@@ -1983,7 +1983,7 @@ loop1:  do n=1,maxiens
 
      real,    dimension (its:ite) ::                            &
        edt,edtx,aa1,aa0,xaa0,hkb,                               &
-       hkbo,xhkb,qkb, pwevo,bu,bud,cap_max,xland1,              &
+       hkbo,xhkb,qkb, pwevo,bu,bud,cap_max,                     &
        cap_max_increment,psum,psumh,sigd,mconv
 
      integer,    dimension (its:ite) ::                         &
@@ -2153,7 +2153,6 @@ loop1:  do n=1,maxiens
         kstabm (i) = ktf-1
         ierr2  (i) = 0
         ierr3  (i) = 0
-        xland1 (i) = xland(i) ! 1.
         cap_max(i) = cap_maxs
         ierrc  (i) = "ierrtxt"
         aa0    (i) = 0.0
@@ -2637,9 +2636,20 @@ loop0:       do k=kts,ktf
         !-------------------------------------------------------------------------
         do i=its,itf 
            if(ierr(i) /= 0)cycle
+           ! Cloud top too low: should be shallow instead
            if(po_cup(i,ktop(i)) > 750) then
-               ierr(i)=22
+               ierr(i)=12
                ierrc(i)='deep convection with cloud top too low'
+           endif
+           ! Depth is too thin
+           if(ktop(i) < kbcon(i)+5)then
+               ierr(i)=15
+               ierrc(i)='ktop too small'
+           endif
+           ! avoid double-counting plumes
+           if(last_ierr(i) == 0) then
+              ierr(i)=16
+              ierrc(i)='prevented double-counting plumes'
            endif
         enddo
       ENDIF
@@ -2663,15 +2673,25 @@ loop0:       do k=kts,ktf
         !-------------------------------------------------------------------------
         do i=its,itf
            if(ierr(i) /= 0)cycle
-           ! Too high: reaching tropopause (should be deep instead)
+           ! Cloud top too high: reaching tropopause (should be deep instead)
            if(po_cup(i,ktop(i)) < 450.0) then
-               ierr(i)=22
+               ierr(i)=21
                ierrc(i)='mid convection with cloud top too high'
            endif
-           ! Too low: should be shallow instead
+           ! Cloud top too low: should be shallow instead
            if(po_cup(i,ktop(i)) > 750.0) then  ! Add lower bound
                ierr(i)=22
                ierrc(i)='mid convection with cloud top too low'
+           endif
+           ! Depth is too thin
+           if(ktop(i) < kbcon(i)+5)then
+               ierr(i)=25
+               ierrc(i)='ktop too small'
+           endif
+           ! avoid double-counting deep & mid plumes
+           if(last_ierr(i) == 0) then
+              ierr(i)=26
+              ierrc(i)='prevented double-counting plumes'
            endif
         enddo
       ENDIF
@@ -2682,30 +2702,16 @@ loop0:       do k=kts,ktf
         !-------------------------------------------------------------------------
         do i=its,itf
            if(ierr(i) /= 0)cycle
+           ! Cloud top too high: should be mid/deep instead
            if(po_cup(i,ktop(i)) < 650) then
-               ierr(i)=23
+               ierr(i)=31
                ierrc(i)='shallow convection with cloud top too high'
            endif
-        enddo
-      ELSE
-        !-------------------------------------------------------------------------
-        ! last checks for ktop (deep and mid)
-        !-------------------------------------------------------------------------
-        do i=its,itf
-          if(ktop(i) <= kbcon(i)+5)then
-              ierr(i)=5
-              ierrc(i)='ktop too small'
-          endif
-        enddo
-        !-------------------------------------------------------------------------
-        ! avoid double-counting deep & mid plumes
-        !-------------------------------------------------------------------------
-        do i=its,itf
-          if(ierr(i) /= 0)cycle
-          if(last_ierr(i) == 0) then
-             ierr(i)=27
-             ierrc(i)='prevented double-counting plumes'
-          endif 
+           ! avoid double-counting plumes
+           if(last_ierr(i) == 0) then
+              ierr(i)=36
+              ierrc(i)='prevented double-counting plumes'
+           endif
         enddo
       ENDIF
 !
@@ -4143,7 +4149,7 @@ ENDIF ! vertical discretization formulation
       if(trim(cumulus) == 'deep') &
       call cup_forcing_ens_3d(itf,ktf,its,ite, kts,kte,ens4,ensdim,ichoice,maxens,maxens2,maxens3 &
                              ,ierr,ierr2,ierr3,k22,kbcon,ktop         &
-                             ,xland1,aa0,aa1,xaa0,mbdt,dtime          &
+                             ,xland ,aa0,aa1,xaa0,mbdt,dtime          &
                              ,xf_ens,mconv,qo                         &
                              ,po_cup,omeg,zdo,zuo,pr_ens,edto         &
                              ,tau_ecmwf,aa1_bl,xf_dicycle, xk_x)
@@ -4188,7 +4194,7 @@ ENDIF ! vertical discretization formulation
        call cup_output_ens_3d(cumulus,xff_shal,xff_mid,xf_ens,ierr,dellat,dellaq,          &
                               dellaqc,outt, outq,outqc,zuo,pre,pwo_eff,xmb,ktop,           &
                               maxens2,maxens,ierr2,ierr3,                                  &
-                              pr_ens,maxens3,ensdim,sig,cnvfrc,xland1,                     &
+                              pr_ens,maxens3,ensdim,sig,cnvfrc,                            &
                               ichoice,ipr,jpr,itf,ktf,its,ite, kts,kte,                    &
                               xf_dicycle,outu,outv,dellu,dellv,dtime,po_cup,kbcon,         &
                               dellabuoy,outbuoy,                                           &
@@ -4221,12 +4227,13 @@ ENDIF ! vertical discretization formulation
        enddo
 !
 !--- includes effects of the remained cloud dissipation into the enviroment
-!
-       if(use_cloud_dissipation > 0.)                                              &
-       call cloud_dissipation(cumulus,itf,ktf, its,ite, kts,kte,ierr,kbcon,ktop    &
-                             ,dtime,xmb,xland,qo_cup,qeso_cup,po_cup,outt,outq     &
-                             ,outqc,zuo,vvel2d,rho_hydr,qrco,sig,tempco,qco,tn_cup &
-                             ,heso_cup,zo)
+!        WMP: 11-Mar-2026 this appears to be broken, causes runs to crash
+!        WMP: I am commenting it out for now
+!      if(use_cloud_dissipation > 0.)                                              &
+!      call cloud_dissipation(cumulus,itf,ktf, its,ite, kts,kte,ierr,kbcon,ktop    &
+!                            ,dtime,xmb,xland,qo_cup,qeso_cup,po_cup,outt,outq     &
+!                            ,outqc,zuo,vvel2d,rho_hydr,qrco,sig,tempco,qco,tn_cup &
+!                            ,heso_cup,zo)
 
 !
 !
@@ -6678,7 +6685,7 @@ ENDIF !- end of section for atmospheric composition
         g_alpha2=g_alpha(k1)
       endif
 
-      fzu = gammaBrams(alpha2 + beta_deep)/(g_alpha2*g_beta_deep)
+      fzu = gamma(alpha2 + beta_deep)/(g_alpha2*g_beta_deep)
       fzu=0.01*fzu
       do k=kb_adj,min(kte,kt)
          kratio= (po_cup(k)-po_cup(kb_adj))/(po_cup(kt)-po_cup(kb_adj))
@@ -6878,14 +6885,10 @@ ENDIF !- end of section for atmospheric composition
   ELSEIF(itest==12 .and. draft == "deep_up") then
       !- kb cannot be at 1st level
 
-      IF( ZERO_DIFF_LAND==1) then
+      IF(ZERO_DIFF_LAND==1) then
         pmaxzu=psur-px*(psur-po_cup(kt))
       ELSE
-        if(xland  < 0.90 ) then !- over land
-          hei_updf= hei_updf_LAND
-        else
-          hei_updf= hei_updf_OCEAN
-        endif
+        hei_updf= hei_updf_OCEAN*xland + hei_updf_LAND*(1.0-xland)
         pmaxzu=psur-hei_updf*(psur-po_cup(kt))
       ENDIF
 
@@ -6979,13 +6982,9 @@ ENDIF !- end of section for atmospheric composition
 
      !increasing contribuition of zuh => more heating at upper levels/less precip
       IF(ZERO_DIFF_LAND==1) then
-         zu(:)= 0.65        *zul(:)+ 0.35     *zuh(:)
+         zu(:)= 0.65*zul(:)+ 0.35*zuh(:)
       ELSE
-         if(xland  < 0.90 ) then !- over land
-           hei_updf= hei_updf_LAND
-         else
-           hei_updf= hei_updf_OCEAN
-         endif
+         hei_updf= hei_updf_OCEAN*xland + hei_updf_LAND*(1.0-xland)
          zu(:)=(1.-hei_updf)*zul(:) + hei_updf*zuh(:)
       ENDIF
 
@@ -8498,9 +8497,9 @@ loop0:  do k= kbcon(i),ktop(i)
 !------------------------------------------------------------------------------------
    SUBROUTINE cup_output_ens_3d(name,xff_shal,xff_mid,xf_ens,ierr,dellat,dellaq,dellaqc,  &
                                 outtem,outq,outqc,zu,pre,pw,xmb,ktop,                     &
-                                nx,nx2,ierr2,ierr3,pr_ens, maxens3,ensdim,sig,cnvfrc,xland1,     &
+                                nx,nx2,ierr2,ierr3,pr_ens, maxens3,ensdim,sig,cnvfrc,     &
                                 ichoice,ipr,jpr,itf,ktf,its,ite, kts,kte,                 &
-                                xf_dicycle,outu,outv,dellu,dellv,dtime,po_cup,kbcon,       &
+                                xf_dicycle,outu,outv,dellu,dellv,dtime,po_cup,kbcon,      &
                                 dellabuoy,outbuoy, dellampqi,outmpqi,dellampql,outmpql,   &
                                 dellampcf,outmpcf ,nmp)
    IMPLICIT NONE
@@ -8553,9 +8552,6 @@ loop0:  do k= kbcon(i),ktop(i)
      real,    dimension (its:ite)                                      &
         ,intent (out  )                   ::                           &
         pre,xmb
-     real,    dimension (its:ite)                                      &
-        ,intent (inout  )                 ::                         &
-        xland1
      real,    dimension (its:ite,kts:kte)                              &
         ,intent (in   )                   ::                           &
         dellat,dellaqc,dellaq,pw,dellu,dellv,dellabuoy
@@ -8980,20 +8976,19 @@ loop0:  do k= kbcon(i),ktop(i)
                    xf_ens(i,13)= 0.
                 endif
 
-
-                if(ichoice.ge.1)then
+                if(ichoice.ne.0)then
                   xf_ens(i,1:16) =xf_ens(i,ichoice)
-                endif
-
-                if(ZERO_DIFF_LAND == 0 .and. ichoice == 0) then
-                  !---over the land, only applies closure 10.
-                  xf_ens(i,1:16)=(1.-xland(i))*xf_ens(i,10)+xland(i)*xf_ens(i,1:16)
                 else
-                  !---special combination for 'ensemble closure':
-                  !---over the land, only applies closures 1 and 10.
-                  if(ichoice == 0 .and. xland(i) < 0.1)then
-                    xf_ens(i,1:16) =0.5*(xf_ens(i,10)+xf_ens(i,1))
-                  endif               
+                  if(ZERO_DIFF_LAND == 0) then
+                    !---over the land, only applies closure 10.
+                    !                             over Land                over Ocean  
+                    xf_ens(i,1:16)=(1.-xland(i))*xf_ens(i,10) + xland(i)*xf_ens(i,1:16)
+                  else
+                    !---special combination for 'ensemble closure':
+                    !---over the land, only applies closures 1 and 10.
+                    xf_ens(i,1:16) = (1.-xland(i)) * 0.5*(xf_ens(i,10) + xf_ens(i,1)) + &
+                                     (   xland(i)) * xf_ens(i,1:16)
+                  endif
                 endif
 
 !------------------------------------
@@ -10986,57 +10981,7 @@ REAL FUNCTION fract_liq_f(temp2,cnvfrc,srftype) ! temp2 in Kelvin, fraction betw
     enddo
 
   end subroutine get_liq_ice_number_conc
-!DSM {
-  pure function intfuncgamma(x, y) result(z)
-    real :: z
-    real, intent(in) :: x, y
 
-    z = x**(y-1.0) * exp(-x)
-  end function intfuncgamma
-
-  function gammaBrams(a) result(g)
-    real :: g
-    real, intent(in) :: a
-
-    real, parameter :: small = 1.0e-4
-    integer, parameter :: points = 100000
-
-    real :: infty, dx, p, sp(2, points), x
-    integer :: i
-    logical :: correction
-
-    x = a
-
-    correction = .false.
-    ! value with x<1 gives \infty, so we use
-    ! \Gamma(x+1) = x\Gamma(x)
-    ! to avoid the problem
-    if ( x < 1.0 ) then
-      correction = .true.
-      x = x + 1
-    end if
-
-    ! find a "reasonable" infinity...
-    ! we compute this integral indeed
-    ! \int_0^M dt t^{x-1} e^{-t}
-    ! where M is such that M^{x-1} e^{-M} ? \epsilon
-    infty = 1.0e4
-    do while ( intfuncgamma(infty, x) > small )
-      infty = infty * 10.0
-    end do
-
-    ! using simpson
-    dx = infty/real(points)
-    sp = 0.0
-    forall(i=1:points/2-1) sp(1, 2*i) = intfuncgamma(2.0*(i)*dx, x)
-    forall(i=1:points/2) sp(2, 2*i - 1) = intfuncgamma((2.0*(i)-1.0)*dx, x)
-    g = (intfuncgamma(0.0, x) + 2.0*sum(sp(1,:)) + 4.0*sum(sp(2,:)) + &
-    intfuncgamma(infty, x))*dx/3.0
-
-    if ( correction ) g = g/a
-
-  end function gammaBrams
-!DSM}
 !----------------------------------------------------------------------
   subroutine gen_random(its,ite,use_random_num,random)
    implicit none
