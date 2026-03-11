@@ -74,8 +74,8 @@ module GEOSmoist_Process_Library
   real, parameter :: taufrz  =  600.0     ! timescale for freezing
   real, parameter :: taumlt  =  300.0     ! timescale for melting
   real, parameter :: CFMIN   =  1.e-5     ! minimum cloud fraction
-  real, parameter :: QCMIN   =  1.e-15    ! minimum condensate values
-  real, parameter :: QPMIN   =  1.e-15    ! abosolute min cloud props
+  real, parameter :: QCMIN   =  1.e-8     ! minimum condensate (ql & qi) values
+  real, parameter :: QPMIN   =  1.e-15    ! minimum precipitate (qr, qs, qg) values
   ! LDRADIUS4
   ! Jason
   real, parameter :: abeta = 0.07
@@ -1198,7 +1198,7 @@ module GEOSmoist_Process_Library
       end if
 
       ! Fix if Anvil cloud fraction too small
-      if ( AF < 0.0 ) then
+      if ( AF < CFMIN ) then
          QV  = QV + QLA + QIA
          TE  = TE - (alhlbcp)*QLA - (alhsbcp)*QIA
          AF  = 0.
@@ -1207,7 +1207,7 @@ module GEOSmoist_Process_Library
       end if
 
       ! Fix if LS cloud fraction too small
-      if ( CF < 0.0 ) then
+      if ( CF < CFMIN ) then
          QV = QV + QLC + QIC
          TE = TE - (alhlbcp)*QLC - (alhsbcp)*QIC
          CF  = 0.
@@ -1216,33 +1216,33 @@ module GEOSmoist_Process_Library
       end if
 
       ! LS LIQUID too small
-      if ( QLC  < 0.0 ) then
+      if ( QLC  < QCMIN ) then
          QV = QV + QLC
          TE = TE - (alhlbcp)*QLC
          QLC = 0.
       end if
       ! LS ICE too small
-      if ( QIC  < 0.0 ) then
+      if ( QIC  < QCMIN ) then
          QV = QV + QIC
          TE = TE - (alhsbcp)*QIC
          QIC = 0.
       end if
 
       ! Anvil LIQUID too small
-      if ( QLA  < 0.0 ) then
+      if ( QLA  < QCMIN ) then
          QV = QV + QLA
          TE = TE - (alhlbcp)*QLA
          QLA = 0.
       end if
       ! Anvil ICE too small
-      if ( QIA  < 0.0 ) then
+      if ( QIA  < QCMIN ) then
          QV = QV + QIA
          TE = TE - (alhsbcp)*QIA
          QIA = 0.
       end if
 
       ! Fix ALL cloud quants if Anvil cloud LIQUID+ICE too small
-      if ( ( QLA + QIA ) < 0.0 ) then
+      if ( ( QLA + QIA ) < QCMIN ) then
          QV = QV + QLA + QIA
          TE = TE - (alhlbcp)*QLA - (alhsbcp)*QIA
          AF  = 0.
@@ -1250,7 +1250,7 @@ module GEOSmoist_Process_Library
          QIA = 0.
       end if
       ! Ditto if LS cloud LIQUID+ICE too small
-      if ( ( QLC + QIC ) < 0.0 ) then
+      if ( ( QLC + QIC ) < QCMIN ) then
          QV = QV + QLC + QIC
          TE = TE - (alhlbcp)*QLC - (alhsbcp)*QIC
          CF  = 0.
@@ -2681,7 +2681,7 @@ module GEOSmoist_Process_Library
        if (ASSOCIATED(DQDT)) DQDT = Q 
     endif
  
-    WHERE (Q < 0.0)    
+    WHERE (Q < 1.e-15)    
        Q=0.0
     END WHERE
 
