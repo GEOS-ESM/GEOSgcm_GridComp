@@ -650,9 +650,15 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     ! allocate ice-elevation output (export from ISSM)
     allocate(ISSM_OUTPUTS(num_outputs*num_elements))  
+
+    ! allocate mesh exports
     allocate(ICESURF_MESH(num_elements))
     allocate(ICETHICK_MESH(num_elements))
-    allocate(ICEVEL_MESH(num_elements))  
+    allocate(ICEVEL_MESH(num_elements))
+    
+    ! allocate mesh imports
+    allocate(ICESMB_MESH(num_elements))  
+    
 
     call ESMF_VMBarrier(vm, rc=status)
     VERIFY_(STATUS)
@@ -762,6 +768,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   if(associated(ICESURF_MESH))  deallocate(ICESURF_MESH)
   if(associated(ICETHICK_MESH)) deallocate(ICETHICK_MESH)
   if(associated(ICEVEL_MESH))   deallocate(ICEVEL_MESH) 
+  if(associated(ICESMB_MESH))   deallocate(ICESMB_MESH) 
   if(associated(ISSM_OUTPUTS))  deallocate(ISSM_OUTPUTS)
   if(associated(ICESMB_TILE))   deallocate(ICESMB_TILE)
   if(associated(ICESURF_TILE))  deallocate(ICESURF_TILE)
