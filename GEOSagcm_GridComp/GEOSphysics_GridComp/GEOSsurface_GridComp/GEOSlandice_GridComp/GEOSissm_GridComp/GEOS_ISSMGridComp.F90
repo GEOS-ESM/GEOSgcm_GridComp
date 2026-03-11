@@ -84,6 +84,8 @@ public :: ISSM_EXPORT_WRAP
 
 type T_ISSM_EXPORT_STATE
     real, pointer :: ICESURF_TILE(:)
+    real, pointer :: ICETHICK_TILE(:)
+    real, pointer :: ICEVEL_TILE(:)
 end type T_ISSM_EXPORT_STATE
 
 type ISSM_EXPORT_WRAP
@@ -593,11 +595,15 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real, pointer, dimension(:)          :: ICESURF_EX    => null() ! pointer to ice-sheet elevation export state (mesh tiles)
 
   ! ice thickness
-  real(dp),    pointer, dimension(:)   :: ICETHICK      => null() ! ice thickness on mesh
+  real(dp),    pointer, dimension(:)   :: ICETHICK_MESH => null() ! ice thickness on mesh
+  real, pointer, dimension(:,:)        :: ICETHICK_GRID => null() ! ice thickness on grid
+  real, pointer, dimension(:)          :: ICETHICK_TILE => null() ! ice thickness on landice tiles
   real, pointer, dimension(:)          :: ICETHICK_EX   => null() ! pointer to ice thickness export state (mesh tiles)
 
   ! ice-flow speed  
-  real(dp),    pointer, dimension(:)   :: ICEVEL        => null() ! ice flow speed on mesh
+  real(dp),    pointer, dimension(:)   :: ICEVEL_MESH   => null() ! ice flow speed on mesh
+  real, pointer, dimension(:,:)        :: ICEVEL_GRID   => null() ! ice flow speed on grid
+  real, pointer, dimension(:)          :: ICEVEL_TILE   => null() ! ice flow speed on landice tiles
   real, pointer, dimension(:)          :: ICEVEL_EX     => null() ! pointer to ice flow speed export state (mesh tiles)
  
   ! physical parameters
@@ -646,16 +652,16 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! allocate ice-elevation output (export from ISSM)
     allocate(ISSM_OUTPUTS(num_outputs*num_elements))  
     allocate(ICESURF_MESH(num_elements))
-    allocate(ICETHICK(num_elements))
-    allocate(ICEVEL(num_elements))  
+    allocate(ICETHICK_MESH(num_elements))
+    allocate(ICEVEL_MESH(num_elements))  
 
     call ESMF_VMBarrier(vm, rc=status)
     VERIFY_(STATUS)
 
     ! initialize ISSM outputs to zero 
     ICESURF_MESH(:) = 0.0_dp
-    ICETHICK(:) = 0.0_dp
-    ICEVEL(:) = 0.0_dp
+    ICETHICK_MESH(:) = 0.0_dp
+    ICEVEL_MESH(:) = 0.0_dp
     ISSM_OUTPUTS(:) = 0.0_dp
 
     ! get routehandles for regridding
@@ -677,7 +683,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     
     call MAPL_GetPointer(IMPORT,ICESMB_IM, 'ICESMB' , RC=STATUS); VERIFY_(STATUS)
 
-    ! allocate tiles for SMB (MKTILE)
+    ! allocate tiles for SMB 
     if(associated(ICESMB_IM) .and. .not.associated(ICESMB_TILE)) then
       allocate(ICESMB_TILE(NT), STAT=STATUS)
       VERIFY_(STATUS)
@@ -736,23 +742,24 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     ! unpack ISSM output pointer
     ICESURF_MESH(:) = ISSM_OUTPUTS(1:num_elements)
-    ICETHICK(:) = ISSM_OUTPUTS(num_elements+1:2*num_elements)
-    ICEVEL(:) = ISSM_OUTPUTS(2*num_elements+1:3*num_elements)
+    ICETHICK_MESH(:) = ISSM_OUTPUTS(num_elements+1:2*num_elements)
+    ICEVEL_MESH(:) = ISSM_OUTPUTS(2*num_elements+1:3*num_elements)
 
     ! set pointers to tile-mesh exports
     call MAPL_GetPointer(EXPORT  , ICESURF_EX , 'ICESURF' , RC=STATUS); VERIFY_(STATUS)
     if(associated(ICESURF_EX)) ICESURF_EX = ICESURF_MESH
 
     call MAPL_GetPointer(EXPORT  , ICEVEL_EX , 'ICEVEL' , RC=STATUS); VERIFY_(STATUS)
-    if(associated(ICEVEL_EX)) ICEVEL_EX = ICEVEL
+    if(associated(ICEVEL_EX)) ICEVEL_EX = ICEVEL_MESH
 
     call MAPL_GetPointer(EXPORT  , ICETHICK_EX , 'ICETHICK' , RC=STATUS); VERIFY_(STATUS)
-    if(associated(ICETHICK_EX)) ICETHICK_EX = ICETHICK
+    if(associated(ICETHICK_EX)) ICETHICK_EX = ICETHICK_MESH
 
     ! *************************************************************************** !
     ! REGRID MESH FIELDS ONTO LANDICE TILES AND EXPORT VIA INTERNAL STATE
     ! *************************************************************************** !
-
+    
+    ! 1) ***** ice elevation *****
     ! destroy regridding fields so they can be reused
     call ESMF_FieldDestroy(srcField,rc=STATUS); VERIFY_(STATUS)
     call ESMF_FieldDestroy(dstField,rc=STATUS); VERIFY_(STATUS)
@@ -788,22 +795,95 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     issm_exports_state%ICESURF_TILE = ICESURF_TILE
 
+    ! 2) ***** ice thickness *****
     ! destroy regridding fields 
     call ESMF_FieldDestroy(srcField,rc=STATUS); VERIFY_(STATUS)
     call ESMF_FieldDestroy(dstField,rc=STATUS); VERIFY_(STATUS)
+
+    ! create source field: ice elevation on mesh elements
+    srcField = ESMF_FieldCreate(mesh=mesh,farrayPtr=ICETHICK_MESH,meshloc=ESMF_MESHLOC_ELEMENT, & 
+    datacopyflag=ESMF_DATACOPY_VALUE,rc=STATUS)
+    VERIFY_(STATUS)
+    
+    ! create destination field: ice elevation on grid
+    dstField = ESMF_FieldCreate(grid=internal_state%grid,typekind=ESMF_TYPEKIND_R4,rc=STATUS)
+    VERIFY_(STATUS)
+
+    ! regrid ice thickness from mesh to grid
+    call ESMF_FieldRegrid(srcField, dstField, routehandle_m2g, RC=STATUS); VERIFY_(STATUS)
+
+    ! allocate tiles for ice thickness 
+    if (.not.associated(ICETHICK_TILE)) then
+      allocate(ICETHICK_TILE(NT), STAT=STATUS)
+      VERIFY_(STATUS)
+      ICETHICK_TILE = MAPL_Undef
+    end if
+
+    ! allocate ICETHICK on grid
+    allocate( ICETHICK_GRID(IM,JM), STAT=STATUS ); VERIFY_(STATUS)
+   
+    ! get pointer to ice thickness on grid
+    call ESMF_FieldGet(dstField,farrayPtr=ICETHICK_GRID,RC=STATUS); VERIFY_(STATUS)
+
+    ! transform from grid to tiles  
+    call MAPL_LocStreamTransform(internal_state%LOCSTREAM,ICETHICK_TILE,ICETHICK_GRID, RC=STATUS)
+    VERIFY_(STATUS)
+
+    issm_exports_state%ICETHICK_TILE = ICETHICK_TILE
+
+    ! 3) ***** ice flow speed *****
+    ! destroy regridding fields 
+    call ESMF_FieldDestroy(srcField,rc=STATUS); VERIFY_(STATUS)
+    call ESMF_FieldDestroy(dstField,rc=STATUS); VERIFY_(STATUS)
+
+    ! create source field: ice ice flow speed on mesh elements
+    srcField = ESMF_FieldCreate(mesh=mesh,farrayPtr=ICEVEL_MESH,meshloc=ESMF_MESHLOC_ELEMENT, & 
+    datacopyflag=ESMF_DATACOPY_VALUE,rc=STATUS)
+    VERIFY_(STATUS)
+    
+    ! create destination field: ice ice flow speed on grid
+    dstField = ESMF_FieldCreate(grid=internal_state%grid,typekind=ESMF_TYPEKIND_R4,rc=STATUS)
+    VERIFY_(STATUS)
+
+    ! regrid ice ice flow speed from mesh to grid
+    call ESMF_FieldRegrid(srcField, dstField, routehandle_m2g, RC=STATUS); VERIFY_(STATUS)
+
+    ! allocate tiles for ice ice flow speed 
+    if (.not.associated(ICEVEL_TILE)) then
+      allocate(ICEVEL_TILE(NT), STAT=STATUS)
+      VERIFY_(STATUS)
+      ICEVEL_TILE = MAPL_Undef
+    end if
+
+    ! allocate ICEVEL on grid
+    allocate( ICEVEL_GRID(IM,JM), STAT=STATUS ); VERIFY_(STATUS)
+   
+    ! get pointer to ice ice flow speed on grid
+    call ESMF_FieldGet(dstField,farrayPtr=ICEVEL_GRID,RC=STATUS); VERIFY_(STATUS)
+
+    ! transform from grid to tiles  
+    call MAPL_LocStreamTransform(internal_state%LOCSTREAM,ICEVEL_TILE,ICEVEL_GRID, RC=STATUS)
+    VERIFY_(STATUS)
+
+    issm_exports_state%ICEVEL_TILE = ICEVEL_TILE
 
   end if 
 
   call ESMF_VMBarrier(vm, rc=status)
   VERIFY_(STATUS)
 
-  if(associated(ICESURF_MESH)) deallocate(ICESURF_MESH)
-  if(associated(ISSM_OUTPUTS)) deallocate(ISSM_OUTPUTS)
-  if(associated(ICETHICK))     deallocate(ICETHICK)
-  if(associated(ICEVEL))       deallocate(ICEVEL) 
-  if(associated(ICESMB_TILE))  deallocate(ICESMB_TILE)
-  if(associated(ICESURF_TILE)) deallocate(ICESURF_TILE)
-  if(associated(ICESMB_GRID))  deallocate(ICESMB_GRID)
+  if(associated(ICESURF_MESH))  deallocate(ICESURF_MESH)
+  if(associated(ICETHICK_MESH)) deallocate(ICETHICK_MESH)
+  if(associated(ICEVEL_MESH))   deallocate(ICEVEL_MESH) 
+  if(associated(ISSM_OUTPUTS))  deallocate(ISSM_OUTPUTS)
+  if(associated(ICESMB_TILE))   deallocate(ICESMB_TILE)
+  if(associated(ICESURF_TILE))  deallocate(ICESURF_TILE)
+  if(associated(ICETHICK_TILE)) deallocate(ICETHICK_TILE)
+  if(associated(ICEVEL_TILE))   deallocate(ICEVEL_TILE)
+  if(associated(ICESMB_GRID))   deallocate(ICESMB_GRID)
+  if(associated(ICESURF_GRID))  deallocate(ICESURF_GRID)
+  if(associated(ICETHICK_GRID)) deallocate(ICETHICK_GRID)
+  if(associated(ICEVEL_GRID))   deallocate(ICEVEL_GRID)
 
   call MAPL_TimerOff(MAPL,"RUN"  )
   call MAPL_TimerOff(MAPL,"TOTAL")
