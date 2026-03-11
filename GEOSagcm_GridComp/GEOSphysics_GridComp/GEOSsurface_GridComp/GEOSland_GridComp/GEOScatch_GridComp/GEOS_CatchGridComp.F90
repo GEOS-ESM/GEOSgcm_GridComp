@@ -5436,7 +5436,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(SWDOWNLAND)) SWDOWNLAND = DRPAR + DFPAR + DRUVR + DFUVR + DRNIR + DFNIR
 
         ALBVR_UR=max(0.08, CATCH_ALB_URBAN - 0.005 * urban%height)
-        LBVF_UR=max(0.08,  CATCH_ALB_URBAN - 0.005 * urban%height)
+        ALBVF_UR=max(0.08,  CATCH_ALB_URBAN - 0.005 * urban%height)
         ALBNR_UR=max(0.08, CATCH_ALB_URBAN - 0.005 * urban%height)
         ALBNF_UR=max(0.08, CATCH_ALB_URBAN - 0.005 * urban%height)
 
