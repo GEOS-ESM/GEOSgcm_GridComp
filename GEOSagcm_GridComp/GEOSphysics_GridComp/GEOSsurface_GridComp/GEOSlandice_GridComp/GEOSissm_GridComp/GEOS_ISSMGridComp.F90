@@ -84,6 +84,8 @@ public :: ISSM_EXPORT_WRAP
 
 type T_ISSM_EXPORT_STATE
     real, pointer :: ICESURF_TILE(:)
+    real, pointer :: ICETHICK_TILE(:)
+    real, pointer :: ICEVEL_TILE(:)
 end type T_ISSM_EXPORT_STATE
 
 type ISSM_EXPORT_WRAP
@@ -760,21 +762,15 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_FieldDestroy(srcField,rc=STATUS); VERIFY_(STATUS)
     call ESMF_FieldDestroy(dstField,rc=STATUS); VERIFY_(STATUS)
 
-    ! allocate tiles 
-    if (.not.associated(ICESURF_TILE)) then
-      allocate(ICESURF_TILE(NT), STAT=STATUS)
-      VERIFY_(STATUS)
-      ICESURF_TILE = MAPL_Undef
-    end if
-
-    ! allocate grid in case fieldestroy deallocates?
-    if (.not.associated(VAR_GRID)) then
-      allocate(VAR_GRID(IM,JM), STAT=STATUS ); VERIFY_(STATUS)
-    end if
-
     ! transform from mesh to tiles
     call mesh_to_tile(ICESURF_MESH,ICESURF_TILE); VERIFY_(STATUS)
     issm_exports_state%ICESURF_TILE = ICESURF_TILE
+
+    call mesh_to_tile(ICETHICK_MESH,ICETHICK_TILE); VERIFY_(STATUS)
+    issm_exports_state%ICETHICK_TILE = ICETHICK_TILE
+
+    call mesh_to_tile(ICEVEL_MESH,ICEVEL_TILE); VERIFY_(STATUS)
+    issm_exports_state%ICEVEL_TILE = ICEVEL_TILE
 
   end if 
 
@@ -799,6 +795,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! regrid from mesh to grid, then transform from grid to landice tiles
     real(dp),    pointer, dimension(:), intent(inout)   :: VAR_MESH  ! var on issm mesh
     real, pointer, dimension(:), intent(inout)          :: VAR_TILE  ! var on landice tiles
+
+    ! allocate tiles 
+    if (.not.associated(VAR_TILE)) then
+      allocate(VAR_TILE(NT), STAT=STATUS)
+      VERIFY_(STATUS)
+      VAR_TILE = MAPL_Undef
+    end if
 
     ! create source field: field on mesh elements
     srcField = ESMF_FieldCreate(mesh=mesh,farrayPtr=VAR_MESH,meshloc=ESMF_MESHLOC_ELEMENT, & 

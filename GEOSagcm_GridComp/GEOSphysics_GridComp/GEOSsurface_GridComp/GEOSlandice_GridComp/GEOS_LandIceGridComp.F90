@@ -221,6 +221,24 @@ module GEOS_LandiceGridCompMod
         RC=STATUS  )
      VERIFY_(STATUS)
 
+     call MAPL_AddExportSpec(GC,                   &
+        SHORT_NAME = 'ICEVEL',                     &
+        LONG_NAME  = 'ice_flow_speed',             &
+        UNITS      = 'm s-1',                      &
+        DIMS       = MAPL_DimsTileOnly,            &
+        VLOCATION  = MAPL_VLocationNone,           &
+        RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                   &
+        SHORT_NAME = 'ICETHICK',                   &
+        LONG_NAME  = 'ice_thickness',              &
+        UNITS      = 'm',                          &
+        DIMS       = MAPL_DimsTileOnly,            &
+        VLOCATION  = MAPL_VLocationNone,           &
+        RC=STATUS  )
+     VERIFY_(STATUS)
+
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'EMIS',                              &
         LONG_NAME          = 'surface_emissivity',                &
@@ -1759,6 +1777,8 @@ module GEOS_LandiceGridCompMod
           if (index(gcnames(I), 'ISSM') /=0 ) then
              allocate(issm_exports_state)
              allocate(issm_exports_state%ICESURF_TILE(nt_local))
+             allocate(issm_exports_state%ICETHICK_TILE(nt_local))
+             allocate(issm_exports_state%ICEVEL_TILE(nt_local))
              issm_exports_wrap%ptr => issm_exports_state
              call ESMF_UserCompSetInternalState(GCS(I), 'ISSM_EXPORTS', issm_exports_wrap, status)
              VERIFY_(STATUS)
@@ -2390,6 +2410,8 @@ contains
 ! pointers to export
    real, pointer, dimension(:  )  :: ICESMB
    real, pointer, dimension(:  )  :: ICESURF
+   real, pointer, dimension(:  )  :: ICETHICK
+   real, pointer, dimension(:  )  :: ICEVEL
    real, pointer, dimension(:  )  :: EMISS
    real, pointer, dimension(:  )  :: ALBVF 
    real, pointer, dimension(:  )  :: ALBVR 
@@ -2704,6 +2726,8 @@ contains
 !--------------------
    call MAPL_GetPointer(EXPORT,ICESMB  , 'ICESMB',alloc=.true., RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,ICESURF , 'ICESURF',alloc=.true., RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,ICETHICK ,'ICETHICK',alloc=.true., RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,ICEVEL ,'ICEVEL',alloc=.true., RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,EMISS  , 'EMIS'   , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,ALBVF  , 'ALBVF'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,ALBVR  , 'ALBVR'  , RC=STATUS); VERIFY_(STATUS)
@@ -3559,8 +3583,10 @@ contains
              call ESMF_UserCompGetInternalState(GCS(N), 'ISSM_EXPORTS', issm_exports_wrap, status)
              VERIFY_(STATUS)
              issm_exports_state =>issm_exports_wrap%ptr
-            if (associated(ICESURF)) ICESURF = issm_exports_state%ICESURF_TILE
-          endif
+            if (associated(ICESURF))  ICESURF = issm_exports_state%ICESURF_TILE
+            if (associated(ICETHICK)) ICETHICK = issm_exports_state%ICETHICK_TILE
+            if (associated(ICEVEL))   ICEVEL = issm_exports_state%ICEVEL_TILE
+         endif
       enddo
     end if 
 
