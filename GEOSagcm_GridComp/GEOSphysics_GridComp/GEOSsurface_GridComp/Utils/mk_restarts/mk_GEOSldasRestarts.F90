@@ -3,7 +3,7 @@
 
 PROGRAM mk_GEOSldasRestarts
 
-! USAGE/HELP (NOTICE mpirun -np 1) 
+! USAGE/HELP (NOTICE mpirun -np 1)
 !  mpirun -np 1 bin/mk_GEOSldasRestarts.x -h
 !
 ! (1) to create an initial catch(cn)_internal_rst file ready for an offline experiment :
@@ -11,26 +11,26 @@ PROGRAM mk_GEOSldasRestarts
 ! (1.1) mpirun -np 1 bin/mk_GEOSldasRestarts.x -a SPONSORCODE -b BCSDIR -m MODEL -s SURFLAY(20/50) -t TILFILE
 ! where MODEL : catch or catchcn
 ! (1.2) sbatch mkLDAS.j
-!    
+!
 ! (2) to reorder an LDASsa restart file to the order of the BCs for use in an GCM experiment :
 ! --------------------------------------------------------------------------------------------
 ! mpirun -np 1 bin/mk_GEOSldasRestarts.x -b BCSDIR  -d YYYYMMDD -e EXPNAME -l EXPDIR -m MODEL -s SURFLAY(20/50) -r Y -t TILFILE -p PARAMFILE
   use netcdf
   use MAPL
   use mk_restarts_getidsMod, only: GetIDs, ReadTileFile_RealLatLon
-  use gFTL_StringVector 
+  use gFTL_StringVector
   use ieee_arithmetic, only: isnan => ieee_is_nan
   USE STIEGLITZSNOW,   ONLY :                 &
-       StieglitzSnow_calc_tpsnow 
+       StieglitzSnow_calc_tpsnow
   implicit none
   include 'mpif.h'
   INCLUDE 'netcdf.inc'
-  
+
   ! initialize to non-MPI values
-  
+
   integer  :: myid=0, numprocs=1, mpierr
   logical  :: root_proc=.true.
-  
+
   ! Carbon model specifics
   ! ----------------------
 
@@ -44,12 +44,12 @@ PROGRAM mk_GEOSldasRestarts
   real, parameter :: PERIHELION    = 102.0
   real, parameter :: OBLIQUITY     = 23.45
   integer, parameter :: EQUINOX    = 80
-  
+
   integer, parameter :: nveg    = 4
   integer, parameter :: nzone   = 3
   integer, parameter :: VAR_COL_CLM40 = 40 ! number of CN column restart variables
   integer, parameter :: VAR_PFT_CLM40 = 74 ! number of CN PFT variables per column
-  integer, parameter :: npft    = 19  
+  integer, parameter :: npft    = 19
   integer, parameter :: npft_clm45    = 19
   integer, parameter :: VAR_COL_CLM45 = 35 ! number of CN column restart variables
   integer, parameter :: VAR_PFT_CLM45 = 75 ! number of CN PFT variables per column
@@ -75,10 +75,10 @@ PROGRAM mk_GEOSldasRestarts
        InCNTilFile = '/discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Heracles-NL/SMAP_EASEv2_M09/SMAP_EASEv2_M09_3856x1624.til',                        &
        InCatRestart= '/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding/Catch/M09/20170101/catch_internal_rst', &
        InCatTilFile= '/discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/CLSM_params/mkCatchParam_SMAP_L4SM_v002/' &
-                      //'SMAP_EASEv2_M09/SMAP_EASEv2_M09_3856x1624.til',                                                   &        
+                      //'SMAP_EASEv2_M09/SMAP_EASEv2_M09_3856x1624.til',                                                   &
        InCatRest45 = '/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding/Catch/M09/20170101/catch_internal_rst', &
        InCatTil45  = '/discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/CLSM_params/mkCatchParam_SMAP_L4SM_v002/' &
-                      //'SMAP_EASEv2_M09/SMAP_EASEv2_M09_3856x1624.til'            
+                      //'SMAP_EASEv2_M09/SMAP_EASEv2_M09_3856x1624.til'
   REAL        :: SURFLAY = 50.
   integer     :: STATUS
 
@@ -133,7 +133,7 @@ PROGRAM mk_GEOSldasRestarts
   CALL get_command (cmd)
   call getenv ("ESMADIR"        ,ESMADIR        )
   nxt = 1
-  
+
   call getarg(nxt,arg)
   rstfile = 'NONE'
   do while(arg(1:1)=='-')
@@ -220,18 +220,18 @@ PROGRAM mk_GEOSldasRestarts
 
      call MPI_Barrier(MPI_COMM_WORLD, STATUS)
      call MPI_FINALIZE(mpierr)
-     call exit(0)     
+     call exit(0)
 
   elseif (trim(REORDER) == 'R') then
 
    ! This call is to regrid LDASsa/GEOSldas restarts from a different grid (RESTART: 2)
-   
+
      call regrid_from_xgrid (SURFLAY, BCSDIR, YYYYMMDDHH, EXPNAME, EXPDIR, MODEL, PFILE, rstfile)
- 
+
      call MPI_Barrier(MPI_COMM_WORLD, STATUS)
      call MPI_FINALIZE(mpierr)
      call exit(0)
-  
+
   else
 
      ! The user does not have restarts, thus cold start (RESTART: 0)
@@ -248,7 +248,7 @@ PROGRAM mk_GEOSldasRestarts
 
         open (10, file ='mkLDASsa.j', form = 'formatted', status ='unknown', action = 'write')
         write(10,'(a)')'#!/bin/csh -fx'
-        write(10,'(a)')' ' 
+        write(10,'(a)')' '
         write(10,'(a)')'#SBATCH --account='//trim(SPONSORCODE)
         write(10,'(a)')'#SBATCH --time=1:00:00'
         write(10,'(a)')'#SBATCH --ntasks=56'
@@ -256,7 +256,7 @@ PROGRAM mk_GEOSldasRestarts
         write(10,'(a)')'###SBATCH --constraint=hasw'
         write(10,'(a)')'#SBATCH --output=mkLDAS.o'
         write(10,'(a)')'#SBATCH --error=mkLDAS.e'
-        write(10,'(a)')' ' 
+        write(10,'(a)')' '
         write(10,'(a)')'limit stacksize unlimited'
         write(10,'(a)')'source bin/g5_modules'
         !tmpstring = "set BINDIR=`ls -l bin | cut -d'>' -f2`"
@@ -265,7 +265,7 @@ PROGRAM mk_GEOSldasRestarts
         write(10,'(a)')'setenv ESMADIR '//trim(ESMADIR)
         write(10,'(a)')'setenv MKL_CBWR SSE4_2 # ensure zero-diff across archs'
         write(10,'(a)')'setenv MV2_ON_DEMAND_THRESHOLD 8192 # MVAPICH2'
-        write(10,'(a)')' ' 
+        write(10,'(a)')' '
         write(10,'(a)')'mpirun -np 56 '//trim(cmd)//' -j Y'
 
         write(10,'(a)')'bin/'//trim(catch_scaler)//' InData/'//model//'_internal_rst OutData/'//model//'_internal_rst '//model//'_internal_rst '//trim(SFL)
@@ -275,12 +275,12 @@ PROGRAM mk_GEOSldasRestarts
         stop
      endif
   endif
- 
+
   if (root_proc) then
-     
-     ! read in ntiles 
+
+     ! read in ntiles
      ! ----------------------------
-     
+
      open  (10,file = trim(BCSDIR)//'/clsm/catchment.def', form = 'formatted', status ='old', action = 'read')
      read  (10,*) ntiles
      close (10, status ='keep')
@@ -288,29 +288,29 @@ PROGRAM mk_GEOSldasRestarts
   endif
 
   call MPI_BCAST(NTILES     ,     1, MPI_INTEGER  ,  0,MPI_COMM_WORLD,mpierr)
-  
+
   ! Regridding
   inquire(file='InData/'//trim(MODEL)//'_internal_rst',exist=second_visit )
 
   if(.not. second_visit) then
-     call regrid_hyd_vars (NTILES, trim(MODEL)) 
+     call regrid_hyd_vars (NTILES, trim(MODEL))
      call MPI_Barrier(MPI_COMM_WORLD, STATUS)
      stop
   endif
-  if (root_proc) then 
+  if (root_proc) then
      call read_bcs_data (NTILES, SURFLAY, trim(MODEL),'OutData/clsm/','OutData/'//trim(MODEL)//'_internal_rst', __RC__)
   endif
 
   call MPI_Barrier(MPI_COMM_WORLD, STATUS)
 
-  if(index(MODEL,'catchcn') /=0) then 
+  if(index(MODEL,'catchcn') /=0) then
 
-     call  regrid_carbon_vars (NTILES, model)     
+     call  regrid_carbon_vars (NTILES, model)
 
   endif
 
   call MPI_FINALIZE(mpierr)
-     
+
 contains
 
   ! *****************************************************************************
@@ -326,37 +326,37 @@ contains
     integer                   :: NTILES, nv, iv, i,j,k,n, nx, nz, ndims,dimSizes(3), NTILES_RST,nplus, STATUS,NCFID, req, filetype, OUTID
     integer, allocatable      :: LDAS2BCS (:), tile_id(:)
     real, allocatable         :: var1(:), var2(:),wesn1(:), htsn1(:), lon_rst(:), lat_rst(:)
-    logical                   :: fexist, bin_out = .false., lendian = .true.    
-    real   , allocatable, dimension (:) :: LATT, LONN, DAYX 
+    logical                   :: fexist, bin_out = .false., lendian = .true.
+    real   , allocatable, dimension (:) :: LATT, LONN, DAYX
     real   , pointer , dimension (:) :: long, latg, lonc, latc
-    integer, allocatable, dimension (:) :: low_ind, upp_ind, nt_local       
+    integer, allocatable, dimension (:) :: low_ind, upp_ind, nt_local
     integer, allocatable, dimension (:) :: Id_glb, id_loc
-    integer, allocatable, dimension (:,:) :: Id_glb_cn, id_loc_cn    
+    integer, allocatable, dimension (:,:) :: Id_glb_cn, id_loc_cn
     integer, allocatable, dimension (:) :: ld_reorder, tid_offl
     real, allocatable, dimension (:)    :: CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, &
-         CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2, var_dum2    
+         CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2, var_dum2
     integer                :: AGCM_YY,AGCM_MM,AGCM_DD,AGCM_HR=0,AGCM_DATE
     real,    allocatable, dimension(:,:) :: fveg_offl,  ityp_offl,  fveg_tmp,  ityp_tmp
-    real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:) 
+    real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:)
     type(Netcdf4_FileFormatter)  :: ldFmt
     type(FileMetadata)           :: meta_data
-    character(256) :: Iam = "regrid_from_xgrid" 
+    character(256) :: Iam = "regrid_from_xgrid"
     ! read NTILES from output BCs and tile_coord from GEOSldas/LDASsa input restarts
-    
+
     open (10,file =trim(BCSDIR)//"clsm/catchment.def",status='old',form='formatted')
     read (10,*) ntiles
-    close (10, status = 'keep')  
+    close (10, status = 'keep')
 
     ! Determine whether LDASsa or GEOSldas
     if (trim(rstfile) == "NONE") then
        if (trim(MODEL) == 'catch') then
           rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDDHH(1:4)//'/M'//YYYYMMDDHH(5:6)//'/'//trim(ExpName)//&
-                   '.catch_internal_rst.'//YYYYMMDDHH(1:8)//'_'//YYYYMMDDHH(9:10)//'00'  
+                   '.catch_internal_rst.'//YYYYMMDDHH(1:8)//'_'//YYYYMMDDHH(9:10)//'00'
           inquire(file =  trim(rst_file), exist=fexist)
           if (.not.fexist) then
              rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDDHH(1:4)//'/M'//YYYYMMDDHH(5:6)//'/'  &
                 //trim(ExpName)//'.ens'//ENS//'.catch_ldas_rst.'// &
-                YYYYMMDDHH(1:8)//'_'//YYYYMMDDHH(9:10)//'00z.bin'          
+                YYYYMMDDHH(1:8)//'_'//YYYYMMDDHH(9:10)//'00z.bin'
              lendian = .false.
           endif
        else !catchcn
@@ -365,7 +365,7 @@ contains
           inquire(file =  trim(rst_file), exist=fexist)
           if (.not. fexist) then
              rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDDHH(1:4)//'/M'//YYYYMMDDHH(5:6)//'/'//trim(ExpName)//&
-               '.ens'//ENS//'.'//trim(MODEL)//'_ldas_rst.'//YYYYMMDDHH(1:8)//'_'//YYYYMMDDHH(9:10)//'00z'          
+               '.ens'//ENS//'.'//trim(MODEL)//'_ldas_rst.'//YYYYMMDDHH(1:8)//'_'//YYYYMMDDHH(9:10)//'00z'
              lendian = .false.
           endif
        endif ! catch
@@ -374,13 +374,13 @@ contains
        if (index(rst_file, "_ldas_rst") /=0) lendian = .false.
     endif
 
-    if (index(MODEL, 'catchcn') /=0) then 
+    if (index(MODEL, 'catchcn') /=0) then
        call ldFmt%open(trim(rst_file) , pFIO_READ,__RC__)
        meta_data = ldFmt%read(__RC__)
        call ldFmt%close(__RC__)
        if(meta_data%get_dimension('unknown_dim3',rc=status) == 105) then
            clm45  = .true.
-           VAR_COL = VAR_COL_CLM45 
+           VAR_COL = VAR_COL_CLM45
            VAR_PFT = VAR_PFT_CLM45
            if (root_proc) print *, 'Processing CLM45 restarts : ', VAR_COL, VAR_PFT, clm45
         else
@@ -403,7 +403,7 @@ contains
     endif
 
     read (10) NTILES_RST
-    
+
     if(root_proc) then
        print *,'NTILES in BCs      : ',NTILES
        print *,'NTILES in restarts : ',NTILES_RST
@@ -417,18 +417,18 @@ contains
     allocate(nt_local(   numprocs))
 
     low_ind (:)    = 1
-    upp_ind (:)    = NTILES       
-    nt_local(:)    = NTILES 
+    upp_ind (:)    = NTILES
+    nt_local(:)    = NTILES
 
-    if (numprocs > 1) then      
+    if (numprocs > 1) then
        do i = 1, numprocs - 1
-          upp_ind(i)   = low_ind(i) + (ntiles/numprocs) - 1 
+          upp_ind(i)   = low_ind(i) + (ntiles/numprocs) - 1
           low_ind(i+1) = upp_ind(i) + 1
           nt_local(i)  = upp_ind(i) - low_ind(i) + 1
        end do
        nt_local(numprocs) = upp_ind(numprocs) - low_ind(numprocs) + 1
     endif
-   
+
     allocate (id_loc (nt_local (myid + 1)))
     allocate (lonn   (nt_local (myid + 1)))
     allocate (latt   (nt_local (myid + 1)))
@@ -439,7 +439,7 @@ contains
     if (root_proc) then
         allocate (long   (ntiles))
         allocate (latg   (ntiles))
-        allocate (ld_reorder(ntiles_rst))   
+        allocate (ld_reorder(ntiles_rst))
         allocate (tile_id  (1:ntiles_rst))
         allocate (LDAS2BCS (1:ntiles_rst))
         allocate (lon_rst  (1:ntiles_rst))
@@ -451,17 +451,17 @@ contains
         read  (10) tile_id
         read  (10) tile_id
         read  (10) lon_rst
-        read  (10) lat_rst  
+        read  (10) lat_rst
 
         tile_id = LDAS2BCS
 
-        do n = 1, NTILES_RST 
+        do n = 1, NTILES_RST
            ld_reorder (tile_id(n)) = n
            tid_offl(n)    = n
         end do
         do n = 1, NTILES_RST
-           lonc(n) = lon_rst(ld_reorder(n)) 
-           latc(n) = lat_rst(ld_reorder(n)) 
+           lonc(n) = lon_rst(ld_reorder(n))
+           latc(n) = lat_rst(ld_reorder(n))
         END DO
         deallocate (lon_rst, lat_rst)
     endif
@@ -481,28 +481,28 @@ contains
           else if (myid == 0) then
              ! root sends
              call MPI_ISend(long(low_ind(i) : upp_ind(i)),nt_local(i),MPI_REAL,i-1,995,MPI_COMM_WORLD,req,mpierr)
-             call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)    
+             call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)
              call MPI_ISend(latg(low_ind(i) : upp_ind(i)),nt_local(i),MPI_REAL,i-1,994,MPI_COMM_WORLD,req,mpierr)
-             call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr) 
+             call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)
           endif
        endif
     end do
 
     if(root_proc) deallocate (long)
-     
+
     call MPI_BCAST(lonc,ntiles_rst,MPI_REAL,0,MPI_COMM_WORLD,mpierr)
     call MPI_BCAST(latc,ntiles_rst,MPI_REAL,0,MPI_COMM_WORLD,mpierr)
     call MPI_BCAST(tid_offl,size(tid_offl  ),MPI_INTEGER,0,MPI_COMM_WORLD,mpierr)
 
     ! --------------------------------------------------------------------------------
     ! Here we create transfer index array to map offline restarts to output tile space
-    ! --------------------------------------------------------------------------------   
+    ! --------------------------------------------------------------------------------
 
     ! id_glb for hydrologic variable
 
     call GetIds(lonc,latc,lonn,latt,id_loc, tid_offl)
     if(root_proc)  allocate (id_glb  (ntiles))
-     
+
      call MPI_Barrier(MPI_COMM_WORLD, STATUS)
 !     call MPI_GATHERV( &
 !                   id_loc, nt_local(myid+1)  , MPI_real, &
@@ -515,7 +515,7 @@ contains
            if(I-1 == myid) then
               ! send to root
               call MPI_ISend(id_loc,nt_local(i),MPI_INTEGER,0,993,MPI_COMM_WORLD,req,mpierr)
-              call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)    
+              call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)
            else if (myid == 0) then
               ! root receives
               call MPI_RECV(id_glb(low_ind(i) : upp_ind(i)),nt_local(i) , MPI_INTEGER, i-1,993,MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
@@ -525,8 +525,8 @@ contains
 
      deallocate (id_loc)
 
-     if(root_proc)  then 
-                
+     if(root_proc)  then
+
         inquire(file =  trim(rst_file), exist=fexist)
         if (.not. fexist) then
            print*, "WARNING!!"
@@ -546,7 +546,7 @@ contains
         else
            call read_ldas_restarts (NTILES, ntiles_rst, id_glb, ld_reorder,  rst_file, pfile)
         endif
-        
+
         ! ====================
         ! READ AND PUT OUT BCS
         ! ====================
@@ -576,9 +576,9 @@ contains
         allocate (CLMC_st1(nt_local (myid + 1)))
         allocate (CLMC_st2(nt_local (myid + 1)))
         allocate (ityp_offl (ntiles_rst,nveg))
-        allocate (fveg_offl (ntiles_rst,nveg))    
+        allocate (fveg_offl (ntiles_rst,nveg))
         allocate (id_loc_cn (nt_local (myid + 1),nveg))
-       
+
 !        STATUS = NF90_OPEN ('OutData/catchcn_internal_rst',NF_WRITE,OUTID) ; VERIFY_(STATUS)
         STATUS = NF_OPEN_PAR   ('OutData/'//trim(model)//'_internal_rst',IOR(NF_WRITE,NF_MPIIO),MPI_COMM_WORLD, infos,OUTID) ; VERIFY_(STATUS)
         STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'ITY'), (/low_ind(myid+1),1/), (/nt_local(myid+1),1/),CLMC_pt1)
@@ -589,30 +589,30 @@ contains
         STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'FVG'), (/low_ind(myid+1),2/), (/nt_local(myid+1),1/),CLMC_pf2)
         STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'FVG'), (/low_ind(myid+1),3/), (/nt_local(myid+1),1/),CLMC_sf1)
         STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'FVG'), (/low_ind(myid+1),4/), (/nt_local(myid+1),1/),CLMC_sf2)
-        
+
         if (root_proc) then
 
            allocate (ityp_tmp (ntiles_rst,nveg))
-           allocate (fveg_tmp (ntiles_rst,nveg))  
+           allocate (fveg_tmp (ntiles_rst,nveg))
            allocate (DAYX   (NTILES))
 
-           READ(YYYYMMDDHH(1:8),'(I8)') AGCM_DATE 
+           READ(YYYYMMDDHH(1:8),'(I8)') AGCM_DATE
            AGCM_YY = AGCM_DATE / 10000
            AGCM_MM = (AGCM_DATE - AGCM_YY*10000) / 100
            AGCM_DD = (AGCM_DATE - AGCM_YY*10000 - AGCM_MM*100)
-           
+
            call compute_dayx (                                     &
                 NTILES, AGCM_YY, AGCM_MM, AGCM_DD, AGCM_HR,        &
-                LATG, DAYX) 
-           
+                LATG, DAYX)
+
            STATUS = NF_OPEN (trim(rst_file),NF_NOWRITE,NCFID) ; VERIFY_(STATUS)
            STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ITY'), (/1,1/), (/ntiles_rst,4/),ityp_tmp)
-           STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'FVG'), (/1,1/), (/ntiles_rst,4/),fveg_tmp)            
+           STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'FVG'), (/1,1/), (/ntiles_rst,4/),fveg_tmp)
 
            do n = 1, NTILES_RST
               ityp_offl (n,:) = ityp_tmp (ld_reorder(n),:)
               fveg_offl (n,:) = fveg_tmp (ld_reorder(n),:)
-              
+
               if((ityp_offl(N,3) == 0).and.(ityp_offl(N,4) == 0)) then
                  if(ityp_offl(N,1) /= 0) then
                     ityp_offl(N,3) = ityp_offl(N,1)
@@ -620,7 +620,7 @@ contains
                     ityp_offl(N,3) = ityp_offl(N,2)
                  endif
               endif
-              
+
               if((ityp_offl(N,1) == 0).and.(ityp_offl(N,2) /= 0)) ityp_offl(N,1) = ityp_offl(N,2)
               if((ityp_offl(N,2) == 0).and.(ityp_offl(N,1) /= 0)) ityp_offl(N,2) = ityp_offl(N,1)
               if((ityp_offl(N,3) == 0).and.(ityp_offl(N,4) /= 0)) ityp_offl(N,3) = ityp_offl(N,4)
@@ -630,7 +630,7 @@ contains
         endif
 
         call MPI_BCAST(ityp_offl,size(ityp_offl),MPI_REAL   ,0,MPI_COMM_WORLD,mpierr)
-        call MPI_BCAST(fveg_offl,size(fveg_offl),MPI_REAL   ,0,MPI_COMM_WORLD,mpierr)    
+        call MPI_BCAST(fveg_offl,size(fveg_offl),MPI_REAL   ,0,MPI_COMM_WORLD,mpierr)
 
         call GetIds(lonc,latc,lonn,latt,id_loc_cn, tid_offl, &
              CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2, &
@@ -649,7 +649,7 @@ contains
            !                   id_loc (:,nv), nt_local(myid+1)  , MPI_real, &
            !                   id_vec, nt_local,low_ind-1, MPI_real, &
            !                   0, MPI_COMM_WORLD, mpierr )
-           
+
            do i = 1, numprocs
               if((I == 1).and.(myid == 0)) then
                  id_loc(low_ind(i) : upp_ind(i)) = Id_loc_cn(:,nv)
@@ -657,24 +657,24 @@ contains
                  if(I-1 == myid) then
                     ! send to root
                     call MPI_ISend(id_loc_cn(:,nv),nt_local(i),MPI_INTEGER,0,994,MPI_COMM_WORLD,req,mpierr)
-                    call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)    
+                    call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)
                  else if (myid == 0) then
                     ! root receives
                     call MPI_RECV(id_loc(low_ind(i) : upp_ind(i)),nt_local(i) , MPI_INTEGER, i-1,994,MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
                  endif
               endif
            end do
-           
+
            if(root_proc) id_glb_cn (:,nv) = id_loc
-           
+
         end do
-        
+
         if(root_proc) then
 
            allocate (var_off_col (1: NTILES_RST, 1 : nzone,1 : var_col))
            allocate (var_off_pft (1: NTILES_RST, 1 : nzone,1 : nveg, 1 : var_pft))
            allocate (var_dum2    (1:ntiles_rst))
-           
+
            i = 1
            do nv = 1,VAR_COL
               do nz = 1,nzone
@@ -685,7 +685,7 @@ contains
                  i = i + 1
               end do
            end do
-           
+
            i = 1
            do iv = 1,VAR_PFT
               do nv = 1,nveg
@@ -698,20 +698,20 @@ contains
                  end do
               end do
            end do
-                   
-           where(isnan(var_off_pft))  var_off_pft = 0.   
-           where(var_off_pft /= var_off_pft)  var_off_pft = 0.  
+
+           where(isnan(var_off_pft))  var_off_pft = 0.
+           where(var_off_pft /= var_off_pft)  var_off_pft = 0.
            print *, 'Writing regridded carbn'
            call write_regridded_carbon (NTILES, ntiles_rst, NCFID, OUTID, id_glb_cn, &
-                DAYX, var_off_col,var_off_pft, ityp_offl, fveg_offl) 
-           deallocate (var_off_col,var_off_pft)           
+                DAYX, var_off_col,var_off_pft, ityp_offl, fveg_offl)
+           deallocate (var_off_col,var_off_pft)
         endif
         call MPI_Barrier(MPI_COMM_WORLD, STATUS)
         STATUS = NF_CLOSE (OutID)
      endif
-     
+
    END SUBROUTINE regrid_from_xgrid
-  
+
   ! *****************************************************************************
 
   SUBROUTINE  reorder_LDASsa_restarts (SURFLAY, BCSDIR, YYYYMMDDHH, EXPNAME, EXPDIR, MODEL, ENS, rstfile, rc)
@@ -737,9 +737,9 @@ contains
     logical :: fexist, bin_out = .false.
     character(len=:), allocatable :: ftype
     character*256        :: Iam = "reorder_LDASsa_restarts"
-    integer :: status   
- 
-    if (trim(rstfile) == "NONE") then 
+    integer :: status
+
+    if (trim(rstfile) == "NONE") then
        ftype = ''
        if(trim(MODEL) == 'catch') ftype='.bin'
        rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDDHH(1:4)//'/M'//YYYYMMDDHH(5:6)//'/'//trim(ExpName)//&
@@ -763,7 +763,7 @@ contains
         meta_data = ldFmt%read(__RC__)
         call ldFmt%close(__RC__)
         if(meta_data%get_dimension('unknown_dim3',rc=status) == 105) then
-           VAR_COL = VAR_COL_CLM45 
+           VAR_COL = VAR_COL_CLM45
            VAR_PFT = VAR_PFT_CLM45
            if ( .not. clm45) stop ' ERROR: Given clm45 restart, but the model is not clm45'
            if (root_proc) print *, 'Processing CLM45 restarts : ', VAR_COL, VAR_PFT, clm45
@@ -771,10 +771,10 @@ contains
            if (root_proc) print *, 'Processing CLM40 restarts : ', VAR_COL, VAR_PFT, clm45
         endif
     endif
- 
+
     open (10,file =trim(BCSDIR)//"clsm/catchment.def",status='old',form='formatted')
     read (10,*) ntiles
-    close (10, status = 'keep')  
+    close (10, status = 'keep')
 
    ! read NTILES from BCs and tile_coord from LDASsa experiment
 
@@ -787,7 +787,7 @@ contains
 
     open (10,file =trim(tile_coord),status='old',form='unformatted',convert='big_endian')
     read (10) i
-    if (i /= ntiles) then 
+    if (i /= ntiles) then
       print *,'NTILES BCs/LDASsa mismatch:', i,ntiles
       stop
     endif
@@ -825,196 +825,196 @@ contains
    allocate(var1(ntiles))
    allocate(var2(ntiles))
    allocate(wesn1 (ntiles))
-   allocate(htsn1 (ntiles))  
+   allocate(htsn1 (ntiles))
    ! CH CM CQ FR WW
    ! WW
    var1 = 0.1
    do j = 1,4
-      call MAPL_VarWrite(OutFmt,'WW',var1 ,offset1=j)  
+      call MAPL_VarWrite(OutFmt,'WW',var1 ,offset1=j)
    end do
    ! FR
    var1 = 0.25
    do j = 1,4
-      call MAPL_VarWrite(OutFmt,'FR',var1 ,offset1=j)  
+      call MAPL_VarWrite(OutFmt,'FR',var1 ,offset1=j)
    end do
-   ! CH CM CQ 
+   ! CH CM CQ
    var1 = 0.001
    do j = 1,4
-      call MAPL_VarWrite(OutFmt,'CH',var1 ,offset1=j)  
-      call MAPL_VarWrite(OutFmt,'CM',var1 ,offset1=j)  
-      call MAPL_VarWrite(OutFmt,'CQ',var1 ,offset1=j)  
+      call MAPL_VarWrite(OutFmt,'CH',var1 ,offset1=j)
+      call MAPL_VarWrite(OutFmt,'CM',var1 ,offset1=j)
+      call MAPL_VarWrite(OutFmt,'CQ',var1 ,offset1=j)
    end do
-   
+
    tile_id = LDAS2BCS
-   do n = 1, NTILES 
+   do n = 1, NTILES
       G2D(tile_id(n)) = n
    end do
-   
-   if(trim(MODEL) == 'catch') then   
+
+   if(trim(MODEL) == 'catch') then
 
       open(10, file=trim(rst_file), form='unformatted', status='old', &
            convert='big_endian', action='read')
-      
+
       var1 = real(tile_id)
       var2 = var1 (tile_id)
-      do n = 1,  NTILES 
+      do n = 1,  NTILES
          var2(n) = var1(g2d(n))
       end do
       call MAPL_VarWrite(OutFmt,'TILE_ID' ,var2)
 
       read(10) var1
       var2 = var1 (tile_id)
-      do n = 1,  NTILES 
+      do n = 1,  NTILES
          var2(n) = var1(g2d(n))
       end do
       call MAPL_VarWrite(OutFmt,'TC' ,var2, offset1=1)
       read(10) var1
       var2 = var1 (tile_id)
-      do n = 1,  NTILES 
+      do n = 1,  NTILES
          var2(n) = var1(g2d(n))
       end do
       call MAPL_VarWrite(OutFmt,'TC' ,var2, offset1=2)
       read(10) var1
       var2 = var1 (tile_id)
-      do n = 1,  NTILES 
+      do n = 1,  NTILES
          var2(n) = var1(g2d(n))
       end do
       call MAPL_VarWrite(OutFmt,'TC' ,var2, offset1=3)
-      
+
       read(10) var1
       var2 = var1 (tile_id)
-      do n = 1,  NTILES 
+      do n = 1,  NTILES
          var2(n) = var1(g2d(n))
       end do
       call MAPL_VarWrite(OutFmt,'QC' ,var2, offset1=1)
       read(10) var1
       var2 = var1 (tile_id)
-      do n = 1,  NTILES 
+      do n = 1,  NTILES
          var2(n) = var1(g2d(n))
       end do
       call MAPL_VarWrite(OutFmt,'QC' ,var2, offset1=2)
       read(10) var1
       var2 = var1 (tile_id)
-      do n = 1,  NTILES 
+      do n = 1,  NTILES
          var2(n) = var1(g2d(n))
       end do
       call MAPL_VarWrite(OutFmt,'QC' ,var2, offset1=3)
       call MAPL_VarWrite(OutFmt,'QC' ,var2, offset1=4)
-      
+
       read(10) var1
       var2 = var1 (tile_id)
-      do n = 1,  NTILES 
+      do n = 1,  NTILES
          var2(n) = var1(g2d(n))
       end do
       call MAPL_VarWrite(OutFmt,'CAPAC' ,var2)
       read(10) var1
       var2 = var1 (tile_id)
-      do n = 1,  NTILES 
+      do n = 1,  NTILES
          var2(n) = var1(g2d(n))
       end do
       call MAPL_VarWrite(OutFmt,'CATDEF' ,var2)
       read(10) var1
       var2 = var1 (tile_id)
-      do n = 1,  NTILES 
+      do n = 1,  NTILES
          var2(n) = var1(g2d(n))
       end do
       call MAPL_VarWrite(OutFmt,'RZEXC' ,var2)
       read(10) var1
       var2 = var1 (tile_id)
-      do n = 1,  NTILES 
+      do n = 1,  NTILES
          var2(n) = var1(g2d(n))
       end do
       call MAPL_VarWrite(OutFmt,'SRFEXC' ,var2)
       read(10) var1
       var2 = var1 (tile_id)
-      do n = 1,  NTILES 
+      do n = 1,  NTILES
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutFmt,'GHTCNT1' ,var2)     
+      call MAPL_VarWrite(OutFmt,'GHTCNT1' ,var2)
       read(10) var1
-      var2 = var1 (tile_id) 
-      do n = 1,  NTILES 
+      var2 = var1 (tile_id)
+      do n = 1,  NTILES
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutFmt,'GHTCNT2' ,var2) 
+      call MAPL_VarWrite(OutFmt,'GHTCNT2' ,var2)
       read(10) var1
-      var2 = var1 (tile_id) 
-      do n = 1,  NTILES 
+      var2 = var1 (tile_id)
+      do n = 1,  NTILES
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutFmt,'GHTCNT3' ,var2) 
+      call MAPL_VarWrite(OutFmt,'GHTCNT3' ,var2)
       read(10) var1
-      var2 = var1 (tile_id)   
-      do n = 1,  NTILES 
+      var2 = var1 (tile_id)
+      do n = 1,  NTILES
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutFmt,'GHTCNT4' ,var2) 
+      call MAPL_VarWrite(OutFmt,'GHTCNT4' ,var2)
       read(10) var1
-      var2 = var1 (tile_id)  
-      do n = 1,  NTILES 
+      var2 = var1 (tile_id)
+      do n = 1,  NTILES
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutFmt,'GHTCNT5' ,var2)   
+      call MAPL_VarWrite(OutFmt,'GHTCNT5' ,var2)
       read(10) var1
-      var2 = var1 (tile_id)  
-      do n = 1,  NTILES 
+      var2 = var1 (tile_id)
+      do n = 1,  NTILES
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutFmt,'GHTCNT6' ,var2)   
+      call MAPL_VarWrite(OutFmt,'GHTCNT6' ,var2)
       read(10) var1
-      var2 = var1 (tile_id)   
-      
-      do n = 1,  NTILES 
+      var2 = var1 (tile_id)
+
+      do n = 1,  NTILES
          var2(n) = var1(g2d(n))
       end do
       wesn1 = var2
       call MAPL_VarWrite(OutFmt,'WESNN1' ,var2)
       read(10) var1
-      var2 = var1 (tile_id) 
-      do n = 1,  NTILES 
+      var2 = var1 (tile_id)
+      do n = 1,  NTILES
          var2(n) = var1(g2d(n))
       end do
       call MAPL_VarWrite(OutFmt,'WESNN2' ,var2)
       read(10) var1
-      var2 = var1 (tile_id) 
-      do n = 1,  NTILES 
+      var2 = var1 (tile_id)
+      do n = 1,  NTILES
          var2(n) = var1(g2d(n))
       end do
       call MAPL_VarWrite(OutFmt,'WESNN3' ,var2)
       read(10) var1
-      var2 = var1 (tile_id)  
-      do n = 1,  NTILES 
+      var2 = var1 (tile_id)
+      do n = 1,  NTILES
          var2(n) = var1(g2d(n))
       end do
       htsn1 = var2
       call MAPL_VarWrite(OutFmt,'HTSNNN1' ,var2)
       read(10) var1
-      var2 = var1 (tile_id)   
-      do n = 1,  NTILES 
+      var2 = var1 (tile_id)
+      do n = 1,  NTILES
          var2(n) = var1(g2d(n))
       end do
       call MAPL_VarWrite(OutFmt,'HTSNNN2' ,var2)
       read(10) var1
-      var2 = var1 (tile_id)   
-      do n = 1,  NTILES 
+      var2 = var1 (tile_id)
+      do n = 1,  NTILES
          var2(n) = var1(g2d(n))
       end do
       call MAPL_VarWrite(OutFmt,'HTSNNN3' ,var2)
       read(10) var1
-      var2 = var1 (tile_id)   
-      do n = 1,  NTILES 
+      var2 = var1 (tile_id)
+      do n = 1,  NTILES
          var2(n) = var1(g2d(n))
       end do
       call MAPL_VarWrite(OutFmt,'SNDZN1' ,var2)
       read(10) var1
-      var2 = var1 (tile_id)   
-      do n = 1,  NTILES 
+      var2 = var1 (tile_id)
+      do n = 1,  NTILES
          var2(n) = var1(g2d(n))
       end do
       call MAPL_VarWrite(OutFmt,'SNDZN2' ,var2)
       read(10) var1
-      var2 = var1 (tile_id)   
-      do n = 1,  NTILES 
+      var2 = var1 (tile_id)
+      do n = 1,  NTILES
          var2(n) = var1(g2d(n))
       end do
       call MAPL_VarWrite(OutFmt,'SNDZN3' ,var2)
@@ -1025,8 +1025,8 @@ contains
       call OutFmt%close()
       close(10)
 
-   else ! CATCHCN 
-     
+   else ! CATCHCN
+
        call InFmt%open(trim(rst_file),pFIO_READ,__RC__)
        meta_data =  InFmt%read(__RC__)
 
@@ -1064,7 +1064,7 @@ contains
 
              call MAPL_VarWrite(OutFmt,vname,var2)
 
-          else if (ndims == 2) then 
+          else if (ndims == 2) then
 
              dname => var%get_ith_dimension(2)
              dim1=meta_data%get_dimension(dname)
@@ -1126,10 +1126,10 @@ contains
    !_RETURN(_SUCCESS)
 
   END SUBROUTINE reorder_LDASsa_restarts
-  
+
   ! *****************************************************************************
-  
-  SUBROUTINE regrid_hyd_vars (NTILES, model) 
+
+  SUBROUTINE regrid_hyd_vars (NTILES, model)
 
     implicit none
     integer, intent (in)           :: NTILES
@@ -1160,15 +1160,15 @@ contains
     allocate(nt_local(   numprocs))
 
     low_ind (:)    = 1
-    upp_ind (:)    = NTILES       
-    nt_local(:)    = NTILES 
+    upp_ind (:)    = NTILES
+    nt_local(:)    = NTILES
 
     ! Domain decomposition
     ! --------------------
 
-    if (numprocs > 1) then      
+    if (numprocs > 1) then
        do i = 1, numprocs - 1
-          upp_ind(i)   = low_ind(i) + (ntiles/numprocs) - 1 
+          upp_ind(i)   = low_ind(i) + (ntiles/numprocs) - 1
           low_ind(i+1) = upp_ind(i) + 1
           nt_local(i)  = upp_ind(i) - low_ind(i) + 1
        end do
@@ -1185,26 +1185,26 @@ contains
 
        allocate (long   (ntiles))
        allocate (latg   (ntiles))
-       allocate (ld_reorder(ntiles_smap)) 
+       allocate (ld_reorder(ntiles_smap))
 
        call ReadTileFile_RealLatLon ('InData/OutTileFile', i, xlon=long, xlat=latg); VERIFY_(i-ntiles)
        ! ---------------------------------------------
-       ! Read exact lonc, latc from offline .til File 
+       ! Read exact lonc, latc from offline .til File
        ! ---------------------------------------------
-       
+
        if(index(MODEL,'catchcn') /=0) then
-          call ReadTileFile_RealLatLon(trim(InCNTilFile ),i,xlon=lonc,xlat=latc) 
+          call ReadTileFile_RealLatLon(trim(InCNTilFile ),i,xlon=lonc,xlat=latc)
           VERIFY_(i-ntiles_smap)
        endif
        if(trim(MODEL) == 'catch'  ) then
-          call ReadTileFile_RealLatLon(trim(InCatTilFile),i,xlon=lonc,xlat=latc) 
+          call ReadTileFile_RealLatLon(trim(InCatTilFile),i,xlon=lonc,xlat=latc)
           VERIFY_(i-ntiles_smap)
        endif
        if(index(MODEL,'catchcn') /=0) then
           STATUS = NF_OPEN (trim(InCNRestart ),NF_NOWRITE,NCFID) ; VERIFY_(STATUS)
        endif
        if(trim(MODEL) == 'catch'  ) then
-          STATUS = NF_OPEN (trim(InCatRestart),NF_NOWRITE,NCFID) ; VERIFY_(STATUS) 
+          STATUS = NF_OPEN (trim(InCatRestart),NF_NOWRITE,NCFID) ; VERIFY_(STATUS)
        endif
        STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'TILE_ID'   ), (/1/), (/NTILES_SMAP/),tmp_var)
        STATUS = NF_CLOSE (NCFID)
@@ -1232,9 +1232,9 @@ contains
           else if (myid == 0) then
              ! root sends
              call MPI_ISend(long(low_ind(i) : upp_ind(i)),nt_local(i),MPI_REAL,i-1,995,MPI_COMM_WORLD,req,mpierr)
-             call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)    
+             call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)
              call MPI_ISend(latg(low_ind(i) : upp_ind(i)),nt_local(i),MPI_REAL,i-1,994,MPI_COMM_WORLD,req,mpierr)
-             call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr) 
+             call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)
           endif
        endif
     end do
@@ -1250,18 +1250,18 @@ contains
 !         0,MPI_COMM_WORLD, mpierr )
 
     if(root_proc) deallocate (long, latg)
-     
+
     call MPI_BCAST(lonc,ntiles_smap,MPI_REAL,0,MPI_COMM_WORLD,mpierr)
     call MPI_BCAST(latc,ntiles_smap,MPI_REAL,0,MPI_COMM_WORLD,mpierr)
     call MPI_BCAST(tid_offl,size(tid_offl  ),MPI_INTEGER,0,MPI_COMM_WORLD,mpierr)
 
     ! --------------------------------------------------------------------------------
     ! Here we create transfer index array to map offline restarts to output tile space
-    ! --------------------------------------------------------------------------------   
+    ! --------------------------------------------------------------------------------
 
     call GetIds(lonc,latc,lonn,latt,id_loc, tid_offl)
-    
-    ! Loop through NTILES (# of tiles in output array) find the nearest neighbor from Qing.  
+
+    ! Loop through NTILES (# of tiles in output array) find the nearest neighbor from Qing.
 
     if(root_proc)  allocate (id_glb  (ntiles))
 
@@ -1277,14 +1277,14 @@ contains
            if(I-1 == myid) then
               ! send to root
               call MPI_ISend(id_loc,nt_local(i),MPI_INTEGER,0,993,MPI_COMM_WORLD,req,mpierr)
-              call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)    
+              call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)
            else if (myid == 0) then
               ! root receives
               call MPI_RECV(id_glb(low_ind(i) : upp_ind(i)),nt_local(i) , MPI_INTEGER, i-1,993,MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
            endif
         endif
-     end do     
-        
+     end do
+
     if (root_proc) call put_land_vars  (NTILES, ntiles_smap, id_glb, ld_reorder, model)
 
     call MPI_Barrier(MPI_COMM_WORLD, STATUS)
@@ -1293,14 +1293,14 @@ contains
 
 
   ! *****************************************************************************
-  
+
   SUBROUTINE read_bcs_data (ntiles, SURFLAY,MODEL, DataDir, InRestart, rc)
 
     ! This subroutine :
     !  1) reads BCs from BCSDIR and hydrological varables from InRestart.
     !     InRestart is a catchcn_internal_rst nc4 file.
     !
-    !  2) writes out BCs and hydrological variables in catchcn_internal_rst (1:72). 
+    !  2) writes out BCs and hydrological variables in catchcn_internal_rst (1:72).
     !     output catchcn_internal_rst is nc4.
 
     implicit none
@@ -1309,18 +1309,18 @@ contains
     character(*), intent (in)                 :: MODEL, DataDir, InRestart
     integer, optional, intent(out) :: rc
     real, allocatable :: CLMC_pf1(:), CLMC_pf2(:), CLMC_sf1(:), CLMC_sf2(:)
-    real, allocatable :: CLMC_pt1(:), CLMC_pt2(:), CLMC_st1(:), CLMC_st2(:)    
+    real, allocatable :: CLMC_pt1(:), CLMC_pt2(:), CLMC_st1(:), CLMC_st2(:)
     real, allocatable :: CLMC45_pf1(:), CLMC45_pf2(:), CLMC45_sf1(:), CLMC45_sf2(:)
-    real, allocatable :: CLMC45_pt1(:), CLMC45_pt2(:), CLMC45_st1(:), CLMC45_st2(:)    
+    real, allocatable :: CLMC45_pt1(:), CLMC45_pt2(:), CLMC45_st1(:), CLMC45_st2(:)
     real, allocatable :: BF1(:),   BF2(:),   BF3(:),  VGWMAX(:)
-    real, allocatable :: CDCR1(:), CDCR2(:), PSIS(:), BEE(:) 
+    real, allocatable :: CDCR1(:), CDCR2(:), PSIS(:), BEE(:)
     real, allocatable :: POROS(:), WPWET(:), COND(:), GNU(:)
     real, allocatable :: ARS1(:),  ARS2(:),  ARS3(:)
     real, allocatable :: ARA1(:),  ARA2(:),  ARA3(:), ARA4(:)
     real, allocatable :: ARW1(:),  ARW2(:),  ARW3(:), ARW4(:)
     real, allocatable :: TSA1(:),  TSA2(:),  TSB1(:), TSB2(:)
     real, allocatable :: ATAU2(:), BTAU2(:), DP2BR(:), CanopH(:)
-    real, allocatable :: NDEP(:), BVISDR(:), BVISDF(:), BNIRDR(:), BNIRDF(:) 
+    real, allocatable :: NDEP(:), BVISDR(:), BVISDF(:), BNIRDR(:), BNIRDF(:)
     real, allocatable :: T2(:), var1(:), hdm(:), fc(:), gdp(:), peatf(:), RITY(:)
     integer, allocatable :: ity(:), abm (:)
     integer       :: NCFID, STATUS
@@ -1330,10 +1330,10 @@ contains
     logical       :: file_exists
     type(NetCDF4_Fileformatter) :: CatchFmt,CatchCNFmt
     character*256        :: Iam = "read_bcs_data"
- 
+
     allocate (   BF1(ntiles),    BF2 (ntiles),     BF3(ntiles)  )
-    allocate (VGWMAX(ntiles),   CDCR1(ntiles),   CDCR2(ntiles)  ) 
-    allocate (  PSIS(ntiles),     BEE(ntiles),   POROS(ntiles)  ) 
+    allocate (VGWMAX(ntiles),   CDCR1(ntiles),   CDCR2(ntiles)  )
+    allocate (  PSIS(ntiles),     BEE(ntiles),   POROS(ntiles)  )
     allocate ( WPWET(ntiles),    COND(ntiles),     GNU(ntiles)  )
     allocate (  ARS1(ntiles),    ARS2(ntiles),    ARS3(ntiles)  )
     allocate (  ARA1(ntiles),    ARA2(ntiles),    ARA3(ntiles)  )
@@ -1342,7 +1342,7 @@ contains
     allocate (  TSA2(ntiles),    TSB1(ntiles),    TSB2(ntiles)  )
     allocate ( ATAU2(ntiles),   BTAU2(ntiles),   DP2BR(ntiles)  )
     allocate (BVISDR(ntiles),  BVISDF(ntiles),  BNIRDR(ntiles)  )
-    allocate (BNIRDF(ntiles),      T2(ntiles),    NDEP(ntiles)  )    
+    allocate (BNIRDF(ntiles),      T2(ntiles),    NDEP(ntiles)  )
     allocate (   ity(ntiles),  CanopH(ntiles)  )
     allocate (CLMC_pf1(ntiles), CLMC_pf2(ntiles), CLMC_sf1(ntiles))
     allocate (CLMC_sf2(ntiles), CLMC_pt1(ntiles), CLMC_pt2(ntiles))
@@ -1361,7 +1361,7 @@ contains
     if(file_exists) then
 
        print *,'FILE FORMAT FOR LAND BCS IS NC4'
-       call CatchFmt%Open(trim(DataDir)//'/catch_params.nc4', pFIO_READ, __RC__)   
+       call CatchFmt%Open(trim(DataDir)//'/catch_params.nc4', pFIO_READ, __RC__)
        call MAPL_VarRead ( CatchFmt ,'OLD_ITY', RITY, __RC__)
        ITY = NINT (RITY)
        call MAPL_VarRead ( CatchFmt ,'ARA1', ARA1, __RC__)
@@ -1402,7 +1402,7 @@ contains
        call MAPL_VarRead ( CatchFmt ,'POROS', POROS, __RC__)
        call CatchFmt%close()
        if(isCatchCN) then
-          call CatchCNFmt%Open(trim(DataDir)//'/catchcn_params.nc4', pFIO_READ, __RC__)    
+          call CatchCNFmt%Open(trim(DataDir)//'/catchcn_params.nc4', pFIO_READ, __RC__)
           call MAPL_VarRead ( CatchCNFmt ,'BGALBNF', BNIRDF, __RC__)
           call MAPL_VarRead ( CatchCNFmt ,'BGALBNR', BNIRDR, __RC__)
           call MAPL_VarRead ( CatchCNFmt ,'BGALBVF', BVISDF, __RC__)
@@ -1428,15 +1428,15 @@ contains
           endif
        endif
 
-      
+
     else
-       open(unit=21, file=trim(DataDir)//'mosaic_veg_typs_fracs',form='formatted') 
+       open(unit=21, file=trim(DataDir)//'mosaic_veg_typs_fracs',form='formatted')
        open(unit=22, file=trim(DataDir)//'bf.dat'               ,form='formatted')
        open(unit=23, file=trim(DataDir)//'soil_param.dat'       ,form='formatted')
        open(unit=24, file=trim(DataDir)//'ar.new'               ,form='formatted')
        open(unit=25, file=trim(DataDir)//'ts.dat'               ,form='formatted')
        open(unit=26, file=trim(DataDir)//'tau_param.dat'        ,form='formatted')
-       
+
        if(NewLand .and. isCatchCN) then
           open(unit=27, file=trim(DataDir)//'CLM_veg_typs_fracs'   ,form='formatted')
           open(unit=28, file=trim(DataDir)//'CLM_NDep_SoilAlb_T2m' ,form='formatted')
@@ -1448,49 +1448,49 @@ contains
 
        do n=1,ntiles
           var1 (n) = real (n)
-          ! W.J notes: CanopH is not used. If CLM_veg_typs_fracs exists, the read some dummy ???? Ask Sarith  
+          ! W.J notes: CanopH is not used. If CLM_veg_typs_fracs exists, the read some dummy ???? Ask Sarith
           if (NewLand) then
              read(21,*) I, j, ITY(N),idum, rdum, rdum, CanopH(N)
           else
              read(21,*) I, j, ITY(N),idum, rdum, rdum
           endif
-          
+
           read (22, *) i,j, GNU(n), BF1(n), BF2(n), BF3(n)
-          
+
           read (23, *) i,j, idum, idum, BEE(n), PSIS(n),&
                POROS(n), COND(n), WPWET(n), DP2BR(n)
-          
+
           read (24, *) i,j, rdum, ARS1(n), ARS2(n), ARS3(n),          &
                ARA1(n), ARA2(n), ARA3(n), ARA4(n), &
                ARW1(n), ARW2(n), ARW3(n), ARW4(n)
-          
+
           read (25, *) i,j, rdum, TSA1(n), TSA2(n), TSB1(n), TSB2(n)
-          
+
           if( SURFLAY.eq.20.0 ) read (26, *) i,j, ATAU2(n), BTAU2(n), rdum, rdum   ! for old soil params
           if( SURFLAY.eq.50.0 ) read (26, *) i,j, rdum , rdum, ATAU2(n), BTAU2(n)  ! for new soil params
-          
+
           if (NewLand .and. isCatchCN) then
              read (27, *) i,j, CLMC_pt1(n), CLMC_pt2(n), CLMC_st1(n), CLMC_st2(n), &
                   CLMC_pf1(n), CLMC_pf2(n), CLMC_sf1(n), CLMC_sf2(n)
-             
+
              read (28, *) NDEP(n), BVISDR(n), BVISDF(n), BNIRDR(n), BNIRDF(n), T2(n) ! MERRA-2 Annual Mean Temp is default.
              if(clm45) then
                 read (29, *) i,j, CLMC45_pt1(n), CLMC45_pt2(n), CLMC45_st1(n), CLMC45_st2(n), &
                      CLMC45_pf1(n), CLMC45_pf2(n), CLMC45_sf1(n), CLMC45_sf2(n)
-                
+
                 read (30, *) i, j, abm(n), peatf(n), &
                      gdp(n), hdm(n), fc(n)
              endif
-          endif          
+          endif
        end do
-       
+
        CLOSE (21, STATUS = 'KEEP')
        CLOSE (22, STATUS = 'KEEP')
        CLOSE (23, STATUS = 'KEEP')
        CLOSE (24, STATUS = 'KEEP')
        CLOSE (25, STATUS = 'KEEP')
        CLOSE (26, STATUS = 'KEEP')
-       
+
        if(NewLand .and. isCatchCN) then
           CLOSE (27, STATUS = 'KEEP')
           CLOSE (28, STATUS = 'KEEP')
@@ -1500,87 +1500,87 @@ contains
           endif
        endif
     endif
-    
+
 
     do n=1,ntiles
        var1 (n) = real (n)
 
        zdep2=1000.
        zdep3=amax1(1000.,DP2BR(n))
-       
+
        if (zdep2 .gt.0.75*zdep3) then
-          zdep2  =  0.75*zdep3              
+          zdep2  =  0.75*zdep3
        end if
-       
+
        zdep1=20.
        zmet=zdep3/1000.
-       
+
        term1=-1.+((PSIS(n)-zmet)/PSIS(n))**((BEE(n)-1.)/BEE(n))
        term2=PSIS(n)*BEE(n)/(BEE(n)-1)
-       
-       VGWMAX(n) = POROS(n)*zdep2   
-       CDCR1(n)  = 1000.*POROS(n)*(zmet-(-term2*term1))   
+
+       VGWMAX(n) = POROS(n)*zdep2
+       CDCR1(n)  = 1000.*POROS(n)*(zmet-(-term2*term1))
        CDCR2(n)  = (1.-WPWET(n))*POROS(n)*zdep3
 
        if( isCatchCN) then
-       
+
           BVISDR(n) = amax1(1.e-6, BVISDR(n))
           BVISDF(n) = amax1(1.e-6, BVISDF(n))
           BNIRDR(n) = amax1(1.e-6, BNIRDR(n))
           BNIRDF(n) = amax1(1.e-6, BNIRDF(n))
 
           ! convert % to fractions
-          
+
           CLMC_pf1(n) = CLMC_pf1(n) / 100.
           CLMC_pf2(n) = CLMC_pf2(n) / 100.
           CLMC_sf1(n) = CLMC_sf1(n) / 100.
           CLMC_sf2(n) = CLMC_sf2(n) / 100.
-          
+
           fvg(1) = CLMC_pf1(n)
           fvg(2) = CLMC_pf2(n)
           fvg(3) = CLMC_sf1(n)
           fvg(4) = CLMC_sf2(n)
-          
-          BARE = 1.      
-          
+
+          BARE = 1.
+
           DO NV = 1, NVEG
-             BARE = BARE - FVG(NV)! subtract vegetated fractions 
+             BARE = BARE - FVG(NV)! subtract vegetated fractions
           END DO
-          
+
           if (BARE /= 0.) THEN
              IB = MAXLOC(FVG(:),1)
              FVG (IB) = FVG(IB) + BARE ! This also corrects all cases sum ne 0.
           ENDIF
-          
+
           CLMC_pf1(n) = fvg(1)
           CLMC_pf2(n) = fvg(2)
           CLMC_sf1(n) = fvg(3)
           CLMC_sf2(n) = fvg(4)
-          
+
           if(CLM45) then
              ! CLM 45
-             
+
              CLMC45_pf1(n) = CLMC45_pf1(n) / 100.
              CLMC45_pf2(n) = CLMC45_pf2(n) / 100.
              CLMC45_sf1(n) = CLMC45_sf1(n) / 100.
              CLMC45_sf2(n) = CLMC45_sf2(n) / 100.
-             
+
              fvg(1) = CLMC45_pf1(n)
              fvg(2) = CLMC45_pf2(n)
              fvg(3) = CLMC45_sf1(n)
              fvg(4) = CLMC45_sf2(n)
-             
-             BARE = 1.      
-             
+
+             BARE = 1.
+
              DO NV = 1, NVEG
-                BARE = BARE - FVG(NV)! subtract vegetated fractions 
+                BARE = BARE - FVG(NV)! subtract vegetated fractions
              END DO
-             
+
              if (BARE /= 0.) THEN
                 IB = MAXLOC(FVG(:),1)
                 FVG (IB) = FVG(IB) + BARE ! This also corrects all cases sum ne 0.
              ENDIF
-             
+
              CLMC45_pf1(n) = fvg(1)
              CLMC45_pf2(n) = fvg(2)
              CLMC45_sf1(n) = fvg(3)
@@ -1590,9 +1590,9 @@ contains
     enddo
 
     if( isCatchCN) then
-       
+
        NDEP = NDEP * 1.e-9
-       
+
        ! prevent trivial fractions
        ! -------------------------
        do n = 1,ntiles
@@ -1600,12 +1600,12 @@ contains
              CLMC_pf2(n) = CLMC_pf2(n) + CLMC_pf1(n)
              CLMC_pf1(n) = 0.
           endif
-          
+
           if(CLMC_pf2(n) <= 1.e-4) then
              CLMC_pf1(n) = CLMC_pf1(n) + CLMC_pf2(n)
              CLMC_pf2(n) = 0.
           endif
-          
+
           if(CLMC_sf1(n) <= 1.e-4) then
              if(CLMC_sf2(n) > 1.e-4) then
                 CLMC_sf2(n) = CLMC_sf2(n) + CLMC_sf1(n)
@@ -1618,7 +1618,7 @@ contains
              endif
              CLMC_sf1(n) = 0.
           endif
-          
+
           if(CLMC_sf2(n) <= 1.e-4) then
              if(CLMC_sf1(n) > 1.e-4) then
                 CLMC_sf1(n) = CLMC_sf1(n) + CLMC_sf2(n)
@@ -1631,19 +1631,19 @@ contains
              endif
              CLMC_sf2(n) = 0.
           endif
-         
+
           if (clm45) then
              ! CLM45
              if(CLMC45_pf1(n) <= 1.e-4) then
                 CLMC45_pf2(n) = CLMC45_pf2(n) + CLMC45_pf1(n)
                 CLMC45_pf1(n) = 0.
              endif
-             
+
              if(CLMC45_pf2(n) <= 1.e-4) then
                 CLMC45_pf1(n) = CLMC45_pf1(n) + CLMC45_pf2(n)
                 CLMC45_pf2(n) = 0.
              endif
-             
+
              if(CLMC45_sf1(n) <= 1.e-4) then
                 if(CLMC45_sf2(n) > 1.e-4) then
                    CLMC45_sf2(n) = CLMC45_sf2(n) + CLMC45_sf1(n)
@@ -1656,7 +1656,7 @@ contains
                 endif
                 CLMC45_sf1(n) = 0.
              endif
-             
+
              if(CLMC45_sf2(n) <= 1.e-4) then
                 if(CLMC45_sf1(n) > 1.e-4) then
                    CLMC45_sf1(n) = CLMC45_sf1(n) + CLMC45_sf2(n)
@@ -1673,10 +1673,10 @@ contains
        end do
     endif
 
-     
+
      ! Vegdyn Boundary Condition
      ! -------------------------
-     
+
      ! open(20,file=trim("vegdyn_internal_rst"), &
      !     status="unknown", &
      !     form="unformatted",convert="little_endian")
@@ -1688,7 +1688,7 @@ contains
      ! Now writing BCs (from BCSDIR) and regridded hydrological variables 1-72
      ! -----------------------------------------------------------------------
 
-     STATUS = NF_OPEN (trim(InRestart),NF_WRITE,NCFID)  ; VERIFY_(STATUS)  
+     STATUS = NF_OPEN (trim(InRestart),NF_WRITE,NCFID)  ; VERIFY_(STATUS)
      STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'BF1'), (/1/), (/NTILES/),BF1)
      STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'BF2'), (/1/), (/NTILES/),BF2)
      STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'BF3'), (/1/), (/NTILES/),BF3)
@@ -1726,12 +1726,12 @@ contains
         STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'ITY'), (/1,2/), (/NTILES,1/),CLMC_pt2)
         STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'ITY'), (/1,3/), (/NTILES,1/),CLMC_st1)
         STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'ITY'), (/1,4/), (/NTILES,1/),CLMC_st2)
-        
+
         STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'FVG'), (/1,1/), (/NTILES,1/),CLMC_pf1)
         STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'FVG'), (/1,2/), (/NTILES,1/),CLMC_pf2)
         STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'FVG'), (/1,3/), (/NTILES,1/),CLMC_sf1)
         STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'FVG'), (/1,4/), (/NTILES,1/),CLMC_sf2)
-        
+
 
         STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'NDEP'   ), (/1/), (/NTILES/),NDEP)
         STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'CLI_T2M'), (/1/), (/NTILES/),T2)
@@ -1739,7 +1739,7 @@ contains
         STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'BGALBVF'), (/1/), (/NTILES/),BVISDF)
         STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'BGALBNR'), (/1/), (/NTILES/),BNIRDR)
         STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'BGALBNF'), (/1/), (/NTILES/),BNIRDF)
-        
+
         if(CLM45) then
 
            STATUS = NF_PUT_VARA_REAL(NCFID,VarID(NCFID,'ABM'     ), (/1/), (/NTILES/),real(ABM))
@@ -1756,8 +1756,8 @@ contains
      STATUS = NF_CLOSE ( NCFID)
 
      deallocate (   BF1,     BF2,     BF3  )
-     deallocate (VGWMAX,   CDCR1,   CDCR2  ) 
-     deallocate (  PSIS,     BEE,   POROS  ) 
+     deallocate (VGWMAX,   CDCR1,   CDCR2  )
+     deallocate (  PSIS,     BEE,   POROS  )
      deallocate ( WPWET,    COND,     GNU  )
      deallocate (  ARS1,    ARS2,    ARS3  )
      deallocate (  ARA1,    ARA2,    ARA3  )
@@ -1766,7 +1766,7 @@ contains
      deallocate (  TSA2,    TSB1,    TSB2  )
      deallocate ( ATAU2,   BTAU2,   DP2BR  )
      deallocate (BVISDR,  BVISDF,  BNIRDR  )
-     deallocate (BNIRDF,      T2,    NDEP  )    
+     deallocate (BNIRDF,      T2,    NDEP  )
      deallocate (   ity,  CanopH)
      deallocate (CLMC_pf1, CLMC_pf2, CLMC_sf1)
      deallocate (CLMC_sf2, CLMC_pt1, CLMC_pt2)
@@ -1776,7 +1776,7 @@ contains
   END SUBROUTINE read_bcs_data
 
   ! *****************************************************************************
-  
+
   SUBROUTINE regrid_carbon_vars (NTILES, model)
 
     implicit none
@@ -1785,7 +1785,7 @@ contains
     character(*), intent (in)            :: model
     character*300          :: OutTileFile = 'InData/OutTileFile'
     character*300          :: OutFileName
-    integer                :: AGCM_YY=2015,AGCM_MM=1,AGCM_DD=1,AGCM_HR=0 
+    integer                :: AGCM_YY=2015,AGCM_MM=1,AGCM_DD=1,AGCM_HR=0
     real, allocatable, dimension (:)     :: CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, &
          CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2
 
@@ -1797,9 +1797,9 @@ contains
      integer :: n,i,j, k, offl_cell, STATUS,NCFID, req
     integer :: outid, local_id, nv, nz, iv
     real   , allocatable, dimension (:) :: LATT, LONN, DAYX, TILE_ID, var_dum2
-    real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:) 
+    real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:)
     integer, allocatable :: low_ind(:), upp_ind(:), nt_local (:)
-    real   , pointer , dimension (:) :: long, latg, lonc, latc  
+    real   , pointer , dimension (:) :: long, latg, lonc, latc
     character*256        :: Iam = "regrid_carbon_vars"
 
     OutFileName='OutData/'//trim(model)//'_internal_rst'
@@ -1813,15 +1813,15 @@ contains
     allocate(nt_local(   numprocs))
 
     low_ind (:)    = 1
-    upp_ind (:)    = NTILES       
-    nt_local(:)    = NTILES 
+    upp_ind (:)    = NTILES
+    nt_local(:)    = NTILES
 
     ! Domain decomposition
     ! --------------------
 
-    if (numprocs > 1) then      
+    if (numprocs > 1) then
        do i = 1, numprocs - 1
-          upp_ind(i)   = low_ind(i) + (ntiles/numprocs) - 1 
+          upp_ind(i)   = low_ind(i) + (ntiles/numprocs) - 1
           low_ind(i+1) = upp_ind(i) + 1
           nt_local(i)  = upp_ind(i) - low_ind(i) + 1
        end do
@@ -1843,9 +1843,9 @@ contains
     allocate (latc   (1:ntiles_cn))
 
     if (root_proc) then
-       
+
        ! --------------------------------------------
-       ! Read exact lonn, latt from output .til file 
+       ! Read exact lonn, latt from output .til file
        ! --------------------------------------------
 
        allocate (long   (ntiles))
@@ -1859,10 +1859,10 @@ contains
 
        call compute_dayx (                                     &
             NTILES, AGCM_YY, AGCM_MM, AGCM_DD, AGCM_HR,        &
-            LATG, DAYX)   
+            LATG, DAYX)
 
        ! ---------------------------------------------
-       ! Read exact lonc, latc from offline .til File 
+       ! Read exact lonc, latc from offline .til File
        ! ---------------------------------------------
 
        call ReadTileFile_RealLatLon(trim(InCNTilFile),i,xlon=lonc,xlat=latc); VERIFY_(i-ntiles_cn)
@@ -1891,25 +1891,25 @@ contains
           else if (myid == 0) then
              ! root sends
              call MPI_ISend(long(low_ind(i) : upp_ind(i)),nt_local(i),MPI_REAL,i-1,995,MPI_COMM_WORLD,req,mpierr)
-             call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)    
+             call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)
              call MPI_ISend(latg(low_ind(i) : upp_ind(i)),nt_local(i),MPI_REAL,i-1,994,MPI_COMM_WORLD,req,mpierr)
-             call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr) 
+             call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)
           endif
        endif
     end do
-    
+
 
     if(root_proc) deallocate (long, latg)
- 
+
     call MPI_BCAST(lonc,ntiles_cn,MPI_REAL,0,MPI_COMM_WORLD,mpierr)
     call MPI_BCAST(latc,ntiles_cn,MPI_REAL,0,MPI_COMM_WORLD,mpierr)
 
     ! Open GKW/Fzeng SMAP M09 catchcn_internal_rst and output catchcn_internal_rst
     ! ----------------------------------------------------------------------------
-    
+
     STATUS = NF_OPEN_PAR   (trim(OutFileName),IOR(NF_WRITE  ,NF_MPIIO),MPI_COMM_WORLD, infos,OUTID)
     IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS, 'OUTPUT RESTART FAILED')
-    
+
     STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'ITY'), (/low_ind(myid+1),1/), (/nt_local(myid+1),1/),CLMC_pt1)
     STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'ITY'), (/low_ind(myid+1),2/), (/nt_local(myid+1),1/),CLMC_pt2)
     STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'ITY'), (/low_ind(myid+1),3/), (/nt_local(myid+1),1/),CLMC_st1)
@@ -1926,17 +1926,17 @@ contains
        STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'TILE_ID'   ), (/1/), (/NTILES_CN/),TILE_ID)
 
        do n = 1,ntiles_cn
- 
+
           K = NINT (TILE_ID (n))
 
           STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ITY'), (/n,1/), (/1,4/),ityp_offl(K,:))
           STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'FVG'), (/n,1/), (/1,4/),fveg_offl(K,:))
-          
+
           tid_offl (n) = n
-          
+
           do nv = 1,nveg
              if(ityp_offl(K,nv)<0 .or. ityp_offl(K,nv)>npft)    stop 'ityp'
-             if(fveg_offl(K,nv)<0..or. fveg_offl(K,nv)>1.00001) stop 'fveg'             
+             if(fveg_offl(K,nv)<0..or. fveg_offl(K,nv)>1.00001) stop 'fveg'
           end do
 
           if((ityp_offl(K,3) == 0).and.(ityp_offl(K,4) == 0)) then
@@ -1946,42 +1946,42 @@ contains
                 ityp_offl(K,3) = ityp_offl(K,2)
              endif
           endif
-          
+
           if((ityp_offl(K,1) == 0).and.(ityp_offl(K,2) /= 0)) ityp_offl(K,1) = ityp_offl(K,2)
           if((ityp_offl(K,2) == 0).and.(ityp_offl(K,1) /= 0)) ityp_offl(K,2) = ityp_offl(K,1)
           if((ityp_offl(K,3) == 0).and.(ityp_offl(K,4) /= 0)) ityp_offl(K,3) = ityp_offl(K,4)
           if((ityp_offl(K,4) == 0).and.(ityp_offl(K,3) /= 0)) ityp_offl(K,4) = ityp_offl(K,3)
-          
+
        end do
 
     endif
-    
+
     call MPI_BCAST(tid_offl ,size(tid_offl ),MPI_INTEGER,0,MPI_COMM_WORLD,mpierr)
     call MPI_BCAST(ityp_offl,size(ityp_offl),MPI_REAL   ,0,MPI_COMM_WORLD,mpierr)
-    call MPI_BCAST(fveg_offl,size(fveg_offl),MPI_REAL   ,0,MPI_COMM_WORLD,mpierr)    
+    call MPI_BCAST(fveg_offl,size(fveg_offl),MPI_REAL   ,0,MPI_COMM_WORLD,mpierr)
 
     ! --------------------------------------------------------------------------------
     ! Here we create transfer index array to map offline restarts to output tile space
-    ! --------------------------------------------------------------------------------   
+    ! --------------------------------------------------------------------------------
 
     call GetIds(lonc,latc,lonn,latt,id_loc, tid_offl, &
          CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2, &
          fveg_offl, ityp_offl)
-      
+
     ! update id_glb in root
-    
+
     if(root_proc)  then
        allocate (id_glb  (ntiles, nveg))
        allocate (id_vec  (ntiles))
     endif
-    
+
     do nv = 1, nveg
        call MPI_Barrier(MPI_COMM_WORLD, STATUS)
        !        call MPI_GATHERV( &
        !                   id_loc (:,nv), nt_local(myid+1)  , MPI_real, &
        !                   id_vec, nt_local,low_ind-1, MPI_real, &
        !                   0, MPI_COMM_WORLD, mpierr )
-       
+
        do i = 1, numprocs
           if((I == 1).and.(myid == 0)) then
              id_vec(low_ind(i) : upp_ind(i)) = Id_loc(:,nv)
@@ -1989,16 +1989,16 @@ contains
              if(I-1 == myid) then
                 ! send to root
                 call MPI_ISend(id_loc(:,nv),nt_local(i),MPI_INTEGER,0,993,MPI_COMM_WORLD,req,mpierr)
-                call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)    
+                call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)
              else if (myid == 0) then
                 ! root receives
                 call MPI_RECV(id_vec(low_ind(i) : upp_ind(i)),nt_local(i) , MPI_INTEGER, i-1,993,MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
              endif
           endif
        end do
-        
+
        if(root_proc) id_glb (:,nv) = id_vec
-        
+
     end do
 
     if(root_proc) then
@@ -2011,33 +2011,33 @@ contains
           do nz = 1,nzone
              STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'CNCOL'), (/1,i/), (/NTILES_CN,1 /),VAR_DUM2)
              do k = 1, NTILES_CN
-                var_off_col(TILE_ID(K), nz,nv) = VAR_DUM2(K)
+                var_off_col(nint(TILE_ID(K)), nz,nv) = VAR_DUM2(K)
              end do
              i = i + 1
           end do
        end do
-       
+
        i = 1
        do iv = 1,VAR_PFT
           do nv = 1,nveg
              do nz = 1,nzone
                 STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'CNPFT'), (/1,i/), (/NTILES_CN,1 /),VAR_DUM2)
                 do k = 1, NTILES_CN
-                   var_off_pft(TILE_ID(K), nz,nv,iv) = VAR_DUM2(K)
+                   var_off_pft(nint(TILE_ID(K)), nz,nv,iv) = VAR_DUM2(K)
                 end do
                 i = i + 1
              end do
           end do
        end do
-       
-       where(isnan(var_off_pft))  var_off_pft = 0.   
-       where(var_off_pft /= var_off_pft)  var_off_pft = 0.  
+
+       where(isnan(var_off_pft))  var_off_pft = 0.
+       where(var_off_pft /= var_off_pft)  var_off_pft = 0.
 
        call write_regridded_carbon (NTILES, ntiles_cn, NCFID, OUTID, id_glb, &
-            DAYX, var_off_col, var_off_pft, ityp_offl, fveg_offl) 
+            DAYX, var_off_col, var_off_pft, ityp_offl, fveg_offl)
        deallocate (var_off_col,var_off_pft)
     endif
-    
+
     call MPI_Barrier(MPI_COMM_WORLD, STATUS)
 
    END SUBROUTINE regrid_carbon_vars
@@ -2045,21 +2045,21 @@ contains
 ! ---------------------------------------------------------------------------------------------------------
 
    SUBROUTINE write_regridded_carbon (NTILES, ntiles_rst, NCFID, OUTID, id_glb, &
-        DAYX, var_off_col, var_off_pft, ityp_offl, fveg_offl) 
+        DAYX, var_off_col, var_off_pft, ityp_offl, fveg_offl)
 
      ! write out regridded carbon variables
      implicit none
      integer, intent (in) :: NTILES, ntiles_rst,NCFID, OUTID, id_glb (ntiles,nveg)
-     real, intent (in)    :: DAYX (NTILES), var_off_col(NTILES_RST,NZONE,var_col), var_off_pft(NTILES_RST,NZONE, NVEG, var_pft)  
+     real, intent (in)    :: DAYX (NTILES), var_off_col(NTILES_RST,NZONE,var_col), var_off_pft(NTILES_RST,NZONE, NVEG, var_pft)
      real, intent (in),  dimension(ntiles_rst,nveg) :: fveg_offl,  ityp_offl
      real, allocatable, dimension (:)    :: CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, &
-          CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2, var_dum    
-     real, allocatable :: var_col_out (:,:,:), var_pft_out (:,:,:,:)   
+          CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2, var_dum
+     real, allocatable :: var_col_out (:,:,:), var_pft_out (:,:,:,:)
      integer           :: N, STATUS, nv, nx, offl_cell, ityp_new, i, j, nz, iv
      real              :: fveg_new
-     character(256) :: Iam = "write_regridded_carbon"    
+     character(256) :: Iam = "write_regridded_carbon"
 
- 
+
      allocate (CLMC_pf1(NTILES))
      allocate (CLMC_pf2(NTILES))
      allocate (CLMC_sf1(NTILES))
@@ -2069,7 +2069,7 @@ contains
      allocate (CLMC_st1(NTILES))
      allocate (CLMC_st2(NTILES))
      allocate (VAR_DUM (NTILES))
-     
+
      STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'ITY'), (/1,1/), (/NTILES,1/),CLMC_pt1) ; VERIFY_(STATUS)
      STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'ITY'), (/1,2/), (/NTILES,1/),CLMC_pt2) ; VERIFY_(STATUS)
      STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'ITY'), (/1,3/), (/NTILES,1/),CLMC_st1) ; VERIFY_(STATUS)
@@ -2078,123 +2078,123 @@ contains
      STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'FVG'), (/1,2/), (/NTILES,1/),CLMC_pf2) ; VERIFY_(STATUS)
      STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'FVG'), (/1,3/), (/NTILES,1/),CLMC_sf1) ; VERIFY_(STATUS)
      STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'FVG'), (/1,4/), (/NTILES,1/),CLMC_sf2) ; VERIFY_(STATUS)
-     
+
      allocate (var_col_out (1: NTILES, 1 : nzone,1 : var_col))
-     allocate (var_pft_out (1: NTILES, 1 : nzone,1 : nveg, 1 : var_pft)) 
-       
+     allocate (var_pft_out (1: NTILES, 1 : nzone,1 : nveg, 1 : var_pft))
+
      var_col_out = 0.
-     var_pft_out = NaN     
+     var_pft_out = NaN
 
      OUT_TILE : DO N = 1, NTILES
-        
+
         ! if(mod (n,1000) == 0) print *, myid +1, n, Id_glb(n,:)
-        
+
         NVLOOP2 : do nv = 1, nveg
-           
+
            if(nv <= 2) then ! index for secondary PFT index if primary or primary if secondary
               nx = nv + 2
            else
               nx = nv - 2
            endif
-           
+
            if (nv == 1) ityp_new = CLMC_pt1(n)
            if (nv == 1) fveg_new = CLMC_pf1(n)
            if (nv == 2) ityp_new = CLMC_pt2(n)
            if (nv == 2) fveg_new = CLMC_pf2(n)
            if (nv == 3) ityp_new = CLMC_st1(n)
            if (nv == 3) fveg_new = CLMC_sf1(n)
-           if (nv == 4) ityp_new = CLMC_st2(n) 
+           if (nv == 4) ityp_new = CLMC_st2(n)
            if (nv == 4) fveg_new = CLMC_sf2(n)
-           
+
            if (fveg_new > fmin) then
-              
+
               offl_cell    = Id_glb(n,nv)
-              
+
               if(ityp_new      == ityp_offl (offl_cell,nv) .and. fveg_offl (offl_cell,nv)> fmin) then
-                 iv = nv                                     ! same type fraction (primary of secondary)                          
+                 iv = nv                                     ! same type fraction (primary of secondary)
               else if(ityp_new == ityp_offl (offl_cell,nx) .and. fveg_offl (offl_cell,nx)> fmin) then
                  iv = nx                                     ! not same fraction
-              else if(iclass(ityp_new)==iclass(ityp_offl(offl_cell,nv)) .and. fveg_offl (offl_cell,nv)> fmin) then
+              else if(iclass(ityp_new)==iclass(nint(ityp_offl(offl_cell,nv))) .and. fveg_offl (offl_cell,nv)> fmin) then
                  iv = nv                                     ! primary, other type (same class)
               else if(fveg_offl (offl_cell,nx)> fmin) then
                  iv = nx                                     ! secondary, other type (same class)
               endif
-              
+
               ! Get col and pft variables for the Id_glb(nv) grid cell from offline catchcn_internal_rst
               ! ----------------------------------------------------------------------------------------
-              
-              ! call NCDF_reshape_getOput (NCFID,Id_glb(n,nv),var_off_col,var_off_pft,.true.)  
-              
-              var_pft_out (n,:,nv,:) = var_off_pft(Id_glb(n,nv), :,iv,:)                      
+
+              ! call NCDF_reshape_getOput (NCFID,Id_glb(n,nv),var_off_col,var_off_pft,.true.)
+
+              var_pft_out (n,:,nv,:) = var_off_pft(Id_glb(n,nv), :,iv,:)
               var_col_out (n,:,:)    = var_col_out(n,:,:) + fveg_new * var_off_col(Id_glb(n,nv), :,:) ! gkw: column state simple weighted mean; ! could use "woody" fraction?
-              
+
               ! Check whether var_pft_out is realistic
               do nz = 1, nzone
                  do j = 1, VAR_PFT
-                    if (isnan(var_pft_out (n, nz,nv,j))) print *,j,nv,nz,n,var_pft_out (n, nz,nv,j),fveg_new                       
+                    if (isnan(var_pft_out (n, nz,nv,j))) print *,j,nv,nz,n,var_pft_out (n, nz,nv,j),fveg_new
                     !if(isnan(var_pft_out (n, nz,nv,69))) var_pft_out (n, nz,nv,69) = 1.e-6
-                    !if(isnan(var_pft_out (n, nz,nv,70))) var_pft_out (n, nz,nv,70) = 1.e-6   
+                    !if(isnan(var_pft_out (n, nz,nv,70))) var_pft_out (n, nz,nv,70) = 1.e-6
                     !if(isnan(var_pft_out (n, nz,nv,73))) var_pft_out (n, nz,nv,73) = 1.e-6
-                    !if(isnan(var_pft_out (n, nz,nv,74))) var_pft_out (n, nz,nv,74) = 1.e-6                 
+                    !if(isnan(var_pft_out (n, nz,nv,74))) var_pft_out (n, nz,nv,74) = 1.e-6
                  end do
               end do
            endif
-           
+
         end do NVLOOP2
-        
+
         ! reset carbon if negative < 10g
         ! ------------------------
- 
+
         NZLOOP : do nz = 1, nzone
-           
+
            if(var_col_out (n, nz,14) < 10.) then
-              
-              var_col_out(n, nz, 1) = max(var_col_out(n, nz, 1), 0.)   
-              var_col_out(n, nz, 2) = max(var_col_out(n, nz, 2), 0.)   
-              var_col_out(n, nz, 3) = max(var_col_out(n, nz, 3), 0.)   
-              var_col_out(n, nz, 4) = max(var_col_out(n, nz, 4), 0.)   
-              var_col_out(n, nz, 5) = max(var_col_out(n, nz, 5), 0.)   
-              var_col_out(n, nz,10) = max(var_col_out(n, nz,10), 0.)   
-              var_col_out(n, nz,11) = max(var_col_out(n, nz,11), 0.)   
-              var_col_out(n, nz,12) = max(var_col_out(n, nz,12), 0.)   
-              var_col_out(n, nz,13) = max(var_col_out(n, nz,13),10.)   ! soil4c       
-              var_col_out(n, nz,14) = max(var_col_out(n, nz,14), 0.) 
-              var_col_out(n, nz,15) = max(var_col_out(n, nz,15), 0.)     
-              var_col_out(n, nz,16) = max(var_col_out(n, nz,16), 0.)     
-              var_col_out(n, nz,17) = max(var_col_out(n, nz,17), 0.)     
-              var_col_out(n, nz,18) = max(var_col_out(n, nz,18), 0.)     
-              var_col_out(n, nz,19) = max(var_col_out(n, nz,19), 0.)     
-              var_col_out(n, nz,20) = max(var_col_out(n, nz,20), 0.)     
-              var_col_out(n, nz,24) = max(var_col_out(n, nz,24), 0.)     
-              var_col_out(n, nz,25) = max(var_col_out(n, nz,25), 0.)     
-              var_col_out(n, nz,26) = max(var_col_out(n, nz,26), 0.)     
-              var_col_out(n, nz,27) = max(var_col_out(n, nz,27), 0.)     
-              var_col_out(n, nz,28) = max(var_col_out(n, nz,28), 1.)     
-              var_col_out(n, nz,29) = max(var_col_out(n, nz,29), 0.)     
-              
+
+              var_col_out(n, nz, 1) = max(var_col_out(n, nz, 1), 0.)
+              var_col_out(n, nz, 2) = max(var_col_out(n, nz, 2), 0.)
+              var_col_out(n, nz, 3) = max(var_col_out(n, nz, 3), 0.)
+              var_col_out(n, nz, 4) = max(var_col_out(n, nz, 4), 0.)
+              var_col_out(n, nz, 5) = max(var_col_out(n, nz, 5), 0.)
+              var_col_out(n, nz,10) = max(var_col_out(n, nz,10), 0.)
+              var_col_out(n, nz,11) = max(var_col_out(n, nz,11), 0.)
+              var_col_out(n, nz,12) = max(var_col_out(n, nz,12), 0.)
+              var_col_out(n, nz,13) = max(var_col_out(n, nz,13),10.)   ! soil4c
+              var_col_out(n, nz,14) = max(var_col_out(n, nz,14), 0.)
+              var_col_out(n, nz,15) = max(var_col_out(n, nz,15), 0.)
+              var_col_out(n, nz,16) = max(var_col_out(n, nz,16), 0.)
+              var_col_out(n, nz,17) = max(var_col_out(n, nz,17), 0.)
+              var_col_out(n, nz,18) = max(var_col_out(n, nz,18), 0.)
+              var_col_out(n, nz,19) = max(var_col_out(n, nz,19), 0.)
+              var_col_out(n, nz,20) = max(var_col_out(n, nz,20), 0.)
+              var_col_out(n, nz,24) = max(var_col_out(n, nz,24), 0.)
+              var_col_out(n, nz,25) = max(var_col_out(n, nz,25), 0.)
+              var_col_out(n, nz,26) = max(var_col_out(n, nz,26), 0.)
+              var_col_out(n, nz,27) = max(var_col_out(n, nz,27), 0.)
+              var_col_out(n, nz,28) = max(var_col_out(n, nz,28), 1.)
+              var_col_out(n, nz,29) = max(var_col_out(n, nz,29), 0.)
+
               NVLOOP3 : do nv = 1,nveg
-                 
+
                  if (nv == 1) ityp_new = CLMC_pt1(n)
                  if (nv == 1) fveg_new = CLMC_pf1(n)
                  if (nv == 2) ityp_new = CLMC_pt2(n)
                  if (nv == 2) fveg_new = CLMC_pf2(n)
                  if (nv == 3) ityp_new = CLMC_st1(n)
                  if (nv == 3) fveg_new = CLMC_sf1(n)
-                 if (nv == 4) ityp_new = CLMC_st2(n) 
+                 if (nv == 4) ityp_new = CLMC_st2(n)
                  if (nv == 4) fveg_new = CLMC_sf2(n)
-                 
+
                  if(fveg_new > fmin) then
-                    var_pft_out(n, nz,nv, 1) = max(var_pft_out(n, nz,nv, 1),0.)      
-                    var_pft_out(n, nz,nv, 2) = max(var_pft_out(n, nz,nv, 2),0.)      
-                    var_pft_out(n, nz,nv, 3) = max(var_pft_out(n, nz,nv, 3),0.)  
-                    var_pft_out(n, nz,nv, 4) = max(var_pft_out(n, nz,nv, 4),0.)      
-                    
+                    var_pft_out(n, nz,nv, 1) = max(var_pft_out(n, nz,nv, 1),0.)
+                    var_pft_out(n, nz,nv, 2) = max(var_pft_out(n, nz,nv, 2),0.)
+                    var_pft_out(n, nz,nv, 3) = max(var_pft_out(n, nz,nv, 3),0.)
+                    var_pft_out(n, nz,nv, 4) = max(var_pft_out(n, nz,nv, 4),0.)
+
                     if(ityp_new <= 12) then ! tree or shrub deadstemc
                        var_pft_out(n, nz,nv, 5) = max(var_pft_out(n, nz,nv, 5),0.1)
-                    else            
+                    else
                        var_pft_out(n, nz,nv, 5) = max(var_pft_out(n, nz,nv, 5),0.0)
                     endif
-                    
+
                     var_pft_out(n, nz,nv, 6) = max(var_pft_out(n, nz,nv, 6),0.)
                     var_pft_out(n, nz,nv, 7) = max(var_pft_out(n, nz,nv, 7),0.)
                     var_pft_out(n, nz,nv, 8) = max(var_pft_out(n, nz,nv, 8),0.)
@@ -2202,15 +2202,15 @@ contains
                     var_pft_out(n, nz,nv,10) = max(var_pft_out(n, nz,nv,10),0.)
                     var_pft_out(n, nz,nv,11) = max(var_pft_out(n, nz,nv,11),0.)
                     var_pft_out(n, nz,nv,12) = max(var_pft_out(n, nz,nv,12),0.)
-                    
+
                     if(ityp_new <=2 .or. ityp_new ==4 .or. ityp_new ==5 .or. ityp_new == 9) then
                        var_pft_out(n, nz,nv,13) = max(var_pft_out(n, nz,nv,13),1.)  ! leaf carbon display for evergreen
                        var_pft_out(n, nz,nv,14) = max(var_pft_out(n, nz,nv,14),0.)
                     else
-                       var_pft_out(n, nz,nv,13) = max(var_pft_out(n, nz,nv,13),0.)               
+                       var_pft_out(n, nz,nv,13) = max(var_pft_out(n, nz,nv,13),0.)
                        var_pft_out(n, nz,nv,14) = max(var_pft_out(n, nz,nv,14),1.)  ! leaf carbon storage for deciduous
                     endif
-                    
+
                     var_pft_out(n, nz,nv,15) = max(var_pft_out(n, nz,nv,15),0.)
                     var_pft_out(n, nz,nv,16) = max(var_pft_out(n, nz,nv,16),0.)
                     var_pft_out(n, nz,nv,17) = max(var_pft_out(n, nz,nv,17),0.)
@@ -2232,34 +2232,34 @@ contains
                     var_pft_out(n, nz,nv,48) = max(var_pft_out(n, nz,nv,48),0.)
                     var_pft_out(n, nz,nv,49) = max(var_pft_out(n, nz,nv,49),0.)
                     var_pft_out(n, nz,nv,50) = max(var_pft_out(n, nz,nv,50),0.)
-                    var_pft_out(n, nz,nv,51) = max(var_pft_out(n, nz,nv, 5)/500.,0.)            
+                    var_pft_out(n, nz,nv,51) = max(var_pft_out(n, nz,nv, 5)/500.,0.)
                     var_pft_out(n, nz,nv,52) = max(var_pft_out(n, nz,nv,52),0.)
                     var_pft_out(n, nz,nv,53) = max(var_pft_out(n, nz,nv,53),0.)
                     var_pft_out(n, nz,nv,54) = max(var_pft_out(n, nz,nv,54),0.)
                     var_pft_out(n, nz,nv,55) = max(var_pft_out(n, nz,nv,55),0.)
                     var_pft_out(n, nz,nv,56) = max(var_pft_out(n, nz,nv,56),0.)
-                    var_pft_out(n, nz,nv,57) = max(var_pft_out(n, nz,nv,13)/25.,0.)        
-                    var_pft_out(n, nz,nv,58) = max(var_pft_out(n, nz,nv,14)/25.,0.)        
+                    var_pft_out(n, nz,nv,57) = max(var_pft_out(n, nz,nv,13)/25.,0.)
+                    var_pft_out(n, nz,nv,58) = max(var_pft_out(n, nz,nv,14)/25.,0.)
                     var_pft_out(n, nz,nv,59) = max(var_pft_out(n, nz,nv,59),0.)
-                    var_pft_out(n, nz,nv,60) = max(var_pft_out(n, nz,nv,60),0.)  
-                    var_pft_out(n, nz,nv,61) = max(var_pft_out(n, nz,nv,61),0.)  
-                    var_pft_out(n, nz,nv,62) = max(var_pft_out(n, nz,nv,62),0.)  
-                    var_pft_out(n, nz,nv,63) = max(var_pft_out(n, nz,nv,63),0.)  
-                    var_pft_out(n, nz,nv,64) = max(var_pft_out(n, nz,nv,64),0.)  
-                    var_pft_out(n, nz,nv,65) = max(var_pft_out(n, nz,nv,65),0.)  
-                    var_pft_out(n, nz,nv,66) = max(var_pft_out(n, nz,nv,66),0.)  
-                    var_pft_out(n, nz,nv,67) = max(var_pft_out(n, nz,nv,67),0.)  
-                    var_pft_out(n, nz,nv,68) = max(var_pft_out(n, nz,nv,68),0.)  
-                    var_pft_out(n, nz,nv,69) = max(var_pft_out(n, nz,nv,69),0.)  
-                    var_pft_out(n, nz,nv,70) = max(var_pft_out(n, nz,nv,70),0.)  
-                    var_pft_out(n, nz,nv,73) = max(var_pft_out(n, nz,nv,73),0.)  
-                    var_pft_out(n, nz,nv,74) = max(var_pft_out(n, nz,nv,74),0.)  
-                    if(clm45) var_pft_out(n, nz,nv,75) = max(var_pft_out(n, nz,nv,75),0.)  
+                    var_pft_out(n, nz,nv,60) = max(var_pft_out(n, nz,nv,60),0.)
+                    var_pft_out(n, nz,nv,61) = max(var_pft_out(n, nz,nv,61),0.)
+                    var_pft_out(n, nz,nv,62) = max(var_pft_out(n, nz,nv,62),0.)
+                    var_pft_out(n, nz,nv,63) = max(var_pft_out(n, nz,nv,63),0.)
+                    var_pft_out(n, nz,nv,64) = max(var_pft_out(n, nz,nv,64),0.)
+                    var_pft_out(n, nz,nv,65) = max(var_pft_out(n, nz,nv,65),0.)
+                    var_pft_out(n, nz,nv,66) = max(var_pft_out(n, nz,nv,66),0.)
+                    var_pft_out(n, nz,nv,67) = max(var_pft_out(n, nz,nv,67),0.)
+                    var_pft_out(n, nz,nv,68) = max(var_pft_out(n, nz,nv,68),0.)
+                    var_pft_out(n, nz,nv,69) = max(var_pft_out(n, nz,nv,69),0.)
+                    var_pft_out(n, nz,nv,70) = max(var_pft_out(n, nz,nv,70),0.)
+                    var_pft_out(n, nz,nv,73) = max(var_pft_out(n, nz,nv,73),0.)
+                    var_pft_out(n, nz,nv,74) = max(var_pft_out(n, nz,nv,74),0.)
+                    if(clm45) var_pft_out(n, nz,nv,75) = max(var_pft_out(n, nz,nv,75),0.)
                  endif
-              end do NVLOOP3  ! end veg loop                 
-           endif    ! end carbon check         
+              end do NVLOOP3  ! end veg loop
+           endif    ! end carbon check
         end do NZLOOP ! end zone loop
-        
+
         ! Update dayx variable var_pft_out (:,:,28)
 
         do j = 28, 28  !  1,VAR_PFT var_pft_out (:,:,:,28)
@@ -2269,165 +2269,165 @@ contains
               end do
            end do
         end do
-        
-        ! call NCDF_reshape_getOput (OutID,N,var_col_out,var_pft_out,.false.)  
-        
+
+        ! call NCDF_reshape_getOput (OutID,N,var_col_out,var_pft_out,.false.)
+
         ! column vars clm40                         clm45
         ! -----------------                         ---------------------
-        !  1 clm3%g%l%c%ccs%col_ctrunc	           !  1 ccs%col_ctrunc_vr   (:,1)              
-        !  2 clm3%g%l%c%ccs%cwdc	           !  2 ccs%decomp_cpools_vr(:,1,4)   ! cwdc        
-        !  3 clm3%g%l%c%ccs%litr1c                 !  3 ccs%decomp_cpools_vr(:,1,1)   ! litr1c 
-        !  4 clm3%g%l%c%ccs%litr2c 	           !  4 ccs%decomp_cpools_vr(:,1,2)   ! litr2c 
-        !  5 clm3%g%l%c%ccs%litr3c 	           !  5 ccs%decomp_cpools_vr(:,1,3)   ! litr3c 
-        !  6 clm3%g%l%c%ccs%pcs_a%totvegc          !  6 ccs%totvegc_col                        
-        !  7 clm3%g%l%c%ccs%prod100c	           !  7 ccs%prod100c                           
-        !  8 clm3%g%l%c%ccs%prod10c	           !  8 ccs%prod10c                            
-        !  9 clm3%g%l%c%ccs%seedc                  !  9 ccs%seedc                              
-        ! 10 clm3%g%l%c%ccs%soil1c                 ! 10 ccs%decomp_cpools_vr(:,1,5)   ! soil1c 
-        ! 11 clm3%g%l%c%ccs%soil2c                 ! 11 ccs%decomp_cpools_vr(:,1,6)   ! soil2c 
-        ! 12 clm3%g%l%c%ccs%soil3c                 ! 12 ccs%decomp_cpools_vr(:,1,7)   ! soil3c 
-        ! 13 clm3%g%l%c%ccs%soil4c                 ! 13 ccs%decomp_cpools_vr(:,1,8)   ! soil4c 
-        ! 14 clm3%g%l%c%ccs%totcolc                ! 14 ccs%totcolc                            
-        ! 15 clm3%g%l%c%ccs%totlitc                ! 15 ccs%totlitc                            
-        ! 16 clm3%g%l%c%cns%col_ntrunc	           ! 16 cns%col_ntrunc_vr   (:,1)              
-        ! 17 clm3%g%l%c%cns%cwdn	           ! 17 cns%decomp_npools_vr(:,1,4)   ! cwdn        
-        ! 18 clm3%g%l%c%cns%litr1n                 ! 18 cns%decomp_npools_vr(:,1,1)   ! litr1n 
-        ! 19 clm3%g%l%c%cns%litr2n 	           ! 19 cns%decomp_npools_vr(:,1,2)   ! litr2n 
-        ! 20 clm3%g%l%c%cns%litr3n 	           ! 20 cns%decomp_npools_vr(:,1,3)   ! litr3n 
-        ! 21 clm3%g%l%c%cns%prod100n	           ! 21 cns%prod100n                           
-        ! 22 clm3%g%l%c%cns%prod10n                ! 22 cns%prod10n                            
-        ! 23 clm3%g%l%c%cns%seedn                  ! 23 cns%seedn                              
-        ! 24 clm3%g%l%c%cns%sminn                  ! 24 cns%sminn_vr        (:,1)              
-        ! 25 clm3%g%l%c%cns%soil1n                 ! 25 cns%decomp_npools_vr(:,1,5)   ! soil1n 
-        ! 26 clm3%g%l%c%cns%soil2n                 ! 26 cns%decomp_npools_vr(:,1,6)   ! soil2n 
-        ! 27 clm3%g%l%c%cns%soil3n                 ! 27 cns%decomp_npools_vr(:,1,7)   ! soil3n 
-        ! 28 clm3%g%l%c%cns%soil4n                 ! 28 cns%decomp_npools_vr(:,1,8)   ! soil4n 
-        ! 29 clm3%g%l%c%cns%totcoln                ! 29 cns%totcoln                            
-        ! 30 clm3%g%l%c%cps%ann_farea_burned       ! 30 cps%fpg                                
-        ! 31 clm3%g%l%c%cps%annsum_counter         ! 31 cps%annsum_counter                     
-        ! 32 clm3%g%l%c%cps%cannavg_t2m	           ! 32 cps%cannavg_t2m                             
-        ! 33 clm3%g%l%c%cps%cannsum_npp	           ! 33 cps%cannsum_npp                             
-        ! 34 clm3%g%l%c%cps%farea_burned           ! 34 cps%farea_burned                            
-        ! 35 clm3%g%l%c%cps%fire_prob	           ! 35 cps%fpi_vr          (:,1)              
-        ! 36 clm3%g%l%c%cps%fireseasonl	           ! OLD           ! 30 cps%altmax                   
-        ! 37 clm3%g%l%c%cps%fpg	                   ! OLD           ! 31 cps%annsum_counter            
-        ! 38 clm3%g%l%c%cps%fpi	                   ! OLD           ! 32 cps%cannavg_t2m               
-        ! 39 clm3%g%l%c%cps%me	                   ! OLD           ! 33 cps%cannsum_npp          
-        ! 40 clm3%g%l%c%cps%mean_fire_prob         ! OLD           ! 34 cps%farea_burned         
-                                                   ! OLD           ! 35 cps%altmax_lastyear      
-                                                   ! OLD           ! 36 cps%altmax_indx          
-                                                   ! OLD           ! 37 cps%fpg                  
+        !  1 clm3%g%l%c%ccs%col_ctrunc	           !  1 ccs%col_ctrunc_vr   (:,1)
+        !  2 clm3%g%l%c%ccs%cwdc	           !  2 ccs%decomp_cpools_vr(:,1,4)   ! cwdc
+        !  3 clm3%g%l%c%ccs%litr1c                 !  3 ccs%decomp_cpools_vr(:,1,1)   ! litr1c
+        !  4 clm3%g%l%c%ccs%litr2c 	           !  4 ccs%decomp_cpools_vr(:,1,2)   ! litr2c
+        !  5 clm3%g%l%c%ccs%litr3c 	           !  5 ccs%decomp_cpools_vr(:,1,3)   ! litr3c
+        !  6 clm3%g%l%c%ccs%pcs_a%totvegc          !  6 ccs%totvegc_col
+        !  7 clm3%g%l%c%ccs%prod100c	           !  7 ccs%prod100c
+        !  8 clm3%g%l%c%ccs%prod10c	           !  8 ccs%prod10c
+        !  9 clm3%g%l%c%ccs%seedc                  !  9 ccs%seedc
+        ! 10 clm3%g%l%c%ccs%soil1c                 ! 10 ccs%decomp_cpools_vr(:,1,5)   ! soil1c
+        ! 11 clm3%g%l%c%ccs%soil2c                 ! 11 ccs%decomp_cpools_vr(:,1,6)   ! soil2c
+        ! 12 clm3%g%l%c%ccs%soil3c                 ! 12 ccs%decomp_cpools_vr(:,1,7)   ! soil3c
+        ! 13 clm3%g%l%c%ccs%soil4c                 ! 13 ccs%decomp_cpools_vr(:,1,8)   ! soil4c
+        ! 14 clm3%g%l%c%ccs%totcolc                ! 14 ccs%totcolc
+        ! 15 clm3%g%l%c%ccs%totlitc                ! 15 ccs%totlitc
+        ! 16 clm3%g%l%c%cns%col_ntrunc	           ! 16 cns%col_ntrunc_vr   (:,1)
+        ! 17 clm3%g%l%c%cns%cwdn	           ! 17 cns%decomp_npools_vr(:,1,4)   ! cwdn
+        ! 18 clm3%g%l%c%cns%litr1n                 ! 18 cns%decomp_npools_vr(:,1,1)   ! litr1n
+        ! 19 clm3%g%l%c%cns%litr2n 	           ! 19 cns%decomp_npools_vr(:,1,2)   ! litr2n
+        ! 20 clm3%g%l%c%cns%litr3n 	           ! 20 cns%decomp_npools_vr(:,1,3)   ! litr3n
+        ! 21 clm3%g%l%c%cns%prod100n	           ! 21 cns%prod100n
+        ! 22 clm3%g%l%c%cns%prod10n                ! 22 cns%prod10n
+        ! 23 clm3%g%l%c%cns%seedn                  ! 23 cns%seedn
+        ! 24 clm3%g%l%c%cns%sminn                  ! 24 cns%sminn_vr        (:,1)
+        ! 25 clm3%g%l%c%cns%soil1n                 ! 25 cns%decomp_npools_vr(:,1,5)   ! soil1n
+        ! 26 clm3%g%l%c%cns%soil2n                 ! 26 cns%decomp_npools_vr(:,1,6)   ! soil2n
+        ! 27 clm3%g%l%c%cns%soil3n                 ! 27 cns%decomp_npools_vr(:,1,7)   ! soil3n
+        ! 28 clm3%g%l%c%cns%soil4n                 ! 28 cns%decomp_npools_vr(:,1,8)   ! soil4n
+        ! 29 clm3%g%l%c%cns%totcoln                ! 29 cns%totcoln
+        ! 30 clm3%g%l%c%cps%ann_farea_burned       ! 30 cps%fpg
+        ! 31 clm3%g%l%c%cps%annsum_counter         ! 31 cps%annsum_counter
+        ! 32 clm3%g%l%c%cps%cannavg_t2m	           ! 32 cps%cannavg_t2m
+        ! 33 clm3%g%l%c%cps%cannsum_npp	           ! 33 cps%cannsum_npp
+        ! 34 clm3%g%l%c%cps%farea_burned           ! 34 cps%farea_burned
+        ! 35 clm3%g%l%c%cps%fire_prob	           ! 35 cps%fpi_vr          (:,1)
+        ! 36 clm3%g%l%c%cps%fireseasonl	           ! OLD           ! 30 cps%altmax
+        ! 37 clm3%g%l%c%cps%fpg	                   ! OLD           ! 31 cps%annsum_counter
+        ! 38 clm3%g%l%c%cps%fpi	                   ! OLD           ! 32 cps%cannavg_t2m
+        ! 39 clm3%g%l%c%cps%me	                   ! OLD           ! 33 cps%cannsum_npp
+        ! 40 clm3%g%l%c%cps%mean_fire_prob         ! OLD           ! 34 cps%farea_burned
+                                                   ! OLD           ! 35 cps%altmax_lastyear
+                                                   ! OLD           ! 36 cps%altmax_indx
+                                                   ! OLD           ! 37 cps%fpg
                                                    ! OLD           ! 38 cps%fpi_vr          (:,1)
-                                                   ! OLD           ! 39 cps%altmax_lastyear_indx 
-               
-        ! PFT vars CLM40                                CLM45    
+                                                   ! OLD           ! 39 cps%altmax_lastyear_indx
+
+        ! PFT vars CLM40                                CLM45
         ! --------------                                -----
-        !  1 clm3%g%l%c%p%pcs%cpool	                   !  1 pcs%cpool                           
-        !  2 clm3%g%l%c%p%pcs%deadcrootc	           !  2 pcs%deadcrootc                      
-        !  3 clm3%g%l%c%p%pcs%deadcrootc_storage	   !  3 pcs%deadcrootc_storage              
-        !  4 clm3%g%l%c%p%pcs%deadcrootc_xfer              !  4 pcs%deadcrootc_xfer                 
-        !  5 clm3%g%l%c%p%pcs%deadstemc 	           !  5 pcs%deadstemc                       
-        !  6 clm3%g%l%c%p%pcs%deadstemc_storage 	   !  6 pcs%deadstemc_storage               
-        !  7 clm3%g%l%c%p%pcs%deadstemc_xfer               !  7 pcs%deadstemc_xfer                  
-        !  8 clm3%g%l%c%p%pcs%frootc	                   !  8 pcs%frootc                          
-        !  9 clm3%g%l%c%p%pcs%frootc_storage               !  9 pcs%frootc_storage                  
-        ! 10 clm3%g%l%c%p%pcs%frootc_xfer                  ! 10 pcs%frootc_xfer                     
-        ! 11 clm3%g%l%c%p%pcs%gresp_storage                ! 11 pcs%gresp_storage                   
-        ! 12 clm3%g%l%c%p%pcs%gresp_xfer	           ! 12 pcs%gresp_xfer                      
-        ! 13 clm3%g%l%c%p%pcs%leafc	                   ! 13 pcs%leafc                           
-        ! 14 clm3%g%l%c%p%pcs%leafc_storage	           ! 14 pcs%leafc_storage                   
-        ! 15 clm3%g%l%c%p%pcs%leafc_xfer	           ! 15 pcs%leafc_xfer                      
-        ! 16 clm3%g%l%c%p%pcs%livecrootc		   ! 16 pcs%livecrootc                      
-        ! 17 clm3%g%l%c%p%pcs%livecrootc_storage	   ! 17 pcs%livecrootc_storage              
-        ! 18 clm3%g%l%c%p%pcs%livecrootc_xfer              ! 18 pcs%livecrootc_xfer                 
-        ! 19 clm3%g%l%c%p%pcs%livestemc 	           ! 19 pcs%livestemc                       
-        ! 20 clm3%g%l%c%p%pcs%livestemc_storage 	   ! 20 pcs%livestemc_storage               
-        ! 21 clm3%g%l%c%p%pcs%livestemc_xfer               ! 21 pcs%livestemc_xfer                  
-        ! 22 clm3%g%l%c%p%pcs%pft_ctrunc	           ! 22 pcs%pft_ctrunc                      
-        ! 23 clm3%g%l%c%p%pcs%xsmrpool                     ! 23 pcs%xsmrpool                        
-        ! 24 clm3%g%l%c%p%pepv%annavg_t2m                  ! 24 pepv%annavg_t2m                     
-        ! 25 clm3%g%l%c%p%pepv%annmax_retransn             ! 25 pepv%annmax_retransn                
-        ! 26 clm3%g%l%c%p%pepv%annsum_npp                  ! 26 pepv%annsum_npp                     
-        ! 27 clm3%g%l%c%p%pepv%annsum_potential_gpp        ! 27 pepv%annsum_potential_gpp           
-        ! 28 clm3%g%l%c%p%pepv%dayl	                   ! 28 pepv%dayl                           
-        ! 29 clm3%g%l%c%p%pepv%days_active                 ! 29 pepv%days_active                    
-        ! 30 clm3%g%l%c%p%pepv%dormant_flag                ! 30 pepv%dormant_flag                   
-        ! 31 clm3%g%l%c%p%pepv%offset_counter              ! 31 pepv%offset_counter                 
-        ! 32 clm3%g%l%c%p%pepv%offset_fdd                  ! 32 pepv%offset_fdd                     
-        ! 33 clm3%g%l%c%p%pepv%offset_flag                 ! 33 pepv%offset_flag                    
-        ! 34 clm3%g%l%c%p%pepv%offset_swi                  ! 34 pepv%offset_swi                     
-        ! 35 clm3%g%l%c%p%pepv%onset_counter               ! 35 pepv%onset_counter                  
-        ! 36 clm3%g%l%c%p%pepv%onset_fdd	           ! 36 pepv%onset_fdd                      
-        ! 37 clm3%g%l%c%p%pepv%onset_flag                  ! 37 pepv%onset_flag                     
-        ! 38 clm3%g%l%c%p%pepv%onset_gdd	           ! 38 pepv%onset_gdd                      
-        ! 39 clm3%g%l%c%p%pepv%onset_gddflag               ! 39 pepv%onset_gddflag                  
-        ! 40 clm3%g%l%c%p%pepv%onset_swi	           ! 40 pepv%onset_swi                      
-        ! 41 clm3%g%l%c%p%pepv%prev_frootc_to_litter       ! 41 pepv%prev_frootc_to_litter          
-        ! 42 clm3%g%l%c%p%pepv%prev_leafc_to_litter        ! 42 pepv%prev_leafc_to_litter           
-        ! 43 clm3%g%l%c%p%pepv%tempavg_t2m                 ! 43 pepv%tempavg_t2m                    
-        ! 44 clm3%g%l%c%p%pepv%tempmax_retransn 	   ! 44 pepv%tempmax_retransn               
-        ! 45 clm3%g%l%c%p%pepv%tempsum_npp                 ! 45 pepv%tempsum_npp                    
-        ! 46 clm3%g%l%c%p%pepv%tempsum_potential_gpp       ! 46 pepv%tempsum_potential_gpp          
-        ! 47 clm3%g%l%c%p%pepv%xsmrpool_recover 	   ! 47 pepv%xsmrpool_recover               
-        ! 48 clm3%g%l%c%p%pns%deadcrootn	           ! 48 pns%deadcrootn                      
-        ! 49 clm3%g%l%c%p%pns%deadcrootn_storage	   ! 49 pns%deadcrootn_storage              
-        ! 50 clm3%g%l%c%p%pns%deadcrootn_xfer              ! 50 pns%deadcrootn_xfer                 
-        ! 51 clm3%g%l%c%p%pns%deadstemn 	           ! 51 pns%deadstemn                       
-        ! 52 clm3%g%l%c%p%pns%deadstemn_storage 	   ! 52 pns%deadstemn_storage               
-        ! 53 clm3%g%l%c%p%pns%deadstemn_xfer               ! 53 pns%deadstemn_xfer                  
-        ! 54 clm3%g%l%c%p%pns%frootn	                   ! 54 pns%frootn                          
-        ! 55 clm3%g%l%c%p%pns%frootn_storage               ! 55 pns%frootn_storage                  
-        ! 56 clm3%g%l%c%p%pns%frootn_xfer                  ! 56 pns%frootn_xfer                     
-        ! 57 clm3%g%l%c%p%pns%leafn	                   ! 57 pns%leafn                           
-        ! 58 clm3%g%l%c%p%pns%leafn_storage                ! 58 pns%leafn_storage                   
-        ! 59 clm3%g%l%c%p%pns%leafn_xfer	           ! 59 pns%leafn_xfer                      
-        ! 60 clm3%g%l%c%p%pns%livecrootn	           ! 60 pns%livecrootn                      
-        ! 61 clm3%g%l%c%p%pns%livecrootn_storage	   ! 61 pns%livecrootn_storage              
-        ! 62 clm3%g%l%c%p%pns%livecrootn_xfer              ! 62 pns%livecrootn_xfer                 
-        ! 63 clm3%g%l%c%p%pns%livestemn 	           ! 63 pns%livestemn                       
-        ! 64 clm3%g%l%c%p%pns%livestemn_storage 	   ! 64 pns%livestemn_storage               
-        ! 65 clm3%g%l%c%p%pns%livestemn_xfer               ! 65 pns%livestemn_xfer                  
-        ! 66 clm3%g%l%c%p%pns%npool	                   ! 66 pns%npool                           
-        ! 67 clm3%g%l%c%p%pns%pft_ntrunc		   ! 67 pns%pft_ntrunc                      
-        ! 68 clm3%g%l%c%p%pns%retransn	                   ! 68 pns%retransn                        
-        ! 69 clm3%g%l%c%p%pps%elai 	                   ! 69 pps%elai                            
-        ! 70 clm3%g%l%c%p%pps%esai 	                   ! 70 pps%esai                            
-        ! 71 clm3%g%l%c%p%pps%hbot 	                   ! 71 pps%hbot                            
-        ! 72 clm3%g%l%c%p%pps%htop 	                   ! 72 pps%htop                            
-        ! 73 clm3%g%l%c%p%pps%tlai 	                   ! 73 pps%tlai                            
-        ! 74 clm3%g%l%c%p%pps%tsai 	                   ! 74 pps%tsai                            
-                                                           ! 75 pepv%plant_ndemand                  
-                                                           ! OLD           ! 75 pps%gddplant        
-                                                           ! OLD           ! 76 pps%gddtsoi         
-                                                           ! OLD           ! 77 pps%peaklai         
-                                                           ! OLD           ! 78 pps%idop            
-                                                           ! OLD           ! 79 pps%aleaf           
-                                                           ! OLD           ! 80 pps%aleafi          
-                                                           ! OLD           ! 81 pps%astem           
-                                                           ! OLD           ! 82 pps%astemi          
-                                                           ! OLD           ! 83 pps%htmx            
-                                                           ! OLD           ! 84 pps%hdidx           
-                                                           ! OLD           ! 85 pps%vf              
-                                                           ! OLD           ! 86 pps%cumvd           
-                                                           ! OLD           ! 87 pps%croplive        
-                                                           ! OLD           ! 88 pps%cropplant       
-                                                           ! OLD           ! 89 pps%harvdate        
-                                                           ! OLD           ! 90 pps%gdd1020         
-                                                           ! OLD           ! 91 pps%gdd820          
-                                                           ! OLD           ! 92 pps%gdd020          
-                                                           ! OLD           ! 93 pps%gddmaturity     
-                                                           ! OLD           ! 94 pps%huileaf         
-                                                           ! OLD           ! 95 pps%huigrain        
-                                                           ! OLD           ! 96 pcs%grainc          
-                                                           ! OLD           ! 97 pcs%grainc_storage  
-                                                           ! OLD           ! 98 pcs%grainc_xfer     
-                                                           ! OLD           ! 99 pns%grainn          
-                                                           ! OLD           !100 pns%grainn_storage  
-                                                           ! OLD           !101 pns%grainn_xfer     
-                                                           ! OLD           !102 pepv%fert_counter   
-                                                           ! OLD           !103 pnf%fert            
-                                                           ! OLD           !104 pepv%grain_flag     
-                                                                                                                      
+        !  1 clm3%g%l%c%p%pcs%cpool	                   !  1 pcs%cpool
+        !  2 clm3%g%l%c%p%pcs%deadcrootc	           !  2 pcs%deadcrootc
+        !  3 clm3%g%l%c%p%pcs%deadcrootc_storage	   !  3 pcs%deadcrootc_storage
+        !  4 clm3%g%l%c%p%pcs%deadcrootc_xfer              !  4 pcs%deadcrootc_xfer
+        !  5 clm3%g%l%c%p%pcs%deadstemc 	           !  5 pcs%deadstemc
+        !  6 clm3%g%l%c%p%pcs%deadstemc_storage 	   !  6 pcs%deadstemc_storage
+        !  7 clm3%g%l%c%p%pcs%deadstemc_xfer               !  7 pcs%deadstemc_xfer
+        !  8 clm3%g%l%c%p%pcs%frootc	                   !  8 pcs%frootc
+        !  9 clm3%g%l%c%p%pcs%frootc_storage               !  9 pcs%frootc_storage
+        ! 10 clm3%g%l%c%p%pcs%frootc_xfer                  ! 10 pcs%frootc_xfer
+        ! 11 clm3%g%l%c%p%pcs%gresp_storage                ! 11 pcs%gresp_storage
+        ! 12 clm3%g%l%c%p%pcs%gresp_xfer	           ! 12 pcs%gresp_xfer
+        ! 13 clm3%g%l%c%p%pcs%leafc	                   ! 13 pcs%leafc
+        ! 14 clm3%g%l%c%p%pcs%leafc_storage	           ! 14 pcs%leafc_storage
+        ! 15 clm3%g%l%c%p%pcs%leafc_xfer	           ! 15 pcs%leafc_xfer
+        ! 16 clm3%g%l%c%p%pcs%livecrootc		   ! 16 pcs%livecrootc
+        ! 17 clm3%g%l%c%p%pcs%livecrootc_storage	   ! 17 pcs%livecrootc_storage
+        ! 18 clm3%g%l%c%p%pcs%livecrootc_xfer              ! 18 pcs%livecrootc_xfer
+        ! 19 clm3%g%l%c%p%pcs%livestemc 	           ! 19 pcs%livestemc
+        ! 20 clm3%g%l%c%p%pcs%livestemc_storage 	   ! 20 pcs%livestemc_storage
+        ! 21 clm3%g%l%c%p%pcs%livestemc_xfer               ! 21 pcs%livestemc_xfer
+        ! 22 clm3%g%l%c%p%pcs%pft_ctrunc	           ! 22 pcs%pft_ctrunc
+        ! 23 clm3%g%l%c%p%pcs%xsmrpool                     ! 23 pcs%xsmrpool
+        ! 24 clm3%g%l%c%p%pepv%annavg_t2m                  ! 24 pepv%annavg_t2m
+        ! 25 clm3%g%l%c%p%pepv%annmax_retransn             ! 25 pepv%annmax_retransn
+        ! 26 clm3%g%l%c%p%pepv%annsum_npp                  ! 26 pepv%annsum_npp
+        ! 27 clm3%g%l%c%p%pepv%annsum_potential_gpp        ! 27 pepv%annsum_potential_gpp
+        ! 28 clm3%g%l%c%p%pepv%dayl	                   ! 28 pepv%dayl
+        ! 29 clm3%g%l%c%p%pepv%days_active                 ! 29 pepv%days_active
+        ! 30 clm3%g%l%c%p%pepv%dormant_flag                ! 30 pepv%dormant_flag
+        ! 31 clm3%g%l%c%p%pepv%offset_counter              ! 31 pepv%offset_counter
+        ! 32 clm3%g%l%c%p%pepv%offset_fdd                  ! 32 pepv%offset_fdd
+        ! 33 clm3%g%l%c%p%pepv%offset_flag                 ! 33 pepv%offset_flag
+        ! 34 clm3%g%l%c%p%pepv%offset_swi                  ! 34 pepv%offset_swi
+        ! 35 clm3%g%l%c%p%pepv%onset_counter               ! 35 pepv%onset_counter
+        ! 36 clm3%g%l%c%p%pepv%onset_fdd	           ! 36 pepv%onset_fdd
+        ! 37 clm3%g%l%c%p%pepv%onset_flag                  ! 37 pepv%onset_flag
+        ! 38 clm3%g%l%c%p%pepv%onset_gdd	           ! 38 pepv%onset_gdd
+        ! 39 clm3%g%l%c%p%pepv%onset_gddflag               ! 39 pepv%onset_gddflag
+        ! 40 clm3%g%l%c%p%pepv%onset_swi	           ! 40 pepv%onset_swi
+        ! 41 clm3%g%l%c%p%pepv%prev_frootc_to_litter       ! 41 pepv%prev_frootc_to_litter
+        ! 42 clm3%g%l%c%p%pepv%prev_leafc_to_litter        ! 42 pepv%prev_leafc_to_litter
+        ! 43 clm3%g%l%c%p%pepv%tempavg_t2m                 ! 43 pepv%tempavg_t2m
+        ! 44 clm3%g%l%c%p%pepv%tempmax_retransn 	   ! 44 pepv%tempmax_retransn
+        ! 45 clm3%g%l%c%p%pepv%tempsum_npp                 ! 45 pepv%tempsum_npp
+        ! 46 clm3%g%l%c%p%pepv%tempsum_potential_gpp       ! 46 pepv%tempsum_potential_gpp
+        ! 47 clm3%g%l%c%p%pepv%xsmrpool_recover 	   ! 47 pepv%xsmrpool_recover
+        ! 48 clm3%g%l%c%p%pns%deadcrootn	           ! 48 pns%deadcrootn
+        ! 49 clm3%g%l%c%p%pns%deadcrootn_storage	   ! 49 pns%deadcrootn_storage
+        ! 50 clm3%g%l%c%p%pns%deadcrootn_xfer              ! 50 pns%deadcrootn_xfer
+        ! 51 clm3%g%l%c%p%pns%deadstemn 	           ! 51 pns%deadstemn
+        ! 52 clm3%g%l%c%p%pns%deadstemn_storage 	   ! 52 pns%deadstemn_storage
+        ! 53 clm3%g%l%c%p%pns%deadstemn_xfer               ! 53 pns%deadstemn_xfer
+        ! 54 clm3%g%l%c%p%pns%frootn	                   ! 54 pns%frootn
+        ! 55 clm3%g%l%c%p%pns%frootn_storage               ! 55 pns%frootn_storage
+        ! 56 clm3%g%l%c%p%pns%frootn_xfer                  ! 56 pns%frootn_xfer
+        ! 57 clm3%g%l%c%p%pns%leafn	                   ! 57 pns%leafn
+        ! 58 clm3%g%l%c%p%pns%leafn_storage                ! 58 pns%leafn_storage
+        ! 59 clm3%g%l%c%p%pns%leafn_xfer	           ! 59 pns%leafn_xfer
+        ! 60 clm3%g%l%c%p%pns%livecrootn	           ! 60 pns%livecrootn
+        ! 61 clm3%g%l%c%p%pns%livecrootn_storage	   ! 61 pns%livecrootn_storage
+        ! 62 clm3%g%l%c%p%pns%livecrootn_xfer              ! 62 pns%livecrootn_xfer
+        ! 63 clm3%g%l%c%p%pns%livestemn 	           ! 63 pns%livestemn
+        ! 64 clm3%g%l%c%p%pns%livestemn_storage 	   ! 64 pns%livestemn_storage
+        ! 65 clm3%g%l%c%p%pns%livestemn_xfer               ! 65 pns%livestemn_xfer
+        ! 66 clm3%g%l%c%p%pns%npool	                   ! 66 pns%npool
+        ! 67 clm3%g%l%c%p%pns%pft_ntrunc		   ! 67 pns%pft_ntrunc
+        ! 68 clm3%g%l%c%p%pns%retransn	                   ! 68 pns%retransn
+        ! 69 clm3%g%l%c%p%pps%elai 	                   ! 69 pps%elai
+        ! 70 clm3%g%l%c%p%pps%esai 	                   ! 70 pps%esai
+        ! 71 clm3%g%l%c%p%pps%hbot 	                   ! 71 pps%hbot
+        ! 72 clm3%g%l%c%p%pps%htop 	                   ! 72 pps%htop
+        ! 73 clm3%g%l%c%p%pps%tlai 	                   ! 73 pps%tlai
+        ! 74 clm3%g%l%c%p%pps%tsai 	                   ! 74 pps%tsai
+                                                           ! 75 pepv%plant_ndemand
+                                                           ! OLD           ! 75 pps%gddplant
+                                                           ! OLD           ! 76 pps%gddtsoi
+                                                           ! OLD           ! 77 pps%peaklai
+                                                           ! OLD           ! 78 pps%idop
+                                                           ! OLD           ! 79 pps%aleaf
+                                                           ! OLD           ! 80 pps%aleafi
+                                                           ! OLD           ! 81 pps%astem
+                                                           ! OLD           ! 82 pps%astemi
+                                                           ! OLD           ! 83 pps%htmx
+                                                           ! OLD           ! 84 pps%hdidx
+                                                           ! OLD           ! 85 pps%vf
+                                                           ! OLD           ! 86 pps%cumvd
+                                                           ! OLD           ! 87 pps%croplive
+                                                           ! OLD           ! 88 pps%cropplant
+                                                           ! OLD           ! 89 pps%harvdate
+                                                           ! OLD           ! 90 pps%gdd1020
+                                                           ! OLD           ! 91 pps%gdd820
+                                                           ! OLD           ! 92 pps%gdd020
+                                                           ! OLD           ! 93 pps%gddmaturity
+                                                           ! OLD           ! 94 pps%huileaf
+                                                           ! OLD           ! 95 pps%huigrain
+                                                           ! OLD           ! 96 pcs%grainc
+                                                           ! OLD           ! 97 pcs%grainc_storage
+                                                           ! OLD           ! 98 pcs%grainc_xfer
+                                                           ! OLD           ! 99 pns%grainn
+                                                           ! OLD           !100 pns%grainn_storage
+                                                           ! OLD           !101 pns%grainn_xfer
+                                                           ! OLD           !102 pepv%fert_counter
+                                                           ! OLD           !103 pnf%fert
+                                                           ! OLD           !104 pepv%grain_flag
+
      end do OUT_TILE
 
      i = 1
@@ -2476,7 +2476,7 @@ contains
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'RZMM'), (/1,nz/), (/NTILES,1 /),VAR_DUM(:))            ; VERIFY_(STATUS)
         if(clm45) STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'SFMM'), (/1,nz/), (/NTILES,1 /),VAR_DUM(:))  ; VERIFY_(STATUS)
      end do
-     
+
      STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'BFLOWM' ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
      STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TOTWATM'), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
      STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TAIRM'  ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
@@ -2484,7 +2484,7 @@ contains
      STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'CNSUM'  ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
      STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'SNDZM'  ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
      STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'ASNOWM' ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
-     
+
      if(clm45) then
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'AR1M'    ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'RAINFM'  ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
@@ -2495,10 +2495,10 @@ contains
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TPREC10D'), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TPREC60D'), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'T2M10D'  ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
-     else                                                                                      
+     else
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'SFMCM'), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
      endif
-          
+
      do nv = 1,nzone
         do nz = 1,nveg
            STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'PSNSUNM'), (/1,nz,nv/), (/NTILES,1,1/),VAR_DUM(:))  ; VERIFY_(STATUS)
@@ -2510,12 +2510,12 @@ contains
      do i = 1,4
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'WW'), (/1,i/), (/NTILES,1 /),VAR_DUM(:))
      end do
-     
+
      VAR_DUM = 0.25
      do i = 1,4
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'FR'), (/1,i/), (/NTILES,1 /),VAR_DUM(:))
      end do
-     
+
      VAR_DUM = 0.001
      do i = 1,4
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'CH'), (/1,i/), (/NTILES,1 /),VAR_DUM(:))
@@ -2525,10 +2525,10 @@ contains
 
      STATUS = NF_CLOSE (NCFID)
 
-     deallocate (var_col_out,var_pft_out)  
+     deallocate (var_col_out,var_pft_out)
      deallocate (CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2)
      deallocate (CLMC_pt1, CLMC_pt2, CLMC_st1, CLMC_st2)
-        
+
    END SUBROUTINE write_regridded_carbon
 
   ! *****************************************************************************
@@ -2536,22 +2536,22 @@ contains
    SUBROUTINE put_land_vars (NTILES, ntiles_rst, id_glb, ld_reorder, model, rst_file)
 
      implicit none
-     character(*), intent (in)  :: model 
+     character(*), intent (in)  :: model
      integer, intent (in)       :: NTILES, ntiles_rst
      integer, intent (in)       :: id_glb(NTILES), ld_reorder (ntiles_rst)
      integer                    :: k, rc
      real   , dimension (:), allocatable :: var_get, var_put
      type(Netcdf4_FileFormatter):: OutFmt, InFmt
-     type(FileMetadata)         :: meta_data 
+     type(FileMetadata)         :: meta_data
      integer         :: STATUS, NCFID, OUTID
      character(*), intent (in), optional :: rst_file
      character(256) :: Iam = "put_land_vars"
 
      allocate (var_get (NTILES_RST))
      allocate (var_put (NTILES))
-   
+
      ! create output catchcn_internal_rst
-     if(index(model,'catchcn') /=0) then 
+     if(index(model,'catchcn') /=0) then
         if (clm45) then
            call InFmt%open('/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_clm45',PFIO_READ, __RC__)
         else
@@ -2559,7 +2559,7 @@ contains
         endif
      endif
      if(trim(model) == 'catch'  ) then
-        call InFmt%open(trim(InCatRestart), pFIO_READ, __RC__)  
+        call InFmt%open(trim(InCatRestart), pFIO_READ, __RC__)
      endif
      meta_data = InFmt%read(__RC__)
      call InFmt%close(__RC__)
@@ -2568,17 +2568,17 @@ contains
 
      OutFileName = "InData/"//trim(model)//"_internal_rst"
 
-     call OutFmt%create(trim(OutFileName),__RC__) 
+     call OutFmt%create(trim(OutFileName),__RC__)
      call OutFmt%write(meta_data,__RC__)
- 
+
      if (present(rst_file)) then
-        STATUS = NF_OPEN (trim(rst_file ),NF_NOWRITE,NCFID)  ; VERIFY_(STATUS)  
+        STATUS = NF_OPEN (trim(rst_file ),NF_NOWRITE,NCFID)  ; VERIFY_(STATUS)
      else
         if(index(model, 'catchcn') /=0 ) then
-           STATUS = NF_OPEN (trim(InCNRestart ),NF_NOWRITE,NCFID) ; VERIFY_(STATUS)  
+           STATUS = NF_OPEN (trim(InCNRestart ),NF_NOWRITE,NCFID) ; VERIFY_(STATUS)
         endif
         if(trim(model) == 'catch') then
-           STATUS = NF_OPEN (trim(InCatRestart),NF_NOWRITE,NCFID) ; VERIFY_(STATUS)  
+           STATUS = NF_OPEN (trim(InCatRestart),NF_NOWRITE,NCFID) ; VERIFY_(STATUS)
         endif
      endif
 
@@ -2590,418 +2590,418 @@ contains
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
      call MAPL_VarWrite(OutFmt,'POROS',var_put)
-     
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'COND'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
      call MAPL_VarWrite(OutFmt,'COND',var_put)
-     
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'PSIS'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
      call MAPL_VarWrite(OutFmt,'PSIS',var_put)
-     
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'BEE'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'BEE',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'BEE',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'WPWET'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'WPWET',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'WPWET',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'GNU'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
      call MAPL_VarWrite(OutFmt,'GNU',var_put)
-     
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'VGWMAX'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'VGWMAX',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'VGWMAX',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'BF1'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'BF1',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'BF1',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'BF2'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'BF2',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'BF2',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'BF3'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'BF3',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'BF3',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'CDCR1'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'CDCR1',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'CDCR1',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'CDCR2'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'CDCR2',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'CDCR2',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ARS1'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'ARS1',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'ARS1',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ARS2'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'ARS2',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'ARS2',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ARS3'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'ARS3',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'ARS3',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ARA1'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'ARA1',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'ARA1',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ARA2'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'ARA2',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'ARA2',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ARA3'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'ARA3',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'ARA3',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ARA4'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
      call MAPL_VarWrite(OutFmt,'ARA4',var_put)
-     
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ARW1'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'ARW1',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'ARW1',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ARW2'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'ARW2',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'ARW2',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ARW3'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'ARW3',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'ARW3',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ARW4'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'ARW4',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'ARW4',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'TSA1'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'TSA1',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'TSA1',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'TSA2'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'TSA2',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'TSA2',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'TSB1'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'TSB1',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'TSB1',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'TSB2'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'TSB2',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'TSB2',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ATAU'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'ATAU',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'ATAU',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'BTAU'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'BTAU',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'BTAU',var_put)
+
      if(index(model,'catchcn') /=0) then
 
         STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ITY'   ), (/1,1/), (/NTILES_RST,1/),var_get)
         do k = 1, NTILES
            VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
         end do
-        call MAPL_VarWrite(OutFmt,'ITY',var_put, offset1=1) 
+        call MAPL_VarWrite(OutFmt,'ITY',var_put, offset1=1)
 
         STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ITY'   ), (/1,2/), (/NTILES_RST,1/),var_get)
         do k = 1, NTILES
            VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
         end do
-        call MAPL_VarWrite(OutFmt,'ITY',var_put, offset1=2) 
+        call MAPL_VarWrite(OutFmt,'ITY',var_put, offset1=2)
 
         STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ITY'   ), (/1,3/), (/NTILES_RST,1/),var_get)
         do k = 1, NTILES
            VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
         end do
-        call MAPL_VarWrite(OutFmt,'ITY',var_put, offset1=3) 
+        call MAPL_VarWrite(OutFmt,'ITY',var_put, offset1=3)
 
         STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ITY'   ), (/1,4/), (/NTILES_RST,1/),var_get)
         do k = 1, NTILES
            VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
         end do
         call MAPL_VarWrite(OutFmt,'ITY',var_put, offset1=4)
-        
+
         STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'FVG'   ), (/1,1/), (/NTILES_RST,1/),var_get)
         do k = 1, NTILES
            VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
         end do
-        call MAPL_VarWrite(OutFmt,'FVG',var_put, offset1=1) 
+        call MAPL_VarWrite(OutFmt,'FVG',var_put, offset1=1)
 
         STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'FVG'   ), (/1,2/), (/NTILES_RST,1/),var_get)
         do k = 1, NTILES
            VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
         end do
-        call MAPL_VarWrite(OutFmt,'FVG',var_put, offset1=2) 
+        call MAPL_VarWrite(OutFmt,'FVG',var_put, offset1=2)
 
         STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'FVG'   ), (/1,3/), (/NTILES_RST,1/),var_get)
         do k = 1, NTILES
            VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
         end do
-        call MAPL_VarWrite(OutFmt,'FVG',var_put, offset1=3) 
+        call MAPL_VarWrite(OutFmt,'FVG',var_put, offset1=3)
 
         STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'FVG'   ), (/1,4/), (/NTILES_RST,1/),var_get)
         do k = 1, NTILES
            VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
         end do
         call MAPL_VarWrite(OutFmt,'FVG',var_put, offset1=4)
-        
+
         ! read restart and regrid
         ! -----------------------
-        
+
         STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'TG'   ), (/1,1/), (/NTILES_RST,1/),var_get)
         do k = 1, NTILES
            VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
         end do
         call MAPL_VarWrite(OutFmt,'TG',var_put, offset1=1)  ! if you see offset1=1 it is a 2-D var
-        
+
         STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'TG'   ), (/1,2/), (/NTILES_RST,1/),var_get)
         do k = 1, NTILES
            VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
         end do
-        call MAPL_VarWrite(OutFmt,'TG',var_put, offset1=2) 
-        
+        call MAPL_VarWrite(OutFmt,'TG',var_put, offset1=2)
+
         STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'TG'   ), (/1,3/), (/NTILES_RST,1/),var_get)
         do k = 1, NTILES
            VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
         end do
-        call MAPL_VarWrite(OutFmt,'TG',var_put, offset1=3) 
-        
+        call MAPL_VarWrite(OutFmt,'TG',var_put, offset1=3)
+
      endif
-     
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'TC'   ), (/1,1/), (/NTILES_RST,1/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
-     end do     
-     call MAPL_VarWrite(OutFmt,'TC',var_put, offset1=1) 
-     
+     end do
+     call MAPL_VarWrite(OutFmt,'TC',var_put, offset1=1)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'TC'   ), (/1,2/), (/NTILES_RST,1/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'TC',var_put, offset1=2) 
-     
+     call MAPL_VarWrite(OutFmt,'TC',var_put, offset1=2)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'TC'   ), (/1,3/), (/NTILES_RST,1/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'TC',var_put, offset1=3) 
-     
+     call MAPL_VarWrite(OutFmt,'TC',var_put, offset1=3)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'QC'   ), (/1,1/), (/NTILES_RST,1/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'QC',var_put, offset1=1) 
-     
+     call MAPL_VarWrite(OutFmt,'QC',var_put, offset1=1)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'QC'   ), (/1,2/), (/NTILES_RST,1/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
      call MAPL_VarWrite(OutFmt,'QC',var_put, offset1=2)
-     
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'QC'   ), (/1,3/), (/NTILES_RST,1/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
      call MAPL_VarWrite(OutFmt,'QC',var_put, offset1=3)
-     
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'CAPAC'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'CAPAC',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'CAPAC',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'CATDEF'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'CATDEF',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'CATDEF',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'RZEXC'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'RZEXC',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'RZEXC',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'SRFEXC'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'SRFEXC',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'SRFEXC',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'GHTCNT1'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'GHTCNT1',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'GHTCNT1',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'GHTCNT2'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'GHTCNT2',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'GHTCNT2',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'GHTCNT3'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'GHTCNT3',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'GHTCNT3',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'GHTCNT4'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'GHTCNT4',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'GHTCNT4',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'GHTCNT5'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'GHTCNT5',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'GHTCNT5',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'GHTCNT6'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'GHTCNT6',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'GHTCNT6',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'WESNN1'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'WESNN1',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'WESNN1',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'WESNN2'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'WESNN2',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'WESNN2',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'WESNN3'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'WESNN3',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'WESNN3',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'HTSNNN1'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'HTSNNN1',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'HTSNNN1',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'HTSNNN2'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'HTSNNN2',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'HTSNNN2',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'HTSNNN3'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'HTSNNN3',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'HTSNNN3',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'SNDZN1'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'SNDZN1',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'SNDZN1',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'SNDZN2'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'SNDZN2',var_put) 
-     
+     call MAPL_VarWrite(OutFmt,'SNDZN2',var_put)
+
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'SNDZN3'   ), (/1/), (/NTILES_RST/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'SNDZN3',var_put) 
+     call MAPL_VarWrite(OutFmt,'SNDZN3',var_put)
 
      ! CH CM CQ FR WW
      ! WW
      VAR_PUT = 0.1
      do k = 1,4
-        call MAPL_VarWrite(OutFmt,'WW',VAR_PUT ,offset1=k)  
+        call MAPL_VarWrite(OutFmt,'WW',VAR_PUT ,offset1=k)
      end do
      ! FR
      VAR_PUT = 0.25
      do k = 1,4
-        call MAPL_VarWrite(OutFmt,'FR',VAR_PUT ,offset1=k) 
+        call MAPL_VarWrite(OutFmt,'FR',VAR_PUT ,offset1=k)
      end do
-     ! CH CM CQ 
+     ! CH CM CQ
      VAR_PUT = 0.001
      do k = 1,4
-        call MAPL_VarWrite(OutFmt,'CH',VAR_PUT ,offset1=k)  
-        call MAPL_VarWrite(OutFmt,'CM',VAR_PUT ,offset1=k)  
-        call MAPL_VarWrite(OutFmt,'CQ',VAR_PUT ,offset1=k)  
+        call MAPL_VarWrite(OutFmt,'CH',VAR_PUT ,offset1=k)
+        call MAPL_VarWrite(OutFmt,'CM',VAR_PUT ,offset1=k)
+        call MAPL_VarWrite(OutFmt,'CQ',VAR_PUT ,offset1=k)
      end do
 
-     call OutFmt%close(__RC__) 
+     call OutFmt%close(__RC__)
      STATUS = NF_CLOSE ( NCFID)
 
      deallocate (var_get, var_put)
@@ -3010,25 +3010,25 @@ contains
    END SUBROUTINE put_land_vars
 
  ! *****************************************************************************
-  
+
   subroutine init_MPI()
-    
+
     ! initialize MPI
-    
+
     call MPI_INIT(mpierr)
-    
+
     call MPI_COMM_RANK( MPI_COMM_WORLD, myid, mpierr )
     call MPI_COMM_SIZE( MPI_COMM_WORLD, numprocs, mpierr )
 
     if (myid .ne. 0)  root_proc = .false.
-    
+
 !    call init_MPI_types()
-    
-    write (*,*) "MPI process ", myid, " of ", numprocs, " is alive"    
+
+    write (*,*) "MPI process ", myid, " of ", numprocs, " is alive"
     write (*,*) "MPI process ", myid, ": root_proc=", root_proc
 
   end subroutine init_MPI
-  
+
   ! -----------------------------------------------------------------------
 
    SUBROUTINE HANDLE_ERR(STATUS, Line)
@@ -3048,18 +3048,18 @@ contains
   subroutine compute_dayx (                               &
        NTILES, AGCM_YY, AGCM_MM, AGCM_DD, AGCM_HR,        &
        LATT, DAYX)
- 
+
     implicit none
 
-    integer, intent (in) :: NTILES,AGCM_YY,AGCM_MM,AGCM_DD,AGCM_HR 
+    integer, intent (in) :: NTILES,AGCM_YY,AGCM_MM,AGCM_DD,AGCM_HR
     real, dimension (NTILES), intent (in)  :: LATT
     real, dimension (NTILES), intent (out) :: DAYX
     integer, parameter :: DT = 900
-    integer, parameter :: ncycle = 1461 ! number of days in a 4-year leap cycle (365*4 + 1)   
+    integer, parameter :: ncycle = 1461 ! number of days in a 4-year leap cycle (365*4 + 1)
     real, dimension(ncycle) :: zc, zs
-    integer :: dofyr, sec,YEARS_PER_CYCLE, DAYS_PER_CYCLE, year, iday, idayp1, nn, n 
+    integer :: dofyr, sec,YEARS_PER_CYCLE, DAYS_PER_CYCLE, year, iday, idayp1, nn, n
     real    :: fac, YEARLEN, zsin, zcos, declin
-    
+
     dofyr = AGCM_DD
     if(AGCM_MM >  1) dofyr = dofyr + 31
     if(AGCM_MM >  2) then
@@ -3075,14 +3075,14 @@ contains
     if(AGCM_MM >  9) dofyr = dofyr + 30
     if(AGCM_MM > 10) dofyr = dofyr + 31
     if(AGCM_MM > 11) dofyr = dofyr + 30
-      
+
     sec = AGCM_HR * 3600 - DT ! subtract DT to get time of previous physics step
     fac = real(sec) / 86400.
 
     call orbit_create(zs,zc,ncycle) ! GEOS5 leap cycle routine
-    
+
     YEARLEN = 365.25
-  
+
     !  Compute length of leap cycle
     !------------------------------
 
@@ -3091,100 +3091,100 @@ contains
     else
        YEARS_PER_CYCLE = 1
     endif
-  
+
     DAYS_PER_CYCLE=nint(YEARLEN*YEARS_PER_CYCLE)
-    
+
     ! declination & daylength
     ! -----------------------
 
     YEAR = mod(AGCM_YY-1,YEARS_PER_CYCLE)
-  
+
     IDAY = YEAR*int(YEARLEN)+dofyr
     IDAYP1 = mod(IDAY,DAYS_PER_CYCLE) + 1
 
     ZSin = ZS(IDAYP1)*FAC + ZS(IDAY)*(1.-FAC) !   sine of solar declination
     ZCos = ZC(IDAYP1)*FAC + ZC(IDAY)*(1.-FAC) ! cosine of solar declination
-    
+
     nn = 0
     do n = 1,days_per_cycle
        nn = nn + 1
        if(nn > 365) nn = nn - 365
        !     print *, 'cycle:',n,nn,asin(ZS(n))
     end do
-    
+
     declin = asin(ZSin)
-  
-    ! compute daylength on input tile space (accounts for any change in physics time step)  
+
+    ! compute daylength on input tile space (accounts for any change in physics time step)
     !  do n = 1,ntiles_cn
     !     fac = -(sin((latc(n)/zoom)*(MAPL_PI/180.))*zsin)/(cos((latc(n)/zoom)*(MAPL_PI/180.))*zcos)
     !     fac = min(1.,max(-1.,fac))
     !     dayl(n) = (86400./MAPL_PI) * acos(fac)   ! daylength (seconds)
     !  end do
-  
+
     ! compute daylength on output tile space (accounts for lat shift due to split & change in time step)
-    
+
     do n = 1,ntiles
        fac = -(sin(latt(n)*(MAPL_PI/180.))*zsin)/(cos(latt(n)*(MAPL_PI/180.))*zcos)
        fac = min(1.,max(-1.,fac))
        dayx(n) = (86400./MAPL_PI) * acos(fac)   ! daylength (seconds)
     end do
-    
+
     ! print *,'DAYX : ', minval(dayx),maxval(dayx), minval(latt), maxval(latt), zsin, zcos, dofyr, iday, idayp1, declin
- 
+
   end subroutine compute_dayx
 
   ! *****************************************************************************
 
    subroutine orbit_create(zs,zc,ncycle)
-     
+
      implicit none
-     
+
      integer, intent(in) :: ncycle
      real, intent(out), dimension(ncycle) :: zs, zc
-     
+
      integer :: YEARS_PER_CYCLE, DAYS_PER_CYCLE
      integer :: K, KP !, KM
      real*8  :: T1, T2, T3, T4, FUN, Y, SOB, OMG, PRH, TT
      real*8  :: YEARLEN
-     
+
      !  STATEMENT FUNCTION
-     
+
      FUN(Y) = OMG*(1.0-ECCENTRICITY*cos(Y-PRH))**2
-     
+
      YEARLEN = 365.25
-     
+
      !  Factors involving the orbital parameters
      !------------------------------------------
-     
+
      OMG  = (2.0*MAPL_PI/YEARLEN) / (sqrt(1.-ECCENTRICITY**2)**3)
      PRH  = PERIHELION*(MAPL_PI/180.)
      SOB  = sin(OBLIQUITY*(MAPL_PI/180.))
-     
+
      !  Compute length of leap cycle
      !------------------------------
-     
+
      if(YEARLEN-int(YEARLEN) > 0.) then
         YEARS_PER_CYCLE = nint(1./(YEARLEN-int(YEARLEN)))
      else
         YEARS_PER_CYCLE = 1
      endif
-     
+
      DAYS_PER_CYCLE=nint(YEARLEN*YEARS_PER_CYCLE)
-     
+
      if(days_per_cycle /= ncycle) stop 'bad cycle'
-     
+
      !   ZS:   Sine of declination
      !   ZC:   Cosine of declination
-     
+
      !  Begin integration at vernal equinox
-     
+
      KP           = EQUINOX
      TT           = 0.0
      ZS(KP) = sin(TT)*SOB
      ZC(KP) = sqrt(1.0-ZS(KP)**2)
-     
+
      !  Integrate orbit for entire leap cycle using Runge-Kutta
-     
+
      do K=2,DAYS_PER_CYCLE
         T1 = FUN(TT       )
         T2 = FUN(TT+T1*0.5)
@@ -3195,7 +3195,7 @@ contains
         ZS(KP) = sin(TT)*SOB
         ZC(KP) = sqrt(1.0-ZS(KP)**2)
      end do
-     
+
    end subroutine orbit_create
 
 ! *****************************************************************************
@@ -3211,13 +3211,13 @@ contains
 !   end function to_radian
 !
 !   ! *****************************************************************************
-!   
+!
 !   real function haversine(deglat1,deglon1,deglat2,deglon2)
-!     ! great circle distance -- adapted from Matlab 
+!     ! great circle distance -- adapted from Matlab
 !     real,intent(in) :: deglat1,deglon1,deglat2,deglon2
 !     real :: a,c, dlat,dlon,lat1,lat2
 !     real,parameter :: radius = MAPL_radius
-!     
+!
 !!     dlat = to_radian(deglat2-deglat1)
 !!     dlon = to_radian(deglon2-deglon1)
 !     !     lat1 = to_radian(deglat1)
@@ -3225,7 +3225,7 @@ contains
 !     dlat = deglat2-deglat1
 !     dlon = deglon2-deglon1
 !     lat1 = deglat1
-!     lat2 = deglat2     
+!     lat2 = deglat2
 !     a = (sin(dlat/2))**2 + cos(lat1)*cos(lat2)*(sin(dlon/2))**2
 !     if(a>=0. .and. a<=1.) then
 !        c = 2*atan2(sqrt(a),sqrt(1-a))
@@ -3237,77 +3237,77 @@ contains
 !
 !  ! ----------------------------------------------------------------------
 
-   integer function VarID (NCFID, VNAME) 
-     
+   integer function VarID (NCFID, VNAME)
+
      integer, intent (in)      :: NCFID
      character(*), intent (in) :: VNAME
      integer                   :: status
 
      STATUS = NF_INQ_VARID (NCFID, trim(VNAME) ,VarID)
      IF (STATUS .NE. NF_NOERR) &
-          CALL HANDLE_ERR(STATUS, trim(VNAME))  
-     
+          CALL HANDLE_ERR(STATUS, trim(VNAME))
+
    end function VarID
 !   ! -----------------------------------------------------------------------------
-! 
-   
-   FUNCTION StrUpCase ( Input_String ) RESULT ( Output_String ) 
-     ! -- Argument and result 
-     CHARACTER( * ), INTENT( IN ) :: Input_String 
-     CHARACTER( LEN( Input_String ) ) :: Output_String 
-     ! -- Local variables 
-     INTEGER :: i, n 
+!
+
+   FUNCTION StrUpCase ( Input_String ) RESULT ( Output_String )
+     ! -- Argument and result
+     CHARACTER( * ), INTENT( IN ) :: Input_String
+     CHARACTER( LEN( Input_String ) ) :: Output_String
+     ! -- Local variables
+     INTEGER :: i, n
 
 
-     ! -- Copy input string 
-     Output_String = Input_String 
-     ! -- Loop over string elements 
-     DO i = 1, LEN( Output_String ) 
-       ! -- Find location of letter in lower case constant string 
-       n = INDEX( LOWER_CASE, Output_String( i:i ) ) 
-       ! -- If current substring is a lower case letter, make it upper case 
-       IF ( n /= 0 ) Output_String( i:i ) = UPPER_CASE( n:n ) 
-     END DO 
-   END FUNCTION StrUpCase 
+     ! -- Copy input string
+     Output_String = Input_String
+     ! -- Loop over string elements
+     DO i = 1, LEN( Output_String )
+       ! -- Find location of letter in lower case constant string
+       n = INDEX( LOWER_CASE, Output_String( i:i ) )
+       ! -- If current substring is a lower case letter, make it upper case
+       IF ( n /= 0 ) Output_String( i:i ) = UPPER_CASE( n:n )
+     END DO
+   END FUNCTION StrUpCase
+
+   ! -----------------------------------------------------------------------------
+
+   FUNCTION StrLowCase ( Input_String ) RESULT ( Output_String )
+     ! -- Argument and result
+     CHARACTER( * ), INTENT( IN ) :: Input_String
+     CHARACTER( LEN( Input_String ) ) :: Output_String
+     ! -- Local variables
+     INTEGER :: i, n
+
+     ! -- Copy input string
+     Output_String = Input_String
+     ! -- Loop over string elements
+     DO i = 1, LEN( Output_String )
+       ! -- Find location of letter in upper case constant string
+       n = INDEX( UPPER_CASE, Output_String( i:i ) )
+       ! -- If current substring is an upper case letter, make it lower case
+       IF ( n /= 0 ) Output_String( i:i ) = LOWER_CASE( n:n )
+     END DO
+   END FUNCTION StrLowCase
 
    ! -----------------------------------------------------------------------------
 
-   FUNCTION StrLowCase ( Input_String ) RESULT ( Output_String ) 
-     ! -- Argument and result 
-     CHARACTER( * ), INTENT( IN ) :: Input_String 
-     CHARACTER( LEN( Input_String ) ) :: Output_String 
-     ! -- Local variables 
-     INTEGER :: i, n 
+   FUNCTION StrExtName ( Input_String ) RESULT ( Output_String )
+     ! -- Argument and result
+     CHARACTER( * ), INTENT( IN ) :: Input_String
+     CHARACTER( LEN( Input_String ) ) :: Output_String
+     ! -- Local variables
+     INTEGER :: i, n1, n2, n3, n4, n5, n, k
 
-     ! -- Copy input string 
-     Output_String = Input_String 
-     ! -- Loop over string elements 
-     DO i = 1, LEN( Output_String ) 
-       ! -- Find location of letter in upper case constant string 
-       n = INDEX( UPPER_CASE, Output_String( i:i ) ) 
-       ! -- If current substring is an upper case letter, make it lower case 
-       IF ( n /= 0 ) Output_String( i:i ) = LOWER_CASE( n:n ) 
-     END DO 
-   END FUNCTION StrLowCase 
-
-   ! -----------------------------------------------------------------------------
-   
-   FUNCTION StrExtName ( Input_String ) RESULT ( Output_String ) 
-     ! -- Argument and result 
-     CHARACTER( * ), INTENT( IN ) :: Input_String 
-     CHARACTER( LEN( Input_String ) ) :: Output_String 
-     ! -- Local variables 
-     INTEGER :: i, n1, n2, n3, n4, n5, n, k 
-
-     ! -- Copy input string 
-     ! Output_String = Input_String 
-     ! -- Loop over string elements 
+     ! -- Copy input string
+     ! Output_String = Input_String
+     ! -- Loop over string elements
 
      k = 1
 
-     DO i = 1, LEN( Input_String ) 
+     DO i = 1, LEN( Input_String )
 
-       ! -- Find location of letter in upper case constant string 
+       ! -- Find location of letter in upper case constant string
        n1 = INDEX( UPPER_CASE, Input_String( i:i ) )
        n2 = INDEX( LOWER_CASE, Input_String( i:i ) )
        n3 = INDEX( '.', Input_String( i:i ) )
@@ -3322,19 +3322,19 @@ contains
        if (n3 /= 0) n = n3
        if (n4 /= 0) n = n4
        if (n5 /= 0) n = n5
-            
-       ! -- If current substring is acceptable 
+
+       ! -- If current substring is acceptable
        IF ( n /= 0 ) then
           Output_String( k:k ) = Input_String( i:i )
           k = k + 1
        endif
 
-     END DO 
+     END DO
 
    END FUNCTION StrExtName
 
    ! ----------------------------------------------------------------------------
-   
+
    SUBROUTINE write_bin (unit, InFmt, NTILES)
 
      implicit none
@@ -3401,7 +3401,7 @@ contains
      real ::        fr(ntiles,4)
      real ::        ww(ntiles,4)
      character*256        :: Iam = "Write bin"
-     integer :: status 
+     integer :: status
 
      call MAPL_VarRead(InFmt,"BF1",bf1, __RC__)
      call MAPL_VarRead(InFmt,"BF2",bf2, __RC__)
@@ -3461,7 +3461,7 @@ contains
      call MAPL_VarRead(InFmt,"CQ",cq, __RC__)
      call MAPL_VarRead(InFmt,"FR",fr, __RC__)
      call MAPL_VarRead(InFmt,"WW",ww, __RC__)
-    
+
      write(unit)       bf1
      write(unit)       bf2
      write(unit)       bf3
@@ -3519,13 +3519,13 @@ contains
      write(unit)        cq
      write(unit)        fr
      write(unit)        ww
-       
+
    END SUBROUTINE write_bin
-   
+
    ! ----------------------------------------------------------------------------
 
    SUBROUTINE read_ldas_restarts (NTILES, ntiles_rst, id_glb, ld_reorder,  rst_file, pfile)
-     
+
      implicit none
      integer, intent (in)       :: NTILES, ntiles_rst
      integer, intent (in)       :: id_glb(NTILES), ld_reorder (ntiles_rst)
@@ -3536,9 +3536,9 @@ contains
      type(FileMetadata)                  :: meta_data
 
      allocate (var_get (NTILES_RST))
-     allocate (var_put (NTILES))     
+     allocate (var_put (NTILES))
 
-     call InFmt%Open(trim(InCatRestart), pFIO_READ, __RC__) 
+     call InFmt%Open(trim(InCatRestart), pFIO_READ, __RC__)
      meta_data = InFmt%read(__RC__)
      call InFmt%close()
      call meta_data%modify_dimension('tile', ntiles, __RC__)
@@ -3567,7 +3567,7 @@ contains
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
      call MAPL_VarWrite(OutFmt,'TC',var_put, offset1=3)
-     
+
      read (10) var_get ! (cat_progn(n)%qa1,    n=1,N_catd)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
@@ -3592,7 +3592,7 @@ contains
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
      call MAPL_VarWrite(OutFmt,'CAPAC',var_put)
-     
+
      read (10) var_get ! (cat_progn(n)%catdef, n=1,N_catd)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
@@ -3610,7 +3610,7 @@ contains
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
      call MAPL_VarWrite(OutFmt,'SRFEXC',var_put)
-     
+
      read (10) var_get ! (cat_progn(n)%ght(k),  n=1,N_catd)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
@@ -3695,15 +3695,15 @@ contains
 ! PARAM
 
      open(10, file=trim(pfile), form='unformatted', status='old', &
-           convert='big_endian', action='read')    
+           convert='big_endian', action='read')
 
 
     read (10) var_get !(cat_param(n)%dpth,       n=1,N_catd)
-    
-    read (10) var_get !(cat_param(n)%dzsf,       n=1,N_catd)  
-    read (10) var_get !(cat_param(n)%dzrz,       n=1,N_catd)  
-    read (10) var_get !(cat_param(n)%dzpr,       n=1,N_catd)  
-    
+
+    read (10) var_get !(cat_param(n)%dzsf,       n=1,N_catd)
+    read (10) var_get !(cat_param(n)%dzrz,       n=1,N_catd)
+    read (10) var_get !(cat_param(n)%dzpr,       n=1,N_catd)
+
     do k=1,6
        read (10) var_get !(cat_param(n)%dzgt(k), n=1,N_catd)
     end do
@@ -3712,13 +3712,13 @@ contains
      end do
      call MAPL_VarWrite(OutFmt,'TILE_ID',var_put)
 
-    read (10) var_get !(cat_param(n)%poros,      n=1,N_catd) 
+    read (10) var_get !(cat_param(n)%poros,      n=1,N_catd)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
      call MAPL_VarWrite(OutFmt,'POROS',var_put)
 
-    read (10) var_get !(cat_param(n)%cond,       n=1,N_catd) 
+    read (10) var_get !(cat_param(n)%cond,       n=1,N_catd)
       do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
@@ -3729,40 +3729,40 @@ contains
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
      call MAPL_VarWrite(OutFmt,'PSIS',var_put)
- 
+
     read (10) var_get !(cat_param(n)%bee,        n=1,N_catd)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(OutFmt,'BEE',var_put)   
-    
+     call MAPL_VarWrite(OutFmt,'BEE',var_put)
+
     read (10) var_get !(cat_param(n)%wpwet,      n=1,N_catd)
        do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
      call MAPL_VarWrite(OutFmt,'WPWET',var_put)
-    
-    read (10) var_get !(cat_param(n)%gnu,        n=1,N_catd) 
+
+    read (10) var_get !(cat_param(n)%gnu,        n=1,N_catd)
         do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
      call MAPL_VarWrite(OutFmt,'GNU',var_put)
-    
-    read (10) var_get !(cat_param(n)%vgwmax,     n=1,N_catd) 
+
+    read (10) var_get !(cat_param(n)%vgwmax,     n=1,N_catd)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
      call MAPL_VarWrite(OutFmt,'VGWMAX',var_put)
-     
-    read (10) var_get !(cat_param(n)%vegcls,     n=1,N_catd)  
+
+    read (10) var_get !(cat_param(n)%vegcls,     n=1,N_catd)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
      call MAPL_VarWrite(OutFmt,'OLD_ITY',var_put)
 
-    read (10) var_get !(cat_param(n)%soilcls30,  n=1,N_catd) 
-    read (10) var_get !(cat_param(n)%soilcls100, n=1,N_catd)  
-    
+    read (10) var_get !(cat_param(n)%soilcls30,  n=1,N_catd)
+    read (10) var_get !(cat_param(n)%soilcls100, n=1,N_catd)
+
     read (10) var_get !(cat_param(n)%bf1,        n=1,N_catd)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))

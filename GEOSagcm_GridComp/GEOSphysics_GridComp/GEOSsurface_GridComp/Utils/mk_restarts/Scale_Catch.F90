@@ -2,14 +2,14 @@
 #include "MAPL_Generic.h"
 
 program Scale_Catch
-  
+
   use MAPL
-  
+
   use LSM_ROUTINES,      ONLY:          &
        catch_calc_soil_moist,           &
        catch_calc_tp,                   &
        catch_calc_ght
-  
+
   USE CATCH_CONSTANTS,   ONLY:          &
        N_GT              => CATCH_N_GT, &
        DZGT              => CATCH_DZGT, &
@@ -18,7 +18,7 @@ program Scale_Catch
   implicit none
 
   character(256)    :: fname1, fname2, fname3
-#ifndef __GFORTRAN__
+#if !defined(__GFORTRAN__) && !defined(__flang__)
   integer           :: ftell
   external          :: ftell
 #endif
@@ -101,7 +101,7 @@ program Scale_Catch
   integer :: i, rc, filetype
   integer :: status
   character(256) :: Iam = "Scale_Catch"
- 
+
 ! Usage
 ! -----
   if (iargc() /= 6) then
@@ -128,8 +128,8 @@ program Scale_Catch
   if (filetype == 0) then
      call formatter(1)%open(trim(fname1),pFIO_READ, __RC__)
      call formatter(2)%open(trim(fname2),pFIO_READ, __RC__)
-     cfg(1)=formatter(1)%read(__RC__) 
-     cfg(2)=formatter(2)%read(__RC__) 
+     cfg(1)=formatter(1)%read(__RC__)
+     cfg(2)=formatter(2)%read(__RC__)
   else
      open(unit=10, file=trim(fname1),  form='unformatted')
      open(unit=20, file=trim(fname2),  form='unformatted')
@@ -161,7 +161,7 @@ program Scale_Catch
      bpos=0
      read(10)
      epos = ftell(10)            ! ending position of file pointer
-     ntiles = (epos-bpos)/4-2    ! record size (in 4 byte words; 
+     ntiles = (epos-bpos)/4-2    ! record size (in 4 byte words;
      rewind 10
 
   end if
@@ -178,7 +178,7 @@ program Scale_Catch
 ! ------------------
   old = 1
   new = 2
-  
+
   if (filetype ==0) then
      call readcatch_nc4 ( catch(old), formatter(old), __RC__ )
      call readcatch_nc4 ( catch(new), formatter(new), __RC__ )
@@ -202,7 +202,7 @@ program Scale_Catch
 !
 !  where( (catch(old)%catdef .gt. catch(old)%cdcr1) .and. &
 !         (catch(new)%cdcr2  .gt. catch(old)%cdcr2) )
-! 
+!
 !      catch(sca)%rzexc  = catch(old)%rzexc * ( catch(new)%vgwmax / &
 !                                               catch(old)%vgwmax )
 !
@@ -213,7 +213,7 @@ program Scale_Catch
 !  end where
 
   n =count((catch(old)%catdef .gt. catch(old)%cdcr1))
-  
+
   write(6,200) n,100*n/ntiles
 
 ! Scale rxexc regardless of CDCR1, CDCR2 differences
@@ -224,7 +224,7 @@ program Scale_Catch
 ! Scale catdef regardless of whether CDCR2 is larger or smaller in the new situation
 ! ----------------------------------------------------------------------------------
   where (catch(old)%catdef .gt. catch(old)%cdcr1)
- 
+
       catch(sca)%catdef = catch(new)%cdcr1 +                     &
                         ( catch(old)%catdef-catch(old)%cdcr1 ) / &
                         ( catch(old)%cdcr2 -catch(old)%cdcr1 ) * &
@@ -279,7 +279,7 @@ program Scale_Catch
   GHT_IN (4,:) = catch(old)%ghtcnt4
   GHT_IN (5,:) = catch(old)%ghtcnt5
   GHT_IN (6,:) = catch(old)%ghtcnt6
-  
+
   call catch_calc_tp ( NTILES, catch(old)%poros, GHT_IN, tp_in, FICE)
   GHT_OUT = GHT_IN
 
@@ -299,7 +299,7 @@ program Scale_Catch
   catch(sca)%ghtcnt3 = GHT_IN (3,:)
   catch(sca)%ghtcnt4 = GHT_IN (4,:)
   catch(sca)%ghtcnt5 = GHT_IN (5,:)
-  catch(sca)%ghtcnt6 = GHT_IN (6,:) 
+  catch(sca)%ghtcnt6 = GHT_IN (6,:)
 
 ! Deep soil temp sanity check
 ! ---------------------------
@@ -332,7 +332,7 @@ program Scale_Catch
 
      !  catch(sca)%sndzn1=catch(old)%sndzn1
      !  catch(sca)%sndzn2=catch(old)%sndzn2
-     !  catch(sca)%sndzn3=catch(old)%sndzn3     
+     !  catch(sca)%sndzn3=catch(old)%sndzn3
      !     do i = 1, ntiles
      !         if((swe_in(i) > 0.).and. ((areasc_in(i) < 1.).OR.(areasc_out(i) < 1.))) then
      !        print *, i, areasc_in(i), depth_in(i)
@@ -343,9 +343,9 @@ program Scale_Catch
      !            catch(sca)%sndzn1(i) = catch(new)%sndzn1(i)*wemin_out/wemin_in   ! depth_out(i)/3.
      !            catch(sca)%sndzn2(i) = catch(new)%sndzn2(i)*wemin_out/wemin_in   ! depth_out(i)/3.
      !            catch(sca)%sndzn3(i) = catch(new)%sndzn3(i)*wemin_out/wemin_in   ! depth_out(i)/3.
-     !         endif 
+     !         endif
      !      end do
-     
+
      where (swe_in .gt. 0.)
         where (areasc_in .lt. 1. .or. areasc_out .lt. 1.)
            !      density_in= swe_in/(areasc_in *  depth_in + 1.e-20)
@@ -359,8 +359,8 @@ program Scale_Catch
 
      print *, 'Snow scaling summary'
      print *, '....................'
-     print *, 'Percent tiles SNDZ scaled : ', 100.* count (catch(sca)%sndzn3 .ne. catch(old)%sndzn3) /float (count (catch(sca)%sndzn3 > 0.)) 
-          
+     print *, 'Percent tiles SNDZ scaled : ', 100.* count (catch(sca)%sndzn3 .ne. catch(old)%sndzn3) /float (count (catch(sca)%sndzn3 > 0.))
+
   endif
 
   ! PEATCLSM - ensure low CATDEF on peat tiles where "old" restart is not also peat
