@@ -17,6 +17,7 @@ module gc2gc
      integer :: nvars
      integer :: DT, COUPLE_DT
      logical :: average=.false.
+     logical :: alreadyPrint=.false.
      type(T_CVARS), pointer :: vars(:) => null()
      type(ESMF_State) :: StateIn, StateOut, StateTmp
      type(ESMF_CplComp) :: ccs
@@ -152,7 +153,8 @@ contains
     type (ESMF_State) :: StateIn
     character (len=ESMF_MAXSTR), allocatable  :: itemNameListIn(:)
     character (len=ESMF_MAXSTR), allocatable  :: itemNameListOut(:)
-
+    logical :: skip
+    
     stateIn = this%stateIn
     if (this%average) stateIn = this%stateTmp
 
@@ -168,16 +170,25 @@ contains
 
     do n=1,size(this%vars)
        ! we might need to check the field is in the state. If not, it might be Ok
-       if (.not. any(itemNameListIn==this%vars(n)%vIn)) cycle
-       if (.not. any(itemNameListOut==this%vars(n)%vOut)) cycle
+       skip = .false.
+       if (.not. any(itemNameListIn==this%vars(n)%vIn)) skip=.true.
+       if (.not. any(itemNameListOut==this%vars(n)%vOut)) skip=.true.
+       if (.not. this%alreadyPrint) then
+          if (MAPL_Am_I_Root()) then
+             print *, "DEBUG: var "//trim(this%vars(n)%vIn),skip
+          end if
+          this%alreadyPrint = .true.
+       end if
+
+       if (skip) cycle
+
        call ESMF_StateGet(this%stateIn, this%vars(n)%vIn, field, _RC)
        ! get rank,typekind to use the appropriate overload
        call ESMF_FieldGet(field, rank=rank, _RC)
        select case (rank)
           case (1)
              call MAPL_GetPointer(this%stateOut, ptr1out, this%vars(n)%Vout, notFoundOK=.true., _RC)
-             call MAPL_GetPointer(this%stateIn, ptr1in, this%vars(n)%Vin, notFoundOK=.true., _RC)
-
+             call MAPL_GetPointer(this%stateIn, ptr1in, this%vars(n)%Vin, notFoundOK=.true., _RC)       
              if (associated(ptr1Out) .and. associated(ptr1In)) then
                 call MAPL_LocStreamTransform( ptr1Out, &
                      this%XFORM, ptr1In, _RC )
@@ -228,8 +239,6 @@ contains
 
     TMP(1:I) = this%vars
     if(I>0) deallocate(this%vars)
-
-    allocate(TMP(I+1),stat=STATUS)
 
     TMP(I+1)%Vin =  varIn
     TMP(I+1)%VOut =  varOut

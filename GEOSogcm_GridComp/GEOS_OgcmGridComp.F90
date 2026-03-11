@@ -1184,8 +1184,7 @@ contains
 
     call MAPL_TimerOff(MAPL,"TOTAL"     )
     call MAPL_TimerOn(MAPL,"InitChild") 
-    call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, Ogcm_Internal_State%CLOCK,  RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK, _RC)
     call MAPL_TimerOff(MAPL,"InitChild")
     call MAPL_TimerOn (MAPL,"TOTAL"     )
 

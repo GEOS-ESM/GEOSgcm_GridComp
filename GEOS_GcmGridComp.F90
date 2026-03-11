@@ -1620,8 +1620,10 @@ contains
    !===================================
    end if
 
-   call MAPL_GetObjectFromGC ( GCS(OGCM), CMAPL, _RC)
-   call MAPL_Get(CMAPL, runAlarm=GCM_INTERNAL_STATE%alarmOcn, _RC)
+   call ESMF_ClockGetAlarm(clock, alarmname=trim(GCNAMES(OGCM)) // '_Alarm', &
+                           alarm=GCM_INTERNAL_STATE%alarmOcn, _RC)
+!   call MAPL_GetObjectFromGC ( GCS(OGCM), CMAPL, _RC)
+!   call MAPL_Get(CMAPL, runAlarm=GCM_INTERNAL_STATE%alarmOcn, _RC)
 
    !NEW CODE
 
