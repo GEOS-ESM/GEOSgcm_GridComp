@@ -783,6 +783,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   if(associated(ISSM_OUTPUTS))  deallocate(ISSM_OUTPUTS)
   if(associated(ICESMB_TILE))   deallocate(ICESMB_TILE)
   if(associated(ICESURF_TILE))  deallocate(ICESURF_TILE)
+  if(associated(ICETHICK_TILE)) deallocate(ICETHICK_TILE)
+  if(associated(ICEVEL_TILE))   deallocate(ICEVEL_TILE)
+
+
 
   call MAPL_TimerOff(MAPL,"RUN"  )
   call MAPL_TimerOff(MAPL,"TOTAL")
