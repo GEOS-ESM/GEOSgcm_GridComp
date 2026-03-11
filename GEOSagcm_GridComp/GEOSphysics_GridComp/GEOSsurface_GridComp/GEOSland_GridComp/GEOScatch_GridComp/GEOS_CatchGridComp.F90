@@ -4592,10 +4592,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         integer                       :: ldas_ens_id, ldas_first_ens_id
         integer                       :: NUM_LDAS_ENSEMBLE
 
-        real                          :: ALBVR_UR=CATCH_ALB_URBAN
-        real                          :: ALBVF_UR=CATCH_ALB_URBAN
-        real                          :: ALBNR_UR=CATCH_ALB_URBAN
-        real                          :: ALBNF_UR=CATCH_ALB_URBAN
+        real                          :: ALBVR_UR
+        real                          :: ALBVF_UR
+        real                          :: ALBNR_UR
+        real                          :: ALBNF_UR
 
 
 !#---
@@ -5432,6 +5432,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         VSUVF = DFPAR + DFUVR
 
         if(associated(SWDOWNLAND)) SWDOWNLAND = DRPAR + DFPAR + DRUVR + DFUVR + DRNIR + DFNIR
+
+        ALBVR_UR=max(0.08, CATCH_ALB_URBAN - 0.005 * urban%height)
+        LBVF_UR=max(0.08,  CATCH_ALB_URBAN - 0.005 * urban%height)
+        ALBNR_UR=max(0.08, CATCH_ALB_URBAN - 0.005 * urban%height)
+        ALBNF_UR=max(0.08, CATCH_ALB_URBAN - 0.005 * urban%height)
 
         SWNETFREE = (1.-ALBVR)*VSUVR + (1.-ALBVF)*VSUVF + (1.-ALBNR)*DRNIR + (1.-ALBNF)*DFNIR
         SWNET_UR  = (1.-ALBVR_UR)*VSUVR + (1.-ALBVF_UR)*VSUVF + (1.-ALBNR_UR)*DRNIR + (1.-ALBNF_UR)*DFNIR 
