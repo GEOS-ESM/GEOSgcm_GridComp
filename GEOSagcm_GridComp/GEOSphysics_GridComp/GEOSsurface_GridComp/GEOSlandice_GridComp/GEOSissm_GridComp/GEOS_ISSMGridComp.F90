@@ -760,6 +760,18 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_FieldDestroy(srcField,rc=STATUS); VERIFY_(STATUS)
     call ESMF_FieldDestroy(dstField,rc=STATUS); VERIFY_(STATUS)
 
+    ! allocate tiles 
+    if (.not.associated(ICESURF_TILE)) then
+      allocate(ICESURF_TILE(NT), STAT=STATUS)
+      VERIFY_(STATUS)
+      ICESURF_TILE = MAPL_Undef
+    end if
+
+    ! allocate grid in case fieldestroy deallocates?
+    if (.not.associated(VAR_GRID)) then
+      allocate(VAR_GRID(IM,JM), STAT=STATUS ); VERIFY_(STATUS)
+    end if
+
     ! transform from mesh to tiles
     call mesh_to_tile(ICESURF_MESH,ICESURF_TILE); VERIFY_(STATUS)
     issm_exports_state%ICESURF_TILE = ICESURF_TILE
@@ -783,42 +795,36 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   RETURN_(ESMF_SUCCESS)
 
   contains
-    subroutine mesh_to_tile(VAR_MESH,VAR_TILE)
-      ! regrid from mesh to grid, then transform from grid to landice tiles
-      real(dp),    pointer, dimension(:), intent(inout)   :: VAR_MESH  ! var on issm mesh
-      real, pointer, dimension(:), intent(inout)          :: VAR_TILE  ! var on landice tiles
-  
-      ! create source field: field on mesh elements
-      srcField = ESMF_FieldCreate(mesh=mesh,farrayPtr=VAR_MESH,meshloc=ESMF_MESHLOC_ELEMENT, & 
-      datacopyflag=ESMF_DATACOPY_VALUE,rc=STATUS)
-      VERIFY_(STATUS)
-      
-      ! create destination field: field on grid
-      dstField = ESMF_FieldCreate(grid=internal_state%grid,typekind=ESMF_TYPEKIND_R4,rc=STATUS)
-      VERIFY_(STATUS)
-  
-      ! regrid field from mesh to grid
-      call ESMF_FieldRegrid(srcField, dstField, routehandle_m2g, RC=STATUS); VERIFY_(STATUS)
-  
-      ! get pointer to field on grid
-      call ESMF_FieldGet(dstField,farrayPtr=VAR_GRID,RC=STATUS); VERIFY_(STATUS)
 
-      ! allocate tiles 
-      if (.not.associated(VAR_TILE)) then
-        allocate(VAR_TILE(NT), STAT=STATUS)
-        VERIFY_(STATUS)
-        VAR_TILE = MAPL_Undef
-      end if
-  
-      ! transform from grid to tiles  
-      call MAPL_LocStreamTransform(internal_state%LOCSTREAM,VAR_TILE,VAR_GRID, RC=STATUS)
-      VERIFY_(STATUS)
+  subroutine mesh_to_tile(VAR_MESH,VAR_TILE)
+    ! regrid from mesh to grid, then transform from grid to landice tiles
+    real(dp),    pointer, dimension(:), intent(inout)   :: VAR_MESH  ! var on issm mesh
+    real, pointer, dimension(:), intent(inout)          :: VAR_TILE  ! var on landice tiles
 
-      ! destroy regridding fields so they can be reused
-      call ESMF_FieldDestroy(srcField,rc=STATUS); VERIFY_(STATUS)
-      call ESMF_FieldDestroy(dstField,rc=STATUS); VERIFY_(STATUS)
-  
-    end subroutine mesh_to_tile
+    ! create source field: field on mesh elements
+    srcField = ESMF_FieldCreate(mesh=mesh,farrayPtr=VAR_MESH,meshloc=ESMF_MESHLOC_ELEMENT, & 
+    datacopyflag=ESMF_DATACOPY_VALUE,rc=STATUS)
+    VERIFY_(STATUS)
+    
+    ! create destination field: field on grid
+    dstField = ESMF_FieldCreate(grid=internal_state%grid,typekind=ESMF_TYPEKIND_R4,rc=STATUS)
+    VERIFY_(STATUS)
+
+    ! regrid field from mesh to grid
+    call ESMF_FieldRegrid(srcField, dstField, routehandle_m2g, RC=STATUS); VERIFY_(STATUS)
+
+    ! get pointer to field on grid
+    call ESMF_FieldGet(dstField,farrayPtr=VAR_GRID,RC=STATUS); VERIFY_(STATUS)
+
+    ! transform from grid to tiles  
+    call MAPL_LocStreamTransform(internal_state%LOCSTREAM,VAR_TILE,VAR_GRID, RC=STATUS)
+    VERIFY_(STATUS)
+
+    ! destroy regridding fields so they can be reused
+    call ESMF_FieldDestroy(srcField,rc=STATUS); VERIFY_(STATUS)
+    call ESMF_FieldDestroy(dstField,rc=STATUS); VERIFY_(STATUS)
+
+  end subroutine mesh_to_tile
 
  
  end subroutine RUN
