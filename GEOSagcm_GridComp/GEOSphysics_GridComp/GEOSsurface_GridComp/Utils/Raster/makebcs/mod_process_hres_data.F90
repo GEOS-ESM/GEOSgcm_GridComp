@@ -3394,8 +3394,8 @@ contains
 
     implicit none
     integer,         intent(in) :: nx, ny, n_land
-    integer,         intent(in) :: tile_pfs(:)
-    integer, target, intent(in) :: tile_id(:,:)
+    integer,         intent(in) :: tile_pfs(:)               ! Pfafstetter index of tile (tile-space)
+    integer, target, intent(in) :: tile_id(:,:)              ! tile ID on raster grid (0=ocean, otherwise land or landice or lake)
 
 
     real, dimension (:), allocatable ::           &
@@ -3727,17 +3727,19 @@ contains
           if(status == 0) then
              status = NF_GET_att_INT  (ncid, NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
              status = NF_GET_att_INT  (ncid, NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
+             
+             ! read UNDEF and ScaleFactor (sf) for Clay0-30 only (variable 4);
              ! assume UNDEF and ScaleFactor (sf) are the same for *all* variables read below
              ! (ok for SoilProperties_H[xx]V[yy].nc as of 29 Apr 2022).
-             status = NF_GET_att_INT  (ncid, 4,'UNDEF',d_undef); VERIFY_(STATUS) 
-             status = NF_GET_att_REAL (ncid, 4,'ScaleFactor',sf); VERIFY_(STATUS)
-             status = NF_GET_VARA_INT (ncid, 4,(/1,1/),(/nc_10,nr_10/),net_data1); VERIFY_(STATUS)
-             status = NF_GET_VARA_INT (ncid, 5,(/1,1/),(/nc_10,nr_10/),net_data2); VERIFY_(STATUS)
-             status = NF_GET_VARA_INT (ncid, 6,(/1,1/),(/nc_10,nr_10/),net_data3); VERIFY_(STATUS)
-             status = NF_GET_VARA_INT (ncid, 7,(/1,1/),(/nc_10,nr_10/),net_data4); VERIFY_(STATUS)
-             status = NF_GET_VARA_INT (ncid, 8,(/1,1/),(/nc_10,nr_10/),net_data5); VERIFY_(STATUS)
-             status = NF_GET_VARA_INT (ncid, 9,(/1,1/),(/nc_10,nr_10/),net_data6); VERIFY_(STATUS)
-             status = NF_GET_VARA_INT (ncid,10,(/1,1/),(/nc_10,nr_10/),net_data7); VERIFY_(STATUS)
+             status = NF_GET_att_INT  (ncid, 4,'UNDEF',d_undef);                   VERIFY_(STATUS) 
+             status = NF_GET_att_REAL (ncid, 4,'ScaleFactor',sf);                  VERIFY_(STATUS)             
+             status = NF_GET_VARA_INT (ncid, 4,(/1,1/),(/nc_10,nr_10/),net_data1); VERIFY_(STATUS)   ! Clay 0-30
+             status = NF_GET_VARA_INT (ncid, 5,(/1,1/),(/nc_10,nr_10/),net_data2); VERIFY_(STATUS)   ! Sand 0-30
+             status = NF_GET_VARA_INT (ncid, 6,(/1,1/),(/nc_10,nr_10/),net_data3); VERIFY_(STATUS)   ! OrgC 0-30
+             status = NF_GET_VARA_INT (ncid, 7,(/1,1/),(/nc_10,nr_10/),net_data4); VERIFY_(STATUS)   ! Clay 30-100
+             status = NF_GET_VARA_INT (ncid, 8,(/1,1/),(/nc_10,nr_10/),net_data5); VERIFY_(STATUS)   ! Sand 30-100
+             status = NF_GET_VARA_INT (ncid, 9,(/1,1/),(/nc_10,nr_10/),net_data6); VERIFY_(STATUS)   ! OrgC 30-100
+             status = NF_GET_VARA_INT (ncid,10,(/1,1/),(/nc_10,nr_10/),net_data7); VERIFY_(STATUS)   ! Gravel
              do j = jLL,jLL + nr_10 -1 
                 do i = iLL, iLL + nc_10 -1 
                    if(net_data1(i-iLL +1 ,j - jLL +1) /= d_undef) &
@@ -3808,7 +3810,7 @@ contains
         !------------------------------------------------------------
         if (PEATMAP_STRICT_GPA22) then
            where (pmapr < PEATMAP_THRESHOLD_1)
-              oc_top = min(oc_top, NINT((cF_lim(4) - 1.0e-6)/sf))
+              oc_top = min(oc_top, NINT((cF_lim(4) - 1.0e-6)/sf))     ! cap oc_top just below cF_lim(4)
            endwhere
         endif
      
@@ -3908,7 +3910,7 @@ contains
 
     ! ----------------------------------------------------------------------------
 
-    ! compute peat fraction on tile for CLM45+ (for fires?)
+    ! from raster oc_top, compute peat area fraction of land tiles for CLM45+ (for fires?)
 
     allocate(pmap  (1:n_land))
     !allocate(count_soil(1:n_land))            ! already allocated above
@@ -4051,20 +4053,20 @@ contains
     !
     ! Read Woesten soil parameters and CLSM tau parameters for soil classes (1:253)
 
-    allocate(a_sand  (1:n_SoilClasses))
-    allocate(a_clay  (1:n_SoilClasses))
-    allocate(a_silt  (1:n_SoilClasses))
-    allocate(a_oc    (1:n_SoilClasses))
-    allocate(a_bee   (1:n_SoilClasses))
-    allocate(a_psis  (1:n_SoilClasses))
-    allocate(a_poros (1:n_SoilClasses))
-    allocate(a_wp    (1:n_SoilClasses))
-    allocate(a_aksat (1:n_SoilClasses))
-    allocate(atau    (1:n_SoilClasses))
-    allocate(btau    (1:n_SoilClasses))
-    allocate(atau_2cm(1:n_SoilClasses))
-    allocate(btau_2cm(1:n_SoilClasses))
-    allocate(a_wpsurf(1:n_SoilClasses))
+    allocate(a_sand  (  1:n_SoilClasses))
+    allocate(a_clay  (  1:n_SoilClasses))
+    allocate(a_silt  (  1:n_SoilClasses))
+    allocate(a_oc    (  1:n_SoilClasses))
+    allocate(a_bee   (  1:n_SoilClasses))
+    allocate(a_psis  (  1:n_SoilClasses))
+    allocate(a_poros (  1:n_SoilClasses))
+    allocate(a_wp    (  1:n_SoilClasses))
+    allocate(a_aksat (  1:n_SoilClasses))
+    allocate(atau    (  1:n_SoilClasses))
+    allocate(btau    (  1:n_SoilClasses))
+    allocate(atau_2cm(  1:n_SoilClasses))
+    allocate(btau_2cm(  1:n_SoilClasses))
+    allocate(a_wpsurf(  1:n_SoilClasses))
     allocate(a_porosurf(1:n_SoilClasses))
 
     ! SoilClasses-SoilHyd-TauParam.dat and SoilClasses-SoilHyd-TauParam.peatmap differ
@@ -4284,7 +4286,7 @@ contains
              if((ss_oc_all(j)*sf >=  cF_lim(1)).and. (ss_oc_all(j)*sf < cF_lim(2))) cFamily(1) = cFamily(1) + factor
              if((ss_oc_all(j)*sf >=  cF_lim(2)).and. (ss_oc_all(j)*sf < cF_lim(3))) cFamily(2) = cFamily(2) + factor
              if((ss_oc_all(j)*sf >=  cF_lim(3)).and. (ss_oc_all(j)*sf < cF_lim(4))) cFamily(3) = cFamily(3) + factor
-             if((ss_oc_all(j)*sf >=  cF_lim(4) ))                                   cFamily(4) = cFamily(4) + factor
+             if((ss_oc_all(j)*sf >=  cF_lim(4)                                   )) cFamily(4) = cFamily(4) + factor
           end do
 
           if (sum(cFamily) == 0.) o_cl  = 1    ! default is o_cl=1 (if somehow no grid cell has top-layer orgC >=0.)
