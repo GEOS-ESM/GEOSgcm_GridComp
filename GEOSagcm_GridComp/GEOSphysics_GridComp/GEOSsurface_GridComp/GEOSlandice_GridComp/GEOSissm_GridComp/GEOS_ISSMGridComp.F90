@@ -651,16 +651,15 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! allocate ice-elevation output (export from ISSM)
     allocate(ISSM_OUTPUTS(num_outputs*num_elements))  
 
-    ! allocate mesh exports
+    ! allocate exports defined on mesh elements
     allocate(ICESURF_MESH(num_elements))
     allocate(ICETHICK_MESH(num_elements))
     allocate(ICEVEL_MESH(num_elements))
     
-    ! allocate mesh imports
+    ! allocate imports defined on mesh elements
     allocate(ICESMB_MESH(num_elements))  
-    
 
-    call ESMF_VMBarrier(vm, rc=status)
+    call ESMF_VMBarrier(vm, rc=status) ! don't know why this is here...
     VERIFY_(STATUS)
 
     ! initialize ISSM outputs to zero 
@@ -674,7 +673,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     internal_state => wrap%ptr
     routehandle_m2g = internal_state%routehandle_m2g  ! mesh to grid 
     routehandle_g2m = internal_state%routehandle_g2m  ! grid to mesh
+
+    ! git landice tile dimensions
     call MAPL_LocStreamGet(internal_state%locstream, NT_LOCAL=NT, _RC)
+
+    ! get grid dimensions
     call MAPL_GridGet(internal_state%grid, localCellCountPerDim=local_dims, _RC)
     IM = local_dims(1)
     JM = local_dims(2)
@@ -691,7 +694,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     
     call MAPL_GetPointer(IMPORT,ICESMB_IM, 'ICESMB' , RC=STATUS); VERIFY_(STATUS)
 
-    ! allocate tiles for SMB 
+    ! allocate tiles for ICESMB 
     if(associated(ICESMB_IM) .and. .not.associated(ICESMB_TILE)) then
       allocate(ICESMB_TILE(NT), STAT=STATUS)
       VERIFY_(STATUS)
@@ -702,7 +705,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ICESMB_TILE(:) = ICESMB_IM(:)
 
     ! *************************************************************************** !
-    ! Transform ICESMB from TILES to MESH 
+    ! TRANSFORM ICESMB FROM TILES TO MESH 
     ! *************************************************************************** !
 
     call tile_to_mesh(ICESMB_TILE,ICESMB_MESH); VERIFY_(STATUS)
