@@ -577,6 +577,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   ! surface mass balance on mesh, grid, and landice tiles
   real(dp), pointer, dimension(:)      :: ICESMB_MESH   => null() ! surface mass balce on mesh elements
+  real, pointer, dimension(:,:)        :: ICESMB_GRID   => null() ! surface mass balance on grid
   real, pointer, dimension(:)          :: ICESMB_TILE   => null() ! surface mass balance on landice tiles
   real, pointer, dimension(:)          :: ICESMB_IM     => null() ! pointer to SMB import state (landice tiles)
   real, pointer, dimension(:)          :: ICESMB_EX     => null() ! pointer to SMB export state (mesh tiles)
@@ -585,22 +586,18 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   integer :: num_outputs = 3                                      ! number of outputs 
   real(dp),    pointer, dimension(:)   :: ISSM_OUTPUTS  => null() ! pointer containing all outputs
 
-  ! pointer for variables on attached grid (reused multiple times for regridding)
-  real, pointer, dimension(:,:)        :: VAR_GRID      => null() 
-
   ! ice-surface elevation on mesh, grid, and landice tiles
   real(dp),    pointer, dimension(:)   :: ICESURF_MESH  => null() ! ice elevation on mesh
+  real, pointer, dimension(:,:)        :: ICESURF_GRID  => null() ! ice elevation on grid
   real, pointer, dimension(:)          :: ICESURF_TILE  => null() ! ice elevation on landice tiles
   real, pointer, dimension(:)          :: ICESURF_EX    => null() ! pointer to ice-sheet elevation export state (mesh tiles)
 
-  ! ice thickness on mesh, grid, and landice tiles
-  real(dp),    pointer, dimension(:)   :: ICETHICK_MESH => null() ! ice thickness on mesh
-  real, pointer, dimension(:)          :: ICETHICK_TILE => null() ! ice thickness on landice tiles
+  ! ice thickness
+  real(dp),    pointer, dimension(:)   :: ICETHICK      => null() ! ice thickness on mesh
   real, pointer, dimension(:)          :: ICETHICK_EX   => null() ! pointer to ice thickness export state (mesh tiles)
 
-  ! ice-flow speed on mesh, grid, and landice tiles  
-  real(dp),    pointer, dimension(:)   :: ICEVEL_MESH   => null() ! ice flow speed on mesh
-  real, pointer, dimension(:)          :: ICEVEL_TILE   => null() ! ice flow speed on landice tiles
+  ! ice-flow speed  
+  real(dp),    pointer, dimension(:)   :: ICEVEL        => null() ! ice flow speed on mesh
   real, pointer, dimension(:)          :: ICEVEL_EX     => null() ! pointer to ice flow speed export state (mesh tiles)
  
   ! physical parameters
@@ -649,16 +646,16 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! allocate ice-elevation output (export from ISSM)
     allocate(ISSM_OUTPUTS(num_outputs*num_elements))  
     allocate(ICESURF_MESH(num_elements))
-    allocate(ICETHICK_MESH(num_elements))
-    allocate(ICEVEL_MESH(num_elements))  
+    allocate(ICETHICK(num_elements))
+    allocate(ICEVEL(num_elements))  
 
     call ESMF_VMBarrier(vm, rc=status)
     VERIFY_(STATUS)
 
     ! initialize ISSM outputs to zero 
     ICESURF_MESH(:) = 0.0_dp
-    ICETHICK_MESH(:) = 0.0_dp
-    ICEVEL_MESH(:) = 0.0_dp
+    ICETHICK(:) = 0.0_dp
+    ICEVEL(:) = 0.0_dp
     ISSM_OUTPUTS(:) = 0.0_dp
 
     ! get routehandles for regridding
@@ -671,9 +668,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     IM = local_dims(1)
     JM = local_dims(2)
 
-    ! allocate pointer on grid for regridding (reused multiple times)
-    allocate(VAR_GRID(IM,JM), STAT=STATUS ); VERIFY_(STATUS)
-     
     call ESMF_UserCompGetInternalState(GC, 'ISSM_EXPORTS', issm_exports_wrap, status); VERIFY_(STATUS)
     issm_exports_state => issm_exports_wrap%ptr
     
@@ -683,7 +677,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     
     call MAPL_GetPointer(IMPORT,ICESMB_IM, 'ICESMB' , RC=STATUS); VERIFY_(STATUS)
 
-    ! allocate tiles for SMB 
+    ! allocate tiles for SMB (MKTILE)
     if(associated(ICESMB_IM) .and. .not.associated(ICESMB_TILE)) then
       allocate(ICESMB_TILE(NT), STAT=STATUS)
       VERIFY_(STATUS)
@@ -693,15 +687,18 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! copy import values into tile array 
     ICESMB_TILE(:) = ICESMB_IM(:)
 
+    ! allocate SMB on grid
+    allocate( ICESMB_GRID(IM,JM), STAT=STATUS ); VERIFY_(STATUS)
+
     ! transform ICESMB from tile to grid
     ! NOTE: we use the "transpose" option with MAPL_LocStreamTransformG2T 
     ! (rather than MAPL_LocStreamTransformT2G) because the "default" value is zero
     ! (rather than MAPL_UNDEF, which leads to errors when regridding onto mesh)
-    call MAPL_LocStreamTransform(internal_state%LOCSTREAM, ICESMB_TILE, VAR_GRID, TRANSPOSE=.true., RC=STATUS)
+    call MAPL_LocStreamTransform(internal_state%LOCSTREAM, ICESMB_TILE, ICESMB_GRID, TRANSPOSE=.true., RC=STATUS)
     VERIFY_(STATUS)
 
     ! create source field: SMB on grid
-    srcField = ESMF_FieldCreate(grid=internal_state%grid,farrayPtr=VAR_GRID, datacopyflag=ESMF_DATACOPY_VALUE,rc=STATUS)
+    srcField = ESMF_FieldCreate(grid=internal_state%grid,farrayPtr=ICESMB_GRID, datacopyflag=ESMF_DATACOPY_VALUE,rc=STATUS)
     VERIFY_(STATUS)
 
     ! create destination field: SMB on mesh elements
@@ -739,18 +736,18 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     ! unpack ISSM output pointer
     ICESURF_MESH(:) = ISSM_OUTPUTS(1:num_elements)
-    ICETHICK_MESH(:) = ISSM_OUTPUTS(num_elements+1:2*num_elements)
-    ICEVEL_MESH(:) = ISSM_OUTPUTS(2*num_elements+1:3*num_elements)
+    ICETHICK(:) = ISSM_OUTPUTS(num_elements+1:2*num_elements)
+    ICEVEL(:) = ISSM_OUTPUTS(2*num_elements+1:3*num_elements)
 
     ! set pointers to tile-mesh exports
     call MAPL_GetPointer(EXPORT  , ICESURF_EX , 'ICESURF' , RC=STATUS); VERIFY_(STATUS)
     if(associated(ICESURF_EX)) ICESURF_EX = ICESURF_MESH
 
     call MAPL_GetPointer(EXPORT  , ICEVEL_EX , 'ICEVEL' , RC=STATUS); VERIFY_(STATUS)
-    if(associated(ICEVEL_EX)) ICEVEL_EX = ICEVEL_MESH
+    if(associated(ICEVEL_EX)) ICEVEL_EX = ICEVEL
 
     call MAPL_GetPointer(EXPORT  , ICETHICK_EX , 'ICETHICK' , RC=STATUS); VERIFY_(STATUS)
-    if(associated(ICETHICK_EX)) ICETHICK_EX = ICETHICK_MESH
+    if(associated(ICETHICK_EX)) ICETHICK_EX = ICETHICK
 
     ! *************************************************************************** !
     ! REGRID MESH FIELDS ONTO LANDICE TILES AND EXPORT VIA INTERNAL STATE
@@ -760,66 +757,58 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_FieldDestroy(srcField,rc=STATUS); VERIFY_(STATUS)
     call ESMF_FieldDestroy(dstField,rc=STATUS); VERIFY_(STATUS)
 
-    ! transform from mesh to tiles
-    call mesh_to_tile(ICESURF_MESH,ICESURF_TILE); VERIFY_(STATUS)
+    ! create source field: ice elevation on mesh elements
+    srcField = ESMF_FieldCreate(mesh=mesh,farrayPtr=ICESURF_MESH,meshloc=ESMF_MESHLOC_ELEMENT, & 
+    datacopyflag=ESMF_DATACOPY_VALUE,rc=STATUS)
+    VERIFY_(STATUS)
+    
+    ! create destination field: ice elevation on grid
+    dstField = ESMF_FieldCreate(grid=internal_state%grid,typekind=ESMF_TYPEKIND_R4,rc=STATUS)
+    VERIFY_(STATUS)
+
+    ! regrid ice elevation from mesh to grid
+    call ESMF_FieldRegrid(srcField, dstField, routehandle_m2g, RC=STATUS); VERIFY_(STATUS)
+
+    ! allocate tiles for ice elevation (MKTILE)
+    if (.not.associated(ICESURF_TILE)) then
+      allocate(ICESURF_TILE(NT), STAT=STATUS)
+      VERIFY_(STATUS)
+      ICESURF_TILE = MAPL_Undef
+    end if
+
+    ! allocate ICESURF on grid
+    allocate( ICESURF_GRID(IM,JM), STAT=STATUS ); VERIFY_(STATUS)
+   
+    ! get pointer to ice elevation on grid
+    call ESMF_FieldGet(dstField,farrayPtr=ICESURF_GRID,RC=STATUS); VERIFY_(STATUS)
+
+    ! transform from grid to tiles  
+    call MAPL_LocStreamTransform(internal_state%LOCSTREAM,ICESURF_TILE,ICESURF_GRID, RC=STATUS)
+    VERIFY_(STATUS)
+
     issm_exports_state%ICESURF_TILE = ICESURF_TILE
+
+    ! destroy regridding fields 
+    call ESMF_FieldDestroy(srcField,rc=STATUS); VERIFY_(STATUS)
+    call ESMF_FieldDestroy(dstField,rc=STATUS); VERIFY_(STATUS)
 
   end if 
 
   call ESMF_VMBarrier(vm, rc=status)
   VERIFY_(STATUS)
 
-  if(associated(ICESURF_MESH))  deallocate(ICESURF_MESH)
-  if(associated(ICETHICK_MESH)) deallocate(ICETHICK_MESH)
-  if(associated(ICEVEL_MESH))   deallocate(ICEVEL_MESH) 
-  if(associated(ISSM_OUTPUTS))  deallocate(ISSM_OUTPUTS)
-  if(associated(ICESMB_TILE))   deallocate(ICESMB_TILE)
-  if(associated(ICESURF_TILE))  deallocate(ICESURF_TILE)
-  if(associated(VAR_GRID))      deallocate(VAR_GRID)
+  if(associated(ICESURF_MESH)) deallocate(ICESURF_MESH)
+  if(associated(ISSM_OUTPUTS)) deallocate(ISSM_OUTPUTS)
+  if(associated(ICETHICK))     deallocate(ICETHICK)
+  if(associated(ICEVEL))       deallocate(ICEVEL) 
+  if(associated(ICESMB_TILE))  deallocate(ICESMB_TILE)
+  if(associated(ICESURF_TILE)) deallocate(ICESURF_TILE)
+  if(associated(ICESMB_GRID))  deallocate(ICESMB_GRID)
 
   call MAPL_TimerOff(MAPL,"RUN"  )
   call MAPL_TimerOff(MAPL,"TOTAL")
  
   RETURN_(ESMF_SUCCESS)
-
-  contains
-    subroutine mesh_to_tile(VAR_MESH,VAR_TILE)
-      ! regrid from mesh to grid, then transform from grid to landice tiles
-      real(dp),    pointer, dimension(:), intent(inout)   :: VAR_MESH  ! var on issm mesh
-      real, pointer, dimension(:), intent(inout)          :: VAR_TILE  ! var on landice tiles
-  
-      ! create source field: field on mesh elements
-      srcField = ESMF_FieldCreate(mesh=mesh,farrayPtr=VAR_MESH,meshloc=ESMF_MESHLOC_ELEMENT, & 
-      datacopyflag=ESMF_DATACOPY_VALUE,rc=STATUS)
-      VERIFY_(STATUS)
-      
-      ! create destination field: field on grid
-      dstField = ESMF_FieldCreate(grid=internal_state%grid,typekind=ESMF_TYPEKIND_R4,rc=STATUS)
-      VERIFY_(STATUS)
-  
-      ! regrid field from mesh to grid
-      call ESMF_FieldRegrid(srcField, dstField, routehandle_m2g, RC=STATUS); VERIFY_(STATUS)
-  
-      ! get pointer to field on grid
-      call ESMF_FieldGet(dstField,farrayPtr=VAR_GRID,RC=STATUS); VERIFY_(STATUS)
-
-      ! allocate tiles 
-      if (.not.associated(VAR_TILE)) then
-        allocate(VAR_TILE(NT), STAT=STATUS)
-        VERIFY_(STATUS)
-        VAR_TILE = MAPL_Undef
-      end if
-  
-      ! transform from grid to tiles  
-      call MAPL_LocStreamTransform(internal_state%LOCSTREAM,VAR_TILE,VAR_GRID, RC=STATUS)
-      VERIFY_(STATUS)
-
-      ! destroy regridding fields so they can be reused
-      call ESMF_FieldDestroy(srcField,rc=STATUS); VERIFY_(STATUS)
-      call ESMF_FieldDestroy(dstField,rc=STATUS); VERIFY_(STATUS)
-  
-    end subroutine mesh_to_tile
-
  
  end subroutine RUN
 
