@@ -577,7 +577,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   type(T_ISSM_EXPORT_STATE), pointer   :: issm_exports_state
   type(ISSM_EXPORT_WRAP)               :: issm_exports_wrap
 
-  ! surface mass balance on mesh, grid, and landice tiles
+  ! surface mass balance on mesh and landice tiles
   real(dp), pointer, dimension(:)      :: ICESMB_MESH   => null() ! surface mass balce on mesh elements
   real, pointer, dimension(:)          :: ICESMB_TILE   => null() ! surface mass balance on landice tiles
   real, pointer, dimension(:)          :: ICESMB_IM     => null() ! pointer to SMB import state (landice tiles)
@@ -742,10 +742,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! *************************************************************************** !
     ! REGRID MESH FIELDS ONTO LANDICE TILES AND EXPORT VIA INTERNAL STATE
     ! *************************************************************************** !
-
-    ! destroy regridding fields so they can be reused
-    call ESMF_FieldDestroy(srcField,rc=STATUS); VERIFY_(STATUS)
-    call ESMF_FieldDestroy(dstField,rc=STATUS); VERIFY_(STATUS)
 
     ! transform from mesh to tiles
     call mesh_to_tile(ICESURF_MESH,ICESURF_TILE); VERIFY_(STATUS)
