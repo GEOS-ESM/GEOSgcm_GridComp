@@ -836,12 +836,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_FieldDestroy(srcField,rc=STATUS); VERIFY_(STATUS)
     call ESMF_FieldDestroy(dstField,rc=STATUS); VERIFY_(STATUS)
 
-    ! create source field: ice ice flow speed on mesh elements
+    ! create source field: ice flow speed on mesh elements
     srcField = ESMF_FieldCreate(mesh=mesh,farrayPtr=ICEVEL_MESH,meshloc=ESMF_MESHLOC_ELEMENT, & 
     datacopyflag=ESMF_DATACOPY_VALUE,rc=STATUS)
     VERIFY_(STATUS)
     
-    ! create destination field: ice ice flow speed on grid
+    ! create destination field: ice flow speed on grid
     dstField = ESMF_FieldCreate(grid=internal_state%grid,typekind=ESMF_TYPEKIND_R4,rc=STATUS)
     VERIFY_(STATUS)
 
@@ -881,9 +881,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   if(associated(ICETHICK_TILE)) deallocate(ICETHICK_TILE)
   if(associated(ICEVEL_TILE))   deallocate(ICEVEL_TILE)
   if(associated(ICESMB_GRID))   deallocate(ICESMB_GRID)
-  if(associated(ICESURF_GRID))  deallocate(ICESURF_GRID)
-  if(associated(ICETHICK_GRID)) deallocate(ICETHICK_GRID)
-  if(associated(ICEVEL_GRID))   deallocate(ICEVEL_GRID)
+  !if(associated(ICESURF_GRID))  deallocate(ICESURF_GRID)
+  !if(associated(ICETHICK_GRID)) deallocate(ICETHICK_GRID)
+  !if(associated(ICEVEL_GRID))   deallocate(ICEVEL_GRID)
 
   call MAPL_TimerOff(MAPL,"RUN"  )
   call MAPL_TimerOff(MAPL,"TOTAL")

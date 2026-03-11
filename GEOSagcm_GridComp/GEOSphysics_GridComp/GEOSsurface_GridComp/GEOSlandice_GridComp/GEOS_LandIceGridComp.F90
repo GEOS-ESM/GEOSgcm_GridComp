@@ -3586,7 +3586,7 @@ contains
             if (associated(ICESURF))  ICESURF = issm_exports_state%ICESURF_TILE
             if (associated(ICETHICK)) ICETHICK = issm_exports_state%ICETHICK_TILE
             if (associated(ICEVEL))   ICEVEL = issm_exports_state%ICEVEL_TILE
-          endif
+         endif
       enddo
     end if 
 
