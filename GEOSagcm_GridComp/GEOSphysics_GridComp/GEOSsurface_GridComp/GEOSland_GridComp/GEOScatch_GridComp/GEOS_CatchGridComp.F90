@@ -4592,10 +4592,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         integer                       :: ldas_ens_id, ldas_first_ens_id
         integer                       :: NUM_LDAS_ENSEMBLE
 
-        real                          :: ALBVR_UR
-        real                          :: ALBVF_UR
-        real                          :: ALBNR_UR
-        real                          :: ALBNF_UR
+        real, pointer, dimension(:) :: ALBVR_UR
+        real, pointer, dimension(:) :: ALBVF_UR
+        real, pointer, dimension(:) :: ALBNR_UR
+        real, pointer, dimension(:) :: ALBNF_UR
 
 
 !#---
@@ -5059,6 +5059,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(RCONSTIT (NTILES,N_SNOW,N_constit))
         allocate(TOTDEPOS (NTILES,N_constit))
         allocate(RMELT    (NTILES,N_constit))
+        allocate(ALBVR_UR(NTILES),ALBVF_UR(NTILES),ALBNR_UR(NTILES),ALBNF_UR(NTILES))
+
 
         debugzth = .false.
 
@@ -6517,6 +6519,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(FICE1TMP )
         deallocate(SLDTOT   )
         deallocate(FSW_CHANGE)
+        deallocate(ALBVR_UR,ALBVF_UR,ALBNR_UR,ALBNF_UR)
 
         RETURN_(ESMF_SUCCESS)
 
