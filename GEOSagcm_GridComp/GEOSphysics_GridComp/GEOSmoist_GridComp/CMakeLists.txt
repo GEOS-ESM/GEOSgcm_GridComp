@@ -15,6 +15,8 @@ set (srcs
   GEOS_MoistGridComp.F90
   # files that are sometimes present?
   # ras00.F90 cloud.F90
+  # Python interface files that doesn't fit the MAPL_PythonBridge pattern
+  ./pyMoist/pyMoist/fortran/moist_workarounds.F90
   )
 
 if (CMAKE_Fortran_COMPILER_ID MATCHES Intel AND CMAKE_BUILD_TYPE MATCHES Aggressive)
@@ -50,7 +52,7 @@ endif ()
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES GEOS_Shared GMAO_mpeu MAPL Chem_Shared Chem_Base ESMF::ESMF)
+  DEPENDENCIES GEOS_Shared GMAO_mpeu MAPL fms_r4 Chem_Shared Chem_Base ESMF::ESMF TYPE SHARED)
 
 # We need to add_dependencies for fms_r4 because CMake doesn't know we
 # need it for include purposes. In R4R8, we only ever link against

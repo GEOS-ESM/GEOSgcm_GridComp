@@ -181,6 +181,15 @@ class UWState(State):
                 "dtype": Float,
             }
         )
+        CLCN: Quantity = dataclasses.field(
+            metadata={
+                "name": "CLCN",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
 
     @dataclasses.dataclass
     class Output:
@@ -517,6 +526,24 @@ class UWState(State):
                 "name": "CUSH_SC",
                 "dims": [X_DIM, Y_DIM],
                 "units": "m",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        ql0_inv: Quantity = dataclasses.field(
+            metadata={
+                "name": "ql0_inv",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        qi0_inv: Quantity = dataclasses.field(
+            metadata={
+                "name": "qi0_inv",
+                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }

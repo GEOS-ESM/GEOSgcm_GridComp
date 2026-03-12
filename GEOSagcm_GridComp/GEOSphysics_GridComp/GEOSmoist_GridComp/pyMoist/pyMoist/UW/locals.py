@@ -194,8 +194,6 @@ class UWLocals:
     qv0_in: Local
     ql0_in: Local
     qi0_in: Local
-    ql0_inv: Local
-    qi0_inv: Local
     th0_in: Local
     cush_inout: Local
     dpi: Local
@@ -299,18 +297,22 @@ class UWLocals:
     v0: Local
     cinlcl: Local
     MASS: Local
-    CLCN: Local
     QLCN: Local
     QICN: Local
     QLLS: Local
     QILS: Local
     PTR2D: Local
+    qc_l: Local
+    qc_i: Local
+    qtten: Local
 
     @classmethod
     def make(cls, runtime: NDSLRuntime, quantity_factory: QuantityFactory):
         # FloatFields
+        qc_l= runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
+        qc_i= runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
+        qtten= runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
         PTR2D = runtime.make_local(quantity_factory, [X_DIM, Y_DIM])
-        CLCN = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
         QLCN = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
         QICN = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
         QLLS = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
@@ -507,8 +509,6 @@ class UWLocals:
         qv0_in = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
         ql0_in = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
         qi0_in = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
-        ql0_inv = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
-        qi0_inv = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
         th0_in = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
         cinlcl = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
         # FloatFieldIJs
@@ -801,8 +801,6 @@ class UWLocals:
             dp0_inv=dp0_inv,
             qv0_in=qv0_in,
             ql0_in=ql0_in,
-            ql0_inv=ql0_inv,
-            qi0_inv=qi0_inv,
             qi0_in=qi0_in,
             th0_in=th0_in,
             cush_inout=cush_inout,
@@ -906,10 +904,12 @@ class UWLocals:
             v0=v0,
             cinlcl=cinlcl,
             MASS=MASS,
-            CLCN=CLCN,
             QLCN=QLCN,
             QICN=QICN,
             QLLS=QLLS,
             QILS=QILS,
             PTR2D=PTR2D,
+            qc_l=qc_l,
+            qc_i=qc_i,
+            qtten=qtten,
         )

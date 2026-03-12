@@ -21,6 +21,7 @@ from ndsl import (
     SubtileGridSizer,
     TileCommunicator,
     TilePartitioner,
+    Backend,
 )
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py_utils import backend_is_fortran_aligned, is_gpu_backend
@@ -40,7 +41,7 @@ class NDSLPhysicsConfiguration:
     layout_x: int = 1
     layout_y: int = 1
     single_column: bool = False
-    backend: str = "dace:cpu_KJI"
+    backend: str = "st:dace:cpu:KJI"
 
 
 class NDSLPhysicsStack:
@@ -55,7 +56,7 @@ class NDSLPhysicsStack:
         if single_rank_override >= 0:
             comm = LocalComm(rank=single_rank_override, total_ranks=6, buffer_dict={})
 
-        self.backend = flags.backend
+        self.backend = Backend(flags.backend)
         self.flags = flags
         layout = (self.flags.layout_x, self.flags.layout_y)
 
@@ -84,7 +85,7 @@ class NDSLPhysicsStack:
             layout=layout,
             tile_partitioner=partitioner.tile,
             tile_rank=self.communicator.tile.rank,
-            backend=flags.backend,
+            backend=self.backend,
         )
         self.quantity_factory = QuantityFactory(sizer=sizer, backend=self.backend)
 
@@ -149,6 +150,10 @@ class NDSLPhysicsStack:
             f"     Device ord : {device_ordinal_info}\n"
             f"     Nvidia MPS : {MPS_is_on}\n"
         )
+
+    @property
+    def interface_type(self) -> InterfaceTransferType:
+        return self._interface_type
 
 
 NDSL_PHYSICS: NDSLPhysicsStack | None = None

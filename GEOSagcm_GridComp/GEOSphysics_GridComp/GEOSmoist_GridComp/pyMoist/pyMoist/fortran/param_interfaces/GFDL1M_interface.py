@@ -27,12 +27,6 @@ class GFDL1MInterface(UserCode):
     def init(self, mapl_state: CVoidPointer, import_state: CVoidPointer, export_state: CVoidPointer):
         maplpy = get_MAPLPy()
         ndsl_stack = get_NDSL_physics(mapl_state)
-        self._gfdl_1m: GFDL1M | None = None
-        self._managed_state = MAPLManagedState(
-            GFDL1MState.empty(ndsl_stack.quantity_factory),
-            InterfaceTransferType.CPU_MAP,
-        )
-
         try:
             with open("input.nml", "r") as f:
                 namelist = f90nml.read(f)
@@ -165,6 +159,12 @@ class GFDL1MInterface(UserCode):
             ndsl_stack.stencil_factory.config.dace_config,
         ):
             self._gfdl_1m = GFDL1M(ndsl_stack.stencil_factory, ndsl_stack.quantity_factory, config)
+
+        # Make the state
+        self._managed_state = MAPLManagedState(
+            GFDL1MState.empty(ndsl_stack.quantity_factory),
+            ndsl_stack.interface_type,
+        )
 
     def run(
         self,
@@ -407,6 +407,7 @@ class GFDL1MInterface(UserCode):
 
             with TimedCUDAProfiler("GFDL 1M - State copy-back", {}):
                 self._managed_state.ndsl_to_fortran()
+                self._managed_state.record("GFDL1M-Out")
 
     def finalize(
         self,
@@ -414,7 +415,7 @@ class GFDL1MInterface(UserCode):
         import_state: CVoidPointer,
         export_state: CVoidPointer,
     ):
-        pass
+        self._managed_state.save_recorded()
 
 
 CODE = GFDL1MInterface()

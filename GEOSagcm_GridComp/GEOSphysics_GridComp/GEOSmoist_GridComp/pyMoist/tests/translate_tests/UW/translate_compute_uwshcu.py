@@ -32,6 +32,7 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
             "QILS": {},
             "QLCN": {},
             "QICN": {},
+            "CLCN": {},
             "kpbl_inv": {},
             "u0_inv": {},
             "v0_inv": {},
@@ -54,6 +55,7 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
             "DQADT_SC": self.grid.compute_dict(),
             "MFD_SC": self.grid.compute_dict(),
             "Q": self.grid.compute_dict(),
+            "CLCN": self.grid.compute_dict(),
             "QIDET_SC": self.grid.compute_dict(),
             "QIENT_SC": self.grid.compute_dict(),
             "QLDET_SC": self.grid.compute_dict(),
@@ -62,6 +64,8 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
             "CNV_MFD": self.grid.compute_dict(),
             "SHLW_PRC3": self.grid.compute_dict(),
             "SHLW_SNO3": self.grid.compute_dict(),
+            "QITOT": self.grid.compute_dict(),
+            "QLTOT": self.grid.compute_dict(),
             "T": self.grid.compute_dict(),
             "U": self.grid.compute_dict(),
             "V": self.grid.compute_dict(),
@@ -133,6 +137,7 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
         state.input_output.cush.field[:] = inputs["cush"]
         state.input_output.CNV_Tracers.field[:] = inputs["CNV_Tracers"]
         state.input_output.cnvtr.field[:] = inputs["cnvtr"]
+        state.input_output.CLCN.field[:] = inputs["CLCN"]
 
         compute_uwshcu(
             state,
@@ -142,10 +147,13 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
             "CNV_Tracers": state.input_output.CNV_Tracers.field[:],
             "CNPCRATE": state.input_output.cnvtr.field[:],
             "RKFRE": state.output.RKFRE.field[:],
+            "CLCN": state.input_output.CLCN.field[:],
             "Q": state.input_output.qv0_inv.view[:],
             "T": state.input_output.t0_inv.view[:],
             "U": state.input_output.u0_inv.view[:],
             "V": state.input_output.v0_inv.view[:],
+            "QLTOT": state.output.ql0_inv.view[:],
+            "QITOT": state.output.qi0_inv.view[:],
             "QIDET_SC": state.output.qidet_inv.view[:],
             "QLDET_SC": state.output.qldet_inv.view[:],
             "MFD_SC": state.output.MFD_SC.view[:],
