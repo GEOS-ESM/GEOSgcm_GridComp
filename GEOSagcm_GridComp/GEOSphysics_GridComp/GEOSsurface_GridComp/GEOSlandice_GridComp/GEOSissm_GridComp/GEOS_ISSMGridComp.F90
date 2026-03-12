@@ -659,9 +659,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! allocate imports defined on mesh elements
     allocate(ICESMB_MESH(num_elements))  
 
-    call ESMF_VMBarrier(vm, rc=status) ! don't know why this is here...
-    VERIFY_(STATUS)
-
     ! initialize ISSM outputs to zero 
     ICESURF_MESH(:) = 0.0_dp
     ICETHICK_MESH(:) = 0.0_dp
@@ -721,7 +718,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! convert SMB to units of [m/s] (ice-equivalent) before passing to ISSM
     ICESMB_MESH = ICESMB_MESH/rho_ice
 
-    ! NOTE: do we need the barriers before/after ISSM run?
     call ESMF_VMBarrier(vm, rc=status); VERIFY_(STATUS)
 
     ! call run method from ISSM library 
@@ -763,9 +759,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     issm_exports_state%ICEVEL_TILE = ICEVEL_TILE
 
   end if 
-
-  call ESMF_VMBarrier(vm, rc=status)
-  VERIFY_(STATUS)
 
   ! deallocates
   if(associated(ICESURF_MESH))  deallocate(ICESURF_MESH)
