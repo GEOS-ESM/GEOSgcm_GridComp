@@ -8,6 +8,7 @@ program mkOverlaySimple
   use MAPL_HashMod
   use MAPL_ExceptionHandling
   use MAPL_Constants
+  use, intrinsic :: iso_fortran_env, only: REAL64
 
 ! Overlay atmosphere, land, and ocean rasters, creating a .idx file.
 ! The ocean raster should be defined everywhere, or at least, everywhere
@@ -210,8 +211,11 @@ program mkOverlaySimple
 
     allocate(iTable(0:nvars,maxtiles),stat=status)
     VERIFY_(STATUS)
+    iTable = 0
+
     allocate(rTable(1:rvars,maxtiles),stat=status)
     VERIFY_(STATUS)
+    rTable = 0.0_REAL64
 
     allocate(rst1(nx,ny),             stat=status)
     VERIFY_(STATUS)
@@ -279,7 +283,7 @@ program mkOverlaySimple
     end if
 
     ip    = 0
-    Hash  = MAPL_HashCreate(8*1024)
+    Hash  = MAPL_HashCreate(512*1024)
 
     if(Verb) write (6, '(A)', advance='NO') ' Started Overlay'
 
