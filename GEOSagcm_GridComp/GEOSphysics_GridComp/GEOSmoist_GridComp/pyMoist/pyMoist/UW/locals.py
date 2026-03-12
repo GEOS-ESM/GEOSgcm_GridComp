@@ -305,6 +305,7 @@ class UWLocals:
     qc_l: Local
     qc_i: Local
     qtten: Local
+    tke_flip: Local
 
     @classmethod
     def make(cls, runtime: NDSLRuntime, quantity_factory: QuantityFactory):
@@ -591,7 +592,8 @@ class UWLocals:
         vflx = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_INTERFACE_DIM])
         umf_temp = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_INTERFACE_DIM])
         umf_s = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_INTERFACE_DIM])
-        tke_in = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_INTERFACE_DIM])
+        tke_in = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM])
+        tke_flip = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_INTERFACE_DIM])
         pifc0_in = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_INTERFACE_DIM])
         zifc0_in = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_INTERFACE_DIM])
         zifc0_inv = runtime.make_local(quantity_factory, [X_DIM, Y_DIM, Z_INTERFACE_DIM])
@@ -912,4 +914,5 @@ class UWLocals:
             qc_l=qc_l,
             qc_i=qc_i,
             qtten=qtten,
+            tke_flip=tke_flip,
         )
