@@ -558,6 +558,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   character(len=ESMF_MAXSTR)           :: COMP_NAME
 
   type(MAPL_MetaComp), pointer         :: MAPL
+  type(ESMF_VM)                        :: vm  
 
   ! regridding
   type(ESMF_RouteHandle)               :: routehandle_m2g         ! mesh to grid routehandle
@@ -610,10 +611,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   character(len=ESMF_MAXSTR)           :: ISSM_EXPDIR             ! directory containing ISSM input file
 
-! Get the target components name and mesh 
+! Get the target components name, mesh and vm
 ! -----------------------------------------------------------
   Iam = "Run"
-  call ESMF_GridCompGet( GC, name=COMP_NAME,mesh=mesh,RC=STATUS )
+  call ESMF_GridCompGet( GC, name=COMP_NAME,mesh=mesh,vm=vm,RC=STATUS )
   VERIFY_(STATUS)
   Iam = trim(COMP_NAME) // Iam
 
@@ -657,6 +658,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     
     ! allocate imports defined on mesh elements
     allocate(ICESMB_MESH(num_elements))  
+
+    call ESMF_VMBarrier(vm, rc=status) ! don't know why this is here...
+    VERIFY_(STATUS)
 
     ! initialize ISSM outputs to zero 
     ICESURF_MESH(:) = 0.0_dp
@@ -717,8 +721,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! convert SMB to units of [m/s] (ice-equivalent) before passing to ISSM
     ICESMB_MESH = ICESMB_MESH/rho_ice
 
+    ! NOTE: do we need the barriers before/after ISSM run?
+    call ESMF_VMBarrier(vm, rc=status); VERIFY_(STATUS)
+
     ! call run method from ISSM library 
     call RunISSM(dt, c_loc(ICESMB_MESH), c_loc(ISSM_OUTPUTS))
+
+    call ESMF_VMBarrier(vm, rc=status); VERIFY_(STATUS)
 
     ! *************************************************************************** !
     ! UNPACK AND EXPORT ISSM OUTPUTS ON MESH TILES
@@ -754,6 +763,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     issm_exports_state%ICEVEL_TILE = ICEVEL_TILE
 
   end if 
+
+  call ESMF_VMBarrier(vm, rc=status)
+  VERIFY_(STATUS)
 
   ! deallocates
   if(associated(ICESURF_MESH))  deallocate(ICESURF_MESH)
