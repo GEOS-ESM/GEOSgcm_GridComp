@@ -828,11 +828,8 @@ class GFDL1MWarmRain(NDSLRuntime):
             des3=self.saturation_tables.des3,
             des4=self.saturation_tables.des4,
         )
-        if self.config.USE_PPM is False:
-            # NOTE: somehow errors pop up in rain1 and m1_rain within implicit fall, despite all of the
-            # imputs being correct and implicit_fall verifying at three separate calls
-            # within the terminal_fall module. May be a similar issue to the warm_rain_part_1 error
-            # (different result despite inputs being identical, possible registry issue??).
+
+        if not self.config.USE_PPM:
             self._implicit_fall(
                 mixing_ratio=mixing_ratio_rain,
                 terminal_speed=terminal_speed_rain,
