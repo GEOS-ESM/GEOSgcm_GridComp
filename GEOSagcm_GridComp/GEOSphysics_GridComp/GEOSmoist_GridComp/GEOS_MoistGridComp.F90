@@ -1506,7 +1506,7 @@ contains
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'CLDTOP_SC',                                      &
          LONG_NAME = 'Cloud_top_pressure_from_shallow_convection',&
-         UNITS     = 'm',                                 &
+         UNITS     = 'Pa',                                 &
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                         &
          RC=STATUS  )
