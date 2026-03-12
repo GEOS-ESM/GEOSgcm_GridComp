@@ -659,9 +659,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! allocate imports defined on mesh elements
     allocate(ICESMB_MESH(num_elements))  
 
-    call ESMF_VMBarrier(vm, rc=status) ! don't know why this is here...
-    VERIFY_(STATUS)
-
     ! initialize ISSM outputs to zero 
     ICESURF_MESH(:) = 0.0_dp
     ICETHICK_MESH(:) = 0.0_dp
