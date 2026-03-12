@@ -1062,12 +1062,12 @@ contains
     qpert_out(:idim)             = 0.0
 
     cbmf_out(:idim)              = 0.0
-    plcl_out(:idim)              = 0.0
-    pinv_out(:idim)              = 0.0
-    plfc_out(:idim)              = 0.0
-    prel_out(:idim)              = 0.0
-    pbup_out(:idim)              = 0.0
-    cldhgt_out(:idim)            = 0.0
+    plcl_out(:idim)              = MAPL_UNDEF
+    pinv_out(:idim)              = MAPL_UNDEF
+    plfc_out(:idim)              = MAPL_UNDEF
+    prel_out(:idim)              = MAPL_UNDEF
+    pbup_out(:idim)              = MAPL_UNDEF
+    cldhgt_out(:idim)            = MAPL_UNDEF
 
 #ifdef UWDIAG
     cinh_out(:idim)              = MAPL_UNDEF
@@ -4565,11 +4565,12 @@ contains
      fdr_out(i,1:k0)             = MAPL_UNDEF
 
      cbmf_out(i)                 = 0.   
-     plcl_out(i)                  = MAPL_UNDEF
-     pinv_out(i)                  = MAPL_UNDEF
-     prel_out(i)                  = MAPL_UNDEF
-     plfc_out(i)                  = MAPL_UNDEF
-     pbup_out(i)                  = MAPL_UNDEF
+     plcl_out(i)                 = MAPL_UNDEF
+     pinv_out(i)                 = MAPL_UNDEF
+     prel_out(i)                 = MAPL_UNDEF
+     plfc_out(i)                 = MAPL_UNDEF
+     pbup_out(i)                 = MAPL_UNDEF
+     cldhgt_out(i)               = MAPL_UNDEF
      
 #ifdef UWDIAG
      cnt_out(i)                  = 1.
