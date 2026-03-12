@@ -465,7 +465,6 @@ subroutine SetServices ( GC, RC )
   ! ------------------------------ END SAVE MESH ---------------------------
 
     ! Create losctream that match mesh element id, then set it to this GC and MAPL
-    !
     ! note: original attached/atmospheric grid and landice tile locsstream have
     ! been stored in the internal state
     mesh_grid = create_mesh_grid(_RC)
@@ -718,7 +717,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! convert SMB to units of [m/s] (ice-equivalent) before passing to ISSM
     ICESMB_MESH = ICESMB_MESH/rho_ice
 
-    ! NOTE: do we need the barriers before/after ISSM run?
     call ESMF_VMBarrier(vm, rc=status); VERIFY_(STATUS)
 
     ! call run method from ISSM library 
@@ -760,7 +758,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     issm_exports_state%ICEVEL_TILE = ICEVEL_TILE
 
   end if 
-
+  
+  ! barrier to ensure regridding completes before any deallocates
   call ESMF_VMBarrier(vm, rc=status)
   VERIFY_(STATUS)
 
