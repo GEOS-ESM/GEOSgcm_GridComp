@@ -671,7 +671,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     routehandle_m2g = internal_state%routehandle_m2g  ! mesh to grid 
     routehandle_g2m = internal_state%routehandle_g2m  ! grid to mesh
 
-    ! git landice tile dimensions
+    ! get landice tile dimensions
     call MAPL_LocStreamGet(internal_state%locstream, NT_LOCAL=NT, _RC)
 
     ! get grid dimensions
@@ -680,7 +680,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     JM = local_dims(2)
 
     ! allocate pointer on grid for regridding (reused multiple times)
-    allocate(VAR_GRID(IM,JM), STAT=STATUS ); VERIFY_(STATUS)
+    allocate(VAR_GRID(IM,JM), STAT=STATUS); VERIFY_(STATUS)
      
     call ESMF_UserCompGetInternalState(GC, 'ISSM_EXPORTS', issm_exports_wrap, status); VERIFY_(STATUS)
     issm_exports_state => issm_exports_wrap%ptr
