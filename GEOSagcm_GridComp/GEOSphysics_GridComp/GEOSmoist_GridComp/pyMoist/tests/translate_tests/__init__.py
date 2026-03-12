@@ -7,7 +7,7 @@ from .GFDL_1M.driver.translate_GFDL_1M_FallSpeed import TranslateGFDL_1M_FallSpe
 from .GFDL_1M.driver.translate_GFDL_1M_IceCloud import TranslateGFDL_1M_IceCloud
 from .GFDL_1M.driver.translate_GFDL_1M_TerminalFall import TranslateGFDL_1M_TerminalFall
 from .GFDL_1M.driver.translate_GFDL_1M_WarmRain import TranslateGFDL_1M_WarmRain
-from .GFDL_1M.driver.translate_GFDL_driver_tables import TranslateGFDL_driver_tables
+from .GFDL_1M.driver.translate_GFDL_1M_DriverTables import TranslateGFDL_1M_DriverTables
 from .GFDL_1M.PhaseChange.translate_GFDL_1M_Evaporate import TranslateGFDL_1M_Evaporate
 from .GFDL_1M.PhaseChange.translate_GFDL_1M_HydrostaticPDF import TranslateGFDL_1M_HydrostaticPDF
 from .GFDL_1M.PhaseChange.translate_GFDL_1M_MeltFreeze import TranslateGFDL_1M_MeltFreeze
@@ -62,7 +62,7 @@ __all__ = [
     "TranslateGFDL_1M_IceCloud",
     "TranslateGFDL_1M_TerminalFall",
     "TranslateGFDL_1M_WarmRain",
-    "TranslateGFDL_driver_tables",
+    "TranslateGFDL_1M_DriverTables",
     "TranslateGFDL_1M_Evaporate",
     "TranslateGFDL_1M_HydrostaticPDF",
     "TranslateGFDL_1M_MeltFreeze",

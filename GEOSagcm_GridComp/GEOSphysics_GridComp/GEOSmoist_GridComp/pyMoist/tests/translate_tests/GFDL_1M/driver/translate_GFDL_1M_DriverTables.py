@@ -5,7 +5,7 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.GFDL_1M.driver.sat_tables import get_tables
 
 
-class TranslateGFDL_driver_tables(TranslateFortranData2Py):
+class TranslateGFDL_1M_DriverTables(TranslateFortranData2Py):
     def __init__(self, grid, namelist: Namelist, stencil_factory: StencilFactory):
         super().__init__(grid, stencil_factory)
         self.stencil_factory = stencil_factory
