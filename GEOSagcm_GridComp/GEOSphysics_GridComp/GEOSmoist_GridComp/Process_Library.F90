@@ -249,7 +249,7 @@ module GEOSmoist_Process_Library
   public :: MELTFRZ
   public :: DIAGNOSE_PRECIP_TYPE
   public :: VertInterp, cs_interpolator
-  public :: find_l, FIND_EIS, FIND_KLCL
+  public :: find_l, FIND_EIS, FIND_KLCL, GET_LCL_AGL
   public :: find_cldtop, find_cldbase, gw_prof
   public :: make_IceNumber, make_DropletNumber, make_RainNumber
   public :: dissipative_ke_heating
@@ -802,7 +802,7 @@ module GEOSmoist_Process_Library
 
 
   subroutine BUOYANCY2( IM, JM, LM, T, Q, QS, DQS, DZ, ZLO, PLO, PS, SBCAPE, MLCAPE, MUCAPE, &
-                        SBCIN, MLCIN, MUCIN, BYNCY, LFC, LNB )
+                        SBCIN, MLCIN, MUCIN, BYNCY, LFC, LNB, LCL )
 
     ! Computes surface-based (SB), mixed-layer (ML) and most unstable (MU) versions
     ! of CAPE and CIN.
@@ -811,7 +811,7 @@ module GEOSmoist_Process_Library
     real, dimension(:,:,:), intent(in)  :: T, Q, QS, DQS, DZ, ZLO, PLO
     real, dimension(:,:,:), intent(out) :: BYNCY
     real, pointer, dimension(:,:)       :: MLCAPE, MUCAPE, MLCIN, MUCIN
-    real, dimension(:,:)                :: SBCAPE, SBCIN, LFC, LNB
+    real, dimension(:,:)                :: SBCAPE, SBCIN, LFC, LNB, LCL
     real, dimension(:,:),   intent(in)  :: PS
 
     real, dimension(IM,JM,LM)           :: Tve
@@ -3119,6 +3119,54 @@ module GEOSmoist_Process_Library
     end do
 
   end function FIND_KLCL
+
+  function GET_LCL_AGL( T, Q, PL, Z, IM, JM, LM ) result( LCL_AGL )
+    ! !DESCRIPTION: 
+    ! Calculates the precise height of the Lifting Condensation Level (LCL)
+    ! in meters Above Ground Level (AGL).
+    
+    integer,                      intent(in) :: IM, JM, LM                 
+    real,    dimension(IM,JM,LM), intent(in) :: T, Q, PL, Z ! T(K), PL(mb), Z(m)
+    real,    dimension(IM,JM)                :: LCL_AGL
+               
+    real    :: RHSFC, TLCL, Rm, Cpm, PLCL, ZSFC
+    real    :: frac
+    integer :: I, J, L
+            
+    do J=1,JM
+       do I=1,IM
+          ! 1. Calculate Surface Properties
+          ZSFC  = Z(I,J,LM)
+          RHSFC = 100.0*Q(I,J,LM)/GEOS_QSAT( T(I,J,LM), PL(I,J,LM) ) 
+          TLCL  = FIND_TLCL(T(I,J,LM), RHSFC) 
+          
+          ! 2. Calculate Pressure at LCL (Dry Adiabatic Ascent)
+          Rm    = (1.0-Q(I,J,LM))*MAPL_RGAS  + Q(I,J,LM)*MAPL_RVAP
+          Cpm   = (1.0-Q(I,J,LM))*MAPL_CPDRY + Q(I,J,LM)*MAPL_CPVAP
+          PLCL  = PL(I,J,LM) * ( (TLCL/T(I,J,LM))**(Cpm/Rm) ) 
+
+          ! 3. Find the bracket levels and interpolate for Height
+          LCL_AGL(I,J) = 0.0 ! Default for saturated surface
+          
+          if (PLCL < PL(I,J,LM)) then
+             do L = LM-1, 1, -1
+                if (PL(I,J,L) <= PLCL) then
+                   ! Log-P interpolation between level L and L+1
+                   ! L is above LCL, L+1 is below LCL
+                   frac = log(PLCL / PL(I,J,L+1)) / log(PL(I,J,L) / PL(I,J,L+1))
+                   LCL_AGL(I,J) = Z(I,J,L+1) + frac * (Z(I,J,L) - Z(I,J,L+1)) - ZSFC
+                   exit
+                end if
+                
+                ! Safety: if we hit the top of the model
+                if (L == 1) LCL_AGL(I,J) = Z(I,J,1) - ZSFC
+             end do
+          end if
+          
+       end do
+    end do
+
+  end function GET_LCL_AGL
 
   !Find cloud top based on cloud fraction
 
