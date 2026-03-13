@@ -795,11 +795,6 @@ CONTAINS
                 if (IENS==MID ) sgs_vvel_md(i,j,k) = sgs_vvel_5d(i,flip(k),j,IENS)
                 if (IENS==SHAL) sgs_vvel_sh(i,j,k) = sgs_vvel_5d(i,flip(k),j,IENS)
 
-                !- Export entrainment rates used by GF
-                if (IENS==DEEP) entr_dp(i,j,k) = entr5d(i,flip(k),j,IENS)
-                if (IENS==MID ) entr_md(i,j,k) = entr5d(i,flip(k),j,IENS)
-                if (IENS==SHAL) entr_sh(i,j,k) = entr5d(i,flip(k),j,IENS)
-
                 !- special treatment for CNV_DQCDT: 'convective_condensate_source',  UNITS     = 'kg m-2 s-1',
                 !- SRC_CI contains contributions from deep, shallow,... . So, do not need to be accumulated over  CNV_DQCDT
                 !- note the SRC_CI has different array structure (k,i,j) _not_ (i,j,k)
@@ -826,6 +821,10 @@ CONTAINS
 
                 if(zup5d(i,flip(k),j,IENS) > 1.0e-6) then
                    !-'entrainment parameter',  UNITS     ='m-1',
+                !- Export entrainment rates used by GF
+                   if (IENS==DEEP) entr_dp(i,j,k) = up_massentr5d(i,flip(k),j,IENS)/(DZ(i,j,k)*zup5d(i,flip(k),j,IENS))
+                   if (IENS==MID ) entr_md(i,j,k) = up_massentr5d(i,flip(k),j,IENS)/(DZ(i,j,k)*zup5d(i,flip(k),j,IENS))
+                   if (IENS==SHAL) entr_sh(i,j,k) = up_massentr5d(i,flip(k),j,IENS)/(DZ(i,j,k)*zup5d(i,flip(k),j,IENS))
                    ENTLAM  (i,j,k) =  ENTLAM (i,j,k) + (up_massentr5d(i,flip(k),j,IENS)/(DZ(i,j,k)*zup5d(i,flip(k),j,IENS)))
 
                    !-'updraft_vertical_velocity',            UNITS     = 'hPa s-1',
@@ -2583,13 +2582,14 @@ loop0:       do k=kts,ktf
             else
                entr_rate(i,k)=entr_rate(i,k)*(1.3-frh)
             endif
-    ! WMP    entr_rate(i,k) = max(entr_rate(i,k),min_entr_rate)
-
-            cd(i,k)=0.75e-4*(1.6-frh)
-    ! WMP    if(trim(cumulus) == 'deep'   ) cd(i,k)=0.10*entr_rate(i,k)
-    ! WMP    if(trim(cumulus) == 'mid'    ) cd(i,k)=0.50*entr_rate(i,k)
-    ! WMP    if(trim(cumulus) == 'shallow') cd(i,k)=0.75*entr_rate(i,k)
-
+            if (ZERO_DIFF_ENTR) then
+               cd(i,k)=0.75e-4*(1.6-frh)    
+            else
+               entr_rate(i,k) = max(entr_rate(i,k),min_entr_rate)
+               if(trim(cumulus) == 'deep'   ) cd(i,k)=0.10*entr_rate(i,k)
+               if(trim(cumulus) == 'mid'    ) cd(i,k)=0.50*entr_rate(i,k)
+               if(trim(cumulus) == 'shallow') cd(i,k)=0.75*entr_rate(i,k)
+            endif
          enddo
       ENDDO
 !
