@@ -118,12 +118,7 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
                                    Sticky       = .false.  , RC=STATUS); VERIFY_(STATUS)
 
     if (LM .eq. 72) then
-      call MAPL_GetResource(MAPL, USE_GF2020                , 'USE_GF2020:'            ,default= 0,    RC=STATUS );VERIFY_(STATUS)
-    else
       call MAPL_GetResource(MAPL, USE_GF2020                , 'USE_GF2020:'            ,default= 1,    RC=STATUS );VERIFY_(STATUS)
-    endif
-    call MAPL_GetResource(MAPL, REPORT_GF_NEGATIVES, 'REPORT_GF_NEGATIVES:', default=.FALSE., RC=STATUS) ; VERIFY_(STATUS)
-    IF (USE_GF2020==1) THEN
       call MAPL_GetResource(MAPL, ZERO_DIFF_LAND            , 'ZERO_DIFF_LAND:'        ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_VVEL            , 'ZERO_DIFF_VVEL:'        ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_ENTR            , 'ZERO_DIFF_ENTR:'        ,default= 1,    RC=STATUS );VERIFY_(STATUS)
@@ -131,6 +126,18 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, ZERO_DIFF_AUTOCONV        , 'ZERO_DIFF_AUTOCONV:'    ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_VGRID           , 'ZERO_DIFF_VGRID:'       ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_OTHER           , 'ZERO_DIFF_OTHER:'       ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+    else
+      call MAPL_GetResource(MAPL, USE_GF2020                , 'USE_GF2020:'            ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, ZERO_DIFF_LAND            , 'ZERO_DIFF_LAND:'        ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, ZERO_DIFF_VVEL            , 'ZERO_DIFF_VVEL:'        ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, ZERO_DIFF_ENTR            , 'ZERO_DIFF_ENTR:'        ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, ZERO_DIFF_TAU             , 'ZERO_DIFF_TAU:'         ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, ZERO_DIFF_AUTOCONV        , 'ZERO_DIFF_AUTOCONV:'    ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, ZERO_DIFF_VGRID           , 'ZERO_DIFF_VGRID:'       ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, ZERO_DIFF_OTHER           , 'ZERO_DIFF_OTHER:'       ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+    endif
+    call MAPL_GetResource(MAPL, REPORT_GF_NEGATIVES, 'REPORT_GF_NEGATIVES:', default=.FALSE., RC=STATUS) ; VERIFY_(STATUS)
+    IF (USE_GF2020==1) THEN
       call MAPL_GetResource(MAPL, ICUMULUS_GF(DEEP)         , 'DEEP:'                  ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ICUMULUS_GF(SHAL)         , 'SHALLOW:'               ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ICUMULUS_GF(MID)          , 'CONGESTUS:'             ,default= 1,    RC=STATUS );VERIFY_(STATUS)

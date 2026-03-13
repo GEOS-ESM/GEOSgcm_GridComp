@@ -2583,13 +2583,14 @@ loop0:       do k=kts,ktf
             else
                entr_rate(i,k)=entr_rate(i,k)*(1.3-frh)
             endif
-    ! WMP    entr_rate(i,k) = max(entr_rate(i,k),min_entr_rate)
-
-            cd(i,k)=0.75e-4*(1.6-frh)
-    ! WMP    if(trim(cumulus) == 'deep'   ) cd(i,k)=0.10*entr_rate(i,k)
-    ! WMP    if(trim(cumulus) == 'mid'    ) cd(i,k)=0.50*entr_rate(i,k)
-    ! WMP    if(trim(cumulus) == 'shallow') cd(i,k)=0.75*entr_rate(i,k)
-
+            if (ZERO_DIFF_ENTR) then
+               cd(i,k)=0.75e-4*(1.6-frh)    
+            else
+               entr_rate(i,k) = max(entr_rate(i,k),min_entr_rate)
+               if(trim(cumulus) == 'deep'   ) cd(i,k)=0.10*entr_rate(i,k)
+               if(trim(cumulus) == 'mid'    ) cd(i,k)=0.50*entr_rate(i,k)
+               if(trim(cumulus) == 'shallow') cd(i,k)=0.75*entr_rate(i,k)
+            endif
          enddo
       ENDDO
 !
