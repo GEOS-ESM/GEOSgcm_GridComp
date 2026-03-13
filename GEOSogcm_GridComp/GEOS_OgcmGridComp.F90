@@ -1658,7 +1658,7 @@ contains
 ! Verify that the saltwater ice variables are friendly to seaice
 !---------------------------------------------------------------
 
-#ifdef FRIENDLY
+#ifdef ENFORCE_SEAICE_FRIENDLY
     if (.not. seaIceT_extData) then
       call ESMF_StateGet (IMPORT, 'TI', FIELD, _RC)
       call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, _RC)

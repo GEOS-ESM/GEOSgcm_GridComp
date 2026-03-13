@@ -75,6 +75,7 @@ type T_GCM_STATE
    type (MAPL_LocStreamXFORM) :: XFORM_O2A
    type (T_GC2GC_STATE)       :: a2o_state
    type (T_GC2GC_STATE)       :: o2a_state
+   type (T_GC2GC_STATE)       :: o2a_frndl ! This should be fixed in MAPL3
    type(ESMF_State)           :: impSKIN ! Ocean thin layer
    type(ESMF_State)           :: expSKIN
    type(ESMF_Alarm)           :: alarmOcn
@@ -173,6 +174,7 @@ contains
     integer                             :: iDUAL_OCEAN
 
     type (T_GC2GC_STATE)                :: a2o_state, o2a_state
+    type (T_GC2GC_STATE)                :: o2a_frndl
 !=============================================================================
 
 ! Begin...
@@ -761,27 +763,27 @@ contains
     ! o2a
     if (DO_CICE_THERMO == 0) then
        if (.not. seaIceT_extData) then
-          call o2a_state%set('TSKINI', 'TI', _RC)
+          call o2a_frndl%set('TSKINI', 'TI', _RC)
        endif
     else
-       call o2a_state%set('TSKINI', 'TI', _RC)
+       call o2a_frndl%set('TSKINI', 'TI', _RC)
     endif
 
        if (.not. seaIceT_extData) then
          if (DO_CICE_THERMO <= 1) then
-            call o2a_state%set('HSKINI', 'HI', _RC)
+            call o2a_frndl%set('HSKINI', 'HI', _RC)
          endif
-         call o2a_state%set('SSKINI', 'SI', _RC)
+         call o2a_frndl%set('SSKINI', 'SI', _RC)
        endif
 
        if (DO_CICE_THERMO == 1) then
-          call o2a_state%set('FR', 'FRACICE', _RC)
-          call o2a_state%set('VOLICE', 'VOLICE', _RC)
-          call o2a_state%set('VOLSNO', 'VOLSNO', _RC)
-          call o2a_state%set('ERGICE', 'ERGICE', _RC)
-          call o2a_state%set('ERGSNO', 'ERGSNO', _RC)
-          call o2a_state%set('TAUAGE', 'TAUAGE', _RC)
-          call o2a_state%set('VOLPOND', 'MPOND', _RC)
+          call o2a_frndl%set('FR', 'FRACICE', _RC)
+          call o2a_frndl%set('VOLICE', 'VOLICE', _RC)
+          call o2a_frndl%set('VOLSNO', 'VOLSNO', _RC)
+          call o2a_frndl%set('ERGICE', 'ERGICE', _RC)
+          call o2a_frndl%set('ERGSNO', 'ERGSNO', _RC)
+          call o2a_frndl%set('TAUAGE', 'TAUAGE', _RC)
+          call o2a_frndl%set('VOLPOND', 'MPOND', _RC)
        endif
 
        call o2a_state%set('UW', 'UW', _RC)
@@ -841,6 +843,8 @@ contains
 
     gcm_internal_state%a2o_state = a2o_state
     gcm_internal_state%o2a_state = o2a_state
+! Attention (MAPL3)
+    gcm_internal_state%o2a_frndl = o2a_frndl
 
     RETURN_(ESMF_SUCCESS)
 
@@ -1638,7 +1642,11 @@ contains
      call gcm_internal_state%a2o_state%set(DT=DT, COUPLE_DT=COUPLE_DT, _RC)
 
      call gcm_internal_state%o2a_state%set(DT=COUPLE_DT, COUPLE_DT=COUPLE_DT, _RC)
+     call gcm_internal_state%o2a_frndl%set(DT=COUPLE_DT, COUPLE_DT=COUPLE_DT, _RC)
    end block
+   
+! this need extra work, get a resource, etc
+   call gcm_internal_state%a2o_state%set(average=.FALSE., _RC)
 
    !loop over cpld vars (say A2O)
 
@@ -1665,6 +1673,13 @@ contains
         name="O2A", _RC)
 
    call gcm_internal_state%o2a_state%set( &
+        xform=GCM_INTERNAL_STATE%xform_o2a, _RC)
+   
+   call gcm_internal_state%o2a_frndl%set( &
+        stateIn=GIM(OGCM), stateOut=GCM_INTERNAL_STATE%expSKIN, &
+        name="O2Afrdnl", _RC)
+
+   call gcm_internal_state%o2a_frndl%set( &
         xform=GCM_INTERNAL_STATE%xform_o2a, _RC)
    
    call AllocateExports(GCM_INTERNAL_STATE%expSKIN, &
@@ -1718,6 +1733,7 @@ contains
 
    call gcm_internal_state%a2o_state%g2ginitialize(clock, _RC)
    call gcm_internal_state%o2a_state%g2ginitialize(clock, _RC)
+   call gcm_internal_state%o2a_frndl%g2ginitialize(clock, _RC)
 
 #ifdef PRINT_STATES
     call WRITE_PARALLEL ( trim(Iam)//": IMPORT State" )
@@ -2389,6 +2405,7 @@ contains
 
        call ESMF_VMBarrier(VM, _RC)
        call gcm_internal_state%o2a_state%regrid(_RC)
+       call gcm_internal_state%o2a_frndl%regrid(_RC)
        call ESMF_VMBarrier(VM, _RC)
        call ESMF_AlarmRingerOff(GCM_INTERNAL_STATE%alarmOcn, _RC)
 
@@ -2683,17 +2700,6 @@ contains
 !ALT we could have a finalize method to release memory
 ! for example call ESMF_FieldRegridRelease(routeHandle, rc=status)
 
-#ifdef FIXME    
- !<<<<<<<<<<<<< TO DO:
- move the subcycling loop (i.e. private clock) in Ogcm
- make ogcm DT coupling DT
- DEAL with friendliness
-!!!  call MAPL_CopyFriendliness(GIM(OGCM),'TI',expSKIN,'TSKINI' ,_RC)
-
-  
- !>>>>>>>>>>>>>
-#endif
- !<<<<<<<<<<<<<
 
 end module GEOS_GcmGridCompMod
 

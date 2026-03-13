@@ -29,10 +29,12 @@ module gc2gc
      procedure, private :: MAPL_ConnectSetXform
      procedure, private :: MAPL_ConnectSetVars
      procedure, private :: MAPL_ConnectSetDt
+     procedure, private :: MAPL_ConnectSetAverage
      generic :: set => MAPL_ConnectSetName
      generic :: set => MAPL_ConnectSetXform
      generic :: set => MAPL_ConnectSetVars
      generic :: set => MAPL_ConnectSetDt
+     generic :: set => MAPL_ConnectSetAverage
   end type T_GC2GC_STATE
 
   public T_GC2GC_STATE
@@ -51,6 +53,13 @@ contains
     character (len=ESMF_MAXSTR), allocatable  :: itemNameList(:)
 
     _RETURN_UNLESS(this%average)
+
+    ! create couplers as needed
+    this%CCS = ESMF_CplCompCreate (                  &
+         NAME = this%name, &
+         contextFlag = ESMF_CONTEXT_PARENT_VM,              &
+         _RC )
+    this%stateTmp = ESMF_StateCreate(name='TmpInOut',_RC)
 
     ! fill the export state of the coupler
     call ESMF_StateGet(this%stateIn, ITEMCOUNT=N, _RC)
@@ -175,9 +184,9 @@ contains
        if (.not. any(itemNameListOut==this%vars(n)%vOut)) skip=.true.
        if (.not. this%alreadyPrint) then
           if (MAPL_Am_I_Root()) then
-             print *, "DEBUG: var "//trim(this%vars(n)%vIn),skip
+             print *, "DEBUG: var "//trim(this%vars(n)%vIn),&
+                  "  "//trim(this%name), skip
           end if
-          this%alreadyPrint = .true.
        end if
 
        if (skip) cycle
@@ -219,6 +228,7 @@ contains
           _FAIL("Unsupported rank")
        end select
     end do
+    if (.not. this%alreadyPrint) this%alreadyPrint = .true.
     deallocate(itemNameListIn, itemNameListOut)
     _RETURN(ESMF_SUCCESS)
 
@@ -286,17 +296,20 @@ contains
 
     this%average = dt/=couple_dt
     
-    if (this%average) then
-       ! create couplers as needed
-       this%CCS = ESMF_CplCompCreate (                  &
-            NAME = this%name, &
-            contextFlag = ESMF_CONTEXT_PARENT_VM,              &
-            _RC )
-       this%stateTmp = ESMF_StateCreate(name='TmpInOut',_RC)
-    end if
-
     _RETURN(ESMF_SUCCESS)
   end subroutine MAPL_ConnectSetDt
+
+  subroutine MAPL_ConnectSetAverage(this, average, rc)
+    class (T_GC2GC_STATE), intent(INOUT) :: this
+    logical, intent(IN) :: average
+    integer, optional, intent(OUT) :: rc
+
+    integer :: status
+    
+    this%average = average
+    
+    _RETURN(ESMF_SUCCESS)
+  end subroutine MAPL_ConnectSetAverage
 
 end module gc2gc
 
