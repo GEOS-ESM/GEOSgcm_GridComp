@@ -63,6 +63,158 @@ class TranslateGFDL_1M_Driver(TranslateFortranData2Py):
         }
 
         self.out_vars = self.in_vars["data_vars"].copy()
+        self.out_vars.update(
+            {
+                "DEBUG_vapor_unmodified_setup": {},
+                "DEBUG_vapor_modified_setup": {},
+                "DEBUG_vapor_unmodified_fallspeed": {},
+                "DEBUG_vapor_modified_fallspeed": {},
+                "DEBUG_vapor_unmodified_terminalfall": {},
+                "DEBUG_vapor_modified_terminalfall": {},
+                "DEBUG_vapor_unmodified_warmrain": {},
+                "DEBUG_vapor_modified_warmrain": {},
+                "DEBUG_vapor_unmodified_icecloud": {},
+                "DEBUG_vapor_modified_icecloud": {},
+                #
+                "DEBUG_TERMINALFALL_IN_driver_local_t_terminalfall": {},
+                "DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_vapor_terminalfall": {},
+                "DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_liquid_terminalfall": {},
+                "DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_rain_terminalfall": {},
+                "DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_graupel_terminalfall": {},
+                "DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_snow_terminalfall": {},
+                "DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_ice_terminalfall": {},
+                "DEBUG_TERMINALFALL_IN_driver_local_ice_precip_flux_terminalfall": {},
+                "DEBUG_TERMINALFALL_IN_driver_local_w_terminalfall": {},
+                "DEBUG_TERMINALFALL_IN_driver_local_dz_terminalfall": {},
+                "DEBUG_TERMINALFALL_IN_driver_local_dp_terminalfall": {},
+                "DEBUG_TERMINALFALL_IN_driver_local_terminal_speed_ice_terminalfall": {},
+                "DEBUG_TERMINALFALL_IN_driver_local_terminal_speed_snow_terminalfall": {},
+                "DEBUG_TERMINALFALL_IN_driver_local_terminal_speed_graupel_terminalfall": {},
+                "DEBUG_TERMINALFALL_IN_surface_precip_rain_terminalfall": {},
+                "DEBUG_TERMINALFALL_IN_surface_precip_snow_terminalfall": {},
+                "DEBUG_TERMINALFALL_IN_surface_precip_graupel_terminalfall": {},
+                "DEBUG_TERMINALFALL_IN_surface_precip_ice_terminalfall": {},
+                #
+                "DEBUG_TERMINALFALL_OUT_driver_local_t_terminalfall": {},
+                "DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_vapor_terminalfall": {},
+                "DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_liquid_terminalfall": {},
+                "DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_rain_terminalfall": {},
+                "DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_graupel_terminalfall": {},
+                "DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_snow_terminalfall": {},
+                "DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_ice_terminalfall": {},
+                "DEBUG_TERMINALFALL_OUT_driver_local_ice_precip_flux_terminalfall": {},
+                "DEBUG_TERMINALFALL_OUT_driver_local_w_terminalfall": {},
+                "DEBUG_TERMINALFALL_OUT_driver_local_dz_terminalfall": {},
+                "DEBUG_TERMINALFALL_OUT_driver_local_dp_terminalfall": {},
+                "DEBUG_TERMINALFALL_OUT_driver_local_terminal_speed_ice_terminalfall": {},
+                "DEBUG_TERMINALFALL_OUT_driver_local_terminal_speed_snow_terminalfall": {},
+                "DEBUG_TERMINALFALL_OUT_driver_local_terminal_speed_graupel_terminalfall": {},
+                "DEBUG_TERMINALFALL_OUT_surface_precip_rain_terminalfall": {},
+                "DEBUG_TERMINALFALL_OUT_surface_precip_snow_terminalfall": {},
+                "DEBUG_TERMINALFALL_OUT_surface_precip_graupel_terminalfall": {},
+                "DEBUG_TERMINALFALL_OUT_surface_precip_ice_terminalfall": {},
+                #
+                "DEBUG_WARMRAIN_IN_driver_local_dp_warmrain": {},
+                "DEBUG_WARMRAIN_IN_driver_local_dz_warmrain": {},
+                "DEBUG_WARMRAIN_IN_driver_local_t_warmrain": {},
+                "DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_vapor_warmrain": {},
+                "DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_liquid_warmrain": {},
+                "DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_rain_warmrain": {},
+                "DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_ice_warmrain": {},
+                "DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_snow_warmrain": {},
+                "DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_graupel_warmrain": {},
+                "DEBUG_WARMRAIN_IN_driver_local_cloud_fraction_warmrain": {},
+                "DEBUG_WARMRAIN_IN_driver_local_ccn_warmrain": {},
+                "DEBUG_WARMRAIN_IN_driver_local_density_warmrain": {},
+                "DEBUG_WARMRAIN_IN_driver_local_density_factor_warmrain": {},
+                "DEBUG_WARMRAIN_IN_driver_local_c_praut_warmrain": {},
+                "DEBUG_WARMRAIN_IN_driver_local_terminal_speed_rain_warmrain": {},
+                "DEBUG_WARMRAIN_IN_driver_local_evaporation_warmrain": {},
+                "DEBUG_WARMRAIN_IN_driver_local_liquid_precip_flux_warmrain": {},
+                "DEBUG_WARMRAIN_IN_driver_local_w_warmrain": {},
+                "DEBUG_WARMRAIN_IN_driver_local_rh_limited_warmrain": {},
+                "DEBUG_WARMRAIN_IN_non_anvil_large_scale_evaporation_warmrain": {},
+                "DEBUG_WARMRAIN_IN_non_anvil_large_scale_liquid_precip_flux_warmrain": {},
+                "DEBUG_WARMRAIN_IN_non_anvil_large_scale_ice_precip_flux_warmrain": {},
+                "DEBUG_WARMRAIN_IN_driver_local_mass_warmrain": {},
+                "DEBUG_WARMRAIN_IN_driver_local_ice_precip_flux_warmrain": {},
+                "DEBUG_WARMRAIN_IN_driver_local_rain_warmrain": {},
+                "DEBUG_WARMRAIN_IN_surface_precip_rain_warmrain": {},
+                "DEBUG_WARMRAIN_IN_estimated_inversion_strength_warmrain": {},
+                "DEBUG_WARMRAIN_IN_driver_local_one_minus_sigma_warmrain": {},
+                #
+                "DEBUG_WARMRAIN_OUT_driver_local_dp_warmrain": {},
+                "DEBUG_WARMRAIN_OUT_driver_local_dz_warmrain": {},
+                "DEBUG_WARMRAIN_OUT_driver_local_t_warmrain": {},
+                "DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_vapor_warmrain": {},
+                "DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_liquid_warmrain": {},
+                "DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_rain_warmrain": {},
+                "DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_ice_warmrain": {},
+                "DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_snow_warmrain": {},
+                "DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_graupel_warmrain": {},
+                "DEBUG_WARMRAIN_OUT_driver_local_cloud_fraction_warmrain": {},
+                "DEBUG_WARMRAIN_OUT_driver_local_ccn_warmrain": {},
+                "DEBUG_WARMRAIN_OUT_driver_local_density_warmrain": {},
+                "DEBUG_WARMRAIN_OUT_driver_local_density_factor_warmrain": {},
+                "DEBUG_WARMRAIN_OUT_driver_local_c_praut_warmrain": {},
+                "DEBUG_WARMRAIN_OUT_driver_local_terminal_speed_rain_warmrain": {},
+                "DEBUG_WARMRAIN_OUT_driver_local_evaporation_warmrain": {},
+                "DEBUG_WARMRAIN_OUT_driver_local_liquid_precip_flux_warmrain": {},
+                "DEBUG_WARMRAIN_OUT_driver_local_w_warmrain": {},
+                "DEBUG_WARMRAIN_OUT_driver_local_rh_limited_warmrain": {},
+                "DEBUG_WARMRAIN_OUT_non_anvil_large_scale_evaporation_warmrain": {},
+                "DEBUG_WARMRAIN_OUT_non_anvil_large_scale_liquid_precip_flux_warmrain": {},
+                "DEBUG_WARMRAIN_OUT_non_anvil_large_scale_ice_precip_flux_warmrain": {},
+                "DEBUG_WARMRAIN_OUT_driver_local_mass_warmrain": {},
+                "DEBUG_WARMRAIN_OUT_driver_local_ice_precip_flux_warmrain": {},
+                "DEBUG_WARMRAIN_OUT_driver_local_rain_warmrain": {},
+                "DEBUG_WARMRAIN_OUT_surface_precip_rain_warmrain": {},
+                "DEBUG_WARMRAIN_OUT_estimated_inversion_strength_warmrain": {},
+                "DEBUG_WARMRAIN_OUT_driver_local_one_minus_sigma_warmrain": {},
+                #
+                "DEBUG_ICECLOUD_IN_driver_local_t_icecloud": {},
+                "DEBUG_ICECLOUD_IN_driver_local_p_dry_icecloud": {},
+                "DEBUG_ICECLOUD_IN_driver_local_dp_icecloud": {},
+                "DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_vapor_icecloud": {},
+                "DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_liquid_icecloud": {},
+                "DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_rain_icecloud": {},
+                "DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_ice_icecloud": {},
+                "DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_snow_icecloud": {},
+                "DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_graupel_icecloud": {},
+                "DEBUG_ICECLOUD_IN_driver_local_cloud_fraction_icecloud": {},
+                "DEBUG_ICECLOUD_IN_driver_local_terminal_speed_snow_icecloud": {},
+                "DEBUG_ICECLOUD_IN_driver_local_terminal_speed_graupel_icecloud": {},
+                "DEBUG_ICECLOUD_IN_driver_local_terminal_speed_rain_icecloud": {},
+                "DEBUG_ICECLOUD_IN_driver_local_density_icecloud": {},
+                "DEBUG_ICECLOUD_IN_driver_local_density_factor_icecloud": {},
+                "DEBUG_ICECLOUD_IN_driver_local_rh_limited_icecloud": {},
+                "DEBUG_ICECLOUD_IN_non_anvil_large_scale_sublimation_icecloud": {},
+                "DEBUG_ICECLOUD_IN_driver_local_ccn_icecloud": {},
+                "DEBUG_ICECLOUD_IN_convection_fraction_icecloud": {},
+                "DEBUG_ICECLOUD_IN_surface_type_icecloud": {},
+                #
+                "DEBUG_ICECLOUD_OUT_driver_local_t_icecloud": {},
+                "DEBUG_ICECLOUD_OUT_driver_local_p_dry_icecloud": {},
+                "DEBUG_ICECLOUD_OUT_driver_local_dp_icecloud": {},
+                "DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_vapor_icecloud": {},
+                "DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_liquid_icecloud": {},
+                "DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_rain_icecloud": {},
+                "DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_ice_icecloud": {},
+                "DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_snow_icecloud": {},
+                "DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_graupel_icecloud": {},
+                "DEBUG_ICECLOUD_OUT_driver_local_cloud_fraction_icecloud": {},
+                "DEBUG_ICECLOUD_OUT_driver_local_terminal_speed_snow_icecloud": {},
+                "DEBUG_ICECLOUD_OUT_driver_local_terminal_speed_graupel_icecloud": {},
+                "DEBUG_ICECLOUD_OUT_driver_local_terminal_speed_rain_icecloud": {},
+                "DEBUG_ICECLOUD_OUT_driver_local_density_icecloud": {},
+                "DEBUG_ICECLOUD_OUT_driver_local_density_factor_icecloud": {},
+                "DEBUG_ICECLOUD_OUT_driver_local_rh_limited_icecloud": {},
+                "DEBUG_ICECLOUD_OUT_non_anvil_large_scale_sublimation_icecloud": {},
+                "DEBUG_ICECLOUD_OUT_driver_local_ccn_icecloud": {},
+                "DEBUG_ICECLOUD_OUT_convection_fraction_icecloud": {},
+                "DEBUG_ICECLOUD_OUT_surface_type_icecloud": {},
+            }
+        )
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GFDL_1M-constants")
@@ -136,6 +288,156 @@ class TranslateGFDL_1M_Driver(TranslateFortranData2Py):
             config=config,
         )
 
+        from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+        DEBUG_vapor_unmodified_setup = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_vapor_modified_setup = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_vapor_unmodified_fallspeed = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_vapor_modified_fallspeed = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_vapor_unmodified_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_vapor_modified_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_vapor_unmodified_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_vapor_modified_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_vapor_unmodified_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_vapor_modified_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        #
+        DEBUG_TERMINALFALL_IN_driver_local_t_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_vapor_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_liquid_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_rain_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_graupel_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_snow_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_ice_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_IN_driver_local_ice_precip_flux_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_IN_driver_local_w_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_IN_driver_local_dz_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_IN_driver_local_dp_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_IN_driver_local_terminal_speed_ice_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_IN_driver_local_terminal_speed_snow_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_IN_driver_local_terminal_speed_graupel_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_IN_surface_precip_rain_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_IN_surface_precip_snow_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_IN_surface_precip_graupel_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_IN_surface_precip_ice_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        #
+        DEBUG_TERMINALFALL_OUT_driver_local_t_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_vapor_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_liquid_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_rain_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_graupel_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_snow_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_ice_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_OUT_driver_local_ice_precip_flux_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_OUT_driver_local_w_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_OUT_driver_local_dz_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_OUT_driver_local_dp_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_OUT_driver_local_terminal_speed_ice_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_OUT_driver_local_terminal_speed_snow_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_OUT_driver_local_terminal_speed_graupel_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_OUT_surface_precip_rain_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_OUT_surface_precip_snow_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_OUT_surface_precip_graupel_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_TERMINALFALL_OUT_surface_precip_ice_terminalfall = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        #
+        DEBUG_WARMRAIN_IN_driver_local_dp_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_IN_driver_local_dz_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_IN_driver_local_t_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_vapor_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_liquid_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_rain_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_ice_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_snow_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_graupel_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_IN_driver_local_cloud_fraction_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_IN_driver_local_ccn_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_IN_driver_local_density_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_IN_driver_local_density_factor_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_IN_driver_local_c_praut_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_IN_driver_local_terminal_speed_rain_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_IN_driver_local_evaporation_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_IN_driver_local_liquid_precip_flux_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_IN_driver_local_w_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_IN_driver_local_rh_limited_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_IN_non_anvil_large_scale_evaporation_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_IN_non_anvil_large_scale_liquid_precip_flux_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a")
+        DEBUG_WARMRAIN_IN_non_anvil_large_scale_ice_precip_flux_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a")
+        DEBUG_WARMRAIN_IN_driver_local_mass_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_IN_driver_local_ice_precip_flux_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_IN_driver_local_rain_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_IN_surface_precip_rain_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_IN_estimated_inversion_strength_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_IN_driver_local_one_minus_sigma_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        #
+        DEBUG_WARMRAIN_OUT_driver_local_dp_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_OUT_driver_local_dz_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_OUT_driver_local_t_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_vapor_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_liquid_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_rain_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_ice_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_snow_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_graupel_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_OUT_driver_local_cloud_fraction_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_OUT_driver_local_ccn_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_OUT_driver_local_density_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_OUT_driver_local_density_factor_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_OUT_driver_local_c_praut_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_OUT_driver_local_terminal_speed_rain_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_OUT_driver_local_evaporation_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_OUT_driver_local_liquid_precip_flux_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_OUT_driver_local_w_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_OUT_driver_local_rh_limited_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_OUT_non_anvil_large_scale_evaporation_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_OUT_non_anvil_large_scale_liquid_precip_flux_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a")
+        DEBUG_WARMRAIN_OUT_non_anvil_large_scale_ice_precip_flux_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a")
+        DEBUG_WARMRAIN_OUT_driver_local_mass_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_OUT_driver_local_ice_precip_flux_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_OUT_driver_local_rain_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_OUT_surface_precip_rain_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_OUT_estimated_inversion_strength_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_WARMRAIN_OUT_driver_local_one_minus_sigma_warmrain = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        #
+        DEBUG_ICECLOUD_IN_driver_local_t_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_IN_driver_local_p_dry_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_IN_driver_local_dp_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_vapor_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_liquid_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_rain_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_ice_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_snow_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_graupel_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_IN_driver_local_cloud_fraction_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_IN_driver_local_terminal_speed_snow_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_IN_driver_local_terminal_speed_graupel_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_IN_driver_local_terminal_speed_rain_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_IN_driver_local_density_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_IN_driver_local_density_factor_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_IN_driver_local_rh_limited_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_IN_non_anvil_large_scale_sublimation_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_IN_driver_local_ccn_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_IN_convection_fraction_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_IN_surface_type_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        #
+        DEBUG_ICECLOUD_OUT_driver_local_t_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_OUT_driver_local_p_dry_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_OUT_driver_local_dp_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_vapor_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_liquid_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_rain_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_ice_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_snow_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_graupel_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_OUT_driver_local_cloud_fraction_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_OUT_driver_local_terminal_speed_snow_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_OUT_driver_local_terminal_speed_graupel_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_OUT_driver_local_terminal_speed_rain_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_OUT_driver_local_density_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_OUT_driver_local_density_factor_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_OUT_driver_local_rh_limited_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_OUT_non_anvil_large_scale_sublimation_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_OUT_driver_local_ccn_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_OUT_convection_fraction_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        DEBUG_ICECLOUD_OUT_surface_type_icecloud = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+
         code(
             t=state.t,
             u=state.u,
@@ -175,6 +477,155 @@ class TranslateGFDL_1M_Driver(TranslateFortranData2Py):
             surface_precip_snow=state.precipitation_at_surface.snow,
             surface_precip_ice=state.precipitation_at_surface.ice,
             surface_precip_graupel=state.precipitation_at_surface.graupel,
+            #
+            DEBUG_vapor_unmodified_setup=DEBUG_vapor_unmodified_setup,
+            DEBUG_vapor_modified_setup=DEBUG_vapor_modified_setup,
+            DEBUG_vapor_unmodified_fallspeed=DEBUG_vapor_unmodified_fallspeed,
+            DEBUG_vapor_modified_fallspeed=DEBUG_vapor_modified_fallspeed,
+            DEBUG_vapor_unmodified_terminalfall=DEBUG_vapor_unmodified_terminalfall,
+            DEBUG_vapor_modified_terminalfall=DEBUG_vapor_modified_terminalfall,
+            DEBUG_vapor_unmodified_warmrain=DEBUG_vapor_unmodified_warmrain,
+            DEBUG_vapor_modified_warmrain=DEBUG_vapor_modified_warmrain,
+            DEBUG_vapor_unmodified_icecloud=DEBUG_vapor_unmodified_icecloud,
+            DEBUG_vapor_modified_icecloud=DEBUG_vapor_modified_icecloud,
+            #
+            DEBUG_TERMINALFALL_IN_driver_local_t_terminalfall=DEBUG_TERMINALFALL_IN_driver_local_t_terminalfall,
+            DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_vapor_terminalfall=DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_vapor_terminalfall,
+            DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_liquid_terminalfall=DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_liquid_terminalfall,
+            DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_rain_terminalfall=DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_rain_terminalfall,
+            DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_graupel_terminalfall=DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_graupel_terminalfall,
+            DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_snow_terminalfall=DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_snow_terminalfall,
+            DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_ice_terminalfall=DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_ice_terminalfall,
+            DEBUG_TERMINALFALL_IN_driver_local_ice_precip_flux_terminalfall=DEBUG_TERMINALFALL_IN_driver_local_ice_precip_flux_terminalfall,
+            DEBUG_TERMINALFALL_IN_driver_local_w_terminalfall=DEBUG_TERMINALFALL_IN_driver_local_w_terminalfall,
+            DEBUG_TERMINALFALL_IN_driver_local_dz_terminalfall=DEBUG_TERMINALFALL_IN_driver_local_dz_terminalfall,
+            DEBUG_TERMINALFALL_IN_driver_local_dp_terminalfall=DEBUG_TERMINALFALL_IN_driver_local_dp_terminalfall,
+            DEBUG_TERMINALFALL_IN_driver_local_terminal_speed_ice_terminalfall=DEBUG_TERMINALFALL_IN_driver_local_terminal_speed_ice_terminalfall,
+            DEBUG_TERMINALFALL_IN_driver_local_terminal_speed_snow_terminalfall=DEBUG_TERMINALFALL_IN_driver_local_terminal_speed_snow_terminalfall,
+            DEBUG_TERMINALFALL_IN_driver_local_terminal_speed_graupel_terminalfall=DEBUG_TERMINALFALL_IN_driver_local_terminal_speed_graupel_terminalfall,
+            DEBUG_TERMINALFALL_IN_surface_precip_rain_terminalfall=DEBUG_TERMINALFALL_IN_surface_precip_rain_terminalfall,
+            DEBUG_TERMINALFALL_IN_surface_precip_snow_terminalfall=DEBUG_TERMINALFALL_IN_surface_precip_snow_terminalfall,
+            DEBUG_TERMINALFALL_IN_surface_precip_graupel_terminalfall=DEBUG_TERMINALFALL_IN_surface_precip_graupel_terminalfall,
+            DEBUG_TERMINALFALL_IN_surface_precip_ice_terminalfall=DEBUG_TERMINALFALL_IN_surface_precip_ice_terminalfall,
+            #
+            DEBUG_TERMINALFALL_OUT_driver_local_t_terminalfall=DEBUG_TERMINALFALL_OUT_driver_local_t_terminalfall,
+            DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_vapor_terminalfall=DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_vapor_terminalfall,
+            DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_liquid_terminalfall=DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_liquid_terminalfall,
+            DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_rain_terminalfall=DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_rain_terminalfall,
+            DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_graupel_terminalfall=DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_graupel_terminalfall,
+            DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_snow_terminalfall=DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_snow_terminalfall,
+            DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_ice_terminalfall=DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_ice_terminalfall,
+            DEBUG_TERMINALFALL_OUT_driver_local_ice_precip_flux_terminalfall=DEBUG_TERMINALFALL_OUT_driver_local_ice_precip_flux_terminalfall,
+            DEBUG_TERMINALFALL_OUT_driver_local_w_terminalfall=DEBUG_TERMINALFALL_OUT_driver_local_w_terminalfall,
+            DEBUG_TERMINALFALL_OUT_driver_local_dz_terminalfall=DEBUG_TERMINALFALL_OUT_driver_local_dz_terminalfall,
+            DEBUG_TERMINALFALL_OUT_driver_local_dp_terminalfall=DEBUG_TERMINALFALL_OUT_driver_local_dp_terminalfall,
+            DEBUG_TERMINALFALL_OUT_driver_local_terminal_speed_ice_terminalfall=DEBUG_TERMINALFALL_OUT_driver_local_terminal_speed_ice_terminalfall,
+            DEBUG_TERMINALFALL_OUT_driver_local_terminal_speed_snow_terminalfall=DEBUG_TERMINALFALL_OUT_driver_local_terminal_speed_snow_terminalfall,
+            DEBUG_TERMINALFALL_OUT_driver_local_terminal_speed_graupel_terminalfall=DEBUG_TERMINALFALL_OUT_driver_local_terminal_speed_graupel_terminalfall,
+            DEBUG_TERMINALFALL_OUT_surface_precip_rain_terminalfall=DEBUG_TERMINALFALL_OUT_surface_precip_rain_terminalfall,
+            DEBUG_TERMINALFALL_OUT_surface_precip_snow_terminalfall=DEBUG_TERMINALFALL_OUT_surface_precip_snow_terminalfall,
+            DEBUG_TERMINALFALL_OUT_surface_precip_graupel_terminalfall=DEBUG_TERMINALFALL_OUT_surface_precip_graupel_terminalfall,
+            DEBUG_TERMINALFALL_OUT_surface_precip_ice_terminalfall=DEBUG_TERMINALFALL_OUT_surface_precip_ice_terminalfall,
+            #
+            DEBUG_WARMRAIN_IN_driver_local_dp_warmrain=DEBUG_WARMRAIN_IN_driver_local_dp_warmrain,
+            DEBUG_WARMRAIN_IN_driver_local_dz_warmrain=DEBUG_WARMRAIN_IN_driver_local_dz_warmrain,
+            DEBUG_WARMRAIN_IN_driver_local_t_warmrain=DEBUG_WARMRAIN_IN_driver_local_t_warmrain,
+            DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_vapor_warmrain=DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_vapor_warmrain,
+            DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_liquid_warmrain=DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_liquid_warmrain,
+            DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_rain_warmrain=DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_rain_warmrain,
+            DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_ice_warmrain=DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_ice_warmrain,
+            DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_snow_warmrain=DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_snow_warmrain,
+            DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_graupel_warmrain=DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_graupel_warmrain,
+            DEBUG_WARMRAIN_IN_driver_local_cloud_fraction_warmrain=DEBUG_WARMRAIN_IN_driver_local_cloud_fraction_warmrain,
+            DEBUG_WARMRAIN_IN_driver_local_ccn_warmrain=DEBUG_WARMRAIN_IN_driver_local_ccn_warmrain,
+            DEBUG_WARMRAIN_IN_driver_local_density_warmrain=DEBUG_WARMRAIN_IN_driver_local_density_warmrain,
+            DEBUG_WARMRAIN_IN_driver_local_density_factor_warmrain=DEBUG_WARMRAIN_IN_driver_local_density_factor_warmrain,
+            DEBUG_WARMRAIN_IN_driver_local_c_praut_warmrain=DEBUG_WARMRAIN_IN_driver_local_c_praut_warmrain,
+            DEBUG_WARMRAIN_IN_driver_local_terminal_speed_rain_warmrain=DEBUG_WARMRAIN_IN_driver_local_terminal_speed_rain_warmrain,
+            DEBUG_WARMRAIN_IN_driver_local_evaporation_warmrain=DEBUG_WARMRAIN_IN_driver_local_evaporation_warmrain,
+            DEBUG_WARMRAIN_IN_driver_local_liquid_precip_flux_warmrain=DEBUG_WARMRAIN_IN_driver_local_liquid_precip_flux_warmrain,
+            DEBUG_WARMRAIN_IN_driver_local_w_warmrain=DEBUG_WARMRAIN_IN_driver_local_w_warmrain,
+            DEBUG_WARMRAIN_IN_driver_local_rh_limited_warmrain=DEBUG_WARMRAIN_IN_driver_local_rh_limited_warmrain,
+            DEBUG_WARMRAIN_IN_non_anvil_large_scale_evaporation_warmrain=DEBUG_WARMRAIN_IN_non_anvil_large_scale_evaporation_warmrain,
+            DEBUG_WARMRAIN_IN_non_anvil_large_scale_liquid_precip_flux_warmrain=DEBUG_WARMRAIN_IN_non_anvil_large_scale_liquid_precip_flux_warmrain,
+            DEBUG_WARMRAIN_IN_non_anvil_large_scale_ice_precip_flux_warmrain=DEBUG_WARMRAIN_IN_non_anvil_large_scale_ice_precip_flux_warmrain,
+            DEBUG_WARMRAIN_IN_driver_local_mass_warmrain=DEBUG_WARMRAIN_IN_driver_local_mass_warmrain,
+            DEBUG_WARMRAIN_IN_driver_local_ice_precip_flux_warmrain=DEBUG_WARMRAIN_IN_driver_local_ice_precip_flux_warmrain,
+            DEBUG_WARMRAIN_IN_driver_local_rain_warmrain=DEBUG_WARMRAIN_IN_driver_local_rain_warmrain,
+            DEBUG_WARMRAIN_IN_surface_precip_rain_warmrain=DEBUG_WARMRAIN_IN_surface_precip_rain_warmrain,
+            DEBUG_WARMRAIN_IN_estimated_inversion_strength_warmrain=DEBUG_WARMRAIN_IN_estimated_inversion_strength_warmrain,
+            DEBUG_WARMRAIN_IN_driver_local_one_minus_sigma_warmrain=DEBUG_WARMRAIN_IN_driver_local_one_minus_sigma_warmrain,
+            #
+            DEBUG_WARMRAIN_OUT_driver_local_dp_warmrain=DEBUG_WARMRAIN_OUT_driver_local_dp_warmrain,
+            DEBUG_WARMRAIN_OUT_driver_local_dz_warmrain=DEBUG_WARMRAIN_OUT_driver_local_dz_warmrain,
+            DEBUG_WARMRAIN_OUT_driver_local_t_warmrain=DEBUG_WARMRAIN_OUT_driver_local_t_warmrain,
+            DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_vapor_warmrain=DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_vapor_warmrain,
+            DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_liquid_warmrain=DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_liquid_warmrain,
+            DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_rain_warmrain=DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_rain_warmrain,
+            DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_ice_warmrain=DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_ice_warmrain,
+            DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_snow_warmrain=DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_snow_warmrain,
+            DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_graupel_warmrain=DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_graupel_warmrain,
+            DEBUG_WARMRAIN_OUT_driver_local_cloud_fraction_warmrain=DEBUG_WARMRAIN_OUT_driver_local_cloud_fraction_warmrain,
+            DEBUG_WARMRAIN_OUT_driver_local_ccn_warmrain=DEBUG_WARMRAIN_OUT_driver_local_ccn_warmrain,
+            DEBUG_WARMRAIN_OUT_driver_local_density_warmrain=DEBUG_WARMRAIN_OUT_driver_local_density_warmrain,
+            DEBUG_WARMRAIN_OUT_driver_local_density_factor_warmrain=DEBUG_WARMRAIN_OUT_driver_local_density_factor_warmrain,
+            DEBUG_WARMRAIN_OUT_driver_local_c_praut_warmrain=DEBUG_WARMRAIN_OUT_driver_local_c_praut_warmrain,
+            DEBUG_WARMRAIN_OUT_driver_local_terminal_speed_rain_warmrain=DEBUG_WARMRAIN_OUT_driver_local_terminal_speed_rain_warmrain,
+            DEBUG_WARMRAIN_OUT_driver_local_evaporation_warmrain=DEBUG_WARMRAIN_OUT_driver_local_evaporation_warmrain,
+            DEBUG_WARMRAIN_OUT_driver_local_liquid_precip_flux_warmrain=DEBUG_WARMRAIN_OUT_driver_local_liquid_precip_flux_warmrain,
+            DEBUG_WARMRAIN_OUT_driver_local_w_warmrain=DEBUG_WARMRAIN_OUT_driver_local_w_warmrain,
+            DEBUG_WARMRAIN_OUT_driver_local_rh_limited_warmrain=DEBUG_WARMRAIN_OUT_driver_local_rh_limited_warmrain,
+            DEBUG_WARMRAIN_OUT_non_anvil_large_scale_evaporation_warmrain=DEBUG_WARMRAIN_OUT_non_anvil_large_scale_evaporation_warmrain,
+            DEBUG_WARMRAIN_OUT_non_anvil_large_scale_liquid_precip_flux_warmrain=DEBUG_WARMRAIN_OUT_non_anvil_large_scale_liquid_precip_flux_warmrain,
+            DEBUG_WARMRAIN_OUT_non_anvil_large_scale_ice_precip_flux_warmrain=DEBUG_WARMRAIN_OUT_non_anvil_large_scale_ice_precip_flux_warmrain,
+            DEBUG_WARMRAIN_OUT_driver_local_mass_warmrain=DEBUG_WARMRAIN_OUT_driver_local_mass_warmrain,
+            DEBUG_WARMRAIN_OUT_driver_local_ice_precip_flux_warmrain=DEBUG_WARMRAIN_OUT_driver_local_ice_precip_flux_warmrain,
+            DEBUG_WARMRAIN_OUT_driver_local_rain_warmrain=DEBUG_WARMRAIN_OUT_driver_local_rain_warmrain,
+            DEBUG_WARMRAIN_OUT_surface_precip_rain_warmrain=DEBUG_WARMRAIN_OUT_surface_precip_rain_warmrain,
+            DEBUG_WARMRAIN_OUT_estimated_inversion_strength_warmrain=DEBUG_WARMRAIN_OUT_estimated_inversion_strength_warmrain,
+            DEBUG_WARMRAIN_OUT_driver_local_one_minus_sigma_warmrain=DEBUG_WARMRAIN_OUT_driver_local_one_minus_sigma_warmrain,
+            #
+            DEBUG_ICECLOUD_IN_driver_local_t_icecloud=DEBUG_ICECLOUD_IN_driver_local_t_icecloud,
+            DEBUG_ICECLOUD_IN_driver_local_p_dry_icecloud=DEBUG_ICECLOUD_IN_driver_local_p_dry_icecloud,
+            DEBUG_ICECLOUD_IN_driver_local_dp_icecloud=DEBUG_ICECLOUD_IN_driver_local_dp_icecloud,
+            DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_vapor_icecloud=DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_vapor_icecloud,
+            DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_liquid_icecloud=DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_liquid_icecloud,
+            DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_rain_icecloud=DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_rain_icecloud,
+            DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_ice_icecloud=DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_ice_icecloud,
+            DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_snow_icecloud=DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_snow_icecloud,
+            DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_graupel_icecloud=DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_graupel_icecloud,
+            DEBUG_ICECLOUD_IN_driver_local_cloud_fraction_icecloud=DEBUG_ICECLOUD_IN_driver_local_cloud_fraction_icecloud,
+            DEBUG_ICECLOUD_IN_driver_local_terminal_speed_snow_icecloud=DEBUG_ICECLOUD_IN_driver_local_terminal_speed_snow_icecloud,
+            DEBUG_ICECLOUD_IN_driver_local_terminal_speed_graupel_icecloud=DEBUG_ICECLOUD_IN_driver_local_terminal_speed_graupel_icecloud,
+            DEBUG_ICECLOUD_IN_driver_local_terminal_speed_rain_icecloud=DEBUG_ICECLOUD_IN_driver_local_terminal_speed_rain_icecloud,
+            DEBUG_ICECLOUD_IN_driver_local_density_icecloud=DEBUG_ICECLOUD_IN_driver_local_density_icecloud,
+            DEBUG_ICECLOUD_IN_driver_local_density_factor_icecloud=DEBUG_ICECLOUD_IN_driver_local_density_factor_icecloud,
+            DEBUG_ICECLOUD_IN_driver_local_rh_limited_icecloud=DEBUG_ICECLOUD_IN_driver_local_rh_limited_icecloud,
+            DEBUG_ICECLOUD_IN_non_anvil_large_scale_sublimation_icecloud=DEBUG_ICECLOUD_IN_non_anvil_large_scale_sublimation_icecloud,
+            DEBUG_ICECLOUD_IN_driver_local_ccn_icecloud=DEBUG_ICECLOUD_IN_driver_local_ccn_icecloud,
+            DEBUG_ICECLOUD_IN_convection_fraction_icecloud=DEBUG_ICECLOUD_IN_convection_fraction_icecloud,
+            DEBUG_ICECLOUD_IN_surface_type_icecloud=DEBUG_ICECLOUD_IN_surface_type_icecloud,
+            #
+            DEBUG_ICECLOUD_OUT_driver_local_t_icecloud=DEBUG_ICECLOUD_OUT_driver_local_t_icecloud,
+            DEBUG_ICECLOUD_OUT_driver_local_p_dry_icecloud=DEBUG_ICECLOUD_OUT_driver_local_p_dry_icecloud,
+            DEBUG_ICECLOUD_OUT_driver_local_dp_icecloud=DEBUG_ICECLOUD_OUT_driver_local_dp_icecloud,
+            DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_vapor_icecloud=DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_vapor_icecloud,
+            DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_liquid_icecloud=DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_liquid_icecloud,
+            DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_rain_icecloud=DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_rain_icecloud,
+            DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_ice_icecloud=DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_ice_icecloud,
+            DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_snow_icecloud=DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_snow_icecloud,
+            DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_graupel_icecloud=DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_graupel_icecloud,
+            DEBUG_ICECLOUD_OUT_driver_local_cloud_fraction_icecloud=DEBUG_ICECLOUD_OUT_driver_local_cloud_fraction_icecloud,
+            DEBUG_ICECLOUD_OUT_driver_local_terminal_speed_snow_icecloud=DEBUG_ICECLOUD_OUT_driver_local_terminal_speed_snow_icecloud,
+            DEBUG_ICECLOUD_OUT_driver_local_terminal_speed_graupel_icecloud=DEBUG_ICECLOUD_OUT_driver_local_terminal_speed_graupel_icecloud,
+            DEBUG_ICECLOUD_OUT_driver_local_terminal_speed_rain_icecloud=DEBUG_ICECLOUD_OUT_driver_local_terminal_speed_rain_icecloud,
+            DEBUG_ICECLOUD_OUT_driver_local_density_icecloud=DEBUG_ICECLOUD_OUT_driver_local_density_icecloud,
+            DEBUG_ICECLOUD_OUT_driver_local_density_factor_icecloud=DEBUG_ICECLOUD_OUT_driver_local_density_factor_icecloud,
+            DEBUG_ICECLOUD_OUT_driver_local_rh_limited_icecloud=DEBUG_ICECLOUD_OUT_driver_local_rh_limited_icecloud,
+            DEBUG_ICECLOUD_OUT_non_anvil_large_scale_sublimation_icecloud=DEBUG_ICECLOUD_OUT_non_anvil_large_scale_sublimation_icecloud,
+            DEBUG_ICECLOUD_OUT_driver_local_ccn_icecloud=DEBUG_ICECLOUD_OUT_driver_local_ccn_icecloud,
+            DEBUG_ICECLOUD_OUT_convection_fraction_icecloud=DEBUG_ICECLOUD_OUT_convection_fraction_icecloud,
+            DEBUG_ICECLOUD_OUT_surface_type_icecloud=DEBUG_ICECLOUD_OUT_surface_type_icecloud,
         )
 
         validation_outputs = {
@@ -222,6 +673,155 @@ class TranslateGFDL_1M_Driver(TranslateFortranData2Py):
             "surface_precip_snow": copy.copy(state.precipitation_at_surface.snow.field[:]),
             "surface_precip_ice": copy.copy(state.precipitation_at_surface.ice.field[:]),
             "surface_precip_graupel": copy.copy(state.precipitation_at_surface.graupel.field[:]),
+            #
+            "DEBUG_vapor_unmodified_setup": DEBUG_vapor_unmodified_setup.field[:],
+            "DEBUG_vapor_modified_setup": DEBUG_vapor_modified_setup.field[:],
+            "DEBUG_vapor_unmodified_fallspeed": DEBUG_vapor_unmodified_fallspeed.field[:],
+            "DEBUG_vapor_modified_fallspeed": DEBUG_vapor_modified_fallspeed.field[:],
+            "DEBUG_vapor_unmodified_terminalfall": DEBUG_vapor_unmodified_terminalfall.field[:],
+            "DEBUG_vapor_modified_terminalfall": DEBUG_vapor_modified_terminalfall.field[:],
+            "DEBUG_vapor_unmodified_warmrain": DEBUG_vapor_unmodified_warmrain.field[:],
+            "DEBUG_vapor_modified_warmrain": DEBUG_vapor_modified_warmrain.field[:],
+            "DEBUG_vapor_unmodified_icecloud": DEBUG_vapor_unmodified_icecloud.field[:],
+            "DEBUG_vapor_modified_icecloud": DEBUG_vapor_modified_icecloud.field[:],
+            #
+            "DEBUG_TERMINALFALL_IN_driver_local_t_terminalfall": DEBUG_TERMINALFALL_IN_driver_local_t_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_vapor_terminalfall": DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_vapor_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_liquid_terminalfall": DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_liquid_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_rain_terminalfall": DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_rain_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_graupel_terminalfall": DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_graupel_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_snow_terminalfall": DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_snow_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_ice_terminalfall": DEBUG_TERMINALFALL_IN_driver_local_dry_mixing_ratio_ice_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_IN_driver_local_ice_precip_flux_terminalfall": DEBUG_TERMINALFALL_IN_driver_local_ice_precip_flux_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_IN_driver_local_w_terminalfall": DEBUG_TERMINALFALL_IN_driver_local_w_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_IN_driver_local_dz_terminalfall": DEBUG_TERMINALFALL_IN_driver_local_dz_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_IN_driver_local_dp_terminalfall": DEBUG_TERMINALFALL_IN_driver_local_dp_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_IN_driver_local_terminal_speed_ice_terminalfall": DEBUG_TERMINALFALL_IN_driver_local_terminal_speed_ice_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_IN_driver_local_terminal_speed_snow_terminalfall": DEBUG_TERMINALFALL_IN_driver_local_terminal_speed_snow_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_IN_driver_local_terminal_speed_graupel_terminalfall": DEBUG_TERMINALFALL_IN_driver_local_terminal_speed_graupel_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_IN_surface_precip_rain_terminalfall": DEBUG_TERMINALFALL_IN_surface_precip_rain_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_IN_surface_precip_snow_terminalfall": DEBUG_TERMINALFALL_IN_surface_precip_snow_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_IN_surface_precip_graupel_terminalfall": DEBUG_TERMINALFALL_IN_surface_precip_graupel_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_IN_surface_precip_ice_terminalfall": DEBUG_TERMINALFALL_IN_surface_precip_ice_terminalfall.field[:],
+            #
+            "DEBUG_TERMINALFALL_OUT_driver_local_t_terminalfall": DEBUG_TERMINALFALL_OUT_driver_local_t_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_vapor_terminalfall": DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_vapor_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_liquid_terminalfall": DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_liquid_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_rain_terminalfall": DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_rain_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_graupel_terminalfall": DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_graupel_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_snow_terminalfall": DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_snow_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_ice_terminalfall": DEBUG_TERMINALFALL_OUT_driver_local_dry_mixing_ratio_ice_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_OUT_driver_local_ice_precip_flux_terminalfall": DEBUG_TERMINALFALL_OUT_driver_local_ice_precip_flux_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_OUT_driver_local_w_terminalfall": DEBUG_TERMINALFALL_OUT_driver_local_w_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_OUT_driver_local_dz_terminalfall": DEBUG_TERMINALFALL_OUT_driver_local_dz_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_OUT_driver_local_dp_terminalfall": DEBUG_TERMINALFALL_OUT_driver_local_dp_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_OUT_driver_local_terminal_speed_ice_terminalfall": DEBUG_TERMINALFALL_OUT_driver_local_terminal_speed_ice_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_OUT_driver_local_terminal_speed_snow_terminalfall": DEBUG_TERMINALFALL_OUT_driver_local_terminal_speed_snow_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_OUT_driver_local_terminal_speed_graupel_terminalfall": DEBUG_TERMINALFALL_OUT_driver_local_terminal_speed_graupel_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_OUT_surface_precip_rain_terminalfall": DEBUG_TERMINALFALL_OUT_surface_precip_rain_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_OUT_surface_precip_snow_terminalfall": DEBUG_TERMINALFALL_OUT_surface_precip_snow_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_OUT_surface_precip_graupel_terminalfall": DEBUG_TERMINALFALL_OUT_surface_precip_graupel_terminalfall.field[:],
+            "DEBUG_TERMINALFALL_OUT_surface_precip_ice_terminalfall": DEBUG_TERMINALFALL_OUT_surface_precip_ice_terminalfall.field[:],
+            #
+            "DEBUG_WARMRAIN_IN_driver_local_dp_warmrain": DEBUG_WARMRAIN_IN_driver_local_dp_warmrain.field[:],
+            "DEBUG_WARMRAIN_IN_driver_local_dz_warmrain": DEBUG_WARMRAIN_IN_driver_local_dz_warmrain.field[:],
+            "DEBUG_WARMRAIN_IN_driver_local_t_warmrain": DEBUG_WARMRAIN_IN_driver_local_t_warmrain.field[:],
+            "DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_vapor_warmrain": DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_vapor_warmrain.field[:],
+            "DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_liquid_warmrain": DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_liquid_warmrain.field[:],
+            "DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_rain_warmrain": DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_rain_warmrain.field[:],
+            "DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_ice_warmrain": DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_ice_warmrain.field[:],
+            "DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_snow_warmrain": DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_snow_warmrain.field[:],
+            "DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_graupel_warmrain": DEBUG_WARMRAIN_IN_driver_local_dry_mixing_ratio_graupel_warmrain.field[:],
+            "DEBUG_WARMRAIN_IN_driver_local_cloud_fraction_warmrain": DEBUG_WARMRAIN_IN_driver_local_cloud_fraction_warmrain.field[:],
+            "DEBUG_WARMRAIN_IN_driver_local_ccn_warmrain": DEBUG_WARMRAIN_IN_driver_local_ccn_warmrain.field[:],
+            "DEBUG_WARMRAIN_IN_driver_local_density_warmrain": DEBUG_WARMRAIN_IN_driver_local_density_warmrain.field[:],
+            "DEBUG_WARMRAIN_IN_driver_local_density_factor_warmrain": DEBUG_WARMRAIN_IN_driver_local_density_factor_warmrain.field[:],
+            "DEBUG_WARMRAIN_IN_driver_local_c_praut_warmrain": DEBUG_WARMRAIN_IN_driver_local_c_praut_warmrain.field[:],
+            "DEBUG_WARMRAIN_IN_driver_local_terminal_speed_rain_warmrain": DEBUG_WARMRAIN_IN_driver_local_terminal_speed_rain_warmrain.field[:],
+            "DEBUG_WARMRAIN_IN_driver_local_evaporation_warmrain": DEBUG_WARMRAIN_IN_driver_local_evaporation_warmrain.field[:],
+            "DEBUG_WARMRAIN_IN_driver_local_liquid_precip_flux_warmrain": DEBUG_WARMRAIN_IN_driver_local_liquid_precip_flux_warmrain.field[:],
+            "DEBUG_WARMRAIN_IN_driver_local_w_warmrain": DEBUG_WARMRAIN_IN_driver_local_w_warmrain.field[:],
+            "DEBUG_WARMRAIN_IN_driver_local_rh_limited_warmrain": DEBUG_WARMRAIN_IN_driver_local_rh_limited_warmrain.field[:],
+            "DEBUG_WARMRAIN_IN_non_anvil_large_scale_evaporation_warmrain": DEBUG_WARMRAIN_IN_non_anvil_large_scale_evaporation_warmrain.field[:],
+            "DEBUG_WARMRAIN_IN_non_anvil_large_scale_liquid_precip_flux_warmrain": DEBUG_WARMRAIN_IN_non_anvil_large_scale_liquid_precip_flux_warmrain.field[:,:,1:],
+            "DEBUG_WARMRAIN_IN_non_anvil_large_scale_ice_precip_flux_warmrain": DEBUG_WARMRAIN_IN_non_anvil_large_scale_ice_precip_flux_warmrain.field[:,:,1:],
+            "DEBUG_WARMRAIN_IN_driver_local_mass_warmrain": DEBUG_WARMRAIN_IN_driver_local_mass_warmrain.field[:],
+            "DEBUG_WARMRAIN_IN_driver_local_ice_precip_flux_warmrain": DEBUG_WARMRAIN_IN_driver_local_ice_precip_flux_warmrain.field[:],
+            "DEBUG_WARMRAIN_IN_driver_local_rain_warmrain": DEBUG_WARMRAIN_IN_driver_local_rain_warmrain.field[:],
+            "DEBUG_WARMRAIN_IN_surface_precip_rain_warmrain": DEBUG_WARMRAIN_IN_surface_precip_rain_warmrain.field[:],
+            "DEBUG_WARMRAIN_IN_estimated_inversion_strength_warmrain": DEBUG_WARMRAIN_IN_estimated_inversion_strength_warmrain.field[:],
+            "DEBUG_WARMRAIN_IN_driver_local_one_minus_sigma_warmrain": DEBUG_WARMRAIN_IN_driver_local_one_minus_sigma_warmrain.field[:],
+            #
+            "DEBUG_WARMRAIN_OUT_driver_local_dp_warmrain": DEBUG_WARMRAIN_OUT_driver_local_dp_warmrain.field[:],
+            "DEBUG_WARMRAIN_OUT_driver_local_dz_warmrain": DEBUG_WARMRAIN_OUT_driver_local_dz_warmrain.field[:],
+            "DEBUG_WARMRAIN_OUT_driver_local_t_warmrain": DEBUG_WARMRAIN_OUT_driver_local_t_warmrain.field[:],
+            "DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_vapor_warmrain": DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_vapor_warmrain.field[:],
+            "DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_liquid_warmrain": DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_liquid_warmrain.field[:],
+            "DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_rain_warmrain": DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_rain_warmrain.field[:],
+            "DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_ice_warmrain": DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_ice_warmrain.field[:],
+            "DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_snow_warmrain": DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_snow_warmrain.field[:],
+            "DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_graupel_warmrain": DEBUG_WARMRAIN_OUT_driver_local_dry_mixing_ratio_graupel_warmrain.field[:],
+            "DEBUG_WARMRAIN_OUT_driver_local_cloud_fraction_warmrain": DEBUG_WARMRAIN_OUT_driver_local_cloud_fraction_warmrain.field[:],
+            "DEBUG_WARMRAIN_OUT_driver_local_ccn_warmrain": DEBUG_WARMRAIN_OUT_driver_local_ccn_warmrain.field[:],
+            "DEBUG_WARMRAIN_OUT_driver_local_density_warmrain": DEBUG_WARMRAIN_OUT_driver_local_density_warmrain.field[:],
+            "DEBUG_WARMRAIN_OUT_driver_local_density_factor_warmrain": DEBUG_WARMRAIN_OUT_driver_local_density_factor_warmrain.field[:],
+            "DEBUG_WARMRAIN_OUT_driver_local_c_praut_warmrain": DEBUG_WARMRAIN_OUT_driver_local_c_praut_warmrain.field[:],
+            "DEBUG_WARMRAIN_OUT_driver_local_terminal_speed_rain_warmrain": DEBUG_WARMRAIN_OUT_driver_local_terminal_speed_rain_warmrain.field[:],
+            "DEBUG_WARMRAIN_OUT_driver_local_evaporation_warmrain": DEBUG_WARMRAIN_OUT_driver_local_evaporation_warmrain.field[:],
+            "DEBUG_WARMRAIN_OUT_driver_local_liquid_precip_flux_warmrain": DEBUG_WARMRAIN_OUT_driver_local_liquid_precip_flux_warmrain.field[:],
+            "DEBUG_WARMRAIN_OUT_driver_local_w_warmrain": DEBUG_WARMRAIN_OUT_driver_local_w_warmrain.field[:],
+            "DEBUG_WARMRAIN_OUT_driver_local_rh_limited_warmrain": DEBUG_WARMRAIN_OUT_driver_local_rh_limited_warmrain.field[:],
+            "DEBUG_WARMRAIN_OUT_non_anvil_large_scale_evaporation_warmrain": DEBUG_WARMRAIN_OUT_non_anvil_large_scale_evaporation_warmrain.field[:],
+            "DEBUG_WARMRAIN_OUT_non_anvil_large_scale_liquid_precip_flux_warmrain": DEBUG_WARMRAIN_OUT_non_anvil_large_scale_liquid_precip_flux_warmrain.field[:,:,1:],
+            "DEBUG_WARMRAIN_OUT_non_anvil_large_scale_ice_precip_flux_warmrain": DEBUG_WARMRAIN_OUT_non_anvil_large_scale_ice_precip_flux_warmrain.field[:,:,1:],
+            "DEBUG_WARMRAIN_OUT_driver_local_mass_warmrain": DEBUG_WARMRAIN_OUT_driver_local_mass_warmrain.field[:],
+            "DEBUG_WARMRAIN_OUT_driver_local_ice_precip_flux_warmrain": DEBUG_WARMRAIN_OUT_driver_local_ice_precip_flux_warmrain.field[:],
+            "DEBUG_WARMRAIN_OUT_driver_local_rain_warmrain": DEBUG_WARMRAIN_OUT_driver_local_rain_warmrain.field[:],
+            "DEBUG_WARMRAIN_OUT_surface_precip_rain_warmrain": DEBUG_WARMRAIN_OUT_surface_precip_rain_warmrain.field[:],
+            "DEBUG_WARMRAIN_OUT_estimated_inversion_strength_warmrain": DEBUG_WARMRAIN_OUT_estimated_inversion_strength_warmrain.field[:],
+            "DEBUG_WARMRAIN_OUT_driver_local_one_minus_sigma_warmrain": DEBUG_WARMRAIN_OUT_driver_local_one_minus_sigma_warmrain.field[:],
+            #
+            "DEBUG_ICECLOUD_IN_driver_local_t_icecloud": DEBUG_ICECLOUD_IN_driver_local_t_icecloud.field[:],
+            "DEBUG_ICECLOUD_IN_driver_local_p_dry_icecloud": DEBUG_ICECLOUD_IN_driver_local_p_dry_icecloud.field[:],
+            "DEBUG_ICECLOUD_IN_driver_local_dp_icecloud": DEBUG_ICECLOUD_IN_driver_local_dp_icecloud.field[:],
+            "DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_vapor_icecloud": DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_vapor_icecloud.field[:],
+            "DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_liquid_icecloud": DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_liquid_icecloud.field[:],
+            "DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_rain_icecloud": DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_rain_icecloud.field[:],
+            "DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_ice_icecloud": DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_ice_icecloud.field[:],
+            "DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_snow_icecloud": DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_snow_icecloud.field[:],
+            "DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_graupel_icecloud": DEBUG_ICECLOUD_IN_driver_local_dry_mixing_ratio_graupel_icecloud.field[:],
+            "DEBUG_ICECLOUD_IN_driver_local_cloud_fraction_icecloud": DEBUG_ICECLOUD_IN_driver_local_cloud_fraction_icecloud.field[:],
+            "DEBUG_ICECLOUD_IN_driver_local_terminal_speed_snow_icecloud": DEBUG_ICECLOUD_IN_driver_local_terminal_speed_snow_icecloud.field[:],
+            "DEBUG_ICECLOUD_IN_driver_local_terminal_speed_graupel_icecloud": DEBUG_ICECLOUD_IN_driver_local_terminal_speed_graupel_icecloud.field[:],
+            "DEBUG_ICECLOUD_IN_driver_local_terminal_speed_rain_icecloud": DEBUG_ICECLOUD_IN_driver_local_terminal_speed_rain_icecloud.field[:],
+            "DEBUG_ICECLOUD_IN_driver_local_density_icecloud": DEBUG_ICECLOUD_IN_driver_local_density_icecloud.field[:],
+            "DEBUG_ICECLOUD_IN_driver_local_density_factor_icecloud": DEBUG_ICECLOUD_IN_driver_local_density_factor_icecloud.field[:],
+            "DEBUG_ICECLOUD_IN_driver_local_rh_limited_icecloud": DEBUG_ICECLOUD_IN_driver_local_rh_limited_icecloud.field[:],
+            "DEBUG_ICECLOUD_IN_non_anvil_large_scale_sublimation_icecloud": DEBUG_ICECLOUD_IN_non_anvil_large_scale_sublimation_icecloud.field[:],
+            "DEBUG_ICECLOUD_IN_driver_local_ccn_icecloud": DEBUG_ICECLOUD_IN_driver_local_ccn_icecloud.field[:],
+            "DEBUG_ICECLOUD_IN_convection_fraction_icecloud": DEBUG_ICECLOUD_IN_convection_fraction_icecloud.field[:],
+            "DEBUG_ICECLOUD_IN_surface_type_icecloud": DEBUG_ICECLOUD_IN_surface_type_icecloud.field[:],
+            #
+            "DEBUG_ICECLOUD_OUT_driver_local_t_icecloud": DEBUG_ICECLOUD_OUT_driver_local_t_icecloud.field[:],
+            "DEBUG_ICECLOUD_OUT_driver_local_p_dry_icecloud": DEBUG_ICECLOUD_OUT_driver_local_p_dry_icecloud.field[:],
+            "DEBUG_ICECLOUD_OUT_driver_local_dp_icecloud": DEBUG_ICECLOUD_OUT_driver_local_dp_icecloud.field[:],
+            "DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_vapor_icecloud": DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_vapor_icecloud.field[:],
+            "DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_liquid_icecloud": DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_liquid_icecloud.field[:],
+            "DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_rain_icecloud": DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_rain_icecloud.field[:],
+            "DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_ice_icecloud": DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_ice_icecloud.field[:],
+            "DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_snow_icecloud": DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_snow_icecloud.field[:],
+            "DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_graupel_icecloud": DEBUG_ICECLOUD_OUT_driver_local_dry_mixing_ratio_graupel_icecloud.field[:],
+            "DEBUG_ICECLOUD_OUT_driver_local_cloud_fraction_icecloud": DEBUG_ICECLOUD_OUT_driver_local_cloud_fraction_icecloud.field[:],
+            "DEBUG_ICECLOUD_OUT_driver_local_terminal_speed_snow_icecloud": DEBUG_ICECLOUD_OUT_driver_local_terminal_speed_snow_icecloud.field[:],
+            "DEBUG_ICECLOUD_OUT_driver_local_terminal_speed_graupel_icecloud": DEBUG_ICECLOUD_OUT_driver_local_terminal_speed_graupel_icecloud.field[:],
+            "DEBUG_ICECLOUD_OUT_driver_local_terminal_speed_rain_icecloud": DEBUG_ICECLOUD_OUT_driver_local_terminal_speed_rain_icecloud.field[:],
+            "DEBUG_ICECLOUD_OUT_driver_local_density_icecloud": DEBUG_ICECLOUD_OUT_driver_local_density_icecloud.field[:],
+            "DEBUG_ICECLOUD_OUT_driver_local_density_factor_icecloud": DEBUG_ICECLOUD_OUT_driver_local_density_factor_icecloud.field[:],
+            "DEBUG_ICECLOUD_OUT_driver_local_rh_limited_icecloud": DEBUG_ICECLOUD_OUT_driver_local_rh_limited_icecloud.field[:],
+            "DEBUG_ICECLOUD_OUT_non_anvil_large_scale_sublimation_icecloud": DEBUG_ICECLOUD_OUT_non_anvil_large_scale_sublimation_icecloud.field[:],
+            "DEBUG_ICECLOUD_OUT_driver_local_ccn_icecloud": DEBUG_ICECLOUD_OUT_driver_local_ccn_icecloud.field[:],
+            "DEBUG_ICECLOUD_OUT_convection_fraction_icecloud": DEBUG_ICECLOUD_OUT_convection_fraction_icecloud.field[:],
+            "DEBUG_ICECLOUD_OUT_surface_type_icecloud": DEBUG_ICECLOUD_OUT_surface_type_icecloud.field[:],
         }
 
         # Micro-bench

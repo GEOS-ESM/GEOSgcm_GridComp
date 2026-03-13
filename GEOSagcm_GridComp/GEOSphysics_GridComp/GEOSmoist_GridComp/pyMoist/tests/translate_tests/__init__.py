@@ -18,6 +18,7 @@ from .GFDL_1M.translate_GFDL_1M_Finalize import TranslateGFDL_1M_Finalize
 from .GFDL_1M.translate_GFDL_1M_RadiationCoupling import TranslateGFDL_1M_RadiationCoupling
 from .GFDL_1M.translate_GFDL_1M_RedistributeClouds import TranslateGFDL_1M_RedistributeClouds
 from .GFDL_1M.translate_GFDL_1M_Setup import TranslateGFDL_1M_Setup
+from .GFDL_1M.translate_GFDL_1M import TranslateGFDL_1M
 from .UW.translate_compute_uwshcu import TranslateComputeUwshcuInv
 
 from .UW.UW_translate_tests.translate_setup_inputs import TranslateSetupInputs

@@ -66,6 +66,17 @@ class TranslateGFDL_1M_TerminalFall(TranslateFortranData2Py):
 
         # construct test stencil
         # NOTE: required `extra_data_load` means we can't allocate code in __init__
+        constant_print_dict = {
+            "dts": config_dependent_constants.DTS,
+            "tau_imlt": config.TAU_IMLT,
+            "ql_mlt": config.QL_MLT,
+            "c_air": config_dependent_constants.C_AIR,
+            "c_vap": config_dependent_constants.C_VAP,
+            "d0_vap": config_dependent_constants.D0_VAP,
+            "lv00": config_dependent_constants.LV00,
+            "do_sedi_w": config.DO_SEDI_W,
+        }
+        print(f"RELEVANT CONSTANTS {constant_print_dict}")
         code = GFDL1MTerminalFall(
             stencil_factory=self.stencil_factory,
             quantity_factory=self.quantity_factory,
