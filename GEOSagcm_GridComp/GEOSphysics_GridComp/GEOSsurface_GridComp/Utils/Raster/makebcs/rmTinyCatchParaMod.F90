@@ -2599,6 +2599,8 @@ contains
     logical :: file_exists
     REAL, ALLOCATABLE, DIMENSION (:,:) :: parms4file
     integer :: ncid, status
+    ! peat GPA22 additions
+    logical :: target_is_peat, donor_is_peat
 
     ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
     !
@@ -3005,8 +3007,10 @@ contains
 
     DO n=1,nbcatch
 
-       ! Read soil_param.first again...; this is (almost certainly) needed to maintain consistency
-       ! between soil_param.first and soil_param.dat, see comments above.
+       ! Re-read soil_param.first for tile n so soil_param.dat starts from the
+       ! original tile identity/properties written by mod_process_hres_data.
+       ! This preserves consistency between soil_param.first and soil_param.dat
+       ! before any bad-SAT donor repair is applied below.       
 
        read(10,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)') &
             tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),         &
@@ -3015,34 +3019,76 @@ contains
             a_sand_surf(n),a_clay_surf(n),atile_sand(n),atile_clay(n) ,   &
             wpwet_surf(n),poros_surf(n), pmap(n)
 
-       ! This revised if block replaces the complex, nested if block commented out above
+       ! If SAT parameters are invalid for tile n, choose donor tile k.
+       !
+       ! Legacy behavior:
+       !   use the nearest tile with valid SAT parameters.
+       !
+       ! Strict GPA22 behavior:
+       !   first prefer a donor with the same peat/mineral state as the
+       !   target tile, so repaired bulk hydraulics do not cross peat and
+       !   mineral regimes.  If no same-state donor exists, fall back to
+       !   the original nearest-valid donor search.
 
-       if ( (ars1(n)==9999.) .or. (arw1(n)==9999.) ) then 
-
-          ! some parameter values are no-data --> find nearest tile k with good parameters
-
+       if ( (ars1(n)==9999.) .or. (arw1(n)==9999.) ) then          
           dist_save = 1000000.
           k = 0
-          do i = 1,nbcatch
-             if(i /= n) then
-                if((ars1(i).ne.9999.).and.(arw1(i).ne.9999.)) then
 
-                   tile_distance = (tile_lon(i) - tile_lon(n)) * (tile_lon(i) - tile_lon(n)) + &
-                        (tile_lat(i) - tile_lat(n)) * (tile_lat(i) - tile_lat(n))
-                   if(tile_distance < dist_save) then
-                      k = i
-                      dist_save = tile_distance
-                   endif
-                endif
+          ! Define target tile peat/mineral state from its current top/profile classes.
+          target_is_peat = (soil_class_top(n) == 253) .or. (soil_class_com(n) == 253)
+
+          do i = 1,nbcatch
+             if (i == n) cycle
+             if ((ars1(i) == 9999.) .or. (arw1(i) == 9999.)) cycle
+
+             ! In strict GPA22 mode, only consider donors with the same
+             ! peat/mineral state as the target tile.
+             if (PEATMAP_STRICT_GPA22) then
+                donor_is_peat = (soil_class_top(i) == 253) .or. (soil_class_com(i) == 253)
+                if (donor_is_peat .neqv. target_is_peat) cycle
+             endif
+
+             tile_distance = (tile_lon(i) - tile_lon(n)) * (tile_lon(i) - tile_lon(n)) + &
+                             (tile_lat(i) - tile_lat(n)) * (tile_lat(i) - tile_lat(n))
+
+             if (tile_distance < dist_save) then
+                k = i
+                dist_save = tile_distance
              endif
           enddo
-          ! record in file clsm/bad_sat_param.tiles
-          write (41,*)n,k        ! n="bad" tile, k=tile from which parameters are taken
+
+          ! Strict GPA22 fallback:
+          ! if no same-state donor exists, revert to the original
+          ! nearest-valid donor search so a donor is still always found.          
+          if ((k == 0) .and. PEATMAP_STRICT_GPA22) then
+             dist_save = 1000000.
+             do i = 1,nbcatch
+                if (i == n) cycle
+                if ((ars1(i) == 9999.) .or. (arw1(i) == 9999.)) cycle
+
+                tile_distance = (tile_lon(i) - tile_lon(n)) * (tile_lon(i) - tile_lon(n)) + &
+                                (tile_lat(i) - tile_lat(n)) * (tile_lat(i) - tile_lat(n))
+
+                if (tile_distance < dist_save) then
+                   k = i
+                   dist_save = tile_distance
+                endif
+             enddo
+          endif
+
+          if (k == 0) then
+             write(*,*) 'ERROR: no donor tile found for tile ', n
+             stop
+          endif
+
+          ! Record repaired target tile n and donor tile k in clsm/bad_sat_param.tiles.
+          write (41,*) n, k 
 
           ! Overwrite parms4file when filling in parameters from neighboring tile k.
           ! For "good" tiles, keep parms4file as read earlier from catch_params.nc4,
-          ! which is why this must be done within the "then" block of the "if" statement.
-          ! This is necessary for backward 0-diff compatibility of catch_params.nc4.
+          ! which is why this must be done within the "then" block of the "if"
+          ! statement.  This is necessary for backward 0-diff compatibility of
+          ! catch_params.nc4.
 
           parms4file (n,12) = BEE(k)
           parms4file (n,16) = COND(k)
@@ -3053,11 +3099,10 @@ contains
 
        else
 
-          ! nominal case, all parameters are good
-
+          ! Nominal case: current tile n already has valid parameters.
           k = n
 
-       end if
+       end if    
 
        ! for current tile n, write parameters of tile k into ar.new (20), bf.dat (30), ts.dat (40), 
        !   and soil_param.dat (42)
@@ -3073,12 +3118,24 @@ contains
        write(40,'(i10,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,                      &
             tsa1(k),tsa2(k),tsb1(k),tsb2(k)
 
-       write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')         &
-            tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),                      &
-            BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k),                       &
-            grav_vec(k),soc_vec(k),poc_vec(k),                                            &
-            a_sand_surf(k),a_clay_surf(k),atile_sand(k),atile_clay(k) ,                   &
-            wpwet_surf(k),poros_surf(k), pmap(k)
+        ! n = target tile, k = donor tile.
+        ! Strict GPA22: preserve target identity fields and borrow only repaired bulk hydraulic fields from donor tile k.
+        ! Legacy path: preserve original donor-copy behavior.
+        if (PEATMAP_STRICT_GPA22) then
+           write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)') &
+                tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),               &
+                BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k),                &
+                grav_vec(n),soc_vec(n),poc_vec(n),                                     &
+                a_sand_surf(n),a_clay_surf(n),atile_sand(n),atile_clay(n),             &
+                wpwet_surf(n),poros_surf(n), pmap(n)
+        else
+           write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)') &
+                tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),               &
+                BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k),                &
+                grav_vec(k),soc_vec(k),poc_vec(k),                                     &
+                a_sand_surf(k),a_clay_surf(k),atile_sand(k),atile_clay(k),             &
+                wpwet_surf(k),poros_surf(k), pmap(k)
+        endif  
 
        ! record ar.new, bf.dat, and ts.dat parameters for later writing into catch_params.nc4
 
