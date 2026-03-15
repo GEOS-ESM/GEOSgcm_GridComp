@@ -127,6 +127,7 @@ type T_URBAN_STATE !urban related variables
      real,    pointer :: frac(:)      => NULL()  
      real,    pointer :: height(:)    => NULL()
      real,    pointer :: mask(:)      => NULL()
+     real,    pointer :: uhi_prev(:)  => NULL()
 end type T_URBAN_STATE
 
 type URBAN_WRAP
@@ -3125,6 +3126,8 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
     open(77,file="/discover/nobackup/yzeng3/data/urban_input_test/M36_SAT_2020_Avg.txt",status="old",action="read");read(77,*)real_global;close(77)
     urban%mask=real_global(rdispls_global(mype+1)+1:rdispls_global(mype+1)+nt_local)
     deallocate(real_global)
+    
+    allocate(urban%uhi_prev(nt_local),source=0.)
 
     deallocate(scounts,scounts_global,rdispls_global)
 
@@ -6055,7 +6058,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0                ,&
              RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS    ,&
              FRAC_UR=urban%frac, H_UR=urban%height, MSK_UR=urban%mask, SWNET_UR=SWNET_UR, RA_UR=RA_UR, QSAT_UR=QSAT_UR, DQS_UR=DQS_UR, &
-             TC_UR=TC_UR, TC_NA=TC_NA, UHI=UHI, QA_UR=QC_UR, QA_NA=QC_NA, CH_UR=CH_UR)
+             TC_UR=TC_UR, TC_NA=TC_NA, UHI=UHI, QA_UR=QC_UR, QA_NA=QC_NA, CH_UR=CH_UR, UHI_PR=urban%uhi_prev, )
              FRACOUT_UR=urban%frac
              HEIGHT_UR=urban%height
 
