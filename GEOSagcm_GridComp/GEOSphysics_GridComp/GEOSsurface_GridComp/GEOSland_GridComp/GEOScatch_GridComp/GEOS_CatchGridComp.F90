@@ -6058,7 +6058,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0                ,&
              RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS    ,&
              FRAC_UR=urban%frac, H_UR=urban%height, MSK_UR=urban%mask, SWNET_UR=SWNET_UR, RA_UR=RA_UR, QSAT_UR=QSAT_UR, DQS_UR=DQS_UR, &
-             TC_UR=TC_UR, TC_NA=TC_NA, UHI=UHI, QA_UR=QC_UR, QA_NA=QC_NA, CH_UR=CH_UR, UHI_PR=urban%uhi_prev, )
+             TC_UR=TC_UR, TC_NA=TC_NA, UHI=UHI, QA_UR=QC_UR, QA_NA=QC_NA, CH_UR=CH_UR, UHI_PR=urban%uhi_prev)
              FRACOUT_UR=urban%frac
              HEIGHT_UR=urban%height
 
