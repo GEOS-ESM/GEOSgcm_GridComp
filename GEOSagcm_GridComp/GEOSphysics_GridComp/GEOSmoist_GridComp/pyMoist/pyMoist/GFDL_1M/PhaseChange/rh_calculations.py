@@ -23,7 +23,7 @@ def rh_calculations(
     with computation(PARALLEL), interval(...):
         # determine the turn pressure using the LCL
         if TURNRHCRIT_PARAM <= 0:
-            turnrhcrit = p_mb.at(K=lcl_level - 1) - 250
+            turnrhcrit = p_mb.at(K=lcl_level) - 250
         else:
             turnrhcrit = TURNRHCRIT_PARAM
 

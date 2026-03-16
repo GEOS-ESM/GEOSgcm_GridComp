@@ -563,9 +563,11 @@ def update_outputs(
     """
     with computation(PARALLEL), interval(...):
         evaporation = evaporation + driver_evaporation
-        liquid_precip_flux = liquid_precip_flux + driver_liquid_precip_flux
-        ice_precip_flux = ice_precip_flux + driver_ice_precip_flux
         mass = mass + driver_liquid_precip_flux + driver_ice_precip_flux
+
+    with computation(FORWARD), interval(...):
+        liquid_precip_flux[0, 0, 1] = liquid_precip_flux[0, 0, 1] + driver_liquid_precip_flux
+        ice_precip_flux[0, 0, 1] = ice_precip_flux[0, 0, 1] + driver_ice_precip_flux
 
     with computation(FORWARD), interval(0, 1):
         rain = rain + driver_rain

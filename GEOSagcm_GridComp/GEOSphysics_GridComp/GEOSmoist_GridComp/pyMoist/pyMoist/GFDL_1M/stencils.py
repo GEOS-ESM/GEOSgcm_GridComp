@@ -40,7 +40,7 @@ def prepare_tendencies(
         dgraupel_dt = graupel
 
 
-def update_radiation(
+def update_after_driver(
     t: FloatField,
     u: FloatField,
     v: FloatField,

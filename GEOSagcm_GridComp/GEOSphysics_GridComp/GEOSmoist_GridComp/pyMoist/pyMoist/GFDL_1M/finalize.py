@@ -50,14 +50,6 @@ def finalize_precip(
     snow: FloatField,
     graupel: FloatField,
 ):
-    """
-
-    Dev note on `PFL_LS`, `PFI_LS`, `PFL_AN`, `PFI_AN `:
-        Fortran use large_scale_nonanvil_ice_flux(PFI_LS) & anvil_ice_flux(PFI_AN) etc.,
-        as Z_INTERFACE_DIMS fields, but level == 0 is never touched.
-        It's reset every time to 0 and calculation are done on [1:] everywhere (before and in this code).
-        Therefore, it's not a Z_INTERFACE_DIM and we treat it as a Z_DIM.
-    """
     from __externals__ import DT_MOIST
 
     with computation(FORWARD), interval(0, 1):
@@ -73,27 +65,35 @@ def finalize_precip(
         icefall = precipitated_ice + precipitated_graupel
         freezing_rainfall = 0.0
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(...):
         # Convert precipitation fluxes from (Pa kg/kg) to (kg m-2 s-1)
-        large_scale_nonanvil_ice_flux = large_scale_nonanvil_ice_flux / (MAPL_GRAV * DT_MOIST)
-        large_scale_nonanvil_liquid_flux = large_scale_nonanvil_liquid_flux / (MAPL_GRAV * DT_MOIST)
+        large_scale_nonanvil_ice_flux[0, 0, 1] = large_scale_nonanvil_ice_flux[0, 0, 1] / (
+            MAPL_GRAV * DT_MOIST
+        )
+        large_scale_nonanvil_liquid_flux[0, 0, 1] = large_scale_nonanvil_liquid_flux[0, 0, 1] / (
+            MAPL_GRAV * DT_MOIST
+        )
 
-    with computation(PARALLEL), interval(1, None):
+    with computation(FORWARD), interval(...):
         # Redistribute precipitation fluxes for chemistry
-        anvil_ice_flux = large_scale_nonanvil_ice_flux * min(
+        anvil_ice_flux[0, 0, 1] = large_scale_nonanvil_ice_flux[0, 0, 1] * min(
             1.0,
             max(convective_ice / max(ice_for_radiation, 1.0e-8), 0.0),
         )
-        large_scale_nonanvil_ice_flux = large_scale_nonanvil_ice_flux - anvil_ice_flux
+        large_scale_nonanvil_ice_flux[0, 0, 1] = (
+            large_scale_nonanvil_ice_flux[0, 0, 1] - anvil_ice_flux[0, 0, 1]
+        )
 
-        anvil_liquid_flux = large_scale_nonanvil_liquid_flux * min(
+        anvil_liquid_flux[0, 0, 1] = large_scale_nonanvil_liquid_flux[0, 0, 1] * min(
             1.0,
             max(
                 convective_liquid / max(liquid_for_radiation, 1.0e-8),
                 0.0,
             ),
         )
-        large_scale_nonanvil_liquid_flux = large_scale_nonanvil_liquid_flux - anvil_liquid_flux
+        large_scale_nonanvil_liquid_flux[0, 0, 1] = (
+            large_scale_nonanvil_liquid_flux[0, 0, 1] - anvil_liquid_flux[0, 0, 1]
+        )
 
     with computation(PARALLEL), interval(...):
         # cleanup suspended precipitation condensates
