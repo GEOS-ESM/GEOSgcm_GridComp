@@ -794,9 +794,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            ! lower turn from maxrhcrit=1.0
              if (PLmb(i,j,l) .le. turnrhcrit) then
                 RHCRIT = minrhcrit
-                !$ser data_buffered Dx=3 DEBUG_location=1
              else
-                !$ser data_buffered Dx=3 DEBUG_location=2
                 if (L.eq.LM) then
                    RHCRIT = 1.0
                 else
@@ -816,9 +814,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            !$ser data_buffered Dx=2 top_of_local_p_interface_mb=PLEmb(I,J,LM)
            !$ser data_buffered Dx=3 local_p_mb=PLmb(I,J,L)
            !$ser data_buffered Dx=3 local_alpha=ALPHA
-           ! DEBUG STUFF
-           !$ser data_buffered Dx=3 DEBUG_turnrhcrit=turnrhcrit
-           !$ser data_buffered Dx=3 DEBUG_RHCRIT=RHCRIT
            ! Put condensates in touch with the PDF
              if (.not. do_qa) then ! if not doing cloud pdf inside of GFDL-MP
              !$ser savepoint GFDL_1M_HydrostaticPDF-In
