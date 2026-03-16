@@ -1361,10 +1361,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
         ! Compute DBZ radar reflectivity
         call MAPL_GetPointer(EXPORT, PTR3D   , 'DBZ'     , RC=STATUS); VERIFY_(STATUS)
-        !$ser verbatim if (associated(PTR3D)) then
-          !$ser savepoint GFDL_1M-In_part_17
-          !$ser data radar_simulated_reflectivity=PTR3D
-        !$ser verbatim endif
         call MAPL_GetPointer(EXPORT, DBZ_MAX , 'DBZ_MAX' , RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT, DBZ_1KM , 'DBZ_1KM' , RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT, DBZ_TOP , 'DBZ_TOP' , RC=STATUS); VERIFY_(STATUS)
@@ -1372,6 +1368,22 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
         if (associated(PTR3D) .OR. &
             associated(DBZ_MAX) .OR. associated(DBZ_1KM) .OR. associated(DBZ_TOP) .OR. associated(DBZ_M10C)) then
+            !$ser savepoint GFDL_1M-In_part_17
+            !$ser verbatim if (associated(PTR3D)) then
+              !$ser data radar_simulated_reflectivity=PTR3D
+            !$ser verbatim endif
+            !$ser verbatim if (associated(DBZ_MAX)) then
+              !$ser data radar_maximum_composite_reflectivity=DBZ_MAX
+            !$ser verbatim endif
+            !$ser verbatim if (associated(DBZ_1KM)) then
+              !$ser data radar_base_1km_agl_reflectivity=DBZ_1KM
+            !$ser verbatim endif
+            !$ser verbatim if (associated(DBZ_TOP)) then
+              !$ser data radar_echo_top_reflectivity=DBZ_TOP
+            !$ser verbatim endif
+            !$ser verbatim if (associated(DBZ_M10C)) then
+              !$ser data radar_minus_10c_reflectivity=DBZ_M10C
+            !$ser verbatim endif
 
             call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,0,1)
             if (associated(PTR3D)) PTR3D = TMP3D
