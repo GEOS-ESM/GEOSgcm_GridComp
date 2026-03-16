@@ -3081,8 +3081,8 @@ contains
              stop
           endif
 
-          ! Record repaired target tile n and donor tile k in clsm/bad_sat_param.tiles.
-          write (41,*) n, k 
+          ! Record indices of (repaired) target tile "n" and donor tile "k" in file "clsm/bad_sat_param.tiles"
+          write (41,*) n, k   
 
           ! Overwrite parms4file when filling in parameters from neighboring tile k.
           ! For "good" tiles, keep parms4file as read earlier from catch_params.nc4,
@@ -3112,33 +3112,36 @@ contains
             ars1(k),ars2(k),ars3(k),                   &
             ara1(k),ara2(k),ara3(k),ara4(k),           &
             arw1(k),arw2(k),arw3(k),arw4(k) 
-
+       
        write(30,'(i10,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(k),bf2(k),bf3(k)
-
+       
        write(40,'(i10,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,                      &
             tsa1(k),tsa2(k),tsb1(k),tsb2(k)
+       
+       ! write "soil_param.dat" file;  n = target tile, k = donor tile.
 
-        ! n = target tile, k = donor tile.
-        ! Strict GPA22: preserve target identity fields and borrow only repaired bulk hydraulic fields from donor tile k.
-        ! Legacy path: preserve original donor-copy behavior.
-        if (PEATMAP_STRICT_GPA22) then
-           write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)') &
-                tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),               &
-                BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k),                &
-                grav_vec(n),soc_vec(n),poc_vec(n),                                     &
-                a_sand_surf(n),a_clay_surf(n),atile_sand(n),atile_clay(n),             &
-                wpwet_surf(n),poros_surf(n), pmap(n)
-        else
-           write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)') &
-                tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),               &
-                BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k),                &
-                grav_vec(k),soc_vec(k),poc_vec(k),                                     &
-                a_sand_surf(k),a_clay_surf(k),atile_sand(k),atile_clay(k),             &
-                wpwet_surf(k),poros_surf(k), pmap(k)
-        endif  
-
+       if (PEATMAP_STRICT_GPA22) then
+          ! write only bulk hydraulic fields from donor tile k.
+          write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')  &
+               tindex2(n),pfaf2(n),                                                   &     ! n (target)
+               soil_class_top(n),soil_class_com(n),                                   &     ! n (target)
+               BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k),                &     ! k (donor)
+               grav_vec(n),soc_vec(n),poc_vec(n),                                     &     ! n (target)
+               a_sand_surf(n),a_clay_surf(n),atile_sand(n),atile_clay(n),             &     ! n (target)
+               wpwet_surf(n),poros_surf(n), pmap(n)                                         ! n (target)
+       else
+          ! Legacy path: preserve original donor-copy behavior.
+          write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')  &
+               tindex2(n),pfaf2(n),                                                   &     ! n (target) 
+               soil_class_top(k),soil_class_com(k),                                   &     ! k (donor)
+               BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k),                &     ! k (donor)
+               grav_vec(k),soc_vec(k),poc_vec(k),                                     &     ! k (donor)
+               a_sand_surf(k),a_clay_surf(k),atile_sand(k),atile_clay(k),             &     ! k (donor)
+               wpwet_surf(k),poros_surf(k), pmap(k)                                         ! k (donor)
+       endif
+       
        ! record ar.new, bf.dat, and ts.dat parameters for later writing into catch_params.nc4
-
+       
        if (allocated (parms4file)) then
           parms4file (n, 1) = ara1(k)
           parms4file (n, 2) = ara2(k)
