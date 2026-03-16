@@ -30,7 +30,7 @@ USE GEOSmoist_Process_Library, only : sigma, SH_MD_DP, ICE_FRACTION, make_Drople
         ,cum_hei_down_ocean,cum_hei_updf_land, cum_hei_updf_ocean &
         ,cum_cap_maxs &
         ,use_momentum_transp,min_entr_rate &
-        ,zero_diff_land,zero_diff_entr,zero_diff_vvel & 
+        ,zero_diff_land,zero_diff_entr,zero_diff_vvel &
         ,nmp,lsmp,moist_trigger,frac_modis,max_tq_tend &
         ,cum_fadj_massflx, cum_use_excess, adv_trigger &
         ,evap_fix,output_sound,use_cloud_dissipation &
@@ -422,7 +422,7 @@ CONTAINS
     pwav4d         =0.
     sigma4d        =0.
     pcup5d         =0.
-    entr5d         =0.                      
+    entr5d         =0.
     up_massentr5d  =0.
     up_massdetr5d  =0.
     dd_massentr5d  =0.
@@ -789,7 +789,7 @@ CONTAINS
             DO i=1,mxp
              if(ierr4d(i,j,IENS) .ne. 0) cycle
               DO k=mzp,flip(ktop4d(i,j,IENS))-1,-1
-   
+
                 !- Export sug-grid scale vertical velocities used by GF
                 if (IENS==DEEP) sgs_vvel_dp(i,j,k) = sgs_vvel_5d(i,flip(k),j,IENS)
                 if (IENS==MID ) sgs_vvel_md(i,j,k) = sgs_vvel_5d(i,flip(k),j,IENS)
@@ -1116,7 +1116,7 @@ CONTAINS
    INTEGER, DIMENSION(its:ite,jts:jte), INTENT(INOUT) :: do_this_column
 
    REAL,DIMENSION(mxp,mzp,myp,maxiens), INTENT(OUT)   :: entr5d
- 
+
 !- for convective transport and cloud/radiation (OUT)
    INTEGER,DIMENSION(mxp,myp,maxiens), INTENT(INOUT) ::  &
                ierr4d                    &
@@ -1547,7 +1547,7 @@ CONTAINS
                   ,pwav4d               (:,j,plume) &
                   ,sigma4d              (:,j,plume) &
                   ,pcup5d             (:,:,j,plume) &
-                  ,entr5d             (:,:,j,plume) & 
+                  ,entr5d             (:,:,j,plume) &
                   ,up_massentr5d      (:,:,j,plume) &
                   ,up_massdetr5d      (:,:,j,plume) &
                   ,dd_massentr5d      (:,:,j,plume) &
@@ -2224,7 +2224,7 @@ loop1:  do n=1,maxiens
 !
       !- initial entrainment/detrainment
       entr_rate(:,:) = entr_rate_plume
-      cd       (:,:) = entr_rate_plume                       
+      cd       (:,:) = entr_rate_plume
 !
 !--- max/min allowed value for epsilon (ratio downdraft base mass flux/updraft
 !    base mass flux
@@ -2582,8 +2582,8 @@ loop0:       do k=kts,ktf
             else
                entr_rate(i,k)=entr_rate(i,k)*(1.3-frh)
             endif
-            if (ZERO_DIFF_ENTR) then
-               cd(i,k)=0.75e-4*(1.6-frh)    
+            if (ZERO_DIFF_ENTR==1) then
+               cd(i,k)=0.75e-4*(1.6-frh)
             else
                entr_rate(i,k) = max(entr_rate(i,k),min_entr_rate)
                if(trim(cumulus) == 'deep'   ) cd(i,k)=0.10*entr_rate(i,k)
@@ -2634,7 +2634,7 @@ loop0:       do k=kts,ktf
         ! Deep: Must reach at least ~3 km (750 mb)
         ! This ensures it's truly "deep" convection
         !-------------------------------------------------------------------------
-        do i=its,itf 
+        do i=its,itf
            if(ierr(i) /= 0)cycle
            ! Cloud top too low: should be shallow instead
            if(po_cup(i,ktop(i)) > 750) then
@@ -2656,7 +2656,7 @@ loop0:       do k=kts,ktf
 !
       IF(trim(cumulus) == 'mid') THEN
         if(USE_INV_LAYERS) then
-        !    
+        !
         !--- get inversion layers
           call get_inversion_layers(cumulus,ierr,psur,po_cup,tn_cup,zo_cup,k_inv_layers,&
                                     dtempdz,itf,ktf,its,ite, kts,kte)
@@ -2664,8 +2664,8 @@ loop0:       do k=kts,ktf
            if(ierr(i) /= 0)cycle
            ktop(i) = min(ktop(i),k_inv_layers(i,mid))
            !print*,"ktop=",ktop(i),k_inv_layers(i,mid);flush(6)
-          enddo              
-        endif                
+          enddo
+        endif
         !-------------------------------------------------------------------------
         ! Mid (Congestus): Capped between ~3 km and ~9 km (700-300 mb)
         ! Lower bound: Must be taller than shallow
@@ -3695,7 +3695,7 @@ ELSEIF(VERT_DISCR == 1) THEN
                          +(zdo(i,k+1)*(hcdo(i,k+1)-heo_cup(i,k+1) ) -                    &
                            zdo(i,k  )*(hcdo(i,k  )-heo_cup(i,k  ) ) )*g/dp*edto(i)
 
-            dellah(i,k) = dellah(i,k) - xlf*melting(i,k)*g/dp      
+            dellah(i,k) = dellah(i,k) - xlf*melting(i,k)*g/dp
 ! BUG2025   dellah(i,k) = dellah(i,k) + xlf*((1.-p_liq_ice(i,k))* &
 ! BUG2025                              0.5*(qrco(i,k+1)+qrco(i,k)) - melting(i,k))*g/dp
 ! BUG2025 latent heat of freezing for qrco included in hco already
@@ -3725,7 +3725,7 @@ ELSEIF(VERT_DISCR == 1) THEN
             dellah(i,k) =-( zuo(i,k+1)*hco (i,k+1) - zuo(i,k)*hco (i,k) )*g/dp           &
                          +( zdo(i,k+1)*hcdo(i,k+1) - zdo(i,k)*hcdo(i,k) )*g/dp*edto(i)
 
-            dellah(i,k) = dellah(i,k) - xlf*melting(i,k)*g/dp      
+            dellah(i,k) = dellah(i,k) - xlf*melting(i,k)*g/dp
 ! BUG2025   dellah(i,k) = dellah(i,k) + xlf*((1.-p_liq_ice(i,k))* &
 ! BUG2025                               0.5*(qrco(i,k+1)+qrco(i,k)) - melting(i,k))*g/dp
 ! BUG2025 latent heat of freezing for qrco included in hco already
@@ -4217,7 +4217,7 @@ ENDIF ! vertical discretization formulation
 !
 !-- get the total (deep+congestus) evaporation flux for output (units kg/kg/s)
 !
-       do i=its,itf                    
+       do i=its,itf
            if(ierr(i) /= 0) cycle
            do k=kts,ktop(i)
               dp=100.*(po_cup(i,k)-po_cup(i,k+1))
@@ -4775,7 +4775,7 @@ ENDIF !- end of section for atmospheric composition
   !
    real,    dimension (kts:kte,its:ite)                                &
         ,intent (in   )                   ::                           &
-        ccn  
+        ccn
    real,    dimension (its:ite,kts:kte)                                &
         ,intent (in   )                   ::                           &
         rho,us,vs,z,p,pw
@@ -5926,7 +5926,7 @@ ENDIF !- end of section for atmospheric composition
                 endif
 
             ELSEIF (AUTOCONV == 6 ) then
-                min_liq  = ( xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd ) 
+                min_liq  = ( xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd )
                 if(clw_all(i,k) <= min_liq) then
                    qrc(i,k)= clw_all(i,k)
                    pw(i,k) = 0.
@@ -5939,7 +5939,7 @@ ENDIF !- end of section for atmospheric composition
                 endif
 
             ELSEIF (AUTOCONV == 7 ) then
-                min_liq  = ( xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd ) 
+                min_liq  = ( xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd )
                 if(clw_all(i,k) <= min_liq) then
                    qrc(i,k)= clw_all(i,k)
                    pw(i,k) = 0.
@@ -6103,7 +6103,7 @@ ENDIF !- end of section for atmospheric composition
             if(c0 < 1.e-6) cx0 = 0.
 
             qrc(i,k)= clw_all(i,k)/(1.+cx0)
-            min_liq  = ( xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd ) 
+            min_liq  = ( xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd )
             pw (i,k)= cx0*max(0.,qrc(i,k) - min_liq)! units kg[rain]/kg[air]
             !--- convert pw to normalized pw
             pw (i,k)= pw(i,k)*zu(i,k)
@@ -6306,11 +6306,11 @@ ENDIF !- end of section for atmospheric composition
            up_massentro(i,k)=max(up_massentro(i,k),0.0)
 
            !-- check dd_massdetro in case of dd_massentro has been changed above
-           up_massdetro(i,k)=-zuo(i,k+1)+zuo(i,k)+up_massentro(i,k)
+           up_massdetro(i,k)=zuo(i,k)-zuo(i,k+1)+up_massentro(i,k)
 
-           if(zuo(i,k).gt.0.) then
-                    cd(i,k)=up_massdetro(i,k)/(dz*zuo(i,k))
-             entr_rate(i,k)=up_massentro(i,k)/(dz*zuo(i,k))
+           if(dz_zuo_ave.gt.0.) then
+                     cd(i,k)=up_massdetro(i,k)/dz_zuo_ave
+              entr_rate(i,k)=up_massentro(i,k)/dz_zuo_ave
            endif
          enddo
 
@@ -6320,14 +6320,14 @@ ENDIF !- end of section for atmospheric composition
 
            up_massentro(i,k)=entr_rate(i,k)*dz_zuo_ave
 
-           up_massdetro(i,k)=zuo(i,k)+up_massentro(i,k)-zuo(i,k+1)
+           up_massdetro(i,k)=zuo(i,k)-zuo(i,k+1)+up_massentro(i,k)
            up_massdetro(i,k)=max(up_massdetro(i,k),0.0)
            !-- check up_massentro in case of dd_up_massdetro has been changed above
-           up_massentro(i,k)=-zuo(i,k)+up_massdetro(i,k)+zuo(i,k+1)
+           up_massentro(i,k)=zuo(i,k+1)-zuo(i,k)+up_massdetro(i,k)
 
-           if(zuo(i,k-1).gt.0.) then
-                    cd(i,k)=up_massdetro(i,k)/(dz*zuo(i,k))
-             entr_rate(i,k)=up_massentro(i,k)/(dz*zuo(i,k))
+           if(dz_zuo_ave.gt.0.) then
+                     cd(i,k)=up_massdetro(i,k)/dz_zuo_ave
+              entr_rate(i,k)=up_massentro(i,k)/dz_zuo_ave
            endif
          enddo
 
@@ -8193,8 +8193,8 @@ SUBROUTINE get_inversion_layers(cumulus,ierr,psur,po_cup,to_cup,zo_cup,k_inv_lay
 
 !  local variables in this routine
 
-     real, parameter              :: frh_crit_O=0.7                        
-     real, parameter              :: frh_crit_L=0.7  !--- test 0.5         
+     real, parameter              :: frh_crit_O=0.7
+     real, parameter              :: frh_crit_L=0.7  !--- test 0.5
      real                         :: delz_oversh !--- height of cloud overshoot is 10% higher than the LNB.
                                                        !--- Typically it can 2 - 2.5km higher, but it depends on
                                                        !--- the severity of the thunderstorm.
@@ -8981,7 +8981,7 @@ loop0:  do k= kbcon(i),ktop(i)
                 else
                   if(ZERO_DIFF_LAND == 0) then
                     !---over the land, only applies closure 10.
-                    !                             over Land                over Ocean  
+                    !                             over Land                over Ocean
                     xf_ens(i,1:16)=(1.-xland(i))*xf_ens(i,10) + xland(i)*xf_ens(i,1:16)
                   else
                     !---special combination for 'ensemble closure':
