@@ -24,7 +24,6 @@ from ndsl import (
     Backend,
 )
 from ndsl.constants import I_DIM, J_DIM, K_DIM
-from ndsl.dsl.gt4py_utils import backend_is_fortran_aligned, is_gpu_backend
 from ndsl.dsl.typing import get_precision
 from ndsl.logging import ndsl_log_on_rank_0
 from ndsl.optional_imports import cupy as cp
@@ -41,7 +40,7 @@ class NDSLPhysicsConfiguration:
     layout_x: int = 1
     layout_y: int = 1
     single_column: bool = False
-    backend: str = "st:dace:cpu:KJI"
+    backend: str = "st:dace:gpu:KJI"
 
 
 class NDSLPhysicsStack:
@@ -113,10 +112,10 @@ class NDSLPhysicsStack:
         default_3D_memory_desc = (tmp_quantity.data.shape, tmp_quantity.data.strides)
         if fortran_mem_space != MemorySpace.CPU:
             raise NotImplementedError("Interface cannot stream Fortran memory resident on GPU")
-        if is_gpu_backend(self.backend):
+        if self.backend.is_gpu_backend():
             self._interface_type = InterfaceTransferType.CPU_TO_GPU_TO_CPU
         else:
-            if backend_is_fortran_aligned(self.backend):
+            if self.backend.is_fortran_aligned():
                 # This is Fortran layout - we can Map the memory
                 self._interface_type = InterfaceTransferType.CPU_MAP
             else:
