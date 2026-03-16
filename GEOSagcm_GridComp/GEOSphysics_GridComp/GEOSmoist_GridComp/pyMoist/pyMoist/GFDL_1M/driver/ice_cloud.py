@@ -1,5 +1,5 @@
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import (
     FORWARD,
     PARALLEL,
@@ -1610,12 +1610,12 @@ class GFDL1MIceCloud(NDSLRuntime):
         self.saturation_tables = saturation_tables
 
         # initialize locals
-        self._sublimation = self.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM], Float)
+        self._sublimation = self.make_local(quantity_factory, [I_DIM, J_DIM, K_DIM], Float)
 
         # construct stencils
         self._icloud_core = stencil_factory.from_dims_halo(
             func=icloud_core,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "c_air": config_dependent_constants.C_AIR,
                 "c_vap": config_dependent_constants.C_VAP,
@@ -1676,7 +1676,7 @@ class GFDL1MIceCloud(NDSLRuntime):
 
         self._update_output = stencil_factory.from_dims_halo(
             func=update_precip_total,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
     def __call__(

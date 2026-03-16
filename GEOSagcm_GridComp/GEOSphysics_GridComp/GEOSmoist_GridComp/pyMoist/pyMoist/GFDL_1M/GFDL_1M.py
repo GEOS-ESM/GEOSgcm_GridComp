@@ -1,5 +1,5 @@
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.driver import GFDL1MDriver
@@ -60,7 +60,7 @@ class GFDL1M(NDSLRuntime):
         # Build components
         self.prepare_tendencies = stencil_factory.from_dims_halo(
             func=prepare_tendencies,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._setup = GFDL1MSetup(
@@ -79,7 +79,7 @@ class GFDL1M(NDSLRuntime):
 
         self._update_tendencies = stencil_factory.from_dims_halo(
             func=update_tendencies,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "DT_MOIST": config.DT_MOIST,
             },
@@ -87,17 +87,17 @@ class GFDL1M(NDSLRuntime):
 
         self._reset_micro_tendencies = stencil_factory.from_dims_halo(
             func=reset_micro_tendencies,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._prepare_radiation = stencil_factory.from_dims_halo(
             func=prepare_radiation,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._get_total_concentration = stencil_factory.from_dims_halo(
             func=get_total_concentration,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._driver = GFDL1MDriver(
@@ -108,7 +108,7 @@ class GFDL1M(NDSLRuntime):
 
         self._update_after_driver = stencil_factory.from_dims_halo(
             func=update_after_driver,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "DT_MOIST": config.DT_MOIST,
             },

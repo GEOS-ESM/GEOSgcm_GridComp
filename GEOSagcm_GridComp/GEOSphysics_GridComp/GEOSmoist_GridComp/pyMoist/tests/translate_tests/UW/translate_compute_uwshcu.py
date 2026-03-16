@@ -1,7 +1,7 @@
 from f90nml import Namelist
 
 from ndsl import Quantity, QuantityFactory, StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.UW.compute_uwshcu import ComputeUwshcuInv

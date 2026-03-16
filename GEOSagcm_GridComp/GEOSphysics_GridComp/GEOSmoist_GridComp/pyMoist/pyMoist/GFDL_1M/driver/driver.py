@@ -2,7 +2,7 @@
 
 import dace
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.typing import FloatField, FloatFieldIJ
 
 from pyMoist.GFDL_1M.config import GFDL1MConfig
@@ -82,7 +82,7 @@ class GFDL1MDriver(NDSLRuntime):
 
         self._fall_speed = stencil_factory.from_dims_halo(
             func=fall_speed,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "p_nonhydro": self.config_dependent_constants.P_NONHYDRO,
                 "const_vi": config.CONST_VI,
@@ -124,7 +124,7 @@ class GFDL1MDriver(NDSLRuntime):
 
         self._finish = stencil_factory.from_dims_halo(
             func=update_tendencies,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "c_air": self.config_dependent_constants.C_AIR,
                 "c_vap": self.config_dependent_constants.C_VAP,

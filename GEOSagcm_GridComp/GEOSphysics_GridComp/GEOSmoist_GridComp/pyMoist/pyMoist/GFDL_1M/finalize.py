@@ -1,5 +1,5 @@
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, function, interval, sqrt
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 
@@ -250,12 +250,12 @@ class GFDL1MFinalize(NDSLRuntime):
         # construct stencils
         self._redistribute_clouds = stencil_factory.from_dims_halo(
             func=redistribute_clouds,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._finalize_precip = stencil_factory.from_dims_halo(
             func=finalize_precip,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"DT_MOIST": config.DT_MOIST},
         )
 
@@ -267,32 +267,32 @@ class GFDL1MFinalize(NDSLRuntime):
 
         self._fix_humidity = stencil_factory.from_dims_halo(
             func=fix_humidity,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._fix_mixing_ratio = stencil_factory.from_dims_halo(
             func=fix_mixing_ratio,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._minimum_mixing_ratio = stencil_factory.from_dims_halo(
             func=minimum_mixing_ratio,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._fix_radii = stencil_factory.from_dims_halo(
             func=fix_radii,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._update_rainwater_source = stencil_factory.from_dims_halo(
             func=update_rainwater_source,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._dissipative_ke_heating = stencil_factory.from_dims_halo(
             func=dissipative_ke_heating,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         # Dev NOTE: this is an orchestration workaround. Direct call to

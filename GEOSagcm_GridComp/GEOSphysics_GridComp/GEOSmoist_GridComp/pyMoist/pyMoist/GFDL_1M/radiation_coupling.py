@@ -1,5 +1,5 @@
 from ndsl import NDSLRuntime, StencilFactory, ndsl_log
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import PARALLEL, computation, interval
 from ndsl.dsl.typing import FloatField
 
@@ -50,12 +50,12 @@ class GFDL1MRadiationCoupling(NDSLRuntime):
         # construct stencils
         self._fix_up_clouds = stencil_factory.from_dims_halo(
             func=fix_up_clouds,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._radiation_coupling = stencil_factory.from_dims_halo(
             func=radiation_coupling,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "FAC_RL": config.FAC_RL,
                 "MIN_RL": config.MIN_RL,
@@ -67,7 +67,7 @@ class GFDL1MRadiationCoupling(NDSLRuntime):
         )
         self._update_humidity = stencil_factory.from_dims_halo(
             func=update_humidity,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         if config.DO_QA:

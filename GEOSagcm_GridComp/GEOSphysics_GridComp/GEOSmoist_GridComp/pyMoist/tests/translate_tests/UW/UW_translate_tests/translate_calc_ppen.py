@@ -3,7 +3,7 @@ from gt4py.cartesian.gtscript import int32
 
 import pyMoist.constants as constants
 from ndsl import StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
@@ -57,11 +57,11 @@ class TranslateCalcPpen(TranslateFortranData2Py):
 
         self._calc_ppen = self.stencil_factory.from_dims_halo(
             func=calc_ppen,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         # Field inputs
-        condensation = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a", dtype=bool)
+        condensation = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a", dtype=bool)
 
         for i in range(0, 24):
             for j in range(0, 24):
@@ -70,28 +70,28 @@ class TranslateCalcPpen(TranslateFortranData2Py):
                 else:
                     condensation.view[i, j] = True
 
-        kpen_IJ = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a", dtype=Int)
+        kpen_IJ = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a", dtype=Int)
         safe_assign_array(kpen_IJ.view[:], inputs["kpen"] - 1)
-        bogbot = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
+        bogbot = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
         safe_assign_array(bogbot.view[:], inputs["bogbot"])
-        bogtop = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
+        bogtop = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
         safe_assign_array(bogtop.view[:], inputs["bogtop"])
-        dp0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        dp0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(dp0.view[:], inputs["dp0"])
-        drage = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
+        drage = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
         safe_assign_array(drage.view[:], inputs["drage"])
-        pifc0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        pifc0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
         safe_assign_array(pifc0.view[:], inputs["pifc0"])
-        rhomid0j = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
+        rhomid0j = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
         safe_assign_array(rhomid0j.view[:], inputs["rhomid0j"])
-        wtwb = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
+        wtwb = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
         safe_assign_array(wtwb.view[:], inputs["wtwb"])
-        wu = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        wu = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
         safe_assign_array(wu.view[:], inputs["wu"])
 
         # Outputs
-        ppen = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
-        kpen = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a", dtype=Int)
+        ppen = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
+        kpen = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a", dtype=Int)
 
         # The iteration you want to test
         iter_test = int32(0)

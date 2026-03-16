@@ -3,7 +3,7 @@ from gt4py.cartesian.gtscript import int32
 
 import pyMoist.constants as constants
 from ndsl import StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
@@ -84,12 +84,12 @@ class TranslateDefineEnvProperties(TranslateFortranData2Py):
 
         self._define_env_properties = self.stencil_factory.from_dims_halo(
             func=define_env_properties,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"ncnst": config.NCNST, "PGFc": config.PGFc, "dotransport": config.dotransport},
         )
 
         # Field inputs
-        condensation = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a", dtype=bool)
+        condensation = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a", dtype=bool)
 
         for i in range(0, 24):
             for j in range(0, 24):
@@ -98,76 +98,76 @@ class TranslateDefineEnvProperties(TranslateFortranData2Py):
                 else:
                     condensation.view[i, j] = True
 
-        kinv = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a", dtype=Int)
+        kinv = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a", dtype=Int)
         safe_assign_array(kinv.view[:], inputs["kinv"])
-        krel = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a", dtype=Int)
+        krel = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a", dtype=Int)
         safe_assign_array(krel.view[:], inputs["krel"] - 1)
-        pifc0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        pifc0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
         safe_assign_array(pifc0.view[:], inputs["pifc0"])
-        pmid0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        pmid0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(pmid0.view[:], inputs["pmid0"])
-        prel = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        prel = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(prel.view[:], inputs["prel"])
-        qt0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        qt0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(qt0.view[:], inputs["qt0"])
-        ssqt0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        ssqt0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(ssqt0.view[:], inputs["ssqt0"])
-        ssthl0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        ssthl0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(ssthl0.view[:], inputs["ssthl0"])
-        sstr0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM, "ntracers"], units="n/a")
+        sstr0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM, "ntracers"], units="n/a")
         safe_assign_array(sstr0.view[:], inputs["sstr0"])
-        ssu0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        ssu0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(ssu0.view[:], inputs["ssu0"])
-        ssv0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        ssv0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(ssv0.view[:], inputs["ssv0"])
-        thl0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        thl0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(thl0.view[:], inputs["thl0"])
-        trsrc = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, "ntracers"], units="n/a")
+        trsrc = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, "ntracers"], units="n/a")
         safe_assign_array(trsrc.view[:], inputs["trsrc"])
-        u0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        u0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(u0.view[:], inputs["u0"])
-        v0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        v0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(v0.view[:], inputs["v0"])
-        usrc = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        usrc = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(usrc.view[:], inputs["usrc"])
-        vsrc = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        vsrc = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(vsrc.view[:], inputs["vsrc"])
-        thv0rel = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        thv0rel = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(thv0rel.view[:], inputs["thv0rel"])
-        tr0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM, "ntracers"], units="n/a")
+        tr0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM, "ntracers"], units="n/a")
         safe_assign_array(tr0.view[:], inputs["tr0_DefineEnvProperties"])
-        uu = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        uu = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
         safe_assign_array(uu.view[:], inputs["uu"])
-        vu = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        vu = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
         safe_assign_array(vu.view[:], inputs["vu"])
         # Outputs
-        dpe = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
-        exne = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
-        pe = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
-        qsat_pe = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        qte = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
-        thle = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
-        thvebot = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
-        tre = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, "ntracers"], units="n/a")
-        tru = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], units="n/a")
-        ue = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
-        uplus = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
+        dpe = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
+        exne = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
+        pe = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
+        qsat_pe = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        qte = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
+        thle = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
+        thvebot = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
+        tre = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, "ntracers"], units="n/a")
+        tru = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM, "ntracers"], units="n/a")
+        ue = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
+        uplus = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
 
-        ve = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
-        vplus = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
-        uplus_3D = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        vplus_3D = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        ve = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
+        vplus = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
+        uplus_3D = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        vplus_3D = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
 
         saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory.backend)
         self.ese = saturation_vapor_pressure_table.ese
         self.esx = saturation_vapor_pressure_table.esx
 
-        umf_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
-        qtflx_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
-        slflx_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
-        uflx_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
-        vflx_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
-        cush_inout = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
+        umf_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
+        qtflx_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
+        slflx_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
+        uflx_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
+        vflx_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
+        cush_inout = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
 
         # The iteration you want to test
         iter_test = int32(0)

@@ -1,6 +1,6 @@
 from f90nml import Namelist
 from ndsl import StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
@@ -54,7 +54,7 @@ class TranslateGFDL_1M_RedistributeClouds(TranslateFortranData2Py):
         # construct test stencil
         code = self.stencil_factory.from_dims_halo(
             func=redistribute_clouds,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
         code(
             cloud_fraction=state.radiation_field.cloud_fraction,

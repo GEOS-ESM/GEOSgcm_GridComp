@@ -236,7 +236,7 @@ class GFDL1MInterface(UserCode):
         #     "scalar_diffusivity_interface",
         #     "KH",
         #     import_repository,
-        #     dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM],
+        #     dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
         # )
         # self_manage_state.register("sensible_heat_flux", "SH", import_repository)
 

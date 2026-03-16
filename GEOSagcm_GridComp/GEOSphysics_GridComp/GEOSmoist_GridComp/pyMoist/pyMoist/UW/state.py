@@ -1,7 +1,7 @@
 import dataclasses
 
 from ndsl import Quantity, State
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Float, Z_INTERFACE_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM, Float, K_INTERFACE_DIM
 
 
 @dataclasses.dataclass
@@ -15,7 +15,7 @@ class UWState(State):
         PLE: Quantity = dataclasses.field(
             metadata={
                 "name": "PLE",
-                "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+                "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
                 "units": "Pa",
                 "intent": "?",
                 "dtype": Float,
@@ -24,7 +24,7 @@ class UWState(State):
         ZLE: Quantity = dataclasses.field(
             metadata={
                 "name": "ZLE",
-                "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+                "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
                 "units": "m",
                 "intent": "?",
                 "dtype": Float,
@@ -33,7 +33,7 @@ class UWState(State):
         QLLS: Quantity = dataclasses.field(
             metadata={
                 "name": "QLLS",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -42,7 +42,7 @@ class UWState(State):
         QILS: Quantity = dataclasses.field(
             metadata={
                 "name": "QILS",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -51,7 +51,7 @@ class UWState(State):
         QLCN: Quantity = dataclasses.field(
             metadata={
                 "name": "QLCN",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -60,7 +60,7 @@ class UWState(State):
         QICN: Quantity = dataclasses.field(
             metadata={
                 "name": "QICN",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -69,7 +69,7 @@ class UWState(State):
         kpbl_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "kpbl_inv",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "m",
                 "intent": "?",
                 "dtype": Float,
@@ -78,7 +78,7 @@ class UWState(State):
         frland: Quantity = dataclasses.field(
             metadata={
                 "name": "frland",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "fraction",
                 "intent": "?",
                 "dtype": Float,
@@ -87,7 +87,7 @@ class UWState(State):
         tke_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "tke_inv",
-                "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+                "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
                 "units": "m2/s2",
                 "intent": "?",
                 "dtype": Float,
@@ -96,7 +96,7 @@ class UWState(State):
         shfx: Quantity = dataclasses.field(
             metadata={
                 "name": "skfx",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "J",
                 "intent": "?",
                 "dtype": Float,
@@ -105,7 +105,7 @@ class UWState(State):
         evap: Quantity = dataclasses.field(
             metadata={
                 "name": "evap",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "kg/m^2/s",
                 "intent": "?",
                 "dtype": Float,
@@ -121,7 +121,7 @@ class UWState(State):
         u0_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "u0_inv",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "m/s",
                 "intent": "?",
                 "dtype": Float,
@@ -130,7 +130,7 @@ class UWState(State):
         v0_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "v0_inv",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "m/s",
                 "intent": "?",
                 "dtype": Float,
@@ -139,7 +139,7 @@ class UWState(State):
         qv0_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "qv0_inv",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg/kg",
                 "intent": "?",
                 "dtype": Float,
@@ -148,7 +148,7 @@ class UWState(State):
         t0_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "t0_inv",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "K",
                 "intent": "?",
                 "dtype": Float,
@@ -157,7 +157,7 @@ class UWState(State):
         cush: Quantity = dataclasses.field(
             metadata={
                 "name": "cush",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "m",
                 "intent": "?",
                 "dtype": Float,
@@ -166,7 +166,7 @@ class UWState(State):
         CNV_Tracers: Quantity = dataclasses.field(
             metadata={
                 "name": "CNV_Tracers",
-                "dims": [X_DIM, Y_DIM, Z_DIM, "ntracers"],
+                "dims": [I_DIM, J_DIM, K_DIM, "ntracers"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -175,7 +175,7 @@ class UWState(State):
         cnvtr: Quantity = dataclasses.field(
             metadata={
                 "name": "cnvtr",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -184,7 +184,7 @@ class UWState(State):
         CLCN: Quantity = dataclasses.field(
             metadata={
                 "name": "CLCN",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -200,7 +200,7 @@ class UWState(State):
         RKFRE: Quantity = dataclasses.field(
             metadata={
                 "name": "RKFRE",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "fraction",
                 "intent": "?",
                 "dtype": Float,
@@ -209,7 +209,7 @@ class UWState(State):
         MFD_SC: Quantity = dataclasses.field(
             metadata={
                 "name": "MFD_SC",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -218,7 +218,7 @@ class UWState(State):
         DQADT_SC: Quantity = dataclasses.field(
             metadata={
                 "name": "DQADT_SC",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -227,7 +227,7 @@ class UWState(State):
         QLENT_SC: Quantity = dataclasses.field(
             metadata={
                 "name": "QLENT_SC",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -236,7 +236,7 @@ class UWState(State):
         QIENT_SC: Quantity = dataclasses.field(
             metadata={
                 "name": "QIENT_SC",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -245,7 +245,7 @@ class UWState(State):
         umf_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "umf_inv",
-                "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+                "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
                 "units": "kg/m^2/s",
                 "intent": "?",
                 "dtype": Float,
@@ -254,7 +254,7 @@ class UWState(State):
         dcm_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "dcm_inv",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -263,7 +263,7 @@ class UWState(State):
         qtflx_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "qtflx_inv",
-                "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+                "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -272,7 +272,7 @@ class UWState(State):
         slflx_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "slflx_inv",
-                "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+                "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -281,7 +281,7 @@ class UWState(State):
         uflx_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "uflx_inv",
-                "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+                "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -290,7 +290,7 @@ class UWState(State):
         vflx_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "vflx_inv",
-                "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+                "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -299,7 +299,7 @@ class UWState(State):
         qvten_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "qvten_inv",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg/kg/s",
                 "intent": "?",
                 "dtype": Float,
@@ -308,7 +308,7 @@ class UWState(State):
         qlten_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "qlten_inv",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg/kg/s",
                 "intent": "?",
                 "dtype": Float,
@@ -317,7 +317,7 @@ class UWState(State):
         qiten_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "qiten_inv",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg/kg/s",
                 "intent": "?",
                 "dtype": Float,
@@ -326,7 +326,7 @@ class UWState(State):
         tten_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "tten_inv",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "K/s",
                 "intent": "?",
                 "dtype": Float,
@@ -335,7 +335,7 @@ class UWState(State):
         uten_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "uten_inv",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "m/s^2",
                 "intent": "?",
                 "dtype": Float,
@@ -344,7 +344,7 @@ class UWState(State):
         vten_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "vten_inv",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "m/s^2",
                 "intent": "?",
                 "dtype": Float,
@@ -353,7 +353,7 @@ class UWState(State):
         qrten_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "qrten_inv",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg/kg/s",
                 "intent": "?",
                 "dtype": Float,
@@ -362,7 +362,7 @@ class UWState(State):
         qsten_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "qsten_inv",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg/kg/s",
                 "intent": "?",
                 "dtype": Float,
@@ -371,7 +371,7 @@ class UWState(State):
         cufrc_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "cufrc_inv",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "fraction",
                 "intent": "?",
                 "dtype": Float,
@@ -380,7 +380,7 @@ class UWState(State):
         fer_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "fer_inv",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "1/Pa",
                 "intent": "?",
                 "dtype": Float,
@@ -389,7 +389,7 @@ class UWState(State):
         fdr_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "fdr_inv",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "1/Pa",
                 "intent": "?",
                 "dtype": Float,
@@ -398,7 +398,7 @@ class UWState(State):
         ndrop_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "ndrop_inv",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -407,7 +407,7 @@ class UWState(State):
         nice_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "nice_inv",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -416,7 +416,7 @@ class UWState(State):
         qldet_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "qldet_inv",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -425,7 +425,7 @@ class UWState(State):
         qlsub_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "qlsub_inv",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -434,7 +434,7 @@ class UWState(State):
         qidet_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "qidet_inv",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -443,7 +443,7 @@ class UWState(State):
         qisub_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "qisub_inv",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -452,7 +452,7 @@ class UWState(State):
         tpert_out: Quantity = dataclasses.field(
             metadata={
                 "name": "tpert_out",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -461,7 +461,7 @@ class UWState(State):
         qpert_out: Quantity = dataclasses.field(
             metadata={
                 "name": "qpert_out",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -470,7 +470,7 @@ class UWState(State):
         CNV_MFC: Quantity = dataclasses.field(
             metadata={
                 "name": "CNV_MFC",
-                "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+                "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -479,7 +479,7 @@ class UWState(State):
         CNV_MFD: Quantity = dataclasses.field(
             metadata={
                 "name": "CNV_MFD",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -488,7 +488,7 @@ class UWState(State):
         SHLW_PRC3: Quantity = dataclasses.field(
             metadata={
                 "name": "SHLW_PRC3",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -497,7 +497,7 @@ class UWState(State):
         SHLW_SNO3: Quantity = dataclasses.field(
             metadata={
                 "name": "SHLW_SNO3",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -506,7 +506,7 @@ class UWState(State):
         SC_QT: Quantity | None = dataclasses.field(
             metadata={
                 "name": "SC_QT",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -515,7 +515,7 @@ class UWState(State):
         SC_MSE: Quantity | None = dataclasses.field(
             metadata={
                 "name": "SC_MSE",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -524,7 +524,7 @@ class UWState(State):
         CUSH_SC: Quantity | None = dataclasses.field(
             metadata={
                 "name": "CUSH_SC",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "m",
                 "intent": "?",
                 "dtype": Float,
@@ -533,7 +533,7 @@ class UWState(State):
         ql0_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "ql0_inv",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -542,7 +542,7 @@ class UWState(State):
         qi0_inv: Quantity = dataclasses.field(
             metadata={
                 "name": "qi0_inv",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,

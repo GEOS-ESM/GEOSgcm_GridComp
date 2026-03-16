@@ -1,6 +1,6 @@
 from f90nml import Namelist
 from ndsl import StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
@@ -41,7 +41,7 @@ class TranslateGFDL_1M_RHCalculations(TranslateFortranData2Py):
         locals_ = GFDL1MLocals.make_as_state(self.quantity_factory)
 
         # Internal from wrapper class needed for this test
-        alpha = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        alpha = self.quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
 
         # fill relevant parts of dataclasses
         state.estimated_inversion_strength.field[:] = inputs["estimated_inversion_strength"]
@@ -54,7 +54,7 @@ class TranslateGFDL_1M_RHCalculations(TranslateFortranData2Py):
         # construct test stencil
         code = self.stencil_factory.from_dims_halo(
             func=rh_calculations,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "DW_LAND": config.DW_LAND,
                 "DW_OCEAN": config.DW_OCEAN,
