@@ -8,7 +8,6 @@ from MAPL_PythonBridge import get_MAPLPy
 from MAPL_PythonBridge.memory.fortran_python_converter import FortranPythonConverter
 from MAPL_PythonBridge.types import CVoidPointer
 from ndsl import QuantityFactory
-from ndsl.dsl.gt4py_utils import is_gpu_backend
 from ndsl.optional_imports import cupy as cp
 
 
@@ -42,7 +41,7 @@ class MAPLMemoryRepository:
             self._quantity_factory.sizer.nx,
             self._quantity_factory.sizer.ny,
             self._quantity_factory.sizer.nz,
-            cp if is_gpu_backend(self._quantity_factory.backend) else np,
+            cp if self._quantity_factory.backend.is_gpu_backend() else np,
         )
         self._fortran_pointers: dict[str, MAPLMemoryRepository.FortranMemory] = {}
 
