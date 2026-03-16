@@ -48,9 +48,6 @@ class TranslateGFDL_1M_TerminalFall(TranslateFortranData2Py):
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GFDL_1M-constants")
 
-        ##### DEBUG
-        self.alternate_inputs = data_loader.load("GFDL_1M_Driver-Out")
-
     def compute(self, inputs):
         # initialize dataclasses
         driver_locals = GFDL1MDriverLocals.make_as_state(self.quantity_factory)
