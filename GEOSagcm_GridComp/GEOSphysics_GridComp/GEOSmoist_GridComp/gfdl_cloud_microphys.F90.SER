@@ -453,7 +453,9 @@ subroutine gfdl_cloud_microphys_driver (qv, ql, qr, qi, qs, qg, qa, qn,   &
     rdt    = 1. / dt_in
     ntimes = nint (dt_in / mpdt)
     ! set final dimension of driver savepoints
-    !$ser verbatim call ser_set_D4(ntimes)
+    !$ser verbatim if (debug_serialization .eqv. .true.) then
+        !$ser verbatim call ser_set_D4(ntimes)
+    !$ser verbatim endif
 
     ! small time step:
     dts = dt_in / real (ntimes)
@@ -1033,7 +1035,6 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
                         !$ser data_buffered Dx=4 surface_precip_graupel_terminalfall=graupel(i)
                         !$ser data_buffered Dx=4 surface_precip_ice_terminalfall=ice(i)
                     !$ser verbatim enddo
-                    !$ser savepoint GFDL_1M_TerminalFall-Out
                 !$ser verbatim endif
             !$ser verbatim endif
             call terminal_fall (dts, ktop, kbot, tz, qvz, qlz, qrz, qgz, qsz, qiz, &
@@ -1045,7 +1046,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             ice (i) = ice (i) + i1
             !$ser verbatim if (debug_serialization .eqv. .true.) then
                 !$ser verbatim if (serialize_index == n) then
-                    !!$ser savepoint GFDL_1M_TerminalFall-Out
+                    !$ser savepoint GFDL_1M_TerminalFall-Out
                     !$ser verbatim do k = ktop, kbot
                         !$ser verbatim call ser_set_indices(i, j, k, serialize_index)
                         !$ser data_buffered Dx=4 driver_local_t_terminalfall=tz(k)
@@ -1115,7 +1116,6 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
                         !$ser data_buffered Dx=4 estimated_inversion_strength_warmrain=eis(i)
                         !$ser data_buffered Dx=4 driver_local_one_minus_sigma_warmrain=onemsig
                     !$ser verbatim enddo
-                    !$ser savepoint GFDL_1M_WarmRain-Out
                 !$ser verbatim endif
             !$ser verbatim endif
             call warm_rain (dts, ktop, kbot, dp1, dz1, tz, qvz, qlz, qrz, qiz, qsz, &
@@ -1132,6 +1132,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             enddo
             !$ser verbatim if (debug_serialization .eqv. .true.) then
                 !$ser verbatim if (serialize_index == n) then
+                    !$ser savepoint GFDL_1M_WarmRain-Out
                     !$ser verbatim do k = ktop, kbot
                         !$ser verbatim call ser_set_indices(i, j, k, serialize_index)
                         !$ser data_buffered Dx=4 driver_local_dp_warmrain=dp1(k)
