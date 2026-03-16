@@ -58,18 +58,6 @@ class GFDL1MDriver(NDSLRuntime):
 
         self.config_dependent_constants = GFDL1MDriverConfigDependentConstants.make(config)
 
-        constant_print_dict = {
-            "dts": self.config_dependent_constants.DTS,
-            "tau_imlt": config.TAU_IMLT,
-            "ql_mlt": config.QL_MLT,
-            "c_air": self.config_dependent_constants.C_AIR,
-            "c_vap": self.config_dependent_constants.C_VAP,
-            "d0_vap": self.config_dependent_constants.D0_VAP,
-            "lv00": self.config_dependent_constants.LV00,
-            "do_sedi_w": config.DO_SEDI_W,
-        }
-        print(f"RELEVANT CONSTANTS {constant_print_dict}")
-
         # Check constants for unimplemented and untested code paths
         check_flags(
             config,
