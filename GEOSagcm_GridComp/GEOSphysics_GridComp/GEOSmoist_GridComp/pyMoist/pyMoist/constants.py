@@ -1,8 +1,9 @@
 """File containing all constants used for pyMoist"""
 
+import os
+
 import numpy as np
 from ndsl.dsl.typing import Float, Int
-import os
 
 
 _f32 = np.float32

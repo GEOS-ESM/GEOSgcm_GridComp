@@ -181,8 +181,8 @@ class GFDL1M(NDSLRuntime):
             local_lcl_level=self._locals.lcl_level,
         )
 
-        # compute macrophysical tendencies, use the hydrostatic pdf to distribute particles, then melt, freeze, and
-        # evaporate, all according to options defined in namelist
+        # compute macrophysical tendencies, use the hydrostatic pdf to distribute particles,
+        # then melt, freeze, and evaporate, all according to options defined in namelist
         self._phase_change(
             t=state.t,
             mixing_ratio_vapor=state.mixing_ratio.vapor,

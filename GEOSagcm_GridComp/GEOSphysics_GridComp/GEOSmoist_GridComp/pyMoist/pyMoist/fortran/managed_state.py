@@ -1,7 +1,7 @@
-import xarray as xr
 from typing import Tuple
 
 import numpy.typing as npt
+import xarray as xr
 from ndsl import State
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM, Float
 from ndsl.optional_imports import cupy as cp
@@ -22,7 +22,7 @@ class MAPLManagedState:
         self._ndsl_state = py_state
         self._state_to_mapl_mapping: dict[str, Tuple[MAPLMemoryRepository, str]] = {}
         self._transfer_type = transfer_type
-        self._recorded_state = {}
+        self._recorded_state: dict[str, xr.DataArray] = {}
 
     def register(
         self,

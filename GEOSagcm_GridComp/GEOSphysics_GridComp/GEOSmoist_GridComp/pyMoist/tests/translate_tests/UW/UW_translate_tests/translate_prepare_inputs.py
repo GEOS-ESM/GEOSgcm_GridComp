@@ -1,13 +1,13 @@
 from f90nml import Namelist
-
-import pyMoist.constants as constants
 from ndsl import Quantity, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.dsl.typing import Float, FloatField, Int
+from ndsl.dsl.typing import FloatField, Int
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
+
+import pyMoist.constants as constants
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
 from pyMoist.UW.compute_uwshcu import (
     _reset_mask,
@@ -16,6 +16,7 @@ from pyMoist.UW.compute_uwshcu import (
     compute_uwshcu_invert_before,
 )
 from pyMoist.UW.config import UWConfiguration
+
 
 # Run the following at command line before running translate test
 # python UW_postprocess_netcdfs.py

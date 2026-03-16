@@ -1,6 +1,4 @@
 import dace
-
-import pyMoist.constants as constants
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.gt4py import (
@@ -20,7 +18,9 @@ from ndsl.dsl.gt4py import (
     log,
     sqrt,
 )
-from ndsl.dsl.typing import Bool, BoolFieldIJ, FloatField, FloatFieldIJ, IntField, IntFieldIJ, Int
+from ndsl.dsl.typing import Bool, BoolFieldIJ, FloatField, FloatFieldIJ, Int, IntField, IntFieldIJ
+
+import pyMoist.constants as constants
 from pyMoist.field_types import FloatField_NTracers, FloatFieldIJ_NTracers
 from pyMoist.saturation_tables import (
     GlobalTable_saturation_tables,
@@ -29,8 +29,8 @@ from pyMoist.saturation_tables import (
     saturation_specific_humidity,
 )
 from pyMoist.UW.config import UWConfiguration
-from pyMoist.UW.state import UWState
 from pyMoist.UW.locals import UWLocals
+from pyMoist.UW.state import UWState
 from pyMoist.UW.uwshcu_functions import (
     compute_alpha,
     compute_mumin2,
@@ -3701,7 +3701,9 @@ def buoyancy_sorting(
                                                 + sstr0[0, 0, 0][n] * dpe / 2.0
                                                 - tru[0, 0, 0][n]
                                                 + sstr0[0, 0, 0][n] / fer
-                                            ) * exp(-fer * dpe)
+                                            ) * exp(
+                                                -fer * dpe
+                                            )
                                             n += 1
 
                                 # Expel some of cloud water and ice from cumulus
@@ -4240,7 +4242,9 @@ def recalc_condensate(
                     + ssthl0.at(K=kpen) * (-ppen) / 2.0
                     - thlu.at(K=kpen)
                     + ssthl0.at(K=kpen) / fer.at(K=kpen)
-                ) * exp(-fer.at(K=kpen) * (-ppen))
+                ) * exp(
+                    -fer.at(K=kpen) * (-ppen)
+                )
                 qtu_top = (
                     qt0.at(K=kpen) + ssqt0.at(K=kpen) / fer.at(K=kpen) - ssqt0.at(K=kpen) * (-ppen) / 2.0
                 ) - (
@@ -4248,7 +4252,9 @@ def recalc_condensate(
                     + ssqt0.at(K=kpen) * (-ppen) / 2.0
                     - qtu.at(K=kpen)
                     + ssqt0.at(K=kpen) / fer.at(K=kpen)
-                ) * exp(-fer.at(K=kpen) * (-ppen))
+                ) * exp(
+                    -fer.at(K=kpen) * (-ppen)
+                )
 
     with computation(FORWARD), interval(...):
         if not condensation:
@@ -7526,10 +7532,7 @@ def setup_outputs(
 
     Outputs:
     """
-    from __externals__ import (
-        SCLM_SHALLOW,
-        dt,
-    )
+    from __externals__ import SCLM_SHALLOW, dt
 
     with computation(PARALLEL), interval(...):
         Q = Q + DQVDT_SC * dt
