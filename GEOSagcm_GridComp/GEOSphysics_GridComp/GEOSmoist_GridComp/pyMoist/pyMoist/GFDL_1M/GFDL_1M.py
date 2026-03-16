@@ -13,7 +13,7 @@ from pyMoist.GFDL_1M.stencils import (
     prepare_radiation,
     prepare_tendencies,
     reset_micro_tendencies,
-    update_radiation,
+    update_after_driver,
     update_tendencies,
 )
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
@@ -106,8 +106,8 @@ class GFDL1M(NDSLRuntime):
             config,
         )
 
-        self._update_radiation = stencil_factory.from_dims_halo(
-            func=update_radiation,
+        self._update_after_driver = stencil_factory.from_dims_halo(
+            func=update_after_driver,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "DT_MOIST": config.DT_MOIST,
@@ -348,8 +348,8 @@ class GFDL1M(NDSLRuntime):
             surface_precip_graupel=state.precipitation_at_surface.graupel,
         )
 
-        # update radiation fields with tendencies computed in the driver
-        self._update_radiation(
+        # update fields with tendencies computed in the driver
+        self._update_after_driver(
             t=state.t,
             u=state.u,
             v=state.v,

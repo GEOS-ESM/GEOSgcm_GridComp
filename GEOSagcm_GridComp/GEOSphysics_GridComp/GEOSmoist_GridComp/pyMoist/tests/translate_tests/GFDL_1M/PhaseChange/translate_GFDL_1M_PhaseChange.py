@@ -76,7 +76,7 @@ class TranslateGFDL_1M_PhaseChange(TranslateFortranData2Py):
         state.mixing_ratio.large_scale_liquid.field[:] = inputs["mixing_ratio_large_scale_liquid"]
         state.cloud_fraction.large_scale.field[:] = inputs["cloud_fraction_large_scale"]
         state.cloud_fraction.convective.field[:] = inputs["cloud_fraction_convective"]
-        locals_.lcl_level.field[:] = inputs["local_lcl_level"]
+        locals_.lcl_level.field[:] = inputs["local_lcl_level"] - 1
         locals_.p_mb.field[:] = inputs["local_p_mb"]
         locals_.p_interface_mb.field[:] = inputs["local_p_interface_mb"]
         state.area.field[:] = inputs["area"]
@@ -136,7 +136,7 @@ class TranslateGFDL_1M_PhaseChange(TranslateFortranData2Py):
             "mixing_ratio_large_scale_liquid": copy.copy(state.mixing_ratio.large_scale_liquid.field[:]),
             "cloud_fraction_large_scale": copy.copy(state.cloud_fraction.large_scale.field[:]),
             "cloud_fraction_convective": copy.copy(state.cloud_fraction.convective.field[:]),
-            "local_lcl_level": copy.copy(locals_.lcl_level.field[:]),
+            "local_lcl_level": copy.copy(locals_.lcl_level.field[:]) + 1,
             "local_p_mb": copy.copy(locals_.p_mb.field[:]),
             "local_p_interface_mb": copy.copy(locals_.p_interface_mb.field[:]),
             "area": copy.copy(state.area.field[:]),
