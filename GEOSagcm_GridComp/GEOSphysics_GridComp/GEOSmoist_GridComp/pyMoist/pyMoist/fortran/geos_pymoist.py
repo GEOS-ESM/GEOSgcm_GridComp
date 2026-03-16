@@ -7,6 +7,7 @@ import os
 
 from MAPL_PythonBridge import get_MAPLPy
 from ndsl import (
+    Backend,
     CompilationConfig,
     CubedSphereCommunicator,
     CubedSpherePartitioner,
@@ -21,7 +22,6 @@ from ndsl import (
     SubtileGridSizer,
     TileCommunicator,
     TilePartitioner,
-    Backend,
 )
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.typing import get_precision
@@ -128,13 +128,13 @@ class NDSLPhysicsStack:
         if cp is not None:
             device_ordinal_info = (
                 f"  Device PCI bus id: {cp.cuda.Device(0).pci_bus_id}"
-                if is_gpu_backend(self.backend)
+                if self.backend.is_gpu_backend()
                 else "N/A"
             )
         MPS_pipe_directory = os.getenv("CUDA_MPS_PIPE_DIRECTORY", None)
         MPS_is_on = (
             MPS_pipe_directory is not None
-            and is_gpu_backend(self.backend)
+            and self.backend.is_gpu_backend()
             and os.path.exists(f"{MPS_pipe_directory}/log")
         )
         ndsl_log_on_rank_0.info(
