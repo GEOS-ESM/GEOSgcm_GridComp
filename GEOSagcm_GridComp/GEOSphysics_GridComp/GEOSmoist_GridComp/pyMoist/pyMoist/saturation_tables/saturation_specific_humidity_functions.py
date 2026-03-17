@@ -77,7 +77,7 @@ def saturation_specific_humidity_liquid_surface(
     esw,
     lqu,
     t,
-    p=-999,
+    p=-999.0,
 ):
     """Computes saturation specific humidity over liquid water surface, using
     data from saturation pressure tables.
