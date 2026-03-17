@@ -107,8 +107,8 @@ def bergeron_partition(
             f_qi = ice_fraction(t, convection_fraction, surface_type)
         else:
             qv_inc = vapor
-            qs_liq, _ = saturation_specific_humidity_liquid_surface(esw, lqu, t, p_mb * 100.0, True, False)
-            qs_ice, dq_si = saturation_specific_humidity_frozen_surface(ese, frz, t, p_mb * 100.0, True, True)
+            qs_liq, _ = saturation_specific_humidity_liquid_surface(esw, lqu, t, p_mb * 100.0)
+            qs_ice, dq_si = saturation_specific_humidity_frozen_surface(ese, frz, t, p_mb * 100.0)
             qv_inc = min(qv_inc, qs_liq)  # limit to below water saturation
 
             # Calculate deposition onto preexisting ice

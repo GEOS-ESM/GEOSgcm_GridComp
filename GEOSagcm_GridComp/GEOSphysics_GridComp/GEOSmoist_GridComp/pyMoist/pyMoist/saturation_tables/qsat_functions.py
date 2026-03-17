@@ -24,146 +24,130 @@ from pyMoist.saturation_tables.tables.main import get_saturation_vapor_pressure_
 
 @function
 def saturation_specific_humidity_frozen_surface(
-    ese: GlobalTable_saturation_tables,  # type: ignore
-    frz: Float,
-    t: Float,
-    p: Float,
-    pressure_correction: bool,
-    compute_dq: bool,
+    ese,
+    frz,
+    t,
+    p=-999.0,
 ):
-    """
-    Computes saturation specific humidity over liquid water surface, using
+    """Computes saturation specific humidity over liquid water surface, using
     data from saturation pressure tables.
 
-    Arguments:
-        ese (in): saturation pressure table in Pascals, specifics unknown
-        frz (in): saturation pressure at reference temperature (273.16 K)
-        t (in): temperature in Kelvin
-        p (in): pressure in Pascals
-        pressure_correction (in): trigger for pressure correction
-        compute_dq (in): trigger for computing derivative saturation specific humidity
+    Tables must be initialized before use.
+
+    Args:
+        ese (Float): saturation pressure table in Pascals, specifics unknown
+        frz (Float): saturation pressure at reference temperature (273.16 K)
+        t (Float): temperature in Kelvin
+        p (Float, optional): pressure in Pascals. Defaults to -999.
 
     Returns:
-        qsat (out): saturation specific humidity
-        dqsat (out): derivative saturation specific humidity with respect to temperature
+        qsat (Float): saturation specific humidity
+        dqsat (Float): derivative saturation specific humidity with respect to temperature
     """
-    dq = 0.0
+    dqsat = 0.0
     if t <= TMINTBL:
-        qs = ese.A[0]  # type: ignore
-        if compute_dq:
-            ddq = 0.0
+        qsat = ese.A[0]  # type: ignore
+        ddq = 0.0
     elif t >= MAPL_TICE:
-        qs = frz
-        if compute_dq:
-            ddq = 0.0
+        qsat = frz
+        ddq = 0.0
     else:
         t = (t - TMINTBL) * DEGSUBS + 1
         t_integer = int(floor(t))
         ddq = ese.A[t_integer] - ese.A[t_integer - 1]  # type: ignore
-        qs = (t - t_integer) * ddq + ese.A[t_integer - 1]  # type: ignore
+        qsat = (t - t_integer) * ddq + ese.A[t_integer - 1]  # type: ignore
 
-    if pressure_correction == True:  # noqa
-        if p > qs:
-            dd = ESFAC / (p - (1.0 - ESFAC) * qs)
-            qs = qs * dd
-            if compute_dq:
-                dq = ddq * ERFAC * p * dd * dd
+    if p > 0:
+        # apply pressure correction
+        if p > qsat:
+            dd = ESFAC / (p - (1.0 - ESFAC) * qsat)
+            qsat = qsat * dd
+            dqsat = ddq * ERFAC * p * dd * dd
         else:
-            qs = MAX_MIXING_RATIO
-            if compute_dq:
-                dq = 0.0
+            qsat = MAX_MIXING_RATIO
+            dqsat = 0.0
     else:
-        if compute_dq:
-            dq = ddq
+        dqsat = ddq
 
-    return qs, dq
+    return qsat, dqsat
 
 
 @function
 def saturation_specific_humidity_liquid_surface(
-    esw: GlobalTable_saturation_tables,  # type: ignore
-    lqu: Float,
-    t: Float,
-    p: Float,
-    pressure_correction: bool = False,
-    compute_dq: bool = False,
+    esw,
+    lqu,
+    t,
+    p=-999,
 ):
-    """
-    Computes saturation specific humidity over liquid water surface, using
+    """Computes saturation specific humidity over liquid water surface, using
     data from saturation pressure tables.
 
+    Tables must be initialized before use.
+
     Arguments:
-        esw (in): saturation pressure table in Pascals, specifics unknown
-        lqu (in): saturation pressure at reference temperature (233.16 K)
-        t (in): temperature in Kelvin
-        p (in): pressure in Pascals
-        pressure_correction (in): trigger for pressure correction
-        compute_dq (in): trigger for computing derivative saturation specific humidity
+        esw (Float): saturation pressure table in Pascals, specifics unknown
+        lqu (Float): saturation pressure at reference temperature (233.16 K)
+        t (Float): temperature in Kelvin
+        p (Float, optional): pressure in Pascals. Defaults to -999.
 
     Returns:
-        qsat (out): saturation specific humidity
-        dqsat (out): derivative saturation specific humidity with respect to temperature
+        qsat (Float): saturation specific humidity
+        dqsat (Float): derivative saturation specific humidity with respect to temperature
     """
     dqsat = 0.0
     if t <= TMINLQU:
         qsat = lqu
-        if compute_dq == True:  # noqa
-            ddq = 0.0
+        ddq = 0.0
     elif t >= TMAXTBL:
         TABLESIZE_MINUS_1: int32 = TABLESIZE - 1
         qsat = esw.A[TABLESIZE_MINUS_1]  # type: ignore
-        if compute_dq == True:  # noqa
-            ddq = 0.0
+        ddq = 0.0
     else:
         t = (t - TMINTBL) * DEGSUBS + 1
         t_integer = int(floor(t))
         ddq = esw.A[t_integer] - esw.A[t_integer - 1]  # type: ignore
         qsat = (t - t_integer) * ddq + esw.A[t_integer - 1]  # type: ignore
 
-    if pressure_correction == True:  # noqa
+    if p > 0:
+        # apply pressure correction
         if p > qsat:
             dd = ESFAC / (p - (1.0 - ESFAC) * qsat)
             qsat = qsat * dd
-            if compute_dq == True:  # noqa
-                dqsat = ddq * ERFAC * p * dd * dd
+            dqsat = ddq * ERFAC * p * dd * dd
         else:
             qsat = MAX_MIXING_RATIO
-            if compute_dq == True:  # noqa
-                dqsat = 0.0
+            dqsat = 0.0
     else:
-        if compute_dq == True:  # noqa
-            dqsat = ddq
+        dqsat = ddq
 
     return qsat, dqsat
 
 
-# Function version of GEOS_Qsat
 @function
 def saturation_specific_humidity(
-    t: Float,
-    p: Float,
-    ese: GlobalTable_saturation_tables,  # type: ignore
-    esx: GlobalTable_saturation_tables,  # type: ignore
-    use_ramp: bool = False,
-    ramp: Float = -999.0,
+    t,
+    p,
+    ese,
+    esx,
+    use_ramp=False,
+    ramp=-999.0,
 ):
-    """
-    Compute saturation specific humidity and derivative saturation specific humidity
+    """Compute saturation specific humidity and derivative saturation specific humidity
     with respect to temperature from saturation pressure tables.
 
     Tables must be initialized before use.
 
     Arguments:
-        t (in): temperature in Kelvin
-        p (in): pressure in Pascals
-        ese (in): saturation pressure table in Pascals, specifics unknown
-        esx (in): saturation pressure table in Pascals, specifics unknown
-        use_ramp (in): trigger for "ramp" option. details unknown
-        ramp (in): parameter used for "ramp" option. details unknown
+        t (Float): temperature in Kelvin
+        p (Float): pressure in Pascals
+        ese (Float): saturation pressure table in Pascals, specifics unknown
+        esx (Float): saturation pressure table in Pascals, specifics unknown
+        use_ramp (Bool): trigger for "ramp" option. details unknown
+        ramp (Float): parameter used for "ramp" option. details unknown
 
     Returns:
-        qsat (out): saturation specific humidity
-        dqsat (out): derivative saturation specific humidity with respect to temperature
+        qsat (Float): saturation specific humidity
+        dqsat (Float): derivative saturation specific humidity with respect to temperature
     """
     if use_ramp == True:  # noqa
         uramp = -abs(ramp)
@@ -192,7 +176,12 @@ def saturation_specific_humidity(
     else:
         dd = 1.0 / (p - (1.0 - ESFAC) * qsat)
         qsat = ESFAC * qsat * dd
-        dqsat = ESFAC * dq * DEGSUBS * p * (dd * dd)
+        # NOTE the following dqsat calculation is the sole point of difference between GEOS_QSAT
+        # (the source of this code) and GEOS_DQSAT. GEOS_DQSAT computes using a different order
+        # of operations (and one line instead of two): DQSAT = (ESFAC*DEGSUBS)*DQQ*PP*(DD*DD).
+        # In testing, this difference resulted in errors no larger than four (4) ULP.
+        dqsat = dq * DEGSUBS
+        dqsat = ESFAC * dqsat * p * (dd * dd)
 
     return qsat, dqsat
 
