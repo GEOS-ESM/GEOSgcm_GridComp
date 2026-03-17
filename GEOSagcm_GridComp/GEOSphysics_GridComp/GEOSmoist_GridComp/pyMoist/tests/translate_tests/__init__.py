@@ -1,5 +1,7 @@
 """All translate tests must be imported here to be automatically discoverable by `pytest"""
 
+from .translate_saturation_specific_humidity_functions import Translatesaturation_specific_humidity_functions
+
 from .GFDL_1M.driver.translate_GFDL_1M_Driver import TranslateGFDL_1M_Driver
 from .GFDL_1M.driver.translate_GFDL_1M_DriverFinish import TranslateGFDL_1M_DriverFinish
 from .GFDL_1M.driver.translate_GFDL_1M_DriverSetup import TranslateGFDL_1M_DriverSetup
