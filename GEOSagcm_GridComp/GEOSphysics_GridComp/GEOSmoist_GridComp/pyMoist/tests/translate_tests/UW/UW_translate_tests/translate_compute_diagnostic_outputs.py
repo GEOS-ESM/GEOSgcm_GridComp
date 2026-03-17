@@ -98,6 +98,22 @@ class TranslateComputeDiagnosticOutputs(TranslateFortranData2Py):
         uflx_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
         vflx_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
         cush_inout = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
+        cush = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
+        fer_out= self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
+        fdr_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
+        qldet_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
+        qidet_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
+        dcm_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
+        qvten_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
+        qlten_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
+        qiten_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
+        sten_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
+        uten_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
+        vten_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
+        qrten_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
+        qsten_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
+        cufrc_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
+        
 
         # The iteration you want to test
         iter_test = int32(0)
@@ -111,18 +127,33 @@ class TranslateComputeDiagnosticOutputs(TranslateFortranData2Py):
             krel=krel,
             ese=self.ese,
             esx=self.esx,
-            umf_out=umf_out,
-            qtflx_out=qtflx_out,
-            slflx_out=slflx_out,
-            uflx_out=uflx_out,
-            vflx_out=vflx_out,
             qcubelow=qcubelow,
             qlubelow=qlubelow,
             qiubelow=qiubelow,
             rcwp=rcwp,
             rlwp=rlwp,
             riwp=riwp,
+            cush=cush,
+            umf_out=umf_out,
+            dcm_out=dcm_out,
+            qvten_out=qvten_out,
+            qlten_out=qlten_out,
+            qiten_out=qiten_out,
+            sten_out=sten_out,
+            uten_out=uten_out,
+            vten_out=vten_out,
+            qrten_out=qrten_out,
+            qsten_out=qsten_out,
+            cufrc_out=cufrc_out,
             cush_inout=cush_inout,
+            qldet_out=qldet_out,
+            qidet_out=qidet_out,
+            qtflx_out=qtflx_out,
+            slflx_out=slflx_out,
+            uflx_out=uflx_out,
+            vflx_out=vflx_out,
+            fer_out=fer_out,
+            fdr_out=fdr_out,
         )
 
         return {

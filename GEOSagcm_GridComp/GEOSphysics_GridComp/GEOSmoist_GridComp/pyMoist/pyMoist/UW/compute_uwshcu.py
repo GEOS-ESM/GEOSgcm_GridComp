@@ -3363,7 +3363,7 @@ def buoyancy_sorting(
                 # (e.g., Fortran go to 45)
 
     with computation(FORWARD), interval(1, -1):
-        if K >= krel and K <= k0 - 1 and not stop_buoyancy_sort and not condensation:
+        if K >= krel and K <= krel and not stop_buoyancy_sort and not condensation:
             thlue = thlu
             qtue = qtu
             wue = wu
@@ -3375,7 +3375,7 @@ def buoyancy_sorting(
             # testvar3D_4 = wtwb
 
             iter_xc = 1
-            while iter_xc <= niter_xc and not condensation:
+            while iter_xc <= 1 and not condensation:
                 wtw = wu * wu
 
                 # Calculate environmental and cumulus saturation 'excess' at 'pe'.
@@ -3384,6 +3384,11 @@ def buoyancy_sorting(
                 # of "qsat". But note normal argument of "qsat" is temperature.
 
                 thj, qvj, qlj, qij, qse, id_check = conden(pe, thle, qte, ese, esx)
+                # testvar3D_2=thj
+                # testvar3D_3=qvj
+                # testvar3D_4=qlj
+                # testvar3D_5=qij
+                # testvar3D_1=qse
 
                 if id_check == 1:
                     condensation = True
@@ -4284,6 +4289,11 @@ def recalc_condensate(
     vflx_out: FloatField,
     fer_out: FloatField,
     fdr_out: FloatField,
+    testvar3D_1: FloatField,
+    testvar3D_2: FloatField,
+    testvar3D_3: FloatField,
+    testvar3D_4: FloatField,
+    testvar3D_5: FloatField,
 ):
     """
     Re-calculate the amount of expelled condensate from cloud updraft
@@ -4374,9 +4384,15 @@ def recalc_condensate(
                     -fer.at(K=kpen) * (-ppen)
                 )
 
+
     with computation(FORWARD), interval(...):
         if not condensation:
             thj, qvj, qlj, qij, qse, id_check = conden(pifc0.at(K=kpen) + ppen, thlu_top, qtu_top, ese, esx)
+            testvar3D_1=thj
+            testvar3D_2=qvj
+            testvar3D_3=qlj
+            testvar3D_4=qij
+            testvar3D_5=qse
 
     with computation(FORWARD), interval(...):
         if not condensation:
@@ -4866,7 +4882,7 @@ def calc_pbl_fluxes(
     trflx [FloatField_NTracers]: Tracer PBL flux [?]
     xflx_ndim [FloatField_NTracers]: PBL flux [?]
     """
-    from __externals__ import dotransport, dt, ncnst
+    from __externals__ import dt, dotransport, ncnst
 
     with computation(FORWARD), interval(...):
         # 1. PBL fluxes :  0 <= k <= kinv - 1
@@ -5767,6 +5783,10 @@ def calc_thermodynamic_tendencies(
     vflx_out: FloatField,
     fer_out: FloatField,
     fdr_out: FloatField,
+    testvar3D_1: FloatField,
+    testvar3D_2: FloatField,
+    testvar3D_3: FloatField,
+    testvar3D_4: FloatField,
 ):
     """
     Tendencies of thermodynamic variables.
@@ -5939,6 +5959,8 @@ def calc_thermodynamic_tendencies(
                 
                 qtten = (qtflx - qtflx[0, 0, 1]) * constants.MAPL_GRAV / dp0
 
+                testvar3D_1=slten
+
                 # Compute condensate tendency, including reserved condensate
                 # We assume that eventual detachment and detrainment occurs in kbup
                 # layer  due to downdraft buoyancy sorting. In the layer above the
@@ -6105,13 +6127,18 @@ def calc_thermodynamic_tendencies(
                             qlu_mid = 0.5 * (qlubelow + qlj_2D)
                             qiu_mid = 0.5 * (qiubelow + qij_2D)
 
+
                 if not condensation:
                     qlubelow = qlj_2D
                     qiubelow = qij_2D
 
+                    testvar3D_2=qlubelow
+                    testvar3D_3=qiubelow
+
                     # 1. Non-precipitating portion of expelled condensate
                     qc_l = (1.0 - frc_rasn) * dwten  # [ kg/kg/s ]
                     qc_i = (1.0 - frc_rasn) * diten  # [ kg/kg/s ]
+                    testvar3D_4=qc_l
 
                     # 2. Detrained Condensate
                     if K <= kbup:
@@ -6219,22 +6246,23 @@ def calc_thermodynamic_tendencies(
                             qiten_sink = -(qi0 / dt) * qiten_sink / totsink
                             qiten_det = qc_i + qc_im
 
-                    qlten = qrten + qlten_sink + qlten_det
-                    qiten = qsten + qiten_sink + qiten_det
+                    qlten = qrten + qlten_sink + qlten_det 
+                    qiten = qsten + qiten_sink + qiten_det 
+                    qvten = qtten - qlten - qiten 
 
-                    qvten = qtten - qlten - qiten
-                    
+                    sten = slten + constants.MAPL_ALHL * qlten + constants.MAPL_ALHS * qiten 
+
+                    qc = qc_l + qc_i 
+
+                    qlten = qlten - qrten 
+                    qiten = qiten - qsten 
+                    qtten = qlten + qiten + qvten 
+
+                    slten = sten - constants.MAPL_ALHL * qlten - constants.MAPL_ALHS * qiten 
+                    slten = slten + constants.MAPL_ALHL * qrten + constants.MAPL_ALHS * qsten 
                     sten = slten + constants.MAPL_ALHL * qlten + constants.MAPL_ALHS * qiten
-
-                    qc = qc_l + qc_i
-
-                    qlten = qlten - qrten
-                    qiten = qiten - qsten
-                    qtten = qlten + qiten + qvten
-
-                    slten = sten - constants.MAPL_ALHL * qlten - constants.MAPL_ALHS * qiten
-                    slten = slten + constants.MAPL_ALHL * qrten + constants.MAPL_ALHS * qsten
-                    sten = slten + constants.MAPL_ALHL * qlten + constants.MAPL_ALHS * qiten
+                
+                                
 
 
 def prevent_negative_condensate(
@@ -6649,6 +6677,9 @@ def calc_cumulus_condensate_at_interface(
     vflx_out: FloatField,
     fer_out: FloatField,
     fdr_out: FloatField,
+    testvar3D_1: FloatField,
+    testvar3D_2: FloatField,
+    testvar3D_3: FloatField,
 ):
     """
     Stencil to calculate cumulus condensate at the upper interface of each layer.
@@ -6698,13 +6729,15 @@ def calc_cumulus_condensate_at_interface(
                 if not condensation:
                     # Note 'ppen < 0' and at 'k=kpen' layer, I used 'thlu_top'&'qtu_top'
                     # which explicitly considered zero or non-zero 'fer(kpen)'.
-
                     if K == kpen:
-                        thj, qvj, qlj, qij, qse, id_check = conden(pifc0 + ppen, thlu_top, qtu_top, ese, esx)
+                        thj, qvj, qlj, qij, qse, id_check = conden(pifc0+ppen, thlu_top, qtu_top, ese, esx)
                     else:
                         thj, qvj, qlj, qij, qse, id_check = conden(
                             pifc0[0, 0, 1], thlu[0, 0, 1], qtu[0, 0, 1], ese, esx
                         )
+                    testvar3D_1=thj
+                    testvar3D_2=qvj
+                    testvar3D_3=qlj
 
                     if id_check == 1:
                         condensation = True
@@ -7549,7 +7582,6 @@ def compute_uwshcu_invert_after(
     slflx_out: FloatField,
     uflx_out: FloatField,
     vflx_out: FloatField,
-    #dcm_outvar: FloatField,
     qvten_out: FloatField,
     qlten_out: FloatField,
     qiten_out: FloatField,
@@ -7558,7 +7590,6 @@ def compute_uwshcu_invert_after(
     vten_out: FloatField,
     qrten_out: FloatField,
     qsten_out: FloatField,
-    #cufrc_outvar: FloatField,
     cufrc_out: FloatField,
     qldet_out: FloatField,
     qidet_out: FloatField,
@@ -7571,16 +7602,6 @@ def compute_uwshcu_invert_after(
     tr0: FloatField_NTracers,
     tr0_inout: FloatField_NTracers,
     cush_inout: FloatFieldIJ,
-    # qvten_outvar: FloatField,
-    # qlten_outvar: FloatField,
-    # qiten_outvar: FloatField,
-    # sten_outvar: FloatField,
-    # uten_outvar: FloatField,
-    # vten_outvar: FloatField,
-    # qrten_outvar: FloatField,
-    # qsten_outvar: FloatField,
-    # cush_inoutvar: FloatFieldIJ,
-    # umf_outvar: FloatField,
     # Outputs
     umf_inv: FloatField,
     dcm_inv: FloatField,

@@ -219,6 +219,7 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
         qi0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         th0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         tke_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        tke_flip = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
         pifc0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
         zifc0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
         exnifc0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
@@ -239,6 +240,7 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
             qi0_inv=qi0_inv,
             t0_inv=t0_inv,
             tke_inv=tke_inv,
+            tke_flip=tke_flip,
             pifc0_inv=pifc0_inv,
             zifc0_inv=zifc0_inv,
             exnifc0_inv=exnifc0_inv,
@@ -284,6 +286,14 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
         fdr_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         tpert_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
         qpert_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
+        dcm_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        qldet_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        qidet_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        qlsub_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        qisub_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        ndrop_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        nice_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        cufrc_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
 
         self._compute_thermodynamic_variables(
             pmid0_in=pmid0_in,
@@ -326,6 +336,14 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
             fdr_out=fdr_out,
             tpert_out=tpert_out,
             qpert_out=qpert_out,
+            dcm_out=dcm_out,
+            qldet_out=qldet_out,
+            qidet_out=qidet_out,
+            qlsub_out=qlsub_out,
+            qisub_out=qisub_out,
+            ndrop_out=ndrop_out,
+            nice_out=nice_out,
+            cufrc_out=cufrc_out,
         )
 
         saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory.backend)
@@ -395,6 +413,32 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
         ssu0_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         ssv0_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         cush_inout = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
+        qvten_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        qlten_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        qiten_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        sten_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        uten_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        vten_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        qrten_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        qsten_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        dcm=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        qvten=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        qrten=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        qsten=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        dwten=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
+        diten=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
+        fer=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        fdr=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        xco=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        cin=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        cinlcl=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        cbmf=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        qc=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        qc_l=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        qc_i=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        qtten=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        ufrclcl=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
+        wlcl=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
 
         self._compute_thv0_thvl0(
             pmid0_in=pmid0_in,
@@ -489,6 +533,39 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
             ssu0_o=ssu0_o,
             ssv0_o=ssv0_o,
             cush_inout=cush_inout,
+            cush=cush,
+            dcm_out=dcm_out,
+            qvten_out=qvten_out,
+            qlten_out=qlten_out,
+            qiten_out=qiten_out,
+            sten_out=sten_out,
+            uten_out=uten_out,
+            vten_out=vten_out,
+            qrten_out=qrten_out,
+            qsten_out=qsten_out,
+            cufrc_out=cufrc_out,
+            qldet_out=qldet_out,
+            qidet_out=qidet_out,
+            fer_out=fer_out,
+            fdr_out=fdr_out,
+            dcm=dcm,
+            qvten=qvten,
+            qrten=qrten,
+            qsten=qsten,
+            dwten=dwten,
+            diten=diten,
+            fer=fer,
+            fdr=fdr,
+            xco=xco,
+            cin=cin,
+            cinlcl=cinlcl,
+            cbmf=cbmf,
+            qc=qc,
+            qc_l=qc_l,
+            qc_i=qc_i,
+            qtten=qtten,
+            ufrclcl=ufrclcl,
+            wlcl=wlcl,
         )
 
         return {
