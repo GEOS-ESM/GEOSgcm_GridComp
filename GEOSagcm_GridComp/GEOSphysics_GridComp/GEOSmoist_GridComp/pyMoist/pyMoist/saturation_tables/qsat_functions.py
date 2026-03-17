@@ -2,7 +2,7 @@ import copy
 from typing import Optional
 
 from ndsl import QuantityFactory, StencilFactory, orchestrate
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import PARALLEL, computation, floor, function, int32, interval
 from ndsl.dsl.typing import Float, FloatField
 
@@ -284,24 +284,24 @@ class QSat:
     ) -> None:
         self.extra_dim_quantity_factory = self.make_extra_dim_quantity_factory(quantity_factory)
 
-        self.ese = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
-        self.esw = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
-        self.esx = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
+        self.ese = self.extra_dim_quantity_factory.zeros([K_DIM, "table_axis"], "n/a")
+        self.esw = self.extra_dim_quantity_factory.zeros([K_DIM, "table_axis"], "n/a")
+        self.esx = self.extra_dim_quantity_factory.zeros([K_DIM, "table_axis"], "n/a")
 
         self.table = get_saturation_vapor_pressure_table(formulation)
         self.ese.view[:] = self.table.ese
         self.esw.view[:] = self.table.esw
         self.esx.view[:] = self.table.esx
 
-        self._RAMP = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._DQSAT = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self._RAMP = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._DQSAT = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
 
-        self.QSat = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.QSat = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
 
         orchestrate(obj=self, config=stencil_factory.config.dace_config)
         self._QSat_FloatField = stencil_factory.from_dims_halo(
             func=QSat_FloatField,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "USE_RAMP": use_ramp,
                 "USE_PASCALS": use_pascals,
@@ -344,5 +344,5 @@ class QSat:
 
         if not use_table_lookup:
             raise NotImplementedError(
-                "Saturation calculation: exact formulation not available," " only table look up"
+                "Saturation calculation: exact formulation not available, only table look up"
             )

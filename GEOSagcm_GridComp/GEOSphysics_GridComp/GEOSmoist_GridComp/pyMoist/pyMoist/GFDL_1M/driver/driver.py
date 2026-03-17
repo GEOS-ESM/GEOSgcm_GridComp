@@ -2,7 +2,7 @@
 
 import dace
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.typing import FloatField, FloatFieldIJ
 
 from pyMoist.GFDL_1M.config import GFDL1MConfig
@@ -82,7 +82,7 @@ class GFDL1MDriver(NDSLRuntime):
 
         self._fall_speed = stencil_factory.from_dims_halo(
             func=fall_speed,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "p_nonhydro": self.config_dependent_constants.P_NONHYDRO,
                 "const_vi": config.CONST_VI,
@@ -124,7 +124,7 @@ class GFDL1MDriver(NDSLRuntime):
 
         self._finish = stencil_factory.from_dims_halo(
             func=update_tendencies,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "c_air": self.config_dependent_constants.C_AIR,
                 "c_vap": self.config_dependent_constants.C_VAP,
@@ -300,9 +300,9 @@ class GFDL1MDriver(NDSLRuntime):
                 mixing_ratio_ice=self._locals.dry_air_mixing_ratio.ice,
                 dz=self._locals.dz,
                 dp=self._locals.dp,
-                terminal_velocity_graupel=self._locals.terminal_speed.ice,
+                terminal_velocity_graupel=self._locals.terminal_speed.graupel,
                 terminal_velocity_snow=self._locals.terminal_speed.snow,
-                terminal_velocity_ice=self._locals.terminal_speed.graupel,
+                terminal_velocity_ice=self._locals.terminal_speed.ice,
                 rain=surface_precip_rain,
                 graupel=surface_precip_graupel,
                 snow=surface_precip_snow,

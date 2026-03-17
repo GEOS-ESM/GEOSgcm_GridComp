@@ -1,7 +1,7 @@
 from typing import Dict, Optional
 
 from ndsl.boilerplate import get_factories_single_tile
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import PARALLEL, K, computation, interval
 from ndsl.dsl.typing import Float, FloatField, Int
 
@@ -147,9 +147,9 @@ class SaturationVaporPressureTable:
         elif formulation == SaturationFormulation.MurphyAndKoop:
             formulation_int = Int(3)
 
-        self._estimated_ese = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._estimated_esw = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._estimated_esx = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self._estimated_ese = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._estimated_esw = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._estimated_esx = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
 
         NDSL_tables = False
         # NOTE Setting NDSL_tables to True will the tables using gt4py stencils and functions.
@@ -161,7 +161,7 @@ class SaturationVaporPressureTable:
         if NDSL_tables:
             compute_tables = stencil_factory.from_dims_halo(
                 func=_compute_tables,
-                compute_dims=[X_DIM, Y_DIM, Z_DIM],
+                compute_dims=[I_DIM, J_DIM, K_DIM],
             )
             compute_tables(
                 self._estimated_ese,

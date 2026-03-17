@@ -11,7 +11,7 @@ def vertical_interpolation_interface(
     """
     Interpolate to a specific vertical level on interface.
 
-    Only works for interface fields. Must be constructed using Z_INTERFACE_DIM.
+    Only works for interface fields. Must be constructed using K_INTERFACE_DIM.
 
     Arguments:
         field (in): three dimensional field to be interpolated to a specific pressure
@@ -40,7 +40,7 @@ def vertical_interpolation(
     """
     Interpolate to a specific vertical level.
 
-    Only works for non-interface fields. Must be constructed using Z_DIM.
+    Only works for non-interface fields. Must be constructed using K_DIM.
 
     Arguments:
         field (in): three dimensional field to be interpolated to a specific pressure

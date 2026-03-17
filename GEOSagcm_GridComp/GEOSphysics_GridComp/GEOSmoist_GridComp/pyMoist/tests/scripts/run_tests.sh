@@ -5,12 +5,14 @@
 export NDSL_LITERAL_PRECISION=32
 export NDSL_TEST_N_THRESHOLD_SAMPLES=0
 export GT4PY_COMPILE_OPT_LEVEL=0
-export FV3_DACEMODE=Python
+export FV3_DACEMODE=BuildAndRun
 # export OPENMP_CPPFLAGS=" "
 # export OPENMP_LDFLAGS=" "
 
 # UW specific
 #export GT4PY_EXTRA_COMPILE_OPT_FLAGS='-fconstexpr-ops-limit=1000000000'
+
+export EXP_NAME='gcm-fp'
 
 python -m pytest -s -v --disable-warnings --multimodal_metric \
     --data_path=$1 \
@@ -22,7 +24,3 @@ python -m pytest -s -v --disable-warnings --multimodal_metric \
     --threshold_overrides_file=./overrides.yml \
     --which_rank=0 \
     ../translate_tests
-
-
-
-

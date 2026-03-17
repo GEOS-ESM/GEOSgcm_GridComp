@@ -1,5 +1,5 @@
 from ndsl import NDSLRuntime, StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, function, interval, sqrt
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 
@@ -298,7 +298,7 @@ class GFDL1MDriverSetup(NDSLRuntime):
         # construct stencils
         self._init_temporaries = stencil_factory.from_dims_halo(
             func=init_temporaries,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "DO_SEDI_W": config.DO_SEDI_W,
                 "cpaut": config_dependent_constants.CPAUT,
@@ -307,7 +307,7 @@ class GFDL1MDriverSetup(NDSLRuntime):
 
         self._fix_negative_values = stencil_factory.from_dims_halo(
             func=fix_negative_values,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "c_air": config_dependent_constants.C_AIR,
                 "c_vap": config_dependent_constants.C_VAP,

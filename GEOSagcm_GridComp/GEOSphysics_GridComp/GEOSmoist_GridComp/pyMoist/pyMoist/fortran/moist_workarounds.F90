@@ -1,8 +1,8 @@
 module moist_dsl_workarounds
 
 ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - !
-! This module provides workarounds for memory passing when 
-! beyond the scope of the NDSL python bridge. 
+! This module provides workarounds for memory passing when
+! beyond the scope of the NDSL python bridge.
 ! Fortran API:
 !  - CNV_Tracers_To_SOA: move the ProcessLibrary CNV_Tracers to a SOA for DSL consumption
 !  - CNV_Tracers_To_AOS: copy back the tracers value part to the AOS structure the original code expects
@@ -31,7 +31,7 @@ subroutine CNV_Tracers_To_SOA()
     integer :: IM, JM, LM, n, ncnst
 
     ncnst = size(CNV_Tracers)
-    
+
     IM = size(CNV_Tracers(1)%Q,1)
     JM = size(CNV_Tracers(1)%Q,2)
     LM = size(CNV_Tracers(1)%Q,3)
@@ -58,7 +58,7 @@ subroutine CNV_Tracers_To_AOS()
     integer :: IM, JM, LM, n, ncnst
 
     ncnst = size(CNV_Tracers)
-    
+
     IM = size(CNV_Tracers(1)%Q,1)
     JM = size(CNV_Tracers(1)%Q,2)
     LM = size(CNV_Tracers(1)%Q,3)

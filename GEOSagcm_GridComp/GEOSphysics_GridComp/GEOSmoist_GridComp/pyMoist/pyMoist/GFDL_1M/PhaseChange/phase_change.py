@@ -3,7 +3,7 @@ I/O and error handling is performed here.
 Calculations can be found in deeper functions."""
 
 from ndsl import Local, NDSLRuntime, QuantityFactory, StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.typing import Float
 
 from pyMoist.constants import FLOAT_TINY
@@ -52,12 +52,12 @@ class PhaseChange(NDSLRuntime):
         self.saturation_tables = saturation_tables
 
         # innitalize locals
-        self._alpha: Local = self.make_local(quantity_factory, [X_DIM, Y_DIM, Z_DIM], Float)
+        self._alpha: Local = self.make_local(quantity_factory, [I_DIM, J_DIM, K_DIM], Float)
 
         # construct stencils
         self._rh_calculations = stencil_factory.from_dims_halo(
             func=rh_calculations,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "DW_LAND": config.DW_LAND,
                 "DW_OCEAN": config.DW_OCEAN,
@@ -67,12 +67,12 @@ class PhaseChange(NDSLRuntime):
 
         self._fill_rh_crit_export = stencil_factory.from_dims_halo(
             func=fill_rh_crit_export,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._hydrostatic_pdf = stencil_factory.from_dims_halo(
             func=hydrostatic_pdf,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "DT_MOIST": config.DT_MOIST,
                 "PDF_SHAPE": config.PDFSHAPE,
@@ -83,14 +83,14 @@ class PhaseChange(NDSLRuntime):
 
         self._meltfrz = stencil_factory.from_dims_halo(
             func=melt_freeze,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "DT_MOIST": config.DT_MOIST,
             },
         )
         self._evap = stencil_factory.from_dims_halo(
             func=evaporate,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "DT_MOIST": config.DT_MOIST,
                 "CCW_EVAP_EFF": config.CCW_EVAP_EFF,
@@ -98,7 +98,7 @@ class PhaseChange(NDSLRuntime):
         )
         self._subl = stencil_factory.from_dims_halo(
             func=sublimate,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "DT_MOIST": config.DT_MOIST,
                 "CCI_EVAP_EFF": config.CCW_EVAP_EFF,
@@ -106,7 +106,7 @@ class PhaseChange(NDSLRuntime):
         )
         self._fix_up_clouds = stencil_factory.from_dims_halo(
             func=fix_up_clouds,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         # Dev NOTE: this is an orchestration workaround. Direct call to

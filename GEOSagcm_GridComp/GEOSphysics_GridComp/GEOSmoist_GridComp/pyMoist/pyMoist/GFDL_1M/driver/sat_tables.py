@@ -1,6 +1,6 @@
 from mpi4py import MPI
 from ndsl.boilerplate import get_factories_single_tile
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.dace.dace_config import DaceConfig
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, GlobalTable, K, computation, exp, interval, log, log10
 from ndsl.dsl.typing import Float, FloatField, Int
@@ -201,15 +201,15 @@ class GFDL_driver_tables:
             backend,
         )
 
-        self._table1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._table2 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._table3 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._table4 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._des1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._des2 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._des3 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._des4 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._esupc = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self._table1 = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._table2 = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._table3 = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._table4 = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._des1 = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._des2 = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._des3 = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._des4 = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._esupc = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
 
         # Cancel multi-node compile for tables
         # TODO: this should come for free with the rewrite of the gt:X stencils

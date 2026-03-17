@@ -1,7 +1,7 @@
 import dataclasses
 
 from ndsl import Local, LocalState, NDSLRuntime, QuantityFactory, StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, exp, function, interval, log, max, sqrt
 from ndsl.dsl.typing import Bool, BoolFieldIJ, Float, FloatField, FloatFieldIJ
 from ndsl.stencils import set_IJ_mask_value, set_value, set_value_2D
@@ -563,9 +563,11 @@ def update_outputs(
     """
     with computation(PARALLEL), interval(...):
         evaporation = evaporation + driver_evaporation
-        liquid_precip_flux = liquid_precip_flux + driver_liquid_precip_flux
-        ice_precip_flux = ice_precip_flux + driver_ice_precip_flux
         mass = mass + driver_liquid_precip_flux + driver_ice_precip_flux
+
+    with computation(FORWARD), interval(...):
+        liquid_precip_flux[0, 0, 1] = liquid_precip_flux[0, 0, 1] + driver_liquid_precip_flux
+        ice_precip_flux[0, 0, 1] = ice_precip_flux[0, 0, 1] + driver_ice_precip_flux
 
     with computation(FORWARD), interval(0, 1):
         rain = rain + driver_rain
@@ -576,7 +578,7 @@ class Locals(LocalState):
     dmass: Local = dataclasses.field(
         metadata={
             "name": "dm",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -585,7 +587,7 @@ class Locals(LocalState):
     unused_m1: Local = dataclasses.field(
         metadata={
             "name": "unused_m1",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -594,7 +596,7 @@ class Locals(LocalState):
     z_interface: Local = dataclasses.field(
         metadata={
             "name": "z_interface",
-            "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+            "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -603,7 +605,7 @@ class Locals(LocalState):
     precip_fall: Local = dataclasses.field(
         metadata={
             "name": "precip_fall",
-            "dims": [X_DIM, Y_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Bool,
@@ -637,7 +639,7 @@ class GFDL1MWarmRain(NDSLRuntime):
         # construct stencils
         self._warm_rain_step_1 = stencil_factory.from_dims_halo(
             func=warm_rain_step_1,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "dts": config_dependent_constants.DTS,
                 "do_qa": config.DO_QA,
@@ -667,7 +669,7 @@ class GFDL1MWarmRain(NDSLRuntime):
 
         self._implicit_fall = stencil_factory.from_dims_halo(
             func=implicit_fall,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "dts": config_dependent_constants.DTS,
                 "use_ppm": config.USE_PPM,
@@ -676,7 +678,7 @@ class GFDL1MWarmRain(NDSLRuntime):
 
         self._warm_rain_step_2 = stencil_factory.from_dims_halo(
             func=warm_rain_step_2,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "dts": config_dependent_constants.DTS,
                 "do_qa": config.DO_QA,
@@ -706,23 +708,23 @@ class GFDL1MWarmRain(NDSLRuntime):
 
         self._update_outputs = stencil_factory.from_dims_halo(
             func=update_outputs,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
         self._set_value_IJ = stencil_factory.from_dims_halo(
             func=set_value_2D,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
         self._set_value = stencil_factory.from_dims_halo(
             func=set_value,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
         self._set_value_K_interface = stencil_factory.from_dims_halo(
             func=set_value,
-            compute_dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM],
+            compute_dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
         )
         self._set_IJ_mask = stencil_factory.from_dims_halo(
             func=set_IJ_mask_value,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
     def __call__(
@@ -828,11 +830,8 @@ class GFDL1MWarmRain(NDSLRuntime):
             des3=self.saturation_tables.des3,
             des4=self.saturation_tables.des4,
         )
-        if self.config.USE_PPM is False:
-            # NOTE: somehow errors pop up in rain1 and m1_rain within implicit fall, despite all of the
-            # imputs being correct and implicit_fall verifying at three separate calls
-            # within the terminal_fall module. May be a similar issue to the warm_rain_part_1 error
-            # (different result despite inputs being identical, possible registry issue??).
+
+        if not self.config.USE_PPM:
             self._implicit_fall(
                 mixing_ratio=mixing_ratio_rain,
                 terminal_speed=terminal_speed_rain,

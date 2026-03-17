@@ -1,8 +1,6 @@
 import dace
-
-import pyMoist.constants as constants
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.gt4py import (
     BACKWARD,
     FORWARD,
@@ -20,7 +18,9 @@ from ndsl.dsl.gt4py import (
     log,
     sqrt,
 )
-from ndsl.dsl.typing import Bool, BoolFieldIJ, FloatField, FloatFieldIJ, IntField, IntFieldIJ, Int
+from ndsl.dsl.typing import Bool, BoolFieldIJ, FloatField, FloatFieldIJ, Int, IntField, IntFieldIJ
+
+import pyMoist.constants as constants
 from pyMoist.field_types import FloatField_NTracers, FloatFieldIJ_NTracers
 from pyMoist.saturation_tables import (
     GlobalTable_saturation_tables,
@@ -29,8 +29,8 @@ from pyMoist.saturation_tables import (
     saturation_specific_humidity,
 )
 from pyMoist.UW.config import UWConfiguration
-from pyMoist.UW.state import UWState
 from pyMoist.UW.locals import UWLocals
+from pyMoist.UW.state import UWState
 from pyMoist.UW.uwshcu_functions import (
     compute_alpha,
     compute_mumin2,
@@ -573,7 +573,6 @@ def compute_thv0_thvl0(
     ufrclcl: FloatField,
     wlcl: FloatField,
 ):
-
     """
     Stencil to compute internal environmental variables
 
@@ -713,7 +712,7 @@ def compute_thv0_thvl0(
         if id_check == 1:
             condensation = True  # Indicates if condensation has occurred (e.g., Fortran go to 333)
             umf_out = 0.0
-            umf_out[0,0,1] = 0.0
+            umf_out[0, 0, 1] = 0.0
             dcm_out = 0.0
             qvten_out = 0.0
             qlten_out = 0.0
@@ -732,10 +731,10 @@ def compute_thv0_thvl0(
             slflx_out = 0.0
             uflx_out = 0.0
             vflx_out = 0.0
-            qtflx_out[0,0,1] = 0.0
-            slflx_out[0,0,1] = 0.0
-            uflx_out[0,0,1] = 0.0
-            vflx_out[0,0,1] = 0.0
+            qtflx_out[0, 0, 1] = 0.0
+            slflx_out[0, 0, 1] = 0.0
+            uflx_out[0, 0, 1] = 0.0
+            vflx_out[0, 0, 1] = 0.0
             fer_out = constants.MAPL_UNDEF
             fdr_out = constants.MAPL_UNDEF
 
@@ -749,14 +748,14 @@ def compute_thv0_thvl0(
 
     with computation(PARALLEL), interval(...):
         if not condensation:
-            thj, qvj, qlj, qij, qse, id_check = conden(pifc0[0,0,1], thl0top, qt0top, ese, esx)
+            thj, qvj, qlj, qij, qse, id_check = conden(pifc0[0, 0, 1], thl0top, qt0top, ese, esx)
 
     with computation(FORWARD), interval(...):
         if not condensation:
             if id_check == 1:
                 condensation = True
                 umf_out = 0.0
-                umf_out[0,0,1] = 0.0
+                umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
                 qlten_out = 0.0
@@ -775,10 +774,10 @@ def compute_thv0_thvl0(
                 slflx_out = 0.0
                 uflx_out = 0.0
                 vflx_out = 0.0
-                qtflx_out[0,0,1] = 0.0
-                slflx_out[0,0,1] = 0.0
-                uflx_out[0,0,1] = 0.0
-                vflx_out[0,0,1] = 0.0
+                qtflx_out[0, 0, 1] = 0.0
+                slflx_out[0, 0, 1] = 0.0
+                uflx_out[0, 0, 1] = 0.0
+                vflx_out[0, 0, 1] = 0.0
                 fer_out = constants.MAPL_UNDEF
                 fdr_out = constants.MAPL_UNDEF
 
@@ -889,7 +888,7 @@ def compute_thv0_thvl0(
             ufrclcl = 0.0
             wlcl = 0.0
 
-            uemf= 0.0
+            uemf = 0.0
             uemf[0, 0, 1] = 0.0
             qlten_sink = 0.0
             qiten_sink = 0.0
@@ -1004,7 +1003,7 @@ def find_pbl_height(
             if kinv <= int64(1):
                 condensation = True
                 umf_out = 0.0
-                umf_out[0,0,1] = 0.0
+                umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
                 qlten_out = 0.0
@@ -1023,10 +1022,10 @@ def find_pbl_height(
                 slflx_out = 0.0
                 uflx_out = 0.0
                 vflx_out = 0.0
-                qtflx_out[0,0,1] = 0.0
-                slflx_out[0,0,1] = 0.0
-                uflx_out[0,0,1] = 0.0
-                vflx_out[0,0,1] = 0.0
+                qtflx_out[0, 0, 1] = 0.0
+                slflx_out[0, 0, 1] = 0.0
+                uflx_out[0, 0, 1] = 0.0
+                vflx_out[0, 0, 1] = 0.0
                 fer_out = constants.MAPL_UNDEF
                 fdr_out = constants.MAPL_UNDEF
 
@@ -1034,7 +1033,7 @@ def find_pbl_height(
                 if kinv >= int64(k0 / 4):
                     condensation = True
                     umf_out = 0.0
-                    umf_out[0,0,1] = 0.0
+                    umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
                     qlten_out = 0.0
@@ -1053,10 +1052,10 @@ def find_pbl_height(
                     slflx_out = 0.0
                     uflx_out = 0.0
                     vflx_out = 0.0
-                    qtflx_out[0,0,1] = 0.0
-                    slflx_out[0,0,1] = 0.0
-                    uflx_out[0,0,1] = 0.0
-                    vflx_out[0,0,1] = 0.0
+                    qtflx_out[0, 0, 1] = 0.0
+                    slflx_out[0, 0, 1] = 0.0
+                    uflx_out[0, 0, 1] = 0.0
+                    vflx_out[0, 0, 1] = 0.0
                     fer_out = constants.MAPL_UNDEF
                     fdr_out = constants.MAPL_UNDEF
 
@@ -1383,7 +1382,7 @@ def find_klcl(
             if pifc0.at(K=0) < 70000 or pifc0.at(K=0) > 115000.0:
                 condensation = True
                 umf_out = 0.0
-                umf_out[0,0,1] = 0.0
+                umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
                 qlten_out = 0.0
@@ -1402,10 +1401,10 @@ def find_klcl(
                 slflx_out = 0.0
                 uflx_out = 0.0
                 vflx_out = 0.0
-                qtflx_out[0,0,1] = 0.0
-                slflx_out[0,0,1] = 0.0
-                uflx_out[0,0,1] = 0.0
-                vflx_out[0,0,1] = 0.0
+                qtflx_out[0, 0, 1] = 0.0
+                slflx_out[0, 0, 1] = 0.0
+                uflx_out[0, 0, 1] = 0.0
+                vflx_out[0, 0, 1] = 0.0
                 fer_out = constants.MAPL_UNDEF
                 fdr_out = constants.MAPL_UNDEF
 
@@ -1413,7 +1412,7 @@ def find_klcl(
                 if qtsrc > 0.1 or qtsrc < 1e-8:
                     condensation = True
                     umf_out = 0.0
-                    umf_out[0,0,1] = 0.0
+                    umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
                     qlten_out = 0.0
@@ -1432,10 +1431,10 @@ def find_klcl(
                     slflx_out = 0.0
                     uflx_out = 0.0
                     vflx_out = 0.0
-                    qtflx_out[0,0,1] = 0.0
-                    slflx_out[0,0,1] = 0.0
-                    uflx_out[0,0,1] = 0.0
-                    vflx_out[0,0,1] = 0.0
+                    qtflx_out[0, 0, 1] = 0.0
+                    slflx_out[0, 0, 1] = 0.0
+                    uflx_out[0, 0, 1] = 0.0
+                    vflx_out[0, 0, 1] = 0.0
                     fer_out = constants.MAPL_UNDEF
                     fdr_out = constants.MAPL_UNDEF
 
@@ -1443,7 +1442,7 @@ def find_klcl(
                     if thlsrc > 400.0 or thlsrc < 100.0:
                         condensation = True
                         umf_out = 0.0
-                        umf_out[0,0,1] = 0.0
+                        umf_out[0, 0, 1] = 0.0
                         dcm_out = 0.0
                         qvten_out = 0.0
                         qlten_out = 0.0
@@ -1462,10 +1461,10 @@ def find_klcl(
                         slflx_out = 0.0
                         uflx_out = 0.0
                         vflx_out = 0.0
-                        qtflx_out[0,0,1] = 0.0
-                        slflx_out[0,0,1] = 0.0
-                        uflx_out[0,0,1] = 0.0
-                        vflx_out[0,0,1] = 0.0
+                        qtflx_out[0, 0, 1] = 0.0
+                        slflx_out[0, 0, 1] = 0.0
+                        uflx_out[0, 0, 1] = 0.0
+                        vflx_out[0, 0, 1] = 0.0
                         fer_out = constants.MAPL_UNDEF
                         fdr_out = constants.MAPL_UNDEF
 
@@ -1492,7 +1491,7 @@ def find_klcl(
             if plcl < 60000.0:
                 condensation = True
                 umf_out = 0.0
-                umf_out[0,0,1] = 0.0
+                umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
                 qlten_out = 0.0
@@ -1511,10 +1510,10 @@ def find_klcl(
                 slflx_out = 0.0
                 uflx_out = 0.0
                 vflx_out = 0.0
-                qtflx_out[0,0,1] = 0.0
-                slflx_out[0,0,1] = 0.0
-                uflx_out[0,0,1] = 0.0
-                vflx_out[0,0,1] = 0.0
+                qtflx_out[0, 0, 1] = 0.0
+                slflx_out[0, 0, 1] = 0.0
+                uflx_out[0, 0, 1] = 0.0
+                vflx_out[0, 0, 1] = 0.0
                 fer_out = constants.MAPL_UNDEF
                 fdr_out = constants.MAPL_UNDEF
 
@@ -1531,7 +1530,7 @@ def find_klcl(
                 if id_check == 1:
                     condensation = True
                     umf_out = 0.0
-                    umf_out[0,0,1] = 0.0
+                    umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
                     qlten_out = 0.0
@@ -1550,10 +1549,10 @@ def find_klcl(
                     slflx_out = 0.0
                     uflx_out = 0.0
                     vflx_out = 0.0
-                    qtflx_out[0,0,1] = 0.0
-                    slflx_out[0,0,1] = 0.0
-                    uflx_out[0,0,1] = 0.0
-                    vflx_out[0,0,1] = 0.0
+                    qtflx_out[0, 0, 1] = 0.0
+                    slflx_out[0, 0, 1] = 0.0
+                    uflx_out[0, 0, 1] = 0.0
+                    vflx_out[0, 0, 1] = 0.0
                     fer_out = constants.MAPL_UNDEF
                     fdr_out = constants.MAPL_UNDEF
 
@@ -1722,7 +1721,7 @@ def compute_cin_cinlcl(
                 if id_check == 1:
                     condensation = True
                     umf_out = 0.0
-                    umf_out[0,0,1] = 0.0
+                    umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
                     qlten_out = 0.0
@@ -1741,10 +1740,10 @@ def compute_cin_cinlcl(
                     slflx_out = 0.0
                     uflx_out = 0.0
                     vflx_out = 0.0
-                    qtflx_out[0,0,1] = 0.0
-                    slflx_out[0,0,1] = 0.0
-                    uflx_out[0,0,1] = 0.0
-                    vflx_out[0,0,1] = 0.0
+                    qtflx_out[0, 0, 1] = 0.0
+                    slflx_out[0, 0, 1] = 0.0
+                    uflx_out[0, 0, 1] = 0.0
+                    vflx_out[0, 0, 1] = 0.0
                     fer_out = constants.MAPL_UNDEF
                     fdr_out = constants.MAPL_UNDEF
 
@@ -1787,7 +1786,7 @@ def compute_cin_cinlcl(
                     if id_check == 1:
                         condensation = True
                         umf_out = 0.0
-                        umf_out[0,0,1] = 0.0
+                        umf_out[0, 0, 1] = 0.0
                         dcm_out = 0.0
                         qvten_out = 0.0
                         qlten_out = 0.0
@@ -1806,13 +1805,12 @@ def compute_cin_cinlcl(
                         slflx_out = 0.0
                         uflx_out = 0.0
                         vflx_out = 0.0
-                        qtflx_out[0,0,1] = 0.0
-                        slflx_out[0,0,1] = 0.0
-                        uflx_out[0,0,1] = 0.0
-                        vflx_out[0,0,1] = 0.0
+                        qtflx_out[0, 0, 1] = 0.0
+                        slflx_out[0, 0, 1] = 0.0
+                        uflx_out[0, 0, 1] = 0.0
+                        vflx_out[0, 0, 1] = 0.0
                         fer_out = constants.MAPL_UNDEF
                         fdr_out = constants.MAPL_UNDEF
-                        
 
                     if not condensation and not stop_cin:
                         thvutop = thj * (1.0 + zvir * qvj - qlj - qij)
@@ -1852,7 +1850,7 @@ def compute_cin_cinlcl(
                 if id_check == 1 and not stop_cin:
                     condensation = True
                     umf_out = 0.0
-                    umf_out[0,0,1] = 0.0
+                    umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
                     qlten_out = 0.0
@@ -1871,10 +1869,10 @@ def compute_cin_cinlcl(
                     slflx_out = 0.0
                     uflx_out = 0.0
                     vflx_out = 0.0
-                    qtflx_out[0,0,1] = 0.0
-                    slflx_out[0,0,1] = 0.0
-                    uflx_out[0,0,1] = 0.0
-                    vflx_out[0,0,1] = 0.0
+                    qtflx_out[0, 0, 1] = 0.0
+                    slflx_out[0, 0, 1] = 0.0
+                    uflx_out[0, 0, 1] = 0.0
+                    vflx_out[0, 0, 1] = 0.0
                     fer_out = constants.MAPL_UNDEF
                     fdr_out = constants.MAPL_UNDEF
 
@@ -1898,7 +1896,7 @@ def compute_cin_cinlcl(
                 if id_check == 1 and not stop_cin:
                     condensation = True
                     umf_out = 0.0
-                    umf_out[0,0,1] = 0.0
+                    umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
                     qlten_out = 0.0
@@ -1917,10 +1915,10 @@ def compute_cin_cinlcl(
                     slflx_out = 0.0
                     uflx_out = 0.0
                     vflx_out = 0.0
-                    qtflx_out[0,0,1] = 0.0
-                    slflx_out[0,0,1] = 0.0
-                    uflx_out[0,0,1] = 0.0
-                    vflx_out[0,0,1] = 0.0
+                    qtflx_out[0, 0, 1] = 0.0
+                    slflx_out[0, 0, 1] = 0.0
+                    uflx_out[0, 0, 1] = 0.0
+                    vflx_out[0, 0, 1] = 0.0
                     fer_out = constants.MAPL_UNDEF
                     fdr_out = constants.MAPL_UNDEF
 
@@ -1958,7 +1956,7 @@ def compute_cin_cinlcl(
                 klfc_IJ = k0 - 1
                 condensation = True
                 umf_out = 0.0
-                umf_out[0,0,1] = 0.0
+                umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
                 qlten_out = 0.0
@@ -1977,10 +1975,10 @@ def compute_cin_cinlcl(
                 slflx_out = 0.0
                 uflx_out = 0.0
                 vflx_out = 0.0
-                qtflx_out[0,0,1] = 0.0
-                slflx_out[0,0,1] = 0.0
-                uflx_out[0,0,1] = 0.0
-                vflx_out[0,0,1] = 0.0
+                qtflx_out[0, 0, 1] = 0.0
+                slflx_out[0, 0, 1] = 0.0
+                uflx_out[0, 0, 1] = 0.0
+                vflx_out[0, 0, 1] = 0.0
                 fer_out = constants.MAPL_UNDEF
                 fdr_out = constants.MAPL_UNDEF
 
@@ -2398,7 +2396,6 @@ def avg_initial_and_final_cin3(
     with computation(FORWARD), interval(...):
         if not condensation:
             if del_CIN <= 0.0:  # When 'del_CIN < 0', use explicit CIN instead of implicit CIN.
-
                 # Restore original output values of "iter_cin = 1" and exit
                 umf_out = umf_s
                 umf_out[0, 0, 1] = umf_s[0, 0, 1]
@@ -2657,11 +2654,11 @@ def calc_cumulus_base_mass_flux(
     """
     from __externals__ import dt, epsvarw, mumin1, rbuoy, rmaxfrac, use_CINcin
 
-    with computation(FORWARD), interval(...): 
+    with computation(FORWARD), interval(...):
         if iteration == 0:
             cbmflimit = 0.0
 
-    with computation(FORWARD), interval(...): 
+    with computation(FORWARD), interval(...):
         if not condensation:
             if use_CINcin == 1:
                 wcrit = sqrt(2.0 * cin_IJ * rbuoy)
@@ -4552,7 +4549,6 @@ def recalc_condensate(
                     xco = 0.0
 
 
-
 def calc_entrainment_mass_flux(
     condensation: BoolFieldIJ,
     thlu: FloatField,
@@ -4691,7 +4687,7 @@ def calc_entrainment_mass_flux(
                 while n < ncnst:
                     tru_emf[0, 0, 1][n] = tru[0, 0, 1][n]
                     n += 1
-    
+
     with computation(BACKWARD), interval(0, -2):
         if not condensation:
             if K <= kpen - 1 and K >= kbup:  # Here, 'k' is an interface index at which
@@ -5243,7 +5239,7 @@ def non_buoyancy_sorting_fluxes(
             uplus = 0.0
             vplus = 0.0
 
-    with computation(FORWARD), interval(0,-1):
+    with computation(FORWARD), interval(0, -1):
         if not condensation:
             if K >= kinv and K <= (krel - 1):
                 qtflx[0, 0, 1] = cbmf * (
@@ -5664,7 +5660,6 @@ def penetrative_entrainment_fluxes(
                     )  # For consistency with prognostic macrophysics scheme
 
 
-
 def calc_momentum_tendency(
     condensation: BoolFieldIJ,
     kpen: IntField,
@@ -5860,7 +5855,7 @@ def calc_thermodynamic_tendencies(
     """
     from __externals__ import dt, frc_rasn
 
-    with computation(FORWARD), interval(0,-1):
+    with computation(FORWARD), interval(0, -1):
         if not condensation:
 
             # if iteration != 0:  # Reset some vars to zero after first iteration
@@ -5956,7 +5951,7 @@ def calc_thermodynamic_tendencies(
                         uflx * (uf - uf.at(K=K - 1) + u0 - u0.at(K=K - 1))
                         + vflx * (vf - vf.at(K=K - 1) + v0 - v0.at(K=K - 1))
                     )
-                
+
                 qtten = (qtflx - qtflx[0, 0, 1]) * constants.MAPL_GRAV / dp0
 
                 testvar3D_1=slten
@@ -6595,7 +6590,7 @@ def compute_diagnostic_outputs(
             if id_check == 1:
                 condensation = True
                 umf_out = 0.0
-                umf_out[0,0,1] = 0.0
+                umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
                 qlten_out = 0.0
@@ -6614,10 +6609,10 @@ def compute_diagnostic_outputs(
                 slflx_out = 0.0
                 uflx_out = 0.0
                 vflx_out = 0.0
-                qtflx_out[0,0,1] = 0.0
-                slflx_out[0,0,1] = 0.0
-                uflx_out[0,0,1] = 0.0
-                vflx_out[0,0,1] = 0.0
+                qtflx_out[0, 0, 1] = 0.0
+                slflx_out[0, 0, 1] = 0.0
+                uflx_out[0, 0, 1] = 0.0
+                vflx_out[0, 0, 1] = 0.0
                 fer_out = constants.MAPL_UNDEF
                 fdr_out = constants.MAPL_UNDEF
 
@@ -6742,7 +6737,7 @@ def calc_cumulus_condensate_at_interface(
                     if id_check == 1:
                         condensation = True
                         umf_out = 0.0
-                        umf_out[0,0,1] = 0.0
+                        umf_out[0, 0, 1] = 0.0
                         dcm_out = 0.0
                         qvten_out = 0.0
                         qlten_out = 0.0
@@ -6761,10 +6756,10 @@ def calc_cumulus_condensate_at_interface(
                         slflx_out = 0.0
                         uflx_out = 0.0
                         vflx_out = 0.0
-                        qtflx_out[0,0,1] = 0.0
-                        slflx_out[0,0,1] = 0.0
-                        uflx_out[0,0,1] = 0.0
-                        vflx_out[0,0,1] = 0.0
+                        qtflx_out[0, 0, 1] = 0.0
+                        slflx_out[0, 0, 1] = 0.0
+                        uflx_out[0, 0, 1] = 0.0
+                        vflx_out[0, 0, 1] = 0.0
                         fer_out = constants.MAPL_UNDEF
                         fdr_out = constants.MAPL_UNDEF
 
@@ -6777,7 +6772,7 @@ def calc_cumulus_condensate_at_interface(
                         # to be twice of core updraft fractional area. Thus LWP
                         # and IWP will be twice of actual value coming from our
                         # scheme.
-                        
+
                         qcu = 0.5 * (qcubelow + qlj + qij)
                         qlu = 0.5 * (qlubelow + qlj)
                         qiu = 0.5 * (qiubelow + qij)
@@ -6794,7 +6789,6 @@ def calc_cumulus_condensate_at_interface(
                                 qlu = 0.5 * (qlubelow + criqc * qlj / (qlj + qij))
                                 qiu = 0.5 * (qiubelow + criqc * qij / (qlj + qij))
 
-                    
                         rcwp = rcwp + (qlu + qiu) * (pifc0 - pifc0[0, 0, 1]) / constants.MAPL_GRAV * cufrc
 
                         rlwp = rlwp + qlu * (pifc0 - pifc0[0, 0, 1]) / constants.MAPL_GRAV * cufrc
@@ -6937,7 +6931,6 @@ def adjust_implicit_CIN_inputs1(
 
     with computation(FORWARD), interval(...):
         if not condensation:
-
             qv0_s = qv0 + qvten * dt
             ql0_s = ql0 + qlten * dt
             qi0_s = qi0 + qiten * dt
@@ -7228,7 +7221,7 @@ def recalc_environmental_variables(
             if id_check == 1:
                 condensation = True
                 umf_out = 0.0
-                umf_out[0,0,1] = 0.0
+                umf_out[0, 0, 1] = 0.0
                 dcm_out = 0.0
                 qvten_out = 0.0
                 qlten_out = 0.0
@@ -7247,17 +7240,17 @@ def recalc_environmental_variables(
                 slflx_out = 0.0
                 uflx_out = 0.0
                 vflx_out = 0.0
-                qtflx_out[0,0,1] = 0.0
-                slflx_out[0,0,1] = 0.0
-                uflx_out[0,0,1] = 0.0
-                vflx_out[0,0,1] = 0.0
+                qtflx_out[0, 0, 1] = 0.0
+                slflx_out[0, 0, 1] = 0.0
+                uflx_out[0, 0, 1] = 0.0
+                vflx_out[0, 0, 1] = 0.0
                 fer_out = constants.MAPL_UNDEF
                 fdr_out = constants.MAPL_UNDEF
 
             if not condensation:
                 thv0bot = thj * (1.0 + zvir * qvj - qlj - qij)
                 thvl0bot = thl0bot * (1.0 + zvir * qt0bot)
-                
+
                 thl0top = thl0 + ssthl0 * (pifc0[0, 0, 1] - pmid0)
                 qt0top = qt0 + ssqt0 * (pifc0[0, 0, 1] - pmid0)
                 thj, qvj, qlj, qij, qse, id_check = conden(pifc0[0, 0, 1], thl0top, qt0top, ese, esx)
@@ -7265,7 +7258,7 @@ def recalc_environmental_variables(
                 if id_check == 1:
                     condensation = True
                     umf_out = 0.0
-                    umf_out[0,0,1] = 0.0
+                    umf_out[0, 0, 1] = 0.0
                     dcm_out = 0.0
                     qvten_out = 0.0
                     qlten_out = 0.0
@@ -7284,10 +7277,10 @@ def recalc_environmental_variables(
                     slflx_out = 0.0
                     uflx_out = 0.0
                     vflx_out = 0.0
-                    qtflx_out[0,0,1] = 0.0
-                    slflx_out[0,0,1] = 0.0
-                    uflx_out[0,0,1] = 0.0
-                    vflx_out[0,0,1] = 0.0
+                    qtflx_out[0, 0, 1] = 0.0
+                    slflx_out[0, 0, 1] = 0.0
+                    uflx_out[0, 0, 1] = 0.0
+                    vflx_out[0, 0, 1] = 0.0
                     fer_out = constants.MAPL_UNDEF
                     fdr_out = constants.MAPL_UNDEF
 
@@ -7749,7 +7742,7 @@ def compute_uwshcu_invert_after(
         if K == k_end:
             dcm_inv = 0.0
 
-        #Re-scale liquid/ice water sub-tendencies to enforce conservation
+        # Re-scale liquid/ice water sub-tendencies to enforce conservation
         if abs(qldet_inv + qlsub_inv) > 1e-12:
             tmp2d = qlten_inv / (qldet_inv + qlsub_inv)
             qldet_inv = tmp2d * qldet_inv
@@ -7759,7 +7752,6 @@ def compute_uwshcu_invert_after(
             tmp2d = qiten_inv / (qidet_inv + qisub_inv)
             qidet_inv = tmp2d * qidet_inv
             qisub_inv = tmp2d * qisub_inv
-  
 
 
 def setup_outputs(
@@ -7801,10 +7793,7 @@ def setup_outputs(
 
     Outputs:
     """
-    from __externals__ import (
-        SCLM_SHALLOW,
-        dt,
-    )
+    from __externals__ import SCLM_SHALLOW, dt
 
     with computation(PARALLEL), interval(...):
         Q = Q + DQVDT_SC * dt
@@ -7838,18 +7827,17 @@ def setup_outputs(
         QLCN = QLCN + QLDET_SC * dt
         QICN = QICN + QIDET_SC * dt
 
-    with computation(PARALLEL), interval(...):    
+    with computation(PARALLEL), interval(...):
         QLDET_SC = QLDET_SC * MASS
         QIDET_SC = QIDET_SC * MASS
 
-    with computation(PARALLEL), interval(...): 
+    with computation(PARALLEL), interval(...):
         QLLS = QLLS + (QLSUB_SC + QLENT_SC) * dt
         QILS = QILS + (QISUB_SC + QIENT_SC) * dt
 
     with computation(PARALLEL), interval(...):
         SHLW_PRC3 = DQRDT_SC
         SHLW_SNO3 = DQSDT_SC
-   
 
 
 def update_total_water_tendency(
@@ -7997,39 +7985,37 @@ class ComputeUwshcuInv(NDSLRuntime):
 
         if constants.NCNST != self.config.NCNST:
             raise NotImplementedError(
-                f"Coding limitation: {constants.NCNST} tracers are expected, " f"getting {self.config.NCNST}"
+                f"Coding limitation: {constants.NCNST} tracers are expected, getting {self.config.NCNST}"
             )
 
         if self.config.k0 < 5:
             raise NotImplementedError(
-                f"Coding limitation: Only {self.config.k0} k-levels are " f"available, atleast 5 are expected"
+                f"Coding limitation: Only {self.config.k0} k-levels are available, atleast 5 are expected"
             )
 
         if self.config.windsrcavg != 0:
-            raise NotImplementedError(
-                f"Coding limitation: windsrcavg is {self.config.windsrcavg}" f"expected 0"
-            )
+            raise NotImplementedError(f"Coding limitation: windsrcavg is {self.config.windsrcavg}expected 0")
 
         self._setup_inputs = self.stencil_factory.from_dims_halo(
             func=setup_inputs,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._compute_uwshcu_invert_before = self.stencil_factory.from_dims_halo(
             func=compute_uwshcu_invert_before,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"ncnst": config.NCNST},
         )
 
         self._compute_thermodynamic_variables = self.stencil_factory.from_dims_halo(
             func=compute_thermodynamic_variables,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"ncnst": config.NCNST, "dotransport": config.dotransport},
         )
 
         self._compute_thv0_thvl0 = self.stencil_factory.from_dims_halo(
             func=compute_thv0_thvl0,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "ncnst": config.NCNST,
                 "k0": config.k0,
@@ -8039,7 +8025,7 @@ class ComputeUwshcuInv(NDSLRuntime):
 
         self._find_pbl_height = self.stencil_factory.from_dims_halo(
             func=find_pbl_height,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "k0": config.k0,
             },
@@ -8047,7 +8033,7 @@ class ComputeUwshcuInv(NDSLRuntime):
 
         self._find_pbl_averages = self.stencil_factory.from_dims_halo(
             func=find_pbl_averages,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "qtsrchgt": config.qtsrchgt,
             },
@@ -8055,7 +8041,7 @@ class ComputeUwshcuInv(NDSLRuntime):
 
         self._find_cumulus_characteristics = self.stencil_factory.from_dims_halo(
             func=find_cumulus_characteristics,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "ncnst": config.NCNST,
                 "thlsrc_fac": config.thlsrc_fac,
@@ -8067,13 +8053,13 @@ class ComputeUwshcuInv(NDSLRuntime):
 
         self._find_klcl = self.stencil_factory.from_dims_halo(
             func=find_klcl,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"k0": config.k0},
         )
 
         self._compute_cin_cinlcl = self.stencil_factory.from_dims_halo(
             func=compute_cin_cinlcl,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "ncnst": config.NCNST,
                 "dotransport": config.dotransport,
@@ -8085,13 +8071,13 @@ class ComputeUwshcuInv(NDSLRuntime):
 
         self._compute_del_CIN = self.stencil_factory.from_dims_halo(
             func=compute_del_CIN,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"use_CINcin": config.use_CINcin},
         )
 
         self._avg_initial_and_final_cin1 = self.stencil_factory.from_dims_halo(
             func=avg_initial_and_final_cin1,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "ncnst": config.NCNST,
                 "dotransport": config.dotransport,
@@ -8101,7 +8087,7 @@ class ComputeUwshcuInv(NDSLRuntime):
 
         self._avg_initial_and_final_cin2 = self.stencil_factory.from_dims_halo(
             func=avg_initial_and_final_cin2,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "ncnst": config.NCNST,
                 "dotransport": config.dotransport,
@@ -8110,17 +8096,17 @@ class ComputeUwshcuInv(NDSLRuntime):
 
         self._avg_initial_and_final_cin3 = self.stencil_factory.from_dims_halo(
             func=avg_initial_and_final_cin3,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._define_prel_krel = self.stencil_factory.from_dims_halo(
             func=define_prel_krel,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._calc_cumulus_base_mass_flux = self.stencil_factory.from_dims_halo(
             func=calc_cumulus_base_mass_flux,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "use_CINcin": config.use_CINcin,
                 "rbuoy": config.rbuoy,
@@ -8133,7 +8119,7 @@ class ComputeUwshcuInv(NDSLRuntime):
 
         self._define_updraft_properties = self.stencil_factory.from_dims_halo(
             func=define_updraft_properties,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "rbuoy": config.rbuoy,
             },
@@ -8141,13 +8127,13 @@ class ComputeUwshcuInv(NDSLRuntime):
 
         self._define_env_properties = self.stencil_factory.from_dims_halo(
             func=define_env_properties,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"ncnst": config.NCNST, "PGFc": config.PGFc, "dotransport": config.dotransport},
         )
 
         self._buoyancy_sorting = self.stencil_factory.from_dims_halo(
             func=buoyancy_sorting,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "ncnst": config.NCNST,
                 "dotransport": config.dotransport,
@@ -8170,18 +8156,18 @@ class ComputeUwshcuInv(NDSLRuntime):
 
         self._calc_ppen = self.stencil_factory.from_dims_halo(
             func=calc_ppen,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._recalc_condensate = self.stencil_factory.from_dims_halo(
             func=recalc_condensate,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"criqc": config.criqc, "k0": config.k0},
         )
 
         self._calc_entrainment_mass_flux = self.stencil_factory.from_dims_halo(
             func=calc_entrainment_mass_flux,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "ncnst": config.NCNST,
                 "dotransport": config.dotransport,
@@ -8193,25 +8179,25 @@ class ComputeUwshcuInv(NDSLRuntime):
 
         self._calc_pbl_fluxes = self.stencil_factory.from_dims_halo(
             func=calc_pbl_fluxes,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"ncnst": config.NCNST, "dt": config.dt, "dotransport": config.dotransport},
         )
 
         self._non_buoyancy_sorting_fluxes = self.stencil_factory.from_dims_halo(
             func=non_buoyancy_sorting_fluxes,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"ncnst": config.NCNST, "PGFc": config.PGFc, "dotransport": config.dotransport},
         )
 
         self._buoyancy_sorting_fluxes = self.stencil_factory.from_dims_halo(
             func=buoyancy_sorting_fluxes,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"ncnst": config.NCNST, "dotransport": config.dotransport},
         )
 
         self._penetrative_entrainment_fluxes = self.stencil_factory.from_dims_halo(
             func=penetrative_entrainment_fluxes,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "ncnst": config.NCNST,
                 "k0": config.k0,
@@ -8222,12 +8208,12 @@ class ComputeUwshcuInv(NDSLRuntime):
         )
 
         self._calc_momentum_tendency = self.stencil_factory.from_dims_halo(
-            func=calc_momentum_tendency, compute_dims=[X_DIM, Y_DIM, Z_DIM], externals={"dt": config.dt}
+            func=calc_momentum_tendency, compute_dims=[I_DIM, J_DIM, K_DIM], externals={"dt": config.dt}
         )
 
         self._calc_thermodynamic_tendencies = self.stencil_factory.from_dims_halo(
             func=calc_thermodynamic_tendencies,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "frc_rasn": config.frc_rasn,
                 "dt": config.dt,
@@ -8236,7 +8222,7 @@ class ComputeUwshcuInv(NDSLRuntime):
 
         self._prevent_negative_condensate = self.stencil_factory.from_dims_halo(
             func=prevent_negative_condensate,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "k0": config.k0,
                 "dt": config.dt,
@@ -8245,7 +8231,7 @@ class ComputeUwshcuInv(NDSLRuntime):
 
         self._calc_tracer_tendencies = self.stencil_factory.from_dims_halo(
             func=calc_tracer_tendencies,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "ncnst": config.NCNST,
                 "dt": config.dt,
@@ -8255,12 +8241,12 @@ class ComputeUwshcuInv(NDSLRuntime):
 
         self._compute_diagnostic_outputs = self.stencil_factory.from_dims_halo(
             func=compute_diagnostic_outputs,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._calc_cumulus_condensate_at_interfaces = self.stencil_factory.from_dims_halo(
             func=calc_cumulus_condensate_at_interface,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "criqc": config.criqc,
             },
@@ -8268,7 +8254,7 @@ class ComputeUwshcuInv(NDSLRuntime):
 
         self._adjust_implicit_CIN_inputs1 = self.stencil_factory.from_dims_halo(
             func=adjust_implicit_CIN_inputs1,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "ncnst": config.NCNST,
                 "dt": config.dt,
@@ -8278,12 +8264,12 @@ class ComputeUwshcuInv(NDSLRuntime):
 
         self._adjust_implicit_CIN_inputs2 = self.stencil_factory.from_dims_halo(
             func=adjust_implicit_CIN_inputs2,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._recalc_environmental_variables = self.stencil_factory.from_dims_halo(
             func=recalc_environmental_variables,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "ncnst": config.NCNST,
                 "dotransport": config.dotransport,
@@ -8292,12 +8278,12 @@ class ComputeUwshcuInv(NDSLRuntime):
 
         self._update_output_variables1 = self.stencil_factory.from_dims_halo(
             func=update_output_variables1,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._update_output_variables2 = self.stencil_factory.from_dims_halo(
             func=update_output_variables2,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "ncnst": config.NCNST,
                 "dotransport": config.dotransport,
@@ -8308,7 +8294,7 @@ class ComputeUwshcuInv(NDSLRuntime):
 
         self._compute_uwshcu_invert_after = self.stencil_factory.from_dims_halo(
             func=compute_uwshcu_invert_after,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "ncnst": config.NCNST,
                 "k0": config.k0,
@@ -8318,7 +8304,7 @@ class ComputeUwshcuInv(NDSLRuntime):
 
         self._setup_outputs = self.stencil_factory.from_dims_halo(
             func=setup_outputs,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "dt": config.dt,
                 "SCLM_SHALLOW": config.SCLM_SHALLOW,
@@ -8327,34 +8313,34 @@ class ComputeUwshcuInv(NDSLRuntime):
 
         self._update_total_water_tendency = self.stencil_factory.from_dims_halo(
             func=update_total_water_tendency,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._update_moist_static_energy_tendency = self.stencil_factory.from_dims_halo(
             func=update_moist_static_energy_tendency,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._update_convective_mass_fluxes = self.stencil_factory.from_dims_halo(
             func=update_convective_mass_fluxes,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._update_convective_scale_height = self.stencil_factory.from_dims_halo(
             func=update_convective_scale_height,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._reset_mask = self.stencil_factory.from_dims_halo(
             func=_reset_mask,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         # Create masks
         # Mask that indicates if condensation has occurred (e.g., Fortran goto 333)
-        self.condensation = self.make_local(quantity_factory, [X_DIM, Y_DIM], dtype=bool)
-        self.stop_cin = self.make_local(quantity_factory, [X_DIM, Y_DIM], dtype=bool)
-        self.stop_buoyancy_sort = self.make_local(quantity_factory, [X_DIM, Y_DIM], dtype=bool)
+        self.condensation = self.make_local(quantity_factory, [I_DIM, J_DIM], dtype=bool)
+        self.stop_cin = self.make_local(quantity_factory, [I_DIM, J_DIM], dtype=bool)
+        self.stop_buoyancy_sort = self.make_local(quantity_factory, [I_DIM, J_DIM], dtype=bool)
 
         # Create 4D tracer fields
         self.quantity_factory.add_data_dimensions(
@@ -8362,336 +8348,336 @@ class ComputeUwshcuInv(NDSLRuntime):
                 "ntracers": constants.NCNST,
             }
         )
-        self.trsrc = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, "ntracers"], units="na")
-        self.trsrc_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, "ntracers"], units="na")
-        self.tre = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, "ntracers"], units="na")
-        self.trmin = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, "ntracers"], units="na")
-        self.sstr0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM, "ntracers"], units="na")
-        self.tr0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM, "ntracers"], units="na")
-        self.tr0_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM, "ntracers"], units="na")
-        self.sstr0_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM, "ntracers"], units="na")
-        self.trten = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM, "ntracers"], units="na")
-        self.tr0_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM, "ntracers"], units="na")
-        self.tr0_inout = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM, "ntracers"], units="na")
-        self.trflx = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], units="na")
-        self.tru = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], units="na")
+        self.trsrc = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, "ntracers"], units="na")
+        self.trsrc_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, "ntracers"], units="na")
+        self.tre = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, "ntracers"], units="na")
+        self.trmin = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, "ntracers"], units="na")
+        self.sstr0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM, "ntracers"], units="na")
+        self.tr0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM, "ntracers"], units="na")
+        self.tr0_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM, "ntracers"], units="na")
+        self.sstr0_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM, "ntracers"], units="na")
+        self.trten = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM, "ntracers"], units="na")
+        self.tr0_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM, "ntracers"], units="na")
+        self.tr0_inout = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM, "ntracers"], units="na")
+        self.trflx = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM, "ntracers"], units="na")
+        self.tru = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM, "ntracers"], units="na")
         self.tru_emf = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], units="na"
+            dims=[I_DIM, J_DIM, K_INTERFACE_DIM, "ntracers"], units="na"
         )
         self.xflx_ndim = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], units="na"
+            dims=[I_DIM, J_DIM, K_INTERFACE_DIM, "ntracers"], units="na"
         )
         self.trflx_d = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], units="na"
+            dims=[I_DIM, J_DIM, K_INTERFACE_DIM, "ntracers"], units="na"
         )
         self.trflx_u = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"], units="na"
+            dims=[I_DIM, J_DIM, K_INTERFACE_DIM, "ntracers"], units="na"
         )
 
         saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory.backend)
         self.ese = saturation_vapor_pressure_table.ese
         self.esx = saturation_vapor_pressure_table.esx
 
-        self.locals.PTR2D = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.MASS = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.ssthl0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.ssqt0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.ssu0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.ssv0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.thj = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qlj = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qvj = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qse = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qij = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.tr0_temp = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.thv0top = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.thv0bot = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.thvl0top = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.dcm_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qvten_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qlten_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qiten_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.sten_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.uten_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.vten_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qrten_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qsten_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.cufrc_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.fer_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.fdr_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.thvlavg = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.tkeavg = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.uavg = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.vavg = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.thvlmin = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qtavg = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.zmid0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qt0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.thvl0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.thvl0bot = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.t0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qv0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.pmid0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.pmid0_inv = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.thl0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.thlsrc = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.usrc = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.vsrc = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.plcl = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.thl0lcl = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qt0lcl = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.thv0lcl = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.plfc = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.fer_outvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.fdr_outvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.cin = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.thvubot = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.thvutop = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.thvlsrc = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.thl0top = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qt0top = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qldet_outvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qidet_outvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qlsub_outvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qisub_outvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.dcm_outvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qvten_outvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qlten_outvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qiten_outvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.sten_outvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.uten_outvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.vten_outvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qrten_outvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qsten_outvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.cufrc_outvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.usrc_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.vsrc_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.thv0lcl_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.ql0_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qi0_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.t0_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.s0_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.u0_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.v0_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qt0_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.thl0_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.thvl0_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.ssthl0_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.ssqt0_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.thv0bot_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.thv0top_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.thvl0bot_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.thvl0top_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.ssu0_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.ssv0_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.dcm_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qvten_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qlten_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qiten_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.sten_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.uten_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.vten_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qrten_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qsten_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qldet_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qidet_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qlsub_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qisub_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.cush_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.cufrc_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.fer_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.fdr_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qtsrc_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.thvlsrc_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.thlsrc_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qldet_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qidet_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qlsub_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qisub_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.ndrop_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.nice_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.dcm = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.xco = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qc = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qlten_det = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qiten_det = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qv0_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.ql0_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qi0_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.s0_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.t0_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.u0_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.v0_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.slten = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qv0_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.plcl_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.plfc_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.tkeavg_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.thvlmin_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.ufrclcl = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qcu = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qlu = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qiu = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.cufrc = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qtsrc = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.uplus_3D = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.vplus_3D = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.prel = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.thv0rel = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.winv = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.cbmf = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.rho0inv = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.ufrcinv = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.wlcl = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qsat_pe = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.thlue = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qtue = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.wue = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.rei = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.fer = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.dwten = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.diten = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.ql0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qi0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.uten = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.vten = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.uf = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.vf = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.dwten_temp = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.diten_temp = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.fdr = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qlten_sink = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qiten_sink = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qrten = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qsten = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.s0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qvten = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qlten = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.sten = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qiten = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qmin = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.pmid0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.u0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.v0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.u0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.v0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.zmid0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.zmid0_inv = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.exnmid0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.exnmid0_inv = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
+        self.locals.PTR2D = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.MASS = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.ssthl0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.ssqt0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.ssu0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.ssv0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.thj = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qlj = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qvj = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qse = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qij = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.tr0_temp = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.thv0top = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.thv0bot = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.thvl0top = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.dcm_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qvten_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qlten_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qiten_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.sten_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.uten_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.vten_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qrten_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qsten_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.cufrc_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.fer_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.fdr_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.thvlavg = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.tkeavg = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.uavg = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.vavg = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.thvlmin = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qtavg = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.zmid0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qt0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.thvl0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.thvl0bot = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.t0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qv0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.pmid0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.pmid0_inv = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.thl0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.thlsrc = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.usrc = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.vsrc = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.plcl = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.thl0lcl = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qt0lcl = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.thv0lcl = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.plfc = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.fer_outvar = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.fdr_outvar = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.cin = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.thvubot = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.thvutop = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.thvlsrc = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.thl0top = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qt0top = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qldet_outvar = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qidet_outvar = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qlsub_outvar = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qisub_outvar = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.dcm_outvar = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qvten_outvar = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qlten_outvar = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qiten_outvar = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.sten_outvar = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.uten_outvar = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.vten_outvar = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qrten_outvar = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qsten_outvar = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.cufrc_outvar = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.usrc_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.vsrc_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.thv0lcl_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.ql0_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qi0_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.t0_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.s0_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.u0_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.v0_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qt0_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.thl0_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.thvl0_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.ssthl0_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.ssqt0_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.thv0bot_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.thv0top_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.thvl0bot_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.thvl0top_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.ssu0_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.ssv0_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.dcm_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qvten_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qlten_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qiten_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.sten_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.uten_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.vten_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qrten_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qsten_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qldet_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qidet_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qlsub_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qisub_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.cush_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.cufrc_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.fer_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.fdr_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qtsrc_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.thvlsrc_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.thlsrc_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qldet_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qidet_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qlsub_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qisub_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.ndrop_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.nice_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.dcm = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.xco = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qc = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qlten_det = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qiten_det = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qv0_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.ql0_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qi0_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.s0_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.t0_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.u0_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.v0_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.slten = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qv0_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.plcl_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.plfc_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.tkeavg_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.thvlmin_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.ufrclcl = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qcu = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qlu = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qiu = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.cufrc = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qtsrc = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.uplus_3D = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.vplus_3D = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.prel = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.thv0rel = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.winv = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.cbmf = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.rho0inv = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.ufrcinv = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.wlcl = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qsat_pe = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.thlue = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qtue = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.wue = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.rei = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.fer = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.dwten = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.diten = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.ql0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qi0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.uten = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.vten = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.uf = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.vf = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.dwten_temp = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.diten_temp = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.fdr = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qlten_sink = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qiten_sink = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qrten = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qsten = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.s0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qvten = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qlten = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.sten = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qiten = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qmin = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.pmid0_in = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.u0_in = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.v0_in = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.u0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.v0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.zmid0_in = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.zmid0_inv = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.exnmid0_in = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.exnmid0_inv = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
         self.locals.exnifc0_inv = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na"
+            dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na"
         )
-        self.locals.dp0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.dp0_inv = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qv0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.ql0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.qi0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.th0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
-        self.locals.cinlcl = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na")
+        self.locals.dp0_in = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.dp0_inv = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qv0_in = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.ql0_in = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.qi0_in = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.th0_in = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
+        self.locals.cinlcl = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na")
         # FloatFieldIJs
-        self.locals.cush_inout = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.dpi = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.thvlmin_IJ = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.wcrit = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.alpha = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.del_CIN = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.cin_IJ = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.plfc_IJ = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.cinlcl_IJ = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.pe = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.thle = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.qte = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.dpe = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.exne = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.thvebot = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.ue = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.ve = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.drage = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.bogbot = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.bogtop = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.rhomid0j = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.cush_inoutvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.uplus = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.vplus = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.cin_i = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.cinlcl_i = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.ke = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.thlu_top = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.qtu_top = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.cldhgt = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.qlubelow = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.qiubelow = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.qlj_2D = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.qij_2D = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.qcubelow = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.rcwp = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.rlwp = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.riwp = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.ppen = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.tscaleh = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.wtwb = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
-        self.locals.cnvtrmax = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na")
+        self.locals.cush_inout = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.dpi = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.thvlmin_IJ = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.wcrit = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.alpha = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.del_CIN = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.cin_IJ = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.plfc_IJ = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.cinlcl_IJ = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.pe = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.thle = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.qte = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.dpe = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.exne = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.thvebot = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.ue = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.ve = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.drage = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.bogbot = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.bogtop = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.rhomid0j = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.cush_inoutvar = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.uplus = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.vplus = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.cin_i = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.cinlcl_i = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.ke = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.thlu_top = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.qtu_top = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.cldhgt = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.qlubelow = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.qiubelow = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.qlj_2D = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.qij_2D = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.qcubelow = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.rcwp = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.rlwp = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.riwp = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.ppen = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.tscaleh = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.wtwb = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
+        self.locals.cnvtrmax = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na")
         # Interface FloatFields
-        self.locals.qtu_emf = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.umf_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.qtflx_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.slflx_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.slflx = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.thlu_emf = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.uu_emf = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.vu_emf = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.uemf = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.uflx_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.vflx_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.ufrc = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.wu = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.emf = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.thlu = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.qtu = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.uu = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.vu = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.umf_zint = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.thvu = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.umf_outvar = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
+        self.locals.qtu_emf = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.umf_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.qtflx_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.slflx_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.slflx = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.thlu_emf = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.uu_emf = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.vu_emf = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.uemf = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.uflx_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.vflx_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.ufrc = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.wu = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.emf = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.thlu = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.qtu = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.uu = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.vu = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.umf_zint = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.thvu = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.umf_outvar = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
         self.locals.qtflx_outvar = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na"
+            dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na"
         )
         self.locals.slflx_outvar = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na"
+            dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na"
         )
         self.locals.uflx_outvar = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na"
+            dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na"
         )
         self.locals.vflx_outvar = self.quantity_factory.zeros(
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na"
+            dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na"
         )
-        self.locals.slflx_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.qtflx_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.uflx_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.vflx_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.qtflx = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.uflx = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.ufrc_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.xflx = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.vflx = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.umf_temp = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.umf_s = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.tke_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.pifc0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.zifc0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.zifc0_inv = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
-        self.locals.exnifc0_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="na")
+        self.locals.slflx_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.qtflx_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.uflx_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.vflx_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.qtflx = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.uflx = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.ufrc_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.xflx = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.vflx = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.umf_temp = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.umf_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.tke_in = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.pifc0_in = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.zifc0_in = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.zifc0_inv = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
+        self.locals.exnifc0_in = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="na")
         # IntFields
-        self.locals.kinv = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na", dtype=Int)
-        self.locals.klcl = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na", dtype=Int)
-        self.locals.klfc = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na", dtype=Int)
-        self.locals.kinv_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na", dtype=Int)
-        self.locals.klcl_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na", dtype=Int)
-        self.locals.klfc_o = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na", dtype=Int)
-        self.locals.kbup = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na", dtype=Int)
-        self.locals.krel = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na", dtype=Int)
-        self.locals.kpen = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="na", dtype=Int)
+        self.locals.kinv = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na", dtype=Int)
+        self.locals.klcl = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na", dtype=Int)
+        self.locals.klfc = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na", dtype=Int)
+        self.locals.kinv_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na", dtype=Int)
+        self.locals.klcl_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na", dtype=Int)
+        self.locals.klfc_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na", dtype=Int)
+        self.locals.kbup = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na", dtype=Int)
+        self.locals.krel = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na", dtype=Int)
+        self.locals.kpen = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na", dtype=Int)
 
         # IntFieldIJs
         self.locals.kbup_IJ = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na", dtype=Int)
@@ -8749,7 +8735,6 @@ class ComputeUwshcuInv(NDSLRuntime):
             QLTOT=state.output.ql0_inv,
             QITOT=state.output.qi0_inv,
         )
-        
 
         self._compute_uwshcu_invert_before(
             pmid0_inv=self.locals.pmid0_inv,

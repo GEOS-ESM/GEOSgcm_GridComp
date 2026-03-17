@@ -1,7 +1,7 @@
 import dataclasses
 
 from ndsl import Quantity, State
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.typing import Float
 
 
@@ -10,7 +10,7 @@ class GFDL1MState(State):
     area: Quantity = dataclasses.field(
         metadata={
             "name": "area",
-            "dims": [X_DIM, Y_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "m2",
             "intent": "?",
             "dtype": Float,
@@ -19,7 +19,7 @@ class GFDL1MState(State):
     z_interface: Quantity = dataclasses.field(
         metadata={
             "name": "geopotential_height_interface",
-            "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+            "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
             "units": "m",
             "intent": "?",
             "dtype": Float,
@@ -28,7 +28,7 @@ class GFDL1MState(State):
     p_interface: Quantity = dataclasses.field(
         metadata={
             "name": "p_interface",
-            "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+            "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
             "units": "Pa",
             "intent": "?",
             "dtype": Float,
@@ -37,7 +37,7 @@ class GFDL1MState(State):
     t: Quantity = dataclasses.field(
         metadata={
             "name": "t",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "K",
             "intent": "?",
             "dtype": Float,
@@ -46,7 +46,7 @@ class GFDL1MState(State):
     u: Quantity = dataclasses.field(
         metadata={
             "name": "u",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "m s-1",
             "intent": "?",
             "dtype": Float,
@@ -55,7 +55,7 @@ class GFDL1MState(State):
     v: Quantity = dataclasses.field(
         metadata={
             "name": "v",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "m s-1",
             "intent": "?",
             "dtype": Float,
@@ -64,7 +64,7 @@ class GFDL1MState(State):
     land_fraction: Quantity = dataclasses.field(
         metadata={
             "name": "land_fraction",
-            "dims": [X_DIM, Y_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "1",
             "intent": "?",
             "dtype": Float,
@@ -73,7 +73,7 @@ class GFDL1MState(State):
     scalar_diffusivity_interface: Quantity | None = dataclasses.field(
         metadata={
             "name": "scalar_diffusivity_interface",
-            "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+            "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
             "units": "m2 s-1",
             "intent": "?",
             "dtype": Float,
@@ -82,7 +82,7 @@ class GFDL1MState(State):
     pdf_first_plume_fractional_area: Quantity = dataclasses.field(
         metadata={
             "name": "pdf_first_plume_fractional_area",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "1",
             "intent": "?",
             "dtype": Float,
@@ -91,7 +91,7 @@ class GFDL1MState(State):
     covariance_liquid_water_static_energy_and_total_water_specific_humidity: Quantity = dataclasses.field(
         metadata={
             "name": "covariance_liquid_water_static_energy_and_total_water_specific_humudity",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "K",
             "intent": "?",
             "dtype": Float,
@@ -100,7 +100,7 @@ class GFDL1MState(State):
     surface_temperature: Quantity | None = dataclasses.field(
         metadata={
             "name": "surface_temperature",
-            "dims": [X_DIM, Y_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "K",
             "intent": "?",
             "dtype": Float,
@@ -109,7 +109,7 @@ class GFDL1MState(State):
     sensible_heat_flux: Quantity | None = dataclasses.field(
         metadata={
             "name": "sensible_heat_flux",
-            "dims": [X_DIM, Y_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "W m-2",
             "intent": "?",
             "dtype": Float,
@@ -118,7 +118,7 @@ class GFDL1MState(State):
     omega: Quantity = dataclasses.field(
         metadata={
             "name": "omega",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "Pa s-1",
             "intent": "?",
             "dtype": Float,
@@ -127,7 +127,7 @@ class GFDL1MState(State):
     convection_fraction: Quantity = dataclasses.field(
         metadata={
             "name": "convection_fraction",
-            "dims": [X_DIM, Y_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "1",
             "intent": "?",
             "dtype": Float,
@@ -136,7 +136,7 @@ class GFDL1MState(State):
     surface_type: Quantity = dataclasses.field(
         metadata={
             "name": "surface_type",
-            "dims": [X_DIM, Y_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "1",
             "intent": "?",
             "dtype": Float,
@@ -145,7 +145,7 @@ class GFDL1MState(State):
     cloud_liquid_evaporation: Quantity = dataclasses.field(
         metadata={
             "name": "cloud_liquid_evaporation",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "kg kg-1 s-1",
             "intent": "?",
             "dtype": Float,
@@ -154,7 +154,7 @@ class GFDL1MState(State):
     cloud_ice_sublimation: Quantity = dataclasses.field(
         metadata={
             "name": "cloud_ice_sublimation",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "kg kg-1 s-1",
             "intent": "?",
             "dtype": Float,
@@ -163,7 +163,7 @@ class GFDL1MState(State):
     icefall: Quantity = dataclasses.field(
         metadata={
             "name": "icefall",
-            "dims": [X_DIM, Y_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "kg m-2 s-1",
             "intent": "?",
             "dtype": Float,
@@ -172,7 +172,7 @@ class GFDL1MState(State):
     freezing_rainfall: Quantity = dataclasses.field(
         metadata={
             "name": "freezing_rainfall",
-            "dims": [X_DIM, Y_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "kg m-2 s-1",
             "intent": "?",
             "dtype": Float,
@@ -181,7 +181,7 @@ class GFDL1MState(State):
     relative_humidity_after_pdf: Quantity = dataclasses.field(
         metadata={
             "name": "relative_humidity_after_pdf",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "1",
             "intent": "?",
             "dtype": Float,
@@ -190,7 +190,7 @@ class GFDL1MState(State):
     buoyancy_flux: Quantity = dataclasses.field(
         metadata={
             "name": "buoyancy_flux",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "1",
             "intent": "?",
             "dtype": Float,
@@ -199,7 +199,7 @@ class GFDL1MState(State):
     liquid_water_flux: Quantity = dataclasses.field(
         metadata={
             "name": "liquid_water_flux",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "kg kg-1 m s-1",
             "intent": "?",
             "dtype": Float,
@@ -208,7 +208,7 @@ class GFDL1MState(State):
     hydrostatic_pdf_iterations: Quantity = dataclasses.field(
         metadata={
             "name": "hydrostatic_pdf_iterations",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "1",
             "intent": "?",
             "dtype": Float,
@@ -217,7 +217,7 @@ class GFDL1MState(State):
     lower_tropospheric_stability: Quantity = dataclasses.field(
         metadata={
             "name": "lower_tropospheric_stability",
-            "dims": [X_DIM, Y_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "K",
             "intent": "?",
             "dtype": Float,
@@ -226,7 +226,7 @@ class GFDL1MState(State):
     estimated_inversion_strength: Quantity = dataclasses.field(
         metadata={
             "name": "estimated_inversion_strength",
-            "dims": [X_DIM, Y_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "K",
             "intent": "?",
             "dtype": Float,
@@ -235,7 +235,7 @@ class GFDL1MState(State):
     lcl_height: Quantity | None = dataclasses.field(
         metadata={
             "name": "lcl_height",
-            "dims": [X_DIM, Y_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "m",
             "intent": "?",
             "dtype": Float,
@@ -244,7 +244,7 @@ class GFDL1MState(State):
     shallow_convection_rain: Quantity = dataclasses.field(
         metadata={
             "name": "shallow_convection_rain",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "kg kg-1 s-1",
             "intent": "?",
             "dtype": Float,
@@ -253,7 +253,7 @@ class GFDL1MState(State):
     shallow_convection_snow: Quantity = dataclasses.field(
         metadata={
             "name": "shallow_convective_snow",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "kg kg-1 s-1",
             "intent": "?",
             "dtype": Float,
@@ -262,7 +262,7 @@ class GFDL1MState(State):
     critical_relative_humidity_for_pdf: Quantity = dataclasses.field(
         metadata={
             "name": "critical_relative_humidity_for_pdf",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "1",
             "intent": "?",
             "dtype": Float,
@@ -271,7 +271,7 @@ class GFDL1MState(State):
     large_scale_rainwater_source: Quantity | None = dataclasses.field(
         metadata={
             "name": "large_scale_rainwater_source",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "kg kg-1 s-1",
             "intent": "?",
             "dtype": Float,
@@ -283,7 +283,7 @@ class GFDL1MState(State):
         velocity: Quantity = dataclasses.field(
             metadata={
                 "name": "velocity",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "m s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -292,7 +292,7 @@ class GFDL1MState(State):
         variance: Quantity = dataclasses.field(
             metadata={
                 "name": "variance",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "m2 s-2",
                 "intent": "?",
                 "dtype": Float,
@@ -301,7 +301,7 @@ class GFDL1MState(State):
         third_moment: Quantity = dataclasses.field(
             metadata={
                 "name": "third_moment",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "m3 s-3",
                 "intent": "?",
                 "dtype": Float,
@@ -313,7 +313,7 @@ class GFDL1MState(State):
         vapor: Quantity = dataclasses.field(
             metadata={
                 "name": "vapor",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1",
                 "intent": "?",
                 "dtype": Float,
@@ -322,7 +322,7 @@ class GFDL1MState(State):
         rain: Quantity = dataclasses.field(
             metadata={
                 "name": "rain",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1",
                 "intent": "?",
                 "dtype": Float,
@@ -331,7 +331,7 @@ class GFDL1MState(State):
         snow: Quantity = dataclasses.field(
             metadata={
                 "name": "snow",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1",
                 "intent": "?",
                 "dtype": Float,
@@ -340,7 +340,7 @@ class GFDL1MState(State):
         graupel: Quantity = dataclasses.field(
             metadata={
                 "name": "graupel",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1",
                 "intent": "?",
                 "dtype": Float,
@@ -349,7 +349,7 @@ class GFDL1MState(State):
         large_scale_liquid: Quantity = dataclasses.field(
             metadata={
                 "name": "large_scale_liquid",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1",
                 "intent": "?",
                 "dtype": Float,
@@ -358,7 +358,7 @@ class GFDL1MState(State):
         large_scale_ice: Quantity = dataclasses.field(
             metadata={
                 "name": "large_scale_ice",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1",
                 "intent": "?",
                 "dtype": Float,
@@ -367,7 +367,7 @@ class GFDL1MState(State):
         convective_liquid: Quantity = dataclasses.field(
             metadata={
                 "name": "convective_liquid",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1",
                 "intent": "?",
                 "dtype": Float,
@@ -376,7 +376,7 @@ class GFDL1MState(State):
         convective_ice: Quantity = dataclasses.field(
             metadata={
                 "name": "convective_ice",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1",
                 "intent": "?",
                 "dtype": Float,
@@ -388,7 +388,7 @@ class GFDL1MState(State):
         large_scale: Quantity = dataclasses.field(
             metadata={
                 "name": "large_scale_cloud_fraction",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "1",
                 "intent": "?",
                 "dtype": Float,
@@ -397,7 +397,7 @@ class GFDL1MState(State):
         convective: Quantity = dataclasses.field(
             metadata={
                 "name": "convective_cloud_fraction",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "1",
                 "intent": "?",
                 "dtype": Float,
@@ -409,7 +409,7 @@ class GFDL1MState(State):
         liquid: Quantity = dataclasses.field(
             metadata={
                 "name": "liquid",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "m-3",
                 "intent": "?",
                 "dtype": Float,
@@ -418,7 +418,7 @@ class GFDL1MState(State):
         ice: Quantity = dataclasses.field(
             metadata={
                 "name": "ice",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "m-3",
                 "intent": "?",
                 "dtype": Float,
@@ -437,7 +437,7 @@ class GFDL1MState(State):
         flux: Quantity = dataclasses.field(
             metadata={
                 "name": "flux",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "K m s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -446,7 +446,7 @@ class GFDL1MState(State):
         variance: Quantity = dataclasses.field(
             metadata={
                 "name": "variance",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "K+2",
                 "intent": "?",
                 "dtype": Float,
@@ -455,7 +455,7 @@ class GFDL1MState(State):
         third_moment: Quantity = dataclasses.field(
             metadata={
                 "name": "third_moment",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "K+3",
                 "intent": "?",
                 "dtype": Float,
@@ -476,7 +476,7 @@ class GFDL1MState(State):
         flux: Quantity = dataclasses.field(
             metadata={
                 "name": "flux",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 m s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -485,7 +485,7 @@ class GFDL1MState(State):
         variance: Quantity = dataclasses.field(
             metadata={
                 "name": "variance",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "1",
                 "intent": "?",
                 "dtype": Float,
@@ -494,7 +494,7 @@ class GFDL1MState(State):
         third_moment: Quantity = dataclasses.field(
             metadata={
                 "name": "third_moment",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "1",
                 "intent": "?",
                 "dtype": Float,
@@ -506,7 +506,7 @@ class GFDL1MState(State):
         cloud_fraction: Quantity = dataclasses.field(
             metadata={
                 "name": "cloud_fraction",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1",
                 "intent": "?",
                 "dtype": Float,
@@ -515,7 +515,7 @@ class GFDL1MState(State):
         vapor: Quantity = dataclasses.field(
             metadata={
                 "name": "vapor",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1",
                 "intent": "?",
                 "dtype": Float,
@@ -524,7 +524,7 @@ class GFDL1MState(State):
         liquid: Quantity = dataclasses.field(
             metadata={
                 "name": "liquid",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1",
                 "intent": "?",
                 "dtype": Float,
@@ -533,7 +533,7 @@ class GFDL1MState(State):
         ice: Quantity = dataclasses.field(
             metadata={
                 "name": "cloud_fraction",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1",
                 "intent": "?",
                 "dtype": Float,
@@ -542,7 +542,7 @@ class GFDL1MState(State):
         rain: Quantity = dataclasses.field(
             metadata={
                 "name": "cloud_fraction",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1",
                 "intent": "?",
                 "dtype": Float,
@@ -551,7 +551,7 @@ class GFDL1MState(State):
         snow: Quantity = dataclasses.field(
             metadata={
                 "name": "cloud_fraction",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1",
                 "intent": "?",
                 "dtype": Float,
@@ -560,7 +560,7 @@ class GFDL1MState(State):
         graupel: Quantity = dataclasses.field(
             metadata={
                 "name": "graupel",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1",
                 "intent": "?",
                 "dtype": Float,
@@ -572,7 +572,7 @@ class GFDL1MState(State):
         liquid: Quantity = dataclasses.field(
             metadata={
                 "name": "liquid",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "m",
                 "intent": "?",
                 "dtype": Float,
@@ -581,7 +581,7 @@ class GFDL1MState(State):
         ice: Quantity = dataclasses.field(
             metadata={
                 "name": "ice",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "m",
                 "intent": "?",
                 "dtype": Float,
@@ -593,7 +593,7 @@ class GFDL1MState(State):
         rain: Quantity = dataclasses.field(
             metadata={
                 "name": "rain",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "kg m-2 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -602,7 +602,7 @@ class GFDL1MState(State):
         snow: Quantity = dataclasses.field(
             metadata={
                 "name": "snow",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "kg m-2 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -611,7 +611,7 @@ class GFDL1MState(State):
         ice: Quantity = dataclasses.field(
             metadata={
                 "name": "ice",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "kg m-2 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -620,7 +620,7 @@ class GFDL1MState(State):
         graupel: Quantity = dataclasses.field(
             metadata={
                 "name": "graupel",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "kg m-2 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -629,7 +629,7 @@ class GFDL1MState(State):
         shallow_convective_precipitation: Quantity = dataclasses.field(
             metadata={
                 "name": "shallow_convective_precipitation",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "kg m-2 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -638,7 +638,7 @@ class GFDL1MState(State):
         deep_convective_precipitation: Quantity = dataclasses.field(
             metadata={
                 "name": "deep_convective_precipitation",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "kg m-2 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -647,7 +647,7 @@ class GFDL1MState(State):
         anvil_precipitation: Quantity = dataclasses.field(
             metadata={
                 "name": "anvil_precipitation",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "kg m-2 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -656,7 +656,7 @@ class GFDL1MState(State):
         shallow_convective_snow: Quantity = dataclasses.field(
             metadata={
                 "name": "shallow_convective_snow",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "kg m-2 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -665,7 +665,7 @@ class GFDL1MState(State):
         deep_convective_snow: Quantity = dataclasses.field(
             metadata={
                 "name": "deep_convective_snow",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "kg m-2 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -674,7 +674,7 @@ class GFDL1MState(State):
         anvil_snow: Quantity = dataclasses.field(
             metadata={
                 "name": "anvil_snow",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "kg m-2 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -686,7 +686,7 @@ class GFDL1MState(State):
         precip: Quantity = dataclasses.field(
             metadata={
                 "name": "precip",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "kg m-2 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -695,7 +695,7 @@ class GFDL1MState(State):
         snow: Quantity = dataclasses.field(
             metadata={
                 "name": "snow",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "kg m-2 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -704,7 +704,7 @@ class GFDL1MState(State):
         evaporation: Quantity = dataclasses.field(
             metadata={
                 "name": "evaporation",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -713,7 +713,7 @@ class GFDL1MState(State):
         sublimation: Quantity = dataclasses.field(
             metadata={
                 "name": "sublimation",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -722,7 +722,7 @@ class GFDL1MState(State):
         liquid_precip_flux: Quantity = dataclasses.field(
             metadata={
                 "name": "liquid_precip_flux",
-                "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+                "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
                 "units": "kg m-2 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -731,7 +731,7 @@ class GFDL1MState(State):
         ice_precip_flux: Quantity = dataclasses.field(
             metadata={
                 "name": "ice_precip_flux",
-                "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+                "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
                 "units": "kg m-2 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -743,7 +743,7 @@ class GFDL1MState(State):
         liquid_precip_flux: Quantity = dataclasses.field(
             metadata={
                 "name": "liquid_precip_flux",
-                "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+                "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
                 "units": "kg m-2 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -752,7 +752,7 @@ class GFDL1MState(State):
         ice_precip_flux: Quantity = dataclasses.field(
             metadata={
                 "name": "ice_precip_flux",
-                "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+                "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
                 "units": "kg m-2 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -764,7 +764,7 @@ class GFDL1MState(State):
         dcloud_fractiondt_macro: Quantity = dataclasses.field(
             metadata={
                 "name": "dsurface_specific_humuditydt_macro",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -773,7 +773,7 @@ class GFDL1MState(State):
         dvapordt_macro: Quantity = dataclasses.field(
             metadata={
                 "name": "dvapordt_macro",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -782,7 +782,7 @@ class GFDL1MState(State):
         dicedt_macro: Quantity = dataclasses.field(
             metadata={
                 "name": "dicedt_macro",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -791,7 +791,7 @@ class GFDL1MState(State):
         dliquiddt_macro: Quantity = dataclasses.field(
             metadata={
                 "name": "dliquiddt_macro",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -800,7 +800,7 @@ class GFDL1MState(State):
         draindt_macro: Quantity = dataclasses.field(
             metadata={
                 "name": "draindt_macro",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -809,7 +809,7 @@ class GFDL1MState(State):
         dgraupeldt_macro: Quantity = dataclasses.field(
             metadata={
                 "name": "dgraupeldt_macro",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -818,7 +818,7 @@ class GFDL1MState(State):
         dsnowdt_macro: Quantity = dataclasses.field(
             metadata={
                 "name": "dsnowdt_macro",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -827,7 +827,7 @@ class GFDL1MState(State):
         dudt_macro: Quantity = dataclasses.field(
             metadata={
                 "name": "dudt_macro",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -836,7 +836,7 @@ class GFDL1MState(State):
         dvdt_macro: Quantity = dataclasses.field(
             metadata={
                 "name": "dvdt_macro",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -845,7 +845,7 @@ class GFDL1MState(State):
         dtdt_macro: Quantity = dataclasses.field(
             metadata={
                 "name": "dtdt_macro",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -854,7 +854,7 @@ class GFDL1MState(State):
         dcloud_fractiondt_micro: Quantity = dataclasses.field(
             metadata={
                 "name": "dsurface_specific_humuditydt_micro",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -863,7 +863,7 @@ class GFDL1MState(State):
         dvapordt_micro: Quantity = dataclasses.field(
             metadata={
                 "name": "dvapordt_micro",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -872,7 +872,7 @@ class GFDL1MState(State):
         dicedt_micro: Quantity = dataclasses.field(
             metadata={
                 "name": "dicedt_micro",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -881,7 +881,7 @@ class GFDL1MState(State):
         dliquiddt_micro: Quantity = dataclasses.field(
             metadata={
                 "name": "dliquiddt_micro",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -890,7 +890,7 @@ class GFDL1MState(State):
         draindt_micro: Quantity = dataclasses.field(
             metadata={
                 "name": "draindt_micro",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -899,7 +899,7 @@ class GFDL1MState(State):
         dgraupeldt_micro: Quantity = dataclasses.field(
             metadata={
                 "name": "dgraupeldt_micro",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -908,7 +908,7 @@ class GFDL1MState(State):
         dsnowdt_micro: Quantity = dataclasses.field(
             metadata={
                 "name": "dsnowdt_micro",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -917,7 +917,7 @@ class GFDL1MState(State):
         dudt_micro: Quantity = dataclasses.field(
             metadata={
                 "name": "dudt_micro",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -926,7 +926,7 @@ class GFDL1MState(State):
         dvdt_micro: Quantity = dataclasses.field(
             metadata={
                 "name": "dvdt_micro",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -935,7 +935,7 @@ class GFDL1MState(State):
         dtdt_micro: Quantity = dataclasses.field(
             metadata={
                 "name": "dtdt_micro",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -944,7 +944,7 @@ class GFDL1MState(State):
         dtdt_friction_pressure_weighted: Quantity = dataclasses.field(
             metadata={
                 "name": "dtdt_friction_pressure_weighted",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "Pa K s-1",
                 "intent": "?",
                 "dtype": Float,
@@ -956,7 +956,7 @@ class GFDL1MState(State):
         simulated_reflectivity: Quantity | None = dataclasses.field(
             metadata={
                 "name": "simulated_reflectivity",
-                "dims": [X_DIM, Y_DIM, Z_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "dBZ",
                 "intent": "?",
                 "dtype": Float,
@@ -965,7 +965,7 @@ class GFDL1MState(State):
         maximum_composite_reflectivity: Quantity | None = dataclasses.field(
             metadata={
                 "name": "maximum_composite_reflectivity",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "dBZ",
                 "intent": "?",
                 "dtype": Float,
@@ -974,7 +974,7 @@ class GFDL1MState(State):
         base_1km_agl_reflectivity: Quantity | None = dataclasses.field(
             metadata={
                 "name": "base_1km_agl_reflectivity",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "dBZ",
                 "intent": "?",
                 "dtype": Float,
@@ -983,7 +983,7 @@ class GFDL1MState(State):
         echo_top_reflectivity: Quantity | None = dataclasses.field(
             metadata={
                 "name": "echo_top_reflectivity",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "dBZ",
                 "intent": "?",
                 "dtype": Float,
@@ -992,7 +992,7 @@ class GFDL1MState(State):
         minus_10c_reflectivity: Quantity | None = dataclasses.field(
             metadata={
                 "name": "minus_10c_reflectivity",
-                "dims": [X_DIM, Y_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "dBZ",
                 "intent": "?",
                 "dtype": Float,

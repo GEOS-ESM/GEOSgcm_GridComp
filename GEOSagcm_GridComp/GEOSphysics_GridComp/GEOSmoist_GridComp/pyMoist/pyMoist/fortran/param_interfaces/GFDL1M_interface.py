@@ -9,7 +9,7 @@ from ndsl.constants import I_DIM, J_DIM, K_INTERFACE_DIM
 from ndsl.dsl.typing import Float, Int
 
 from pyMoist.fortran import get_NDSL_physics
-from pyMoist.fortran.build_helper import InterfaceTransferType, StencilBackendCompilerOverride
+from pyMoist.fortran.build_helper import StencilBackendCompilerOverride
 from pyMoist.fortran.managed_state import MAPLManagedState
 from pyMoist.fortran.memory_factory import MAPLMemoryRepository
 from pyMoist.fortran.profiler import TimedCUDAProfiler
@@ -236,7 +236,7 @@ class GFDL1MInterface(UserCode):
         #     "scalar_diffusivity_interface",
         #     "KH",
         #     import_repository,
-        #     dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM],
+        #     dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
         # )
         # self_manage_state.register("sensible_heat_flux", "SH", import_repository)
 

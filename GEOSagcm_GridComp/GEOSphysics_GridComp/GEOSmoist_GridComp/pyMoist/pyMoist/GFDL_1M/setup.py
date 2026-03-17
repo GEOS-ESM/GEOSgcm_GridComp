@@ -1,7 +1,7 @@
 import dataclasses
 
 from ndsl import Local, LocalState, NDSLRuntime, QuantityFactory, StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, computation, function, interval, log
 from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, IntFieldIJ
 
@@ -24,6 +24,23 @@ from pyMoist.saturation_tables import (
     saturation_specific_humidity,
 )
 from pyMoist.shared.interpolations import vertical_interpolation
+
+
+def set_unused_to_zero(
+    shallow_convective_precipitation: FloatFieldIJ,
+    deep_convective_precipitation: FloatFieldIJ,
+    anvil_precipitation: FloatFieldIJ,
+    shallow_convective_snow: FloatFieldIJ,
+    deep_convective_snow: FloatFieldIJ,
+    anvil_snow: FloatFieldIJ,
+):
+    with computation(FORWARD), interval(0, 1):
+        shallow_convective_precipitation = 0.0
+        deep_convective_precipitation = 0.0
+        anvil_precipitation = 0.0
+        shallow_convective_snow = 0.0
+        deep_convective_snow = 0.0
+        anvil_snow = 0.0
 
 
 def calculate_derived_states(
@@ -193,7 +210,7 @@ class GFDL1MSetupLocals(LocalState):
     th: Local = dataclasses.field(
         metadata={
             "name": "th",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -202,7 +219,7 @@ class GFDL1MSetupLocals(LocalState):
     t700: Local = dataclasses.field(
         metadata={
             "name": "t700",
-            "dims": [X_DIM, Y_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -211,7 +228,7 @@ class GFDL1MSetupLocals(LocalState):
     th700: Local = dataclasses.field(
         metadata={
             "name": "th700",
-            "dims": [X_DIM, Y_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -220,7 +237,7 @@ class GFDL1MSetupLocals(LocalState):
     z700: Local = dataclasses.field(
         metadata={
             "name": "z700",
-            "dims": [X_DIM, Y_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -259,39 +276,44 @@ class GFDL1MSetup(NDSLRuntime):
         self._locals = GFDL1MSetupLocals.make_locals(quantity_factory)
 
         # construct stencils
+        self._set_unused_to_zero = stencil_factory.from_dims_halo(
+            func=set_unused_to_zero,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+
         self._prepare_tendencies = stencil_factory.from_dims_halo(
             func=prepare_tendencies,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._calculate_derived_states = stencil_factory.from_dims_halo(
             func=calculate_derived_states,
-            compute_dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM],
+            compute_dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
         )
 
         self._find_lcl_level = stencil_factory.from_dims_halo(
             func=find_lcl_level,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._update_lcl_height = stencil_factory.from_dims_halo(
             func=update_lcl_height,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._vertical_interpolation = stencil_factory.from_dims_halo(
             func=vertical_interpolation,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._compute_estimated_inversion_strength = stencil_factory.from_dims_halo(
             func=compute_estimated_inversion_strength,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._update_precipitation = stencil_factory.from_dims_halo(
             func=update_precipitation,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "DT_MOIST": config.DT_MOIST,
             },
@@ -335,6 +357,12 @@ class GFDL1MSetup(NDSLRuntime):
         draindt_macro,
         dsnowdt_macro,
         dgraupeldt_macro,
+        shallow_convective_precipitation,
+        deep_convective_precipitation,
+        anvil_precipitation,
+        shallow_convective_snow,
+        deep_convective_snow,
+        anvil_snow,
         local_p_mb,
         local_p_interface_mb,
         local_edge_height_above_surface,
@@ -350,6 +378,16 @@ class GFDL1MSetup(NDSLRuntime):
         local_v_unmodified,
         local_lcl_level,
     ):
+        # set unused fields to zero
+        self._set_unused_to_zero(
+            shallow_convective_precipitation=shallow_convective_precipitation,
+            deep_convective_precipitation=deep_convective_precipitation,
+            anvil_precipitation=anvil_precipitation,
+            shallow_convective_snow=shallow_convective_snow,
+            deep_convective_snow=deep_convective_snow,
+            anvil_snow=anvil_snow,
+        )
+
         # prepare macrophysics tendencies
         self._prepare_tendencies(
             u=u,

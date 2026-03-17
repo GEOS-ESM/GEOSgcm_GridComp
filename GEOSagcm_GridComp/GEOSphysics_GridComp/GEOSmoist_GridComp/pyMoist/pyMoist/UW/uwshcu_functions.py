@@ -1,8 +1,8 @@
 import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import K, erfc, exp, float32, float64, log, sin, sqrt
+from ndsl.dsl.typing import Float, FloatField, Int
 
 import pyMoist.constants as constants
-from ndsl.dsl.typing import Float, FloatField, Int
 from pyMoist.field_types import FloatField_NTracers
 from pyMoist.saturation_tables import GlobalTable_saturation_tables, saturation_specific_humidity
 

@@ -1,7 +1,7 @@
 import dataclasses
 
 from ndsl import Local, LocalState, NDSLRuntime, QuantityFactory, StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, exp, function, interval
 from ndsl.dsl.typing import Bool, BoolFieldIJ, Float, FloatField, FloatFieldIJ
 from ndsl.stencils import set_IJ_mask_value, set_value, set_value_2D
@@ -300,7 +300,7 @@ class Locals(LocalState):
     lhi: Local = dataclasses.field(
         metadata={
             "name": "lhi",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -309,7 +309,7 @@ class Locals(LocalState):
     icpk: Local = dataclasses.field(
         metadata={
             "name": "icpk",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -318,7 +318,7 @@ class Locals(LocalState):
     cvm: Local = dataclasses.field(
         metadata={
             "name": "cvm",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -327,7 +327,7 @@ class Locals(LocalState):
     mass: Local = dataclasses.field(
         metadata={
             "name": "m1",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -336,7 +336,7 @@ class Locals(LocalState):
     dmass: Local = dataclasses.field(
         metadata={
             "name": "dm",
-            "dims": [X_DIM, Y_DIM, Z_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -345,7 +345,7 @@ class Locals(LocalState):
     z_interface: Local = dataclasses.field(
         metadata={
             "name": "z_interface",
-            "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+            "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -354,7 +354,7 @@ class Locals(LocalState):
     z_interface_modified: Local = dataclasses.field(
         metadata={
             "name": "z_interface_modified",
-            "dims": [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+            "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -363,7 +363,7 @@ class Locals(LocalState):
     rain: Local = dataclasses.field(
         metadata={
             "name": "rain",
-            "dims": [X_DIM, Y_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -372,7 +372,7 @@ class Locals(LocalState):
     graupel: Local = dataclasses.field(
         metadata={
             "name": "graupel",
-            "dims": [X_DIM, Y_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -381,7 +381,7 @@ class Locals(LocalState):
     snow: Local = dataclasses.field(
         metadata={
             "name": "snow",
-            "dims": [X_DIM, Y_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -390,7 +390,7 @@ class Locals(LocalState):
     ice: Local = dataclasses.field(
         metadata={
             "name": "ice",
-            "dims": [X_DIM, Y_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -399,7 +399,7 @@ class Locals(LocalState):
     precip_fall: Local = dataclasses.field(
         metadata={
             "name": "precip_fall",
-            "dims": [X_DIM, Y_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Bool,
@@ -430,7 +430,7 @@ class GFDL1MTerminalFall(NDSLRuntime):
         # construct stencils
         self._setup = stencil_factory.from_dims_halo(
             func=setup,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "dts": config_dependent_constants.DTS,
                 "tau_imlt": config.TAU_IMLT,
@@ -444,7 +444,7 @@ class GFDL1MTerminalFall(NDSLRuntime):
 
         self._check_precip_get_zt = stencil_factory.from_dims_halo(
             func=check_precip_get_zt,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "dts": config_dependent_constants.DTS,
             },
@@ -452,7 +452,7 @@ class GFDL1MTerminalFall(NDSLRuntime):
 
         self._update_dmass = stencil_factory.from_dims_halo(
             func=update_dmass,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "do_sedi_w": config.DO_SEDI_W,
             },
@@ -460,7 +460,7 @@ class GFDL1MTerminalFall(NDSLRuntime):
 
         self._implicit_fall = stencil_factory.from_dims_halo(
             func=implicit_fall,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "dts": config_dependent_constants.DTS,
             },
@@ -468,7 +468,7 @@ class GFDL1MTerminalFall(NDSLRuntime):
 
         self._update_w = stencil_factory.from_dims_halo(
             func=update_w,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "do_sedi_w": config.DO_SEDI_W,
             },
@@ -476,29 +476,29 @@ class GFDL1MTerminalFall(NDSLRuntime):
 
         self._reset = stencil_factory.from_dims_halo(
             func=reset,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._update_outputs = stencil_factory.from_dims_halo(
             func=update_outputs,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._set_value_IJ = stencil_factory.from_dims_halo(
             func=set_value_2D,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
         self._set_value = stencil_factory.from_dims_halo(
             func=set_value,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
         self._set_value_K_interface = stencil_factory.from_dims_halo(
             func=set_value,
-            compute_dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM],
+            compute_dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
         )
         self._set_IJ_mask = stencil_factory.from_dims_halo(
             func=set_IJ_mask_value,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
     def __call__(

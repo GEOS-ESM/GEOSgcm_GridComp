@@ -1,14 +1,14 @@
 from f90nml import Namelist
 from gt4py.cartesian.gtscript import int32
-
-import pyMoist.constants as constants
 from ndsl import StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.typing import Float, Int
+from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
+from ndsl.dsl.typing import Int
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
+
+import pyMoist.constants as constants
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
 from pyMoist.UW.compute_uwshcu import recalc_condensate
 from pyMoist.UW.config import UWConfiguration
@@ -86,12 +86,12 @@ class TranslateRecalcCondensate(TranslateFortranData2Py):
 
         self._recalc_condensate = self.stencil_factory.from_dims_halo(
             func=recalc_condensate,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"criqc": config.criqc, "k0": config.k0},
         )
 
         # Inputs
-        condensation = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a", dtype=bool)
+        condensation = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a", dtype=bool)
 
         for i in range(0, 24):
             for j in range(0, 24):
@@ -100,63 +100,63 @@ class TranslateRecalcCondensate(TranslateFortranData2Py):
                 else:
                     condensation.view[i, j] = True
 
-        exnifc0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        exnifc0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
         safe_assign_array(exnifc0.view[:], inputs["exnifc0"])
-        fer = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        fer = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(fer.view[:], inputs["fer"])
-        kbup_IJ = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a", dtype=Int)
+        kbup_IJ = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a", dtype=Int)
         safe_assign_array(kbup_IJ.view[:], inputs["kbup"] - 1)
-        kpen = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a", dtype=Int)
+        kpen = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a", dtype=Int)
         safe_assign_array(kpen.view[:], inputs["kpen"] - 1)
-        pifc0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        pifc0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
         safe_assign_array(pifc0.view[:], inputs["pifc0"])
-        ppen = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
+        ppen = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
         safe_assign_array(ppen.view[:], inputs["ppen"])
-        qt0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        qt0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(qt0.view[:], inputs["qt0"])
-        qtu = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        qtu = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
         safe_assign_array(qtu.view[:], inputs["qtu"])
-        ssqt0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        ssqt0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(ssqt0.view[:], inputs["ssqt0"])
-        ssthl0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        ssthl0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(ssthl0.view[:], inputs["ssthl0"])
-        thl0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        thl0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(thl0.view[:], inputs["thl0"])
-        thlu = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        thlu = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
         safe_assign_array(thlu.view[:], inputs["thlu"])
-        thv0bot = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        thv0bot = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(thv0bot.view[:], inputs["thv0bot"])
-        thv0top = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        thv0top = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(thv0top.view[:], inputs["thv0top"])
-        zifc0 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        zifc0 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
         safe_assign_array(zifc0.view[:], inputs["zifc0"])
-        krel = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a", dtype=Int)
+        krel = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a", dtype=Int)
         safe_assign_array(krel.view[:], inputs["krel"] - 1)
 
         # Outputs
 
-        cldhgt = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
-        diten = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        cldhgt = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
+        diten = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(diten.view[:], inputs["diten"])
-        dwten = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        dwten = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(dwten.view[:], inputs["dwten"])
-        emf = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        emf = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
         safe_assign_array(emf.view[:], inputs["emf"])
-        fdr = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        fdr = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(fdr.view[:], inputs["fdr"])
-        qtu_top = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
-        thlu_top = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
-        ufrc = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        qtu_top = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
+        thlu_top = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
+        ufrc = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
         safe_assign_array(ufrc.view[:], inputs["ufrc"])
-        umf = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
+        umf = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
         safe_assign_array(umf.view[:], inputs["umf"])
-        xco = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        xco = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(xco.view[:], inputs["xco"])
-        kbup = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a", dtype=Int)
-        dwten_temp = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        diten_temp = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        umf_temp = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        cush = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
+        kbup = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a", dtype=Int)
+        dwten_temp = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        diten_temp = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        umf_temp = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        cush = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
 
         saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory.backend)
         self.ese = saturation_vapor_pressure_table.ese

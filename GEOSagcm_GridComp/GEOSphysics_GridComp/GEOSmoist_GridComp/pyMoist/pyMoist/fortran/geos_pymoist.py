@@ -7,6 +7,7 @@ import os
 
 from MAPL_PythonBridge import get_MAPLPy
 from ndsl import (
+    Backend,
     CompilationConfig,
     CubedSphereCommunicator,
     CubedSpherePartitioner,
@@ -21,10 +22,8 @@ from ndsl import (
     SubtileGridSizer,
     TileCommunicator,
     TilePartitioner,
-    Backend,
 )
 from ndsl.constants import I_DIM, J_DIM, K_DIM
-from ndsl.dsl.gt4py_utils import backend_is_fortran_aligned, is_gpu_backend
 from ndsl.dsl.typing import get_precision
 from ndsl.logging import ndsl_log_on_rank_0
 from ndsl.optional_imports import cupy as cp
@@ -113,10 +112,10 @@ class NDSLPhysicsStack:
         default_3D_memory_desc = (tmp_quantity.data.shape, tmp_quantity.data.strides)
         if fortran_mem_space != MemorySpace.CPU:
             raise NotImplementedError("Interface cannot stream Fortran memory resident on GPU")
-        if is_gpu_backend(self.backend):
+        if self.backend.is_gpu_backend():
             self._interface_type = InterfaceTransferType.CPU_TO_GPU_TO_CPU
         else:
-            if backend_is_fortran_aligned(self.backend):
+            if self.backend.is_fortran_aligned():
                 # This is Fortran layout - we can Map the memory
                 self._interface_type = InterfaceTransferType.CPU_MAP
             else:
@@ -129,13 +128,13 @@ class NDSLPhysicsStack:
         if cp is not None:
             device_ordinal_info = (
                 f"  Device PCI bus id: {cp.cuda.Device(0).pci_bus_id}"
-                if is_gpu_backend(self.backend)
+                if self.backend.is_gpu_backend()
                 else "N/A"
             )
         MPS_pipe_directory = os.getenv("CUDA_MPS_PIPE_DIRECTORY", None)
         MPS_is_on = (
             MPS_pipe_directory is not None
-            and is_gpu_backend(self.backend)
+            and self.backend.is_gpu_backend()
             and os.path.exists(f"{MPS_pipe_directory}/log")
         )
         ndsl_log_on_rank_0.info(

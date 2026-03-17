@@ -1,11 +1,11 @@
 from f90nml import Namelist
-
 from ndsl import QuantityFactory, StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.utils import safe_assign_array
+
 from pyMoist.UW.compute_uwshcu import setup_outputs
 from pyMoist.UW.config import UWConfiguration
 
@@ -85,59 +85,59 @@ class TranslateSetupOutputs(TranslateFortranData2Py):
         )
 
         # Inputs
-        CLCN = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        CLCN = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(CLCN.view[:, :, :], inputs["CLCN"])
         #CUSH = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a")
         #safe_assign_array(CUSH.view[:, :], inputs["CUSH"])
         DCM_SC = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
         safe_assign_array(DCM_SC.view[:, :, :], inputs["DCM_SC"])
-        DETR_SC = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        DETR_SC = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(DETR_SC.view[:, :, :], inputs["DETR_SC"])
-        DP = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        DP = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(DP.view[:, :, :], inputs["DP"])
-        DQIDT_SC = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        DQIDT_SC = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(DQIDT_SC.view[:, :, :], inputs["DQIDT_SC"])
-        DQRDT_SC = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        DQRDT_SC = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(DQRDT_SC.view[:, :, :], inputs["DQRDT_SC"])
-        DQSDT_SC = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        DQSDT_SC = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(DQSDT_SC.view[:, :, :], inputs["DQSDT_SC"])
-        DQVDT_SC = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        DQVDT_SC = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(DQVDT_SC.view[:, :, :], inputs["DQVDT_SC"])
-        DTDT_SC = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        DTDT_SC = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(DTDT_SC.view[:, :, :], inputs["DTDT_SC"])
-        DUDT_SC = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        DUDT_SC = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(DUDT_SC.view[:, :, :], inputs["DUDT_SC"])
-        DVDT_SC = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        DVDT_SC = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(DVDT_SC.view[:, :, :], inputs["DVDT_SC"])
-        MASS = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        MASS = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(MASS.view[:, :, :], inputs["MASS"])
-        Q = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        Q = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(Q.view[:, :, :], inputs["Q"])
-        QICN = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        QICN = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(QICN.view[:, :, :], inputs["QICN"])
-        QIDET_SC = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        QIDET_SC = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(QIDET_SC.view[:, :, :], inputs["QIDET_SC"])
-        QILS = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        QILS = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(QILS.view[:, :, :], inputs["QILS"])
-        QISUB_SC = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        QISUB_SC = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(QISUB_SC.view[:, :, :], inputs["QISUB_SC"])
-        QLCN = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        QLCN = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(QLCN.view[:, :, :], inputs["QLCN"])
-        QLDET_SC = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        QLDET_SC = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(QLDET_SC.view[:, :, :], inputs["QLDET_SC"])
-        QLLS = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        QLLS = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(QLLS.view[:, :, :], inputs["QLLS"])
-        QLSUB_SC = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        QLSUB_SC = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(QLSUB_SC.view[:, :, :], inputs["QLSUB_SC"])
-        T = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        T = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(T.view[:, :, :], inputs["T"])
-        U = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        U = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(U.view[:, :, :], inputs["U"])
         UMF_SC = QuantityFactory.zeros(
-            self.quantity_factory, dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a"
+            self.quantity_factory, dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a"
         )
         safe_assign_array(UMF_SC.view[:, :, :], inputs["UMF_SC"])
-        V = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        V = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(V.view[:, :, :], inputs["V"])
 
         # Outputs

@@ -107,6 +107,7 @@ subroutine UW_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
       call MAPL_ConfigSetAttribute(CF, UW_DT, 'DSL__UW_DT:', RC=STATUS); VERIFY_(STATUS)
       call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.UW_interface", MAPL, IMPORT, EXPORT )
     else
+      call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.UW_interface_NOOP", MAPL, IMPORT, EXPORT )
 
     call MAPL_GetResource(MAPL, USE_TRACER_TRANSP_UW,        'USE_TRACER_TRANSP_UW:',default= 1      , RC=STATUS) ; VERIFY_(STATUS)
     if (LM==72) then
@@ -219,7 +220,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     
     if (alarm_is_ringing) then
     
-!!! call WRITE_PARALLEL('UW is Running')
+    call WRITE_PARALLEL('UW is Running')
     call ESMF_AlarmRingerOff(alarm, RC=STATUS); VERIFY_(STATUS)
     call ESMF_AlarmGet(alarm, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
@@ -246,6 +247,8 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.UW_interface", MAPL, IMPORT, EXPORT, INTERNAL )
       call CNV_Tracers_To_AOS()
     else
+      call CNV_Tracers_To_SOA()
+      call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.UW_interface_NOOP", MAPL, IMPORT, EXPORT, INTERNAL )
 
     ! Internals
     call MAPL_GetPointer(INTERNAL, Q,      'Q'       , RC=STATUS); VERIFY_(STATUS)
@@ -455,7 +458,10 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
         call MAPL_GetPointer(EXPORT, PTR2D,  'CUSH_SC', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR2D)) PTR2D = CUSH
-    
+  
+        call CNV_Tracers_To_SOA()
+        call MAPL_pybridge_gcrun( "pyMoist.fortran.param_interfaces.UW_interface_NOOP", MAPL, IMPORT, EXPORT )
+
     endif ! USE_PYMOIST_UW
 
     call MAPL_TimerOff (MAPL,"--UW")
@@ -481,6 +487,8 @@ subroutine UW_Finalize(gc, import, export, rc)
 
   if (USE_PYMOIST_UW) then
     call MAPL_pybridge_gcfinalize( "pyMoist.fortran.param_interfaces.UW_interface", MAPL, IMPORT, EXPORT )
+  else
+    call MAPL_pybridge_gcfinalize( "pyMoist.fortran.param_interfaces.UW_interface_NOOP", MAPL, IMPORT, EXPORT )
   endif
 
 end subroutine UW_Finalize

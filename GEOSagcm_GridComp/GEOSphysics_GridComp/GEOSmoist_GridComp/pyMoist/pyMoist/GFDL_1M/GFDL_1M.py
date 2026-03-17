@@ -1,5 +1,5 @@
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.driver import GFDL1MDriver
@@ -13,7 +13,7 @@ from pyMoist.GFDL_1M.stencils import (
     prepare_radiation,
     prepare_tendencies,
     reset_micro_tendencies,
-    update_radiation,
+    update_after_driver,
     update_tendencies,
 )
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
@@ -49,7 +49,7 @@ class GFDL1M(NDSLRuntime):
         super().__init__(stencil_factory)
 
         if stencil_factory.grid_indexing.n_halo != 0:
-            raise ValueError("halo needs to be zero for GFDL Single Moment microphysics")
+            raise ValueError("halo size must be zero for GFDL Single Moment microphysics")
 
         # Initialize saturation tables
         saturation_tables = get_saturation_vapor_pressure_table(stencil_factory.backend)
@@ -60,7 +60,7 @@ class GFDL1M(NDSLRuntime):
         # Build components
         self.prepare_tendencies = stencil_factory.from_dims_halo(
             func=prepare_tendencies,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._setup = GFDL1MSetup(
@@ -79,7 +79,7 @@ class GFDL1M(NDSLRuntime):
 
         self._update_tendencies = stencil_factory.from_dims_halo(
             func=update_tendencies,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "DT_MOIST": config.DT_MOIST,
             },
@@ -87,17 +87,17 @@ class GFDL1M(NDSLRuntime):
 
         self._reset_micro_tendencies = stencil_factory.from_dims_halo(
             func=reset_micro_tendencies,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._prepare_radiation = stencil_factory.from_dims_halo(
             func=prepare_radiation,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._get_total_concentration = stencil_factory.from_dims_halo(
             func=get_total_concentration,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._driver = GFDL1MDriver(
@@ -106,9 +106,9 @@ class GFDL1M(NDSLRuntime):
             config,
         )
 
-        self._update_radiation = stencil_factory.from_dims_halo(
-            func=update_radiation,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        self._update_after_driver = stencil_factory.from_dims_halo(
+            func=update_after_driver,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "DT_MOIST": config.DT_MOIST,
             },
@@ -126,7 +126,8 @@ class GFDL1M(NDSLRuntime):
         self,
         state: GFDL1MState,
     ):
-        # NOTE test GFDL_1M_setup: ❌ fails with tiny error (operational differences?)
+        # miscelaneous setup for GFDL1M microphysics
+        # compute additional inputs, prefill outputs, reset temporaries
         self._setup(
             p_interface=state.p_interface,
             z_interface=state.z_interface,
@@ -158,6 +159,12 @@ class GFDL1M(NDSLRuntime):
             draindt_macro=state.tendencies.draindt_macro,
             dsnowdt_macro=state.tendencies.dsnowdt_macro,
             dgraupeldt_macro=state.tendencies.dgraupeldt_macro,
+            shallow_convective_precipitation=state.precipitation_at_surface.shallow_convective_precipitation,
+            deep_convective_precipitation=state.precipitation_at_surface.deep_convective_precipitation,
+            anvil_precipitation=state.precipitation_at_surface.anvil_precipitation,
+            shallow_convective_snow=state.precipitation_at_surface.shallow_convective_snow,
+            deep_convective_snow=state.precipitation_at_surface.deep_convective_snow,
+            anvil_snow=state.precipitation_at_surface.anvil_snow,
             local_p_mb=self._locals.p_mb,
             local_p_interface_mb=self._locals.p_interface_mb,
             local_edge_height_above_surface=self._locals.edge_height_above_surface,
@@ -174,6 +181,8 @@ class GFDL1M(NDSLRuntime):
             local_lcl_level=self._locals.lcl_level,
         )
 
+        # compute macrophysical tendencies, use the hydrostatic pdf to distribute particles,
+        # then melt, freeze, and evaporate, all according to options defined in namelist
         self._phase_change(
             t=state.t,
             mixing_ratio_vapor=state.mixing_ratio.vapor,
@@ -200,6 +209,7 @@ class GFDL1M(NDSLRuntime):
             local_saturation_specific_humidity=self._locals.saturation_specific_humidity,
         )
 
+        # update the model state with macrophysics tendencies
         self._update_tendencies(
             u=state.u,
             v=state.v,
@@ -226,7 +236,7 @@ class GFDL1M(NDSLRuntime):
             dgraupel_dt=state.tendencies.dgraupeldt_macro,
         )
 
-        # prepare microphysics tendencies
+        # prefill microphysics tendencies before they are updated with output from the driver
         self.prepare_tendencies(
             u=state.u,
             v=state.v,
@@ -253,6 +263,8 @@ class GFDL1M(NDSLRuntime):
             dgraupel_dt=state.tendencies.dgraupeldt_micro,
         )
 
+        # ensure the local copy of the microphysics temporaries are reset
+        # before they are computed in the driver
         self._reset_micro_tendencies(
             dvapordt=self._locals.driver_tendencies.dvapordt,
             dliquiddt=self._locals.driver_tendencies.dliquiddt,
@@ -266,6 +278,7 @@ class GFDL1M(NDSLRuntime):
             dvdt=self._locals.driver_tendencies.dvdt,
         )
 
+        # prefill the radiation fields
         self._prepare_radiation(
             convective_cloud_fraction=state.cloud_fraction.convective,
             large_scale_cloud_fraction=state.cloud_fraction.large_scale,
@@ -286,12 +299,14 @@ class GFDL1M(NDSLRuntime):
             radiation_graupel=state.radiation_field.graupel,
         )
 
+        # compute total particle concentration
         self._get_total_concentration(
             ice_concentration=state.concentration.ice,
             liquid_concentration=state.concentration.liquid,
             total_concentration=self._locals.total_concentration,
         )
 
+        # call the GFDL1M microphysics driver
         self._driver(
             t=state.t,
             u=state.u,
@@ -333,7 +348,8 @@ class GFDL1M(NDSLRuntime):
             surface_precip_graupel=state.precipitation_at_surface.graupel,
         )
 
-        self._update_radiation(
+        # update fields with tendencies computed in the driver
+        self._update_after_driver(
             t=state.t,
             u=state.u,
             v=state.v,
@@ -356,6 +372,9 @@ class GFDL1M(NDSLRuntime):
             dgraupeldt=self._locals.driver_tendencies.dgraupeldt,
         )
 
+        # finish the GFDL1M microphysics parameterization - update tendencies and state with tendency
+        # output from the driver, enforce logical bounds on mixing ratios and cloud fractions,
+        # perform radiation coupling
         self._finalize(
             t=state.t,
             u=state.u,

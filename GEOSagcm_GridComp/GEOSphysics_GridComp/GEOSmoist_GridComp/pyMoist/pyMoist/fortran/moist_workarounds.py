@@ -1,13 +1,14 @@
-from MAPL_PythonBridge.python2fortran import MAPLPyAPI
-from ndsl.constants import Float
-from typing import no_type_check
-import cffi
-import os
-from MAPL_PythonBridge.types import FFI
-import platform
 import dataclasses
+import os
+import platform
+from typing import no_type_check
+
+import cffi
 import numpy.typing as npt
 from MAPL_PythonBridge import get_MAPLPy
+from MAPL_PythonBridge.python2fortran import MAPLPyAPI
+from MAPL_PythonBridge.types import FFI
+from ndsl.constants import Float
 
 
 @dataclasses.dataclass
