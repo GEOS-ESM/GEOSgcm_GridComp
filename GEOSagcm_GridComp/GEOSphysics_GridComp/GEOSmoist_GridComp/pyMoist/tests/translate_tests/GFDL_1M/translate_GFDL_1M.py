@@ -1,5 +1,3 @@
-from typing import Any
-
 from f90nml import Namelist
 from ndsl import StencilFactory
 from ndsl.stencils.testing.grid import Grid
@@ -7,7 +5,6 @@ from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
 from pyMoist.GFDL_1M.config import GFDL1MConfig
-from pyMoist.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.GFDL_1M.GFDL_1M import GFDL1M
 from pyMoist.GFDL_1M.state import GFDL1MState
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
@@ -279,27 +276,27 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
         code(state=state)
 
         return {
-            "precipitation_at_surface_deep_convective_precipitation": state.precipitation_at_surface.deep_convective_precipitation.field[
+            "precipitation_at_surface_deep_convective_precipitation": state.precipitation_at_surface.deep_convective_precipitation.field[  # noqa
                 :
             ],
-            "precipitation_at_surface_anvil_precipitation": state.precipitation_at_surface.anvil_precipitation.field[
+            "precipitation_at_surface_anvil_precipitation": state.precipitation_at_surface.anvil_precipitation.field[  # noqa
                 :
             ],
-            "precipitation_at_surface_shallow_convective_precipitation": state.precipitation_at_surface.shallow_convective_precipitation.field[
+            "precipitation_at_surface_shallow_convective_precipitation": state.precipitation_at_surface.shallow_convective_precipitation.field[  # noqa
                 :
             ],
-            "precipitation_at_surface_deep_convective_snow": state.precipitation_at_surface.deep_convective_snow.field[
+            "precipitation_at_surface_deep_convective_snow": state.precipitation_at_surface.deep_convective_snow.field[  # noqa
                 :
             ],
             "precipitation_at_surface_anvil_snow": state.precipitation_at_surface.anvil_snow.field[:],
-            "precipitation_at_surface_shallow_convective_snow": state.precipitation_at_surface.shallow_convective_snow.field[
+            "precipitation_at_surface_shallow_convective_snow": state.precipitation_at_surface.shallow_convective_snow.field[  # noqa
                 :
             ],
             # "lcl_height": state.lcl_height.field[:],
             "shallow_convection_rain": state.shallow_convection_rain.field[:],
             "shallow_convection_snow": state.shallow_convection_snow.field[:],
             # "large_scale_rainwater_source": state.large_scale_rainwater_source.field[:],
-            "tendencies_dtdt_friction_pressure_weighted": state.tendencies.dtdt_friction_pressure_weighted.field[
+            "tendencies_dtdt_friction_pressure_weighted": state.tendencies.dtdt_friction_pressure_weighted.field[  # noqa
                 :
             ],
             "mixing_ratio_vapor": state.mixing_ratio.vapor.field[:],
@@ -321,7 +318,7 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
             "u": state.u.field[:],
             "v": state.v.field[:],
             "land_fraction": state.land_fraction.field[:],
-            "covariance_liquid_water_static_energy_and_total_water_specific_humidity": state.covariance_liquid_water_static_energy_and_total_water_specific_humidity.field[
+            "covariance_liquid_water_static_energy_and_total_water_specific_humidity": state.covariance_liquid_water_static_energy_and_total_water_specific_humidity.field[  # noqa
                 :
             ],
             "omega": state.omega.field[:],
@@ -392,7 +389,7 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
             "tendencies_dvdt_micro": state.tendencies.dvdt_micro.field[:],
             "tendencies_dtdt_micro": state.tendencies.dtdt_micro.field[:],
             # inputs["radar_simulated_reflectivity"]: state.radar.simulated_reflectivity.field[:],
-            # inputs["radar_maximum_composite_reflectivity"]: state.radar.maximum_composite_reflectivity.field[:],
+            # inputs["radar_maximum_composite_reflectivity"]: state.radar.maximum_composite_reflectivity.field[:], # noqa
             # inputs["radar_base_1km_agl_reflectivity"]: state.radar.base_1km_agl_reflectivity.field[:],
             # inputs["radar_echo_top_reflectivity"]: state.radar.echo_top_reflectivity.field[:],
             # inputs["radar_minus_10c_reflectivity"]: state.radar.minus_10c_reflectivity.field[:],

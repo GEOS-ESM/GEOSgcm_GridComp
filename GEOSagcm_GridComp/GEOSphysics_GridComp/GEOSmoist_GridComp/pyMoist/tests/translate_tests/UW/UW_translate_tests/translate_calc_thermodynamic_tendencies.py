@@ -1,14 +1,18 @@
 from f90nml import Namelist
 from gt4py.cartesian.gtscript import int32
-
-import pyMoist.constants as constants
 from ndsl import StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.dsl.typing import Float, Int
+from ndsl.dsl.typing import Int
+from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
+from ndsl.dsl.typing import Int
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
+
+import pyMoist.constants as constants
+
+import pyMoist.constants as constants
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
 from pyMoist.UW.compute_uwshcu import calc_thermodynamic_tendencies
 from pyMoist.UW.config import UWConfiguration
@@ -69,6 +73,12 @@ class TranslateThermodynamicTendencies(TranslateFortranData2Py):
             "qiten": self.grid.compute_dict(),
             "qlten": self.grid.compute_dict(),
             "qvten": self.grid.compute_dict(),
+            "qrten":self.grid.compute_dict(),
+            "qsten":self.grid.compute_dict(),
+            "testvar3D_1": self.grid.compute_dict(),
+            "testvar3D_2": self.grid.compute_dict(),
+            "testvar3D_3": self.grid.compute_dict(),
+            "testvar3D_4": self.grid.compute_dict(),
         }
 
     def extra_data_load(self, data_loader: DataLoader):
@@ -150,6 +160,22 @@ class TranslateThermodynamicTendencies(TranslateFortranData2Py):
         uflx_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
         vflx_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
         cush_inout = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
+        cush = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
+        fer_out= self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        fdr_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        qldet_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        qidet_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        dcm_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        qvten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        qlten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        qiten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        sten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        uten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        vten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        qrten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        qsten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        cufrc_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        
 
         krel = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a", dtype=Int)
         safe_assign_array(krel.view[:], inputs["krel"] - 1)
@@ -193,6 +219,11 @@ class TranslateThermodynamicTendencies(TranslateFortranData2Py):
         qlten_det = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         qiten_det = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
 
+        testvar3D_1 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        testvar3D_2 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        testvar3D_3 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        testvar3D_4 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+
         # The iteration you want to test
         iter_test = int32(0)
 
@@ -219,11 +250,6 @@ class TranslateThermodynamicTendencies(TranslateFortranData2Py):
             qtu=qtu,
             ese=self.ese,
             esx=self.esx,
-            umf_out=umf_out,
-            qtflx_out=qtflx_out,
-            slflx_out=slflx_out,
-            uflx_out=uflx_out,
-            vflx_out=vflx_out,
             pifc0=pifc0,
             ppen=ppen,
             thlu_top=thlu_top,
@@ -252,8 +278,32 @@ class TranslateThermodynamicTendencies(TranslateFortranData2Py):
             qlten_det=qlten_det,
             qiten_det=qiten_det,
             slten=slten,
+            cush=cush,
+            umf_out=umf_out,
+            dcm_out=dcm_out,
+            qvten_out=qvten_out,
+            qlten_out=qlten_out,
+            qiten_out=qiten_out,
+            sten_out=sten_out,
+            uten_out=uten_out,
+            vten_out=vten_out,
+            qrten_out=qrten_out,
+            qsten_out=qsten_out,
+            cufrc_out=cufrc_out,
             cush_inout=cush_inout,
+            qldet_out=qldet_out,
+            qidet_out=qidet_out,
+            qtflx_out=qtflx_out,
+            slflx_out=slflx_out,
+            uflx_out=uflx_out,
+            vflx_out=vflx_out,
+            fer_out=fer_out,
+            fdr_out=fdr_out,
             iteration=iter_test,
+            testvar3D_1=testvar3D_1,
+            testvar3D_2=testvar3D_2,
+            testvar3D_3=testvar3D_3,
+            testvar3D_4=testvar3D_4,
         )
 
         return {
@@ -263,4 +313,10 @@ class TranslateThermodynamicTendencies(TranslateFortranData2Py):
             "qiten": qiten.view[:],
             "qlten": qlten.view[:],
             "qvten": qvten.view[:],
+            "qsten": qsten.view[:],
+            "qrten": qrten.view[:],
+            "testvar3D_1": testvar3D_1.view[:],
+            "testvar3D_2": testvar3D_2.view[:],
+            "testvar3D_3": testvar3D_3.view[:],
+            "testvar3D_4": testvar3D_4.view[:],
         }

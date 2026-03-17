@@ -1,11 +1,13 @@
 from f90nml import Namelist
-
 from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
+from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.utils import safe_assign_array
+
 from pyMoist.UW.compute_uwshcu import setup_outputs
+from pyMoist.UW.config import UWConfiguration
 
 
 class TranslateSetupOutputs(TranslateFortranData2Py):
@@ -22,7 +24,7 @@ class TranslateSetupOutputs(TranslateFortranData2Py):
         # FloatField Inputs
         self.in_vars["data_vars"] = {
             "CLCN": {},
-            "CUSH": {},
+            #"CUSH": {},
             "DCM_SC": {},
             "DETR_SC": {},
             "DP": {},
@@ -49,22 +51,12 @@ class TranslateSetupOutputs(TranslateFortranData2Py):
             "V": {},
         }
 
-        self.in_vars["parameters"] = [
-            "SCLM_SHALLOW",
-            "UW_DT",
-            "status_PTR2D_1",
-            "status_PTR2D_2",
-            "status_PTR2D_3",
-            "status_PTR3D_1",
-            "status_PTR3D_2",
-        ]
-
         # FloatField Outputs
         self.out_vars = {
             "CLCN": self.grid.compute_dict(),
             "DQADT_SC": self.grid.compute_dict(),
             "MFD_SC": self.grid.compute_dict(),
-            "PTR3D": self.grid.compute_dict(),
+            #"PTR3D": self.grid.compute_dict(),
             "Q": self.grid.compute_dict(),
             "QIDET_SC": self.grid.compute_dict(),
             "QIENT_SC": self.grid.compute_dict(),
@@ -77,27 +69,26 @@ class TranslateSetupOutputs(TranslateFortranData2Py):
             "V": self.grid.compute_dict(),
         }
 
-    def compute(self, inputs):
+    def extra_data_load(self, data_loader: DataLoader):
+        self.constants = data_loader.load("ComputeUwshcuInv-constants")
 
-        _setup_outputs = self.stencil_factory.from_dims_halo(
+    def compute(self, inputs):
+        config = UWConfiguration(**self.constants)
+
+        self._setup_outputs = self.stencil_factory.from_dims_halo(
             func=setup_outputs,
             compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={
+                "dt": config.dt,
+                "SCLM_SHALLOW": config.SCLM_SHALLOW,
+            },
         )
-
-        # Float / Ints
-        SCLM_SHALLOW = Float(inputs["SCLM_SHALLOW"])
-        UW_DT = Float(inputs["UW_DT"])
-        status_PTR2D_1 = Int(inputs["status_PTR2D_1"])
-        status_PTR2D_2 = Int(inputs["status_PTR2D_2"])
-        status_PTR2D_3 = Int(inputs["status_PTR2D_3"])
-        status_PTR3D_1 = Int(inputs["status_PTR3D_1"])
-        status_PTR3D_2 = Int(inputs["status_PTR3D_2"])
 
         # Inputs
         CLCN = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(CLCN.view[:, :, :], inputs["CLCN"])
-        CUSH = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM], units="n/a")
-        safe_assign_array(CUSH.view[:, :], inputs["CUSH"])
+        #CUSH = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM], units="n/a")
+        #safe_assign_array(CUSH.view[:, :], inputs["CUSH"])
         DCM_SC = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(DCM_SC.view[:, :, :], inputs["DCM_SC"])
         DETR_SC = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
@@ -154,15 +145,15 @@ class TranslateSetupOutputs(TranslateFortranData2Py):
         DQADT_SC = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         QLENT_SC = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         QIENT_SC = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        PTR3D = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        PTR2D = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM], units="n/a")
+        SHLW_SNO3 = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        SHLW_PRC3 = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        
 
-        _setup_outputs(
+        self._setup_outputs(
             Q=Q,
             T=T,
             U=U,
             V=V,
-            UW_DT=UW_DT,
             DQVDT_SC=DQVDT_SC,
             DTDT_SC=DTDT_SC,
             DUDT_SC=DUDT_SC,
@@ -184,25 +175,18 @@ class TranslateSetupOutputs(TranslateFortranData2Py):
             QILS=QILS,
             QLSUB_SC=QLSUB_SC,
             QISUB_SC=QISUB_SC,
-            status_PTR2D_1=status_PTR2D_1,
-            status_PTR2D_2=status_PTR2D_2,
-            status_PTR2D_3=status_PTR2D_3,
-            status_PTR3D_1=status_PTR3D_1,
-            status_PTR3D_2=status_PTR3D_2,
-            PTR3D=PTR3D,
-            PTR2D=PTR2D,
             DQRDT_SC=DQRDT_SC,
             DQSDT_SC=DQSDT_SC,
             DQIDT_SC=DQIDT_SC,
-            CUSH=CUSH,
-            SCLM_SHALLOW=SCLM_SHALLOW,
+            #CUSH=CUSH,
+            SHLW_PRC3=SHLW_PRC3,
+            SHLW_SNO3=SHLW_SNO3,
         )
 
         return {
             "CLCN": CLCN.view[:],
             "DQADT_SC": DQADT_SC.view[:],
             "MFD_SC": MFD_SC.view[:],
-            "PTR3D": PTR3D.view[:],
             "Q": Q.view[:],
             "QIDET_SC": QIDET_SC.view[:],
             "QIENT_SC": QIENT_SC.view[:],
@@ -213,4 +197,5 @@ class TranslateSetupOutputs(TranslateFortranData2Py):
             "T": T.view[:],
             "U": U.view[:],
             "V": V.view[:],
+            
         }

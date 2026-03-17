@@ -1,10 +1,11 @@
 import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import K, erfc, exp, float32, float64, log, sin, sqrt
+from ndsl.dsl.typing import Float, FloatField, Int
 
 import pyMoist.constants as constants
-from ndsl.dsl.typing import Float, FloatField, Int
 from pyMoist.field_types import FloatField_NTracers
 from pyMoist.saturation_tables import GlobalTable_saturation_tables, saturation_specific_humidity
+from pyMoist.shared.incloud_processes import ice_fraction
 
 
 P00 = Float(1e5)  # Reference pressure
@@ -126,76 +127,6 @@ def slope_mid_tracer(
 
 
 @gtscript.function
-def ice_fraction(
-    temp: Float,
-    cnv_frc: Float,
-    srf_type: Float,
-):
-    """
-    Function description
-
-    Inputs:
-    temp [Float]: Temperature [K]
-    cnv_frc [Float]: Convective fraction [?]
-    srf_type [Float]: Surface type [?]
-
-    Returns:
-    ice_frac [Float]: Ice fraction [unitless]
-    """
-    # Anvil clouds
-    # Anvil-Convective sigmoidal function like figure 6(right)
-    # Sigmoidal functions Hu et al 2010, doi:10.1029/2009JD012384
-    if temp <= constants.JaT_ICE_ALL:
-        icefrct_c = 1.000
-    elif temp > constants.JaT_ICE_ALL and temp <= constants.JaT_ICE_MAX:
-        icefrct_c = sin(
-            0.5
-            * constants.MAPL_PI
-            * (1.00 - (temp - constants.JaT_ICE_ALL) / (constants.JaT_ICE_MAX - constants.JaT_ICE_ALL))
-        )
-    else:
-        icefrct_c = 0.00
-    icefrct_c = max(min(icefrct_c, 1.00), 0.00) ** constants.aICEFRPWR
-    # Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
-    if srf_type == 2.0:
-        if temp <= constants.JiT_ICE_ALL:
-            icefrct_m = 1.000
-        elif temp > constants.JiT_ICE_ALL and temp <= constants.JiT_ICE_MAX:
-            icefrct_m = 1.00 - (temp - constants.JiT_ICE_ALL) / (
-                constants.JiT_ICE_MAX - constants.JiT_ICE_ALL
-            )
-        else:
-            icefrct_m = 0.00
-        icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** constants.iICEFRPWR
-    elif srf_type > 1.0:
-        if temp <= constants.lT_ICE_ALL:
-            icefrct_m = 1.000
-        elif temp > constants.lT_ICE_ALL and temp <= constants.lT_ICE_MAX:
-            icefrct_m = sin(
-                0.5
-                * constants.MAPL_PI
-                * (1.00 - (temp - constants.lT_ICE_ALL) / (constants.lT_ICE_MAX - constants.lT_ICE_ALL))
-            )
-        else:
-            icefrct_m = 0.00
-        icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** constants.lICEFRPWR
-    else:
-        if temp <= constants.oT_ICE_ALL:
-            icefrct_m = 1.000
-        elif temp > constants.oT_ICE_ALL and temp <= constants.oT_ICE_MAX:
-            icefrct_m = sin(
-                0.5
-                * constants.MAPL_PI
-                * (1.00 - (temp - constants.oT_ICE_ALL) / (constants.oT_ICE_MAX - constants.oT_ICE_ALL))
-            )
-        else:
-            icefrct_m = 0.00
-        icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** constants.oICEFRPWR
-    ice_frac = icefrct_m * (1.0 - cnv_frc) + icefrct_c * cnv_frc
-    return ice_frac
-
-
-@gtscript.function
 def conden(
     p: Float,
     thl: Float,
@@ -233,6 +164,7 @@ def conden(
     temps: float32 = tc
     ps: float32 = p
     qs, _ = saturation_specific_humidity(temps, ps, ese, esx)
+    nu_test=qs
     rvls = qs
 
     if qs >= qt:  # no condensation
@@ -252,6 +184,7 @@ def conden(
             qs, _ = saturation_specific_humidity(temps, ps, ese, esx)
             rvls = qs
             iteration += 1
+        nu_test=qs
         qc = max(qt - qs, float64(0.0))
         qv = qt - qc
         ql = qc * (float64(1.0) - nu)
@@ -262,7 +195,7 @@ def conden(
         else:
             id_check = 0
 
-    return float32(th), float32(qv), float32(ql), float32(qi), float32(rvls), id_check
+    return float32(th), float32(qv), float32(ql), float32(nu_test), float32(rvls), id_check
 
 
 @gtscript.function

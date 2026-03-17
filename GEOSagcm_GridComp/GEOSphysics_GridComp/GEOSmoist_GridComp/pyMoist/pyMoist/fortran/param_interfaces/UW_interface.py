@@ -4,14 +4,14 @@ from mpi4py import MPI
 from ndsl.dsl.typing import Float, Int
 from ndsl.utils import safe_assign_array
 
+from pyMoist.constants import NCNST
 from pyMoist.fortran import get_NDSL_physics
 from pyMoist.fortran.build_helper import StencilBackendCompilerOverride
 from pyMoist.fortran.managed_state import MAPLManagedState
 from pyMoist.fortran.memory_factory import MAPLMemoryRepository
-from pyMoist.fortran.profiler import TimedCUDAProfiler
 from pyMoist.fortran.moist_workarounds import MOIST_WORKAROUNDS
+from pyMoist.fortran.profiler import TimedCUDAProfiler
 from pyMoist.UW import ComputeUwshcuInv, UWConfiguration, UWState
-from pyMoist.constants import NCNST
 
 
 class UWGEOSInterface(UserCode):
@@ -35,7 +35,9 @@ class UWGEOSInterface(UserCode):
             dotransport=1 if MAPLPy.get_resource("USE_TRACER_TRANSP_UW:", mapl_state, default=True) else 0,
             dt=MAPLPy.get_resource("DSL__UW_DT:", mapl_state, default=Float(0)),
             windsrcavg=MAPLPy.get_resource("WINDSRCAVG:", mapl_state, default=Int(0)),
-            mixscale=MAPLPy.get_resource("MIXSCALE:", mapl_state, default=Float(0.0) if jason_uw else Float(3000.0)),
+            mixscale=MAPLPy.get_resource(
+                "MIXSCALE:", mapl_state, default=Float(0.0) if jason_uw else Float(3000.0)
+            ),
             criqc=MAPLPy.get_resource(
                 "CRIQC:", mapl_state, default=Float(1.0e-3) if jason_uw else Float(0.9e-3)
             ),
@@ -48,12 +50,12 @@ class UWGEOSInterface(UserCode):
             rkm=MAPLPy.get_resource("RKM:", mapl_state, default=Float(12.0) if jason_uw else Float(8.0)),
             rpen=MAPLPy.get_resource("RPEN:", mapl_state, default=Float(3.0)),
             SCLM_SHALLOW=MAPLPy.get_resource("SCLM_SHALLOW:", mapl_state, default=Float(1.0)),
-            niter_xc=MAPLPy.get_resource("NITER_XC:", mapl_state, default=Int(2)), 
+            niter_xc=MAPLPy.get_resource("NITER_XC:", mapl_state, default=Int(2)),
             iter_cin=MAPLPy.get_resource("ITER_CIN:", mapl_state, default=Int(2)),
             use_CINcin=1 if MAPLPy.get_resource("USE_CINCIN:", mapl_state, default=True) else 0,
             cridist_opt=MAPLPy.get_resource("CRIDIST_OPT:", mapl_state, default=Int(0)),
             use_self_detrain=1 if MAPLPy.get_resource("USE_SELF_DETRAIN:", mapl_state, default=False) else 0,
-            use_momenflx=1 if MAPLPy.get_resource("USE_MOMENFLX:", mapl_state, default=True)else 0,
+            use_momenflx=1 if MAPLPy.get_resource("USE_MOMENFLX:", mapl_state, default=True) else 0,
             use_cumpenent=1 if MAPLPy.get_resource("USE_CUMPENENT:", mapl_state, default=True) else 0,
             rle=MAPLPy.get_resource("RLE:", mapl_state, default=Float(0.1)),
             rmaxfrac=MAPLPy.get_resource("RMAXFRAC:", mapl_state, default=Float(0.1)),
@@ -185,6 +187,7 @@ class UWGEOSInterface(UserCode):
                     self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
                 )
                 self._managed_state.ndsl_to_fortran()
+                self._managed_state.record("UW-Out")
 
     def finalize(self, mapl_state, import_state, export_state) -> None:
         self._managed_state.save_recorded()

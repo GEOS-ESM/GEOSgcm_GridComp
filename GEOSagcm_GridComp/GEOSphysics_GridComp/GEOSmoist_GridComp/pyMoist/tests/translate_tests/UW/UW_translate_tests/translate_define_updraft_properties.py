@@ -1,14 +1,14 @@
 from f90nml import Namelist
 from gt4py.cartesian.gtscript import int32
-
-import pyMoist.constants as constants
 from ndsl import StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.dsl.typing import Float, Int
+from ndsl.dsl.typing import Int
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
+
+import pyMoist.constants as constants
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
 from pyMoist.UW.compute_uwshcu import define_updraft_properties
 from pyMoist.UW.config import UWConfiguration
@@ -121,6 +121,22 @@ class TranslateDefineUpdraftProperties(TranslateFortranData2Py):
         thlu = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
         qtu = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
         wlcl = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        cush = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
+        fer_out= self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        fdr_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        qldet_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        qidet_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        dcm_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        qvten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        qlten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        qiten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        sten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        uten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        vten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        qrten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        qsten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        cufrc_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        
 
         # The iteration you want to test
         iter_test = int32(0)
@@ -131,11 +147,6 @@ class TranslateDefineUpdraftProperties(TranslateFortranData2Py):
             iteration=iter_test,
             winv=winv,
             cinlcl_IJ=cinlcl,
-            umf_out=umf_out,
-            qtflx_out=qtflx_out,
-            slflx_out=slflx_out,
-            uflx_out=uflx_out,
-            vflx_out=vflx_out,
             cbmf=cbmf,
             rho0inv=rho0inv,
             krel=krel,
@@ -155,13 +166,33 @@ class TranslateDefineUpdraftProperties(TranslateFortranData2Py):
             thvu=thvu,
             wlcl=wlcl,
             ufrclcl=ufrclcl,
+            cush=cush,
+            umf_out=umf_out,
+            dcm_out=dcm_out,
+            qvten_out=qvten_out,
+            qlten_out=qlten_out,
+            qiten_out=qiten_out,
+            sten_out=sten_out,
+            uten_out=uten_out,
+            vten_out=vten_out,
+            qrten_out=qrten_out,
+            qsten_out=qsten_out,
+            cufrc_out=cufrc_out,
             cush_inout=cush_inout,
+            qldet_out=qldet_out,
+            qidet_out=qidet_out,
+            qtflx_out=qtflx_out,
+            slflx_out=slflx_out,
+            uflx_out=uflx_out,
+            vflx_out=vflx_out,
+            fer_out=fer_out,
+            fdr_out=fdr_out,
         )
 
         # NOTE 1 variable is failing - I am ignoring this for now.
 
         return {
-            "thvu_out": thvu.view[:],  # thvu_out fails
+            "thvu_out": thvu.view[:],  # thvu_out fails, serialization issue I think
             "ufrc": ufrc.view[:],
             "ufrclcl": ufrclcl.view[:],
         }

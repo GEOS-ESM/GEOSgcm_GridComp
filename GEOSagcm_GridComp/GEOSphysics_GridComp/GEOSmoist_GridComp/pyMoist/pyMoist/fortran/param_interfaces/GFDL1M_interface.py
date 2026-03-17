@@ -9,7 +9,7 @@ from ndsl.constants import I_DIM, J_DIM, K_INTERFACE_DIM
 from ndsl.dsl.typing import Float, Int
 
 from pyMoist.fortran import get_NDSL_physics
-from pyMoist.fortran.build_helper import InterfaceTransferType, StencilBackendCompilerOverride
+from pyMoist.fortran.build_helper import StencilBackendCompilerOverride
 from pyMoist.fortran.managed_state import MAPLManagedState
 from pyMoist.fortran.memory_factory import MAPLMemoryRepository
 from pyMoist.fortran.profiler import TimedCUDAProfiler

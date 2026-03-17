@@ -1,14 +1,14 @@
 from f90nml import Namelist
 from gt4py.cartesian.gtscript import int32
-
-import pyMoist.constants as constants
 from ndsl import StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.dsl.typing import Float, Int
+from ndsl.dsl.typing import Int
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
+
+import pyMoist.constants as constants
 from pyMoist.UW.compute_uwshcu import find_pbl_averages, find_pbl_height
 from pyMoist.UW.config import UWConfiguration
 
@@ -128,7 +128,23 @@ class TranslateFindPbl(TranslateFortranData2Py):
         slflx_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
         uflx_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
         vflx_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
-        cush_inout = umf_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
+        cush_inout = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
+
+
+        dcm_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        qvten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        qlten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        qiten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        sten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        uten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        vten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        qrten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        qsten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        cufrc_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        qldet_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        qidet_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        fer_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        fdr_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
 
         # The iteration you want to test
         iter_test = int32(0)
@@ -138,15 +154,29 @@ class TranslateFindPbl(TranslateFortranData2Py):
             iteration=iter_test,
             kpbl_in=kpbl_in,
             condensation=condensation,
+            kinv=kinv,
+            tscaleh=tscaleh,
+            cush=cush,
+            cush_inout=cush_inout,
             umf_out=umf_out,
+            dcm_out=dcm_out,
+            qvten_out=qvten_out,
+            qlten_out=qlten_out,
+            qiten_out=qiten_out,
+            sten_out=sten_out,
+            uten_out=uten_out,
+            vten_out=vten_out,
+            qrten_out=qrten_out,
+            qsten_out=qsten_out,
+            cufrc_out=cufrc_out,
+            qldet_out=qldet_out,
+            qidet_out=qidet_out,
             qtflx_out=qtflx_out,
             slflx_out=slflx_out,
             uflx_out=uflx_out,
             vflx_out=vflx_out,
-            kinv=kinv,
-            cush=cush,
-            cush_inout=cush_inout,
-            tscaleh=tscaleh,
+            fer_out=fer_out,
+            fdr_out=fdr_out,
         )
 
         self._find_pbl_averages(

@@ -24,7 +24,3 @@ python -m pytest -s -v --disable-warnings --multimodal_metric \
     --threshold_overrides_file=./overrides.yml \
     --which_rank=0 \
     ../translate_tests
-
-
-
-

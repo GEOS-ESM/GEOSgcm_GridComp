@@ -40,7 +40,7 @@ class NDSLPhysicsConfiguration:
     layout_x: int = 1
     layout_y: int = 1
     single_column: bool = False
-    backend: str = "st:dace:gpu:KJI"
+    backend: str = "st:dace:cpu:KJI"
 
 
 class NDSLPhysicsStack:
