@@ -96,7 +96,7 @@ class TranslateComputeUwshcuInvertAfter(TranslateFortranData2Py):
 
         self._compute_uwshcu_invert_after = self.stencil_factory.from_dims_halo(
             func=compute_uwshcu_invert_after,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "ncnst": config.NCNST,
                 "k0": config.k0,

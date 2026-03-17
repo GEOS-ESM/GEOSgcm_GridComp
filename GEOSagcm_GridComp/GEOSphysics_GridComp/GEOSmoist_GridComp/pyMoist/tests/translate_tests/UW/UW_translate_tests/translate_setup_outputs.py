@@ -77,7 +77,7 @@ class TranslateSetupOutputs(TranslateFortranData2Py):
 
         self._setup_outputs = self.stencil_factory.from_dims_halo(
             func=setup_outputs,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "dt": config.dt,
                 "SCLM_SHALLOW": config.SCLM_SHALLOW,
@@ -87,9 +87,9 @@ class TranslateSetupOutputs(TranslateFortranData2Py):
         # Inputs
         CLCN = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(CLCN.view[:, :, :], inputs["CLCN"])
-        #CUSH = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM], units="n/a")
+        #CUSH = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM], units="n/a")
         #safe_assign_array(CUSH.view[:, :], inputs["CUSH"])
-        DCM_SC = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        DCM_SC = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(DCM_SC.view[:, :, :], inputs["DCM_SC"])
         DETR_SC = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(DETR_SC.view[:, :, :], inputs["DETR_SC"])
@@ -141,12 +141,12 @@ class TranslateSetupOutputs(TranslateFortranData2Py):
         safe_assign_array(V.view[:, :, :], inputs["V"])
 
         # Outputs
-        MFD_SC = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        DQADT_SC = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        QLENT_SC = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        QIENT_SC = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        SHLW_SNO3 = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        SHLW_PRC3 = QuantityFactory.zeros(self.quantity_factory, dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        MFD_SC = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        DQADT_SC = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        QLENT_SC = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        QIENT_SC = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        SHLW_SNO3 = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        SHLW_PRC3 = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         
 
         self._setup_outputs(

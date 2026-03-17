@@ -3,10 +3,14 @@ from gt4py.cartesian.gtscript import int32
 from ndsl import StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.typing import Int
+from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
+from ndsl.dsl.typing import Int
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
+
+import pyMoist.constants as constants
 
 import pyMoist.constants as constants
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
@@ -92,6 +96,7 @@ class TranslateThermodynamicTendencies(TranslateFortranData2Py):
         self._calc_thermodynamic_tendencies = self.stencil_factory.from_dims_halo(
             func=calc_thermodynamic_tendencies,
             compute_dims=[I_DIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "frc_rasn": config.frc_rasn,
                 "dt": config.dt,
@@ -99,6 +104,7 @@ class TranslateThermodynamicTendencies(TranslateFortranData2Py):
         )
 
         # Inputs
+        condensation = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a", dtype=bool)
         condensation = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a", dtype=bool)
 
         for i in range(0, 24):
@@ -150,27 +156,27 @@ class TranslateThermodynamicTendencies(TranslateFortranData2Py):
         self.ese = saturation_vapor_pressure_table.ese
         self.esx = saturation_vapor_pressure_table.esx
 
-        umf_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
-        qtflx_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
-        slflx_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
-        uflx_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
-        vflx_out = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="n/a")
-        cush_inout = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
-        cush = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="n/a")
-        fer_out= self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
-        fdr_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
-        qldet_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
-        qidet_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
-        dcm_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
-        qvten_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
-        qlten_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
-        qiten_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
-        sten_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
-        uten_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
-        vten_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
-        qrten_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
-        qsten_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
-        cufrc_out=self.quantity_factory.zeros(dims=[X_DIM, Y_DIM,Z_DIM], units="n/a")
+        umf_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
+        qtflx_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
+        slflx_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
+        uflx_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
+        vflx_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
+        cush_inout = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
+        cush = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
+        fer_out= self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        fdr_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        qldet_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        qidet_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        dcm_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        qvten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        qlten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        qiten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        sten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        uten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        vten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        qrten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        qsten_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
+        cufrc_out=self.quantity_factory.zeros(dims=[I_DIM, J_DIM,K_DIM], units="n/a")
         
 
         krel = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a", dtype=Int)
@@ -207,18 +213,18 @@ class TranslateThermodynamicTendencies(TranslateFortranData2Py):
         safe_assign_array(qlten_sink.view[:], inputs["qlten_sink"])
         qiten_sink = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(qiten_sink.view[:], inputs["qiten_sink"])
-        qvten = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        qiten = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        qlten = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        sten = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        qc = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        qlten_det = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        qiten_det = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        qvten = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        qiten = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        qlten = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        sten = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        qc = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        qlten_det = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        qiten_det = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
 
-        testvar3D_1 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        testvar3D_2 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        testvar3D_3 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
-        testvar3D_4 = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="n/a")
+        testvar3D_1 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        testvar3D_2 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        testvar3D_3 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        testvar3D_4 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
 
         # The iteration you want to test
         iter_test = int32(0)

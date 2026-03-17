@@ -1,6 +1,7 @@
 import dace
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.gt4py import (
     BACKWARD,
     FORWARD,
@@ -18,6 +19,9 @@ from ndsl.dsl.gt4py import (
     log,
     sqrt,
 )
+from ndsl.dsl.typing import Bool, BoolFieldIJ, FloatField, FloatFieldIJ, Int, IntField, IntFieldIJ
+
+import pyMoist.constants as constants
 from ndsl.dsl.typing import Bool, BoolFieldIJ, FloatField, FloatFieldIJ, Int, IntField, IntFieldIJ
 
 import pyMoist.constants as constants
@@ -2433,6 +2437,8 @@ def avg_initial_and_final_cin3(
         if not condensation:
             if del_CIN <= 0.0:
                 condensation = True  # Done computing at this column
+                cush = -1.0
+                umf_out = 0.0
 
 
 def define_prel_krel(
@@ -3389,6 +3395,7 @@ def buoyancy_sorting(
 
                 if id_check == 1:
                     condensation = True
+                    cush = -1.0
                     umf_out = 0.0
                     umf_out[0,0,1] = 0.0
                     dcm_out = 0.0
@@ -3427,6 +3434,7 @@ def buoyancy_sorting(
 
                     if id_check == 1:
                         condensation = True
+                        cush = -1.0
                         umf_out = 0.0
                         umf_out[0,0,1] = 0.0
                         dcm_out = 0.0
@@ -3481,6 +3489,7 @@ def buoyancy_sorting(
 
                         if id_check == 1:
                             condensation = True
+                            cush = -1.0
                             umf_out = 0.0
                             umf_out[0,0,1] = 0.0
                             dcm_out = 0.0
@@ -3576,6 +3585,7 @@ def buoyancy_sorting(
 
                                 if id_check == 1:
                                     condensation = True
+                                    cush = -1.0
                                     umf_out = 0.0
                                     umf_out[0,0,1] = 0.0
                                     dcm_out = 0.0
@@ -3836,6 +3846,7 @@ def buoyancy_sorting(
 
                                 if id_check == 1:
                                     condensation = True
+                                    cush = -1.0
                                     umf_out = 0.0
                                     umf_out[0,0,1] = 0.0
                                     dcm_out = 0.0
@@ -3925,6 +3936,7 @@ def buoyancy_sorting(
 
                                     if id_check == 1:
                                         condensation = True
+                                        cush = -1.0
                                         umf_out = 0.0
                                         umf_out[0,0,1] = 0.0
                                         dcm_out = 0.0
@@ -4056,6 +4068,7 @@ def buoyancy_sorting(
 
                     if wu[0, 0, 1] > 100.0:
                         condensation = True
+                        cush = -1.0
                         umf_out = 0.0
                         umf_out[0,0,1] = 0.0
                         dcm_out = 0.0
@@ -4395,6 +4408,7 @@ def recalc_condensate(
         if not condensation:
             if id_check == 1:
                 condensation = True
+                cush = -1.0
                 umf_out = 0.0
                 umf_out[0,0,1] = 0.0
                 dcm_out = 0.0
@@ -4495,6 +4509,7 @@ def recalc_condensate(
 
             if forcedCu:
                 condensation = True
+                cush = -1.0
                 umf_out = 0.0
                 umf_out[0,0,1] = 0.0
                 dcm_out = 0.0
@@ -5624,6 +5639,7 @@ def penetrative_entrainment_fluxes(
 
                 if id_check == 1:
                     condensation = True
+                    cush = -1.0
                     umf_out = 0.0
                     umf_out[0,0,1] = 0.0
                     dcm_out = 0.0
@@ -5857,11 +5873,10 @@ def calc_thermodynamic_tendencies(
 
     with computation(FORWARD), interval(0, -1):
         if not condensation:
-
-            # if iteration != 0:  # Reset some vars to zero after first iteration
-            #     qlten = 0.0
-            #     slten = 0.0
-            #     sten = 0.0
+            if iteration != 0:  # Reset some vars to zero after first iteration
+                qlten = 0.0
+                slten = 0.0
+                sten = 0.0
 
             if K <= kpen:
                 # Compute 'slten', 'qtten', 'qvten', 'qlten', 'qiten', and 'sten'
@@ -5973,6 +5988,7 @@ def calc_thermodynamic_tendencies(
 
                     if id_check == 1:
                         condensation = True
+                        cush = -1.0
                         umf_out = 0.0
                         umf_out[0,0,1] = 0.0
                         dcm_out = 0.0
@@ -6008,6 +6024,7 @@ def calc_thermodynamic_tendencies(
 
                         if id_check == 1:
                             condensation = True
+                            cush = -1.0
                             umf_out = 0.0
                             umf_out[0,0,1] = 0.0
                             dcm_out = 0.0
@@ -6051,6 +6068,7 @@ def calc_thermodynamic_tendencies(
 
                         if id_check == 1:
                             condensation = True
+                            cush = -1.0
                             umf_out = 0.0
                             umf_out[0,0,1] = 0.0
                             dcm_out = 0.0
@@ -6092,6 +6110,7 @@ def calc_thermodynamic_tendencies(
 
                         if id_check == 1:
                             condensation = True
+                            cush = -1.0
                             umf_out = 0.0
                             umf_out[0,0,1] = 0.0
                             dcm_out = 0.0
@@ -6182,6 +6201,7 @@ def calc_thermodynamic_tendencies(
 
                     if id_check == 1:
                         condensation = True
+                        cush = -1.0
                         umf_out = 0.0
                         umf_out[0,0,1] = 0.0
                         dcm_out = 0.0
@@ -6241,11 +6261,12 @@ def calc_thermodynamic_tendencies(
                             qiten_sink = -(qi0 / dt) * qiten_sink / totsink
                             qiten_det = qc_i + qc_im
 
-                    qlten = qrten + qlten_sink + qlten_det 
-                    qiten = qsten + qiten_sink + qiten_det 
-                    qvten = qtten - qlten - qiten 
+                    qlten = qrten + qlten_sink + qlten_det
+                    qiten = qsten + qiten_sink + qiten_det
 
-                    sten = slten + constants.MAPL_ALHL * qlten + constants.MAPL_ALHS * qiten 
+                    qvten = qtten - qlten - qiten
+
+                    sten = slten + constants.MAPL_ALHL * qlten + constants.MAPL_ALHS * qiten
 
                     qc = qc_l + qc_i 
 
@@ -7476,24 +7497,23 @@ def update_output_variables1(
             #     qrten_out= 0.0
             #     qsten_out= 0.0
 
+    with computation(FORWARD), interval(...):
+        if del_CIN <= 0.0:
+            umf_outvar = umf_out
+            cufrc_outvar = cufrc_out
+            dcm_outvar = dcm_out
+            qvten_outvar = qvten_out
+            qlten_outvar = qlten_out
+            qiten_outvar = qiten_out
+            sten_outvar = sten_out
+            uten_outvar = uten_out
+            vten_outvar = vten_out
+            qrten_outvar = qrten_out
+            qsten_outvar = qsten_out
+            cush_inoutvar = cush_inout
 
-    # with computation(FORWARD), interval(...):
-    #     if del_CIN <= 0.0:
-    #         umf_outvar = umf_out
-    #         cufrc_outvar = cufrc_out
-    #         dcm_outvar = dcm_out
-    #         qvten_outvar = qvten_out
-    #         qlten_outvar = qlten_out
-    #         qiten_outvar = qiten_out
-    #         sten_outvar = sten_out
-    #         uten_outvar = uten_out
-    #         vten_outvar = vten_out
-    #         qrten_outvar = qrten_out
-    #         qsten_outvar = qsten_out
-    #         cush_inoutvar = cush_inout
-      
-    #     if del_CIN > 0.0:
-    #         umf_outvar = umf_zint
+        if del_CIN > 0.0:
+            umf_outvar = umf_zint
 
     #         if K <= kinv:
     #             umf_outvar = umf_zint.at(K=kinv) * zifc0 / zifc0.at(K=kinv)
@@ -8680,11 +8700,10 @@ class ComputeUwshcuInv(NDSLRuntime):
         self.locals.kpen = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="na", dtype=Int)
 
         # IntFieldIJs
-        self.locals.kbup_IJ = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na", dtype=Int)
-        self.locals.klfc_IJ = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na", dtype=Int)
-        self.locals.kpen_IJ = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na", dtype=Int)
-        self.locals.kpbl_in = self.quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="na", dtype=Int)
-
+        self.locals.kbup_IJ = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na", dtype=Int)
+        self.locals.klfc_IJ = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na", dtype=Int)
+        self.locals.kpen_IJ = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na", dtype=Int)
+        self.locals.kpbl_in = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na", dtype=Int)
 
     def __call__(
         self,
