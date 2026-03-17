@@ -3816,7 +3816,7 @@ contains
        ! prevent HWSD oc_top from generating peat outside the GPA22 peat mask.
        if (PEATMAP_STRICT_GPA22) then
           where (pmapr < PEATMAP_THRESHOLD_1)
-             oc_top = min(oc_top, NINT((cF_lim(4) - 1.0e-5)/sf))  ! cap oc_top just below cF_lim(4)=~8.72
+             oc_top = min(oc_top, FLOOR((cF_lim(4)/sf) )  ! force oc_top<=872   (cF_lim(4)/sf=872.0930)
           endwhere
        endif
        
