@@ -96,7 +96,6 @@ class TranslateThermodynamicTendencies(TranslateFortranData2Py):
         self._calc_thermodynamic_tendencies = self.stencil_factory.from_dims_halo(
             func=calc_thermodynamic_tendencies,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "frc_rasn": config.frc_rasn,
                 "dt": config.dt,
@@ -104,7 +103,6 @@ class TranslateThermodynamicTendencies(TranslateFortranData2Py):
         )
 
         # Inputs
-        condensation = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a", dtype=bool)
         condensation = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a", dtype=bool)
 
         for i in range(0, 24):

@@ -79,14 +79,12 @@ class TranslateCalcCumulusCondensate(TranslateFortranData2Py):
         self._calc_cumulus_condensate_at_interfaces = self.stencil_factory.from_dims_halo(
             func=calc_cumulus_condensate_at_interface,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "criqc": config.criqc,
             },
         )
 
         # Inputs
-        condensation = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a", dtype=bool)
         condensation = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a", dtype=bool)
 
         for i in range(0, 24):

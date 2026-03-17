@@ -3366,7 +3366,7 @@ def buoyancy_sorting(
                 # (e.g., Fortran go to 45)
 
     with computation(FORWARD), interval(1, -1):
-        if K >= krel and K <= krel and not stop_buoyancy_sort and not condensation:
+        if K >= krel and K <= k0 - 1 and not stop_buoyancy_sort and not condensation:
             thlue = thlu
             qtue = qtu
             wue = wu
@@ -3378,7 +3378,7 @@ def buoyancy_sorting(
             # testvar3D_4 = wtwb
 
             iter_xc = 1
-            while iter_xc <= 1 and not condensation:
+            while iter_xc <= niter_xc and not condensation:
                 wtw = wu * wu
 
                 # Calculate environmental and cumulus saturation 'excess' at 'pe'.
@@ -3387,11 +3387,6 @@ def buoyancy_sorting(
                 # of "qsat". But note normal argument of "qsat" is temperature.
 
                 thj, qvj, qlj, qij, qse, id_check = conden(pe, thle, qte, ese, esx)
-                # testvar3D_2=thj
-                # testvar3D_3=qvj
-                # testvar3D_4=qlj
-                # testvar3D_5=qij
-                # testvar3D_1=qse
 
                 if id_check == 1:
                     condensation = True
