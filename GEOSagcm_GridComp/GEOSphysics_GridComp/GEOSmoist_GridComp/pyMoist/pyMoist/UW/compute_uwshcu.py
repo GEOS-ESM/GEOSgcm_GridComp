@@ -1,7 +1,6 @@
 import dace
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.gt4py import (
     BACKWARD,
     FORWARD,
@@ -20,10 +19,6 @@ from ndsl.dsl.gt4py import (
     sqrt,
 )
 from ndsl.dsl.typing import Bool, BoolFieldIJ, FloatField, FloatFieldIJ, Int, IntField, IntFieldIJ
-
-import pyMoist.constants as constants
-from ndsl.dsl.typing import Bool, BoolFieldIJ, FloatField, FloatFieldIJ, Int, IntField, IntFieldIJ
-
 import pyMoist.constants as constants
 from pyMoist.field_types import FloatField_NTracers, FloatFieldIJ_NTracers
 from pyMoist.saturation_tables import (
@@ -1262,7 +1257,7 @@ def find_cumulus_characteristics(
             if windsrcavg == 1:
                 # Caution: This code has not been tested, since windsrcavg is 0
                 # An error will be raised if windsrcavg == 1
-                zrho = pifc0.at(K=0) / (287.04 * (t0.at(K=0) * (1.0 + 0.608 * qv0.at(K=0))))
+                zrho = pifc0.at(K=1) / (287.04 * (t0.at(K=0) * (1.0 + 0.608 * qv0.at(K=0))))
                 buoyflx = (-shfx / constants.MAPL_CP - 0.608 * t0.at(K=0) * evap) / zrho  # K m s-1
                 delzg = (50.0) * constants.MAPL_GRAV  # assume 50m surface scale
                 wstar = max(0.0, 0.001 - 0.41 * buoyflx * delzg / t0.at(K=0))  # m3 s-3
@@ -3376,6 +3371,7 @@ def buoyancy_sorting(
             # testvar3D_2 = qtue
             # testvar3D_3 = wue
             # testvar3D_4 = wtwb
+            # testvar3D_5 = wtw
 
             iter_xc = 1
             while iter_xc <= niter_xc and not condensation:
@@ -3422,7 +3418,8 @@ def buoyancy_sorting(
                     thv0j = thj * (1.0 + zvir * qvj - qlj - qij)
                     rhomid0j = pe / (constants.MAPL_RDRY * thv0j * exne)
                     qsat_arg = thle * exne
-                    qs, _ = saturation_specific_humidity(qsat_arg, qsat_pe, ese, esx)
+                    qsatpe_tmp = qsat_pe / 100.0
+                    qs, _ = saturation_specific_humidity(qsat_arg, qsatpe_tmp*100.0, ese, esx)
                     excess0 = qte - qs
 
                     thj, qvj, qlj, qij, qse, id_check = conden(pe, thlue, qtue, ese, esx)
@@ -3516,7 +3513,8 @@ def buoyancy_sorting(
                             thvj = thj * (1.0 + zvir * qvj - qlj - qij)
                             tj = thj * exne  # This 'tj' is used for computing thermo. coeffs. below
                             qsat_arg = thlue * exne
-                            qs, _ = saturation_specific_humidity(qsat_arg, qsat_pe, ese, esx)
+                            pe_tmp = qsat_pe / 100.0
+                            qs, _ = saturation_specific_humidity(qsat_arg, pe_tmp * 100.0, ese, esx)
                             excessu = qtue - qs
 
                             # Calculate critical mixing fraction, 'xc'. Mixture with
@@ -4294,11 +4292,6 @@ def recalc_condensate(
     vflx_out: FloatField,
     fer_out: FloatField,
     fdr_out: FloatField,
-    testvar3D_1: FloatField,
-    testvar3D_2: FloatField,
-    testvar3D_3: FloatField,
-    testvar3D_4: FloatField,
-    testvar3D_5: FloatField,
 ):
     """
     Re-calculate the amount of expelled condensate from cloud updraft
@@ -4393,11 +4386,6 @@ def recalc_condensate(
     with computation(FORWARD), interval(...):
         if not condensation:
             thj, qvj, qlj, qij, qse, id_check = conden(pifc0.at(K=kpen) + ppen, thlu_top, qtu_top, ese, esx)
-            testvar3D_1=thj
-            testvar3D_2=qvj
-            testvar3D_3=qlj
-            testvar3D_4=qij
-            testvar3D_5=qse
 
     with computation(FORWARD), interval(...):
         if not condensation:
@@ -5789,10 +5777,6 @@ def calc_thermodynamic_tendencies(
     vflx_out: FloatField,
     fer_out: FloatField,
     fdr_out: FloatField,
-    testvar3D_1: FloatField,
-    testvar3D_2: FloatField,
-    testvar3D_3: FloatField,
-    testvar3D_4: FloatField,
 ):
     """
     Tendencies of thermodynamic variables.
@@ -5964,7 +5948,6 @@ def calc_thermodynamic_tendencies(
 
                 qtten = (qtflx - qtflx[0, 0, 1]) * constants.MAPL_GRAV / dp0
 
-                testvar3D_1=slten
 
                 # Compute condensate tendency, including reserved condensate
                 # We assume that eventual detachment and detrainment occurs in kbup
@@ -6141,13 +6124,11 @@ def calc_thermodynamic_tendencies(
                     qlubelow = qlj_2D
                     qiubelow = qij_2D
 
-                    testvar3D_2=qlubelow
-                    testvar3D_3=qiubelow
 
                     # 1. Non-precipitating portion of expelled condensate
                     qc_l = (1.0 - frc_rasn) * dwten  # [ kg/kg/s ]
                     qc_i = (1.0 - frc_rasn) * diten  # [ kg/kg/s ]
-                    testvar3D_4=qc_l
+                
 
                     # 2. Detrained Condensate
                     if K <= kbup:
@@ -6688,9 +6669,6 @@ def calc_cumulus_condensate_at_interface(
     vflx_out: FloatField,
     fer_out: FloatField,
     fdr_out: FloatField,
-    testvar3D_1: FloatField,
-    testvar3D_2: FloatField,
-    testvar3D_3: FloatField,
 ):
     """
     Stencil to calculate cumulus condensate at the upper interface of each layer.
@@ -6746,9 +6724,6 @@ def calc_cumulus_condensate_at_interface(
                         thj, qvj, qlj, qij, qse, id_check = conden(
                             pifc0[0, 0, 1], thlu[0, 0, 1], qtu[0, 0, 1], ese, esx
                         )
-                    testvar3D_1=thj
-                    testvar3D_2=qvj
-                    testvar3D_3=qlj
 
                     if id_check == 1:
                         condensation = True
@@ -8008,8 +7983,8 @@ class ComputeUwshcuInv(NDSLRuntime):
                 f"Coding limitation: Only {self.config.k0} k-levels are available, atleast 5 are expected"
             )
 
-        if self.config.windsrcavg != 0:
-            raise NotImplementedError(f"Coding limitation: windsrcavg is {self.config.windsrcavg}expected 0")
+        # if self.config.windsrcavg != 0:
+        #     raise NotImplementedError(f"Coding limitation: windsrcavg is {self.config.windsrcavg}, expected 0")
 
         self._setup_inputs = self.stencil_factory.from_dims_halo(
             func=setup_inputs,
@@ -8363,6 +8338,33 @@ class ComputeUwshcuInv(NDSLRuntime):
                 "ntracers": constants.NCNST,
             }
         )
+
+    def __call__(
+        self,
+        state: UWState,
+    ):
+        """
+        University of Washington Shallow Convection Scheme
+
+        Described in Park and Bretherton. 2008. J. Climate :
+
+        'The University of Washington shallow convection and
+        moist turbulent schemes and their impact on climate
+        simulations with the Community Atmosphere Model'
+        Coded in CESM by Sungsu Park. Oct.2005. May.2008.
+        Coded in GEOS by Nathan Arnold. July 2016.
+        NDSL Port by Katrina Fandrich. May 2025.
+
+        For general questions, email sungsup@ucar.edu or sungsu@atmos.washington.edu
+        For GEOS-specific questions, email nathan.arnold@nasa.gov
+        For NDSL-specific questions, email katrina.fandrich@nasa.gov
+
+        ##############################################################################
+
+        Args:
+        state: UWState
+        """
+        # Reset all locals at the start of UW run
         self.trsrc = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, "ntracers"], units="na")
         self.trsrc_o = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, "ntracers"], units="na")
         self.tre = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, "ntracers"], units="na")
@@ -8700,31 +8702,6 @@ class ComputeUwshcuInv(NDSLRuntime):
         self.locals.kpen_IJ = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na", dtype=Int)
         self.locals.kpbl_in = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="na", dtype=Int)
 
-    def __call__(
-        self,
-        state: UWState,
-    ):
-        """
-        University of Washington Shallow Convection Scheme
-
-        Described in Park and Bretherton. 2008. J. Climate :
-
-        'The University of Washington shallow convection and
-        moist turbulent schemes and their impact on climate
-        simulations with the Community Atmosphere Model'
-        Coded in CESM by Sungsu Park. Oct.2005. May.2008.
-        Coded in GEOS by Nathan Arnold. July 2016.
-        NDSL Port by Katrina Fandrich. May 2025.
-
-        For general questions, email sungsup@ucar.edu or sungsu@atmos.washington.edu
-        For GEOS-specific questions, email nathan.arnold@nasa.gov
-        For NDSL-specific questions, email katrina.fandrich@nasa.gov
-
-        ##############################################################################
-
-        Args:
-        state: UWState
-        """
 
         # Initialize masks, default for all masks is False.
         self._reset_mask(self.condensation, False)
@@ -8762,6 +8739,7 @@ class ComputeUwshcuInv(NDSLRuntime):
             qi0_inv=state.output.qi0_inv,
             t0_inv=state.input_output.t0_inv,
             tke_inv=state.input.tke_inv,
+            tke_flip=self.locals.tke_flip,
             pifc0_inv=state.input.PLE,
             zifc0_inv=self.locals.zifc0_inv,
             exnifc0_inv=self.locals.exnifc0_inv,
@@ -10218,7 +10196,6 @@ class ComputeUwshcuInv(NDSLRuntime):
             cush=state.input_output.cush,
             umf_out=self.locals.umf_out,
             dcm_out=self.locals.dcm_out,
-            #dcm_outvar=self.locals.dcm_outvar,
             qvten_out=self.locals.qvten_out,
             qlten_out=self.locals.qlten_out,
             qiten_out=self.locals.qiten_out,
@@ -10228,18 +10205,7 @@ class ComputeUwshcuInv(NDSLRuntime):
             qrten_out=self.locals.qrten_out,
             qsten_out=self.locals.qsten_out,
             cufrc_out=self.locals.cufrc_out,
-            #cufrc_outvar=self.locals.cufrc_outvar,
-            #umf_outvar=self.locals.umf_outvar,
             cush_inout=self.locals.cush_inout,
-            #qvten_outvar=self.locals.qvten_outvar,
-            #qlten_outvar=self.locals.qlten_outvar,
-            #qiten_outvar=self.locals.qiten_outvar,
-            #sten_outvar=self.locals.sten_outvar,
-            #uten_outvar=self.locals.uten_outvar,
-            #vten_outvar=self.locals.vten_outvar,
-            #qrten_outvar=self.locals.qrten_outvar,
-            #qsten_outvar=self.locals.qsten_outvar,
-            #cush_inoutvar=self.locals.cush_inoutvar,
         )
 
         self._update_output_variables2(
@@ -10279,7 +10245,6 @@ class ComputeUwshcuInv(NDSLRuntime):
             uflx_out=self.locals.uflx_out,
             vflx_out=self.locals.vflx_out,
             cufrc_out=self.locals.cufrc_out,
-            #dcm_outvar=self.locals.dcm_outvar,
             qvten_out=self.locals.qvten_out,
             qlten_out=self.locals.qlten_out,
             qiten_out=self.locals.qiten_out,
@@ -10288,7 +10253,6 @@ class ComputeUwshcuInv(NDSLRuntime):
             vten_out=self.locals.vten_out,
             qrten_out=self.locals.qrten_out,
             qsten_out=self.locals.qsten_out,
-            #cufrc_outvar=self.locals.cufrc_outvar,
             qldet_out=self.locals.qldet_out,
             qidet_out=self.locals.qidet_out,
             qlsub_out=self.locals.qlsub_out,
@@ -10301,16 +10265,6 @@ class ComputeUwshcuInv(NDSLRuntime):
             tr0_inout=self.tr0_inout,
             CNV_Tracers=state.input_output.CNV_Tracers,
             cush_inout=self.locals.cush_inout,
-            # qvten_outvar=self.locals.qvten_outvar,
-            # qlten_outvar=self.locals.qlten_outvar,
-            # qiten_outvar=self.locals.qiten_outvar,
-            # sten_outvar=self.locals.sten_outvar,
-            # uten_outvar=self.locals.uten_outvar,
-            # vten_outvar=self.locals.vten_outvar,
-            # qrten_outvar=self.locals.qrten_outvar,
-            # qsten_outvar=self.locals.qsten_outvar,
-            # cush_inoutvar=self.locals.cush_inoutvar,
-            # umf_outvar=self.locals.umf_outvar,
             umf_inv=state.output.umf_inv,
             dcm_inv=state.output.dcm_inv,
             qtflx_inv=state.output.qtflx_inv,

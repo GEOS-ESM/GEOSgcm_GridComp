@@ -168,6 +168,8 @@ def _set_NDSL_physics(mapl_state) -> NDSLPhysicsStack:
         single_column = True
         ny = 1
 
+    override_backend = os.getenv("GEOS_DSL_BACKEND", "st:dace:cpu:KJI")
+
     return NDSLPhysicsStack(
         NDSLPhysicsConfiguration(
             grid_infos.im * grid_infos.nx,
@@ -176,6 +178,7 @@ def _set_NDSL_physics(mapl_state) -> NDSLPhysicsStack:
             grid_infos.nx,
             ny,
             single_column,
+            override_backend,
         )
     )
 
