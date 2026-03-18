@@ -34,7 +34,7 @@ class UWGEOSInterface(UserCode):
             k0=ndsl_stack.quantity_factory.sizer.nz,
             dotransport=1 if MAPLPy.get_resource("USE_TRACER_TRANSP_UW:", mapl_state, default=True) else 0,
             dt=MAPLPy.get_resource("DSL__UW_DT:", mapl_state, default=Float(0)),
-            windsrcavg=MAPLPy.get_resource("WINDSRCAVG:", mapl_state, default=Int(0)),
+            windsrcavg=MAPLPy.get_resource("WINDSRCAVG:", mapl_state, default=Int(0) if jason_uw else Int(1)),
             mixscale=MAPLPy.get_resource(
                 "MIXSCALE:", mapl_state, default=Float(0.0) if jason_uw else Float(3000.0)
             ),

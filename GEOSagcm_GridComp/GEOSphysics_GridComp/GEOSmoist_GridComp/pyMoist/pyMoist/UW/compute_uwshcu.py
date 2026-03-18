@@ -1257,7 +1257,7 @@ def find_cumulus_characteristics(
             if windsrcavg == 1:
                 # Caution: This code has not been tested, since windsrcavg is 0
                 # An error will be raised if windsrcavg == 1
-                zrho = pifc0.at(K=0) / (287.04 * (t0.at(K=0) * (1.0 + 0.608 * qv0.at(K=0))))
+                zrho = pifc0.at(K=1) / (287.04 * (t0.at(K=0) * (1.0 + 0.608 * qv0.at(K=0))))
                 buoyflx = (-shfx / constants.MAPL_CP - 0.608 * t0.at(K=0) * evap) / zrho  # K m s-1
                 delzg = (50.0) * constants.MAPL_GRAV  # assume 50m surface scale
                 wstar = max(0.0, 0.001 - 0.41 * buoyflx * delzg / t0.at(K=0))  # m3 s-3
@@ -7983,8 +7983,8 @@ class ComputeUwshcuInv(NDSLRuntime):
                 f"Coding limitation: Only {self.config.k0} k-levels are available, atleast 5 are expected"
             )
 
-        if self.config.windsrcavg != 0:
-            raise NotImplementedError(f"Coding limitation: windsrcavg is {self.config.windsrcavg}, expected 0")
+        # if self.config.windsrcavg != 0:
+        #     raise NotImplementedError(f"Coding limitation: windsrcavg is {self.config.windsrcavg}, expected 0")
 
         self._setup_inputs = self.stencil_factory.from_dims_halo(
             func=setup_inputs,
