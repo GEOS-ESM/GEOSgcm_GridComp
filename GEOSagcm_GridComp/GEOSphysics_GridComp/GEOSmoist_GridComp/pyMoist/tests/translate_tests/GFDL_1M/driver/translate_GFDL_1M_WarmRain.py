@@ -163,11 +163,11 @@ class TranslateGFDL_1M_WarmRain(TranslateFortranData2Py):
             inputs["non_anvil_large_scale_evaporation_warmrain"][:, :, :],
         )
         safe_assign_array(
-            state.non_anvil_large_scale.liquid_precip_flux.field[:, :, 0:-1],
+            state.non_anvil_large_scale.liquid_precip_flux.field[:, :, 1:],
             inputs["non_anvil_large_scale_liquid_precip_flux_warmrain"][:, :, :],
         )
         safe_assign_array(
-            state.non_anvil_large_scale.ice_precip_flux.field[:, :, 0:-1],
+            state.non_anvil_large_scale.ice_precip_flux.field[:, :, 1:],
             inputs["non_anvil_large_scale_ice_precip_flux_warmrain"][:, :, :],
         )
         safe_assign_array(
