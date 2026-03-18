@@ -163,8 +163,8 @@ def conden(
     leff = term1 + term2
     temps: float32 = tc
     ps: float32 = p
-    qs, _ = saturation_specific_humidity(temps, ps, ese, esx)
-    nu_test=qs
+    ps_tmp = ps/100.0
+    qs, _ = saturation_specific_humidity(temps, ps_tmp*100.0, ese, esx)
     rvls = qs
 
     if qs >= qt:  # no condensation
@@ -181,10 +181,10 @@ def conden(
                 constants.MAPL_CP / leff
                 + constants.EPSILON * leff * rvls / (constants.MAPL_RGAS * temps * temps)
             )
-            qs, _ = saturation_specific_humidity(temps, ps, ese, esx)
+            ps_tmp = ps/100.0
+            qs, _ = saturation_specific_humidity(temps, ps_tmp*100.0, ese, esx)
             rvls = qs
             iteration += 1
-        nu_test=qs
         qc = max(qt - qs, float64(0.0))
         qv = qt - qc
         ql = qc * (float64(1.0) - nu)
@@ -195,7 +195,7 @@ def conden(
         else:
             id_check = 0
 
-    return float32(th), float32(qv), float32(ql), float32(nu_test), float32(rvls), id_check
+    return float32(th), float32(qv), float32(ql), float32(qi), float32(rvls), id_check
 
 
 @gtscript.function
