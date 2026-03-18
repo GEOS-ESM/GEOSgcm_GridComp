@@ -56,10 +56,41 @@ def icloud_melt_freeze(
     qi0_crt: Float,
     ql_mlt: Float,
 ):
-    """
-    Melting and freezing of cloud ice/water within the icloud subroutine
+    """Melting and freezing of cloud ice/water.
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutine icloud
+
+    Args:
+        t (Float)
+        vapor (Float)
+        liquid (Float)
+        rain (Float)
+        ice (Float)
+        snow (Float)
+        graupel (Float)
+        cloud_fraction (Float)
+        density (Float)
+        convection_fraction (Float)
+        surface_type (Float)
+        c_air (Float)
+        c_vap (Float)
+        fac_frz (Float)
+        fac_imlt (Float)
+        qi0_crt (Float)
+        ql_mlt (Float)
+
+    Returns:
+        t (Float)
+        vapor (Float)
+        liquid (Float)
+        rain (Float)
+        ice (Float)
+        snow (Float)
+        graupel (Float)
+        cloud_fraction (Float)
+        cvm (Float)
+        q_liq (Float)
+        q_sol (Float)
     """
 
     # -----------------------------------------------------------------------
@@ -111,7 +142,7 @@ def icloud_melt_freeze(
         # -----------------------------------------------------------------------
         qi_crt = ice_fraction(t, convection_fraction, surface_type) * qi0_crt / density
         if qi_crt - ice > 0:
-            ans = qi_crt
+            ans = qi_crt - ice
         else:
             ans = 0
         tmp = min(frez, ans)
@@ -148,10 +179,23 @@ def acr3d(
     cac_3: Float,
     rho: Float,
 ):
-    """
-    Compute accretion according to Lin et al. 1983
+    """Compute accretion according to Lin et al. 1983
 
     reference Fortran: gfdl_cloud_microphys.F90: function acr3d
+
+    Args:
+        v1 (Float)
+        v2 (Float)
+        q1 (Float)
+        q2 (Float)
+        c (Float)
+        cac_1 (Float)
+        cac_2 (Float)
+        cac_3 (Float)
+        rho (Float)
+
+    Returns:
+        acr3d (Float)
     """
     t1 = sqrt(q1 * rho)
     s1 = sqrt(q2 * rho)
@@ -176,11 +220,27 @@ def smow_melt(
     rho: Float,
     rhofac: Float,
 ):
-    """
-    Melting of snow function (lin et al. 1983)
+    """Melting of snow function (lin et al. 1983)
     note: psacw and psacr must be calc before smlt is called
 
     reference Fortran: gfdl_cloud_microphys.F90: function smlt
+
+    Args:
+        tc (Float)
+        dqs (Float)
+        qsrho (Float)
+        psacw (Float)
+        psacr (Float)
+        c_0 (Float)
+        c_1 (Float)
+        c_2 (Float)
+        c_3 (Float)
+        c_4 (Float)
+        rho (Float)
+        rhofac (Float)
+
+    Returns:
+        smow_melt (Float)
     """
     smow_melt = (c_0 * tc / rho - c_1 * dqs) * (
         c_2 * sqrt(qsrho) + c_3 * qsrho**0.65625 * sqrt(rhofac)
@@ -203,11 +263,26 @@ def graupel_melt(
     c_4: Float,
     rho: Float,
 ):
-    """
-    Melting of graupel function (lin et al. 1983)
+    """Melting of graupel function (lin et al. 1983)
     note: pgacw and pgacr must be calc before gmlt is called
 
     reference Fortran: gfdl_cloud_microphys.F90: function gmlt
+
+    Args:
+        tc: (Float)
+        dqs: (Float)
+        qgrho: (Float)
+        pgacw: (Float)
+        pgacr: (Float)
+        c_0: (Float)
+        c_1: (Float)
+        c_2: (Float)
+        c_3: (Float)
+        c_4: (Float)
+        rho: (Float)
+
+    Returns:
+        graupel_melt (Float)
     """
     graupel_melt = (c_0 * tc / rho - c_1 * dqs) * (
         c_2 * sqrt(qgrho) + c_3 * qgrho**0.6875 / rho**0.25
@@ -270,11 +345,84 @@ def snow_graupel_coldrain(
     qs_mlt: Float,
     rdts: Float,
 ):
-    """
-    Snow, graupel, cold rain microphysics
-    melting, freezing, accretion
+    """Snow, graupel, cold rain microphysics. melting, freezing, accretion
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutine icloud
+
+    Args:
+        t (Float)
+        vapor (Float)
+        liquid (Float)
+        ice (Float)
+        rain (Float)
+        snow (Float)
+        graupel (Float)
+        cloud_fraction (Float)
+        p_dry (Float)
+        density (Float)
+        density_factor (Float)
+        terminal_fall_rain (Float)
+        terminal_fall_snow (Float)
+        terminal_fall_graupel (Float)
+        cvm (Float)
+        lhl (Float)
+        lhi (Float)
+        lcpk (Float)
+        icpk (Float)
+        tcpk (Float)
+        q_liq (Float)
+        q_sol (Float)
+        di (Float)
+        convection_fraction (Float)
+        surface_type (Float)
+        c_air (Float)
+        c_vap (Float)
+        cgaci (Float)
+        cgacs (Float)
+        cgacw (Float)
+        cgfr_0 (Float)
+        cgfr_1 (Float)
+        cgmlt_0 (Float)
+        cgmlt_1 (Float)
+        cgmlt_2 (Float)
+        cgmlt_3 (Float)
+        cgmlt_4 (Float)
+        const_vi (bool)
+        csaci (Float)
+        csacw (Float)
+        csmlt_0 (Float)
+        csmlt_1 (Float)
+        csmlt_2 (Float)
+        csmlt_3 (Float)
+        csmlt_4 (Float)
+        dts (Float)
+        fac_i2s (Float)
+        qi0_crt (Float)
+        qs0_crt (Float)
+        qs_mlt (Float)
+        rdts (Float)
+
+    Returns:
+        t (Float)
+        vapor (Float)
+        liquid (Float)
+        ice (Float)
+        rain (Float)
+        snow (Float)
+        graupel (Float)
+        cloud_fraction (Float)
+        p_dry (Float)
+        density (Float)
+        density_factor (Float)
+        terminal_fall_rain (Float)
+        terminal_fall_snow (Float)
+        terminal_fall_graupel (Float)
+        cvm (Float)
+        lhl (Float)
+        lhi (Float)
+        lcpk (Float)
+        icpk (Float)
+        tcpk (Float)
     """
 
     t2 = t
@@ -620,7 +768,7 @@ def snow_graupel_coldrain(
                     terminal_fall_graupel,
                     terminal_fall_snow,
                     qs2,
-                    qs2,
+                    qg2,
                     cgacs,
                     constants.ACCO_03,
                     constants.ACCO_13,
@@ -1311,6 +1459,38 @@ def icloud_core(
     des2: GlobalTable_driver_qsat,
     des3: GlobalTable_driver_qsat,
 ):
+    """sources of cloud ice: pihom, cold rain, and the sat_adj
+    (initiation plus deposition)
+    sources of snow: cold rain, auto conversion + accretion (from cloud ice)
+    sat_adj (deposition; requires pre - existing snow);
+    initial snow comes from auto conversion
+
+    Args:
+        t (FloatField)
+        p_dry (FloatField)
+        dp (FloatField)
+        vapor (FloatField)
+        liquid (FloatField)
+        rain (FloatField)
+        ice (FloatField)
+        snow (FloatField)
+        graupel (FloatField)
+        cloud_fraction (FloatField)
+        density (FloatField)
+        density_factor (FloatField)
+        terminal_fall_snow (FloatField)
+        terminal_fall_graupel (FloatField)
+        terminal_fall_rain (FloatField)
+        sublimation (FloatField)
+        rh_limited (FloatField)
+        ccn (FloatField)
+        convection_fraction (FloatFieldIJ)
+        surface_type (FloatFieldIJ)
+        table2 (GlobalTable_driver_qsat)
+        table3 (GlobalTable_driver_qsat)
+        des2 (GlobalTable_driver_qsat)
+        des3 (GlobalTable_driver_qsat)
+    """
     from __externals__ import (
         c_air,
         c_vap,
@@ -1367,12 +1547,6 @@ def icloud_core(
         t_sub,
         z_slope_ice,
     )
-
-    # sources of cloud ice: pihom, cold rain, and the sat_adj
-    # (initiation plus deposition)
-    # sources of snow: cold rain, auto conversion + accretion (from cloud ice)
-    # sat_adj (deposition; requires pre - existing snow);
-    # initial snow comes from auto conversion
 
     with computation(PARALLEL), interval(...):
         t, vapor, liquid, rain, ice, snow, graupel, cloud_fraction, cvm, q_liq, q_sol = icloud_melt_freeze(
