@@ -200,8 +200,8 @@ def warm_rain_step_1(
     )
 
     with computation(PARALLEL), interval(...):
-        # ensure mask is clear of any previous values
-        driver_liquid_precip_flux = 0
+        # reset to zero, clearing data from previous call
+        driver_liquid_precip_flux = 0.0
 
     with computation(FORWARD), interval(0, 1):
         # ensure mask is clear of previous value
