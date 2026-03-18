@@ -48,9 +48,6 @@ class GFDL1M(NDSLRuntime):
     ):
         super().__init__(stencil_factory)
 
-        if stencil_factory.grid_indexing.n_halo != 0:
-            raise ValueError("halo size must be zero for GFDL Single Moment microphysics")
-
         # Initialize saturation tables
         saturation_tables = get_saturation_vapor_pressure_table(stencil_factory.backend)
 
