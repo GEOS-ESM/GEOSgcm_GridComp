@@ -5,7 +5,7 @@ from ndsl.dsl.dace.dace_config import DaceConfig
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, GlobalTable, K, computation, exp, interval, log, log10
 from ndsl.dsl.typing import Float, FloatField, Int
 
-from pyMoist.GFDL_1M.driver.constants import constants
+from pyMoist.microphysics.GFDL_1M.driver.constants import constants
 from pyMoist.shared.incloud_processes import ice_fraction
 
 

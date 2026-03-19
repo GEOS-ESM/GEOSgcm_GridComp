@@ -16,8 +16,8 @@ from pyMoist.constants import (
     MAPL_RGAS,
     MAPL_RVAP,
 )
-from pyMoist.GFDL_1M.config import GFDL1MConfig
-from pyMoist.GFDL_1M.stencils import prepare_tendencies
+from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
+from pyMoist.microphysics.GFDL_1M.shared_stencils import prepare_tendencies
 from pyMoist.saturation_tables import (
     GlobalTable_saturation_tables,
     SaturationVaporPressureTable,

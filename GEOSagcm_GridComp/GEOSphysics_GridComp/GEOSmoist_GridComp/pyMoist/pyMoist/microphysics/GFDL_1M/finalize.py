@@ -4,8 +4,8 @@ from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, function, interval, s
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 
 from pyMoist.constants import MAPL_CP, MAPL_GRAV
-from pyMoist.GFDL_1M.config import GFDL1MConfig
-from pyMoist.GFDL_1M.radiation_coupling import GFDL1MRadiationCoupling
+from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
+from pyMoist.microphysics.GFDL_1M.radiation_coupling import GFDL1MRadiationCoupling
 from pyMoist.saturation_tables import (
     GlobalTable_saturation_tables,
     SaturationVaporPressureTable,

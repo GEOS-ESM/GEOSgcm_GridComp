@@ -6,12 +6,12 @@ from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
-from pyMoist.GFDL_1M.config import GFDL1MConfig
-from pyMoist.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentConstants
-from pyMoist.GFDL_1M.driver.fall_speed import fall_speed
-from pyMoist.GFDL_1M.driver.locals import GFDL1MDriverLocals
-from pyMoist.GFDL_1M.locals import GFDL1MLocals
-from pyMoist.GFDL_1M.state import GFDL1MState
+from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
+from pyMoist.microphysics.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentConstants
+from pyMoist.microphysics.GFDL_1M.driver.fall_speed import fall_speed
+from pyMoist.microphysics.GFDL_1M.driver.locals import GFDL1MDriverLocals
+from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
+from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
 
 
 class TranslateGFDL_1M_FallSpeed(TranslateFortranData2Py):

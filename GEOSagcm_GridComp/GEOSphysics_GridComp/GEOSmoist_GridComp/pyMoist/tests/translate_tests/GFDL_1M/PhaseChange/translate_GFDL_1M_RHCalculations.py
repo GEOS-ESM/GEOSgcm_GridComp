@@ -5,10 +5,10 @@ from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
-from pyMoist.GFDL_1M.config import GFDL1MConfig
-from pyMoist.GFDL_1M.locals import GFDL1MLocals
-from pyMoist.GFDL_1M.PhaseChange.rh_calculations import rh_calculations
-from pyMoist.GFDL_1M.state import GFDL1MState
+from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
+from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
+from pyMoist.microphysics.GFDL_1M.PhaseChange.rh_calculations import rh_calculations
+from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
 
 
 class TranslateGFDL_1M_RHCalculations(TranslateFortranData2Py):

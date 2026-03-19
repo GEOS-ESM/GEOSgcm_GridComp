@@ -15,11 +15,11 @@ from ndsl.dsl.gt4py import (
 )
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 
-from pyMoist.GFDL_1M.config import GFDL1MConfig
-from pyMoist.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentConstants
-from pyMoist.GFDL_1M.driver.constants import constants
-from pyMoist.GFDL_1M.driver.sat_tables import GFDL_driver_tables, GlobalTable_driver_qsat
-from pyMoist.GFDL_1M.driver.stencils import wqs2
+from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
+from pyMoist.microphysics.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentConstants
+from pyMoist.microphysics.GFDL_1M.driver.constants import constants
+from pyMoist.microphysics.GFDL_1M.driver.sat_tables import GFDL_driver_tables, GlobalTable_driver_qsat
+from pyMoist.microphysics.GFDL_1M.driver.stencils import wqs2
 from pyMoist.shared.incloud_processes import ice_fraction
 
 

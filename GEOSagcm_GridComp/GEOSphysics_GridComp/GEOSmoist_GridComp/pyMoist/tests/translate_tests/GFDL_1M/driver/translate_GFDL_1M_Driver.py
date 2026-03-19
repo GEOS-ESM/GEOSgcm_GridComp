@@ -8,10 +8,10 @@ from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
 
-from pyMoist.GFDL_1M.config import GFDL1MConfig
-from pyMoist.GFDL_1M.driver.driver import GFDL1MDriver
-from pyMoist.GFDL_1M.locals import GFDL1MLocals
-from pyMoist.GFDL_1M.state import GFDL1MState
+from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
+from pyMoist.microphysics.GFDL_1M.driver.driver import GFDL1MDriver
+from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
+from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
 
 
 class TranslateGFDL_1M_Driver(TranslateFortranData2Py):

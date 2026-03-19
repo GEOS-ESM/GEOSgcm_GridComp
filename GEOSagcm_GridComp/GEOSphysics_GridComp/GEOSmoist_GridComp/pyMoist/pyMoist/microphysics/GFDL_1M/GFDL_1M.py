@@ -1,14 +1,14 @@
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 
-from pyMoist.GFDL_1M.config import GFDL1MConfig
-from pyMoist.GFDL_1M.driver.driver import GFDL1MDriver
-from pyMoist.GFDL_1M.finalize import GFDL1MFinalize
-from pyMoist.GFDL_1M.locals import GFDL1MLocals
-from pyMoist.GFDL_1M.PhaseChange.phase_change import PhaseChange
-from pyMoist.GFDL_1M.setup import GFDL1MSetup
-from pyMoist.GFDL_1M.state import GFDL1MState
-from pyMoist.GFDL_1M.stencils import (
+from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
+from pyMoist.microphysics.GFDL_1M.driver import GFDL1MDriver
+from pyMoist.microphysics.GFDL_1M.finalize import GFDL1MFinalize
+from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
+from pyMoist.microphysics.GFDL_1M.PhaseChange import PhaseChange
+from pyMoist.microphysics.GFDL_1M.setup import GFDL1MSetup
+from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
+from pyMoist.microphysics.GFDL_1M.shared_stencils import (
     get_total_concentration,
     prepare_radiation,
     prepare_tendencies,

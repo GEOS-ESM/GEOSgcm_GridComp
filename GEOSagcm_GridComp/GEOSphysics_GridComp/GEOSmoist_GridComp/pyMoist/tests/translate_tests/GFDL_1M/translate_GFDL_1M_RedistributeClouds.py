@@ -5,7 +5,7 @@ from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
-from pyMoist.GFDL_1M.state import GFDL1MState
+from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
 from pyMoist.shared.redistribute_clouds import redistribute_clouds
 
 

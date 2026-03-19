@@ -1,8 +1,8 @@
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, function, int32, interval, trunc
 from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ
 
-from pyMoist.GFDL_1M.driver.constants import constants
-from pyMoist.GFDL_1M.driver.sat_tables import GlobalTable_driver_qsat
+from pyMoist.microphysics.GFDL_1M.driver.constants import constants
+from pyMoist.microphysics.GFDL_1M.driver.sat_tables import GlobalTable_driver_qsat
 
 
 @function

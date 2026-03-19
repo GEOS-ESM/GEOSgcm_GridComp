@@ -3,7 +3,7 @@ from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import PARALLEL, computation, interval
 from ndsl.dsl.typing import FloatField
 
-from pyMoist.GFDL_1M.config import GFDL1MConfig
+from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.saturation_tables import (
     GlobalTable_saturation_tables,
     SaturationVaporPressureTable,

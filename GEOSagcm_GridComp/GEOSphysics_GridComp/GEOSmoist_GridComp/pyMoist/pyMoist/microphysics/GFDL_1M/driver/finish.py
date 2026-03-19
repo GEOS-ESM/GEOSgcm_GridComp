@@ -1,7 +1,7 @@
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, interval, sqrt
 from ndsl.dsl.typing import FloatField, FloatFieldIJ
 
-from pyMoist.GFDL_1M.driver.constants import constants
+from pyMoist.microphysics.GFDL_1M.driver.constants import constants
 
 
 def update_tendencies(

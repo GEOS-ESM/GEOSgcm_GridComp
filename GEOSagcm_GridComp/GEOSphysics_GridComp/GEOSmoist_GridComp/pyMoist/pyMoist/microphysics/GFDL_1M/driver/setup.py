@@ -3,9 +3,9 @@ from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, function, interval, sqrt
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 
-from pyMoist.GFDL_1M.config import GFDL1MConfig
-from pyMoist.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentConstants
-from pyMoist.GFDL_1M.driver.constants import constants
+from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
+from pyMoist.microphysics.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentConstants
+from pyMoist.microphysics.GFDL_1M.driver.constants import constants
 from pyMoist.shared.atmos_recipes import sigma
 
 

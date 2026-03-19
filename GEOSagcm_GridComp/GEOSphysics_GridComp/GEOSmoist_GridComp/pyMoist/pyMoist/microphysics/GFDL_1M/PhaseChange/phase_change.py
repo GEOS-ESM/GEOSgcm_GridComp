@@ -7,12 +7,12 @@ from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.typing import Float
 
 from pyMoist.constants import FLOAT_TINY
-from pyMoist.GFDL_1M.config import GFDL1MConfig
-from pyMoist.GFDL_1M.PhaseChange.evaporate import evaporate
-from pyMoist.GFDL_1M.PhaseChange.hydrostatic_pdf import hydrostatic_pdf
-from pyMoist.GFDL_1M.PhaseChange.melt_freeze import melt_freeze
-from pyMoist.GFDL_1M.PhaseChange.rh_calculations import fill_rh_crit_export, rh_calculations
-from pyMoist.GFDL_1M.PhaseChange.sublimate import sublimate
+from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
+from pyMoist.microphysics.GFDL_1M.PhaseChange.evaporate import evaporate
+from pyMoist.microphysics.GFDL_1M.PhaseChange.hydrostatic_pdf import hydrostatic_pdf
+from pyMoist.microphysics.GFDL_1M.PhaseChange.melt_freeze import melt_freeze
+from pyMoist.microphysics.GFDL_1M.PhaseChange.rh_calculations import fill_rh_crit_export, rh_calculations
+from pyMoist.microphysics.GFDL_1M.PhaseChange.sublimate import sublimate
 from pyMoist.saturation_tables import SaturationVaporPressureTable
 from pyMoist.shared.incloud_processes import fix_up_clouds
 

@@ -13,7 +13,7 @@ from pyMoist.fortran.build_helper import StencilBackendCompilerOverride
 from pyMoist.fortran.managed_state import MAPLManagedState
 from pyMoist.fortran.memory_factory import MAPLMemoryRepository
 from pyMoist.fortran.profiler import TimedCUDAProfiler
-from pyMoist.GFDL_1M import GFDL1M, GFDL1MConfig, GFDL1MState
+from pyMoist.microphysics.GFDL_1M import GFDL1M, GFDL1MConfig, GFDL1MState
 
 
 def _default_or_get_from_namelist(default, name_in_namelist: str, namelist: dict[str, Any]) -> Any:
