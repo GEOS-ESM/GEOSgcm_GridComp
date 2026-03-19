@@ -1078,106 +1078,13 @@ CONTAINS
          JCOL = j
 
          !--- 3.1 Initialize 1D/2D local slice arrays
-         DO i = its, itf
-            ztexec(i)    = 0.0
-            zqexec(i)    = 0.0
-            last_ierr(i) = -999
-            fixout_qv(i) = 1.0
-
-            conprr(i,j)      = 0.0
-            lightn_dens(i,j) = 0.0
-
-            revsu_gf_2d(i,:) = 0.0
-            prfil_gf_2d(i,:) = 0.0
-            Tpert_2d(i,:)    = 0.0
-            temp_tendqv(i,:) = 0.0
-
-            outt(i,:,:)    = 0.0
-            outu(i,:,:)    = 0.0
-            outv(i,:,:)    = 0.0
-            outq(i,:,:)    = 0.0
-            outqc(i,:,:)   = 0.0
-            outnice(i,:,:) = 0.0
-            outnliq(i,:,:) = 0.0
-            outbuoy(i,:,:) = 0.0
-            omeg(i,:,:)    = 0.0
-         ENDDO
-
-         IF(APPLY_SUB_MP) THEN
-            DO i = its, itf
-               outmpqi(:,i,:,:) = 0.0
-               outmpql(:,i,:,:) = 0.0
-               outmpcf(:,i,:,:) = 0.0
-            ENDDO
-         ENDIF
-
-         IF(ADV_TRIGGER == ADV_TRIGGER_MOIST) THEN
-            do k = kts, kte
-               do i = its, itf
-                  Tpert_2d(i,k) = Tpert_h(k,i,j) + Tpert_v(k,i,j)
-               enddo
-            enddo
-         ENDIF
-
-         IF(USE_TRACER_TRANSP == 1) out_chem = 0.0
+         call gf2020_drv_init_slice_arrays()
 
          !--- 3.2 1D Surface / Map projections
-         DO i = its, itf
-            xlandi(i) = xland(i,j) 
-            psur(i)   = sfc_press(i,j) * 1.e-2 ! mbar
-            tsur(i)   = temp2m(i,j)
-            ter11(i)  = max(0.0, topt(i,j))
-            kpbli(i)  = kpbl(i,j)
-            xlons(i)  = lons(i,j) * 180./3.14159
-            xlats(i)  = lats(i,j) * 180./3.14159
-         ENDDO
+         call gf2020_drv_load_surface_data()
 
-         !--- 3.3 2D Vertical Array loading
-         DO k = kts, ktf
-            kr = k 
-            DO i = its, itf
-               zo(i,k)       = zt(kr,i,j) + topt(i,j)
-               po(i,k)       = press(kr,i,j) * 1.e-2 ! mbar
-               temp_old(i,k) = temp(kr,i,j)
-               qv_old(i,k)   = rvap(kr,i,j)
-               qv_curr(i,k)  = curr_rvap(kr,i,j)
-
-               rhoi(i,k) = 1.e2 * po(i,k) / (287.04 * temp_old(i,k) * (1. + 0.608 * qv_old(i,k)))
-               tkeg(i,k) = tkmin
-               rcpg(i,k) = 0.0
-
-               us(i,k)   = u(kr,i,j)
-               vs(i,k)   = v(kr,i,j)
-               dm2d(i,k) = dm(kr,i,j)
-               omeg(i,k,:) = om(kr,i,j)
-
-               buoy_exc2d(i,k)   = buoy_exc(kr,i,j)
-               temp_new_ADV(i,k) = temp_old(i,k) + rth_advten(kr,i,j) * dt
-               qv_new_ADV(i,k)   = qv_old(i,k)   + rqvften(kr,i,j) * dt
-            ENDDO
-         ENDDO
-
-         IF(APPLY_SUB_MP) THEN
-            DO k = kts, ktf
-               kr = k
-               DO i = its, itf
-                  mpqi(:,i,k) = mp_ice(:,kr,i,j)
-                  mpql(:,i,k) = mp_liq(:,kr,i,j)
-                  mpcf(:,i,k) = mp_cf(:,kr,i,j)
-               ENDDO
-            ENDDO
-         ENDIF
-
-         IF(USE_TRACER_TRANSP == 1) THEN
-            DO k = kts, kte
-               kr = k
-               DO i = its, itf
-                  DO ispc = 1, mtp
-                     se_chem(ispc,i,k) = max(CNV_Tracers(ispc)%Q(i,j,flip(kr)), mintracer)
-                  ENDDO
-               ENDDO
-            ENDDO
-         ENDIF
+          !--- 3.3 2D Vertical Array loading
+          call gf2020_drv_load_vertical_data()
 
          !--- 3.4 Boundary Layer scaling and surface forcing
          DO i = its, itf
@@ -1311,14 +1218,137 @@ CONTAINS
             ENDDO
          ENDDO ! End Plume loop
 
-         !===========================================================================
-         ! 5. FEEDBACK TENDENCY AGGREGATION & BOUNDING
-         !===========================================================================
+          !===========================================================================
+          ! 5. FEEDBACK TENDENCY AGGREGATION & BOUNDING
+          !===========================================================================
+          call gf2020_drv_aggregate_feedback()
 
-         !-- Reset inactive plumes
-         DO n = 1, maxiens
-            if(.NOT. icumulus_gf(n)) ierr4d(:,j,n) = -99
+       ENDDO ! End J loop
+
+   CONTAINS
+
+      !------------------------------------------------------------------------
+      ! Internal helper: Initialize 1D/2D local slice arrays for current j
+      !------------------------------------------------------------------------
+      SUBROUTINE gf2020_drv_init_slice_arrays()
+         INTEGER :: i, k
+
+         DO i = its, itf
+            ztexec(i)    = 0.0
+            zqexec(i)    = 0.0
+            last_ierr(i) = -999
+            fixout_qv(i) = 1.0
+
+            conprr(i,j)      = 0.0
+            lightn_dens(i,j) = 0.0
+
+            revsu_gf_2d(i,:) = 0.0
+            prfil_gf_2d(i,:) = 0.0
+            Tpert_2d(i,:)    = 0.0
+            temp_tendqv(i,:) = 0.0
+
+            outt(i,:,:)    = 0.0
+            outu(i,:,:)    = 0.0
+            outv(i,:,:)    = 0.0
+            outq(i,:,:)    = 0.0
+            outqc(i,:,:)   = 0.0
+            outnice(i,:,:) = 0.0
+            outnliq(i,:,:) = 0.0
+            outbuoy(i,:,:) = 0.0
+            omeg(i,:,:)    = 0.0
          ENDDO
+
+         IF(APPLY_SUB_MP) THEN
+            DO i = its, itf
+               outmpqi(:,i,:,:) = 0.0
+               outmpql(:,i,:,:) = 0.0
+               outmpcf(:,i,:,:) = 0.0
+            ENDDO
+         ENDIF
+
+         IF(ADV_TRIGGER == ADV_TRIGGER_MOIST) THEN
+            do k = kts, kte
+               do i = its, itf
+                  Tpert_2d(i,k) = Tpert_h(k,i,j) + Tpert_v(k,i,j)
+               enddo
+            enddo
+         ENDIF
+
+          IF(USE_TRACER_TRANSP == 1) out_chem = 0.0
+       END SUBROUTINE gf2020_drv_init_slice_arrays
+
+       SUBROUTINE gf2020_drv_load_surface_data()
+          INTEGER :: i
+
+          DO i = its, itf
+             xlandi(i) = xland(i,j)       ! flag < 1 para land, flag = 1 para water
+             psur(i)   = sfc_press(i,j) * 1.e-2  ! mbar
+             tsur(i)   = temp2m(i,j)
+             ter11(i)  = max(0.0, topt(i,j))
+             kpbli(i)  = kpbl(i,j)
+             xlons(i)  = lons(i,j) * 180.0 / 3.14159
+             xlats(i)  = lats(i,j) * 180.0 / 3.14159
+          ENDDO
+       END SUBROUTINE gf2020_drv_load_surface_data
+
+       SUBROUTINE gf2020_drv_load_vertical_data()
+          INTEGER :: i, k, kr, ispc
+
+          DO k = kts, ktf
+             kr = k
+             DO i = its, itf
+                zo(i,k)       = zt(kr,i,j) + topt(i,j)
+                po(i,k)       = press(kr,i,j) * 1.e-2  ! mbar
+                temp_old(i,k) = temp(kr,i,j)
+                qv_old(i,k)   = rvap(kr,i,j)
+                qv_curr(i,k)  = curr_rvap(kr,i,j)
+
+                rhoi(i,k) = 1.e2 * po(i,k) / (287.04 * temp_old(i,k) * (1.0 + 0.608 * qv_old(i,k)))
+                tkeg(i,k) = tkmin
+                rcpg(i,k) = 0.0
+
+                us(i,k)   = u(kr,i,j)
+                vs(i,k)   = v(kr,i,j)
+                dm2d(i,k) = dm(kr,i,j)
+                omeg(i,k,:) = om(kr,i,j)
+
+                buoy_exc2d(i,k)   = buoy_exc(kr,i,j)
+                temp_new_ADV(i,k) = temp_old(i,k) + rth_advten(kr,i,j) * dt
+                qv_new_ADV(i,k)   = qv_old(i,k)   + rqvften(kr,i,j) * dt
+             ENDDO
+          ENDDO
+
+          IF(APPLY_SUB_MP) THEN
+             DO k = kts, ktf
+                kr = k
+                DO i = its, itf
+                   mpqi(:,i,k) = mp_ice(:,kr,i,j)
+                   mpql(:,i,k) = mp_liq(:,kr,i,j)
+                   mpcf(:,i,k) = mp_cf(:,kr,i,j)
+                ENDDO
+             ENDDO
+          ENDIF
+
+          IF(USE_TRACER_TRANSP == 1) THEN
+             DO k = kts, kte
+                kr = k
+                DO i = its, itf
+                   DO ispc = 1, mtp
+                      se_chem(ispc,i,k) = max(CNV_Tracers(ispc)%Q(i,j,flip(kr)), mintracer)
+                   ENDDO
+                ENDDO
+             ENDDO
+          ENDIF
+        END SUBROUTINE gf2020_drv_load_vertical_data
+
+       SUBROUTINE gf2020_drv_aggregate_feedback()
+          INTEGER :: i, k, kr, n, ispc, zmax
+          REAL    :: fixouts
+
+          !-- Reset inactive plumes
+          DO n = 1, maxiens
+             if(.NOT. icumulus_gf(n)) ierr4d(:,j,n) = -99
+          ENDDO
 
           !-- Flag columns with active convection
           DO i = its, itf
@@ -1331,112 +1361,111 @@ CONTAINS
              enddo loop1
           ENDDO
 
-         !-- Limit total moisture tendencies to prevent negative humidity
-         if (FIX_NEGATIVES) then
+          !-- Limit total moisture tendencies to prevent negative humidity
+          if (FIX_NEGATIVES) then
              DO i = its, itf
                 if(.NOT. do_this_column(i,j)) cycle
-               do k = kts, ktf
-                  temp_tendqv(i,k) = outq(i,k,shal) + outq(i,k,deep) + outq(i,k,mid)
-                  distance(k)      = qv_curr(i,k) + temp_tendqv(i,k) * dt
-               enddo
-               if(minval(distance(kts:ktf)) < 0.0) then
-                  zmax = MINLOC(distance(kts:ktf), 1)
-                  if(abs(temp_tendqv(i,zmax) * dt) < mintracer) then
-                     fixout_qv(i) = 0.999999
-                  else
-                     fixout_qv(i) = (smallerQV - qv_curr(i,zmax)) / (temp_tendqv(i,zmax) * dt)
-                  endif
-                  fixout_qv(i) = max(0.0, min(fixout_qv(i), 1.0))
-               endif
-            ENDDO
-         endif
+                do k = kts, ktf
+                   temp_tendqv(i,k) = outq(i,k,shal) + outq(i,k,deep) + outq(i,k,mid)
+                   distance(k)      = qv_curr(i,k) + temp_tendqv(i,k) * dt
+                enddo
+                if(minval(distance(kts:ktf)) < 0.0) then
+                   zmax = MINLOC(distance(kts:ktf), 1)
+                   if(abs(temp_tendqv(i,zmax) * dt) < mintracer) then
+                      fixout_qv(i) = 0.999999
+                   else
+                      fixout_qv(i) = (smallerQV - qv_curr(i,zmax)) / (temp_tendqv(i,zmax) * dt)
+                   endif
+                   fixout_qv(i) = max(0.0, min(fixout_qv(i), 1.0))
+                endif
+             ENDDO
+          endif
 
-         !-- Accumulate aggregated feedback fields to GEOS Host
+          !-- Accumulate aggregated feedback fields to GEOS Host
           DO i = its, itf
              if(.NOT. do_this_column(i,j)) cycle
-            CONPRR(i,j) = CONPRR(i,j) * fixout_qv(i)
+             CONPRR(i,j) = CONPRR(i,j) * fixout_qv(i)
 
-            DO k = kts, kte
-               kr = k
-               RTHCUTEN(kr,i,j) = (outt(i,k,shal) + outt(i,k,deep) + outt(i,k,mid)) * fixout_qv(i)
-               RQVCUTEN(kr,i,j) = (outq(i,k,shal) + outq(i,k,deep) + outq(i,k,mid)) * fixout_qv(i)
-               RQCCUTEN(kr,i,j) = (outqc(i,k,shal) + outqc(i,k,deep) + outqc(i,k,mid)) * fixout_qv(i)
+             DO k = kts, kte
+                kr = k
+                RTHCUTEN(kr,i,j) = (outt(i,k,shal) + outt(i,k,deep) + outt(i,k,mid)) * fixout_qv(i)
+                RQVCUTEN(kr,i,j) = (outq(i,k,shal) + outq(i,k,deep) + outq(i,k,mid)) * fixout_qv(i)
+                RQCCUTEN(kr,i,j) = (outqc(i,k,shal) + outqc(i,k,deep) + outqc(i,k,mid)) * fixout_qv(i)
 
-               REVSU_GF(kr,i,j) = revsu_gf_2d(i,k) * fixout_qv(i)
-               PRFIL_GF(kr,i,j) = prfil_gf_2d(i,k) * fixout_qv(i)
-            ENDDO
-         ENDDO
+                REVSU_GF(kr,i,j) = revsu_gf_2d(i,k) * fixout_qv(i)
+                PRFIL_GF(kr,i,j) = prfil_gf_2d(i,k) * fixout_qv(i)
+             ENDDO
+          ENDDO
 
-         IF(USE_MOMENTUM_TRANSP) THEN
+          IF(USE_MOMENTUM_TRANSP) THEN
              DO i = its, itf
                 if(.NOT. do_this_column(i,j)) cycle
-               DO k = kts, kte
-                  kr = k
-                  RUCUTEN(kr,i,j) = (outu(i,k,deep) + outu(i,k,mid) + outu(i,k,shal)) * fixout_qv(i)
-                  RVCUTEN(kr,i,j) = (outv(i,k,deep) + outv(i,k,mid) + outv(i,k,shal)) * fixout_qv(i)
-               ENDDO
-            ENDDO
-         ENDIF
+                DO k = kts, kte
+                   kr = k
+                   RUCUTEN(kr,i,j) = (outu(i,k,deep) + outu(i,k,mid) + outu(i,k,shal)) * fixout_qv(i)
+                   RVCUTEN(kr,i,j) = (outv(i,k,deep) + outv(i,k,mid) + outv(i,k,shal)) * fixout_qv(i)
+                ENDDO
+             ENDDO
+          ENDIF
 
-         IF(APPLY_SUB_MP) THEN
+          IF(APPLY_SUB_MP) THEN
              DO i = its, itf
                 if(.NOT. do_this_column(i,j)) cycle
-               DO k = kts, kte
-                  kr = k
-                  SUB_MPQL(:,kr,i,j) = (outmpql(:,i,k,deep) + outmpql(:,i,k,mid) + outmpql(:,i,k,shal)) * fixout_qv(i)
-                  SUB_MPQI(:,kr,i,j) = (outmpqi(:,i,k,deep) + outmpqi(:,i,k,mid) + outmpqi(:,i,k,shal)) * fixout_qv(i)
-                  SUB_MPCF(:,kr,i,j) = (outmpcf(:,i,k,deep) + outmpcf(:,i,k,mid) + outmpcf(:,i,k,shal)) * fixout_qv(i)
-               ENDDO
-            ENDDO
-         ENDIF
+                DO k = kts, kte
+                   kr = k
+                   SUB_MPQL(:,kr,i,j) = (outmpql(:,i,k,deep) + outmpql(:,i,k,mid) + outmpql(:,i,k,shal)) * fixout_qv(i)
+                   SUB_MPQI(:,kr,i,j) = (outmpqi(:,i,k,deep) + outmpqi(:,i,k,mid) + outmpqi(:,i,k,shal)) * fixout_qv(i)
+                   SUB_MPCF(:,kr,i,j) = (outmpcf(:,i,k,deep) + outmpcf(:,i,k,mid) + outmpcf(:,i,k,shal)) * fixout_qv(i)
+                ENDDO
+             ENDDO
+          ENDIF
 
-         IF(USE_TRACER_TRANSP == 1) THEN
+          IF(USE_TRACER_TRANSP == 1) THEN
              DO i = its, itf
                 if(.NOT. do_this_column(i,j)) cycle
-               DO k = kts, kte
-                  kr = k
-                  RCHEMCUTEN(:,kr,i,j) = (out_chem(:,i,k,deep) + out_chem(:,i,k,mid) + out_chem(:,i,k,shal)) * fixout_qv(i)
-               ENDDO
-            ENDDO
+                DO k = kts, kte
+                   kr = k
+                   RCHEMCUTEN(:,kr,i,j) = (out_chem(:,i,k,deep) + out_chem(:,i,k,mid) + out_chem(:,i,k,shal)) * fixout_qv(i)
+                ENDDO
+             ENDDO
 
-            if(FIX_NEGATIVES) then
+             if(FIX_NEGATIVES) then
+                DO i = its, itf
+                   if(.NOT. do_this_column(i,j)) cycle
+                   do ispc = 1, mtp
+                      do k = kts, ktf
+                         distance(k) = se_chem(ispc,i,k) + RCHEMCUTEN(ispc,k,i,j) * dt
+                      enddo
+                      IF(minval(distance(kts:ktf)) < 0.0) THEN
+                         zmax = MINLOC(distance(kts:ktf), 1)
+                         if(abs(RCHEMCUTEN(ispc,zmax,i,j) * dt) < mintracer) then
+                            fixouts = 0.999999
+                         else
+                            fixouts = (mintracer - se_chem(ispc,i,zmax)) / (RCHEMCUTEN(ispc,zmax,i,j) * dt)
+                         endif
+                         fixouts = max(0.0, min(fixouts, 1.0))
+                         RCHEMCUTEN(ispc,kts:ktf,i,j) = fixouts * RCHEMCUTEN(ispc,kts:ktf,i,j)
+                      ENDIF
+                   enddo
+                ENDDO
+             endif
+          ENDIF
+
+          IF(CONVECTION_TRACER) THEN
              DO i = its, itf
                 if(.NOT. do_this_column(i,j)) cycle
-                  do ispc = 1, mtp
-                     do k = kts, ktf
-                        distance(k) = se_chem(ispc,i,k) + RCHEMCUTEN(ispc,k,i,j) * dt
-                     enddo
-                     IF(minval(distance(kts:ktf)) < 0.0) THEN
-                        zmax = MINLOC(distance(kts:ktf), 1)
-                        if(abs(RCHEMCUTEN(ispc,zmax,i,j) * dt) < mintracer) then
-                           fixouts = 0.999999
-                        else
-                           fixouts = (mintracer - se_chem(ispc,i,zmax)) / (RCHEMCUTEN(ispc,zmax,i,j) * dt)
-                        endif
-                        fixouts = max(0.0, min(fixouts, 1.0))
-                        RCHEMCUTEN(ispc,kts:ktf,i,j) = fixouts * RCHEMCUTEN(ispc,kts:ktf,i,j)
-                     ENDIF
-                  enddo
-               ENDDO
-            endif
-         ENDIF
+                DO k = kts, kte
+                   kr = k
+                   RBUOYCUTEN(kr,i,j) = (outbuoy(i,k,deep) + outbuoy(i,k,mid) + outbuoy(i,k,shal)) * fixout_qv(i)
+                ENDDO
+             ENDDO
+          ENDIF
 
-         IF(CONVECTION_TRACER) THEN
-             DO i = its, itf
-                if(.NOT. do_this_column(i,j)) cycle
-               DO k = kts, kte
-                  kr = k
-                  RBUOYCUTEN(kr,i,j) = (outbuoy(i,k,deep) + outbuoy(i,k,mid) + outbuoy(i,k,shal)) * fixout_qv(i)
-               ENDDO
-            ENDDO
-         ENDIF
+          AA3(:,j) = cprr4d(:,j,deep) * fixout_qv(:)
+          AA2(:,j) = cprr4d(:,j,mid)  * fixout_qv(:)
+       END SUBROUTINE gf2020_drv_aggregate_feedback
 
-         AA3(:,j) = cprr4d(:,j,deep) * fixout_qv(:)
-         AA2(:,j) = cprr4d(:,j,mid)  * fixout_qv(:)
-
-      ENDDO ! End J loop
-
-   END SUBROUTINE GF2020_DRV
+     END SUBROUTINE GF2020_DRV
 
    !---------------------------------------------------------------------------------------------------
 
