@@ -1,0 +1,6 @@
+2026-03-19T13:16:07Z | Initial harness request: create before/after wrappers around GF2020_INTERFACE, log prompts and snapshots
+2026-03-19T13:27:30Z | Created initial GF2020_Harness_Mod.F90 with GF2020_BEFORE/GF2020_AFTER stubs (no I/O yet)
+2026-03-19T13:38:35Z | Confirmed plan; next implement real BEFORE/AFTER I/O and wrap GF2020_Interface call in GEOS_GF_InterfaceMod; note upcoming rebase and need to re-check interfaces
+2026-03-19T13:42:12Z | Snapshotted ConvPar_GF2020.F90; added GF2020_BEFORE/AFTER stubs there and wrapped GF2020_INTERFACE call in GEOS_GF_InterfaceMod to call BEFORE/INTERFACE/AFTER
+2026-03-19T13:44:24Z | Removed mistaken nested GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp tree and stray GF2020_Harness_Mod.F90 inside it
+2026-03-19T13:55:25Z | User rebased (stash/apply); ConvPar_GF2020.F90 and GEOS_GF_InterfaceMod.F90 now have conflicts with upstream refactor
