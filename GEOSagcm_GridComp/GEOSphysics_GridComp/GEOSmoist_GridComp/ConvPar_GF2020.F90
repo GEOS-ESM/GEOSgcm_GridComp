@@ -3342,131 +3342,131 @@ CONTAINS
       !-----------------------------------------------------------------------------
       ! 8.2 GATE Soundings Output
       !-----------------------------------------------------------------------------
-      IF(wrtgrads) THEN
-         SELECT CASE(trim(cumulus))
-         CASE('deep');    cty = '1'; nvarbegin = 0
-         CASE('shallow'); cty = '2'; nvarbegin = 101
-         CASE('mid');     cty = '3'; nvarbegin = 201
-         END SELECT
+      if(.NOT. wrtgrads) return
 
-         do i = its, itf
-            do k = kts, ktf
-               nvar = nvarbegin
-               if(trim(cumulus) == 'deep') call set_grads_var(jl, k, nvar, zo(i,k), "zo"//cty, ' height', '3d')
+      SELECT CASE(trim(cumulus))
+      CASE('deep');    cty = '1'; nvarbegin = 0
+      CASE('shallow'); cty = '2'; nvarbegin = 101
+      CASE('mid');     cty = '3'; nvarbegin = 201
+      END SELECT
 
-               dp = 100. * (po_cup(i,k) - po_cup(i,k+1))
-               E_dn = -0.5 * (pwdo(i,k) + pwdo(i,k+1)) * g / dp * edto(i) * 86400. * xlv / cp * xmb(i)
-               C_up = dellaqc(i,k) + (zuo(i,k+1) * qrco(i,k+1) - zuo(i,k) * qrco(i,k)) * g / dp + 0.5 * (pwo(i,k) + pwo(i,k+1)) * g / dp
-               C_up = -C_up * 86400. * xlv / cp * xmb(i)
+      do i = its, itf
+         do k = kts, ktf
+            nvar = nvarbegin
+            if(trim(cumulus) == 'deep') call set_grads_var(jl, k, nvar, zo(i,k), "zo"//cty, ' height', '3d')
 
-               trash  = -(zuo(i,k+1) * (qco(i,k+1) - qo_cup(i,k+1)) - zuo(i,k) * (qco(i,k) - qo_cup(i,k))) * g / dp * 86400. * xlv / cp * xmb(i)
-               trash2 =  (zdo(i,k+1) * (qcdo(i,k+1) - qo_cup(i,k+1)) - zdo(i,k) * (qcdo(i,k) - qo_cup(i,k))) * g / dp * edto(i) * 86400. * xlv / cp * xmb(i)
+            dp = 100. * (po_cup(i,k) - po_cup(i,k+1))
+            E_dn = -0.5 * (pwdo(i,k) + pwdo(i,k+1)) * g / dp * edto(i) * 86400. * xlv / cp * xmb(i)
+            C_up = dellaqc(i,k) + (zuo(i,k+1) * qrco(i,k+1) - zuo(i,k) * qrco(i,k)) * g / dp + 0.5 * (pwo(i,k) + pwo(i,k+1)) * g / dp
+            C_up = -C_up * 86400. * xlv / cp * xmb(i)
 
-               env_mf   = 0.5 * ((zuo(i,k+1) - zdo(i,k+1) * edto(i)) + (zuo(i,k) - zdo(i,k) * edto(i)))
-               resten_H = dellah(i,k) - subten_H(i,k)
-               resten_Q = dellaQ(i,k) - subten_Q(i,k)
-               resten_T = (1./cp) * (resten_H - xlv * resten_Q)
+            trash  = -(zuo(i,k+1) * (qco(i,k+1) - qo_cup(i,k+1)) - zuo(i,k) * (qco(i,k) - qo_cup(i,k))) * g / dp * 86400. * xlv / cp * xmb(i)
+            trash2 =  (zdo(i,k+1) * (qcdo(i,k+1) - qo_cup(i,k+1)) - zdo(i,k) * (qcdo(i,k) - qo_cup(i,k))) * g / dp * edto(i) * 86400. * xlv / cp * xmb(i)
 
-               call set_grads_var(jl, k, nvar, out_chem(1,i,k) * 86400., "outchem"//cty, ' outchem', '3d')
-               call set_grads_var(jl, k, nvar, sc_up_chem(1,i,k), "scup"//cty, ' sc_chem', '3d')
-               call set_grads_var(jl, k, nvar, sc_dn_chem(1,i,k), "scdn"//cty, ' sc_chem', '3d')
-               call set_grads_var(jl, k, nvar, massi, "mi"//cty, ' initial mass', '2d')
-               call set_grads_var(jl, k, nvar, massf, "mf"//cty, ' final mass', '2d')
-               call set_grads_var(jl, k, nvar, se_chem(1,i,k), "se"//cty, ' se_chem', '3d')
-               call set_grads_var(jl, k, nvar, se_cup_chem(1,i,k), "secup"//cty, ' se_cup_chem', '3d')
+            env_mf   = 0.5 * ((zuo(i,k+1) - zdo(i,k+1) * edto(i)) + (zuo(i,k) - zdo(i,k) * edto(i)))
+            resten_H = dellah(i,k) - subten_H(i,k)
+            resten_Q = dellaQ(i,k) - subten_Q(i,k)
+            resten_T = (1./cp) * (resten_H - xlv * resten_Q)
 
-               IF(APPLY_SUB_MP) THEN
-                  kmp = lsmp
-                  call set_grads_var(jl, k, nvar, outmpqi(kmp,i,k) * 86400. * 1000., "outqi"//cty, ' outmpqi', '3d')
-                  call set_grads_var(jl, k, nvar, outmpql(kmp,i,k) * 86400. * 1000., "outql"//cty, ' outmpql', '3d')
-                  call set_grads_var(jl, k, nvar, outmpcf(kmp,i,k) * 86400., "outcf"//cty, ' outmpcf', '3d')
-                  call set_grads_var(jl, k, nvar, mpqi(kmp,i,k), "mpqi"//cty, ' mpqi', '3d')
-                  call set_grads_var(jl, k, nvar, mpql(kmp,i,k), "mpql"//cty, ' mpql', '3d')
-                  call set_grads_var(jl, k, nvar, mpcf(kmp,i,k), "mpcf"//cty, ' mpcf', '3d')
-               ENDIF
+            call set_grads_var(jl, k, nvar, out_chem(1,i,k) * 86400., "outchem"//cty, ' outchem', '3d')
+            call set_grads_var(jl, k, nvar, sc_up_chem(1,i,k), "scup"//cty, ' sc_chem', '3d')
+            call set_grads_var(jl, k, nvar, sc_dn_chem(1,i,k), "scdn"//cty, ' sc_chem', '3d')
+            call set_grads_var(jl, k, nvar, massi, "mi"//cty, ' initial mass', '2d')
+            call set_grads_var(jl, k, nvar, massf, "mf"//cty, ' final mass', '2d')
+            call set_grads_var(jl, k, nvar, se_chem(1,i,k), "se"//cty, ' se_chem', '3d')
+            call set_grads_var(jl, k, nvar, se_cup_chem(1,i,k), "secup"//cty, ' se_cup_chem', '3d')
 
-               call set_grads_var(jl, k, nvar, env_mf, "sub"//cty, ' sub', '3d')
+            IF(APPLY_SUB_MP) THEN
+               kmp = lsmp
+               call set_grads_var(jl, k, nvar, outmpqi(kmp,i,k) * 86400. * 1000., "outqi"//cty, ' outmpqi', '3d')
+               call set_grads_var(jl, k, nvar, outmpql(kmp,i,k) * 86400. * 1000., "outql"//cty, ' outmpql', '3d')
+               call set_grads_var(jl, k, nvar, outmpcf(kmp,i,k) * 86400., "outcf"//cty, ' outmpcf', '3d')
+               call set_grads_var(jl, k, nvar, mpqi(kmp,i,k), "mpqi"//cty, ' mpqi', '3d')
+               call set_grads_var(jl, k, nvar, mpql(kmp,i,k), "mpql"//cty, ' mpql', '3d')
+               call set_grads_var(jl, k, nvar, mpcf(kmp,i,k), "mpcf"//cty, ' mpcf', '3d')
+            ENDIF
 
-               IF(LIQ_ICE_NUMBER_CONC == 1) THEN
-                  call set_grads_var(jl, k, nvar, outnice(i,k) * 86400., "outnice"//cty, 'out # ice1/day', '3d')
-                  call set_grads_var(jl, k, nvar, outnliq(i,k) * 86400., "outnliq"//cty, 'out # liq /day', '3d')
-               ENDIF
+            call set_grads_var(jl, k, nvar, env_mf, "sub"//cty, ' sub', '3d')
 
-               call set_grads_var(jl, k, nvar, zuo(i,k) / xmb(i), "zup"//cty, 'norm m flux up', '3d')
-               call set_grads_var(jl, k, nvar, zdo(i,k) / xmb(i), "zdn"//cty, 'norm m flux dn', '3d')
-               call set_grads_var(jl, k, nvar, zenv(i,k), "zenv"//cty, 'norm m flux env', '3d')
-               call set_grads_var(jl, k, nvar, -edto(i) * xmb(i) * zdo(i,k), "mdn"//cty, 'm flux down (kg/s/m^2)', '3d')
-               call set_grads_var(jl, k, nvar, up_massentro(i,k), "upent"//cty, 'up_massentr(kg/s/m^2)', '3d')
-               call set_grads_var(jl, k, nvar, xmb(i) * up_massdetro(i,k), "updet"//cty, 'up_massdetr(kg/s/m^2)', '3d')
-               call set_grads_var(jl, k, nvar, outt(i,k) * 86400., "outt"//cty, 'outt K/day', '3d')
-               call set_grads_var(jl, k, nvar, resten_T * 86400., "rest"//cty, 'residuo T K/day', '3d')
-               call set_grads_var(jl, k, nvar, resten_H * 86400. / cp, "resh"//cty, 'residuo H J/kg/day', '3d')
-               call set_grads_var(jl, k, nvar, resten_Q * 86400. * xlv / cp, "resq"//cty, 'residuo q K/day', '3d')
-               call set_grads_var(jl, k, nvar, subten_T(i,k) * 86400., "subt"//cty, 'subT K/day', '3d')
-               call set_grads_var(jl, k, nvar, subten_H(i,k) * 86400. / cp, "subh"//cty, 'subH J/kg/day', '3d')
-               call set_grads_var(jl, k, nvar, subten_Q(i,k) * 86400. * xlv / cp, "subq"//cty, 'subq K/day', '3d')
-               call set_grads_var(jl, k, nvar, outq(i,k) * 86400. * xlv / cp, "outq"//cty, 'outq K/s', '3d')
-               call set_grads_var(jl, k, nvar, outqc(i,k) * 86400. * xlv / cp, "outqc"//cty, 'outqc K/day', '3d')
-               call set_grads_var(jl, k, nvar, pre(i) * 3600., "precip"//cty, 'precip mm', '2d')
-               call set_grads_var(jl, k, nvar, prec_flx(i,k) * 3600., "precflx"//cty, 'prec flx mm', '3d')
-               call set_grads_var(jl, k, nvar, pwo(i,k), "pwo"//cty, 'xx', '3d')
-               call set_grads_var(jl, k, nvar, outu(i,k) * 86400., "outu"//cty, 'out_U m/s/day', '3d')
-               call set_grads_var(jl, k, nvar, outv(i,k) * 86400., "outv"//cty, 'out_V m/s/day', '3d')
-               call set_grads_var(jl, k, nvar, xmb(i), "xmb"//cty, 'xmb kg/m2/s', '2d')
-               call set_grads_var(jl, k, nvar, vvel2d(i,k), "W2d"//cty, 'W /m/s', '3d')
-               call set_grads_var(jl, k, nvar, vvel1d(i), "W1d"//cty, 'W1s /m/s', '2d')
-               call set_grads_var(jl, k, nvar, us(i,k), "us"//cty, 'U /m/s', '3d')
-               call set_grads_var(jl, k, nvar, outu(i,k) * 86400. / (1.e-16 + xmb(i)), "delu"//cty, 'dellu', '3d')
-               call set_grads_var(jl, k, nvar, evap_bcb(i,k) * 1000., "evcb"//cty, 'g/kg', '3d')
-               call set_grads_var(jl, k, nvar, tot_pw_up_chem(1,i), "pwup"//cty, 'pwup', '2d')
-               call set_grads_var(jl, k, nvar, tot_pw_dn_chem(1,i), "pwdn"//cty, 'pwdn', '2d')
-               call set_grads_var(jl, k, nvar, xmb(i) * dellah(i,k) * 86400. / cp, "delh"//cty, 'dellah K/day', '3d')
-               call set_grads_var(jl, k, nvar, xmb(i) * dellaq(i,k) * 86400. * xlv / cp, "dellq"//cty, 'dellaq K/day', '3d')
-               call set_grads_var(jl, k, nvar, xmb(i) * dellaqc(i,k) * 86400. * xlv / cp, "dellqc"//cty, 'dellaqc K/day', '3d')
-               call set_grads_var(jl, k, nvar, xmb(i), "xmb"//cty, 'm flux up (kg/s/m^2)', '2d')
-               call set_grads_var(jl, k, nvar, aa1(i), "aa1"//cty, 'AA1 J/kg3)', '2d')
-               call set_grads_var(jl, k, nvar, float(ierr(i)), "ierr"//cty, 'ierr #', '2d')
-               call set_grads_var(jl, k, nvar, xmb(i) * dd_massentro(i,k), "ddent"//cty, 'dd_massentr(kg/s/m^2)', '3d')
-               call set_grads_var(jl, k, nvar, xmb(i) * dd_massdetro(i,k), "dddet"//cty, 'dd_massdetr(kg/s/m^2)', '3d')
-               call set_grads_var(jl, k, nvar, hc(i,k), "hc"//cty, 'hc', '3d')
-               call set_grads_var(jl, k, nvar, hco(i,k), "hco"//cty, 'hco', '3d')
-               call set_grads_var(jl, k, nvar, dby(i,k), "dby"//cty, 'dbuo', '3d')
-               call set_grads_var(jl, k, nvar, t_cup(i,k) - 273.15, "te"//cty, 'K', '3d')
-               call set_grads_var(jl, k, nvar, 1000. * q_cup(i,k), "qe"//cty, 'kg kg-1', '3d')
-               call set_grads_var(jl, k, nvar, he_cup(i,k), "he"//cty, 'he', '3d')
-               call set_grads_var(jl, k, nvar, HKB(i), "hkb"//cty, 'H', '2d')
-               call set_grads_var(jl, k, nvar, z_cup(i, max(1,k22(i))), "zs"//cty, 'm', '2d')
-               call set_grads_var(jl, k, nvar, z_cup(i, max(1,kbcon(i))), "zbcon"//cty, 'm', '2d')
-               call set_grads_var(jl, k, nvar, z_cup(i, max(1,ktop(i))), "ztop"//cty, 'm', '2d')
-               call set_grads_var(jl, k, nvar, z_cup(i, max(1,klcl(i))), "zlcl"//cty, 'm', '2d')
-               call set_grads_var(jl, k, nvar, z_cup(i, max(1,jmin(i))), "zjmin"//cty, 'm', '2d')
-               call set_grads_var(jl, k, nvar, zws(i), "ws"//cty, 'm/s', '2d')
-               call set_grads_var(jl, k, nvar, clfrac(i,k), "clfrac"//cty, 'shcf #', '3d')
-               call set_grads_var(jl, k, nvar, entr_rate(i,k), "entr"//cty, 'm-1', '3d')
-               call set_grads_var(jl, k, nvar, cd(i,k), "detr"//cty, 'm-1', '3d')
-               call set_grads_var(jl, k, nvar, pwdo(i,k), "pwd"//cty, 'xx', '3d')
-               call set_grads_var(jl, k, nvar, edto(i), "edt"//cty, 'edt kg/m2/s', '2d')
-               call set_grads_var(jl, k, nvar, E_DN, "EVAP"//cty, 'xx', '3d')
-               call set_grads_var(jl, k, nvar, C_UP, "CUP"//cty, 'xx', '3d')
-               call set_grads_var(jl, k, nvar, trash, "F1"//cty, 'F1', '3d')
-               call set_grads_var(jl, k, nvar, trash2, "F2"//cty, 'F2', '3d')
-               call set_grads_var(jl, k, nvar, p_liq_ice(i,k), "pli"//cty, '#', '3d')
-               call set_grads_var(jl, k, nvar, melting_layer(i,k), "cpli"//cty, '#', '3d')
-               call set_grads_var(jl, k, nvar, t(i,k), "t"//cty, 'temp K', '3d')
-               call set_grads_var(jl, k, nvar, tn(i,k), "tn"//cty, 'temp K', '3d')
-               call set_grads_var(jl, k, nvar, 1000. * q(i,k), "q"//cty, 'q g/kg', '3d')
-               call set_grads_var(jl, k, nvar, 1000. * qo(i,k), "qn"//cty, 'q g/kg', '3d')
-               call set_grads_var(jl, k, nvar, 1000. * qrco(i,k), "qrc"//cty, 'q g/kg', '3d')
-               call set_grads_var(jl, k, nvar, 1000. * (q(i,k) + outq(i,k) * dtime), "qnc"//cty, 'q upd conv g/kg', '3d')
-               call set_grads_var(jl, k, nvar, 1000. * (qo(i,k) + outq(i,k) * dtime), "qnall"//cty, 'q upd all g/kg', '3d')
-               call set_grads_var(jl, k, nvar, 1000. * qrr(i,k), "qrr"//cty, 'qrr g/kg', '3d')
-               call set_grads_var(jl, k, nvar, 1000. * qco(i,k), "qc"//cty, 'qc g/kg', '3d')
-               call set_grads_var(jl, k, nvar, 1000. * qo_cup(i,k), "qcup"//cty, 'qc g/kg', '3d')
-               call set_grads_var(jl, k, nvar, 1000. * qeso_cup(i,k), "qescup"//cty, 'qc g/kg', '3d')
-            enddo
-            if(wrtgrads) call wrt_bin_ctl(1, kte, po(1,1:kte), cumulus)
+            IF(LIQ_ICE_NUMBER_CONC == 1) THEN
+               call set_grads_var(jl, k, nvar, outnice(i,k) * 86400., "outnice"//cty, 'out # ice1/day', '3d')
+               call set_grads_var(jl, k, nvar, outnliq(i,k) * 86400., "outnliq"//cty, 'out # liq /day', '3d')
+            ENDIF
+
+            call set_grads_var(jl, k, nvar, zuo(i,k) / xmb(i), "zup"//cty, 'norm m flux up', '3d')
+            call set_grads_var(jl, k, nvar, zdo(i,k) / xmb(i), "zdn"//cty, 'norm m flux dn', '3d')
+            call set_grads_var(jl, k, nvar, zenv(i,k), "zenv"//cty, 'norm m flux env', '3d')
+            call set_grads_var(jl, k, nvar, -edto(i) * xmb(i) * zdo(i,k), "mdn"//cty, 'm flux down (kg/s/m^2)', '3d')
+            call set_grads_var(jl, k, nvar, up_massentro(i,k), "upent"//cty, 'up_massentr(kg/s/m^2)', '3d')
+            call set_grads_var(jl, k, nvar, xmb(i) * up_massdetro(i,k), "updet"//cty, 'up_massdetr(kg/s/m^2)', '3d')
+            call set_grads_var(jl, k, nvar, outt(i,k) * 86400., "outt"//cty, 'outt K/day', '3d')
+            call set_grads_var(jl, k, nvar, resten_T * 86400., "rest"//cty, 'residuo T K/day', '3d')
+            call set_grads_var(jl, k, nvar, resten_H * 86400. / cp, "resh"//cty, 'residuo H J/kg/day', '3d')
+            call set_grads_var(jl, k, nvar, resten_Q * 86400. * xlv / cp, "resq"//cty, 'residuo q K/day', '3d')
+            call set_grads_var(jl, k, nvar, subten_T(i,k) * 86400., "subt"//cty, 'subT K/day', '3d')
+            call set_grads_var(jl, k, nvar, subten_H(i,k) * 86400. / cp, "subh"//cty, 'subH J/kg/day', '3d')
+            call set_grads_var(jl, k, nvar, subten_Q(i,k) * 86400. * xlv / cp, "subq"//cty, 'subq K/day', '3d')
+            call set_grads_var(jl, k, nvar, outq(i,k) * 86400. * xlv / cp, "outq"//cty, 'outq K/s', '3d')
+            call set_grads_var(jl, k, nvar, outqc(i,k) * 86400. * xlv / cp, "outqc"//cty, 'outqc K/day', '3d')
+            call set_grads_var(jl, k, nvar, pre(i) * 3600., "precip"//cty, 'precip mm', '2d')
+            call set_grads_var(jl, k, nvar, prec_flx(i,k) * 3600., "precflx"//cty, 'prec flx mm', '3d')
+            call set_grads_var(jl, k, nvar, pwo(i,k), "pwo"//cty, 'xx', '3d')
+            call set_grads_var(jl, k, nvar, outu(i,k) * 86400., "outu"//cty, 'out_U m/s/day', '3d')
+            call set_grads_var(jl, k, nvar, outv(i,k) * 86400., "outv"//cty, 'out_V m/s/day', '3d')
+            call set_grads_var(jl, k, nvar, xmb(i), "xmb"//cty, 'xmb kg/m2/s', '2d')
+            call set_grads_var(jl, k, nvar, vvel2d(i,k), "W2d"//cty, 'W /m/s', '3d')
+            call set_grads_var(jl, k, nvar, vvel1d(i), "W1d"//cty, 'W1s /m/s', '2d')
+            call set_grads_var(jl, k, nvar, us(i,k), "us"//cty, 'U /m/s', '3d')
+            call set_grads_var(jl, k, nvar, outu(i,k) * 86400. / (1.e-16 + xmb(i)), "delu"//cty, 'dellu', '3d')
+            call set_grads_var(jl, k, nvar, evap_bcb(i,k) * 1000., "evcb"//cty, 'g/kg', '3d')
+            call set_grads_var(jl, k, nvar, tot_pw_up_chem(1,i), "pwup"//cty, 'pwup', '2d')
+            call set_grads_var(jl, k, nvar, tot_pw_dn_chem(1,i), "pwdn"//cty, 'pwdn', '2d')
+            call set_grads_var(jl, k, nvar, xmb(i) * dellah(i,k) * 86400. / cp, "delh"//cty, 'dellah K/day', '3d')
+            call set_grads_var(jl, k, nvar, xmb(i) * dellaq(i,k) * 86400. * xlv / cp, "dellq"//cty, 'dellaq K/day', '3d')
+            call set_grads_var(jl, k, nvar, xmb(i) * dellaqc(i,k) * 86400. * xlv / cp, "dellqc"//cty, 'dellaqc K/day', '3d')
+            call set_grads_var(jl, k, nvar, xmb(i), "xmb"//cty, 'm flux up (kg/s/m^2)', '2d')
+            call set_grads_var(jl, k, nvar, aa1(i), "aa1"//cty, 'AA1 J/kg3)', '2d')
+            call set_grads_var(jl, k, nvar, float(ierr(i)), "ierr"//cty, 'ierr #', '2d')
+            call set_grads_var(jl, k, nvar, xmb(i) * dd_massentro(i,k), "ddent"//cty, 'dd_massentr(kg/s/m^2)', '3d')
+            call set_grads_var(jl, k, nvar, xmb(i) * dd_massdetro(i,k), "dddet"//cty, 'dd_massdetr(kg/s/m^2)', '3d')
+            call set_grads_var(jl, k, nvar, hc(i,k), "hc"//cty, 'hc', '3d')
+            call set_grads_var(jl, k, nvar, hco(i,k), "hco"//cty, 'hco', '3d')
+            call set_grads_var(jl, k, nvar, dby(i,k), "dby"//cty, 'dbuo', '3d')
+            call set_grads_var(jl, k, nvar, t_cup(i,k) - 273.15, "te"//cty, 'K', '3d')
+            call set_grads_var(jl, k, nvar, 1000. * q_cup(i,k), "qe"//cty, 'kg kg-1', '3d')
+            call set_grads_var(jl, k, nvar, he_cup(i,k), "he"//cty, 'he', '3d')
+            call set_grads_var(jl, k, nvar, HKB(i), "hkb"//cty, 'H', '2d')
+            call set_grads_var(jl, k, nvar, z_cup(i, max(1,k22(i))), "zs"//cty, 'm', '2d')
+            call set_grads_var(jl, k, nvar, z_cup(i, max(1,kbcon(i))), "zbcon"//cty, 'm', '2d')
+            call set_grads_var(jl, k, nvar, z_cup(i, max(1,ktop(i))), "ztop"//cty, 'm', '2d')
+            call set_grads_var(jl, k, nvar, z_cup(i, max(1,klcl(i))), "zlcl"//cty, 'm', '2d')
+            call set_grads_var(jl, k, nvar, z_cup(i, max(1,jmin(i))), "zjmin"//cty, 'm', '2d')
+            call set_grads_var(jl, k, nvar, zws(i), "ws"//cty, 'm/s', '2d')
+            call set_grads_var(jl, k, nvar, clfrac(i,k), "clfrac"//cty, 'shcf #', '3d')
+            call set_grads_var(jl, k, nvar, entr_rate(i,k), "entr"//cty, 'm-1', '3d')
+            call set_grads_var(jl, k, nvar, cd(i,k), "detr"//cty, 'm-1', '3d')
+            call set_grads_var(jl, k, nvar, pwdo(i,k), "pwd"//cty, 'xx', '3d')
+            call set_grads_var(jl, k, nvar, edto(i), "edt"//cty, 'edt kg/m2/s', '2d')
+            call set_grads_var(jl, k, nvar, E_DN, "EVAP"//cty, 'xx', '3d')
+            call set_grads_var(jl, k, nvar, C_UP, "CUP"//cty, 'xx', '3d')
+            call set_grads_var(jl, k, nvar, trash, "F1"//cty, 'F1', '3d')
+            call set_grads_var(jl, k, nvar, trash2, "F2"//cty, 'F2', '3d')
+            call set_grads_var(jl, k, nvar, p_liq_ice(i,k), "pli"//cty, '#', '3d')
+            call set_grads_var(jl, k, nvar, melting_layer(i,k), "cpli"//cty, '#', '3d')
+            call set_grads_var(jl, k, nvar, t(i,k), "t"//cty, 'temp K', '3d')
+            call set_grads_var(jl, k, nvar, tn(i,k), "tn"//cty, 'temp K', '3d')
+            call set_grads_var(jl, k, nvar, 1000. * q(i,k), "q"//cty, 'q g/kg', '3d')
+            call set_grads_var(jl, k, nvar, 1000. * qo(i,k), "qn"//cty, 'q g/kg', '3d')
+            call set_grads_var(jl, k, nvar, 1000. * qrco(i,k), "qrc"//cty, 'q g/kg', '3d')
+            call set_grads_var(jl, k, nvar, 1000. * (q(i,k) + outq(i,k) * dtime), "qnc"//cty, 'q upd conv g/kg', '3d')
+            call set_grads_var(jl, k, nvar, 1000. * (qo(i,k) + outq(i,k) * dtime), "qnall"//cty, 'q upd all g/kg', '3d')
+            call set_grads_var(jl, k, nvar, 1000. * qrr(i,k), "qrr"//cty, 'qrr g/kg', '3d')
+            call set_grads_var(jl, k, nvar, 1000. * qco(i,k), "qc"//cty, 'qc g/kg', '3d')
+            call set_grads_var(jl, k, nvar, 1000. * qo_cup(i,k), "qcup"//cty, 'qc g/kg', '3d')
+            call set_grads_var(jl, k, nvar, 1000. * qeso_cup(i,k), "qescup"//cty, 'qc g/kg', '3d')
          enddo
-      ENDIF
+         if(wrtgrads) call wrt_bin_ctl(1, kte, po(1,1:kte), cumulus)
+      enddo
 
    END SUBROUTINE CUP_gf
 
