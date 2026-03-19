@@ -395,6 +395,10 @@ class GFDL1MInterface(UserCode):
         self._managed_state.register_2D("radar.echo_top_reflectivity", "DBZ_TOP", export_repository)
         self._managed_state.register_2D("radar.minus_10c_reflectivity", "DBZ_M10C", export_repository)
 
+        self._managed_state.register("mass_fraction.suspended_rain", "QRTOT", export_repository)
+        self._managed_state.register("mass_fraction.suspended_graupel", "QGTOT", export_repository)
+        self._managed_state.register("mass_fraction.suspended_snow", "QSTOT", export_repository)
+
         if self._gfdl_1m is None:
             raise RuntimeError("GFDL1M Runtime called before initialization was done. Abort.")
 

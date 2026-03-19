@@ -429,4 +429,12 @@ class GFDL1M(NDSLRuntime):
             local_mass=self._locals.mass,
             local_u_unmodified=self._locals.u_unmodified,
             local_v_unmodified=self._locals.v_unmodified,
+            simulated_reflectivity=state.radar.simulated_reflectivity,
+            maximum_composite_reflectivity=state.radar.maximum_composite_reflectivity,
+            base_1km_agl_reflectivity=state.radar.base_1km_agl_reflectivity,
+            echo_top_reflectivity=state.radar.echo_top_reflectivity,
+            minus_10c_reflectivity=state.radar.minus_10c_reflectivity,
+            mass_fraction_suspended_rain=state.mass_fraction.suspended_rain,
+            mass_fraction_suspended_snow=state.mass_fraction.suspended_snow,
+            mass_fraction_suspended_graupel=state.mass_fraction.suspended_graupel,
         )

@@ -999,6 +999,36 @@ class GFDL1MState(State):
             }
         )
 
+    @dataclasses.dataclass
+    class MassFraction:
+        suspended_rain: Quantity | None = dataclasses.field(
+            metadata={
+                "name": "suspended_rain",
+                "dims": [I_DIM, J_DIM, K_DIM],
+                "units": "dBZ",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        suspended_snow: Quantity | None = dataclasses.field(
+            metadata={
+                "name": "suspended_snow",
+                "dims": [I_DIM, J_DIM, K_DIM],
+                "units": "dBZ",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        suspended_graupel: Quantity | None = dataclasses.field(
+            metadata={
+                "name": "suspended_graupel",
+                "dims": [I_DIM, J_DIM, K_DIM],
+                "units": "dBZ",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+
     vertical_motion: VerticalMotion
     mixing_ratio: MixingRatio
     cloud_fraction: CloudFraction
@@ -1012,3 +1042,4 @@ class GFDL1MState(State):
     anvil: Anvil
     tendencies: Tendencies
     radar: Radar
+    mass_fraction: MassFraction

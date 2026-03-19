@@ -1,4 +1,4 @@
-from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
+from ndsl import NDSLRuntime, QuantityFactory, StencilFactory, ndsl_log
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, function, interval, sqrt
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
@@ -12,6 +12,7 @@ from pyMoist.saturation_tables import (
     saturation_specific_humidity,
 )
 from pyMoist.shared.redistribute_clouds import redistribute_clouds
+from ndsl.stencils.basic_operations import copy
 
 
 @function
@@ -295,6 +296,11 @@ class GFDL1MFinalize(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
+        self._copy = stencil_factory.from_dims_halo(
+            func=copy,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+
         # Dev NOTE: this is an orchestration workaround. Direct call to
         #           `self.saturation_tables.X` fails closure capture for
         #           argument reconstruction at call time
@@ -359,6 +365,14 @@ class GFDL1MFinalize(NDSLRuntime):
         local_mass,
         local_u_unmodified,
         local_v_unmodified,
+        simulated_reflectivity,
+        maximum_composite_reflectivity,
+        base_1km_agl_reflectivity,
+        echo_top_reflectivity,
+        minus_10c_reflectivity,
+        mass_fraction_suspended_rain,
+        mass_fraction_suspended_snow,
+        mass_fraction_suspended_graupel,
     ):
         self._redistribute_clouds(
             cloud_fraction=radiation_cloud_fraction,
@@ -533,8 +547,6 @@ class GFDL1MFinalize(NDSLRuntime):
             dgraupel_dt=dgraupeldt_micro,
         )
 
-        # NOTE need a better way to figure out if this is associated
-        # this will never be none with the new state
         if large_scale_rainwater_source is not None:
             self._update_rainwater_source(
                 large_scale_rainwater_source,
@@ -542,8 +554,6 @@ class GFDL1MFinalize(NDSLRuntime):
                 draindt_micro,
             )
 
-        # NOTE need a better way to figure out if this is associated
-        # this will never be none with the new state
         if dtdt_friction_pressure_weighted is not None:
             self._dissipative_ke_heating(
                 mass=local_mass,
@@ -556,14 +566,21 @@ class GFDL1MFinalize(NDSLRuntime):
                 t_tendency=dtdt_friction_pressure_weighted,
             )
 
-        # NOTE DISABLED DURING DEVELOPMENT.
-        # NOTE need a better way to figure out if this is associated,
-        # this will never be none with the new state
-        # if (
-        #     outputs.simulated_reflectivity is not None
-        #     or outputs.maximum_reflectivity is not None
-        #     or outputs.one_km_agl_reflectivity is not None
-        #     or outputs.echo_top_reflectivity is not None
-        #     or outputs.minus_10c_reflectivity is not None
-        # ):
-        #     ndsl_log.warning("Diagnostic radar output not implemented yet.")
+        if (
+            simulated_reflectivity is not None
+            or maximum_composite_reflectivity is not None
+            or base_1km_agl_reflectivity is not None
+            or echo_top_reflectivity is not None
+            or minus_10c_reflectivity is not None
+        ):
+            ndsl_log.warning("Diagnostic radar output not implemented yet.")
+
+        # new code from v11.8.1, is not tested (translate tests are based on data from v11.5.2)
+        if mass_fraction_suspended_rain is not None:
+            self._copy(mixing_ratio_rain, mass_fraction_suspended_rain)
+
+        if mass_fraction_suspended_snow is not None:
+            self._copy(mixing_ratio_snow, mass_fraction_suspended_snow)
+
+        if mass_fraction_suspended_graupel is not None:
+            self._copy(mixing_ratio_graupel, mass_fraction_suspended_graupel)
