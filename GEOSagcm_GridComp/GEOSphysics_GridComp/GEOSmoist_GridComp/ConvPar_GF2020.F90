@@ -174,14 +174,14 @@ MODULE ConvPar_GF2020
    INTEGER, PARAMETER :: ens4    = 1
 
    !--- Mathematical Constants
-   REAL, PARAMETER :: RADIANS_TO_DEGREES = 180.0 / 3.14159  ! Conversion factor from radians to degrees
+   REAL, PARAMETER :: PI                 = 3.1415926536
+   REAL, PARAMETER :: RADIANS_TO_DEGREES = 180.0 / PI  ! Conversion factor from radians to degrees
 
    !--- Numerical Constraints
    REAL, PARAMETER :: pgcon      = 0.0    ! Pressure gradient updraft constant (Zhang/Wu 2003)
    REAL, PARAMETER :: xmbmaxshal = 0.05   ! kg/m2/s maximum base mass flux (shallow)
    REAL, PARAMETER :: mintracer  = tiny(1.0) ! Lower bound for tracers
    REAL, PARAMETER :: smallerQV  = 1.e-16 ! Lower bound for specific humidity
-   REAL, PARAMETER :: PI         = 3.1415926536
 
    INTEGER :: whoami_all, JCOL
 
