@@ -41,10 +41,10 @@ MODULE ConvPar_GF2020
    LOGICAL :: FIX_NEGATIVES       = .FALSE. ! Prevent negative water vapor / tracers
    INTEGER :: VERT_DISCR          = 1       ! 1 = New vertical discretization, 0 = Default
    INTEGER :: CLEV_GRID           = 1       ! 0=Default, 1=Tiedtke(1989), 2=GATE
-   INTEGER :: SATUR_CALC          = 1       ! 1 = New saturation specific humidity calc
+   LOGICAL :: SATUR_CALC          = .TRUE.  ! Use new saturation specific humidity calculation
    INTEGER :: USE_SMOOTH_TEND     = 0       ! 0 = OFF, >0 averages tendencies (e.g., 1=avg(k-1,k,k+1))
    REAL    :: MAX_TQ_TEND         = 100.    ! Max T,Q tendency allowed (K/day)
-   INTEGER :: OUTPUT_SOUND        = 0       ! Diagnostic profile output flag
+   LOGICAL :: OUTPUT_SOUND        = .FALSE. ! Diagnostic profile output flag
 
    LOGICAL :: wrtgrads            = .FALSE.
    INTEGER :: nrec = 0, ntimes = 0
@@ -82,7 +82,7 @@ MODULE ConvPar_GF2020
    !=============================================================================
    ! 3. TRIGGERS, MEMORY, AND MICROPHYSICS
    !=============================================================================
-   INTEGER :: MOIST_TRIGGER       = 0       ! RH effects on the cap_max trigger
+   LOGICAL :: MOIST_TRIGGER       = .FALSE. ! RH effects on the cap_max trigger
    INTEGER :: ADV_TRIGGER         = 0       ! 1=Kain (2004), 2=Moist adv (Ma&Tan 2009), 3=Xie dCAPE
    INTEGER :: AUTOCONV            = 1       ! 1=Kessler, 3=Kessler w/temp, 4=Sundqvist
 
@@ -95,24 +95,24 @@ MODULE ConvPar_GF2020
    !--- Microphysics & Cloud Feedbacks
    INTEGER, PARAMETER :: nmp      = 1       ! Number of microphysics schemes
    INTEGER, PARAMETER :: lsmp     = 1       ! Index for host microphysics arrays
-   INTEGER :: APPLY_SUB_MP        = 0       ! Apply conv subsidence to grid-scale ice/liq/cloud fraction
+   LOGICAL :: APPLY_SUB_MP        = .FALSE. ! Apply conv subsidence to grid-scale ice/liq/cloud fraction
    LOGICAL :: USE_REBCB           = .TRUE.  ! Turn ON/OFF rainfall evap below cloud base
-   INTEGER :: EVAP_FIX            = 1       ! Prevent total evap from exceeding column rainfall
-   INTEGER :: FRAC_MODIS          = 0       ! Use MODIS/CALIPSO derived liq/ice fraction
-   INTEGER :: USE_WETBULB         = 0       ! Use wetbulb formulation for downdrafts
+   LOGICAL :: EVAP_FIX            = .TRUE.  ! Prevent total evap from exceeding column rainfall
+   LOGICAL :: FRAC_MODIS          = .FALSE. ! Use MODIS/CALIPSO derived liq/ice fraction
+   LOGICAL :: USE_WETBULB         = .FALSE. ! Use wetbulb formulation for downdrafts
 
    !--- Misc Optional Parameterizations
-   INTEGER :: LIGHTNING_DIAG      = 0       ! Lightning diagnostic based on Lopez 2016
+   LOGICAL :: LIGHTNING_DIAG      = .FALSE. ! Lightning diagnostic based on Lopez 2016
    REAL    :: OVERSHOOT           = 0.0     ! Overshoot flag (0/1)
    REAL    :: use_cloud_dissipation = 0.0
    REAL    :: use_gustiness       = 0.0
    REAL    :: use_random_num      = 0.0
    REAL    :: dcape_threshold     = 0.0
    REAL    :: beta_sh             = 2.2
-   INTEGER :: use_linear_subcl_mf = 1
+   LOGICAL :: use_linear_subcl_mf = .TRUE.
 
    !--- Zero-Diff Debug Flags (Stable version Dec 2019 equivalence)
-   INTEGER :: ZERO_DIFF_ENTR      = 0      
+   LOGICAL :: ZERO_DIFF_ENTR      = .FALSE.      
    LOGICAL :: ZERO_DIFF_LAND      = .FALSE.
    LOGICAL :: ZERO_DIFF_VVEL      = .FALSE.      
 
@@ -1075,7 +1075,7 @@ CONTAINS
             omeg(i,:,:)    = 0.0
          ENDDO
 
-         IF(APPLY_SUB_MP == 1) THEN
+         IF(APPLY_SUB_MP) THEN
             DO i = its, itf
                outmpqi(:,i,:,:) = 0.0
                outmpql(:,i,:,:) = 0.0
@@ -1129,7 +1129,7 @@ CONTAINS
             ENDDO
          ENDDO
 
-         IF(APPLY_SUB_MP == 1) THEN
+         IF(APPLY_SUB_MP) THEN
             DO k = kts, ktf
                kr = k
                DO i = its, itf
@@ -1350,7 +1350,7 @@ CONTAINS
             ENDDO
          ENDIF
 
-         IF(APPLY_SUB_MP == 1) THEN
+         IF(APPLY_SUB_MP) THEN
              DO i = its, itf
                 if(.NOT. do_this_column(i,j)) cycle
                DO k = kts, kte
@@ -1637,7 +1637,7 @@ CONTAINS
          zcutdown        = 5000.  ! Originates from mid-level dry air
          z_detr          = 1000.  ! Forms distinct cold pool in PBL
 
-         cap_max_inc  = MERGE(90.0, 20.0, MOIST_TRIGGER /= 0)
+         cap_max_inc  = MERGE(90.0, 20.0, MOIST_TRIGGER)
          lambau_dp(:) = lambau_deep
          lambau_dn(:) = lambau_shdn
 
@@ -1649,7 +1649,7 @@ CONTAINS
          zcutdown        = 4000.  ! Lower mid-levels
          z_detr          = 1000.  ! Evaporates in deep sub-cloud layer
 
-         cap_max_inc  = MERGE(90.0, 10.0, MOIST_TRIGGER /= 0)
+         cap_max_inc  = MERGE(90.0, 10.0, MOIST_TRIGGER)
          lambau_dp(:) = lambau_shdn
          lambau_dn(:) = lambau_shdn
 
@@ -1661,7 +1661,7 @@ CONTAINS
          zcutdown        = 1500.  ! Very shallow if at all
          z_detr          = 300.   ! Small detrainment right at surface
 
-         cap_max_inc  = MERGE(10.0, 25.0, MOIST_TRIGGER /= 0)
+         cap_max_inc  = MERGE(10.0, 25.0, MOIST_TRIGGER)
          lambau_dp(:) = lambau_shdn
          lambau_dn(:) = lambau_shdn
 
@@ -1777,7 +1777,7 @@ CONTAINS
       call cup_env(zo, qeso, heo, heso, tn, qo, po, z1, psur, ierr, -1, itf, ktf, its, ite, kts, kte)
 
       !--- Model Sounding Output (Optional)
-      IF(OUTPUT_SOUND == 1) THEN
+      IF(OUTPUT_SOUND) THEN
          call SOUND(1,cumulus,int_time,dtime,ens4,itf,ktf,its,ite, kts,kte,xlats,xlons,jcol,whoami_all  &
               ,z ,qes ,he ,hes ,t ,q ,po,z1 ,psur,zo,qeso,heo,heso,tn,qo,us,vs ,omeg,xz     &
               ,h_sfc_flux,le_sfc_flux,tsur, dx,stochastic_sig,zws,ztexec,zqexec, xland      &
@@ -1994,7 +1994,7 @@ CONTAINS
          if(ierr(i) /= 0) cycle
          do k = kts, kte
             frh = min(qo_cup(i,k) / max(qeso_cup(i,k), smallerQV), 1.0)
-            if (ZERO_DIFF_ENTR == 1) then
+            if (ZERO_DIFF_ENTR) then
                if(k >= klcl(i)) then
                   entr_rate(i,k) = entr_rate(i,k) * (1.3 - frh) * (qeso_cup(i,k) / qeso_cup(i,klcl(i)))**3
                else
@@ -2204,7 +2204,7 @@ CONTAINS
       !-----------------------------------------------------------------------------
       ! 4.6 Final Updraft Moist Static Energy & Momentum Budget
       !-----------------------------------------------------------------------------
-      IF(trim(cumulus) == 'shallow' .and. use_linear_subcl_mf == 1) THEN
+      IF(trim(cumulus) == 'shallow' .and. use_linear_subcl_mf) THEN
          do i = its, itf
             if(ierr(i) /= 0) cycle
             call get_delmix(cumulus, kts, kte, ktf, xland(i), start_level(i), po(i,:), he_cup(i,:), hc(i,:))
@@ -2309,7 +2309,7 @@ CONTAINS
            dd_massentro, dd_massdetro, dd_massentr, dd_massdetr,    &
            cumulus, dd_massentru, dd_massdetru, lambau_dn)
 
-      IF(USE_WETBULB == 1 .and. trim(cumulus) /= 'shallow') THEN
+      IF(USE_WETBULB .and. trim(cumulus) /= 'shallow') THEN
          do i = its, itf
             if(ierr(i) /= 0) cycle
             call get_wetbulb(jmin(i), qo_cup(i,jmin(i)), t_cup(i,jmin(i)), po_cup(i,jmin(i)), q_wetbulb(i), t_wetbulb(i))
@@ -2865,7 +2865,7 @@ CONTAINS
          ENDIF
 
          !--- Microphysics Subsidence Smoothing
-         IF(APPLY_SUB_MP == 1) THEN
+         IF(APPLY_SUB_MP) THEN
             dellampqi = 0.; dellampql = 0.; dellampcf = 0.
             do i = its, itf
                if(ierr(i) /= 0) cycle
@@ -3073,7 +3073,7 @@ CONTAINS
          enddo
       enddo
 
-      IF(LIGHTNING_DIAG == 1 .and. trim(cumulus) == 'deep') THEN
+      IF(LIGHTNING_DIAG .and. trim(cumulus) == 'deep') THEN
          call cup_up_cape(cape, z, zu, dby, gamma_cup, t_cup, k22, kbcon, ktop, ierr, tempco, qco, qrco, qo_cup, itf, ktf, its, ite, kts, kte)
          call cup_up_lightning(itf, ktf, its, ite, kts, kte, ierr, kbcon, ktop, xland, cape, cnvfrc, srftype, zo, zo_cup, t_cup, t, tempco, qrco, po_cup, rho, prec_flx, lightn_dens)
       ENDIF
@@ -3098,7 +3098,7 @@ CONTAINS
          subten_T(i,:) = xmb(i) * subten_T(i,:)
       enddo
 
-      IF(OUTPUT_SOUND == 1) THEN
+      IF(OUTPUT_SOUND) THEN
          call SOUND(2, cumulus, int_time, dtime, ens4, itf, ktf, its, ite, kts, kte, xlats, xlons, jcol, whoami_all, &
               z, qes, he, hes, t, q, po, z1, psur, zo, qeso, heo, heso, tn, qo, us, vs, omeg, xz, &
               h_sfc_flux, le_sfc_flux, tsur, dx, stochastic_sig, zws, ztexec, zqexec, xland, &
@@ -3333,7 +3333,7 @@ CONTAINS
                call set_grads_var(jl, k, nvar, se_chem(1,i,k), "se"//cty, ' se_chem', '3d')
                call set_grads_var(jl, k, nvar, se_cup_chem(1,i,k), "secup"//cty, ' se_cup_chem', '3d')
 
-               IF(APPLY_SUB_MP == 1) THEN
+               IF(APPLY_SUB_MP) THEN
                   kmp = lsmp
                   call set_grads_var(jl, k, nvar, outmpqi(kmp,i,k) * 86400. * 1000., "outqi"//cty, ' outmpqi', '3d')
                   call set_grads_var(jl, k, nvar, outmpql(kmp,i,k) * 86400. * 1000., "outql"//cty, ' outmpql', '3d')
@@ -3683,7 +3683,7 @@ CONTAINS
          endif
 
          ! ZERO_DIFF: The EVAP_FIX option is not in GF2019
-         if(EVAP_FIX==1) then
+         if(EVAP_FIX) then
             if(abs(pwev(i)) > pwavo(i) .and. ierr(i) == 0)then
                fix_evap = pwavo(i)/(1.e-16+abs(pwev(i)))
                pwev(i)  = 0.
@@ -3758,7 +3758,7 @@ CONTAINS
       hes =0.0
       qes =0.0
 
-      if(SATUR_CALC == 0) then
+      if(.NOT. SATUR_CALC) then
          do k=kts,ktf
             do i=its,itf
                if(ierr(i).eq.0)then
@@ -5716,7 +5716,7 @@ CONTAINS
          zu(kts)=0.
          !
          !-- special treatment below kbcon - linear Zu
-         if(use_linear_subcl_mf == 1) then
+         if(use_linear_subcl_mf) then
             kstart=kbcon
             slope=(zu(kstart)-zu(kts))/(po_cup(kstart)-po_cup(kts))
             do k=kstart-1,kts+1,-1
@@ -6896,7 +6896,7 @@ CONTAINS
             !---     i.e., the depth (in mb) of the layer of negative buoyancy
             depth_neg_buoy(i) = - (po_cup(i,kbcon(i))-po_cup(i,start_level(i)))
 
-            IF(MOIST_TRIGGER == 1) THEN
+            IF(MOIST_TRIGGER) THEN
                frh(i)=0. ; dzh = 0
                do k=k22(i),kbcon(i)
                   dz     = z_cup(i,k)-z_cup(i,max(k-1,kts))
@@ -7372,7 +7372,7 @@ CONTAINS
          ENDDO
          xf_ens (i,:)= sig(i)*xf_ens(i,:)
 
-         IF(APPLY_SUB_MP == 1) THEN
+         IF(APPLY_SUB_MP) THEN
             DO k=kts,ktop(i)
                outmpqi(:,i,k)= dellampqi(:,i,k)*xmb(i)
                outmpql(:,i,k)= dellampql(:,i,k)*xmb(i)
@@ -9111,12 +9111,11 @@ CONTAINS
    REAL FUNCTION fract_liq_f(temp2,cnvfrc,srftype) ! temp2 in Kelvin, fraction between 0 and 1.
       real,intent(in)  :: temp2 ! K
       real,intent(in)  :: cnvfrc,srftype
-      SELECT CASE(FRAC_MODIS)
-      CASE (1)
+      IF(FRAC_MODIS) THEN
          fract_liq_f = 1.0 - ice_fraction(temp2,cnvfrc,srftype)
-      CASE DEFAULT
+      ELSE
          fract_liq_f =  min(1., (max(0.,(temp2-t_ice))/(t_0-t_ice))**2)
-      END SELECT
+      END IF
    END FUNCTION fract_liq_f
    !------------------------------------------------------------------------------------
 
