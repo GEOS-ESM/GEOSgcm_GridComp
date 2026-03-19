@@ -54,21 +54,21 @@ MODULE ConvPar_GF2020
    ! 2. PHYSICS & PLUME TUNING COEFFICIENTS 
    !    Order of Plume Indices: (1: Deep, 2: Shallow, 3: Congestus)
    !=============================================================================
-   REAL,    DIMENSION(maxiens) :: CUM_CAP_MAXS       = (/ 150., 50.0, 150. /) ! Max depth (mb) of capping inversion
-   REAL,    DIMENSION(maxiens) :: CUM_FADJ_MASSFLX   = (/ 1.00, 1.00, 1.00 /) ! Mass flux tunning multiplier
-   INTEGER, DIMENSION(maxiens) :: CUM_USE_EXCESS     = (/ 1,    1,    1    /) ! Use sub-grid scale variability (T,Q excess)
+   REAL,    DIMENSION(maxiens) :: CUM_CAP_MAXS       = [ 150., 50.0, 150. ] ! Max depth (mb) of capping inversion
+   REAL,    DIMENSION(maxiens) :: CUM_FADJ_MASSFLX   = [ 1.00, 1.00, 1.00 ] ! Mass flux tunning multiplier
+   INTEGER, DIMENSION(maxiens) :: CUM_USE_EXCESS     = [ 1,    1,    1    ] ! Use sub-grid scale variability (T,Q excess)
 
    !--- Updraft/Downdraft Structure Tuning (Normalized Heights 0.2 to 0.8)
-   REAL,    DIMENSION(maxiens) :: CUM_HEI_UPDF_LAND  = (/ 0.35, 0.10, 0.10 /)
-   REAL,    DIMENSION(maxiens) :: CUM_HEI_UPDF_OCEAN = (/ 0.35, 0.10, 0.10 /)
-   REAL,    DIMENSION(maxiens) :: CUM_HEI_DOWN_LAND  = (/ 0.30, 0.20, 0.20 /)
-   REAL,    DIMENSION(maxiens) :: CUM_HEI_DOWN_OCEAN = (/ 0.30, 0.20, 0.20 /)
+   REAL,    DIMENSION(maxiens) :: CUM_HEI_UPDF_LAND  = [ 0.35, 0.10, 0.10 ]
+   REAL,    DIMENSION(maxiens) :: CUM_HEI_UPDF_OCEAN = [ 0.35, 0.10, 0.10 ]
+   REAL,    DIMENSION(maxiens) :: CUM_HEI_DOWN_LAND  = [ 0.30, 0.20, 0.20 ]
+   REAL,    DIMENSION(maxiens) :: CUM_HEI_DOWN_OCEAN = [ 0.30, 0.20, 0.20 ]
 
    !--- Evaporative Efficiency Limits (Epsilon)
-   REAL,    DIMENSION(maxiens) :: CUM_MIN_EDT_LAND   = (/ 0.10, 0.00, 0.10 /)
-   REAL,    DIMENSION(maxiens) :: CUM_MIN_EDT_OCEAN  = (/ 0.10, 0.00, 0.10 /)
-   REAL,    DIMENSION(maxiens) :: CUM_MAX_EDT_LAND   = (/ 0.90, 0.00, 0.90 /)
-   REAL,    DIMENSION(maxiens) :: CUM_MAX_EDT_OCEAN  = (/ 0.90, 0.00, 0.90 /)
+   REAL,    DIMENSION(maxiens) :: CUM_MIN_EDT_LAND   = [ 0.10, 0.00, 0.10 ]
+   REAL,    DIMENSION(maxiens) :: CUM_MIN_EDT_OCEAN  = [ 0.10, 0.00, 0.10 ]
+   REAL,    DIMENSION(maxiens) :: CUM_MAX_EDT_LAND   = [ 0.90, 0.00, 0.90 ]
+   REAL,    DIMENSION(maxiens) :: CUM_MAX_EDT_OCEAN  = [ 0.90, 0.00, 0.90 ]
 
    !--- Momentum Transport
    LOGICAL :: USE_MOMENTUM_TRANSP = .TRUE.  ! Turn ON/OFF convective momentum transport
