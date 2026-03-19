@@ -4205,87 +4205,117 @@ contains
     RETURN_(ESMF_SUCCESS)
   end subroutine VertInterp
 
-  subroutine FILLQ2ZERO( Q, MASS, DT, DQDT, WARNING_LABEL, VM, RC )
-
-    ! New algorithm to fill the negative q values in a mass conserving way.
-    ! Conservation of TPW was checked. Donifan Barahona
-    ! Updated from FILLQ2ZERO, avoids the usage of scalars
+  subroutine FILLQ2ZERO(Q, MASS, DT, DQDT, WARNING_LABEL, VM, RC)
 
     real, dimension(:,:,:),   intent(inout)  :: Q
     real, dimension(:,:,:),   intent(in)     :: MASS
     real, optional,           intent(in)     :: DT
     real, optional, pointer,  intent(out)    :: DQDT(:,:,:)
     character(*), optional,   intent(in)     :: WARNING_LABEL
-    type( ESMF_VM ), optional,intent(in)     :: VM
+    type(ESMF_VM), optional,  intent(in)     :: VM
     integer,                  intent(out)    :: RC
-    ! Locals
-    real, dimension(:,:), allocatable        :: TPW1, TPW2, TPWC
-    integer                                  :: IM,JM,LM, l
-    integer                                  :: RANK
-    integer :: neg_count, total_count, I1D(2)
-    character(len=ESMF_MAXSTR)               :: IAm="FILLQ2ZERO"
-    integer                                  :: STATUS
 
-    if (PRESENT(WARNING_LABEL) .AND. PRESENT(VM)) then
-      ! Calculate local statistics
-      if (any(Q < 0.0)) then
-        neg_count = count(Q < 0.0)
-      else
-        neg_count = 0
-      endif
-      total_count = size(Q)
-      if (PRESENT(VM)) then
-        call ESMF_VmGet(VM, localPet=RANK, rc=STATUS)
-        VERIFY_(STATUS)
-        call ESMF_VMAllReduce(VM, sendData=[neg_count,total_count], & 
-                              recvData=I1D, count=2, &
-                              reduceflag=ESMF_REDUCE_SUM, rc=STATUS)
-        VERIFY_(STATUS)
-        if ((RANK==0) .AND. (I1D(1)>0) .AND. (I1D(2)>0)) &
-        write(*,'(A,A,A,/,2X,A,I0,A,I0,A,F5.1,A)') &
-              'WARNING: Negative values filled in ', trim(WARNING_LABEL), ':', &
-              'Count: ', I1D(1), '/', I1D(2), ' (', &
-                (real(I1D(1))/real(I1D(2)))*100.0, '%)'
+    integer :: IM, JM, LM
+    integer :: i, j, l
+    integer :: neg_count_local, total_count_local
+    integer :: I1D(2), RANK, STATUS
+    real    :: tpw_before, tpw_after, d_tpw
+    real    :: positive_mass
+    real    :: q_old
+
+    character(len=ESMF_MAXSTR) :: IAm="FILLQ2ZERO"
+
+    RC = 0
+
+    IM = size(Q,1)
+    JM = size(Q,2)
+    LM = size(Q,3)
+
+    !===============================================================
+    ! 1. Count negative values BEFORE fixing
+    !===============================================================
+    if (present(WARNING_LABEL) .and. present(VM)) then
+      neg_count_local   = count(Q < 0.0)
+      total_count_local = size(Q)
+
+      call ESMF_VMGet(VM, localPet=RANK, rc=STATUS)
+      VERIFY_(STATUS)
+
+      call ESMF_VMAllReduce(VM, sendData=[neg_count_local,total_count_local], &
+                            recvData=I1D, count=2, &
+                            reduceflag=ESMF_REDUCE_SUM, rc=STATUS)
+      VERIFY_(STATUS)
+
+      if ((RANK == 0) .and. (I1D(1) > 0)) then
+        write(*,'(A,A,A,2X,"Count: ",I0,"/",I0," (",F5.1,"%)")')  &
+             'WARNING: Negative values filled in ', trim(WARNING_LABEL), ':', &
+             I1D(1), I1D(2), real(I1D(1))/real(I1D(2))*100.0
       endif
     endif
 
-    IM = SIZE( Q, 1 )
-    JM = SIZE( Q, 2 )
-    LM = SIZE( Q, 3 )
-   
-    ALLOCATE(TPW1(IM, JM))
-    ALLOCATE(TPW2(IM, JM))
-    ALLOCATE(TPWC(IM, JM))
-
-    TPW2 =0.0 
-    TPWC= 0.0                 
-    TPW1 = SUM( Q*MASS, 3 )   
-
-    if (PRESENT(DQDT) .AND. PRESENT(DT)) then
-       if (ASSOCIATED(DQDT)) DQDT = Q 
+    !===============================================================
+    ! 2. Save original Q if tendency is requested
+    !===============================================================
+    if (present(DQDT) .and. present(DT)) then
+      if (associated(DQDT)) DQDT = Q
     endif
 
-    WHERE (Q < 1.e-15)         
-       Q=1.e-15
-    END WHERE
+    !===============================================================
+    ! 3. Moisture limiter: per-column mass-conserving Q fix
+    !===============================================================
+    do j = 1, JM
+      do i = 1, IM
 
-    TPW2 = SUM( Q*MASS, 3 )
+        !--- TPW_before: using the *original* Q
+        tpw_before = 0.0
+        do l = 1, LM
+          tpw_before = tpw_before + Q(i,j,l) * MASS(i,j,l)
+        end do
 
-    WHERE (TPW2 > 1.e-15)
-       TPWC=(TPW2-TPW1)/TPW2
-    END WHERE
+        !--- Clip negative Q locally
+        do l = 1, LM
+          if (Q(i,j,l) < 0.0) Q(i,j,l) = 0.0
+        end do
 
-    do l=1,LM
-       Q(:, :, l)= Q(:, :, l)*(1.0-TPWC) !reduce Q proportionally to the increase in TPW
+        !--- TPW_after: using clipped Q
+        tpw_after = 0.0
+        do l = 1, LM
+          tpw_after = tpw_after + Q(i,j,l) * MASS(i,j,l)
+        end do
+
+        d_tpw = tpw_before - tpw_after   ! >0 means mass was removed
+
+        !--- Redistribute delta TPW to positive layers only
+        if (abs(d_tpw) > 1.0e-15) then
+
+          positive_mass = 0.0
+          do l = 1, LM
+            if (Q(i,j,l) > 0.0) positive_mass = positive_mass + MASS(i,j,l)
+          end do
+
+          if (positive_mass > 0.0) then
+            do l = 1, LM
+              if (Q(i,j,l) > 0.0) then
+                Q(i,j,l) = Q(i,j,l) + d_tpw * ( MASS(i,j,l) / positive_mass )
+                if (Q(i,j,l) < 0.0) Q(i,j,l) = 0.0  ! safety
+              end if
+            end do
+          end if
+
+        end if
+
+      end do
     end do
 
-    if (PRESENT(DQDT) .AND. PRESENT(DT)) then
-       if (ASSOCIATED(DQDT)) DQDT = (Q - DQDT)/DT
+    !===============================================================
+    ! 4. Final DQDT tendencies if requested
+    !===============================================================
+    if (present(DQDT) .and. present(DT)) then
+      if (associated(DQDT) .and. DT > 0.0) then
+        DQDT = (Q - DQDT) / DT
+      endif
     endif
 
-    DEALLOCATE(TPW1)
-    DEALLOCATE(TPW2)
-    DEALLOCATE(TPWC)
   end subroutine FILLQ2ZERO
 
 end module GEOS_PhysicsGridCompMod

@@ -266,6 +266,7 @@ module GEOSmoist_Process_Library
   public :: get_fac_eis
   public :: init_refl10cm, calc_refl10cm
   public :: neg_adj_external
+  public :: compute_sgs_vvel
 
   contains
 
@@ -4854,5 +4855,58 @@ real function get_fac_eis (eis, SRF_TYPE)
        get_fac_eis = (eis / 10.0)**2
     endif
 end function get_fac_eis
+
+subroutine compute_sgs_vvel(IM,JM,LM,ZLE0,W,BYNCY, &
+                            SGS_VVEL_DP,SGS_VVEL_MD,SGS_VVEL_SH)
+
+implicit none
+
+integer, intent(in) :: IM,JM,LM
+real, intent(in) :: ZLE0(IM,JM,0:LM)
+real, intent(in) :: W(IM,JM,LM)
+real, intent(in) :: BYNCY(IM,JM,LM)
+
+real, intent(out) :: SGS_VVEL_DP(IM,JM,LM)
+real, intent(out) :: SGS_VVEL_MD(IM,JM,LM)
+real, intent(out) :: SGS_VVEL_SH(IM,JM,LM)
+
+integer :: i,j,k
+real :: dz,B
+real :: Ldeep,Lmid,Lshal
+real :: wsgs,weff
+real, parameter :: wmin = 0.1
+
+do j=1,JM
+do i=1,IM
+do k=1,LM
+
+   dz = ZLE0(i,j,k) - ZLE0(i,j,k-1)
+   B  = max(BYNCY(i,j,k),0.0)
+
+   ! Mixing lengths
+   Ldeep = min(1000.0,max(200.0,2.0*dz))
+   Lmid  = min(600.0 ,max(150.0,1.5*dz))
+   Lshal = min(300.0 ,max(75.0 ,1.0*dz))
+
+   ! Deep
+   wsgs = sqrt(2.0*B*Ldeep)
+   weff = sqrt(W(i,j,k)**2 + wsgs**2)
+   SGS_VVEL_DP(i,j,k) = max(weff,wmin)
+
+   ! Congestus
+   wsgs = sqrt(2.0*B*Lmid)
+   weff = sqrt(W(i,j,k)**2 + wsgs**2)
+   SGS_VVEL_MD(i,j,k) = max(weff,wmin)
+
+   ! Shallow
+   wsgs = sqrt(2.0*B*Lshal)
+   weff = sqrt(W(i,j,k)**2 + wsgs**2)
+   SGS_VVEL_SH(i,j,k) = max(weff,wmin)
+
+enddo
+enddo
+enddo
+
+end subroutine compute_sgs_vvel
 
 end module GEOSmoist_Process_Library

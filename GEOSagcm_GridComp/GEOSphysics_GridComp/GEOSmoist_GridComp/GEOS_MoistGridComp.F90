@@ -5522,8 +5522,8 @@ contains
     call MAPL_GetResource( MAPL, LDIAGNOSE_PRECIP_TYPE, Label="DIAGNOSE_PRECIP_TYPE:",  default=.FALSE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LUPDATE_PRECIP_TYPE,   Label="UPDATE_PRECIP_TYPE:",    default=.FALSE., RC=STATUS); VERIFY_(STATUS)
 
-    call MAPL_GetResource( MAPL, USE_AEROSOL_NN  , 'USE_AEROSOL_NN:'  , DEFAULT=.TRUE.        , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, USE_BERGERON    , 'USE_BERGERON:'    , DEFAULT=USE_AEROSOL_NN, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, USE_AEROSOL_NN  , 'USE_AEROSOL_NN:'  , DEFAULT=USE_AEROSOL_NN, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, USE_BERGERON    , 'USE_BERGERON:'    , DEFAULT=USE_BERGERON  , RC=STATUS); VERIFY_(STATUS)
     if (USE_AEROSOL_NN) then
       call aer_cloud_init()
       call WRITE_PARALLEL ("INITIALIZED aer_cloud_init")
@@ -5595,6 +5595,7 @@ contains
 
     ! Local variables
     real                                :: Tmax, KCBLMIN, PMIN_CBL
+    real                                :: CNV_CAPE_NORM, CNV_CAPE_SCALE
     real, allocatable, dimension(:,:,:) :: PLEmb, PKE, ZLE0, PK, MASS
     real, allocatable, dimension(:,:,:) :: PLmb,  ZL0, DZET
     real, allocatable, dimension(:,:,:) :: QST3, DQST3, MWFA
@@ -5878,7 +5879,16 @@ contains
            END WHERE
        else
          ! use -1.0*EIS so CNV_FRC 0:1 for EIS 0:-1
-           CNV_FRC = MAX(0.0,MIN(1.0,-1.0*EIS))
+         CNV_FRC = MAX(0.0,MIN(1.0,-1.0*EIS))
+        !!
+        !CNV_CAPE_SCALE = 0.5*(CNV_FRACTION_MIN+CNV_FRACTION_MAX)
+        !CNV_CAPE_NORM = SQRT(CNV_FRACTION_MAX-CNV_FRACTION_MIN) / &
+        !               (SQRT(CNV_FRACTION_MAX-CNV_FRACTION_MIN)+SQRT(CNV_CAPE_SCALE-CNV_FRACTION_MIN))
+        !WHERE (MUCAPE .ne. MAPL_UNDEF)
+        !   CNV_FRC = MIN(  SQRT(MAX(0.0,MUCAPE-CNV_FRACTION_MIN)) / &
+        !                  (SQRT(MAX(0.0,MUCAPE-CNV_FRACTION_MIN)+SQRT(CNV_CAPE_SCALE-CNV_FRACTION_MIN))) / &
+        !                  CNV_CAPE_NORM , 1.0)
+        !END WHERE
        endif
 
        ! Extract convective tracers from the TR bundle
