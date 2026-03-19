@@ -182,6 +182,10 @@ MODULE ConvPar_GF2020
    REAL, PARAMETER :: CP_DRY_AIR    = 1004.64   ! Specific heat at constant pressure [J kg⁻¹ K⁻¹]
    REAL, PARAMETER :: EPSILON_VAPOR = 0.608     ! (Rv/Rd - 1) for virtual temperature
 
+   !--- Unit Conversion
+   REAL, PARAMETER :: PA_TO_MBAR = 1.e-2   ! Pascal to millibar conversion
+   REAL, PARAMETER :: MBAR_TO_PA = 100.0   ! Millibar to Pascal conversion
+
    !--- Numerical Constraints
    REAL, PARAMETER :: pgcon      = 0.0    ! Pressure gradient updraft constant (Zhang/Wu 2003)
    REAL, PARAMETER :: xmbmaxshal = 0.05   ! kg/m2/s maximum base mass flux (shallow)
@@ -1097,7 +1101,7 @@ CONTAINS
 
             pten = temp_old(i,1)
             pqen = qv_old(i,1)
-            paph = 100. * psur(i)
+            paph = MBAR_TO_PA * psur(i)
             zrho = paph / (R_DRY_AIR * (temp_old(i,1) * (1. + EPSILON_VAPOR * qv_old(i,1))))
 
             h_sfc_flux(i)  = zrho * cp * sflux_t(i,j)
@@ -1299,7 +1303,7 @@ CONTAINS
              qv_old(its:itf,k)   = rvap(kr,its:itf,j)
              qv_curr(its:itf,k)  = curr_rvap(kr,its:itf,j)
 
-             rhoi(its:itf,k) = 1.e2 * po(its:itf,k) / (R_DRY_AIR * temp_old(its:itf,k) * (1.0 + EPSILON_VAPOR * qv_old(its:itf,k)))
+             rhoi(its:itf,k) = MBAR_TO_PA * po(its:itf,k) / (R_DRY_AIR * temp_old(its:itf,k) * (1.0 + EPSILON_VAPOR * qv_old(its:itf,k)))
              tkeg(its:itf,k) = tkmin
              rcpg(its:itf,k) = 0.0
 
@@ -1845,7 +1849,7 @@ CONTAINS
             if (dz == 0.0) then
                rho_hydr(i,k) = rho(i,k)
             else
-               rho_hydr(i,k) = 100. * (po_cup(i,k) - po_cup(i,k+1)) / (dz * g)
+               rho_hydr(i,k) = MBAR_TO_PA * (po_cup(i,k) - po_cup(i,k+1)) / (dz * g)
             end if
          enddo
       enddo
@@ -1967,7 +1971,7 @@ CONTAINS
          call get_cloud_bc(cumulus, kts, kte, ktf, xland(i), po(i,:), t_cup(i,:), tlll, k22(i), x_add)
          call get_cloud_bc(cumulus, kts, kte, ktf, xland(i), po(i,:), p_cup(i,:), plll, k22(i))
 
-         call get_lcl(tlll, 100. * plll, rlll, tlcl, plcl, dzlcl)
+         call get_lcl(tlll, MBAR_TO_PA * plll, rlll, tlcl, plcl, dzlcl)
 
          if(dzlcl >= 0.) then 
             call get_cloud_bc(cumulus, kts, kte, ktf, xland(i), po(i,:), z_cup(i,:), zlll, k22(i))
@@ -2530,7 +2534,7 @@ CONTAINS
             if(ierr(i) /= 0) cycle
             aa3(i) = 0.0
             do k = max(kbcon(i), kts+1), ktop(i)
-               dp = -(log(100. * po(i,k)) - log(100. * po(i,k-1))) 
+               dp = -(log(MBAR_TO_PA * po(i,k)) - log(MBAR_TO_PA * po(i,k-1))) 
                aa3(i) = aa3(i) - (tn_cup_x(i,k) * (1. + EPSILON_VAPOR * qo_cup_x(i,k)) - t_cup(i,k) * (1. + EPSILON_VAPOR * q_cup(i,k))) * dp / dtime
             enddo
             aa1_bl(i) = aa3(i) - (63.e-6)
@@ -2540,7 +2544,7 @@ CONTAINS
             dtdt(i,:) = 0.0; dqdt(i,:) = 0.0
             if(ierr(i) /= 0) cycle
             do k = max(kbcon(i), kts+1), ktop(i)
-               dp    = 100. * (po_cup(i,k+1) - po_cup(i,k))
+dp = MBAR_TO_PA * (po_cup(i,k+1) - po_cup(i,k))
                RZenv = 0.5 * (zuo(i,k+1) + zuo(i,k) - (zdo(i,k+1) + zdo(i,k)) * edto(i))
                S2 = cp * tn_cup_x(i,k+1) + g * zo_cup(i,k+1)
                S1 = cp * tn_cup_x(i,k)   + g * zo_cup(i,k)
@@ -2556,7 +2560,7 @@ CONTAINS
             enddo
             xk_x(i) = 0.0
             do k = max(kbcon(i), kts+1), ktop(i)
-               dp = -(log(100. * po_cup(i,k+1)) - log(100. * po_cup(i,k)))
+               dp = -(log(MBAR_TO_PA * po_cup(i,k+1)) - log(MBAR_TO_PA * po_cup(i,k)))
                xk_x(i) = xk_x(i) + ((1. + EPSILON_VAPOR * qo_x(i,k)) * dtdt(i,k) + EPSILON_VAPOR * tn_x(i,k) * dqdt(i,k)) * dp
             enddo
          ENDDO
@@ -2727,7 +2731,7 @@ CONTAINS
             do i = its, itf
                if(ierr(i) /= 0) cycle
                do k = kts, ktop(i)
-                  dp = 100. * (po_cup(i,k) - po_cup(i,k+1))
+                  dp = MBAR_TO_PA * (po_cup(i,k) - po_cup(i,k+1))
                   dellu(i,k) = -(zuo(i,k+1) * (uc(i,k+1) - u_cup(i,k+1)) - zuo(i,k) * (uc(i,k) - u_cup(i,k))) * g / dp &
                        +(zdo(i,k+1) * (ucd(i,k+1) - u_cup(i,k+1)) - zdo(i,k) * (ucd(i,k) - u_cup(i,k))) * g / dp * edto(i)
 
@@ -2739,7 +2743,7 @@ CONTAINS
             do i = its, itf
                if(ierr(i) /= 0) cycle
                do k = kts, ktop(i)
-                  dp = 100. * (po_cup(i,k) - po_cup(i,k+1))
+                  dp = MBAR_TO_PA * (po_cup(i,k) - po_cup(i,k+1))
                   dellah(i,k) = -(zuo(i,k+1) * (hco(i,k+1) - heo_cup(i,k+1)) - zuo(i,k) * (hco(i,k) - heo_cup(i,k))) * g / dp &
                        +(zdo(i,k+1) * (hcdo(i,k+1) - heo_cup(i,k+1)) - zdo(i,k) * (hcdo(i,k) - heo_cup(i,k))) * g / dp * edto(i)
                   dellah(i,k) = dellah(i,k) + xlf * ((1. - p_liq_ice(i,k)) * 0.5 * (qrco(i,k+1) + qrco(i,k)) - melting(i,k)) * g / dp
@@ -2780,7 +2784,7 @@ CONTAINS
                do i = its, itf
                   if(ierr(i) /= 0) cycle
                   do k = kts, ktop(i)
-                     dp = 100. * (po_cup(i,k) - po_cup(i,k+1))
+                     dp = MBAR_TO_PA * (po_cup(i,k) - po_cup(i,k+1))
                      dellu(i,k) = -(zuo(i,k+1) * (uc(i,k+1) - u_cup(i,k+1)) - zuo(i,k) * (uc(i,k) - u_cup(i,k))) * g / dp &
                           +(zdo(i,k+1) * (ucd(i,k+1) - u_cup(i,k+1)) - zdo(i,k) * (ucd(i,k) - u_cup(i,k))) * g / dp * edto(i)
                      dellv(i,k) = -(zuo(i,k+1) * (vc(i,k+1) - v_cup(i,k+1)) - zuo(i,k) * (vc(i,k) - v_cup(i,k))) * g / dp &
@@ -2796,7 +2800,7 @@ CONTAINS
                      fm(k) = 0.5 * (zenv(i,k) - abs(zenv(i,k)))
                   enddo
                   do k = kts, ktop(i)
-                     dp = 100. * (po_cup(i,k) - po_cup(i,k+1))
+                     dp = MBAR_TO_PA * (po_cup(i,k) - po_cup(i,k+1))
                      beta1 = dtime * g / dp
                      aa(k) = alp1 * beta1 * fm(k)
                      bb(k) = 1. + alp1 * beta1 * (fp(k) - fm(k+1))
@@ -2822,7 +2826,7 @@ CONTAINS
                if(ierr(i) /= 0) cycle
                if(use_fct == 0) then
                   do k = kts, ktop(i)
-                     dp = 100. * (po_cup(i,k) - po_cup(i,k+1))
+                     dp = MBAR_TO_PA * (po_cup(i,k) - po_cup(i,k+1))
                      dellah(i,k) = -(zuo(i,k+1) * (hco(i,k+1) - heo_cup(i,k+1)) - zuo(i,k) * (hco(i,k) - heo_cup(i,k))) * g / dp &
                           +(zdo(i,k+1) * (hcdo(i,k+1) - heo_cup(i,k+1)) - zdo(i,k) * (hcdo(i,k) - heo_cup(i,k))) * g / dp * edto(i)
                      dellah(i,k) = dellah(i,k) - xlf * melting(i,k) * g / dp      
@@ -2832,7 +2836,7 @@ CONTAINS
                else
                   sub_tend(1,:) = 0.; trcflx_in(1,:) = 0.; massflx(i,:) = 0.; dtime_max = dtime
                   do k = kts, ktop(i)
-                     dp = 100. * (po_cup(i,k) - po_cup(i,k+1))
+                     dp = MBAR_TO_PA * (po_cup(i,k) - po_cup(i,k+1))
                      trcflx_in(1,k) = -(zuo(i,k) - edto(i) * zdo(i,k)) * heo_cup(i,k)
                      massflx(i,k)   = -(zuo(i,k) - edto(i) * zdo(i,k))
                      dtime_max = min(dtime_max, .5 * dp)
@@ -2840,7 +2844,7 @@ CONTAINS
                   call fct1d3(ktop(i), kte, dtime_max, po_cup(i,:), heo(i,:), massflx(i,:), trcflx_in(1,:), sub_tend(1,:))
 
                   do k = kts, ktop(i)
-                     dp = 100. * (po_cup(i,k) - po_cup(i,k+1))
+                     dp = MBAR_TO_PA * (po_cup(i,k) - po_cup(i,k+1))
                      dellah(i,k) = -(zuo(i,k+1) * hco(i,k+1) - zuo(i,k) * hco(i,k)) * g / dp &
                           +(zdo(i,k+1) * hcdo(i,k+1) - zdo(i,k) * hcdo(i,k)) * g / dp * edto(i)
                      dellah(i,k) = dellah(i,k) - xlf * melting(i,k) * g / dp + sub_tend(1,k)
@@ -2853,7 +2857,7 @@ CONTAINS
             do i = its, itf
                if(ierr(i) /= 0) cycle
                do k = kts, ktop(i)
-                  dp = 100. * (po_cup(i,k) - po_cup(i,k+1))
+                  dp = MBAR_TO_PA * (po_cup(i,k) - po_cup(i,k+1))
                   detup = up_massdetro(i,k)
                   if(trim(cumulus) == 'mid' .or. trim(cumulus) == 'shallow') then
                      dellaqc(i,k) = detup * 0.5 * (qrco(i,k+1) + qrco(i,k)) * g / dp
@@ -2889,14 +2893,14 @@ CONTAINS
 
                if(use_fct == 0) then
                   do k = kts, ktop(i)
-                     dp = 100. * (po_cup(i,k) - po_cup(i,k+1))
+                     dp = MBAR_TO_PA * (po_cup(i,k) - po_cup(i,k+1))
                      sub_tend(1,k) = -(zuo(i,k+1) * (-qo_cup(i,k+1)) - zuo(i,k) * (-qo_cup(i,k))) * g / dp &
                           +(zdo(i,k+1) * (-qo_cup(i,k+1)) - zdo(i,k) * (-qo_cup(i,k))) * g / dp * edto(i)
                   enddo
                else
                   sub_tend(1,:) = 0.; trcflx_in(1,:) = 0.; massflx(i,:) = 0.; dtime_max = dtime
                   do k = kts, ktop(i)
-                     dp = 100. * (po_cup(i,k) - po_cup(i,k+1))
+                     dp = MBAR_TO_PA * (po_cup(i,k) - po_cup(i,k+1))
                      trcflx_in(1,k) = -(zuo(i,k) - edto(i) * zdo(i,k)) * qo_cup(i,k)
                      massflx(i,k)   = -(zuo(i,k) - edto(i) * zdo(i,k))
                      dtime_max = min(dtime_max, .5 * dp)
@@ -2915,7 +2919,7 @@ CONTAINS
             do i = its, itf
                if(ierr(i) /= 0) cycle
                do k = kts, ktop(i)
-                  dp = 100. * (po_cup(i,k) - po_cup(i,k+1))
+                  dp = MBAR_TO_PA * (po_cup(i,k) - po_cup(i,k+1))
                   env_mf   = -0.5 * (zenv(i,k+1) + zenv(i,k))
                   env_mf_m = min(env_mf, 0.) * g / dp
                   env_mf_p = max(env_mf, 0.) * g / dp
@@ -2928,7 +2932,7 @@ CONTAINS
                if(alp1 > 0.) then
                   alp0 = 1.0 - alp1
                   do k = kts, ktop(i)
-                     dp = 100. * (po_cup(i,k) - po_cup(i,k+1))
+                     dp = MBAR_TO_PA * (po_cup(i,k) - po_cup(i,k+1))
                      env_mf   = -0.5 * (zenv(i,k+1) + zenv(i,k))
                      env_mf_m = min(env_mf, 0.) * g / dp
                      env_mf_p = max(env_mf, 0.) * g / dp
@@ -3113,7 +3117,7 @@ CONTAINS
       do i = its, itf                    
          if(ierr(i) /= 0) cycle
          do k = kts, ktop(i)
-            dp = 100. * (po_cup(i,k) - po_cup(i,k+1))
+            dp = MBAR_TO_PA * (po_cup(i,k) - po_cup(i,k+1))
             revsu_gf(i,k) = revsu_gf(i,k) + evap_flx(i,k) * g / dp
          enddo
       enddo
@@ -3195,14 +3199,14 @@ CONTAINS
             IF(USE_FLUX_FORM == 1 .and. alp1 == 0.) THEN
                if(use_fct == 0) then
                   do k = kts, ktop(i)
-                     dp = 100. * (po_cup(i,k) - po_cup(i,k+1))
+                     dp = MBAR_TO_PA * (po_cup(i,k) - po_cup(i,k+1))
                      out_chem(:,i,k) = -(zuo(i,k+1) * (sc_up_chem(:,i,k+1) - se_cup_chem(:,i,k+1)) - zuo(i,k) * (sc_up_chem(:,i,k) - se_cup_chem(:,i,k))) * g / dp &
                           +(zdo(i,k+1) * (sc_dn_chem(:,i,k+1) - se_cup_chem(:,i,k+1)) - zdo(i,k) * (sc_dn_chem(:,i,k) - se_cup_chem(:,i,k))) * g / dp * edto(i)
                   enddo
                else
                   sub_tend = 0.; trcflx_in = 0.; dtime_max = dtime; massflx(i,:) = 0.
                   do k = kts+1, ktop(i)+1
-                     dp = 100. * (po_cup(i,k) - po_cup(i,k+1))
+                     dp = MBAR_TO_PA * (po_cup(i,k) - po_cup(i,k+1))
                      trcflx_in(:,k) = -(zuo(i,k) - edto(i) * zdo(i,k)) * se_cup_chem(:,i,k)
                      massflx(i,k)   = -(zuo(i,k) - edto(i) * zdo(i,k))
                      dtime_max = min(dtime_max, .5 * dp)
@@ -3211,7 +3215,7 @@ CONTAINS
                      call fct1d3(ktop(i), kte, dtime_max, po_cup(i,:), se_chem(ispc,i,:), massflx(i,:), trcflx_in(ispc,:), sub_tend(ispc,:))
                   enddo
                   do k = kts, ktop(i)
-                     dp = 100. * (po_cup(i,k) - po_cup(i,k+1))
+                     dp = MBAR_TO_PA * (po_cup(i,k) - po_cup(i,k+1))
                      out_chem(:,i,k) = -(zuo(i,k+1) * (sc_up_chem(:,i,k+1)) - zuo(i,k) * (sc_up_chem(:,i,k))) * g / dp &
                           +(zdo(i,k+1) * (sc_dn_chem(:,i,k+1)) - zdo(i,k) * (sc_dn_chem(:,i,k))) * g / dp * edto(i)
                      out_chem(:,i,k) = out_chem(:,i,k) + sub_tend(:,k)
@@ -3220,13 +3224,13 @@ CONTAINS
 
                if(USE_TRACER_EVAP == 1 .and. trim(cumulus) /= 'shallow') then
                   do k = kts, ktop(i)
-                     dp = 100. * (po_cup(i,k) - po_cup(i,k+1))
+                     dp = MBAR_TO_PA * (po_cup(i,k) - po_cup(i,k+1))
                      out_chem(:,i,k) = out_chem(:,i,k) - 0.5 * edto(i) * (zdo(i,k) * pw_dn_chem(:,i,k) + zdo(i,k+1) * pw_dn_chem(:,i,k+1)) * g / dp
                   enddo
                endif
                if(USE_TRACER_SCAVEN > 0 .and. trim(cumulus) /= 'shallow') then
                   do k = kts, ktop(i)
-                     dp = 100. * (po_cup(i,k) - po_cup(i,k+1))
+                     dp = MBAR_TO_PA * (po_cup(i,k) - po_cup(i,k+1))
                      out_chem(:,i,k) = out_chem(:,i,k) - 0.5 * (zuo(i,k) * pw_up_chem(:,i,k) + zuo(i,k+1) * pw_up_chem(:,i,k+1)) * g / dp
                   enddo
                endif
@@ -3239,7 +3243,7 @@ CONTAINS
                   fm(k) = 0.5 * (zenv(i,k) - abs(zenv(i,k)))
                enddo
                do k = kts, ktop(i)
-                  dp = 100. * (po_cup(i,k) - po_cup(i,k+1))
+                  dp = MBAR_TO_PA * (po_cup(i,k) - po_cup(i,k+1))
                   beta1 = dtime * g / dp
                   aa(k) = alp1 * beta1 * fm(k)
                   bb(k) = 1. + alp1 * beta1 * (fp(k) - fm(k+1))
@@ -3285,7 +3289,7 @@ CONTAINS
                   endif
 
                   do k = kts, ktop(i)
-                     dp = -100. * (po_cup(i,k) - po_cup(i,k+1))
+                     dp = -MBAR_TO_PA * (po_cup(i,k) - po_cup(i,k+1))
                      beta1 = dtime * g / dp
                      ddtr(:,k) = ddtr_upd(:,k) + alp0 * beta1 * ((fp_mtp(:,k+1) * ddtr_upd(:,k) + fm_mtp(:,k+1) * ddtr_upd(:,k+1)) - (fp_mtp(:,k) * ddtr_upd(:,max(kts,k-1)) + fm_mtp(:,k) * ddtr_upd(:,k)))
                   enddo
@@ -3295,7 +3299,7 @@ CONTAINS
                enddo
 
                do k = kts, ktop(i)
-                  dp = 100. * (po_cup(i,k) - po_cup(i,k+1))
+                  dp = MBAR_TO_PA * (po_cup(i,k) - po_cup(i,k+1))
                   beta1 = g / dp
                   out_chem(:,i,k) = out_chem(:,i,k) - (zuo(i,k+1) * sc_up_chem(:,i,k+1) - zuo(i,k) * sc_up_chem(:,i,k)) * beta1 &
                        + (zdo(i,k+1) * sc_dn_chem(:,i,k+1) - zdo(i,k) * sc_dn_chem(:,i,k)) * beta1 * edto(i)
@@ -3307,7 +3311,7 @@ CONTAINS
             do ispc = 1, mtp
                trash_(:) = 0.; trash2_(:) = 0.; evap_(:) = 0.; wetdep_(:) = 0.; residu_(:) = 0.
                do k = kts, ktop(i)
-                  dp = 100. * (po_cup(i,k) - po_cup(i,k+1))
+                  dp = MBAR_TO_PA * (po_cup(i,k) - po_cup(i,k+1))
                   evap   = -0.5 * (zdo(i,k) * pw_dn_chem(ispc,i,k) + zdo(i,k+1) * pw_dn_chem(ispc,i,k+1)) * g / dp * edto(i)
                   wetdep =  0.5 * (zuo(i,k) * pw_up_chem(ispc,i,k) + zuo(i,k+1) * pw_up_chem(ispc,i,k+1)) * g / dp
                   evap_(ispc)   = evap_(ispc)   + evap * dp / g
@@ -3358,7 +3362,7 @@ CONTAINS
             nvar = nvarbegin
             if(trim(cumulus) == 'deep') call set_grads_var(jl, k, nvar, zo(i,k), "zo"//cty, ' height', '3d')
 
-            dp = 100. * (po_cup(i,k) - po_cup(i,k+1))
+            dp = MBAR_TO_PA * (po_cup(i,k) - po_cup(i,k+1))
             E_dn = -0.5 * (pwdo(i,k) + pwdo(i,k+1)) * g / dp * edto(i) * 86400. * xlv / cp * xmb(i)
             C_up = dellaqc(i,k) + (zuo(i,k+1) * qrco(i,k+1) - zuo(i,k) * qrco(i,k)) * g / dp + 0.5 * (pwo(i,k) + pwo(i,k+1)) * g / dp
             C_up = -C_up * 86400. * xlv / cp * xmb(i)
@@ -4199,7 +4203,7 @@ CONTAINS
             blqe=0.
             do k=kts,kbcon(i) !- orig formulation
                !do k=kts,kpbl(i)
-               blqe = blqe+100.*dhdt(i,k)*(po_cup(i,k)-po_cup(i,k+1))/g
+               blqe = blqe+MBAR_TO_PA*dhdt(i,k)*(po_cup(i,k)-po_cup(i,k+1))/g
             enddo
             !trash = max((hc (i,kbcon(i))-he_cup (i,kbcon(i))),1.e1)!- orig formulation
             trash = max((hco(i,kbcon(i))-heo_cup(i,kbcon(i))),1.e1)
@@ -5466,7 +5470,7 @@ CONTAINS
          hei_updf = hei_updf + random
 
          !--hei_updf parameter goes from 0 to 1 = rainfall decreases with hei_updf
-         pmaxzu  =  (psur-100.) * (1.- 0.5*hei_updf) + 0.6*( po_cup(kt) ) * 0.5*hei_updf
+         pmaxzu  =  (psur-MBAR_TO_PA) * (1.- 0.5*hei_updf) + 0.6*( po_cup(kt) ) * 0.5*hei_updf
 
          !- beta parameter: must be larger than 1, higher makes the profile sharper around the maximum zu
          beta    = max(1.1, 2.1 - 0.5*hei_updf)
@@ -7383,7 +7387,7 @@ CONTAINS
       !
       DO i=its,itf
          if(ierr(i) /= 0) cycle
-         xmbmax(i)=100.*(po_cup(i,kbcon(i))-po_cup(i,kbcon(i)+1))/(g*dtime)
+         xmbmax(i)=MBAR_TO_PA*(po_cup(i,kbcon(i))-po_cup(i,kbcon(i)+1))/(g*dtime)
          xmb(i) = min(xmb(i),xmbmax(i))
       ENDDO
 
@@ -7811,13 +7815,13 @@ CONTAINS
          DO k=kts,ktf-1
             DO i=its,itf
                if(ierr(i) /= 0) cycle
-               dp = 100.*(po_cup(i,k)-po_cup(i,k+1))
+               dp = MBAR_TO_PA*(po_cup(i,k)-po_cup(i,k+1))
                norm(i) = norm(i) + melting_layer(i,k)*dp/g
             ENDDO
          ENDDO
          DO i=its,itf
             if(ierr(i) /= 0) cycle
-            melting_layer(i,:)=melting_layer(i,:)/(norm(i)+1.e-6)*(100*(po_cup(i,kts)-po_cup(i,ktf))/g)
+            melting_layer(i,:)=melting_layer(i,:)/(norm(i)+1.e-6)*(MBAR_TO_PA*(po_cup(i,kts)-po_cup(i,ktf))/g)
             !print*,"i2=",i,maxval(melting_layer(i,:)),minval(melting_layer(i,:)),norm(i)
          ENDDO
          !--check
@@ -7868,7 +7872,7 @@ CONTAINS
          DO k=kts,ktf-1
             DO i=its,itf
                if(ierr(i) /= 0) cycle
-               dp = 100.*(po_cup(i,k)-po_cup(i,k+1))
+               dp = MBAR_TO_PA*(po_cup(i,k)-po_cup(i,k+1))
 
                !-- effective precip (after evaporation by downdraft)
                pwo_eff(i,k) = 0.5*(pwo(i,k)+pwo(i,k+1))
@@ -7885,7 +7889,7 @@ CONTAINS
             DO i=its,itf
                if(ierr(i) /= 0) cycle
                !-- melting profile (kg/kg)
-               melting(i,k) = melting_layer(i,k)*(total_pwo_solid_phase(i)/(100*(po_cup(i,kts)-po_cup(i,ktf))/g))
+               melting(i,k) = melting_layer(i,k)*(total_pwo_solid_phase(i)/(MBAR_TO_PA*(po_cup(i,kts)-po_cup(i,ktf))/g))
                !print*,"mel=",k,melting(i,k),pwo_solid_phase(i,k),po_cup(i,k)
             ENDDO
          ENDDO
@@ -7928,7 +7932,7 @@ CONTAINS
          dts=0.
          fpi=0.
          do k=kts,ktop(i)
-            dp=(po_cup(i,k)-po_cup(i,k+1))*100.
+            dp=(po_cup(i,k)-po_cup(i,k+1))*MBAR_TO_PA
             !total KE dissiptaion estimate
             dts = dts - (dellu(i,k)*us(i,k)+dellv(i,k)*vs(i,k))*dp/g
             !
@@ -8595,7 +8599,7 @@ CONTAINS
       !-- environmental values
       PT  = t_cup       ! K
       PQ  = qo_cup      ! kg/kg
-      PSP = po_cup*100. ! hPa
+      PSP = po_cup*MBAR_TO_PA ! hPa
 
       IF (PT > RTT) THEN
          Z3ES=R3LES
@@ -8688,7 +8692,7 @@ CONTAINS
          xf_dicycle(i)     = 0.
          if(ierr(i) /= 0 ) cycle
 
-         xmbmax(i)=100.*(po(i,kbcon(i))-po(i,kbcon(i)+1))/(g*dtime)
+         xmbmax(i)=MBAR_TO_PA*(po(i,kbcon(i))-po(i,kbcon(i)+1))/(g*dtime)
 
          !- limiting the mass flux at cloud base
          xmbmax(i)=min(xmbmaxshal,xmbmax(i))
@@ -9003,7 +9007,7 @@ CONTAINS
       !-- initial values
       PT  = t_old       ! K
       PQ  = q_old       ! kg/kg
-      PSP = po_cup*100. ! hPa
+      PSP = po_cup*MBAR_TO_PA ! hPa
 
 
       !--- get condensation in moist ascent --------------------------
@@ -9104,7 +9108,7 @@ CONTAINS
 
       PT  = t_old       ! K
       PQ  = q_old       ! kg/kg
-      PSP = po_cup*100. ! hPa
+      PSP = po_cup*MBAR_TO_PA ! hPa
 
       !-- for testing
       !              PSP                   TEMP                         Q                     ZCOND1
