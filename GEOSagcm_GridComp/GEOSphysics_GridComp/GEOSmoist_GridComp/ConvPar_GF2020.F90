@@ -1954,26 +1954,25 @@ CONTAINS
       !-----------------------------------------------------------------------------
       DO i = its, itf
          klcl(i) = k22(i) ! Default
+         if(ierr(i) /= 0) cycle
 
-         if(ierr(i) == 0) then
-            x_add = zqexec(i)
-            call get_cloud_bc(cumulus, kts, kte, ktf, xland(i), po(i,:), q_cup(i,:), rlll, k22(i), x_add)
-            x_add = ztexec(i)
-            call get_cloud_bc(cumulus, kts, kte, ktf, xland(i), po(i,:), t_cup(i,:), tlll, k22(i), x_add)
-            call get_cloud_bc(cumulus, kts, kte, ktf, xland(i), po(i,:), p_cup(i,:), plll, k22(i))
+         x_add = zqexec(i)
+         call get_cloud_bc(cumulus, kts, kte, ktf, xland(i), po(i,:), q_cup(i,:), rlll, k22(i), x_add)
+         x_add = ztexec(i)
+         call get_cloud_bc(cumulus, kts, kte, ktf, xland(i), po(i,:), t_cup(i,:), tlll, k22(i), x_add)
+         call get_cloud_bc(cumulus, kts, kte, ktf, xland(i), po(i,:), p_cup(i,:), plll, k22(i))
 
-            call get_lcl(tlll, 100. * plll, rlll, tlcl, plcl, dzlcl)
+         call get_lcl(tlll, 100. * plll, rlll, tlcl, plcl, dzlcl)
 
-            if(dzlcl >= 0.) then 
-               call get_cloud_bc(cumulus, kts, kte, ktf, xland(i), po(i,:), z_cup(i,:), zlll, k22(i))
-               do k = kts, ktf
-                  if(z_cup(i,k) > zlll + dzlcl) then
-                     klcl(i) = max(k, k22(i))
-                     exit
-                  endif
-               enddo
-               klcl(i) = min(klcl(i), ktf-4)
-            endif
+         if(dzlcl >= 0.) then 
+            call get_cloud_bc(cumulus, kts, kte, ktf, xland(i), po(i,:), z_cup(i,:), zlll, k22(i))
+            do k = kts, ktf
+               if(z_cup(i,k) > zlll + dzlcl) then
+                  klcl(i) = max(k, k22(i))
+                  exit
+               endif
+            enddo
+            klcl(i) = min(klcl(i), ktf-4)
          endif
       ENDDO
 
