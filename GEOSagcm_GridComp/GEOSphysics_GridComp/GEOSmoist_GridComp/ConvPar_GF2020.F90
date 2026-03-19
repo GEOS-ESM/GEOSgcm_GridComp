@@ -173,6 +173,9 @@ MODULE ConvPar_GF2020
    INTEGER, PARAMETER :: ensdim  = maxens * maxens2 * maxens3
    INTEGER, PARAMETER :: ens4    = 1
 
+   !--- Mathematical Constants
+   REAL, PARAMETER :: RADIANS_TO_DEGREES = 180.0 / 3.14159  ! Conversion factor from radians to degrees
+
    !--- Numerical Constraints
    REAL, PARAMETER :: pgcon      = 0.0    ! Pressure gradient updraft constant (Zhang/Wu 2003)
    REAL, PARAMETER :: xmbmaxshal = 0.05   ! kg/m2/s maximum base mass flux (shallow)
@@ -1279,8 +1282,8 @@ CONTAINS
           tsur(its:itf)   = temp2m(its:itf,j)
           ter11(its:itf)  = max(0.0, topt(its:itf,j))
           kpbli(its:itf)  = kpbl(its:itf,j)
-          xlons(its:itf)  = lons(its:itf,j) * 180.0 / 3.14159
-          xlats(its:itf)  = lats(its:itf,j) * 180.0 / 3.14159
+          xlons(its:itf)  = lons(its:itf,j) * RADIANS_TO_DEGREES
+          xlats(its:itf)  = lats(its:itf,j) * RADIANS_TO_DEGREES
        END SUBROUTINE gf2020_drv_load_surface_data
 
        SUBROUTINE gf2020_drv_load_vertical_data()
