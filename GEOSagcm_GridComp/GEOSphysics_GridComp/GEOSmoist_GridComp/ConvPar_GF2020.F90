@@ -2464,125 +2464,18 @@ CONTAINS
       !-----------------------------------------------------------------------------
       ! 6.3 Diurnal Cycle (DICYCLE) Closure Formulations
       !-----------------------------------------------------------------------------
-      IF( (DICYCLE == 1 .or. DICYCLE == 6) .or. (DICYCLE == 0 .and. trim(cumulus) == 'mid') ) THEN
-         iversion = 0
-         call cup_up_aa1bl(iversion, aa1_bl, aa1_fa, aa1, t, tn, q, qo, dtime, po_cup, zo_cup, zuo, dbyo, GAMMAo_CUP, tn_cup, &
-              rho, klcl, kpbl, kbcon, ktop, ierr, itf, ktf, its, ite, kts, kte,                          &
-              xland, ztexec, xlons, xlats, h_sfc_flux, le_sfc_flux, tau_bl, tau_ecmwf, t_star, cumulus, tn_bl, qo_bl)
-         if(DICYCLE == 6) then
-            call cup_up_aa1bl(iversion, aa0_bl, aa1_fa, aa1, t, tn_bl, q, qo_bl, dtime, po_cup, zo_cup, zuo, dbyo, GAMMAo_CUP, tn_cup, &
-                 rho, klcl, kpbl, kbcon, ktop, ierr, itf, ktf, its, ite, kts, kte, &
-                 xland, ztexec, xlons, xlats, h_sfc_flux, le_sfc_flux, tau_bl, tau_ecmwf, t_star, cumulus, tn_bl, qo_bl)
-            where(ierr == 0) aa1_bl = 0.50 * aa1_bl + 0.50 * aa0_bl
-         endif
-         DO i = its, itf
-            if(ierr(i) == 0) aa1_bl(i) = (aa1_bl(i) / T_star) * tau_bl(i)
-         ENDDO
-
-      ELSEIF(DICYCLE == 4) THEN ! Zhang (2002)
-         DO i = its, itf
-            if (ierr(i) /= 0) cycle
-            tn_x(i, kts:ktf) = tn(i, kts:ktf) - tn_bl(i, kts:ktf) + t(i, kts:ktf)
-            qo_x(i, kts:ktf) = qo(i, kts:ktf) - qo_bl(i, kts:ktf) + q(i, kts:ktf)
-         ENDDO
-         call cup_env(zo, qeso_x, heo_x, heso_x, tn_x, qo_x, po, z1, psur, ierr, -1, itf, ktf, its, ite, kts, kte)
-         call cup_env_clev(tn_x, qeso_x, qo_x, heo_x, heso_x, zo, po, qeso_cup_x, qo_cup_x, heo_cup_x, us, vs, u_cup, v_cup, &
-              heso_cup_x, zo_cup, po_cup, gammao_cup_x, tn_cup_x, psur, tsur, ierr, z1, itf, ktf, its, ite, kts, kte)
-         DO i = its, itf
-            if(ierr(i) /= 0) cycle
-            aa3(i) = 0.0
-            do k = max(kbcon(i), kts+1), ktop(i)
-               dp = -(log(MBAR_TO_PA * po(i,k)) - log(MBAR_TO_PA * po(i,k-1))) 
-               aa3(i) = aa3(i) - (tn_cup_x(i,k) * (1. + EPSILON_VAPOR * qo_cup_x(i,k)) - t_cup(i,k) * (1. + EPSILON_VAPOR * q_cup(i,k))) * dp / dtime
-            enddo
-            aa1_bl(i) = aa3(i) - (63.e-6)
-            if(xland(i) > 0.90) aa1_bl(i) = 1.4 * aa1_bl(i)
-         ENDDO
-         DO i = its, itf
-            dtdt(i,:) = 0.0; dqdt(i,:) = 0.0
-            if(ierr(i) /= 0) cycle
-            do k = max(kbcon(i), kts+1), ktop(i)
-dp = MBAR_TO_PA * (po_cup(i,k+1) - po_cup(i,k))
-               RZenv = 0.5 * (zuo(i,k+1) + zuo(i,k) - (zdo(i,k+1) + zdo(i,k)) * edto(i))
-               S2 = cp * tn_cup_x(i,k+1) + g * zo_cup(i,k+1)
-               S1 = cp * tn_cup_x(i,k)   + g * zo_cup(i,k)
-               Q2 = qo_cup_x(i,k+1)
-               Q1 = qo_cup_x(i,k)
-
-               dqdt(i,k) = -RZenv * (Q2 - Q1) * g / dp
-               dtdt(i,k) = -(1./cp) * RZenv * (S2 - S1) * g / dp
-               dqdt(i,k) = dqdt(i,k) + (up_massdetro(i,k) * 0.5 * (qco(i,k+1) + qco(i,k) - (Q2 + Q1)) + &
-                    edto(i) * dd_massdetro(i,k) * 0.5 * (qcdo(i,k+1) + qcdo(i,k) - (Q2 + Q1))) * g / dp
-               dtdt(i,k) = dtdt(i,k) + (up_massdetro(i,k) * 0.5 * (tempco(i,k+1) + tempco(i,k) - (tn_cup_x(i,k+1) + tn_cup_x(i,k))) + &
-                    edto(i) * dd_massdetro(i,k) * 0.5 * (tempcdo(i,k+1) + tempcdo(i,k) - (tn_cup_x(i,k+1) + tn_cup_x(i,k)))) * g / dp
-            enddo
-            xk_x(i) = 0.0
-            do k = max(kbcon(i), kts+1), ktop(i)
-               dp = -(log(MBAR_TO_PA * po_cup(i,k+1)) - log(MBAR_TO_PA * po_cup(i,k)))
-               xk_x(i) = xk_x(i) + ((1. + EPSILON_VAPOR * qo_x(i,k)) * dtdt(i,k) + EPSILON_VAPOR * tn_x(i,k) * dqdt(i,k)) * dp
-            enddo
-         ENDDO
-
-      ELSEIF(DICYCLE == 5 .or. DICYCLE == 2) THEN
-         PHY2: DO step = fa, fa
-            IF(step == bl) then
-               DO i = its, itf
-                  if (ierr(i) /= 0) cycle
-                  k_free_trop = kpbl(i)
-                  tn_x(i, 1:k_free_trop) = tn(i, 1:k_free_trop)
-                  qo_x(i, 1:k_free_trop) = qo(i, 1:k_free_trop)
-                  tn_x(i, k_free_trop+1:kte) = t(i, k_free_trop+1:kte)
-                  qo_x(i, k_free_trop+1:kte) = q(i, k_free_trop+1:kte)
-               ENDDO
-            ELSEIF(step == fa) then
-               DO i = its, itf
-                  if (ierr(i) /= 0) cycle
-                  k_free_trop = kpbl(i)
-                  tn_x(i, 1:k_free_trop) = t(i, 1:k_free_trop)
-                  qo_x(i, 1:k_free_trop) = q(i, 1:k_free_trop)
-                  tn_x(i, k_free_trop+1:kte) = tn(i, k_free_trop+1:kte) - tn_bl(i, k_free_trop+1:kte) + t(i, k_free_trop+1:kte)
-                  qo_x(i, k_free_trop+1:kte) = qo(i, k_free_trop+1:kte) - qo_bl(i, k_free_trop+1:kte) + q(i, k_free_trop+1:kte)
-               ENDDO
-            ENDIF
-
-            call cup_env(zo, qeso_x, heo_x, heso_x, tn_x, qo_x, po, z1, psur, ierr, -1, itf, ktf, its, ite, kts, kte)
-            call cup_env_clev(tn_x, qeso_x, qo_x, heo_x, heso_x, zo, po, qeso_cup_x, qo_cup_x, heo_cup_x, us, vs, u_cup, v_cup, &
-                 heso_cup_x, zo_cup, po_cup, gammao_cup_x, tn_cup_x, psur, tsur, ierr, z1, itf, ktf, its, ite, kts, kte)
-
-            DO i = its, itf
-               if(ierr(i) /= 0) cycle
-               x_add = MERGE((xlv * zqexec(i) + cp * ztexec(i)), 0.0, step == bl)
-               call get_cloud_bc(cumulus, kts, kte, ktf, xland(i), po(i,:), heo_cup_x(i,:), hkbo_x(i), k22(i), x_add, Tpert(i,:))
-            ENDDO
-
-            DO i = its, itf
-               hco_x(i,:) = 0.0
-               if(ierr(i) /= 0) cycle
-               hco_x(i, kts:start_level(i)) = hkbo_x(i)
-
-               do k = start_level(i) + 1, ktop(i) + 1
-                  denom = (zuo(i,k-1) - 0.5 * up_massdetro(i,k-1) + up_massentro(i,k-1))
-                  if(denom > 0.0) then
-                     hco_x(i,k) = (hco_x(i,k-1) * zuo(i,k-1) - 0.5 * up_massdetro(i,k-1) * hco_x(i,k-1) + up_massentro(i,k-1) * heo_x(i,k-1)) / denom
-                  else
-                     hco_x(i,k) = hco_x(i,k-1)
-                  endif
-                  hco_x(i,k) = hco_x(i,k) + (1.0 - p_liq_ice(i,k)) * qrco(i,k) * xlf
-               enddo
-               do k = ktop(i) + 2, ktf
-                  hco_x(i,k) = heso_cup_x(i,k)
-               enddo
-            ENDDO
-
-            call get_buoyancy(itf, ktf, its, ite, kts, kte, ierr, klcl, kbcon, ktop, hco_x, heo_cup_x, heso_cup_x, dbyo_x, zo_cup)
-
-            IF(step == bl) call cup_up_aa0(aa1_bl, zo_cup, zuo, dbyo_x, GAMMAo_CUP_x, tn_cup_x, k22, klcl, kbcon, ktop, ierr, itf, ktf, its, ite, kts, kte)
-            IF(step == fa) call cup_up_aa0(aa1_fa, zo_cup, zuo, dbyo_x, GAMMAo_CUP_x, tn_cup_x, k22, klcl, kbcon, ktop, ierr, itf, ktf, its, ite, kts, kte)
-         ENDDO PHY2
-         DO i = its, itf
-            if(ierr(i) == 0) aa1_bl(i) = aa1_fa(i)
-         ENDDO
-      ENDIF
+      call compute_diurnal_cycle_closure(DICYCLE, cumulus, its, itf, kts, kte, ktf, ite, &
+                                          ierr, aa1_bl, aa0_bl, aa1_fa, aa1, t, tn, q, qo, &
+                                          tn_bl, qo_bl, dtime, po, po_cup, zo, zo_cup, zuo, zdo, &
+                                          dbyo, dbyo_x, GAMMAo_CUP, GAMMAo_CUP_x, tn_cup, tn_cup_x, &
+                                          rho, klcl, kpbl, kbcon, ktop, xland, ztexec, xlons, xlats, &
+                                          h_sfc_flux, le_sfc_flux, tau_bl, tau_ecmwf, t_star, &
+                                          tn_x, qo_x, qeso_x, heo_x, heso_x, z1, psur, tsur, &
+                                          qeso_cup_x, qo_cup_x, heo_cup_x, us, vs, u_cup, v_cup, &
+                                          heso_cup_x, zo_cup_x, po_cup_x, gammao_cup_x, edto, &
+                                          up_massdetro, dd_massdetro, qco, qcdo, tempco, tempcdo, &
+                                          dtdt, dqdt, aa3, start_level, up_massentro, hco_x, hkbo_x, &
+                                          k22, qrco, xlf, p_liq_ice, xk_x)
 
       !-----------------------------------------------------------------------------
       ! 6.4 Xie et al 2019 Advective Trigger
@@ -3499,6 +3392,176 @@ dp = MBAR_TO_PA * (po_cup(i,k+1) - po_cup(i,k))
          endif
 
       END SUBROUTINE apply_cold_pool_memory
+
+      !--------------------------------------------------------------------------
+      ! Helper: Compute diurnal cycle closure (aa1_bl) for various formulations
+      !--------------------------------------------------------------------------
+      SUBROUTINE compute_diurnal_cycle_closure(DICYCLE, cumulus, its, itf, kts, kte, ktf, ite, &
+                                                ierr, aa1_bl, aa0_bl, aa1_fa, aa1, t, tn, q, qo, &
+                                                tn_bl, qo_bl, dtime, po, po_cup, zo, zo_cup, zuo, zdo, &
+                                                dbyo, dbyo_x, GAMMAo_CUP, GAMMAo_CUP_x, tn_cup, tn_cup_x, &
+                                                rho, klcl, kpbl, kbcon, ktop, xland, ztexec, xlons, xlats, &
+                                                h_sfc_flux, le_sfc_flux, tau_bl, tau_ecmwf, t_star, &
+                                                tn_x, qo_x, qeso_x, heo_x, heso_x, z1, psur, tsur, &
+                                                qeso_cup_x, qo_cup_x, heo_cup_x, us, vs, u_cup, v_cup, &
+                                                heso_cup_x, zo_cup_x, po_cup_x, gammao_cup_x, edto, &
+                                                up_massdetro, dd_massdetro, qco, qcdo, tempco, tempcdo, &
+                                                dtdt, dqdt, aa3, start_level, up_massentro, hco_x, hkbo_x, &
+                                                k22, qrco, xlf, p_liq_ice, xk_x)
+         INTEGER, INTENT(IN) :: DICYCLE, its, itf, kts, kte, ktf, ite
+         CHARACTER(LEN=*), INTENT(IN) :: cumulus
+         INTEGER, INTENT(IN) :: ierr(its:itf), klcl(its:itf), kpbl(its:itf), kbcon(its:itf), ktop(its:itf)
+         INTEGER, INTENT(IN) :: start_level(its:itf), k22(its:itf)
+         REAL, INTENT(IN) :: dtime, z1, xlf, t_star
+         REAL, INTENT(IN) :: t(its:itf,kts:kte), tn(its:itf,kts:kte), q(its:itf,kts:kte), qo(its:itf,kts:kte)
+         REAL, INTENT(IN) :: tn_bl(its:itf,kts:kte), qo_bl(its:itf,kts:kte)
+         REAL, INTENT(IN) :: po(its:itf,kts:kte), po_cup(its:itf,kts:kte), zo(its:itf,kts:kte), zo_cup(its:itf,kts:kte)
+         REAL, INTENT(IN) :: zuo(its:itf,kts:kte), zdo(its:itf,kts:kte), dbyo(its:itf,kts:kte)
+         REAL, INTENT(IN) :: GAMMAo_CUP(its:itf,kts:kte), tn_cup(its:itf,kts:kte), rho(its:itf,kts:kte)
+         REAL, INTENT(IN) :: xland(its:itf), ztexec(its:itf), xlons(its:itf), xlats(its:itf)
+         REAL, INTENT(IN) :: h_sfc_flux(its:itf), le_sfc_flux(its:itf), tau_bl(its:itf), tau_ecmwf(its:itf)
+         REAL, INTENT(IN) :: psur(its:itf), tsur(its:itf), us(its:itf,kts:kte), vs(its:itf,kts:kte)
+         REAL, INTENT(IN) :: edto(its:itf), up_massdetro(its:itf,kts:kte), dd_massdetro(its:itf,kts:kte)
+         REAL, INTENT(IN) :: qco(its:itf,kts:kte), qcdo(its:itf,kts:kte), tempco(its:itf,kts:kte), tempcdo(its:itf,kts:kte)
+         REAL, INTENT(IN) :: up_massentro(its:itf,kts:kte), qrco(its:itf,kts:kte), p_liq_ice(its:itf,kts:kte)
+         REAL, INTENT(INOUT) :: tn_x(its:itf,kts:kte), qo_x(its:itf,kts:kte)
+         REAL, INTENT(INOUT) :: qeso_x(its:itf,kts:kte), heo_x(its:itf,kts:kte), heso_x(its:itf,kts:kte)
+         REAL, INTENT(INOUT) :: qeso_cup_x(its:itf,kts:kte), qo_cup_x(its:itf,kts:kte), heo_cup_x(its:itf,kts:kte)
+         REAL, INTENT(INOUT) :: u_cup(its:itf,kts:kte), v_cup(its:itf,kts:kte)
+         REAL, INTENT(INOUT) :: heso_cup_x(its:itf,kts:kte), zo_cup_x(its:itf,kts:kte), po_cup_x(its:itf,kts:kte)
+         REAL, INTENT(INOUT) :: gammao_cup_x(its:itf,kts:kte), tn_cup_x(its:itf,kts:kte)
+         REAL, INTENT(INOUT) :: dbyo_x(its:itf,kts:kte), GAMMAo_CUP_x(its:itf,kts:kte)
+         REAL, INTENT(INOUT) :: dtdt(its:itf,kts:kte), dqdt(its:itf,kts:kte), hco_x(its:itf,kts:kte)
+         REAL, INTENT(INOUT) :: hkbo_x(its:itf), xk_x(its:itf)
+         REAL, INTENT(OUT) :: aa1_bl(its:itf), aa0_bl(its:itf), aa1_fa(its:itf), aa1(its:itf), aa3(its:itf)
+         
+         INTEGER :: i, k, iversion, step, fa, bl, k_free_trop
+         REAL :: dp, RZenv, S1, S2, Q1, Q2, x_add, denom
+         REAL :: Tpert(its:itf,kts:kte)
+
+         fa = 1; bl = 2
+
+         IF( (DICYCLE == 1 .or. DICYCLE == 6) .or. (DICYCLE == 0 .and. trim(cumulus) == 'mid') ) THEN
+            iversion = 0
+            call cup_up_aa1bl(iversion, aa1_bl, aa1_fa, aa1, t, tn, q, qo, dtime, po_cup, zo_cup, zuo, dbyo, GAMMAo_CUP, tn_cup, &
+                 rho, klcl, kpbl, kbcon, ktop, ierr, itf, ktf, its, ite, kts, kte,                          &
+                 xland, ztexec, xlons, xlats, h_sfc_flux, le_sfc_flux, tau_bl, tau_ecmwf, t_star, cumulus, tn_bl, qo_bl)
+            if(DICYCLE == 6) then
+               call cup_up_aa1bl(iversion, aa0_bl, aa1_fa, aa1, t, tn_bl, q, qo_bl, dtime, po_cup, zo_cup, zuo, dbyo, GAMMAo_CUP, tn_cup, &
+                    rho, klcl, kpbl, kbcon, ktop, ierr, itf, ktf, its, ite, kts, kte, &
+                    xland, ztexec, xlons, xlats, h_sfc_flux, le_sfc_flux, tau_bl, tau_ecmwf, t_star, cumulus, tn_bl, qo_bl)
+               where(ierr == 0) aa1_bl = 0.50 * aa1_bl + 0.50 * aa0_bl
+            endif
+            DO i = its, itf
+               if(ierr(i) == 0) aa1_bl(i) = (aa1_bl(i) / T_star) * tau_bl(i)
+            ENDDO
+
+         ELSEIF(DICYCLE == 4) THEN ! Zhang (2002)
+            DO i = its, itf
+               if (ierr(i) /= 0) cycle
+               tn_x(i, kts:ktf) = tn(i, kts:ktf) - tn_bl(i, kts:ktf) + t(i, kts:ktf)
+               qo_x(i, kts:ktf) = qo(i, kts:ktf) - qo_bl(i, kts:ktf) + q(i, kts:ktf)
+            ENDDO
+            call cup_env(zo, qeso_x, heo_x, heso_x, tn_x, qo_x, po, z1, psur, ierr, -1, itf, ktf, its, ite, kts, kte)
+            call cup_env_clev(tn_x, qeso_x, qo_x, heo_x, heso_x, zo, po, qeso_cup_x, qo_cup_x, heo_cup_x, us, vs, u_cup, v_cup, &
+                 heso_cup_x, zo_cup, po_cup, gammao_cup_x, tn_cup_x, psur, tsur, ierr, z1, itf, ktf, its, ite, kts, kte)
+            DO i = its, itf
+               if(ierr(i) /= 0) cycle
+               aa3(i) = 0.0
+               do k = max(kbcon(i), kts+1), ktop(i)
+                  dp = -(log(MBAR_TO_PA * po(i,k)) - log(MBAR_TO_PA * po(i,k-1))) 
+                  aa3(i) = aa3(i) - (tn_cup_x(i,k) * (1. + EPSILON_VAPOR * qo_cup_x(i,k)) - t_cup(i,k) * (1. + EPSILON_VAPOR * q_cup(i,k))) * dp / dtime
+               enddo
+               aa1_bl(i) = aa3(i) - (63.e-6)
+               if(xland(i) > 0.90) aa1_bl(i) = 1.4 * aa1_bl(i)
+            ENDDO
+            DO i = its, itf
+               dtdt(i,:) = 0.0; dqdt(i,:) = 0.0
+               if(ierr(i) /= 0) cycle
+               do k = max(kbcon(i), kts+1), ktop(i)
+                  dp = MBAR_TO_PA * (po_cup(i,k+1) - po_cup(i,k))
+                  RZenv = 0.5 * (zuo(i,k+1) + zuo(i,k) - (zdo(i,k+1) + zdo(i,k)) * edto(i))
+                  S2 = cp * tn_cup_x(i,k+1) + g * zo_cup(i,k+1)
+                  S1 = cp * tn_cup_x(i,k)   + g * zo_cup(i,k)
+                  Q2 = qo_cup_x(i,k+1)
+                  Q1 = qo_cup_x(i,k)
+
+                  dqdt(i,k) = -RZenv * (Q2 - Q1) * g / dp
+                  dtdt(i,k) = -(1./cp) * RZenv * (S2 - S1) * g / dp
+                  dqdt(i,k) = dqdt(i,k) + (up_massdetro(i,k) * 0.5 * (qco(i,k+1) + qco(i,k) - (Q2 + Q1)) + &
+                       edto(i) * dd_massdetro(i,k) * 0.5 * (qcdo(i,k+1) + qcdo(i,k) - (Q2 + Q1))) * g / dp
+                  dtdt(i,k) = dtdt(i,k) + (up_massdetro(i,k) * 0.5 * (tempco(i,k+1) + tempco(i,k) - (tn_cup_x(i,k+1) + tn_cup_x(i,k))) + &
+                       edto(i) * dd_massdetro(i,k) * 0.5 * (tempcdo(i,k+1) + tempcdo(i,k) - (tn_cup_x(i,k+1) + tn_cup_x(i,k)))) * g / dp
+               enddo
+               xk_x(i) = 0.0
+               do k = max(kbcon(i), kts+1), ktop(i)
+                  dp = -(log(MBAR_TO_PA * po_cup(i,k+1)) - log(MBAR_TO_PA * po_cup(i,k)))
+                  xk_x(i) = xk_x(i) + ((1. + EPSILON_VAPOR * qo_x(i,k)) * dtdt(i,k) + EPSILON_VAPOR * tn_x(i,k) * dqdt(i,k)) * dp
+               enddo
+            ENDDO
+
+         ELSEIF(DICYCLE == 5 .or. DICYCLE == 2) THEN
+            PHY2: DO step = fa, fa
+               IF(step == bl) then
+                  DO i = its, itf
+                     if (ierr(i) /= 0) cycle
+                     k_free_trop = kpbl(i)
+                     tn_x(i, 1:k_free_trop) = tn(i, 1:k_free_trop)
+                     qo_x(i, 1:k_free_trop) = qo(i, 1:k_free_trop)
+                     tn_x(i, k_free_trop+1:kte) = t(i, k_free_trop+1:kte)
+                     qo_x(i, k_free_trop+1:kte) = q(i, k_free_trop+1:kte)
+                  ENDDO
+               ELSEIF(step == fa) then
+                  DO i = its, itf
+                     if (ierr(i) /= 0) cycle
+                     k_free_trop = kpbl(i)
+                     tn_x(i, 1:k_free_trop) = t(i, 1:k_free_trop)
+                     qo_x(i, 1:k_free_trop) = q(i, 1:k_free_trop)
+                     tn_x(i, k_free_trop+1:kte) = tn(i, k_free_trop+1:kte) - tn_bl(i, k_free_trop+1:kte) + t(i, k_free_trop+1:kte)
+                     qo_x(i, k_free_trop+1:kte) = qo(i, k_free_trop+1:kte) - qo_bl(i, k_free_trop+1:kte) + q(i, k_free_trop+1:kte)
+                  ENDDO
+               ENDIF
+
+               call cup_env(zo, qeso_x, heo_x, heso_x, tn_x, qo_x, po, z1, psur, ierr, -1, itf, ktf, its, ite, kts, kte)
+               call cup_env_clev(tn_x, qeso_x, qo_x, heo_x, heso_x, zo, po, qeso_cup_x, qo_cup_x, heo_cup_x, us, vs, u_cup, v_cup, &
+                    heso_cup_x, zo_cup, po_cup, gammao_cup_x, tn_cup_x, psur, tsur, ierr, z1, itf, ktf, its, ite, kts, kte)
+
+               DO i = its, itf
+                  if(ierr(i) /= 0) cycle
+                  x_add = MERGE((xlv * zqexec(i) + cp * ztexec(i)), 0.0, step == bl)
+                  call get_cloud_bc(cumulus, kts, kte, ktf, xland(i), po(i,:), heo_cup_x(i,:), hkbo_x(i), k22(i), x_add, Tpert(i,:))
+               ENDDO
+
+               DO i = its, itf
+                  hco_x(i,:) = 0.0
+                  if(ierr(i) /= 0) cycle
+                  hco_x(i, kts:start_level(i)) = hkbo_x(i)
+
+                  do k = start_level(i) + 1, ktop(i) + 1
+                     denom = (zuo(i,k-1) - 0.5 * up_massdetro(i,k-1) + up_massentro(i,k-1))
+                     if(denom > 0.0) then
+                        hco_x(i,k) = (hco_x(i,k-1) * zuo(i,k-1) - 0.5 * up_massdetro(i,k-1) * hco_x(i,k-1) + up_massentro(i,k-1) * heo_x(i,k-1)) / denom
+                     else
+                        hco_x(i,k) = hco_x(i,k-1)
+                     endif
+                     hco_x(i,k) = hco_x(i,k) + (1.0 - p_liq_ice(i,k)) * qrco(i,k) * xlf
+                  enddo
+                  do k = ktop(i) + 2, ktf
+                     hco_x(i,k) = heso_cup_x(i,k)
+                  enddo
+               ENDDO
+
+               call get_buoyancy(itf, ktf, its, ite, kts, kte, ierr, klcl, kbcon, ktop, hco_x, heo_cup_x, heso_cup_x, dbyo_x, zo_cup)
+
+               IF(step == bl) call cup_up_aa0(aa1_bl, zo_cup, zuo, dbyo_x, GAMMAo_CUP_x, tn_cup_x, k22, klcl, kbcon, ktop, ierr, itf, ktf, its, ite, kts, kte)
+               IF(step == fa) call cup_up_aa0(aa1_fa, zo_cup, zuo, dbyo_x, GAMMAo_CUP_x, tn_cup_x, k22, klcl, kbcon, ktop, ierr, itf, ktf, its, ite, kts, kte)
+            ENDDO PHY2
+            DO i = its, itf
+               if(ierr(i) == 0) aa1_bl(i) = aa1_fa(i)
+            ENDDO
+         ENDIF
+
+      END SUBROUTINE compute_diurnal_cycle_closure
 
    END SUBROUTINE CUP_gf
 
