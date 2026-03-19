@@ -459,107 +459,106 @@ CONTAINS
       ! 6. FEEDBACK TENDENCIES TO GEOS HOST MODEL
       !===========================================================================
 
-      IF(FEED_3DMODEL) THEN
+      if(.NOT. FEED_3DMODEL) return
 
-         !--- 6.1 Basic Precipitation & Evaporative Feedbacks
-        DO j = 1, myp
-          DO i = 1, mxp
-            IF(.NOT. do_this_column(i,j)) CYCLE
-               CNPCPRATE(i,j) = CONPRR(i,j)
-               DO k = 1, mzp
-                  REVSU(i,j,k) = REVSU_GF(flip(k),i,j)
-                  PRFIL(i,j,k) = PRFIL_GF(flip(k),i,j)
-               ENDDO
-            ENDDO
-         ENDDO
+      !--- 6.1 Basic Precipitation & Evaporative Feedbacks
+      DO j = 1, myp
+        DO i = 1, mxp
+          IF(.NOT. do_this_column(i,j)) CYCLE
+             CNPCPRATE(i,j) = CONPRR(i,j)
+             DO k = 1, mzp
+                REVSU(i,j,k) = REVSU_GF(flip(k),i,j)
+                PRFIL(i,j,k) = PRFIL_GF(flip(k),i,j)
+             ENDDO
+          ENDDO
+       ENDDO
 
-         !--- 6.2 Tracer Chemistry Feedbacks
-          IF(USE_TRACER_TRANSP == 1) THEN
-             DO j = 1, myp
-                DO i = 1, mxp
-                   IF(.NOT. do_this_column(i,j)) CYCLE
-                  DO k = 1, mzp
-                     DO ispc = 1, mtp
-                        CNV_Tracers(ispc)%Q(i,j,k) = CNV_Tracers(ispc)%Q(i,j,k) + DT_moist * SRC_CHEM(ispc,flip(k),i,j)
-                        CNV_Tracers(ispc)%Q(i,j,k) = max(CNV_Tracers(ispc)%Q(i,j,k), mintracer)
-                     ENDDO
-                  ENDDO
-               ENDDO
-            ENDDO
-         ENDIF
-
-         !--- 6.3 Reset Sub-grid Diagnostics
-         if(ZERO_DIFF_VVEL == 1) then
-            sgs_vvel_dp = MAPL_UNDEF
-            sgs_vvel_md = MAPL_UNDEF
-            sgs_vvel_sh = MAPL_UNDEF
-         endif
-
-         entr_dp = MAPL_UNDEF
-         entr_md = MAPL_UNDEF
-         entr_sh = MAPL_UNDEF
-
-         !--- 6.4 Extract Plume-Specific Profiles
-         DO IENS = 1, maxiens
-            if(.NOT. icumulus_gf(IENS)) cycle
-            DO j = 1, myp
-               DO i = 1, mxp
-                  if(ierr4d(i,j,IENS) /= 0) cycle
-
-                  DO k = mzp, flip(ktop4d(i,j,IENS)) - 1, -1
-
-                     !- Sub-grid vertical velocity
-                     if(ZERO_DIFF_VVEL == 1) then
-                        SELECT CASE(IENS)
-                        CASE(DEEP); sgs_vvel_dp(i,j,k) = sgs_vvel_5d(i,flip(k),j,IENS)
-                        CASE(MID);  sgs_vvel_md(i,j,k) = sgs_vvel_5d(i,flip(k),j,IENS)
-                        CASE(SHAL); sgs_vvel_sh(i,j,k) = sgs_vvel_5d(i,flip(k),j,IENS)
-                        END SELECT
-                     endif
-
-                     !- Convective Condensate Source (kg m-2 s-1)
-                     CNV_DQCDT(i,j,k) = SRC_CI(flip(k),i,j) * DZ(i,j,k) * AIR_DEN(i,j,k)
-
-                     !- Updraft and Detrainment Mass Fluxes
-                     CNV_MFD(i,j,k) = CNV_MFD(i,j,k) + up_massdetr5d(i,flip(k),j,IENS) * xmb4d(i,j,IENS)
-                     CNV_MF0(i,j,k) = CNV_MF0(i,j,k) + zup5d(i,flip(k),j,IENS) * xmb4d(i,j,IENS)
-
-                     !- Total Convective Mass Flux
-                     CNV_MFC(i,j,k) = CNV_MFC(i,j,k) + (zup5d(i,flip(k),j,IENS) + &
-                          zdn5d(i,flip(k),j,IENS) * edt4d(i,j,IENS)) * xmb4d(i,j,IENS)
-
-                     !- Deep convective total water flux
-                     qsatup = MAPL_EQsat(tup5d(i,flip(k),j,IENS), press(flip(k),i,j), dtqw) + clwup5d(i,flip(k),j,IENS) / 0.033
-                     WQT_DC(i,j,k) = WQT_DC(i,j,k) + xmb4d(i,j,IENS) * zup5d(i,flip(k),j,IENS) * (qsatup - rvap(flip(k),i,j))
-
-                     !- Entrainment Profiles
-                     if(zup5d(i,flip(k),j,IENS) > 1.0e-6) then
-                        SELECT CASE(IENS)
-                        CASE(DEEP); entr_dp(i,j,k) = up_massentr5d(i,flip(k),j,IENS) / (DZ(i,j,k) * zup5d(i,flip(k),j,IENS))
-                        CASE(MID);  entr_md(i,j,k) = up_massentr5d(i,flip(k),j,IENS) / (DZ(i,j,k) * zup5d(i,flip(k),j,IENS))
-                        CASE(SHAL); entr_sh(i,j,k) = up_massentr5d(i,flip(k),j,IENS) / (DZ(i,j,k) * zup5d(i,flip(k),j,IENS))
-                        END SELECT
-
-                        ENTLAM(i,j,k)  = ENTLAM(i,j,k) + (up_massentr5d(i,flip(k),j,IENS) / (DZ(i,j,k) * zup5d(i,flip(k),j,IENS)))
-                        CNV_CVW(i,j,k) = -0.2 ! hPa/s => 4 m/s
-                     endif
-
-                     !- Grid mean convective condensate
-                     CNV_QC(i,j,k) = CNV_QC(i,j,k) + clwup5d(i,flip(k),j,IENS)
-
-                     !- Convective precipitation generation 
-                     CNV_PRC3(i,j,k) = CNV_PRC3(i,j,k) + (prup5d(i,flip(k),j,IENS) + &
-                          edt4d(i,j,IENS) * prdn5d(i,flip(k),j,IENS)) * xmb4d(i,j,IENS) &
-                          * DT_moist / (DZ(i,j,k) * AIR_DEN(i,j,k))
-
-                     !- Updraft Areal Fraction
-                     if(zup5d(i,flip(k),j,IENS) > 1.0e-6) CNV_UPDF(i,j,k) = 0.033
-
-                  ENDDO
-               ENDDO
-            ENDDO
-         ENDDO
+      !--- 6.2 Tracer Chemistry Feedbacks
+      IF(USE_TRACER_TRANSP == 1) THEN
+         DO j = 1, myp
+            DO i = 1, mxp
+               IF(.NOT. do_this_column(i,j)) CYCLE
+              DO k = 1, mzp
+                 DO ispc = 1, mtp
+                    CNV_Tracers(ispc)%Q(i,j,k) = CNV_Tracers(ispc)%Q(i,j,k) + DT_moist * SRC_CHEM(ispc,flip(k),i,j)
+                    CNV_Tracers(ispc)%Q(i,j,k) = max(CNV_Tracers(ispc)%Q(i,j,k), mintracer)
+                 ENDDO
+              ENDDO
+           ENDDO
+        ENDDO
       ENDIF
+
+      !--- 6.3 Reset Sub-grid Diagnostics
+      if(ZERO_DIFF_VVEL == 1) then
+         sgs_vvel_dp = MAPL_UNDEF
+         sgs_vvel_md = MAPL_UNDEF
+         sgs_vvel_sh = MAPL_UNDEF
+      endif
+
+      entr_dp = MAPL_UNDEF
+      entr_md = MAPL_UNDEF
+      entr_sh = MAPL_UNDEF
+
+      !--- 6.4 Extract Plume-Specific Profiles
+      DO IENS = 1, maxiens
+         if(.NOT. icumulus_gf(IENS)) cycle
+         DO j = 1, myp
+            DO i = 1, mxp
+               if(ierr4d(i,j,IENS) /= 0) cycle
+
+               DO k = mzp, flip(ktop4d(i,j,IENS)) - 1, -1
+
+                  !- Sub-grid vertical velocity
+                  if(ZERO_DIFF_VVEL == 1) then
+                     SELECT CASE(IENS)
+                     CASE(DEEP); sgs_vvel_dp(i,j,k) = sgs_vvel_5d(i,flip(k),j,IENS)
+                     CASE(MID);  sgs_vvel_md(i,j,k) = sgs_vvel_5d(i,flip(k),j,IENS)
+                     CASE(SHAL); sgs_vvel_sh(i,j,k) = sgs_vvel_5d(i,flip(k),j,IENS)
+                     END SELECT
+                  endif
+
+                  !- Convective Condensate Source (kg m-2 s-1)
+                  CNV_DQCDT(i,j,k) = SRC_CI(flip(k),i,j) * DZ(i,j,k) * AIR_DEN(i,j,k)
+
+                  !- Updraft and Detrainment Mass Fluxes
+                  CNV_MFD(i,j,k) = CNV_MFD(i,j,k) + up_massdetr5d(i,flip(k),j,IENS) * xmb4d(i,j,IENS)
+                  CNV_MF0(i,j,k) = CNV_MF0(i,j,k) + zup5d(i,flip(k),j,IENS) * xmb4d(i,j,IENS)
+
+                  !- Total Convective Mass Flux
+                  CNV_MFC(i,j,k) = CNV_MFC(i,j,k) + (zup5d(i,flip(k),j,IENS) + &
+                       zdn5d(i,flip(k),j,IENS) * edt4d(i,j,IENS)) * xmb4d(i,j,IENS)
+
+                  !- Deep convective total water flux
+                  qsatup = MAPL_EQsat(tup5d(i,flip(k),j,IENS), press(flip(k),i,j), dtqw) + clwup5d(i,flip(k),j,IENS) / 0.033
+                  WQT_DC(i,j,k) = WQT_DC(i,j,k) + xmb4d(i,j,IENS) * zup5d(i,flip(k),j,IENS) * (qsatup - rvap(flip(k),i,j))
+
+                  !- Entrainment Profiles
+                  if(zup5d(i,flip(k),j,IENS) > 1.0e-6) then
+                     SELECT CASE(IENS)
+                     CASE(DEEP); entr_dp(i,j,k) = up_massentr5d(i,flip(k),j,IENS) / (DZ(i,j,k) * zup5d(i,flip(k),j,IENS))
+                     CASE(MID);  entr_md(i,j,k) = up_massentr5d(i,flip(k),j,IENS) / (DZ(i,j,k) * zup5d(i,flip(k),j,IENS))
+                     CASE(SHAL); entr_sh(i,j,k) = up_massentr5d(i,flip(k),j,IENS) / (DZ(i,j,k) * zup5d(i,flip(k),j,IENS))
+                     END SELECT
+
+                     ENTLAM(i,j,k)  = ENTLAM(i,j,k) + (up_massentr5d(i,flip(k),j,IENS) / (DZ(i,j,k) * zup5d(i,flip(k),j,IENS)))
+                     CNV_CVW(i,j,k) = -0.2 ! hPa/s => 4 m/s
+                  endif
+
+                  !- Grid mean convective condensate
+                  CNV_QC(i,j,k) = CNV_QC(i,j,k) + clwup5d(i,flip(k),j,IENS)
+
+                  !- Convective precipitation generation 
+                  CNV_PRC3(i,j,k) = CNV_PRC3(i,j,k) + (prup5d(i,flip(k),j,IENS) + &
+                       edt4d(i,j,IENS) * prdn5d(i,flip(k),j,IENS)) * xmb4d(i,j,IENS) &
+                       * DT_moist / (DZ(i,j,k) * AIR_DEN(i,j,k))
+
+                  !- Updraft Areal Fraction
+                  if(zup5d(i,flip(k),j,IENS) > 1.0e-6) CNV_UPDF(i,j,k) = 0.033
+
+               ENDDO
+            ENDDO
+         ENDDO
+      ENDDO
 
       !===========================================================================
       ! 7. CONVECTION TRACER (COLD POOL MEMORY)
