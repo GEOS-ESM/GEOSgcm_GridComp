@@ -71,7 +71,7 @@ MODULE ConvPar_GF2020
    REAL,    DIMENSION(maxiens) :: CUM_MAX_EDT_OCEAN  = (/ 0.90, 0.00, 0.90 /)
 
    !--- Momentum Transport
-   INTEGER :: USE_MOMENTUM_TRANSP = 1       ! Turn ON/OFF convective momentum transport
+   LOGICAL :: USE_MOMENTUM_TRANSP = .TRUE.  ! Turn ON/OFF convective momentum transport
    REAL    :: LAMBAU_DEEP         = 0.0     ! Lambda parameter for deep/congestus transport
    REAL    :: LAMBAU_SHDN         = 2.0     ! Lambda parameter for shallow/downdraft transport
 
@@ -88,7 +88,7 @@ MODULE ConvPar_GF2020
 
    !--- Convective Memory & Tracers
    INTEGER :: USE_MEMORY          = -1      ! Cold pool memory (-1/0/1/2.../10)
-   INTEGER :: CONVECTION_TRACER   = 0       ! 0/1: Turn ON/OFF 'convection' diagnostic tracer
+   LOGICAL :: CONVECTION_TRACER   = .FALSE. ! Turn ON/OFF 'convection' diagnostic tracer
    REAL    :: tau_ocea_cp         = 6.*3600.! Decay time for ocean cold pool tracer
    REAL    :: tau_land_cp         = 6.*3600.! Decay time for land cold pool tracer
 
@@ -96,7 +96,7 @@ MODULE ConvPar_GF2020
    INTEGER, PARAMETER :: nmp      = 1       ! Number of microphysics schemes
    INTEGER, PARAMETER :: lsmp     = 1       ! Index for host microphysics arrays
    INTEGER :: APPLY_SUB_MP        = 0       ! Apply conv subsidence to grid-scale ice/liq/cloud fraction
-   INTEGER :: USE_REBCB           = 1       ! Turn ON/OFF rainfall evap below cloud base
+   LOGICAL :: USE_REBCB           = .TRUE.  ! Turn ON/OFF rainfall evap below cloud base
    INTEGER :: EVAP_FIX            = 1       ! Prevent total evap from exceeding column rainfall
    INTEGER :: FRAC_MODIS          = 0       ! Use MODIS/CALIPSO derived liq/ice fraction
    INTEGER :: USE_WETBULB         = 0       ! Use wetbulb formulation for downdrafts
@@ -113,13 +113,12 @@ MODULE ConvPar_GF2020
 
    !--- Zero-Diff Debug Flags (Stable version Dec 2019 equivalence)
    INTEGER :: ZERO_DIFF_ENTR      = 0      
-   INTEGER :: ZERO_DIFF_LAND      = 0      
-   INTEGER :: ZERO_DIFF_VVEL      = 0      
+   LOGICAL :: ZERO_DIFF_LAND      = .FALSE.
+   LOGICAL :: ZERO_DIFF_VVEL      = .FALSE.      
 
    !=============================================================================
    ! 4. INTERNAL HARDCODED CONSTANTS & STATE VARIABLES
    !=============================================================================
-   INTEGER, PARAMETER :: ON = 1, OFF = 0
 
    !--- Temporary Plume Constants (Mapped internally to MAXIENS arrays)
    REAL    ::  HEI_DOWN_LAND, HEI_DOWN_OCEAN
@@ -471,7 +470,7 @@ CONTAINS
 
          !--- 6.4 Extract Plume-Specific Profiles
          DO IENS = 1, maxiens
-            IF(icumulus_gf(IENS) == ON) THEN
+            IF(icumulus_gf(IENS)) THEN
                DO j = 1, myp
                   DO i = 1, mxp
                      if(ierr4d(i,j,IENS) /= 0) cycle
@@ -535,7 +534,7 @@ CONTAINS
       !===========================================================================
       ! 7. CONVECTION TRACER (COLD POOL MEMORY)
       !===========================================================================
-      IF(CONVECTION_TRACER == 1) THEN
+      IF(CONVECTION_TRACER) THEN
          DO j = 1, myp
             DO i = 1, mxp
                tau_cp = FRLAND(i,j) * tau_land_cp + (1.0 - FRLAND(i,j)) * tau_ocea_cp
@@ -561,10 +560,10 @@ CONTAINS
       CNV_TOPP_MD = MAPL_UNDEF
       CNV_TOPP_SH = MAPL_UNDEF
 
-      IF(maxval(icumulus_gf) > 0) THEN
+      IF(ANY(icumulus_gf)) THEN
 
          DO IENS = 1, maxiens
-            IF(icumulus_gf(IENS) == ON) THEN
+            IF(icumulus_gf(IENS)) THEN
 
                SELECT CASE(IENS)
                CASE(DEEP)
@@ -1200,7 +1199,7 @@ CONTAINS
                if(ii_plume == 3) plume = mid
             endif
 
-            IF(icumulus_gf(plume) /= ON) cycle
+            IF(.NOT. icumulus_gf(plume)) cycle
 
             hei_down_land  = cum_hei_down_land(plume)
             hei_down_ocean = cum_hei_down_ocean(plume)
@@ -1290,7 +1289,7 @@ CONTAINS
 
          !-- Reset inactive plumes
          DO n = 1, maxiens
-            if(icumulus_gf(n) == OFF) ierr4d(:,j,n) = -99
+            if(.NOT. icumulus_gf(n)) ierr4d(:,j,n) = -99
          ENDDO
 
           !-- Flag columns with active convection
@@ -1340,7 +1339,7 @@ CONTAINS
             ENDDO
          ENDDO
 
-         IF(USE_MOMENTUM_TRANSP > 0) THEN
+         IF(USE_MOMENTUM_TRANSP) THEN
              DO i = its, itf
                 if(.NOT. do_this_column(i,j)) cycle
                DO k = kts, kte
@@ -1394,7 +1393,7 @@ CONTAINS
             endif
          ENDIF
 
-         IF(CONVECTION_TRACER == 1) THEN
+         IF(CONVECTION_TRACER) THEN
              DO i = its, itf
                 if(.NOT. do_this_column(i,j)) cycle
                DO k = kts, kte
@@ -3058,7 +3057,7 @@ CONTAINS
            xf_dicycle, outu, outv, dellu, dellv, dtime, po_cup, kbcon, dellabuoy, outbuoy, &
            dellampqi, outmpqi, dellampql, outmpql, dellampcf, outmpcf, nmp)
 
-      IF(USE_REBCB == 1) THEN
+      IF(USE_REBCB) THEN
          call rain_evap_below_cloudbase(cumulus, itf, ktf, its, ite, kts, kte, ierr, kbcon, ktop, xmb, psur, xland, qo_cup, t_cup, &
               po_cup, qes_cup, pwavo, edto, pwevo, pwo, pwdo, pre, prec_flx, evap_flx, outt, outq, outbuoy, evap_bcb)
       ELSE
@@ -5297,7 +5296,7 @@ CONTAINS
       zu =0.0
       zuh=0.0
       zul=0.0
-      IF(ZERO_DIFF_LAND==1) then
+      IF(ZERO_DIFF_LAND) then
          if(draft == "deep_up" .and. xland >  0.90) itest=11 !ocean
          if(draft == "deep_up" .and. xland <= 0.90) itest=12 !land
          if(draft == "mid_up"                     ) itest=5
@@ -5536,7 +5535,7 @@ CONTAINS
       ELSEIF(itest==12 .and. draft == "deep_up") then
          !- kb cannot be at 1st level
 
-         IF(ZERO_DIFF_LAND==1) then
+         IF(ZERO_DIFF_LAND) then
             pmaxzu=psur-px*(psur-po_cup(kt))
          ELSE
             hei_updf= hei_updf_OCEAN*xland + hei_updf_LAND*(1.0-xland)
@@ -5632,7 +5631,7 @@ CONTAINS
          zuh(kts:min(kte,kt))= zuh(kts:min(kte,kt))/ (1.e-9+maxval(zuh(kts:min(kte,kt)),1))
 
          !increasing contribuition of zuh => more heating at upper levels/less precip
-         IF(ZERO_DIFF_LAND==1) then
+         IF(ZERO_DIFF_LAND) then
             zu(:)= 0.65*zul(:)+ 0.35*zuh(:)
          ELSE
             hei_updf= hei_updf_OCEAN*xland + hei_updf_LAND*(1.0-xland)
@@ -5748,7 +5747,7 @@ CONTAINS
          IF(trim(cumulus) == 'mid' ) beta =6.5
          IF(trim(cumulus) == 'deep') beta =2.5
 
-         IF(ZERO_DIFF_LAND==1) then
+         IF(ZERO_DIFF_LAND) then
             hei_down= 0.5
          ELSE
             hei_down=(1.-xland)*hei_down_LAND+xland*hei_down_OCEAN
@@ -7605,7 +7604,7 @@ CONTAINS
          if(ichoice.ne.0)then
             xf_ens(i,1:16) =xf_ens(i,ichoice)
          else
-            if(ZERO_DIFF_LAND == 0) then
+            if(.NOT. ZERO_DIFF_LAND) then
                !---over the land, only applies closure 10.
                !                             over Land                over Ocean  
                xf_ens(i,1:16)=(1.-xland(i))*xf_ens(i,10) + xland(i)*xf_ens(i,1:16)

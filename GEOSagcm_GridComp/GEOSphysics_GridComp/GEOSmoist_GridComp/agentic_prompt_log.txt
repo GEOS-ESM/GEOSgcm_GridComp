@@ -12,3 +12,4 @@
 2026-03-19T14:28:00Z | Converted do_this_column from INTEGER to LOGICAL in GF2020_INTERFACE and GF2020_DRV; updated all tests and initializations to use .TRUE./.FALSE. without changing behavior
 2026-03-19T14:40:00Z | Removed remaining per-procedure IMPLICIT NONE/implicit none statements from ConvPar_GF2020.F90; kept module-level IMPLICIT NONE only; no logic changes
 2026-03-19T14:50:00Z | Added internal derived types gf_column_indices and gf_forcing_3d in ConvPar_GF2020.F90; marked for potential future use but not actively propagated; simpler approach preferred over extensive refactoring
+2026-03-19T18:43:00Z | Converted INTEGER flags to LOGICAL in ConvPar_GF2020.F90 (ZERO_DIFF_LAND, ZERO_DIFF_VVEL, USE_MOMENTUM_TRANSP, CONVECTION_TRACER, USE_REBCB); converted icumulus_gf array to LOGICAL in ConvPar_GF_Shared.F90; updated GEOS_GF_InterfaceMod.F90 to use LOGICAL defaults; removed ON/OFF INTEGER parameters

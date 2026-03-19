@@ -13,8 +13,8 @@ USE GEOSmoist_Process_Library, only : CNV_Tracers
                                                   ,'mid       ' &
                                                                     /)
  !------------------- namelist variables
- !-- plume to be activated (1 true, 0 false): deep, shallow, congestus
- INTEGER, DIMENSION(maxiens) :: icumulus_gf = (/1,0,1/)
+  !-- plume to be activated: deep, shallow, congestus
+  LOGICAL, DIMENSION(maxiens) :: icumulus_gf = (/.TRUE., .FALSE., .TRUE./)
 
  !-- choice for the closures:
  !--  deep   : 0 ensemble (all)          , 1 GR, 4 ll omega, 7 moist conv, 10 PB
