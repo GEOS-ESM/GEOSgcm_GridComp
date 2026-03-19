@@ -1910,52 +1910,10 @@ CONTAINS
       ! 3.1 Cold Pool Parameterization & Convective Memory (Deep Only)
       !-----------------------------------------------------------------------------
       IF(CONVECTION_TRACER == 1 .and. trim(cumulus) == 'deep') THEN
-
-         if(USE_MEMORY == 0) then
-            do i = its, itf
-               if(ierr(i) /= 0) cycle
-               x_add_buoy(i) = min(maxval(buoy_exc(i,kts:k22(i))), mx_buoy)
-               AA3_(i) = x_add_buoy(i)
-            enddo
-
-         elseif(USE_MEMORY > 0 .and. USE_MEMORY <= 10) then
-            do i = its, itf
-               factor = float(USE_MEMORY)
-               entr_rate(i,:) = entr_rate(i,:) * factor
-               if(ierr(i) /= 0) cycle
-
-               x_add_buoy(i) = min(maxval(buoy_exc(i,kts:k22(i))), mx_buoy)
-               entr_threshold = 0.6 
-               factor = min(maxval(buoy_exc(i,kts:k22(i))), mx_buoy) / mx_buoy
-               factor = 0.5 * (1. - atan((factor - entr_threshold) * 5.) / 1.37)
-               factor = max(0.1, min(factor, 0.9))
-
-               x_add_buoy(i) = x_add_buoy(i) * max(0.0, min(1. - atan(((AA1_CIN_(i) - 1.e-7) * 1.e+7) / 1.569), 1.0))
-               entr_rate(i,:) = entr_rate(i,:) * factor
-
-               AA0_(i) = max(0.0, min(1. - atan(((AA1_CIN_(i) - 1.e-7) * 1.e+7) / 1.569), 1.0))
-               AA2_(i) = factor        
-               AA3_(i) = x_add_buoy(i) 
-            enddo
-
-         elseif(USE_MEMORY == 20) then
-            do i = its, itf
-               cap_max_inc = 0.0
-               cap_max(i) = cap_maxs
-               cap_max_increment(i) = cap_max_inc
-
-               if(ierr(i) /= 0) cycle
-               x_add_buoy(i) = min(maxval(buoy_exc(i,kts:k22(i))), mx_buoy)
-               entr_threshold = 0.6
-               factor = min(maxval(buoy_exc(i,kts:k22(i))), mx_buoy) / mx_buoy
-               factor = 0.5 * (1. - atan((factor - entr_threshold) * 5.0) / 1.37)
-               factor = max(0.1, min(factor, 0.9))
-
-               cap_max(i) = cap_maxs + (1. - factor) * 200.
-               AA2_(i) = (1. - factor) 
-               AA3_(i) = x_add_buoy(i) 
-            enddo
-         endif
+         call apply_cold_pool_memory(USE_MEMORY, its, itf, kts, ierr, &
+                                      buoy_exc, k22, mx_buoy, entr_rate, &
+                                      AA1_CIN_, cap_maxs, x_add_buoy, &
+                                      cap_max, cap_max_increment, AA0_, AA2_, AA3_)
       ENDIF
 
       !-----------------------------------------------------------------------------
@@ -3474,6 +3432,73 @@ dp = MBAR_TO_PA * (po_cup(i,k+1) - po_cup(i,k))
          enddo
          if(wrtgrads) call wrt_bin_ctl(1, kte, po(1,1:kte), cumulus)
       enddo
+
+   CONTAINS
+
+      !--------------------------------------------------------------------------
+      ! Helper: Apply cold pool memory effects to buoyancy and entrainment
+      !--------------------------------------------------------------------------
+      SUBROUTINE apply_cold_pool_memory(USE_MEMORY, its, itf, kts, ierr, &
+                                         buoy_exc, k22, mx_buoy, entr_rate, &
+                                         AA1_CIN_, cap_maxs, x_add_buoy, &
+                                         cap_max, cap_max_increment, AA0_, AA2_, AA3_)
+         INTEGER, INTENT(IN) :: USE_MEMORY, its, itf, kts
+         INTEGER, INTENT(IN) :: ierr(its:itf), k22(its:itf)
+         REAL,    INTENT(IN) :: buoy_exc(its:itf,kts:), mx_buoy, AA1_CIN_(its:itf), cap_maxs
+         REAL, INTENT(INOUT) :: entr_rate(its:itf,kts:)
+         REAL,   INTENT(OUT) :: x_add_buoy(its:itf), cap_max(its:itf), cap_max_increment(its:itf)
+         REAL,   INTENT(OUT) :: AA0_(its:itf), AA2_(its:itf), AA3_(its:itf)
+         
+         INTEGER :: i
+         REAL :: factor, entr_threshold, cap_max_inc
+
+         if(USE_MEMORY == 0) then
+            do i = its, itf
+               if(ierr(i) /= 0) cycle
+               x_add_buoy(i) = min(maxval(buoy_exc(i,kts:k22(i))), mx_buoy)
+               AA3_(i) = x_add_buoy(i)
+            enddo
+
+         elseif(USE_MEMORY > 0 .and. USE_MEMORY <= 10) then
+            do i = its, itf
+               factor = float(USE_MEMORY)
+               entr_rate(i,:) = entr_rate(i,:) * factor
+               if(ierr(i) /= 0) cycle
+
+               x_add_buoy(i) = min(maxval(buoy_exc(i,kts:k22(i))), mx_buoy)
+               entr_threshold = 0.6 
+               factor = min(maxval(buoy_exc(i,kts:k22(i))), mx_buoy) / mx_buoy
+               factor = 0.5 * (1. - atan((factor - entr_threshold) * 5.) / 1.37)
+               factor = max(0.1, min(factor, 0.9))
+
+               x_add_buoy(i) = x_add_buoy(i) * max(0.0, min(1. - atan(((AA1_CIN_(i) - 1.e-7) * 1.e+7) / 1.569), 1.0))
+               entr_rate(i,:) = entr_rate(i,:) * factor
+
+               AA0_(i) = max(0.0, min(1. - atan(((AA1_CIN_(i) - 1.e-7) * 1.e+7) / 1.569), 1.0))
+               AA2_(i) = factor        
+               AA3_(i) = x_add_buoy(i) 
+            enddo
+
+         elseif(USE_MEMORY == 20) then
+            do i = its, itf
+               cap_max_inc = 0.0
+               cap_max(i) = cap_maxs
+               cap_max_increment(i) = cap_max_inc
+
+               if(ierr(i) /= 0) cycle
+               x_add_buoy(i) = min(maxval(buoy_exc(i,kts:k22(i))), mx_buoy)
+               entr_threshold = 0.6
+               factor = min(maxval(buoy_exc(i,kts:k22(i))), mx_buoy) / mx_buoy
+               factor = 0.5 * (1. - atan((factor - entr_threshold) * 5.0) / 1.37)
+               factor = max(0.1, min(factor, 0.9))
+
+               cap_max(i) = cap_maxs + (1. - factor) * 200.
+               AA2_(i) = (1. - factor) 
+               AA3_(i) = x_add_buoy(i) 
+            enddo
+         endif
+
+      END SUBROUTINE apply_cold_pool_memory
 
    END SUBROUTINE CUP_gf
 
