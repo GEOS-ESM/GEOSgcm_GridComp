@@ -11,3 +11,4 @@
 2026-03-19T14:23:00Z | User manually re-indented ConvPar_GF2020.F90 in emacs (not via agent); no intentional logic changes
 2026-03-19T14:28:00Z | Converted do_this_column from INTEGER to LOGICAL in GF2020_INTERFACE and GF2020_DRV; updated all tests and initializations to use .TRUE./.FALSE. without changing behavior
 2026-03-19T14:40:00Z | Removed remaining per-procedure IMPLICIT NONE/implicit none statements from ConvPar_GF2020.F90; kept module-level IMPLICIT NONE only; no logic changes
+2026-03-19T14:50:00Z | Added internal derived types gf_column_indices and gf_forcing_3d in ConvPar_GF2020.F90; marked for potential future use but not actively propagated; simpler approach preferred over extensive refactoring

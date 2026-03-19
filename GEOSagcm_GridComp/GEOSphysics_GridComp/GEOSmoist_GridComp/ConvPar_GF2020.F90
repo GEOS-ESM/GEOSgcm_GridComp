@@ -155,6 +155,19 @@ MODULE ConvPar_GF2020
 
    INTEGER :: whoami_all, JCOL
 
+   !--- Internal grouped argument types (for potential future use)
+   TYPE :: gf_column_indices
+      INTEGER :: its, ite, jts, jte, kts, kte
+   END TYPE gf_column_indices
+
+   TYPE :: gf_forcing_3d
+      REAL, DIMENSION(:,:,:), POINTER :: rthften  => NULL() ! temperature forcing ("gsf_t")
+      REAL, DIMENSION(:,:,:), POINTER :: rqvften  => NULL() ! moisture forcing    ("gsf_q")
+      REAL, DIMENSION(:,:,:), POINTER :: rth_advten => NULL() ! advective heating ("advf_t")
+      REAL, DIMENSION(:,:,:), POINTER :: rthblten => NULL() ! BL heating         ("sgsf_t")
+      REAL, DIMENSION(:,:,:), POINTER :: rqvblten => NULL() ! BL moistening      ("sgsf_q")
+   END TYPE gf_forcing_3d
+
 CONTAINS
 
    SUBROUTINE GF2020_BEFORE( &
