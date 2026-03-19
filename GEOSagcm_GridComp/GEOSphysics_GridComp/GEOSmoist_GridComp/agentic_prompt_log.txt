@@ -4,3 +4,10 @@
 2026-03-19T13:42:12Z | Snapshotted ConvPar_GF2020.F90; added GF2020_BEFORE/AFTER stubs there and wrapped GF2020_INTERFACE call in GEOS_GF_InterfaceMod to call BEFORE/INTERFACE/AFTER
 2026-03-19T13:44:24Z | Removed mistaken nested GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp tree and stray GF2020_Harness_Mod.F90 inside it
 2026-03-19T13:55:25Z | User rebased (stash/apply); ConvPar_GF2020.F90 and GEOS_GF_InterfaceMod.F90 now have conflicts with upstream refactor
+2026-03-19T14:05:00Z | Refactored GF2020_INTERFACE environment mapping into internal helpers gf2020_env_from_current/gf2020_env_from_dynamics (no behavior change); left public interface and GF2020_DRV untouched
+2026-03-19T14:12:00Z | Added reverse_k_host_to_gf_3d helper inside GF2020_INTERFACE; rewired env_from_current/env_from_dynamics to use k-loop with i,j slices via array notation, preserving original mappings including mp_ice/mp_liq/mp_cf LSMP plane
+2026-03-19T14:15:00Z | Simplified zeroing and forcing mapping in gf2020_env_from_current/dynamics using whole-array assignment over i,j with explicit k loop where needed (no behavior change)
+2026-03-19T14:20:00Z | Added gf2020_surface_mapping, gf2020_ccn_and_tracer_init, and gf2020_transfer_sgs_vvel internal helpers in GF2020_INTERFACE; moved existing surface, CCN/tracer, and SGS vertical velocity mapping logic into helpers without behavior changes; ensured zm3d mapping follows original ZLE flip semantics
+2026-03-19T14:23:00Z | User manually re-indented ConvPar_GF2020.F90 in emacs (not via agent); no intentional logic changes
+2026-03-19T14:28:00Z | Converted do_this_column from INTEGER to LOGICAL in GF2020_INTERFACE and GF2020_DRV; updated all tests and initializations to use .TRUE./.FALSE. without changing behavior
+2026-03-19T14:40:00Z | Removed remaining per-procedure IMPLICIT NONE/implicit none statements from ConvPar_GF2020.F90; kept module-level IMPLICIT NONE only; no logic changes
