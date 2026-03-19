@@ -141,8 +141,8 @@ contains
     DUAL_OCEAN = iDUAL_OCEAN /= 0
 
     if (dual_ocean) then
-       SEAICE_NAME="DATASEAICE"
-       ICEd = MAPL_AddChild(GC, NAME=SEAICE_NAME, SS=DataSeaiceSetServices, __RC__) 
+!       SEAICE_NAME="DATASEAICE"                                                        !! By SK to implement dual_ocean in v12
+       ICEd = MAPL_AddChild(GC, NAME="DATASEAICE", SS=DataSeaiceSetServices, __RC__)    !! By SK to implement dual_ocean in v12 
     endif
 
 ! Set the state variable specs.
@@ -817,23 +817,23 @@ contains
 
        call MAPL_GetPointer(EXPORT   , FRd ,       'FRACICEd', __RC__)
 
-       call MAPL_GetPointer(GIM(ICE) , FRO8     , 'FRACICE',  __RC__)
-       call MAPL_GetPointer(GIM(ICE) , TIO8     , 'TI'     ,  __RC__)
-       call MAPL_GetPointer(GIM(ICE) , VOLICEO  , 'VOLICE' ,  __RC__)
-       call MAPL_GetPointer(GIM(ICE) , VOLSNOO  , 'VOLSNO' ,  __RC__)
-       call MAPL_GetPointer(GIM(ICE) , ERGICEO  , 'ERGICE' ,  __RC__)
-       call MAPL_GetPointer(GIM(ICE) , ERGSNOO  , 'ERGSNO' ,  __RC__)
-       call MAPL_GetPointer(GIM(ICE) , TAUAGEO  , 'TAUAGE' ,  __RC__)
-       call MAPL_GetPointer(GIM(ICE) , MPONDO   , 'MPOND'  ,  __RC__)
+!       call MAPL_GetPointer(GIM(ICE) , FRO8     , 'FRACICE',  __RC__)
+!       call MAPL_GetPointer(GIM(ICE) , TIO8     , 'TI'     ,  __RC__)
+!       call MAPL_GetPointer(GIM(ICE) , VOLICEO  , 'VOLICE' ,  __RC__)
+!       call MAPL_GetPointer(GIM(ICE) , VOLSNOO  , 'VOLSNO' ,  __RC__)
+!       call MAPL_GetPointer(GIM(ICE) , ERGICEO  , 'ERGICE' ,  __RC__)
+!       call MAPL_GetPointer(GIM(ICE) , ERGSNOO  , 'ERGSNO' ,  __RC__)
+!       call MAPL_GetPointer(GIM(ICE) , TAUAGEO  , 'TAUAGE' ,  __RC__)
+!       call MAPL_GetPointer(GIM(ICE) , MPONDO   , 'MPOND'  ,  __RC__)
 
-       call MAPL_GetPointer(GIM(ICEd), FRO8d    , 'FRACICE',  __RC__)
-       call MAPL_GetPointer(GIM(ICEd), TIO8d    , 'TI'     ,  __RC__)
-       call MAPL_GetPointer(GIM(ICEd), VOLICEOd , 'VOLICE' ,  __RC__)
-       call MAPL_GetPointer(GIM(ICEd), VOLSNOOd , 'VOLSNO' ,  __RC__)
-       call MAPL_GetPointer(GIM(ICEd), ERGICEOd , 'ERGICE' ,  __RC__)
-       call MAPL_GetPointer(GIM(ICEd), ERGSNOOd , 'ERGSNO' ,  __RC__)
-       call MAPL_GetPointer(GIM(ICEd), TAUAGEOd , 'TAUAGE' ,  __RC__)
-       call MAPL_GetPointer(GIM(ICEd), MPONDOd  , 'MPOND'  ,  __RC__)
+!       call MAPL_GetPointer(GIM(ICEd), FRO8d    , 'FRACICE',  __RC__)
+!       call MAPL_GetPointer(GIM(ICEd), TIO8d    , 'TI'     ,  __RC__)
+!       call MAPL_GetPointer(GIM(ICEd), VOLICEOd , 'VOLICE' ,  __RC__)
+!       call MAPL_GetPointer(GIM(ICEd), VOLSNOOd , 'VOLSNO' ,  __RC__)
+!       call MAPL_GetPointer(GIM(ICEd), ERGICEOd , 'ERGICE' ,  __RC__)
+!       call MAPL_GetPointer(GIM(ICEd), ERGSNOOd , 'ERGSNO' ,  __RC__)
+!       call MAPL_GetPointer(GIM(ICEd), TAUAGEOd , 'TAUAGE' ,  __RC__)
+!       call MAPL_GetPointer(GIM(ICEd), MPONDOd  , 'MPOND'  ,  __RC__)
 
        call MAPL_GetPointer(GEX(ICEd), FId       , 'FRACICE'   , alloc=.TRUE., __RC__)
 
@@ -1032,14 +1032,14 @@ contains
     if (dual_ocean) then
 
 
-       call MAPL_GetPointer(GIM(ICE) , FRO8     , 'FRACICE',  __RC__)
-       call MAPL_GetPointer(GIM(ICE) , TIO8     , 'TI'     ,  __RC__)
-       call MAPL_GetPointer(GIM(ICE) , VOLICEO  , 'VOLICE' ,  __RC__)
-       call MAPL_GetPointer(GIM(ICE) , VOLSNOO  , 'VOLSNO' ,  __RC__)
-       call MAPL_GetPointer(GIM(ICE) , ERGICEO  , 'ERGICE' ,  __RC__)
-       call MAPL_GetPointer(GIM(ICE) , ERGSNOO  , 'ERGSNO' ,  __RC__)
-       call MAPL_GetPointer(GIM(ICE) , TAUAGEO  , 'TAUAGE' ,  __RC__)
-       call MAPL_GetPointer(GIM(ICE) , MPONDO   , 'MPOND'  ,  __RC__)
+!       call MAPL_GetPointer(GIM(ICE) , FRO8     , 'FRACICE',  __RC__)
+!       call MAPL_GetPointer(GIM(ICE) , TIO8     , 'TI'     ,  __RC__)
+!       call MAPL_GetPointer(GIM(ICE) , VOLICEO  , 'VOLICE' ,  __RC__)
+!       call MAPL_GetPointer(GIM(ICE) , VOLSNOO  , 'VOLSNO' ,  __RC__)
+!       call MAPL_GetPointer(GIM(ICE) , ERGICEO  , 'ERGICE' ,  __RC__)
+!       call MAPL_GetPointer(GIM(ICE) , ERGSNOO  , 'ERGSNO' ,  __RC__)
+!       call MAPL_GetPointer(GIM(ICE) , TAUAGEO  , 'TAUAGE' ,  __RC__)
+!       call MAPL_GetPointer(GIM(ICE) , MPONDO   , 'MPOND'  ,  __RC__)
 
        call MAPL_GetPointer(GIM(ICEd), FRO8d    , 'FRACICE',  __RC__)
        call MAPL_GetPointer(GIM(ICEd), TIO8d    , 'TI'     ,  __RC__)
@@ -1051,22 +1051,22 @@ contains
        call MAPL_GetPointer(GIM(ICEd), MPONDOd  , 'MPOND'  ,  __RC__)
 
 
-       call MAPL_GetPointer(GEX(ICE) , AICEDO    , 'AICE'    , __RC__)  ! SA: AICE needs to be looked into
-       call MAPL_GetPointer(GEX(ICE) , HICEDO    , 'HICE'    , __RC__)  ! BZ: These diags need to be updated
-       call MAPL_GetPointer(GEX(ICE) , HSNODO    , 'HSNO'    , __RC__)  ! after ice nudging
-       call MAPL_GetPointer(GEX(ICE) , DAIDTNUDG , 'DAIDTNUDG' , alloc=.TRUE., __RC__)
-       call MAPL_GetPointer(GEX(ICE) , DVIDTNUDG , 'DVIDTNUDG' , alloc=.TRUE., __RC__)
+!       call MAPL_GetPointer(GEX(ICE) , AICEDO    , 'AICE'    , __RC__)  ! SA: AICE needs to be looked into
+!       call MAPL_GetPointer(GEX(ICE) , HICEDO    , 'HICE'    , __RC__)  ! BZ: These diags need to be updated
+!       call MAPL_GetPointer(GEX(ICE) , HSNODO    , 'HSNO'    , __RC__)  ! after ice nudging
+!       call MAPL_GetPointer(GEX(ICE) , DAIDTNUDG , 'DAIDTNUDG' , alloc=.TRUE., __RC__)
+!       call MAPL_GetPointer(GEX(ICE) , DVIDTNUDG , 'DVIDTNUDG' , alloc=.TRUE., __RC__)
        call MAPL_GetPointer(GEX(ICEd), FId       , 'FRACICE'   , alloc=.TRUE., __RC__)
 
        ! copy to dataseaice imports as the ice nudging is done via dataseaice states 
-       TIO8d    = TIO8
-       FRO8d    = FRO8
-       VOLICEOd = VOLICEO
-       VOLSNOOd = VOLSNOO
-       TAUAGEOd = TAUAGEO
-       MPONDOd  = MPONDO
-       ERGICEOd = ERGICEO
-       ERGSNOOd = ERGSNOO
+!       TIO8d    = TIO8
+!       FRO8d    = FRO8
+!       VOLICEOd = VOLICEO
+!       VOLSNOOd = VOLSNOO
+!       TAUAGEOd = TAUAGEO
+!       MPONDOd  = MPONDO
+!       ERGICEOd = ERGICEO
+!       ERGSNOOd = ERGSNOO
 
     end if
 
@@ -1081,6 +1081,8 @@ contains
     !---------------------------------
     
     call MAPL_TimerOff(STATE,"TOTAL")
+
+#ifdef SEAICE_NUDGING_IS_ENABLED
     call MAPL_TimerOn (STATE,"--IceNudging")
 
     
@@ -1147,6 +1149,7 @@ contains
     ERGSNOO = ERGSNOOd
 
     call MAPL_TimerOff (STATE,"--IceNudging")
+#endif
 
 ! Profilers
 !----------
