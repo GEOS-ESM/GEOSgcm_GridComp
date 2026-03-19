@@ -2706,7 +2706,9 @@ CONTAINS
          !--------------------------------------------------------------------------
          ! 7.1 Vertical Discretization Feedback Forms
          !--------------------------------------------------------------------------
-         IF(VERT_DISCR == VERT_DISCR_DEFAULT) THEN
+         SELECT CASE (VERT_DISCR)
+
+         CASE (VERT_DISCR_DEFAULT)
             do i = its, itf
                if(ierr(i) /= 0) cycle
                do k = kts, ktop(i)
@@ -2757,7 +2759,7 @@ CONTAINS
                enddo
             enddo
 
-         ELSEIF(VERT_DISCR == VERT_DISCR_NEW) THEN
+         CASE (VERT_DISCR_NEW)
             !--- Momentum Transport
             if(alp1 == 0.) then 
                do i = its, itf
@@ -2935,7 +2937,7 @@ CONTAINS
                   enddo
                endif
             enddo
-         ENDIF
+         END SELECT
 
          !--- Smooth Tendencies
          IF(USE_SMOOTH_TEND >= 1) THEN
@@ -4483,7 +4485,9 @@ CONTAINS
                cycle
             endif
 
-            IF (AUTOCONV == AUTOCONV_KESSLER ) then
+            SELECT CASE (AUTOCONV)
+
+            CASE (AUTOCONV_KESSLER)
                min_liq  = ( xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd )
                cx0     = (c1d(i,k)+c0)*DZ
                qrc(i,k)= clw_all(i,k)/(1.+cx0)
@@ -4491,7 +4495,7 @@ CONTAINS
                !--- convert pw to normalized pw
                pw (i,k)=pw(i,k)*zu(i,k)
 
-            ELSEIF (AUTOCONV == AUTOCONV_KESSLER_TEMP ) then
+            CASE (AUTOCONV_KESSLER_TEMP)
                ! this is similar to AUTOCONV_KESSLER with temperature dependence
                min_liq  = ( xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd )
                cx0     = (c1d(i,k)+c0)*DZ*fract_liq_f(tempc(i,k),cnvfrc(i),srftype(i))
@@ -4500,7 +4504,7 @@ CONTAINS
                !--- convert PW to normalized PW
                pw (i,k)=pw(i,k)*zu(i,k)
 
-            ELSEIF (AUTOCONV == AUTOCONV_KESSLER_CCN ) then
+            CASE (AUTOCONV_KESSLER_CCN)
                ! this is similar to AUTOCONV_KESSLER_TEMP with CCN dependence
                !------------------------------------------------------------
                ! 1. Base land/ocean autoconversion threshold
@@ -4530,7 +4534,7 @@ CONTAINS
                ! Normalize
                pw(i,k)  = pw(i,k)*zu(i,k)
 
-            ELSEIF (AUTOCONV == AUTOCONV_SUNDQVIST ) then
+            CASE (AUTOCONV_SUNDQVIST)
 
                ! this is similar to AUTOCONV_KESSLER_CCN with VVEL dependence & analytic solution
                !-----------------------------------------------------------------------
@@ -4594,7 +4598,7 @@ CONTAINS
                   pw(i,k)  = pw(i,k) * zu(i,k)
                endif
 
-            ELSEIF (AUTOCONV == AUTOCONV_OPTION5 ) then
+            CASE (AUTOCONV_OPTION5)
                min_liq  = ( xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd )
                if(clw_all(i,k) <= min_liq) then
                   qrc(i,k)= clw_all(i,k)
@@ -4611,7 +4615,7 @@ CONTAINS
                   pw (i,k)= pw(i,k)*zu(i,k)
                endif
 
-            ELSEIF (AUTOCONV == AUTOCONV_OPTION6 ) then
+            CASE (AUTOCONV_OPTION6)
                min_liq  = ( xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd ) 
                if(clw_all(i,k) <= min_liq) then
                   qrc(i,k)= clw_all(i,k)
@@ -4624,7 +4628,7 @@ CONTAINS
                   pw (i,k)= pw(i,k)*zu(i,k)
                endif
 
-            ELSEIF (AUTOCONV == AUTOCONV_OPTION7 ) then
+            CASE (AUTOCONV_OPTION7)
                min_liq  = ( xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd ) 
                if(clw_all(i,k) <= min_liq) then
                   qrc(i,k)= clw_all(i,k)
@@ -4641,7 +4645,7 @@ CONTAINS
                   pw (i,k)= pw(i,k)*zu(i,k)
                endif
 
-            ENDIF
+            END SELECT
             !- total water (vapor + condensed) in updraft after the rainout
             qc(i,k)=qrc(i,k)+min(qc(i,k),qrch)
 
