@@ -4363,15 +4363,14 @@ contains
              ! No valid profile orgC values: fall back to mineral orgC class 1.
              !            
              o_clp = 1
-
           else if (PEATMAP_STRICT_GPA22) then
              !
              ! Strict GPA22 behavior:
-             ! classify profile peat only when weighted peat support exceeds the
-             ! threshold relative to the full weighted tile support. Otherwise
-             ! choose the dominant mineral orgC class (1–3).
-             !            
-             if (cFamily(4)/(real(i) + 2.33*real(i)) > PEATMAP_THRESHOLD_2) then  
+             ! if top-layer peat support makes the tile peat, then profile follows
+             ! consistently as peat. Otherwise use weighted profile support only to
+             ! distinguish mineral orgC classes 1–3.
+             !
+             if (o_cl == 4) then
                 o_clp = 4
              else
                 if (sum(cFamily(1:3)) > 0.) then
@@ -4380,7 +4379,6 @@ contains
                    o_clp = 1
                 endif
              endif
-
           else
              !
              ! Legacy behavior preserved for backward compatibility.
@@ -4711,12 +4709,17 @@ contains
 
        fac_surf = soil_class_top(n)
        fac      = soil_class_com(n)
-
-       if(use_PEATMAP) then
-          ! the maximum peat soil depth is set to the value Michel used to derive parameters (5000.) 
-          if (fac_surf == 253)  soildepth(n) = 5000. ! max(soildepth(n),5000.)
-          ! reset subsurface to peat if surface soil type is peat
-          if (fac_surf == 253)  fac      = 253
+       
+       if (use_PEATMAP) then
+          ! The maximum peat soil depth is set to the value Michel used to derive
+          ! parameters (5000.).
+          if (fac_surf == 253) soildepth(n) = 5000.
+       
+          ! Legacy PEATMAP behavior:
+          ! if the surface class is peat, force the written profile class to peat.
+          ! In strict GPA22 mode, profile peat must already have been assigned
+          ! upstream, so do not override fac here.
+          if ((fac_surf == 253) .and. (.not. PEATMAP_STRICT_GPA22)) fac = 253
        endif
 
        wp_wetness = a_wp(fac) /a_poros(fac)
