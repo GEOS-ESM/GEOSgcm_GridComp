@@ -106,7 +106,7 @@ contains
     !   NGDC      : Soil parameters from Reynolds et al. 2000, doi:10.1029/2000WR900130 (MERRA-2, Fortuna, Ganymed, Icarus)
     !   HWSD      : Merged HWSDv1.21-STATSGO2 soil properties on 43200x21600 with Woesten et al. (1999) parameters   
     !   HWSD_b    : As in HWSD but with surgical fix of Argentina peatland issue (38S,60W)
-    !   HWSD_c    : HWSD updated from v1.2 to v2. And sub and top are D2 layer
+    !   HWSD_v2   : HWSD updated from v1.2 to v2. And sub and top are D2 layer
     !
     ! OUTLETV: Definition of outlet locations.  DEFAULT : N/A
     !   N/A       : No information (do not create routing "TRN" files).

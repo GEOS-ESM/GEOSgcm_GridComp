@@ -3655,7 +3655,7 @@ contains
 
     if      (trim(SOILBCS)=='HWSD_b')  then
        tmpversion = 'v3'
-    else if (trim(SOILBCS)=='HWSD_c')    then
+    else if (trim(SOILBCS)=='HWSD_v2')    then
        ! v4 is /discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/land/soil/soil_properties/v2/out_HWSDv2_NGDC_STATSGO_noMASK/
        ! New soil files with HWSDv2 - D2 layer both top and sub
        tmpversion = 'v4'
