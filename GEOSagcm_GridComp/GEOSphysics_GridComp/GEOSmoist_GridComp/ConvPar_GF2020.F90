@@ -177,6 +177,11 @@ MODULE ConvPar_GF2020
    REAL, PARAMETER :: PI                 = 3.1415926536
    REAL, PARAMETER :: RADIANS_TO_DEGREES = 180.0 / PI  ! Conversion factor from radians to degrees
 
+   !--- Thermodynamic Constants
+   REAL, PARAMETER :: R_DRY_AIR     = 287.04    ! Gas constant for dry air [J kg⁻¹ K⁻¹]
+   REAL, PARAMETER :: CP_DRY_AIR    = 1004.64   ! Specific heat at constant pressure [J kg⁻¹ K⁻¹]
+   REAL, PARAMETER :: EPSILON_VAPOR = 0.608     ! (Rv/Rd - 1) for virtual temperature
+
    !--- Numerical Constraints
    REAL, PARAMETER :: pgcon      = 0.0    ! Pressure gradient updraft constant (Zhang/Wu 2003)
    REAL, PARAMETER :: xmbmaxshal = 0.05   ! kg/m2/s maximum base mass flux (shallow)
@@ -675,7 +680,7 @@ CONTAINS
          sflux_r(:,:) = EVAP(:,:)
 
          !- Sensible heat flux (SH) comes in W m-2; convert to K m s-1
-         sflux_t(:,:) = SH(:,:) / (1004. * PLE(:,:,mzp) / (287.04 * T1(:,:,mzp) * (1. + 0.608 * Q1(:,:,mzp))))
+         sflux_t(:,:) = SH(:,:) / (CP_DRY_AIR * PLE(:,:,mzp) / (R_DRY_AIR * T1(:,:,mzp) * (1. + EPSILON_VAPOR * Q1(:,:,mzp))))
 
          !- Topography height (m)
          topt(:,:)  = PHIS(:,:) / MAPL_GRAV
@@ -767,7 +772,7 @@ CONTAINS
          !- Map GEOS state directly ("CURRENT" environment)
 
          DZ      = -(ZLE(:,:,1:mzp) - ZLE(:,:,0:mzp-1))
-         AIR_DEN = PLO / (287.04 * T1 * (1. + 0.608 * Q1))
+         AIR_DEN = PLO / (R_DRY_AIR * T1 * (1. + EPSILON_VAPOR * Q1))
 
          CALL reverse_k_host_to_gf_3d(T1,             temp,      flip)
          CALL reverse_k_host_to_gf_3d(PLO,            press,     flip)
@@ -803,7 +808,7 @@ CONTAINS
          call get_vars(mzp, mxp, myp, QV_DYN_IN, T_DYN_IN, PLE_DYN_IN, ZLE_N, ZLO_N, PLO_N, PK_N)
 
          DZ      = -(ZLE_N(:,:,1:mzp) - ZLE_N(:,:,0:mzp-1))
-         AIR_DEN = PLO_N / (287.04 * T_DYN_IN * (1. + 0.608 * QV_DYN_IN))
+         AIR_DEN = PLO_N / (R_DRY_AIR * T_DYN_IN * (1. + EPSILON_VAPOR * QV_DYN_IN))
 
          CALL reverse_k_host_to_gf_3d(T_DYN_IN,          temp,      flip)
          CALL reverse_k_host_to_gf_3d(PLO_N,             press,     flip)
@@ -1093,22 +1098,22 @@ CONTAINS
             pten = temp_old(i,1)
             pqen = qv_old(i,1)
             paph = 100. * psur(i)
-            zrho = paph / (287.04 * (temp_old(i,1) * (1. + 0.608 * qv_old(i,1))))
+            zrho = paph / (R_DRY_AIR * (temp_old(i,1) * (1. + EPSILON_VAPOR * qv_old(i,1))))
 
             h_sfc_flux(i)  = zrho * cp * sflux_t(i,j)
             le_sfc_flux(i) = zrho * xlv * sflux_r(i,j)
 
-            pahfs = -sflux_t(i,j) * zrho * 1004.64 
+            pahfs = -sflux_t(i,j) * zrho * CP_DRY_AIR 
             pqhfl = -sflux_r(i,j)
 
-            zkhvfl = (pahfs / 1004.64 + 0.608 * pten * pqhfl) / zrho
+            zkhvfl = (pahfs / CP_DRY_AIR + EPSILON_VAPOR * pten * pqhfl) / zrho
             pgeoh  = 2. * (zo(i,1) - topt(i,j)) * g
 
             zws(i) = max(0.0, 0.001 - 1.5 * 0.41 * zkhvfl * pgeoh / pten)
 
             if(zws(i) > tiny(pgeoh)) then
                zws(i)    = 1.2 * zws(i)**0.3333
-               ztexec(i) = max(0.0, -1.5 * pahfs / (zrho * zws(i) * 1004.64))
+               ztexec(i) = max(0.0, -1.5 * pahfs / (zrho * zws(i) * CP_DRY_AIR))
                zqexec(i) = max(0.0, -1.5 * pqhfl / (zrho * zws(i)))
             endif
 
@@ -1294,7 +1299,7 @@ CONTAINS
              qv_old(its:itf,k)   = rvap(kr,its:itf,j)
              qv_curr(its:itf,k)  = curr_rvap(kr,its:itf,j)
 
-             rhoi(its:itf,k) = 1.e2 * po(its:itf,k) / (287.04 * temp_old(its:itf,k) * (1.0 + 0.608 * qv_old(its:itf,k)))
+             rhoi(its:itf,k) = 1.e2 * po(its:itf,k) / (R_DRY_AIR * temp_old(its:itf,k) * (1.0 + EPSILON_VAPOR * qv_old(its:itf,k)))
              tkeg(its:itf,k) = tkmin
              rcpg(its:itf,k) = 0.0
 
@@ -2526,7 +2531,7 @@ CONTAINS
             aa3(i) = 0.0
             do k = max(kbcon(i), kts+1), ktop(i)
                dp = -(log(100. * po(i,k)) - log(100. * po(i,k-1))) 
-               aa3(i) = aa3(i) - (tn_cup_x(i,k) * (1. + 0.608 * qo_cup_x(i,k)) - t_cup(i,k) * (1. + 0.608 * q_cup(i,k))) * dp / dtime
+               aa3(i) = aa3(i) - (tn_cup_x(i,k) * (1. + EPSILON_VAPOR * qo_cup_x(i,k)) - t_cup(i,k) * (1. + EPSILON_VAPOR * q_cup(i,k))) * dp / dtime
             enddo
             aa1_bl(i) = aa3(i) - (63.e-6)
             if(xland(i) > 0.90) aa1_bl(i) = 1.4 * aa1_bl(i)
@@ -2552,7 +2557,7 @@ CONTAINS
             xk_x(i) = 0.0
             do k = max(kbcon(i), kts+1), ktop(i)
                dp = -(log(100. * po_cup(i,k+1)) - log(100. * po_cup(i,k)))
-               xk_x(i) = xk_x(i) + ((1. + 0.608 * qo_x(i,k)) * dtdt(i,k) + 0.608 * tn_x(i,k) * dqdt(i,k)) * dp
+               xk_x(i) = xk_x(i) + ((1. + EPSILON_VAPOR * qo_x(i,k)) * dtdt(i,k) + EPSILON_VAPOR * tn_x(i,k) * dqdt(i,k)) * dp
             enddo
          ENDDO
 
@@ -4894,7 +4899,7 @@ CONTAINS
             !***       do k=kts,kbcon(i)
             do k=kts,kpbl(i)
                dz = (z_cup (i,k+1)-z_cup (i,k))*g
-               da = dz*(tn(i,k)*(1.+0.608*qo(i,k))-t(i,k)*(1.+0.608*q(i,k)))/dtime
+               da = dz*(tn(i,k)*(1.+EPSILON_VAPOR*qo(i,k))-t(i,k)*(1.+EPSILON_VAPOR*q(i,k)))/dtime
 
                !--
                !             tcup=0.5*(t_cup(i,k+1)+t_cup(i,k))
@@ -6001,8 +6006,8 @@ CONTAINS
          IF(ierr(i) == 0) then
             DO k=kbcon(i),ktop(i)
                dz=z(i,k)-z(i,max(1,k-1))
-               daa0=g*dz*(   (tempco(i,k)*(1.+0.608*qco   (i,k))  - t_cup(i,k)*(1.+0.608*qo_cup(i,k)))&
-                    / (t_cup (i,k)*(1.+0.608*qo_cup(i,k))) &
+               daa0=g*dz*(   (tempco(i,k)*(1.+EPSILON_VAPOR*qco   (i,k))  - t_cup(i,k)*(1.+EPSILON_VAPOR*qo_cup(i,k)))&
+                    / (t_cup (i,k)*(1.+EPSILON_VAPOR*qo_cup(i,k))) &
                     )
                aa0(i)=aa0(i)+max(0.,daa0)
                !~ print*,"cape",k,AA0(I),tempco(i,k),t_cup(i,k), qrco  (i,k)
