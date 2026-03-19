@@ -447,7 +447,6 @@ class GFDL1MSetup(NDSLRuntime):
             lcl_level=local_lcl_level,
         )
 
-        # NOTE need a new way to resolve this now that it is a state field. it will never be none
         if lcl_height is not None:
             self._update_lcl_height(
                 layer_height_above_surface=local_layer_height_above_surface,
@@ -490,10 +489,8 @@ class GFDL1MSetup(NDSLRuntime):
             estimated_inversion_strength=estimated_inversion_strength,
         )
 
-        # NOTE need a new way to resolve this now that it is a state field. it will never be none
         if shallow_convection_rain is not None:
             self._update_precipitation(mixing_ratio_rain, shallow_convection_rain)
 
-        # NOTE need a new way to resolve this now that it is a state field. it will never be none
         if shallow_convection_snow is not None:
             self._update_precipitation(mixing_ratio_snow, shallow_convection_snow)
