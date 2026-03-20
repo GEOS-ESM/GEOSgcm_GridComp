@@ -1,6 +1,6 @@
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from ndsl import NDSLRuntime, Quantity, QuantityFactory, StencilFactory
-from ndsl.constants import I_XIM, J_DIM, K_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, interval
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 from pyMoist.convection.GF_2020.config import GF2020Config
@@ -264,12 +264,12 @@ class StaticControl(NDSLRuntime):
         # construct stencils and functions
         self._moist_static_energy_inside_cloud = stencil_factory.from_dims_halo(
             func=moist_static_energy_inside_cloud,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._get_buoyancy = stencil_factory.from_dims_halo(
             func=get_buoyancy,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
     def __call__(

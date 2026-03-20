@@ -1,7 +1,7 @@
 import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from ndsl import Local, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
-from ndsl.constants import I_XIM, J_DIM, K_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, computation, exp, interval
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
 from pyMoist.convection.GF_2020.config import GF2020Config
@@ -725,25 +725,25 @@ class AtmosphericComposition(NDSLRuntime):
         self.cumulus_parameterization_config = cumulus_parameterization_config
 
         quantity_factory.add_data_dimensions({"convection_tracers": config.NUMBER_OF_TRACERS})
-        self._aa: Local = quantity_factory.zeros([I_XIM, J_DIM, K_DIM], "n/a")
-        self._bb: Local = quantity_factory.zeros([I_XIM, J_DIM, K_DIM], "n/a")
-        self._cc: Local = quantity_factory.zeros([I_XIM, J_DIM, K_DIM], "n/a")
-        self._dd_tracers: Local = quantity_factory.zeros([I_XIM, J_DIM, K_DIM, "convection_tracers"], "n/a")
+        self._aa: Local = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._bb: Local = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._cc: Local = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._dd_tracers: Local = quantity_factory.zeros([I_DIM, J_DIM, K_DIM, "convection_tracers"], "n/a")
         self._tracer_cloud_boundary: Local = quantity_factory.zeros(
-            [I_XIM, J_DIM, "convection_tracers"], "n/a"
+            [I_DIM, J_DIM, "convection_tracers"], "n/a"
         )
-        self._residual: Local = quantity_factory.zeros([I_XIM, J_DIM, "convection_tracers"], "n/a")
+        self._residual: Local = quantity_factory.zeros([I_DIM, J_DIM, "convection_tracers"], "n/a")
 
         # construct stencils and functions
         self._environment_cloud_levels_chemistry = stencil_factory.from_dims_halo(
             func=environment_cloud_levels_chemistry,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"NUMBER_OF_TRACERS": config.NUMBER_OF_TRACERS, "CLOUD_LEVEL_OPTION": 2},
         )
 
         self._updraft_chemistry = stencil_factory.from_dims_halo(
             func=updraft_chemistry,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "NUMBER_OF_TRACERS": config.NUMBER_OF_TRACERS,
                 "BOUNDARY_CONDITION_METHOD": cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD,
@@ -753,7 +753,7 @@ class AtmosphericComposition(NDSLRuntime):
 
         self._downdraft_chemistry = stencil_factory.from_dims_halo(
             func=downdraft_chemistry,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "NUMBER_OF_TRACERS": config.NUMBER_OF_TRACERS,
                 "USE_TRACER_EVAPORATION": cumulus_parameterization_config.USE_TRACER_EVAPORATION,
@@ -762,7 +762,7 @@ class AtmosphericComposition(NDSLRuntime):
 
         self._vertical_transport_part_1 = stencil_factory.from_dims_halo(
             func=vertical_transport_part_1,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "ALP1": cumulus_parameterization_config.ALP1,
                 "DTIME": cumulus_parameterization_config.DTIME,
@@ -776,18 +776,18 @@ class AtmosphericComposition(NDSLRuntime):
 
         self._tridiag = stencil_factory.from_dims_halo(
             func=tridiag,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._update_after_tridiag = stencil_factory.from_dims_halo(
             func=update_after_tridiag,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"DTIME": cumulus_parameterization_config.DTIME},
         )
 
         self._vertical_transport_part_2 = stencil_factory.from_dims_halo(
             func=vertical_transport_part_2,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"NUMBER_OF_TRACERS": config.NUMBER_OF_TRACERS},
         )
 

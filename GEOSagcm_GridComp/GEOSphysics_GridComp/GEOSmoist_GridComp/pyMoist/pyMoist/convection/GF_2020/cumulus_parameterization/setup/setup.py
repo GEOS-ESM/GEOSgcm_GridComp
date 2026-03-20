@@ -1,6 +1,6 @@
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from ndsl import NDSLRuntime, Quantity, QuantityFactory, StencilFactory
-from ndsl.constants import I_XIM, J_DIM, K_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, interval
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 from pyMoist.convection.GF_2020.config import GF2020Config
@@ -397,13 +397,13 @@ class Setup(NDSLRuntime):
         # construct stencils and functions
         self._set_plume_dependent_fields = stencil_factory.from_dims_halo(
             func=set_plume_dependent_fields,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"DT_MOIST": config.DT_MOIST},
         )
 
         self._prefil_internal_fields = stencil_factory.from_dims_halo(
             func=prefil_internal_fields,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "CAP_MAXS": cumulus_parameterization_config.CAP_MAXS,
                 "ENSEMBLE_MEMBERS": MAXENS1 * MAXENS2 * MAXENS3,
@@ -412,29 +412,29 @@ class Setup(NDSLRuntime):
 
         self._compute_scale_dependence_factor = stencil_factory.from_dims_halo(
             func=compute_scale_dependence_factor,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"USE_SCALE_DEP": cumulus_parameterization_config.USE_SCALE_DEP},
         )
 
         self._get_random_number = stencil_factory.from_dims_halo(
             func=get_random_number,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"USE_RANDOM_NUMBER": cumulus_parameterization_config.USE_RANDOM_NUMBER},
         )
 
         self._initial_entrainment_detrainment = stencil_factory.from_dims_halo(
             func=initial_entrainment_detrainment,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._epsilon_min_max = stencil_factory.from_dims_halo(
             func=epsilon_min_max,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._calculate_arbitrary_numerical_parameter = stencil_factory.from_dims_halo(
             func=calculate_arbitrary_numerical_parameter,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
     def __call__(

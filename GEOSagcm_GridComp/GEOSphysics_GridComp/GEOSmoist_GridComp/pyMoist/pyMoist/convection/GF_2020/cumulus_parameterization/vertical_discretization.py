@@ -1,7 +1,7 @@
 import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from ndsl import Local, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
-from ndsl.constants import I_XIM, J_DIM, K_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, interval
 from ndsl.dsl.typing import FloatField, Int, IntFieldIJ
 from ndsl.stencils.column_operations import column_max
@@ -621,22 +621,22 @@ class VerticalDiscretization(NDSLRuntime):
         self.cumulus_parameterization_config = cumulus_parameterization_config
 
         # initialize local fields
-        self._fp: Local = quantity_factory.zeros([I_XIM, J_DIM, K_DIM], "n/a")
-        self._fm: Local = quantity_factory.zeros([I_XIM, J_DIM, K_DIM], "n/a")
-        self._aa: Local = quantity_factory.zeros([I_XIM, J_DIM, K_DIM], "n/a")
-        self._bb: Local = quantity_factory.zeros([I_XIM, J_DIM, K_DIM], "n/a")
-        self._cc: Local = quantity_factory.zeros([I_XIM, J_DIM, K_DIM], "n/a")
-        self._ddu: Local = quantity_factory.zeros([I_XIM, J_DIM, K_DIM], "n/a")
-        self._ddv: Local = quantity_factory.zeros([I_XIM, J_DIM, K_DIM], "n/a")
+        self._fp: Local = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._fm: Local = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._aa: Local = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._bb: Local = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._cc: Local = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._ddu: Local = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._ddv: Local = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
 
         self._zero_tendencies = stencil_factory.from_dims_halo(
             func=zero_tendencies,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._convective_transport_of_momentum = stencil_factory.from_dims_halo(
             func=convective_transport_of_momentum,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "VERTICAL_DISCRETIZATION_OPTION": cumulus_parameterization_config.VERTICAL_DISCRETIZATION_OPTION,
                 "ALP1": cumulus_parameterization_config.ALP1,
@@ -646,24 +646,24 @@ class VerticalDiscretization(NDSLRuntime):
 
         self._tridiag = stencil_factory.from_dims_halo(
             func=tridiag,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._update_after_tridiag = stencil_factory.from_dims_halo(
             func=update_after_tridiag,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"DTIME": cumulus_parameterization_config.DTIME},
         )
 
         self._convective_transport_of_mse_and_liquid_water = stencil_factory.from_dims_halo(
             func=convective_transport_of_mse,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"USE_FCT": cumulus_parameterization_config.USE_FCT},
         )
 
         self._convective_transport_of_water_vapor_and_condensates = stencil_factory.from_dims_halo(
             func=convective_transport_of_water_vapor_and_condensates,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"C1": config.C1, "USE_FCT": cumulus_parameterization_config.USE_FCT},
         )
 

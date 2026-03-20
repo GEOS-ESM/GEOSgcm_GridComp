@@ -1,7 +1,7 @@
 import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from ndsl import Local, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
-from ndsl.constants import I_XIM, J_DIM, K_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, computation, interval
 from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 from ndsl.stencils.column_operations import column_max, column_max_ddim, column_min
@@ -1066,22 +1066,22 @@ class DowndraftOriginLevel(NDSLRuntime):
         self.cumulus_parameterization_config = cumulus_parameterization_config
 
         # initialize locals
-        self._critical_level: Local = self.make_local(quantity_factory, [I_XIM, J_DIM], Int)
+        self._critical_level: Local = self.make_local(quantity_factory, [I_DIM, J_DIM], Int)
 
         # construct stencils
         self._get_critical_level = stencil_factory.from_dims_halo(
             func=get_critical_level,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._unknown_find_level = stencil_factory.from_dims_halo(
             func=generic_find_level,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._get_downdraft_origin_level = stencil_factory.from_dims_halo(
             func=get_downdraft_origin_level,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"MELT_GLAC": cumulus_parameterization_config.MELT_GLAC},
         )
 
@@ -1168,13 +1168,13 @@ class DowndraftWindShear(NDSLRuntime):
         # construct stencils and functions
         self._downdraft_windshear = stencil_factory.from_dims_halo(
             func=downdraft_windshear,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"AEROEVAP": cumulus_parameterization_config.AEROEVAP},
         )
 
         self._update_epsilon_forced = stencil_factory.from_dims_halo(
             func=update_epsilon_forced,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
     def __call__(

@@ -1,5 +1,5 @@
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory, ndsl_log
-from ndsl.constants import I_XIM, J_DIM, K_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.air_density import hydrostatic_air_density
 from pyMoist.convection.GF_2020.cumulus_parameterization.buoyancy import get_buoyancy
@@ -169,7 +169,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
         self._environment_conditions = stencil_factory.from_dims_halo(
             func=environment_conditions,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "SATURATION_CALCULATION_CHOICE": cumulus_parameterization_config.SATURATION_CALCULATION_CHOICE
             },
@@ -179,18 +179,18 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
         self._environment_cloud_levels = stencil_factory.from_dims_halo(
             func=environment_cloud_levels,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"CLOUD_LEVEL_GRID": cumulus_parameterization_config.CLOUD_LEVEL_GRID},
         )
 
         self._hydrostatic_air_density = stencil_factory.from_dims_halo(
             func=hydrostatic_air_density,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._partition_liquid_ice = stencil_factory.from_dims_halo(
             func=partition_liquid_ice,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "MELT_GLAC": cumulus_parameterization_config.MELT_GLAC,
                 "FRAC_MODIS": cumulus_parameterization_config.FRAC_MODIS,
@@ -199,17 +199,17 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
         self._find_maximum_updraft_origin_level = stencil_factory.from_dims_halo(
             func=find_maximum_updraft_origin_level,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._find_detrainmet_start_level = stencil_factory.from_dims_halo(
             func=find_detrainmet_start_level,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._find_highest_moist_static_energy_level = stencil_factory.from_dims_halo(
             func=find_highest_moist_static_energy_level,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._precip_factor = PrecipFactor()
@@ -218,7 +218,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
         self._find_lcl = stencil_factory.from_dims_halo(
             func=find_lcl,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "BOUNDARY_CONDITION_METHOD": cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD,
                 "ADV_TRIGGER": config.ADV_TRIGGER,
@@ -227,7 +227,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
         self._parcel_moist_static_energy = stencil_factory.from_dims_halo(
             func=parcel_moist_static_energy,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "BOUNDARY_CONDITION_METHOD": cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD,
             },
@@ -235,7 +235,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
         self._entrainment_rates = stencil_factory.from_dims_halo(
             func=entrainment_rates,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "ZERO_DIFF": cumulus_parameterization_config.ZERO_DIFF,
                 "MIN_ENTRAINMENT_RATE": cumulus_parameterization_config.MIN_ENTRAINMENT_RATE,
@@ -244,12 +244,12 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
         self._set_start_level = stencil_factory.from_dims_halo(
             func=set_start_level,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._get_convective_cloud_base_level = stencil_factory.from_dims_halo(
             func=get_convective_cloud_base_level,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "OVERSHOOT": cumulus_parameterization_config.OVERSHOOT,
                 "ZERO_DIFF": cumulus_parameterization_config.ZERO_DIFF,
@@ -261,24 +261,24 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
         self._downdraft_entraiment_profiles = stencil_factory.from_dims_halo(
             func=downdraft_entrainment_profiles,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"DOWNDRAFT": cumulus_parameterization_config.DOWNDRAFT},
         )
 
         self._generic_find_level = stencil_factory.from_dims_halo(
             func=generic_find_level,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._get_cloud_top = stencil_factory.from_dims_halo(
             func=get_cloud_top,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"OVERSHOOT": cumulus_parameterization_config.OVERSHOOT},
         )
 
         self._cloud_top_checks = stencil_factory.from_dims_halo(
             func=cloud_top_checks,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._updraft_mass_flux = UpdraftMassFlux(
@@ -290,12 +290,12 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
         self._compute_lateral_massflux = stencil_factory.from_dims_halo(
             func=compute_lateral_massflux,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._compute_uc_vc = stencil_factory.from_dims_halo(
             func=compute_uc_vc,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "BOUNDARY_CONDITION_METHOD": cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD
             },
@@ -303,12 +303,12 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
         self._first_guess_moist_static_energy = stencil_factory.from_dims_halo(
             func=first_guess_moist_static_energy,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._get_buoyancy = stencil_factory.from_dims_halo(
             func=get_buoyancy,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._c1d_profile = C1DProfile(
@@ -318,7 +318,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
         self._updraft_moisture_profile = stencil_factory.from_dims_halo(
             func=updraft_moisture,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "BOUNDARY_CONDITION_METHOD": cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD,
                 "USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES": cumulus_parameterization_config.USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES,
@@ -332,7 +332,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
         self._melting_profile = stencil_factory.from_dims_halo(
             func=melting_profile,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "MELT_GLAC": cumulus_parameterization_config.MELT_GLAC,
             },
@@ -340,7 +340,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
         self._updraft_moist_static_energy_and_momentum_budget = stencil_factory.from_dims_halo(
             func=updraft_moist_static_energy_and_momentum_budget,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES": cumulus_parameterization_config.USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES,
                 "PRESSURE_GRADIENT_CONSTANT": cumulus_parameterization_config.PRESSURE_GRADIENT_CONSTANT,
@@ -349,12 +349,12 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
         self._updraft_temperature = stencil_factory.from_dims_halo(
             func=updraft_temperature,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._updraft_vertical_velocity = stencil_factory.from_dims_halo(
             func=updraft_vertical_velocity,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"ZERO_DIFF": cumulus_parameterization_config.ZERO_DIFF},
         )
 
@@ -367,13 +367,13 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
         self._downdraft_mass_flux = stencil_factory.from_dims_halo(
             func=downdraft_mass_flux,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"ZERO_DIFF": cumulus_parameterization_config.ZERO_DIFF},
         )
 
         self._downdraft_lateral_mass_flux = stencil_factory.from_dims_halo(
             func=downdraft_lateral_massflux,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._downdraft_wet_bulb = DowndraftWetBlub(
@@ -382,7 +382,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
         self._downdraft_moist_static_energy_and_buoyancy = stencil_factory.from_dims_halo(
             func=downdraft_moist_static_energy_and_buoyancy,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "USE_WETBULB": cumulus_parameterization_config.USE_WETBULB,
                 "PRESSURE_GRADIENT_CONSTANT": cumulus_parameterization_config.PRESSURE_GRADIENT_CONSTANT,
@@ -391,7 +391,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
         self._downdraft_moisture = stencil_factory.from_dims_halo(
             func=downdraft_moisture,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "USE_WETBULB": cumulus_parameterization_config.USE_WETBULB,
                 "ZERO_DIFF": cumulus_parameterization_config.ZERO_DIFF,
@@ -415,13 +415,13 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
         self._convection_trigger = stencil_factory.from_dims_halo(
             func=convection_trigger,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"DICYCLE": cumulus_parameterization_config.DIURNAL_CYCLE},
         )
 
         self._downdraft_temperature = stencil_factory.from_dims_halo(
             func=downdraft_temperature,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._diurnal_cycle = DiurnalCycle(
@@ -445,7 +445,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
         self._environment_mass_flux = stencil_factory.from_dims_halo(
             func=environment_mass_flux,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._mass_conservation = MassConservation()
@@ -464,13 +464,13 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
         self._smooth_tendencies = stencil_factory.from_dims_halo(
             func=smooth_tendencies,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"USE_SMOOTH_TENDENCIES": cumulus_parameterization_config.USE_SMOOTH_TENDENCIES},
         )
 
         self._modify_environment_profiles = stencil_factory.from_dims_halo(
             func=modify_environment_profiles,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "COUPLE_MICROPHYSICS": cumulus_parameterization_config.COUPLE_MICROPHYSICS,
                 "BOUNDARY_CONDITION_METHOD": cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD,
@@ -499,12 +499,12 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
         self._kinetic_energy_to_heating = stencil_factory.from_dims_halo(
             func=kinetic_energy_to_heating,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._ensemble_output_and_feedback = stencil_factory.from_dims_halo(
             func=ensemble_output_and_feedback,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "DTIME": cumulus_parameterization_config.DTIME,
                 "MAX_TEMP_VAPOR_TENDENCY": cumulus_parameterization_config.MAX_TEMP_VAPOR_TENDENCY,
@@ -515,17 +515,17 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
         self._precipitation_flux = stencil_factory.from_dims_halo(
             func=get_precip_fluxes,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._rain_evaporation_below_cloud_base = stencil_factory.from_dims_halo(
             func=rain_evaporation_below_cloud_base,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._cloud_dissapation = stencil_factory.from_dims_halo(
             func=cloud_dissapation,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "USE_CLOUD_DISSIPATION": cumulus_parameterization_config.USE_CLOUD_DISSIPATION,
                 "DTIME": cumulus_parameterization_config.DTIME,
@@ -535,7 +535,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
         self._total_evaporation_flux = stencil_factory.from_dims_halo(
             func=total_evaporation_flux,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._lightning_flash_density = LightningFlashDensity(
@@ -544,17 +544,17 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
         self._deep_precipitation_output = stencil_factory.from_dims_halo(
             func=deep_precipitation_output,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._output_updraft_temperature = stencil_factory.from_dims_halo(
             func=output_updraft_temperature,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._prepare_output = stencil_factory.from_dims_halo(
             func=prepare_output,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._output_workfunctions_and_precip_concentrations = OutputWorkfunctionsAndPrecipConcentrations(

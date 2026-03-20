@@ -1,7 +1,7 @@
 import dataclasses
 
 from ndsl import Quantity, State
-from ndsl.constants import I_XIM, J_DIM, K_DIM, K_INTERFACE_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.typing import Float, Int
 
 
@@ -12,7 +12,7 @@ class GF2020Locals(State):
         edge_height_above_surface: Quantity = dataclasses.field(
             metadata={
                 "name": "edge_height_above_surface",
-                "dims": [I_XIM, J_DIM, K_INTERFACE_DIM],
+                "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -21,7 +21,7 @@ class GF2020Locals(State):
         layer_height_above_surface: Quantity = dataclasses.field(
             metadata={
                 "name": "layer_height_above_surface",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -30,7 +30,7 @@ class GF2020Locals(State):
         p: Quantity = dataclasses.field(
             metadata={
                 "name": "p",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -39,7 +39,7 @@ class GF2020Locals(State):
         p_kappa: Quantity = dataclasses.field(
             metadata={
                 "name": "p_kappa",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -48,7 +48,7 @@ class GF2020Locals(State):
         th: Quantity = dataclasses.field(
             metadata={
                 "name": "th",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -57,7 +57,7 @@ class GF2020Locals(State):
         mass: Quantity = dataclasses.field(
             metadata={
                 "name": "mass",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -66,7 +66,7 @@ class GF2020Locals(State):
         vertical_velocity: Quantity = dataclasses.field(
             metadata={
                 "name": "vertical_velocity",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -75,7 +75,7 @@ class GF2020Locals(State):
         ice_fraciton: Quantity = dataclasses.field(
             metadata={
                 "name": "ice_fraciton",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -84,7 +84,7 @@ class GF2020Locals(State):
         saturation_specific_humidity: Quantity = dataclasses.field(
             metadata={
                 "name": "saturation_specific_humidity",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -93,7 +93,7 @@ class GF2020Locals(State):
         seed_convection: Quantity = dataclasses.field(
             metadata={
                 "name": "seed_convection",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -102,7 +102,7 @@ class GF2020Locals(State):
         modified_area: Quantity = dataclasses.field(
             metadata={
                 "name": "modified_area",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -111,7 +111,7 @@ class GF2020Locals(State):
         t_perturbation_horizontal: Quantity = dataclasses.field(
             metadata={
                 "name": "t_perturbation_horizontal",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -120,7 +120,7 @@ class GF2020Locals(State):
         t_perturbation_vertical: Quantity = dataclasses.field(
             metadata={
                 "name": "t_perturbation_vertical",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -129,7 +129,7 @@ class GF2020Locals(State):
         dz: Quantity = dataclasses.field(
             metadata={
                 "name": "dz",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -138,7 +138,7 @@ class GF2020Locals(State):
         air_density: Quantity = dataclasses.field(
             metadata={
                 "name": "air_density",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -147,7 +147,7 @@ class GF2020Locals(State):
         scalar_diffusivity: Quantity = dataclasses.field(
             metadata={
                 "name": "scalar_diffusivity",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -159,7 +159,7 @@ class GF2020Locals(State):
         t_2m: Quantity = dataclasses.field(
             metadata={
                 "name": "t_2m",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -168,7 +168,7 @@ class GF2020Locals(State):
         t: Quantity = dataclasses.field(
             metadata={
                 "name": "t",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -177,7 +177,7 @@ class GF2020Locals(State):
         t_surface: Quantity = dataclasses.field(
             metadata={
                 "name": "t_surface",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -186,7 +186,7 @@ class GF2020Locals(State):
         p: Quantity = dataclasses.field(
             metadata={
                 "name": "p",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -195,7 +195,7 @@ class GF2020Locals(State):
         p_surface: Quantity = dataclasses.field(
             metadata={
                 "name": "p_surface",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -204,7 +204,7 @@ class GF2020Locals(State):
         vapor: Quantity = dataclasses.field(
             metadata={
                 "name": "vapor",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -213,7 +213,7 @@ class GF2020Locals(State):
         vapor_current: Quantity = dataclasses.field(
             metadata={
                 "name": "vapor_current",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -222,7 +222,7 @@ class GF2020Locals(State):
         u: Quantity = dataclasses.field(
             metadata={
                 "name": "u",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -231,7 +231,7 @@ class GF2020Locals(State):
         v: Quantity = dataclasses.field(
             metadata={
                 "name": "v",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -240,7 +240,7 @@ class GF2020Locals(State):
         w: Quantity = dataclasses.field(
             metadata={
                 "name": "vertical_velocity",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -249,7 +249,7 @@ class GF2020Locals(State):
         layer_height_above_surface: Quantity = dataclasses.field(
             metadata={
                 "name": "layer_height_above_surface",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -258,7 +258,7 @@ class GF2020Locals(State):
         edge_height_above_surface: Quantity = dataclasses.field(
             metadata={
                 "name": "edge_height_above_surface",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -267,7 +267,7 @@ class GF2020Locals(State):
         mass: Quantity = dataclasses.field(
             metadata={
                 "name": "mass",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -276,7 +276,7 @@ class GF2020Locals(State):
         scalar_diffusivity: Quantity = dataclasses.field(
             metadata={
                 "name": "scalar_diffusivity",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -285,7 +285,7 @@ class GF2020Locals(State):
         lateral_entrainment_rate: Quantity = dataclasses.field(
             metadata={
                 "name": "lateral_entrainment_rate",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -294,7 +294,7 @@ class GF2020Locals(State):
         convective_liquid: Quantity = dataclasses.field(
             metadata={
                 "name": "convective_liquid",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -303,7 +303,7 @@ class GF2020Locals(State):
         convective_ice: Quantity = dataclasses.field(
             metadata={
                 "name": "convective_ice",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -312,7 +312,7 @@ class GF2020Locals(State):
         convective_cloud_fraction: Quantity = dataclasses.field(
             metadata={
                 "name": "convective_cloud_fraction",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -321,7 +321,7 @@ class GF2020Locals(State):
         large_scale_liquid: Quantity = dataclasses.field(
             metadata={
                 "name": "large_scale_liquid",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -330,7 +330,7 @@ class GF2020Locals(State):
         large_scale_ice: Quantity = dataclasses.field(
             metadata={
                 "name": "large_scale_ice",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -339,7 +339,7 @@ class GF2020Locals(State):
         large_scale_cloud_fraction: Quantity = dataclasses.field(
             metadata={
                 "name": "large_scale_cloud_fraction",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -348,7 +348,7 @@ class GF2020Locals(State):
         pbl_level: Quantity = dataclasses.field(
             metadata={
                 "name": "pbl_level",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Int,
@@ -358,7 +358,7 @@ class GF2020Locals(State):
     do_this_column: Quantity = dataclasses.field(
         metadata={
             "name": "do_this_column",
-            "dims": [I_XIM, J_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Int,
@@ -367,7 +367,7 @@ class GF2020Locals(State):
     fix_out_vapor: Quantity = dataclasses.field(
         metadata={
             "name": "fix_out_vapor",
-            "dims": [I_XIM, J_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -376,7 +376,7 @@ class GF2020Locals(State):
     t_tendency_from_vapor: Quantity = dataclasses.field(
         metadata={
             "name": "t_tendency_from_vapor",
-            "dims": [I_XIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -385,7 +385,7 @@ class GF2020Locals(State):
     rtgt: Quantity = dataclasses.field(
         metadata={
             "name": "rtgt",
-            "dims": [I_XIM, J_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -394,7 +394,7 @@ class GF2020Locals(State):
     aot500: Quantity = dataclasses.field(
         metadata={
             "name": "aot500",
-            "dims": [I_XIM, J_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -403,7 +403,7 @@ class GF2020Locals(State):
     evaporation: Quantity = dataclasses.field(
         metadata={
             "name": "evaporation",
-            "dims": [I_XIM, J_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -412,7 +412,7 @@ class GF2020Locals(State):
     sensible_heat_flux: Quantity = dataclasses.field(
         metadata={
             "name": "sensible_heat_flux",
-            "dims": [I_XIM, J_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -421,7 +421,7 @@ class GF2020Locals(State):
     topography_height: Quantity = dataclasses.field(
         metadata={
             "name": "topography_height",
-            "dims": [I_XIM, J_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -430,7 +430,7 @@ class GF2020Locals(State):
     ocean_fraction: Quantity = dataclasses.field(
         metadata={
             "name": "ocean_fraction",
-            "dims": [I_XIM, J_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -439,7 +439,7 @@ class GF2020Locals(State):
     grid_length: Quantity = dataclasses.field(
         metadata={
             "name": "grid_length",
-            "dims": [I_XIM, J_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -448,7 +448,7 @@ class GF2020Locals(State):
     buoyancy_excess: Quantity = dataclasses.field(
         metadata={
             "name": "buoyancy_excess",
-            "dims": [I_XIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -457,7 +457,7 @@ class GF2020Locals(State):
     grid_scale_forcing_t: Quantity = dataclasses.field(
         metadata={
             "name": "grid_scale_forcing_t",
-            "dims": [I_XIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -466,7 +466,7 @@ class GF2020Locals(State):
     grid_scale_forcing_vapor: Quantity = dataclasses.field(
         metadata={
             "name": "grid_scale_forcing_vapor",
-            "dims": [I_XIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -475,7 +475,7 @@ class GF2020Locals(State):
     subgrid_scale_forcing_t: Quantity = dataclasses.field(
         metadata={
             "name": "subgrid_scale_forcing_t",
-            "dims": [I_XIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -484,7 +484,7 @@ class GF2020Locals(State):
     subgrid_scale_forcing_vapor: Quantity = dataclasses.field(
         metadata={
             "name": "subgrid_scale_forcing_vapor",
-            "dims": [I_XIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -493,7 +493,7 @@ class GF2020Locals(State):
     advective_forcing_t: Quantity = dataclasses.field(
         metadata={
             "name": "advective_forcing_t",
-            "dims": [I_XIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -502,7 +502,7 @@ class GF2020Locals(State):
     saturation_water_vapor: Quantity = dataclasses.field(
         metadata={
             "name": "saturation_water_vapor",
-            "dims": [I_XIM, J_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -511,7 +511,7 @@ class GF2020Locals(State):
     dtdt: Quantity = dataclasses.field(
         metadata={
             "name": "dtdt",
-            "dims": [I_XIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -520,7 +520,7 @@ class GF2020Locals(State):
     dvapordt: Quantity = dataclasses.field(
         metadata={
             "name": "dvapordt",
-            "dims": [I_XIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -529,7 +529,7 @@ class GF2020Locals(State):
     dcloudicedt: Quantity = dataclasses.field(
         metadata={
             "name": "dcloudicedt",
-            "dims": [I_XIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -538,7 +538,7 @@ class GF2020Locals(State):
     dudt: Quantity = dataclasses.field(
         metadata={
             "name": "dudt",
-            "dims": [I_XIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -547,7 +547,7 @@ class GF2020Locals(State):
     dvdt: Quantity = dataclasses.field(
         metadata={
             "name": "dvdt",
-            "dims": [I_XIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -556,7 +556,7 @@ class GF2020Locals(State):
     dlarge_scale_icedt: Quantity = dataclasses.field(
         metadata={
             "name": "dlarge_scale_icedt",
-            "dims": [I_XIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -565,7 +565,7 @@ class GF2020Locals(State):
     dconvective_icedt: Quantity = dataclasses.field(
         metadata={
             "name": "dconvective_icedt",
-            "dims": [I_XIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -574,7 +574,7 @@ class GF2020Locals(State):
     dlarge_scale_liquiddt: Quantity = dataclasses.field(
         metadata={
             "name": "dlarge_scale_liquiddt",
-            "dims": [I_XIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -583,7 +583,7 @@ class GF2020Locals(State):
     dconvective_liquiddt: Quantity = dataclasses.field(
         metadata={
             "name": "dconvective_liquiddt",
-            "dims": [I_XIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -592,7 +592,7 @@ class GF2020Locals(State):
     dlarge_scale_cloud_fractiondt: Quantity = dataclasses.field(
         metadata={
             "name": "dlarge_scale_cloud_fractiondt",
-            "dims": [I_XIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -601,7 +601,7 @@ class GF2020Locals(State):
     dconvective_cloud_fractiondt: Quantity = dataclasses.field(
         metadata={
             "name": "dconvective_cloud_fractiondt",
-            "dims": [I_XIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -610,7 +610,7 @@ class GF2020Locals(State):
     dbuoyancydt: Quantity = dataclasses.field(
         metadata={
             "name": "dbuoyancydt",
-            "dims": [I_XIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -619,7 +619,7 @@ class GF2020Locals(State):
     dconvection_tracersdt: Quantity = dataclasses.field(
         metadata={
             "name": "dconvection_tracersdt",
-            "dims": [I_XIM, J_DIM, K_DIM, "convection_tracers"],
+            "dims": [I_DIM, J_DIM, K_DIM, "convection_tracers"],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -628,7 +628,7 @@ class GF2020Locals(State):
     evaporation_sublimation_tendency: Quantity = dataclasses.field(
         metadata={
             "name": "evaporation_sublimation_tendency",
-            "dims": [I_XIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -637,7 +637,7 @@ class GF2020Locals(State):
     convective_precip_flux: Quantity = dataclasses.field(
         metadata={
             "name": "convective_precip_flux",
-            "dims": [I_XIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -646,7 +646,7 @@ class GF2020Locals(State):
     precip: Quantity = dataclasses.field(
         metadata={
             "name": "precip",
-            "dims": [I_XIM, J_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,

@@ -1,7 +1,7 @@
 import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from ndsl import QuantityFactory, StencilFactory
-from ndsl.constants import I_XIM, J_DIM, K_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, exp, function, interval
 from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 from ndsl.logging import ndsl_log
@@ -826,7 +826,7 @@ class MaximumUpdraftOriginLevel:
         # construct stencils and functions
         self._find_maximum_updraft_origin_level = stencil_factory.from_dims_halo(
             func=find_maximum_updraft_origin_level,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
     def __call__(
@@ -860,7 +860,7 @@ class DowndraftDetrainmentLevel:
         # construct stencils and functions
         self._find_detrainmet_start_level = stencil_factory.from_dims_halo(
             func=find_detrainmet_start_level,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
     def __call__(
@@ -894,7 +894,7 @@ class HighestMoistStaticEnergyLevel:
         # construct stencils and functions
         self._find_highest_moist_static_energy_level = stencil_factory.from_dims_halo(
             func=find_highest_moist_static_energy_level,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
     def __call__(
@@ -927,13 +927,13 @@ class CloudTop:
         # construct stencils and functions
         self._updraft_rates_pdf = stencil_factory.from_dims_halo(
             func=get_cloud_top,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"OVERSHOOT": cumulus_parameterization_config.OVERSHOOT},
         )
 
         self._cloud_top_checks = stencil_factory.from_dims_halo(
             func=cloud_top_checks,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
     def __call__(

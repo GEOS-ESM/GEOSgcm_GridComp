@@ -1,7 +1,7 @@
 import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from ndsl import Local, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
-from ndsl.constants import I_XIM, J_DIM, K_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, Field, GlobalTable, K, computation, interval
 from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 from ndsl.stencils.column_operations import column_max_ddim, column_min
@@ -939,7 +939,7 @@ class UpdraftMassFlux(NDSLRuntime):
         # construct stencil
         self._updraft_mass_flux = stencil_factory.from_dims_halo(
             func=updraft_mass_flux,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "ZERO_DIFF": cumulus_parameterization_config.ZERO_DIFF,
                 "BETA_SHALLOW": cumulus_parameterization_config.BETA_SHALLOW,
@@ -1006,12 +1006,12 @@ class UpdraftInitialWorkfunctions(NDSLRuntime):
         # construct stencils and functions
         self._cloud_workfunction_aa0 = stencil_factory.from_dims_halo(
             func=cloud_workfunction_aa0,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._check_cloud_workfunction_1 = stencil_factory.from_dims_halo(
             func=check_cloud_workfunction_1,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
     def __call__(
@@ -1093,7 +1093,7 @@ class UpdraftCIN(NDSLRuntime):
         # construct stencils and functions
         self._cloud_workfunction_aa0 = stencil_factory.from_dims_halo(
             func=cloud_workfunction_aa0,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
     def __call__(
@@ -1169,12 +1169,12 @@ class UpdateWorkfunctionAndPrecipitationEnsemble(NDSLRuntime):
         # construct stencils and functions
         self._cloud_workfunction_aa0 = stencil_factory.from_dims_halo(
             func=cloud_workfunction_aa0,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._compute_precipitation_ensemble = stencil_factory.from_dims_halo(
             func=compute_precipitation_ensemble,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "ENSEMBLE_MEMBERS": cumulus_parameterization_constants.MAXENS1
                 * cumulus_parameterization_constants.MAXENS2

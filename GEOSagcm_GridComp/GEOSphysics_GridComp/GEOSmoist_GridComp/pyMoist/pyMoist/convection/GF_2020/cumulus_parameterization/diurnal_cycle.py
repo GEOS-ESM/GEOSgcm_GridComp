@@ -1,6 +1,6 @@
 import pyMoist.constants as constants
 from ndsl import Local, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
-from ndsl.constants import I_XIM, J_DIM, K_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, computation, interval, sqrt
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 from pyMoist.convection.GF_2020.config import GF2020Config
@@ -183,7 +183,7 @@ class DiurnalCycle(NDSLRuntime):
         # construct stencils and functions
         self._set_time_scales = stencil_factory.from_dims_halo(
             func=set_time_scales,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "SGS_W_TIMESCALE": cumulus_parameterization_config.SGS_W_TIMESCALE,
                 "DTIME": cumulus_parameterization_config.DTIME,
@@ -192,7 +192,7 @@ class DiurnalCycle(NDSLRuntime):
 
         self._cloud_workfunction_1_pbl = stencil_factory.from_dims_halo(
             func=cloud_workfunction_1_pbl,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "SGS_W_TIMESCALE": cumulus_parameterization_config.SGS_W_TIMESCALE,
                 "DTIME": cumulus_parameterization_config.DTIME,
@@ -201,12 +201,12 @@ class DiurnalCycle(NDSLRuntime):
 
         self._scale_cloud_workfunction_1_pbl = stencil_factory.from_dims_halo(
             func=scale_cloud_workfunction_1_pbl,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         # initialize internal fields
-        self._tau_ecmwf: Local = quantity_factory.zeros([I_XIM, J_DIM], "n/a")
-        self._tau_bl: Local = quantity_factory.zeros([I_XIM, J_DIM], "n/a")
+        self._tau_ecmwf: Local = quantity_factory.zeros([I_DIM, J_DIM], "n/a")
+        self._tau_bl: Local = quantity_factory.zeros([I_DIM, J_DIM], "n/a")
 
     def __call__(
         self,

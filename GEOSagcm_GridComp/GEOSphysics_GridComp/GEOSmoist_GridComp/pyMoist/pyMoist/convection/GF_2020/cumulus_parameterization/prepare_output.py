@@ -1,7 +1,7 @@
 import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from ndsl import Local, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
-from ndsl.constants import I_XIM, J_DIM, K_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, interval
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 from ndsl.stencils.column_operations import column_max
@@ -603,7 +603,7 @@ class OutputWorkfunctionsAndPrecipConcentrations(NDSLRuntime):
         # construct stencils
         self._output_workfunctions_and_precip_concentrations = stencil_factory.from_dims_halo(
             func=output_workfunctions_and_precip_concentrations,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "FRAC_MODIS": cumulus_parameterization_config.FRAC_MODIS,
                 "DTIME": cumulus_parameterization_config.DTIME,

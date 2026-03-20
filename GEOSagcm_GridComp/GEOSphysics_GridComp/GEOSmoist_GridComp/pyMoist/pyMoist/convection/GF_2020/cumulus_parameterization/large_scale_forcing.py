@@ -1,7 +1,7 @@
 import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from ndsl import Local, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
-from ndsl.constants import I_XIM, J_DIM, K_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, K, computation, interval
 from ndsl.dsl.typing import FloatField, FloatFieldIJ, Int, IntFieldIJ
 from pyMoist.convection.GF_2020.config import GF2020Config
@@ -454,18 +454,18 @@ class LargeScaleForcing(NDSLRuntime):
             }
         )
         self._internal_mass_flux_ensemble: Local = quantity_factory.zeros(
-            [I_XIM, J_DIM, "ensemble_members"], "n/a"
+            [I_DIM, J_DIM, "ensemble_members"], "n/a"
         )
 
         # construct stencils
         self._copy = stencil_factory.from_dims_halo(
             func=ddim_copy,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self.ensemble_forcing = stencil_factory.from_dims_halo(
             func=ensemble_forcing,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "DIURNAL_CYCLE": cumulus_parameterization_config.DIURNAL_CYCLE,
                 "DTIME": cumulus_parameterization_config.DTIME,
@@ -478,7 +478,7 @@ class LargeScaleForcing(NDSLRuntime):
 
         self._ensemble_forcing_mid_plume = stencil_factory.from_dims_halo(
             func=ensemble_forcing_mid_plume,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "DIURNAL_CYCLE": cumulus_parameterization_config.DIURNAL_CYCLE,
                 "DTIME": cumulus_parameterization_config.DTIME,
@@ -488,7 +488,7 @@ class LargeScaleForcing(NDSLRuntime):
 
         self._effective_precipitation = stencil_factory.from_dims_halo(
             func=effective_precipitation,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
     def __call__(

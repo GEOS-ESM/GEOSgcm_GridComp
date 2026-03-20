@@ -1,7 +1,7 @@
 import dataclasses
 
 from ndsl import Quantity, State
-from ndsl.constants import I_XIM, J_DIM, K_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.typing import Float, Int
 
 
@@ -12,7 +12,7 @@ class GF2020CumulusParameterizationState(State):
         t_excess: Quantity = dataclasses.field(
             metadata={
                 "name": "t_excess",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -21,7 +21,7 @@ class GF2020CumulusParameterizationState(State):
         vapor_excess: Quantity = dataclasses.field(
             metadata={
                 "name": "vapor_excess",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -30,7 +30,7 @@ class GF2020CumulusParameterizationState(State):
         grid_scale_forcing_t: Quantity = dataclasses.field(
             metadata={
                 "name": "grid_scale_forcing_t",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -39,7 +39,7 @@ class GF2020CumulusParameterizationState(State):
         grid_scale_forcing_vapor: Quantity = dataclasses.field(
             metadata={
                 "name": "grid_scale_forcing_vapor",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -48,7 +48,7 @@ class GF2020CumulusParameterizationState(State):
         subgrid_scale_forcing_t: Quantity = dataclasses.field(
             metadata={
                 "name": "subgrid_scale_forcing_t",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -57,7 +57,7 @@ class GF2020CumulusParameterizationState(State):
         subgrid_scale_forcing_vapor: Quantity = dataclasses.field(
             metadata={
                 "name": "subgrid_scale_forcing_vapor",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -66,7 +66,7 @@ class GF2020CumulusParameterizationState(State):
         seed_convection: Quantity = dataclasses.field(
             metadata={
                 "name": "seed_convection",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -75,7 +75,7 @@ class GF2020CumulusParameterizationState(State):
         saturation_water_vapor: Quantity = dataclasses.field(
             metadata={
                 "name": "saturation_water_vapor",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -84,7 +84,7 @@ class GF2020CumulusParameterizationState(State):
         ocean_fraction: Quantity = dataclasses.field(
             metadata={
                 "name": "ocean_fraction",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -93,7 +93,7 @@ class GF2020CumulusParameterizationState(State):
         convection_fraction: Quantity = dataclasses.field(
             metadata={
                 "name": "convection_fraction",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -102,7 +102,7 @@ class GF2020CumulusParameterizationState(State):
         surface_type: Quantity = dataclasses.field(
             metadata={
                 "name": "surface_type",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -111,7 +111,7 @@ class GF2020CumulusParameterizationState(State):
         lateral_entrainment_rate: Quantity = dataclasses.field(
             metadata={
                 "name": "lateral_entrainment_rate",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -120,7 +120,7 @@ class GF2020CumulusParameterizationState(State):
         last_error_code: Quantity = dataclasses.field(
             metadata={
                 "name": "last_error_code",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Int,
@@ -132,7 +132,7 @@ class GF2020CumulusParameterizationState(State):
         dtdt: Quantity = dataclasses.field(
             metadata={
                 "name": "t",
-                "dims": [I_XIM, J_DIM, K_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, K_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -141,7 +141,7 @@ class GF2020CumulusParameterizationState(State):
         dvapordt: Quantity = dataclasses.field(
             metadata={
                 "name": "dvapordt",
-                "dims": [I_XIM, J_DIM, K_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, K_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -150,7 +150,7 @@ class GF2020CumulusParameterizationState(State):
         dcloudicedt: Quantity = dataclasses.field(
             metadata={
                 "name": "dcloudicedt",
-                "dims": [I_XIM, J_DIM, K_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, K_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -159,7 +159,7 @@ class GF2020CumulusParameterizationState(State):
         dudt: Quantity = dataclasses.field(
             metadata={
                 "name": "dudt",
-                "dims": [I_XIM, J_DIM, K_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, K_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -168,7 +168,7 @@ class GF2020CumulusParameterizationState(State):
         dvdt: Quantity = dataclasses.field(
             metadata={
                 "name": "dvdt",
-                "dims": [I_XIM, J_DIM, K_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, K_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -177,7 +177,7 @@ class GF2020CumulusParameterizationState(State):
         dnliquiddt: Quantity = dataclasses.field(
             metadata={
                 "name": "dnliquiddt",
-                "dims": [I_XIM, J_DIM, K_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, K_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -186,7 +186,7 @@ class GF2020CumulusParameterizationState(State):
         dnicedt: Quantity = dataclasses.field(
             metadata={
                 "name": "dnicedt",
-                "dims": [I_XIM, J_DIM, K_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, K_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -195,7 +195,7 @@ class GF2020CumulusParameterizationState(State):
         dbuoyancydt: Quantity = dataclasses.field(
             metadata={
                 "name": "dbuoyancydt",
-                "dims": [I_XIM, J_DIM, K_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, K_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -204,7 +204,7 @@ class GF2020CumulusParameterizationState(State):
         dconvectiveicedt: Quantity = dataclasses.field(
             metadata={
                 "name": "dconvectiveicedt",
-                "dims": [I_XIM, J_DIM, K_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, K_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -213,7 +213,7 @@ class GF2020CumulusParameterizationState(State):
         dlargescaleicedt: Quantity = dataclasses.field(
             metadata={
                 "name": "dlargescaleicedt",
-                "dims": [I_XIM, J_DIM, K_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, K_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -222,7 +222,7 @@ class GF2020CumulusParameterizationState(State):
         dconvectiveliquiddt: Quantity = dataclasses.field(
             metadata={
                 "name": "dconvectiveliquiddt",
-                "dims": [I_XIM, J_DIM, K_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, K_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -231,7 +231,7 @@ class GF2020CumulusParameterizationState(State):
         dlargescaleliquiddt: Quantity = dataclasses.field(
             metadata={
                 "name": "dlargescaleliquiddt",
-                "dims": [I_XIM, J_DIM, K_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, K_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -240,7 +240,7 @@ class GF2020CumulusParameterizationState(State):
         dconvectivecloudfractiondt: Quantity = dataclasses.field(
             metadata={
                 "name": "dconvectivecloudfractiondt",
-                "dims": [I_XIM, J_DIM, K_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, K_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -249,7 +249,7 @@ class GF2020CumulusParameterizationState(State):
         dlargescalecloudfractiondt: Quantity = dataclasses.field(
             metadata={
                 "name": "dlargescalecloudfractiondt",
-                "dims": [I_XIM, J_DIM, K_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, K_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -258,7 +258,7 @@ class GF2020CumulusParameterizationState(State):
         error_code: Quantity = dataclasses.field(
             metadata={
                 "name": "error_code",
-                "dims": [I_XIM, J_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Int,
@@ -267,7 +267,7 @@ class GF2020CumulusParameterizationState(State):
         downdraft_origin_level: Quantity = dataclasses.field(
             metadata={
                 "name": "downdraft_origin_level",
-                "dims": [I_XIM, J_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Int,
@@ -276,7 +276,7 @@ class GF2020CumulusParameterizationState(State):
         lcl_level: Quantity = dataclasses.field(
             metadata={
                 "name": "lcl_level",
-                "dims": [I_XIM, J_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Int,
@@ -285,7 +285,7 @@ class GF2020CumulusParameterizationState(State):
         updraft_origin_level: Quantity = dataclasses.field(
             metadata={
                 "name": "updraft_origin_level",
-                "dims": [I_XIM, J_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Int,
@@ -294,7 +294,7 @@ class GF2020CumulusParameterizationState(State):
         updraft_lfc_level: Quantity = dataclasses.field(
             metadata={
                 "name": "updraft_lfc_level",
-                "dims": [I_XIM, J_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Int,
@@ -303,7 +303,7 @@ class GF2020CumulusParameterizationState(State):
         cloud_top_level: Quantity = dataclasses.field(
             metadata={
                 "name": "cloud_top_level",
-                "dims": [I_XIM, J_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Int,
@@ -312,7 +312,7 @@ class GF2020CumulusParameterizationState(State):
         kstabi: Quantity = dataclasses.field(
             metadata={
                 "name": "kstabi",
-                "dims": [I_XIM, J_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Int,
@@ -321,7 +321,7 @@ class GF2020CumulusParameterizationState(State):
         kstabm: Quantity = dataclasses.field(
             metadata={
                 "name": "kstabm",
-                "dims": [I_XIM, J_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Int,
@@ -330,7 +330,7 @@ class GF2020CumulusParameterizationState(State):
         precip: Quantity = dataclasses.field(
             metadata={
                 "name": "precip",
-                "dims": [I_XIM, J_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -339,7 +339,7 @@ class GF2020CumulusParameterizationState(State):
         cloud_base_mass_flux_modified: Quantity = dataclasses.field(
             metadata={
                 "name": "cloud_base_mass_flux_modified",
-                "dims": [I_XIM, J_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -348,7 +348,7 @@ class GF2020CumulusParameterizationState(State):
         epsilon_forced: Quantity = dataclasses.field(
             metadata={
                 "name": "epsilon_forced",
-                "dims": [I_XIM, J_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -357,7 +357,7 @@ class GF2020CumulusParameterizationState(State):
         total_normalized_integrated_condensate_forced: Quantity = dataclasses.field(
             metadata={
                 "name": "total_normalized_integrated_condensate_forced",
-                "dims": [I_XIM, J_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -366,7 +366,7 @@ class GF2020CumulusParameterizationState(State):
         scale_dependence_factor: Quantity = dataclasses.field(
             metadata={
                 "name": "scale_dependence_factor",
-                "dims": [I_XIM, J_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -375,7 +375,7 @@ class GF2020CumulusParameterizationState(State):
         p_cloud_levels_forced: Quantity = dataclasses.field(
             metadata={
                 "name": "p_cloud_levels_forced",
-                "dims": [I_XIM, J_DIM, K_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, K_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -384,7 +384,7 @@ class GF2020CumulusParameterizationState(State):
         entrainment_rate: Quantity = dataclasses.field(
             metadata={
                 "name": "entrainment_rate",
-                "dims": [I_XIM, J_DIM, K_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, K_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -393,7 +393,7 @@ class GF2020CumulusParameterizationState(State):
         mass_entrainment_updraft_forced: Quantity = dataclasses.field(
             metadata={
                 "name": "mass_entrainment_updraft_forced",
-                "dims": [I_XIM, J_DIM, K_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, K_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -402,7 +402,7 @@ class GF2020CumulusParameterizationState(State):
         mass_entrainment_downdraft_forced: Quantity = dataclasses.field(
             metadata={
                 "name": "mass_entrainment_downdraft_forced",
-                "dims": [I_XIM, J_DIM, K_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, K_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -411,7 +411,7 @@ class GF2020CumulusParameterizationState(State):
         mass_detrainment_updraft_forced: Quantity = dataclasses.field(
             metadata={
                 "name": "mass_detrainment_updraft_forced",
-                "dims": [I_XIM, J_DIM, K_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, K_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -420,7 +420,7 @@ class GF2020CumulusParameterizationState(State):
         mass_detrainment_downdraft_forced: Quantity = dataclasses.field(
             metadata={
                 "name": "mass_detrainment_downdraft_forced",
-                "dims": [I_XIM, J_DIM, K_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, K_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -429,7 +429,7 @@ class GF2020CumulusParameterizationState(State):
         normalized_massflux_updraft_forced: Quantity = dataclasses.field(
             metadata={
                 "name": "normalized_massflux_updraft",
-                "dims": [I_XIM, J_DIM, K_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, K_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -438,7 +438,7 @@ class GF2020CumulusParameterizationState(State):
         normalized_massflux_downdraft_forced: Quantity = dataclasses.field(
             metadata={
                 "name": "normalized_massflux_downdraft_forced",
-                "dims": [I_XIM, J_DIM, K_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, K_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -447,7 +447,7 @@ class GF2020CumulusParameterizationState(State):
         condensate_to_fall_forced: Quantity = dataclasses.field(
             metadata={
                 "name": "condensate_to_fall_forced",
-                "dims": [I_XIM, J_DIM, K_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, K_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -456,7 +456,7 @@ class GF2020CumulusParameterizationState(State):
         evaporate_in_downdraft_forced: Quantity = dataclasses.field(
             metadata={
                 "name": "evaporate_in_downdraft_forced",
-                "dims": [I_XIM, J_DIM, K_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, K_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -465,7 +465,7 @@ class GF2020CumulusParameterizationState(State):
         cloud_liquid_after_rain_forced: Quantity = dataclasses.field(
             metadata={
                 "name": "cloud_liquid_after_rain_forced",
-                "dims": [I_XIM, J_DIM, K_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, K_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -474,7 +474,7 @@ class GF2020CumulusParameterizationState(State):
         t_updraft: Quantity = dataclasses.field(
             metadata={
                 "name": "t_updraft",
-                "dims": [I_XIM, J_DIM, K_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, K_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -483,7 +483,7 @@ class GF2020CumulusParameterizationState(State):
         convective_cloud_fraction: Quantity = dataclasses.field(
             metadata={
                 "name": "convective_cloud_fraction",
-                "dims": [I_XIM, J_DIM, K_DIM, "plumes"],
+                "dims": [I_DIM, J_DIM, K_DIM, "plumes"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -492,7 +492,7 @@ class GF2020CumulusParameterizationState(State):
         cloud_workfunction_0: Quantity = dataclasses.field(
             metadata={
                 "name": "cloud_workfunction_0",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -501,7 +501,7 @@ class GF2020CumulusParameterizationState(State):
         cloud_workfunction_1: Quantity = dataclasses.field(
             metadata={
                 "name": "cloud_workfunction_1",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -510,7 +510,7 @@ class GF2020CumulusParameterizationState(State):
         cloud_workfunction_2: Quantity = dataclasses.field(
             metadata={
                 "name": "cloud_workfunction_2",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -519,7 +519,7 @@ class GF2020CumulusParameterizationState(State):
         cloud_workfunction_3: Quantity = dataclasses.field(
             metadata={
                 "name": "cloud_workfunction_3",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -528,7 +528,7 @@ class GF2020CumulusParameterizationState(State):
         cloud_workfunction_1_pbl: Quantity = dataclasses.field(
             metadata={
                 "name": "cloud_workfunction_1_pbl",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -537,7 +537,7 @@ class GF2020CumulusParameterizationState(State):
         cloud_workfunction_1_cin: Quantity = dataclasses.field(
             metadata={
                 "name": "cloud_workfunction_1_cin",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -546,7 +546,7 @@ class GF2020CumulusParameterizationState(State):
         cape_removal_time_scale: Quantity = dataclasses.field(
             metadata={
                 "name": "cape_removal_time_scale",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -555,7 +555,7 @@ class GF2020CumulusParameterizationState(State):
         pbl_time_scale: Quantity = dataclasses.field(
             metadata={
                 "name": "pbl_time_scale",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -564,7 +564,7 @@ class GF2020CumulusParameterizationState(State):
         lightning_density: Quantity = dataclasses.field(
             metadata={
                 "name": "lightning_density",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -573,7 +573,7 @@ class GF2020CumulusParameterizationState(State):
         evaporation_sublimation_tendency: Quantity = dataclasses.field(
             metadata={
                 "name": "evaporation_sublimation_tendency",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -582,7 +582,7 @@ class GF2020CumulusParameterizationState(State):
         convective_precip_flux: Quantity = dataclasses.field(
             metadata={
                 "name": "convective_precip_flux",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -591,7 +591,7 @@ class GF2020CumulusParameterizationState(State):
         t_perturbation: Quantity = dataclasses.field(
             metadata={
                 "name": "t_perturbation",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -603,7 +603,7 @@ class GF2020CumulusParameterizationState(State):
         grid_length: Quantity = dataclasses.field(
             metadata={
                 "name": "grid_length",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -612,7 +612,7 @@ class GF2020CumulusParameterizationState(State):
         pbl_level: Quantity = dataclasses.field(
             metadata={
                 "name": "pbl_level",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Int,
@@ -621,7 +621,7 @@ class GF2020CumulusParameterizationState(State):
         ccn: Quantity = dataclasses.field(
             metadata={
                 "name": "ccn",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -630,7 +630,7 @@ class GF2020CumulusParameterizationState(State):
         air_density: Quantity = dataclasses.field(
             metadata={
                 "name": "air_density",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -639,7 +639,7 @@ class GF2020CumulusParameterizationState(State):
         omega: Quantity = dataclasses.field(
             metadata={
                 "name": "omega",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -648,7 +648,7 @@ class GF2020CumulusParameterizationState(State):
         topography_height_no_negative: Quantity = dataclasses.field(
             metadata={
                 "name": "topography_height_no_negative",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -657,7 +657,7 @@ class GF2020CumulusParameterizationState(State):
         sensible_heat_flux: Quantity = dataclasses.field(
             metadata={
                 "name": "sensible_heat_flux",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -666,7 +666,7 @@ class GF2020CumulusParameterizationState(State):
         latent_heat_flux: Quantity = dataclasses.field(
             metadata={
                 "name": "latent_heat_flux",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -675,7 +675,7 @@ class GF2020CumulusParameterizationState(State):
         longitude_degrees: Quantity = dataclasses.field(
             metadata={
                 "name": "longitude_degrees",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -684,7 +684,7 @@ class GF2020CumulusParameterizationState(State):
         latitude_degrees: Quantity = dataclasses.field(
             metadata={
                 "name": "latitude_degrees",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -693,7 +693,7 @@ class GF2020CumulusParameterizationState(State):
         t_old: Quantity = dataclasses.field(
             metadata={
                 "name": "t_old",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -702,7 +702,7 @@ class GF2020CumulusParameterizationState(State):
         vapor_old: Quantity = dataclasses.field(
             metadata={
                 "name": "vapor_old",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -711,7 +711,7 @@ class GF2020CumulusParameterizationState(State):
         t_modified_by_advection: Quantity = dataclasses.field(
             metadata={
                 "name": "t_modified_by_advection",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -720,7 +720,7 @@ class GF2020CumulusParameterizationState(State):
         vapor_modified_by_advection: Quantity = dataclasses.field(
             metadata={
                 "name": "vapor_modified_by_advection",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -729,7 +729,7 @@ class GF2020CumulusParameterizationState(State):
         geopotential_height_forced: Quantity = dataclasses.field(
             metadata={
                 "name": "geopotential_height_forced",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -738,7 +738,7 @@ class GF2020CumulusParameterizationState(State):
         p_forced: Quantity = dataclasses.field(
             metadata={
                 "name": "p_forced",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -747,7 +747,7 @@ class GF2020CumulusParameterizationState(State):
         p_surface: Quantity = dataclasses.field(
             metadata={
                 "name": "p_surface",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -756,7 +756,7 @@ class GF2020CumulusParameterizationState(State):
         t_surface: Quantity = dataclasses.field(
             metadata={
                 "name": "t_surface",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -765,7 +765,7 @@ class GF2020CumulusParameterizationState(State):
         u: Quantity = dataclasses.field(
             metadata={
                 "name": "u",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -774,7 +774,7 @@ class GF2020CumulusParameterizationState(State):
         v: Quantity = dataclasses.field(
             metadata={
                 "name": "v",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -783,7 +783,7 @@ class GF2020CumulusParameterizationState(State):
         w: Quantity = dataclasses.field(
             metadata={
                 "name": "w",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -792,7 +792,7 @@ class GF2020CumulusParameterizationState(State):
         mass: Quantity = dataclasses.field(
             metadata={
                 "name": "mass",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -801,7 +801,7 @@ class GF2020CumulusParameterizationState(State):
         convective_scale_velocity: Quantity = dataclasses.field(
             metadata={
                 "name": "convective_scale_velocity",
-                "dims": [I_XIM, J_DIM],
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -810,7 +810,7 @@ class GF2020CumulusParameterizationState(State):
         buoyancy_excess: Quantity = dataclasses.field(
             metadata={
                 "name": "buoyancy_excess",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -819,7 +819,7 @@ class GF2020CumulusParameterizationState(State):
         large_scale_ice: Quantity = dataclasses.field(
             metadata={
                 "name": "large_scale_ice",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -828,7 +828,7 @@ class GF2020CumulusParameterizationState(State):
         convective_ice: Quantity = dataclasses.field(
             metadata={
                 "name": "convective_ice",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -837,7 +837,7 @@ class GF2020CumulusParameterizationState(State):
         large_scale_liquid: Quantity = dataclasses.field(
             metadata={
                 "name": "large_scale_liquid",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -846,7 +846,7 @@ class GF2020CumulusParameterizationState(State):
         convective_liquid: Quantity = dataclasses.field(
             metadata={
                 "name": "convective_liquid",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -855,7 +855,7 @@ class GF2020CumulusParameterizationState(State):
         large_scale_cloud_fraction: Quantity = dataclasses.field(
             metadata={
                 "name": "large_scale_cloud_fraction",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -864,7 +864,7 @@ class GF2020CumulusParameterizationState(State):
         convective_cloud_fraction: Quantity = dataclasses.field(
             metadata={
                 "name": "convective_cloud_fraction",
-                "dims": [I_XIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -873,7 +873,7 @@ class GF2020CumulusParameterizationState(State):
         chemistry_tracers: Quantity = dataclasses.field(
             metadata={
                 "name": "chemistry_tracers",
-                "dims": [I_XIM, J_DIM, K_DIM, "convection_tracers"],
+                "dims": [I_DIM, J_DIM, K_DIM, "convection_tracers"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -882,7 +882,7 @@ class GF2020CumulusParameterizationState(State):
         chemistry_tracers_output: Quantity = dataclasses.field(
             metadata={
                 "name": "chemistry_tracers_output",
-                "dims": [I_XIM, J_DIM, K_DIM, "plumes", "convection_tracers"],
+                "dims": [I_DIM, J_DIM, K_DIM, "plumes", "convection_tracers"],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,

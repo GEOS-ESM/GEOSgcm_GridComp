@@ -1,7 +1,7 @@
 import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
-from ndsl.constants import I_XIM, J_DIM, K_DIM, K_INTERFACE_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, abs, computation, floor, interval, max, min, sqrt
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, IntFieldIJ
 from pyMoist.convection.GF_2020.config import GF2020Config
@@ -1251,7 +1251,7 @@ class GF2020Setup(NDSLRuntime):
         # Construct stencils
         self._compute_extra_inputs_from_state = stencil_factory.from_dims_halo(
             func=compute_extra_inputs_from_state,
-            compute_dims=[I_XIM, J_DIM, K_INTERFACE_DIM],
+            compute_dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
             externals={
                 "STOCHASTIC_CONVECTION": config.STOCHASTIC_CNV,
                 "STOCH_TOP": config.STOCH_TOP,
@@ -1263,12 +1263,12 @@ class GF2020Setup(NDSLRuntime):
 
         self._zero_state = stencil_factory.from_dims_halo(
             func=zero_state,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._prefill_cumulus_parameterization_state = stencil_factory.from_dims_halo(
             func=prefill_cumulus_parameterization_state,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "NUMBER_OF_PLUMES": cumulus_parameterization_constants.NUMBER_OF_PLUMES,
                 "APPLY_SUBSIDENCE_MICROPHYSICS": config.APPLY_SUBSIDENCE_MICROPHYSICS,
@@ -1277,21 +1277,21 @@ class GF2020Setup(NDSLRuntime):
 
         self._prefill_locals = stencil_factory.from_dims_halo(
             func=prefill_locals,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._set_2d_fields = stencil_factory.from_dims_halo(
             func=set_2d_fields,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
-                "SIZE_I_DIM": stencil_factory.grid_indexing.get_shape([I_XIM])[0],
+                "SIZE_I_DIM": stencil_factory.grid_indexing.get_shape([I_DIM])[0],
                 "SIZE_J_DIM": stencil_factory.grid_indexing.get_shape([J_DIM])[0],
             },
         )
 
         self._choose_environment_and_flip_k_axis = stencil_factory.from_dims_halo(
             func=choose_environment_and_flip_k_axis,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "GF_ENV_SETTING": config.GF_ENV_SETTING,
                 "ENTRVERSION": config.ENTRVERSION,
@@ -1301,12 +1301,12 @@ class GF2020Setup(NDSLRuntime):
 
         self._copy_into_cumulus_parameterization_state = stencil_factory.from_dims_halo(
             func=copy_into_cumulus_parameterization_state,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._prepare_cumulus_paramaterization_state = stencil_factory.from_dims_halo(
             func=prepare_cumulus_paramaterization_state,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "AUTOCONV": config.AUTOCONV,
                 "DT_MOIST": config.DT_MOIST,
@@ -1476,7 +1476,7 @@ class GF2020Setup(NDSLRuntime):
         t_2m_max = state.t_2m.field.max()
 
         # # if surface temperature is not yet set in single column mode, stop the entire convection scheme
-        if self.stencil_factory.grid_indexing.get_shape([I_XIM, J_DIM]) == (1, 1) and t_2m_max < 1.0e-6:
+        if self.stencil_factory.grid_indexing.get_shape([I_DIM, J_DIM]) == (1, 1) and t_2m_max < 1.0e-6:
             scm_stop = True
             return
 

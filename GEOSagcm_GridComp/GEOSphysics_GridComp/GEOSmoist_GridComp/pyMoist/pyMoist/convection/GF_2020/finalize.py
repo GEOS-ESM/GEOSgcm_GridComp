@@ -1,7 +1,7 @@
 import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
-from ndsl.constants import I_XIM, J_DIM, K_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, abs, computation, interval, max, min
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 from ndsl.stencils.column_operations import column_min
@@ -1113,12 +1113,12 @@ class GF2020Finalize(NDSLRuntime):
         # construct stencils
         self._copy_from_cumulus_parameterization_state = stencil_factory.from_dims_halo(
             func=copy_from_cumulus_parameterization_state,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._flag_computed_plumes_and_columns = stencil_factory.from_dims_halo(
             func=flag_computed_plumes_and_columns,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "ENABLE_SHALLOW": cumulus_parameterization_config.ENABLE_SHALLOW,
                 "ENABLE_MID": cumulus_parameterization_config.ENABLE_MID,
@@ -1128,13 +1128,13 @@ class GF2020Finalize(NDSLRuntime):
 
         self._check_vapor_mixing_ratio = stencil_factory.from_dims_halo(
             func=check_vapor_mixing_ratio,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"DT_MOIST": config.DT_MOIST},
         )
 
         self._feedback = stencil_factory.from_dims_halo(
             func=feedback,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "USE_MOMENTUM_TRANSPORT": config.USE_MOMENTUM_TRANSPORT,
                 "APPLY_SUBSIDENCE_MICROPHYSICS": config.APPLY_SUBSIDENCE_MICROPHYSICS,
@@ -1144,7 +1144,7 @@ class GF2020Finalize(NDSLRuntime):
 
         self._feedback_tracers = stencil_factory.from_dims_halo(
             func=feedback_tracers,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "USE_TRACER_TRANSPORT": config.USE_TRACER_TRANSPORT,
                 "DT_MOIST": config.DT_MOIST,
@@ -1153,17 +1153,17 @@ class GF2020Finalize(NDSLRuntime):
 
         self._cloud_workfunction_output = stencil_factory.from_dims_halo(
             func=cloud_workfunction_output,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._prefill_entrainment = stencil_factory.from_dims_halo(
             func=prefill_entrainment,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._feed_3d_model = stencil_factory.from_dims_halo(
             func=feed_3d_model,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "FEED_3D_MODEL": cumulus_parameterization_config.FEED_3D_MODEL,
                 "ITEST": cumulus_parameterization_config.ITEST,
@@ -1174,7 +1174,7 @@ class GF2020Finalize(NDSLRuntime):
 
         self._feed_3d_model_from_plumes = stencil_factory.from_dims_halo(
             func=feed_3d_model_from_plumes,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "FEED_3D_MODEL": cumulus_parameterization_config.FEED_3D_MODEL,
                 "ITEST": cumulus_parameterization_config.ITEST,
@@ -1185,13 +1185,13 @@ class GF2020Finalize(NDSLRuntime):
 
         self._update_convection_tracer = stencil_factory.from_dims_halo(
             func=update_convection_tracer,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"CONVECTION_TRACER": config.CONVECTION_TRACER, "DT_MOIST": config.DT_MOIST},
         )
 
         self._update_outputs = stencil_factory.from_dims_halo(
             func=update_outputs,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "ENABLE_SHALLOW": cumulus_parameterization_config.ENABLE_SHALLOW,
                 "ENABLE_MID": cumulus_parameterization_config.ENABLE_MID,
@@ -1201,17 +1201,17 @@ class GF2020Finalize(NDSLRuntime):
 
         self._update_tendencies = stencil_factory.from_dims_halo(
             func=update_tendencies,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._update_convection_codes = stencil_factory.from_dims_halo(
             func=update_convection_codes,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._update_state_with_tendencies = stencil_factory.from_dims_halo(
             func=update_state_with_tendencies,
-            compute_dims=[I_XIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "SCLM_DEEP": config.SCLM_DEEP,
                 "DT_MOIST": config.DT_MOIST,
