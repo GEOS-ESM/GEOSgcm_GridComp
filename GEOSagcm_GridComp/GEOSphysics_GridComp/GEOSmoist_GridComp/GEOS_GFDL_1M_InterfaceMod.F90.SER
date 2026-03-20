@@ -1535,6 +1535,18 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     !$ser verbatim if (associated(PTR3D)) then
       !$ser data radar_simulated_reflectivity=PTR3D
     !$ser verbatim endif
+    !$ser verbatim if (associated(DBZ_MAX)) then
+      !$ser data radar_maximum_composite_reflectivity=DBZ_MAX
+    !$ser verbatim endif
+    !$ser verbatim if (associated(DBZ_1KM)) then
+      !$ser data radar_base_1km_agl_reflectivity=DBZ_1KM
+    !$ser verbatim endif
+    !$ser verbatim if (associated(DBZ_TOP)) then
+      !$ser data radar_echo_top_reflectivity=DBZ_TOP
+    !$ser verbatim endif
+    !$ser verbatim if (associated(DBZ_M10C)) then
+      !$ser data radar_minus_10c_reflectivity=DBZ_M10C
+    !$ser verbatim endif
 
      call MAPL_TimerOff(MAPL,"--GFDL_1M",RC=STATUS)
 
