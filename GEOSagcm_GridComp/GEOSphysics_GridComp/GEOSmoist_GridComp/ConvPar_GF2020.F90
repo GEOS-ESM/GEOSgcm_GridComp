@@ -519,11 +519,7 @@ CONTAINS
 
                   !- Sub-grid vertical velocity
                   if(ZERO_DIFF_VVEL == 1) then
-                     SELECT CASE(IENS)
-                     CASE(DEEP); sgs_vvel_dp(i,j,k) = sgs_vvel_5d(i,flip(k),j,IENS)
-                     CASE(MID);  sgs_vvel_md(i,j,k) = sgs_vvel_5d(i,flip(k),j,IENS)
-                     CASE(SHAL); sgs_vvel_sh(i,j,k) = sgs_vvel_5d(i,flip(k),j,IENS)
-                     END SELECT
+                     call assign_plume_sgs_vvel(IENS, i, j, k, sgs_vvel_5d(i,flip(k),j,IENS))
                   endif
 
                   !- Convective Condensate Source (kg m-2 s-1)
@@ -543,11 +539,8 @@ CONTAINS
 
                   !- Entrainment Profiles
                   if(zup5d(i,flip(k),j,IENS) > 1.0e-6) then
-                     SELECT CASE(IENS)
-                     CASE(DEEP); entr_dp(i,j,k) = up_massentr5d(i,flip(k),j,IENS) / (DZ(i,j,k) * zup5d(i,flip(k),j,IENS))
-                     CASE(MID);  entr_md(i,j,k) = up_massentr5d(i,flip(k),j,IENS) / (DZ(i,j,k) * zup5d(i,flip(k),j,IENS))
-                     CASE(SHAL); entr_sh(i,j,k) = up_massentr5d(i,flip(k),j,IENS) / (DZ(i,j,k) * zup5d(i,flip(k),j,IENS))
-                     END SELECT
+                     call assign_plume_entrainment(IENS, i, j, k, &
+                          up_massentr5d(i,flip(k),j,IENS) / (DZ(i,j,k) * zup5d(i,flip(k),j,IENS)))
 
                      ENTLAM(i,j,k)  = ENTLAM(i,j,k) + (up_massentr5d(i,flip(k),j,IENS) / (DZ(i,j,k) * zup5d(i,flip(k),j,IENS)))
                      CNV_CVW(i,j,k) = -0.2 ! hPa/s => 4 m/s
@@ -603,40 +596,12 @@ CONTAINS
          DO IENS = 1, maxiens
             if(.NOT. icumulus_gf(IENS)) cycle
 
-            SELECT CASE(IENS)
-            CASE(DEEP)
-               DO j = 1, myp
-                  DO i = 1, mxp
-                     if(ierr4d(i,j,DEEP) /= 0) cycle
-                     CNV_TOPP_DP(i,j)  = press(ktop4d(i,j,DEEP),i,j)
-                     MFDP(i,j)         = xmb4d(i,j,DEEP)
-                     SIGMA_DEEP(i,j)   = sigma4d(i,j,DEEP)
-                     MUPDP(i,j,1:mzp)  = zup5d(i,flip(1):flip(mzp):-1,j,DEEP) * xmb4d(i,j,IENS)
-                     MDNDP(i,j,1:mzp)  = zdn5d(i,flip(1):flip(mzp):-1,j,DEEP) * edt4d(i,j,IENS) * xmb4d(i,j,IENS)
-                  ENDDO
+            DO j = 1, myp
+               DO i = 1, mxp
+                  if(ierr4d(i,j,IENS) /= 0) cycle
+                  call extract_plume_diagnostics(IENS, i, j)
                ENDDO
-
-            CASE(SHAL)
-               DO j = 1, myp
-                  DO i = 1, mxp
-                     if(ierr4d(i,j,SHAL) /= 0) cycle
-                     CNV_TOPP_SH(i,j) = press(ktop4d(i,j,SHAL),i,j)
-                     MFSH(i,j)        = xmb4d(i,j,SHAL)
-                     MUPSH(i,j,1:mzp) = zup5d(i,flip(1):flip(mzp):-1,j,SHAL) * xmb4d(i,j,IENS)
-                  ENDDO
-               ENDDO
-
-            CASE(MID)
-               DO j = 1, myp
-                  DO i = 1, mxp
-                     if(ierr4d(i,j,MID) /= 0) cycle
-                     CNV_TOPP_MD(i,j) = press(ktop4d(i,j,MID),i,j)
-                     MFMD(i,j)        = xmb4d(i,j,MID)
-                     SIGMA_MID(i,j)   = sigma4d(i,j,MID)
-                     MUPMD(i,j,1:mzp) = zup5d(i,flip(1):flip(mzp):-1,j,MID) * xmb4d(i,j,IENS)
-                  ENDDO
-               ENDDO
-            END SELECT
+            ENDDO
          ENDDO
 
          !- Convert ierr for output (0 = OFF, 1 = ON)
@@ -810,6 +775,53 @@ CONTAINS
          sfc_press(:,:) = ple_in(:,:,mzp)
 
       END SUBROUTINE map_3d_fields
+
+      SUBROUTINE assign_plume_sgs_vvel(plume_type, i, j, k, value)
+         !- Assign sub-grid vertical velocity to appropriate plume-specific array
+         INTEGER, INTENT(IN) :: plume_type, i, j, k
+         REAL,    INTENT(IN) :: value
+
+         SELECT CASE(plume_type)
+         CASE(DEEP); sgs_vvel_dp(i,j,k) = value
+         CASE(MID);  sgs_vvel_md(i,j,k) = value
+         CASE(SHAL); sgs_vvel_sh(i,j,k) = value
+         END SELECT
+      END SUBROUTINE assign_plume_sgs_vvel
+
+      SUBROUTINE assign_plume_entrainment(plume_type, i, j, k, value)
+         !- Assign entrainment rate to appropriate plume-specific array
+         INTEGER, INTENT(IN) :: plume_type, i, j, k
+         REAL,    INTENT(IN) :: value
+
+         SELECT CASE(plume_type)
+         CASE(DEEP); entr_dp(i,j,k) = value
+         CASE(MID);  entr_md(i,j,k) = value
+         CASE(SHAL); entr_sh(i,j,k) = value
+         END SELECT
+      END SUBROUTINE assign_plume_entrainment
+
+      SUBROUTINE extract_plume_diagnostics(plume_type, i, j)
+         !- Extract plume-specific diagnostic outputs (cloud top, mass flux, sigma, vertical profiles)
+         INTEGER, INTENT(IN) :: plume_type, i, j
+
+         SELECT CASE(plume_type)
+         CASE(DEEP)
+            CNV_TOPP_DP(i,j)  = press(ktop4d(i,j,DEEP),i,j)
+            MFDP(i,j)         = xmb4d(i,j,DEEP)
+            SIGMA_DEEP(i,j)   = sigma4d(i,j,DEEP)
+            MUPDP(i,j,1:mzp)  = zup5d(i,flip(1):flip(mzp):-1,j,DEEP) * xmb4d(i,j,DEEP)
+            MDNDP(i,j,1:mzp)  = zdn5d(i,flip(1):flip(mzp):-1,j,DEEP) * edt4d(i,j,DEEP) * xmb4d(i,j,DEEP)
+         CASE(SHAL)
+            CNV_TOPP_SH(i,j) = press(ktop4d(i,j,SHAL),i,j)
+            MFSH(i,j)        = xmb4d(i,j,SHAL)
+            MUPSH(i,j,1:mzp) = zup5d(i,flip(1):flip(mzp):-1,j,SHAL) * xmb4d(i,j,SHAL)
+         CASE(MID)
+            CNV_TOPP_MD(i,j) = press(ktop4d(i,j,MID),i,j)
+            MFMD(i,j)        = xmb4d(i,j,MID)
+            SIGMA_MID(i,j)   = sigma4d(i,j,MID)
+            MUPMD(i,j,1:mzp) = zup5d(i,flip(1):flip(mzp):-1,j,MID) * xmb4d(i,j,MID)
+         END SELECT
+      END SUBROUTINE extract_plume_diagnostics
 
       SUBROUTINE gf2020_env_from_current()
 
