@@ -407,9 +407,7 @@ class GFDL1MInterface(UserCode):
                 self._managed_state.fortran_to_ndsl()
 
             with TimedCUDAProfiler("GFDL 1M Numerics", {}):
-                self._managed_state.record("GFDL1M-In_python")
                 self._gfdl_1m(self._managed_state.ndsl_state)
-                self._managed_state.record("GFDL1M-Out_python")
 
             with TimedCUDAProfiler("GFDL 1M - State copy-back", {}):
                 self._managed_state.ndsl_to_fortran()
@@ -421,9 +419,7 @@ class GFDL1MInterface(UserCode):
         import_state: CVoidPointer,
         export_state: CVoidPointer,
     ):
-        print(f"SAVING DATA to {os.getcwd()}")
         self._managed_state.save_recorded()
-
 
 
 CODE = GFDL1MInterface()

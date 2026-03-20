@@ -24,7 +24,7 @@ from pyMoist.saturation_tables import (
     saturation_specific_humidity_liquid_surface,
 )
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
-from pyMoist.shared.incloud_processes import ice_fraction
+from pyMoist.shared_incloud_processes import ice_fraction
 
 
 def copy_from_cumulus_parameterization_state(

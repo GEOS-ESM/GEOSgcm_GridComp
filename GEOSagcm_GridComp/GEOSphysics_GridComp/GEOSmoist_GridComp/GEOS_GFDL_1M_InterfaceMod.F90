@@ -17,7 +17,6 @@ module GEOS_GFDL_1M_InterfaceMod
   use GEOSmoist_Process_Library
   use Aer_Actv_Single_Moment
   use gfdl2_cloud_microphys_mod
-  use OUTPUT_NETCDFS
 
   implicit none
 
@@ -269,8 +268,6 @@ subroutine GFDL_1M_Initialize (MAPL, CF, IMPORT, EXPORT, RC)
       call MAPL_ConfigSetAttribute(CF, DT_MOIST, 'DSL__GFLD1M_DT:', RC=STATUS); VERIFY_(STATUS)
       call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.microphysics.GFDL1M_interface", MAPL, IMPORT, EXPORT )
     else
-    call create_netcdf_file("F-In-F_side.nc")
-    call create_netcdf_file("F-Out-F_side.nc")
     call MAPL_GetResource( MAPL, SH_MD_DP        , 'SH_MD_DP:'        , DEFAULT= .TRUE., RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, TURNRHCRIT_PARAM, 'TURNRHCRIT:'      , DEFAULT= -9999., RC=STATUS); VERIFY_(STATUS)
@@ -299,10 +296,6 @@ subroutine GFDL_1M_Initialize (MAPL, CF, IMPORT, EXPORT, RC)
     call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    1.0, RC=STATUS); VERIFY_(STATUS)
 
     endif ! USE_PYMOIST_GFDL1M
-
-    ! init for fortran so that data can be saved
-    call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.microphysics.save_GFDL1M_start", MAPL, IMPORT, EXPORT )
-    call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.microphysics.save_GFDL1M_end", MAPL, IMPORT, EXPORT )
 
 end subroutine GFDL_1M_Initialize
 
@@ -363,7 +356,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:)   :: DBZ_MAX, DBZ_1KM, DBZ_TOP, DBZ_M10C
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
-    integer :: timestep
 #ifdef PDFDIAG
     real, pointer, dimension(:,:,:) :: PDF_W1, PDF_W2, PDF_SIGW1, PDF_SIGW2,     &
                                        PDF_QT1, PDF_QT2, PDF_SIGQT1, PDF_SIGQT2, &
@@ -405,7 +397,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     if (USE_PYMOIST_GFDL1M) then
       call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.microphysics.GFDL1M_interface", MAPL, IMPORT, EXPORT, INTERNAL )
     else
-      call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.microphysics.save_GFDL1M_start", MAPL, IMPORT, EXPORT, INTERNAL )
 
     call MAPL_GetPointer(INTERNAL, Q,        'Q'       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QRAIN,    'QRAIN'   , RC=STATUS); VERIFY_(STATUS)
@@ -478,39 +469,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( KLCL         (IM,JM) )
     ALLOCATE ( TMP2D        (IM,JM) )
 
-    ! DEBUG
-    call add_variable("F-In-F_side.nc", Q, "mixing_ratio_vapor")
-    call add_variable("F-In-F_side.nc", QRAIN, "mixing_ratio_rain")
-    call add_variable("F-In-F_side.nc", QSNOW, "mixing_ratio_snow")
-    call add_variable("F-In-F_side.nc", QGRAUPEL, "mixing_ratio_graupel")
-    call add_variable("F-In-F_side.nc", QLLS, "mixing_ratio_large_scale_liquid")
-    call add_variable("F-In-F_side.nc", QILS, "mixing_ratio_large_scale_ice")
-    call add_variable("F-In-F_side.nc", QLCN, "mixing_ratio_convective_liquid")
-    call add_variable("F-In-F_side.nc", QICN, "mixing_ratio_convective_ice")
-    call add_variable("F-In-F_side.nc", CLLS, "cloud_fraction_large_scale")
-    call add_variable("F-In-F_side.nc", CLCN, "cloud_fraction_convective")
-    call add_variable("F-In-F_side.nc", NACTL, "concentration_liquid")
-    call add_variable("F-In-F_side.nc", NACTI, "concentration_ice")
-    call add_variable("F-In-F_side.nc", AREA, "area")
-    call add_variable("F-In-F_side.nc", PLE, "p_interface")
-    call add_variable("F-In-F_side.nc", ZLE, "z_interface")
-    call add_variable("F-In-F_side.nc", T, "t")
-    call add_variable("F-In-F_side.nc", U, "u")
-    call add_variable("F-In-F_side.nc", V, "v")
-    call add_variable("F-In-F_side.nc", FRLAND, "land_fraction")
-    call add_variable("F-In-F_side.nc", SLQT, "covariance_liquid_water_static_energy_and_total_water_specific_humidity")
-    call add_variable("F-In-F_side.nc", OMEGA, "omega")
-    call add_variable("F-In-F_side.nc", PDF_A, "pdf_first_plume_fractional_area")
-    call add_variable("F-In-F_side.nc", W, "vertical_motion_velocity")
-    call add_variable("F-In-F_side.nc", W2, "vertical_motion_variance")
-    call add_variable("F-In-F_side.nc", W3, "vertical_motion_third_moment")
-    call add_variable("F-In-F_side.nc", WSL, "liquid_water_static_energy_flux")
-    call add_variable("F-In-F_side.nc", SL2, "liquid_water_static_energy_variance")
-    call add_variable("F-In-F_side.nc", SL3, "liquid_water_static_energy_third_moment")
-    call add_variable("F-In-F_side.nc", WQT, "total_water_flux")
-    call add_variable("F-In-F_side.nc", QT2, "total_water_variance")
-    call add_variable("F-In-F_side.nc", QT3, "total_water_third_moment")
-
     ! Derived States
     PLEmb    =  PLE*.01
     PLmb     = 0.5*(PLEmb(:,:,0:LM-1) + PLEmb(:,:,1:LM))
@@ -562,45 +520,23 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, WQL,      'WQL'     , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, PDFITERS, 'PDFITERS', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     ! Unused Exports (forced to 0.0)
-    call MAPL_GetPointer(EXPORT, PTR2D,  'CN_PRCP'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call add_variable("F-In-F_side.nc", PTR2D, "precipitation_at_surface_deep_convective_precipitation")
-    PTR2D=0.0
-    call add_variable("F-Out-F_side.nc", PTR2D, "precipitation_at_surface_deep_convective_precipitation")
-    call MAPL_GetPointer(EXPORT, PTR2D,  'AN_PRCP'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call add_variable("F-In-F_side.nc", PTR2D, "precipitation_at_surface_anvil_precipitation")
-    PTR2D=0.0
-    call add_variable("F-Out-F_side.nc", PTR2D, "precipitation_at_surface_anvil_precipitation")
-    call MAPL_GetPointer(EXPORT, PTR2D,  'SC_PRCP'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call add_variable("F-In-F_side.nc", PTR2D, "precipitation_at_surface_shallow_convective_precipitation")
-    PTR2D=0.0
-    call add_variable("F-Out-F_side.nc", PTR2D, "precipitation_at_surface_shallow_convective_precipitation")
-    call MAPL_GetPointer(EXPORT, PTR2D,  'CN_SNR'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call add_variable("F-In-F_side.nc", PTR2D, "precipitation_at_surface_deep_convective_snow")
-    PTR2D=0.0
-    call add_variable("F-Out-F_side.nc", PTR2D, "precipitation_at_surface_deep_convective_snow")
-    call MAPL_GetPointer(EXPORT, PTR2D,  'AN_SNR'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call add_variable("F-In-F_side.nc", PTR2D, "precipitation_at_surface_anvil_snow")
-    PTR2D=0.0
-    call add_variable("F-Out-F_side.nc", PTR2D, "precipitation_at_surface_anvil_snow")
-    call MAPL_GetPointer(EXPORT, PTR2D,  'SC_SNR'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call add_variable("F-In-F_side.nc", PTR2D, "precipitation_at_surface_shallow_convective_snow")
-    PTR2D=0.0
-    call add_variable("F-Out-F_side.nc", PTR2D, "precipitation_at_surface_shallow_convective_snow")
+    call MAPL_GetPointer(EXPORT, PTR2D,  'CN_PRCP'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); PTR2D=0.0
+    call MAPL_GetPointer(EXPORT, PTR2D,  'AN_PRCP'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); PTR2D=0.0
+    call MAPL_GetPointer(EXPORT, PTR2D,  'SC_PRCP'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); PTR2D=0.0
+    call MAPL_GetPointer(EXPORT, PTR2D,  'CN_SNR'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); PTR2D=0.0
+    call MAPL_GetPointer(EXPORT, PTR2D,  'AN_SNR'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); PTR2D=0.0
+    call MAPL_GetPointer(EXPORT, PTR2D,  'SC_SNR'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); PTR2D=0.0
     ! Lowe tropospheric stability and estimated inversion strength
     call MAPL_GetPointer(EXPORT, LTS,   'LTS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, EIS,   'EIS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     KLCL = FIND_KLCL( T, Q, PLmb, IM, JM, LM )
     call MAPL_GetPointer(EXPORT, PTR2D, 'ZLCL', RC=STATUS); VERIFY_(STATUS)
-    call add_variable("F-In-F_side.nc", LTS, "lower_tropospheric_stability")
-    call add_variable("F-In-F_side.nc", EIS, "estimated_inversion_strength")
     if (associated(PTR2D)) then
-      call add_variable("F-In-F_side.nc", PTR2D, "lcl_height")
       do J=1,JM
          do I=1,IM
            PTR2D(I,J) = ZL0(I,J,KLCL(I,J))
          end do
       end do
-      call add_variable("F-Out-F_side.nc", PTR2D, "lcl_height")
     endif
     TMP3D = (100.0*PLmb/MAPL_P00)**(MAPL_KAPPA)
     call FIND_EIS(T/TMP3D, QST3, T, ZL0, PLEmb, KLCL, IM, JM, LM, LTS, EIS)
@@ -616,16 +552,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT,  DUDT_macro,  'DUDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,  DVDT_macro,  'DVDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,  DTDT_macro,  'DTDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call add_variable("F-In-F_side.nc", DQADT_macro, "tendencies_dcloud_fractiondt_macro")
-    call add_variable("F-In-F_side.nc", DQVDT_macro, "tendencies_dvapordt_macro")
-    call add_variable("F-In-F_side.nc", DQIDT_macro, "tendencies_dicedt_macro")
-    call add_variable("F-In-F_side.nc", DQLDT_macro, "tendencies_dliquiddt_macro")
-    call add_variable("F-In-F_side.nc", DQRDT_macro, "tendencies_draindt_macro")
-    call add_variable("F-In-F_side.nc", DQGDT_macro, "tendencies_dgraupeldt_macro")
-    call add_variable("F-In-F_side.nc", DQSDT_macro, "tendencies_dsnowdt_macro")
-    call add_variable("F-In-F_side.nc", DUDT_macro, "tendencies_dudt_macro")
-    call add_variable("F-In-F_side.nc", DVDT_macro, "tendencies_dvdt_macro")
-    call add_variable("F-In-F_side.nc", DTDT_macro, "tendencies_dtdt_macro")
     DUDT_macro=U
     DVDT_macro=V
     DTDT_macro=T
@@ -655,54 +581,18 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
    call MAPL_GetPointer(EXPORT,  PDF_RWQT,  'PDF_RWQT' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 #endif
 
-call add_variable("F-In-F_side.nc", CNV_FRC, "convection_fraction")
-call add_variable("F-In-F_side.nc", SRF_TYPE, "surface_type")
-call add_variable("F-In-F_side.nc", EVAPC, "cloud_liquid_evaporation")
-call add_variable("F-In-F_side.nc", SUBLC, "cloud_ice_sublimation")
-call add_variable("F-In-F_side.nc", ICE, "icefall")
-call add_variable("F-In-F_side.nc", FRZR, "freezing_rainfall")
-call add_variable("F-In-F_side.nc", RHX, "relative_humidity_after_pdf")
-call add_variable("F-In-F_side.nc", WTHV2, "buoyancy_flux")
-call add_variable("F-In-F_side.nc", WQL, "liquid_water_flux")
-call add_variable("F-In-F_side.nc", PDFITERS, "hydrostatic_pdf_iterations")
-call add_variable("F-In-F_side.nc", RAD_CF, "radiation_field_cloud_fraction")
-call add_variable("F-In-F_side.nc", RAD_QV, "radiation_field_vapor")
-call add_variable("F-In-F_side.nc", RAD_QL, "radiation_field_liquid")
-call add_variable("F-In-F_side.nc", RAD_QI, "radiation_field_ice")
-call add_variable("F-In-F_side.nc", RAD_QR, "radiation_field_rain")
-call add_variable("F-In-F_side.nc", RAD_QS, "radiation_field_snow")
-call add_variable("F-In-F_side.nc", RAD_QG, "radiation_field_graupel")
-call add_variable("F-In-F_side.nc", CLDREFFL, "cloud_particle_effective_radius_liquid")
-call add_variable("F-In-F_side.nc", CLDREFFI, "cloud_particle_effective_radius_ice")
-call add_variable("F-In-F_side.nc", PRCP_RAIN, "precipitation_at_surface_rain")
-call add_variable("F-In-F_side.nc", PRCP_SNOW, "precipitation_at_surface_snow")
-call add_variable("F-In-F_side.nc", PRCP_ICE, "precipitation_at_surface_ice")
-call add_variable("F-In-F_side.nc", PRCP_GRAUPEL, "precipitation_at_surface_graupel")
-call add_variable("F-In-F_side.nc", LS_PRCP, "non_anvil_large_scale_precip")
-call add_variable("F-In-F_side.nc", LS_SNR, "non_anvil_large_scale_snow")
-call add_variable("F-In-F_side.nc", REV_LS, "non_anvil_large_scale_evaporation")
-call add_variable("F-In-F_side.nc", RSU_LS, "non_anvil_large_scale_sublimation")
-call add_variable("F-In-F_side.nc", PFL_LS, "non_anvil_large_scale_liquid_precip_flux")
-call add_variable("F-In-F_side.nc", PFI_LS, "non_anvil_large_scale_ice_precip_flux")
-call add_variable("F-In-F_side.nc", PFL_AN, "anvil_liquid_precip_flux")
-call add_variable("F-In-F_side.nc", PFI_AN, "anvil_ice_precip_flux")
 
       ! Include shallow precip condensates if present
         call MAPL_GetPointer(EXPORT, PTR3D,  'SHLW_PRC3', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) then
-          call add_variable("F-In-F_side.nc", PTR3D, "shallow_convection_rain")
           QRAIN = QRAIN + PTR3D*DT_MOIST
-          call add_variable("F-Out-F_side.nc", PTR3D, "shallow_convection_rain")
         endif
         call MAPL_GetPointer(EXPORT, PTR3D,  'SHLW_SNO3', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) then 
-          call add_variable("F-In-F_side.nc", PTR3D, "shallow_convection_snow")
           QSNOW = QSNOW + PTR3D*DT_MOIST
-          call add_variable("F-Out-F_side.nc", PTR3D, "shallow_convection_snow")
         endif
        ! evap/subl/pdf
         call MAPL_GetPointer(EXPORT, RHCRIT3D,  'RHCRIT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-        call add_variable("F-In-F_side.nc", RHCRIT3D, "critical_relative_humidity_for_pdf")
         do L=1,LM
           do J=1,JM
            do I=1,IM
@@ -872,16 +762,6 @@ call add_variable("F-In-F_side.nc", PFI_AN, "anvil_ice_precip_flux")
     call MAPL_GetPointer(EXPORT,  DUDT_micro,  'DUDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,  DVDT_micro,  'DVDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,  DTDT_micro,  'DTDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call add_variable("F-In-F_side.nc", DQADT_micro, "tendencies_dcloud_fractiondt_micro")
-    call add_variable("F-In-F_side.nc", DQVDT_micro, "tendencies_dvapordt_micro")
-    call add_variable("F-In-F_side.nc", DQIDT_micro, "tendencies_dicedt_micro")
-    call add_variable("F-In-F_side.nc", DQLDT_micro, "tendencies_dliquiddt_micro")
-    call add_variable("F-In-F_side.nc", DQRDT_micro, "tendencies_draindt_micro")
-    call add_variable("F-In-F_side.nc", DQGDT_micro, "tendencies_dgraupeldt_micro")
-    call add_variable("F-In-F_side.nc", DQSDT_micro, "tendencies_dsnowdt_micro")
-    call add_variable("F-In-F_side.nc", DUDT_micro, "tendencies_dudt_micro")
-    call add_variable("F-In-F_side.nc", DVDT_micro, "tendencies_dvdt_micro")
-    call add_variable("F-In-F_side.nc", DTDT_micro, "tendencies_dtdt_micro")
     DQVDT_micro = Q
     DQLDT_micro = QLLS + QLCN
     DQIDT_micro = QILS + QICN
@@ -1036,20 +916,14 @@ call add_variable("F-In-F_side.nc", PFI_AN, "anvil_ice_precip_flux")
         call MAPL_TimerOff(MAPL,"---CLDMICRO")
 
         call MAPL_GetPointer(EXPORT, PTR3D, 'DQRL', RC=STATUS); VERIFY_(STATUS)
-        if(associated(PTR3D)) then
-          call add_variable("F-In-F_side.nc", PTR3D, "large_scale_rainwater_source")
-          PTR3D = DQRDT_macro + DQRDT_micro
-          call add_variable("F-Out-F_side.nc", PTR3D, "large_scale_rainwater_source")
-        endif
+        if(associated(PTR3D)) PTR3D = DQRDT_macro + DQRDT_micro
 
         ! dissipative heating tendency from KE across the macro/micro physics
         call MAPL_GetPointer(EXPORT, PTR3D, 'DTDTFRIC', RC=STATUS); VERIFY_(STATUS)
         if(associated(PTR3D)) then
-          call add_variable("F-In-F_side.nc", PTR3D, "tendencies_dtdt_friction_pressure_weighted")
           call dissipative_ke_heating(IM,JM,LM, MASS,U0,V0, &
                                       DUDT_macro+DUDT_micro,&
                                       DVDT_macro+DVDT_micro,PTR3D)
-          call add_variable("F-Out-F_side.nc", PTR3D, "tendencies_dtdt_friction_pressure_weighted")
         endif
 
         ! Compute DBZ radar reflectivity
@@ -1061,22 +935,6 @@ call add_variable("F-In-F_side.nc", PFI_AN, "anvil_ice_precip_flux")
 
         if (associated(PTR3D) .OR. &
             associated(DBZ_MAX) .OR. associated(DBZ_1KM) .OR. associated(DBZ_TOP) .OR. associated(DBZ_M10C)) then
-
-            if (associated(PTR3D)) then
-              call add_variable("F-In-F_side.nc", PTR3D, "radar_simulated_reflectivity")
-            endif
-            if (associated(DBZ_MAX)) then
-              call add_variable("F-In-F_side.nc", DBZ_MAX, "radar_maximum_composite_reflectivity")
-            endif
-            if (associated(DBZ_1KM)) then
-              call add_variable("F-In-F_side.nc", DBZ_1KM, "radar_base_1km_agl_reflectivity")
-            endif
-            if (associated(DBZ_TOP)) then
-              call add_variable("F-In-F_side.nc", DBZ_TOP, "radar_echo_top_reflectivity")
-            endif
-            if (associated(DBZ_M10C)) then
-              call add_variable("F-In-F_side.nc", DBZ_M10C, "radar_minus_10c_reflectivity")
-            endif
 
             call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,0,1)
             if (associated(PTR3D)) PTR3D = TMP3D
@@ -1120,107 +978,6 @@ call add_variable("F-In-F_side.nc", PFI_AN, "anvil_ice_precip_flux")
 
         endif
 
-        call add_variable("F-Out-F_side.nc", Q, "mixing_ratio_vapor")
-        call add_variable("F-Out-F_side.nc", QRAIN, "mixing_ratio_rain")
-        call add_variable("F-Out-F_side.nc", QSNOW, "mixing_ratio_snow")
-        call add_variable("F-Out-F_side.nc", QGRAUPEL, "mixing_ratio_graupel")
-        call add_variable("F-Out-F_side.nc", QLLS, "mixing_ratio_large_scale_liquid")
-        call add_variable("F-Out-F_side.nc", QILS, "mixing_ratio_large_scale_ice")
-        call add_variable("F-Out-F_side.nc", QLCN, "mixing_ratio_convective_liquid")
-        call add_variable("F-Out-F_side.nc", QICN, "mixing_ratio_convective_ice")
-        call add_variable("F-Out-F_side.nc", CLLS, "cloud_fraction_large_scale")
-        call add_variable("F-Out-F_side.nc", CLCN, "cloud_fraction_convective")
-        call add_variable("F-Out-F_side.nc", NACTL, "concentration_liquid")
-        call add_variable("F-Out-F_side.nc", NACTI, "concentration_ice")
-        call add_variable("F-Out-F_side.nc", AREA, "area")
-        call add_variable("F-Out-F_side.nc", PLE, "p_interface")
-        call add_variable("F-Out-F_side.nc", ZLE, "z_interface")
-        call add_variable("F-Out-F_side.nc", T, "t")
-        call add_variable("F-Out-F_side.nc", U, "u")
-        call add_variable("F-Out-F_side.nc", V, "v")
-        call add_variable("F-Out-F_side.nc", FRLAND, "land_fraction")
-        call add_variable("F-Out-F_side.nc", SLQT, "covariance_liquid_water_static_energy_and_total_water_specific_humidity")
-        call add_variable("F-Out-F_side.nc", OMEGA, "omega")
-        call add_variable("F-Out-F_side.nc", PDF_A, "pdf_first_plume_fractional_area")
-        call add_variable("F-Out-F_side.nc", W, "vertical_motion_velocity")
-        call add_variable("F-Out-F_side.nc", W2, "vertical_motion_variance")
-        call add_variable("F-Out-F_side.nc", W3, "vertical_motion_third_moment")
-        call add_variable("F-Out-F_side.nc", WSL, "liquid_water_static_energy_flux")
-        call add_variable("F-Out-F_side.nc", SL2, "liquid_water_static_energy_variance")
-        call add_variable("F-Out-F_side.nc", SL3, "liquid_water_static_energy_third_moment")
-        call add_variable("F-Out-F_side.nc", WQT, "total_water_flux")
-        call add_variable("F-Out-F_side.nc", QT2, "total_water_variance")
-        call add_variable("F-Out-F_side.nc", QT3, "total_water_third_moment")
-        call add_variable("F-Out-F_side.nc", LTS, "lower_tropospheric_stability")
-        call add_variable("F-Out-F_side.nc", EIS, "estimated_inversion_strength")
-        call add_variable("F-Out-F_side.nc", DQADT_macro, "tendencies_dcloud_fractiondt_macro")
-        call add_variable("F-Out-F_side.nc", DQVDT_macro, "tendencies_dvapordt_macro")
-        call add_variable("F-Out-F_side.nc", DQIDT_macro, "tendencies_dicedt_macro")
-        call add_variable("F-Out-F_side.nc", DQLDT_macro, "tendencies_dliquiddt_macro")
-        call add_variable("F-Out-F_side.nc", DQRDT_macro, "tendencies_draindt_macro")
-        call add_variable("F-Out-F_side.nc", DQGDT_macro, "tendencies_dgraupeldt_macro")
-        call add_variable("F-Out-F_side.nc", DQSDT_macro, "tendencies_dsnowdt_macro")
-        call add_variable("F-Out-F_side.nc", DUDT_macro, "tendencies_dudt_macro")
-        call add_variable("F-Out-F_side.nc", DVDT_macro, "tendencies_dvdt_macro")
-        call add_variable("F-Out-F_side.nc", DTDT_macro, "tendencies_dtdt_macro")
-        call add_variable("F-Out-F_side.nc", CNV_FRC, "convection_fraction")
-        call add_variable("F-Out-F_side.nc", SRF_TYPE, "surface_type")
-        call add_variable("F-Out-F_side.nc", EVAPC, "cloud_liquid_evaporation")
-        call add_variable("F-Out-F_side.nc", SUBLC, "cloud_ice_sublimation")
-        call add_variable("F-Out-F_side.nc", ICE, "icefall")
-        call add_variable("F-Out-F_side.nc", FRZR, "freezing_rainfall")
-        call add_variable("F-Out-F_side.nc", RHX, "relative_humidity_after_pdf")
-        call add_variable("F-Out-F_side.nc", WTHV2, "buoyancy_flux")
-        call add_variable("F-Out-F_side.nc", WQL, "liquid_water_flux")
-        call add_variable("F-Out-F_side.nc", PDFITERS, "hydrostatic_pdf_iterations")
-        call add_variable("F-Out-F_side.nc", RAD_CF, "radiation_field_cloud_fraction")
-        call add_variable("F-Out-F_side.nc", RAD_QV, "radiation_field_vapor")
-        call add_variable("F-Out-F_side.nc", RAD_QL, "radiation_field_liquid")
-        call add_variable("F-Out-F_side.nc", RAD_QI, "radiation_field_ice")
-        call add_variable("F-Out-F_side.nc", RAD_QR, "radiation_field_rain")
-        call add_variable("F-Out-F_side.nc", RAD_QS, "radiation_field_snow")
-        call add_variable("F-Out-F_side.nc", RAD_QG, "radiation_field_graupel")
-        call add_variable("F-Out-F_side.nc", CLDREFFL, "cloud_particle_effective_radius_liquid")
-        call add_variable("F-Out-F_side.nc", CLDREFFI, "cloud_particle_effective_radius_ice")
-        call add_variable("F-Out-F_side.nc", PRCP_RAIN, "precipitation_at_surface_rain")
-        call add_variable("F-Out-F_side.nc", PRCP_SNOW, "precipitation_at_surface_snow")
-        call add_variable("F-Out-F_side.nc", PRCP_ICE, "precipitation_at_surface_ice")
-        call add_variable("F-Out-F_side.nc", PRCP_GRAUPEL, "precipitation_at_surface_graupel")
-        call add_variable("F-Out-F_side.nc", LS_PRCP, "non_anvil_large_scale_precip")
-        call add_variable("F-Out-F_side.nc", LS_SNR, "non_anvil_large_scale_snow")
-        call add_variable("F-Out-F_side.nc", REV_LS, "non_anvil_large_scale_evaporation")
-        call add_variable("F-Out-F_side.nc", RSU_LS, "non_anvil_large_scale_sublimation")
-        call add_variable("F-Out-F_side.nc", PFL_LS, "non_anvil_large_scale_liquid_precip_flux")
-        call add_variable("F-Out-F_side.nc", PFI_LS, "non_anvil_large_scale_ice_precip_flux")
-        call add_variable("F-Out-F_side.nc", PFL_AN, "anvil_liquid_precip_flux")
-        call add_variable("F-Out-F_side.nc", PFI_AN, "anvil_ice_precip_flux")
-        call add_variable("F-Out-F_side.nc", RHCRIT3D, "critical_relative_humidity_for_pdf")
-        call add_variable("F-Out-F_side.nc", DQADT_micro, "tendencies_dcloud_fractiondt_micro")
-        call add_variable("F-Out-F_side.nc", DQVDT_micro, "tendencies_dvapordt_micro")
-        call add_variable("F-Out-F_side.nc", DQIDT_micro, "tendencies_dicedt_micro")
-        call add_variable("F-Out-F_side.nc", DQLDT_micro, "tendencies_dliquiddt_micro")
-        call add_variable("F-Out-F_side.nc", DQRDT_micro, "tendencies_draindt_micro")
-        call add_variable("F-Out-F_side.nc", DQGDT_micro, "tendencies_dgraupeldt_micro")
-        call add_variable("F-Out-F_side.nc", DQSDT_micro, "tendencies_dsnowdt_micro")
-        call add_variable("F-Out-F_side.nc", DUDT_micro, "tendencies_dudt_micro")
-        call add_variable("F-Out-F_side.nc", DVDT_micro, "tendencies_dvdt_micro")
-        call add_variable("F-Out-F_side.nc", DTDT_micro, "tendencies_dtdt_micro")
-        if (associated(PTR3D)) then
-          call add_variable("F-Out-F_side.nc", PTR3D, "radar_simulated_reflectivity")
-        endif
-        if (associated(DBZ_MAX)) then
-          call add_variable("F-Out-F_side.nc", DBZ_MAX, "radar_maximum_composite_reflectivity")
-        endif
-        if (associated(DBZ_1KM)) then
-          call add_variable("F-Out-F_side.nc", DBZ_1KM, "radar_base_1km_agl_reflectivity")
-        endif
-        if (associated(DBZ_TOP)) then
-          call add_variable("F-Out-F_side.nc", DBZ_TOP, "radar_echo_top_reflectivity")
-        endif
-        if (associated(DBZ_M10C)) then
-          call add_variable("F-Out-F_side.nc", DBZ_M10C, "radar_minus_10c_reflectivity")
-        endif
-
         call MAPL_GetPointer(EXPORT, PTR3D, 'QRTOT', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) PTR3D = QRAIN
 
@@ -1230,7 +987,6 @@ call add_variable("F-In-F_side.nc", PFI_AN, "anvil_ice_precip_flux")
         call MAPL_GetPointer(EXPORT, PTR3D, 'QGTOT', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) PTR3D = QGRAUPEL
 
-        call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.microphysics.save_GFDL1M_end", MAPL, IMPORT, EXPORT, INTERNAL )
     endif ! USE_PYMOIST_GFDL1M
 
      call MAPL_TimerOff(MAPL,"--GFDL_1M",RC=STATUS)
@@ -1254,9 +1010,6 @@ subroutine GFDL_1M_Finalize(gc, import, export, rc)
 
   if (USE_PYMOIST_GFDL1M) then
     call MAPL_pybridge_gcfinalize( "pyMoist.fortran.param_interfaces.microphysics.GFDL1M_interface", MAPL, IMPORT, EXPORT )
-  else
-    call MAPL_pybridge_gcfinalize( "pyMoist.fortran.param_interfaces.microphysics.save_GFDL1M_start", MAPL, IMPORT, EXPORT )
-    call MAPL_pybridge_gcfinalize( "pyMoist.fortran.param_interfaces.microphysics.save_GFDL1M_end", MAPL, IMPORT, EXPORT )
   endif
 
 end subroutine GFDL_1M_Finalize

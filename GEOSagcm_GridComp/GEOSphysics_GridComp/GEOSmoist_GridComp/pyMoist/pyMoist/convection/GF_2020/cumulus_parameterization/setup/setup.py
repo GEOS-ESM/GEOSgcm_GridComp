@@ -16,7 +16,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constan
     GF2020PlumeDependentConstants,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
-from pyMoist.shared.atmos_recipes import sigma
+from pyMoist.shared_generic_math import sigma
 
 
 def set_plume_dependent_fields(

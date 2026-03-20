@@ -1,7 +1,6 @@
 esma_set_this()
 
 set (srcs
-  OUTPUT_NETCDFS.f90
   Process_Library.F90
   GEOS_RAS_InterfaceMod.F90 RASPARAMS.F90 ras.F90 ddf.F90 rascnvv2_v.F90
   GEOS_BACM_1M_InterfaceMod.F90 cloudnew.F90
