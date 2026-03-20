@@ -771,6 +771,46 @@ CONTAINS
 
       END SUBROUTINE reverse_k_host_to_gf_3d
 
+      SUBROUTINE map_3d_fields(temp_in, press_in, qv_in, u_in, v_in, omega_in, &
+                               zlo_in, zle_in, mass_in, kh_in, qice_in, qliq_in, qcld_in, ple_in)
+
+         !- Common 3D field mapping for both CURRENT and DYNAMICS environments
+
+         REAL, INTENT(IN) :: temp_in(:,:,:)      ! Temperature
+         REAL, INTENT(IN) :: press_in(:,:,:)     ! Pressure (mid-level)
+         REAL, INTENT(IN) :: qv_in(:,:,:)        ! Water vapor mixing ratio
+         REAL, INTENT(IN) :: u_in(:,:,:)         ! U wind component
+         REAL, INTENT(IN) :: v_in(:,:,:)         ! V wind component
+         REAL, INTENT(IN) :: omega_in(:,:,:)     ! Vertical velocity
+         REAL, INTENT(IN) :: zlo_in(:,:,:)       ! Geopotential height (mid-level)
+         REAL, INTENT(IN) :: zle_in(:,:,0:)      ! Geopotential height (edge)
+         REAL, INTENT(IN) :: mass_in(:,:,:)      ! Layer mass
+         REAL, INTENT(IN) :: kh_in(:,:,:)        ! Eddy diffusivity
+         REAL, INTENT(IN) :: qice_in(:,:,:)      ! Ice mixing ratio
+         REAL, INTENT(IN) :: qliq_in(:,:,:)      ! Liquid mixing ratio
+         REAL, INTENT(IN) :: qcld_in(:,:,:)      ! Cloud fraction
+         REAL, INTENT(IN) :: ple_in(:,:,0:)      ! Pressure (edge)
+
+         CALL reverse_k_host_to_gf_3d(temp_in,            temp,              flip)
+         CALL reverse_k_host_to_gf_3d(press_in,           press,             flip)
+         CALL reverse_k_host_to_gf_3d(qv_in,              rvap,              flip)
+         CALL reverse_k_host_to_gf_3d(u_in,               up,                flip)
+         CALL reverse_k_host_to_gf_3d(v_in,               vp,                flip)
+         CALL reverse_k_host_to_gf_3d(omega_in,           wp,                flip)
+         CALL reverse_k_host_to_gf_3d(zlo_in,             zt3d,              flip)
+         CALL reverse_k_host_to_gf_3d(zle_in(:,:,1:mzp),  zm3d,              flip)
+         CALL reverse_k_host_to_gf_3d(mass_in,            dm3d,              flip)
+         CALL reverse_k_host_to_gf_3d(kh_in,              khloc,             flip)
+         CALL reverse_k_host_to_gf_3d(Q1,                 curr_rvap,         flip)
+
+         CALL reverse_k_host_to_gf_3d(qice_in, mp_ice(lsmp,:,:,:), flip)
+         CALL reverse_k_host_to_gf_3d(qliq_in, mp_liq(lsmp,:,:,:), flip)
+         CALL reverse_k_host_to_gf_3d(qcld_in, mp_cf(lsmp,:,:,:),  flip)
+
+         sfc_press(:,:) = ple_in(:,:,mzp)
+
+      END SUBROUTINE map_3d_fields
+
       SUBROUTINE gf2020_env_from_current()
 
          !- Map GEOS state directly ("CURRENT" environment)
@@ -778,23 +818,7 @@ CONTAINS
          DZ      = -(ZLE(:,:,1:mzp) - ZLE(:,:,0:mzp-1))
          AIR_DEN = PLO / (R_DRY_AIR * T1 * (1. + EPSILON_VAPOR * Q1))
 
-         CALL reverse_k_host_to_gf_3d(T1,             temp,      flip)
-         CALL reverse_k_host_to_gf_3d(PLO,            press,     flip)
-         CALL reverse_k_host_to_gf_3d(Q1,             rvap,      flip)
-         CALL reverse_k_host_to_gf_3d(U1,             up,        flip)
-         CALL reverse_k_host_to_gf_3d(V1,             vp,        flip)
-         CALL reverse_k_host_to_gf_3d(OM1,            wp,        flip)
-         CALL reverse_k_host_to_gf_3d(ZLO,            zt3d,      flip)
-         CALL reverse_k_host_to_gf_3d(ZLE(:,:,1:mzp), zm3d,      flip)
-         CALL reverse_k_host_to_gf_3d(MASS,           dm3d,      flip)
-         CALL reverse_k_host_to_gf_3d(KH,             khloc,     flip)
-         CALL reverse_k_host_to_gf_3d(Q1,             curr_rvap, flip)
-
-         CALL reverse_k_host_to_gf_3d(QICE, mp_ice(lsmp,:,:,:), flip)
-         CALL reverse_k_host_to_gf_3d(QLIQ, mp_liq(lsmp,:,:,:), flip)
-         CALL reverse_k_host_to_gf_3d(QCLD, mp_cf(lsmp,:,:,:),  flip)
-
-         sfc_press(:,:) = PLE(:,:,mzp)
+         CALL map_3d_fields(T1, PLO, Q1, U1, V1, OM1, ZLO, ZLE, MASS, KH, QICE, QLIQ, QCLD, PLE)
 
          gsf_t  = 0.0
          gsf_q  = 0.0
@@ -814,23 +838,8 @@ CONTAINS
          DZ      = -(ZLE_N(:,:,1:mzp) - ZLE_N(:,:,0:mzp-1))
          AIR_DEN = PLO_N / (R_DRY_AIR * T_DYN_IN * (1. + EPSILON_VAPOR * QV_DYN_IN))
 
-         CALL reverse_k_host_to_gf_3d(T_DYN_IN,          temp,      flip)
-         CALL reverse_k_host_to_gf_3d(PLO_N,             press,     flip)
-         CALL reverse_k_host_to_gf_3d(QV_DYN_IN,         rvap,      flip)
-         CALL reverse_k_host_to_gf_3d(U_DYN_IN,          up,        flip)
-         CALL reverse_k_host_to_gf_3d(V_DYN_IN,          vp,        flip)
-         CALL reverse_k_host_to_gf_3d(OM1,               wp,        flip)
-         CALL reverse_k_host_to_gf_3d(ZLO_N,             zt3d,      flip)
-         CALL reverse_k_host_to_gf_3d(ZLE_N(:,:,1:mzp),  zm3d,      flip)
-         CALL reverse_k_host_to_gf_3d(MASS_N,            dm3d,      flip)
-         CALL reverse_k_host_to_gf_3d(KH,                khloc,     flip)
-         CALL reverse_k_host_to_gf_3d(Q1,                curr_rvap, flip)
-
-         CALL reverse_k_host_to_gf_3d(QICE, mp_ice(lsmp,:,:,:), flip)
-         CALL reverse_k_host_to_gf_3d(QLIQ, mp_liq(lsmp,:,:,:), flip)
-         CALL reverse_k_host_to_gf_3d(QCLD, mp_cf(lsmp,:,:,:),  flip)
-
-         sfc_press(:,:) = PLE_DYN_IN(:,:,mzp)
+         CALL map_3d_fields(T_DYN_IN, PLO_N, QV_DYN_IN, U_DYN_IN, V_DYN_IN, OM1, &
+                            ZLO_N, ZLE_N, MASS_N, KH, QICE, QLIQ, QCLD, PLE_DYN_IN)
 
          DO k = 1, mzp
             gsf_t(k,:,:)  = DTDTDYN(:,:,flip(k)) + RADSW(:,:,flip(k)) + RADLW(:,:,flip(k))
