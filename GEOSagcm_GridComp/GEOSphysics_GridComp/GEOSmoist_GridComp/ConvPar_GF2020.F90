@@ -1606,20 +1606,19 @@ CONTAINS
 
       !--- Determine Source Layer (kbmax) and Detrainment Level (kdet) based on Metric Heights
       do i = its, itf
-         if(ierr(i) == 0) then
-            do k = kts, ktf
-               if(zo_cup(i,k) > zkbmax + z1(i)) then
-                  kbmax(i) = k
-                  exit
-               endif
-            enddo
-            do k = kts, ktf
-               if(zo_cup(i,k) > z_detr + z1(i)) then
-                  kdet(i) = k
-                  exit
-               endif
-            enddo
-         endif
+         if(ierr(i) /= 0) cycle
+         do k = kts, ktf
+            if(zo_cup(i,k) > zkbmax + z1(i)) then
+               kbmax(i) = k
+               exit
+            endif
+         enddo
+         do k = kts, ktf
+            if(zo_cup(i,k) > z_detr + z1(i)) then
+               kdet(i) = k
+               exit
+            endif
+         enddo
       enddo
 
       !--- Determine Origin Level (K22) based on Maximum Moist Static Energy
@@ -1769,7 +1768,8 @@ CONTAINS
             call get_inversion_layers(cumulus, ierr, psur, po_cup, tn_cup, zo_cup, k_inv_layers, &
                  dtempdz, itf, ktf, its, ite, kts, kte)
             do i = its, itf
-               if(ierr(i) == 0) ktop(i) = min(ktop(i), k_inv_layers(i,mid))
+               if(ierr(i) /= 0) cycle
+               ktop(i) = min(ktop(i), k_inv_layers(i,mid))
             enddo
          endif
 
@@ -1807,14 +1807,13 @@ CONTAINS
       hco = 0.0
 
       DO i = its, itf
-         if(ierr(i) == 0) then
-            do k = kts, start_level(i)
-               hc(i,k)  = hkb(i)
-               hco(i,k) = hkbo(i)
-               call get_cloud_bc(cumulus, kts, kte, ktf, xland(i), po(i,:), u_cup(i,:), uc(i,k), k22(i))
-               call get_cloud_bc(cumulus, kts, kte, ktf, xland(i), po(i,:), v_cup(i,:), vc(i,k), k22(i))
-            enddo
-         endif
+         if(ierr(i) /= 0) cycle
+         do k = kts, start_level(i)
+            hc(i,k)  = hkb(i)
+            hco(i,k) = hkbo(i)
+            call get_cloud_bc(cumulus, kts, kte, ktf, xland(i), po(i,:), u_cup(i,:), uc(i,k), k22(i))
+            call get_cloud_bc(cumulus, kts, kte, ktf, xland(i), po(i,:), v_cup(i,:), vc(i,k), k22(i))
+         enddo
       ENDDO
 
       DO i = its, itf
@@ -1839,7 +1838,8 @@ CONTAINS
       !-----------------------------------------------------------------------------
       IF(trim(cumulus) == 'deep' .and. USE_C1D) THEN
          do i = its, itf
-            if(ierr(i) == 0) c1d(i, kbcon(i)+1:ktop(i)-1) = abs(c1)
+            if(ierr(i) /= 0) cycle
+            c1d(i, kbcon(i)+1:ktop(i)-1) = abs(c1)
          enddo
       ENDIF
 
