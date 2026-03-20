@@ -935,11 +935,9 @@ def downdraft_windshear(
         sdp: FloatFieldIJ = 0.0
         vws: FloatFieldIJ = 0.0
 
-        lower_bound: FloatFieldIJ = updraft_lfc_level[0, 0][plume]
-        upper_bound: FloatFieldIJ = cloud_top_level[0, 0][plume] + 1
 
-    with computation(FORWARD), interval(lower_bound, upper_bound):
-        if plume != 0 and error_code[0, 0][plume] == 0:
+    with computation(FORWARD), interval(...):
+        if plume != 0 and error_code[0, 0][plume] == 0 and K > updraft_lfc_level[0, 0][plume] and K <= cloud_top_level[0, 0][plume]:
             dp = p_forced - p_forced[0, 0, 1]
             vws = (
                 vws

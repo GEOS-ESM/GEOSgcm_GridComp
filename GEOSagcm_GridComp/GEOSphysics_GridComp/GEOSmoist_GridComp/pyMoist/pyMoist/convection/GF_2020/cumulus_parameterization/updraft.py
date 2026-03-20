@@ -828,10 +828,8 @@ def cloud_workfunction_aa0(
             lower_bound: IntFieldIJ = updraft_origin_level[0, 0][plume]
             upper_bound: IntFieldIJ = updraft_lfc_level[0, 0][plume] - 1
 
-        upper_bound = upper_bound + 1
-
-    with computation(FORWARD), interval(lower_bound, upper_bound):
-        if error_code[0, 0][plume] == 0:
+    with computation(FORWARD), interval(...):
+        if error_code[0, 0][plume] == 0 and K >= lower_bound and K <= upper_bound:
             dz = geopotential_height[0, 0, 1] - geopotential_height
             workfunction_current_level = (
                 normalized_massflux_updraft

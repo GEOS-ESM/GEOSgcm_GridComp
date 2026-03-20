@@ -1,7 +1,7 @@
 import pyMoist.constants as constants
 from ndsl import Local, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM
-from ndsl.dsl.gt4py import FORWARD, computation, interval, sqrt
+from ndsl.dsl.gt4py import FORWARD, computation, interval, sqrt, K
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
@@ -130,10 +130,8 @@ def cloud_workfunction_1_pbl(
         cloud_work_function_1_pbl = 0.0
         cloud_work_function_1_fa = 0.0
 
-        top_bound: IntFieldIJ = pbl_level + 1
-
-    with computation(FORWARD), interval(0, top_bound):
-        if error_code[0, 0][plume] == 0:
+    with computation(FORWARD), interval(...):
+        if error_code[0, 0][plume] == 0 and K <= pbl_level:
             dz = (
                 geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
             ) * constants.MAPL_GRAV

@@ -575,7 +575,6 @@ def feed_3d_model_from_plumes(
                 lqu=estlqu,
                 t=t_updraft_from_cumulus_parameterization.at(K=k_end - K, ddim=[plume]),
                 p=p_flipped.at(K=k_end - K),
-                pressure_correction=True,
             )
 
             saturation_specific_humidity_updraft = (
