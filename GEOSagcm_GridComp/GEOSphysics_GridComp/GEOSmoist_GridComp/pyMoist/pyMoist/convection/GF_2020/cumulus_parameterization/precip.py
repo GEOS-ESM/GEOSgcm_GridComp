@@ -7,7 +7,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
     FloatFieldIJ_Plume,
     IntFieldIJ_Plume,
 )
-from pyMoist.shared_incloud_processes import ice_fraction
+from pyMoist.shared.incloud_processes import ice_fraction
 
 
 @function

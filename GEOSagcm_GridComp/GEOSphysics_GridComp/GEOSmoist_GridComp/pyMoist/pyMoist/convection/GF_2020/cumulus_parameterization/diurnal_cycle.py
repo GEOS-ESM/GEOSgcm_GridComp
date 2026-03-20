@@ -9,7 +9,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import IntF
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
 )
-from pyMoist.shared_generic_math import sigma
+from pyMoist.shared.atmos_recipes import sigma
 
 
 def set_time_scales(
