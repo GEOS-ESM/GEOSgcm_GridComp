@@ -4186,24 +4186,6 @@ CONTAINS
       ENDIF
 
       RETURN
-      !IF( MAPL_AM_I_ROOT() .and. irun == 0) then
-      irun = 1
-      DO i=its,itf
-         IF(ierr(i) == 0) then
-            do k=kts,kte-1
-               rho=100*(p_cup(i,k)-p_cup(i,k+1))/(z_cup(i,k+1)-z_cup(i,k))/g ! air dens by hidrostatic balance (kg/m3)
-               write(23,101) i,k,z_cup(i,k),p_cup(i,k),t_cup(i,k),q_cup(i,k)*1000.,he_cup(i,k),u_cup(i,k),v_cup(i,k),rho
-
-               rho=100*(p(i,k)-p(i,k+1))/(z(i,k+1)-z(i,k))/g
-               write(25,101) i,k,z    (i,k),p    (i,k),t    (i,k),q    (i,k)*1000.,he        (i,k),us   (i,k),vs   (i,k),rho
-
-101            format(2i3,8F15.5)
-            ENDDO
-            GOTO 400
-         ENDIF
-      ENDDO
-      !ENDIF
-400   continue
 
    END SUBROUTINE cup_env_clev
    !------------------------------------------------------------------------------------
@@ -6049,13 +6031,7 @@ CONTAINS
 
       return
 
-      !OPEN(19,FILE= 'zu.gra', FORM='unformattORM='unformatted',ACCESS='direct'&
-      !       ,STATUS='unknown',RECL=4)
-      ! DO k = kts,kte
-      !    nrec=nrec+1
-      !     WRITE(19,REC=nrec) zu(k)
-      ! END DO
-      !close (19)
+
 
    END SUBROUTINE get_zu_zd_pdf_orig
    !------------------------------------------------------------------------------------
@@ -6891,49 +6867,6 @@ CONTAINS
          !PCLDFR(k) = MAX( 0., MIN(1.,0.292/ZQ1**2) )
 
          CYCLE
-         !total condensate diagnostic (not being used)
-         IF (ZQ1 > 0. .AND. ZQ1 <= 2. ) THEN
-            !orig   ZCOND =     EXP(-1.)+.66*ZQ1+.086*ZQ1*ZQ1
-            ZCOND = MIN(EXP(-1.)+.66*ZQ1+.086*ZQ1**2, 2.) ! We use the MIN function for continuity
-         ELSE IF (ZQ1 > 2.) THEN
-            ZCOND = ZQ1
-         ELSE
-            ZCOND = EXP( 1.2*ZQ1-1. )
-         END IF
-         ZCOND = ZCOND * ZSIGMA
-
-         if ( zcond < 1.e-12) then
-            zcond = 0.
-            pcldfr(k) = 0.
-         end if
-         if ( pcldfr(k) == 0.) then
-            zcond = 0.
-         end if
-
-         LOC_PRC(k) = ZFRAC * ZCOND ! liquid condensate
-         IF (LUSERI) THEN
-            LOC_PRI(k) = (1.-ZFRAC) * ZCOND   ! solid condensate
-         END IF
-
-         !---
-         ! compute s'rl'/Sigs^2
-         ! used in w'rl'= w's' * s'rl'/Sigs^2
-         !  PSIGRC(k) = PCLDFR(k)   ! Gaussian relation
-         !
-         ! s r_c/ sig_s^2
-         !    PSIGRC(JI,JJ,JK) = PCLDFR(JI,JJ,JK)  ! use simple Gaussian relation
-         !
-         !    multiply PSRCS by the lambda3 coefficient
-         !
-         !      PSIGRC(JI,JJ,JK) = 2.*PCLDFR(JI,JJ,JK) * MIN( 3. , MAX(1.,1.-ZQ1) )
-         ! in the 3D case lambda_3 = 1.
-         !      INQ1 = MIN( MAX(-22,FLOOR(2*ZQ1) ), 10)
-         !      ZINC = 2.*ZQ1 - INQ1
-         !
-         !      PSIGRC(k) =  MIN(1.,(1.-ZINC)*ZSRC_1D(INQ1)+ZINC*ZSRC_1D(INQ1+1))
-         !
-         !      PSIGRC(k) = PSIGRC(k)* MIN( 3. , MAX(1.,1.-ZQ1) )
-         !---
       END DO
       !
    END SUBROUTINE get_cloud_fraction
