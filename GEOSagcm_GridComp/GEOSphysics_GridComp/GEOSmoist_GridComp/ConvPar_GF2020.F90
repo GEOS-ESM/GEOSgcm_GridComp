@@ -1648,151 +1648,15 @@ CONTAINS
       !=============================================================================
       ! 1. SCHEME PARAMETERS & INITIALIZATION
       !=============================================================================
-      pre = 0.0
-      sig = 0.0
-      sigd = 0.0
-      lightn_dens = 0.0
-
-      ! --- Convection Physical Limits & Triggers
-      SELECT CASE(trim(cumulus))
-      CASE('deep')
-         z_cloud_top_min = 6000.  ! Must pass freezing level
-         z_cloud_top_max = 16000. ! Tropopause bound
-         depth_min       = 3000.  ! Needs deep instability
-         zkbmax          = 3000.  ! Surface or low-level based
-         zcutdown        = 5000.  ! Originates from mid-level dry air
-         z_detr          = 1000.  ! Forms distinct cold pool in PBL
-
-         cap_max_inc  = MERGE(90.0, 20.0, MOIST_TRIGGER)
-         lambau_dp(:) = lambau_deep
-         lambau_dn(:) = lambau_shdn
-
-      CASE('mid')
-         z_cloud_top_min = 4000.  ! Mid-level cloud
-         z_cloud_top_max = 8000.  ! Capped below upper troposphere
-         depth_min       = 1000.  ! Noticeable mid-layer depth
-         zkbmax          = 5000.  ! Elevated origin (above cold pools/PBL)
-         zcutdown        = 4000.  ! Lower mid-levels
-         z_detr          = 1000.  ! Evaporates in deep sub-cloud layer
-
-         cap_max_inc  = MERGE(90.0, 10.0, MOIST_TRIGGER)
-         lambau_dp(:) = lambau_shdn
-         lambau_dn(:) = lambau_shdn
-
-      CASE('shallow')
-         z_cloud_top_min = 1000.  ! Just needs to clear the LCL
-         z_cloud_top_max = 3500.  ! Capped by trade inversion
-         depth_min       = 300.   ! Can be thin fair-weather cu
-         zkbmax          = 1500.  ! Strictly PBL driven
-         zcutdown        = 1500.  ! Very shallow if at all
-         z_detr          = 300.   ! Small detrainment right at surface
-
-         cap_max_inc  = MERGE(10.0, 25.0, MOIST_TRIGGER)
-         lambau_dp(:) = lambau_shdn
-         lambau_dn(:) = lambau_shdn
-
-      CASE DEFAULT
-         ! Failsafe initialization
-         z_cloud_top_min = 0.
-         z_cloud_top_max = 16000.
-         depth_min       = 0.
-         zkbmax          = 3000.
-         zcutdown        = 3000.
-         z_detr          = 1000.
-         cap_max_inc     = 20.0
-         lambau_dp(:)    = 0.0
-         lambau_dn(:)    = 0.0
-      END SELECT
-
-      if(pgcon /= 0.) then
-         lambau_dp(:) = 0.
-         lambau_dn(:) = 0.
-      endif
-
-      ! --- Array Initialization
-      do i = its, itf
-         kbmax(i)   = 1
-         kstabm(i)  = ktf-1
-         ierr2(i)   = 0
-         ierr3(i)   = 0
-         ierrc(i)   = "ierrtxt"
-
-         cap_max(i)           = cap_maxs
-         cap_max_increment(i) = cap_max_inc
-
-         aa0(i) = 0.0
-         aa1(i) = 0.0
-         aa2(i) = 0.0
-         aa3(i) = 0.0
-
-         aa1_bl(i) = 0.0
-         aa1_fa(i) = 0.0
-         aa0_bl(i) = 0.0
-
-         cin1(i) = 0.0
-         xk_x(i) = 0.0
-         edt(i)  = 0.0
-         edto(i) = 0.0
-
-         tau_bl(i)    = 0.0
-         tau_ecmwf(i) = 0.0
-         q_wetbulb(i) = 0.0
-         t_wetbulb(i) = 0.0
-         xf_dicycle(i)= 0.0
-         x_add_buoy(i)= 0.0
-
-         z(i,:)      = zo(i,:)
-         xz(i,:)     = zo(i,:)
-         hcdo(i,:)   = 0.0
-         cupclw(i,:) = 0.0
-         qrcdo(i,:)  = 0.0
-         hcot(i,:)   = 0.0
-         c1d(i,:)    = 0.0
-         xf_ens(i,:) = 0.0
-         pr_ens(i,:) = 0.0
-         evap_bcb(i,:) = 0.0
-
-         mbdt(i) = 0.1
-      enddo
-
-      ! --- Scale Dependence Factor (sig)
-      if( USE_SCALE_DEP == 0 .or. trim(cumulus) == 'shallow' ) then
-         sig(:) = 1.0
-      else
-         do i = its, itf
-            sig(i) = 0.0
-            if (stochastic_sig(i) < 0.0) then
-               ierr(i)  = 1
-               ierrc(i) = 'scale_dep renders convection insignificant'
-               cycle
-            endif
-            sig(i) = sigma(dx(i))
-            if (stochastic_sig(i) /= 1.0) then
-               sig(i) = sig(i)**(stochastic_sig(i) * MAX(1.0, sig(i)))
-            endif
-            sig(i) = max(0.001, min(sig(i), 1.0))
-         enddo
-      endif
-
-      ! --- Random number generation for stochastic physics
-      if( trim(cumulus) == 'deep' .and. use_random_num > 1.e-6) then
-         call gen_random(its, ite, use_random_num, random)
-      else
-         random = 0.0
-      endif
-
-      ! --- Initial Entrainment/Detrainment Profiles
-      entr_rate(:,:) = entr_rate_plume
-      cd(:,:)        = entr_rate_plume                       
-
-      ! --- Evaporation efficiency limits (edtmin / edtmax)
-      do i = its, itf
-         if(xland(i) > 0.99 ) then
-            edtmin(i) = MIN_EDT_OCEAN;  edtmax(i) = MAX_EDT_OCEAN
-         else
-            edtmin(i) = MIN_EDT_LAND;   edtmax(i) = MAX_EDT_LAND
-         endif
-      enddo
+      call initialize_convection_parameters(cumulus, MOIST_TRIGGER, USE_SCALE_DEP, &
+            its, itf, kts, kte, ktf, cap_maxs, entr_rate_plume, pgcon, lambau_deep, lambau_shdn, &
+            use_random_num, dx, stochastic_sig, xland, zo, ierr, ierrc, &
+            z_cloud_top_min, z_cloud_top_max, depth_min, zkbmax, zcutdown, z_detr, &
+            cap_max_inc, lambau_dp, lambau_dn, kbmax, kstabm, ierr2, ierr3, &
+            cap_max, cap_max_increment, aa0, aa1, aa2, aa3, aa1_bl, aa1_fa, aa0_bl, &
+            cin1, xk_x, edt, edto, tau_bl, tau_ecmwf, q_wetbulb, t_wetbulb, &
+            xf_dicycle, x_add_buoy, z, xz, hcdo, cupclw, qrcdo, hcot, c1d, xf_ens, pr_ens, &
+            evap_bcb, mbdt, sig, random, entr_rate, cd, edtmin, edtmax, pre, sigd, lightn_dens)
 
       !=============================================================================
       ! 2. ENVIRONMENTAL THERMODYNAMICS & PROFILES
@@ -3760,6 +3624,200 @@ CONTAINS
               heo, tn_cup, 1, t_wetbulb, q_wetbulb, qco, pwavo, itf, ktf, its, ite, kts, kte)
 
       END SUBROUTINE compute_downdraft_plume_model
+
+      !--------------------------------------------------------------------------
+      ! Helper: Initialize convection scheme parameters and arrays
+      !
+      ! This subroutine sets up regime-specific physical parameters and
+      ! initializes all working arrays for the convection calculation. It
+      ! establishes the geometric and thermodynamic constraints that distinguish
+      ! deep, mid-level, and shallow convection regimes.
+      !
+      ! Arguments: (many scalar and array outputs - see full list below)
+      !--------------------------------------------------------------------------
+      SUBROUTINE initialize_convection_parameters(cumulus, MOIST_TRIGGER, USE_SCALE_DEP, &
+                    its, itf, kts, kte, ktf, cap_maxs, entr_rate_plume, pgcon, lambau_deep, lambau_shdn, &
+                    use_random_num, dx, stochastic_sig, xland, zo, ierr, ierrc, &
+                    z_cloud_top_min, z_cloud_top_max, depth_min, zkbmax, zcutdown, z_detr, &
+                    cap_max_inc, lambau_dp, lambau_dn, kbmax, kstabm, ierr2, ierr3, &
+                    cap_max, cap_max_increment, aa0, aa1, aa2, aa3, aa1_bl, aa1_fa, aa0_bl, &
+                    cin1, xk_x, edt, edto, tau_bl, tau_ecmwf, q_wetbulb, t_wetbulb, &
+                    xf_dicycle, x_add_buoy, z, xz, hcdo, cupclw, qrcdo, hcot, c1d, xf_ens, pr_ens, &
+                    evap_bcb, mbdt, sig, random, entr_rate, cd, edtmin, edtmax, pre, sigd, lightn_dens)
+         CHARACTER(LEN=*), INTENT(IN) :: cumulus
+         LOGICAL, INTENT(IN) :: MOIST_TRIGGER
+         INTEGER, INTENT(IN) :: USE_SCALE_DEP, its, itf, kts, kte, ktf
+         REAL, INTENT(IN) :: cap_maxs, entr_rate_plume, pgcon, lambau_deep, lambau_shdn, use_random_num
+         REAL, INTENT(IN) :: dx(its:itf), stochastic_sig(its:itf), xland(its:itf), zo(its:itf,kts:kte)
+         INTEGER, INTENT(INOUT) :: ierr(its:itf)
+         CHARACTER(LEN=512), INTENT(INOUT) :: ierrc(its:itf)
+         REAL, INTENT(OUT) :: z_cloud_top_min, z_cloud_top_max, depth_min, zkbmax, zcutdown, z_detr, cap_max_inc
+         REAL, INTENT(OUT) :: lambau_dp(its:itf), lambau_dn(its:itf)
+         INTEGER, INTENT(OUT) :: kbmax(its:itf), kstabm(its:itf), ierr2(its:itf), ierr3(its:itf)
+         REAL, INTENT(OUT) :: cap_max(its:itf), cap_max_increment(its:itf)
+         REAL, INTENT(OUT) :: aa0(its:itf), aa1(its:itf), aa2(its:itf), aa3(its:itf)
+         REAL, INTENT(OUT) :: aa1_bl(its:itf), aa1_fa(its:itf), aa0_bl(its:itf)
+         REAL, INTENT(OUT) :: cin1(its:itf), xk_x(its:itf), edt(its:itf), edto(its:itf)
+         REAL, INTENT(OUT) :: tau_bl(its:itf), tau_ecmwf(its:itf), q_wetbulb(its:itf), t_wetbulb(its:itf)
+         REAL, INTENT(OUT) :: xf_dicycle(its:itf), x_add_buoy(its:itf)
+         REAL, INTENT(OUT) :: z(its:itf,kts:kte), xz(its:itf,kts:kte), hcdo(its:itf,kts:kte)
+         REAL, INTENT(OUT) :: cupclw(its:itf,kts:kte), qrcdo(its:itf,kts:kte), hcot(its:itf,kts:kte)
+         REAL, INTENT(OUT) :: c1d(its:itf,kts:kte), evap_bcb(its:itf,kts:kte)
+         REAL, INTENT(OUT) :: xf_ens(its:itf,:), pr_ens(its:itf,:)
+         REAL, INTENT(OUT) :: mbdt(its:itf), sig(its:itf), random(its:itf)
+         REAL, INTENT(OUT) :: entr_rate(its:itf,kts:kte), cd(its:itf,kts:kte)
+         REAL, INTENT(OUT) :: edtmin(its:itf), edtmax(its:itf), pre(its:itf), sigd(its:itf), lightn_dens(its:itf)
+
+         ! Local variables
+         INTEGER :: i
+
+         pre = 0.0
+         sig = 0.0
+         sigd = 0.0
+         lightn_dens = 0.0
+
+         ! --- Convection Physical Limits & Triggers
+         SELECT CASE(trim(cumulus))
+         CASE('deep')
+            z_cloud_top_min = 6000.  ! Must pass freezing level
+            z_cloud_top_max = 16000. ! Tropopause bound
+            depth_min       = 3000.  ! Needs deep instability
+            zkbmax          = 3000.  ! Surface or low-level based
+            zcutdown        = 5000.  ! Originates from mid-level dry air
+            z_detr          = 1000.  ! Forms distinct cold pool in PBL
+
+            cap_max_inc  = MERGE(90.0, 20.0, MOIST_TRIGGER)
+            lambau_dp(:) = lambau_deep
+            lambau_dn(:) = lambau_shdn
+
+         CASE('mid')
+            z_cloud_top_min = 4000.  ! Mid-level cloud
+            z_cloud_top_max = 8000.  ! Capped below upper troposphere
+            depth_min       = 1000.  ! Noticeable mid-layer depth
+            zkbmax          = 5000.  ! Elevated origin (above cold pools/PBL)
+            zcutdown        = 4000.  ! Lower mid-levels
+            z_detr          = 1000.  ! Evaporates in deep sub-cloud layer
+
+            cap_max_inc  = MERGE(90.0, 10.0, MOIST_TRIGGER)
+            lambau_dp(:) = lambau_shdn
+            lambau_dn(:) = lambau_shdn
+
+         CASE('shallow')
+            z_cloud_top_min = 1000.  ! Just needs to clear the LCL
+            z_cloud_top_max = 3500.  ! Capped by trade inversion
+            depth_min       = 300.   ! Can be thin fair-weather cu
+            zkbmax          = 1500.  ! Strictly PBL driven
+            zcutdown        = 1500.  ! Very shallow if at all
+            z_detr          = 300.   ! Small detrainment right at surface
+
+            cap_max_inc  = MERGE(10.0, 25.0, MOIST_TRIGGER)
+            lambau_dp(:) = lambau_shdn
+            lambau_dn(:) = lambau_shdn
+
+         CASE DEFAULT
+            ! Failsafe initialization
+            z_cloud_top_min = 0.
+            z_cloud_top_max = 16000.
+            depth_min       = 0.
+            zkbmax          = 3000.
+            zcutdown        = 3000.
+            z_detr          = 1000.
+            cap_max_inc     = 20.0
+            lambau_dp(:)    = 0.0
+            lambau_dn(:)    = 0.0
+         END SELECT
+
+         if(pgcon /= 0.) then
+            lambau_dp(:) = 0.
+            lambau_dn(:) = 0.
+         endif
+
+         ! --- Array Initialization
+         do i = its, itf
+            kbmax(i)   = 1
+            kstabm(i)  = ktf-1
+            ierr2(i)   = 0
+            ierr3(i)   = 0
+            ierrc(i)   = "ierrtxt"
+
+            cap_max(i)           = cap_maxs
+            cap_max_increment(i) = cap_max_inc
+
+            aa0(i) = 0.0
+            aa1(i) = 0.0
+            aa2(i) = 0.0
+            aa3(i) = 0.0
+
+            aa1_bl(i) = 0.0
+            aa1_fa(i) = 0.0
+            aa0_bl(i) = 0.0
+
+            cin1(i) = 0.0
+            xk_x(i) = 0.0
+            edt(i)  = 0.0
+            edto(i) = 0.0
+
+            tau_bl(i)    = 0.0
+            tau_ecmwf(i) = 0.0
+            q_wetbulb(i) = 0.0
+            t_wetbulb(i) = 0.0
+            xf_dicycle(i)= 0.0
+            x_add_buoy(i)= 0.0
+
+            z(i,:)      = zo(i,:)
+            xz(i,:)     = zo(i,:)
+            hcdo(i,:)   = 0.0
+            cupclw(i,:) = 0.0
+            qrcdo(i,:)  = 0.0
+            hcot(i,:)   = 0.0
+            c1d(i,:)    = 0.0
+            xf_ens(i,:) = 0.0
+            pr_ens(i,:) = 0.0
+            evap_bcb(i,:) = 0.0
+
+            mbdt(i) = 0.1
+         enddo
+
+         ! --- Scale Dependence Factor (sig)
+         if( USE_SCALE_DEP == 0 .or. trim(cumulus) == 'shallow' ) then
+            sig(:) = 1.0
+         else
+            do i = its, itf
+               sig(i) = 0.0
+               if (stochastic_sig(i) < 0.0) then
+                  ierr(i)  = 1
+                  ierrc(i) = 'scale_dep renders convection insignificant'
+                  cycle
+               endif
+               sig(i) = sigma(dx(i))
+               if (stochastic_sig(i) /= 1.0) then
+                  sig(i) = sig(i)**(stochastic_sig(i) * MAX(1.0, sig(i)))
+               endif
+               sig(i) = max(0.001, min(sig(i), 1.0))
+            enddo
+         endif
+
+         ! --- Random number generation for stochastic physics
+         if( trim(cumulus) == 'deep' .and. use_random_num > 1.e-6) then
+            call gen_random(its, itf, use_random_num, random)
+         else
+            random = 0.0
+         endif
+
+         ! --- Initial Entrainment/Detrainment Profiles
+         entr_rate(:,:) = entr_rate_plume
+         cd(:,:)        = entr_rate_plume
+
+         ! --- Evaporation efficiency limits (edtmin / edtmax)
+         do i = its, itf
+            if(xland(i) > 0.99 ) then
+               edtmin(i) = MIN_EDT_OCEAN;  edtmax(i) = MAX_EDT_OCEAN
+            else
+               edtmin(i) = MIN_EDT_LAND;   edtmax(i) = MAX_EDT_LAND
+            endif
+         enddo
+
+      END SUBROUTINE initialize_convection_parameters
 
       !--------------------------------------------------------------------------
       ! Helper: Compute diurnal cycle closure (aa1_bl) for various formulations
