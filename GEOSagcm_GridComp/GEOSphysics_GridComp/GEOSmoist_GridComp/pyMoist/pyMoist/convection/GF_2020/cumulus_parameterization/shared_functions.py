@@ -1,7 +1,7 @@
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from ndsl.dsl.gt4py import function, log
 from ndsl.stencils.column_operations import column_max
-from pyMoist.shared_incloud_processes import ice_fraction
+from pyMoist.shared.incloud_processes import ice_fraction
 
 
 @function

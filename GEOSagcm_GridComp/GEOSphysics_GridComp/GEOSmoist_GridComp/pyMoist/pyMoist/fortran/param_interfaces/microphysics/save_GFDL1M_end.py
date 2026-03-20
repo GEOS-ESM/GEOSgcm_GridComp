@@ -9,24 +9,28 @@ from ndsl.constants import I_DIM, J_DIM, K_INTERFACE_DIM
 from ndsl.dsl.typing import Float, Int
 
 from pyMoist.fortran import get_NDSL_physics
-from pyMoist.fortran.build_helper import StencilBackendCompilerOverride
+from pyMoist.fortran.build_helper import InterfaceTransferType
 from pyMoist.fortran.managed_state import MAPLManagedState
 from pyMoist.fortran.memory_factory import MAPLMemoryRepository
-from pyMoist.fortran.profiler import TimedCUDAProfiler
-from pyMoist.microphysics.GFDL_1M import GFDL1M, GFDL1MConfig, GFDL1MState
+from pyMoist.microphysics.GFDL_1M import GFDL1MConfig, GFDL1MState
 
 
 def _default_or_get_from_namelist(default, name_in_namelist: str, namelist: dict[str, Any]) -> Any:
     return default if name_in_namelist not in namelist else namelist[name_in_namelist]
 
 
-class GFDL1MInterface(UserCode):
+class GFDL1M_save_end(UserCode):
     def __init__(self) -> None:
         pass
 
     def init(self, mapl_state: CVoidPointer, import_state: CVoidPointer, export_state: CVoidPointer):
         maplpy = get_MAPLPy()
         ndsl_stack = get_NDSL_physics(mapl_state)
+        self._managed_state = MAPLManagedState(
+            GFDL1MState.empty(ndsl_stack.quantity_factory),
+            InterfaceTransferType.CPU_MAP,
+        )
+
         try:
             with open("input.nml", "r") as f:
                 namelist = f90nml.read(f)
@@ -151,19 +155,6 @@ class GFDL1MInterface(UserCode):
             FIX_NEGATIVE=_default_or_get_from_namelist(False, "fix_negative", gfdl1m_namelist),
             ICLOUD_F=_default_or_get_from_namelist(Int(0), "icloud_f", gfdl1m_namelist),
             IRAIN_F=_default_or_get_from_namelist(Int(0), "irain_f", gfdl1m_namelist),
-        )
-
-        # Initialize the module
-        with StencilBackendCompilerOverride(
-            MPI.COMM_WORLD,
-            ndsl_stack.stencil_factory.config.dace_config,
-        ):
-            self._gfdl_1m = GFDL1M(ndsl_stack.stencil_factory, ndsl_stack.quantity_factory, config)
-
-        # Make the state
-        self._managed_state = MAPLManagedState(
-            GFDL1MState.empty(ndsl_stack.quantity_factory),
-            ndsl_stack.interface_type,
         )
 
     def run(
@@ -395,25 +386,9 @@ class GFDL1MInterface(UserCode):
         self._managed_state.register_2D("radar.echo_top_reflectivity", "DBZ_TOP", export_repository)
         self._managed_state.register_2D("radar.minus_10c_reflectivity", "DBZ_M10C", export_repository)
 
-        self._managed_state.register("mass_fraction.suspended_rain", "QRTOT", export_repository)
-        self._managed_state.register("mass_fraction.suspended_graupel", "QGTOT", export_repository)
-        self._managed_state.register("mass_fraction.suspended_snow", "QSTOT", export_repository)
-
-        if self._gfdl_1m is None:
-            raise RuntimeError("GFDL1M Runtime called before initialization was done. Abort.")
-
-        with TimedCUDAProfiler("GFDL 1M", {}):
-            with TimedCUDAProfiler("GFDL 1M - State copy", {}):
-                self._managed_state.fortran_to_ndsl()
-
-            with TimedCUDAProfiler("GFDL 1M Numerics", {}):
-                self._managed_state.record("GFDL1M-In_python")
-                self._gfdl_1m(self._managed_state.ndsl_state)
-                self._managed_state.record("GFDL1M-Out_python")
-
-            with TimedCUDAProfiler("GFDL 1M - State copy-back", {}):
-                self._managed_state.ndsl_to_fortran()
-                self._managed_state.record("GFDL1M-Out")
+        print(f"WRITING DATA TO GFDL1M_Out")
+        self._managed_state.fortran_to_ndsl()
+        self._managed_state.record("GFDL1M-Out_fortran")
 
     def finalize(
         self,
@@ -425,5 +400,4 @@ class GFDL1MInterface(UserCode):
         self._managed_state.save_recorded()
 
 
-
-CODE = GFDL1MInterface()
+CODE = GFDL1M_save_end()
