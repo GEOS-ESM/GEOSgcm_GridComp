@@ -2400,10 +2400,9 @@ CONTAINS
                dellaq(i, kts:ktop(i))   = dellaq(i, kts:ktop(i)) + sub_tend(1, kts:ktop(i))
                subten_Q(i, kts:ktop(i)) = sub_tend(1, kts:ktop(i))
             enddo
-         ENDIF
 
          !--- Microphysics Subsidence Smoothing
-         IF(APPLY_SUB_MP) THEN
+         if(APPLY_SUB_MP) then
             dellampqi = 0.; dellampql = 0.; dellampcf = 0.
             do i = its, itf
                if(ierr(i) /= 0) cycle
@@ -2445,6 +2444,7 @@ CONTAINS
                   enddo
                endif
             enddo
+         endif
          END SELECT
 
          !--- Smooth Tendencies
