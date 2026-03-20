@@ -1661,44 +1661,14 @@ CONTAINS
       !=============================================================================
       ! 2. ENVIRONMENTAL THERMODYNAMICS & PROFILES
       !=============================================================================
-
-      !--- Calculate Moist Static Energy, Heights, and Saturation Profiles
-      call cup_env(z,  qes,  he,  hes,  t,  q,  po, z1, psur, ierr, -1, itf, ktf, its, ite, kts, kte)
-      call cup_env(zo, qeso, heo, heso, tn, qo, po, z1, psur, ierr, -1, itf, ktf, its, ite, kts, kte)
-
-      !--- Model Sounding Output (Optional)
-      IF(OUTPUT_SOUND) THEN
-         call SOUND(1,cumulus,int_time,dtime,ens4,itf,ktf,its,ite, kts,kte,xlats,xlons,jcol,whoami_all  &
-              ,z ,qes ,he ,hes ,t ,q ,po,z1 ,psur,zo,qeso,heo,heso,tn,qo,us,vs ,omeg,xz     &
-              ,h_sfc_flux,le_sfc_flux,tsur, dx,stochastic_sig,zws,ztexec,zqexec, xland      &
-              ,kpbl,k22,klcl,kbcon,ktop,aa0,aa1,sig,xaa0,hkb,xmb,pre,edto &
-              ,zo_cup,dhdt,rho,zuo,zdo,up_massentro,up_massdetro,outt, outq,outqc,outu,outv)
-      ENDIF
-
-      !--- Interpolate Environmental Values to Staggered Cloud Levels
-      call cup_env_clev(t, qes, q, he, hes, z, po, qes_cup, q_cup, he_cup, us, vs, u_cup, v_cup, &
-           hes_cup, z_cup, p_cup, gamma_cup, t_cup, psur, tsur, ierr, z1, itf, ktf, its, ite, kts, kte)
-
-      call cup_env_clev(tn, qeso, qo, heo, heso, zo, po, qeso_cup, qo_cup, heo_cup, us, vs, u_cup, v_cup, &
-           heso_cup, zo_cup, po_cup, gammao_cup, tn_cup, psur, tsur, ierr, z1, itf, ktf, its, ite, kts, kte)
-
-      !--- Calculate Air Density on Cloud Levels (Hydrostatic Balance)
-      do i = its, itf
-         rho_hydr(i,:) = 0.0
-         if(ierr(i) /= 0) cycle
-         do k = kts, ktf
-            dz = zo_cup(i,k+1) - zo_cup(i,k)
-            if (dz == 0.0) then
-               rho_hydr(i,k) = rho(i,k)
-            else
-               rho_hydr(i,k) = MBAR_TO_PA * (po_cup(i,k) - po_cup(i,k+1)) / (dz * g)
-            end if
-         enddo
-      enddo
-
-      !--- Partition Liquid and Ice Cloud Contents
-      call get_partition_liq_ice(ierr, tn, z1, zo_cup, po_cup, p_liq_ice, melting_layer, &
-           itf, ktf, its, ite, kts, kte, cnvfrc, srftype, cumulus)
+      call compute_environmental_thermodynamics(cumulus, OUTPUT_SOUND, its, itf, kts, kte, ktf, ite, &
+            int_time, dtime, ens4, jcol, whoami_all, ierr, z1, psur, tsur, po, cnvfrc, srftype, &
+            t, q, tn, qo, us, vs, z, zo, omeg, xz, h_sfc_flux, le_sfc_flux, dx, stochastic_sig, &
+            zws, ztexec, zqexec, xland, kpbl, k22, klcl, kbcon, ktop, aa0, aa1, sig, xaa0, hkb, xmb, &
+            pre, edto, dhdt, zuo, zdo, up_massentro, up_massdetro, outt, outq, outqc, outu, outv, &
+            xlats, xlons, qes, he, hes, qeso, heo, heso, qes_cup, q_cup, he_cup, u_cup, v_cup, &
+            hes_cup, z_cup, p_cup, gamma_cup, t_cup, qeso_cup, qo_cup, heo_cup, heso_cup, zo_cup, &
+            po_cup, gammao_cup, tn_cup, rho, rho_hydr, p_liq_ice, melting_layer)
 
       !=============================================================================
       ! 3. CONVECTIVE TRIGGERING & VERTICAL BOUNDS
@@ -3818,6 +3788,99 @@ CONTAINS
          enddo
 
       END SUBROUTINE initialize_convection_parameters
+
+      !--------------------------------------------------------------------------
+      ! Helper: Compute environmental thermodynamic profiles
+      !
+      ! This subroutine calculates basic thermodynamic variables (moist static
+      ! energy, saturation mixing ratio, air density) on both model levels and
+      ! staggered cloud levels. It also partitions cloud condensate into liquid
+      ! and ice fractions based on temperature.
+      !
+      ! Arguments: (see full parameter list below)
+      !--------------------------------------------------------------------------
+      SUBROUTINE compute_environmental_thermodynamics(cumulus, OUTPUT_SOUND, its, itf, kts, kte, ktf, ite, &
+            int_time, dtime, ens4, jcol, whoami_all, ierr, z1, psur, tsur, po, cnvfrc, srftype, &
+            t, q, tn, qo, us, vs, z, zo, omeg, xz, h_sfc_flux, le_sfc_flux, dx, stochastic_sig, &
+            zws, ztexec, zqexec, xland, kpbl, k22, klcl, kbcon, ktop, aa0, aa1, sig, xaa0, hkb, xmb, &
+            pre, edto, dhdt, zuo, zdo, up_massentro, up_massdetro, outt, outq, outqc, outu, outv, &
+            xlats, xlons, qes, he, hes, qeso, heo, heso, qes_cup, q_cup, he_cup, u_cup, v_cup, &
+            hes_cup, z_cup, p_cup, gamma_cup, t_cup, qeso_cup, qo_cup, heo_cup, heso_cup, zo_cup, &
+            po_cup, gammao_cup, tn_cup, rho, rho_hydr, p_liq_ice, melting_layer)
+         CHARACTER(LEN=*), INTENT(IN) :: cumulus
+         LOGICAL, INTENT(IN) :: OUTPUT_SOUND
+         INTEGER, INTENT(IN) :: its, itf, kts, kte, ktf, ite, int_time, ens4, jcol
+         CHARACTER(LEN=*), INTENT(IN) :: whoami_all
+         INTEGER, INTENT(IN) :: ierr(its:itf)
+         REAL, INTENT(IN) :: dtime, z1(its:itf), psur(its:itf), tsur(its:itf), po(its:itf,kts:kte)
+         REAL, INTENT(IN) :: cnvfrc(its:itf), srftype(its:itf)
+         REAL, INTENT(IN) :: t(its:itf,kts:kte), q(its:itf,kts:kte), tn(its:itf,kts:kte), qo(its:itf,kts:kte)
+         REAL, INTENT(IN) :: us(its:itf,kts:kte), vs(its:itf,kts:kte)
+         REAL, INTENT(INOUT) :: z(its:itf,kts:kte), zo(its:itf,kts:kte), omeg(its:itf,kts:kte,1)
+         REAL, INTENT(IN) :: xz(its:itf,kts:kte), h_sfc_flux(its:itf), le_sfc_flux(its:itf)
+         REAL, INTENT(IN) :: dx(its:itf), stochastic_sig(its:itf), zws(its:itf), ztexec(its:itf), zqexec(its:itf)
+         REAL, INTENT(IN) :: xland(its:itf), sig(its:itf), xaa0(its:itf), hkb(its:itf), xmb(its:itf), pre(its:itf), edto(its:itf)
+         INTEGER, INTENT(IN) :: kpbl(its:itf), k22(its:itf), klcl(its:itf), kbcon(its:itf), ktop(its:itf)
+         REAL, INTENT(IN) :: aa0(its:itf), aa1(its:itf), dhdt(its:itf,kts:kte)
+         REAL, INTENT(IN) :: zuo(its:itf,kts:kte), zdo(its:itf,kts:kte)
+         REAL, INTENT(IN) :: up_massentro(its:itf,kts:kte), up_massdetro(its:itf,kts:kte)
+         REAL, INTENT(IN) :: outt(its:itf,kts:kte), outq(its:itf,kts:kte), outqc(its:itf,kts:kte)
+         REAL, INTENT(IN) :: outu(its:itf,kts:kte), outv(its:itf,kts:kte), xlats(its:itf), xlons(its:itf)
+         REAL, INTENT(OUT) :: qes(its:itf,kts:kte), he(its:itf,kts:kte), hes(its:itf,kts:kte)
+         REAL, INTENT(OUT) :: qeso(its:itf,kts:kte), heo(its:itf,kts:kte), heso(its:itf,kts:kte)
+         REAL, INTENT(OUT) :: qes_cup(its:itf,kts:kte), q_cup(its:itf,kts:kte), he_cup(its:itf,kts:kte)
+         REAL, INTENT(OUT) :: u_cup(its:itf,kts:kte), v_cup(its:itf,kts:kte), hes_cup(its:itf,kts:kte)
+         REAL, INTENT(OUT) :: z_cup(its:itf,kts:kte), p_cup(its:itf,kts:kte), gamma_cup(its:itf,kts:kte), t_cup(its:itf,kts:kte)
+         REAL, INTENT(OUT) :: qeso_cup(its:itf,kts:kte), qo_cup(its:itf,kts:kte), heo_cup(its:itf,kts:kte)
+         REAL, INTENT(OUT) :: heso_cup(its:itf,kts:kte), zo_cup(its:itf,kts:kte), po_cup(its:itf,kts:kte)
+         REAL, INTENT(OUT) :: gammao_cup(its:itf,kts:kte), tn_cup(its:itf,kts:kte)
+         REAL, INTENT(IN) :: rho(its:itf,kts:kte)
+         REAL, INTENT(OUT) :: rho_hydr(its:itf,kts:kte), p_liq_ice(its:itf,kts:kte)
+         INTEGER, INTENT(OUT) :: melting_layer(its:itf,kts:kte)
+
+         ! Local variables
+         INTEGER :: i, k
+         REAL :: dz
+
+         !--- Calculate Moist Static Energy, Heights, and Saturation Profiles
+         call cup_env(z,  qes,  he,  hes,  t,  q,  po, z1, psur, ierr, -1, itf, ktf, its, ite, kts, kte)
+         call cup_env(zo, qeso, heo, heso, tn, qo, po, z1, psur, ierr, -1, itf, ktf, its, ite, kts, kte)
+
+         !--- Model Sounding Output (Optional)
+         IF(OUTPUT_SOUND) THEN
+            call SOUND(1,cumulus,int_time,dtime,ens4,itf,ktf,its,ite, kts,kte,xlats,xlons,jcol,whoami_all  &
+                 ,z ,qes ,he ,hes ,t ,q ,po,z1 ,psur,zo,qeso,heo,heso,tn,qo,us,vs ,omeg,xz     &
+                 ,h_sfc_flux,le_sfc_flux,tsur, dx,stochastic_sig,zws,ztexec,zqexec, xland      &
+                 ,kpbl,k22,klcl,kbcon,ktop,aa0,aa1,sig,xaa0,hkb,xmb,pre,edto &
+                 ,zo_cup,dhdt,rho,zuo,zdo,up_massentro,up_massdetro,outt, outq,outqc,outu,outv)
+         ENDIF
+
+         !--- Interpolate Environmental Values to Staggered Cloud Levels
+         call cup_env_clev(t, qes, q, he, hes, z, po, qes_cup, q_cup, he_cup, us, vs, u_cup, v_cup, &
+              hes_cup, z_cup, p_cup, gamma_cup, t_cup, psur, tsur, ierr, z1, itf, ktf, its, ite, kts, kte)
+
+         call cup_env_clev(tn, qeso, qo, heo, heso, zo, po, qeso_cup, qo_cup, heo_cup, us, vs, u_cup, v_cup, &
+              heso_cup, zo_cup, po_cup, gammao_cup, tn_cup, psur, tsur, ierr, z1, itf, ktf, its, ite, kts, kte)
+
+         !--- Calculate Air Density on Cloud Levels (Hydrostatic Balance)
+         do i = its, itf
+            rho_hydr(i,:) = 0.0
+            if(ierr(i) /= 0) cycle
+            do k = kts, ktf
+               dz = zo_cup(i,k+1) - zo_cup(i,k)
+               if (dz == 0.0) then
+                  rho_hydr(i,k) = rho(i,k)
+               else
+                  rho_hydr(i,k) = MBAR_TO_PA * (po_cup(i,k) - po_cup(i,k+1)) / (dz * g)
+               end if
+            enddo
+         enddo
+
+         !--- Partition Liquid and Ice Cloud Contents
+         call get_partition_liq_ice(ierr, tn, z1, zo_cup, po_cup, p_liq_ice, melting_layer, &
+              itf, ktf, its, ite, kts, kte, cnvfrc, srftype, cumulus)
+
+      END SUBROUTINE compute_environmental_thermodynamics
 
       !--------------------------------------------------------------------------
       ! Helper: Compute diurnal cycle closure (aa1_bl) for various formulations
