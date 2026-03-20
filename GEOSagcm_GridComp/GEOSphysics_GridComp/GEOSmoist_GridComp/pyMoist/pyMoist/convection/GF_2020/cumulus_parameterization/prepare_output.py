@@ -16,7 +16,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constan
     GF2020PlumeDependentConstants,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import liquid_fraction
-from pyMoist.shared_incloud_processes import (
+from pyMoist.shared.incloud_processes import (
     G_RATIO,
     RADIATIVE_EFFECTIVE_RADIUS,
     G_RATIO_Table_Type,
