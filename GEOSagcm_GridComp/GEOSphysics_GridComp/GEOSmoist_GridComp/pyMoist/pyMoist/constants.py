@@ -1,8 +1,7 @@
-"""File containing all constants used for pyMoist"""
-
-import os
+"""File containing constants used in multiple components of pyMoist"""
 
 import numpy as np
+
 from ndsl.dsl.typing import Float, Int
 
 
@@ -10,14 +9,11 @@ _f32 = np.float32
 _f64 = np.float64
 _i32 = np.int32
 
+NUMBER_OF_TRACERS = Int(23)
+
 # Define number of tracers in UW
-EXPERIMENT_TRACERS = {"bomex": 18, "armtwp_ice": 18, "gcm-fp": 23}
-EXP_NAME = os.getenv("EXP_NAME", "")
-if EXP_NAME == "":
-    raise ValueError("EXP_NAME env var is not set - experiment unknown.")
-if EXP_NAME not in EXPERIMENT_TRACERS:
-    raise ValueError(f"Experiment {EXP_NAME} unknown - tracers can't be initialized.")
-NCNST = _i32(EXPERIMENT_TRACERS[EXP_NAME])
+# NOTE depreciate this, change all references of NCNST to NUMBER_OF_TRACERS
+NCNST = _i32(23)
 
 # MAPL_UNDEF is set to 1E15 in the Fortran
 # We keep it as is for now to match 11.5.2 GEOS
@@ -69,12 +65,14 @@ MAPL_AIRMW = Float(28.965)  # kg/Kmole
 MAPL_RDRY = MAPL_RUNIV / MAPL_AIRMW  # J/(kg K)
 MAPL_CPDRY = Float(3.5) * MAPL_RDRY  # J/(kg K)
 MAPL_KAPPA = MAPL_RDRY / MAPL_CPDRY  # (2.0/7.0)
+MAPL_EPSILON = MAPL_H2OMW / MAPL_AIRMW  # --
 MAPL_CVDRY = MAPL_CPDRY - MAPL_RDRY  # J/(kg K)
 MAPL_RVAP = MAPL_RUNIV / MAPL_H2OMW  # J/(kg K)
 MAPL_CPVAP = Float(4) * MAPL_RVAP  # J/(kg K)
 MAPL_CVVAP = MAPL_CPVAP - MAPL_RVAP  # J/(kg K)
 MAPL_RGAS = MAPL_RDRY  # MAPL_RDRY  # J/(kg K) (DEPRECATED)
 MAPL_CP = MAPL_RGAS / MAPL_KAPPA  # J/(kg K) (DEPRECATED)
+MAPL_VIREPS = Float(1.0) / MAPL_EPSILON - Float(1.0)  # (DEPRECATED)
 MAPL_P00 = Float(100000.0)  # Pa
 
 EPSILON = MAPL_H2OMW / MAPL_AIRMW  # --
