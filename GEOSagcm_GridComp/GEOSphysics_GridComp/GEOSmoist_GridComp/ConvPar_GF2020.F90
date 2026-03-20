@@ -1116,37 +1116,12 @@ CONTAINS
           !--- 3.3 2D Vertical Array loading
           call gf2020_drv_load_vertical_data()
 
-         !--- 3.4 Boundary Layer scaling and surface forcing
-         DO i = its, itf
-            pbl(i) = zo(i,kpbli(i)) - topt(i,j)
+          !--- 3.4 Boundary Layer scaling and surface forcing
+          call compute_convective_velocity_scale_from_surface_fluxes( &
+                  its, itf, kts, ktf, kpbli, temp_old, qv_old, psur, &
+                  sflux_t(:,j), sflux_r(:,j), zo, topt(:,j), pbl, h_sfc_flux, le_sfc_flux, &
+                  zws, ztexec, zqexec)
 
-            pten = temp_old(i,1)
-            pqen = qv_old(i,1)
-            paph = MBAR_TO_PA * psur(i)
-            zrho = paph / (R_DRY_AIR * (temp_old(i,1) * (1. + EPSILON_VAPOR * qv_old(i,1))))
-
-            h_sfc_flux(i)  = zrho * cp * sflux_t(i,j)
-            le_sfc_flux(i) = zrho * xlv * sflux_r(i,j)
-
-            pahfs = -sflux_t(i,j) * zrho * CP_DRY_AIR 
-            pqhfl = -sflux_r(i,j)
-
-            zkhvfl = (pahfs / CP_DRY_AIR + EPSILON_VAPOR * pten * pqhfl) / zrho
-            pgeoh  = 2. * (zo(i,1) - topt(i,j)) * g
-
-            zws(i) = max(0.0, 0.001 - 1.5 * 0.41 * zkhvfl * pgeoh / pten)
-
-            if(zws(i) > tiny(pgeoh)) then
-               zws(i)    = 1.2 * zws(i)**0.3333
-               ztexec(i) = max(0.0, -1.5 * pahfs / (zrho * zws(i) * CP_DRY_AIR))
-               zqexec(i) = max(0.0, -1.5 * pqhfl / (zrho * zws(i)))
-            endif
-
-            !- Recompute zws for shallow closure (Grant 2001) over true PBL depth
-            pgeoh  = pbl(i) * g
-            zws(i) = max(0.0, 0.001 - 1.5 * 0.41 * zkhvfl * pgeoh / pten)
-            zws(i) = 1.2 * zws(i)**0.3333
-         ENDDO
 
          !===========================================================================
          ! 4. PLUME ITERATION LOOP (Call CUP_gf for Deep, Mid, Shallow)
@@ -3455,7 +3430,98 @@ CONTAINS
             enddo
          endif
 
-      END SUBROUTINE compute_subgrid_turbulent_excess
+       END SUBROUTINE compute_subgrid_turbulent_excess
+
+      !--------------------------------------------------------------------------
+      ! Helper: Compute convective velocity scale from surface fluxes
+      !
+      ! This subroutine diagnoses the sub-grid updraft velocity scale (zws)
+      ! from surface sensible and latent heat fluxes. It also computes
+      ! turbulent excess perturbations (ztexec, zqexec) used for convective
+      ! triggering. The calculation follows Tiedtke (1989) and Grant (2001)
+      ! formulations for convective boundary layer velocity scales.
+      !
+      ! Arguments:
+      !   its, itf     - Horizontal index bounds
+      !   kpbli        - PBL top level index
+      !   temp_old     - Temperature profile [K]
+      !   qv_old       - Water vapor mixing ratio [kg/kg]
+      !   psur         - Surface pressure [mbar]
+      !   sflux_t      - Surface sensible heat flux [K m/s]
+      !   sflux_r      - Surface latent heat flux [kg/kg m/s]
+      !   zo           - Height above ground [m]
+      !   topt         - Terrain height [m]
+      !   pbl          - PBL depth [m] (output)
+      !   h_sfc_flux   - Sensible heat flux [W/m²] (output)
+      !   le_sfc_flux  - Latent heat flux [W/m²] (output)
+      !   zws          - Convective velocity scale [m/s] (output)
+      !   ztexec       - Temperature excess [K] (output)
+      !   zqexec       - Moisture excess [kg/kg] (output)
+      !--------------------------------------------------------------------------
+      SUBROUTINE compute_convective_velocity_scale_from_surface_fluxes( &
+                    its, itf, kts, kte, kpbli, temp_old, qv_old, psur, &
+                    sflux_t, sflux_r, zo, topt, pbl, h_sfc_flux, le_sfc_flux, &
+                    zws, ztexec, zqexec)
+         INTEGER, INTENT(IN) :: its, itf, kts, kte
+         INTEGER, INTENT(IN) :: kpbli(its:itf)
+         REAL, INTENT(IN)    :: temp_old(its:itf,kts:kte), qv_old(its:itf,kts:kte)
+         REAL, INTENT(IN)    :: psur(its:itf), sflux_t(its:itf), sflux_r(its:itf)
+         REAL, INTENT(IN)    :: zo(its:itf,kts:kte), topt(its:itf)
+         REAL, INTENT(OUT)   :: pbl(its:itf), h_sfc_flux(its:itf), le_sfc_flux(its:itf)
+         REAL, INTENT(OUT)   :: zws(its:itf), ztexec(its:itf), zqexec(its:itf)
+
+         ! Local variables
+         INTEGER :: i
+         REAL :: pten, pqen, paph, zrho, pahfs, pqhfl, zkhvfl, pgeoh
+
+         ! Named constants for velocity scale calculation
+         REAL, PARAMETER :: VON_KARMAN = 0.41              ! von Karman constant
+         REAL, PARAMETER :: VEL_SCALE_OFFSET = 0.001       ! Velocity scale offset [m³/s³]
+         REAL, PARAMETER :: VEL_SCALE_COEFF = 1.5          ! Velocity scale coefficient
+         REAL, PARAMETER :: VEL_SCALE_MULT = 1.2           ! Velocity scale multiplier
+         REAL, PARAMETER :: VEL_SCALE_EXPONENT = 0.3333    ! Velocity scale exponent (1/3)
+
+         DO i = its, itf
+            ! Compute PBL depth
+            pbl(i) = zo(i,kpbli(i)) - topt(i)
+
+            ! Surface values for flux calculations
+            pten = temp_old(i,1)
+            pqen = qv_old(i,1)
+            paph = MBAR_TO_PA * psur(i)
+            zrho = paph / (R_DRY_AIR * (temp_old(i,1) * (1. + EPSILON_VAPOR * qv_old(i,1))))
+
+            ! Convert surface fluxes to W/m²
+            h_sfc_flux(i)  = zrho * cp * sflux_t(i)
+            le_sfc_flux(i) = zrho * xlv * sflux_r(i)
+
+            ! Compute fluxes for velocity scale
+            pahfs = -sflux_t(i) * zrho * CP_DRY_AIR
+            pqhfl = -sflux_r(i)
+
+            ! Virtual kinematic heat flux
+            zkhvfl = (pahfs / CP_DRY_AIR + EPSILON_VAPOR * pten * pqhfl) / zrho
+
+            ! Geopotential at first model level (for triggering calculation)
+            pgeoh  = 2. * (zo(i,1) - topt(i)) * g
+
+            ! Velocity scale cubed (Tiedtke 1989 formulation)
+            zws(i) = max(0.0, VEL_SCALE_OFFSET - VEL_SCALE_COEFF * VON_KARMAN * zkhvfl * pgeoh / pten)
+
+            ! Compute turbulent excess if velocity scale is significant
+            if(zws(i) > tiny(pgeoh)) then
+               zws(i)    = VEL_SCALE_MULT * zws(i)**VEL_SCALE_EXPONENT
+               ztexec(i) = max(0.0, -VEL_SCALE_COEFF * pahfs / (zrho * zws(i) * CP_DRY_AIR))
+               zqexec(i) = max(0.0, -VEL_SCALE_COEFF * pqhfl / (zrho * zws(i)))
+            endif
+
+            ! Recompute zws for shallow closure (Grant 2001) over true PBL depth
+            pgeoh  = pbl(i) * g
+            zws(i) = max(0.0, VEL_SCALE_OFFSET - VEL_SCALE_COEFF * VON_KARMAN * zkhvfl * pgeoh / pten)
+            zws(i) = VEL_SCALE_MULT * zws(i)**VEL_SCALE_EXPONENT
+         ENDDO
+
+      END SUBROUTINE compute_convective_velocity_scale_from_surface_fluxes
 
       !--------------------------------------------------------------------------
       ! Helper: Compute diurnal cycle closure (aa1_bl) for various formulations
