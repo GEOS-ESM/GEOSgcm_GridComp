@@ -1935,25 +1935,8 @@ CONTAINS
       ! 3.3 Dynamic Temperature Trigger (Kain-Fritsch 2004)
       !-----------------------------------------------------------------------------
       IF(ADV_TRIGGER == ADV_TRIGGER_KAIN .and. trim(cumulus) /= 'shallow') THEN
-         wkf = 0.02
-         do i = its, itf
-            if(ierr(i) /= 0) cycle
-            k = klcl(i)
-            dzlcl = z_cup(i,k) - z1(i)
-            ckf = MERGE(wkf * (dzlcl / 2000.), wkf, dzlcl <= 2.e+3)
-
-            wkflcl = -(omeg(i, max(kts,k-1), 1) / rho(i, max(k-1,kts)) + &
-                 omeg(i, k, 1)            / rho(i, k)            + &
-                 omeg(i, k+1, 1)          / rho(i, k+1)) / (3.*g)
-
-            if(dx(i) >= 25.e+3) then
-               wkflcl = wkflcl * (dx(i) / 25.e3) - ckf
-            else
-               wkflcl = wkflcl - ckf
-            endif
-
-            Tpert(i,:) = max(-2.0, min(4.64 * wkflcl**(1./3.), 2.0))
-         enddo
+         call compute_dynamic_temperature_perturbation_kf2004( &
+               its, itf, kts, kte, ierr, klcl, z_cup, z1, omeg, rho, dx, Tpert)
       ENDIF
 
       !-----------------------------------------------------------------------------
@@ -3631,6 +3614,82 @@ CONTAINS
          ENDDO
 
       END SUBROUTINE compute_humidity_dependent_entrainment
+
+      !--------------------------------------------------------------------------
+      ! Helper: Compute dynamic temperature perturbation from vertical motion
+      !
+      ! This subroutine implements the Kain-Fritsch (2004) dynamic triggering
+      ! mechanism which computes temperature perturbations based on large-scale
+      ! vertical motion at the LCL. Rising motion at the LCL promotes convection
+      ! through dynamic lifting, while subsidence suppresses it.
+      !
+      ! Reference: Kain, J. S. (2004), The Kain-Fritsch Convective Parameterization:
+      !            An Update, J. Appl. Meteor., 43, 170-181.
+      !
+      ! Arguments:
+      !   its, itf    - Horizontal index bounds
+      !   kts, kte    - Vertical index bounds
+      !   ierr        - Error status array
+      !   klcl        - Lifting condensation level index
+      !   z_cup       - Height on cloud coordinate [m]
+      !   z1          - Surface height [m]
+      !   omeg        - Vertical velocity (omega) [Pa/s]
+      !   rho         - Air density [kg/m³]
+      !   dx          - Grid spacing [m]
+      !   Tpert       - Temperature perturbation [K] (output)
+      !--------------------------------------------------------------------------
+      SUBROUTINE compute_dynamic_temperature_perturbation_kf2004( &
+                    its, itf, kts, kte, ierr, klcl, z_cup, z1, omeg, rho, dx, Tpert)
+         INTEGER, INTENT(IN) :: its, itf, kts, kte
+         INTEGER, INTENT(IN) :: ierr(its:itf), klcl(its:itf)
+         REAL, INTENT(IN)    :: z_cup(its:itf,kts:kte), z1(its:itf)
+         REAL, INTENT(IN)    :: omeg(its:itf,kts:kte,1), rho(its:itf,kts:kte)
+         REAL, INTENT(IN)    :: dx(its:itf)
+         REAL, INTENT(OUT)   :: Tpert(its:itf,kts:kte)
+
+         ! Local variables
+         INTEGER :: i, k
+         REAL :: wkf, ckf, dzlcl, wkflcl
+
+         ! Named constants for Kain-Fritsch dynamic trigger
+         REAL, PARAMETER :: KF_W_BASE = 0.02              ! Base vertical velocity scale [m/s]
+         REAL, PARAMETER :: KF_LCL_DEPTH_THRESHOLD = 2.0e3 ! LCL depth threshold [m]
+         REAL, PARAMETER :: KF_GRID_THRESHOLD = 25.0e3    ! Grid resolution threshold [m]
+         REAL, PARAMETER :: KF_W_EXPONENT = 0.3333        ! 1/3 power law for convective scaling
+         REAL, PARAMETER :: KF_W_COEFF = 4.64             ! Coefficient for w -> T conversion
+         REAL, PARAMETER :: KF_TPERT_MIN = -2.0           ! Minimum temperature perturbation [K]
+         REAL, PARAMETER :: KF_TPERT_MAX = 2.0            ! Maximum temperature perturbation [K]
+         REAL, PARAMETER :: KF_OMEGA_LEVELS = 3.0         ! Number of levels for omega averaging
+
+         wkf = KF_W_BASE
+
+         do i = its, itf
+            if(ierr(i) /= 0) cycle
+
+            k = klcl(i)
+            dzlcl = z_cup(i,k) - z1(i)
+
+            ! Adjust damping coefficient based on LCL height
+            ckf = MERGE(wkf * (dzlcl / KF_LCL_DEPTH_THRESHOLD), wkf, dzlcl <= KF_LCL_DEPTH_THRESHOLD)
+
+            ! Compute vertical velocity at LCL from omega (3-level average)
+            wkflcl = -(omeg(i, max(kts,k-1), 1) / rho(i, max(k-1,kts)) + &
+                       omeg(i, k, 1)            / rho(i, k)            + &
+                       omeg(i, k+1, 1)          / rho(i, k+1)) / (KF_OMEGA_LEVELS * g)
+
+            ! Apply grid-resolution scaling and damping
+            if(dx(i) >= KF_GRID_THRESHOLD) then
+               wkflcl = wkflcl * (dx(i) / KF_GRID_THRESHOLD) - ckf
+            else
+               wkflcl = wkflcl - ckf
+            endif
+
+            ! Convert vertical velocity to temperature perturbation (cube root scaling)
+            ! Positive (negative) w gives positive (negative) T perturbation
+            Tpert(i,:) = max(KF_TPERT_MIN, min(KF_W_COEFF * wkflcl**KF_W_EXPONENT, KF_TPERT_MAX))
+         enddo
+
+      END SUBROUTINE compute_dynamic_temperature_perturbation_kf2004
 
       !--------------------------------------------------------------------------
       ! Helper: Compute diurnal cycle closure (aa1_bl) for various formulations
