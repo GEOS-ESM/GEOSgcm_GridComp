@@ -3590,34 +3590,19 @@ CONTAINS
         pw,ccn,pwev,edtmax,edtmin,maxens2,edtc,psum2,psumh,    &
         rho,aeroevap,itf,ktf,ipr,jpr,its,ite, kts,kte )
 
-      character *(*),        intent (in )  :: cumulus
-      integer  ,intent (in  )             ::                           &
-           ipr,jpr,aeroevap,itf,ktf,its,ite, kts,kte
-      integer, intent (in   )              :: maxens2
+      character*(*), intent(in) :: cumulus
+      integer, intent(in) :: ipr, jpr, aeroevap, itf, ktf, its, ite, kts, kte
+      integer, intent(in) :: maxens2
       !
       ! ierr error value, maybe modified in this routine
       !
-      real,    dimension (kts:kte,its:ite)                                &
-           ,intent (in   )                   ::                           &
-           ccn  
-      real,    dimension (its:ite,kts:kte)                                &
-           ,intent (in   )                   ::                           &
-           rho,us,vs,z,p,pw
-      real,    dimension (its:ite)                                      &
-           ,intent (in   )                   ::                           &
-           pwav,pwev,psum2,psumh,edtmax,edtmin
-      integer, dimension (its:ite)                                      &
-           ,intent (in   )                   ::                           &
-           ktop,kbcon
-      integer, dimension (its:ite)                                      &
-           ,intent (inout)                   ::                           &
-           ierr
-      real,    dimension (its:ite,1:maxens2)                            &
-           ,intent (out  )                   ::                           &
-           edtc
-      real,    dimension (its:ite)                                      &
-           ,intent (out  )                   ::                           &
-           edt
+      real, dimension(kts:kte,its:ite), intent(in) :: ccn
+      real, dimension(its:ite,kts:kte), intent(in) :: rho, us, vs, z, p, pw
+      real, dimension(its:ite), intent(in) :: pwav, pwev, psum2, psumh, edtmax, edtmin
+      integer, dimension(its:ite), intent(in) :: ktop, kbcon
+      integer, dimension(its:ite), intent(inout) :: ierr
+      real, dimension(its:ite,1:maxens2), intent(out) :: edtc
+      real, dimension(its:ite), intent(out) :: edt
       !
       !  local variables in this routine
       !
@@ -3728,21 +3713,13 @@ CONTAINS
       ! entr = entrainment rate
       ! cdd  = detrainment function
       !
-      real,    dimension (its:ite) ,intent (in  )          ::           &
-           t_wetbulb,q_wetbulb, pwavo
-      real,    dimension (its:ite,kts:kte) ,intent (in   ) ::           &
-           zd,t_cup,hes_cup,hcd,qes_cup,q_cup,z_cup,                      &
-           dd_massentr,dd_massdetr,gamma_cup,q,he,qco
-      integer  ,intent (in   )                             ::           &
-           iloop
-      integer, dimension (its:ite) ,intent (in   )         ::           &
-           jmin
-      integer, dimension (its:ite) ,intent (inout)         ::           &
-           ierr
-      real,    dimension (its:ite,kts:kte) ,intent (out  ) ::           &
-           qcd,qrcd,pwd
-      real,    dimension (its:ite) ,intent (out  )         ::           &
-           pwev,bu
+      real, dimension(its:ite), intent(in) :: t_wetbulb, q_wetbulb, pwavo
+      real, dimension(its:ite,kts:kte), intent(in) :: zd, t_cup, hes_cup, hcd, qes_cup, q_cup, z_cup, dd_massentr, dd_massdetr, gamma_cup, q, he, qco
+      integer, intent(in) :: iloop
+      integer, dimension(its:ite), intent(in) :: jmin
+      integer, dimension(its:ite), intent(inout) :: ierr
+      real, dimension(its:ite,kts:kte), intent(out) :: qcd, qrcd, pwd
+      real, dimension(its:ite), intent(out) :: pwev, bu
       character*128 :: ierrc(its:ite)
       !
       !  local variables in this routine
@@ -3881,24 +3858,12 @@ CONTAINS
       ! z1          = terrain elevation
       !
       !
-      real,    dimension (its:ite,kts:kte)                              &
-           ,intent (in   )                   ::                           &
-           p,t,q
-      real,    dimension (its:ite,kts:kte)                              &
-           ,intent (out  )                   ::                           &
-           he,hes,qes
-      real,    dimension (its:ite,kts:kte)                              &
-           ,intent (inout)                   ::                           &
-           z
-      real,    dimension (its:ite)                                      &
-           ,intent (in   )                   ::                           &
-           psur,z1
-      integer, dimension (its:ite)                                      &
-           ,intent (inout)                   ::                           &
-           ierr
-      integer                                                           &
-           ,intent (in   )                   ::                           &
-           itest
+      real, dimension(its:ite,kts:kte), intent(in) :: p, t, q
+      real, dimension(its:ite,kts:kte), intent(out) :: he, hes, qes
+      real, dimension(its:ite,kts:kte), intent(inout) :: z
+      real, dimension(its:ite), intent(in) :: psur, z1
+      integer, dimension(its:ite), intent(inout) :: ierr
+      integer, intent(in) :: itest
       !
       !  local variables in this routine
       !
@@ -4023,18 +3988,10 @@ CONTAINS
       ! z1          = terrain elevation
       !
       !
-      real,    dimension (its:ite,kts:kte)                              &
-           ,intent (in   )                   ::                           &
-           qes,q,he,hes,z,p,t,us, vs
-      real,    dimension (its:ite,kts:kte)                              &
-           ,intent (out  )                   ::                           &
-           qes_cup,q_cup,he_cup,hes_cup,z_cup,p_cup,gamma_cup,t_cup,u_cup,v_cup
-      real,    dimension (its:ite)                                      &
-           ,intent (in   )                   ::                           &
-           psur,z1,tsur
-      integer, dimension (its:ite)                                      &
-           ,intent (inout)                   ::                           &
-           ierr
+      real, dimension(its:ite,kts:kte), intent(in) :: qes, q, he, hes, z, p, t, us, vs
+      real, dimension(its:ite,kts:kte), intent(out) :: qes_cup, q_cup, he_cup, hes_cup, z_cup, p_cup, gamma_cup, t_cup, u_cup, v_cup
+      real, dimension(its:ite), intent(in) :: psur, z1, tsur
+      integer, dimension(its:ite), intent(inout) :: ierr
       !
       !  local variables in this routine
       !
@@ -4337,27 +4294,16 @@ CONTAINS
 
       ! only local dimensions are need as of now in this routine
 
-      integer                                                           &
-           ,intent (in   )                   ::                           &
-           itf,ktf,                                    &
-           its,ite, kts,kte
+      integer, intent(in) :: itf, ktf, its, ite, kts, kte
       ! array input array
       ! x output array with return values
       ! kt output array of levels
       ! ks,kend  check-range
-      real,    dimension (its:ite,kts:kte)                              &
-           ,intent (in   )                   ::                           &
-           array
-      integer, dimension (its:ite)                                      &
-           ,intent (in   )                   ::                           &
-           ierr,ks,kend
-      integer, dimension (its:ite)                                      &
-           ,intent (out  )                   ::                           &
-           kt
-      real,    dimension (its:ite)         ::                           &
-           x
-      integer                              ::                           &
-           i,k,kstop
+      real, dimension(its:ite,kts:kte), intent(in) :: array
+      integer, dimension(its:ite), intent(in) :: ierr, ks, kend
+      integer, dimension(its:ite), intent(out) :: kt
+      real, dimension(its:ite) :: x
+      integer :: i, k, kstop
 
       DO i=its,itf
          KT(I)=KS(I)
@@ -6074,16 +6020,12 @@ CONTAINS
       ! qo_cup = environ water vapor mixing ratio on model cloud levels
       ! qrco   = in-cloud liquid water mixing ratio on model cloud levels
 
-      real,    dimension (its:ite,kts:kte) ,intent (in   )    ::       &
-           z,zu,gamma_cup,t_cup,dby,tempco,qco,qrco, qo_cup
-      integer, dimension (its:ite)         ,intent (in   )    ::       &
-           k22,kbcon,ktop
+      real, dimension(its:ite,kts:kte), intent(in) :: z, zu, gamma_cup, t_cup, dby, tempco, qco, qrco, qo_cup
+      integer, dimension(its:ite), intent(in) :: k22, kbcon, ktop
       !
       ! input and output
-      integer, dimension (its:ite)         ,intent (inout)    ::       &
-           ierr
-      real,    dimension (its:ite)         ,intent (out  )    ::       &
-           aa0
+      integer, dimension(its:ite), intent(inout) :: ierr
+      real, dimension(its:ite), intent(out) :: aa0
       !
       !  local variables in this routine
       integer       ::   i,k
