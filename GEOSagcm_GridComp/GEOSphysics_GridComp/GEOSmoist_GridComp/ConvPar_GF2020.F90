@@ -1623,18 +1623,17 @@ CONTAINS
       REAL,    DIMENSION(its:ite,kts:kte), INTENT(INOUT) :: zuo, zdo, pwo, pwdo, qrco, tup, clfrac
 
       !- Local Variables (Work Arrays & Scalars)
-      LOGICAL :: keep_going
       CHARACTER*128 :: ierrc(its:ite)
       CHARACTER(LEN=2) :: cty
 
       !- Reals (1D Arrays)
       REAL, DIMENSION(its:ite,1:maxens2) :: edtc
       REAL, DIMENSION(its:ite,1:ensdim)  :: xf_ens, pr_ens
-      REAL, DIMENSION(its:ite) :: edt, edtx, aa1, aa0, xaa0, hkb, hkbo, xhkb, qkb, pwevo, bu, bud, cap_max, cap_max_increment
-      REAL, DIMENSION(its:ite) :: psum, psumh, sigd, mconv, aa0_bl, aa1_bl, tau_bl, tau_ecmwf, wmean, aa1_fa, aa1_tmp, hkbo_x
-      REAL, DIMENSION(its:ite) :: aa2, aa3, cin0, cin1, edtmax, edtmin, aa1_lift, aa_tmp, aa_ini, aa_adv, daa_adv_dt
-      REAL, DIMENSION(its:ite) :: xaa0_x, xk_x, xf_dicycle, mbdt, vvel1d, x_add_buoy, lambau_dn, lambau_dp
-      REAL, DIMENSION(its:ite) :: q_wetbulb, t_wetbulb, p_cwv_ave, cape, depth_neg_buoy, frh_bcon, check_sig, random
+      REAL, DIMENSION(its:ite) :: edt, aa1, aa0, xaa0, hkb, hkbo, pwevo, bu, bud, cap_max, cap_max_increment
+      REAL, DIMENSION(its:ite) :: psum, psumh, sigd, mconv, aa0_bl, aa1_bl, tau_bl, tau_ecmwf, wmean, aa1_fa, hkbo_x
+      REAL, DIMENSION(its:ite) :: aa2, aa3, cin0, cin1, edtmax, edtmin, aa_tmp, aa_ini, aa_adv, daa_adv_dt
+      REAL, DIMENSION(its:ite) :: xk_x, xf_dicycle, mbdt, vvel1d, x_add_buoy, lambau_dn, lambau_dp
+      REAL, DIMENSION(its:ite) :: q_wetbulb, t_wetbulb, p_cwv_ave, cape, depth_neg_buoy, frh_bcon, random
 
       !- Reals (2D Arrays)
       REAL, DIMENSION(its:ite,kts:kte) :: mentrd_rate, he, hes, qes, z, heo, heso, qeso, zo, zu, zd, xhe, xhes, xqes, xz, xt, xq
@@ -1650,13 +1649,13 @@ CONTAINS
       REAL, DIMENSION(its:ite,kts:kte) :: xhe_x, xhes_x, xt_x, xq_x, xqes_x, xqes_cup_x, xq_cup_x, xhe_cup_x, xhes_cup_x, gamma_cup_x, xt_cup_x
       REAL, DIMENSION(its:ite,kts:kte) :: dtempdz, tempco, tempcdo, p_liq_ice, melting_layer, melting, c1d
       REAL, DIMENSION(its:ite,kts:kte) :: up_massentru, up_massdetru, dd_massentru, dd_massdetru, prec_flx, evap_flx, qrr
-      REAL, DIMENSION(its:ite,kts:kte) :: massflx, zenv, rho_hydr, alpha_H, alpha_Q
+      REAL, DIMENSION(its:ite,kts:kte) :: massflx, zenv, rho_hydr
       REAL, DIMENSION(its:ite,kts:kte) :: dtdt, dqdt
 
       !- Reals (3D Arrays / specific dimensions)
       REAL, DIMENSION(its:ite,1:maxens3) :: xff_mid
       REAL, DIMENSION(its:ite,9)         :: xff_shal
-      REAL, DIMENSION(kts:kte)           :: dummy1, dummy2, aa, bb, cc, ddu, ddv, ddh, ddq, fp, fm
+      REAL, DIMENSION(kts:kte)           :: aa, bb, cc, ddu, ddv, fp, fm
       REAL, DIMENSION(nmp,kts:kte)       :: dd
       REAL, DIMENSION(kts:kte,8)         :: tend2d
       REAL, DIMENSION(8)                 :: tend1d
@@ -1665,19 +1664,19 @@ CONTAINS
       INTEGER, DIMENSION(its:ite) :: kzdown, kdet, kb, ierr2, ierr3, kbmax, start_level
       INTEGER, DIMENSION(its:ite,kts:kte) :: k_inv_layers
       INTEGER :: iloop, nall, iedt, nens, nens3, ki, I, K, KK, iresult, nvar, nvarbegin
-      INTEGER :: jprnt, k1, k2, kbegzu, kdefi, kfinalzu, kstart, jmini, imid, k_free_trop
+      INTEGER :: k1, kstart, jmini, k_free_trop
       INTEGER :: iversion, bl=1, fa=2, step, start_k22, ipr=0, jpr=0, fase, i_wb=0, status, ispc, kmp, istep, lstep
 
       !- Local Reals (Scalars)
-      REAL :: day, dz, dzo, radius, entrd_rate, zktop
+      REAL :: dz, dzo, entrd_rate, zktop
       REAL :: z_cloud_top_min, z_cloud_top_max, zcutdown, depth_min, zkbmax, z_detr
-      REAL :: massfld, dh, trash, frh, rh_fac, z_fac, xlamdd, radiusd, frhd, effec_entrain
+      REAL :: massfld, dh, trash, frh, rh_fac, z_fac, xlamdd
       REAL :: detdo1, detdo2, entdo, dp, subin, detdo, entup, detup, subdown, entdoj, entupk, detupk, totmas
-      REAL :: tot_time_hr, beta, wmeanx, env_mf, env_mf_p, env_mf_m, dts, denom, denomU, umean, T_star
-      REAL :: C_up, E_dn, G_rain, trash2, pgc, bl2dp, trash3, dsubh_aver, dellah_aver, x_add, cap_max_inc
-      REAL :: tlll, plll, rlll, tlcl, plcl, dzlcl, zlll
-      REAL :: s1, s2, q1, q2, rzenv, factor, CWV, entr_threshold, resten_H, resten_Q, resten_T
-      REAL :: w_eff, tau_0, tau_1, alp0, beta1, beta2, dp_p, dp_m, delt1, delt2, delt_Tvv, wkf, ckf, wkflcl, rcount
+      REAL :: beta, env_mf, env_mf_p, env_mf_m, dts, denom, denomU, umean, T_star
+      REAL :: C_up, E_dn, G_rain, trash2, pgc, x_add, cap_max_inc
+      REAL :: tlll, plll, rlll, dzlcl, zlll
+      REAL :: q1, factor, CWV, entr_threshold, resten_H, resten_Q, resten_T
+      REAL :: w_eff, tau_0, tau_1, alp0, beta1, beta2, wkf, ckf, wkflcl, rcount
 
       !- Local Composition (Tracers)
       REAL, DIMENSION(mtp,its:ite,kts:kte) :: se_cup_chem, sc_up_chem, sc_dn_chem, pw_up_chem, pw_dn_chem
