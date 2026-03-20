@@ -2588,72 +2588,31 @@ CONTAINS
       ! 8. GRID-SCALE FEEDBACKS & CHEMISTRY TRANSPORT
       !=============================================================================
 
-      call ke_to_heating(itf, ktf, its, ite, kts, kte, ktop, ierr, po_cup, us, vs, dellu, dellv, dellat)
-
-      call cup_output_ens_3d(cumulus, xff_shal, xff_mid, xf_ens, ierr, dellat, dellaq, dellaqc, outt, outq, outqc, zuo, pre, pwo_eff, xmb, ktop, &
-           maxens2, maxens, ierr2, ierr3, pr_ens, maxens3, ensdim, sig, cnvfrc, ichoice, ipr, jpr, itf, ktf, its, ite, kts, kte, &
-           xf_dicycle, outu, outv, dellu, dellv, dtime, po_cup, kbcon, dellabuoy, outbuoy, &
-           dellampqi, outmpqi, dellampql, outmpql, dellampcf, outmpcf, nmp)
-
-      IF(USE_REBCB) THEN
-         call rain_evap_below_cloudbase(cumulus, itf, ktf, its, ite, kts, kte, ierr, kbcon, ktop, xmb, psur, xland, qo_cup, t_cup, &
-              po_cup, qes_cup, pwavo, edto, pwevo, pwo, pwdo, pre, prec_flx, evap_flx, outt, outq, outbuoy, evap_bcb)
-      ELSE
-         call get_precip_fluxes(cumulus, klcl, kbcon, ktop, k22, ierr, xland, pre, xmb, pwo, pwavo, edto, pwevo, pwdo, t_cup, tempco, &
-              prec_flx, evap_flx, itf, ktf, its, ite, kts, kte)
-      ENDIF
-
-      do i = its, itf                    
-         if(ierr(i) /= 0) cycle
-         do k = kts, ktop(i)
-            dp = MBAR_TO_PA * (po_cup(i,k) - po_cup(i,k+1))
-            revsu_gf(i,k) = revsu_gf(i,k) + evap_flx(i,k) * g / dp
-         enddo
-      enddo
-
-      IF(LIGHTNING_DIAG .and. trim(cumulus) == 'deep') THEN
-         call cup_up_cape(cape, z, zu, dby, gamma_cup, t_cup, k22, kbcon, ktop, ierr, tempco, qco, qrco, qo_cup, itf, ktf, its, ite, kts, kte)
-         call cup_up_lightning(itf, ktf, its, ite, kts, kte, ierr, kbcon, ktop, xland, cape, cnvfrc, srftype, zo, zo_cup, t_cup, t, tempco, qrco, po_cup, rho, prec_flx, lightn_dens)
-      ENDIF
-
-      IF(trim(cumulus) == 'deep') THEN
-         do i = its, itf
-            if(ierr(i) /= 0) cycle
-            prfil_gf(i, kts:ktop(i)+1) = prec_flx(i, kts:ktop(i)+1)
-         enddo
-      ENDIF
-
-      do i = its, itf
-         if(ierr(i) /= 0) cycle
-         do k = kts, ktf
-            tup(i,k) = (1./cp) * (hco(i,k) - g * zo_cup(i,k) - xlv * qco(i,k))
-         enddo
-      enddo
-
-      do i = its, itf
-         subten_Q(i,:) = xmb(i) * subten_Q(i,:)
-         subten_H(i,:) = xmb(i) * subten_H(i,:)
-         subten_T(i,:) = xmb(i) * subten_T(i,:)
-      enddo
-
-      IF(OUTPUT_SOUND) THEN
-         call SOUND(2, cumulus, int_time, dtime, ens4, itf, ktf, its, ite, kts, kte, xlats, xlons, jcol, whoami_all, &
-              z, qes, he, hes, t, q, po, z1, psur, zo, qeso, heo, heso, tn, qo, us, vs, omeg, xz, &
-              h_sfc_flux, le_sfc_flux, tsur, dx, stochastic_sig, zws, ztexec, zqexec, xland, &
-              kpbl, k22, klcl, kbcon, ktop, aa0, aa1, sig, xaa0, hkb, xmb, pre, edto, &
-              zo_cup, dhdt, rho, zuo, zdo, up_massentro, up_massdetro, outt, outq, outqc, outu, outv)
-      ENDIF
-
-      IF(trim(cumulus) == 'deep') THEN
-         do i = its, itf
-            AA1_(i) = MERGE(AA1(i), 0.0, ierr(i) == 0)
-            AA0_(i) = MERGE(AA0(i), 0.0, ierr(i) == 0)
-         enddo
-      ENDIF
-
-      IF(LIQ_ICE_NUMBER_CONC == 1) THEN
-         call get_liq_ice_number_conc(itf, ktf, its, ite, kts, kte, ierr, ktop, cnvfrc, srftype, dtime, rho, outqc, tempco, outnliq, outnice)
-      ENDIF
+      !-- 8.0 Basic grid-scale feedbacks and diagnostics
+      call apply_basic_grid_scale_feedbacks(cumulus, its, ite, itf, kts, kte, ktf, nmp, &
+           ierr, ktop, kbcon, k22, klcl, &
+           ichoice, ipr, jpr, ensdim, maxens, maxens2, maxens3, &
+           dtime, &
+           xff_shal, xff_mid, xf_ens, xf_dicycle, pr_ens, ierr2, ierr3, sig, &
+           po_cup, us, vs, dellu, dellv, dellat, &
+           dellaq, dellaqc, dellabuoy, &
+           dellampqi, dellampql, dellampcf, &
+           outt, outq, outqc, outu, outv, outbuoy, &
+           outmpqi, outmpql, outmpcf, &
+           zuo, zdo, pwo, pwdo, pwavo, pwevo, pre, pwo_eff, xmb, edto, &
+           up_massentro, up_massdetro, &
+           xland, psur, qo_cup, t_cup, qes_cup, tempco, &
+           prec_flx, evap_flx, evap_bcb, revsu_gf, &
+           cape, z, zu, dby, gamma_cup, qco, qrco, &
+           srftype, zo, zo_cup, t, rho, cnvfrc, lightn_dens, &
+           prfil_gf, hco, tup, cp, xlv, g, &
+           subten_Q, subten_H, subten_T, &
+           int_time, ens4, xlats, xlons, jcol, whoami_all, &
+           qes, he, hes, q, po, z1, tsur, dx, stochastic_sig, zws, ztexec, zqexec, &
+           kpbl, aa0, aa1, xaa0, hkb, dhdt, omeg, xz, qeso, heo, heso, tn, qo, &
+           h_sfc_flux, le_sfc_flux, &
+           AA0_, AA1_, &
+           outnliq, outnice)
 
       !-----------------------------------------------------------------------------
       ! 8.1 Atmospheric Composition / Tracer Transport
@@ -4051,6 +4010,192 @@ CONTAINS
          ENDIF
 
       END SUBROUTINE compute_diurnal_cycle_closure
+
+      !--------------------------------------------------------------------------
+      ! Helper: Apply basic grid-scale feedbacks and diagnostics
+      !--------------------------------------------------------------------------
+      ! This subroutine handles fundamental grid-scale feedback computations:
+      !   - Kinetic energy conversion to heating from momentum transport dissipation
+      !   - Ensemble output averaging with mass flux weighting
+      !   - Rain evaporation below cloud base or precipitation flux profiles
+      !   - Accumulation of rain evaporation/subsidence tendency
+      !   - Lightning density diagnostics for deep convection
+      !   - Precipitation flux profile storage for deep convection
+      !   - In-cloud temperature computation from moist static energy
+      !   - Subgrid tendency scaling by mass flux
+      !   - SOUND detailed diagnostic output
+      !   - Available energy (AA0, AA1) storage for deep convection
+      !   - Liquid/ice cloud droplet number concentration
+      !
+      ! Physics:
+      !   Converts momentum transport to heating via frictional dissipation,
+      !   computes rain evaporation below cloud base for realistic surface
+      !   precipitation, diagnoses lightning from CAPE and updraft strength,
+      !   and optionally computes cloud droplet number concentrations for
+      !   aerosol-cloud interaction studies.
+      !--------------------------------------------------------------------------
+      SUBROUTINE apply_basic_grid_scale_feedbacks(cumulus, its, ite, itf, kts, kte, ktf, nmp, &
+           ierr, ktop, kbcon, k22, klcl, &
+           ichoice, ipr, jpr, ensdim, maxens, maxens2, maxens3, &
+           dtime, &
+           xff_shal, xff_mid, xf_ens, xf_dicycle, pr_ens, ierr2, ierr3, sig, &
+           po_cup, us, vs, dellu, dellv, dellat, &
+           dellaq, dellaqc, dellabuoy, &
+           dellampqi, dellampql, dellampcf, &
+           outt, outq, outqc, outu, outv, outbuoy, &
+           outmpqi, outmpql, outmpcf, &
+           zuo, zdo, pwo, pwdo, pwavo, pwevo, pre, pwo_eff, xmb, edto, &
+           up_massentro, up_massdetro, &
+           xland, psur, qo_cup, t_cup, qes_cup, tempco, &
+           prec_flx, evap_flx, evap_bcb, revsu_gf, &
+           cape, z, zu, dby, gamma_cup, qco, qrco, &
+           srftype, zo, zo_cup, t, rho, cnvfrc, lightn_dens, &
+           prfil_gf, hco, tup, cp, xlv, g, &
+           subten_Q, subten_H, subten_T, &
+           int_time, ens4, xlats, xlons, jcol, whoami_all, &
+           qes, he, hes, q, po, z1, tsur, dx, stochastic_sig, zws, ztexec, zqexec, &
+           kpbl, aa0, aa1, xaa0, hkb, dhdt, omeg, xz, qeso, heo, heso, tn, qo, &
+           h_sfc_flux, le_sfc_flux, &
+           AA0_, AA1_, &
+           outnliq, outnice)
+         CHARACTER(LEN=*), INTENT(IN) :: cumulus
+         INTEGER, INTENT(IN) :: its, ite, itf, kts, kte, ktf, nmp
+         INTEGER, INTENT(IN) :: ierr(its:itf), ktop(its:itf), kbcon(its:itf), k22(its:itf), klcl(its:itf)
+         INTEGER, INTENT(IN) :: ichoice, ipr, jpr, ensdim, maxens, maxens2, maxens3
+         REAL, INTENT(IN) :: dtime
+         REAL, INTENT(IN) :: xff_shal(its:itf,ensdim), xff_mid(its:itf,ensdim), xf_ens(its:itf,ensdim)
+         REAL, INTENT(IN) :: xf_dicycle(its:itf,ensdim), pr_ens(its:itf,ensdim)
+         INTEGER, INTENT(IN) :: ierr2(its:itf), ierr3(its:itf)
+         REAL, INTENT(IN) :: sig(its:itf)
+         REAL, INTENT(IN) :: po_cup(its:itf,kts:kte), us(its:itf,kts:kte), vs(its:itf,kts:kte)
+         REAL, INTENT(INOUT) :: dellu(its:itf,kts:kte), dellv(its:itf,kts:kte), dellat(its:itf,kts:kte)
+         REAL, INTENT(INOUT) :: dellaq(its:itf,kts:kte), dellaqc(its:itf,kts:kte), dellabuoy(its:itf,kts:kte)
+         REAL, INTENT(INOUT) :: dellampqi(nmp,its:itf,kts:kte), dellampql(nmp,its:itf,kts:kte)
+         REAL, INTENT(INOUT) :: dellampcf(nmp,its:itf,kts:kte)
+         REAL, INTENT(INOUT) :: outt(its:itf,kts:kte), outq(its:itf,kts:kte), outqc(its:itf,kts:kte)
+         REAL, INTENT(INOUT) :: outu(its:itf,kts:kte), outv(its:itf,kts:kte), outbuoy(its:itf,kts:kte)
+         REAL, INTENT(INOUT) :: outmpqi(nmp,its:itf,kts:kte), outmpql(nmp,its:itf,kts:kte)
+         REAL, INTENT(INOUT) :: outmpcf(nmp,its:itf,kts:kte)
+         REAL, INTENT(IN) :: zuo(its:itf,kts:kte), zdo(its:itf,kts:kte)
+         REAL, INTENT(IN) :: pwo(its:itf,kts:kte), pwdo(its:itf,kts:kte)
+         REAL, INTENT(IN) :: pwavo(its:itf), pwevo(its:itf)
+         REAL, INTENT(IN) :: pre(its:itf), pwo_eff(its:itf), xmb(its:itf), edto(its:itf)
+         REAL, INTENT(IN) :: up_massentro(its:itf,kts:kte), up_massdetro(its:itf,kts:kte)
+         REAL, INTENT(IN) :: xland(its:itf), psur(its:itf)
+         REAL, INTENT(IN) :: qo_cup(its:itf,kts:kte), t_cup(its:itf,kts:kte), qes_cup(its:itf,kts:kte)
+         REAL, INTENT(IN) :: tempco(its:itf,kts:kte)
+         REAL, INTENT(INOUT) :: prec_flx(its:itf,kts:kte), evap_flx(its:itf,kts:kte)
+         REAL, INTENT(INOUT) :: evap_bcb(its:itf,kts:kte), revsu_gf(its:itf,kts:kte)
+         REAL, INTENT(INOUT) :: cape(its:itf)
+         REAL, INTENT(IN) :: z(its:itf,kts:kte), zu(its:itf,kts:kte), dby(its:itf,kts:kte)
+         REAL, INTENT(IN) :: gamma_cup(its:itf,kts:kte), qco(its:itf,kts:kte), qrco(its:itf,kts:kte)
+         REAL, INTENT(IN) :: srftype(its:itf), zo(its:itf,kts:kte), zo_cup(its:itf,kts:kte)
+         REAL, INTENT(IN) :: t(its:itf,kts:kte), rho(its:itf,kts:kte)
+         REAL, INTENT(IN) :: cnvfrc(its:itf)
+         REAL, INTENT(INOUT) :: lightn_dens(its:itf)
+         REAL, INTENT(INOUT) :: prfil_gf(its:itf,kts:kte)
+         REAL, INTENT(IN) :: hco(its:itf,kts:kte)
+         REAL, INTENT(OUT) :: tup(its:itf,kts:kte)
+         REAL, INTENT(IN) :: cp, xlv, g
+         REAL, INTENT(INOUT) :: subten_Q(its:itf,kts:kte), subten_H(its:itf,kts:kte), subten_T(its:itf,kts:kte)
+         INTEGER, INTENT(IN) :: int_time, ens4, jcol, whoami_all
+         REAL, INTENT(IN) :: xlats(its:itf), xlons(its:itf)
+         REAL, INTENT(IN) :: qes(its:itf,kts:kte), he(its:itf,kts:kte), hes(its:itf,kts:kte)
+         REAL, INTENT(IN) :: q(its:itf,kts:kte), po(its:itf,kts:kte)
+         REAL, INTENT(IN) :: z1, tsur(its:itf), dx, stochastic_sig, zws(its:itf)
+         REAL, INTENT(IN) :: ztexec(its:itf), zqexec(its:itf)
+         INTEGER, INTENT(IN) :: kpbl(its:itf)
+         REAL, INTENT(IN) :: aa0(its:itf), aa1(its:itf), xaa0(its:itf), hkb(its:itf)
+         REAL, INTENT(IN) :: dhdt(its:itf,kts:kte), omeg(its:itf,kts:kte), xz(its:itf,kts:kte)
+         REAL, INTENT(IN) :: qeso(its:itf,kts:kte), heo(its:itf,kts:kte), heso(its:itf,kts:kte)
+         REAL, INTENT(IN) :: tn(its:itf,kts:kte), qo(its:itf,kts:kte)
+         REAL, INTENT(IN) :: h_sfc_flux(its:itf), le_sfc_flux(its:itf)
+         REAL, INTENT(INOUT) :: AA0_(its:itf), AA1_(its:itf)
+         REAL, INTENT(INOUT) :: outnliq(its:itf,kts:kte), outnice(its:itf,kts:kte)
+         
+         ! Local variables
+         INTEGER :: i, k
+         REAL :: dp
+
+         ! Convert momentum transport to heating via dissipation
+         call ke_to_heating(itf, ktf, its, ite, kts, kte, ktop, ierr, po_cup, us, vs, dellu, dellv, dellat)
+
+         ! Average ensemble outputs and apply mass flux weighting
+         call cup_output_ens_3d(cumulus, xff_shal, xff_mid, xf_ens, ierr, dellat, dellaq, dellaqc, outt, outq, outqc, zuo, pre, pwo_eff, xmb, ktop, &
+              maxens2, maxens, ierr2, ierr3, pr_ens, maxens3, ensdim, sig, cnvfrc, ichoice, ipr, jpr, itf, ktf, its, ite, kts, kte, &
+              xf_dicycle, outu, outv, dellu, dellv, dtime, po_cup, kbcon, dellabuoy, outbuoy, &
+              dellampqi, outmpqi, dellampql, outmpql, dellampcf, outmpcf, nmp)
+
+         ! Compute rain evaporation below cloud base and precipitation fluxes
+         IF(USE_REBCB) THEN
+            call rain_evap_below_cloudbase(cumulus, itf, ktf, its, ite, kts, kte, ierr, kbcon, ktop, xmb, psur, xland, qo_cup, t_cup, &
+                 po_cup, qes_cup, pwavo, edto, pwevo, pwo, pwdo, pre, prec_flx, evap_flx, outt, outq, outbuoy, evap_bcb)
+         ELSE
+            call get_precip_fluxes(cumulus, klcl, kbcon, ktop, k22, ierr, xland, pre, xmb, pwo, pwavo, edto, pwevo, pwdo, t_cup, tempco, &
+                 prec_flx, evap_flx, itf, ktf, its, ite, kts, kte)
+         ENDIF
+
+         ! Accumulate rain evaporation/subsidence tendency
+         do i = its, itf                    
+            if(ierr(i) /= 0) cycle
+            do k = kts, ktop(i)
+               dp = MBAR_TO_PA * (po_cup(i,k) - po_cup(i,k+1))
+               revsu_gf(i,k) = revsu_gf(i,k) + evap_flx(i,k) * g / dp
+            enddo
+         enddo
+
+         ! Diagnose lightning density for deep convection
+         IF(LIGHTNING_DIAG .and. trim(cumulus) == 'deep') THEN
+            call cup_up_cape(cape, z, zu, dby, gamma_cup, t_cup, k22, kbcon, ktop, ierr, tempco, qco, qrco, qo_cup, itf, ktf, its, ite, kts, kte)
+            call cup_up_lightning(itf, ktf, its, ite, kts, kte, ierr, kbcon, ktop, xland, cape, cnvfrc, srftype, zo, zo_cup, t_cup, t, tempco, qrco, po_cup, rho, prec_flx, lightn_dens)
+         ENDIF
+
+         ! Store precipitation flux profile for deep convection
+         IF(trim(cumulus) == 'deep') THEN
+            do i = its, itf
+               if(ierr(i) /= 0) cycle
+               prfil_gf(i, kts:ktop(i)+1) = prec_flx(i, kts:ktop(i)+1)
+            enddo
+         ENDIF
+
+         ! Compute in-cloud temperature from moist static energy
+         do i = its, itf
+            if(ierr(i) /= 0) cycle
+            do k = kts, ktf
+               tup(i,k) = (1./cp) * (hco(i,k) - g * zo_cup(i,k) - xlv * qco(i,k))
+            enddo
+         enddo
+
+         ! Scale subgrid tendencies by mass flux
+         do i = its, itf
+            subten_Q(i,:) = xmb(i) * subten_Q(i,:)
+            subten_H(i,:) = xmb(i) * subten_H(i,:)
+            subten_T(i,:) = xmb(i) * subten_T(i,:)
+         enddo
+
+         ! Output detailed soundings for GATE diagnostics
+         IF(OUTPUT_SOUND) THEN
+            call SOUND(2, cumulus, int_time, dtime, ens4, itf, ktf, its, ite, kts, kte, xlats, xlons, jcol, whoami_all, &
+                 z, qes, he, hes, t, q, po, z1, psur, zo, qeso, heo, heso, tn, qo, us, vs, omeg, xz, &
+                 h_sfc_flux, le_sfc_flux, tsur, dx, stochastic_sig, zws, ztexec, zqexec, xland, &
+                 kpbl, k22, klcl, kbcon, ktop, aa0, aa1, sig, xaa0, hkb, xmb, pre, edto, &
+                 zo_cup, dhdt, rho, zuo, zdo, up_massentro, up_massdetro, outt, outq, outqc, outu, outv)
+         ENDIF
+
+         ! Save AA values for deep convection diagnostics
+         IF(trim(cumulus) == 'deep') THEN
+            do i = its, itf
+               AA1_(i) = MERGE(AA1(i), 0.0, ierr(i) == 0)
+               AA0_(i) = MERGE(AA0(i), 0.0, ierr(i) == 0)
+            enddo
+         ENDIF
+
+         ! Compute liquid/ice cloud droplet number concentration
+         IF(LIQ_ICE_NUMBER_CONC == 1) THEN
+            call get_liq_ice_number_conc(itf, ktf, its, ite, kts, kte, ierr, ktop, cnvfrc, srftype, dtime, rho, outqc, tempco, outnliq, outnice)
+         ENDIF
+
+      END SUBROUTINE apply_basic_grid_scale_feedbacks
 
    END SUBROUTINE CUP_gf
 
