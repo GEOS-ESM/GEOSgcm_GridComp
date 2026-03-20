@@ -16,7 +16,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020Cumu
 from pyMoist.convection.GF_2020.locals import GF2020Locals
 from pyMoist.convection.GF_2020.state import GF2020State
 from pyMoist.convection_tracers import ConvectionTracers
-from pyMoist.saturation_tables.qsat_functions import saturation_specific_humidity
+from pyMoist.saturation_tables.saturation_specific_humidity_functions import saturation_specific_humidity
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.saturation_tables.types import GlobalTable_saturation_tables
 
