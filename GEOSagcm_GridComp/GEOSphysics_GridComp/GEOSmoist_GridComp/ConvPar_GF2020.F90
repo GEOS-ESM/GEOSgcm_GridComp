@@ -19,20 +19,19 @@ MODULE ConvPar_GF2020
    IMPLICIT NONE
    PRIVATE
 
-   PUBLIC :: gf2020_interface, gf2020_before, gf2020_after, use_memory, convection_tracer, &
-        downdraft, use_rebcb, vert_discr, satur_calc, clev_grid, apply_sub_mp, &
-        sgs_w_timescale, lightning_diag, tau_ocea_cp, tau_land_cp, &
-        autoconv, overshoot, use_wetbulb, &
-        lambau_deep, lambau_shdn, &
+   !--- PUBLIC Interface Procedures
+   PUBLIC :: gf2020_interface, gf2020_before, gf2020_after
+
+   !--- PUBLIC Configuration Variables (set by GEOS_GF_InterfaceMod via MAPL_GetResource)
+   PUBLIC :: use_memory, convection_tracer, downdraft, use_rebcb, vert_discr, satur_calc, &
+        clev_grid, apply_sub_mp, sgs_w_timescale, lightning_diag, tau_ocea_cp, tau_land_cp, &
+        autoconv, overshoot, use_wetbulb, lambau_deep, lambau_shdn, &
         cum_min_edt_land, cum_min_edt_ocean, cum_max_edt_land, cum_max_edt_ocean, &
         cum_hei_down_land, cum_hei_down_ocean, cum_hei_updf_land, cum_hei_updf_ocean, &
-        cum_cap_maxs, use_momentum_transp, min_entr_rate, &
-        zero_diff_land, zero_diff_entr, zero_diff_vvel, &
-        nmp, lsmp, moist_trigger, frac_modis, max_tq_tend, &
-        cum_fadj_massflx, cum_use_excess, adv_trigger, &
-        evap_fix, output_sound, use_cloud_dissipation, &
-        use_smooth_tend, beta_sh, use_linear_subcl_mf, &
-        CUM_AVE_LAYER
+        cum_cap_maxs, use_momentum_transp, min_entr_rate, zero_diff_land, zero_diff_entr, &
+        zero_diff_vvel, moist_trigger, frac_modis, max_tq_tend, cum_fadj_massflx, &
+        cum_use_excess, adv_trigger, evap_fix, output_sound, use_smooth_tend, beta_sh, &
+        use_linear_subcl_mf, CUM_AVE_LAYER
 
    !=============================================================================
    ! 1. GENERAL SCHEME TOGGLES & NUMERICS
