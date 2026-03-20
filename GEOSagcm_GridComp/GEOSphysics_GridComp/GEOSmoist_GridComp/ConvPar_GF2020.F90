@@ -1426,101 +1426,45 @@ CONTAINS
    !---------------------------------------------------------------------------------------------------
 
    SUBROUTINE CUP_gf(its,ite,kts,kte ,itf,ktf, mtp, nmp &
-        ,cumulus           &
-        ,ichoice           &
-        ,entr_rate_plume   &
-        ,use_excess        &
-        ,cap_maxs          &
+        ,cumulus, ichoice, entr_rate_plume, use_excess, cap_maxs &
                                 !input data
-        ,dx                &
-        ,stochastic_sig    &
-        ,col_sat           &
-        ,dtime             &
-        ,kpbl              &
-        ,ztexec            &
-        ,zqexec            &
-        ,ccn_in            &
-        ,rho               &
-        ,omeg              &
-        ,t                 &
-        ,q                 &
-        ,z1                &
-        ,h_sfc_flux        &
-        ,le_sfc_flux       &
-        ,xlons             &
-        ,xlats             &
-        ,xland             &
-        ,cnvfrc            &
-        ,srftype           &
-        ,tn                &
-        ,qo                &
-        ,tn_bl             &
-        ,qo_bl             &
-        ,tn_adv            &
-        ,qo_adv            &
-        ,zo                &
-        ,po                &
-        ,tsur              &
-        ,psur              &
-        ,us                &
-        ,vs                &
-        ,dm2d              &
-        ,se_chem           &
-        ,zws               &
-        ,dhdt              &
-        ,buoy_exc          &
-        ,mpqi              &
-        ,mpql              &
-        ,mpcf              &
-        ,last_ierr         &
+        ,dx, stochastic_sig, col_sat, dtime, kpbl &
+        ,ztexec, zqexec, ccn_in, rho, omeg &
+        ,t, q, z1 &
+        ,h_sfc_flux, le_sfc_flux &
+        ,xlons, xlats, xland, cnvfrc, srftype &
+        ,tn, qo &
+        ,tn_bl, qo_bl &
+        ,tn_adv, qo_adv &
+        ,zo, po, tsur, psur &
+        ,us, vs &
+        ,dm2d, se_chem, zws, dhdt, buoy_exc &
+        ,mpqi, mpql, mpcf &
+        ,last_ierr &
                                 !output data
-        ,outt              &
-        ,outq              &
-        ,outqc             &
-        ,outu              &
-        ,outv              &
-        ,outnliq           &
-        ,outnice           &
-        ,outbuoy           &
-        ,outmpqi           &
-        ,outmpql           &
-        ,outmpcf           &
-        ,out_chem          &
+        ,outt, outq, outqc &
+        ,outu, outv &
+        ,outnliq, outnice &
+        ,outbuoy &
+        ,outmpqi, outmpql, outmpcf &
+        ,out_chem &
                                 !- for convective transport
-        ,ierr              &
-        ,jmin              &
-        ,klcl              &
-        ,k22               &
-        ,kbcon             &
-        ,ktop              &
-        ,kstabi            &
-        ,kstabm            &
-        ,pre               &
-        ,xmb               &
-        ,edto              &
-        ,pwavo             &
-        ,sig               &
-        ,po_cup            &
-        ,entr_rate         &
-        ,up_massentro      &
-        ,up_massdetro      &
-        ,dd_massentro      &
-        ,dd_massdetro      &
-        ,zuo               &
-        ,zdo               &
-        ,pwo               &
-        ,pwdo              &
-        ,qrco              &
-        ,tup               &
-        ,clfrac            &
+        ,ierr, jmin, klcl, k22, kbcon, ktop, kstabi, kstabm &
+        ,pre, xmb, edto, pwavo, sig &
+        ,po_cup &
+        ,entr_rate &
+        ,up_massentro, up_massdetro &
+        ,dd_massentro, dd_massdetro &
+        ,zuo, zdo &
+        ,pwo, pwdo &
+        ,qrco, tup, clfrac &
                                 !- for convective transport-end
                                 !- for debug/diag
-        ,vvel2d            &
-        ,AA0_,AA1_,AA2_,AA3_,AA1_BL_,AA1_CIN_,TAU_BL_,TAU_EC_   &
-        ,lightn_dens       &
-        ,revsu_gf          &
-        ,prfil_gf          &
-        ,Tpert             &
+        ,vvel2d &
+        ,AA0_,AA1_,AA2_,AA3_,AA1_BL_,AA1_CIN_,TAU_BL_,TAU_EC_ &
+        ,lightn_dens &
+        ,revsu_gf, prfil_gf &
+        ,Tpert &
         )
 
       !=============================================================================
