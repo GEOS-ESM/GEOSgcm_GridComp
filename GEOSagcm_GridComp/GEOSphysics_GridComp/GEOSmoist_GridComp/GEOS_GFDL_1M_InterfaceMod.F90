@@ -266,7 +266,7 @@ subroutine GFDL_1M_Initialize (MAPL, CF, IMPORT, EXPORT, RC)
 
     if (USE_PYMOIST_GFDL1M) then
       call MAPL_ConfigSetAttribute(CF, DT_MOIST, 'DSL__GFLD1M_DT:', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.GFDL1M_interface", MAPL, IMPORT, EXPORT )
+      call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.microphysics.GFDL1M_interface", MAPL, IMPORT, EXPORT )
     else
     call MAPL_GetResource( MAPL, SH_MD_DP        , 'SH_MD_DP:'        , DEFAULT= .TRUE., RC=STATUS); VERIFY_(STATUS)
 
@@ -395,7 +395,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     DT_MOIST = DT_R8
 
     if (USE_PYMOIST_GFDL1M) then
-      call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.GFDL1M_interface", MAPL, IMPORT, EXPORT, INTERNAL )
+      call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.microphysics.GFDL1M_interface", MAPL, IMPORT, EXPORT, INTERNAL )
     else
 
     call MAPL_GetPointer(INTERNAL, Q,        'Q'       , RC=STATUS); VERIFY_(STATUS)
@@ -1009,7 +1009,7 @@ subroutine GFDL_1M_Finalize(gc, import, export, rc)
 
 
   if (USE_PYMOIST_GFDL1M) then
-    call MAPL_pybridge_gcfinalize( "pyMoist.fortran.param_interfaces.GFDL1M_interface", MAPL, IMPORT, EXPORT )
+    call MAPL_pybridge_gcfinalize( "pyMoist.fortran.param_interfaces.microphysics.GFDL1M_interface", MAPL, IMPORT, EXPORT )
   endif
 
 end subroutine GFDL_1M_Finalize
