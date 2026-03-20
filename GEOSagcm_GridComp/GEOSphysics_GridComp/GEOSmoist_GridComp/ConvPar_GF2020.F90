@@ -1178,25 +1178,8 @@ CONTAINS
             use_excess     = cum_use_excess(plume)
 
             !-- Setup Temperature and Moisture Excess for trigger 
-            if(use_excess == 0) then
-               cum_ztexec(:) = 0.0; cum_zqexec(:) = 0.0
-            elseif(use_excess == 1) then
-               cum_ztexec(:) = ztexec(:); cum_zqexec(:) = zqexec(:)
-            elseif(use_excess == 2) then
-               do i = its, itf
-                  cum_zqexec(i) = max(1.e-4, zqexec(i))
-                  cum_ztexec(i) = max(0.2,   ztexec(i))
-               enddo
-            else
-               do i = its, itf
-                  if(xlandi(i) > 0.98) then 
-                     cum_zqexec(i) = min(5.e-4, max(1.e-4, zqexec(i)))
-                     cum_ztexec(i) = min(0.5,   max(0.2,   ztexec(i)))
-                  else                      
-                     cum_ztexec(i) = ztexec(i); cum_zqexec(i) = zqexec(i)
-                  endif
-               enddo
-            endif
+            call compute_subgrid_turbulent_excess(use_excess, xlandi, ztexec, zqexec, &
+                                                  cum_ztexec, cum_zqexec, its, itf)
 
             !-- Apply implicit PBL/radiation tendencies to thermodynamic profiles
             do i = its, itf
@@ -3412,6 +3395,67 @@ CONTAINS
          endif
 
       END SUBROUTINE apply_cold_pool_memory
+
+      !--------------------------------------------------------------------------
+      ! Helper: Compute sub-grid turbulent excess for convective triggering
+      !
+      ! This subroutine computes boundary-layer turbulent T/Q perturbations
+      ! that modify the convective triggering threshold. The excess values
+      ! represent sub-grid variability due to turbulent eddies near the surface.
+      !
+      ! Arguments:
+      !   use_excess  - Control flag (0=no excess, 1=use input, 2=enforce min, 3=clamp land)
+      !   xlandi      - Land fraction (0=ocean, 1=land)
+      !   ztexec      - Input temperature excess [K]
+      !   zqexec      - Input moisture excess [kg/kg]
+      !   cum_ztexec  - Output temperature excess [K]
+      !   cum_zqexec  - Output moisture excess [kg/kg]
+      !   its, itf    - Horizontal index bounds
+      !--------------------------------------------------------------------------
+      SUBROUTINE compute_subgrid_turbulent_excess(use_excess, xlandi, ztexec, zqexec, &
+                                                  cum_ztexec, cum_zqexec, its, itf)
+         INTEGER, INTENT(IN) :: use_excess, its, itf
+         REAL, INTENT(IN)    :: xlandi(its:itf), ztexec(its:itf), zqexec(its:itf)
+         REAL, INTENT(OUT)   :: cum_ztexec(its:itf), cum_zqexec(its:itf)
+
+         ! Local variables
+         INTEGER :: i
+
+         ! Named constants for excess perturbations
+         REAL, PARAMETER :: EXCESS_QV_MIN = 1.0e-4        ! Minimum moisture excess [kg/kg]
+         REAL, PARAMETER :: EXCESS_QV_MAX_LAND = 5.0e-4   ! Maximum moisture excess over land [kg/kg]
+         REAL, PARAMETER :: EXCESS_TEMP_MIN = 0.2         ! Minimum temperature excess [K]
+         REAL, PARAMETER :: EXCESS_TEMP_MAX_LAND = 0.5    ! Maximum temperature excess over land [K]
+         REAL, PARAMETER :: LAND_THRESHOLD = 0.98         ! Land fraction threshold for clamping
+
+         if(use_excess == 0) then
+            ! No excess perturbations
+            cum_ztexec(:) = 0.0
+            cum_zqexec(:) = 0.0
+         elseif(use_excess == 1) then
+            ! Use input excess values directly
+            cum_ztexec(:) = ztexec(:)
+            cum_zqexec(:) = zqexec(:)
+         elseif(use_excess == 2) then
+            ! Enforce minimum values
+            do i = its, itf
+               cum_zqexec(i) = max(EXCESS_QV_MIN, zqexec(i))
+               cum_ztexec(i) = max(EXCESS_TEMP_MIN, ztexec(i))
+            enddo
+         else
+            ! Clamp excess values over land, use input over ocean
+            do i = its, itf
+               if(xlandi(i) > LAND_THRESHOLD) then
+                  cum_zqexec(i) = min(EXCESS_QV_MAX_LAND, max(EXCESS_QV_MIN, zqexec(i)))
+                  cum_ztexec(i) = min(EXCESS_TEMP_MAX_LAND, max(EXCESS_TEMP_MIN, ztexec(i)))
+               else
+                  cum_ztexec(i) = ztexec(i)
+                  cum_zqexec(i) = zqexec(i)
+               endif
+            enddo
+         endif
+
+      END SUBROUTINE compute_subgrid_turbulent_excess
 
       !--------------------------------------------------------------------------
       ! Helper: Compute diurnal cycle closure (aa1_bl) for various formulations
