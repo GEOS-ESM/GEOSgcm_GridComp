@@ -2040,21 +2040,10 @@ CONTAINS
       !-----------------------------------------------------------------------------
       SELECT CASE(trim(cumulus))
       CASE('deep')
-         do i = its, itf
-            if(ierr(i) /= 0) cycle
-            if(zo_cup(i,ktop(i)) < z_cloud_top_min) then
-               ierr(i) = 12
-               ierrc(i) = 'deep convection with cloud top too low'
-            endif
-            if((zo_cup(i,ktop(i)) - zo_cup(i,kbcon(i))) < depth_min) then
-               ierr(i) = 15
-               ierrc(i) = 'physical depth too small for deep convection'
-            endif
-            if(last_ierr(i) == 0) then
-               ierr(i) = 16
-               ierrc(i) = 'prevented double-counting plumes'
-            endif
-         enddo
+         call validate_convective_cloud_geometry('deep', its, itf, kts, ktf, &
+               ierr, ierrc, last_ierr, zo_cup, ktop, kbcon, &
+               z_cloud_top_min, z_cloud_top_max, depth_min, &
+               12, 0, 15, 16)  ! err_top_low=12, err_top_high=0 (no check), err_depth=15, err_double=16
 
       CASE('mid')
          if(USE_INV_LAYERS) then
@@ -2065,42 +2054,16 @@ CONTAINS
             enddo
          endif
 
-         do i = its, itf
-            if(ierr(i) /= 0) cycle
-            if(zo_cup(i,ktop(i)) > z_cloud_top_max) then
-               ierr(i) = 21
-               ierrc(i) = 'mid convection with cloud top too high'
-            endif
-            if(zo_cup(i,ktop(i)) < z_cloud_top_min) then  
-               ierr(i) = 22
-               ierrc(i) = 'mid convection with cloud top too low'
-            endif
-            if((zo_cup(i,ktop(i)) - zo_cup(i,kbcon(i))) < depth_min) then
-               ierr(i) = 25
-               ierrc(i) = 'physical depth too small for mid convection'
-            endif
-            if(last_ierr(i) == 0) then
-               ierr(i) = 26
-               ierrc(i) = 'prevented double-counting plumes'
-            endif
-         enddo
+         call validate_convective_cloud_geometry('mid', its, itf, kts, ktf, &
+               ierr, ierrc, last_ierr, zo_cup, ktop, kbcon, &
+               z_cloud_top_min, z_cloud_top_max, depth_min, &
+               22, 21, 25, 26)  ! err_top_low=22, err_top_high=21, err_depth=25, err_double=26
 
       CASE('shallow')
-         do i = its, itf
-            if(ierr(i) /= 0) cycle
-            if(zo_cup(i,ktop(i)) > z_cloud_top_max) then
-               ierr(i) = 31
-               ierrc(i) = 'shallow convection with cloud top too high'
-            endif
-            if((zo_cup(i,ktop(i)) - zo_cup(i,kbcon(i))) < depth_min) then
-               ierr(i) = 35
-               ierrc(i) = 'physical depth too small for shallow convection'
-            endif
-            if(last_ierr(i) == 0) then
-               ierr(i) = 36
-               ierrc(i) = 'prevented double-counting plumes'
-            endif
-         enddo
+         call validate_convective_cloud_geometry('shallow', its, itf, kts, ktf, &
+               ierr, ierrc, last_ierr, zo_cup, ktop, kbcon, &
+               z_cloud_top_min, z_cloud_top_max, depth_min, &
+               0, 31, 35, 36)  ! err_top_low=0 (no check), err_top_high=31, err_depth=35, err_double=36
       END SELECT
 
       !-----------------------------------------------------------------------------
@@ -3522,6 +3485,83 @@ CONTAINS
          ENDDO
 
       END SUBROUTINE compute_convective_velocity_scale_from_surface_fluxes
+
+      !--------------------------------------------------------------------------
+      ! Helper: Validate convective cloud geometry constraints
+      !
+      ! This subroutine validates that convective cloud top heights and cloud
+      ! depths meet physical constraints for deep/mid/shallow convection regimes.
+      ! It sets appropriate error codes when clouds violate geometric constraints.
+      !
+      ! Arguments:
+      !   cumulus        - Convection regime ('deep', 'mid', or 'shallow')
+      !   its, itf       - Horizontal index bounds
+      !   ierr           - Error status array (0=valid, >0=error code)
+      !   ierrc          - Error message array
+      !   last_ierr      - Previous plume error status (for double-counting check)
+      !   zo_cup         - Height on cloud coordinate [m]
+      !   ktop           - Cloud top level index
+      !   kbcon          - Convective base level index
+      !   z_cloud_top_min - Minimum cloud top height [m]
+      !   z_cloud_top_max - Maximum cloud top height [m]
+      !   depth_min      - Minimum cloud depth [m]
+      !   err_top_low    - Error code for cloud top too low
+      !   err_top_high   - Error code for cloud top too high
+      !   err_depth      - Error code for insufficient depth
+      !   err_double     - Error code for double-counting prevention
+      !--------------------------------------------------------------------------
+      SUBROUTINE validate_convective_cloud_geometry(cumulus, its, itf, kts, kte, &
+                    ierr, ierrc, last_ierr, zo_cup, ktop, kbcon, &
+                    z_cloud_top_min, z_cloud_top_max, depth_min, &
+                    err_top_low, err_top_high, err_depth, err_double)
+         CHARACTER(LEN=*), INTENT(IN) :: cumulus
+         INTEGER, INTENT(IN) :: its, itf, kts, kte
+         INTEGER, INTENT(INOUT) :: ierr(its:itf)
+         CHARACTER(LEN=512), INTENT(INOUT) :: ierrc(its:itf)
+         INTEGER, INTENT(IN) :: last_ierr(its:itf)
+         REAL, INTENT(IN)    :: zo_cup(its:itf,kts:kte)
+         INTEGER, INTENT(IN) :: ktop(its:itf), kbcon(its:itf)
+         REAL, INTENT(IN)    :: z_cloud_top_min, z_cloud_top_max, depth_min
+         INTEGER, INTENT(IN) :: err_top_low, err_top_high, err_depth, err_double
+
+         ! Local variables
+         INTEGER :: i
+         REAL :: cloud_depth
+
+         do i = its, itf
+            if(ierr(i) /= 0) cycle
+
+            ! Check if cloud top is too low (only for deep and mid)
+            if(err_top_low > 0) then
+               if(zo_cup(i,ktop(i)) < z_cloud_top_min) then
+                  ierr(i) = err_top_low
+                  ierrc(i) = trim(cumulus) // ' convection with cloud top too low'
+               endif
+            endif
+
+            ! Check if cloud top is too high (only for mid and shallow)
+            if(err_top_high > 0) then
+               if(zo_cup(i,ktop(i)) > z_cloud_top_max) then
+                  ierr(i) = err_top_high
+                  ierrc(i) = trim(cumulus) // ' convection with cloud top too high'
+               endif
+            endif
+
+            ! Check if cloud depth is sufficient
+            cloud_depth = zo_cup(i,ktop(i)) - zo_cup(i,kbcon(i))
+            if(cloud_depth < depth_min) then
+               ierr(i) = err_depth
+               ierrc(i) = 'physical depth too small for ' // trim(cumulus) // ' convection'
+            endif
+
+            ! Prevent double-counting of plumes
+            if(last_ierr(i) == 0) then
+               ierr(i) = err_double
+               ierrc(i) = 'prevented double-counting plumes'
+            endif
+         enddo
+
+      END SUBROUTINE validate_convective_cloud_geometry
 
       !--------------------------------------------------------------------------
       ! Helper: Compute diurnal cycle closure (aa1_bl) for various formulations
