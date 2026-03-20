@@ -11,7 +11,7 @@ from pyMoist.fortran.managed_state import MAPLManagedState
 from pyMoist.fortran.memory_factory import MAPLMemoryRepository
 from pyMoist.fortran.moist_workarounds import MOIST_WORKAROUNDS
 from pyMoist.fortran.profiler import TimedCUDAProfiler
-from pyMoist.UW import ComputeUwshcuInv, UWConfiguration, UWState
+from pyMoist.convection.UW import ComputeUwshcuInv, UWConfiguration, UWState
 
 
 class UWGEOSInterface(UserCode):

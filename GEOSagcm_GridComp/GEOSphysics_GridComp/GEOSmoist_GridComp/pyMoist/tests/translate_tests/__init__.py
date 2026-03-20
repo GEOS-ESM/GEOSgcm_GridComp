@@ -21,42 +21,66 @@ from .GFDL_1M.translate_GFDL_1M_Finalize import TranslateGFDL_1M_Finalize
 from .GFDL_1M.translate_GFDL_1M_RadiationCoupling import TranslateGFDL_1M_RadiationCoupling
 from .GFDL_1M.translate_GFDL_1M_RedistributeClouds import TranslateGFDL_1M_RedistributeClouds
 from .GFDL_1M.translate_GFDL_1M_Setup import TranslateGFDL_1M_Setup
-from .UW.translate_compute_uwshcu import TranslateComputeUwshcuInv
-from .UW.UW_translate_tests.translate_adjust_implicit_CIN_inputs1 import TranslateAdjustImplicitCINInputs1
-from .UW.UW_translate_tests.translate_adjust_implicit_CIN_inputs2 import TranslateAdjustImplicitCINInputs2
-from .UW.UW_translate_tests.translate_average_initial_and_final_CIN1 import TranslateAverageInitialFinalCIN1
-from .UW.UW_translate_tests.translate_average_initial_and_final_CIN3 import TranslateAverageInitialFinalCIN3
-from .UW.UW_translate_tests.translate_buoyancy_sorting import TranslateBuoyancySorting
-from .UW.UW_translate_tests.translate_buoyancy_sorting_fluxes import TranslateBuoyancySortingFluxes
-from .UW.UW_translate_tests.translate_calc_cumulus_condensate_at_interface import (
+from .convection.UW.translate_compute_uwshcu import TranslateComputeUwshcuInv
+from .convection.UW.UW_translate_tests.translate_adjust_implicit_CIN_inputs1 import (
+    TranslateAdjustImplicitCINInputs1,
+)
+from .convection.UW.UW_translate_tests.translate_adjust_implicit_CIN_inputs2 import (
+    TranslateAdjustImplicitCINInputs2,
+)
+from .convection.UW.UW_translate_tests.translate_average_initial_and_final_CIN1 import (
+    TranslateAverageInitialFinalCIN1,
+)
+from .convection.UW.UW_translate_tests.translate_average_initial_and_final_CIN3 import (
+    TranslateAverageInitialFinalCIN3,
+)
+from .convection.UW.UW_translate_tests.translate_buoyancy_sorting import TranslateBuoyancySorting
+from .convection.UW.UW_translate_tests.translate_buoyancy_sorting_fluxes import TranslateBuoyancySortingFluxes
+from .convection.UW.UW_translate_tests.translate_calc_cumulus_condensate_at_interface import (
     TranslateCalcCumulusCondensate,
 )
-from .UW.UW_translate_tests.translate_calc_entrainment_mass_flux import TranslateCalcEntrainmentMassFlux
-from .UW.UW_translate_tests.translate_calc_momentum_tendency import TranslateMomentumTendency
-from .UW.UW_translate_tests.translate_calc_pbl_fluxes import TranslateCalcPblFluxes
-from .UW.UW_translate_tests.translate_calc_ppen import TranslateCalcPpen
-from .UW.UW_translate_tests.translate_calc_thermodynamic_tendencies import TranslateThermodynamicTendencies
-from .UW.UW_translate_tests.translate_compute_cin_cinlcl import TranslateComputeCinCinlcl
-from .UW.UW_translate_tests.translate_compute_del_CIN import TranslateComputeDelCIN
-from .UW.UW_translate_tests.translate_compute_diagnostic_outputs import TranslateComputeDiagnosticOutputs
-from .UW.UW_translate_tests.translate_compute_uwshcu_invert_after import TranslateComputeUwshcuInvertAfter
-from .UW.UW_translate_tests.translate_define_env_properties import TranslateDefineEnvProperties
-from .UW.UW_translate_tests.translate_define_prel_cbmf import TranslateDefinePrelCbmf
-from .UW.UW_translate_tests.translate_define_updraft_properties import TranslateDefineUpdraftProperties
-from .UW.UW_translate_tests.translate_find_klcl import TranslateFindKlcl
-from .UW.UW_translate_tests.translate_find_pbl import TranslateFindPbl
-from .UW.UW_translate_tests.translate_penetrative_entrainment_fluxes import (
+from .convection.UW.UW_translate_tests.translate_calc_entrainment_mass_flux import (
+    TranslateCalcEntrainmentMassFlux,
+)
+from .convection.UW.UW_translate_tests.translate_calc_momentum_tendency import TranslateMomentumTendency
+from .convection.UW.UW_translate_tests.translate_calc_pbl_fluxes import TranslateCalcPblFluxes
+from .convection.UW.UW_translate_tests.translate_calc_ppen import TranslateCalcPpen
+from .convection.UW.UW_translate_tests.translate_calc_thermodynamic_tendencies import (
+    TranslateThermodynamicTendencies,
+)
+from .convection.UW.UW_translate_tests.translate_compute_cin_cinlcl import TranslateComputeCinCinlcl
+from .convection.UW.UW_translate_tests.translate_compute_del_CIN import TranslateComputeDelCIN
+from .convection.UW.UW_translate_tests.translate_compute_diagnostic_outputs import (
+    TranslateComputeDiagnosticOutputs,
+)
+from .convection.UW.UW_translate_tests.translate_compute_uwshcu_invert_after import (
+    TranslateComputeUwshcuInvertAfter,
+)
+from .convection.UW.UW_translate_tests.translate_define_env_properties import TranslateDefineEnvProperties
+from .convection.UW.UW_translate_tests.translate_define_prel_cbmf import TranslateDefinePrelCbmf
+from .convection.UW.UW_translate_tests.translate_define_updraft_properties import (
+    TranslateDefineUpdraftProperties,
+)
+from .convection.UW.UW_translate_tests.translate_find_klcl import TranslateFindKlcl
+from .convection.UW.UW_translate_tests.translate_find_pbl import TranslateFindPbl
+from .convection.UW.UW_translate_tests.translate_penetrative_entrainment_fluxes import (
     TranslatePenetrativeEntrainmentFluxes,
 )
-from .UW.UW_translate_tests.translate_prepare_inputs import TranslatePrepareInputs
-from .UW.UW_translate_tests.translate_prevent_negative_condensate import TranslatePreventNegativeCondensate
-from .UW.UW_translate_tests.translate_recalc_condensate import TranslateRecalcCondensate
-from .UW.UW_translate_tests.translate_recalc_environmental_variables import TranslateRecalcEnvVariables
-from .UW.UW_translate_tests.translate_setup_inputs import TranslateSetupInputs
-from .UW.UW_translate_tests.translate_tracer_tendencies import TranslateTracerTendencies
-from .UW.UW_translate_tests.translate_update_output_variables1 import TranslateUpdateOutputVars1
-from .UW.UW_translate_tests.translate_compute_uwshcu_invert_after import TranslateComputeUwshcuInvertAfter
-from .UW.UW_translate_tests.translate_setup_outputs import TranslateSetupOutputs
+from .convection.UW.UW_translate_tests.translate_prepare_inputs import TranslatePrepareInputs
+from .convection.UW.UW_translate_tests.translate_prevent_negative_condensate import (
+    TranslatePreventNegativeCondensate,
+)
+from .convection.UW.UW_translate_tests.translate_recalc_condensate import TranslateRecalcCondensate
+from .convection.UW.UW_translate_tests.translate_recalc_environmental_variables import (
+    TranslateRecalcEnvVariables,
+)
+from .convection.UW.UW_translate_tests.translate_setup_inputs import TranslateSetupInputs
+from .convection.UW.UW_translate_tests.translate_tracer_tendencies import TranslateTracerTendencies
+from .convection.UW.UW_translate_tests.translate_update_output_variables1 import TranslateUpdateOutputVars1
+from .convection.UW.UW_translate_tests.translate_compute_uwshcu_invert_after import (
+    TranslateComputeUwshcuInvertAfter,
+)
+from .convection.UW.UW_translate_tests.translate_setup_outputs import TranslateSetupOutputs
 
 
 __all__ = [
