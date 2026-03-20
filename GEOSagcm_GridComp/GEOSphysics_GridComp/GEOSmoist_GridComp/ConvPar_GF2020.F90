@@ -2173,107 +2173,15 @@ CONTAINS
       !=============================================================================
       ! 5. DOWNDRAFT PLUME MODEL
       !=============================================================================
-
-      !-----------------------------------------------------------------------------
-      ! 5.1 Determine Downdraft Origin Limits (kzdown and jmin)
-      !-----------------------------------------------------------------------------
-      DO i = its, itf
-         kzdown(i) = 0
-         if(ierr(i) == 0) then
-            zktop = (zo_cup(i,ktop(i)) - z1(i)) * 0.6
-            zktop = min(zktop + z1(i), zcutdown + z1(i))
-            do k = kts, ktf
-               if(zo_cup(i,k) > zktop) then
-                  kzdown(i) = k
-                  exit
-               endif
-            enddo
-         endif
-      ENDDO
-
-      call cup_minimi(heso_cup, k22, kzdown, jmin, ierr, itf, ktf, its, ite, kts, kte)
-      call get_jmin(cumulus, itf, ktf, its, ite, kts, kte, ierr, kdet, ktop, kbcon, jmin, &
-           ierrc, beta, depth_min, heso_cup, zo_cup, melting_layer)
-
-      !-----------------------------------------------------------------------------
-      ! 5.2 Downdraft Mass Flux and Lateral Exchange Profiles
-      !-----------------------------------------------------------------------------
-      DO i = its, itf
-         zd(i,:) = 0.0
-         if(ierr(i) /= 0) cycle
-         call get_zu_zd_pdf(trim(cumulus), "DOWN", ierr(i), kdet(i), jmin(i), zdo(i,:), &
-              kts, kte, ktf, kpbl(i), k22(i), kbcon(i), klcl(i), po_cup(i,:), psur(i), xland(i), random(i))
-      ENDDO
-
-      call get_lateral_massflux_down(trim(cumulus), itf, ktf, its, ite, kts, kte, ierr, jmin, &
-           po_cup, zo_cup, zdo, xzd, zd, cdd, mentrd_rate,          &
-           dd_massentro, dd_massdetro, dd_massentr, dd_massdetr,    &
-           cumulus, dd_massentru, dd_massdetru, lambau_dn)
-
-      IF(USE_WETBULB .and. trim(cumulus) /= 'shallow') THEN
-         do i = its, itf
-            if(ierr(i) /= 0) cycle
-            call get_wetbulb(jmin(i), qo_cup(i,jmin(i)), t_cup(i,jmin(i)), po_cup(i,jmin(i)), q_wetbulb(i), t_wetbulb(i))
-         enddo
-      ENDIF
-
-      !-----------------------------------------------------------------------------
-      ! 5.3 Downdraft Thermodynamic and Moisture Budget
-      !-----------------------------------------------------------------------------
-      DO i = its, itf
-         hcdo(i,:)  = heso_cup(i,:)
-         ucd(i,:)   = u_cup(i,:)
-         vcd(i,:)   = v_cup(i,:)
-         dbydo(i,:) = 0.0
-      ENDDO
-
-      DO i = its, itf
-         bud(i) = 0.0
-         if(ierr(i) /= 0 .or. trim(cumulus) == 'shallow') cycle
-
-         i_wb = 0
-         if(use_wetbulb == 1) then
-            hcdo(i,jmin(i)) = 0.5 * (cp * t_wetbulb(i) + xlv * q_wetbulb(i) + zo_cup(i,jmin(i)) * g + hc(i,jmin(i)))
-            i_wb = 1
-         endif
-
-         dbydo(i,jmin(i)) = hcdo(i,jmin(i)) - heso_cup(i,jmin(i))
-         bud(i) = dbydo(i,jmin(i)) * (zo_cup(i,jmin(i)+1) - zo_cup(i,jmin(i)))
-
-         do ki = jmin(i) - i_wb, kts, -1
-            denom  = zdo(i,ki+1) - 0.5 * dd_massdetro(i,ki) + dd_massentro(i,ki)
-            denomU = zdo(i,ki+1) - 0.5 * dd_massdetru(i,ki) + dd_massentru(i,ki)
-
-            if(denom > 0.0 .and. denomU > 0.0) then
-               dzo = zo_cup(i,ki+1) - zo_cup(i,ki)
-
-               ucd(i,ki) = (ucd(i,ki+1) * zdo(i,ki+1) - 0.5 * dd_massdetru(i,ki) * ucd(i,ki+1) + &
-                    dd_massentru(i,ki) * us(i,ki) - pgcon * zdo(i,ki+1) * (us(i,ki+1) - us(i,ki))) / denomU
-
-               vcd(i,ki) = (vcd(i,ki+1) * zdo(i,ki+1) - 0.5 * dd_massdetru(i,ki) * vcd(i,ki+1) + &
-                    dd_massentru(i,ki) * vs(i,ki) - pgcon * zdo(i,ki+1) * (vs(i,ki+1) - vs(i,ki))) / denomU
-
-               hcdo(i,ki) = (hcdo(i,ki+1) * zdo(i,ki+1) - 0.5 * dd_massdetro(i,ki) * hcdo(i,ki+1) + &
-                    dd_massentro(i,ki) * heo(i,ki)) / denom
-
-               dbydo(i,ki) = hcdo(i,ki) - heso_cup(i,ki)
-               bud(i) = bud(i) + dbydo(i,ki) * dzo
-            else
-               ucd(i,ki)  = ucd(i,ki+1)
-               vcd(i,ki)  = vcd(i,ki+1)
-               hcdo(i,ki) = hcdo(i,ki+1)
-            endif
-         enddo
-
-         if(bud(i) > 0.0) then
-            ierr(i) = 7
-            ierrc(i) = 'downdraft is not negatively buoyant'
-         endif
-      ENDDO
-
-      call cup_dd_moisture(cumulus, ierrc, zdo, hcdo, heso_cup, qcdo, qeso_cup, pwdo, qo_cup, zo_cup, &
-           dd_massentro, dd_massdetro, jmin, ierr, gammao_cup, pwevo, bu, qrcdo, qo,  &
-           heo, tn_cup, 1, t_wetbulb, q_wetbulb, qco, pwavo, itf, ktf, its, ite, kts, kte)
+      call compute_downdraft_plume_model(cumulus, USE_WETBULB, its, itf, kts, kte, ktf, ite, &
+            ierr, ierrc, k22, kdet, ktop, kbcon, klcl, jmin, kzdown, kpbl, &
+            z1, zo_cup, po_cup, heso_cup, heo, t_cup, qo_cup, qeso_cup, gammao_cup, &
+            u_cup, v_cup, us, vs, qo, tn_cup, hc, xland, psur, random, &
+            zcutdown, depth_min, beta, melting_layer, &
+            zdo, xzd, zd, cdd, mentrd_rate, dd_massentro, dd_massdetro, &
+            dd_massentr, dd_massdetr, dd_massentru, dd_massdetru, lambau_dn, &
+            q_wetbulb, t_wetbulb, hcdo, ucd, vcd, dbydo, bud, &
+            qcdo, pwdo, pwevo, bu, qrcdo, qco, pwavo)
 
       !=============================================================================
       ! 6. CLOSURE & CLOUD WORK FUNCTION (CAPE/CIN)
@@ -3690,6 +3598,168 @@ CONTAINS
          enddo
 
       END SUBROUTINE compute_dynamic_temperature_perturbation_kf2004
+
+      !--------------------------------------------------------------------------
+      ! Helper: Compute downdraft plume thermodynamics and mass fluxes
+      !
+      ! This subroutine calculates the complete downdraft plume model including:
+      ! (1) Downdraft origin level determination
+      ! (2) Downdraft mass flux vertical profile
+      ! (3) Downdraft thermodynamic and moisture budget with entrainment/detrainment
+      ! (4) Wet-bulb temperature cooling at downdraft origin (optional)
+      ! (5) Buoyancy check to ensure downdrafts are negatively buoyant
+      !
+      ! Downdrafts represent compensating subsidence and evaporatively-cooled
+      ! descending air that originates from mid-levels. They are essential for
+      ! realistic precipitation efficiency and surface cold pool formation.
+      !
+      ! Arguments: (too many to list individually - see full parameter list below)
+      !--------------------------------------------------------------------------
+      SUBROUTINE compute_downdraft_plume_model(cumulus, USE_WETBULB, its, itf, kts, kte, ktf, ite, &
+                    ierr, ierrc, k22, kdet, ktop, kbcon, klcl, jmin, kzdown, kpbl, &
+                    z1, zo_cup, po_cup, heso_cup, heo, t_cup, qo_cup, qeso_cup, gammao_cup, &
+                    u_cup, v_cup, us, vs, qo, tn_cup, hc, xland, psur, random, &
+                    zcutdown, depth_min, beta, melting_layer, &
+                    zdo, xzd, zd, cdd, mentrd_rate, dd_massentro, dd_massdetro, &
+                    dd_massentr, dd_massdetr, dd_massentru, dd_massdetru, lambau_dn, &
+                    q_wetbulb, t_wetbulb, hcdo, ucd, vcd, dbydo, bud, &
+                    qcdo, pwdo, pwevo, bu, qrcdo, qco, pwavo)
+         CHARACTER(LEN=*), INTENT(IN) :: cumulus
+         LOGICAL, INTENT(IN) :: USE_WETBULB
+         INTEGER, INTENT(IN) :: its, itf, kts, kte, ktf, ite
+         INTEGER, INTENT(INOUT) :: ierr(its:itf)
+         CHARACTER(LEN=512), INTENT(INOUT) :: ierrc(its:itf)
+         INTEGER, INTENT(IN) :: k22(its:itf), kdet(its:itf), ktop(its:itf), kbcon(its:itf), klcl(its:itf), kpbl(its:itf)
+         INTEGER, INTENT(OUT) :: jmin(its:itf), kzdown(its:itf)
+         REAL, INTENT(IN) :: z1(its:itf), zcutdown, depth_min, beta
+         REAL, INTENT(IN) :: zo_cup(its:itf,kts:kte), po_cup(its:itf,kts:kte), heso_cup(its:itf,kts:kte)
+         REAL, INTENT(IN) :: heo(its:itf,kts:kte), t_cup(its:itf,kts:kte), qo_cup(its:itf,kts:kte)
+         REAL, INTENT(IN) :: qeso_cup(its:itf,kts:kte), gammao_cup(its:itf,kts:kte)
+         REAL, INTENT(IN) :: u_cup(its:itf,kts:kte), v_cup(its:itf,kts:kte), us(its:itf,kts:kte), vs(its:itf,kts:kte)
+         REAL, INTENT(IN) :: qo(its:itf,kts:kte), tn_cup(its:itf,kts:kte), hc(its:itf,kts:kte)
+         REAL, INTENT(IN) :: xland(its:itf), psur(its:itf), random(its:itf)
+         INTEGER, INTENT(IN) :: melting_layer(its:itf,kts:kte)
+         REAL, INTENT(OUT) :: zdo(its:itf,kts:kte), xzd(its:itf,kts:kte), zd(its:itf,kts:kte)
+         REAL, INTENT(OUT) :: cdd(its:itf,kts:kte), mentrd_rate(its:itf,kts:kte)
+         REAL, INTENT(OUT) :: dd_massentro(its:itf,kts:kte), dd_massdetro(its:itf,kts:kte)
+         REAL, INTENT(OUT) :: dd_massentr(its:itf,kts:kte), dd_massdetr(its:itf,kts:kte)
+         REAL, INTENT(OUT) :: dd_massentru(its:itf,kts:kte), dd_massdetru(its:itf,kts:kte)
+         REAL, INTENT(IN) :: lambau_dn(its:itf)
+         REAL, INTENT(OUT) :: q_wetbulb(its:itf), t_wetbulb(its:itf)
+         REAL, INTENT(OUT) :: hcdo(its:itf,kts:kte), ucd(its:itf,kts:kte), vcd(its:itf,kts:kte)
+         REAL, INTENT(OUT) :: dbydo(its:itf,kts:kte), bud(its:itf)
+         REAL, INTENT(OUT) :: qcdo(its:itf,kts:kte), pwdo(its:itf), pwevo(its:itf), bu(its:itf)
+         REAL, INTENT(OUT) :: qrcdo(its:itf,kts:kte), qco(its:itf,kts:kte), pwavo(its:itf)
+
+         ! Local variables
+         INTEGER :: i, k, ki, i_wb
+         REAL :: zktop, denom, denomU, dzo
+
+         ! Named constants for downdraft origin
+         REAL, PARAMETER :: DOWNDRAFT_ORIGIN_FRAC = 0.6  ! Fraction of cloud top height for downdraft origin
+
+         !-----------------------------------------------------------------------------
+         ! 5.1 Determine Downdraft Origin Limits (kzdown and jmin)
+         !-----------------------------------------------------------------------------
+         DO i = its, itf
+            kzdown(i) = 0
+            if(ierr(i) == 0) then
+               zktop = (zo_cup(i,ktop(i)) - z1(i)) * DOWNDRAFT_ORIGIN_FRAC
+               zktop = min(zktop + z1(i), zcutdown + z1(i))
+               do k = kts, ktf
+                  if(zo_cup(i,k) > zktop) then
+                     kzdown(i) = k
+                     exit
+                  endif
+               enddo
+            endif
+         ENDDO
+
+         call cup_minimi(heso_cup, k22, kzdown, jmin, ierr, itf, ktf, its, ite, kts, kte)
+         call get_jmin(cumulus, itf, ktf, its, ite, kts, kte, ierr, kdet, ktop, kbcon, jmin, &
+              ierrc, beta, depth_min, heso_cup, zo_cup, melting_layer)
+
+         !-----------------------------------------------------------------------------
+         ! 5.2 Downdraft Mass Flux and Lateral Exchange Profiles
+         !-----------------------------------------------------------------------------
+         DO i = its, itf
+            zd(i,:) = 0.0
+            if(ierr(i) /= 0) cycle
+            call get_zu_zd_pdf(trim(cumulus), "DOWN", ierr(i), kdet(i), jmin(i), zdo(i,:), &
+                 kts, kte, ktf, kpbl(i), k22(i), kbcon(i), klcl(i), po_cup(i,:), psur(i), xland(i), random(i))
+         ENDDO
+
+         call get_lateral_massflux_down(trim(cumulus), itf, ktf, its, ite, kts, kte, ierr, jmin, &
+              po_cup, zo_cup, zdo, xzd, zd, cdd, mentrd_rate,          &
+              dd_massentro, dd_massdetro, dd_massentr, dd_massdetr,    &
+              cumulus, dd_massentru, dd_massdetru, lambau_dn)
+
+         IF(USE_WETBULB .and. trim(cumulus) /= 'shallow') THEN
+            do i = its, itf
+               if(ierr(i) /= 0) cycle
+               call get_wetbulb(jmin(i), qo_cup(i,jmin(i)), t_cup(i,jmin(i)), po_cup(i,jmin(i)), q_wetbulb(i), t_wetbulb(i))
+            enddo
+         ENDIF
+
+         !-----------------------------------------------------------------------------
+         ! 5.3 Downdraft Thermodynamic and Moisture Budget
+         !-----------------------------------------------------------------------------
+         DO i = its, itf
+            hcdo(i,:)  = heso_cup(i,:)
+            ucd(i,:)   = u_cup(i,:)
+            vcd(i,:)   = v_cup(i,:)
+            dbydo(i,:) = 0.0
+         ENDDO
+
+         DO i = its, itf
+            bud(i) = 0.0
+            if(ierr(i) /= 0 .or. trim(cumulus) == 'shallow') cycle
+
+            i_wb = 0
+            if(USE_WETBULB) then
+               hcdo(i,jmin(i)) = 0.5 * (cp * t_wetbulb(i) + xlv * q_wetbulb(i) + zo_cup(i,jmin(i)) * g + hc(i,jmin(i)))
+               i_wb = 1
+            endif
+
+            dbydo(i,jmin(i)) = hcdo(i,jmin(i)) - heso_cup(i,jmin(i))
+            bud(i) = dbydo(i,jmin(i)) * (zo_cup(i,jmin(i)+1) - zo_cup(i,jmin(i)))
+
+            do ki = jmin(i) - i_wb, kts, -1
+               denom  = zdo(i,ki+1) - 0.5 * dd_massdetro(i,ki) + dd_massentro(i,ki)
+               denomU = zdo(i,ki+1) - 0.5 * dd_massdetru(i,ki) + dd_massentru(i,ki)
+
+               if(denom > 0.0 .and. denomU > 0.0) then
+                  dzo = zo_cup(i,ki+1) - zo_cup(i,ki)
+
+                  ucd(i,ki) = (ucd(i,ki+1) * zdo(i,ki+1) - 0.5 * dd_massdetru(i,ki) * ucd(i,ki+1) + &
+                       dd_massentru(i,ki) * us(i,ki) - pgcon * zdo(i,ki+1) * (us(i,ki+1) - us(i,ki))) / denomU
+
+                  vcd(i,ki) = (vcd(i,ki+1) * zdo(i,ki+1) - 0.5 * dd_massdetru(i,ki) * vcd(i,ki+1) + &
+                       dd_massentru(i,ki) * vs(i,ki) - pgcon * zdo(i,ki+1) * (vs(i,ki+1) - vs(i,ki))) / denomU
+
+                  hcdo(i,ki) = (hcdo(i,ki+1) * zdo(i,ki+1) - 0.5 * dd_massdetro(i,ki) * hcdo(i,ki+1) + &
+                       dd_massentro(i,ki) * heo(i,ki)) / denom
+
+                  dbydo(i,ki) = hcdo(i,ki) - heso_cup(i,ki)
+                  bud(i) = bud(i) + dbydo(i,ki) * dzo
+               else
+                  ucd(i,ki)  = ucd(i,ki+1)
+                  vcd(i,ki)  = vcd(i,ki+1)
+                  hcdo(i,ki) = hcdo(i,ki+1)
+               endif
+            enddo
+
+            if(bud(i) > 0.0) then
+               ierr(i) = 7
+               ierrc(i) = 'downdraft is not negatively buoyant'
+            endif
+         ENDDO
+
+         call cup_dd_moisture(cumulus, ierrc, zdo, hcdo, heso_cup, qcdo, qeso_cup, pwdo, qo_cup, zo_cup, &
+              dd_massentro, dd_massdetro, jmin, ierr, gammao_cup, pwevo, bu, qrcdo, qo,  &
+              heo, tn_cup, 1, t_wetbulb, q_wetbulb, qco, pwavo, itf, ktf, its, ite, kts, kte)
+
+      END SUBROUTINE compute_downdraft_plume_model
 
       !--------------------------------------------------------------------------
       ! Helper: Compute diurnal cycle closure (aa1_bl) for various formulations
