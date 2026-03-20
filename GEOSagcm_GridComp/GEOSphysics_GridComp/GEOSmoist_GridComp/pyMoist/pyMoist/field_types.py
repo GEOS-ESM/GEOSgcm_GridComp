@@ -1,10 +1,12 @@
-import gt4py.cartesian.gtscript as gtscript
-from ndsl.dsl.gt4py import IJK, Field
-from ndsl.dsl.typing import Float
-
-from pyMoist.constants import N_MODES, NCNST
+from ndsl.dsl.gt4py import IJ, IJK, Field, GlobalTable
+from ndsl.dsl.typing import Bool, Float
+from pyMoist.constants import N_MODES, NUMBER_OF_TRACERS
 
 
 FloatField_NModes = Field[IJK, (Float, (N_MODES))]
-FloatField_NTracers = gtscript.Field[gtscript.IJK, (Float, (int(NCNST)))]
-FloatFieldIJ_NTracers = gtscript.Field[gtscript.IJ, (Float, (int(NCNST)))]
+FloatField_NTracers = Field[IJK, (Float, (int(NUMBER_OF_TRACERS)))]
+FloatFieldIJ_NTracers = Field[IJ, (Float, (int(NUMBER_OF_TRACERS)))]
+ConvectionTracerMetaDataTable_Float = GlobalTable[(Float, int(NUMBER_OF_TRACERS))]
+ConvectionTracerMetaDataTable_Bool = GlobalTable[(Bool, int(NUMBER_OF_TRACERS))]
+ConvectionTracerMetaDataTable_x3 = GlobalTable[(Float, (int(NUMBER_OF_TRACERS), 3))]
+ConvectionTracerMetaDataTable_x4 = GlobalTable[(Float, (int(NUMBER_OF_TRACERS), 4))]
