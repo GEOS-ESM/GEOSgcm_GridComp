@@ -299,8 +299,9 @@ from .convection.GF_2020.cumulus_parameterization.vertical_discretization.transl
     TranslateGF2020_CumulusParameterization_VerticalDiscretization_shallow,
 )
 
-from .translate_saturation_specific_humidity_functions import Translatesaturation_specific_humidity_functions
-
+from .convection.GF_2020.translate_GF2020 import TranslateGF2020
+from .convection.GF_2020.translate_GF2020_Finalize import TranslateGF2020_Finalize
+from .convection.GF_2020.translate_GF2020_Setup import TranslateGF2020_Setup
 from .GFDL_1M.driver.translate_GFDL_1M_Driver import TranslateGFDL_1M_Driver
 from .GFDL_1M.driver.translate_GFDL_1M_DriverFinish import TranslateGFDL_1M_DriverFinish
 from .GFDL_1M.driver.translate_GFDL_1M_DriverSetup import TranslateGFDL_1M_DriverSetup
@@ -381,6 +382,7 @@ from .convection.UW.UW_translate_tests.translate_compute_uwshcu_invert_after imp
 )
 from .convection.UW.UW_translate_tests.translate_setup_outputs import TranslateSetupOutputs
 
+from .translate_saturation_specific_humidity_functions import Translatesaturation_specific_humidity_functions
 
 __all__ = [
     "TranslateGFDL_1M_Driver",
