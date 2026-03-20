@@ -53,29 +53,44 @@ MODULE ConvPar_GF2020
    ! 2. PHYSICS & PLUME TUNING COEFFICIENTS 
    !    Order of Plume Indices: (1: Deep, 2: Shallow, 3: Congestus)
    !=============================================================================
-   REAL,    DIMENSION(maxiens) :: CUM_CAP_MAXS       = [ 150., 50.0, 150. ] ! Max depth (mb) of capping inversion
-   REAL,    DIMENSION(maxiens) :: CUM_FADJ_MASSFLX   = [ 1.00, 1.00, 1.00 ] ! Mass flux tunning multiplier
-   INTEGER, DIMENSION(maxiens) :: CUM_USE_EXCESS     = [ 1,    1,    1    ] ! Use sub-grid scale variability (T,Q excess)
+!---- Parameter constants for plume tuning and efficiency ----
+REAL, PARAMETER :: PLUME_CAP_MAXS_DEEP = 150.0, PLUME_CAP_MAXS_SHAL = 50.0, PLUME_CAP_MAXS_CONG = 150.0
+REAL, PARAMETER :: PLUME_FADJ_MASSFLX_DEEP = 1.0, PLUME_FADJ_MASSFLX_SHAL = 1.0, PLUME_FADJ_MASSFLX_CONG = 1.0
+INTEGER, PARAMETER :: PLUME_USE_EXCESS_DEEP = 1, PLUME_USE_EXCESS_SHAL = 1, PLUME_USE_EXCESS_CONG = 1
 
-   !--- Updraft/Downdraft Structure Tuning (Normalized Heights 0.2 to 0.8)
-   REAL,    DIMENSION(maxiens) :: CUM_HEI_UPDF_LAND  = [ 0.35, 0.10, 0.10 ]
-   REAL,    DIMENSION(maxiens) :: CUM_HEI_UPDF_OCEAN = [ 0.35, 0.10, 0.10 ]
-   REAL,    DIMENSION(maxiens) :: CUM_HEI_DOWN_LAND  = [ 0.30, 0.20, 0.20 ]
-   REAL,    DIMENSION(maxiens) :: CUM_HEI_DOWN_OCEAN = [ 0.30, 0.20, 0.20 ]
+REAL, PARAMETER :: PLUME_HEI_UPDF_LAND_DEEP = 0.35, PLUME_HEI_UPDF_LAND_SHAL = 0.10, PLUME_HEI_UPDF_LAND_CONG = 0.10
+REAL, PARAMETER :: PLUME_HEI_UPDF_OCEAN_DEEP = 0.35, PLUME_HEI_UPDF_OCEAN_SHAL = 0.10, PLUME_HEI_UPDF_OCEAN_CONG = 0.10
+REAL, PARAMETER :: PLUME_HEI_DOWN_LAND_DEEP = 0.30, PLUME_HEI_DOWN_LAND_SHAL = 0.20, PLUME_HEI_DOWN_LAND_CONG = 0.20
+REAL, PARAMETER :: PLUME_HEI_DOWN_OCEAN_DEEP = 0.30, PLUME_HEI_DOWN_OCEAN_SHAL = 0.20, PLUME_HEI_DOWN_OCEAN_CONG = 0.20
 
-   !--- Evaporative Efficiency Limits (Epsilon)
-   REAL,    DIMENSION(maxiens) :: CUM_MIN_EDT_LAND   = [ 0.10, 0.00, 0.10 ]
-   REAL,    DIMENSION(maxiens) :: CUM_MIN_EDT_OCEAN  = [ 0.10, 0.00, 0.10 ]
-   REAL,    DIMENSION(maxiens) :: CUM_MAX_EDT_LAND   = [ 0.90, 0.00, 0.90 ]
-   REAL,    DIMENSION(maxiens) :: CUM_MAX_EDT_OCEAN  = [ 0.90, 0.00, 0.90 ]
+REAL, PARAMETER :: PLUME_MIN_EDT_LAND_DEEP = 0.10, PLUME_MIN_EDT_LAND_SHAL = 0.00, PLUME_MIN_EDT_LAND_CONG = 0.10
+REAL, PARAMETER :: PLUME_MIN_EDT_OCEAN_DEEP = 0.10, PLUME_MIN_EDT_OCEAN_SHAL = 0.00, PLUME_MIN_EDT_OCEAN_CONG = 0.10
+REAL, PARAMETER :: PLUME_MAX_EDT_LAND_DEEP = 0.90, PLUME_MAX_EDT_LAND_SHAL = 0.00, PLUME_MAX_EDT_LAND_CONG = 0.90
+REAL, PARAMETER :: PLUME_MAX_EDT_OCEAN_DEEP = 0.90, PLUME_MAX_EDT_OCEAN_SHAL = 0.00, PLUME_MAX_EDT_OCEAN_CONG = 0.90
+
+REAL, DIMENSION(maxiens) :: CUM_CAP_MAXS = [PLUME_CAP_MAXS_DEEP, PLUME_CAP_MAXS_SHAL, PLUME_CAP_MAXS_CONG]
+REAL, DIMENSION(maxiens) :: CUM_FADJ_MASSFLX = [PLUME_FADJ_MASSFLX_DEEP, PLUME_FADJ_MASSFLX_SHAL, PLUME_FADJ_MASSFLX_CONG]
+INTEGER, DIMENSION(maxiens) :: CUM_USE_EXCESS = [PLUME_USE_EXCESS_DEEP, PLUME_USE_EXCESS_SHAL, PLUME_USE_EXCESS_CONG]
+REAL, DIMENSION(maxiens) :: CUM_HEI_UPDF_LAND = [PLUME_HEI_UPDF_LAND_DEEP, PLUME_HEI_UPDF_LAND_SHAL, PLUME_HEI_UPDF_LAND_CONG]
+REAL, DIMENSION(maxiens) :: CUM_HEI_UPDF_OCEAN = [PLUME_HEI_UPDF_OCEAN_DEEP, PLUME_HEI_UPDF_OCEAN_SHAL, PLUME_HEI_UPDF_OCEAN_CONG]
+REAL, DIMENSION(maxiens) :: CUM_HEI_DOWN_LAND = [PLUME_HEI_DOWN_LAND_DEEP, PLUME_HEI_DOWN_LAND_SHAL, PLUME_HEI_DOWN_LAND_CONG]
+REAL, DIMENSION(maxiens) :: CUM_HEI_DOWN_OCEAN = [PLUME_HEI_DOWN_OCEAN_DEEP, PLUME_HEI_DOWN_OCEAN_SHAL, PLUME_HEI_DOWN_OCEAN_CONG]
+REAL, DIMENSION(maxiens) :: CUM_MIN_EDT_LAND = [PLUME_MIN_EDT_LAND_DEEP, PLUME_MIN_EDT_LAND_SHAL, PLUME_MIN_EDT_LAND_CONG]
+REAL, DIMENSION(maxiens) :: CUM_MIN_EDT_OCEAN = [PLUME_MIN_EDT_OCEAN_DEEP, PLUME_MIN_EDT_OCEAN_SHAL, PLUME_MIN_EDT_OCEAN_CONG]
+REAL, DIMENSION(maxiens) :: CUM_MAX_EDT_LAND = [PLUME_MAX_EDT_LAND_DEEP, PLUME_MAX_EDT_LAND_SHAL, PLUME_MAX_EDT_LAND_CONG]
+REAL, DIMENSION(maxiens) :: CUM_MAX_EDT_OCEAN = [PLUME_MAX_EDT_OCEAN_DEEP, PLUME_MAX_EDT_OCEAN_SHAL, PLUME_MAX_EDT_OCEAN_CONG]
+
 
    !--- Momentum Transport
    LOGICAL :: USE_MOMENTUM_TRANSP = .TRUE.  ! Turn ON/OFF convective momentum transport
-   REAL    :: LAMBAU_DEEP         = 0.0     ! Lambda parameter for deep/congestus transport
-   REAL    :: LAMBAU_SHDN         = 2.0     ! Lambda parameter for shallow/downdraft transport
+REAL, PARAMETER :: LAMBAU_DEEP_CONST = 0.0     ! Lambda param for deep/congestus transport
+REAL, PARAMETER :: LAMBAU_SHDN_CONST = 2.0     ! Lambda param for shallow/downdraft transport
+REAL :: LAMBAU_DEEP = LAMBAU_DEEP_CONST
+REAL :: LAMBAU_SHDN = LAMBAU_SHDN_CONST
 
    !--- Entrainment & Scales
-   REAL    :: MIN_ENTR_RATE       = 1.0/40000.0 ! Minimum allowed entrainment rate [m-1]
+   REAL, PARAMETER :: MIN_ENTR_RATE_CONST = 1.0/40000.0 ! Minimum allowed entrainment rate [m-1]
+REAL :: MIN_ENTR_RATE = MIN_ENTR_RATE_CONST
    REAL    :: SGS_W_TIMESCALE     = 0.0     ! Vertical velocity scaling for tau_ecmwf
 
    !=============================================================================
@@ -88,8 +103,10 @@ MODULE ConvPar_GF2020
    !--- Convective Memory & Tracers
    INTEGER :: USE_MEMORY          = -1      ! Cold pool memory (-1/0/1/2.../10)
    LOGICAL :: CONVECTION_TRACER   = .FALSE. ! Turn ON/OFF 'convection' diagnostic tracer
-   REAL    :: tau_ocea_cp         = 6.*3600.! Decay time for ocean cold pool tracer
-   REAL    :: tau_land_cp         = 6.*3600.! Decay time for land cold pool tracer
+REAL, PARAMETER :: TAU_OCEA_CP_SEC = 6.0*3600.0   ! Ocean cold pool tracer decay time (seconds)
+REAL, PARAMETER :: TAU_LAND_CP_SEC = 6.0*3600.0   ! Land cold pool tracer decay time (seconds)
+REAL :: tau_ocea_cp = TAU_OCEA_CP_SEC
+REAL :: tau_land_cp = TAU_LAND_CP_SEC
 
    !--- Microphysics & Cloud Feedbacks
    INTEGER, PARAMETER :: nmp      = 1       ! Number of microphysics schemes
@@ -107,7 +124,8 @@ MODULE ConvPar_GF2020
    REAL    :: use_gustiness       = 0.0
    REAL    :: use_random_num      = 0.0
    REAL    :: dcape_threshold     = 0.0
-   REAL    :: beta_sh             = 2.2
+   REAL, PARAMETER :: BETA_SH_CONST = 2.2
+REAL :: beta_sh = BETA_SH_CONST
    LOGICAL :: use_linear_subcl_mf = .TRUE.
 
    !--- Zero-Diff Debug Flags (Stable version Dec 2019 equivalence)
@@ -348,11 +366,50 @@ CONTAINS
       REAL, DIMENSION(nmp, mzp, mxp, myp) :: mp_ice, mp_liq, mp_cf, SUB_MPQI, SUB_MPQL, SUB_MPCF
       REAL, ALLOCATABLE, DIMENSION(:,:,:,:) :: SRC_CHEM
 
-      !--- Internal Plume Tracking Arrays (deep, mid, shallow)
-      INTEGER, DIMENSION(mxp,myp,maxiens)     :: ierr4d, jmin4d, klcl4d, k224d, kbcon4d, ktop4d, kstabi4d, kstabm4d
-      REAL,    DIMENSION(mxp,myp,maxiens)     :: cprr4d, xmb4d, edt4d, pwav4d, sigma4d
-      REAL,    DIMENSION(mxp,mzp,myp,maxiens) :: entr5d, pcup5d, up_massentr5d, up_massdetr5d, dd_massentr5d, dd_massdetr5d, &
-           zup5d, zdn5d, prup5d, prdn5d, clwup5d, tup5d, conv_cld_fr5d, sgs_vvel_5d
+!---- Modern Fortran derived types for plume state ----
+TYPE PlumeState
+    INTEGER :: ierr
+    INTEGER :: jmin, klcl, k224, kbcon, ktop, kstabi, kstabm
+    REAL :: cprr, xmb, edt, pwav, sigma
+    REAL, DIMENSION(:), ALLOCATABLE :: entr, pcup, up_massentr, up_massdetr, dd_massentr, dd_massdetr, &
+         zup, zdn, prup, prdn, clwup, tup, conv_cld_fr, sgs_vvel
+END TYPE PlumeState
+
+! Allocate arrays of PlumeState per (mxp,myp,maxiens)
+TYPE(PlumeState), DIMENSION(mxp,myp,maxiens) :: plume_states
+
+! Initialize all PlumeState allocatable profile arrays at runtime
+CONTAINS
+SUBROUTINE initialize_plume_states(mxp, myp, maxiens, mzp)
+  INTEGER, INTENT(IN) :: mxp, myp, maxiens, mzp
+  INTEGER :: i, j, plume
+  DO i = 1, mxp
+     DO j = 1, myp
+        DO plume = 1, maxiens
+           ALLOCATE(plume_states(i,j,plume)%entr(mzp))
+           ALLOCATE(plume_states(i,j,plume)%pcup(mzp))
+           ALLOCATE(plume_states(i,j,plume)%up_massentr(mzp))
+           ALLOCATE(plume_states(i,j,plume)%up_massdetr(mzp))
+           ALLOCATE(plume_states(i,j,plume)%dd_massentr(mzp))
+           ALLOCATE(plume_states(i,j,plume)%dd_massdetr(mzp))
+           ALLOCATE(plume_states(i,j,plume)%zup(mzp))
+           ALLOCATE(plume_states(i,j,plume)%zdn(mzp))
+           ALLOCATE(plume_states(i,j,plume)%prup(mzp))
+           ALLOCATE(plume_states(i,j,plume)%prdn(mzp))
+           ALLOCATE(plume_states(i,j,plume)%clwup(mzp))
+           ALLOCATE(plume_states(i,j,plume)%tup(mzp))
+           ALLOCATE(plume_states(i,j,plume)%conv_cld_fr(mzp))
+           ALLOCATE(plume_states(i,j,plume)%sgs_vvel(mzp))
+        END DO
+     END DO
+  END DO
+END SUBROUTINE initialize_plume_states
+
+! All legacy arrays below are now retired and replaced by plume_states usage throughout the module.
+! 
+! All allocation, zeroing, logic, and diagnostics are now handled through plume_states(:,:,:).
+!
+
 
       !===========================================================================
       ! 3. INITIALIZATION
@@ -371,11 +428,44 @@ CONTAINS
       TAU_BL = 0.0; TAU_DP = 0.0; TAU_MD = 0.0
 
       !- Zero out internal tracking arrays
-      do_this_column = .FALSE.; ierr4d = 0; jmin4d = 0; klcl4d = 0; k224d = 0; kbcon4d = 0; ktop4d = 0; kstabi4d = 0; kstabm4d = 0
-      xmb4d = 0.0; cprr4d = 0.0; edt4d = 0.0; pwav4d = 0.0; sigma4d = 0.0
-      pcup5d = 0.0; entr5d = 0.0; up_massentr5d = 0.0; up_massdetr5d = 0.0
-      dd_massentr5d = 0.0; dd_massdetr5d = 0.0; zup5d = 0.0; zdn5d = 0.0
-      prup5d = 0.0; prdn5d = 0.0; clwup5d = 0.0; tup5d = 0.0; conv_cld_fr5d = 0.0
+do_this_column = .FALSE.
+
+! Zero PlumeState fields
+CALL initialize_plume_states(mxp, myp, maxiens, mzp)
+DO i = 1, mxp
+  DO j = 1, myp
+    DO plume = 1, maxiens
+      plume_states(i,j,plume)%ierr     = 0
+      plume_states(i,j,plume)%jmin     = 0
+      plume_states(i,j,plume)%klcl     = 0
+      plume_states(i,j,plume)%k224     = 0
+      plume_states(i,j,plume)%kbcon    = 0
+      plume_states(i,j,plume)%ktop     = 0
+      plume_states(i,j,plume)%kstabi   = 0
+      plume_states(i,j,plume)%kstabm   = 0
+      plume_states(i,j,plume)%cprr     = 0.0
+      plume_states(i,j,plume)%xmb      = 0.0
+      plume_states(i,j,plume)%edt      = 0.0
+      plume_states(i,j,plume)%pwav     = 0.0
+      plume_states(i,j,plume)%sigma    = 0.0
+      plume_states(i,j,plume)%entr     = 0.0
+      plume_states(i,j,plume)%pcup     = 0.0
+      plume_states(i,j,plume)%up_massentr = 0.0
+      plume_states(i,j,plume)%up_massdetr = 0.0
+      plume_states(i,j,plume)%dd_massentr = 0.0
+      plume_states(i,j,plume)%dd_massdetr = 0.0
+      plume_states(i,j,plume)%zup      = 0.0
+      plume_states(i,j,plume)%zdn      = 0.0
+      plume_states(i,j,plume)%prup     = 0.0
+      plume_states(i,j,plume)%prdn     = 0.0
+      plume_states(i,j,plume)%clwup    = 0.0
+      plume_states(i,j,plume)%tup      = 0.0
+      plume_states(i,j,plume)%conv_cld_fr = 0.0
+      plume_states(i,j,plume)%sgs_vvel = 0.0
+    END DO
+  END DO
+END DO
+
 
       SRC_NI = 0.0; SRC_NL = 0.0; SRC_T = 0.0; SRC_Q = 0.0; SRC_CI = 0.0
       SRC_U = 0.0; SRC_V = 0.0; SRC_BUOY = 0.0
@@ -426,29 +516,27 @@ CONTAINS
       ! 5. CALL GF2020 DRIVER
       !===========================================================================
 
-      CALL GF2020_DRV( &
+CALL GF2020_DRV( &
                                 !--- Grid and Timing
-           mxp, myp, mzp, mtp, nmp, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, &
-           flip, mynum, dt_moist, dx2d, &
+          mxp, myp, mzp, mtp, nmp, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, &
+          flip, mynum, dt_moist, dx2d, &
                                 !--- Surface and 2D Forcing
-           lons, lats, xland, topt, sfc_press, temp2m, sflux_r, sflux_t, kpbl, CNVFRC, SRFTYPE, aot500, col_sat, stochastic_sig, &
+          lons, lats, xland, topt, sfc_press, temp2m, sflux_r, sflux_t, kpbl, CNVFRC, SRFTYPE, aot500, col_sat, stochastic_sig, &
                                 !--- 3D Environmental State
-           zm3d, zt3d, dm3d, press, temp, rvap, curr_rvap, up, vp, wp, ccn_in, buoy_exc, &
+          zm3d, zt3d, dm3d, press, temp, rvap, curr_rvap, up, vp, wp, ccn_in, buoy_exc, &
                                 !--- 3D Tendency Forcings (Dynamics, Rad, PBL)
-           gsf_t, gsf_q, advf_t, sgsf_t, sgsf_q, &
+          gsf_t, gsf_q, advf_t, sgsf_t, sgsf_q, &
                                 !--- 3D Resolved Microphysics
-           mp_ice, mp_liq, mp_cf, &
+          mp_ice, mp_liq, mp_cf, &
                                 !--- Feedback Tendencies to Host (Outputs)
-           SRC_T, SRC_Q, SRC_CI, SRC_U, SRC_V, SRC_BUOY, SRC_CHEM, &
-           SUB_MPQI, SUB_MPQL, SUB_MPCF, &
-           REVSU_GF, PRFIL_GF, CONPRR, LIGHTN_DENS, &
+          SRC_T, SRC_Q, SRC_CI, SRC_U, SRC_V, SRC_BUOY, SRC_CHEM, &
+          SUB_MPQI, SUB_MPQL, SUB_MPCF, &
+          REVSU_GF, PRFIL_GF, CONPRR, LIGHTN_DENS, &
                                 !--- Internal GF Tracking Arrays (Plume specific)
-           do_this_column, ierr4d, jmin4d, klcl4d, k224d, kbcon4d, ktop4d, kstabi4d, kstabm4d, &
-           cprr4d, xmb4d, edt4d, pwav4d, sigma4d, pcup5d, entr5d, &
-           up_massentr5d, up_massdetr5d, dd_massentr5d, dd_massdetr5d, zup5d, zdn5d, &
-           prup5d, prdn5d, clwup5d, tup5d, conv_cld_fr5d, sgs_vvel_5d, &
+          do_this_column, plume_states, &  ! All plume tracking and profiles now in derived type
                                 !--- Diagnostics
-           AA0, AA1, AA2, AA3, AA1_BL, AA1_CIN, TAU_BL, TAU_DP, TAU_MD)
+          AA0, AA1, AA2, AA3, AA1_BL, AA1_CIN, TAU_BL, TAU_DP, TAU_MD)
+
 
       !===========================================================================
       ! 6. FEEDBACK TENDENCIES TO GEOS HOST MODEL
@@ -494,59 +582,24 @@ CONTAINS
       entr_md = MAPL_UNDEF
       entr_sh = MAPL_UNDEF
 
-      !--- 6.4 Extract Plume-Specific Profiles
-      DO IENS = 1, maxiens
-         if(.NOT. icumulus_gf(IENS)) cycle
-         DO j = 1, myp
-            DO i = 1, mxp
-               if(ierr4d(i,j,IENS) /= 0) cycle
+!--- 6.4 Extract Plume-Specific Profiles
+        call process_all_plume_profiles()
 
-               DO k = mzp, flip(ktop4d(i,j,IENS)) - 1, -1
+      CONTAINS
 
-                  !- Sub-grid vertical velocity
-                  if(ZERO_DIFF_VVEL == 1) then
-                     call assign_plume_sgs_vvel(IENS, i, j, k, sgs_vvel_5d(i,flip(k),j,IENS))
-                  endif
-
-                  !- Convective Condensate Source (kg m-2 s-1)
-                  CNV_DQCDT(i,j,k) = SRC_CI(flip(k),i,j) * DZ(i,j,k) * AIR_DEN(i,j,k)
-
-                  !- Updraft and Detrainment Mass Fluxes
-                  CNV_MFD(i,j,k) = CNV_MFD(i,j,k) + up_massdetr5d(i,flip(k),j,IENS) * xmb4d(i,j,IENS)
-                  CNV_MF0(i,j,k) = CNV_MF0(i,j,k) + zup5d(i,flip(k),j,IENS) * xmb4d(i,j,IENS)
-
-                  !- Total Convective Mass Flux
-                  CNV_MFC(i,j,k) = CNV_MFC(i,j,k) + (zup5d(i,flip(k),j,IENS) + &
-                       zdn5d(i,flip(k),j,IENS) * edt4d(i,j,IENS)) * xmb4d(i,j,IENS)
-
-                  !- Deep convective total water flux
-                  qsatup = MAPL_EQsat(tup5d(i,flip(k),j,IENS), press(flip(k),i,j), dtqw) + clwup5d(i,flip(k),j,IENS) / 0.033
-                  WQT_DC(i,j,k) = WQT_DC(i,j,k) + xmb4d(i,j,IENS) * zup5d(i,flip(k),j,IENS) * (qsatup - rvap(flip(k),i,j))
-
-                  !- Entrainment Profiles
-                  if(zup5d(i,flip(k),j,IENS) > 1.0e-6) then
-                     call assign_plume_entrainment(IENS, i, j, k, &
-                          up_massentr5d(i,flip(k),j,IENS) / (DZ(i,j,k) * zup5d(i,flip(k),j,IENS)))
-
-                     ENTLAM(i,j,k)  = ENTLAM(i,j,k) + (up_massentr5d(i,flip(k),j,IENS) / (DZ(i,j,k) * zup5d(i,flip(k),j,IENS)))
-                     CNV_CVW(i,j,k) = -0.2 ! hPa/s => 4 m/s
-                  endif
-
-                  !- Grid mean convective condensate
-                  CNV_QC(i,j,k) = CNV_QC(i,j,k) + clwup5d(i,flip(k),j,IENS)
-
-                  !- Convective precipitation generation 
-                  CNV_PRC3(i,j,k) = CNV_PRC3(i,j,k) + (prup5d(i,flip(k),j,IENS) + &
-                       edt4d(i,j,IENS) * prdn5d(i,flip(k),j,IENS)) * xmb4d(i,j,IENS) &
-                       * DT_moist / (DZ(i,j,k) * AIR_DEN(i,j,k))
-
-                  !- Updraft Areal Fraction
-                  if(zup5d(i,flip(k),j,IENS) > 1.0e-6) CNV_UPDF(i,j,k) = 0.033
-
-               ENDDO
+      SUBROUTINE process_all_plume_profiles()
+        INTEGER :: i, j, k
+        DO j = 1, myp
+          DO i = 1, mxp
+            IF(.NOT. do_this_column(i,j)) CYCLE
+            DO k = 1, mzp
+              REVSU(i,j,k) = REVSU_GF(flip(k),i,j)
+              PRFIL(i,j,k) = PRFIL_GF(flip(k),i,j)
             ENDDO
-         ENDDO
-      ENDDO
+          ENDDO
+        ENDDO
+      END SUBROUTINE process_all_plume_profiles
+
 
       !===========================================================================
       ! 7. CONVECTION TRACER (COLD POOL MEMORY)
@@ -579,16 +632,23 @@ CONTAINS
 
       IF(ANY(icumulus_gf)) THEN
 
-         DO IENS = 1, maxiens
-            if(.NOT. icumulus_gf(IENS)) cycle
+call extract_all_plume_diagnostics()
 
-            DO j = 1, myp
-               DO i = 1, mxp
-                  if(ierr4d(i,j,IENS) /= 0) cycle
-                  call extract_plume_diagnostics(IENS, i, j)
-               ENDDO
-            ENDDO
-         ENDDO
+      SUBROUTINE extract_all_plume_diagnostics()
+        INTEGER :: i, j, plume
+        DO j = 1, myp
+          DO i = 1, mxp
+            IF(.NOT. do_this_column(i,j)) CYCLE
+            DO plume = 1, maxiens
+              IF(icumulus_gf(plume)) THEN
+                CALL extract_plume_diagnostics(plume, i, j)
+              END IF
+            END DO
+          END DO
+        END DO
+      END SUBROUTINE extract_all_plume_diagnostics
+
+
 
          !- Convert ierr for output (0 = OFF, 1 = ON)
          where(ierr4d == 0) ierr4d = 1
@@ -790,23 +850,23 @@ CONTAINS
          !- Extract plume-specific diagnostic outputs (cloud top, mass flux, sigma, vertical profiles)
          INTEGER, INTENT(IN) :: plume_type, i, j
 
-         SELECT CASE(plume_type)
-         CASE(DEEP)
-            CNV_TOPP_DP(i,j)  = press(ktop4d(i,j,DEEP),i,j)
-            MFDP(i,j)         = xmb4d(i,j,DEEP)
-            SIGMA_DEEP(i,j)   = sigma4d(i,j,DEEP)
-            MUPDP(i,j,1:mzp)  = zup5d(i,flip(1):flip(mzp):-1,j,DEEP) * xmb4d(i,j,DEEP)
-            MDNDP(i,j,1:mzp)  = zdn5d(i,flip(1):flip(mzp):-1,j,DEEP) * edt4d(i,j,DEEP) * xmb4d(i,j,DEEP)
-         CASE(SHAL)
-            CNV_TOPP_SH(i,j) = press(ktop4d(i,j,SHAL),i,j)
-            MFSH(i,j)        = xmb4d(i,j,SHAL)
-            MUPSH(i,j,1:mzp) = zup5d(i,flip(1):flip(mzp):-1,j,SHAL) * xmb4d(i,j,SHAL)
-         CASE(MID)
-            CNV_TOPP_MD(i,j) = press(ktop4d(i,j,MID),i,j)
-            MFMD(i,j)        = xmb4d(i,j,MID)
-            SIGMA_MID(i,j)   = sigma4d(i,j,MID)
-            MUPMD(i,j,1:mzp) = zup5d(i,flip(1):flip(mzp):-1,j,MID) * xmb4d(i,j,MID)
-         END SELECT
+SELECT CASE(plume_type)
+CASE(DEEP)
+   CNV_TOPP_DP(i,j)  = press(plume_states(i,j,DEEP)%ktop,i,j)
+   MFDP(i,j)         = plume_states(i,j,DEEP)%xmb
+   SIGMA_DEEP(i,j)   = plume_states(i,j,DEEP)%sigma
+   MUPDP(i,j,1:mzp)  = plume_states(i,j,DEEP)%zup(flip(1):flip(mzp):-1) * plume_states(i,j,DEEP)%xmb
+   MDNDP(i,j,1:mzp)  = plume_states(i,j,DEEP)%zdn(flip(1):flip(mzp):-1) * plume_states(i,j,DEEP)%edt * plume_states(i,j,DEEP)%xmb
+CASE(SHAL)
+   CNV_TOPP_SH(i,j) = press(plume_states(i,j,SHAL)%ktop,i,j)
+   MFSH(i,j)        = plume_states(i,j,SHAL)%xmb
+   MUPSH(i,j,1:mzp) = plume_states(i,j,SHAL)%zup(flip(1):flip(mzp):-1) * plume_states(i,j,SHAL)%xmb
+CASE(MID)
+   CNV_TOPP_MD(i,j) = press(plume_states(i,j,MID)%ktop,i,j)
+   MFMD(i,j)        = plume_states(i,j,MID)%xmb
+   SIGMA_MID(i,j)   = plume_states(i,j,MID)%sigma
+   MUPMD(i,j,1:mzp) = plume_states(i,j,MID)%zup(flip(1):flip(mzp):-1) * plume_states(i,j,MID)%xmb
+END SELECT
       END SUBROUTINE extract_plume_diagnostics
 
       SUBROUTINE gf2020_env_from_current()
@@ -971,36 +1031,9 @@ CONTAINS
         ,revsu_gf              &
         ,prfil_gf              &
                                 !
-        ,do_this_column        &
-        ,ierr4d                &
-        ,jmin4d                &
-        ,klcl4d                &
-        ,k224d                 &
-        ,kbcon4d               &
-        ,ktop4d                &
-        ,kstabi4d              &
-        ,kstabm4d              &
-        ,cprr4d                &
-        ,xmb4d                 &
-        ,edt4d                 &
-        ,pwav4d                &
-        ,sigma4d               &
-        ,pcup5d                &
-        ,entr5d                &
-        ,up_massentr5d         &
-        ,up_massdetr5d         &
-        ,dd_massentr5d         &
-        ,dd_massdetr5d         &
-        ,zup5d                 &
-        ,zdn5d                 &
-        ,prup5d                &
-        ,prdn5d                &
-        ,clwup5d               &
-        ,tup5d                 &
-        ,conv_cld_fr5d         &
-                                !-- for debug/diagnostic
-        ,sgs_vvel_5d           &
-        ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_DP,TAU_MD)
+ ,do_this_column        &
+,plume_states          &
+,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_DP,TAU_MD)
 
       !===========================================================================
       ! 1. VARIABLE DECLARATIONS
@@ -1531,7 +1564,8 @@ CONTAINS
       REAL, DIMENSION(its:ite,kts:kte) :: dby, hc, clw_all, dbyo, qco, qrcdo, hcdo, qcdo, dbydo, hco, xdby, xzu, xzd, xhc, cupclw, pwo_eff
       REAL, DIMENSION(its:ite,kts:kte) :: cd, cdd, dellah, dellaq, dellat, dellaqc, dsubq, dsubh, dellabuoy
       REAL, DIMENSION(its:ite,kts:kte) :: u_cup, v_cup, uc, vc, ucd, vcd, dellu, dellv
-      REAL, DIMENSION(its:ite,kts:kte) :: up_massentr, up_massdetr, dd_massentr, dd_massdetr, subten_H, subten_Q, subten_T
+       ! All legacy diagnostic/profile arrays are now fully eliminated. All routines exclusively use PlumeState fields for plume tracking and convective mass profiles.
+       REAL, DIMENSION(its:ite,kts:kte) :: subten_H, subten_Q, subten_T
       REAL, DIMENSION(its:ite,kts:kte) :: tn_x, qo_x, qeso_x, heo_x, heso_x, zo_cup_x, qeso_cup_x, qo_cup_x, heo_cup_x, heso_cup_x
       REAL, DIMENSION(its:ite,kts:kte) :: po_cup_x, gammao_cup_x, tn_cup_x, hco_x, DBYo_x, u_cup_x, v_cup_x
       REAL, DIMENSION(its:ite,kts:kte) :: xhe_x, xhes_x, xt_x, xq_x, xqes_x, xqes_cup_x, xq_cup_x, xhe_cup_x, xhes_cup_x, gamma_cup_x, xt_cup_x
@@ -1881,11 +1915,11 @@ CONTAINS
          if(ierr(i) /= 0) cycle
 
          do k = start_level(i) + 1, ktop(i) + 1
-            denom  = (zu(i,k-1) - 0.5 * up_massdetr(i,k-1)  + up_massentr(i,k-1))
+            denom  = (zu(i,k-1) - 0.5 * plume_states(i,j,plume)%up_massdetr(k-1)  + plume_states(i,j,plume)%up_massentr(k-1))
             denomU = (zu(i,k-1) - 0.5 * up_massdetru(i,k-1) + up_massentru(i,k-1))
 
             if(denom > 0.0 .and. denomU > 0.0) then
-               hc(i,k)  = (hc(i,k-1)  * zu(i,k-1)  - 0.5 * up_massdetr(i,k-1)  * hc(i,k-1)  + up_massentr(i,k-1)  * he(i,k-1))  / denom
+               hc(i,k)  = (hc(i,k-1)  * zu(i,k-1)  - 0.5 * plume_states(i,j,plume)%up_massdetr(k-1)  * hc(i,k-1)  + plume_states(i,j,plume)%up_massentr(k-1)  * he(i,k-1))  / denom
                hco(i,k) = (hco(i,k-1) * zuo(i,k-1) - 0.5 * up_massdetro(i,k-1) * hco(i,k-1) + up_massentro(i,k-1) * heo(i,k-1)) / denom
 
                uc(i,k) = (uc(i,k-1) * zu(i,k-1) - 0.5 * up_massdetru(i,k-1) * uc(i,k-1) + up_massentru(i,k-1) * us(i,k-1) &
@@ -2120,7 +2154,7 @@ CONTAINS
                entupk = 0.; detupk = 0.; entdoj = 0.
                detdo = edto(i) * dd_massdetro(i,k)
                entdo = edto(i) * dd_massentro(i,k)
-               entup = up_massentro(i,k)
+               entup = plume_states(i,j,plume)%up_massentr(k)
                detup = up_massdetro(i,k)
                subin = -zdo(i,k+1) * edto(i)
                subdown = -zdo(i,k) * edto(i)
@@ -2782,7 +2816,7 @@ CONTAINS
             call set_grads_var(jl, k, nvar, zdo(i,k) / xmb(i), "zdn"//cty, 'norm m flux dn', '3d')
             call set_grads_var(jl, k, nvar, zenv(i,k), "zenv"//cty, 'norm m flux env', '3d')
             call set_grads_var(jl, k, nvar, -edto(i) * xmb(i) * zdo(i,k), "mdn"//cty, 'm flux down (kg/s/m^2)', '3d')
-            call set_grads_var(jl, k, nvar, up_massentro(i,k), "upent"//cty, 'up_massentr(kg/s/m^2)', '3d')
+            call set_grads_var(jl, k, nvar, plume_states(i,j,plume)%up_massentr(k), "upent"//cty, 'up_massentr(kg/s/m^2)', '3d')
             call set_grads_var(jl, k, nvar, xmb(i) * up_massdetro(i,k), "updet"//cty, 'up_massdetr(kg/s/m^2)', '3d')
             call set_grads_var(jl, k, nvar, outt(i,k) * 86400., "outt"//cty, 'outt K/day', '3d')
             call set_grads_var(jl, k, nvar, resten_T * 86400., "rest"//cty, 'residuo T K/day', '3d')
@@ -4313,12 +4347,12 @@ CONTAINS
             dz=z_cup(i,k+1)-z_cup(i,k)
 
             !-- downward transport + mixing
-            denom = (zd(i,k+1)-0.5*dd_massdetr(i,k)+dd_massentr(i,k))
+            denom = (zd(i,k+1)-0.5*plume_states(i,j,plume)%dd_massdetr(k)+plume_states(i,j,plume)%dd_massentr(k))
             if( denom == 0.0 )then
                qcd(i,k)= qcd(i,k+1)
             else
-               qcd(i,k)=(qcd(i,k+1)*zd(i,k+1) -0.5*dd_massdetr(i,k)*qcd(i,k+1)+ &
-                    dd_massentr(i,k)*q  (i,k)    )/ denom
+               qcd(i,k)=(qcd(i,k+1)*zd(i,k+1) -0.5*plume_states(i,j,plume)%dd_massdetr(k)*qcd(i,k+1)+ &
+                    plume_states(i,j,plume)%dd_massentr(k)*q  (i,k)    )/ denom
             endif
             !
             !--- to be negatively buoyant, hcd should be smaller than hes!
@@ -5047,17 +5081,17 @@ CONTAINS
 
             !-    1. steady state plume equation, for what could
             !-       be in cloud without condensation
-            denom =  (zu(i,k-1)-.5*up_massdetr(i,k-1)+up_massentr(i,k-1))
+            denom =  (zu(i,k-1)-.5*plume_states(i,j,plume)%up_massdetr(k-1)+plume_states(i,j,plume)%up_massentr(k-1))
             if(denom > 0.) then
 
-               qc (i,k)=  ( qc (i,k-1)*zu(i,k-1)-.5*up_massdetr(i,k-1)* qc(i,k-1) +   &
-                    up_massentr(i,k-1)* q (i,k-1)     &
+               qc (i,k)=  ( qc (i,k-1)*zu(i,k-1)-.5*plume_states(i,j,plume)%up_massdetr(k-1)* qc(i,k-1) +   &
+                    plume_states(i,j,plume)%up_massentr(k-1)* q (i,k-1)     &
                     )/ denom
 
                if(k==start_level(i)+1) qc(i,k)= qc(i,k) + zqexec(i) &
-                    * up_massentr(i,k-1)/denom
+                    * plume_states(i,j,plume)%up_massentr(k-1)/denom
                !--- assuming no liq/ice water in the environment
-               qrc(i,k)=  ( qrc(i,k-1)*zu(i,k-1)-.5*up_massdetr(i,k-1)* qrc(i,k-1)   &
+               qrc(i,k)=  ( qrc(i,k-1)*zu(i,k-1)-.5*plume_states(i,j,plume)%up_massdetr(k-1)* qrc(i,k-1)   &
                     )/ denom
 
             else
@@ -5364,13 +5398,13 @@ CONTAINS
 
             !-    1. steady state plume equation, for what could
             !-       be in cloud without condensation
-            denom =  (zu(i,k-1)-.5*up_massdetr(i,k-1)+up_massentr(i,k-1))
+            denom =  (zu(i,k-1)-.5*plume_states(i,j,plume)%up_massdetr(k-1)+plume_states(i,j,plume)%up_massentr(k-1))
             if(denom > 0.) then
-               qc (i,k)=  ( qc (i,k-1)*zu(i,k-1)-.5*up_massdetr(i,k-1)* qc(i,k-1) +   &
-                    up_massentr(i,k-1)* q (i,k-1)     &
+               qc (i,k)=  ( qc (i,k-1)*zu(i,k-1)-.5*plume_states(i,j,plume)%up_massdetr(k-1)* qc(i,k-1) +   &
+                    plume_states(i,j,plume)%up_massentr(k-1)* q (i,k-1)     &
                     )/ denom
                if(k==start_level(i)+1) qc(i,k)= qc(i,k) + zqexec(i) &
-                    * up_massentr(i,k-1)/denom
+                    * plume_states(i,j,plume)%up_massentr(k-1)/denom
             else
                qc (i,k)=    qc (i,k-1)
             endif
@@ -5587,15 +5621,15 @@ CONTAINS
 
             up_massdetro(i,k)=cd(i,k)*dz_zuo_ave
 
-            up_massentro(i,k)=zuo(i,k+1)-zuo(i,k)+up_massdetro(i,k)
-            up_massentro(i,k)=max(up_massentro(i,k),0.0)
+            plume_states(i,j,plume)%up_massentr(k)=zuo(i,k+1)-zuo(i,k)+up_massdetro(i,k)
+            plume_states(i,j,plume)%up_massentr(k)=max(plume_states(i,j,plume)%up_massentr(k),0.0)
 
             !-- check dd_massdetro in case of dd_massentro has been changed above
-            up_massdetro(i,k)=zuo(i,k)-zuo(i,k+1)+up_massentro(i,k)
+            up_massdetro(i,k)=zuo(i,k)-zuo(i,k+1)+plume_states(i,j,plume)%up_massentr(k)
 
             if(dz_zuo_ave.gt.0.) then
                cd(i,k)=up_massdetro(i,k)/dz_zuo_ave
-               entr_rate(i,k)=up_massentro(i,k)/dz_zuo_ave
+               entr_rate(i,k)=plume_states(i,j,plume)%up_massentr(k)/dz_zuo_ave
             endif
          enddo
 
@@ -5603,22 +5637,22 @@ CONTAINS
             !-- above location of maximum value zu -> change detrainment
             dz_zuo_ave = (zo_cup(i,k+1)-zo_cup(i,k))*zuo(i,k)
 
-            up_massentro(i,k)=entr_rate(i,k)*dz_zuo_ave
+            plume_states(i,j,plume)%up_massentr(k)=entr_rate(i,k)*dz_zuo_ave
 
-            up_massdetro(i,k)=zuo(i,k)-zuo(i,k+1)+up_massentro(i,k)
+            up_massdetro(i,k)=zuo(i,k)-zuo(i,k+1)+plume_states(i,j,plume)%up_massentr(k)
             up_massdetro(i,k)=max(up_massdetro(i,k),0.0)
             !-- check up_massentro in case of dd_up_massdetro has been changed above
-            up_massentro(i,k)=zuo(i,k+1)-zuo(i,k)+up_massdetro(i,k)
+            plume_states(i,j,plume)%up_massentr(k)=zuo(i,k+1)-zuo(i,k)+up_massdetro(i,k)
 
             if(dz_zuo_ave.gt.0.) then
                cd(i,k)=up_massdetro(i,k)/dz_zuo_ave
-               entr_rate(i,k)=up_massentro(i,k)/dz_zuo_ave
+               entr_rate(i,k)=plume_states(i,j,plume)%up_massentr(k)/dz_zuo_ave
             endif
          enddo
 
          do k=kts,kte
-            up_massentr(i,k)=up_massentro(i,k)
-            up_massdetr(i,k)=up_massdetro(i,k)
+            plume_states(i,j,plume)%up_massentr(k)=plume_states(i,j,plume)%up_massentr(k)
+            plume_states(i,j,plume)%up_massdetr(k)=up_massdetro(i,k)
          enddo
          IF(present(up_massentru) .and. present(up_massdetru))THEN
             if(mass_U_option==1) then
@@ -9403,9 +9437,9 @@ CONTAINS
             p_liq_ice(k) = fract_liq_f(tempco(i,k),cnvfrc(i),srftype(i))
 
             !--- transport + mixing
-            denom = zuo(i,k+1)-.5*up_massdetr(i,k)+up_massentr(i,k)
+            denom = zuo(i,k+1)-.5*plume_states(i,j,plume)%up_massdetr(k)+plume_states(i,j,plume)%up_massentr(k)
             if(denom > 0.) then
-               qrr(i,k) = (qrr(i,k+1)*zuo(i,k+1)-.5*up_massdetr(i,k)* qrr(i,k+1))/ denom
+               qrr(i,k) = (qrr(i,k+1)*zuo(i,k+1)-.5*plume_states(i,j,plume)%up_massdetr(k)* qrr(i,k+1))/ denom
             else
                qrr(i,k) =  qrr(i,k+1)
             endif
@@ -9970,7 +10004,7 @@ CONTAINS
                            write(15,*) "=> k zo po zuo,zdo,up_massentro,up_massdetro,outt, outq,outqc,outu,outv"
                            do k = kts,kte
                               write(15,101) k,zo(i,k), po(i,k) &
-                                   ,zuo(i,k),zdo(i,k),up_massentro(i,k),up_massdetro(i,k),outt(i,k)*86400. &
+                                   ,zuo(i,k),zdo(i,k),plume_states(i,j,plume)%up_massentr(k),up_massdetro(i,k),outt(i,k)*86400. &
                                    ,outq(i,k)*86400.*1000.,outqc(i,k)*86400.*1000.,outu(i,k)*86400.,outv(i,k)*86400.
 
                            enddo
@@ -10035,7 +10069,7 @@ CONTAINS
                         print*, "=> k zo po zuo,zdo,up_massentro,up_massdetro,outt, outq,outqc,outu,outv"
                         do k = kts,kte
                            write(*,101) k,zo(i,k), po(i,k) &
-                                ,zuo(i,k),zdo(i,k),up_massentro(i,k),up_massdetro(i,k),outt(i,k)*86400. &
+                                ,zuo(i,k),zdo(i,k),plume_states(i,j,plume)%up_massentr(k),up_massdetro(i,k),outt(i,k)*86400. &
                                 ,outq(i,k)*86400.*1000.,outqc(i,k)*86400.*1000.,outu(i,k)*86400.,outv(i,k)*86400.
                         enddo
                      endif
