@@ -1973,37 +1973,9 @@ CONTAINS
       !-----------------------------------------------------------------------------
       ! 4.1 Updraft Entrainment and Detrainment Profiles
       !-----------------------------------------------------------------------------
-      DO i = its, itf
-         if(ierr(i) /= 0) cycle
-         do k = kts, kte
-            frh = min(qo_cup(i,k) / max(qeso_cup(i,k), smallerQV), 1.0)
-            if (ZERO_DIFF_ENTR) then
-               if(k >= klcl(i)) then
-                  entr_rate(i,k) = entr_rate(i,k) * (1.3 - frh) * (qeso_cup(i,k) / qeso_cup(i,klcl(i)))**3
-               else
-                  entr_rate(i,k) = entr_rate(i,k) * (1.3 - frh)
-               endif
-               cd(i,k) = 0.75e-4 * (1.6 - frh)    
-            else
-               ! --- RH dependence ---
-               rh_fac = max(0.5, min(1.1, 1.15 - 0.7*frh))
-               ! --- vertical scaling ---
-               if (k >= klcl(i)) then
-                  z_fac = (qeso_cup(i,k) / qeso_cup(i,klcl(i)))**2.0
-                  z_fac = max(0.5, min(1.6, z_fac))
-                  entr_rate(i,k) = entr_rate(i,k) * rh_fac * z_fac
-               else
-                  entr_rate(i,k) = entr_rate(i,k) * rh_fac
-               endif
-               entr_rate(i,k) = max(entr_rate(i,k), min_entr_rate)
-               SELECT CASE(trim(cumulus))
-               CASE('deep');    cd(i,k) = 0.10 * entr_rate(i,k)
-               CASE('mid');     cd(i,k) = 0.50 * entr_rate(i,k)
-               CASE('shallow'); cd(i,k) = 0.75 * entr_rate(i,k)
-               END SELECT
-            endif
-         enddo
-      ENDDO
+      call compute_humidity_dependent_entrainment(cumulus, ZERO_DIFF_ENTR, &
+            its, itf, kts, kte, ierr, qo_cup, qeso_cup, klcl, &
+            entr_rate, cd, min_entr_rate)
 
       !-----------------------------------------------------------------------------
       ! 4.2 Determine Convective Cloud Base (kbcon) and Top Limits (ktop)
@@ -3562,6 +3534,103 @@ CONTAINS
          enddo
 
       END SUBROUTINE validate_convective_cloud_geometry
+
+      !--------------------------------------------------------------------------
+      ! Helper: Compute humidity-dependent entrainment and detrainment rates
+      !
+      ! This subroutine adjusts updraft entrainment rates based on relative
+      ! humidity and vertical structure, following the physical principle that
+      ! drier air increases entrainment mixing. Detrainment rates are computed
+      ! as a fraction of entrainment, varying by convective regime.
+      !
+      ! Arguments:
+      !   cumulus       - Convection regime ('deep', 'mid', or 'shallow')
+      !   ZERO_DIFF_ENTR - Flag for simplified entrainment formulation
+      !   its, itf      - Horizontal index bounds
+      !   kts, kte      - Vertical index bounds
+      !   ierr          - Error status array
+      !   qo_cup        - Environmental moisture [kg/kg]
+      !   qeso_cup      - Saturation moisture [kg/kg]
+      !   klcl          - Lifting condensation level index
+      !   entr_rate     - Entrainment rate [1/m] (input/output)
+      !   cd            - Detrainment rate [1/m] (output)
+      !   min_entr_rate - Minimum entrainment rate [1/m]
+      !--------------------------------------------------------------------------
+      SUBROUTINE compute_humidity_dependent_entrainment(cumulus, ZERO_DIFF_ENTR, &
+                    its, itf, kts, kte, ierr, qo_cup, qeso_cup, klcl, &
+                    entr_rate, cd, min_entr_rate)
+         CHARACTER(LEN=*), INTENT(IN) :: cumulus
+         LOGICAL, INTENT(IN) :: ZERO_DIFF_ENTR
+         INTEGER, INTENT(IN) :: its, itf, kts, kte
+         INTEGER, INTENT(IN) :: ierr(its:itf), klcl(its:itf)
+         REAL, INTENT(IN)    :: qo_cup(its:itf,kts:kte), qeso_cup(its:itf,kts:kte)
+         REAL, INTENT(INOUT) :: entr_rate(its:itf,kts:kte)
+         REAL, INTENT(OUT)   :: cd(its:itf,kts:kte)
+         REAL, INTENT(IN)    :: min_entr_rate
+
+         ! Local variables
+         INTEGER :: i, k
+         REAL :: frh, rh_fac, z_fac
+
+         ! Named constants for entrainment/detrainment
+         REAL, PARAMETER :: RH_ENTR_OFFSET_OLD = 1.3      ! Old scheme RH offset
+         REAL, PARAMETER :: DETR_FRAC_OLD = 0.75e-4       ! Old scheme detrainment base
+         REAL, PARAMETER :: DETR_RH_COEFF_OLD = 1.6       ! Old scheme detrainment RH coefficient
+         REAL, PARAMETER :: RH_ENTR_OFFSET = 1.15         ! RH offset for new scheme
+         REAL, PARAMETER :: RH_ENTR_COEFF = 0.7           ! RH coefficient for new scheme
+         REAL, PARAMETER :: RH_FAC_MIN = 0.5              ! Minimum RH factor
+         REAL, PARAMETER :: RH_FAC_MAX = 1.1              ! Maximum RH factor
+         REAL, PARAMETER :: Z_FAC_MIN = 0.5               ! Minimum vertical factor
+         REAL, PARAMETER :: Z_FAC_MAX = 1.6               ! Maximum vertical factor
+         REAL, PARAMETER :: Z_SCALE_EXPONENT = 2.0        ! Vertical scaling exponent
+         REAL, PARAMETER :: QSAT_SCALE_EXPONENT_OLD = 3.0 ! Old qsat scaling exponent
+         REAL, PARAMETER :: DETR_FRAC_DEEP = 0.10         ! Detrainment fraction for deep
+         REAL, PARAMETER :: DETR_FRAC_MID = 0.50          ! Detrainment fraction for mid
+         REAL, PARAMETER :: DETR_FRAC_SHALLOW = 0.75      ! Detrainment fraction for shallow
+
+         DO i = its, itf
+            if(ierr(i) /= 0) cycle
+            do k = kts, kte
+               ! Compute fractional relative humidity
+               frh = min(qo_cup(i,k) / max(qeso_cup(i,k), smallerQV), 1.0)
+
+               if (ZERO_DIFF_ENTR) then
+                  ! Simplified entrainment scheme
+                  if(k >= klcl(i)) then
+                     entr_rate(i,k) = entr_rate(i,k) * (RH_ENTR_OFFSET_OLD - frh) * &
+                                      (qeso_cup(i,k) / qeso_cup(i,klcl(i)))**QSAT_SCALE_EXPONENT_OLD
+                  else
+                     entr_rate(i,k) = entr_rate(i,k) * (RH_ENTR_OFFSET_OLD - frh)
+                  endif
+                  cd(i,k) = DETR_FRAC_OLD * (DETR_RH_COEFF_OLD - frh)
+               else
+                  ! Advanced entrainment scheme with RH and vertical scaling
+                  ! RH dependence: drier air increases entrainment
+                  rh_fac = max(RH_FAC_MIN, min(RH_FAC_MAX, RH_ENTR_OFFSET - RH_ENTR_COEFF * frh))
+
+                  ! Vertical scaling above LCL
+                  if (k >= klcl(i)) then
+                     z_fac = (qeso_cup(i,k) / qeso_cup(i,klcl(i)))**Z_SCALE_EXPONENT
+                     z_fac = max(Z_FAC_MIN, min(Z_FAC_MAX, z_fac))
+                     entr_rate(i,k) = entr_rate(i,k) * rh_fac * z_fac
+                  else
+                     entr_rate(i,k) = entr_rate(i,k) * rh_fac
+                  endif
+
+                  ! Apply minimum entrainment threshold
+                  entr_rate(i,k) = max(entr_rate(i,k), min_entr_rate)
+
+                  ! Detrainment as fraction of entrainment, varies by regime
+                  SELECT CASE(trim(cumulus))
+                  CASE('deep');    cd(i,k) = DETR_FRAC_DEEP * entr_rate(i,k)
+                  CASE('mid');     cd(i,k) = DETR_FRAC_MID * entr_rate(i,k)
+                  CASE('shallow'); cd(i,k) = DETR_FRAC_SHALLOW * entr_rate(i,k)
+                  END SELECT
+               endif
+            enddo
+         ENDDO
+
+      END SUBROUTINE compute_humidity_dependent_entrainment
 
       !--------------------------------------------------------------------------
       ! Helper: Compute diurnal cycle closure (aa1_bl) for various formulations
