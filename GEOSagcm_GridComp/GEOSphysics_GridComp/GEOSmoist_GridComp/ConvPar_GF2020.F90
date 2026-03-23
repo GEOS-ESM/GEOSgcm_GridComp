@@ -2804,8 +2804,8 @@ CONTAINS
   IF(USE_TRACER_TRANSP == 1) THEN
      do i = its, itf
         if(ierr(i) /= 0) cycle
-        pwavo(i)          = pwavo(i) / (xmb(i) + 1.e-16)
-        pwevo(i)          = pwevo(i) / (xmb(i) + 1.e-16)
+        pwavo(i)          = xmb(i) * pwavo(i)
+        pwevo(i)          = xmb(i) * pwevo(i)
         zuo(i,:)          = xmb(i) * zuo(i,:)
         zdo(i,:)          = xmb(i) * zdo(i,:)
         pwo(i,:)          = xmb(i) * pwo(i,:)
