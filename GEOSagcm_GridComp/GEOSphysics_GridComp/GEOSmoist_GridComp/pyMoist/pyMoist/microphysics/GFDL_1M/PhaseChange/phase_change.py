@@ -2,7 +2,7 @@
 I/O and error handling is performed here.
 Calculations can be found in deeper functions."""
 
-from ndsl import Local, NDSLRuntime, QuantityFactory, StencilFactory
+from ndsl import Local, NDSLRuntime, QuantityFactory, StencilFactory, Quantity
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.typing import Float
 
@@ -81,14 +81,14 @@ class PhaseChange(NDSLRuntime):
             },
         )
 
-        self._meltfrz = stencil_factory.from_dims_halo(
+        self._melt_freeze = stencil_factory.from_dims_halo(
             func=melt_freeze,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "DT_MOIST": config.DT_MOIST,
             },
         )
-        self._evap = stencil_factory.from_dims_halo(
+        self._evaporate = stencil_factory.from_dims_halo(
             func=evaporate,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
@@ -96,7 +96,7 @@ class PhaseChange(NDSLRuntime):
                 "CCW_EVAP_EFF": config.CCW_EVAP_EFF,
             },
         )
-        self._subl = stencil_factory.from_dims_halo(
+        self._sublimate = stencil_factory.from_dims_halo(
             func=sublimate,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
@@ -120,33 +120,56 @@ class PhaseChange(NDSLRuntime):
 
     def __call__(
         self,
-        t,
-        mixing_ratio_vapor,
-        mixing_ratio_large_scale_liquid,
-        mixing_ratio_convective_liquid,
-        mixing_ratio_large_scale_ice,
-        mixing_ratio_convective_ice,
-        cloud_fraction_large_scale,
-        cloud_fraction_convective,
-        concentration_ice,
-        concentration_liquid,
-        relative_humidity_after_pdf,
-        estimated_inversion_strength,
-        area,
-        critical_relative_humidity_for_pdf,
-        pdf_iters,
-        cloud_liquid_evaporation,
-        cloud_ice_sublimation,
-        convection_fraction,
-        surface_type,
-        local_lcl_level,
-        local_p_mb,
-        local_p_interface_mb,
-        local_saturation_specific_humidity,
+        t: Quantity,
+        mixing_ratio_vapor: Quantity,
+        mixing_ratio_large_scale_liquid: Quantity,
+        mixing_ratio_convective_liquid: Quantity,
+        mixing_ratio_large_scale_ice: Quantity,
+        mixing_ratio_convective_ice: Quantity,
+        cloud_fraction_large_scale: Quantity,
+        cloud_fraction_convective: Quantity,
+        concentration_ice: Quantity,
+        concentration_liquid: Quantity,
+        relative_humidity_after_pdf: Quantity,
+        estimated_inversion_strength: Quantity,
+        area: Quantity,
+        critical_relative_humidity_for_pdf: Quantity,
+        pdf_iters: Quantity,
+        cloud_liquid_evaporation: Quantity,
+        cloud_ice_sublimation: Quantity,
+        convection_fraction: Quantity,
+        surface_type: Quantity,
+        local_lcl_level: Quantity,
+        local_p_mb: Quantity,
+        local_p_interface_mb: Quantity,
+        local_saturation_specific_humidity: Quantity,
     ):
-        """
+        """Allow for phase change of excess vapor/liquid/ice before calling the microphysics driver
 
         Args:
+            t (Quantity): temperature (Kelvin)
+            mixing_ratio_vapor (Quantity): water vapor mixing ratio (kg/kg)
+            mixing_ratio_large_scale_liquid (Quantity): large scale (non-convective) cloud liquid (kg/kg)
+            mixing_ratio_convective_liquid (Quantity): convective liquid (kg/kg)
+            mixing_ratio_large_scale_ice (Quantity): large scale (non-convective) cloud ice (kg/kg)
+            mixing_ratio_convective_ice (Quantity): convective ice (kg/kg)
+            cloud_fraction_large_scale (Quantity): (unitless)
+            cloud_fraction_convective (Quantity): (unitless)
+            concentration_ice (Quantity): cloud ice particle concentration (m^-3)
+            concentration_liquid (Quantity): cloud liquid particle concentration (m^-3)
+            relative_humidity_after_pdf (Quantity): (unitless)
+            estimated_inversion_strength (Quantity): K
+            area (Quantity): grid cell area (m^2)
+            critical_relative_humidity_for_pdf (Quantity): (unitless)
+            pdf_iters (Quantity): number of iterations in the hydrostatic pdf before exit
+            cloud_liquid_evaporation (Quantity): (kg kg-1 s-1)
+            cloud_ice_sublimation (Quantity): (kg kg-1 s-1)
+            convection_fraction (Quantity)
+            surface_type (Quantity)
+            local_lcl_level (Quantity)
+            local_p_mb (Quantity): grid center pressure (mb)
+            local_p_interface_mb (Quantity): grid edge pressure (mb)
+            local_saturation_specific_humidity (Quantity)
 
         """
         self._rh_calculations(
@@ -166,11 +189,11 @@ class PhaseChange(NDSLRuntime):
             convection_fraction=convection_fraction,
             surface_type=surface_type,
             p_mb=local_p_mb,
-            vapor=mixing_ratio_vapor,
-            large_scale_liquid=mixing_ratio_large_scale_liquid,
-            convective_liquid=mixing_ratio_convective_liquid,
-            large_scale_ice=mixing_ratio_large_scale_ice,
-            convective_ice=mixing_ratio_convective_ice,
+            mixing_ratio_vapor=mixing_ratio_vapor,
+            mixing_ratio_large_scale_liquid=mixing_ratio_large_scale_liquid,
+            mixing_ratio_convective_liquid=mixing_ratio_convective_liquid,
+            mixing_ratio_large_scale_ice=mixing_ratio_large_scale_ice,
+            mixing_ratio_convective_ice=mixing_ratio_convective_ice,
             t=t,
             large_scale_cloud_fraction=cloud_fraction_large_scale,
             convective_cloud_fraction=cloud_fraction_convective,
@@ -185,28 +208,28 @@ class PhaseChange(NDSLRuntime):
         )
 
         if self.config.LMELTFRZ:
-            self._meltfrz(
+            self._melt_freeze(
                 convection_fraction=convection_fraction,
                 surface_type=surface_type,
                 t=t,
-                liquid=mixing_ratio_convective_liquid,
-                ice=mixing_ratio_convective_ice,
+                mixing_ratio_liquid=mixing_ratio_convective_liquid,
+                mixing_ratio_ice=mixing_ratio_convective_ice,
             )
-            self._meltfrz(
+            self._melt_freeze(
                 convection_fraction=convection_fraction,
                 surface_type=surface_type,
                 t=t,
-                liquid=mixing_ratio_large_scale_liquid,
-                ice=mixing_ratio_large_scale_ice,
+                mixing_ratio_liquid=mixing_ratio_large_scale_liquid,
+                mixing_ratio_ice=mixing_ratio_large_scale_ice,
             )
 
         if self.config.CCW_EVAP_EFF > 0.0 and not self.config.DO_EVAP:
-            self._evap(
+            self._evaporate(
                 p_mb=local_p_mb,
                 t=t,
-                vapor=mixing_ratio_vapor,
-                convective_liquid=mixing_ratio_convective_liquid,
-                convective_ice=mixing_ratio_convective_ice,
+                mixing_ratio_vapor=mixing_ratio_vapor,
+                mixing_ratio_convective_liquid=mixing_ratio_convective_liquid,
+                mixing_ratio_convective_ice=mixing_ratio_convective_ice,
                 convective_cloud_fraction=cloud_fraction_convective,
                 liquid_concentration=concentration_liquid,
                 ice_concentration=concentration_ice,
@@ -215,12 +238,12 @@ class PhaseChange(NDSLRuntime):
             )
 
         if self.config.CCI_EVAP_EFF > 0.0 and not self.config.DO_SUBL:
-            self._subl(
+            self._sublimate(
                 p_mb=local_p_mb,
                 t=t,
-                vapor=mixing_ratio_vapor,
-                convective_liquid=mixing_ratio_convective_liquid,
-                convective_ice=mixing_ratio_convective_ice,
+                mixing_ratio_vapor=mixing_ratio_vapor,
+                mixing_ratio_convective_liquid=mixing_ratio_convective_liquid,
+                mixing_ratio_convective_ice=mixing_ratio_convective_ice,
                 convective_cloud_fraction=cloud_fraction_convective,
                 liquid_concentration=concentration_liquid,
                 ice_concentration=concentration_ice,
@@ -229,12 +252,12 @@ class PhaseChange(NDSLRuntime):
             )
 
         self._fix_up_clouds(
-            vapor=mixing_ratio_vapor,
+            mixing_ratio_vapor=mixing_ratio_vapor,
             t=t,
-            large_scale_liquid=mixing_ratio_large_scale_liquid,
-            large_scale_ice=mixing_ratio_large_scale_ice,
+            mixing_ratio_large_scale_liquid=mixing_ratio_large_scale_liquid,
+            mixing_ratio_large_scale_ice=mixing_ratio_large_scale_ice,
             large_scale_cloud_fraction=cloud_fraction_large_scale,
-            convective_liquid=mixing_ratio_convective_liquid,
-            convective_ice=mixing_ratio_convective_ice,
+            mixing_ratio_convective_liquid=mixing_ratio_convective_liquid,
+            mixing_ratio_convective_ice=mixing_ratio_convective_ice,
             convective_cloud_fraction=cloud_fraction_convective,
         )

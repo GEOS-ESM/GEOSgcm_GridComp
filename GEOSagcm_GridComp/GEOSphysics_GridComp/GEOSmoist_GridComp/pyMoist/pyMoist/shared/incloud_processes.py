@@ -181,13 +181,13 @@ def cloud_effective_radius_ice(
 
 
 def fix_up_clouds(
-    vapor: FloatField,
+    mixing_ratio_vapor: FloatField,
     t: FloatField,
-    large_scale_liquid: FloatField,
-    large_scale_ice: FloatField,
+    mixing_ratio_large_scale_liquid: FloatField,
+    mixing_ratio_large_scale_ice: FloatField,
     large_scale_cloud_fraction: FloatField,
-    convective_liquid: FloatField,
-    convective_ice: FloatField,
+    mixing_ratio_convective_liquid: FloatField,
+    mixing_ratio_convective_ice: FloatField,
     convective_cloud_fraction: FloatField,
 ) -> None:
     """
@@ -202,80 +202,103 @@ def fix_up_clouds(
             and remove cloud.
 
     Parameters:
-    vapor (inout): water vapor mixing ratio
+    mixing_ratio_vapor (inout): water vapor mixing ratio
     t (inout): temperature.
-    large_scale_liquid (inout): large scale cloud liquid water mixing ratio
-    large_scale_ice (inout): large scale cloud frozen water mixing ratio
+    mixing_ratio_large_scale_liquid (inout): large scale cloud liquid water mixing ratio
+    mixing_ratio_large_scale_ice (inout): large scale cloud frozen water mixing ratio
     large_scale_cloud_fraction (inout): large scale cloud fraction
-    convective_liquid (inout): convective cloud liquid water mixing ratio
-    convective_ice (inout): convective cloud frozen water mixing ratio
+    mixing_ratio_convective_liquid (inout): convective cloud liquid water mixing ratio
+    mixing_ratio_convective_ice (inout): convective cloud frozen water mixing ratio
     convective_cloud_fraction (inout): convective cloud fraction
     """
     with computation(PARALLEL), interval(...):
         # fix small convective cloud fraction
         if convective_cloud_fraction < 1.0e-5:
-            vapor = vapor + convective_liquid + convective_ice
+            mixing_ratio_vapor = (
+                mixing_ratio_vapor + mixing_ratio_convective_liquid + mixing_ratio_convective_ice
+            )
             t = (
                 t
-                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * convective_liquid
-                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * convective_ice
+                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP)
+                * mixing_ratio_convective_liquid
+                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * mixing_ratio_convective_ice
             )
             convective_cloud_fraction = 0.0
-            convective_liquid = 0.0
-            convective_ice = 0.0
+            mixing_ratio_convective_liquid = 0.0
+            mixing_ratio_convective_ice = 0.0
         # fix small large scale cloud fraction
         if large_scale_cloud_fraction < 1.0e-5:
-            vapor = vapor + large_scale_liquid + large_scale_ice
+            mixing_ratio_vapor = (
+                mixing_ratio_vapor + mixing_ratio_large_scale_liquid + mixing_ratio_large_scale_ice
+            )
             t = (
                 t
-                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * large_scale_liquid
-                - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * large_scale_ice
+                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP)
+                * mixing_ratio_large_scale_liquid
+                - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * mixing_ratio_large_scale_ice
             )
             large_scale_cloud_fraction = 0.0
-            large_scale_liquid = 0.0
-            large_scale_ice = 0.0
+            mixing_ratio_large_scale_liquid = 0.0
+            mixing_ratio_large_scale_ice = 0.0
         # if large scale liquid water concentration is too low
-        if large_scale_liquid < 1.0e-8:
-            vapor = vapor + large_scale_liquid
-            t = t - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * large_scale_liquid
-            large_scale_liquid = 0.0
-        # if large scale frozen water concentration is too low
-        if large_scale_ice < 1.0e-8:
-            vapor = vapor + large_scale_ice
-            t = t - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * large_scale_ice
-            large_scale_ice = 0.0
-        # if convective liquid water concentration is too low
-        if convective_liquid < 1.0e-8:
-            vapor = vapor + convective_liquid
-            t = t - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * convective_liquid
-            convective_liquid = 0.0
-        # if convective frozen water concentration is too low
-        if convective_ice < 1.0e-8:
-            vapor = vapor + convective_ice
-            t = t - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * convective_ice
-            convective_ice = 0.0
-        # if total convective water is too low
-        if (convective_liquid + convective_ice) < 1.0e-8:
-            vapor = vapor + convective_liquid + convective_ice
+        if mixing_ratio_large_scale_liquid < 1.0e-8:
+            mixing_ratio_vapor = mixing_ratio_vapor + mixing_ratio_large_scale_liquid
             t = (
                 t
-                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * convective_liquid
-                - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * convective_ice
+                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP)
+                * mixing_ratio_large_scale_liquid
+            )
+            mixing_ratio_large_scale_liquid = 0.0
+        # if large scale frozen water concentration is too low
+        if mixing_ratio_large_scale_ice < 1.0e-8:
+            mixing_ratio_vapor = mixing_ratio_vapor + mixing_ratio_large_scale_ice
+            t = (
+                t
+                - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * mixing_ratio_large_scale_ice
+            )
+            mixing_ratio_large_scale_ice = 0.0
+        # if convective liquid water concentration is too low
+        if mixing_ratio_convective_liquid < 1.0e-8:
+            mixing_ratio_vapor = mixing_ratio_vapor + mixing_ratio_convective_liquid
+            t = (
+                t
+                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP)
+                * mixing_ratio_convective_liquid
+            )
+            mixing_ratio_convective_liquid = 0.0
+        # if convective frozen water concentration is too low
+        if mixing_ratio_convective_ice < 1.0e-8:
+            mixing_ratio_vapor = mixing_ratio_vapor + mixing_ratio_convective_ice
+            t = t - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * mixing_ratio_convective_ice
+            mixing_ratio_convective_ice = 0.0
+        # if total convective water is too low
+        if (mixing_ratio_convective_liquid + mixing_ratio_convective_ice) < 1.0e-8:
+            mixing_ratio_vapor = (
+                mixing_ratio_vapor + mixing_ratio_convective_liquid + mixing_ratio_convective_ice
+            )
+            t = (
+                t
+                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP)
+                * mixing_ratio_convective_liquid
+                - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * mixing_ratio_convective_ice
             )
             convective_cloud_fraction = 0.0
-            convective_liquid = 0.0
-            convective_ice = 0.0
+            mixing_ratio_convective_liquid = 0.0
+            mixing_ratio_convective_ice = 0.0
         # if total large scale water is too low
-        if (large_scale_liquid + large_scale_ice) < 1.0e-8:
-            vapor = vapor + large_scale_liquid + large_scale_ice
+        if (mixing_ratio_large_scale_liquid + mixing_ratio_large_scale_ice) < 1.0e-8:
+            mixing_ratio_vapor = (
+                mixing_ratio_vapor + mixing_ratio_large_scale_liquid + mixing_ratio_large_scale_ice
+            )
             t = (
                 t
-                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * large_scale_liquid
-                - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * large_scale_ice
+                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP)
+                * mixing_ratio_large_scale_liquid
+                - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * mixing_ratio_large_scale_ice
             )
             large_scale_cloud_fraction = 0.0
-            large_scale_liquid = 0.0
-            large_scale_ice = 0.0
+            mixing_ratio_large_scale_liquid = 0.0
+            mixing_ratio_large_scale_ice = 0.0
 
 
 # able of lookup values of radiative effective radius of ice crystals as a function of temperature from

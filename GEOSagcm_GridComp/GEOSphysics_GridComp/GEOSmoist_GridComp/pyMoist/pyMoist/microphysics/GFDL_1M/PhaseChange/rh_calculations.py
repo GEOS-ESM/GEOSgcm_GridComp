@@ -12,6 +12,16 @@ def rh_calculations(
     lcl_level: IntFieldIJ,
     alpha: FloatField,
 ):
+    """Compute relative humidity for use in the PDF
+
+    Args:
+        estimated_inversion_strength (FloatFieldIJ)
+        p_mb (FloatField)
+        p_interface_mb (FloatField)
+        area (FloatFieldIJ)
+        lcl_level (IntFieldIJ)
+        alpha (FloatField)
+    """
     from __externals__ import DW_LAND, DW_OCEAN, TURNRHCRIT_PARAM, k_end
 
     with computation(FORWARD), interval(0, 1):
@@ -62,5 +72,11 @@ def rh_calculations(
 
 
 def fill_rh_crit_export(alpha: FloatField, rh_crit: FloatField):
+    """Export relative humidity to the model - only called if rh_crit is associated in the Fortran
+
+    Args:
+        alpha (FloatField)
+        rh_crit (FloatField)
+    """
     with computation(PARALLEL), interval(...):
         rh_crit = 1 - alpha

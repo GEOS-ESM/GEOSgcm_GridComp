@@ -29,8 +29,32 @@ def radiation_coupling(
     liquid_radius: FloatField,
     ice_radius: FloatField,
 ) -> None:
-    """
-    Couple radiation with cloud variables to ensure physical consistency.
+    """Couple radiation with cloud variables to ensure physical consistency.
+
+    Args:
+        temperature (FloatField)
+        pressure (FloatField)
+        large_scale_cloud_fraction (FloatField)
+        convective_cloud_fraction (FloatField)
+        vapor (FloatField)
+        large_scale_liquid (FloatField)
+        large_scale_ice (FloatField)
+        convective_liquid (FloatField)
+        convective_ice (FloatField)
+        rain (FloatField)
+        snow (FloatField)
+        graupel (FloatField)
+        liquid_concentration (FloatField)
+        ice_concentration (FloatField)
+        radiation_vapor (FloatField)
+        radiation_liquid (FloatField)
+        radiation_ice (FloatField)
+        radiation_rain (FloatField)
+        radiation_snow (FloatField)
+        radiation_graupel (FloatField)
+        radiation_cloud_fraction (FloatField)
+        liquid_radius (FloatField)
+        ice_radius (FloatField)
     """
 
     from __externals__ import FAC_RI, FAC_RL, MAX_RI, MAX_RL, MIN_RI, MIN_RL

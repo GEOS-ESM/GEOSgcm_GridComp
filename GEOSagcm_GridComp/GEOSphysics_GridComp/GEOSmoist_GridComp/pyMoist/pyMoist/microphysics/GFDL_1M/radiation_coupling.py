@@ -1,4 +1,4 @@
-from ndsl import NDSLRuntime, StencilFactory, ndsl_log
+from ndsl import NDSLRuntime, StencilFactory, ndsl_log, Quantity
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import PARALLEL, computation, interval
 from ndsl.dsl.typing import FloatField
@@ -21,6 +21,16 @@ def update_humidity(
     ese: GlobalTable_saturation_tables,
     esx: GlobalTable_saturation_tables,
 ):
+    """Update humidity with mixing ratios updated by driver output
+
+    Args:
+        temperature (FloatField)
+        pressure (FloatField)
+        vapor (FloatField)
+        humidity (FloatField)
+        ese (GlobalTable_saturation_tables)
+        esx (GlobalTable_saturation_tables)
+    """
     with computation(PARALLEL), interval(...):
         qsat, _ = saturation_specific_humidity(temperature, pressure * 100, ese, esx)
         humidity = vapor * qsat
@@ -78,44 +88,70 @@ class GFDL1MRadiationCoupling(NDSLRuntime):
 
     def __call__(
         self,
-        t,
-        mixing_ratio_vapor,
-        mixing_ratio_large_scale_liquid,
-        mixing_ratio_large_scale_ice,
-        mixing_ratio_convective_liquid,
-        mixing_ratio_rain,
-        mixing_ratio_snow,
-        mixing_ratio_graupel,
-        mixing_ratio_convective_ice,
-        cloud_fraction_large_scale,
-        cloud_fraction_convective,
-        concentration_liquid,
-        concentration_ice,
-        liquid_radius,
-        ice_radius,
-        relative_humidity_after_pdf,
-        radiation_vapor,
-        radiation_liquid,
-        radiation_ice,
-        radiation_rain,
-        radiation_snow,
-        radiation_graupel,
-        radiation_cloud_fraction,
-        local_p_mb,
+        t: Quantity,
+        mixing_ratio_vapor: Quantity,
+        mixing_ratio_large_scale_liquid: Quantity,
+        mixing_ratio_large_scale_ice: Quantity,
+        mixing_ratio_convective_liquid: Quantity,
+        mixing_ratio_rain: Quantity,
+        mixing_ratio_snow: Quantity,
+        mixing_ratio_graupel: Quantity,
+        mixing_ratio_convective_ice: Quantity,
+        cloud_fraction_large_scale: Quantity,
+        cloud_fraction_convective: Quantity,
+        concentration_liquid: Quantity,
+        concentration_ice: Quantity,
+        liquid_radius: Quantity,
+        ice_radius: Quantity,
+        relative_humidity_after_pdf: Quantity,
+        radiation_vapor: Quantity,
+        radiation_liquid: Quantity,
+        radiation_ice: Quantity,
+        radiation_rain: Quantity,
+        radiation_snow: Quantity,
+        radiation_graupel: Quantity,
+        radiation_cloud_fraction: Quantity,
+        local_p_mb: Quantity,
     ):
         """
         Perform the radiation coupling process. This prefills fields for the proper radiation scheme.
         Fields are (generally) copied cleanly from non-radiation storage to the radiation driven counterpart
         with only minor modifications. Exceptions include extreme value checks and unit conversions.
+
+        Args:
+            t (Quantity)
+            mixing_ratio_vapor (Quantity)
+            mixing_ratio_large_scale_liquid (Quantity)
+            mixing_ratio_large_scale_ice (Quantity)
+            mixing_ratio_convective_liquid (Quantity)
+            mixing_ratio_rain (Quantity)
+            mixing_ratio_snow (Quantity)
+            mixing_ratio_graupel (Quantity)
+            mixing_ratio_convective_ice (Quantity)
+            cloud_fraction_large_scale (Quantity)
+            cloud_fraction_convective (Quantity)
+            concentration_liquid (Quantity)
+            concentration_ice (Quantity)
+            liquid_radius (Quantity)
+            ice_radius (Quantity)
+            relative_humidity_after_pdf (Quantity)
+            radiation_vapor (Quantity)
+            radiation_liquid (Quantity)
+            radiation_ice (Quantity)
+            radiation_rain (Quantity)
+            radiation_snow (Quantity)
+            radiation_graupel (Quantity)
+            radiation_cloud_fraction (Quantity)
+            local_p_mb (Quantity)
         """
         self._fix_up_clouds(
-            vapor=mixing_ratio_vapor,
+            mixing_ratio_vapor=mixing_ratio_vapor,
             t=t,
-            large_scale_liquid=mixing_ratio_large_scale_liquid,
-            large_scale_ice=mixing_ratio_large_scale_ice,
+            mixing_ratio_large_scale_liquid=mixing_ratio_large_scale_liquid,
+            mixing_ratio_large_scale_ice=mixing_ratio_large_scale_ice,
             large_scale_cloud_fraction=cloud_fraction_large_scale,
-            convective_liquid=mixing_ratio_convective_liquid,
-            convective_ice=mixing_ratio_convective_ice,
+            mixing_ratio_convective_liquid=mixing_ratio_convective_liquid,
+            mixing_ratio_convective_ice=mixing_ratio_convective_ice,
             convective_cloud_fraction=cloud_fraction_convective,
         )
 
