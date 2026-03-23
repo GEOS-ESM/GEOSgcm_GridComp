@@ -1633,12 +1633,16 @@ contains
 
    block
      integer :: DT, COUPLE_DT
-     type(ESMF_TimeInterval) :: ringDuration, timeStep
+     type(ESMF_TimeInterval) :: ringInterval, timeStep
      call ESMF_ClockGet(clock, timestep=timestep, _RC)
-     call ESMF_AlarmGet(GCM_INTERNAL_STATE%alarmOcn, ringDuration=ringDuration, _RC)
+     call ESMF_AlarmGet(GCM_INTERNAL_STATE%alarmOcn, ringInterval=ringInterval, _RC)
      call ESMF_TimeIntervalGet(timeStep, s=DT, _RC)
-     call ESMF_TimeIntervalGet(ringDuration, s=COUPLE_DT, _RC)
-
+     call ESMF_TimeIntervalGet(ringInterval, s=COUPLE_DT, _RC)
+!DEBUG info
+     if (MAPL_Am_I_root()) then
+        print *,"DEBUG_INFO (dt):",DT, COUPLE_DT
+     end if
+     
      call gcm_internal_state%a2o_state%set(DT=DT, COUPLE_DT=COUPLE_DT, _RC)
 
      call gcm_internal_state%o2a_state%set(DT=COUPLE_DT, COUPLE_DT=COUPLE_DT, _RC)

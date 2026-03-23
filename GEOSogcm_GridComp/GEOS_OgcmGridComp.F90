@@ -2085,6 +2085,9 @@ contains
     NUM = 0
     do while ( MyTime <= endTime ) ! Time to run
     !============================BEGIN-of-local-time-loop
+       if (MAPL_Am_I_root()) then
+          print *,"OGCM: doing ocean sub-stepping, STEP",num+1
+       end if
        if (.not. DUAL_OCEAN) then
           call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, Ogcm_Internal_State%CLOCK, RC=STATUS)
           VERIFY_(STATUS)
