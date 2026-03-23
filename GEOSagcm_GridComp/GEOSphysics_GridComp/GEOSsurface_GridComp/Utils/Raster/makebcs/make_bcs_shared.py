@@ -4,7 +4,6 @@
 
 import os
 import glob
-import re
 
 # --- BEGIN VERSION MATRIX ---
 
@@ -31,19 +30,8 @@ _VERSION_MATRIX = {
 
 _DEFAULTS = {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"}
 
-def _normalize_lbcsv(label: str) -> str:
-    v = (label or "").strip()
-    m = re.match(r'[vV]?\d+|[A-Za-z0-9]+', v)  # accepts v13 / 13 / NL3 / etc.
-    if not m:
-        return v
-    key = m.group(0)
-    # normalize numeric like '13' -> 'v13'
-    if key.isdigit():
-        key = 'v' + key
-    return key
-
 def resolve_bcs_matrix(bcs_version: str):
-    key = _normalize_lbcsv(bcs_version)
+    key = (bcs_version or "").strip()
     return {**_DEFAULTS, **_VERSION_MATRIX.get(key, {})}
 
 def topo_version_for_bcs(bcs_version: str) -> str:
