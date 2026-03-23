@@ -227,9 +227,9 @@ def make_bcs_cube(config):
            SGNAME  = SGNAME, \
            SGPARAM = SGPARAM, \
            TOPO_VERSION = TOPO_VERSION, \
-           mom6_bathy_version = MOM6_BATHY_VERSION, \                              
+           mom6_bathy_version = MOM6_BATHY_VERSION, \
            IS_STRETCHED = IS_STRETCHED, \
-           NCPUS = config['NCPUS'])
+           NCPUS = config['NCPUS'])           
 
   cube_job = open(bcjob,'wt')
   cube_job.write(script_string)
