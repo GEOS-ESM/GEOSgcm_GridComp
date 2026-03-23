@@ -1,7 +1,7 @@
 """GFDL_1M driver"""
 
 import dace
-from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
+from ndsl import NDSLRuntime, QuantityFactory, StencilFactory, Quantity
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.typing import FloatField, FloatFieldIJ
 
@@ -20,9 +20,10 @@ from pyMoist.microphysics.GFDL_1M.driver.warm_rain import GFDL1MWarmRain
 
 class GFDL1MDriver(NDSLRuntime):
     """
-    Computes precipitates and microphysics tendencies using the following functions:
+    Computes precipitates and microphysics using the Geophysical Fluid Dynamics Labratory Single Moment
+    Microphysics package tendencies using the following functions:
     __init__:
-        - checks validity of constants and trigger parameters for unimplemented options
+        - checks constants for options which will require unimplemented options
         - initializes internal fields
         - constructs stencils
         Arguments: StencilFactory, QuantityFactory, GFDL1MConfig
@@ -44,14 +45,13 @@ class GFDL1MDriver(NDSLRuntime):
         quantity_factory: QuantityFactory,
         config: GFDL1MConfig,
     ):
-        """
-        Perform setup for the microphysics driver. Check flags for unimplemented options,
+        """Perform setup for the microphysics driver. Check flags for unimplemented options,
         initialize internal fields, and compile stencils.
 
-        Arguments:
-            stencil_factory: StencilFactory with model domain information
-            quantity_factory: QuantityFactory with model domain information
-            config: driver configuration
+        Args:
+            stencil_factory (StencilFactory): StencilFactory with model domain information
+            quantity_factory (QuantityFactory): QuantityFactory with model domain information
+            config (GFDL1MConfig): driver configuration
         """
         # init NDSLRuntime
         super().__init__(stencil_factory)
@@ -137,86 +137,86 @@ class GFDL1MDriver(NDSLRuntime):
 
     def __call__(
         self,
-        t: FloatField,
-        u: FloatField,
-        v: FloatField,
-        w: FloatField,
-        dz: FloatField,
-        dp: FloatField,
-        area: FloatFieldIJ,
-        land_fraction: FloatFieldIJ,
-        convection_fraction: FloatFieldIJ,
-        surface_type: FloatFieldIJ,
-        estimated_inversion_strength: FloatFieldIJ,
-        critical_relative_humidity_for_pdf: FloatField,
-        vapor: FloatField,
-        liquid: FloatField,
-        rain: FloatField,
-        ice: FloatField,
-        snow: FloatField,
-        graupel: FloatField,
-        cloud_fraction: FloatField,
-        total_concentration: FloatField,
-        dvapordt: FloatField,
-        dliquiddt: FloatField,
-        draindt: FloatField,
-        dicedt: FloatField,
-        dsnowdt: FloatField,
-        dgraupeldt: FloatField,
-        dcloudfractiondt: FloatField,
-        dtdt: FloatField,
-        dudt: FloatField,
-        dvdt: FloatField,
-        liquid_precip_flux: FloatField,
-        ice_precip_flux: FloatField,
-        evaporation: FloatField,
-        sublimation: FloatField,
-        surface_precip_rain: FloatFieldIJ,
-        surface_precip_snow: FloatFieldIJ,
-        surface_precip_ice: FloatFieldIJ,
-        surface_precip_graupel: FloatFieldIJ,
+        t: Quantity,
+        u: Quantity,
+        v: Quantity,
+        w: Quantity,
+        dz: Quantity,
+        dp: Quantity,
+        area: Quantity,
+        land_fraction: Quantity,
+        convection_fraction: Quantity,
+        surface_type: Quantity,
+        estimated_inversion_strength: Quantity,
+        critical_relative_humidity_for_pdf: Quantity,
+        vapor: Quantity,
+        liquid: Quantity,
+        rain: Quantity,
+        ice: Quantity,
+        snow: Quantity,
+        graupel: Quantity,
+        cloud_fraction: Quantity,
+        total_concentration: Quantity,
+        dvapordt: Quantity,
+        dliquiddt: Quantity,
+        draindt: Quantity,
+        dicedt: Quantity,
+        dsnowdt: Quantity,
+        dgraupeldt: Quantity,
+        dcloudfractiondt: Quantity,
+        dtdt: Quantity,
+        dudt: Quantity,
+        dvdt: Quantity,
+        liquid_precip_flux: Quantity,
+        ice_precip_flux: Quantity,
+        evaporation: Quantity,
+        sublimation: Quantity,
+        surface_precip_rain: Quantity,
+        surface_precip_snow: Quantity,
+        surface_precip_ice: Quantity,
+        surface_precip_graupel: Quantity,
     ):
         """
 
         Arguments:
-            t (in): atmospheric temperature (K)
-            u (in): eastward winds (m/s)
-            v (in): northward winds (m/s)
-            w (in): vertical velocity (m/s)
-            dz (in): layer thickness (m)
-            dp (in): change in pressure between model levels (Pa)
-            area (in): grid cell area
-            land_fraction (in): land fraction
-            convection_fraction (in): convection fraction
-            surface_type (in): surface type
-            estimated_inversion_strength (in): estimated inversion strength (K)
-            critical_relative_humidity_for_pdf (in): critical relative humidity for pdf
-            vapor: (in): water vapor mixing ratio (kg/kg)
-            liquid (in): in cloud liquid mixing radio (kg/kg)
-            rain (in): falling rain (kg/kg)
-            ice (in): in cloud ice mixing radio (kg/kg)
-            snow (in): in cloud snow mixing radio (kg/kg)
-            graupel (in): in cloud graupel mixing radio (kg/kg)
-            cloud_fraction (in): cloud fraction (convective + large scale)
-            total_concentration (in): total ice + liquid concentration (m^-3)
-            dvapordt (out): water vapor tendency
-            dliquiddt (out): in cloud liquid water tendency
-            draindt (out): falling rain tendency
-            dicedt (out): in cloud frozen water tendency
-            dsnowdt (out): in cloud snow tendency
-            dgraupeldt (out): in cloud graupel tendency
-            dcloudfractiondt (out): cloud fraction (convective + large scale) tendency
-            dtdt (out): atmospheric temperature tendency
-            dudt (out): eastward wind tendency
-            dvdt (out): northward wind tendency
-            liquid_precip_flux (out): non-anvil large scale liquid precip flux
-            ice_precip_flux (out): non-anvil large scale ice precip flux
-            evaporation (out): non-anvil large scale evaporation
-            sublimation (out): non-anvil large scale sublimation
-            surface_precip_rain (out): rain precip at surface (kg/m^2/s)
-            surface_precip_snow (out): snow precip at surface (kg/m^2/s)
-            surface_precip_ice (out): ice precip at surface (kg/m^2/s)
-            surface_precip_graupel (out): graupel precip at surface (kg/m^2/s)
+            t (Quantity): (in) atmospheric temperature (K)
+            u (Quantity): (in) eastward winds (m/s)
+            v (Quantity): (in) northward winds (m/s)
+            w (Quantity): (in) vertical velocity (m/s)
+            dz (Quantity): (in) layer thickness (m)
+            dp (Quantity): (in) change in pressure between model levels (Pa)
+            area (Quantity): (in) grid cell area
+            land_fraction (Quantity): (in) land fraction
+            convection_fraction (Quantity): (in) convection fraction
+            surface_type (Quantity): (in) surface type
+            estimated_inversion_strength (Quantity): (in) estimated inversion strength (K)
+            critical_relative_humidity_for_pdf (Quantity): (in) critical relative humidity for pdf
+            vapor:(Quantity):  (in: water vapor mixing ratio (kg/kg)
+            liquid (Quantity): (in) in cloud liquid mixing radio (kg/kg)
+            rain (Quantity): (in) falling rain (kg/kg)
+            ice (Quantity): (in) in cloud ice mixing radio (kg/kg)
+            snow (Quantity): (in) in cloud snow mixing radio (kg/kg)
+            graupel (Quantity): (in) in cloud graupel mixing radio (kg/kg)
+            cloud_fraction (Quantity): (in) cloud fraction (convective + large scale)
+            total_concentration (Quantity): (in) total ice + liquid concentration (m^-3)
+            dvapordt (Quantity): (out: water vapor tendency
+            dliquiddt (Quantity): (out: in cloud liquid water tendency
+            draindt (Quantity): (out: falling rain tendency
+            dicedt (Quantity): (out: in cloud frozen water tendency
+            dsnowdt (Quantity): (out: in cloud snow tendency
+            dgraupeldt (Quantity): (out: in cloud graupel tendency
+            dcloudfractiondt (Quantity): (out: cloud fraction (convective + large scale) tendency
+            dtdt (Quantity): (out: atmospheric temperature tendency
+            dudt (Quantity): (out: eastward wind tendency
+            dvdt (Quantity): (out: northward wind tendency
+            liquid_precip_flux (Quantity): (out: non-anvil large scale liquid precip flux
+            ice_precip_flux (Quantity): (out: non-anvil large scale ice precip flux
+            evaporation (Quantity): (out: non-anvil large scale evaporation
+            sublimation (Quantity): (out: non-anvil large scale sublimation
+            surface_precip_rain (Quantity): (out: rain precip at surface (kg/m^2/s)
+            surface_precip_snow (Quantity): (out: snow precip at surface (kg/m^2/s)
+            surface_precip_ice (Quantity): (out: ice precip at surface (kg/m^2/s)
+            surface_precip_graupel (Quantity): (out: graupel precip at surface (kg/m^2/s)
         """
         self._setup(
             unmodified_t=t,
@@ -272,10 +272,10 @@ class GFDL1MDriver(NDSLRuntime):
 
         for _ in dace.nounroll(range(self.config_dependent_constants.NTIMES)):
             self._fall_speed(
-                liquid=self._locals.dry_air_mixing_ratio.liquid,
-                ice=self._locals.dry_air_mixing_ratio.ice,
-                snow=self._locals.dry_air_mixing_ratio.snow,
-                graupel=self._locals.dry_air_mixing_ratio.graupel,
+                mixing_ratio_liquid=self._locals.dry_air_mixing_ratio.liquid,
+                mixing_ratio_ice=self._locals.dry_air_mixing_ratio.ice,
+                mixing_ratio_snow=self._locals.dry_air_mixing_ratio.snow,
+                mixing_ratio_graupel=self._locals.dry_air_mixing_ratio.graupel,
                 t_unmodified=t,
                 t=self._locals.t,
                 dz_unmodified=dz,
@@ -345,12 +345,12 @@ class GFDL1MDriver(NDSLRuntime):
                 t=self._locals.t,
                 p_dry=self._locals.p_dry,
                 dp=self._locals.dp,
-                vapor=self._locals.dry_air_mixing_ratio.vapor,
-                liquid=self._locals.dry_air_mixing_ratio.liquid,
-                rain=self._locals.dry_air_mixing_ratio.rain,
-                ice=self._locals.dry_air_mixing_ratio.ice,
-                snow=self._locals.dry_air_mixing_ratio.snow,
-                graupel=self._locals.dry_air_mixing_ratio.graupel,
+                mixing_ratio_vapor=self._locals.dry_air_mixing_ratio.vapor,
+                mixing_ratio_liquid=self._locals.dry_air_mixing_ratio.liquid,
+                mixing_ratio_rain=self._locals.dry_air_mixing_ratio.rain,
+                mixing_ratio_ice=self._locals.dry_air_mixing_ratio.ice,
+                mixing_ratio_snow=self._locals.dry_air_mixing_ratio.snow,
+                mixing_ratio_graupel=self._locals.dry_air_mixing_ratio.graupel,
                 cloud_fraction=self._locals.cloud_fraction,
                 density=self._locals.density,
                 density_factor=self._locals.density_factor,

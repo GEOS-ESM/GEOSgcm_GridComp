@@ -1,6 +1,6 @@
 import dataclasses
 
-from ndsl import Local, LocalState, NDSLRuntime, QuantityFactory, StencilFactory
+from ndsl import Local, LocalState, NDSLRuntime, QuantityFactory, StencilFactory, Quantity
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, exp, function, interval
 from ndsl.dsl.typing import Bool, BoolFieldIJ, Float, FloatField, FloatFieldIJ
@@ -20,6 +20,17 @@ def check_precip_get_zt(
     internal_precip: FloatFieldIJ,
     precip_fall: BoolFieldIJ,
 ):
+    """Check if a critical mixing ratio is met for precipitation to occur and compute the updated
+    grid edge height.
+
+    Args:
+        mixing_ratio (FloatField)
+        terminal_speed (FloatField)
+        z_interface (FloatField)
+        z_interface_modified (FloatField)
+        internal_precip (FloatFieldIJ)
+        precip_fall (BoolFieldIJ)
+    """
     from __externals__ import dts
 
     # melting of falling snow into rain
@@ -59,6 +70,19 @@ def update_dmass(
     mixing_ratio_graupel: FloatField,
     precip_fall: BoolFieldIJ,
 ):
+    """Compute the change in mass based on mixing ratios
+
+    Args:
+        dmass (FloatField)
+        dp (FloatField)
+        mixing_ratio_vapor (FloatField)
+        mixing_ratio_liquid (FloatField)
+        mixing_ratio_rain (FloatField)
+        mixing_ratio_ice (FloatField)
+        mixing_ratio_snow (FloatField)
+        mixing_ratio_graupel (FloatField)
+        precip_fall (BoolFieldIJ)
+    """
     from __externals__ import do_sedi_w
 
     with computation(PARALLEL), interval(...):
@@ -82,6 +106,15 @@ def update_w(
     terminal_speed: FloatField,
     precip_fall: BoolFieldIJ,
 ):
+    """Update vertical motion
+
+    Args:
+        w (FloatField)
+        dmass (FloatField)
+        mass (FloatField)
+        terminal_speed (FloatField)
+        precip_fall (BoolFieldIJ)
+    """
     from __externals__ import do_sedi_w
 
     with computation(FORWARD), interval(0, 1):
@@ -101,6 +134,12 @@ def reset(
     mass: FloatField,
     precip_fall: BoolFieldIJ,
 ):
+    """Reset masks
+
+    Args:
+        mass (FloatField)
+        precip_fall (BoolFieldIJ)
+    """
     # reset masks and temporaries
     with computation(FORWARD), interval(0, 1):
         precip_fall = False
@@ -113,27 +152,54 @@ def reset(
 
 @function
 def prefall_melting(
-    t,
-    vapor,
-    liquid,
-    rain,
-    graupel,
-    snow,
-    ice,
-    ice_precip_flux,
-    is_frozen,
-    c_air,
-    c_vap,
-    d0_vap,
-    dts,
-    lv00,
-    ql_mlt,
-    tau_imlt,
+    t: Float,
+    vapor: Float,
+    liquid: Float,
+    rain: Float,
+    graupel: Float,
+    snow: Float,
+    ice: Float,
+    ice_precip_flux: Float,
+    is_frozen: Float,
+    c_air: Float,
+    c_vap: Float,
+    d0_vap: Float,
+    dts: Float,
+    lv00: Float,
+    ql_mlt: Float,
+    tau_imlt: Float,
 ):
-    """
-    Melt cloud ice before fall
+    """Melt excess cloud ice before any precipitation occurs.
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutine terminal_fall
+
+    Args:
+        t (Float): _description_
+        vapor (Float): _description_
+        liquid (Float): _description_
+        rain (Float): _description_
+        graupel (Float): _description_
+        snow (Float): _description_
+        ice (Float): _description_
+        ice_precip_flux (Float): _description_
+        is_frozen (bool): _description_
+        c_air (Float): _description_
+        c_vap (Float): _description_
+        d0_vap (Float): _description_
+        dts (Float): _description_
+        lv00 (Float): _description_
+        ql_mlt (Float): _description_
+        tau_imlt (Float): _description_
+
+    Returns:
+        Float: t
+        Float: liquid
+        Float: rain
+        Float: ice
+        Float: cvm
+        Float: lhi
+        Float: icpk
+        Float: ice_precip_flux
     """
 
     fac_imlt = 1.0 - exp(-dts / tau_imlt)
@@ -194,6 +260,33 @@ def setup(
     internal_snow: FloatFieldIJ,
     internal_ice: FloatFieldIJ,
 ):
+    """Perform initial calculations of the terminal fall module. Get extra parameters
+    and compute prefall melting.
+
+    Args:
+        t (FloatField): temperature (Kelvin)
+        mixing_ratio_vapor (FloatField): water vapor mixing ratio (kg/kg)
+        mixing_ratio_liquid (FloatField): liquid water mixing ratio (kg/kg)
+        mixing_ratio_rain (FloatField): rain mixing ratio (kg/kg)
+        mixing_ratio_graupel (FloatField): graupel mixing ratio (kg/kg)
+        mixing_ratio_snow (FloatField): snow mixing ratio (kg/kg)
+        mixing_ratio_ice (FloatField): ice mixing ratio (kg/kg)
+        dz (FloatField): change in height between model layers (m)
+        ice_precip_flux (FloatField): ice precipitation flux (kg m^-2 s^-1)
+        z_interface (FloatField): grid center height (m)
+        z_interface_modified (FloatField): grid edge height (m)
+        lhi (FloatField): _description_
+        icpk (FloatField): _description_
+        cvm (FloatField): _description_
+        internal_rain (FloatFieldIJ): precipitable rain from within the terminal fall
+            module (kg m^-2 s^-1)
+        internal_graupel (FloatFieldIJ): precipitable graupel from within the terminal fall
+            module (kg m^-2 s^-1)
+        internal_snow (FloatFieldIJ): precipitable snow from within the terminal fall
+            module (kg m^-2 s^-1)
+        internal_ice (FloatFieldIJ): precipitable ice from within the terminal fall
+            module (kg m^-2 s^-1)
+    """
     from __externals__ import c_air, c_vap, d0_vap, dts, lv00, ql_mlt, tau_imlt
 
     # determine frozen levels
@@ -285,8 +378,17 @@ def update_outputs(
     internal_snow: FloatFieldIJ,
     internal_ice: FloatFieldIJ,
 ):
-    """
-    ensure information for all precipitates is pushed back to the rest of the model
+    """Ensure information for all precipitates is pushed back to the rest of the model
+
+    Args:
+        rain (FloatFieldIJ): total precipitated rain from microphysics (kg m^-2 s^-1)
+        graupel (FloatFieldIJ): total precipitated graupel from microphysics (kg m^-2 s^-1)
+        snow (FloatFieldIJ): total precipitated snow from microphysics (kg m^-2 s^-1)
+        ice (FloatFieldIJ): total precipitated ice from microphysics (kg m^-2 s^-1)
+        internal_rain (FloatFieldIJ): precipitated rain from the terminal fall module (kg m^-2 s^-1)
+        internal_graupel (FloatFieldIJ): precipitated graupel from the terminal fall module (kg m^-2 s^-1)
+        internal_snow (FloatFieldIJ): precipitated snow from the terminal fall module (kg m^-2 s^-1)
+        internal_ice (FloatFieldIJ): precipitated ice from the terminal fall module (kg m^-2 s^-1)
     """
     with computation(FORWARD), interval(0, 1):
         rain = rain + internal_rain  # from melted snow & ice that reached the ground
@@ -419,6 +521,14 @@ class GFDL1MTerminalFall(NDSLRuntime):
         config: GFDL1MConfig,
         config_dependent_constants: GFDL1MDriverConfigDependentConstants,
     ):
+        """Initialize the TerminalFall module
+
+        Args:
+            stencil_factory (StencilFactory)
+            quantity_factory (QuantityFactory)
+            config (GFDL1MConfig)
+            config_dependent_constants (GFDL1MDriverConfigDependentConstants)
+        """
         # initialize NDSLRuntime
         super().__init__(stencil_factory)
 
@@ -503,47 +613,47 @@ class GFDL1MTerminalFall(NDSLRuntime):
 
     def __call__(
         self,
-        t: FloatField,
-        w: FloatField,
-        mixing_ratio_vapor: FloatField,
-        mixing_ratio_liquid: FloatField,
-        mixing_ratio_rain: FloatField,
-        mixing_ratio_graupel: FloatField,
-        mixing_ratio_snow: FloatField,
-        mixing_ratio_ice: FloatField,
-        dz: FloatField,
-        dp: FloatField,
-        terminal_velocity_graupel: FloatField,
-        terminal_velocity_snow: FloatField,
-        terminal_velocity_ice: FloatField,
-        rain: FloatFieldIJ,
-        graupel: FloatFieldIJ,
-        snow: FloatFieldIJ,
-        ice: FloatFieldIJ,
-        ice_precip_flux: FloatField,
+        t: Quantity,
+        w: Quantity,
+        mixing_ratio_vapor: Quantity,
+        mixing_ratio_liquid: Quantity,
+        mixing_ratio_rain: Quantity,
+        mixing_ratio_graupel: Quantity,
+        mixing_ratio_snow: Quantity,
+        mixing_ratio_ice: Quantity,
+        dz: Quantity,
+        dp: Quantity,
+        terminal_velocity_graupel: Quantity,
+        terminal_velocity_snow: Quantity,
+        terminal_velocity_ice: Quantity,
+        rain: Quantity,
+        graupel: Quantity,
+        snow: Quantity,
+        ice: Quantity,
+        ice_precip_flux: Quantity,
     ):
         """
         Calculate terminal fall speed, accounting for melting of ice, snow, and graupel during fall
 
         Args:
-            t (inout): temperature (K)
-            w (inout): vertical motion (m/s)
-            mixing_ratio_vapor (inout): water vapor mixing ratio (kg/kg)
-            mixing_ratio_liquid (inout): liquid water mixing ratio (kg/kg)
-            mixing_ratio_rain (inout): rain mixing ratio (kg/kg)
-            mixing_ratio_graupel (inout): graupel mixing ratio (kg/kg)
-            mixing_ratio_snow (inout): snow mixing ratio (kg/kg)
-            mixing_ratio_ice (inout): ice mixing ratio (kg/kg)
-            dz (in): change in height between model layers (m)
-            dp (in): change in pressure between model layers (Pa)
-            terminal_velocity_graupel (in): terminal fall speed of graupel
-            terminal_velocity_snow (in): terminal fall speed of snow
-            terminal_velocity_ice (in): terminal fall speed of ice
-            rain (out): rain precipitation (kg m^-2 s^-1)
-            graupel (out): graupel precipitation (kg m^-2 s^-1)
-            snow (out): snow precipitation (kg m^-2 s^-1)
-            ice (out): ice precipitation (kg m^-2 s^-1)
-            ice_precip_flux (out): ice precipitation flux (kg m^-2 s^-1)
+            t (Quantity): (inout) temperature (K)
+            w (Quantity): (inout) vertical motion (m/s)
+            mixing_ratio_vapor (Quantity): (inout) water vapor mixing ratio (kg/kg)
+            mixing_ratio_liquid (Quantity): (inout) liquid water mixing ratio (kg/kg)
+            mixing_ratio_rain (Quantity): (inout) rain mixing ratio (kg/kg)
+            mixing_ratio_graupel (Quantity): (inout) graupel mixing ratio (kg/kg)
+            mixing_ratio_snow (Quantity): (inout) snow mixing ratio (kg/kg)
+            mixing_ratio_ice (Quantity): (inout) ice mixing ratio (kg/kg)
+            dz (Quantity): (in) change in height between model layers (m)
+            dp (Quantity): (in) change in pressure between model layers (Pa)
+            terminal_velocity_graupel (Quantity): (in) terminal fall speed of graupel
+            terminal_velocity_snow (Quantity): (in) terminal fall speed of snow
+            terminal_velocity_ice (Quantity): (in) terminal fall speed of ice
+            rain (Quantity): (out) rain precipitation (kg m^-2 s^-1)
+            graupel (Quantity): (out) graupel precipitation (kg m^-2 s^-1)
+            snow (Quantity): (out) snow precipitation (kg m^-2 s^-1)
+            ice (Quantity): (out) ice precipitation (kg m^-2 s^-1)
+            ice_precip_flux (Quantity): (out) ice precipitation flux (kg m^-2 s^-1)
         """
 
         # Reset locals

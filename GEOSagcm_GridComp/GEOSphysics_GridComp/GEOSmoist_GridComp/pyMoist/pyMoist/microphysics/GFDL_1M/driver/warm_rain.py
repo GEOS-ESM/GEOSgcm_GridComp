@@ -15,25 +15,25 @@ from pyMoist.microphysics.GFDL_1M.driver.stencils import implicit_fall, wqs2
 
 @function
 def revap_racc(
-    t1: Float,
-    qv1: Float,
-    ql1: Float,
-    qr1: Float,
-    qi1: Float,
-    qs1: Float,
-    qg1: Float,
-    qa1: Float,
-    den1: Float,
-    denfac: Float,
+    t: Float,
+    mixing_ratio_vapor: Float,
+    mixing_ratio_liquid: Float,
+    mixing_ratio_rain: Float,
+    mixing_ratio_ice: Float,
+    mixing_ratio_snow: Float,
+    mixing_ratio_graupel: Float,
+    cloud_fraction: Float,
+    density: Float,
+    density_factor: Float,
     rh_limited: Float,
-    table1: GlobalTable_driver_qsat,
-    table2: GlobalTable_driver_qsat,
-    table3: GlobalTable_driver_qsat,
-    table4: GlobalTable_driver_qsat,
-    des1: GlobalTable_driver_qsat,
-    des2: GlobalTable_driver_qsat,
-    des3: GlobalTable_driver_qsat,
-    des4: GlobalTable_driver_qsat,
+    table1: Float,
+    table2: Float,
+    table3: Float,
+    table4: Float,
+    des1: Float,
+    des2: Float,
+    des3: Float,
+    des4: Float,
     c_air: Float,
     c_vap: Float,
     cracw: Float,
@@ -47,15 +47,57 @@ def revap_racc(
     tau_revp: Float,
     dts: Float,
 ):
-    """
-    Evaporate rain
+    """Evaporate rain
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutine revap_racc
-    """
 
+    Args:
+        t (Float)
+        mixing_ratio_vapor (Float)
+        mixing_ratio_liquid (Float)
+        mixing_ratio_rain (Float)
+        mixing_ratio_ice (Float)
+        mixing_ratio_snow (Float)
+        mixing_ratio_graupel (Float)
+        cloud_fraction (Float)
+        density (Float)
+        density_factor (Float)
+        rh_limited (Float)
+        table1 (Float)
+        table2 (Float)
+        table3 (Float)
+        table4 (Float)
+        des1 (Float)
+        des2 (Float)
+        des3 (Float)
+        des4 (Float)
+        c_air (Float)
+        c_vap (Float)
+        cracw (Float)
+        crevp_0 (Float)
+        crevp_1 (Float)
+        crevp_2 (Float)
+        crevp_3 (Float)
+        crevp_4 (Float)
+        d0_vap (Float)
+        lv00 (Float)
+        tau_revp (Float)
+        dts (Float)
+
+    Returns:
+        Float: t
+        Float: mixing_ratio_vapor
+        Float: mixing_ratio_liquid
+        Float: mixing_ratio_rain
+        Float: mixing_ratio_ice
+        Float: mixing_ratio_snow
+        Float: mixing_ratio_graupel
+        Float: cloud_fraction
+        Float: revap
+    """
     revap = 0.0
 
-    if t1 > constants.T_WFR and qr1 > constants.QPMIN:
+    if t > constants.T_WFR and mixing_ratio_rain > constants.QPMIN:
         # area and timescale efficiency on revap
         fac_revp = 1.0 - exp(-(0.5 * dts) / tau_revp)
 
@@ -63,18 +105,18 @@ def revap_racc(
         # define heat capacity and latent heat coefficient
         # -----------------------------------------------------------------------
 
-        lhl = lv00 + d0_vap * t1
-        q_liq = ql1 + qr1
-        q_sol = qi1 + qs1 + qg1
-        cvm = c_air + qv1 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+        lhl = lv00 + d0_vap * t
+        q_liq = mixing_ratio_liquid + mixing_ratio_rain
+        q_sol = mixing_ratio_ice + mixing_ratio_snow + mixing_ratio_graupel
+        cvm = c_air + mixing_ratio_vapor * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
         lcpk = lhl / cvm
 
-        tin = t1 - lcpk * ql1  # presence of clouds suppresses the rain evap
-        qpz = qv1 + ql1
-        qsat, dqsdt = wqs2(tin, den1, table2, des2)
-        dqh = max(ql1, rh_limited * max(qpz, constants.QCMIN))
+        tin = t - lcpk * mixing_ratio_liquid  # presence of clouds suppresses the rain evap
+        qpz = mixing_ratio_vapor + mixing_ratio_liquid
+        qsat, dqsdt = wqs2(tin, density, table2, des2)
+        dqh = max(mixing_ratio_liquid, rh_limited * max(qpz, constants.QCMIN))
         dqh = min(dqh, 0.2 * qpz)  # new limiter
-        dqv = qsat - qv1  # use this to prevent super - sat the gird box
+        dqv = qsat - mixing_ratio_vapor  # use this to prevent super - sat the gird box
         q_minus = qpz - dqh
         q_plus = qpz + dqh
 
@@ -96,42 +138,42 @@ def revap_racc(
                 # dq == dqh if qsat == q_minus
                 # -----------------------------------------------------------------------
                 dq = 0.25 * (q_minus - qsat) ** 2 / dqh
-            qden = qr1 * den1
+            qden = mixing_ratio_rain * density
             t2 = tin * tin
             evap = (
                 crevp_0
                 * t2
                 * dq
                 * (crevp_1 * sqrt(qden) + crevp_2 * exp(0.725 * log(qden)))
-                / (crevp_3 * t2 + crevp_4 * qsat * den1)
+                / (crevp_3 * t2 + crevp_4 * qsat * density)
             )
-            evap = min(qr1, min(0.5 * dts * fac_revp * evap, dqv / (1.0 + lcpk * dqsdt)))
-            qr1 = qr1 - evap
-            qv1 = qv1 + evap
+            evap = min(mixing_ratio_rain, min(0.5 * dts * fac_revp * evap, dqv / (1.0 + lcpk * dqsdt)))
+            mixing_ratio_rain = mixing_ratio_rain - evap
+            mixing_ratio_vapor = mixing_ratio_vapor + evap
             q_liq = q_liq - evap
-            cvm = c_air + qv1 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
-            t1 = t1 - evap * lhl / cvm
+            cvm = c_air + mixing_ratio_vapor * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            t = t - evap * lhl / cvm
             revap = evap / (0.5 * dts)
 
         # -----------------------------------------------------------------------
         # accretion: pracc
         # -----------------------------------------------------------------------
 
-        if qr1 > constants.QPMIN and ql1 > constants.QCMIN and qsat < q_minus:
-            sink = 0.5 * dts * denfac * cracw * exp(0.95 * log(qr1 * den1))
-            sink = sink / (1.0 + sink) * ql1
-            ql1 = ql1 - sink
-            qr1 = qr1 + sink
+        if mixing_ratio_rain > constants.QPMIN and mixing_ratio_liquid > constants.QCMIN and qsat < q_minus:
+            sink = 0.5 * dts * density_factor * cracw * exp(0.95 * log(mixing_ratio_rain * density))
+            sink = sink / (1.0 + sink) * mixing_ratio_liquid
+            mixing_ratio_liquid = mixing_ratio_liquid - sink
+            mixing_ratio_rain = mixing_ratio_rain + sink
 
     return (
-        t1,
-        qv1,
-        qr1,
-        ql1,
-        qi1,
-        qs1,
-        qg1,
-        qa1,
+        t,
+        mixing_ratio_vapor,
+        mixing_ratio_rain,
+        mixing_ratio_liquid,
+        mixing_ratio_ice,
+        mixing_ratio_snow,
+        mixing_ratio_graupel,
+        cloud_fraction,
         revap,
     )
 
@@ -169,10 +211,42 @@ def warm_rain_step_1(
     des3: GlobalTable_driver_qsat,
     des4: GlobalTable_driver_qsat,
 ):
-    """
-    Warm rain cloud microphysics: evaporation, accretion
+    """Warm rain cloud microphysics: evaporation, accretion
 
     first half of the timestep
+
+    Args:
+        dp (FloatField)
+        dz (FloatField)
+        t (FloatField)
+        mixing_ratio_vapor (FloatField)
+        mixing_ratio_liquid (FloatField)
+        mixing_ratio_rain (FloatField)
+        mixing_ratio_ice (FloatField)
+        mixing_ratio_snow (FloatField)
+        mixing_ratio_graupel (FloatField)
+        cloud_fraction (FloatField)
+        ccn (FloatField)
+        density (FloatField)
+        density_factor (FloatField)
+        c_praut (FloatField)
+        terminal_speed_rain (FloatField)
+        driver_evaporation (FloatField)
+        driver_liquid_precip_flux (FloatField)
+        rh_limited (FloatField)
+        estimated_inversion_strength (FloatFieldIJ)
+        one_minus_sigma (FloatFieldIJ)
+        z_interface (FloatField)
+        dmass (FloatField)
+        precip_fall (BoolFieldIJ)
+        table1 (GlobalTable_driver_qsat)
+        table2 (GlobalTable_driver_qsat)
+        table3 (GlobalTable_driver_qsat)
+        table4 (GlobalTable_driver_qsat)
+        des1 (GlobalTable_driver_qsat)
+        des2 (GlobalTable_driver_qsat)
+        des3 (GlobalTable_driver_qsat)
+        des4 (GlobalTable_driver_qsat)
     """
     from __externals__ import (
         c_air,
@@ -458,10 +532,35 @@ def warm_rain_step_2(
     des3: GlobalTable_driver_qsat,
     des4: GlobalTable_driver_qsat,
 ):
-    """
-    Warm rain cloud microphysics: evaporation, accretion
+    """Warm rain cloud microphysics: evaporation, accretion
 
-    first half of the timestep
+    second half of the timestep
+
+    Args:
+        t (FloatField)
+        mixing_ratio_vapor (FloatField)
+        mixing_ratio_liquid (FloatField)
+        mixing_ratio_rain (FloatField)
+        mixing_ratio_ice (FloatField)
+        mixing_ratio_snow (FloatField)
+        mixing_ratio_graupel (FloatField)
+        cloud_fraction (FloatField)
+        density (FloatField)
+        density_factor (FloatField)
+        terminal_speed_rain (FloatField)
+        driver_evaporation (FloatField)
+        driver_liquid_precip_flux (FloatField)
+        w (FloatField)
+        rh_limited (FloatField)
+        dmass (FloatField)
+        table1 (GlobalTable_driver_qsat)
+        table2 (GlobalTable_driver_qsat)
+        table3 (GlobalTable_driver_qsat)
+        table4 (GlobalTable_driver_qsat)
+        des1 (GlobalTable_driver_qsat)
+        des2 (GlobalTable_driver_qsat)
+        des3 (GlobalTable_driver_qsat)
+        des4 (GlobalTable_driver_qsat)
     """
     from __externals__ import (
         c_air,
@@ -558,8 +657,18 @@ def update_outputs(
     mass: FloatField,
     rain: FloatFieldIJ,
 ):
-    """
-    Ensure that information is pushed back to the rest of the model
+    """Ensure that information is pushed back to the rest of the model
+
+    Args:
+        driver_liquid_precip_flux (FloatField)
+        driver_ice_precip_flux (FloatField)
+        driver_rain (FloatFieldIJ)
+        driver_evaporation (FloatField)
+        evaporation (FloatField)
+        liquid_precip_flux (FloatField)
+        ice_precip_flux (FloatField)
+        mass (FloatField)
+        rain (FloatFieldIJ)
     """
     with computation(PARALLEL), interval(...):
         evaporation = evaporation + driver_evaporation
@@ -626,6 +735,15 @@ class GFDL1MWarmRain(NDSLRuntime):
         config_dependent_constants: GFDL1MDriverConfigDependentConstants,
         saturation_tables: GFDL_driver_tables,
     ):
+        """Initialize the warm rain module
+
+        Args:
+            stencil_factory (StencilFactory)
+            quantity_factory (QuantityFactory)
+            config (GFDL1MConfig)
+            config_dependent_constants (GFDL1MDriverConfigDependentConstants)
+            saturation_tables (GFDL_driver_tables)
+        """
         # initialize NDSLRuntime
         super().__init__(stencil_factory)
 
@@ -762,34 +880,34 @@ class GFDL1MWarmRain(NDSLRuntime):
         Warm rain cloud microphysics: evaporation, accretion
 
         Args:
-            t (inout): temperature (K)
-            dp (in): change in pressure between model levels (Pa)
-            dz (in): change in height between model levels (m)
-            w (inout): vertical motion (m/s)
-            mixing_ratio_vapor (inout): water vapor mixing ratio (kg/kg)
-            mixing_ratio_liquid (inout): liquid water mixing ratio (kg/kg)
-            mixing_ratio_rain (inout): rain mixing ratio (kg/kg)
-            mixing_ratio_ice (inout): ice mixing ratio (kg/kg)
-            mixing_ratio_snow (inout): snow mixing ratio (kg/kg)
-            mixing_ratio_graupel (inout): graupel mixing ratio (kg/kg)
-            cloud_fraction (inout): cloud fraction
-            ccn (in): cloud condensation nuclei
-            density (in): density of the grid cell (kg m^-3)
-            density_factor (in): details unknown
-            c_praut (in): details unknown
-            terminal_speed_rain (inout): terminal speed of rain (m/s)
-            rh_limited (in): relative humidity with limits imposed
-            estimated_inversion_strength (in): estimated inversion strength (K)
-            one_minus_sigma (out): details unknown
-            mass (inout): mass of grid cell
-            rain (out): model at-large rain precipitation (kg m^-2 s^-1)
-            driver_rain (): in-driver rain precipitation (kg m^-2 s^-1)
-            ice_precip_flux (out): model at-large non-anvil large scale ice precip flux (kg m^-2 s^-1)
-            driver_ice_precip_flux (out): in-driver non-anvil large scale ice precip flux (kg m^-2 s^-1)
-            liquid_precip_flux (out): model at-large non-anvil large scare liquid precip flux (kg m^-2 s^-1)
-            driver_liquid_precip_flux (out): in-driver non-anvil large scare liquid precip flux (kg m^-2 s^-1)
-            evaporation (out): model at-large non-anvil large scale evaporation (kg kg-1 s-1)
-            driver_evaporation (out): in-driver non-anvil large scale evaporation (kg kg-1 s-1)
+            t (FloatField): (inout) temperature (K)
+            dp (FloatField): (in) change in pressure between model levels (Pa)
+            dz (FloatField): (in) change in height between model levels (m)
+            w (FloatField): (inout) vertical motion (m/s)
+            mixing_ratio_vapor (FloatField): (inout) water vapor mixing ratio (kg/kg)
+            mixing_ratio_liquid (FloatField): (inout) liquid water mixing ratio (kg/kg)
+            mixing_ratio_rain (FloatField): (inout) rain mixing ratio (kg/kg)
+            mixing_ratio_ice (FloatField): (inout) ice mixing ratio (kg/kg)
+            mixing_ratio_snow (FloatField): (inout) snow mixing ratio (kg/kg)
+            mixing_ratio_graupel (FloatField): (inout) graupel mixing ratio (kg/kg)
+            cloud_fraction (FloatField): (inout) cloud fraction
+            ccn (FloatField): (in) cloud condensation nuclei
+            density (FloatField): (in) density of the grid cell (kg m^-3)
+            density_factor (FloatField): (in) details unknown
+            c_praut (FloatField): (in) details unknown
+            terminal_speed_rain (FloatField): (inout) terminal speed of rain (m/s)
+            rh_limited (FloatField): (in) relative humidity with limits imposed
+            estimated_inversion_strength (FloatFieldIJ): (in) estimated inversion strength (K)
+            one_minus_sigma (FloatFieldIJ): (out) details unknown
+            mass (FloatField): (inout) mass of grid cell
+            rain (FloatFieldIJ): (out) model at-large rain precipitation (kg m^-2 s^-1)
+            driver_rain (FloatFieldIJ): (out) in-driver rain precipitation (kg m^-2 s^-1)
+            ice_precip_flux (FloatField): (out) model at-large non-anvil large scale ice precip flux (kg m^-2 s^-1)
+            driver_ice_precip_flux (FloatField): (out) in-driver non-anvil large scale ice precip flux (kg m^-2 s^-1)
+            liquid_precip_flux (FloatField): (out) model at-large non-anvil large scare liquid precip flux (kg m^-2 s^-1)
+            driver_liquid_precip_flux (FloatField): (out) in-driver non-anvil large scare liquid precip flux (kg m^-2 s^-1)
+            evaporation (FloatField): (out) model at-large non-anvil large scale evaporation (kg kg-1 s-1)
+            driver_evaporation (FloatField): (out) in-driver non-anvil large scale evaporation (kg kg-1 s-1)
         """
         # reset locals
         self._set_value(self._locals.dmass, Float(0))

@@ -13,7 +13,7 @@ from ndsl.dsl.gt4py import (
     sqrt,
     trunc,
 )
-from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
+from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
 
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentConstants
@@ -24,14 +24,28 @@ from pyMoist.shared.incloud_processes import ice_fraction
 
 
 @function
-def new_ice_condensate(t, ql, qi, cnv_frc, srf_type):
-    """
-    Calculate amount of new ice to be frozen at a given point
+def new_ice_condensate(
+    t: Float,
+    mixing_ratio_liquid: Float,
+    mixing_ratio_ice: Float,
+    convection_fraction: Float,
+    surface_type: Int,
+):
+    """Calculate amount of new ice to be frozen at a given point
 
     reference Fortran: gfdl_cloud_microphys.F90: function new_ice_condensate
+
+    Args:
+        t (Float)
+        mixing_ratio_liquid (Float)
+        mixing_ratio_ice (Float)
+        convection_fraction (Float)
+        surface_type (Int)
     """
-    ifrac = ice_fraction(t, cnv_frc, srf_type)
-    new_ice_condensate = min(max(0.0, ifrac * (ql + qi) - qi), ql)
+    ifrac = ice_fraction(t, convection_fraction, surface_type)
+    new_ice_condensate = min(
+        max(0.0, ifrac * (mixing_ratio_liquid + mixing_ratio_ice) - mixing_ratio_ice), mixing_ratio_liquid
+    )
 
     return new_ice_condensate
 
@@ -39,12 +53,12 @@ def new_ice_condensate(t, ql, qi, cnv_frc, srf_type):
 @function
 def icloud_melt_freeze(
     t: Float,
-    vapor: Float,
-    liquid: Float,
-    rain: Float,
-    ice: Float,
-    snow: Float,
-    graupel: Float,
+    mixing_ratio_vapor: Float,
+    mixing_ratio_liquid: Float,
+    mixing_ratio_rain: Float,
+    mixing_ratio_ice: Float,
+    mixing_ratio_snow: Float,
+    mixing_ratio_graupel: Float,
     cloud_fraction: Float,
     density: Float,
     convection_fraction: Float,
@@ -62,12 +76,12 @@ def icloud_melt_freeze(
 
     Args:
         t (Float)
-        vapor (Float)
-        liquid (Float)
-        rain (Float)
-        ice (Float)
-        snow (Float)
-        graupel (Float)
+        mixing_ratio_vapor (Float)
+        mixing_ratio_liquid (Float)
+        mixing_ratio_rain (Float)
+        mixing_ratio_ice (Float)
+        mixing_ratio_snow (Float)
+        mixing_ratio_graupel (Float)
         cloud_fraction (Float)
         density (Float)
         convection_fraction (Float)
@@ -80,17 +94,17 @@ def icloud_melt_freeze(
         ql_mlt (Float)
 
     Returns:
-        t (Float)
-        vapor (Float)
-        liquid (Float)
-        rain (Float)
-        ice (Float)
-        snow (Float)
-        graupel (Float)
-        cloud_fraction (Float)
-        cvm (Float)
-        q_liq (Float)
-        q_sol (Float)
+        Float: t
+        Float: vapor
+        Float: liquid
+        Float: rain
+        Float: ice
+        Float: snow
+        Float: graupel
+        Float: cloud_fraction
+        Float: cvm
+        Float: q_liq
+        Float: q_sol
     """
 
     # -----------------------------------------------------------------------
@@ -98,51 +112,57 @@ def icloud_melt_freeze(
     # -----------------------------------------------------------------------
 
     lhi = constants.LI00 + constants.DC_ICE * t
-    q_liq = liquid + rain
-    q_sol = ice + snow + graupel
-    cvm = c_air + vapor * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+    q_liq = mixing_ratio_liquid + mixing_ratio_rain
+    q_sol = mixing_ratio_ice + mixing_ratio_snow + mixing_ratio_graupel
+    cvm = c_air + mixing_ratio_vapor * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
     icpk = lhi / cvm
 
-    newice = max(0.0, ice + new_ice_condensate(t, liquid, ice, convection_fraction, surface_type))
-    newliq = max(0.0, liquid + ice - newice)
+    newice = max(
+        0.0,
+        mixing_ratio_ice
+        + new_ice_condensate(t, mixing_ratio_liquid, mixing_ratio_ice, convection_fraction, surface_type),
+    )
+    newliq = max(0.0, mixing_ratio_liquid + mixing_ratio_ice - newice)
 
-    melt = fac_imlt * max(0.0, newliq - liquid)
-    frez = fac_frz * max(0.0, newice - ice)
+    melt = fac_imlt * max(0.0, newliq - mixing_ratio_liquid)
+    frez = fac_frz * max(0.0, newice - mixing_ratio_ice)
 
-    if melt > 0.0 and t > constants.TICE and ice > constants.QCMIN:
+    if melt > 0.0 and t > constants.TICE and mixing_ratio_ice > constants.QCMIN:
         # -----------------------------------------------------------------------
         # pimlt: melting of cloud ice
         # -----------------------------------------------------------------------
-        if ql_mlt - liquid > 0:
-            ans = ql_mlt - liquid
+        if ql_mlt - mixing_ratio_liquid > 0:
+            ans = ql_mlt - mixing_ratio_liquid
         else:
             ans = 0
-        tmp = min(melt, ans)  # max ql amount
+        tmp = min(melt, ans)  # max mixing_ratio_liquid amount
 
         # new total condensate / old condensate
         cloud_fraction = max(
             0.0,
             min(
                 1.0,
-                cloud_fraction * max(ice + liquid - melt + tmp, 0.0) / max(ice + liquid, constants.QCMIN),
+                cloud_fraction
+                * max(mixing_ratio_ice + mixing_ratio_liquid - melt + tmp, 0.0)
+                / max(mixing_ratio_ice + mixing_ratio_liquid, constants.QCMIN),
             ),
         )
 
-        liquid = liquid + tmp
-        rain = rain + melt - tmp
-        ice = ice - melt
+        mixing_ratio_liquid = mixing_ratio_liquid + tmp
+        mixing_ratio_rain = mixing_ratio_rain + melt - tmp
+        mixing_ratio_ice = mixing_ratio_ice - melt
         q_liq = q_liq + melt
         q_sol = q_sol - melt
-        cvm = c_air + vapor * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+        cvm = c_air + mixing_ratio_vapor * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
         t = t - melt * lhi / cvm
-    elif frez > 0.0 and t <= constants.TICE and liquid > constants.QCMIN:
+    elif frez > 0.0 and t <= constants.TICE and mixing_ratio_liquid > constants.QCMIN:
         # -----------------------------------------------------------------------
         # pihom: homogeneous freezing of cloud water into cloud ice
         # this is the 1st occurrence of liquid water freezing in the split mp process
         # -----------------------------------------------------------------------
         qi_crt = ice_fraction(t, convection_fraction, surface_type) * qi0_crt / density
-        if qi_crt - ice > 0:
-            ans = qi_crt - ice
+        if qi_crt - mixing_ratio_ice > 0:
+            ans = qi_crt - mixing_ratio_ice
         else:
             ans = 0
         tmp = min(frez, ans)
@@ -152,27 +172,41 @@ def icloud_melt_freeze(
             0.0,
             min(
                 1.0,
-                cloud_fraction * max(ice + liquid - frez + tmp, 0.0) / max(ice + liquid, constants.QCMIN),
+                cloud_fraction
+                * max(mixing_ratio_ice + mixing_ratio_liquid - frez + tmp, 0.0)
+                / max(mixing_ratio_ice + mixing_ratio_liquid, constants.QCMIN),
             ),
         )
 
-        liquid = liquid - frez
-        snow = snow + frez - tmp
-        ice = ice + tmp
+        mixing_ratio_liquid = mixing_ratio_liquid - frez
+        mixing_ratio_snow = mixing_ratio_snow + frez - tmp
+        mixing_ratio_ice = mixing_ratio_ice + tmp
         q_liq = q_liq - frez
         q_sol = q_sol + frez
-        cvm = c_air + vapor * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+        cvm = c_air + mixing_ratio_vapor * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
         t = t + frez * lhi / cvm
 
-    return t, vapor, liquid, rain, ice, snow, graupel, cloud_fraction, cvm, q_liq, q_sol
+    return (
+        t,
+        mixing_ratio_vapor,
+        mixing_ratio_liquid,
+        mixing_ratio_rain,
+        mixing_ratio_ice,
+        mixing_ratio_snow,
+        mixing_ratio_graupel,
+        cloud_fraction,
+        cvm,
+        q_liq,
+        q_sol,
+    )
 
 
 @function
 def acr3d(
-    v1: Float,
-    v2: Float,
-    q1: Float,
-    q2: Float,
+    terminal_speed_1: Float,
+    terminal_speed_2: Float,
+    mixing_ratio_1: Float,
+    mixing_ratio_2: Float,
     c: Float,
     cac_1: Float,
     cac_2: Float,
@@ -184,10 +218,10 @@ def acr3d(
     reference Fortran: gfdl_cloud_microphys.F90: function acr3d
 
     Args:
-        v1 (Float)
-        v2 (Float)
-        q1 (Float)
-        q2 (Float)
+        terminal_speed_1 (Float)
+        terminal_speed_2 (Float)
+        mixing_ratio_1 (Float)
+        mixing_ratio_2 (Float)
         c (Float)
         cac_1 (Float)
         cac_2 (Float)
@@ -195,12 +229,18 @@ def acr3d(
         rho (Float)
 
     Returns:
-        acr3d (Float)
+        Float: acr3d
     """
-    t1 = sqrt(q1 * rho)
-    s1 = sqrt(q2 * rho)
+    t1 = sqrt(mixing_ratio_1 * rho)
+    s1 = sqrt(mixing_ratio_2 * rho)
     s2 = sqrt(s1)  # s1 = s2 ** 2
-    acr3d = c * abs(v1 - v2) * q1 * s2 * (cac_1 * t1 + cac_2 * sqrt(t1) * s2 + cac_3 * s1)
+    acr3d = (
+        c
+        * abs(terminal_speed_1 - terminal_speed_2)
+        * mixing_ratio_1
+        * s2
+        * (cac_1 * t1 + cac_2 * sqrt(t1) * s2 + cac_3 * s1)
+    )
 
     return acr3d
 
@@ -240,7 +280,7 @@ def smow_melt(
         rhofac (Float)
 
     Returns:
-        smow_melt (Float)
+        Float: smow_melt
     """
     smow_melt = (c_0 * tc / rho - c_1 * dqs) * (
         c_2 * sqrt(qsrho) + c_3 * qsrho**0.65625 * sqrt(rhofac)
@@ -282,7 +322,7 @@ def graupel_melt(
         rho: (Float)
 
     Returns:
-        graupel_melt (Float)
+        Float: graupel_melt
     """
     graupel_melt = (c_0 * tc / rho - c_1 * dqs) * (
         c_2 * sqrt(qgrho) + c_3 * qgrho**0.6875 / rho**0.25
@@ -294,12 +334,12 @@ def graupel_melt(
 @function
 def snow_graupel_coldrain(
     t: Float,
-    vapor: Float,
-    liquid: Float,
-    ice: Float,
-    rain: Float,
-    snow: Float,
-    graupel: Float,
+    mixing_ratio_vapor: Float,
+    mixing_ratio_liquid: Float,
+    mixing_ratio_ice: Float,
+    mixing_ratio_rain: Float,
+    mixing_ratio_snow: Float,
+    mixing_ratio_graupel: Float,
     cloud_fraction: Float,
     p_dry: Float,
     density: Float,
@@ -351,12 +391,12 @@ def snow_graupel_coldrain(
 
     Args:
         t (Float)
-        vapor (Float)
-        liquid (Float)
-        ice (Float)
-        rain (Float)
-        snow (Float)
-        graupel (Float)
+        mixing_ratio_vapor (Float)
+        mixing_ratio_liquid (Float)
+        mixing_ratio_ice (Float)
+        mixing_ratio_rain (Float)
+        mixing_ratio_snow (Float)
+        mixing_ratio_graupel (Float)
         cloud_fraction (Float)
         p_dry (Float)
         density (Float)
@@ -403,56 +443,56 @@ def snow_graupel_coldrain(
         rdts (Float)
 
     Returns:
-        t (Float)
-        vapor (Float)
-        liquid (Float)
-        ice (Float)
-        rain (Float)
-        snow (Float)
-        graupel (Float)
-        cloud_fraction (Float)
-        p_dry (Float)
-        density (Float)
-        density_factor (Float)
-        terminal_fall_rain (Float)
-        terminal_fall_snow (Float)
-        terminal_fall_graupel (Float)
-        cvm (Float)
-        lhl (Float)
-        lhi (Float)
-        lcpk (Float)
-        icpk (Float)
-        tcpk (Float)
+        Float: t
+        Float: vapor
+        Float: liquid
+        Float: ice
+        Float: rain
+        Float: snow
+        Float: graupel
+        Float: cloud_fraction
+        Float: p_dry
+        Float: density
+        Float: density_factor
+        Float: terminal_fall_rain
+        Float: terminal_fall_snow
+        Float: terminal_fall_graupel
+        Float: cvm
+        Float: lhl
+        Float: lhi
+        Float: lcpk
+        Float: icpk
+        Float: tcpk
     """
 
-    t2 = t
-    qv2 = vapor
-    ql2 = liquid
-    qi2 = ice
-    qr2 = rain
-    qs2 = snow
-    qg2 = graupel
+    internal_t = t
+    internal_mixing_ratio_vapor = mixing_ratio_vapor
+    internal_mixing_ratio_liquid = mixing_ratio_liquid
+    internal_mixing_ratio_ice = mixing_ratio_ice
+    internal_mixing_ratio_rain = mixing_ratio_rain
+    internal_mixing_ratio_snow = mixing_ratio_snow
+    internal_mixing_ratio_graupel = mixing_ratio_graupel
 
     pgacr = 0.0
     pgacw = 0.0
-    tc = t2 - constants.TICE
+    tc = internal_t - constants.TICE
 
     if tc >= 0.0:
         # -----------------------------------------------------------------------
         # melting of snow
         # -----------------------------------------------------------------------
 
-        dqs0 = constants.CES0 / p_dry - qv2
+        dqs0 = constants.CES0 / p_dry - internal_mixing_ratio_vapor
 
-        if qs2 > constants.QPMIN:
+        if internal_mixing_ratio_snow > constants.QPMIN:
             # -----------------------------------------------------------------------
             # psacw: accretion of cloud water by snow
             # only rate is used (for snow melt) since tc > 0.
             # -----------------------------------------------------------------------
 
-            if ql2 > constants.QCMIN:
-                factor = density_factor * csacw * exp(0.8125 * log(qs2 * density))
-                psacw = factor / (1.0 + dts * factor) * ql2  # rate
+            if internal_mixing_ratio_liquid > constants.QCMIN:
+                factor = density_factor * csacw * exp(0.8125 * log(internal_mixing_ratio_snow * density))
+                psacw = factor / (1.0 + dts * factor) * internal_mixing_ratio_liquid  # rate
             else:
                 psacw = 0.0
 
@@ -461,26 +501,26 @@ def snow_graupel_coldrain(
             # pracs: accretion of snow by rain
             # -----------------------------------------------------------------------
 
-            if qr2 > constants.QPMIN:
+            if internal_mixing_ratio_rain > constants.QPMIN:
                 psacr = min(
                     acr3d(
                         terminal_fall_snow,
                         terminal_fall_rain,
-                        qr2,
-                        qs2,
+                        internal_mixing_ratio_rain,
+                        internal_mixing_ratio_snow,
                         constants.CSARC,
                         constants.ACCO_01,
                         constants.ACCO_11,
                         constants.ACCO_21,
                         density,
                     ),
-                    qr2 * rdts,
+                    internal_mixing_ratio_rain * rdts,
                 )
                 pracs = acr3d(
                     terminal_fall_rain,
                     terminal_fall_snow,
-                    qs2,
-                    qr2,
+                    internal_mixing_ratio_snow,
+                    internal_mixing_ratio_rain,
                     constants.CRACS,
                     constants.ACCO_00,
                     constants.ACCO_10,
@@ -501,7 +541,7 @@ def snow_graupel_coldrain(
                 smow_melt(
                     tc,
                     dqs0,
-                    qs2 * density,
+                    internal_mixing_ratio_snow * density,
                     psacw,
                     psacr,
                     csmlt_0,
@@ -513,73 +553,80 @@ def snow_graupel_coldrain(
                     density_factor,
                 ),
             )
-            sink = min(qs2, min(dts * (psmlt + pracs), tc / icpk))
-            qs2 = qs2 - sink
+            sink = min(internal_mixing_ratio_snow, min(dts * (psmlt + pracs), tc / icpk))
+            internal_mixing_ratio_snow = internal_mixing_ratio_snow - sink
             # sjl, 20170321:
-            if qs_mlt - ql2 > 0:
-                ans = qs_mlt - ql2
+            if qs_mlt - internal_mixing_ratio_liquid > 0:
+                ans = qs_mlt - internal_mixing_ratio_liquid
             else:
                 ans = 0
-            tmp = min(sink, ans)  # max ql due to snow melt
+            tmp = min(sink, ans)  # max mixing_ratio_liquid due to snow melt
 
             # new total condensate / old condensate
             cloud_fraction = max(
                 0.0,
                 min(
                     1.0,
-                    cloud_fraction * max(qi2 + ql2 + tmp, 0.0) / max(qi2 + ql2, constants.QCMIN),
+                    cloud_fraction
+                    * max(internal_mixing_ratio_ice + internal_mixing_ratio_liquid + tmp, 0.0)
+                    / max(internal_mixing_ratio_ice + internal_mixing_ratio_liquid, constants.QCMIN),
                 ),
             )
 
-            ql2 = ql2 + tmp
-            qr2 = qr2 + sink - tmp
+            internal_mixing_ratio_liquid = internal_mixing_ratio_liquid + tmp
+            internal_mixing_ratio_rain = internal_mixing_ratio_rain + sink - tmp
             # sjl, 20170321:
             q_liq = q_liq + sink
             q_sol = q_sol - sink
-            cvm = c_air + qv2 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
-            t2 = t2 - sink * lhi / cvm
-            tc = t2 - constants.TICE
+            cvm = (
+                c_air
+                + internal_mixing_ratio_vapor * c_vap
+                + q_liq * constants.C_LIQ
+                + q_sol * constants.C_ICE
+            )
+            internal_t = internal_t - sink * lhi / cvm
+            tc = internal_t - constants.TICE
 
         # -----------------------------------------------------------------------
         # update capacity heat and latent heat coefficient
         # -----------------------------------------------------------------------
 
-        lhi = constants.LI00 + constants.DC_ICE * t2
+        lhi = constants.LI00 + constants.DC_ICE * internal_t
         icpk = lhi / cvm
 
         # -----------------------------------------------------------------------
         # melting of graupel
         # -----------------------------------------------------------------------
 
-        if qg2 > constants.QPMIN and tc > 0.0:
+        if internal_mixing_ratio_graupel > constants.QPMIN and tc > 0.0:
             # -----------------------------------------------------------------------
             # pgacr: accretion of rain by graupel
             # -----------------------------------------------------------------------
 
-            if qr2 > constants.QPMIN:
+            if internal_mixing_ratio_rain > constants.QPMIN:
                 pgacr = min(
                     acr3d(
                         terminal_fall_graupel,
                         terminal_fall_rain,
-                        qr2,
-                        qg2,
+                        internal_mixing_ratio_rain,
+                        internal_mixing_ratio_graupel,
                         constants.CGARC,
                         constants.ACCO_02,
                         constants.ACCO_12,
                         constants.ACCO_22,
                         density,
                     ),
-                    rdts * qr2,
+                    rdts * internal_mixing_ratio_rain,
                 )
 
             # -----------------------------------------------------------------------
             # pgacw: accretion of cloud water by graupel
             # -----------------------------------------------------------------------
 
-            qden = qg2 * density
-            if ql2 > constants.QCMIN:
+            qden = internal_mixing_ratio_graupel * density
+            if internal_mixing_ratio_liquid > constants.QCMIN:
                 factor = cgacw * qden / sqrt(density * sqrt(sqrt(qden)))
-                pgacw = factor / (1.0 + dts * factor) * ql2  # rate
+                pgacw = factor / (1.0 + dts * factor) * internal_mixing_ratio_liquid  # rate
 
             # -----------------------------------------------------------------------
             # pgmlt: graupel melt
@@ -598,13 +645,18 @@ def snow_graupel_coldrain(
                 cgmlt_4,
                 density,
             )
-            pgmlt = min(max(0.0, pgmlt), min(qg2, tc / icpk))
-            qg2 = qg2 - pgmlt
-            qr2 = qr2 + pgmlt
+            pgmlt = min(max(0.0, pgmlt), min(internal_mixing_ratio_graupel, tc / icpk))
+            internal_mixing_ratio_graupel = internal_mixing_ratio_graupel - pgmlt
+            internal_mixing_ratio_rain = internal_mixing_ratio_rain + pgmlt
             q_liq = q_liq + pgmlt
             q_sol = q_sol - pgmlt
-            cvm = c_air + qv2 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
-            t2 = t2 - pgmlt * lhi / cvm
+            cvm = (
+                c_air
+                + internal_mixing_ratio_vapor * c_vap
+                + q_liq * constants.C_LIQ
+                + q_sol * constants.C_ICE
+            )
+            internal_t = internal_t - pgmlt * lhi / cvm
 
     else:
         # -----------------------------------------------------------------------
@@ -615,14 +667,19 @@ def snow_graupel_coldrain(
         # psaci: accretion of cloud ice by snow
         # -----------------------------------------------------------------------
 
-        if qi2 > 3.0e-7:  # cloud ice sink terms
-            if qs2 > constants.QPMIN:
+        if internal_mixing_ratio_ice > 3.0e-7:  # cloud ice sink terms
+            if internal_mixing_ratio_snow > constants.QPMIN:
                 # -----------------------------------------------------------------------
                 # sjl added (following lin eq. 23) the temperature dependency
                 # to reduce accretion, use esi = exp (0.05 * tc) as in hong et al 2004
                 # -----------------------------------------------------------------------
-                factor = dts * density_factor * csaci * exp(0.05 * tc + 0.8125 * log(qs2 * density))
-                psaci = factor / (1.0 + factor) * qi2
+                factor = (
+                    dts
+                    * density_factor
+                    * csaci
+                    * exp(0.05 * tc + 0.8125 * log(internal_mixing_ratio_snow * density))
+                )
+                psaci = factor / (1.0 + factor) * internal_mixing_ratio_ice
             else:
                 psaci = 0.0
 
@@ -635,7 +692,7 @@ def snow_graupel_coldrain(
             # threshold from wsm6 scheme, hong et al 2004, eq (13) : qi0_crt ~0.8e-4
             # -----------------------------------------------------------------------
 
-            qim = ice_fraction(t2, convection_fraction, surface_type) * qi0_crt / density
+            qim = ice_fraction(internal_t, convection_fraction, surface_type) * qi0_crt / density
 
             # -----------------------------------------------------------------------
             # assuming linear subgrid vertical distribution of cloud ice
@@ -648,43 +705,45 @@ def snow_graupel_coldrain(
                 tmp = fac_i2s * exp(0.025 * tc)
 
             di = max(di, constants.QCMIN)
-            q_plus = qi2 + di
+            q_plus = internal_mixing_ratio_ice + di
             if q_plus > (qim + constants.QCMIN):
-                if qim > (qi2 - di):
+                if qim > (internal_mixing_ratio_ice - di):
                     dq = (0.25 * (q_plus - qim) ** 2) / di
                 else:
-                    dq = qi2 - qim
+                    dq = internal_mixing_ratio_ice - qim
                 psaut = tmp * dq
             else:
                 psaut = 0.0
-            sink = min(qi2, psaci + psaut)
+            sink = min(internal_mixing_ratio_ice, psaci + psaut)
 
             # new total condensate / old condensate
             cloud_fraction = max(
                 0.0,
                 min(
                     1.0,
-                    cloud_fraction * max(qi2 + ql2 - sink + tmp, 0.0) / max(qi2 + ql2, constants.QCMIN),
+                    cloud_fraction
+                    * max(internal_mixing_ratio_ice + internal_mixing_ratio_liquid - sink + tmp, 0.0)
+                    / max(internal_mixing_ratio_ice + internal_mixing_ratio_liquid, constants.QCMIN),
                 ),
             )
 
-            qi2 = qi2 - sink
-            qs2 = qs2 + sink
+            internal_mixing_ratio_ice = internal_mixing_ratio_ice - sink
+            internal_mixing_ratio_snow = internal_mixing_ratio_snow + sink
 
             # -----------------------------------------------------------------------
             # pgaci: accretion of cloud ice by graupel
             # -----------------------------------------------------------------------
 
-            if qg2 > constants.QPMIN:
+            if internal_mixing_ratio_graupel > constants.QPMIN:
                 # -----------------------------------------------------------------------
                 # factor = dts * cgaci / sqrt (den (k)) *
                 # exp (0.05 * tc + 0.875 * log (qg * den (k)))
                 # simplified form: remove temp dependency & set the exponent 0.875 -> 1
                 # -----------------------------------------------------------------------
-                factor = dts * cgaci * sqrt(density) * qg2
-                pgaci = factor / (1.0 + factor) * qi2
-                qi2 = qi2 - pgaci
-                qg2 = qg2 + pgaci
+                factor = dts * cgaci * sqrt(density) * internal_mixing_ratio_graupel
+                pgaci = factor / (1.0 + factor) * internal_mixing_ratio_ice
+                internal_mixing_ratio_ice = internal_mixing_ratio_ice - pgaci
+                internal_mixing_ratio_graupel = internal_mixing_ratio_graupel + pgaci
 
         # -----------------------------------------------------------------------
         # cold - rain proc:
@@ -694,25 +753,25 @@ def snow_graupel_coldrain(
         # rain to ice, snow, graupel processes:
         # -----------------------------------------------------------------------
 
-        tc = t2 - constants.TICE
+        tc = internal_t - constants.TICE
 
-        if qr2 > constants.QPMIN and tc < 0.0:
+        if internal_mixing_ratio_rain > constants.QPMIN and tc < 0.0:
             # -----------------------------------------------------------------------
             # * sink * terms to qr: psacr + pgfr
-            # source terms to qs: psacr
-            # source terms to qg: pgfr
+            # source terms to mixing_ratio_snow: psacr
+            # source terms to mixing_ratio_graupel: pgfr
             # -----------------------------------------------------------------------
 
             # -----------------------------------------------------------------------
             # psacr accretion of rain by snow
             # -----------------------------------------------------------------------
 
-            if qs2 > constants.QPMIN:  # if snow exists
+            if internal_mixing_ratio_snow > constants.QPMIN:  # if snow exists
                 psacr = dts * acr3d(
                     terminal_fall_snow,
                     terminal_fall_rain,
-                    qr2,
-                    qs2,
+                    internal_mixing_ratio_rain,
+                    internal_mixing_ratio_snow,
                     constants.CSARC,
                     constants.ACCO_01,
                     constants.ACCO_11,
@@ -726,49 +785,60 @@ def snow_graupel_coldrain(
             # pgfr: rain freezing -- > graupel
             # -----------------------------------------------------------------------
 
-            pgfr = dts * cgfr_0 / density * (exp(-cgfr_1 * tc) - 1.0) * exp(1.75 * log(qr2 * density))
+            pgfr = (
+                dts
+                * cgfr_0
+                / density
+                * (exp(-cgfr_1 * tc) - 1.0)
+                * exp(1.75 * log(internal_mixing_ratio_rain * density))
+            )
 
             # -----------------------------------------------------------------------
             # total sink to qr
             # -----------------------------------------------------------------------
 
             sink = psacr + pgfr
-            factor = min(sink, min(qr2, -tc / icpk)) / max(sink, constants.QPMIN)
+            factor = min(sink, min(internal_mixing_ratio_rain, -tc / icpk)) / max(sink, constants.QPMIN)
 
             psacr = factor * psacr
             pgfr = factor * pgfr
 
             sink = psacr + pgfr
-            qr2 = qr2 - sink
-            qs2 = qs2 + psacr
-            qg2 = qg2 + pgfr
+            internal_mixing_ratio_rain = internal_mixing_ratio_rain - sink
+            internal_mixing_ratio_snow = internal_mixing_ratio_snow + psacr
+            internal_mixing_ratio_graupel = internal_mixing_ratio_graupel + pgfr
             q_liq = q_liq - sink
             q_sol = q_sol + sink
-            cvm = c_air + qv2 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
-            t2 = t2 + sink * lhi / cvm
+            cvm = (
+                c_air
+                + internal_mixing_ratio_vapor * c_vap
+                + q_liq * constants.C_LIQ
+                + q_sol * constants.C_ICE
+            )
+            internal_t = internal_t + sink * lhi / cvm
 
         # # -----------------------------------------------------------------------
         # # update capacity heat and latent heat coefficient
         # # -----------------------------------------------------------------------
 
-        lhi = constants.LI00 + constants.DC_ICE * t2
+        lhi = constants.LI00 + constants.DC_ICE * internal_t
         icpk = lhi / cvm
 
         # # -----------------------------------------------------------------------
         # # graupel production terms:
         # # -----------------------------------------------------------------------
 
-        if qs2 > constants.QPMIN:
+        if internal_mixing_ratio_snow > constants.QPMIN:
             # -----------------------------------------------------------------------
             # accretion: snow -- > graupel
             # -----------------------------------------------------------------------
 
-            if qg2 > constants.QPMIN:
+            if internal_mixing_ratio_graupel > constants.QPMIN:
                 sink = dts * acr3d(
                     terminal_fall_graupel,
                     terminal_fall_snow,
-                    qs2,
-                    qg2,
+                    internal_mixing_ratio_snow,
+                    internal_mixing_ratio_graupel,
                     cgacs,
                     constants.ACCO_03,
                     constants.ACCO_13,
@@ -783,24 +853,24 @@ def snow_graupel_coldrain(
             # -----------------------------------------------------------------------
 
             qsm = qs0_crt / density
-            if qs2 > qsm:
-                factor = dts * 1.0e-3 * exp(0.09 * (t2 - constants.TICE))
-                sink = sink + factor / (1.0 + factor) * (qs2 - qsm)
-            sink = min(qs2, sink)
+            if internal_mixing_ratio_snow > qsm:
+                factor = dts * 1.0e-3 * exp(0.09 * (internal_t - constants.TICE))
+                sink = sink + factor / (1.0 + factor) * (internal_mixing_ratio_snow - qsm)
+            sink = min(internal_mixing_ratio_snow, sink)
 
             # snow existed
-            qs2 = qs2 - sink
-            qg2 = qg2 + sink
+            internal_mixing_ratio_snow = internal_mixing_ratio_snow - sink
+            internal_mixing_ratio_graupel = internal_mixing_ratio_graupel + sink
 
-        if qg2 > constants.QPMIN and t2 < (constants.TICE - 0.01):
+        if internal_mixing_ratio_graupel > constants.QPMIN and internal_t < (constants.TICE - 0.01):
             # -----------------------------------------------------------------------
             # pgacw: accretion of cloud water by graupel
             # -----------------------------------------------------------------------
 
-            if ql2 > constants.QCMIN:
-                qden = qg2 * density
+            if internal_mixing_ratio_liquid > constants.QCMIN:
+                qden = internal_mixing_ratio_graupel * density
                 factor = dts * cgacw * qden / sqrt(density * sqrt(sqrt(qden)))
-                pgacw = factor / (1.0 + factor) * ql2
+                pgacw = factor / (1.0 + factor) * internal_mixing_ratio_liquid
             else:
                 pgacw = 0.0
 
@@ -808,28 +878,28 @@ def snow_graupel_coldrain(
             # pgacr: accretion of rain by graupel
             # -----------------------------------------------------------------------
 
-            if qr2 > constants.QPMIN:
+            if internal_mixing_ratio_rain > constants.QPMIN:
                 pgacr = min(
                     dts
                     * acr3d(
                         terminal_fall_graupel,
                         terminal_fall_rain,
-                        qr2,
-                        qg2,
+                        internal_mixing_ratio_rain,
+                        internal_mixing_ratio_graupel,
                         constants.CGARC,
                         constants.ACCO_02,
                         constants.ACCO_12,
                         constants.ACCO_22,
                         density,
                     ),
-                    qr2,
+                    internal_mixing_ratio_rain,
                 )
             else:
                 pgacr = 0.0
 
             sink = pgacr + pgacw
-            if constants.TICE - t2 > 0:
-                ans = constants.TICE - t2
+            if constants.TICE - internal_t > 0:
+                ans = constants.TICE - internal_t
             else:
                 ans = 0
             factor = min(sink, ans / icpk) / max(sink, constants.QPMIN)
@@ -837,30 +907,35 @@ def snow_graupel_coldrain(
             pgacw = factor * pgacw
 
             sink = pgacr + pgacw
-            qg2 = qg2 + sink
-            qr2 = qr2 - pgacr
-            ql2 = ql2 - pgacw
+            internal_mixing_ratio_graupel = internal_mixing_ratio_graupel + sink
+            internal_mixing_ratio_rain = internal_mixing_ratio_rain - pgacr
+            internal_mixing_ratio_liquid = internal_mixing_ratio_liquid - pgacw
             q_liq = q_liq - sink
             q_sol = q_sol + sink
-            cvm = c_air + qv2 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
-            t2 = t2 + sink * lhi / cvm
+            cvm = (
+                c_air
+                + internal_mixing_ratio_vapor * c_vap
+                + q_liq * constants.C_LIQ
+                + q_sol * constants.C_ICE
+            )
+            internal_t = internal_t + sink * lhi / cvm
 
-    t = t2
-    vapor = qv2
-    liquid = ql2
-    ice = qi2
-    rain = qr2
-    snow = qs2
-    graupel = qg2
+    t = internal_t
+    mixing_ratio_vapor = internal_mixing_ratio_vapor
+    mixing_ratio_liquid = internal_mixing_ratio_liquid
+    mixing_ratio_ice = internal_mixing_ratio_ice
+    mixing_ratio_rain = internal_mixing_ratio_rain
+    mixing_ratio_snow = internal_mixing_ratio_snow
+    mixing_ratio_graupel = internal_mixing_ratio_graupel
 
     return (
         t,
-        vapor,
-        liquid,
-        ice,
-        rain,
-        snow,
-        graupel,
+        mixing_ratio_vapor,
+        mixing_ratio_liquid,
+        mixing_ratio_ice,
+        mixing_ratio_rain,
+        mixing_ratio_snow,
+        mixing_ratio_graupel,
         cloud_fraction,
         p_dry,
         density,
@@ -879,8 +954,8 @@ def snow_graupel_coldrain(
 
 @function
 def iqs1(
-    ta: Float,
-    den: Float,
+    t: Float,
+    density: Float,
     table3: GlobalTable_driver_qsat,
     des3: GlobalTable_driver_qsat,
 ):
@@ -888,28 +963,34 @@ def iqs1(
     Compute saturation specific humidity from table3
 
     water - ice phase; universal dry / moist formular using air density
-    input "den" can be either dry or moist air density
+    "density" can be either dry or moist air density
 
     reference Fortran: gfdl_cloud_microphys.F90: function iqs1
+
+    Args:
+        t (Float)
+        density (Float)
+        table3 (GlobalTable_driver_qsat)
+        des3 (GlobalTable_driver_qsat)
     """
     tmin = constants.TABLE_ICE - 160.0
-    if ta - tmin > 0:
-        ans = ta - tmin
+    if t - tmin > 0:
+        ans = t - tmin
     else:
         ans = 0
     ap1 = 10.0 * ans + 1.0
     ap1 = min(2621.0, ap1)
     it = int32(trunc(ap1))
     es = table3.A[it - 1] + (ap1 - it) * des3.A[it - 1]
-    iqs1 = es / (constants.RVGAS * ta * den)
+    iqs1 = es / (constants.RVGAS * t * density)
 
     return iqs1
 
 
 @function
 def iqs2(
-    ta: Float,
-    den: Float,
+    t: Float,
+    density: Float,
     table3: GlobalTable_driver_qsat,
     des3: GlobalTable_driver_qsat,
 ):
@@ -918,51 +999,64 @@ def iqs2(
     with additional calculation of gradient (dq/dt)
 
     water - ice phase; universal dry / moist formular using air density
-    input "den" can be either dry or moist air density
+    "density" can be either dry or moist air density
 
     reference Fortran: gfdl_cloud_microphys.F90: function iqs2
+
+    Args:
+        t (Float)
+        density (Float)
+        table3 (GlobalTable_driver_qsat)
+        des3 (GlobalTable_driver_qsat)
     """
     tmin = constants.TABLE_ICE - 160.0
-    if ta - tmin > 0:
-        ans = ta - tmin
+    if t - tmin > 0:
+        ans = t - tmin
     else:
         ans = 0
     ap1 = 10.0 * ans + 1.0
     ap1 = min(2621.0, ap1)
     it = int32(trunc(ap1))
     es = table3.A[it - 1] + (ap1 - it) * des3.A[it - 1]
-    iqs2 = es / (constants.RVGAS * ta * den)
+    iqs2 = es / (constants.RVGAS * t * density)
     it = int32(trunc(ap1 - 0.5))
-    dqdt = 10.0 * (des3.A[it - 1] + (ap1 - it) * (des3.A[it] - des3.A[it - 1])) / (constants.RVGAS * ta * den)
+    dqdt = (
+        10.0 * (des3.A[it - 1] + (ap1 - it) * (des3.A[it] - des3.A[it - 1])) / (constants.RVGAS * t * density)
+    )
 
     return iqs2, dqdt
 
 
 @function
 def wqs1(
-    ta: Float,
-    den: Float,
+    t: Float,
+    density: Float,
     table2: GlobalTable_driver_qsat,
     des2: GlobalTable_driver_qsat,
 ):
-    """
-    Compute the saturated specific humidity for table2
+    """Compute the saturated specific humidity for table2
 
     pure water phase; universal dry / moist formular using air density
-    input "den" can be either dry or moist air density
+    "density" can be either dry or moist air density
 
     reference Fortran: gfdl_cloud_microphys.F90: function wqs1
+
+    Args:
+        t (Float)
+        density (Float)
+        table2 (GlobalTable_driver_qsat)
+        des2 (GlobalTable_driver_qsat)
     """
     tmin = constants.TABLE_ICE - 160.0
-    if ta - tmin > 0:
-        ans = ta - tmin
+    if t - tmin > 0:
+        ans = t - tmin
     else:
         ans = 0
     ap1 = 10.0 * ans + 1.0
     ap1 = min(2621.0, ap1)
     it = int32(trunc(ap1))
     es = table2.A[it - 1] + (ap1 - it) * des2.A[it - 1]
-    wqs1 = es / (constants.RVGAS * ta * den)
+    wqs1 = es / (constants.RVGAS * t * density)
 
     return wqs1
 
@@ -973,12 +1067,12 @@ def subgrid_z_proc(
     density: Float,
     density_factor: Float,
     t: Float,
-    vapor: Float,
-    liquid: Float,
-    rain: Float,
-    ice: Float,
-    snow: Float,
-    graupel: Float,
+    mixing_ratio_vapor: Float,
+    mixing_ratio_liquid: Float,
+    mixing_ratio_rain: Float,
+    mixing_ratio_ice: Float,
+    mixing_ratio_snow: Float,
+    mixing_ratio_graupel: Float,
     cloud_fraction: Float,
     rh_limited: Float,
     ccn: Float,
@@ -1017,21 +1111,79 @@ def subgrid_z_proc(
     t_min: Float,
     t_sub: Float,
 ):
-    """
-    Temperature sensitive high vertical resolution processes
+    """Temperature sensitive high vertical resolution processes
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutine subgrid_z_proc
-    """
 
+    Args:
+        p_dry (Float)
+        density (Float)
+        density_factor (Float)
+        t (Float)
+        mixing_ratio_vapor (Float)
+        mixing_ratio_liquid (Float)
+        mixing_ratio_rain (Float)
+        mixing_ratio_ice (Float)
+        mixing_ratio_snow (Float)
+        mixing_ratio_graupel (Float)
+        cloud_fraction (Float)
+        rh_limited (Float)
+        ccn (Float)
+        convection_fraction (Float)
+        surface_type (Float)
+        table2 (GlobalTable_driver_qsat)
+        table3 (GlobalTable_driver_qsat)
+        des2 (GlobalTable_driver_qsat)
+        des3 (GlobalTable_driver_qsat)
+        c_air (Float)
+        c_vap (Float)
+        cssub_0 (Float)
+        cssub_1 (Float)
+        cssub_2 (Float)
+        cssub_3 (Float)
+        cssub_4 (Float)
+        d0_vap (Float)
+        do_bigg (bool)
+        do_evap (bool)
+        do_qa (bool)
+        dts (Float)
+        fac_frz (Float)
+        fac_g2v (Float)
+        fac_l2v (Float)
+        fac_s2v (Float)
+        fac_v2g (Float)
+        fac_v2s (Float)
+        icloud_f (Float)
+        lat2 (Float)
+        lv00 (Float)
+        preciprad (bool)
+        qc_crt (Float)
+        qi_lim (Float)
+        rh_inc (Float)
+        rh_inr (Float)
+        t_min (Float)
+        t_sub (Float)
+
+    Returns:
+        Float: t
+        Float: mixing_ratio_vapor
+        Float: mixing_ratio_liquid
+        Float: mixing_ratio_rain
+        Float: mixing_ratio_ice
+        Float: mixing_ratio_snow
+        Float: mixing_ratio_graupel
+        Float: cloud_fraction
+        Float: subl1
+    """
     # -----------------------------------------------------------------------
     # define heat capacity and latent heat coefficient
     # -----------------------------------------------------------------------
 
     lhl = lv00 + d0_vap * t
     lhi = constants.LI00 + constants.DC_ICE * t
-    q_liq = liquid + rain
-    q_sol = ice + snow + graupel
-    cvm = c_air + vapor * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+    q_liq = mixing_ratio_liquid + mixing_ratio_rain
+    q_sol = mixing_ratio_ice + mixing_ratio_snow + mixing_ratio_graupel
+    cvm = c_air + mixing_ratio_vapor * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
     lcpk = lhl / cvm
     icpk = lhi / cvm
     tcpk = lcpk + icpk
@@ -1055,14 +1207,14 @@ def subgrid_z_proc(
     # -----------------------------------------------------------------------
 
     if t < t_min and cycle == False:  # noqa
-        if vapor - constants.QVMIN > 0:
-            sink = vapor - constants.QVMIN
+        if mixing_ratio_vapor - constants.QVMIN > 0:
+            sink = mixing_ratio_vapor - constants.QVMIN
         else:
             sink = 0
-        vapor = vapor - sink
-        ice = ice + sink
+        mixing_ratio_vapor = mixing_ratio_vapor - sink
+        mixing_ratio_ice = mixing_ratio_ice + sink
         q_sol = q_sol + sink
-        cvm = c_air + vapor * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+        cvm = c_air + mixing_ratio_vapor * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
         t = t + sink * (lhl + lhi) / cvm
         if do_qa == True:  # noqa
             cloud_fraction = 1.0  # air fully saturated; 100 % cloud cover
@@ -1086,17 +1238,20 @@ def subgrid_z_proc(
         # -----------------------------------------------------------------------
         # instant evaporation / sublimation of all clouds if rh < rh_adj -- > cloud free
         # -----------------------------------------------------------------------
-        qpz = vapor + liquid + ice
-        tin = t - (lhl * (liquid + ice) + lhi * ice) / (
-            c_air + qpz * c_vap + rain * constants.C_LIQ + (snow + graupel) * constants.C_ICE
+        qpz = mixing_ratio_vapor + mixing_ratio_liquid + mixing_ratio_ice
+        tin = t - (lhl * (mixing_ratio_liquid + mixing_ratio_ice) + lhi * mixing_ratio_ice) / (
+            c_air
+            + qpz * c_vap
+            + mixing_ratio_rain * constants.C_LIQ
+            + (mixing_ratio_snow + mixing_ratio_graupel) * constants.C_ICE
         )
         if tin > t_sub + 6.0:
             rh = qpz / iqs1(tin, density, table3, des3)
-            if rh < rh_adj:  # qpz / rh_adj < qs
+            if rh < rh_adj:  # qpz / rh_adj < mixing_ratio_snow
                 t = tin
-                vapor = qpz
-                liquid = 0.0
-                ice = 0.0
+                mixing_ratio_vapor = qpz
+                mixing_ratio_liquid = 0.0
+                mixing_ratio_ice = 0.0
                 if do_qa == True:  # noqa
                     qa = 0.0
                 cycle = True  # cloud free
@@ -1107,16 +1262,16 @@ def subgrid_z_proc(
         # -----------------------------------------------------------------------
         if do_evap == True:  # noqa
             qsw, dwsdt = wqs2(t, density, table2, des2)
-            dq0 = qsw - vapor
+            dq0 = qsw - mixing_ratio_vapor
             if dq0 > constants.QVMIN:
                 factor = min(1.0, fac_l2v * (10.0 * dq0 / qsw))
-                evap = min(liquid, factor * liquid / (1.0 + tcp3 * dwsdt))
+                evap = min(mixing_ratio_liquid, factor * mixing_ratio_liquid / (1.0 + tcp3 * dwsdt))
             else:
                 evap = 0.0
-            vapor = vapor + evap
-            liquid = liquid - evap
+            mixing_ratio_vapor = mixing_ratio_vapor + evap
+            mixing_ratio_liquid = mixing_ratio_liquid - evap
             q_liq = q_liq - evap
-            cvm = c_air + vapor * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            cvm = c_air + mixing_ratio_vapor * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
             t = t - evap * lhl / cvm
 
         # -----------------------------------------------------------------------
@@ -1131,13 +1286,13 @@ def subgrid_z_proc(
         # -----------------------------------------------------------------------
 
         ifrac = ice_fraction(t, convection_fraction, surface_type)
-        if ifrac == 1.0 and liquid > constants.QCMIN:
-            sink = liquid
-            liquid = liquid - sink
-            ice = ice + sink
+        if ifrac == 1.0 and mixing_ratio_liquid > constants.QCMIN:
+            sink = mixing_ratio_liquid
+            mixing_ratio_liquid = mixing_ratio_liquid - sink
+            mixing_ratio_ice = mixing_ratio_ice + sink
             q_liq = q_liq - sink
             q_sol = q_sol + sink
-            cvm = c_air + vapor * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            cvm = c_air + mixing_ratio_vapor * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
             t = t + sink * lhi / cvm
 
         # -----------------------------------------------------------------------
@@ -1152,24 +1307,24 @@ def subgrid_z_proc(
         # -----------------------------------------------------------------------
 
         tc = constants.TICE - t
-        if do_bigg == True and liquid > constants.QCMIN and tc > 0.0:  # noqa
+        if do_bigg == True and mixing_ratio_liquid > constants.QCMIN and tc > 0.0:  # noqa
             sink = (
                 fac_frz
                 * (100.0 / constants.RHOR / ccn)
                 * dts
                 * (exp(0.66 * tc) - 1.0)
                 * density
-                * liquid
-                * liquid
+                * mixing_ratio_liquid
+                * mixing_ratio_liquid
             )
-            sink = min(liquid, min(tc / icpk, sink))
-            liquid = liquid - sink
-            ice = ice + sink
+            sink = min(mixing_ratio_liquid, min(tc / icpk, sink))
+            mixing_ratio_liquid = mixing_ratio_liquid - sink
+            mixing_ratio_ice = mixing_ratio_ice + sink
             q_liq = q_liq - sink
             q_sol = q_sol + sink
-            cvm = c_air + vapor * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            cvm = c_air + mixing_ratio_vapor * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
             t = t + sink * lhi / cvm
-            # significant ql existed
+            # significant mixing_ratio_liquid existed
 
         # -----------------------------------------------------------------------
         # update capacity heat and latent heat coefficient
@@ -1187,16 +1342,16 @@ def subgrid_z_proc(
 
         if t < constants.TICE:
             qsi, dqsdt = iqs2(t, density, table3, des3)
-            dq = vapor - qsi
-            sink = min(ice, dq / (1.0 + tcpk * dqsdt))
-            if ice > constants.QCMIN:
+            dq = mixing_ratio_vapor - qsi
+            sink = min(mixing_ratio_ice, dq / (1.0 + tcpk * dqsdt))
+            if mixing_ratio_ice > constants.QCMIN:
                 # eq 9, hong et al. 2004, mwr
                 # for a and b, see dudhia 1989: page 3103 eq (b7) and (b8)
                 pidep = (
                     dts
                     * dq
                     * 349138.78
-                    * exp(0.875 * log(ice * density))
+                    * exp(0.875 * log(mixing_ratio_ice * density))
                     / (qsi * density * lat2 / (0.0243 * constants.RVGAS * t**2) + 4.42478e4)
                 )
             else:
@@ -1207,7 +1362,7 @@ def subgrid_z_proc(
                 tmp = constants.TICE - t
                 qi_crt = 4.92e-11 * exp(1.33 * log(1.0e3 * exp(0.1 * tmp)))
                 qi_crt = max(qi_crt, 1.82e-6) * qi_lim * ifrac / density
-                sink = min(sink, min(max(qi_crt - ice, pidep), tmp / tcpk))
+                sink = min(sink, min(max(qi_crt - mixing_ratio_ice, pidep), tmp / tcpk))
             else:  # ice -- > vapor
                 # NOTE sublimation not implemented
                 # trigger checked in driver `check_flags` function
@@ -1227,10 +1382,10 @@ def subgrid_z_proc(
                 # else:
                 #     sink = 0.0
                 sink = 0
-            vapor = vapor - sink
-            ice = ice + sink
+            mixing_ratio_vapor = mixing_ratio_vapor - sink
+            mixing_ratio_ice = mixing_ratio_ice + sink
             q_sol = q_sol + sink
-            cvm = c_air + vapor * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            cvm = c_air + mixing_ratio_vapor * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
             t = t + sink * (lhl + lhi) / cvm
 
         # -----------------------------------------------------------------------
@@ -1248,35 +1403,35 @@ def subgrid_z_proc(
         # this process happens for all temp rage
         # -----------------------------------------------------------------------
 
-        if snow > constants.QPMIN:
+        if mixing_ratio_snow > constants.QPMIN:
             qsi, dqsdt = iqs2(t, density, table3, des3)
-            qden = snow * density
+            qden = mixing_ratio_snow * density
             tmp = exp(0.65625 * log(qden))
             tsq = t * t
-            dq = (qsi - vapor) / (1.0 + tcpk * dqsdt)
+            dq = (qsi - mixing_ratio_vapor) / (1.0 + tcpk * dqsdt)
             pssub = (
                 cssub_0
                 * tsq
                 * (cssub_1 * sqrt(qden) + cssub_2 * tmp * sqrt(density_factor))
                 / (cssub_3 * tsq + cssub_4 * qsi * density)
             )
-            pssub = (qsi - vapor) * dts * pssub
-            if pssub > 0.0:  # qs -- > qv, sublimation
+            pssub = (qsi - mixing_ratio_vapor) * dts * pssub
+            if pssub > 0.0:  # snow -- > vapor, sublimation
                 if t - t_sub > 0:
                     ans = t - t_sub
                 else:
                     ans = 0
-                pssub = min(fac_s2v * pssub * min(1.0, ans * 0.2), snow)
+                pssub = min(fac_s2v * pssub * min(1.0, ans * 0.2), mixing_ratio_snow)
                 subl1 = subl1 + pssub / dts
             else:
                 if t > constants.TICE:
                     pssub = 0.0  # no deposition
                 else:
                     pssub = max(fac_v2s * pssub, max(dq, (t - constants.TICE) / tcpk))
-            snow = snow - pssub
-            vapor = vapor + pssub
+            mixing_ratio_snow = mixing_ratio_snow - pssub
+            mixing_ratio_vapor = mixing_ratio_vapor + pssub
             q_sol = q_sol - pssub
-            cvm = c_air + vapor * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            cvm = c_air + mixing_ratio_vapor * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
             t = t - pssub * (lhl + lhi) / cvm
 
         # -----------------------------------------------------------------------
@@ -1293,10 +1448,10 @@ def subgrid_z_proc(
         # simplified 2 - way grapuel sublimation - deposition mechanism
         # -----------------------------------------------------------------------
 
-        if graupel > constants.QPMIN:
+        if mixing_ratio_graupel > constants.QPMIN:
             qsi, dqsdt = iqs2(t, density, table3, des3)
-            dq = (vapor - qsi) / (1.0 + tcpk * dqsdt)
-            pgsub = (vapor / qsi - 1.0) * graupel
+            dq = (mixing_ratio_vapor - qsi) / (1.0 + tcpk * dqsdt)
+            pgsub = (mixing_ratio_vapor / qsi - 1.0) * mixing_ratio_graupel
             if pgsub > 0.0:  # deposition
                 if t > constants.TICE:
                     pgsub = 0.0  # no deposition
@@ -1305,7 +1460,7 @@ def subgrid_z_proc(
                         fac_v2g * pgsub,
                         min(
                             0.2 * dq,
-                            min(liquid + rain, (constants.TICE - t) / tcpk),
+                            min(mixing_ratio_liquid + mixing_ratio_rain, (constants.TICE - t) / tcpk),
                         ),
                     )
             else:  # submilation
@@ -1315,10 +1470,10 @@ def subgrid_z_proc(
                     ans = 0
                 pgsub = max(fac_g2v * pgsub, dq) * min(1.0, ans * 0.1)
                 subl1 = subl1 + pgsub / dts
-            graupel = graupel + pgsub
-            vapor = vapor - pgsub
+            mixing_ratio_graupel = mixing_ratio_graupel + pgsub
+            mixing_ratio_vapor = mixing_ratio_vapor - pgsub
             q_sol = q_sol + pgsub
-            cvm = c_air + vapor * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            cvm = c_air + mixing_ratio_vapor * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
             t = t + pgsub * (lhl + lhi) / cvm
 
             # Fortran ifdef USE_MIN_EVAP goes in here.
@@ -1329,7 +1484,7 @@ def subgrid_z_proc(
         # -----------------------------------------------------------------------
 
         lhl = lv00 + d0_vap * t
-        cvm = c_air + (vapor + q_liq + q_sol) * c_vap
+        cvm = c_air + (mixing_ratio_vapor + q_liq + q_sol) * c_vap
         lcpk = lhl / cvm
 
         # -----------------------------------------------------------------------
@@ -1343,14 +1498,14 @@ def subgrid_z_proc(
         # combine water species
         # -----------------------------------------------------------------------
         if preciprad == True:  # noqa
-            q_sol = ice + snow + graupel
-            q_liq = liquid + rain
+            q_sol = mixing_ratio_ice + mixing_ratio_snow + mixing_ratio_graupel
+            q_liq = mixing_ratio_liquid + mixing_ratio_rain
         else:
-            q_sol = ice
-            q_liq = liquid
+            q_sol = mixing_ratio_ice
+            q_liq = mixing_ratio_liquid
         q_cond = q_liq + q_sol
 
-        qpz = vapor + q_cond  # qpz is conserved
+        qpz = mixing_ratio_vapor + q_cond  # qpz is conserved
 
         # -----------------------------------------------------------------------
         # use the "liquid - frozen water temperature" (tin)
@@ -1430,19 +1585,29 @@ def subgrid_z_proc(
                 elif qstar <= q_minus:
                     cloud_fraction = 1.0  # air fully saturated; 100 % cloud cover
 
-    return t, vapor, liquid, rain, ice, snow, graupel, cloud_fraction, subl1
+    return (
+        t,
+        mixing_ratio_vapor,
+        mixing_ratio_liquid,
+        mixing_ratio_rain,
+        mixing_ratio_ice,
+        mixing_ratio_snow,
+        mixing_ratio_graupel,
+        cloud_fraction,
+        subl1,
+    )
 
 
 def icloud_core(
     t: FloatField,
     p_dry: FloatField,
     dp: FloatField,
-    vapor: FloatField,
-    liquid: FloatField,
-    rain: FloatField,
-    ice: FloatField,
-    snow: FloatField,
-    graupel: FloatField,
+    mixing_ratio_vapor: FloatField,
+    mixing_ratio_liquid: FloatField,
+    mixing_ratio_rain: FloatField,
+    mixing_ratio_ice: FloatField,
+    mixing_ratio_snow: FloatField,
+    mixing_ratio_graupel: FloatField,
     cloud_fraction: FloatField,
     density: FloatField,
     density_factor: FloatField,
@@ -1469,12 +1634,12 @@ def icloud_core(
         t (FloatField)
         p_dry (FloatField)
         dp (FloatField)
-        vapor (FloatField)
-        liquid (FloatField)
-        rain (FloatField)
-        ice (FloatField)
-        snow (FloatField)
-        graupel (FloatField)
+        mixing_ratio_vapor (FloatField)
+        mixing_ratio_liquid (FloatField)
+        mixing_ratio_rain (FloatField)
+        mixing_ratio_ice (FloatField)
+        mixing_ratio_snow (FloatField)
+        mixing_ratio_graupel (FloatField)
         cloud_fraction (FloatField)
         density (FloatField)
         density_factor (FloatField)
@@ -1549,14 +1714,26 @@ def icloud_core(
     )
 
     with computation(PARALLEL), interval(...):
-        t, vapor, liquid, rain, ice, snow, graupel, cloud_fraction, cvm, q_liq, q_sol = icloud_melt_freeze(
+        (
             t,
-            vapor,
-            liquid,
-            rain,
-            ice,
-            snow,
-            graupel,
+            mixing_ratio_vapor,
+            mixing_ratio_liquid,
+            mixing_ratio_rain,
+            mixing_ratio_ice,
+            mixing_ratio_snow,
+            mixing_ratio_graupel,
+            cloud_fraction,
+            cvm,
+            q_liq,
+            q_sol,
+        ) = icloud_melt_freeze(
+            t,
+            mixing_ratio_vapor,
+            mixing_ratio_liquid,
+            mixing_ratio_rain,
+            mixing_ratio_ice,
+            mixing_ratio_snow,
+            mixing_ratio_graupel,
             cloud_fraction,
             density,
             convection_fraction,
@@ -1571,7 +1748,7 @@ def icloud_core(
 
     with computation(PARALLEL), interval(...):
         if z_slope_ice == True:  # noqa
-            q_linear_prof = ice
+            q_linear_prof = mixing_ratio_ice
             h_var_linear_prof = rh_limited
             dm_linear_prof = q_linear_prof  # initialized here to ensure it is created as a 3d field
 
@@ -1624,12 +1801,12 @@ def icloud_core(
         if p_dry >= constants.P_MIN:
             (
                 t,
-                vapor,
-                liquid,
-                ice,
-                rain,
-                snow,
-                graupel,
+                mixing_ratio_vapor,
+                mixing_ratio_liquid,
+                mixing_ratio_ice,
+                mixing_ratio_rain,
+                mixing_ratio_snow,
+                mixing_ratio_graupel,
                 cloud_fraction,
                 p_dry,
                 density,
@@ -1645,12 +1822,12 @@ def icloud_core(
                 tcpk,
             ) = snow_graupel_coldrain(
                 t=t,
-                vapor=vapor,
-                liquid=liquid,
-                ice=ice,
-                rain=rain,
-                snow=snow,
-                graupel=graupel,
+                mixing_ratio_vapor=mixing_ratio_vapor,
+                mixing_ratio_liquid=mixing_ratio_liquid,
+                mixing_ratio_ice=mixing_ratio_ice,
+                mixing_ratio_rain=mixing_ratio_rain,
+                mixing_ratio_snow=mixing_ratio_snow,
+                mixing_ratio_graupel=mixing_ratio_graupel,
                 cloud_fraction=cloud_fraction,
                 p_dry=p_dry,
                 density=density,
@@ -1697,17 +1874,27 @@ def icloud_core(
                 rdts=rdts,
             )
 
-        t, vapor, liquid, rain, ice, snow, graupel, cloud_fraction, sublimation = subgrid_z_proc(
+        (
+            t,
+            mixing_ratio_vapor,
+            mixing_ratio_liquid,
+            mixing_ratio_rain,
+            mixing_ratio_ice,
+            mixing_ratio_snow,
+            mixing_ratio_graupel,
+            cloud_fraction,
+            sublimation,
+        ) = subgrid_z_proc(
             p_dry=p_dry,
             density=density,
             density_factor=density_factor,
             t=t,
-            vapor=vapor,
-            liquid=liquid,
-            rain=rain,
-            ice=ice,
-            snow=snow,
-            graupel=graupel,
+            mixing_ratio_vapor=mixing_ratio_vapor,
+            mixing_ratio_liquid=mixing_ratio_liquid,
+            mixing_ratio_rain=mixing_ratio_rain,
+            mixing_ratio_ice=mixing_ratio_ice,
+            mixing_ratio_snow=mixing_ratio_snow,
+            mixing_ratio_graupel=mixing_ratio_graupel,
             cloud_fraction=cloud_fraction,
             rh_limited=rh_limited,
             ccn=ccn,
@@ -1777,6 +1964,15 @@ class GFDL1MIceCloud(NDSLRuntime):
         config_dependent_constants: GFDL1MDriverConfigDependentConstants,
         saturation_tables: GFDL_driver_tables,
     ):
+        """Initialize the ice cloud module
+
+        Args:
+            stencil_factory (StencilFactory)
+            quantity_factory (QuantityFactory)
+            config (GFDL1MConfig)
+            config_dependent_constants (GFDL1MDriverConfigDependentConstants)
+            saturation_tables (GFDL_driver_tables)
+        """
         # initialize NDSLRuntime
         super().__init__(stencil_factory)
 
@@ -1858,12 +2054,12 @@ class GFDL1MIceCloud(NDSLRuntime):
         t: FloatField,
         p_dry: FloatField,
         dp: FloatField,
-        vapor: FloatField,
-        liquid: FloatField,
-        rain: FloatField,
-        ice: FloatField,
-        snow: FloatField,
-        graupel: FloatField,
+        mixing_ratio_vapor: FloatField,
+        mixing_ratio_liquid: FloatField,
+        mixing_ratio_rain: FloatField,
+        mixing_ratio_ice: FloatField,
+        mixing_ratio_snow: FloatField,
+        mixing_ratio_graupel: FloatField,
         cloud_fraction: FloatField,
         density: FloatField,
         density_factor: FloatField,
@@ -1886,12 +2082,12 @@ class GFDL1MIceCloud(NDSLRuntime):
             t (inout): temperature (K)
             p_dry (in): dry air pressure (Pa)
             dp (in): change in pressure between model layers (Pa)
-            vapor (inout): mixing ratio vapor (kg/kg)
-            liquid (inout): mixing ratio liquid (kg/kg)
-            rain (inout): mixing ratio rain (kg/kg)
-            ice (inout): mixing ratio ice (kg/kg)
-            snow (inout): mixing ratio snow (kg/kg)
-            graupel (inout): mixing ratio graupel (kg/kg)
+            mixing_ratio_vapor (inout): mixing ratio vapor (kg/kg)
+            mixing_ratio_liquid (inout): mixing ratio liquid (kg/kg)
+            mixing_ratio_rain (inout): mixing ratio rain (kg/kg)
+            mixing_ratio_ice (inout): mixing ratio ice (kg/kg)
+            mixing_ratio_snow (inout): mixing ratio snow (kg/kg)
+            mixing_ratio_graupel (inout): mixing ratio graupel (kg/kg)
             cloud_fraction (inout): cloud fraction
             density (in): density of the grid cell (kg m^-3)
             density_factor (in): details unknown
@@ -1908,12 +2104,12 @@ class GFDL1MIceCloud(NDSLRuntime):
             t,
             p_dry,
             dp,
-            vapor,
-            liquid,
-            rain,
-            ice,
-            snow,
-            graupel,
+            mixing_ratio_vapor,
+            mixing_ratio_liquid,
+            mixing_ratio_rain,
+            mixing_ratio_ice,
+            mixing_ratio_snow,
+            mixing_ratio_graupel,
             cloud_fraction,
             density,
             density_factor,

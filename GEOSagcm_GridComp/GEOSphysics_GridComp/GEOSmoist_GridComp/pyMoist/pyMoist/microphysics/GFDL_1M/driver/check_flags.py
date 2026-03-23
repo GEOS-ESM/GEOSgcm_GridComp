@@ -70,7 +70,7 @@ def check_flags(
         failed_keywords.append("DE_ICE")
     if GFDL_1M_config.MP_PRINT:
         failed_keywords.append("MP_PRINT")
-    if config_dependent_constants.DTS >= 300:
+    if config_dependent_constants.DTS >= 300.0:
         failed_keywords.append("DTS")
 
     if len(failed_keywords) > 0:

@@ -5,10 +5,10 @@ from pyMoist.microphysics.GFDL_1M.driver.constants import constants
 
 
 def fall_speed(
-    liquid: FloatField,
-    ice: FloatField,
-    snow: FloatField,
-    graupel: FloatField,
+    mixing_ratio_liquid: FloatField,
+    mixing_ratio_ice: FloatField,
+    mixing_ratio_snow: FloatField,
+    mixing_ratio_graupel: FloatField,
     t_unmodified: FloatField,
     t: FloatField,
     dz_unmodified: FloatField,
@@ -21,40 +21,24 @@ def fall_speed(
     graupel_terminal_velocity: FloatField,
     convection_fraction: FloatFieldIJ,
 ):
-    """
-    calculate the vertical fall speed of precipitation
+    """Calculate the vertical fall speed of precipitation
 
     Arguments:
-        liquid (inout): in cloud liquid mixing radio (kg/kg)
-        ice (inout): in cloud ice mixing radio (kg/kg)
-        snow (inout): in cloud snow mixing radio (kg/kg)
-        graupel (inout): in cloud graupel mixing radio (kg/kg)
-        t_unmodified (in): atmospheric temperature, unmodified throughout the driver (K)
-        t (in): atmospheric temperature, modified throughout the driver (K)
-        dz_unmodified (in): layer thickness (m)
-        dz (out): layer thickness
-        density_unmodified (in): density
-        density (out): density, potentially corrected for hydrostatic balance
-        density_factor (out): details unknown
-        ice_terminal_velocity (out): terminal fall speed for ice
-        snow_terminal_velocity (out): terminal fall speed for snow
-        graupel_terminal_velocity (out): terminal fall speed for graupel
-        convection_fraction (in): convection fraction
-
-    Externals:
-        const_vg (bool): controls constant vs computed terminal velocity for graupel
-        const_vi (bool): controls constant vs computed terminal velocity for ice
-        const_vs (bool): controls constant vs computed terminal velocity for snow
-        p_nonhydro: performs hydrostatic adjustment on air density
-        vg_fac (Float): details unknown
-        vg_max (Float): details unknown
-        vi_fac (Float): details unknown
-        vi_max (Float): details unknown
-        vs_fac (Float): details unknown
-        vs_max (Float): details unknown
-        anv_icefall (in): details unknown
-        ls_icefall (in): details unknown
-
+        mixing_ratio_liquid (FloatField): (inout) in cloud liquid mixing radio (kg/kg)
+        mixing_ratio_ice (FloatField): (inout) in cloud ice mixing radio (kg/kg)
+        mixing_ratio_snow (FloatField): (inout) in cloud snow mixing radio (kg/kg)
+        mixing_ratio_graupel (FloatField): (inout) in cloud graupel mixing radio (kg/kg)
+        t_unmodified (FloatField): (in) atmospheric temperature, unmodified throughout the driver (K)
+        t (FloatField): (in) atmospheric temperature, modified throughout the driver (K)
+        dz_unmodified (FloatField): (in) layer thickness (m)
+        dz (FloatField): (out) layer thickness
+        density_unmodified (FloatField): (in) density
+        density (FloatField): (out) density, potentially corrected for hydrostatic balance
+        density_factor (FloatField): (out) details unknown
+        ice_terminal_velocity (FloatField): (out) terminal fall speed for ice
+        snow_terminal_velocity (FloatField): (out) terminal fall speed for snow
+        graupel_terminal_velocity (FloatField): (out) terminal fall speed for graupel
+        convection_fraction (FloatFieldIJ): (in) convection fraction
     """
     from __externals__ import (
         anv_icefall,
@@ -85,7 +69,7 @@ def fall_speed(
         if const_vi == True:  # noqa
             ice_terminal_velocity = vi_fac
         else:
-            if ice < constants.THI:
+            if mixing_ratio_ice < constants.THI:
                 ice_terminal_velocity = constants.VF_MIN
             else:
                 # -----------------------------------------------------------------------
@@ -94,7 +78,7 @@ def fall_speed(
 
                 vi1 = 0.01 * vi_fac
                 tc = t - constants.TICE  # deg C
-                IWC = ice * density * 1.0e3  # Units are g/m3
+                IWC = mixing_ratio_ice * density * 1.0e3  # Units are g/m3
                 # -----------------------------------------------------------------------
                 # use deng and mace (2008, grl)
                 # https://doi.org/10.1029/2008GL035054
@@ -123,11 +107,14 @@ def fall_speed(
         if const_vs == True:  # noqa
             snow_terminal_velocity = vs_fac  # 1. ifs_2016
         else:
-            if snow < constants.THS:
+            if mixing_ratio_snow < constants.THS:
                 snow_terminal_velocity = constants.VF_MIN
             else:
                 snow_terminal_velocity = (
-                    vs_fac * constants.VCONS * rhof * exp(0.0625 * log(snow * density / constants.NORMS))
+                    vs_fac
+                    * constants.VCONS
+                    * rhof
+                    * exp(0.0625 * log(mixing_ratio_snow * density / constants.NORMS))
                 )
                 snow_terminal_velocity = min(vs_max, max(constants.VF_MIN, snow_terminal_velocity))
 
@@ -138,10 +125,13 @@ def fall_speed(
         if const_vg == True:  # noqa
             graupel_terminal_velocity = vg_fac  # 2.
         else:
-            if graupel < constants.THG:
+            if mixing_ratio_graupel < constants.THG:
                 graupel_terminal_velocity = constants.VF_MIN
             else:
                 graupel_terminal_velocity = (
-                    vg_fac * constants.VCONG * rhof * sqrt(sqrt(sqrt(graupel * density / constants.NORMG)))
+                    vg_fac
+                    * constants.VCONG
+                    * rhof
+                    * sqrt(sqrt(sqrt(mixing_ratio_graupel * density / constants.NORMG)))
                 )
                 graupel_terminal_velocity = min(vg_max, max(constants.VF_MIN, graupel_terminal_velocity))

@@ -1,4 +1,4 @@
-from ndsl import NDSLRuntime, StencilFactory
+from ndsl import NDSLRuntime, StencilFactory, Quantity
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, function, interval, sqrt
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
@@ -60,10 +60,59 @@ def init_temporaries(
     evaporation: FloatField,
     sublimation: FloatField,
 ):
-    """
-    Initialize temporary copies of many fields
+    """Initialize temporary copies of many fields. Data from these fields are not directly returned to the
+    larger model, but it may be used to update another field which is returned to the model
 
-    modification to quantities made inside of the driver are not returned to the rest of the model
+    Args:
+        unmodified_t (FloatField)
+        unmodified_dp (FloatField)
+        critical_relative_humidity_for_pdf (FloatField)
+        radiation_field_vapor (FloatField)
+        radiation_field_liquid (FloatField)
+        radiation_field_ice (FloatField)
+        radiation_field_rain (FloatField)
+        radiation_field_snow (FloatField)
+        radiation_field_graupel (FloatField)
+        radiation_field_cloud_fraction (FloatField)
+        total_concentration (FloatField)
+        unmodified_mixing_ratio_vapor (FloatField)
+        unmodified_mixing_ratio_liquid (FloatField)
+        unmodified_mixing_ratio_rain (FloatField)
+        unmodified_mixing_ratio_ice (FloatField)
+        unmodified_mixing_ratio_snow (FloatField)
+        unmodified_mixing_ratio_graupel (FloatField)
+        dry_air_mixing_ratio_vapor (FloatField)
+        dry_air_mixing_ratio_liquid (FloatField)
+        dry_air_mixing_ratio_rain (FloatField)
+        dry_air_mixing_ratio_ice (FloatField)
+        dry_air_mixing_ratio_snow (FloatField)
+        dry_air_mixing_ratio_graupel (FloatField)
+        cloud_fraction (FloatField)
+        dz (FloatField)
+        u_unmodified (FloatField)
+        v_unmodified (FloatField)
+        w_unmodified (FloatField)
+        area (FloatFieldIJ)
+        t (FloatField)
+        dp (FloatField)
+        density_unmodified (FloatField)
+        p_dry (FloatField)
+        mass (FloatField)
+        u (FloatField)
+        v (FloatField)
+        w (FloatField)
+        one_minus_sigma (FloatFieldIJ)
+        ccn (FloatField)
+        c_praut (FloatField)
+        rh_limited (FloatField)
+        rain (FloatFieldIJ)
+        snow (FloatFieldIJ)
+        graupel (FloatFieldIJ)
+        ice (FloatFieldIJ)
+        liquid_precip_flux (FloatField)
+        ice_precip_flux (FloatField)
+        evaporation (FloatField)
+        sublimation (FloatField)
     """
     from __externals__ import DO_SEDI_W, cpaut
 
@@ -140,27 +189,53 @@ def init_temporaries(
 @function
 def fix_negative_core(
     t: Float,
-    qv: Float,
-    ql: Float,
-    qr: Float,
-    qi: Float,
-    qs: Float,
-    qg: Float,
+    mixing_ratio_vapor: Float,
+    mixing_ratio_liquid: Float,
+    mixing_ratio_rain: Float,
+    mixing_ratio_ice: Float,
+    mixing_ratio_snow: Float,
+    mixing_ratio_graupel: Float,
     c_air: Float,
     c_vap: Float,
     lv00: Float,
     d0_vap: Float,
 ):
-    """
-    Adjusts/removes negative mixing ratios
+    """Adjusts/removes negative mixing ratios
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutine neg_adj
+
+    Args:
+        t (Float): temperature (Kelvin)
+        mixing_ratio_vapor (Float): water vapor mixing ratio (kg/kg)
+        mixing_ratio_liquid (Float): liquid water mixing ratio (kg/kg)
+        mixing_ratio_rain (Float): rain mixing ratio (kg/kg)
+        mixing_ratio_ice (Float): ice mixing ratio (kg/kg)
+        mixing_ratio_snow (Float): snow mixing ratio (kg/kg)
+        mixing_ratio_graupel (Float): graupel mixing ratio (kg/kg)
+        c_air (Float)
+        c_vap (Float)
+        lv00 (Float)
+        d0_vap (Float)
+
+    Returns:
+        Float: t
+        Float: mixing_ratio_vapor
+        Float: mixing_ratio_liquid
+        Float: mixing_ratio_rain
+        Float: mixing_ratio_ice
+        Float: mixing_ratio_snow
+        Float: mixing_ratio_graupel
     """
     # -----------------------------------------------------------------------
     # define heat capacity and latent heat coefficient
     # -----------------------------------------------------------------------
 
-    cvm = c_air + qv * c_vap + (qr + ql) * constants.C_LIQ + (qi + qs + qg) * constants.C_ICE
+    cvm = (
+        c_air
+        + mixing_ratio_vapor * c_vap
+        + (mixing_ratio_rain + mixing_ratio_liquid) * constants.C_LIQ
+        + (mixing_ratio_ice + mixing_ratio_snow + mixing_ratio_graupel) * constants.C_ICE
+    )
     lcpk = (lv00 + d0_vap * t) / cvm
     icpk = (constants.LI00 + constants.DC_ICE * t) / cvm
 
@@ -169,34 +244,42 @@ def fix_negative_core(
     # -----------------------------------------------------------------------
 
     # if cloud ice < 0, borrow from snow
-    if qi < 0.0:
-        qs = qs + qi
-        qi = 0.0
+    if mixing_ratio_ice < 0.0:
+        mixing_ratio_snow = mixing_ratio_snow + mixing_ratio_ice
+        mixing_ratio_ice = 0.0
     # if snow < 0, borrow from graupel
-    if qs < 0.0:
-        qg = qg + qs
-        qs = 0.0
+    if mixing_ratio_snow < 0.0:
+        mixing_ratio_graupel = mixing_ratio_graupel + mixing_ratio_snow
+        mixing_ratio_snow = 0.0
     # if graupel < 0, borrow from rain
-    if qg < 0.0:
-        qr = qr + qg
-        t = t - qg * icpk  # heating
-        qg = 0.0
+    if mixing_ratio_graupel < 0.0:
+        mixing_ratio_rain = mixing_ratio_rain + mixing_ratio_graupel
+        t = t - mixing_ratio_graupel * icpk  # heating
+        mixing_ratio_graupel = 0.0
 
     # -----------------------------------------------------------------------
     # liquid phase:
     # -----------------------------------------------------------------------
 
     # if rain < 0, borrow from cloud water
-    if qr < 0.0:
-        ql = ql + qr
-        qr = 0.0
+    if mixing_ratio_rain < 0.0:
+        mixing_ratio_liquid = mixing_ratio_liquid + mixing_ratio_rain
+        mixing_ratio_rain = 0.0
     # if cloud water < 0, borrow from water vapor
-    if ql < 0.0:
-        qv = qv + ql
-        t = t - ql * lcpk  # heating
-        ql = 0.0
+    if mixing_ratio_liquid < 0.0:
+        mixing_ratio_vapor = mixing_ratio_vapor + mixing_ratio_liquid
+        t = t - mixing_ratio_liquid * lcpk  # heating
+        mixing_ratio_liquid = 0.0
 
-    return t, qv, ql, qr, qi, qs, qg
+    return (
+        t,
+        mixing_ratio_vapor,
+        mixing_ratio_liquid,
+        mixing_ratio_rain,
+        mixing_ratio_ice,
+        mixing_ratio_snow,
+        mixing_ratio_graupel,
+    )
 
 
 def fix_negative_values(
@@ -209,13 +292,20 @@ def fix_negative_values(
     dry_air_mixing_ratio_graupel: FloatField,
     dp: FloatField,
 ):
-    """
-    Stencil wrapper for fix_negative_core
-
-    adjusts/removes negative mixing ratios
-    updates qv based on new values
+    """Adjusts/removes negative mixing ratios and updates vapor and temperature
+    where necessary. Core math is done in fix_negative_core
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutine mpdrv
+
+    Args:
+        t (FloatField): temperature (Kelvin)
+        dry_air_mixing_ratio_vapor (FloatField): water vapor mixing ratio (kg/kg)
+        dry_air_mixing_ratio_liquid (FloatField): liquid water mixing ratio (kg/kg)
+        dry_air_mixing_ratio_rain (FloatField): rain mixing ratio (kg/kg)
+        dry_air_mixing_ratio_ice (FloatField): ice mixing ratio (kg/kg)
+        dry_air_mixing_ratio_snow (FloatField): snow mixing ratio (kg/kg)
+        dry_air_mixing_ratio_graupel (FloatField): graupel mixing ratio (kg/kg)
+        dp (FloatField): pressure change between model layers (Pa)
     """
     from __externals__ import c_air, c_vap, d0_vap, lv00
 
@@ -287,10 +377,14 @@ class GFDL1MDriverSetup(NDSLRuntime):
         config: GFDL1MConfig,
         config_dependent_constants: GFDL1MDriverConfigDependentConstants,
     ):
-        """
-        The driver modifies a number of variables (t, p, qX) but does not pass
+        """The driver modifies a number of variables (t, p, qX) but does not pass
         the changes back to the rest of the model. To replicate this behavior,
         temporary copies of these variables are used throughout the driver.
+
+        Args:
+            stencil_factory (StencilFactory)
+            config (GFDL1MConfig)
+            config_dependent_constants (GFDL1MDriverConfigDependentConstants)
         """
         # init NDSLRuntime
         super().__init__(stencil_factory)
@@ -318,115 +412,115 @@ class GFDL1MDriverSetup(NDSLRuntime):
 
     def __call__(
         self,
-        unmodified_t: FloatField,
-        t: FloatField,
-        unmodified_dp: FloatField,
-        dp: FloatField,
-        critical_relative_humidity_for_pdf: FloatField,
-        radiation_field_vapor: FloatField,
-        radiation_field_liquid: FloatField,
-        radiation_field_ice: FloatField,
-        radiation_field_rain: FloatField,
-        radiation_field_snow: FloatField,
-        radiation_field_graupel: FloatField,
-        radiation_field_cloud_fraction: FloatField,
-        total_concentration: FloatField,
-        unmodified_mixing_ratio_vapor: FloatField,
-        unmodified_mixing_ratio_liquid: FloatField,
-        unmodified_mixing_ratio_rain: FloatField,
-        unmodified_mixing_ratio_ice: FloatField,
-        unmodified_mixing_ratio_snow: FloatField,
-        unmodified_mixing_ratio_graupel: FloatField,
-        dry_air_mixing_ratio_vapor: FloatField,
-        dry_air_mixing_ratio_liquid: FloatField,
-        dry_air_mixing_ratio_rain: FloatField,
-        dry_air_mixing_ratio_ice: FloatField,
-        dry_air_mixing_ratio_snow: FloatField,
-        dry_air_mixing_ratio_graupel: FloatField,
-        cloud_fraction: FloatField,
-        dz: FloatField,
-        u_unmodified: FloatField,
-        u: FloatField,
-        v_unmodified: FloatField,
-        v: FloatField,
-        w_unmodified: FloatField,
-        w: FloatField,
-        area: FloatFieldIJ,
-        density_unmodified: FloatField,
-        p_dry: FloatField,
-        mass: FloatField,
-        one_minus_sigma: FloatFieldIJ,
-        ccn: FloatField,
-        c_praut: FloatField,
-        rh_limited: FloatField,
-        rain: FloatFieldIJ,
-        snow: FloatFieldIJ,
-        graupel: FloatFieldIJ,
-        ice: FloatFieldIJ,
-        liquid_precip_flux: FloatField,
-        ice_precip_flux: FloatField,
-        evaporation: FloatField,
-        sublimation: FloatField,
+        unmodified_t: Quantity,
+        t: Quantity,
+        unmodified_dp: Quantity,
+        dp: Quantity,
+        critical_relative_humidity_for_pdf: Quantity,
+        radiation_field_vapor: Quantity,
+        radiation_field_liquid: Quantity,
+        radiation_field_ice: Quantity,
+        radiation_field_rain: Quantity,
+        radiation_field_snow: Quantity,
+        radiation_field_graupel: Quantity,
+        radiation_field_cloud_fraction: Quantity,
+        total_concentration: Quantity,
+        unmodified_mixing_ratio_vapor: Quantity,
+        unmodified_mixing_ratio_liquid: Quantity,
+        unmodified_mixing_ratio_rain: Quantity,
+        unmodified_mixing_ratio_ice: Quantity,
+        unmodified_mixing_ratio_snow: Quantity,
+        unmodified_mixing_ratio_graupel: Quantity,
+        dry_air_mixing_ratio_vapor: Quantity,
+        dry_air_mixing_ratio_liquid: Quantity,
+        dry_air_mixing_ratio_rain: Quantity,
+        dry_air_mixing_ratio_ice: Quantity,
+        dry_air_mixing_ratio_snow: Quantity,
+        dry_air_mixing_ratio_graupel: Quantity,
+        cloud_fraction: Quantity,
+        dz: Quantity,
+        u_unmodified: Quantity,
+        u: Quantity,
+        v_unmodified: Quantity,
+        v: Quantity,
+        w_unmodified: Quantity,
+        w: Quantity,
+        area: Quantity,
+        density_unmodified: Quantity,
+        p_dry: Quantity,
+        mass: Quantity,
+        one_minus_sigma: Quantity,
+        ccn: Quantity,
+        c_praut: Quantity,
+        rh_limited: Quantity,
+        rain: Quantity,
+        snow: Quantity,
+        graupel: Quantity,
+        ice: Quantity,
+        liquid_precip_flux: Quantity,
+        ice_precip_flux: Quantity,
+        evaporation: Quantity,
+        sublimation: Quantity,
     ):
-        """
-        Setup the driver: initialize/prefill locals and ensure there are no negative mixing ratios.
+        """Setup the driver: initialize/prefill locals and ensure there are no negative mixing ratios.
 
         Args:
-            unmodified_t (in): temperature from the model state (K), unmodified within driver
-            t (out): copy of temperature (K) - can be modified within driver
-            unmodified_dp (in): pressure between model layers from model state (Pa), unmodified within driver
-            dp (out): copy of pressure between model layers (Pa) - can be modified within driver
-            critical_relative_humidity_for_pdf (in): critical relative humidity
-            radiation_field_vapor (in): water vapor mixing ratio - used in radiation scheme (kg/kg)
-            radiation_field_liquid (in): liquid water mixing ratio - used in radiation scheme (kg/kg)
-            radiation_field_ice (in): ice mixing ratio - used in radiation scheme (kg/kg)
-            radiation_field_rain (in): rain mixing ratio - used in radiation scheme (kg/kg)
-            radiation_field_snow (in): snow mixing ratio - used in radiation scheme (kg/kg)
-            radiation_field_graupel (in): graupel mixing ratio - used in radiation scheme (kg/kg)
-            radiation_field_cloud_fraction (in): cloud fraction - used in radiation scheme
-            total_concentration (in): total liquid + ice concentration (m^-3)
-            unmodified_mixing_ratio_vapor (out): unit-converted copy of radiation_field_vapor mixing ratio
-                (kg/kg), unmodified within the remaining driver
-            unmodified_mixing_ratio_liquid (out): unit-converted copy of radiation_field_liquid mixing ratio
-                (kg/kg), unmodified within the remaining driver
-            unmodified_mixing_ratio_rain (out): unit-converted copy of radiation_field_rain mixing ratio
-                (kg/kg), unmodified within the remaining driver
-            unmodified_mixing_ratio_ice (out): unit-converted copy of radiation_field_ice mixing ratio
-                (kg/kg), unmodified within the remaining driver
-            unmodified_mixing_ratio_snow (out): unit-converted copy of radiation_field_snow mixing ratio
-                (kg/kg), unmodified within the remaining driver
-            unmodified_mixing_ratio_graupel (out): unit-converted copy of radiation_field_graupel mixing ratio
-                (kg/kg), unmodified within the remaining driver
-            dry_air_mixing_ratio_vapor (out): copy of radiation_field_vapor (kg/kg)
-            dry_air_mixing_ratio_liquid (out): copy of radiation_field_liquid (kg/kg)
-            dry_air_mixing_ratio_rain (out): copy of radiation_field_rain (kg/kg)
-            dry_air_mixing_ratio_ice (out): copy of radiation_field_ice (kg/kg)
-            dry_air_mixing_ratio_snow (out): copy of radiation_field_snow (kg/kg)
-            dry_air_mixing_ratio_graupel (out): copy of radiation_field_graupel (kg/kg)
-            cloud_fraction (out): copy of radiation_field_cloud_fraction
-            dz (in): height between model layer (m)
-            u_unmodified (in): zonal wind (m/s), unmodified within driver
-            u (out): zonal wind (m), may be modified within driver
-            v_unmodified (in): meridional wind (m/s), unmodified within driver
-            v (out): meridional wind (m), may be modified within driver
-            w_unmodified (in): vertical motion (m/s), unmodified within driver
-            w (out): vertical motion (m/s), may be modified within driver
-            area (in): area of grid cell
-            density_unmodified (out): density of grid cell, unmodified in the rest of the driver
-            p_dry (out): dry air pressure
-            mass (out): mass of grid call
-            one_minus_sigma (out): details unknown
-            ccn (out): cloud condensation nuclei of a grid cell (m^-3)
-            c_praut (out): details unknown
-            rh_limited (out): relative humidity, with limits applied
-            rain (out): precipitated rain (kg m^-2 s^-1)
-            snow (out): precipitated snow (kg m^-2 s^-1)
-            graupel (out): precipitated graupel (kg m^-2 s^-1)
-            ice (out): precipitated ice (kg m^-2 s^-1)
-            liquid_precip_flux (out): non-anvil large scale liquid precip flux (kg m^-2 s^-1)
-            ice_precip_flux (out): non-anvil large scale ice precip flux (kg m^-2 s^-1)
-            evaporation (out): non-anvil large scale evaporation (kg kg^-1 s^-1)
-            sublimation (out): non-anvil large scale sublimation (kg kg^-1 s^-1)
+            unmodified_t (Quantity): (in) temperature from the model state (K), unmodified within driver
+            t (Quantity): (out) copy of temperature (K) - can be modified within driver
+            unmodified_dp (Quantity): (in) pressure between model layers from model state (Pa), unmodified
+                within driver
+            dp (Quantity): (out) copy of pressure between model layers (Pa) - can be modified within driver
+            critical_relative_humidity_for_pdf (Quantity): (in) critical relative humidity
+            radiation_field_vapor (Quantity): (in) water vapor mixing ratio - used in radiation scheme (kg/kg)
+            radiation_field_liquid (Quantity): (in) liquid water mixing ratio - used in radiation scheme (kg/kg)
+            radiation_field_ice (Quantity): (in) ice mixing ratio - used in radiation scheme (kg/kg)
+            radiation_field_rain (Quantity): (in) rain mixing ratio - used in radiation scheme (kg/kg)
+            radiation_field_snow (Quantity): (in) snow mixing ratio - used in radiation scheme (kg/kg)
+            radiation_field_graupel (Quantity): (in) graupel mixing ratio - used in radiation scheme (kg/kg)
+            radiation_field_cloud_fraction (Quantity): (in) cloud fraction - used in radiation scheme
+            total_concentration (Quantity): (in) total liquid + ice concentration (m^-3)
+            unmodified_mixing_ratio_vapor (Quantity): (out) unit-converted copy of radiation_field_vapor
+                mixing ratio (kg/kg), unmodified within the remaining driver
+            unmodified_mixing_ratio_liquid (Quantity): (out) unit-converted copy of radiation_field_liquid
+                mixing ratio (kg/kg), unmodified within the remaining driver
+            unmodified_mixing_ratio_rain (Quantity): (out) unit-converted copy of radiation_field_rain
+                mixing ratio (kg/kg), unmodified within the remaining driver
+            unmodified_mixing_ratio_ice (Quantity): (out) unit-converted copy of radiation_field_ice
+                mixing ratio (kg/kg), unmodified within the remaining driver
+            unmodified_mixing_ratio_snow (Quantity): (out) unit-converted copy of radiation_field_snow
+                mixing ratio (kg/kg), unmodified within the remaining driver
+            unmodified_mixing_ratio_graupel (Quantity): (out) unit-converted copy of radiation_field_graupel
+                mixing ratio (kg/kg), unmodified within the remaining driver
+            dry_air_mixing_ratio_vapor (Quantity): (out) copy of radiation_field_vapor (kg/kg)
+            dry_air_mixing_ratio_liquid (Quantity): (out) copy of radiation_field_liquid (kg/kg)
+            dry_air_mixing_ratio_rain (Quantity): (out) copy of radiation_field_rain (kg/kg)
+            dry_air_mixing_ratio_ice (Quantity): (out) copy of radiation_field_ice (kg/kg)
+            dry_air_mixing_ratio_snow (Quantity): (out) copy of radiation_field_snow (kg/kg)
+            dry_air_mixing_ratio_graupel (Quantity): (out) copy of radiation_field_graupel (kg/kg)
+            cloud_fraction (Quantity): (out) copy of radiation_field_cloud_fraction
+            dz (Quantity): (in) height between model layer (m)
+            u_unmodified (Quantity): (in) zonal wind (m/s), unmodified within driver
+            u (Quantity): (out) zonal wind (m), may be modified within driver
+            v_unmodified (Quantity): (in) meridional wind (m/s), unmodified within driver
+            v (Quantity): (out) meridional wind (m), may be modified within driver
+            w_unmodified (Quantity): (in) vertical motion (m/s), unmodified within driver
+            w (Quantity): (out) vertical motion (m/s), may be modified within driver
+            area (Quantity): (in) area of grid cell
+            density_unmodified (Quantity): (out) density of grid cell, unmodified in the rest of the driver
+            p_dry (Quantity): (out) dry air pressure
+            mass (Quantity): (out) mass of grid call
+            one_minus_sigma (Quantity): (out) details unknown
+            ccn (Quantity): (out) cloud condensation nuclei of a grid cell (m^-3)
+            c_praut (Quantity): (out) details unknown
+            rh_limited (Quantity): (out) relative humidity, with limits applied
+            rain (Quantity): (out) precipitated rain (kg m^-2 s^-1)
+            snow (Quantity): (out) precipitated snow (kg m^-2 s^-1)
+            graupel (Quantity): (out) precipitated graupel (kg m^-2 s^-1)
+            ice (Quantity): (out) precipitated ice (kg m^-2 s^-1)
+            liquid_precip_flux (Quantity): (out) non-anvil large scale liquid precip flux (kg m^-2 s^-1)
+            ice_precip_flux (Quantity): (out) non-anvil large scale ice precip flux (kg m^-2 s^-1)
+            evaporation (Quantity): (out) non-anvil large scale evaporation (kg kg^-1 s^-1)
+            sublimation (Quantity): (out) non-anvil large scale sublimation (kg kg^-1 s^-1)
         """
         # The driver modifies a number of variables but does not pass the changes back to
         # the rest of the model. To replicate this behavior, temporary copies of these
