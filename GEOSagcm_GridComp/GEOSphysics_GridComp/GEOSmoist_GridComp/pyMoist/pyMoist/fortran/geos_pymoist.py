@@ -168,7 +168,7 @@ def _set_NDSL_physics(mapl_state) -> NDSLPhysicsStack:
         single_column = True
         ny = 1
 
-    override_backend = os.getenv("GEOS_DSL_BACKEND", "st:dace:cpu:KJI")
+    override_backend = os.getenv("GEOS_DSL_BACKEND", "st:dace:cpu:KIJ")
 
     return NDSLPhysicsStack(
         NDSLPhysicsConfiguration(
