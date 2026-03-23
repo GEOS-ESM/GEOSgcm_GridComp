@@ -1423,8 +1423,8 @@ CONTAINS
         if (stochastic_sig(i) < 0.0) then
            ierr(i)  = 1
            ierrc(i) = 'scale_dep renders convection insignificant'
+           cycle
         endif
-        if(ierr(i) /= 0) cycle  !<-- Applied to ALL previous errors
         sig(i) = sigma(dx(i))
         if (stochastic_sig(i) /= 1.0) then
            sig(i) = sig(i)**(stochastic_sig(i) * MAX(1.0, sig(i)))
