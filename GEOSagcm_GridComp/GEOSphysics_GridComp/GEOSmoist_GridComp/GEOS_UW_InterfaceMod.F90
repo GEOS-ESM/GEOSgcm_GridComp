@@ -219,7 +219,6 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     
     if (alarm_is_ringing) then
     
-    call WRITE_PARALLEL('UW is Running')
     call ESMF_AlarmRingerOff(alarm, RC=STATUS); VERIFY_(STATUS)
     call ESMF_AlarmGet(alarm, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
