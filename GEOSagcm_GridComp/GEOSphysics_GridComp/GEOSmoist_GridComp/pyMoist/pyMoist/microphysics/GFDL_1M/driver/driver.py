@@ -61,7 +61,7 @@ class GFDL1MDriver(NDSLRuntime):
         # Check constants for unimplemented and untested code paths
         check_flags(
             config,
-            self.config_dependent_constants.DTS,
+            self.config_dependent_constants,
         )
 
         # initialize locals
