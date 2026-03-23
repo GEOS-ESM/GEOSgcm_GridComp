@@ -1361,6 +1361,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
 
     real :: ccn0, cin0, q1, q2
     real :: convt, rdt, dts, q_cond, tmp, nl, ni
+    real :: cpaut0_, rthreshs_, rthreshu_
 
     real, dimension (ks:ke) :: h_var
     real, dimension (ks:ke) :: q_liq, q_sol, dp, dz, dp0
@@ -1427,10 +1428,26 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         fac_eis = get_fac_eis(eis(i),srf_type) ! Estimated inversion strength determine stable regime
 
         ! -----------------------------------------------------------------------
+        ! Resolution dependence on autoconversion parameters
+        ! -----------------------------------------------------------------------
+        ! Autoconversion efficiency [default: 0.5]
+        !   increased by 25% for fine resolutions
+        cpaut0_   = cpaut0 * (1.0 + onemsig*0.25)
+        ! Stable critical radius [default: 10.0e-6]
+        !   unchanged
+        rthreshs_ = rthreshs 
+        ! Unstable critical radius [default: 7.0e-6]
+        !   Coarse (onemsig=0):  7.0e-6 + 3.e-6  = 10.0e-6
+        !   Fine   (onemsig=1):  7.0e-6 + 0.0    = 7.0e-6
+        rthreshu_ = rthreshu + (1.0-onemsig)*3.e-6
+ 
+        ! -----------------------------------------------------------------------
         ! adjust autoconversion rates and thresholds for stable vs unstable 
         ! -----------------------------------------------------------------------
-        cpaut  = cpaut0 * (    0.75*fac_eis +          (1.0-fac_eis))
-        fac_rc =     rc * (rthreshs*fac_eis + rthreshu*(1.0-fac_eis)) ** 3
+        ! include stability dependence
+        cpaut  = cpaut0_ * (     0.75*fac_eis +           (1.0-fac_eis))
+        ! include stability dependence
+        fac_rc =      rc * (rthreshs_*fac_eis + rthreshu_*(1.0-fac_eis)) ** 3
 
         ! -----------------------------------------------------------------------
         ! conversion of temperature
@@ -2557,6 +2574,7 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
 
     real, dimension (ks:ke) :: tc
     real :: zero=0.0
+    real :: R_eff, vt_radius
 
     if (const_v) then
         vt (:) = 0.5*(v_min+v_max)
@@ -2567,7 +2585,7 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
             else
                 tc (k) = tz (k) - tice
                 if (ifflag .eq. 1) then
-                    qden = q (k) * den (k) * 1.e3
+                    qden = max( q (k) * den (k) * 1.e3 , 1.e-4 )
                     ! Large-scale settling SGP
                     viLSC = 10.0**(log10(qden) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
                     ! Convective settling TWP
@@ -2575,6 +2593,12 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
                     ! Combine
                     vt (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
                     vt (k) = 0.01 * v_fac * vt (k)
+                    ! Limit to avoid excessively slow cirus settling
+                    pl = den (k) * rdgas * tz (k) ! dry air pressure
+                    tmp = tz (k)
+                    R_eff = LDRADIUS4(pl/100.0,tmp,q(k),zero,zero,2) ! meters
+                    vt_radius = 0.1 * (R_eff / 20.e-6)**0.8
+                    vt(k) = max(vt(k), vt_radius)
                 endif
                 if (ifflag .eq. 2) then
                     qden = q (k) * den (k)

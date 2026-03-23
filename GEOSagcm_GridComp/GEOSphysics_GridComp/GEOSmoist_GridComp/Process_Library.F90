@@ -748,7 +748,7 @@ module GEOSmoist_Process_Library
        REAL  :: RADIUS
        INTEGER, PARAMETER  :: LIQUID=1, ICE=2
        REAL :: NNX,RHO,BB,WC
-       REAL :: TC,AA
+       REAL :: TC,AA,Rmin
 
        !- air density (kg/m^3)
        RHO = (100.*PL) / (MAPL_RGAS*TE )
@@ -784,7 +784,6 @@ module GEOSmoist_Process_Library
             endif
             BB     = MIN((MAX(BB,-6.)),-2.)
             RADIUS = 377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
-            RADIUS = MIN(150.e-6,MAX(5.e-6, 1.e-6*RADIUS))
           else
             !------ice cloud effective radius ----- [Sun, 2001]
             ! https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2022GL102521
@@ -792,8 +791,11 @@ module GEOSmoist_Process_Library
             AA = 45.8966 * (WC**0.2214)
             BB = 0.79570 * (WC**0.2535) * (TE - 83.15)
             RADIUS = MIN(155.0  ,MAX(30.0  , (1.2351 + 0.0105*TC) * (AA + BB)))
-            RADIUS = MIN(150.e-6,MAX( 5.e-6, 1.e-6*0.64952*RADIUS))
+            RADIUS = 0.64952*RADIUS
           endif
+
+          Rmin = max(15.e-6, 30.e-6 * exp((TE - 233.) / 20.))
+          RADIUS = MIN(150.e-6, MAX(Rmin, 1.e-6*RADIUS))
 
       ELSE
         STOP "WRONG HYDROMETEOR type: CLOUD = 1 OR ICE = 2"
