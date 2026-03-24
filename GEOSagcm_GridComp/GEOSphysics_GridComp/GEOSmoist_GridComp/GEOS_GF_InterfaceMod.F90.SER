@@ -688,7 +688,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     !$ser data cloud_workfunction_1_cin_bugworkaroundname=AA1_CIN
     !$ser data pbl_time_scale_bugworkaroundname=TAU_BL
     !$ser data cape_removal_time_scale_bugworkaroundname=TAU_EC
-    !$ser data lighting_density_bugworkaroundname=LFR_GF
+    !$ser data lightning_density_bugworkaroundname=LFR_GF
     !$ser data convection_tracer_bugworkaroundname=CNV_TR
    
     IF (USE_GF2020==1) THEN
@@ -1086,7 +1086,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     !$ser data cloud_workfunction_1_cin_bugworkaroundname=AA1_CIN
     !$ser data pbl_time_scale_bugworkaroundname=TAU_BL
     !$ser data cape_removal_time_scale_bugworkaroundname=TAU_EC
-    !$ser data lighting_density_bugworkaroundname=LFR_GF
+    !$ser data lightning_density_bugworkaroundname=LFR_GF
     !$ser data convection_tracer_bugworkaroundname=CNV_TR
     call MAPL_TimerOff (MAPL,"--GF")
 
