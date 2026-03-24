@@ -33,14 +33,18 @@ program Scale_CatchCN
   integer, parameter :: nveg  = 4
   integer, parameter :: nzone = 3
   integer            :: VAR_COL, VAR_PFT
-  integer, parameter :: VAR_COL_CLM40 = 40 ! number of CN column restart variables
-  integer, parameter :: VAR_PFT_CLM40 = 74 ! number of CN PFT variables per column
+  integer, parameter :: VAR_COL_CLM40 = 40 ! number of CN column restart variables in CatchCNCLM40
+  integer, parameter :: VAR_PFT_CLM40 = 74 ! number of CN PFT variables per column in CatchCNCLM40
   integer, parameter :: npft    = 19  
-  integer, parameter :: VAR_COL_CLM45 = 35 ! number of CN column restart variables
-  integer, parameter :: VAR_PFT_CLM45 = 75 ! number of CN PFT variables per column
-  
+  integer, parameter :: VAR_COL_CLM45 = 35 ! number of CN column restart variables in CatchCNCLM45
+  integer, parameter :: VAR_PFT_CLM45 = 75 ! number of CN PFT variables per column in CatchCNCLM45
+  integer, parameter :: npft_51    = 15
+  integer, parameter :: VAR_COL_CLM51 = 35 ! number of CN column restart variables in CatchCNCLM51
+  integer, parameter :: VAR_PFT_CLM51 = 81 ! number of CN PFT variables per column in CatchCNCLM51
+
   logical            :: clm45  = .false.
-  integer :: un_dim3
+  logical            :: clm51  = .false.
+  integer :: un_dim3, un_dim4
 
   type catch_rst
        real, pointer ::        bf1(:)
@@ -116,6 +120,19 @@ program Scale_CatchCN
        real, pointer ::    HDM     (:)
        real, pointer ::    GDP     (:)
        real, pointer ::    PEATF   (:)       
+       real, pointer ::    RHM     (:)
+       real, pointer ::    RH30D   (:)
+       real, pointer ::    WINDM   (:)
+       real, pointer ::    RAINFM  (:)
+       real, pointer ::    SNOWFM  (:)
+       real, pointer ::    RUNSURFM(:)
+       real, pointer ::    AR1M    (:)
+       real, pointer ::    TG10D   (:)
+       real, pointer ::    T2M10D  (:)
+       real, pointer ::    T2MMIN5D(:)
+       real, pointer ::    TPREC10D(:)
+       real, pointer ::    TPREC60D(:)
+       real, pointer ::    SNDZM5D (:)
   endtype catch_rst
 
   type(catch_rst) catch(3)
@@ -185,11 +202,17 @@ program Scale_CatchCN
 
      ntiles = cfg(1)%get_dimension('tile', __RC__)
      un_dim3 = cfg(1)%get_dimension('unknown_dim3', __RC__)
-     if(un_dim3 == 105) then
+     un_dim4 = cfg(1)%get_dimension('unknown_dim4', __RC__)
+     if((un_dim3 == 105).and.(un_dim4 == 900)) then
         clm45  = .true.
         VAR_COL = VAR_COL_CLM45 
         VAR_PFT = VAR_PFT_CLM45
         print *, 'Processing CLM45 restarts : ', VAR_COL, VAR_PFT, clm45
+     elseif((un_dim3 == 105).and.(un_dim4 == 972)) then
+        clm51  = .true.
+        VAR_COL = VAR_COL_CLM51
+        VAR_PFT = VAR_PFT_CLM51
+        print *, 'Processing CLM51 restarts : ', VAR_COL, VAR_PFT, clm51
      else
         print *, 'Processing CLM40 restarts : ', VAR_COL, VAR_PFT, clm45
      endif
@@ -608,6 +631,25 @@ program Scale_CatchCN
          call MAPL_VarRead(formatter,"HDM",     catch%HDM     , __RC__)
          call MAPL_VarRead(formatter,"GDP",     catch%GDP     , __RC__)
          call MAPL_VarRead(formatter,"PEATF",   catch%PEATF   , __RC__)
+      elseif(clm51) then
+          call MAPL_VarRead(formatter,"ABM",     catch%ABM     , __RC__)
+          call MAPL_VarRead(formatter,"FIELDCAP",catch%FIELDCAP, __RC__)
+          call MAPL_VarRead(formatter,"HDM",     catch%HDM     , __RC__)
+          call MAPL_VarRead(formatter,"GDP",     catch%GDP     , __RC__)
+          call MAPL_VarRead(formatter,"PEATF",   catch%PEATF   , __RC__)
+          call MAPL_VarRead(formatter,"RHM",     catch%RHM     , __RC__)
+          call MAPL_VarRead(formatter,"WINDM",   catch%WINDM   , __RC__)
+          call MAPL_VarRead(formatter,"RAINFM",  catch%RAINFM  , __RC__)
+          call MAPL_VarRead(formatter,"SNOWFM",  catch%SNOWFM  , __RC__)
+          call MAPL_VarRead(formatter,"RUNSRFM", catch%RUNSURFM, __RC__)
+          call MAPL_VarRead(formatter,"AR1M",    catch%AR1M    , __RC__)
+          call MAPL_VarRead(formatter,"SNDZM5D", catch%SNDZM5D , __RC__)
+          call MAPL_VarRead(formatter,"T2M10D",  catch%T2M10D  , __RC__)
+          call MAPL_VarRead(formatter,"T2MMIN5D",catch%T2MMIN5D, __RC__)
+          call MAPL_VarRead(formatter,"TG10D",   catch%TG10D   , __RC__)
+          call MAPL_VarRead(formatter,"RH30D",   catch%RH30D   , __RC__)
+          call MAPL_VarRead(formatter,"TPREC10D",catch%TPREC10D, __RC__)
+          call MAPL_VarRead(formatter,"TPREC60D",catch%TPREC60D, __RC__)
       endif
       do j=1,dim1
          call MAPL_VarRead(formatter,"CNCOL",catch%CNCOL(:,j),offset1=j, __RC__)
@@ -849,6 +891,29 @@ program Scale_CatchCN
           call MAPL_VarWrite(formatter,"RUNSRFM", var)
           call MAPL_VarWrite(formatter,"AR1M",    var)
           call MAPL_VarWrite(formatter,"T2M10D",  var)
+          call MAPL_VarWrite(formatter,"TPREC10D",var)
+          call MAPL_VarWrite(formatter,"TPREC60D",var)
+       elseif (clm51) then
+          do j=1,dim1
+             call MAPL_VarWrite(formatter,"SFMM",  var,offset1=j)
+          enddo
+
+          call MAPL_VarWrite(formatter,"ABM",     catch%ABM, rc =rc     )
+          call MAPL_VarWrite(formatter,"FIELDCAP",catch%FIELDCAP)
+          call MAPL_VarWrite(formatter,"HDM",     catch%HDM     )
+          call MAPL_VarWrite(formatter,"GDP",     catch%GDP     )
+          call MAPL_VarWrite(formatter,"PEATF",   catch%PEATF   )
+          call MAPL_VarWrite(formatter,"RHM",     var)
+          call MAPL_VarWrite(formatter,"WINDM",   var)
+          call MAPL_VarWrite(formatter,"RAINFM",  var)
+          call MAPL_VarWrite(formatter,"SNOWFM",  var)
+          call MAPL_VarWrite(formatter,"RUNSRFM", var)
+          call MAPL_VarWrite(formatter,"AR1M",    var)
+          call MAPL_VarWrite(formatter,"SNDZM5D", var)
+          call MAPL_VarWrite(formatter,"T2M10D",  var)
+          call MAPL_VarWrite(formatter,"T2MMIN5D",var)
+          call MAPL_VarWrite(formatter,"TG10D",   var)
+          call MAPL_VarWrite(formatter,"RH30D",   var)
           call MAPL_VarWrite(formatter,"TPREC10D",var)
           call MAPL_VarWrite(formatter,"TPREC60D",var)
        else

@@ -32,6 +32,7 @@
 #
 #    Note: For *offline* simulations, optional use of extra MO derivatives is supported
 #          through rc parameter MOSFC_EXTRA_DERIVS_LAND (see catch_wrap_state.F90).
+#          (Not implemented for CatchCNCLM40.)
 #
 # GEOSagcm=>CHOOSEMOSFC:                  1
 # GEOSagcm=>MOSFC_EXTRA_DERIVS_OFFL_LAND: 0
@@ -65,12 +66,14 @@
 
 # ---- Formulation for turbulent roughness length (z0)
 #
+#    For CatchCNCLM40, Z0_FORMULATION=3 is hardwired.
+#
 #    0 : Fortuna,      SMAP NRv3
-#    1 : Ganymed-4_1,  SMAP NRv4/NRv4.1
+#   [1 : Ganymed-4_1,  SMAP NRv4/NRv4.1]         --> DISABLED, 28 Aug 2025     
 #    2 : Heracles-4_3, Icarus (AGCM default)
 #    3 :               SMAP NRv5/NRv7.2
 #    4 : Icarus-NLv3 (f525_fp, f527_fp, f529_fp)
-#                      SMAP NRv8.1, NRv9.1, NRv10.0
+#                      SMAP NRv8.1, NRv9.1, NRv10.0, NRv11.4
 #
 # GEOSagcm=>Z0_FORMULATION: 4
 # GEOSldas=>Z0_FORMULATION: 4
@@ -216,6 +219,13 @@
 # GEOSagcm=>DTCN: 5400
 # GEOSldas=>DTCN: 5400
 
+# ---- Name of nml file for Catchment-CN5.1
+#
+#    Include path (abs or relative) in string; './' is the "run" directory.  String max length is 256 chars.
+#
+# GEOSagcm=>CN_CLM51_NML_FILE: './CN_CLM51.nml'
+# GEOSldas=>CN_CLM51_NML_FILE: './CN_CLM51.nml'
+
 # ---- Atmospheric CO2
 #
 #    0: Use a fixed value defined by "CO2" resource parameter [ppm]
@@ -238,6 +248,7 @@
 
 # ---- Prescribe daily LAI and SAI data from an archived CATCHCN simulation
 #
+#    Implemented only for CatchCNCLM40.  May not work!
 #
 #    0 : NO,  run CN Model interactively (default)
 #    1 : YES, prescribe interannually varying LAI and SAI

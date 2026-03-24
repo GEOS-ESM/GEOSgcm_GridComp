@@ -163,14 +163,22 @@ cd ../..
 
 /bin/rm -r {TMP_DIR}
 
-# if necessary, copy resolution-independent CO2 file from MAKE_BCS_INPUT_DIR to bcs dir
+# if necessary, copy resolution-independent files to bcs dir
 
-if(-f land/shared/CO2_MonthlyMean_DiurnalCycle.nc4) then
-    echo "CO2_MonthlyMean_DiurnalCycle.nc4 already present in bcs dir."
-else
-    /bin/cp -p {MAKE_BCS_INPUT_DIR}/land/CO2/v1/CO2_MonthlyMean_DiurnalCycle.nc4 land/shared/CO2_MonthlyMean_DiurnalCycle.nc4
-    echo "Successfully copied CO2_MonthlyMean_DiurnalCycle.nc4 to bcs dir."
-endif
+set files = ( \\
+    "CO2/v1/CO2_MonthlyMean_DiurnalCycle.nc4" \\
+    "CLM/v1/ctsm51_params.c210923_forCNCLM.nc" \\
+)
+
+foreach f ($files)
+    set fname = `basename $f`
+    if (-f land/shared/$fname) then
+        echo "$fname already present in bcs dir."
+    else
+        /bin/cp -p {MAKE_BCS_INPUT_DIR}/land/$f land/shared/$fname
+        echo "Successfully copied $fname to bcs dir."
+    endif
+end
 
 # adjust permissions
 

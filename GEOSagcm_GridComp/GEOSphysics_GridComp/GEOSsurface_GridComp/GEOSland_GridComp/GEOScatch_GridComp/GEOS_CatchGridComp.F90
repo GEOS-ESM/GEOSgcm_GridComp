@@ -55,7 +55,7 @@ module GEOS_CatchGridCompMod
        PEATCLSM_POROS_THRESHOLD
 
 
-  USE lsm_routines, ONLY : sibalb, catch_calc_soil_moist, catch_calc_peatclsm_waterlevel
+  USE lsm_routines, ONLY : sibalb, catch_calc_soil_moist, catch_calc_peatclsm_waterlevel, get_Z0_FORMULATION_params
 
 !#for_ldas_coupling 
   use catch_incr
@@ -187,11 +187,12 @@ subroutine SetServices ( GC, RC )
 
     OFFLINE_MODE = CATCH_INTERNAL_STATE%CATCH_OFFLINE    ! shorthand
 
-    ! resource variables from GEOS_SurfaceGridComp.rc
+    ! put resource variables from rc file into SCF config object (GCM: SURFRC=GEOS_SurfaceGridComp.rc, LDAS: SURFRC=LDAS.rc)
     call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)   
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
 
+    ! assemble internal state from SCF config object
     call surface_params_to_wrap_state(statePtr, SCF, _RC)
 
     call ESMF_ConfigDestroy(SCF, _RC)
@@ -1225,7 +1226,7 @@ subroutine SetServices ( GC, RC )
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'mean_catchment_temp_incl_snw',&
     UNITS              = 'K'                         ,&
-    SHORT_NAME         = 'TSURF'                     ,&
+    SHORT_NAME         = 'TSURF'                     ,&    ! legacy (and obsolete) internal spec w/ bad name; see ExportSpec TPSURF
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = RESTART                     ,&
@@ -3245,7 +3246,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer             :: CHOOSEZ0
     real                :: SCALE4Z0
     real                :: SCALE4ZVG
-    real                :: SCALE4Z0_u
     real                :: MIN_VEG_HEIGHT 
 
     ! ------------------------------------- 
@@ -3559,35 +3559,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     if(associated( MOQ2M))  MOQ2M = 0.0
     if(associated( MOU2M))  MOU2M = 0.0
     if(associated( MOV2M))  MOV2M = 0.0
-
-    select case (CATCH_INTERNAL_STATE%Z0_FORMULATION)
-       case (0)  ! no scaled at all
-          SCALE4ZVG   = 1
-          SCALE4Z0    = 1
-          SCALE4Z0_u  = 1
-          MIN_VEG_HEIGHT = 0.01
-       case (1) ! This case is bugged
-          SCALE4ZVG   = 1
-          SCALE4Z0    = 2
-          SCALE4Z0_u  = 1
-          MIN_VEG_HEIGHT = 0.01         
-       case (2)
-          SCALE4ZVG   = 1
-          SCALE4Z0    = 2
-          SCALE4Z0_u  = 2
-          MIN_VEG_HEIGHT = 0.01         
-       case (3)
-          SCALE4ZVG   = 0.5
-          SCALE4Z0    = 1
-          SCALE4Z0_u  = 1
-          MIN_VEG_HEIGHT = 0.01         
-       case (4) 
-          SCALE4ZVG   = 1
-          SCALE4Z0    = 2
-          SCALE4Z0_u  = 2
-          MIN_VEG_HEIGHT = 0.1
-    end select
-
+    
+    call get_Z0_FORMULATION_params( CATCH_INTERNAL_STATE%Z0_FORMULATION, &
+         MIN_VEG_HEIGHT, SCALE4ZVG, SCALE4Z0 )
+    
     SUBTILES: do N=1,NUM_SUBTILES
 
 !  Effective vegetation height. In catchment, LAI dependence 
@@ -3601,18 +3576,18 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
          ZVG  = Z2CH - SAI4ZVG(VEG)*SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI)
       else
          ZVG  = Z2CH - SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI)
-         !Z0T(:,N)  = Z0_BY_ZVEG*ZVG*SCALE4Z0 
       endif
-
-!  For now roughnesses and displacement heights
-!   are the same for all subtiles.
-
+      
+      !  For now roughnesses and displacement heights are the same for all subtiles.
+      
       Z0T(:,N)  = Z0_BY_ZVEG*ZVG*SCALE4Z0
+      
       IF (CATCH_INTERNAL_STATE%USE_ASCATZ0 == 1) THEN
          WHERE (NDVI <= 0.2)
             Z0T(:,N)  = ASCATZ0
          END WHERE
       ENDIF
+      
       D0T  = D0_BY_ZVEG*ZVG
 
       DZE  = max(DZ - D0T, 10.)
@@ -3929,7 +3904,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer                          :: IM,JM
 
     real                             :: SCALE4ZVG
-    real                             :: SCALE4Z0_u
+    real                             :: SCALE4Z0
     real                             :: MIN_VEG_HEIGHT
     type(ESMF_VM)                    :: VM
     type (T_CATCH_STATE), pointer    :: CATCH_INTERNAL_STATE
@@ -3963,28 +3938,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call ESMF_VMGetCurrent(VM,       rc=STATUS)
 
-   select case (CATCH_INTERNAL_STATE%Z0_FORMULATION)
-      case (0)  ! no scaled at all
-         SCALE4ZVG   = 1
-         SCALE4Z0_u  = 1
-         MIN_VEG_HEIGHT = 0.01
-      case (1) ! This case is bugged
-         SCALE4ZVG   = 1
-         SCALE4Z0_u  = 1
-         MIN_VEG_HEIGHT = 0.01         
-      case (2)
-         SCALE4ZVG   = 1
-         SCALE4Z0_u  = 2
-         MIN_VEG_HEIGHT = 0.01         
-      case (3)
-         SCALE4ZVG   = 0.5
-         SCALE4Z0_u  = 1
-         MIN_VEG_HEIGHT = 0.01         
-      case (4) 
-         SCALE4ZVG   = 1
-         SCALE4Z0_u  = 2
-         MIN_VEG_HEIGHT = 0.1
-   end select
+    call get_Z0_FORMULATION_params( CATCH_INTERNAL_STATE%Z0_FORMULATION, &
+         MIN_VEG_HEIGHT, SCALE4ZVG, SCALE4Z0 )
     
 ! ------------------------------------------------------------------------------
 ! If its time, recalculate the LSM tile routine
@@ -5131,13 +5086,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ZVG  = Z2CH - SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI)
      endif
 
-     Z0   = Z0_BY_ZVEG*ZVG*SCALE4Z0_u
+     !  For now roughnesses and displacement heights are the same for all subtiles.
 
-     !  For now roughnesses and displacement heights
-     !   are the same for all subtiles.
-     !---------------------------------------------------
+     Z0   = Z0_BY_ZVEG*ZVG*SCALE4Z0
      
      IF (CATCH_INTERNAL_STATE%USE_ASCATZ0 == 1) WHERE (NDVI <= 0.2) Z0 = ASCATZ0
+
      D0   = D0_BY_ZVEG*ZVG
 
      UUU = max(UU,MAPL_USMIN) * (log((ZVG-D0+Z0)/Z0) &
@@ -5533,9 +5487,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 	      ! driver
 	      ! --------------------------------------------------------------------------
 
-        _ASSERT(count(PLS<0.)==0,'needs informative message')
-        _ASSERT(count(PCU<0.)==0,'needs informative message')
-        _ASSERT(count(SLDTOT<0.)==0,'needs informative message')
+        _ASSERT(count(PLS<0.)   ==0, 'encountered neg precip value (PLS)'   )
+        _ASSERT(count(PCU<0.)   ==0, 'encountered neg precip value (PCU)'   )
+        _ASSERT(count(SLDTOT<0.)==0, 'encountered neg precip value (SLDTOT)')
 
         LAI0  = max(0.0001     , LAI)
         GRN0  = max(0.0001     , GRN)
@@ -6022,8 +5976,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              CAPAC, CATDEF, RZEXC, SRFEXC, GHTCNT, TSURF          ,&
              WESNN, HTSNNN, SNDZN                                 ,&
 
-             EVAPOUT, SHOUT, RUNOFF, EVPINT, EVPSOI, EVPVEG       ,&  ! EVAPOUT:                        kg/m2/s
-             EVPICE                                               ,&  ! EVPINT, EVPSOI, EVPVEG, EVPICE: W/m2
+             EVAPOUT, SHOUT, RUNOFF                               ,&  ! EVAPOUT:                        kg/m2/s
+             EVPINT, EVPSOI, EVPVEG, EVPICE                       ,&  ! EVPINT, EVPSOI, EVPVEG, EVPICE: W/m2
              BFLOW                                                ,&
              RUNSURF                                              ,&
              SMELT                                                ,&

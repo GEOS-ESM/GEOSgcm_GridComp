@@ -1,4 +1,8 @@
 MODULE DBG_ROUTINES
+
+!THESE ROUTINES ARE SPECIFIC TO CATCHMENT-CN4.0 ONLY (jkolassa, Jul 2025)
+!
+
   USE catch_constants, ONLY:                  &
        N_SNOW         => CATCH_N_SNOW,        &
        N_GT           => CATCH_N_GT     

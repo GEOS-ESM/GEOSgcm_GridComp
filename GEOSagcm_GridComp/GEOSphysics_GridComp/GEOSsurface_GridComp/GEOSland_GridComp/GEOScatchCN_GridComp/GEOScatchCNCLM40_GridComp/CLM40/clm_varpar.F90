@@ -10,10 +10,13 @@ module clm_varpar
 !
 ! !USES:
 
- use clm_varpar_shared, only : VAR_COL =>VAR_COL_40, VAR_PFT => VAR_PFT_40, &
-                               numpft => numpft_CN, NUM_ZON => NUM_ZON_CN, &
-                               NUM_VEG => NUM_VEG_CN
-
+  use clm_varpar_shared, only :    &
+       VAR_COL => VAR_COL_40,      &
+       VAR_PFT => VAR_PFT_40,      &
+       numpft  => NUM_PFT_CN_40,   &
+       NUM_ZON => NUM_ZON_CN,      &
+       NUM_VEG => NUM_VEG_CN_40
+  
 !
 ! !PUBLIC TYPES:
   implicit none
@@ -32,7 +35,8 @@ module clm_varpar
 
 ! clm_varpar_init seems to do something similar; less prone to error to move
 ! these three lines there? (slevis)
-  integer, parameter :: max_pft_per_col   = numpft+1
+  
+  integer, parameter :: max_pft_per_col   = numpft + 1
 
 ! !PUBLIC MEMBER FUNCTIONS:
   public clm_varpar_init          ! set parameters

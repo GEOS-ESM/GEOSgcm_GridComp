@@ -1106,6 +1106,13 @@
 !****
 !**** (FIRST CORRECT FOR EXCESSIVE INTERCEPTION LOSS)
 
+      ! NOTE: The following correction of the interception loss is specific to Catchment()
+      ! and does not appear in CatchCN().  This is because CatchCN() has separate ground and veg
+      ! temperatures and a more complex resistance network that does not allow for the simpler
+      ! calculations applied in Catchment().  Note also that WUPDAT() differs between Catchment() 
+      ! and CatchCN().
+      ! reichle, koster, kolassa - 24 July 2025
+        
       DO N=1,NCH
         EINTX=EIRFRC(N)*EVAPFR(N)*DTSTEP
         IF(EINTX .GT. CAPAC(N)) THEN
