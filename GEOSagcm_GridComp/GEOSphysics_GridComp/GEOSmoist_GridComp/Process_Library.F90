@@ -2365,7 +2365,7 @@ module GEOSmoist_Process_Library
                                 PDF_SIGQT1, PDF_SIGQT2, PDF_QT1, PDF_QT2, &
                                 PDF_RHLQT, PDF_RWHL, PDF_RWQT
 #endif
-      real,    intent(out)   :: WTHV2, WQL
+      real,    intent(out)   :: WTHV2, WQC
       real,    intent(out)   :: PDFITERS
       logical, intent(in)    :: needs_preexisting, USE_BERGERON
       real,    optional, intent(in) :: SC_ICE
@@ -2502,8 +2502,8 @@ module GEOSmoist_Process_Library
                                   HLQT,         &
                                   W3,           &
                                   W2,           &
-                                  MFQT3,        &
-                                  MFHL3,        &
+                                  QT3,          &
+                                  HL3,          &
                                   PDF_A,        &
 #ifdef PDFDIAG
                                   PDF_SIGW1,    &
