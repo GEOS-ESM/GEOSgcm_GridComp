@@ -2241,7 +2241,7 @@ loop1:  do n=1,maxiens
 !
       !- initial entrainment/detrainment
       entr_rate(:,:) = entr_rate_plume
-      cd       (:,:) = entr_rate_plume                       
+      cd       (:,:) = entr_rate_plume
 !
 !--- max/min allowed value for epsilon (ratio downdraft base mass flux/updraft
 !    base mass flux
@@ -2695,7 +2695,7 @@ loop0:       do k=kts,ktf
 !
       IF(trim(cumulus) == 'mid') THEN
         if(USE_INV_LAYERS) then
-        !    
+        !
         !--- get inversion layers
           call get_inversion_layers(cumulus,ierr,psur,po_cup,tn_cup,zo_cup,k_inv_layers,&
                                     dtempdz,itf,ktf,its,ite, kts,kte)
