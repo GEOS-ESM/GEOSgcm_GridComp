@@ -31,7 +31,7 @@ module catch_wrap_stateMod
      real    :: SURFLAY  
      real    :: FWETC, FWETL
      logical :: USE_FWET_FOR_RUNOFF
-     integer :: RUN_IRRIG, IRRIG_METHOD
+     integer :: RUN_IRRIG, IRRG_METHOD
   end type T_CATCH_STATE
   
   type CATCH_WRAP
@@ -142,7 +142,7 @@ contains
     call MAPL_GetResource(    SCF, statePtr%N_CONST_LAND4SNWALB,      label='N_CONST_LAND4SNWALB:',      DEFAULT=0,             __RC__ )
     call MAPL_GetResource(    SCF, statePtr%AEROSOL_DEPOSITION,       label='AEROSOL_DEPOSITION:',       DEFAULT=0,             __RC__ )
     call MAPL_GetResource(    SCF, statePtr%RUN_IRRIG,                label='RUN_IRRIG:',                DEFAULT=0,             __RC__ )
-    call MAPL_GetResource(    SCF, statePtr%IRRIG_METHOD,             label='IRRIG_METHOD:',             DEFAULT=0,             __RC__ )
+    call MAPL_GetResource(    SCF, statePtr%IRRG_METHOD,              label='IRRG_METHOD:',              DEFAULT=0,             __RC__ )
     
     select type (statePtr)
     type is (T_CATCHCN_STATE) ! CATCHCN

@@ -746,6 +746,42 @@ subroutine SetServices ( GC, RC )
          RC=STATUS  ) 
     VERIFY_(STATUS)
 
+    call MAPL_AddImportSpec(GC                              ,&
+         LONG_NAME          = 'irrigation_flux_sprinkler'   ,&
+         UNITS              = 'kg m-2 s-1'                  ,&
+         SHORT_NAME         = 'IRRG_RATE_SPR'               ,&
+         DIMS               = MAPL_DimsTileOnly             ,&
+         VLOCATION          = MAPL_VLocationNone            ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC                              ,&
+         LONG_NAME          = 'irrigation_flux_drip'	    ,&
+         UNITS              = 'kg m-2 s-1'                  ,&
+         SHORT_NAME         = 'IRRG_RATE_DRP'               ,&
+         DIMS               = MAPL_DimsTileOnly             ,&
+         VLOCATION          = MAPL_VLocationNone            ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC                              ,&
+         LONG_NAME          = 'irrigation_flux_furrow'      ,&
+         UNITS              = 'kg m-2 s-1'                  ,&
+         SHORT_NAME         = 'IRRG_RATE_FRW'               ,&
+         DIMS               = MAPL_DimsTileOnly             ,&
+         VLOCATION          = MAPL_VLocationNone            ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC                              ,&
+         LONG_NAME          = 'irrigation_flux_paddy'       ,&
+         UNITS              = 'kg m-2 s-1'                  ,&
+         SHORT_NAME         = 'IRRG_RATE_PDY'               ,&
+         DIMS               = MAPL_DimsTileOnly             ,&
+         VLOCATION          = MAPL_VLocationNone            ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
 !  !INTERNAL STATE:
 
 ! if is_offline, some variables ( in the last) are not required
@@ -2633,6 +2669,15 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  )
   VERIFY_(STATUS)
 
+  call MAPL_AddExportSpec(GC,                    &
+    SHORT_NAME         = 'SPIRRG',                    &              
+    LONG_NAME          = 'Spurious_irrigation_flux',  &
+    UNITS              = 'kg m-2 s-1',                &
+    DIMS               = MAPL_DimsTileOnly,           &
+    VLOCATION          = MAPL_VLocationNone,          &
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+  
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'vegetation_type'           ,&
     UNITS              = '1'                         ,&
@@ -4064,6 +4109,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: ASCATZ0
         real, dimension(:),   pointer :: NDVI
 
+        real, dimension(:),   pointer :: IRRG_RATE_SPR
+        real, dimension(:),   pointer :: IRRG_RATE_DRP
+        real, dimension(:),   pointer :: IRRG_RATE_FRW
+        real, dimension(:),   pointer :: IRRG_RATE_PDY
+
         real, dimension(:,:), pointer :: DUDP
         real, dimension(:,:), pointer :: DUSV
         real, dimension(:,:), pointer :: DUWT
@@ -4256,6 +4306,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: SPLH
         real, dimension(:),   pointer :: SPWATR  
         real, dimension(:),   pointer :: SPSNOW
+        real, dimension(:),   pointer :: SPIRRG
 
         real, dimension(:),   pointer :: WAT10CM
         real, dimension(:),   pointer :: WATSOI
@@ -4323,6 +4374,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real,pointer,dimension(:) :: ALWX, BLWX
         real,pointer,dimension(:) :: FICE1TMP
         real,pointer,dimension(:) :: SLDTOT
+        real,pointer,dimension(:) :: PLS_SPR
  
 !       real*8,pointer,dimension(:) :: fsum
 
@@ -4398,6 +4450,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         integer                     :: NTILES
         integer                     :: I, N 
 
+        real, dimension(:), allocatable :: AR4, werror   ! for catch_calc_soil_moist() after irrigation application
+        
 ! dummy variables for call to get snow temp
 
         real    :: FICE
@@ -4643,6 +4697,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(IMPORT,SSWT   ,'SSWT'   ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,SSSD   ,'SSSD'   ,RC=STATUS); VERIFY_(STATUS)
 
+        call MAPL_GetPointer(IMPORT,IRRG_RATE_SPR,'IRRG_RATE_SPR',RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT,IRRG_RATE_DRP,'IRRG_RATE_DRP',RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT,IRRG_RATE_FRW,'IRRG_RATE_FRW',RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT,IRRG_RATE_PDY,'IRRG_RATE_PDY',RC=STATUS); VERIFY_(STATUS)
+
         ! -----------------------------------------------------
         ! INTERNAL Pointers
         ! -----------------------------------------------------
@@ -4824,6 +4883,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,SPLH,   'SPLH'   ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SPWATR, 'SPWATR' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SPSNOW, 'SPSNOW' ,             RC=STATUS); VERIFY_(STATUS)
+        if(CATCH_INTERNAL_STATE%RUN_IRRIG /= 0) &
+             call MAPL_GetPointer(EXPORT,SPIRRG, 'SPIRRG' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTDU001,'RMELTDU001',  RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTDU002,'RMELTDU002',  RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTDU003,'RMELTDU003',  RC=STATUS); VERIFY_(STATUS)
@@ -4944,7 +5005,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(RCONSTIT (NTILES,N_SNOW,N_constit))
         allocate(TOTDEPOS (NTILES,N_constit))
         allocate(RMELT    (NTILES,N_constit))
-
+        allocate(PLS_SPR  (NTILES))
         debugzth = .false.
 
         ! --------------------------------------------------------------------------
@@ -5533,8 +5594,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 	      ! driver
 	      ! --------------------------------------------------------------------------
 
-        _ASSERT(count(PLS<0.)==0,'needs informative message')
-        _ASSERT(count(PCU<0.)==0,'needs informative message')
+        _ASSERT(count(PLS   <0.)==0,'needs informative message')
+        _ASSERT(count(PCU   <0.)==0,'needs informative message')
         _ASSERT(count(SLDTOT<0.)==0,'needs informative message')
 
         LAI0  = max(0.0001     , LAI)
@@ -5549,6 +5610,48 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! --------------------------------------------------------------------------
 
         TILEZERO = 0.0
+
+        PLS_SPR  = PLS     ! PLS_SPR = large-scale precip plus sprinkler irrigation (if present, see below)
+
+        ! --------------------------------------------------------------------------
+        ! Add irrigation model imports
+        ! --------------------------------------------------------------------------
+
+        if(CATCH_INTERNAL_STATE%RUN_IRRIG /= 0) then
+           
+           where (IRRG_RATE_SPR > 0)
+              PLS_SPR = PLS_SPR + IRRG_RATE_SPR
+           end where
+           where (IRRG_RATE_DRP > 0)
+              RZEXC   = RZEXC   + IRRG_RATE_DRP * DT
+           end where
+           where (IRRG_RATE_FRW > 0)
+              RZEXC   = RZEXC   + IRRG_RATE_FRW * DT
+           end where
+           where (IRRG_RATE_PDY > 0)
+              SRFEXC  = SRFEXC  + IRRG_RATE_PDY * DT
+           end where
+
+           ! after application of irrigation water, make sure soil moisture prognostics
+           ! (srfexc, rzexc, catdef) remain valid;
+           ! werror accounts for excess irrigation that cannot be absorbed by the soil;
+           ! sfmc, rzmc, prmc here are dummies that are required to get werror
+
+           allocate(ar4(   NTILES))
+           allocate(werror(NTILES))
+           
+           call catch_calc_soil_moist(                                                       &
+                NTILES, dzsf_in_mm, vgwmax, cdcr1, cdcr2, psis, bee, poros, wpwet,           &
+                ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4, bf1, bf2,  &
+                srfexc, rzexc, catdef, ar1, ar2, ar4,                                        &
+                sfmc, rzmc, prmc, werror )
+
+           SPIRRG = -werror / DT                ! add excess irrigation into spurious term
+           
+           deallocate(ar4)
+           deallocate(werror)
+           
+        endif
 
         call MAPL_TimerOn  ( MAPL, "-CATCH" )
 
@@ -5568,12 +5671,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         unit = unit_i
  
 ! Inputs
-        call MAPL_VarWrite(unit, tilegrid, PCU,  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, PLS,  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, SNO,  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, ICE,  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, FRZR, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, UUU,  mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, PCU,            mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, PLS_SPR,        mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, SNO,            mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, ICE,            mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, FRZR,           mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, UUU,            mask=mask, rc=status); VERIFY_(STATUS)
 
         call MAPL_VarWrite(unit, tilegrid, EVSBT (:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DEVSBT(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
@@ -5984,7 +6087,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              DT,CATCH_INTERNAL_STATE%USE_FWET_FOR_RUNOFF          ,&
              CATCH_INTERNAL_STATE%FWETC, CATCH_INTERNAL_STATE%FWETL,&
              cat_id, VEG, DZSF_in_mm                              ,&     ! cat_id is set to no-data above !!!
-             PCU      ,     PLS       ,    SNO, ICE, FRZR         ,&
+             PCU      ,     PLS_SPR   ,    SNO, ICE, FRZR         ,&
              UUU                                                  ,&
 
              EVSBT(:,FSAT),     DEVSBT(:,FSAT),     DEDTC(:,FSAT) ,&
@@ -6500,6 +6603,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(RMELT    )
         deallocate(FICE1TMP )
         deallocate(SLDTOT   )
+        deallocate(PLS_SPR  )
         deallocate(FSW_CHANGE)
 
         RETURN_(ESMF_SUCCESS)
@@ -6534,7 +6638,7 @@ subroutine RUN0(gc, import, export, clock, rc)
 
   !! ESMF/MAPL variables
   type(MAPL_MetaComp), pointer :: MAPL
-  type(ESMF_State) :: INTERNAL
+  type(ESMF_State)             :: INTERNAL
 
   !! IMPORT pointers
   real, pointer :: ity(:)=>null()
