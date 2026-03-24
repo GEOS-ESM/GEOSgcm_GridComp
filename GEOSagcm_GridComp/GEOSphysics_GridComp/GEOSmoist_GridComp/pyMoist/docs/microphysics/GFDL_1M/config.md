@@ -1,3 +1,3 @@
 # config
 
-::: pyMoist.GFDL_1M.config
+::: pyMoist.microphysics.GFDL_1M.config
