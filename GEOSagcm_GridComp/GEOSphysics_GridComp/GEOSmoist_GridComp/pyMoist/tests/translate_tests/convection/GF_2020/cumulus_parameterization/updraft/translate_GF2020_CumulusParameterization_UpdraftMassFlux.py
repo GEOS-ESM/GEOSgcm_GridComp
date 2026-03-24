@@ -53,7 +53,7 @@ class TestCore:
 
     def __call__(self, constants: dict, cu_param_constants: dict, plume: str, **inputs):
         # initialize constants
-        config = GF2020Config(SINGLE_COLUMN_MODE=False, **constants)
+        config = GF2020Config(**constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
         plume_dependent_constants = set_constants(
@@ -117,23 +117,22 @@ class TestCore:
 
         # call test code
         if plume_dependent_constants.ENABLE_PLUME == 1:
-            if cumulus_parameterization_config.FIRST_GUESS_W == 0:
-                code(
-                    error_code=state.output.error_code,
-                    updraft_origin_level=state.output.updraft_origin_level,
-                    cloud_top_level=state.output.cloud_top_level,
-                    pbl_level=state.input_output.pbl_level,
-                    updraft_lfc_level=state.output.updraft_lfc_level,
-                    lcl_level=state.output.lcl_level,
-                    p_cloud_levels_forced=state.output.p_cloud_levels_forced,
-                    p_surface=state.input_output.p_surface,
-                    ocean_fraction=state.input.ocean_fraction,
-                    normalized_massflux_updraft=locals.normalized_massflux_updraft,
-                    normalized_massflux_updraft_forced=state.output.normalized_massflux_updraft_forced,
-                    normalized_massflux_updraft_modified=locals.normalized_massflux_updraft_modified,
-                    random_number=locals.random_number,
-                    plume_dependent_constants=plume_dependent_constants,
-                )
+            code(
+                error_code=state.output.error_code,
+                updraft_origin_level=state.output.updraft_origin_level,
+                cloud_top_level=state.output.cloud_top_level,
+                pbl_level=state.input_output.pbl_level,
+                updraft_lfc_level=state.output.updraft_lfc_level,
+                lcl_level=state.output.lcl_level,
+                p_cloud_levels_forced=state.output.p_cloud_levels_forced,
+                p_surface=state.input_output.p_surface,
+                ocean_fraction=state.input.ocean_fraction,
+                normalized_massflux_updraft=locals.normalized_massflux_updraft,
+                normalized_massflux_updraft_forced=state.output.normalized_massflux_updraft_forced,
+                normalized_massflux_updraft_modified=locals.normalized_massflux_updraft_modified,
+                random_number=locals.random_number,
+                plume_dependent_constants=plume_dependent_constants,
+            )
 
         # write output
         outputs = {

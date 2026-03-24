@@ -4,7 +4,7 @@ from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.air_density import hydrostatic_air_density
 from pyMoist.convection.GF_2020.cumulus_parameterization.buoyancy import get_buoyancy
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, FIRST_GUESS_W
 from pyMoist.convection.GF_2020.cumulus_parameterization.convective_tracers import (
     AtmosphericComposition,
     ColdPoolParameterization,
@@ -192,7 +192,6 @@ class GF2020CumulusParameterization(NDSLRuntime):
             func=partition_liquid_ice,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
-                "MELT_GLAC": cumulus_parameterization_config.MELT_GLAC,
                 "FRAC_MODIS": cumulus_parameterization_config.FRAC_MODIS,
             },
         )
@@ -333,9 +332,6 @@ class GF2020CumulusParameterization(NDSLRuntime):
         self._melting_profile = stencil_factory.from_dims_halo(
             func=melting_profile,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={
-                "MELT_GLAC": cumulus_parameterization_config.MELT_GLAC,
-            },
         )
 
         self._updraft_moist_static_energy_and_momentum_budget = stencil_factory.from_dims_halo(
@@ -343,7 +339,6 @@ class GF2020CumulusParameterization(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES": cumulus_parameterization_config.USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES,
-                "PRESSURE_GRADIENT_CONSTANT": cumulus_parameterization_config.PRESSURE_GRADIENT_CONSTANT,
             },
         )
 
@@ -385,7 +380,6 @@ class GF2020CumulusParameterization(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "USE_WETBULB": cumulus_parameterization_config.USE_WETBULB,
-                "PRESSURE_GRADIENT_CONSTANT": cumulus_parameterization_config.PRESSURE_GRADIENT_CONSTANT,
             },
         )
 
@@ -472,7 +466,6 @@ class GF2020CumulusParameterization(NDSLRuntime):
             func=modify_environment_profiles,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
-                "COUPLE_MICROPHYSICS": cumulus_parameterization_config.COUPLE_MICROPHYSICS,
                 "BOUNDARY_CONDITION_METHOD": cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD,
             },
         )
@@ -529,7 +522,6 @@ class GF2020CumulusParameterization(NDSLRuntime):
             externals={
                 "USE_CLOUD_DISSIPATION": cumulus_parameterization_config.USE_CLOUD_DISSIPATION,
                 "DTIME": cumulus_parameterization_config.DTIME,
-                "COUPLE_MICROPHYSICS": cumulus_parameterization_config.COUPLE_MICROPHYSICS,
             },
         )
 
@@ -1286,7 +1278,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
                     plume=self.plume_dependent_constants.PLUME_INDEX,
                 )
 
-                if not self.cumulus_parameterization_config.FIRST_GUESS_W:
+                if not FIRST_GUESS_W:
                     # calculate in-cloud/updraft air temperature for vertical velocity
                     # NOTE test GF2020_CumulusParameterization_UpdraftTemperature_{plume}:
                     # NOTE      deep ✅

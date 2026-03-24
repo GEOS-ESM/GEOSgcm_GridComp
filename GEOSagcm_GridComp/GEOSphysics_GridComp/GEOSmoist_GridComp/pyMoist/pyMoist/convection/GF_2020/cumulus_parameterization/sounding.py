@@ -1,5 +1,5 @@
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import WRTGRADS
 
 class Sounding:
     def __init__(self, cumulus_parameterization_config: GF2020CumulusParameterizationConfig):
@@ -17,7 +17,7 @@ class Sounding:
 
 class GATESounding:
     def __init__(self, cumulus_parameterization_config: GF2020CumulusParameterizationConfig):
-        if cumulus_parameterization_config.WRTGRADS == 1:
+        if WRTGRADS == 1:
             raise NotImplementedError(
                 "[NDSL] GF2020-->CumulusParameterization-->GATESounding: GATE Sounding capabilities have not"
                 "been implemented. You should have been caught before getting here by the config checker."

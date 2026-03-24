@@ -64,7 +64,7 @@ class TestCore:
 
     def __call__(self, constants: dict, cu_param_constants: dict, plume: str, **inputs):
         # initialize constants
-        config = GF2020Config(SINGLE_COLUMN_MODE=False, **constants)
+        config = GF2020Config(**constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
         plume_dependent_constants = set_constants(
@@ -155,33 +155,32 @@ class TestCore:
 
         # call test code
         if plume_dependent_constants.ENABLE_PLUME == 1:
-            if cumulus_parameterization_config.FIRST_GUESS_W == 0:
-                code(
-                    error_code=state.output.error_code,
-                    downdraft_origin_level=state.output.downdraft_origin_level,
-                    t_cloud_levels_forced=locals.t_cloud_levels_forced,
-                    t_wetbulb=locals.t_wetbulb,
-                    vapor_forced=locals.vapor_forced,
-                    vapor_cloud_levels_forced=locals.vapor_cloud_levels_forced,
-                    environment_saturation_mixing_ratio_cloud_levels_forced=locals.environment_saturation_mixing_ratio_cloud_levels_forced,
-                    cloud_total_water_after_entrainment_forced=locals.cloud_total_water_after_entrainment_forced,
-                    cloud_total_water_after_entrainment_downdraft_forced=locals.cloud_total_water_after_entrainment_downdraft_forced,
-                    downdraft_saturation_vapor_forced=locals.downdraft_saturation_vapor_forced,
-                    vapor_wetbulb=locals.vapor_wetbulb,
-                    normalized_massflux_downdraft_forced=state.output.normalized_massflux_downdraft_forced,
-                    environment_moist_static_energy_forced=locals.environment_moist_static_energy_forced,
-                    environment_saturation_moist_static_energy_cloud_levels_forced=locals.environment_saturation_moist_static_energy_cloud_levels_forced,
-                    cloud_moist_static_energy_downdraft_forced=locals.cloud_moist_static_energy_downdraft_forced,
-                    evaporate_in_downdraft_forced=state.output.evaporate_in_downdraft_forced,
-                    geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
-                    mass_entrainment_downdraft_forced=state.output.mass_entrainment_downdraft_forced,
-                    mass_detrainment_downdraft_forced=state.output.mass_detrainment_downdraft_forced,
-                    gamma_cloud_levels_forced=locals.gamma_cloud_levels_forced,
-                    total_normalized_integrated_condensate_forced=state.output.total_normalized_integrated_condensate_forced,
-                    total_normalized_integrated_evaporate_forced=locals.total_normalized_integrated_evaporate_forced,
-                    buoyancy=locals.buoyancy,
-                    plume=plume_dependent_constants.PLUME_INDEX,
-                )
+            code(
+                error_code=state.output.error_code,
+                downdraft_origin_level=state.output.downdraft_origin_level,
+                t_cloud_levels_forced=locals.t_cloud_levels_forced,
+                t_wetbulb=locals.t_wetbulb,
+                vapor_forced=locals.vapor_forced,
+                vapor_cloud_levels_forced=locals.vapor_cloud_levels_forced,
+                environment_saturation_mixing_ratio_cloud_levels_forced=locals.environment_saturation_mixing_ratio_cloud_levels_forced,
+                cloud_total_water_after_entrainment_forced=locals.cloud_total_water_after_entrainment_forced,
+                cloud_total_water_after_entrainment_downdraft_forced=locals.cloud_total_water_after_entrainment_downdraft_forced,
+                downdraft_saturation_vapor_forced=locals.downdraft_saturation_vapor_forced,
+                vapor_wetbulb=locals.vapor_wetbulb,
+                normalized_massflux_downdraft_forced=state.output.normalized_massflux_downdraft_forced,
+                environment_moist_static_energy_forced=locals.environment_moist_static_energy_forced,
+                environment_saturation_moist_static_energy_cloud_levels_forced=locals.environment_saturation_moist_static_energy_cloud_levels_forced,
+                cloud_moist_static_energy_downdraft_forced=locals.cloud_moist_static_energy_downdraft_forced,
+                evaporate_in_downdraft_forced=state.output.evaporate_in_downdraft_forced,
+                geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
+                mass_entrainment_downdraft_forced=state.output.mass_entrainment_downdraft_forced,
+                mass_detrainment_downdraft_forced=state.output.mass_detrainment_downdraft_forced,
+                gamma_cloud_levels_forced=locals.gamma_cloud_levels_forced,
+                total_normalized_integrated_condensate_forced=state.output.total_normalized_integrated_condensate_forced,
+                total_normalized_integrated_evaporate_forced=locals.total_normalized_integrated_evaporate_forced,
+                buoyancy=locals.buoyancy,
+                plume=plume_dependent_constants.PLUME_INDEX,
+            )
 
         # write output
         outputs = {

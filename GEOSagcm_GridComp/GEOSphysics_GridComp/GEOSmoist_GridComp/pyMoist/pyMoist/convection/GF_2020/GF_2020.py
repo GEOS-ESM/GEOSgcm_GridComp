@@ -1,11 +1,11 @@
-import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
 from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.cumulus_parameterization import (
+from pyMoist.convection.GF_2020.cumulus_parameterization import (
     GF2020CumulusParameterization,
+    GF2020CumulusParameterizationConstants,
+    GF2020CumulusParameterizationConfig,
+    GF2020CumulusParameterizationState,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 from pyMoist.convection.GF_2020.finalize import GF2020Finalize
 from pyMoist.convection.GF_2020.locals import GF2020Locals
 from pyMoist.convection.GF_2020.setup import GF2020Setup
@@ -65,7 +65,7 @@ class GF2020(NDSLRuntime):
         self.cumulus_parameterization_state = GF2020CumulusParameterizationState.zeros(
             quantity_factory,
             data_dimensions={
-                "plumes": cumulus_parameterization_constants.NUMBER_OF_PLUMES,
+                "plumes": GF2020CumulusParameterizationConstants.NUMBER_OF_PLUMES,
                 "convection_tracers": config.NUMBER_OF_TRACERS,
             },
         )

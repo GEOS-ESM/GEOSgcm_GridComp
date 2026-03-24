@@ -3,6 +3,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020Cum
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
 )
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import PRESSURE_GRADIENT_CONSTANT
 
 
 def set_constants(
@@ -57,7 +58,7 @@ def set_constants(
             plume_dependent_constants.CAP_MAX_INC = Float(10.0)
 
         # lambda_U parameter for momentum transport
-        if cumulus_parameterization_config.PRESSURE_GRADIENT_CONSTANT != 0.0:
+        if PRESSURE_GRADIENT_CONSTANT != 0.0:
             plume_dependent_constants.LAMBDA_DEEP = Float(0.0)
             plume_dependent_constants.LAMBDA_DOWN = Float(0.0)
         else:
@@ -138,7 +139,7 @@ def set_constants(
             plume_dependent_constants.CAP_MAX_INC = Float(90.0)
 
         # lambda_U parameter for momentum transport
-        if cumulus_parameterization_config.PRESSURE_GRADIENT_CONSTANT != 0.0:
+        if PRESSURE_GRADIENT_CONSTANT != 0.0:
             plume_dependent_constants.LAMBDA_DEEP = Float(0.0)
             plume_dependent_constants.LAMBDA_DOWN = Float(0.0)
         else:
@@ -217,7 +218,7 @@ def set_constants(
             plume_dependent_constants.CAP_MAX_INC = Float(90.0)
 
         # lambda_U parameter for momentum transport
-        if cumulus_parameterization_config.PRESSURE_GRADIENT_CONSTANT != 0.0:
+        if PRESSURE_GRADIENT_CONSTANT != 0.0:
             plume_dependent_constants.LAMBDA_DEEP = Float(0.0)
             plume_dependent_constants.LAMBDA_DOWN = Float(0.0)
         else:

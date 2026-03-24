@@ -242,7 +242,7 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
         self.convection_tracers_input = data_loader.load("GF2020_ConvectionTracers")
 
     def compute(self, inputs):
-        config = GF2020Config(SINGLE_COLUMN_MODE=False, **self.constants)
+        config = GF2020Config(**self.constants)
 
         # initialize GF2020 state
         state = GF2020State.zeros(self.quantity_factory)

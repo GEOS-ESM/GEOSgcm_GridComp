@@ -5,10 +5,7 @@ from ndsl import StencilFactory
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.GF_2020 import GF2020
-from pyMoist.convection.GF_2020.state import GF2020State
+from pyMoist.convection.GF_2020 import GF2020Config, GF2020CumulusParameterizationConfig, GF2020, GF2020State
 from pyMoist.convection_tracers import ConvectionTracers
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 
@@ -129,7 +126,7 @@ class TranslateGF2020(TranslateFortranData2Py):
         self.unmodified_state = data_loader.load("GF2020-In")
 
     def compute(self, inputs):
-        config = GF2020Config(SINGLE_COLUMN_MODE=False, **self.constants)
+        config = GF2020Config(**self.constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**self.cu_param_constants)
 
         # initialize saturation tables

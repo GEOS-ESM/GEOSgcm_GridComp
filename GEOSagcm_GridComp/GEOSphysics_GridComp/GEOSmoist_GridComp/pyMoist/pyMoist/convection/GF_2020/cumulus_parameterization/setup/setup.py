@@ -297,10 +297,11 @@ def get_random_number(
         plume (Int)
         random_number (FloatFieldIJ)
     """
-    from __externals__ import USE_RANDOM_NUMBER
-
     with computation(FORWARD), interval(0, 1):
-        if plume == cumulus_parameterization_constants.DEEP and USE_RANDOM_NUMBER > 1.0e-6:
+        if (
+            plume == cumulus_parameterization_constants.DEEP
+            and cumulus_parameterization_constants.USE_RANDOM_NUMBER > 1.0e-6
+        ):
             # need to figure out how to get system clock data
             random_number = random_number  # keep input data from fortran for now
         else:
@@ -419,7 +420,6 @@ class Setup(NDSLRuntime):
         self._get_random_number = stencil_factory.from_dims_halo(
             func=get_random_number,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"USE_RANDOM_NUMBER": cumulus_parameterization_config.USE_RANDOM_NUMBER},
         )
 
         self._initial_entrainment_detrainment = stencil_factory.from_dims_halo(

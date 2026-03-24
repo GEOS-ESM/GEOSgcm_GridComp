@@ -1,6 +1,7 @@
 from ndsl import ndsl_log
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MELT_GLAC, AEROEVAP, COUPLE_MICROPHYSICS, WRTGRADS
 
 
 def check_config(
@@ -31,7 +32,7 @@ def check_config(
             "untested FRAC_MODIS option. Running untested code... proceed with caution"
         )
 
-    if not cumulus_parameterization_config.MELT_GLAC:
+    if not MELT_GLAC:
         ndsl_log.warning(
             " GF2020-->CumulusParameterization-->partition_liquid_ice constructed with "
             "untested MELT_GLAC option. Running untested code... proceed with caution"
@@ -139,7 +140,7 @@ def check_config(
             "untested SGS_W_TIMESCALE option. Running untested code... proceed with caution"
         )
 
-    if cumulus_parameterization_config.AEROEVAP != 1:
+    if AEROEVAP != 1:
         ndsl_log.warning(
             " GF2020-->CumulusParameterization-->DowndraftWindshear initialized with "
             "untested AEROEVAP option. Running untested code... proceed with caution"
@@ -263,7 +264,7 @@ def check_config(
             "error manually to proceed."
         )
 
-    if not cumulus_parameterization_config.COUPLE_MICROPHYSICS:
+    if not COUPLE_MICROPHYSICS:
         raise NotImplementedError(
             "[NDSL] GF2020-->CumulusParameterization initialized with COUPLE_MICROPHYSICS != True. This"
             "setting requires an unimeplemented option in cloud_dissipation. Please implement, then"
@@ -298,7 +299,7 @@ def check_config(
             "Please implement, then disable this error manually to proceed."
         )
 
-    if not cumulus_parameterization_config.WRTGRADS:
+    if not WRTGRADS:
         raise NotImplementedError(
             "[NDSL] GF2020-->CumulusParameterization initialized with WRTGRADS = True. This setting requires"
             "the unimeplemented GATE sounding capabilities (in the GATESounding class). Please implement,"

@@ -67,7 +67,7 @@ def partition_liquid_ice(
         part_liquid_ice (FloatField)
         plume (Int)
     """
-    from __externals__ import FRAC_MODIS, MELT_GLAC, k_end
+    from __externals__ import FRAC_MODIS, k_end
 
     with computation(PARALLEL), interval(...):
         # constants, set internally because they may differ from global constants
@@ -82,13 +82,13 @@ def partition_liquid_ice(
         melting_layer = 0.0
 
     with computation(PARALLEL), interval(0, -1):
-        if MELT_GLAC == True and plume == cumulus_parameterization_constants.DEEP:
+        if cumulus_parameterization_constants.MELT_GLAC == True and plume == cumulus_parameterization_constants.DEEP:
             if error_code[0, 0][plume] == 0:
                 # get function of T for partition of total condensate into liq and ice phases
                 part_liquid_ice = liquid_fraction(t, convection_fraction, surface_type, FRAC_MODIS)
 
     with computation(PARALLEL), interval(0, -1):
-        if MELT_GLAC == True and plume == cumulus_parameterization_constants.DEEP:
+        if cumulus_parameterization_constants.MELT_GLAC == True and plume == cumulus_parameterization_constants.DEEP:
             if error_code[0, 0][plume] == 0:
                 # define the melting layer (the layer will be between T_0+1 < TEMP < T_1
                 if t <= (cumulus_parameterization_constants.T_0 - del_t):
@@ -107,19 +107,19 @@ def partition_liquid_ice(
                 melting_layer = melting_layer * (1.0 - melting_layer)
 
     with computation(FORWARD), interval(0, 1):
-        if MELT_GLAC == True and plume == cumulus_parameterization_constants.DEEP:
+        if cumulus_parameterization_constants.MELT_GLAC == True and plume == cumulus_parameterization_constants.DEEP:
             # normalize vertical integral of melting_layer to 1
             norm: FloatFieldIJ = 0.0
 
     with computation(FORWARD), interval(0, -2):
-        if MELT_GLAC == True and plume == cumulus_parameterization_constants.DEEP:
+        if cumulus_parameterization_constants.MELT_GLAC == True and plume == cumulus_parameterization_constants.DEEP:
             if error_code[0, 0][plume] == 0:
                 # normalize vertical integral of melting_layer to 1
                 dp = 100.0 * (p[0, 0, 0][plume] - p[0, 0, 1][plume])
                 norm = norm + melting_layer * dp / constants.MAPL_GRAV
 
     with computation(PARALLEL), interval(...):
-        if MELT_GLAC == True and plume == cumulus_parameterization_constants.DEEP:
+        if cumulus_parameterization_constants.MELT_GLAC == True and plume == cumulus_parameterization_constants.DEEP:
             if error_code[0, 0][plume] == 0:
                 # normalize vertical integral of melting_layer to 1
                 melting_layer = (
@@ -393,7 +393,7 @@ def cloud_dissapation(
         dcloudicedt (FloatField_Plume)
         plume (Int)
     """
-    from __externals__ import COUPLE_MICROPHYSICS, DTIME, USE_CLOUD_DISSIPATION
+    from __externals__ import DTIME, USE_CLOUD_DISSIPATION
 
     with computation(FORWARD), interval(0, 1):
         # setup internal constants
@@ -426,7 +426,7 @@ def cloud_dissapation(
             out_precip_dissipation = (precip_dissipation * (1.0 - f_rh)) / cloud_lifetime
 
             # NOTE other option (if this is true) is not implemented
-            if not (version_x == 1 or COUPLE_MICROPHYSICS == False):
+            if not (version_x == 1 or cumulus_parameterization_constants.COUPLE_MICROPHYSICS == False):
                 dcloudicedt[0, 0, 0][plume] = (
                     dcloudicedt[0, 0, 0][plume]
                     + out_precip_dissipation * fractional_area * USE_CLOUD_DISSIPATION

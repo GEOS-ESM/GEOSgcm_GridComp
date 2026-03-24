@@ -56,7 +56,7 @@ class TestCore:
 
     def __call__(self, constants: dict, cu_param_constants: dict, plume: str, **inputs):
         # initialize constants
-        config = GF2020Config(SINGLE_COLUMN_MODE=False, **constants)
+        config = GF2020Config(**constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
         plume_dependent_constants = set_constants(
@@ -121,24 +121,23 @@ class TestCore:
 
         # call test code
         if plume_dependent_constants.ENABLE_PLUME == 1:
-            if cumulus_parameterization_config.FIRST_GUESS_W == 0:
-                code(
-                    vertical_velocity_3d=locals.vertical_velocity_3d,
-                    vertical_velocity_2d=locals.vertical_velocity_2d,
-                    convective_scale_velocity=state.input_output.convective_scale_velocity,
-                    entrainment_rate=state.output.entrainment_rate,
-                    detrainment_function_updraft=locals.detrainment_function_updraft,
-                    geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
-                    t_cloud_levels_forced=locals.t_cloud_levels_forced,
-                    updraft_column_temperature_forced=locals.updraft_column_temperature_forced,
-                    cloud_total_water_after_entrainment_forced=locals.cloud_total_water_after_entrainment_forced,
-                    cloud_liquid_after_rain_forced=state.output.cloud_liquid_after_rain_forced,
-                    vapor_forced=locals.vapor_forced,
-                    updraft_lfc_level=state.output.updraft_lfc_level,
-                    cloud_top_level=state.output.cloud_top_level,
-                    error_code=state.output.error_code,
-                    plume=plume_dependent_constants.PLUME_INDEX,
-                )
+            code(
+                vertical_velocity_3d=locals.vertical_velocity_3d,
+                vertical_velocity_2d=locals.vertical_velocity_2d,
+                convective_scale_velocity=state.input_output.convective_scale_velocity,
+                entrainment_rate=state.output.entrainment_rate,
+                detrainment_function_updraft=locals.detrainment_function_updraft,
+                geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
+                t_cloud_levels_forced=locals.t_cloud_levels_forced,
+                updraft_column_temperature_forced=locals.updraft_column_temperature_forced,
+                cloud_total_water_after_entrainment_forced=locals.cloud_total_water_after_entrainment_forced,
+                cloud_liquid_after_rain_forced=state.output.cloud_liquid_after_rain_forced,
+                vapor_forced=locals.vapor_forced,
+                updraft_lfc_level=state.output.updraft_lfc_level,
+                cloud_top_level=state.output.cloud_top_level,
+                error_code=state.output.error_code,
+                plume=plume_dependent_constants.PLUME_INDEX,
+            )
 
         # write output
         outputs = {

@@ -54,7 +54,7 @@ class TestCore:
 
     def __call__(self, constants: dict, cu_param_constants: dict, plume: str, **inputs):
         # initialize constants
-        config = GF2020Config(SINGLE_COLUMN_MODE=False, **constants)
+        config = GF2020Config(**constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
         plume_dependent_constants = set_constants(
@@ -115,25 +115,24 @@ class TestCore:
 
         # call test code
         if plume_dependent_constants.ENABLE_PLUME == 1:
-            if cumulus_parameterization_config.FIRST_GUESS_W == 0:
-                code(
-                    error_code=state.output.error_code,
-                    detrainment_start_level=locals.detrainment_start_level,
-                    downdraft_origin_level=state.output.downdraft_origin_level,
-                    pbl_level=state.input_output.pbl_level,
-                    updraft_origin_level=state.output.updraft_origin_level,
-                    updraft_lfc_level=state.output.updraft_lfc_level,
-                    lcl_level=state.output.lcl_level,
-                    p_cloud_levels_forced=state.output.p_cloud_levels_forced,
-                    p_surface=state.input_output.p_surface,
-                    normalized_massflux_downdraft=locals.normalized_massflux_downdraft,
-                    normalized_massflux_downdraft_forced=state.output.normalized_massflux_downdraft_forced,
-                    ocean_fraction=state.input.ocean_fraction,
-                    random_number=locals.random_number,
-                    DOWNDRAFT_MAX_HEIGHT_LAND=plume_dependent_constants.DOWNDRAFT_MAX_HEIGHT_LAND,
-                    DOWNDRAFT_MAX_HEIGHT_OCEAN=plume_dependent_constants.DOWNDRAFT_MAX_HEIGHT_OCEAN,
-                    plume=plume_dependent_constants.PLUME_INDEX,
-                )
+            code(
+                error_code=state.output.error_code,
+                detrainment_start_level=locals.detrainment_start_level,
+                downdraft_origin_level=state.output.downdraft_origin_level,
+                pbl_level=state.input_output.pbl_level,
+                updraft_origin_level=state.output.updraft_origin_level,
+                updraft_lfc_level=state.output.updraft_lfc_level,
+                lcl_level=state.output.lcl_level,
+                p_cloud_levels_forced=state.output.p_cloud_levels_forced,
+                p_surface=state.input_output.p_surface,
+                normalized_massflux_downdraft=locals.normalized_massflux_downdraft,
+                normalized_massflux_downdraft_forced=state.output.normalized_massflux_downdraft_forced,
+                ocean_fraction=state.input.ocean_fraction,
+                random_number=locals.random_number,
+                DOWNDRAFT_MAX_HEIGHT_LAND=plume_dependent_constants.DOWNDRAFT_MAX_HEIGHT_LAND,
+                DOWNDRAFT_MAX_HEIGHT_OCEAN=plume_dependent_constants.DOWNDRAFT_MAX_HEIGHT_OCEAN,
+                plume=plume_dependent_constants.PLUME_INDEX,
+            )
 
         # write output
         outputs = {

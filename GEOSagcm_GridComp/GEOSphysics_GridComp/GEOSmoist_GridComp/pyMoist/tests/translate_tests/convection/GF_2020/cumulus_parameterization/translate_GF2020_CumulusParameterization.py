@@ -142,7 +142,7 @@ class TranslateGF2020_CumulusParameterization(TranslateFortranData2Py):
 
     def compute_func(self, **inputs):
         # initialize constants
-        config = GF2020Config(SINGLE_COLUMN_MODE=False, **self.constants)
+        config = GF2020Config(**self.constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**self.cu_param_constants)
 
         # initialize convection tracers

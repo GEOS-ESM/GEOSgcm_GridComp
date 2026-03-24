@@ -20,16 +20,25 @@ T_ICE = Float(235.16)  # K
 XLF = Float(0.333e6)  # latent heat of freezing (J K-1 kg-1)
 MAX_QSAT = Float(0.5)  # kg/kg
 MX_BUOY = CP * Float(5.0) + XLV * Float(2.0e-3)  # temp exc=5 K, q deficit=2 g/kg (=> mx_buoy ~ 10 kJ/kg)
-
 smaller_qv = Float(1.0e-16)  # kg/kg
 
+# ensemble sizes
 MAXENS1 = Int(1)  # ensemble one on cap_max
 MAXENS2 = Int(1)  # ensemble two on precip efficiency
 MAXENS3 = Int(16)  # ensemble three done in cup_forcing_ens16 for G3d
 
+# other miscelaneous constants which control code flow
+# NOTE changing these constants will likely trigger unimplemented code errors
 USE_LCL = False
-
-AEROEVAP = 1
+AEROEVAP = Int(1)
+PRESSURE_GRADIENT_CONSTANT = Float(0.0)
+USE_RANDOM_NUMBER = Float(0.0)
+ITEST = Int(1)
+MELT_GLAC = True
+FIRST_GUESS_W = False
+COUPLE_MICROPHYSICS = True
+WRTGRADS = False
+FEED_3D_MODEL = True
 
 # plume identifiers
 SHALLOW = Int(0)

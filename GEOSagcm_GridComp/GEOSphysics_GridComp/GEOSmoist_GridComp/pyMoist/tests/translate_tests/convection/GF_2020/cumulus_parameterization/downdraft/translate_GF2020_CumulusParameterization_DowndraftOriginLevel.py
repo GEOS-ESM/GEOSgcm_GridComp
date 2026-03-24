@@ -51,7 +51,7 @@ class TestCore:
 
     def __call__(self, constants: dict, cu_param_constants: dict, plume: str, **inputs):
         # initialize constants
-        config = GF2020Config(SINGLE_COLUMN_MODE=False, **constants)
+        config = GF2020Config(**constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
         plume_dependent_constants = set_constants(
@@ -112,20 +112,19 @@ class TestCore:
 
         # call test code
         if plume_dependent_constants.ENABLE_PLUME == 1:
-            if cumulus_parameterization_config.FIRST_GUESS_W == 0:
-                code(
-                    error_code=state.output.error_code,
-                    cloud_top_level=state.output.cloud_top_level,
-                    geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
-                    topography_height_no_negative=state.input_output.topography_height_no_negative,
-                    environment_saturation_moist_static_energy_cloud_levels_forced=locals.environment_saturation_moist_static_energy_cloud_levels_forced,
-                    updraft_origin_level=state.output.updraft_origin_level,
-                    downdraft_origin_level=state.output.downdraft_origin_level,
-                    updraft_lfc_level=state.output.updraft_lfc_level,
-                    detrainment_start_level=locals.detrainment_start_level,
-                    melting_layer=locals.melting_layer,
-                    plume_dependent_constants=plume_dependent_constants,
-                )
+            code(
+                error_code=state.output.error_code,
+                cloud_top_level=state.output.cloud_top_level,
+                geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
+                topography_height_no_negative=state.input_output.topography_height_no_negative,
+                environment_saturation_moist_static_energy_cloud_levels_forced=locals.environment_saturation_moist_static_energy_cloud_levels_forced,
+                updraft_origin_level=state.output.updraft_origin_level,
+                downdraft_origin_level=state.output.downdraft_origin_level,
+                updraft_lfc_level=state.output.updraft_lfc_level,
+                detrainment_start_level=locals.detrainment_start_level,
+                melting_layer=locals.melting_layer,
+                plume_dependent_constants=plume_dependent_constants,
+            )
 
         # write output
         outputs = {

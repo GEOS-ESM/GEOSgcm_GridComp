@@ -55,7 +55,7 @@ class TestCore:
 
     def __call__(self, constants: dict, cu_param_constants: dict, plume: str, **inputs):
         # initialize constants
-        config = GF2020Config(SINGLE_COLUMN_MODE=False, **constants)
+        config = GF2020Config(**constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
         plume_dependent_constants = set_constants(
@@ -118,25 +118,24 @@ class TestCore:
 
         # call test code
         if plume_dependent_constants.ENABLE_PLUME == 1:
-            if cumulus_parameterization_config.FIRST_GUESS_W == 0:
-                code(
-                    error_code=state.output.error_code,
-                    downdraft_origin_level=state.output.downdraft_origin_level,
-                    geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
-                    normalized_massflux_downdraft=locals.normalized_massflux_downdraft,
-                    normalized_massflux_downdraft_forced=state.output.normalized_massflux_downdraft_forced,
-                    normalized_massflux_downdraft_modified=locals.normalized_massflux_downdraft_modified,
-                    detrainment_function_downdraft=locals.detrainment_function_downdraft,
-                    entrainment_rate_downdraft=locals.entrainment_rate_downdraft,
-                    mass_entrainment_downdraft=locals.mass_entrainment_downdraft,
-                    mass_detrainment_downdraft=locals.mass_detrainment_downdraft,
-                    mass_entrainment_downdraft_forced=state.output.mass_entrainment_downdraft_forced,
-                    mass_detrainment_downdraft_forced=state.output.mass_detrainment_downdraft_forced,
-                    mass_entrainment_u_downdraft=locals.mass_entrainment_u_downdraft,
-                    mass_detrainment_u_downdraft=locals.mass_detrainment_u_downdraft,
-                    LAMBDA_DOWN=plume_dependent_constants.LAMBDA_DOWN,
-                    plume=plume_dependent_constants.PLUME_INDEX,
-                )
+            code(
+                error_code=state.output.error_code,
+                downdraft_origin_level=state.output.downdraft_origin_level,
+                geopotential_height_cloud_levels_forced=locals.geopotential_height_cloud_levels_forced,
+                normalized_massflux_downdraft=locals.normalized_massflux_downdraft,
+                normalized_massflux_downdraft_forced=state.output.normalized_massflux_downdraft_forced,
+                normalized_massflux_downdraft_modified=locals.normalized_massflux_downdraft_modified,
+                detrainment_function_downdraft=locals.detrainment_function_downdraft,
+                entrainment_rate_downdraft=locals.entrainment_rate_downdraft,
+                mass_entrainment_downdraft=locals.mass_entrainment_downdraft,
+                mass_detrainment_downdraft=locals.mass_detrainment_downdraft,
+                mass_entrainment_downdraft_forced=state.output.mass_entrainment_downdraft_forced,
+                mass_detrainment_downdraft_forced=state.output.mass_detrainment_downdraft_forced,
+                mass_entrainment_u_downdraft=locals.mass_entrainment_u_downdraft,
+                mass_detrainment_u_downdraft=locals.mass_detrainment_u_downdraft,
+                LAMBDA_DOWN=plume_dependent_constants.LAMBDA_DOWN,
+                plume=plume_dependent_constants.PLUME_INDEX,
+            )
 
         # write output
         outputs = {

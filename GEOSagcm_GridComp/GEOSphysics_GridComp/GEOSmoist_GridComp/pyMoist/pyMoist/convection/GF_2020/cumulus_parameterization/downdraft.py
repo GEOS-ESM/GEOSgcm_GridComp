@@ -116,7 +116,7 @@ def get_downdraft_origin_level(
         MINIMUM_DEPTH (Float)
         plume (Int)
     """
-    from __externals__ import MELT_GLAC, k_end
+    from __externals__ import k_end
 
     with computation(FORWARD), interval(0, 1):
         if plume == cumulus_parameterization_constants.SHALLOW:
@@ -135,7 +135,7 @@ def get_downdraft_origin_level(
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
-            if plume == cumulus_parameterization_constants.DEEP and MELT_GLAC == True:  # noqa
+            if plume == cumulus_parameterization_constants.DEEP and cumulus_parameterization_constants.MELT_GLAC == True:  # noqa
                 _, max_index = column_max(melting_layer, 0, k_end)
                 downdraft_origin_level[0, 0][plume] = max(downdraft_origin_level[0, 0][plume], max_index)
 
@@ -495,7 +495,7 @@ def downdraft_moist_static_energy_and_buoyancy(
         mass_detrainment_u_downdraft (FloatField)
         plume (Int)
     """
-    from __externals__ import PRESSURE_GRADIENT_CONSTANT, USE_WETBULB
+    from __externals__ import USE_WETBULB
 
     with computation(PARALLEL), interval(...):
         cloud_moist_static_energy_downdraft_forced = (
@@ -555,7 +555,7 @@ def downdraft_moist_static_energy_and_buoyancy(
                     u_c_downdraft[0, 0, 1] * normalized_massflux_downdraft_forced[0, 0, 1][plume]
                     - 0.5 * mass_detrainment_u_downdraft * u_c_downdraft[0, 0, 1]
                     + mass_entrainment_u_downdraft * u
-                    - PRESSURE_GRADIENT_CONSTANT
+                    - cumulus_parameterization_constants.PRESSURE_GRADIENT_CONSTANT
                     * normalized_massflux_downdraft_forced[0, 0, 1][plume]
                     * (u[0, 0, 1] - u)
                 ) / denom_u
@@ -563,7 +563,7 @@ def downdraft_moist_static_energy_and_buoyancy(
                     v_c_downdraft[0, 0, 1] * normalized_massflux_downdraft_forced[0, 0, 1][plume]
                     - 0.5 * mass_detrainment_u_downdraft * v_c_downdraft[0, 0, 1]
                     + mass_entrainment_u_downdraft * v
-                    - PRESSURE_GRADIENT_CONSTANT
+                    - cumulus_parameterization_constants.PRESSURE_GRADIENT_CONSTANT
                     * normalized_massflux_downdraft_forced[0, 0, 1][plume]
                     * (v[0, 0, 1] - v)
                 ) / denom_u
@@ -914,7 +914,6 @@ def downdraft_windshear(
         epsilon_computed (FloatFieldIJ_ensemble_2)
         plume (Int)
     """
-    from __externals__ import AEROEVAP
 
     with computation(FORWARD), interval(0, 1):
         # initialize internal constants
@@ -978,7 +977,7 @@ def downdraft_windshear(
 
             epsilon = 1.0 - 0.5 * (precip_efficiency_b + precip_efficiency)
 
-            if AEROEVAP > 1:
+            if cumulus_parameterization_constants.AEROEVAP > 1:
                 aeroadd = (cumulus_parameterization_constants.CCNCLEAN**beta3) * (
                     (psumh) ** (alpha3 - 1)
                 )  # *1.e6
@@ -991,7 +990,7 @@ def downdraft_windshear(
                 if precip_efficiency_c < 0.1:
                     precip_efficiency_c = 0.1
                 epsilon = 1.0 - precip_efficiency_c
-                if AEROEVAP == 2:
+                if cumulus_parameterization_constants.AEROEVAP == 2:
                     epsilon = 1.0 - 0.25 * (
                         precip_efficiency_b + precip_efficiency + 2.0 * precip_efficiency_c
                     )
@@ -1080,7 +1079,6 @@ class DowndraftOriginLevel(NDSLRuntime):
         self._get_downdraft_origin_level = stencil_factory.from_dims_halo(
             func=get_downdraft_origin_level,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"MELT_GLAC": cumulus_parameterization_config.MELT_GLAC},
         )
 
     def __call__(
@@ -1167,7 +1165,6 @@ class DowndraftWindShear(NDSLRuntime):
         self._downdraft_windshear = stencil_factory.from_dims_halo(
             func=downdraft_windshear,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"AEROEVAP": cumulus_parameterization_config.AEROEVAP},
         )
 
         self._update_epsilon_forced = stencil_factory.from_dims_halo(

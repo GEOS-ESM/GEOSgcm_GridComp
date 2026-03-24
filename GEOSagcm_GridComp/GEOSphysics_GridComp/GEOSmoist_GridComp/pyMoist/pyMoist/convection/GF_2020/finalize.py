@@ -26,7 +26,6 @@ from pyMoist.saturation_tables import (
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.shared.incloud_processes import ice_fraction
 
-
 def copy_from_cumulus_parameterization_state(
     pbl_time_scale_from_cumulus_parameterization: FloatFieldIJ,
     pbl_time_scale: FloatFieldIJ,
@@ -455,18 +454,18 @@ def feed_3d_model(
         dconvection_tracersdt (FloatField_ConvectionTracers)
         convection_tracers (FloatField_ConvectionTracers)
     """
-    from __externals__ import DT_MOIST, FEED_3D_MODEL, ITEST, USE_TRACER_TRANSPORT, k_end
+    from __externals__ import DT_MOIST, USE_TRACER_TRANSPORT, k_end
 
     with computation(FORWARD), interval(0, 1):
-        if FEED_3D_MODEL == True and do_this_column != 0:
+        if cumulus_parameterization_constants.FEED_3D_MODEL == True and do_this_column != 0:
             # convective precip rate: mm/s = kg m-2 s-1
-            if ITEST == 0:
+            if cumulus_parameterization_constants.ITEST == 0:
                 convective_precipitation_GF = 0.0
             else:
                 convective_precipitation_GF = precip
 
     with computation(PARALLEL), interval(...):
-        if FEED_3D_MODEL == True and do_this_column != 0:
+        if cumulus_parameterization_constants.FEED_3D_MODEL == True and do_this_column != 0:
             # sublimation/evaporation tendencies (kg/kg/s)
             evaporation_sublimation_tendency = (
                 evaporation_sublimation_tendency_from_cumulus_parameterization.at(K=k_end - K)
@@ -560,11 +559,11 @@ def feed_3d_model_from_plumes(
         esw (GlobalTable_saturation_tables)
         estlqu (Float)
     """
-    from __externals__ import DT_MOIST, FEED_3D_MODEL, k_end
+    from __externals__ import DT_MOIST, k_end
 
     with computation(FORWARD), interval(...):
         if (
-            FEED_3D_MODEL == True
+            cumulus_parameterization_constants.FEED_3D_MODEL == True
             and K >= k_end - cloud_top_level_from_cumulus_parameterization[0, 0][plume] - 1
             and error_code_from_cumulus_parameterization[0, 0][plume] == 0
         ):
@@ -592,7 +591,7 @@ def feed_3d_model_from_plumes(
 
     with computation(PARALLEL), interval(...):
         if (
-            FEED_3D_MODEL == True
+            cumulus_parameterization_constants.FEED_3D_MODEL == True
             and K >= k_end - cloud_top_level_from_cumulus_parameterization[0, 0][plume] - 1
             and error_code_from_cumulus_parameterization[0, 0][plume] == 0
         ):
@@ -680,7 +679,7 @@ def feed_3d_model_from_plumes(
 
     with computation(BACKWARD), interval(...):
         # this must be done in a separate computation because the offset write is incompatable with PARALLEL
-        if FEED_3D_MODEL == True:
+        if cumulus_parameterization_constants.FEED_3D_MODEL == True:
             if (
                 K >= k_end - cloud_top_level_from_cumulus_parameterization[0, 0][plume] - 1
                 and error_code_from_cumulus_parameterization[0, 0][plume] == 0
@@ -1164,8 +1163,6 @@ class GF2020Finalize(NDSLRuntime):
             func=feed_3d_model,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
-                "FEED_3D_MODEL": cumulus_parameterization_config.FEED_3D_MODEL,
-                "ITEST": cumulus_parameterization_config.ITEST,
                 "USE_TRACER_TRANSPORT": config.USE_TRACER_TRANSPORT,
                 "DT_MOIST": config.DT_MOIST,
             },
@@ -1175,8 +1172,6 @@ class GF2020Finalize(NDSLRuntime):
             func=feed_3d_model_from_plumes,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
-                "FEED_3D_MODEL": cumulus_parameterization_config.FEED_3D_MODEL,
-                "ITEST": cumulus_parameterization_config.ITEST,
                 "USE_TRACER_TRANSPORT": config.USE_TRACER_TRANSPORT,
                 "DT_MOIST": config.DT_MOIST,
             },

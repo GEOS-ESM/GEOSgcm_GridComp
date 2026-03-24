@@ -74,7 +74,7 @@ class TestCore:
 
     def __call__(self, constants: dict, cu_param_constants: dict, plume: str, **inputs):
         # initialize constants
-        config = GF2020Config(SINGLE_COLUMN_MODE=False, **constants)
+        config = GF2020Config(**constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
         plume_dependent_constants = set_constants(
@@ -158,47 +158,45 @@ class TestCore:
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES": cumulus_parameterization_config.USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES,
-                "PRESSURE_GRADIENT_CONSTANT": cumulus_parameterization_config.PRESSURE_GRADIENT_CONSTANT,
             },
         )
 
         # call test code
         if plume_dependent_constants.ENABLE_PLUME == 1:
-            if cumulus_parameterization_config.FIRST_GUESS_W == 0:
-                code(
-                    error_code=state.output.error_code,
-                    start_level=locals.start_level,
-                    cloud_top_level=state.output.cloud_top_level,
-                    p_forced=state.input_output.p_forced,
-                    environment_moist_static_energy=locals.environment_moist_static_energy,
-                    environment_moist_static_energy_forced=locals.environment_moist_static_energy_forced,
-                    environment_moist_static_energy_cloud_levels=locals.environment_moist_static_energy_cloud_levels,
-                    environment_moist_static_energy_cloud_levels_forced=locals.environment_moist_static_energy_cloud_levels_forced,
-                    environment_saturation_moist_static_energy_cloud_levels=locals.environment_saturation_moist_static_energy_cloud_levels,
-                    environment_saturation_moist_static_energy_cloud_levels_forced=locals.environment_saturation_moist_static_energy_cloud_levels_forced,
-                    cloud_moist_static_energy=locals.cloud_moist_static_energy,
-                    cloud_moist_static_energy_forced=locals.cloud_moist_static_energy_forced,
-                    normalized_massflux_updraft=locals.normalized_massflux_updraft,
-                    normalized_massflux_updraft_forced=state.output.normalized_massflux_updraft_forced,
-                    mass_entrainment_updraft=locals.mass_entrainment_updraft,
-                    mass_detrainment_updraft=locals.mass_detrainment_updraft,
-                    mass_entrainment_u_updraft=locals.mass_entrainment_u_updraft,
-                    mass_detrainment_u_updraft=locals.mass_detrainment_u_updraft,
-                    mass_detrainment_updraft_forced=state.output.mass_detrainment_updraft_forced,
-                    mass_entrainment_updraft_forced=state.output.mass_entrainment_updraft_forced,
-                    u=state.input_output.u,
-                    v=state.input_output.v,
-                    u_c=locals.u_c,
-                    v_c=locals.v_c,
-                    u_cloud_levels=locals.u_cloud_levels,
-                    v_cloud_levels=locals.v_cloud_levels,
-                    partition_liquid_ice=locals.partition_liquid_ice,
-                    cloud_liquid_after_rain_forced=state.output.cloud_liquid_after_rain_forced,
-                    vapor_excess=locals.vapor_excess,
-                    t_excess=locals.t_excess,
-                    add_buoyancy=locals.add_buoyancy,
-                    plume=plume_dependent_constants.PLUME_INDEX,
-                )
+            code(
+                error_code=state.output.error_code,
+                start_level=locals.start_level,
+                cloud_top_level=state.output.cloud_top_level,
+                p_forced=state.input_output.p_forced,
+                environment_moist_static_energy=locals.environment_moist_static_energy,
+                environment_moist_static_energy_forced=locals.environment_moist_static_energy_forced,
+                environment_moist_static_energy_cloud_levels=locals.environment_moist_static_energy_cloud_levels,
+                environment_moist_static_energy_cloud_levels_forced=locals.environment_moist_static_energy_cloud_levels_forced,
+                environment_saturation_moist_static_energy_cloud_levels=locals.environment_saturation_moist_static_energy_cloud_levels,
+                environment_saturation_moist_static_energy_cloud_levels_forced=locals.environment_saturation_moist_static_energy_cloud_levels_forced,
+                cloud_moist_static_energy=locals.cloud_moist_static_energy,
+                cloud_moist_static_energy_forced=locals.cloud_moist_static_energy_forced,
+                normalized_massflux_updraft=locals.normalized_massflux_updraft,
+                normalized_massflux_updraft_forced=state.output.normalized_massflux_updraft_forced,
+                mass_entrainment_updraft=locals.mass_entrainment_updraft,
+                mass_detrainment_updraft=locals.mass_detrainment_updraft,
+                mass_entrainment_u_updraft=locals.mass_entrainment_u_updraft,
+                mass_detrainment_u_updraft=locals.mass_detrainment_u_updraft,
+                mass_detrainment_updraft_forced=state.output.mass_detrainment_updraft_forced,
+                mass_entrainment_updraft_forced=state.output.mass_entrainment_updraft_forced,
+                u=state.input_output.u,
+                v=state.input_output.v,
+                u_c=locals.u_c,
+                v_c=locals.v_c,
+                u_cloud_levels=locals.u_cloud_levels,
+                v_cloud_levels=locals.v_cloud_levels,
+                partition_liquid_ice=locals.partition_liquid_ice,
+                cloud_liquid_after_rain_forced=state.output.cloud_liquid_after_rain_forced,
+                vapor_excess=locals.vapor_excess,
+                t_excess=locals.t_excess,
+                add_buoyancy=locals.add_buoyancy,
+                plume=plume_dependent_constants.PLUME_INDEX,
+            )
 
         # write output
         outputs = {

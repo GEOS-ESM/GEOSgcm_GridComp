@@ -27,10 +27,13 @@ def melting_profile(
         condensate_to_fall_forced (FloatField_Plume)
         melting (FloatField)
     """
-    from __externals__ import MELT_GLAC, k_end
+    from __externals__ import k_end
 
     with computation(FORWARD), interval(...):
-        if MELT_GLAC == True and plume == cumulus_parameterization_constants.DEEP:
+        if (
+            cumulus_parameterization_constants.MELT_GLAC == True
+            and plume == cumulus_parameterization_constants.DEEP
+        ):
             solid_phase_precipitable_water = 0.0
             effective_precipitable_water = 0.0
             melting = 0.0
@@ -39,7 +42,7 @@ def melting_profile(
 
     with computation(FORWARD), interval(0, -2):
         if (
-            MELT_GLAC == True
+            cumulus_parameterization_constants.MELT_GLAC == True
             and plume == cumulus_parameterization_constants.DEEP
             and error_code[0, 0][plume] == 0
         ):
@@ -58,7 +61,7 @@ def melting_profile(
 
     with computation(PARALLEL), interval(0, -1):
         if (
-            MELT_GLAC == True
+            cumulus_parameterization_constants.MELT_GLAC == True
             and plume == cumulus_parameterization_constants.DEEP
             and error_code[0, 0][plume] == 0
         ):
@@ -75,7 +78,10 @@ def melting_profile(
             )
 
     with computation(PARALLEL), interval(...):
-        if not (MELT_GLAC == True and plume == cumulus_parameterization_constants.DEEP):
+        if not (
+            cumulus_parameterization_constants.MELT_GLAC == True
+            and plume == cumulus_parameterization_constants.DEEP
+        ):
             melting = 0.0
 
 
@@ -90,7 +96,7 @@ class C1DProfile:
         config: GF2020Config,
         cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
     ):
-        if cumulus_parameterization_config.FIRST_GUESS_W or config.AUTOCONV == 4:
+        if cumulus_parameterization_constants.FIRST_GUESS_W or config.AUTOCONV == 4:
             raise NotImplementedError(
                 "[NDSL] GF2020-->CumulusParameterization-->C1DProfile: C1DProfile option has not been"
                 "implemented. You should have been caught before getting here by the config checker."

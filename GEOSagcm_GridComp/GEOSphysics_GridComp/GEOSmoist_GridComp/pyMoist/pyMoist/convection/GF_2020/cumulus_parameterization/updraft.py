@@ -635,7 +635,7 @@ def updraft_moist_static_energy_and_momentum_budget(
         add_buoyancy (FloatFieldIJ)
         plume (Int)
     """
-    from __externals__ import PRESSURE_GRADIENT_CONSTANT, USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES
+    from __externals__ import USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES
 
     with computation(PARALLEL), interval(...):
         if (
@@ -695,7 +695,7 @@ def updraft_moist_static_energy_and_momentum_budget(
                         u_c[0, 0, -1] * normalized_massflux_updraft[0, 0, -1]
                         - 0.5 * mass_detrainment_u_updraft[0, 0, -1] * u_c[0, 0, -1]
                         + mass_entrainment_u_updraft[0, 0, -1] * u[0, 0, -1]
-                        - PRESSURE_GRADIENT_CONSTANT
+                        - cumulus_parameterization_constants.PRESSURE_GRADIENT_CONSTANT
                         * 0.5
                         * (normalized_massflux_updraft + normalized_massflux_updraft[0, 0, -1])
                         * (u_cloud_levels - u_cloud_levels[0, 0, -1])
@@ -705,7 +705,7 @@ def updraft_moist_static_energy_and_momentum_budget(
                         v_c[0, 0, -1] * normalized_massflux_updraft[0, 0, -1]
                         - 0.5 * mass_detrainment_u_updraft[0, 0, -1] * v_c[0, 0, -1]
                         + mass_entrainment_u_updraft[0, 0, -1] * v[0, 0, -1]
-                        - PRESSURE_GRADIENT_CONSTANT
+                        - cumulus_parameterization_constants.PRESSURE_GRADIENT_CONSTANT
                         * 0.5
                         * (normalized_massflux_updraft + normalized_massflux_updraft[0, 0, -1])
                         * (v_cloud_levels - v_cloud_levels[0, 0, -1])

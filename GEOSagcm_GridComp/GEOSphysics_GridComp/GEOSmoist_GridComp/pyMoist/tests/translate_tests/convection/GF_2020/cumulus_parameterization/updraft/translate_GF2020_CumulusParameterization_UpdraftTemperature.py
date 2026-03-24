@@ -12,6 +12,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
     MAXENS2,
     MAXENS3,
     NUMBER_OF_PLUMES,
+    FIRST_GUESS_W,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
@@ -47,7 +48,7 @@ class TestCore:
 
     def __call__(self, constants: dict, cu_param_constants: dict, plume: str, **inputs):
         # initialize constants
-        config = GF2020Config(SINGLE_COLUMN_MODE=False, **constants)
+        config = GF2020Config(**constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
         plume_dependent_constants = set_constants(
@@ -94,7 +95,7 @@ class TestCore:
 
         # call test code
         if plume_dependent_constants.ENABLE_PLUME == 1:
-            if cumulus_parameterization_config.FIRST_GUESS_W == 0:
+            if FIRST_GUESS_W == 0:
                 code(
                     error_code=state.output.error_code,
                     updraft_column_temperature_forced=locals.updraft_column_temperature_forced,

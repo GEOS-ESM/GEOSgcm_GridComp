@@ -5,7 +5,6 @@ from ndsl.dsl.typing import Float, Int
 
 @dataclass
 class GF2020Config:
-    SINGLE_COLUMN_MODE: bool
     DT_MOIST: Float
     LHYDROSTATIC: bool
     STOCHASTIC_CNV: bool

@@ -678,7 +678,7 @@ def modify_environment_profiles(
         AVERAGE_LAYER_DEPTH (Float)
         plume (Int)
     """
-    from __externals__ import BOUNDARY_CONDITION_METHOD, COUPLE_MICROPHYSICS, k_end
+    from __externals__ import BOUNDARY_CONDITION_METHOD, k_end
 
     with computation(PARALLEL), interval(...):
         # make garbage field so the get_cloud_boundary_conditions call does not break
@@ -701,7 +701,7 @@ def modify_environment_profiles(
 
             # do not feed del_t_cloud_ensemble with del_cloud_liquid_cloud_ensemble if the
             # detrainment of liquid water will be used as a source for cloud microphysics
-            if COUPLE_MICROPHYSICS == True:
+            if cumulus_parameterization_constants.COUPLE_MICROPHYSICS == True:
                 del_t_cloud_ensemble = (1.0 / cumulus_parameterization_constants.CP) * (
                     del_moist_static_energy_cloud_ensemble
                     - cumulus_parameterization_constants.XLV * del_vapor_cloud_ensemble
