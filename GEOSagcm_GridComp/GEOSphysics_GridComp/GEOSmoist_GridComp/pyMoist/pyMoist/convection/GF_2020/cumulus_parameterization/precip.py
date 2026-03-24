@@ -393,7 +393,7 @@ def cloud_dissapation(
         dcloudicedt (FloatField_Plume)
         plume (Int)
     """
-    from __externals__ import DTIME, USE_CLOUD_DISSIPATION
+    from __externals__ import DT_MOIST, USE_CLOUD_DISSIPATION
 
     with computation(FORWARD), interval(0, 1):
         # setup internal constants
@@ -409,7 +409,7 @@ def cloud_dissapation(
         ):
             # cloud liq/ice remained in the convection plume
             precip_dissipation = max(
-                0.0, cloud_liquid_after_rain_forced[0, 0, 0][plume] - dcloudicedt[0, 0, 0][plume] * DTIME
+                0.0, cloud_liquid_after_rain_forced[0, 0, 0][plume] - dcloudicedt[0, 0, 0][plume] * DT_MOIST
             )
 
             # get relative humidity
@@ -435,5 +435,5 @@ def cloud_dissapation(
             cloud_liquid_after_rain_forced[0, 0, 0][plume] = max(
                 0.0,
                 cloud_liquid_after_rain_forced[0, 0, 0][plume]
-                - out_precip_dissipation * USE_CLOUD_DISSIPATION * fractional_area * DTIME,
+                - out_precip_dissipation * USE_CLOUD_DISSIPATION * fractional_area * DT_MOIST,
             )

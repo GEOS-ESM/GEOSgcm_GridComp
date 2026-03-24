@@ -469,7 +469,7 @@ def vertical_transport_part_1(
     """
     from __externals__ import (
         ALP1,
-        DTIME,
+        DT_MOIST,
         NUMBER_OF_TRACERS,
         USE_FLUX_FORM,
         USE_TRACER_EVAPORATION,
@@ -501,7 +501,7 @@ def vertical_transport_part_1(
             and K <= cloud_top_level[0, 0][plume]
         ):
             dp = 100.0 * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])
-            beta = DTIME * constants.MAPL_GRAV / dp
+            beta = DT_MOIST * constants.MAPL_GRAV / dp
             aa = ALP1 * beta * fm
             bb = 1.0 + ALP1 * beta * (fp - fm[0, 0, 1])
             cc = -ALP1 * beta * fp[0, 0, 1]
@@ -596,13 +596,13 @@ def update_after_tridiag(
     tracer: Int,
     plume: Int,
 ):
-    from __externals__ import DTIME
+    from __externals__ import DT_MOIST
 
     with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] == 0 and K <= cloud_top_level[0, 0][plume]:
             chemistry_tracers_output[0, 0, 0][plume, tracer] = (
                 dd[0, 0, 0][tracer] - chemistry_tracers[0, 0, 0][tracer]
-            ) / DTIME
+            ) / DT_MOIST
 
 
 def vertical_transport_part_2(
@@ -765,7 +765,7 @@ class AtmosphericComposition(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "ALP1": cumulus_parameterization_config.ALP1,
-                "DTIME": cumulus_parameterization_config.DTIME,
+                "DT_MOIST": config.DT_MOIST,
                 "NUMBER_OF_TRACERS": config.NUMBER_OF_TRACERS,
                 "USE_TRACER_EVAPORATION": cumulus_parameterization_config.USE_TRACER_EVAPORATION,
                 "USE_TRACER_SCAVENGE": cumulus_parameterization_config.USE_TRACER_SCAVENGE,
@@ -782,7 +782,7 @@ class AtmosphericComposition(NDSLRuntime):
         self._update_after_tridiag = stencil_factory.from_dims_halo(
             func=update_after_tridiag,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"DTIME": cumulus_parameterization_config.DTIME},
+            externals={"DT_MOIST": config.DT_MOIST},
         )
 
         self._vertical_transport_part_2 = stencil_factory.from_dims_halo(

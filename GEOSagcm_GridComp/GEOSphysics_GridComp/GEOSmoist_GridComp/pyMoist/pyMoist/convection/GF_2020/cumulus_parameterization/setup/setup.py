@@ -370,8 +370,8 @@ def calculate_arbitrary_numerical_parameter(
         arbitrary_numerical_parameter = 0.1
         # approx xmb * timescale
         # other options (from fortran):
-        # 0.1 * dtime*xmb_nm1(i)
-        # 100.*(p_cup(i,kbcon(i))-p_cup(i,kbcon(i)+1))/(g*dtime)
+        # 0.1 * dt_moist*xmb_nm1(i)
+        # 100.*(p_cup(i,kbcon(i))-p_cup(i,kbcon(i)+1))/(g*dt_moist)
         # 0.1*mbdt(i)
 
 

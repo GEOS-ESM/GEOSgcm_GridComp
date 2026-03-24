@@ -12,6 +12,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
     FloatFieldIJ_Plume,
     IntFieldIJ_Plume,
 )
+from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
     GF2020PlumeDependentConstants,
 )
@@ -123,7 +124,7 @@ def ensemble_output_and_feedback(
     """
     from __externals__ import (
         APPLY_SUBSIDENCE_MICROPHYSICS,
-        DTIME,
+        DT_MOIST,
         MAX_TEMP_VAPOR_TENDENCY,
         USE_SMOOTH_TENDENCIES,
         k_end,
@@ -215,7 +216,7 @@ def ensemble_output_and_feedback(
                     p_cloud_levels_forced.at(K=updraft_lfc_level[0, 0][plume], ddim=[plume])
                     - p_cloud_levels_forced.at(K=updraft_lfc_level[0, 0][plume] + 1, ddim=[plume])
                 )
-                / (constants.MAPL_GRAV * DTIME)
+                / (constants.MAPL_GRAV * DT_MOIST)
             )
             cloud_base_mass_flux_modified[0, 0][plume] = min(
                 cloud_base_mass_flux_modified[0, 0][plume], max_mass_flux
@@ -536,7 +537,7 @@ def output_workfunctions_and_precip_concentrations(
         RADIATIVE_EFFECTIVE_RADIUS (RADIATIVE_EFFECTIVE_RADIUS_Table_Type)
         plume (Int)
     """
-    from __externals__ import DTIME, FRAC_MODIS
+    from __externals__ import DT_MOIST, FRAC_MODIS
 
     with computation(PARALLEL), interval(...):
         n_water_friendly_aerosols = 99.0e7  # in the future set this as NCPL
@@ -555,8 +556,8 @@ def output_workfunctions_and_precip_concentrations(
             fraction = liquid_fraction(
                 updraft_column_temperature_forced, convection_fraction, surface_type, FRAC_MODIS
             )
-            cloud_liquid = DTIME * dcloudicedt[0, 0, 0][plume] * air_density * fraction
-            cloud_ice = DTIME * dcloudicedt[0, 0, 0][plume] * air_density * (1.0 - fraction)
+            cloud_liquid = DT_MOIST * dcloudicedt[0, 0, 0][plume] * air_density * fraction
+            cloud_ice = DT_MOIST * dcloudicedt[0, 0, 0][plume] * air_density * (1.0 - fraction)
 
             dnicedt[0, 0, 0][plume] = max(
                 0.0,
@@ -568,8 +569,8 @@ def output_workfunctions_and_precip_concentrations(
             )
 
             # convert to tendencies
-            dnicedt[0, 0, 0][plume] = dnicedt[0, 0, 0][plume] * (1 / DTIME)  # unit [1/s]
-            dnliquiddt[0, 0, 0][plume] = dnliquiddt[0, 0, 0][plume] * (1 / DTIME)  # unit [1/s]
+            dnicedt[0, 0, 0][plume] = dnicedt[0, 0, 0][plume] * (1 / DT_MOIST)  # unit [1/s]
+            dnliquiddt[0, 0, 0][plume] = dnliquiddt[0, 0, 0][plume] * (1 / DT_MOIST)  # unit [1/s]
 
 
 class OutputWorkfunctionsAndPrecipConcentrations(NDSLRuntime):
@@ -581,6 +582,7 @@ class OutputWorkfunctionsAndPrecipConcentrations(NDSLRuntime):
         self,
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
+        config: GF2020Config,
         cumulus_parameterization_config: GF2020CumulusParameterizationConfig,
     ):
         # init NDSLRuntime
@@ -606,7 +608,7 @@ class OutputWorkfunctionsAndPrecipConcentrations(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "FRAC_MODIS": cumulus_parameterization_config.FRAC_MODIS,
-                "DTIME": cumulus_parameterization_config.DTIME,
+                "DT_MOIST": config.DT_MOIST,
             },
         )
 

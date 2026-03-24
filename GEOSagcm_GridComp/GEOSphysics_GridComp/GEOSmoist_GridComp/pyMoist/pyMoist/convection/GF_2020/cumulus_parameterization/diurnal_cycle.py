@@ -50,7 +50,7 @@ def set_time_scales(
         TAU_CAPE_REMOVAL (Float)
         plume (Int)
     """
-    from __externals__ import DTIME, SGS_W_TIMESCALE
+    from __externals__ import DT_MOIST, SGS_W_TIMESCALE
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
@@ -69,7 +69,7 @@ def set_time_scales(
                     + 10800.0 * (1.0 - sigma(grid_length))
                     + (dz / vertical_velocity_2d)
                 )
-                cape_removal_time_scale = max(DTIME, cape_removal_time_scale)
+                cape_removal_time_scale = max(DT_MOIST, cape_removal_time_scale)
 
             if ocean_fraction > 0.99:  # over water
                 umean = 2.0 + sqrt(
@@ -124,7 +124,7 @@ def cloud_workfunction_1_pbl(
         cloud_work_function_1_fa (FloatFieldIJ)
         plume (Int)
     """
-    from __externals__ import DTIME
+    from __externals__ import DT_MOIST
 
     with computation(FORWARD), interval(0, 1):
         cloud_work_function_1_pbl = 0.0
@@ -135,7 +135,7 @@ def cloud_workfunction_1_pbl(
             dz = (
                 geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
             ) * constants.MAPL_GRAV
-            da = dz * (t_new * (1.0 + 0.608 * vapor_forced) - t_old * (1.0 + 0.608 * vapor_old)) / DTIME
+            da = dz * (t_new * (1.0 + 0.608 * vapor_forced) - t_old * (1.0 + 0.608 * vapor_old)) / DT_MOIST
 
             cloud_work_function_1_pbl = cloud_work_function_1_pbl + da  # Units : J K / (kg seg)
 
@@ -184,7 +184,7 @@ class DiurnalCycle(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "SGS_W_TIMESCALE": cumulus_parameterization_config.SGS_W_TIMESCALE,
-                "DTIME": cumulus_parameterization_config.DTIME,
+                "DT_MOIST": config.DT_MOIST,
             },
         )
 
@@ -193,7 +193,7 @@ class DiurnalCycle(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "SGS_W_TIMESCALE": cumulus_parameterization_config.SGS_W_TIMESCALE,
-                "DTIME": cumulus_parameterization_config.DTIME,
+                "DT_MOIST": config.DT_MOIST,
             },
         )
 

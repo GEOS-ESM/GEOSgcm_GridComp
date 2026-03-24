@@ -55,7 +55,6 @@ class GF2020CumulusParameterizationConfig:
     CLOSURE_CHOICE_DEEP: Int
     # plume independent
     PLUME_ORDER: Float
-    DTIME: Float
     ZERO_DIFF: Int
     MOIST_TRIGGER: Int
     LAMBDA_DEEP: Float

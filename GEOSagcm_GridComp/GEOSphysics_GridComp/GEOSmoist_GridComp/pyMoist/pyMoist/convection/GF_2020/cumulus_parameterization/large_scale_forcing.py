@@ -79,7 +79,7 @@ def ensemble_forcing(
         CLOSURE_CHOICE (Int)
         plume (Int)
     """
-    from __externals__ import DIURNAL_CYCLE, DTIME, ENSEMBLE_MEMBERS, ZERO_DIFF
+    from __externals__ import DIURNAL_CYCLE, DT_MOIST, ENSEMBLE_MEMBERS, ZERO_DIFF
 
     with computation(FORWARD), interval(0, 1):
         ensemble_adjustment: FloatFieldIJ = 1.0
@@ -90,10 +90,10 @@ def ensemble_forcing(
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
-            workfunction_diff_1: FloatFieldIJ = (cloud_workfunction_1 - cloud_workfunction_0) / DTIME
+            workfunction_diff_1: FloatFieldIJ = (cloud_workfunction_1 - cloud_workfunction_0) / DT_MOIST
 
             internal_mass_flux_ensemble[0, 0][0] = max(
-                0.0, (cloud_workfunction_1 - cloud_workfunction_0) / DTIME
+                0.0, (cloud_workfunction_1 - cloud_workfunction_0) / DT_MOIST
             )
 
             internal_mass_flux_ensemble[0, 0][1] = internal_mass_flux_ensemble[0, 0][0]
@@ -468,7 +468,7 @@ class LargeScaleForcing(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "DIURNAL_CYCLE": cumulus_parameterization_config.DIURNAL_CYCLE,
-                "DTIME": cumulus_parameterization_config.DTIME,
+                "DT_MOIST": config.DT_MOIST,
                 "ZERO_DIFF": cumulus_parameterization_config.ZERO_DIFF,
                 "ENSEMBLE_MEMBERS": cumulus_parameterization_constants.MAXENS1
                 * cumulus_parameterization_constants.MAXENS2
@@ -481,7 +481,7 @@ class LargeScaleForcing(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "DIURNAL_CYCLE": cumulus_parameterization_config.DIURNAL_CYCLE,
-                "DTIME": cumulus_parameterization_config.DTIME,
+                "DT_MOIST": config.DT_MOIST,
                 # "ENSEMBLE_MEMBERS": cumulus_parameterization_config.ENSEMBLE_MEMBERS,
             },
         )

@@ -6,7 +6,7 @@ from MAPL_PythonBridge import UserCode, get_MAPLPy
 from MAPL_PythonBridge.types import CVoidPointer
 from mpi4py import MPI
 from ndsl.constants import I_DIM, J_DIM, K_INTERFACE_DIM
-from ndsl.dsl.typing import Float, Int
+from ndsl.utils import safe_assign_array
 
 from pyMoist.fortran import get_NDSL_physics
 from pyMoist.fortran.build_helper import StencilBackendCompilerOverride
@@ -16,6 +16,8 @@ from pyMoist.fortran.profiler import TimedCUDAProfiler
 from pyMoist.convection.GF_2020 import GF2020, GF2020Config, GF2020State, GF2020CumulusParameterizationConfig
 from pyMoist.saturation_tables import SaturationVaporPressureTable
 from pyMoist.constants import NUMBER_OF_TRACERS
+from pyMoist.fortran.moist_workarounds import MOIST_WORKAROUNDS
+from pyMoist.convection_tracers import ConvectionTracers
 
 def _default_or_get_from_namelist(default, name_in_namelist: str, namelist: dict[str, Any]) -> Any:
     return default if name_in_namelist not in namelist else namelist[name_in_namelist]
@@ -237,6 +239,11 @@ class GF2020Interface(UserCode):
             ndsl_stack.interface_type,
         )
 
+        self._managed_convection_tracers = MAPLManagedState(
+            ConvectionTracers.empty(ndsl_stack.quantity_factory),
+            ndsl_stack.interface_type,
+        )
+
     def run(
         self,
         mapl_state: CVoidPointer,
@@ -256,8 +263,6 @@ class GF2020Interface(UserCode):
         import_repository = MAPLMemoryRepository(import_state, ndsl_stack.quantity_factory)
         internal_repository = MAPLMemoryRepository(internal_state, ndsl_stack.quantity_factory)
         export_repository = MAPLMemoryRepository(export_state, ndsl_stack.quantity_factory)
-
-        self._managed_state.register("mixing_ratio.vapor", "Q", internal_repository)
 
         latitude
         longitude
@@ -367,9 +372,26 @@ class GF2020Interface(UserCode):
         with TimedCUDAProfiler("GF 2020 Convection", {}):
             with TimedCUDAProfiler("GF 2020 Convection - State copy", {}):
                 self._managed_state.fortran_to_ndsl()
+                safe_assign_array(
+                    self._managed_convection_tracers.ndsl_state.tracers.data[:],
+                    MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
+                )
+                safe_assign_array(
+                    self._managed_convection_tracers.ndsl_state.fscav.data[:],
+                    MOIST_WORKAROUNDS.CNV_Tracers().fscav[:],
+                )
+                safe_assign_array(
+                    self._managed_convection_tracers.ndsl_state.vect_hcts.data[:],
+                    MOIST_WORKAROUNDS.CNV_Tracers().Vect_Hcts[:],
+                )
+                safe_assign_array(
+                    self._managed_convection_tracers.ndsl_state.kc_scal.data[:],
+                    MOIST_WORKAROUNDS.CNV_Tracers().use_gcc_washout[:],
+                )
+
 
             with TimedCUDAProfiler("GF 2020 Convection Numerics", {}):
-                self._gf_2020(self._managed_state.ndsl_state, convection_tracers)
+                self._gf_2020(self._managed_state.ndsl_state, self._managed_convection_tracers)
 
             with TimedCUDAProfiler("GF 2020 Convection - State copy-back", {}):
                 self._managed_state.ndsl_to_fortran()

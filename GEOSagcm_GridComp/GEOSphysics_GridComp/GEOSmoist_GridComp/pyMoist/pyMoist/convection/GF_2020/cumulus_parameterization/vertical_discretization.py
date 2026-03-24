@@ -114,7 +114,7 @@ def convective_transport_of_momentum(
         ddv (FloatField)
         plume (Int)
     """
-    from __externals__ import ALP1, DTIME, VERTICAL_DISCRETIZATION_OPTION
+    from __externals__ import ALP1, DT_MOIST, VERTICAL_DISCRETIZATION_OPTION
 
     with computation(FORWARD), interval(0, 1):
         # prepare bounds for subsequent computation
@@ -175,7 +175,7 @@ def convective_transport_of_momentum(
         if error_code[0, 0][plume] == 0 and VERTICAL_DISCRETIZATION_OPTION == 1 and ALP1 > 0.0:
             dp = 100.0 * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])
 
-            beta1 = DTIME * constants.MAPL_GRAV / dp
+            beta1 = DT_MOIST * constants.MAPL_GRAV / dp
             aa = ALP1 * beta1 * fm
             bb = 1.0 + ALP1 * beta1 * (fp - fm[0, 0, 1])
             cc = -ALP1 * beta1 * fp[0, 0, 1]
@@ -239,11 +239,11 @@ def update_after_tridiag(
         wind (FloatField)
         plume (Int)
     """
-    from __externals__ import DTIME
+    from __externals__ import DT_MOIST
 
     with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] == 0 and K <= cloud_top_level[0, 0][plume]:
-            out_field = (in_field - wind) / DTIME
+            out_field = (in_field - wind) / DT_MOIST
 
 
 def convective_transport_of_mse(
@@ -640,7 +640,7 @@ class VerticalDiscretization(NDSLRuntime):
             externals={
                 "VERTICAL_DISCRETIZATION_OPTION": cumulus_parameterization_config.VERTICAL_DISCRETIZATION_OPTION,
                 "ALP1": cumulus_parameterization_config.ALP1,
-                "DTIME": cumulus_parameterization_config.DTIME,
+                "DT_MOIST": config.DT_MOIST,
             },
         )
 
@@ -652,7 +652,7 @@ class VerticalDiscretization(NDSLRuntime):
         self._update_after_tridiag = stencil_factory.from_dims_halo(
             func=update_after_tridiag,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"DTIME": cumulus_parameterization_config.DTIME},
+            externals={"DT_MOIST": config.DT_MOIST},
         )
 
         self._convective_transport_of_mse_and_liquid_water = stencil_factory.from_dims_halo(

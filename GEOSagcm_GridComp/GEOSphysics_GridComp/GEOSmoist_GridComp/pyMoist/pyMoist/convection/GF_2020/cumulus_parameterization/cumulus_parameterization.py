@@ -499,7 +499,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
             func=ensemble_output_and_feedback,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
-                "DTIME": cumulus_parameterization_config.DTIME,
+                "DT_MOIST": config.DT_MOIST,
                 "MAX_TEMP_VAPOR_TENDENCY": cumulus_parameterization_config.MAX_TEMP_VAPOR_TENDENCY,
                 "APPLY_SUBSIDENCE_MICROPHYSICS": config.APPLY_SUBSIDENCE_MICROPHYSICS,
                 "USE_SMOOTH_TENDENCIES": cumulus_parameterization_config.USE_SMOOTH_TENDENCIES,
@@ -521,7 +521,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "USE_CLOUD_DISSIPATION": cumulus_parameterization_config.USE_CLOUD_DISSIPATION,
-                "DTIME": cumulus_parameterization_config.DTIME,
+                "DT_MOIST": config.DT_MOIST,
             },
         )
 
@@ -552,6 +552,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
         self._output_workfunctions_and_precip_concentrations = OutputWorkfunctionsAndPrecipConcentrations(
             stencil_factory=stencil_factory,
             quantity_factory=quantity_factory,
+            config=config,
             cumulus_parameterization_config=cumulus_parameterization_config,
         )
 
