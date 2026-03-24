@@ -586,20 +586,23 @@ contains
       integer :: status, nWeights, nLocal_weights,type,dumi,nx,ny,xi,yi,catid_temp
       real    :: dumr,area_temp
       integer :: fillvalue=-9999
-      integer, allocatable :: global_id(:)
+      integer :: unit,ii,dst,np,kk,nn,np_lnd,tile_id
+      integer :: im(2),jm(2)      
+      integer, allocatable :: global_id(:),type_tile(:),xi_tile(:),yi_tile(:),catid_tile(:)
       logical, allocatable :: mask(:)
       integer, allocatable :: srcIndices(:), positions(:), factorIndexList(:,:),map_tile(:,:)
       real,    allocatable :: weights(:), global_frac(:), global_area(:)
       integer, allocatable :: local_src(:), local_dst(:), global_src(:), global_dst(:)
-      real,    allocatable :: areacat_glob(:)
-      integer :: unit,ii,dst,np,kk,nn
-      integer, pointer :: pfaf_index(:), local_id(:)
-      real   , pointer :: tilearea(:),frac_tot(:),fscale(:),area_patch(:)
-      integer, pointer :: catid_patch(:),tid_patch(:)
-      type(Netcdf4_Fileformatter) :: formatter
-      type(Filemetadata)          :: meta
-      character(len=MAPL_TileNameLength), pointer :: GNAMES(:)
+      real,    allocatable :: areacat_glob(:),area_tile(:)
+      integer, pointer     :: pfaf_index(:), local_id(:)
+      real   , pointer     :: tilearea(:),frac_tot(:),fscale(:),area_patch(:)
+      integer, pointer     :: catid_patch(:),tid_patch(:)
+      integer,           allocatable :: iTable(:,:)
+      real(kind=REAL64), allocatable :: rTable(:,:)     
+      type(Netcdf4_Fileformatter)    :: formatter
+      type(Filemetadata)             :: meta
       character(len=ESMF_MAXSTR)     :: tile_pfaf_file, tile_file
+      character(len=MAPL_TileNameLength), pointer :: GNAMES(:)
 
       ! create source for orignal tile space
       route%field_src = ESMF_FieldCreate(grid=tilegrid, typekind=ESMF_TYPEKIND_R4, _RC)
@@ -613,53 +616,54 @@ contains
       call ESMFL_Fcollect(tilegrid, global_id, local_id, _RC)
 
       if (index(GNAMES(1), 'EASEv') /=0) then
-         call MAPL_GetResource (MAPL, tile_pfaf_file, label = 'TILE2PFAF_FILE:',  default = '../input/route_tile.data', RC=STATUS ) 
-         call MAPL_GetResource (MAPL, tile_file,      label = 'TILING_FILE:',     default = '../input/tile.data',       RC=STATUS )          
+         call MAPL_GetResource (MAPL, tile_pfaf_file, label = 'TILE2PFAF_FILE:',  default = '../input/route_tile.nc4', RC=STATUS ) 
+         call MAPL_GetResource (MAPL, tile_file,      label = 'TILINGNC4_FILE:',     default = '../input/tile.nc4',       RC=STATUS )          
          if (MAPL_AM_I_ROOT()) then
-            open (15,file = trim(tile_file) ,form ='formatted', action ='read', status ='old')
-            read(15,*)np
-            do ii=1,2
-               read(15,*)
-            enddo
-            read(15,*)nx
-            read(15,*)ny
+            call MAPL_ReadTilingNC4( trim(tile_file), im=im, jm=jm, n_tiles=np, iTable=iTable )
+            allocate(type_tile(np),xi_tile(np),yi_tile(np))
+            nx=im(1);ny=jm(1)
             allocate(map_tile(nx,ny),source=fillvalue)
+            type_tile = iTable(:,0)
+            xi_tile = iTable(:,2)
+            yi_tile = iTable(:,3)
             nn=0
             do ii=1,np
-               read(15,*)type,dumi,dumr,dumr,xi,yi
-               if(type==100)then
+               if(type_tile(ii)==100)then
                  nn=nn+1
-                 map_tile(xi+1,yi+1)=nn
+                 map_tile(xi_tile(ii)+1,yi_tile(ii)+1)=nn
                endif
-            enddo
-            close(15)
-            open (15,file = trim(tile_pfaf_file) ,form ='formatted', action ='read', status ='old')
-            read(15,*) np
+            enddo 
+            np_lnd=nn  
+            deallocate(type_tile,xi_tile,yi_tile)         
+            call MAPL_ReadTilingNC4( trim(tile_pfaf_file), n_tiles=np, iTable=iTable, rTable=rTable)
+            allocate(type_tile(np),xi_tile(np),yi_tile(np),catid_tile(np),area_tile(np))
             allocate(area_patch(np),catid_patch(np),tid_patch(np))
-            do ii=1,7
-               read(15,*)
-            enddo
+            type_tile = iTable(:,0)
+            xi_tile = iTable(:,2)
+            yi_tile = iTable(:,3)   
+            catid_tile = iTable(:,4) 
+            area_tile = real(rTable(:,3))       
             kk=0
             do ii=1,np
-               read(15,*)type,area_temp,dumr,dumr,xi,yi,dumr,dumi,catid_temp
-               if(type==100)then
-                  if(1<=map_tile(xi+1,ny-yi).and.map_tile(xi+1,ny-yi)<=nn)then
+               if(type_tile(ii)==100)then
+                  tile_id=map_tile(xi_tile(ii)+1,ny-yi_tile(ii))
+                  if(1<=tile_id.and.tile_id<=np_lnd)then
                     kk=kk+1
-                    tid_patch(kk)=map_tile(xi+1,ny-yi)
-                    area_patch(kk)=area_temp
-                    catid_patch(kk)=catid_temp
+                    tid_patch(kk)=tile_id
+                    area_patch(kk)=area_tile(ii)
+                    catid_patch(kk)=catid_tile(ii)
                   endif
                endif
             enddo 
             nWeights=kk
-            close(15)
+            deallocate(type_tile,xi_tile,yi_tile,catid_tile,area_tile)
          endif
          call MAPL_CommsBcast(layout, nWeights, 1, MAPL_Root, status)
          allocate(global_src(nWeights), global_dst(nWeights), global_area(nWeights), global_frac(nWeights))
          if (MAPL_AM_I_ROOT()) then
             global_src=tid_patch(1:nWeights)
             global_dst=catid_patch(1:nWeights)
-            global_area=area_patch(1:nWeights)*MAPL_RADIUS**2
+            global_area=area_patch(1:nWeights)*MAPL_RADIUS**2                  
             deallocate(map_tile,area_patch,catid_patch,tid_patch)
          endif
          call MAPL_CommsBcast(layout, global_src, nWeights, MAPL_Root, status)
