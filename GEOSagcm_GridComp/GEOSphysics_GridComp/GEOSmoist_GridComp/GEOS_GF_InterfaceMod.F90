@@ -627,29 +627,33 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          ! Compute subgrid vertical velocities
          call compute_sgs_vvel(IM,JM,LM,ZLE0,TMP3D,BYNCY, &
                                SGS_VVEL_DP,SGS_VVEL_MD,SGS_VVEL_SH)
-         !- call GF2020 interface routine
-         ! PLE and PL are passed in Pa
-         call GF2020_Interface(   IM,JM,LM,LONS,LATS,GF_DT                       &
-                                 ,PLE, PL, ZLE0, ZL0, PK, MASS, KH                  &
-                                 ,T, TH, Q, U, V, TMP3D, OMEGA, BYNCY, (QLCN+QLLS), (QICN+QILS) &
-                                 ,NACTL, CNPCPRATE &
-                                 ,CNV_MF0, CNV_PRC3, MFD_DC, CNV_DQCDT, ENTLAM      &
-                                 ,UMF_DC, CNV_UPDF, CNV_CVW, CNV_QC, (CLCN+CLLS)    &
-                                 ,QV_DYN_IN,PLE_DYN_IN,U_DYN_IN,V_DYN_IN,T_DYN_IN   &
-                                 ,RADSW   ,RADLW  ,DQDT_BL  ,DTDT_BL                &
-                                 ,FRLAND, TMP2D, T2M, Q2M                           &
-                                 ,TA ,QA ,SH ,EVAP ,PHIS                            &
-                                 ,KPBL ,CNV_FRC, SRF_TYPE                           &
-                                 ,SEEDCNV, SIGMA_DEEP, SIGMA_MID                    &
-                                 ,DQVDT_DC,DTDT_DC,DUDT_DC,DVDT_DC                  &
-                                 ,CNV_TOPP_DP,CNV_TOPP_MD,CNV_TOPP_SH               &
-                                 ,MUPDP,MUPSH,MUPMD,MDNDP                           &
-                                 ,MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD,WQT_DC           &
-                                 ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_DP,TAU_MD &
-                                 ,DTDTDYN,DQVDTDYN                                  &
-                                 ,REVSU, ENTR_DP, ENTR_MD, ENTR_SH,  PRFIL    &
-                                 , SGS_VVEL_DP, SGS_VVEL_MD, SGS_VVEL_SH            &
-                                 ,TPWI, TPWI_star, LFR_GF, CNV_TR)
+         !- call GF2020 interface routine: PLE and PL are passed in Pa
+         call GF2020_Interface( &
+              !--- Grid and Timing
+              IM, JM, LM, LONS, LATS, GF_DT, &
+              !--- 3D Host Environmental State
+              PLE, PL, ZLE0, ZL0, PK, MASS, KH, &
+              T, TH, Q, U, V, TMP3D, OMEGA, BYNCY, (QLCN+QLLS), (QICN+QILS), (CLCN+CLLS), NACTL, &
+              !--- 3D Forcings (Dynamics, Advection, Radiation, PBL)
+              QV_DYN_IN, PLE_DYN_IN, U_DYN_IN, V_DYN_IN, T_DYN_IN, &
+              RADSW, RADLW, DQDT_BL, DTDT_BL, DTDTDYN, DQVDTDYN, &
+              !--- 2D Surface and Environmental Inputs
+              FRLAND, TMP2D, T2M, Q2M, TA, QA, SH, EVAP, PHIS, &
+              KPBL, CNV_FRC, SRF_TYPE, SEEDCNV, TPWI, TPWI_star, &
+              !--- 3D Tracers and Sub-grid Velocity (InOut)
+              CNV_TR, SGS_VVEL_DP, SGS_VVEL_MD, SGS_VVEL_SH, &
+              !--- Output Tendencies
+              DQVDT_DC, DTDT_DC, DUDT_DC, DVDT_DC, &
+              !--- 2D Output Diagnostics
+              CNPCPRATE, LFR_GF, SIGMA_DEEP, SIGMA_MID, &
+              CNV_TOPP_DP, CNV_TOPP_MD, CNV_TOPP_SH, &
+              MFDP, MFSH, MFMD, ERRDP, ERRSH, ERRMD, &
+              AA0, AA1, AA2, AA3, AA1_BL, AA1_CIN, TAU_BL, TAU_DP, TAU_MD, &
+              !--- 3D Output Diagnostics and Profiles
+              CNV_MF0, CNV_PRC3, MFD_DC, CNV_DQCDT, ENTLAM, &
+              UMF_DC, CNV_UPDF, CNV_CVW, CNV_QC, WQT_DC, &
+              REVSU, PRFIL, ENTR_DP, ENTR_MD, ENTR_SH, &
+              MUPDP, MUPSH, MUPMD, MDNDP)
     ELSE
          !- call GF/GEOS5 interface routine
          ! PLE and PL are passed in Pa
