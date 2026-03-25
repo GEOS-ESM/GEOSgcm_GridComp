@@ -155,13 +155,6 @@ module GEOS_DataAtmGridCompMod
       VLOCATION = MAPL_VLocationNone, __RC__)
 
     call MAPL_AddImportSpec(GC,              &
-      SHORT_NAME = 'RUNOFF',                 &
-      LONG_NAME = 'overland_runoff_including_throughflow', &
-      UNITS = 'kg m-2 s-1',                  &
-      DIMS = MAPL_DimsHorzOnly,              &
-      VLOCATION = MAPL_VLocationNone, __RC__)
-
-    call MAPL_AddImportSpec(GC,              &
       SHORT_NAME = 'PCU',                    &
       LONG_NAME = 'convective_rainfall',     &
       UNITS = 'kg m-2 s-1',                  &
@@ -462,7 +455,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real, pointer, dimension(:,:) :: QA       ! => null()
   real, pointer, dimension(:,:) :: UA       ! => null()
   real, pointer, dimension(:,:) :: VA       ! => null()
-  real, pointer, dimension(:,:) :: RUNOFF   ! => null()
   real, pointer, dimension(:,:) :: PCU      ! => null()
   real, pointer, dimension(:,:) :: PLS      ! => null()
   real, pointer, dimension(:,:) :: SNO      ! => null()
@@ -484,6 +476,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    logical :: firsttime = .false.
 
    real :: TAU_TS
+   real :: REF_HEIGHT
    real :: DT
 
    integer :: year, month, day, hr, mn, se
@@ -525,6 +518,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_Get(MAPL, HEARTBEAT = DT, __RC__)
     call MAPL_GetResource ( MAPL, DT, Label="DT:", DEFAULT=DT, __RC__)
     call MAPL_GetResource ( MAPL, TAU_TS, Label="TAU_TS:", DEFAULT=7200.0, __RC__)
+    call MAPL_GetResource ( MAPL, REF_HEIGHT, Label="REFERENCE_HEIGHT:", DEFAULT=10.0, __RC__)
 
 ! Pointers to Imports
 !--------------------
@@ -601,13 +595,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     allocate(Uskin(IM,JM), Vskin(IM,JM), Qskin(IM,JM), swrad(IM,JM), __STAT__)
 
     call MAPL_GetPointer(SurfImport, DZ, 'DZ', __RC__)
-    DZ = 50.0 ! meters
+    DZ = REF_HEIGHT
 
 ! River runoff    
 !   call ReadForcingData(impName='DISCHARGE', frcName='RR', default=0., __RC__)
     call MAPL_GetPointer(SurfImport, DISCHARGE, 'DISCHARGE', __RC__)
-    call MAPL_GetPointer(import, RUNOFF, 'RUNOFF', __RC__)
-    DISCHARGE=RUNOFF
+! runoff is provided directly by Ocean Gc on the tripolar grid
+    DISCHARGE=0.0
 
     !ALT: we should read topo, but for now over ocean this is fine
     call SetVarToZero('PHIS', __RC__)
