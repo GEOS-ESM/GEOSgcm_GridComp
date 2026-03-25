@@ -2491,6 +2491,7 @@ module GEOSmoist_Process_Library
                                   TEn,          &
                                   QVn,          &
                                   QCn,          &
+                                  QSn,          &
                                   0.0,          &
                                   ZL,           &
                                   PL*100.,      &
