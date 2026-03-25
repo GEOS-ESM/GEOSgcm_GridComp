@@ -2561,7 +2561,7 @@ module GEOSmoist_Process_Library
             ! DENAIR inside Bergeron_Partition = PL*100/(MAPL_RGAS*TE) [kg/m3].
             ! NIv passed in as [#/kg_air]; TEFF = NIv*DENAIR*... correctly
             ! gives [#/m3] inside the routine.  Do NOT pre-multiply by density
-            ! here ? that would double-count it.  Nfac is retained only for
+            ! here — that would double-count it.  Nfac is retained only for
             ! any other uses; NIv and NLv are pure mixing ratios [#/kg_air].
             ! If NI is already in [#/kg_air] then no conversion is needed here.
             ! If NI is in [#/m3] divide by DENAIR = PL*100/(MAPL_RGAS*TEn).
@@ -2634,7 +2634,7 @@ module GEOSmoist_Process_Library
       QCn  = QCn * (1.-CLCN)
       QCx  = QCn - (QLLS+QILS)
       if (QCx .lt. 0.0) then  ! net evaporation
-         ! Bergeron is irrelevant during net evaporation ? liquid evaporates first
+         ! Bergeron is irrelevant during net evaporation — liquid evaporates first
          dQLLS = max(QCx        , -QLLS)
          dQILS = max(QCx - dQLLS, -QILS)
       else
@@ -2739,7 +2739,7 @@ module GEOSmoist_Process_Library
          FQI              , &
          CNVFRC, SRF_TYPE , &
          needs_preexisting, &
-         DEP_BERGERON     )   ! FIX #4: new intent(out) ? Bergeron liquid->ice
+         DEP_BERGERON     )   ! FIX #4: new intent(out) — Bergeron liquid->ice
                                !         transfer rate [kg/kg/s], applied by caller
 
       real,    intent(in)    :: DTIME, PL, TE
@@ -2865,7 +2865,7 @@ module GEOSmoist_Process_Library
                DQL          = DQALL - DQI
                DEP_BERGERON = max(DQI - DQALL, 0.0)   ! [kg/kg/s], >= 0
             else
-               ! Subsaturated PDF condensation ? no ice growth via deposition
+               ! Subsaturated PDF condensation — no ice growth via deposition
                DQL = DQALL
                DQI = 0.0
             end if
@@ -2875,7 +2875,7 @@ module GEOSmoist_Process_Library
             ! Liquid evaporates first regardless of DEP sign
             DQL = max(DQALL, -QLLS/DTIME)
             DQI = max(DQALL - DQL, -QILS/DTIME)
-            ! DEP_BERGERON remains 0.0 during net evaporation ?
+            ! DEP_BERGERON remains 0.0 during net evaporation —
             ! WBF does not apply when the cloud is evaporating overall
 
          else   ! DQALL = 0: no net phase change from PDF
