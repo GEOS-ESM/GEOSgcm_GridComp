@@ -52,7 +52,6 @@ USE GEOSmoist_Process_Library, only : CNV_Tracers
 
  REAL,   DIMENSION(maxiens) :: CUM_AVE_LAYER     =(/50.,   30.,   50. /)!= layer depth for average the properties
                                                                         != of source air parcels (mbar)
- REAL    ::  AVE_LAYER         != layer depth for average the properties of source air parcels (mbar)
 
  REAL    ::  TAU_DEEP         = 5400.  != deep      convective timescale
  REAL    ::  TAU_MID          = 3600.  != congestus convective timescale
