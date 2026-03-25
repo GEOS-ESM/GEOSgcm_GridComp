@@ -1,5 +1,6 @@
-import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import K, erfc, exp, float32, float64, log, sin, sqrt
+from ndsl.dsl.gt4py import K, erfc, exp, float32, float64
+from ndsl.dsl.gt4py import function as gtfunction
+from ndsl.dsl.gt4py import log, sqrt
 from ndsl.dsl.typing import Float, FloatField, Int
 
 import pyMoist.constants as constants
@@ -13,39 +14,40 @@ zvir = Float(0.609)  # r_H2O/r_air-1
 ROVCP = constants.MAPL_RGAS / constants.MAPL_CP  # Gas constant over specific heat
 
 
-@gtscript.function
+@gtfunction
 def exnerfn(
     p: Float,
 ) -> Float:
     """
     Function that calculates the Exner function for a given pressure.
 
-    Inputs:
-    p [Float]: Atmospheric pressure [Pa]
+    Arguments:
+        p [Float]: Atmospheric pressure [Pa]
 
     Returns:
-    (p / 100000.0) ** (constants.MAPL_RGAS / constants.MAPL_CP) [Float]:
-    Exner function [unitless]
+        Exner function [unitless]
     """
 
     return (p / 100000.0) ** (constants.MAPL_RGAS / constants.MAPL_CP)
 
 
-@gtscript.function
+@gtfunction
 def slope_bot(
     field: FloatField,
     p0: FloatField,
 ):
     """
     Function that calculates slope at bottom layer of a field.
-    WARNING: This function is for 3D fields, if 4D field use slope_bot_tracers
+    NOTE: This function is for 3D fields, if 4D field use slope_bot_tracers
 
-    Inputs:
-    field (FloatField): Field of interest [N/A]
-    p0 (FloatField): Pressure [Pa]
+    Arguments:
+        field (FloatField): Field of interest [N/A]
+        p0 (FloatField): Pressure [Pa]
 
     Returns:
-    slope (Float): Slope of the field of interest [N/A]
+        slope (Float): Slope of the field of interest [N/A]
+
+    reference Fortran: uwshcu.F90: function slope
     """
     if K == 0:
         value = (field[0, 0, 1] - field) / (p0[0, 0, 1] - p0)
@@ -57,7 +59,7 @@ def slope_bot(
     return slope
 
 
-@gtscript.function
+@gtfunction
 def slope_bot_tracer(
     field: FloatField_NTracers,
     p0: FloatField,
@@ -76,7 +78,7 @@ def slope_bot_tracer(
     return slope
 
 
-@gtscript.function
+@gtfunction
 def slope_mid(
     max_k: Int,
     field: FloatField,
@@ -84,15 +86,15 @@ def slope_mid(
 ):
     """
     Function that calculates slope at mid layers of a field.
-    WARNING: This function is for 3D fields, if 4D field use slope_mid_tracers
+    NOTE: This function is for 3D fields, if 4D field use slope_mid_tracers.
 
-    Inputs:
-    max_k [Int]: Max k level (e.g., 71)
-    field [FloatField]: Field of interest [n/a]
-    p0 [FloatField]: Pressure [Pa]
+    Arguments:
+        max_k [Int]: Max k level (e.g., 71)
+        field [FloatField]: Field of interest [n/a]
+        p0 [FloatField]: Pressure [Pa]
 
     Returns:
-    slope [Float]: Slope of the field of interest [n/a]
+        slope [Float]: Slope of the field of interest [n/a]
     """
     if K > 0 and K < max_k:
         above_value = (field[0, 0, 1] - field) / (p0[0, 0, 1] - p0)
@@ -105,7 +107,7 @@ def slope_mid(
     return slope
 
 
-@gtscript.function
+@gtfunction
 def slope_mid_tracer(
     max_k: Int,
     field: FloatField_NTracers,
@@ -126,7 +128,7 @@ def slope_mid_tracer(
     return slope
 
 
-@gtscript.function
+@gtfunction
 def conden(
     p: Float,
     thl: Float,
@@ -137,21 +139,23 @@ def conden(
     """
     Function that determines if condensation process has occurred.
 
-    Inputs:
-    p [Float]: Pressure [Pa]
-    thl [Float]: Liquid potential temperature [K]
-    qt [Float]: Mixing ratio [kg/kg]
-    ese [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
-    esx [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
+    Arguments:
+        p [Float]: Pressure [Pa]
+        thl [Float]: Liquid potential temperature [K]
+        qt [Float]: Mixing ratio [kg/kg]
+        ese [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
+        esx [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
 
     Returns:
-    th [Float]: Temperature [K]
-    qv [Float]: Water vapor mixing ratio [kg/kg]
-    ql [Float]: Liquid water mixing ratio [kg/kg]
-    qi [Float]: Ice water mixing ratio [kg/kg]
-    rvls [Float]: Saturation specific humidity [kg/kg]
-    id_check (Int): Flag that indicates if condensation occurs
-    (0 for no condensation, 1 for condensation).
+        th [Float]: Temperature [K]
+        qv [Float]: Water vapor mixing ratio [kg/kg]
+        ql [Float]: Liquid water mixing ratio [kg/kg]
+        qi [Float]: Ice water mixing ratio [kg/kg]
+        rvls [Float]: Saturation specific humidity [kg/kg]
+        id_check (Int): Flag that indicates if condensation occurs
+        (0 for no condensation, 1 for condensation).
+
+    reference Fortran: uwshcu.F90: subroutine conden
     """
 
     tc: float64 = float32(thl) * exnerfn(p)
@@ -163,8 +167,8 @@ def conden(
     leff = term1 + term2
     temps: float32 = tc
     ps: float32 = p
-    ps_tmp = ps/100.0
-    qs, _ = saturation_specific_humidity(temps, ps_tmp*100.0, ese, esx)
+    ps_tmp = ps / 100.0
+    qs, _ = saturation_specific_humidity(temps, ps_tmp * 100.0, ese, esx)
     rvls = qs
 
     if qs >= qt:  # no condensation
@@ -181,8 +185,8 @@ def conden(
                 constants.MAPL_CP / leff
                 + constants.EPSILON * leff * rvls / (constants.MAPL_RGAS * temps * temps)
             )
-            ps_tmp = ps/100.0
-            qs, _ = saturation_specific_humidity(temps, ps_tmp*100.0, ese, esx)
+            ps_tmp = ps / 100.0
+            qs, _ = saturation_specific_humidity(temps, ps_tmp * 100.0, ese, esx)
             rvls = qs
             iteration += 1
         qc = max(qt - qs, float64(0.0))
@@ -198,7 +202,7 @@ def conden(
     return float32(th), float32(qv), float32(ql), float32(qi), float32(rvls), id_check
 
 
-@gtscript.function
+@gtfunction
 def compute_alpha(
     del_CIN: Float,
     ke: Float,
@@ -207,12 +211,14 @@ def compute_alpha(
     Subroutine to compute proportionality factor for
     implicit CIN calculation.
 
-    Inputs:
-    del_CIN [Float]: Difference between initial and final CIN calculations [J/kg]
-    ke [Float]: Evaporative efficiency [?]
+    Arguments:
+        del_CIN [Float]: Difference between initial and final CIN calculations [J/kg]
+        ke [Float]: Evaporative efficiency [?]
 
     Returns:
-    compute_alpha [Float]: Proportionality factor for CIN calculation [unitless]
+        compute_alpha [Float]: Proportionality factor for CIN calculation [unitless]
+
+    reference Fortran: uwshcu.F90: function compute_alpha
     """
 
     x0: float64 = float64(0.0)
@@ -231,7 +237,7 @@ def compute_alpha(
     return compute_alpha
 
 
-@gtscript.function
+@gtfunction
 def compute_mumin2(
     mulcl: Float,
     rmaxfrax: Float,
@@ -241,14 +247,15 @@ def compute_mumin2(
     Subroutine to compute critical 'mu' (normalized CIN) such
     that updraft fraction at the LCL is equal to 'rmaxfrac'.
 
-    Inputs:
-    mulcl [Float]: Some var at the LCL [?]
-    rmaxfrac [Float]: Maximum core updraft fraction [unitless]
-    mulow [Float]: Some var at the bottom interface [?]
+    Arguments:
+        mulcl [Float]: Some var at the LCL [?]
+        rmaxfrac [Float]: Maximum core updraft fraction [unitless]
+        mulow [Float]: Some var at the bottom interface [?]
 
     Returns:
-    compute_mumin2 [Float]: Critical mu (normalized CIN) [unitless]
+        compute_mumin2 [Float]: Critical mu (normalized CIN) [unitless]
 
+    reference Fortran: uwshcu.F90: function compute_mumin2
     """
 
     x0: float64 = mulow
@@ -274,7 +281,7 @@ def compute_mumin2(
     return compute_mumin2
 
 
-@gtscript.function
+@gtfunction
 def compute_ppen(
     wtwb: Float,
     drag: Float,
@@ -289,16 +296,18 @@ def compute_ppen(
     vertical velocity is exactly zero ) by considering exact
     non-zero fer(kpen).
 
-    Inputs:
-    wtwb [Float]: Updraft vertical velocity at lower interface [m/s]
-    drag [Float]: Drag coefficient [unitless]
-    bogbot [Float]: Cloud buoyancy at base interface [n/a]
-    bogtop [Float]: Cloud buoyancy at top interface [n/a]
-    rho0j [Float]: Density of water [kg/m^3] [?]
-    dpen [Float]: Environmental layer pressure thickness [Pa] > 0
+    Arguments:
+        wtwb [Float]: Updraft vertical velocity at lower interface [m/s]
+        drag [Float]: Drag coefficient [unitless]
+        bogbot [Float]: Cloud buoyancy at base interface [n/a]
+        bogtop [Float]: Cloud buoyancy at top interface [n/a]
+        rho0j [Float]: Density of water [kg/m^3] [?]
+        dpen [Float]: Environmental layer pressure thickness [Pa] > 0
 
     Returns:
-    compute_ppen [Float]: Critical ppen [Pa]
+        compute_ppen [Float]: Critical ppen [Pa]
+
+    reference Fortran: uwshcu.F90: function compute_ppen
     """
 
     # Buoyancy slope
@@ -339,7 +348,7 @@ def compute_ppen(
     return compute_ppen
 
 
-@gtscript.function
+@gtfunction
 def getbuoy(
     pbot: Float,
     thv0bot: Float,
@@ -359,19 +368,21 @@ def getbuoy(
     different from 'single_cin' below, where both positive  and
     negative CIN are included.
 
-    Inputs:
-    pbot [Float]: Pressure at bottom layer [Pa]
-    thv0bot [Float]: Some sort of temperature at bottom [?]
-    ptop [Float]: Pressure at top layer [Pa]
-    thv0top [Float]: Some sort of temperature at top [?]
-    thvubot [Float]: Some sort of temperature at bot [?]
-    thvutop [Float]: Some sort of temperature at top [?]
-    cin_in [Float]: Convective inhibition [J/kg]
-    plfc_in [Float]: Pressure at the level of free convection [Pa]
+    Arguments:
+        pbot [Float]: Pressure at bottom layer [Pa]
+        thv0bot [Float]: Some sort of temperature at bottom [?]
+        ptop [Float]: Pressure at top layer [Pa]
+        thv0top [Float]: Some sort of temperature at top [?]
+        thvubot [Float]: Some sort of temperature at bot [?]
+        thvutop [Float]: Some sort of temperature at top [?]
+        cin_in [Float]: Convective inhibition [J/kg]
+        plfc_in [Float]: Pressure at the level of free convection [Pa]
 
     Returns:
-    plfc [Float]: Pressure at level of free convection [Pa]
-    cin [Float]: Integreated CIN [J/kg]
+        plfc [Float]: Pressure at level of free convection [Pa]
+        cin [Float]: Integreated CIN [J/kg]
+
+    reference Fortran: uwshcu.F90: function getbuoy
     """
     plfc = plfc_in
     cin = cin_in
@@ -400,7 +411,7 @@ def getbuoy(
     return plfc, cin  # Note: plfc and cin are returned, but not always used
 
 
-@gtscript.function
+@gtfunction
 def qsinvert(
     qt: Float,
     thl: Float,
@@ -414,15 +425,17 @@ def qsinvert(
     temperature) by inverting Bolton formula. I should check later if
     current use of 'leff' instead of 'xlv' here is reasonable or not.
 
-    Inputs:
-    qt [Float]: Mixing ratio [kg/kg]
-    thl [Float]: Liquid potential temperature [K]
-    ps_in [Float]: Pressure [Pa]
-    ese [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
-    esx [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
+    Arguments:
+        qt [Float]: Mixing ratio [kg/kg]
+        thl [Float]: Liquid potential temperature [K]
+        ps_in [Float]: Pressure [Pa]
+        ese [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
+        esx [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
 
     Returns:
-    qsinvert [Float]: Saturation pressure [Pa]
+        qsinvert [Float]: Saturation pressure [Pa]
+
+    reference Fortran: uwshcu.F90: function qsinvert
     """
 
     psmin: float64 = float64(10000.0)  # Default saturation pressure [Pa] if iteration does not converge
@@ -485,7 +498,7 @@ def qsinvert(
     return float32(qsinvert)
 
 
-@gtscript.function
+@gtfunction
 def sign(
     a: Float,
     b: Float,
@@ -493,12 +506,12 @@ def sign(
     """
     Function that returns the magnitude of one argument and the sign of another.
 
-    Inputs:
-    a [Float]: Argument of which the magnitude is needed [unitless]
-    b [Float]: Argument of which the sign is needed [unitless]
+    Arguments:
+        a [Float]: Argument of which the magnitude is needed [unitless]
+        b [Float]: Argument of which the sign is needed [unitless]
 
     Returns:
-    result [Float]: The magnitude of a and sign of b [unitless]
+        result [Float]: The magnitude of a and sign of b [unitless]
     """
 
     if b >= 0.0:
@@ -509,7 +522,7 @@ def sign(
     return result
 
 
-@gtscript.function
+@gtfunction
 def roots(
     a: Float,
     b: Float,
@@ -519,16 +532,18 @@ def roots(
     Function to solve a second order polynomial equation of the
     form [ax^2 + bx + c].
 
-    Inputs:
-    a [Float]: Coefficient of the x^2 term [unitless]
-    b [Float]: Coefficient of x [unitless]
-    c [Float]: Constant term [unitless]
+    Arguments:
+        a [Float]: Coefficient of the x^2 term [unitless]
+        b [Float]: Coefficient of x [unitless]
+        c [Float]: Constant term [unitless]
 
     Returns:
-    r1 [Float]: The first root of the polynomial [unitless]
-    r2  [Float]: The second root of the polynomial [unitless]
-    status [Int]: 0 if roots are found. 1, 2, or 3 if
-    there are no roots [unitless]
+        r1 [Float]: The first root of the polynomial [unitless]
+        r2  [Float]: The second root of the polynomial [unitless]
+        status [Int]: 0 if roots are found. 1, 2, or 3 if
+        there are no roots [unitless]
+
+    reference Fortran: uwshcu.F90: function roots
     """
 
     status = 0
@@ -557,7 +572,7 @@ def roots(
     return r1, r2, status
 
 
-@gtscript.function
+@gtfunction
 def single_cin(
     pbot: Float,
     thv0bot: Float,
@@ -570,16 +585,18 @@ def single_cin(
     Function to calculate a single layer CIN by summing all
     positive and negative CIN.
 
-    Inputs:
-    pbot [Float]: Pressure at bottom layer [Pa]
-    thv0bot [Float]: Some sort of temperature at bottom layer [?]
-    ptop [Float]: Pressure at top of layer [Pa]
-    thv0top [Float]: Some sort of temperature at top layer [?]
-    thvubot [Float]: Some sort of temperature at bottom layer [?]
-    thvutop [Float]: Some sort of temperature at top layer [?]
+    Arguments:
+        pbot [Float]: Pressure at bottom layer [Pa]
+        thv0bot [Float]: Some sort of temperature at bottom layer [?]
+        ptop [Float]: Pressure at top of layer [Pa]
+        thv0top [Float]: Some sort of temperature at top layer [?]
+        thvubot [Float]: Some sort of temperature at bottom layer [?]
+        thvutop [Float]: Some sort of temperature at top layer [?]
 
     Returns:
-    single_cin [Float]: Convective Inhibition (CIN) of a single layer [J/kg]
+        single_cin [Float]: Convective Inhibition (CIN) of a single layer [J/kg]
+
+    reference Fortran: uwshcu.F90: function single_cin
     """
 
     single_cin = (
