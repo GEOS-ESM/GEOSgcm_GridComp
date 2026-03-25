@@ -2378,7 +2378,12 @@ CONTAINS
               dp = 100. * (po_cup(i,k) - po_cup(i,k+1))
               dellah(i,k) = -(zuo(i,k+1) * (hco(i,k+1) - heo_cup(i,k+1)) - zuo(i,k) * (hco(i,k) - heo_cup(i,k))) * g / dp &
                             +(zdo(i,k+1) * (hcdo(i,k+1) - heo_cup(i,k+1)) - zdo(i,k) * (hcdo(i,k) - heo_cup(i,k))) * g / dp * edto(i)
+            !---meltglac-------------------------------------------------
+! BUG2025     dellah(i,k) = dellah(i,k) - xlf*melting(i,k)*g/dp
               dellah(i,k) = dellah(i,k) + xlf * ((1. - p_liq_ice(i,k)) * 0.5 * (qrco(i,k+1) + qrco(i,k)) - melting(i,k)) * g / dp
+! BUG2025 this is a known bug where latent heat of freezing for qrco included in hco already
+! BUG2025 this bug remains for the legacy VERT_DISCR==0 configuration for consistency with old exps
+! BUG2025 the bug is corrected below when running the recommended VERT_DISCR==1
 
               subten_H(i,k) = -(zuo(i,k+1) * (-heo_cup(i,k+1)) - zuo(i,k) * (-heo_cup(i,k))) * g / dp &
                               +(zdo(i,k+1) * (-heo_cup(i,k+1)) - zdo(i,k) * (-heo_cup(i,k))) * g / dp * edto(i)
