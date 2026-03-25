@@ -14,7 +14,7 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
 
 jobs:
   build_gcm:
@@ -34,7 +34,7 @@ jobs:
       compiler: ${{ matrix.compiler }}
       cmake-build-type: ${{ matrix.build-type }}
       fixture-repo: ${{ matrix.fixture-repo }}
-      run-mepo-develop: ${{ fromJSON(matrix.run-mepo-develop || 'true') }}
+      run-mepo-develop: ${{ fromJSON(matrix.run-mepo-develop == '' && 'true' || matrix.run-mepo-develop) }}
 
   spack_build:
     strategy:
@@ -51,5 +51,5 @@ jobs:
       BUILDCACHE_TOKEN: ${{ secrets.BUILDCACHE_TOKEN }}
     with:
       fixture-repo: ${{ matrix.fixture-repo }}
-      run-mepo-develop: ${{ fromJSON(matrix.run-mepo-develop || 'true') }}
+      run-mepo-develop: ${{ fromJSON(matrix.run-mepo-develop == '' && 'true' || matrix.run-mepo-develop) }}
 
