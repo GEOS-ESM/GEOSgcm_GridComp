@@ -34,7 +34,7 @@ jobs:
       compiler: ${{ matrix.compiler }}
       cmake-build-type: ${{ matrix.build-type }}
       fixture-repo: ${{ matrix.fixture-repo }}
-      run-mepo-develop: ${{ matrix.run-mepo-develop || 'true' }}
+      run-mepo-develop: ${{ fromJSON(matrix.run-mepo-develop || 'true') }}
 
   spack_build:
     strategy:
@@ -51,5 +51,5 @@ jobs:
       BUILDCACHE_TOKEN: ${{ secrets.BUILDCACHE_TOKEN }}
     with:
       fixture-repo: ${{ matrix.fixture-repo }}
-      run-mepo-develop: ${{ matrix.run-mepo-develop || 'true' }}
+      run-mepo-develop: ${{ fromJSON(matrix.run-mepo-develop || 'true') }}
 
