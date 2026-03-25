@@ -10,6 +10,7 @@ on:
       - "**.sh"
       - "**.perl"
       - ".github/CODEOWNERS"
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
