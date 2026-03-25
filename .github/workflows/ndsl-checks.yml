@@ -1,8 +1,8 @@
 name: NDSL Lint & Translate Tests
 
 on:
-  pull_request:
-    branches: [ dsl/develop, dsl/v11/develop ]
+  push:
+    paths: "./GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist/**"
   workflow_dispatch:
 
 # cancel running jobs if theres a newer push
