@@ -2416,9 +2416,9 @@ module GEOSmoist_Process_Library
       DQS = GEOS_DQSAT( TEn, PL, QSAT=QSx )
       QVn = ( QV - QSx*CLCN ) * tmpARR
 
-      QT = max(0.,QCn + QVn)  !Total LS water after microphysics
-                              ! - this can be negative because QV does not account
-                              ! for saturation inside convective cloud fraction
+      QT = QCn + QVn  ! Total LS water after microphysics
+                      ! this can be negative because QV does not account
+                      ! for saturation inside convective cloud fraction
 
       ! FIX #1 (DQCALL): Save QCn at the start of the iteration loop so
       ! DQCALL can be computed as the cumulative condensation since entry,
