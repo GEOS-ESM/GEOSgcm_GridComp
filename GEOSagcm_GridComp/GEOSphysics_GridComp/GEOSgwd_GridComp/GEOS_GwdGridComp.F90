@@ -823,9 +823,10 @@ contains
     if(associated(  PLE_EXP ))  PLE_EXP = PLE
 
     if (DEBUG_GWD) then
-       if(associated( T_EXP )) call MAPL_MaxMin('GWD: T_AF_GWD ', T_EXP)
-       if(associated( U_EXP )) call MAPL_MaxMin('GWD: U_AF_GWD ', U_EXP)
-       if(associated( V_EXP )) call MAPL_MaxMin('GWD: V_AF_GWD ', V_EXP)
+       ! [TODO] Purnendu: The MAPL_MaxMin calls are now different in MAPL3
+       !if(associated( T_EXP )) call MAPL_MaxMin('GWD: T_AF_GWD ', T_EXP)
+       !if(associated( U_EXP )) call MAPL_MaxMin('GWD: U_AF_GWD ', U_EXP)
+       !if(associated( V_EXP )) call MAPL_MaxMin('GWD: V_AF_GWD ', V_EXP)
     endif
 
     if (allocated(scratch_ridge)) deallocate(scratch_ridge)
