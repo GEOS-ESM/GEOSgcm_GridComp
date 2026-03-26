@@ -3313,6 +3313,11 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS)
     VERIFY_(STATUS)
+
+    niter  = 6   ! number of internal iterations in the helfand MO surface layer routine
+    call MAPL_GetResource ( MAPL, niter, Label="NITER_HELFSURFACE:", DEFAULT=niter, RC=STATUS)
+    VERIFY_(STATUS)
+
     call ESMF_VMGetCurrent(VM,       rc=STATUS)
     VERIFY_(STATUS)
     
@@ -3741,7 +3746,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
          RE = 0.
          UUU = UU  
          UCN = 0.
-         
 !  Aggregate to tiles for MO only diagnostics
 !--------------------------------------------
          if(associated(MOU50M))MOU50M = MOU50M + U50M(:)*FR(:,N)

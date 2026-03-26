@@ -27,10 +27,15 @@ module uwshcu
      integer  :: windsrcavg         ! Source air uses PBL mean momentum
      real     :: rpen               ! Penentrative entrainment factor
      real     :: rle
+     real     :: rkfre              ! fraction_of_tke_associated_with_vertical_velocity
      real     :: rkm                ! Factor controlling lateral mixing rate
      real     :: mixscale           ! Controls vertical structure of mixing
+     real     :: rkfre_hr           ! fraction_of_tke_associated_with_vertical_velocity High Resolution
+     real     :: rkm_hr             ! Factor controlling lateral mixing rate High Resolution
+     real     :: mixscale_hr        ! Controls vertical structure of mixing High Resolution
      real     :: detrhgt            ! Mixing rate increases above this height
      real     :: rmaxfrac           ! Maximum core updraft fraction
+     real     :: rmaxfrac_hr        ! Maximum core updraft fraction  High Resolution
      real     :: mumin1             ! 
      real     :: rbuoy              ! Non-hydro pressure effect on updraft
      real     :: rdrag              ! Drag coefficient
@@ -61,7 +66,13 @@ module uwshcu
    real, parameter :: p00   = 1e5                   ! Reference pressure
    real, parameter :: rovcp = MAPL_RGAS/MAPL_CP     ! Gas constant over specific heat
 
-   real, parameter :: mintracer = tiny(1.)
+   real, parameter :: qpmin = 1.e-8  !< min value for suspended rain/snow/liquid/ice precip
+   real, parameter :: qvmin = 1.e-20 !< min value for water vapor (treated as zero)
+   real, parameter :: qcmin = 1.e-12 !< min value for cloud condensates
+
+   logical, parameter :: fix_negative = .false.
+
+   real, parameter :: mintracer = 0.0
 contains
 
    real function exnerfn(pressure)
@@ -73,17 +84,17 @@ contains
    subroutine compute_uwshcu_inv(idim, k0,        dt,pmid0_inv,     & ! INPUT
          zmid0_inv, exnmid0_inv, pifc0_inv, zifc0_inv, exnifc0_inv, &
          dp0_inv, u0_inv, v0_inv, qv0_inv, ql0_inv, qi0_inv,        &
-         t0_inv, tke_inv, rkfre, kpbl_inv, shfx,evap, cnvtr, frland,& 
+         t0_inv, tke_inv, rkfre, kpbl_inv, shfx,evap, cnvtr, frland, rkm2d, mix2d, rmaxfrac, & 
          cush,                                                      & ! INOUT
          umf_inv, dcm_inv, qvten_inv, qlten_inv, qiten_inv, tten_inv, & ! OUTPUT
          uten_inv, vten_inv, qrten_inv, qsten_inv, cufrc_inv,       &
          fer_inv, fdr_inv, qldet_inv, qidet_inv, qlsub_inv,         &
          qisub_inv, ndrop_inv, nice_inv, tpert_out, qpert_out,      & 
          qtflx_inv, slflx_inv, uflx_inv, vflx_inv,                  &
+         cbmf, plcl, plfc, pinv, prel, pbup, cldtop,                & ! DIAGNOSTIC ONLY
 #ifdef UWDIAG
-         qcu_inv, qlu_inv, qiu_inv, cbmf, qc_inv,                   & ! DIAGNOSTIC ONLY
-         cnt_inv, cnb_inv, cin, plcl, plfc, pinv, prel, pbup,       &
-         wlcl, qtsrc, thlsrc, thvlsrc, tkeavg, cldtop, wu_inv,      &
+         qcu_inv, qlu_inv, qiu_inv, qc_inv, cnt_inv, cnb_inv,       &
+         cin, wlcl, qtsrc, thlsrc, thvlsrc, tkeavg, wu_inv,         &
          qtu_inv, thlu_inv, thvu_inv, uu_inv, vu_inv, xc_inv,       &
 #endif
          dotransport)
@@ -117,6 +128,9 @@ contains
       real, intent(in)    :: evap(idim)                 ! Surface evaporation
       real, intent(in)    :: cnvtr(idim)                ! convective tracer
       real, intent(in)    :: frland(idim)               ! land fraction
+      real, intent(in)    :: rkm2d(idim)                !  Resolution dependent lateral mixing parameter
+      real, intent(in)    :: mix2d(idim)                !  Resolution dependent lateral mixing depth
+      real, intent(in)    :: rmaxfrac(idim)             !  Resolution dependent Maximum core updraft fraction
       real, intent(inout) :: cush(idim)                 !  Convective scale height [m]
 
       real, intent(out)   :: umf_inv(idim,k0+1)         !  Updraft mass flux at interfaces [kg/m2/s]
@@ -147,6 +161,14 @@ contains
       real, intent(out)   :: vflx_inv(idim,k0+1)
 
 !!! Diagnostic only
+      real, intent(out)   :: cbmf(idim)                !  Cumulus base mass flux [ kg/m2/s ]
+      real, intent(out)   :: plcl(idim)
+      real, intent(out)   :: plfc(idim)
+      real, intent(out)   :: pinv(idim)
+      real, intent(out)   :: prel(idim)
+      real, intent(out)   :: pbup(idim)
+      real, intent(out)   :: cldtop(idim)
+
 #ifdef UWDIAG
       real, intent(out)   :: qcu_inv(idim,k0)         !  Liquid+ice specific humidity within cumulus updraft [ kg/kg ]
       real, intent(out)   :: qlu_inv(idim,k0)         !  Liquid water specific humidity within cumulus updraft [ kg/kg ]
@@ -159,21 +181,14 @@ contains
       real, intent(out)   :: uu_inv(idim,k0+1)
       real, intent(out)   :: vu_inv(idim,k0+1)
       real, intent(out)   :: xc_inv(idim,k0)
-      real, intent(out)   :: cbmf(idim)                !  Cumulus base mass flux [ kg/m2/s ]
       real, intent(out)   :: cnt_inv(idim)             !  Cumulus top  interface index, cnt = kpen [ no ]
       real, intent(out)   :: cnb_inv(idim)             !  Cumulus base interface index, cnb = krel - 1 [ no ]
       real, intent(out)   :: cin(idim)
-      real, intent(out)   :: plcl(idim)
-      real, intent(out)   :: plfc(idim)
-      real, intent(out)   :: pinv(idim)
-      real, intent(out)   :: prel(idim)
-      real, intent(out)   :: pbup(idim)
       real, intent(out)   :: wlcl(idim)
       real, intent(out)   :: qtsrc(idim)
       real, intent(out)   :: thlsrc(idim)
       real, intent(out)   :: thvlsrc(idim)
       real, intent(out)   :: tkeavg(idim)
-      real, intent(out)   :: cldtop(idim)
 #endif
 
   !----- Local variables -----
@@ -220,7 +235,7 @@ contains
 
 !--------- Local, Diagnostic only ---------
 #ifdef UWDIAG
-      real              :: trten(idim,k0,ncnst)    !  Tendency of tracers [ #/s, kg/kg/s ]
+!      real              :: trten(idim,k0,ncnst)    !  Tendency of tracers [ #/s, kg/kg/s ]
       real              :: qcu(idim,k0)            !  Condensate water specific humidity within cumulus updraft
                                                    ! at the layer mid-point [ kg/kg ]
       real              :: qlu(idim,k0)            !  Liquid water specific humidity within cumulus updraft
@@ -237,7 +252,7 @@ contains
       real              :: uu(idim,0:k0)
       real              :: vu(idim,0:k0)
       real              :: xc(idim,k0)
-      real              :: trten_inv(idim,k0,ncnst) !  Tendency of tracers [ #/s, kg/kg/s ]
+!      real              :: trten_inv(idim,k0,ncnst) !  Tendency of tracers [ #/s, kg/kg/s ]
 #endif
 
 
@@ -297,17 +312,18 @@ contains
 
       call compute_uwshcu( idim,k0, dt, ncnst,pifc0, zifc0, &
            exnifc0, pmid0, zmid0, exnmid0, dp0, u0, v0,     &
-           qv0, ql0, qi0, th0, tr0, kpbl, frland, tke, rkfre, cush, umf, &
+           qv0, ql0, qi0, th0, tr0, kpbl, frland, tke, rkfre, rkm2d, mix2d, rmaxfrac, &
+           cush, umf, &
            dcm, qvten, qlten, qiten, sten, uten, vten,      &
            qrten, qsten, cufrc, fer, fdr, qldet, qidet,     & 
            qlsub, qisub, ndrop, nice,                       &
            shfx, evap, cnvtrmax, tpert_out, qpert_out,      &
            qtflx, slflx, uflx, vflx,                        &
+           cbmf, plcl, plfc, pinv, prel, pbup, cldtop,      & ! Diagnostic only
 #ifdef UWDIAG
-           qcu, qlu, qiu, cbmf, qc, cnt, cnb,               & ! Diagnostic only
-           cin, plcl, plfc, pinv, prel, pbup, wlcl, qtsrc,  &
-           thlsrc, thvlsrc, tkeavg, cldtop, wu, qtu,        &
-           thlu, thvu, uu, vu, xc, trten,                   & 
+           qcu, qlu, qiu, qc, cnt, cnb, cin, wlcl, qtsrc,   &
+           thlsrc, thvlsrc, tkeavg, wu, qtu,                &
+           thlu, thvu, uu, vu, xc, & ! trten,                   & 
 #endif
            dotransport )
 
@@ -370,7 +386,7 @@ contains
             enddo
             CNV_Tracers(m)%Q(:,:,k_inv) = reshape(tr0(:,k,m), (/IM,JM/))
 #ifdef UWDIAG
-            trten_inv(:idim,k_inv,m) = trten(:idim,k,m)            
+!            trten_inv(:idim,k_inv,m) = trten(:idim,k,m)            
 #endif
          enddo
          endif
@@ -394,19 +410,21 @@ contains
    subroutine compute_uwshcu(idim, k0, dt,ncnst, pifc0_in,zifc0_in,& ! IN
          exnifc0_in, pmid0_in, zmid0_in, exnmid0_in, dp0_in,       &
          u0_in, v0_in, qv0_in, ql0_in, qi0_in, th0_in,             &
-         tr0_inout, kpbl_in, frland_in, tke_in, rkfre, cush_inout, & ! OUT
+         tr0_inout, kpbl_in, frland_in, tke_in, rkfre, rkm2d, mix2d, rmaxfrac, &
+         cush_inout, & ! OUT
          umf_out, dcm_out, qvten_out, qlten_out, qiten_out,        &
          sten_out, uten_out, vten_out, qrten_out,                  &
          qsten_out, cufrc_out, fer_out, fdr_out, qldet_out,        &
          qidet_out, qlsub_out, qisub_out, ndrop_out, nice_out,     &
          shfx, evap, cnvtr, tpert_out, qpert_out,                  &
          qtflx_out, slflx_out, uflx_out, vflx_out,                 &
+         cbmf_out, plcl_out, plfc_out, pinv_out,                   & ! DIAG ONLY
+         prel_out, pbup_out, cldhgt_out,                           &
 #ifdef UWDIAG
-         qcu_out, qlu_out, qiu_out, cbmf_out, qc_out,              & ! DIAG ONLY
-         cnt_out, cnb_out, cinh_out, plcl_out, plfc_out, pinv_out, &
-         prel_out, pbup_out, wlcl_out, qtsrc_out, thlsrc_out,      &
-         thvlsrc_out, tkeavg_out, cldhgt_out, wu_out, qtu_out,     &
-         thlu_out, thvu_out, uu_out, vu_out, xc_out, trten_out,    &
+         qcu_out, qlu_out, qiu_out, qc_out, cnt_out, cnb_out,      &
+         cinh_out, wlcl_out, qtsrc_out, thlsrc_out,                &
+         thvlsrc_out, tkeavg_out, wu_out, qtu_out,                 &
+         thlu_out, thvu_out, uu_out, vu_out, xc_out, & !trten_out,    &
 #endif
          dotransport)  
 
@@ -453,7 +471,10 @@ contains
       real, intent(in)    :: qi0_in( idim,k0 )        ! Environmental ice specific humidity
       real, intent(in)    :: th0_in( idim,k0 )        ! Environmental potential temperature [K]
       real, intent(in)    :: tke_in( idim,0:k0 )      ! Turbulent kinetic energy at interfaces
-      real, intent(in)    :: rkfre(idim)              !  Resolution dependent Vertical velocity variance as fraction of tke. 
+      real, intent(in)    :: rkfre(idim)              ! Resolution dependent Vertical velocity variance as fraction of tke. 
+      real, intent(in)    :: rkm2d(idim)              ! Resolution dependent lateral mixing parameter
+      real, intent(in)    :: mix2d(idim)              ! Resolution dependent lateral mixing depth
+      real, intent(in)    :: rmaxfrac(idim)           ! Resolution dependent Maximum core updraft fraction
       real, intent(in)    :: shfx(idim)               ! Surface sensible heat
       real, intent(in)    :: evap(idim)               ! Surface evaporation
       real, intent(in)    :: cnvtr(idim)              ! Convective tracer
@@ -491,8 +512,16 @@ contains
       real, intent(out)   :: nice_out(idim,k0)
 
 !--------- Diagnostic only ------------
+      real, intent(out)   :: cbmf_out(idim)           ! Cloud base mass flux [kg/m2/s]
+      real, intent(out)   :: pinv_out(idim)           !  PBL top pressure [ Pa ]
+      real, intent(out)   :: plfc_out(idim)           !  LFC of source air [ Pa ]
+      real, intent(out)   :: plcl_out(idim)           !  LCL of source air [ Pa ]
+      real, intent(out)   :: prel_out(idim)
+      real, intent(out)   :: pbup_out(idim)
+      real, intent(out)   :: cldhgt_out(idim)
+
 #ifdef UWDIAG
-      real, intent(out)   :: trten_out(idim,k0,ncnst) !  Tendency of tracers [ #/s, kg/kg/s ]
+!      real, intent(out)   :: trten_out(idim,k0,ncnst) !  Tendency of tracers [ #/s, kg/kg/s ]
       real, intent(out)   :: wu_out(idim,0:k0)        !  Updraft vertical velocity
       real, intent(out)   :: qtu_out(idim,0:k0)       !  Updraft qt [ kg/kg ]
       real, intent(out)   :: thlu_out(idim,0:k0)      !  Updraft thl [ K ]
@@ -502,18 +531,11 @@ contains
       real, intent(out)   :: qcu_out(idim,k0)         !  Condensate water specific humidity within cumulus updraft [ kg/kg ]
       real, intent(out)   :: qlu_out(idim,k0)         !  Liquid water specific humidity within cumulus updraft [ kg/kg ]
       real, intent(out)   :: qiu_out(idim,k0)         !  Ice specific humidity within cumulus updraft [ kg/kg ]
-      real, intent(out)   :: cbmf_out(idim)           ! Cloud base mass flux [kg/m2/s]
       real, intent(out)   :: qc_out(idim,k0)          !  Tendency of detrained cumulus condensate
       real, intent(out)   :: cnt_out(idim)            ! Cumulus top interface index
       real, intent(out)   :: cnb_out(idim)            ! Cumulus base interface index
       real, intent(out)   :: cinh_out(idim)
-      real, intent(out)   :: pinv_out(idim)           !  PBL top pressure [ Pa ]
-      real, intent(out)   :: plfc_out(idim)           !  LFC of source air [ Pa ]
-      real, intent(out)   :: plcl_out(idim)           !  LCL of source air [ Pa ]
-      real, intent(out)   :: prel_out(idim)
-      real, intent(out)   :: pbup_out(idim)
       real, intent(out)   :: tkeavg_out(idim)         !  Average tke over the PBL [ m2/s2 ]
-      real, intent(out)   :: cldhgt_out(idim)
       real, intent(out)   :: xc_out(idim,k0)
 #endif
 
@@ -629,7 +651,6 @@ contains
     real    trflx(0:k0,ncnst)                            !  Flux of
     real    trflx_d(0:k0)                                !  Adjustive
     real    trflx_u(0:k0)                                !  Adjustive
-    real    trmin
     real    pdelx, dum 
 
 ! Variables for temperature/moisture excess in source parcel
@@ -867,6 +888,8 @@ contains
     real, dimension(ncnst)       :: trsrc_o
     integer                          :: ixnumliq, ixnumice, ixcldliq, ixcldice
 
+    ! Adaptive fer/fdr limits for vertical resolution changes from L72
+    real :: layer_thickness_mb, reference_thickness, resolution_factor, fer_fdr_limit
 
     ! ------------------ !
     !                    !
@@ -939,10 +962,7 @@ contains
     ! ----------------------- !
 
     real :: rle          !  For critical stopping distance for lateral entrainment [no unit]
-    real :: rkm          !  Determine the amount of air that is involved in buoyancy-sorting [no unit]
-    real :: mixscale     !  Specify vertical structure of mixing rate
     real :: detrhgt      !  Mixing rate increases above this height to speed detrainment
-    real :: rmaxfrac     !  Maximum allowable 'core' updraft fraction
     real :: mumin1       !  Normalized CIN ('mu') corresponding to 'rmaxfrac' at the PBL top
                          !  obtaind by inverting 'rmaxfrac = 0.5*erfc(mumin1)'.
                          !  [rmaxfrac:mumin1]=[ 0.05:1.163, 0.075:1.018, 0.1:0.906, 0.15:0.733, 0.2:0.595, 0.25:0.477]
@@ -953,9 +973,13 @@ contains
                          !  'u' & 'v' by horizontal PGF during upward motion [no unit]
     real :: frc_rasn
 
-!!! TEMPORARY:  should be ncnst array of minimum values for all constituents
-    real, parameter,dimension(4) :: qmin = [0.,0.,0.,0.]
+    real :: cbmf_raw, rkfre_eff
 
+!!! TEMPORARY:  should be ncnst array of minimum values for all constituents
+!!! real, parameter,dimension(4) :: qmin = [0.,0.,0.,0.]
+
+    real :: tiny = 1.e-15
+    real :: arg
 
     ! ---------------------------------------- !
     ! Bulk microphysics controlling parameters !
@@ -988,10 +1012,7 @@ contains
     rpen             = shlwparams%rpen
     cridist_opt      = shlwparams%cridist_opt
     rle       = shlwparams%rle      !  For critical stopping distance for lateral entrainment [no unit]
-    rkm       = shlwparams%rkm      !  Determine the amount of air that is involved in buoyancy-sorting [no unit]
-    mixscale  = shlwparams%mixscale !  Specifies vertical structure of mixing rate
     detrhgt   = shlwparams%detrhgt  !  Specifies vertical structure of mixing rate
-    rmaxfrac  = shlwparams%rmaxfrac !  Maximum allowable 'core' updraft fraction
     mumin1    = shlwparams%mumin1
     rbuoy     = shlwparams%rbuoy    !  For nonhydrostatic pressure effects on updraft [no unit]
     rdrag     = shlwparams%rdrag    !  Drag coefficient [no unit]
@@ -1040,11 +1061,17 @@ contains
     tpert_out(:idim)             = 0.0
     qpert_out(:idim)             = 0.0
 
-#ifdef UWDIAG
     cbmf_out(:idim)              = 0.0
+    plcl_out(:idim)              = MAPL_UNDEF
+    pinv_out(:idim)              = MAPL_UNDEF
+    plfc_out(:idim)              = MAPL_UNDEF
+    prel_out(:idim)              = MAPL_UNDEF
+    pbup_out(:idim)              = MAPL_UNDEF
+    cldhgt_out(:idim)            = MAPL_UNDEF
+
+#ifdef UWDIAG
     cinh_out(:idim)              = MAPL_UNDEF
     cinlclh_out(:idim)           = MAPL_UNDEF
-    cldhgt_out(:idim)            = 0.0
     qcu_out(:idim,:k0)           = 0.0
     qlu_out(:idim,:k0)           = 0.0
     qiu_out(:idim,:k0)           = 0.0
@@ -1055,17 +1082,11 @@ contains
 !    ufrc_out(:idim,0:k0)         = 0.0
 !    uflx_out(:idim,0:k0)         = 0.0
 !    vflx_out(:idim,0:k0)         = 0.0
-
+    ppen_out(:idim)              = 0.0
     ufrcinvbase_out(:idim)       = 0.0
     ufrclcl_out(:idim)           = 0.0
     winvbase_out(:idim)          = 0.0
     wlcl_out(:idim)              = 0.0
-    plcl_out(:idim)              = 0.0
-    pinv_out(:idim)              = 0.0
-    plfc_out(:idim)              = 0.0
-    prel_out(:idim)              = 0.0
-    pbup_out(:idim)              = 0.0
-    ppen_out(:idim)              = 0.0
     qtsrc_out(:idim)             = 0.0
     thlsrc_out(:idim)            = 0.0
     thvlsrc_out(:idim)           = 0.0
@@ -1092,7 +1113,7 @@ contains
     dwten_out(:idim,:k0)        = 0.0
     diten_out(:idim,:k0)        = 0.0
 
-    trten_out(:idim,:k0,:ncnst)    = 0.0
+!    trten_out(:idim,:k0,:ncnst)    = 0.0
     trflx_out(:idim,0:k0,:ncnst)   = 0.0
     tru_out(:idim,0:k0,:ncnst)     = 0.0
     tru_emf_out(:idim,0:k0,:ncnst) = 0.0
@@ -1440,43 +1461,50 @@ contains
        ! interface values of 'thvl' in each layers within the PBL.                  !
        ! -------------------------------------------------------------------------- !
        
+       ! averaged within the boundary layer
          dpsum    = 0.
          thvlmin  = 1000.
          thvlavg  = 0.
-         do k = 1,kinv ! max(kinv-1,1)    ! Here, 'k' is an interfacial layer index.  
+         qtavg = 0.
+         do k = 1,kinv ! Here, 'k' is an interfacial layer index.  
             dpi = pifc0(k-1) - pifc0(k)
             dpsum  = dpsum  + dpi 
             tkeavg = tkeavg + dpi*tke(k)
             uavg   = uavg   + dpi*u0(k)
             vavg   = vavg   + dpi*v0(k)
             thvlavg = thvlavg + dpi*thvl0(k)
+            qtavg = qtavg + dpi*qt0(k)
             if( k .ne. kinv ) thvlmin = min(thvlmin,min(thvl0bot(k),thvl0top(k)))
          end do
          tkeavg  = tkeavg/dpsum
          uavg    = uavg/dpsum
          vavg    = vavg/dpsum
          thvlavg = thvlavg/dpsum
+         qtavg   = qtavg/dpsum
 
-        ! weighted average over lowest 20mb
-!         dpsum = 0.
-!         do k = 1,kinv
-!             dpi = max(0.,(2e3+pmid0(k)-pifc0(0))/2e3)
-!             qtavg  = qtavg  + dpi*qt0(k)
-!             dpsum = dpsum + dpi
-!         end do
-!         qtavg   = qtavg/dpsum
+!       ! weighted average over lowest 20mb
+!        dpsum = 0.
+!        qtavg = 0.
+!        do k = 1,kinv
+!            dpi = max(0.,(2e3+pmid0(k)-pifc0(0))/2e3)
+!            qtavg  = qtavg  + dpi*qt0(k)
+!            dpsum = dpsum + dpi
+!        end do
+!        qtavg = qtavg/dpsum
  
-       ! Interpolate qt to specified height
-         k = 1
-         do while (zmid0(k).lt.qtsrchgt)
-           k = k+1
-         end do
-         if (k.gt.1) then
-           qtavg = qt0(k-1)*(zmid0(k)-qtsrchgt) + qt0(k)*(qtsrchgt-zmid0(k-1))
-           qtavg = qtavg / (zmid0(k)-zmid0(k-1))
-         else
-           qtavg = qt0(1)
-         end if
+       ! Interpolate qt to specified height or the PBL edge height
+         if (qtsrchgt > 1.0) then
+            k = 1
+            do while (zmid0(k).lt.qtsrchgt)
+              k = k+1
+            end do
+            if (k.gt.1) then
+               qtavg = qt0(k-1)*(zmid0(k)-qtsrchgt) + qt0(k)*(qtsrchgt-zmid0(k-1))
+               qtavg = qtavg / (zmid0(k)-zmid0(k-1))
+            else
+               qtavg = qt0(1)
+            endif
+         endif
 
        ! ------------------------------------------------------------------ !
        ! Find characteristics of cumulus source air: qtsrc,thlsrc,usrc,vsrc !
@@ -1742,7 +1770,7 @@ contains
        if( iter .eq. 1 ) then 
            cin_i       = cin
            cinlcl_i    = cinlcl
-           ke          = rbuoy / ( rkfre(i) * tkeavg + epsvarw ) 
+           ke          = rbuoy / ( tkeavg + epsvarw )
            kinv_o      = kinv     
            klcl_o      = klcl     
            klfc_o      = klfc    
@@ -1988,19 +2016,20 @@ contains
                uflx_out(i,0:k0)        = uflx_s(0:k0)
                vflx_out(i,0:k0)        = vflx_s(0:k0)
 
+               cbmf_out(i)             = cbmf_s
+
 #ifdef UWDIAG  
                qcu_out(i,:k0)          = qcu_s(:k0)    
                qlu_out(i,:k0)          = qlu_s(:k0)  
                qiu_out(i,:k0)          = qiu_s(:k0)  
-               cbmf_out(i)             = cbmf_s
                qc_out(i,:k0)           = qc_s(:k0)  
                cnt_out(i)              = cnt_s
                cnb_out(i)              = cnb_s
-               if (dotransport.eq.1) then
-               do m = 1, ncnst
-                  trten_out(i,:k0,m)   = trten_s(:k0,m)
-               enddo  
-               end if
+!               if (dotransport.eq.1) then
+!               do m = 1, ncnst
+!                  trten_out(i,:k0,m)   = trten_s(:k0,m)
+!               enddo  
+!               end if
 #endif             
 
                ! ------------------------------------------------------------------------------ ! 
@@ -2010,17 +2039,17 @@ contains
 
                fer_out(i,1:k0)      = fer_s(:k0)  
                fdr_out(i,1:k0)      = fdr_s(:k0)  
+               plcl_out(i)              = plcl_s
+               pinv_out(i)              = pinv_s    
+               prel_out(i)              = prel_s    
+               plfc_out(i)              = plfc_s    
+               pbup_out(i)              = pbup_s
 
 #ifdef UWDIAG
                ufrcinvbase_out(i)       = ufrcinvbase_s
                ufrclcl_out(i)           = ufrclcl_s 
                winvbase_out(i)          = winvbase_s
                wlcl_out(i)              = wlcl_s
-               plcl_out(i)              = plcl_s
-               pinv_out(i)              = pinv_s    
-               prel_out(i)              = prel_s    
-               plfc_out(i)              = plfc_s    
-               pbup_out(i)              = pbup_s
                ppen_out(i)              = ppen_s    
                qtsrc_out(i)             = qtsrc_s
                thlsrc_out(i)            = thlsrc_s
@@ -2153,12 +2182,16 @@ contains
        ! that buoyancy sorting does not occur when cumulus updraft is unsaturated.   !
        ! ---------------------------------------------------------------------------
  
-         if( use_CINcin ) then       
-            wcrit = sqrt( 2. * cin * rbuoy )      
+       ! ---------------------------------------------------------------------------
+       ! Raw calculations for wcrit, sigmaw, mu and cbmf
+       ! ---------------------------------------------------------------------------
+
+        if( use_CINcin ) then       
+            wcrit = sqrt(max(0.0, 2. * cin * rbuoy) )
          else
-            wcrit = sqrt( 2. * cinlcl * rbuoy )   
+            wcrit = sqrt(max(0.0, 2. * cinlcl * rbuoy) )
          endif
-         sigmaw = sqrt( rkfre(i) * tkeavg + epsvarw )
+         sigmaw = sqrt(max(0.0, tkeavg + epsvarw) )
          mu = wcrit/sigmaw/1.4142                  
          if( mu .ge. 3. ) then
             if (scverbose) then
@@ -2170,17 +2203,30 @@ contains
          rho0inv = pifc0(kinv-1)/(r*thv0top(kinv-1)*exnifc0(kinv-1))
          cbmf = (rho0inv*sigmaw/2.5066)*exp(-mu**2)
 
+       ! ---------------------------------------------------------------------------
+       ! Limiters
+       ! ---------------------------------------------------------------------------
+
          ! 1. 'cbmf' constraint
-         cbmflimit = 0.9*dp0(kinv-1)/g/dt
-         mumin0 = 0.
-         if( cbmf .gt. cbmflimit ) mumin0 = sqrt(-log(2.5066*cbmflimit/rho0inv/sigmaw))
-         ! 2. 'ufrcinv' constraint
+         if (cbmf > 1.0e-12) then
+          ! limit and normalize by raw cbmf  [0.1 : 1.0]
+           rkfre_eff = min(rkfre(i), min(1.0,max(0.1,(0.9*dp0(kinv-1)/g/dt)/cbmf)))
+         else
+          ! When no cloud base mass flux, limit to rkfre only
+           rkfre_eff = min(rkfre(i), 1.0)
+         endif
+         cbmf = rkfre_eff*cbmf
+         if( rkfre_eff .lt. 1.0 ) limit_cbmf(i) = 1.
+         ! 2. limited sigmaw (solving for sigmaw using limited cbmf)
+         sigmaw = 2.5066 * cbmf * exp(mu**2) / rho0inv
+         ! 3. 'ufrcinv' constraint
+         mumin0 = sqrt(max(0.0,-log(max(tiny,2.5066*cbmf/rho0inv/sigmaw))))
          mu = max(max(mu,mumin0),mumin1)
-         ! 3. 'ufrclcl' constraint      
-         mulcl = sqrt(2.*cinlcl*rbuoy)/1.4142/sigmaw
-         mulclstar = sqrt(max(0.,2.*(exp(-mu**2)/2.5066)**2*(1./erfc(mu)**2-0.25/rmaxfrac**2)))
+         ! 4. 'ufrclcl' constraint
+         mulcl = sqrt(max(0.0,2.*cinlcl*rbuoy))/1.4142/sigmaw
+         mulclstar = sqrt(max(0.,2.*(exp(-mu**2)/2.5066)**2*(1./erfc(mu)**2-0.25/rmaxfrac(i)**2)))
          if( mulcl .gt. 1.e-8 .and. mulcl .gt. mulclstar ) then
-            mumin2 = compute_mumin2(mulcl,rmaxfrac,mu)
+            mumin2 = compute_mumin2(mulcl,rmaxfrac(i),mu)
             if( mu .gt. mumin2 ) then
                  call write_parallel('Critical error in mu calculation in UW_ShCu')
 !                call endrun
@@ -2188,7 +2234,6 @@ contains
             mu = max(mu,mumin2)
             if( mu .eq. mumin2 ) limit_ufrc(i) = 1.
          endif
-         if( mu .eq. mumin0 ) limit_cbmf(i) = 1.
          if( mu .eq. mumin1 ) limit_ufrc(i) = 1.
 
        ! ------------------------------------------------------------------- !    
@@ -2197,10 +2242,9 @@ contains
        ! 'ufrclcl' are smaller than ufrcmax with no instability.             !
        ! ------------------------------------------------------------------- !
 
-         cbmf = rkfre(i)*(rho0inv*sigmaw/2.5066)*exp(-mu**2)                       
+         cbmf = (rho0inv*sigmaw/2.5066)*exp(-mu**2)
          winv = sigmaw*(2./2.5066)*exp(-mu**2)/erfc(mu)
          ufrcinv = cbmf/winv/rho0inv
-
 
        ! ------------------------------------------------------------------- !
        ! Calculate ['ufrclcl','wlcl'] at the LCL. When LCL is below PBL top, !
@@ -2222,7 +2266,7 @@ contains
             id_exit = .true.
             go to 333
          endif
-         wlcl = sqrt(wtw)
+         wlcl = sqrt(wtw) ! protected from NaN above
          ufrclcl = cbmf/wlcl/rho0inv
          wrel = wlcl
          if( ufrclcl .le. 0.0001 ) then
@@ -2235,7 +2279,7 @@ contains
          endif
          ufrc(krel-1) = ufrclcl
 
-      ! ----------------------------------------------------------------------- !
+       ! ----------------------------------------------------------------------- !
        ! Below is just diagnostic output for detailed analysis of cumulus scheme !
        ! ----------------------------------------------------------------------- !
 
@@ -2310,7 +2354,8 @@ contains
 
          pe      = 0.5 * ( prel + pifc0(krel) )
          qsat_pe = 0.5 * ( prel + pifc0(krel) )
-         dpe     = prel - pifc0(krel)
+         dpe     = max(prel - pifc0(krel), 100.0) ! Global protection: minimum 1.0 hPa
+                                                ! as prel approaches pifc0
          exne    = exnerfn(pe)
          thvebot = thv0rel
          thle    = thl0(krel) + ssthl0(krel) * ( pe - pmid0(krel) )
@@ -2437,7 +2482,8 @@ contains
 
          wtw     = wlcl * wlcl
          pe      = 0.5 * ( prel + pifc0(krel) )
-         dpe     = prel - pifc0(krel)
+         dpe     = max(prel - pifc0(krel), 100.0) ! Global protection: minimum 0.01 hPa
+                                                ! as prel approaches pifc0
          exne    = exnerfn(pe)
          thvebot = thv0rel
          thle    = thl0(krel) + ssthl0(krel) * ( pe - pmid0(krel) )
@@ -2657,21 +2703,42 @@ contains
           ! ------------------------------------------------------------------------ !
             ee2    = xc**2
             ud2    = 1. - 2.*xc + xc**2  ! (1-xc)**2
-            if (min(scaleh,mixscale).ne.0.0) then
-              rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)                                  ) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
+            if (min(scaleh,mix2d(i)) .gt. tiny) then
+              rei(k) = ( (rkm2d(i)+max(0.,(zmid0(k)-detrhgt)/200.) ) / min(scaleh,mix2d(i)) / g / rhomid0j )   ! alternative
 ! regression bug due to cnvtr
-! WMP         rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)-max(0.,min(2.,(cnvtr(i))/2.5e-6))) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
+! WMP         rei(k) = ( (rkm2d(i)+max(0.,(zmid0(k)-detrhgt)/200.)-max(0.,min(2.,(cnvtr(i))/2.5e-6))) / min(scaleh,mix2d(i)) / g / rhomid0j )   ! alternative
             else
-              rei(k) = ( 0.5 * rkm / zmid0(k) / g /rhomid0j ) ! Jason-2_0 version
+              rei(k) = ( 0.5 * rkm2d(i) / zmid0(k) / g /rhomid0j ) ! Jason-2_0 version
             end if
 
-            if( xc .gt. 0.5 ) rei(k) = min(rei(k),0.9*log(dp0(k)/g/dt/umf(km1) + 1.)/dpe/(2.*xc-1.))
+! overflow  if( xc .gt. 0.5 ) rei(k) = min(rei(k),0.9*log(max(tiny,dp0(k)/g/dt/umf(km1) + 1.))/dpe/(2.*xc-1.))
+            if( xc .gt. 0.5 ) then
+                arg = dp0(k)/g/dt/max(umf(km1),tiny) + 1.0
+                rei(k) = min(rei(k),0.9*log(max(tiny,arg))/max(dpe*(2.*xc-1.), tiny))
+            endif
             fer(k) = rei(k) * ee2
             fdr(k) = rei(k) * ud2
             xco(k) = xc
 
-          
+          ! Adaptive fer/fdr limits for vertical resolution changes from L72
+            layer_thickness_mb = dp0(k)
+            reference_thickness = 2500.0  ! 25 hPa is GEOS L72 reference layer thickness
+            if (layer_thickness_mb > 0) then
+               resolution_factor = reference_thickness / layer_thickness_mb
+               fer_fdr_limit = 0.1 * min(6.0, max(1.0, resolution_factor))
+            else
+               fer_fdr_limit = 0.1  ! Fallback
+            endif
 
+          ! Use capping instead of exiting to handle the transition smoothly
+            if (fer(k) > fer_fdr_limit) then
+                print *,"fer(k) = rei(k) * ee2 > ",fer_fdr_limit," ! fer=",fer(k)
+                fer(k) = fer_fdr_limit * 0.95
+            endif
+            if (fdr(k) > fer_fdr_limit) then
+                print *,"fdr(k) = rei(k) * ud2 > ",fer_fdr_limit," ! fdr=",fdr(k)
+                fdr(k) = fer_fdr_limit * 0.95
+            endif
 
           ! ------------------------------------------------------------------------------ !
           ! Iteration Start due to 'maxufrc' constraint [ ****************************** ] ! 
@@ -2686,7 +2753,12 @@ contains
 
             umf(k) = umf(km1) * exp( dpe * ( fer(k) - fdr(k) ) )
             emf(k) = 0.
-   
+
+          ! --------------------------------------------------------- !
+          ! Limit umf based on (2x) the CFL condition
+          ! --------------------------------------------------------- !
+            umf(k) = min(umf(k),2.*dp0(k)/g/dt)
+
             dcm(k) = 0.5*(umf(k)+umf(km1))*rei(k)*dpe*min(1.,max(0.,xsat-xc))
 !           dcm(k) = min(1.,max(0.,xsat-xc))
 
@@ -2904,7 +2976,7 @@ contains
               go to 45
             end if
 
-            wu(k) = sqrt(wtw)
+            wu(k) = sqrt(wtw) ! Protected from NaN above
             if( wu(k) .gt. 100. ) then
               exit_wu(i) = 1.
               id_exit = .true.
@@ -2936,11 +3008,16 @@ contains
             
           rhoifc0j  = pifc0(k) / ( r * 0.5 * ( thv0bot(k+1) + thv0top(k) )*exnifc0(k) )
           ufrc(k) = umf(k) / ( rhoifc0j * wu(k) )
-          if( ufrc(k) .gt. rmaxfrac ) then
+          if( ufrc(k) .gt. rmaxfrac(i) ) then
               limit_ufrc(i) = 1. 
-              ufrc(k) = rmaxfrac
-              umf(k)  = rmaxfrac * rhoifc0j * wu(k)
-              fdr(k)  = fer(k) - log( umf(k) / umf(km1) ) / dpe
+              ufrc(k) = rmaxfrac(i)
+              umf(k)  = rmaxfrac(i) * rhoifc0j * wu(k)
+              fdr(k)  = fer(k) - log(max(tiny, umf(k) / umf(km1)) ) / dpe
+              if (fdr(k).gt.fer_fdr_limit) then
+                 print *,"fdr(k) [updated] > ",fer_fdr_limit," ! fdr=",fdr(k)," dpe=",dpe/100.0
+                !id_exit = .true.
+                !go to 333
+              end if
           endif
 
           ! ------------------------------------------------------------ !
@@ -3919,6 +3996,7 @@ contains
 	   ! 
            ! ----------------------------------------------------------------- !
 
+           if (fix_negative) then
            if ( ((qc_lm+qlten_sink(k))*dt+ql0(k)).lt.0. ) then
               totsink = qc_lm+qlten_sink(k)
               if (totsink.ne.0.) then
@@ -3935,6 +4013,7 @@ contains
                 qiten_det(k) = qc_i(k) + qc_im
               end if
            end if
+           endif
 
            qlten(k) = qrten(k) + qlten_sink(k) + qlten_det(k)
            qiten(k) = qsten(k) + qiten_sink(k) + qiten_det(k)
@@ -3998,14 +4077,16 @@ contains
        !                in combination with the original computation of qlten, qiten. However,
        !                if we use new 'qlten,qiten', there is no problem.
 
+         if (fix_negative) then
          qv0_star(:k0) = qv0(:k0) + qvten(:k0) * dt
          ql0_star(:k0) = ql0(:k0) + qlten(:k0) * dt
          qi0_star(:k0) = qi0(:k0) + qiten(:k0) * dt
          s0_star(:k0)  =  s0(:k0) +  sten(:k0) * dt
-         call positive_moisture_single( xlv, xls, k0, dt, qmin(1), qmin(ixcldliq), qmin(ixcldice), &
+         call positive_moisture_single( xlv, xls, k0, dt, &
               dp0, qv0_star, ql0_star, qi0_star, s0_star, qvten, qlten, qiten, sten )
          qtten(:k0)    = qvten(:k0) + qlten(:k0) + qiten(:k0)
          slten(:k0)    = sten(:k0)  - xlv * qlten(:k0) - xls * qiten(:k0)
+         endif
 
        ! --------------------- !
        ! Tendencies of tracers !
@@ -4016,16 +4097,6 @@ contains
 
 !         if( m .ne. ixnumliq .and. m .ne. ixnumice ) then
 
-           trmin = 0. !qmin(m)
-!#ifdef MODAL_AERO
-!           do mm = 1, ntot_amode
-!             if( m .eq. numptr_amode(mm) ) then
-!                 trmin = 1.e-5
-!                 goto 55
-!             endif              
-!           enddo
-!        55 continue
-!#endif 
            trflx_d(0:k0) = 0.
            trflx_u(0:k0) = 0.           
            do k = 1, k0-1
@@ -4035,7 +4106,7 @@ contains
 !                 pdelx = dpdry0(k)
 !             endif
              km1 = k - 1
-             dum = ( tr0(k,m) - trmin ) *  pdelx / g / dt + trflx(km1,m) - trflx(k,m) + trflx_d(km1)
+             dum = tr0(k,m) *  pdelx / g / dt + trflx(km1,m) - trflx(k,m) + trflx_d(km1)
              trflx_d(k) = min( 0., dum )
            enddo
            do k = k0, 2, -1
@@ -4045,7 +4116,7 @@ contains
 !                 pdelx = dpdry0(k)
 !             endif
              km1 = k - 1
-             dum = ( tr0(k,m) - trmin ) * pdelx / g / dt + trflx(km1,m) - trflx(k,m) + &
+             dum = tr0(k,m) * pdelx / g / dt + trflx(km1,m) - trflx(k,m) + &
                                                            trflx_d(km1) - trflx_d(k) - trflx_u(k) 
              trflx_u(km1) = max( 0., -dum ) 
            enddo
@@ -4215,6 +4286,12 @@ contains
 !           slten_s(:k0)         = slten(:k0)
            ufrc_s(0:k0)         = ufrc(0:k0) 
 
+           plcl_s               = plcl
+           pinv_s               = pifc0(kinv-1)
+           plfc_s               = plfc        
+           prel_s               = prel        
+           pbup_s               = pifc0(kbup)
+
 
 #ifdef UWDIAG         
            cnt_s                = cnt
@@ -4224,11 +4301,6 @@ contains
            ufrclcl_s            = ufrclcl 
            winvbase_s           = winvbase
            wlcl_s               = wlcl
-           plcl_s               = plcl
-           pinv_s               = pifc0(kinv-1)
-           plfc_s               = plfc        
-           prel_s               = prel        
-           pbup_s               = pifc0(kbup)
            ppen_s               = pifc0(kpen-1) + ppen        
            qtsrc_s              = qtsrc
            thlsrc_s             = thlsrc
@@ -4385,9 +4457,15 @@ contains
      fer_out(i,1:kpen)          = fer(:kpen)  
      fdr_out(i,1:kpen)          = fdr(:kpen)  
 
-#ifdef UWDIAG
      cldhgt_out(i)               = cldhgt
      cbmf_out(i)                 = cbmf
+     plcl_out(i)                 = plcl
+     pinv_out(i)                 = pifc0(kinv-1)
+     plfc_out(i)                 = plfc    
+     prel_out(i)                 = prel    
+     pbup_out(i)                 = pifc0(kbup)        
+
+#ifdef UWDIAG
      cnt_out(i)                  = cnt
      cnb_out(i)                  = cnb
      qcu_out(i,:k0)              = qcu(:k0)
@@ -4407,11 +4485,6 @@ contains
      ufrclcl_out(i)               = ufrclcl 
      winvbase_out(i)              = winvbase
      wlcl_out(i)                  = wlcl
-     plcl_out(i)                  = plcl
-     pinv_out(i)                  = pifc0(kinv-1)
-     plfc_out(i)                  = plfc    
-     prel_out(i)                  = prel    
-     pbup_out(i)                  = pifc0(kbup)        
      ppen_out(i)                  = pifc0(kpen-1) + ppen            
      qtsrc_out(i)                 = qtsrc
      thlsrc_out(i)                = thlsrc
@@ -4448,14 +4521,14 @@ contains
      bogbot_arr_out(i,1:k0)   = bogbot_arr(:k0)
      bogtop_arr_out(i,1:k0)   = bogtop_arr(:k0)
 
-      if (dotransport.eq.1) then
-      do m = 1, ncnst
-        trten_out(i,:k0,m)    = trten(:k0,m)
-        trflx_out(i,0:k0,m)   = trflx(0:k0,m)  
-        tru_out(i,0:k0,m)     = tru(0:k0,m)
-        tru_emf_out(i,0:k0,m) = tru_emf(0:k0,m)
-      enddo
-      endif
+!      if (dotransport.eq.1) then
+!      do m = 1, ncnst
+!        trten_out(i,:k0,m)    = trten(:k0,m)
+!        trflx_out(i,0:k0,m)   = trflx(0:k0,m)  
+!        tru_out(i,0:k0,m)     = tru(0:k0,m)
+!        tru_emf_out(i,0:k0,m) = tru_emf(0:k0,m)
+!      enddo
+!      endif
 #endif
 
 333    if (id_exit) then
@@ -4491,8 +4564,15 @@ contains
      fer_out(i,1:k0)             = MAPL_UNDEF
      fdr_out(i,1:k0)             = MAPL_UNDEF
 
-#ifdef UWDIAG
      cbmf_out(i)                 = 0.   
+     plcl_out(i)                 = MAPL_UNDEF
+     pinv_out(i)                 = MAPL_UNDEF
+     prel_out(i)                 = MAPL_UNDEF
+     plfc_out(i)                 = MAPL_UNDEF
+     pbup_out(i)                 = MAPL_UNDEF
+     cldhgt_out(i)               = MAPL_UNDEF
+     
+#ifdef UWDIAG
      cnt_out(i)                  = 1.
      cnb_out(i)                  = real(k0)
      qcu_out(i,:k0)              = 0.
@@ -4512,11 +4592,6 @@ contains
      ufrclcl_out(i)               = 0. 
      winvbase_out(i)              = 0.    
      wlcl_out(i)                  = MAPL_UNDEF    
-     plcl_out(i)                  = MAPL_UNDEF
-     pinv_out(i)                  = MAPL_UNDEF
-     prel_out(i)                  = MAPL_UNDEF
-     plfc_out(i)                  = MAPL_UNDEF
-     pbup_out(i)                  = MAPL_UNDEF
      ppen_out(i)                  = MAPL_UNDEF
      qtsrc_out(i)                 = MAPL_UNDEF 
      thlsrc_out(i)                = MAPL_UNDEF    
@@ -4553,14 +4628,14 @@ contains
         bogbot_arr_out(i,k0:1:-1)   = 0.    
         bogtop_arr_out(i,k0:1:-1)   = 0.    
 
-        if (dotransport.eq.1) then
-        do m = 1, ncnst
-          trten_out(i,:k0,m)       = 0.
-          trflx_out(i,k0:0:-1,m)   = 0.  
-          tru_out(i,k0:0:-1,m)     = 0.
-          tru_emf_out(i,k0:0:-1,m) = 0.
-        enddo
-        endif
+!        if (dotransport.eq.1) then
+!        do m = 1, ncnst
+!          trten_out(i,:k0,m)       = 0.
+!          trflx_out(i,k0:0:-1,m)   = 0.  
+!          tru_out(i,k0:0:-1,m)     = 0.
+!          tru_emf_out(i,k0:0:-1,m) = 0.
+!        enddo
+!        endif
 #endif
 
        end if
@@ -4642,7 +4717,7 @@ contains
         return
      end if
 
-!     print *,'Ti,Rhi,thl=',Ti,rhi,thl
+!     print *,'Ti,Rhi,thl=',Ti,rhi,thl       ! WMP log(rhi) protected from NaN above
      TLCL     =  55._r8 + 1._r8/(1._r8/(Ti-55._r8)-log(rhi)/2840._r8) ! Bolton's formula. MWR.1980.Eq.(22)
      PiLCL    =  TLCL/thl
      ps       =  p00*(PiLCL)**(1._r8/rovcp)
@@ -4867,7 +4942,7 @@ contains
   end subroutine fluxbelowinv
 
 
-  subroutine positive_moisture_single( xlv, xls, mkx, dt, qvmin, qlmin, qimin, dp, qv, ql, qi, s, qvten, qlten, qiten, sten )
+  subroutine positive_moisture_single( xlv, xls, mkx, dt, dp, qv, ql, qi, s, qvten, qlten, qiten, sten )
   ! ------------------------------------------------------------------------------- !
   ! If any 'ql < qlmin, qi < qimin, qv < qvmin' are developed in any layer,         !
   ! force them to be larger than minimum value by (1) condensating water vapor      !
@@ -4881,48 +4956,47 @@ contains
     implicit none
     integer,  intent(in)     :: mkx
     real, intent(in)     :: xlv, xls
-    real, intent(in)     :: qvmin, qlmin, qimin
     real, intent(in)     :: dp(mkx)
     real, intent(in)       :: dt
     real, intent(inout)  :: qv(mkx), ql(mkx), qi(mkx), s(mkx)
     real, intent(inout)  :: qvten(mkx), qlten(mkx), qiten(mkx), sten(mkx)
     integer   k
-    real*8 dql, dqi, dqv, sum, aa, dum 
+    real dql, dqi, dqv, sum, aa, dum 
 
     do k = mkx, 1, -1        ! From the top to the 1st (lowest) layer from the surface
-       dql = max(0._r8,1._r8*qlmin-ql(k))
-       dqi = max(0._r8,1._r8*qimin-qi(k))
+       dql = max(0.0, (qcmin-ql(k)))
+       dqi = max(0.0, (qcmin-qi(k)))
        qlten(k) = qlten(k) +  dql/dt
        qiten(k) = qiten(k) +  dqi/dt
-       qvten(k) = qvten(k) - (dql+dqi)/dt
        sten(k)  = sten(k)  + xlv * (dql/dt) + xls * (dqi/dt)
        ql(k)    = ql(k) +  dql
        qi(k)    = qi(k) +  dqi
-       qv(k)    = qv(k) -  dql - dqi
        s(k)     = s(k)  +  xlv * dql + xls * dqi
-       dqv      = max(0.,1.*qvmin-qv(k))
+
+       qv(k) = qv(k) - dql - dqi
+       dqv  = max(0.0, (qvmin-qv(k)))
        qvten(k) = qvten(k) + dqv/dt
-       qv(k)    = qv(k)   + dqv
+       qv(k)    = qv(k)    + dqv
        if( k .ne. 1 ) then 
            qv(k-1)    = qv(k-1)    - dqv*dp(k)/dp(k-1)
            qvten(k-1) = qvten(k-1) - dqv*dp(k)/dp(k-1)/dt
        endif
        qv(k) = max(qv(k),qvmin)
-       ql(k) = max(ql(k),qlmin)
-       qi(k) = max(qi(k),qimin)
+       ql(k) = max(ql(k),qcmin)
+       qi(k) = max(qi(k),qcmin)
     end do
     ! Extra moisture used to satisfy 'qv(i,1)=qvmin' is proportionally 
     ! extracted from all the layers that has 'qv > 2*qvmin'. This fully
     ! preserves column moisture. 
-    if( dqv .gt. 1.e-20_r8 ) then
+    if( dqv .gt. qvmin ) then
         sum = 0.
         do k = 1, mkx
-           if( qv(k) .gt. 2._r8*qvmin ) sum = sum + qv(k)*dp(k)
+           if( qv(k) .gt. 2.0*qvmin ) sum = sum + qv(k)*dp(k)
         enddo
-        aa = dqv*dp(1)/max(1.e-20_r8,sum)
-        if( aa .lt. 0.5_r8 ) then
+        aa = dqv*dp(1)/max(qvmin,sum)
+        if( aa .lt. 0.5 ) then
             do k = 1, mkx
-               if( qv(k) .gt. 2._r8*qvmin ) then
+               if( qv(k) .gt. 2.0*qvmin ) then
                    dum      = aa*qv(k)
                    qv(k)    = qv(k) - dum
                    qvten(k) = qvten(k) - dum/dt
@@ -5024,14 +5098,14 @@ contains
             if( a*c .gt. 0. ) then                  ! Failure: x**2 = -c/a < 0
                 status = 2  
             else                                       ! x**2 = -c/a 
-                r1 = sqrt(-c/a)
+                r1 = sqrt(-c/a)  ! protected from NaN above
             endif
             r2 = -r1
        else                                            ! Form a*x**2 + b*x + c = 0
             if( (b**2 - 4.*a*c) .lt. 0. ) then   ! Failure, no real roots
                  status = 3
             else
-                 q  = -0.5*(b + sign(1.0,b)*sqrt(b**2 - 4.*a*c))
+                 q  = -0.5*(b + sign(1.0,b)*sqrt(b**2 - 4.*a*c)) ! protected from NaN above
                  r1 =  q/a
                  r2 =  c/q
 !                 r1 = -0.5*(b + sign(1.0,b)*sqrt(b**2 - 4.*a*c))/a

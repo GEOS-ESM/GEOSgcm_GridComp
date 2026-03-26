@@ -5,17 +5,16 @@ category: INTERNAL
 #--------------------------------------------------------------------------------------------------------------------
 #  VARIABLE    | DIMENSION   |          Additional Metadata
 #--------------------------------------------------------------------------------------------------------------------
- NAME   | UNITS   | DIMS | VLOC | UNGRIDDED  | LONG NAME
+ NAME   | UNITS   | DIMS | VLOC | UNGRIDDED  | COND                  | LONG NAME
 #--------------------------------------------------------------------------------------------------------------------
- SGH30  | m       | xy   | N    |            | standard deviation of 30s elevation from 3km cube
- KWVRDG | km      | xy   | N    | ungrd_16   | horizonal wwavenumber of mountain ridges
- EFFRDG | km      | xy   | N    | ungrd_16   | efficiency of mountain ridge scheme
- GBXAR  | NA      | xy   | N    |            | grid box area
- HWDTH  | km      | xy   | N    | ungrd_16   | width of mountain ridges
- CLNGT  | km      | xy   | N    | ungrd_16   | width of mountain ridges
- MXDIS  | NA      | xy   | N    | ungrd_16   | NA
- ANGLL  | NA      | xy   | N    | ungrd_16   | NA
- ANIXY  | NA      | xy   | N    | ungrd_16   | NA
+ KWVRDG | km      | xy   | N    | ungrd_16   | self%NCAR_NRDG /= 0.0 | horizonal wavenumber of mountain ridges
+ EFFRDG | km      | xy   | N    | ungrd_16   | self%NCAR_NRDG /= 0.0 | efficiency of mountain ridge scheme
+ GBXAR  | NA      | xy   | N    |            | self%NCAR_NRDG /= 0.0 | grid box area
+ HWDTH  | km      | xy   | N    | ungrd_16   | self%NCAR_NRDG /= 0.0 | width of mountain ridges
+ CLNGT  | km      | xy   | N    | ungrd_16   | self%NCAR_NRDG /= 0.0 | width of mountain ridges
+ MXDIS  | NA      | xy   | N    | ungrd_16   | self%NCAR_NRDG /= 0.0 | NA
+ ANGLL  | NA      | xy   | N    | ungrd_16   | self%NCAR_NRDG /= 0.0 | NA
+ ANIXY  | NA      | xy   | N    | ungrd_16   | self%NCAR_NRDG /= 0.0 | NA
 
 category: IMPORT
 #-------------------------------------------------------------------------------------------------------
@@ -58,6 +57,7 @@ category: EXPORT
  RDG1_GBXAR |          | km^2     | xy   | N    | ridge1_gridbox_area
  SGH        | SGH_EXP  | m        | xy   | N    | standard_deviation_of_topography
  PREF       | PREF_EXP | Pa       |   z  | E    | reference_air_pressure
+ DQCDT_LS   |          | kg kg-1 s-1 | xyz  | C    | total_condensate_tendency_for_frontal_GWD_forcing
  DTDT       |          | Pa K s-1 | xyz  | C    | mass_weighted_air_temperature_tendency_due_to_GWD
  TTMGW      |          | K s-1    | xyz  | C    | air_temperature_tendency_due_to_GWD
  DUDT       |          | m s-2    | xyz  | C    | tendency_of_eastward_wind_due_to_GWD
