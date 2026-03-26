@@ -5,7 +5,7 @@
 export NDSL_LITERAL_PRECISION=32
 export NDSL_TEST_N_THRESHOLD_SAMPLES=0
 export GT4PY_COMPILE_OPT_LEVEL=0
-export FV3_DACEMODE=Python
+export FV3_DACEMODE=BuildAndRun
 export NDSL_LOGLEVEL=Critical
 
 # UW specific

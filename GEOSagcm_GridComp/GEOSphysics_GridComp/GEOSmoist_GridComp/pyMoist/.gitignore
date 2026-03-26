@@ -17,3 +17,4 @@ sandbox/
 .venv/
 site/
 .debug.yaml
+_dacegraphs/

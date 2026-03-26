@@ -59,4 +59,4 @@ jobs:
       - name: Run translate tests
         run: |
           cd GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist/tests/scripts/
-          ./run_all.sh ../../${{ env.DATA_PATH }} dace:cpu_kfirst
+          ./run_all.sh ../../${{ env.DATA_PATH }} st:dace:cpu:KIJ

@@ -1,16 +1,16 @@
 ComputeUwshcuInv:
-  - backend: debug
+  - backend: st:python:cpu:IJK
     multimodal:
       absolute_epsilon: 1.00e-08
       relative_fraction: 1.00e-04
       ulp_threshold: 5000.0
-  - backend: dace:cpu_kfirst
+  - backend: st:dace:cpu:IJK
     multimodal:
       absolute_epsilon: 1.00e-08
       ulp_threshold: 1000
 
 
 GFDL_1M_PhaseChange:
-  - backend: dace:cpu_KJI
+  - backend: st:dace:cpu:KJI
     multimodal:
       ulp_threshold: 250
