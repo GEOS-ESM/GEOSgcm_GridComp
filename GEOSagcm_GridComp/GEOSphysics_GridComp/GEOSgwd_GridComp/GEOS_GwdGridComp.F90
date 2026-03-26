@@ -317,7 +317,7 @@ contains
          call MAPL_GridCompGetResource(gc, "GEOS_EFFGWBKG", self%GEOS_EFFGWBKG, default=0.125, _RC)
          call MAPL_GridCompGetResource(gc, "NCAR_EFFGWBKG", self%NCAR_EFFGWBKG, default=0.000, _RC)
          !! call MAPL_GridCompGetResource(gc, "RAYLEIGH_TAU1", self%TAU1,          default=172800., _RC)
-         call MAPL_GridCompGetResource(gc, "RAYLEIGH_TAU1", self%TAU1,          default=0.000., _RC)
+         call MAPL_GridCompGetResource(gc, "RAYLEIGH_TAU1", self%TAU1,          default=0.000, _RC)
       else
          GEOS_PGWV = NINT(32*LM/181.0)
          call MAPL_GridCompGetResource(gc, "GEOS_PGWV",     self%GEOS_PGWV,     default=GEOS_PGWV, _RC)
@@ -334,7 +334,7 @@ contains
          call MAPL_GridCompGetResource(gc, "GEOS_EFFGWORO", self%GEOS_EFFGWORO, default=0.250, _RC)
          call MAPL_GridCompGetResource(gc, "NCAR_EFFGWORO", self%NCAR_EFFGWORO, default=0.000, _RC)
          call MAPL_GridCompGetResource(gc, "NCAR_NRDG",     self%NCAR_NRDG,     default=0, _RC)
-      else  
+      else
          call MAPL_GridCompGetResource(gc, "GEOS_EFFGWORO", self%GEOS_EFFGWORO, default=0.000, _RC)
          call MAPL_GridCompGetResource(gc, "NCAR_NRDG",     self%NCAR_NRDG,     default=0, _RC)
          if (self%NCAR_NRDG == 16) then
@@ -847,7 +847,7 @@ contains
                  print *, "            UWND =", U_EXP(I,J,L)
                  print *, "            VWND =", V_EXP(I,J,L)
                  endif
-             endif 
+             endif
            end do ! IM loop
          end do ! JM loop
        end do ! LM loop
