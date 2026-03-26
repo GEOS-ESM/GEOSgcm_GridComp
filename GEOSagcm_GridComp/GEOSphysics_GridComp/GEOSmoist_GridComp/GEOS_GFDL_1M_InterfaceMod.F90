@@ -221,9 +221,6 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
 
     real, pointer, dimension(:,:,:)     :: Q, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL
 
-    type(ESMF_VM) :: VM
-    integer :: comm
-
     call MAPL_GetResource( MAPL, LHYDROSTATIC, Label="HYDROSTATIC:",  default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LPHYS_HYDROSTATIC, Label="PHYS_HYDROSTATIC:",  default=.TRUE., RC=STATUS)
@@ -252,10 +249,7 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetPointer(INTERNAL, QILS,     'QILS'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , RC=STATUS); VERIFY_(STATUS)
 
-    call ESMF_VMGetCurrent(VM, _RC)
-    call ESMF_VMGet(VM, mpiCommunicator=comm, _RC)
-
-    call gfdl_cloud_microphys_init(comm)
+    call gfdl_cloud_microphys_init()
     call WRITE_PARALLEL ("INITIALIZED GFDL_1M microphysics in non-generic GC INIT")
 
     call MAPL_GetResource( MAPL, SH_MD_DP        , 'SH_MD_DP:'        , DEFAULT= .TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -572,7 +566,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           QRAIN = QRAIN + PTR3D*DT_MOIST
         endif
         call MAPL_GetPointer(EXPORT, PTR3D,  'SHLW_SNO3', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR3D)) then 
+        if (associated(PTR3D)) then
           QSNOW = QSNOW + PTR3D*DT_MOIST
         endif
        ! evap/subl/pdf
