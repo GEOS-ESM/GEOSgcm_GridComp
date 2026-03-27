@@ -411,7 +411,6 @@ class GFDL1MInterface(UserCode):
 
             with TimedCUDAProfiler("GFDL 1M - State copy-back", {}):
                 self._managed_state.ndsl_to_fortran()
-                self._managed_state.record("GFDL1M-Out")
 
     def finalize(
         self,
