@@ -11,7 +11,7 @@ module CNBalanceCheckMod
 ! Module for carbon mass balance checking.
 !
 ! !USES:
-    use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+    use MAPL_Constants, ONLY: r8 => MAPL_R4
     use clm_varctl  , only: iulog
     implicit none
     save

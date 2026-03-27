@@ -561,7 +561,7 @@
 ! !REVISION HISTORY:
 
 ! !USES:
-   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+   use MAPL_Constants, ONLY: r8 => MAPL_R4
    use clmtype
    use clm_varcon  , only : rgas, tfrz
    use clm_varpar  , only : nlevcan
@@ -1356,7 +1356,7 @@
    ! Dec 14, 2012: Created by Jinyun Tang
    !
    !!USES
-   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+   use MAPL_Constants, ONLY: r8 => MAPL_R4
    use clmtype
    
    !
@@ -1504,7 +1504,7 @@
 ! 4/5/10: Adapted from /home/bonan/ecm/psn/An_gs_iterative.f90 by Keith Oleson
 !
 ! !USES:
-   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+   use MAPL_Constants, ONLY: r8 => MAPL_R4
    implicit none
 !
 ! !ARGUMENTS:
@@ -1555,7 +1555,7 @@
    !Dec 14/2012: Jinyun Tang, modified from numerical recipes in F90 by press et al. 1188-1189
    !
    !!USES:
-   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+   use MAPL_Constants, ONLY: r8 => MAPL_R4
    
    !
    !!ARGUMENTS:
@@ -1705,7 +1705,7 @@
    
    !
    !!USES:   
-   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4  
+   use MAPL_Constants, ONLY: r8 => MAPL_R4  
    
    !
    !! ARGUMENTS:
