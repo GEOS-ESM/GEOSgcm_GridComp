@@ -20,7 +20,7 @@ USE GEOSmoist_Process_Library, only : sigma, SH_MD_DP, ICE_FRACTION, make_Drople
  PRIVATE
  PUBLIC  gf2020_interface &
         ,use_memory,convection_tracer &
-        ,downdraft &
+        ,downdraft,use_inv_layers &
         ,use_rebcb, vert_discr, satur_calc, clev_grid, apply_sub_mp &
         ,sgs_w_timescale, lightning_diag, tau_ocea_cp,  tau_land_cp &
         ,autoconv, overshoot, use_wetbulb &
@@ -61,7 +61,7 @@ USE GEOSmoist_Process_Library, only : sigma, SH_MD_DP, ICE_FRACTION, make_Drople
 
  INTEGER :: SATUR_CALC        = 1 != 0/1: 1=new saturation specific humidity calculation, default = 0
 
- INTEGER :: SGS_W_TIMESCALE   = 0 != 0/1: vertical velocity for tau_ecmwf, default = 0
+ REAL    :: SGS_W_TIMESCALE   = 0 != 0/1: vertical velocity for tau_ecmwf, default = 0
 
  INTEGER :: LIGHTNING_DIAG    = 0 != 0/1: do LIGHTNING_DIAGgnostics based on Lopez (2016, MWR)
 
@@ -81,6 +81,8 @@ USE GEOSmoist_Process_Library, only : sigma, SH_MD_DP, ICE_FRACTION, make_Drople
  REAL    ::  LAMBAU_SHDN        = 2.0 != default= 2.0 lambda parameter for shallow/downdraft convection momentum transp
 
  LOGICAL :: DOWNDRAFT           = .TRUE. ! turn ON/OFF downdrafts, default = ON
+
+ LOGICAL :: USE_INV_LAYERS      = .FALSE. ! Turn ON/OFF inversion layer capping for mid clouds
 
  REAL    :: MAX_TQ_TEND         = 100.   != max T,Q tendency allowed (100 K/day)
 
@@ -245,7 +247,7 @@ CONTAINS
 
     REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(OUT)  :: REVSU, entr_dp, entr_md, entr_sh
 
-    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(OUT)  :: SGS_VVEL_DP, SGS_VVEL_MD, SGS_VVEL_SH
+    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(INOUT):: SGS_VVEL_DP, SGS_VVEL_MD, SGS_VVEL_SH
 
     REAL   ,DIMENSION(mxp,myp,0:mzp) ,INTENT(OUT)  :: PRFIL
 
@@ -620,6 +622,17 @@ CONTAINS
      stop 'unknown GF_ENV_SETTING at convpar_gf2020.F90'
     ENDIF
 
+     !- fill sub-grid vertical velocities for each plume
+     DO j=1,myp
+        DO i=1,mxp
+           DO k=1,mzp
+              sgs_vvel_5d(i,k,j,DEEP) = sgs_vvel_dp(i,j,flip(k))
+              sgs_vvel_5d(i,k,j,MID ) = sgs_vvel_md(i,j,flip(k))
+              sgs_vvel_5d(i,k,j,SHAL) = sgs_vvel_sh(i,j,flip(k))
+           ENDDO
+        ENDDO
+     ENDDO
+
     IF(CONVECTION_TRACER==1) THEN
       DO j=1,myp
        DO i=1,mxp
@@ -775,9 +788,11 @@ CONTAINS
 
       ENDIF
 
-      sgs_vvel_dp = MAPL_UNDEF
-      sgs_vvel_md = MAPL_UNDEF
-      sgs_vvel_sh = MAPL_UNDEF
+      if(ZERO_DIFF_VVEL==1) then
+        sgs_vvel_dp = MAPL_UNDEF
+        sgs_vvel_md = MAPL_UNDEF
+        sgs_vvel_sh = MAPL_UNDEF
+      endif
 
       entr_dp = MAPL_UNDEF
       entr_md = MAPL_UNDEF
@@ -791,10 +806,12 @@ CONTAINS
               DO k=mzp,flip(ktop4d(i,j,IENS))-1,-1
 
                 !- Export sug-grid scale vertical velocities used by GF
-                if (IENS==DEEP) sgs_vvel_dp(i,j,k) = sgs_vvel_5d(i,flip(k),j,IENS)
-                if (IENS==MID ) sgs_vvel_md(i,j,k) = sgs_vvel_5d(i,flip(k),j,IENS)
-                if (IENS==SHAL) sgs_vvel_sh(i,j,k) = sgs_vvel_5d(i,flip(k),j,IENS)
-
+                if(ZERO_DIFF_VVEL==1) then
+                  if (IENS==DEEP) sgs_vvel_dp(i,j,k) = sgs_vvel_5d(i,flip(k),j,IENS)
+                  if (IENS==MID ) sgs_vvel_md(i,j,k) = sgs_vvel_5d(i,flip(k),j,IENS)
+                  if (IENS==SHAL) sgs_vvel_sh(i,j,k) = sgs_vvel_5d(i,flip(k),j,IENS)
+                endif
+ 
                 !- special treatment for CNV_DQCDT: 'convective_condensate_source',  UNITS     = 'kg m-2 s-1',
                 !- SRC_CI contains contributions from deep, shallow,... . So, do not need to be accumulated over  CNV_DQCDT
                 !- note the SRC_CI has different array structure (k,i,j) _not_ (i,j,k)
@@ -1817,7 +1834,7 @@ loop1:  do n=1,maxiens
                      ,clfrac            &
                      !- for convective transport-end
                      !- for debug/diag
-                     ,SGS_VVEL_         &
+                     ,vvel2d            &
                      ,AA0_,AA1_,AA2_,AA3_,AA1_BL_,AA1_CIN_,TAU_BL_,TAU_EC_   &
                      ,lightn_dens       &
                      ,revsu_gf          &
@@ -1828,7 +1845,6 @@ loop1:  do n=1,maxiens
 
      !-local settings
      LOGICAL, PARAMETER:: USE_LCL       =.FALSE.
-     LOGICAL, PARAMETER:: USE_INV_LAYERS=.TRUE.
 
      CHARACTER*(*),INTENT(IN) :: cumulus
      INTEGER      ,INTENT(IN) :: itf,ktf,its,ite,kts,kte,ichoice,use_excess,mtp, nmp
@@ -1991,6 +2007,7 @@ loop1:  do n=1,maxiens
      integer :: jprnt,k1,k2,kbegzu,kdefi,kfinalzu,kstart,jmini,imid,k_free_trop
 
      real :: day,dz,dzo,radius,entrd_rate,                         &
+             z_cloud_top_min, z_cloud_top_max,                     &
              zcutdown,depth_min,zkbmax,z_detr,zktop,               &
              massfld,dh,trash,frh,xlamdd,radiusd,frhd,effec_entrain
      real :: detdo1,detdo2,entdo,dp,subin,detdo,entup,             &
@@ -2023,7 +2040,7 @@ loop1:  do n=1,maxiens
      integer, dimension (its:ite,kts:kte) ::  k_inv_layers
      integer :: ipr=0,jpr=0,fase
 
-     real,    dimension (its:ite,kts:kte) ::  vvel2d,tempco,tempcdo
+     real,    dimension (its:ite,kts:kte) ::  tempco,tempcdo
      real,    dimension (its:ite        ) ::  vvel1d, x_add_buoy
 
      real,    dimension (its:ite,kts:kte) ::  p_liq_ice,melting_layer,melting
@@ -2091,12 +2108,12 @@ loop1:  do n=1,maxiens
              ,clfrac
     !----------------------------------------------------------------------
     !-- debug/diag
-     real,  dimension (its:ite,kts:kte),intent (inout)  :: SGS_VVEL_
+     real,  dimension (its:ite,kts:kte),intent (inout)  :: vvel2d
      real,  dimension (its:ite)        ,intent (inout)  :: &
              aa0_,aa1_,aa2_,aa3_,aa1_bl_,aa1_cin_,tau_bl_,tau_ec_
      real,  dimension (its:ite,kts:kte) :: dtdt,dqdt
      real :: s1,s2,q1,q2,rzenv,factor,CWV,entr_threshold,resten_H,resten_Q,resten_T
-     real :: tau_0, tau_1
+     real :: w_eff, tau_0, tau_1
      integer :: status
      real :: alp0,beta1,beta2,dp_p,dp_m,delt1,delt2,delt_Tvv,wkf,ckf,wkflcl,rcount
      real,    dimension (kts:kte,8)       ::  tend2d
@@ -2236,30 +2253,46 @@ loop1:  do n=1,maxiens
            edtmin(i)=MIN_EDT_LAND;  edtmax(i)=MAX_EDT_LAND
          endif
       ENDDO
+
+!===================================================================================
+! DEFINE PHYSICALLY BASED CONVECTION LIMITS (IN METERS AGL)
+!===================================================================================
+!        
+!--- minimum cloud top height (m), how tall must the cloud get to qualify?
+!           
+      if(trim(cumulus) == 'deep'   ) z_cloud_top_min = 4500. ! Must pass freezing level
+      if(trim(cumulus) == 'mid'    ) z_cloud_top_min = 2500. ! Mid-level cloud
+      if(trim(cumulus) == 'shallow') z_cloud_top_min =  500. ! Just needs to clear the LCL
+!                                   
+!--- maximum cloud top height (m), how tall is the cloud allowed to get?
+!           
+      if(trim(cumulus) == 'deep'   ) z_cloud_top_max = 18000. ! Tropopause
+      if(trim(cumulus) == 'mid'    ) z_cloud_top_max = 5500.  ! Capped below upper troposphere
+      if(trim(cumulus) == 'shallow') z_cloud_top_max = 2500.  ! Capped by trade inversion
 !
-!--- minimum depth (m), clouds must have
+!--- minimum depth (m), required thickness of the cloud
 !
-      if(trim(cumulus) == 'deep'   ) depth_min=1000.
-      if(trim(cumulus) == 'mid'    ) depth_min=500.
-      if(trim(cumulus) == 'shallow') depth_min=500.
+      if(trim(cumulus) == 'deep'   ) depth_min = 3000. ! Needs deep instability
+      if(trim(cumulus) == 'mid'    ) depth_min = 1200. ! Noticeable mid-layer
+      if(trim(cumulus) == 'shallow') depth_min = 300.  ! Can be thin fair-weather cu
+!                  
+!--- max height(m) above ground where updraft air can originate (Source Layer)
 !
-!--- max height(m) above ground where updraft air can originate
-!
-      if(trim(cumulus) == 'deep'   ) zkbmax=4000.
-      if(trim(cumulus) == 'mid'    ) zkbmax=3000.
-      if(trim(cumulus) == 'shallow') zkbmax=2000.
-!
+      if(trim(cumulus) == 'deep'   ) zkbmax = 3000. ! Surface or low-level based
+      if(trim(cumulus) == 'mid'    ) zkbmax = 5000. ! Elevated origin (above cold pools/PBL)
+      if(trim(cumulus) == 'shallow') zkbmax = 1500. ! Strictly PBL driven
+!        
 !--- height(m) above which no downdrafts are allowed to originate
+!                          
+      if(trim(cumulus) == 'deep'   ) zcutdown = 5000.  ! Originates from mid-level dry air
+      if(trim(cumulus) == 'mid'    ) zcutdown = 4000.  ! Lower mid-levels
+      if(trim(cumulus) == 'shallow') zcutdown = 1500.  ! Very shallow if at all
 !
-      if(trim(cumulus) == 'deep'   ) zcutdown = 3000.  ! Allow higher for tall clouds
-      if(trim(cumulus) == 'mid'    ) zcutdown = 3000.  ! Keep
-      if(trim(cumulus) == 'shallow') zcutdown = 2000.  ! Lower for shallow
-!
-!--- depth(m) over which downdraft detrains all its mass
-!
-      if(trim(cumulus) == 'deep'   ) z_detr= 1000.
-      if(trim(cumulus) == 'mid'    ) z_detr= 300.
-      if(trim(cumulus) == 'shallow') z_detr= 300.
+!--- depth(m) over which downdraft detrains all its mass near the surface
+!                                    
+      if(trim(cumulus) == 'deep'   ) z_detr = 1000. ! Forms distinct cold pool in PBL
+      if(trim(cumulus) == 'mid'    ) z_detr = 1000. ! Evaporates in deep sub-cloud layer
+      if(trim(cumulus) == 'shallow') z_detr = 300.  ! Small detrainment right at surface
 !
       !- mbdt ~ xmb * timescale
       do i=its,itf
@@ -2628,24 +2661,30 @@ loop0:       do k=kts,ktf
 !
       CALL rates_up_pdf(cumulus,ktop,ierr,po_cup,entr_rate,hkbo,heo,heso_cup,zo_cup, &
                         kstabi,k22,kbcon,its,ite,itf,kts,kte,ktf,zuo,kpbl,klcl,hcot)
-!
+!===================================================================================
+! APPLY LIMITS TO CONVECTION TYPES
+!===================================================================================
+
       IF(trim(cumulus) == 'deep') THEN
         !-------------------------------------------------------------------------
-        ! Deep: Must reach at least ~3 km (750 mb)
+        ! Deep: Must reach at least z_cloud_top_min
         ! This ensures it's truly "deep" convection
         !-------------------------------------------------------------------------
         do i=its,itf
            if(ierr(i) /= 0)cycle
-           ! Cloud top too low: should be shallow instead
-           if(po_cup(i,ktop(i)) > 750) then
+           
+           ! Cloud top too low: should be mid or shallow instead
+           if(zo_cup(i,ktop(i)) < z_cloud_top_min) then
                ierr(i)=12
                ierrc(i)='deep convection with cloud top too low'
            endif
-           ! Depth is too thin
-           if(ktop(i) < kbcon(i)+5)then
+           
+           ! Depth is too thin (using physical meters instead of model levels)
+           if((zo_cup(i,ktop(i)) - zo_cup(i,kbcon(i))) < depth_min) then
                ierr(i)=15
-               ierrc(i)='ktop too small'
+               ierrc(i)='physical depth too small for deep convection'
            endif
+           
            ! avoid double-counting plumes
            if(last_ierr(i) == 0) then
               ierr(i)=16
@@ -2663,31 +2702,34 @@ loop0:       do k=kts,ktf
           DO i=its,itf
            if(ierr(i) /= 0)cycle
            ktop(i) = min(ktop(i),k_inv_layers(i,mid))
-           !print*,"ktop=",ktop(i),k_inv_layers(i,mid);flush(6)
           enddo
         endif
         !-------------------------------------------------------------------------
-        ! Mid (Congestus): Capped between ~3 km and ~9 km (700-300 mb)
+        ! Mid (Congestus): Capped between z_cloud_top_min and z_cloud_top_max
         ! Lower bound: Must be taller than shallow
         ! Upper bound: Should be capped, not reach tropopause
         !-------------------------------------------------------------------------
         do i=its,itf
            if(ierr(i) /= 0)cycle
-           ! Cloud top too high: reaching tropopause (should be deep instead)
-           if(po_cup(i,ktop(i)) < 450.0) then
+           
+           ! Cloud top too high: reaching upper troposphere (should be deep instead)
+           if(zo_cup(i,ktop(i)) > z_cloud_top_max) then
                ierr(i)=21
                ierrc(i)='mid convection with cloud top too high'
            endif
+           
            ! Cloud top too low: should be shallow instead
-           if(po_cup(i,ktop(i)) > 750.0) then  ! Add lower bound
+           if(zo_cup(i,ktop(i)) < z_cloud_top_min) then  
                ierr(i)=22
                ierrc(i)='mid convection with cloud top too low'
            endif
-           ! Depth is too thin
-           if(ktop(i) < kbcon(i)+5)then
+           
+           ! Depth is too thin (using physical meters instead of model levels)
+           if((zo_cup(i,ktop(i)) - zo_cup(i,kbcon(i))) < depth_min) then
                ierr(i)=25
-               ierrc(i)='ktop too small'
+               ierrc(i)='physical depth too small for mid convection'
            endif
+           
            ! avoid double-counting deep & mid plumes
            if(last_ierr(i) == 0) then
               ierr(i)=26
@@ -2698,15 +2740,24 @@ loop0:       do k=kts,ktf
 !
       IF(trim(cumulus) == 'shallow') THEN
         !-------------------------------------------------------------------------
-        ! Shallow: Boundary layer convection (< ~3.5 km / 650 mb)
+        ! Shallow: Boundary layer convection (capped at z_cloud_top_max)
         !-------------------------------------------------------------------------
         do i=its,itf
            if(ierr(i) /= 0)cycle
+           
            ! Cloud top too high: should be mid/deep instead
-           if(po_cup(i,ktop(i)) < 650) then
+           if(zo_cup(i,ktop(i)) > z_cloud_top_max) then
                ierr(i)=31
                ierrc(i)='shallow convection with cloud top too high'
            endif
+           
+           ! Depth is too thin (using physical meters instead of model levels)
+           ! Note: Added this check to match deep/mid structure
+           if((zo_cup(i,ktop(i)) - zo_cup(i,kbcon(i))) < depth_min) then
+               ierr(i)=35
+               ierrc(i)='physical depth too small for shallow convection'
+           endif
+           
            ! avoid double-counting plumes
            if(last_ierr(i) == 0) then
               ierr(i)=36
@@ -2794,7 +2845,6 @@ loop0:       do k=kts,ktf
 
        call cup_up_vvel(vvel2d,vvel1d,zws,entr_rate,cd,zo,zo_cup,zuo,dbyo,GAMMAo_CUP,tn_cup &
                        ,tempco,qco,qrco,qo,klcl,kbcon,ktop,ierr,itf,ktf,its,ite, kts,kte       )
-       SGS_VVEL_ = vvel2d
      endif
 
 !
@@ -2911,7 +2961,6 @@ loop0:       do k=kts,ktf
     !
         call cup_up_vvel(vvel2d,vvel1d,zws,entr_rate,cd,zo,zo_cup,zuo,dbyo,GAMMAo_CUP,tn_cup &
                         ,tempco,qco,qrco,qo,klcl,kbcon,ktop,ierr,itf,ktf,its,ite, kts,kte)
-        SGS_VVEL_ = vvel2d
      endif
 
 !---- new rain
@@ -3098,9 +3147,21 @@ loop0:       do k=kts,ktf
            T_star=40.
       endif
 !
+!--- Boundary laye recovery timescale and
 !--- Bechtold et al 2008 time-scale of cape removal
 !
-      IF(SGS_W_TIMESCALE == 0) THEN
+      IF(SGS_W_TIMESCALE == 0.0) THEN
+        !--- boundary layer recovery time-scale
+         DO i=its,itf
+            if(ierr(i) /= 0) cycle
+            if(xland(i) > 0.99 ) then !- over water
+               umean= 2.0+sqrt(0.5*(US(i,1)**2+VS(i,1)**2+US(i,kbcon(i))**2+VS(i,kbcon(i))**2))
+               tau_bl(i) = (zo_cup(i,kbcon(i))- z1(i)) /umean
+            else !- over land
+               tau_bl(i) =( zo_cup(i,ktop(i))- zo_cup(i,kbcon(i)) ) / 3.0 ! 3.0 m/s is estimated wmean
+            endif
+         ENDDO
+        !--- deep/mid convective time-scale of cape removal
          DO i=its,itf
             if(ierr(i) /= 0) cycle
           ! cloud depth (H)
@@ -3109,37 +3170,41 @@ loop0:       do k=kts,ktf
             tau_ecmwf(i)= dz/3.0 ! wmean subgrid vvel approximated at 3.0 m/s
             if(trim(cumulus)=='deep') tau_ecmwf(i)=max(tau_ecmwf(i),tau_deep)
             if(trim(cumulus)=='mid' ) tau_ecmwf(i)=max(tau_ecmwf(i),tau_mid)
-            tau_ecmwf(i)= tau_ecmwf(i) * (1. + 1.66 * (dx(i)/(125*1000.)))! dx must be in meters
+            tau_ecmwf(i)= tau_ecmwf(i) * (1. + 1.66 * (dx(i)/125000.))! dx must be in meters
          ENDDO
       ELSE
          DO i=its,itf
             if(ierr(i) /= 0) cycle
+          !--- boundary layer recovery time-scale
+            umean = (1.0-xland(i))*2.0 + xland(i)*(1.0 + sqrt(0.5*(US(i,1)**2 + VS(i,1)**2 + &
+                                                         US(i,kbcon(i))**2 + VS(i,kbcon(i))**2)))
+            tau_bl(i) = max(zo_cup(i,kbcon(i)) - z1(i), 1.0) / umean
+          ! Upper limit
+            tau_bl(i) = min(tau_bl(i),7200.)
+          ! Lower limit
+            tau_bl(i) = max(tau_bl(i),1800.)
+          !--- deep/mid convective time-scale of cape removal
           ! cloud depth (H)
             dz = max(zo_cup(i,ktop(i))-zo_cup(i,kbcon(i)),1.e-16)
+          ! subgrid vertical velocity
+            w_eff = min(max(vvel1d(i),0.3), 4.0)
           ! time-scale cape removal from Bechtold et al. 2008
-            if(trim(cumulus)=='deep') tau_0 = (dz/vvel1d(i))*(1.0+sig(i))*real(SGS_W_TIMESCALE)*2.0
-            if(trim(cumulus)=='mid' ) tau_0 = (dz/vvel1d(i))*(1.0+sig(i))*real(SGS_W_TIMESCALE)
+            tau_0 = (dz/w_eff)*(1.0+sig(i))*SGS_W_TIMESCALE
           ! prefered time-scale for convection permitting resolutions
-            tau_1 = tau_deep*(1.0-sig(i))
+            if(trim(cumulus)=='deep') tau_1 = tau_deep*(1.0-sig(i))
+            if(trim(cumulus)=='mid' ) tau_1 = tau_mid *(1.0-sig(i))
           ! Combine
             tau_ecmwf(i)= tau_0 + tau_1*(1.0-cnvfrc(i))
           ! Upper limit
-            if(trim(cumulus)=='deep') tau_ecmwf(i)= min(tau_ecmwf(i),tau_deep)
-            if(trim(cumulus)=='mid' ) tau_ecmwf(i)= min(tau_ecmwf(i),tau_mid)
+            if(trim(cumulus)=='deep') tau_ecmwf(i)= min(tau_ecmwf(i),14400.0)
+            if(trim(cumulus)=='mid' ) tau_ecmwf(i)= min(tau_ecmwf(i),10800.0)
           ! Lower limit
-            if(trim(cumulus)=='deep') tau_ecmwf(i) = max(tau_ecmwf(i),5400., dtime)
-            if(trim(cumulus)=='mid' ) tau_ecmwf(i) = max(tau_ecmwf(i),3600., dtime)
+            if(trim(cumulus)=='deep') tau_ecmwf(i) = max(tau_ecmwf(i),7200., dtime)
+            if(trim(cumulus)=='mid' ) tau_ecmwf(i) = max(tau_ecmwf(i),5400., dtime)
+          ! Deep convection cannot remove CAPE faster than the boundary layer can supply moist static energy
+            tau_ecmwf(i)=max(tau_ecmwf(i),tau_bl(i))
          ENDDO
       ENDIF
-      DO i=its,itf
-         if(ierr(i) /= 0) cycle
-         if(xland(i) > 0.99 ) then !- over water
-            umean= 2.0+sqrt(0.5*(US(i,1)**2+VS(i,1)**2+US(i,kbcon(i))**2+VS(i,kbcon(i))**2))
-            tau_bl(i) = (zo_cup(i,kbcon(i))- z1(i)) /umean
-         else !- over land
-            tau_bl(i) =( zo_cup(i,ktop(i))- zo_cup(i,kbcon(i)) ) / 3.0 ! 3.0 m/s is estimated wmean
-         endif
-      ENDDO
       tau_ec_ = tau_ecmwf
       tau_bl_ = tau_bl
 
@@ -3949,10 +4014,12 @@ ENDIF ! vertical discretization formulation
                    bb(k) = 1.+alp1*beta1-alp1*beta2  ! coef of f(k  ,t+1),
                    cc(k) =   -alp1*beta1             ! coef of f(k+1,t+1),
 
-                   !-- this is the rhs of the discretization
-                   dd(:,k) = (1.-alp0*beta1+alp0*beta2)*mpcf(:,i,k  ) +&       ! coef of  f(k  ,t),
-                                            alp0*beta1 *mpcf(:,i,k+1) -&       ! coef of  f(k+1,t),
-                                            alp0*beta2 *mpcf(:,i,max(kts,k-1)) ! coef of  f(k-1,t),
+                   ! Explicitly loop over the microphysics (nmp) dimension to avoid syntax errors
+                   do kmp = 1, nmp
+                      dd(kmp,k) = (1. - alp0 * beta1 + alp0 * beta2) * mpcf(kmp,i,k) &
+                                + alp0 * beta1 * mpcf(kmp,i,k+1)                     &
+                                - alp0 * beta2 * mpcf(kmp,i,max(kts,k-1))
+                   enddo
            enddo
            do kmp =1,nmp
              !-- this routine solves the problem: aa*f(k-1,t+1) + bb*f(k,t+1) + cc*f(k+1,t+1) = dd
@@ -8392,7 +8459,7 @@ loop2:      do while (hcot(i,kbcon(i)) < HESO_cup(i,kbcon(i)))
 
   ! input and output
      integer, dimension (its:ite)        ,intent (inout) :: ierr
-     real,    dimension (its:ite,kts:kte),intent (out  ) ::  vvel2d
+     real,    dimension (its:ite,kts:kte),intent (inout  ) ::  vvel2d
      real,    dimension (its:ite        ),intent (out  ) ::  vvel1d
   !
   !  local variables in this routine
@@ -8407,6 +8474,10 @@ loop2:      do while (hcot(i,kbcon(i)) < HESO_cup(i,kbcon(i)))
         ftun1=1. ; ftun2=0.5
      endif
 
+     !-- initialize arrays to zero.
+     vvel1d = 0.0
+     vvel2d = 0.0
+     if(ZERO_DIFF_VVEL==1) then
      do i=its,itf
         !-- initialize arrays to zero.
         vvel1d(i  ) = 0.0
@@ -8445,7 +8516,6 @@ loop0:  do k= kbcon(i),ktop(i)
         enddo loop0
      enddo
      if(smooth) then
-      if(ZERO_DIFF_VVEL==1) then
        do i=its,itf
          if(ierr(i) /= 0)cycle
          do k=kts,ktop(i)-2
@@ -8457,31 +8527,20 @@ loop0:  do k= kbcon(i),ktop(i)
            vvel2d(i,k) = vs/(1.e-16+float(nvs))
          enddo
        enddo
-      else
-       do i=its,itf
-         if(ierr(i) /= 0)cycle
-         do k=kts,ktop(i)+1
-           vs =0.; dz1m= 0.
-           do k1 = max(k-n_smooth,kts),min(k+n_smooth,ktf)
-                dz   = z_cup(i,k1+1)-z_cup(i,k1)
-                vs   =  vs + dz*vvel2d(i,k1)
-            dz1m = dz1m + dz
-           enddo
-           vvel2d(i,k) = vs/(1.e-16+dz1m)
-         enddo
-       enddo
-      endif
+     endif
      endif
 
-     !-- convert to vertical velocity
      do i=its,itf
          if(ierr(i) /= 0)cycle
-         vvel2d(i,:)= sqrt(max(0.1,vvel2d(i,:)))
 
-         !-- sanity check
-         where(vvel2d(i,:) < 1. ) vvel2d(i,:) = 1.
-         where(vvel2d(i,:) > 20.) vvel2d(i,:) = 20.
-         if(ZERO_DIFF_VVEL==0)    vvel2d(i,ktop(i)+1:kte) = 0.1
+         if(ZERO_DIFF_VVEL==1) then
+           !-- convert to vertical velocity
+            vvel2d(i,:)= sqrt(max(0.1,vvel2d(i,:)))
+           !-- limits
+            where(vvel2d(i,:) < 1. ) vvel2d(i,:) = 1.
+            where(vvel2d(i,:) > 20.) vvel2d(i,:) = 20.
+                                     vvel2d(i,ktop(i)+1:kte) = 0.1
+         endif
 
          !-- get the column average vert velocity
          do k= kbcon(i),ktop(i)
@@ -8489,7 +8548,13 @@ loop0:  do k= kbcon(i),ktop(i)
             vvel1d(i)=vvel1d(i)+vvel2d(i,k)*dz
          enddo
          vvel1d(i)=vvel1d(i)/(z_cup(i,ktop(i)+1)-z_cup(i,kbcon(i))+1.e-16)
-         vvel1d(i)=max(1.,vvel1d(i))
+
+         !-- limit column average
+         if(ZERO_DIFF_VVEL==1) then
+            vvel1d(i)=max(1.,vvel1d(i))
+         else
+            vvel1d(i)=max(0.3,vvel1d(i))
+         endif
      enddo
 
    end subroutine cup_up_vvel
@@ -10971,14 +11036,13 @@ REAL FUNCTION fract_liq_f(temp2,cnvfrc,srftype) ! temp2 in Kelvin, fraction betw
             outnliq(i,k) = max(0.0,  make_DropletNumber(tqliq, nwfa  (i,k))/rho(i,k))
 
          enddo
-         !-- convert in tendencies
-         outnice = outnice * dtinv ! unit [1/s]
-         outnliq = outnliq * dtinv ! unit [1/s]
-         !--- for update
-         ! nwfa =nwfa + outnliq*dtime
-         ! nifa =nifa + outnice*dtime
-
+    !-- convert in tendencies
+    outnice = outnice * dtinv ! unit [1/s]
+    outnliq = outnliq * dtinv ! unit [1/s]
     enddo
+    !--- for update
+    ! nwfa =nwfa + outnliq*dtime
+    ! nifa =nifa + outnice*dtime
 
   end subroutine get_liq_ice_number_conc
 

@@ -24,7 +24,7 @@ MODULE lsm_routines
   use MAPL, ONLY:                                &
        MAPL_UNDEF
 
-  USE MAPL_ConstantsMod, ONLY:                   &
+  USE MAPL_Constants, ONLY:                   &
        PIE               => MAPL_PI,             &  ! -
        TF                => MAPL_TICE,           &  ! K
        SHW               => MAPL_CAPWTR,         &  ! J/kg/K  spec heat of water
