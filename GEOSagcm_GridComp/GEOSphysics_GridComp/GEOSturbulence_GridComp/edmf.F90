@@ -6,7 +6,7 @@ module edmf_mod
 ! Additional development by Nathan Arnold and David New (GMAO).
 !
 
-use MAPL_ConstantsMod, only: mapl_epsilon, mapl_grav, mapl_cp,  &
+use MAPL_Constants, only: mapl_epsilon, mapl_grav, mapl_cp,  &
                              mapl_alhl, mapl_p00, mapl_vireps,  &
                              mapl_alhs, mapl_alhf, mapl_kappa,  &
                              mapl_pi, mapl_celsius_to_kelvin

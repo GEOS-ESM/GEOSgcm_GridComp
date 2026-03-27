@@ -14,7 +14,7 @@ module gw_drag
 !
 !---------------------------------------------------------------------------------
 
-  use MAPL_ConstantsMod, only: MAPL_P00,  MAPL_CP, MAPL_GRAV, &
+  use MAPL_Constants, only: MAPL_P00,  MAPL_CP, MAPL_GRAV, &
                                MAPL_RGAS, MAPL_VIREPS
 
   implicit none

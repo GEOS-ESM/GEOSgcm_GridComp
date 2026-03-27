@@ -6869,7 +6869,7 @@ end subroutine LOUIS_KS_OPTIMIZED
 
 subroutine ComputeMOScalingInterlevel(MO_MAX_ITER, IM, JM, LM, ZE, Z0, Z0H, UU, VV, PV, &
                                       S_M, S_H)
-   use MAPL_ConstantsMod, only: MAPL_GRAV, MAPL_KARMAN
+   use MAPL_Constants, only: MAPL_GRAV, MAPL_KARMAN
    implicit none
 
    integer, intent(IN) :: MO_MAX_ITER, IM, JM, LM
