@@ -11033,14 +11033,13 @@ REAL FUNCTION fract_liq_f(temp2,cnvfrc,srftype) ! temp2 in Kelvin, fraction betw
             outnliq(i,k) = max(0.0,  make_DropletNumber(tqliq, nwfa  (i,k))/rho(i,k))
 
          enddo
-         !-- convert in tendencies
-         outnice = outnice * dtinv ! unit [1/s]
-         outnliq = outnliq * dtinv ! unit [1/s]
-         !--- for update
-         ! nwfa =nwfa + outnliq*dtime
-         ! nifa =nifa + outnice*dtime
-
+    !-- convert in tendencies
+    outnice = outnice * dtinv ! unit [1/s]
+    outnliq = outnliq * dtinv ! unit [1/s]
     enddo
+    !--- for update
+    ! nwfa =nwfa + outnliq*dtime
+    ! nifa =nifa + outnice*dtime
 
   end subroutine get_liq_ice_number_conc
 
