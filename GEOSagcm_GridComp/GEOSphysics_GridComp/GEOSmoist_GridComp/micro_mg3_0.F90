@@ -6,7 +6,7 @@ module micro_mg3_0
 !
 ! Author: Andrew Gettelman, Hugh Morrison
 !
-! Version 3 history: Sep 2016: development begun for hail, graupel 
+! Version 3 history: Sep 2016: development begun for hail, graupel
 !
 ! Version 2 history: Sep 2011: Development begun.
 !                    Feb 2013: Added of prognostic precipitation.
@@ -15,23 +15,23 @@ module micro_mg3_0
 !
 ! invoked in CAM by specifying -microphys=mg3
 !
-! References: 
+! References:
 !
-!           Gettelman, A. and H. Morrison, Advanced Two-Moment Microphysics for Global Models. 
+!           Gettelman, A. and H. Morrison, Advanced Two-Moment Microphysics for Global Models.
 !
-!           Part I: Off line tests and comparisons with other schemes. 
+!           Part I: Off line tests and comparisons with other schemes.
 !
-!           J. Climate, 28, 1268-1287. doi: 10.1175/JCLI-D-14-00102.1, 2015. 
+!           J. Climate, 28, 1268-1287. doi: 10.1175/JCLI-D-14-00102.1, 2015.
 !
 !
 !
-!           Gettelman, A., H. Morrison, S. Santos, P. Bogenschutz and P. H. Caldwell 
+!           Gettelman, A., H. Morrison, S. Santos, P. Bogenschutz and P. H. Caldwell
 !
-!           Advanced Two-Moment Microphysics for Global Models. 
+!           Advanced Two-Moment Microphysics for Global Models.
 !
-!           Part II: Global model solutions and Aerosol-Cloud Interactions. 
+!           Part II: Global model solutions and Aerosol-Cloud Interactions.
 !
-!           J. Climate, 28, 1288-1307. doi:10.1175/JCLI-D-14-00103.1 , 2015. 
+!           J. Climate, 28, 1288-1307. doi:10.1175/JCLI-D-14-00103.1 , 2015.
 !
 ! for questions contact Hugh Morrison, Andrew Gettelman
 ! e-mail: morrison@ucar.edu, andrew@ucar.edu
@@ -115,8 +115,8 @@ module micro_mg3_0
 !use shr_spfn_mod, only: gamma => shr_spfn_gamma
 !#endif
 
-use MAPL_Constants 
-use MAPL_Mod, r8 => MAPL_R8
+use MAPL_Constants
+use MAPL_Constants, r8 => MAPL_R8
 
 use GEOSmoist_Process_Library, only: update_cld
 
@@ -148,7 +148,7 @@ use micro_mg_utils, only: &
      rising_factorial, &
      mui_of_l
  use aer_cloud, only:  gammp
- 
+
 implicit none
 private
 save
@@ -194,15 +194,15 @@ real(r8) :: dcs
 ! externally (kg)
 real(r8), parameter :: mi0l_min = 4._r8/3._r8*pi*rhow*(4.e-6_r8)**3
 
-! Ice number sublimation parameter. Assume some decrease in ice number with sublimation if non-zero. Else, no decrease in number with sublimation. 
-  real(r8), parameter :: sublim_factor =0.0_r8      !number sublimation factor. 
+! Ice number sublimation parameter. Assume some decrease in ice number with sublimation if non-zero. Else, no decrease in number with sublimation.
+  real(r8), parameter :: sublim_factor =0.0_r8      !number sublimation factor.
 
 !=========================================================
 ! Constants set in initialization
 !=========================================================
 
 
-!!!DONIFF   
+!!!DONIFF
    real(r8), parameter :: gravit      = MAPL_GRAV
    real(r8), parameter :: rair        = MAPL_RGAS
    real(r8), parameter :: tmelt_in    = MAPL_TICE
@@ -212,9 +212,9 @@ real(r8), parameter :: mi0l_min = 4._r8/3._r8*pi*rhow*(4.e-6_r8)**3
    real(r8), parameter :: latice      = MAPL_ALHF
    real(r8), parameter :: rhmini_in       = 0.90_r8       ! Minimum rh for ice cloud fraction > 0.
    real(r8), parameter :: epsilon     = MAPL_EPSILON
-  
-   
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!   
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
 ! Set using arguments to micro_mg_init
@@ -334,15 +334,15 @@ subroutine micro_mg_init(micro_mg_dcs, micro_mg_do_graupel_in,  micro_mg_berg_ef
   ! Initialize subordinate utilities module.
   kind = r8
   errstring = ' '
-  
+
   call wv_sat_methods_init(kind, tmelt_in, 273.15_r8, 373.15_r8, &
      35._r8, epsilon, errstring)
-     
+
   call micro_mg_utils_init(kind, rair, rh2o, cpair, tmelt_in, latvap, latice, &
        micro_mg_dcs, muicst_in)
- 
- 
-         
+
+
+
   if (trim(errstring) /= "") return
 
   ! declarations for MG code (transforms variable names)
@@ -408,13 +408,13 @@ end subroutine micro_mg_init
 !====================================================================================
 !====================================================================================
 !!"Interface" for mg_micro.
-!!Substeps MG2 and Macro-scale condensation and cloud fraction. 
+!!Substeps MG2 and Macro-scale condensation and cloud fraction.
 ! NO changes to prognostic variables are done here
 ! Written by Donifan Barahona
 
 
 subroutine micro_mg_tend_interface ( DT_MICRO, &
-                             ncol,             LM,               dt_moist,       & 
+                             ncol,             LM,               dt_moist,       &
                              ter8,                            qvr8,                              &
                              qcr8,                          qir8,                          &
                              ncr8,                          nir8,                          &
@@ -449,7 +449,7 @@ subroutine micro_mg_tend_interface ( DT_MICRO, &
                              qcsevapr8,            qisevapr8,            qvresr8,              &
                              cmeioutr8,            vtrmcr8,              vtrmir8,              &
                              umrr8,                          umsr8,                          &
-                             umgr8,                          qgsedtendr8,                    &    
+                             umgr8,                          qgsedtendr8,                    &
                              qcsedtenr8,                     qisedtenr8,                     &
                              qrsedtenr8,                     qssedtenr8,                     &
                              praor8,                       prcor8,                       &
@@ -457,13 +457,13 @@ subroutine micro_mg_tend_interface ( DT_MICRO, &
                              psacwsor8,          bergsor8,           bergor8,            &
                              meltor8,                      homoor8,                      &
                              qcresor8,           prcior8,            praior8,            &
-                             qirestotr8,           mnuccrtotr8,          mnuccritotr8, pracstotr8,           &                           
+                             qirestotr8,           mnuccrtotr8,          mnuccritotr8, pracstotr8,           &
                              meltsdtr8,         frzrdtr8,          mnuccdor8,          &
                              pracgtotr8,           psacwgtotr8,          pgsacwtotr8,          &
                              pgracstotr8,          prdgtotr8,           &
                              qmultgtotr8,          qmultrgtotr8,         psacrtotr8,           &
                              npracgtotr8,          nscngtotr8,           ngracstotr8,          &
-                             nmultgtotr8,          nmultrgtotr8,         npsacwgtotr8,         & 
+                             nmultgtotr8,          nmultrgtotr8,         npsacwgtotr8,         &
                              nroutr8,                            nsoutr8,                        &
                              reflr8,               areflr8,              areflzr8,             &
                              freflr8,              csrflr8,              acsrflr8,             &
@@ -490,8 +490,8 @@ subroutine micro_mg_tend_interface ( DT_MICRO, &
 
    REAL, intent(in)     :: DT_MICRO
    real(r8), intent(in) :: DT_MOIST
-   INTEGER, intent(in) :: LM, ncol  
-   real(r8), dimension(1,1:LM)  ::                                                     &  
+   INTEGER, intent(in) :: LM, ncol
+   real(r8), dimension(1,1:LM)  ::                                                     &
                              ter8,                          qvr8,                              &
                              qcr8,                          qir8,                          &
                              ncr8,                          nir8,                          &
@@ -509,7 +509,7 @@ subroutine micro_mg_tend_interface ( DT_MICRO, &
                              qrtendr8,                       qstendr8,   qgrtendr8,                     &
                              nrtendr8,                       nstendr8,   ngrtendr8,                   &
                              effcr8,               effc_fnr8,            effir8,               &
-                             sadicer8,                       sadsnowr8,                      &                            
+                             sadicer8,                       sadsnowr8,                      &
                              nevaprr8,                       evapsnowr8,                     &
                              am_evp_str8,                                                  &
                              prainr8,                        prodsnowr8,                     &
@@ -522,7 +522,7 @@ subroutine micro_mg_tend_interface ( DT_MICRO, &
                              qcsevapr8,            qisevapr8,            qvresr8,              &
                              cmeioutr8,            vtrmcr8,              vtrmir8,              &
                              umrr8,                          umsr8,                          &
-                             umgr8,                          qgsedtendr8,                    &    
+                             umgr8,                          qgsedtendr8,                    &
                              qcsedtenr8,                     qisedtenr8,                     &
                              qrsedtenr8,                     qssedtenr8,                     &
                              praor8,                       prcor8,                       &
@@ -530,13 +530,13 @@ subroutine micro_mg_tend_interface ( DT_MICRO, &
                              psacwsor8,          bergsor8,           bergor8,            &
                              meltor8,                      homoor8,                      &
                              qcresor8,           prcior8,            praior8,            &
-                             qirestotr8,           mnuccrtotr8,          mnuccritotr8, pracstotr8,           &                           
+                             qirestotr8,           mnuccrtotr8,          mnuccritotr8, pracstotr8,           &
                              meltsdtr8,         frzrdtr8,          mnuccdor8,          &
                              pracgtotr8,           psacwgtotr8,          pgsacwtotr8,          &
                              pgracstotr8,          prdgtotr8,           &
                              qmultgtotr8,          qmultrgtotr8,         psacrtotr8,           &
                              npracgtotr8,          nscngtotr8,           ngracstotr8,          &
-                             nmultgtotr8,          nmultrgtotr8,         npsacwgtotr8,         & 
+                             nmultgtotr8,          nmultrgtotr8,         npsacwgtotr8,         &
                              nroutr8,                            nsoutr8,                        &
                              reflr8,               areflr8,              areflzr8,             &
                              freflr8,              csrflr8,              acsrflr8,             &
@@ -555,19 +555,19 @@ subroutine micro_mg_tend_interface ( DT_MICRO, &
                              nsootr8, rnsootr8,  & ! soot for contact IN
                              npccnor8, npsacwsor8,npraor8,nsubcor8, nprc1or8, &  ! Number tendencies for liquid
                              npraior8, nnucctor8, nnucccor8, nnuccdor8, nsubior8, nprcior8, nsacwior8
-     
-    
+
+
       real(r8), dimension(1,1:LM,10)  ::    rndstr8,naconr8  !Assume maximum 10 dust bins
       real(r8), dimension(1,LM+1)  :: rflxr8, sflxr8, lflxr8, iflxr8, gflxr8
-                
+
       real(r8), dimension(1)       :: prectr8, precir8
       real(r8)                     :: ts_auticex, ui_scalex, dcritx, disp_liux, urscalex
-      
-      integer :: num_steps_micro, N_MICRO, K, nbincontactdustx   
-                                        
-      
-        ! Accumulate tendencies 
-           
+
+      integer :: num_steps_micro, N_MICRO, K, nbincontactdustx
+
+
+        ! Accumulate tendencies
+
        real(r8), dimension(1,1:LM) :: &
        qcsinksum_rate1ordr8_accum ,  tlatr8_accum ,  qvlatr8_accum ,  qctendr8_accum ,  qitendr8_accum ,  &
        nctendr8_accum , nitendr8_accum , qrtendr8_accum , qstendr8_accum ,  qgrtendr8_accum,  nrtendr8_accum , nstendr8_accum ,  ngrtendr8_accum, &
@@ -578,84 +578,84 @@ subroutine micro_mg_tend_interface ( DT_MICRO, &
        umsr8_accum , qcsedtenr8_accum , qisedtenr8_accum , qrsedtenr8_accum , qssedtenr8_accum , qgsedtenr8_accum, praor8_accum ,  &
        prcor8_accum , mnuccctotr8_accum , mnucctor8_accum , msacwior8_accum , psacwsor8_accum , bergsor8_accum ,  &
        bergor8_accum , meltor8_accum , homoor8_accum , qcresor8_accum , prcior8_accum ,  &
-       praior8_accum , qirestotr8_accum , mnuccrtotr8_accum, mnuccritotr8_accum, pracstotr8_accum , meltsdtr8_accum ,  &  
+       praior8_accum , qirestotr8_accum , mnuccrtotr8_accum, mnuccritotr8_accum, pracstotr8_accum , meltsdtr8_accum ,  &
        frzrdtr8_accum , mnuccdor8_accum , nroutr8_accum , nsoutr8_accum , reflr8_accum , &
        areflr8_accum , areflzr8_accum , freflr8_accum , csrflr8_accum , acsrflr8_accum , &
        fcsrflr8_accum ,  rercldr8_accum , ncair8_accum , ncalr8_accum ,  qrout2r8_accum , qsout2r8_accum , nrout2r8_accum , &
        nsout2r8_accum ,  drout2r8_accum , dsout2r8_accum , dgout2r8_accum , freqsr8_accum , freqrr8_accum , freqgr8_accum ,  nficer8_accum , npccnor8_accum , npsacwsor8_accum , &
-       npraor8_accum ,  nsubcor8_accum ,   nprc1or8_accum , npraior8_accum , nnucctor8_accum , nnucccor8_accum , nnuccdor8_accum , nsubior8_accum , & 
+       npraor8_accum ,  nsubcor8_accum ,   nprc1or8_accum , npraior8_accum , nnucctor8_accum , nnucccor8_accum , nnuccdor8_accum , nsubior8_accum , &
        nprcior8_accum ,  nsacwior8_accum, &
-       
+
        pracgtotr8_accum,           psacwgtotr8_accum,          pgsacwtotr8_accum,          &
        pgracstotr8_accum,          prdgtotr8_accum,           &
        qmultgtotr8_accum,          qmultrgtotr8_accum,         psacrtotr8_accum,           &
        npracgtotr8_accum,          nscngtotr8_accum,           ngracstotr8_accum,          &
        nmultgtotr8_accum,          nmultrgtotr8_accum,         npsacwgtotr8_accum
-                              
-                              
-       real(r8), dimension(1) ::   prectr8_accum ,  precir8_accum 
+
+
+       real(r8), dimension(1) ::   prectr8_accum ,  precir8_accum
 
        real(r8), dimension(1,0:LM) ::  lflxr8_accum , iflxr8_accum ,  rflxr8_accum , sflxr8_accum, gflxr8_accum
 
-       real, dimension(1, 1:LM) :: QRAIN_tmp, QSNOW_tmp, QGR_tmp, NRAIN_tmp, NSNOW_tmp, NGR_tmp, QLTOT_tmp, &    
+       real, dimension(1, 1:LM) :: QRAIN_tmp, QSNOW_tmp, QGR_tmp, NRAIN_tmp, NSNOW_tmp, NGR_tmp, QLTOT_tmp, &
                                                  QITOT_tmp, Q1_tmp, TEMP_tmp, NCPL_tmp, NCPI_tmp, CF_tmp, &
                                                  QLLS_tmp, QILS_tmp, QLCN_tmp, QICN_tmp, CLLS_tmp, CLCN_tmp, PL_tmp, &
                                                  RHC_tmp, NCNUC_tmp
        real(r8) :: DT_R8
 !!!!!!!!!!!!!!Initialize
-  
-      QRAIN_tmp(1, 1:LM)  = qrr8(1, 1:LM) 
-      QSNOW_tmp(1, 1:LM)  = qsr8(1, 1:LM) 
-      QGR_tmp(1, 1:LM)  =   qgrr8(1, 1:LM)                    
-      NRAIN_tmp(1, 1:LM)  =  nrr8(1, 1:LM)  
-      NSNOW_tmp(1, 1:LM)  =nsr8(1, 1:LM)    
-      NGR_tmp(1, 1:LM)  =ngrr8(1, 1:LM)                
-      QLTOT_tmp(1, 1:LM) = qcr8(1,1:LM) 
-      QITOT_tmp(1, 1:LM) =qir8(1,1:LM) 
-      Q1_tmp(1, 1:LM)  = qvr8(1,1:LM) 
-      TEMP_tmp(1, 1:LM)= ter8(1,1:LM) 
-      NCPL_tmp(1, 1:LM)=  ncr8(1,1:LM)    
-      NCPI_tmp(1, 1:LM)=  nir8(1,1:LM)   
-      CF_tmp (1, 1:LM)= cldfr8(1,1:LM) 
-      PL_tmp(1, 1:LM) = plevr8(1,1:LM) 
-      RHC_tmp = 0.8   
+
+      QRAIN_tmp(1, 1:LM)  = qrr8(1, 1:LM)
+      QSNOW_tmp(1, 1:LM)  = qsr8(1, 1:LM)
+      QGR_tmp(1, 1:LM)  =   qgrr8(1, 1:LM)
+      NRAIN_tmp(1, 1:LM)  =  nrr8(1, 1:LM)
+      NSNOW_tmp(1, 1:LM)  =nsr8(1, 1:LM)
+      NGR_tmp(1, 1:LM)  =ngrr8(1, 1:LM)
+      QLTOT_tmp(1, 1:LM) = qcr8(1,1:LM)
+      QITOT_tmp(1, 1:LM) =qir8(1,1:LM)
+      Q1_tmp(1, 1:LM)  = qvr8(1,1:LM)
+      TEMP_tmp(1, 1:LM)= ter8(1,1:LM)
+      NCPL_tmp(1, 1:LM)=  ncr8(1,1:LM)
+      NCPI_tmp(1, 1:LM)=  nir8(1,1:LM)
+      CF_tmp (1, 1:LM)= cldfr8(1,1:LM)
+      PL_tmp(1, 1:LM) = plevr8(1,1:LM)
+      RHC_tmp = 0.8
       NCNUC_tmp = 0.0
-      
-    !  where (naair8 .gt. 1e3)             
-    !   icecldfr8 =max( 0.05, icecldfr8)                              
-    !  end where 
-      
-      
-      ! npccninr8  = max(npccninr8*cldfr8 - ncr8, 0.0)/DT_MOIST 
+
+    !  where (naair8 .gt. 1e3)
+    !   icecldfr8 =max( 0.05, icecldfr8)
+    !  end where
+
+
+      ! npccninr8  = max(npccninr8*cldfr8 - ncr8, 0.0)/DT_MOIST
       ! naair8     = max(naair8*cldfr8 -  nir8, 0.0)/DT_MOIST ! only for cirrus
-       
-    
+
+
      call accum_mg_tend(0) !initialize accum values
 
      num_steps_micro = MAX(INT(DT_MOIST/DT_MICRO),1)
      DT_R8 = DT_MOIST / num_steps_micro
-     
-     !!!!!!!!!!!!!!Iteration 
-  
-  
-      DO N_MICRO = 1, num_steps_micro      
-                   ! reset prognostic vars       
-                  qrr8   = QRAIN_tmp 
-                  qgrr8  = QGR_tmp 
+
+     !!!!!!!!!!!!!!Iteration
+
+
+      DO N_MICRO = 1, num_steps_micro
+                   ! reset prognostic vars
+                  qrr8   = QRAIN_tmp
+                  qgrr8  = QGR_tmp
                   qsr8   = QSNOW_tmp
-                  ngrr8  = NGR_tmp                       
-                  nrr8   = NRAIN_tmp  
-                  nsr8   = NSNOW_tmp 
-                  qcr8   = QLTOT_tmp    
-                  qir8   = QITOT_tmp     
-                  qvr8   = Q1_tmp   
+                  ngrr8  = NGR_tmp
+                  nrr8   = NRAIN_tmp
+                  nsr8   = NSNOW_tmp
+                  qcr8   = QLTOT_tmp
+                  qir8   = QITOT_tmp
+                  qvr8   = Q1_tmp
                   ter8   = TEMP_tmp
-                  ncr8   = NCPL_tmp  
-                  nir8   = NCPI_tmp                      
-                  
-        
+                  ncr8   = NCPL_tmp
+                  nir8   = NCPI_tmp
+
+
                         call micro_mg_tend ( &
-                             ncol,             LM,               dt_r8,       & 
+                             ncol,             LM,               dt_r8,       &
                              ter8,                            qvr8,                              &
                              qcr8,                          qir8,                          &
                              ncr8,                          nir8,                          &
@@ -671,7 +671,7 @@ subroutine micro_mg_tend_interface ( DT_MICRO, &
                              tlatr8,                         qvlatr8,                        &
                              qctendr8,                       qitendr8,                       &
                              nctendr8,                       nitendr8,                       &
-                             qrtendr8,                       qstendr8,   			 	     &		
+                             qrtendr8,                       qstendr8,   			 	     &
                              nrtendr8,                       nstendr8,                       &
                              qgrtendr8,                      ngrtendr8,                      &
                              effcr8,               effc_fnr8,            effir8,             &
@@ -691,7 +691,7 @@ subroutine micro_mg_tend_interface ( DT_MICRO, &
                              qcsevapr8,            qisevapr8,            qvresr8,              &
                              cmeioutr8,            vtrmcr8,              vtrmir8,              &
                              umrr8,                          umsr8,                          &
-                             umgr8,                          qgsedtendr8,                    &    
+                             umgr8,                          qgsedtendr8,                    &
                              qcsedtenr8,                     qisedtenr8,                     &
                              qrsedtenr8,                     qssedtenr8,                     &
                              praor8,                       prcor8,                       &
@@ -699,13 +699,13 @@ subroutine micro_mg_tend_interface ( DT_MICRO, &
                              psacwsor8,          bergsor8,           bergor8,            &
                              meltor8,                      homoor8,                      &
                              qcresor8,           prcior8,            praior8,            &
-                             qirestotr8,           mnuccrtotr8,          mnuccritotr8, pracstotr8,           &                           
+                             qirestotr8,           mnuccrtotr8,          mnuccritotr8, pracstotr8,           &
                              meltsdtr8,         frzrdtr8,          mnuccdor8,          &
                              pracgtotr8,           psacwgtotr8,          pgsacwtotr8,          &
                              pgracstotr8,          prdgtotr8,           &
                              qmultgtotr8,          qmultrgtotr8,         psacrtotr8,           &
                              npracgtotr8,          nscngtotr8,           ngracstotr8,          &
-                             nmultgtotr8,          nmultrgtotr8,         npsacwgtotr8,         & 
+                             nmultgtotr8,          nmultrgtotr8,         npsacwgtotr8,         &
                              nroutr8,                            nsoutr8,                        &
                              reflr8,               areflr8,              areflzr8,             &
                              freflr8,              csrflr8,              acsrflr8,             &
@@ -724,169 +724,169 @@ subroutine micro_mg_tend_interface ( DT_MICRO, &
                              nsootr8, rnsootr8,  & ! soot for contact IN
                              npccnor8, npsacwsor8,npraor8,nsubcor8, nprc1or8, &  ! Number tendencies for liquid
                              npraior8, nnucctor8, nnucccor8, nnuccdor8, nsubior8, nprcior8, nsacwior8,  &  ! Number tendencies for ice
-                             ts_auticex,  ui_scalex, dcritx, disp_liux, nbincontactdustx, urscalex) ! tuning constants  
+                             ts_auticex,  ui_scalex, dcritx, disp_liux, nbincontactdustx, urscalex) ! tuning constants
            ! Substepping update
- 
- 
- 
-                   
+
+
+
+
                   ! prognostic vars
-                          QRAIN_tmp(1, 1:LM) = max( QRAIN_tmp(1, 1:LM) +    REAL(qrtendr8(1, 1:LM)*DT_R8), 0.0) ! grid average 
+                          QRAIN_tmp(1, 1:LM) = max( QRAIN_tmp(1, 1:LM) +    REAL(qrtendr8(1, 1:LM)*DT_R8), 0.0) ! grid average
                           QSNOW_tmp(1, 1:LM) = max( QSNOW_tmp(1, 1:LM) +    REAL(qstendr8(1, 1:LM)*DT_R8), 0.0) ! grid average
-                          QGR_tmp(1, 1:LM) = max( QGR_tmp(1, 1:LM) +    REAL(qgrtendr8(1, 1:LM)*DT_R8), 0.0) ! grid average 
+                          QGR_tmp(1, 1:LM) = max( QGR_tmp(1, 1:LM) +    REAL(qgrtendr8(1, 1:LM)*DT_R8), 0.0) ! grid average
                           NRAIN_tmp(1, 1:LM)  = max(NRAIN_tmp(1, 1:LM)  + REAL(nrtendr8(1, 1:LM)*DT_R8), 0.0)
-                          NSNOW_tmp(1, 1:LM)  = max(NSNOW_tmp (1, 1:LM) + REAL(nstendr8(1, 1:LM)*DT_R8), 0.0) 
-                          NGR_tmp(1, 1:LM)  = max(NGR_tmp(1, 1:LM)  + REAL(ngrtendr8(1, 1:LM)*DT_R8), 0.0)          
+                          NSNOW_tmp(1, 1:LM)  = max(NSNOW_tmp (1, 1:LM) + REAL(nstendr8(1, 1:LM)*DT_R8), 0.0)
+                          NGR_tmp(1, 1:LM)  = max(NGR_tmp(1, 1:LM)  + REAL(ngrtendr8(1, 1:LM)*DT_R8), 0.0)
                           QLTOT_tmp(1, 1:LM)= max(QLTOT_tmp(1, 1:LM)  + REAL(qctendr8(1,1:LM)) * DT_R8, 0.0)
-                          QITOT_tmp(1, 1:LM)= max(QITOT_tmp(1, 1:LM)  + REAL(qitendr8(1,1:LM)) * DT_R8, 0.0)    
+                          QITOT_tmp(1, 1:LM)= max(QITOT_tmp(1, 1:LM)  + REAL(qitendr8(1,1:LM)) * DT_R8, 0.0)
                           Q1_tmp(1, 1:LM)  = MAX(Q1_tmp (1, 1:LM)  + REAL(qvlatr8(1,1:LM)) * DT_R8, 0.0)
-                          TEMP_tmp(1, 1:LM)= TEMP_tmp(1, 1:LM)  + REAL(tlatr8(1,1:LM)) * DT_R8 / (MAPL_CP) 
-                          NCPL_tmp(1, 1:LM)= MAX(NCPL_tmp(1, 1:LM)  + REAL(nctendr8(1,1:LM)) * DT_R8, 0.0) 
-                          NCPI_tmp(1, 1:LM)= MAX(NCPI_tmp(1, 1:LM)  + REAL(nitendr8(1,1:LM)) * DT_R8, 0.0)  
-               
-   
-                     !Accumulate tendencies              
+                          TEMP_tmp(1, 1:LM)= TEMP_tmp(1, 1:LM)  + REAL(tlatr8(1,1:LM)) * DT_R8 / (MAPL_CP)
+                          NCPL_tmp(1, 1:LM)= MAX(NCPL_tmp(1, 1:LM)  + REAL(nctendr8(1,1:LM)) * DT_R8, 0.0)
+                          NCPI_tmp(1, 1:LM)= MAX(NCPI_tmp(1, 1:LM)  + REAL(nitendr8(1,1:LM)) * DT_R8, 0.0)
+
+
+                     !Accumulate tendencies
                      call accum_mg_tend(1)
-             
-       end do ! MG2 iteration 
-               
+
+       end do ! MG2 iteration
+
             call accum_mg_tend(2) ! output averages
 
 !!!!!!!!!!!!!!! note: dxout, nxout and qxout variables are not averaged
- contains 
- 
+ contains
+
  subroutine accum_mg_tend(stage)
 
  integer, intent(in) :: stage
 
     if (stage .eq.0) then  !initialize
-           
-       qcsinksum_rate1ordr8_accum = 0.0 
-       tlatr8_accum = 0.0 
-       qvlatr8_accum = 0.0 
-       qctendr8_accum = 0.0 
-       qitendr8_accum = 0.0 
-       nctendr8_accum = 0.0 
-       nitendr8_accum = 0.0 
-       qrtendr8_accum = 0.0 
-       qgrtendr8_accum = 0.0 
-       qstendr8_accum = 0.0 
-       nrtendr8_accum = 0.0 
-       nstendr8_accum = 0.0 
-       ngrtendr8_accum = 0.0 
-       
-       effcr8_accum = 0.0 
-       effc_fnr8_accum = 0.0 
-       effir8_accum = 0.0 
-       sadicer8_accum = 0.0 
-       sadsnowr8_accum = 0.0 
-       prectr8_accum = 0.0 
-       precir8_accum = 0.0 
-       nevaprr8_accum = 0.0 
-       evapsnowr8_accum = 0.0                                                    
-       prainr8_accum = 0.0 
-       prodsnowr8_accum = 0.0 
-       cmeoutr8_accum = 0.0 
-       deffir8_accum = 0.0 
-       pgamradr8_accum = 0.0 
-       lamcradr8_accum = 0.0 
-       qsoutr8_accum = 0.0 
-       dsoutr8_accum = 0.0 
-       lflxr8_accum = 0.0 
-       iflxr8_accum = 0.0        
-       rflxr8_accum = 0.0 
-       sflxr8_accum = 0.0 
+
+       qcsinksum_rate1ordr8_accum = 0.0
+       tlatr8_accum = 0.0
+       qvlatr8_accum = 0.0
+       qctendr8_accum = 0.0
+       qitendr8_accum = 0.0
+       nctendr8_accum = 0.0
+       nitendr8_accum = 0.0
+       qrtendr8_accum = 0.0
+       qgrtendr8_accum = 0.0
+       qstendr8_accum = 0.0
+       nrtendr8_accum = 0.0
+       nstendr8_accum = 0.0
+       ngrtendr8_accum = 0.0
+
+       effcr8_accum = 0.0
+       effc_fnr8_accum = 0.0
+       effir8_accum = 0.0
+       sadicer8_accum = 0.0
+       sadsnowr8_accum = 0.0
+       prectr8_accum = 0.0
+       precir8_accum = 0.0
+       nevaprr8_accum = 0.0
+       evapsnowr8_accum = 0.0
+       prainr8_accum = 0.0
+       prodsnowr8_accum = 0.0
+       cmeoutr8_accum = 0.0
+       deffir8_accum = 0.0
+       pgamradr8_accum = 0.0
+       lamcradr8_accum = 0.0
+       qsoutr8_accum = 0.0
+       dsoutr8_accum = 0.0
+       lflxr8_accum = 0.0
+       iflxr8_accum = 0.0
+       rflxr8_accum = 0.0
+       sflxr8_accum = 0.0
        gflxr8_accum = 0.0
-       
-       reff_rainr8_accum = 0.0 
+
+       reff_rainr8_accum = 0.0
        reff_snowr8_accum = 0.0
        reff_graur8_accum = 0.0
-        
-       qcsevapr8_accum = 0.0 
-       qisevapr8_accum = 0.0 
-       qvresr8_accum = 0.0 
-       cmeioutr8_accum = 0.0 
-       vtrmcr8_accum = 0.0 
-       vtrmir8_accum = 0.0 
-       umrr8_accum = 0.0 
-       umsr8_accum = 0.0 
-       qcsedtenr8_accum = 0.0 
-       qisedtenr8_accum = 0.0 
-       qrsedtenr8_accum = 0.0 
+
+       qcsevapr8_accum = 0.0
+       qisevapr8_accum = 0.0
+       qvresr8_accum = 0.0
+       cmeioutr8_accum = 0.0
+       vtrmcr8_accum = 0.0
+       vtrmir8_accum = 0.0
+       umrr8_accum = 0.0
+       umsr8_accum = 0.0
+       qcsedtenr8_accum = 0.0
+       qisedtenr8_accum = 0.0
+       qrsedtenr8_accum = 0.0
        qgsedtenr8_accum = 0.0
-       qssedtenr8_accum = 0.0 
-       praor8_accum = 0.0 
-       prcor8_accum = 0.0 
-       mnuccctotr8_accum = 0.0 
-       mnucctor8_accum = 0.0 
-       msacwior8_accum = 0.0 
-       psacwsor8_accum = 0.0 
-       bergsor8_accum = 0.0 
-       bergor8_accum = 0.0 
-       meltor8_accum = 0.0 
-       homoor8_accum = 0.0 
-       qcresor8_accum = 0.0 
-       prcior8_accum = 0.0 
-       praior8_accum = 0.0 
-       qirestotr8_accum = 0.0 
-       mnuccctotr8_accum = 0.0 
-       pracstotr8_accum = 0.0 
-       meltsdtr8_accum = 0.0 
-       frzrdtr8_accum = 0.0 
-       mnuccdor8_accum = 0.0 
-       nroutr8_accum = 0.0 
-       nsoutr8_accum = 0.0 
-       reflr8_accum = 0.0 
-       areflr8_accum = 0.0 
-       areflzr8_accum = 0.0 
-       freflr8_accum = 0.0 
-       csrflr8_accum = 0.0 
-       acsrflr8_accum = 0.0 
-       fcsrflr8_accum = 0.0 
-       rercldr8_accum = 0.0 
-       ncair8_accum = 0.0 
-       ncalr8_accum = 0.0  
+       qssedtenr8_accum = 0.0
+       praor8_accum = 0.0
+       prcor8_accum = 0.0
+       mnuccctotr8_accum = 0.0
+       mnucctor8_accum = 0.0
+       msacwior8_accum = 0.0
+       psacwsor8_accum = 0.0
+       bergsor8_accum = 0.0
+       bergor8_accum = 0.0
+       meltor8_accum = 0.0
+       homoor8_accum = 0.0
+       qcresor8_accum = 0.0
+       prcior8_accum = 0.0
+       praior8_accum = 0.0
+       qirestotr8_accum = 0.0
+       mnuccctotr8_accum = 0.0
+       pracstotr8_accum = 0.0
+       meltsdtr8_accum = 0.0
+       frzrdtr8_accum = 0.0
+       mnuccdor8_accum = 0.0
+       nroutr8_accum = 0.0
+       nsoutr8_accum = 0.0
+       reflr8_accum = 0.0
+       areflr8_accum = 0.0
+       areflzr8_accum = 0.0
+       freflr8_accum = 0.0
+       csrflr8_accum = 0.0
+       acsrflr8_accum = 0.0
+       fcsrflr8_accum = 0.0
+       rercldr8_accum = 0.0
+       ncair8_accum = 0.0
+       ncalr8_accum = 0.0
 
        drout2r8_accum = 0.0
        dsout2r8_accum = 0.0
        dgout2r8_accum = 0.0
-             
-       freqsr8_accum = 0.0 
-       freqrr8_accum = 0.0 
-       freqgr8_accum = 0.0 
-        
+
+       freqsr8_accum = 0.0
+       freqrr8_accum = 0.0
+       freqgr8_accum = 0.0
+
        nficer8_accum = 0.0
-       npccnor8_accum = 0.0 
-       npsacwsor8_accum = 0.0 
-       npraor8_accum = 0.0 
-       nsubcor8_accum = 0.0 
-       nprc1or8_accum = 0.0 
-       npraior8_accum = 0.0 
-       nnucctor8_accum = 0.0 
-       nnucccor8_accum = 0.0 
-       nnuccdor8_accum = 0.0 
-       nsubior8_accum = 0.0 
-       nprcior8_accum = 0.0 
-       nsacwior8_accum = 0.0 
-              
-       pracgtotr8_accum = 0.0            
-       psacwgtotr8_accum = 0.0          
-       pgsacwtotr8_accum = 0.0          
-       pgracstotr8_accum = 0.0           
-       prdgtotr8_accum = 0.0            
-       qmultgtotr8_accum = 0.0           
-       qmultrgtotr8_accum = 0.0          
-       psacrtotr8_accum = 0.0 
-       npracgtotr8_accum = 0.0           
-       nscngtotr8_accum = 0.0            
-       ngracstotr8_accum = 0.0           
-       nmultgtotr8_accum = 0.0           
-       nmultrgtotr8_accum = 0.0          
-       npsacwgtotr8_accum = 0.0      
-                             
-                             
+       npccnor8_accum = 0.0
+       npsacwsor8_accum = 0.0
+       npraor8_accum = 0.0
+       nsubcor8_accum = 0.0
+       nprc1or8_accum = 0.0
+       npraior8_accum = 0.0
+       nnucctor8_accum = 0.0
+       nnucccor8_accum = 0.0
+       nnuccdor8_accum = 0.0
+       nsubior8_accum = 0.0
+       nprcior8_accum = 0.0
+       nsacwior8_accum = 0.0
+
+       pracgtotr8_accum = 0.0
+       psacwgtotr8_accum = 0.0
+       pgsacwtotr8_accum = 0.0
+       pgracstotr8_accum = 0.0
+       prdgtotr8_accum = 0.0
+       qmultgtotr8_accum = 0.0
+       qmultrgtotr8_accum = 0.0
+       psacrtotr8_accum = 0.0
+       npracgtotr8_accum = 0.0
+       nscngtotr8_accum = 0.0
+       ngracstotr8_accum = 0.0
+       nmultgtotr8_accum = 0.0
+       nmultrgtotr8_accum = 0.0
+       npsacwgtotr8_accum = 0.0
+
+
     elseif  (stage .eq.1)  then!accumulate
-      
+
        qcsinksum_rate1ordr8_accum = qcsinksum_rate1ordr8_accum  +qcsinksum_rate1ordr8
        tlatr8_accum =  tlatr8_accum +  tlatr8
        qvlatr8_accum = qvlatr8_accum + qvlatr8
@@ -900,21 +900,21 @@ subroutine micro_mg_tend_interface ( DT_MICRO, &
        nrtendr8_accum = nrtendr8_accum +nrtendr8
        nstendr8_accum = nstendr8_accum + nstendr8
        ngrtendr8_accum =  ngrtendr8_accum  +  ngrtendr8
-        
+
        prectr8_accum = prectr8_accum  + prectr8
        precir8_accum = precir8_accum  + precir8
 
- 
+
        !effcr8_accum = effcr8_accum  + effcr8
        !effc_fnr8_accum = effc_fnr8_accum +effc_fnr8
        !effir8_accum = effir8_accum + effir8
-       
+
        !use the final size instad of the average
        effcr8_accum = effcr8
        effc_fnr8_accum = effc_fnr8
        effir8_accum = effir8
-       
-       
+
+
        sadicer8_accum = sadicer8_accum + sadicer8
        sadsnowr8_accum = sadsnowr8_accum + sadsnowr8
        nevaprr8_accum = nevaprr8_accum + nevaprr8
@@ -932,17 +932,17 @@ subroutine micro_mg_tend_interface ( DT_MICRO, &
        rflxr8_accum = rflxr8_accum + rflxr8
        sflxr8_accum = sflxr8_accum + sflxr8
        gflxr8_accum = gflxr8_accum + gflxr8
-       
-       
+
+
        !reff_rainr8_accum = reff_rainr8_accum  +reff_rainr8
        !reff_snowr8_accum =  reff_snowr8_accum  +   reff_snowr8
        !reff_graur8_accum =   reff_graur8_accum +  reff_graur8
-       
+
         !use the final size instad of the average
        reff_rainr8_accum = reff_rainr8
        reff_snowr8_accum = reff_snowr8
        reff_graur8_accum = reff_graur8
-       
+
        qcsevapr8_accum = qcsevapr8_accum  + qcsevapr8
        qisevapr8_accum = qisevapr8_accum  + qisevapr8
        qvresr8_accum = qvresr8_accum  + qvresr8
@@ -990,11 +990,11 @@ subroutine micro_mg_tend_interface ( DT_MICRO, &
        drout2r8_accum = drout2r8_accum + drout2r8
        dsout2r8_accum = dsout2r8_accum + dsout2r8
        dgout2r8_accum = dgout2r8_accum + dgout2r8
-             
+
        freqsr8_accum = freqsr8_accum + freqsr8
        freqrr8_accum = freqrr8_accum + freqrr8
        freqgr8_accum = freqgr8_accum + freqgr8
-              
+
        nficer8_accum = nficer8_accum + nficer8
        npccnor8_accum = npccnor8_accum+ npccnor8
        npsacwsor8_accum = npsacwsor8_accum  +npsacwsor8
@@ -1008,7 +1008,7 @@ subroutine micro_mg_tend_interface ( DT_MICRO, &
        nsubior8_accum = nsubior8_accum + nsubior8
        nprcior8_accum = nprcior8_accum + nprcior8
        nsacwior8_accum = nsacwior8_accum + nsacwior8
-       
+
        pracgtotr8_accum = pracgtotr8_accum  + pracgtotr8
        psacwgtotr8_accum = psacwgtotr8_accum + psacwgtotr8
        pgsacwtotr8_accum = pgsacwtotr8_accum + pgsacwtotr8
@@ -1023,123 +1023,123 @@ subroutine micro_mg_tend_interface ( DT_MICRO, &
        nmultgtotr8_accum = nmultgtotr8_accum + nmultgtotr8
        nmultrgtotr8_accum = nmultrgtotr8_accum + nmultrgtotr8
        npsacwgtotr8_accum = nmultrgtotr8_accum + nmultrgtotr8
-       
-       
+
+
     else  !finish
-    
+
        qcsinksum_rate1ordr8 = qcsinksum_rate1ordr8_accum/num_steps_micro
-       tlatr8 =  tlatr8_accum/num_steps_micro 
-       qvlatr8 = qvlatr8_accum/num_steps_micro 
-       qctendr8 = qctendr8_accum/num_steps_micro 
-       qitendr8 = qitendr8_accum/num_steps_micro 
-       nctendr8 = nctendr8_accum/num_steps_micro 
+       tlatr8 =  tlatr8_accum/num_steps_micro
+       qvlatr8 = qvlatr8_accum/num_steps_micro
+       qctendr8 = qctendr8_accum/num_steps_micro
+       qitendr8 = qitendr8_accum/num_steps_micro
+       nctendr8 = nctendr8_accum/num_steps_micro
        nitendr8 =  nitendr8_accum/num_steps_micro
-       qrtendr8 = qrtendr8_accum/num_steps_micro 
+       qrtendr8 = qrtendr8_accum/num_steps_micro
        qstendr8 = qstendr8_accum/num_steps_micro
        qgrtendr8 = qgrtendr8_accum/num_steps_micro
-       nrtendr8 = nrtendr8_accum/num_steps_micro 
-       nstendr8 = nstendr8_accum/num_steps_micro 
+       nrtendr8 = nrtendr8_accum/num_steps_micro
+       nstendr8 = nstendr8_accum/num_steps_micro
        ngrtendr8 = ngrtendr8_accum/num_steps_micro
-       
-       prectr8 = prectr8_accum/num_steps_micro  
+
+       prectr8 = prectr8_accum/num_steps_micro
        precir8 = precir8_accum/num_steps_micro
-       
-       
-              
-       !effcr8 = effcr8_accum/num_steps_micro 
-       !effc_fnr8 = effc_fnr8_accum/num_steps_micro 
+
+
+
+       !effcr8 = effcr8_accum/num_steps_micro
+       !effc_fnr8 = effc_fnr8_accum/num_steps_micro
        !effir8 = effir8_accum/num_steps_micro
-       
+
        !use the final size
-       
+
        effcr8 = effcr8_accum
-       effc_fnr8 = effc_fnr8_accum 
+       effc_fnr8 = effc_fnr8_accum
        effir8 = effir8_accum
-       
-       
-       sadicer8 = sadicer8_accum/num_steps_micro 
-       sadsnowr8 = sadsnowr8_accum/num_steps_micro  
-       nevaprr8 = nevaprr8_accum/num_steps_micro 
-       evapsnowr8 = evapsnowr8_accum/num_steps_micro 
-       prainr8 = prainr8_accum/num_steps_micro 
-       prodsnowr8 = prodsnowr8_accum/num_steps_micro 
-       cmeoutr8 = cmeoutr8_accum/num_steps_micro 
-       deffir8 = deffir8_accum/num_steps_micro 
-       pgamradr8 = pgamradr8_accum/num_steps_micro 
-       lamcradr8 = lamcradr8_accum/num_steps_micro 
+
+
+       sadicer8 = sadicer8_accum/num_steps_micro
+       sadsnowr8 = sadsnowr8_accum/num_steps_micro
+       nevaprr8 = nevaprr8_accum/num_steps_micro
+       evapsnowr8 = evapsnowr8_accum/num_steps_micro
+       prainr8 = prainr8_accum/num_steps_micro
+       prodsnowr8 = prodsnowr8_accum/num_steps_micro
+       cmeoutr8 = cmeoutr8_accum/num_steps_micro
+       deffir8 = deffir8_accum/num_steps_micro
+       pgamradr8 = pgamradr8_accum/num_steps_micro
+       lamcradr8 = lamcradr8_accum/num_steps_micro
        qsoutr8 = qsoutr8_accum/num_steps_micro
-       dsoutr8 = dsoutr8_accum/num_steps_micro 
-       lflxr8 = lflxr8_accum/num_steps_micro 
-       iflxr8 = iflxr8_accum/num_steps_micro 
+       dsoutr8 = dsoutr8_accum/num_steps_micro
+       lflxr8 = lflxr8_accum/num_steps_micro
+       iflxr8 = iflxr8_accum/num_steps_micro
        rflxr8 = rflxr8_accum/num_steps_micro
        sflxr8 = sflxr8_accum/num_steps_micro
        gflxr8 = gflxr8_accum/num_steps_micro
 
-       
-       
+
+
 
        !use the final size
        reff_rainr8 = reff_rainr8_accum
        reff_snowr8 =  reff_snowr8_accum
        reff_graur8 = reff_graur8_accum
-       
-       qcsevapr8 = qcsevapr8_accum/num_steps_micro 
-       qisevapr8 = qisevapr8_accum/num_steps_micro 
-       qvresr8 = qvresr8_accum/num_steps_micro  
-       cmeioutr8 = cmeioutr8_accum/num_steps_micro 
-       vtrmcr8 = vtrmcr8_accum/num_steps_micro 
-       vtrmir8 = vtrmir8_accum/num_steps_micro 
-       umrr8 = umrr8_accum/num_steps_micro 
-       umsr8 = umsr8_accum/num_steps_micro 
-       qcsedtenr8 = qcsedtenr8_accum/num_steps_micro 
-       qisedtenr8 = qisedtenr8_accum/num_steps_micro 
+
+       qcsevapr8 = qcsevapr8_accum/num_steps_micro
+       qisevapr8 = qisevapr8_accum/num_steps_micro
+       qvresr8 = qvresr8_accum/num_steps_micro
+       cmeioutr8 = cmeioutr8_accum/num_steps_micro
+       vtrmcr8 = vtrmcr8_accum/num_steps_micro
+       vtrmir8 = vtrmir8_accum/num_steps_micro
+       umrr8 = umrr8_accum/num_steps_micro
+       umsr8 = umsr8_accum/num_steps_micro
+       qcsedtenr8 = qcsedtenr8_accum/num_steps_micro
+       qisedtenr8 = qisedtenr8_accum/num_steps_micro
        qrsedtenr8 =  qrsedtenr8_accum/num_steps_micro
-       qssedtenr8 = qssedtenr8_accum/num_steps_micro 
+       qssedtenr8 = qssedtenr8_accum/num_steps_micro
        praor8 = praor8_accum/num_steps_micro
        prcor8 = prcor8_accum/num_steps_micro
        mnuccctotr8 = mnuccctotr8_accum/num_steps_micro
-       mnucctor8 = mnucctor8_accum/num_steps_micro 
-       msacwior8 = msacwior8_accum/num_steps_micro 
-       psacwsor8 = psacwsor8_accum/num_steps_micro 
-       bergsor8 = bergsor8_accum/num_steps_micro 
-       bergor8 = bergor8_accum/num_steps_micro 
-       meltor8 = meltor8_accum/num_steps_micro 
-       homoor8 = homoor8_accum/num_steps_micro 
-       qcresor8 = qcresor8_accum/num_steps_micro 
-       prcior8 = prcior8_accum/num_steps_micro 
-       praior8 = praior8_accum/num_steps_micro 
+       mnucctor8 = mnucctor8_accum/num_steps_micro
+       msacwior8 = msacwior8_accum/num_steps_micro
+       psacwsor8 = psacwsor8_accum/num_steps_micro
+       bergsor8 = bergsor8_accum/num_steps_micro
+       bergor8 = bergor8_accum/num_steps_micro
+       meltor8 = meltor8_accum/num_steps_micro
+       homoor8 = homoor8_accum/num_steps_micro
+       qcresor8 = qcresor8_accum/num_steps_micro
+       prcior8 = prcior8_accum/num_steps_micro
+       praior8 = praior8_accum/num_steps_micro
        qirestotr8 = qirestotr8_accum/num_steps_micro
-       mnuccctotr8 = mnuccctotr8_accum/num_steps_micro 
-       pracstotr8 = pracstotr8_accum/num_steps_micro  
-       meltsdtr8 = meltsdtr8_accum/num_steps_micro 
-       frzrdtr8 = frzrdtr8_accum/num_steps_micro 
-       mnuccdor8 = mnuccdor8_accum/num_steps_micro 
-       nroutr8 = nroutr8_accum/num_steps_micro 
-       nsoutr8 = nsoutr8_accum/num_steps_micro 
-       reflr8 = reflr8_accum/num_steps_micro 
+       mnuccctotr8 = mnuccctotr8_accum/num_steps_micro
+       pracstotr8 = pracstotr8_accum/num_steps_micro
+       meltsdtr8 = meltsdtr8_accum/num_steps_micro
+       frzrdtr8 = frzrdtr8_accum/num_steps_micro
+       mnuccdor8 = mnuccdor8_accum/num_steps_micro
+       nroutr8 = nroutr8_accum/num_steps_micro
+       nsoutr8 = nsoutr8_accum/num_steps_micro
+       reflr8 = reflr8_accum/num_steps_micro
        areflr8 = areflr8_accum/num_steps_micro
-       areflzr8 = areflzr8_accum/num_steps_micro 
+       areflzr8 = areflzr8_accum/num_steps_micro
        freflr8 = freflr8_accum/num_steps_micro
-       csrflr8 = csrflr8_accum/num_steps_micro 
-       acsrflr8 = acsrflr8_accum/num_steps_micro 
-       fcsrflr8 = fcsrflr8_accum/num_steps_micro 
-       rercldr8 = rercldr8_accum/num_steps_micro 
+       csrflr8 = csrflr8_accum/num_steps_micro
+       acsrflr8 = acsrflr8_accum/num_steps_micro
+       fcsrflr8 = fcsrflr8_accum/num_steps_micro
+       rercldr8 = rercldr8_accum/num_steps_micro
        ncair8 = ncair8_accum/num_steps_micro
-       ncalr8 = ncalr8_accum/num_steps_micro 
-       
-       drout2r8 = drout2r8_accum/num_steps_micro 
-       dsout2r8 = dsout2r8_accum/num_steps_micro 
-       dgout2r8 = dgout2r8_accum/num_steps_micro 
-              
-       freqsr8 = freqsr8_accum/num_steps_micro 
+       ncalr8 = ncalr8_accum/num_steps_micro
+
+       drout2r8 = drout2r8_accum/num_steps_micro
+       dsout2r8 = dsout2r8_accum/num_steps_micro
+       dgout2r8 = dgout2r8_accum/num_steps_micro
+
+       freqsr8 = freqsr8_accum/num_steps_micro
        freqrr8 = freqrr8_accum/num_steps_micro
-       freqgr8 = freqgr8_accum/num_steps_micro 
-              
-       nficer8 = nficer8_accum/num_steps_micro 
+       freqgr8 = freqgr8_accum/num_steps_micro
+
+       nficer8 = nficer8_accum/num_steps_micro
        npccnor8 = npccnor8_accum/num_steps_micro
-       npsacwsor8 = npsacwsor8_accum/num_steps_micro 
+       npsacwsor8 = npsacwsor8_accum/num_steps_micro
        npraor8 = npraor8_accum/num_steps_micro
-       nsubcor8 = nsubcor8_accum/num_steps_micro 
+       nsubcor8 = nsubcor8_accum/num_steps_micro
        nprc1or8 = nprc1or8_accum/num_steps_micro
        npraior8 = npraior8_accum/num_steps_micro
        nnucctor8 = nnucctor8_accum/num_steps_micro
@@ -1148,25 +1148,25 @@ subroutine micro_mg_tend_interface ( DT_MICRO, &
        nsubior8 = nsubior8_accum/num_steps_micro
        nprcior8 = nprcior8_accum/num_steps_micro
        nsacwior8 = nsacwior8_accum/num_steps_micro
-       
-       pracgtotr8   = pracgtotr8_accum/num_steps_micro          
-       psacwgtotr8  = psacwgtotr8_accum/num_steps_micro      
-       pgsacwtotr8  = pgsacwtotr8_accum/num_steps_micro 
-       pgracstotr8  = pgracstotr8_accum/num_steps_micro  
-       prdgtotr8    = prdgtotr8_accum/num_steps_micro 
-       qmultgtotr8  = qmultgtotr8_accum/num_steps_micro 
-       qmultrgtotr8 = qmultrgtotr8_accum/num_steps_micro 
-       psacrtotr8   = psacrtotr8_accum/num_steps_micro 
-       npracgtotr8  = npracgtotr8_accum/num_steps_micro 
-       nscngtotr8   = nscngtotr8_accum/num_steps_micro 
-       ngracstotr8  = ngracstotr8_accum/num_steps_micro 
-       nmultgtotr8  = nmultgtotr8_accum/num_steps_micro 
-       nmultrgtotr8 = nmultrgtotr8_accum/num_steps_micro 
-       npsacwgtotr8 = nmultrgtotr8_accum/num_steps_micro 
-       
-    end if 
-    
-    
+
+       pracgtotr8   = pracgtotr8_accum/num_steps_micro
+       psacwgtotr8  = psacwgtotr8_accum/num_steps_micro
+       pgsacwtotr8  = pgsacwtotr8_accum/num_steps_micro
+       pgracstotr8  = pgracstotr8_accum/num_steps_micro
+       prdgtotr8    = prdgtotr8_accum/num_steps_micro
+       qmultgtotr8  = qmultgtotr8_accum/num_steps_micro
+       qmultrgtotr8 = qmultrgtotr8_accum/num_steps_micro
+       psacrtotr8   = psacrtotr8_accum/num_steps_micro
+       npracgtotr8  = npracgtotr8_accum/num_steps_micro
+       nscngtotr8   = nscngtotr8_accum/num_steps_micro
+       ngracstotr8  = ngracstotr8_accum/num_steps_micro
+       nmultgtotr8  = nmultgtotr8_accum/num_steps_micro
+       nmultrgtotr8 = nmultrgtotr8_accum/num_steps_micro
+       npsacwgtotr8 = nmultrgtotr8_accum/num_steps_micro
+
+    end if
+
+
     end subroutine accum_mg_tend
 
 end subroutine micro_mg_tend_interface
@@ -1232,7 +1232,7 @@ subroutine micro_mg_tend ( &
      pgracstot,          prdgtot,           &
      qmultgtot,          qmultrgtot,         psacrtot,           &
      npracgtot,          nscngtot,           ngracstot,          &
-     nmultgtot,          nmultrgtot,         npsacwgtot,         & 
+     nmultgtot,          nmultrgtot,         npsacwgtot,         &
      nrout,                        nsout,                        &
      refl,               arefl,              areflz,             &
      frefl,              csrfl,              acsrfl,             &
@@ -1247,12 +1247,12 @@ subroutine micro_mg_tend ( &
       !errstring,  & ! Below arguments are "optional" (pass null pointers to omit).
   !   tnd_qsnow,          tnd_nsnow,          re_ice,             &
      prer_evap, &
-     frzimm,             frzcnt,             frzdep,  & 
+     frzimm,             frzcnt,             frzdep,  &
       nsoot, rnsoot,  & ! soot for contact IN
       npccno, npsacwso, nprao, nsubco, nprc1o, &  ! Number tendencies for liquid
       npraio, nnuccto, nnuccco, nnuccdo, nsubio, nprcio, nsacwio,  &  ! Number tendencies for ice
       ts_auto_ice,   ui_scale, dcrit, disp_liu, nbincontactdust, urscale)
-      
+
   ! Constituent properties.
   use micro_mg_utils, only: &
        mg_liq_props, &
@@ -1273,7 +1273,7 @@ subroutine micro_mg_tend ( &
   use micro_mg_utils, only: &
        ice_deposition_sublimation, &
        sb2001v2_liq_autoconversion,&
-       sb2001v2_accre_cld_water_rain,&       
+       sb2001v2_accre_cld_water_rain,&
        kk2000_liq_autoconversion, &
        liu2006_liq_autoconversion, &
        ice_autoconversion, &
@@ -1342,11 +1342,11 @@ subroutine micro_mg_tend ( &
   ! (For example, in CAM, the last dimension is always size 4.)
   !real(r8), intent(in) :: rndst(:,:,:)  ! radius of each dust bin, for contact freezing (from microp_aero_ts) (m)
   !real(r8), intent(in) :: nacon(:,:,:) ! number in each dust bin, for contact freezing  (from microp_aero_ts) (1/m^3)
-  
+
   integer :: nbincontactdust !DONIF
-  real(r8),  dimension(:) :: rndst(mgncol,nlev, 10)   ! 
+  real(r8),  dimension(:) :: rndst(mgncol,nlev, 10)   !
   real(r8),  dimension(:) :: nacon(mgncol,nlev, 10)   !
-  
+
   ! output arguments
 
   real(r8), intent(out) :: qcsinksum_rate1ord(mgncol,nlev) ! 1st order rate for
@@ -1471,7 +1471,7 @@ subroutine micro_mg_tend ( &
   real(r8), intent(out) :: qgout2(mgncol,nlev)       ! copy of qgout as used to compute dgout2
   real(r8), intent(out) :: ngout2(mgncol,nlev)       ! copy of ngout as used to compute dgout2
   real(r8), intent(out) :: dgout2(mgncol,nlev)       ! mean graupel/hail particle diameter (m)
-  real(r8), intent(out) :: freqg(mgncol,nlev)        ! fractional occurrence of graupel  
+  real(r8), intent(out) :: freqg(mgncol,nlev)        ! fractional occurrence of graupel
 
   real(r8), intent(out) :: prer_evap(mgncol,nlev)
 
@@ -1499,7 +1499,7 @@ subroutine micro_mg_tend ( &
       real(r8), intent(out) ::  nsubio(mgncol,nlev)
       real(r8), intent(out) ::  nprcio(mgncol,nlev)
       real(r8), intent(out) ::  npraio(mgncol,nlev)
-      
+
 
       real(r8), intent(out) ::  npccno(mgncol,nlev)
       real(r8), intent(out) ::  npsacwso(mgncol,nlev)
@@ -1507,14 +1507,14 @@ subroutine micro_mg_tend ( &
       real(r8), intent(out) ::  nprao(mgncol,nlev)
       real(r8), intent(out) ::  nprc1o(mgncol,nlev)
 
-     
-      real(r8)  :: ui_scale, dcrit, ts_auto_ice,  disp_liu, aux, mu_ice, urscale ! miu value in Liu autoconversion. Ui scale is used to tune olrcf by decreasing uised 
-       ! used in contact freezing via soot and dust particles 
-      real(r8), intent (in) :: nsoot (mgncol,nlev) , rnsoot (mgncol,nlev)  
+
+      real(r8)  :: ui_scale, dcrit, ts_auto_ice,  disp_liu, aux, mu_ice, urscale ! miu value in Liu autoconversion. Ui scale is used to tune olrcf by decreasing uised
+       ! used in contact freezing via soot and dust particles
+      real(r8), intent (in) :: nsoot (mgncol,nlev) , rnsoot (mgncol,nlev)
 
 !ccccccccccccccccccccccccccccc
 
-  
+
   ! local workspace
   ! all units mks unless otherwise stated
 
@@ -1578,7 +1578,7 @@ subroutine micro_mg_tend ( &
   real(r8) :: n0s(mgncol,nlev)    ! intercept
   ! rain
   real(r8) :: lamr(mgncol,nlev)   ! slope
-  real(r8) :: n0r(mgncol,nlev)    ! intercept 
+  real(r8) :: n0r(mgncol,nlev)    ! intercept
   ! graupel/hail
   real(r8) :: lamg(mgncol,nlev)   ! slope
   real(r8) :: n0g(mgncol,nlev)    ! intercept
@@ -1798,7 +1798,7 @@ subroutine micro_mg_tend ( &
   ! assign variable deltat to deltatin
   deltat = deltatin
 
-  ! Copies of input concentrations that may be changed internally. 
+  ! Copies of input concentrations that may be changed internally.
   qc = max(qcn, 0.0)! DONIF ban small negative values
   nc = max(ncn, 0.0)
   qi = max(qin, 0.0)
@@ -2053,18 +2053,18 @@ subroutine micro_mg_tend ( &
    !NEW diags DONIFF
       nnuccto=0._r8
       nnuccdo=0._r8
-      nnuccco=0._r8 
-      nsacwio=0._r8 
-      nsubio=0._r8 
-      nprcio=0._r8 
-      npraio=0._r8 
+      nnuccco=0._r8
+      nsacwio=0._r8
+      nsubio=0._r8
+      nprcio=0._r8
+      npraio=0._r8
 
-      npccno=0._r8 
-      npsacwso=0._r8 
-      nsubco=0._r8 
-      nprao=0._r8 
-      nprc1o=0._r8    
-      
+      npccno=0._r8
+      npsacwso=0._r8
+      nsubco=0._r8
+      nprao=0._r8
+      nprc1o=0._r8
+
 
   ! initialize limiter for output
   qcrat = 1._r8
@@ -2120,7 +2120,7 @@ subroutine micro_mg_tend ( &
 
   ! output activated liquid and ice (convert from #/kg -> #/m3)
   !--------------------------------------------------
-  where (qc >= qsmall)               
+  where (qc >= qsmall)
      nc = max(nc + npccn*deltat, 0._r8)
      ncal = nc*rho/lcldm ! sghan minimum in #/cm3
   elsewhere
@@ -2153,9 +2153,9 @@ subroutine micro_mg_tend ( &
         !note: this is gridbox averaged
         !nnuccd = (naai-ni/icldm)/mtime*icldm
         !nnuccd = max(nnuccd,0._r8)
-         nnuccd = naai ! only pass tendencies 
+         nnuccd = naai ! only pass tendencies
         !nimax = naai*icldm
-        
+
         !since GEOS produces condensate in the same way as liquid we need to apply the nucleation tendency here DONIF
         ni = max(ni + naai*deltat, 0._r8)
         nimax = naai*deltat/icldm ! DONIF
@@ -2163,7 +2163,7 @@ subroutine micro_mg_tend ( &
         !Calc mass of new particles using new crystal mass...
         !also this will be multiplied by mtime as nnuccd is...
 
-        mnuccd = nnuccd * mi0 
+        mnuccd = nnuccd * mi0
 
      elsewhere
         nnuccd = 0._r8
@@ -2212,7 +2212,7 @@ subroutine micro_mg_tend ( &
         end if
 
      end do
-  end do 
+  end do
 
         ! melting of graupel at +2 C
 
@@ -2248,7 +2248,7 @@ subroutine micro_mg_tend ( &
         end if
 
      end do
-  end do 
+  end do
 
   do k=1,nlev
     do i=1,mgncol
@@ -2292,7 +2292,7 @@ subroutine micro_mg_tend ( &
            end if
         end if
      end do
-  end do 
+  end do
 
   do k=1,nlev
     do i=1,mgncol
@@ -2373,7 +2373,7 @@ subroutine micro_mg_tend ( &
      ! cloud liquid
      !-------------------------------------------
 
-     call size_dist_param_liq(mg_liq_props, qcic(1:mgncol,k), ncic(1:mgncol,k),& 
+     call size_dist_param_liq(mg_liq_props, qcic(1:mgncol,k), ncic(1:mgncol,k),&
           rho(1:mgncol,k), pgam(1:mgncol,k), lamc(1:mgncol,k), mgncol)
 
 
@@ -2385,15 +2385,15 @@ subroutine micro_mg_tend ( &
      if (.not. do_sb_physics) then
 !       call kk2000_liq_autoconversion(microp_uniform, qcic(:,k), &
 !          ncic(:,k), rho(:,k), relvar(:,k), prc(:,k), nprc(:,k), nprc1(:,k), mgncol)
-          
+
        call liu2006_liq_autoconversion(pgam(:,k), microp_uniform, qcic(:,k), & !DONIF
           ncic(:,k), rho(:,k), relvar(:,k), prc(:,k), nprc(:,k), nprc1(:,k), mgncol)
 
-          
+
           prc(:,k) = prc(:,k)*dcrit
           nprc(:,k) = nprc(:,k)*dcrit
           nprc1(:,k) = nprc1(:,k)*dcrit
-         
+
      endif
 
      ! assign qric based on prognostic qr, using assumed precip fraction
@@ -2421,16 +2421,16 @@ subroutine micro_mg_tend ( &
 
   !   call size_dist_param_basic(mg_ice_props, qiic(:,k), niic(:,k), &
   !        lami(:,k), mgncol, n0=n0i(:,k))
-  
+
      call size_dist_param_ice(mg_ice_props, qiic(:,k), niic(:,k), &
           lami(:,k), mgncol, n0=n0i(:,k))
-	    
-	  
-     ! Alternative autoconversion 
+
+
+     ! Alternative autoconversion
      if (do_sb_physics) then
        call sb2001v2_liq_autoconversion(pgam(:,k),qcic(:,k),ncic(:,k), &
-            qric(:,k),rho(:,k),relvar(:,k),prc(:,k),nprc(:,k),nprc1(:,k), mgncol)     
-     endif	  
+            qric(:,k),rho(:,k),relvar(:,k),prc(:,k),nprc(:,k),nprc1(:,k), mgncol)
+     endif
 
      !.......................................................................
      ! Autoconversion of cloud ice to snow
@@ -2439,12 +2439,12 @@ subroutine micro_mg_tend ( &
      if (do_cldice) then
        ! call ice_autoconversion(t(:,k), qiic(:,k), lami(:,k), n0i(:,k), &
        !      dcs, prci(:,k), nprci(:,k), mgncol, ts_auto_ice)
-       
-       
+
+
         call ice_autoconversion(t(:,k), qiic(:,k), lami(:,k), niic(:,k), &
               dcs, prci(:,k), nprci(:,k), mgncol, ts_auto_ice) !donif
-       
-                  
+
+
      else
         ! Add in the particles that we have already converted to snow, and
         ! don't do any further autoconversion of ice.
@@ -2490,7 +2490,7 @@ subroutine micro_mg_tend ( &
      ! make sure number concentration is a positive number to avoid
      ! taking root of negative later
 
-     ngic(:,k)=max(ngic(:,k),0._r8)    
+     ngic(:,k)=max(ngic(:,k),0._r8)
 
      !.......................................................................
      ! get size distribution parameters for precip
@@ -2532,12 +2532,12 @@ subroutine micro_mg_tend ( &
 
      !......................................................................
      !       graupel/hail density set (Hail = 400, Graupel = 500 from M2005)
-        
-     if (do_hail) then 
-        bgtmp = bh 
+
+     if (do_hail) then
+        bgtmp = bh
         rhogtmp = rhoh
      end if
-     if (do_graupel) then 
+     if (do_graupel) then
         bgtmp = bg
         rhogtmp = rhog
      end if
@@ -2552,7 +2552,7 @@ subroutine micro_mg_tend ( &
         call size_dist_param_basic(mg_graupel_props, qgic(:,k), ngic(:,k), &
           lamg(:,k), mgncol, n0=n0g(:,k))
      end if
-        
+
      where (lamg(:,k) > 0._r8)
 
         ! provisional graupel/hail number and mass weighted mean fallspeed (m/s)
@@ -2620,9 +2620,9 @@ subroutine micro_mg_tend ( &
               mnudep(:,k) = 0._r8
            end where
 
-    ! donif     
-         nacon(:,k,nbincontactdust + 1)  = nsoot(:,k)  !Add soot. 
-               rndst(:,k,nbincontactdust + 1)  = rnsoot(:,k) 
+    ! donif
+         nacon(:,k,nbincontactdust + 1)  = nsoot(:,k)  !Add soot.
+               rndst(:,k,nbincontactdust + 1)  = rnsoot(:,k)
           mdust = nbincontactdust + 1
            call contact_freezing(microp_uniform, t(:,k), p(:,k), rndst(:,k,:), &
                 nacon(:,k,:), pgam(:,k), lamc(:,k), qcic(:,k), ncic(:,k), &
@@ -2663,7 +2663,7 @@ subroutine micro_mg_tend ( &
 
      if (do_sb_physics) then
        call sb2001v2_accre_cld_water_rain(qcic(1:mgncol,k), ncic(:,k), qric(:,k), &
-            rho(:,k), relvar(:,k), pra(:,k), npra(:,k), mgncol)     
+            rho(:,k), relvar(:,k), pra(:,k), npra(:,k), mgncol)
      else
        call accrete_cloud_water_rain(microp_uniform, qric(:,k), qcic(1:mgncol,k), &
             ncic(:,k), relvar(:,k), accre_enhan(:,k), pra(:,k), npra(:,k), mgncol)
@@ -2706,7 +2706,7 @@ subroutine micro_mg_tend ( &
 
      end if !do_cldice
 
-! Process rate calls for graupel   
+! Process rate calls for graupel
 !===================================================================
 
      if(do_hail.or.do_graupel) then
@@ -2716,7 +2716,7 @@ subroutine micro_mg_tend ( &
 
        call graupel_collecting_cld_water(qgic(:,k),qcic(:,k),ncic(:,k),rho(:,k), &
              n0g(:,k),lamg(:,k),bgtmp,agn(:,k), psacwg(:,k), npsacwg(:,k), mgncol)
-        
+
         call graupel_riming_liquid_snow(psacws(:,k),qsic(:,k),qcic(:,k),nsic(:,k), &
              rho(:,k),rhosn,rhogtmp,asn(:,k),lams(:,k),n0s(:,k),deltat, &
              pgsacw(:,k),nscng(:,k),mgncol)
@@ -2724,14 +2724,14 @@ subroutine micro_mg_tend ( &
         call graupel_collecting_rain(qric(:,k),qgic(:,k),umg(:,k), &
              umr(:,k),ung(:,k),unr(:,k),rho(:,k),n0r(:,k),lamr(:,k),n0g(:,k), &
              lamg(:,k), pracg(:,k),npracg(:,k),mgncol)
-        
-!AG note: Graupel rain riming snow changes  
+
+!AG note: Graupel rain riming snow changes
 !    pracs, npracs, (accretion of rain by snow)  psacr (collection of snow by rain)
 
        call graupel_rain_riming_snow(pracs(:,k),npracs(:,k),psacr(:,k),qsic(:,k), &
              qric(:,k),nric(:,k),nsic(:,k),n0s(:,k),lams(:,k),n0r(:,k),lamr(:,k), &
              deltat,pgracs(:,k),ngracs(:,k),mgncol)
-        
+
         call graupel_rime_splintering(t(:,k),qcic(:,k),qric(:,k),qgic(:,k), &
              psacwg(:,k),pracg(:,k),qmultg(:,k),nmultg(:,k),qmultrg(:,k), &
              nmultrg(:,k),mgncol)
@@ -2742,10 +2742,10 @@ subroutine micro_mg_tend ( &
              lcldm(:,k), precip_frac(:,k), arn(:,k), asn(:,k), agn(:,k), bgtmp, &
              qcic(1:mgncol,k), qiic(:,k), qric(:,k), qsic(:,k), qgic(:,k), &
              lamr(:,k), n0r(:,k), lams(:,k), n0s(:,k), lamg(:,k), n0g(:,k), &
-             pre(:,k), prds(:,k), prdg(:,k), am_evp_st(:,k), mgncol)   
+             pre(:,k), prds(:,k), prdg(:,k), am_evp_st(:,k), mgncol)
      else
-             
-        ! Routine without Graupel (original)        
+
+        ! Routine without Graupel (original)
         call evaporate_sublimate_precip(t(:,k), rho(:,k), &
           dv(:,k), mu(:,k), sc(:,k), q(:,k), qvl(:,k), qvi(:,k), &
           lcldm(:,k), precip_frac(:,k), arn(:,k), asn(:,k), qcic(1:mgncol,k), qiic(:,k), &
@@ -2769,10 +2769,10 @@ subroutine micro_mg_tend ( &
 
         dum = ((prc(i,k)+pra(i,k)+mnuccc(i,k)+mnucct(i,k)+msacwi(i,k)+ &
              psacws(i,k)+bergs(i,k)+qmultg(i,k)+psacwg(i,k)+pgsacw(i,k))*lcldm(i,k)+ &
-             berg(i,k))*deltat 
+             berg(i,k))*deltat
 
         if (dum.gt.qc(i,k)) then
-                
+
            ratio = qc(i,k)/deltat/((prc(i,k)+pra(i,k)+mnuccc(i,k)+mnucct(i,k)+ &
                 msacwi(i,k)+psacws(i,k)+bergs(i,k)+qmultg(i,k)+psacwg(i,k)+pgsacw(i,k))*lcldm(i,k)+&
                 berg(i,k))*omsm
@@ -3006,19 +3006,19 @@ subroutine micro_mg_tend ( &
         else
            dum = (-(prds(i,k)+pracs(i,k)+mnuccr(i,k))*precip_frac(i,k)-(prai(i,k)+prci(i,k))*icldm(i,k) &
              -(bergs(i,k)+psacws(i,k))*lcldm(i,k))*deltat
-        end if 
+        end if
 
         if (dum.gt.qs(i,k).and.(psacr(i,k)-prds(i,k)).ge.qsmall) then
 
-           if (do_hail .or. do_graupel) then        
-          
+           if (do_hail .or. do_graupel) then
+
               ratio = (qs(i,k)/deltat+(prai(i,k)+prci(i,k))*icldm(i,k)+ &
                    (bergs(i,k)+psacws(i,k))*lcldm(i,k)+pracs(i,k)*precip_frac(i,k))/ &
                    precip_frac(i,k)/(psacr(i,k)-prds(i,k))*omsm
-            
+
               psacr(i,k)=psacr(i,k)*ratio
-           else 
-            
+           else
+
               ratio = (qs(i,k)/deltat+(prai(i,k)+prci(i,k))*icldm(i,k)+ &
                    (bergs(i,k)+psacws(i,k))*lcldm(i,k)+(pracs(i,k)+mnuccr(i,k))*precip_frac(i,k))/ &
                    precip_frac(i,k)/(-prds(i,k))*omsm
@@ -3037,15 +3037,15 @@ subroutine micro_mg_tend ( &
         ! for now neglect sublimation of ns
         nsubs(i,k)=0._r8
 
-        if (do_hail .or. do_graupel) then        
+        if (do_hail .or. do_graupel) then
            dum = ((-nsagg(i,k)-nsubs(i,k)+ngracs(i,k))*precip_frac(i,k)-nprci(i,k)*icldm(i,k)-nscng(i,k)*lcldm(i,k))*deltat
         else
            dum = ((-nsagg(i,k)-nsubs(i,k)-nnuccr(i,k))*precip_frac(i,k)-nprci(i,k)*icldm(i,k))*deltat
         end if
 
         if (dum.gt.ns(i,k)) then
-           
-           if (do_hail .or. do_graupel) then        
+
+           if (do_hail .or. do_graupel) then
               ratio = (ns(i,k)/deltat+nprci(i,k)*icldm(i,k))/precip_frac(i,k)/ &
                    (-nsubs(i,k)-nsagg(i,k)+ngracs(i,k)+lcldm(i,k)/precip_frac(i,k)*nscng(i,k))*omsm
               nscng(i,k)=nscng(i,k)*ratio
@@ -3074,9 +3074,9 @@ subroutine micro_mg_tend ( &
 
            dum= ((-pracg(i,k)-pgracs(i,k)-prdg(i,k)-psacr(i,k)-mnuccr(i,k))*precip_frac(i,k) &
                 + (-psacwg(i,k)-pgsacw(i,k))*lcldm(i,k))*deltat
-           
+
            if ((dum.gt.qg(i,k)) .and. (abs(prdg(i, k)) .gt. 0.0)) then !DONIF
-                   
+
               ! note: prdg is always negative (like prds), so it needs to be subtracted in ratio
               ratio = (qg(i,k)/deltat + (pracg(i,k)+pgracs(i,k)+psacr(i,k)+mnuccr(i,k))*precip_frac(i,k) &
                    + (psacwg(i,k)+pgsacw(i,k))*lcldm(i,k)) / ((-prdg(i,k))*precip_frac(i,k))  *omsm
@@ -3162,7 +3162,7 @@ subroutine micro_mg_tend ( &
 
         qvlat(i,k) = qvlat(i,k)-(pre(i,k)+prds(i,k))*precip_frac(i,k)-&
              vap_dep(i,k)-ice_sublim(i,k)-mnuccd(i,k)-mnudep(i,k)*lcldm(i,k) &
-             -prdg(i,k)*precip_frac(i,k) 
+             -prdg(i,k)*precip_frac(i,k)
 
         tlat(i,k) = tlat(i,k)+((pre(i,k)*precip_frac(i,k))*xxlv+ &
              ((prds(i,k)+prdg(i,k))*precip_frac(i,k)+vap_dep(i,k)+ice_sublim(i,k)+ &
@@ -3170,7 +3170,7 @@ subroutine micro_mg_tend ( &
              ((bergs(i,k)+psacws(i,k)+mnuccc(i,k)+mnucct(i,k)+msacwi(i,k)+psacwg(i,k)+ &
                   qmultg(i,k)+pgsacw(i,k))*lcldm(i,k)+ &
              (mnuccr(i,k)+pracs(i,k)+mnuccri(i,k)+pracg(i,k)+pgracs(i,k)+qmultrg(i,k))*precip_frac(i,k)+ &
-                  berg(i,k))*xlf)  
+                  berg(i,k))*xlf)
 
         qctend(i,k) = qctend(i,k)+ &
              (-pra(i,k)-prc(i,k)-mnuccc(i,k)-mnucct(i,k)-msacwi(i,k)- &
@@ -3183,7 +3183,7 @@ subroutine micro_mg_tend ( &
               (mnuccc(i,k)+mnucct(i,k)+mnudep(i,k)+msacwi(i,k)+qmultg(i,k))*lcldm(i,k)+(-prci(i,k)- &
               prai(i,k))*icldm(i,k)+vap_dep(i,k)+berg(i,k)+ice_sublim(i,k)+ &
               mnuccd(i,k)+(mnuccri(i,k)+qmultrg(i,k))*precip_frac(i,k)
- 
+
         end if
 
         qrtend(i,k) = qrtend(i,k)+ &
@@ -3193,7 +3193,7 @@ subroutine micro_mg_tend ( &
         if (do_hail.or.do_graupel) then
            qgtend(i,k) = qgtend(i,k) + (pracg(i,k)+pgracs(i,k)+prdg(i,k)+psacr(i,k)+mnuccr(i,k))*precip_frac(i,k) &
                 + (psacwg(i,k)+pgsacw(i,k))*lcldm(i,k)
-                 
+
 
            qstend(i,k) = qstend(i,k)+ &
                 (prai(i,k)+prci(i,k))*icldm(i,k)+(psacws(i,k)+bergs(i,k))*lcldm(i,k)+(prds(i,k)+ &
@@ -3239,7 +3239,7 @@ subroutine micro_mg_tend ( &
         ! qcsinksum_rate1ord = { rate of direct transfer of cloud water to rain & snow }
         !                      (no cloud ice or bergeron terms)
 
-        qcsinksum_rate1ord(i,k) = (pra(i,k)+prc(i,k)+psacws(i,k)+psacwg(i,k)+pgsacw(i,k))*lcldm(i,k) 
+        qcsinksum_rate1ord(i,k) = (pra(i,k)+prc(i,k)+psacws(i,k)+psacwg(i,k)+pgsacw(i,k))*lcldm(i,k)
         ! Avoid zero/near-zero division.
         qcsinksum_rate1ord(i,k) = qcsinksum_rate1ord(i,k) / &
              max(qc(i,k),1.0e-30_r8)
@@ -3270,8 +3270,8 @@ subroutine micro_mg_tend ( &
         prdgtot(i,k) = prdg(i,k)*precip_frac(i,k)
         qmultgtot(i,k) = qmultg(i,k)*lcldm(i,k)
         qmultrgtot(i,k) = qmultrg(i,k)*precip_frac(i,k)
-        npracgtot(i,k) = npracg(i,k)*precip_frac(i,k) 
-        nscngtot(i,k) = nscng(i,k)*lcldm(i,k) 
+        npracgtot(i,k) = npracg(i,k)*precip_frac(i,k)
+        nscngtot(i,k) = nscng(i,k)*lcldm(i,k)
         ngracstot(i,k) = ngracs(i,k)*precip_frac(i,k)
         nmultgtot(i,k) = nmultg(i,k)*lcldm(i,k)
         nmultrgtot(i,k) = nmultrg(i,k)*precip_frac(i,k)
@@ -3279,7 +3279,7 @@ subroutine micro_mg_tend ( &
 
 ! DONIF additional diagnostics for number (some may be redundant)
                nnuccto(i,k)=nnuccto(i,k)+ nnucct(i, k)*lcldm(i,k)!DONIF
-               nnuccdo(i,k)=nnuccdo(i,k)+ nnuccd(i, k)!DONIF   
+               nnuccdo(i,k)=nnuccdo(i,k)+ nnuccd(i, k)!DONIF
                nnuccco(i,k)=nnuccco(i,k)+ nnuccc(i, k)*lcldm(i,k)!DONIF
                nsacwio(i,k)=nsacwio(i,k)+ nsacwi(i, k)*icldm(i,k)!DONIF
                nsubio(i,k)=nsubio(i,k)+ nsubi(i, k)*icldm(i,k)!DONIF
@@ -3290,10 +3290,10 @@ subroutine micro_mg_tend ( &
                npsacwso(i,k)=npsacwso(i,k)+ npsacws(i, k)*lcldm(i,k)!DONIF
                nsubco(i,k)=nsubco(i,k)+ nsubc(i, k)*lcldm(i,k)!DONIF
                nprao(i,k)=nprao(i,k)+ npra(i, k)*lcldm(i,k)!DONIF
-               nprc1o(i,k)=nprc1o(i,k)+ nprc1(i, k)*lcldm(i,k)!DONIF   
-               
+               nprc1o(i,k)=nprc1o(i,k)+ nprc1(i, k)*lcldm(i,k)!DONIF
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-               
+
         nctend(i,k) = nctend(i,k)+&
              (-nnuccc(i,k)-nnucct(i,k)-npsacws(i,k)+nsubc(i,k) &
              -npra(i,k)-nprc1(i,k)-npsacwg(i,k))*lcldm(i,k)
@@ -3331,9 +3331,9 @@ subroutine micro_mg_tend ( &
         ! maximum (existing N + source terms*dt), which is possible if mtime < deltat
         ! note that currently mtime = deltat
         !================================================================
-        
+
         !Don't do this, we taake care of it somewhere else.
-        !Donifan 2023 
+        !Donifan 2023
 
        ! if (do_cldice .and. nitend(i,k).gt.0._r8.and.ni(i,k)+nitend(i,k)*deltat.gt.nimax(i,k)) then
        !    nitend(i,k)=max(0._r8,(nimax(i,k)-ni(i,k))/deltat)
@@ -3409,9 +3409,9 @@ subroutine micro_mg_tend ( &
   dum_2D = qg
   qg = qgr
   qgtend = qgtend + (dum_2D-qg)/deltat
-  
-  
-  
+
+
+
   dum_2D = ng
   ng = ngr
   ngtend = ngtend + (dum_2D-ng)/deltat
@@ -3507,20 +3507,20 @@ subroutine micro_mg_tend ( &
         ! calculate number and mass weighted fall velocity for cloud ice
 
         if (dumi(i,k).ge.qsmall) then
-         
+
          mu_ice =  mui_of_l(lami(i, k))
-         aux=gamma(4._r8+bi+mu_ice)/gamma(4._r8+mu_ice)  !DONIF         
+         aux=gamma(4._r8+bi+mu_ice)/gamma(4._r8+mu_ice)  !DONIF
          vtrmi(i,k)=  ain(i,k)*aux/(lami(i, k)**bi)
          fi(i,k) = g*rho(i,k)*vtrmi(i,k)
-        
-               
+
+
 !        vtrmi(i,k)=min(ain(i,k)*gamma_bi_plus4/(6._r8*lami(i,k)**bi), &
 !                1.2_r8*rhof(i,k))
-          aux=gamma(1._r8+bi+mu_ice)/gamma(1._r8+mu_ice) !DONIF                
+          aux=gamma(1._r8+bi+mu_ice)/gamma(1._r8+mu_ice) !DONIF
           fni(i,k) = g*rho(i,k)* &
                 min(ain(i,k)*aux/(lami(i, k)**bi),1.2_r8*rhof(i,k))
 
-                
+
           ! fni(i,k) = g*rho(i,k)* &
 !                min(ain(i,k)*gamma_bi_plus1/lami(i,k)**bi,1.2_r8*rhof(i,k))
 
@@ -3528,15 +3528,15 @@ subroutine micro_mg_tend ( &
            ! particles (blend over 8-20 um)
            irad = 1.5_r8 / lami(i,k) * 1e6_r8
            ifrac = min(1._r8, max(0._r8, (irad - 18._r8) / 2._r8))
- 
+
            if (ifrac .lt. 1._r8) then
-              vtrmi(i,k) = ifrac * vtrmi(i,k) + & 
+              vtrmi(i,k) = ifrac * vtrmi(i,k) + &
                  (1._r8 - ifrac) * &
                  min(ajn(i,k)*gamma_bj_plus4/(6._r8*lami(i,k)**bj), &
                  1.2_r8*rhof(i,k))
 
               fi(i,k) = g*rho(i,k)*vtrmi(i,k)
-              fni(i,k) = ifrac * fni(i,k) + & 
+              fni(i,k) = ifrac * fni(i,k) + &
                  (1._r8 - ifrac) * &
                  g*rho(i,k)* &
                  min(ajn(i,k)*gamma_bj_plus1/lami(i,k)**bj,1.2_r8*rhof(i,k))
@@ -3548,7 +3548,7 @@ subroutine micro_mg_tend ( &
 !DONIFFFF tune up sedimentation vel!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             fi(i,k)= fi(i,k)*ui_scale
             fni(i,k)= fni(i,k)*ui_scale
-            
+
      enddo
 
   enddo
@@ -3606,7 +3606,7 @@ subroutine micro_mg_tend ( &
            call size_dist_param_basic(mg_graupel_props, dumg(i,k), dumng(i,k), &
              lamg(i,k))
         end if
-            
+
         if (lamg(i,k).ge.qsmall) then
 
            ! 'final' values of number and mass weighted mean fallspeed for graupel (m/s)
@@ -3976,7 +3976,7 @@ subroutine micro_mg_tend ( &
         preci(i) = preci(i)+faloutg(nlev)/g/real(nstep)/1000._r8
 
      end do              !! nstep loop
-        
+
   enddo
   ! end sedimentation
 
@@ -4008,7 +4008,7 @@ subroutine micro_mg_tend ( &
         if (nicons) then
            dumni(i,k)=ninst/rho(i,k)*icldm(i,k)
         end if
-        
+
         ! switch for specification of graupel number
         if (ngcons) then
            dumng(i,k)=ngnst/rho(i,k)*precip_frac(i,k)
@@ -4217,8 +4217,8 @@ subroutine micro_mg_tend ( &
                  tlat(i,k)=tlat(i,k)+xlf*dum*dumc(i,k)/deltat
               end if
            end if
-        enddo 
-     enddo 
+        enddo
+     enddo
 
      ! remove any excess over-saturation, which is possible due to non-linearity when adding
      ! together all microphysical processes
@@ -4261,8 +4261,8 @@ subroutine micro_mg_tend ( &
               qvres(i,k)=-dum
               tlat(i,k)=tlat(i,k)+dum*(1._r8-dum1)*xxlv+dum*dum1*xxls
            end if
-        enddo 
-     enddo 
+        enddo
+     enddo
   end if
 
   ! calculate effective radius for pass to radiation code
@@ -4311,7 +4311,7 @@ subroutine micro_mg_tend ( &
 
      enddo
   enddo
-      
+
   ! cloud ice effective radius
   !-----------------------------------------------------------------
 
@@ -4323,7 +4323,7 @@ subroutine micro_mg_tend ( &
               dum_2D(i,k) = dumni(i,k)
              ! call size_dist_param_basic(mg_ice_props, dumi(i,k), dumni(i,k), & DONIF
              !      lami(i,k), dumni0)
-             
+
               call size_dist_param_ice(mg_ice_props, dumi(i,k), dumni(i,k), & !DONIF
                    lami(i,k), dumni0)
 
@@ -4333,11 +4333,11 @@ subroutine micro_mg_tend ( &
               end if
 
 
-              mu_ice  =  mui_of_l(lami(i, k))   
+              mu_ice  =  mui_of_l(lami(i, k))
               !effi(i,k) = 1.5_r8/lami(i,k)*1.e6_r8
                effi(i,k) = 1.e6_r8*gamma(4._r8+mu_ice)/(2.0*lami(i, k)*gamma(3._r8+mu_ice))  !DONIF
-                          
-                         
+
+
               sadice(i,k) = 2._r8*pi*(lami(i,k)**(-3))*dumni0*rho(i,k)*1.e-2_r8  ! m2/m3 -> cm2/cm3 ! Check DONIF
 
            else
@@ -4478,7 +4478,7 @@ subroutine micro_mg_tend ( &
               call size_dist_param_basic(mg_graupel_props, dumg(i,k), dumng(i,k), &
                 lamg(i,k))
            end if
-              
+
            if (dum /= dumng(i,k)) then
               ! adjust number conc if needed to keep mean size in reasonable range
               ngtend(i,k)=(dumng(i,k)*precip_frac(i,k)-ng(i,k))/deltat
