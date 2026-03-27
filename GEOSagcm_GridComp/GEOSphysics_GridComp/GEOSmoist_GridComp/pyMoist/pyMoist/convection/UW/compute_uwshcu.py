@@ -8245,8 +8245,6 @@ class ComputeUwshcuInv(NDSLRuntime):
         self.xflx_ndim.data[:] = 0
         self.trflx_d.data[:] = 0
         self.trflx_u.data[:] = 0
-        self.ese.data[:] = 0
-        self.esx.data[:] = 0
         self.locals.PTR2D.data[:] = 0
         self.locals.MASS.data[:] = 0
         self.locals.ssthl0.data[:] = 0
