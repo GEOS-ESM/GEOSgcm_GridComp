@@ -55,16 +55,20 @@ class MAPLMemoryRepository:
         """Register the fortran memory with the factory"""
         # MAPL Fortran call retrieve memory as a void* - we will cast
         if len(dims) == 3:
-            void_fptr = self._bridge.MAPL_GetPointer_3D(self._state, name, alloc=alloc)
             is_associated = self._bridge.associated_3d(self._state, name, alloc=alloc)
+            void_fptr = (
+                self._bridge.MAPL_GetPointer_3D(self._state, name, alloc=alloc) if is_associated else None
+            )
         elif len(dims) == 2:
-            void_fptr = self._bridge.MAPL_GetPointer_2D(self._state, name, alloc=alloc)
             is_associated = self._bridge.associated_2d(self._state, name, alloc=alloc)
+            void_fptr = (
+                self._bridge.MAPL_GetPointer_2D(self._state, name, alloc=alloc) if is_associated else None
+            )
         else:
             raise NotImplementedError(
                 f"Only 2D & 3D fields implemented, missing support for {len(dims)}D arrays."
             )
-        cast_ptr = self._f_py_converter.cast(dtype, void_fptr)
+        cast_ptr = self._f_py_converter.cast(dtype, void_fptr) if void_fptr else None
         self._fortran_pointers[name] = MAPLMemoryRepository.FortranMemory(
             pointer=cast_ptr,
             associated=is_associated,
