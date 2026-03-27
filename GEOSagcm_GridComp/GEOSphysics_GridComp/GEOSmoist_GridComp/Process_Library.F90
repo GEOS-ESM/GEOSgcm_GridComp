@@ -41,6 +41,7 @@ module GEOSmoist_Process_Library
   integer, parameter :: SRF_TYPE_OCEAN = 0
 
   ! ICE_FRACTION constants
+   logical :: constrain_modis_ice = .FALSE.
    ! In anvil/convective clouds
    real, parameter :: aT_ICE_ALL = 252.16
    real, parameter :: aT_ICE_MAX = 268.16
@@ -242,6 +243,7 @@ module GEOSmoist_Process_Library
   public :: AeroProps
   public :: AeroPropsNew
   public :: CNV_Tracer_Type, CNV_Tracers, CNV_Tracers_Init
+  public :: constrain_modis_ice
   public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, BUOYANCY2
   public :: REDISTRIBUTE_CLOUDS, RADCOUPLE, FIX_UP_CLOUDS
   public :: hystpdf, fix_up_clouds_2M
@@ -501,11 +503,11 @@ module GEOSmoist_Process_Library
       enddo
   end function ICE_FRACTION_1D
 
-  function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
+function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
       real, intent(in) :: TEMP,CNV_FRACTION,SRF_TYPE
       real             :: ICEFRCT
       real             :: tc, ptc
-      real             :: ICEFRCT_C, ICEFRCT_M
+      real             :: ICEFRCT_C, ICEFRCT_M, ICEFRCT_PHYS
 
 #ifdef USE_MODIS_ICE_POLY
      ! Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384)
@@ -579,6 +581,72 @@ module GEOSmoist_Process_Library
       ! Combine the Convective and MODIS functions
         ICEFRCT  = ICEFRCT_M*(1.0-CNV_FRACTION) + ICEFRCT_C*(CNV_FRACTION)
 #endif
+
+      if (constrain_modis_ice) then
+
+      ! =====================================================================
+      ! NEW: Apply thermodynamic constraints
+      ! Ensures ice fraction doesn't violate physical laws while respecting
+      ! MODIS observations where physically reasonable
+      ! =====================================================================
+      
+      ! Compute physics-based minimum ice fraction
+      ICEFRCT_PHYS = 0.0
+      
+      if (TEMP < 235.0) then
+        ! Below -38°C: Homogeneous nucleation temperature
+        ! All supercooled liquid droplets freeze spontaneously
+        ! This is a thermodynamic law, not negotiable
+        ICEFRCT_PHYS = 1.0
+        
+      elseif (TEMP < 238.0) then
+        ! -38°C to -35°C: Transition to 100% ice
+        ! Very rapid heterogeneous nucleation, essentially all ice
+        ICEFRCT_PHYS = 0.975 + 0.025 * (238.0 - TEMP) / 3.0
+        
+      elseif (TEMP < 243.0) then
+        ! -35°C to -30°C: Should be 90-97.5% ice
+        ! Laboratory and aircraft observations show predominantly ice
+        ICEFRCT_PHYS = 0.90 + 0.075 * (243.0 - TEMP) / 5.0
+        
+      elseif (TEMP < 248.0) then
+        ! -30°C to -25°C: Should be 80-90% ice
+        ! Mixed phase possible but ice dominant
+        ICEFRCT_PHYS = 0.80 + 0.10 * (248.0 - TEMP) / 5.0
+        
+      elseif (TEMP < 253.0) then
+        ! -25°C to -20°C: Should be 65-80% ice
+        ! Active heterogeneous nucleation, ice favored
+        ICEFRCT_PHYS = 0.65 + 0.15 * (253.0 - TEMP) / 5.0
+        
+      elseif (TEMP < 258.0) then
+        ! -20°C to -15°C: Should be 45-65% ice
+        ! True mixed phase regime
+        ICEFRCT_PHYS = 0.45 + 0.20 * (258.0 - TEMP) / 5.0
+        
+      elseif (TEMP < 263.0) then
+        ! -15°C to -10°C: Should be 25-45% ice
+        ! Mixed phase, liquid becomes more common
+        ICEFRCT_PHYS = 0.25 + 0.20 * (263.0 - TEMP) / 5.0
+        
+      elseif (TEMP < 268.0) then
+        ! -10°C to -5°C: Mixed phase, 10-25% ice
+        ! Supercooled liquid droplets stable
+        ICEFRCT_PHYS = 0.10 + 0.15 * (268.0 - TEMP) / 5.0
+        
+      else
+        ! Above -5°C: MODIS parameterization is fine
+        ICEFRCT_PHYS = 0.0
+      endif
+      
+      ! Take maximum of MODIS-based and physics-based ice fraction
+      ! This preserves MODIS accuracy where valid, applies constraints where needed
+      ICEFRCT = MAX(ICEFRCT, ICEFRCT_PHYS)
+      
+      endif
+      
+      ! Final bounds check
+      ICEFRCT = MIN(1.0, MAX(0.0, ICEFRCT))
 
   end function ICE_FRACTION_SC
 

@@ -308,6 +308,8 @@ module gfdl_mp_mod
     logical :: use_rhc_cevap = .false. ! cap of rh for cloud water evaporation
     logical :: use_rhc_revap = .false. ! cap of rh for rain evaporation
 
+    logical :: use_enhanced_dry_evap = .false. ! Alternative minimum evaporation formula
+
     logical :: const_vw = .false. ! if .ture., the constants are specified by v * _fac
     logical :: const_vi = .false. ! if .ture., the constants are specified by v * _fac
     logical :: const_vs = .false. ! if .ture., the constants are specified by v * _fac
@@ -407,8 +409,8 @@ module gfdl_mp_mod
     ! other timescales
     real :: tau_v2l  =  120.0 ! water vapor to cloud water condensation time scale (s)
     real :: tau_l2v  =  300.0 ! cloud water to water vapor evaporation time scale (s)
-    real :: tau_revp =  600.0 ! rain evaporation time scale (s)
-    real :: tau_frez =  600.0 ! cloud liquid freezing time scale (s)
+    real :: tau_revp =  300.0 ! rain evaporation time scale (s)
+    real :: tau_frez =  300.0 ! cloud liquid freezing time scale (s)
     real :: tau_imlt =  600.0 ! cloud ice melting time scale (s)
     real :: tau_smlt =  900.0 ! snow melting time scale (s)
     real :: tau_gmlt = 1200.0 ! graupel melting time scale (s)
@@ -436,7 +438,7 @@ module gfdl_mp_mod
 
     real :: psaut_qi_crt = 0.5e-4 ! cloud ice to snow autoconversion threshold (kg/m^3)
     real :: pwbf_qi_crt  = 0.8e-4 ! WBF liquid to ice freezing threshold (kg/m^3)
-    real :: pgaut_qs_crt = 0.8e-3 ! snow to graupel autoconversion threshold (0.6e-3 in Purdue Lin scheme) (kg/m^3)
+    real :: pgaut_qs_crt = 0.6e-3 ! snow to graupel autoconversion threshold (0.6e-3 in Purdue Lin scheme) (kg/m^3)
 
     real :: c_paut  = 0.5 ! cloud water to rain autoconversion efficiency
 
@@ -565,7 +567,7 @@ module gfdl_mp_mod
         prog_ccn, c_pracw, c_praci, rad_snow, rad_graupel, rad_rain, cld_min, &
         prog_cin, sedflag, sed_fac, do_sedi_uv, do_sedi_w, do_sedi_heat, icloud_f, &
         irain_f, xr_a, xr_b, xr_c, ntimes, tau_revp, tice_mlt, do_cond_timescale, &
-        mp_time, consv_checker, te_err, tw_err, use_rhc_cevap, use_rhc_revap, tau_wbf, &
+        mp_time, consv_checker, te_err, tw_err, use_rhc_cevap, use_rhc_revap, use_enhanced_dry_evap, tau_wbf, &
         do_warm_rain_mp, rh_thres, f_dq_p, f_dq_m, do_cld_adj, rhc_cevap, &
         rhc_revap, beta, liq_ice_combine, rewflag, reiflag, rerflag, resflag, &
         regflag, rewmin, rewmax, reimin, reimax, rermin, rermax, resmin, &
@@ -3121,7 +3123,7 @@ subroutine prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
     integer :: k
 
     real :: dqv, qsat, dqdt, tmp, t2, qden, q_plus, q_minus, sink
-    real :: qpz, dq, dqh, tin, fac_revp, rh_tem
+    real :: qpz, dq, dqh, tin, fac_revp, rh_tem, rh_rain
 
     real, dimension (ks:ke) :: q_liq, q_sol, lcpk, icpk, tcpk, tcp3
 
@@ -3177,16 +3179,33 @@ subroutine prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
             t2 = tin * tin
             sink = psub (t2, dq, qden, qsat, crevp, den (k), denfac (k), blinr, mur, lcpk (k), cvm (k))
             sink = min (qr (k), dts * fac_revp * sink, dqv / (1. + lcpk (k) * dqdt))
-            rh_tem = qpz / qsat
-            if (use_rhc_revap .and. rh_tem .ge. rhc_revap) then
-                sink = 0.0
+
+            ! -----------------------------------------------------------------------
+            ! Enhanced scale-aware rain evaporation in dry environmental air.
+            ! Target grid-mean RH scales with grid resolution via h_var (rhcrit).
+            ! At 1km (h_var=0.0): evaporates until grid box is 100% saturated.
+            ! At 100km (h_var=0.3): evaporates until grid box is 70% saturated.
+            ! -----------------------------------------------------------------------
+            if (use_enhanced_dry_evap) then
+                ! True scale-aware target RH based on subgrid moisture variance
+                rh_rain = max (0.70, 1.0 - h_var (k)) 
+                ! Calculate total mass needed to hit the target RH threshold
+                tmp = min (qr (k), dim (rh_rain * qsat, qv (k)) / (1. + lcpk (k) * dqdt))
+                ! Apply the evaporation timescale factor to avoid shocking the model
+                tmp = dts * fac_revp * tmp 
+                ! Ensure the evaporation rate doesn't fall below this enhanced baseline
+                sink = max (sink, tmp)
             endif
 
             ! -----------------------------------------------------------------------
-            ! alternative minimum evaporation in dry environmental air
+            ! use RH cap for rain evaporation
             ! -----------------------------------------------------------------------
-            ! tmp = min (qr (k), dim (rh_rain * qsat, qv (k)) / (1. + lcpk (k) * dqdt))
-            ! sink = max (sink, tmp)
+            if (use_rhc_revap) then
+                rh_tem = qpz / qsat
+                if (rh_tem .ge. rhc_revap) then
+                    sink = 0.0
+                endif
+            endif
 
             tmp = sink * dp (k) * convt
 
@@ -3534,9 +3553,9 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
     real :: ql, qi, qim, qadum, newliq, newice
     real :: tmp, sink, fac_imlt, fac_frez
+    real :: tc_freeze, tau_ratio, tau_frez_local
 
     fac_imlt = 1. - exp (- dts / tau_imlt)
-    fac_frez = 1. - exp (- dts / tau_frez)
 
     do k = ks, ke
 
@@ -3575,11 +3594,39 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
             ql = qlk (k)/qadum
             qi = qik (k)/qadum
 
+            ! ----------------------------------------------------------------
+            ! Temperature-dependent freezing timescale
+            ! Smooth exponential function - faster at colder temperatures
+            ! ----------------------------------------------------------------
+            tc_freeze = tice - tz(k)  ! Degrees below freezing
+            
+            if (tc_freeze > 0.0) then
+                ! Exponential decrease: tau ∝ exp(-0.1 * dts)
+                tau_ratio = exp(-0.1 * tc_freeze)
+                tau_ratio = max(tau_ratio, dts / tau_frez)  ! Floor at dts
+                tau_frez_local = tau_frez * tau_ratio
+            else
+                tau_frez_local = tau_frez
+            endif
+
             tmp = tz (k)
             newice = new_ice_condensate(tmp, qlk (k), qik (k))/qadum
-            sink = fac_frez * min(ql, newice, ql * (tice - tz (k)) / icpk (k))
-            qim = qi0_max / den (k)
-            tmp = min (sink, dim (qim/qadum, qi))
+            
+            ! ----------------------------------------------------------------
+            ! NEW: Relax thermal constraint at cold temperatures
+            ! In strong updrafts, adiabatic cooling >> latent heating
+            ! ----------------------------------------------------------------
+            if (tz(k) < 253.0) then
+                ! Below -20°C: Remove thermal constraint
+                ! Trust the ice_fraction_corrected to limit freezing
+                sink = fac_frez * min(ql, newice)
+            else
+                ! -20°C to 0°C: Keep thermal constraint for stability
+                sink = fac_frez * min(ql, newice, ql * (tice - tz(k)) / icpk(k))
+            endif
+            
+            qim = (qi0_max / den (k))/qadum
+            tmp = min (sink, dim (qim, qi))
 
             tmp = tmp*qadum
             sink = sink*qadum
@@ -4045,7 +4092,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
                 else
                     dq = qi - qim
                 endif
-                sink = fac_i2s * exp (0.025 * tc) * dq
+                sink = fac_i2s * dq
             endif
             sink = min (fi2s_fac * qi, sink) * qadum
             mppas = mppas + sink * dp (k) * convt
@@ -4289,7 +4336,7 @@ subroutine pgaut (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, den, mppag, c
             sink = 0
             qsm = pgaut_qs_crt / den (k)
             if (qs (k) .gt. qsm) then
-                factor = dts * 1.e-3 * exp (0.09 * tc)
+                factor = dts * 1.e-3
                 sink = factor / (1. + factor) * (qs (k) - qsm)
             endif
 
@@ -4602,7 +4649,7 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
             evap = 0.0
             subl = 0.0
 
-            rh_adj = 1. - h_var(k) - rh_inc
+            rh_adj = max(0.70, 1. - h_var(k) - rh_inc)
             qsi = iqs (tin, den (k), dqdt)
             rh = qpz / qsi
             if (rh .lt. rh_adj) then
@@ -4613,7 +4660,6 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
                 ! partial evap of liquid
                 tin = tz (k)
                 qsw = wqs (tin, den (k), dqdt)
-                rh_tem = qpz / qsw
                 dq = qsw - qv (k)
                 if (dq > qvmin) then
                    if (do_evap_timescale) then
@@ -4622,8 +4668,12 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
                       factor = 1.
                    endif  
                    evap = min (ql (k), factor * ql(k) / (1. + tcp3 (k) * dqdt))
-                   if (use_rhc_cevap .and. rh_tem .ge. rhc_cevap) then
-                      evap = 0.
+                   ! -----------------------------------------------------------------------
+                   ! use RH cap for cloud evaporation
+                   ! -----------------------------------------------------------------------
+                   if (use_rhc_cevap) then
+                       rh_tem = qpz / qsw
+                       if (rh_tem .ge. rhc_cevap)  evap = 0.
                    endif
                 endif
                 ! nothing for ice
@@ -4764,7 +4814,7 @@ subroutine pcomp (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, lcp
     do k = ks, ke
 
         ifrac = ice_fraction(real(tz(k)),cnv_fraction,srf_type)
-        if (ifrac .eq. 1. .and. ql (k) .gt. qcmin) then
+        if (ifrac .ge. 0.99 .and. ql (k) .gt. qcmin) then
 
             sink = min(ql (k), fac_frez * ql (k) )
             mppfw = mppfw + sink * dp (k) * convt
@@ -7556,6 +7606,26 @@ subroutine qs_table_core (n, n_blend, do_smith_table, table)
     real (kind = r8) :: esbasw, tbasw, esbasi, a, b, c, d, e
     real (kind = r8) :: esupc (n_blend)
 
+    ! -----------------------------------------------------------------------
+    ! Safety check for array bounds in blending region
+    ! -----------------------------------------------------------------------
+    if (n_blend > n_min) then
+        print*, "FATAL ERROR in qs_table_core:"
+        print*, "  n_blend = ", n_blend
+        print*, "  n_min   = ", n_min  
+        print*, "  n_blend must be <= n_min to avoid negative array indices"
+        print*, "  in the blending loop: table(i + n_min - n_blend)"
+        stop
+    endif
+    
+    if (n < n_min) then
+        print*, "FATAL ERROR in qs_table_core:"
+        print*, "  n     = ", n
+        print*, "  n_min = ", n_min
+        print*, "  Table length n must be >= n_min"
+        stop
+    endif
+
     esbasw = 1013246.0
     tbasw = tice + 100.
     esbasi = 6107.1
@@ -7624,8 +7694,19 @@ subroutine qs_table_core (n, n_blend, do_smith_table, table)
 
     do i = 1, n_blend
         tem = tice + delt * (real (i - 1) - n_blend)
-       ! WMP impose CALIPSO ice polynomial for mixed phase
-        ifrac = ice_fraction(real(tem),0.0,0.0)
+
+        ! Temperature-only ice fraction for saturation table
+        ! Use simple linear ramp: all liquid at 0°C, all ice at -20°C
+        ! This is appropriate for a reference saturation table
+        if (tem >= tice) then
+            ifrac = 0.0
+        elseif (tem <= tice - 20.0) then
+            ifrac = 1.0
+        else
+            ! Linear transition over 20°C range
+            ifrac = (tice - tem) / 20.0
+        endif
+
         wice = ifrac
         wh2o = 1.0 - wice
         table (i + n_min - n_blend) = wice * table (i + n_min - n_blend) + wh2o * esupc (i)
@@ -7814,8 +7895,12 @@ function qs_core (tk, den, dqdt, table, des)
     ap1 = rdelt * dim (tk, es_table_tmin) + 1.
     ap1 = min (real(es_table_length), ap1)
     qs_core = es_core (tk, table, des) / (rvgas * tk * den)
-    it = ap1 - 0.5
-    dqdt = rdelt * (des (it) + (ap1 - it) * (des (it + 1) - des (it))) / (rvgas * tk * den)
+    
+    ! Ensure it+1 is within bounds
+    it = int(ap1)
+    it = max(1, min(it, es_table_length - 1))
+    
+    dqdt = rdelt * (des(it) + (ap1 - real(it)) * (des(it+1) - des(it))) / (rvgas * tk * den)
 
 end function qs_core
 

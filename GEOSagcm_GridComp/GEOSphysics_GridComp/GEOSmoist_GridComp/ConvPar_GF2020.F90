@@ -1717,10 +1717,30 @@ CONTAINS
                         klcl, kbcon, ktop, depth_neg_buoy, frh_bcon, Tpert, start_level, &
                         use_excess, zqexec, ztexec, x_add_buoy, xland, cnvfrc, itf, ktf, its, ite, kts, kte)
 
-  !- Setup initial Downdraft Profile Parameters 
-  mentrd_rate = entr_rate_plume * 0.3
-  cdd = mentrd_rate
-  sigd(:) = MERGE(1.0, 0.0, DOWNDRAFT)
+  if (ZERO_DIFF_ENTR == 1) then     
+      mentrd_rate = entr_rate_plume
+      cdd = mentrd_rate
+      sigd(:) = MERGE(1.0, 0.0, DOWNDRAFT)
+  else
+      !- Scale-aware downdraft switch (matches updraft scaling perfectly)
+      sigd(:) = MERGE(sig(:), 0.0, DOWNDRAFT)
+      !- Physically-based downdraft lateral mixing (Entrainment/Detrainment)
+      SELECT CASE(trim(cumulus))
+        CASE('deep')
+           ! Reverted to original GF (1.0). Highly leaky to moisten 700-300 mb.
+           mentrd_rate = entr_rate_plume 
+        CASE('mid')
+           ! Highly leaky. Evaporates and mixes completely into the mid-levels.
+           mentrd_rate = entr_rate_plume 
+        CASE('shallow')
+           ! Kept restricted (0.3). Weak shallow downdrafts need protection 
+           ! from over-entraining dry air so they can reach the PBL.
+           mentrd_rate = entr_rate_plume * 0.3 
+        CASE DEFAULT
+           mentrd_rate = entr_rate_plume * 0.3
+      END SELECT
+      cdd = mentrd_rate
+  endif
 
   !- Update Source Parcels
   DO i = its, itf
@@ -4153,6 +4173,9 @@ CONTAINS
             endif
 
             IF (AUTOCONV == 1 ) then
+                !-----------------------------------------------------------------------
+                ! AUTOCONV = 1 : Classic Kessler scheme; constant conversion rate once a static liquid water threshold is exceeded.
+                !-----------------------------------------------------------------------
                 min_liq  = ( xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd )
                 cx0     = (c1d(i,k)+c0)*DZ
                 qrc(i,k)= clw_all(i,k)/(1.+cx0)
@@ -4161,7 +4184,9 @@ CONTAINS
                 pw (i,k)=pw(i,k)*zu(i,k)
 
             ELSEIF (AUTOCONV == 2 ) then
-              ! this is similar to AUTOCONV == 1 with temperature dependence
+                !-----------------------------------------------------------------------
+                ! AUTOCONV = 2 : Kessler with temperature dependence; suppresses rain formation at freezing temperatures to mimic mixed-phase glaciation.
+                !-----------------------------------------------------------------------
                 min_liq  = ( xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd )
                 cx0     = (c1d(i,k)+c0)*DZ*fract_liq_f(tempc(i,k),cnvfrc(i),srftype(i))
                 qrc(i,k)= clw_all(i,k)/(1.+cx0)
@@ -4170,6 +4195,8 @@ CONTAINS
                 pw (i,k)=pw(i,k)*zu(i,k)
 
             ELSEIF (AUTOCONV == 3 ) then
+                !-----------------------------------------------------------------------
+                ! AUTOCONV = 3 : Aerosol-aware Berry (1968) scheme; conversion rate depends on droplet number concentration derived from AOD/CCN.
                 ! this is similar to AUTOCONV == 2 with CCN dependence
                 !------------------------------------------------------------
                 ! 1. Base land/ocean autoconversion threshold
@@ -4201,6 +4228,7 @@ CONTAINS
 
             ELSEIF (AUTOCONV == 4 ) then
                 !-----------------------------------------------------------------------
+                ! AUTOCONV = 4 : Sundqvist scheme; smooth exponential activation of rain formation with vertical-velocity and ice-phase dependencies.
                 ! this is similar to AUTOCONV == 3 with VVEL dependence & analytic solution
                 !-----------------------------------------------------------------------
                 ! Base land/ocean threshold
@@ -4264,15 +4292,16 @@ CONTAINS
                 endif
 
             ELSEIF (AUTOCONV == 5 ) then
+                !--------------------------------------------------------------------
+                ! AUTOCONV = 5 : Analytical integration that includes a continuous condensation source term (cup) and a mildly temperature-dependent conversion rate.
+                !--------------------------------------------------------------------
                 min_liq  = ( xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd )
                 if(clw_all(i,k) <= min_liq) then
                    qrc(i,k)= clw_all(i,k)
                    pw(i,k) = 0.
                 else
-                   cx0     = (c1d(i,k)+c0)*(1.+ 0.33*fract_liq_f(tempc(i,k),cnvfrc(i),srftype(i)))
-                   ! BUG FIX: Protect against divide-by-zero
+                   cx0 = (c1d(i,k)+c0)*(1.+ 0.33*fract_liq_f(tempc(i,k),cnvfrc(i),srftype(i)))
                    cx0 = max(cx0, 1.e-6)
-                   ! BUG FIX: Use clw_all instead of self-referential qrc
                    qrc(i,k)= clw_all(i,k)*exp(-cx0*dz) + (cup/cx0)*(1.-exp(-cx0*dz))
                    pw (i,k)= max(0.,clw_all(i,k)-qrc(i,k)) ! units kg[rain]/kg[air]
                    qrc(i,k)= clw_all(i,k)-pw(i,k)
@@ -4281,12 +4310,16 @@ CONTAINS
                 endif
 
             ELSEIF (AUTOCONV == 6 ) then
+                !--------------------------------------------------------------------
+                ! AUTOCONV = 6 : Kessler-type scheme like Option 1, but utilizes a smooth exponential decay for mass-conserving rainout rather than an instantaneous linear fraction.
+                !--------------------------------------------------------------------
                 min_liq  = ( xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd ) 
                 if(clw_all(i,k) <= min_liq) then
                    qrc(i,k)= clw_all(i,k)
                    pw(i,k) = 0.
                 else
-                   cx0     = (c1d(i,k)+c0)*dz
+                   cx0 = (c1d(i,k)+c0)*dz
+                   cx0 = max(cx0, 1.e-6)
                    qrc(i,k)= (clw_all(i,k))*exp(-cx0)
                    pw (i,k)= clw_all(i,k) - qrc(i,k)
                   !--- convert pw to normalized pw
@@ -4294,15 +4327,16 @@ CONTAINS
                 endif
 
             ELSEIF (AUTOCONV == 7 ) then
+                !--------------------------------------------------------------------
+                ! AUTOCONV = 7 : Analytical integration that includes a continuous condensation source term (cup), but strictly uses a constant, temperature-independent conversion rate.
+                !--------------------------------------------------------------------
                 min_liq  = ( xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd ) 
                 if(clw_all(i,k) <= min_liq) then
                    qrc(i,k)= clw_all(i,k)
                    pw(i,k) = 0.
                 else
-                   cx0     = c1d(i,k)+c0
-                   ! BUG FIX: Protect against divide-by-zero
+                   cx0 = c1d(i,k)+c0
                    cx0 = max(cx0, 1.e-6)
-                   ! BUG FIX: Use clw_all instead of self-referential qrc
                    qrc(i,k)= clw_all(i,k)*exp(-cx0*dz) + (cup/cx0)*(1.-exp(-cx0*dz))
                    pw (i,k)= max(clw_all(i,k) - qrc(i,k),0.)
                    qrc(i,k)= clw_all(i,k) - pw (i,k)
