@@ -115,7 +115,7 @@ module micro_mg3_0
 !use shr_spfn_mod, only: gamma => shr_spfn_gamma
 !#endif
 
-use MAPL_ConstantsMod 
+use MAPL_Constants 
 use MAPL_Mod, r8 => MAPL_R8
 
 use GEOSmoist_Process_Library, only: update_cld

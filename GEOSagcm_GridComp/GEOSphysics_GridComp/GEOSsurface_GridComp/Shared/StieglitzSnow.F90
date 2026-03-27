@@ -15,7 +15,7 @@ module StieglitzSnow
   ! Justin, 4/16/2018    - moved WEMIN, AICEV, AICEN to SurfParams,
   !  	    		   removed LAND_UPD ifdef's
   
-  USE MAPL_ConstantsMod, ONLY:  &
+  USE MAPL_Constants, ONLY:  &
        PIE  => MAPL_PI,         &  ! -          
        ALHE => MAPL_ALHL,       &  ! J/kg  @15C 
        ALHM => MAPL_ALHF,       &  ! J/kg       
