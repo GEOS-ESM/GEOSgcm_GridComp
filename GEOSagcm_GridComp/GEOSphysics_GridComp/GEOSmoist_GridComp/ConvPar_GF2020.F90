@@ -8475,8 +8475,8 @@ loop2:      do while (hcot(i,kbcon(i)) < HESO_cup(i,kbcon(i)))
      endif
 
      !-- initialize arrays to zero.
-     vvel1d(i  ) = 0.0
-     vvel2d(i,:) = 0.0
+     vvel1d = 0.0
+     vvel2d = 0.0
      if(ZERO_DIFF_VVEL==1) then
      do i=its,itf
         !-- initialize arrays to zero.
