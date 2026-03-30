@@ -199,7 +199,7 @@ def ask_questions(default_grid="Cubed-Sphere"):
    "v11 : NL3 + JPL veg height + PEATMAP + MODIS snow alb v2", \
    "v12 : NL3 + JPL veg height + PEATMAP + MODIS snow alb v2 + Argentina peatland fix", \
    "v13 : NL3 + JPL veg height + PEATMAP + MODIS snow alb v2 + Argentina peatland fix + mean land elevation fix", \
-   "v15 : NL3 + JPL veg height + PEATMAP GPA22 + MODIS snow alb v2 + HWSDv1.2+ mean land elevation fix", \
+   "v15 : As in v13 but with GPM 2.0 peat", \
    "ICA : Icarus        (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus/)", \
    "GM4 : Ganymed-4_0   (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Ganymed-4_0/)", \
    "F25 : Fortuna-2_5   (archived*: n/a)"], 
