@@ -318,9 +318,16 @@ CONTAINS
     dx2d(:,:)  = MERGE(100000.0, sqrt(AREA(:,:)), mxp == 1 .and. myp == 1)
 
     !- PBL Index Mapping
+    ! NOTE: MERGE evaluates both branches before applying the mask, so using
+    ! flip(NINT(KPBLIN)) inside MERGE causes an out-of-bounds subscript (flip(0))
+    ! when KPBLIN==0. Use an explicit IF instead to guard the array access.
     DO j = 1, myp
        DO i = 1, mxp
-          kpbl(i,j) = MERGE(flip(NINT(KPBLIN(i,j))), 1, KPBLIN(i,j) /= 0.0)
+          IF(KPBLIN(i,j) /= 0.0) THEN
+             kpbl(i,j) = flip(NINT(KPBLIN(i,j)))
+          ELSE
+             kpbl(i,j) = 1
+          ENDIF
        ENDDO
     ENDDO
 
