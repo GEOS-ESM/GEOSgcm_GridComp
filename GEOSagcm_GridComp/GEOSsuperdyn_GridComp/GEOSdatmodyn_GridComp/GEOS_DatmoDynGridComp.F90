@@ -17,7 +17,7 @@ module GEOS_DatmoDynGridCompMod
   use MAPL
   use PPM
   use cfmip_data_mod
-  use MAPL_PhysicalConstantsMod, only : MAPL_OMEGA
+  use MAPL_Constants, only : MAPL_OMEGA
 
   implicit none
   private
@@ -1392,8 +1392,8 @@ contains
     call ESMF_ConfigGetAttribute( cf, SCMAREA, label ='SCM_AREA:', &
                                     DEFAULT=1e10, rc = status )
 
-   
-    
+
+
     if ( CFMIP .and. CFMIP2) then
             print *, " Error - SCM_CFMIP and SCM_CFMIP2 cannot be set at the same time  "  ! This should never happen
             RETURN_(ESMF_FAILURE)
