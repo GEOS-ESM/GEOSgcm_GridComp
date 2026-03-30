@@ -59,9 +59,8 @@ module rmTinyCatchParaMod
   ! The following variables define the details of the BCS version (data sources).
   ! Initialize to dummy values here and set to desired values in init_bcs_config().
   
-  logical,      public, save :: use_PEATMAP = .false.
+  integer,      public, save :: PEAT_INFO   = 0
   logical,      public, save :: jpl_height  = .false.
-  logical,      public, save :: PEATMAP_STRICT_GPA22 = .false.
   character*8,  public, save :: LAIBCS      = 'UNDEF'
   character*6,  public, save :: SOILBCS     = 'UNDEF'
   character*6,  public, save :: MODALB      = 'UNDEF'
@@ -106,138 +105,134 @@ contains
     !   NGDC      : Soil parameters from Reynolds et al. 2000, doi:10.1029/2000WR900130 (MERRA-2, Fortuna, Ganymed, Icarus)
     !   HWSD      : Merged HWSDv1.21-STATSGO2 soil properties on 43200x21600 with Woesten et al. (1999) parameters   
     !   HWSD_b    : As in HWSD but with surgical fix of Argentina peatland issue (38S,60W)
-    !   HWSDv2   : HWSD updated from v1.2 to v2. And sub and top are D2 layer
+    !   HWSDv2    : As in HWSD but using HWSDv2 instead of HWSDv1.21; uses HWSDv2 layer 2 ("D2") texture for "top" *and* "sub" layers
     !
     ! OUTLETV: Definition of outlet locations.  DEFAULT : N/A
     !   N/A       : No information (do not create routing "TRN" files).
     !   v1        : Outlet locations file produced manually by Randy Koster.
     !   v2        : Outlet locations file produced by run_routing_raster.py using routing information encoded 
     !               in SRTM-based Pfafstetter catchments and Greenland outlets info provided by Lauren Andrews.
-
+    !
+    ! PEAT_INFO: Source of peat information
+    !   0         : HWSD texture
+    !   1         : HWSD texture + PEATMAP (Xu et al 2017, doi:10.5518/252)
+    !   2         : Global Peatland Map 2.0 (GPM 2.0; Greifswald Mire Centre)
+    !
+    ! -----------------------------------------------------------------------------------------------------------------
+    
     character(*), intent (in) :: LBCSV     ! land BCs version 
 
     select case (trim(LBCSV))
        
     case ("F25")
-       LAIBCS  = 'GSWP2'
-       SOILBCS = 'NGDC'
-       MODALB  = 'MODIS1'
-       SNOWALB = 'LUT'
-       OUTLETV = "N/A"
-       GNU     = 2.17
-       use_PEATMAP = .false.
-       jpl_height  = .false.
-       PEATMAP_STRICT_GPA22= .false.
+       LAIBCS     = 'GSWP2'
+       SOILBCS    = 'NGDC'
+       MODALB     = 'MODIS1'
+       SNOWALB    = 'LUT'
+       OUTLETV    = "N/A"
+       GNU        = 2.17
+       PEAT_INFO  = 0
+       jpl_height = .false.
        
     case ("GM4", "ICA")
-       LAIBCS  = 'GSWP2'
-       SOILBCS = 'NGDC'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'LUT'
-       OUTLETV = "N/A"
-       GNU     = 1.0
-       use_PEATMAP = .false.
-       jpl_height  = .false.
-       PEATMAP_STRICT_GPA22= .false.
+       LAIBCS     = 'GSWP2'
+       SOILBCS    = 'NGDC'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'LUT'
+       OUTLETV    = "N/A"
+       GNU        = 1.0
+       PEAT_INFO  = 0
+       jpl_height = .false.
 
     case ("NL3")
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'LUT'
-       OUTLETV = "N/A"
-       GNU     = 1.0
-       use_PEATMAP = .false.
-       jpl_height  = .false.
-       PEATMAP_STRICT_GPA22= .false.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'LUT'
+       OUTLETV    = "N/A"
+       GNU        = 1.0
+       PEAT_INFO  = 0
+       jpl_height = .false.
 
     case ("NL4")
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
-       MODALB  = 'MODIS2'      
-       SNOWALB = 'LUT'
-       OUTLETV = "N/A"
-       GNU     = 1.0
-       use_PEATMAP = .false.
-       jpl_height  = .true.
-       PEATMAP_STRICT_GPA22= .false.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD'
+       MODALB     = 'MODIS2'      
+       SNOWALB    = 'LUT'
+       OUTLETV    = "N/A"
+       GNU        = 1.0
+       PEAT_INFO  = 0
+       jpl_height = .true.
 
     case ("NL5")
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'LUT'
-       OUTLETV = "N/A"
-       GNU     = 1.0
-       use_PEATMAP = .true.
-       jpl_height  = .true.
-       PEATMAP_STRICT_GPA22= .false.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'LUT'
+       OUTLETV    = "N/A"
+       GNU        = 1.0
+       PEAT_INFO  = 1
+       jpl_height = .true.
 
     case ("v06")   
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'MODC061'
-       OUTLETV = "N/A"
-       GNU     = 1.0
-       use_PEATMAP = .true.
-       jpl_height  = .true.
-       PEATMAP_STRICT_GPA22= .false.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'MODC061'
+       OUTLETV    = "N/A"
+       GNU        = 1.0
+       PEAT_INFO  = 1
+       jpl_height = .true.
 
     case ("v07")   
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'LUT'
-       OUTLETV = "N/A"
-       GNU     = 1.0
-       use_PEATMAP = .true.
-       jpl_height  = .false.
-       PEATMAP_STRICT_GPA22= .false.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'LUT'
+       OUTLETV    = "N/A"
+       GNU        = 1.0
+       PEAT_INFO  = 1
+       jpl_height = .false.
        
     case ("v08")   
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'MODC061'
-       OUTLETV = "N/A"
-       GNU     = 1.0
-       use_PEATMAP = .false.
-       jpl_height  = .false.
-       PEATMAP_STRICT_GPA22= .false.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'MODC061'
+       OUTLETV    = "N/A"
+       GNU        = 1.0
+       PEAT_INFO  = 0
+       jpl_height = .false.
        
     case ("v09")   
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'MODC061'
-       OUTLETV = "N/A"
-       GNU     = 1.0
-       use_PEATMAP = .true.
-       jpl_height  = .false.
-       PEATMAP_STRICT_GPA22= .false.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'MODC061'
+       OUTLETV    = "N/A"
+       GNU        = 1.0
+       PEAT_INFO  = 1
+       jpl_height = .false.
 
     case ("v10")   
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'MODC061v2'
-       OUTLETV = "N/A"
-       GNU     = 1.0
-       use_PEATMAP = .true.
-       jpl_height  = .false.
-       PEATMAP_STRICT_GPA22= .false.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'MODC061v2'
+       OUTLETV    = "N/A"
+       GNU        = 1.0
+       PEAT_INFO  = 1
+       jpl_height = .false.
 
     case ("v11")   
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'MODC061v2'
-       OUTLETV = "v1"
-       GNU     = 1.0
-       use_PEATMAP = .true.
-       jpl_height  = .true.
-       PEATMAP_STRICT_GPA22= .false.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'MODC061v2'
+       OUTLETV    = "v1"
+       GNU        = 1.0
+       PEAT_INFO  = 1
+       jpl_height = .true.
 
     case ("v12","v13")  
 
@@ -246,26 +241,24 @@ contains
        ! - bug fix for land elevation in catchment.def file
        ! - generation of nc4-formatted tile file
  
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD_b'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'MODC061v2'
-       OUTLETV = "v2"       
-       GNU     = 1.0
-       use_PEATMAP = .true.
-       jpl_height  = .true.
-       PEATMAP_STRICT_GPA22= .false.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD_b'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'MODC061v2'
+       OUTLETV    = "v2"       
+       GNU        = 1.0
+       PEAT_INFO  = 1
+       jpl_height = .true.
 
     case ("v15")  
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD_b'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'MODC061v2'
-       OUTLETV = "v2"       
-       GNU     = 1.0
-       use_PEATMAP = .true.
-       jpl_height  = .true.
-       PEATMAP_STRICT_GPA22= .true.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD_b'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'MODC061v2'
+       OUTLETV    = "v2"       
+       GNU        = 1.0
+       PEAT_INFO  = 2
+       jpl_height = .true.
       
 
     case default
@@ -2658,7 +2651,7 @@ contains
 
     call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR)
 
-    if(use_PEATMAP) then 
+    if(PEAT_INFO>0) then 
        fname = trim(MAKE_BCS_INPUT_DIR)//'/land/soil/SOIL-DATA/SoilClasses-SoilHyd-TauParam.peatmap' 
     else
        fname = trim(MAKE_BCS_INPUT_DIR)//'land/soil/SOIL-DATA/SoilClasses-SoilHyd-TauParam.dat'
@@ -2687,7 +2680,7 @@ contains
 
        ! open and read loss parameter file for class n (defined through sand/clay/orgC)
 
-       if(n == n_SoilClasses .and. use_PEATMAP) then 
+       if(n == n_SoilClasses .and. PEAT_INFO>0) then 
           open (120,file=trim(losfile)//trim(fout)//'.peat',  &
                form='formatted',status='old')
        else
@@ -2833,7 +2826,7 @@ contains
           write(*,*)'Warnning 1: pfafstetter mismatched' 
           stop
        endif
-       if((use_PEATMAP).and.(soil_class_top(n) == 253)) then
+       if((PEAT_INFO>0).and.(soil_class_top(n) == 253)) then
           meanlu = 9.3
           stdev  = 0.12
           minlu  = 8.5
@@ -2919,7 +2912,7 @@ contains
     !$OMP        taberr1,taberr2,normerr1,normerr2,         &
     !$OMP        taberr3,taberr4,normerr3,normerr4,         &
     !$OMP        gwatdep,gwan,grzexcn,gfrc,soil_class_com,  &
-    !$OMP        n_threads, low_ind, upp_ind, use_PEATMAP ) &
+    !$OMP        n_threads, low_ind, upp_ind, PEAT_INFO )   &
     !$OMP PRIVATE(k,li,ui,n,i,watdep,wan,rzexcn,frc,ST,AC,  &
     !$OMP COESKEW,profdep)
 
@@ -2970,7 +2963,7 @@ contains
                tsa1(n),tsa2(n),tsb1(n),tsb2(n)  &
                )
 
-          if(soil_class_com(n) == 253 .and. use_PEATMAP) then
+          if(soil_class_com(n) == 253 .and. PEAT_INFO>0) then
 
              ! Michel Bechtold paper - PEATCLSM_fitting_CLSM_params.R produced these data values.
 
@@ -3043,7 +3036,7 @@ contains
 
              ! In strict GPA22 mode, only consider donors with the same
              ! peat/mineral state as the target tile.
-             if (PEATMAP_STRICT_GPA22) then
+             if (PEAT_INFO>=2) then
                 donor_is_peat = (soil_class_top(i) == 253) .or. (soil_class_com(i) == 253)
                 if (donor_is_peat .neqv. target_is_peat) cycle
              endif
@@ -3060,7 +3053,7 @@ contains
           ! Strict GPA22 fallback:
           ! if no same-state donor exists, revert to the original
           ! nearest-valid donor search so a donor is still always found.          
-          if ((k == 0) .and. PEATMAP_STRICT_GPA22) then
+          if ((k == 0) .and. PEAT_INFO>=2) then
              dist_save = 1000000.
              do i = 1,nbcatch
                 if (i == n) cycle
@@ -3120,7 +3113,7 @@ contains
        
        ! write "soil_param.dat" file;  n = target tile, k = donor tile.
 
-       if (PEATMAP_STRICT_GPA22) then
+       if (PEAT_INFO>=2) then
           ! write only bulk hydraulic fields from donor tile k.
           write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')  &
                tindex2(n),pfaf2(n),                                                   &     ! n (target)
