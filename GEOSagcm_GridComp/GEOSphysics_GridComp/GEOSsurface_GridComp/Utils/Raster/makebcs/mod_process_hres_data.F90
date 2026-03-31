@@ -3796,7 +3796,7 @@ contains
     !
     ! Final tile top/profile classes are assigned later from the raster-based fields.
 
-    if (PEAT_INFO>0) then
+    if (PEAT_INFO>=1) then
 
        print *, 'PEATMAP_THRESHOLD_1 : ', PEATMAP_THRESHOLD_1
 
@@ -4083,7 +4083,7 @@ contains
     ! NLv4  7.86e-7   5.81e-6
     ! NLv5  3.79e-6   2.80e-5   <== note *typo* in Table 2 of Bechtold et al. 2019, which erroneously lists K_s=2.8e-5
 
-    if(PEAT_INFO>0) then 
+    if(PEAT_INFO>=1) then 
        fname = trim(MAKE_BCS_INPUT_DIR)//'/land/soil/SOIL-DATA/SoilClasses-SoilHyd-TauParam.peatmap'
     else
        fname = trim(MAKE_BCS_INPUT_DIR)//'/land/soil/SOIL-DATA/SoilClasses-SoilHyd-TauParam.dat'
@@ -4508,7 +4508,7 @@ contains
 
              fac_count = 0.
 
-             if (PEAT_INFO<2) then
+             if (PEAT_INFO<=1) then
 
                 ! Legacy behavior: Compute weighted average profile orgC (only across raster grid cells/layers whose orgC class is peat).
                 
@@ -4716,7 +4716,7 @@ contains
 
           else
 
-             ! PEAT_INFO>1
+             ! PEAT_INFO>=2
              
              ! If the profile class is missing, search "neighboring" tiles for a fill value,
              !   where "neighbors" are defined in terms of proximity of tile index (not necessarily geographical proximity)
@@ -4753,30 +4753,30 @@ contains
                 
              endif
              
-          endif
-          
-          fac_surf = soil_class_top(n)
-          fac      = soil_class_com(n)
-          
-          if (PEAT_INFO==1) then
-             
-             ! Legacy PEATMAP behavior:
-             ! if the surface class is peat, force the written profile class to peat.
-             ! In strict GPA22 mode, profile peat must already have been assigned
-             ! upstream, so do not override fac here.
-             if (fac_surf == 253) fac = 253
-             
-          endif
-          
-       end if   ! (PEAT_INFO<=1) 
+          endif   ! (PEAT_INFO<=1) 
+
+       end if  ! (soil_class_top(n) == -9999) .or. (soil_class_com(n) == -9999)
        
        ! done filling missing soil class
        !
        ! ---------------------------------------------------------------------------------------------------------
+       
+       fac_surf = soil_class_top(n)
+       fac      = soil_class_com(n)
+
+       if (PEAT_INFO==1) then
+
+          ! Legacy PEATMAP behavior:
+          ! if the surface class is peat, force the written profile class to peat.
+          ! In strict GPA22 mode, profile peat must already have been assigned
+          ! upstream, so do not override fac here.
+          if (fac_surf == 253) fac = 253
+
+       endif
 
        ! determine/write soil parameters that are based on soil class
        
-       if (PEAT_INFO>0) then
+       if (PEAT_INFO>=1) then
           
           if (fac_surf == 253) soildepth(n) = 5000.  ! For peat, set soil depth is set to the value Michel used to derive parameters (5000.).
           

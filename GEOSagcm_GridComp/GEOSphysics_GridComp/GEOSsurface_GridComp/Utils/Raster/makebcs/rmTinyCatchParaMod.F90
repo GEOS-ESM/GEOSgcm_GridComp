@@ -2651,7 +2651,7 @@ contains
 
     call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR)
 
-    if(PEAT_INFO>0) then 
+    if(PEAT_INFO>=1) then 
        fname = trim(MAKE_BCS_INPUT_DIR)//'/land/soil/SOIL-DATA/SoilClasses-SoilHyd-TauParam.peatmap' 
     else
        fname = trim(MAKE_BCS_INPUT_DIR)//'land/soil/SOIL-DATA/SoilClasses-SoilHyd-TauParam.dat'
@@ -2680,7 +2680,7 @@ contains
 
        ! open and read loss parameter file for class n (defined through sand/clay/orgC)
 
-       if(n == n_SoilClasses .and. PEAT_INFO>0) then 
+       if(n == n_SoilClasses .and. PEAT_INFO>=1) then 
           open (120,file=trim(losfile)//trim(fout)//'.peat',  &
                form='formatted',status='old')
        else
@@ -2826,7 +2826,7 @@ contains
           write(*,*)'Warnning 1: pfafstetter mismatched' 
           stop
        endif
-       if((PEAT_INFO>0).and.(soil_class_top(n) == 253)) then
+       if((PEAT_INFO>=1).and.(soil_class_top(n) == 253)) then
           meanlu = 9.3
           stdev  = 0.12
           minlu  = 8.5
@@ -2963,7 +2963,7 @@ contains
                tsa1(n),tsa2(n),tsb1(n),tsb2(n)  &
                )
 
-          if(soil_class_com(n) == 253 .and. PEAT_INFO>0) then
+          if(soil_class_com(n) == 253 .and. PEAT_INFO>=1) then
 
              ! Michel Bechtold paper - PEATCLSM_fitting_CLSM_params.R produced these data values.
 
@@ -3012,12 +3012,13 @@ contains
             a_sand_surf(n),a_clay_surf(n),atile_sand(n),atile_clay(n) ,   &
             wpwet_surf(n),poros_surf(n), pmap(n)
 
-       ! If SAT parameters are invalid for tile n, choose donor tile k.
+       ! If ars1/arw1 parameters are invalid for tile n, replace tile n soil class and 
+       !   soil parameters with those from donor tile k.
        !
-       ! Legacy behavior:
+       ! PEAT_INFO<=1
        !   use the nearest tile with valid SAT parameters.
        !
-       ! Strict GPA22 behavior:
+       ! PEAT_INFO>=2
        !   first prefer a donor with the same peat/mineral state as the
        !   target tile, so repaired bulk hydraulics do not cross peat and
        !   mineral regimes.  If no same-state donor exists, fall back to
