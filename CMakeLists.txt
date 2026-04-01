@@ -2,10 +2,10 @@ esma_set_this()
 
 set (alldirs
   GEOSagcm_GridComp
-  GEOSdataatm_GridComp
-  GEOSmkiau_GridComp
-  GEOSogcm_GridComp
-  GEOSwgcm_GridComp
+  # GEOSdataatm_GridComp  # not yet ported to MAPL3 - restore when ported
+  # GEOSmkiau_GridComp    # not yet ported to MAPL3 - restore when ported
+  # GEOSogcm_GridComp     # not yet ported to MAPL3 - restore when ported
+  # GEOSwgcm_GridComp     # not yet ported to MAPL3 - restore when ported
   )
 
 option(BUILD_WITH_GIGATRAJ "Build GEOSgcm with Gigatraj" OFF)
