@@ -3505,9 +3505,9 @@ contains
 
     ! define number of mineral classes in each orgC class
 
-    nsoil_pcarbon(1) = 84 ! 84
-    nsoil_pcarbon(2) = nsoil_pcarbon(1) + 84 ! 84
-    nsoil_pcarbon(3) = nsoil_pcarbon(2) + 84 ! 57
+    nsoil_pcarbon(1) =                    84   !  =  84
+    nsoil_pcarbon(2) = nsoil_pcarbon(1) + 84   !  = 168
+    nsoil_pcarbon(3) = nsoil_pcarbon(2) + 84   !  = 252
 
 
     ! read soil depth data from GSWP2_soildepth_H[xx]V[yy].nc
@@ -4670,13 +4670,13 @@ contains
           
           ! top and/or profile class remain undefined
           
+          ! if only the top class is missing, set top class to profile class
+          
+          if (soil_class_com(n) >= 1)  soil_class_top(n) = soil_class_com(n)
+          
           if (PEAT_INFO<=1) then
              
              ! Legacy processing
-             
-             ! if only the top-layer class is missing, set top class to profile class.
-             
-             if (soil_class_com(n) >= 1)  soil_class_top(n) = soil_class_com(n)
              
              ! If the profile class is missing, search "neighboring" tiles for a fill value,
              !   where "neighbors" are defined in terms of proximity of tile index (not necessarily geographical proximity)
