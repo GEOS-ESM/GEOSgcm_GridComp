@@ -4200,12 +4200,12 @@ contains
     !$OMP         sf,data_vec1,data_vec2,data_vec3,         &
     !$OMP         data_vec4,data_vec5,data_vec6,cF_lim,     &
     !$OMP         table_map,soil_class_top,soil_class_com,  &
-    !$OMP         soc_vec,poc_vec,PEAT_INFO,tmp_oc_top_real)&
+    !$OMP         soc_vec,poc_vec,PEAT_INFO)                &
     !$OMP PRIVATE(n,i,j,k,icount,t_count,i1,i2,ss_clay,     &
     !$OMP         ss_sand,ss_clay_all,ss_sand_all,          &
     !$OMP         ss_oc_all,cFamily,factor,o_cl,o_clp,ktop, &
     !$OMP         min_percs, fac_count, write_debug,        &
-    !$OMP         n_valid_top, n_valid_prof)
+    !$OMP         n_valid_top, n_valid_prof,tmp_oc_top_real)
 
     ! loop through tiles (split into two loops for OpenMP)
 
