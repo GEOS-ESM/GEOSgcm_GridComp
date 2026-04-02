@@ -4513,20 +4513,20 @@ contains
                 ! Legacy behavior: Compute weighted average profile orgC (only across raster grid cells/layers whose orgC class is peat).
                 
                 do j=1,2*i
-                   if(ss_oc_all(j)*sf >= cF_lim(4)) then
+                   if (ss_oc_all(j)*sf >= cF_lim(4)) then
                       if(j <= i) factor = 1.                                ! top layer contribution  1   <= j <=i
                       if(j  > i) factor = 2.33                              ! sub layer contribution  i+1 <= j <=2*i
                       poc_vec (n) = poc_vec(n) + ss_oc_all(j)*sf*factor     ! weighted sum of orgC ("poc" = "profile orgC")
                       fac_count = fac_count + factor                        ! sum of weights
                    endif
                 end do
-
+                
              else
-
+                
                 ! Compute weighted average profile orgC only for raster grid cells that are peat (based on oc_top)
                 
                 do j=1,2*i
-
+                   
                    ! determine top orgC that corresponds to element j:
                    
                    if(j <= i) then
@@ -4534,8 +4534,11 @@ contains
                    else
                       tmp_oc_top_real = ss_oc_all(j-i)*sf   ! j is for sub layer
                    end if
-                   
-                   if(tmp_oc_top_real >= cF_lim(4)) then
+
+                   if ( (tmp_oc_top_real >= cF_lim(4)) .and. (ss_oc_all(j)*sf >= cF_lim(1)) ) then   
+                      
+                      ! top orgC is peat *and* top/sub orgC is valid data
+                      
                       if(j <= i) factor = 1.                                ! top layer contribution  1   <= j <=i
                       if(j  > i) factor = 2.33                              ! sub layer contribution  i+1 <= j <=2*i
                       poc_vec (n) = poc_vec(n) + ss_oc_all(j)*sf*factor     ! weighted sum of orgC ("poc" = "profile orgC")
