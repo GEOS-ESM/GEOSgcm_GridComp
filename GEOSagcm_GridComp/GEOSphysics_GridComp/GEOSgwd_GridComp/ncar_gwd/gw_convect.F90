@@ -10,7 +10,7 @@ module gw_convect
                        calc_taucd, momentum_flux, momentum_fixer, &
                        energy_momentum_adjust, energy_change, energy_fixer
 
-  use MAPL_ConstantsMod, only: MAPL_RGAS, MAPL_CP, MAPL_GRAV
+  use MAPL_Constants, only: MAPL_RGAS, MAPL_CP, MAPL_GRAV
 
 implicit none
 private
