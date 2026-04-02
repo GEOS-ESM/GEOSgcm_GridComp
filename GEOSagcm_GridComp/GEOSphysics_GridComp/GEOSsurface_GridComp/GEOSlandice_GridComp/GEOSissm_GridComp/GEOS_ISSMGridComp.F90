@@ -303,6 +303,8 @@ subroutine SetServices ( GC, RC )
     real(dp),    pointer, dimension(:)     :: field_saver => null()
     real(dp),    pointer, dimension(:)     :: nodelons    => null()
     real(dp),    pointer, dimension(:)     :: nodelats    => null()
+    real,    allocatable, dimension(:)     :: elemlons, elemlats
+
     integer, pointer, dimension(:)         :: conn_slice  => null()
     character(len=16) :: varname
     character(len=1)  :: istr
@@ -467,8 +469,14 @@ subroutine SetServices ( GC, RC )
     ! Create losctream that match mesh element id, then set it to this GC and MAPL
     ! note: original attached/atmospheric grid and landice tile locsstream have
     ! been stored in the internal state
+    allocate(elemlons(num_elements))
+    allocate(elemlats(num_elements))
+    elemlons = elementCoords(1::2)*MAPL_DEGREES_TO_RADIANS
+    elemlats = elementCoords(2::2)*MAPL_DEGREES_TO_RADIANS
+
     mesh_grid = create_mesh_grid(_RC)
-    call MAPL_LocstreamCreate(mesh_locstream, mesh_grid, local_id=elementIds,  _RC)
+    call MAPL_LocstreamCreate(mesh_locstream, mesh_grid, local_id=elementIds, &
+              tilelons=elemlons, tilelats=elemlats,  _RC)
     call MAPL%grid%set(mesh_grid, _RC)
     call ESMF_GridCompSet(gc, grid=mesh_grid, _RC)
     Call MAPL_set(MAPL, locstream = mesh_locstream, _RC)
@@ -485,7 +493,8 @@ subroutine SetServices ( GC, RC )
     deallocate(elementConn)
     deallocate(elementCoords)
     deallocate(glacIds)
-
+    deallocate(elemlons)
+    deallocate(elemlats)
     ! generic initialize 
     call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
     VERIFY_(STATUS)
