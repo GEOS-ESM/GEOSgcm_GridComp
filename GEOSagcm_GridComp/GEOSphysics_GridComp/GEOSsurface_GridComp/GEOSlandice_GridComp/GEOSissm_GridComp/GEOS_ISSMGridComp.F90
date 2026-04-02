@@ -471,8 +471,8 @@ subroutine SetServices ( GC, RC )
     ! been stored in the internal state
     allocate(elemlons(num_elements))
     allocate(elemlats(num_elements))
-    elemlons = elementCoords(1::2) 
-    elemlats = elementCoords(2::2)
+    elemlons = elementCoords(1::2)*MAPL_DEGREES_TO_RADIANS
+    elemlats = elementCoords(2::2)*MAPL_DEGREES_TO_RADIANS
 
     mesh_grid = create_mesh_grid(_RC)
     call MAPL_LocstreamCreate(mesh_locstream, mesh_grid, local_id=elementIds, &
