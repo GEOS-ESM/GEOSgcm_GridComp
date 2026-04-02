@@ -7,7 +7,7 @@ module uwshcu
 
    use GEOS_UtilsMod, only: GEOS_QSAT, GEOS_DQSAT
    use GEOSmoist_Process_Library
-   use MAPL_ConstantsMod, only: MAPL_TICE , MAPL_CP   , &
+   use MAPL_Constants, only: MAPL_TICE , MAPL_CP   , &
                                 MAPL_GRAV , MAPL_ALHS , &
                                 MAPL_ALHL , MAPL_ALHF , &
                                 MAPL_RGAS , MAPL_H2OMW, &
@@ -91,10 +91,10 @@ contains
          fer_inv, fdr_inv, qldet_inv, qidet_inv, qlsub_inv,         &
          qisub_inv, ndrop_inv, nice_inv, tpert_out, qpert_out,      & 
          qtflx_inv, slflx_inv, uflx_inv, vflx_inv,                  &
+         cbmf, plcl, plfc, pinv, prel, pbup, cldtop,                & ! DIAGNOSTIC ONLY
 #ifdef UWDIAG
-         qcu_inv, qlu_inv, qiu_inv, cbmf, qc_inv,                   & ! DIAGNOSTIC ONLY
-         cnt_inv, cnb_inv, cin, plcl, plfc, pinv, prel, pbup,       &
-         wlcl, qtsrc, thlsrc, thvlsrc, tkeavg, cldtop, wu_inv,      &
+         qcu_inv, qlu_inv, qiu_inv, qc_inv, cnt_inv, cnb_inv,       &
+         cin, wlcl, qtsrc, thlsrc, thvlsrc, tkeavg, wu_inv,         &
          qtu_inv, thlu_inv, thvu_inv, uu_inv, vu_inv, xc_inv,       &
 #endif
          dotransport)
@@ -161,6 +161,14 @@ contains
       real, intent(out)   :: vflx_inv(idim,k0+1)
 
 !!! Diagnostic only
+      real, intent(out)   :: cbmf(idim)                !  Cumulus base mass flux [ kg/m2/s ]
+      real, intent(out)   :: plcl(idim)
+      real, intent(out)   :: plfc(idim)
+      real, intent(out)   :: pinv(idim)
+      real, intent(out)   :: prel(idim)
+      real, intent(out)   :: pbup(idim)
+      real, intent(out)   :: cldtop(idim)
+
 #ifdef UWDIAG
       real, intent(out)   :: qcu_inv(idim,k0)         !  Liquid+ice specific humidity within cumulus updraft [ kg/kg ]
       real, intent(out)   :: qlu_inv(idim,k0)         !  Liquid water specific humidity within cumulus updraft [ kg/kg ]
@@ -173,21 +181,14 @@ contains
       real, intent(out)   :: uu_inv(idim,k0+1)
       real, intent(out)   :: vu_inv(idim,k0+1)
       real, intent(out)   :: xc_inv(idim,k0)
-      real, intent(out)   :: cbmf(idim)                !  Cumulus base mass flux [ kg/m2/s ]
       real, intent(out)   :: cnt_inv(idim)             !  Cumulus top  interface index, cnt = kpen [ no ]
       real, intent(out)   :: cnb_inv(idim)             !  Cumulus base interface index, cnb = krel - 1 [ no ]
       real, intent(out)   :: cin(idim)
-      real, intent(out)   :: plcl(idim)
-      real, intent(out)   :: plfc(idim)
-      real, intent(out)   :: pinv(idim)
-      real, intent(out)   :: prel(idim)
-      real, intent(out)   :: pbup(idim)
       real, intent(out)   :: wlcl(idim)
       real, intent(out)   :: qtsrc(idim)
       real, intent(out)   :: thlsrc(idim)
       real, intent(out)   :: thvlsrc(idim)
       real, intent(out)   :: tkeavg(idim)
-      real, intent(out)   :: cldtop(idim)
 #endif
 
   !----- Local variables -----
@@ -234,7 +235,7 @@ contains
 
 !--------- Local, Diagnostic only ---------
 #ifdef UWDIAG
-      real              :: trten(idim,k0,ncnst)    !  Tendency of tracers [ #/s, kg/kg/s ]
+!      real              :: trten(idim,k0,ncnst)    !  Tendency of tracers [ #/s, kg/kg/s ]
       real              :: qcu(idim,k0)            !  Condensate water specific humidity within cumulus updraft
                                                    ! at the layer mid-point [ kg/kg ]
       real              :: qlu(idim,k0)            !  Liquid water specific humidity within cumulus updraft
@@ -251,7 +252,7 @@ contains
       real              :: uu(idim,0:k0)
       real              :: vu(idim,0:k0)
       real              :: xc(idim,k0)
-      real              :: trten_inv(idim,k0,ncnst) !  Tendency of tracers [ #/s, kg/kg/s ]
+!      real              :: trten_inv(idim,k0,ncnst) !  Tendency of tracers [ #/s, kg/kg/s ]
 #endif
 
 
@@ -318,11 +319,11 @@ contains
            qlsub, qisub, ndrop, nice,                       &
            shfx, evap, cnvtrmax, tpert_out, qpert_out,      &
            qtflx, slflx, uflx, vflx,                        &
+           cbmf, plcl, plfc, pinv, prel, pbup, cldtop,      & ! Diagnostic only
 #ifdef UWDIAG
-           qcu, qlu, qiu, cbmf, qc, cnt, cnb,               & ! Diagnostic only
-           cin, plcl, plfc, pinv, prel, pbup, wlcl, qtsrc,  &
-           thlsrc, thvlsrc, tkeavg, cldtop, wu, qtu,        &
-           thlu, thvu, uu, vu, xc, trten,                   & 
+           qcu, qlu, qiu, qc, cnt, cnb, cin, wlcl, qtsrc,   &
+           thlsrc, thvlsrc, tkeavg, wu, qtu,                &
+           thlu, thvu, uu, vu, xc, & ! trten,                   & 
 #endif
            dotransport )
 
@@ -385,7 +386,7 @@ contains
             enddo
             CNV_Tracers(m)%Q(:,:,k_inv) = reshape(tr0(:,k,m), (/IM,JM/))
 #ifdef UWDIAG
-            trten_inv(:idim,k_inv,m) = trten(:idim,k,m)            
+!            trten_inv(:idim,k_inv,m) = trten(:idim,k,m)            
 #endif
          enddo
          endif
@@ -417,12 +418,13 @@ contains
          qidet_out, qlsub_out, qisub_out, ndrop_out, nice_out,     &
          shfx, evap, cnvtr, tpert_out, qpert_out,                  &
          qtflx_out, slflx_out, uflx_out, vflx_out,                 &
+         cbmf_out, plcl_out, plfc_out, pinv_out,                   & ! DIAG ONLY
+         prel_out, pbup_out, cldhgt_out,                           &
 #ifdef UWDIAG
-         qcu_out, qlu_out, qiu_out, cbmf_out, qc_out,              & ! DIAG ONLY
-         cnt_out, cnb_out, cinh_out, plcl_out, plfc_out, pinv_out, &
-         prel_out, pbup_out, wlcl_out, qtsrc_out, thlsrc_out,      &
-         thvlsrc_out, tkeavg_out, cldhgt_out, wu_out, qtu_out,     &
-         thlu_out, thvu_out, uu_out, vu_out, xc_out, trten_out,    &
+         qcu_out, qlu_out, qiu_out, qc_out, cnt_out, cnb_out,      &
+         cinh_out, wlcl_out, qtsrc_out, thlsrc_out,                &
+         thvlsrc_out, tkeavg_out, wu_out, qtu_out,                 &
+         thlu_out, thvu_out, uu_out, vu_out, xc_out, & !trten_out,    &
 #endif
          dotransport)  
 
@@ -510,8 +512,16 @@ contains
       real, intent(out)   :: nice_out(idim,k0)
 
 !--------- Diagnostic only ------------
+      real, intent(out)   :: cbmf_out(idim)           ! Cloud base mass flux [kg/m2/s]
+      real, intent(out)   :: pinv_out(idim)           !  PBL top pressure [ Pa ]
+      real, intent(out)   :: plfc_out(idim)           !  LFC of source air [ Pa ]
+      real, intent(out)   :: plcl_out(idim)           !  LCL of source air [ Pa ]
+      real, intent(out)   :: prel_out(idim)
+      real, intent(out)   :: pbup_out(idim)
+      real, intent(out)   :: cldhgt_out(idim)
+
 #ifdef UWDIAG
-      real, intent(out)   :: trten_out(idim,k0,ncnst) !  Tendency of tracers [ #/s, kg/kg/s ]
+!      real, intent(out)   :: trten_out(idim,k0,ncnst) !  Tendency of tracers [ #/s, kg/kg/s ]
       real, intent(out)   :: wu_out(idim,0:k0)        !  Updraft vertical velocity
       real, intent(out)   :: qtu_out(idim,0:k0)       !  Updraft qt [ kg/kg ]
       real, intent(out)   :: thlu_out(idim,0:k0)      !  Updraft thl [ K ]
@@ -521,18 +531,11 @@ contains
       real, intent(out)   :: qcu_out(idim,k0)         !  Condensate water specific humidity within cumulus updraft [ kg/kg ]
       real, intent(out)   :: qlu_out(idim,k0)         !  Liquid water specific humidity within cumulus updraft [ kg/kg ]
       real, intent(out)   :: qiu_out(idim,k0)         !  Ice specific humidity within cumulus updraft [ kg/kg ]
-      real, intent(out)   :: cbmf_out(idim)           ! Cloud base mass flux [kg/m2/s]
       real, intent(out)   :: qc_out(idim,k0)          !  Tendency of detrained cumulus condensate
       real, intent(out)   :: cnt_out(idim)            ! Cumulus top interface index
       real, intent(out)   :: cnb_out(idim)            ! Cumulus base interface index
       real, intent(out)   :: cinh_out(idim)
-      real, intent(out)   :: pinv_out(idim)           !  PBL top pressure [ Pa ]
-      real, intent(out)   :: plfc_out(idim)           !  LFC of source air [ Pa ]
-      real, intent(out)   :: plcl_out(idim)           !  LCL of source air [ Pa ]
-      real, intent(out)   :: prel_out(idim)
-      real, intent(out)   :: pbup_out(idim)
       real, intent(out)   :: tkeavg_out(idim)         !  Average tke over the PBL [ m2/s2 ]
-      real, intent(out)   :: cldhgt_out(idim)
       real, intent(out)   :: xc_out(idim,k0)
 #endif
 
@@ -1058,11 +1061,17 @@ contains
     tpert_out(:idim)             = 0.0
     qpert_out(:idim)             = 0.0
 
-#ifdef UWDIAG
     cbmf_out(:idim)              = 0.0
+    plcl_out(:idim)              = MAPL_UNDEF
+    pinv_out(:idim)              = MAPL_UNDEF
+    plfc_out(:idim)              = MAPL_UNDEF
+    prel_out(:idim)              = MAPL_UNDEF
+    pbup_out(:idim)              = MAPL_UNDEF
+    cldhgt_out(:idim)            = MAPL_UNDEF
+
+#ifdef UWDIAG
     cinh_out(:idim)              = MAPL_UNDEF
     cinlclh_out(:idim)           = MAPL_UNDEF
-    cldhgt_out(:idim)            = 0.0
     qcu_out(:idim,:k0)           = 0.0
     qlu_out(:idim,:k0)           = 0.0
     qiu_out(:idim,:k0)           = 0.0
@@ -1073,17 +1082,11 @@ contains
 !    ufrc_out(:idim,0:k0)         = 0.0
 !    uflx_out(:idim,0:k0)         = 0.0
 !    vflx_out(:idim,0:k0)         = 0.0
-
+    ppen_out(:idim)              = 0.0
     ufrcinvbase_out(:idim)       = 0.0
     ufrclcl_out(:idim)           = 0.0
     winvbase_out(:idim)          = 0.0
     wlcl_out(:idim)              = 0.0
-    plcl_out(:idim)              = 0.0
-    pinv_out(:idim)              = 0.0
-    plfc_out(:idim)              = 0.0
-    prel_out(:idim)              = 0.0
-    pbup_out(:idim)              = 0.0
-    ppen_out(:idim)              = 0.0
     qtsrc_out(:idim)             = 0.0
     thlsrc_out(:idim)            = 0.0
     thvlsrc_out(:idim)           = 0.0
@@ -1110,7 +1113,7 @@ contains
     dwten_out(:idim,:k0)        = 0.0
     diten_out(:idim,:k0)        = 0.0
 
-    trten_out(:idim,:k0,:ncnst)    = 0.0
+!    trten_out(:idim,:k0,:ncnst)    = 0.0
     trflx_out(:idim,0:k0,:ncnst)   = 0.0
     tru_out(:idim,0:k0,:ncnst)     = 0.0
     tru_emf_out(:idim,0:k0,:ncnst) = 0.0
@@ -2013,19 +2016,20 @@ contains
                uflx_out(i,0:k0)        = uflx_s(0:k0)
                vflx_out(i,0:k0)        = vflx_s(0:k0)
 
+               cbmf_out(i)             = cbmf_s
+
 #ifdef UWDIAG  
                qcu_out(i,:k0)          = qcu_s(:k0)    
                qlu_out(i,:k0)          = qlu_s(:k0)  
                qiu_out(i,:k0)          = qiu_s(:k0)  
-               cbmf_out(i)             = cbmf_s
                qc_out(i,:k0)           = qc_s(:k0)  
                cnt_out(i)              = cnt_s
                cnb_out(i)              = cnb_s
-               if (dotransport.eq.1) then
-               do m = 1, ncnst
-                  trten_out(i,:k0,m)   = trten_s(:k0,m)
-               enddo  
-               end if
+!               if (dotransport.eq.1) then
+!               do m = 1, ncnst
+!                  trten_out(i,:k0,m)   = trten_s(:k0,m)
+!               enddo  
+!               end if
 #endif             
 
                ! ------------------------------------------------------------------------------ ! 
@@ -2035,17 +2039,17 @@ contains
 
                fer_out(i,1:k0)      = fer_s(:k0)  
                fdr_out(i,1:k0)      = fdr_s(:k0)  
+               plcl_out(i)              = plcl_s
+               pinv_out(i)              = pinv_s    
+               prel_out(i)              = prel_s    
+               plfc_out(i)              = plfc_s    
+               pbup_out(i)              = pbup_s
 
 #ifdef UWDIAG
                ufrcinvbase_out(i)       = ufrcinvbase_s
                ufrclcl_out(i)           = ufrclcl_s 
                winvbase_out(i)          = winvbase_s
                wlcl_out(i)              = wlcl_s
-               plcl_out(i)              = plcl_s
-               pinv_out(i)              = pinv_s    
-               prel_out(i)              = prel_s    
-               plfc_out(i)              = plfc_s    
-               pbup_out(i)              = pbup_s
                ppen_out(i)              = ppen_s    
                qtsrc_out(i)             = qtsrc_s
                thlsrc_out(i)            = thlsrc_s
@@ -2350,7 +2354,7 @@ contains
 
          pe      = 0.5 * ( prel + pifc0(krel) )
          qsat_pe = 0.5 * ( prel + pifc0(krel) )
-         dpe     = max(prel - pifc0(krel), 1.0) ! Global protection: minimum 0.01 hPa
+         dpe     = max(prel - pifc0(krel), 100.0) ! Global protection: minimum 1.0 hPa
                                                 ! as prel approaches pifc0
          exne    = exnerfn(pe)
          thvebot = thv0rel
@@ -2478,7 +2482,7 @@ contains
 
          wtw     = wlcl * wlcl
          pe      = 0.5 * ( prel + pifc0(krel) )
-         dpe     = max(prel - pifc0(krel), 1.0) ! Global protection: minimum 0.01 hPa
+         dpe     = max(prel - pifc0(krel), 100.0) ! Global protection: minimum 0.01 hPa
                                                 ! as prel approaches pifc0
          exne    = exnerfn(pe)
          thvebot = thv0rel
@@ -4282,6 +4286,12 @@ contains
 !           slten_s(:k0)         = slten(:k0)
            ufrc_s(0:k0)         = ufrc(0:k0) 
 
+           plcl_s               = plcl
+           pinv_s               = pifc0(kinv-1)
+           plfc_s               = plfc        
+           prel_s               = prel        
+           pbup_s               = pifc0(kbup)
+
 
 #ifdef UWDIAG         
            cnt_s                = cnt
@@ -4291,11 +4301,6 @@ contains
            ufrclcl_s            = ufrclcl 
            winvbase_s           = winvbase
            wlcl_s               = wlcl
-           plcl_s               = plcl
-           pinv_s               = pifc0(kinv-1)
-           plfc_s               = plfc        
-           prel_s               = prel        
-           pbup_s               = pifc0(kbup)
            ppen_s               = pifc0(kpen-1) + ppen        
            qtsrc_s              = qtsrc
            thlsrc_s             = thlsrc
@@ -4452,9 +4457,15 @@ contains
      fer_out(i,1:kpen)          = fer(:kpen)  
      fdr_out(i,1:kpen)          = fdr(:kpen)  
 
-#ifdef UWDIAG
      cldhgt_out(i)               = cldhgt
      cbmf_out(i)                 = cbmf
+     plcl_out(i)                 = plcl
+     pinv_out(i)                 = pifc0(kinv-1)
+     plfc_out(i)                 = plfc    
+     prel_out(i)                 = prel    
+     pbup_out(i)                 = pifc0(kbup)        
+
+#ifdef UWDIAG
      cnt_out(i)                  = cnt
      cnb_out(i)                  = cnb
      qcu_out(i,:k0)              = qcu(:k0)
@@ -4474,11 +4485,6 @@ contains
      ufrclcl_out(i)               = ufrclcl 
      winvbase_out(i)              = winvbase
      wlcl_out(i)                  = wlcl
-     plcl_out(i)                  = plcl
-     pinv_out(i)                  = pifc0(kinv-1)
-     plfc_out(i)                  = plfc    
-     prel_out(i)                  = prel    
-     pbup_out(i)                  = pifc0(kbup)        
      ppen_out(i)                  = pifc0(kpen-1) + ppen            
      qtsrc_out(i)                 = qtsrc
      thlsrc_out(i)                = thlsrc
@@ -4515,14 +4521,14 @@ contains
      bogbot_arr_out(i,1:k0)   = bogbot_arr(:k0)
      bogtop_arr_out(i,1:k0)   = bogtop_arr(:k0)
 
-      if (dotransport.eq.1) then
-      do m = 1, ncnst
-        trten_out(i,:k0,m)    = trten(:k0,m)
-        trflx_out(i,0:k0,m)   = trflx(0:k0,m)  
-        tru_out(i,0:k0,m)     = tru(0:k0,m)
-        tru_emf_out(i,0:k0,m) = tru_emf(0:k0,m)
-      enddo
-      endif
+!      if (dotransport.eq.1) then
+!      do m = 1, ncnst
+!        trten_out(i,:k0,m)    = trten(:k0,m)
+!        trflx_out(i,0:k0,m)   = trflx(0:k0,m)  
+!        tru_out(i,0:k0,m)     = tru(0:k0,m)
+!        tru_emf_out(i,0:k0,m) = tru_emf(0:k0,m)
+!      enddo
+!      endif
 #endif
 
 333    if (id_exit) then
@@ -4558,8 +4564,15 @@ contains
      fer_out(i,1:k0)             = MAPL_UNDEF
      fdr_out(i,1:k0)             = MAPL_UNDEF
 
-#ifdef UWDIAG
      cbmf_out(i)                 = 0.   
+     plcl_out(i)                 = MAPL_UNDEF
+     pinv_out(i)                 = MAPL_UNDEF
+     prel_out(i)                 = MAPL_UNDEF
+     plfc_out(i)                 = MAPL_UNDEF
+     pbup_out(i)                 = MAPL_UNDEF
+     cldhgt_out(i)               = MAPL_UNDEF
+     
+#ifdef UWDIAG
      cnt_out(i)                  = 1.
      cnb_out(i)                  = real(k0)
      qcu_out(i,:k0)              = 0.
@@ -4579,11 +4592,6 @@ contains
      ufrclcl_out(i)               = 0. 
      winvbase_out(i)              = 0.    
      wlcl_out(i)                  = MAPL_UNDEF    
-     plcl_out(i)                  = MAPL_UNDEF
-     pinv_out(i)                  = MAPL_UNDEF
-     prel_out(i)                  = MAPL_UNDEF
-     plfc_out(i)                  = MAPL_UNDEF
-     pbup_out(i)                  = MAPL_UNDEF
      ppen_out(i)                  = MAPL_UNDEF
      qtsrc_out(i)                 = MAPL_UNDEF 
      thlsrc_out(i)                = MAPL_UNDEF    
@@ -4620,14 +4628,14 @@ contains
         bogbot_arr_out(i,k0:1:-1)   = 0.    
         bogtop_arr_out(i,k0:1:-1)   = 0.    
 
-        if (dotransport.eq.1) then
-        do m = 1, ncnst
-          trten_out(i,:k0,m)       = 0.
-          trflx_out(i,k0:0:-1,m)   = 0.  
-          tru_out(i,k0:0:-1,m)     = 0.
-          tru_emf_out(i,k0:0:-1,m) = 0.
-        enddo
-        endif
+!        if (dotransport.eq.1) then
+!        do m = 1, ncnst
+!          trten_out(i,:k0,m)       = 0.
+!          trflx_out(i,k0:0:-1,m)   = 0.  
+!          tru_out(i,k0:0:-1,m)     = 0.
+!          tru_emf_out(i,k0:0:-1,m) = 0.
+!        enddo
+!        endif
 #endif
 
        end if

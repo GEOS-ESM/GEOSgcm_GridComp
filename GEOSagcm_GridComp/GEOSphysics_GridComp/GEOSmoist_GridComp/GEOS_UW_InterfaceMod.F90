@@ -2,6 +2,8 @@
 
 #include "MAPL_Generic.h"
 
+!#define UWDIAG 1
+
 !=============================================================================
 !BOP
 
@@ -197,6 +199,18 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                        QIDET_SC, QLENT_SC, QIENT_SC, &
                                        QLSUB_SC, QISUB_SC, SC_NDROP, SC_NICE
     real, pointer, dimension(:,:)   :: TPERT_SC, QPERT_SC, LTS, EIS
+    real, pointer, dimension(:,:)   :: CBMF_SC, PLCL_SC, PLFC_SC,     &
+                                       PINV_SC, PREL_SC, PBUP_SC,    &
+                                       CLDTOP_SC
+#ifdef UWDIAG
+    real, pointer, dimension(:,:)   :: CIN_SC, CNT_SC, CNB_SC,      &
+                                       WLCL_SC, QTSRC_SC, THLSRC_SC, &
+                                       THVLSRC_SC, TKEAVG_SC
+    real, pointer, dimension(:,:,:) :: SHL_DQCDT, WUP_SC, QTUP_SC,   &
+                                       THLUP_SC, THVUP_SC, UUP_SC,   & 
+                                       VUP_SC, XC_SC, QCU_SC,        &
+                                       QLU_SC, QIU_SC
+#endif
     real, pointer, dimension(:,:,:) :: QLTOT, QITOT
     real, pointer, dimension(:,:,:) ::   DQVDT_FILL
     real, pointer, dimension(:,:,:) :: DQLLSDT_FILL
@@ -273,6 +287,35 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, LTS,   'LTS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, EIS,   'EIS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 
+    call MAPL_GetPointer(EXPORT, PLCL_SC,   'PLCL_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PLFC_SC,   'PLFC_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PINV_SC,   'PINV_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PREL_SC,   'PREL_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PBUP_SC,   'PBUP_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CBMF_SC,   'CBMF_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CLDTOP_SC, 'CLDTOP_SC' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+
+#ifdef UWDIAG
+      call MAPL_GetPointer(EXPORT, SHL_DQCDT, 'SHL_DQCDT' , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, CNT_SC,    'CNT_SC'    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, CNB_SC,    'CNB_SC'    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, WLCL_SC,   'WLCL_SC'   , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, QTSRC_SC,  'QTSRC_SC'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, THLSRC_SC, 'THLSRC_SC' , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, THVLSRC_SC,'THVLSRC_SC', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, TKEAVG_SC, 'TKEAVG_SC' , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, WUP_SC,    'WUP_SC'    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, QTUP_SC,   'QTUP_SC'   , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, THLUP_SC,  'THLUP_SC'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, THVUP_SC,  'THVUP_SC'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, UUP_SC,    'UUP_SC'    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, VUP_SC,    'VUP_SC'    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, XC_SC,     'XC_SC'     , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, QCU_SC,    'QCU_SC'    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, QLU_SC,    'QLU_SC'    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, QIU_SC,    'QIU_SC'    , RC=STATUS); VERIFY_(STATUS)
+#endif
+    
     ! Get my internal MAPL_Generic state
     !-----------------------------------
 
@@ -420,11 +463,12 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             QLDET_SC, QIDET_SC, QLSUB_SC, QISUB_SC,       &
             SC_NDROP, SC_NICE, TPERT_SC, QPERT_SC,        &
             QTFLX_SC, SLFLX_SC, UFLX_SC, VFLX_SC,         &
+            CBMF_SC, PLCL_SC, PLFC_SC, PINV_SC,           & ! DIAG ONLY
+            PREL_SC, PBUP_SC, CLDTOP_SC,                  &
 #ifdef UWDIAG 
-            QCU_SC, QLU_SC,                               & ! DIAG ONLY 
-            QIU_SC, CBMF_SC, SHL_DQCDT, CNT_SC, CNB_SC,   &
-            CIN_SC, PLCL_SC, PLFC_SC, PINV_SC, PREL_SC,   &
-            PBUP_SC, WLCL_SC, QTSRC_SC, THLSRC_SC,        &
+            QCU_SC, QLU_SC,                               & 
+            QIU_SC, SHL_DQCDT, CNT_SC, CNB_SC,            &
+            CIN_SC, WLCL_SC, QTSRC_SC, THLSRC_SC,         &
             THVLSRC_SC, TKEAVG_SC, CLDTOP_SC, WUP_SC,     &
             QTUP_SC, THLUP_SC, THVUP_SC, UUP_SC, VUP_SC,  &
             XC_SC,                                        &

@@ -52,7 +52,6 @@ USE GEOSmoist_Process_Library, only : CNV_Tracers
 
  REAL,   DIMENSION(maxiens) :: CUM_AVE_LAYER     =(/50.,   30.,   50. /)!= layer depth for average the properties
                                                                         != of source air parcels (mbar)
- REAL    ::  AVE_LAYER         != layer depth for average the properties of source air parcels (mbar)
 
  REAL    ::  TAU_DEEP         = 5400.  != deep      convective timescale
  REAL    ::  TAU_MID          = 3600.  != congestus convective timescale
@@ -446,72 +445,85 @@ loopk:      do k=k22(i)+1,ktop(i)+1
     real   ,optional ,intent(in)  :: add
     real   ,optional ,intent(in)  :: Tpert(kts:kte)
     real   ,intent(out)           :: x_aver
-    integer                       :: i,local_order_aver,order_aver, i_beg,i_end,ic
-    real,    parameter            :: frac_ave_layer_ocean= 0.3
-    real                          :: count,dp,dp_layer,effec_frac,x_ave_layer
+    
+    integer                       :: i, local_order_aver, order_aver, i_beg, i_end, ic
+    real,    parameter            :: frac_ave_layer_ocean = 0.3
+    real                          :: count, dp, dp_layer, effec_frac, x_ave_layer
 
-    !-- dimensions of the average:
-    !-- a) to pick the value at k22 level, instead of an average between
-    !--    (k22-order_aver, ..., k22-1, k22) set order_aver=kts
-    !-- b) to average between kts and k22 => set order_aver = k22
-    !order_aver = 4    !=> bc_meth 0: average between k22, k22-1, k22-2 ...
-                       !=> bc_meth 1: average between ... k22+1,k22, k22-1 ...
-    !-- order_aver = kts !=> average between k22, k22-1 and k22-2
-
-     if(bc_meth == 0) then
+    !===========================================================================
+    ! bc_meth 0: Fixed level averaging (Legacy)
+    !===========================================================================
+    if(bc_meth == 0) then
 
       order_aver = 3
-      local_order_aver=min(k22,order_aver)
+      local_order_aver = min(k22, order_aver)
 
-      x_aver=0.
-      do i = kts,local_order_aver
-        x_aver = x_aver + array(k22-i+1)
-      enddo
-      x_aver = x_aver/float(local_order_aver)
+      x_aver = 0.
+      do i = kts, local_order_aver
+        x_aver = x_aver + array(k22 - i + 1)
+      enddo          
+      x_aver = x_aver / float(local_order_aver)
 
-     elseif(bc_meth == 1) then
-      effec_frac  = (1.-xland) +xland*frac_ave_layer_ocean
-      if(trim(cumulus) == 'deep'   ) x_ave_layer = cum_ave_layer(deep)*effec_frac
-      if(trim(cumulus) == 'shallow') x_ave_layer = cum_ave_layer(shal)*effec_frac
-      if(trim(cumulus) == 'mid'    ) x_ave_layer = cum_ave_layer(mid )*effec_frac
+    !===========================================================================
+    ! bc_meth 1: Pressure layer averaging (Uses CUM_AVE_LAYER runtime tuning)
+    !===========================================================================
+    elseif(bc_meth == 1) then
+      
+      !-- Apply ocean fraction multiplier (Marine PBLs are significantly shallower)
+      effec_frac = (1.0 - xland) + (xland * frac_ave_layer_ocean)
 
-      i_beg = minloc(abs(po(kts:ktf)-(po(k22)+0.5*x_ave_layer)),1)
-      i_end = minloc(abs(po(kts:ktf)-(po(k22)-0.5*x_ave_layer)),1)
-      i_beg = min(ktf,max(i_beg,kts))
-      i_end = min(ktf,max(i_end,kts))
+      !-- Pull layer depth from runtime tuning array
+      SELECT CASE(trim(cumulus))
+        CASE('deep')
+           x_ave_layer = CUM_AVE_LAYER(1) * effec_frac
+        CASE('shallow')
+           x_ave_layer = CUM_AVE_LAYER(2) * effec_frac
+        CASE('mid')
+           x_ave_layer = CUM_AVE_LAYER(3) * effec_frac
+        CASE DEFAULT
+           x_ave_layer = 50.0 * effec_frac  ! Failsafe
+      END SELECT
 
+      !-- Find vertical bounds corresponding to this pressure depth
+      i_beg = minloc(abs(po(kts:ktf) - (po(k22) + 0.5 * x_ave_layer)), 1)
+      i_end = minloc(abs(po(kts:ktf) - (po(k22) - 0.5 * x_ave_layer)), 1)
+      i_beg = min(ktf, max(i_beg, kts))
+      i_end = min(ktf, max(i_end, kts))
+
+      !-- Perform the weighted average
       if(i_beg >= i_end) then
          x_aver   = array(k22)
          dp_layer = 0.
          ic       = i_beg
-
       else
          dp_layer = 1.e-06
          x_aver   = 0.
          ic       = 0
-         do i = i_beg,ktf
-              dp = -(po(i+1)-po(i))
-              if(dp_layer + dp <= x_ave_layer)  then
-                  dp_layer =  dp_layer  + dp
-                  x_aver   =  x_aver    + array(i)*dp
-
-              else
-                  dp       =  x_ave_layer - dp_layer
-                  dp_layer =  dp_layer    + dp
-                  x_aver   =  x_aver      + array(i)*dp
-
-                  exit
-              endif
-      enddo
-      x_aver = x_aver/dp_layer
-         ic  = max(i_beg,i)
+         
+         do i = i_beg, ktf
+            dp = -(po(i+1) - po(i))
+            if(dp_layer + dp <= x_ave_layer) then
+               dp_layer = dp_layer + dp
+               x_aver   = x_aver + array(i) * dp
+            else
+               dp       = x_ave_layer - dp_layer
+               dp_layer = dp_layer + dp
+               x_aver   = x_aver + array(i) * dp
+               exit
+            endif
+         enddo
+         x_aver = x_aver / dp_layer
+         ic  = max(i_beg, i)
       endif
-      !print*,"xaver1=",real(x_aver,4),real(dp_layer,4)
 
-      !-- this perturbation is included only for MSE
-      if(present(Tpert)) x_aver = x_aver + cp*maxval(Tpert(i_beg:ic))  ! version 2 - maxval in the layer
+      !-- Apply thermodynamic perturbation (if passed, e.g., for MSE)
+      if(present(Tpert)) then
+         x_aver = x_aver + cp * maxval(Tpert(i_beg:ic))  ! maxval in the layer
+      endif
 
     endif
+
+    !-- Apply general additive forcing (if passed)
     IF(present(add)) x_aver = x_aver + add
 
    end subroutine get_cloud_bc

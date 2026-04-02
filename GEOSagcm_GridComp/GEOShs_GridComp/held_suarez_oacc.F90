@@ -1,6 +1,6 @@
 module hs_oacc_mod
 
-  use MAPL_ConstantsMod, only: MAPL_CP, MAPL_GRAV, MAPL_KAPPA, MAPL_P00, MAPL_PI, MAPL_RGAS
+  use MAPL_Constants, only: MAPL_CP, MAPL_GRAV, MAPL_KAPPA, MAPL_P00, MAPL_PI, MAPL_RGAS
 
 contains
 
