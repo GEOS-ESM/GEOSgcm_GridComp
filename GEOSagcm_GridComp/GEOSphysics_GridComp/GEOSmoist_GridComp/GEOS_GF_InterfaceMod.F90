@@ -132,7 +132,7 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, ZERO_DIFF_VVEL            , 'ZERO_DIFF_VVEL:'        ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_ENTR            , 'ZERO_DIFF_ENTR:'        ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_TAU             , 'ZERO_DIFF_TAU:'         ,default= 0,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, ZERO_DIFF_AUTOCONV        , 'ZERO_DIFF_AUTOCONV:'    ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, ZERO_DIFF_AUTOCONV        , 'ZERO_DIFF_AUTOCONV:'    ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_VGRID           , 'ZERO_DIFF_VGRID:'       ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_OTHER           , 'ZERO_DIFF_OTHER:'       ,default= 0,    RC=STATUS );VERIFY_(STATUS)
     endif
@@ -171,9 +171,9 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       if (INT(ZERO_DIFF_AUTOCONV) == 0) then
         ! C1: Explicit cloud condensate detrainment rate [m^-1].
         ! Controls how much suspended liquid/ice is forcibly shed into the grid-scale environment.
-        ! Default (1.0e-3) favors convective precipitation; increasing (e.g., 3.0e-3 to 5.0e-3) shifts 
+        ! Default (1.0e-3) favors convective precipitation; increasing (e.g., 2.0e-3 to 3.0e-3) shifts 
         ! moisture to host microphysics, where evaporation can moisten the 700-300 mb free troposphere.
-        call MAPL_GetResource(MAPL, C1                        , 'C1:'                    ,default= 4.0e-3,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, C1                        , 'C1:'                    ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
       else
         call MAPL_GetResource(MAPL, C1                        , 'C1:'                    ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
       endif
