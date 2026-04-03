@@ -120,7 +120,7 @@ USE GEOSmoist_Process_Library, only : CNV_Tracers
      real   , dimension (mtp) :: conc_mxr
      real :: x_add,dz,XZZ,XZD,XZE,denom,henry_coef,w_upd,fliq,dp
      integer :: i,k,ispc
-     real, parameter :: cte_w_upd = 10. ! m/s
+     real, parameter :: w_upd_floor = 0.1 ! m/s
 !    real, parameter :: kc = 5.e-3  ! s-1
      real, parameter :: kc = 2.e-3  ! s-1        !!! autoconversion parameter in GF is lower than what is used in GOCART
      real, dimension (mtp ,its:ite,kts:kte) ::  factor_temp
@@ -168,7 +168,7 @@ loopk:      do k=k22(i)+1,ktop(i)+1
             dz=z_cup(i,k)-z_cup(i,k-1)
 
             !-- in-cloud vert velocity for scavenging formulation 2
-            w_upd = vvel2d(i,k)
+            w_upd = max(vvel2d(i,k),w_upd_floor)
 
             do ispc = 1,mtp
                 !--use GEOS-Chem washout parameterization?
@@ -197,6 +197,7 @@ loopk:      do k=k22(i)+1,ktop(i)+1
                           ! if it's not a wetdep species, force kc_scaled to 0. This ensures no washout
                           if ( .not. CNV_Tracers(ispc)%is_wetdep ) kc_scaled = 0.0 
                           ! calculate soluble fraction and apply to tracer
+                          this_w_upd = max(this_w_upd,w_upd_floor)
                           fsol = min(1.,max(0.,(1.-exp(- kc_scaled * (dz/this_w_upd)))*ftemp))
                           pw_up(ispc,i,k) = sc_up(ispc,i,k)*fsol
  
@@ -244,6 +245,7 @@ loopk:      do k=k22(i)+1,ktop(i)+1
                           ! if it's not a wetdep species, force kc_scaled to 0. This ensures no washout
                           if ( .not. CNV_Tracers(ispc)%is_wetdep ) kc_scaled = 0.0
                           ! calculate soluble fraction and apply to tracer
+                          this_w_upd = max(this_w_upd,w_upd_floor)
                           fsol = min(1.,max(0.,(1.-exp(-kc_scaled*dz/this_w_upd)))) !*factor_temp(ispc,i,k))
                           pw_up(ispc,i,k) = sc_up(ispc,i,k)*fsol
 

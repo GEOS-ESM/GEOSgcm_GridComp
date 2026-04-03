@@ -320,7 +320,11 @@ CONTAINS
     !- PBL Index Mapping
     DO j = 1, myp
        DO i = 1, mxp
-          kpbl(i,j) = MERGE(flip(NINT(KPBLIN(i,j))), 1, KPBLIN(i,j) /= 0.0)
+          IF(NINT(KPBLIN(i,j)) /= 0.0) THEN
+             kpbl(i,j) = flip(NINT(KPBLIN(i,j)))
+          ELSE
+             kpbl(i,j) = 1
+          ENDIF
        ENDDO
     ENDDO
 
