@@ -358,7 +358,7 @@ CONTAINS
     REAL :: RL, RI, disp_factor,x1,x2
     INTEGER :: mtp
     real :: dtqw,qsatup
-    !$ser verbatim integer :: SER_VAR_1, SER_VAR_2
+    !$ser verbatim integer :: SER_VAR_1
 
    !$ser savepoint GF2020_CumulusParameterization-constants
    ! plume-dependent
@@ -410,7 +410,7 @@ CONTAINS
    !$ser data CLOSURE_CHOICE_MID=closure_choice(3)
    !$ser data CLOSURE_CHOICE_DEEP=closure_choice(1)
    ! plume-independent
-   !$ser data DTIME=DT_moist USE_WETBULB=USE_WETBULB USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES=use_linear_subcl_mf
+   !$ser data USE_WETBULB=USE_WETBULB USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES=use_linear_subcl_mf
    !$ser data CRITICAL_MIXING_RATIO_OVER_LAND=QRC_CRIT_LND CRITICAL_MIXING_RATIO_OVER_OCEAN=QRC_CRIT_OCN
    !$ser data ZERO_DIFF=ZERO_DIFF MOIST_TRIGGER=MOIST_TRIGGER LAMBDA_DEEP=LAMBAU_DEEP FRAC_MODIS=FRAC_MODIS
    !$ser data LAMBDA_SHALLOW_DOWN=LAMBAU_SHDN CAP_MAXS=cap_maxs SATURATION_CALCULATION_CHOICE=SATUR_CALC
@@ -425,11 +425,11 @@ CONTAINS
    !$ser data USE_TRACER_SCAVENGE=USE_TRACER_SCAVEN USE_TRACER_EVAPORATION=USE_TRACER_EVAP
    !$ser data USE_FLUX_FORM=USE_FLUX_FORM MAX_TEMP_VAPOR_TENDENCY=MAX_TQ_TEND
    !$ser verbatim if (SH_MD_DP) then
-      !$ser verbatim SER_VAR_1 = 0
-   !$ser verbatim else
       !$ser verbatim SER_VAR_1 = 1
+   !$ser verbatim else
+      !$ser verbatim SER_VAR_1 = 0
    !$ser verbatim endif
-   !$ser data PLUME_ORDER=SER_VAR_1
+   !$ser data SHALLOW_MID_DEEP=SER_VAR_1
 
 
    WQT_DC = 0.0
@@ -1626,7 +1626,6 @@ CONTAINS
    !$ser verbatim enddo
 
      DO ii_plume = 1, maxiens
-
        if (SH_MD_DP) then
          if(ii_plume == 1) plume = shal
          if(ii_plume == 2) plume = mid
