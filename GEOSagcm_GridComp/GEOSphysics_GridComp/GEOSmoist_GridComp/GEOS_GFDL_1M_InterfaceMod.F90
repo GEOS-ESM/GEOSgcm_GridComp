@@ -16,7 +16,7 @@ module GEOS_GFDL_1M_InterfaceMod
   use GEOSmoist_Process_Library
   use Aer_Actv_Single_Moment
   use gfdl2_cloud_microphys_mod, only : gfdl_cloud_microphys_init, gfdl_cloud_microphys_driver, ICE_LSC_VFALL_PARAM, ICE_CNV_VFALL_PARAM
-  use gfdl_mp_mod, only : gfdl_mp_init, gfdl_mp_driver, do_hail, do_sedi_melt_qs, do_sedi_melt_qg, ifflag
+  use gfdl_mp_mod, only : gfdl_mp_init, gfdl_mp_driver, do_hail, do_sedi_heat, do_sedi_melt_qs, do_sedi_melt_qg, ifflag
 
   implicit none
 
@@ -274,6 +274,7 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
 
     call MAPL_GetResource( MAPL, GFDL_MP3, Label="GFDL_MP3:",  default=.TRUE., RC=STATUS); VERIFY_(STATUS)
     if (DT_R8 <= 150.0) do_hail = .true. 
+    if (DT_R8 <= 150.0) do_sedi_heat = .true.
     if (DT_R8 <= 150.0) do_sedi_melt_qs = .true.
     if (DT_R8 <= 150.0) do_sedi_melt_qg = .true.
 
@@ -298,10 +299,10 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
     call MAPL_GetResource( MAPL, refl10cm_allow_wet_snow    , 'refl10cm_allow_wet_snow:'    , &
                         DEFAULT= refl10cm_allow_wet_snow, RC=STATUS); VERIFY_(STATUS)
 
-    call MAPL_GetResource( MAPL, constrain_modis_ice, 'constrain_modis_ice:', DEFAULT= .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, constrain_modis_ice, 'constrain_modis_ice:', DEFAULT= .FALSE., RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, TURNRHCRIT_PARAM, 'TURNRHCRIT:'      , DEFAULT= -9999., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MIN_RH_UNSTABLE , 'MIN_RH_UNSTABLE:' , DEFAULT= 0.8000, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, MIN_RH_UNSTABLE , 'MIN_RH_UNSTABLE:' , DEFAULT= 0.9250, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MIN_RH_STABLE   , 'MIN_RH_STABLE:'   , DEFAULT= 0.9750, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 1     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, ICE_LSC_VFALL_PARAM, 'ICE_LSC_VFALL_PARAM:',DEFAULT= 1, RC=STATUS); VERIFY_(STATUS)

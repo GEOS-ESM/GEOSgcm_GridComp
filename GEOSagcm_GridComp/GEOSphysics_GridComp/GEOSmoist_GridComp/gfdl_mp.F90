@@ -88,7 +88,7 @@ module gfdl_mp_mod
     public :: c_liq, c_ice, rhow, wet_bulb
     public :: cv_air, cv_vap, mtetw, mte
     public :: hlv, hlf, tice
-    public :: do_hail, do_sedi_melt_qs, do_sedi_melt_qg, ifflag
+    public :: do_hail, do_sedi_heat, do_sedi_melt_qi, do_sedi_melt_qs, do_sedi_melt_qg, ifflag
 
     ! -----------------------------------------------------------------------
     ! precision definition
@@ -335,7 +335,7 @@ module gfdl_mp_mod
 
     logical :: do_wbf = .true. ! do Wegener Bergeron Findeisen process
 
-    logical :: do_bigg = .true. ! do Bigg process
+    logical :: do_bigg = .false. ! do Bigg process
 
     logical :: do_psd_water_fall = .false. ! calculate cloud water terminal velocity based on PSD
     logical :: do_psd_ice_fall = .false. ! calculate cloud ice terminal velocity based on PSD
@@ -415,7 +415,7 @@ module gfdl_mp_mod
     real :: tau_smlt =  900.0 ! snow melting time scale (s)
     real :: tau_gmlt = 1200.0 ! graupel melting time scale (s)
     ! subgridz timescales
-    real :: tau_wbf  =  600.0 ! Wegener Bergeron Findeisen time scale (s)
+    real :: tau_wbf  =  300.0 ! Wegener Bergeron Findeisen time scale (s)
 
     real :: ccn_o = 90.0 ! ccn over ocean (1/cm^3)
     real :: ccn_l = 270.0 ! ccn over land (1/cm^3)
@@ -440,7 +440,7 @@ module gfdl_mp_mod
     real :: pwbf_qi_crt  = 0.8e-4 ! WBF liquid to ice freezing threshold (kg/m^3)
     real :: pgaut_qs_crt = 0.6e-3 ! snow to graupel autoconversion threshold (0.6e-3 in Purdue Lin scheme) (kg/m^3)
 
-    real :: c_paut  = 0.5 ! cloud water to rain autoconversion efficiency
+    real :: c_paut  = 1.0 ! cloud water to rain autoconversion efficiency
 
     ! collection efficiencies for accretion
     !   Dry processes (frozen to/from frozen)
@@ -451,10 +451,10 @@ module gfdl_mp_mod
     real :: c_psacw = 1.0  ! cloud water to snow accretion efficiency
     real :: c_pracw = 1.0  ! cloud water to rain accretion efficiency
     real :: c_praci = 1.0  ! cloud ice to rain accretion efficiency
-    real :: c_pgacw = 0.01 ! cloud water to graupel accretion efficiency
+    real :: c_pgacw = 1.0 ! cloud water to graupel accretion efficiency
     real :: c_pracs = 1.0  ! snow to rain accretion efficiency
     real :: c_psacr = 1.0  ! rain to snow accretion efficiency
-    real :: c_pgacr = 0.01 ! rain to graupel accretion efficiency
+    real :: c_pgacr = 1.0 ! rain to graupel accretion efficiency
 
     real :: is_fac = 0.2 ! cloud ice sublimation temperature factor
     real :: ss_fac = 0.2 ! snow sublimation temperature factor
@@ -1363,7 +1363,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
 
     real :: ccn0, cin0, q1, q2
     real :: convt, rdt, dts, q_cond, tmp, nl, ni
-    real :: cpaut0_, rthreshs_, rthreshu_
+    real :: rthreshs_, rthreshu_
 
     real, dimension (ks:ke) :: h_var
     real, dimension (ks:ke) :: q_liq, q_sol, dp, dz, dp0
@@ -1432,9 +1432,6 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         ! -----------------------------------------------------------------------
         ! Resolution dependence on autoconversion parameters
         ! -----------------------------------------------------------------------
-        ! Autoconversion efficiency [default: 0.5]
-        !   increased by 25% for fine resolutions
-        cpaut0_   = cpaut0 * (1.0 + onemsig*0.25)
         ! Stable critical radius [default: 10.0e-6]
         !   unchanged
         rthreshs_ = rthreshs 
@@ -1447,7 +1444,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         ! adjust autoconversion rates and thresholds for stable vs unstable 
         ! -----------------------------------------------------------------------
         ! include stability dependence
-        cpaut  = cpaut0_ * (     0.75*fac_eis +           (1.0-fac_eis))
+        cpaut  =  cpaut0 * (     0.75*fac_eis +           (1.0-fac_eis))
         ! include stability dependence
         fac_rc =      rc * (rthreshs_*fac_eis + rthreshu_*(1.0-fac_eis)) ** 3
 
@@ -2575,7 +2572,7 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
     real, parameter :: eeC = 1.91523
 
     real, dimension (ks:ke) :: tc
-    real :: zero=0.0
+    real :: zero=0.0 ! ice radii currently independent of CCN
     real :: R_eff, vt_radius
 
     if (const_v) then
@@ -3553,9 +3550,9 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
     real :: ql, qi, qim, qadum, newliq, newice
     real :: tmp, sink, fac_imlt, fac_frez
-    real :: tc_freeze, tau_ratio, tau_frez_local
 
     fac_imlt = 1. - exp (- dts / tau_imlt)
+    fac_frez = 1. - exp (- dts / tau_frez)
 
     do k = ks, ke
 
@@ -3594,39 +3591,11 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
             ql = qlk (k)/qadum
             qi = qik (k)/qadum
 
-            ! ----------------------------------------------------------------
-            ! Temperature-dependent freezing timescale
-            ! Smooth exponential function - faster at colder temperatures
-            ! ----------------------------------------------------------------
-            tc_freeze = tice - tz(k)  ! Degrees below freezing
-            
-            if (tc_freeze > 0.0) then
-                ! Exponential decrease: tau ∝ exp(-0.1 * dts)
-                tau_ratio = exp(-0.1 * tc_freeze)
-                tau_ratio = max(tau_ratio, dts / tau_frez)  ! Floor at dts
-                tau_frez_local = tau_frez * tau_ratio
-            else
-                tau_frez_local = tau_frez
-            endif
-
             tmp = tz (k)
             newice = new_ice_condensate(tmp, qlk (k), qik (k))/qadum
-            
-            ! ----------------------------------------------------------------
-            ! NEW: Relax thermal constraint at cold temperatures
-            ! In strong updrafts, adiabatic cooling >> latent heating
-            ! ----------------------------------------------------------------
-            if (tz(k) < 253.0) then
-                ! Below -20°C: Remove thermal constraint
-                ! Trust the ice_fraction_corrected to limit freezing
-                sink = fac_frez * min(ql, newice)
-            else
-                ! -20°C to 0°C: Keep thermal constraint for stability
-                sink = fac_frez * min(ql, newice, ql * (tice - tz(k)) / icpk(k))
-            endif
-            
-            qim = (qi0_max / den (k))/qadum
-            tmp = min (sink, dim (qim, qi))
+            sink = fac_frez * min(ql, newice, ql * (tice - tz (k)) / icpk (k))
+            qim = qi0_max / den (k)
+            tmp = min (sink, dim (qim/qadum, qi))
 
             tmp = tmp*qadum
             sink = sink*qadum
@@ -4092,7 +4061,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
                 else
                     dq = qi - qim
                 endif
-                sink = fac_i2s * dq
+                sink = fac_i2s * exp (0.025 * tc) * dq
             endif
             sink = min (fi2s_fac * qi, sink) * qadum
             mppas = mppas + sink * dp (k) * convt
@@ -4336,7 +4305,7 @@ subroutine pgaut (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, den, mppag, c
             sink = 0
             qsm = pgaut_qs_crt / den (k)
             if (qs (k) .gt. qsm) then
-                factor = dts * 1.e-3
+                factor = dts * 1.e-3 * exp (0.09 * tc)
                 sink = factor / (1. + factor) * (qs (k) - qsm)
             endif
 
@@ -4649,7 +4618,7 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
             evap = 0.0
             subl = 0.0
 
-            rh_adj = max(0.70, 1. - h_var(k) - rh_inc)
+            rh_adj = 1. - h_var(k) - rh_inc
             qsi = iqs (tin, den (k), dqdt)
             rh = qpz / qsi
             if (rh .lt. rh_adj) then
@@ -4875,7 +4844,7 @@ subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den,
     ! If onemsig = 1.0 (2km),   tau_wbf_eff = tau_wbf * 1.0
     ! If onemsig = 0.0 (50km),  tau_wbf_eff = tau_wbf * 10.0
     ! -------------------------------------------------------------------
-    tau_wbf_eff = tau_wbf * (wbf_coarse_mult * (1.0 - onemsig) + 1.0 * onemsig)
+    tau_wbf_eff = tau_wbf * (wbf_coarse_mult * (1.0 - onemsig) + onemsig)
     
     ! Calculate the time-step fraction using the effective timescale
     fac_wbf = 1. - exp (- dts / tau_wbf_eff)
@@ -7694,19 +7663,8 @@ subroutine qs_table_core (n, n_blend, do_smith_table, table)
 
     do i = 1, n_blend
         tem = tice + delt * (real (i - 1) - n_blend)
-
-        ! Temperature-only ice fraction for saturation table
-        ! Use simple linear ramp: all liquid at 0°C, all ice at -20°C
-        ! This is appropriate for a reference saturation table
-        if (tem >= tice) then
-            ifrac = 0.0
-        elseif (tem <= tice - 20.0) then
-            ifrac = 1.0
-        else
-            ! Linear transition over 20°C range
-            ifrac = (tice - tem) / 20.0
-        endif
-
+       ! WMP impose CALIPSO ice polynomial for mixed phase
+        ifrac = ice_fraction(real(tem),0.0,0.0)
         wice = ifrac
         wh2o = 1.0 - wice
         table (i + n_min - n_blend) = wice * table (i + n_min - n_blend) + wh2o * esupc (i)
