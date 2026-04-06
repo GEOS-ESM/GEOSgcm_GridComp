@@ -4,7 +4,7 @@
 
       use GEOS_Mod
       use GEOS_UtilsMod, only : DQSAT=>GEOS_DQsat
-      use MAPL_ConstantsMod, only: MAPL_GRAV, MAPL_CP, MAPL_RGAS, &
+      use MAPL_Constants, only: MAPL_GRAV, MAPL_CP, MAPL_RGAS, &
                                    MAPL_ALHL, MAPL_ALHF, MAPL_KAPPA
 
       implicit none

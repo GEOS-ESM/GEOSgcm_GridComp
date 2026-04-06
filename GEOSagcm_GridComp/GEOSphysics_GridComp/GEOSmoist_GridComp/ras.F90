@@ -6,7 +6,7 @@ MODULE RAS
    use ESMF
    use GEOS_Mod
    use GEOS_UtilsMod, only : DQSAT=>GEOS_DQsat
-   use MAPL_ConstantsMod, only: MAPL_TICE, MAPL_UNDEFINED_REAL, &
+   use MAPL_Constants, only: MAPL_TICE, MAPL_UNDEFINED_REAL, &
                                 MAPL_RVAP, MAPL_ALHL, MAPL_PI
    use module_ras
    !use aer_cloud, only: AerProps, getINsubset
