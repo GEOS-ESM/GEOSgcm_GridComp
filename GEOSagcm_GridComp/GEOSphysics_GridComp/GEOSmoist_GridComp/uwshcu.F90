@@ -2,9 +2,7 @@ module uwshcu
 
 !#define UWDIAG 1
 
-   use GEOS_Mod, only: write_parallel
-   use MAPL,     only: MAPL_UNDEF
-
+   use MAPL, only: write_parallel
    use GEOS_UtilsMod, only: GEOS_QSAT, GEOS_DQSAT
    use GEOSmoist_Process_Library
    use MAPL_ConstantsMod, only: MAPL_TICE , MAPL_CP   , &
@@ -12,7 +10,8 @@ module uwshcu
                                 MAPL_ALHL , MAPL_ALHF , &
                                 MAPL_RGAS , MAPL_H2OMW, &
                                 MAPL_AIRMW, MAPL_RVAP , &
-                                MAPL_PI, r8 => MAPL_R8
+                                MAPL_PI, r8 => MAPL_R8, &
+                                MAPL_UNDEFINED_REAL
 
    implicit none
 
@@ -1046,8 +1045,8 @@ contains
     umf_out(:idim,0:k0)          = 0.0
     dcm_out(:idim,:k0)           = 0.0
     cufrc_out(:idim,:k0)         = 0.0
-    fer_out(:idim,:k0)           = MAPL_UNDEF
-    fdr_out(:idim,:k0)           = MAPL_UNDEF
+    fer_out(:idim,:k0)           = MAPL_UNDEFINED_REAL
+    fdr_out(:idim,:k0)           = MAPL_UNDEFINED_REAL
     qldet_out(:idim,:k0)         = 0.0
     qidet_out(:idim,:k0)         = 0.0
     qlsub_out(:idim,:k0)         = 0.0
@@ -1062,16 +1061,16 @@ contains
     qpert_out(:idim)             = 0.0
 
     cbmf_out(:idim)              = 0.0
-    plcl_out(:idim)              = MAPL_UNDEF
-    pinv_out(:idim)              = MAPL_UNDEF
-    plfc_out(:idim)              = MAPL_UNDEF
-    prel_out(:idim)              = MAPL_UNDEF
-    pbup_out(:idim)              = MAPL_UNDEF
-    cldhgt_out(:idim)            = MAPL_UNDEF
+    plcl_out(:idim)              = MAPL_UNDEFINED_REAL
+    pinv_out(:idim)              = MAPL_UNDEFINED_REAL
+    plfc_out(:idim)              = MAPL_UNDEFINED_REAL
+    prel_out(:idim)              = MAPL_UNDEFINED_REAL
+    pbup_out(:idim)              = MAPL_UNDEFINED_REAL
+    cldhgt_out(:idim)            = MAPL_UNDEFINED_REAL
 
 #ifdef UWDIAG
-    cinh_out(:idim)              = MAPL_UNDEF
-    cinlclh_out(:idim)           = MAPL_UNDEF
+    cinh_out(:idim)              = MAPL_UNDEFINED_REAL
+    cinlclh_out(:idim)           = MAPL_UNDEFINED_REAL
     qcu_out(:idim,:k0)           = 0.0
     qlu_out(:idim,:k0)           = 0.0
     qiu_out(:idim,:k0)           = 0.0
@@ -1098,12 +1097,12 @@ contains
     rlwp_out(:idim)              = 0.0
     riwp_out(:idim)              = 0.0
   
-    wu_out(:idim,0:k0)          = MAPL_UNDEF
-    qtu_out(:idim,0:k0)         = MAPL_UNDEF
-    thlu_out(:idim,0:k0)        = MAPL_UNDEF
-    thvu_out(:idim,0:k0)        = MAPL_UNDEF
-    uu_out(:idim,0:k0)          = MAPL_UNDEF
-    vu_out(:idim,0:k0)          = MAPL_UNDEF
+    wu_out(:idim,0:k0)          = MAPL_UNDEFINED_REAL
+    qtu_out(:idim,0:k0)         = MAPL_UNDEFINED_REAL
+    thlu_out(:idim,0:k0)        = MAPL_UNDEFINED_REAL
+    thvu_out(:idim,0:k0)        = MAPL_UNDEFINED_REAL
+    uu_out(:idim,0:k0)          = MAPL_UNDEFINED_REAL
+    vu_out(:idim,0:k0)          = MAPL_UNDEFINED_REAL
     qtu_emf_out(:idim,0:k0)     = 0.0
     thlu_emf_out(:idim,0:k0)    = 0.0
     uu_emf_out(:idim,0:k0)      = 0.0
@@ -1324,16 +1323,16 @@ contains
       slten(:k0)         = 0.0   
       ufrc(0:k0)         = 0.0  
 
-      thlu(0:k0)         = MAPL_UNDEF
-      qtu(0:k0)          = MAPL_UNDEF
-      uu(0:k0)           = MAPL_UNDEF
-      vu(0:k0)           = MAPL_UNDEF
-      wu(0:k0)           = MAPL_UNDEF
-      thvu(0:k0)         = MAPL_UNDEF
-      thlu_emf(0:k0)     = MAPL_UNDEF
-      qtu_emf(0:k0)      = MAPL_UNDEF
-      uu_emf(0:k0)       = MAPL_UNDEF
-      vu_emf(0:k0)       = MAPL_UNDEF
+      thlu(0:k0)         = MAPL_UNDEFINED_REAL
+      qtu(0:k0)          = MAPL_UNDEFINED_REAL
+      uu(0:k0)           = MAPL_UNDEFINED_REAL
+      vu(0:k0)           = MAPL_UNDEFINED_REAL
+      wu(0:k0)           = MAPL_UNDEFINED_REAL
+      thvu(0:k0)         = MAPL_UNDEFINED_REAL
+      thlu_emf(0:k0)     = MAPL_UNDEFINED_REAL
+      qtu_emf(0:k0)      = MAPL_UNDEFINED_REAL
+      uu_emf(0:k0)       = MAPL_UNDEFINED_REAL
+      vu_emf(0:k0)       = MAPL_UNDEFINED_REAL
       
       ufrcinvbase         = 0.0
       ufrclcl             = 0.0
@@ -1936,16 +1935,16 @@ contains
                slten(:k0)         = 0.0
                ufrc(0:k0)         = 0.0
 
-               thlu(0:k0)         = MAPL_UNDEF
-               qtu(0:k0)          = MAPL_UNDEF
-               uu(0:k0)           = MAPL_UNDEF
-               vu(0:k0)           = MAPL_UNDEF
-               wu(0:k0)           = MAPL_UNDEF
-               thvu(0:k0)         = MAPL_UNDEF
-               thlu_emf(0:k0)     = MAPL_UNDEF
-               qtu_emf(0:k0)      = MAPL_UNDEF
-               uu_emf(0:k0)       = MAPL_UNDEF
-               vu_emf(0:k0)       = MAPL_UNDEF
+               thlu(0:k0)         = MAPL_UNDEFINED_REAL
+               qtu(0:k0)          = MAPL_UNDEFINED_REAL
+               uu(0:k0)           = MAPL_UNDEFINED_REAL
+               vu(0:k0)           = MAPL_UNDEFINED_REAL
+               wu(0:k0)           = MAPL_UNDEFINED_REAL
+               thvu(0:k0)         = MAPL_UNDEFINED_REAL
+               thlu_emf(0:k0)     = MAPL_UNDEFINED_REAL
+               qtu_emf(0:k0)      = MAPL_UNDEFINED_REAL
+               uu_emf(0:k0)       = MAPL_UNDEFINED_REAL
+               vu_emf(0:k0)       = MAPL_UNDEFINED_REAL
              
                if (dotransport.eq.1) then
                do m = 1, ncnst
@@ -4561,16 +4560,16 @@ contains
      uflx_out(i,0:k0)            = 0.
      vflx_out(i,0:k0)            = 0.
 
-     fer_out(i,1:k0)             = MAPL_UNDEF
-     fdr_out(i,1:k0)             = MAPL_UNDEF
+     fer_out(i,1:k0)             = MAPL_UNDEFINED_REAL
+     fdr_out(i,1:k0)             = MAPL_UNDEFINED_REAL
 
      cbmf_out(i)                 = 0.   
-     plcl_out(i)                 = MAPL_UNDEF
-     pinv_out(i)                 = MAPL_UNDEF
-     prel_out(i)                 = MAPL_UNDEF
-     plfc_out(i)                 = MAPL_UNDEF
-     pbup_out(i)                 = MAPL_UNDEF
-     cldhgt_out(i)               = MAPL_UNDEF
+     plcl_out(i)                 = MAPL_UNDEFINED_REAL
+     pinv_out(i)                 = MAPL_UNDEFINED_REAL
+     prel_out(i)                 = MAPL_UNDEFINED_REAL
+     plfc_out(i)                 = MAPL_UNDEFINED_REAL
+     pbup_out(i)                 = MAPL_UNDEFINED_REAL
+     cldhgt_out(i)               = MAPL_UNDEFINED_REAL
      
 #ifdef UWDIAG
      cnt_out(i)                  = 1.
@@ -4579,7 +4578,7 @@ contains
      qlu_out(i,:k0)              = 0.
      qiu_out(i,:k0)              = 0.
      qc_out(i,:k0)               = 0.
-     xc_out(i,1:k0)              = MAPL_UNDEF
+     xc_out(i,1:k0)              = MAPL_UNDEFINED_REAL
      cinh_out(i)                 = cin 
      cinlclh_out(i)              = cinlcl
 !     qtten_out(i,k0:1:-1)        = 0.
@@ -4591,11 +4590,11 @@ contains
      ufrcinvbase_out(i)           = 0. 
      ufrclcl_out(i)               = 0. 
      winvbase_out(i)              = 0.    
-     wlcl_out(i)                  = MAPL_UNDEF    
-     ppen_out(i)                  = MAPL_UNDEF
-     qtsrc_out(i)                 = MAPL_UNDEF 
-     thlsrc_out(i)                = MAPL_UNDEF    
-     thvlsrc_out(i)               = MAPL_UNDEF
+     wlcl_out(i)                  = MAPL_UNDEFINED_REAL    
+     ppen_out(i)                  = MAPL_UNDEFINED_REAL
+     qtsrc_out(i)                 = MAPL_UNDEFINED_REAL 
+     thlsrc_out(i)                = MAPL_UNDEFINED_REAL    
+     thvlsrc_out(i)               = MAPL_UNDEFINED_REAL
      emfkbup_out(i)               = 0.
      cbmflimit_out(i)             = 0.    
      tkeavg_out(i)                = tkeavg    
@@ -4604,17 +4603,17 @@ contains
      rlwp_out(i)                  = 0.    
      riwp_out(i)                  = 0.    
 
-     wu_out(i,k0:0:-1)           = MAPL_UNDEF
-     qtu_out(i,k0:0:-1)          = MAPL_UNDEF
-     thlu_out(i,k0:0:-1)         = MAPL_UNDEF 
-     thvu_out(i,k0:0:-1)         = MAPL_UNDEF 
-     uu_out(i,k0:0:-1)           = MAPL_UNDEF
-     vu_out(i,k0:0:-1)           = MAPL_UNDEF
-     qtu_emf_out(i,k0:0:-1)      = MAPL_UNDEF
-     thlu_emf_out(i,k0:0:-1)     = MAPL_UNDEF         
-     uu_emf_out(i,k0:0:-1)       = MAPL_UNDEF  
-     vu_emf_out(i,k0:0:-1)       = MAPL_UNDEF
-     uemf_out(i,k0:0:-1)         = MAPL_UNDEF
+     wu_out(i,k0:0:-1)           = MAPL_UNDEFINED_REAL
+     qtu_out(i,k0:0:-1)          = MAPL_UNDEFINED_REAL
+     thlu_out(i,k0:0:-1)         = MAPL_UNDEFINED_REAL 
+     thvu_out(i,k0:0:-1)         = MAPL_UNDEFINED_REAL 
+     uu_out(i,k0:0:-1)           = MAPL_UNDEFINED_REAL
+     vu_out(i,k0:0:-1)           = MAPL_UNDEFINED_REAL
+     qtu_emf_out(i,k0:0:-1)      = MAPL_UNDEFINED_REAL
+     thlu_emf_out(i,k0:0:-1)     = MAPL_UNDEFINED_REAL         
+     uu_emf_out(i,k0:0:-1)       = MAPL_UNDEFINED_REAL  
+     vu_emf_out(i,k0:0:-1)       = MAPL_UNDEFINED_REAL
+     uemf_out(i,k0:0:-1)         = MAPL_UNDEFINED_REAL
    
      dwten_out(i,k0:1:-1)        = 0.    
      diten_out(i,k0:1:-1)        = 0.    

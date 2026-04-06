@@ -63,7 +63,7 @@ SUBROUTINE CPTREAD(FILENAME, NT, NLEVEL, NLAYR,                 &
 	integer :: IGD, IGU, IGTLEV, ITOP, UNIT, NLEVSFILE, NTFILE
 
 !
-	UNIT = GETFILE(FILENAME, form = "unformatted")
+        open(newunit=UNIT, file=FILENAME, form="unformatted")
 !
 
 	READ(UNIT) YY

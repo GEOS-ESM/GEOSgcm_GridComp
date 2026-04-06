@@ -141,7 +141,6 @@ contains
     integer                       :: I
     integer                       :: RST, SCM_SL
     logical                       :: ANA_TS
-    type (ESMF_Config)            :: CF
     type (MAPL_MetaComp), pointer :: MAPL
     character(len=ESMF_MAXSTR)    :: ReplayMode
 
@@ -171,9 +170,6 @@ contains
 
 ! Get the configuration from the component
 !-----------------------------------------
-
-    call ESMF_GridCompGet( GC, CONFIG = CF, RC=STATUS )
-    VERIFY_(STATUS)
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -1257,7 +1253,6 @@ contains
    type (ESMF_TimeInterval)            :: TIMEINT
    type (ESMF_Alarm)                   :: ALARM
    type (ESMF_Alarm)                   :: ALARM4D
-   type (ESMF_Config)                  :: cf
    integer                             :: I, NQ, IM, JM, LM
    real                                :: POFFSET, DT
    real, pointer, dimension(:,:)       :: PHIS,SGH,VARFLT,PTR
@@ -1282,7 +1277,7 @@ contains
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
 
-    call ESMF_GridCompGet ( GC, name=COMP_NAME, config=cf, RC=STATUS )
+    call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // "Initialize"
 
@@ -1346,7 +1341,7 @@ contains
 !---------
     call ESMF_StateGet( GIM(SDYN), 'PHIS', FIELD, rc=STATUS )
     VERIFY_(STATUS)
-    Call GEOS_TopoGet ( cf, MEAN=FIELD, rc=STATUS )
+    Call GEOS_TopoGet ( gc, MEAN=FIELD, rc=STATUS )
     VERIFY_(STATUS)
     call ESMF_FieldGet (FIELD, localDE=0, farrayPtr=PTR, rc = status)
     VERIFY_(STATUS)
@@ -1356,14 +1351,14 @@ contains
 !---------
     call ESMF_StateGet( GIM(PHYS), 'PHIS', FIELD, rc=STATUS )
     VERIFY_(STATUS)
-    Call GEOS_TopoGet ( cf, MEAN=FIELD, rc=STATUS )
+    Call GEOS_TopoGet ( gc, MEAN=FIELD, rc=STATUS )
     VERIFY_(STATUS)
 
 ! GWDVAR (standard deviation)...
 !-----------
     call ESMF_StateGet( GIM(PHYS), 'SGH', FIELD, rc=STATUS )
     VERIFY_(STATUS)
-    Call GEOS_TopoGet ( cf, GWDVAR=FIELD, rc=STATUS )
+    Call GEOS_TopoGet ( gc, GWDVAR=FIELD, rc=STATUS )
     VERIFY_(STATUS)
     call ESMF_FieldGet (FIELD, localDE=0, farrayPtr=PTR, rc = status)
     SGH = PTR
@@ -1372,7 +1367,7 @@ contains
 !-----------
     call ESMF_StateGet( GIM(PHYS), 'VARFLT', FIELD, rc=STATUS )
     VERIFY_(STATUS)
-    Call GEOS_TopoGet ( cf, TRBVAR=FIELD, rc=STATUS )
+    Call GEOS_TopoGet ( gc, TRBVAR=FIELD, rc=STATUS )
     VERIFY_(STATUS)
     call ESMF_FieldGet (FIELD, localDE=0, farrayPtr=PTR, rc = status)
     VERIFY_(STATUS)
@@ -1382,7 +1377,7 @@ contains
 !-----------
     call ESMF_StateGet( GIM(SDYN), 'VARFLT', FIELD, rc=STATUS )
     VERIFY_(STATUS)
-    Call GEOS_TopoGet ( cf, TRBVAR=FIELD, rc=STATUS )
+    Call GEOS_TopoGet ( gc, TRBVAR=FIELD, rc=STATUS )
     VERIFY_(STATUS)
 
 ! ======================================================================
@@ -3643,7 +3638,6 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
     logical IuseTS
     logical l_windfix
     logical done_remap
-    type(ESMF_Config)                   :: CF
     type(ESMF_Field)                    :: Field
     type(ESMF_FieldBundle)              :: RBUNDLE
     type(ESMF_Time)                     :: AincTime
@@ -3924,16 +3918,14 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 
 !        Get PHIS from background
 !        ------------------------
-         call ESMF_GridCompGet( GC, CONFIG = CF, RC=STATUS )
-         VERIFY_(STATUS)
          call ESMF_StateGet( GIM(SDYN), 'PHIS', FIELD, rc=STATUS )
          VERIFY_(STATUS)
-         Call GEOS_TopoGet ( CF, MEAN=FIELD, rc=STATUS )
+         Call GEOS_TopoGet ( GC, MEAN=FIELD, rc=STATUS )
          VERIFY_(STATUS)
 
          call ESMF_StateGet( GIM(PHYS), 'PHIS', FIELD, rc=STATUS )
          VERIFY_(STATUS)
-         Call GEOS_TopoGet ( CF, MEAN=FIELD, rc=STATUS )
+         Call GEOS_TopoGet ( GC, MEAN=FIELD, rc=STATUS )
          VERIFY_(STATUS)
          call ESMF_FieldGet (FIELD, localDE=0, farrayPtr=phis_bkg, rc = status)
 

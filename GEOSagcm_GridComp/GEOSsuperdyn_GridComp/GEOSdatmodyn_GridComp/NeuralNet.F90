@@ -2,7 +2,7 @@
 
 ! VERIFY_ and RETURN_ macros for error handling.
 
-#include "MAPL_ErrLog.h"
+!#include "MAPL_ErrLog.h"
 
 !=============================================================================
 !BOP
@@ -18,6 +18,8 @@ module NeuralNetMod
 
   use ESMF
   use GEOS_Mod
+  use MAPL_ConstantsMod, only : MAPL_P00, MAPL_KAPPA
+  use MAPL_ErrorHandlingMod
 
   implicit none
   private

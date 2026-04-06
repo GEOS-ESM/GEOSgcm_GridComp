@@ -31,6 +31,7 @@
                      P_MODEL_E                           )
 
         use GEOS_Mod
+        use MAPL_ConstantsMod, only: MAPL_P00, MAPL_KAPPA
 
         IMPLICIT None
 

@@ -310,7 +310,7 @@
 !  READ DATA
 !  ---------
 
-     UNIT = GETFILE('gateorig.data.ascii.80', form="formatted")
+       open(newunit=UNIT, file='gateorig.data.ascii.80', form="formatted")
 
 !     open(888,file='gateorig.data.ascii.80',form='formatted', status='old')  
 

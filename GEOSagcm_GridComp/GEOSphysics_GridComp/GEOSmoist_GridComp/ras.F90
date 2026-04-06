@@ -6,6 +6,8 @@ MODULE RAS
    use ESMF
    use GEOS_Mod
    use GEOS_UtilsMod, only : DQSAT=>GEOS_DQsat
+   use MAPL_ConstantsMod, only: MAPL_TICE, MAPL_UNDEFINED_REAL, &
+                                MAPL_RVAP, MAPL_ALHL, MAPL_PI
    use module_ras
    !use aer_cloud, only: AerProps, getINsubset
    use aer_cloud
@@ -332,8 +334,8 @@ CONTAINS
       CLDMICRO = 0.0
       FDROP_DUST = 0.1
       FDROP_SOOT = 0.01
-      RAS_ALPHA = MAPL_UNDEF
-      RAS_TAU = MAPL_UNDEF
+      RAS_ALPHA = MAPL_UNDEFINED_REAL
+      RAS_TAU = MAPL_UNDEFINED_REAL
 
       ! *********************************************************************
 
@@ -422,8 +424,8 @@ CONTAINS
       LBCP  = ALHL*CPI
       OBG   = 100.*GRAVI
 
-      HHO = MAPL_UNDEF
-      HSO = MAPL_UNDEF
+      HHO = MAPL_UNDEFINED_REAL
+      HSO = MAPL_UNDEFINED_REAL
 
 #ifdef RAS2
       dt8    =  dt
