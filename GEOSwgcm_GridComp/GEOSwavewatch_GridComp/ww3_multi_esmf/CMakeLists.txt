@@ -59,7 +59,7 @@ list( APPEND WW3ESMF_SRCS
     SCRIP/scrip_iounitsmod.f90
     SCRIP/scrip_kindsmod.f90
     SCRIP/scrip_netcdfmod.f90
-    SCRIP/scrip_remap_conservative.f
+    SCRIP/scrip_remap_conservative.F
     SCRIP/scrip_remap_read.f
     SCRIP/scrip_remap_vars.f
     SCRIP/scrip_remap_write.f

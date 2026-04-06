@@ -16,7 +16,7 @@ module GEOS_GFDL_1M_InterfaceMod
   use GEOSmoist_Process_Library
   use Aer_Actv_Single_Moment
   use gfdl2_cloud_microphys_mod, only : gfdl_cloud_microphys_init, gfdl_cloud_microphys_driver, ICE_LSC_VFALL_PARAM, ICE_CNV_VFALL_PARAM
-  use gfdl_mp_mod, only : gfdl_mp_init, gfdl_mp_driver, do_hail, ifflag
+  use gfdl_mp_mod, only : gfdl_mp_init, gfdl_mp_driver, do_hail, do_sedi_melt_qs, do_sedi_melt_qg, ifflag
 
   implicit none
 
@@ -235,9 +235,9 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
     type(ESMF_Calendar)      :: calendar
     type(ESMF_Alarm)         :: DBZ_RunAlarm
     type(ESMF_TimeInterval)  :: ringInterval
-    integer                  :: year, month, day, hh, mm, ss
+    integer                  :: LM, year, month, day, hh, mm, ss
 
-    call MAPL_Get(MAPL, RUNALARM=ALARM, RC=STATUS );VERIFY_(STATUS)
+    call MAPL_Get(MAPL, LM=LM, RUNALARM=ALARM, RC=STATUS );VERIFY_(STATUS)
     call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
     DT_MOIST = DT_R8
@@ -274,6 +274,8 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
 
     call MAPL_GetResource( MAPL, GFDL_MP3, Label="GFDL_MP3:",  default=.TRUE., RC=STATUS); VERIFY_(STATUS)
     if (DT_R8 <= 150.0) do_hail = .true. 
+    if (DT_R8 <= 150.0) do_sedi_melt_qs = .true.
+    if (DT_R8 <= 150.0) do_sedi_melt_qg = .true.
 
     if (GFDL_MP3) then
       call gfdl_mp_init(LHYDROSTATIC,DT_MOIST)
@@ -307,7 +309,7 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
     call MAPL_GetResource( MAPL, LIQ_RADII_PARAM , 'LIQ_RADII_PARAM:' , DEFAULT= 1     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, ICE_RADII_PARAM , 'ICE_RADII_PARAM:' , DEFAULT= 2     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, FAC_RI          , 'FAC_RI:'          , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MIN_RI          , 'MIN_RI:'          , DEFAULT=  5.e-6, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, MIN_RI          , 'MIN_RI:'          , DEFAULT= 15.e-6, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MAX_RI          , 'MAX_RI:'          , DEFAULT=100.e-6, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, FAC_RL          , 'FAC_RL:'          , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MIN_RL          , 'MIN_RL:'          , DEFAULT= 2.5e-6, RC=STATUS); VERIFY_(STATUS)

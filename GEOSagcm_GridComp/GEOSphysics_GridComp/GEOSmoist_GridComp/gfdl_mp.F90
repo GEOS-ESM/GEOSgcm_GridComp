@@ -88,7 +88,7 @@ module gfdl_mp_mod
     public :: c_liq, c_ice, rhow, wet_bulb
     public :: cv_air, cv_vap, mtetw, mte
     public :: hlv, hlf, tice
-    public :: do_hail, ifflag
+    public :: do_hail, do_sedi_melt_qs, do_sedi_melt_qg, ifflag
 
     ! -----------------------------------------------------------------------
     ! precision definition
@@ -287,9 +287,12 @@ module gfdl_mp_mod
     logical :: do_sedi_w = .false. ! transport of vertical momentum in sedimentation
 
     ! WMP: 01-Dec-2025
-    ! these two options make Tropical Cyclones too intense (even unphysical, may be a conversion bug for DTDT)
+    ! sedi_heat makes Tropical Cyclones too intense (even unphysical, may be a conversion bug for DTDT)
     logical :: do_sedi_heat = .false. ! transport of heat in sedimentation
-    logical :: do_sedi_melt = .false. ! melt cloud ice, snow, and graupel during sedimentation
+
+    logical :: do_sedi_melt_qi = .false. ! melt cloud ice, snow, and graupel during sedimentation
+    logical :: do_sedi_melt_qs = .false. ! melt cloud ice, snow, and graupel during sedimentation
+    logical :: do_sedi_melt_qg = .false. ! melt cloud ice, snow, and graupel during sedimentation
 
     logical :: do_qa = .false. ! do inline cloud fraction
     logical :: rad_snow = .true. ! include snow in cloud fraciton calculation
@@ -328,9 +331,9 @@ module gfdl_mp_mod
 
     logical :: do_warm_rain_mp = .false. ! do warm rain cloud microphysics only
 
-    logical :: do_wbf = .false. ! do Wegener Bergeron Findeisen process
+    logical :: do_wbf = .true. ! do Wegener Bergeron Findeisen process
 
-    logical :: do_bigg = .false. ! do Bigg process
+    logical :: do_bigg = .true. ! do Bigg process
 
     logical :: do_psd_water_fall = .false. ! calculate cloud water terminal velocity based on PSD
     logical :: do_psd_ice_fall = .false. ! calculate cloud ice terminal velocity based on PSD
@@ -354,12 +357,12 @@ module gfdl_mp_mod
 
     real :: mp_time = 150.0 ! maximum microphysics time step (s)
 
-    real :: n0w_sig = 1.2 ! intercept parameter (significand) of cloud water (Lin et al. 1983) (1/m^4) (Martin et al. 1994)
-    real :: n0i_sig = 1.2 ! intercept parameter (significand) of cloud ice (Lin et al. 1983) (1/m^4) (McFarquhar et al. 2015)
-    real :: n0r_sig = 8.0 ! intercept parameter (significand) of rain (Lin et al. 1983) (1/m^4) (Marshall and Palmer 1948)
-    real :: n0s_sig = 3.0 ! intercept parameter (significand) of snow (Lin et al. 1983) (1/m^4) (Gunn and Marshall 1958)
-    real :: n0g_sig = 4.0 ! intercept parameter (significand) of graupel (Rutledge and Hobbs 1984) (1/m^4) (Houze et al. 1979)
-    real :: n0h_sig = 4.0 ! intercept parameter (significand) of hail (Lin et al. 1983) (1/m^4) (Federer and Waldvogel 1975)
+    real :: n0w_sig = 1.2 ! intercept parameter (significant) of cloud water (Lin et al. 1983) (1/m^4) (Martin et al. 1994)
+    real :: n0i_sig = 1.2 ! intercept parameter (significant) of cloud ice (Lin et al. 1983) (1/m^4) (McFarquhar et al. 2015)
+    real :: n0r_sig = 6.0 ! intercept parameter (significant) of rain (Lin et al. 1983) (1/m^4) (Marshall and Palmer 1948)
+    real :: n0s_sig = 2.0 ! intercept parameter (significant) of snow (Lin et al. 1983) (1/m^4) (Gunn and Marshall 1958)
+    real :: n0g_sig = 4.0 ! intercept parameter (significant) of graupel (Rutledge and Hobbs 1984) (1/m^4) (Houze et al. 1979)
+    real :: n0h_sig = 4.0 ! intercept parameter (significant) of hail (Lin et al. 1983) (1/m^4) (Federer and Waldvogel 1975)
 
     real :: n0w_exp = 66 ! intercept parameter (exponent) of cloud water (Lin et al. 1983) (1/m^4) (Martin et al. 1994)
     real :: n0i_exp = 10 ! intercept parameter (exponent) of cloud ice (Lin et al. 1983) (1/m^4) (McFarquhar et al. 2015)
@@ -410,7 +413,7 @@ module gfdl_mp_mod
     real :: tau_smlt =  900.0 ! snow melting time scale (s)
     real :: tau_gmlt = 1200.0 ! graupel melting time scale (s)
     ! subgridz timescales
-    real :: tau_wbf  =  300.0 ! graupel melting time scale (s)
+    real :: tau_wbf  =  600.0 ! Wegener Bergeron Findeisen time scale (s)
 
     real :: ccn_o = 90.0 ! ccn over ocean (1/cm^3)
     real :: ccn_l = 270.0 ! ccn over land (1/cm^3)
@@ -431,8 +434,9 @@ module gfdl_mp_mod
     real :: ql0_max = 2.0e-3 ! maximum cloud water value (autoconverted to rain) (kg/kg)
     real :: qi0_max = 9.82679e-5 ! maximum cloud ice value (autoconverted to snow) (kg/m^3)
 
-    real :: qi0_crt = 1.0e-4 ! cloud ice to snow autoconversion threshold (kg/m^3)
-    real :: qs0_crt = 0.6e-3 ! snow to graupel autoconversion threshold (0.6e-3 in Purdue Lin scheme) (kg/m^3)
+    real :: psaut_qi_crt = 0.5e-4 ! cloud ice to snow autoconversion threshold (kg/m^3)
+    real :: pwbf_qi_crt  = 0.8e-4 ! WBF liquid to ice freezing threshold (kg/m^3)
+    real :: pgaut_qs_crt = 0.8e-3 ! snow to graupel autoconversion threshold (0.6e-3 in Purdue Lin scheme) (kg/m^3)
 
     real :: c_paut  = 0.5 ! cloud water to rain autoconversion efficiency
 
@@ -467,7 +471,7 @@ module gfdl_mp_mod
     real :: vh_fac = 1.0
 
     real :: vw_min = 0.0  !< minimum fall speed for cloud water (m/s)
-    real :: vi_min = 0.01 !< minimum fall speed or constant fall speed
+    real :: vi_min = 0.1  !< minimum fall speed or constant fall speed
     real :: vs_min = 1.   !< minimum fall speed or constant fall speed
     real :: vg_min = 3.   !< minimum fall speed or constant fall speed
     real :: vr_min = 4.   !< minimum fall speed or constant fall speed
@@ -553,7 +557,7 @@ module gfdl_mp_mod
     namelist / gfdl_mp_nml / &
         t_min, t_sub, tau_r2g, tau_smlt, tau_gmlt, vw_min, vi_min, &
         vr_min, vs_min, vg_min, vh_min, ql_mlt, do_qa, fix_negative, vw_max, vi_max, vs_max, &
-        vh_max, vg_max, vr_max, qs_mlt, qs0_crt, ql0_max, qi0_max, qi0_crt, ifflag, &
+        vh_max, vg_max, vr_max, qs_mlt, ql0_max, qi0_max, psaut_qi_crt, pwbf_qi_crt, pgaut_qs_crt, ifflag, &
         rh_inc, rh_inr, const_vw, const_vi, const_vs, const_vg, const_vr, rthreshu, rthreshs, &
         ccn_l, ccn_o, igflag, c_paut, tau_imlt, tau_v2l, tau_l2v, tau_i2s, &
         tau_l2r, qi_lim, do_hail, inflag, c_psacw, c_psaci, c_pracs, &
@@ -565,7 +569,7 @@ module gfdl_mp_mod
         do_warm_rain_mp, rh_thres, f_dq_p, f_dq_m, do_cld_adj, rhc_cevap, &
         rhc_revap, beta, liq_ice_combine, rewflag, reiflag, rerflag, resflag, &
         regflag, rewmin, rewmax, reimin, reimax, rermin, rermax, resmin, &
-        resmax, regmin, regmax, fs2g_fac, fi2s_fac, fi2g_fac, do_sedi_melt, &
+        resmax, regmin, regmax, fs2g_fac, fi2s_fac, fi2g_fac, do_sedi_melt_qi, do_sedi_melt_qs, do_sedi_melt_qg, &
         radr_flag, rads_flag, radg_flag, do_wbf, do_psd_water_fall, do_psd_ice_fall, &
         n0w_sig, n0i_sig, n0r_sig, n0s_sig, n0g_sig, n0h_sig, n0w_exp, n0i_exp, &
         n0r_exp, n0s_exp, n0g_exp, n0h_exp, muw, mui, mur, mus, mug, muh, &
@@ -1357,6 +1361,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
 
     real :: ccn0, cin0, q1, q2
     real :: convt, rdt, dts, q_cond, tmp, nl, ni
+    real :: cpaut0_, rthreshs_, rthreshu_
 
     real, dimension (ks:ke) :: h_var
     real, dimension (ks:ke) :: q_liq, q_sol, dp, dz, dp0
@@ -1423,10 +1428,26 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         fac_eis = get_fac_eis(eis(i),srf_type) ! Estimated inversion strength determine stable regime
 
         ! -----------------------------------------------------------------------
+        ! Resolution dependence on autoconversion parameters
+        ! -----------------------------------------------------------------------
+        ! Autoconversion efficiency [default: 0.5]
+        !   increased by 25% for fine resolutions
+        cpaut0_   = cpaut0 * (1.0 + onemsig*0.25)
+        ! Stable critical radius [default: 10.0e-6]
+        !   unchanged
+        rthreshs_ = rthreshs 
+        ! Unstable critical radius [default: 7.0e-6]
+        !   Coarse (onemsig=0):  7.0e-6 + 3.e-6  = 10.0e-6
+        !   Fine   (onemsig=1):  7.0e-6 + 0.0    = 7.0e-6
+        rthreshu_ = rthreshu + (1.0-onemsig)*3.e-6
+ 
+        ! -----------------------------------------------------------------------
         ! adjust autoconversion rates and thresholds for stable vs unstable 
         ! -----------------------------------------------------------------------
-        cpaut  = cpaut0 * (    0.75*fac_eis +          (1.0-fac_eis))
-        fac_rc =     rc * (rthreshs*fac_eis + rthreshu*(1.0-fac_eis)) ** 3
+        ! include stability dependence
+        cpaut  = cpaut0_ * (     0.75*fac_eis +           (1.0-fac_eis))
+        ! include stability dependence
+        fac_rc =      rc * (rthreshs_*fac_eis + rthreshu_*(1.0-fac_eis)) ** 3
 
         ! -----------------------------------------------------------------------
         ! conversion of temperature
@@ -2427,7 +2448,7 @@ subroutine sedimentation (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
         call term_ice (ks, ke, tz, qi, den, vi_fac, vi_min, vi_max, const_vi, vti)
     endif
 
-    if (do_sedi_melt) then
+    if (do_sedi_melt_qi) then
         call sedi_melt (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
             vti, r1, tau_imlt, icpk, "qi", mppm1, convt)
     endif
@@ -2443,7 +2464,7 @@ subroutine sedimentation (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
 
     call term_rsg (ks, ke, qs, den, denfac, vs_fac, blins, mus, tvas, tvbs, vs_min, vs_max, const_vs, vts)
 
-    if (do_sedi_melt) then
+    if (do_sedi_melt_qs) then
         call sedi_melt (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
             vts, r1, tau_smlt, icpk, "qs", mppm2, convt)
     endif
@@ -2463,7 +2484,7 @@ subroutine sedimentation (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
         call term_rsg (ks, ke, qg, den, denfac, vg_fac, bling, mug, tvag, tvbg, vg_min, vg_max, const_vg, vtg)
     endif
 
-    if (do_sedi_melt) then
+    if (do_sedi_melt_qg) then
         call sedi_melt (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
             vtg, r1, tau_gmlt, icpk, "qg", mppm3, convt)
     endif
@@ -2553,6 +2574,7 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
 
     real, dimension (ks:ke) :: tc
     real :: zero=0.0
+    real :: R_eff, vt_radius
 
     if (const_v) then
         vt (:) = 0.5*(v_min+v_max)
@@ -2563,7 +2585,7 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
             else
                 tc (k) = tz (k) - tice
                 if (ifflag .eq. 1) then
-                    qden = q (k) * den (k) * 1.e3
+                    qden = max( q (k) * den (k) * 1.e3 , 1.e-4 )
                     ! Large-scale settling SGP
                     viLSC = 10.0**(log10(qden) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
                     ! Convective settling TWP
@@ -2571,6 +2593,12 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
                     ! Combine
                     vt (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
                     vt (k) = 0.01 * v_fac * vt (k)
+                    ! Limit to avoid excessively slow cirus settling
+                    pl = den (k) * rdgas * tz (k) ! dry air pressure
+                    tmp = tz (k)
+                    R_eff = LDRADIUS4(pl/100.0,tmp,q(k),zero,zero,2) ! meters
+                    vt_radius = 0.1 * (R_eff / 20.e-6)**0.8
+                    vt(k) = max(vt(k), vt_radius)
                 endif
                 if (ifflag .eq. 2) then
                     qden = q (k) * den (k)
@@ -3986,9 +4014,9 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
 
     real :: di, qi, critical_qi_factor, qadum
 
-    ! qi0_crt (ice to snow conversion) has strong resolution dependence
+    ! psaut_qi_crt (ice to snow conversion) has strong resolution dependence
     !    account for this using onemsig to convert more ice to snow at coarser resolutions
-    critical_qi_factor = qi0_crt*(1.e-1*(1.0-onemsig) + onemsig)
+    critical_qi_factor = psaut_qi_crt*(1.e-1*(1.0-onemsig) + onemsig)
 
     fac_i2s = 1. - exp (- dts / tau_i2s)
 
@@ -4010,8 +4038,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
             sink = 0.
             di  = max (di, qcmin)
             q_plus = qi + di
-            ! Use of ice_fraction here is critical to producing the proper snow in reflectivity vs too much cloud ice
-            qim = ice_fraction(real(tz(k)), cnv_fraction, srf_type) * critical_qi_factor / qadum / den (k)
+            qim = critical_qi_factor / qadum / den (k)
             if (q_plus .gt. (qim + qcmin)) then
                 if (qim .gt. (qi - di)) then
                     dq = (0.25 * (q_plus - qim) ** 2) / di
@@ -4260,7 +4287,7 @@ subroutine pgaut (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, den, mppag, c
         if (tc .lt. 0. .and. qs (k) .gt. qpmin) then
 
             sink = 0
-            qsm = qs0_crt / den (k)
+            qsm = pgaut_qs_crt / den (k)
             if (qs (k) .gt. qsm) then
                 factor = dts * 1.e-3 * exp (0.09 * tc)
                 sink = factor / (1. + factor) * (qs (k) - qsm)
@@ -4788,15 +4815,20 @@ subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den,
 
     real :: tc, tin, sink, dqdt, qsw, qsi, qim, tmp, fac_wbf
 
-    real :: critical_qi_factor
+    real :: tau_wbf_eff
+    real, parameter :: wbf_coarse_mult = 10.0 ! How much slower WBF is at 50km vs 2km
 
     if (.not. do_wbf) return
 
-    ! qi0_crt (ice to snow conversion) has strong resolution dependence
-    !    account for this using onemsig to convert more ice to snow at coarser resolutions
-    critical_qi_factor = qi0_crt*(1.e-1*(1.0-onemsig) + onemsig)
-
-    fac_wbf = 1. - exp (- dts / tau_wbf)
+    ! -------------------------------------------------------------------
+    ! Scale tau_wbf: 
+    ! If onemsig = 1.0 (2km),   tau_wbf_eff = tau_wbf * 1.0
+    ! If onemsig = 0.0 (50km),  tau_wbf_eff = tau_wbf * 10.0
+    ! -------------------------------------------------------------------
+    tau_wbf_eff = tau_wbf * (wbf_coarse_mult * (1.0 - onemsig) + 1.0 * onemsig)
+    
+    ! Calculate the time-step fraction using the effective timescale
+    fac_wbf = 1. - exp (- dts / tau_wbf_eff)
 
     do k = ks, ke
 
@@ -4810,7 +4842,7 @@ subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den,
             qv (k) .gt. qsi .and. qv (k) .lt. qsw) then
 
             sink = min (fac_wbf * ql (k), tc / icpk (k))
-            qim = critical_qi_factor / den (k)
+            qim = pwbf_qi_crt / den (k)
             tmp = min (sink, dim (qim, qi (k)))
             mppfw = mppfw + sink * dp (k) * convt
 

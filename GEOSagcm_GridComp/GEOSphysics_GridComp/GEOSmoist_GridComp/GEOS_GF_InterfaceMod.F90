@@ -130,7 +130,7 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, USE_GF2020                , 'USE_GF2020:'            ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_LAND            , 'ZERO_DIFF_LAND:'        ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_VVEL            , 'ZERO_DIFF_VVEL:'        ,default= 0,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, ZERO_DIFF_ENTR            , 'ZERO_DIFF_ENTR:'        ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, ZERO_DIFF_ENTR            , 'ZERO_DIFF_ENTR:'        ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_TAU             , 'ZERO_DIFF_TAU:'         ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_AUTOCONV        , 'ZERO_DIFF_AUTOCONV:'    ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_VGRID           , 'ZERO_DIFF_VGRID:'       ,default= 0,    RC=STATUS );VERIFY_(STATUS)
@@ -151,9 +151,9 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, DICYCLE                   , 'DICYCLE:'               ,default= 1,    RC=STATUS );VERIFY_(STATUS)
 
       if (INT(ZERO_DIFF_ENTR) == 0) then
-        call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 0.3e-4,RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)        , 'ENTR_MD:'               ,default= 4.0e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 0.2e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 0.8e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)        , 'ENTR_MD:'               ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)       , 'ENTR_SH:'               ,default= 6.0e-4,RC=STATUS );VERIFY_(STATUS)
       else
         call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 0.1e-4,RC=STATUS );VERIFY_(STATUS)  
@@ -167,8 +167,8 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
         call MAPL_GetResource(MAPL, C0_DEEP                   , 'C0_DEEP:'               ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, C0_MID                    , 'C0_MID:'                ,default= 0.8e-3,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, C0_SHAL                   , 'C0_SHAL:'               ,default= 0.0   ,RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, QRC_CRIT_OCN              , 'QRC_CRIT_OCN:'          ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, QRC_CRIT_LND              , 'QRC_CRIT_LND:'          ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, QRC_CRIT_OCN              , 'QRC_CRIT_OCN:'          ,default= 3.5e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, QRC_CRIT_LND              , 'QRC_CRIT_LND:'          ,default= 3.5e-4,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, C1                        , 'C1:'                    ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
       else
         call MAPL_GetResource(MAPL, AUTOCONV                  , 'AUTOCONV:'              ,default= 1,     RC=STATUS );VERIFY_(STATUS)
@@ -182,9 +182,10 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
 
       if (INT(ZERO_DIFF_TAU) == 0) then
          call MAPL_GetResource(MAPL, GF_MIN_AREA               , 'GF_MIN_AREA:'           ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-                                     SGS_W_TIMESCALE = 1.5 ! Hours
+                                     SGS_W_TIMESCALE = 1.0 ! factor for adjusting GF2020 timescales
          call MAPL_GetResource(MAPL, SGS_W_TIMESCALE           , 'SGS_W_TIMESCALE:'       ,default= SGS_W_TIMESCALE, RC=STATUS );VERIFY_(STATUS)
-         call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 3600., RC=STATUS );VERIFY_(STATUS)
+         ! These are UPPER bounds for new GF timescales
+         call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 7200., RC=STATUS );VERIFY_(STATUS)
          call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default=10800., RC=STATUS );VERIFY_(STATUS)
         ! FADJ_MASSFLX is a fractional mass flux tuning factor (1.0 is no reduction) in low CAPE environments
         call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(DEEP)    , 'FADJ_MASSFLX_DP:'       ,default= 0.1,   RC=STATUS );VERIFY_(STATUS)
@@ -192,9 +193,11 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
         call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(MID)     , 'FADJ_MASSFLX_MD:'       ,default= 1.0,   RC=STATUS );VERIFY_(STATUS)
       else
          call MAPL_GetResource(MAPL, GF_MIN_AREA               , 'GF_MIN_AREA:'           ,default= 1.e6,  RC=STATUS );VERIFY_(STATUS)
+                                     SGS_W_TIMESCALE = 0.0 ! do not use new scheme for timescales
+         call MAPL_GetResource(MAPL, SGS_W_TIMESCALE           , 'SGS_W_TIMESCALE:'       ,default= SGS_W_TIMESCALE,RC=STATUS );VERIFY_(STATUS)
+         ! These are LOWER bounds for classic GF timescales
          call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 3600., RC=STATUS );VERIFY_(STATUS)
          call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default= 5400., RC=STATUS );VERIFY_(STATUS)
-         call MAPL_GetResource(MAPL, SGS_W_TIMESCALE           , 'SGS_W_TIMESCALE:'       ,default= 0     ,RC=STATUS );VERIFY_(STATUS)
         ! FADJ_MASSFLX is a fractional mass flux tuning factor (1.0 is no reduction) in low CAPE environments
         call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(DEEP)    , 'FADJ_MASSFLX_DP:'       ,default= 1.0,   RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(SHAL)    , 'FADJ_MASSFLX_SH:'       ,default= 1.0,   RC=STATUS );VERIFY_(STATUS)
@@ -210,7 +213,8 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       endif
 
       if (INT(ZERO_DIFF_OTHER) == 0) then
-        call MAPL_GetResource(MAPL, USE_SMOOTH_TEND           , 'USE_SMOOTH_TEND:'       ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_INV_LAYERS            , 'USE_INV_LAYERS:'        ,default= .FALSE., RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_SMOOTH_TEND           , 'USE_SMOOTH_TEND:'       ,default= 1,     RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, SATUR_CALC                , 'SATUR_CALC:'            ,default= 1,     RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, BC_METH                   , 'BC_METH:'               ,default= 1,     RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, USE_REBCB                 , 'USE_REBCB:'             ,default= 1,     RC=STATUS );VERIFY_(STATUS)
@@ -218,11 +222,12 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
         call MAPL_GetResource(MAPL, MOIST_TRIGGER             , 'MOIST_TRIGGER:'         ,default= 1,     RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL ,FRAC_MODIS                , 'FRAC_MODIS:'            ,default= 1,     RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL ,EVAP_FIX                  , 'EVAP_FIX:'              ,default= 1,     RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, CUM_AVE_LAYER(DEEP)       , 'AVE_LAYER_DP:'          ,default= 60.,   RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, CUM_AVE_LAYER(SHAL)       , 'AVE_LAYER_SH:'          ,default= 30.,   RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_AVE_LAYER(DEEP)       , 'AVE_LAYER_DP:'          ,default= 80.,   RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_AVE_LAYER(SHAL)       , 'AVE_LAYER_SH:'          ,default= 20.,   RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_AVE_LAYER(MID)        , 'AVE_LAYER_MD:'          ,default= 50.,   RC=STATUS );VERIFY_(STATUS)
       else
-        call MAPL_GetResource(MAPL, USE_SMOOTH_TEND           , 'USE_SMOOTH_TEND:'       ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_INV_LAYERS            , 'USE_INV_LAYERS:'        ,default= .TRUE., RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_SMOOTH_TEND           , 'USE_SMOOTH_TEND:'       ,default= 0,     RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, SATUR_CALC                , 'SATUR_CALC:'            ,default= 0,     RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, BC_METH                   , 'BC_METH:'               ,default= 0,     RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, USE_REBCB                 , 'USE_REBCB:'             ,default= 0,     RC=STATUS );VERIFY_(STATUS)
@@ -619,29 +624,36 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     IF (USE_GF2020==1) THEN
          ! Convert OMEGA (Pa/s) to W (m/s)
          TMP3D = -1*OMEGA/(MAPL_GRAV*PL/(MAPL_RDRY*T*(1.0+MAPL_VIREPS*Q)))
-         !- call GF2020 interface routine
-         ! PLE and PL are passed in Pa
-         call GF2020_Interface(   IM,JM,LM,LONS,LATS,GF_DT                       &
-                                 ,PLE, PL, ZLE0, ZL0, PK, MASS, KH                  &
-                                 ,T, TH, Q, U, V, TMP3D, OMEGA, BYNCY, (QLCN+QLLS), (QICN+QILS) &
-                                 ,NACTL, CNPCPRATE &
-                                 ,CNV_MF0, CNV_PRC3, MFD_DC, CNV_DQCDT, ENTLAM      &
-                                 ,UMF_DC, CNV_UPDF, CNV_CVW, CNV_QC, (CLCN+CLLS)    &
-                                 ,QV_DYN_IN,PLE_DYN_IN,U_DYN_IN,V_DYN_IN,T_DYN_IN   &
-                                 ,RADSW   ,RADLW  ,DQDT_BL  ,DTDT_BL                &
-                                 ,FRLAND, TMP2D, T2M, Q2M                           &
-                                 ,TA ,QA ,SH ,EVAP ,PHIS                            &
-                                 ,KPBL ,CNV_FRC, SRF_TYPE                           &
-                                 ,SEEDCNV, SIGMA_DEEP, SIGMA_MID                    &
-                                 ,DQVDT_DC,DTDT_DC,DUDT_DC,DVDT_DC                  &
-                                 ,CNV_TOPP_DP,CNV_TOPP_MD,CNV_TOPP_SH               &
-                                 ,MUPDP,MUPSH,MUPMD,MDNDP                           &
-                                 ,MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD,WQT_DC           &
-                                 ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_DP,TAU_MD &
-                                 ,DTDTDYN,DQVDTDYN                                  &
-                                 ,REVSU, ENTR_DP, ENTR_MD, ENTR_SH,  PRFIL    &
-                                 , SGS_VVEL_DP, SGS_VVEL_MD, SGS_VVEL_SH            &
-                                 ,TPWI, TPWI_star, LFR_GF, CNV_TR)
+         ! Compute subgrid vertical velocities
+         call compute_sgs_vvel(IM,JM,LM,ZLE0,TMP3D,BYNCY, &
+                               SGS_VVEL_DP,SGS_VVEL_MD,SGS_VVEL_SH)
+         !- call GF2020 interface routine: PLE and PL are passed in Pa
+         call GF2020_Interface( &
+              !--- Grid and Timing
+              IM, JM, LM, LONS, LATS, GF_DT, &
+              !--- 3D Host Environmental State
+              PLE, PL, ZLE0, ZL0, PK, MASS, KH, &
+              T, TH, Q, U, V, TMP3D, OMEGA, BYNCY, (QLCN+QLLS), (QICN+QILS), (CLCN+CLLS), NACTL, &
+              !--- 3D Forcings (Dynamics, Advection, Radiation, PBL)
+              QV_DYN_IN, PLE_DYN_IN, U_DYN_IN, V_DYN_IN, T_DYN_IN, &
+              RADSW, RADLW, DQDT_BL, DTDT_BL, DTDTDYN, DQVDTDYN, &
+              !--- 2D Surface and Environmental Inputs
+              FRLAND, TMP2D, T2M, Q2M, TA, QA, SH, EVAP, PHIS, &
+              KPBL, CNV_FRC, SRF_TYPE, SEEDCNV, TPWI, TPWI_star, &
+              !--- 3D Tracers and Sub-grid Velocity (InOut)
+              CNV_TR, SGS_VVEL_DP, SGS_VVEL_MD, SGS_VVEL_SH, &
+              !--- Output Tendencies
+              DQVDT_DC, DTDT_DC, DUDT_DC, DVDT_DC, &
+              !--- 2D Output Diagnostics
+              CNPCPRATE, LFR_GF, SIGMA_DEEP, SIGMA_MID, &
+              CNV_TOPP_DP, CNV_TOPP_MD, CNV_TOPP_SH, &
+              MFDP, MFSH, MFMD, ERRDP, ERRSH, ERRMD, &
+              AA0, AA1, AA2, AA3, AA1_BL, AA1_CIN, TAU_BL, TAU_DP, TAU_MD, &
+              !--- 3D Output Diagnostics and Profiles
+              CNV_MF0, CNV_PRC3, MFD_DC, CNV_DQCDT, ENTLAM, &
+              UMF_DC, CNV_UPDF, CNV_CVW, CNV_QC, WQT_DC, &
+              REVSU, PRFIL, ENTR_DP, ENTR_MD, ENTR_SH, &
+              MUPDP, MUPSH, MUPMD, MDNDP)
     ELSE
          !- call GF/GEOS5 interface routine
          ! PLE and PL are passed in Pa
