@@ -1731,15 +1731,15 @@ CONTAINS
       !- Physically-based downdraft lateral mixing (Entrainment/Detrainment)
       SELECT CASE(trim(cumulus))
         CASE('deep')
-           ! Reverted to original GF (1.0). Highly leaky to moisten 700-300 mb.
-           mentrd_rate = entr_rate_plume 
+           ! Restrict lateral mixing so the downdraft preserves its cold,
+           ! heavy core and transports moisture/mass forcefully into the lower levels
+           mentrd_rate = entr_rate_plume * 0.3  ! <--- DECREASED FROM 1.0
         CASE('mid')
-           ! Highly leaky. Evaporates and mixes completely into the mid-levels.
-           mentrd_rate = entr_rate_plume 
+           ! Optionally reduce this too, or leave at 1.0 if you want mid-level
+           ! convection to remain leaky
+           mentrd_rate = entr_rate_plume * 0.5
         CASE('shallow')
-           ! Kept restricted (0.3). Weak shallow downdrafts need protection 
-           ! from over-entraining dry air so they can reach the PBL.
-           mentrd_rate = entr_rate_plume * 0.3 
+           mentrd_rate = entr_rate_plume * 0.3
         CASE DEFAULT
            mentrd_rate = entr_rate_plume * 0.3
       END SELECT

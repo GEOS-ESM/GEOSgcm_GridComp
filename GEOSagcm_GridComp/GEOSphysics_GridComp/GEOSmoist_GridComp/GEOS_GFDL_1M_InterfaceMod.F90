@@ -411,6 +411,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! Local variables
     real    :: facEIS, rand1
     real    :: minrhcrit, turnrhcrit, ALPHA, RHCRIT
+    real    :: ONE_M_SIG
     integer :: IM,JM,LM
     integer :: I, J, L
     type( ESMF_VM ) :: VMG
@@ -982,7 +983,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          endif
      ! Update cloud fraction
          where (RAD_QL+RAD_QI > 0.0)
-         RAD_CF = MIN(1.0,MAX(0.0,RAD_CF + DQADTmic * DT_MOIST))
+            RAD_CF = MIN(1.0,MAX(0.0,RAD_CF + DQADTmic * DT_MOIST))
          elsewhere
             RAD_CF = 0.0
          end where
@@ -1066,26 +1067,28 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                                          QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L), &
                                                          REMOVE_CLOUDS=(L < KLID) )
                endif
+              ! Scale-aware sigma
+               ONE_M_SIG = 1.0 - SIGMA(SQRT(AREA(i,j)))
               ! get radiative properties
-               call RADCOUPLE ( T(I,J,L), PLmb(I,J,L), CLLS(I,J,L), CLCN(I,J,L), &
+               call RADCOUPLE_BINARY ( T(I,J,L), PLmb(I,J,L), CLLS(I,J,L), CLCN(I,J,L), &
                      Q(I,J,L), QLLS(I,J,L), QILS(I,J,L), QLCN(I,J,L), QICN(I,J,L), QRAIN(I,J,L), QSNOW(I,J,L), QGRAUPEL(I,J,L), NACTL(I,J,L), NACTI(I,J,L), &
-                     RAD_QV(I,J,L), RAD_QL(I,J,L), RAD_QI(I,J,L), RAD_QR(I,J,L), RAD_QS(I,J,L), RAD_QG(I,J,L), RAD_CF(I,J,L), &
+                     ONE_M_SIG, RAD_QV(I,J,L), RAD_QL(I,J,L), RAD_QI(I,J,L), RAD_QR(I,J,L), RAD_QS(I,J,L), RAD_QG(I,J,L), RAD_CF(I,J,L), &
                      CLDREFFL(I,J,L), CLDREFFI(I,J,L), &
                      FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI)
             enddo
           enddo
          enddo
-         call FILLQ2ZERO(RAD_QV, MASS, RC=STATUS); VERIFY_(STATUS)
-         call FILLQ2ZERO(RAD_QL, MASS, RC=STATUS); VERIFY_(STATUS)
-         call FILLQ2ZERO(RAD_QI, MASS, RC=STATUS); VERIFY_(STATUS)
-         call FILLQ2ZERO(RAD_QR, MASS, RC=STATUS); VERIFY_(STATUS)
-         call FILLQ2ZERO(RAD_QS, MASS, RC=STATUS); VERIFY_(STATUS)
-         call FILLQ2ZERO(RAD_QG, MASS, RC=STATUS); VERIFY_(STATUS)
-         RAD_QL = MIN( RAD_QL , 0.001 )  ! Still a ridiculously large
-         RAD_QI = MIN( RAD_QI , 0.001 )  ! value.
-         RAD_QR = MIN( RAD_QR , 0.01  )  ! value.
-         RAD_QS = MIN( RAD_QS , 0.01  )  ! value.
-         RAD_QG = MIN( RAD_QG , 0.01  )  ! value.
+        !call FILLQ2ZERO(RAD_QV, MASS, RC=STATUS); VERIFY_(STATUS)
+        !call FILLQ2ZERO(RAD_QL, MASS, RC=STATUS); VERIFY_(STATUS)
+        !call FILLQ2ZERO(RAD_QI, MASS, RC=STATUS); VERIFY_(STATUS)
+        !call FILLQ2ZERO(RAD_QR, MASS, RC=STATUS); VERIFY_(STATUS)
+        !call FILLQ2ZERO(RAD_QS, MASS, RC=STATUS); VERIFY_(STATUS)
+        !call FILLQ2ZERO(RAD_QG, MASS, RC=STATUS); VERIFY_(STATUS)
+        !RAD_QL = MIN( RAD_QL , 0.001 )  ! Still a ridiculously large
+        !RAD_QI = MIN( RAD_QI , 0.001 )  ! value.
+        !RAD_QR = MIN( RAD_QR , 0.01  )  ! value.
+        !RAD_QS = MIN( RAD_QS , 0.01  )  ! value.
+        !RAD_QG = MIN( RAD_QG , 0.01  )  ! value.
 
      ! Cleanup negative water species
      ! ------------------------------
@@ -1287,6 +1290,12 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
         call MAPL_GetPointer(EXPORT, PTR3D, 'QGTOT', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) PTR3D = QGRAUPEL
+
+        call MAPL_GetPointer(EXPORT, PTR2D, 'LWP', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR2D)) PTR2D = SUM( ( QLCN+QLLS+QRAIN ) *MASS , 3 )
+
+        call MAPL_GetPointer(EXPORT, PTR2D, 'IWP', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR2D)) PTR2D = SUM( ( QICN+QILS+QSNOW+QGRAUPEL ) *MASS , 3 )
 
         call MAPL_TimerOff(MAPL,"---CLDDIAGS")
 

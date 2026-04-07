@@ -245,7 +245,7 @@ module GEOSmoist_Process_Library
   public :: CNV_Tracer_Type, CNV_Tracers, CNV_Tracers_Init
   public :: constrain_modis_ice
   public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, BUOYANCY2
-  public :: REDISTRIBUTE_CLOUDS, RADCOUPLE, FIX_UP_CLOUDS
+  public :: REDISTRIBUTE_CLOUDS, RADCOUPLE_BINARY, RADCOUPLE, FIX_UP_CLOUDS
   public :: hystpdf, fix_up_clouds_2M
   public :: FILLQ2ZERO
   public :: MELTFRZ
@@ -264,6 +264,7 @@ module GEOSmoist_Process_Library
   public :: FIX_NEGATIVE_PRECIP
   public :: FIND_KLID
   public :: sigma
+  public :: smooth_cloud_binary
   public :: pdf_alpha
   public :: get_fac_eis
   public :: init_refl10cm, calc_refl10cm
@@ -469,6 +470,79 @@ module GEOSmoist_Process_Library
         sigma = (1.0-0.9839*exp(-0.09835*(dx/SIGMA_DX)))**tmp_exp
       endif
   end function sigma
+
+  subroutine smooth_cloud_binary(one_minus_sigma, &
+                                 cf_in, ql_in, qi_in, qr_in, qs_in, qg_in, &
+                                 cf_out, ql_out, qi_out, qr_out, qs_out, qg_out, &
+                                 is_inverse)
+
+    implicit none
+    ! Inputs
+    real, intent(in)  :: one_minus_sigma ! 0.0 (coarse) to 1.0 (fine)
+    real, intent(in)  :: cf_in           ! Input cloud fraction
+    real, intent(in)  :: ql_in, qi_in, qr_in, qs_in, qg_in ! Input mixing ratios
+    logical, intent(in) :: is_inverse  ! .FALSE. for in-cloud smooth-to-binary
+                                       ! .TRUE. for reverse in-cloud to mixing ratios 
+    ! Outputs
+    real, intent(out) :: cf_out
+    real, intent(out) :: ql_out, qi_out, qr_out, qs_out, qg_out
+
+    ! Internal Parameters
+    real, parameter :: CF_BASE  = 0.01   ! 1% robust floor
+    real, parameter :: EPS_BASE = 0.01   ! Damping factor
+    real, parameter :: Q_THRESHOLD = 1.e-12 
+    real :: binary_cf, eps_damp, scale_cfmin, denom
+
+    ! 1. Calculate Adaptive Thresholds
+    scale_cfmin = CF_BASE * (1.0 - 0.9 * one_minus_sigma)
+    eps_damp    = EPS_BASE * (1.0 - one_minus_sigma)
+
+    if (.not. is_inverse) then
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        ! FORWARD: GRID-MEAN -> SMOOTH BINARY
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        
+        ! Determine Binary State
+        if (cf_in >= 0.5) then
+            binary_cf = 1.0
+        else
+            binary_cf = 0.0
+        end if
+
+        ! Blend CF toward Binary
+        cf_out = (1.0 - one_minus_sigma) * cf_in + (one_minus_sigma * binary_cf)
+        
+        if (cf_out >= scale_cfmin) then
+            denom = cf_out + eps_damp
+            ql_out = ql_in / denom
+            qi_out = qi_in / denom
+            qr_out = qr_in / denom
+            qs_out = qs_in / denom
+            qg_out = qg_in / denom
+        else
+            cf_out = 0.0
+            ql_out = 0.0; qi_out = 0.0; qr_out = 0.0; qs_out = 0.0; qg_out = 0.0
+        end if
+
+    else
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        ! INVERSE: IN-CLOUD -> GRID-MEAN
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        ! Note: Use this if you need to recover the mass-balanced 
+        ! grid-mean after the radiation/microphysics step.
+        
+        cf_out = cf_in ! Typically you keep the modified CF
+        
+        denom = cf_in + eps_damp
+        ql_out = ql_in * denom
+        qi_out = qi_in * denom
+        qr_out = qr_in * denom
+        qs_out = qs_in * denom
+        qg_out = qg_in * denom
+    end if
+
+  end subroutine smooth_cloud_binary
+
 
   function ICE_FRACTION_3D (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
       real, intent(in) :: TEMP(:,:,:),CNV_FRACTION(:,:),SRF_TYPE(:,:)
@@ -1114,6 +1188,87 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
     end where
 
   end subroutine BUOYANCY
+
+   subroutine RADCOUPLE_BINARY(  &
+         TE,              &
+         PL,              &
+         CF,              &
+         AF,              &
+         QV,              &
+         QClLS,           &
+         QCiLS,           &
+         QClAN,           &
+         QCiAN,           &
+         QR_IN,           &
+         QS_IN,           &
+         QG_IN,           &
+         NL,              &
+         NI,              &
+         one_minus_sigma, &
+         RAD_QV,          &
+         RAD_QL,          &
+         RAD_QI,          &
+         RAD_QR,          &
+         RAD_QS,          &
+         RAD_QG,          &
+         RAD_CF,          &
+         RAD_RL,          &
+         RAD_RI,          &
+         FAC_RL, MIN_RL, MAX_RL, &
+         FAC_RI, MIN_RI, MAX_RI)
+
+      real, intent(in ) :: TE
+      real, intent(in ) :: PL
+      real, intent(in ) :: AF,CF, QV, QClAN, QCiAN, QClLS, QCiLS
+      real, intent(in ) :: QR_IN, QS_IN, QG_IN
+      real, intent(in ) :: NL,NI
+      real, intent(in ) :: one_minus_sigma
+      real, intent(out) :: RAD_QV,RAD_QL,RAD_QI,RAD_QR,RAD_QS,RAD_QG,RAD_CF,RAD_RL,RAD_RI
+      real, intent(in ) :: FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI
+
+      real :: CF_IN, QL_IN, QI_IN
+
+      ! Limits on Radii needed to ensure
+      ! correct behavior of cloud optical
+      ! properties currently calculated in
+      ! sorad and irrad (1e-6 m = micron)
+
+      ! water vapor
+      RAD_QV = QV
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      ! Total cloud fraction
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      CF_IN = MAX(MIN(CF+AF,1.0),0.0)
+      QL_IN = QClLS + QClAN
+      QI_IN = QCiLS + QCiAN
+
+      call smooth_cloud_binary(one_minus_sigma, &
+                               cf_in, ql_in, qi_in, qr_in, qs_in, qg_in, &
+                               RAD_CF, RAD_QL, RAD_QI, RAD_QR, RAD_QS, RAD_QG, &
+                               .false.)
+
+     ! LIQUID RADII
+      if (RAD_QL > 0.0) then
+        !-BRAMS formulation
+        RAD_RL = LDRADIUS4(PL,TE,RAD_QL,NL,NI,1)
+        ! apply limits
+        RAD_RL = MAX( MIN_RL, MIN(RAD_RL*FAC_RL, MAX_RL) )
+      else
+        RAD_RL = MAPL_UNDEF
+      end if
+
+    ! ICE RADII
+      if (RAD_QI > 0.0) then
+        !-BRAMS formulation
+        RAD_RI = LDRADIUS4(PL,TE,RAD_QI,NL,NI,2)
+        ! apply limits
+        RAD_RI = MAX( MIN_RI, MIN(RAD_RI*FAC_RI, MAX_RI) )
+      else
+        RAD_RI = MAPL_UNDEF
+      end if
+
+   end subroutine RADCOUPLE_BINARY
 
    subroutine RADCOUPLE(  &
          TE,              &

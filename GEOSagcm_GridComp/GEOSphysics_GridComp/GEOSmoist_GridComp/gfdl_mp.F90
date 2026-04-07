@@ -404,7 +404,7 @@ module gfdl_mp_mod
 
     ! simple process timescales
     real :: tau_r2g  =  900.0 ! rain freezing to graupel time scale (s)
-    real :: tau_i2s  =  600.0 ! cloud ice to snow autoconversion time scale (s)
+    real :: tau_i2s  =  300.0 ! cloud ice to snow autoconversion time scale (s)
     real :: tau_l2r  =  900.0 ! cloud water to rain autoconversion time scale (s)
     ! other timescales
     real :: tau_v2l  =  120.0 ! water vapor to cloud water condensation time scale (s)
@@ -2573,7 +2573,6 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
 
     real, dimension (ks:ke) :: tc
     real :: zero=0.0 ! ice radii currently independent of CCN
-    real :: R_eff, vt_radius
 
     if (const_v) then
         vt (:) = 0.5*(v_min+v_max)
@@ -2592,12 +2591,6 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
                     ! Combine
                     vt (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
                     vt (k) = 0.01 * v_fac * vt (k)
-                    ! Limit to avoid excessively slow cirus settling
-                    pl = den (k) * rdgas * tz (k) ! dry air pressure
-                    tmp = tz (k)
-                    R_eff = LDRADIUS4(pl/100.0,tmp,q(k),zero,zero,2) ! meters
-                    vt_radius = 0.1 * (R_eff / 20.e-6)**0.8
-                    vt(k) = max(vt(k), vt_radius)
                 endif
                 if (ifflag .eq. 2) then
                     qden = q (k) * den (k)

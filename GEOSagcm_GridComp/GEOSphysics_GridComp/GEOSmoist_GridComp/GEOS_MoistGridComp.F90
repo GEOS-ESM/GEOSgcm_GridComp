@@ -2453,6 +2453,14 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='CIWP',                                        & 
+         LONG_NAME ='cloud_ice_water_path',                        &
+         UNITS     ='kg m-2'  ,                                    & 
+         DIMS      = MAPL_DimsHorzOnly,                            & 
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  ) 
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='IWP',                                         &
          LONG_NAME ='ice_water_path',                              &
          UNITS     ='kg m-2'  ,                                    &
@@ -6496,14 +6504,19 @@ contains
 
        call MAPL_GetPointer(EXPORT, PTR3D, 'RH2', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = MAX(MIN( Q/GEOS_QSAT (T, PLmb) , 1.02 ),0.0)
+
+       ! Cloud Water Path
        call MAPL_GetPointer(EXPORT, PTR2D, 'CWP', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR2D)) PTR2D = SUM( ( QLCN+QLLS+QICN+QILS )*MASS , 3 )
+       ! Cloud Liquid Water Path
        call MAPL_GetPointer(EXPORT, PTR2D, 'CLWP', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR2D)) PTR2D = SUM( ( QLCN+QLLS ) *MASS , 3 )
-       call MAPL_GetPointer(EXPORT, PTR2D, 'LWP', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR2D)) PTR2D = SUM( ( QLCN+QLLS ) *MASS , 3 )
-       call MAPL_GetPointer(EXPORT, PTR2D, 'IWP', RC=STATUS); VERIFY_(STATUS)
+       ! Cloud Ice Water Path
+       call MAPL_GetPointer(EXPORT, PTR2D, 'CIWP', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR2D)) PTR2D = SUM( ( QICN+QILS ) *MASS , 3 )
+       ! Total LWP and IWP need to be defined inside the microphysics depends on number was water species
+
+       ! Total Precipitable Water
        call MAPL_GetPointer(EXPORT, PTR2D, 'TPW', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR2D)) PTR2D = SUM( ( Q         ) *MASS , 3 )
 

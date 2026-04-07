@@ -151,7 +151,7 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, DICYCLE                   , 'DICYCLE:'               ,default= 1,    RC=STATUS );VERIFY_(STATUS)
 
       if (INT(ZERO_DIFF_ENTR) == 0) then
-        call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 0.2e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 0.1e-4,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 0.8e-4,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)        , 'ENTR_MD:'               ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)       , 'ENTR_SH:'               ,default= 6.0e-4,RC=STATUS );VERIFY_(STATUS)
@@ -173,7 +173,7 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
         ! Controls how much suspended liquid/ice is forcibly shed into the grid-scale environment.
         ! Default (1.0e-3) favors convective precipitation; increasing (e.g., 2.0e-3 to 3.0e-3) shifts 
         ! moisture to host microphysics, where evaporation can moisten the 700-300 mb free troposphere.
-        call MAPL_GetResource(MAPL, C1                        , 'C1:'                    ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, C1                        , 'C1:'                    ,default= 3.0e-3,RC=STATUS );VERIFY_(STATUS)
       else
         call MAPL_GetResource(MAPL, C1                        , 'C1:'                    ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
       endif
@@ -186,7 +186,7 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
          call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 7200., RC=STATUS );VERIFY_(STATUS)
          call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default=10800., RC=STATUS );VERIFY_(STATUS)
         ! FADJ_MASSFLX is a fractional mass flux tuning factor (1.0 is no reduction) in low CAPE environments
-        call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(DEEP)    , 'FADJ_MASSFLX_DP:'       ,default= 0.1,   RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(DEEP)    , 'FADJ_MASSFLX_DP:'       ,default= 1.0,   RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(SHAL)    , 'FADJ_MASSFLX_SH:'       ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(MID)     , 'FADJ_MASSFLX_MD:'       ,default= 1.0,   RC=STATUS );VERIFY_(STATUS)
       else
@@ -249,7 +249,11 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, ALP1                      , 'ALP1:'                  ,default= 1.,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, LIGHTNING_DIAG            , 'LIGHTNING_DIAG:'        ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, OVERSHOOT                 , 'OVERSHOOT:'             ,default= 0.,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, USE_WETBULB               , 'USE_WETBULB:'           ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+      if (INT(ZERO_DIFF_OTHER) == 0) then
+        call MAPL_GetResource(MAPL, USE_WETBULB               , 'USE_WETBULB:'           ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+      else
+        call MAPL_GetResource(MAPL, USE_WETBULB               , 'USE_WETBULB:'           ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+      endif
       call MAPL_GetResource(MAPL, LAMBAU_SHDN               , 'LAMBAU_SHDN:'           ,default= 2.,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, MAX_TQ_TEND               , 'MAX_TQ_TEND:'           ,default= 100., RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, BETA_SH                   , 'BETA_SH:'               ,default= 2.2,  RC=STATUS );VERIFY_(STATUS)
@@ -275,15 +279,27 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(DEEP)   , 'HEI_UPDF_LAND_DP:'      ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(SHAL)   , 'HEI_UPDF_LAND_SH:'      ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(MID)    , 'HEI_UPDF_LAND_MD:'      ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(DEEP)  , 'HEI_UPDF_OCEAN_DP:'     ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(SHAL)  , 'HEI_UPDF_OCEAN_SH:'     ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(MID)   , 'HEI_UPDF_OCEAN_MD:'     ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
+      if (INT(ZERO_DIFF_OTHER) == 0) then
+        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(DEEP)  , 'HEI_UPDF_OCEAN_DP:'     ,default= 0.55,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(SHAL)  , 'HEI_UPDF_OCEAN_SH:'     ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(MID)   , 'HEI_UPDF_OCEAN_MD:'     ,default= 0.55,  RC=STATUS );VERIFY_(STATUS)
+      else
+        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(DEEP)  , 'HEI_UPDF_OCEAN_DP:'     ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(SHAL)  , 'HEI_UPDF_OCEAN_SH:'     ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(MID)   , 'HEI_UPDF_OCEAN_MD:'     ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
+      endif
       call MAPL_GetResource(MAPL, CUM_MIN_EDT_LAND(DEEP)    , 'MIN_EDT_LAND_DP:'       ,default= 0.1,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_MIN_EDT_LAND(SHAL)    , 'MIN_EDT_LAND_SH:'       ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_MIN_EDT_LAND(MID)     , 'MIN_EDT_LAND_MD:'       ,default= 0.1,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(DEEP)   , 'MIN_EDT_OCEAN_DP:'      ,default= 0.1,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(SHAL)   , 'MIN_EDT_OCEAN_SH:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(MID)    , 'MIN_EDT_OCEAN_MD:'      ,default= 0.1,   RC=STATUS );VERIFY_(STATUS)
+      if (INT(ZERO_DIFF_OTHER) == 0) then
+        call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(DEEP)   , 'MIN_EDT_OCEAN_DP:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(SHAL)   , 'MIN_EDT_OCEAN_SH:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(MID)    , 'MIN_EDT_OCEAN_MD:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
+      else
+        call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(DEEP)   , 'MIN_EDT_OCEAN_DP:'      ,default= 0.1,   RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(SHAL)   , 'MIN_EDT_OCEAN_SH:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(MID)    , 'MIN_EDT_OCEAN_MD:'      ,default= 0.1,   RC=STATUS );VERIFY_(STATUS)
+      endif
       call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(DEEP)    , 'MAX_EDT_LAND_DP:'       ,default= 0.9,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(SHAL)    , 'MAX_EDT_LAND_SH:'       ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(MID)     , 'MAX_EDT_LAND_MD:'       ,default= 0.9,   RC=STATUS );VERIFY_(STATUS)
