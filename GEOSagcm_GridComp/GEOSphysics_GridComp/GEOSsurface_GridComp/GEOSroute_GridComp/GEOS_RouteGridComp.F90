@@ -268,7 +268,7 @@ contains
 ! For Exports, "TileOnly" refers to the *Pfafstetter* catchment space of GEOS_RouteGridComp
 
     call MAPL_AddExportSpec(GC,                           &
-         LONG_NAME          = 'runoff_amount_from_the_catchment'                                 ,&
+         LONG_NAME          = 'total_runoff_flow_from_catchment'                 ,&
          UNITS              = 'm+3 s-1'                  ,&
          SHORT_NAME         = 'QRUNOFF_CAT'              ,&
          DIMS               = MAPL_DimsTileOnly          ,&
@@ -276,7 +276,7 @@ contains
          _RC )
 
     call MAPL_AddExportSpec(GC,                           &
-         LONG_NAME          = 'discharge_from_local_streams_to_main_river'                       ,&
+         LONG_NAME          = 'discharge_from_local_streams_to_main_river'       ,&
          UNITS              = 'm+3 s-1'                  ,&
          SHORT_NAME         = 'QSFLOW'                   ,&
          DIMS               = MAPL_DimsTileOnly          ,&
@@ -284,7 +284,7 @@ contains
          _RC )
 
     call MAPL_AddExportSpec(GC,                           &
-         LONG_NAME          = 'discharge_from_upstream_catchments_to_main_river'                 ,&
+         LONG_NAME          = 'discharge_from_upstream_catchments_to_main_river' ,&
          UNITS              = 'm+3 s-1'                  ,&
          SHORT_NAME         = 'QINFLOW'                  ,&
          DIMS               = MAPL_DimsTileOnly          ,&
@@ -292,7 +292,7 @@ contains
          _RC )
 
     call MAPL_AddExportSpec(GC,                           &
-         LONG_NAME          = 'discharge_from_main_river_to_reservoirs_or_downstream_catchments' ,&
+         LONG_NAME          = 'discharge_from_main_river'                        ,&
          UNITS              = 'm+3 s-1'                  ,&
          SHORT_NAME         = 'QOUTFLOW'                 ,&
          DIMS               = MAPL_DimsTileOnly          ,&
@@ -300,7 +300,7 @@ contains
          _RC )
 
     call MAPL_AddExportSpec(GC,                           &
-         LONG_NAME          = 'discharge_from_reservoirs_to_downstream_catchments'               ,&
+         LONG_NAME          = 'discharge_from_reservoir'                         ,&
          UNITS              = 'm+3 s-1'                  ,&
          SHORT_NAME         = 'QRES'                     ,&
          DIMS               = MAPL_DimsTileOnly          ,&
@@ -308,7 +308,7 @@ contains
          _RC )
 
     call MAPL_AddExportSpec(GC,                           &
-         LONG_NAME          = 'discharge_from_the_catchments_to_downstream_catchments'           ,&
+         LONG_NAME          = 'discharge_to_downstream_catchment'                ,&
          UNITS              = 'm+3 s-1'                  ,&
          SHORT_NAME         = 'QCAT'                     ,&
          DIMS               = MAPL_DimsTileOnly          ,&
