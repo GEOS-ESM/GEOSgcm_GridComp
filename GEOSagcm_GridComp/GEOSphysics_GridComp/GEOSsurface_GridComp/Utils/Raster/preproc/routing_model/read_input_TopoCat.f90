@@ -1,7 +1,7 @@
 program main
 !Main purpose: Reads lake and lake outlets information from Lake-TopoCat database.
 
-use routing_constant, only : no, nvl, nvo, nl=>nl_lake
+use routing_model_constants, only : no, nvl, nvo, nl=>nl_lake
 
   implicit none
 

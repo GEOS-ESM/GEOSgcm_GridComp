@@ -3,7 +3,7 @@ program main
 
 use MAPL
 use river_ncfile_helper
-use routing_constant, only : nc, nlon, nlat
+use routing_model_constants, only : nc, nlon, nlat
 
 implicit none
 

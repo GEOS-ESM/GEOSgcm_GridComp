@@ -1,7 +1,7 @@
 program main
 !main purpose: Reads the Pfafstetter code dataset and generates files for the connectivity of catchments in the routing network.
 
-  use routing_constant, only: nc, nupmax
+  use routing_model_constants, only: nc, nupmax
 
   implicit none
 

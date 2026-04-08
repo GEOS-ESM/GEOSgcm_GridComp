@@ -3,7 +3,7 @@ program main
 
   use omp_lib
   use river_ncfile_helper
-  use routing_constant, only : nlat=>nlat09, nlon=>nlon09, nc, nupmax
+  use routing_model_constants, only : nlat=>nlat09, nlon=>nlon09, nc, nupmax
 
   implicit none
 

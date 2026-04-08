@@ -1,4 +1,4 @@
-module routing_constant
+module outlets_constants
 
   use catch_constants,        ONLY: nc => CATCH_N_PFAFS
   ! hardwired constants for GEOS river routing scheme
@@ -19,4 +19,4 @@ module routing_constant
   integer,parameter :: ng         =    525  ! number of catchments in Greenland
   integer,parameter :: nl         =  22116  ! number of outlets to ocean in land (not including Greenland)
 
-end module routing_constant
+end module outlets_constants
