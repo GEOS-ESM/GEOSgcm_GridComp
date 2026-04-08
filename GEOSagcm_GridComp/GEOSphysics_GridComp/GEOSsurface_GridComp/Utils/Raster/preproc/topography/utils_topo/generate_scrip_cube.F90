@@ -52,7 +52,13 @@
 
 !EOC
 
-    real(REAL64), parameter           :: PI = 3.14159265358979323846
+    ! Define PI and Earth RADIUS here, avoiding explicit dependency on MAPL (so program can be used outside GEOS).
+    ! When using the program with GEOS, probably best to make sure values are consistent with those in MAPL.
+    ! (Previously, value of PI was hardcoded a total of five times in this file, with two distinct values.)
+    !
+    real(REAL64), parameter           :: PI           = 3.14159265358979323846d0  !       ( MAPL_PI=3.14159265358979323846d0  as of Feb 2026 )
+    real(REAL64), parameter           :: EARTH_RADIUS = 6371.d0                   ! [km]  ( MAPL_RADIUS=6731.0E3 [m]  real*4  as of Feb 2026 )
+    
     integer                           :: npets, localPet
     integer                           :: i, j, k
     integer :: rc
@@ -747,10 +753,10 @@
              write(*,*) "CRITICAL DEBUG cell:", n, i, j
              write(*,*) "local_min_length very small or zero:", local_min_length_all(n)
              write(*,*) "Polygon lengths (km):", &
-                        great_circle_dist(p1,p2,6371.d0), &
-                        great_circle_dist(p2,p3,6371.d0), &
-                        great_circle_dist(p3,p4,6371.d0), &
-                        great_circle_dist(p4,p1,6371.d0)
+                        great_circle_dist(p1,p2,EARTH_RADIUS), &
+                        great_circle_dist(p2,p3,EARTH_RADIUS), &
+                        great_circle_dist(p3,p4,EARTH_RADIUS), &
+                        great_circle_dist(p4,p1,EARTH_RADIUS)
              write(*,*) "Polygon coords (deg):", &
                         "p1", p1*180/pi, "p2", p2*180/pi, &
                         "p3", p3*180/pi, "p4", p4*180/pi
@@ -1179,7 +1185,7 @@ subroutine angle_rad_2d ( p1, p2, p3, res )
 
   integer, parameter :: dim_num = 2
 
-  real    (REAL64), parameter :: pi = 3.141592653589793D+00
+  !real    (REAL64), parameter :: pi = 3.141592653589793D+00
   real    (REAL64) p(dim_num)
   real    (REAL64) p1(dim_num)
   real    (REAL64) p2(dim_num)
@@ -1262,7 +1268,7 @@ subroutine points_hull_2d ( node_num, node_xy, hull_num, hull )
   logical :: polar_cell
   integer :: node_num_unique
   real(REAL64), allocatable :: unique_xy(:,:)
-  real(REAL64), parameter :: pi = 3.141592653589793d0
+  !real(REAL64), parameter :: pi = 3.141592653589793d0
 
   if ( node_num < 1 ) then
      hull_num = 0
@@ -1563,7 +1569,7 @@ function spherical_angles(p1,p2,p3) result(spherical_angle)
    real (real64):: qx, qy, qz
    real (real64):: angle, ddd, threshold
    integer n
-   real(REAL64), parameter           :: PI = 3.14159265358979323846
+   !real(REAL64), parameter           :: PI = 3.14159265358979323846
 
    do n=1,3
       e1(n) = p1(n)
@@ -1613,7 +1619,7 @@ real(REAL64) function great_circle_dist( q1, q2, radius )
      real (REAL64):: p1(2), p2(2)
      real (REAL64):: beta
      real(REAL64) :: dlon, dlat
-     real(REAL64), parameter           :: pi = 3.141592653589793d0
+     !real(REAL64), parameter           :: pi = 3.141592653589793d0
      integer n
 
      do n=1,2
