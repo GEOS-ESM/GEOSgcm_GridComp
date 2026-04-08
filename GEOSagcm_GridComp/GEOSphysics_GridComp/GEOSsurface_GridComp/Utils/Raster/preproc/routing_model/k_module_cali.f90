@@ -2,7 +2,7 @@ module k_module
 !module for K parameter calculations.
 
   use river_ncfile_helper
-  use constant, only: nga
+  use routing_constant, only: nga
 
   implicit none
   private

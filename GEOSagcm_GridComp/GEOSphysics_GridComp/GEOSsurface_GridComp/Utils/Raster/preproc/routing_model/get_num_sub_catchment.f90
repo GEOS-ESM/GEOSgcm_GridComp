@@ -1,10 +1,9 @@
 program main
 !Main purpose: Assigns a catchment‐tile index from catchment definition files to each model grid cell for M09 grid.
 
+use MAPL
 use river_ncfile_helper
-use constant, only : nc, nlon, nlat
-
-use EASE_pfaf_subareaMod, only : EASE_find_subs
+use routing_constant, only : nc, nlon, nlat
 
 implicit none
 
@@ -105,4 +104,101 @@ do i = 1, nc
   write(88, *) pfaf_area(i)
 end do
 
-end
+
+
+contains
+
+  ! ----------------------------------------------------------------------------------
+  
+  subroutine EASE_Find_subs(catchind, loni, lati, lat, nland, nlon30s, nlat30s, rstfile, nsub, xsub0, ysub0, asub0)
+    
+    integer,           intent(in)  :: catchind(:,:)
+    integer,           intent(in)  :: loni(:)          ! lon index of overlying EASE grid cell;                 size = nlon
+    integer,           intent(in)  :: lati(:)          ! lat index of overlying EASE grid cell;                 size = nlat
+    real(kind=REAL64), intent(in)  :: lat(:)           ! lat of raster grid cell;                               size = nlat
+    integer,           intent(in)  :: nland            ! number of land tiles
+    integer,           intent(in)  :: nlon30s          ! number of lon coordinate in 30-s grid
+    integer,           intent(in)  :: nlat30s          ! number of lat coordinate in 30-s grid
+    character(*),      intent(in)  :: rstfile          ! path of *.rst file
+    integer,           intent(out) :: nsub(:)          ! # raster grid cells that contribute to Pfaf catchment; size = nPfaf
+    integer,           intent(out) :: xsub0(:,:)       ! lon index of overlying EASE grid cell;                 size = nsub_max_init x nPfaf
+    integer,           intent(out) :: ysub0(:,:)       ! lat index of overlying EASE grid cell;                 size = nsub_max_init x nPfaf
+    real,              intent(out) :: asub0(:,:)       ! area of raster grid cell;                              size = nsub_max_init x nPfaf
+
+    integer :: xi, yi, flag, id, i, j, nlon, nlat
+    real(kind=REAL64)             :: cellarea, delta, area30s(2,2)
+    real(kind=REAL64),allocatable :: lat30s(:), cellarea30s(:)
+    integer,allocatable           :: rst(:,:)
+
+    nlon  = size(loni)
+    nlat  = size(lati)
+    nsub  = 0 
+    xsub0 = 0
+    ysub0 = 0
+    asub0 = 0.
+
+    allocate(rst(nlon30s,nlat30s),lat30s(nlat30s),cellarea30s(nlat30s)) 
+    delta=180./nlat30s
+    ! Calculate the lat of 30-s grid.
+    do j=1,nlat  
+      if(lat(1)<0.d0)then
+        lat30s(2*j-1)=lat(j)-delta/2.d0
+        lat30s(2*j)=lat(j)+delta/2.d0
+      else
+        lat30s(2*j-1)=lat(j)+delta/2.d0
+        lat30s(2*j)=lat(j)-delta/2.d0
+      endif      
+    enddo
+    delta = 2*MAPL_PI_R8/nlon30s * MAPL_PI_R8/nlat30s
+    open(20,file=trim(rstfile),form="unformatted",status="old")
+    ! Read rst file and calculate the area of 30-s gridcell.
+    do j=1,nlat30s
+      read(20) rst(:,j)
+      cellarea30s(j) = cos(lat30s(j) * MAPL_DEGREES_TO_RADIANS_R8)*delta * MAPL_RADIUS/1.e3*MAPL_RADIUS/1.e3 !km^2
+    enddo
+    where (rst<1.or.rst>nland) rst=0 !For no-land tiles in the rst file, set rst to 0.
+
+    delta = 2*MAPL_PI_R8/nlon * MAPL_PI_R8/nlat                    ! pre-compute term for raster grid cell area
+    ! Loop through all raster grid cells to aggregate cell areas by catchment and sub-area:
+    do yi = 1, nlat
+      cellarea = cos(lat(yi) * MAPL_DEGREES_TO_RADIANS_R8)*delta   ! area of raster grid cell for latitude yi [radians^2]
+      cellarea = cellarea*MAPL_RADIUS/1.e3*MAPL_RADIUS/1.e3        ! convert to km^2
+      do xi = 1, nlon
+        if (catchind(xi, yi) >= 1) then
+          area30s(:,1)=cellarea30s(2*yi-1) !area30s(2,2) is the area of 30s cells corresponding to the (xi,yi) of 1-min cell.
+          area30s(:,2)=cellarea30s(2*yi)
+          !set land area to 0 in the area30s(2,2), so the sum(area30s(2,2)) is the no-land area in the (xi,yi) of 1-min cell.
+          where(rst(2*xi-1:2*xi,2*yi-1:2*yi)/=0) area30s=0.d0          
+          ! The raster grid cell belongs to a catchment
+          id = catchind(xi, yi)  ! Get the catchment id for the current cell
+          flag = 0               ! Reset flag to indicate whether a matching sub-area is found      
+          ! If the catchment already has one or more sub-areas, check for a matching sub-area:
+          if (nsub(id) >= 1) then
+            do i = 1, nsub(id)
+              if (loni(xi) == xsub0(i, id) .and. lati(yi) == ysub0(i, id)) then
+                flag = 1
+                ! If a match is found, accumulate the cell area into the existing sub-area:
+                ! subtract the no-land area sum(area30s) here, so only land area is summed to sub-area
+                asub0(i, id) = asub0(i, id) + max(0.,cellarea - sum(area30s)) 
+                exit  ! Exit the inner loop since a matching sub-area has been found
+              endif
+            end do
+          endif
+          ! If no matching sub-area was found, create a new sub-area:
+          if (flag == 0) then
+            nsub(           id) = nsub(id) + 1
+            xsub0(nsub(id), id) = loni(xi)
+            ysub0(nsub(id), id) = lati(yi)
+            ! subtract the no-land area sum(area30s) here, so only land area is summed to sub-area
+            asub0(nsub(id), id) = max(0.,cellarea - sum(area30s))
+          endif
+        endif
+      end do
+    end do
+
+    deallocate(rst,lat30s,cellarea30s)
+
+  end subroutine EASE_Find_subs
+
+
+end program main

@@ -1,4 +1,4 @@
-module constant
+module routing_constant
   
   ! module for constants used in the river routing pre-processing package  
   
@@ -34,4 +34,4 @@ module constant
   integer,parameter :: nvo         =    3917    ! Number of outlet records after matching with lakes
   integer,parameter :: nl_lake     = 1426967    ! Total number of lake records in the input files  
 
-end module constant
+end module routing_constant

@@ -2,7 +2,7 @@ program main
 !Main purpose: Determines main river channel lengths for each catchment by using HydroSHEDS data of distance to sink.
 
 use river_ncfile_helper
-use constant, only : nc, nlon, nlat, nlonh, nlath, cur_avg, cur_min, cur_max
+use routing_constant, only : nc, nlon, nlat, nlonh, nlath, cur_avg, cur_min, cur_max
 use MAPL_ConstantsMod, only: MAPL_radius
 
 implicit none
