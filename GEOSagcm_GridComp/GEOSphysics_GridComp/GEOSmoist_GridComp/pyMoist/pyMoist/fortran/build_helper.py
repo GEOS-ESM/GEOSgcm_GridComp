@@ -45,9 +45,10 @@ class StencilBackendCompilerOverride:
 
         # We abuse the DaCe build system
         if not self.no_op:
+            original_orchestrate = config._orchestrate
             config._orchestrate = DaCeOrchestration.Build
             set_distributed_caches(config)
-            config._orchestrate = DaCeOrchestration.Python
+            config._orchestrate = original_orchestrate
 
         # We remove warnings from the stencils compiling when in critical and/or
         # error
