@@ -1,7 +1,7 @@
 esma_set_this ()
 
 set(srcs
-  outlets_constant.f90
+  outlets_constants.f90
 )
 
 set (exe_srcs
