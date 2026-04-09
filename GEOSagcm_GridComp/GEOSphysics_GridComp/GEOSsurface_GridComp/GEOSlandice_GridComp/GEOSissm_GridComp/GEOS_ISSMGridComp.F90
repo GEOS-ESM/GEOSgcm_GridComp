@@ -246,6 +246,15 @@ subroutine SetServices ( GC, RC )
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddInternalSpec(GC,                  &
+         SHORT_NAME = 'ICETHICK',                   &
+         LONG_NAME  = 'ice_sheet_thickness',       &
+         UNITS      = 'm',                         &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone,          &
+         RC=STATUS  )
+VERIFY_(STATUS)
+
 
 ! Set the Profiling timers
 ! ------------------------
@@ -644,6 +653,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real(dp),    pointer, dimension(:)   :: ICETHICK_MESH => null() ! ice thickness on mesh
   real, pointer, dimension(:)          :: ICETHICK_TILE => null() ! ice thickness on landice tiles
   real, pointer, dimension(:)          :: ICETHICK_EX   => null() ! pointer to ice thickness export state (mesh tiles)
+  real, pointer, dimension(:)          :: ICETHICK_IN   => null() ! pointer to ice thicknesss internal state (mesh tiles)
 
   ! ice-flow speed on mesh, grid, and landice tiles  
   real(dp),    pointer, dimension(:)   :: ICEVEL_MESH   => null() ! ice flow speed on mesh
@@ -784,18 +794,21 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ICEVEL_MESH(:) = ISSM_OUTPUTS(2*num_elements+1:3*num_elements)
 
     ! set pointers to tile-mesh exports
-    call MAPL_GetPointer(EXPORT  , ICESURF_EX , 'ICESURF' , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ICESURF_EX, 'ICESURF', RC=STATUS); VERIFY_(STATUS)
     if(associated(ICESURF_EX)) ICESURF_EX = ICESURF_MESH
 
-    call MAPL_GetPointer(EXPORT  , ICEVEL_EX , 'ICEVEL' , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ICEVEL_EX, 'ICEVEL', RC=STATUS); VERIFY_(STATUS)
     if(associated(ICEVEL_EX)) ICEVEL_EX = ICEVEL_MESH
 
-    call MAPL_GetPointer(EXPORT  , ICETHICK_EX , 'ICETHICK' , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ICETHICK_EX, 'ICETHICK', RC=STATUS); VERIFY_(STATUS)
     if(associated(ICETHICK_EX)) ICETHICK_EX = ICETHICK_MESH
 
     ! set pointers to tile-mesh internals
-    call MAPL_GetPointer(INTERNAL  , ICESURF_IN, 'ICESURF' , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, ICESURF_IN, 'ICESURF', RC=STATUS); VERIFY_(STATUS)
     if(associated(ICESURF_IN)) ICESURF_IN = ICESURF_MESH
+
+    call MAPL_GetPointer(INTERNAL, ICETHICK_IN, 'ICETHICK', RC=STATUS); VERIFY_(STATUS)
+    if(associated(ICETHICK_IN)) ICETHICK_IN = ICETHICK_MESH
 
     ! *************************************************************************** !
     ! REGRID MESH FIELDS ONTO LANDICE TILES AND EXPORT VIA INTERNAL STATE
