@@ -323,6 +323,12 @@ subroutine SetServices ( GC, RC )
     type(ESMF_Grid)                        :: mesh_grid               
     type(MAPL_LocStream)                   :: mesh_locstream   
 
+    ! variables for masking the mesh seam (triangles that cross +/-180 longitude)
+    real(dp)                               :: dlon,lon1,lon2,lon3
+    integer, pointer, dimension(:)         :: elementMask => null()
+    integer                                :: n1,n2,n3
+
+
     ! Get the target components name and set-up traceback handle.
     ! -----------------------------------------------------------
 
@@ -365,7 +371,8 @@ subroutine SetServices ( GC, RC )
     allocate(glacIds(num_elements))
     allocate(elementConn(3*num_elements))
     allocate(elementCoords(2*num_elements))
-
+    allocate(elementMask(num_elements))
+    
     ! get information about nodes and elements
     ! node coords and element coords (centroids) are in (lon,lat)
     call GetNodesISSM(c_loc(nodeIds), c_loc(nodeCoords)) 
@@ -373,11 +380,25 @@ subroutine SetServices ( GC, RC )
 
     elementTypes(:) = ESMF_MESHELEMTYPE_TRI ! triangular elements
 
+    ! mask triangles that cross the seam (longitude +/- 180)
+    elementMask(:) = 0
+    do j=1,num_elements
+      n1 = elementConn(3*(j-1)+1)
+      n2 = elementConn(3*(j-1)+2)
+      n3 = elementConn(3*(j-1)+3)
+      lon1 = nodeCoords(2*n1-1)
+      lon2 = nodeCoords(2*n2-1)
+      lon3 = nodeCoords(2*n3-1)
+      dlon = maxval((/lon1,lon2,lon3/)) - minval((/lon1,lon2,lon3/))
+      if ( dlon>180.0 ) then
+        elementMask(j) = 1
+      end if
+    end do
+
     ! create the ESMF mesh from ISSM mesh properties
     mesh = ESMF_MeshCreate(parametricDim=2, spatialDim=2, nodeIds=nodeIds, nodeCoords=nodeCoords, &
-            elementIds=elementIds, elementTypes=elementTypes, elementConn=elementConn,& 
+            elementIds=elementIds, elementTypes=elementTypes, elementConn=elementConn,elementMask=elementMask,& 
             elementCoords=elementCoords,coordSys=ESMF_COORDSYS_SPH_DEG, rc=STATUS)
-
     VERIFY_(STATUS)
 
     ! associate ESMF_Mesh representation of ISSM mesh with GC for regridding imports/exports in run method       
@@ -397,11 +418,14 @@ subroutine SetServices ( GC, RC )
     gridField = ESMF_FieldCreate(grid=grid,typekind=ESMF_TYPEKIND_R4,rc=STATUS); VERIFY_(STATUS)
     
     ! create routehandle for mesh-to-grid regridding
-    call ESMF_FieldRegridStore(srcField=meshField, dstField=gridField,routehandle=routehandle_m2g,unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,rc=STATUS)
+    call ESMF_FieldRegridStore(srcField=meshField, dstField=gridField,routehandle=routehandle_m2g,& 
+    srcMaskValues=(/1/),unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,extrapmethod=ESMF_EXTRAPMETHOD_CREEP,&
+    extrapNumLevels=1,rc=STATUS)
     VERIFY_(STATUS)
 
     ! create routehandle for grid-to-mesh regridding
-    call ESMF_FieldRegridStore(srcField=gridField, dstField=meshField,routehandle=routehandle_g2m,unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,rc=STATUS)
+    call ESMF_FieldRegridStore(srcField=gridField, dstField=meshField,routehandle=routehandle_g2m,& 
+    dstMaskValues=(/1/), unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,extrapmethod=ESMF_EXTRAPMETHOD_NEAREST_D,rc=STATUS)
     VERIFY_(STATUS)
     
     ! create pointer to routehandle for component's private internal state
@@ -505,6 +529,7 @@ subroutine SetServices ( GC, RC )
     deallocate(glacIds)
     deallocate(elemlons)
     deallocate(elemlats)
+    deallocate(elementMask)
     ! generic initialize 
     call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
     VERIFY_(STATUS)
