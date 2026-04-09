@@ -1186,7 +1186,7 @@ contains
    type (ESMF_Alarm)                   :: ALARM
    type (ESMF_Alarm)                   :: ALARM4D
    type (ESMF_Config)                  :: cf
-   integer                             :: I, NQ
+   integer                             :: I, NQ, IM, JM, LM
    real                                :: POFFSET, DT
    real, pointer, dimension(:,:)       :: PHIS,SGH,VARFLT,PTR
    real, pointer, dimension(:,:,:)     :: TEND!
@@ -1222,6 +1222,11 @@ contains
 
 
     call MAPL_TimerOn(STATE,"INITIALIZE")
+
+! Spin the MAPL python bridge with the atmospheric grid dimensions
+!--------------------------
+    call MAPL_Get ( STATE, IM=IM, JM=JM, LM=LM, RC=STATUS )
+    call initialize_python_bridge( IM, JM, LM )
 
 ! Call Initialize for every Child
 
