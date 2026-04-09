@@ -249,11 +249,7 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, ALP1                      , 'ALP1:'                  ,default= 1.,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, LIGHTNING_DIAG            , 'LIGHTNING_DIAG:'        ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, OVERSHOOT                 , 'OVERSHOOT:'             ,default= 0.,   RC=STATUS );VERIFY_(STATUS)
-      if (INT(ZERO_DIFF_OTHER) == 0) then
-        call MAPL_GetResource(MAPL, USE_WETBULB               , 'USE_WETBULB:'           ,default= 1,    RC=STATUS );VERIFY_(STATUS)
-      else
-        call MAPL_GetResource(MAPL, USE_WETBULB               , 'USE_WETBULB:'           ,default= 0,    RC=STATUS );VERIFY_(STATUS)
-      endif
+      call MAPL_GetResource(MAPL, USE_WETBULB               , 'USE_WETBULB:'           ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, LAMBAU_SHDN               , 'LAMBAU_SHDN:'           ,default= 2.,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, MAX_TQ_TEND               , 'MAX_TQ_TEND:'           ,default= 100., RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, BETA_SH                   , 'BETA_SH:'               ,default= 2.2,  RC=STATUS );VERIFY_(STATUS)

@@ -1867,6 +1867,10 @@ CONTAINS
         denom = (zu(i,k-1) - 0.5 * up_massdetro(i,k-1) + up_massentro(i,k-1))
         if(denom > 0.0) then
            hco(i,k) = (hco(i,k-1) * zuo(i,k-1) - 0.5 * up_massdetro(i,k-1) * hco(i,k-1) + up_massentro(i,k-1) * heo(i,k-1)) / denom
+           if ( (ZERO_DIFF_ENTR /= 1) .AND. (k == start_level(i) + 1) ) then
+               x_add = (xlv*zqexec(i)+cp*ztexec(i)) +  x_add_buoy(i)
+               hco(i,k)= hco(i,k) + x_add*up_massentro(i,k-1)/denom
+           endif
         else
            hco(i,k) = hco(i,k-1)
         endif
@@ -1931,6 +1935,12 @@ CONTAINS
         if(denom > 0.0 .and. denomU > 0.0) then
            hc(i,k)  = (hc(i,k-1)  * zu(i,k-1)  - 0.5 * up_massdetr(i,k-1)  * hc(i,k-1)  + up_massentr(i,k-1)  * he(i,k-1))  / denom
            hco(i,k) = (hco(i,k-1) * zuo(i,k-1) - 0.5 * up_massdetro(i,k-1) * hco(i,k-1) + up_massentro(i,k-1) * heo(i,k-1)) / denom
+
+           if ( (ZERO_DIFF_ENTR /= 1) .AND. (k == start_level(i) + 1) ) then
+               x_add = (xlv*zqexec(i)+cp*ztexec(i)) +  x_add_buoy(i)
+               hco(i,k)= hco(i,k) + x_add*up_massentro(i,k-1)/denom
+               hc (i,k)= hc (i,k) + x_add*up_massentr (i,k-1)/denom
+           endif
 
            uc(i,k) = (uc(i,k-1) * zu(i,k-1) - 0.5 * up_massdetru(i,k-1) * uc(i,k-1) + up_massentru(i,k-1) * us(i,k-1) &
                      - pgcon * 0.5 * (zu(i,k) + zu(i,k-1)) * (u_cup(i,k) - u_cup(i,k-1))) / denomU
@@ -2696,6 +2706,10 @@ CONTAINS
               xhc(i,k) = xhc(i,k-1)
            else
               xhc(i,k) = (xhc(i,k-1) * xzu(i,k-1) - .5 * up_massdetro(i,k-1) * xhc(i,k-1) + up_massentro(i,k-1) * xhe(i,k-1)) / denom
+              if ( (ZERO_DIFF_ENTR /= 1) .AND. (k == start_level(i) + 1) ) then
+                  x_add = (xlv*zqexec(i)+cp*ztexec(i)) +  x_add_buoy(i)
+                  xhc(i,k)= xhc(i,k) + x_add*up_massentro(i,k-1)/denom
+              endif
            endif
            xhc(i,k) = xhc(i,k) + xlf * (1. - p_liq_ice(i,k)) * qrco(i,k)
         enddo

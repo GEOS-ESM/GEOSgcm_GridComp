@@ -333,7 +333,7 @@ module gfdl_mp_mod
 
     logical :: do_warm_rain_mp = .false. ! do warm rain cloud microphysics only
 
-    logical :: do_wbf = .false. ! do Wegener Bergeron Findeisen process
+    logical :: do_wbf = .true. ! do Wegener Bergeron Findeisen process
 
     logical :: do_bigg = .false. ! do Bigg process
 
@@ -404,13 +404,13 @@ module gfdl_mp_mod
 
     ! simple process timescales
     real :: tau_r2g  =  900.0 ! rain freezing to graupel time scale (s)
-    real :: tau_i2s  =  600.0 ! cloud ice to snow autoconversion time scale (s)
+    real :: tau_i2s  =  300.0 ! cloud ice to snow autoconversion time scale (s)
     real :: tau_l2r  =  900.0 ! cloud water to rain autoconversion time scale (s)
     ! other timescales
     real :: tau_v2l  =  120.0 ! water vapor to cloud water condensation time scale (s)
     real :: tau_l2v  =  300.0 ! cloud water to water vapor evaporation time scale (s)
-    real :: tau_revp =  600.0 ! rain evaporation time scale (s)
-    real :: tau_frez =  600.0 ! cloud liquid freezing time scale (s)
+    real :: tau_revp =  300.0 ! rain evaporation time scale (s)
+    real :: tau_frez =  300.0 ! cloud liquid freezing time scale (s)
     real :: tau_imlt =  600.0 ! cloud ice melting time scale (s)
     real :: tau_smlt =  900.0 ! snow melting time scale (s)
     real :: tau_gmlt = 1200.0 ! graupel melting time scale (s)
@@ -2456,9 +2456,6 @@ subroutine sedimentation (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
         vti, i1, pfi, u, v, w, dte, "qi")
 
     pfi (ks) = max (0.0, pfi (ks))
-    do k = ke, ks + 1, - 1
-        pfi (k) = max (0.0, pfi (k) - pfi (k - 1))
-    enddo
 
     ! -----------------------------------------------------------------------
     ! terminal fall and melting of falling snow into rain
@@ -2475,9 +2472,6 @@ subroutine sedimentation (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
         vts, s1, pfs, u, v, w, dte, "qs")
 
     pfs (ks) = max (0.0, pfs (ks))
-    do k = ke, ks + 1, - 1
-        pfs (k) = max (0.0, pfs (k) - pfs (k - 1))
-    enddo
 
     ! -----------------------------------------------------------------------
     ! terminal fall and melting of falling graupel into rain
@@ -2498,9 +2492,6 @@ subroutine sedimentation (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
         vtg, g1, pfg, u, v, w, dte, "qg")
 
     pfg (ks) = max (0.0, pfg (ks))
-    do k = ke, ks + 1, - 1
-        pfg (k) = max (0.0, pfg (k) - pfg (k - 1))
-    enddo
 
     ! -----------------------------------------------------------------------
     ! terminal fall of cloud water
@@ -2514,9 +2505,6 @@ subroutine sedimentation (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
             vtw, w1, pfw, u, v, w, dte, "ql")
 
         pfw (ks) = max (0.0, pfw (ks))
-        do k = ke, ks + 1, - 1
-            pfw (k) = max (0.0, pfw (k) - pfw (k - 1))
-        enddo
 
     endif
 
@@ -2530,9 +2518,6 @@ subroutine sedimentation (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
         vtr, r1, pfr, u, v, w, dte, "qr")
 
     pfr (ks) = max (0.0, pfr (ks))
-    do k = ke, ks + 1, - 1
-        pfr (k) = max (0.0, pfr (k) - pfr (k - 1))
-    enddo
 
 end subroutine sedimentation
 
@@ -2598,7 +2583,7 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
             else
                 tc (k) = tz (k) - tice
                 if (ifflag .eq. 1) then
-                    qden = q (k) * den (k) * 1.e3
+                    qden = max( q (k) * den (k) * 1.e3 , 1.e-4 )
                     ! Large-scale settling SGP
                     viLSC = 10.0**(log10(qden) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
                     ! Convective settling TWP
@@ -3576,7 +3561,7 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newliq = new_liq_condensate(tmp, ql, qi)
+            newliq = new_liq_condensate(tmp, qlk (k), qik (k))/qadum
             sink = fac_imlt * min (qi, newliq, (tz (k) - tice) / icpk (k))
             tmp = min (sink, dim (ql_mlt/qadum, ql))
 
@@ -3600,7 +3585,7 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newice = new_ice_condensate(tmp, ql, qi)
+            newice = new_ice_condensate(tmp, qlk (k), qik (k))/qadum
             sink = fac_frez * min(ql, newice, ql * (tice - tz (k)) / icpk (k))
             qim = qi0_max / den (k)
             tmp = min (sink, dim (qim/qadum, qi))
@@ -3672,7 +3657,7 @@ subroutine pimlt (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, t
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newliq = new_liq_condensate(tmp, ql, qi)
+            newliq = new_liq_condensate(tmp, qlk (k), qik (k))/qadum
             sink = fac_imlt * min (qi, newliq, (tz (k) - tice) / icpk (k))
             tmp = min (sink, dim (ql_mlt/qadum, ql))
 
@@ -3743,7 +3728,7 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newice = new_ice_condensate(tmp, ql, qi)
+            newice = new_ice_condensate(tmp, qlk (k), qik (k))/qadum
             sink = fac_frez * min(ql, newice, ql * (tice - tz (k)) / icpk (k))
             qim = qi0_max / den (k)
             tmp = min (sink, dim (qim/qadum, qi))
@@ -3886,8 +3871,8 @@ subroutine pgmlt (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den
     real :: pgacw, pgacr
     real :: oms_cgacw, oms_cgacr
 
-    oms_cgacw = cgacw * (1.e-4*(1.0-onemsig) + 1.e-2*onemsig)
-    oms_cgacr = cgacr * (1.e-4*(1.0-onemsig) + 1.e-2*onemsig)
+    oms_cgacw = onemsig*cgacw
+    oms_cgacr = onemsig*cgacr
 
     do k = ks, ke
 
@@ -4062,8 +4047,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
             sink = 0.
             di  = max (di, qcmin)
             q_plus = qi + di
-            ! Use of ice_fraction here is critical to producing the proper snow in reflectivity vs too much cloud ice
-            qim = ice_fraction(real(tz(k)), cnv_fraction, srf_type) * critical_qi_factor / den (k)
+            qim = critical_qi_factor / qadum / den (k)
             if (q_plus .gt. (qim + qcmin)) then
                 if (qim .gt. (qi - di)) then
                     dq = (0.25 * (q_plus - qim) ** 2) / di
@@ -7828,9 +7812,6 @@ function es_core (tk, table, des)
     ap1 = rdelt * dim (tk, es_table_tmin) + 1.
     ap1 = min (real(es_table_length), ap1)
     it = ap1
-    ! Apply protections (bounds checking)
-    ! Ensures it is >= 1 AND it+1 <= es_table_length
-    it = max(1, min(it, es_table_length - 1))
     es_core = table (it) + (ap1 - it) * des (it)
 
 end function es_core
@@ -7865,11 +7846,12 @@ function qs_core (tk, den, dqdt, table, des)
     ap1 = rdelt * dim (tk, es_table_tmin) + 1.
     ap1 = min (real(es_table_length), ap1)
     qs_core = es_core (tk, table, des) / (rvgas * tk * den)
-    it = ap1 - 0.5
-    ! Apply protections (bounds checking)
-    ! Ensures it is >= 1 AND it+1 <= es_table_length
+    
+    ! Ensure it+1 is within bounds
+    it = int(ap1)
     it = max(1, min(it, es_table_length - 1))
-    dqdt = rdelt * (des (it) + (ap1 - it) * (des (it + 1) - des (it))) / (rvgas * tk * den)
+    
+    dqdt = rdelt * (des(it) + (ap1 - real(it)) * (des(it+1) - des(it))) / (rvgas * tk * den)
 
 end function qs_core
 

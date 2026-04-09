@@ -936,8 +936,7 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
             RADIUS = 0.64952*RADIUS
           endif
 
-          Rmin = max(15.e-6, 30.e-6 * exp((TE - 233.) / 20.))
-          RADIUS = MIN(150.e-6, MAX(Rmin, 1.e-6*RADIUS))
+          RADIUS = MIN(150.e-6, MAX(5.e-6, 1.e-6*RADIUS))
 
       ELSE
         STOP "WRONG HYDROMETEOR type: CLOUD = 1 OR ICE = 2"
