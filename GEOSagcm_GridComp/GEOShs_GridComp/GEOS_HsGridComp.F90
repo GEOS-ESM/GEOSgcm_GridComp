@@ -16,7 +16,7 @@ module GEOS_HSGridCompMod
    !  a localized, gaussian heat source.
    !
    !
-   !  {\it Scientific Basis:} 
+   !  {\it Scientific Basis:}
    !
    ! {\bf The Held-Suarez forcing:}
    !The wind tendencies are given by
@@ -37,11 +37,11 @@ module GEOS_HSGridCompMod
    !\frac{\partial T}{\partial t} = \cdots - k_T(\phi,\sigma) \left[\, T - T_{eq}(\phi,p) \,\right]
    !$$
    !$$
-   !T_{eq} = \max \left[   T_{strat}, 
-   !   \left(\frac{p}{p_\circ}\right)^\kappa 
-   !   \left( T_0  - (\Delta T)_y\,\sin^2\!\phi 
-   !          - (\Delta\theta)_z  \log\left(\frac{p}{p_\circ}\right) \cos^2\!\phi\, 
-   !   \right)     \right] 
+   !T_{eq} = \max \left[   T_{strat},
+   !   \left(\frac{p}{p_\circ}\right)^\kappa
+   !   \left( T_0  - (\Delta T)_y\,\sin^2\!\phi
+   !          - (\Delta\theta)_z  \log\left(\frac{p}{p_\circ}\right) \cos^2\!\phi\,
+   !   \right)     \right]
    !$$
    !where
    !$$
@@ -63,15 +63,15 @@ module GEOS_HSGridCompMod
    !  For $p<p_D$, the constant HS value is replaced with the following distribution:
    !$$
    !T_{eq} = T_{strat} \,\left[
-   ! \min \left(1,\frac{p}{p_D}\right)^\frac{R_d \gamma_D}{g} +  
-   ! \min \left(1,\frac{p}{p_I}\right)^\frac{R_d \gamma_I}{g} - 1 \right], 
+   ! \min \left(1,\frac{p}{p_D}\right)^\frac{R_d \gamma_D}{g} +
+   ! \min \left(1,\frac{p}{p_I}\right)^\frac{R_d \gamma_I}{g} - 1 \right],
    !$$
    ! where $T_{strat}$ is as in HS,
    !$$
    !  p_I = p_D - \frac{p_D-p(\sigma=0)}{2}( 1 + \tanh(\alpha\frac{|\phi|-\phi_0}{(\delta\phi)_0})),
    !$$
    !and defaults for the other parameters are
-   !  $\gamma_I=-3.345 \times 10^{-3}$ K m$^{-1}$, 
+   !  $\gamma_I=-3.345 \times 10^{-3}$ K m$^{-1}$,
    !                $\gamma_D=2.0 \times 10^{-3}$ K m$^{-1}$,
    !$p_D = 100 \hbox{ hPa} $,
    !$\alpha = 2.65 $,
@@ -81,7 +81,7 @@ module GEOS_HSGridCompMod
    ! {\bf The Local Heat Source:}
    ! A local heat form can also be included. It has the form
    !$$
-   !  Q(\lambda,\phi) = Q_{max} e^{ -\frac{1}{2} 
+   !  Q(\lambda,\phi) = Q_{max} e^{ -\frac{1}{2}
    !    \left( \frac{(\phi_h-\phi)^2}{(\delta\phi)_h^2}
    !   +       \frac{(\lambda_h-\lambda)^2}{(\delta\lambda)_h^2} \right) }
    !     h(p),
@@ -96,15 +96,15 @@ module GEOS_HSGridCompMod
    !            \right.
    !\end{equation*}
    !  $Q_{max}$ is in K day$^{-1}$, with a default of zero, and defaults for the
-   !  other parameters are $\phi_h=\lambda_h=0$, 
+   !  other parameters are $\phi_h=\lambda_h=0$,
    !  $(\delta\phi)_h=5^\circ$, $(\delta\lambda)_h=30^\circ$,
    !  $p_1=$0 hPa.
-   !  
    !
    !
-   !  {\it Code Implementation:} 
-   !  
-   !  
+   !
+   !  {\it Code Implementation:}
+   !
+   !
    !   All HS parameters are
    !  optionally adjustable from the configuration, with published values
    !  being the defaults.  Its parameters are also adjustable
@@ -117,10 +117,10 @@ module GEOS_HSGridCompMod
    !
    !  Held, I. M., and M. J. Suarez, 1994: A proposal for the intercomparison
    !  of the dynamical cores of atmospheric general circulation models. {\em Bulletin
-   !  of the American Meteorological Society}, {\bf 75(10)}, 1825-1830. 
+   !  of the American Meteorological Society}, {\bf 75(10)}, 1825-1830.
    !
-   !  Williamson, D.L., J. G. Olson, and B. A. Boville, 1998: A comparison of 
-   !  semi-Lagrangian and Eulerian tropical climate simulations. {\em Mon. Wea. Rev.}, 
+   !  Williamson, D.L., J. G. Olson, and B. A. Boville, 1998: A comparison of
+   !  semi-Lagrangian and Eulerian tropical climate simulations. {\em Mon. Wea. Rev.},
    !  {\bf 126}, 1001-1012
    !
 
@@ -144,10 +144,10 @@ contains
    !IROUTINE: SetServices -- Sets ESMF services for this component
    !DESCRIPTION:  This version uses the MAPL\_GenericSetServices, which sets
    !              the Initialize and Finalize services, as well as allocating
-   !   our instance of the MAPL\_MetaComp and putting it in the 
+   !   our instance of the MAPL\_MetaComp and putting it in the
    !   gridded component (GC). The MAPL\_MetaComp contains an ESMF state to use as
    !   an internal state. This routine describes the contents of this Internal state,
-   !   as well as of the conventional Import and Export states by making call 
+   !   as well as of the conventional Import and Export states by making call
    !   to MAPL.
    !INTERFACE:
    subroutine SetServices ( GC, RC )
@@ -284,7 +284,7 @@ contains
            RC=STATUS  )
       VERIFY_(STATUS)
 
-      call MAPL_AddExportSpec(GC,                                    & 
+      call MAPL_AddExportSpec(GC,                                    &
            SHORT_NAME = 'DVDT',                                      &
            LONG_NAME  = 'northward_wind_tendency',                   &
            UNITS      = 'm s-2',                                     &
@@ -293,7 +293,7 @@ contains
            RC=STATUS  )
       VERIFY_(STATUS)
 
-      call MAPL_AddExportSpec(GC,                                    & 
+      call MAPL_AddExportSpec(GC,                                    &
            SHORT_NAME = 'T_EQ',                                      &
            LONG_NAME  = 'equilibrium_temperature',                   &
            UNITS      = 'K',                                         &
@@ -302,7 +302,7 @@ contains
            RC=STATUS  )
       VERIFY_(STATUS)
 
-      call MAPL_AddExportSpec(GC,                                    & 
+      call MAPL_AddExportSpec(GC,                                    &
            SHORT_NAME = 'THEQ',                                      &
            LONG_NAME  = 'equilibrium_potential_temperature',         &
            UNITS      = 'K',                                         &
@@ -329,9 +329,9 @@ contains
            RC=STATUS  )
       VERIFY_(STATUS)
 
-      call MAPL_AddExportSpec(GC,                                    & 
+      call MAPL_AddExportSpec(GC,                                    &
            SHORT_NAME = 'DISS',                                      &
-           LONG_NAME  = 'frictional_dissipation',                    & 
+           LONG_NAME  = 'frictional_dissipation',                    &
            UNITS      = 'W m-2',                                     &
            DIMS       =  MAPL_DimsHorzOnly,                          &
            VLOCATION  =  MAPL_VLocationNone,                         &
@@ -361,14 +361,14 @@ contains
    !IROUTINE: Initialize
    !DESCRIPTION: Here we initialize the internal state, which in HS contains
    !   two-dimensional invariant arrays used in the forcing calculations. They
-   !   are done here simply for economy. Initialize calls MAPL\_GenericInitialize.  
-   !   If the import state needs to be restarted, MAPL will do it 
-   !   if a restart file is provided. 
+   !   are done here simply for economy. Initialize calls MAPL\_GenericInitialize.
+   !   If the import state needs to be restarted, MAPL will do it
+   !   if a restart file is provided.
 
    !INTERFACE:
    subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
       !ARGUMENTS:
-      type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+      type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
       type(ESMF_State),    intent(inout) :: IMPORT ! Import state
       type(ESMF_State),    intent(inout) :: EXPORT ! Export state
       type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
@@ -376,7 +376,7 @@ contains
 
       !EOP
       ! ErrLog Variables
-      character(len=ESMF_MAXSTR)    :: IAm 
+      character(len=ESMF_MAXSTR)    :: IAm
       integer                       :: STATUS
       character(len=ESMF_MAXSTR)    :: COMP_NAME
 
@@ -396,7 +396,7 @@ contains
 
       ! Local derived type aliases
       type (MAPL_MetaComp), pointer :: MAPL
-      type (ESMF_State   )          :: INTERNAL 
+      type (ESMF_State   )          :: INTERNAL
 
       ! Get the target components name and set-up traceback handle.
       Iam = "Initialize"
@@ -408,7 +408,7 @@ contains
       call MAPL_GetObjectFromGC   ( GC, MAPL,                   RC=STATUS)
       VERIFY_(STATUS)
 
-      ! Call Generic Initialize 
+      ! Call Generic Initialize
       call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK,  RC=STATUS)
       VERIFY_(STATUS)
 
@@ -437,8 +437,8 @@ contains
       ! Precompute Local heating distribution
 
       !BOR
-      !RESOURCE_ITEM: K day-1 :: Local heating 
-      call MAPL_GetResource(MAPL,QMAX,'QMAX:',default=.000    , RC=STATUS ) 
+      !RESOURCE_ITEM: K day-1 :: Local heating
+      call MAPL_GetResource(MAPL,QMAX,'QMAX:',default=.000    , RC=STATUS )
       VERIFY_(STATUS)
 
       if(QMAX /= 0.0) then
@@ -447,16 +447,16 @@ contains
 
          !RESOURCE_ITEM: degrees :: Central longitude of local heating, $\lambda_h$
          call MAPL_GetResource(MAPL,X0  ,'X0:'  ,default=0.0     , RC=STATUS)
-         VERIFY_(STATUS)                                               
+         VERIFY_(STATUS)
          !RESOURCE_ITEM: degrees :: Central latitude of local heating, $\phi_h$
          call MAPL_GetResource(MAPL,Y0  ,'Y0:'  ,default=0.0     , RC=STATUS)
-         VERIFY_(STATUS)                                               
+         VERIFY_(STATUS)
          !RESOURCE_ITEM: degrees :: Longitudinal width of local heating, $(\delta\lambda)_h$
          call MAPL_GetResource(MAPL,DX  ,'DX:'  ,default=30.     , RC=STATUS)
-         VERIFY_(STATUS)                                               
+         VERIFY_(STATUS)
          !RESOURCE_ITEM: degrees :: Latitudinal width of local heating, $(\delta\phi)_h$
          call MAPL_GetResource(MAPL,DY  ,'DY:'  ,default=5.0     , RC=STATUS)
-         VERIFY_(STATUS)                             
+         VERIFY_(STATUS)
 
          ! Horizontal structure of optional stationary heat source
          X0 = X0 * (MAPL_PI/180.0)
@@ -485,7 +485,7 @@ contains
       VERIFY_(STATUS)
       !RESOURCE_ITEM: degrees :: Williamson's $\phi_o$ parameter
       call MAPL_GetResource(MAPL,PHI0,'PHI0:',default=60.     , RC=STATUS)
-      VERIFY_(STATUS)                                      
+      VERIFY_(STATUS)
       !EOR
 
       ! Horizontal structure of Willianson parameterization
@@ -503,17 +503,17 @@ contains
    !DESCRIPTION: The Run method of the HS Gridded Component. It computes
    !  tendencies for temperature and winds as described above,
    !  as well as a number of
-   !  diagnostics. These are all optional Exports. The input winds 
+   !  diagnostics. These are all optional Exports. The input winds
    !  and/or temperatures may be Friendly. All Friendlies are updated
    !  using a time step
    !  obtained from 'RUN\_DT:' in the configuration. Both U and V must be
    !  Friendly for the wind to be updated. It is an error for one to be Friendly
-   !  and not the other.  
+   !  and not the other.
 
    !INTERFACE:
    subroutine Run( GC, IMPORT, EXPORT, CLOCK, RC )
       !ARGUMENTS:
-      type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+      type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
       type(ESMF_State),    intent(inout) :: IMPORT ! Import state
       type(ESMF_State),    intent(inout) :: EXPORT ! Export state
       type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
@@ -521,7 +521,7 @@ contains
 
       !EOP
       ! ErrLog Variables
-      character(len=ESMF_MAXSTR)        :: IAm 
+      character(len=ESMF_MAXSTR)        :: IAm
       integer                           :: STATUS
       character(len=ESMF_MAXSTR)        :: COMP_NAME
 
@@ -567,8 +567,8 @@ contains
       logical :: FriendlyWind
 
       real    :: DT
-      real    :: KA  
-      real    :: KS  
+      real    :: KA
+      real    :: KS
       real    :: KF
 
       ! 8 Held-Suarez parameters
@@ -641,25 +641,25 @@ contains
       !BOR
       !RESOURCE_ITEM: days :: H-S $k_a^{-1}$ parameter
       call MAPL_GetResource(MAPL,TAUA ,'TAUA:' ,default=40. ,     RC=STATUS )
-      VERIFY_(STATUS)                  
+      VERIFY_(STATUS)
       !RESOURCE_ITEM: days :: H-S $k_s^{-1}$ parameter
       call MAPL_GetResource(MAPL,TAUS ,'TAUS:' ,default=4.0 ,     RC=STATUS )
-      VERIFY_(STATUS)                  
+      VERIFY_(STATUS)
       !RESOURCE_ITEM: days :: H-S $k_f^{-1}$ parameter
       call MAPL_GetResource(MAPL,TAUF ,'TAUF:' ,default=1.0 ,     RC=STATUS )
       VERIFY_(STATUS)
       !RESOURCE_ITEM: days :: H-S $\sigma_b$ parameter
       call MAPL_GetResource(MAPL,SIG1 ,'SIG1:' ,default=0.7 ,     RC=STATUS )
-      VERIFY_(STATUS)                  
+      VERIFY_(STATUS)
       !RESOURCE_ITEM: K :: H-S $T_o$ parameter
       call MAPL_GetResource(MAPL,T0   ,'T0:'   ,default=315.,     RC=STATUS )
-      VERIFY_(STATUS)                  
+      VERIFY_(STATUS)
       !RESOURCE_ITEM: K :: H-S $(\Delta \theta)_z$ parameter
       call MAPL_GetResource(MAPL,DELV1,'DELV1:',default=10. ,     RC=STATUS )
-      VERIFY_(STATUS)                  
+      VERIFY_(STATUS)
       !RESOURCE_ITEM: K :: H-S $(\Delta T)_y$ parameter
       call MAPL_GetResource(MAPL,DELH ,'DELH:' ,default=60. ,     RC=STATUS )
-      VERIFY_(STATUS)                  
+      VERIFY_(STATUS)
       !RESOURCE_ITEM: K :: H-S $T_{strat}$ parameter
       call MAPL_GetResource(MAPL,TSTRT,'TSTRT:',default=200.,     RC=STATUS )
       VERIFY_(STATUS)
@@ -672,15 +672,15 @@ contains
       call MAPL_GetResource(mapl,P_1  ,'P1:'   ,default=0.0 ,     RC=STATUS )
       VERIFY_(STATUS)
       call MAPL_GetResource(mapl,QMAX ,'QMAX:' ,default=0.0 ,     RC=STATUS )
-      VERIFY_(STATUS)                                        
+      VERIFY_(STATUS)
 
       ! 3 Williamson parameters
       !RESOURCE_ITEM: K m-1 :: Williamson's $\gamma_I$ parameter
       call MAPL_GetResource(mapl,GAM_I,'GAM_I:',default=-3.345e-3,RC=STATUS)
-      VERIFY_(STATUS)                                        
+      VERIFY_(STATUS)
       !RESOURCE_ITEM: K m-1 :: Williamson's $\gamma_D$ parameter
       call MAPL_GetResource(mapl,GAM_D,'GAM_D:',default=.002     ,RC=STATUS)
-      VERIFY_(STATUS)                                        
+      VERIFY_(STATUS)
       !RESOURCE_ITEM: Pa :: Williamson's $p_D$ parameter
       call MAPL_GetResource(mapl,P_D  ,'P_D:'  ,default=1.E4     ,RC=STATUS)
       VERIFY_(STATUS)
@@ -743,7 +743,7 @@ contains
          DP  = (PLE(:,:,L)-PLE(:,:,L-1))
          PL  = (PLE(:,:,L)+PLE(:,:,L-1))*0.5
          DM  = DP / MAPL_GRAV
-         PK  = (PL/MAPL_P00)**MAPL_KAPPA 
+         PK  = (PL/MAPL_P00)**MAPL_KAPPA
 
          ! H&S equilibrium temperature
          TE  = PK*( T0 - DELH*SPHI2 - DELV1*CPHI2*log( PL/MAPL_P00 ) )
@@ -801,25 +801,25 @@ contains
                VR = 0.
             end where
 
-            if(associated(DTDT)) DTDT(:,:,L) = DTDT(:,:,L) + DP*VR 
+            if(associated(DTDT)) DTDT(:,:,L) = DTDT(:,:,L) + DP*VR
             if(FriendlyTemp    ) T   (:,:,L) = T   (:,:,L) + DT*VR
          end if
 
       enddo LEVELS
 
       ! Free 10 scratch arrays
-      deallocate(PK ) 
-      deallocate(DM ) 
-      deallocate(RR ) 
-      deallocate(F1 ) 
-      deallocate(PII) 
-      deallocate(DS ) 
-      deallocate(TE ) 
-      deallocate(VR ) 
-      deallocate(VV ) 
+      deallocate(PK )
+      deallocate(DM )
+      deallocate(RR )
+      deallocate(F1 )
+      deallocate(PII)
+      deallocate(DS )
+      deallocate(TE )
+      deallocate(VR )
+      deallocate(VV )
       deallocate(UU )
-      deallocate(PL ) 
-      deallocate(DP ) 
+      deallocate(PL )
+      deallocate(DP )
 
       ! Close timers
       call MAPL_TimerOff(MAPL,"RUN")
