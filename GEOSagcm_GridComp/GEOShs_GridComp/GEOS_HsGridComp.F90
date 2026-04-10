@@ -179,7 +179,6 @@ contains
 
       ! Set Data Services for the GC
 
-      !BOP
       !IROUTINE: State Descriptions
       !DESCRIPTION: The component uses all three states (Import, Export
       !  and Internal). There is no Private (non-ESMF) Internal state. All
@@ -187,148 +186,10 @@ contains
       !  horizontally dependent quantities that are set in Initialize, therefore
       !  it never needs checkpointing.
 
-      !IMPORT STATE:
-      call MAPL_AddImportSpec(gc, &
-           SHORT_NAME='U', &
-           LONG_NAME='eastward_wind', &
-           UNITS='m s-1', &
-           DEFAULT=0.0, &
-           DIMS=MAPL_DimsHorzVert, &
-           VLOCATION=MAPL_VLocationCenter, &
-           _RC)
-
-      call MAPL_AddImportSpec(gc, &
-           SHORT_NAME='V', &
-           LONG_NAME='northward_wind', &
-           UNITS='m s-1', &
-           DEFAULT=0.0, &
-           DIMS=MAPL_DimsHorzVert, &
-           VLOCATION=MAPL_VLocationCenter, &
-           _RC)
-
-      call MAPL_AddImportSpec(gc, &
-           SHORT_NAME='TEMP', &
-           LONG_NAME='air_temperature', &
-           UNITS='K', &
-           DEFAULT=300.0, &
-           DIMS=MAPL_DimsHorzVert, &
-           VLOCATION=MAPL_VLocationCenter, &
-           _RC)
-
-      call MAPL_AddImportSpec(gc, &
-           SHORT_NAME='PLE', &
-           LONG_NAME='edge_pressure', &
-           UNITS='Pa', &
-           DIMS=MAPL_DimsHorzVert, &
-           VLOCATION=MAPL_VLocationEdge, &
-           _RC)
-
-      !INTERNAL STATE:
-      call MAPL_AddInternalSpec(gc, &
-           SHORT_NAME='SPHI2', &
-           LONG_NAME='sine_latitude_squared', &
-           UNITS='1', &
-           DEFAULT=0.0, &
-           DIMS=MAPL_DimsHorzOnly, &
-           VLOCATION=MAPL_VLocationNone, &
-           RESTART=MAPL_RestartSkip, &
-           _RC)
-
-      call MAPL_AddInternalSpec(gc, &
-           SHORT_NAME='CPHI2', &
-           LONG_NAME='cosine_latitude_squared', &
-           UNITS='1', &
-           DEFAULT=0.0, &
-           DIMS=MAPL_DimsHorzOnly, &
-           VLOCATION=MAPL_VLocationNone, &
-           RESTART=MAPL_RestartSkip, &
-           _RC)
-
-      call MAPL_AddInternalSpec(gc, &
-           SHORT_NAME='HFCN', &
-           LONG_NAME='horizontal_structure_of_localized_heating', &
-           UNITS='1', &
-           DEFAULT=0.0, &
-           DIMS=MAPL_DimsHorzOnly, &
-           VLOCATION=MAPL_VLocationNone, &
-           RESTART=MAPL_RestartSkip, &
-           _RC)
-
-      call MAPL_AddInternalSpec(gc, &
-           SHORT_NAME='P_I', &
-           LONG_NAME='Williamson_interface_pressure', &
-           UNITS='1', &
-           DEFAULT=0.0, &
-           DIMS=MAPL_DimsHorzOnly, &
-           VLOCATION=MAPL_VLocationNone, &
-           RESTART=MAPL_RestartSkip, &
-           _RC)
-
-      !EXPORT STATE:
-      call MAPL_AddExportSpec(gc, &
-           SHORT_NAME='DTDT', &
-           LONG_NAME='pressure_weighted_air_temperature_tendency',&
-           UNITS='Pa K s-1', &
-           DIMS=MAPL_DimsHorzVert, &
-           VLOCATION=MAPL_VLocationCenter, &
-           _RC)
-
-      call MAPL_AddExportSpec(gc, &
-           SHORT_NAME='DUDT', &
-           LONG_NAME='eastward_wind_tendency', &
-           UNITS='m s-2', &
-           DIMS=MAPL_DimsHorzVert, &
-           VLOCATION=MAPL_VLocationCenter, &
-           _RC)
-
-      call MAPL_AddExportSpec(gc, &
-           SHORT_NAME='DVDT', &
-           LONG_NAME='northward_wind_tendency', &
-           UNITS='m s-2', &
-           DIMS=MAPL_DimsHorzVert, &
-           VLOCATION=MAPL_VLocationCenter, &
-           _RC)
-
-      call MAPL_AddExportSpec(gc, &
-           SHORT_NAME='T_EQ', &
-           LONG_NAME='equilibrium_temperature', &
-           UNITS='K', &
-           DIMS=MAPL_DimsHorzVert, &
-           VLOCATION=MAPL_VLocationCenter, &
-           _RC)
-
-      call MAPL_AddExportSpec(gc, &
-           SHORT_NAME='THEQ', &
-           LONG_NAME='equilibrium_potential_temperature', &
-           UNITS='K', &
-           DIMS=MAPL_DimsHorzVert, &
-           VLOCATION=MAPL_VLocationCenter, &
-           _RC)
-
-      call MAPL_AddExportSpec(gc, &
-           SHORT_NAME='TAUX', &
-           LONG_NAME='eastward_surface_stress', &
-           UNITS='N m-2', &
-           DIMS=MAPL_DimsHorzOnly, &
-           VLOCATION=MAPL_VLocationNone, &
-           _RC)
-
-      call MAPL_AddExportSpec(gc, &
-           SHORT_NAME='TAUY', &
-           LONG_NAME='northward_surface_stress', &
-           UNITS='N m-2', &
-           DIMS=MAPL_DimsHorzOnly, &
-           VLOCATION=MAPL_VLocationNone, &
-           _RC)
-
-      call MAPL_AddExportSpec(gc, &
-           SHORT_NAME='DISS', &
-           LONG_NAME='frictional_dissipation', &
-           UNITS='W m-2', &
-           DIMS=MAPL_DimsHorzOnly, &
-           VLOCATION=MAPL_VLocationNone, &
-           _RC)
-      !EOP
+      ! Set state variable specs
+#include "HS_Import___.h"
+#include "HS_Export___.h"
+#include "HS_Internal___.h"
 
       ! Set the Initialize and Run entry points
       call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_INITIALIZE, Initialize, _RC)
