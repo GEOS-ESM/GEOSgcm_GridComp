@@ -234,10 +234,7 @@ contains
       real, pointer :: LONS(:, :)
 
       ! Pointers to internals
-      real, pointer :: SPHI2(:, :)
-      real, pointer :: CPHI2(:, :)
-      real, pointer :: HFCN(:, :)
-      real, pointer :: P_I(:, :)
+#include "HS_DeclarePointer___.h"
 
       ! Local variables
       real :: DX, DY, X0, Y0
@@ -245,7 +242,7 @@ contains
 
       ! Local derived type aliases
       type(MAPL_MetaComp), pointer :: MAPL
-      type(ESMF_State) :: INTERNAL
+      type(ESMF_State) :: internal
 
       ! Get the target components name and set-up traceback handle.
       IAm = "Initialize"
@@ -266,14 +263,11 @@ contains
       call MAPL_Get(MAPL, &
            LATS=LATS, & ! These are in radians
            LONS=LONS, & ! These are in radians
-           INTERNAL_ESMF_STATE=INTERNAL, &
+           INTERNAL_ESMF_STATE=internal, &
            _RC)
 
       ! Get pointers to internal variables
-      call MAPL_GetPointer(INTERNAL, SPHI2, 'SPHI2', _RC)
-      call MAPL_GetPointer(INTERNAL, CPHI2, 'CPHI2', _RC)
-      call MAPL_GetPointer(INTERNAL, HFCN, 'HFCN', _RC)
-      call MAPL_GetPointer(INTERNAL, P_I, 'P_I', _RC)
+#include "HS_GetPointer___.h"
 
       ! Initialize geometric factors
       SPHI2 = sin(LATS)**2
@@ -365,20 +359,12 @@ contains
 
       ! Local derived type aliases
       type(MAPL_MetaComp), pointer :: MAPL
-      type(ESMF_State) :: INTERNAL
+      type(ESMF_State) :: internal
       type(ESMF_Grid) :: GRID
       type(ESMF_Logical) :: Friendly
 
-      ! Pointers to inputs
-      real, pointer, dimension(:, :, :) :: PLE, T, U, V
-
-      ! Pointers to internals
-      real, pointer, dimension(:, :) :: HFCN, SPHI2, CPHI2, P_I
-
-      ! Pointers to outputs
-      real, pointer, dimension(:, :, :) :: DTDT, DUDT, DVDT
-      real, pointer, dimension(:, :, :) :: THEQ, T_EQ
-      real, pointer, dimension(:, :) :: TAUX, TAUY, DISS
+      ! Pointers to imports/internals/exports
+#include "HS_DeclarePointer___.h"
 
       ! Scratch arrays and working pointers
       real, allocatable, dimension(:, :) :: PII
@@ -445,30 +431,11 @@ contains
       ! Get esmf internal state from generic state.
       call MAPL_Get(MAPL, &
            IM=IM, JM=JM, LM=LM, &
-           INTERNAL_ESMF_STATE=INTERNAL, &
+           INTERNAL_ESMF_STATE=internal, &
            _RC)
 
-      ! Pointers TO INTERNALS
-      call MAPL_GetPointer(INTERNAL, SPHI2, 'SPHI2', _RC)
-      call MAPL_GetPointer(INTERNAL, CPHI2, 'CPHI2', _RC)
-      call MAPL_GetPointer(INTERNAL, HFCN, 'HFCN', _RC)
-      call MAPL_GetPointer(INTERNAL, P_I, 'P_I', _RC)
-
-      ! Pointers TO IMPORTS
-      call MAPL_GetPointer(import, PLE, 'PLE', _RC)
-      call MAPL_GetPointer(import, T, 'TEMP', _RC)
-      call MAPL_GetPointer(import, U, 'U', _RC)
-      call MAPL_GetPointer(import, V, 'V', _RC)
-
-      ! Pointers TO EXPORTS
-      call MAPL_GetPointer(export, DUDT, 'DUDT', _RC)
-      call MAPL_GetPointer(export, DVDT, 'DVDT', _RC)
-      call MAPL_GetPointer(export, DTDT, 'DTDT', _RC)
-      call MAPL_GetPointer(export, DISS, 'DISS', _RC)
-      call MAPL_GetPointer(export, THEQ, 'THEQ', _RC)
-      call MAPL_GetPointer(export, T_EQ, 'T_EQ', _RC)
-      call MAPL_GetPointer(export, TAUX, 'TAUX', _RC)
-      call MAPL_GetPointer(export, TAUY, 'TAUY', _RC)
+      ! Pointers to internals
+#include "HS_GetPointer___.h"
 
       ! Get parameters from the configuration
 
@@ -580,10 +547,10 @@ contains
          F1 = max(0.0, ((PL / PS) - SIG1) / (1.0 - SIG1))
 
          ! Atmospheric heating from H&S
-         RR = (KA + (KS - KA) * F1 * CPHI2**2) * (TE - T(:, :, L))
+         RR = (KA + (KS - KA) * F1 * CPHI2**2) * (TE - TEMP(:, :, L))
 
          if (associated(DTDT)) DTDT(:, :, L) = DP * RR
-         if (FriendlyTemp) T(:, :, L) = T(:, :, L) + DT * RR
+         if (FriendlyTemp) TEMP(:, :, L) = TEMP(:, :, L) + DT * RR
 
          ! Wind tendencies
          UU = -U(:, :, L) * (F1 * KF)
@@ -603,7 +570,7 @@ contains
          if (associated(DISS)) DISS = DISS - DS * DM
          if (FRICQ /= 0) then
             if (associated(DTDT)) DTDT(:, :, L) = DTDT(:, :, L) - DS * (DP / MAPL_CP)
-            if (FriendlyTemp) T(:, :, L) = T(:, :, L) - DS * (DT / MAPL_CP)
+            if (FriendlyTemp) TEMP(:, :, L) = TEMP(:, :, L) - DS * (DT / MAPL_CP)
          end if
 
          !  Surface stresses from vertically integrated H&S surface drag
@@ -619,7 +586,7 @@ contains
             end where
 
             if (associated(DTDT)) DTDT(:, :, L) = DTDT(:, :, L) + DP * VR
-            if (FriendlyTemp) T(:, :, L) = T(:, :, L) + DT * VR
+            if (FriendlyTemp) TEMP(:, :, L) = TEMP(:, :, L) + DT * VR
          end if
 
       end do LEVELS
