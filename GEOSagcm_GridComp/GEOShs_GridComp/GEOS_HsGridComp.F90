@@ -127,7 +127,17 @@ module GEOS_HSGridCompMod
    !USES:
 
    use ESMF
-   use MAPL_Mod
+   use MAPL, only: MAPL_AddImportSpec, MAPL_AddExportSpec, MAPL_AddInternalSpec
+   use MAPL, only: MAPL_DimsHorzVert, MAPL_DimsHorzOnly
+   use MAPL, only: MAPL_VLocationCenter, MAPL_VLocationEdge, MAPL_VLocationNone
+   use MAPL, only: MAPL_RestartSkip
+   use MAPL, only: MAPL_GridCompSetEntryPoint, MAPL_GenericSetServices, MAPL_GenericInitialize
+   use MAPL, only: MAPL_MetaComp
+   use MAPL, only: MAPL_Get, MAPL_GetObjectFromGC, MAPL_GetPointer, MAPL_GetResource
+   use MAPL, only: MAPL_VerifyFriendly
+   use MAPL, only: MAPL_TimerAdd, MAPL_TimerOn, MAPL_TimerOff
+   use MAPL, only: MAPL_Verify, MAPL_Return, MAPL_ASRT
+   use MAPL_Constants, only: MAPL_PI, MAPL_GRAV, MAPL_P00, MAPL_KAPPA, MAPL_RGAS, MAPL_CP
 
    implicit none
    private
