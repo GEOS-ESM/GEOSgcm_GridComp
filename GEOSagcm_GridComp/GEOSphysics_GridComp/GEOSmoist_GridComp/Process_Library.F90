@@ -212,8 +212,9 @@ module GEOSmoist_Process_Library
   integer :: ICE_RADII_PARAM = 1
 
   ! defined to determine CNV_FRACTION
-  real    :: CNV_FRACTION_MIN
-  real    :: CNV_FRACTION_MAX
+  real    :: CNV_FRACTION_MIN =  500.0
+  real    :: CNV_FRACTION_MAX = 1500.0
+  real    :: CNV_FRACTION_EXP =    1.0
 
   ! Storage of aerosol properties for activation
   type(AerPropsNew) :: AeroPropsNew(nsmx_par)
@@ -257,7 +258,7 @@ module GEOSmoist_Process_Library
   public :: dissipative_ke_heating
   public :: pdffrac, pdfcondensate, partition_dblgss
   public :: SIGMA_DX, SIGMA_EXP
-  public :: CNV_FRACTION_MIN, CNV_FRACTION_MAX
+  public :: CNV_FRACTION_MIN, CNV_FRACTION_MAX, CNV_FRACTION_EXP
   public :: SH_MD_DP, DBZ_VAR_INTERCP, DBZ_LIQUID_SKIN, LIQ_RADII_PARAM, ICE_RADII_PARAM
   public :: refl10cm_allow_wet_graupel, refl10cm_allow_wet_snow
   public :: update_cld, meltfrz_inst2M
@@ -2784,12 +2785,15 @@ subroutine hystpdf( &
       QI   = QILS + QICN
       QL   = QLLS + QLCN
       QTOT = QI + QL
+
+      ! We calculate FQA for reference, but we NO LONGER scale NI by it.
       FQA  = 0.0
       if (QTOT .gt. 0.0) FQA = (QICN + QILS) / QTOT
 
-      ! FIX #2: Use ice mass fraction (FQA) to scale NI toward large-scale
-      ! ice crystal number, not liquid fraction (1-FQA).
-      NIX = FQA * NI
+      ! CORRECTION 2: Use the actual ice crystal number concentration (NI) 
+      ! provided by the aerosol/nucleation scheme. Do not scale it by ice mass fraction.
+      ! Added a tiny lower bound to prevent divide-by-zero.
+      NIX = MAX(NI, 1.0e-12)
 
       DQALL = DQALL / DTIME
       CFALL = min(CF + AF, 1.0)
@@ -2843,7 +2847,9 @@ subroutine hystpdf( &
          LHcorr = (1.0 + DQSI*MAPL_ALHS/MAPL_CP)                ! ice deposition correction
 
          if ((NIX .gt. 1.0) .and. (QILS .gt. 1.0e-10)) then
-            DC = max((QILS/(NIX*DENICE*MAPL_PI))**(0.333), 20.0e-6)  ! monodisperse
+            ! Added missing factor of 6.0 for spherical volume math.
+            ! D = (6 * Mass / (N * rho * pi))^(1/3)
+            DC = max( (6.0 * QILS / (NIX * DENICE * MAPL_PI))**(1.0/3.0), 20.0e-6 )
          else
             DC = 20.0e-6
          end if
@@ -2853,6 +2859,8 @@ subroutine hystpdf( &
          DEP = 0.0
          if ((TEFF .gt. 0.0) .and. (QILS .gt. 1.0e-14)) then
             AUX = max(min(DTIME*TEFF, 20.0), 0.0)
+            ! Note: This analytical integration assumes T and QV are constant over DTIME.
+            ! If time steps are long, this may still slightly over-predict deposition.
             DEP = (QVINC - QSICE) * (1.0 - EXP(-AUX)) / DTIME
          end if
          DEP = MAX(DEP, -QILS/DTIME)   ! only existing ice can sublimate

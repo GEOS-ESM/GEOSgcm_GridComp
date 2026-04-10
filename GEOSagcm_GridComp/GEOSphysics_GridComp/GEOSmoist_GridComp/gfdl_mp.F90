@@ -194,7 +194,7 @@ module gfdl_mp_mod
     ! namelist parameters
     ! -----------------------------------------------------------------------
 
-    integer :: ntimes = 2 ! cloud microphysics sub cycles
+    integer :: ntimes = 1 ! cloud microphysics sub cycles
 
     integer :: nconds = 1 ! condensation sub cycles
 
@@ -410,8 +410,8 @@ module gfdl_mp_mod
     real :: tau_v2l  =  120.0 ! water vapor to cloud water condensation time scale (s)
     real :: tau_l2v  =  300.0 ! cloud water to water vapor evaporation time scale (s)
     real :: tau_revp =  600.0 ! rain evaporation time scale (s)
-    real :: tau_frez =  600.0 ! cloud liquid freezing time scale (s)
-    real :: tau_imlt =  600.0 ! cloud ice melting time scale (s)
+    real :: tau_frez =   75.0 ! cloud liquid freezing time scale (s)
+    real :: tau_imlt =  150.0 ! cloud ice melting time scale (s)
     real :: tau_smlt =  900.0 ! snow melting time scale (s)
     real :: tau_gmlt = 1200.0 ! graupel melting time scale (s)
     ! subgridz timescales
@@ -448,12 +448,12 @@ module gfdl_mp_mod
     real :: c_pgaci = 0.01 ! cloud ice to graupel accretion efficiency (was 0.1 in ZETAC)
     real :: c_pgacs = 0.01 ! snow to graupel accretion efficiency (was 0.1 in ZETAC)
     !   Wet processes (liquid to/from frozen)
-    real :: c_psacw = 1.0  ! cloud water to snow accretion efficiency
-    real :: c_pracw = 1.0  ! cloud water to rain accretion efficiency
-    real :: c_praci = 1.0  ! cloud ice to rain accretion efficiency
+    real :: c_psacw = 1.0 ! cloud water to snow accretion efficiency
+    real :: c_pracw = 1.0 ! cloud water to rain accretion efficiency
+    real :: c_praci = 1.0 ! cloud ice to rain accretion efficiency
     real :: c_pgacw = 1.0 ! cloud water to graupel accretion efficiency
-    real :: c_pracs = 1.0  ! snow to rain accretion efficiency
-    real :: c_psacr = 1.0  ! rain to snow accretion efficiency
+    real :: c_pracs = 1.0 ! snow to rain accretion efficiency
+    real :: c_psacr = 1.0 ! rain to snow accretion efficiency
     real :: c_pgacr = 1.0 ! rain to graupel accretion efficiency
 
     real :: is_fac = 0.2 ! cloud ice sublimation temperature factor
@@ -474,14 +474,14 @@ module gfdl_mp_mod
 
     real :: vw_min = 0.0  !< minimum fall speed for cloud water (m/s)
     real :: vi_min = 0.01 !< minimum fall speed or constant fall speed
-    real :: vs_min = 1.   !< minimum fall speed or constant fall speed
-    real :: vg_min = 3.   !< minimum fall speed or constant fall speed
-    real :: vr_min = 4.   !< minimum fall speed or constant fall speed
+    real :: vs_min = 0.5  !< minimum fall speed or constant fall speed
+    real :: vg_min = 2.   !< minimum fall speed or constant fall speed
+    real :: vr_min = 0.5  !< minimum fall speed or constant fall speed
     real :: vh_min = 9.   !< minimum fall speed or constant fall speed
             
     real :: vw_max = 0.01 !< max fall speed for cloud water (m/s)
-    real :: vi_max =  1.0 !< max fall speed for ice
-    real :: vs_max =  2.0 !< max fall speed for snow
+    real :: vi_max =  0.3 !< max fall speed for ice
+    real :: vs_max =  1.5 !< max fall speed for snow
     real :: vg_max =  9.0 !< max fall speed for graupel
     real :: vr_max = 12.0 !< max fall speed for rain
     real :: vh_max = 19.0 !< max fall speed for hail
@@ -609,7 +609,8 @@ subroutine gfdl_mp_init (hydrostatic,dtm)
     logical :: exists
 
     ! update default ntimes
-    ntimes = max (ntimes, ceiling (dtm / min (0.5*dtm, mp_time)))
+!!  ntimes = max (ntimes, ceiling (dtm / min (0.5*dtm, mp_time)))
+    ntimes = max (ntimes, int (dtm / min (dtm, mp_time)))
 
     ! -----------------------------------------------------------------------
     ! read namelist
@@ -1419,7 +1420,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         ! 1 minus sigma used to control resolution sensitive parameters
         ! -----------------------------------------------------------------------
         if (do_scale_dep) then
-          onemsig = 1.0 - sigma(sqrt(area(i)))
+        onemsig = 1.0 - sigma(sqrt(area(i)))
         else
           onemsig = 1.0
         endif
@@ -1439,12 +1440,12 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         !   Coarse (onemsig=0):  7.0e-6 + 3.e-6  = 10.0e-6
         !   Fine   (onemsig=1):  7.0e-6 + 0.0    = 7.0e-6
         rthreshu_ = rthreshu + (1.0-onemsig)*3.e-6
- 
+
         ! -----------------------------------------------------------------------
         ! adjust autoconversion rates and thresholds for stable vs unstable 
         ! -----------------------------------------------------------------------
         ! include stability dependence
-        cpaut  =  cpaut0 * (     0.75*fac_eis +           (1.0-fac_eis))
+        cpaut  = cpaut0 * (    0.75*fac_eis +          (1.0-fac_eis))
         ! include stability dependence
         fac_rc =      rc * (rthreshs_*fac_eis + rthreshu_*(1.0-fac_eis)) ** 3
 
@@ -1846,7 +1847,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
 
         if (do_sedi_uv) then
             if (do_sedi_heat) then
-              do k = ks, ke
+            do k = ks, ke
                 tz (k) = tz (k) - tzuv (k)
                 q_liq (k) = qlz (k) + qrz (k)
                 q_sol (k) = qiz (k) + qsz (k) + qgz (k)
@@ -1856,7 +1857,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
                 tzuv (k) = (0.5 * (ua (i, k) ** 2 + va (i, k) ** 2) * dp0 (k) - &
                     0.5 * (u (k) ** 2 + v (k) ** 2) * dp (k)) / c8 / dp (k)
                 tz (k) = tz (k) + tzuv (k)
-              enddo
+            enddo
             endif
             do k = ks, ke
                ua (i, k) = u (k)
@@ -1866,7 +1867,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
 
         if (do_sedi_w) then
             if (do_sedi_heat) then
-              do k = ks, ke
+            do k = ks, ke
                 tz (k) = tz (k) - tzw (k)
                 q_liq (k) = qlz (k) + qrz (k)
                 q_sol (k) = qiz (k) + qsz (k) + qgz (k)
@@ -1876,7 +1877,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
                 tzw (k) = (0.5 * (wa (i, k) ** 2) * dp0 (k) - &
                     0.5 * (w (k) ** 2) * dp (k)) / c8 / dp (k)
                 tz (k) = tz (k) + tzw (k)
-              enddo
+            enddo
             endif
             do k = ks, ke
                wa (i, k) = w (k)
@@ -2717,7 +2718,7 @@ subroutine sedi_melt (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
 
     integer :: k, m
 
-    real :: dtime, sink, zs
+    real :: dtime, sink, zs, fac_mlt
 
     real, dimension (ks:ke) :: q
 
@@ -2750,9 +2751,15 @@ subroutine sedi_melt (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
                 if (zt (k) .lt. ze (m + 1) .and. tz (m) .gt. tice) then
                     cvm (k) = mhc (qv (k), ql (k), qr (k), qi (k), qs (k), qg (k))
                     cvm (m) = mhc (qv (m), ql (m), qr (m), qi (m), qs (m), qg (m))
+                    ! 1. Calculate actual time spent falling through this layer
                     dtime = min (dts, (ze (m) - ze (m + 1)) / vt (k))
-                    dtime = min (1.0, dtime / tau_mlt)
-                    sink = min (q (k) * dp (k) / dp (m), dtime * (tz (m) - tice) / icpk (m))
+                    ! 2. Calculate the exponential melting fraction
+                    ! Using a local variable 'fac_mlt' is cleaner
+                    fac_mlt = 1.0 - exp(-dtime / tau_mlt)
+                    ! 3. Calculate melting amount based on FALLING MASS, not the limit
+                    sink = fac_mlt * (q (k) * dp (k) / dp (m))
+                    ! 4. Apply the thermodynamic safety limit
+                    sink = min (sink, (tz (m) - tice) / icpk (m))
                     mppm = mppm + sink * dp (k) * convt
                     q (k) = q (k) - sink * dp (m) / dp (k)
                     if (zt (k) .lt. zs) then
@@ -2770,9 +2777,11 @@ subroutine sedi_melt (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
                         case default
                             print *, "gfdl_mp: qflag error!"
                     end select
-                    tz (k) = (tz (k) * cvm (k) - li00 * sink * dp (m) / dp (k)) / &
+                    ! 5. FIXED THERMODYNAMICS: Apply cooling to layer m, not k!
+                    tz (k) = (tz (k) * cvm (k)) / &
                         mhc (qv (k), ql (k), qr (k), qi (k), qs (k), qg (k))
-                    tz (m) = (tz (m) * cvm (m)) / &
+                        
+                    tz (m) = (tz (m) * cvm (m) - li00 * sink) / &
                         mhc (qv (m), ql (m), qr (m), qi (m), qs (m), qg (m))
                 endif
                 if (q (k) .lt. qcmin) exit
@@ -3576,8 +3585,8 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newliq = new_liq_condensate(tmp, ql, qi)
-            sink = fac_imlt * min (qi, newliq, (tz (k) - tice) / icpk (k))
+            newliq = fac_imlt * new_liq_condensate(tmp, ql, qi)
+            sink = min (qi, newliq, (tz (k) - tice) / icpk (k))
             tmp = min (sink, dim (ql_mlt/qadum, ql))
 
             tmp = tmp * qadum
@@ -3600,8 +3609,8 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newice = new_ice_condensate(tmp, ql, qi)
-            sink = fac_frez * min(ql, newice, ql * (tice - tz (k)) / icpk (k))
+            newice = fac_frez * new_ice_condensate(tmp, ql, qi)
+            sink = min(ql, newice, (tice - tz (k)) / icpk (k))
             qim = qi0_max / den (k)
             tmp = min (sink, dim (qim/qadum, qi))
 
@@ -3672,8 +3681,8 @@ subroutine pimlt (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, t
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newliq = new_liq_condensate(tmp, ql, qi)
-            sink = fac_imlt * min (qi, newliq, (tz (k) - tice) / icpk (k))
+            newliq = fac_imlt * new_liq_condensate(tmp, ql, qi)
+            sink = min (qi, newliq, (tz (k) - tice) / icpk (k))
             tmp = min (sink, dim (ql_mlt/qadum, ql))
 
             tmp = tmp * qadum
@@ -3743,8 +3752,8 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newice = new_ice_condensate(tmp, ql, qi)
-            sink = fac_frez * min(ql, newice, ql * (tice - tz (k)) / icpk (k))
+            newice = fac_frez * new_ice_condensate(tmp, ql, qi)
+            sink = min(ql, newice, (tice - tz (k)) / icpk (k))
             qim = qi0_max / den (k)
             tmp = min (sink, dim (qim/qadum, qi))
 
@@ -4063,7 +4072,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
             di  = max (di, qcmin)
             q_plus = qi + di
             ! Use of ice_fraction here is critical to producing the proper snow in reflectivity vs too much cloud ice
-            qim = ice_fraction(real(tz(k)), cnv_fraction, srf_type) * critical_qi_factor / den (k)
+            qim = max(ice_fraction(real(tz(k)), cnv_fraction, srf_type), 0.01) * critical_qi_factor / den (k)
             if (q_plus .gt. (qim + qcmin)) then
                 if (qim .gt. (qi - di)) then
                     dq = (0.25 * (q_plus - qim) ** 2) / di
@@ -4072,7 +4081,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
                 endif
                 sink = fac_i2s * exp (0.025 * tc) * dq
             endif
-            sink = min (fi2s_fac * qi, sink) * qadum
+            sink = min (qi, sink) * qadum
             mppas = mppas + sink * dp (k) * convt
 
             call update_qq (qak (k), qvk (k), qlk (k), qrk (k), qik (k), qsk (k), qgk (k), &
@@ -4785,16 +4794,16 @@ subroutine pcomp (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, lcp
 
     integer :: k
 
-    real :: fac_frez, ifrac, sink
-
-    fac_frez = 1. - exp (- dts / tau_frez)
-
+    real :: sink, tc
+                
     do k = ks, ke
 
-        ifrac = ice_fraction(real(tz(k)),cnv_fraction,srf_type)
-        if (ifrac .ge. 0.99 .and. ql (k) .gt. qcmin) then
+        tc = t_wfr - tz (k)
 
-            sink = min(ql (k), fac_frez * ql (k) )
+        if (tc .gt. 0. .and. ql (k) .gt. qcmin) then
+
+            sink = ql (k) * tc / dt_fr
+            sink = min (ql (k), sink, tc / icpk (k))
             mppfw = mppfw + sink * dp (k) * convt
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
@@ -4854,7 +4863,7 @@ subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den,
     ! If onemsig = 0.0 (50km),  tau_wbf_eff = tau_wbf * 10.0
     ! -------------------------------------------------------------------
     tau_wbf_eff = tau_wbf * (wbf_coarse_mult * (1.0 - onemsig) + onemsig)
-    
+
     ! Calculate the time-step fraction using the effective timescale
     fac_wbf = 1. - exp (- dts / tau_wbf_eff)
 
@@ -6414,8 +6423,8 @@ subroutine psmlt_simp (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8
 
         if (tc .ge. 0. .and. qs (k) .gt. qpmin) then
 
-            sink = (tc * 0.1) ** 2 * qs (k)
-            sink = min (qs (k), sink, fac_smlt * tc / icpk (k))
+            sink =fac_smlt * (tc * 0.1) ** 2 * qs (k)
+            sink = min (qs (k), sink, tc / icpk (k))
             tmp = min (sink, dim (qs_mlt, ql (k)))
             mppms = mppms + sink * dp (k) * convt
 
