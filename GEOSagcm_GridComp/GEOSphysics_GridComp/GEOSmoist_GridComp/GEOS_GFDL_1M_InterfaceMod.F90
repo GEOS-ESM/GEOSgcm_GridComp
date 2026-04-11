@@ -253,7 +253,7 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
     call MAPL_GetResource( MAPL, LPHYS_HYDROSTATIC, Label="PHYS_HYDROSTATIC:",  default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
     LHYDROSTATIC = LPHYS_HYDROSTATIC
-    call MAPL_GetResource( MAPL, LMELTFRZ_CLDMACRO, Label="MELTFRZ_CLDMACRO:",  default=.TRUE., RC=STATUS)
+    call MAPL_GetResource( MAPL, LMELTFRZ_CLDMACRO, Label="MELTFRZ_CLDMACRO:",  default=.FALSE., RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LMELTFRZ_CLDMICRO, Label="MELTFRZ_CLDMICRO:",  default=.FALSE., RC=STATUS)
     VERIFY_(STATUS)
@@ -292,7 +292,6 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
     call MAPL_GetResource( MAPL, DBZ_LIQUID_SKIN , 'DBZ_LIQUID_SKIN:' , DEFAULT= DBZ_LIQUID_SKIN, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, DBZ_VAR_INTERCP , 'DBZ_VAR_INTERCP:' , DEFAULT= DBZ_VAR_INTERCP, RC=STATUS); VERIFY_(STATUS)
 
-
                                  refl10cm_allow_wet_graupel = .false.
     call MAPL_GetResource( MAPL, refl10cm_allow_wet_graupel , 'refl10cm_allow_wet_graupel:' , &
                         DEFAULT= refl10cm_allow_wet_graupel, RC=STATUS); VERIFY_(STATUS)
@@ -303,7 +302,7 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
     call MAPL_GetResource( MAPL, constrain_modis_ice, 'constrain_modis_ice:', DEFAULT= .FALSE., RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, TURNRHCRIT_PARAM, 'TURNRHCRIT:'      , DEFAULT= -9999., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MAX_RH_CRIT     , 'MAX_RH_CRIT:'     , DEFAULT= 0.9800, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, MAX_RH_CRIT     , 'MAX_RH_CRIT:'     , DEFAULT= 0.9900, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MIN_RH_UNSTABLE , 'MIN_RH_UNSTABLE:' , DEFAULT= 0.9125, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MIN_RH_STABLE   , 'MIN_RH_STABLE:'   , DEFAULT= 0.9125, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 1     , RC=STATUS); VERIFY_(STATUS)
@@ -320,6 +319,9 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
     call MAPL_GetResource( MAPL, MIN_RL          , 'MIN_RL:'          , DEFAULT= 2.5e-6, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MAX_RL          , 'MAX_RL:'          , DEFAULT=60.0e-6, RC=STATUS); VERIFY_(STATUS)
 
+    ! USE_BERGERON should be .TRUE. only when USE_AEROSOL_NN is also .TRUE.
+    call MAPL_GetResource( MAPL, USE_BERGERON    , 'USE_BERGERON:'    , DEFAULT=USE_AEROSOL_NN, RC=STATUS); VERIFY_(STATUS)
+
                                  CCW_EVAP_EFF = 4.e-3
     call MAPL_GetResource( MAPL, CCW_EVAP_EFF, 'CCW_EVAP_EFF:', DEFAULT= CCW_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
 
@@ -327,7 +329,7 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
     call MAPL_GetResource( MAPL, CCI_EVAP_EFF, 'CCI_EVAP_EFF:', DEFAULT= CCI_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 4000.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 3000.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    2.0, RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, GFDL_MP_KLID    , 'GFDL_MP_KLID:'    , DEFAULT= -999.0, RC=STATUS); VERIFY_(STATUS)
@@ -1069,12 +1071,18 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                                          QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L), &
                                                          REMOVE_CLOUDS=(L < KLID) )
                endif
-              ! Scale-aware sigma
-               ONE_M_SIG = 1.0 - SIGMA(SQRT(AREA(i,j)))
+             !! Scale-aware sigma
+             ! ONE_M_SIG = 1.0 - SIGMA(SQRT(AREA(i,j)))
+             !! get radiative properties
+             ! call RADCOUPLE_BINARY ( T(I,J,L), PLmb(I,J,L), CLLS(I,J,L), CLCN(I,J,L), &
+             !       Q(I,J,L), QLLS(I,J,L), QILS(I,J,L), QLCN(I,J,L), QICN(I,J,L), QRAIN(I,J,L), QSNOW(I,J,L), QGRAUPEL(I,J,L), NACTL(I,J,L), NACTI(I,J,L), &
+             !       ONE_M_SIG, RAD_QV(I,J,L), RAD_QL(I,J,L), RAD_QI(I,J,L), RAD_QR(I,J,L), RAD_QS(I,J,L), RAD_QG(I,J,L), RAD_CF(I,J,L), &
+             !       CLDREFFL(I,J,L), CLDREFFI(I,J,L), &
+             !       FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI)
               ! get radiative properties
-               call RADCOUPLE_BINARY ( T(I,J,L), PLmb(I,J,L), CLLS(I,J,L), CLCN(I,J,L), &
+               call RADCOUPLE ( T(I,J,L), PLmb(I,J,L), CLLS(I,J,L), CLCN(I,J,L), &
                      Q(I,J,L), QLLS(I,J,L), QILS(I,J,L), QLCN(I,J,L), QICN(I,J,L), QRAIN(I,J,L), QSNOW(I,J,L), QGRAUPEL(I,J,L), NACTL(I,J,L), NACTI(I,J,L), &
-                     ONE_M_SIG, RAD_QV(I,J,L), RAD_QL(I,J,L), RAD_QI(I,J,L), RAD_QR(I,J,L), RAD_QS(I,J,L), RAD_QG(I,J,L), RAD_CF(I,J,L), &
+                     RAD_QV(I,J,L), RAD_QL(I,J,L), RAD_QI(I,J,L), RAD_QR(I,J,L), RAD_QS(I,J,L), RAD_QG(I,J,L), RAD_CF(I,J,L), &
                      CLDREFFL(I,J,L), CLDREFFI(I,J,L), &
                      FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI)
             enddo
