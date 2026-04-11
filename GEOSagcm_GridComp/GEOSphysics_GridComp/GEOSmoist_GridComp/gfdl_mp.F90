@@ -410,8 +410,8 @@ module gfdl_mp_mod
     real :: tau_v2l  =  120.0 ! water vapor to cloud water condensation time scale (s)
     real :: tau_l2v  =  300.0 ! cloud water to water vapor evaporation time scale (s)
     real :: tau_revp =  600.0 ! rain evaporation time scale (s)
-    real :: tau_frez =   75.0 ! cloud liquid freezing time scale (s)
-    real :: tau_imlt =  150.0 ! cloud ice melting time scale (s)
+    real :: tau_frez =  150.0 ! cloud liquid freezing time scale (s)
+    real :: tau_imlt =  600.0 ! cloud ice melting time scale (s)
     real :: tau_smlt =  900.0 ! snow melting time scale (s)
     real :: tau_gmlt = 1200.0 ! graupel melting time scale (s)
     ! subgridz timescales
@@ -475,13 +475,13 @@ module gfdl_mp_mod
     real :: vw_min = 0.0  !< minimum fall speed for cloud water (m/s)
     real :: vi_min = 0.01 !< minimum fall speed or constant fall speed
     real :: vs_min = 0.5  !< minimum fall speed or constant fall speed
-    real :: vg_min = 2.   !< minimum fall speed or constant fall speed
-    real :: vr_min = 0.5  !< minimum fall speed or constant fall speed
+    real :: vg_min = 3.   !< minimum fall speed or constant fall speed
+    real :: vr_min = 4.   !< minimum fall speed or constant fall speed
     real :: vh_min = 9.   !< minimum fall speed or constant fall speed
             
     real :: vw_max = 0.01 !< max fall speed for cloud water (m/s)
-    real :: vi_max =  0.3 !< max fall speed for ice
-    real :: vs_max =  1.5 !< max fall speed for snow
+    real :: vi_max =  1.0 !< max fall speed for ice
+    real :: vs_max =  2.0 !< max fall speed for snow
     real :: vg_max =  9.0 !< max fall speed for graupel
     real :: vr_max = 12.0 !< max fall speed for rain
     real :: vh_max = 19.0 !< max fall speed for hail
@@ -1842,23 +1842,9 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
 
         ! -----------------------------------------------------------------------
         ! momentum transportation during sedimentation
-        ! update temperature after delp and q update
         ! -----------------------------------------------------------------------
 
         if (do_sedi_uv) then
-            if (do_sedi_heat) then
-            do k = ks, ke
-                tz (k) = tz (k) - tzuv (k)
-                q_liq (k) = qlz (k) + qrz (k)
-                q_sol (k) = qiz (k) + qsz (k) + qgz (k)
-                q_cond = q_liq (k) + q_sol (k)
-                con_r8 = one_r8 - (qvz (k) + q_cond)
-                c8 = mhc (con_r8, qvz (k), q_liq (k), q_sol (k)) * c_air
-                tzuv (k) = (0.5 * (ua (i, k) ** 2 + va (i, k) ** 2) * dp0 (k) - &
-                    0.5 * (u (k) ** 2 + v (k) ** 2) * dp (k)) / c8 / dp (k)
-                tz (k) = tz (k) + tzuv (k)
-            enddo
-            endif
             do k = ks, ke
                ua (i, k) = u (k)
                va (i, k) = v (k)
@@ -1866,19 +1852,6 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         endif
 
         if (do_sedi_w) then
-            if (do_sedi_heat) then
-            do k = ks, ke
-                tz (k) = tz (k) - tzw (k)
-                q_liq (k) = qlz (k) + qrz (k)
-                q_sol (k) = qiz (k) + qsz (k) + qgz (k)
-                q_cond = q_liq (k) + q_sol (k)
-                con_r8 = one_r8 - (qvz (k) + q_cond)
-                c8 = mhc (con_r8, qvz (k), q_liq (k), q_sol (k)) * c_air
-                tzw (k) = (0.5 * (wa (i, k) ** 2) * dp0 (k) - &
-                    0.5 * (w (k) ** 2) * dp (k)) / c8 / dp (k)
-                tz (k) = tz (k) + tzw (k)
-            enddo
-            endif
             do k = ks, ke
                wa (i, k) = w (k)
             enddo
@@ -3895,8 +3868,8 @@ subroutine pgmlt (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den
     real :: pgacw, pgacr
     real :: oms_cgacw, oms_cgacr
 
-    oms_cgacw = cgacw * (1.e-4*(1.0-onemsig) + 1.e-2*onemsig)
-    oms_cgacr = cgacr * (1.e-4*(1.0-onemsig) + 1.e-2*onemsig)
+    oms_cgacw = cgacw * (1.e-2*(1.0-onemsig) + 1.e-1*onemsig)
+    oms_cgacr = cgacr * (1.e-2*(1.0-onemsig) + 1.e-1*onemsig)
 
     do k = ks, ke
 
@@ -4377,8 +4350,8 @@ subroutine pgacw_pgacr (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te
     real :: pgacw, pgacr
     real :: oms_cgacw, oms_cgacr
         
-    oms_cgacw = onemsig*cgacw
-    oms_cgacr = onemsig*cgacr
+    oms_cgacw = cgacw * (1.e-2*(1.0-onemsig) + 1.e-1*onemsig)
+    oms_cgacr = cgacr * (1.e-2*(1.0-onemsig) + 1.e-1*onemsig)
 
     do k = ks, ke
 
