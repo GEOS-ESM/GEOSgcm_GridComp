@@ -474,14 +474,14 @@ module gfdl_mp_mod
 
     real :: vw_min = 0.0  !< minimum fall speed for cloud water (m/s)
     real :: vi_min = 0.01 !< minimum fall speed or constant fall speed
-    real :: vs_min = 0.5  !< minimum fall speed or constant fall speed
+    real :: vs_min = 0.25 !< minimum fall speed or constant fall speed
     real :: vg_min = 3.   !< minimum fall speed or constant fall speed
     real :: vr_min = 4.   !< minimum fall speed or constant fall speed
     real :: vh_min = 9.   !< minimum fall speed or constant fall speed
             
     real :: vw_max = 0.01 !< max fall speed for cloud water (m/s)
     real :: vi_max =  1.0 !< max fall speed for ice
-    real :: vs_max =  2.0 !< max fall speed for snow
+    real :: vs_max =  1.5 !< max fall speed for snow
     real :: vg_max =  9.0 !< max fall speed for graupel
     real :: vr_max = 12.0 !< max fall speed for rain
     real :: vh_max = 19.0 !< max fall speed for hail
