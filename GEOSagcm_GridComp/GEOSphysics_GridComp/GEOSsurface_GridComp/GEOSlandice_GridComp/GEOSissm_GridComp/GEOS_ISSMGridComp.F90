@@ -41,12 +41,19 @@ subroutine InitializeISSM(expdir, num_elements, num_nodes, comm) bind(c, name="I
   integer(c_int)                  :: comm
 end subroutine InitializeISSM
     
-subroutine RunISSM(dt, gcm_forcings, issm_outputs) bind(C,NAME="RunISSM")
+subroutine RunISSM(dt, gcm_forcings, issm_outputs, elementConn) bind(C,NAME="RunISSM")
    import :: c_ptr, c_double
    real(c_double),   value       :: dt
    type(c_ptr),      value       :: gcm_forcings
    type(c_ptr),      value       :: issm_outputs
+   type(c_ptr),      value       :: elementConn
 end subroutine RunISSM
+
+subroutine InputFromRestarts(gcm_restarts, elementConn) bind(C,NAME="InputFromRestarts")
+  import :: c_ptr
+  type(c_ptr),      value   :: gcm_restarts
+  type(c_ptr),      value   :: elementConn
+end subroutine InputFromRestarts
 
 subroutine GetNodesISSM(nodeIds, nodeCoords) bind(C,NAME="GetNodesISSM")
    import :: c_ptr
@@ -97,6 +104,7 @@ type T_ISSM_STATE
   private
   type(ESMF_RouteHandle) :: routehandle_m2g ! routehandle for regridding mesh to grid
   type(ESMF_RouteHandle) :: routehandle_g2m ! routehandle for regridding grid to mesh
+  type(ESMF_RouteHandle) :: halohandle      ! routehandle for field halos
   type(ESMF_GRID)        :: grid            ! original grid
   type(MAPL_LocStream)   :: locstream       ! original locstream 
 end type T_ISSM_STATE
@@ -210,12 +218,21 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                    &
-         SHORT_NAME = 'ICEVEL',                    &
-         LONG_NAME  = 'ice_flow_speed',            &
+         SHORT_NAME = 'ICEVX',                     &
+         LONG_NAME  = 'ice_velocity_x_direction',  &
          UNITS      = 'm s-1',                     &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
          RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                    &
+        SHORT_NAME = 'ICEVY',                      &
+        LONG_NAME  = 'ice_velocity_y_direction',   &
+        UNITS      = 'm s-1',                      &
+        DIMS       = MAPL_DimsTileOnly,            &
+        VLOCATION  = MAPL_VLocationNone,           &
+        RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                    &
@@ -247,13 +264,31 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                  &
-         SHORT_NAME = 'ICETHICK',                   &
+         SHORT_NAME = 'ICETHICK',                  &
          LONG_NAME  = 'ice_sheet_thickness',       &
          UNITS      = 'm',                         &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
          RC=STATUS  )
-VERIFY_(STATUS)
+    VERIFY_(STATUS)
+    
+    call MAPL_AddInternalSpec(GC,                  &
+         SHORT_NAME = 'ICEMASKLS',                 &
+         LONG_NAME  = 'ice_mask_levelset',         &
+         UNITS      = 'm',                         &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone,          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                  &
+         SHORT_NAME = 'OCNMASKLS',                 &
+         LONG_NAME  = 'ocean_mask_levelset',       &
+         UNITS      = 'm',                         &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone,          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
 
 
 ! Set the Profiling timers
