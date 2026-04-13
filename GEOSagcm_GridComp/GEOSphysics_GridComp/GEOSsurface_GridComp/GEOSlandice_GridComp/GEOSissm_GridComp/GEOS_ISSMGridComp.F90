@@ -434,6 +434,7 @@ subroutine SetServices ( GC, RC )
     allocate(elementCoords(2*num_elements))
     allocate(elementMask(num_elements))
     allocate(nodeMask(num_nodes))
+    allocate(nodeOwners(num_nodes))
 
     ! get information about nodes and elements
     ! node coords and element coords (centroids) are in (lon,lat)
@@ -645,6 +646,7 @@ subroutine SetServices ( GC, RC )
     deallocate(ownedNodeLats)
     deallocate(ownedNodeLons)
     deallocate(ownedNodeIds)
+    deallocate(nodeOwners)
 
     ! destroy fields and arrays
     call ESMF_FieldDestroy(gridField, rc=STATUS); VERIFY_(STATUS)
