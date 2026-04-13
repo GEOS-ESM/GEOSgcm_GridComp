@@ -127,15 +127,20 @@ module GEOS_HSGridCompMod
    !USES:
 
    use ESMF
-   use MAPL, only: MAPL_AddImportSpec, MAPL_AddExportSpec, MAPL_AddInternalSpec
-   use MAPL, only: MAPL_DimsHorzVert, MAPL_DimsHorzOnly
-   use MAPL, only: MAPL_VLocationCenter, MAPL_VLocationEdge, MAPL_VLocationNone
-   use MAPL, only: MAPL_RestartSkip
-   use MAPL, only: MAPL_GridCompSetEntryPoint, MAPL_GenericSetServices, MAPL_GenericInitialize
-   use MAPL, only: MAPL_MetaComp
-   use MAPL, only: MAPL_Get, MAPL_GetObjectFromGC, MAPL_GetPointer, MAPL_GetResource
-   use MAPL, only: MAPL_VerifyFriendly
-   use MAPL, only: MAPL_TimerAdd, MAPL_TimerOn, MAPL_TimerOff
+   use mapl3g_Generic, only: MAPL_GridCompSetEntryPoint
+   use mapl3g_Generic, only: MAPL_GridCompGet, MAPL_GridCompGetInternalState, MAPL_GridCompGetResource
+   use mapl3g_Geom_API, only: MAPL_GridGet, MAPL_GridGetCoordinates
+   use mapl3g_State_API, only: MAPL_StateGetPointer
+
+   ! use MAPL, only: MAPL_AddImportSpec, MAPL_AddExportSpec, MAPL_AddInternalSpec
+   ! use MAPL, only: MAPL_DimsHorzVert, MAPL_DimsHorzOnly
+   ! use MAPL, only: MAPL_VLocationCenter, MAPL_VLocationEdge, MAPL_VLocationNone
+   ! use MAPL, only: MAPL_RestartSkip
+   ! use MAPL, only: MAPL_GridCompSetEntryPoint, MAPL_GenericSetServices, MAPL_GenericInitialize
+   ! use MAPL, only: MAPL_MetaComp
+   ! use MAPL, only: MAPL_Get, MAPL_GetObjectFromGC, MAPL_GetPointer, MAPL_GetResource
+   ! use MAPL, only: MAPL_VerifyFriendly
+   ! use MAPL, only: MAPL_TimerAdd, MAPL_TimerOn, MAPL_TimerOff
    use MAPL, only: MAPL_Verify, MAPL_Return, MAPL_ASRT
    use MAPL_Constants, only: MAPL_PI, MAPL_GRAV, MAPL_P00, MAPL_KAPPA, MAPL_RGAS, MAPL_CP
 
@@ -162,22 +167,12 @@ contains
    !INTERFACE:
    subroutine SetServices(gc, rc)
       !ARGUMENTS:
-      type(ESMF_GridComp), intent(inout) :: gc ! gridded component
-      integer, optional, intent(out) :: rc ! return code
-
+      type(ESMF_GridComp), intent(inout) :: gc
+      integer, optional, intent(out) :: rc
       !EOP
 
-      ! ErrLog Variables
-      character(len=ESMF_MAXSTR) :: IAm
       integer :: status
       character(len=ESMF_MAXSTR) :: comp_name
-
-      ! Get my name and set-up traceback handle
-      IAm = 'SetServices'
-      call ESMF_GridCompGet(gc, name=comp_name, _RC)
-      IAm = trim(comp_name) // trim(IAm)
-
-      ! Set Data Services for the GC
 
       !IROUTINE: State Descriptions
       !DESCRIPTION: The component uses all three states (Import, Export
@@ -195,14 +190,6 @@ contains
       call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_INITIALIZE, Initialize, _RC)
       call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_RUN, Run, _RC)
 
-      ! Set the Profiling timers
-      call MAPL_TimerAdd(gc, name="RUN", _RC)
-      call MAPL_TimerAdd(gc, name="INIT", _RC)
-
-      ! SetServices clean-up on the way back up through the hierarchy
-      call MAPL_GenericSetServices(gc, _RC)
-
-      ! All Done
       _RETURN(_SUCCESS)
    end subroutine SetServices
 
@@ -217,92 +204,59 @@ contains
    !INTERFACE:
    subroutine Initialize(gc, import, export, clock, rc)
       !ARGUMENTS:
-      type(ESMF_GridComp), intent(inout) :: gc ! Gridded component
-      type(ESMF_State), intent(inout) :: import ! Import state
-      type(ESMF_State), intent(inout) :: export ! Export state
-      type(ESMF_Clock), intent(inout) :: clock ! The clock
-      integer, optional, intent(out) :: rc ! Error code
-
+      type(ESMF_GridComp), intent(inout) :: gc
+      type(ESMF_State), intent(inout) :: import
+      type(ESMF_State), intent(inout) :: export
+      type(ESMF_Clock), intent(inout) :: clock
+      integer, optional, intent(out) :: rc
       !EOP
-      ! ErrLog Variables
-      character(len=ESMF_MAXSTR) :: IAm
-      integer :: status
-      character(len=ESMF_MAXSTR) :: comp_name
 
-      ! Pointers to geography info in the MAPL MetaComp
-      real, pointer :: LATS(:, :)
-      real, pointer :: LONS(:, :)
-
+      type(ESMF_Grid) :: grid
+      type(ESMF_State) :: internal
+      real, pointer :: lats(:, :), lons(:, :)
+      real :: dx, dy, x0, y0, afac, phi0, qmax
       ! Pointers to internals
 #include "HS_DeclarePointer___.h"
+      integer :: status
 
-      ! Local variables
-      real :: DX, DY, X0, Y0
-      real :: AFAC, PHI0, QMAX
+      ! Get coordinate information
+      call MAPL_GridCompGet(gc, grid=grid, _RC)
+      call MAPL_GridGetCoordinates(grid, longitudes=lons, latitudes=lats, _RC)
 
-      ! Local derived type aliases
-      type(MAPL_MetaComp), pointer :: MAPL
-      type(ESMF_State) :: internal
-
-      ! Get the target components name and set-up traceback handle.
-      IAm = "Initialize"
-      call ESMF_GridCompGet(gc, name=comp_name, _RC)
-      IAm = trim(comp_name) // IAm
-
-      ! Get my instance of the MAPL MetaComp
-      call MAPL_GetObjectFromGC(gc, MAPL, _RC)
-
-      ! Call Generic Initialize
-      call MAPL_GenericInitialize(gc, import, export, clock, _RC)
-
-      ! Start total timer
-      call MAPL_TimerOn(MAPL, "TOTAL")
-      call MAPL_TimerOn(MAPL, "INIT")
-
-      ! Get coordinate information from MAPL_MetaComp
-      call MAPL_Get(MAPL, &
-           LATS=LATS, & ! These are in radians
-           LONS=LONS, & ! These are in radians
-           INTERNAL_ESMF_STATE=internal, &
-           _RC)
+      ! Get internal state
+      call MAPL_GridCompGetInternalState(gc, internal, _RC)
 
       ! Get pointers to internal variables
 #include "HS_GetPointer___.h"
 
       ! Initialize geometric factors
-      SPHI2 = sin(LATS)**2
-      CPHI2 = cos(LATS)**2
+      SPHI2 = sin(lats)**2
+      CPHI2 = cos(lats)**2
 
       ! Precompute Local heating distribution
 
-      !BOR
-      !RESOURCE_ITEM: K day-1 :: Local heating
-      call MAPL_GetResource(MAPL, QMAX, 'QMAX:', DEFAULT=.000, _RC)
+      ! K day-1 :: Local heating
+      call MAPL_GridCompGetResource(gc, 'QMAX', qmax, default=.000, _RC)
 
-      if (QMAX /= 0.0) then
+      if (qmax /= 0.0) then
 
          ! Get local heating parameters from the configuration
-
-         !RESOURCE_ITEM: degrees :: Central longitude of local heating, $\lambda_h$
-         call MAPL_GetResource(MAPL, X0, 'X0:', DEFAULT=0.0, _RC)
-         !RESOURCE_ITEM: degrees :: Central latitude of local heating, $\phi_h$
-         call MAPL_GetResource(MAPL, Y0, 'Y0:', DEFAULT=0.0, _RC)
-         !RESOURCE_ITEM: degrees :: Longitudinal width of local heating, $(\delta\lambda)_h$
-         call MAPL_GetResource(MAPL, DX, 'DX:', DEFAULT=30., _RC)
-         !RESOURCE_ITEM: degrees :: Latitudinal width of local heating, $(\delta\phi)_h$
-         call MAPL_GetResource(MAPL, DY, 'DY:', DEFAULT=5.0, _RC)
+         call MAPL_GridCompGetResource(gc, 'X0', x0, default=0.0, _RC)
+         call MAPL_GridCompGetResource(gc, 'Y0', y0, default=0.0, _RC)
+         call MAPL_GridCompGetResource(gc, 'DX', dx, default=30.0, _RC)
+         call MAPL_GridCompGetResource(gc, 'DY', dy, default=5.0, _RC)
 
          ! Horizontal structure of optional stationary heat source
-         X0 = X0 * (MAPL_PI / 180.0)
-         Y0 = Y0 * (MAPL_PI / 180.0)
-         DX = DX * (MAPL_PI / 180.0)
-         DY = DY * (MAPL_PI / 180.0)
+         x0 = x0 * (MAPL_PI / 180.0)
+         y0 = y0 * (MAPL_PI / 180.0)
+         dx = dx * (MAPL_PI / 180.0)
+         dy = dy * (MAPL_PI / 180.0)
 
-         HFCN = ((LONS - X0) / DX)**2
-         HFCN = min(HFCN, ((LONS + 360. - X0) / DX)**2)
-         HFCN = min(HFCN, ((LONS - 360. - X0) / DX)**2)
+         HFCN = ((lons - x0) / dx)**2
+         HFCN = min(HFCN, ((lons + 360. - x0) / dx)**2)
+         HFCN = min(HFCN, ((lons - 360. - x0) / dx)**2)
 
-         HFCN = HFCN + ((LATS - Y0) / DY)**2
+         HFCN = HFCN + ((lats - y0) / dy)**2
 
          where (HFCN < 10.)
             HFCN = exp(-0.5 * HFCN)
@@ -313,19 +267,12 @@ contains
          HFCN = 0.0
       end if
 
-      ! Get Williamson parameters from the configuration
-      !RESOURCE_ITEM: 1 :: Williamson's $\alpha$ parameter
-      call MAPL_GetResource(MAPL, AFAC, 'AFAC:', DEFAULT=2.65 / 15., _RC)
-      !RESOURCE_ITEM: degrees :: Williamson's $\phi_o$ parameter
-      call MAPL_GetResource(MAPL, PHI0, 'PHI0:', DEFAULT=60., _RC)
-      !EOR
+      ! Get Williamson parameters (alpha, phi0) from the configuration
+      call MAPL_GridCompGetResource(gc, 'AFAC', afac, default=2.65 / 15., _RC)
+      call MAPL_GridCompGetResource(gc, 'PHI0', phi0, default=60., _RC)
 
       ! Horizontal structure of Willianson parameterization
-      P_I = (1.0 + tanh(AFAC * (abs(LATS) - PHI0)))
-
-      ! All Done
-      call MAPL_TimerOff(MAPL, "INIT")
-      call MAPL_TimerOff(MAPL, "TOTAL")
+      P_I = (1.0 + tanh(afac * (abs(lats) - phi0)))
 
       _RETURN(_SUCCESS)
    end subroutine Initialize
@@ -345,172 +292,103 @@ contains
    !INTERFACE:
    subroutine Run(gc, import, export, clock, rc)
       !ARGUMENTS:
-      type(ESMF_GridComp), intent(inout) :: gc ! Gridded component
-      type(ESMF_State), intent(inout) :: import ! Import state
-      type(ESMF_State), intent(inout) :: export ! Export state
-      type(ESMF_Clock), intent(inout) :: clock ! The clock
-      integer, optional, intent(out) :: rc ! Error code
-
+      type(ESMF_GridComp), intent(inout) :: gc
+      type(ESMF_State), intent(inout) :: import
+      type(ESMF_State), intent(inout) :: export
+      type(ESMF_Clock), intent(inout) :: clock
+      integer, optional, intent(out) :: rc
       !EOP
-      ! ErrLog Variables
-      character(len=ESMF_MAXSTR) :: IAm
-      integer :: status
-      character(len=ESMF_MAXSTR) :: comp_name
 
-      ! Local derived type aliases
-      type(MAPL_MetaComp), pointer :: MAPL
       type(ESMF_State) :: internal
-      type(ESMF_Grid) :: GRID
-      type(ESMF_Logical) :: Friendly
+      type(ESMF_Grid) :: grid
+      type(ESMF_Logical) :: friendly
 
       ! Pointers to imports/internals/exports
 #include "HS_DeclarePointer___.h"
 
       ! Scratch arrays and working pointers
-      real, allocatable, dimension(:, :) :: PII
-      real, allocatable, dimension(:, :) :: DP
-      real, allocatable, dimension(:, :) :: PL
-      real, allocatable, dimension(:, :) :: UU
-      real, allocatable, dimension(:, :) :: VV
-      real, allocatable, dimension(:, :) :: VR
-      real, allocatable, dimension(:, :) :: TE
-      real, allocatable, dimension(:, :) :: F1
-      real, allocatable, dimension(:, :) :: RR
-      real, allocatable, dimension(:, :) :: DS
-      real, allocatable, dimension(:, :) :: DM
-      real, allocatable, dimension(:, :) :: PK
-
-      real, pointer, dimension(:, :) :: PS
-      real, pointer, dimension(:, :) :: PT
-
-      integer :: L
-      integer :: IM, JM, LM
-      integer :: FRICQ
-
-      logical :: FriendlyTemp
-      logical :: FriendlyWind
-
-      real :: DT
-      real :: KA
-      real :: KS
-      real :: KF
+      real, allocatable, dimension(:, :) :: pii, dp, pl, uu, vv, vr, te, f1, rr, ds, dm, pk
+      real, pointer, dimension(:, :) :: ps, pt
+      integer :: level, im, jm, lm, fricq, status
+      logical :: friendly_temp, friendly_wind
+      real :: dt, ka, ks, kf
 
       ! 8 Held-Suarez parameters
-      real :: SIG1
-      real :: TAUA
-      real :: TAUS
-      real :: TAUF
-      real :: DELV1
-      real :: DELH
-      real :: T0
-      real :: TSTRT
+      real :: sig1, taua, taus, tauf, delv1, delh, t0, tstrt
 
-      ! 3 Localized heating parameters
-      real :: P_1
-      real :: QMAX
+      ! Localized heating parameters
+      real :: p_1, qmax
 
       ! 3 Williamson parameters
-      real :: P_D
-      real :: GAM_I
-      real :: GAM_D
+      real :: p_d, gam_i, gam_d
 
       real, parameter :: DAYLEN = 86400.
 
-      ! Get the target components name and set-up traceback handle.
-      IAm = "Run"
-      call ESMF_GridCompGet(gc, name=comp_name, _RC)
-      IAm = trim(comp_name) // trim(IAm)
-
-      ! Get my MAPL_MetaComp
-      call MAPL_GetObjectFromGC(gc, MAPL, _RC)
-
-      ! Start the TOTAL timer
-      call MAPL_TimerOn(MAPL, "TOTAL")
-      call MAPL_TimerOn(MAPL, "RUN")
-
       ! Get esmf internal state from generic state.
-      call MAPL_Get(MAPL, &
-           IM=IM, JM=JM, LM=LM, &
-           INTERNAL_ESMF_STATE=internal, &
-           _RC)
+      call MAPL_GridCompGet(gc, grid=grid, num_levels=lm, _RC)
+      call MAPL_GridGet(grid, im=im, jm=jm, _RC)
 
       ! Pointers to internals
+      call MAPL_GridCompGetInternalState(gc, internal, _RC)
 #include "HS_GetPointer___.h"
 
       ! Get parameters from the configuration
 
       ! 8 Held-Suarez parameters
-      !BOR
-      !RESOURCE_ITEM: days :: H-S $k_a^{-1}$ parameter
-      call MAPL_GetResource(MAPL, TAUA, 'TAUA:', DEFAULT=40., _RC)
-      !RESOURCE_ITEM: days :: H-S $k_s^{-1}$ parameter
-      call MAPL_GetResource(MAPL, TAUS, 'TAUS:', DEFAULT=4.0, _RC)
-      !RESOURCE_ITEM: days :: H-S $k_f^{-1}$ parameter
-      call MAPL_GetResource(MAPL, TAUF, 'TAUF:', DEFAULT=1.0, _RC)
-      !RESOURCE_ITEM: days :: H-S $\sigma_b$ parameter
-      call MAPL_GetResource(MAPL, SIG1, 'SIG1:', DEFAULT=0.7, _RC)
-      !RESOURCE_ITEM: K :: H-S $T_o$ parameter
-      call MAPL_GetResource(MAPL, T0, 'T0:', DEFAULT=315., _RC)
-      !RESOURCE_ITEM: K :: H-S $(\Delta \theta)_z$ parameter
-      call MAPL_GetResource(MAPL, DELV1, 'DELV1:', DEFAULT=10., _RC)
-      !RESOURCE_ITEM: K :: H-S $(\Delta T)_y$ parameter
-      call MAPL_GetResource(MAPL, DELH, 'DELH:', DEFAULT=60., _RC)
-      !RESOURCE_ITEM: K :: H-S $T_{strat}$ parameter
-      call MAPL_GetResource(MAPL, TSTRT, 'TSTRT:', DEFAULT=200., _RC)
-      !RESOURCE_ITEM: 1 OR 0 :: Controls addition of dissipation heat.
-      call MAPL_GetResource(MAPL, FRICQ, 'DISSQ:', DEFAULT=1, _RC)
+      call MAPL_GridCompGetResource(gc, 'TAUA', taua, default=40., _RC)
+      call MAPL_GridCompGetResource(gc, 'TAUS', taus, default=4.0, _RC)
+      call MAPL_GridCompGetResource(gc, 'TAUF', tauf, default=1.0, _RC)
+      call MAPL_GridCompGetResource(gc, 'SIG1', sig1, default=0.7, _RC)
+      call MAPL_GridCompGetResource(gc, 'T0', t0, default=315., _RC)
+      call MAPL_GridCompGetResource(gc, 'DELV1', delv1, default=10., _RC)
+      call MAPL_GridCompGetResource(gc, 'DELH', delh, default=60., _RC)
+      call MAPL_GridCompGetResource(gc, 'TSTRT', tstrt, default=200., _RC)
+      call MAPL_GridCompGetResource(gc, 'FRICQ', fricq, default=1, _RC)
 
-      ! 3 Localized heating parameters
-      !RESOURCE_ITEM: Pa :: Local heating $p_1$ parameter
-      call MAPL_GetResource(MAPL, P_1, 'P1:', DEFAULT=0.0, _RC)
-      call MAPL_GetResource(MAPL, QMAX, 'QMAX:', DEFAULT=0.0, _RC)
+      ! Localized heating parameters
+      call MAPL_GridCompGetResource(gc, 'P_1', p_1, default=0.0, _RC)
+      call MAPL_GridCompGetResource(gc, 'QMAX', qmax, default=0.0, _RC)
 
       ! 3 Williamson parameters
-      !RESOURCE_ITEM: K m-1 :: Williamson's $\gamma_I$ parameter
-      call MAPL_GetResource(MAPL, GAM_I, 'GAM_I:', DEFAULT=-3.345e-3, _RC)
-      !RESOURCE_ITEM: K m-1 :: Williamson's $\gamma_D$ parameter
-      call MAPL_GetResource(MAPL, GAM_D, 'GAM_D:', DEFAULT=.002, _RC)
-      !RESOURCE_ITEM: Pa :: Williamson's $p_D$ parameter
-      call MAPL_GetResource(MAPL, P_D, 'P_D:', DEFAULT=1.E4, _RC)
+      call MAPL_GridCompGetResource(gc, 'GAM_I', gam_i, default=-3.345e-3, _RC)
+      call MAPL_GridCompGetResource(gc, 'GAM_D', gam_d, default=.002, _RC)
+      call MAPL_GridCompGetResource(gc, 'P_D', p_d, default=1.E4, _RC)
       !EOR
 
       ! Check for Friendliness
-      Friendly = MAPL_VerifyFriendly(import, 'V', trim(comp_name), _RC)
+      friendly = ESMF_TRUE ! MAPL_VerifyFriendly(import, 'V', trim(comp_name), _RC)
+      friendly_wind = friendly == ESMF_TRUE
 
-      FriendlyWind = Friendly == ESMF_TRUE
+      friendly = ESMF_TRUE ! MAPL_VerifyFriendly(import, 'U', trim(comp_name), _RC)
+      ASSERT_((friendly == ESMF_TRUE) .eqv. friendly_wind)
 
-      Friendly = MAPL_VerifyFriendly(import, 'U', trim(comp_name), _RC)
-
-      ASSERT_((Friendly == ESMF_TRUE) .eqv. FriendlyWind)
-
-      Friendly = MAPL_VerifyFriendly(import, 'TEMP', trim(comp_name), _RC)
-
-      FriendlyTemp = Friendly == ESMF_TRUE
+      friendly = ESMF_TRUE ! MAPL_VerifyFriendly(import, 'TEMP', trim(comp_name), _RC)
+      friendly_temp = friendly == ESMF_TRUE
 
       ! If we have a friendly, we need a time step
-      if (FriendlyTemp .or. FriendlyWind) then
-         call MAPL_GetResource(MAPL, DT, 'RUN_DT', _RC)
+      if (friendly_temp .or. friendly_wind) then
+         call MAPL_GridCompGetResource(gc, 'RUN_DT', dt, default=0.0, _RC)
       end if
 
       ! Allocate 10 2D scratch arrays
-      allocate(DP(IM, JM), _STAT)
-      allocate(PL(IM, JM), _STAT)
-      allocate(UU(IM, JM), _STAT)
-      allocate(VV(IM, JM), _STAT)
-      allocate(VR(IM, JM), _STAT)
-      allocate(TE(IM, JM), _STAT)
-      allocate(DS(IM, JM), _STAT)
-      allocate(PII(IM, JM), _STAT)
-      allocate(F1(IM, JM), _STAT)
-      allocate(RR(IM, JM), _STAT)
-      allocate(DM(IM, JM), _STAT)
-      allocate(PK(IM, JM), _STAT)
+      allocate(dp(im, jm), _STAT)
+      allocate(pl(im, jm), _STAT)
+      allocate(uu(im, jm), _STAT)
+      allocate(vv(im, jm), _STAT)
+      allocate(vr(im, jm), _STAT)
+      allocate(te(im, jm), _STAT)
+      allocate(ds(im, jm), _STAT)
+      allocate(pii(im, jm), _STAT)
+      allocate(f1(im, jm), _STAT)
+      allocate(rr(im, jm), _STAT)
+      allocate(dm(im, jm), _STAT)
+      allocate(pk(im, jm), _STAT)
 
       ! Begin calculations.
-      PS => PLE(:, :, LM)
-      PT => PLE(:, :, 0)
+      ps => PLE(:, :, lm)
+      pt => PLE(:, :, 0)
 
-      PII = P_D - (P_D - PT) * 0.5 * P_I
+      pii = p_d - (p_d - pt) * 0.5 * P_I
 
       ! Initialize vertically integrated diagnostics
       if (associated(DISS)) DISS = 0.0
@@ -518,98 +396,79 @@ contains
       if (associated(TAUY)) TAUY = 0.0
 
       ! Loop invariants
-      KA = 1.0 / (DAYLEN * TAUA)
-      KS = 1.0 / (DAYLEN * TAUS)
-      KF = 1.0 / (DAYLEN * TAUF)
+      ka = 1.0 / (DAYLEN * taua)
+      ks = 1.0 / (DAYLEN * taus)
+      kf = 1.0 / (DAYLEN * tauf)
 
-      LEVELS: do L = 1, LM
+      LEVELS: do level = 1, lm
 
-         DP = (PLE(:, :, L) - PLE(:, :, L - 1))
-         PL = (PLE(:, :, L) + PLE(:, :, L - 1)) * 0.5
-         DM = DP / MAPL_GRAV
-         PK = (PL / MAPL_P00)**MAPL_KAPPA
+         dp = (PLE(:, :, level) - PLE(:, :, level - 1))
+         pl = (PLE(:, :, level) + PLE(:, :, level - 1)) * 0.5
+         dm = dp / MAPL_GRAV
+         pk = (pl / MAPL_P00)**MAPL_KAPPA
 
          ! H&S equilibrium temperature
-         TE = PK * (T0 - DELH * SPHI2 - DELV1 * CPHI2 * log(PL / MAPL_P00))
-         TE = max(TE, TSTRT)
+         te = pk * (t0 - delh * SPHI2 - delv1 * CPHI2 * log(pl / MAPL_P00))
+         te = max(te, tstrt)
 
          ! Williamson Stratospheric modifications to equilibrium temperature
-         where (PL < P_D)
-            TE = TSTRT * (min(1.0, PL / P_D)**(MAPL_RGAS * GAM_D / MAPL_GRAV) &
-                 + min(1.0, PL / PII)**(MAPL_RGAS * GAM_I / MAPL_GRAV) - 1)
+         where (pl < p_d)
+            te = tstrt * (min(1.0, pl / p_d)**(MAPL_RGAS * gam_d / MAPL_GRAV) &
+                 + min(1.0, pl / pii)**(MAPL_RGAS * gam_i / MAPL_GRAV) - 1)
          end where
 
          !  Exports of equilibrium T and Theta
-         if (associated(T_EQ)) T_EQ(:, :, L) = TE
-         if (associated(THEQ)) THEQ(:, :, L) = TE / PK
+         if (associated(T_EQ)) T_EQ(:, :, level) = te
+         if (associated(THEQ)) THEQ(:, :, level) = te / pk
 
          ! Vertical structure of timescales in H&S.
-         F1 = max(0.0, ((PL / PS) - SIG1) / (1.0 - SIG1))
+         f1 = max(0.0, ((pl / ps) - sig1) / (1.0 - sig1))
 
          ! Atmospheric heating from H&S
-         RR = (KA + (KS - KA) * F1 * CPHI2**2) * (TE - TEMP(:, :, L))
+         rr = (ka + (ks - ka) * f1 * CPHI2**2) * (te - TEMP(:, :, level))
 
-         if (associated(DTDT)) DTDT(:, :, L) = DP * RR
-         if (FriendlyTemp) TEMP(:, :, L) = TEMP(:, :, L) + DT * RR
+         if (associated(DTDT)) DTDT(:, :, level) = dp * rr
+         if (friendly_temp) TEMP(:, :, level) = TEMP(:, :, level) + dt * rr
 
          ! Wind tendencies
-         UU = -U(:, :, L) * (F1 * KF)
-         VV = -V(:, :, L) * (F1 * KF)
+         uu = -U(:, :, level) * (f1 * kf)
+         vv = -V(:, :, level) * (f1 * kf)
 
-         if (associated(DUDT)) DUDT(:, :, L) = UU
-         if (associated(DVDT)) DVDT(:, :, L) = VV
+         if (associated(DUDT)) DUDT(:, :, level) = uu
+         if (associated(DVDT)) DVDT(:, :, level) = vv
 
-         if (FriendlyWind) then
-            U(:, :, L) = U(:, :, L) + DT * UU
-            V(:, :, L) = V(:, :, L) + DT * VV
+         if (friendly_wind) then
+            U(:, :, level) = U(:, :, level) + dt * uu
+            V(:, :, level) = V(:, :, level) + dt * vv
          end if
 
          !  Frictional heating from H&S drag
-         DS = U(:, :, L) * UU + V(:, :, L) * VV
+         ds = U(:, :, level) * uu + V(:, :, level) * vv
 
-         if (associated(DISS)) DISS = DISS - DS * DM
-         if (FRICQ /= 0) then
-            if (associated(DTDT)) DTDT(:, :, L) = DTDT(:, :, L) - DS * (DP / MAPL_CP)
-            if (FriendlyTemp) TEMP(:, :, L) = TEMP(:, :, L) - DS * (DT / MAPL_CP)
+         if (associated(DISS)) DISS = DISS - ds * dm
+         if (fricq /= 0) then
+            if (associated(DTDT)) DTDT(:, :, level) = DTDT(:, :, level) - ds * (dp / MAPL_CP)
+            if (friendly_temp) TEMP(:, :, level) = TEMP(:, :, level) - ds * (dt / MAPL_CP)
          end if
 
          !  Surface stresses from vertically integrated H&S surface drag
-         if (associated(TAUX)) TAUX = TAUX - UU * DM
-         if (associated(TAUY)) TAUY = TAUY - VV * DM
+         if (associated(TAUX)) TAUX = TAUX - uu * dm
+         if (associated(TAUY)) TAUY = TAUY - vv * dm
 
          ! Localized heat source, if any
-         if ((associated(DTDT) .or. FriendlyTemp) .and. QMAX/=0.0) then
-            where (PL > P_1)
-               VR = HFCN * (QMAX / DAYLEN) * sin(MAPL_PI * (PS - PL) / (PS - P_1))
+         if ((associated(DTDT) .or. FriendlyTemp) .and. qmax/=0.0) then
+            where (pl > p_1)
+               vr = HFCN * (qmax / DAYLEN) * sin(MAPL_PI * (ps - pl) / (ps - p_1))
                elsewhere
-               VR = 0.
+               vr = 0.
             end where
 
-            if (associated(DTDT)) DTDT(:, :, L) = DTDT(:, :, L) + DP * VR
-            if (FriendlyTemp) TEMP(:, :, L) = TEMP(:, :, L) + DT * VR
+            if (associated(DTDT)) DTDT(:, :, level) = DTDT(:, :, level) + dp * vr
+            if (FriendlyTemp) TEMP(:, :, level) = TEMP(:, :, level) + dt * vr
          end if
 
       end do LEVELS
 
-      ! Free 10 scratch arrays
-      deallocate(PK)
-      deallocate(DM)
-      deallocate(RR)
-      deallocate(F1)
-      deallocate(PII)
-      deallocate(DS)
-      deallocate(TE)
-      deallocate(VR)
-      deallocate(VV)
-      deallocate(UU)
-      deallocate(PL)
-      deallocate(DP)
-
-      ! Close timers
-      call MAPL_TimerOff(MAPL, "RUN")
-      call MAPL_TimerOff(MAPL, "TOTAL")
-
-      ! All Done
       _RETURN(_SUCCESS)
    end subroutine Run
 
