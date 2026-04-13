@@ -12,7 +12,7 @@ module GEOS_IssmGridCompMod
 !
 !   {\tt GEOS\_ISSM} is a wrapper that calls ISSM (C++) IRF methods
 !   Imports: ICESMB (defined on landice tiles)
-!   Exports: ICESURF, ICETHICK, ICEVEL, ICEEQSMB (defined on mesh)
+!   Exports: ICESURF, ICETHICK, ICEVEL, EQSMB (defined on mesh)
 ! *** NOTES: 
 !            (*) currently we run over all input files (*.bin) that are found in ISSM_EXPDIR 
 !                (e.g., Greenland + Antarctica + any other glaciers that have been configured)
@@ -43,30 +43,30 @@ end subroutine InitializeISSM
     
 subroutine RunISSM(dt, gcm_forcings, issm_outputs, elementConn) bind(C,NAME="RunISSM")
    import :: c_ptr, c_double
-   real(c_double),   value       :: dt
-   type(c_ptr),      value       :: gcm_forcings
-   type(c_ptr),      value       :: issm_outputs
-   type(c_ptr),      value       :: elementConn
+   real(c_double),   value        :: dt
+   type(c_ptr),      value        :: gcm_forcings
+   type(c_ptr),      value        :: issm_outputs
+   type(c_ptr),      value        :: elementConn
 end subroutine RunISSM
 
 subroutine InputFromRestarts(gcm_restarts, elementConn) bind(C,NAME="InputFromRestarts")
   import :: c_ptr
-  type(c_ptr),      value   :: gcm_restarts
-  type(c_ptr),      value   :: elementConn
+  type(c_ptr),       value        :: gcm_restarts
+  type(c_ptr),       value        :: elementConn
 end subroutine InputFromRestarts
 
 subroutine GetNodesISSM(nodeIds, nodeCoords) bind(C,NAME="GetNodesISSM")
    import :: c_ptr
-   type(c_ptr),      value       :: nodeIds
-   type(c_ptr),      value       :: nodeCoords !
+   type(c_ptr),      value        :: nodeIds
+   type(c_ptr),      value        :: nodeCoords 
 end subroutine GetNodesISSM
 
 subroutine GetElementsISSM(elementIds, elementConn, elementCoords, glacIds) bind(C,NAME="GetElementsISSM")
   import :: c_ptr
-  type(c_ptr),      value       :: elementIds
-  type(c_ptr),      value       :: elementConn
-  type(c_ptr),      value       :: elementCoords
-  type(c_ptr),      value       :: glacIds
+  type(c_ptr),       value        :: elementIds
+  type(c_ptr),       value        :: elementConn
+  type(c_ptr),       value        :: elementCoords
+  type(c_ptr),       value        :: glacIds
 end subroutine GetElementsISSM
 
 subroutine FinalizeISSM() bind(C,NAME="FinalizeISSM")
@@ -108,8 +108,8 @@ type T_ISSM_STATE
   integer, pointer,dimension(:) :: halomask        ! mask for filtering out halos
   integer, pointer,dimension(:) :: halolist        ! list of halo nodeIds
   type(ESMF_DistGrid)           :: nodalDistgrid   ! distgrid (owned nodes)
-  type(ESMF_GRID)               :: grid            ! original grid
-  type(MAPL_LocStream)          :: locstream       ! original locstream 
+  type(ESMF_GRID)               :: grid            ! original grid (atmosphere)
+  type(MAPL_LocStream)          :: locstream       ! original locstream (landice tiles)
 end type T_ISSM_STATE
 
 ! Wrapper for extracting internal state
@@ -248,7 +248,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'ICEEQSMB',                             &
+         SHORT_NAME = 'EQSMB',                             &
          LONG_NAME  = 'ice_equivalent_surface_mass_balance',  &
          UNITS      = 'm s-1',                                &
          DIMS       = MAPL_DimsTileOnly,                      &
@@ -276,18 +276,18 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
     
     call MAPL_AddInternalSpec(GC,                  &
-         SHORT_NAME = 'ICEMASKLS',                 &
+         SHORT_NAME = 'IMLS',                 &
          LONG_NAME  = 'ice_mask_levelset',         &
-         UNITS      = 'm',                         &
+         UNITS      = 'none',                      &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
          RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                  &
-         SHORT_NAME = 'OCNMASKLS',                 &
+         SHORT_NAME = 'OMLS',                 &
          LONG_NAME  = 'ocean_mask_levelset',       &
-         UNITS      = 'm',                         &
+         UNITS      = 'none',                      &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
          RC=STATUS  )
@@ -328,6 +328,7 @@ subroutine SetServices ( GC, RC )
     ! virtual machine / mpi comm
     type(ESMF_VM)                          :: vm    
     integer(c_int)                         :: comm                    ! mpi comm to pass to ISSM
+    integer                                :: localPET                ! ~mpi rank
     
     ! mesh information
     type(ESMF_Mesh)                        :: mesh                    ! ESMF_Mesh representation of ISSM mesh
@@ -352,16 +353,17 @@ subroutine SetServices ( GC, RC )
     type(ISSM_WRAP)                        :: wrap                    ! wrapper for routehandle container
 
     ! field halo
-    integer                                :: num_halo_nodes            ! number of nodes on PET but not owned by PET
-    type(ESMF_RouteHandle)                 :: halohandle                ! routehandle for field halos
-    integer, pointer, dimension(:)         :: halolist        => null() ! list of halo nodeIds
-    integer, pointer, dimension(:)         :: ownedNodeIds    => null() ! nodeIds excluding halolist
-    type(ESMF_DistGrid)                    :: nodalDistgrid             ! distgrid (owned nodes)
-    type(ESMF_Array)                       :: meshArray                 ! array for creating mesh fields
-    integer, pointer, dimension(:)         :: halomask        => null() ! mask local halos points for arrays with owned nodes
-    real(dp),pointer,dimension(:)          :: ownedNodeCoords => null() ! owned node coordinates (longitude,latitude)
-    real(dp),pointer,dimension(:)          :: ownedNodeLats => null()   ! owned node latitudes
-    real(dp),pointer,dimension(:)          :: ownedNodeLons => null()   ! owned node longitudes
+    integer                                :: num_halo_nodes          ! num_nodes minus num_owned_nodes
+    type(ESMF_RouteHandle)                 :: halohandle              ! routehandle for field halos
+    integer, pointer, dimension(:)         :: halolist      => null() ! list of halo nodeIds
+    integer, pointer, dimension(:)         :: ownedNodeIds  => null() ! nodeIds excluding halolist
+    type(ESMF_DistGrid)                    :: nodalDistgrid           ! distgrid (owned nodes)
+    type(ESMF_Array)                       :: meshArray               ! array for creating mesh fields
+    integer, pointer, dimension(:)         :: halomask      => null() ! mask out halos points 
+
+    ! owned node coordinates (longitude,latitude)
+    real(dp),pointer,dimension(:)          :: ownedNodeCoords => null() 
+    real,    allocatable, dimension(:)     :: ownedNodeLons, ownedNodeLats
 
     ! command-line arguments to initialize ISSM 
     integer                                :: i,j,k                   ! loop indices
@@ -373,7 +375,6 @@ subroutine SetServices ( GC, RC )
     real(dp),    pointer, dimension(:)     :: field_saver => null()
     real(dp),    pointer, dimension(:)     :: nodelons    => null()
     real(dp),    pointer, dimension(:)     :: nodelats    => null()
-    real,    allocatable, dimension(:)     :: elemlons, elemlats
 
     integer, pointer, dimension(:)         :: conn_slice  => null()
     character(len=16) :: varname
@@ -390,15 +391,13 @@ subroutine SetServices ( GC, RC )
     integer, pointer, dimension(:)         :: nodeMask => null()
     integer                                :: n1,n2,n3
 
-
     ! Get the target components name and set-up traceback handle.
     ! -----------------------------------------------------------
 
     Iam = "Initialize"
-    call ESMF_GridCompGet( GC, NAME=comp_name, RC=status )
+    call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=status )
     VERIFY_(STATUS)
-    Iam = trim(comp_name) // trim(Iam)
-
+    Iam = trim(COMP_NAME) // trim(Iam)
 
     ! Get my internal MAPL_Generic state
     !-----------------------------------
@@ -406,17 +405,16 @@ subroutine SetServices ( GC, RC )
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
 
-
     call ESMF_VMGetCurrent(vm, rc=STATUS)
     VERIFY_(STATUS)
 
-    call ESMF_VMGet(vm,mpiCommunicator=comm,rc=STATUS)
+    call ESMF_VMGet(vm,mpiCommunicator=comm,localPet=localPET,rc=STATUS)
     VERIFY_(STATUS)
 
     ! ****************************************************
     ! call ISSM initialize C++ code so we can set up mesh
 
-    call MAPL_GetResource(MAPL, ISSM_EXPDIR, Label=trim(COMP_NAME)//"_EXPDIR:", RC=STATUS)
+    call MAPL_GetResource(MAPL, ISSM_EXPDIR, Label="ISSM_EXPDIR:", RC=STATUS)
     VERIFY_(STATUS)
 
     EXPDIR = trim(ISSM_EXPDIR)//c_null_char ! create string for C++
@@ -470,7 +468,7 @@ subroutine SetServices ( GC, RC )
             nodeMask=nodeMask,elementCoords=elementCoords,coordSys=ESMF_COORDSYS_SPH_DEG, rc=STATUS)
     VERIFY_(STATUS)
 
-    ! associate ESMF_Mesh representation of ISSM mesh with GC for regridding imports/exports in run method       
+    ! associate ESMF_Mesh representation of ISSM mesh with GC for regridding imports/exports in Run method       
     call ESMF_GridCompSet(GC,mesh=mesh,rc=STATUS)
     VERIFY_(STATUS)
 
@@ -487,31 +485,32 @@ subroutine SetServices ( GC, RC )
     call ESMF_MeshGet(mesh=mesh,ownedNodeCoords=ownedNodeCoords)
     
     ! get list of (global) nodeIds that are halos on this PET
-    ! and create a mask to remove these 
+    ! and create a mask to remove these values from arrays
     i=1
     k=1
     halomask = .true.
     do j=1,num_nodes
     if (nodeOwners(j)/= localPET) then
-    halolist(i) = nodeIds(j)
-    halomask(2*j-1:2*j) = .false.
-    i = i+1
+      halolist(i) = nodeIds(j)
+      halomask(2*j-1:2*j) = .false.
+      i = i+1
     else
       ownedNodeIds(k) = nodeIds(j)
       k = k+1
     end if 
     end do
 
+    ! create array with halo information
     meshArray=ESMF_ArrayCreate(nodalDistgrid,typekind=ESMF_TYPEKIND_R8,haloSeqIndexList=halolist,rc=STATUS)
     VERIFY_(STATUS)
 
-    ! create field on ISSM mesh
+    ! create field on ISSM mesh 
     meshField=ESMF_FieldCreate(mesh, array=meshArray, meshLoc=ESMF_MESHLOC_NODE, rc=STATUS)
     VERIFY_(STATUS)
 
-    call ESMF_FieldHaloStore(meshField, routehandle=haloHandle, rc=STATUS)
+    ! store the halo operation in a routehandle
+    call ESMF_FieldHaloStore(meshField, routehandle=halohandle, rc=STATUS)
     VERIFY_(STATUS)
-
 
     ! Set up regridding next
     !-----------------------------------
@@ -532,21 +531,22 @@ subroutine SetServices ( GC, RC )
     unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,extrapmethod=ESMF_EXTRAPMETHOD_NEAREST_D,rc=STATUS)
     VERIFY_(STATUS)
     
-    ! create pointer to routehandle for component's private internal state
-    ! also store attached/atmospheric grid and landice tile locstream in internal state
+    ! create component's private internal state
+    ! stores everything needed for regrid and halo operations during run method
     allocate(internal_state, stat=status)
     VERIFY_(STATUS)
     allocate(internal_state%halomask(num_nodes))
     allocate(internal_state%halolist(num_halo_nodes))
-    internal_state%routehandle_m2g  = routehandle_m2g
-    internal_state%routehandle_g2m  = routehandle_g2m 
-    internal_state%halohandle  = halohandle 
-    internal_state%halomask  = halomask 
-    internal_state%grid      = grid
+    internal_state%routehandle_m2g = routehandle_m2g
+    internal_state%routehandle_g2m = routehandle_g2m 
+    internal_state%halohandle = halohandle 
+    internal_state%halomask = halomask 
+    internal_state%grid = grid
     internal_state%halolist = halolist
     internal_state%nodalDistgrid = nodalDistgrid
     call MAPL_Get(MAPL, LocStream = internal_state%locstream, _RC)
 
+    ! wrap the private internal state
     wrap%ptr => internal_state
     call ESMF_UserCompSetInternalState ( GC, 'ISSM_WRAP', wrap, status )
     VERIFY_(STATUS)
@@ -619,7 +619,7 @@ subroutine SetServices ( GC, RC )
 
     mesh_grid = create_mesh_grid(_RC)
     call MAPL_LocstreamCreate(mesh_locstream, mesh_grid, local_id=ownedNodeIds, &
-              tilelons=elemlons, tilelats=elemlats,  _RC)
+              tilelons=ownedNodeLons, tilelats=ownedNodeLats,  _RC)
     call MAPL%grid%set(mesh_grid, _RC)
     call ESMF_GridCompSet(gc, grid=mesh_grid, _RC)
     Call MAPL_set(MAPL, locstream = mesh_locstream, _RC)
@@ -636,8 +636,6 @@ subroutine SetServices ( GC, RC )
     deallocate(elementConn)
     deallocate(elementCoords)
     deallocate(glacIds)
-    deallocate(elemlons)
-    deallocate(elemlats)
     deallocate(elementMask)
     deallocate(nodeMask)
     deallocate(halomask)
@@ -648,9 +646,9 @@ subroutine SetServices ( GC, RC )
     deallocate(ownedNodeIds)
 
     ! destroy fields and arrays
-    call ESMF_FieldDestroy(gridField, rc=STATUS)
-    call ESMF_FieldDestroy(meshField, rc=STATUS)
-    call ESMF_FieldDestroy(meshArray, rc=STATUS)
+    call ESMF_FieldDestroy(gridField, rc=STATUS); VERIFY_(STATUS)
+    call ESMF_FieldDestroy(meshField, rc=STATUS); VERIFY_(STATUS)
+    call ESMF_FieldDestroy(meshArray, rc=STATUS); VERIFY_(STATUS)
 
     ! generic initialize 
     call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
@@ -723,7 +721,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   character(len=ESMF_MAXSTR)           :: COMP_NAME
 
   type(MAPL_MetaComp), pointer         :: MAPL
-  type (ESMF_State)                    :: INTERNAL
+  type(ESMF_State)                     :: INTERNAL
   type(ESMF_VM)                        :: vm  
 
   ! regridding
@@ -740,10 +738,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   integer                              :: IM, JM, local_dims(3)   ! local grid size
 
   ! halo information
-  integer                              :: num_halo_nodes          ! number of nodes on PET but not owned by PET
+  integer                              :: num_halo_nodes          ! num_nodes minus num_owned_nodes
   type(ESMF_RouteHandle)               :: halohandle              ! field halo routehandle
   integer, pointer, dimension(:)       :: halolist     => null()  ! list of halo nodeIds
-  integer, pointer, dimension(:)       :: halomask     => null()  ! mask local halos points for arrays with owned nodes
+  integer, pointer, dimension(:)       :: halomask     => null()  ! mask out halo points
   type(ESMF_DistGrid)                  :: nodalDistgrid           ! distgrid (owned nodes)
   type(ESMF_Array)                     :: meshArray               ! array for creating mesh fields
 
@@ -760,7 +758,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real(dp), pointer, dimension(:)      :: ICESMB_MESH   => null() ! surface mass balce on mesh elements
   real, pointer, dimension(:)          :: ICESMB_TILE   => null() ! surface mass balance on landice tiles
   real, pointer, dimension(:)          :: ICESMB_IM     => null() ! pointer to SMB import state (landice tiles)
-  real, pointer, dimension(:)          :: ICEEQSMB_EX   => null() ! pointer to ice-equivalent SMB export (mesh)
+  real, pointer, dimension(:)          :: EQSMB_EX   => null() ! pointer to ice-equivalent SMB export (mesh)
 
   ! ISSM Outputs
   integer :: num_outputs = 6                                      ! number of outputs 
@@ -781,11 +779,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real, pointer, dimension(:)          :: ICETHICK_EX   => null() ! pointer to ice thickness export state (mesh tiles)
   real, pointer, dimension(:)          :: ICETHICK_IN   => null() ! pointer to ice thicknesss internal state (mesh tiles)
 
-  ! ice-flow velocity in x direction (in projection coordinate)
+  ! ice-flow velocity in x direction (in projection coordinates)
   real(dp),    pointer, dimension(:)   :: ICEVX_MESH   => null() ! ice x-velocity on mesh
   real, pointer, dimension(:)          :: ICEVX_EX     => null() ! pointer to export state (mesh tiles)
 
-  ! ice-flow velocity in y direction (in projection coordinate)
+  ! ice-flow velocity in y direction (in projection coordinates)
   real(dp),    pointer, dimension(:)   :: ICEVY_MESH   => null() ! ice y-velocity on mesh
   real, pointer, dimension(:)          :: ICEVY_EX     => null() ! pointer to export state (mesh tiles)
 
@@ -794,18 +792,16 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real, pointer, dimension(:)          :: IMLS_IN     => null() ! pointer to internal state (mesh tiles)
 
   ! ocean mask level set (tracks grounding line)
-  real(dp),    pointer, dimension(:)   :: OMLS_MESH   => null() ! ice flow speed on mesh
+  real(dp),    pointer, dimension(:)   :: OMLS_MESH   => null() ! ocean mask level set
   real, pointer, dimension(:)          :: OMLS_IN     => null() ! pointer to internal state (mesh tiles)
 
   ! ice-flow speed on mesh and landice tiles  
-  real(dp),    pointer, dimension(:)   :: ICEVEL_MESH   => null() ! ice flow speed on mesh tiles
-  real, pointer, dimension(:)          :: ICEVEL_TILE   => null() ! ice flow speed on landice tiles
+  real(dp),    pointer, dimension(:)   :: ICEVEL_MESH => null() ! ice flow speed on mesh tiles
+  real, pointer, dimension(:)          :: ICEVEL_TILE => null() ! ice flow speed on landice tiles
  
   ! physical parameters
-  real(dp), parameter                  :: rho_ice   = 917.0       ! pure ice density [kg m-3]
-  real(dp)                             :: dt                      ! time step [s] (ISSM_DT set in AGCM.rc)
-
-  character(len=ESMF_MAXSTR)           :: ISSM_EXPDIR             ! directory containing ISSM input file
+  real(dp), parameter                  :: rho_ice   = 917.0     ! pure ice density [kg m-3]
+  real(dp)                             :: dt                    ! time step [s] (ISSM_DT set in AGCM.rc)
 
 ! Get the target components name, mesh and vm
 ! -----------------------------------------------------------
@@ -828,9 +824,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   call MAPL_TimerOn(MAPL,"RUN" )
 
   call MAPL_Get(MAPL, RUNALARM = ALARM, RC=STATUS )
-  VERIFY_(STATUS)
-
-  call MAPL_GetResource(MAPL, ISSM_EXPDIR, Label=trim(COMP_NAME)//"_EXPDIR:", RC=STATUS)
   VERIFY_(STATUS)
 
   ! run ISSM at specified time steps
@@ -874,7 +867,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     OMLS_MESH(:) = 0.0_dp
     ISSM_OUTPUTS(:) = 0.0_dp
 
-    ! get routehandles for regridding
+    ! get internal state for regridding
     call ESMF_UserCompGetInternalState(GC, 'ISSM_WRAP', wrap, status); VERIFY_(STATUS)
     internal_state => wrap%ptr
     routehandle_m2g = internal_state%routehandle_m2g  ! mesh to grid 
@@ -923,15 +916,15 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! TRANSFORM ICESMB FROM TILES TO MESH 
     ! *************************************************************************** !
 
-    call tile_to_mesh(ICESMB_TILE,ICESMB_MESH); VERIFY_(STATUS)
+    call tile_to_mesh(ICESMB_TILE,ICESMB_MESH)
 
     ! convert SMB to units of [m/s] (ice-equivalent) before passing to ISSM
     ICESMB_MESH = ICESMB_MESH/rho_ice
 
-    ! save ICESMB on mesh elements in ice-equivalent units (m/s): "ICEEQSMB"
-    call MAPL_GetPointer(EXPORT  , ICEEQSMB_EX , 'ICEEQSMB' , RC=STATUS); VERIFY_(STATUS)
+    ! save ICESMB on mesh elements in ice-equivalent units (m/s): "EQSMB"
+    call MAPL_GetPointer(EXPORT  , EQSMB_EX , 'EQSMB' , RC=STATUS); VERIFY_(STATUS)
 
-    if(associated(ICEEQSMB_EX)) ICEEQSMB_EX = ICESMB_MESH(halomask)
+    if(associated(EQSMB_EX)) EQSMB_EX = ICESMB_MESH(halomask)
 
     ! *************************************************************************** !
     !  RUN ISSM WITH SMB INPUT AND ICE-ELEVATION OUTPUT
@@ -979,10 +972,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetPointer(INTERNAL, ICETHICK_IN, 'ICETHICK', RC=STATUS); VERIFY_(STATUS)
     if(associated(ICETHICK_IN)) ICETHICK_IN = ICETHICK_MESH(halomask)
 
-    call MAPL_GetPointer(INTERNAL, OMLS_IN, 'OCNMASKLS', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, OMLS_IN, 'OMLS', RC=STATUS); VERIFY_(STATUS)
     if(associated(OMLS_IN)) OMLS_IN = OMLS_MESH(halomask)
 
-    call MAPL_GetPointer(INTERNAL, IMLS_IN, 'ICEMASKLS', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, IMLS_IN, 'IMLS', RC=STATUS); VERIFY_(STATUS)
     if(associated(IMLS_IN)) IMLS_IN = IMLS_MESH(halomask)
 
     ! *************************************************************************** !
@@ -990,13 +983,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! *************************************************************************** !
 
     ! transform from mesh to tiles
-    call mesh_to_tile(ICESURF_MESH,ICESURF_TILE); VERIFY_(STATUS)
+    call mesh_to_tile(ICESURF_MESH,ICESURF_TILE)
     issm_exports_state%ICESURF_TILE = ICESURF_TILE
 
-    call mesh_to_tile(ICETHICK_MESH,ICETHICK_TILE); VERIFY_(STATUS)
+    call mesh_to_tile(ICETHICK_MESH,ICETHICK_TILE)
     issm_exports_state%ICETHICK_TILE = ICETHICK_TILE
 
-    call mesh_to_tile(ICEVEL_MESH,ICEVEL_TILE); VERIFY_(STATUS)
+    call mesh_to_tile(ICEVEL_MESH,ICEVEL_TILE)
     issm_exports_state%ICEVEL_TILE = ICEVEL_TILE
 
   end if 
@@ -1035,11 +1028,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     real(dp),    pointer, dimension(:), intent(inout)   :: VAR_MESH       ! var on mesh nodes
     real, pointer, dimension(:), intent(inout)          :: VAR_TILE       ! var on landice tiles
 
-    real(dp),    pointer, dimension(:)                  :: VAR_MESH_owned ! var on owned mesh nodes
+    real(dp),    pointer, dimension(:)                  :: VAR_MESH_OWN   ! var on owned mesh nodes
 
-    allocate(values_masked(num_owned_nodes))
+    allocate(VAR_MESH_OWN(num_owned_nodes))
 
-    VAR_MESH_owned = VAR_MESH(halomask)
+    VAR_MESH_OWN = VAR_MESH(halomask)
 
     ! allocate tiles 
     if (.not.associated(VAR_TILE)) then
@@ -1049,7 +1042,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     end if
 
     ! create source field: field on mesh elements
-    srcField = ESMF_FieldCreate(mesh=mesh,farrayPtr=VAR_MESH_owned,meshloc=ESMF_MESHLOC_NODE, & 
+    srcField = ESMF_FieldCreate(mesh=mesh,farrayPtr=VAR_MESH_OWN,meshloc=ESMF_MESHLOC_NODE, & 
     datacopyflag=ESMF_DATACOPY_VALUE,rc=STATUS)
     VERIFY_(STATUS)
     
@@ -1064,7 +1057,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_FieldGet(dstField,farrayPtr=VAR_GRID,RC=STATUS); VERIFY_(STATUS)
 
     ! transform from grid to tiles  
-    call MAPL_LocStreamTransform(internal_state%LOCSTREAM,VAR_TILE,VAR_GRID, RC=STATUS)
+    call MAPL_LocStreamTransform(internal_state%locstream,VAR_TILE,VAR_GRID, RC=STATUS)
     VERIFY_(STATUS)
 
     ! destroy regridding fields so they can be reused
@@ -1077,7 +1070,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! transform from landice tile to grid, then regrid onto mesh
     real, pointer, dimension(:), intent(inout)     :: VAR_TILE    ! var on landice tiles
     real(dp), pointer, dimension(:), intent(inout) :: VAR_MESH    ! var on mesh elements
-    real(dp), pointer, dimension(:)                :: MESH_ptr    ! pointer for ESMF_FieldGet 
+    real(dp), pointer, dimension(:)                :: MESH_PTR    ! pointer for ESMF_FieldGet 
 
 ! transform from tile to grid
     ! NOTE: we use the "transpose" option with MAPL_LocStreamTransformG2T 
@@ -1105,11 +1098,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_FieldHalo(dstField, routehandle=halohandle, rc=STATUS); VERIFY_(STATUS)
 
     ! get pointer to field on mesh
-    call ESMF_FieldGet(dstField,farrayPtr=MESH_ptr,RC=STATUS); VERIFY_(STATUS)
+    call ESMF_FieldGet(dstField,farrayPtr=MESH_PTR,RC=STATUS); VERIFY_(STATUS)
 
     ! copy values into VAR_MESH
-    VAR_MESH(halomask) = MESH_ptr(1:num_owned_nodes)                 ! owned nodes
-    VAR_MESH(.not. halomask) = MESH_ptr(num_owned_nodes+1:num_nodes) ! halo values
+    VAR_MESH(halomask) = MESH_PTR(1:num_owned_nodes)                 ! owned nodes
+    VAR_MESH(.not. halomask) = MESH_PTR(num_owned_nodes+1:num_nodes) ! halo nodes
     
     ! destroy fields and arrays so they can be reused
     call ESMF_FieldDestroy(srcField,rc=STATUS); VERIFY_(STATUS)
