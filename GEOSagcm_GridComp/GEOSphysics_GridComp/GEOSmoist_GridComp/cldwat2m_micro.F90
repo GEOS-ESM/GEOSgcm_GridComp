@@ -16,7 +16,7 @@ module cldwat2m_micro
 
 
 #ifdef GEOS5
-   use MAPL_ConstantsMod, r8 => MAPL_R8
+   use MAPL_Constants, r8 => MAPL_R8
    use wv_saturation,  only: estblf, hlatv, tmin, hlatf, rgasv, pcf, cp, epsqs, ttrice, &
          vqsatd2, vqsatd2_single,polysvp,gestbl
    use aer_cloud, only:  gammp

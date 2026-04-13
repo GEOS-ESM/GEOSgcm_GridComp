@@ -546,6 +546,7 @@ contains
       real, dimension(GPU_MAXLEVS) :: dqs
       !real, dimension(GPU_MAXLEVS) :: qs ! Not used in current code
       real                         :: qs_dummy
+      real                         :: khsfcfac, depth_factor, eis_factor
       real                         :: eis_stability, surface_suppression, radiative_modulation
 !-----------------------------------------------------------------------
 !
@@ -734,7 +735,7 @@ contains
                   u_star,           &
                   evap,             &
                   sh,               &
-                  ipbl,zsml         )
+                  ipbl,zsml,use_eis)
 
 !------------------------------------------------------
 ! Define velocity scales vsurf and vshear
@@ -789,18 +790,28 @@ contains
                            (tmp1+tmp2) ) )
 
 !----------------------------------------
-! AMM fudgey adjustment of entrainment to reduce it
-! for shallow boundary layers, and increase for 
-! deep ones. Linear from 0 to 1600m
+! Entrainment velocity scaling
+! Physical basis:
+!   - Depth: Deeper BL → more TKE → stronger entrainment
+!   - EIS: Strong inversion → resistance → weaker entrainment
             if (use_eis) then
-              ! Surface entrainment: Reduce in stable conditions (high EIS)
-              surface_suppression = 1.0 - 0.8*eis_stability  ! Range: 1.0 to 0.2
-              wentr_tmp = wentr_tmp * max(0.1, surface_suppression)
+               ! Component 1: Depth effect (0 to 2.0)
+               depth_factor = MIN(2.0, zsml(i,j)/800.)
+               
+               ! Component 2: Inversion strength effect (0.5 to 1.2)
+               ! High EIS (stable): 0.5 (strong suppression)
+               ! Low EIS (unstable): 1.2 (enhancement)
+               eis_factor = 1.2 - 0.7*eis_stability
+               
+               ! Combined: multiplicative interaction
+               ! Range: ~0 to 2.4
+               wentr_tmp = wentr_tmp * depth_factor * eis_factor
             else
-              wentr_tmp = wentr_tmp * MIN(2.0, zsml(i,j)/800.)
+               ! Original depth-only scaling (backward compatible)
+               wentr_tmp = wentr_tmp * MIN(2.0, zsml(i,j)/800.)
             endif
-!-----------------------------------------
-
+    !-----------------------------------------
+     
             k_entr_tmp = wentr_tmp*(zfull(i,j,ipbl-1)-zfull(i,j,ipbl))  
             k_entr_tmp = min ( k_entr_tmp, akmax )
 
@@ -821,10 +832,15 @@ contains
 ! the PBL
 
             if (ipbl .lt. ibot) then
-
+               if (use_eis) then
+                  khsfcfac = khsfcfac_lnd*(    eis_stability) + &
+                             khsfcfac_ocn*(1.0-eis_stability)
+               else
+                  khsfcfac = khsfcfac_lnd*frland(i,j) + khsfcfac_ocn*(1.0-frland(i,j))
+               endif
                call diffusivity_pbl2(i,j,icol,jcol,nlev, &
                      zsml,                  &
-                     khsfcfac_lnd, khsfcfac_ocn, k_entr_tmp,  & 
+                     khsfcfac, k_entr_tmp,  & 
                      vsurf,frland,          & 
                      zhalf,                 &
                      k_m_troen,             &
@@ -917,14 +933,6 @@ contains
          maxradf = maxradf*MAPL_CP*( (phalf(i,j,kcldtop+1)-phalf(i,j,kcldtop)) / MAPL_GRAV )
 
          maxradf = max( maxradf , 0. ) ! do not consider cloud tops that are heating
-
-!!AMM108 ! Break out of "rad" plume if layer above cloud is 
-!!AMM108 ! wetter than RH = somenumber
-!!AMM108 if ( rh(kcldtop-1) .gt. 0.5 ) then 
-!!AMM108    if(associated(radrcode_diag)) if radrcode_diag(i,j)=5.
-!!AMM108    go to 55 
-!!AMM108 endif  
-
 
 !-----------------------------------------------------------
 ! Calculate optimal mixing fraction - chis - for buoyancy 
@@ -1038,20 +1046,12 @@ contains
 !----------------------------------------
 ! adjust velocity scales to prevent jumps 
 ! near zradtop=zcldtopmax
-         if (use_eis) then
-           ! Replace hard zradtop height limit with physics-based EIS limit
-           if (eis(i,j) < 2.0) then  ! Very unstable - not suitable for Lock scheme
-             vrad3 = vrad3 * max(0.0, eis(i,j)/2.0)  ! Taper based on stability
-             vbr3  = vbr3  * max(0.0, eis(i,j)/2.0)
-           endif 
-         else
-           if ( zradtop .gt. zcldtopmax-500. ) then 
-              vrad3 = vrad3*(zcldtopmax - zradtop)/500.  
-              vbr3  = vbr3 *(zcldtopmax - zradtop)/500.  
-           endif
-           vrad3=max( vrad3, 0. ) ! these really should not be needed
-           vbr3 =max( vbr3,  0. )
+         if ( zradtop .gt. zcldtopmax-500. ) then 
+            vrad3 = vrad3*(zcldtopmax - zradtop)/500.  
+            vbr3  = vbr3 *(zcldtopmax - zradtop)/500.  
          endif
+         vrad3=max( vrad3, 0. ) ! these really should not be needed
+         vbr3 =max( vbr3,  0. )
 !-----------------------------------------
 
 
@@ -1066,20 +1066,37 @@ contains
          wentr_brv = beta_rad*vbr3/zradml(i,j)/(tmp1+tmp2)
 
 !----------------------------------------
-! AMM107 fudgey adjustment of entrainment to reduce it
-! for shallow boundary layers, and increase for 
-! deep ones: piecewise linear function 500-800m & 800-2400m 
+! Entrainment modulation: Depth AND inversion strength both matter
+! - Depth: Deeper BL has more TKE available for entrainment
+! - EIS: Strong inversion resists penetration by turbulence
          if (use_eis) then
-           ! Radiative entrainment: Modulate based on inversion strength  
-           radiative_modulation = 0.5 + 1.5*eis_stability  ! Range: 0.5 to 2.0
+           
+           ! Depth component (0.5 to 2.0)
+           ! Captures available turbulent kinetic energy
+           if ( zradtop .le. 800. ) then
+              depth_factor = 0.5 + 0.5*max(0.0, (zradtop-500.)/300.)
+           else
+              depth_factor = min(2.0, (zradtop/800.))
+           endif
+           
+           ! EIS component (0.4 to 1.2)
+           ! Captures resistance to entrainment from inversion strength
+           ! High EIS (stable): 0.4 (strong suppression)
+           ! Low EIS (unstable): 1.2 (slight enhancement)
+           eis_factor = 1.2 - 0.8*eis_stability
+           
+           ! Combined: Range approximately 0.2 to 2.4
+           radiative_modulation = depth_factor * eis_factor
            wentr_rad = wentr_rad * radiative_modulation
+           
          else
+           ! Original depth-only scaling (preserved for backward compatibility)
            if ( zradtop .le. 800. ) then
               wentr_rad = wentr_rad * max(0.0,(zradtop-500.)/300.)
            else
               wentr_rad = wentr_rad * min(3.0,(zradtop/800.))
-           endif
-         endif
+           endif  
+         endif    
 !-----------------------------------------
 
          k_entr_tmp = min ( akmax, wentr_rad*(zfull(i,j,kcldtop-1)-zfull(i,j,kcldtop)) )
@@ -1217,7 +1234,8 @@ contains
 #ifdef _CUDA
    attributes(device) &
 #endif
-   subroutine mpbl_depth(i,j,icol,jcol,nlev, tpfac_min, tpfac_max, entrate, pceff, vscale, t, q, u, v, z, p, frland, b_star, u_star , evap, sh, ipbl, ztop )
+   subroutine mpbl_depth(i,j,icol,jcol,nlev, tpfac_min, tpfac_max, entrate, pceff, vscale, &
+                         t, q, u, v, z, p, frland, b_star, u_star, evap, sh, ipbl, ztop, use_eis)
 
 !
 !  -----
@@ -1249,6 +1267,7 @@ contains
       real,    intent(in   )                            :: tpfac_min, tpfac_max, entrate, pceff, vscale
       integer, intent(  out)                            :: ipbl
       real,    intent(  out),dimension(icol,jcol)       :: ztop
+      logical, intent(in   )                            :: use_eis
 
 
       real     :: lts_min,lts_max,lts_fac
@@ -1332,8 +1351,12 @@ contains
          du = sqrt ( ( u2 - u1 )**2 + ( v2 - v1 )**2 ) / (z2-z1)
          du = min(du,1.0e-8)
 
-         entrate_x = (entrate - 0.6e-3*LTS_FAC) * & ! adjust entrate based on LTS_FAC
-                     ( 1.0 + du / vscale )
+         if (use_eis) then
+            entrate_x = (entrate - 0.6e-3*LTS_FAC) * & ! adjust entrate based on LTS_FAC
+                        ( 1.0 + du / vscale )
+         else
+            entrate_x = entrate * ( 1.0 + du / vscale )
+         endif
 
          entfr = min( entrate_x*(z2-z1), 0.99 )
 
@@ -1514,19 +1537,17 @@ contains
 #ifdef _CUDA
    attributes(device) &
 #endif
-   subroutine diffusivity_pbl2(i, j, icol, jcol, lm, h, kfac_l, kfac_o, k_ent, vsurf, frland, zm, k_m, k_t)
+   subroutine diffusivity_pbl2(i, j, icol, jcol, lm, h, kfac, k_ent, vsurf, frland, zm, k_m, k_t)
 
       integer, intent(in   )                              :: i, j, lm, icol, jcol
       real,    intent(in   ), dimension(icol,jcol)        :: h, frland
-      real,    intent(in   )                              :: k_ent, vsurf, kfac_l, kfac_o
+      real,    intent(in   )                              :: k_ent, vsurf, kfac
       real,    intent(in   ), dimension(icol,jcol,1:lm+1) :: zm
       real,    intent(  out), dimension(lm)               :: k_m, k_t
 
-      real    :: EE, hin, kfacx 
+      real    :: EE, hin
 
       integer :: k
-
-      kfacx = kfac_l*frland(i,j) + kfac_o*(1.0-frland(i,j))
 
       hin = 0.0 ! 200.  ! "Organization" scale for plume (m).
 
@@ -1538,11 +1559,11 @@ contains
 !! factor = (zm(i,j,k)/hinner)* (1.0 -(zm(i,j,k)-hinner)/(h(i,j)-hinner))**2
 
       if ( vsurf*h(i,j) .gt. 0. ) then
-         EE  = 1.0 - sqrt( k_ent / ( kfacx * MAPL_KARMAN * vsurf * h(i,j) ) )
+         EE  = 1.0 - sqrt( k_ent / ( kfac * MAPL_KARMAN * vsurf * h(i,j) ) )
          EE  = max( EE , 0.7 )  ! If EE is too small, then punt, as LCs
          do k = 1, lm
             if ( ( zm(i,j,k) .le. h(i,j) ) .and.  ( zm(i,j,k) .gt. hin )  ) then
-               k_t(k) = kfacx * MAPL_KARMAN * vsurf * ( zm(i,j,k)-hin ) * ( 1. - EE*( (zm(i,j,k)-hin)/(h(i,j)-hin) ))**2
+               k_t(k) = kfac * MAPL_KARMAN * vsurf * ( zm(i,j,k)-hin ) * ( 1. - EE*( (zm(i,j,k)-hin)/(h(i,j)-hin) ))**2
             end if
          end do
       endif

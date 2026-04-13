@@ -1580,8 +1580,8 @@ contains
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'CLDTOP_SC',                                      &
-         LONG_NAME = 'Cloud_top_height_from_shallow_convection',&
-         UNITS     = 'm',                                 &
+         LONG_NAME = 'Cloud_top_pressure_from_shallow_convection',&
+         UNITS     = 'Pa',                                 &
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                         &
          RC=STATUS  )
@@ -2688,6 +2688,14 @@ contains
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                                     &
+         SHORT_NAME='LCL_AGL',                                      &
+         LONG_NAME ='lifted_condensation_level_above_ground_level', & 
+         UNITS     ='m'  ,                                          &
+         DIMS      = MAPL_DimsHorzOnly,                             &
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS   )
+    VERIFY_(STATUS)
+         
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='ZCBL',                                        &
          LONG_NAME ='height_of_cloud_base_layer',                  &
@@ -5444,9 +5452,18 @@ contains
         VERIFY_(STATUS)
 
         call MAPL_AddExportSpec(GC,                               &
-        SHORT_NAME         = 'TAU_EC',                             &
-        LONG_NAME          = 'cape removal time scale',           &
-        UNITS              = 's',                                &
+        SHORT_NAME         = 'TAU_DP',                            &
+        LONG_NAME          = 'deep cu cape removal time scale',   &
+        UNITS              = 's',                                 &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+                                                       RC=STATUS  )
+        VERIFY_(STATUS)
+
+        call MAPL_AddExportSpec(GC,                               &
+        SHORT_NAME         = 'TAU_MD',                            &
+        LONG_NAME          = 'congestus cape removal time scale', &       
+        UNITS              = 's',                                 &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
@@ -5580,9 +5597,12 @@ contains
     call MAPL_GetResource( MAPL, LDIAGNOSE_PRECIP_TYPE, Label="DIAGNOSE_PRECIP_TYPE:",  default=.FALSE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LUPDATE_PRECIP_TYPE,   Label="UPDATE_PRECIP_TYPE:",    default=.FALSE., RC=STATUS); VERIFY_(STATUS)
 
-    call MAPL_GetResource( MAPL, USE_AEROSOL_NN  , 'USE_AEROSOL_NN:'  , DEFAULT=.TRUE.        , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, USE_BERGERON    , 'USE_BERGERON:'    , DEFAULT=USE_AEROSOL_NN, RC=STATUS); VERIFY_(STATUS)
-
+    call MAPL_GetResource( MAPL, USE_AEROSOL_NN  , 'USE_AEROSOL_NN:'  , DEFAULT=USE_AEROSOL_NN, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, USE_BERGERON    , 'USE_BERGERON:'    , DEFAULT=USE_BERGERON  , RC=STATUS); VERIFY_(STATUS)
+    if (USE_AEROSOL_NN) then
+      call aer_cloud_init()
+      call WRITE_PARALLEL ("INITIALIZED aer_cloud_init")
+    endif
     ! MAT These have to be defined as they are passed into Aer_Activate below and are intent(in)
     !     Note: It's possible these aren't *used* if USE_AEROSOL_NN=.TRUE. but they are still passed
     !           in so they have to be defined
@@ -5650,6 +5670,7 @@ contains
 
     ! Local variables
     real                                :: Tmax, KCBLMIN, PMIN_CBL
+    real                                :: CNV_CAPE_NORM, CNV_CAPE_SCALE
     real, allocatable, dimension(:,:,:) :: PLEmb, PKE, ZLE0, PK, MASS
     real, allocatable, dimension(:,:,:) :: PLmb,  ZL0, DZET
     real, allocatable, dimension(:,:,:) :: QST3, DQST3, MWFA
@@ -5676,7 +5697,7 @@ contains
     real, pointer, dimension(:,:  ) :: PTYPE, TPREC, CN_PRCP, LS_PRCP, AN_PRCP, SC_PRCP, PLS, PCU
     real, pointer, dimension(:,:  ) :: RAIN, SNOW, ICE, FRZR, PREC_STRAT, PREC_CONV
     real, pointer, dimension(:,:,:) :: BYNCY
-    real, pointer, dimension(:,:  ) :: CAPE, INHB, MLCAPE, SBCAPE, MLCIN, MUCAPE, MUCIN, SBCIN, LFC, LNB
+    real, pointer, dimension(:,:  ) :: CAPE, INHB, MLCAPE, SBCAPE, MLCIN, MUCAPE, MUCIN, SBCIN, LFC, LNB, LCL_AGL
     real, pointer, dimension(:,:  ) :: CNV_FRC, SRF_TYPE
     real, pointer, dimension(:,:,:) :: CFICE, CFLIQ
     real, pointer, dimension(:,:,:) :: NWFA
@@ -5919,7 +5940,9 @@ contains
        call MAPL_GetPointer(EXPORT, MUCIN,   'MUCIN'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, LFC,     'ZLFC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, LNB,     'ZLNB'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-       call BUOYANCY2( IM, JM, LM, T, Q, QST3, DQST3, DZET, ZL0, PLmb, PLEmb(:,:,LM), SBCAPE, MLCAPE, MUCAPE, SBCIN, MLCIN, MUCIN, BYNCY, LFC, LNB )
+       call MAPL_GetPointer(EXPORT, LCL_AGL, 'LCL_AGL', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       call BUOYANCY2( IM, JM, LM, T, Q, QST3, DQST3, DZET, ZL0, PLmb, PLEmb(:,:,LM), &
+                       SBCAPE, MLCAPE, MUCAPE, SBCIN, MLCIN, MUCIN, BYNCY, LFC, LNB, LCL_AGL )
        call BUOYANCY( T, Q, QST3, DQST3, DZET, ZL0, BYNCY, CAPE, INHB)
 
        ! initialize diagnosed convective fraction
@@ -5937,7 +5960,16 @@ contains
            END WHERE
        else
          ! use -1.0*EIS so CNV_FRC 0:1 for EIS 0:-1
-           CNV_FRC = MAX(0.0,MIN(1.0,-1.0*EIS))
+         CNV_FRC = MAX(0.0,MIN(1.0,-1.0*EIS))
+        !!
+        !CNV_CAPE_SCALE = 0.5*(CNV_FRACTION_MIN+CNV_FRACTION_MAX)
+        !CNV_CAPE_NORM = SQRT(CNV_FRACTION_MAX-CNV_FRACTION_MIN) / &
+        !               (SQRT(CNV_FRACTION_MAX-CNV_FRACTION_MIN)+SQRT(CNV_CAPE_SCALE-CNV_FRACTION_MIN))
+        !WHERE (MUCAPE .ne. MAPL_UNDEF)
+        !   CNV_FRC = MIN(  SQRT(MAX(0.0,MUCAPE-CNV_FRACTION_MIN)) / &
+        !                  (SQRT(MAX(0.0,MUCAPE-CNV_FRACTION_MIN)+SQRT(CNV_CAPE_SCALE-CNV_FRACTION_MIN))) / &
+        !                  CNV_CAPE_NORM , 1.0)
+        !END WHERE
        endif
 
        ! Extract convective tracers from the TR bundle

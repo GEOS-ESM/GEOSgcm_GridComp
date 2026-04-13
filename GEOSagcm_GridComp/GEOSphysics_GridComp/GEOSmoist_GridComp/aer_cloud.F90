@@ -1,6 +1,6 @@
  MODULE aer_cloud
 
- use MAPL_ConstantsMod, r8 => MAPL_R8
+ use MAPL_Constants, r8 => MAPL_R8
  use m_fpe, only: isnan
  use Wnet, only: load_wnet_weights, Wnet_forward_pass 
  use omp_lib 
