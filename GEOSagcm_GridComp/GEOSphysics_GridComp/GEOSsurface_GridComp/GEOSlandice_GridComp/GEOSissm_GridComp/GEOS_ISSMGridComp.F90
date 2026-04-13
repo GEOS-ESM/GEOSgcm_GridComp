@@ -597,8 +597,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
     call ESMF_FieldDestroy(field, rc=STATUS)
     VERIFY_(STATUS)
-
-
+  
     ! ---- save glacier IDs ----
     varname = "glacIds"
     field_saver = glacIds(:)
@@ -647,6 +646,11 @@ subroutine SetServices ( GC, RC )
     deallocate(ownedNodeLats)
     deallocate(ownedNodeLons)
     deallocate(ownedNodeIds)
+
+    ! destroy fields and arrays
+    call ESMF_FieldDestroy(gridField, rc=STATUS)
+    call ESMF_FieldDestroy(meshField, rc=STATUS)
+    call ESMF_FieldDestroy(meshArray, rc=STATUS)
 
     ! generic initialize 
     call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
@@ -1028,8 +1032,14 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   subroutine mesh_to_tile(VAR_MESH,VAR_TILE)
     ! regrid from mesh to grid, then transform from grid to landice tiles
-    real(dp),    pointer, dimension(:), intent(inout)   :: VAR_MESH  ! var on mesh elements
-    real, pointer, dimension(:), intent(inout)          :: VAR_TILE  ! var on landice tiles
+    real(dp),    pointer, dimension(:), intent(inout)   :: VAR_MESH       ! var on mesh nodes
+    real, pointer, dimension(:), intent(inout)          :: VAR_TILE       ! var on landice tiles
+
+    real(dp),    pointer, dimension(:)                  :: VAR_MESH_owned ! var on owned mesh nodes
+
+    allocate(values_masked(num_owned_nodes))
+
+    VAR_MESH_owned = VAR_MESH(halomask)
 
     ! allocate tiles 
     if (.not.associated(VAR_TILE)) then
@@ -1039,7 +1049,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     end if
 
     ! create source field: field on mesh elements
-    srcField = ESMF_FieldCreate(mesh=mesh,farrayPtr=VAR_MESH,meshloc=ESMF_MESHLOC_ELEMENT, & 
+    srcField = ESMF_FieldCreate(mesh=mesh,farrayPtr=VAR_MESH_owned,meshloc=ESMF_MESHLOC_NODE, & 
     datacopyflag=ESMF_DATACOPY_VALUE,rc=STATUS)
     VERIFY_(STATUS)
     
@@ -1081,21 +1091,30 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
 
     ! create destination field on mesh elements
-    dstField = ESMF_FieldCreate(mesh=mesh,typekind=ESMF_TYPEKIND_R8,meshloc=ESMF_MESHLOC_ELEMENT, rc=STATUS)
+    meshArray=ESMF_ArrayCreate(nodalDistgrid,typekind=ESMF_TYPEKIND_R8,haloSeqIndexList=halolist,rc=STATUS)
+    VERIFY_(STATUS)
+
+    ! create field on ISSM mesh
+    dstField=ESMF_FieldCreate(mesh, array=meshArray, meshLoc=ESMF_MESHLOC_NODE, rc=STATUS)
     VERIFY_(STATUS)
 
     ! regrid from grid to mesh
     call ESMF_FieldRegrid(srcField, dstField, routehandle_g2m, RC=STATUS); VERIFY_(STATUS)
 
+    ! append halo values to end of "owned" array
+    call ESMF_FieldHalo(dstField, routehandle=halohandle, rc=STATUS); VERIFY_(STATUS)
+
     ! get pointer to field on mesh
     call ESMF_FieldGet(dstField,farrayPtr=MESH_ptr,RC=STATUS); VERIFY_(STATUS)
 
     ! copy values into VAR_MESH
-    VAR_MESH(:) = MESH_ptr(:)
+    VAR_MESH(halomask) = MESH_ptr(1:num_owned_nodes)                 ! owned nodes
+    VAR_MESH(.not. halomask) = MESH_ptr(num_owned_nodes+1:num_nodes) ! halo values
     
-    ! destroy regridding fields so they can be reused
+    ! destroy fields and arrays so they can be reused
     call ESMF_FieldDestroy(srcField,rc=STATUS); VERIFY_(STATUS)
     call ESMF_FieldDestroy(dstField,rc=STATUS); VERIFY_(STATUS)
+    call ESMF_ArrayDestroy(meshArray,rc=STATUS); VERIFY_(STATUS)
 
   end subroutine tile_to_mesh  
 
