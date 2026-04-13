@@ -637,6 +637,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   character(len=ESMF_MAXSTR)          :: REPLAY_FILEP0
   character(len=ESMF_MAXSTR)          :: REPLAY_FILEM1
   character(len=ESMF_MAXSTR)          :: REPLAY_FILEM2
+  character(len=ESMF_MAXSTR)          :: REPLAY_FILEP1_TMPL
+  character(len=ESMF_MAXSTR)          :: REPLAY_FILEP0_TMPL
+  character(len=ESMF_MAXSTR)          :: REPLAY_FILEM1_TMPL
+  character(len=ESMF_MAXSTR)          :: REPLAY_FILEM2_TMPL
   character(len=ESMF_MAXSTR)          :: REPLAY_TIME_INTERP
   character(len=ESMF_MAXSTR)          :: FILETMPL
   character(len=ESMF_MAXSTR)          :: GRIDINC
@@ -983,6 +987,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         REPLAY_TIMEP0 = REPLAY_TIME
 
+        REPLAY_FILEP0_TMPL = FILETMPL
         call ESMF_CFIOstrTemplate ( REPLAY_FILEP0, FILETMPL, 'GRADS', nymd=nymd, nhms=nhms, stat=STATUS )
         VERIFY_(STATUS)
 
@@ -1008,24 +1013,28 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
         call ESMF_TimeGet(REPLAY_TIMEP1, timeString=DATE, RC=STATUS)
         VERIFY_(STATUS)
         call strToInt(DATE, nymdp1, nhmsp1)
+        REPLAY_FILEP1_TMPL = FILETMPL
         call ESMF_CFIOstrTemplate ( REPLAY_FILEP1, FILETMPL, 'GRADS', nymd=nymdp1, nhms=nhmsp1, stat=STATUS )
         VERIFY_(STATUS)
 
         call ESMF_TimeGet(REPLAY_TIMEP0, timeString=DATE, RC=STATUS)
         VERIFY_(STATUS)
         call strToInt(DATE, nymdp0, nhmsp0)
+        REPLAY_FILEP0_TMPL = FILETMPL
         call ESMF_CFIOstrTemplate ( REPLAY_FILEP0, FILETMPL, 'GRADS', nymd=nymdp0, nhms=nhmsp0, stat=STATUS )
         VERIFY_(STATUS)
 
         call ESMF_TimeGet(REPLAY_TIMEM1, timeString=DATE, RC=STATUS)
         VERIFY_(STATUS)
         call strToInt(DATE, nymdm1, nhmsm1)
+        REPLAY_FILEM1_TMPL = FILETMPL
         call ESMF_CFIOstrTemplate ( REPLAY_FILEM1, FILETMPL, 'GRADS', nymd=nymdm1, nhms=nhmsm1, stat=STATUS )
         VERIFY_(STATUS)
 
         call ESMF_TimeGet(REPLAY_TIMEM2, timeString=DATE, RC=STATUS)
         VERIFY_(STATUS)
         call strToInt(DATE, nymdm2, nhmsm2)
+        REPLAY_FILEM2_TMPL = FILETMPL
         call ESMF_CFIOstrTemplate ( REPLAY_FILEM2, FILETMPL, 'GRADS', nymd=nymdm2, nhms=nhmsm2, stat=STATUS )
         VERIFY_(STATUS)
 
@@ -1256,7 +1265,7 @@ CONTAINS
     VERIFY_(STATUS)
     call ESMF_FieldBundleSet(RBUNDLEP0, grid=GRIDana, rc=status)
     VERIFY_(STATUS)
-    call MAPL_read_bundle( RBUNDLEP0, REPLAY_FILEP0, REPLAY_TIMEP0, RC=status)
+    call MAPL_read_bundle( RBUNDLEP0, REPLAY_FILEP0_TMPL, REPLAY_TIMEP0, RC=status)
     VERIFY_(STATUS)
     call ESMF_FieldBundleGet ( RBUNDLEP0, fieldCount=NQ, RC=STATUS )
     VERIFY_(STATUS)
@@ -1546,13 +1555,13 @@ CONTAINS
         if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEP0, grid=GRIDrep, rc=status)
         if ( trim(GRIDINC)=="BKG" ) call ESMF_FieldBundleSet(RBUNDLEP0, grid=GRIDbkg, rc=status)
         VERIFY_(STATUS)
-        call MAPL_read_bundle( RBUNDLEP0, REPLAY_FILEP0, REPLAY_TIMEP0, RC=status)
+        call MAPL_read_bundle( RBUNDLEP0, REPLAY_FILEP0_TMPL, REPLAY_TIMEP0, RC=status)
         VERIFY_(STATUS)
              FILEP0 = REPLAY_FILEP0
         FILE_TIMEP0 = REPLAY_TIMEP0
         NEED_BUNDLEP0 = .FALSE.
     else if( (FILE_TIMEP0 .ne. REPLAY_TIMEP0) .or. (FILEP0 .ne. REPLAY_FILEP0) ) then
-        call MAPL_read_bundle( RBUNDLEP0, REPLAY_FILEP0, REPLAY_TIMEP0, RC=status)
+        call MAPL_read_bundle( RBUNDLEP0, REPLAY_FILEP0_TMPL, REPLAY_TIMEP0, RC=status)
         VERIFY_(STATUS)
              FILEP0 = REPLAY_FILEP0
         FILE_TIMEP0 = REPLAY_TIMEP0
@@ -1565,13 +1574,13 @@ CONTAINS
             if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEM1, grid=GRIDrep, rc=status)
             if ( trim(GRIDINC)=="BKG" ) call ESMF_FieldBundleSet(RBUNDLEM1, grid=GRIDbkg, rc=status)
             VERIFY_(STATUS)
-            call MAPL_read_bundle( RBUNDLEM1, REPLAY_FILEM1, REPLAY_TIMEM1, RC=status)
+            call MAPL_read_bundle( RBUNDLEM1, REPLAY_FILEM1_TMPL, REPLAY_TIMEM1, RC=status)
             VERIFY_(STATUS)
                  FILEM1 = REPLAY_FILEM1
             FILE_TIMEM1 = REPLAY_TIMEM1
             NEED_BUNDLEM1 = .FALSE.
         else if ( (FILE_TIMEM1 .ne. REPLAY_TIMEM1) .or. (FILEM1 .ne. REPLAY_FILEM1) ) then
-            call MAPL_read_bundle( RBUNDLEM1, REPLAY_FILEM1, REPLAY_TIMEM1, RC=status)
+            call MAPL_read_bundle( RBUNDLEM1, REPLAY_FILEM1_TMPL, REPLAY_TIMEM1, RC=status)
             VERIFY_(STATUS)
                  FILEM1 = REPLAY_FILEM1
             FILE_TIMEM1 = REPLAY_TIMEM1
@@ -1584,13 +1593,13 @@ CONTAINS
                 if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEP1, grid=GRIDrep, rc=status)
                 if ( trim(GRIDINC)=="BKG" ) call ESMF_FieldBundleSet(RBUNDLEP1, grid=GRIDbkg, rc=status)
                 VERIFY_(STATUS)
-                call MAPL_read_bundle( RBUNDLEP1, REPLAY_FILEP1, REPLAY_TIMEP1, RC=status)
+                call MAPL_read_bundle( RBUNDLEP1, REPLAY_FILEP1_TMPL, REPLAY_TIMEP1, RC=status)
                 VERIFY_(STATUS)
                      FILEP1 = REPLAY_FILEP1
                 FILE_TIMEP1 = REPLAY_TIMEP1
                 NEED_BUNDLEP1 = .FALSE.
             else if ( FILE_TIMEP1 .ne. REPLAY_TIMEP1 .or. (FILEP1 .ne. REPLAY_FILEP1) ) then
-                call MAPL_read_bundle( RBUNDLEP1, REPLAY_FILEP1, REPLAY_TIMEP1, RC=status)
+                call MAPL_read_bundle( RBUNDLEP1, REPLAY_FILEP1_TMPL, REPLAY_TIMEP1, RC=status)
                 VERIFY_(STATUS)
                      FILEP1 = REPLAY_FILEP1
                 FILE_TIMEP1 = REPLAY_TIMEP1
@@ -1602,13 +1611,13 @@ CONTAINS
                 if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEM2, grid=GRIDrep, rc=status)
                 if ( trim(GRIDINC)=="BKG" ) call ESMF_FieldBundleSet(RBUNDLEM2, grid=GRIDbkg, rc=status)
                 VERIFY_(STATUS)
-                call MAPL_read_bundle( RBUNDLEM2, REPLAY_FILEM2, REPLAY_TIMEM2, RC=status)
+                call MAPL_read_bundle( RBUNDLEM2, REPLAY_FILEM2_TMPL, REPLAY_TIMEM2, RC=status)
                 VERIFY_(STATUS)
                      FILEM2 = REPLAY_FILEM2
                 FILE_TIMEM2 = REPLAY_TIMEM2
                 NEED_BUNDLEM2 = .FALSE.
             else if ( FILE_TIMEM2 .ne. REPLAY_TIMEM2 .or. (FILEM2 .ne. REPLAY_FILEM2) ) then
-                call MAPL_read_bundle( RBUNDLEM2, REPLAY_FILEM2, REPLAY_TIMEM2, RC=status)
+                call MAPL_read_bundle( RBUNDLEM2, REPLAY_FILEM2_TMPL, REPLAY_TIMEM2, RC=status)
                 VERIFY_(STATUS)
                      FILEM2 = REPLAY_FILEM2
                 FILE_TIMEM2 = REPLAY_TIMEM2
