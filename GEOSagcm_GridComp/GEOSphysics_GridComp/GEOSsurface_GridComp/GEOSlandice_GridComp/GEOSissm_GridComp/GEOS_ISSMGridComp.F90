@@ -649,7 +649,7 @@ subroutine SetServices ( GC, RC )
     ! destroy fields and arrays
     call ESMF_FieldDestroy(gridField, rc=STATUS); VERIFY_(STATUS)
     call ESMF_FieldDestroy(meshField, rc=STATUS); VERIFY_(STATUS)
-    call ESMF_FieldDestroy(meshArray, rc=STATUS); VERIFY_(STATUS)
+    call ESMF_ArrayDestroy(meshArray, rc=STATUS); VERIFY_(STATUS)
 
     ! generic initialize 
     call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
