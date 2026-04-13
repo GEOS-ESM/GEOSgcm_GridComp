@@ -102,11 +102,14 @@ end type ISSM_EXPORT_WRAP
 ! private internal state for regridding 
 type T_ISSM_STATE
   private
-  type(ESMF_RouteHandle) :: routehandle_m2g ! routehandle for regridding mesh to grid
-  type(ESMF_RouteHandle) :: routehandle_g2m ! routehandle for regridding grid to mesh
-  type(ESMF_RouteHandle) :: halohandle      ! routehandle for field halos
-  type(ESMF_GRID)        :: grid            ! original grid
-  type(MAPL_LocStream)   :: locstream       ! original locstream 
+  type(ESMF_RouteHandle)        :: routehandle_m2g ! routehandle for regridding mesh to grid
+  type(ESMF_RouteHandle)        :: routehandle_g2m ! routehandle for regridding grid to mesh
+  type(ESMF_RouteHandle)        :: halohandle      ! routehandle for field halos
+  integer, pointer,dimension(:) :: halomask        ! mask for filtering out halos
+  integer, pointer,dimension(:) :: halolist        ! list of halo nodeIds
+  type(ESMF_DistGrid)           :: nodalDistgrid   ! distgrid (owned nodes)
+  type(ESMF_GRID)               :: grid            ! original grid
+  type(MAPL_LocStream)          :: locstream       ! original locstream 
 end type T_ISSM_STATE
 
 ! Wrapper for extracting internal state
@@ -331,13 +334,14 @@ subroutine SetServices ( GC, RC )
     integer, allocatable                   :: elementTypes(:)         ! element geometry type (triangles)
     integer(c_int)                         :: num_elements            ! number of elements on PET
     integer(c_int)                         :: num_nodes               ! number of nodes on PET
+    integer(c_int)                         :: num_owned_nodes         ! number of nodes owned by this PET (<=num_nodes)
     integer, pointer, dimension(:)         :: elementIds    => null() ! list of elements local to PET
     integer, pointer, dimension(:)         :: elementConn   => null() ! element connectivity (nodes indices)
     real(dp),pointer, dimension(:)         :: elementCoords => null() ! element centroids
     real(dp),pointer,dimension(:)          :: nodeCoords    => null() ! node coordinates (longitude,latitude)
     integer, pointer, dimension(:)         :: nodeIds       => null() ! list of nodes local to PET
     integer, pointer, dimension(:)         :: glacIds       => null() ! glacier ID for each element
-
+    
     ! regridding 
     type(ESMF_Grid)                        :: grid                    ! atmospheric grid
     type(ESMF_RouteHandle)                 :: routehandle_m2g         ! routehandle for regridding mesh to grid
@@ -347,8 +351,20 @@ subroutine SetServices ( GC, RC )
     type(T_ISSM_STATE), pointer            :: internal_state          ! store the routehandles for access during run
     type(ISSM_WRAP)                        :: wrap                    ! wrapper for routehandle container
 
+    ! field halo
+    integer                                :: num_halo_nodes            ! number of nodes on PET but not owned by PET
+    type(ESMF_RouteHandle)                 :: halohandle                ! routehandle for field halos
+    integer, pointer, dimension(:)         :: halolist        => null() ! list of halo nodeIds
+    integer, pointer, dimension(:)         :: ownedNodeIds    => null() ! nodeIds excluding halolist
+    type(ESMF_DistGrid)                    :: nodalDistgrid             ! distgrid (owned nodes)
+    type(ESMF_Array)                       :: meshArray                 ! array for creating mesh fields
+    integer, pointer, dimension(:)         :: halomask        => null() ! mask local halos points for arrays with owned nodes
+    real(dp),pointer,dimension(:)          :: ownedNodeCoords => null() ! owned node coordinates (longitude,latitude)
+    real(dp),pointer,dimension(:)          :: ownedNodeLats => null()   ! owned node latitudes
+    real(dp),pointer,dimension(:)          :: ownedNodeLons => null()   ! owned node longitudes
+
     ! command-line arguments to initialize ISSM 
-    integer                                :: i,j                     ! loop indices
+    integer                                :: i,j,k                   ! loop indices
     character(len=ESMF_MAXSTR)             :: ISSM_EXPDIR             ! directory containing ISSM input file
     character(len=ESMF_MAXSTR)             :: EXPDIR                  ! C++ compatible ISSM_EXPDIR string
 
@@ -368,8 +384,10 @@ subroutine SetServices ( GC, RC )
     type(MAPL_LocStream)                   :: mesh_locstream   
 
     ! variables for masking the mesh seam (triangles that cross +/-180 longitude)
+    ! (needed for elements, but unsure if this is needed for regridding fields defined on nodes)
     real(dp)                               :: dlon,lon1,lon2,lon3
     integer, pointer, dimension(:)         :: elementMask => null()
+    integer, pointer, dimension(:)         :: nodeMask => null()
     integer                                :: n1,n2,n3
 
 
@@ -416,7 +434,8 @@ subroutine SetServices ( GC, RC )
     allocate(elementConn(3*num_elements))
     allocate(elementCoords(2*num_elements))
     allocate(elementMask(num_elements))
-    
+    allocate(nodeMask(num_nodes))
+
     ! get information about nodes and elements
     ! node coords and element coords (centroids) are in (lon,lat)
     call GetNodesISSM(c_loc(nodeIds), c_loc(nodeCoords)) 
@@ -425,7 +444,10 @@ subroutine SetServices ( GC, RC )
     elementTypes(:) = ESMF_MESHELEMTYPE_TRI ! triangular elements
 
     ! mask triangles that cross the seam (longitude +/- 180)
+    ! possibly mask nodes, tbd... (note: you don't have to 'activate' these
+    ! masks, they can just be associated with the mesh)
     elementMask(:) = 0
+    nodeMask(:) = 0
     do j=1,num_elements
       n1 = elementConn(3*(j-1)+1)
       n2 = elementConn(3*(j-1)+2)
@@ -436,49 +458,93 @@ subroutine SetServices ( GC, RC )
       dlon = maxval((/lon1,lon2,lon3/)) - minval((/lon1,lon2,lon3/))
       if ( dlon>180.0 ) then
         elementMask(j) = 1
+        nodeMask(n1) = 1
+        nodeMask(n2) = 1
+        nodeMask(n3) = 1
       end if
     end do
 
     ! create the ESMF mesh from ISSM mesh properties
     mesh = ESMF_MeshCreate(parametricDim=2, spatialDim=2, nodeIds=nodeIds, nodeCoords=nodeCoords, &
             elementIds=elementIds, elementTypes=elementTypes, elementConn=elementConn,elementMask=elementMask,& 
-            elementCoords=elementCoords,coordSys=ESMF_COORDSYS_SPH_DEG, rc=STATUS)
+            nodeMask=nodeMask,elementCoords=elementCoords,coordSys=ESMF_COORDSYS_SPH_DEG, rc=STATUS)
     VERIFY_(STATUS)
 
     ! associate ESMF_Mesh representation of ISSM mesh with GC for regridding imports/exports in run method       
     call ESMF_GridCompSet(GC,mesh=mesh,rc=STATUS)
     VERIFY_(STATUS)
 
-    ! Set up regridding next
+    ! set up field halos
     !-----------------------------------
-    ! create source field on ISSM mesh
-    meshField = ESMF_FieldCreate(mesh=mesh,typekind=ESMF_TYPEKIND_R8,meshloc=ESMF_MESHLOC_ELEMENT,rc=STATUS)
+    call ESMF_MeshGet(mesh=mesh,numOwnedNodes=num_owned_nodes,nodalDistgrid=nodalDistgrid)
+
+    num_halo_nodes = num_nodes - num_owned_nodes
+    allocate(halolist(num_halo_nodes))
+    allocate(halomask(num_nodes))
+    allocate(ownedNodeCoords(2*num_owned_nodes))
+    allocate(ownedNodeIds(num_owned_nodes))
+
+    call ESMF_MeshGet(mesh=mesh,ownedNodeCoords=ownedNodeCoords)
+    
+    ! get list of (global) nodeIds that are halos on this PET
+    ! and create a mask to remove these 
+    i=1
+    k=1
+    halomask = .true.
+    do j=1,num_nodes
+    if (nodeOwners(j)/= localPET) then
+    halolist(i) = nodeIds(j)
+    halomask(2*j-1:2*j) = .false.
+    i = i+1
+    else
+      ownedNodeIds(k) = nodeIds(j)
+      k = k+1
+    end if 
+    end do
+
+    meshArray=ESMF_ArrayCreate(nodalDistgrid,typekind=ESMF_TYPEKIND_R8,haloSeqIndexList=halolist,rc=STATUS)
     VERIFY_(STATUS)
 
-    ! get atmospheric grid 
+    ! create field on ISSM mesh
+    meshField=ESMF_FieldCreate(mesh, array=meshArray, meshLoc=ESMF_MESHLOC_NODE, rc=STATUS)
+    VERIFY_(STATUS)
+
+    call ESMF_FieldHaloStore(meshField, routehandle=haloHandle, rc=STATUS)
+    VERIFY_(STATUS)
+
+
+    ! Set up regridding next
+    !-----------------------------------
+    ! get atmospheric (attached) grid 
     call ESMF_GridCompGet( GC, GRID=grid, RC=status ); VERIFY_(STATUS)
     
-    ! create destination field on atmospheric grid
+    ! create field on atmospheric grid
     gridField = ESMF_FieldCreate(grid=grid,typekind=ESMF_TYPEKIND_R4,rc=STATUS); VERIFY_(STATUS)
     
-    ! create routehandle for mesh-to-grid regridding
+    ! create routehandle for mesh-to-grid regridding (set srcMaskValues to 1 if needed... )
     call ESMF_FieldRegridStore(srcField=meshField, dstField=gridField,routehandle=routehandle_m2g,& 
-    srcMaskValues=(/1/),unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,extrapmethod=ESMF_EXTRAPMETHOD_CREEP,&
+    unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,extrapmethod=ESMF_EXTRAPMETHOD_CREEP,&
     extrapNumLevels=1,rc=STATUS)
     VERIFY_(STATUS)
 
-    ! create routehandle for grid-to-mesh regridding
+    ! create routehandle for grid-to-mesh regridding (set dstMaskValues to 1 if needed... )
     call ESMF_FieldRegridStore(srcField=gridField, dstField=meshField,routehandle=routehandle_g2m,& 
-    dstMaskValues=(/1/), unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,extrapmethod=ESMF_EXTRAPMETHOD_NEAREST_D,rc=STATUS)
+    unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,extrapmethod=ESMF_EXTRAPMETHOD_NEAREST_D,rc=STATUS)
     VERIFY_(STATUS)
     
     ! create pointer to routehandle for component's private internal state
     ! also store attached/atmospheric grid and landice tile locstream in internal state
     allocate(internal_state, stat=status)
     VERIFY_(STATUS)
+    allocate(internal_state%halomask(num_nodes))
+    allocate(internal_state%halolist(num_halo_nodes))
     internal_state%routehandle_m2g  = routehandle_m2g
     internal_state%routehandle_g2m  = routehandle_g2m 
-    internal_state%grid             = grid
+    internal_state%halohandle  = halohandle 
+    internal_state%halomask  = halomask 
+    internal_state%grid      = grid
+    internal_state%halolist = halolist
+    internal_state%nodalDistgrid = nodalDistgrid
     call MAPL_Get(MAPL, LocStream = internal_state%locstream, _RC)
 
     wrap%ptr => internal_state
@@ -547,13 +613,13 @@ subroutine SetServices ( GC, RC )
     ! Create losctream that match mesh element id, then set it to this GC and MAPL
     ! note: original attached/atmospheric grid and landice tile locsstream have
     ! been stored in the internal state
-    allocate(elemlons(num_elements))
-    allocate(elemlats(num_elements))
-    elemlons = elementCoords(1::2)*MAPL_DEGREES_TO_RADIANS
-    elemlats = elementCoords(2::2)*MAPL_DEGREES_TO_RADIANS
+    allocate(ownedNodeLons(num_owned_nodes))
+    allocate(ownedNodeLats(num_owned_nodes))
+    ownedNodeLons = ownedNodeCoords(1::2)*MAPL_DEGREES_TO_RADIANS
+    ownedNodeLats = ownedNodeCoords(2::2)*MAPL_DEGREES_TO_RADIANS
 
     mesh_grid = create_mesh_grid(_RC)
-    call MAPL_LocstreamCreate(mesh_locstream, mesh_grid, local_id=elementIds, &
+    call MAPL_LocstreamCreate(mesh_locstream, mesh_grid, local_id=ownedNodeIds, &
               tilelons=elemlons, tilelats=elemlats,  _RC)
     call MAPL%grid%set(mesh_grid, _RC)
     call ESMF_GridCompSet(gc, grid=mesh_grid, _RC)
@@ -574,6 +640,14 @@ subroutine SetServices ( GC, RC )
     deallocate(elemlons)
     deallocate(elemlats)
     deallocate(elementMask)
+    deallocate(nodeMask)
+    deallocate(halomask)
+    deallocate(halolist)
+    deallocate(ownedNodeCoords)
+    deallocate(ownedNodeLats)
+    deallocate(ownedNodeLons)
+    deallocate(ownedNodeIds)
+
     ! generic initialize 
     call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
     VERIFY_(STATUS)
@@ -589,10 +663,10 @@ subroutine SetServices ( GC, RC )
           integer, allocatable  :: IMs(:)
           
 
-          !comm, VM, num_elements are from containing subroutine
+          !comm, VM, num_owned_nodes are from containing subroutine
           call ESMF_VMGet(vm, petcount=nDEs,  _RC) 
           allocate(IMS(nDEs))
-          num(1) = num_elements
+          num(1) = num_owned_nodes
           call MAPL_CommsAllGather(vm, num, 1, IMs, 1, _RC) 
 
           ! create a mesh-grid in 1D
@@ -615,11 +689,11 @@ subroutine SetServices ( GC, RC )
           call ESMF_GridGetCoord(mesh_grid, coordDim=1, localDE=0, &
                staggerloc=ESMF_STAGGERLOC_CENTER, &
                farrayPtr=centers, _RC)
-          centers = 0 ! can assign element coord: elementCoords(1::2)?
+          centers = 0 
           call ESMF_GridGetCoord(mesh_grid, coordDim=2, localDE=0, &
                staggerloc=ESMF_STAGGERLOC_CENTER, &
                farrayPtr=centers, _RC)
-          centers = 0 ! elementCoords(2::2)?
+          centers = 0 
 
           _RETURN(_SUCCESS)
        end function create_mesh_grid      
@@ -653,11 +727,24 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   type(ESMF_RouteHandle)               :: routehandle_g2m         ! grid to mesh routehandle
   type(ESMF_Field)                     :: srcField                ! source field for regridding
   type(ESMF_Field)                     :: dstField                ! destination field for regridding
-  type(T_ISSM_STATE), pointer          :: internal_state=>null()  ! stores the routehandles
+  type(T_ISSM_STATE), pointer          :: internal_state=>null()  ! stores everything needed for regridding
   type(ISSM_WRAP)                      :: wrap                    ! wrapper for routehandle container
   type(ESMF_Mesh)                      :: mesh                    ! ESMF version of ISSM mesh
-  integer(c_int)                       :: num_elements            ! number of elements on each PET
+  integer                              :: num_elements            ! number of elements on PET
+  integer                              :: num_nodes               ! number of nodes on PET
+  integer                              :: num_owned_nodes         ! number of nodes owned by PET
   integer                              :: IM, JM, local_dims(3)   ! local grid size
+
+  ! halo information
+  integer                              :: num_halo_nodes          ! number of nodes on PET but not owned by PET
+  type(ESMF_RouteHandle)               :: halohandle              ! field halo routehandle
+  integer, pointer, dimension(:)       :: halolist     => null()  ! list of halo nodeIds
+  integer, pointer, dimension(:)       :: halomask     => null()  ! mask local halos points for arrays with owned nodes
+  type(ESMF_DistGrid)                  :: nodalDistgrid           ! distgrid (owned nodes)
+  type(ESMF_Array)                     :: meshArray               ! array for creating mesh fields
+
+  ! mesh information
+  integer, pointer, dimension(:)       :: elementConn   => null() ! element connectivity (nodes indices)
 
   ! tile information
   integer                              :: NT                      ! number of landice tiles
@@ -672,28 +759,43 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real, pointer, dimension(:)          :: ICEEQSMB_EX   => null() ! pointer to ice-equivalent SMB export (mesh)
 
   ! ISSM Outputs
-  integer :: num_outputs = 3                                      ! number of outputs 
+  integer :: num_outputs = 6                                      ! number of outputs 
   real(dp),    pointer, dimension(:)   :: ISSM_OUTPUTS  => null() ! pointer containing all outputs
 
   ! pointer for variables on attached grid (reused multiple times for regridding)
   real, pointer, dimension(:,:)        :: VAR_GRID      => null() 
 
-  ! ice-surface elevation on mesh, grid, and landice tiles
+  ! ice-surface elevation on mesh and landice tiles
   real(dp),    pointer, dimension(:)   :: ICESURF_MESH  => null() ! ice elevation on mesh
   real, pointer, dimension(:)          :: ICESURF_TILE  => null() ! ice elevation on landice tiles
-  real, pointer, dimension(:)          :: ICESURF_EX    => null() ! pointer to ice-sheet elevation export state (mesh tiles)
-  real, pointer, dimension(:)          :: ICESURF_IN    => null() ! pointer to ice-sheet elevation internal state (mesh tiles)
+  real, pointer, dimension(:)          :: ICESURF_EX    => null() ! pointer to export state (mesh tiles)
+  real, pointer, dimension(:)          :: ICESURF_IN    => null() ! pointer to internal state (mesh tiles)
 
-  ! ice thickness on mesh, grid, and landice tiles
+  ! ice thickness on mesh and landice tiles
   real(dp),    pointer, dimension(:)   :: ICETHICK_MESH => null() ! ice thickness on mesh
   real, pointer, dimension(:)          :: ICETHICK_TILE => null() ! ice thickness on landice tiles
   real, pointer, dimension(:)          :: ICETHICK_EX   => null() ! pointer to ice thickness export state (mesh tiles)
   real, pointer, dimension(:)          :: ICETHICK_IN   => null() ! pointer to ice thicknesss internal state (mesh tiles)
 
-  ! ice-flow speed on mesh, grid, and landice tiles  
-  real(dp),    pointer, dimension(:)   :: ICEVEL_MESH   => null() ! ice flow speed on mesh
+  ! ice-flow velocity in x direction (in projection coordinate)
+  real(dp),    pointer, dimension(:)   :: ICEVX_MESH   => null() ! ice x-velocity on mesh
+  real, pointer, dimension(:)          :: ICEVX_EX     => null() ! pointer to export state (mesh tiles)
+
+  ! ice-flow velocity in y direction (in projection coordinate)
+  real(dp),    pointer, dimension(:)   :: ICEVY_MESH   => null() ! ice y-velocity on mesh
+  real, pointer, dimension(:)          :: ICEVY_EX     => null() ! pointer to export state (mesh tiles)
+
+  ! ice mask level set (tracks glacier terminus)
+  real(dp),    pointer, dimension(:)   :: IMLS_MESH   => null() ! ice mask level set
+  real, pointer, dimension(:)          :: IMLS_IN     => null() ! pointer to internal state (mesh tiles)
+
+  ! ocean mask level set (tracks grounding line)
+  real(dp),    pointer, dimension(:)   :: OMLS_MESH   => null() ! ice flow speed on mesh
+  real, pointer, dimension(:)          :: OMLS_IN     => null() ! pointer to internal state (mesh tiles)
+
+  ! ice-flow speed on mesh and landice tiles  
+  real(dp),    pointer, dimension(:)   :: ICEVEL_MESH   => null() ! ice flow speed on mesh tiles
   real, pointer, dimension(:)          :: ICEVEL_TILE   => null() ! ice flow speed on landice tiles
-  real, pointer, dimension(:)          :: ICEVEL_EX     => null() ! pointer to ice flow speed export state (mesh tiles)
  
   ! physical parameters
   real(dp), parameter                  :: rho_ice   = 917.0       ! pure ice density [kg m-3]
@@ -739,23 +841,33 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
 
     ! get number of mesh elements
-    call ESMF_MeshGet(mesh,elementCount=num_elements)
+    call ESMF_MeshGet(mesh,elementCount=num_elements,nodeCount=num_nodes,numOwnedNodes=num_owned_nodes)
+    allocate(elementConn(3*num_elements))
+    call ESMF_MeshGet(mesh,elementConn=elementConn)
 
     ! allocate ice-elevation output (export from ISSM)
-    allocate(ISSM_OUTPUTS(num_outputs*num_elements))  
+    allocate(ISSM_OUTPUTS(num_outputs*num_nodes))  
 
-    ! allocate exports defined on mesh elements
-    allocate(ICESURF_MESH(num_elements))
-    allocate(ICETHICK_MESH(num_elements))
-    allocate(ICEVEL_MESH(num_elements))
+    ! allocate output arrays defined on mesh nodes
+    allocate(ICESURF_MESH(num_nodes))
+    allocate(ICETHICK_MESH(num_nodes))
+    allocate(ICEVX_MESH(num_nodes))
+    allocate(ICEVY_MESH(num_nodes))
+    allocate(ICEVEL_MESH(num_nodes))
+    allocate(IMLS_MESH(num_nodes))
+    allocate(OMLS_MESH(num_nodes))
     
-    ! allocate imports defined on mesh elements
-    allocate(ICESMB_MESH(num_elements))  
+    ! allocate input arrays defined on mesh nodes
+    allocate(ICESMB_MESH(num_nodes))  
 
     ! initialize ISSM outputs to zero 
     ICESURF_MESH(:) = 0.0_dp
     ICETHICK_MESH(:) = 0.0_dp
+    ICEVX_MESH(:) = 0.0_dp
+    ICEVY_MESH(:) = 0.0_dp
     ICEVEL_MESH(:) = 0.0_dp
+    IMLS_MESH(:) = 0.0_dp
+    OMLS_MESH(:) = 0.0_dp
     ISSM_OUTPUTS(:) = 0.0_dp
 
     ! get routehandles for regridding
@@ -763,6 +875,15 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     internal_state => wrap%ptr
     routehandle_m2g = internal_state%routehandle_m2g  ! mesh to grid 
     routehandle_g2m = internal_state%routehandle_g2m  ! grid to mesh
+
+    ! get field halo information
+    num_halo_nodes = num_nodes - num_owned_nodes
+    allocate(halomask(num_nodes))
+    allocate(halolist(num_halo_nodes))
+    halomask = internal_state%halomask
+    halohandle = internal_state%halohandle
+    halolist = internal_state%halolist
+    nodalDistgrid = internal_state%nodalDistgrid
 
     ! get landice tile dimensions
     call MAPL_LocStreamGet(internal_state%locstream, NT_LOCAL=NT, _RC)
@@ -806,7 +927,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! save ICESMB on mesh elements in ice-equivalent units (m/s): "ICEEQSMB"
     call MAPL_GetPointer(EXPORT  , ICEEQSMB_EX , 'ICEEQSMB' , RC=STATUS); VERIFY_(STATUS)
 
-    if(associated(ICEEQSMB_EX)) ICEEQSMB_EX = ICESMB_MESH
+    if(associated(ICEEQSMB_EX)) ICEEQSMB_EX = ICESMB_MESH(halomask)
 
     ! *************************************************************************** !
     !  RUN ISSM WITH SMB INPUT AND ICE-ELEVATION OUTPUT
@@ -815,7 +936,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_VMBarrier(vm, rc=status); VERIFY_(STATUS)
 
     ! call run method from ISSM library 
-    call RunISSM(dt, c_loc(ICESMB_MESH), c_loc(ISSM_OUTPUTS))
+    call RunISSM(dt, c_loc(ICESMB_MESH), c_loc(ISSM_OUTPUTS), c_loc(elementConn))
 
     call ESMF_VMBarrier(vm, rc=status); VERIFY_(STATUS)
 
@@ -824,26 +945,41 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! *************************************************************************** !
 
     ! unpack ISSM output pointer
-    ICESURF_MESH(:) = ISSM_OUTPUTS(1:num_elements)
-    ICETHICK_MESH(:) = ISSM_OUTPUTS(num_elements+1:2*num_elements)
-    ICEVEL_MESH(:) = ISSM_OUTPUTS(2*num_elements+1:3*num_elements)
+    ICESURF_MESH(:) = ISSM_OUTPUTS(1:num_nodes)
+    ICETHICK_MESH(:) = ISSM_OUTPUTS(num_nodes+1:2*num_nodes)
+    ICEVX_MESH(:) = ISSM_OUTPUTS(2*num_nodes+1:3*num_nodes)
+    ICEVY_MESH(:) = ISSM_OUTPUTS(3*num_nodes+1:4*num_nodes)
+    OMLS_MESH(:) = ISSM_OUTPUTS(4*num_nodes+1:5*num_nodes)
+    IMLS_MESH(:) = ISSM_OUTPUTS(5*num_nodes+1:6*num_nodes)
+
+    ! calculate ice flow speed
+    ICEVEL_MESH = sqrt(ICEVX_MESH**2 + ICEVY_MESH**2)
 
     ! set pointers to tile-mesh exports
     call MAPL_GetPointer(EXPORT, ICESURF_EX, 'ICESURF', RC=STATUS); VERIFY_(STATUS)
-    if(associated(ICESURF_EX)) ICESURF_EX = ICESURF_MESH
+    if(associated(ICESURF_EX)) ICESURF_EX = ICESURF_MESH(halomask)
 
-    call MAPL_GetPointer(EXPORT, ICEVEL_EX, 'ICEVEL', RC=STATUS); VERIFY_(STATUS)
-    if(associated(ICEVEL_EX)) ICEVEL_EX = ICEVEL_MESH
+    call MAPL_GetPointer(EXPORT, ICEVX_EX, 'ICEVX', RC=STATUS); VERIFY_(STATUS)
+    if(associated(ICEVX_EX)) ICEVX_EX = ICEVX_MESH(halomask)
+
+    call MAPL_GetPointer(EXPORT, ICEVY_EX, 'ICEVY', RC=STATUS); VERIFY_(STATUS)
+    if(associated(ICEVY_EX)) ICEVY_EX = ICEVY_MESH(halomask)
 
     call MAPL_GetPointer(EXPORT, ICETHICK_EX, 'ICETHICK', RC=STATUS); VERIFY_(STATUS)
-    if(associated(ICETHICK_EX)) ICETHICK_EX = ICETHICK_MESH
+    if(associated(ICETHICK_EX)) ICETHICK_EX = ICETHICK_MESH(halomask)
 
     ! set pointers to tile-mesh internals
     call MAPL_GetPointer(INTERNAL, ICESURF_IN, 'ICESURF', RC=STATUS); VERIFY_(STATUS)
-    if(associated(ICESURF_IN)) ICESURF_IN = ICESURF_MESH
+    if(associated(ICESURF_IN)) ICESURF_IN = ICESURF_MESH(halomask)
 
     call MAPL_GetPointer(INTERNAL, ICETHICK_IN, 'ICETHICK', RC=STATUS); VERIFY_(STATUS)
-    if(associated(ICETHICK_IN)) ICETHICK_IN = ICETHICK_MESH
+    if(associated(ICETHICK_IN)) ICETHICK_IN = ICETHICK_MESH(halomask)
+
+    call MAPL_GetPointer(INTERNAL, OMLS_IN, 'OCNMASKLS', RC=STATUS); VERIFY_(STATUS)
+    if(associated(OMLS_IN)) OMLS_IN = OMLS_MESH(halomask)
+
+    call MAPL_GetPointer(INTERNAL, IMLS_IN, 'ICEMASKLS', RC=STATUS); VERIFY_(STATUS)
+    if(associated(IMLS_IN)) IMLS_IN = IMLS_MESH(halomask)
 
     ! *************************************************************************** !
     ! REGRID MESH FIELDS ONTO LANDICE TILES AND EXPORT VIA INTERNAL STATE
@@ -868,14 +1004,20 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   ! deallocates
   if(associated(ICESURF_MESH))  deallocate(ICESURF_MESH)
   if(associated(ICETHICK_MESH)) deallocate(ICETHICK_MESH)
-  if(associated(ICEVEL_MESH))   deallocate(ICEVEL_MESH) 
+  if(associated(ICEVEL_MESH))   deallocate(ICEVEL_MESH)
+  if(associated(ICEVX_MESH))    deallocate(ICEVX_MESH)
+  if(associated(ICEVY_MESH))    deallocate(ICEVY_MESH)
+  if(associated(IMLS_MESH))     deallocate(IMLS_MESH)
+  if(associated(OMLS_MESH))     deallocate(OMLS_MESH)  
   if(associated(ICESMB_MESH))   deallocate(ICESMB_MESH) 
   if(associated(ISSM_OUTPUTS))  deallocate(ISSM_OUTPUTS)
   if(associated(ICESMB_TILE))   deallocate(ICESMB_TILE)
   if(associated(ICESURF_TILE))  deallocate(ICESURF_TILE)
   if(associated(ICETHICK_TILE)) deallocate(ICETHICK_TILE)
   if(associated(ICEVEL_TILE))   deallocate(ICEVEL_TILE)
-
+  if(associated(elementConn))   deallocate(elementConn)
+  if(associated(halolist))      deallocate(halolist)
+  if(associated(halomask))      deallocate(halomask)
 
   call MAPL_TimerOff(MAPL,"RUN"  )
   call MAPL_TimerOff(MAPL,"TOTAL")
