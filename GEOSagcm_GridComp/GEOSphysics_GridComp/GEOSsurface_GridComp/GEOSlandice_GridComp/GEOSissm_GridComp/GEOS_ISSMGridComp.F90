@@ -340,7 +340,8 @@ subroutine SetServices ( GC, RC )
     integer, pointer, dimension(:)         :: elementConn   => null() ! element connectivity (nodes indices)
     real(dp),pointer, dimension(:)         :: elementCoords => null() ! element centroids
     real(dp),pointer,dimension(:)          :: nodeCoords    => null() ! node coordinates (longitude,latitude)
-    integer, pointer, dimension(:)         :: nodeIds       => null() ! list of nodes local to PET
+    integer, pointer, dimension(:)         :: nodeIds       => null() ! Global IDs of nodes local to PET
+    integer, pointer, dimension(:)         :: nodeOwners    => null() ! Specify which PET owns each node
     integer, pointer, dimension(:)         :: glacIds       => null() ! glacier ID for each element
     
     ! regridding 
@@ -474,7 +475,7 @@ subroutine SetServices ( GC, RC )
 
     ! set up field halos
     !-----------------------------------
-    call ESMF_MeshGet(mesh=mesh,numOwnedNodes=num_owned_nodes,nodalDistgrid=nodalDistgrid)
+    call ESMF_MeshGet(mesh=mesh,nodeOwners=nodeOwners,numOwnedNodes=num_owned_nodes,nodalDistgrid=nodalDistgrid)
 
     num_halo_nodes = num_nodes - num_owned_nodes
     allocate(halolist(num_halo_nodes))
