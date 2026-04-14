@@ -921,7 +921,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call tile_to_mesh(ICESMB_TILE,ICESMB_MESH)
 
-    ! save ICESMB on mesh elements in ice-equivalent units (m/s): "EQSMB"
+    ! save ICESMB on mesh elements 
     call MAPL_GetPointer(EXPORT  , ICESMB_EX , 'ICESMB' , RC=STATUS); VERIFY_(STATUS)
 
     if(associated(ICESMB_EX)) ICESMB_EX = ICESMB_MESH(halomask)
