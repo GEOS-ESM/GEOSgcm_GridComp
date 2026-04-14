@@ -5990,7 +5990,7 @@ contains
        call MAPL_TimerOn (MAPL,"---AERO_ACTIVATE")
 
 
-       if ((USE_AEROSOL_NN) .and. not (USE_NCLOUD_CLIM)) then
+       if ((USE_AEROSOL_NN) .and. .not. (USE_NCLOUD_CLIM)) then
          ! get veritical velocity
          if (all(W == 0.0)) then
            TMP3D = -OMEGA/(MAPL_GRAV*PLmb*100.0/(MAPL_RGAS*T))
