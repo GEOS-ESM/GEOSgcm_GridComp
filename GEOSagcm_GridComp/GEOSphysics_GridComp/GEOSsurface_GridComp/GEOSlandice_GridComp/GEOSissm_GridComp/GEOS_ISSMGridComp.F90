@@ -105,7 +105,7 @@ type T_ISSM_STATE
   type(ESMF_RouteHandle)        :: routehandle_m2g ! routehandle for regridding mesh to grid
   type(ESMF_RouteHandle)        :: routehandle_g2m ! routehandle for regridding grid to mesh
   type(ESMF_RouteHandle)        :: halohandle      ! routehandle for field halos
-  integer, pointer,dimension(:) :: halomask        ! mask for filtering out halos
+  logical, pointer,dimension(:) :: halomask        ! mask for filtering out halos
   integer, pointer,dimension(:) :: halolist        ! list of halo nodeIds
   type(ESMF_DistGrid)           :: nodalDistgrid   ! distgrid (owned nodes)
   type(ESMF_GRID)               :: grid            ! original grid (atmosphere)
@@ -248,7 +248,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'EQSMB',                             &
+         SHORT_NAME = 'EQSMB',                                &
          LONG_NAME  = 'ice_equivalent_surface_mass_balance',  &
          UNITS      = 'm s-1',                                &
          DIMS       = MAPL_DimsTileOnly,                      &
@@ -360,7 +360,7 @@ subroutine SetServices ( GC, RC )
     integer, pointer, dimension(:)         :: ownedNodeIds  => null() ! nodeIds excluding halolist
     type(ESMF_DistGrid)                    :: nodalDistgrid           ! distgrid (owned nodes)
     type(ESMF_Array)                       :: meshArray               ! array for creating mesh fields
-    integer, pointer, dimension(:)         :: halomask      => null() ! mask out halos points 
+    logical, pointer, dimension(:)         :: halomask      => null() ! mask out halos points 
 
     ! owned node coordinates (longitude,latitude)
     real(dp),pointer,dimension(:)          :: ownedNodeCoords => null() 
@@ -535,7 +535,7 @@ subroutine SetServices ( GC, RC )
     
     ! create component's private internal state
     ! stores everything needed for regrid and halo operations during run method
-    allocate(internal_state, stat=status)
+    allocate(internal_state, stat=STATUS)
     VERIFY_(STATUS)
     allocate(internal_state%halomask(num_nodes))
     allocate(internal_state%halolist(num_halo_nodes))
