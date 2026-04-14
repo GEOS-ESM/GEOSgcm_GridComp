@@ -113,10 +113,10 @@ PROGRAM mkEASETilesParam
   character(len=512)     :: fname_mask
   character(len=400)     :: MAKE_BCS_INPUT_DIR
 
-  ! --- LakeTopoCat needed ---
-  real(REAL64), allocatable :: tile_lake_frac(:)
+  ! LakeTopoCat
+  real(REAL64), allocatable :: tile_lake_frac( :)
   integer(1),   allocatable :: tile_is_lake_50(:)
-  integer :: n_tile
+  integer                   :: rc_lake
 
   ! --------------------------------------------------------------------------------------
   
@@ -983,18 +983,19 @@ PROGRAM mkEASETilesParam
   call MAPL_WriteTilingNC4('til/'//trim(gfile)//'.nc4', [EASELabel],[nc_ease],[nr_ease], &
        nc, nr, iTable, rTable)
 
-  ! ---  LakeTopoCat: compute lake fraction in tile space and append to tile nc4 ---   
-  n_tile = n_landlakelandice
-  allocate(tile_lake_frac(n_tile))
-  allocate(tile_is_lake_50(n_tile))
-  tile_lake_frac  = 0.0_REAL64
-  tile_is_lake_50 = 0_1
+  ! LakeTopoCat: compute lake fraction in tile space and append to nc4 tile file
   
-  call LakeTopoCat_on_tiles_from_raster(n_tile, nc, nr, tileid_index, tile_lake_frac, tile_is_lake_50)
-  call AppendLakeVarsToTileNC4('til/'//trim(gfile)//'.nc4', tile_lake_frac, tile_is_lake_50, n_tile)
+  allocate(tile_lake_frac( n_landlakelandice))
+  allocate(tile_is_lake_50(n_landlakelandice))
+  
+  call LakeTopoCat_on_tiles_from_raster(n_landlakelandice, nc, nr, tileid_index, tile_lake_frac, tile_is_lake_50, rc_lake)
+  
+  if (rc_lake == 0)  call AppendLakeVarsToTileNC4('til/'//trim(gfile)//'.nc4', n_landlakelandice, tile_lake_frac, tile_is_lake_50 )
   
   deallocate( tile_lake_frac, tile_is_lake_50)  
-  ! --- End LakeTopoCat ---   
+
+  ! -------------------------------------------- 
+
   deallocate( tileid_index, catid_index,veg )
   deallocate( tile_area, ease_grid_area, tile_elev, my_land, all_id )
       
