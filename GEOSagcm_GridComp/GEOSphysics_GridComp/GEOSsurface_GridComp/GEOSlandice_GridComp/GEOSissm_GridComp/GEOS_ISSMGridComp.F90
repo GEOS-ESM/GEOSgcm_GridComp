@@ -247,12 +247,12 @@ subroutine SetServices ( GC, RC )
          RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'EQSMB',                                &
-         LONG_NAME  = 'ice_equivalent_surface_mass_balance',  &
-         UNITS      = 'm s-1',                                &
-         DIMS       = MAPL_DimsTileOnly,                      &
-         VLOCATION  = MAPL_VLocationNone,                     &
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'ICESMB',                    &
+         LONG_NAME  = 'ice_surface_mass_balance',  &
+         UNITS      = 'kg m-2 s-1',                &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone,          &
          RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -761,7 +761,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real(dp), pointer, dimension(:)      :: ICESMB_MESH   => null() ! surface mass balce on mesh elements
   real, pointer, dimension(:)          :: ICESMB_TILE   => null() ! surface mass balance on landice tiles
   real, pointer, dimension(:)          :: ICESMB_IM     => null() ! pointer to SMB import state (landice tiles)
-  real, pointer, dimension(:)          :: EQSMB_EX   => null() ! pointer to ice-equivalent SMB export (mesh)
+  real, pointer, dimension(:)          :: ICESMB_EX     => null() ! pointer to SMB export (mesh)
 
   ! ISSM Outputs
   integer :: num_outputs = 6                                      ! number of outputs 
@@ -921,17 +921,17 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call tile_to_mesh(ICESMB_TILE,ICESMB_MESH)
 
-    ! convert SMB to units of [m/s] (ice-equivalent) before passing to ISSM
-    ICESMB_MESH = ICESMB_MESH/rho_ice
-
     ! save ICESMB on mesh elements in ice-equivalent units (m/s): "EQSMB"
-    call MAPL_GetPointer(EXPORT  , EQSMB_EX , 'EQSMB' , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , ICESMB_EX , 'ICESMB' , RC=STATUS); VERIFY_(STATUS)
 
-    if(associated(EQSMB_EX)) EQSMB_EX = ICESMB_MESH(halomask)
+    if(associated(ICESMB_EX)) ICESMB_EX = ICESMB_MESH(halomask)
 
     ! *************************************************************************** !
     !  RUN ISSM WITH SMB INPUT AND ICE-ELEVATION OUTPUT
     ! *************************************************************************** !
+
+    ! convert SMB to units of [m/s] (ice-equivalent) before passing to ISSM
+    ICESMB_MESH = ICESMB_MESH/rho_ice
 
     call ESMF_VMBarrier(vm, rc=status); VERIFY_(STATUS)
 
