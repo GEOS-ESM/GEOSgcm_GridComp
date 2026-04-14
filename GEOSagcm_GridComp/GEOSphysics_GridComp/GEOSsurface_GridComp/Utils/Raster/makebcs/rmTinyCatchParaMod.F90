@@ -16,8 +16,6 @@ module rmTinyCatchParaMod
   
   use, intrinsic :: iso_fortran_env, only: REAL64 
 
-  use netcdf
-  
   implicit none
   
   logical, parameter :: error_file=.true.
@@ -34,6 +32,8 @@ module rmTinyCatchParaMod
   real,    parameter :: slice=0.1, lim =5.,grzdep =1.1
   logical, parameter :: bug =.false.
 
+  include 'netcdf.inc'
+  
   logical :: preserve_soiltype = .false.
   
   ! Bugfix for Target_mean_land_elev: 
@@ -1076,8 +1076,9 @@ contains
     integer :: varid_frac, varid_l50
     
     character(len=NF_MAX_NAME)              :: dname
+    character(len=128)                      :: mylongname
     integer,                    allocatable :: tmp_int(:)
-    
+        
     ! convert "tile_is_lake_50" from integer(1) to int*4
     
     allocate(tmp_int(n_tile), stat=status)
@@ -1086,15 +1087,15 @@ contains
     
     ! append data into nc4 tile file
     
-    status = NF_OPEN(trim(tilefile), NF_WRITE, ncid)                                                     ; VERIFY_(status)
+    status = NF_OPEN(trim(tilefile), NF_WRITE, ncid)                                               ; VERIFY_(status)
     
     ! find tile dimension by matching length
     
-    status = NF_INQ(ncid, ndims, nvars, ngatts, unlimdimid)                                              ; VERIFY_(status)
+    status = NF_INQ(ncid, ndims, nvars, ngatts, unlimdimid)                                        ; VERIFY_(status)
     
     dimid_tile = -1
     do dd = 1, ndims
-       status = NF_INQ_DIM(ncid, dd, dname, dimlen)                                                      ; VERIFY_(status)
+       status = NF_INQ_DIM(ncid, dd, dname, dimlen)                                                ; VERIFY_(status)
        if (dimlen == n_tile) then
           dimid_tile = dd
           exit
@@ -1108,27 +1109,32 @@ contains
 
     ! define lake variables
     
-    status = NF_REDEF(ncid)                                                                              ; VERIFY_(status)
+    status = NF_REDEF(ncid)                                                                        ; VERIFY_(status)
     
-    status = NF_DEF_VAR(ncid, 'tile_lake_frac',     NF_DOUBLE, 1, (/dimid_tile/), varid_frac)            ; VERIFY_(status)
-    status = NF_DEF_VAR(ncid, 'tile_is_lake_50pct', NF_INT,    1, (/dimid_tile/), varid_l50)             ; VERIFY_(status)
+    status = NF_DEF_VAR(ncid, 'tile_lake_frac',     NF_DOUBLE, 1, (/dimid_tile/), varid_frac)      ; VERIFY_(status)
+    status = NF_DEF_VAR(ncid, 'tile_is_lake_50pct', NF_INT,    1, (/dimid_tile/), varid_l50)       ; VERIFY_(status)
     
-    status = NF_ENDDEF(ncid)                                                                             ; VERIFY_(status)
+    status = NF_ENDDEF(ncid)                                                                       ; VERIFY_(status)
 
     ! add metadata
 
-    status = NF90_PUT_ATT(ncid, varid_frac, 'long_name', 'Lake area fraction')                           ; VERIFY_(status)
-    status = NF90_PUT_ATT(ncid, varid_frac, 'units',     '1')                                            ; VERIFY_(status)
+    mylongname = 'Lake area fraction'
+    
+    status = NF_PUT_ATT_TEXT(ncid, varid_frac, 'long_name', len_trim(mylongname), mylongname)      ; VERIFY_(status)
+    status = NF_PUT_ATT_TEXT(ncid, varid_frac, 'units',     1,                    '1')             ; VERIFY_(status)
 
-    status = NF90_PUT_ATT(ncid, varid_l50,  'long_name', 'Binary flag (0/1): Lake area fraction >= 0.5') ; VERIFY_(status)
-    status = NF90_PUT_ATT(ncid, varid_l50,  'units',     '1')                                            ; VERIFY_(status)
+
+    mylongname = 'Binary flag (0/1): Lake area fraction >= 0.5'
+    
+    status = NF_PUT_ATT_TEXT(ncid, varid_frac, 'long_name', len_trim(mylongname), mylongname)      ; VERIFY_(status)    
+    status = NF_PUT_ATT_TEXT(ncid, varid_l50,  'units',     1,                    '1')             ; VERIFY_(status)
         
     ! write data and close file
     
-    status = NF_PUT_VARA_DOUBLE(ncid, varid_frac, (/1/), (/n_tile/), tile_lake_frac)                     ; VERIFY_(status)
-    status = NF_PUT_VARA_INT(   ncid, varid_l50,  (/1/), (/n_tile/), tmp_int)                            ; VERIFY_(status)
+    status = NF_PUT_VARA_DOUBLE(ncid, varid_frac, (/1/), (/n_tile/), tile_lake_frac)               ; VERIFY_(status)
+    status = NF_PUT_VARA_INT(   ncid, varid_l50,  (/1/), (/n_tile/), tmp_int)                      ; VERIFY_(status)
     
-    status = NF_CLOSE(ncid)                                                                              ; VERIFY_(status)
+    status = NF_CLOSE(ncid)                                                                        ; VERIFY_(status)
     
     deallocate(tmp_int)
         
