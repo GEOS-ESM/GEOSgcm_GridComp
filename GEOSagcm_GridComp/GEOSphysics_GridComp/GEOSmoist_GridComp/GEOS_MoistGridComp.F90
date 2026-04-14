@@ -185,9 +185,9 @@ contains
 
     !***********Aerosol-Cloud related
 
-    call ESMF_ConfigGetAttribute( CF, USE_NCLOUD_CLIM, Label='USE_NCLOUD_CLIM:',   default=.FALSE.,        RC=STATUS)
+    call MAPL_GetResource( CF, USE_NCLOUD_CLIM, Label='USE_NCLOUD_CLIM:',   default=.FALSE.,        RC=STATUS)
     VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute( CF, WSUB_OPTION, Label='WSUB_OPTION:',   default= 1,        RC=STATUS) !0- param 1- Use Wsub climatology 2-USE WNET`
+    call MAPL_GetResource( CF, WSUB_OPTION, Label='WSUB_OPTION:',   default= 1,        RC=STATUS) !0- param 1- Use Wsub climatology 2-USE WNET`
     VERIFY_(STATUS)
 
 
@@ -5569,6 +5569,8 @@ contains
 
     type (ESMF_Config)                  :: CF
 
+    logical :: initialize_aer_cloud
+
     !=============================================================================
 
     ! Begin...
@@ -5599,8 +5601,15 @@ contains
 
     call MAPL_GetResource( MAPL, USE_AEROSOL_NN  , 'USE_AEROSOL_NN:'  , DEFAULT=USE_AEROSOL_NN, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, USE_BERGERON    , 'USE_BERGERON:'    , DEFAULT=USE_BERGERON  , RC=STATUS); VERIFY_(STATUS)
-    if (USE_AEROSOL_NN) then
-      call aer_cloud_init()
+
+    ! If you use MGB2_2M, then aer_cloud_init is done in MGB2_2M_Initialize, otherwise we need to do it here if USE_AEROSOL_NN is true
+    ! and *not* MG
+
+    initialize_aer_cloud = USE_AEROSOL_NN .AND. (adjustl(CLDMICR_OPTION) /= "MGB2_2M")
+
+    if (initialize_aer_cloud) then
+      ! NOTE: For now we hard code in .false. for use_wnet as that is only an option with MG and will be handled there
+      call aer_cloud_init(use_wnet = .false.)
       call WRITE_PARALLEL ("INITIALIZED aer_cloud_init")
     endif
     ! MAT These have to be defined as they are passed into Aer_Activate below and are intent(in)

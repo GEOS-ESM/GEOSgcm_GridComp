@@ -12,6 +12,8 @@ module GEOSmoist_Process_Library
   use GEOS_UtilsMod
   !use Aer_Actv_Single_Moment
   !use aer_cloud
+  USE module_mp_radar
+
 
   implicit none
   private
@@ -4539,8 +4541,6 @@ subroutine update_cld( &
 
    subroutine init_refl10cm ()
 
-      USE module_mp_radar
-
       IMPLICIT NONE
 
       integer :: n
@@ -4673,8 +4673,6 @@ subroutine update_cld( &
       subroutine calc_refl10cm (qv1d, qr1d, nr1d, qs1d, qg1d, &
                t1d, p1d, dBZ, rand1, kts, kte, ii, jj, &
                vt_dBZ, first_time_step, ktopin, kbotin)
-
-      USE module_mp_radar
 
       IMPLICIT NONE
 
