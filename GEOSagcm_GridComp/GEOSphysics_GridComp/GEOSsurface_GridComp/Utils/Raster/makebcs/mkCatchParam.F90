@@ -278,10 +278,10 @@ PROGRAM mkCatchParam
       endif
    else 
       write (log_file,'(a)')'Skipping step for EASE grid. '
-      write (log_file,'(a)')'catchment.def file and tile file should already be created by mkEASETilesParam.x '
+      write (log_file,'(a)')'catchment.def file and tile file should already have been created by mkEASETilesParam.x '
    endif
    write (log_file,'(a)')' '
-
+   
    if (trim(withbcs) == 'no') then
       write (log_file,'(a)')'Skipping MOM BCs. BCs will be extracted from the corresponding BCs. '
       close (log_file,status='keep')
