@@ -41,6 +41,7 @@ module GEOSmoist_Process_Library
   integer, parameter :: SRF_TYPE_OCEAN = 0
 
   ! ICE_FRACTION constants
+   logical :: constrain_modis_ice = .FALSE.
    ! In anvil/convective clouds
    real, parameter :: aT_ICE_ALL = 252.16
    real, parameter :: aT_ICE_MAX = 268.16
@@ -211,8 +212,9 @@ module GEOSmoist_Process_Library
   integer :: ICE_RADII_PARAM = 1
 
   ! defined to determine CNV_FRACTION
-  real    :: CNV_FRACTION_MIN
-  real    :: CNV_FRACTION_MAX
+  real    :: CNV_FRACTION_MIN =  500.0
+  real    :: CNV_FRACTION_MAX = 1500.0
+  real    :: CNV_FRACTION_EXP =    1.0
 
   ! Storage of aerosol properties for activation
   type(AerPropsNew) :: AeroPropsNew(nsmx_par)
@@ -242,8 +244,9 @@ module GEOSmoist_Process_Library
   public :: AeroProps
   public :: AeroPropsNew
   public :: CNV_Tracer_Type, CNV_Tracers, CNV_Tracers_Init
+  public :: constrain_modis_ice
   public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, BUOYANCY2
-  public :: REDISTRIBUTE_CLOUDS, RADCOUPLE, FIX_UP_CLOUDS
+  public :: REDISTRIBUTE_CLOUDS, RADCOUPLE_BINARY, RADCOUPLE, FIX_UP_CLOUDS
   public :: hystpdf, fix_up_clouds_2M
   public :: FILLQ2ZERO
   public :: MELTFRZ
@@ -255,13 +258,14 @@ module GEOSmoist_Process_Library
   public :: dissipative_ke_heating
   public :: pdffrac, pdfcondensate, precalc_dblgss, partition_dblgss, partition_dblgss2
   public :: SIGMA_DX, SIGMA_EXP
-  public :: CNV_FRACTION_MIN, CNV_FRACTION_MAX
+  public :: CNV_FRACTION_MIN, CNV_FRACTION_MAX, CNV_FRACTION_EXP
   public :: SH_MD_DP, DBZ_VAR_INTERCP, DBZ_LIQUID_SKIN, LIQ_RADII_PARAM, ICE_RADII_PARAM
   public :: refl10cm_allow_wet_graupel, refl10cm_allow_wet_snow
   public :: update_cld, meltfrz_inst2M
   public :: FIX_NEGATIVE_PRECIP
   public :: FIND_KLID
   public :: sigma
+  public :: smooth_cloud_binary
   public :: pdf_alpha
   public :: get_fac_eis
   public :: init_refl10cm, calc_refl10cm
@@ -468,6 +472,79 @@ module GEOSmoist_Process_Library
       endif
   end function sigma
 
+  subroutine smooth_cloud_binary(one_minus_sigma, &
+                                 cf_in, ql_in, qi_in, qr_in, qs_in, qg_in, &
+                                 cf_out, ql_out, qi_out, qr_out, qs_out, qg_out, &
+                                 is_inverse)
+
+    implicit none
+    ! Inputs
+    real, intent(in)  :: one_minus_sigma ! 0.0 (coarse) to 1.0 (fine)
+    real, intent(in)  :: cf_in           ! Input cloud fraction
+    real, intent(in)  :: ql_in, qi_in, qr_in, qs_in, qg_in ! Input mixing ratios
+    logical, intent(in) :: is_inverse  ! .FALSE. for in-cloud smooth-to-binary
+                                       ! .TRUE. for reverse in-cloud to mixing ratios 
+    ! Outputs
+    real, intent(out) :: cf_out
+    real, intent(out) :: ql_out, qi_out, qr_out, qs_out, qg_out
+
+    ! Internal Parameters
+    real, parameter :: CF_BASE  = 0.01   ! 1% robust floor
+    real, parameter :: EPS_BASE = 0.01   ! Damping factor
+    real, parameter :: Q_THRESHOLD = 1.e-12 
+    real :: binary_cf, eps_damp, scale_cfmin, denom
+
+    ! 1. Calculate Adaptive Thresholds
+    scale_cfmin = CF_BASE * (1.0 - 0.9 * one_minus_sigma)
+    eps_damp    = EPS_BASE * (1.0 - one_minus_sigma)
+
+    if (.not. is_inverse) then
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        ! FORWARD: GRID-MEAN -> SMOOTH BINARY
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        
+        ! Determine Binary State
+        if (cf_in >= 0.5) then
+            binary_cf = 1.0
+        else
+            binary_cf = 0.0
+        end if
+
+        ! Blend CF toward Binary
+        cf_out = (1.0 - one_minus_sigma) * cf_in + (one_minus_sigma * binary_cf)
+        
+        if (cf_out >= scale_cfmin) then
+            denom = cf_out + eps_damp
+            ql_out = ql_in / denom
+            qi_out = qi_in / denom
+            qr_out = qr_in / denom
+            qs_out = qs_in / denom
+            qg_out = qg_in / denom
+        else
+            cf_out = 0.0
+            ql_out = 0.0; qi_out = 0.0; qr_out = 0.0; qs_out = 0.0; qg_out = 0.0
+        end if
+
+    else
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        ! INVERSE: IN-CLOUD -> GRID-MEAN
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        ! Note: Use this if you need to recover the mass-balanced 
+        ! grid-mean after the radiation/microphysics step.
+        
+        cf_out = cf_in ! Typically you keep the modified CF
+        
+        denom = cf_in + eps_damp
+        ql_out = ql_in * denom
+        qi_out = qi_in * denom
+        qr_out = qr_in * denom
+        qs_out = qs_in * denom
+        qg_out = qg_in * denom
+    end if
+
+  end subroutine smooth_cloud_binary
+
+
   function ICE_FRACTION_3D (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
       real, intent(in) :: TEMP(:,:,:),CNV_FRACTION(:,:),SRF_TYPE(:,:)
       real :: ICEFRCT(size(TEMP,1),size(TEMP,2),size(TEMP,3))
@@ -501,11 +578,11 @@ module GEOSmoist_Process_Library
       enddo
   end function ICE_FRACTION_1D
 
-  function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
+function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
       real, intent(in) :: TEMP,CNV_FRACTION,SRF_TYPE
       real             :: ICEFRCT
       real             :: tc, ptc
-      real             :: ICEFRCT_C, ICEFRCT_M
+      real             :: ICEFRCT_C, ICEFRCT_M, ICEFRCT_PHYS
 
 #ifdef USE_MODIS_ICE_POLY
      ! Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384)
@@ -579,6 +656,72 @@ module GEOSmoist_Process_Library
       ! Combine the Convective and MODIS functions
         ICEFRCT  = ICEFRCT_M*(1.0-CNV_FRACTION) + ICEFRCT_C*(CNV_FRACTION)
 #endif
+
+      if (constrain_modis_ice) then
+
+      ! =====================================================================
+      ! NEW: Apply thermodynamic constraints
+      ! Ensures ice fraction doesn't violate physical laws while respecting
+      ! MODIS observations where physically reasonable
+      ! =====================================================================
+      
+      ! Compute physics-based minimum ice fraction
+      ICEFRCT_PHYS = 0.0
+      
+      if (TEMP < 235.0) then
+        ! Below -38°C: Homogeneous nucleation temperature
+        ! All supercooled liquid droplets freeze spontaneously
+        ! This is a thermodynamic law, not negotiable
+        ICEFRCT_PHYS = 1.0
+        
+      elseif (TEMP < 238.0) then
+        ! -38°C to -35°C: Transition to 100% ice
+        ! Very rapid heterogeneous nucleation, essentially all ice
+        ICEFRCT_PHYS = 0.975 + 0.025 * (238.0 - TEMP) / 3.0
+        
+      elseif (TEMP < 243.0) then
+        ! -35°C to -30°C: Should be 90-97.5% ice
+        ! Laboratory and aircraft observations show predominantly ice
+        ICEFRCT_PHYS = 0.90 + 0.075 * (243.0 - TEMP) / 5.0
+        
+      elseif (TEMP < 248.0) then
+        ! -30°C to -25°C: Should be 80-90% ice
+        ! Mixed phase possible but ice dominant
+        ICEFRCT_PHYS = 0.80 + 0.10 * (248.0 - TEMP) / 5.0
+        
+      elseif (TEMP < 253.0) then
+        ! -25°C to -20°C: Should be 65-80% ice
+        ! Active heterogeneous nucleation, ice favored
+        ICEFRCT_PHYS = 0.65 + 0.15 * (253.0 - TEMP) / 5.0
+        
+      elseif (TEMP < 258.0) then
+        ! -20°C to -15°C: Should be 45-65% ice
+        ! True mixed phase regime
+        ICEFRCT_PHYS = 0.45 + 0.20 * (258.0 - TEMP) / 5.0
+        
+      elseif (TEMP < 263.0) then
+        ! -15°C to -10°C: Should be 25-45% ice
+        ! Mixed phase, liquid becomes more common
+        ICEFRCT_PHYS = 0.25 + 0.20 * (263.0 - TEMP) / 5.0
+        
+      elseif (TEMP < 268.0) then
+        ! -10°C to -5°C: Mixed phase, 10-25% ice
+        ! Supercooled liquid droplets stable
+        ICEFRCT_PHYS = 0.10 + 0.15 * (268.0 - TEMP) / 5.0
+        
+      else
+        ! Above -5°C: MODIS parameterization is fine
+        ICEFRCT_PHYS = 0.0
+      endif
+      
+      ! Take maximum of MODIS-based and physics-based ice fraction
+      ! This preserves MODIS accuracy where valid, applies constraints where needed
+      ICEFRCT = MAX(ICEFRCT, ICEFRCT_PHYS)
+      
+      endif
+      
+      ! Final bounds check
+      ICEFRCT = MIN(1.0, MAX(0.0, ICEFRCT))
 
   end function ICE_FRACTION_SC
 
@@ -794,8 +937,7 @@ module GEOSmoist_Process_Library
             RADIUS = 0.64952*RADIUS
           endif
 
-          Rmin = max(15.e-6, 30.e-6 * exp((TE - 233.) / 20.))
-          RADIUS = MIN(150.e-6, MAX(Rmin, 1.e-6*RADIUS))
+          RADIUS = MIN(150.e-6, MAX(5.e-6, 1.e-6*RADIUS))
 
       ELSE
         STOP "WRONG HYDROMETEOR type: CLOUD = 1 OR ICE = 2"
@@ -1046,6 +1188,87 @@ module GEOSmoist_Process_Library
     end where
 
   end subroutine BUOYANCY
+
+   subroutine RADCOUPLE_BINARY(  &
+         TE,              &
+         PL,              &
+         CF,              &
+         AF,              &
+         QV,              &
+         QClLS,           &
+         QCiLS,           &
+         QClAN,           &
+         QCiAN,           &
+         QR_IN,           &
+         QS_IN,           &
+         QG_IN,           &
+         NL,              &
+         NI,              &
+         one_minus_sigma, &
+         RAD_QV,          &
+         RAD_QL,          &
+         RAD_QI,          &
+         RAD_QR,          &
+         RAD_QS,          &
+         RAD_QG,          &
+         RAD_CF,          &
+         RAD_RL,          &
+         RAD_RI,          &
+         FAC_RL, MIN_RL, MAX_RL, &
+         FAC_RI, MIN_RI, MAX_RI)
+
+      real, intent(in ) :: TE
+      real, intent(in ) :: PL
+      real, intent(in ) :: AF,CF, QV, QClAN, QCiAN, QClLS, QCiLS
+      real, intent(in ) :: QR_IN, QS_IN, QG_IN
+      real, intent(in ) :: NL,NI
+      real, intent(in ) :: one_minus_sigma
+      real, intent(out) :: RAD_QV,RAD_QL,RAD_QI,RAD_QR,RAD_QS,RAD_QG,RAD_CF,RAD_RL,RAD_RI
+      real, intent(in ) :: FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI
+
+      real :: CF_IN, QL_IN, QI_IN
+
+      ! Limits on Radii needed to ensure
+      ! correct behavior of cloud optical
+      ! properties currently calculated in
+      ! sorad and irrad (1e-6 m = micron)
+
+      ! water vapor
+      RAD_QV = QV
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      ! Total cloud fraction
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      CF_IN = MAX(MIN(CF+AF,1.0),0.0)
+      QL_IN = QClLS + QClAN
+      QI_IN = QCiLS + QCiAN
+
+      call smooth_cloud_binary(one_minus_sigma, &
+                               cf_in, ql_in, qi_in, qr_in, qs_in, qg_in, &
+                               RAD_CF, RAD_QL, RAD_QI, RAD_QR, RAD_QS, RAD_QG, &
+                               .false.)
+
+     ! LIQUID RADII
+      if (RAD_QL > 0.0) then
+        !-BRAMS formulation
+        RAD_RL = LDRADIUS4(PL,TE,RAD_QL,NL,NI,1)
+        ! apply limits
+        RAD_RL = MAX( MIN_RL, MIN(RAD_RL*FAC_RL, MAX_RL) )
+      else
+        RAD_RL = MAPL_UNDEF
+      end if
+
+    ! ICE RADII
+      if (RAD_QI > 0.0) then
+        !-BRAMS formulation
+        RAD_RI = LDRADIUS4(PL,TE,RAD_QI,NL,NI,2)
+        ! apply limits
+        RAD_RI = MAX( MIN_RI, MIN(RAD_RI*FAC_RI, MAX_RI) )
+      else
+        RAD_RI = MAPL_UNDEF
+      end if
+
+   end subroutine RADCOUPLE_BINARY
 
    subroutine RADCOUPLE(  &
          TE,              &
@@ -2774,12 +2997,15 @@ module GEOSmoist_Process_Library
       QI   = QILS + QICN
       QL   = QLLS + QLCN
       QTOT = QI + QL
+
+      ! We calculate FQA for reference, but we NO LONGER scale NI by it.
       FQA  = 0.0
       if (QTOT .gt. 0.0) FQA = (QICN + QILS) / QTOT
 
-      ! FIX #2: Use ice mass fraction (FQA) to scale NI toward large-scale
-      ! ice crystal number, not liquid fraction (1-FQA).
-      NIX = FQA * NI
+      ! CORRECTION 2: Use the actual ice crystal number concentration (NI) 
+      ! provided by the aerosol/nucleation scheme. Do not scale it by ice mass fraction.
+      ! Added a tiny lower bound to prevent divide-by-zero.
+      NIX = MAX(NI, 1.0e-12)
 
       DQALL = DQALL / DTIME
       CFALL = min(CF + AF, 1.0)
@@ -2833,7 +3059,9 @@ module GEOSmoist_Process_Library
          LHcorr = (1.0 + DQSI*MAPL_ALHS/MAPL_CP)                ! ice deposition correction
 
          if ((NIX .gt. 1.0) .and. (QILS .gt. 1.0e-10)) then
-            DC = max((QILS/(NIX*DENICE*MAPL_PI))**(0.333), 20.0e-6)  ! monodisperse
+            ! Added missing factor of 6.0 for spherical volume math.
+            ! D = (6 * Mass / (N * rho * pi))^(1/3)
+            DC = max( (6.0 * QILS / (NIX * DENICE * MAPL_PI))**(1.0/3.0), 20.0e-6 )
          else
             DC = 20.0e-6
          end if
@@ -2843,6 +3071,8 @@ module GEOSmoist_Process_Library
          DEP = 0.0
          if ((TEFF .gt. 0.0) .and. (QILS .gt. 1.0e-14)) then
             AUX = max(min(DTIME*TEFF, 20.0), 0.0)
+            ! Note: This analytical integration assumes T and QV are constant over DTIME.
+            ! If time steps are long, this may still slightly over-predict deposition.
             DEP = (QVINC - QSICE) * (1.0 - EXP(-AUX)) / DTIME
          end if
          DEP = MAX(DEP, -QILS/DTIME)   ! only existing ice can sublimate

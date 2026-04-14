@@ -1725,9 +1725,30 @@ CONTAINS
                         use_excess, zqexec, ztexec, x_add_buoy, xland, cnvfrc, itf, ktf, its, ite, kts, kte)
 
   !- Setup initial Downdraft Profile Parameters
-  mentrd_rate = entr_rate_plume * 0.3
-  cdd = mentrd_rate
-  sigd(:) = MERGE(1.0, 0.0, DOWNDRAFT)
+  if (ZERO_DIFF_ENTR == 1) then     
+      mentrd_rate = entr_rate_plume
+      cdd = mentrd_rate
+      sigd(:) = MERGE(1.0, 0.0, DOWNDRAFT)
+  else
+      !- Scale-aware downdraft switch (matches updraft scaling perfectly)
+      sigd(:) = MERGE(sig(:), 0.0, DOWNDRAFT)
+      !- Physically-based downdraft lateral mixing (Entrainment/Detrainment)
+      SELECT CASE(trim(cumulus))
+        CASE('deep')
+           ! Restrict lateral mixing so the downdraft preserves its cold,
+           ! heavy core and transports moisture/mass forcefully into the lower levels
+           mentrd_rate = entr_rate_plume * 0.3  ! <--- DECREASED FROM 1.0
+        CASE('mid')
+           ! Optionally reduce this too, or leave at 1.0 if you want mid-level
+           ! convection to remain leaky
+           mentrd_rate = entr_rate_plume * 0.5
+        CASE('shallow')
+           mentrd_rate = entr_rate_plume * 0.3
+        CASE DEFAULT
+           mentrd_rate = entr_rate_plume * 0.3
+      END SELECT
+      cdd = mentrd_rate
+  endif
 
   !- Update Source Parcels
   DO i = its, itf
@@ -1850,6 +1871,10 @@ CONTAINS
         denom = (zu(i,k-1) - 0.5 * up_massdetro(i,k-1) + up_massentro(i,k-1))
         if(denom > 0.0) then
            hco(i,k) = (hco(i,k-1) * zuo(i,k-1) - 0.5 * up_massdetro(i,k-1) * hco(i,k-1) + up_massentro(i,k-1) * heo(i,k-1)) / denom
+           if ( (ZERO_DIFF_ENTR /= 1) .AND. (k == start_level(i) + 1) ) then
+               x_add = (xlv*zqexec(i)+cp*ztexec(i)) +  x_add_buoy(i)
+               hco(i,k)= hco(i,k) + x_add*up_massentro(i,k-1)/denom
+           endif
         else
            hco(i,k) = hco(i,k-1)
         endif
@@ -1914,6 +1939,12 @@ CONTAINS
         if(denom > 0.0 .and. denomU > 0.0) then
            hc(i,k)  = (hc(i,k-1)  * zu(i,k-1)  - 0.5 * up_massdetr(i,k-1)  * hc(i,k-1)  + up_massentr(i,k-1)  * he(i,k-1))  / denom
            hco(i,k) = (hco(i,k-1) * zuo(i,k-1) - 0.5 * up_massdetro(i,k-1) * hco(i,k-1) + up_massentro(i,k-1) * heo(i,k-1)) / denom
+
+           if ( (ZERO_DIFF_ENTR /= 1) .AND. (k == start_level(i) + 1) ) then
+               x_add = (xlv*zqexec(i)+cp*ztexec(i)) +  x_add_buoy(i)
+               hco(i,k)= hco(i,k) + x_add*up_massentro(i,k-1)/denom
+               hc (i,k)= hc (i,k) + x_add*up_massentr (i,k-1)/denom
+           endif
 
            uc(i,k) = (uc(i,k-1) * zu(i,k-1) - 0.5 * up_massdetru(i,k-1) * uc(i,k-1) + up_massentru(i,k-1) * us(i,k-1) &
                      - pgcon * 0.5 * (zu(i,k) + zu(i,k-1)) * (u_cup(i,k) - u_cup(i,k-1))) / denomU
@@ -2385,7 +2416,12 @@ CONTAINS
               dp = 100. * (po_cup(i,k) - po_cup(i,k+1))
               dellah(i,k) = -(zuo(i,k+1) * (hco(i,k+1) - heo_cup(i,k+1)) - zuo(i,k) * (hco(i,k) - heo_cup(i,k))) * g / dp &
                             +(zdo(i,k+1) * (hcdo(i,k+1) - heo_cup(i,k+1)) - zdo(i,k) * (hcdo(i,k) - heo_cup(i,k))) * g / dp * edto(i)
+            !---meltglac-------------------------------------------------
+! BUG2025     dellah(i,k) = dellah(i,k) - xlf*melting(i,k)*g/dp
               dellah(i,k) = dellah(i,k) + xlf * ((1. - p_liq_ice(i,k)) * 0.5 * (qrco(i,k+1) + qrco(i,k)) - melting(i,k)) * g / dp
+! BUG2025 this is a known bug where latent heat of freezing for qrco included in hco already
+! BUG2025 this bug remains for the legacy VERT_DISCR==0 configuration for consistency with old exps
+! BUG2025 the bug is corrected below when running the recommended VERT_DISCR==1
 
               subten_H(i,k) = -(zuo(i,k+1) * (-heo_cup(i,k+1)) - zuo(i,k) * (-heo_cup(i,k))) * g / dp &
                               +(zdo(i,k+1) * (-heo_cup(i,k+1)) - zdo(i,k) * (-heo_cup(i,k))) * g / dp * edto(i)
@@ -2674,6 +2710,10 @@ CONTAINS
               xhc(i,k) = xhc(i,k-1)
            else
               xhc(i,k) = (xhc(i,k-1) * xzu(i,k-1) - .5 * up_massdetro(i,k-1) * xhc(i,k-1) + up_massentro(i,k-1) * xhe(i,k-1)) / denom
+              if ( (ZERO_DIFF_ENTR /= 1) .AND. (k == start_level(i) + 1) ) then
+                  x_add = (xlv*zqexec(i)+cp*ztexec(i)) +  x_add_buoy(i)
+                  xhc(i,k)= xhc(i,k) + x_add*up_massentro(i,k-1)/denom
+              endif
            endif
            xhc(i,k) = xhc(i,k) + xlf * (1. - p_liq_ice(i,k)) * qrco(i,k)
         enddo
@@ -4155,6 +4195,9 @@ CONTAINS
             endif
 
             IF (AUTOCONV == 1 ) then
+                !-----------------------------------------------------------------------
+                ! AUTOCONV = 1 : Classic Kessler scheme; constant conversion rate once a static liquid water threshold is exceeded.
+                !-----------------------------------------------------------------------
                 min_liq  = ( xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd )
                 cx0     = (c1d(i,k)+c0)*DZ
                 qrc(i,k)= clw_all(i,k)/(1.+cx0)
@@ -4163,7 +4206,9 @@ CONTAINS
                 pw (i,k)=pw(i,k)*zu(i,k)
 
             ELSEIF (AUTOCONV == 2 ) then
-              ! this is similar to AUTOCONV == 1 with temperature dependence
+                !-----------------------------------------------------------------------
+                ! AUTOCONV = 2 : Kessler with temperature dependence; suppresses rain formation at freezing temperatures to mimic mixed-phase glaciation.
+                !-----------------------------------------------------------------------
                 min_liq  = ( xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd )
                 cx0     = (c1d(i,k)+c0)*DZ*fract_liq_f(tempc(i,k),cnvfrc(i),srftype(i))
                 qrc(i,k)= clw_all(i,k)/(1.+cx0)
@@ -4172,6 +4217,8 @@ CONTAINS
                 pw (i,k)=pw(i,k)*zu(i,k)
 
             ELSEIF (AUTOCONV == 3 ) then
+                !-----------------------------------------------------------------------
+                ! AUTOCONV = 3 : Aerosol-aware Berry (1968) scheme; conversion rate depends on droplet number concentration derived from AOD/CCN.
                 ! this is similar to AUTOCONV == 2 with CCN dependence
                 !------------------------------------------------------------
                 ! 1. Base land/ocean autoconversion threshold
@@ -4203,6 +4250,7 @@ CONTAINS
 
             ELSEIF (AUTOCONV == 4 ) then
                 !-----------------------------------------------------------------------
+                ! AUTOCONV = 4 : Sundqvist scheme; smooth exponential activation of rain formation with vertical-velocity and ice-phase dependencies.
                 ! this is similar to AUTOCONV == 3 with VVEL dependence & analytic solution
                 !-----------------------------------------------------------------------
                 ! Base land/ocean threshold
@@ -4266,15 +4314,16 @@ CONTAINS
                 endif
 
             ELSEIF (AUTOCONV == 5 ) then
+                !--------------------------------------------------------------------
+                ! AUTOCONV = 5 : Analytical integration that includes a continuous condensation source term (cup) and a mildly temperature-dependent conversion rate.
+                !--------------------------------------------------------------------
                 min_liq  = ( xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd )
                 if(clw_all(i,k) <= min_liq) then
                    qrc(i,k)= clw_all(i,k)
                    pw(i,k) = 0.
                 else
-                   cx0     = (c1d(i,k)+c0)*(1.+ 0.33*fract_liq_f(tempc(i,k),cnvfrc(i),srftype(i)))
-                   ! BUG FIX: Protect against divide-by-zero
+                   cx0 = (c1d(i,k)+c0)*(1.+ 0.33*fract_liq_f(tempc(i,k),cnvfrc(i),srftype(i)))
                    cx0 = max(cx0, 1.e-6)
-                   ! BUG FIX: Use clw_all instead of self-referential qrc
                    qrc(i,k)= clw_all(i,k)*exp(-cx0*dz) + (cup/cx0)*(1.-exp(-cx0*dz))
                    pw (i,k)= max(0.,clw_all(i,k)-qrc(i,k)) ! units kg[rain]/kg[air]
                    qrc(i,k)= clw_all(i,k)-pw(i,k)
@@ -4283,12 +4332,16 @@ CONTAINS
                 endif
 
             ELSEIF (AUTOCONV == 6 ) then
-                min_liq  = ( xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd )
+                !--------------------------------------------------------------------
+                ! AUTOCONV = 6 : Kessler-type scheme like Option 1, but utilizes a smooth exponential decay for mass-conserving rainout rather than an instantaneous linear fraction.
+                !--------------------------------------------------------------------
+                min_liq  = ( xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd ) 
                 if(clw_all(i,k) <= min_liq) then
                    qrc(i,k)= clw_all(i,k)
                    pw(i,k) = 0.
                 else
-                   cx0     = (c1d(i,k)+c0)*dz
+                   cx0 = (c1d(i,k)+c0)*dz
+                   cx0 = max(cx0, 1.e-6)
                    qrc(i,k)= (clw_all(i,k))*exp(-cx0)
                    pw (i,k)= clw_all(i,k) - qrc(i,k)
                   !--- convert pw to normalized pw
@@ -4296,15 +4349,16 @@ CONTAINS
                 endif
 
             ELSEIF (AUTOCONV == 7 ) then
-                min_liq  = ( xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd )
+                !--------------------------------------------------------------------
+                ! AUTOCONV = 7 : Analytical integration that includes a continuous condensation source term (cup), but strictly uses a constant, temperature-independent conversion rate.
+                !--------------------------------------------------------------------
+                min_liq  = ( xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd ) 
                 if(clw_all(i,k) <= min_liq) then
                    qrc(i,k)= clw_all(i,k)
                    pw(i,k) = 0.
                 else
-                   cx0     = c1d(i,k)+c0
-                   ! BUG FIX: Protect against divide-by-zero
+                   cx0 = c1d(i,k)+c0
                    cx0 = max(cx0, 1.e-6)
-                   ! BUG FIX: Use clw_all instead of self-referential qrc
                    qrc(i,k)= clw_all(i,k)*exp(-cx0*dz) + (cup/cx0)*(1.-exp(-cx0*dz))
                    pw (i,k)= max(clw_all(i,k) - qrc(i,k),0.)
                    qrc(i,k)= clw_all(i,k) - pw (i,k)

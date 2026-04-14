@@ -167,11 +167,8 @@ loopk:      do k=k22(i)+1,ktop(i)+1
             if(USE_TRACER_SCAVEN==0 .or. trim(cumulus) == 'shallow') cycle loopk
             dz=z_cup(i,k)-z_cup(i,k-1)
 
-             !-- in-cloud vert velocity for scavenging formulation 2
-             ! Guard against zero: vvel2d can be 0 outside kbcon:ktop when
-             ! ZERO_DIFF_VVEL==0 (the default), which would cause a FP invalid
-             ! in the dz/w_upd expressions below.  Use w_upd_floor as the floor.
-             w_upd = max(vvel2d(i,k),w_upd_floor)
+            !-- in-cloud vert velocity for scavenging formulation 2
+            w_upd = max(vvel2d(i,k),w_upd_floor)
 
             do ispc = 1,mtp
                 !--use GEOS-Chem washout parameterization?
@@ -242,12 +239,12 @@ loopk:      do k=k22(i)+1,ktop(i)+1
                        if ( is_gcc ) then
                           call compute_ki_gcc_gas ( ispc, tempco(i,k), po_cup(i,k), qco(i,k), qrco(i,k), henry_coef, &
                              kc_scaled, l2g )
-                           this_w_upd = get_w_upd_gcc( vvel2d(i,k), xland(i), CNV_Tracers(ispc)%online_vud )
-                           ! if it's not a wetdep species, force kc_scaled to 0. This ensures no washout
-                           if ( .not. CNV_Tracers(ispc)%is_wetdep ) kc_scaled = 0.0
-                           ! calculate soluble fraction and apply to tracer
-                           this_w_upd = max(this_w_upd,w_upd_floor)
-                           fsol = min(1.,max(0.,(1.-exp(-kc_scaled*dz/this_w_upd)))) !*factor_temp(ispc,i,k))
+                          this_w_upd = get_w_upd_gcc( vvel2d(i,k), xland(i), CNV_Tracers(ispc)%online_vud )
+                          ! if it's not a wetdep species, force kc_scaled to 0. This ensures no washout
+                          if ( .not. CNV_Tracers(ispc)%is_wetdep ) kc_scaled = 0.0
+                          ! calculate soluble fraction and apply to tracer
+                          this_w_upd = max(this_w_upd,w_upd_floor)
+                          fsol = min(1.,max(0.,(1.-exp(-kc_scaled*dz/this_w_upd)))) !*factor_temp(ispc,i,k))
                           pw_up(ispc,i,k) = sc_up(ispc,i,k)*fsol
 
                        !-- this the 'alpha' parameter in Eq 8 of Mari et al (2000 JGR) = X_aq/X_total
