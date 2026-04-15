@@ -484,7 +484,7 @@ subroutine SetServices ( GC, RC )
     allocate(ownedNodeCoords(2*num_owned_nodes))
     allocate(ownedNodeIds(num_owned_nodes))
 
-    call ESMF_MeshGet(mesh=mesh,ownedNodeCoords=ownedNodeCoords)
+    !call ESMF_MeshGet(mesh=mesh,ownedNodeCoords=ownedNodeCoords)
     
     ! get list of (global) nodeIds that are halos on this PET
     ! and create a mask to remove these values from arrays
@@ -494,9 +494,11 @@ subroutine SetServices ( GC, RC )
     do j=1,num_nodes
     if (nodeOwners(j)/= localPET) then
       halolist(i) = nodeIds(j)
-      halomask(2*j-1:2*j) = .false.
+      halomask(j) = .false.
       i = i+1
     else
+      ownedNodeCoords(2*k-1) = nodeCoords(2*j-1)
+      ownedNodeCoords(2*k) = nodeCoords(2*j)
       ownedNodeIds(k) = nodeIds(j)
       k = k+1
     end if 
