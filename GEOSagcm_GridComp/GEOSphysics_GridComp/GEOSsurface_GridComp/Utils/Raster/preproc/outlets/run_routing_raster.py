@@ -14,10 +14,10 @@ file_path  = "/discover/nobackup/projects/gmao/bcs_shared/"     # NCCS Discover
 
 file_Pfafcatch = file_path + "/make_bcs_inputs/land/topo/v1/SRTM-TopoData/Pfafcatch-routing.dat"
 file_SRTMPfaf  = file_path + "/make_bcs_inputs/land/topo/v1/SRTM-TopoData/SRTM_PfafData.nc"
-file_Drainage  = file_path + "/preprocessing_bcs_inputs/land/routing/HydroSHEDS_drainage_area.nc"
-file_GrnLat    = file_path + "/preprocessing_bcs_inputs/land/routing/Greenland_outlets_lat.txt"
-file_GrnLon    = file_path + "/preprocessing_bcs_inputs/land/routing/Greenland_outlets_lon.txt"
-file_GrnMap    = file_path + "/preprocessing_bcs_inputs/land/routing/GreenlandID_30s.nc"
+file_Drainage  = file_path + "/preprocessing_bcs_inputs/route/outlets/v2/HydroSHEDS_drainage_area.nc"
+file_GrnLat    = file_path + "/preprocessing_bcs_inputs/route/outlets/v2/Greenland_outlets_lat.txt"
+file_GrnLon    = file_path + "/preprocessing_bcs_inputs/route/outlets/v2/Greenland_outlets_lon.txt"
+file_GrnMap    = file_path + "/preprocessing_bcs_inputs/route/outlets/v2/GreenlandID_30s.nc"
 
 name_Pfafcatch = os.path.basename(file_Pfafcatch)
 name_SRTMPfaf  = os.path.basename(file_SRTMPfaf)
