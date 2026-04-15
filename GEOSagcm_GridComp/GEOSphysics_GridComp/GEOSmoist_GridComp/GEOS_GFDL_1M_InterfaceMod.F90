@@ -278,6 +278,7 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
     if (DT_R8 <= 150.0) do_sedi_melt_qi = .true.
     if (DT_R8 <= 150.0) do_sedi_melt_qs = .true.
     if (DT_R8 <= 150.0) do_sedi_melt_qg = .true.
+    if (DT_R8 <= 150.0) ifflag = 1
 
     if (GFDL_MP3) then
       call gfdl_mp_init(LHYDROSTATIC,DT_MOIST)
