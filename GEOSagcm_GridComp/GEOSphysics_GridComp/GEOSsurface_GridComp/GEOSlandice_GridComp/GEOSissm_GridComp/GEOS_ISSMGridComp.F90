@@ -105,7 +105,8 @@ type T_ISSM_STATE
   type(ESMF_RouteHandle)        :: routehandle_m2g ! routehandle for regridding mesh to grid
   type(ESMF_RouteHandle)        :: routehandle_g2m ! routehandle for regridding grid to mesh
   type(ESMF_RouteHandle)        :: halohandle      ! routehandle for field halos
-  logical, pointer,dimension(:) :: halomask        ! mask for filtering out halos
+  integer, pointer,dimension(:) :: halo_idx        ! indices of halo nodes in arrays
+  integer, pointer,dimension(:) :: owned_idx       ! indices of owned nodes in arrays
   integer, pointer,dimension(:) :: halolist        ! list of halo nodeIds
   type(ESMF_DistGrid)           :: nodalDistgrid   ! distgrid (owned nodes)
   type(ESMF_GRID)               :: grid            ! original grid (atmosphere)
@@ -360,7 +361,8 @@ subroutine SetServices ( GC, RC )
     integer, pointer, dimension(:)         :: ownedNodeIds  => null() ! nodeIds excluding halolist
     type(ESMF_DistGrid)                    :: nodalDistgrid           ! distgrid (owned nodes)
     type(ESMF_Array)                       :: meshArray               ! array for creating mesh fields
-    logical, pointer, dimension(:)         :: halomask      => null() ! mask out halos points 
+    integer, pointer,dimension(:)          :: halo_idx      => null() ! indices of halo nodes in arrays
+    integer, pointer,dimension(:)          :: owned_idx     => null() ! indices of owned nodes in arrays
 
     ! owned node coordinates (longitude,latitude)
     real(dp),pointer,dimension(:)          :: ownedNodeCoords => null() 
@@ -480,26 +482,25 @@ subroutine SetServices ( GC, RC )
 
     num_halo_nodes = num_nodes - num_owned_nodes
     allocate(halolist(num_halo_nodes))
-    allocate(halomask(num_nodes))
     allocate(ownedNodeCoords(2*num_owned_nodes))
     allocate(ownedNodeIds(num_owned_nodes))
+    allocate(halo_idx(num_halo_nodes))
+    allocate(owned_idx(num_owned_nodes))
 
-    !call ESMF_MeshGet(mesh=mesh,ownedNodeCoords=ownedNodeCoords)
+
+    call ESMF_MeshGet(mesh=mesh,ownedNodeCoords=ownedNodeCoords)
     
     ! get list of (global) nodeIds that are halos on this PET
     ! and create a mask to remove these values from arrays
-    i=1
-    k=1
-    halomask = .true.
+    i=1; k=1
     do j=1,num_nodes
     if (nodeOwners(j)/= localPET) then
       halolist(i) = nodeIds(j)
-      halomask(j) = .false.
+      halo_idx(i) = j
       i = i+1
     else
-      ownedNodeCoords(2*k-1) = nodeCoords(2*j-1)
-      ownedNodeCoords(2*k) = nodeCoords(2*j)
       ownedNodeIds(k) = nodeIds(j)
+      owned_idx(k) = j
       k = k+1
     end if 
     end do
@@ -539,12 +540,14 @@ subroutine SetServices ( GC, RC )
     ! stores everything needed for regrid and halo operations during run method
     allocate(internal_state, stat=STATUS)
     VERIFY_(STATUS)
-    allocate(internal_state%halomask(num_nodes))
+    allocate(internal_state%halo_idx(num_halo_nodes))
+    allocate(internal_state%owned_idx(num_owned_nodes))
     allocate(internal_state%halolist(num_halo_nodes))
     internal_state%routehandle_m2g = routehandle_m2g
     internal_state%routehandle_g2m = routehandle_g2m 
     internal_state%halohandle = halohandle 
-    internal_state%halomask = halomask 
+    internal_state%halo_idx = halo_idx
+    internal_state%owned_idx = owned_idx  
     internal_state%grid = grid
     internal_state%halolist = halolist
     internal_state%nodalDistgrid = nodalDistgrid
@@ -642,7 +645,8 @@ subroutine SetServices ( GC, RC )
     deallocate(glacIds)
     deallocate(elementMask)
     deallocate(nodeMask)
-    deallocate(halomask)
+    allocate(halo_idx)
+    allocate(owned_idx)
     deallocate(halolist)
     deallocate(ownedNodeCoords)
     deallocate(ownedNodeLats)
@@ -745,8 +749,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   ! halo information
   integer                              :: num_halo_nodes          ! num_nodes minus num_owned_nodes
   type(ESMF_RouteHandle)               :: halohandle              ! field halo routehandle
-  integer, pointer, dimension(:)       :: halolist     => null()  ! list of halo nodeIds
-  integer, pointer, dimension(:)       :: halomask     => null()  ! mask out halo points
+  integer, pointer, dimension(:)       :: halolist      => null() ! list of halo nodeIds
+  integer, pointer,dimension(:)        :: halo_idx      => null() ! indices of halo nodes in arrays
+  integer, pointer,dimension(:)        :: owned_idx     => null() ! indices of owned nodes in arrays
   type(ESMF_DistGrid)                  :: nodalDistgrid           ! distgrid (owned nodes)
   type(ESMF_Array)                     :: meshArray               ! array for creating mesh fields
 
@@ -880,9 +885,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     ! get field halo information
     num_halo_nodes = num_nodes - num_owned_nodes
-    allocate(halomask(num_nodes))
+    allocate(halo_idx(num_halo_nodes))
+    allocate(owned_idx(num_owned_nodes))
     allocate(halolist(num_halo_nodes))
-    halomask = internal_state%halomask
+    halo_idx = internal_state%halo_idx
+    owned_idx = internal_state%owned_idx
     halohandle = internal_state%halohandle
     halolist = internal_state%halolist
     nodalDistgrid = internal_state%nodalDistgrid
@@ -926,7 +933,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! save ICESMB on mesh elements 
     call MAPL_GetPointer(EXPORT  , ICESMB_EX , 'ICESMB' , RC=STATUS); VERIFY_(STATUS)
 
-    if(associated(ICESMB_EX)) ICESMB_EX = ICESMB_MESH(halomask)
+    if(associated(ICESMB_EX)) ICESMB_EX = ICESMB_MESH(owned_idx)
 
     ! *************************************************************************** !
     !  RUN ISSM WITH SMB INPUT AND ICE-ELEVATION OUTPUT
@@ -959,29 +966,29 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     ! set pointers to tile-mesh exports
     call MAPL_GetPointer(EXPORT, ICESURF_EX, 'ICESURF', RC=STATUS); VERIFY_(STATUS)
-    if(associated(ICESURF_EX)) ICESURF_EX = ICESURF_MESH(halomask)
+    if(associated(ICESURF_EX)) ICESURF_EX = ICESURF_MESH(owned_idx)
 
     call MAPL_GetPointer(EXPORT, ICEVX_EX, 'ICEVX', RC=STATUS); VERIFY_(STATUS)
-    if(associated(ICEVX_EX)) ICEVX_EX = ICEVX_MESH(halomask)
+    if(associated(ICEVX_EX)) ICEVX_EX = ICEVX_MESH(owned_idx)
 
     call MAPL_GetPointer(EXPORT, ICEVY_EX, 'ICEVY', RC=STATUS); VERIFY_(STATUS)
-    if(associated(ICEVY_EX)) ICEVY_EX = ICEVY_MESH(halomask)
+    if(associated(ICEVY_EX)) ICEVY_EX = ICEVY_MESH(owned_idx)
 
     call MAPL_GetPointer(EXPORT, ICETHICK_EX, 'ICETHICK', RC=STATUS); VERIFY_(STATUS)
-    if(associated(ICETHICK_EX)) ICETHICK_EX = ICETHICK_MESH(halomask)
+    if(associated(ICETHICK_EX)) ICETHICK_EX = ICETHICK_MESH(owned_idx)
 
     ! set pointers to tile-mesh internals
     call MAPL_GetPointer(INTERNAL, ICESURF_IN, 'ICESURF', RC=STATUS); VERIFY_(STATUS)
-    if(associated(ICESURF_IN)) ICESURF_IN = ICESURF_MESH(halomask)
+    if(associated(ICESURF_IN)) ICESURF_IN = ICESURF_MESH(owned_idx)
 
     call MAPL_GetPointer(INTERNAL, ICETHICK_IN, 'ICETHICK', RC=STATUS); VERIFY_(STATUS)
-    if(associated(ICETHICK_IN)) ICETHICK_IN = ICETHICK_MESH(halomask)
+    if(associated(ICETHICK_IN)) ICETHICK_IN = ICETHICK_MESH(owned_idx)
 
     call MAPL_GetPointer(INTERNAL, OMLS_IN, 'OMLS', RC=STATUS); VERIFY_(STATUS)
-    if(associated(OMLS_IN)) OMLS_IN = OMLS_MESH(halomask)
+    if(associated(OMLS_IN)) OMLS_IN = OMLS_MESH(owned_idx)
 
     call MAPL_GetPointer(INTERNAL, IMLS_IN, 'IMLS', RC=STATUS); VERIFY_(STATUS)
-    if(associated(IMLS_IN)) IMLS_IN = IMLS_MESH(halomask)
+    if(associated(IMLS_IN)) IMLS_IN = IMLS_MESH(owned_idx)
 
     ! *************************************************************************** !
     ! REGRID MESH FIELDS ONTO LANDICE TILES AND EXPORT VIA INTERNAL STATE
@@ -1019,7 +1026,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   if(associated(ICEVEL_TILE))   deallocate(ICEVEL_TILE)
   if(associated(elementConn))   deallocate(elementConn)
   if(associated(halolist))      deallocate(halolist)
-  if(associated(halomask))      deallocate(halomask)
+  if(associated(halo_idx))      deallocate(halo_idx)
+  if(associated(owned_idx))     deallocate(owned_idx)
 
   call MAPL_TimerOff(MAPL,"RUN"  )
   call MAPL_TimerOff(MAPL,"TOTAL")
@@ -1037,7 +1045,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     allocate(VAR_MESH_OWN(num_owned_nodes))
 
-    VAR_MESH_OWN = VAR_MESH(halomask)
+    VAR_MESH_OWN = VAR_MESH(owned_idx)
 
     ! allocate tiles 
     if (.not.associated(VAR_TILE)) then
@@ -1106,12 +1114,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_FieldGet(dstField,farrayPtr=MESH_PTR,RC=STATUS); VERIFY_(STATUS)
 
     ! copy values into VAR_MESH
-    VAR_MESH(halomask) = MESH_PTR(1:num_owned_nodes)                 ! owned nodes
-    VAR_MESH(.not. halomask) = MESH_PTR(num_owned_nodes+1:num_nodes) ! halo nodes
+    VAR_MESH(owned_idx) = MESH_PTR(1:num_owned_nodes)                 ! owned nodes
+    VAR_MESH(halo_idx) = MESH_PTR(num_owned_nodes+1:num_nodes) ! halo nodes
     
     ! destroy fields and arrays so they can be reused
-    call ESMF_FieldDestroy(srcField,rc=STATUS); VERIFY_(STATUS)
-    call ESMF_FieldDestroy(dstField,rc=STATUS); VERIFY_(STATUS)
+    call ESMF_FieldDestroy(srcField,rc=STATUS);  VERIFY_(STATUS)
+    call ESMF_FieldDestroy(dstField,rc=STATUS);  VERIFY_(STATUS)
     call ESMF_ArrayDestroy(meshArray,rc=STATUS); VERIFY_(STATUS)
 
   end subroutine tile_to_mesh  
