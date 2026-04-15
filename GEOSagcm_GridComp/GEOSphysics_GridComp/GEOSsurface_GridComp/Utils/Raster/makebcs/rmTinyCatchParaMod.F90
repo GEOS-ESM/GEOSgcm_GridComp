@@ -59,7 +59,7 @@ module rmTinyCatchParaMod
   public ascat_r0, jpl_canoph, NC_VarID, init_bcs_config  
   public LakeTopoCat_on_tiles_from_raster, AppendLakeVarsToTileNC4
   
-  ! The following variables define the details of the BCS version (data sources).
+  ! The following variables define the details of the BCs versions (data sources).
   ! Initialize to dummy values here and set to desired values in init_bcs_config().
   
   logical,      public, save :: use_PEATMAP = .false.
@@ -230,17 +230,17 @@ contains
        jpl_height  = .true.
 
     case ("v12","v13")  
-
-       ! "v12" and "v13" are identical except for:
-       ! - topography used for the atm (processed outside of make_bcs)
-       ! - bug fix for land elevation in catchment.def file
-       ! - generation of nc4-formatted tile file
+       !   v12 are v13 BCs are identical except for the following updates and bug fixes in v13:
+       !   - Fix for land elevation in catchment.def file.
+       !   - Generation of netCDF-4 (NC4) tile file (supplemental to ASCII file).
+       !   - Fix for inconsistency in land tile properties of coupled-model BCs vs. AGCM BCs.
+       !   - Coupled-model BCs use MOM6/v2 (OM4) ocean bathymetry.
  
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD_b'
        MODALB  = 'MODIS2'
        SNOWALB = 'MODC061v2'
-       OUTLETV = "v2"       
+       OUTLETV = "v2"
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .true.
@@ -1168,7 +1168,7 @@ contains
 
     REAL (REAL64), PARAMETER           :: RADIUS=MAPL_RADIUS, pi= MAPL_PI 
 
-    character*512                      :: fname
+    character*512                      :: fname, catch_file
     character*512                      :: gtopo30
     CHARACTER*512                      :: version
 
@@ -1187,6 +1187,10 @@ contains
     integer,           allocatable         :: iTable(:,:)
     character(len=128)                     :: gName(2)
     logical,           allocatable         :: IsOcean(:)
+    ! This is used to adjust EASE grid from 1-based to 0-based indexes
+    ! The tile file with only one EASE grid is already 0-based and may not go through this subroutine
+    ! This is a special case for river-routing. The ocean grid is also EASE just for convenience
+    logical                                :: two_EASE 
 
     ! LakeTopoCat
     real(REAL64), allocatable :: tile_lake_frac( :)
@@ -1255,7 +1259,8 @@ contains
        IM(n)    = nc_gcm
        JM(n)    = nr_gcm
     end do
-    
+    two_EASE = index(gName(1), 'EASE') /=0 .and. index(gName(2), 'EASE') /=0    
+
 !    dx_gcm = 360./float(nc_gcm)
     
     allocate(iTable(ip,0:7))
@@ -1422,9 +1427,9 @@ contains
     ! --------------------------------------------------------------------------
     !
     ! write (ASCII) catchment.def file (land tiles only!)
-    
-    open (10,file='clsm//catchment.def',  &
-         form='formatted',status='unknown')
+    catch_file = 'clsm//catchment.def'
+    if (two_EASE) catch_file = 'clsm//catchment-route.def' 
+    open (10,file=catch_file, form='formatted',status='unknown')
     write (10,*) n_land
     
     do j=1,n_land
@@ -1437,6 +1442,17 @@ contains
     end do
     close(10,status='keep')
     
+    if (two_EASE) then
+       iTable(:,2) = iTable(:,2) - 1
+       iTable(:,3) = iTable(:,3) - 1
+       where (iTable(:,0) == 0)
+          iTable(:,4) = iTable(:,4) -1
+          iTable(:,5) = iTable(:,5) -1
+       endwhere
+       j = index(gName(2), "-Pfafstetter")
+       gName(2) = gName(2)(1:j-1)
+    endif
+
     ! --------------------------------------------------------------------------
     !
     ! write nc4-formatted tile file (all tile types)
@@ -5775,10 +5791,10 @@ contains
     REAL*8 b(m),u(m,n),v(n,n),w(n),x(n) 
     PARAMETER (NMAX=500)  !Maximum anticipated value of n
     !------------------------------------------------------------------------------------------- 
-    ! Solves A · X = B for a vector X, where A is specified by the arrays u, w, v as returned by 
-    ! svdcmp. m and n are the dimensions of a, and will be equal for square matrices. b(1:m) is 
-    ! the input right-hand side. x(1:n) is the output solution vector. No input quantities are 
-    ! destroyed, so the routine may be called sequentially with different b’s. 
+    ! Solves A . X = B for a vector X, where A is specified by the arrays u, w, v as returned by 
+    ! svdcmp.  m and n are the dimensions of a, and will be equal for square matrices. b(1:m) is 
+    ! the input right-hand side. x(1:n) is the output solution vector.  No input quantities are 
+    ! destroyed, so the routine may be called sequentially with different b values. 
     !-------------------------------------------------------------------------------------------
 
     INTEGER i,j,jj 
@@ -5813,7 +5829,7 @@ contains
     PARAMETER (NMAX=500)  !Maximum anticipated value of n. 
     !-------------------------------------------------------------------------------------- 
     ! Given a matrix A(1:m,1:n), this routine computes its singular value decomposition, 
-    ! A = U · W · Vt. The matrix U replaces A on output. The diagonal matrix of singular 
+    ! A = U . W . Vt. The matrix U replaces A on output.  The diagonal matrix of singular 
     ! values W is output as a vector W(1:n). The matrix V (not the transpose Vt) is output 
     ! as V(1:n,1:n). 
     !--------------------------------------------------------------------------------------

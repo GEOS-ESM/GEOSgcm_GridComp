@@ -1,6 +1,6 @@
 program main
   
-  use routing_constant, only : nc,nlon,nlat,nlon_G,nlat_G,loni_min,loni_max,lati_min,lati_max,&
+  use outlets_constants, only : nc,nlon,nlat,nlon_G,nlat_G,loni_min,loni_max,lati_min,lati_max,&
                                nlon1m,nlat1m
   
   implicit none
