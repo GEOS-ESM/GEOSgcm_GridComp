@@ -1,5 +1,6 @@
-module routing_constant
-  
+module outlets_constants
+
+  use catch_constants,        ONLY: nc => CATCH_N_PFAFS
   ! hardwired constants for GEOS river routing scheme
 
   implicit none
@@ -15,8 +16,7 @@ module routing_constant
   integer,parameter :: loni_max   =  20400  ! = loni_min + nlon_G - 1, ind of lon end   of Greenland grid in world grid (30 sec resolution)
   integer,parameter :: lati_min   =  16801  !                          ind of lat start of Greenland grid in world grid (30 sec resolution)
   integer,parameter :: lati_max   =  21600  ! = lati_min + nlat_G - 1, ind of lat end   of Greenland grid in world grid (30 sec resolution)
-  integer,parameter :: nc         = 291284  ! number of catchments in land
   integer,parameter :: ng         =    525  ! number of catchments in Greenland
   integer,parameter :: nl         =  22116  ! number of outlets to ocean in land (not including Greenland)
 
-end module routing_constant
+end module outlets_constants
