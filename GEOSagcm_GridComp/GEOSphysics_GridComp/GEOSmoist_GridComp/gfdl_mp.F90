@@ -404,7 +404,7 @@ module gfdl_mp_mod
 
     ! simple process timescales
     real :: tau_r2g  =  900.0 ! rain freezing to graupel time scale (s)
-    real :: tau_i2s  =  600.0 ! cloud ice to snow autoconversion time scale (s)
+    real :: tau_i2s  =  150.0 ! cloud ice to snow autoconversion time scale (s)
     real :: tau_l2r  =  900.0 ! cloud water to rain autoconversion time scale (s)
     ! other timescales
     real :: tau_v2l  =  120.0 ! water vapor to cloud water condensation time scale (s)
@@ -436,7 +436,7 @@ module gfdl_mp_mod
     real :: ql0_max = 2.0e-3 ! maximum cloud water value (autoconverted to rain) (kg/kg)
     real :: qi0_max = 9.82679e-5 ! maximum cloud ice value (autoconverted to snow) (kg/m^3)
 
-    real :: psaut_qi_crt = 1.0e-4 ! cloud ice to snow autoconversion threshold (kg/m^3)
+    real :: psaut_qi_crt = 0.7e-4 ! cloud ice to snow autoconversion threshold (kg/m^3)
     real :: pwbf_qi_crt  = 0.8e-4 ! WBF liquid to ice freezing threshold (kg/m^3)
     real :: pgaut_qs_crt = 0.6e-3 ! snow to graupel autoconversion threshold (0.6e-3 in Purdue Lin scheme) (kg/m^3)
 
@@ -445,11 +445,11 @@ module gfdl_mp_mod
     ! collection efficiencies for accretion
     !   Dry processes (frozen to/from frozen)
     real :: c_psaci = 0.05 ! cloud ice to snow accretion efficiency (was 0.1 in ZETAC)
-    real :: c_pgaci = 0.01 ! cloud ice to graupel accretion efficiency (was 0.1 in ZETAC)
-    real :: c_pgacs = 0.01 ! snow to graupel accretion efficiency (was 0.1 in ZETAC)
+    real :: c_pgaci = 0.01 ! cloud ice to graupel accretion efficiency
+    real :: c_pgacs = 0.01 ! snow to graupel accretion efficiency
     !   Mixed processes (liquid to/from frozen)
-    real :: c_psacw = 0.8 ! cloud water to snow accretion efficiency
-    real :: c_pgacw = 0.9 ! cloud water to graupel accretion efficiency
+    real :: c_psacw = 1.0 ! cloud water to snow accretion efficiency
+    real :: c_pgacw = 1.0 ! cloud water to graupel accretion efficiency
     !   Rain processes (to/from rain)
     real :: c_pracw = 1.0 ! cloud water to rain accretion efficiency
     real :: c_praci = 1.0 ! cloud ice to rain accretion efficiency
@@ -457,7 +457,7 @@ module gfdl_mp_mod
     real :: c_psacr = 1.0 ! rain to snow accretion efficiency
     real :: c_pgacr = 1.0 ! rain to graupel accretion efficiency
 
-    real :: is_fac = 0.2 ! cloud ice sublimation temperature factor
+    real :: is_fac = 0.5 ! cloud ice sublimation temperature factor
     real :: ss_fac = 0.2 ! snow sublimation temperature factor
     real :: gs_fac = 0.2 ! graupel sublimation temperature factor
 
@@ -465,6 +465,8 @@ module gfdl_mp_mod
     real :: rh_fac_cond = 10.0 ! cloud water condensation relative humidity factor
 
     real :: sed_fac = 1.0 ! coefficient for sedimentation fall, scale from 1.0 (implicit) to 0.0 (lagrangian)
+
+    logical :: do_ice_pres_scaling = .true.  ! optional pressure scaling to accelerate ice settling in the upper troposphere
 
     real :: vw_fac = 1.0
     real :: vi_fac = 1.0
@@ -502,8 +504,8 @@ module gfdl_mp_mod
     real :: f_dq_m = 1.0 ! cloud fraction adjustment for undersaturation
 
     real :: fi2s_fac = 1.00 ! maximum sink of cloud ice to form snow: 0-1
-    real :: fi2g_fac = 1.00 ! maximum sink of cloud ice to form graupel: 0-1
-    real :: fs2g_fac = 0.75 ! maximum sink of snow to form graupel: 0-1
+    real :: fi2g_fac = 1.00 ! maximum sink of cloud ice to form graupel/hail: 0-1
+    real :: fs2g_fac = 1.00 ! maximum sink of snow to form graupel/hail: 0-1
 
     real :: beta = 1.22 ! defined in Heymsfield and Mcfarquhar (1996)
 
@@ -558,7 +560,7 @@ module gfdl_mp_mod
     ! -----------------------------------------------------------------------
 
     namelist / gfdl_mp_nml / &
-        t_min, t_sub, tau_r2g, tau_smlt, tau_gmlt, vw_min, vi_min, &
+        t_min, t_sub, tau_r2g, tau_smlt, tau_gmlt, do_ice_pres_scaling, vw_min, vi_min, &
         vr_min, vs_min, vg_min, vh_min, ql_mlt, do_qa, fix_negative, vw_max, vi_max, vs_max, &
         vh_max, vg_max, vr_max, qs_mlt, ql0_max, qi0_max, psaut_qi_crt, pwbf_qi_crt, pgaut_qs_crt, ifflag, &
         rh_inc, rh_inr, const_vw, const_vi, const_vs, const_vg, const_vr, rthreshu, rthreshs, &
@@ -1421,7 +1423,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         ! 1 minus sigma used to control resolution sensitive parameters
         ! -----------------------------------------------------------------------
         if (do_scale_dep) then
-        onemsig = 1.0 - sigma(sqrt(area(i)))
+          onemsig = 1.0 - sigma(sqrt(area(i)))
         else
           onemsig = 1.0
         endif
@@ -2431,9 +2433,6 @@ subroutine sedimentation (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
         vti, i1, pfi, u, v, w, dte, "qi")
 
     pfi (ks) = max (0.0, pfi (ks))
-    do k = ke, ks + 1, - 1
-        pfi (k) = max (0.0, pfi (k) - pfi (k - 1))
-    enddo
 
     ! -----------------------------------------------------------------------
     ! terminal fall and melting of falling snow into rain
@@ -2450,9 +2449,6 @@ subroutine sedimentation (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
         vts, s1, pfs, u, v, w, dte, "qs")
 
     pfs (ks) = max (0.0, pfs (ks))
-    do k = ke, ks + 1, - 1
-        pfs (k) = max (0.0, pfs (k) - pfs (k - 1))
-    enddo
 
     ! -----------------------------------------------------------------------
     ! terminal fall and melting of falling graupel into rain
@@ -2473,9 +2469,6 @@ subroutine sedimentation (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
         vtg, g1, pfg, u, v, w, dte, "qg")
 
     pfg (ks) = max (0.0, pfg (ks))
-    do k = ke, ks + 1, - 1
-        pfg (k) = max (0.0, pfg (k) - pfg (k - 1))
-    enddo
 
     ! -----------------------------------------------------------------------
     ! terminal fall of cloud water
@@ -2489,9 +2482,6 @@ subroutine sedimentation (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
             vtw, w1, pfw, u, v, w, dte, "ql")
 
         pfw (ks) = max (0.0, pfw (ks))
-        do k = ke, ks + 1, - 1
-            pfw (k) = max (0.0, pfw (k) - pfw (k - 1))
-        enddo
 
     endif
 
@@ -2505,9 +2495,6 @@ subroutine sedimentation (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
         vtr, r1, pfr, u, v, w, dte, "qr")
 
     pfr (ks) = max (0.0, pfr (ks))
-    do k = ke, ks + 1, - 1
-        pfr (k) = max (0.0, pfr (k) - pfr (k - 1))
-    enddo
 
 end subroutine sedimentation
 
@@ -2524,15 +2511,10 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
     ! -----------------------------------------------------------------------
 
     integer, intent (in) :: ks, ke
-
     logical, intent (in) :: const_v
-
     real, intent (in) :: v_fac, v_min, v_max
-
     real, intent (in), dimension (ks:ke) :: q, den
-
     real (kind = r8), intent (in), dimension (ks:ke) :: tz
-
     real, intent (out), dimension (ks:ke) :: vt
 
     ! -----------------------------------------------------------------------
@@ -2540,7 +2522,6 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
     ! -----------------------------------------------------------------------
 
     integer :: k
-
     real :: DIAM, C2, C1, C0, lnP, tmp, pl, qden, viLSC, viCNV
 
     real, parameter :: aa = - 4.14122e-5
@@ -2572,40 +2553,50 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
                 vt (k) = 0.0
             else
                 tc (k) = tz (k) - tice
+
+                ! -----------------------------------------------------------
+                ! 1. Calculate Base Fall Speeds based on chosen formulation
+                ! -----------------------------------------------------------
                 if (ifflag .eq. 1) then
                     qden = q (k) * den (k) * 1.e3
-                    ! Large-scale settling SGP
                     viLSC = 10.0**(log10(qden) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
-                    ! Convective settling TWP
                     viCNV = 10.0**(log10(qden) * (tc (k) * (aaC * tc (k) + bbC) + ccC) + ddC * tc (k) + eeC)
-                    ! Combine
-                    vt (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
-                    vt (k) = 0.01 * v_fac * vt (k)
+                    vt (k) = 0.01 * (viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction))
                 endif
+
                 if (ifflag .eq. 2) then
                     qden = q (k) * den (k)
-                    vt (k) = 3.29* v_fac  * exp (0.16 * log (qden))
+                    vt (k) = 3.29 * exp (0.16 * log (qden))
                 endif
+
                 if (ifflag .eq. 3) then
                     qden = q (k) * den (k) * 1.e3
-                    ! Large-scale settling
                     viLSC = 10.0**(log10(qden) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
-                    ! Convective settling
                     viCNV = MAX(10.0,(1.119*tc (k) + 14.21*log10(qden*1.e3) + 68.85))
-                    ! Combine
-                    vt (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
-                    ! Include pressure sensitivity (eq 14 in https://doi.org/10.1175/JAS-D-12-0124.1)
+                    vt (k) = 0.01 * (viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction))
+                endif
+
+                ! -----------------------------------------------------------
+                ! 2. Apply Universal Pressure Scaling (Accelerates high-alt ice)
+                ! -----------------------------------------------------------
+                if (do_ice_pres_scaling) then
                     pl = den (k) * rdgas * tz (k) ! dry air pressure
                     tmp = tz (k)
+                    ! Note: Ensure LDRADIUS4 is accessible in this scope
                     DIAM = 2.0*LDRADIUS4(pl/100.0,tmp,q(k),zero,zero,2)*1.e6 ! microns
                     lnP = log(pl/100.0)                                    
                     C0 = -1.04 + 0.298*lnP
                     C1 =  0.67 - 0.097*lnP
-                    ! apply pressure scaling
+                    ! Apply pressure scaling multiplier
                     vt (k) = vt (k) * (C0 + C1*log(DIAM))
-                    vt (k) = 0.01 * v_fac * vt (k)
                 endif
+
+                ! -----------------------------------------------------------
+                ! 3. Apply user multiplier and safety caps
+                ! -----------------------------------------------------------
+                vt (k) = v_fac * vt (k)
                 vt (k) = min (v_max, max (v_min, vt (k)))
+
             endif
         enddo
     endif
