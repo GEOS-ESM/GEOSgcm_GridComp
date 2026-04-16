@@ -1,6 +1,6 @@
 program main
   
-  use routing_constant,only : nc,nl,ng
+  use outlets_constants,only : nc,nl,ng
   implicit none
   
   integer,allocatable,dimension(:) :: msk,outid,mskall,final,finalall
