@@ -1093,9 +1093,8 @@ contains
            ! Original depth-only scaling (preserved for backward compatibility)
            if ( zradtop .le. 800. ) then
               wentr_rad = wentr_rad * max(0.0,(zradtop-500.)/300.)
-           else
-              wentr_rad = wentr_rad * min(3.0,(zradtop/800.))
-           endif  
+           endif
+           wentr_rad = wentr_rad * min(3.0,(zradtop/800.))
          endif    
 !-----------------------------------------
 
