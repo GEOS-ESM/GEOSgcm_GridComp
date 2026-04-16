@@ -5,6 +5,41 @@
 import os
 import glob
 
+# --- BEGIN VERSION MATRIX ---
+
+# Independent version mapping per questionnaire 'lbcsv'
+#
+# TOPO_VERSION refers to topography inputs for atm model
+
+_VERSION_MATRIX = {
+    "NL3": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
+    "NL4": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
+    "NL5": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
+    "ICA": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
+    "GM4": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
+    "F25": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
+    "v06": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
+    "v07": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
+    "v08": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
+    "v09": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
+    "v10": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
+    "v11": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
+    "v12": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
+    "v13": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v2"},
+}
+
+_DEFAULTS = {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"}
+
+def resolve_bcs_matrix(bcs_version: str):
+    key = (bcs_version or "").strip()
+    return {**_DEFAULTS, **_VERSION_MATRIX.get(key, {})}
+
+def topo_version_for_bcs(bcs_version: str) -> str:
+    return resolve_bcs_matrix(bcs_version)["TOPO_VERSION"]
+
+def mom6_bathy_version_for_bcs(bcs_version: str) -> str:
+    return resolve_bcs_matrix(bcs_version)["MOM6_BATHY_VERSION"]
+
 def get_script_head() :
 
   head =  """#!/bin/csh -x
@@ -90,8 +125,8 @@ def get_script_mv(grid_type):
 
 mkdir -p geometry/{GRIDNAME}
 /bin/mv {GRIDNAME}.j geometry/{GRIDNAME}/.
-/bin/cp til/{GRIDNAME}{RS}.til geometry/{GRIDNAME}/.
-/bin/cp til/{GRIDNAME}{RS}.nc4 geometry/{GRIDNAME}/.
+/bin/cp til/{GRIDNAME}*.til geometry/{GRIDNAME}/.
+/bin/cp til/{GRIDNAME}*.nc4 geometry/{GRIDNAME}/.
 if( {TRIPOL_OCEAN} == True ) /bin/cp til/{GRIDNAME}{RS}.TRN geometry/{GRIDNAME}/.
 
 /bin/mv rst til geometry/{GRIDNAME}/.
@@ -172,12 +207,43 @@ else
     echo "Successfully copied CO2_MonthlyMean_DiurnalCycle.nc4 to bcs dir."
 endif
 
-# adjust permissions
-
-chmod +rX -R geometry land logs
+if(-f land/shared/route_parameters.nc ) then
+    echo "route_parameters.nc already present in bcs dir."
+else
+    /bin/cp -p {MAKE_BCS_INPUT_DIR}/route/routing_model/v1/route_parameters.nc land/shared/route_parameters.nc
+    echo "Successfully copied route_parameters.nc to bcs dir."
+endif
 
 """
 
+   if grid_type in ("Cubed-Sphere", "Stretched_CS"):
+        mv_template = mv_template + """
+
+# Link (atm) TOPO into this BCS directory based on bcs_version (only needed if grid_type is [stretched] cube-sphere)
+set topo_version = {TOPO_VERSION}
+
+if ( ! -d TOPO ) mkdir -p TOPO
+set topo_dir  = CF{NC}x6C{SGNAME}     # e.g., CF0024x6C or CF0540x6C-SG001
+set topo_root = {MAKE_BCS_INPUT_DIR}/atmosphere/TOPO
+set topo_src  = $topo_root/$topo_version/$topo_dir
+
+if ( -e TOPO/$topo_dir ) then
+    echo "TOPO/$topo_dir already exists; not relinking."
+else if ( -d $topo_src ) then
+    /bin/ln -s $topo_src TOPO/$topo_dir
+    echo "Linked TOPO/$topo_dir -> $topo_src"
+else
+    echo "WARNING: TOPO source not found: $topo_src"
+endif
+
+"""
+
+   mv_template = mv_template + """
+
+# adjust permissions (for all grid types)
+chmod +rX -R geometry land logs
+
+"""
    return mv_template
 
 def check_script(expdir, script):
