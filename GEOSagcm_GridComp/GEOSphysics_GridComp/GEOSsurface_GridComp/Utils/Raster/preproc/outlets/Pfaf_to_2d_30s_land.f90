@@ -1,6 +1,6 @@
 program main
   
-  use routing_constant,only : nc,ng,nlon,nlat
+  use outlets_constants,only : nc,ng,nlon,nlat
   implicit none
   
   character(len=100)  :: var1="outlet_sinky_allcat"
