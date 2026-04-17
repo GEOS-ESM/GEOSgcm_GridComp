@@ -44,8 +44,8 @@ The tasks completed by each F90 or Python program are briefly described as follo
     Combines all inputs created above to the one nc file route_parameters.nc
 
 Please note the script get_num_sub_catchment.f90 is 
-specific to the M36 EASE grid because it is only needed by "get_Qr_clmt.f90", 
-and the M36 dependency stems from the fact that "get_Qr_clmt.f90" creates 
+specific to the M09 EASE grid because it is only needed by "get_Qr_clmt.f90", 
+and the M09 dependency stems from the fact that "get_Qr_clmt.f90" creates 
 a runoff climatology from SMAP L4 NRv11.4 simulations.
 
 The explanations for the input files of this package can be found in the input directory.

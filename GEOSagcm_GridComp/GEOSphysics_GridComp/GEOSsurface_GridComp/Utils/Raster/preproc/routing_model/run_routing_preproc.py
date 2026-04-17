@@ -24,11 +24,11 @@ def main():
 
     file_pfafrout       = file_path1 + "/make_bcs_inputs/land/topo/v1/SRTM-TopoData/Pfafcatch-routing.dat"
     file_pfafmap        = file_path1 + "/make_bcs_inputs/land/topo/v1/SRTM-TopoData/SRTM_PfafData.nc"
-    file_EASE_pfaf      = file_path1 + "/fvInput/ExtData/esm/tiles/v12/geometry/EASEv2_M36/EASEv2_M36_EASEv2_M36-Pfafstetter.nc4"
+    file_EASE_pfaf      = file_path1 + "/fvInput/ExtData/esm/tiles/v12/geometry/EASEv2_M09/EASEv2_M09_EASEv2_M09-Pfafstetter.nc4"
 
     file_lat1m          = file_path2 + "/lat_1m.txt"
     file_lon1m          = file_path2 + "/lon_1m.txt"   
-    file_clmtrunf       = file_path2 + "/SMAPL4_NRv11p4_runoff_mean_1990_2023.nc"
+    file_clmtrunf       = file_path2 + "/SMAPL4_NRv11p4_M09_runoff_mean_2001_2023.nc"
     file_ldn            = file_path2 + "/hyd_glo_ldn_15s.nc"
     file_hyelev         = file_path2 + "/hyd_glo_dem_15s.nc"
     file_vel            = file_path2 + "/velocity.txt"
