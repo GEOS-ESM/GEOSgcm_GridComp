@@ -343,8 +343,8 @@ module gfdl_mp_mod
     logical :: do_psd_water_num = .false. ! calculate cloud water number concentration based on PSD
     logical :: do_psd_ice_num = .true. ! calculate cloud ice number concentration based on PSD
 
-    logical :: do_3d_acc_cliq = .true. ! perform the new 3d accretion for cloud water
-    logical :: do_3d_acc_cice = .true. ! perform the new 3d accretion for cloud ice
+    logical :: do_3d_acc_cliq = .true.  ! perform the new 3d accretion for cloud water
+    logical :: do_3d_acc_cice = .false. ! perform the new 3d accretion for cloud ice
 
     logical :: cp_heating = .false. ! update temperature based on constant pressure
 
@@ -403,14 +403,14 @@ module gfdl_mp_mod
     real :: rh_inr = 0.30 ! rh increment for minimum evaporation of rain
 
     ! simple process timescales
-    real :: tau_r2g  =  900.0 ! rain freezing to graupel time scale (s)
-    real :: tau_i2s  =  150.0 ! cloud ice to snow autoconversion time scale (s)
-    real :: tau_l2r  =  900.0 ! cloud water to rain autoconversion time scale (s)
+    real :: tau_r2g  =  450.0 ! rain freezing to graupel time scale (s)
+    real :: tau_i2s  =  300.0 ! cloud ice to snow autoconversion time scale (s)
+    real :: tau_l2r  =  450.0 ! cloud water to rain autoconversion time scale (s)
     ! other timescales
-    real :: tau_v2l  =  120.0 ! water vapor to cloud water condensation time scale (s)
-    real :: tau_l2v  =  300.0 ! cloud water to water vapor evaporation time scale (s)
+    real :: tau_v2l  =   75.0 ! water vapor to cloud water condensation time scale (s)
+    real :: tau_l2v  =  150.0 ! cloud water to water vapor evaporation time scale (s)
     real :: tau_revp =  600.0 ! rain evaporation time scale (s)
-    real :: tau_frez =  150.0 ! cloud liquid freezing time scale (s)
+    real :: tau_frez =  600.0 ! cloud liquid freezing time scale (s)
     real :: tau_imlt =  600.0 ! cloud ice melting time scale (s)
     real :: tau_smlt =  900.0 ! snow melting time scale (s)
     real :: tau_gmlt = 1200.0 ! graupel melting time scale (s)
@@ -436,7 +436,7 @@ module gfdl_mp_mod
     real :: ql0_max = 2.0e-3 ! maximum cloud water value (autoconverted to rain) (kg/kg)
     real :: qi0_max = 9.82679e-5 ! maximum cloud ice value (autoconverted to snow) (kg/m^3)
 
-    real :: psaut_qi_crt = 0.7e-4 ! cloud ice to snow autoconversion threshold (kg/m^3)
+    real :: psaut_qi_crt = 1.0e-4 ! cloud ice to snow autoconversion threshold (kg/m^3)
     real :: pwbf_qi_crt  = 0.8e-4 ! WBF liquid to ice freezing threshold (kg/m^3)
     real :: pgaut_qs_crt = 0.6e-3 ! snow to graupel autoconversion threshold (0.6e-3 in Purdue Lin scheme) (kg/m^3)
 
@@ -457,7 +457,7 @@ module gfdl_mp_mod
     real :: c_psacr = 1.0 ! rain to snow accretion efficiency
     real :: c_pgacr = 1.0 ! rain to graupel accretion efficiency
 
-    real :: is_fac = 0.5 ! cloud ice sublimation temperature factor
+    real :: is_fac = 0.2 ! cloud ice sublimation temperature factor
     real :: ss_fac = 0.2 ! snow sublimation temperature factor
     real :: gs_fac = 0.2 ! graupel sublimation temperature factor
 
@@ -505,7 +505,7 @@ module gfdl_mp_mod
 
     real :: fi2s_fac = 1.00 ! maximum sink of cloud ice to form snow: 0-1
     real :: fi2g_fac = 1.00 ! maximum sink of cloud ice to form graupel/hail: 0-1
-    real :: fs2g_fac = 1.00 ! maximum sink of snow to form graupel/hail: 0-1
+    real :: fs2g_fac = 0.75 ! maximum sink of snow to form graupel: 0-1
 
     real :: beta = 1.22 ! defined in Heymsfield and Mcfarquhar (1996)
 
@@ -3168,11 +3168,14 @@ subroutine prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
             if (use_enhanced_dry_evap) then
                 ! True scale-aware target RH based on subgrid moisture variance
                 rh_rain = max (0.70, 1.0 - h_var (k)) 
-                ! Calculate total mass needed to hit the target RH threshold
-                tmp = min (qr (k), dim (rh_rain * qsat, qv (k)) / (1. + lcpk (k) * dqdt))
-                ! Apply the evaporation timescale factor to avoid shocking the model
-                tmp = dts * fac_revp * tmp 
-                ! Ensure the evaporation rate doesn't fall below this enhanced baseline
+                ! Calculate total mass NEEDED to hit the target RH threshold (Units: kg/kg)
+                tmp = dim (rh_rain * qsat, qv (k)) / (1. + lcpk (k) * dqdt)
+                ! Apply the dimensionless timescale factor so it doesn't evaporate instantly
+                ! (Units: dimensionless * kg/kg = kg/kg)
+                tmp = fac_revp * tmp 
+                ! Bound by the actual rain available (Units: kg/kg)
+                tmp = min (qr (k), tmp)
+                ! Update the final sink amount (Units: kg/kg)
                 sink = max (sink, tmp)
             endif
 
@@ -3298,9 +3301,12 @@ subroutine praut (ks, ke, dts, dp, tz, qak, qvk, qlk, qrk, qik, qsk, qgk, den, c
 
     real, dimension (ks:ke) :: ql, dl, qadum, c_praut
 
-    ! Use In-Cloud condensates
+    ! Use In-Cloud condensates with scale-aware blending
     if (in_cloud_liq) then
-      qadum = max(qak,cfmin)
+      ! At coarse res (onemsig=0): uses strictly max(qak, cfmin)
+      ! At fine res   (onemsig=1): qadum becomes 1.0
+      ! In the gray zone (0 < onemsig < 1): blends the two
+      qadum = (1.0 - onemsig) * max(qak, cfmin) + onemsig
     else
       qadum = 1.0
     endif
@@ -3540,18 +3546,21 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
         if (tz (k) .gt. tice .and. qik (k) .gt. qcmin) then
 
-            ! Use In-Cloud condensates
+            ! Use In-Cloud condensates with scale-aware blending
             if (in_cloud_ice) then
-              qadum = max(qak(k),cfmin)
+              ! At coarse res (onemsig=0): uses strictly max(qak, cfmin)
+              ! At fine res   (onemsig=1): qadum becomes 1.0
+              ! In the gray zone (0 < onemsig < 1): blends the two
+              qadum = (1.0 - onemsig) * max(qak(k), cfmin) + onemsig
             else
-              qadum = 1.0
+              qadum = 1.0 
             endif
             ql = qlk (k)/qadum
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newliq = fac_imlt * new_liq_condensate(tmp, ql, qi)
-            sink = min (qi, newliq, (tz (k) - tice) / icpk (k))
+            newliq = new_liq_condensate(tmp, ql, qi)
+            sink = fac_imlt * min (qi, newliq, (tz (k) - tice) / icpk (k) / qadum)
             tmp = min (sink, dim (ql_mlt/qadum, ql))
 
             tmp = tmp * qadum
@@ -3564,9 +3573,12 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
         elseif (tz (k) <= tice .and. qlk (k) > qcmin) then
 
-            ! Use In-Cloud condensates
+            ! Use In-Cloud condensates with scale-aware blending
             if (in_cloud_ice) then
-              qadum = max(qak(k),cfmin)
+              ! At coarse res (onemsig=0): uses strictly max(qak, cfmin)
+              ! At fine res   (onemsig=1): qadum becomes 1.0
+              ! In the gray zone (0 < onemsig < 1): blends the two
+              qadum = (1.0 - onemsig) * max(qak(k), cfmin) + onemsig
             else
               qadum = 1.0
             endif
@@ -3574,8 +3586,8 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newice = fac_frez * new_ice_condensate(tmp, ql, qi)
-            sink = min(ql, newice, (tice - tz (k)) / icpk (k))
+            newice = new_ice_condensate(tmp, ql, qi)
+            sink = fac_frez * min(ql, newice, (tice - tz (k)) / icpk (k) / qadum)
             qim = qi0_max / den (k)
             tmp = min (sink, dim (qim/qadum, qi))
 
@@ -3636,9 +3648,12 @@ subroutine pimlt (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, t
 
         if (tz (k) .gt. tice .and. qik (k) .gt. qcmin) then
 
-            ! Use In-Cloud condensates
+            ! Use In-Cloud condensates with scale-aware blending
             if (in_cloud_ice) then
-              qadum = max(qak(k),cfmin)
+              ! At coarse res (onemsig=0): uses strictly max(qak, cfmin)
+              ! At fine res   (onemsig=1): qadum becomes 1.0
+              ! In the gray zone (0 < onemsig < 1): blends the two
+              qadum = (1.0 - onemsig) * max(qak(k), cfmin) + onemsig
             else
               qadum = 1.0
             endif
@@ -3646,8 +3661,8 @@ subroutine pimlt (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, t
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newliq = fac_imlt * new_liq_condensate(tmp, ql, qi)
-            sink = min (qi, newliq, (tz (k) - tice) / icpk (k))
+            newliq = new_liq_condensate(tmp, ql, qi)
+            sink = fac_imlt * min (qi, newliq, (tz (k) - tice) / icpk (k) / qadum)
             tmp = min (sink, dim (ql_mlt/qadum, ql))
 
             tmp = tmp * qadum
@@ -3707,9 +3722,12 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
 
         if (tz (k) .le. tice .and. qlk (k) .gt. qcmin) then
 
-            ! Use In-Cloud condensates
+            ! Use In-Cloud condensates with scale-aware blending
             if (in_cloud_ice) then
-              qadum = max(qak(k),cfmin)
+              ! At coarse res (onemsig=0): uses strictly max(qak, cfmin)
+              ! At fine res   (onemsig=1): qadum becomes 1.0
+              ! In the gray zone (0 < onemsig < 1): blends the two
+              qadum = (1.0 - onemsig) * max(qak(k), cfmin) + onemsig
             else
               qadum = 1.0
             endif
@@ -3717,8 +3735,8 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newice = fac_frez * new_ice_condensate(tmp, ql, qi)
-            sink = min(ql, newice, (tice - tz (k)) / icpk (k))
+            newice = new_ice_condensate(tmp, ql, qi)
+            sink = fac_frez * min(ql, newice, (tice - tz (k)) / icpk (k) / qadum)
             qim = qi0_max / den (k)
             tmp = min (sink, dim (qim/qadum, qi))
 
@@ -4018,9 +4036,12 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
 
             tc = tz (k) - tice
 
-            ! Use In-Cloud condensates
+            ! Use In-Cloud condensates with scale-aware blending
             if (in_cloud_ice) then
-              qadum = max(qak(k),cfmin)
+              ! At coarse res (onemsig=0): uses strictly max(qak, cfmin)
+              ! At fine res   (onemsig=1): qadum becomes 1.0
+              ! In the gray zone (0 < onemsig < 1): blends the two
+              qadum = (1.0 - onemsig) * max(qak(k), cfmin) + onemsig
             else
               qadum = 1.0
             endif
@@ -4031,7 +4052,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
             di  = max (di, qcmin)
             q_plus = qi + di
             ! Use of ice_fraction here is critical to producing the proper snow in reflectivity vs too much cloud ice
-            qim = max(ice_fraction(real(tz(k)), cnv_fraction, srf_type), 0.01) * critical_qi_factor / den (k)
+            qim = max(ice_fraction(real(tz(k)), cnv_fraction, srf_type), 0.01) * critical_qi_factor / den (k) / qadum
             if (q_plus .gt. (qim + qcmin)) then
                 if (qim .gt. (qi - di)) then
                     dq = (0.25 * (q_plus - qim) ** 2) / di

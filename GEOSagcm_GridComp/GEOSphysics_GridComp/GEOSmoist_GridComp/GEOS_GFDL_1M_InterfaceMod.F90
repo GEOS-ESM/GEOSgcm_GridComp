@@ -677,8 +677,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              facEIS = get_fac_eis(EIS(I,J),SRF_TYPE(I,J))
            ! determine combined minrhcrit in unstable/stable regimes
              minrhcrit = MIN_RH_UNSTABLE*(1.0-facEIS) + MIN_RH_STABLE*facEIS
-           ! include grid cell area scaling and limit RHcrit to > 70%
-             minrhcrit = 1.0 - min(0.3,(1.0-minrhcrit)*SQRT(SQRT(AREA(I,J)/1.e10))+0.01)
+           ! limit minrhcrit to > 70%
+             minrhcrit = max(0.7,minrhcrit)
              if (TURNRHCRIT_PARAM <= 0.0) then
               ! determine the turn pressure using the PBL For ShallowCu
                 turnrhcrit = PLmb(I, J, NINT(KPBLSC(I,J))) - 50.  ! 50mb above KHSFC top
@@ -698,6 +698,14 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                 RHCRIT = minrhcrit + (safe_max_rh_crit - minrhcrit) * &
                          (x_norm * x_norm * (3.0 - 2.0 * x_norm))
              endif
+           ! -----------------------------------------------------------------
+           ! Scale-Aware Blending for RHCRIT
+           ! -----------------------------------------------------------------
+           ! At coarse res (ONE_M_SIG=0): Uses the tuned Slingo-Ritter profile
+           ! At fine res   (ONE_M_SIG=1): Converges to 1.0 (explicitly resolved clouds)
+           ! In gray zone  (0<sig<1)    : Smoothly blends the two assumptions
+             ONE_M_SIG = 1.0 - SIGMA(SQRT(AREA(i,j)))
+             RHCRIT = (1.0 - ONE_M_SIG) * RHCRIT + ONE_M_SIG * 0.99
            ! limit RHcrit to > 70%
              ALPHA = max(0.0,min(0.30, (1.0-RHCRIT)))
            ! fill RHCRIT export
@@ -1072,20 +1080,20 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                                          QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L), &
                                                          REMOVE_CLOUDS=(L < KLID) )
                endif
-             !! Scale-aware sigma
-             ! ONE_M_SIG = 1.0 - SIGMA(SQRT(AREA(i,j)))
-             !! get radiative properties
-             ! call RADCOUPLE_BINARY ( T(I,J,L), PLmb(I,J,L), CLLS(I,J,L), CLCN(I,J,L), &
-             !       Q(I,J,L), QLLS(I,J,L), QILS(I,J,L), QLCN(I,J,L), QICN(I,J,L), QRAIN(I,J,L), QSNOW(I,J,L), QGRAUPEL(I,J,L), NACTL(I,J,L), NACTI(I,J,L), &
-             !       ONE_M_SIG, RAD_QV(I,J,L), RAD_QL(I,J,L), RAD_QI(I,J,L), RAD_QR(I,J,L), RAD_QS(I,J,L), RAD_QG(I,J,L), RAD_CF(I,J,L), &
-             !       CLDREFFL(I,J,L), CLDREFFI(I,J,L), &
-             !       FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI)
+              ! Scale-aware sigma
+               ONE_M_SIG = 1.0 - SIGMA(SQRT(AREA(i,j)))
               ! get radiative properties
-               call RADCOUPLE ( T(I,J,L), PLmb(I,J,L), CLLS(I,J,L), CLCN(I,J,L), &
+               call RADCOUPLE_SCALE_AWARE ( T(I,J,L), PLmb(I,J,L), CLLS(I,J,L), CLCN(I,J,L), &
                      Q(I,J,L), QLLS(I,J,L), QILS(I,J,L), QLCN(I,J,L), QICN(I,J,L), QRAIN(I,J,L), QSNOW(I,J,L), QGRAUPEL(I,J,L), NACTL(I,J,L), NACTI(I,J,L), &
-                     RAD_QV(I,J,L), RAD_QL(I,J,L), RAD_QI(I,J,L), RAD_QR(I,J,L), RAD_QS(I,J,L), RAD_QG(I,J,L), RAD_CF(I,J,L), &
+                     ONE_M_SIG, RAD_QV(I,J,L), RAD_QL(I,J,L), RAD_QI(I,J,L), RAD_QR(I,J,L), RAD_QS(I,J,L), RAD_QG(I,J,L), RAD_CF(I,J,L), &
                      CLDREFFL(I,J,L), CLDREFFI(I,J,L), &
                      FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI)
+             !! get radiative properties
+             ! call RADCOUPLE ( T(I,J,L), PLmb(I,J,L), CLLS(I,J,L), CLCN(I,J,L), &
+             !       Q(I,J,L), QLLS(I,J,L), QILS(I,J,L), QLCN(I,J,L), QICN(I,J,L), QRAIN(I,J,L), QSNOW(I,J,L), QGRAUPEL(I,J,L), NACTL(I,J,L), NACTI(I,J,L), &
+             !       RAD_QV(I,J,L), RAD_QL(I,J,L), RAD_QI(I,J,L), RAD_QR(I,J,L), RAD_QS(I,J,L), RAD_QG(I,J,L), RAD_CF(I,J,L), &
+             !       CLDREFFL(I,J,L), CLDREFFI(I,J,L), &
+             !       FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI)
             enddo
           enddo
          enddo

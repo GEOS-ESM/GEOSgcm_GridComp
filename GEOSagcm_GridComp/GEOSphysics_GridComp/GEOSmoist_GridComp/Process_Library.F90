@@ -72,7 +72,7 @@ module GEOSmoist_Process_Library
   real, parameter :: EPSILON =  MAPL_H2OMW/MAPL_AIRMW
   real, parameter :: K_COND  =  2.4e-2    ! J m**-1 s**-1 K**-1
   real, parameter :: DIFFU   =  2.2e-5    ! m**2 s**-1
-  real, parameter :: taufrz  =  600.0     ! timescale for freezing
+  real, parameter :: taufrz  =  450.0
   real, parameter :: taumlt  =  300.0     ! timescale for melting
   real, parameter :: CFMIN   =  1.e-5     ! minimum cloud fraction
   real, parameter :: QCMIN   =  1.e-8     ! minimum condensate (ql & qi) values
@@ -246,7 +246,7 @@ module GEOSmoist_Process_Library
   public :: CNV_Tracer_Type, CNV_Tracers, CNV_Tracers_Init
   public :: constrain_modis_ice
   public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, BUOYANCY2
-  public :: REDISTRIBUTE_CLOUDS, RADCOUPLE_BINARY, RADCOUPLE, FIX_UP_CLOUDS
+  public :: REDISTRIBUTE_CLOUDS, RADCOUPLE_SCALE_AWARE, RADCOUPLE, FIX_UP_CLOUDS
   public :: hystpdf, fix_up_clouds_2M
   public :: FILLQ2ZERO
   public :: MELTFRZ
@@ -1189,7 +1189,7 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
 
   end subroutine BUOYANCY
 
-   subroutine RADCOUPLE_BINARY(  &
+subroutine RADCOUPLE_SCALE_AWARE(  &
          TE,              &
          PL,              &
          CF,              &
@@ -1199,9 +1199,9 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
          QCiLS,           &
          QClAN,           &
          QCiAN,           &
-         QR_IN,           &
-         QS_IN,           &
-         QG_IN,           &
+         QRN_ALL,         &
+         QSN_ALL,         &
+         QGR_ALL,         &
          NL,              &
          NI,              &
          one_minus_sigma, &
@@ -1217,16 +1217,16 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
          FAC_RL, MIN_RL, MAX_RL, &
          FAC_RI, MIN_RI, MAX_RI)
 
+      implicit none
+
       real, intent(in ) :: TE
       real, intent(in ) :: PL
       real, intent(in ) :: AF,CF, QV, QClAN, QCiAN, QClLS, QCiLS
-      real, intent(in ) :: QR_IN, QS_IN, QG_IN
+      real, intent(in ) :: QRN_ALL, QSN_ALL, QGR_ALL
       real, intent(in ) :: NL,NI
       real, intent(in ) :: one_minus_sigma
       real, intent(out) :: RAD_QV,RAD_QL,RAD_QI,RAD_QR,RAD_QS,RAD_QG,RAD_CF,RAD_RL,RAD_RI
       real, intent(in ) :: FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI
-
-      real :: CF_IN, QL_IN, QI_IN
 
       ! Limits on Radii needed to ensure
       ! correct behavior of cloud optical
@@ -1237,16 +1237,62 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
       RAD_QV = QV
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      ! Total cloud fraction
+      ! Total cloud fraction & In-Cloud Scaling
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      CF_IN = MAX(MIN(CF+AF,1.0),0.0)
-      QL_IN = QClLS + QClAN
-      QI_IN = QCiLS + QCiAN
+      RAD_CF = MAX(MIN(CF+AF,1.0),0.0)
 
-      call smooth_cloud_binary(one_minus_sigma, &
-                               cf_in, ql_in, qi_in, qr_in, qs_in, qg_in, &
-                               RAD_CF, RAD_QL, RAD_QI, RAD_QR, RAD_QS, RAD_QG, &
-                               .false.)
+      ! Process clouds if there is a parameterized cloud fraction OR 
+      ! if there is resolved condensate (crucial for fine resolutions where CF might be 0)
+      if ( RAD_CF >= CFMIN .or. (QClLS + QClAN + QCiLS + QCiAN) >= QCMIN ) then
+        
+        ! Scale-aware blending for the effective cloud fraction
+        ! At coarse res (onemsig=0): uses traditional MAX(RAD_CF, CFMIN)
+        ! At fine res   (onemsig=1): becomes 1.0 (fully cloudy grid cell)
+        RAD_CF = (1.0 - one_minus_sigma) * MAX(RAD_CF, CFMIN) + one_minus_sigma
+
+        ! Total In-cloud liquid
+        if ( (QClLS + QClAN) >= QCMIN ) then
+           RAD_QL = ( QClLS + QClAN ) / RAD_CF
+        else
+           RAD_QL = 0.0
+        end if
+        ! Total In-cloud ice
+        if ( (QCiLS + QCiAN) >= QCMIN ) then
+           RAD_QI = ( QCiLS + QCiAN ) / RAD_CF
+        else
+           RAD_QI = 0.0
+        end if
+        ! Total In-cloud precipitation
+        if (QRN_ALL >= QPMIN ) then
+           RAD_QR = ( QRN_ALL ) / RAD_CF
+        else
+           RAD_QR = 0.0
+        end if
+        if (QSN_ALL >= QPMIN ) then
+           RAD_QS = ( QSN_ALL ) / RAD_CF
+        else
+           RAD_QS = 0.0
+        end if
+        if (QGR_ALL >= QPMIN ) then
+           RAD_QG = ( QGR_ALL ) / RAD_CF
+        else
+           RAD_QG = 0.0
+        end if
+      else
+        RAD_CF = 0.0
+        RAD_QL = 0.0
+        RAD_QI = 0.0
+        RAD_QR = 0.0
+        RAD_QS = 0.0
+        RAD_QG = 0.0
+      end if
+
+     ! cap the high end of condensates
+      RAD_QL = MIN( RAD_QL, 0.01 )
+      RAD_QI = MIN( RAD_QI, 0.01 )
+      RAD_QR = MIN( RAD_QR, 0.01 )
+      RAD_QS = MIN( RAD_QS, 0.01 )
+      RAD_QG = MIN( RAD_QG, 0.01 )
 
      ! LIQUID RADII
       if (RAD_QL > 0.0) then
@@ -1268,7 +1314,7 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
         RAD_RI = MAPL_UNDEF
       end if
 
-   end subroutine RADCOUPLE_BINARY
+   end subroutine RADCOUPLE_SCALE_AWARE
 
    subroutine RADCOUPLE(  &
          TE,              &
@@ -2771,62 +2817,31 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
             end if
          endif
 
-         IF (USE_BERGERON) THEN
-
-            ! FIX #1 (DQCALL): Use cumulative condensation since loop entry
-            ! (QCn - QCn_initial) rather than per-iteration delta (QCn - QCp).
-            ! The per-iteration delta approaches zero at convergence, causing
-            ! Bergeron_Partition to see a near-zero tendency divided by the
-            ! full DT, which made the deposition competition physically
-            ! meaningless. The cumulative delta correctly represents the net
-            ! condensation tendency over the timestep DT.
-            DQCALL = QCn - QCn_initial
-
-            CLLS = CFn * (1.-CLCN)
-
-            ! FIX #3 (units): Nfac converts number mixing ratio [#/kg_air] to
-            ! number concentration [#/m3] using air density.
-            ! DENAIR inside Bergeron_Partition = PL*100/(MAPL_RGAS*TE) [kg/m3].
-            ! NIv passed in as [#/kg_air]; TEFF = NIv*DENAIR*... correctly
-            ! gives [#/m3] inside the routine.  Do NOT pre-multiply by density
-            ! here - that would double-count it.  Nfac is retained only for
-            ! any other uses; NIv and NLv are pure mixing ratios [#/kg_air].
-            ! If NI is already in [#/kg_air] then no conversion is needed here.
-            ! If NI is in [#/m3] divide by DENAIR = PL*100/(MAPL_RGAS*TEn).
-            ! *** Verify units of NI/NL at the call site and adjust accordingly.
-            Nfac = 100.*PL*R_AIR/TEn   ! air density [kg/m3] x unit conversion
-            NLv  = NL / Nfac
-            NIv  = NI / Nfac
-
-            ! FIX #2 (QV vs QT): Pass pure vapor QVn, NOT total water QT.
-            ! QT = QCn + QVn includes condensate, which is not available for
-            ! vapor deposition.  Using QT caused QVINC to be too large in
-            ! subsaturated or thin-cloud conditions where QT < QSLIQ, allowing
-            ! condensate to be counted as vapor available for ice deposition.
-            QVn_only = QT - QCn   ! = QVn by construction; explicit for clarity
-
-            call Bergeron_Partition(  &
-                  DT               ,  &
-                  PL               ,  &
-                  TEn              ,  &
-                  QVn_only         ,  &  ! FIX #2: pure vapor, not QT
-                  QILS             ,  &
-                  QICN             ,  &
-                  QLLS             ,  &
-                  QLCN             ,  &
-                  CLLS             ,  &
-                  CLCN             ,  &
-                  NLv              ,  &
-                  NIv              ,  &
-                  DQCALL           ,  &  ! FIX #1: cumulative, not per-iteration
-                  fQi              ,  &
-                  CNVFRC, SRF_TYPE ,  &
-                  needs_preexisting,  &
-                  DEP_BERGERON     )     ! FIX #4: new intent(out) argument
-
+         IF(USE_BERGERON) THEN
+           DQCALL = QCn - QCp
+           CLLS = CFn * (1.-CLCN)
+           Nfac = 100.*PL*R_AIR/TEn !density times conversion factor
+           NLv = NL/Nfac
+           NIv = NI/Nfac
+           call Bergeron_Partition( &         !Microphysically-based partitions the new condensate
+                 DT               , &
+                 PL               , &
+                 TEn              , &
+                 QT               , &
+                 QILS             , &
+                 QICN             , &
+                 QLLS             , &
+                 QLCN             , &
+                 CLLS             , &
+                 CLCN             , &
+                 NLv              , &
+                 NIv              , &
+                 DQCALL           , &
+                 fQi              , &
+                 CNVFRC,SRF_TYPE  , &
+                 needs_preexisting)
          ELSE
-            fQi          = ice_fraction( TEn, CNVFRC, SRF_TYPE )
-            DEP_BERGERON = 0.0
+           fQi = ice_fraction( TEn, CNVFRC,SRF_TYPE )
          ENDIF
 
          alhxbcp = (1.0-fQi)*alhlbcp + fQi*alhsbcp
@@ -2866,19 +2881,8 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
          dQLLS = max(QCx        , -QLLS)
          dQILS = max(QCx - dQLLS, -QILS)
       else
-         ! Base partition from fQI
          dQLLS = (1.0-fQi)*QCx
          dQILS =      fQi *QCx
-
-         ! FIX #4: Apply Bergeron liquid->ice transfer explicitly.
-         ! DEP_BERGERON [kg/kg/s] represents the WBF conversion of QLLS to
-         ! ice that is independent of the net condensation tendency DQCALL.
-         ! This transfer is not representable through fQI alone when
-         ! DEP > DQCALL (fQI gets clipped to 1.0, silently losing the excess).
-         ! Guard against driving QLLS+dQLLS negative.
-         DEP_BERGERON_APPLIED = min(DEP_BERGERON*DT, max(QLLS + dQLLS, 0.0))
-         dQLLS = dQLLS - DEP_BERGERON_APPLIED
-         dQILS = dQILS + DEP_BERGERON_APPLIED
       end if
 
       ! Clean-up cloud if fractions are too small
@@ -2948,7 +2952,8 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
 
    end subroutine pdf_alpha
 
-!Partitions DQ into ice and liquid. Follows Barahona et al. GMD. 2014
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !Parititions DQ into ice and liquid. Follows Barahona et al. GMD. 2014
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    subroutine Bergeron_Partition (           &
          DTIME            , &
@@ -2966,184 +2971,101 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
          DQALL            , &
          FQI              , &
          CNVFRC, SRF_TYPE , &
-         needs_preexisting, &
-         DEP_BERGERON     )   ! FIX #4: new intent(out) - Bergeron liquid->ice
-                               !         transfer rate [kg/kg/s], applied by caller
+         needs_preexisting )
 
-      real,    intent(in)    :: DTIME, PL, TE
-      real,    intent(inout) :: DQALL
-      real,    intent(in)    :: QV, QLLS, QLCN, QICN, QILS
-      real,    intent(in)    :: CF, AF, NL, NI
-      real,    intent(out)   :: FQI
-      real,    intent(in)    :: CNVFRC, SRF_TYPE
-      logical, intent(in)    :: needs_preexisting
-      real,    intent(out)   :: DEP_BERGERON   ! FIX #4: Bergeron WBF transfer rate [kg/kg/s]
-                                               ! Positive = liquid->ice conversion
-                                               ! Caller must apply to QLLS and QILS explicitly
+      real ,  intent(in   )    :: DTIME, PL, TE       !, RHCR
+      real ,  intent(inout   )    ::  DQALL
+      real ,  intent(in)    :: QV, QLLS, QLCN, QICN, QILS
+      real ,  intent(in)    :: CF, AF, NL, NI
+      real, intent (out) :: FQI
+      real, intent(in) :: CNVFRC, SRF_TYPE
+      logical, intent (in)  :: needs_preexisting
 
-      real  :: DC, TEFF, QCm, DEP,              &
-               QC, QS, RHCR, DQSL, DQSI, QI, TC, &
-               DIFF, DENAIR, DENICE, AUX,          &
-               DCF, QTOT, LHCORR, QL, DQI, DQL,   &
-               QVINC, QSLIQ, CFALL, new_QI, new_QL,&
-               QSICE, fQI_0, QS_0, DQS_0, FQA, NIX
-
-      ! Always initialize DEP_BERGERON to zero so the caller
-      ! receives a valid value on all exit paths.
-      DEP_BERGERON = 0.0
+      real  :: DC, TEFF,QCm,DEP, &
+            QC, QS, RHCR, DQSL, DQSI, QI, TC, &
+            DIFF, DENAIR, DENICE, AUX, &
+            DCF, QTOT, LHCORR,  QL, DQI, DQL, &
+            QVINC, QSLIQ, CFALL,  new_QI, new_QL, &
+            QSICE, fQI_0, QS_0, DQS_0, FQA, NIX
 
       DIFF = 0.0
       DEP  = 0.0
-      QI   = QILS + QICN
+      QI   = QILS + QICN !neccesary because NI is for convective and large scale
       QL   = QLLS + QLCN
-      QTOT = QI + QL
-
-      ! We calculate FQA for reference, but we NO LONGER scale NI by it.
+      QTOT = QI+QL
       FQA  = 0.0
-      if (QTOT .gt. 0.0) FQA = (QICN + QILS) / QTOT
+      if (QTOT .gt. 0.0) FQA = (QICN+QILS)/QTOT
+      NIX  = (1.0-FQA)*NI
 
-      ! CORRECTION 2: Use the actual ice crystal number concentration (NI) 
-      ! provided by the aerosol/nucleation scheme. Do not scale it by ice mass fraction.
-      ! Added a tiny lower bound to prevent divide-by-zero.
-      NIX = MAX(NI, 1.0e-12)
+      DQALL = DQALL/DTIME
+      CFALL = min(CF+AF, 1.0)
+      TC    = TE-MAPL_TICE
+      fQI_0 = fQI
 
-      DQALL = DQALL / DTIME
-      CFALL = min(CF + AF, 1.0)
-      TC    = TE - MAPL_TICE
-      fQI_0 = FQI
-
-      ! ---- Temperature regime selection ----
-
-      if (TE .ge. iT_ICE_MAX) then      ! purely liquid cloud
-         FQI = 0.0
-
-      elseif (TE .le. iT_ICE_ALL) then  ! fully glaciated cloud
-         FQI = 1.0
-
-      else  ! mixed-phase cloud
-
-         FQI = 0.0
-
+      !Completely glaciated cloud:
+      if (TE .ge. iT_ICE_MAX) then   !liquid cloud
+         FQI   = 0.0
+      elseif(TE .le. iT_ICE_ALL) then !ice cloud
+         FQI   = 1.0
+      else !mixed phase cloud
+         FQI   = 0.0
          if (QILS .le. 0.0) then
-            ! FIX #1: When needs_preexisting=.TRUE. and QILS<=0 there is no
-            ! preexisting ice for vapor to deposit onto.  Explicitly set
-            ! FQI=0.0 (all liquid) before returning.  Previously the routine
-            ! returned the incoming value of FQI, which could be nonzero and
-            ! cause spurious ice persistence across calls.
-            if (needs_preexisting) then
-               FQI          = 0.0
-               DEP_BERGERON = 0.0
-               return
-            else
-               FQI = ice_fraction( TE, CNVFRC, SRF_TYPE )
-               return
-            end if
+              if (needs_preexisting) then
+              ! new 0518 this line ensures that only preexisting ice can grow by deposition.
+              ! Only works if explicit ice nucleation is available (2 moment muphysics and up)
+              else
+                  fQi = ice_fraction( TE, CNVFRC, SRF_TYPE )
+              end if
+              return
          end if
 
-         ! ---- Vapor and saturation quantities ----
+         QVINC =  QV
+         QSLIQ = GEOS_QsatLQU( TE, PL*100.0 , DQ=DQSL )
+         QSICE = GEOS_QsatICE( TE, PL*100.0 , DQ=DQSI )
+         QVINC = MIN(QVINC, QSLIQ) !limit to below water saturation
 
-         QVINC = QV
-         QSLIQ = GEOS_QsatLQU( TE, PL*100.0, DQ=DQSL )
-         QSICE = GEOS_QsatICE( TE, PL*100.0, DQ=DQSI )
-         QVINC = MIN(QVINC, QSLIQ)   ! limit to below liquid saturation
+         ! Calculate deposition onto preexisting ice
 
-         ! ---- Ice crystal deposition timescale ----
+         DIFF=(0.211*1013.25/(PL+0.1))*(((TE+0.1)/MAPL_TICE)**1.94)*1e-4  !From Seinfeld and Pandis 2006
+         DENAIR=PL*100.0/MAPL_RGAS/TE
+         DENICE= 1000.0*(0.9167 - 1.75e-4*TC -5.0e-7*TC*TC) !From PK 97
+         LHcorr = ( 1.0 + DQSI*MAPL_ALHS/MAPL_CP) !must be ice deposition
 
-         ! FIX #6: Removed spurious +0.1 guard on TE in the temperature
-         ! exponent. TE is in Kelvin and is never near zero in any
-         ! atmospheric context, so the offset was physically meaningless
-         ! and slightly biased the diffusivity.
-         DIFF   = (0.211*1013.25/(PL+0.1)) * ((TE/MAPL_TICE)**1.94) * 1e-4  ! Seinfeld & Pandis 2006
-         DENAIR = PL*100.0 / MAPL_RGAS / TE
-         DENICE = 1000.0*(0.9167 - 1.75e-4*TC - 5.0e-7*TC*TC)   ! PK97
-         LHcorr = (1.0 + DQSI*MAPL_ALHS/MAPL_CP)                ! ice deposition correction
-
-         if ((NIX .gt. 1.0) .and. (QILS .gt. 1.0e-10)) then
-            ! Added missing factor of 6.0 for spherical volume math.
-            ! D = (6 * Mass / (N * rho * pi))^(1/3)
-            DC = max( (6.0 * QILS / (NIX * DENICE * MAPL_PI))**(1.0/3.0), 20.0e-6 )
+         if  ((NIX .gt. 1.0) .and. (QILS .gt. 1.0e-10)) then
+            DC=max((QILS/(NIX*DENICE*MAPL_PI))**(0.333), 20.0e-6) !Assumme monodisperse size dsitribution
          else
-            DC = 20.0e-6
+            DC=20.0e-6
          end if
 
-         TEFF = NIX * DENAIR * 2.0 * MAPL_PI * DIFF * DC / LHcorr   ! [1/s]
+         TEFF= NIX*DENAIR*2.0*MAPL_PI*DIFF*DC/LHcorr ! 1/Dep time scale
 
-         DEP = 0.0
+         DEP=0.0
          if ((TEFF .gt. 0.0) .and. (QILS .gt. 1.0e-14)) then
-            AUX = max(min(DTIME*TEFF, 20.0), 0.0)
-            ! Note: This analytical integration assumes T and QV are constant over DTIME.
-            ! If time steps are long, this may still slightly over-predict deposition.
-            DEP = (QVINC - QSICE) * (1.0 - EXP(-AUX)) / DTIME
+            AUX=max(min(DTIME*TEFF, 20.0), 0.0)
+            DEP=(QVINC-QSICE)*(1.0-EXP(-AUX))/DTIME
          end if
-         DEP = MAX(DEP, -QILS/DTIME)   ! only existing ice can sublimate
+         DEP=MAX(DEP, -QILS/DTIME) !only existing ice can be sublimated
 
-         ! ---- Partition DQALL accounting for Bergeron-Findeisen process ----
-
-         DQI          = 0.0
-         DQL          = 0.0
-         FQI          = 0.0
-         DEP_BERGERON = 0.0
-
-         if (DQALL .gt. 0.0) then   ! net condensation
-
+         DQI = 0.0
+         DQL = 0.0
+         FQI = 0.0
+         !Partition DQALL accounting for Bergeron-Findensen process
+         if  (DQALL .ge. 0.0) then !net condensation. Note: do not allow bergeron with QLCN
             if (DEP .gt. 0.0) then
-               ! FIX #3: Upper bound uses only QLLS (large-scale liquid),
-               ! not QLCN, consistent with the physical intent that Bergeron
-               ! should not draw from convective liquid.
-               !
-               ! FIX #4: Any DQI in excess of DQALL came from QLLS via the
-               ! WBF mechanism. Record this explicitly as DEP_BERGERON so the
-               ! caller can apply the liquid->ice mass transfer directly to
-               ! QLLS and QILS, rather than relying on FQI clipping which
-               ! silently loses this transfer when DEP > DQALL.
-               DQI          = min(DEP, DQALL + QLLS/DTIME)
-               DQL          = DQALL - DQI
-               DEP_BERGERON = max(DQI - DQALL, 0.0)   ! [kg/kg/s], >= 0
+               DQI = min(DEP, DQALL + QLLS/DTIME)
+               DQL = DQALL - DQI
             else
-               ! Subsaturated PDF condensation - no ice growth via deposition
-               DQL = DQALL
+               DQL = DQALL ! could happen because the PDF allows condensation in subsaturated conditions
                DQI = 0.0
             end if
-
-         elseif (DQALL .lt. 0.0) then   ! net evaporation
-
-            ! Liquid evaporates first regardless of DEP sign
+         end if
+         if  (DQALL .lt. 0.0) then  !net evaporation. Water evaporates first regaardless of DEP
             DQL = max(DQALL, -QLLS/DTIME)
             DQI = max(DQALL - DQL, -QILS/DTIME)
-            ! DEP_BERGERON remains 0.0 during net evaporation -
-            ! WBF does not apply when the cloud is evaporating overall
-
-         else   ! DQALL = 0: no net phase change from PDF
-
-            ! FIX #5: WBF can still convert existing large-scale liquid to
-            ! ice via vapor deposition onto ice crystals even when the net
-            ! condensation tendency is zero. This was previously ignored,
-            ! completely shutting off the Bergeron process at zero net
-            ! condensation. DEP_BERGERON carries this transfer to the caller.
-            if ((DEP .gt. 0.0) .and. (QLLS .gt. 0.0)) then
-               DEP_BERGERON = min(DEP, QLLS/DTIME)
-               DQI          =  DEP_BERGERON
-               DQL          = -DEP_BERGERON
-            end if
-
          end if
+         if (DQALL .ne. 0.0)  FQI=max(min(DQI/DQALL, 1.0), 0.0)
 
-         ! ---- Compute ice fraction of net condensation tendency ----
-
-         if (DQALL .ne. 0.0) then
-            ! Standard case: FQI is the ice fraction of net condensation.
-            ! Note: DQI is capped at DQALL when DEP_BERGERON > 0, so FQI
-            ! correctly stays in [0,1] and DEP_BERGERON carries the remainder.
-            FQI = max(min(DQI/DQALL, 1.0), 0.0)
-         else if (DEP_BERGERON .gt. 0.0) then
-            ! FIX #5 continued: DQALL=0 but WBF is active. All net phase
-            ! change is liquid->ice via Bergeron; set FQI=1.0 as a sentinel.
-            ! The actual mass transfer is in DEP_BERGERON, not in DQALL*FQI,
-            ! so the caller must use DEP_BERGERON directly.
-            FQI = 1.0
-         end if
-
-      end if  !=====
+      end if !=====
 
    end subroutine Bergeron_Partition
 
