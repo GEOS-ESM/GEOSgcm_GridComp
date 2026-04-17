@@ -29,7 +29,7 @@ PROGRAM mkEASETilesParam
   ! - removed repetition of identical operations
   ! - added comments
   ! - white-space changes for improved readability
-  use, intrinsic :: iso_fortran_env, only: REAL64 
+  use, intrinsic :: iso_fortran_env, only: REAL64, REAL32 
   use rmTinyCatchParaMod,    only : i_raster, j_raster 
   use rmTinyCatchParaMod,    only : RegridRasterReal     
   use rmTinyCatchParaMod,    only : Target_mean_land_elev
@@ -114,7 +114,7 @@ PROGRAM mkEASETilesParam
   character(len=400)     :: MAKE_BCS_INPUT_DIR
 
   ! LakeTopoCat
-  real(REAL64), allocatable :: tile_lake_frac( :)
+  real(REAL32), allocatable :: tile_lake_frac( :)
   integer(1),   allocatable :: tile_is_lake_50(:)
   integer                   :: rc_lake
 

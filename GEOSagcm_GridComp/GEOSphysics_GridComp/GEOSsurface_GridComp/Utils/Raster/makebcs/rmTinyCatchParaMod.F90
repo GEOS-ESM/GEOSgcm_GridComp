@@ -2,8 +2,6 @@
 #define ASSERT_(A)   if(.not.A)then;print *,'Error:',__FILE__,__LINE__;stop;endif
 !
 ! A Collection subroutines needed by mkCatchParam.F90
-!   Contact: Sarith Mahanama  sarith.p.mahanama@nasa.gov
-!   Email  : sarith.p.mahanama@nasa.gov
 
 module rmTinyCatchParaMod
 
@@ -942,7 +940,7 @@ contains
     integer,           intent(in)            :: nc_rst, nr_rst
     integer,           intent(in)            :: tile_id(1:nc_rst, 1:nr_rst)
 
-    real(REAL64),      intent(out)           :: tile_lake_frac( 1:n_tile)
+    real(REAL32),      intent(out)           :: tile_lake_frac(1:n_tile)
     integer(1),        intent(out)           :: tile_is_lake_50(1:n_tile)
     integer,           intent(out), optional :: rc
 
@@ -980,7 +978,7 @@ contains
     ! ------------------------------------------------------------------
 
     ! initialize
-    tile_lake_frac  = 0.0_REAL64
+    tile_lake_frac  = 0.0_REAL32
     tile_is_lake_50 = 0_1
     
     if (nc_rst /= 43200 .or. nr_rst /= 21600) then
@@ -1013,7 +1011,7 @@ contains
              stop
           endif
 
-          status = NF_INQ_VARID(ncid, 'lake_presence_frac', varid) ; VERIFY_(status)
+          status = NF_INQ_VARID(ncid, 'lake_area_frac', varid) ; VERIFY_(status)
           status = NF_GET_VARA_REAL(ncid, varid, (/1,1/), (/nc_10,nr_10/), lake_frac) ; VERIFY_(status)
           status = NF_CLOSE(ncid) ; VERIFY_(status)
 
@@ -1045,7 +1043,7 @@ contains
     ! Finalize fraction and binary flag
 
     where (sum_w > 0.0_8)
-       tile_lake_frac = sum_fw / sum_w
+       tile_lake_frac = real(sum_fw / sum_w, real32)
     endwhere
 
     do tid = 1, n_tile
@@ -1068,7 +1066,7 @@ contains
     
     character(*), intent(in) :: tilefile
     integer,      intent(in) :: n_tile
-    real(REAL64), intent(in) :: tile_lake_frac( 1:n_tile)
+    real(REAL32), intent(in) :: tile_lake_frac( 1:n_tile)
     integer(1),   intent(in) :: tile_is_lake_50(1:n_tile)
     
     integer :: status, ncid, ndims, nvars, ngatts, unlimdimid
@@ -1111,7 +1109,7 @@ contains
     
     status = NF_REDEF(ncid)                                                                        ; VERIFY_(status)
     
-    status = NF_DEF_VAR(ncid, 'tile_lake_frac',     NF_DOUBLE, 1, (/dimid_tile/), varid_frac)      ; VERIFY_(status)
+    status = NF_DEF_VAR(ncid, 'tile_lake_frac',     NF_FLOAT,  1, (/dimid_tile/), varid_frac)      ; VERIFY_(status)
     status = NF_DEF_VAR(ncid, 'tile_is_lake_50pct', NF_INT,    1, (/dimid_tile/), varid_l50)       ; VERIFY_(status)
     
     status = NF_ENDDEF(ncid)                                                                       ; VERIFY_(status)
@@ -1131,7 +1129,7 @@ contains
         
     ! write data and close file
     
-    status = NF_PUT_VARA_DOUBLE(ncid, varid_frac, (/1/), (/n_tile/), tile_lake_frac)               ; VERIFY_(status)
+    status = NF_PUT_VARA_REAL(  ncid, varid_frac, (/1/), (/n_tile/), tile_lake_frac)               ; VERIFY_(status)
     status = NF_PUT_VARA_INT(   ncid, varid_l50,  (/1/), (/n_tile/), tmp_int)                      ; VERIFY_(status)
     
     status = NF_CLOSE(ncid)                                                                        ; VERIFY_(status)
@@ -1193,7 +1191,7 @@ contains
     logical                                :: two_EASE 
 
     ! LakeTopoCat
-    real(REAL64), allocatable :: tile_lake_frac( :)
+    real(REAL32), allocatable :: tile_lake_frac( :)
     integer(1),   allocatable :: tile_is_lake_50(:)
     integer                   :: rc_lake
 
