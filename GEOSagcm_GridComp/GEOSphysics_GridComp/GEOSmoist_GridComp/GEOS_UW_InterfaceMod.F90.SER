@@ -345,15 +345,15 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! $ser data MASS=MASS RKFRE=RKFRE QLTOT=QLTOT QITOT=QITOT
     ! $ser verbatim endif
  
-    !$ser savepoint ComputeUwshcuInv-In
-    !$ser data PLE=PLE ZLE=ZLE QLLS=QLLS QLCN=QLCN QILS=QILS QICN=QICN
-    !$ser data idim=IM*JM k0=LM dt=UW_DT
-    !$ser data u0_inv=U v0_inv=V qv0_inv=Q
-    !$ser data t0_inv=T tke_inv=TKE kpbl_inv=KPBL_SC shfx=SH evap=EVAP cnvtr=CNPCPRATE 
-    !$ser data frland=FRLAND cush=CUSH 
+    ! $ser savepoint ComputeUwshcuInv-In
+    ! $ser data PLE=PLE ZLE=ZLE QLLS=QLLS QLCN=QLCN QILS=QILS QICN=QICN
+    ! $ser data idim=IM*JM k0=LM dt=UW_DT
+    ! $ser data u0_inv=U v0_inv=V qv0_inv=Q
+    ! $ser data t0_inv=T tke_inv=TKE kpbl_inv=KPBL_SC shfx=SH evap=EVAP cnvtr=CNPCPRATE 
+    ! $ser data frland=FRLAND cush=CUSH 
 
-    !$ser savepoint ComputeUwshcuInv-constants2
-    !$ser data SCLM_SHALLOW=SCLM_SHALLOW
+    ! $ser savepoint ComputeUwshcuInv-constants2
+    ! $ser data SCLM_SHALLOW=SCLM_SHALLOW
 
     ! $ser verbatim if (debug_ser .eqv. .true.) then
     ! $ser savepoint PrepareInputs-In
@@ -430,6 +430,8 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         endif
        ! Tiedtke-style cloud fraction !!
         DQADT_SC= MFD_SC*SCLM_SHALLOW/MASS
+        ! $ser savepoint extra_inputs-In
+        ! $ser data CLCN=CLCN
         CLCN = CLCN + DQADT_SC*UW_DT
         CLCN = MIN( CLCN , 1.0 )
       !  Convert detrained water units before passing to cloud
@@ -460,12 +462,12 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       !  Precipitation
       !--------------------------------------------------------------
         call MAPL_GetPointer(EXPORT, PTR3D, 'SHLW_PRC3', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-        !$ser savepoint ComputeUwshcuInv-Out2
+        ! $ser savepoint ComputeUwshcuInv-Out2
         if (associated(PTR3D)) PTR3D = DQRDT_SC    ! [kg/kg/s]
-        !$ser data SHLW_PRC3=PTR3D
+        ! $ser data SHLW_PRC3=PTR3D
         call MAPL_GetPointer(EXPORT, PTR3D, 'SHLW_SNO3', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) PTR3D = DQSDT_SC    ! [kg/kg/s]
-        !$ser data SHLW_SNO3=PTR3D
+        ! $ser data SHLW_SNO3=PTR3D
       
       ! Other exports
         call MAPL_GetPointer(EXPORT, PTR2D, 'SC_QT', RC=STATUS); VERIFY_(STATUS)
@@ -500,35 +502,35 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         
         call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_MFC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
         PTR3D = PTR3D + UMF_SC
-        !$ser data CNV_MFC=PTR3D
+        ! $ser data CNV_MFC=PTR3D
      
         call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_MFD', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
         PTR3D = PTR3D + MFD_SC
-        !$ser data CNV_MFD=PTR3D
+        ! $ser data CNV_MFD=PTR3D
 
         call MAPL_GetPointer(EXPORT, PTR2D,  'CUSH_SC', RC=STATUS); VERIFY_(STATUS)
         ! $ser data CUSH_SC=PTR2D
         if (associated(PTR2D)) PTR2D = CUSH
         
 
-        !$ser savepoint ComputeUwshcuInv-Out
-        !$ser data umf_inv=UMF_SC dcm_inv=DCM_SC qvten_inv=DQVDT_SC qlten_inv=DQLDT_SC qiten_inv=DQIDT_SC
-        !$ser data tten_inv=DTDT_SC uten_inv=DUDT_SC vten_inv=DVDT_SC qrten_inv=DQRDT_SC 
-        !$ser data qsten_inv=DQSDT_SC cufrc_inv=CUFRC_SC fer_inv=ENTR_SC fdr_inv=DETR_SC 
-        !$ser data qldet_inv=QLDET_SC qidet_inv=QIDET_SC qlsub_inv=QLSUB_SC qisub_inv=QISUB_SC 
-        !$ser data ndrop_inv=SC_NDROP nice_inv=SC_NICE cush=CUSH        
-        !$ser data qtflx_inv=QTFLX_SC slflx_inv=SLFLX_SC uflx_inv=UFLX_SC vflx_inv=VFLX_SC  
-        !$ser data tpert_out=TPERT_SC qpert_out=QPERT_SC
-        !$ser data dotransport=USE_TRACER_TRANSP_UW CNPCRATE=CNPCPRATE
-        !$ser data Q=Q T=T U=U V=V MFD_SC=MFD_SC DQADT_SC=DQADT_SC 
-        !$ser data QLENT_SC=QLENT_SC QIENT_SC=QIENT_SC QLDET_SC=QLDET_SC
-        !$ser data QIDET_SC=QIDET_SC RKFRE=RKFRE
+        ! $ser savepoint ComputeUwshcuInv-Out
+        ! $ser data umf_inv=UMF_SC dcm_inv=DCM_SC qvten_inv=DQVDT_SC qlten_inv=DQLDT_SC qiten_inv=DQIDT_SC
+        ! $ser data tten_inv=DTDT_SC uten_inv=DUDT_SC vten_inv=DVDT_SC qrten_inv=DQRDT_SC 
+        ! $ser data qsten_inv=DQSDT_SC cufrc_inv=CUFRC_SC fer_inv=ENTR_SC fdr_inv=DETR_SC 
+        ! $ser data qldet_inv=QLDET_SC qidet_inv=QIDET_SC qlsub_inv=QLSUB_SC qisub_inv=QISUB_SC 
+        ! $ser data ndrop_inv=SC_NDROP nice_inv=SC_NICE cush=CUSH        
+        ! $ser data qtflx_inv=QTFLX_SC slflx_inv=SLFLX_SC uflx_inv=UFLX_SC vflx_inv=VFLX_SC  
+        ! $ser data tpert_out=TPERT_SC qpert_out=QPERT_SC
+        ! $ser data dotransport=USE_TRACER_TRANSP_UW CNPCRATE=CNPCPRATE
+        ! $ser data Q=Q T=T U=U V=V MFD_SC=MFD_SC DQADT_SC=DQADT_SC 
+        ! $ser data QLENT_SC=QLENT_SC QIENT_SC=QIENT_SC QLDET_SC=QLDET_SC
+        ! $ser data QIDET_SC=QIDET_SC RKFRE=RKFRE CLCN=CLCN QITOT=QITOT QLTOT=QLTOT
 
         ! $ser verbatim if (debug_ser .eqv. .true.) then
         ! $ser savepoint SetupOutputs-Out
         ! $ser data Q=Q T=T U=U V=V MFD_SC=MFD_SC DQADT_SC=DQADT_SC CLCN=CLCN
         ! $ser data QLENT_SC=QLENT_SC QIENT_SC=QIENT_SC QLDET_SC=QLDET_SC
-        ! $ser data QIDET_SC=QIDET_SC QLLS=QLLS QILS=QILS PTR3D=PTR3D 
+        ! $ser data QIDET_SC=QIDET_SC QLLS=QLLS QILS=QILS 
         ! $ser verbatim endif
 
     call MAPL_TimerOff (MAPL,"--UW")
