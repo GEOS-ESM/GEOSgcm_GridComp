@@ -6,7 +6,7 @@ Output (the only file makebcs Fortran needs):
   LakeTopoCat_Global_30arcsec.nc4
 
 Variables:
-  - lake_presence_frac(lat, lon): float32 in [0, 1]
+  - lake_area_frac(lat, lon): float32 in [0, 1]
         Fractional lake coverage of each 30 arc-sec cell, estimated by oversampling
         at 10 arc-sec and averaging 3x3 subpixels.
   - lake_presence_any(lat, lon): uint8 0/1 (optional but cheap and handy)
@@ -21,8 +21,6 @@ Method:
 Why oversample at 10"?
   Rasterization at 30" directly gives only a binary pixel mask. Oversampling at 10"
   lets us estimate fractional coverage in each 30" pixel at low cost.
-This file is same as one saved at :
-    /discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/lake/lake_mask/v1/LakeTopoCat_Global_30arcsec.nc4
 """
 
 import os
@@ -51,9 +49,9 @@ from affine import Affine
 # ------------------------------------------------------------
 # Paths (edit as needed)
 # ------------------------------------------------------------------
-shapefile_dir = "/discover/nobackup/borescan/brisi/lake/Lake_TopoCat/Lakes/"
-out_dir = "/discover/nobackup/borescan/brisi/lake/processing/make_bcs_preproc/lake_mask_build/"
-out_global = "/discover/nobackup/borescan/brisi/lake/processing/make_bcs_preproc/LakeTopoCat_Global_30arcsec.nc4"
+shapefile_dir = "/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/lake/Lake_TopoCat/v1/Lakes/"
+out_dir = "/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/lake/Lake_TopoCat/v1/lake_mask_build/"
+out_global = "/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/lake/lake_mask/v1/before_splitting_nc4/LakeTopoCat_Global_30arcsec.nc4"
 
 
 os.makedirs(out_dir, exist_ok=True)
@@ -160,7 +158,7 @@ for lat_start in np.arange(-90, 90, band_deg):
     # Write band netcdf
     ds = xr.Dataset(
         {
-            "lake_presence_frac": (("lat", "lon"), frac30),
+            "lake_area_frac": (("lat", "lon"), frac30),
             "lake_presence_any":  (("lat", "lon"), any30),  # optional but useful
         },
         coords={"lat": lat30_band, "lon": lon30},
@@ -168,7 +166,7 @@ for lat_start in np.arange(-90, 90, band_deg):
 
     band_out = os.path.join(out_dir, f"LakeTopoCat_30arcsec_{lat_start}_{lat_end}.nc4")
     encoding = {
-        "lake_presence_frac": {"zlib": True, "complevel": 4, "dtype": "float32", "_FillValue": -9999.0},
+        "lake_area_frac": {"zlib": True, "complevel": 4, "dtype": "float32", "_FillValue": -9999.0},
         "lake_presence_any":  {"zlib": True, "complevel": 4, "dtype": "uint8",   "_FillValue": 255},
     }
     
@@ -188,12 +186,12 @@ ds = xr.open_mfdataset(
 ).sortby("lat")
 
 # Force arrays into memory to avoid dask/lazy-write issues
-frac = ds["lake_presence_frac"].load().astype("float32")
+frac = ds["lake_area_frac"].load().astype("float32")
 anyv = ds["lake_presence_any"].load().astype("uint8")
 
 ds_out = xr.Dataset(
     {
-        "lake_presence_frac": frac,
+        "lake_area_frac": frac,
         "lake_presence_any": anyv,
     },
     coords={
@@ -203,7 +201,7 @@ ds_out = xr.Dataset(
 )
 
 encoding = {
-    "lake_presence_frac": {
+    "lake_area_frac": {
         "zlib": True,
         "complevel": 4,
         "dtype": "float32",

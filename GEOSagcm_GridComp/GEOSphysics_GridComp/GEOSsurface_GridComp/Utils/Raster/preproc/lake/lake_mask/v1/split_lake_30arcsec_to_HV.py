@@ -11,7 +11,7 @@ Format intentionally matches soil-properties style:
   - Dimensions: N_lat, N_lon (1200x1200)
   - 1D coordinates: latitude(N_lat), longitude(N_lon)
   - Variables:
-      lake_presence_frac(N_lat,N_lon)  float32 [0,1]
+      lake_area_frac(N_lat,N_lon)  float32 [0,1]
       lake_presence_any(N_lat,N_lon)   uint8 0/1
   - Global attributes include:
       N_lon_global, N_lat_global
@@ -23,8 +23,8 @@ All ocean cells are 0.
 This file is designed for fast chunk-based reading inside GEOS tiling (similar to soil and snow albedo).
 """
 
-in_global = "/discover/nobackup/borescan/brisi/lake/processing/make_bcs_preproc/LakeTopoCat_Global_30arcsec.nc4"
-out_dir   = "/discover/nobackup/borescan/brisi/lake/processing/make_bcs_preproc/tiles_10deg/"
+in_global = "/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/lake/lake_mask/v1/before_splitting_nc4/LakeTopoCat_Global_30arcsec.nc4"
+out_dir   = "/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/lake/lake_mask/v1/"
 os.makedirs(out_dir, exist_ok=True)
 
 # 30 arc-sec global grid
@@ -42,7 +42,7 @@ lat_g = ds["lat"].astype("float32")
 lon_g = ds["lon"].astype("float32")
 
 # Data vars
-frac_g = ds["lake_presence_frac"].astype("float32")
+frac_g = ds["lake_area_frac"].astype("float32")
 any_g  = ds["lake_presence_any"].astype("uint8")
 
 assert frac_g.sizes["lon"] == N_LON_GLOBAL and frac_g.sizes["lat"] == N_LAT_GLOBAL
@@ -76,7 +76,7 @@ for jx in range(1, 18+1):      # V 01..18
         # Build soil-style dataset
         sub = xr.Dataset(
             data_vars={
-                "lake_presence_frac": (("N_lat", "N_lon"), frac_sub),
+                "lake_area_frac":     (("N_lat", "N_lon"), frac_sub),
                 "lake_presence_any":  (("N_lat", "N_lon"), any_sub),
             },
             coords={
@@ -98,7 +98,7 @@ for jx in range(1, 18+1):      # V 01..18
 
         # No fill values (data are complete everywhere)
         encoding = {
-            "lake_presence_frac": {"zlib": True, "complevel": 4, "dtype": "float32", "_FillValue": None},
+            "lake_area_frac":     {"zlib": True, "complevel": 4, "dtype": "float32", "_FillValue": None},
             "lake_presence_any":  {"zlib": True, "complevel": 4, "dtype": "uint8",   "_FillValue": None},
             "latitude":           {"zlib": True, "complevel": 1, "dtype": "float32", "_FillValue": None},
             "longitude":          {"zlib": True, "complevel": 1, "dtype": "float32", "_FillValue": None},

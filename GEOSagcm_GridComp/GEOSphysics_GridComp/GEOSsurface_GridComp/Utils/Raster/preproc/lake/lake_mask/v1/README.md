@@ -46,7 +46,7 @@ Direct 30″ rasterization would produce only a binary mask.
 
 | Variable | Type | Description |
 |-----------|------|------------|
-| `lake_presence_frac` | float32 | Fractional lake coverage in each 30″ cell [0–1] |
+| `lake_area_frac` | float32 | Fractional lake coverage in each 30″ cell [0–1] |
 | `lake_presence_any`  | uint8   | Binary lake presence (0/1) |
 
 ### Data Completeness
@@ -99,7 +99,7 @@ LakeTopoCat data are mapped directly from the native 30″ raster to GEOS tiles 
 - Each 30″ pixel contributes equal weight (uniform pixel-area assumption).
 - Because LakeTopoCat inputs and GEOS `tile_id` raster are on the same native 30″ grid,
    **no interpolation or spatial remapping is performed**.
-- Tile means are simple averages of `lake_presence_frac` over all 30″ pixels belonging to each tile.
+- Tile means are simple averages of `lake_area_frac` over all 30″ pixels belonging to each tile.
 - Processing runs **only if raster resolution = 43200 × 21600**.
 - Lake variables are skipped automatically for workflows using coarser raster masks (e.g., 8640×4320).
 
