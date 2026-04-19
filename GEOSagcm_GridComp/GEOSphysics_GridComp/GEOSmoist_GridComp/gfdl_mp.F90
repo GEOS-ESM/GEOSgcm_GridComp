@@ -88,7 +88,7 @@ module gfdl_mp_mod
     public :: c_liq, c_ice, rhow, wet_bulb
     public :: cv_air, cv_vap, mtetw, mte
     public :: hlv, hlf, tice
-    public :: do_hail, do_sedi_heat, do_sedi_melt_qi, do_sedi_melt_qs, do_sedi_melt_qg, ifflag
+    public :: do_ref, do_hail, do_sedi_heat, do_sedi_melt_qi, do_sedi_melt_qs, do_sedi_melt_qg, ifflag
 
     ! -----------------------------------------------------------------------
     ! precision definition
@@ -679,7 +679,7 @@ end subroutine gfdl_mp_init
 !        mpprs, mpprg, mppxr, mppxs, mppxg, last_step, do_inline_mp, &
 !        use_cond, moist_kappa)
 
-subroutine gfdl_mp_driver (qv, ql, qr, qi, qs, qg, qa, qnl, qni, pt, wa, &
+subroutine gfdl_mp_driver (qv, ql, qr, qi, qs, qg, qa, zet, qnl, qni, pt, wa, &
         ua, va, delz, delp, dtm, rhcrit, hs, cnv_frc, eis, area, srft,   &
         water, rain, ice, snow, graupel, hydrostatic, is, ie, ks, ke, ktop, &
         qa_dt, &
@@ -706,11 +706,13 @@ subroutine gfdl_mp_driver (qv, ql, qr, qi, qs, qg, qa, qnl, qni, pt, wa, &
     real, intent (inout),  dimension (is:ie, ks:ke) :: pt, ua, va, wa
     real, intent (inout),  dimension (is:ie, ks:ke) :: qv, ql, qr, qi, qs, qg, qa
 
+    real, intent (out), dimension (is:ie, ks:ke) :: zet
     real, intent (out), dimension (is:ie, ks:ke) :: qa_dt
     real, intent (out), dimension (is:ie, ks:ke) :: revap, rsubl
     real, intent (out), dimension (is:ie, ks:ke) :: prefluxw, prefluxr, prefluxi, prefluxs, prefluxg
 
     real, intent (out), dimension (is:ie) :: water, rain, ice, snow, graupel
+
 !   real, intent (inout), dimension (is:ie) :: mppcw, mppew, mppe1, mpper, mppdi
 !   real, intent (inout), dimension (is:ie) :: mppd1, mppds, mppdg, mppsi, mpps1
 !   real, intent (inout), dimension (is:ie) :: mppss, mppsg, mppfw, mppfr, mppar
@@ -720,7 +722,7 @@ subroutine gfdl_mp_driver (qv, ql, qr, qi, qs, qg, qa, qnl, qni, pt, wa, &
 
 !   real, intent (inout), dimension (is:, ks:) :: q_con, cappa
 
-    real, dimension (is:ie, ks:ke) :: adj_vmr, te, zet, q_con, cappa
+    real, dimension (is:ie, ks:ke) :: adj_vmr, te, q_con, cappa
 
     real (kind = r8), dimension (is:ie) :: dte
 
@@ -1509,7 +1511,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
             qsz (k) = qs (i, k)
             qgz (k) = qg (i, k)
             qaz (k) = qa (i, k)
-            zez (k) = zet (i, k)
+            zez (k) = -30.0
 
             if (do_inline_mp) then
                 q_cond = qlz (k) + qrz (k) + qiz (k) + qsz (k) + qgz (k)

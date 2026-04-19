@@ -16,7 +16,7 @@ module GEOS_GFDL_1M_InterfaceMod
   use GEOSmoist_Process_Library
   use Aer_Actv_Single_Moment
   use gfdl2_cloud_microphys_mod, only : gfdl_cloud_microphys_init, gfdl_cloud_microphys_driver, ICE_LSC_VFALL_PARAM, ICE_CNV_VFALL_PARAM
-  use gfdl_mp_mod, only : gfdl_mp_init, gfdl_mp_driver, do_hail, do_sedi_heat, do_sedi_melt_qi, do_sedi_melt_qs, do_sedi_melt_qg, ifflag
+  use gfdl_mp_mod, only : gfdl_mp_init, gfdl_mp_driver, do_ref, do_hail, do_sedi_heat, do_sedi_melt_qi, do_sedi_melt_qs, do_sedi_melt_qg, ifflag
 
   implicit none
 
@@ -283,9 +283,11 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
     if (GFDL_MP3) then
       call gfdl_mp_init(LHYDROSTATIC,DT_MOIST)
       call WRITE_PARALLEL ("INITIALIZED GFDL_1M gfdl_mp v3 in non-generic GC INIT")
+      call MAPL_GetResource( MAPL, do_ref, Label="DO_GFDL_REFLECTIVITY:",  default=.FALSE., RC=STATUS); VERIFY_(STATUS)
     else  
       call gfdl_cloud_microphys_init()
       call WRITE_PARALLEL ("INITIALIZED GFDL_1M gfdl_cloud_microphys in non-generic GC INIT")
+      do_ref = .false.  ! Force to false so CALCDBZ triggers, as older driver has no DBZ3D
     endif 
 
     call MAPL_GetResource( MAPL, SH_MD_DP        , 'SH_MD_DP:'        , DEFAULT= .TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -372,6 +374,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, allocatable, dimension(:,:,:) :: PLmb,  ZL0
     real, allocatable, dimension(:,:,:) :: DZ, DZET, DP, MASS, iMASS
     real, allocatable, dimension(:,:,:) :: DQST3, QST3
+    real, allocatable, dimension(:,:,:) :: DBZ3D, TMP_NACTR
     real, allocatable, dimension(:,:,:) :: DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
                                            DQSDTmic, DQGDTmic, DQADTmic, &
                                             DUDTmic,  DVDTmic,  DTDTmic, DWDTmic
@@ -402,7 +405,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: CNV_PRC3 
     real, pointer, dimension(:,:)   :: EIS, LTS
     real, pointer, dimension(:,:)   :: DBZ_MAX, DBZ_1KM, DBZ_TOP, DBZ_M10C
-    real, pointer, dimension(:,:)   :: DBZ_MAX_R, DBZ_MAX_S, DBZ_MAX_G
+    real, pointer, dimension(:,:,:) :: DBZ
     real, pointer, dimension(:,:,:) ::   DQVDT_FILL
     real, pointer, dimension(:,:,:) :: DQLLSDT_FILL
     real, pointer, dimension(:,:,:) :: DQLCNDT_FILL
@@ -506,6 +509,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( iMASS(IM,JM,LM  ) )
     ALLOCATE ( DQST3(IM,JM,LM  ) )
     ALLOCATE (  QST3(IM,JM,LM  ) )
+    ALLOCATE ( DBZ3D(IM,JM,LM  ) )
     ALLOCATE ( TMP3D(IM,JM,LM  ) )
      ! Local tendencies
     ALLOCATE ( DQVDTmic(IM,JM,LM  ) )
@@ -523,6 +527,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( TMP2D        (IM,JM) )
      ! 1D Variables
     ALLOCATE ( TMP1D   (      LM  ) )   
+
+    ! Initialize to clear DBZ
+    DBZ3D = -30.0
 
     ! Derived States
     PLEmb    =  PLE*.01
@@ -555,6 +562,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, RAD_QG,   'QG'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CLDREFFL, 'RL'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CLDREFFI, 'RI'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DBZ     , 'DBZ' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     ! This export MUST have been filled in the GridComp
     call MAPL_GetPointer(EXPORT, CNV_FRC,      'CNV_FRC'      , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, SRF_TYPE,     'SRF_TYPE'     , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -923,7 +931,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          if (GFDL_MP3) then
          call gfdl_mp_driver( &
                              ! Input water/cloud species and liquid+ice CCN NACTL & NACTI (#/m^3)
-                               RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, NACTL, NACTI, &
+                               RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, DBZ3D, NACTL, NACTI, &
                              ! Input fields
                                T, W, U, V, DZ, DP, &
                              ! Other inputs
@@ -1187,118 +1195,114 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         endif
 
         ! Compute DBZ radar reflectivity
-
-        ! diagnosed Marshall Palmer rain number concentration
-        call MAPL_GetPointer(EXPORT,  NACTR,  'NACTR', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-        NACTR = 1.e8*QRAIN**0.8   
-
         call ESMF_ClockGetAlarm(clock, 'DBZ_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
         alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
+            
+        call MAPL_GetPointer(EXPORT,  NACTR,  'NACTR',        RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,  PTR2D,  'REFL10CM_MAX', RC=STATUS); VERIFY_(STATUS)
+    
+        ! 1. If the user explicitly requested NACTR export, fill it every time (or whenever needed)
+        if (associated(NACTR)) then
+            NACTR = 1.e8 * QRAIN**0.8 
+        endif
+
+        ! 2. Handle the reflectivity alarm
         if (alarm_is_ringing) then
-          ! calc_refl10cm is expensive, do not call every time
            call ESMF_AlarmRingerOff(alarm, RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(EXPORT, PTR2D , 'REFL10CM_MAX' , RC=STATUS); VERIFY_(STATUS)
-           if (associated(PTR2D)) then
-               call MAPL_TimerOn(MAPL,"---CLD_REFL10CM")
+           
+           ! Only compute if the user actually requested the reflectivity output
+           if (associated(PTR2D)) then 
+               call MAPL_TimerOn(MAPL,"---CLD_REFL10CM")    
                rand1 = 0.0
                TMP3D = 0.0
+               
+               ! If NACTR wasn't associated, we still need it for calc_refl10cm!
+               ! We can use TMP3D to temporarily hold NACTR if needed, or if calc_refl10cm 
+               ! requires it as a distinct array, use a locally allocated TMP_NACTR array.
+               ! Assuming TMP_NACTR is an allocatable 3D array defined at the top:
+               
+               if (.not. associated(NACTR)) then
+                   ! Fill a local temporary array to pass into the subroutine
+                   ALLOCATE ( TMP_NACTR(IM,JM,LM) )
+                   TMP_NACTR = 1.e8 * QRAIN**0.8
+               endif
+               
                DO J=1,JM ; DO I=1,IM
-                !rand1= 1000000 * ( 100*T(I,J,LM) - INT( 100*T(I,J,LM) ) )
-                !rand1= max( rand1/1000000., 1e-6 )
-                 call calc_refl10cm(Q(I,J,:), QRAIN(I,J,:), NACTR(I,J,:), QSNOW(I,J,:), QGRAUPEL(I,J,:), &
-                    T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J)
+                 ! Pass either the Export pointer (if associated) or the local temporary array
+                 if (associated(NACTR)) then
+                     call calc_refl10cm(Q(I,J,:), QRAIN(I,J,:), NACTR(I,J,:), QSNOW(I,J,:), QGRAUPEL(I,J,:), &
+                        T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J) 
+                 else
+                     call calc_refl10cm(Q(I,J,:), QRAIN(I,J,:), TMP_NACTR(I,J,:), QSNOW(I,J,:), QGRAUPEL(I,J,:), &
+                        T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J) 
+                 endif
                END DO ; END DO
-               PTR2D=-9999.0
-               DO L=1,LM ; DO J=1,JM ; DO I=1,IM
+              
+               if (.not. associated(NACTR)) then
+                   DEALLOCATE ( TMP_NACTR )
+               endif
+ 
+               PTR2D = -9999.0
+               DO L=1,LM ; DO J=1,JM ; DO I=1,IM 
                   PTR2D(I,J) = MAX(PTR2D(I,J),TMP3D(I,J,L))
                END DO ; END DO ; END DO
+               
                call MAPL_TimerOff(MAPL,"---CLD_REFL10CM")
            endif
         endif
 
-        call MAPL_GetPointer(EXPORT, PTR3D   , 'DBZ'     , RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT, DBZ_MAX , 'DBZ_MAX' , RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT, DBZ_1KM , 'DBZ_1KM' , RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT, DBZ_TOP , 'DBZ_TOP' , RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT, DBZ_M10C, 'DBZ_M10C', RC=STATUS); VERIFY_(STATUS)
 
-        if (associated(PTR3D) .OR. &
-            associated(DBZ_MAX) .OR. associated(DBZ_1KM) .OR. associated(DBZ_TOP) .OR. associated(DBZ_M10C)) then
+        if ( (.not. do_ref) .and. &
+             (associated(DBZ) .OR. &
+              associated(DBZ_MAX) .OR. associated(DBZ_1KM) .OR. associated(DBZ_TOP) .OR. associated(DBZ_M10C)) ) then
             call MAPL_TimerOn(MAPL,"---CLD_CALCDBZ")
            ! CALCDBZ is 10x cheaper    
-            TMP3D = 0.0
-            call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,DBZ_VAR_INTERCP,DBZ_LIQUID_SKIN)
-            if (associated(PTR3D)) PTR3D = TMP3D
+            DBZ3D = 0.0
+            call CALCDBZ(DBZ3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,DBZ_VAR_INTERCP,DBZ_LIQUID_SKIN)
             call MAPL_TimerOff(MAPL,"---CLD_CALCDBZ")
         end if
 
-            if (associated(DBZ_MAX)) then
-               DBZ_MAX=-9999.0
-               DO L=1,LM ; DO J=1,JM ; DO I=1,IM
-                  DBZ_MAX(I,J) = MAX(DBZ_MAX(I,J),TMP3D(I,J,L))
-               END DO ; END DO ; END DO
-            endif
+        if (associated(DBZ)) DBZ = DBZ3D
 
-            if (associated(DBZ_1KM)) then
-               call cs_interpolator(1, IM, 1, JM, LM, TMP3D, 1000., ZLE0, DBZ_1KM, -20.)
-            endif
-
-            if (associated(DBZ_TOP)) then
-               DBZ_TOP=MAPL_UNDEF
-               DO J=1,JM ; DO I=1,IM
-                  DO L=LM,1,-1
-                     if (ZLE0(i,j,l) >= 25000.) continue
-                     if (TMP3D(i,j,l) >= 18.5 ) then
-                         DBZ_TOP(I,J) = ZLE0(I,J,L)
-                         exit
-                     endif
-                  END DO
-               END DO ; END DO
-            endif
-
-            if (associated(DBZ_M10C)) then
-               DBZ_M10C=MAPL_UNDEF
-               DO J=1,JM ; DO I=1,IM
-                  DO L=LM,1,-1
-                     if (ZLE0(i,j,l) >= 25000.) continue
-                     if (T(i,j,l) <= MAPL_TICE-10.0) then
-                         DBZ_M10C(I,J) = TMP3D(I,J,L)
-                         exit
-                     endif
-                  END DO
-               END DO ; END DO
-            endif
-
-        call MAPL_GetPointer(EXPORT, DBZ_MAX_R , 'DBZ_MAX_R' , RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT, DBZ_MAX_S , 'DBZ_MAX_S' , RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT, DBZ_MAX_G , 'DBZ_MAX_G' , RC=STATUS); VERIFY_(STATUS)
-        if (associated(DBZ_MAX_R) .OR. associated(DBZ_MAX_S) .OR. associated(DBZ_MAX_G)) then
-            call MAPL_TimerOn(MAPL,"---CLD_REFRSG")
-            if (associated(DBZ_MAX_R)) then
-               TMP3D = 0.0
-               call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,0*QSNOW,0*QGRAUPEL,IM,JM,LM,1,DBZ_VAR_INTERCP,DBZ_LIQUID_SKIN)
-               DBZ_MAX_R=-9999.0
-             DO L=1,LM ; DO J=1,JM ; DO I=1,IM
-                  DBZ_MAX_R(I,J) = MAX(DBZ_MAX_R(I,J),TMP3D(I,J,L))
-             END DO ; END DO ; END DO
+        if (associated(DBZ_MAX)) then
+           DBZ_MAX=-9999.0
+           DO L=1,LM ; DO J=1,JM ; DO I=1,IM
+              DBZ_MAX(I,J) = MAX(DBZ_MAX(I,J),DBZ3D(I,J,L))
+           END DO ; END DO ; END DO
         endif
-            if (associated(DBZ_MAX_S)) then
-               TMP3D = 0.0
-               call CALCDBZ(TMP3D,100*PLmb,T,Q,0*QRAIN,QSNOW,0*QGRAUPEL,IM,JM,LM,1,DBZ_VAR_INTERCP,DBZ_LIQUID_SKIN)     
-               DBZ_MAX_S=-9999.0
-             DO L=1,LM ; DO J=1,JM ; DO I=1,IM
-                  DBZ_MAX_S(I,J) = MAX(DBZ_MAX_S(I,J),TMP3D(I,J,L))
-             END DO ; END DO ; END DO 
+
+        if (associated(DBZ_1KM)) then
+           call cs_interpolator(1, IM, 1, JM, LM, DBZ3D, 1000., ZLE0, DBZ_1KM, -20.)
         endif
-            if (associated(DBZ_MAX_G)) then
-               TMP3D = 0.0
-               call CALCDBZ(TMP3D,100*PLmb,T,Q,0*QRAIN,0*QSNOW,QGRAUPEL,IM,JM,LM,1,DBZ_VAR_INTERCP,DBZ_LIQUID_SKIN)     
-               DBZ_MAX_G=-9999.0
-             DO L=1,LM ; DO J=1,JM ; DO I=1,IM
-                  DBZ_MAX_G(I,J) = MAX(DBZ_MAX_G(I,J),TMP3D(I,J,L))
-             END DO ; END DO ; END DO  
+
+        if (associated(DBZ_TOP)) then
+           DBZ_TOP=MAPL_UNDEF
+           DO J=1,JM ; DO I=1,IM
+              DO L=LM,1,-1
+                 if (ZLE0(i,j,l) >= 25000.) continue
+                 if (DBZ3D(i,j,l) >= 18.5 ) then
+                     DBZ_TOP(I,J) = ZLE0(I,J,L)
+                     exit
+                 endif
+              END DO
+           END DO ; END DO
         endif
-            call MAPL_TimerOff(MAPL,"---CLD_REFRSG")
+
+        if (associated(DBZ_M10C)) then
+           DBZ_M10C=MAPL_UNDEF
+           DO J=1,JM ; DO I=1,IM
+              DO L=LM,1,-1
+                 if (ZLE0(i,j,l) >= 25000.) continue
+                 if (T(i,j,l) <= MAPL_TICE-10.0) then
+                     DBZ_M10C(I,J) = DBZ3D(I,J,L)
+                     exit
+                 endif
+              END DO
+           END DO ; END DO
         endif
 
         call MAPL_GetPointer(EXPORT, PTR3D, 'QRTOT', RC=STATUS); VERIFY_(STATUS)

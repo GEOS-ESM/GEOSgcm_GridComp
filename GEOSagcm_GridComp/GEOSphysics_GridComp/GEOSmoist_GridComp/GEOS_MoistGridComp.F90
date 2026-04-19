@@ -2026,30 +2026,6 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'DBZ_MAX_S',                                          &
-         LONG_NAME = 'Maximum_composite_radar_reflectivity_snow',                  &
-         UNITS     = 'dBZ',                                     &
-         DIMS      = MAPL_DimsHorzOnly,                            &
-         VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'DBZ_MAX_R',                                          &
-         LONG_NAME = 'Maximum_composite_radar_reflectivity_rain',                  &
-         UNITS     = 'dBZ',                                     &
-         DIMS      = MAPL_DimsHorzOnly,                            &
-         VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'DBZ_MAX_G',                                          &
-         LONG_NAME = 'Maximum_composite_radar_reflectivity_graupel',                  &
-         UNITS     = 'dBZ',                                     &
-         DIMS      = MAPL_DimsHorzOnly,                            &
-         VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'REFL10CM_MAX',                                          &
          LONG_NAME = 'Maximum_composite_10cm_radar_reflectivity',                  &
          UNITS     = 'dBZ',                                     &
