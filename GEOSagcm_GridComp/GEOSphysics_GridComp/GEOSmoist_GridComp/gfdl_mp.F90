@@ -434,7 +434,6 @@ module gfdl_mp_mod
     real :: qs_mlt = 1.0e-6 ! maximum cloud water allowed from melted snow (kg/kg)
 
     real :: ql0_max = 2.0e-3 ! maximum cloud water value (autoconverted to rain) (kg/kg)
-    real :: qi0_max = 9.82679e-5 ! maximum cloud ice value (autoconverted to snow) (kg/m^3)
 
     real :: psaut_qi_crt = 1.0e-4 ! cloud ice to snow autoconversion threshold (kg/m^3)
     real :: pwbf_qi_crt  = 0.8e-4 ! WBF liquid to ice freezing threshold (kg/m^3)
@@ -562,7 +561,7 @@ module gfdl_mp_mod
     namelist / gfdl_mp_nml / &
         t_min, t_sub, tau_r2g, tau_smlt, tau_gmlt, do_ice_pres_scaling, vw_min, vi_min, &
         vr_min, vs_min, vg_min, vh_min, ql_mlt, do_qa, fix_negative, vw_max, vi_max, vs_max, &
-        vh_max, vg_max, vr_max, qs_mlt, ql0_max, qi0_max, psaut_qi_crt, pwbf_qi_crt, pgaut_qs_crt, ifflag, &
+        vh_max, vg_max, vr_max, qs_mlt, ql0_max, psaut_qi_crt, pwbf_qi_crt, pgaut_qs_crt, ifflag, &
         rh_inc, rh_inr, const_vw, const_vi, const_vs, const_vg, const_vr, rthreshu, rthreshs, &
         ccn_l, ccn_o, igflag, c_paut, tau_imlt, tau_v2l, tau_l2v, tau_i2s, &
         tau_l2r, qi_lim, do_hail, inflag, c_psacw, c_psaci, c_pracs, &
@@ -1793,7 +1792,9 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
                 con_r8 = one_r8 + qvz (k)
             endif
 
-            con_r8  =  dp (k) / dp0 (k)
+            ! Invert to get (M_dry / M_moist_new)
+            con_r8  =  one_r8 / con_r8
+
             qvz (k) = qvz (k) * con_r8
             qlz (k) = qlz (k) * con_r8
             qrz (k) = qrz (k) * con_r8
@@ -1802,7 +1803,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
             qgz (k) = qgz (k) * con_r8
 
             ! convert dry air mass to wet
-            dp  (k) = dp (k) * con_r8
+            dp  (k) = dp (k) / con_r8
 
             q1 = qv (i, k) + ql (i, k) + qr (i, k) + qi (i, k) + qs (i, k) + qg (i, k)
             q2 = qvz (k) + qlz (k) + qrz (k) + qiz (k) + qsz (k) + qgz (k)
@@ -3540,6 +3541,11 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
     real :: ql, qi, qim, qadum, newliq, newice
     real :: tmp, sink, fac_imlt, fac_frez
+    real :: critical_qi_factor
+
+    ! psaut_qi_crt (ice to snow conversion) has strong resolution dependence
+    !    account for this using onemsig to convert more ice to snow at coarser resolutions
+    critical_qi_factor = psaut_qi_crt*(1.e-1*(1.0-onemsig) + onemsig)
 
     fac_imlt = 1. - exp (- dts / tau_imlt)
     fac_frez = 1. - exp (- dts / tau_frez)
@@ -3590,7 +3596,7 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
             tmp = tz (k)
             newice = new_ice_condensate(tmp, ql, qi)
             sink = fac_frez * min(ql, newice, (tice - tz (k)) / icpk (k) / qadum)
-            qim = qi0_max / den (k)
+            qim = critical_qi_factor / den (k)
             tmp = min (sink, dim (qim/qadum, qi))
 
             tmp = tmp*qadum
@@ -3717,6 +3723,11 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
 
     real :: ql, qi, qadum, newice 
     real :: tmp, sink, qim, fac_frez
+    real :: critical_qi_factor 
+
+    ! psaut_qi_crt (ice to snow conversion) has strong resolution dependence
+    !    account for this using onemsig to convert more ice to snow at coarser resolutions
+    critical_qi_factor = psaut_qi_crt*(1.e-1*(1.0-onemsig) + onemsig)
 
     fac_frez = 1. - exp (- dts / tau_frez)
 
@@ -3739,7 +3750,7 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
             tmp = tz (k)
             newice = new_ice_condensate(tmp, ql, qi)
             sink = fac_frez * min(ql, newice, (tice - tz (k)) / icpk (k) / qadum)
-            qim = qi0_max / den (k)
+            qim = critical_qi_factor / den (k)
             tmp = min (sink, dim (qim/qadum, qi))
 
             tmp = tmp*qadum
@@ -6508,7 +6519,7 @@ subroutine psaut_simp (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, den, mpp
 
         tc = tz (k) - tice
 
-        qim = qi0_max / den (k)
+        qim = psaut_qi_crt / den (k)
 
         if (tc .lt. 0. .and. qi (k) .gt. qim) then
 
