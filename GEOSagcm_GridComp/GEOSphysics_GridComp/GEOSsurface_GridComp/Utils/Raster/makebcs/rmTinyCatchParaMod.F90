@@ -940,7 +940,7 @@ contains
     integer,           intent(in)            :: nc_rst, nr_rst
     integer,           intent(in)            :: tile_id(1:nc_rst, 1:nr_rst)
 
-    real(REAL32),      intent(out)           :: tile_lake_frac(1:n_tile)
+    real,              intent(out)           :: tile_lake_frac(1:n_tile)
     integer(1),        intent(out)           :: tile_is_lake_50(1:n_tile)
     integer,           intent(out), optional :: rc
 
@@ -955,7 +955,7 @@ contains
     character*512 :: MAKE_BCS_INPUT_DIR
 
     real,         allocatable :: lake_frac(:,:)         ! 10 deg x 10 deg chunk, 30 arcsec
-    real(REAL64), allocatable :: sum_w(:), sum_fw(:)    ! counts + weighted fraction
+    real,         allocatable :: sum_w(:), sum_fw(:)    ! counts + weighted fraction
 
     call get_environment_variable("MAKE_BCS_INPUT_DIR", MAKE_BCS_INPUT_DIR)
 
@@ -978,7 +978,7 @@ contains
     ! ------------------------------------------------------------------
 
     ! initialize
-    tile_lake_frac  = 0.0_REAL32
+    tile_lake_frac  = 0.0
     tile_is_lake_50 = 0_1
     
     if (nc_rst /= 43200 .or. nr_rst /= 21600) then
@@ -991,8 +991,8 @@ contains
     allocate(sum_w (1:n_tile))
     allocate(sum_fw(1:n_tile))
 
-    sum_w  = 0.0_8
-    sum_fw = 0.0_8
+    sum_w  = 0.0
+    sum_fw = 0.0
 
     ! Loop through 36x18 tiles (HxxVyy)
     
@@ -1031,8 +1031,8 @@ contains
                 if (tid < 1 .or. tid > n_tile) cycle
 
                 ! unit weight: each 30" pixel counts once for its tile
-                sum_fw(tid) = sum_fw(tid) + real(lake_frac(ii,jj), REAL64)
-                sum_w (tid) = sum_w (tid) + 1.0_8
+                sum_fw(tid) = sum_fw(tid) + lake_frac(ii,jj)
+                sum_w (tid) = sum_w (tid) + 1.0
 
              end do
           end do
@@ -1042,12 +1042,12 @@ contains
 
     ! Finalize fraction and binary flag
 
-    where (sum_w > 0.0_8)
-       tile_lake_frac = real(sum_fw / sum_w, real32)
+    where (sum_w > 0.0)
+       tile_lake_frac = sum_fw / sum_w
     endwhere
 
     do tid = 1, n_tile
-       if (tile_lake_frac(tid) >= 0.5_8) tile_is_lake_50(tid) = 1_1
+       if (tile_lake_frac(tid) >= 0.5) tile_is_lake_50(tid) = 1_1
     end do
 
     if (present(rc)) rc = 0
@@ -1066,7 +1066,7 @@ contains
     
     character(*), intent(in) :: tilefile
     integer,      intent(in) :: n_tile
-    real(REAL32), intent(in) :: tile_lake_frac( 1:n_tile)
+    real,         intent(in) :: tile_lake_frac( 1:n_tile)
     integer(1),   intent(in) :: tile_is_lake_50(1:n_tile)
     
     integer :: status, ncid, ndims, nvars, ngatts, unlimdimid
@@ -1191,7 +1191,7 @@ contains
     logical                                :: two_EASE 
 
     ! LakeTopoCat
-    real(REAL32), allocatable :: tile_lake_frac( :)
+    real,         allocatable :: tile_lake_frac( :)
     integer(1),   allocatable :: tile_is_lake_50(:)
     integer                   :: rc_lake
 
