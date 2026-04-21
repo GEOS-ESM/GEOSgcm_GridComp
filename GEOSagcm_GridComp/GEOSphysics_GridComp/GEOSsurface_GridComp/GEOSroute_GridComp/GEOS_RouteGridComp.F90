@@ -419,7 +419,7 @@ contains
     type(ESMF_TimeInterval) :: CollectWater_DT, ModelTimeStep
     character(len=3) :: resname
     type(Netcdf4_Fileformatter)  :: formatter 
-    integer          :: j,nt_local, mpierr 
+    integer          :: j,nt_local, mpierr, i1, i2, j1, j2 
 
     ! ------------------
     ! begin
@@ -461,7 +461,7 @@ contains
     VERIFY_(status)
     call ESMF_GridGet(agrid,   distGrid=dist_grid, _RC)
     call ESMF_DistGridGet(dist_grid, delayout=layout, _RC) 
-
+    call ESMF_GRID_INTERIOR  (agrid, I1,I2,J1,J2)
     call MAPL_LocStreamGet(locstream, &
          tileGrid=tilegrid, nt_local=nt_local, nt_global=nt_global, &
          RC=status)
@@ -589,14 +589,15 @@ contains
       real    :: dumr,area_temp
       integer :: fillvalue=-9999
       integer :: unit,ii,dst,np,kk,nn,np_lnd,tile_id
-      integer :: im(2),jm(2)      
+      integer :: im(2),jm(2), cols, rows   
       integer, allocatable :: global_id(:),type_tile(:),xi_tile(:),yi_tile(:),catid_tile(:)
+      integer, allocatable :: global_II(:), global_JJ(:), local_II(:), local_JJ(:)
       logical, allocatable :: mask(:)
       integer, allocatable :: srcIndices(:), positions(:), factorIndexList(:,:),map_tile(:,:)
       real,    allocatable :: weights(:), global_frac(:), global_area(:)
       integer, allocatable :: local_src(:), local_dst(:), global_src(:), global_dst(:)
       real,    allocatable :: areacat_glob(:),area_tile(:)
-      integer, pointer     :: pfaf_index(:), local_id(:)
+      integer, pointer     :: pfaf_index(:), local_id(:), local_i(:), local_j(:)
       real   , pointer     :: tilearea(:),frac_tot(:),fscale(:),area_patch(:)
       integer, pointer     :: catid_patch(:),tid_patch(:)
       integer,           allocatable :: iTable(:,:)
@@ -612,14 +613,22 @@ contains
       ! create destination for pfaf tile space
       route%field     = ESMF_FieldCreate(grid=pfaf_tilegrid, typekind=ESMF_TYPEKIND_R4,_RC)
 
-      call MAPL_LocstreamGet(LOCSTREAM, GRIDNAMES=GNAMES, pfaf_index=pfaf_index, tilearea=tilearea, local_id=local_id, _RC)
+      call MAPL_LocstreamGet(LOCSTREAM, GRIDNAMES=GNAMES, pfaf_index=pfaf_index, tilearea=tilearea, local_id=local_id, local_i =local_i, local_j =local_j, _RC)
       ! ESMF use global indices increasing with mpi_rank, no mask here for tile grid 
       allocate(global_id(route%nt_global))
       call ESMFL_Fcollect(tilegrid, global_id, local_id, _RC)
 
       if (index(GNAMES(1), 'EASEv') /=0) then
          call MAPL_GetResource (MAPL, tile_pfaf_file, label = 'TILE2PFAF_FILE:',  default = '../input/route_tile.nc4', RC=STATUS ) 
+         !call MAPL_GetResource (MAPL, tile_pfaf_file, label = 'EASE_PFAF_FILE:',  default = '../input/route_tile.nc4', RC=STATUS ) 
          call MAPL_GetResource (MAPL, tile_file,      label = 'TILINGNC4_FILE:',     default = '../input/tile.nc4',       RC=STATUS )          
+
+         allocate(global_II(route%nt_global), global_JJ(route%nt_global))
+         allocate(local_II(route%nt_local), source = local_i + I1 -1)
+         allocate(local_JJ(route%nt_local), source = local_j + J1 -1)
+         call ESMFL_Fcollect(tilegrid, global_II, local_II, _RC)
+         call ESMFL_Fcollect(tilegrid, global_JJ, local_JJ, _RC)
+         call MAPL_ease_extent(GNAMES(1), cols, rows) 
          if (MAPL_AM_I_ROOT()) then
             call MAPL_ReadTilingNC4( trim(tile_file), im=im, jm=jm, n_tiles=np, iTable=iTable )
             allocate(type_tile(np),xi_tile(np),yi_tile(np))
@@ -635,8 +644,21 @@ contains
                  map_tile(xi_tile(ii)+1,yi_tile(ii)+1)=nn
                endif
             enddo 
-            np_lnd=nn  
+            np_lnd=nn
+            ! verify 
+            ! 1)
+            ! np_lnd == route%nt_global
+            ! cols  == nx
+            ! rows  == ny
+            ! 2)
+            ! do ii = 1, route%nt_global
+            !   xi_tile (ii) + 1 == global_ii(ii)
+            !   yi_tile (ii) + 1 == global_jj(ii)
+            !   map_tile(global_ii(ii),global_jj) = globa_id(ii)
+            ! enddo
+ 
             deallocate(type_tile,xi_tile,yi_tile)         
+
             call MAPL_ReadTilingNC4( trim(tile_pfaf_file), n_tiles=np, iTable=iTable, rTable=rTable)
             allocate(type_tile(np),xi_tile(np),yi_tile(np),catid_tile(np),area_tile(np))
             allocate(area_patch(np),catid_patch(np),tid_patch(np))
