@@ -386,7 +386,7 @@ contains
     integer        :: beforeMe, minCatch, maxCatch, i
     integer        :: n_pfaf_local, nt_global
     integer        :: ROUTE_DT, route_flag
-
+    REAL           :: HEARTBEAT 
     type(ESMF_Grid)            :: tileGrid
     type(ESMF_Grid)            :: pfaf_tilegrid, pfaf_grid
     character(len=ESMF_MAXSTR) :: SURFRC
@@ -479,6 +479,8 @@ contains
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
     call MAPL_GetResource (SCF, route_flag, label='RUN_ROUTE:', DEFAULT=1, RC=STATUS )
     call MAPL_GetResource (SCF, ROUTE_DT, label='RRM_DT:', DEFAULT=3600, RC=STATUS )    
+    call MAPL_Get(MAPL, HEARTBEAT = HEARTBEAT, _RC)
+    _ASSERT( mod(ROUTE_DT, int(HEARTBEAT)) == 0, "ROUTE_DT should be multiple of HEARTBEAT")
     route%route_dt = ROUTE_DT
 
     allocate(route%runoff_acc(nt_local), source = 0.)
