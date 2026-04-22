@@ -13,7 +13,7 @@ set (srcs
   GEOS_GF_InterfaceMod.F90 ConvPar_GF_GEOS5.F90 ConvPar_GF2020.F90 ConvPar_GF_Shared.F90 module_gate.F90
   GEOS_UW_InterfaceMod.F90 uwshcu.F90
   aer_actv_single_moment.F90
-  GEOS_MoistGridComp.F90
+  GEOS_MoistGridComp.F90 Wnet.F90
   # files that are sometimes present?
   # ras00.F90 cloud.F90
   )
@@ -65,7 +65,7 @@ endif ()
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES GEOS_Shared GMAO_mpeu MAPL Chem_Shared Chem_Base ESMF::ESMF)
+  DEPENDENCIES GEOS_Shared GMAO_mpeu MAPL Chem_Shared Chem_Base ESMF::ESMF BLAS::BLAS LAPACK::LAPACK)
 
 file (GLOB_RECURSE rc_files CONFIGURE_DEPENDS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.rc *.yaml)
 foreach ( file ${rc_files} )
