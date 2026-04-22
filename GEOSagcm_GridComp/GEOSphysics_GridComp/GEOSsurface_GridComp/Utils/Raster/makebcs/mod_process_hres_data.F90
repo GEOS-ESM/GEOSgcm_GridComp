@@ -4479,17 +4479,6 @@ contains
 
           endif  ! o_cl==4
           
-          ! ! Strict GPA22 fallback:
-          ! ! if no valid top-layer soil class could be assigned (for example, no valid
-          ! ! representative clay/sand pair was found), fall back to mineral class 1
-          ! ! rather than leaving the class undefined.
-          ! if (PEATMAP_STRICT_GPA22) then
-          !    if (soil_class_top(n) < 1) then
-          !       soil_class_top(n) = 1
-          !       soc_vec(n) = cF_lim(1)
-          !    endif
-          ! endif
-
           ! debugging output
           if (write_debug) write(80+n,*) soil_class_top (n) 
 
@@ -4626,16 +4615,6 @@ contains
 
           endif ! o_clp==4
           
-          ! ! Strict GPA22 fallback:
-          ! ! if no valid profile soil class could be assigned, fall back to the
-          ! ! already assigned top-layer soil class rather than leaving the profile class undefined.          
-          ! if (PEATMAP_STRICT_GPA22) then
-          !    if (soil_class_com(n) < 1) then
-          !       soil_class_com(n) = soil_class_top(n)
-          !       poc_vec(n) = soc_vec(n)
-          !    endif
-          ! endif
-
           deallocate (ss_clay,ss_sand,ss_clay_all,ss_sand_all,ss_oc_all)
        END DO
     END DO              ! loop through tiles
@@ -4771,7 +4750,7 @@ contains
 
           ! Legacy PEATMAP behavior:
           ! if the surface class is peat, force the written profile class to peat.
-          ! In strict GPA22 mode, profile peat must already have been assigned
+          ! In strict GPM 2.0  mode, profile peat must already have been assigned
           ! upstream, so do not override fac here.
           if (fac_surf == 253) fac = 253
 

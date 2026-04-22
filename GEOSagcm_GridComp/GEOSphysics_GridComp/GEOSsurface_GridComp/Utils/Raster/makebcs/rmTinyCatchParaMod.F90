@@ -2608,7 +2608,7 @@ contains
     logical :: file_exists
     REAL, ALLOCATABLE, DIMENSION (:,:) :: parms4file
     integer :: ncid, status
-    ! peat GPA22 additions
+    ! peat GPM 2.0 additions
     logical :: target_is_peat, donor_is_peat
 
     ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
@@ -3051,7 +3051,7 @@ contains
              if (i == n) cycle
              if ((ars1(i) == 9999.) .or. (arw1(i) == 9999.)) cycle
 
-             ! In strict GPA22 mode, only consider donors with the same
+             ! In strict GPM 2.0 mode, only consider donors with the same
              ! peat/mineral state as the target tile.
              if (PEAT_INFO>=2) then
                 donor_is_peat = (soil_class_top(i) == 253) .or. (soil_class_com(i) == 253)
@@ -3067,7 +3067,7 @@ contains
              endif
           enddo
 
-          ! Strict GPA22 fallback:
+          ! Strict GPM 2.0 fallback:
           ! if no same-state donor exists, revert to the original
           ! nearest-valid donor search so a donor is still always found.          
           if ((k == 0) .and. PEAT_INFO>=2) then

@@ -38,7 +38,7 @@ with nc.Dataset(nc4_file, 'w', format='NETCDF4') as dst:
     peatland_type[:, :] = data
 
     # Add attributes
-    dst.description = 'Global Peatland Map 2022 (GPA22) - peat dominated (1), peat in soil mosaic (2)'
+    dst.description = 'Global Peatland Map 2022 (GPM 2.0) - peat dominated (1), peat in soil mosaic (2)'
     longitude.units = 'degrees_east'
     latitude.units = 'degrees_north'
     peatland_type.description = '1=peat dominated, 2=peat in soil mosaic'
