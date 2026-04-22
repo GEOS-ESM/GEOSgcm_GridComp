@@ -104,8 +104,6 @@ if( ! -d bin ) then
 endif
 
 source bin/g5_modules
-module load nco
-module load cdo
 
 if ( ! -e landm_coslat.nc ) then
   /bin/ln -s bin/landm_coslat.nc landm_coslat.nc
@@ -226,7 +224,7 @@ _EOF_
    #--------------------------------------------------------
 
        # --- rrfac_max  = ceil( max(rrfac) ) ------------------
-       set rr = `cdo -s infon $scriptfile | \
+       set rr = `$BASEDIR/Linux/bin/cdo -s infon $scriptfile | \
                  awk '/rrfac/ {{v=$(NF-2); printf("%d",(v>int(v)?int(v)+1:int(v)));}}'`
        if ( "$rr" != "" ) then
         set rrfac = "--rrfac_max=$rr"
