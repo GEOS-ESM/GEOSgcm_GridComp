@@ -465,7 +465,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
          do while (zlo(ktmp).lt.zlo(k)+1e3)
             ktmp = ktmp+1
          end do
-         wcfac(1:k) = min(10.,max(0.,thv(ktmp)-thv(k)-MFPARAMS%WCTHRESH))*exp(-(zlo(k)-zlo(1:k))/100. )
+         wcfac(1:k) = min(10.,max(0.,thv(ktmp)-thv(k)-MFPARAMS%WCTHRESH))*exp(-(zlo(k)-zlo(1:k))/200. )
       end if
 
       ! define surface conditions

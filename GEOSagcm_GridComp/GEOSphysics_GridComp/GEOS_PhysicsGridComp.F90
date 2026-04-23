@@ -2028,7 +2028,7 @@ contains
   integer, optional,   intent(  out) :: RC     ! Error code
 
 ! !DESCRIPTION: The Initialize method of the Physics Composite Gridded Component.
-!  It acts as a driver for the initializtion of the five children: Radiation,
+  !  It acts as a driver for the initializtion of the five children: Radiation,
 !  Turbulence, Moist, Chem, and Surface. It also sets up the frieldly connections
 !  between the children and their sibling Turbulence, as well as with their
 !  ``uncles'' Advection and Analysis.
@@ -2606,7 +2606,8 @@ contains
    real, pointer, dimension(:,:,:)     :: DQLDTMST, DQIDTMST
    real, pointer, dimension(:,:,:)     :: DQRDTMST, DQSDTMST, DQGDTMST
    real, pointer, dimension(:,:,:)     :: DPDTMST,  DPDTTRB
-
+   real, pointer, dimension(:,:,:)     :: DQLMST, DQIMST
+   
    real, pointer, dimension(:,:,:)     ::   DQVDT_FILL
    real, pointer, dimension(:,:,:)     :: DQLLSDT_FILL
    real, pointer, dimension(:,:,:)     :: DQLCNDT_FILL
@@ -2951,7 +2952,7 @@ contains
        call MAPL_GetPointer(GEX(MOIST),   TICU,'DTDTFRIC', alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
     end if
-
+    
        call MAPL_GetPointer ( EXPORT,     DQVDTTRB, 'QVIT',     alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer ( EXPORT,     DQLDTTRB, 'QLLSIT',   alloc=.true., RC=STATUS)
@@ -2979,6 +2980,12 @@ contains
        call MAPL_GetPointer ( GEX(MOIST), DQGDTMST, 'DQGDT',    alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
 
+       ! Pass Turbulence QL, QI tendencies to Moist Import state
+       call MAPL_GetPointer ( GIM(MOIST), DQLMST, 'DQLDTTRB', RC=STATUS)
+       DQLMST = DQLDTTRB
+       call MAPL_GetPointer ( GIM(MOIST), DQIMST, 'DQLDTTRB', RC=STATUS)
+       DQIMST = DQIDTTRB
+       
        call MAPL_GetPointer (EXPORT, DQVDTSCL, 'DQVDTSCL', RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer (EXPORT, DQLDTSCL, 'DQLDTSCL', RC=STATUS)

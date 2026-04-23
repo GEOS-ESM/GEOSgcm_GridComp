@@ -3631,7 +3631,7 @@ end if
       call MAPL_GetResource (MAPL, MFPARAMS%ENTUFAC,   "EDMF_ENTUFAC:",       default=2.0,   RC=STATUS)  
       call MAPL_GetResource (MAPL, MFPARAMS%WA,        "EDMF_WA:",            default=1.0,   RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%WB,        "EDMF_WB:",            default=1.5,   RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%WC,        "EDMF_WC:",            default=0.016, RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%WC,        "EDMF_WC:",            default=0.05,  RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%WCTHRESH,  "EDMF_WCTHRESH:",      default=11.,   RC=STATUS)
       ! coefficients for surface forcing, appropriate for L137
       call MAPL_GetResource (MAPL, MFPARAMS%AlphaW,    "EDMF_ALPHAW:",        default=0.05,  RC=STATUS)
