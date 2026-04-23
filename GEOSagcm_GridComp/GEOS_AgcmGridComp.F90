@@ -2002,12 +2002,13 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                    VERIFY_(STATUS)
                    block
                    ! remove the "replay" file. This is terrible kludge
-                     character(len=ESMF_MAXSTR) :: cmd_line
+                     character(len=:), allocatable :: cmd_line
                      call ESMF_VmBarrier(vmg, _RC)
                      if (MAPL_AM_I_Root(vmg)) then
                         cmd_line = '/bin/rm -f '//trim(replayFile)
                         call execute_command_line(cmd_line, cmdstat=status)
                         _VERIFY(STATUS)
+                        deallocate(cmd_line)
                      end if
                      call ESMF_VmBarrier(vmg, _RC)
                    end block
