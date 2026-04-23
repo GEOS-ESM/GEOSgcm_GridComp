@@ -1962,6 +1962,12 @@ contains
      endif
 
      call MAPL_TerminateImport    ( GC,    &
+          SHORT_NAME = (/'DQLDTTRB','DQIDTTRB'/),          &
+          CHILD = MOIST,                   &
+          RC=STATUS)
+     VERIFY_(STATUS)
+     
+     call MAPL_TerminateImport    ( GC,    &
           SHORT_NAME = (/'MTR'/),          &
           CHILD = MOIST,                   &
           RC=STATUS)
