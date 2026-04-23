@@ -2000,6 +2000,17 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 
                    call MAPL_ESMFStateReadFromFile(STATE=IMPORT, CLOCK=CLOCK, FILENAME=ReplayFile, MPL=STATE, HDR=.FALSE., RC=STATUS)
                    VERIFY_(STATUS)
+                   block
+                     character(len=*), allocatable :: cmd_line
+                   ! remove the "replay" file. This is terrible kludge
+                     call ESMF_VmBarrier(vmg, _RC)
+                     if (MAPL_AM_I_Root(vmg)) then
+                        cmd_line = '/bin/rm -f '//trim(replayFile)
+                        call execute_command_line(cmd_line, cmdstat=status)
+                        _VERIFY(STATUS)
+                     end if
+                     call ESMF_VmBarrier(vmg, _RC)
+                   end block
                endif
 
            end if REPLAYING
