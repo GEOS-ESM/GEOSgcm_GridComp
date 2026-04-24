@@ -479,8 +479,6 @@ contains
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
     call MAPL_GetResource (SCF, route_flag, label='RUN_ROUTE:', DEFAULT=1, RC=STATUS )
     call MAPL_GetResource (SCF, ROUTE_DT, label='RRM_DT:', DEFAULT=3600, RC=STATUS )    
-    call MAPL_Get(MAPL, HEARTBEAT = HEARTBEAT, _RC)
-    _ASSERT( mod(ROUTE_DT, int(HEARTBEAT)) == 0, "ROUTE_DT should be multiple of HEARTBEAT")
     route%route_dt = ROUTE_DT
 
     allocate(route%runoff_acc(nt_local), source = 0.)
@@ -538,7 +536,10 @@ contains
 
     call create_mapping_handler(tilegrid, pfaf_tilegrid, _RC)
     call setup_exchange_water(pfaf_tilegrid, _RC)
-     
+
+    call MAPL_Get(MAPL, HEARTBEAT = HEARTBEAT, _RC)
+    _ASSERT( mod(ROUTE_DT, int(HEARTBEAT)) == 0, "ROUTE_DT should be multiple of HEARTBEAT")     
+
     RETURN_(ESMF_SUCCESS)
 
   contains
@@ -591,7 +592,7 @@ contains
       integer :: unit,ii,dst,np,kk,nn,np_lnd,tile_id
       integer :: im(2),jm(2), cols, rows   
       integer, allocatable :: global_id(:),type_tile(:),xi_tile(:),yi_tile(:),catid_tile(:)
-      integer, allocatable :: global_II(:), global_JJ(:), local_II(:), local_JJ(:)
+      integer, allocatable :: global_ii(:), global_jj(:), local_ii(:), local_jj(:)
       logical, allocatable :: mask(:)
       integer, allocatable :: srcIndices(:), positions(:), factorIndexList(:,:),map_tile(:,:)
       real,    allocatable :: weights(:), global_frac(:), global_area(:)
@@ -619,46 +620,20 @@ contains
       call ESMFL_Fcollect(tilegrid, global_id, local_id, _RC)
 
       if (index(GNAMES(1), 'EASEv') /=0) then
-         call MAPL_GetResource (MAPL, tile_pfaf_file, label = 'TILE2PFAF_FILE:',  default = '../input/route_tile.nc4', RC=STATUS ) 
-         !call MAPL_GetResource (MAPL, tile_pfaf_file, label = 'EASE_PFAF_FILE:',  default = '../input/route_tile.nc4', RC=STATUS ) 
-         call MAPL_GetResource (MAPL, tile_file,      label = 'TILINGNC4_FILE:',     default = '../input/tile.nc4',       RC=STATUS )          
-
-         allocate(global_II(route%nt_global), global_JJ(route%nt_global))
-         allocate(local_II(route%nt_local), source = local_i + I1 -1)
-         allocate(local_JJ(route%nt_local), source = local_j + J1 -1)
-         call ESMFL_Fcollect(tilegrid, global_II, local_II, _RC)
-         call ESMFL_Fcollect(tilegrid, global_JJ, local_JJ, _RC)
+         call MAPL_GetResource (MAPL, tile_pfaf_file, label = 'EASE_PFAF_FILE:',  default = '../input/route_tile.nc4', RC=STATUS )     
+         allocate(global_ii(route%nt_global), global_jj(route%nt_global))
+         allocate(local_ii(route%nt_local), source = local_i + I1 -1)
+         allocate(local_jj(route%nt_local), source = local_j + J1 -1)
+         call ESMFL_Fcollect(tilegrid, global_ii, local_ii, _RC)
+         call ESMFL_Fcollect(tilegrid, global_jj, local_jj, _RC)
          call MAPL_ease_extent(GNAMES(1), cols, rows) 
          if (MAPL_AM_I_ROOT()) then
-            call MAPL_ReadTilingNC4( trim(tile_file), im=im, jm=jm, n_tiles=np, iTable=iTable )
-            allocate(type_tile(np),xi_tile(np),yi_tile(np))
-            nx=im(1);ny=jm(1)
+            nx=cols;ny=rows
             allocate(map_tile(nx,ny),source=fillvalue)
-            type_tile = iTable(:,0)
-            xi_tile = iTable(:,2)
-            yi_tile = iTable(:,3)
-            nn=0
-            do ii=1,np
-               if(type_tile(ii)==100)then
-                 nn=nn+1
-                 map_tile(xi_tile(ii)+1,yi_tile(ii)+1)=nn
-               endif
-            enddo 
-            np_lnd=nn
-            ! verify 
-            ! 1)
-            ! np_lnd == route%nt_global
-            ! cols  == nx
-            ! rows  == ny
-            ! 2)
-            ! do ii = 1, route%nt_global
-            !   xi_tile (ii) + 1 == global_ii(ii)
-            !   yi_tile (ii) + 1 == global_jj(ii)
-            !   map_tile(global_ii(ii),global_jj) = globa_id(ii)
-            ! enddo
- 
-            deallocate(type_tile,xi_tile,yi_tile)         
-
+            do ii=1,route%nt_global
+              map_tile(global_ii(ii),global_jj(ii))=ii
+            enddo
+            np_lnd=route%nt_global      
             call MAPL_ReadTilingNC4( trim(tile_pfaf_file), n_tiles=np, iTable=iTable, rTable=rTable)
             allocate(type_tile(np),xi_tile(np),yi_tile(np),catid_tile(np),area_tile(np))
             allocate(area_patch(np),catid_patch(np),tid_patch(np))
@@ -693,6 +668,7 @@ contains
          call MAPL_CommsBcast(layout, global_src, nWeights, MAPL_Root, status)
          call MAPL_CommsBcast(layout, global_dst, nWeights, MAPL_Root, status)
          call MAPL_CommsBcast(layout, global_area,nWeights, MAPL_Root, status)
+         deallocate(global_ii,global_jj,local_ii,local_jj)
       else
          nWeights = route%nt_global
          allocate(global_src(nWeights), global_dst(nWeights), global_area(nWeights), global_frac(nWeights))
