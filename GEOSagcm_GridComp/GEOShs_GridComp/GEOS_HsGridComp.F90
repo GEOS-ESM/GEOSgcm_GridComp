@@ -1,4 +1,4 @@
-#include "MAPL_Generic.h"
+#include "MAPL.h"
 
 module GEOS_HSGridCompMod
 
@@ -127,28 +127,20 @@ module GEOS_HSGridCompMod
    !USES:
 
    use ESMF
-   use mapl3g_Generic, only: MAPL_GridCompSetEntryPoint
-   use mapl3g_Generic, only: MAPL_GridCompGet, MAPL_GridCompGetInternalState, MAPL_GridCompGetResource
-   use mapl3g_Geom_API, only: MAPL_GridGet, MAPL_GridGetCoordinates
-   use mapl3g_State_API, only: MAPL_StateGetPointer
-
-   ! use MAPL, only: MAPL_AddImportSpec, MAPL_AddExportSpec, MAPL_AddInternalSpec
-   ! use MAPL, only: MAPL_DimsHorzVert, MAPL_DimsHorzOnly
-   ! use MAPL, only: MAPL_VLocationCenter, MAPL_VLocationEdge, MAPL_VLocationNone
-   ! use MAPL, only: MAPL_RestartSkip
-   ! use MAPL, only: MAPL_GridCompSetEntryPoint, MAPL_GenericSetServices, MAPL_GenericInitialize
-   ! use MAPL, only: MAPL_MetaComp
-   ! use MAPL, only: MAPL_Get, MAPL_GetObjectFromGC, MAPL_GetPointer, MAPL_GetResource
-   ! use MAPL, only: MAPL_VerifyFriendly
-   ! use MAPL, only: MAPL_TimerAdd, MAPL_TimerOn, MAPL_TimerOff
-   use MAPL, only: MAPL_Verify, MAPL_Return, MAPL_ASRT
+   use MAPL, only: MAPL_GridCompSetEntryPoint, MAPL_GridCompAddSpec
+   use MAPL, only: MAPL_GridCompGet, MAPL_GridCompGetInternalState, MAPL_GridCompGetResource
+   use MAPL, only: VERTICAL_STAGGER_CENTER, VERTICAL_STAGGER_EDGE, VERTICAL_STAGGER_NONE
+   use MAPL, only: MAPL_GridGet, MAPL_GridGetCoordinates
+   use MAPL, only: MAPL_StateGetPointer
+   use MAPL, only: MAPL_RESTART_SKIP
+   use MAPL, only: MAPL_STATEITEM_FIELDBUNDLE
+   use MAPL, only: MAPL_Verify, MAPL_Return, MAPL_Assert
    use MAPL_Constants, only: MAPL_PI, MAPL_GRAV, MAPL_P00, MAPL_KAPPA, MAPL_RGAS, MAPL_CP
 
    implicit none
    private
 
    !PUBLIC MEMBER FUNCTIONS:
-
    public SetServices
 
    !EOP
@@ -167,12 +159,11 @@ contains
    !INTERFACE:
    subroutine SetServices(gc, rc)
       !ARGUMENTS:
-      type(ESMF_GridComp), intent(inout) :: gc
-      integer, optional, intent(out) :: rc
+      type(ESMF_GridComp) :: gc
+      integer, intent(out) :: rc
       !EOP
 
       integer :: status
-      character(len=ESMF_MAXSTR) :: comp_name
 
       !IROUTINE: State Descriptions
       !DESCRIPTION: The component uses all three states (Import, Export
@@ -188,7 +179,7 @@ contains
 
       ! Set the Initialize and Run entry points
       call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_INITIALIZE, Initialize, _RC)
-      call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_RUN, Run, _RC)
+      call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_RUN, Run, phase_name="Run", _RC)
 
       _RETURN(_SUCCESS)
    end subroutine SetServices
@@ -200,23 +191,23 @@ contains
    !   are done here simply for economy. Initialize calls MAPL\_GenericInitialize.
    !   If the import state needs to be restarted, MAPL will do it
    !   if a restart file is provided.
-
    !INTERFACE:
    subroutine Initialize(gc, import, export, clock, rc)
       !ARGUMENTS:
-      type(ESMF_GridComp), intent(inout) :: gc
-      type(ESMF_State), intent(inout) :: import
-      type(ESMF_State), intent(inout) :: export
-      type(ESMF_Clock), intent(inout) :: clock
-      integer, optional, intent(out) :: rc
+      type(ESMF_GridComp) :: gc
+      type(ESMF_State) :: import
+      type(ESMF_State) :: export
+      type(ESMF_Clock) :: clock
+      integer, intent(out) :: rc
       !EOP
 
       type(ESMF_Grid) :: grid
       type(ESMF_State) :: internal
-      real, pointer :: lats(:, :), lons(:, :)
+      real, allocatable :: lats(:, :), lons(:, :)
       real :: dx, dy, x0, y0, afac, phi0, qmax
       ! Pointers to internals
 #include "HS_DeclarePointer___.h"
+      real, pointer :: phis(:, :)
       integer :: status
 
       ! Get coordinate information
@@ -237,30 +228,24 @@ contains
 
       ! K day-1 :: Local heating
       call MAPL_GridCompGetResource(gc, 'QMAX', qmax, default=.000, _RC)
-
       if (qmax /= 0.0) then
-
          ! Get local heating parameters from the configuration
          call MAPL_GridCompGetResource(gc, 'X0', x0, default=0.0, _RC)
          call MAPL_GridCompGetResource(gc, 'Y0', y0, default=0.0, _RC)
          call MAPL_GridCompGetResource(gc, 'DX', dx, default=30.0, _RC)
          call MAPL_GridCompGetResource(gc, 'DY', dy, default=5.0, _RC)
-
          ! Horizontal structure of optional stationary heat source
          x0 = x0 * (MAPL_PI / 180.0)
          y0 = y0 * (MAPL_PI / 180.0)
          dx = dx * (MAPL_PI / 180.0)
          dy = dy * (MAPL_PI / 180.0)
-
          HFCN = ((lons - x0) / dx)**2
          HFCN = min(HFCN, ((lons + 360. - x0) / dx)**2)
          HFCN = min(HFCN, ((lons - 360. - x0) / dx)**2)
-
          HFCN = HFCN + ((lats - y0) / dy)**2
-
          where (HFCN < 10.)
             HFCN = exp(-0.5 * HFCN)
-            elsewhere
+         elsewhere
             HFCN = 0.0
          end where
       else
@@ -270,11 +255,11 @@ contains
       ! Get Williamson parameters (alpha, phi0) from the configuration
       call MAPL_GridCompGetResource(gc, 'AFAC', afac, default=2.65 / 15., _RC)
       call MAPL_GridCompGetResource(gc, 'PHI0', phi0, default=60., _RC)
-
       ! Horizontal structure of Willianson parameterization
       P_I = (1.0 + tanh(afac * (abs(lats) - phi0)))
 
       _RETURN(_SUCCESS)
+      _UNUSED_DUMMY(clock)
    end subroutine Initialize
 
    !BOP
@@ -292,11 +277,11 @@ contains
    !INTERFACE:
    subroutine Run(gc, import, export, clock, rc)
       !ARGUMENTS:
-      type(ESMF_GridComp), intent(inout) :: gc
-      type(ESMF_State), intent(inout) :: import
-      type(ESMF_State), intent(inout) :: export
-      type(ESMF_Clock), intent(inout) :: clock
-      integer, optional, intent(out) :: rc
+      type(ESMF_GridComp) :: gc
+      type(ESMF_State) :: import
+      type(ESMF_State) :: export
+      type(ESMF_Clock) :: clock
+      integer, intent(out) :: rc
       !EOP
 
       type(ESMF_State) :: internal
@@ -305,11 +290,13 @@ contains
 
       ! Pointers to imports/internals/exports
 #include "HS_DeclarePointer___.h"
+      real, pointer, contiguous :: PLE0(:,:,:) ! 0-based PLE
 
       ! Scratch arrays and working pointers
       real, allocatable, dimension(:, :) :: pii, dp, pl, uu, vv, vr, te, f1, rr, ds, dm, pk
       real, pointer, dimension(:, :) :: ps, pt
-      integer :: level, im, jm, lm, fricq, status
+      integer :: level, im, jm, lm, fricq
+      integer :: i1, in, j1, jn, status
       logical :: friendly_temp, friendly_wind
       real :: dt, ka, ks, kf
 
@@ -331,6 +318,9 @@ contains
       ! Pointers to internals
       call MAPL_GridCompGetInternalState(gc, internal, _RC)
 #include "HS_GetPointer___.h"
+      ! Edge variable PLE is expected to be 0-based
+      i1 = lbound(PLE, 1); in = ubound(PLE, 1); j1 = lbound(PLE, 2); jn = ubound(PLE, 2)
+      PLE0(i1:in, j1:jn, 0:lm) => PLE(i1:in, j1:jn, 1:lm+1)
 
       ! Get parameters from the configuration
 
@@ -360,7 +350,7 @@ contains
       friendly_wind = friendly == ESMF_TRUE
 
       friendly = ESMF_TRUE ! MAPL_VerifyFriendly(import, 'U', trim(comp_name), _RC)
-      ASSERT_((friendly == ESMF_TRUE) .eqv. friendly_wind)
+      _ASSERT((friendly == ESMF_TRUE) .eqv. friendly_wind, "something wrong")
 
       friendly = ESMF_TRUE ! MAPL_VerifyFriendly(import, 'TEMP', trim(comp_name), _RC)
       friendly_temp = friendly == ESMF_TRUE
@@ -385,8 +375,8 @@ contains
       allocate(pk(im, jm), _STAT)
 
       ! Begin calculations.
-      ps => PLE(:, :, lm)
-      pt => PLE(:, :, 0)
+      ps => PLE0(:, :, lm)
+      pt => PLE0(:, :, 0)
 
       pii = p_d - (p_d - pt) * 0.5 * P_I
 
@@ -402,8 +392,8 @@ contains
 
       LEVELS: do level = 1, lm
 
-         dp = (PLE(:, :, level) - PLE(:, :, level - 1))
-         pl = (PLE(:, :, level) + PLE(:, :, level - 1)) * 0.5
+         dp = (PLE0(:, :, level) - PLE0(:, :, level - 1))
+         pl = (PLE0(:, :, level) + PLE0(:, :, level - 1)) * 0.5
          dm = dp / MAPL_GRAV
          pk = (pl / MAPL_P00)**MAPL_KAPPA
 
@@ -456,7 +446,7 @@ contains
          if (associated(TAUY)) TAUY = TAUY - vv * dm
 
          ! Localized heat source, if any
-         if ((associated(DTDT) .or. FriendlyTemp) .and. qmax/=0.0) then
+         if ((associated(DTDT) .or. friendly_temp) .and. qmax/=0.0) then
             where (pl > p_1)
                vr = HFCN * (qmax / DAYLEN) * sin(MAPL_PI * (ps - pl) / (ps - p_1))
                elsewhere
@@ -464,12 +454,13 @@ contains
             end where
 
             if (associated(DTDT)) DTDT(:, :, level) = DTDT(:, :, level) + dp * vr
-            if (FriendlyTemp) TEMP(:, :, level) = TEMP(:, :, level) + dt * vr
+            if (friendly_temp) TEMP(:, :, level) = TEMP(:, :, level) + dt * vr
          end if
 
       end do LEVELS
 
       _RETURN(_SUCCESS)
+      _UNUSED_DUMMY(clock)
    end subroutine Run
 
 end module GEOS_HSGridCompMod

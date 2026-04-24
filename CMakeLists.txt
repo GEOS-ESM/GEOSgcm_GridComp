@@ -38,7 +38,3 @@ esma_add_subdirectories (${alldirs})
 #   esma_add_subdirectories (${alldirs})
 #
 # endif()
-
-
-
-

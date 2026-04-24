@@ -1,0 +1,18 @@
+schema_version: 2.0.0
+component: AgcmSimple
+
+# FAKE internals for bundling tracers for FV3
+category: INTERNAL
+#-------------------------------------------------------------------
+ SHORT_NAME | UNITS   | DEFAULT | DIMS | VLOC | RESTART | LONG_NAME
+#-------------------------------------------------------------------
+ Q          | kg kg-1 | 1.0e-6  | xyz  | C    | SKIP   | specific_humidity
+ QLLS       | kg kg-1 |         | xyz  | C    | SKIP   | mass_fraction_of_large_scale_cloud_liquid_water
+ QLCN       | kg kg-1 |         | xyz  | C    | SKIP   | mass_fraction_of_convective_cloud_liquid_water
+ QILS       | kg kg-1 |         | xyz  | C    | SKIP   | mass_fraction_of_large_scale_cloud_ice_water
+ QICN       | kg kg-1 |         | xyz  | C    | SKIP   | mass_fraction_of_convective_cloud_ice_water
+ CLLS       | 1       |         | xyz  | C    | SKIP   | large_scale_cloud_area_fraction
+ CLCN       | 1       |         | xyz  | C    | SKIP   | convective_cloud_area_fraction
+ QRAIN      | kg kg-1 | 0.0     | xyz  | C    | SKIP   | mass_fraction_of_rain
+ QSNOW      | kg kg-1 | 0.0     | xyz  | C    | SKIP   | mass_fraction_of_snow
+ QGRAUPEL   | kg kg-1 | 0.0     | xyz  | C    | SKIP   | mass_fraction_of_graupel
