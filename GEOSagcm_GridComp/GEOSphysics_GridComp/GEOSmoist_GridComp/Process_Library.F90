@@ -3011,19 +3011,17 @@ subroutine RADCOUPLE_SCALE_AWARE(  &
       real  :: DC, TEFF,QCm,DEP, &
             QC, QS, RHCR, DQSL, DQSI, TC, &
             DIFF, DENAIR, DENICE, AUX, &
-            DCF, QTOT, LHCORR,  QI, QL, &
+            DCF, QTOT, LHCORR, &
             QVINC, QSLIQ, CFALL,  new_QI, new_QL, &
-            QSICE, fQI_0, QS_0, DQS_0, FQA, NIX
+            QSICE, fQI_0, QS_0, DQS_0, FQLS, NILS
 
       DIFF = 0.0
       DEP  = 0.0
-      QI   = QILS + QICN !neccesary because NI is for convective and large scale
-      QL   = QLLS + QLCN
-      QTOT = QI+QL
-      FQA  = 0.0
-      
-      if (QTOT .gt. 0.0) FQA = (QICN+QILS)/QTOT
-      NIX  = (1.0-FQA)*NI 
+      FQLS = 0.0
+
+      QTOT = QILS + QICN + QLLS + QLCN
+      if (QTOT .gt. 0.0) FQLS = (QILS+QLLS)/QTOT
+      NILS = FQLS*NI 
 
       DQALL = DQALL/DTIME
       CFALL = min(CF+AF, 1.0)
@@ -3069,14 +3067,14 @@ subroutine RADCOUPLE_SCALE_AWARE(  &
          DENICE= 1000.0*(0.9167 - 1.75e-4*TC -5.0e-7*TC*TC) !From PK 97
          LHcorr = ( 1.0 + DQSI*MAPL_ALHS/MAPL_CP) !must be ice deposition
 
-         ! The NIX > 1.0 check protects against division by zero here
-         if  ((NIX .gt. 1.0) .and. (QILS .gt. 1.0e-10)) then
-            DC=max((QILS/(NIX*DENICE*MAPL_PI))**(0.333), 20.0e-6) !Assumme monodisperse size dsitribution
+         ! The NILS > 1.0 check protects against division by zero here
+         if  ((NILS .gt. 1.0) .and. (QILS .gt. 1.0e-10)) then
+            DC=max((QILS/(NILS*DENICE*MAPL_PI))**(0.333), 20.0e-6) !Assumme monodisperse size dsitribution
          else
             DC=20.0e-6
          end if
 
-         TEFF= NIX*DENAIR*2.0*MAPL_PI*DIFF*DC/LHcorr ! 1/Dep time scale
+         TEFF= NILS*DENAIR*2.0*MAPL_PI*DIFF*DC/LHcorr ! 1/Dep time scale
 
          DEP=0.0
          if ((TEFF .gt. 0.0) .and. (QILS .gt. 1.0e-14)) then
