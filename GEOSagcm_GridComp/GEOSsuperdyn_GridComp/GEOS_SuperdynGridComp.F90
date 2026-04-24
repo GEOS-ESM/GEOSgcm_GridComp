@@ -174,6 +174,7 @@ contains
       call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="DQVDTDYN", _RC)
       ! Service
       call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="TRADV", _RC)
+      call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="PLE4", _RC)
       ! Needed for NCEP GWD
       call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="DXC", _RC)
 
