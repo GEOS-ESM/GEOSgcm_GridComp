@@ -437,8 +437,10 @@ subroutine SetServices ( GC, RC )
     elementTypes(:) = ESMF_MESHELEMTYPE_TRI ! triangular elements
 
     ! mask triangles that cross the seam (longitude +/- 180)
-    ! possibly mask nodes, tbd... (note: you don't have to 'activate' these
+    ! possibly mask nodes... (note: you don't have to 'activate' these
     ! masks, they can just be associated with the mesh)
+    ! note: I think this is only relevant in regridding when fields are
+    !       defined on esmf_meshloc_element (rather than esmf_meshloc_node)
     elementMask(:) = 0
     nodeMask(:) = 0
     do j=1,num_elements
@@ -897,8 +899,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     
     ! *************************************************************************** !
     ! GET ICESMB IMPORT (surface mass balance)
-    ! *************************************************************************** !
-    
+    ! *************************************************************************** !    
     ! allocate tiles for ICESMB 
     if(.not.associated(ICESMB_TILE)) then
       allocate(ICESMB_TILE(NT), STAT=STATUS)
@@ -912,7 +913,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! *************************************************************************** !
     ! TRANSFORM ICESMB FROM TILES TO MESH 
     ! *************************************************************************** !
-
     call tile_to_mesh(ICESMB_TILE,ICESMB_MESH)
 
     ! save ICESMB on mesh elements 
@@ -923,7 +923,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! *************************************************************************** !
     !  RUN ISSM WITH SMB INPUT AND ICE-ELEVATION OUTPUT
     ! *************************************************************************** !
-
     ! convert SMB to units of [m/s] (ice-equivalent) before passing to ISSM
     ICESMB_MESH = ICESMB_MESH/rho_ice
 
@@ -937,7 +936,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! *************************************************************************** !
     ! UNPACK AND EXPORT ISSM OUTPUTS ON MESH TILES
     ! *************************************************************************** !
-
     ! unpack ISSM output pointer
     ICESURF_MESH(:) = ISSM_OUTPUTS(1:num_nodes)
     ICETHICK_MESH(:) = ISSM_OUTPUTS(num_nodes+1:2*num_nodes)
@@ -978,7 +976,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! *************************************************************************** !
     ! REGRID MESH FIELDS ONTO LANDICE TILES AND EXPORT VIA INTERNAL STATE
     ! *************************************************************************** !
-
     ! transform from mesh to tiles
     call mesh_to_tile(ICESURF_MESH,ICESURF_TILE)
     issm_tile_state%ICESURF_TILE = ICESURF_TILE
@@ -990,6 +987,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     issm_tile_state%ICEVEL_TILE = ICEVEL_TILE
 
   end if 
+
   
   ! barrier to ensure regridding completes before any deallocates
   call ESMF_VMBarrier(vm, rc=status)
@@ -1013,7 +1011,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   if(associated(halolist))      deallocate(halolist)
   if(associated(halo_idx))      deallocate(halo_idx)
   if(associated(owned_idx))     deallocate(owned_idx)
-  if(associated(VAR_GRID))      deallocate(VAR_GRID)
 
   call MAPL_TimerOff(MAPL,"RUN"  )
   call MAPL_TimerOff(MAPL,"TOTAL")
@@ -1107,8 +1104,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_FieldDestroy(srcField,rc=STATUS);  VERIFY_(STATUS)
     call ESMF_FieldDestroy(dstField,rc=STATUS);  VERIFY_(STATUS)
     call ESMF_ArrayDestroy(meshArray,rc=STATUS); VERIFY_(STATUS)
-
-    if(associated(MESH_PTR)) deallocate(MESH_PTR)
 
   end subroutine tile_to_mesh  
 
