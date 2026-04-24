@@ -161,9 +161,19 @@ CONTAINS
 
          AeroPropsNew(n)%nmods = n_modes
 
-         where (AeroPropsNew(n)%kap > 0.4)
-            NWFA = NWFA + AeroPropsNew(n)%num
-         end where
+         ! Replace the slow 'where' construct with a threaded explicit loop
+         !$OMP parallel do default(none) &
+         !$OMP shared(IM, JM, LM, AeroPropsNew, n, NWFA) &
+         !$OMP private(i, j, k)
+         do k = 1, LM
+            do j = 1, JM
+               do i = 1, IM
+                  if (AeroPropsNew(n)%kap(i,j,k) > 0.4) then
+                     NWFA(i,j,k) = NWFA(i,j,k) + AeroPropsNew(n)%num(i,j,k)
+                  endif
+               enddo
+            enddo
+         enddo
 
       end do ACTIVATION_PROPERTIES
 
@@ -180,9 +190,11 @@ CONTAINS
       allocate(bibar(IM,JM,n_modes), source=0.0, __STAT__)
       allocate( nact(IM,JM,n_modes), source=0.0, __STAT__)
 
-      !$OMP parallel do default(none) shared(IM,JM,LM,n_modes,T,plo,vvel,tke,MAPL_RGAS, &
-      !$OMP                                  AeroPropsNew,NACTL,NACTI,NN_MIN,NN_MAX,ai,bi,ci,di) &
-      !$OMP                           private(k,n,tk,press,air_den,wupdraft,ni,rg,bibar,sig0,nact)
+      !$OMP parallel do default(none) &
+      !$OMP shared(IM, JM, LM, n_modes, T, plo, vvel, tke, AeroPropsNew, &
+      !$OMP        NACTL, NACTI) &
+      !$OMP private(k, n, i, j, tk, press, air_den, wupdraft, ni, rg, bibar, &
+      !$OMP         sig0, nact, numbinit)
       DO k=1,LM
 
          tk                 = T(:,:,k)                         ! K
@@ -197,6 +209,8 @@ CONTAINS
             bibar(:,:,n) =   AeroPropsNew(n)%kap(:,:,k)
             sig0 (:,:,n) =   AeroPropsNew(n)%sig(:,:,k)
          ENDDO
+         
+         ! Passed nact to ensure the private copy is populated
          call GetActFrac(IM*JM, n_modes    &
               ,      ni(1,1,1)   &
               ,      rg(1,1,1)   &
@@ -207,6 +221,7 @@ CONTAINS
               ,wupdraft(1,1)     &
               ,    nact(1,1,1)   &
               )
+              
          numbinit(:,:) = 0.
          NACTL(:,:,k) = 0.
          DO n=1,n_modes
@@ -219,9 +234,11 @@ CONTAINS
              ENDDO
            ENDDO
          ENDDO
-         numbinit = numbinit * air_den ! #/m3
+         
+         ! Fused array multiplication into the existing loop for better cache performance
          DO j = 1, JM
            DO i = 1, IM
+              numbinit(i,j) = numbinit(i,j) * air_den(i,j)
               numbinit(i,j) = max(numbinit(i,j),0.0)
               NACTL(i,j,k) = MIN(NACTL(i,j,k),0.99*numbinit(i,j))
               NACTL(i,j,k) = MAX(MIN(NACTL(i,j,k),NN_MAX),NN_MIN)
@@ -240,12 +257,21 @@ CONTAINS
              ENDDO
            ENDDO
          ENDDO
-         numbinit = numbinit * air_den ! #/m3
+         
+         ! Optimized conditional calculation
          DO j = 1, JM
            DO i = 1, IM
+             numbinit(i,j) = numbinit(i,j) * air_den(i,j)
              numbinit(i,j) = max(numbinit(i,j),0.0)
-             ! Number of activated IN following deMott (2010) [#/m3]
-             NACTI(i,j,k) = (ai*(max(0.0,(MAPL_TICE-tk(i,j)))**bi)) * (numbinit(i,j)**(ci*max((MAPL_TICE-tk(i,j)),0.0)+di)) !#/m3
+             
+             ! Only compute expensive exponents if cold enough AND aerosols exist
+             if (tk(i,j) < MAPL_TICE .and. numbinit(i,j) > 0.0) then
+                ! Number of activated IN following deMott (2010) [#/m3]
+                NACTI(i,j,k) = (ai*(max(0.0,(MAPL_TICE-tk(i,j)))**bi)) * (numbinit(i,j)**(ci*max((MAPL_TICE-tk(i,j)),0.0)+di))
+             else
+                NACTI(i,j,k) = 0.0
+             endif
+             
              NACTI(i,j,k) = MAX(MIN(NACTI(i,j,k),NN_MAX),NN_MIN)
            ENDDO
          ENDDO

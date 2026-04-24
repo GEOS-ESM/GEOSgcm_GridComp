@@ -403,7 +403,7 @@ module gfdl_mp_mod
     real :: rh_inr = 0.30 ! rh increment for minimum evaporation of rain
 
     ! simple process timescales
-    real :: tau_r2g  =  450.0 ! rain freezing to graupel time scale (s)
+    real :: tau_r2g  =  900.0 ! rain freezing to graupel time scale (s)
     real :: tau_i2s  =  300.0 ! cloud ice to snow autoconversion time scale (s)
     real :: tau_l2r  =  450.0 ! cloud water to rain autoconversion time scale (s)
     ! other timescales
@@ -504,7 +504,7 @@ module gfdl_mp_mod
 
     real :: fi2s_fac = 1.00 ! maximum sink of cloud ice to form snow: 0-1
     real :: fi2g_fac = 1.00 ! maximum sink of cloud ice to form graupel/hail: 0-1
-    real :: fs2g_fac = 0.75 ! maximum sink of snow to form graupel: 0-1
+    real :: fs2g_fac = 1.00 ! maximum sink of snow to form graupel: 0-1
 
     real :: beta = 1.22 ! defined in Heymsfield and Mcfarquhar (1996)
 
@@ -532,11 +532,14 @@ module gfdl_mp_mod
     real :: cracs, csacr, cgacr, cgacs, csacw, craci, csaci, cgacw, cgaci, cracw
     real :: cssub (5), cgsub (5), crevp (5), cgfr (2), csmlt (4), cgmlt (4)
 
-    real :: t_wfr, fac_rc, c_air, c_vap, d0_vap
+    real :: t_wfr, c_air, c_vap, d0_vap
 
-    real :: srf_type, cnv_fraction, onemsig, fac_eis
+    ! these variables should be passed throughout the code as arguments
+    ! but the lazy approach is to make them threadprivate here
+    real :: cnv_fraction, fac_eis, cpaut, fac_rc, onemsig, srf_type
+    !$OMP THREADPRIVATE(cnv_fraction, fac_eis, cpaut, fac_rc, onemsig, srf_type)
 
-    real (kind = r8) :: lv00, li00, li20, cpaut0, cpaut
+    real (kind = r8) :: lv00, li00, li20, cpaut0
     real (kind = r8) :: d1_vap, d1_ice, c1_vap, c1_liq, c1_ice
     real (kind = r8) :: normw, normr, normi, norms, normg, normh
     real (kind = r8) :: expow, expor, expoi, expos, expog, expoh
@@ -1368,7 +1371,6 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
 
     real :: ccn0, cin0, q1, q2
     real :: convt, rdt, dts, q_cond, tmp, nl, ni
-    real :: rthreshs_, rthreshu_
 
     real, dimension (ks:ke) :: h_var
     real, dimension (ks:ke) :: q_liq, q_sol, dp, dz, dp0
@@ -1412,6 +1414,16 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
 
     convt = 86400. * rgrav / dtm
 
+    ! -----------------------------------------------------------------------
+    ! Begin Parallel Loop
+    ! -----------------------------------------------------------------------
+    !$OMP PARALLEL DO DEFAULT(SHARED) &
+    !$OMP PRIVATE(i, k, ccn0, cin0, q1, q2, q_cond, tmp, nl, ni, con_r8, c8, cp8, &
+    !$OMP         h_var, q_liq, q_sol, dp, dz, dp0, qvz, qlz, qrz, qiz, qsz, &
+    !$OMP         qgz, qaz, zez, den, pz, denfac, ccn, cin, u, v, w, &
+    !$OMP         pcw, edw, oew, rrw, tvw, pci, edi, oei, rri, tvi, &
+    !$OMP         pcr, edr, oer, rrr, tvr, pcs, eds, oes, rrs, tvs, &
+    !$OMP         pcg, edg, oeg, rrg, tvg, tz, tzuv, tzw)
     do i = is, ie
 
         ! -----------------------------------------------------------------------
@@ -1435,23 +1447,12 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         fac_eis = get_fac_eis(eis(i),srf_type) ! Estimated inversion strength determine stable regime
 
         ! -----------------------------------------------------------------------
-        ! Resolution dependence on autoconversion parameters
-        ! -----------------------------------------------------------------------
-        ! Stable critical radius [default: 10.0e-6]
-        !   unchanged
-        rthreshs_ = rthreshs 
-        ! Unstable critical radius [default: 7.0e-6]
-        !   Coarse (onemsig=0):  7.0e-6 + 3.e-6  = 10.0e-6
-        !   Fine   (onemsig=1):  7.0e-6 + 0.0    = 7.0e-6
-        rthreshu_ = rthreshu + (1.0-onemsig)*3.e-6
-
-        ! -----------------------------------------------------------------------
         ! adjust autoconversion rates and thresholds for stable vs unstable 
         ! -----------------------------------------------------------------------
         ! include stability dependence
-        cpaut  = cpaut0 * (    0.75*fac_eis +          (1.0-fac_eis))
+        cpaut  = cpaut0 * (     0.75*fac_eis +          (1.0-fac_eis))
         ! include stability dependence
-        fac_rc =      rc * (rthreshs_*fac_eis + rthreshu_*(1.0-fac_eis)) ** 3
+        fac_rc =      rc * (rthreshs*fac_eis + rthreshu*(1.0-fac_eis)) ** 3
 
         ! -----------------------------------------------------------------------
         ! conversion of temperature
@@ -1512,19 +1513,28 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
             qaz (k) = qa (i, k)
             zez (k) = -30.0
 
+            ! Determine the dry air fraction (1 - total_water_specific_humidity).
+            ! If inline microphysics is enabled, we account for both vapor and all 
+            ! condensate species (liquid/ice); otherwise, we only account for vapor.
             if (do_inline_mp) then
                 q_cond = qlz (k) + qrz (k) + qiz (k) + qsz (k) + qgz (k)
                 con_r8 = one_r8 - (qvz (k) + q_cond)
             else
-                con_r8 = one_r8 - qvz (k)
+                con_r8 = one_r8 - qvz (k) 
             endif
 
-            ! dp0: original moist air_mass
+            ! Store original moist pressure thickness (diagnostic/unused).
             dp0 (k) = delp (i, k)
-            ! dp: dry air_mass
+
+            ! Convert total pressure thickness (delp) to dry air pressure thickness (dp).
             dp (k) = delp (i, k) * con_r8
 
-            con_r8  = dp0 (k) / dp (k)
+            ! Calculate the conversion factor to go from specific humidity 
+            ! (mass/total_mass) to dry mixing ratio (mass/dry_mass).
+            con_r8 = one_r8 / con_r8
+
+            ! Scale all water species from specific ratios to dry mixing ratios.
+            ! This ensures mass conservation within the microphysics driver.
             qvz (k) = qvz (k) * con_r8
             qlz (k) = qlz (k) * con_r8
             qrz (k) = qrz (k) * con_r8
@@ -1782,19 +1792,25 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         do k = ks, ke
 
             ! -----------------------------------------------------------------------
-            ! convert mass mixing ratios back to specific ratios
+            ! Convert dry mixing ratios back to specific ratios (mass per total air mass)
             ! -----------------------------------------------------------------------
-
+            
+            ! Calculate the total-to-dry mass ratio (1 + sum of water species).
+            ! If inline MP is used, we include condensates in the total mass definition.
             if (do_inline_mp) then
                 q_cond = qlz (k) + qrz (k) + qiz (k) + qsz (k) + qgz (k)
                 con_r8 = one_r8 + qvz (k) + q_cond
             else
                 con_r8 = one_r8 + qvz (k)
             endif
+                
+            ! Convert dry pressure thickness back to total moist pressure thickness.
+            dp (k) = dp (k) * con_r8
 
-            ! Invert to get (M_dry / M_moist_new)
-            con_r8  =  one_r8 / con_r8
+            ! Prepare the reciprocal factor to scale species from dry to total mass.
+            con_r8 = one_r8 / con_r8
 
+            ! Rescale all water species back to specific humidity/specific ratios.
             qvz (k) = qvz (k) * con_r8
             qlz (k) = qlz (k) * con_r8
             qrz (k) = qrz (k) * con_r8
@@ -1802,13 +1818,18 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
             qsz (k) = qsz (k) * con_r8
             qgz (k) = qgz (k) * con_r8
 
-            ! convert dry air mass to wet
-            dp  (k) = dp (k) / con_r8
-
+            ! Calculate the total water mass fraction BEFORE the physics update.
             q1 = qv (i, k) + ql (i, k) + qr (i, k) + qi (i, k) + qs (i, k) + qg (i, k)
+            
+            ! Calculate the total water mass fraction AFTER the physics update.
             q2 = qvz (k) + qlz (k) + qrz (k) + qiz (k) + qsz (k) + qgz (k)
+            
+            ! Compute an adjustment factor for non-water tracers (adj_vmr).
+            ! This accounts for the 'dilution' or 'concentration' of chemical species 
+            ! as the total air mass changes while the dry air mass stays constant.
             adj_vmr (i, k) = ((one_r8 - q1) / (one_r8 - q2)) / (one_r8 + q2 - q1)
 
+            ! return reflectivity
             zet (i, k) = zez (k)
 
 ! return QA tendencies for GEOS
@@ -1962,6 +1983,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         endif
 
     enddo ! i loop
+    !$OMP END PARALLEL DO
 
 end subroutine mpdrv
 
@@ -3304,12 +3326,9 @@ subroutine praut (ks, ke, dts, dp, tz, qak, qvk, qlk, qrk, qik, qsk, qgk, den, c
 
     real, dimension (ks:ke) :: ql, dl, qadum, c_praut
 
-    ! Use In-Cloud condensates with scale-aware blending
+    ! Use In-Cloud condensates
     if (in_cloud_liq) then
-      ! At coarse res (onemsig=0): uses strictly max(qak, cfmin)
-      ! At fine res   (onemsig=1): qadum becomes 1.0
-      ! In the gray zone (0 < onemsig < 1): blends the two
-      qadum = (1.0 - onemsig) * max(qak, cfmin) + onemsig
+      qadum = max(qak,cfmin)
     else
       qadum = 1.0
     endif
@@ -3554,12 +3573,9 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
         if (tz (k) .gt. tice .and. qik (k) .gt. qcmin) then
 
-            ! Use In-Cloud condensates with scale-aware blending
+            ! Use In-Cloud condensates
             if (in_cloud_ice) then
-              ! At coarse res (onemsig=0): uses strictly max(qak, cfmin)
-              ! At fine res   (onemsig=1): qadum becomes 1.0
-              ! In the gray zone (0 < onemsig < 1): blends the two
-              qadum = (1.0 - onemsig) * max(qak(k), cfmin) + onemsig
+              qadum = max(qak(k),cfmin)
             else
               qadum = 1.0 
             endif
@@ -3581,12 +3597,9 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
         elseif (tz (k) <= tice .and. qlk (k) > qcmin) then
 
-            ! Use In-Cloud condensates with scale-aware blending
+            ! Use In-Cloud condensates
             if (in_cloud_ice) then
-              ! At coarse res (onemsig=0): uses strictly max(qak, cfmin)
-              ! At fine res   (onemsig=1): qadum becomes 1.0
-              ! In the gray zone (0 < onemsig < 1): blends the two
-              qadum = (1.0 - onemsig) * max(qak(k), cfmin) + onemsig
+              qadum = max(qak(k),cfmin)
             else
               qadum = 1.0
             endif
@@ -3656,12 +3669,9 @@ subroutine pimlt (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, t
 
         if (tz (k) .gt. tice .and. qik (k) .gt. qcmin) then
 
-            ! Use In-Cloud condensates with scale-aware blending
+            ! Use In-Cloud condensates
             if (in_cloud_ice) then
-              ! At coarse res (onemsig=0): uses strictly max(qak, cfmin)
-              ! At fine res   (onemsig=1): qadum becomes 1.0
-              ! In the gray zone (0 < onemsig < 1): blends the two
-              qadum = (1.0 - onemsig) * max(qak(k), cfmin) + onemsig
+              qadum = max(qak(k),cfmin)
             else
               qadum = 1.0
             endif
@@ -3735,12 +3745,9 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
 
         if (tz (k) .le. tice .and. qlk (k) .gt. qcmin) then
 
-            ! Use In-Cloud condensates with scale-aware blending
+            ! Use In-Cloud condensates
             if (in_cloud_ice) then
-              ! At coarse res (onemsig=0): uses strictly max(qak, cfmin)
-              ! At fine res   (onemsig=1): qadum becomes 1.0
-              ! In the gray zone (0 < onemsig < 1): blends the two
-              qadum = (1.0 - onemsig) * max(qak(k), cfmin) + onemsig
+              qadum = max(qak(k),cfmin)
             else
               qadum = 1.0
             endif
@@ -4049,12 +4056,9 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
 
             tc = tz (k) - tice
 
-            ! Use In-Cloud condensates with scale-aware blending
+            ! Use In-Cloud condensates
             if (in_cloud_ice) then
-              ! At coarse res (onemsig=0): uses strictly max(qak, cfmin)
-              ! At fine res   (onemsig=1): qadum becomes 1.0
-              ! In the gray zone (0 < onemsig < 1): blends the two
-              qadum = (1.0 - onemsig) * max(qak(k), cfmin) + onemsig
+              qadum = max(qak(k),cfmin)
             else
               qadum = 1.0
             endif

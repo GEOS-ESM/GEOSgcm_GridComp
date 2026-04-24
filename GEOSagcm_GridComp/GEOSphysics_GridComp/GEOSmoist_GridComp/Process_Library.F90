@@ -108,8 +108,8 @@ module GEOSmoist_Process_Library
   logical :: SH_MD_DP = .FALSE.
 
   ! Radar parameter
-  integer :: DBZ_VAR_INTERCP=2 ! use variable intercept parameters 
-  integer :: DBZ_LIQUID_SKIN=1 ! use liquid skin on snow(1) and graupel(2) in warm environments
+  integer :: DBZ_VAR_INTERCP=2 ! use variable intercept parameters: 1 - on, 2 - snow boost, 3 - hail instead of graupel
+  integer :: DBZ_LIQUID_SKIN=1 ! use liquid skin on snow(1) and graupel/hail(2) in warm environments
   LOGICAL :: refl10cm_allow_wet_graupel = .false.
   LOGICAL :: refl10cm_allow_wet_snow = .true.
 
@@ -207,6 +207,12 @@ module GEOSmoist_Process_Library
 
   REAL :: r2o7, lam_r000, lam_r001 
 
+  ! Tune this between 0.0 and 1.0
+  ! 1.0 = Full aggressive Bergeron (your recent test)
+  ! 0.0 = Ice cannot eat existing liquid (effective FQI never exceeds 1.0)
+  ! 0.1 to 0.25 = Gentle Bergeron (Highly recommended!)
+  REAL :: BERGERON_EFF = 0.1
+
   ! option for cloud liq/ice radii
   integer :: LIQ_RADII_PARAM = 1
   integer :: ICE_RADII_PARAM = 1
@@ -246,7 +252,7 @@ module GEOSmoist_Process_Library
   public :: CNV_Tracer_Type, CNV_Tracers, CNV_Tracers_Init
   public :: constrain_modis_ice
   public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, BUOYANCY2
-  public :: REDISTRIBUTE_CLOUDS, RADCOUPLE_SCALE_AWARE, RADCOUPLE, FIX_UP_CLOUDS
+  public :: REDISTRIBUTE_CLOUDS_SCALAR, REDISTRIBUTE_CLOUDS, RADCOUPLE_SCALE_AWARE, RADCOUPLE, FIX_UP_CLOUDS
   public :: hystpdf, fix_up_clouds_2M
   public :: FILLQ2ZERO
   public :: MELTFRZ
@@ -259,6 +265,7 @@ module GEOSmoist_Process_Library
   public :: pdffrac, pdfcondensate, precalc_dblgss, partition_dblgss, partition_dblgss2
   public :: SIGMA_DX, SIGMA_EXP
   public :: CNV_FRACTION_MIN, CNV_FRACTION_MAX, CNV_FRACTION_EXP
+  public :: BERGERON_EFF
   public :: SH_MD_DP, DBZ_VAR_INTERCP, DBZ_LIQUID_SKIN, LIQ_RADII_PARAM, ICE_RADII_PARAM
   public :: refl10cm_allow_wet_graupel, refl10cm_allow_wet_snow
   public :: update_cld, meltfrz_inst2M
@@ -2656,17 +2663,7 @@ subroutine RADCOUPLE_SCALE_AWARE(  &
       real :: tmpARR
       real :: alhxbcp, DQCALL
 
-      ! FIX #4: Add DEP_BERGERON to carry Bergeron liquid->ice transfer rate
-      ! out of Bergeron_Partition and apply it in the post-loop budget update.
-      real :: DEP_BERGERON, DEP_BERGERON_APPLIED
-
-      ! FIX #1: Add QVn_only to carry pure vapor (excluding condensate)
-      ! into Bergeron_Partition, separate from QT.
-      real :: QVn_only
-
-      ! FIX #1 (DQCALL): Track cumulative condensation across iterations
-      ! so Bergeron_Partition always sees the full-timestep tendency.
-      real :: QCn_initial
+      real :: DQI_rate, DQL_rate, actual_DQI, actual_DQL
 
       real :: exner, thv, bastoeps, beta, rwqt, rwhl, rhlqt, t1, t2, sigt1, sigt2, q1, q2, w1, w2, sigw1, sigw2  
       ! internal scalars
@@ -2675,7 +2672,6 @@ subroutine RADCOUPLE_SCALE_AWARE(  &
       character*(10) :: Iam = 'Process_Library:hystpdf'
 
       scice      = 1.0
-      DEP_BERGERON = 0.0   ! initialize in case USE_BERGERON is .FALSE.
 
                       tmpARR = 0.0
       if (CLCN < 1.0) tmpARR = 1.0/(1.0-CLCN)
@@ -2691,13 +2687,6 @@ subroutine RADCOUPLE_SCALE_AWARE(  &
       QT = QCn + QVn  ! Total LS water after microphysics
                       ! this can be negative because QV does not account
                       ! for saturation inside convective cloud fraction
-
-      ! FIX #1 (DQCALL): Save QCn at the start of the iteration loop so
-      ! DQCALL can be computed as the cumulative condensation since entry,
-      ! not just the per-iteration increment QCn-QCp.  Using the per-iteration
-      ! delta caused Bergeron_Partition to see an artificially small (near-zero
-      ! at convergence) tendency divided by the full DT.
-      QCn_initial = QCn
 
       if (pdfshape .eq. 6) then
          exner = (pl / 1e3)**MAPL_KAPPA
@@ -2823,7 +2812,8 @@ subroutine RADCOUPLE_SCALE_AWARE(  &
            Nfac = 100.*PL*R_AIR/TEn !density times conversion factor
            NLv = NL/Nfac
            NIv = NI/Nfac
-           call Bergeron_Partition( &         !Microphysically-based partitions the new condensate
+           
+           call Bergeron_Partition( &         
                  DT               , &
                  PL               , &
                  TEn              , &
@@ -2838,13 +2828,31 @@ subroutine RADCOUPLE_SCALE_AWARE(  &
                  NIv              , &
                  DQCALL           , &
                  fQi              , &
+                 DQI_rate         , &  !<-- New explicit ice rate
+                 DQL_rate         , &  !<-- New explicit liquid rate
                  CNVFRC,SRF_TYPE  , &
                  needs_preexisting)
+                 
+            ! Bergeron_Partition returns rates (divided by DT). Convert back to mass:
+            actual_DQI = DQI_rate * DT
+            actual_DQL = DQL_rate * DT
+            
          ELSE
            fQi = ice_fraction( TEn, CNVFRC,SRF_TYPE )
+           ! If no Bergeron, just partition strictly by fraction
+           actual_DQI = fQi * (QCn - QCp)
+           actual_DQL = (1.0 - fQi) * (QCn - QCp)
          ENDIF
 
-         alhxbcp = (1.0-fQi)*alhlbcp + fQi*alhsbcp
+         ! Calculate the effective latent heat for the solver step
+         ! Protect against divide-by-zero if QCn == QCp
+         if (abs(QCn - QCp) > 1.0e-12) then
+             alhxbcp = (actual_DQL * alhlbcp + actual_DQI * alhsbcp) / (QCn - QCp)
+         else
+             alhxbcp = (1.0-fQi)*alhlbcp + fQi*alhsbcp
+         end if
+
+         ! Iterative solver for total condensate (QCn) remains unchanged
          if (PDFSHAPE .eq. 1) then
             QCn = QCp + (QCn-QCp) / (1.-(CFn*(ALPHA-1.)-(QCn/QSn))*DQS*alhxbcp)
          elseif (PDFSHAPE .eq. 2) then
@@ -2853,9 +2861,13 @@ subroutine RADCOUPLE_SCALE_AWARE(  &
             QCn = QCp + 0.7*(QCn-QCp)
          endif
 
+         ! Update vapor and temperature using the EXACT partitioned mass
          QVn = QVp - (QCn - QCp)
-         TEn = TEp + (1.0-fQi)*(alhlbcp)*(QCn - QCp)*(1.-CLCN)  &
-                   +      fQi *(alhsbcp)*(QCn - QCp)*(1.-CLCN)
+         
+         ! Using actual_DQL and actual_DQI captures the true Bergeron heating/cooling
+         ! (Ice deposition warms, liquid evaporation cools)
+         TEn = TEp + actual_DQL * alhlbcp * (1.-CLCN) &
+                   + actual_DQI * alhsbcp * (1.-CLCN)
 
          PDFITERS = n
          if (abs(TEn - TEp) .lt. 0.00001) exit
@@ -2876,13 +2888,22 @@ subroutine RADCOUPLE_SCALE_AWARE(  &
       CLLS = CFn * (1.-CLCN)
       QCn  = QCn * (1.-CLCN)
       QCx  = QCn - (QLLS+QILS)
+      
       if (QCx .lt. 0.0) then  ! net evaporation
          ! Bergeron is irrelevant during net evaporation - liquid evaporates first
          dQLLS = max(QCx        , -QLLS)
          dQILS = max(QCx - dQLLS, -QILS)
       else
-         dQLLS = (1.0-fQi)*QCx
-         dQILS =      fQi *QCx
+         if (USE_BERGERON) then
+            ! Apply the explicit ice growth (scaled to the large-scale fraction)
+            ! Ensure it doesn't exceed the total new condensation PLUS available liquid
+            dQILS = min(actual_DQI * (1.-CLCN), QCx + QLLS)
+            dQLLS = QCx - dQILS
+         else
+            ! Standard fractional partitioning if Bergeron is off
+            dQLLS = (1.0-fQi)*QCx
+            dQILS =      fQi *QCx
+         end if
       end if
 
       ! Clean-up cloud if fractions are too small
@@ -2955,6 +2976,8 @@ subroutine RADCOUPLE_SCALE_AWARE(  &
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    !Parititions DQ into ice and liquid. Follows Barahona et al. GMD. 2014
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!Parititions DQ into ice and liquid. Follows Barahona et al. GMD. 2014
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    subroutine Bergeron_Partition (           &
          DTIME            , &
          PL               , &
@@ -2970,21 +2993,25 @@ subroutine RADCOUPLE_SCALE_AWARE(  &
          NI               , &
          DQALL            , &
          FQI              , &
+         DQI              , &   !<-- ADDED explicit ice growth output
+         DQL              , &   !<-- ADDED explicit liquid growth output
          CNVFRC, SRF_TYPE , &
          needs_preexisting )
 
-      real ,  intent(in   )    :: DTIME, PL, TE       !, RHCR
-      real ,  intent(inout   )    ::  DQALL
-      real ,  intent(in)    :: QV, QLLS, QLCN, QICN, QILS
-      real ,  intent(in)    :: CF, AF, NL, NI
-      real, intent (out) :: FQI
-      real, intent(in) :: CNVFRC, SRF_TYPE
-      logical, intent (in)  :: needs_preexisting
+      real,    intent(in)    :: DTIME, PL, TE
+      real,    intent(inout) :: DQALL
+      real,    intent(in)    :: QV, QLLS, QLCN, QICN, QILS
+      real,    intent(in)    :: CF, AF, NL, NI
+      real,    intent(inout) :: FQI     !<-- Changed to inout because fQI_0 reads it
+      real,    intent(out)   :: DQI     !<-- Added
+      real,    intent(out)   :: DQL     !<-- Added
+      real,    intent(in)    :: CNVFRC, SRF_TYPE
+      logical, intent(in)    :: needs_preexisting
 
       real  :: DC, TEFF,QCm,DEP, &
-            QC, QS, RHCR, DQSL, DQSI, QI, TC, &
+            QC, QS, RHCR, DQSL, DQSI, TC, &
             DIFF, DENAIR, DENICE, AUX, &
-            DCF, QTOT, LHCORR,  QL, DQI, DQL, &
+            DCF, QTOT, LHCORR,  QI, QL, &
             QVINC, QSLIQ, CFALL,  new_QI, new_QL, &
             QSICE, fQI_0, QS_0, DQS_0, FQA, NIX
 
@@ -2994,27 +3021,39 @@ subroutine RADCOUPLE_SCALE_AWARE(  &
       QL   = QLLS + QLCN
       QTOT = QI+QL
       FQA  = 0.0
+      
       if (QTOT .gt. 0.0) FQA = (QICN+QILS)/QTOT
-      NIX  = (1.0-FQA)*NI
+      NIX  = (1.0-FQA)*NI 
 
       DQALL = DQALL/DTIME
       CFALL = min(CF+AF, 1.0)
       TC    = TE-MAPL_TICE
       fQI_0 = fQI
 
+      ! Initialize outputs
+      DQI = 0.0
+      DQL = 0.0
+
       !Completely glaciated cloud:
       if (TE .ge. iT_ICE_MAX) then   !liquid cloud
-         FQI   = 0.0
+         FQI = 0.0
+         DQL = DQALL
+         DQI = 0.0
       elseif(TE .le. iT_ICE_ALL) then !ice cloud
-         FQI   = 1.0
+         FQI = 1.0
+         DQI = DQALL
+         DQL = 0.0
       else !mixed phase cloud
-         FQI   = 0.0
+         FQI = 0.0
          if (QILS .le. 0.0) then
               if (needs_preexisting) then
               ! new 0518 this line ensures that only preexisting ice can grow by deposition.
               ! Only works if explicit ice nucleation is available (2 moment muphysics and up)
               else
-                  fQi = ice_fraction( TE, CNVFRC, SRF_TYPE )
+                  ! Assuming ice_fraction function exists in your module
+                  FQI = ice_fraction( TE, CNVFRC, SRF_TYPE )
+                  DQI = FQI * DQALL
+                  DQL = (1.0 - FQI) * DQALL
               end if
               return
          end if
@@ -3025,12 +3064,12 @@ subroutine RADCOUPLE_SCALE_AWARE(  &
          QVINC = MIN(QVINC, QSLIQ) !limit to below water saturation
 
          ! Calculate deposition onto preexisting ice
-
          DIFF=(0.211*1013.25/(PL+0.1))*(((TE+0.1)/MAPL_TICE)**1.94)*1e-4  !From Seinfeld and Pandis 2006
          DENAIR=PL*100.0/MAPL_RGAS/TE
          DENICE= 1000.0*(0.9167 - 1.75e-4*TC -5.0e-7*TC*TC) !From PK 97
          LHcorr = ( 1.0 + DQSI*MAPL_ALHS/MAPL_CP) !must be ice deposition
 
+         ! The NIX > 1.0 check protects against division by zero here
          if  ((NIX .gt. 1.0) .and. (QILS .gt. 1.0e-10)) then
             DC=max((QILS/(NIX*DENICE*MAPL_PI))**(0.333), 20.0e-6) !Assumme monodisperse size dsitribution
          else
@@ -3046,24 +3085,27 @@ subroutine RADCOUPLE_SCALE_AWARE(  &
          end if
          DEP=MAX(DEP, -QILS/DTIME) !only existing ice can be sublimated
 
-         DQI = 0.0
-         DQL = 0.0
-         FQI = 0.0
          !Partition DQALL accounting for Bergeron-Findensen process
-         if  (DQALL .ge. 0.0) then !net condensation. Note: do not allow bergeron with QLCN
+         ! BUG 2 FIXED: DQI and DQL are now preserved and returned to the caller.
+         !Partition DQALL accounting for Bergeron-Findensen process
+         if  (DQALL .ge. 0.0) then !net condensation.
             if (DEP .gt. 0.0) then
-               DQI = min(DEP, DQALL + QLLS/DTIME)
+               ! Throttle how much existing liquid (QLLS) can be cannibalized
+               DQI = min(DEP, DQALL + BERGERON_EFF * QLLS/DTIME)
                DQL = DQALL - DQI
             else
-               DQL = DQALL ! could happen because the PDF allows condensation in subsaturated conditions
+               DQL = DQALL
                DQI = 0.0
             end if
          end if
-         if  (DQALL .lt. 0.0) then  !net evaporation. Water evaporates first regaardless of DEP
+         
+         if  (DQALL .lt. 0.0) then  !net evaporation. Water evaporates first regardless of DEP
             DQL = max(DQALL, -QLLS/DTIME)
             DQI = max(DQALL - DQL, -QILS/DTIME)
          end if
-         if (DQALL .ne. 0.0)  FQI=max(min(DQI/DQALL, 1.0), 0.0)
+         
+         ! FQI is still returned bounded for diagnostics, but DQI/DQL handle the actual physics
+         if (DQALL .ne. 0.0) FQI=max(min(DQI/DQALL, 1.0), 0.0)
 
       end if !=====
 
@@ -4266,6 +4308,50 @@ subroutine update_cld( &
           END WHERE
 
     end subroutine FIX_NEGATIVE_PRECIP
+
+    subroutine REDISTRIBUTE_CLOUDS_SCALAR(CF, QL, QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, QV, TE)
+      ! Note: Changed from dimension(:,:,:) to scalar inputs
+      real, intent(inout) :: CF, QL, QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, QV, TE
+
+      ! Liquid
+      QLLS = QLLS + (QL - (QLCN+QLLS))
+      if (QLLS < 0.0) then
+        QLCN = max(0.0, QLCN + QLLS)
+        QLLS = 0.0
+      endif
+
+      ! Ice
+      QILS = QILS + (QI - (QICN+QILS))
+      if (QILS < 0.0) then
+        QICN = max(0.0, QICN + QILS)
+        QILS = 0.0
+      endif
+
+      ! Cloud
+      CLLS = min(1.0, CLLS + (CF - (CLCN+CLLS)))
+      if (CLLS < 0.0) then
+        CLCN = max(0.0, min(1.0, CLCN + CLLS))
+        CLLS = 0.0
+      endif
+
+      ! Evaporate/Sublimate liquid/ice where clouds are gone
+      if ( (CLLS == 0.0) .and. (QLLS+QILS > 0.0) ) then
+        QV = QV + QLLS + QILS
+        TE = TE - (alhlbcp)*QLLS - (alhsbcp)*QILS
+        CLLS = 0.0
+        QLLS = 0.0
+        QILS = 0.0
+      endif
+      
+      if ( (CLCN == 0.0) .and. (QLCN+QICN > 0.0) ) then
+        QV = QV + QLCN + QICN
+        TE = TE - (alhlbcp)*QLCN - (alhsbcp)*QICN
+        CLCN = 0.0
+        QLCN = 0.0
+        QICN = 0.0
+      endif
+
+   end subroutine REDISTRIBUTE_CLOUDS_SCALAR
 
    subroutine REDISTRIBUTE_CLOUDS(CF, QL, QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, QV, TE)
       real, dimension(:,:,:), intent(inout) :: CF, QL, QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, QV, TE
