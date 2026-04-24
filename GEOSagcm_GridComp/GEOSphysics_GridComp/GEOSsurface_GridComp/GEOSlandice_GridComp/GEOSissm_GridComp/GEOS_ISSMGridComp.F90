@@ -324,7 +324,7 @@ subroutine SetServices ( GC, RC )
     
     ! mesh information
     type(ESMF_Mesh)                        :: mesh                    ! ESMF_Mesh representation of ISSM mesh
-    integer, pointer, dimension(:)         :: elementTypes            ! element geometry type (triangles)
+    integer, pointer, dimension(:)         :: elementTypes  => null() ! element geometry type (triangles)
     integer(c_int)                         :: num_elements            ! number of elements on PET
     integer(c_int)                         :: num_nodes               ! number of nodes on PET
     integer(c_int)                         :: num_owned_nodes         ! number of nodes owned by this PET (<=num_nodes)
@@ -357,7 +357,7 @@ subroutine SetServices ( GC, RC )
 
     ! owned node coordinates (longitude,latitude)
     real(dp),pointer,dimension(:)          :: ownedNodeCoords => null() 
-    real,    allocatable, dimension(:)     :: ownedNodeLons, ownedNodeLats
+    real, allocatable, dimension(:)        :: ownedNodeLons, ownedNodeLats
 
     ! command-line arguments to initialize ISSM 
     integer                                :: i,j,k                   ! loop indices
@@ -477,7 +477,6 @@ subroutine SetServices ( GC, RC )
     allocate(ownedNodeIds(num_owned_nodes))
     allocate(halo_idx(num_halo_nodes))
     allocate(owned_idx(num_owned_nodes))
-
 
     call ESMF_MeshGet(mesh=mesh,ownedNodeCoords=ownedNodeCoords)
     
@@ -620,7 +619,7 @@ subroutine SetServices ( GC, RC )
               tilelons=ownedNodeLons, tilelats=ownedNodeLats,  _RC)
     call MAPL%grid%set(mesh_grid, _RC)
     call ESMF_GridCompSet(gc, grid=mesh_grid, _RC)
-    Call MAPL_set(MAPL, locstream = mesh_locstream, _RC)
+    call MAPL_set(MAPL, locstream = mesh_locstream, _RC)
 
     ! deallocate pointers
     if(associated(field_saver))     deallocate(field_saver)
@@ -640,8 +639,6 @@ subroutine SetServices ( GC, RC )
     if(associated(owned_idx))       deallocate(owned_idx)
     if(associated(halolist))        deallocate(halolist)
     if(associated(ownedNodeCoords)) deallocate(ownedNodeCoords)
-    if(associated(ownedNodeLats))   deallocate(ownedNodeLats)
-    if(associated(ownedNodeLons))   deallocate(ownedNodeLons)
     if(associated(ownedNodeIds))    deallocate(ownedNodeIds)
     if(associated(nodeOwners))      deallocate(nodeOwners)
 
