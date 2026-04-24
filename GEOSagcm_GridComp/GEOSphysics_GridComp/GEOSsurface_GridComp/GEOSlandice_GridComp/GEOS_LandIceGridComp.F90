@@ -44,8 +44,8 @@ module GEOS_LandiceGridCompMod
   use GEOS_UtilsMod
   use DragCoefficientsMod
   use GEOS_IssmGridCompMod,   only : IssmSetServices  => SetServices
-  use GEOS_IssmGridCompMod,   only : T_ISSM_EXPORT_STATE
-  use GEOS_IssmGridCompMod,   only : ISSM_EXPORT_WRAP
+  use GEOS_IssmGridCompMod,   only : T_ISSM_TILE_STATE
+  use GEOS_IssmGridCompMod,   only : ISSM_TILE_WRAP
 
   implicit none
   private
@@ -1735,8 +1735,8 @@ module GEOS_LandiceGridCompMod
      
        integer                                 :: I
    
-       type(T_ISSM_EXPORT_STATE), pointer :: issm_exports_state
-       type(ISSM_EXPORT_WRAP) :: issm_exports_wrap
+       type(T_ISSM_TILE_STATE), pointer :: issm_tile_state
+       type(ISSM_TILE_WRAP) :: issm_tile_wrap
        integer :: nt_local
 
    !=============================================================================
@@ -1775,12 +1775,13 @@ module GEOS_LandiceGridCompMod
           call MAPL_Set(CHILD_MAPL, LOCSTREAM=LOCSTREAM, RC=STATUS )
           VERIFY_(STATUS)
           if (index(gcnames(I), 'ISSM') /=0 ) then
-             allocate(issm_exports_state)
-             allocate(issm_exports_state%ICESURF_TILE(nt_local))
-             allocate(issm_exports_state%ICETHICK_TILE(nt_local))
-             allocate(issm_exports_state%ICEVEL_TILE(nt_local))
-             issm_exports_wrap%ptr => issm_exports_state
-             call ESMF_UserCompSetInternalState(GCS(I), 'ISSM_EXPORTS', issm_exports_wrap, status)
+             allocate(issm_tile_state)
+             allocate(issm_tile_state%ICESURF_TILE(nt_local))
+             allocate(issm_tile_state%ICETHICK_TILE(nt_local))
+             allocate(issm_tile_state%ICEVEL_TILE(nt_local))
+             allocate(issm_tile_state%ICESMB_TILE(nt_local))
+             issm_tile_wrap%ptr => issm_tile_state
+             call ESMF_UserCompSetInternalState(GCS(I), 'ISSM_TILES', issm_tile_wrap, status)
              VERIFY_(STATUS)
           endif
        end do
@@ -2293,7 +2294,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 !EOP
 
-   type (ESMF_State),     pointer  :: GIM(:)    ! Import state ISSM
+   type (MAPL_MetaComp), pointer      :: CHILD_MAPL ! MAPL state for ISSM
+   type(ESMF_Alarm)                   :: ISSM_ALARM ! run alarm for ISSM component 
 
 
 ! ErrLog Variables
@@ -2320,8 +2322,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
   type (ESMF_GridComp  ), pointer     :: GCS(:)
   character(len=ESMF_MAXSTR), pointer :: gcnames(:)
       
-  type(T_ISSM_EXPORT_STATE), pointer  :: issm_exports_state
-  type(ISSM_EXPORT_WRAP)              :: issm_exports_wrap
+  type(T_ISSM_TILE_STATE), pointer    :: issm_tile_state
+  type(ISSM_TILE_WRAP)                :: issm_tile_wrap
 
 !=============================================================================
 
@@ -2342,11 +2344,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call MAPL_GetResource (MAPL, DO_ISSM, label='DO_ISSM:', DEFAULT=0, __RC__ )
 
-    ! Get import state of child (ISSM)
-    if (DO_ISSM == 1) then
-      call MAPL_Get(MAPL, GIM=GIM, RC=STATUS )
-      VERIFY_(STATUS) 
-    end if 
 ! Start Total timer
 !------------------
 
@@ -2403,8 +2400,11 @@ contains
    integer                        :: STATUS
 
 
-   ! pointer to child import (ISSM)
-   real, pointer, dimension(:  )  :: ICESMB_ISSM
+   ! pointer to ISSM import via private internal state
+   ! accumulate over time steps for averaging
+   real, pointer, dimension(:), save :: ICESMB_ISSM=>null()
+   integer, save                     :: NSTEPS_ISSM = 0 ! time steps since last ISSM
+
 
 
 ! pointers to export
@@ -2814,6 +2814,13 @@ contains
     VERIFY_(STATUS)
 
     NT = size(ALW)
+
+    if (.not. associated(ICESMB_ISSM)) then
+    allocate(ICESMB_ISSM(NT),STAT=STATUS)
+    VERIFY_(STATUS)
+    ! accumulated between timesteps, so init to zero:
+    ICESMB_ISSM(:) = 0 
+    end if 
 
     allocate(MLT (NT), STAT=STATUS)
     VERIFY_(STATUS)                
@@ -3432,13 +3439,11 @@ contains
 
     ! Calculate surface mass balance (SMB) for ISSM
     if(associated(ICESMB)) ICESMB    = ACCUM - RUNOFF
-
-    ! Set child (ISSM) SMB import pointer 
-    if (DO_ISSM == 1) then
-      call MAPL_GetPointer(GIM(ISSM), ICESMB_ISSM, 'ICESMB'  , RC=STATUS)
-    end if 
-
-    if(associated(ICESMB_ISSM)) ICESMB_ISSM(:) = ICESMB(:)
+    
+    ! accumulate ICESMB over time steps between ISSM runs
+    if(associated(ICESMB_ISSM)) ICESMB_ISSM = ICESMB_ISSM+ICESMB
+    NSTEPS_ISSM = NSTEPS_ISSM + 1 ! accumulate timesteps since last ISSM run
+ 
 
 ! Update snow and landice albedos to anticipate
 !   next radiation calculation
@@ -3575,17 +3580,32 @@ contains
 
     ! Run ISSM (checks if ISSM_ALARM is ringing)
     if (DO_ISSM==1) then
-      call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, CLOCK, RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_Get (MAPL, GCS=GCS, GCNAMES=gcnames, RC=STATUS )
-      do n=1, size(GCS)
-         if (index(gcnames(N), 'ISSM') /=0 ) then
-             call ESMF_UserCompGetInternalState(GCS(N), 'ISSM_EXPORTS', issm_exports_wrap, status)
-             VERIFY_(STATUS)
-             issm_exports_state =>issm_exports_wrap%ptr
-            if (associated(ICESURF))  ICESURF = issm_exports_state%ICESURF_TILE
-            if (associated(ICETHICK)) ICETHICK = issm_exports_state%ICETHICK_TILE
-            if (associated(ICEVEL))   ICEVEL = issm_exports_state%ICEVEL_TILE
+      call MAPL_Get (MAPL, GCS=GCS, GCNAMES=GCNAMES, RC=STATUS )
+      do N=1, size(GCS)
+         if (index(GCNAMES(N), 'ISSM') /=0 ) then ! check if issm alarm is ringing too
+            call MAPL_GetObjectFromGC(GCS(N), CHILD_MAPL, RC=STATUS); VERIFY_(STATUS)
+            call MAPL_Get(CHILD_MAPL, RUNALARM = ISSM_ALARM, RC=STATUS); VERIFY_(STATUS)
+            VERIFY_(STATUS)
+          
+            if (ESMF_AlarmIsRinging (ISSM_ALARM, RC=STATUS)) then
+               call ESMF_UserCompGetInternalState(GCS(N), 'ISSM_TILES', issm_tile_wrap, status)
+               VERIFY_(STATUS)
+               issm_tile_state =>issm_tile_wrap%ptr
+
+               ! send ICESMB that has been averaged over time steps since last ISSM run
+               if(associated(ICESMB_ISSM)) issm_tile_state%ICESMB_TILE = ICESMB_ISSM/NSTEPS_ISSM
+
+               call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, CLOCK, RC=STATUS)
+               VERIFY_(STATUS)
+
+               if(associated(ICESURF))  ICESURF = issm_tile_state%ICESURF_TILE
+               if(associated(ICETHICK)) ICETHICK = issm_tile_state%ICETHICK_TILE
+               if(associated(ICEVEL))   ICEVEL = issm_tile_state%ICEVEL_TILE
+
+               ! refresh ICESMB accumulator
+               NSTEPS_ISSM = 0    ! set ISSM time step accumulation back to zero
+               ICESMB_ISSM(:) = 0 ! zero out ICESMB accumulator
+            end if 
          endif
       enddo
     end if 

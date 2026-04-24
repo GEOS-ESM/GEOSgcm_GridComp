@@ -85,19 +85,19 @@ public SetServices
 !   {\tt GEOS\_ISSM} gridcomp runs NASA's Ice-sheet and Sea-level System Model (ISSM)
 !             
 
-public :: T_ISSM_EXPORT_STATE
-public :: ISSM_EXPORT_WRAP
+public :: T_ISSM_TILE_STATE
+public :: ISSM_TILE_WRAP
 ! define ISSM export as internal variables, will be used by the landice grid comp
 
-type T_ISSM_EXPORT_STATE
+type T_ISSM_TILE_STATE
     real, pointer :: ICESURF_TILE(:)
     real, pointer :: ICETHICK_TILE(:)
     real, pointer :: ICEVEL_TILE(:)
-end type T_ISSM_EXPORT_STATE
+end type T_ISSM_TILE_STATE
 
-type ISSM_EXPORT_WRAP
-   type(T_ISSM_EXPORT_STATE), pointer :: ptr=>null()
-end type ISSM_EXPORT_WRAP
+type ISSM_TILE_WRAP
+   type(T_ISSM_TILE_STATE), pointer :: ptr=>null()
+end type ISSM_TILE_WRAP
 
 ! private internal state for regridding 
 type T_ISSM_STATE
@@ -199,17 +199,7 @@ subroutine SetServices ( GC, RC )
     ! Set the state variable specs.
 !-----------------------------------
 
-!   Import states:
-    call MAPL_AddImportSpec(GC,                    &
-        SHORT_NAME = 'ICESMB',                     &
-        LONG_NAME  = 'ice_surface_mass_balance',   &
-        UNITS      = 'kg m-2 s-1',                 &
-        DIMS       = MAPL_DimsTileOnly,            &
-        VLOCATION  = MAPL_VLocationNone,           &
-        AVERAGING_INTERVAL = nint(dt),             &
-        REFRESH_INTERVAL   = nint(dt),             &
-        RC=STATUS  )
-    VERIFY_(STATUS)
+!   Import states: ICESMB is imported via the ISSM_TILE internal state
 
 !   Export states:
     call MAPL_AddExportSpec(GC,                    &
@@ -722,7 +712,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   type(ESMF_State),    intent(inout)   :: EXPORT                  ! Export state
   type(ESMF_Clock),    intent(inout)   :: CLOCK                   ! The clock
   integer, optional,   intent(  out)   :: RC                      ! Error code
-  type (ESMF_Alarm)                    :: ALARM                   ! run alarm for ISSM component 
+  type(ESMF_Alarm)                     :: ALARM                   ! run alarm for ISSM component 
   
   ! ErrLog Variables
   character(len=ESMF_MAXSTR)           :: IAm
@@ -761,13 +751,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   ! tile information
   integer                              :: NT                      ! number of landice tiles
 
-  type(T_ISSM_EXPORT_STATE), pointer   :: issm_exports_state
-  type(ISSM_EXPORT_WRAP)               :: issm_exports_wrap
+  type(T_ISSM_TILE_STATE), pointer     :: issm_tile_state
+  type(ISSM_TILE_WRAP)                 :: issm_tile_wrap
 
   ! surface mass balance on mesh and landice tiles
   real(dp), pointer, dimension(:)      :: ICESMB_MESH   => null() ! surface mass balce on mesh elements
   real, pointer, dimension(:)          :: ICESMB_TILE   => null() ! surface mass balance on landice tiles
-  real, pointer, dimension(:)          :: ICESMB_IM     => null() ! pointer to SMB import state (landice tiles)
   real, pointer, dimension(:)          :: ICESMB_EX     => null() ! pointer to SMB export (mesh)
 
   ! ISSM Outputs
@@ -905,24 +894,22 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! allocate pointer on grid for regridding (reused multiple times)
     allocate(VAR_GRID(IM,JM), STAT=STATUS); VERIFY_(STATUS)
      
-    call ESMF_UserCompGetInternalState(GC, 'ISSM_EXPORTS', issm_exports_wrap, status); VERIFY_(STATUS)
-    issm_exports_state => issm_exports_wrap%ptr
+    call ESMF_UserCompGetInternalState(GC, 'ISSM_TILES', issm_tile_wrap, status); VERIFY_(STATUS)
+    issm_tile_state => issm_tile_wrap%ptr
     
     ! *************************************************************************** !
     ! GET ICESMB IMPORT (surface mass balance)
     ! *************************************************************************** !
     
-    call MAPL_GetPointer(IMPORT,ICESMB_IM, 'ICESMB' , RC=STATUS); VERIFY_(STATUS)
-
     ! allocate tiles for ICESMB 
-    if(associated(ICESMB_IM) .and. .not.associated(ICESMB_TILE)) then
+    if(.not.associated(ICESMB_TILE)) then
       allocate(ICESMB_TILE(NT), STAT=STATUS)
       VERIFY_(STATUS)
       ICESMB_TILE = MAPL_Undef
     end if
     
     ! copy import values into tile array 
-    ICESMB_TILE(:) = ICESMB_IM(:)
+    ICESMB_TILE = issm_tile_state%ICESMB_TILE
 
     ! *************************************************************************** !
     ! TRANSFORM ICESMB FROM TILES TO MESH 
@@ -996,13 +983,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     ! transform from mesh to tiles
     call mesh_to_tile(ICESURF_MESH,ICESURF_TILE)
-    issm_exports_state%ICESURF_TILE = ICESURF_TILE
+    issm_tile_state%ICESURF_TILE = ICESURF_TILE
 
     call mesh_to_tile(ICETHICK_MESH,ICETHICK_TILE)
-    issm_exports_state%ICETHICK_TILE = ICETHICK_TILE
+    issm_tile_state%ICETHICK_TILE = ICETHICK_TILE
 
     call mesh_to_tile(ICEVEL_MESH,ICEVEL_TILE)
-    issm_exports_state%ICEVEL_TILE = ICEVEL_TILE
+    issm_tile_state%ICEVEL_TILE = ICEVEL_TILE
 
   end if 
   
@@ -1114,7 +1101,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_FieldGet(dstField,farrayPtr=MESH_PTR,RC=STATUS); VERIFY_(STATUS)
 
     ! copy values into VAR_MESH
-    VAR_MESH(owned_idx) = MESH_PTR(1:num_owned_nodes)                 ! owned nodes
+    VAR_MESH(owned_idx) = MESH_PTR(1:num_owned_nodes)          ! owned nodes
     VAR_MESH(halo_idx) = MESH_PTR(num_owned_nodes+1:num_nodes) ! halo nodes
     
     ! destroy fields and arrays so they can be reused
