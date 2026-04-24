@@ -93,6 +93,7 @@ type T_ISSM_TILE_STATE
     real, pointer :: ICESURF_TILE(:)
     real, pointer :: ICETHICK_TILE(:)
     real, pointer :: ICEVEL_TILE(:)
+    real, pointer :: ICESMB_TILE(:)
 end type T_ISSM_TILE_STATE
 
 type ISSM_TILE_WRAP
@@ -323,7 +324,7 @@ subroutine SetServices ( GC, RC )
     
     ! mesh information
     type(ESMF_Mesh)                        :: mesh                    ! ESMF_Mesh representation of ISSM mesh
-    integer, allocatable                   :: elementTypes(:)         ! element geometry type (triangles)
+    integer, pointer, dimension(:)         :: elementTypes            ! element geometry type (triangles)
     integer(c_int)                         :: num_elements            ! number of elements on PET
     integer(c_int)                         :: num_nodes               ! number of nodes on PET
     integer(c_int)                         :: num_owned_nodes         ! number of nodes owned by this PET (<=num_nodes)
@@ -622,27 +623,27 @@ subroutine SetServices ( GC, RC )
     Call MAPL_set(MAPL, locstream = mesh_locstream, _RC)
 
     ! deallocate pointers
-    deallocate(field_saver)
-    deallocate(nodelons)
-    deallocate(nodelats)
-    deallocate(conn_slice)
-    deallocate(nodeCoords)
-    deallocate(nodeIds)
-    deallocate(elementTypes)
-    deallocate(elementIds)
-    deallocate(elementConn)
-    deallocate(elementCoords)
-    deallocate(glacIds)
-    deallocate(elementMask)
-    deallocate(nodeMask)
-    deallocate(halo_idx)
-    deallocate(owned_idx)
-    deallocate(halolist)
-    deallocate(ownedNodeCoords)
-    deallocate(ownedNodeLats)
-    deallocate(ownedNodeLons)
-    deallocate(ownedNodeIds)
-    deallocate(nodeOwners)
+    if(associated(field_saver))     deallocate(field_saver)
+    if(associated(nodelons))        deallocate(nodelons)
+    if(associated(nodelats))        deallocate(nodelats)
+    if(associated(conn_slice))      deallocate(conn_slice)
+    if(associated(nodeCoords))      deallocate(nodeCoords)
+    if(associated(nodeIds))         deallocate(nodeIds)
+    if(associated(elementTypes))    deallocate(elementTypes)
+    if(associated(elementIds))      deallocate(elementIds)
+    if(associated(elementConn))     deallocate(elementConn)
+    if(associated(elementCoords))   deallocate(elementCoords)
+    if(associated(glacIds))         deallocate(glacIds)
+    if(associated(elementMask))     deallocate(elementMask)
+    if(associated(nodeMask))        deallocate(nodeMask)
+    if(associated(halo_idx))        deallocate(halo_idx)
+    if(associated(owned_idx))       deallocate(owned_idx)
+    if(associated(halolist))        deallocate(halolist)
+    if(associated(ownedNodeCoords)) deallocate(ownedNodeCoords)
+    if(associated(ownedNodeLats))   deallocate(ownedNodeLats)
+    if(associated(ownedNodeLons))   deallocate(ownedNodeLons)
+    if(associated(ownedNodeIds))    deallocate(ownedNodeIds)
+    if(associated(nodeOwners))      deallocate(nodeOwners)
 
     ! destroy fields and arrays
     call ESMF_FieldDestroy(gridField, rc=STATUS); VERIFY_(STATUS)
@@ -1015,6 +1016,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   if(associated(halolist))      deallocate(halolist)
   if(associated(halo_idx))      deallocate(halo_idx)
   if(associated(owned_idx))     deallocate(owned_idx)
+  if(associated(VAR_GRID))      deallocate(VAR_GRID)
 
   call MAPL_TimerOff(MAPL,"RUN"  )
   call MAPL_TimerOff(MAPL,"TOTAL")
@@ -1067,12 +1069,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   end subroutine mesh_to_tile
 
   subroutine tile_to_mesh(VAR_TILE,VAR_MESH)
-! transform from landice tile to grid, then regrid onto mesh
+    ! transform from landice tile to grid, then regrid onto mesh
     real, pointer, dimension(:), intent(inout)     :: VAR_TILE    ! var on landice tiles
     real(dp), pointer, dimension(:), intent(inout) :: VAR_MESH    ! var on mesh elements
     real(dp), pointer, dimension(:)                :: MESH_PTR    ! pointer for ESMF_FieldGet 
 
-! transform from tile to grid
+    ! transform from tile to grid
     ! NOTE: we use the "transpose" option with MAPL_LocStreamTransformG2T 
     ! (rather than MAPL_LocStreamTransformT2G) because the "default" value is zero
     ! (rather than MAPL_UNDEF, which leads to errors when regridding onto mesh)
@@ -1108,6 +1110,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_FieldDestroy(srcField,rc=STATUS);  VERIFY_(STATUS)
     call ESMF_FieldDestroy(dstField,rc=STATUS);  VERIFY_(STATUS)
     call ESMF_ArrayDestroy(meshArray,rc=STATUS); VERIFY_(STATUS)
+
+    if(associated(MESH_PTR)) deallocate(MESH_PTR)
 
   end subroutine tile_to_mesh  
 
