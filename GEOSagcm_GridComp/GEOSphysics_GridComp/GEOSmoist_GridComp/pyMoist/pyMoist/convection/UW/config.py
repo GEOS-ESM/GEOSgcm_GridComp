@@ -5,6 +5,7 @@ from ndsl.dsl.typing import Float, Int
 
 @dataclass
 class UWConfiguration:
+    JASON: bool
     NCNST: Int
     k0: Int
     windsrcavg: Int

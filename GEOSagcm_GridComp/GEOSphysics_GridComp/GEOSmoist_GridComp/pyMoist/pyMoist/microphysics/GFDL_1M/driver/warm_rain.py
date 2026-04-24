@@ -902,10 +902,14 @@ class GFDL1MWarmRain(NDSLRuntime):
             mass (FloatField): (inout) mass of grid cell
             rain (FloatFieldIJ): (out) model at-large rain precipitation (kg m^-2 s^-1)
             driver_rain (FloatFieldIJ): (out) in-driver rain precipitation (kg m^-2 s^-1)
-            ice_precip_flux (FloatField): (out) model at-large non-anvil large scale ice precip flux (kg m^-2 s^-1)
-            driver_ice_precip_flux (FloatField): (out) in-driver non-anvil large scale ice precip flux (kg m^-2 s^-1)
-            liquid_precip_flux (FloatField): (out) model at-large non-anvil large scare liquid precip flux (kg m^-2 s^-1)
-            driver_liquid_precip_flux (FloatField): (out) in-driver non-anvil large scare liquid precip flux (kg m^-2 s^-1)
+            ice_precip_flux (FloatField): (out) model at-large non-anvil large scale ice precip flux
+            (kg m^-2 s^-1)
+            driver_ice_precip_flux (FloatField): (out) in-driver non-anvil large scale ice precip flux
+            (kg m^-2 s^-1)
+            liquid_precip_flux (FloatField): (out) model at-large non-anvil large scare liquid precip flux
+            (kg m^-2 s^-1)
+            driver_liquid_precip_flux (FloatField): (out) in-driver non-anvil large scare liquid precip flux
+            (kg m^-2 s^-1)
             evaporation (FloatField): (out) model at-large non-anvil large scale evaporation (kg kg-1 s-1)
             driver_evaporation (FloatField): (out) in-driver non-anvil large scale evaporation (kg kg-1 s-1)
         """

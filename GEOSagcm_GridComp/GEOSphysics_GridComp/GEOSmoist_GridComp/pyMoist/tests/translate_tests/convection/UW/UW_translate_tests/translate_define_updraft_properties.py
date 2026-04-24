@@ -9,9 +9,9 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
 
 import pyMoist.constants as constants
-from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
 from pyMoist.convection.UW.compute_uwshcu import define_updraft_properties
 from pyMoist.convection.UW.config import UWConfiguration
+from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
 
 
 class TranslateDefineUpdraftProperties(TranslateFortranData2Py):

@@ -1,4 +1,4 @@
-from ndsl import NDSLRuntime, StencilFactory, ndsl_log, Quantity
+from ndsl import NDSLRuntime, Quantity, StencilFactory, ndsl_log
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import PARALLEL, computation, interval
 from ndsl.dsl.typing import FloatField

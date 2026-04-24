@@ -60,11 +60,11 @@ nav:
           - "UW_interface": fortran/param_interfaces/convection/UW_interface.md
           - "GFDL_1M": fortran/param_interfaces/microphysics/GFDL1M_interface.md
       - "Internals":
-        - "build_helper": fortran/build_helper.md
-        - "managed_state": "fortran/managed_state.md"
-        - "memory_factory": "fortran/memory_factory.md"
-        - "moist_workarounds": "fortran/moist_workarounds.md"
-        - "profiler": "fortran/profiler.md"
+          - "build_helper": fortran/build_helper.md
+          - "managed_state": "fortran/managed_state.md"
+          - "memory_factory": "fortran/memory_factory.md"
+          - "moist_workarounds": "fortran/moist_workarounds.md"
+          - "profiler": "fortran/profiler.md"
   - Saturation Tables:
       - "tables":
           - "constants": saturation_tables/tables/constants.md

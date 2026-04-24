@@ -1,9 +1,8 @@
 """GFDL_1M driver"""
 
 import dace
-from ndsl import NDSLRuntime, QuantityFactory, StencilFactory, Quantity
+from ndsl import NDSLRuntime, Quantity, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM
-from ndsl.dsl.typing import FloatField, FloatFieldIJ
 
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.driver.check_flags import check_flags

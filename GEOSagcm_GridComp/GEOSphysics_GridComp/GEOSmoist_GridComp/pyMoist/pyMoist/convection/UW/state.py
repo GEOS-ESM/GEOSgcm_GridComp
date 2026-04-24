@@ -30,6 +30,15 @@ class UWState(State):
                 "dtype": Float,
             }
         )
+        AREA: Quantity = dataclasses.field(
+            metadata={
+                "name": "AREA",
+                "dims": [I_DIM, J_DIM],
+                "units": "m^2",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
         QLLS: Quantity = dataclasses.field(
             metadata={
                 "name": "QLLS",

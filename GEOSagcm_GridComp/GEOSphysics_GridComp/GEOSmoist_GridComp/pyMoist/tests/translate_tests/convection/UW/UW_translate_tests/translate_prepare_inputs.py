@@ -8,7 +8,6 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
 
 import pyMoist.constants as constants
-from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
 from pyMoist.convection.UW.compute_uwshcu import (
     _reset_mask,
     compute_thermodynamic_variables,
@@ -16,6 +15,7 @@ from pyMoist.convection.UW.compute_uwshcu import (
     compute_uwshcu_invert_before,
 )
 from pyMoist.convection.UW.config import UWConfiguration
+from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
 
 
 # Run the following at command line before running translate test

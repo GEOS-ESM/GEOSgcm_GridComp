@@ -1,24 +1,5 @@
 """All translate tests must be imported here to be automatically discoverable by `pytest"""
 
-from .microphysics.GFDL_1M.driver.translate_GFDL_1M_Driver import TranslateGFDL_1M_Driver
-from .microphysics.GFDL_1M.driver.translate_GFDL_1M_DriverFinish import TranslateGFDL_1M_DriverFinish
-from .microphysics.GFDL_1M.driver.translate_GFDL_1M_DriverSetup import TranslateGFDL_1M_DriverSetup
-from .microphysics.GFDL_1M.driver.translate_GFDL_1M_DriverTables import TranslateGFDL_1M_DriverTables
-from .microphysics.GFDL_1M.driver.translate_GFDL_1M_FallSpeed import TranslateGFDL_1M_FallSpeed
-from .microphysics.GFDL_1M.driver.translate_GFDL_1M_IceCloud import TranslateGFDL_1M_IceCloud
-from .microphysics.GFDL_1M.driver.translate_GFDL_1M_TerminalFall import TranslateGFDL_1M_TerminalFall
-from .microphysics.GFDL_1M.driver.translate_GFDL_1M_WarmRain import TranslateGFDL_1M_WarmRain
-from .microphysics.GFDL_1M.PhaseChange.translate_GFDL_1M_Evaporate import TranslateGFDL_1M_Evaporate
-from .microphysics.GFDL_1M.PhaseChange.translate_GFDL_1M_HydrostaticPDF import TranslateGFDL_1M_HydrostaticPDF
-from .microphysics.GFDL_1M.PhaseChange.translate_GFDL_1M_MeltFreeze import TranslateGFDL_1M_MeltFreeze
-from .microphysics.GFDL_1M.PhaseChange.translate_GFDL_1M_PhaseChange import TranslateGFDL_1M_PhaseChange
-from .microphysics.GFDL_1M.PhaseChange.translate_GFDL_1M_RHCalculations import TranslateGFDL_1M_RHCalculations
-from .microphysics.GFDL_1M.PhaseChange.translate_GFDL_1M_Sublimate import TranslateGFDL_1M_Sublimate
-from .microphysics.GFDL_1M.translate_GFDL_1M import TranslateGFDL_1M
-from .microphysics.GFDL_1M.translate_GFDL_1M_Finalize import TranslateGFDL_1M_Finalize
-from .microphysics.GFDL_1M.translate_GFDL_1M_RadiationCoupling import TranslateGFDL_1M_RadiationCoupling
-from .microphysics.GFDL_1M.translate_GFDL_1M_RedistributeClouds import TranslateGFDL_1M_RedistributeClouds
-from .microphysics.GFDL_1M.translate_GFDL_1M_Setup import TranslateGFDL_1M_Setup
 from .convection.UW.translate_compute_uwshcu import TranslateComputeUwshcuInv
 from .convection.UW.UW_translate_tests.translate_adjust_implicit_CIN_inputs1 import (
     TranslateAdjustImplicitCINInputs1,
@@ -73,14 +54,30 @@ from .convection.UW.UW_translate_tests.translate_recalc_environmental_variables 
     TranslateRecalcEnvVariables,
 )
 from .convection.UW.UW_translate_tests.translate_setup_inputs import TranslateSetupInputs
+from .convection.UW.UW_translate_tests.translate_setup_outputs import TranslateSetupOutputs
 from .convection.UW.UW_translate_tests.translate_tracer_tendencies import TranslateTracerTendencies
 from .convection.UW.UW_translate_tests.translate_update_output_variables1 import TranslateUpdateOutputVars1
-from .convection.UW.UW_translate_tests.translate_compute_uwshcu_invert_after import (
-    TranslateComputeUwshcuInvertAfter,
-)
-from .convection.UW.UW_translate_tests.translate_setup_outputs import TranslateSetupOutputs
-
+from .microphysics.GFDL_1M.driver.translate_GFDL_1M_Driver import TranslateGFDL_1M_Driver
+from .microphysics.GFDL_1M.driver.translate_GFDL_1M_DriverFinish import TranslateGFDL_1M_DriverFinish
+from .microphysics.GFDL_1M.driver.translate_GFDL_1M_DriverSetup import TranslateGFDL_1M_DriverSetup
+from .microphysics.GFDL_1M.driver.translate_GFDL_1M_DriverTables import TranslateGFDL_1M_DriverTables
+from .microphysics.GFDL_1M.driver.translate_GFDL_1M_FallSpeed import TranslateGFDL_1M_FallSpeed
+from .microphysics.GFDL_1M.driver.translate_GFDL_1M_IceCloud import TranslateGFDL_1M_IceCloud
+from .microphysics.GFDL_1M.driver.translate_GFDL_1M_TerminalFall import TranslateGFDL_1M_TerminalFall
+from .microphysics.GFDL_1M.driver.translate_GFDL_1M_WarmRain import TranslateGFDL_1M_WarmRain
+from .microphysics.GFDL_1M.PhaseChange.translate_GFDL_1M_Evaporate import TranslateGFDL_1M_Evaporate
+from .microphysics.GFDL_1M.PhaseChange.translate_GFDL_1M_HydrostaticPDF import TranslateGFDL_1M_HydrostaticPDF
+from .microphysics.GFDL_1M.PhaseChange.translate_GFDL_1M_MeltFreeze import TranslateGFDL_1M_MeltFreeze
+from .microphysics.GFDL_1M.PhaseChange.translate_GFDL_1M_PhaseChange import TranslateGFDL_1M_PhaseChange
+from .microphysics.GFDL_1M.PhaseChange.translate_GFDL_1M_RHCalculations import TranslateGFDL_1M_RHCalculations
+from .microphysics.GFDL_1M.PhaseChange.translate_GFDL_1M_Sublimate import TranslateGFDL_1M_Sublimate
+from .microphysics.GFDL_1M.translate_GFDL_1M import TranslateGFDL_1M
+from .microphysics.GFDL_1M.translate_GFDL_1M_Finalize import TranslateGFDL_1M_Finalize
+from .microphysics.GFDL_1M.translate_GFDL_1M_RadiationCoupling import TranslateGFDL_1M_RadiationCoupling
+from .microphysics.GFDL_1M.translate_GFDL_1M_RedistributeClouds import TranslateGFDL_1M_RedistributeClouds
+from .microphysics.GFDL_1M.translate_GFDL_1M_Setup import TranslateGFDL_1M_Setup
 from .translate_saturation_specific_humidity_functions import Translatesaturation_specific_humidity_functions
+
 
 __all__ = [
     "TranslateGFDL_1M_Driver",

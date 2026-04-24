@@ -8,8 +8,8 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.finalize import GFDL1MFinalize
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
-from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
 from pyMoist.microphysics.GFDL_1M.shared_stencils import update_tendencies
+from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 
 

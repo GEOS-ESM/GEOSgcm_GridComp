@@ -2,7 +2,7 @@
 I/O and error handling is performed here.
 Calculations can be found in deeper functions."""
 
-from ndsl import Local, NDSLRuntime, QuantityFactory, StencilFactory, Quantity
+from ndsl import Local, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.typing import Float
 

@@ -3,7 +3,6 @@
 import os
 
 import numpy as np
-
 from ndsl.dsl.typing import Float, Int
 
 
@@ -11,11 +10,8 @@ _f32 = np.float32
 _f64 = np.float64
 _i32 = np.int32
 
-NUMBER_OF_TRACERS = Int(23)
-
 # Define number of tracers in UW
-# NOTE depreciate this, change all references of NCNST to NUMBER_OF_TRACERS
-EXPERIMENT_TRACERS = {"bomex": 18, "armtwp_ice": 18, "gcm-fp": 23}
+EXPERIMENT_TRACERS = {"arm_97jul": 18, "arm_97jun": 18, "armtwp_ice": 18, "bomex": 18, "gcm-fp": 23}
 EXP_NAME = os.getenv("EXP_NAME", "")
 if EXP_NAME == "":
     raise ValueError("EXP_NAME env var is not set - experiment unknown.")
@@ -23,6 +19,8 @@ if EXP_NAME not in EXPERIMENT_TRACERS:
     raise ValueError(f"Experiment {EXP_NAME} unknown - tracers can't be initialized.")
 NCNST = _i32(EXPERIMENT_TRACERS[EXP_NAME])
 
+
+NUMBER_OF_TRACERS = NCNST
 
 # MAPL_UNDEF is set to 1E15 in the Fortran
 # We keep it as is for now to match 11.5.2 GEOS

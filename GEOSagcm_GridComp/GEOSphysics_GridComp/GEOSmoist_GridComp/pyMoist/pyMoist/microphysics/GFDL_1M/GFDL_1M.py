@@ -7,7 +7,6 @@ from pyMoist.microphysics.GFDL_1M.finalize import GFDL1MFinalize
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.microphysics.GFDL_1M.PhaseChange import PhaseChange
 from pyMoist.microphysics.GFDL_1M.setup import GFDL1MSetup
-from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
 from pyMoist.microphysics.GFDL_1M.shared_stencils import (
     get_total_concentration,
     prepare_radiation,
@@ -16,6 +15,7 @@ from pyMoist.microphysics.GFDL_1M.shared_stencils import (
     update_after_driver,
     update_tendencies,
 )
+from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
 
 

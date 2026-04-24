@@ -1,9 +1,8 @@
 from f90nml import Namelist
 from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.dsl.typing import Float, Int
-from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.stencils.testing.savepoint import DataLoader
+from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
 
 from pyMoist.convection.UW.compute_uwshcu import setup_outputs

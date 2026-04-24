@@ -5,16 +5,16 @@ from ndsl.dsl.typing import Float, Int
 from ndsl.utils import safe_assign_array
 
 from pyMoist.constants import NCNST
-from pyMoist.convection.UW import ComputeUwshcuInv, UWConfiguration, UWState
 from pyMoist.fortran import get_NDSL_physics
 from pyMoist.fortran.build_helper import StencilBackendCompilerOverride
 from pyMoist.fortran.managed_state import MAPLManagedState
 from pyMoist.fortran.memory_factory import MAPLMemoryRepository
 from pyMoist.fortran.moist_workarounds import MOIST_WORKAROUNDS
 from pyMoist.fortran.profiler import TimedCUDAProfiler
+from pyMoist.convection.UW import UWConfiguration, UWState
 
 
-class UWGEOSInterface(UserCode):
+class UWGEOSInterface_NOOP_IN(UserCode):
     def __init__(self, name: str) -> None:
         pass
 
@@ -30,7 +30,7 @@ class UWGEOSInterface(UserCode):
 
         # Compile the configuration for UW
         config = UWConfiguration(
-            JASON=True if ndsl_stack.quantity_factory.sizer.nz == 72 else False,
+            JASON= True if ndsl_stack.quantity_factory.sizer.nz == 72 else False,
             NCNST=NCNST,
             k0=ndsl_stack.quantity_factory.sizer.nz,
             dotransport=1 if MAPLPy.get_resource("USE_TRACER_TRANSP_UW:", mapl_state, default=True) else 0,
@@ -71,20 +71,13 @@ class UWGEOSInterface(UserCode):
             qtsrchgt=MAPLPy.get_resource("QTSRCHGT:", mapl_state, default=Float(40.0)),
         )
 
-        # Build UW
-        with StencilBackendCompilerOverride(
-            MPI.COMM_WORLD,
-            ndsl_stack.stencil_factory.config.dace_config,
-        ):
-            self._uw = ComputeUwshcuInv(ndsl_stack.stencil_factory, ndsl_stack.quantity_factory, config)
-
         # Init NDSL state
         self._managed_state = MAPLManagedState(
             UWState.empty(
                 ndsl_stack.quantity_factory,
-                data_dimensions={
+                data_dimensions= {
                     "ntracers": config.NCNST,
-                },
+                }
             ),
             ndsl_stack.interface_type,
         )
@@ -173,50 +166,20 @@ class UWGEOSInterface(UserCode):
         # CLLS = MAPLPy.get_pointer("CLLS", internal_state, dtype=np.float32)
         # CNV_FRC = MAPLPy.get_pointer("CNV_FRC", export_state, dtype=np.float32, alloc=True)
         # SRF_TYPE = MAPLPy.get_pointer("SRF_TYPE", export_state, dtype=np.float32, alloc=True)
-
         debug = False
 
-        if not debug:
-            with TimedCUDAProfiler("UW", {}):
-                with TimedCUDAProfiler("UW - State copy", {}):
-                    self._managed_state.fortran_to_ndsl()
-                    safe_assign_array(
-                        self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
-                        MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
-                    )
-
-                with TimedCUDAProfiler("UW Numerics", {}):
-                    self._uw(self._managed_state.ndsl_state)
-
-                with TimedCUDAProfiler("UW - State copy-back", {}):
-                    safe_assign_array(
-                        MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
-                        self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
-                    )
-                    self._managed_state.ndsl_to_fortran()
-        else:
-            with TimedCUDAProfiler("UW", {}):
-                with TimedCUDAProfiler("UW - State copy", {}):
-                    self._managed_state.fortran_to_ndsl()
-                    safe_assign_array(
-                        self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
-                        MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
-                    )
-                    self._managed_state.record("UW-In")
-
-                with TimedCUDAProfiler("UW Numerics", {}):
-                    self._uw(self._managed_state.ndsl_state)
-
-                with TimedCUDAProfiler("UW - State copy-back", {}):
-                    safe_assign_array(
-                        MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
-                        self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
-                    )
-                    self._managed_state.ndsl_to_fortran()
-                    self._managed_state.record("UW-Out")
+        with TimedCUDAProfiler("UW", {}):
+            with TimedCUDAProfiler("UW - State copy", {}):
+                self._managed_state.fortran_to_ndsl()
+                safe_assign_array(
+                    self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
+                    MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
+                )
+                if debug:
+                    self._managed_state.record("UW-Fortran-In")
 
     def finalize(self, mapl_state, import_state, export_state) -> None:
         self._managed_state.save_recorded()
 
 
-CODE = UWGEOSInterface("UW")
+CODE = UWGEOSInterface_NOOP_IN("UW")

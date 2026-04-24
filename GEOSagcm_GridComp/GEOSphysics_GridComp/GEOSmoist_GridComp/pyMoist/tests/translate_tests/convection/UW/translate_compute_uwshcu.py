@@ -101,7 +101,9 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
         self.constants = data_loader.load("ComputeUwshcuInv-constants")
 
     def compute(self, inputs):
-        config = UWConfiguration(**self.constants)
+        JASON_UW: bool = True
+        config = UWConfiguration(JASON_UW, **self.constants)
+
         state = UWState.zeros(
             self.quantity_factory,
             data_dimensions={

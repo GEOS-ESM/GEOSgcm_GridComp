@@ -4,9 +4,7 @@ from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
-from pyMoist import GFDL1MConfig
-from pyMoist import GFDL1M
-from pyMoist import GFDL1MState
+from pyMoist import GFDL1M, GFDL1MConfig, GFDL1MState
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 
 

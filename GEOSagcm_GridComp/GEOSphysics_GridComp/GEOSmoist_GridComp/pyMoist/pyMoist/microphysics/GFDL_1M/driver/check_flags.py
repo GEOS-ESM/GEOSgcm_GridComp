@@ -1,5 +1,3 @@
-from ndsl.dsl.typing import Float
-
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentConstants
 

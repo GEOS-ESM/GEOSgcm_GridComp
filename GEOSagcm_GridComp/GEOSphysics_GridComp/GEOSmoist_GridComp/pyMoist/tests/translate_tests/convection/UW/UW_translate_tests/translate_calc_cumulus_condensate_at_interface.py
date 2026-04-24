@@ -3,19 +3,15 @@ from gt4py.cartesian.gtscript import int32
 from ndsl import StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.typing import Int
-from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.dsl.typing import Int
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
 
 import pyMoist.constants as constants
-
-import pyMoist.constants as constants
-from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
 from pyMoist.convection.UW.compute_uwshcu import calc_cumulus_condensate_at_interface
 from pyMoist.convection.UW.config import UWConfiguration
+from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
 
 
 class TranslateCalcCumulusCondensate(TranslateFortranData2Py):

@@ -2,6 +2,7 @@ from ndsl import NDSLRuntime, QuantityFactory, StencilFactory, ndsl_log
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, function, interval, sqrt
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
+from ndsl.stencils.basic_operations import copy
 
 from pyMoist.constants import MAPL_CP, MAPL_GRAV
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
@@ -12,7 +13,6 @@ from pyMoist.saturation_tables import (
     saturation_specific_humidity,
 )
 from pyMoist.shared.redistribute_clouds import redistribute_clouds
-from ndsl.stencils.basic_operations import copy
 
 
 @function

@@ -1,4 +1,4 @@
-from ndsl import NDSLRuntime, StencilFactory, Quantity
+from ndsl import NDSLRuntime, Quantity, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, function, interval, sqrt
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
@@ -472,7 +472,8 @@ class GFDL1MDriverSetup(NDSLRuntime):
             dp (Quantity): (out) copy of pressure between model layers (Pa) - can be modified within driver
             critical_relative_humidity_for_pdf (Quantity): (in) critical relative humidity
             radiation_field_vapor (Quantity): (in) water vapor mixing ratio - used in radiation scheme (kg/kg)
-            radiation_field_liquid (Quantity): (in) liquid water mixing ratio - used in radiation scheme (kg/kg)
+            radiation_field_liquid (Quantity): (in) liquid water mixing ratio - used in radiation scheme
+            (kg/kg)
             radiation_field_ice (Quantity): (in) ice mixing ratio - used in radiation scheme (kg/kg)
             radiation_field_rain (Quantity): (in) rain mixing ratio - used in radiation scheme (kg/kg)
             radiation_field_snow (Quantity): (in) snow mixing ratio - used in radiation scheme (kg/kg)
