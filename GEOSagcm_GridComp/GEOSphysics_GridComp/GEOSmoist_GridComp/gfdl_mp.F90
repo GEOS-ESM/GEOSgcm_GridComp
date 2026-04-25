@@ -4068,8 +4068,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
             sink = 0.
             di  = max (di, qcmin)
             q_plus = qi + di
-            ! Use of ice_fraction here is critical to producing the proper snow in reflectivity vs too much cloud ice
-            qim = max(ice_fraction(real(tz(k)), cnv_fraction, srf_type), 0.01) * critical_qi_factor / den (k) / qadum
+            qim = critical_qi_factor / den (k) / qadum
             if (q_plus .gt. (qim + qcmin)) then
                 if (qim .gt. (qi - di)) then
                     dq = (0.25 * (q_plus - qim) ** 2) / di
