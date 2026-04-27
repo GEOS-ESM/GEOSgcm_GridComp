@@ -763,9 +763,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   integer :: num_outputs = 6                                      ! number of outputs 
   real(dp),    pointer, dimension(:)   :: ISSM_OUTPUTS  => null() ! pointer containing all outputs
 
-  ! pointer for variables on attached grid (reused multiple times for regridding)
-  real, pointer, dimension(:,:)        :: VAR_GRID      => null() 
-
   ! ice-surface elevation on mesh and landice tiles
   real(dp),    pointer, dimension(:)   :: ICESURF_MESH  => null() ! ice elevation on mesh
   real, pointer, dimension(:)          :: ICESURF_TILE  => null() ! ice elevation on landice tiles
@@ -886,13 +883,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! get landice tile dimensions
     call MAPL_LocStreamGet(internal_state%locstream, NT_LOCAL=NT, _RC)
 
-    ! get grid dimensions
+    ! get grid dimensions, used below in regridding subroutines
     call MAPL_GridGet(internal_state%grid, localCellCountPerDim=local_dims, _RC)
     IM = local_dims(1)
     JM = local_dims(2)
-
-    ! allocate pointer on grid for regridding (reused multiple times)
-    allocate(VAR_GRID(IM,JM), STAT=STATUS); VERIFY_(STATUS)
      
     call ESMF_UserCompGetInternalState(GC, 'ISSM_TILES', issm_tile_wrap, status); VERIFY_(STATUS)
     issm_tile_state => issm_tile_wrap%ptr
@@ -1021,10 +1015,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   subroutine mesh_to_tile(VAR_MESH,VAR_TILE)
     ! regrid from mesh to grid, then transform from grid to landice tiles
-    real(dp),    pointer, dimension(:), intent(inout)   :: VAR_MESH       ! var on mesh nodes
-    real, pointer, dimension(:), intent(inout)          :: VAR_TILE       ! var on landice tiles
-
-    real(dp),    pointer, dimension(:)                  :: VAR_MESH_OWN   ! var on owned mesh nodes
+    real(dp),    pointer, dimension(:), intent(inout)   :: VAR_MESH           ! var on mesh nodes
+    real, pointer, dimension(:), intent(inout)          :: VAR_TILE           ! var on landice tiles
+    real, pointer, dimension(:,:)                       :: VAR_GRID => null() ! var on attached grid
+    real(dp),    pointer, dimension(:)                  :: VAR_MESH_OWN       ! var on owned mesh nodes
 
     allocate(VAR_MESH_OWN(num_owned_nodes))
 
@@ -1064,10 +1058,14 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   subroutine tile_to_mesh(VAR_TILE,VAR_MESH)
     ! transform from landice tile to grid, then regrid onto mesh
-    real, pointer, dimension(:), intent(inout)     :: VAR_TILE    ! var on landice tiles
-    real(dp), pointer, dimension(:), intent(inout) :: VAR_MESH    ! var on mesh elements
-    real(dp), pointer, dimension(:)                :: MESH_PTR    ! pointer for ESMF_FieldGet 
+    real, pointer, dimension(:), intent(inout)     :: VAR_TILE           ! var on landice tiles
+    real(dp), pointer, dimension(:), intent(inout) :: VAR_MESH           ! var on mesh elements
+    real, pointer, dimension(:,:)                  :: VAR_GRID => null() ! var on attached grid
+    real(dp), pointer, dimension(:)                :: MESH_PTR           ! pointer for ESMF_FieldGet 
 
+    ! allocate pointer on grid for regridding 
+    allocate(VAR_GRID(IM,JM), STAT=STATUS); VERIFY_(STATUS)
+  
     ! transform from tile to grid
     ! NOTE: we use the "transpose" option with MAPL_LocStreamTransformG2T 
     ! (rather than MAPL_LocStreamTransformT2G) because the "default" value is zero
@@ -1101,6 +1099,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VAR_MESH(halo_idx) = MESH_PTR(num_owned_nodes+1:num_nodes) ! halo nodes
     
     ! destroy fields and arrays so they can be reused
+    deallocate(VAR_GRID)
     call ESMF_FieldDestroy(srcField,rc=STATUS);  VERIFY_(STATUS)
     call ESMF_FieldDestroy(dstField,rc=STATUS);  VERIFY_(STATUS)
     call ESMF_ArrayDestroy(meshArray,rc=STATUS); VERIFY_(STATUS)
