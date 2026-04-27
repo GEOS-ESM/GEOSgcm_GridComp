@@ -68,9 +68,7 @@ def update_after_driver(
         t = t + dtdt * DT_MOIST
         u = u + dudt * DT_MOIST
         v = v + dvdt * DT_MOIST
-        radiation_cloud_fraction = min(
-            1.0, max(0.0, radiation_cloud_fraction + dcloud_fraction_dt * DT_MOIST)
-        )
+        radiation_cloud_fraction = min(1.0, max(0.0, radiation_cloud_fraction + dcloud_fraction_dt * DT_MOIST))
         radiation_ice = radiation_ice + dicedt * DT_MOIST
         radiation_liquid = radiation_liquid + dliquiddt * DT_MOIST
         radiation_vapor = radiation_vapor + dvapordt * DT_MOIST
@@ -113,9 +111,7 @@ def update_tendencies(
         dvapor_dt = (vapor - dvapor_dt) / DT_MOIST
         dliquid_dt = ((convective_liquid + large_scale_liquid) - dliquid_dt) / DT_MOIST
         dice_dt = ((convective_ice + large_scale_ice) - dice_dt) / DT_MOIST
-        dcloud_fraction_dt = (
-            (convective_cloud_fraction + large_scale_cloud_fraction) - dcloud_fraction_dt
-        ) / DT_MOIST
+        dcloud_fraction_dt = ((convective_cloud_fraction + large_scale_cloud_fraction) - dcloud_fraction_dt) / DT_MOIST
         drain_dt = (rain - drain_dt) / DT_MOIST
         dsnow_dt = (snow - dsnow_dt) / DT_MOIST
         dgraupel_dt = (graupel - dgraupel_dt) / DT_MOIST

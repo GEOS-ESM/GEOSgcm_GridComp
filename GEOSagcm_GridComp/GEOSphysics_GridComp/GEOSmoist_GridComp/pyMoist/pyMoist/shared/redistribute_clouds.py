@@ -53,9 +53,7 @@ def redistribute_clouds(
         # Redistribute liquid CN/LS portions based on prior fractions
         local_cloud_fraction = 0.0
         if convective_liquid + large_scale_liquid > 0.0:
-            local_cloud_fraction = min(
-                max(convective_liquid / (convective_liquid + large_scale_liquid), 0.0), 1.0
-            )
+            local_cloud_fraction = min(max(convective_liquid / (convective_liquid + large_scale_liquid), 0.0), 1.0)
 
         # Put all new condensate into LS
         dqc = liquid - (convective_liquid + large_scale_liquid)
@@ -86,9 +84,7 @@ def redistribute_clouds(
         local_cloud_fraction = 0.0
         if convective_cloud_fraction + large_scale_cloud_fraction > 0.0:
             local_cloud_fraction = min(
-                max(
-                    convective_cloud_fraction / (convective_cloud_fraction + large_scale_cloud_fraction), 0.0
-                ),
+                max(convective_cloud_fraction / (convective_cloud_fraction + large_scale_cloud_fraction), 0.0),
                 1.0,
             )
 

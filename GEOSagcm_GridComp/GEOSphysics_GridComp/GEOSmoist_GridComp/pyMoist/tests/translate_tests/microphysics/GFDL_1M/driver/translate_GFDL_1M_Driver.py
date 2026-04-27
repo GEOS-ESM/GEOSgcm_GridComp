@@ -17,7 +17,6 @@ from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
 class TranslateGFDL_1M_Driver(TranslateFortranData2Py):
     def __init__(self, grid: Grid, namelist: Namelist, stencil_factory: StencilFactory):
         super().__init__(grid, stencil_factory)
-        self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
 
         # FloatField Inputs
@@ -90,9 +89,7 @@ class TranslateGFDL_1M_Driver(TranslateFortranData2Py):
         safe_assign_array(locals_.driver_tendencies.dicedt.field[:], inputs["local_dicedt_driver"])
         safe_assign_array(locals_.driver_tendencies.dsnowdt.field[:], inputs["local_dsnowdt_driver"])
         safe_assign_array(locals_.driver_tendencies.dgraupeldt.field[:], inputs["local_dgraupeldt_driver"])
-        safe_assign_array(
-            locals_.driver_tendencies.dcloudfractiondt.field[:], inputs["local_dcloudfractiondt_driver"]
-        )
+        safe_assign_array(locals_.driver_tendencies.dcloudfractiondt.field[:], inputs["local_dcloudfractiondt_driver"])
         safe_assign_array(locals_.driver_tendencies.dtdt.field[:], inputs["local_dtdt_driver"])
         safe_assign_array(locals_.driver_tendencies.dudt.field[:], inputs["local_dudt_driver"])
         safe_assign_array(locals_.driver_tendencies.dvdt.field[:], inputs["local_dvdt_driver"])
@@ -107,15 +104,9 @@ class TranslateGFDL_1M_Driver(TranslateFortranData2Py):
         safe_assign_array(state.convection_fraction.field[:], inputs["convection_fraction"])
         safe_assign_array(state.surface_type.field[:], inputs["surface_type"])
         safe_assign_array(state.estimated_inversion_strength.field[:], inputs["estimated_inversion_strength"])
-        safe_assign_array(
-            state.critical_relative_humidity_for_pdf.field[:], inputs["critical_relative_humidity_for_pdf"]
-        )
-        safe_assign_array(
-            state.non_anvil_large_scale.evaporation.field[:], inputs["non_anvil_large_scale_evaporation"]
-        )
-        safe_assign_array(
-            state.non_anvil_large_scale.sublimation.field[:], inputs["non_anvil_large_scale_sublimation"]
-        )
+        safe_assign_array(state.critical_relative_humidity_for_pdf.field[:], inputs["critical_relative_humidity_for_pdf"])
+        safe_assign_array(state.non_anvil_large_scale.evaporation.field[:], inputs["non_anvil_large_scale_evaporation"])
+        safe_assign_array(state.non_anvil_large_scale.sublimation.field[:], inputs["non_anvil_large_scale_sublimation"])
         safe_assign_array(
             state.non_anvil_large_scale.liquid_precip_flux.field[:],
             inputs["non_anvil_large_scale_liquid_precip_flux"],
@@ -207,17 +198,11 @@ class TranslateGFDL_1M_Driver(TranslateFortranData2Py):
             "convection_fraction": copy.copy(state.convection_fraction.field[:]),
             "surface_type": copy.copy(state.surface_type.field[:]),
             "estimated_inversion_strength": copy.copy(state.estimated_inversion_strength.field[:]),
-            "critical_relative_humidity_for_pdf": copy.copy(
-                state.critical_relative_humidity_for_pdf.field[:]
-            ),
+            "critical_relative_humidity_for_pdf": copy.copy(state.critical_relative_humidity_for_pdf.field[:]),
             "non_anvil_large_scale_evaporation": copy.copy(state.non_anvil_large_scale.evaporation.field[:]),
             "non_anvil_large_scale_sublimation": copy.copy(state.non_anvil_large_scale.sublimation.field[:]),
-            "non_anvil_large_scale_liquid_precip_flux": copy.copy(
-                state.non_anvil_large_scale.liquid_precip_flux.field
-            )[:],
-            "non_anvil_large_scale_ice_precip_flux": copy.copy(
-                state.non_anvil_large_scale.ice_precip_flux.field[:]
-            ),
+            "non_anvil_large_scale_liquid_precip_flux": copy.copy(state.non_anvil_large_scale.liquid_precip_flux.field)[:],
+            "non_anvil_large_scale_ice_precip_flux": copy.copy(state.non_anvil_large_scale.ice_precip_flux.field[:]),
             "surface_precip_rain": copy.copy(state.precipitation_at_surface.rain.field[:]),
             "surface_precip_snow": copy.copy(state.precipitation_at_surface.snow.field[:]),
             "surface_precip_ice": copy.copy(state.precipitation_at_surface.ice.field[:]),

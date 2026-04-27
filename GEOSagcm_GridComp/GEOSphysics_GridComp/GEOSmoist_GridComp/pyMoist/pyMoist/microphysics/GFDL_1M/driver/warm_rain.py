@@ -140,13 +140,7 @@ def revap_racc(
                 dq = 0.25 * (q_minus - qsat) ** 2 / dqh
             qden = mixing_ratio_rain * density
             t2 = tin * tin
-            evap = (
-                crevp_0
-                * t2
-                * dq
-                * (crevp_1 * sqrt(qden) + crevp_2 * exp(0.725 * log(qden)))
-                / (crevp_3 * t2 + crevp_4 * qsat * density)
-            )
+            evap = crevp_0 * t2 * dq * (crevp_1 * sqrt(qden) + crevp_2 * exp(0.725 * log(qden))) / (crevp_3 * t2 + crevp_4 * qsat * density)
             evap = min(mixing_ratio_rain, min(0.5 * dts * fac_revp * evap, dqv / (1.0 + lcpk * dqsdt)))
             mixing_ratio_rain = mixing_ratio_rain - evap
             mixing_ratio_vapor = mixing_ratio_vapor + evap
@@ -305,9 +299,7 @@ def warm_rain_step_1(
         mixing_ratio_liquid = mixing_ratio_liquid / cloud_fraction_limited
         mixing_ratio_ice = mixing_ratio_ice / cloud_fraction_limited
 
-        fac_rc = (
-            min(1.0, estimated_inversion_strength / 15.0) ** 2
-        )  # Estimated inversion strength determine stable regime
+        fac_rc = min(1.0, estimated_inversion_strength / 15.0) ** 2  # Estimated inversion strength determine stable regime
         fac_rc = constants.RC * (rthreshs * fac_rc + rthreshu * (1.0 - fac_rc)) ** 3
         # NOTE: the multiplication "constants.RC * (result of parenthetical)" produces different results
         # in Fortran and Python, despite constants.RC and (result of parenthetical) being identical.
@@ -401,13 +393,7 @@ def warm_rain_step_1(
                         # revised continuous form: linearly decays
                         # (with subgrid dl) to zero at qc == ql + dl
                         # --------------------------------------------------------------------
-                        sink = (
-                            min(1.0, dq / dl)
-                            * dts
-                            * c_praut
-                            * density
-                            * exp(constants.SO3 * log(mixing_ratio_liquid))
-                        )
+                        sink = min(1.0, dq / dl) * dts * c_praut * density * exp(constants.SO3 * log(mixing_ratio_liquid))
                         sink = min(ql0_max, min(mixing_ratio_liquid, max(0.0, sink)))
                         mixing_ratio_liquid = mixing_ratio_liquid - sink
                         mixing_ratio_rain = mixing_ratio_rain + sink * cloud_fraction_limited
@@ -429,12 +415,7 @@ def warm_rain_step_1(
             if mixing_ratio_rain < constants.THR:
                 terminal_speed_rain = constants.VR_MIN
             else:
-                terminal_speed_rain = (
-                    vr_fac
-                    * constants.VCONR
-                    * sqrt(min(10.0, constants.SFCRHO / density))
-                    * exp(0.2 * log(qden / constants.NORMR))
-                )
+                terminal_speed_rain = vr_fac * constants.VCONR * sqrt(min(10.0, constants.SFCRHO / density)) * exp(0.2 * log(qden / constants.NORMR))
                 terminal_speed_rain = min(vr_max, max(constants.VR_MIN, terminal_speed_rain))
 
     with computation(FORWARD), interval(-1, None):
@@ -495,15 +476,7 @@ def warm_rain_step_1(
 
     with computation(PARALLEL), interval(...):
         if do_sedi_w == True:  # noqa
-            dmass = dp * (
-                1.0
-                + mixing_ratio_vapor
-                + mixing_ratio_liquid
-                + mixing_ratio_rain
-                + mixing_ratio_ice
-                + mixing_ratio_snow
-                + mixing_ratio_graupel
-            )
+            dmass = dp * (1.0 + mixing_ratio_vapor + mixing_ratio_liquid + mixing_ratio_rain + mixing_ratio_ice + mixing_ratio_snow + mixing_ratio_graupel)
 
 
 def warm_rain_step_2(
@@ -562,38 +535,20 @@ def warm_rain_step_2(
         des3 (GlobalTable_driver_qsat)
         des4 (GlobalTable_driver_qsat)
     """
-    from __externals__ import (
-        c_air,
-        c_vap,
-        cracw,
-        crevp_0,
-        crevp_1,
-        crevp_2,
-        crevp_3,
-        crevp_4,
-        d0_vap,
-        do_sedi_w,
-        dts,
-        lv00,
-        tau_revp,
-    )
+    from __externals__ import c_air, c_vap, cracw, crevp_0, crevp_1, crevp_2, crevp_3, crevp_4, d0_vap, do_sedi_w, dts, lv00, tau_revp
 
     # -----------------------------------------------------------------------
     # vertical velocity transportation during sedimentation
     # -----------------------------------------------------------------------
     with computation(FORWARD), interval(0, 1):
         if do_sedi_w == True:  # noqa
-            w = (dmass * w + driver_liquid_precip_flux * terminal_speed_rain) / (
-                dmass - driver_liquid_precip_flux
-            )
+            w = (dmass * w + driver_liquid_precip_flux * terminal_speed_rain) / (dmass - driver_liquid_precip_flux)
 
     with computation(FORWARD), interval(1, None):
         if do_sedi_w == True:  # noqa
-            w = (
-                dmass * w
-                - driver_liquid_precip_flux[0, 0, -1] * terminal_speed_rain[0, 0, -1]
-                + driver_liquid_precip_flux * terminal_speed_rain
-            ) / (dmass + driver_liquid_precip_flux[0, 0, -1] - driver_liquid_precip_flux)
+            w = (dmass * w - driver_liquid_precip_flux[0, 0, -1] * terminal_speed_rain[0, 0, -1] + driver_liquid_precip_flux * terminal_speed_rain) / (
+                dmass + driver_liquid_precip_flux[0, 0, -1] - driver_liquid_precip_flux
+            )
 
     # -----------------------------------------------------------------------
     # evaporation and accretion of rain for the remaing 1 / 2 time step

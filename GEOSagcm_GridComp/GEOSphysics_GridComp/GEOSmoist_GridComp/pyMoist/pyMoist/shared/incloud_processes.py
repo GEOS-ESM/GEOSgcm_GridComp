@@ -2,20 +2,7 @@
 These functions evaluate various in-cloud microphysical
 processes/quantities."""
 
-from ndsl.dsl.gt4py import (
-    PARALLEL,
-    GlobalTable,
-    computation,
-    exp,
-    float32,
-    float64,
-    floor,
-    function,
-    interval,
-    log10,
-    round_away_from_zero,
-    sin,
-)
+from ndsl.dsl.gt4py import PARALLEL, GlobalTable, computation, exp, float32, float64, floor, function, interval, log10, round_away_from_zero, sin
 from ndsl.dsl.typing import Float, FloatField
 
 import pyMoist.constants as constants
@@ -35,59 +22,75 @@ def ice_fraction_modis(
 
 @function
 def ice_fraction(
-    temp: Float,
-    cnv_frc: Float,
-    srf_type: Float,
+    temp,
+    cnv_frc,
+    srf_type,
 ):
+    """Determine the ice/liquid fraction.
+
+    Args:
+        temp (Float): temperature (Kelvin)
+        cnv_frc (Float): convection fraction within the column
+        srf_type (Float): surface type
+
+    Returns:
+        Float: ice fraction
+    """
     # Anvil clouds
     # Anvil-Convective sigmoidal function like figure 6(right)
     # Sigmoidal functions Hu et al 2010, doi:10.1029/2009JD012384
-    if temp <= constants.JaT_ICE_ALL:
-        icefrct_c = 1.000
-    elif temp > constants.JaT_ICE_ALL and temp <= constants.JaT_ICE_MAX:
-        icefrct_c = sin(
-            0.5
-            * constants.MAPL_PI
-            * (1.00 - (temp - constants.JaT_ICE_ALL) / (constants.JaT_ICE_MAX - constants.JaT_ICE_ALL))
-        )
+    if constants.ICE_RADII_PARAM == 1:
+        # Jason formula
+        if temp <= constants.JaT_ICE_ALL:
+            icefrct_c = 1.000
+        elif temp > constants.JaT_ICE_ALL and temp <= constants.JaT_ICE_MAX:
+            icefrct_c = sin(0.5 * constants.MAPL_PI * (1.00 - (temp - constants.JaT_ICE_ALL) / (constants.JaT_ICE_MAX - constants.JaT_ICE_ALL)))
+        else:
+            icefrct_c = 0.00
     else:
-        icefrct_c = 0.00
+        # Default formula
+        if temp <= constants.aT_ICE_ALL:
+            icefrct_c = 1.000
+        elif temp > constants.aT_ICE_ALL and temp <= constants.aT_ICE_MAX:
+            icefrct_c = sin(0.5 * constants.MAPL_PI * (1.00 - (temp - constants.aT_ICE_ALL) / (constants.aT_ICE_MAX - constants.aT_ICE_ALL)))
+        else:
+            icefrct_c = 0.00
     icefrct_c = max(min(icefrct_c, 1.00), 0.00) ** constants.aICEFRPWR
+
     # Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
-    if srf_type == 2.0:
-        if temp <= constants.JiT_ICE_ALL:
+    srf_type_int = round(srf_type)
+
+    if srf_type_int == 2 or srf_type_int == 3:  # 2 = snow, 3 = ice
+        if temp <= constants.iT_ICE_ALL:
             icefrct_m = 1.000
-        elif temp > constants.JiT_ICE_ALL and temp <= constants.JiT_ICE_MAX:
-            icefrct_m = 1.00 - (temp - constants.JiT_ICE_ALL) / (
-                constants.JiT_ICE_MAX - constants.JiT_ICE_ALL
-            )
+        elif temp > constants.iT_ICE_ALL and temp <= constants.iT_ICE_MAX:
+            icefrct_m = sin(0.5 * constants.MAPL_PI * (1.00 - (temp - constants.iT_ICE_ALL) / (constants.iT_ICE_MAX - constants.iT_ICE_ALL)))
         else:
             icefrct_m = 0.00
         icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** constants.iICEFRPWR
-    elif srf_type > 1.0:
+
+    elif srf_type_int == 1:  # land
         if temp <= constants.lT_ICE_ALL:
             icefrct_m = 1.000
         elif temp > constants.lT_ICE_ALL and temp <= constants.lT_ICE_MAX:
-            icefrct_m = sin(
-                0.5
-                * constants.MAPL_PI
-                * (1.00 - (temp - constants.lT_ICE_ALL) / (constants.lT_ICE_MAX - constants.lT_ICE_ALL))
-            )
+            icefrct_m = sin(0.5 * constants.MAPL_PI * (1.00 - (temp - constants.lT_ICE_ALL) / (constants.lT_ICE_MAX - constants.lT_ICE_ALL)))
         else:
             icefrct_m = 0.00
         icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** constants.lICEFRPWR
-    else:
+
+    elif srf_type_int == 0:  # ocean
         if temp <= constants.oT_ICE_ALL:
             icefrct_m = 1.000
         elif temp > constants.oT_ICE_ALL and temp <= constants.oT_ICE_MAX:
-            icefrct_m = sin(
-                0.5
-                * constants.MAPL_PI
-                * (1.00 - (temp - constants.oT_ICE_ALL) / (constants.oT_ICE_MAX - constants.oT_ICE_ALL))
-            )
+            icefrct_m = sin(0.5 * constants.MAPL_PI * (1.00 - (temp - constants.oT_ICE_ALL) / (constants.oT_ICE_MAX - constants.oT_ICE_ALL)))
         else:
             icefrct_m = 0.00
         icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** constants.oICEFRPWR
+
+    else:
+        # unknown surface type detected - you should not be here
+        icefrct_m = -999
+
     ice_frac = icefrct_m * (1.0 - cnv_frc) + icefrct_c * cnv_frc
     return ice_frac
 
@@ -112,9 +115,7 @@ def cloud_effective_radius_liquid(
         radius (Float): drop radius
     """
     # Calculate liquid water content
-    wc = (
-        1.0e3 * air_density(pressure, temperature) * liquid_mixing_ratio
-    )  # air density [g/m3] * liquid cloud mixing ratio [kg/kg]
+    wc = 1.0e3 * air_density(pressure, temperature) * liquid_mixing_ratio  # air density [g/m3] * liquid cloud mixing ratio [kg/kg]
     # Calculate cloud drop number concentration from the aerosol model + ....
     nnx = max(liquid_concentration * 1.0e-6, 10.0)
     # Calculate Radius in meters [m]
@@ -154,9 +155,7 @@ def cloud_effective_radius_ice(
         radius (Float): ice particle radius
     """
     # Calculate ice water content
-    wc = (
-        1.0e3 * air_density(pressure, temperature) * ice_mixing_ratio
-    )  # air density [g/m3] * ice cloud mixing ratio [kg/kg]
+    wc = 1.0e3 * air_density(pressure, temperature) * ice_mixing_ratio  # air density [g/m3] * ice cloud mixing ratio [kg/kg]
     # Calculate radius in meters [m]
     if constants.ICE_RADII_PARAM == 1:
         # Ice cloud effective radius -- [klaus wyser, 1998]
@@ -215,13 +214,10 @@ def fix_up_clouds(
     with computation(PARALLEL), interval(...):
         # fix small convective cloud fraction
         if convective_cloud_fraction < 1.0e-5:
-            mixing_ratio_vapor = (
-                mixing_ratio_vapor + mixing_ratio_convective_liquid + mixing_ratio_convective_ice
-            )
+            mixing_ratio_vapor = mixing_ratio_vapor + mixing_ratio_convective_liquid + mixing_ratio_convective_ice
             t = (
                 t
-                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP)
-                * mixing_ratio_convective_liquid
+                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * mixing_ratio_convective_liquid
                 - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * mixing_ratio_convective_ice
             )
             convective_cloud_fraction = 0.0
@@ -229,13 +225,10 @@ def fix_up_clouds(
             mixing_ratio_convective_ice = 0.0
         # fix small large scale cloud fraction
         if large_scale_cloud_fraction < 1.0e-5:
-            mixing_ratio_vapor = (
-                mixing_ratio_vapor + mixing_ratio_large_scale_liquid + mixing_ratio_large_scale_ice
-            )
+            mixing_ratio_vapor = mixing_ratio_vapor + mixing_ratio_large_scale_liquid + mixing_ratio_large_scale_ice
             t = (
                 t
-                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP)
-                * mixing_ratio_large_scale_liquid
+                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * mixing_ratio_large_scale_liquid
                 - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * mixing_ratio_large_scale_ice
             )
             large_scale_cloud_fraction = 0.0
@@ -244,28 +237,17 @@ def fix_up_clouds(
         # if large scale liquid water concentration is too low
         if mixing_ratio_large_scale_liquid < 1.0e-8:
             mixing_ratio_vapor = mixing_ratio_vapor + mixing_ratio_large_scale_liquid
-            t = (
-                t
-                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP)
-                * mixing_ratio_large_scale_liquid
-            )
+            t = t - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * mixing_ratio_large_scale_liquid
             mixing_ratio_large_scale_liquid = 0.0
         # if large scale frozen water concentration is too low
         if mixing_ratio_large_scale_ice < 1.0e-8:
             mixing_ratio_vapor = mixing_ratio_vapor + mixing_ratio_large_scale_ice
-            t = (
-                t
-                - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * mixing_ratio_large_scale_ice
-            )
+            t = t - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * mixing_ratio_large_scale_ice
             mixing_ratio_large_scale_ice = 0.0
         # if convective liquid water concentration is too low
         if mixing_ratio_convective_liquid < 1.0e-8:
             mixing_ratio_vapor = mixing_ratio_vapor + mixing_ratio_convective_liquid
-            t = (
-                t
-                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP)
-                * mixing_ratio_convective_liquid
-            )
+            t = t - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * mixing_ratio_convective_liquid
             mixing_ratio_convective_liquid = 0.0
         # if convective frozen water concentration is too low
         if mixing_ratio_convective_ice < 1.0e-8:
@@ -274,13 +256,10 @@ def fix_up_clouds(
             mixing_ratio_convective_ice = 0.0
         # if total convective water is too low
         if (mixing_ratio_convective_liquid + mixing_ratio_convective_ice) < 1.0e-8:
-            mixing_ratio_vapor = (
-                mixing_ratio_vapor + mixing_ratio_convective_liquid + mixing_ratio_convective_ice
-            )
+            mixing_ratio_vapor = mixing_ratio_vapor + mixing_ratio_convective_liquid + mixing_ratio_convective_ice
             t = (
                 t
-                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP)
-                * mixing_ratio_convective_liquid
+                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * mixing_ratio_convective_liquid
                 - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * mixing_ratio_convective_ice
             )
             convective_cloud_fraction = 0.0
@@ -288,13 +267,10 @@ def fix_up_clouds(
             mixing_ratio_convective_ice = 0.0
         # if total large scale water is too low
         if (mixing_ratio_large_scale_liquid + mixing_ratio_large_scale_ice) < 1.0e-8:
-            mixing_ratio_vapor = (
-                mixing_ratio_vapor + mixing_ratio_large_scale_liquid + mixing_ratio_large_scale_ice
-            )
+            mixing_ratio_vapor = mixing_ratio_vapor + mixing_ratio_large_scale_liquid + mixing_ratio_large_scale_ice
             t = (
                 t
-                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP)
-                * mixing_ratio_large_scale_liquid
+                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * mixing_ratio_large_scale_liquid
                 - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * mixing_ratio_large_scale_ice
             )
             large_scale_cloud_fraction = 0.0
@@ -444,10 +420,7 @@ def make_ice_number(
         idx_rei = int(t - 180.0)
         idx_rei = min(max(idx_rei, 0), 93)
         corr = t - floor(t)
-        reice = (
-            RADIATIVE_EFFECTIVE_RADIUS.A[idx_rei] * (1.0 - corr)
-            + RADIATIVE_EFFECTIVE_RADIUS.A[idx_rei + 1] * corr
-        )
+        reice = RADIATIVE_EFFECTIVE_RADIUS.A[idx_rei] * (1.0 - corr) + RADIATIVE_EFFECTIVE_RADIUS.A[idx_rei + 1] * corr
         deice = 2.0 * reice * 1.0e-6
 
         internal_lambda = float64(3.0 / deice)
@@ -466,14 +439,7 @@ def make_ice_number(
 
         k = (mui + 3) * (mui * 3) / (mui + 2) / (mui + 1)
 
-        crystal_number = (
-            k
-            * cloud_ice_mixing_ratio
-            * internal_lambda
-            * internal_lambda
-            * internal_lambda
-            / (constants.MAPL_PI * ice_density)
-        )
+        crystal_number = k * cloud_ice_mixing_ratio * internal_lambda * internal_lambda * internal_lambda / (constants.MAPL_PI * ice_density)
 
     return crystal_number
 
@@ -518,14 +484,7 @@ def make_droplet_number(
 
         internal_lambda = (float64(4.0) + nu_c) / xDc
 
-        qnc = (
-            cloud_water_mixing_ratio
-            / G_RATIO.A[int(nu_c - 1)]
-            * internal_lambda
-            * internal_lambda
-            * internal_lambda
-            / am_r
-        )
+        qnc = cloud_water_mixing_ratio / G_RATIO.A[int(nu_c - 1)] * internal_lambda * internal_lambda * internal_lambda / am_r
         droplet_number = float32(qnc)
 
     return droplet_number

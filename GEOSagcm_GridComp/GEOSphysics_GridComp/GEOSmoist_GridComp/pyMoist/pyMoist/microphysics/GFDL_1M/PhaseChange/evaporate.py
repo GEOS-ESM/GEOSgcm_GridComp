@@ -39,17 +39,10 @@ def evaporate(
         # Evaporation of cloud water. DelGenio et al formulation
         # (Eq.s 15-17, 1996, J. Clim., 9, 270-303)
         es = (
-            100.0
-            * p_mb
-            * saturation_specific_humidity
-            / (constants.EPSILON + (1.0 - constants.EPSILON) * saturation_specific_humidity)
+            100.0 * p_mb * saturation_specific_humidity / (constants.EPSILON + (1.0 - constants.EPSILON) * saturation_specific_humidity)
         )  # (100's <-^ convert from mbar to Pa)
         rhx = min(mixing_ratio_vapor / saturation_specific_humidity, 1.00)
-        k1 = (
-            (constants.MAPL_LATENT_HEAT_VAPORIZATION**2)
-            * constants.RHO_W
-            / (constants.K_COND * constants.MAPL_RVAP * (t**2))
-        )
+        k1 = (constants.MAPL_LATENT_HEAT_VAPORIZATION**2) * constants.RHO_W / (constants.K_COND * constants.MAPL_RVAP * (t**2))
         k2 = constants.MAPL_RVAP * t * constants.RHO_W / (constants.DIFFU * (1000.0 / p_mb) * es)
         # Here, DIFFU is given for 1000 mb so 1000./PLmb accounts
         # for increased diffusivity at lower pressure
@@ -59,13 +52,7 @@ def evaporate(
             qcm = 0.0
         radius = cloud_effective_radius_liquid(p_mb, t, qcm, liquid_concentration)
         if rhx < rh_crit and radius > 0.0:
-            evap = (
-                CCW_EVAP_EFF
-                * mixing_ratio_convective_liquid
-                * DT_MOIST
-                * (rh_crit - rhx)
-                / ((k1 + k2) * radius**2)
-            )
+            evap = CCW_EVAP_EFF * mixing_ratio_convective_liquid * DT_MOIST * (rh_crit - rhx) / ((k1 + k2) * radius**2)
             evap = min(evap, mixing_ratio_convective_liquid)
         else:
             evap = 0.0

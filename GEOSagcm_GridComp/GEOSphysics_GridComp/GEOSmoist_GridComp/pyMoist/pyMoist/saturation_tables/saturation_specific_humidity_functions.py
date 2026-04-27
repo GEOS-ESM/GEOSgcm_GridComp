@@ -1,17 +1,6 @@
 from ndsl.dsl.gt4py import floor, function, int32
 
-from pyMoist.saturation_tables.constants import (
-    DEGSUBS,
-    ERFAC,
-    ESFAC,
-    MAPL_TICE,
-    MAX_MIXING_RATIO,
-    TABLESIZE,
-    TMAXTBL,
-    TMINLQU,
-    TMINTBL,
-    TMIX,
-)
+from pyMoist.saturation_tables.constants import DEGSUBS, ERFAC, ESFAC, MAPL_TICE, MAX_MIXING_RATIO, TABLESIZE, TMAXTBL, TMINLQU, TMINTBL, TMIX
 
 
 @function
@@ -141,7 +130,7 @@ def saturation_specific_humidity(
         qsat (Float): saturation specific humidity
         dqsat (Float): derivative saturation specific humidity with respect to temperature
     """
-    if use_ramp == True:  # noqa
+    if use_ramp:
         uramp = -abs(ramp)
     else:
         uramp = TMIX

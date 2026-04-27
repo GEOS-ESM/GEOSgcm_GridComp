@@ -66,16 +66,8 @@ def radiation_coupling(
         # total cloud fraction
         radiation_cloud_fraction = max(min(large_scale_cloud_fraction + convective_cloud_fraction, 1.0), 0.0)
         if radiation_cloud_fraction >= 1.0e-5:
-            radiation_liquid = (
-                (large_scale_liquid + convective_liquid) / radiation_cloud_fraction
-                if (large_scale_liquid + convective_liquid) >= 1.0e-8
-                else 0.0
-            )
-            radiation_ice = (
-                (large_scale_ice + convective_ice) / radiation_cloud_fraction
-                if (large_scale_ice + convective_ice) >= 1.0e-8
-                else 0.0
-            )
+            radiation_liquid = (large_scale_liquid + convective_liquid) / radiation_cloud_fraction if (large_scale_liquid + convective_liquid) >= 1.0e-8 else 0.0
+            radiation_ice = (large_scale_ice + convective_ice) / radiation_cloud_fraction if (large_scale_ice + convective_ice) >= 1.0e-8 else 0.0
             radiation_rain = rain / radiation_cloud_fraction if rain >= 1.0e-8 else 0.0
             radiation_snow = snow / radiation_cloud_fraction if snow >= 1.0e-8 else 0.0
             radiation_graupel = graupel / radiation_cloud_fraction if graupel >= 1.0e-8 else 0.0
@@ -98,8 +90,7 @@ def radiation_coupling(
         liquid_radius = max(
             MIN_RL,
             min(
-                cloud_effective_radius_liquid(pressure, temperature, radiation_liquid, liquid_concentration)
-                * FAC_RL,
+                cloud_effective_radius_liquid(pressure, temperature, radiation_liquid, liquid_concentration) * FAC_RL,
                 MAX_RL,
             ),
         )

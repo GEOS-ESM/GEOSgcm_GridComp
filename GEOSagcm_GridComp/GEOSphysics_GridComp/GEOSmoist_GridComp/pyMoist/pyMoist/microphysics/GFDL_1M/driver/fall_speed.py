@@ -40,20 +40,7 @@ def fall_speed(
         graupel_terminal_velocity (FloatField): (out) terminal fall speed for graupel
         convection_fraction (FloatFieldIJ): (in) convection fraction
     """
-    from __externals__ import (
-        anv_icefall,
-        const_vg,
-        const_vi,
-        const_vs,
-        ls_icefall,
-        p_nonhydro,
-        vg_fac,
-        vg_max,
-        vi_fac,
-        vi_max,
-        vs_fac,
-        vs_max,
-    )
+    from __externals__ import anv_icefall, const_vg, const_vi, const_vs, ls_icefall, p_nonhydro, vg_fac, vg_max, vi_fac, vi_max, vs_fac, vs_max
 
     with computation(PARALLEL), interval(...):
         if p_nonhydro:
@@ -83,16 +70,8 @@ def fall_speed(
                 # use deng and mace (2008, grl)
                 # https://doi.org/10.1029/2008GL035054
                 # -----------------------------------------------------------------------
-                viLSC = ls_icefall * 10.0 ** (
-                    log10(IWC) * (tc * (constants.AAL * tc + constants.BBL) + constants.CCL)
-                    + constants.DDL * tc
-                    + constants.EEL
-                )
-                viCNV = anv_icefall * 10.0 ** (
-                    log10(IWC) * (tc * (constants.AAC * tc + constants.BBC) + constants.CCC)
-                    + constants.DDC * tc
-                    + constants.EEC
-                )
+                viLSC = ls_icefall * 10.0 ** (log10(IWC) * (tc * (constants.AAL * tc + constants.BBL) + constants.CCL) + constants.DDL * tc + constants.EEL)
+                viCNV = anv_icefall * 10.0 ** (log10(IWC) * (tc * (constants.AAC * tc + constants.BBC) + constants.CCC) + constants.DDC * tc + constants.EEC)
                 # Combine
                 ice_terminal_velocity = viLSC * (1.0 - convection_fraction) + viCNV * (convection_fraction)
                 # Update units from cm/s to m/s
@@ -110,12 +89,7 @@ def fall_speed(
             if mixing_ratio_snow < constants.THS:
                 snow_terminal_velocity = constants.VF_MIN
             else:
-                snow_terminal_velocity = (
-                    vs_fac
-                    * constants.VCONS
-                    * rhof
-                    * exp(0.0625 * log(mixing_ratio_snow * density / constants.NORMS))
-                )
+                snow_terminal_velocity = vs_fac * constants.VCONS * rhof * exp(0.0625 * log(mixing_ratio_snow * density / constants.NORMS))
                 snow_terminal_velocity = min(vs_max, max(constants.VF_MIN, snow_terminal_velocity))
 
         # -----------------------------------------------------------------------
@@ -128,10 +102,5 @@ def fall_speed(
             if mixing_ratio_graupel < constants.THG:
                 graupel_terminal_velocity = constants.VF_MIN
             else:
-                graupel_terminal_velocity = (
-                    vg_fac
-                    * constants.VCONG
-                    * rhof
-                    * sqrt(sqrt(sqrt(mixing_ratio_graupel * density / constants.NORMG)))
-                )
+                graupel_terminal_velocity = vg_fac * constants.VCONG * rhof * sqrt(sqrt(sqrt(mixing_ratio_graupel * density / constants.NORMG)))
                 graupel_terminal_velocity = min(vg_max, max(constants.VF_MIN, graupel_terminal_velocity))

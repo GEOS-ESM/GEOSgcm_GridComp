@@ -15,8 +15,7 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
         namelist: Namelist,
         stencil_factory: StencilFactory,
     ):
-        super().__init__(grid, namelist, stencil_factory)
-        self.stencil_factory = stencil_factory
+        super().__init__(grid, stencil_factory)
         self.quantity_factory = grid.quantity_factory
 
         # NOTE not all fields are associated in v11.5.2. fields which are not associated are not serialized,
@@ -141,29 +140,17 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
         state = GFDL1MState.zeros(self.quantity_factory)
 
         # fill state with input data
-        state.precipitation_at_surface.deep_convective_precipitation.field[:] = inputs[
-            "precipitation_at_surface_deep_convective_precipitation"
-        ]
-        state.precipitation_at_surface.anvil_precipitation.field[:] = inputs[
-            "precipitation_at_surface_anvil_precipitation"
-        ]
-        state.precipitation_at_surface.shallow_convective_precipitation.field[:] = inputs[
-            "precipitation_at_surface_shallow_convective_precipitation"
-        ]
-        state.precipitation_at_surface.deep_convective_snow.field[:] = inputs[
-            "precipitation_at_surface_deep_convective_snow"
-        ]
+        state.precipitation_at_surface.deep_convective_precipitation.field[:] = inputs["precipitation_at_surface_deep_convective_precipitation"]
+        state.precipitation_at_surface.anvil_precipitation.field[:] = inputs["precipitation_at_surface_anvil_precipitation"]
+        state.precipitation_at_surface.shallow_convective_precipitation.field[:] = inputs["precipitation_at_surface_shallow_convective_precipitation"]
+        state.precipitation_at_surface.deep_convective_snow.field[:] = inputs["precipitation_at_surface_deep_convective_snow"]
         state.precipitation_at_surface.anvil_snow.field[:] = inputs["precipitation_at_surface_anvil_snow"]
-        state.precipitation_at_surface.shallow_convective_snow.field[:] = inputs[
-            "precipitation_at_surface_shallow_convective_snow"
-        ]
+        state.precipitation_at_surface.shallow_convective_snow.field[:] = inputs["precipitation_at_surface_shallow_convective_snow"]
         # state.lcl_height.field[:] = inputs["lcl_height"]
         state.shallow_convection_rain.field[:] = inputs["shallow_convection_rain"]
         state.shallow_convection_snow.field[:] = inputs["shallow_convection_snow"]
         # state.large_scale_rainwater_source.field[:] = inputs["large_scale_rainwater_source"]
-        state.tendencies.dtdt_friction_pressure_weighted.field[:] = inputs[
-            "tendencies_dtdt_friction_pressure_weighted"
-        ]
+        state.tendencies.dtdt_friction_pressure_weighted.field[:] = inputs["tendencies_dtdt_friction_pressure_weighted"]
         state.mixing_ratio.vapor.field[:] = inputs["mixing_ratio_vapor"]
         state.mixing_ratio.rain.field[:] = inputs["mixing_ratio_rain"]
         state.mixing_ratio.snow.field[:] = inputs["mixing_ratio_snow"]
@@ -193,9 +180,7 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
         state.vertical_motion.third_moment.field[:] = inputs["vertical_motion_third_moment"]
         state.liquid_water_static_energy.flux.field[:] = inputs["liquid_water_static_energy_flux"]
         state.liquid_water_static_energy.variance.field[:] = inputs["liquid_water_static_energy_variance"]
-        state.liquid_water_static_energy.third_moment.field[:] = inputs[
-            "liquid_water_static_energy_third_moment"
-        ]
+        state.liquid_water_static_energy.third_moment.field[:] = inputs["liquid_water_static_energy_third_moment"]
         state.total_water.flux.field[:] = inputs["total_water_flux"]
         state.total_water.variance.field[:] = inputs["total_water_variance"]
         state.total_water.third_moment.field[:] = inputs["total_water_third_moment"]
@@ -228,9 +213,7 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
         state.radiation_field.rain.field[:] = inputs["radiation_field_rain"]
         state.radiation_field.snow.field[:] = inputs["radiation_field_snow"]
         state.radiation_field.graupel.field[:] = inputs["radiation_field_graupel"]
-        state.cloud_particle_effective_radius.liquid.field[:] = inputs[
-            "cloud_particle_effective_radius_liquid"
-        ]
+        state.cloud_particle_effective_radius.liquid.field[:] = inputs["cloud_particle_effective_radius_liquid"]
         state.cloud_particle_effective_radius.ice.field[:] = inputs["cloud_particle_effective_radius_ice"]
         state.precipitation_at_surface.rain.field[:] = inputs["precipitation_at_surface_rain"]
         state.precipitation_at_surface.snow.field[:] = inputs["precipitation_at_surface_snow"]
@@ -240,9 +223,7 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
         state.non_anvil_large_scale.snow.field[:] = inputs["non_anvil_large_scale_snow"]
         state.non_anvil_large_scale.evaporation.field[:] = inputs["non_anvil_large_scale_evaporation"]
         state.non_anvil_large_scale.sublimation.field[:] = inputs["non_anvil_large_scale_sublimation"]
-        state.non_anvil_large_scale.liquid_precip_flux.field[:] = inputs[
-            "non_anvil_large_scale_liquid_precip_flux"
-        ]
+        state.non_anvil_large_scale.liquid_precip_flux.field[:] = inputs["non_anvil_large_scale_liquid_precip_flux"]
         state.non_anvil_large_scale.ice_precip_flux.field[:] = inputs["non_anvil_large_scale_ice_precip_flux"]
         state.anvil.liquid_precip_flux.field[:] = inputs["anvil_liquid_precip_flux"]
         state.anvil.ice_precip_flux.field[:] = inputs["anvil_ice_precip_flux"]
@@ -274,29 +255,17 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
         code(state=state)
 
         return {
-            "precipitation_at_surface_deep_convective_precipitation": state.precipitation_at_surface.deep_convective_precipitation.field[  # noqa
-                :
-            ],
-            "precipitation_at_surface_anvil_precipitation": state.precipitation_at_surface.anvil_precipitation.field[  # noqa
-                :
-            ],
-            "precipitation_at_surface_shallow_convective_precipitation": state.precipitation_at_surface.shallow_convective_precipitation.field[  # noqa
-                :
-            ],
-            "precipitation_at_surface_deep_convective_snow": state.precipitation_at_surface.deep_convective_snow.field[  # noqa
-                :
-            ],
+            "precipitation_at_surface_deep_convective_precipitation": state.precipitation_at_surface.deep_convective_precipitation.field[:],  # noqa
+            "precipitation_at_surface_anvil_precipitation": state.precipitation_at_surface.anvil_precipitation.field[:],  # noqa
+            "precipitation_at_surface_shallow_convective_precipitation": state.precipitation_at_surface.shallow_convective_precipitation.field[:],  # noqa
+            "precipitation_at_surface_deep_convective_snow": state.precipitation_at_surface.deep_convective_snow.field[:],  # noqa
             "precipitation_at_surface_anvil_snow": state.precipitation_at_surface.anvil_snow.field[:],
-            "precipitation_at_surface_shallow_convective_snow": state.precipitation_at_surface.shallow_convective_snow.field[  # noqa
-                :
-            ],
+            "precipitation_at_surface_shallow_convective_snow": state.precipitation_at_surface.shallow_convective_snow.field[:],  # noqa
             # "lcl_height": state.lcl_height.field[:],
             "shallow_convection_rain": state.shallow_convection_rain.field[:],
             "shallow_convection_snow": state.shallow_convection_snow.field[:],
             # "large_scale_rainwater_source": state.large_scale_rainwater_source.field[:],
-            "tendencies_dtdt_friction_pressure_weighted": state.tendencies.dtdt_friction_pressure_weighted.field[  # noqa
-                :
-            ],
+            "tendencies_dtdt_friction_pressure_weighted": state.tendencies.dtdt_friction_pressure_weighted.field[:],  # noqa
             "mixing_ratio_vapor": state.mixing_ratio.vapor.field[:],
             "mixing_ratio_rain": state.mixing_ratio.rain.field[:],
             "mixing_ratio_snow": state.mixing_ratio.snow.field[:],
@@ -369,9 +338,7 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
             "non_anvil_large_scale_snow": state.non_anvil_large_scale.snow.field[:],
             "non_anvil_large_scale_evaporation": state.non_anvil_large_scale.evaporation.field[:],
             "non_anvil_large_scale_sublimation": state.non_anvil_large_scale.sublimation.field[:],
-            "non_anvil_large_scale_liquid_precip_flux": state.non_anvil_large_scale.liquid_precip_flux.field[
-                :
-            ],
+            "non_anvil_large_scale_liquid_precip_flux": state.non_anvil_large_scale.liquid_precip_flux.field[:],
             "non_anvil_large_scale_ice_precip_flux": state.non_anvil_large_scale.ice_precip_flux.field[:],
             "anvil_liquid_precip_flux": state.anvil.liquid_precip_flux.field[:],
             "anvil_ice_precip_flux": state.anvil.ice_precip_flux.field[:],

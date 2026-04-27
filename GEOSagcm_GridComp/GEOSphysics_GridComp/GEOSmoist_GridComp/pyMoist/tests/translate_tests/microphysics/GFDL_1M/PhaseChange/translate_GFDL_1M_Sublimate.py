@@ -15,7 +15,6 @@ from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 class TranslateGFDL_1M_Sublimate(TranslateFortranData2Py):
     def __init__(self, grid: Grid, namelist: Namelist, stencil_factory: StencilFactory):
         super().__init__(grid, stencil_factory)
-        self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
 
         # FloatField Inputs

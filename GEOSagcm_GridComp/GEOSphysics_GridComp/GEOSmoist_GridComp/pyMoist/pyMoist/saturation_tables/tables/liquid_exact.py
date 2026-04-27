@@ -4,15 +4,7 @@ import numpy as np
 from ndsl.dsl.gt4py import exp, function, log, log10, tanh
 from ndsl.dsl.typing import Float, Int
 
-from pyMoist.saturation_tables.constants import (
-    DELTA_T,
-    ERFAC,
-    ESFAC,
-    MAPL_TICE,
-    MAX_MIXING_RATIO,
-    TMAXTBL,
-    TMINLQU,
-)
+from pyMoist.saturation_tables.constants import DELTA_T, ERFAC, ESFAC, MAPL_TICE, MAX_MIXING_RATIO, TMAXTBL, TMINLQU
 from pyMoist.saturation_tables.formulation import SaturationFormulation
 from pyMoist.saturation_tables.tables.constants import LiquidExactConstants
 
@@ -82,16 +74,11 @@ def _saturation_formulation(
             + 2.0
         )
     elif formulation == 3:
-        ex = exp(
-            (CL_0 + CL_1 / t + CL_2 * log(t) + CL_3 * t)
-            + tanh(CL_4 * (t - CL_5)) * (CL_6 + CL_7 / t + CL_8 * log(t) + CL_9 * t)
-        )
+        ex = exp((CL_0 + CL_1 / t + CL_2 * log(t) + CL_3 * t) + tanh(CL_4 * (t - CL_5)) * (CL_6 + CL_7 / t + CL_8 * log(t) + CL_9 * t))
     return ex
 
 
-def _saturation_formulation_no_stencil(
-    t: Float, formulation: SaturationFormulation = SaturationFormulation.Staars
-):
+def _saturation_formulation_no_stencil(t: Float, formulation: SaturationFormulation = SaturationFormulation.Staars):
     if formulation == SaturationFormulation.Staars:
         tt = t - MAPL_TICE
         ex = (
@@ -99,15 +86,7 @@ def _saturation_formulation_no_stencil(
             * (
                 tt
                 * (
-                    tt
-                    * (
-                        tt
-                        * (
-                            tt * (tt * LiquidExactConstants.B6 + LiquidExactConstants.B5)
-                            + LiquidExactConstants.B4
-                        )
-                        + LiquidExactConstants.B3
-                    )
+                    tt * (tt * (tt * (tt * LiquidExactConstants.B6 + LiquidExactConstants.B5) + LiquidExactConstants.B4) + LiquidExactConstants.B3)
                     + LiquidExactConstants.B2
                 )
                 + LiquidExactConstants.B1
@@ -119,30 +98,16 @@ def _saturation_formulation_no_stencil(
         ex = Float(10.0) ** (
             LiquidExactConstants.DL[0] * (tt - Float(1.0))
             + LiquidExactConstants.DL[1] * np.log10(tt)
-            + LiquidExactConstants.DL[2]
-            * (Float(10.0) ** (LiquidExactConstants.DL[3] * (Float(1.0) - (Float(1.0) / tt))) - Float(1.0))
-            / Float(10000000.0)
-            + LiquidExactConstants.DL[4]
-            * (Float(10.0) ** (LiquidExactConstants.DL[5] * (tt - Float(1.0))) - Float(1.0))
-            / Float(1000.0)
+            + LiquidExactConstants.DL[2] * (Float(10.0) ** (LiquidExactConstants.DL[3] * (Float(1.0) - (Float(1.0) / tt))) - Float(1.0)) / Float(10000000.0)
+            + LiquidExactConstants.DL[4] * (Float(10.0) ** (LiquidExactConstants.DL[5] * (tt - Float(1.0))) - Float(1.0)) / Float(1000.0)
             + LiquidExactConstants.LOGPS
             + Float(2.0)
         )
     elif formulation == SaturationFormulation.MurphyAndKoop:
         ex = np.exp(
-            (
-                LiquidExactConstants.CL[0]
-                + LiquidExactConstants.CL[1] / t
-                + LiquidExactConstants.CL[2] * np.log(t)
-                + LiquidExactConstants.CL[3] * t
-            )
+            (LiquidExactConstants.CL[0] + LiquidExactConstants.CL[1] / t + LiquidExactConstants.CL[2] * np.log(t) + LiquidExactConstants.CL[3] * t)
             + np.tanh(LiquidExactConstants.CL[4] * (t - LiquidExactConstants.CL[5]))
-            * (
-                LiquidExactConstants.CL[6]
-                + LiquidExactConstants.CL[7] / t
-                + LiquidExactConstants.CL[8] * np.log(t)
-                + LiquidExactConstants.CL[9] * t
-            )
+            * (LiquidExactConstants.CL[6] + LiquidExactConstants.CL[7] / t + LiquidExactConstants.CL[8] * np.log(t) + LiquidExactConstants.CL[9] * t)
         )
     return Float(ex)
 

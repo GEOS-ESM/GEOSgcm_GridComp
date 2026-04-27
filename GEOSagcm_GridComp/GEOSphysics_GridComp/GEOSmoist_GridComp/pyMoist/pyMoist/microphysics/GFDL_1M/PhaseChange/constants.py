@@ -228,9 +228,7 @@ class PhaseChangeConstants:
     ACCO = np.zeros([3, 4], dtype=Float)
     for i in range(1, 4):
         for k in range(1, 5):
-            ACCO[i - 1, k - 1] = ACC[i - 1] / (
-                ACT[2 * k - 2] ** ((7 - i) * Float(0.25)) * ACT[2 * k - 1] ** (i * Float(0.25))
-            )
+            ACCO[i - 1, k - 1] = ACC[i - 1] / (ACT[2 * k - 2] ** ((7 - i) * Float(0.25)) * ACT[2 * k - 1] ** (i * Float(0.25)))
 
     ACCO_00 = ACCO[0, 0]
     ACCO_01 = ACCO[0, 1]

@@ -72,7 +72,9 @@ class StencilBackendCompilerOverride:
         if not self.config.do_compile:
             ndsl_log.info(f"Stencil backend read cache on {self.comm.Get_rank()}")
         else:
-            ndsl_log.info(f"Stencil backend was compiled on {self.comm.Get_rank()} \
-                    now waiting for other ranks")
+            ndsl_log.info(
+                f"Stencil backend was compiled on {self.comm.Get_rank()} \
+                    now waiting for other ranks"
+            )
             self.comm.Barrier()
         ndsl_log.info(f"Rank {self.comm.Get_rank()} ready for execution")

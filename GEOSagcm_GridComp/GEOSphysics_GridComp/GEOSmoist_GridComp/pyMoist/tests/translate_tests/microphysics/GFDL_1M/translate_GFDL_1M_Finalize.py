@@ -128,13 +128,9 @@ class TranslateGFDL_1M_Finalize(TranslateFortranData2Py):
         state.non_anvil_large_scale.snow.field[:] = inputs["non_anvil_large_scale_snow"]
         state.icefall.field[:] = inputs["icefall"]
         state.freezing_rainfall.field[:] = inputs["freezing_rainfall"]
-        state.cloud_particle_effective_radius.liquid.field[:] = inputs[
-            "cloud_particle_effective_radius_liquid"
-        ]
+        state.cloud_particle_effective_radius.liquid.field[:] = inputs["cloud_particle_effective_radius_liquid"]
         state.cloud_particle_effective_radius.ice.field[:] = inputs["cloud_particle_effective_radius_ice"]
-        state.non_anvil_large_scale.liquid_precip_flux.field[:] = inputs[
-            "non_anvil_large_scale_liquid_precip_flux"
-        ]
+        state.non_anvil_large_scale.liquid_precip_flux.field[:] = inputs["non_anvil_large_scale_liquid_precip_flux"]
         state.non_anvil_large_scale.ice_precip_flux.field[:] = inputs["non_anvil_large_scale_ice_precip_flux"]
         state.anvil.liquid_precip_flux.field[:] = inputs["anvil_liquid_precip_flux"]
         state.anvil.ice_precip_flux.field[:] = inputs["anvil_ice_precip_flux"]
@@ -262,9 +258,7 @@ class TranslateGFDL_1M_Finalize(TranslateFortranData2Py):
             "freezing_rainfall": state.freezing_rainfall.field[:],
             "cloud_particle_effective_radius_liquid": state.cloud_particle_effective_radius.liquid.field[:],
             "cloud_particle_effective_radius_ice": state.cloud_particle_effective_radius.ice.field[:],
-            "non_anvil_large_scale_liquid_precip_flux": state.non_anvil_large_scale.liquid_precip_flux.field[
-                :
-            ],
+            "non_anvil_large_scale_liquid_precip_flux": state.non_anvil_large_scale.liquid_precip_flux.field[:],
             "non_anvil_large_scale_ice_precip_flux": state.non_anvil_large_scale.ice_precip_flux.field[:],
             "anvil_liquid_precip_flux": state.anvil.liquid_precip_flux.field[:],
             "anvil_ice_precip_flux": state.anvil.ice_precip_flux.field[:],

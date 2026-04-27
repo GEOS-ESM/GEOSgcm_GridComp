@@ -182,8 +182,7 @@ def conden(
         iteration = 0
         while iteration < 10:
             temps = temps + ((tc - temps) * constants.MAPL_CP / leff + qt - rvls) / (
-                constants.MAPL_CP / leff
-                + constants.EPSILON * leff * rvls / (constants.MAPL_RGAS * temps * temps)
+                constants.MAPL_CP / leff + constants.EPSILON * leff * rvls / (constants.MAPL_RGAS * temps * temps)
             )
             ps_tmp = ps / 100.0
             qs, _ = saturation_specific_humidity(temps, ps_tmp * 100.0, ese, esx)
@@ -226,9 +225,7 @@ def compute_alpha(
     ke8_f64: float64 = ke
     iteration = 0
     while iteration < 10:
-        x1 = x0 - (exp(-x0 * ke8_f64 * del_CIN8_f64) - x0) / (
-            -ke8_f64 * del_CIN8_f64 * exp(-x0 * ke8_f64 * del_CIN8_f64) - 1.0
-        )
+        x1 = x0 - (exp(-x0 * ke8_f64 * del_CIN8_f64) - x0) / (-ke8_f64 * del_CIN8_f64 * exp(-x0 * ke8_f64 * del_CIN8_f64) - 1.0)
         x0 = x1
         iteration += 1
 
@@ -264,14 +261,8 @@ def compute_mumin2(
         ex: float64 = exp(-(x0**2))
         ef: float64 = erfc(x0)  # Complimentary error fraction function
         exf: float64 = ex / ef
-        f: float64 = (
-            float64(0.5) * exf**2
-            - float64(0.5) * (ex / float64(2.0) / rmaxfrax) ** 2
-            - (mulcl * float64(2.5066) / float64(2.0)) ** 2
-        )
-        fs: float64 = (float64(2.0) * exf**2) * (exf / sqrt(constants.MAPL_PI) - x0) + (
-            float64(0.5) * x0 * ex**2
-        ) / (rmaxfrax**2)
+        f: float64 = float64(0.5) * exf**2 - float64(0.5) * (ex / float64(2.0) / rmaxfrax) ** 2 - (mulcl * float64(2.5066) / float64(2.0)) ** 2
+        fs: float64 = (float64(2.0) * exf**2) * (exf / sqrt(constants.MAPL_PI) - x0) + (float64(0.5) * x0 * ex**2) / (rmaxfrax**2)
         x1: float64 = x0 - f / fs
         x0 = x1
         iteration += 1
@@ -332,12 +323,8 @@ def compute_ppen(
         while iteration < 5:
             aux: float64 = min(max(float64(-2.0) * drag * x0, -20.0), 20.0)
 
-            f: float64 = exp(aux) * (wtwb - (bogbot - SB / (2.0 * drag)) / (drag * rho0j)) + (
-                SB * x0 + bogbot - SB / (2.0 * drag)
-            ) / (drag * rho0j)
-            fs: float64 = -2.0 * drag * exp(aux) * (wtwb - (bogbot - SB / (2.0 * drag)) / (drag * rho0j)) + (
-                SB
-            ) / (drag * rho0j)
+            f: float64 = exp(aux) * (wtwb - (bogbot - SB / (2.0 * drag)) / (drag * rho0j)) + (SB * x0 + bogbot - SB / (2.0 * drag)) / (drag * rho0j)
+            fs: float64 = -2.0 * drag * exp(aux) * (wtwb - (bogbot - SB / (2.0 * drag)) / (drag * rho0j)) + (SB) / (drag * rho0j)
 
             x1: float64 = x0 - f / fs
             x0 = x1
@@ -391,21 +378,18 @@ def getbuoy(
         plfc = pbot
     elif thvubot <= thv0bot and thvutop <= thv0top:
         cin = cin_in - ((thvubot / thv0bot - 1.0) + (thvutop / thv0top - 1.0)) * (pbot - ptop) / (
-            pbot / (constants.MAPL_RGAS * thv0bot * exnerfn(pbot))
-            + ptop / (constants.MAPL_RGAS * thv0top * exnerfn(ptop))
+            pbot / (constants.MAPL_RGAS * thv0bot * exnerfn(pbot)) + ptop / (constants.MAPL_RGAS * thv0top * exnerfn(ptop))
         )
     elif thvubot > thv0bot and thvutop <= thv0top:
         frc = (thvutop / thv0top - 1.0) / ((thvutop / thv0top - 1.0) - (thvubot / thv0bot - 1.0))
         cin = cin_in - (thvutop / thv0top - 1.0) * ((ptop + frc * (pbot - ptop)) - ptop) / (
-            pbot / (constants.MAPL_RGAS * thv0bot * exnerfn(pbot))
-            + ptop / (constants.MAPL_RGAS * thv0top * exnerfn(ptop))
+            pbot / (constants.MAPL_RGAS * thv0bot * exnerfn(pbot)) + ptop / (constants.MAPL_RGAS * thv0top * exnerfn(ptop))
         )
     else:
         frc = (thvubot / thv0bot - 1.0) / ((thvubot / thv0bot - 1.0) - (thvutop / thv0top - 1.0))
         plfc = pbot - frc * (pbot - ptop)
         cin = cin_in - ((thvubot / thv0bot - 1.0) * (pbot - plfc)) / (
-            pbot / (constants.MAPL_RGAS * thv0bot * exnerfn(pbot))
-            + ptop / (constants.MAPL_RGAS * thv0top * exnerfn(ptop))
+            pbot / (constants.MAPL_RGAS * thv0bot * exnerfn(pbot)) + ptop / (constants.MAPL_RGAS * thv0top * exnerfn(ptop))
         )
 
     return plfc, cin  # Note: plfc and cin are returned, but not always used
@@ -455,9 +439,7 @@ def qsinvert(
         qsinvert: float32 = psmin
 
     else:
-        TLCL: float64 = float64(55.0) + float64(1.0) / (
-            float64(1.0) / (Ti - float64(55.0)) - log(rhi) / float64(2840.0)
-        )  # Bolton's formula. MWR.1980.Eq.(22)
+        TLCL: float64 = float64(55.0) + float64(1.0) / (float64(1.0) / (Ti - float64(55.0)) - log(rhi) / float64(2840.0))  # Bolton's formula. MWR.1980.Eq.(22)
         PiLCL: float64 = TLCL / thl
         ps: float64 = p00 * (PiLCL) ** (float64(1.0) / rovcp)
 
@@ -471,9 +453,7 @@ def qsinvert(
             gam: float64 = (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * float64(dqsdT)
             err: float64 = qt - qs
             nu: float64 = ice_fraction(float32(Ts), 0.0, 0.0)
-            leff: float64 = (
-                float64(1.0) - nu
-            ) * constants.MAPL_LATENT_HEAT_VAPORIZATION + nu * constants.MAPL_LATENT_HEAT_SUBLIMATION
+            leff: float64 = (float64(1.0) - nu) * constants.MAPL_LATENT_HEAT_VAPORIZATION + nu * constants.MAPL_LATENT_HEAT_SUBLIMATION
             dlnqsdT: float64 = gam * (constants.MAPL_CP / leff) / qs
             dTdPis: float64 = thl
             dPisdps: float64 = rovcp * Pis / ps
@@ -602,10 +582,7 @@ def single_cin(
     single_cin = (
         ((1.0 - thvubot / thv0bot) + (1.0 - thvutop / thv0top))
         * (pbot - ptop)
-        / (
-            pbot / (constants.MAPL_RGAS * thv0bot * exnerfn(pbot))
-            + ptop / (constants.MAPL_RGAS * thv0top * exnerfn(ptop))
-        )
+        / (pbot / (constants.MAPL_RGAS * thv0bot * exnerfn(pbot)) + ptop / (constants.MAPL_RGAS * thv0top * exnerfn(ptop)))
     )
 
     return single_cin

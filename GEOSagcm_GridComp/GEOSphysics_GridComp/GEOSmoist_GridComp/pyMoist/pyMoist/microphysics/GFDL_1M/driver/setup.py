@@ -336,9 +336,7 @@ def fix_negative_values(
             d0_vap,
         )
         if dry_air_mixing_ratio_vapor < 0.0:
-            dry_air_mixing_ratio_vapor[0, 0, 1] = (
-                dry_air_mixing_ratio_vapor[0, 0, 1] + dry_air_mixing_ratio_vapor * dp / dp[0, 0, 1]
-            )
+            dry_air_mixing_ratio_vapor[0, 0, 1] = dry_air_mixing_ratio_vapor[0, 0, 1] + dry_air_mixing_ratio_vapor * dp / dp[0, 0, 1]
             dry_air_mixing_ratio_vapor = 0.0
 
     with computation(FORWARD), interval(-1, None):

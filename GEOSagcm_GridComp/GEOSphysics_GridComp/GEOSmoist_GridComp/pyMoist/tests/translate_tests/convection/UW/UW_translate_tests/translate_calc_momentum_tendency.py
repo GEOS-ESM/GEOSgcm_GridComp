@@ -57,9 +57,7 @@ class TranslateMomentumTendency(TranslateFortranData2Py):
             }
         )
 
-        self._calc_momentum_tendency = self.stencil_factory.from_dims_halo(
-            func=calc_momentum_tendency, compute_dims=[I_DIM, J_DIM, K_DIM], externals={"dt": config.dt}
-        )
+        self._calc_momentum_tendency = self.stencil_factory.from_dims_halo(func=calc_momentum_tendency, compute_dims=[I_DIM, J_DIM, K_DIM], externals={"dt": config.dt})
 
         # Inputs
         condensation = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a", dtype=bool)

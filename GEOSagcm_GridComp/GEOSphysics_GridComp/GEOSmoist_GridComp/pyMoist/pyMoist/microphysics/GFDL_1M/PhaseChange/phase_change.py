@@ -33,19 +33,13 @@ class PhaseChange(NDSLRuntime):
         super().__init__(stencil_factory)
 
         if not config.USE_BERGERON:
-            raise NotImplementedError(
-                "Untested option for use_bergeron. Code may be missing or incomplete. "
-                "Disable this error manually to continue."
-            )
+            raise NotImplementedError("Untested option for use_bergeron. Code may be missing or incomplete. " "Disable this error manually to continue.")
 
         if config.PDFSHAPE >= 5:
             raise NotImplementedError(f"PDF_SHAPE={config.PDFSHAPE} hasn't been ported from the Fortran")
 
         if config.PDFSHAPE > 1 and config.PDFSHAPE < 5:
-            raise NotImplementedError(
-                f"PDF_SHAPE={config.PDFSHAPE} is ported but untested. "
-                "Disable this error manually to continue."
-            )
+            raise NotImplementedError(f"PDF_SHAPE={config.PDFSHAPE} is ported but untested. " "Disable this error manually to continue.")
 
         # make config and tables visible at runtime
         self.config = config

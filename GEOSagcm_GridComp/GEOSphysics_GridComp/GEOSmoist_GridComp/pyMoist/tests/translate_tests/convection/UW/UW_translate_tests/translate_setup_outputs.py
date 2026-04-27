@@ -132,9 +132,7 @@ class TranslateSetupOutputs(TranslateFortranData2Py):
         safe_assign_array(T.view[:, :, :], inputs["T"])
         U = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(U.view[:, :, :], inputs["U"])
-        UMF_SC = QuantityFactory.zeros(
-            self.quantity_factory, dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a"
-        )
+        UMF_SC = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
         safe_assign_array(UMF_SC.view[:, :, :], inputs["UMF_SC"])
         V = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(V.view[:, :, :], inputs["V"])

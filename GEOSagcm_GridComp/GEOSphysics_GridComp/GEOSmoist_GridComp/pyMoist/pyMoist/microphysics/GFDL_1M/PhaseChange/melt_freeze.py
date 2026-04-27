@@ -30,20 +30,10 @@ def melt_freeze(
             d_qil = max(0.0, d_qil)
             mixing_ratio_ice = mixing_ratio_ice + d_qil
             mixing_ratio_liquid = mixing_ratio_liquid - d_qil
-            t = (
-                t
-                + (constants.MAPL_LATENT_HEAT_SUBLIMATION - constants.MAPL_LATENT_HEAT_VAPORIZATION)
-                * d_qil
-                / constants.MAPL_CP
-            )
+            t = t + (constants.MAPL_LATENT_HEAT_SUBLIMATION - constants.MAPL_LATENT_HEAT_VAPORIZATION) * d_qil / constants.MAPL_CP
         else:
             d_qil = -mixing_ratio_ice
             d_qil = min(0.0, d_qil)
             mixing_ratio_ice = mixing_ratio_ice + d_qil
             mixing_ratio_liquid = mixing_ratio_liquid - d_qil
-            t = (
-                t
-                + (constants.MAPL_LATENT_HEAT_SUBLIMATION - constants.MAPL_LATENT_HEAT_VAPORIZATION)
-                * d_qil
-                / constants.MAPL_CP
-            )
+            t = t + (constants.MAPL_LATENT_HEAT_SUBLIMATION - constants.MAPL_LATENT_HEAT_VAPORIZATION) * d_qil / constants.MAPL_CP

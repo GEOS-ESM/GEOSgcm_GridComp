@@ -4,11 +4,7 @@ from ndsl.dsl.gt4py import PARALLEL, computation, interval
 from ndsl.dsl.typing import FloatField
 
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
-from pyMoist.saturation_tables import (
-    GlobalTable_saturation_tables,
-    SaturationVaporPressureTable,
-    saturation_specific_humidity,
-)
+from pyMoist.saturation_tables import GlobalTable_saturation_tables, SaturationVaporPressureTable, saturation_specific_humidity
 from pyMoist.shared.incloud_processes import fix_up_clouds
 from pyMoist.shared.radiation_coupling import radiation_coupling
 
@@ -81,10 +77,7 @@ class GFDL1MRadiationCoupling(NDSLRuntime):
         )
 
         if config.DO_QA:
-            ndsl_log.log(
-                "[Radiation Coupling] DO_QA option implemented, but untested. "
-                "Running untested code... proceed with caution"
-            )
+            ndsl_log.log("[Radiation Coupling] DO_QA option implemented, but untested. " "Running untested code... proceed with caution")
 
     def __call__(
         self,

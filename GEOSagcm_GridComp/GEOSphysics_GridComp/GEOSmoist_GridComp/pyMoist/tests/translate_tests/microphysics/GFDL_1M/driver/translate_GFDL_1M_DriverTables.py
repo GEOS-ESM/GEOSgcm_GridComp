@@ -8,9 +8,7 @@ from pyMoist.microphysics.GFDL_1M.driver.sat_tables import get_tables
 class TranslateGFDL_1M_DriverTables(TranslateFortranData2Py):
     def __init__(self, grid, namelist: Namelist, stencil_factory: StencilFactory):
         super().__init__(grid, stencil_factory)
-        self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
-        self._grid = grid
 
         # FloatField Inputs
         self.in_vars["data_vars"] = {}

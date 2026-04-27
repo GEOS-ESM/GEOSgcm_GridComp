@@ -35,9 +35,7 @@ class GFDL1MInterface(UserCode):
                 else:
                     gfdl1m_namelist = {}
         except FileNotFoundError:
-            raise FileNotFoundError(
-                f"[DSL GFDL 1M] Could not find input.nml in curent directory ({os.getcwd()})"
-            )
+            raise FileNotFoundError(f"[DSL GFDL 1M] Could not find input.nml in curent directory ({os.getcwd()})")
 
         do_evap = _default_or_get_from_namelist(False, "do_evap", gfdl1m_namelist)
         if do_evap:
@@ -76,8 +74,8 @@ class GFDL1MInterface(UserCode):
             T_SUB=_default_or_get_from_namelist(Float(184.0), "t_sub", gfdl1m_namelist),
             MP_TIME=_default_or_get_from_namelist(Float(150.0), "mp_time", gfdl1m_namelist),
             RH_INC=_default_or_get_from_namelist(Float(0.25), "rh_inc", gfdl1m_namelist),
-            RH_INS=_default_or_get_from_namelist(Float(0.25), "rh_inr", gfdl1m_namelist),
-            RH_INR=_default_or_get_from_namelist(Float(0.25), "rh_ins", gfdl1m_namelist),
+            RH_INS=_default_or_get_from_namelist(Float(0.25), "rh_ins", gfdl1m_namelist),
+            RH_INR=_default_or_get_from_namelist(Float(0.25), "rh_inr", gfdl1m_namelist),
             TAU_R2G=_default_or_get_from_namelist(Float(900.0), "tau_r2g", gfdl1m_namelist),
             TAU_SMLT=_default_or_get_from_namelist(Float(900.0), "tau_smlt", gfdl1m_namelist),
             TAU_G2R=_default_or_get_from_namelist(Float(600.0), "tau_g2r", gfdl1m_namelist),
@@ -92,7 +90,7 @@ class GFDL1MInterface(UserCode):
             TAU_G2V=_default_or_get_from_namelist(Float(900.0), "tau_g2v", gfdl1m_namelist),
             TAU_V2G=_default_or_get_from_namelist(Float(21600.0), "tau_v2g", gfdl1m_namelist),
             TAU_REVP=_default_or_get_from_namelist(Float(600.0), "tau_revp", gfdl1m_namelist),
-            TAU_FRZ=_default_or_get_from_namelist(Float(450.0), "tau_revp", gfdl1m_namelist),
+            TAU_FRZ=_default_or_get_from_namelist(Float(450.0), "tau_frz", gfdl1m_namelist),
             DW_LAND=_default_or_get_from_namelist(Float(0.20), "dw_land", gfdl1m_namelist),
             DW_OCEAN=_default_or_get_from_namelist(Float(0.10), "dw_ocean", gfdl1m_namelist),
             CCN_O=_default_or_get_from_namelist(Float(90.0), "ccn_o", gfdl1m_namelist),
@@ -200,12 +198,8 @@ class GFDL1MInterface(UserCode):
         self._managed_state.register("concentration.ice", "NACTI", internal_repository)
 
         self._managed_state.register_2D("area", "AREA", import_repository)
-        self._managed_state.register(
-            "p_interface", "PLE", import_repository, dims=[I_DIM, J_DIM, K_INTERFACE_DIM]
-        )
-        self._managed_state.register(
-            "z_interface", "ZLE", import_repository, dims=[I_DIM, J_DIM, K_INTERFACE_DIM]
-        )
+        self._managed_state.register("p_interface", "PLE", import_repository, dims=[I_DIM, J_DIM, K_INTERFACE_DIM])
+        self._managed_state.register("z_interface", "ZLE", import_repository, dims=[I_DIM, J_DIM, K_INTERFACE_DIM])
         self._managed_state.register("t", "T", import_repository)
         self._managed_state.register("u", "U", import_repository)
         self._managed_state.register("v", "V", import_repository)
@@ -255,9 +249,7 @@ class GFDL1MInterface(UserCode):
         self._managed_state.register_2D("lcl_height", "ZLCL", export_repository)
         self._managed_state.register("shallow_convection_rain", "SHLW_PRC3", export_repository, alloc=True)
         self._managed_state.register("shallow_convection_snow", "SHLW_SNO3", export_repository, alloc=True)
-        self._managed_state.register(
-            "critical_relative_humidity_for_pdf", "RHCRIT", export_repository, alloc=True
-        )
+        self._managed_state.register("critical_relative_humidity_for_pdf", "RHCRIT", export_repository, alloc=True)
         self._managed_state.register("large_scale_rainwater_source", "DQRL", export_repository)
 
         self._managed_state.register("radiation_field.cloud_fraction", "FCLD", export_repository, alloc=True)
@@ -268,57 +260,29 @@ class GFDL1MInterface(UserCode):
         self._managed_state.register("radiation_field.snow", "QS", export_repository, alloc=True)
         self._managed_state.register("radiation_field.graupel", "QG", export_repository, alloc=True)
 
-        self._managed_state.register(
-            "cloud_particle_effective_radius.liquid", "RL", export_repository, alloc=True
-        )
-        self._managed_state.register(
-            "cloud_particle_effective_radius.ice", "RI", export_repository, alloc=True
-        )
+        self._managed_state.register("cloud_particle_effective_radius.liquid", "RL", export_repository, alloc=True)
+        self._managed_state.register("cloud_particle_effective_radius.ice", "RI", export_repository, alloc=True)
 
-        self._managed_state.register_2D(
-            "precipitation_at_surface.rain", "PRCP_RAIN", export_repository, alloc=True
-        )
-        self._managed_state.register_2D(
-            "precipitation_at_surface.snow", "PRCP_SNOW", export_repository, alloc=True
-        )
-        self._managed_state.register_2D(
-            "precipitation_at_surface.ice", "PRCP_ICE", export_repository, alloc=True
-        )
-        self._managed_state.register_2D(
-            "precipitation_at_surface.graupel", "PRCP_GRAUPEL", export_repository, alloc=True
-        )
+        self._managed_state.register_2D("precipitation_at_surface.rain", "PRCP_RAIN", export_repository, alloc=True)
+        self._managed_state.register_2D("precipitation_at_surface.snow", "PRCP_SNOW", export_repository, alloc=True)
+        self._managed_state.register_2D("precipitation_at_surface.ice", "PRCP_ICE", export_repository, alloc=True)
+        self._managed_state.register_2D("precipitation_at_surface.graupel", "PRCP_GRAUPEL", export_repository, alloc=True)
         self._managed_state.register_2D(
             "precipitation_at_surface.shallow_convective_precipitation",
             "SC_PRCP",
             export_repository,
             alloc=True,
         )
-        self._managed_state.register_2D(
-            "precipitation_at_surface.deep_convective_precipitation", "CN_PRCP", export_repository, alloc=True
-        )
-        self._managed_state.register_2D(
-            "precipitation_at_surface.anvil_precipitation", "AN_PRCP", export_repository, alloc=True
-        )
-        self._managed_state.register_2D(
-            "precipitation_at_surface.shallow_convective_snow", "SC_SNR", export_repository, alloc=True
-        )
-        self._managed_state.register_2D(
-            "precipitation_at_surface.deep_convective_snow", "CN_SNR", export_repository, alloc=True
-        )
-        self._managed_state.register_2D(
-            "precipitation_at_surface.anvil_snow", "AN_SNR", export_repository, alloc=True
-        )
+        self._managed_state.register_2D("precipitation_at_surface.deep_convective_precipitation", "CN_PRCP", export_repository, alloc=True)
+        self._managed_state.register_2D("precipitation_at_surface.anvil_precipitation", "AN_PRCP", export_repository, alloc=True)
+        self._managed_state.register_2D("precipitation_at_surface.shallow_convective_snow", "SC_SNR", export_repository, alloc=True)
+        self._managed_state.register_2D("precipitation_at_surface.deep_convective_snow", "CN_SNR", export_repository, alloc=True)
+        self._managed_state.register_2D("precipitation_at_surface.anvil_snow", "AN_SNR", export_repository, alloc=True)
 
-        self._managed_state.register_2D(
-            "non_anvil_large_scale.precip", "LS_PRCP", export_repository, alloc=True
-        )
+        self._managed_state.register_2D("non_anvil_large_scale.precip", "LS_PRCP", export_repository, alloc=True)
         self._managed_state.register_2D("non_anvil_large_scale.snow", "LS_SNR", export_repository, alloc=True)
-        self._managed_state.register(
-            "non_anvil_large_scale.evaporation", "REV_LS", export_repository, alloc=True
-        )
-        self._managed_state.register(
-            "non_anvil_large_scale.sublimation", "RSU_LS", export_repository, alloc=True
-        )
+        self._managed_state.register("non_anvil_large_scale.evaporation", "REV_LS", export_repository, alloc=True)
+        self._managed_state.register("non_anvil_large_scale.sublimation", "RSU_LS", export_repository, alloc=True)
         self._managed_state.register(
             "non_anvil_large_scale.liquid_precip_flux",
             "PFL_LS",
@@ -349,45 +313,27 @@ class GFDL1MInterface(UserCode):
             alloc=True,
         )
 
-        self._managed_state.register(
-            "tendencies.dcloud_fractiondt_macro", "DQADT_macro", export_repository, alloc=True
-        )
-        self._managed_state.register(
-            "tendencies.dvapordt_macro", "DQVDT_macro", export_repository, alloc=True
-        )
+        self._managed_state.register("tendencies.dcloud_fractiondt_macro", "DQADT_macro", export_repository, alloc=True)
+        self._managed_state.register("tendencies.dvapordt_macro", "DQVDT_macro", export_repository, alloc=True)
         self._managed_state.register("tendencies.dicedt_macro", "DQIDT_macro", export_repository, alloc=True)
-        self._managed_state.register(
-            "tendencies.dliquiddt_macro", "DQLDT_macro", export_repository, alloc=True
-        )
+        self._managed_state.register("tendencies.dliquiddt_macro", "DQLDT_macro", export_repository, alloc=True)
         self._managed_state.register("tendencies.draindt_macro", "DQRDT_macro", export_repository, alloc=True)
-        self._managed_state.register(
-            "tendencies.dgraupeldt_macro", "DQGDT_macro", export_repository, alloc=True
-        )
+        self._managed_state.register("tendencies.dgraupeldt_macro", "DQGDT_macro", export_repository, alloc=True)
         self._managed_state.register("tendencies.dsnowdt_macro", "DQSDT_macro", export_repository, alloc=True)
         self._managed_state.register("tendencies.dudt_macro", "DUDT_macro", export_repository, alloc=True)
         self._managed_state.register("tendencies.dvdt_macro", "DVDT_macro", export_repository, alloc=True)
         self._managed_state.register("tendencies.dtdt_macro", "DTDT_macro", export_repository, alloc=True)
-        self._managed_state.register(
-            "tendencies.dcloud_fractiondt_micro", "DQADT_micro", export_repository, alloc=True
-        )
-        self._managed_state.register(
-            "tendencies.dvapordt_micro", "DQVDT_micro", export_repository, alloc=True
-        )
+        self._managed_state.register("tendencies.dcloud_fractiondt_micro", "DQADT_micro", export_repository, alloc=True)
+        self._managed_state.register("tendencies.dvapordt_micro", "DQVDT_micro", export_repository, alloc=True)
         self._managed_state.register("tendencies.dicedt_micro", "DQIDT_micro", export_repository, alloc=True)
-        self._managed_state.register(
-            "tendencies.dliquiddt_micro", "DQLDT_micro", export_repository, alloc=True
-        )
+        self._managed_state.register("tendencies.dliquiddt_micro", "DQLDT_micro", export_repository, alloc=True)
         self._managed_state.register("tendencies.draindt_micro", "DQRDT_micro", export_repository, alloc=True)
-        self._managed_state.register(
-            "tendencies.dgraupeldt_micro", "DQGDT_micro", export_repository, alloc=True
-        )
+        self._managed_state.register("tendencies.dgraupeldt_micro", "DQGDT_micro", export_repository, alloc=True)
         self._managed_state.register("tendencies.dsnowdt_micro", "DQSDT_micro", export_repository, alloc=True)
         self._managed_state.register("tendencies.dudt_micro", "DUDT_micro", export_repository, alloc=True)
         self._managed_state.register("tendencies.dvdt_micro", "DVDT_micro", export_repository, alloc=True)
         self._managed_state.register("tendencies.dtdt_micro", "DTDT_micro", export_repository, alloc=True)
-        self._managed_state.register(
-            "tendencies.dtdt_friction_pressure_weighted", "DTDTFRIC", export_repository
-        )
+        self._managed_state.register("tendencies.dtdt_friction_pressure_weighted", "DTDTFRIC", export_repository)
 
         self._managed_state.register("radar.simulated_reflectivity", "DBZ", export_repository)
         self._managed_state.register_2D("radar.maximum_composite_reflectivity", "DBZ_MAX", export_repository)

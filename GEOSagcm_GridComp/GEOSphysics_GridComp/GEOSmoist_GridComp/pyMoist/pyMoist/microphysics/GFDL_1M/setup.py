@@ -5,24 +5,10 @@ from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, computation, function, interval, log
 from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, IntFieldIJ
 
-from pyMoist.constants import (
-    MAPL_ALHL,
-    MAPL_CP,
-    MAPL_CPDRY,
-    MAPL_CPVAP,
-    MAPL_GRAV,
-    MAPL_KAPPA,
-    MAPL_P00,
-    MAPL_RGAS,
-    MAPL_RVAP,
-)
+from pyMoist.constants import MAPL_ALHL, MAPL_CP, MAPL_CPDRY, MAPL_CPVAP, MAPL_GRAV, MAPL_KAPPA, MAPL_P00, MAPL_RGAS, MAPL_RVAP
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.shared_stencils import prepare_tendencies
-from pyMoist.saturation_tables import (
-    GlobalTable_saturation_tables,
-    SaturationVaporPressureTable,
-    saturation_specific_humidity,
-)
+from pyMoist.saturation_tables import GlobalTable_saturation_tables, SaturationVaporPressureTable, saturation_specific_humidity
 from pyMoist.shared.interpolations import vertical_interpolation
 
 
@@ -242,9 +228,7 @@ def compute_estimated_inversion_strength(
         # Simplified single adiabat eq4 of https://doi.org/10.1175/JCLI3988.1
         t850 = 0.5 * (t + t700)
         qs850, _ = saturation_specific_humidity(t=t850, p=100 * 850, ese=ese, esx=esx)
-        gamma850 = (1.0 + (MAPL_ALHL * qs850 / (MAPL_RGAS * t850))) / (
-            1.0 + (MAPL_ALHL * MAPL_ALHL * qs850 / (MAPL_CP * MAPL_RVAP * t850 * t850))
-        )
+        gamma850 = (1.0 + (MAPL_ALHL * qs850 / (MAPL_RGAS * t850))) / (1.0 + (MAPL_ALHL * MAPL_ALHL * qs850 / (MAPL_CP * MAPL_RVAP * t850 * t850)))
         gamma850 = MAPL_GRAV / MAPL_CP * (1.0 - gamma850)
         estimated_inversion_strength = lower_tropospheric_stability - gamma850 * (z700 - lcl_height)
 

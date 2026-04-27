@@ -20,8 +20,7 @@ class TranslateGFDL_1M_Setup(TranslateFortranData2Py):
         namelist: Namelist,
         stencil_factory: StencilFactory,
     ):
-        super().__init__(grid, namelist, stencil_factory)
-        self.stencil_factory = stencil_factory
+        super().__init__(grid, stencil_factory)
         self.quantity_factory = grid.quantity_factory
 
         # grid.compute_dict is workaround to remove grid halo, which is hardcoded to 3

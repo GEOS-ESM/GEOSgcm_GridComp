@@ -5162,7 +5162,7 @@ contains
     call MAPL_GetResource( MAPL, CCN_LND, 'NCCN_LND:', DEFAULT= 300., RC=STATUS); VERIFY_(STATUS) ! #/cm^3
 
     if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
-    if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Initialize(MAPL, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Initialize(MAPL, CF, CLOCK, IMPORT, EXPORT, RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Initialize(MAPL, CF, CLOCK, IMPORT, EXPORT, RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CLDMICR_OPTION)=="BACM_1M") call BACM_1M_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Initialize(MAPL, CF, IMPORT, EXPORT, RC=STATUS) ; VERIFY_(STATUS)
@@ -6094,6 +6094,7 @@ contains
 
     if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_FINALIZE(GC, IMPORT, EXPORT, RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(SHALLOW_OPTION)=="UW"     ) call UW_Finalize(GC, IMPORT, EXPORT, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(CONVPAR_OPTION)=="GF"     ) call GF_Finalize(GC, IMPORT, EXPORT, RC=STATUS) ; VERIFY_(STATUS)
 
     ! Call Finalize for every child
     call MAPL_GenericFinalize(gc, import, export, clock, rc=status)

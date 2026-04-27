@@ -149,31 +149,13 @@ class GFDL1MDriverConfigDependentConstants:
         CGACS = constants.PISQ * constants.RNZG * constants.RNZS * constants.RHOS
         CGACS = CGACS * GFDL_1M_config.C_PGACS
 
-        CSACW = (
-            constants.PIE
-            * constants.RNZS
-            * GFDL_1M_config.CLIN
-            * constants.GAM325
-            / (Float(4.0) * np.power(constants.ACT[0], 0.8125, dtype=Float))
-        )
+        CSACW = constants.PIE * constants.RNZS * GFDL_1M_config.CLIN * constants.GAM325 / (Float(4.0) * np.power(constants.ACT[0], 0.8125, dtype=Float))
         # decreasing csacw to reduce cloud water --- > snow
 
-        CRACI = (
-            constants.PIE
-            * constants.RNZR
-            * GFDL_1M_config.ALIN
-            * constants.GAM380
-            / (Float(4.0) * np.power(constants.ACT[1], 0.95, dtype=Float))
-        )
+        CRACI = constants.PIE * constants.RNZR * GFDL_1M_config.ALIN * constants.GAM380 / (Float(4.0) * np.power(constants.ACT[1], 0.95, dtype=Float))
         CSACI = CSACW * GFDL_1M_config.C_PSACI
 
-        CGACW = (
-            constants.PIE
-            * constants.RNZG
-            * constants.GAM350
-            * constants.GCON
-            / (Float(4.0) * np.power(constants.ACT[5], 0.875, dtype=Float))
-        )
+        CGACW = constants.PIE * constants.RNZG * constants.GAM350 * constants.GCON / (Float(4.0) * np.power(constants.ACT[5], 0.875, dtype=Float))
 
         CGACI = CGACW * GFDL_1M_config.C_PGACI
 
@@ -184,15 +166,9 @@ class GFDL1MDriverConfigDependentConstants:
         CGSUB = np.zeros(5, dtype=Float)
         CREVP = np.zeros(5, dtype=Float)
 
-        CSSUB[0] = (
-            Float(2.0) * constants.PIE * constants.VDIFU * constants.TCOND * constants.RVGAS * constants.RNZS
-        )
-        CGSUB[0] = (
-            Float(2.0) * constants.PIE * constants.VDIFU * constants.TCOND * constants.RVGAS * constants.RNZG
-        )
-        CREVP[0] = (
-            Float(2.0) * constants.PIE * constants.VDIFU * constants.TCOND * constants.RVGAS * constants.RNZR
-        )
+        CSSUB[0] = Float(2.0) * constants.PIE * constants.VDIFU * constants.TCOND * constants.RVGAS * constants.RNZS
+        CGSUB[0] = Float(2.0) * constants.PIE * constants.VDIFU * constants.TCOND * constants.RVGAS * constants.RNZG
+        CREVP[0] = Float(2.0) * constants.PIE * constants.VDIFU * constants.TCOND * constants.RVGAS * constants.RNZR
         CSSUB[1] = Float(0.78) / np.sqrt(constants.ACT[0], dtype=Float)
         CGSUB[1] = Float(0.78) / np.sqrt(constants.ACT[5], dtype=Float)
         CREVP[1] = Float(0.78) / np.sqrt(constants.ACT[1], dtype=Float)
@@ -224,13 +200,7 @@ class GFDL1MDriverConfigDependentConstants:
         CGSUB[4] = CSSUB[4]
         CREVP[4] = np.power(constants.HLTC, 2, dtype=Float) * constants.VDIFU
 
-        CGFR_0 = (
-            Float(20.0e2)
-            * constants.PISQ
-            * constants.RNZR
-            * constants.RHOR
-            / np.power(constants.ACT[1], Float(1.75), dtype=Float)
-        )
+        CGFR_0 = Float(20.0e2) * constants.PISQ * constants.RNZR * constants.RHOR / np.power(constants.ACT[1], Float(1.75), dtype=Float)
         CGFR_1 = Float(0.66)
 
         CSSUB_0 = CSSUB[0]
@@ -255,9 +225,7 @@ class GFDL1MDriverConfigDependentConstants:
 
         CSMLT = np.zeros(5, dtype=Float)
         CSMLT[0] = Float(2.0) * constants.PIE * constants.TCOND * constants.RNZS / constants.HLTF
-        CSMLT[1] = (
-            Float(2.0) * constants.PIE * constants.VDIFU * constants.RNZS * constants.HLTC / constants.HLTF
-        )
+        CSMLT[1] = Float(2.0) * constants.PIE * constants.VDIFU * constants.RNZS * constants.HLTC / constants.HLTF
         CSMLT[2] = CSSUB[1]
         CSMLT[3] = CSSUB[2]
         CSMLT[4] = constants.CH2O / constants.HLTF
@@ -272,9 +240,7 @@ class GFDL1MDriverConfigDependentConstants:
 
         CGMLT = np.zeros(5, dtype=Float)
         CGMLT[0] = Float(2.0) * constants.PIE * constants.TCOND * constants.RNZG / constants.HLTF
-        CGMLT[1] = (
-            Float(2.0) * constants.PIE * constants.VDIFU * constants.RNZG * constants.HLTC / constants.HLTF
-        )
+        CGMLT[1] = Float(2.0) * constants.PIE * constants.VDIFU * constants.RNZG * constants.HLTC / constants.HLTF
         CGMLT[2] = CGSUB[1]
         CGMLT[3] = CGSUB[2]
         CGMLT[4] = constants.CH2O / constants.HLTF

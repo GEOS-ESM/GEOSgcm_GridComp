@@ -36,18 +36,10 @@ class UWGEOSInterface(UserCode):
             dotransport=1 if MAPLPy.get_resource("USE_TRACER_TRANSP_UW:", mapl_state, default=True) else 0,
             dt=MAPLPy.get_resource("DSL__UW_DT:", mapl_state, default=Float(0)),
             windsrcavg=MAPLPy.get_resource("WINDSRCAVG:", mapl_state, default=Int(0) if jason_uw else Int(1)),
-            mixscale=MAPLPy.get_resource(
-                "MIXSCALE:", mapl_state, default=Float(0.0) if jason_uw else Float(3000.0)
-            ),
-            criqc=MAPLPy.get_resource(
-                "CRIQC:", mapl_state, default=Float(1.0e-3) if jason_uw else Float(0.9e-3)
-            ),
-            thlsrc_fac=MAPLPy.get_resource(
-                "THLSRC_FAC:", mapl_state, default=Float(0.0) if jason_uw else Float(1.0)
-            ),
-            frc_rasn=MAPLPy.get_resource(
-                "FRC_RASN:", mapl_state, default=Float(0.0) if jason_uw else Float(1.0)
-            ),
+            mixscale=MAPLPy.get_resource("MIXSCALE:", mapl_state, default=Float(0.0) if jason_uw else Float(3000.0)),
+            criqc=MAPLPy.get_resource("CRIQC:", mapl_state, default=Float(1.0e-3) if jason_uw else Float(0.9e-3)),
+            thlsrc_fac=MAPLPy.get_resource("THLSRC_FAC:", mapl_state, default=Float(0.0) if jason_uw else Float(1.0)),
+            frc_rasn=MAPLPy.get_resource("FRC_RASN:", mapl_state, default=Float(0.0) if jason_uw else Float(1.0)),
             rkm=MAPLPy.get_resource("RKM:", mapl_state, default=Float(12.0) if jason_uw else Float(8.0)),
             rpen=MAPLPy.get_resource("RPEN:", mapl_state, default=Float(3.0)),
             SCLM_SHALLOW=MAPLPy.get_resource("SCLM_SHALLOW:", mapl_state, default=Float(1.0)),
@@ -130,12 +122,8 @@ class UWGEOSInterface(UserCode):
         self._managed_state.register("output.QIENT_SC", "QIENT_SC", export_repository, alloc=True)
         self._managed_state.register_K_interface("output.umf_inv", "UMF_SC", export_repository, alloc=True)
         self._managed_state.register("output.dcm_inv", "DCM_SC", export_repository, alloc=True)
-        self._managed_state.register_K_interface(
-            "output.qtflx_inv", "QTFLX_SC", export_repository, alloc=True
-        )
-        self._managed_state.register_K_interface(
-            "output.slflx_inv", "SLFLX_SC", export_repository, alloc=True
-        )
+        self._managed_state.register_K_interface("output.qtflx_inv", "QTFLX_SC", export_repository, alloc=True)
+        self._managed_state.register_K_interface("output.slflx_inv", "SLFLX_SC", export_repository, alloc=True)
         self._managed_state.register_K_interface("output.uflx_inv", "UFLX_SC", export_repository, alloc=True)
         self._managed_state.register_K_interface("output.vflx_inv", "VFLX_SC", export_repository, alloc=True)
         self._managed_state.register("output.DQADT_SC", "DQADT_SC", export_repository, alloc=True)

@@ -56,16 +56,16 @@ def _saturation_formulation(
             ex = tt * (tt * (tt * (tt * (tt * (tt * S16 + S15) + S14) + S13) + S12) + S11) + S10
         elif tt >= TSTARR1 and tt < TSTARR2:
             W = (TSTARR2 - tt) / (TSTARR2 - TSTARR1)
-            ex = W * (tt * (tt * (tt * (tt * (tt * (tt * S16 + S15) + S14) + S13) + S12) + S11) + S10) + (
-                1.0 - W
-            ) * (tt * (tt * (tt * (tt * (tt * (tt * S26 + S25) + S24) + S23) + S22) + S21) + S20)
+            ex = W * (tt * (tt * (tt * (tt * (tt * (tt * S16 + S15) + S14) + S13) + S12) + S11) + S10) + (1.0 - W) * (
+                tt * (tt * (tt * (tt * (tt * (tt * S26 + S25) + S24) + S23) + S22) + S21) + S20
+            )
         elif tt >= TSTARR2 and tt < TSTARR3:
             ex = tt * (tt * (tt * (tt * (tt * (tt * S26 + S25) + S24) + S23) + S22) + S21) + S20
         elif tt >= TSTARR3 and tt < TSTARR4:
             W = (TSTARR4 - tt) / (TSTARR4 - TSTARR3)
-            ex = W * (tt * (tt * (tt * (tt * (tt * (tt * S26 + S25) + S24) + S23) + S22) + S21) + S20) + (
-                1.0 - W
-            ) * (tt * (tt * (tt * (tt * (tt * (tt * BI6 + BI5) + BI4) + BI3) + BI2) + BI1) + BI0)
+            ex = W * (tt * (tt * (tt * (tt * (tt * (tt * S26 + S25) + S24) + S23) + S22) + S21) + S20) + (1.0 - W) * (
+                tt * (tt * (tt * (tt * (tt * (tt * BI6 + BI5) + BI4) + BI3) + BI2) + BI1) + BI0
+            )
         else:
             ex = tt * (tt * (tt * (tt * (tt * (tt * BI6 + BI5) + BI4) + BI3) + BI2) + BI1) + BI0
     elif formulation == 2:
@@ -86,19 +86,7 @@ def _saturation_formulation_no_stencil(
             ex = (
                 tt
                 * (
-                    tt
-                    * (
-                        tt
-                        * (
-                            tt
-                            * (
-                                tt * (tt * IceExactConstants.S16 + IceExactConstants.S15)
-                                + IceExactConstants.S14
-                            )
-                            + IceExactConstants.S13
-                        )
-                        + IceExactConstants.S12
-                    )
+                    tt * (tt * (tt * (tt * (tt * IceExactConstants.S16 + IceExactConstants.S15) + IceExactConstants.S14) + IceExactConstants.S13) + IceExactConstants.S12)
                     + IceExactConstants.S11
                 )
                 + IceExactConstants.S10
@@ -108,38 +96,14 @@ def _saturation_formulation_no_stencil(
             ex = W * (
                 tt
                 * (
-                    tt
-                    * (
-                        tt
-                        * (
-                            tt
-                            * (
-                                tt * (tt * IceExactConstants.S16 + IceExactConstants.S15)
-                                + IceExactConstants.S14
-                            )
-                            + IceExactConstants.S13
-                        )
-                        + IceExactConstants.S12
-                    )
+                    tt * (tt * (tt * (tt * (tt * IceExactConstants.S16 + IceExactConstants.S15) + IceExactConstants.S14) + IceExactConstants.S13) + IceExactConstants.S12)
                     + IceExactConstants.S11
                 )
                 + IceExactConstants.S10
             ) + (Float(1.0) - W) * (
                 tt
                 * (
-                    tt
-                    * (
-                        tt
-                        * (
-                            tt
-                            * (
-                                tt * (tt * IceExactConstants.S26 + IceExactConstants.S25)
-                                + IceExactConstants.S24
-                            )
-                            + IceExactConstants.S23
-                        )
-                        + IceExactConstants.S22
-                    )
+                    tt * (tt * (tt * (tt * (tt * IceExactConstants.S26 + IceExactConstants.S25) + IceExactConstants.S24) + IceExactConstants.S23) + IceExactConstants.S22)
                     + IceExactConstants.S21
                 )
                 + IceExactConstants.S20
@@ -148,19 +112,7 @@ def _saturation_formulation_no_stencil(
             ex = (
                 tt
                 * (
-                    tt
-                    * (
-                        tt
-                        * (
-                            tt
-                            * (
-                                tt * (tt * IceExactConstants.S26 + IceExactConstants.S25)
-                                + IceExactConstants.S24
-                            )
-                            + IceExactConstants.S23
-                        )
-                        + IceExactConstants.S22
-                    )
+                    tt * (tt * (tt * (tt * (tt * IceExactConstants.S26 + IceExactConstants.S25) + IceExactConstants.S24) + IceExactConstants.S23) + IceExactConstants.S22)
                     + IceExactConstants.S21
                 )
                 + IceExactConstants.S20
@@ -170,38 +122,14 @@ def _saturation_formulation_no_stencil(
             ex = W * (
                 tt
                 * (
-                    tt
-                    * (
-                        tt
-                        * (
-                            tt
-                            * (
-                                tt * (tt * IceExactConstants.S26 + IceExactConstants.S25)
-                                + IceExactConstants.S24
-                            )
-                            + IceExactConstants.S23
-                        )
-                        + IceExactConstants.S22
-                    )
+                    tt * (tt * (tt * (tt * (tt * IceExactConstants.S26 + IceExactConstants.S25) + IceExactConstants.S24) + IceExactConstants.S23) + IceExactConstants.S22)
                     + IceExactConstants.S21
                 )
                 + IceExactConstants.S20
             ) + (Float(1.0) - W) * (
                 tt
                 * (
-                    tt
-                    * (
-                        tt
-                        * (
-                            tt
-                            * (
-                                tt * (tt * IceExactConstants.BI6 + IceExactConstants.BI5)
-                                + IceExactConstants.BI4
-                            )
-                            + IceExactConstants.BI3
-                        )
-                        + IceExactConstants.BI2
-                    )
+                    tt * (tt * (tt * (tt * (tt * IceExactConstants.BI6 + IceExactConstants.BI5) + IceExactConstants.BI4) + IceExactConstants.BI3) + IceExactConstants.BI2)
                     + IceExactConstants.BI1
                 )
                 + IceExactConstants.BI0
@@ -210,39 +138,16 @@ def _saturation_formulation_no_stencil(
             ex = (
                 tt
                 * (
-                    tt
-                    * (
-                        tt
-                        * (
-                            tt
-                            * (
-                                tt * (tt * IceExactConstants.BI6 + IceExactConstants.BI5)
-                                + IceExactConstants.BI4
-                            )
-                            + IceExactConstants.BI3
-                        )
-                        + IceExactConstants.BI2
-                    )
+                    tt * (tt * (tt * (tt * (tt * IceExactConstants.BI6 + IceExactConstants.BI5) + IceExactConstants.BI4) + IceExactConstants.BI3) + IceExactConstants.BI2)
                     + IceExactConstants.BI1
                 )
                 + IceExactConstants.BI0
             )
     elif formulation == SaturationFormulation.CAM:
         tt = MAPL_TICE / t
-        ex = IceExactConstants.DI[0] * np.exp(
-            -(
-                IceExactConstants.DI[1] / tt
-                + IceExactConstants.DI[2] * np.log(tt)
-                + IceExactConstants.DI[3] * tt
-            )
-        )
+        ex = IceExactConstants.DI[0] * np.exp(-(IceExactConstants.DI[1] / tt + IceExactConstants.DI[2] * np.log(tt) + IceExactConstants.DI[3] * tt))
     elif formulation == SaturationFormulation.MurphyAndKoop:
-        ex = np.exp(
-            IceExactConstants.CI[0]
-            + IceExactConstants.CI[1] / t
-            + IceExactConstants.CI[2] * np.log(t)
-            + IceExactConstants.CI[3] * t
-        )
+        ex = np.exp(IceExactConstants.CI[0] + IceExactConstants.CI[1] / t + IceExactConstants.CI[2] * np.log(t) + IceExactConstants.CI[3] * t)
     return Float(ex)
 
 

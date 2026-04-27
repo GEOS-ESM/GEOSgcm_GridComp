@@ -76,9 +76,7 @@ def pdfcondensate(
             condensate = float64(0.0)
         elif qstar_64 > (qtmean_64 - sigmaqt1_64):
             if sigmaqt1_64 > 0.0:
-                condensate = (min(qtmean_64 + sigmaqt1_64 - qstar_64, float64(2.0) * sigmaqt1_64) ** 2) / (
-                    float64(4.0) * sigmaqt1_64
-                )
+                condensate = (min(qtmean_64 + sigmaqt1_64 - qstar_64, float64(2.0) * sigmaqt1_64) ** 2) / (float64(4.0) * sigmaqt1_64)
             else:
                 condensate = qtmean_64 - qstar_64
         else:
@@ -132,9 +130,7 @@ def bergeron_partition(
         Float: fraction_ice
         Float: dq_all
     """
-    internal_mixing_ratio_ice = (
-        mixing_ratio_large_scale_ice + mixing_ratio_convective_ice
-    )  # necessary because NI is for convective and large scale
+    internal_mixing_ratio_ice = mixing_ratio_large_scale_ice + mixing_ratio_convective_ice  # necessary because NI is for convective and large scale
     internal_mixing_ratio_liquid = mixing_ratio_large_scale_liquid + mixing_ratio_convective_liquid
     internal_total_precipitate = internal_mixing_ratio_ice + internal_mixing_ratio_liquid
     if internal_total_precipitate > 0.0:
@@ -163,9 +159,7 @@ def bergeron_partition(
 
             # Calculate deposition onto preexisting ice
 
-            diff = (
-                (0.211 * 1013.25 / (p_mb + 0.1)) * (((t + 0.1) / constants.MAPL_TICE) ** 1.94) * 1e-4
-            )  # From Seinfeld and Pandis 2006
+            diff = (0.211 * 1013.25 / (p_mb + 0.1)) * (((t + 0.1) / constants.MAPL_TICE) ** 1.94) * 1e-4  # From Seinfeld and Pandis 2006
             den_air = p_mb * 100.0 / constants.MAPL_RDRY / t
             den_ice = 1000.0 * (0.9167 - 1.75e-4 * t_c - 5.0e-7 * t_c * t_c)  # From PK 97
             # lh_corr = 1.0 + dq_si * constants.MAPL_LATENT_HEAT_SUBLIMATION / (
@@ -203,9 +197,7 @@ def bergeron_partition(
                     d_mixing_ratio_ice = 0.0
             if dq_all < 0.0:  # net evaporation. Water evaporates first regardless of DEP
                 d_mixing_ratio_liquid = max(dq_all, -mixing_ratio_large_scale_liquid / DT_MOIST)
-                d_mixing_ratio_ice = max(
-                    dq_all - d_mixing_ratio_liquid, -mixing_ratio_large_scale_ice / DT_MOIST
-                )
+                d_mixing_ratio_ice = max(dq_all - d_mixing_ratio_liquid, -mixing_ratio_large_scale_ice / DT_MOIST)
             if dq_all != 0.0:
                 fraction_ice = max(min(d_mixing_ratio_ice / dq_all, 1.0), 0.0)
 
@@ -324,9 +316,7 @@ def hydrostatic_pdf(
 
             latent_heat_factor = (1.0 - f_qi) * constants.ALHLBCP + f_qi * constants.ALHSBCP
             if PDF_SHAPE == 1:
-                qc_n = qc_p + (qc_n - qc_p) / (
-                    1.0 - (cf_n * (alpha - 1.0) - (qc_n / qs_n)) * dqs * latent_heat_factor
-                )
+                qc_n = qc_p + (qc_n - qc_p) / (1.0 - (cf_n * (alpha - 1.0) - (qc_n / qs_n)) * dqs * latent_heat_factor)
             elif PDF_SHAPE == 5:
                 qc_n = qc_p + 0.5 * (qc_n - qc_p)
 
@@ -338,18 +328,8 @@ def hydrostatic_pdf(
             qv_n = qv_p - (qc_n - qc_p)
             t_n = (
                 t_p
-                + (1.0 - f_qi)
-                * constants.ALHLBCP
-                * (
-                    (qc_n - qc_p) * (1.0 - convective_cloud_fraction)
-                    + (qa_o - qa_x) * convective_cloud_fraction
-                )
-                + f_qi
-                * constants.ALHSBCP
-                * (
-                    (qc_n - qc_p) * (1.0 - convective_cloud_fraction)
-                    + (qa_o - qa_x) * convective_cloud_fraction
-                )
+                + (1.0 - f_qi) * constants.ALHLBCP * ((qc_n - qc_p) * (1.0 - convective_cloud_fraction) + (qa_o - qa_x) * convective_cloud_fraction)
+                + f_qi * constants.ALHSBCP * ((qc_n - qc_p) * (1.0 - convective_cloud_fraction) + (qa_o - qa_x) * convective_cloud_fraction)
             )
 
             # NOTE Differences in constants between fortran and python cause
@@ -372,10 +352,7 @@ def hydrostatic_pdf(
             # - Note: no guarantee QV_box > QS_box
             large_scale_cloud_fraction = 0.0  # Remove any LS cloud
             qa_o = (
-                mixing_ratio_convective_liquid
-                + mixing_ratio_convective_ice
-                + mixing_ratio_large_scale_liquid
-                + mixing_ratio_large_scale_ice
+                mixing_ratio_convective_liquid + mixing_ratio_convective_ice + mixing_ratio_large_scale_liquid + mixing_ratio_large_scale_ice
             )  # Add all LS condensate to anvil type
             qc_n = 0.0  # Remove same from new LS
             qt = qa_o + mixing_ratio_vapor  # Update total water
@@ -418,9 +395,7 @@ def hydrostatic_pdf(
         mixing_ratio_vapor = mixing_ratio_vapor - (d_qicn + d_qils + d_qlcn + d_qlls)
         t = (
             t
-            + constants.MAPL_LATENT_HEAT_VAPORIZATION
-            / constants.MAPL_CPDRY
-            * (d_qicn + d_qils + d_qlcn + d_qlls)
+            + constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CPDRY * (d_qicn + d_qils + d_qlcn + d_qlls)
             + constants.MAPL_LATENT_HEAT_FUSION / constants.MAPL_CPDRY * (d_qicn + d_qils)
         )
 
@@ -432,15 +407,11 @@ def hydrostatic_pdf(
         # speaking, PDF-wise, we should not do this.
 
         if qa_o <= 0.0:
-            mixing_ratio_vapor = (
-                mixing_ratio_vapor + mixing_ratio_convective_ice + mixing_ratio_convective_liquid
-            )
+            mixing_ratio_vapor = mixing_ratio_vapor + mixing_ratio_convective_ice + mixing_ratio_convective_liquid
             t = (
                 t
                 - constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CPDRY * mixing_ratio_convective_ice
-                - constants.MAPL_LATENT_HEAT_VAPORIZATION
-                / constants.MAPL_CPDRY
-                * mixing_ratio_convective_liquid
+                - constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CPDRY * mixing_ratio_convective_liquid
             )
             mixing_ratio_convective_ice = 0.0
             mixing_ratio_convective_liquid = 0.0

@@ -99,12 +99,8 @@ def update_tendencies(
 
     with computation(FORWARD), interval(1, None):
         if sedi_transport == True:  # noqa
-            driver_u = (dp_unmodified * driver_u + driver_mass[0, 0, -1] * driver_u[0, 0, -1]) / (
-                dp_unmodified + driver_mass[0, 0, -1]
-            )
-            driver_v = (dp_unmodified * driver_v + driver_mass[0, 0, -1] * driver_v[0, 0, -1]) / (
-                dp_unmodified + driver_mass[0, 0, -1]
-            )
+            driver_u = (dp_unmodified * driver_u + driver_mass[0, 0, -1] * driver_u[0, 0, -1]) / (dp_unmodified + driver_mass[0, 0, -1])
+            driver_v = (dp_unmodified * driver_v + driver_mass[0, 0, -1] * driver_v[0, 0, -1]) / (dp_unmodified + driver_mass[0, 0, -1])
             dudt = dudt + (driver_u - u_unmodified) * rdt
             dvdt = dvdt + (driver_v - v_unmodified) * rdt
 
@@ -129,8 +125,7 @@ def update_tendencies(
             c_air
             + mixing_ratio_driver_vapor * c_vap
             + (mixing_ratio_driver_rain + mixing_ratio_driver_liquid) * constants.C_LIQ
-            + (mixing_ratio_driver_ice + mixing_ratio_driver_snow + mixing_ratio_driver_graupel)
-            * constants.C_ICE
+            + (mixing_ratio_driver_ice + mixing_ratio_driver_snow + mixing_ratio_driver_graupel) * constants.C_ICE
         )
         dtdt = dtdt + rdt * (driver_t - t_unmodified) * cvm / constants.CP_AIR
 
@@ -140,10 +135,7 @@ def update_tendencies(
         if do_qa == False:  # noqa
             dcloudfractiondt = dcloudfractiondt + rdt * (
                 cloud_fraction_unmodified
-                * sqrt(
-                    (mixing_ratio_driver_ice + mixing_ratio_driver_liquid)
-                    / max(mixing_ratio_ice_unmodified + mixing_ratio_liquid_unmodified, constants.QCMIN)
-                )
+                * sqrt((mixing_ratio_driver_ice + mixing_ratio_driver_liquid) / max(mixing_ratio_ice_unmodified + mixing_ratio_liquid_unmodified, constants.QCMIN))
                 - cloud_fraction_unmodified
             )  # New Cloud - Old CloudCloud
 

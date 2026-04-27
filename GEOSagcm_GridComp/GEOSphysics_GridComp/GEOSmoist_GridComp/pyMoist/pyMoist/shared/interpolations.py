@@ -68,11 +68,7 @@ def vertical_interpolation(
 
     with computation(FORWARD), interval(-1, None):
         pb2: FloatFieldIJ = 0.5 * (log(p_interface_mb * 100) + log(p_interface_mb[0, 0, 1] * 100))
-        if (
-            log(target_pressure) > pb2
-            and log(target_pressure) <= log(p_interface_mb[0, 0, 1] * 100)
-            and not track_points
-        ):
+        if log(target_pressure) > pb2 and log(target_pressure) <= log(p_interface_mb[0, 0, 1] * 100) and not track_points:
             interpolated_field = field
             track_points = True
 

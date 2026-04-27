@@ -7,11 +7,7 @@ from ndsl.stencils.basic_operations import copy
 from pyMoist.constants import MAPL_CP, MAPL_GRAV
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.radiation_coupling import GFDL1MRadiationCoupling
-from pyMoist.saturation_tables import (
-    GlobalTable_saturation_tables,
-    SaturationVaporPressureTable,
-    saturation_specific_humidity,
-)
+from pyMoist.saturation_tables import GlobalTable_saturation_tables, SaturationVaporPressureTable, saturation_specific_humidity
 from pyMoist.shared.redistribute_clouds import redistribute_clouds
 
 
@@ -68,12 +64,8 @@ def finalize_precip(
 
     with computation(FORWARD), interval(...):
         # Convert precipitation fluxes from (Pa kg/kg) to (kg m-2 s-1)
-        large_scale_nonanvil_ice_flux[0, 0, 1] = large_scale_nonanvil_ice_flux[0, 0, 1] / (
-            MAPL_GRAV * DT_MOIST
-        )
-        large_scale_nonanvil_liquid_flux[0, 0, 1] = large_scale_nonanvil_liquid_flux[0, 0, 1] / (
-            MAPL_GRAV * DT_MOIST
-        )
+        large_scale_nonanvil_ice_flux[0, 0, 1] = large_scale_nonanvil_ice_flux[0, 0, 1] / (MAPL_GRAV * DT_MOIST)
+        large_scale_nonanvil_liquid_flux[0, 0, 1] = large_scale_nonanvil_liquid_flux[0, 0, 1] / (MAPL_GRAV * DT_MOIST)
 
     with computation(FORWARD), interval(...):
         # Redistribute precipitation fluxes for chemistry
@@ -81,9 +73,7 @@ def finalize_precip(
             1.0,
             max(convective_ice / max(ice_for_radiation, 1.0e-8), 0.0),
         )
-        large_scale_nonanvil_ice_flux[0, 0, 1] = (
-            large_scale_nonanvil_ice_flux[0, 0, 1] - anvil_ice_flux[0, 0, 1]
-        )
+        large_scale_nonanvil_ice_flux[0, 0, 1] = large_scale_nonanvil_ice_flux[0, 0, 1] - anvil_ice_flux[0, 0, 1]
 
         anvil_liquid_flux[0, 0, 1] = large_scale_nonanvil_liquid_flux[0, 0, 1] * min(
             1.0,
@@ -92,9 +82,7 @@ def finalize_precip(
                 0.0,
             ),
         )
-        large_scale_nonanvil_liquid_flux[0, 0, 1] = (
-            large_scale_nonanvil_liquid_flux[0, 0, 1] - anvil_liquid_flux[0, 0, 1]
-        )
+        large_scale_nonanvil_liquid_flux[0, 0, 1] = large_scale_nonanvil_liquid_flux[0, 0, 1] - anvil_liquid_flux[0, 0, 1]
 
     with computation(PARALLEL), interval(...):
         # cleanup suspended precipitation condensates
@@ -199,10 +187,7 @@ def dissipative_ke_heating(
         # total KE dissipation estimate
         dts = dts - ((du_dt_macro + du_dt_micro) * u0 + (dv_dt_macro + dv_dt_micro) * v0) * mass
         # [sic] fpi needed for calculation of conversion to pot. energy integrated
-        ke = sqrt(
-            (du_dt_macro + du_dt_micro) * (du_dt_macro + du_dt_micro)
-            + (dv_dt_macro + dv_dt_micro) * (dv_dt_macro + dv_dt_micro)
-        )
+        ke = sqrt((du_dt_macro + du_dt_micro) * (du_dt_macro + du_dt_micro) + (dv_dt_macro + dv_dt_micro) * (dv_dt_macro + dv_dt_micro))
         fpi = fpi + ke * mass
 
     with computation(PARALLEL), interval(...):

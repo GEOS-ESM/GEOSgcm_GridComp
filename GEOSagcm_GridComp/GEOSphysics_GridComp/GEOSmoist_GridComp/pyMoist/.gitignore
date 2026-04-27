@@ -13,6 +13,7 @@ sandbox/
 .gt4py_cache/
 .gt_cache_*/
 .translate*/
+_dacegraphs/
 **/build/
 .venv/
 site/

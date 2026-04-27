@@ -1,58 +1,331 @@
 """All translate tests must be imported here to be automatically discoverable by `pytest"""
 
+from .convection.GF_2020.cumulus_parameterization.air_density.translate_GF2020_CumulusParameterization_HydrostaticAirDensity import (
+    TranslateGF2020_CumulusParameterization_HydrostaticAirDensity_deep,
+    TranslateGF2020_CumulusParameterization_HydrostaticAirDensity_mid,
+    TranslateGF2020_CumulusParameterization_HydrostaticAirDensity_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.buoyancy.translate_GF2020_CumulusParameterization_GetBuoyancy_1 import (
+    TranslateGF2020_CumulusParameterization_GetBuoyancy_1_deep,
+    TranslateGF2020_CumulusParameterization_GetBuoyancy_1_mid,
+    TranslateGF2020_CumulusParameterization_GetBuoyancy_1_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.buoyancy.translate_GF2020_CumulusParameterization_GetBuoyancy_2 import (
+    TranslateGF2020_CumulusParameterization_GetBuoyancy_2_deep,
+    TranslateGF2020_CumulusParameterization_GetBuoyancy_2_mid,
+    TranslateGF2020_CumulusParameterization_GetBuoyancy_2_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.buoyancy.translate_GF2020_CumulusParameterization_GetBuoyancy_3 import (
+    TranslateGF2020_CumulusParameterization_GetBuoyancy_3_deep,
+    TranslateGF2020_CumulusParameterization_GetBuoyancy_3_mid,
+    TranslateGF2020_CumulusParameterization_GetBuoyancy_3_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.convection_tracers.translate_GF2020_CumulusParameterization_AtmosphericComposition import (
+    TranslateGF2020_CumulusParameterization_AtmosphericComposition_deep,
+    TranslateGF2020_CumulusParameterization_AtmosphericComposition_mid,
+    TranslateGF2020_CumulusParameterization_AtmosphericComposition_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.diurnal_cycle.translate_GF2020_CumulusParameterization_DiurnalCycle import (
+    TranslateGF2020_CumulusParameterization_DiurnalCycle_deep,
+    TranslateGF2020_CumulusParameterization_DiurnalCycle_mid,
+    TranslateGF2020_CumulusParameterization_DiurnalCycle_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.downdraft.translate_GF2020_CumulusParameterization_DowndraftLateralMassFlux import (
+    TranslateGF2020_CumulusParameterization_DowndraftLateralMassFlux_deep,
+    TranslateGF2020_CumulusParameterization_DowndraftLateralMassFlux_mid,
+    TranslateGF2020_CumulusParameterization_DowndraftLateralMassFlux_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.downdraft.translate_GF2020_CumulusParameterization_DowndraftMassFlux import (
+    TranslateGF2020_CumulusParameterization_DowndraftMassFlux_deep,
+    TranslateGF2020_CumulusParameterization_DowndraftMassFlux_mid,
+    TranslateGF2020_CumulusParameterization_DowndraftMassFlux_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.downdraft.translate_GF2020_CumulusParameterization_DowndraftMoisture import (
+    TranslateGF2020_CumulusParameterization_DowndraftMoisture_deep,
+    TranslateGF2020_CumulusParameterization_DowndraftMoisture_mid,
+    TranslateGF2020_CumulusParameterization_DowndraftMoisture_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.downdraft.translate_GF2020_CumulusParameterization_DowndraftMSEAndBuoyancy import (
+    TranslateGF2020_CumulusParameterization_DowndraftMSEAndBuoyancy_deep,
+    TranslateGF2020_CumulusParameterization_DowndraftMSEAndBuoyancy_mid,
+    TranslateGF2020_CumulusParameterization_DowndraftMSEAndBuoyancy_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.downdraft.translate_GF2020_CumulusParameterization_DowndraftOriginLevel import (
+    TranslateGF2020_CumulusParameterization_DowndraftOriginLevel_deep,
+    TranslateGF2020_CumulusParameterization_DowndraftOriginLevel_mid,
+    TranslateGF2020_CumulusParameterization_DowndraftOriginLevel_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.downdraft.translate_GF2020_CumulusParameterization_DowndraftTemperature import (
+    TranslateGF2020_CumulusParameterization_DowndraftTemperature_deep,
+    TranslateGF2020_CumulusParameterization_DowndraftTemperature_mid,
+    TranslateGF2020_CumulusParameterization_DowndraftTemperature_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.downdraft.translate_GF2020_CumulusParameterization_DowndraftWindShear import (
+    TranslateGF2020_CumulusParameterization_DowndraftWindShear_deep,
+    TranslateGF2020_CumulusParameterization_DowndraftWindShear_mid,
+    TranslateGF2020_CumulusParameterization_DowndraftWindShear_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.entrainment.translate_GF2020_CumulusParameterization_CalculateMassEntrainmentDetrainment import (
+    TranslateGF2020_CumulusParameterization_CalculateMassEntrainmentDetrainment_deep,
+    TranslateGF2020_CumulusParameterization_CalculateMassEntrainmentDetrainment_mid,
+    TranslateGF2020_CumulusParameterization_CalculateMassEntrainmentDetrainment_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.entrainment.translate_GF2020_CumulusParameterization_DowndraftEntrainmentProfiles import (
+    TranslateGF2020_CumulusParameterization_DowndraftEntrainmentProfiles_deep,
+    TranslateGF2020_CumulusParameterization_DowndraftEntrainmentProfiles_mid,
+    TranslateGF2020_CumulusParameterization_DowndraftEntrainmentProfiles_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.entrainment.translate_GF2020_CumulusParameterization_EntrainmentRates import (
+    TranslateGF2020_CumulusParameterization_EntrainmentRates_deep,
+    TranslateGF2020_CumulusParameterization_EntrainmentRates_mid,
+    TranslateGF2020_CumulusParameterization_EntrainmentRates_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.entrainment.translate_GF2020_CumulusParameterization_StableDetrainment import (
+    TranslateGF2020_CumulusParameterization_StableDetrainment_deep,
+    TranslateGF2020_CumulusParameterization_StableDetrainment_mid,
+    TranslateGF2020_CumulusParameterization_StableDetrainment_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.environment.translate_GF2020_CumulusParameterization_EnvironmentCloudLevels_1 import (
+    TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_1_deep,
+    TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_1_mid,
+    TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_1_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.environment.translate_GF2020_CumulusParameterization_EnvironmentCloudLevels_2 import (
+    TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_2_deep,
+    TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_2_mid,
+    TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_2_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.environment.translate_GF2020_CumulusParameterization_EnvironmentCloudLevels_3 import (
+    TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_3_deep,
+    TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_3_mid,
+    TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_3_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.environment.translate_GF2020_CumulusParameterization_EnvironmentConditions_1 import (
+    TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_deep,
+    TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_mid,
+    TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.environment.translate_GF2020_CumulusParameterization_EnvironmentConditions_2 import (
+    TranslateGF2020_CumulusParameterization_EnvironmentConditions_2_deep,
+    TranslateGF2020_CumulusParameterization_EnvironmentConditions_2_mid,
+    TranslateGF2020_CumulusParameterization_EnvironmentConditions_2_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.environment.translate_GF2020_CumulusParameterization_EnvironmentConditions_3 import (
+    TranslateGF2020_CumulusParameterization_EnvironmentConditions_3_deep,
+    TranslateGF2020_CumulusParameterization_EnvironmentConditions_3_mid,
+    TranslateGF2020_CumulusParameterization_EnvironmentConditions_3_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.environment.translate_GF2020_CumulusParameterization_EnvironmentMassFlux import (
+    TranslateGF2020_CumulusParameterization_EnvironmentMassFlux_deep,
+    TranslateGF2020_CumulusParameterization_EnvironmentMassFlux_mid,
+    TranslateGF2020_CumulusParameterization_EnvironmentMassFlux_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.environment.translate_GF2020_CumulusParameterization_ModifyEnvironmentProfiles import (
+    TranslateGF2020_CumulusParameterization_ModifyEnvironmentProfiles_deep,
+    TranslateGF2020_CumulusParameterization_ModifyEnvironmentProfiles_mid,
+    TranslateGF2020_CumulusParameterization_ModifyEnvironmentProfiles_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.get_levels.translate_GF2020_CumulusParameterization_CloudTop import (
+    TranslateGF2020_CumulusParameterization_CloudTop_deep,
+    TranslateGF2020_CumulusParameterization_CloudTop_mid,
+    TranslateGF2020_CumulusParameterization_CloudTop_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.get_levels.translate_GF2020_CumulusParameterization_ConvectiveCloudBaseLevel import (
+    TranslateGF2020_CumulusParameterization_ConvectiveCloudBaseLevel_deep,
+    TranslateGF2020_CumulusParameterization_ConvectiveCloudBaseLevel_mid,
+    TranslateGF2020_CumulusParameterization_ConvectiveCloudBaseLevel_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.get_levels.translate_GF2020_CumulusParameterization_GetLCL import (
+    TranslateGF2020_CumulusParameterization_GetLCL_deep,
+    TranslateGF2020_CumulusParameterization_GetLCL_mid,
+    TranslateGF2020_CumulusParameterization_GetLCL_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.get_levels.translate_GF2020_CumulusParameterization_HighestMoistStaticEnergyLevel import (
+    TranslateGF2020_CumulusParameterization_HighestMoistStaticEnergyLevel_deep,
+    TranslateGF2020_CumulusParameterization_HighestMoistStaticEnergyLevel_mid,
+    TranslateGF2020_CumulusParameterization_HighestMoistStaticEnergyLevel_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.get_levels.translate_GF2020_CumulusParameterization_PartitionLiquidIceAndGetLevels import (
+    TranslateGF2020_CumulusParameterization_PartitionLiquidIceAndGetLevels_deep,
+    TranslateGF2020_CumulusParameterization_PartitionLiquidIceAndGetLevels_mid,
+    TranslateGF2020_CumulusParameterization_PartitionLiquidIceAndGetLevels_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.kinetic_energy_to_heating.translate_GF2020_CumulusParameterization_KineticEnergyToHeating import (
+    TranslateGF2020_CumulusParameterization_KineticEnergyToHeating_deep,
+    TranslateGF2020_CumulusParameterization_KineticEnergyToHeating_mid,
+    TranslateGF2020_CumulusParameterization_KineticEnergyToHeating_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.large_scale_forcing.translate_GF2020_CumulusParameterization_LargeScaleForcing import (
+    TranslateGF2020_CumulusParameterization_LargeScaleForcing_deep,
+    TranslateGF2020_CumulusParameterization_LargeScaleForcing_mid,
+    TranslateGF2020_CumulusParameterization_LargeScaleForcing_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.moist_static_energy.translate_GF2020_CumulusParameterization_FirstGuessMoistStaticEnergy import (
+    TranslateGF2020_CumulusParameterization_FirstGuessMoistStaticEnergy_deep,
+    TranslateGF2020_CumulusParameterization_FirstGuessMoistStaticEnergy_mid,
+    TranslateGF2020_CumulusParameterization_FirstGuessMoistStaticEnergy_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.moist_static_energy.translate_GF2020_CumulusParameterization_ParcelMoistStaticEnergy_1 import (
+    TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_1_deep,
+    TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_1_mid,
+    TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_1_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.moist_static_energy.translate_GF2020_CumulusParameterization_ParcelMoistStaticEnergy_2 import (
+    TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_2_deep,
+    TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_2_mid,
+    TranslateGF2020_CumulusParameterization_ParcelMoistStaticEnergy_2_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.moist_static_energy.translate_GF2020_CumulusParameterization_StaticControl import (
+    TranslateGF2020_CumulusParameterization_StaticControl_deep,
+    TranslateGF2020_CumulusParameterization_StaticControl_mid,
+    TranslateGF2020_CumulusParameterization_StaticControl_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.precip.translate_GF2020_CumulusParameterization_CloudDissipation import (
+    TranslateGF2020_CumulusParameterization_CloudDissipation_deep,
+    TranslateGF2020_CumulusParameterization_CloudDissipation_mid,
+    TranslateGF2020_CumulusParameterization_CloudDissipation_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.precip.translate_GF2020_CumulusParameterization_PrecipitationFlux import (
+    TranslateGF2020_CumulusParameterization_PrecipitationFlux_deep,
+    TranslateGF2020_CumulusParameterization_PrecipitationFlux_mid,
+    TranslateGF2020_CumulusParameterization_PrecipitationFlux_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.precip.translate_GF2020_CumulusParameterization_RainEvaporationBelowCloudBase import (
+    TranslateGF2020_CumulusParameterization_RainEvaporationBelowCloudBase_deep,
+    TranslateGF2020_CumulusParameterization_RainEvaporationBelowCloudBase_mid,
+    TranslateGF2020_CumulusParameterization_RainEvaporationBelowCloudBase_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.prepare_output.translate_GF2020_CumulusParameterization_DeepPrecipitationOutput import (
+    TranslateGF2020_CumulusParameterization_DeepPrecipitationOutput_deep,
+    TranslateGF2020_CumulusParameterization_DeepPrecipitationOutput_mid,
+    TranslateGF2020_CumulusParameterization_DeepPrecipitationOutput_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.prepare_output.translate_GF2020_CumulusParameterization_EnsembleOutputAndFeedback import (
+    TranslateGF2020_CumulusParameterization_EnsembleOutputAndFeedback_deep,
+    TranslateGF2020_CumulusParameterization_EnsembleOutputAndFeedback_mid,
+    TranslateGF2020_CumulusParameterization_EnsembleOutputAndFeedback_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.prepare_output.translate_GF2020_CumulusParameterization_OutputUpdraftTemperature import (
+    TranslateGF2020_CumulusParameterization_OutputUpdraftTemperature_deep,
+    TranslateGF2020_CumulusParameterization_OutputUpdraftTemperature_mid,
+    TranslateGF2020_CumulusParameterization_OutputUpdraftTemperature_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.prepare_output.translate_GF2020_CumulusParameterization_OutputWorkfunctionsAndPrecipConcentrations import (
+    TranslateGF2020_CumulusParameterization_OutputWorkfunctionsAndPrecipConcentrations_deep,
+    TranslateGF2020_CumulusParameterization_OutputWorkfunctionsAndPrecipConcentrations_mid,
+    TranslateGF2020_CumulusParameterization_OutputWorkfunctionsAndPrecipConcentrations_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.prepare_output.translate_GF2020_CumulusParameterization_PrepareOutput import (
+    TranslateGF2020_CumulusParameterization_PrepareOutput_deep,
+    TranslateGF2020_CumulusParameterization_PrepareOutput_mid,
+    TranslateGF2020_CumulusParameterization_PrepareOutput_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.prepare_output.translate_GF2020_CumulusParameterization_TotalEvaporationFlux import (
+    TranslateGF2020_CumulusParameterization_TotalEvaporationFlux_deep,
+    TranslateGF2020_CumulusParameterization_TotalEvaporationFlux_mid,
+    TranslateGF2020_CumulusParameterization_TotalEvaporationFlux_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.profiles.translate_GF2020_CumulusParameterization_C1DProfile import (
+    TranslateGF2020_CumulusParameterization_C1DProfile_deep,
+    TranslateGF2020_CumulusParameterization_C1DProfile_mid,
+    TranslateGF2020_CumulusParameterization_C1DProfile_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.profiles.translate_GF2020_CumulusParameterization_MeltingProfile import (
+    TranslateGF2020_CumulusParameterization_MeltingProfile_deep,
+    TranslateGF2020_CumulusParameterization_MeltingProfile_mid,
+    TranslateGF2020_CumulusParameterization_MeltingProfile_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.setup.translate_GF2020_CumulusParameterization_Setup import (
+    TranslateGF2020_CumulusParameterization_Setup_deep,
+    TranslateGF2020_CumulusParameterization_Setup_mid,
+    TranslateGF2020_CumulusParameterization_Setup_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.smoothing.translate_GF2020_CumulusParameterization_SmoothTendencies import (
+    TranslateGF2020_CumulusParameterization_SmoothTendencies_deep,
+    TranslateGF2020_CumulusParameterization_SmoothTendencies_mid,
+    TranslateGF2020_CumulusParameterization_SmoothTendencies_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.translate_GF2020_CumulusParameterization import TranslateGF2020_CumulusParameterization
+from .convection.GF_2020.cumulus_parameterization.triggers.translate_GF2020_CumulusParameterization_ConvectionTrigger import (
+    TranslateGF2020_CumulusParameterization_ConvectionTrigger_deep,
+    TranslateGF2020_CumulusParameterization_ConvectionTrigger_mid,
+    TranslateGF2020_CumulusParameterization_ConvectionTrigger_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_CumulusParameterization_UpdateWorkfunctionAndPrecipitationEnsemble import (
+    TranslateGF2020_CumulusParameterization_UpdateWorkfunctionAndPrecipitationEnsemble_deep,
+    TranslateGF2020_CumulusParameterization_UpdateWorkfunctionAndPrecipitationEnsemble_mid,
+    TranslateGF2020_CumulusParameterization_UpdateWorkfunctionAndPrecipitationEnsemble_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_CumulusParameterization_UpdraftCIN import (
+    TranslateGF2020_CumulusParameterization_UpdraftCIN_deep,
+    TranslateGF2020_CumulusParameterization_UpdraftCIN_mid,
+    TranslateGF2020_CumulusParameterization_UpdraftCIN_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_CumulusParameterization_UpdraftInitialWorkfunctions import (
+    TranslateGF2020_CumulusParameterization_UpdraftInitialWorkfunctions_deep,
+    TranslateGF2020_CumulusParameterization_UpdraftInitialWorkfunctions_mid,
+    TranslateGF2020_CumulusParameterization_UpdraftInitialWorkfunctions_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_CumulusParameterization_UpdraftMassFlux import (
+    TranslateGF2020_CumulusParameterization_UpdraftMassFlux_deep,
+    TranslateGF2020_CumulusParameterization_UpdraftMassFlux_mid,
+    TranslateGF2020_CumulusParameterization_UpdraftMassFlux_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_CumulusParameterization_UpdraftMoistStaticEnergyAndMomentumBudget import (
+    TranslateGF2020_CumulusParameterization_UpdraftMoistStaticEnergyAndMomentumBudget_deep,
+    TranslateGF2020_CumulusParameterization_UpdraftMoistStaticEnergyAndMomentumBudget_mid,
+    TranslateGF2020_CumulusParameterization_UpdraftMoistStaticEnergyAndMomentumBudget_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_CumulusParameterization_UpdraftMoisture import (
+    TranslateGF2020_CumulusParameterization_UpdraftMoisture_deep,
+    TranslateGF2020_CumulusParameterization_UpdraftMoisture_mid,
+    TranslateGF2020_CumulusParameterization_UpdraftMoisture_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_CumulusParameterization_UpdraftTemperature import (
+    TranslateGF2020_CumulusParameterization_UpdraftTemperature_deep,
+    TranslateGF2020_CumulusParameterization_UpdraftTemperature_mid,
+    TranslateGF2020_CumulusParameterization_UpdraftTemperature_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.updraft.translate_GF2020_CumulusParameterization_UpdraftVerticalVelocity import (
+    TranslateGF2020_CumulusParameterization_UpdraftVerticalVelocity_deep,
+    TranslateGF2020_CumulusParameterization_UpdraftVerticalVelocity_mid,
+    TranslateGF2020_CumulusParameterization_UpdraftVerticalVelocity_shallow,
+)
+from .convection.GF_2020.cumulus_parameterization.vertical_discretization.translate_GF2020_CumulusParameterization_VerticalDiscretization import (
+    TranslateGF2020_CumulusParameterization_VerticalDiscretization_deep,
+    TranslateGF2020_CumulusParameterization_VerticalDiscretization_mid,
+    TranslateGF2020_CumulusParameterization_VerticalDiscretization_shallow,
+)
+from .convection.GF_2020.translate_GF2020 import TranslateGF2020
+from .convection.GF_2020.translate_GF2020_Finalize import TranslateGF2020_Finalize
+from .convection.GF_2020.translate_GF2020_Setup import TranslateGF2020_Setup
 from .convection.UW.translate_compute_uwshcu import TranslateComputeUwshcuInv
-from .convection.UW.UW_translate_tests.translate_adjust_implicit_CIN_inputs1 import (
-    TranslateAdjustImplicitCINInputs1,
-)
-from .convection.UW.UW_translate_tests.translate_adjust_implicit_CIN_inputs2 import (
-    TranslateAdjustImplicitCINInputs2,
-)
-from .convection.UW.UW_translate_tests.translate_average_initial_and_final_CIN1 import (
-    TranslateAverageInitialFinalCIN1,
-)
-from .convection.UW.UW_translate_tests.translate_average_initial_and_final_CIN3 import (
-    TranslateAverageInitialFinalCIN3,
-)
+from .convection.UW.UW_translate_tests.translate_adjust_implicit_CIN_inputs1 import TranslateAdjustImplicitCINInputs1
+from .convection.UW.UW_translate_tests.translate_adjust_implicit_CIN_inputs2 import TranslateAdjustImplicitCINInputs2
+from .convection.UW.UW_translate_tests.translate_average_initial_and_final_CIN1 import TranslateAverageInitialFinalCIN1
+from .convection.UW.UW_translate_tests.translate_average_initial_and_final_CIN3 import TranslateAverageInitialFinalCIN3
 from .convection.UW.UW_translate_tests.translate_buoyancy_sorting import TranslateBuoyancySorting
 from .convection.UW.UW_translate_tests.translate_buoyancy_sorting_fluxes import TranslateBuoyancySortingFluxes
-from .convection.UW.UW_translate_tests.translate_calc_cumulus_condensate_at_interface import (
-    TranslateCalcCumulusCondensate,
-)
-from .convection.UW.UW_translate_tests.translate_calc_entrainment_mass_flux import (
-    TranslateCalcEntrainmentMassFlux,
-)
+from .convection.UW.UW_translate_tests.translate_calc_cumulus_condensate_at_interface import TranslateCalcCumulusCondensate
+from .convection.UW.UW_translate_tests.translate_calc_entrainment_mass_flux import TranslateCalcEntrainmentMassFlux
 from .convection.UW.UW_translate_tests.translate_calc_momentum_tendency import TranslateMomentumTendency
 from .convection.UW.UW_translate_tests.translate_calc_pbl_fluxes import TranslateCalcPblFluxes
 from .convection.UW.UW_translate_tests.translate_calc_ppen import TranslateCalcPpen
-from .convection.UW.UW_translate_tests.translate_calc_thermodynamic_tendencies import (
-    TranslateThermodynamicTendencies,
-)
+from .convection.UW.UW_translate_tests.translate_calc_thermodynamic_tendencies import TranslateThermodynamicTendencies
 from .convection.UW.UW_translate_tests.translate_compute_cin_cinlcl import TranslateComputeCinCinlcl
 from .convection.UW.UW_translate_tests.translate_compute_del_CIN import TranslateComputeDelCIN
-from .convection.UW.UW_translate_tests.translate_compute_diagnostic_outputs import (
-    TranslateComputeDiagnosticOutputs,
-)
-from .convection.UW.UW_translate_tests.translate_compute_uwshcu_invert_after import (
-    TranslateComputeUwshcuInvertAfter,
-)
+from .convection.UW.UW_translate_tests.translate_compute_diagnostic_outputs import TranslateComputeDiagnosticOutputs
+from .convection.UW.UW_translate_tests.translate_compute_uwshcu_invert_after import TranslateComputeUwshcuInvertAfter
 from .convection.UW.UW_translate_tests.translate_define_env_properties import TranslateDefineEnvProperties
 from .convection.UW.UW_translate_tests.translate_define_prel_cbmf import TranslateDefinePrelCbmf
-from .convection.UW.UW_translate_tests.translate_define_updraft_properties import (
-    TranslateDefineUpdraftProperties,
-)
+from .convection.UW.UW_translate_tests.translate_define_updraft_properties import TranslateDefineUpdraftProperties
 from .convection.UW.UW_translate_tests.translate_find_klcl import TranslateFindKlcl
 from .convection.UW.UW_translate_tests.translate_find_pbl import TranslateFindPbl
-from .convection.UW.UW_translate_tests.translate_penetrative_entrainment_fluxes import (
-    TranslatePenetrativeEntrainmentFluxes,
-)
+from .convection.UW.UW_translate_tests.translate_penetrative_entrainment_fluxes import TranslatePenetrativeEntrainmentFluxes
 from .convection.UW.UW_translate_tests.translate_prepare_inputs import TranslatePrepareInputs
-from .convection.UW.UW_translate_tests.translate_prevent_negative_condensate import (
-    TranslatePreventNegativeCondensate,
-)
+from .convection.UW.UW_translate_tests.translate_prevent_negative_condensate import TranslatePreventNegativeCondensate
 from .convection.UW.UW_translate_tests.translate_recalc_condensate import TranslateRecalcCondensate
-from .convection.UW.UW_translate_tests.translate_recalc_environmental_variables import (
-    TranslateRecalcEnvVariables,
-)
+from .convection.UW.UW_translate_tests.translate_recalc_environmental_variables import TranslateRecalcEnvVariables
 from .convection.UW.UW_translate_tests.translate_setup_inputs import TranslateSetupInputs
 from .convection.UW.UW_translate_tests.translate_setup_outputs import TranslateSetupOutputs
 from .convection.UW.UW_translate_tests.translate_tracer_tendencies import TranslateTracerTendencies

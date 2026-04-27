@@ -64,14 +64,10 @@ class TranslateGFDL_1M_RadiationCoupling(TranslateFortranData2Py):
 
         safe_assign_array(state.mixing_ratio.vapor.field[:], inputs["mixing_ratio_vapor"])
         safe_assign_array(state.t.field[:], inputs["t"])
-        safe_assign_array(
-            state.mixing_ratio.large_scale_liquid.field[:], inputs["mixing_ratio_large_scale_liquid"]
-        )
+        safe_assign_array(state.mixing_ratio.large_scale_liquid.field[:], inputs["mixing_ratio_large_scale_liquid"])
         safe_assign_array(state.mixing_ratio.large_scale_ice.field[:], inputs["mixing_ratio_large_scale_ice"])
         safe_assign_array(state.cloud_fraction.large_scale.field[:], inputs["cloud_fraction_large_scale"])
-        safe_assign_array(
-            state.mixing_ratio.convective_liquid.field[:], inputs["mixing_ratio_convective_liquid"]
-        )
+        safe_assign_array(state.mixing_ratio.convective_liquid.field[:], inputs["mixing_ratio_convective_liquid"])
         safe_assign_array(state.mixing_ratio.convective_ice.field[:], inputs["mixing_ratio_convective_ice"])
         safe_assign_array(state.cloud_fraction.convective.field[:], inputs["cloud_fraction_convective"])
         safe_assign_array(locals_.p_mb.field[:], inputs["local_p_mb"])
@@ -91,9 +87,7 @@ class TranslateGFDL_1M_RadiationCoupling(TranslateFortranData2Py):
             state.cloud_particle_effective_radius.liquid.field[:],
             inputs["cloud_particle_effective_radius_liquid"],
         )
-        safe_assign_array(
-            state.cloud_particle_effective_radius.ice.field[:], inputs["cloud_particle_effective_radius_ice"]
-        )
+        safe_assign_array(state.cloud_particle_effective_radius.ice.field[:], inputs["cloud_particle_effective_radius_ice"])
         safe_assign_array(state.relative_humidity_after_pdf.field[:], inputs["relative_humidity_after_pdf"])
 
         # construct test stencil

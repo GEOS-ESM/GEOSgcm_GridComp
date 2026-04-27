@@ -151,9 +151,7 @@ class MAPLManagedState:
         if key not in self._recorded_state:
             self._recorded_state[key] = self._ndsl_state.to_xarray().copy(deep=True)
         else:
-            self._recorded_state[key] = xr.concat(
-                [self._recorded_state[key], self._ndsl_state.to_xarray()], dim="timestep"
-            )
+            self._recorded_state[key] = xr.concat([self._recorded_state[key], self._ndsl_state.to_xarray()], dim="timestep")
 
     def save_recorded(self) -> None:
         for key, recorded_state in self._recorded_state.items():

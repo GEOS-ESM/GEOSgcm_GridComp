@@ -14,7 +14,6 @@ from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
 class TranslateGFDL_1M_RHCalculations(TranslateFortranData2Py):
     def __init__(self, grid: Grid, namelist: Namelist, stencil_factory: StencilFactory):
         super().__init__(grid, stencil_factory)
-        self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
 
         # FloatField Inputs
