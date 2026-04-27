@@ -120,7 +120,7 @@ contains
       call MAPL_GridCompAddConnection(gc, &
            src_comp="SDYN", &
            dst_comp="PHYS", &
-           src_names="U, V, T, PLE4", &
+           src_names="U, V, T, PLE", &
            dst_names="U, V, TEMP, PLE", _RC)
       call MAPL_GridCompAddConnection(gc, &
            src_comp="<self>", &

@@ -227,13 +227,13 @@ contains
       ! Precompute Local heating distribution
 
       ! K day-1 :: Local heating
-      call MAPL_GridCompGetResource(gc, 'QMAX', qmax, default=.000, _RC)
+      call MAPL_GridCompGetResource(gc, "QMAX", qmax, default=.000, _RC)
       if (qmax /= 0.0) then
          ! Get local heating parameters from the configuration
-         call MAPL_GridCompGetResource(gc, 'X0', x0, default=0.0, _RC)
-         call MAPL_GridCompGetResource(gc, 'Y0', y0, default=0.0, _RC)
-         call MAPL_GridCompGetResource(gc, 'DX', dx, default=30.0, _RC)
-         call MAPL_GridCompGetResource(gc, 'DY', dy, default=5.0, _RC)
+         call MAPL_GridCompGetResource(gc, "X0", x0, default=0.0, _RC)
+         call MAPL_GridCompGetResource(gc, "Y0", y0, default=0.0, _RC)
+         call MAPL_GridCompGetResource(gc, "DX", dx, default=30.0, _RC)
+         call MAPL_GridCompGetResource(gc, "DY", dy, default=5.0, _RC)
          ! Horizontal structure of optional stationary heat source
          x0 = x0 * (MAPL_PI / 180.0)
          y0 = y0 * (MAPL_PI / 180.0)
@@ -253,8 +253,8 @@ contains
       end if
 
       ! Get Williamson parameters (alpha, phi0) from the configuration
-      call MAPL_GridCompGetResource(gc, 'AFAC', afac, default=2.65 / 15., _RC)
-      call MAPL_GridCompGetResource(gc, 'PHI0', phi0, default=60., _RC)
+      call MAPL_GridCompGetResource(gc, "AFAC", afac, default=2.65 / 15., _RC)
+      call MAPL_GridCompGetResource(gc, "PHI0", phi0, default=60., _RC)
       ! Horizontal structure of Willianson parameterization
       P_I = (1.0 + tanh(afac * (abs(lats) - phi0)))
 
@@ -270,7 +270,7 @@ contains
    !  diagnostics. These are all optional Exports. The input winds
    !  and/or temperatures may be Friendly. All Friendlies are updated
    !  using a time step
-   !  obtained from 'RUN\_DT:' in the configuration. Both U and V must be
+   !  obtained from "RUN\_DT:" in the configuration. Both U and V must be
    !  Friendly for the wind to be updated. It is an error for one to be Friendly
    !  and not the other.
 
@@ -325,39 +325,39 @@ contains
       ! Get parameters from the configuration
 
       ! 8 Held-Suarez parameters
-      call MAPL_GridCompGetResource(gc, 'TAUA', taua, default=40., _RC)
-      call MAPL_GridCompGetResource(gc, 'TAUS', taus, default=4.0, _RC)
-      call MAPL_GridCompGetResource(gc, 'TAUF', tauf, default=1.0, _RC)
-      call MAPL_GridCompGetResource(gc, 'SIG1', sig1, default=0.7, _RC)
-      call MAPL_GridCompGetResource(gc, 'T0', t0, default=315., _RC)
-      call MAPL_GridCompGetResource(gc, 'DELV1', delv1, default=10., _RC)
-      call MAPL_GridCompGetResource(gc, 'DELH', delh, default=60., _RC)
-      call MAPL_GridCompGetResource(gc, 'TSTRT', tstrt, default=200., _RC)
-      call MAPL_GridCompGetResource(gc, 'FRICQ', fricq, default=1, _RC)
+      call MAPL_GridCompGetResource(gc, "TAUA", taua, default=40., _RC)
+      call MAPL_GridCompGetResource(gc, "TAUS", taus, default=4.0, _RC)
+      call MAPL_GridCompGetResource(gc, "TAUF", tauf, default=1.0, _RC)
+      call MAPL_GridCompGetResource(gc, "SIG1", sig1, default=0.7, _RC)
+      call MAPL_GridCompGetResource(gc, "T0", t0, default=315., _RC)
+      call MAPL_GridCompGetResource(gc, "DELV1", delv1, default=10., _RC)
+      call MAPL_GridCompGetResource(gc, "DELH", delh, default=60., _RC)
+      call MAPL_GridCompGetResource(gc, "TSTRT", tstrt, default=200., _RC)
+      call MAPL_GridCompGetResource(gc, "FRICQ", fricq, default=1, _RC)
 
       ! Localized heating parameters
-      call MAPL_GridCompGetResource(gc, 'P_1', p_1, default=0.0, _RC)
-      call MAPL_GridCompGetResource(gc, 'QMAX', qmax, default=0.0, _RC)
+      call MAPL_GridCompGetResource(gc, "P_1", p_1, default=0.0, _RC)
+      call MAPL_GridCompGetResource(gc, "QMAX", qmax, default=0.0, _RC)
 
       ! 3 Williamson parameters
-      call MAPL_GridCompGetResource(gc, 'GAM_I', gam_i, default=-3.345e-3, _RC)
-      call MAPL_GridCompGetResource(gc, 'GAM_D', gam_d, default=.002, _RC)
-      call MAPL_GridCompGetResource(gc, 'P_D', p_d, default=1.E4, _RC)
+      call MAPL_GridCompGetResource(gc, "GAM_I", gam_i, default=-3.345e-3, _RC)
+      call MAPL_GridCompGetResource(gc, "GAM_D", gam_d, default=.002, _RC)
+      call MAPL_GridCompGetResource(gc, "P_D", p_d, default=1.E4, _RC)
       !EOR
 
       ! Check for Friendliness
-      friendly = ESMF_TRUE ! MAPL_VerifyFriendly(import, 'V', trim(comp_name), _RC)
+      friendly = ESMF_TRUE ! MAPL_VerifyFriendly(import, "V", trim(comp_name), _RC)
       friendly_wind = friendly == ESMF_TRUE
 
-      friendly = ESMF_TRUE ! MAPL_VerifyFriendly(import, 'U', trim(comp_name), _RC)
+      friendly = ESMF_TRUE ! MAPL_VerifyFriendly(import, "U", trim(comp_name), _RC)
       _ASSERT((friendly == ESMF_TRUE) .eqv. friendly_wind, "something wrong")
 
-      friendly = ESMF_TRUE ! MAPL_VerifyFriendly(import, 'TEMP', trim(comp_name), _RC)
+      friendly = ESMF_TRUE ! MAPL_VerifyFriendly(import, "TEMP", trim(comp_name), _RC)
       friendly_temp = friendly == ESMF_TRUE
 
       ! If we have a friendly, we need a time step
       if (friendly_temp .or. friendly_wind) then
-         call MAPL_GridCompGetResource(gc, 'RUN_DT', dt, default=0.0, _RC)
+         call MAPL_GridCompGetResource(gc, "RUN_DT", dt, default=0.0, _RC)
       end if
 
       ! Allocate 10 2D scratch arrays

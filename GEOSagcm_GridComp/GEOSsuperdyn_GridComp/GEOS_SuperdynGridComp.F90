@@ -210,12 +210,6 @@ contains
       !   topography related quantities.
       !EOP
 
-      ! real, dimension(:, :, :), pointer :: ptr3
-
-      ! TODO: pchakrab - 04/15/2026 - seemingly we do not need to allocate Q here
-      ! The MAPL2 version of GEOShs works just fine without this allocation
-      ! call MAPL_GetPointer(GEX(DYN), ptr3, 'Q', ALLOC=.true., _RC)
-
 #ifdef PRINT_STATES
       character(len=*), parameter :: IAm = "GEOS_SuperdynGridCompMod:Initialize"
       call WRITE_PARALLEL(trim(IAm) // ": IMPORT State")
