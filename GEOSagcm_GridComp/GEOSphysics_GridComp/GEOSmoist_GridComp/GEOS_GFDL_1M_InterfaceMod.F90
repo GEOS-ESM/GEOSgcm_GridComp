@@ -434,7 +434,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real    :: tmp_val, rand1
     real    :: x_norm, safe_max_rh_crit
     real    :: ALPHA, RHCRIT
-    real    :: ONE_M_SIG
+    real    :: one_minus_sigma
     real    :: fraction_hail
 
     real, allocatable :: facEIS_2d(:,:), minrhcrit_2d(:,:), turnrhcrit_2d(:,:)
@@ -1200,8 +1200,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
      !$OMP        CNV_FRC, SRF_TYPE, T, QLLS, QILS, Q, CLLS, CLCN, KLID, PLmb, &
      !$OMP        QRAIN, QSNOW, QGRAUPEL, NACTL, NACTI, RAD_QV, RAD_QR, RAD_QS, &
      !$OMP        RAD_QG, RAD_CF, CLDREFFL, CLDREFFI, FAC_RL, MIN_RL, MAX_RL, &
-     !$OMP        FAC_RI, MIN_RI, MAX_RI) &
-     !$OMP private(I, J, L, tmp_val)
+     !$OMP        FAC_RI, MIN_RI, MAX_RI, AREA) &
+     !$OMP private(I, J, L, tmp_val, one_minus_sigma)
      do L = 1, LM
        do J = 1, JM
          do I = 1, IM
@@ -1222,10 +1222,12 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                 QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L), REMOVE_CLOUDS=(L < KLID))
            endif
 
-           ! Get radiative properties
-           call RADCOUPLE(T(I,J,L), PLmb(I,J,L), CLLS(I,J,L), CLCN(I,J,L), &
+           ! Get radiative properties (Scale-Aware)
+           one_minus_sigma = 1.0 - SIGMA(sqrt(AREA(I,J)))
+           call RADCOUPLE_SCALE_AWARE(T(I,J,L), PLmb(I,J,L), CLLS(I,J,L), CLCN(I,J,L), &
                  Q(I,J,L), QLLS(I,J,L), QILS(I,J,L), QLCN(I,J,L), QICN(I,J,L), &
                  QRAIN(I,J,L), QSNOW(I,J,L), QGRAUPEL(I,J,L), NACTL(I,J,L), NACTI(I,J,L), &
+                 one_minus_sigma, &
                  RAD_QV(I,J,L), RAD_QL(I,J,L), RAD_QI(I,J,L), RAD_QR(I,J,L), RAD_QS(I,J,L), &
                  RAD_QG(I,J,L), RAD_CF(I,J,L), CLDREFFL(I,J,L), CLDREFFI(I,J,L), &
                  FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI)

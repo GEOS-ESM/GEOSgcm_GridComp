@@ -1369,7 +1369,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
 
     integer :: i, k
 
-    real :: ccn0, cin0, q1, q2
+    real :: ccn0, cin0
     real :: convt, rdt, dts, q_cond, tmp, nl, ni
 
     real, dimension (ks:ke) :: h_var
@@ -1384,7 +1384,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
     real, dimension (ks:ke) :: pcs, eds, oes, rrs, tvs
     real, dimension (ks:ke) :: pcg, edg, oeg, rrg, tvg
 
-    real (kind = r8) :: con_r8, c8, cp8
+    real (kind = r8) :: mass_fac, con_r8, c8, cp8
 
     real (kind = r8), dimension (is:ie, ks:ke) :: te_beg_d, te_end_d, tw_beg_d, tw_end_d
     real (kind = r8), dimension (is:ie, ks:ke) :: te_beg_m, te_end_m, tw_beg_m, tw_end_m
@@ -1418,7 +1418,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
     ! Begin Parallel Loop
     ! -----------------------------------------------------------------------
     !$OMP PARALLEL DO DEFAULT(SHARED) &
-    !$OMP PRIVATE(i, k, ccn0, cin0, q1, q2, q_cond, tmp, nl, ni, con_r8, c8, cp8, &
+    !$OMP PRIVATE(i, k, ccn0, cin0, q_cond, tmp, nl, ni, mass_fac, con_r8, c8, cp8, &
     !$OMP         h_var, q_liq, q_sol, dp, dz, dp0, qvz, qlz, qrz, qiz, qsz, &
     !$OMP         qgz, qaz, zez, den, pz, denfac, ccn, cin, u, v, w, &
     !$OMP         pcw, edw, oew, rrw, tvw, pci, edi, oei, rri, tvi, &
@@ -1513,28 +1513,24 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
             qaz (k) = qa (i, k)
             zez (k) = -30.0
 
-            ! Determine the dry air fraction (1 - total_water_specific_humidity).
-            ! If inline microphysics is enabled, we account for both vapor and all 
-            ! condensate species (liquid/ice); otherwise, we only account for vapor.
+            ! Determine the dry air fraction based on inline_mp setting.
             if (do_inline_mp) then
                 q_cond = qlz (k) + qrz (k) + qiz (k) + qsz (k) + qgz (k)
                 con_r8 = one_r8 - (qvz (k) + q_cond)
             else
                 con_r8 = one_r8 - qvz (k) 
             endif
-
-            ! Store original moist pressure thickness (diagnostic/unused).
+        
+            ! Store original moist pressure thickness
             dp0 (k) = delp (i, k)
-
-            ! Convert total pressure thickness (delp) to dry air pressure thickness (dp).
-            dp (k) = delp (i, k) * con_r8
-
-            ! Calculate the conversion factor to go from specific humidity 
-            ! (mass/total_mass) to dry mixing ratio (mass/dry_mass).
+        
+            ! Convert total pressure thickness (delp) to dry air pressure thickness (dp)
+            dp (k) = dp0 (k) * con_r8
+          
+            ! Calculate factor to go from specific humidity to dry mixing ratio
             con_r8 = one_r8 / con_r8
 
-            ! Scale all water species from specific ratios to dry mixing ratios.
-            ! This ensures mass conservation within the microphysics driver.
+            ! Convert all species to dry mixing ratios
             qvz (k) = qvz (k) * con_r8
             qlz (k) = qlz (k) * con_r8
             qrz (k) = qrz (k) * con_r8
@@ -1792,25 +1788,37 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         do k = ks, ke
 
             ! -----------------------------------------------------------------------
-            ! Convert dry mixing ratios back to specific ratios (mass per total air mass)
+            ! Use dp (dry mass) and dp0 (initial total mass) to return safely 
+            ! to specific humidities consistent with the host model's current timestep.
             ! -----------------------------------------------------------------------
-            
-            ! Calculate the total-to-dry mass ratio (1 + sum of water species).
-            ! If inline MP is used, we include condensates in the total mass definition.
+           
+            ! -----------------------------------------------------------------
+            ! 1. Calculate the NEW total-to-dry mass ratio
+            ! -----------------------------------------------------------------
+            ! If inline MP is used, total mass includes vapor and all condensates.
+            ! If not, total mass is just dry air + vapor (condensates are "massless").
             if (do_inline_mp) then
                 q_cond = qlz (k) + qrz (k) + qiz (k) + qsz (k) + qgz (k)
                 con_r8 = one_r8 + qvz (k) + q_cond
             else
                 con_r8 = one_r8 + qvz (k)
             endif
-                
-            ! Convert dry pressure thickness back to total moist pressure thickness.
+
+            ! -----------------------------------------------------------------
+            ! 2. Reconstruct the new moist pressure thickness
+            ! -----------------------------------------------------------------
+            ! dp(k) currently holds the DRY pressure thickness.
+            ! Update dp(k) to represent the NEW total moist pressure thickness.
             dp (k) = dp (k) * con_r8
 
-            ! Prepare the reciprocal factor to scale species from dry to total mass.
+            ! -----------------------------------------------------------------
+            ! 3. Convert water species back to specific humidities
+            ! -----------------------------------------------------------------
+            ! Calculate the reciprocal: (Dry Mass / New Total Mass)
             con_r8 = one_r8 / con_r8
 
-            ! Rescale all water species back to specific humidity/specific ratios.
+            ! Normalize the water species by the NEW total mass of the grid cell.
+            ! (This perfectly restores your original, stable model behavior).
             qvz (k) = qvz (k) * con_r8
             qlz (k) = qlz (k) * con_r8
             qrz (k) = qrz (k) * con_r8
@@ -1818,21 +1826,18 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
             qsz (k) = qsz (k) * con_r8
             qgz (k) = qgz (k) * con_r8
 
-            ! Calculate the total water mass fraction BEFORE the physics update.
-            q1 = qv (i, k) + ql (i, k) + qr (i, k) + qi (i, k) + qs (i, k) + qg (i, k)
-            
-            ! Calculate the total water mass fraction AFTER the physics update.
-            q2 = qvz (k) + qlz (k) + qrz (k) + qiz (k) + qsz (k) + qgz (k)
-            
-            ! Compute an adjustment factor for non-water tracers (adj_vmr).
-            ! This accounts for the 'dilution' or 'concentration' of chemical species 
-            ! as the total air mass changes while the dry air mass stays constant.
-            adj_vmr (i, k) = ((one_r8 - q1) / (one_r8 - q2)) / (one_r8 + q2 - q1)
+            ! -----------------------------------------------------------------
+            ! 4. Calculate the Tracer Dilution Adjustment (adj_vmr)
+            ! -----------------------------------------------------------------
+            ! Instead of the complex q1/q2 algebraic formula, we use the exact 
+            ! physical definition of tracer dilution: Old Mass / New Mass.
+            ! dp0(k) is the old total mass, and dp(k) is the new total mass.
+            adj_vmr (i, k) = dp0 (k) / dp (k)
 
             ! return reflectivity
             zet (i, k) = zez (k)
 
-! return QA tendencies for GEOS
+            ! return QA tendencies for GEOS
             if (.not. do_qa) then
                qa_dt (i, k) = rdt * &
                       ( qa (i, k)*SQRT( max(qiz(k)+qlz(k),qcmin) / max(qi(i,k)+ql(i,k),qcmin) ) - & ! New Cloud -
@@ -3325,10 +3330,23 @@ subroutine praut (ks, ke, dts, dp, tz, qak, qvk, qlk, qrk, qik, qsk, qgk, den, c
     real :: sink, dq, qc
 
     real, dimension (ks:ke) :: ql, dl, qadum, c_praut
+    real :: qadum_lo, qadum_nl
 
-    ! Use In-Cloud condensates
+    ! Use In-Cloud condensates with scale-aware blending
     if (in_cloud_liq) then
-      qadum = max(qak,cfmin)
+       do k=ks,ke
+          ! Coarse-resolution behavior (onemsig -> 0):
+          ! linear response based directly on qak
+          qadum_lo = qak(k)
+          ! Fine-resolution nonlinear limit (onemsig -> 1):
+          ! saturating transition toward unity as qak increases
+          ! curvature strength increases with onemsig via exponent
+          qadum_nl = 1.0 - (1.0 - min(qak(k)/0.6, 1.0)) ** (1.0 + 2.0*onemsig)
+          ! Gray-zone blending between linear and nonlinear regimes
+          qadum(k) = (1.0 - onemsig) * qadum_lo + onemsig * qadum_nl     
+          ! Enforce minimum bound to prevent vanishing values
+          qadum(k) = max(qadum(k), cfmin)            
+      enddo
     else
       qadum = 1.0
     endif
@@ -3561,6 +3579,7 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
     real :: ql, qi, qim, qadum, newliq, newice
     real :: tmp, sink, fac_imlt, fac_frez
     real :: critical_qi_factor
+    real :: qadum_lo, qadum_nl
 
     ! psaut_qi_crt (ice to snow conversion) has strong resolution dependence
     !    account for this using onemsig to convert more ice to snow at coarser resolutions
@@ -3573,9 +3592,19 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
         if (tz (k) .gt. tice .and. qik (k) .gt. qcmin) then
 
-            ! Use In-Cloud condensates
+            ! Use In-Cloud condensates with scale-aware blending
             if (in_cloud_ice) then
-              qadum = max(qak(k),cfmin)
+              ! Coarse-resolution behavior (onemsig -> 0):
+              ! linear response based directly on qak
+              qadum_lo = qak(k)
+              ! Fine-resolution nonlinear limit (onemsig -> 1):
+              ! saturating transition toward unity as qak increases
+              ! curvature strength increases with onemsig via exponent
+              qadum_nl = 1.0 - (1.0 - min(qak(k)/0.6, 1.0)) ** (1.0 + 2.0*onemsig)
+              ! Gray-zone blending between linear and nonlinear regimes
+              qadum = (1.0 - onemsig) * qadum_lo + onemsig * qadum_nl
+              ! Enforce minimum bound to prevent vanishing values
+              qadum = max(qadum, cfmin)
             else
               qadum = 1.0 
             endif
@@ -3597,9 +3626,19 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
         elseif (tz (k) <= tice .and. qlk (k) > qcmin) then
 
-            ! Use In-Cloud condensates
+            ! Use In-Cloud condensates with scale-aware blending
             if (in_cloud_ice) then
-              qadum = max(qak(k),cfmin)
+              ! Coarse-resolution behavior (onemsig -> 0):
+              ! linear response based directly on qak
+              qadum_lo = qak(k)
+              ! Fine-resolution nonlinear limit (onemsig -> 1):
+              ! saturating transition toward unity as qak increases
+              ! curvature strength increases with onemsig via exponent
+              qadum_nl = 1.0 - (1.0 - min(qak(k)/0.6, 1.0)) ** (1.0 + 2.0*onemsig)
+              ! Gray-zone blending between linear and nonlinear regimes
+              qadum = (1.0 - onemsig) * qadum_lo + onemsig * qadum_nl     
+              ! Enforce minimum bound to prevent vanishing values
+              qadum = max(qadum, cfmin)            
             else
               qadum = 1.0
             endif
@@ -3662,6 +3701,7 @@ subroutine pimlt (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, t
 
     real :: ql, qi, qadum, newliq
     real :: tmp, sink, fac_imlt
+    real :: qadum_lo, qadum_nl
 
     fac_imlt = 1. - exp (- dts / tau_imlt)
 
@@ -3669,9 +3709,19 @@ subroutine pimlt (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, t
 
         if (tz (k) .gt. tice .and. qik (k) .gt. qcmin) then
 
-            ! Use In-Cloud condensates
+            ! Use In-Cloud condensates with scale-aware blending
             if (in_cloud_ice) then
-              qadum = max(qak(k),cfmin)
+              ! Coarse-resolution behavior (onemsig -> 0):
+              ! linear response based directly on qak
+              qadum_lo = qak(k)
+              ! Fine-resolution nonlinear limit (onemsig -> 1):
+              ! saturating transition toward unity as qak increases
+              ! curvature strength increases with onemsig via exponent
+              qadum_nl = 1.0 - (1.0 - min(qak(k)/0.6, 1.0)) ** (1.0 + 2.0*onemsig)
+              ! Gray-zone blending between linear and nonlinear regimes
+              qadum = (1.0 - onemsig) * qadum_lo + onemsig * qadum_nl     
+              ! Enforce minimum bound to prevent vanishing values
+              qadum = max(qadum, cfmin)            
             else
               qadum = 1.0
             endif
@@ -3734,6 +3784,7 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
     real :: ql, qi, qadum, newice 
     real :: tmp, sink, qim, fac_frez
     real :: critical_qi_factor 
+    real :: qadum_lo, qadum_nl
 
     ! psaut_qi_crt (ice to snow conversion) has strong resolution dependence
     !    account for this using onemsig to convert more ice to snow at coarser resolutions
@@ -3745,9 +3796,19 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
 
         if (tz (k) .le. tice .and. qlk (k) .gt. qcmin) then
 
-            ! Use In-Cloud condensates
+            ! Use In-Cloud condensates with scale-aware blending
             if (in_cloud_ice) then
-              qadum = max(qak(k),cfmin)
+              ! Coarse-resolution behavior (onemsig -> 0):
+              ! linear response based directly on qak
+              qadum_lo = qak(k)
+              ! Fine-resolution nonlinear limit (onemsig -> 1):
+              ! saturating transition toward unity as qak increases
+              ! curvature strength increases with onemsig via exponent
+              qadum_nl = 1.0 - (1.0 - min(qak(k)/0.6, 1.0)) ** (1.0 + 2.0*onemsig)
+              ! Gray-zone blending between linear and nonlinear regimes
+              qadum = (1.0 - onemsig) * qadum_lo + onemsig * qadum_nl     
+              ! Enforce minimum bound to prevent vanishing values
+              qadum = max(qadum, cfmin)            
             else
               qadum = 1.0
             endif
@@ -4041,8 +4102,8 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
     integer :: k
 
     real :: tc, sink, fac_i2s, q_plus, qim, dq, tmp
-
     real :: di, qi, critical_qi_factor, qadum
+    real :: qadum_lo, qadum_nl
 
     ! psaut_qi_crt (ice to snow conversion) has strong resolution dependence
     !    account for this using onemsig to convert more ice to snow at coarser resolutions
@@ -4056,9 +4117,19 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
 
             tc = tz (k) - tice
 
-            ! Use In-Cloud condensates
+            ! Use In-Cloud condensates with scale-aware blending
             if (in_cloud_ice) then
-              qadum = max(qak(k),cfmin)
+              ! Coarse-resolution behavior (onemsig -> 0):
+              ! linear response based directly on qak
+              qadum_lo = qak(k)
+              ! Fine-resolution nonlinear limit (onemsig -> 1):
+              ! saturating transition toward unity as qak increases
+              ! curvature strength increases with onemsig via exponent
+              qadum_nl = 1.0 - (1.0 - min(qak(k)/0.6, 1.0)) ** (1.0 + 2.0*onemsig)
+              ! Gray-zone blending between linear and nonlinear regimes
+              qadum = (1.0 - onemsig) * qadum_lo + onemsig * qadum_nl     
+              ! Enforce minimum bound to prevent vanishing values
+              qadum = max(qadum, cfmin)            
             else
               qadum = 1.0
             endif
