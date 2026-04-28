@@ -3330,23 +3330,11 @@ subroutine praut (ks, ke, dts, dp, tz, qak, qvk, qlk, qrk, qik, qsk, qgk, den, c
     real :: sink, dq, qc
 
     real, dimension (ks:ke) :: ql, dl, qadum, c_praut
-    real :: qadum_lo, qadum_nl
 
     ! Use In-Cloud condensates with scale-aware blending
     if (in_cloud_liq) then
-       do k=ks,ke
-          ! Coarse-resolution behavior (onemsig -> 0):
-          ! linear response based directly on qak
-          qadum_lo = qak(k)
-          ! Fine-resolution nonlinear limit (onemsig -> 1):
-          ! saturating transition toward unity as qak increases
-          ! curvature strength increases with onemsig via exponent
-          qadum_nl = 1.0 - (1.0 - min(qak(k)/0.6, 1.0)) ** (1.0 + 2.0*onemsig)
-          ! Gray-zone blending between linear and nonlinear regimes
-          qadum(k) = (1.0 - onemsig) * qadum_lo + onemsig * qadum_nl     
-          ! Enforce minimum bound to prevent vanishing values
-          qadum(k) = max(qadum(k), cfmin)            
-      enddo
+      ! Enforce minimum bound to prevent vanishing values
+      qadum = max(qak, cfmin)
     else
       qadum = 1.0
     endif
@@ -3579,7 +3567,6 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
     real :: ql, qi, qim, qadum, newliq, newice
     real :: tmp, sink, fac_imlt, fac_frez
     real :: critical_qi_factor
-    real :: qadum_lo, qadum_nl
 
     ! psaut_qi_crt (ice to snow conversion) has strong resolution dependence
     !    account for this using onemsig to convert more ice to snow at coarser resolutions
@@ -3594,17 +3581,8 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
             ! Use In-Cloud condensates with scale-aware blending
             if (in_cloud_ice) then
-              ! Coarse-resolution behavior (onemsig -> 0):
-              ! linear response based directly on qak
-              qadum_lo = qak(k)
-              ! Fine-resolution nonlinear limit (onemsig -> 1):
-              ! saturating transition toward unity as qak increases
-              ! curvature strength increases with onemsig via exponent
-              qadum_nl = 1.0 - (1.0 - min(qak(k)/0.6, 1.0)) ** (1.0 + 2.0*onemsig)
-              ! Gray-zone blending between linear and nonlinear regimes
-              qadum = (1.0 - onemsig) * qadum_lo + onemsig * qadum_nl
               ! Enforce minimum bound to prevent vanishing values
-              qadum = max(qadum, cfmin)
+              qadum = max(qak(k), cfmin)
             else
               qadum = 1.0 
             endif
@@ -3628,17 +3606,8 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
             ! Use In-Cloud condensates with scale-aware blending
             if (in_cloud_ice) then
-              ! Coarse-resolution behavior (onemsig -> 0):
-              ! linear response based directly on qak
-              qadum_lo = qak(k)
-              ! Fine-resolution nonlinear limit (onemsig -> 1):
-              ! saturating transition toward unity as qak increases
-              ! curvature strength increases with onemsig via exponent
-              qadum_nl = 1.0 - (1.0 - min(qak(k)/0.6, 1.0)) ** (1.0 + 2.0*onemsig)
-              ! Gray-zone blending between linear and nonlinear regimes
-              qadum = (1.0 - onemsig) * qadum_lo + onemsig * qadum_nl     
               ! Enforce minimum bound to prevent vanishing values
-              qadum = max(qadum, cfmin)            
+              qadum = max(qak(k), cfmin)            
             else
               qadum = 1.0
             endif
@@ -3701,7 +3670,6 @@ subroutine pimlt (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, t
 
     real :: ql, qi, qadum, newliq
     real :: tmp, sink, fac_imlt
-    real :: qadum_lo, qadum_nl
 
     fac_imlt = 1. - exp (- dts / tau_imlt)
 
@@ -3711,17 +3679,8 @@ subroutine pimlt (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, t
 
             ! Use In-Cloud condensates with scale-aware blending
             if (in_cloud_ice) then
-              ! Coarse-resolution behavior (onemsig -> 0):
-              ! linear response based directly on qak
-              qadum_lo = qak(k)
-              ! Fine-resolution nonlinear limit (onemsig -> 1):
-              ! saturating transition toward unity as qak increases
-              ! curvature strength increases with onemsig via exponent
-              qadum_nl = 1.0 - (1.0 - min(qak(k)/0.6, 1.0)) ** (1.0 + 2.0*onemsig)
-              ! Gray-zone blending between linear and nonlinear regimes
-              qadum = (1.0 - onemsig) * qadum_lo + onemsig * qadum_nl     
               ! Enforce minimum bound to prevent vanishing values
-              qadum = max(qadum, cfmin)            
+              qadum = max(qak(k), cfmin)            
             else
               qadum = 1.0
             endif
@@ -3784,7 +3743,6 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
     real :: ql, qi, qadum, newice 
     real :: tmp, sink, qim, fac_frez
     real :: critical_qi_factor 
-    real :: qadum_lo, qadum_nl
 
     ! psaut_qi_crt (ice to snow conversion) has strong resolution dependence
     !    account for this using onemsig to convert more ice to snow at coarser resolutions
@@ -3798,17 +3756,8 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
 
             ! Use In-Cloud condensates with scale-aware blending
             if (in_cloud_ice) then
-              ! Coarse-resolution behavior (onemsig -> 0):
-              ! linear response based directly on qak
-              qadum_lo = qak(k)
-              ! Fine-resolution nonlinear limit (onemsig -> 1):
-              ! saturating transition toward unity as qak increases
-              ! curvature strength increases with onemsig via exponent
-              qadum_nl = 1.0 - (1.0 - min(qak(k)/0.6, 1.0)) ** (1.0 + 2.0*onemsig)
-              ! Gray-zone blending between linear and nonlinear regimes
-              qadum = (1.0 - onemsig) * qadum_lo + onemsig * qadum_nl     
               ! Enforce minimum bound to prevent vanishing values
-              qadum = max(qadum, cfmin)            
+              qadum = max(qak(k), cfmin)            
             else
               qadum = 1.0
             endif
@@ -4103,7 +4052,6 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
 
     real :: tc, sink, fac_i2s, q_plus, qim, dq, tmp
     real :: di, qi, critical_qi_factor, qadum
-    real :: qadum_lo, qadum_nl
 
     ! psaut_qi_crt (ice to snow conversion) has strong resolution dependence
     !    account for this using onemsig to convert more ice to snow at coarser resolutions
@@ -4119,17 +4067,8 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
 
             ! Use In-Cloud condensates with scale-aware blending
             if (in_cloud_ice) then
-              ! Coarse-resolution behavior (onemsig -> 0):
-              ! linear response based directly on qak
-              qadum_lo = qak(k)
-              ! Fine-resolution nonlinear limit (onemsig -> 1):
-              ! saturating transition toward unity as qak increases
-              ! curvature strength increases with onemsig via exponent
-              qadum_nl = 1.0 - (1.0 - min(qak(k)/0.6, 1.0)) ** (1.0 + 2.0*onemsig)
-              ! Gray-zone blending between linear and nonlinear regimes
-              qadum = (1.0 - onemsig) * qadum_lo + onemsig * qadum_nl     
               ! Enforce minimum bound to prevent vanishing values
-              qadum = max(qadum, cfmin)            
+              qadum = max(qak(k), cfmin)            
             else
               qadum = 1.0
             endif
