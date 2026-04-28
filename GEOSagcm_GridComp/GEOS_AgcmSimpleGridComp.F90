@@ -130,7 +130,6 @@ contains
       !      itemtype=MAPL_STATEITEM_SERVICE, &
       !      service_items=service_items, _RC)
 
-      call MAPL_GridCompGet(gc, hconfig=hconfig, _RC)
       call MAPL_GridCompAddChild(gc, "SDYN", user_setservices(SDYN_SetServices), "superdyn.yaml", _RC)
       call MAPL_GridCompAddChild(gc, "PHYS", user_setservices(PHYS_SetServices), "held-suarez.yaml", _RC)
 

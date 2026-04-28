@@ -13,6 +13,7 @@ target_include_directories (${this} PUBLIC ${INC_ESMF} ${INC_NETCDF})
 
 set (resource_files
   GEOShs.rc
+  held-suarez.yaml
 )
 
 install(FILES ${resource_files}
