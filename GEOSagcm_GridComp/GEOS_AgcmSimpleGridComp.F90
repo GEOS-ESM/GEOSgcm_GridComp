@@ -28,7 +28,7 @@ module GEOS_AgcmSimpleGridCompMod
    use GEOS_superdynGridCompMod, only: SDYN_SetServices => SetServices
    use GEOS_hsGridCompMod, only: PHYS_SetServices => SetServices
 
-   use gftl2_StringVector, only: StringVector
+   ! use gftl2_StringVector, only: StringVector
 
    implicit none
    private
@@ -60,17 +60,41 @@ contains
       integer, intent(out) :: rc ! return code
       !EOP
 
-      type(ESMF_HConfig) :: hconfig
-      type(StringVector) :: service_items
-      character(len=8), allocatable :: tracer_list(:)
+      ! type(StringVector) :: service_items
+      ! character(len=8), allocatable :: tracer_list(:)
 
-      integer :: iter, status
+      integer :: status
 
       call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_INITIALIZE, Initialize, _RC)
       call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_RUN, Run, _RC)
 
-#include "AgcmSimple_Internal___.h"
-      ! "FAKE" specs to provide PHIS, VARFLT and TRADV to FV3
+      ! NOTE: The tracer advection is provided as a service by DYN, which we originally subscribed
+      ! to in this gridcomp. Subsequently, the subscription was moved to the gridcomp DataMoist,
+      ! using the configurable gridcomp and data-moist.yaml config file. The original code
+      ! implementing the subscriber in this component is commented out and retained, for reference
+      !
+      ! #include "AgcmSimple_Internal___.h"
+      ! Erstwhile AgcmSimple_StateSpecs.rc, for reference
+      ! schema_version: 2.0.0
+      ! component: AgcmSimple
+      !
+      ! # FAKE internals for bundling tracers for FV3
+      ! category: INTERNAL
+      ! #-------------------------------------------------------------------
+      ! SHORT_NAME | UNITS   | DEFAULT | DIMS | VLOC | RESTART | LONG_NAME
+      ! #-------------------------------------------------------------------
+      ! Q          | kg kg-1 | 1.0e-6  | xyz  | C    | SKIP   | specific_humidity
+      ! QLLS       | kg kg-1 |         | xyz  | C    | SKIP   | mass_fraction_of_large_scale_cloud_liquid_water
+      ! QLCN       | kg kg-1 |         | xyz  | C    | SKIP   | mass_fraction_of_convective_cloud_liquid_water
+      ! QILS       | kg kg-1 |         | xyz  | C    | SKIP   | mass_fraction_of_large_scale_cloud_ice_water
+      ! QICN       | kg kg-1 |         | xyz  | C    | SKIP   | mass_fraction_of_convective_cloud_ice_water
+      ! CLLS       | 1       |         | xyz  | C    | SKIP   | large_scale_cloud_area_fraction
+      ! CLCN       | 1       |         | xyz  | C    | SKIP   | convective_cloud_area_fraction
+      ! QRAIN      | kg kg-1 | 0.0     | xyz  | C    | SKIP   | mass_fraction_of_rain
+      ! QSNOW      | kg kg-1 | 0.0     | xyz  | C    | SKIP   | mass_fraction_of_snow
+      ! QGRAUPEL   | kg kg-1 | 0.0     | xyz  | C    | SKIP   | mass_fraction_of_graupel
+
+      ! "FAKE" specs to provide PHIS and VARFLT to FV3
       call MAPL_GridCompAddSpec(gc, &
            state_intent=ESMF_STATEINTENT_INTERNAL, &
            short_name="PHIS", &
@@ -87,22 +111,24 @@ contains
            dims="xy", &
            vstagger=VERTICAL_STAGGER_NONE, &
            add_to_export=.true., _RC)
-      tracer_list = [ &
-           "Q       ", &
-           "QLLS    ", "QLCN    ", "QILS    ", "QICN    ", &
-           "CLLS    ", "CLCN    ", "QRAIN   ", "QSNOW   ", "QGRAUPEL"]
-      do iter = 1, size(tracer_list)
-         call service_items%push_back(trim(tracer_list(iter)))
-      end do
-      call MAPL_GridCompAddSpec(gc, &
-           state_intent=ESMF_STATEINTENT_IMPORT, &
-           short_name="TRADV", &
-           standard_name='advected_quantities', &
-           units="unknown", &
-           dims="xyz", & ! TODO: we shouldn't need dims/vstagger for bundles
-           vstagger=VERTICAL_STAGGER_NONE, &
-           itemtype=MAPL_STATEITEM_SERVICE, &
-           service_items=service_items, _RC)
+
+      ! SUBSCRIBED "FAKE" spec to bundle tracers for FV3
+      ! tracer_list = [ &
+      !      "Q       ", &
+      !      "QLLS    ", "QLCN    ", "QILS    ", "QICN    ", &
+      !      "CLLS    ", "CLCN    ", "QRAIN   ", "QSNOW   ", "QGRAUPEL"]
+      ! do iter = 1, size(tracer_list)
+      !    call service_items%push_back(trim(tracer_list(iter)))
+      ! end do
+      ! call MAPL_GridCompAddSpec(gc, &
+      !      state_intent=ESMF_STATEINTENT_IMPORT, &
+      !      short_name="TRADV", &
+      !      standard_name='advected_quantities', &
+      !      units="unknown", &
+      !      dims="xyz", & ! TODO: we shouldn't need dims/vstagger for bundles
+      !      vstagger=VERTICAL_STAGGER_NONE, &
+      !      itemtype=MAPL_STATEITEM_SERVICE, &
+      !      service_items=service_items, _RC)
 
       call MAPL_GridCompGet(gc, hconfig=hconfig, _RC)
       call MAPL_GridCompAddChild(gc, "SDYN", user_setservices(SDYN_SetServices), "superdyn.yaml", _RC)
@@ -126,10 +152,11 @@ contains
            src_comp="<self>", &
            dst_comp="SDYN", &
            src_names="PHIS, VARFLT", _RC)
-      call MAPL_GridCompAddConnection(gc, &
-           src_comp="SDYN", &
-           dst_comp="<self>", &
-           src_names="TRADV", _RC)
+      ! CONNECTION between provider and subscriber of the "FAKE" tracer bundle service
+      ! call MAPL_GridCompAddConnection(gc, &
+      !      src_comp="SDYN", &
+      !      dst_comp="<self>", &
+      !      src_names="TRADV", _RC)
 
       _RETURN(_SUCCESS)
    end subroutine SetServices
@@ -145,40 +172,37 @@ contains
       !DESCRIPTION: The Initialize method of this Gridded Component.
 
       type(ESMF_State) :: internal
-      type(ESMF_FieldBundle) :: tradv
       type(ESMF_TimeInterval) :: replay_shutoff_interval
-      type(ESMF_Field) :: field
       real, pointer, dimension(:,:) :: phis
-      real, pointer, dimension(:,:,:) :: q, qlls, qlcn, qils, qicn, clls, clcn, qrain, qsnow, qgraupel
-      character(len=8), allocatable :: tracer_list(:)
-      integer :: iter, replay_shutoff_seconds, status
+      ! real, pointer, dimension(:,:,:) :: q, qlls, qlcn, qils, qicn, clls, clcn, qrain, qsnow, qgraupel
+      integer :: replay_shutoff_seconds, status
 
       ! PHIS ... (zeroed out, instead of reading from a zero file)
       call MAPL_GridCompGetInternalState(gc, internal, _RC)
       call MAPL_StateGetPointer(internal, phis, "PHIS", _RC)
       phis = 0.0
 
-      ! TRADV ...
-      call MAPL_StateGetPointer(internal, q, "Q", _RC)
-      q = 1.0e-6 ! initialize to something small but non-zero
-      call MAPL_StateGetPointer(internal, qlls, "QLLS", _RC)
-      qlls = 0.0
-      call MAPL_StateGetPointer(internal, qlcn, "QLCN", _RC)
-      qlcn = 0.0
-      call MAPL_StateGetPointer(internal, qils, "QILS", _RC)
-      qils = 0.0
-      call MAPL_StateGetPointer(internal, qicn, "QICN", _RC)
-      qicn = 0.0
-      call MAPL_StateGetPointer(internal, clls, "CLLS", _RC)
-      clls = 0.0
-      call MAPL_StateGetPointer(internal, clcn, "CLCN", _RC)
-      clcn = 0.0
-      call MAPL_StateGetPointer(internal, qrain, "QRAIN", _RC)
-      qrain = 0.0
-      call MAPL_StateGetPointer(internal, qsnow, "QSNOW", _RC)
-      qsnow = 0.0
-      call MAPL_StateGetPointer(internal, qgraupel, "QGRAUPEL", _RC)
-      qgraupel = 0.0
+      ! ! TRADV ...
+      ! call MAPL_StateGetPointer(internal, q, "Q", _RC)
+      ! q = 1.0e-6 ! initialize to something small but non-zero
+      ! call MAPL_StateGetPointer(internal, qlls, "QLLS", _RC)
+      ! qlls = 0.0
+      ! call MAPL_StateGetPointer(internal, qlcn, "QLCN", _RC)
+      ! qlcn = 0.0
+      ! call MAPL_StateGetPointer(internal, qils, "QILS", _RC)
+      ! qils = 0.0
+      ! call MAPL_StateGetPointer(internal, qicn, "QICN", _RC)
+      ! qicn = 0.0
+      ! call MAPL_StateGetPointer(internal, clls, "CLLS", _RC)
+      ! clls = 0.0
+      ! call MAPL_StateGetPointer(internal, clcn, "CLCN", _RC)
+      ! clcn = 0.0
+      ! call MAPL_StateGetPointer(internal, qrain, "QRAIN", _RC)
+      ! qrain = 0.0
+      ! call MAPL_StateGetPointer(internal, qsnow, "QSNOW", _RC)
+      ! qsnow = 0.0
+      ! call MAPL_StateGetPointer(internal, qgraupel, "QGRAUPEL", _RC)
+      ! qgraupel = 0.0
 
       ! Initialize alarms
       call MAPL_GridCompGetResource(gc, "REPLAY_SHUTOFF", replay_shutoff_seconds, default=-3600, _RC)
