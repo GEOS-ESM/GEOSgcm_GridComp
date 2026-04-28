@@ -190,7 +190,6 @@ class UWGEOSInterface(UserCode):
                         self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
                         MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
                     )
-                    self._managed_state.record("UW-In")
 
                 with TimedCUDAProfiler("UW Numerics", {}):
                     self._uw(self._managed_state.ndsl_state)
@@ -201,7 +200,6 @@ class UWGEOSInterface(UserCode):
                         self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
                     )
                     self._managed_state.ndsl_to_fortran()
-                    self._managed_state.record("UW-Out")
 
     def finalize(self, mapl_state, import_state, export_state) -> None:
         self._managed_state.save_recorded()
