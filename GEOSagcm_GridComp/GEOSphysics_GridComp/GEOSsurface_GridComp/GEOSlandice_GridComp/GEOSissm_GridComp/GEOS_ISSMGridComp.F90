@@ -11,8 +11,10 @@ module GEOS_IssmGridCompMod
 ! !DESCRIPTION:
 !
 !   {\tt GEOS\_ISSM} is a wrapper that calls ISSM (C++) IRF methods
-!   Imports: ICESMB (defined on landice tiles)
-!   Exports: ICESURF, ICETHICK, ICEVEL, EQSMB (defined on mesh)
+!   Imports: ICESMB (defined on landice tiles)  [private internal state]
+!   Exports: ICESURF, ICETHICK, ICESMB, ICEVX, ICEVY (defined on mesh) [true export state]
+!   Exports: ICESURF, ICETHICK, ICEVEL (defined on landice tiles) [private internal state]
+!   Internals: ICESURF, ICETHICK, IMLS, OMLS (defined on mesh) [true internal state]
 ! *** NOTES: 
 !            (*) currently we run over all input files (*.bin) that are found in ISSM_EXPDIR 
 !                (e.g., Greenland + Antarctica + any other glaciers that have been configured)
