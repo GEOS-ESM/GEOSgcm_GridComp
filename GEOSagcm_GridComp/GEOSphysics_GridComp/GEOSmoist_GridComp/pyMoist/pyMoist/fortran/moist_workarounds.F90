@@ -39,11 +39,11 @@ subroutine CNV_Tracers_To_SOA()
     if ( .not. allocated(CNV_Tracers_SOA__Q) ) then
         allocate(CNV_Tracers_SOA__Q(IM, JM, LM, ncnst))
         allocate(CNV_Tracers_SOA__fscav(ncnst))
-        allocate(CNV_Tracers_SOA__Vect_Hcts(4, ncnst))
+        allocate(CNV_Tracers_SOA__Vect_Hcts(ncnst, 4))
         allocate(CNV_Tracers_SOA__use_gcc_washout(ncnst))
         do n = 1, ncnst
             CNV_Tracers_SOA__fscav(n) = CNV_Tracers(n)%fscav
-            CNV_Tracers_SOA__Vect_Hcts(:, n) = CNV_Tracers(n)%Vect_Hcts(:)
+            CNV_Tracers_SOA__Vect_Hcts(n, :) = CNV_Tracers(n)%Vect_Hcts(:)
             CNV_Tracers_SOA__use_gcc_washout(n) = CNV_Tracers(n)%use_gcc_washout
         enddo
         call WRITE_PARALLEL("CNV_Tracers_SOA ready")

@@ -18,6 +18,7 @@ module GEOS_GF_InterfaceMod
   use ConvPar_GF_SharedParams
   use ConvPar_GF_GEOS5
   use ConvPar_GF2020
+  use moist_dsl_workarounds
 
   implicit none
 
@@ -445,7 +446,9 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       call MAPL_GetPointer(INTERNAL, DSL__GF2020_LATS, 'DSL__GF2020_LATS', RC=STATUS); VERIFY_(STATUS)
       DSL__GF2020_LONS = LONS
       DSL__GF2020_LATS = LATS
+      call CNV_Tracers_To_SOA()
       call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.convection.GF2020_interface", MAPL, IMPORT, EXPORT, INTERNAL )
+      call CNV_Tracers_To_AOS()
     else
 
     ! Internals
