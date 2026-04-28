@@ -80,14 +80,11 @@ private
 
 public SetServices
 
-! !DESCRIPTION:
-! 
-!   {\tt GEOS\_ISSM} gridcomp runs NASA's Ice-sheet and Sea-level System Model (ISSM)
-!             
+! some shared derived types and parameters below:       
 
 public :: T_ISSM_TILE_STATE
 public :: ISSM_TILE_WRAP
-! define ISSM export as internal variables, will be used by the landice grid comp
+! define ISSM export as internal variables, will be used by the landice gridcomp
 
 type T_ISSM_TILE_STATE
     real, pointer :: ICESURF_TILE(:)
@@ -120,7 +117,11 @@ type ISSM_WRAP
   type (T_ISSM_STATE), pointer :: ptr
 end type ISSM_WRAP
 
+! number of output fields that ISSM sends to GEOS
+integer :: num_outputs = 6   
+
 contains
+                                
 
 !BOP
 
@@ -138,10 +139,7 @@ subroutine SetServices ( GC, RC )
     ! !DESCRIPTION: 
 !   This version uses the MAPL\_GenericSetServices Here we set the initialize method,
 !   run method, and finalize method because we are interfacing with the external ISSM
-!   library IRF methods. We also add the state variable specifications (also generic) 
-!   to our instance of the generic state. This is the way our true state variables get into
-!   the ESMF\_State INTERNAL, which is in the MAPL\_MetaComp. The import
-!   variables are allocated and initialized by generic. 
+!   library IRF methods.
 
 !EOP
 
@@ -310,7 +308,10 @@ subroutine SetServices ( GC, RC )
     type(ESMF_State),        intent(INOUT) :: EXPORT                  ! Export state
     type(ESMF_Clock),        intent(INOUT) :: CLOCK                   ! The clock
     integer, optional,       intent(OUT)   :: RC                      ! Error code
+    
     type(MAPL_MetaComp), pointer           :: MAPL   
+    type(ESMF_State)                       :: INTERNAL                !internal state
+
 
     ! ErrLog Variables
     character(len=ESMF_MAXSTR)             :: IAm
@@ -384,6 +385,19 @@ subroutine SetServices ( GC, RC )
     integer, pointer, dimension(:)         :: elementMask => null()
     integer, pointer, dimension(:)         :: nodeMask => null()
     integer                                :: n1,n2,n3
+
+    ! restarts from internal state
+    real, pointer, dimension(:)            :: ICESURF_IN    => null() ! ice surface elevation restart
+    real, pointer, dimension(:)            :: ICETHICK_IN   => null() ! ice thickness restart
+    real, pointer, dimension(:)            :: IMLS_IN       => null() ! ice-mask levelset restart
+    real, pointer, dimension(:)            :: OMLS_IN       => null() ! ice-mask levelset restart
+
+    ! restarts with halo points
+    real(dp), pointer, dimension(:)        :: ICESURF_HALO  => null()
+    real(dp), pointer, dimension(:)        :: ICETHICK_HALO => null()
+    real(dp), pointer, dimension(:)        :: IMLS_HALO     => null()
+    real(dp), pointer, dimension(:)        :: OMLS_HALO     => null()
+    real(dp), pointer, dimension(:)        :: GEOS_RESTARTS => null() !concatenate restart fields
 
     ! Get the target components name and set-up traceback handle.
     ! -----------------------------------------------------------
@@ -623,6 +637,52 @@ subroutine SetServices ( GC, RC )
     call ESMF_GridCompSet(gc, grid=mesh_grid, _RC)
     call MAPL_set(MAPL, locstream = mesh_locstream, _RC)
 
+    ! generic initialize 
+    call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
+    VERIFY_(STATUS)
+
+    ! now get MAPL and INTERNAL state
+    call MAPL_GetObjectFromGC(GC, MAPL, STATUS)
+    VERIFY_(STATUS)
+
+    call MAPL_Get(MAPL,INTERNAL_ESMF_STATE = INTERNAL,RC=STATUS)
+    VERIFY_(STATUS)
+
+    ! get pointers to restarts
+    call MAPL_GetPointer(INTERNAL, ICESURF_IN, 'ICESURF', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, ICETHICK_IN, 'ICETHICK', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, IMLS_IN, 'IMLS', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, OMLS_IN, 'OMLS', RC=STATUS); VERIFY_(STATUS)
+
+    ! variables for halo operations
+    allocate(ICESURF_HALO(num_nodes))
+    allocate(ICETHICK_HALO(num_nodes))
+    allocate(IMLS_HALO(num_nodes))
+    allocate(OMLS_HALO(num_nodes))
+    allocate(GEOS_RESTARTS(num_outputs*num_nodes))
+    
+    ! apply halo operation to all restart variables
+    call apply_halo(ICESURF_IN,ICESURF_HALO)
+    call apply_halo(ICETHICK_IN,ICETHICK_HALO)
+    call apply_halo(IMLS_IN,IMLS_HALO)
+    call apply_halo(OMLS_IN,OMLS_HALO)
+
+    ! package restarts into one pointer
+    ! note: same size as full issm output pointer in case
+    ! we need to supply velocity restarts at some point
+    GEOS_RESTARTS(:) = 0.0_dp
+    GEOS_RESTARTS(1:num_nodes) = ICESURF_HALO(:) 
+    GEOS_RESTARTS(num_nodes+1:2*num_nodes) = ICETHICK_HALO(:) 
+    GEOS_RESTARTS(4*num_nodes+1:5*num_nodes) = OMLS_HALO(:) 
+    GEOS_RESTARTS(5*num_nodes+1:6*num_nodes) = IMLS_HALO(:) 
+
+    ! set restarts on the ISSM side
+    call ESMF_VMBarrier(vm, rc=status); VERIFY_(STATUS)
+    
+    call InputFromRestarts(c_loc(GEOS_RESTARTS), c_loc(elementConn))
+
+    call ESMF_VMBarrier(vm, rc=status); VERIFY_(STATUS)
+
     ! deallocate pointers
     if(associated(field_saver))     deallocate(field_saver)
     if(associated(nodelons))        deallocate(nodelons)
@@ -643,18 +703,60 @@ subroutine SetServices ( GC, RC )
     if(associated(ownedNodeCoords)) deallocate(ownedNodeCoords)
     if(associated(ownedNodeIds))    deallocate(ownedNodeIds)
     if(associated(nodeOwners))      deallocate(nodeOwners)
+    if(associated(ICESURF_HALO))    deallocate(ICESURF_HALO)
+    if(associated(ICETHICK_HALO))   deallocate(ICETHICK_HALO)
+    if(associated(IMLS_HALO))       deallocate(IMLS_HALO)
+    if(associated(OMLS_HALO))       deallocate(OMLS_HALO)
+    if(associated(GEOS_RESTARTS))   deallocate(GEOS_RESTARTS)
 
     ! destroy fields and arrays
     call ESMF_FieldDestroy(gridField, rc=STATUS); VERIFY_(STATUS)
     call ESMF_FieldDestroy(meshField, rc=STATUS); VERIFY_(STATUS)
     call ESMF_ArrayDestroy(meshArray, rc=STATUS); VERIFY_(STATUS)
-
-    ! generic initialize 
-    call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
-    VERIFY_(STATUS)
+    
     RETURN_(ESMF_SUCCESS)
 
     contains
+       subroutine apply_halo(VAR_IN,VAR_HALO)
+        ! apply halo operation to a restart variable
+        real, pointer, dimension(:), intent(inout)     :: VAR_IN            ! var on owned_nodes
+        real(dp), pointer, dimension(:), intent(inout) :: VAR_HALO          ! var on all nodes
+        real(dp), pointer, dimension(:)                :: VAR_DP            ! double version of VAR_IN
+        real(dp), pointer, dimension(:)                :: MESH_PTR          ! pointer for ESMF_FieldGet
+        real(dp), pointer, dimension(:)                :: ARRAY_PTR         ! pointer for ESMF_FieldGet 
+        type(ESMF_Array)                               :: meshArray         ! array for creating mesh fields
+        type(ESMF_Field)                               :: meshField         ! field associated with meshArray
+
+        allocate(VAR_DP(num_nodes))
+        VAR_DP(:) = 0.0_dp
+        VAR_DP(1:num_owned_nodes) = REAL(VAR_IN,kind=dp)
+    
+        ! create array with halo information
+        meshArray=ESMF_ArrayCreate(nodalDistgrid,typekind=ESMF_TYPEKIND_R8,haloSeqIndexList=halolist,rc=STATUS)
+
+        call ESMF_ArrayGet(array=meshArray,farrayPtr=ARRAY_PTR)
+        ARRAY_PTR(:) = VAR_DP(:)
+
+        ! create field on ISSM mesh 
+        meshField=ESMF_FieldCreate(mesh, array=meshArray, meshLoc=ESMF_MESHLOC_NODE, rc=STATUS)
+        VERIFY_(STATUS)
+
+        ! append halo values to end of "owned" array
+        call ESMF_FieldHalo(meshField, routehandle=halohandle, rc=STATUS); VERIFY_(STATUS)
+    
+        ! get pointer to field on mesh
+        call ESMF_FieldGet(meshField,farrayPtr=MESH_PTR,RC=STATUS); VERIFY_(STATUS)
+
+        ! copy values into VAR_HALO
+        VAR_HALO(owned_idx) = MESH_PTR(1:num_owned_nodes)          ! owned nodes
+        VAR_HALO(halo_idx) = MESH_PTR(num_owned_nodes+1:num_nodes) ! halo nodes
+
+        ! destroy field and array, deallocate pointer
+        call ESMF_FieldDestroy(meshField,rc=STATUS);  VERIFY_(STATUS)
+        call ESMF_ArrayDestroy(meshArray,rc=STATUS);  VERIFY_(STATUS)
+        deallocate(VAR_DP)
+        
+       end subroutine apply_halo
 
        function create_mesh_grid(rc) result(mesh_grid)
           type (ESMF_Grid) :: mesh_grid
@@ -760,7 +862,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real, pointer, dimension(:)          :: ICESMB_EX     => null() ! pointer to SMB export (mesh)
 
   ! ISSM Outputs
-  integer :: num_outputs = 6                                      ! number of outputs 
   real(dp),    pointer, dimension(:)   :: ISSM_OUTPUTS  => null() ! pointer containing all outputs
 
   ! ice-surface elevation on mesh and landice tiles
@@ -1031,7 +1132,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       VAR_TILE = MAPL_Undef
     end if
 
-    ! create source field: field on mesh elements
+    ! create source field: field on mesh nodes
     srcField = ESMF_FieldCreate(mesh=mesh,farrayPtr=VAR_MESH_OWN,meshloc=ESMF_MESHLOC_NODE, & 
     datacopyflag=ESMF_DATACOPY_VALUE,rc=STATUS)
     VERIFY_(STATUS)
