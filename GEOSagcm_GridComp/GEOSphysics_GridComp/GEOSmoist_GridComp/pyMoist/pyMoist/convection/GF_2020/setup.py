@@ -1449,7 +1449,7 @@ class GF2020Setup(NDSLRuntime):
         )
 
         # workaround because max of full field cannot be determined inside a stencil
-        t_2m_max = state.t_2m.field.max()
+        t_2m_max = Float(state.t_2m.field.max().item())
 
         # # if surface temperature is not yet set in single column mode, stop the entire convection scheme
         if self.stencil_factory.grid_indexing.get_shape([I_DIM, J_DIM]) == (1, 1) and t_2m_max < 1.0e-6:

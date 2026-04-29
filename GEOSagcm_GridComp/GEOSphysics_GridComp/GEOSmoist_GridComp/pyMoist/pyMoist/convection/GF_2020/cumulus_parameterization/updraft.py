@@ -1,4 +1,5 @@
-from ndsl import Local, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
+import numpy as np
+from ndsl import NDSLRuntime, Quantity, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, Field, GlobalTable, K, computation, interval
 from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
@@ -816,11 +817,8 @@ class UpdraftMassFlux(NDSLRuntime):
         # add dimension to quantity factory and create classes for constants
         quantity_factory.update_data_dimensions({"UpdraftMassFlux_constants": len(_X_ALPHA)})
 
-        self._X_ALPHA: Local = quantity_factory.zeros(["UpdraftMassFlux_constants"], "n/a")
-        self._G_ALPHA: Local = quantity_factory.zeros(["UpdraftMassFlux_constants"], "n/a")
-
-        self._X_ALPHA.field[:] = _X_ALPHA
-        self._G_ALPHA.field[:] = _G_ALPHA
+        self._X_ALPHA = quantity_factory.from_array(np.array(_X_ALPHA, dtype=Float), ["UpdraftMassFlux_constants"], "n/a")
+        self._G_ALPHA = quantity_factory.from_array(np.array(_G_ALPHA, dtype=Float), ["UpdraftMassFlux_constants"], "n/a")
 
         # construct stencil
         self._updraft_mass_flux = stencil_factory.from_dims_halo(

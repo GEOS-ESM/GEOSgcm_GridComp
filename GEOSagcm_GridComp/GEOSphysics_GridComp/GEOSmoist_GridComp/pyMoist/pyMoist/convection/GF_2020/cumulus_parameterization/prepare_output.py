@@ -1,4 +1,5 @@
-from ndsl import Local, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
+import numpy as np
+from ndsl import NDSLRuntime, Quantity, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, interval
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
@@ -502,11 +503,8 @@ class OutputWorkfunctionsAndPrecipConcentrations(NDSLRuntime):
         quantity_factory.update_data_dimensions({"G_RATIO_Table": len(G_RATIO)})
         quantity_factory.update_data_dimensions({"RADIATIVE_EFFECTIVE_RADIUS_Table": len(RADIATIVE_EFFECTIVE_RADIUS)})
 
-        self._G_RATIO: Local = quantity_factory.zeros(["G_RATIO_Table"], "n/a")
-        self._RADIATIVE_EFFECTIVE_RADIUS: Local = quantity_factory.zeros(["RADIATIVE_EFFECTIVE_RADIUS_Table"], "n/a")
-
-        self._G_RATIO.field[:] = G_RATIO
-        self._RADIATIVE_EFFECTIVE_RADIUS.field[:] = RADIATIVE_EFFECTIVE_RADIUS
+        self._G_RATIO = quantity_factory.from_array(np.array(G_RATIO, dtype=Float), ["G_RATIO_Table"], "n/a")
+        self._RADIATIVE_EFFECTIVE_RADIUS = quantity_factory.from_array(np.array(RADIATIVE_EFFECTIVE_RADIUS, dtype=Float), ["RADIATIVE_EFFECTIVE_RADIUS_Table"], "n/a")
 
         # construct stencils
         self._output_workfunctions_and_precip_concentrations = stencil_factory.from_dims_halo(
