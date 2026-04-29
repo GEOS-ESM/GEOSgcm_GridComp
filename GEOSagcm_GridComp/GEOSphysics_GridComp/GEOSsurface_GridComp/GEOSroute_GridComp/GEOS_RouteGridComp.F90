@@ -619,8 +619,18 @@ contains
       allocate(global_id(route%nt_global))
       call ESMFL_Fcollect(tilegrid, global_id, local_id, _RC)
 
+
+      ! get weights for aggregation of runoff from tile space to Pfafstetter catchments
+      
       if (index(GNAMES(1), 'EASEv') /=0) then
-         call MAPL_GetResource (MAPL, tile_pfaf_file, label = 'EASE_PFAF_FILE:',  default = '../input/route_tile.nc4', RC=STATUS )     
+
+         ! For the EASE tile space, there is at most one land tile per EASE grid cell; Pfafstetter catchment outlines are
+         ! not considered in the construction of the tile space (i.e., the "tile file" associated with MAPL LocStream).
+         ! EASE grid boundary conditions contain a supplemental "Pfafstetter" nc4 tile file in which tiles are 
+         ! constructed by intersecting the EASE grid with the Pfafstetter catchments.  This supplemental file provides the 
+         ! desired information about the weights.
+
+         call MAPL_GetResource (MAPL, tile_pfaf_file, label = 'EASE_PFAF_FILE:',  default = '../input/EASE_tile2pfaf.nc4', RC=STATUS )     
          allocate(global_ii(route%nt_global), global_jj(route%nt_global))
          allocate(local_ii(route%nt_local), source = local_i + I1 -1)
          allocate(local_jj(route%nt_local), source = local_j + J1 -1)
@@ -631,7 +641,7 @@ contains
             nx=cols;ny=rows
             allocate(map_tile(nx,ny),source=fillvalue)
             do ii=1,route%nt_global
-              map_tile(global_ii(ii),global_jj(ii))=ii
+               map_tile(global_ii(ii),global_jj(ii))=ii
             enddo
             np_lnd=route%nt_global      
             call MAPL_ReadTilingNC4( trim(tile_pfaf_file), n_tiles=np, iTable=iTable, rTable=rTable)
@@ -647,13 +657,13 @@ contains
                if(type_tile(ii)==100)then
                   tile_id=map_tile(xi_tile(ii)+1,ny-yi_tile(ii))
                   if(1<=tile_id.and.tile_id<=np_lnd)then
-                    kk=kk+1
-                    tid_patch(kk)=tile_id
-                    area_patch(kk)=area_tile(ii)
-                    catid_patch(kk)=catid_tile(ii)
+                     kk=kk+1
+                     tid_patch(kk)=tile_id
+                     area_patch(kk)=area_tile(ii)
+                     catid_patch(kk)=catid_tile(ii)
                   endif
                endif
-            enddo 
+            enddo
             nWeights=kk
             deallocate(type_tile,xi_tile,yi_tile,catid_tile,area_tile)
          endif
@@ -669,7 +679,13 @@ contains
          call MAPL_CommsBcast(layout, global_dst, nWeights, MAPL_Root, status)
          call MAPL_CommsBcast(layout, global_area,nWeights, MAPL_Root, status)
          deallocate(global_ii,global_jj,local_ii,local_jj)
+
       else
+
+         ! If not EASE tile space, the tile space is constructed by intersecting the (typically cube-sphere) grid
+         ! with the Pfafstetter catchments, and the tile file associated with MAPL LocStream contains the
+         ! desired information ("pfaf_index" and "tilearea").
+         
          nWeights = route%nt_global
          allocate(global_src(nWeights), global_dst(nWeights), global_area(nWeights), global_frac(nWeights))
          global_src = global_id
