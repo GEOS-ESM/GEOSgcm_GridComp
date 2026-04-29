@@ -90,8 +90,8 @@ contains
 
       ! Register services for this component
       call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_INITIALIZE, Initialize, _RC)
-      call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_RUN, Run, phase_name="Run", _RC)
-      call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_RUN, RunAddIncs, phase_name="RunAddIncs", _RC)
+      call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_RUN, run, phase_name="run", _RC)
+      call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_RUN, run_add_incs, phase_name="run_add_incs", _RC)
 
       ! Create children's gridded components and invoke their SetServices
       call MAPL_GridCompGetResource(gc, "DYCORE", dycore, default="FV3", _RC)
@@ -226,9 +226,9 @@ contains
    end subroutine Initialize
 
    !BOP
-   !IROUTINE: Run -- Run method for the composite SuperDyn Gridded Component
+   !IROUTINE: run -- run method for the composite SuperDyn Gridded Component
    !INTERFACE:
-   subroutine Run(gc, import, export, clock, rc)
+   subroutine run(gc, import, export, clock, rc)
       !ARGUMENTS:
       type(ESMF_GridComp) :: gc
       type(ESMF_State) :: import
@@ -244,20 +244,20 @@ contains
 
       integer :: status
 
-      call MAPL_GridCompRunChild(gc, "DYN", phase_name="Run", _RC)
+      call MAPL_GridCompRunChild(gc, "DYN", phase_name="run", _RC)
       if (ADV /= -1) then
-         call MAPL_GridCompRunChild(gc, "ADV", phase_name="Run", _RC)
+         call MAPL_GridCompRunChild(gc, "ADV", phase_name="run", _RC)
       end if
 
       _RETURN(_SUCCESS)
       _UNUSED_DUMMY(import)
       _UNUSED_DUMMY(export)
       _UNUSED_DUMMY(clock)
-   end subroutine Run
+   end subroutine run
 
-   !IROUTINE: RunAddIncs -- Run method to add increments
+   !IROUTINE: run_add_incs -- run method to add increments
    !INTERFACE:
-   subroutine RunAddIncs(gc, import, export, clock, rc)
+   subroutine run_add_incs(gc, import, export, clock, rc)
       !ARGUMENTS:
       type(ESMF_GridComp) :: gc
       type(ESMF_State) :: import
@@ -270,12 +270,12 @@ contains
 
       integer :: status
 
-      call MAPL_GridCompRunChild(gc, "DYN", phase_name="RunAddIncs", _RC)
+      call MAPL_GridCompRunChild(gc, "DYN", phase_name="run_add_incs", _RC)
 
       _RETURN(_SUCCESS)
       _UNUSED_DUMMY(import)
       _UNUSED_DUMMY(export)
       _UNUSED_DUMMY(clock)
-   end subroutine RunAddIncs
+   end subroutine run_add_incs
 
 end module GEOS_SuperdynGridCompMod
