@@ -364,7 +364,7 @@ subroutine SetServices ( GC, RC )
 
     ! command-line arguments to initialize ISSM 
     integer                                :: i,j,k                   ! loop indices
-    character(len=ESMF_MAXSTR)             :: ISSM_EXPDIR             ! directory containing ISSM input file
+    character(len=ESMF_MAXSTR)             :: ISSM_EXPDIR             ! directory containing ISSM input files
     character(len=ESMF_MAXSTR)             :: EXPDIR                  ! C++ compatible ISSM_EXPDIR string
 
     ! variables for saving mesh output
@@ -424,10 +424,11 @@ subroutine SetServices ( GC, RC )
     ! ****************************************************
     ! call ISSM initialize C++ code so we can set up mesh
 
-    call MAPL_GetResource(MAPL, ISSM_EXPDIR, Label="ISSM_EXPDIR:", RC=STATUS)
+    ! get directory with ISSM binary input files (can modify if needed)
+    call GET_ENVIRONMENT_VARIABLE("SCRDIR",ISSM_EXPDIR,STATUS=STATUS)
     VERIFY_(STATUS)
 
-    EXPDIR = trim(ISSM_EXPDIR)//c_null_char ! create string for C++
+    EXPDIR = trim(ISSM_EXPDIR)//"/"//c_null_char ! create string for C++
     
     ! Call the C++ function for initializing ISSM
     ! gets the number of elements and nodes of the mesh
