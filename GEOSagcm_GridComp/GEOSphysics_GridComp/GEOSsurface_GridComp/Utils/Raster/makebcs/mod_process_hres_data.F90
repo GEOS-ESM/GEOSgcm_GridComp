@@ -3440,9 +3440,9 @@ contains
     REAL, ALLOCATABLE, DIMENSION (:,:) :: parms4file
 
     ! PEATCLSM:
-    REAL, PARAMETER :: PEATMAP_THRESHOLD_1 = 0.5  ! for converting PEATMAP area fraction into binary peat/non-peat (on raster grid)
-    REAL, PARAMETER :: PEATMAP_THRESHOLD_2 = 0.5  ! for aggregation from raster grid cells to tiles
-    REAL, PARAMETER :: PEAT_CROP_THRESHOLD = 0.1  ! for screening raster grid cells that should not be peat but are identified as peat by GPM 2.0
+    REAL, PARAMETER :: PEATMAP_THRESHOLD_1 = 0.5  ! for converting PEATMAP or GPM 2.0 peat area fraction into binary peat/non-peat (on raster grid)
+    REAL, PARAMETER :: PEATMAP_THRESHOLD_2 = 0.5  ! for aggregating PEATMAP or GPM 2.0 based oc_top class from raster grid cells to tiles
+    REAL, PARAMETER :: PEAT_CROP_THRESHOLD = 0.1  ! for screening GPM 2.0 raster grid cells that should not be peat but are identified as peat by GPM 2.0
     
     REAL, DIMENSION (:), POINTER       :: PMAP
     REAL, ALLOCATABLE, DIMENSION (:,:) :: PMAPR, cropmapr
@@ -3856,13 +3856,14 @@ contains
 
 
           where ( (pmapr < PEATMAP_THRESHOLD_1) .or. (cropmapr > PEAT_CROP_THRESHOLD) ) oc_top = min( oc_top, FLOOR(cF_lim(4)/sf) )  ! force oc_top<=872   (cF_lim(4)/sf=872.0930)
+
+          deallocate(cropmapr)
           
        endif
        
-       ! Where PEATMAP or GPM 2.0 (after crop screening ) is peat, set top-layer OrgC to value associated with peat.
+       ! Where GPM 2.0 (after crop screening ) or PEATMAP is peat, set top-layer OrgC to value associated with peat.
        
        where (pmapr >= PEATMAP_THRESHOLD_1)  oc_top = NINT(33.0/sf)
-       
        
        deallocate(pmapr)
 
