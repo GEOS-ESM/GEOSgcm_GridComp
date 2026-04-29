@@ -3442,9 +3442,10 @@ contains
     ! PEATCLSM:
     REAL, PARAMETER :: PEATMAP_THRESHOLD_1 = 0.5  ! for converting PEATMAP area fraction into binary peat/non-peat (on raster grid)
     REAL, PARAMETER :: PEATMAP_THRESHOLD_2 = 0.5  ! for aggregation from raster grid cells to tiles
-
+    REAL, PARAMETER :: PEAT_CROP_THRESHOLD = 0.1  ! for screening raster grid cells that should not be peat but are identified as peat by GPM 2.0
+    
     REAL, DIMENSION (:), POINTER       :: PMAP
-    REAL, ALLOCATABLE, DIMENSION (:,:) :: PMAPR
+    REAL, ALLOCATABLE, DIMENSION (:,:) :: PMAPR, cropmapr
 
     integer :: n_valid_top, n_valid_prof
 
@@ -3807,8 +3808,14 @@ contains
           ! Legacy PEATMAP mask 
           fname = trim(MAKE_BCS_INPUT_DIR)// '/land/soil/SOIL-DATA/PEATMAP_mask.nc4'
        case (2)
-          ! Preprocessed GPM 2.0 peat mask: 1 = peat; 0 = mineral (includes reclassified "2=peat in soil mosaic")
-          fname = trim(MAKE_BCS_INPUT_DIR) // '/land/soil/SOIL-DATA/v2/PEATMAP_from_GPA22_like_old_conservative.nc4'
+          
+          !  ! Preprocessed GPM 2.0 peat mask: 1 = peat; 0 = mineral (includes reclassified "2=peat in soil mosaic")
+          !  fname = trim(MAKE_BCS_INPUT_DIR) // '/land/soil/SOIL-DATA/v2/PEATMAP_from_GPA22_like_old_conservative.nc4'
+
+          ! Preprocessed GPM 2.0 peat mask: 1 = peat dominated, 0.5 = peat in soil mosaic, 0 = mineral)
+          !fname = trim(MAKE_BCS_INPUT_DIR) // '/land/soil/SOIL-DATA/v2/PEATMAP_from_GPA22_like_old_alpha0.50.nc4'
+          fname = '/discover/nobackup/rreichle/PEATMAP_from_GPA22_like_old_alpha0.50.nc4'
+          
        case default
           print *, 'unknown value of PEAT_INFO'
           stop
@@ -3817,6 +3824,8 @@ contains
        status = NF_OPEN(trim(fname), NF_NOWRITE, ncid)                                                ; VERIFY_(STATUS)
        
        status = NF_GET_VARA_REAL(ncid, NC_VarID(ncid,'PEATMAP'), (/1,1/), (/i_highd,j_highd/), pmapr) ; VERIFY_(STATUS)
+       
+       status = NF_CLOSE(ncid)                                                                        ; VERIFY_(STATUS)
        
        if (PEAT_INFO==1) then
           
@@ -3827,21 +3836,36 @@ contains
        end if
        
        if (PEAT_INFO==2) then
-
-          ! Where GPM 2.0 is not peat, limit HWSD oc_top to max possible value for mineral.
+          
+          ! load crop info
+          
+          allocate(cropmapr(1:i_highd,1:j_highd))
+          
+          fname = trim(MAKE_BCS_INPUT_DIR) // '/land/soil/SOIL-DATA/v2/MCD12Q1_LCType1_crop_climatology_30arcsec.nc4'
+          
+          status = NF_OPEN(trim(fname), NF_NOWRITE, ncid)                                                           ; VERIFY_(STATUS)
+          
+          status = NF_GET_VARA_REAL(ncid, NC_VarID(ncid,'crop12or14_clim'), (/1,1/), (/i_highd,j_highd/), cropmapr) ; VERIFY_(STATUS)
+    
+          status = NF_CLOSE(ncid)                                                                                   ; VERIFY_(STATUS)
+          
+          ! Where GPM 2.0 is "not peat" or is "crop", limit HWSD oc_top to max possible value for mineral.
           ! (Ensures that GPM 2.0 takes precedence over HWSD when determining peat/mineral class from oc_top below.)
           
-          where (pmapr < PEATMAP_THRESHOLD_1)  oc_top = min( oc_top, FLOOR(cF_lim(4)/sf) )  ! force oc_top<=872   (cF_lim(4)/sf=872.0930)
+          !where (pmapr < PEATMAP_THRESHOLD_1)  oc_top = min( oc_top, FLOOR(cF_lim(4)/sf) )  ! force oc_top<=872   (cF_lim(4)/sf=872.0930)
+
+
+          where ( (pmapr < PEATMAP_THRESHOLD_1) .or. (cropmapr > PEAT_CROP_THRESHOLD) ) oc_top = min( oc_top, FLOOR(cF_lim(4)/sf) )  ! force oc_top<=872   (cF_lim(4)/sf=872.0930)
           
        endif
        
-       ! Where PEATMAP or GPM 2.0 is peat, set top-layer OrgC to value associated with peat.
+       ! Where PEATMAP or GPM 2.0 (after crop screening ) is peat, set top-layer OrgC to value associated with peat.
        
        where (pmapr >= PEATMAP_THRESHOLD_1)  oc_top = NINT(33.0/sf)
        
        
        deallocate(pmapr)
-       status = NF_CLOSE(ncid) ; VERIFY_(STATUS)
+
     endif
 
     ! ----------------------------------------------------------------------------
