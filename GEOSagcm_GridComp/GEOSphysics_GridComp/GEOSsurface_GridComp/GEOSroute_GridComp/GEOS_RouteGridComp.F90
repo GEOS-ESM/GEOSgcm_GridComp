@@ -589,8 +589,8 @@ contains
       integer :: status, nWeights, nLocal_weights,type,dumi,nx,ny,xi,yi,catid_temp
       real    :: dumr,area_temp
       integer :: fillvalue=-9999
-      integer :: unit,ii,dst,np,kk,nn,np_lnd,tile_id
-      integer :: im(2),jm(2), cols, rows   
+      integer :: unit,ii,dst,np,kk,nn,tile_id
+      integer :: im(2),jm(2)
       integer, allocatable :: global_id(:),type_tile(:),xi_tile(:),yi_tile(:),catid_tile(:)
       integer, allocatable :: global_ii(:), global_jj(:), local_ii(:), local_jj(:)
       logical, allocatable :: mask(:)
@@ -605,20 +605,19 @@ contains
       real(kind=REAL64), allocatable :: rTable(:,:)     
       type(Netcdf4_Fileformatter)    :: formatter
       type(Filemetadata)             :: meta
-      character(len=ESMF_MAXSTR)     :: tile_pfaf_file, tile_file
+      character(len=ESMF_MAXSTR)     :: EASE_pfaf_file, tile_file
       character(len=MAPL_TileNameLength), pointer :: GNAMES(:)
 
       ! create source for orignal tile space
-      route%field_src = ESMF_FieldCreate(grid=tilegrid, typekind=ESMF_TYPEKIND_R4, _RC)
+      route%field_src = ESMF_FieldCreate(grid=tilegrid,      typekind=ESMF_TYPEKIND_R4, _RC)
 
       ! create destination for pfaf tile space
-      route%field     = ESMF_FieldCreate(grid=pfaf_tilegrid, typekind=ESMF_TYPEKIND_R4,_RC)
+      route%field     = ESMF_FieldCreate(grid=pfaf_tilegrid, typekind=ESMF_TYPEKIND_R4, _RC)
 
-      call MAPL_LocstreamGet(LOCSTREAM, GRIDNAMES=GNAMES, pfaf_index=pfaf_index, tilearea=tilearea, local_id=local_id, local_i =local_i, local_j =local_j, _RC)
+      call MAPL_LocstreamGet(LOCSTREAM, GRIDNAMES=GNAMES, pfaf_index=pfaf_index, tilearea=tilearea, local_id=local_id, local_i=local_i, local_j=local_j, _RC)
       ! ESMF use global indices increasing with mpi_rank, no mask here for tile grid 
       allocate(global_id(route%nt_global))
       call ESMFL_Fcollect(tilegrid, global_id, local_id, _RC)
-
 
       ! get weights for aggregation of runoff from tile space to Pfafstetter catchments
       
@@ -630,36 +629,44 @@ contains
          ! constructed by intersecting the EASE grid with the Pfafstetter catchments.  This supplemental file provides the 
          ! desired information about the weights.
 
-         call MAPL_GetResource (MAPL, tile_pfaf_file, label = 'EASE_PFAF_FILE:',  default = '../input/EASE_tile2pfaf.nc4', RC=STATUS )     
-         allocate(global_ii(route%nt_global), global_jj(route%nt_global))
-         allocate(local_ii(route%nt_local), source = local_i + I1 -1)
-         allocate(local_jj(route%nt_local), source = local_j + J1 -1)
+         call MAPL_GetResource (MAPL, EASE_pfaf_file, label = 'EASE_PFAF_FILE:',  default = '../input/EASE_tile2pfaf.nc4', RC=STATUS )
+         
+         allocate(global_ii(route%nt_global))
+         allocate(global_jj(route%nt_global))
+
+         allocate(local_ii( route%nt_local), source = local_i + I1 -1)
+         allocate(local_jj( route%nt_local), source = local_j + J1 -1)
+
          call ESMFL_Fcollect(tilegrid, global_ii, local_ii, _RC)
          call ESMFL_Fcollect(tilegrid, global_jj, local_jj, _RC)
-         call MAPL_ease_extent(GNAMES(1), cols, rows) 
+
+         call MAPL_ease_extent(GNAMES(1), nx, ny)                    ! nx=cols;ny=rows
+
          if (MAPL_AM_I_ROOT()) then
-            nx=cols;ny=rows
+            
             allocate(map_tile(nx,ny),source=fillvalue)
             do ii=1,route%nt_global
-               map_tile(global_ii(ii),global_jj(ii))=ii
+               map_tile(global_ii(ii),global_jj(ii))=ii              ! 2d array of tile index
             enddo
-            np_lnd=route%nt_global      
-            call MAPL_ReadTilingNC4( trim(tile_pfaf_file), n_tiles=np, iTable=iTable, rTable=rTable)
+
+            ! read info from EASE_PFAF_FILE  (EASE*-Pfafstetter.nc4)
+            
+            call MAPL_ReadTilingNC4( trim(EASE_pfaf_file), n_tiles=np, iTable=iTable, rTable=rTable)
             allocate(type_tile(np),xi_tile(np),yi_tile(np),catid_tile(np),area_tile(np))
             allocate(area_patch(np),catid_patch(np),tid_patch(np))
-            type_tile = iTable(:,0)
-            xi_tile = iTable(:,2)
-            yi_tile = iTable(:,3)   
-            catid_tile = iTable(:,4) 
-            area_tile = real(rTable(:,3))       
+            type_tile  = iTable(:,0)
+            xi_tile    = iTable(:,2)
+            yi_tile    = iTable(:,3)   
+            catid_tile = iTable(:,4)                 ! tile "pfaf_index" from EASE*-Pfafstetter.nc4 file
+            area_tile  = real(rTable(:,3))           ! tile "area"       from EASE*-Pfafstetter.nc4 file
             kk=0
             do ii=1,np
                if(type_tile(ii)==100)then
-                  tile_id=map_tile(xi_tile(ii)+1,ny-yi_tile(ii))
-                  if(1<=tile_id.and.tile_id<=np_lnd)then
+                  tile_id=map_tile(xi_tile(ii)+1,ny-yi_tile(ii))              ! note: EASE indices are 0-based
+                  if(1<=tile_id.and.tile_id<=route%nt_global)then             ! route%nt_global = np_lnd
                      kk=kk+1
-                     tid_patch(kk)=tile_id
-                     area_patch(kk)=area_tile(ii)
+                     tid_patch(  kk)=tile_id
+                     area_patch( kk)=area_tile( ii)
                      catid_patch(kk)=catid_tile(ii)
                   endif
                endif
@@ -670,14 +677,15 @@ contains
          call MAPL_CommsBcast(layout, nWeights, 1, MAPL_Root, status)
          allocate(global_src(nWeights), global_dst(nWeights), global_area(nWeights), global_frac(nWeights))
          if (MAPL_AM_I_ROOT()) then
-            global_src=tid_patch(1:nWeights)
-            global_dst=catid_patch(1:nWeights)
-            global_area=area_patch(1:nWeights)*MAPL_RADIUS**2                  
+            global_src =tid_patch(  1:nWeights)
+            global_dst =catid_patch(1:nWeights)
+            global_area=area_patch( 1:nWeights)*MAPL_RADIUS**2                  
             deallocate(map_tile,area_patch,catid_patch,tid_patch)
          endif
          call MAPL_CommsBcast(layout, global_src, nWeights, MAPL_Root, status)
          call MAPL_CommsBcast(layout, global_dst, nWeights, MAPL_Root, status)
          call MAPL_CommsBcast(layout, global_area,nWeights, MAPL_Root, status)
+         
          deallocate(global_ii,global_jj,local_ii,local_jj)
 
       else
@@ -689,8 +697,8 @@ contains
          nWeights = route%nt_global
          allocate(global_src(nWeights), global_dst(nWeights), global_area(nWeights), global_frac(nWeights))
          global_src = global_id
-         call ESMFL_Fcollect(tilegrid, global_dst, pfaf_index, _RC)
-         call ESMFL_Fcollect(tilegrid, global_area, tilearea, _RC)
+         call ESMFL_Fcollect(tilegrid, global_dst,  pfaf_index, _RC)
+         call ESMFL_Fcollect(tilegrid, global_area, tilearea,   _RC)
          global_area = global_area*MAPL_RADIUS**2
       endif
 
