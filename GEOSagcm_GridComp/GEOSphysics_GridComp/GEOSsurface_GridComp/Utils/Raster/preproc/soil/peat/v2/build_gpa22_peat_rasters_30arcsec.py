@@ -8,17 +8,17 @@ Supported products
 conservative
     GPM 2.0 class 1 -> 1.0
     GPM 2.0 class 2 -> 0.0
-    else          -> 0.0
+    else            -> 0.0
 
 alpha050
     GPM 2.0 class 1 -> 1.0
     GPM 2.0 class 2 -> 0.5
-    else          -> 0.0
+    else            -> 0.0
 
 liberal
     GPM 2.0 class 1 -> 1.0
     GPM 2.0 class 2 -> 1.0
-    else          -> 0.0
+    else            -> 0.0
 
 Why this uses the legacy PEATMAP grid
 -------------------------------------
@@ -80,11 +80,11 @@ PEATMAP_GRID_FILE = Path(
 PRODUCT_MODE = "all"
 
 OUTFILE_CONSERVATIVE = Path("PEATMAP_from_GPA22_like_old_conservative.nc4")
-OUTFILE_ALPHA050 = Path("PEATMAP_from_GPA22_like_old_alpha0.50.nc4")
-OUTFILE_LIBERAL = Path("PEATMAP_from_GPA22_like_old_liberal.nc4")
+OUTFILE_ALPHA050     = Path("PEATMAP_from_GPA22_like_old_alpha0.50.nc4")
+OUTFILE_LIBERAL      = Path("PEATMAP_from_GPA22_like_old_liberal.nc4")
 
 GRID_TOL = 1.0e-10
-NC_FILL = np.float32(-9999.0)
+NC_FILL  = np.float32(-9999.0)
 
 
 # ============================================================
@@ -246,8 +246,8 @@ def write_output(outfile, lon, lat, peat_field, mode):
     )
 
     ds_out["longitude"].attrs["units"] = "degrees_east"
-    ds_out["latitude"].attrs["units"] = "degrees_north"
-    ds_out["PEATMAP"].attrs["units"] = "1"
+    ds_out["latitude" ].attrs["units"] = "degrees_north"
+    ds_out["PEATMAP"  ].attrs["units"] = "1"
 
     if mode == "conservative":
         ds_out["PEATMAP"].attrs["long_name"] = "Conservative peat mask from GPM 2.0"
@@ -256,7 +256,7 @@ def write_output(outfile, lon, lat, peat_field, mode):
             "PEATMAP = 0 otherwise, including GPM 2.0 class 2."
         )
         ds_out.attrs["note"] = (
-            "Conservative product: only GPM 2.0 class 1 is treated as peat; "
+            "Conservative binary peat mask: only GPM 2.0 class 1 is treated as peat; "
             "class 2 is treated as non-peat."
         )
     elif mode == "alpha050":
@@ -267,7 +267,7 @@ def write_output(outfile, lon, lat, peat_field, mode):
             "0.0 otherwise."
         )
         ds_out.attrs["note"] = (
-            "Alpha product with class 2 weighted by alpha = 0.5."
+            "Alpha peat mask: GPM 2.0 class 1 is assigned a value of 1 and class 2 is assigned a value of 0.5."
         )
     elif mode == "liberal":
         ds_out["PEATMAP"].attrs["long_name"] = "Peat mask from GPM 2.0 including dominant and mosaic peat"
@@ -281,7 +281,7 @@ def write_output(outfile, lon, lat, peat_field, mode):
     else:
         raise RuntimeError(f"Unsupported mode: {mode}")
 
-    ds_out.attrs["source"] = "Derived from GPM 2.0 (Global Peatland Map 2.0) on PEATMAP grid"
+    ds_out.attrs["source"] = "Derived from GPM 2.0 (Global Peatland Map 2.0) on PEATMAP grid.  GPM 2.0 is 0.01 deg grid spacing with non-global (approx.) coverage: (-179.77:179:73, -74.34:78.32)."
 
     encoding = {
         "PEATMAP":   {"_FillValue": NC_FILL, "zlib": True, "complevel": 1},

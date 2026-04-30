@@ -3789,8 +3789,10 @@ contains
     ! When PEAT_INFO=2, peat/mineral is determined at the raster grid cell level
     !   based solely on Global Peatland Map 2.0 (GPM 2.0), regardless of HWSD organic
     !   carbon content values.
-    !   GPM 2.0 preprocessing sets grid cells with "peat in soil mosaic" to 0 (i.e., no peat)
-    !   and remaps to the 30-arcsec raster grid.
+    !   A crop mask derived from MODIS MCD12Q1 is used to screen out raster grid cells that
+    !   are identified as peat by GPM 2.0 but are in agricultural use. 
+    !   GPM 2.0 preprocessing assigns a value of 1.0 for "peat dominated" and 0.5 for 
+    !   "peat in soil mosaic" and then remaps to the 30-arcsec raster grid using nearest neighbor.
     !   Top-layer organic carbon content is forced to 33% when GPM 2.0 indicates peat. 
     !   Thereafter, organic carbon content values are derived from HWSD data, without the
     !   latter impacting the peat/mineral classification.
