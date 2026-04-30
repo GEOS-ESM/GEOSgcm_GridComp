@@ -605,7 +605,7 @@ contains
       real(kind=REAL64), allocatable :: rTable(:,:)     
       type(Netcdf4_Fileformatter)    :: formatter
       type(Filemetadata)             :: meta
-      character(len=ESMF_MAXSTR)     :: EASE_pfaf_file, tile_file
+      character(len=ESMF_MAXSTR)     :: EASE_pfaf_tile_file, tile_file
       character(len=MAPL_TileNameLength), pointer :: GNAMES(:)
 
       ! create source for orignal tile space
@@ -629,7 +629,7 @@ contains
          ! constructed by intersecting the EASE grid with the Pfafstetter catchments.  This supplemental file provides the 
          ! desired information about the weights.
 
-         call MAPL_GetResource (MAPL, EASE_pfaf_file, label = 'EASE_PFAF_FILE:',  default = '../input/EASE_tile2pfaf.nc4', RC=STATUS )
+         call MAPL_GetResource (MAPL, EASE_pfaf_tile_file, label = 'EASE_PFAF_TILE_FILE:',  default = '../input/EASE_pfaf_tile_file.nc4', RC=STATUS )
          
          allocate(global_ii(route%nt_global))
          allocate(global_jj(route%nt_global))
@@ -649,9 +649,9 @@ contains
                map_tile(global_ii(ii),global_jj(ii))=ii              ! 2d array of tile index
             enddo
 
-            ! read info from EASE_PFAF_FILE  (EASE*-Pfafstetter.nc4)
+            ! read info about Pfafstetter-based tiles from EASE_PFAF_TILE_FILE  (EASE*-Pfafstetter.nc4)
             
-            call MAPL_ReadTilingNC4( trim(EASE_pfaf_file), n_tiles=np, iTable=iTable, rTable=rTable)
+            call MAPL_ReadTilingNC4( trim(EASE_pfaf_tile_file), n_tiles=np, iTable=iTable, rTable=rTable)
             allocate(type_tile(np),xi_tile(np),yi_tile(np),catid_tile(np),area_tile(np))
             allocate(area_patch(np),catid_patch(np),tid_patch(np))
             type_tile  = iTable(:,0)
@@ -659,6 +659,9 @@ contains
             yi_tile    = iTable(:,3)   
             catid_tile = iTable(:,4)                 ! tile "pfaf_index" from EASE*-Pfafstetter.nc4 file
             area_tile  = real(rTable(:,3))           ! tile "area"       from EASE*-Pfafstetter.nc4 file
+
+            ! for each Pfafstetter-based tile, find the tile_id, area, and pfaf_index of the corresponding MAPL LocStream tile
+            
             kk=0
             do ii=1,np
                if(type_tile(ii)==100)then
@@ -671,9 +674,13 @@ contains
                   endif
                endif
             enddo
+
             nWeights=kk
             deallocate(type_tile,xi_tile,yi_tile,catid_tile,area_tile)
          endif
+
+         ! broadcast mapping info 
+         
          call MAPL_CommsBcast(layout, nWeights, 1, MAPL_Root, status)
          allocate(global_src(nWeights), global_dst(nWeights), global_area(nWeights), global_frac(nWeights))
          if (MAPL_AM_I_ROOT()) then
