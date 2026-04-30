@@ -31,10 +31,10 @@ module GEOS_GwdGridCompMod
 
    use esmf
    use mapl_ErrorHandling, only: MAPL_Verify, MAPL_RTRN, MAPL_ASSERT
-   use MAPL_OpenMP_Support, only : MAPL_get_current_thread => get_current_thread
-   use MAPL_OpenMP_Support, only : MAPL_get_num_threads => get_num_threads
-   use MAPL_OpenMP_Support, only : MAPL_find_bounds => find_bounds
-   use MAPL_OpenMP_Support, only : MAPL_Interval => Interval
+   use MAPL, only : MAPL_get_current_thread => get_current_thread
+   use MAPL, only : MAPL_get_num_threads => get_num_threads
+   use MAPL, only : MAPL_find_bounds => find_bounds
+   use MAPL, only : MAPL_Interval => Interval
    use MAPL_CommsMod, only: MAPL_AM_I_ROOT, ArrayGather
    use MAPL_MaplGrid, only: MAPL2_GridGet => MAPL_GridGet
    use MAPL_GenericMod, only: MAPL_TimerAdd, MAPL_TimerOn, MAPL_TimerOff
