@@ -364,7 +364,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     integer                         :: IM,JM,LM
     real, pointer, dimension(:,:)   :: LONS
     real, pointer, dimension(:,:)   :: LATS
-    real                            :: minrhx
+    real                            :: minrhx, fqi_local, tmp_local
+    logical                         :: ptr_is_assoc
 
     ! Internals
     real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN
@@ -522,16 +523,48 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( SEEDCNV(IM,JM) )
     ALLOCATE ( TMP2D  (IM,JM) )
 
-    ! derived quantaties
     ! Derived States
-    PL       = 0.5*(PLE(:,:,0:LM-1) + PLE(:,:,1:LM))
-    PK       = (PL/MAPL_P00)**(MAPL_KAPPA)
-    DO L=0,LM
-       ZLE0(:,:,L)= ZLE(:,:,L) - ZLE(:,:,LM)   ! Edge Height (m) above the surface
-    END DO
-    ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
-    TH       = T/PK
-    MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
+    !--------------------------------------------------------------
+    
+    ! 1. Top-of-atmosphere edge (L = 0)
+    !$OMP PARALLEL DO DEFAULT(NONE) &
+    !$OMP SHARED(IM, JM, LM, ZLE0, ZLE) &
+    !$OMP PRIVATE(I, J)
+    do J = 1, JM
+       !DIR$ IVDEP
+       do I = 1, IM
+          ZLE0(I,J,0) = ZLE(I,J,0) - ZLE(I,J,LM)
+       end do
+    end do
+    !$OMP END PARALLEL DO
+
+    ! 2. Remaining edges and all layer variables (L = 1 to LM)
+    !$OMP PARALLEL DO DEFAULT(NONE) &
+    !$OMP SHARED(IM, JM, LM, ZLE0, ZLE, PL, PLE, PK, &
+    !$OMP        ZL0, TH, T, MASS) &
+    !$OMP PRIVATE(I, J, L)
+    do L = 1, LM
+       do J = 1, JM
+          !DIR$ IVDEP
+          do I = 1, IM
+             
+             ! Edge variables
+             ZLE0(I,J,L) = ZLE(I,J,L) - ZLE(I,J,LM)
+             
+             ! Layer variables
+             PL(I,J,L)   = 0.5 * (PLE(I,J,L-1) + PLE(I,J,L))
+             PK(I,J,L)   = (PL(I,J,L) / MAPL_P00)**(MAPL_KAPPA)
+             
+             ZL0(I,J,L)  = 0.5 * (ZLE0(I,J,L-1) + ZLE0(I,J,L))
+             
+             TH(I,J,L)   = T(I,J,L) / PK(I,J,L)
+             
+             MASS(I,J,L) = (PLE(I,J,L) - PLE(I,J,L-1)) / MAPL_GRAV
+             
+          end do
+       end do
+    end do
+    !$OMP END PARALLEL DO
 
     call ESMF_ClockGetAlarm(clock, 'GF_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
     alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
@@ -686,40 +719,76 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,REVSU, PRFIL)
     ENDIF
 
-    ! update DeepCu QL/QI/CF tendencies
-      fQi = ice_fraction( T+DTDT_DC*GF_DT, CNV_FRC, SRF_TYPE )
-      TMP3D    = CNV_DQCDT/MASS
-      DQLDT_DC = (1.0-fQi)*TMP3D
-      DQIDT_DC =      fQi *TMP3D
-      DQADT_DC = MFD_DC*SCLM_DEEP/MASS
-    ! evap/subl and precip fluxes
-      do L=1,LM
-         !--- sublimation/evaporation tendencies (kg/kg/s)
-           RSU_CN (:,:,L) = REVSU(:,:,L)*     fQi(:,:,L)
-           REV_CN (:,:,L) = REVSU(:,:,L)*(1.0-fQi(:,:,L))
-         !--- preciptation fluxes (kg/kg/s)
-           PFI_CN (:,:,L) = PRFIL(:,:,L)*     fQi(:,:,L)
-           PFL_CN (:,:,L) = PRFIL(:,:,L)*(1.0-fQi(:,:,L))
-      enddo
-    ! Export
-      call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_FICE', RC=STATUS); VERIFY_(STATUS)
-      if (associated(PTR3D)) PTR3D = fQi
-      call MAPL_GetPointer(EXPORT, PTR3D, 'DQRC', RC=STATUS); VERIFY_(STATUS)
-      if(associated(PTR3D)) PTR3D = CNV_PRC3 / GF_DT
-      call MAPL_GetPointer(EXPORT, PTR2D, 'CCWP', RC=STATUS); VERIFY_(STATUS)
-      if (associated(PTR2D)) PTR2D = SUM( CNV_QC*MASS , 3 )
 
-    endif
+    call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_FICE', RC=STATUS); VERIFY_(STATUS)
+    ptr_is_assoc = associated(PTR3D)
 
-    ! add tendencies to the moist import state
-    U  = U  +  DUDT_DC*MOIST_DT
-    V  = V  +  DVDT_DC*MOIST_DT
-    Q  = Q  + DQVDT_DC*MOIST_DT
-    T  = T  +  DTDT_DC*MOIST_DT
-    ! add QI/QL/CL tendencies
-    QLCN =         QLCN + DQLDT_DC*MOIST_DT
-    QICN =         QICN + DQIDT_DC*MOIST_DT
-    CLCN = MAX(MIN(CLCN + DQADT_DC*MOIST_DT, 1.0), 0.0)
+    ! Update DeepCu QL/QI/CF tendencies, evap/subl and precip fluxes
+    !--------------------------------------------------------------
+    !$OMP PARALLEL DO DEFAULT(NONE) &
+    !$OMP SHARED(IM, JM, LM, T, DTDT_DC, GF_DT, CNV_FRC, SRF_TYPE, &
+    !$OMP        CNV_DQCDT, MASS, DQLDT_DC, DQIDT_DC, DQADT_DC, &
+    !$OMP        MFD_DC, SCLM_DEEP, RSU_CN, REVSU, REV_CN, &
+    !$OMP        PFI_CN, PRFIL, PFL_CN, ptr_is_assoc, PTR3D) &
+    !$OMP PRIVATE(I, J, L, fQi_local, tmp_local)
+    do L = 1, LM
+       do J = 1, JM
+          !DIR$ IVDEP
+          do I = 1, IM
+             ! 1. Calculate local ice fraction and tmp scalar
+             fQi_local = ice_fraction(T(I,J,L) + DTDT_DC(I,J,L) * GF_DT, CNV_FRC(I,J), SRF_TYPE(I,J))
+             tmp_local = CNV_DQCDT(I,J,L) / MASS(I,J,L)
+
+             ! Fill the exported 3D pointer if associated
+             if (ptr_is_assoc) PTR3D(I,J,L) = fQi_local
+             
+             ! 2. Update DeepCu QL/QI/CF tendencies
+             DQLDT_DC(I,J,L) = (1.0 - fQi_local) * tmp_local
+             DQIDT_DC(I,J,L) = fQi_local * tmp_local
+             DQADT_DC(I,J,L) = MFD_DC(I,J,L) * SCLM_DEEP / MASS(I,J,L)
+             
+             ! 3. Evap/subl and precip fluxes (kg/kg/s)
+             RSU_CN(I,J,L) = REVSU(I,J,L) * fQi_local
+             REV_CN(I,J,L) = REVSU(I,J,L) * (1.0 - fQi_local)
+             
+             PFI_CN(I,J,L) = PRFIL(I,J,L) * fQi_local
+             PFL_CN(I,J,L) = PRFIL(I,J,L) * (1.0 - fQi_local)
+          end do
+       end do
+    end do
+    !$OMP END PARALLEL DO
+
+    ! Other Exports
+    call MAPL_GetPointer(EXPORT, PTR3D, 'DQRC', RC=STATUS); VERIFY_(STATUS)
+    if(associated(PTR3D)) PTR3D = CNV_PRC3 / GF_DT
+    call MAPL_GetPointer(EXPORT, PTR2D, 'CCWP', RC=STATUS); VERIFY_(STATUS)
+    if (associated(PTR2D)) PTR2D = SUM( CNV_QC*MASS , 3 )
+
+    endif ! Alarm ringing
+
+    ! Add tendencies to the moist import state
+    !--------------------------------------------------------------
+    !$OMP PARALLEL DO DEFAULT(NONE) &
+    !$OMP SHARED(IM, JM, LM, U, DUDT_DC, MOIST_DT, V, DVDT_DC, Q, DQVDT_DC, &
+    !$OMP        T, DTDT_DC, QLCN, DQLDT_DC, QICN, DQIDT_DC, CLCN, DQADT_DC) &
+    !$OMP PRIVATE(I, J, L)
+    do L = 1, LM
+       do J = 1, JM
+          !DIR$ IVDEP
+          do I = 1, IM
+             U(I,J,L) = U(I,J,L) + DUDT_DC(I,J,L) * MOIST_DT
+             V(I,J,L) = V(I,J,L) + DVDT_DC(I,J,L) * MOIST_DT
+             Q(I,J,L) = Q(I,J,L) + DQVDT_DC(I,J,L) * MOIST_DT
+             T(I,J,L) = T(I,J,L) + DTDT_DC(I,J,L) * MOIST_DT
+             
+             ! Add QI/QL/CL tendencies
+             QLCN(I,J,L) = QLCN(I,J,L) + DQLDT_DC(I,J,L) * MOIST_DT
+             QICN(I,J,L) = QICN(I,J,L) + DQIDT_DC(I,J,L) * MOIST_DT
+             CLCN(I,J,L) = MAX(0.0, MIN(CLCN(I,J,L) + DQADT_DC(I,J,L) * MOIST_DT, 1.0))
+          end do
+       end do
+    end do
+    !$OMP END PARALLEL DO
 
 ! Cleanup negative water species
 ! ------------------------------
