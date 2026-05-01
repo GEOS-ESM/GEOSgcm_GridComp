@@ -16,7 +16,7 @@ module GEOS_IssmGridCompMod
 !   Exports: ICESURF, ICETHICK, ICEVEL (defined on landice tiles) [private internal state]
 !   Internals: ICESURF, ICETHICK, IMLS, OMLS (defined on mesh) [true internal state]
 ! *** NOTES: 
-!            (*) currently we run over all input files (*.bin) that are found in ISSM_EXPDIR 
+!            (*) currently we run over all input files (*.bin) that are found in ISSM_EXPDIR (scratch directory)
 !                (e.g., Greenland + Antarctica + any other glaciers that have been configured)
 !            (*) ISSM meshes are internal to ISSM (C++ source)--we create an ESMF_MESH version for regridding     
 !                imports/exports that is the global combination of all ISSM meshes
@@ -198,7 +198,7 @@ subroutine SetServices ( GC, RC )
     ! Set the state variable specs.
 !-----------------------------------
 
-!   Import states: ICESMB is imported via the ISSM_TILE internal state
+!   Import states: ICESMB is imported via the ISSM_TILE private internal state
 
 !   Export states:
     call MAPL_AddExportSpec(GC,                    &
@@ -370,17 +370,16 @@ subroutine SetServices ( GC, RC )
     real(dp),    pointer, dimension(:)     :: field_saver => null()
     real(dp),    pointer, dimension(:)     :: nodelons    => null()
     real(dp),    pointer, dimension(:)     :: nodelats    => null()
-
     integer, pointer, dimension(:)         :: conn_slice  => null()
     character(len=16) :: varname
     character(len=1)  :: istr
 
-    ! variables for mesh tile space
+    ! variables for creating mesh tile space
     type(ESMF_Grid)                        :: mesh_grid               
     type(MAPL_LocStream)                   :: mesh_locstream   
 
     ! variables for masking the mesh seam (triangles that cross +/-180 longitude)
-    ! (needed for elements, but unsure if this is needed for regridding fields defined on nodes)
+    ! (needed for elements,this is not needed for regridding fields defined on nodes)
     real(dp)                               :: dlon,lon1,lon2,lon3
     integer, pointer, dimension(:)         :: elementMask => null()
     integer, pointer, dimension(:)         :: nodeMask => null()
@@ -390,14 +389,14 @@ subroutine SetServices ( GC, RC )
     real, pointer, dimension(:)            :: ICESURF_IN    => null() ! ice surface elevation restart
     real, pointer, dimension(:)            :: ICETHICK_IN   => null() ! ice thickness restart
     real, pointer, dimension(:)            :: IMLS_IN       => null() ! ice-mask levelset restart
-    real, pointer, dimension(:)            :: OMLS_IN       => null() ! ice-mask levelset restart
+    real, pointer, dimension(:)            :: OMLS_IN       => null() ! ocean-mask levelset restart
 
     ! restarts with halo points
     real(dp), pointer, dimension(:)        :: ICESURF_HALO  => null()
     real(dp), pointer, dimension(:)        :: ICETHICK_HALO => null()
     real(dp), pointer, dimension(:)        :: IMLS_HALO     => null()
     real(dp), pointer, dimension(:)        :: OMLS_HALO     => null()
-    real(dp), pointer, dimension(:)        :: GEOS_RESTARTS => null() !concatenate restart fields
+    real(dp), pointer, dimension(:)        :: GEOS_RESTARTS => null() ! concatenate restart fields
 
     ! Get the target components name and set-up traceback handle.
     ! -----------------------------------------------------------
@@ -454,7 +453,7 @@ subroutine SetServices ( GC, RC )
     ! mask triangles that cross the seam (longitude +/- 180)
     ! possibly mask nodes... (note: you don't have to 'activate' these
     ! masks, they can just be associated with the mesh)
-    ! note: I think this is only relevant in regridding when fields are
+    ! note: this is only relevant in regridding when fields are
     !       defined on esmf_meshloc_element (rather than esmf_meshloc_node)
     elementMask(:) = 0
     nodeMask(:) = 0
@@ -624,7 +623,7 @@ subroutine SetServices ( GC, RC )
   ! ------------------------------ END SAVE MESH ---------------------------
 
     ! Create losctream that match mesh element id, then set it to this GC and MAPL
-    ! note: original attached/atmospheric grid and landice tile locsstream have
+    ! note: original attached/atmospheric grid and landice tile locstream have
     ! been stored in the internal state
     allocate(ownedNodeLons(num_owned_nodes))
     allocate(ownedNodeLats(num_owned_nodes))
@@ -642,7 +641,7 @@ subroutine SetServices ( GC, RC )
     call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
     VERIFY_(STATUS)
 
-    ! now get MAPL and INTERNAL state
+    ! Next, send GEOS restarts to ISSM
     call MAPL_GetObjectFromGC(GC, MAPL, STATUS)
     VERIFY_(STATUS)
 
@@ -748,7 +747,7 @@ subroutine SetServices ( GC, RC )
         ! get pointer to field on mesh
         call ESMF_FieldGet(meshField,farrayPtr=MESH_PTR,RC=STATUS); VERIFY_(STATUS)
 
-        ! copy values into VAR_HALO
+        ! copy values into VAR_HALO, interleave according to owned and halo indices
         VAR_HALO(owned_idx) = MESH_PTR(1:num_owned_nodes)          ! owned nodes
         VAR_HALO(halo_idx) = MESH_PTR(num_owned_nodes+1:num_nodes) ! halo nodes
 
@@ -1078,7 +1077,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     issm_tile_state%ICEVEL_TILE = ICEVEL_TILE
 
   end if 
-
   
   ! barrier to ensure regridding completes before any deallocates
   call ESMF_VMBarrier(vm, rc=status)
