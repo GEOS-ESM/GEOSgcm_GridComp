@@ -105,7 +105,10 @@ contains
     !   NGDC      : Soil parameters from Reynolds et al. 2000, doi:10.1029/2000WR900130 (MERRA-2, Fortuna, Ganymed, Icarus)
     !   HWSD      : Merged HWSDv1.21-STATSGO2 soil properties on 43200x21600 with Woesten et al. (1999) parameters   
     !   HWSD_b    : As in HWSD but with surgical fix of Argentina peatland issue (38S,60W)
-    !   HWSDv2    : As in HWSD but using HWSDv2 instead of HWSDv1.21; uses HWSDv2 layer 2 ("D2") texture for "top" *and* "sub" layers
+    !   HWSDv2    : As in HWSD but using HWSDv2 instead of HWSDv1.21; uses HWSDv2 layer 2 ("D2") texture for "top" *and* "sub" layers.
+    !                 HWSDv2 was developed and tested ~2024-2025.  Soil moisture simulation skill was found to be mostly neutral,
+    !                 while the soil moisture climatology changed substantially, which is undesirable for operational products.
+    !                 Therefore, HWSDv2 was not used in released bcs versions as of May 2026.
     !
     ! OUTLETV: Definition of outlet locations.  DEFAULT : N/A
     !   N/A       : No information (do not create routing "TRN" files).
@@ -3051,9 +3054,8 @@ contains
              if (i == n) cycle
              if ((ars1(i) == 9999.) .or. (arw1(i) == 9999.)) cycle
 
-             ! In strict GPM 2.0 mode, only consider donors with the same
-             ! peat/mineral state as the target tile.
              if (PEAT_INFO>=2) then
+                ! Only consider donors with same peat/mineral class as target tile.
                 donor_is_peat = (soil_class_top(i) == 253) .or. (soil_class_com(i) == 253)
                 if (donor_is_peat .neqv. target_is_peat) cycle
              endif
@@ -3067,10 +3069,10 @@ contains
              endif
           enddo
 
-          ! Strict GPM 2.0 fallback:
-          ! if no same-state donor exists, revert to the original
-          ! nearest-valid donor search so a donor is still always found.          
           if ((k == 0) .and. PEAT_INFO>=2) then
+             
+             ! if no same-class donor exists, revert to original nearest-valid donor search so a donor is still always found.          
+
              dist_save = 1000000.
              do i = 1,nbcatch
                 if (i == n) cycle

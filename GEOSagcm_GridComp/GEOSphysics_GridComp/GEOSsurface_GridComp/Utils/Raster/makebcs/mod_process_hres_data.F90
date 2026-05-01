@@ -3651,19 +3651,27 @@ contains
     ! get info common to all H[xx]V[yy] rectangles (could in theory differ from that
     !   of soildepth data read above but is the same as of 29 Apr 2022).
 
-    if      (trim(SOILBCS)=='HWSD_b')  then
-       tmpversion = 'v3'
-    else if (trim(SOILBCS)=='HWSDv2')    then
+    select case (trim(SOILBCS))
+       
+    case ('HWSD')   ; tmpversion = 'v2'             ! HWSDv1.21 as in De Lannoy et al 2014:   first introduced in "new land" (NL) bcs
+
+    case ('HWSD_b') ; tmpversion = 'v3'             ! as in 'HWSD' but with Argentina peatland fix: first introduced in v12 bcs
+       
+    case ('HWSDv2') ; tmpversion = 'v4'             ! HWSD version 2 (inactive)
+       
+       ! HWSDv2 was developed and tested ~2024-2025.  Soil moisture simulation skill was found to be mostly neutral,
+       ! while the soil moisture climatology changed substantially, which is undesirable for operational products.
+       ! Therefore, HWSDv2 was not used in released bcs versions as of May 2026.
+       ! 
        ! v4 is /discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/land/soil/soil_properties/v2/out_HWSDv2_NGDC_STATSGO_noMASK/
        ! New soil files with HWSDv2 - D2 layer both top and sub
-       tmpversion = 'v4'
-    else if (trim(SOILBCS)=='HWSD')    then
-       tmpversion = 'v2'
-    else
-       print *, 'Unknown SOILBCS: ', SOILBCS  
-       stop         
-    end if
+       
+    case default    ;  print *, 'Unknown SOILBCS: ', SOILBCS; stop
 
+    end select
+    
+    ! read HWSD[x] soil texture
+    
     fname =trim(MAKE_BCS_INPUT_DIR)//'/land/soil/SOIL-DATA/soil_properties/' // tmpversion // '/SoilProperties_H11V13.nc'
     status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
     !status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)  ! cannot be needed here
@@ -4777,8 +4785,7 @@ contains
 
           ! Legacy PEATMAP behavior:
           ! if the surface class is peat, force the written profile class to peat.
-          ! In strict GPM 2.0  mode, profile peat must already have been assigned
-          ! upstream, so do not override fac here.
+
           if (fac_surf == 253) fac = 253
 
        endif
