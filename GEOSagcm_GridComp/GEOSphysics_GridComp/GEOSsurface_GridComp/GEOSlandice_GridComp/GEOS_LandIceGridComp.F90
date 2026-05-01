@@ -1675,7 +1675,6 @@ module GEOS_LandiceGridCompMod
       ISSM  = MAPL_AddChild(GC, NAME='ISSM', SS=IssmSetServices, RC=STATUS)
       VERIFY_(STATUS)   
       
-      ! ISSM imports will be satisfied by landice
       call MAPL_TerminateImport(GC, CHILD = ISSM,   RC=STATUS)
       VERIFY_(STATUS)
     end if 
@@ -1775,6 +1774,7 @@ module GEOS_LandiceGridCompMod
           call MAPL_Set(CHILD_MAPL, LOCSTREAM=LOCSTREAM, RC=STATUS )
           VERIFY_(STATUS)
           if (index(gcnames(I), 'ISSM') /=0 ) then
+            ! allocate landice tilespace variables for ISSM
              allocate(issm_tile_state)
              allocate(issm_tile_state%ICESURF_TILE(nt_local))
              allocate(issm_tile_state%ICETHICK_TILE(nt_local))
