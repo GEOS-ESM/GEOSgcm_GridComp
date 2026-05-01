@@ -145,7 +145,7 @@ module catch_constants
   !     --------------------------------------------------------------------------
   !     NLv3, NLv4            | HWSDv1.21                 | poros=0.80 |   no
   !     NLv5, v12             | HWSDv1.21 + PEATMAP       | poros=0.93 |   yes
-  !     v15                   | Global Peatland Map 2.0   | poros=0.93 |   yes
+  !     v14                   | Global Peatland Map 2.0   | poros=0.93 |   yes
   !
   ! - reichle, 26 Jan 2022
   

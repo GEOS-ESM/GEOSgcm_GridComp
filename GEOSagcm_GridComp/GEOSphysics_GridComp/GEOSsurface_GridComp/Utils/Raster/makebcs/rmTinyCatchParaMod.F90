@@ -250,7 +250,7 @@ contains
        PEAT_INFO  = 1
        jpl_height = .true.
 
-    case ("v15")  
+    case ("v14")  
        LAIBCS     = 'MODGEO'
        SOILBCS    = 'HWSD_b'
        MODALB     = 'MODIS2'
