@@ -2737,7 +2737,7 @@ contains
    call MAPL_GetPointer(EXPORT,DELQS  , 'DELQS'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,EVPICE , 'EVPICE_GL' , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SUBLIM , 'SUBLIM' , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,ACCUM  , 'ACCUM'  , RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,ACCUM  , 'ACCUM'  , alloc=.true. , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SMELT  , 'SMELT'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,IMELT  , 'IMELT'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,RAINRFZ, 'RAINRFZ', RC=STATUS); VERIFY_(STATUS)
@@ -2746,7 +2746,7 @@ contains
    call MAPL_GetPointer(EXPORT,MELTWTR, 'MELTWTR', RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,MELTWTRCONT, 'MELTWTRCONT', RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,LWC    , 'LWC'    , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,RUNOFF , 'RUNOFF' , RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,RUNOFF , 'RUNOFF' , alloc=.true. ,RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SNOMAS , 'SNOMAS_GL' , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SNOWMASS,'SNOWMASS',RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SNOWDP , 'SNOWDP_GL' , RC=STATUS); VERIFY_(STATUS)
@@ -3598,6 +3598,7 @@ contains
                call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, CLOCK, RC=STATUS)
                VERIFY_(STATUS)
 
+               ! get exports on tile space
                if(associated(ICESURF))  ICESURF = issm_tile_state%ICESURF_TILE
                if(associated(ICETHICK)) ICETHICK = issm_tile_state%ICETHICK_TILE
                if(associated(ICEVEL))   ICEVEL = issm_tile_state%ICEVEL_TILE
