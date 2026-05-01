@@ -2400,12 +2400,10 @@ contains
    integer                        :: STATUS
 
 
-   ! pointer to ISSM import via private internal state
-   ! accumulate over time steps for averaging
+! pointer to ISSM import via private internal state
+! accumulate over time steps for averaging
    real, pointer, dimension(:), save :: ICESMB_ISSM=>null()
    integer, save                     :: NSTEPS_ISSM = 0 ! time steps since last ISSM
-
-
 
 ! pointers to export
    real, pointer, dimension(:  )  :: ICESMB
