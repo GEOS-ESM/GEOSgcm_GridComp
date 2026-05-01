@@ -1,7 +1,7 @@
 esma_set_this ()
 
 set(srcs
-  routing_constant.f90
+  outlets_constants.f90
 )
 
 set (exe_srcs
@@ -16,6 +16,7 @@ set (exe_srcs
 
 esma_add_library (${this}
   SRCS ${srcs}
+  DEPENDENCIES GEOS_LandShared NetCDF::NetCDF_Fortran
 )
 foreach (src ${exe_srcs})
   string (REGEX REPLACE ".f90" ".x" exe ${src})
@@ -23,7 +24,7 @@ foreach (src ${exe_srcs})
     TARGET ${exe}
     SOURCES ${src}
     NOINSTALL
-    LIBS    ${this} NetCDF::NetCDF_Fortran MPI::MPI_Fortran)
+    LIBS    ${this} NetCDF::NetCDF_Fortran)
 endforeach ()
 
 # copy to the build directory

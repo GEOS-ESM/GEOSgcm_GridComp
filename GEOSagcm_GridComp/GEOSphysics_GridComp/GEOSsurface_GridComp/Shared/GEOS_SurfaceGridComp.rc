@@ -25,6 +25,19 @@
 #                                                                                  #
 #################################################################################### 
 
+# ---- Print resource parameter values to log file
+#
+#    0: Print only parameter values that differ from default settings
+#    1: Print all parameter values
+#
+# GEOSagcm=>PRINTRC: 1
+# GEOSldas=>PRINTRC: 1
+
+
+#--------------------------------------------------------#
+#                Catchment model                         #
+#--------------------------------------------------------#
+
 # ---- Monin-Obukhov (MO) surface layer turbulence scheme
 #
 #    0 : Louis                  (MERRA, Fortuna-DAS, SMAP NRv4/4.1/5/7.2/8.1/9.1/10.0)
@@ -38,7 +51,6 @@
 #
 # GEOSldas=>CHOOSEMOSFC:                  0
 # GEOSldas=>MOSFC_EXTRA_DERIVS_OFFL_LAND: 1
-
 
 # ---- Thickness of surface layer for soil moisture [mm]
 #
@@ -128,6 +140,7 @@
 # GEOSagcm=>SNOW_ALBEDO_INFO: 0
 # GEOSldas=>SNOW_ALBEDO_INFO: 0
 
+
 #--------------------------------------------------------#
 #    GOSWIM aerosol deposition on surface snow           #
 #--------------------------------------------------------#
@@ -164,8 +177,8 @@
 
 # ---- Run irrigation module
 #
-#    0 : Do NOT run irrigation module (default)
-#    1 : YES, run irrigation module
+#    0 : NO   (default)
+#    1 : YES
 #
 # GEOSagcm=>RUN_IRRIG: 0
 # GEOSldas=>RUN_IRRIG: 0
@@ -184,10 +197,11 @@
 #              River routing model (RRM)                 #
 #--------------------------------------------------------#
 
-# ---- Run river routing model interactively 
+# ---- Run river routing model
 #
-#    0 : Default - NO
-#    1 : YES
+#    0 : NO   (default)
+#    1 : YES, without reservoir model
+#    2 : YES, with reservoir model
 #
 # GEOSagcm=>RUN_ROUTE: 0
 # GEOSldas=>RUN_ROUTE: 0
@@ -197,13 +211,6 @@
 # GEOSagcm=>RRM_DT: 3600
 # GEOSldas=>RRM_DT: 3600 
 
-# ---- Print Resource Parameter Values to Log File
-#
-#    0: Print only parameter values that differ from default settings
-#    1: Print all parameter values
-#
-# GEOSagcm=>PRINTRC: 1
-# GEOSldas=>PRINTRC: 1
 
 #--------------------------------------------------------#
 #             CatchCN-specific parameters                #
@@ -248,6 +255,7 @@
 # GEOSagcm=>PRESCRIBE_DVG: 0
 # GEOSldas=>PRESCRIBE_DVG: 0
 
+# =============== EOF =====================================================================================
 
 #--------------------------------------------------------#
 #      Ice-Sheet and Sea-Level System Model (ISSM)       #
