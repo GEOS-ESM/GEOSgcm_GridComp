@@ -21,6 +21,7 @@ module GEOS_RouteGridCompMod
   use ROUTING_MODEL,          ONLY: river_routing_hyd
   use reservoirMod,           ONLY: RES_STATE, Reservoir
   use catch_constants,        ONLY: N_pfaf_g => CATCH_N_PFAFS
+  use netcdf
   
   implicit none
 
@@ -586,12 +587,12 @@ contains
       type(ESMF_Grid),   intent(in)  :: pfaf_tilegrid
       integer, optional, intent(out) :: rc
 
-      integer :: status, nWeights, nLocal_weights,type,dumi,nx,ny,xi,yi,catid_temp
+      integer :: status, nWeights, nLocal_weights,type,dumi,nx,ny,xi,yi,catid_temp,ret,ncid,dimid,varid
       real    :: dumr,area_temp
       integer :: fillvalue=-9999
       integer :: unit,ii,dst,np,kk,nn,tile_id
       integer :: im(2),jm(2)
-      integer, allocatable :: global_id(:),type_tile(:),xi_tile(:),yi_tile(:),catid_tile(:)
+      integer, allocatable :: global_id(:),type_tile(:),xi_tile(:),yi_tile(:),pfaf_tile(:)
       integer, allocatable :: global_ii(:), global_jj(:), local_ii(:), local_jj(:)
       logical, allocatable :: mask(:)
       integer, allocatable :: srcIndices(:), positions(:), factorIndexList(:,:),map_tile(:,:)
@@ -600,9 +601,7 @@ contains
       real,    allocatable :: areacat_glob(:),area_tile(:)
       integer, pointer     :: pfaf_index(:), local_id(:), local_i(:), local_j(:)
       real   , pointer     :: tilearea(:),frac_tot(:),fscale(:),area_patch(:)
-      integer, pointer     :: catid_patch(:),tid_patch(:)
-      integer,           allocatable :: iTable(:,:)
-      real(kind=REAL64), allocatable :: rTable(:,:)     
+      integer, pointer     :: pfaf_patch(:),tid_patch(:)     
       type(Netcdf4_Fileformatter)    :: formatter
       type(Filemetadata)             :: meta
       character(len=ESMF_MAXSTR)     :: EASE_pfaf_tile_file, tile_file
@@ -650,15 +649,43 @@ contains
             enddo
 
             ! read info about Pfafstetter-based tiles from EASE_PFAF_TILE_FILE  (EASE*-Pfafstetter.nc4)
-            
-            call MAPL_ReadTilingNC4( trim(EASE_pfaf_tile_file), n_tiles=np, iTable=iTable, rTable=rTable)
-            allocate(type_tile(np),xi_tile(np),yi_tile(np),catid_tile(np),area_tile(np))
-            allocate(area_patch(np),catid_patch(np),tid_patch(np))
-            type_tile  = iTable(:,0)
-            xi_tile    = iTable(:,2)
-            yi_tile    = iTable(:,3)   
-            catid_tile = iTable(:,4)                 ! tile "pfaf_index" from EASE*-Pfafstetter.nc4 file
-            area_tile  = real(rTable(:,3))           ! tile "area"       from EASE*-Pfafstetter.nc4 file
+            ret=nf90_open(trim(EASE_pfaf_tile_file),NF90_NOWRITE,ncid)
+            _ASSERT( ret == NF90_NOERR, trim(EASE_pfaf_tile_file)//" read error: "//trim(nf90_strerror(ret)))
+
+            ret = nf90_inq_dimid(ncid, "tile", dimid)
+            _ASSERT( ret == NF90_NOERR, "Dimension 'tile' not found in " // trim(EASE_pfaf_tile_file) // ": " // trim(nf90_strerror(ret)))
+            ret = nf90_inquire_dimension(ncid, dimid, len = np)
+            _ASSERT( ret == NF90_NOERR, "Failed to get length of 'tile': " // trim(nf90_strerror(ret)))
+
+            allocate(type_tile(np),xi_tile(np),yi_tile(np),pfaf_tile(np),area_tile(np))
+            allocate(area_patch(np),pfaf_patch(np),tid_patch(np))
+
+            ret=nf90_inq_varid(ncid,"pfaf_index",varid)
+            _ASSERT( ret == NF90_NOERR, "Var 'pfaf_index' not found in "//trim(EASE_pfaf_tile_file)//": "//trim(nf90_strerror(ret)))
+            ret=nf90_get_var(ncid,varid,pfaf_tile)
+            _ASSERT( ret == NF90_NOERR, "Failed to read 'pfaf_index': "//trim(nf90_strerror(ret)))
+
+            ret=nf90_inq_varid(ncid,"typ",varid)
+            _ASSERT( ret == NF90_NOERR, "Var 'typ' not found in "//trim(EASE_pfaf_tile_file)//": "//trim(nf90_strerror(ret)))
+            ret=nf90_get_var(ncid,varid,type_tile)
+            _ASSERT( ret == NF90_NOERR, "Failed to read 'typ': "//trim(nf90_strerror(ret)))
+
+            ret=nf90_inq_varid(ncid,"i_indg",varid)
+            _ASSERT( ret == NF90_NOERR, "Var 'i_indg' not found in "//trim(EASE_pfaf_tile_file)//": "//trim(nf90_strerror(ret)))
+            ret=nf90_get_var(ncid,varid,xi_tile)
+            _ASSERT( ret == NF90_NOERR, "Failed to read 'i_indg': "//trim(nf90_strerror(ret)))
+
+            ret=nf90_inq_varid(ncid,"j_indg",varid)
+            _ASSERT( ret == NF90_NOERR, "Var 'j_indg' not found in "//trim(EASE_pfaf_tile_file)//": "//trim(nf90_strerror(ret)))
+            ret=nf90_get_var(ncid,varid,yi_tile)
+            _ASSERT( ret == NF90_NOERR, "Failed to read 'j_indg': "//trim(nf90_strerror(ret)))
+
+            ret=nf90_inq_varid(ncid,"area",varid)
+            _ASSERT( ret == NF90_NOERR, "Var 'area' not found in "//trim(EASE_pfaf_tile_file)//": "//trim(nf90_strerror(ret)))
+            ret=nf90_get_var(ncid,varid,area_tile)
+            _ASSERT( ret == NF90_NOERR, "Failed to read 'area': "//trim(nf90_strerror(ret)))
+
+            ret=nf90_close(ncid)
 
             ! for each Pfafstetter-based tile, find the tile_id, area, and pfaf_index of the corresponding MAPL LocStream tile
             
@@ -666,17 +693,17 @@ contains
             do ii=1,np
                if(type_tile(ii)==100)then
                   tile_id=map_tile(xi_tile(ii)+1,ny-yi_tile(ii))              ! note: EASE indices are 0-based
-                  if(1<=tile_id.and.tile_id<=route%nt_global)then             ! route%nt_global = np_lnd
-                     kk=kk+1
-                     tid_patch(  kk)=tile_id
-                     area_patch( kk)=area_tile( ii)
-                     catid_patch(kk)=catid_tile(ii)
+                  if(1<=tile_id.and.tile_id<=route%nt_global)then             
+                     kk=kk+1 
+                     tid_patch(  kk)=tile_id                                  ! the EASE id for the patch (src)
+                     pfaf_patch( kk)=pfaf_tile(ii)                            ! the Pfaf id for the patch (dst)
+                     area_patch( kk)=area_tile( ii)                           ! the area of the patch (weight)
                   endif
                endif
             enddo
 
             nWeights=kk
-            deallocate(type_tile,xi_tile,yi_tile,catid_tile,area_tile)
+            deallocate(type_tile,xi_tile,yi_tile,pfaf_tile,area_tile)
          endif
 
          ! broadcast mapping info 
@@ -685,9 +712,9 @@ contains
          allocate(global_src(nWeights), global_dst(nWeights), global_area(nWeights), global_frac(nWeights))
          if (MAPL_AM_I_ROOT()) then
             global_src =tid_patch(  1:nWeights)
-            global_dst =catid_patch(1:nWeights)
+            global_dst =pfaf_patch( 1:nWeights)
             global_area=area_patch( 1:nWeights)*MAPL_RADIUS**2                  
-            deallocate(map_tile,area_patch,catid_patch,tid_patch)
+            deallocate(map_tile,area_patch,pfaf_patch,tid_patch)
          endif
          call MAPL_CommsBcast(layout, global_src, nWeights, MAPL_Root, status)
          call MAPL_CommsBcast(layout, global_dst, nWeights, MAPL_Root, status)
