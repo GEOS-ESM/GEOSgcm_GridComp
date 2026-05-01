@@ -1650,7 +1650,8 @@ contains
    end block
    
 ! this need extra work, get a resource, etc
-   call gcm_internal_state%a2o_state%set(average=.FALSE., _RC)
+!   call gcm_internal_state%a2o_state%set(average=.FALSE., _RC)
+   call gcm_internal_state%a2o_state%set(alarm=gcm_internal_state%alarmOcn, _RC)
 
    !loop over cpld vars (say A2O)
 
@@ -2108,10 +2109,6 @@ contains
                 call ESMF_GridCompRun ( GCS(AGCM), importState=GIM(AGCM), exportState=GEX(AGCM), clock=clock, userRC=status )
                 VERIFY_(STATUS)
 
-                call MAPL_TimerOn(MAPL,"--A2O_accmulate"  )
-                call gcm_internal_state%a2o_state%accumulate(clock,_RC)
-                call MAPL_TimerOff(MAPL,"--A2O_accmulate"  )
-
                 if (.not. DUAL_OCEAN) then
                    if(DO_DATASEA /= 0) then
                       call RUN_OCEAN(RC=STATUS)
@@ -2299,6 +2296,10 @@ contains
 
     call ESMF_GridCompRun ( GCS(AGCM), importState=GIM(AGCM), exportState=GEX(AGCM), clock=clock, userRC=status )
     VERIFY_(STATUS)
+
+    call MAPL_TimerOn(MAPL,"--A2O_accmulate"  )
+    call gcm_internal_state%a2o_state%accumulate(clock,_RC)
+    call MAPL_TimerOff(MAPL,"--A2O_accmulate"  )
 
 #ifdef HAS_GIGATRAJ
     ! use agcm export as gigatraj's import

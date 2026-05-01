@@ -17,10 +17,11 @@ module gc2gc
      integer :: nvars
      integer :: DT, COUPLE_DT
      logical :: average=.false.
-     logical :: alreadyPrint=.false.
+     logical :: alreadyPrinted=.false.
      type(T_CVARS), pointer :: vars(:) => null()
      type(ESMF_State) :: StateIn, StateOut, StateTmp
      type(ESMF_CplComp) :: ccs
+     type(ESMF_Alarm) :: alarm
    contains
      procedure :: g2ginitialize
      procedure :: accumulate
@@ -30,11 +31,13 @@ module gc2gc
      procedure, private :: MAPL_ConnectSetVars
      procedure, private :: MAPL_ConnectSetDt
      procedure, private :: MAPL_ConnectSetAverage
+     procedure, private :: MAPL_ConnectSetAlarm
      generic :: set => MAPL_ConnectSetName
      generic :: set => MAPL_ConnectSetXform
      generic :: set => MAPL_ConnectSetVars
      generic :: set => MAPL_ConnectSetDt
      generic :: set => MAPL_ConnectSetAverage
+     generic :: set => MAPL_ConnectSetAlarm
   end type T_GC2GC_STATE
 
   public T_GC2GC_STATE
@@ -47,7 +50,7 @@ contains
 
     integer :: status
     integer :: n, k, rank, dims
-    type (MAPL_VarSpec), pointer :: SSPEC(:)=> NULL()
+    type (MAPL_VarSpec), pointer :: SSPEC(:)
     type (ESMF_Field) :: field, fieldCopy
     type (ESMF_TypeKind_flag) :: tk
     character (len=ESMF_MAXSTR), allocatable  :: itemNameList(:)
@@ -67,6 +70,7 @@ contains
 
     call ESMF_StateGet(this%stateIn, ITEMNAMELIST=itemNamelist, _RC)
 
+    NULLIFY(SSPEC)
     k=0
     do n=1,size(this%vars)
        if (.not. any(itemNameList==this%vars(n)%vIn)) cycle
@@ -102,14 +106,17 @@ contains
             COUPLE_INTERVAL= this%COUPLE_DT,                         &
             _RC)
 
-
+       if (MAPL_AM_I_ROOT()) then
+          print *,'DEBUG:g2gini:',trim(this%vars(n)%vIn),&
+               this%DT, this%COUPLE_DT, this%average, trim(this%name)
+       end if
 
     end do
     deallocate(itemNameList, _STAT)
 
     if (MAPL_AM_I_Root()) then
        print *, "DEBUG: Averaging the following ",K," vars:"
-       call MAPL_VarSpecPrint(sspec, _RC)
+!       call MAPL_VarSpecPrint(sspec, _RC)
     end if
 
 !         CCSetServ
@@ -119,6 +126,8 @@ contains
     call MAPL_CplCompSetVarSpecs(this%CCS, &
                                       SSPEC,&
                                       SSPEC,_RC)
+    
+    call MAPL_CplCompSetAlarm(this%CCS, this%alarm, _RC)
     
     call ESMF_CplCompInitialize (this%CCS, &
          importState=this%stateIn, & 
@@ -182,14 +191,14 @@ contains
        skip = .false.
        if (.not. any(itemNameListIn==this%vars(n)%vIn)) skip=.true.
        if (.not. any(itemNameListOut==this%vars(n)%vOut)) skip=.true.
-       if (.not. this%alreadyPrint) then
+       if (skip) cycle
+
+       if (.not. this%alreadyPrinted) then
           if (MAPL_Am_I_Root()) then
              print *, "DEBUG: var "//trim(this%vars(n)%vIn),&
-                  "  "//trim(this%name), skip
+                  "  "//trim(this%name)
           end if
        end if
-
-       if (skip) cycle
 
        call ESMF_StateGet(this%stateIn, this%vars(n)%vIn, field, _RC)
        ! get rank,typekind to use the appropriate overload
@@ -228,7 +237,7 @@ contains
           _FAIL("Unsupported rank")
        end select
     end do
-    if (.not. this%alreadyPrint) this%alreadyPrint = .true.
+    if (.not. this%alreadyPrinted) this%alreadyPrinted = .true.
     deallocate(itemNameListIn, itemNameListOut)
     _RETURN(ESMF_SUCCESS)
 
@@ -277,9 +286,9 @@ contains
     integer :: status
 
     this%name = ''
-    if (present(name)) this%name = name
     this%stateIn = stateIn
     this%stateOut = stateOut
+    if (present(name)) this%name = name
 
     _RETURN(ESMF_SUCCESS)
   end subroutine MAPL_ConnectSetName
@@ -310,6 +319,18 @@ contains
     
     _RETURN(ESMF_SUCCESS)
   end subroutine MAPL_ConnectSetAverage
+
+  subroutine MAPL_ConnectSetAlarm(this, alarm, rc)
+    class (T_GC2GC_STATE), intent(INOUT) :: this
+    type(ESMF_Alarm), intent(IN) :: alarm
+    integer, optional, intent(OUT) :: rc
+
+    integer :: status
+    
+    this%alarm = alarm
+    
+    _RETURN(ESMF_SUCCESS)
+  end subroutine MAPL_ConnectSetAlarm
 
 end module gc2gc
 
