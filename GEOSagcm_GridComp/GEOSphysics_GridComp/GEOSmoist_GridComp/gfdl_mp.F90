@@ -435,7 +435,7 @@ module gfdl_mp_mod
 
     real :: ql0_max = 2.0e-3 ! maximum cloud water value (autoconverted to rain) (kg/kg)
 
-    real :: psaut_qi_crt = 1.0e-4 ! cloud ice to snow autoconversion threshold (kg/m^3)
+    real :: psaut_qi_crt = 2.0e-4 ! cloud ice to snow autoconversion threshold (kg/m^3)
     real :: pwbf_qi_crt  = 0.8e-4 ! WBF liquid to ice freezing threshold (kg/m^3)
     real :: pgaut_qs_crt = 0.6e-3 ! snow to graupel autoconversion threshold (0.6e-3 in Purdue Lin scheme) (kg/m^3)
 
@@ -504,7 +504,7 @@ module gfdl_mp_mod
 
     real :: fi2s_fac = 1.00 ! maximum sink of cloud ice to form snow: 0-1
     real :: fi2g_fac = 1.00 ! maximum sink of cloud ice to form graupel/hail: 0-1
-    real :: fs2g_fac = 1.00 ! maximum sink of snow to form graupel: 0-1
+    real :: fs2g_fac = 0.75 ! maximum sink of snow to form graupel: 0-1
 
     real :: beta = 1.22 ! defined in Heymsfield and Mcfarquhar (1996)
 
