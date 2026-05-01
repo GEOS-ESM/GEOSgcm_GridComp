@@ -43,18 +43,16 @@ subroutine InitializeISSM(expdir, num_elements, num_nodes, comm) bind(c, name="I
   integer(c_int)                  :: comm
 end subroutine InitializeISSM
     
-subroutine RunISSM(dt, gcm_forcings, issm_outputs, elementConn) bind(C,NAME="RunISSM")
+subroutine RunISSM(dt, gcm_forcings, issm_outputs) bind(C,NAME="RunISSM")
    import :: c_ptr, c_double
    real(c_double),   value        :: dt
    type(c_ptr),      value        :: gcm_forcings
    type(c_ptr),      value        :: issm_outputs
-   type(c_ptr),      value        :: elementConn
 end subroutine RunISSM
 
-subroutine InputFromRestarts(gcm_restarts, elementConn) bind(C,NAME="InputFromRestarts")
+subroutine InputFromRestarts(gcm_restarts) bind(C,NAME="InputFromRestarts")
   import :: c_ptr
   type(c_ptr),       value        :: gcm_restarts
-  type(c_ptr),       value        :: elementConn
 end subroutine InputFromRestarts
 
 subroutine GetNodesISSM(nodeIds, nodeCoords) bind(C,NAME="GetNodesISSM")
@@ -682,7 +680,7 @@ subroutine SetServices ( GC, RC )
     ! set restarts on the ISSM side
     call ESMF_VMBarrier(vm, rc=status); VERIFY_(STATUS)
     
-    call InputFromRestarts(c_loc(GEOS_RESTARTS), c_loc(elementConn))
+    call InputFromRestarts(c_loc(GEOS_RESTARTS))
 
     call ESMF_VMBarrier(vm, rc=status); VERIFY_(STATUS)
 
@@ -850,9 +848,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   type(ESMF_DistGrid)                  :: nodalDistgrid           ! distgrid (owned nodes)
   type(ESMF_Array)                     :: meshArray               ! array for creating mesh fields
 
-  ! mesh information
-  integer, pointer, dimension(:)       :: elementConn   => null() ! element connectivity (nodes indices)
-
   ! tile information
   integer                              :: NT                      ! number of landice tiles
 
@@ -939,8 +934,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     ! get number of mesh elements
     call ESMF_MeshGet(mesh,elementCount=num_elements,nodeCount=num_nodes,numOwnedNodes=num_owned_nodes)
-    allocate(elementConn(3*num_elements))
-    call ESMF_MeshGet(mesh,elementConn=elementConn)
 
     ! allocate ice-elevation output (export from ISSM)
     allocate(ISSM_OUTPUTS(num_outputs*num_nodes))  
@@ -1027,7 +1020,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_VMBarrier(vm, rc=status); VERIFY_(STATUS)
 
     ! call run method from ISSM library 
-    call RunISSM(dt, c_loc(ICESMB_MESH), c_loc(ISSM_OUTPUTS), c_loc(elementConn))
+    call RunISSM(dt, c_loc(ICESMB_MESH), c_loc(ISSM_OUTPUTS))
 
     call ESMF_VMBarrier(vm, rc=status); VERIFY_(STATUS)
 
@@ -1105,7 +1098,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   if(associated(ICESURF_TILE))  deallocate(ICESURF_TILE)
   if(associated(ICETHICK_TILE)) deallocate(ICETHICK_TILE)
   if(associated(ICEVEL_TILE))   deallocate(ICEVEL_TILE)
-  if(associated(elementConn))   deallocate(elementConn)
   if(associated(halolist))      deallocate(halolist)
   if(associated(halo_idx))      deallocate(halo_idx)
   if(associated(owned_idx))     deallocate(owned_idx)
