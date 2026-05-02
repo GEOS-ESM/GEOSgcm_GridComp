@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Build GPM 2.0 based peat rasters on the legacy PEATMAP target grid.
+Build GPM 2.0 based peat rasters on the standard 30-arcsec global raster grid.
 
 Supported products
 ------------------
@@ -20,68 +20,47 @@ liberal
     GPM 2.0 class 2 -> 1.0
     else            -> 0.0
 
-Why this uses the legacy PEATMAP grid
--------------------------------------
-The output grid is taken directly from the legacy PEATMAP file so the resulting
-rasters can be used as drop-in replacements in the existing Fortran/PEATMAP
-workflow, with the same dimensions, coordinate arrays, variable names, and
-overall file structure expected by the current code.
+The default archived product is alpha050:
+    peatGPA22WGS_2cl_real_30arcsec.nc4
 
-This is a compatibility choice. The script does not construct a new analytic
-global grid with exact 30.000000-arcsec spacing. Instead, it remaps GPM 2.0 onto
-the exact longitude/latitude arrays stored in the legacy PEATMAP product.
+The script reads the original GPM 2.0 GeoTIFF directly, remaps the data from
+the original 0.01-degree lat/lon grid to the standard global 30-arcsec raster
+grid, converts GPM classes to real values, and writes the result as NetCDF4.
 
-In practice, this means the outputs are PEATMAP-grid-compatible global rasters
-with nominal ~30-arcsec resolution (21600 x 43200), rather than standalone
-exact-30-arcsec products.
+The 30-arcsec target grid is constructed analytically in double precision:
+    lat = -90 + dlat/2 ... 90 - dlat/2, dlat = 180 / 21600
+    lon = -180 + dlon/2 ... 180 - dlon/2, dlon = 360 / 43200
 
-Because the GPM 2.0 source grid differs from the PEATMAP target grid, the GPM 2.0
-field is remapped to the PEATMAP grid using nearest-neighbor interpolation.
+No legacy PEATMAP_mask.nc4 file is required.
 """
 
 from pathlib import Path
 import numpy as np
 import xarray as xr
-
-try:
-    import rasterio
-except ImportError:
-    rasterio = None
+import rasterio
 
 
 # ============================================================
 # USER SETTINGS
 # ============================================================
 
-# Source choice:
-#   "nc"  -> read the existing GPM 2.0 (GPA22) NetCDF file
-#   "tif" -> read the original GeoTIFF directly
-# For strict reproduction of your current files, keep this as "nc" first.
-GPA_SOURCE_KIND = "nc"
-
-GPA_NC_FILE = Path(
-    "/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/soil/SOIL-DATA/v2/peatGPA22WGS_2cl.nc4"
-)
 GPA_TIF_FILE = Path(
     "/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/soil/SOIL-DATA/v2/peatGPA22WGS_2cl.tif"
 )
 
-# Target 30-arcsec grid used by the legacy PEATMAP product
-PEATMAP_GRID_FILE = Path(
-    "/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/"
-    "land/soil/SOIL-DATA/PEATMAP_mask.nc4"
-)
+# Default product to build/archive.
+# The alpha050 product contains enough information to derive conservative or
+# liberal masks later if needed.
+PRODUCT_MODE = "alpha050"
 
-# Which products to create:
-#   "conservative" -> class 1 only
-#   "alpha050"     -> class 1 = 1.0, class 2 = 0.5
-#   "liberal"      -> class 1 or 2 both treated as 1.0
-#   "all"          -> write all three files
-PRODUCT_MODE = "all"
 
-OUTFILE_CONSERVATIVE = Path("PEATMAP_from_GPA22_like_old_conservative.nc4")
-OUTFILE_ALPHA050     = Path("PEATMAP_from_GPA22_like_old_alpha0.50.nc4")
-OUTFILE_LIBERAL      = Path("PEATMAP_from_GPA22_like_old_liberal.nc4")
+OUTFILE_ALPHA050      = Path("peatGPA22WGS_2cl_real_30arcsec.nc4")
+# Optional diagnostic products if PRODUCT_MODE is changed manually.
+OUTFILE_CONSERVATIVE = Path("peatGPA22WGS_2cl_real_30arcsec_conservative.nc4")
+OUTFILE_LIBERAL      = Path("peatGPA22WGS_2cl_real_30arcsec_liberal.nc4")
+
+NLAT = 21600
+NLON = 43200
 
 GRID_TOL = 1.0e-10
 NC_FILL  = np.float32(-9999.0)
@@ -100,41 +79,16 @@ def get_resolution_arcsec(coord):
     """Return absolute grid spacing in arc-seconds for a 1D coordinate."""
     return abs(float(coord[1] - coord[0])) * 3600.0
 
-
-def load_gpa_from_nc(nc_path):
-    """
-    Read GPM 2.0 from the NetCDF file and return lon, lat, peatland_type(lat, lon).
-    Latitude is forced to ascending order because interpolation assumes that.
-    """
-    print(f"Reading GPM 2.0 NetCDF: {nc_path}")
-    ds = xr.open_dataset(nc_path)
-
-    if "lon" not in ds or "lat" not in ds or "peatland_type" not in ds:
-        raise RuntimeError("Expected variables lon, lat, peatland_type in GPM 2.0 NetCDF.")
-
-    ptype = ds["peatland_type"]
-    lon = np.asarray(ds["lon"].values, dtype=np.float64)
-    lat = np.asarray(ds["lat"].values, dtype=np.float64)
-
-    if lat[1] < lat[0]:
-        print("Sorting GPM 2.0 latitude to ascending order")
-        ds = ds.sortby("lat")
-        ptype = ds["peatland_type"]
-        lon = np.asarray(ds["lon"].values, dtype=np.float64)
-        lat = np.asarray(ds["lat"].values, dtype=np.float64)
-
-    return ds, lon, lat, ptype
-
-
 def load_gpa_from_tif(tif_path):
     """
-    Read GPM 2.0 (GPA22) directly from the GeoTIFF and return lon, lat, peatland_type(lat, lon).
-    Latitude is converted to ascending order to match the NetCDF workflow.
-    """
-    if rasterio is None:
-        raise RuntimeError("rasterio is required for GPA_SOURCE_KIND='tif'.")
+    Read GPM 2.0 (GPA22) directly from the GeoTIFF and return
+    lon, lat, peatland_type(lat, lon).
 
+    Latitude is converted to ascending order because xarray interpolation
+    expects monotonic coordinates.
+    """
     print(f"Reading GPM 2.0 GeoTIFF: {tif_path}")
+
     with rasterio.open(tif_path) as src:
         data = src.read(1)
         transform = src.transform
@@ -155,29 +109,27 @@ def load_gpa_from_tif(tif_path):
     ptype = xr.DataArray(
         data,
         dims=("lat", "lon"),
-        coords={"lat": lat, "lon": lon},
+        coords={"lat": lat.astype(np.float64), "lon": lon.astype(np.float64)},
         name="peatland_type",
     )
 
-    return None, lon.astype(np.float64), lat.astype(np.float64), ptype
+    return lon.astype(np.float64), lat.astype(np.float64), ptype
 
+def build_target_grid():
+    """
+    Construct the standard global 30-arcsec raster cell-center grid
+    in double precision.
 
-def load_target_grid(peatmap_grid_file):
-    """Read the target PEATMAP grid that defines the output 30-arcsec raster."""
-    print(f"Reading PEATMAP target grid: {peatmap_grid_file}")
-    ds = xr.open_dataset(peatmap_grid_file)
+    Latitude is ascending: south to north.
+    Longitude is ascending: west to east.
+    """
+    dlat = np.float64(180.0) / np.float64(NLAT)
+    dlon = np.float64(360.0) / np.float64(NLON)
 
-    if "longitude" not in ds or "latitude" not in ds:
-        raise RuntimeError("Expected longitude and latitude in PEATMAP grid file.")
+    lat = -90.0  + dlat * (np.arange(NLAT, dtype=np.float64) + 0.5)
+    lon = -180.0 + dlon * (np.arange(NLON, dtype=np.float64) + 0.5)
 
-    lon = np.asarray(ds["longitude"].values, dtype=np.float64)
-    lat = np.asarray(ds["latitude"].values, dtype=np.float64)
-
-    if lat[1] < lat[0]:
-        raise RuntimeError("Expected PEATMAP latitude to be ascending.")
-
-    return ds, lon, lat
-
+    return lon, lat
 
 def build_mask(ptype, mode):
     """Build the requested peat field from GPM 2.0 peatland_type."""
@@ -216,22 +168,23 @@ def remap_to_target(field, lon_src, lat_src, lon_tgt, lat_tgt):
         print("  Grids match. No remapping needed.")
         return field.transpose("lat", "lon")
 
-    print("  Grids do not match. Remapping to PEATMAP grid using nearest neighbor.")
+    print("  Grids do not match. Remapping to standard 30-arcsec grid using nearest neighbor.")
     lon_target = xr.DataArray(lon_tgt, dims=("lon",))
     lat_target = xr.DataArray(lat_tgt, dims=("lat",))
 
-    return field.interp(
+    out = field.interp(
         lon=lon_target,
         lat=lat_target,
         method="nearest"
     ).transpose("lat", "lon")
-
+    
+    return out.fillna(0.0).astype("float32")
 
 def write_output(outfile, lon, lat, peat_field, mode):
     """
-    Write output in the PEATMAP-like layout:
+    Write output on the standard 30-arcsec global raster grid:
       longitude(N_lon), latitude(N_lat), PEATMAP(N_lat, N_lon)
-    """
+    """    
     print(f"Writing output: {outfile}")
 
     peat_data = peat_field.rename({"lat": "N_lat", "lon": "N_lon"})
@@ -281,7 +234,16 @@ def write_output(outfile, lon, lat, peat_field, mode):
     else:
         raise RuntimeError(f"Unsupported mode: {mode}")
 
-    ds_out.attrs["source"] = "Derived from GPM 2.0 (Global Peatland Map 2.0) on PEATMAP grid.  GPM 2.0 is 0.01 deg grid spacing with non-global (approx.) coverage: (-179.77:179:73, -74.34:78.32)."
+    ds_out.attrs["source"] = (
+        "Derived from GPM 2.0 (Global Peatland Map 2.0) GeoTIFF. "
+        "The original 0.01-degree lat/lon data were remapped to the standard "
+        "global 30-arcsec raster grid and written as NetCDF4."
+    )    
+    ds_out.attrs["note"] = (
+        "Alpha peat fraction: GPM 2.0 class 1 is assigned 1.0, "
+        "class 2 is assigned 0.5, and all other classes are assigned 0.0. "
+        "This is the default archived product."
+    )    
 
     encoding = {
         "PEATMAP":   {"_FillValue": NC_FILL, "zlib": True, "complevel": 1},
@@ -323,18 +285,17 @@ def get_outfile(mode):
 # ============================================================
 
 def main():
-    if GPA_SOURCE_KIND == "nc":
-        ds_gpa, lon_gpa, lat_gpa, ptype = load_gpa_from_nc(GPA_NC_FILE)
-    elif GPA_SOURCE_KIND == "tif":
-        ds_gpa, lon_gpa, lat_gpa, ptype = load_gpa_from_tif(GPA_TIF_FILE)
-    else:
-        raise RuntimeError(f"Unsupported GPA_SOURCE_KIND: {GPA_SOURCE_KIND}")
+    lon_gpa, lat_gpa, ptype = load_gpa_from_tif(GPA_TIF_FILE)
 
     print(f"GPM 2.0 grid: nlat={len(lat_gpa)} nlon={len(lon_gpa)}")
     print(f"GPM 2.0 resolution: dlat={get_resolution_arcsec(lat_gpa):.6f}\" "
           f"dlon={get_resolution_arcsec(lon_gpa):.6f}\"")
 
-    ds_tgt, lon_tgt, lat_tgt = load_target_grid(PEATMAP_GRID_FILE)
+    lon_tgt, lat_tgt = build_target_grid()
+
+    print(f"Target 30-arcsec grid: nlat={len(lat_tgt)} nlon={len(lon_tgt)}")
+    print(f"Target resolution: dlat={get_resolution_arcsec(lat_tgt):.6f}\" "
+          f"dlon={get_resolution_arcsec(lon_tgt):.6f}\"")
 
     for mode in get_requested_products(PRODUCT_MODE):
         print()
@@ -346,13 +307,8 @@ def main():
         field_on_target = remap_to_target(field, lon_gpa, lat_gpa, lon_tgt, lat_tgt)
         write_output(get_outfile(mode), lon_tgt, lat_tgt, field_on_target, mode)
 
-    if ds_gpa is not None:
-        ds_gpa.close()
-    ds_tgt.close()
-
     print()
     print("Done.")
-
 
 if __name__ == "__main__":
     main()

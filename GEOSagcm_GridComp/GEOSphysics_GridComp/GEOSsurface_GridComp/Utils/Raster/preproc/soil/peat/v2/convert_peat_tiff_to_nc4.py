@@ -1,3 +1,20 @@
+#!/usr/bin/env python3
+
+"""
+Standalone utility: convert the original GPM 2.0 GeoTIFF to NetCDF4.
+
+This script is NOT required by the peat preprocessing workflow.
+
+The production preprocessing script, build_gpa22_peat_rasters_30arcsec.py,
+reads peatGPA22WGS_2cl.tif directly, remaps it to the standard 30-arcsec
+global raster grid, and writes the final preprocessing input:
+
+    peatGPA22WGS_2cl_real_30arcsec.nc4
+
+This tif-to-nc4 script is kept only as a convenience tool in case someone
+wants a NetCDF4 copy of the original GeoTIFF for inspection or debugging.
+"""
+
 import rasterio
 import numpy as np
 import netCDF4 as nc
