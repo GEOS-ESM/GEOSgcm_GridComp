@@ -3818,11 +3818,12 @@ contains
           ! Legacy PEATMAP mask 
           fname = trim(MAKE_BCS_INPUT_DIR)// '/land/soil/SOIL-DATA/PEATMAP_mask.nc4'
        case (2)
-          
-          !  ! Preprocessed GPM 2.0 peat mask: 1 = peat; 0 = mineral (includes reclassified "2=peat in soil mosaic")
-          !  fname = trim(MAKE_BCS_INPUT_DIR) // '/land/soil/SOIL-DATA/v2/PEATMAP_from_GPA22_like_old_conservative.nc4'
 
-          ! Preprocessed GPM 2.0 peat mask: 1 = peat dominated, 0.5 = peat in soil mosaic, 0 = mineral)
+          ! Preprocessed GPM 2.0 peat fraction on the standard 30-arcsec raster grid.
+          ! Values are:
+          !   1.0 = peat dominated
+          !   0.5 = peat in soil mosaic
+          !   0.0 = non-peat/mineral          
           fname = trim(MAKE_BCS_INPUT_DIR) // '/land/soil/SOIL-DATA/v2/peatGPA22WGS_2cl_real_30arcsec.nc4'
           
        case default
