@@ -3823,8 +3823,7 @@ contains
           !  fname = trim(MAKE_BCS_INPUT_DIR) // '/land/soil/SOIL-DATA/v2/PEATMAP_from_GPA22_like_old_conservative.nc4'
 
           ! Preprocessed GPM 2.0 peat mask: 1 = peat dominated, 0.5 = peat in soil mosaic, 0 = mineral)
-          !fname = trim(MAKE_BCS_INPUT_DIR) // '/land/soil/SOIL-DATA/v2/PEATMAP_from_GPA22_like_old_alpha0.50.nc4'
-          fname = '/discover/nobackup/rreichle/PEATMAP_from_GPA22_like_old_alpha0.50.nc4'
+          fname = trim(MAKE_BCS_INPUT_DIR) // '/land/soil/SOIL-DATA/v2/peatGPA22WGS_2cl_real_30arcsec.nc4'
           
        case default
           print *, 'unknown value of PEAT_INFO'
