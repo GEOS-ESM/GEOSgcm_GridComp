@@ -185,7 +185,7 @@ def ask_questions(default_grid="Cubed-Sphere"):
     directories were originally created.  The impact of these differences on \n \
     science is insignificant, and the parameter files produced by current \n \
     code are scientifically equivalent to corresponding archived BCs. \n \
-    Current code always applies "mean land elevation fix" of v13.  For v12 and earlier, land elevation produced \n \
+    Current code always applies \"mean land elevation fix\" of v13.  For v12 and earlier, land elevation produced \n \
     by current code thus differs from that in bcs_shared project disk. \n",
             "choices": [ \
    "NL3 : Icarus-NLv3   (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv3/)", \
