@@ -33,3 +33,8 @@ esma_add_library (${this}
   SRCS ${srcs}
   SUBCOMPONENTS ${alldirs}
   DEPENDENCIES MAPL GEOS_Shared GEOS_SurfaceShared ESMF::ESMF NetCDF::NetCDF_Fortran)
+
+if(ISSM_FOUND)
+  # If ISSM is found, add this definition
+  target_compile_definitions(${this} PRIVATE HAVE_ISSM)
+endif()
