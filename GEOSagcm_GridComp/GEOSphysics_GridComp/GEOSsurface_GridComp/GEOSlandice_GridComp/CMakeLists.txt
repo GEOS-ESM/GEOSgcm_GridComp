@@ -5,12 +5,6 @@ set(alldirs)
 # ... and srcs to the LandIceGridComp
 set (srcs GEOS_LandIceGridComp.F90)
 
-set_source_files_properties(
-  GEOS_LandIceGridComp.F90
-  PROPERTIES
-  Fortran_PREPROCESS ON
-)
-
 # Then try to find ISSM
 find_package (ISSM QUIET COMPONENTS Core)
 
@@ -39,7 +33,6 @@ esma_add_library (${this}
   SRCS ${srcs}
   SUBCOMPONENTS ${alldirs}
   DEPENDENCIES MAPL GEOS_Shared GEOS_SurfaceShared ESMF::ESMF NetCDF::NetCDF_Fortran)
-
 
 if(ISSM_FOUND)
   # If ISSM is found, add this definition
