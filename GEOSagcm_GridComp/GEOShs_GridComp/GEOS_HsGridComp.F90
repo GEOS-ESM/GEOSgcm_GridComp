@@ -179,7 +179,7 @@ contains
 
       ! Set the Initialize and Run entry points
       call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_INITIALIZE, Initialize, _RC)
-      call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_RUN, Run, phase_name="Run", _RC)
+      call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_RUN, Run, phase_name="run", _RC)
 
       _RETURN(_SUCCESS)
    end subroutine SetServices
