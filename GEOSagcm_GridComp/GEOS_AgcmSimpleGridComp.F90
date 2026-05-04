@@ -76,10 +76,14 @@ contains
       ! SHORT_NAME | UNITS   | FILLVAL | DIMS | VLOC | RESTART | LONG_NAME
       ! #-------------------------------------------------------------------
       ! Q          | kg kg-1 | 1.0e-6  | xyz  | C    | SKIP   | specific_humidity
-      ! QLLS       | kg kg-1 |         | xyz  | C    | SKIP   | mass_fraction_of_large_scale_cloud_liquid_water
-      ! QLCN       | kg kg-1 |         | xyz  | C    | SKIP   | mass_fraction_of_convective_cloud_liquid_water
-      ! QILS       | kg kg-1 |         | xyz  | C    | SKIP   | mass_fraction_of_large_scale_cloud_ice_water
-      ! QICN       | kg kg-1 |         | xyz  | C    | SKIP   | mass_fraction_of_convective_cloud_ice_water
+      ! QLLS       | kg kg-1 |         | xyz  | C    | SKIP   |
+      ! mass_fraction_of_large_scale_cloud_liquid_water
+      ! QLCN       | kg kg-1 |         | xyz  | C    | SKIP   |
+      ! mass_fraction_of_convective_cloud_liquid_water
+      ! QILS       | kg kg-1 |         | xyz  | C    | SKIP   |
+      ! mass_fraction_of_large_scale_cloud_ice_water
+      ! QICN       | kg kg-1 |         | xyz  | C    | SKIP   |
+      ! mass_fraction_of_convective_cloud_ice_water
       ! CLLS       | 1       |         | xyz  | C    | SKIP   | large_scale_cloud_area_fraction
       ! CLCN       | 1       |         | xyz  | C    | SKIP   | convective_cloud_area_fraction
       ! QRAIN      | kg kg-1 | 0.0     | xyz  | C    | SKIP   | mass_fraction_of_rain
@@ -104,56 +108,6 @@ contains
            vstagger=VERTICAL_STAGGER_NONE, &
            add_to_export=.true., _RC)
 
-      ! "FAKE" specs to provide DQVANA etc
-      ! TODO: pchakrab - a separate DataAna gridcomp?
-      call MAPL_GridCompAddSpec(gc, &
-           state_intent=ESMF_STATEINTENT_INTERNAL, &
-           short_name="DQVANA", &
-           standard_name="specific_humidity_increment_from_analysis", &
-           units="kg kg-1", &
-           dims="xyz", &
-           vstagger=VERTICAL_STAGGER_CENTER, &
-           add_to_export=.true., _RC)
-      call MAPL_GridCompAddSpec(gc, &
-           state_intent=ESMF_STATEINTENT_INTERNAL, &
-           short_name="DQLANA", &
-           standard_name="specific_humidity_liquid_increment_from_analysis", &
-           units="kg kg-1", &
-           dims="xyz", &
-           vstagger=VERTICAL_STAGGER_CENTER, &
-           add_to_export=.true., _RC)
-      call MAPL_GridCompAddSpec(gc, &
-           state_intent=ESMF_STATEINTENT_INTERNAL, &
-           short_name="DQIANA", &
-           standard_name="specific_humidity_ice_increment_from_analysis", &
-           units="kg kg-1", &
-           dims="xyz", &
-           vstagger=VERTICAL_STAGGER_CENTER, &
-           add_to_export=.true., _RC)
-      call MAPL_GridCompAddSpec(gc, &
-           state_intent=ESMF_STATEINTENT_INTERNAL, &
-           short_name="DQRANA", &
-           standard_name="specific_humidity_rain_increment_from_analysis", &
-           units="kg kg-1", &
-           dims="xyz", &
-           vstagger=VERTICAL_STAGGER_CENTER, &
-           add_to_export=.true., _RC)
-      call MAPL_GridCompAddSpec(gc, &
-           state_intent=ESMF_STATEINTENT_INTERNAL, &
-           short_name="DQSANA", &
-           standard_name="specific_humidity_snow_increment_from_analysis", &
-           units="kg kg-1", &
-           dims="xyz", &
-           vstagger=VERTICAL_STAGGER_CENTER, &
-           add_to_export=.true., _RC)
-      call MAPL_GridCompAddSpec(gc, &
-           state_intent=ESMF_STATEINTENT_INTERNAL, &
-           short_name="DQGANA", &
-           standard_name="specific_humidity_graupel_increment_from_analysis", &
-           units="kg kg-1", &
-           dims="xyz", &
-           vstagger=VERTICAL_STAGGER_CENTER, &
-           add_to_export=.true., _RC)
       ! SUBSCRIBED "FAKE" spec to bundle tracers for FV3
       ! tracer_list = [ &
       !      "Q       ", &
@@ -193,11 +147,7 @@ contains
            src_comp="<self>", &
            dst_comp="SDYN", &
            src_names="PHIS, VARFLT", _RC)
-      ! TODO: pchakrab - a separate DataAna gridcomp?
-      call MAPL_GridCompAddConnection(gc, &
-           src_comp="<self>", &
-           dst_comp="SDYN", &
-           src_names="DQVANA, DQLANA, DQIANA, DQRANA, DQSANA, DQGANA", _RC)
+
       ! CONNECTION between provider and subscriber of the "FAKE" tracer bundle service
       ! call MAPL_GridCompAddConnection(gc, &
       !      src_comp="SDYN", &
@@ -219,26 +169,12 @@ contains
 
       type(ESMF_State) :: internal
       real, pointer, dimension(:, :) :: phis
-      real, pointer, dimension(:, :, :) :: dqvana, dqlana, dqiana, dqrana, dqsana, dqgana
       integer :: status
 
       ! PHIS ... (zeroed out, instead of reading from a zero file)
       call MAPL_GridCompGetInternalState(gc, internal, _RC)
       call MAPL_StateGetPointer(internal, phis, "PHIS", _RC)
       phis = 0.0
-      ! TODO: pchakrab - a separate DataAna gridcomp?
-      call MAPL_StateGetPointer(internal, dqvana, "DQVANA", _RC)
-      call MAPL_StateGetPointer(internal, dqlana, "DQLANA", _RC)
-      call MAPL_StateGetPointer(internal, dqiana, "DQIANA", _RC)
-      call MAPL_StateGetPointer(internal, dqrana, "DQRANA", _RC)
-      call MAPL_StateGetPointer(internal, dqsana, "DQSANA", _RC)
-      call MAPL_StateGetPointer(internal, dqgana, "DQGANA", _RC)
-      dqvana = 0.0
-      dqlana = 0.0
-      dqiana = 0.0
-      dqrana = 0.0
-      dqsana = 0.0
-      dqgana = 0.0
 
       _RETURN(_SUCCESS)
    end subroutine Initialize
