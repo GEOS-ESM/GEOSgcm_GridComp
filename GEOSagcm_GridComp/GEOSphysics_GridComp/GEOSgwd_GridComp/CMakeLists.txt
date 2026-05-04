@@ -37,7 +37,7 @@ mapl_acg (
   IMPORT_SPECS EXPORT_SPECS INTERNAL_SPECS GET_POINTERS DECLARE_POINTERS
   )
 
-# CMake has an OpenMP issue with NAG Fortran: https://gitlab.kitware.com/cmake/cmake/-/issues/21280
-if (NOT CMAKE_Fortran_COMPILER_ID MATCHES "NAG")
-   target_link_libraries(${this} PRIVATE OpenMP::OpenMP_Fortran)
-endif ()
+## CMake has an OpenMP issue with NAG Fortran: https://gitlab.kitware.com/cmake/cmake/-/issues/21280
+#if (NOT CMAKE_Fortran_COMPILER_ID MATCHES "NAG")
+#   target_link_libraries(${this} PRIVATE OpenMP::OpenMP_Fortran)
+#endif ()
