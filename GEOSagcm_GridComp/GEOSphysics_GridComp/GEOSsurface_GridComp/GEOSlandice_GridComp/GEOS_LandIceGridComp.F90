@@ -44,11 +44,11 @@ module GEOS_LandiceGridCompMod
   use GEOS_UtilsMod
   use DragCoefficientsMod
   
-  #ifdef HAVE_ISSM
+#ifdef HAVE_ISSM
   use GEOS_IssmGridCompMod,   only : IssmSetServices  => SetServices
   use GEOS_IssmGridCompMod,   only : T_ISSM_TILE_STATE
   use GEOS_IssmGridCompMod,   only : ISSM_TILE_WRAP
-  #endif
+#endif
 
   implicit none
   private
@@ -179,9 +179,9 @@ module GEOS_LandiceGridCompMod
    !add initialize method for child (ISSM)
    call MAPL_GetResource (MAPL, DO_ISSM, label='DO_ISSM:', DEFAULT=0, __RC__ )
    
-   #ifndef HAVE_ISSM
+#ifndef HAVE_ISSM
    DO_ISSM=0
-   #endif
+#endif
    
    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS ) 
    VERIFY_(STATUS)
@@ -218,7 +218,7 @@ module GEOS_LandiceGridCompMod
         RC=STATUS  )
      VERIFY_(STATUS)
 
-     #ifdef HAVE_ISSM
+#ifdef HAVE_ISSM
      call MAPL_AddExportSpec(GC,                   &
         SHORT_NAME = 'ICESURF',                    &
         LONG_NAME  = 'ice_surface_elevation',      &
@@ -245,7 +245,7 @@ module GEOS_LandiceGridCompMod
         VLOCATION  = MAPL_VLocationNone,           &
         RC=STATUS  )
      VERIFY_(STATUS)
-     #endif
+#endif
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'EMIS',                              &
@@ -1677,7 +1677,7 @@ module GEOS_LandiceGridCompMod
     VERIFY_(STATUS)
 
 !EOS
-    #ifdef HAVE_ISSM    
+#ifdef HAVE_ISSM    
     if (DO_ISSM==1) then
       ! Add ISSM child gridcomp    
       ISSM  = MAPL_AddChild(GC, NAME='ISSM', SS=IssmSetServices, RC=STATUS)
@@ -1686,7 +1686,7 @@ module GEOS_LandiceGridCompMod
       call MAPL_TerminateImport(GC, CHILD = ISSM,   RC=STATUS)
       VERIFY_(STATUS)
     end if 
-    #endif
+#endif
 
 ! Set the Profiling timers
 ! ------------------------
@@ -1742,10 +1742,10 @@ module GEOS_LandiceGridCompMod
        character(len=ESMF_MAXSTR),   pointer   :: gcnames(:)
      
        integer                                 :: I
-       #ifdef HAVE_ISSM
+#ifdef HAVE_ISSM
        type(T_ISSM_TILE_STATE), pointer :: issm_tile_state
        type(ISSM_TILE_WRAP) :: issm_tile_wrap
-       #endif
+#endif
        integer :: nt_local
         
    !=============================================================================
@@ -1777,7 +1777,7 @@ module GEOS_LandiceGridCompMod
        VERIFY_(status)
    ! Place the land tilegrid in the generic state of each child component
    !---------------------------------------------------------------------
-       #ifdef HAVE_ISSM
+#ifdef HAVE_ISSM
        do I = 1, SIZE(GCS)
           call MAPL_GetObjectFromGC( GCS(I), CHILD_MAPL, RC=STATUS )
           VERIFY_(STATUS)
@@ -1795,7 +1795,7 @@ module GEOS_LandiceGridCompMod
              VERIFY_(STATUS)
           endif
        end do
-       #endif
+#endif
        call MAPL_TimerOff(MAPL,"TOTAL", RC=STATUS ); VERIFY_(STATUS)
    
    ! Call Initialize for every Child
@@ -2331,10 +2331,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   type (ESMF_GridComp  ), pointer     :: GCS(:)
   character(len=ESMF_MAXSTR), pointer :: gcnames(:)
-  #ifdef HAVE_ISSM    
+#ifdef HAVE_ISSM    
   type(T_ISSM_TILE_STATE), pointer    :: issm_tile_state
   type(ISSM_TILE_WRAP)                :: issm_tile_wrap
-  #endif
+#endif
 !=============================================================================
 
 ! Begin... 
@@ -2354,9 +2354,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call MAPL_GetResource (MAPL, DO_ISSM, label='DO_ISSM:', DEFAULT=0, __RC__ )
 
-    #ifndef HAVE_ISSM
+#ifndef HAVE_ISSM
     DO_ISSM=0
-    #endif
+#endif
     
 ! Start Total timer
 !------------------
@@ -2736,11 +2736,11 @@ contains
 
 ! Pointers to outputs
 !--------------------
-   #ifdef HAVE_ISSM
+#ifdef HAVE_ISSM
    call MAPL_GetPointer(EXPORT,ICESURF , 'ICESURF',alloc=.true., RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,ICETHICK ,'ICETHICK',alloc=.true., RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,ICEVEL ,'ICEVEL',alloc=.true., RC=STATUS); VERIFY_(STATUS)
-   #endif
+#endif
    
    call MAPL_GetPointer(EXPORT,ICESMB  , 'ICESMB',alloc=.true., RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,EMISS  , 'EMIS'   , RC=STATUS); VERIFY_(STATUS)
@@ -3594,7 +3594,7 @@ contains
     end if
 
     ! Run ISSM (checks if ISSM_ALARM is ringing)
-    #ifdef HAVE_ISSM
+#ifdef HAVE_ISSM
     if (DO_ISSM==1) then
       call MAPL_Get (MAPL, GCS=GCS, GCNAMES=GCNAMES, RC=STATUS )
       do N=1, size(GCS)
@@ -3626,7 +3626,7 @@ contains
          endif
       enddo
     end if 
-    #endif
+#endif
 
     if(allocated (MLT)) deallocate(MLT , STAT=STATUS); VERIFY_(STATUS)              
     if(allocated (DTS)) deallocate(DTS , STAT=STATUS); VERIFY_(STATUS)              
