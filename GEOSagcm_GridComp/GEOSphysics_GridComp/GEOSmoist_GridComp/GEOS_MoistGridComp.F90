@@ -5651,6 +5651,8 @@ contains
 
     if ( ESMF_AlarmIsRinging( ALARM, RC=STATUS) ) then
 
+       call MAPL_TimerOn(MAPL,"---MOIST_PROLOGUE")
+
        call ESMF_AlarmRingerOff(ALARM, RC=STATUS) ; VERIFY_(STATUS)
 
        ! Internal State
@@ -5867,6 +5869,7 @@ contains
             END WHERE
          endif
        endif
+       call MAPL_TimerOff(MAPL,"---MOIST_PROLOGUE")
 
        ! Extract convective tracers from the TR bundle
        call MAPL_TimerOn (MAPL,"---CONV_TRACERS")
@@ -5968,6 +5971,8 @@ contains
            endif
          endif
        endif
+
+       call MAPL_TimerOn(MAPL,"---MOIST_EPILOGUE")
 
        ! Mass fluxes
        ! accumuated over deep and shalow convection
@@ -6493,7 +6498,9 @@ contains
        call MAPL_GetPointer(EXPORT, PTR2D, 'LFR_GCC', NotFoundOk=.TRUE., RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR2D)) PTR2D = 0.0
 
-    else
+       call MAPL_TimerOff(MAPL,"---MOIST_EPILOGUE")
+
+    else ! Alarm ringing
 
        ! Internal State
        call MAPL_GetPointer(INTERNAL, Q,        'Q'    , RC=STATUS); VERIFY_(STATUS)
@@ -6550,7 +6557,7 @@ contains
        call MAPL_GetPointer(EXPORT, PTR3D, 'RH2', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = MAX(MIN( Q/GEOS_QSAT (T, PLmb) , 1.02 ),0.0)
 
-    endif
+    endif ! Alarm
 
     call MAPL_TimerOff(MAPL,"TOTAL")
 

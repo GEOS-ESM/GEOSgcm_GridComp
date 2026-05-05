@@ -81,7 +81,7 @@ contains
       return
    end function exnerfn
 
-   subroutine compute_uwshcu_inv(ilen, k0,        dt,pmid0_inv,     & ! INPUT
+   subroutine compute_uwshcu_inv(idim, k0,        dt,pmid0_inv,     & ! INPUT
          zmid0_inv, exnmid0_inv, pifc0_inv, zifc0_inv, exnifc0_inv, &
          dp0_inv, u0_inv, v0_inv, qv0_inv, ql0_inv, qi0_inv,        &
          t0_inv, tke_inv, rkfre, kpbl_inv, shfx,evap, cnvtr, frland, rkm2d, mix2d, rmaxfrac, & 
@@ -102,154 +102,154 @@ contains
       implicit none
 
 
-      integer, intent(in)   :: ilen                     ! Number of columns
+      integer, intent(in)   :: idim                     ! Number of columns
       integer, intent(in)   :: k0                       ! Number of levels  
       integer, intent(in)   :: dotransport              ! Transport tracers [1 true]
       real   , intent(in)   :: dt                       ! moist heartbeat [s]
 
-      real,   intent(in)    :: pifc0_inv(ilen,k0+1)     !  Environmental pressure at the interfaces [ Pa ]
-      real,   intent(in)    :: zifc0_inv(ilen,k0+1)     !  Environmental height at the interfaces   [ m ]
-      real,   intent(in)    :: exnifc0_inv(ilen,k0+1)   !  Exner function at the interfaces
-      real,   intent(in)    :: pmid0_inv(ilen,k0)       !  Environmental pressure at the layer mid-point [ Pa ]
-      real,   intent(in)    :: zmid0_inv(ilen,k0)       !  Environmental height at the layer mid-point [ m ]
-      real,   intent(in)    :: exnmid0_inv(ilen,k0)     !  Exner function at the layer mid-point
-      real,   intent(in)    :: dp0_inv(ilen,k0)         !  Environmental layer pressure thickness [ Pa ] > 0.
-      real,   intent(in)    :: u0_inv(ilen,k0)          !  Environmental zonal wind [ m/s ]
-      real,   intent(in)    :: v0_inv(ilen,k0)          !  Environmental meridional wind [ m/s ]
-      real,   intent(in)    :: qv0_inv(ilen,k0)         !  Environmental water vapor specific humidity [ kg/kg ]
-      real,   intent(in)    :: ql0_inv(ilen,k0)         !  Environmental liquid water specific humidity [ kg/kg ]
-      real,   intent(in)    :: qi0_inv(ilen,k0)         !  Environmental ice specific humidity [ kg/kg ]
-      real,   intent(in)    :: t0_inv(ilen,k0)          !  Environmental temperature [ K ]
-      real,   intent(in)    :: tke_inv(ilen,k0+1)       !  Turbulent kinetic energy at the interfaces [ m2/s2 ]
+      real,   intent(in)    :: pifc0_inv(idim,k0+1)     !  Environmental pressure at the interfaces [ Pa ]
+      real,   intent(in)    :: zifc0_inv(idim,k0+1)     !  Environmental height at the interfaces   [ m ]
+      real,   intent(in)    :: exnifc0_inv(idim,k0+1)   !  Exner function at the interfaces
+      real,   intent(in)    :: pmid0_inv(idim,k0)       !  Environmental pressure at the layer mid-point [ Pa ]
+      real,   intent(in)    :: zmid0_inv(idim,k0)       !  Environmental height at the layer mid-point [ m ]
+      real,   intent(in)    :: exnmid0_inv(idim,k0)     !  Exner function at the layer mid-point
+      real,   intent(in)    :: dp0_inv(idim,k0)         !  Environmental layer pressure thickness [ Pa ] > 0.
+      real,   intent(in)    :: u0_inv(idim,k0)          !  Environmental zonal wind [ m/s ]
+      real,   intent(in)    :: v0_inv(idim,k0)          !  Environmental meridional wind [ m/s ]
+      real,   intent(in)    :: qv0_inv(idim,k0)         !  Environmental water vapor specific humidity [ kg/kg ]
+      real,   intent(in)    :: ql0_inv(idim,k0)         !  Environmental liquid water specific humidity [ kg/kg ]
+      real,   intent(in)    :: qi0_inv(idim,k0)         !  Environmental ice specific humidity [ kg/kg ]
+      real,   intent(in)    :: t0_inv(idim,k0)          !  Environmental temperature [ K ]
+      real,   intent(in)    :: tke_inv(idim,k0+1)       !  Turbulent kinetic energy at the interfaces [ m2/s2 ]
                                                         !  at the previous time step [ fraction ]
-      real, intent(in)    :: rkfre(ilen)                !  Resolution dependent Vertical velocity variance as fraction of tke. 
-      real, intent(in)    :: kpbl_inv(ilen)             !  Height of PBL [ m ]
-      real, intent(in)    :: shfx(ilen)                 ! Surface sensible heat
-      real, intent(in)    :: evap(ilen)                 ! Surface evaporation
-      real, intent(in)    :: cnvtr(ilen)                ! convective tracer
-      real, intent(in)    :: frland(ilen)               ! land fraction
-      real, intent(in)    :: rkm2d(ilen)                !  Resolution dependent lateral mixing parameter
-      real, intent(in)    :: mix2d(ilen)                !  Resolution dependent lateral mixing depth
-      real, intent(in)    :: rmaxfrac(ilen)             !  Resolution dependent Maximum core updraft fraction
-      real, intent(inout) :: cush(ilen)                 !  Convective scale height [m]
+      real, intent(in)    :: rkfre(idim)                !  Resolution dependent Vertical velocity variance as fraction of tke. 
+      real, intent(in)    :: kpbl_inv(idim)             !  Height of PBL [ m ]
+      real, intent(in)    :: shfx(idim)                 ! Surface sensible heat
+      real, intent(in)    :: evap(idim)                 ! Surface evaporation
+      real, intent(in)    :: cnvtr(idim)                ! convective tracer
+      real, intent(in)    :: frland(idim)               ! land fraction
+      real, intent(in)    :: rkm2d(idim)                !  Resolution dependent lateral mixing parameter
+      real, intent(in)    :: mix2d(idim)                !  Resolution dependent lateral mixing depth
+      real, intent(in)    :: rmaxfrac(idim)             !  Resolution dependent Maximum core updraft fraction
+      real, intent(inout) :: cush(idim)                 !  Convective scale height [m]
 
-      real, intent(out)   :: umf_inv(ilen,k0+1)         !  Updraft mass flux at interfaces [kg/m2/s]
-      real, intent(out)   :: dcm_inv(ilen,k0)           !  Detrained cloudy air mass
-      real, intent(out)   :: qvten_inv(ilen,k0)         !  Tendency of water vapor specific humidity [ kg/kg/s ]
-      real, intent(out)   :: qlten_inv(ilen,k0)         !  Tendency of liquid water specific humidity [ kg/kg/s ]
-      real, intent(out)   :: qiten_inv(ilen,k0)         !  Tendency of ice specific humidity [ kg/kg/s ]
-      real, intent(out)   ::  tten_inv(ilen,k0)         !  Tendency of temperature [ K/s ]
-      real, intent(out)   :: uten_inv(ilen,k0)          !  Tendency of zonal wind [ m/s2 ]
-      real, intent(out)   :: vten_inv(ilen,k0)          !  Tendency of meridional wind [ m/s2 ]
-      real, intent(out)   :: qrten_inv(ilen,k0)         !  Tendency of rain water specific humidity [ kg/kg/s ]
-      real, intent(out)   :: qsten_inv(ilen,k0)         !  Tendency of snow specific humidity [ kg/kg/s ]
-      real, intent(out)   :: cufrc_inv(ilen,k0)         !  Shallow cumulus cloud fraction at the layer mid-point [ fraction ]
-      real, intent(out)   :: fer_inv(ilen,k0)
-      real, intent(out)   :: fdr_inv(ilen,k0)
-      real, intent(out)   :: qldet_inv(ilen,k0)
-      real, intent(out)   :: qidet_inv(ilen,k0)
-      real, intent(out)   :: qlsub_inv(ilen,k0)
-      real, intent(out)   :: qisub_inv(ilen,k0)
-      real, intent(out)   :: ndrop_inv(ilen,k0)
-      real, intent(out)   :: nice_inv(ilen,k0)
-      real, intent(out)   :: tpert_out(ilen)
-      real, intent(out)   :: qpert_out(ilen)
-      real, intent(out)   :: qtflx_inv(ilen,k0+1)
-      real, intent(out)   :: slflx_inv(ilen,k0+1)
-      real, intent(out)   :: uflx_inv(ilen,k0+1)
-      real, intent(out)   :: vflx_inv(ilen,k0+1)
+      real, intent(out)   :: umf_inv(idim,k0+1)         !  Updraft mass flux at interfaces [kg/m2/s]
+      real, intent(out)   :: dcm_inv(idim,k0)           !  Detrained cloudy air mass
+      real, intent(out)   :: qvten_inv(idim,k0)         !  Tendency of water vapor specific humidity [ kg/kg/s ]
+      real, intent(out)   :: qlten_inv(idim,k0)         !  Tendency of liquid water specific humidity [ kg/kg/s ]
+      real, intent(out)   :: qiten_inv(idim,k0)         !  Tendency of ice specific humidity [ kg/kg/s ]
+      real, intent(out)   ::  tten_inv(idim,k0)         !  Tendency of temperature [ K/s ]
+      real, intent(out)   :: uten_inv(idim,k0)          !  Tendency of zonal wind [ m/s2 ]
+      real, intent(out)   :: vten_inv(idim,k0)          !  Tendency of meridional wind [ m/s2 ]
+      real, intent(out)   :: qrten_inv(idim,k0)         !  Tendency of rain water specific humidity [ kg/kg/s ]
+      real, intent(out)   :: qsten_inv(idim,k0)         !  Tendency of snow specific humidity [ kg/kg/s ]
+      real, intent(out)   :: cufrc_inv(idim,k0)         !  Shallow cumulus cloud fraction at the layer mid-point [ fraction ]
+      real, intent(out)   :: fer_inv(idim,k0)
+      real, intent(out)   :: fdr_inv(idim,k0)
+      real, intent(out)   :: qldet_inv(idim,k0)
+      real, intent(out)   :: qidet_inv(idim,k0)
+      real, intent(out)   :: qlsub_inv(idim,k0)
+      real, intent(out)   :: qisub_inv(idim,k0)
+      real, intent(out)   :: ndrop_inv(idim,k0)
+      real, intent(out)   :: nice_inv(idim,k0)
+      real, intent(out)   :: tpert_out(idim)
+      real, intent(out)   :: qpert_out(idim)
+      real, intent(out)   :: qtflx_inv(idim,k0+1)
+      real, intent(out)   :: slflx_inv(idim,k0+1)
+      real, intent(out)   :: uflx_inv(idim,k0+1)
+      real, intent(out)   :: vflx_inv(idim,k0+1)
 
 !!! Diagnostic only
-      real, intent(out)   :: cbmf(ilen)                !  Cumulus base mass flux [ kg/m2/s ]
-      real, intent(out)   :: plcl(ilen)
-      real, intent(out)   :: plfc(ilen)
-      real, intent(out)   :: pinv(ilen)
-      real, intent(out)   :: prel(ilen)
-      real, intent(out)   :: pbup(ilen)
-      real, intent(out)   :: cldtop(ilen)
+      real, intent(out)   :: cbmf(idim)                !  Cumulus base mass flux [ kg/m2/s ]
+      real, intent(out)   :: plcl(idim)
+      real, intent(out)   :: plfc(idim)
+      real, intent(out)   :: pinv(idim)
+      real, intent(out)   :: prel(idim)
+      real, intent(out)   :: pbup(idim)
+      real, intent(out)   :: cldtop(idim)
 
 #ifdef UWDIAG
-      real, intent(out)   :: qcu_inv(ilen,k0)         !  Liquid+ice specific humidity within cumulus updraft [ kg/kg ]
-      real, intent(out)   :: qlu_inv(ilen,k0)         !  Liquid water specific humidity within cumulus updraft [ kg/kg ]
-      real, intent(out)   :: qiu_inv(ilen,k0)         !  Ice specific humidity within cumulus updraft [ kg/kg ]
-      real, intent(out)   :: qc_inv(ilen,k0)          !  Tendency of cumulus condensate detrained into the environment [ kg/kg/s ]
-      real, intent(out)   :: wu_inv(ilen,k0+1)
-      real, intent(out)   :: qtu_inv(ilen,k0+1)
-      real, intent(out)   :: thlu_inv(ilen,k0+1)
-      real, intent(out)   :: thvu_inv(ilen,k0+1)
-      real, intent(out)   :: uu_inv(ilen,k0+1)
-      real, intent(out)   :: vu_inv(ilen,k0+1)
-      real, intent(out)   :: xc_inv(ilen,k0)
-      real, intent(out)   :: cnt_inv(ilen)             !  Cumulus top  interface index, cnt = kpen [ no ]
-      real, intent(out)   :: cnb_inv(ilen)             !  Cumulus base interface index, cnb = krel - 1 [ no ]
-      real, intent(out)   :: cin(ilen)
-      real, intent(out)   :: wlcl(ilen)
-      real, intent(out)   :: qtsrc(ilen)
-      real, intent(out)   :: thlsrc(ilen)
-      real, intent(out)   :: thvlsrc(ilen)
-      real, intent(out)   :: tkeavg(ilen)
+      real, intent(out)   :: qcu_inv(idim,k0)         !  Liquid+ice specific humidity within cumulus updraft [ kg/kg ]
+      real, intent(out)   :: qlu_inv(idim,k0)         !  Liquid water specific humidity within cumulus updraft [ kg/kg ]
+      real, intent(out)   :: qiu_inv(idim,k0)         !  Ice specific humidity within cumulus updraft [ kg/kg ]
+      real, intent(out)   :: qc_inv(idim,k0)          !  Tendency of cumulus condensate detrained into the environment [ kg/kg/s ]
+      real, intent(out)   :: wu_inv(idim,k0+1)
+      real, intent(out)   :: qtu_inv(idim,k0+1)
+      real, intent(out)   :: thlu_inv(idim,k0+1)
+      real, intent(out)   :: thvu_inv(idim,k0+1)
+      real, intent(out)   :: uu_inv(idim,k0+1)
+      real, intent(out)   :: vu_inv(idim,k0+1)
+      real, intent(out)   :: xc_inv(idim,k0)
+      real, intent(out)   :: cnt_inv(idim)             !  Cumulus top  interface index, cnt = kpen [ no ]
+      real, intent(out)   :: cnb_inv(idim)             !  Cumulus base interface index, cnb = krel - 1 [ no ]
+      real, intent(out)   :: cin(idim)
+      real, intent(out)   :: wlcl(idim)
+      real, intent(out)   :: qtsrc(idim)
+      real, intent(out)   :: thlsrc(idim)
+      real, intent(out)   :: thvlsrc(idim)
+      real, intent(out)   :: tkeavg(idim)
 #endif
 
   !----- Local variables -----
-      real              :: pifc0(ilen,0:k0)         !  Environmental pressure at the interfaces [ Pa ]
-      real              :: zifc0(ilen,0:k0)         !  Environmental height at the interfaces   [ m ]
-      real              :: exnifc0(ilen,0:k0)       !  Exner function on interfaces
-      real              :: pmid0(ilen,k0)           !  Environmental pressure at the layer mid-point [ Pa ]
-      real              :: zmid0(ilen,k0)           !  Environmental height at the layer mid-point [ m ]
-      real              :: exnmid0(ilen,k0)         !  Exner function on layer mid-point
-      real              :: dp0(ilen,k0)             !  Environmental layer pressure thickness [ Pa ] > 0.
-      real              :: u0(ilen,k0)              !  Environmental zonal wind [ m/s ]
-      real              :: v0(ilen,k0)              !  Environmental meridional wind [ m/s ]
-      real              :: qv0(ilen,k0)             !  Environmental water vapor specific humidity [ kg/kg ]
-      real              :: ql0(ilen,k0)             !  Environmental liquid water specific humidity [ kg/kg ]
-      real              :: qi0(ilen,k0)             !  Environmental ice specific humidity [ kg/kg ]
-      real              :: th0(ilen,k0)             !  Environmental temperature [ K ]
-      real              :: tke(ilen,0:k0)           !  Turbulent kinetic energy [ m2 s-2 ] 
+      real              :: pifc0(idim,0:k0)         !  Environmental pressure at the interfaces [ Pa ]
+      real              :: zifc0(idim,0:k0)         !  Environmental height at the interfaces   [ m ]
+      real              :: exnifc0(idim,0:k0)       !  Exner function on interfaces
+      real              :: pmid0(idim,k0)           !  Environmental pressure at the layer mid-point [ Pa ]
+      real              :: zmid0(idim,k0)           !  Environmental height at the layer mid-point [ m ]
+      real              :: exnmid0(idim,k0)         !  Exner function on layer mid-point
+      real              :: dp0(idim,k0)             !  Environmental layer pressure thickness [ Pa ] > 0.
+      real              :: u0(idim,k0)              !  Environmental zonal wind [ m/s ]
+      real              :: v0(idim,k0)              !  Environmental meridional wind [ m/s ]
+      real              :: qv0(idim,k0)             !  Environmental water vapor specific humidity [ kg/kg ]
+      real              :: ql0(idim,k0)             !  Environmental liquid water specific humidity [ kg/kg ]
+      real              :: qi0(idim,k0)             !  Environmental ice specific humidity [ kg/kg ]
+      real              :: th0(idim,k0)             !  Environmental temperature [ K ]
+      real              :: tke(idim,0:k0)           !  Turbulent kinetic energy [ m2 s-2 ] 
       real, allocatable :: w_tr0(:,:)               !  Environmental tracers [ #, kg/kg ]
-      real              :: umf(ilen,0:k0)           !  Updraft mass flux at the interfaces [ kg/m2/s ]
-      real              :: dcm(ilen,k0)             !  Detrained cloudy air mass
-      real              :: qvten(ilen,k0)           !  Tendency of water vapor specific humidity [ kg/kg/s ]
-      real              :: qlten(ilen,k0)           !  Tendency of liquid water specific humidity [ kg/kg/s ]
-      real              :: qiten(ilen,k0)           !  tendency of ice specific humidity [ kg/kg/s ]
-      real              :: sten(ilen,k0)            !  Tendency of static energy [ J/kg/s ]
-      real              :: uten(ilen,k0)            !  Tendency of zonal wind [ m/s2 ]
-      real              :: vten(ilen,k0)            !  Tendency of meridional wind [ m/s2 ]
-      real              :: qrten(ilen,k0)           !  Tendency of rain water specific humidity [ kg/kg/s ]
-      real              :: qsten(ilen,k0)           !  Tendency of snow speficif humidity [ kg/kg/s ]
-      real              :: cufrc(ilen,k0)           !  Shallow cumulus cloud fraction at the layer mid-point [ fraction ]
-      real              :: fer(ilen,k0)             !  Fractional entrainment rate
-      real              :: fdr(ilen,k0)             !  Fractional detrainment rate
-      real              :: qldet(ilen,k0)           !  Detrained liquid condensate
-      real              :: qidet(ilen,k0)           !  Detrained ice
-      real              :: qlsub(ilen,k0)           !  Liquid water tendency due to subsidence
-      real              :: qisub(ilen,k0)           !  Ice water tendency due to subsidence
-      real              :: ndrop(ilen,k0)
-      real              :: nice(ilen,k0)
-      real              :: qtflx(ilen,0:k0)
-      real              :: slflx(ilen,0:k0)
-      real              :: uflx(ilen,0:k0)
-      real              :: vflx(ilen,0:k0)
-      real              :: cnvtrmax(ilen)
-      real              :: tmp2d(ilen,k0)
+      real              :: umf(idim,0:k0)           !  Updraft mass flux at the interfaces [ kg/m2/s ]
+      real              :: dcm(idim,k0)             !  Detrained cloudy air mass
+      real              :: qvten(idim,k0)           !  Tendency of water vapor specific humidity [ kg/kg/s ]
+      real              :: qlten(idim,k0)           !  Tendency of liquid water specific humidity [ kg/kg/s ]
+      real              :: qiten(idim,k0)           !  tendency of ice specific humidity [ kg/kg/s ]
+      real              :: sten(idim,k0)            !  Tendency of static energy [ J/kg/s ]
+      real              :: uten(idim,k0)            !  Tendency of zonal wind [ m/s2 ]
+      real              :: vten(idim,k0)            !  Tendency of meridional wind [ m/s2 ]
+      real              :: qrten(idim,k0)           !  Tendency of rain water specific humidity [ kg/kg/s ]
+      real              :: qsten(idim,k0)           !  Tendency of snow speficif humidity [ kg/kg/s ]
+      real              :: cufrc(idim,k0)           !  Shallow cumulus cloud fraction at the layer mid-point [ fraction ]
+      real              :: fer(idim,k0)             !  Fractional entrainment rate
+      real              :: fdr(idim,k0)             !  Fractional detrainment rate
+      real              :: qldet(idim,k0)           !  Detrained liquid condensate
+      real              :: qidet(idim,k0)           !  Detrained ice
+      real              :: qlsub(idim,k0)           !  Liquid water tendency due to subsidence
+      real              :: qisub(idim,k0)           !  Ice water tendency due to subsidence
+      real              :: ndrop(idim,k0)
+      real              :: nice(idim,k0)
+      real              :: qtflx(idim,0:k0)
+      real              :: slflx(idim,0:k0)
+      real              :: uflx(idim,0:k0)
+      real              :: vflx(idim,0:k0)
+      real              :: cnvtrmax(idim)
+      real              :: tmp2d(idim,k0)
 
 !--------- Local, Diagnostic only ---------
 #ifdef UWDIAG
-      real              :: w_qcu(ilen,k0)            !  Condensate water specific humidity within cumulus updraft
+      real              :: w_qcu(idim,k0)            !  Condensate water specific humidity within cumulus updraft
                                                    ! at the layer mid-point [ kg/kg ]
-      real              :: w_qlu(ilen,k0)            !  Liquid water specific humidity within cumulus updraft
+      real              :: w_qlu(idim,k0)            !  Liquid water specific humidity within cumulus updraft
                                                    ! at the layer mid-point [ kg/kg ]
-      real              :: w_qiu(ilen,k0)            !  Ice specific humidity within cumulus updraft
+      real              :: w_qiu(idim,k0)            !  Ice specific humidity within cumulus updraft
                                                    ! at the layer mid-point [ kg/kg ]
-      real              :: w_qc(ilen,k0)             !  Tendency of cumulus condensate detrained into the environment [ kg/kg/s ]
-      real              :: w_cnt(ilen)               !  Cumulus top  interface index, cnt = kpen [ no ]
-      real              :: w_cnb(ilen)               !  Cumulus base interface index, cnb = krel - 1 [ no ] 
-      real              :: w_wu(ilen,0:k0)
-      real              :: w_qtu(ilen,0:k0)
-      real              :: w_thlu(ilen,0:k0)
-      real              :: w_thvu(ilen,0:k0)
-      real              :: w_uu(ilen,0:k0)
-      real              :: w_vu(ilen,0:k0)
-      real              :: w_xc(ilen,k0)
+      real              :: w_qc(idim,k0)             !  Tendency of cumulus condensate detrained into the environment [ kg/kg/s ]
+      real              :: w_cnt(idim)               !  Cumulus top  interface index, cnt = kpen [ no ]
+      real              :: w_cnb(idim)               !  Cumulus base interface index, cnb = krel - 1 [ no ] 
+      real              :: w_wu(idim,0:k0)
+      real              :: w_qtu(idim,0:k0)
+      real              :: w_thlu(idim,0:k0)
+      real              :: w_thvu(idim,0:k0)
+      real              :: w_uu(idim,0:k0)
+      real              :: w_vu(idim,0:k0)
+      real              :: w_xc(idim,k0)
 #endif
 
       ! Thread-private 1D workspaces
@@ -274,7 +274,7 @@ contains
       integer           :: k                        !  Vertical index for local fields [ no ] 
       integer           :: k_inv                    !  Vertical index for incoming fields [ no ]
       integer           :: m                        !  Tracer index [ no ]
-      integer           :: kpbl(ilen)
+      integer           :: kpbl(idim)
       integer           :: ncnst, IM, JM
 
       ncnst = size(CNV_Tracers)
@@ -283,7 +283,7 @@ contains
       allocate(w_tr0(k0, ncnst))
     
       !$OMP PARALLEL DO DEFAULT(NONE) &
-      !$OMP SHARED(ilen, k0, dt, ncnst, IM, JM, dotransport, &
+      !$OMP SHARED(idim, k0, dt, ncnst, IM, JM, dotransport, &
       !$OMP        pifc0_inv, zifc0_inv, exnifc0_inv, pmid0_inv, zmid0_inv, &
       !$OMP        exnmid0_inv, dp0_inv, u0_inv, v0_inv, qv0_inv, ql0_inv, &
       !$OMP        qi0_inv, t0_inv, tke_inv, rkfre, kpbl_inv, shfx, evap, &
@@ -314,7 +314,7 @@ contains
       !$OMP         w_thlu, w_thvu, w_uu, w_vu, w_xc &
 #endif
       !$OMP         )
-      do i = 1, ilen
+      do i = 1, idim
      
          ! Calculate 2D grid coordinates from 1D flat index
          ii = mod(i - 1, IM) + 1
@@ -362,7 +362,7 @@ contains
             w_exnifc0(k) = exnifc0_inv(i,k_inv)
          end do
 
-         ! 3. Call physics WITHOUT the 'ilen' argument
+         ! 3. Call physics WITHOUT the 'idim' argument
          call compute_uwshcu( k0, dt, ncnst, w_pifc0, w_zifc0, &
               w_exnifc0, w_pmid0, w_zmid0, w_exnmid0, w_dp0, w_u0, w_v0, &
               w_qv0, w_ql0, w_qi0, w_th0, w_tr0, w_kpbl, w_frland, w_tke, &
@@ -470,12 +470,12 @@ contains
 
     ! Re-scale liquid/ice water sub-tendencies to enforce conservation
     !$OMP PARALLEL DO DEFAULT(NONE) &
-    !$OMP SHARED(k0, ilen, qldet_inv, qlsub_inv, qlten_inv, qidet_inv, &
+    !$OMP SHARED(k0, idim, qldet_inv, qlsub_inv, qlten_inv, qidet_inv, &
     !$OMP        qisub_inv, qiten_inv, tmp2d) &
     !$OMP PRIVATE(i, k)
     do k = 1, k0
        !DIR$ IVDEP
-       do i = 1, ilen
+       do i = 1, idim
           ! Liquid
           if (abs(qldet_inv(i,k) + qlsub_inv(i,k)) > 1e-12) then
              tmp2d(i,k) = qlten_inv(i,k) / (qldet_inv(i,k) + qlsub_inv(i,k))
@@ -499,7 +499,7 @@ contains
          exnifc0, pmid0, zmid0, exnmid0, dp0,       &
          u0, v0, qv0, ql0, qi0, th0,             &
          tr0, kpbl, frland, tke, rkfre, rkm2d, mix2d, rmaxfrac, &
-         cush, & ! INOUT
+         cush_inout, & ! INOUT
          umf_out, dcm_out, qvten_out, qlten_out, qiten_out,        &
          sten_out, uten_out, vten_out, qrten_out,                  &
          qsten_out, cufrc_out, fer_out, fdr_out, qldet_out,        &
@@ -574,7 +574,7 @@ contains
       integer, intent(in) :: kpbl     ! Boundary layer top layer index
       real, intent(in)    :: frland   ! fraction of and in grid cell
 
-      real, intent(inout) :: cush          ! Convective scale height [m]
+      real, intent(inout) :: cush_inout          ! Convective scale height [m]
       real, intent(inout) :: tr0(k0,ncnst) !  Environmental tracers [ #, kg/kg ]
 
       real, intent(out)   :: umf_out(0:k0)       !  Updraft mass flux at the interfaces [ kg/m2/s ]
@@ -629,8 +629,8 @@ contains
       ! One-dimensional variables at each grid point
       !-----------------------------------------------
 
-      ! Input variables
- 
+      real :: cush
+
       ! Environmental variables derived from input variables
 
       real :: t0(k0)
@@ -1221,6 +1221,7 @@ contains
          id_exit = .false.
 
          frc_rasn        = shlwparams%frc_rasn
+         cush            = cush_inout
 
          !------------------------------------------------------!
          ! Compute basic thermodynamic variables directly from  !
@@ -1429,7 +1430,7 @@ contains
            ! of the iterative cin loop.                                             !
            ! ---------------------------------------------------------------------- !
 
-           tscaleh = cush                        
+           tscaleh = cush
            cush    = -1.
            tkeavg   = 0.
            qtavg   = 0.
@@ -2046,7 +2047,7 @@ contains
                qidet_out(:k0)        = qidet_s(:k0)
                qlsub_out(:k0)        = qlsub_s(:k0)
                qisub_out(:k0)        = qisub_s(:k0)
-               cush                  = cush_s
+               cush_inout            = cush_s
                cufrc_out(:k0)        = cufrc_s(:k0)
                qtflx_out(0:k0)       = qtflx_s(0:k0)
                slflx_out(0:k0)       = slflx_s(0:k0)
@@ -4467,7 +4468,7 @@ contains
      qrten_out(:k0)            = qrten(:k0)
      qsten_out(:k0)            = qsten(:k0)
      cufrc_out(:k0)            = cufrc(:k0)
-     cush                      = cush
+     cush_inout                = cush
      qldet_out(:k0)            = qlten_det(:k0)
      qidet_out(:k0)            = qiten_det(:k0)
      qlsub_out(:k0)            = qlten_sink(:k0)
@@ -4590,7 +4591,7 @@ contains
      qrten_out(:k0)            = 0.
      qsten_out(:k0)            = 0.
      cufrc_out(:k0)            = 0.
-     cush                      = -1.
+     cush_inout                = -1.
      qldet_out(:k0)            = 0.
      qidet_out(:k0)            = 0.
      qtflx_out(0:k0)           = 0.
