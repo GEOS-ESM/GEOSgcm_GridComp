@@ -1,409 +1,220 @@
-! $Id: GEOS_AgcmSimpleGridComp.F90,v 1.1 2007/05/16 15:33:09 trayanov Exp $
-
-#include "MAPL_Generic.h"
-
+#include "MAPL.h"
 
 module GEOS_AgcmSimpleGridCompMod
 
-!=============================================================================
-!BOP
-! \renewcommand{\comp}{\tt GEOS\_AgcmSimpleGridCompMod}
-!
-! !MODULE: GEOS_AgcmSimpleGridCompMod
-!
-! !DESCRIPTION: This gridded component (GC) combines the the GC that
-!   implements the Finite-Volume (FV) dynamics, with a simple physics
-!   component that implements the Held-Suarez benchmark forcing for
-!   testing dry dynamical cores.
-!
-! !USES:
+   !=============================================================================
+   !BOP
+   ! \renewcommand{\comp}{\tt GEOS\_AgcmSimpleGridCompMod}
+   !
+   ! !MODULE: GEOS_AgcmSimpleGridCompMod
+   !
+   ! !DESCRIPTION: This gridded component (GC) combines the the GC that
+   !   implements the Finite-Volume (FV) dynamics, with a simple physics
+   !   component that implements the Held-Suarez benchmark forcing for
+   !   testing dry dynamical cores.
 
-  use ESMF
-  use MAPL_Mod
-  use GEOS_TopoGetMod
+   !USES:
+   use ESMF
+   use MAPL, only: MAPL_GridCompSetEntryPoint
+   use MAPL, only: MAPL_GridCompAddSpec, user_setservices, MAPL_GridCompReexport
+   use MAPL, only: MAPL_GridCompAddChild, MAPL_GridCompAddConnection
+   use MAPL, only: user_setservices, MAPL_StateGetPointer
+   use MAPL, only: MAPL_GridCompGet, MAPL_GridCompGetResource, MAPL_GridCompGetChildName
+   use MAPL, only: MAPL_GridCompGetInternalState, MAPL_GridCompRunChild
+   use MAPL, only: VERTICAL_STAGGER_CENTER, VERTICAL_STAGGER_EDGE, VERTICAL_STAGGER_NONE
+   use MAPL, only: MAPL_RESTART_SKIP, MAPL_STATEITEM_SERVICE
+   use MAPL, only: MAPL_Verify, MAPL_Return
+   ! use GEOS_TopoGetMod, only: GEOS_TopoGet
+   use GEOS_superdynGridCompMod, only: SDYN_SetServices => SetServices
+   use GEOS_hsGridCompMod, only: PHYS_SetServices => SetServices
 
-  use GEOS_superdynGridCompMod,  only:  SDYN_SetServices => SetServices
-  use GEOS_hsGridCompMod,     only:  PHS_SetServices => SetServices
+   implicit none
+   private
 
-  implicit none
-  private
-
-  integer :: SDYN
-  integer :: PHS
-
-! !PUBLIC MEMBER FUNCTIONS:
-
-  public SetServices
-
-
-!EOP
+   !PUBLIC MEMBER FUNCTIONS:
+   public SetServices
+   !EOP
 
 contains
 
-!BOP
-
-! !IROUTINE: SetServices
-
-! !DESCRIPTION:  This is the only method of this component, since all of its
-!   registered methods can be defaulted to their MAPL generic versions.
-!   SetServices merely creates the children through MAPL and connects
-!   their Import-Export states. FV has some Imports that are
-!   not used in the Held-Suarez benchmark. Since these have proper defaults
-!   in FV, they can simply be terminated here.
-
-
-! !INTERFACE:
-
-    subroutine SetServices ( GC, RC )
-
-! !ARGUMENTS:
-
-    type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
-    integer, optional,   intent(  OUT) :: RC  ! return code
-
-
-!EOP
-!BOC
-!=============================================================================
-!
-! ErrLog Variables
-
-    character(len=ESMF_MAXSTR)              :: IAm
-    integer                                 :: STATUS
-    character(len=ESMF_MAXSTR)              :: COMP_NAME
-
-! Locals
-
-
-!=============================================================================
-
-! Begin...
-
-! Get my name and set-up traceback handle
-! ---------------------------------------
-
-    Iam = 'SetServices'
-    call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
-    VERIFY_(STATUS)
-    Iam = trim(COMP_NAME) // trim(Iam)
-
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS )
-    VERIFY_(STATUS)
-
-    call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_RUN,  Run, __RC__)
-
-! dummy import for testing comcurrent ens
-!    call MAPL_AddImportSpec ( gc,                                  &
-!         SHORT_NAME = 'DTDT',                                      &
-!         LONG_NAME  = 'temperature increment',                     &
-!         UNITS      = 'K s-1',                                     &
-!         DIMS       = MAPL_DimsHorzVert,                           &
-!         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-!    VERIFY_(STATUS)
-
-! these internal spec are "fake" and here only to provide moisture to FV
-! this component will not touch them
-    call MAPL_AddInternalSpec(GC,                                  &
-         SHORT_NAME = 'Q',                                         &
-         LONG_NAME  = 'specific_humidity',                         &
-         UNITS      = 'kg kg-1',                                   &
-         FRIENDLYTO = 'DYNAMICS',    &
-         default    = 1.0e-6,                                      &
-!         RESTART    = MAPL_RestartRequired,                        &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddInternalSpec(GC,                                        &
-         SHORT_NAME = 'QLLS',                                            &
-         LONG_NAME  = 'mass_fraction_of_large_scale_cloud_liquid_water', &
-         UNITS      = 'kg kg-1',                                         &
-         FRIENDLYTO = 'DYNAMICS',                             &
-         DIMS       = MAPL_DimsHorzVert,                                 &
-         VLOCATION  = MAPL_VLocationCenter,                   RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddInternalSpec(GC,                                       &
-         SHORT_NAME = 'QLCN',                                           &
-         LONG_NAME  = 'mass_fraction_of_convective_cloud_liquid_water', &
-         UNITS      = 'kg kg-1',                                        &
-         FRIENDLYTO = 'DYNAMICS',                            &
-         DIMS       = MAPL_DimsHorzVert,                                &
-         VLOCATION  = MAPL_VLocationCenter,                  RC=STATUS  )
-    VERIFY_(STATUS)
-    call MAPL_AddInternalSpec(GC,                                     &
-         SHORT_NAME = 'QILS',                                         &
-         LONG_NAME  = 'mass_fraction_of_large_scale_cloud_ice_water', &
-         UNITS      = 'kg kg-1',                                      &
-         FRIENDLYTO = 'DYNAMICS',                          &
-         DIMS       = MAPL_DimsHorzVert,                              &
-         VLOCATION  = MAPL_VLocationCenter,                RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddInternalSpec(GC,                                    &
-         SHORT_NAME = 'QICN',                                        &
-         LONG_NAME  = 'mass_fraction_of_convective_cloud_ice_water', &
-         UNITS      = 'kg kg-1',                                     &
-         FRIENDLYTO = 'DYNAMICS',                         &
-         DIMS       = MAPL_DimsHorzVert,                             &
-         VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddInternalSpec(GC,                                  &
-         SHORT_NAME = 'CLLS',                                      &
-         LONG_NAME  = 'large_scale_cloud_area_fraction',           &
-         UNITS      = '1',                                         &
-         FRIENDLYTO = 'DYNAMICS',                                  &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddInternalSpec(GC,                                  &
-         SHORT_NAME = 'CLCN',                                      &
-         LONG_NAME  = 'convective_cloud_area_fraction',            &
-         UNITS      = '1',                                         &
-         FRIENDLYTO = 'DYNAMICS',                                  &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
-    call MAPL_AddInternalSpec(GC,                                  &
-         SHORT_NAME = 'QRAIN',                                     &
-         LONG_NAME  = 'mass_fraction_of_rain',                     &
-         UNITS      = 'kg kg-1',                                   &
-         FRIENDLYTO = 'DYNAMICS',                       &
-         default    = 0.0,                                         &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddInternalSpec(GC,                                  &
-         SHORT_NAME = 'QSNOW',                                     &
-         LONG_NAME  = 'mass_fraction_of_snow',                     &
-         UNITS      = 'kg kg-1',                                   &
-         FRIENDLYTO = 'DYNAMICS',                       &
-         default    = 0.0,                                         &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddInternalSpec(GC,                                  &
-         SHORT_NAME = 'QGRAUPEL',                                  &
-         LONG_NAME  = 'mass_fraction_of_graupel',                  &
-         UNITS      = 'kg kg-1',                                   &
-         FRIENDLYTO = 'DYNAMICS',                       &
-         default    = 0.0,                                         &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
-
-
-! Register children with MAPL and go down their SS hierarchy
-! ----------------------------------------------------------
-
-    SDYN  = MAPL_AddChild(GC, NAME='SUPERDYNAMICS', SS=SDYN_SetServices, RC=STATUS)
-    VERIFY_(STATUS)
-    PHS  = MAPL_AddChild(GC, NAME='HSPHYSICS',  SS=PHS_SetServices, RC=STATUS)
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec ( GC   ,                          &
-         SHORT_NAME = 'T',                                    &
-         CHILD_ID   = SDYN,                                    &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec ( GC   ,                          &
-         SHORT_NAME = 'PS',                                   &
-         CHILD_ID   = SDYN,                                    &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-
-! Register connections between children
-! -------------------------------------
-
-    call MAPL_AddConnectivity ( GC,                                    &
-         SHORT_NAME  = (/ 'DUDT', 'DVDT', 'DTDT' /),                   &
-         SRC_ID      =  PHS,                                           &
-         DST_ID      =  SDYN,                                           &
-                                                            RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddConnectivity ( GC,                                    &
-         SRC_NAME = (/ 'U    ', 'V    ', 'T    ', 'PLE  ' /),          &
-         DST_NAME = (/ 'U    ', 'V    ', 'TEMP ', 'PLE  ' /),          &
-         SRC_ID   =  SDYN,                                              &
-         DST_ID   =  PHS,                                              &
-                                                            RC=STATUS  )
-    VERIFY_(STATUS)
-
-
-! SetServices clean-up on the way back up through the hierarchy
-!--------------------------------------------------------------
-
-    call MAPL_TerminateImport(GC, SHORT_NAME = (/'PHIS ','DPEDT'/), &
-         CHILD = SDYN, RC=STATUS)
-    VERIFY_(STATUS)
-
-    call MAPL_GenericSetServices( GC, RC=STATUS )
-    VERIFY_(STATUS)
-
-    RETURN_(ESMF_SUCCESS)
-
-  end subroutine SetServices
-!EOC
-
-  subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
-
-! !ARGUMENTS:
-
-    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
-    type(ESMF_State),    intent(inout) :: IMPORT ! Import state
-    type(ESMF_State),    intent(inout) :: EXPORT ! Export state
-    type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
-    integer, optional,   intent(  out) :: RC     ! Error code
-
-! !DESCRIPTION: The Initialize method of this Gridded Component.
-
-! ErrLog Variables
-
-    character(len=ESMF_MAXSTR)              :: IAm
-    integer                                 :: STATUS
-    character(len=ESMF_MAXSTR)              :: COMP_NAME
-
-! local vars
-    type (MAPL_MetaComp),      pointer  :: MAPL
-    type (ESMF_State),         pointer  :: GIM(:)
-    type (ESMF_Field)                   :: FIELD
-    type (ESMF_FieldBundle)             :: BUNDLE
-    type (ESMF_Config)                  :: cf
-    type (ESMF_Alarm)                   :: replay_shutoff_alarm
-    type(ESMF_TimeInterval)             :: shutoff
-    integer                             :: rplshut
-
-    Iam = "Initialize"
-    call ESMF_GridCompGet ( GC, name=COMP_NAME, config=cf, RC=STATUS )
-    VERIFY_(STATUS)
-    Iam = trim(COMP_NAME) // Iam
-
-    call MAPL_GridCreate(GC, rc=status)
-    VERIFY_(STATUS)
-
-    call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK,  RC=STATUS)
-    VERIFY_(STATUS)
-
-! Get my MAPL_Generic state
-!--------------------------
-
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    VERIFY_(STATUS)
-
-! Fill Childrens TOPO variables and Diagnostics
-!----------------------------------------------
-    call MAPL_Get ( MAPL, GIM=GIM, RC=STATUS )
-    VERIFY_(STATUS)
-
-! PHIS ...
-!---------
-    call ESMF_StateGet( GIM(SDYN), 'PHIS', FIELD, rc=STATUS )
-    VERIFY_(STATUS)
-    Call GEOS_TopoGet ( cf, MEAN=FIELD, rc=STATUS )
-    VERIFY_(STATUS)
-
-! TRADV ...
-!----------
-    call ESMF_StateGet(GIM(SDYN), 'TRADV', BUNDLE, RC=STATUS )
-    VERIFY_(STATUS)
-    call MAPL_GridCompGetFriendlies(GC, "DYNAMICS", BUNDLE, RC=STATUS )
-    VERIFY_(STATUS)
-
-    ! Initialize alarms
-    call MAPL_GetResource(MAPL, rplshut, Label="REPLAY_SHUTOFF:", default=-3600, rc=status)
-    VERIFY_(status)
-    call ESMF_TimeIntervalSet(shutoff, S=abs(rplshut), rc=status)
-    VERIFY_(status)
-    replay_shutoff_alarm = ESMF_AlarmCreate( &
-         name="ReplayShutOff", &
-         clock=clock, &
-         ringInterval=shutoff, &
-         sticky=.true., &
-         rc=status)
-    VERIFY_(status)
-
-    RETURN_(ESMF_SUCCESS)
-
-  end subroutine Initialize
-
-  subroutine Run( GC, IMPORT, EXPORT, CLOCK, RC )
-
-! !ARGUMENTS:
-
-    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
-    type(ESMF_State),    intent(inout) :: IMPORT ! Import state
-    type(ESMF_State),    intent(inout) :: EXPORT ! Export state
-    type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
-    integer, optional,   intent(  out) :: RC     ! Error code
-
-
-!EOP
-
-! ErrLog Variables
-
-    character(len=ESMF_MAXSTR)        :: IAm
-    integer                           :: STATUS
-    character(len=ESMF_MAXSTR)        :: COMP_NAME
-
-! Local derived type aliases
-
-    type (MAPL_MetaComp    ), pointer :: MAPL
-    type (ESMF_GridComp),      pointer  :: GCS(:)
-    type (ESMF_State),         pointer  :: GIM(:)
-    type (ESMF_State),         pointer  :: GEX(:)
-
-!=============================================================================
-
-! Begin...
-
-! Get the target components name and set-up traceback handle.
-! -----------------------------------------------------------
-
-    Iam = "Run"
-    call ESMF_GridCompGet( GC, name=COMP_NAME, RC=STATUS )
-    VERIFY_(STATUS)
-    Iam = trim(COMP_NAME) // trim(Iam)
-
-! Get my MAPL_MetaComp
-!---------------------
-
-    call MAPL_GetObjectFromGC( GC, MAPL, RC=STATUS)
-    VERIFY_(STATUS)
-
-! Start the TOTAL timer
-!----------------------
-
-    call MAPL_TimerOn(MAPL,"TOTAL")
-    call MAPL_TimerOn(MAPL,"RUN")
-
-! Get esmf internal state from generic state.
-!-------------------------------------------
-
-    call MAPL_Get(MAPL, GCS=GCS, GIM=GIM, GEX=GEX, __RC__ )
-
-    call ESMF_GridCompRun(GCS(SDYN), importState=GIM(SDYN), exportState=GEX(SDYN), clock=CLOCK, PHASE=1, userRC=STATUS)
-    VERIFY_(STATUS)
-
-    call MAPL_GenericRunCouplers( MAPL, CHILD=SDYN, CLOCK=clock, __RC__ )
-
-    call ESMF_GridCompRun(GCS(PHS), importState=GIM(PHS), exportState=GEX(PHS), clock=CLOCK, userRC=STATUS)
-    VERIFY_(STATUS)
-
-    call ESMF_GridCompRun(GCS(SDYN), importState=GIM(SDYN), exportState=GEX(SDYN), clock=CLOCK, PHASE=2, userRC=STATUS)
-    VERIFY_(STATUS)
-
-    call MAPL_TimerOff(MAPL,"RUN")
-    call MAPL_TimerOff(MAPL,"TOTAL")
-
-    RETURN_(ESMF_SUCCESS)
-
-  end subroutine Run
+   !BOP
+   !IROUTINE: SetServices
+
+   !DESCRIPTION:  This is the only method of this component, since all of its
+   !   registered methods can be defaulted to their MAPL generic versions.
+   !   SetServices merely creates the children through MAPL and connects
+   !   their Import-Export states. FV has some Imports that are
+   !   not used in the Held-Suarez benchmark. Since these have proper defaults
+   !   in FV, they can simply be terminated here.
+
+   !INTERFACE:
+   subroutine SetServices(gc, rc)
+      !ARGUMENTS:
+
+      type(ESMF_GridComp) :: gc ! gridded component
+      integer, intent(out) :: rc ! return code
+      !EOP
+
+      integer :: status
+
+      call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_INITIALIZE, Initialize, _RC)
+      call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_RUN, Run, _RC)
+
+      ! NOTE: The tracer advection is provided as a service by DYN, which we originally subscribed
+      ! to in this gridcomp. Subsequently, the subscription was moved to the gridcomp DataMoist,
+      ! using the configurable gridcomp and data-moist.yaml config file. The original code
+      ! implementing the subscriber in this component is commented out and retained, for reference
+      !
+      ! #include "AgcmSimple_Internal___.h"
+      ! Erstwhile AgcmSimple_StateSpecs.rc, for reference
+      ! schema_version: 2.0.0
+      ! component: AgcmSimple
+      !
+      ! # FAKE internals for bundling tracers for FV3
+      ! category: INTERNAL
+      ! #-------------------------------------------------------------------
+      ! SHORT_NAME | UNITS   | FILLVAL | DIMS | VLOC | RESTART | LONG_NAME
+      ! #-------------------------------------------------------------------
+      ! Q          | kg kg-1 | 1.0e-6  | xyz  | C    | SKIP   | specific_humidity
+      ! QLLS       | kg kg-1 |         | xyz  | C    | SKIP   |
+      ! mass_fraction_of_large_scale_cloud_liquid_water
+      ! QLCN       | kg kg-1 |         | xyz  | C    | SKIP   |
+      ! mass_fraction_of_convective_cloud_liquid_water
+      ! QILS       | kg kg-1 |         | xyz  | C    | SKIP   |
+      ! mass_fraction_of_large_scale_cloud_ice_water
+      ! QICN       | kg kg-1 |         | xyz  | C    | SKIP   |
+      ! mass_fraction_of_convective_cloud_ice_water
+      ! CLLS       | 1       |         | xyz  | C    | SKIP   | large_scale_cloud_area_fraction
+      ! CLCN       | 1       |         | xyz  | C    | SKIP   | convective_cloud_area_fraction
+      ! QRAIN      | kg kg-1 | 0.0     | xyz  | C    | SKIP   | mass_fraction_of_rain
+      ! QSNOW      | kg kg-1 | 0.0     | xyz  | C    | SKIP   | mass_fraction_of_snow
+      ! QGRAUPEL   | kg kg-1 | 0.0     | xyz  | C    | SKIP   | mass_fraction_of_graupel
+
+      ! "FAKE" specs to provide PHIS and VARFLT to FV3
+      call MAPL_GridCompAddSpec(gc, &
+           state_intent=ESMF_STATEINTENT_INTERNAL, &
+           short_name="PHIS", &
+           standard_name="surface_geopotential_height", &
+           units="m+2 s-2", &
+           dims="xy", &
+           vstagger=VERTICAL_STAGGER_NONE, &
+           add_to_export=.true., _RC)
+      call MAPL_GridCompAddSpec(gc, &
+           state_intent=ESMF_STATEINTENT_INTERNAL, &
+           short_name="VARFLT", &
+           standard_name="variance_of_filtered_topography", &
+           units="m+2", &
+           dims="xy", &
+           vstagger=VERTICAL_STAGGER_NONE, &
+           add_to_export=.true., _RC)
+
+      ! SUBSCRIBED "FAKE" spec to bundle tracers for FV3
+      ! tracer_list = [ &
+      !      "Q       ", &
+      !      "QLLS    ", "QLCN    ", "QILS    ", "QICN    ", &
+      !      "CLLS    ", "CLCN    ", "QRAIN   ", "QSNOW   ", "QGRAUPEL"]
+      ! do iter = 1, size(tracer_list)
+      !    call service_items%push_back(trim(tracer_list(iter)))
+      ! end do
+      ! call MAPL_GridCompAddSpec(gc, &
+      !      state_intent=ESMF_STATEINTENT_IMPORT, &
+      !      short_name="TRADV", &
+      !      standard_name='advected_quantities', &
+      !      units="unknown", &
+      !      dims="xyz", & ! TODO: we shouldn't need dims/vstagger for bundles
+      !      vstagger=VERTICAL_STAGGER_NONE, &
+      !      itemtype=MAPL_STATEITEM_SERVICE, &
+      !      service_items=service_items, _RC)
+
+      call MAPL_GridCompAddChild(gc, "SDYN", user_setservices(SDYN_SetServices), "superdyn.yaml", _RC)
+      call MAPL_GridCompAddChild(gc, "PHYS", user_setservices(PHYS_SetServices), "held-suarez.yaml", _RC)
+
+      ! TODO: pchakrab - we don't really need these, do we?
+      ! call MAPL_GridCompReexport(gc, src_comp="SDYN", src_name="T", _RC)
+      ! call MAPL_GridCompReexport(gc, src_comp="SDYN", src_name="PS", _RC)
+
+      ! Register connections between children
+      call MAPL_GridCompAddConnection(gc, &
+           src_comp="PHYS", &
+           dst_comp="SDYN", &
+           src_names="DUDT, DVDT, DTDT", _RC)
+      call MAPL_GridCompAddConnection(gc, &
+           src_comp="SDYN", &
+           dst_comp="PHYS", &
+           src_names="U, V, T, PLE", &
+           dst_names="U, V, TEMP, PLE", _RC)
+      call MAPL_GridCompAddConnection(gc, &
+           src_comp="<self>", &
+           dst_comp="SDYN", &
+           src_names="PHIS, VARFLT", _RC)
+
+      ! CONNECTION between provider and subscriber of the "FAKE" tracer bundle service
+      ! call MAPL_GridCompAddConnection(gc, &
+      !      src_comp="SDYN", &
+      !      dst_comp="<self>", &
+      !      src_names="TRADV", _RC)
+
+      _RETURN(_SUCCESS)
+   end subroutine SetServices
+
+   subroutine Initialize(gc, import, export, clock, rc)
+      !ARGUMENTS:
+      type(ESMF_GridComp) :: gc ! Gridded component
+      type(ESMF_State) :: import ! Import state
+      type(ESMF_State) :: export ! Export state
+      type(ESMF_Clock) :: clock ! The clock
+      integer, intent(out) :: rc ! Error code
+
+      !DESCRIPTION: The Initialize method of this Gridded Component.
+
+      type(ESMF_State) :: internal
+      real, pointer, dimension(:, :) :: phis
+      integer :: status
+
+      ! PHIS ... (zeroed out, instead of reading from a zero file)
+      call MAPL_GridCompGetInternalState(gc, internal, _RC)
+      call MAPL_StateGetPointer(internal, phis, "PHIS", _RC)
+      phis = 0.0
+
+      _RETURN(_SUCCESS)
+   end subroutine Initialize
+
+   subroutine Run(gc, import, export, clock, rc)
+      !ARGUMENTS:
+      type(ESMF_GridComp) :: gc ! Gridded component
+      type(ESMF_State) :: import ! Import state
+      type(ESMF_State) :: export ! Export state
+      type(ESMF_Clock) :: clock ! The clock
+      integer, intent(out) :: rc ! Error code
+      !EOP
+
+      ! character(len=:), allocatable :: child_name
+      ! integer :: iter, num_children
+      integer :: status
+
+      ! call MAPL_GridCompGet(gc, num_children=num_children, _RC)
+      ! do iter = 1, num_children
+      !    child_name = MAPL_GridCompGetChildName(gc, iter, _RC)
+      !    _HERE, "Child ", iter, ": ", trim(child_name)
+      ! end do
+
+      call MAPL_GridCompRunChild(gc, "SDYN", phase_name="run", _RC)
+      call MAPL_GridCompRunChild(gc, "PHYS", phase_name="run", _RC)
+      ! call MAPL_GridCompRunChild(gc, "DataMoist", phase_name="run", _RC)
+      call MAPL_GridCompRunChild(gc, "SDYN", phase_name="run_add_incs", _RC)
+
+      _RETURN(_SUCCESS)
+      _UNUSED_DUMMY(import)
+      _UNUSED_DUMMY(export)
+      _UNUSED_DUMMY(clock)
+   end subroutine Run
 
 end module GEOS_AgcmSimpleGridCompMod
 
+subroutine SetServices(gc, rc)
+   use ESMF
+   use GEOS_AgcmSimpleGridCompMod, only : mySetservices => SetServices
+   type(ESMF_GridComp) :: gc
+   integer, intent(out) :: rc
+   call mySetServices(gc, rc=rc)
+end subroutine SetServices

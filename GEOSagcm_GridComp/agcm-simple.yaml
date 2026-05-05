@@ -1,0 +1,66 @@
+---
+mapl:
+  geometry:
+    kind: from_child
+    provider: SDYN
+    # geometry:
+    # esmf_geom:
+    #   class: CubedSphere
+    #   im_world: 12
+    # vertical_grid:
+    #   class: model
+    #   standard_name: air_pressure
+    #   units: hPa
+    #   num_levels: 91
+    #   field_edge: PLE
+    #   field_center: PE
+
+  children:
+    DataMoist:
+      dso: libconfigurable_gridcomp
+      config_file: data-moist.yaml
+    DataAna:
+      dso: libconfigurable_gridcomp
+      config_file: data-ana.yaml
+
+  connections:
+    - src_name: TRADV
+      src_comp: SDYN
+      dst_name: TRADV
+      dst_comp: DataMoist
+
+    - src_name: DQVANA
+      src_intent: internal
+      src_comp: DataAna
+      dst_name: DQVANA
+      dst_comp: SDYN
+
+    - src_name: DQLANA
+      src_intent: internal
+      src_comp: DataAna
+      dst_name: DQLANA
+      dst_comp: SDYN
+
+    - src_name: DQIANA
+      src_intent: internal
+      src_comp: DataAna
+      dst_name: DQIANA
+      dst_comp: SDYN
+
+    - src_name: DQRANA
+      src_intent: internal
+      src_comp: DataAna
+      dst_name: DQRANA
+      dst_comp: SDYN
+
+    - src_name: DQSANA
+      src_intent: internal
+      src_comp: DataAna
+      dst_name: DQSANA
+      dst_comp: SDYN
+
+    - src_name: DQGANA
+      src_intent: internal
+      src_comp: DataAna
+      dst_name: DQGANA
+      dst_comp: SDYN

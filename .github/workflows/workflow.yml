@@ -43,6 +43,7 @@ jobs:
       fixture-ref: release/MAPL-v3
       run-mepo-develop: false
       patch-esmf: true
+      load-fms: true
       # There is some weird issue with spack builds and the install step with
       # MAPL 3. For now, turn off as we don't need to *run* GEOS.
       run-install: false
