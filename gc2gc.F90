@@ -182,9 +182,9 @@ contains
     allocate(itemNameListOut(N), _STAT)
     call ESMF_StateGet(this%stateOut, ITEMNAMELIST=itemNamelistOut, _RC)
 
-    call ESMF_StateGet(this%stateIn, ITEMCOUNT=N, _RC)
+    call ESMF_StateGet(stateIn, ITEMCOUNT=N, _RC)
     allocate(itemNameListIn(N), _STAT)
-    call ESMF_StateGet(this%stateIn, ITEMNAMELIST=itemNamelistIn, _RC)
+    call ESMF_StateGet(stateIn, ITEMNAMELIST=itemNamelistIn, _RC)
 
     do n=1,size(this%vars)
        ! we might need to check the field is in the state. If not, it might be Ok
@@ -200,20 +200,20 @@ contains
           end if
        end if
 
-       call ESMF_StateGet(this%stateIn, this%vars(n)%vIn, field, _RC)
+       call ESMF_StateGet(stateIn, this%vars(n)%vIn, field, _RC)
        ! get rank,typekind to use the appropriate overload
        call ESMF_FieldGet(field, rank=rank, _RC)
        select case (rank)
           case (1)
              call MAPL_GetPointer(this%stateOut, ptr1out, this%vars(n)%Vout, notFoundOK=.true., _RC)
-             call MAPL_GetPointer(this%stateIn, ptr1in, this%vars(n)%Vin, notFoundOK=.true., _RC)       
+             call MAPL_GetPointer(stateIn, ptr1in, this%vars(n)%Vin, notFoundOK=.true., _RC)       
              if (associated(ptr1Out) .and. associated(ptr1In)) then
                 call MAPL_LocStreamTransform( ptr1Out, &
                      this%XFORM, ptr1In, _RC )
              end if
           case (2)
              call MAPL_GetPointer(this%STATEout, ptr2out, this%vars(n)%Vout, notFoundOK=.true., _RC)
-             call MAPL_GetPointer(this%STATEin, ptr2in, this%vars(n)%Vin, notFoundOK=.true., _RC)
+             call MAPL_GetPointer(stateIn, ptr2in, this%vars(n)%Vin, notFoundOK=.true., _RC)
 
              if (associated(ptr2Out) .and. associated(ptr2In)) then
                 do K=1,size(ptr2Out,2)
@@ -223,7 +223,7 @@ contains
              end if
           case (3)
              call MAPL_GetPointer(this%STATEout, ptr3out, this%vars(n)%Vout, notFoundOK=.true., _RC)
-             call MAPL_GetPointer(this%STATEin, ptr3in, this%vars(n)%Vin, notFoundOK=.true., _RC)
+             call MAPL_GetPointer(stateIn, ptr3in, this%vars(n)%Vin, notFoundOK=.true., _RC)
 
              if (associated(ptr3Out) .and. associated(ptr3In)) then
                 do M=1,size(ptr3Out,3)
