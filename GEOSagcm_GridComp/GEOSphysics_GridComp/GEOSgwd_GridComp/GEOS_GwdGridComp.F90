@@ -37,7 +37,6 @@ module GEOS_GwdGridCompMod
    use MAPL, only : MAPL_Interval => Interval
    use MAPL_CommsMod, only: MAPL_AM_I_ROOT, ArrayGather
    use MAPL_MaplGrid, only: MAPL2_GridGet => MAPL_GridGet
-   use MAPL_GenericMod, only: MAPL_TimerAdd, MAPL_TimerOn, MAPL_TimerOff
    use MAPL_Constants, only: MAPL_RADIUS, MAPL_RGAS, MAPL_GRAV, MAPL_VIREPS, MAPL_PI, MAPL_P00, MAPL_CP
 
    use mapl3g_generic, only: MAPL_GridCompSetEntryPoint
@@ -173,19 +172,6 @@ contains
 #include "GWD_Export___.h"
 #include "GWD_Internal___.h"
 
-      ! Set the Profiling timers
-      ! ------------------------
-
-      call MAPL_TimerAdd(GC,    name="DRIVER"  ,_RC)
-      call MAPL_TimerAdd(GC,    name="-DRIVER_RUN"   ,_RC)
-      call MAPL_TimerAdd(GC,    name="-INTR"   ,_RC)
-      call MAPL_TimerAdd(GC,    name="-INTR_NCAR"   ,_RC)
-      call MAPL_TimerAdd(GC,    name="-INTR_GEOS"   ,_RC)
-      call MAPL_TimerAdd(GC,    name="-DRIVER_DATA"   ,_RC)
-      call MAPL_TimerAdd(GC,    name="--DRIVER_DATA_DEVICE"   ,_RC)
-      call MAPL_TimerAdd(GC,    name="--DRIVER_DATA_CONST"   ,_RC)
-      call MAPL_TimerAdd(GC,    name="-DRIVER_ALLOC"   ,_RC)
-      call MAPL_TimerAdd(GC,    name="-DRIVER_DEALLOC"   ,_RC)
 
       !   Store internal state in GC
       !   --------------------------
