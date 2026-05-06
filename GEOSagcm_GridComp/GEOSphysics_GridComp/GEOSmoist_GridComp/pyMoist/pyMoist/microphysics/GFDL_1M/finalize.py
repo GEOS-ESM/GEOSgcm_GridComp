@@ -106,7 +106,7 @@ def fix_humidity(
     esx: GlobalTable_saturation_tables,
 ):
     with computation(PARALLEL), interval(...):
-        qsat, _ = saturation_specific_humidity(t, p_mb * 100, ese, esx)
+        qsat, _ = saturation_specific_humidity(t, p_mb * 100.0, ese, esx)
         relative_humidity = vapor / qsat
 
 
