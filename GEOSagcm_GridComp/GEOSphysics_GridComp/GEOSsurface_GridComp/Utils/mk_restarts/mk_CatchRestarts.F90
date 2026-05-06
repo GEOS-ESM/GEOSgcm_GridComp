@@ -40,16 +40,16 @@ program  mk_CatchRestarts
 
 !---------------------------------------------------------------------------
   
-  I = iargc()
+  I = command_argument_count()
 
   if( I<4 .or. I>5 ) then
      print *, "Wrong Number of arguments: ", i
      print *, trim(Usage)
-     call exit(1)
+     stop 1
   end if
  
   do n=1,I
-  call getarg(n,arg(n))
+  call get_command_argument(n,arg(n))
   enddo
   read(arg(1),'(a)') OutTileFile
   read(arg(2),'(a)')  InTileFile
@@ -57,7 +57,7 @@ program  mk_CatchRestarts
   read(arg(4),*)  SURFLAY
 
   if(I==5) then
-     call getarg(6,OutType)
+     call get_command_argument(6,OutType)
      OutIsOld = trim(OutType)=="OutIsOld"
   else
      OutIsOld = .false.
@@ -67,7 +67,7 @@ program  mk_CatchRestarts
      print *, "You must supply a valid SURFLAY value:"
      print *, "(Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params"
      print *, "(Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params"
-     call exit(2)
+     error stop 2
   end if
 
   inquire(file=trim(DataDir)//"mosaic_veg_typs_fracs",exist=havedata)
@@ -354,7 +354,7 @@ contains
           enddo
        else
           print *, "Number of tiles in data, ",Ncatch," does not match number in til file ", size(Ido)
-          call exit(1)
+          stop 1
        endif
        
        allocate(ity(ncatch),rity(ncatch))

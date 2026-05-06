@@ -70,7 +70,7 @@ program mk_runofftbl
      print *, " "
      print *, trim(Usage)
      print *, " "
-     call exit(1)
+     stop 1
   end if
 
   nxt = 1
@@ -93,7 +93,7 @@ program mk_runofftbl
         print *, "Wrong flag -", opt
         print *, "Example usage with defaults: "
         print *, trim(Usage)
-        call exit(1)
+        stop 1
      end select
      nxt = nxt + 1
      call get_command_argument(nxt,arg)
@@ -341,7 +341,7 @@ program mk_runofftbl
   deallocate( area)
   deallocate( lats, lons)
   
-  call exit(0)
+  stop 0
   
   ! -----------------------------------------------------------------
 

@@ -54,7 +54,7 @@ PROGRAM mk_GEOSldasRestarts
   integer, parameter :: VAR_COL_CLM45 = 35 ! number of CN column restart variables
   integer, parameter :: VAR_PFT_CLM45 = 75 ! number of CN PFT variables per column
 
-  real,    parameter :: nan = O'17760000000'
+  real,    parameter :: nan = huge(1.0)
   real,    parameter :: fmin= 1.e-4 ! ignore vegetation fractions at or below this value
   integer, parameter :: OutUnit = 40, InUnit = 50
   character*256      :: arg, tmpstring, ESMADIR
@@ -131,17 +131,17 @@ PROGRAM mk_GEOSldasRestarts
   ! ----------------
 
   CALL get_command (cmd)
-  call getenv ("ESMADIR"        ,ESMADIR        )
+  call get_environment_variable("ESMADIR"        ,ESMADIR        )
   nxt = 1
   
-  call getarg(nxt,arg)
+  call get_command_argument(nxt,arg)
   rstfile = 'NONE'
   do while(arg(1:1)=='-')
 
      opt=arg(2:2)
      if(len(trim(arg))==2) then
         nxt = nxt + 1
-        call getarg(nxt,arg)
+        call get_command_argument(nxt,arg)
      else
         arg = arg(3:)
      end if
@@ -188,10 +188,10 @@ PROGRAM mk_GEOSldasRestarts
         RSTFILE   =  trim(arg)
      case default
         print *, trim(Usage)
-        call exit(1)
+        stop 1
      end select
      nxt = nxt + 1
-     call getarg(nxt,arg)
+     call get_command_argument(nxt,arg)
   end do
 
   if (index(model, 'catchcn') /=0 ) then
@@ -220,7 +220,7 @@ PROGRAM mk_GEOSldasRestarts
 
      call MPI_Barrier(MPI_COMM_WORLD, STATUS)
      call MPI_FINALIZE(mpierr)
-     call exit(0)     
+     stop 0     
 
   elseif (trim(REORDER) == 'R') then
 
@@ -230,7 +230,7 @@ PROGRAM mk_GEOSldasRestarts
  
      call MPI_Barrier(MPI_COMM_WORLD, STATUS)
      call MPI_FINALIZE(mpierr)
-     call exit(0)
+     stop 0
   
   else
 
@@ -238,13 +238,13 @@ PROGRAM mk_GEOSldasRestarts
 
      if(JOBFILE == 'N') then
 
-        call system('mkdir -p InData/  OutData/')
+        call execute_command_line('mkdir -p InData/  OutData/')
         tmpstring =  'cp '//trim(BCSDIR)//'/'//trim(TILFILE)//' InData/OutTileFile'
-        call system(tmpstring)
+        call execute_command_line(tmpstring)
         tmpstring =  'cp '//trim(BCSDIR)//'/'//trim(TILFILE)//' OutData/OutTileFile'
-        call system(tmpstring)
+        call execute_command_line(tmpstring)
         tmpstring =  'ln -s '//trim(BCSDIR)//'/clsm OutData/clsm'
-        call system(tmpstring)
+        call execute_command_line(tmpstring)
 
         open (10, file ='mkLDASsa.j', form = 'formatted', status ='unknown', action = 'write')
         write(10,'(a)')'#!/bin/csh -fx'
@@ -271,7 +271,7 @@ PROGRAM mk_GEOSldasRestarts
         write(10,'(a)')'bin/'//trim(catch_scaler)//' InData/'//model//'_internal_rst OutData/'//model//'_internal_rst '//model//'_internal_rst '//trim(SFL)
 
         close (10, status ='keep')
-        call system('chmod 755 mkLDASsa.j')
+        call execute_command_line('chmod 755 mkLDASsa.j')
         stop
      endif
   endif
@@ -2011,7 +2011,7 @@ contains
           do nz = 1,nzone
              STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'CNCOL'), (/1,i/), (/NTILES_CN,1 /),VAR_DUM2)
              do k = 1, NTILES_CN
-                var_off_col(TILE_ID(K), nz,nv) = VAR_DUM2(K)
+                var_off_col(int(TILE_ID(K)), nz,nv) = VAR_DUM2(K)
              end do
              i = i + 1
           end do
@@ -2023,7 +2023,7 @@ contains
              do nz = 1,nzone
                 STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'CNPFT'), (/1,i/), (/NTILES_CN,1 /),VAR_DUM2)
                 do k = 1, NTILES_CN
-                   var_off_pft(TILE_ID(K), nz,nv,iv) = VAR_DUM2(K)
+                   var_off_pft(int(TILE_ID(K)), nz,nv,iv) = VAR_DUM2(K)
                 end do
                 i = i + 1
              end do
@@ -2114,7 +2114,7 @@ contains
                  iv = nv                                     ! same type fraction (primary of secondary)                          
               else if(ityp_new == ityp_offl (offl_cell,nx) .and. fveg_offl (offl_cell,nx)> fmin) then
                  iv = nx                                     ! not same fraction
-              else if(iclass(ityp_new)==iclass(ityp_offl(offl_cell,nv)) .and. fveg_offl (offl_cell,nv)> fmin) then
+              else if(iclass(ityp_new)==iclass(int(ityp_offl(offl_cell,nv))) .and. fveg_offl (offl_cell,nv)> fmin) then
                  iv = nv                                     ! primary, other type (same class)
               else if(fveg_offl (offl_cell,nx)> fmin) then
                  iv = nx                                     ! secondary, other type (same class)
@@ -3910,7 +3910,7 @@ contains
 
     call OutFmt%close()
 
-    call system('/bin/cp InData/catch_internal_rst OutData/catch_internal_rst')
+    call execute_command_line('/bin/cp InData/catch_internal_rst OutData/catch_internal_rst')
 
   END SUBROUTINE read_ldas_restarts
 

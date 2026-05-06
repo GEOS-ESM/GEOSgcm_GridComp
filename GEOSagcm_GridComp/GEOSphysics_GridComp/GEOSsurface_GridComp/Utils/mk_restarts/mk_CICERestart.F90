@@ -25,17 +25,17 @@ program mk_CiceRestart
 
 !---------------------------------------------------------------------------
 
-  I = iargc()
+  I = command_argument_count()
 
   if(I /= 3) then
      print *, "Wrong Number of arguments: ", i
      print *, trim(Usage)
-     call exit(1)
+     stop 1
   end if
 
-  call getarg(1,OutTileFile)
-  call getarg(2,InTileFile)
-  call getarg(3,InRestart)
+  call get_command_argument(1,OutTileFile)
+  call get_command_argument(2,InTileFile)
+  call get_command_argument(3,InRestart)
 
 ! Read Output Tile File .til file
 ! to get the index into the pfafsttater table

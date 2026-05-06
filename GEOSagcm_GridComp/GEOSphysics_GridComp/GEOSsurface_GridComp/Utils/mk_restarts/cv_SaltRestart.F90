@@ -68,7 +68,7 @@ program cv_SaltRestart
 
   source_is_coupled = .false.
 
-  I = iargc()
+  I = command_argument_count()
 
   print*, '# of arguments : ', I
 
@@ -76,25 +76,25 @@ program cv_SaltRestart
      print *, trim(Usage1)
      print *, ' ========= or ==========='
      print *, trim(Usage2)
-     call exit(1)
+     stop 1
   endif
 
   nxt = 1
 
   do while(nxt<=I)
-       call getarg(nxt,arg)
+       call get_command_argument(nxt,arg)
        if(arg(1:1)/='-') then
           print*, 'first letter /= -'
           print *, trim(Usage1)
           print *, ' ========= or ==========='
           print *, trim(Usage2)
-          call exit(1)
+          stop 1
        endif
        opt=arg(2:2)
        if(len(trim(arg))==2) then
           if(scan(opt,'AC')==0) then
              nxt = nxt + 1
-             call getarg(nxt,arg)
+             call get_command_argument(nxt,arg)
           end if
        else
           arg = arg(3:)
@@ -108,7 +108,7 @@ program cv_SaltRestart
           InFile1 = arg
           if(.not. source_is_coupled) then
              nxt = nxt + 1
-             call getarg(nxt,arg)
+             call get_command_argument(nxt,arg)
              InFile2 = arg
           endif  
        case ('t')
@@ -118,7 +118,7 @@ program cv_SaltRestart
           print *, trim(Usage1)
           print *, ' ========= or ==========='
           print *, trim(Usage2)
-          call exit(1)
+          stop 1
        end select
 
        nxt = nxt + 1
@@ -143,7 +143,7 @@ program cv_SaltRestart
 
   if(.not. source_is_coupled)  then
     print*, 'conversion from AMIP style restarts .NOT. implemented yet!!'
-    call exit(1)
+    stop 1
   else
 
   ilyr1(1) = 1                       ! if nilyr  = 4

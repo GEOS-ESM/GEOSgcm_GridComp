@@ -344,8 +344,8 @@
     dxi   = 1.0/dx
     dyi   = 1.0/dy
 
-    d2r    = (2._8*PI)/range
-    r2d    = range/(2._8*PI)
+    d2r    = ( 2.0d0*PI)/range
+    r2d    = range/( 2.0d0*PI)
 
     !  Report
 
@@ -417,14 +417,14 @@
 
     if(k/=0) then 
        print *, 'allocation error ', k, ' at line ',__LINE__
-       call exit(1)
+       stop 1
     endif		
 
     allocate(rTable(1:4,maxtiles),stat=k)
 
     if(k/=0) then 
        print *, 'allocation error ', k, ' at line ',__LINE__
-       call exit(1)
+       stop 1
     endif		
 
     if(uVerb) then
@@ -568,10 +568,10 @@
     real(REAL64)   :: x0, y0
 
 
-    if    (abs(miny+90._8) < 1.e-10_8) then
+    if    (abs(miny+90.0d0) < 1.0d-10) then
        i1 = 1
        i2 = xsize
-    elseif(abs(maxy-90._8) < 1.e-10_8) then
+    elseif(abs(maxy-90.0d0) < 1.0d-10) then
        i1 = 1 
        i2 = xsize
     else

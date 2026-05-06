@@ -19,6 +19,13 @@ set_source_files_properties(mkMITAquaRaster.F90 PROPERTIES COMPILE_FLAGS "${BYTE
 
 esma_add_library(${this} SRCS ${srcs} DEPENDENCIES MAPL GEOS_SurfaceShared GEOS_LandShared ESMF::ESMF NetCDF::NetCDF_Fortran OpenMP::OpenMP_Fortran)
 
+# NAG: mod_process_hres_data.F90 has very long DATA statements (>255 continuation lines)
+# and calls legacy NetCDF-C API with varying Fortran types intentionally
+if (CMAKE_Fortran_COMPILER_ID MATCHES "NAG")
+  set_source_files_properties(mod_process_hres_data.F90 PROPERTIES COMPILE_FLAGS "-maxcontin=1023")
+  target_compile_options(${this} PRIVATE $<$<COMPILE_LANGUAGE:Fortran>:-wmismatch=NF_GET_VARA_DOUBLE,NF_GET_VARA_REAL,NF_INQ_VARID,NF_GET_ATT_INT,NF_GET_ATT_REAL>)
+endif()
+
 if(NOT FORTRAN_COMPILER_SUPPORTS_FINDLOC)
    target_compile_definitions(${this} PRIVATE USE_EXTERNAL_FINDLOC)
 endif ()
@@ -50,6 +57,13 @@ ecbuild_add_executable (TARGET FillMomGrid.x SOURCES FillMomGrid.F90 LIBS MAPL $
 ecbuild_add_executable (TARGET mk_runofftbl.x SOURCES mk_runofftbl.F90 LIBS MAPL ${this})
 ecbuild_add_executable (TARGET mkEASETilesParam.x SOURCES mkEASETilesParam.F90 LIBS MAPL ${this})
 ecbuild_add_executable (TARGET TileFile_ASCII_to_nc4.x SOURCES TileFile_ASCII_to_nc4.F90 LIBS MAPL ${this})
+
+# NAG: executable sources also call NetCDF C API routines with varying Fortran types
+if (CMAKE_Fortran_COMPILER_ID MATCHES "NAG")
+  foreach(_tgt mkCatchParam.x mkLandRaster.x mkEASETilesParam.x)
+    target_compile_options(${_tgt} PRIVATE $<$<COMPILE_LANGUAGE:Fortran>:-wmismatch=NF_GET_VARA_DOUBLE,NF_GET_VARA_REAL,NF_INQ_VARID,NF_GET_ATT_INT,NF_GET_ATT_REAL>)
+  endforeach()
+endif()
 
 install(PROGRAMS clsm_plots.pro create_README.csh  DESTINATION bin)
 file(GLOB MAKE_BCS_PYTHON CONFIGURE_DEPENDS "./make_bcs*.py")

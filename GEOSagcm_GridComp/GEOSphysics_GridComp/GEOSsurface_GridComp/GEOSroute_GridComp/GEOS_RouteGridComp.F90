@@ -18,6 +18,7 @@ module GEOS_RouteGridCompMod
   use ESMF
   use MAPL_Mod
   use MAPL_ConstantsMod
+  use iso_fortran_env, only: REAL64
   use ROUTING_MODEL,          ONLY: river_routing_hyd
   use reservoirMod,           ONLY: RES_STATE, Reservoir
   use catch_constants,        ONLY: N_pfaf_g => CATCH_N_PFAFS
@@ -545,7 +546,7 @@ contains
       type (ESMF_Grid) :: pfaf_grid
       integer, optional, intent(out) :: rc
       integer :: status
-      real(kind=8), pointer :: centers(:,:)
+      real(REAL64), pointer :: centers(:,:)
       ! create catchment grid and it is tile space
       pfaf_Grid = ESMF_GridCreate(       &
            name='CATCHMENT_GRID',         &

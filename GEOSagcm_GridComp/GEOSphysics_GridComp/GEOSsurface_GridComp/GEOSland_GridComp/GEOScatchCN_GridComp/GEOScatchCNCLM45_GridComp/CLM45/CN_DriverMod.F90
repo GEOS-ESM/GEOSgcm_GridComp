@@ -14,6 +14,7 @@ module CN_DriverMod
   use CNEcosystemDynMod
   use nanMod
   use clm_varcon,        only: grav, denh2o
+  use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
   use clm_varcon,        only: clm_varcon_init
   use clm_varpar,        only: clm_varpar_init, numpft
   use CNSetValueMod,     only: CNZeroFluxes_dwt
@@ -1452,7 +1453,7 @@ contains
           
 	   ! Make it a cold start if there is no information from the restart file (derived from CLM4 restart)
 	   ! fzeng, 1 Aug 2017
-	   if (isnan(pcs%leafc_xfer(np))) pcs%leafc_xfer(np) = 0.                                                     
+	   if (ieee_is_nan(pcs%leafc_xfer(np))) pcs%leafc_xfer(np) = 0.                                                     
           
           endif
 

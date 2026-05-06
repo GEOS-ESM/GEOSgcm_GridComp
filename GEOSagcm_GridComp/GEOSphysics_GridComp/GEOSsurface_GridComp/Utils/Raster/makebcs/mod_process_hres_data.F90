@@ -3088,8 +3088,8 @@ contains
 
     implicit none
 
-    integer(kind=4), parameter     :: nc_10=1200   ! # columns in 10deg-by-10deg MODIS input file
-    integer(kind=4), parameter     :: nr_10=1200   ! # rows    in 10deg-by-10deg MODIS input file
+    integer(selected_int_kind(9)), parameter     :: nc_10=1200   ! # columns in 10deg-by-10deg MODIS input file
+    integer(selected_int_kind(9)), parameter     :: nr_10=1200   ! # rows    in 10deg-by-10deg MODIS input file
 
     integer,           intent (in) :: nc_data,nr_data
     type (regrid_map), intent (in) :: rmap
@@ -3261,12 +3261,12 @@ contains
     character*200                   :: fname
     character*2                     :: vv,hh
     integer                         :: n,ncid,status
-    integer(kind=4),parameter       :: xdim = 1200, ydim = 1200
+    integer(selected_int_kind(9)),parameter       :: xdim = 1200, ydim = 1200
     real,dimension(xdim,ydim)       :: stch_snw_alb_tmp
     real,dimension(36,18,xdim,ydim) :: stch_snw_alb
     real                            :: sno_alb_cnt,sno_alb_sum
     integer                         :: vvtil_min,hhtil_min,vvtil_max,hhtil_max,hhtil,vvtil
-    integer(kind=4)                 :: imin,imax,jmin,jmax,varid1
+    integer(selected_int_kind(9))                 :: imin,imax,jmin,jmax,varid1
     logical                         :: file_exists
 
     ! the stitched MODIS albedo file
@@ -3421,7 +3421,7 @@ contains
          sand_top,clay_top,oc_top,sand_sub,clay_sub,oc_sub, grav_grid
     integer (kind=2), pointer, dimension (:,:) :: Raster, &  
          Raster1,Raster2,Raster3,Raster4,Raster5,Raster6
-    integer (kind=4), allocatable, dimension (:) :: tileid_vec,arrayA,arrayB          
+    integer(selected_int_kind(9)), allocatable, dimension (:) :: tileid_vec,arrayA,arrayB          
     integer (kind=2), allocatable, dimension (:) ::  &
          data_vec1, data_vec2,data_vec3, data_vec4,data_vec5, data_vec6
     REAL, ALLOCATABLE, dimension (:) :: soildepth, grav_vec,soc_vec,poc_vec  

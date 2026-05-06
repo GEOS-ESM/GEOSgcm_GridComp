@@ -127,9 +127,9 @@ module clm_varcon
   real(r8), parameter :: catomw = 12.011_r8 ! molar mass of C atoms (g/mol)
 
   real(r8) :: s_con(ngases,4)    ! Schmidt # calculation constants (spp, #)
-  data (s_con(1,i),i=1,4) /1898_r8, -110.1_r8, 2.834_r8, -0.02791_r8/ ! CH4
-  data (s_con(2,i),i=1,4) /1801_r8, -120.1_r8, 3.7818_r8, -0.047608_r8/ ! O2
-  data (s_con(3,i),i=1,4) /1911_r8, -113.7_r8, 2.967_r8, -0.02943_r8/ ! CO2
+  data (s_con(1,i),i=1,4) /1898.0_r8, -110.1_r8, 2.834_r8, -0.02791_r8/ ! CH4
+  data (s_con(2,i),i=1,4) /1801.0_r8, -120.1_r8, 3.7818_r8, -0.047608_r8/ ! O2
+  data (s_con(3,i),i=1,4) /1911.0_r8, -113.7_r8, 2.967_r8, -0.02943_r8/ ! CO2
 
   real(r8) :: d_con_w(ngases,3)    ! water diffusivity constants (spp, #)  (mult. by 10^-4)
   data (d_con_w(1,i),i=1,3) /0.9798_r8, 0.02986_r8, 0.0004381_r8/ ! CH4

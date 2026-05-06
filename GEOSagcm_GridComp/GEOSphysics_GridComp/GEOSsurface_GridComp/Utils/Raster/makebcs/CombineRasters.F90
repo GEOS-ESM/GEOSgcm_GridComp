@@ -85,7 +85,7 @@ program mkOverlaySimple
 
     if(I < 2 .or. I > 11) then
        print *, trim(Usage)
-       call exit(1)
+       stop 1
     end if
 
     nxt = 1
@@ -123,7 +123,7 @@ program mkOverlaySimple
           s_flag=.true.
        case default
           print *, trim(Usage)
-          call exit(1)
+          stop 1
        end select
 
        nxt = nxt + 1
@@ -231,14 +231,14 @@ program mkOverlaySimple
 
 ! The rasters cover the sphere in lat-lon 
 
-    dx  = 360._8/nx
-    dy  = 180._8/ny
-    d2r = PI/180._8
+    dx  = 360.d0/nx
+    dy  = 180.d0/ny
+    d2r = PI/180.d0
 
 ! sine and cosine of raster longitudes
 
     do i=1,nx
-       lons  = d2r*(-180._8 + (i-0.5_8)*dx)
+       lons  = d2r*(-180.d0 + (i-0.5d0)*dx)
        cc(i) = cos(lons)
        ss(i) = sin(lons)
     enddo
@@ -289,7 +289,7 @@ program mkOverlaySimple
     if(Verb) write (6, '(A)', advance='NO') ' Started Overlay'
 
     LATITUDES: do j=1,ny
-       lats = -90._8 + (j - 0.5_8)*dy
+       lats = -90.d0 + (j - 0.5d0)*dy
        da   = (sin(d2r*(lats+0.5*dy)) - &
                sin(d2r*(lats-0.5*dy))   )*(dx*d2r)
 
@@ -352,7 +352,7 @@ program mkOverlaySimple
                 print *, "Exceeded maxtiles = ", maxtiles," at j= ",  j, &
                           " ny=", ny,  " i=", i, " nx=", nx
                 print *, "Use -t option to increase."
-                call exit(1)
+                stop 1
              end if
 
              iTable(0 ,ip) = nint(Table2(1,Pix2))
@@ -480,7 +480,7 @@ program mkOverlaySimple
 ! All done
 
     if(Verb) print * , 'Terminated Normally'
-    call exit(0)
+    stop 0
 
 
   end program mkOverlaySimple
