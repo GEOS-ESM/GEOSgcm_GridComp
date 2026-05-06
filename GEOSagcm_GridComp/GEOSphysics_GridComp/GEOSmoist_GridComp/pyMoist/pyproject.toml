@@ -1,0 +1,80 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools >= 80", "setuptools-scm>=8"]
+
+[project]
+authors = [{name = "NASA", email = "florian.g.deconinck@nasa.gov"}]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Atmospheric Science",
+  "Private :: Do Not Upload",
+  "Natural Language :: English",
+  "Programming Language :: Python :: 3"
+]
+dependencies = [
+  "mkdocs-material",
+  "mkdocstrings[python]",
+  "mkdocs-exclude",
+  "pytest",
+  "pytest-subtests",
+  "coverage",
+  "flake8-pyproject",
+  "build"
+]
+description = "pyMoist is the NDSL version of NASA GMAO's GEOS Moist physics. Please contact maintainer if used outside of GEOS."
+license = "Apache-2.0"
+license-files = ["LICENSE.txt"]
+name = "pyMoist"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+urls = {Repository = "https://github.com/GEOS-ESM/GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist"}
+version = "2026.dev"
+
+[tool.coverage.run]
+branch = true
+omit = ["tests/*", "*gt_cache*", ".dacecache*", "__init__.py"]
+parallel = true
+source_pkgs = ["pyMoist"]
+
+[tool.flake8]
+exclude = ["docs"]
+extend-ignore = [
+  # Redundant with black formatter
+  "E302",  # Blank lines before function
+  "E501",  # Line too long
+  "E704",  # One statement per line
+  "W293",  # Blank line contains whitespace
+  "W503",  # Linebreak before binary operator
+  # Clashes with NDSL/stencil syntax
+  "E203",  # Space before ":", e.g. `field[1, :]`
+  "F841",  # Local variable assigned but unused
+  # other
+  "B019"  # We'd like to keep using functools.lru_cache
+]
+max-line-length = 110
+
+[tool.isort]
+default_section = "THIRDPARTY"
+known_third_party = "f90nml,pytest,xarray,numpy,mpi4py,ndsl,pyGEOSBridge"
+lines_after_imports = 2
+profile = "black"
+sections = "FUTURE,STDLIB,THIRDPARTY,FIRSTPARTY,LOCALFOLDER"
+
+[tool.mypy]
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+# TODO: understand what's wrong with imports and fix
+ignore_missing_imports = true
+strict_equality = true
+strict_optional = true
+warn_redundant_casts = true
+warn_unreachable = true
+warn_unused_configs = true
+warn_unused_ignores = true
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["pyMoist", "pyMoist.*"]
