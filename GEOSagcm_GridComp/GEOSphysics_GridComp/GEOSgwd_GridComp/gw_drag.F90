@@ -153,6 +153,7 @@ contains
     real    :: cw (-pgwv:pgwv)      ! wave phase speeds
     real    :: cw4(-pgwv:pgwv)      ! wave phase speeds
 
+    
 !-----------------------------------------------------------------------------
 
 ! Assign wave phase speeds
@@ -292,8 +293,8 @@ contains
 
 ! Add the orographic tendencies to the spectrum tendencies
 ! Compute the temperature tendency from energy conservation (includes spectrum).
-
-          do k = 1, pver
+          
+          do k = 1, pver              
              dudt_org_dev(i,k) =                     utgw(k)
              dvdt_org_dev(i,k) =                     vtgw(k)
              dtdt_org_dev(i,k) =                     ttgw(k)
@@ -308,7 +309,24 @@ contains
        end if
 
     end do I_LOOP
-    rc = 0
+    
+    !-----------------------------------------------------------------------
+    ! GEOS_MLT: Zero out gravity wave drag tendencies above model top (top 7 levels)
+    ! Levels 1-7 (interfaces 0-7) are above native model top (~80 km / 0.01 hPa
+    ! *** Removed due to zero difference in GWD when included ***
+    !-----------------------------------------------------------------------
+    !do i = 1, pcols
+    !   do k = 1, 7
+    !      dudt_gwd_dev(i,k) = 0.
+    !      dvdt_gwd_dev(i,k) = 0.
+    !      dtdt_gwd_dev(i,k) = 0.
+    !      dudt_org_dev(i,k) = 0.
+    !      dvdt_org_dev(i,k) = 0.
+    !      dtdt_org_dev(i,k) = 0.
+    !   end do
+    !end do   
+    
+    rc = 0    
 
     return
   end subroutine gw_intr
@@ -489,14 +507,22 @@ contains
     end if
 
 ! Project the local wind at midpoints onto the source wind.
-    do k = 1, pver
+    
+    !do k = 1, pver
+    do k = 8, pver  ! GEOS_MLT
        ubm(k) = u(i,k) * xv + v(i,k) * yv
     end do
 
 ! Compute the interface wind projection by averaging the midpoint winds.
 ! Use the top level wind at the top interface.
-    ubi(0) = ubm(1)
-    do k = 1, pver
+    
+    !ubi(0) = ubm(1)
+    !do k = 1, pver
+    !   ubi(k) = ubm(k)
+    !end do
+
+    ubi(0) = ubm(8)             ! GEOS_MLT 
+    do k = 8, pver
        ubi(k) = ubm(k)
     end do
 
@@ -647,13 +673,14 @@ contains
     end if
 
 ! Project the local wind at midpoints onto the source wind.
-    do k = 1, pver
+    !do k = 1, pver
+    do k = 8, pver
        ubm(k) = u(i,k) * xv + v(i,k) * yv
     end do
 
 ! Compute the bottom interface wind projection using the midpoint winds.
     ubi(0) = ubm(1)
-    do k = 1, pver
+    do k = 8, pver
        ubi(k) = ubm(k)
     end do
 
@@ -862,7 +889,7 @@ contains
 
 ! Loop from bottom to top to get stress profiles
     do l = -ngwv, ngwv
-       do k = pver-1, ktop, -1
+       do k = pver-1, ktop, -1   
           if (k <= kbot-1) then
              d = dback(k)
              ubmc = ubi(k) - c(l)
@@ -1074,6 +1101,7 @@ contains
 !-----------------------------------------------------------------------
     tau0x = tau(0,kbot) * xv * effgw*utfac
     tau0y = tau(0,kbot) * yv * effgw*utfac
+
 
     return
   end subroutine gw_drag_prof

@@ -254,10 +254,27 @@ contains
      dtdt_gwd_dev = dtdt_gwd_dev + dtdt_org_dev
      endif
 
+     ! GEOS_MLT: Zero out gravity wave drag tendencies above model top
+     ! k=1 is at model top, k=pver is at surface
+     ! Top 7 levels (k=1 to k=7) are above ~80 km / 0.01 hPa
+     
+     do k = 1, 7
+        dudt_gwd_dev(:,k) = 0.
+        dvdt_gwd_dev(:,k) = 0.
+        dtdt_gwd_dev(:,k) = 0.
+        dudt_org_dev(:,k) = 0.
+        dvdt_org_dev(:,k) = 0.
+        dtdt_org_dev(:,k) = 0.
+     end do
+
+
      taugwdx_dev(1:pcols)         = 0.0  !zonal      gravity wave surface    stress
      taugwdy_dev(1:pcols)         = 0.0  !meridional gravity wave surface    stress
      taubkgx_dev(1:pcols)         = 0.0  !zonal      gravity wave background stress
      taubkgy_dev(1:pcols)         = 0.0  !meridional gravity wave background stress
+
+
+
 
     return
   end subroutine gw_intr_ncar
