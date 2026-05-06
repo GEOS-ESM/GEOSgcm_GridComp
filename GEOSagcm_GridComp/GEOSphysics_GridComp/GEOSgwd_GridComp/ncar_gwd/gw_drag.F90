@@ -254,17 +254,21 @@ contains
      dtdt_gwd_dev = dtdt_gwd_dev + dtdt_org_dev
      endif
 
-     ! GEOS_MLT: Zero out gravity wave drag tendencies above model top
-     ! k=1 is at model top, k=pver is at surface
-     ! Top 7 levels (k=1 to k=7) are above ~80 km / 0.01 hPa
-     
-     do k = 1, 7
-        dudt_gwd_dev(:,k) = 0.
-        dvdt_gwd_dev(:,k) = 0.
-        dtdt_gwd_dev(:,k) = 0.
-        dudt_org_dev(:,k) = 0.
-        dvdt_org_dev(:,k) = 0.
-        dtdt_org_dev(:,k) = 0.
+     ! GEOS_MLT: Zero out gravity wave drag tendencies above 0.01 hPa.
+     ! k=1 is at model top, k=pver is near the surface.
+     ! pmid_dev is layer-midpoint pressure in Pa; 0.01 hPa = 1 Pa.
+
+     do k = 1, pver
+        do i = 1, pcols
+           if (pmid_dev(i,k) < 1.0) then
+              dudt_gwd_dev(i,k) = 0.0
+              dvdt_gwd_dev(i,k) = 0.0
+              dtdt_gwd_dev(i,k) = 0.0
+              dudt_org_dev(i,k) = 0.0
+              dvdt_org_dev(i,k) = 0.0
+              dtdt_org_dev(i,k) = 0.0
+           end if
+        end do
      end do
 
 
