@@ -36,7 +36,7 @@
 
 module gfdl2_cloud_microphys_mod
 
-      use mpp_mod, only: mpp_pe, mpp_root_pe
+    !  use mpp_mod, only: mpp_pe, mpp_root_pe
     ! use mpp_mod, only: stdlog, mpp_pe, mpp_root_pe, mpp_clock_id, &
     ! mpp_clock_begin, mpp_clock_end, clock_routine, &
     ! input_nml_file
@@ -46,10 +46,11 @@ module gfdl2_cloud_microphys_mod
     ! use fms_mod, only: write_version_number, open_namelist_file, &
     ! check_nml_error, file_exist, close_file
 
-    use fms_mod,             only: write_version_number, open_namelist_file, &
-                                   check_nml_error, close_file, file_exist,  &
-                                   fms_init
+    !use fms_mod,             only: write_version_number, open_namelist_file, &
+    !                               check_nml_error, close_file, file_exist,  &
+    !                               fms_init
     use GEOSmoist_Process_Library, only: sigma, ice_fraction
+    use MAPL, only: MAPL_AM_I_ROOT
 
     implicit none
 
@@ -405,8 +406,6 @@ subroutine gfdl_cloud_microphys_driver (qv, ql, qr, qi, qs, qg, qa, qn,   &
     je = jje - jjs + 1
     ke = kke - kks + 1
 
-    ! call mpp_clock_begin (gfdl_mp_clock)
-
     ! -----------------------------------------------------------------------
     ! define heat capacity of dry air and water vapor based on hydrostatical property
     ! -----------------------------------------------------------------------
@@ -498,34 +497,6 @@ subroutine gfdl_cloud_microphys_driver (qv, ql, qr, qi, qs, qg, qa, qn,   &
         enddo
     endif
 
-    ! -----------------------------------------------------------------------
-    ! diagnostic output
-    ! -----------------------------------------------------------------------
-
-    ! if (id_vtr > 0) then
-    ! used = send_data (id_vtr, vt_r, time, is_in = iis, js_in = jjs)
-    ! endif
-
-    ! if (id_vts > 0) then
-    ! used = send_data (id_vts, vt_s, time, is_in = iis, js_in = jjs)
-    ! endif
-
-    ! if (id_vtg > 0) then
-    ! used = send_data (id_vtg, vt_g, time, is_in = iis, js_in = jjs)
-    ! endif
-
-    ! if (id_vti > 0) then
-    ! used = send_data (id_vti, vt_i, time, is_in = iis, js_in = jjs)
-    ! endif
-
-    ! if (id_droplets > 0) then
-    ! used = send_data (id_droplets, qn2, time, is_in = iis, js_in = jjs)
-    ! endif
-
-    ! if (id_var > 0) then
-    ! used = send_data (id_var, w_var, time, is_in = iis, js_in = jjs)
-    ! endif
-
     ! convert to mm / day
 
     convt = 86400. * rdt * rgrav
@@ -538,74 +509,6 @@ subroutine gfdl_cloud_microphys_driver (qv, ql, qr, qi, qs, qg, qa, qn,   &
             prec_mp (i, j) = rain (i, j) + snow (i, j) + ice (i, j) + graupel (i, j)
         enddo
     enddo
-
-    ! if (id_cond > 0) then
-    ! do j = js, je
-    ! do i = is, ie
-    ! cond (i, j) = cond (i, j) * rgrav
-    ! enddo
-    ! enddo
-    ! used = send_data (id_cond, cond, time, is_in = iis, js_in = jjs)
-    ! endif
-
-    ! if (id_snow > 0) then
-    ! used = send_data (id_snow, snow, time, iis, jjs)
-    ! used = send_data (id_snow, snow, time, is_in = iis, js_in = jjs)
-    ! if (mp_print .and. seconds == 0) then
-    ! tot_prec = g_sum (snow, is, ie, js, je, area, 1)
-    ! if (root_proc) write (*, *) 'mean snow = ', tot_prec
-    ! endif
-    ! endif
-    !
-    ! if (id_graupel > 0) then
-    ! used = send_data (id_graupel, graupel, time, iis, jjs)
-    ! used = send_data (id_graupel, graupel, time, is_in = iis, js_in = jjs)
-    ! if (mp_print .and. seconds == 0) then
-    ! tot_prec = g_sum (graupel, is, ie, js, je, area, 1)
-    ! if (root_proc) write (*, *) 'mean graupel = ', tot_prec
-    ! endif
-    ! endif
-    !
-    ! if (id_ice > 0) then
-    ! used = send_data (id_ice, ice, time, iis, jjs)
-    ! used = send_data (id_ice, ice, time, is_in = iis, js_in = jjs)
-    ! if (mp_print .and. seconds == 0) then
-    ! tot_prec = g_sum (ice, is, ie, js, je, area, 1)
-    ! if (root_proc) write (*, *) 'mean ice_mp = ', tot_prec
-    ! endif
-    ! endif
-    !
-    ! if (id_rain > 0) then
-    ! used = send_data (id_rain, rain, time, iis, jjs)
-    ! used = send_data (id_rain, rain, time, is_in = iis, js_in = jjs)
-    ! if (mp_print .and. seconds == 0) then
-    ! tot_prec = g_sum (rain, is, ie, js, je, area, 1)
-    ! if (root_proc) write (*, *) 'mean rain = ', tot_prec
-    ! endif
-    ! endif
-    !
-    ! if (id_rh > 0) then !not used?
-    ! used = send_data (id_rh, rh0, time, iis, jjs)
-    ! used = send_data (id_rh, rh0, time, is_in = iis, js_in = jjs)
-    ! endif
-    !
-    !
-    ! if (id_prec > 0) then
-    ! used = send_data (id_prec, prec_mp, time, iis, jjs)
-    ! used = send_data (id_prec, prec_mp, time, is_in = iis, js_in = jjs)
-    ! endif
-
-    ! if (mp_print) then
-    ! prec1 (:, :) = prec1 (:, :) + prec_mp (:, :)
-    ! if (seconds == 0) then
-    ! prec1 (:, :) = prec1 (:, :) * dt_in / 86400.
-    ! tot_prec = g_sum (prec1, is, ie, js, je, area, 1)
-    ! if (root_proc) write (*, *) 'daily prec_mp = ', tot_prec
-    ! prec1 (:, :) = 0.
-    ! endif
-    ! endif
-
-    ! call mpp_clock_end (gfdl_mp_clock)
 
 end subroutine gfdl_cloud_microphys_driver
 
@@ -3363,26 +3266,13 @@ end subroutine setupm
 !! cloud microphysics.
 ! =======================================================================
 
-subroutine gfdl_cloud_microphys_init (comm)
+subroutine gfdl_cloud_microphys_init ()
     implicit none
-    integer, intent(in) :: comm
     integer :: nlunit
     character (len = 64) :: fn_nml = 'input.nml'
 
     integer :: ios, ierr
     logical :: exists
-
-    ! integer, intent (in) :: id, jd, kd
-    ! integer, intent (in) :: axes (4)
-    ! type (time_type), intent (in) :: time
-
-    ! integer :: unit, io, ierr, k, logunit
-    ! logical :: flag
-    ! real :: tmp, q1, q2
-
-    call fms_init(comm)
-
-    ! root_proc = (mpp_pe () .eq.mpp_root_pe ())
 
 #ifdef INTERNAL_FILE_NML
     read (input_nml_file, nml = gfdl_cloud_microphysics_nml)
@@ -3392,87 +3282,34 @@ subroutine gfdl_cloud_microphys_init (comm)
         write (6, *) 'gfdl - mp :: namelist file: ', trim (fn_nml), ' does not exist'
         stop
     else
-        nlunit=open_namelist_file()
-        rewind (nlunit)
+        !nlunit=open_namelist_file()
+        !rewind (nlunit)
+        open(NEWUNIT=nlunit,file=trim(fn_nml), form='formatted',access='sequential',iostat=ios)
+        if(ios /= 0) stop 'open namelist file gfdl_cloud_microphys_init failed, bailing out...'
+        rewind (nlunit, iostat=ios)
+        if(ios /= 0) stop 'rewind namelist file gfdl_cloud_microphys_init failed, bailing out...'
      ! Read Main namelist
         read (nlunit,gfdl_cloud_microphysics_nml,iostat=ios)
-        ierr = check_nml_error(ios,'gfdl_cloud_microphysics_nml')
-        call close_file(nlunit)
+        if(ios /= 0) stop 'read namelist gfdl_cloud_microphys_init failed, bailing out...'
+        !ierr = check_nml_error(ios,'gfdl_cloud_microphysics_nml')
+        !call close_file(nlunit)
+        close(nlunit, iostat=ios)
+        if(ios /= 0) stop 'close namelist file gfdl_cloud_microphys_init failed, bailing out...'
     endif
 #endif
 
-    if (mpp_pe() .EQ. mpp_root_pe()) then
+    if (MAPL_AM_I_ROOT()) then
         write (*, *) " ================================================================== "
         write (*, *) "gfdl_cloud_microphys_mod"
         write (*, nml = gfdl_cloud_microphysics_nml)
         write (*, *) " ================================================================== "
     endif
 
-    ! write version number and namelist to log file
-   !if (me == root_proc) then
-   !    write (logunit, *) " ================================================================== "
-   !    write (logunit, *) "gfdl_cloud_microphys_mod"
-   !    write (logunit, nml = gfdl_cloud_microphysics_nml)
-   !endif
-
     if (do_setup) then
         call setup_con
         call setupm
         do_setup = .false.
     endif
-
-    ! if (root_proc) write (logunit, nml = gfdl_cloud_microphys_nml)
-    !
-    ! id_vtr = register_diag_field (mod_name, 'vt_r', axes (1:3), time, &
-    ! 'rain fall speed', 'm / s', missing_value = missing_value)
-    ! id_vts = register_diag_field (mod_name, 'vt_s', axes (1:3), time, &
-    ! 'snow fall speed', 'm / s', missing_value = missing_value)
-    ! id_vtg = register_diag_field (mod_name, 'vt_g', axes (1:3), time, &
-    ! 'graupel fall speed', 'm / s', missing_value = missing_value)
-    ! id_vti = register_diag_field (mod_name, 'vt_i', axes (1:3), time, &
-    ! 'ice fall speed', 'm / s', missing_value = missing_value)
-
-    ! id_droplets = register_diag_field (mod_name, 'droplets', axes (1:3), time, &
-    ! 'droplet number concentration', '# / m3', missing_value = missing_value)
-    ! id_rh = register_diag_field (mod_name, 'rh_lin', axes (1:2), time, &
-    ! 'relative humidity', 'n / a', missing_value = missing_value)
-
-    ! id_rain = register_diag_field (mod_name, 'rain_lin', axes (1:2), time, &
-    ! 'rain_lin', 'mm / day', missing_value = missing_value)
-    ! id_snow = register_diag_field (mod_name, 'snow_lin', axes (1:2), time, &
-    ! 'snow_lin', 'mm / day', missing_value = missing_value)
-    ! id_graupel = register_diag_field (mod_name, 'graupel_lin', axes (1:2), time, &
-    ! 'graupel_lin', 'mm / day', missing_value = missing_value)
-    ! id_ice = register_diag_field (mod_name, 'ice_lin', axes (1:2), time, &
-    ! 'ice_lin', 'mm / day', missing_value = missing_value)
-    ! id_prec = register_diag_field (mod_name, 'prec_lin', axes (1:2), time, &
-    ! 'prec_lin', 'mm / day', missing_value = missing_value)
-
-    ! if (root_proc) write (*, *) 'prec_lin diagnostics initialized.', id_prec
-
-    ! id_cond = register_diag_field (mod_name, 'cond_lin', axes (1:2), time, &
-    ! 'total condensate', 'kg / m ** 2', missing_value = missing_value)
-    ! id_var = register_diag_field (mod_name, 'var_lin', axes (1:2), time, &
-    ! 'subgrid variance', 'n / a', missing_value = missing_value)
-
-    ! call qsmith_init
-
-    ! testing the water vapor tables
-
-    ! if (mp_debug .and. root_proc) then
-    ! write (*, *) 'testing water vapor tables in gfdl_cloud_microphys'
-    ! tmp = tice - 90.
-    ! do k = 1, 25
-    ! q1 = wqsat_moist (tmp, 0., 1.e5)
-    ! q2 = qs1d_m (tmp, 0., 1.e5)
-    ! write (*, *) nint (tmp - tice), q1, q2, 'dq = ', q1 - q2
-    ! tmp = tmp + 5.
-    ! enddo
-    ! endif
-
-    ! if (root_proc) write (*, *) 'gfdl_cloud_micrphys diagnostics initialized.'
-
-    ! gfdl_mp_clock = mpp_clock_id ('gfdl_cloud_microphys', grain = clock_routine)
 
     module_is_initialized = .true.
 
@@ -3509,8 +3346,6 @@ end subroutine gfdl_cloud_microphys_end
 subroutine setup_con
 
     implicit none
-
-    ! root_proc = (mpp_pe () .eq.mpp_root_pe ())
 
     rgrav = 1. / grav
 
@@ -3604,15 +3439,6 @@ subroutine qsmith_init
     integer :: i
 
     if (.not. tables_are_initialized) then
-
-        ! root_proc = (mpp_pe () .eq. mpp_root_pe ())
-        ! if (root_proc) print *, ' gfdl mp: initializing qs tables'
-
-        ! debug code
-        ! print *, mpp_pe (), allocated (table), allocated (table2), &
-        ! allocated (table3), allocated (tablew), allocated (des), &
-        ! allocated (des2), allocated (des3), allocated (desw)
-        ! end debug code
 
         ! generate es table (dt = 0.1 deg. c)
 
@@ -4453,52 +4279,6 @@ subroutine neg_adj (ktop, kbot, pt, dp, qv, ql, qr, qi, qs, qg)
     endif
 
 end subroutine neg_adj
-
-! =======================================================================
-! compute global sum
-!>@brief quick local sum algorithm
-! =======================================================================
-
-!real function g_sum (p, ifirst, ilast, jfirst, jlast, area, mode)
-!
-! use mpp_mod, only: mpp_sum
-!
-! implicit none
-!
-! integer, intent (in) :: ifirst, ilast, jfirst, jlast
-! integer, intent (in) :: mode ! if == 1 divided by area
-!
-! real, intent (in), dimension (ifirst:ilast, jfirst:jlast) :: p, area
-!
-! integer :: i, j
-!
-! real :: gsum
-!
-! if (global_area < 0.) then
-! global_area = 0.
-! do j = jfirst, jlast
-! do i = ifirst, ilast
-! global_area = global_area + area (i, j)
-! enddo
-! enddo
-! call mpp_sum (global_area)
-! endif
-!
-! gsum = 0.
-! do j = jfirst, jlast
-! do i = ifirst, ilast
-! gsum = gsum + p (i, j) * area (i, j)
-! enddo
-! enddo
-! call mpp_sum (gsum)
-!
-! if (mode == 1) then
-! g_sum = gsum / global_area
-! else
-! g_sum = gsum
-! endif
-!
-!end function g_sum
 
 ! ==========================================================================
 !>@brief The subroutine 'interpolate_z' interpolates to a prescribed height.
