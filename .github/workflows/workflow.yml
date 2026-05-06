@@ -39,6 +39,7 @@ jobs:
 
   spack_build:
     strategy:
+      fail-fast: false
       matrix:
         fixture-repo: [GEOS-ESM/GEOSgcm, GEOS-ESM/GEOSldas]
         include:
