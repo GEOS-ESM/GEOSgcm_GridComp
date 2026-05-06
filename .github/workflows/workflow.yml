@@ -28,14 +28,16 @@ jobs:
           # Set run-mepo-develop: false for GEOSldas builds
           - fixture-repo: GEOS-ESM/GEOSldas
             run-mepo-develop: false
-          # GEOSgcm uses the default (true), so no need to specify
+          # GEOSgcm uses run-mepo-develop: true
+          - fixture-repo: GEOS-ESM/GEOSgcm
+            run-mepo-develop: true
 
     uses: GEOS-ESM/CI-workflows/.github/workflows/geosgcm_build_tests.yml@project/geosgcm
     with:
       compiler: ${{ matrix.compiler }}
       cmake-build-type: ${{ matrix.build-type }}
       fixture-repo: ${{ matrix.fixture-repo }}
-      run-mepo-develop: ${{ fromJSON(matrix.run-mepo-develop == '' && 'true' || matrix.run-mepo-develop) }}
+      run-mepo-develop: ${{ matrix.run-mepo-develop }}
 
   spack_build:
     strategy:
@@ -46,12 +48,14 @@ jobs:
           # Set run-mepo-develop: false for GEOSldas builds
           - fixture-repo: GEOS-ESM/GEOSldas
             run-mepo-develop: false
-          # GEOSgcm uses the default (true), so no need to specify
+          # GEOSgcm uses run-mepo-develop: true
+          - fixture-repo: GEOS-ESM/GEOSgcm
+            run-mepo-develop: true
     uses: GEOS-ESM/CI-workflows/.github/workflows/spack_gcc_build.yml@project/geosgcm
     secrets:
       BUILDCACHE_USERNAME: ${{ secrets.BUILDCACHE_USERNAME }}
       BUILDCACHE_TOKEN: ${{ secrets.BUILDCACHE_TOKEN }}
     with:
       fixture-repo: ${{ matrix.fixture-repo }}
-      run-mepo-develop: ${{ fromJSON(matrix.run-mepo-develop == '' && 'true' || matrix.run-mepo-develop) }}
+      run-mepo-develop: ${{ matrix.run-mepo-develop }}
 
