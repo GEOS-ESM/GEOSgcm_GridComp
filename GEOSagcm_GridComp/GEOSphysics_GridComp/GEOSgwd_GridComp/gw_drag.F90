@@ -310,22 +310,6 @@ contains
 
     end do I_LOOP
     
-    !-----------------------------------------------------------------------
-    ! GEOS_MLT: Zero out gravity wave drag tendencies above model top (top 7 levels)
-    ! Levels 1-7 (interfaces 0-7) are above native model top (~80 km / 0.01 hPa
-    ! *** Removed due to zero difference in GWD when included ***
-    !-----------------------------------------------------------------------
-    !do i = 1, pcols
-    !   do k = 1, 7
-    !      dudt_gwd_dev(i,k) = 0.
-    !      dvdt_gwd_dev(i,k) = 0.
-    !      dtdt_gwd_dev(i,k) = 0.
-    !      dudt_org_dev(i,k) = 0.
-    !      dvdt_org_dev(i,k) = 0.
-    !      dtdt_org_dev(i,k) = 0.
-    !   end do
-    !end do   
-    
     rc = 0    
 
     return
@@ -508,22 +492,26 @@ contains
 
 ! Project the local wind at midpoints onto the source wind.
     
-    !do k = 1, pver
-    do k = 8, pver  ! GEOS_MLT
-       ubm(k) = u(i,k) * xv + v(i,k) * yv
+    do k = 1, pver
+       if (pm(i,k) >= 1.0) then ! GEOS_MLT
+          ubm(k) = u(i,k) * xv + v(i,k) * yv
+       end if
     end do
 
 ! Compute the interface wind projection by averaging the midpoint winds.
 ! Use the top level wind at the top interface.
     
-    !ubi(0) = ubm(1)
-    !do k = 1, pver
-    !   ubi(k) = ubm(k)
-    !end do
+    do k = 1, pver
+       if (pm(i,k) >= 1.0) then ! GEOS_MLT
+          ubi(0) = ubm(k)
+          exit
+       end if
+    end do
 
-    ubi(0) = ubm(8)             ! GEOS_MLT 
-    do k = 8, pver
-       ubi(k) = ubm(k)
+    do k = 1, pver
+       if (pm(i,k) >= 1.0) then ! GEOS_MLT
+          ubi(k) = ubm(k)
+       end if
     end do
 
 ! Determine the orographic c=0 source term following McFarlane (1987).
