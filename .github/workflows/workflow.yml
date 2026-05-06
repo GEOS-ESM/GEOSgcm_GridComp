@@ -43,13 +43,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Still issues with spack and GEOSldas, so only test with GEOSgcm for now
-        #fixture-repo: [GEOS-ESM/GEOSgcm, GEOS-ESM/GEOSldas]
         fixture-repo: [GEOS-ESM/GEOSgcm]
         include:
-          # Set run-mepo-develop: false for GEOSldas builds
-          - fixture-repo: GEOS-ESM/GEOSldas
-            run-mepo-develop: false
           # GEOSgcm uses run-mepo-develop: true
           - fixture-repo: GEOS-ESM/GEOSgcm
             run-mepo-develop: true
