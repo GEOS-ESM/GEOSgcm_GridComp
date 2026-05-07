@@ -31,7 +31,6 @@ endforeach ()
 # copy to the build directory
 set(SCRIPT_FILES
   create_river_input.py
-  get_latloni.py
   process_lake_data.py
   get_dam_data.py
   routing_model_constants.py
