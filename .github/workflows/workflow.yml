@@ -37,6 +37,7 @@ jobs:
     with:
       compiler: ${{ matrix.compiler }}
       cmake-build-type: ${{ matrix.build-type }}
+      fixture-repo: ${{ matrix.fixture-repo }}
       fixture-ref: release-v11/MAPL-v3
       run-mepo-develop: ${{ matrix.run-mepo-develop }}
 
