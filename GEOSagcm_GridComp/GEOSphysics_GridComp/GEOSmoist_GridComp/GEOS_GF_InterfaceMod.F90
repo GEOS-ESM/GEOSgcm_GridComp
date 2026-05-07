@@ -74,21 +74,23 @@ subroutine GF_Setup (GC, CF, RC)
          DEFAULT    = 0.0,   RC=STATUS  )
          VERIFY_(STATUS)
 
-    call MAPL_AddInternalSpec(GC,                                &
+   call MAPL_AddInternalSpec(GC,                                &
          SHORT_NAME = 'DSL__GF2020_LONS',                       &
-         LONG_NAME  = 'DSL_longitude',                           &
+         LONG_NAME  = 'DSL_longitude',                          &
          UNITS      = 'radians',                                &
          DIMS       = MAPL_DimsHorzOnly,                        &
-         VLOCATION  = MAPL_VLocationNone,             RC=STATUS  )
-    VERIFY_(STATUS)
+         VLOCATION  = MAPL_VLocationNone,                       &
+         RESTART    = MAPL_RestartSkip,              RC=STATUS  )
+   VERIFY_(STATUS)
 
-    call MAPL_AddInternalSpec(GC,                                &
+   call MAPL_AddInternalSpec(GC,                                &
          SHORT_NAME = 'DSL__GF2020_LATS',                       &
          LONG_NAME  = 'DSL_longitude',                          &
          UNITS      = 'radians',                                &
          DIMS       = MAPL_DimsHorzOnly,                        &
-         VLOCATION  = MAPL_VLocationNone,             RC=STATUS  )
-    VERIFY_(STATUS)
+         VLOCATION  = MAPL_VLocationNone,                       &
+         RESTART    = MAPL_RestartSkip,              RC=STATUS  )
+   VERIFY_(STATUS)
 
     call MAPL_TimerAdd(GC, name="--GF", RC=STATUS)
     VERIFY_(STATUS)
@@ -141,7 +143,7 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
       call MAPL_GetResource(MAPL, GF_ENV_SETTING            , 'GF_ENV_SETTING:'        ,default= 'DYNAMICS', RC=STATUS); VERIFY_(STATUS)
       if (trim(GF_ENV_SETTING)=='CURRENT') then
          call MAPL_ConfigSetAttribute(CF, 0, 'DSL__GF_ENV_SETTING:', RC=STATUS); VERIFY_(STATUS)
-      elseif (trim(GF_ENV_SETTING)=='DYNAMICS') then 
+      elseif (trim(GF_ENV_SETTING)=='DYNAMICS') then
          call MAPL_ConfigSetAttribute(CF, 1, 'DSL__GF_ENV_SETTING:', RC=STATUS); VERIFY_(STATUS)
       endif
       call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.convection.GF2020_interface", MAPL, IMPORT, EXPORT )
@@ -172,7 +174,7 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
         call MAPL_GetResource(MAPL, SGS_W_TIMESCALE           , 'SGS_W_TIMESCALE:'       ,default= SGS_W_TIMESCALE, RC=STATUS );VERIFY_(STATUS)
       else
         call MAPL_GetResource(MAPL, ENTRVERSION               , 'ENTRVERSION:'           ,default= 1,    RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 0.1e-4,RC=STATUS );VERIFY_(STATUS)  
+        call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 0.1e-4,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 1.0e-4,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)        , 'ENTR_MD:'               ,default= 9.0e-4,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)       , 'ENTR_SH:'               ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
@@ -406,7 +408,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:  ) :: CNV_TOPP_DP, CNV_TOPP_MD, CNV_TOPP_SH
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
-    
+
     ! DSL fields
     real, pointer, dimension(:,:) :: DSL__GF2020_LONS, DSL__GF2020_LATS
 
@@ -741,7 +743,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       if(associated(PTR3D)) PTR3D = CNV_PRC3 / GF_DT
 
     endif ! USE_PYMOIST_GF2020
-   
+
     call MAPL_TimerOff (MAPL,"--GF")
 
     endif
@@ -754,9 +756,9 @@ subroutine GF_Finalize(gc, import, export, rc)
   type(ESMF_State),    intent(inout) :: IMPORT ! Import state
   type(ESMF_State),    intent(inout) :: EXPORT ! Export state
   integer, optional,   intent(  out) :: RC     ! Error code
-  
+
   type (MAPL_MetaComp), pointer   :: MAPL
-  
+
   ! Get my internal MAPL_Generic state
   !-----------------------------------
   call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
