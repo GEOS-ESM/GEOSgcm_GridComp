@@ -661,15 +661,24 @@ contains
     end if
 
 ! Project the local wind at midpoints onto the source wind.
-    !do k = 1, pver
-    do k = 8, pver
-       ubm(k) = u(i,k) * xv + v(i,k) * yv
+    do k = 1, pver
+       if (pm(i,k) >= 1.0) then ! GEOS_MLT
+          ubm(k) = u(i,k) * xv + v(i,k) * yv
+       end if
     end do
 
 ! Compute the bottom interface wind projection using the midpoint winds.
-    ubi(0) = ubm(1)
-    do k = 8, pver
-       ubi(k) = ubm(k)
+    do k = 1, pver
+       if (pm(i,k) >= 1.0) then ! GEOS_MLT 
+          ubi(0) = ubm(k)
+          exit
+       endif
+    end do
+
+    do k = 1, pver
+       if (pm(i,k) >= 1.0) then ! GEOS_MLT
+          ubi(k) = ubm(k)
+       end if
     end do
 
 !-----------------------------------------------------------------------
