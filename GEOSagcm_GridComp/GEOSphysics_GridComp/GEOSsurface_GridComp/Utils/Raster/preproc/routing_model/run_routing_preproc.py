@@ -24,14 +24,11 @@ def main():
 
     file_pfafrout       = file_path1 + "/make_bcs_inputs/land/topo/v1/SRTM-TopoData/Pfafcatch-routing.dat"
     file_pfafmap        = file_path1 + "/make_bcs_inputs/land/topo/v1/SRTM-TopoData/SRTM_PfafData.nc"
-    file_rst            = file_path1 + "/fvInput/ExtData/esm/tiles/v12/geometry/EASEv2_M09/rst/EASEv2_M09_3856x1624.rst"
-    file_catchdef       = file_path1 + "/fvInput/ExtData/esm/tiles/v12/land/EASEv2_M09/clsm/catchment.def"
+    file_EASE_pfaf_tile = file_path2 + "/EASEv2_M09-Pfafstetter.nc4"
 
     file_lat1m          = file_path2 + "/lat_1m.txt"
-    file_lon1m          = file_path2 + "/lon_1m.txt"
-    file_lat            = file_path2 + "/lat_SMAPL4.txt"
-    file_lon            = file_path2 + "/lon_SMAPL4.txt"    
-    file_clmtrunf       = file_path2 + "/SMAPL4_OL7000_runoff_mean_2016_2023.nc"
+    file_lon1m          = file_path2 + "/lon_1m.txt"   
+    file_clmtrunf       = file_path2 + "/SMAPL4_NRv11p4_M09_runoff_mean_2001_2023.nc"
     file_ldn            = file_path2 + "/hyd_glo_ldn_15s.nc"
     file_hyelev         = file_path2 + "/hyd_glo_dem_15s.nc"
     file_vel            = file_path2 + "/velocity.txt"
@@ -80,15 +77,8 @@ def main():
     # Compile and run Pfafcatch routing generator
     run(["./get_Pfaf_file.x", file_pfafrout])
 
-    # Generate latitude/longitude indices and cell areas
-    run([
-        "python3", "get_latloni.py",
-        file_lat, file_lon,        
-        file_lat1m, file_lon1m,
-    ])
-
     # Compute number of sub-catchments
-    run([f"./get_num_sub_catchment.x", file_pfafmap, file_rst, file_catchdef])  
+    run([f"./get_num_sub_catchment.x", file_EASE_pfaf_tile])  
 
     # Compute climatological runoff
     run(["./get_Qr_clmt.x", file_clmtrunf])

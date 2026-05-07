@@ -20,7 +20,7 @@ def _get_constant_from_module(my_module: ModuleType) -> list[str]:
     for i in imports:
         module_var.remove(i)
     # Remove non testable constants
-    non_testable_const = ["MAPL_UNDEF", "NCNST", "N_MODES", "FLOAT_TINY"]
+    non_testable_const = ["MAPL_UNDEF", "NCNST", "FLOAT_TINY"]
     for nc in non_testable_const:
         module_var.remove(nc)
     return module_var
