@@ -217,6 +217,14 @@ class TranslateGFDL_1M_Finalize(TranslateFortranData2Py):
             local_mass=locals_.mass,
             local_u_unmodified=locals_.u_unmodified,
             local_v_unmodified=locals_.v_unmodified,
+            simulated_reflectivity=None,
+            maximum_composite_reflectivity=None,
+            base_1km_agl_reflectivity=None,
+            echo_top_reflectivity=None,
+            minus_10c_reflectivity=None,
+            mass_fraction_suspended_rain=None,
+            mass_fraction_suspended_snow=None,
+            mass_fraction_suspended_graupel=None,
         )
 
         return {

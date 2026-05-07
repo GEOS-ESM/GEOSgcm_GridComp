@@ -12,9 +12,7 @@ from pyMoist.shared.redistribute_clouds import redistribute_clouds
 
 
 @function
-def fix_negative_precip(
-    precip: Float,
-):
+def fix_negative_precip(precip: Float):
     if precip < 1.0e-8:
         precip = 0.0
 
