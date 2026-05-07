@@ -59,7 +59,7 @@ allocate(ldnh(nlonh, nlath))
 call read_ncfile_real2d(trim(file_ldn), "Band1", ldnh, nlonh, nlath)
 where(ldnh.lt.4.e9) ldnh = ldnh / 1.e3  ! Convert from meters to kilometers
 
-! Regrid: For each grid cell in the M09 grid, assign the minimum LDN value from the corresponding high-res block.
+! Regrid: For each 1km grid cell, assign the minimum LDN value from the corresponding high-res block.
 do xi = 1, nlon
   do yi = 2041, 10440
     if (ldn1m(xi, yi) .ne. -9999.) then

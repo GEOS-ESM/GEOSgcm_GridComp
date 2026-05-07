@@ -16,11 +16,11 @@ The tasks completed by each F90 or Python program are briefly described as follo
    files for the connectivity of catchments in the routing network.
 
 2. get_num_sub_catchment.f90
-   Parses high-res map of catchment index to get the area and 
+   Read the EASE-Pfafstetter til file to get the area and 
    coordinates (of model grid) of each sub-catchments within each main catchment.
 
 3. get_Qr_clmt.f90  
-   Reads SMAP L4 runoff data (2016–2023) from a NetCDF file and computes the climatological  
+   Reads SMAP L4 NRv11.4 runoff data (1990–2023) from a NetCDF file and computes the climatological  
    mean discharge for each catchment. 
 
 4. get_river_length.f90  
@@ -46,7 +46,7 @@ The tasks completed by each F90 or Python program are briefly described as follo
 Please note the script get_num_sub_catchment.f90 is 
 specific to the M09 EASE grid because it is only needed by "get_Qr_clmt.f90", 
 and the M09 dependency stems from the fact that "get_Qr_clmt.f90" creates 
-a runoff climatology from SMAP L4 simulations.
+a runoff climatology from SMAP L4 NRv11.4 simulations.
 
 The explanations for the input files of this package can be found in the input directory.
 
