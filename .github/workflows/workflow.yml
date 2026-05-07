@@ -18,6 +18,7 @@ concurrency:
 jobs:
   build_gcm:
     strategy:
+      fail-fast: false
       matrix:
         #compiler: [ifort, gfortran-14, gfortran-15]
         # We remove ifort because for some reason, MAPL3 + ifort + Github CI
