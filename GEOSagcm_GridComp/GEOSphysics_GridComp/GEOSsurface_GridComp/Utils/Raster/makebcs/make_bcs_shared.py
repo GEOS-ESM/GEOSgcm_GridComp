@@ -221,7 +221,7 @@ cd ../..
 
 /bin/rm -r {TMP_DIR}
 
-# if necessary, copy resolution-independent CO2 file from MAKE_BCS_INPUT_DIR to bcs dir
+# if necessary, copy resolution-independent CO2 and route files from MAKE_BCS_INPUT_DIR to bcs dir
 
 if(-f land/shared/CO2_MonthlyMean_DiurnalCycle.nc4) then
     echo "CO2_MonthlyMean_DiurnalCycle.nc4 already present in bcs dir."
@@ -230,10 +230,10 @@ else
     echo "Successfully copied CO2_MonthlyMean_DiurnalCycle.nc4 to bcs dir."
 endif
 
-if(-f land/shared/route_parameters.nc ) then
+if(-f route/route_parameters.nc ) then
     echo "route_parameters.nc already present in bcs dir."
 else
-    /bin/cp -p {MAKE_BCS_INPUT_DIR}/route/routing_model/v1/route_parameters.nc land/shared/route_parameters.nc
+    /bin/cp -p {MAKE_BCS_INPUT_DIR}/route/routing_model/v1/route_parameters.nc route/route_parameters.nc
     echo "Successfully copied route_parameters.nc to bcs dir."
 endif
 
