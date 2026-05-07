@@ -45,7 +45,7 @@ import rasterio
 # ============================================================
 
 GPA_TIF_FILE = Path(
-    "/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/soil/SOIL-DATA/v2/peatGPA22WGS_2cl.tif"
+    "/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/land/soil/peat/v2/peatGPA22WGS_2cl.tif"
 )
 
 # Default product to build/archive.

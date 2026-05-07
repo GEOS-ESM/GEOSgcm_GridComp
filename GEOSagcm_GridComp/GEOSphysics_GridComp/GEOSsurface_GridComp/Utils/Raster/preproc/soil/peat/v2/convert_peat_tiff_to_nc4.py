@@ -20,8 +20,8 @@ import numpy as np
 import netCDF4 as nc
 
 # Files
-tif_file = "/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/soil/SOIL-DATA/v2/peatGPA22WGS_2cl.tif"
-nc4_file = "/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/soil/SOIL-DATA/v2/peatGPA22WGS_2cl.nc4"
+tif_file = "/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/land/soil/peat/v2/peatGPA22WGS_2cl.tif"
+nc4_file = "/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/land/soil/peat/v2/peatGPA22WGS_2cl.nc4"
 
 # Read the GeoTIFF and get some info
 with rasterio.open(tif_file) as src:

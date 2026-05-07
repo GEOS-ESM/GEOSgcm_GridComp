@@ -3816,7 +3816,7 @@ contains
        select case (PEAT_INFO)
        case (1)
           ! Legacy PEATMAP mask 
-          fname = trim(MAKE_BCS_INPUT_DIR)// '/land/soil/SOIL-DATA/PEATMAP_mask.nc4'
+          fname = trim(MAKE_BCS_INPUT_DIR)// '/land/soil/SOIL-DATA/peat/v1/PEATMAP_mask.nc4'
        case (2)
 
           ! Preprocessed GPM 2.0 peat fraction on the standard 30-arcsec raster grid.
@@ -3824,7 +3824,7 @@ contains
           !   1.0 = peat dominated
           !   0.5 = peat in soil mosaic
           !   0.0 = non-peat/mineral          
-          fname = trim(MAKE_BCS_INPUT_DIR) // '/land/soil/SOIL-DATA/v2/peatGPA22WGS_2cl_real_30arcsec.nc4'
+          fname = trim(MAKE_BCS_INPUT_DIR) // '/land/soil/SOIL-DATA/peat/v2/peatGPA22WGS_2cl_real_30arcsec.nc4'
           
        case default
           print *, 'unknown value of PEAT_INFO'
@@ -3851,7 +3851,7 @@ contains
           
           allocate(cropmapr(1:i_highd,1:j_highd))
           
-          fname = trim(MAKE_BCS_INPUT_DIR) // '/land/soil/SOIL-DATA/v2/MCD12Q1_LCType1_crop_climatology_30arcsec.nc4'
+          fname = trim(MAKE_BCS_INPUT_DIR) // '/land/soil/SOIL-DATA/peat/v2/MCD12Q1_LCType1_crop_climatology_30arcsec.nc4'
           
           status = NF_OPEN(trim(fname), NF_NOWRITE, ncid)                                                           ; VERIFY_(STATUS)
           
@@ -5043,7 +5043,7 @@ contains
   !     ! READ PEATMAP source data files and regrid
   !     ! -----------------------------------------
   !     
-  !     status  = NF_OPEN (''//trim(MAKE_BCS_INPUT_DIR)//'/land/soil/SOIL-DATA/PEATMAP_mask.nc4', NF_NOWRITE, ncid)
+  !     status  = NF_OPEN (''//trim(MAKE_BCS_INPUT_DIR)//'/land/soil/SOIL-DATA/peat/v1/PEATMAP_mask.nc4', NF_NOWRITE, ncid)
   !     
   !     allocate (pm_grid   (1 : NC      , 1 : NR))
   !     allocate (data_grid (1 : N_lon_pm, 1 : N_lat_pm)) 
