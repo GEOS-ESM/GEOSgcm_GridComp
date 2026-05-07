@@ -1,3 +1,3 @@
 # entrainment
 
-::: pyMoist.convection.GF_2020.entrainment
+::: pyMoist.convection.GF_2020.cumulus_parameterization.entrainment
