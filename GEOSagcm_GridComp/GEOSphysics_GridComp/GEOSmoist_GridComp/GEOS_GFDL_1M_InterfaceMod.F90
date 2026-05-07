@@ -58,8 +58,9 @@ module GEOS_GFDL_1M_InterfaceMod
   logical :: LHYDROSTATIC
   logical :: LPHYS_HYDROSTATIC
   logical :: LMELTFRZ
+  logical :: USE_PYMOIST_GFDL1M
 
-  public :: GFDL_1M_Setup, GFDL_1M_Initialize, GFDL_1M_Run
+  public :: GFDL_1M_Setup, GFDL_1M_Initialize, GFDL_1M_Run, GFDL_1M_Finalize
 
 contains
 
@@ -207,12 +208,15 @@ subroutine GFDL_1M_Setup (GC, CF, RC)
 
 end subroutine GFDL_1M_Setup
 
-subroutine GFDL_1M_Initialize (MAPL, RC)
+subroutine GFDL_1M_Initialize (MAPL, CF, IMPORT, EXPORT, RC)
     type (MAPL_MetaComp), intent(inout) :: MAPL
     integer, optional                   :: RC  ! return code
 
     type (ESMF_Grid )                   :: GRID
     type (ESMF_State)                   :: INTERNAL
+    type (ESMF_State),    intent(inout) :: IMPORT
+    type (ESMF_State),    intent(inout) :: EXPORT
+    type (ESMF_Config),   intent(inout) :: CF
 
     type (ESMF_Alarm   )                :: ALARM
     type (ESMF_TimeInterval)            :: TINT
@@ -221,14 +225,11 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
 
     real, pointer, dimension(:,:,:)     :: Q, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL
 
-    type(ESMF_VM) :: VM
-    integer :: comm
-
     call MAPL_GetResource( MAPL, LHYDROSTATIC, Label="HYDROSTATIC:",  default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, LPHYS_HYDROSTATIC, Label="PHYS_HYDROSTATIC:",  default=.TRUE., RC=STATUS)
+    call MAPL_GetResource( MAPL, LPHYS_HYDROSTATIC, Label='PHYS_HYDROSTATIC:',  default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, LMELTFRZ, Label="MELTFRZ:",  default=.TRUE., RC=STATUS)
+    call MAPL_GetResource( MAPL, LMELTFRZ, Label='MELTFRZ:',  default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
 
     call MAPL_Get ( MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS )
@@ -252,34 +253,38 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetPointer(INTERNAL, QILS,     'QILS'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , RC=STATUS); VERIFY_(STATUS)
 
-    call ESMF_VMGetCurrent(VM, _RC)
-    call ESMF_VMGet(VM, mpiCommunicator=comm, _RC)
-
-    call gfdl_cloud_microphys_init(comm)
+    call gfdl_cloud_microphys_init()
     call WRITE_PARALLEL ("INITIALIZED GFDL_1M microphysics in non-generic GC INIT")
 
-    call MAPL_GetResource( MAPL, SH_MD_DP        , 'SH_MD_DP:'        , DEFAULT= .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, USE_PYMOIST_GFDL1M, 'USE_PYMOIST_GFDL1M:', default=.FALSE., RC=STATUS); VERIFY_(STATUS)
 
-    call MAPL_GetResource( MAPL, TURNRHCRIT_PARAM, 'TURNRHCRIT:'      , DEFAULT= -9999., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 1     , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, ANV_ICEFALL     , 'ANV_ICEFALL:'     , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, LS_ICEFALL      , 'LS_ICEFALL:'      , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, LIQ_RADII_PARAM , 'LIQ_RADII_PARAM:' , DEFAULT= 2     , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, ICE_RADII_PARAM , 'ICE_RADII_PARAM:' , DEFAULT= 1     , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, FAC_RI          , 'FAC_RI:'          , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MIN_RI          , 'MIN_RI:'          , DEFAULT=  5.e-6, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MAX_RI          , 'MAX_RI:'          , DEFAULT=100.e-6, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, FAC_RL          , 'FAC_RL:'          , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MIN_RL          , 'MIN_RL:'          , DEFAULT= 2.5e-6, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MAX_RL          , 'MAX_RL:'          , DEFAULT=60.0e-6, RC=STATUS); VERIFY_(STATUS)
+    if (USE_PYMOIST_GFDL1M) then
+      call MAPL_ConfigSetAttribute(CF, DT_MOIST, 'DSL__GFLD1M_DT:', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.microphysics.GFDL1M_interface", MAPL, IMPORT, EXPORT )
+    else
+      call MAPL_GetResource( MAPL, SH_MD_DP        , 'SH_MD_DP:'        , DEFAULT= .TRUE., RC=STATUS); VERIFY_(STATUS)
 
-                                 CCW_EVAP_EFF = 1.e-2
-                    if (do_evap) CCW_EVAP_EFF = 0.0 ! Evap done inside GFDL-MP
-    call MAPL_GetResource( MAPL, CCW_EVAP_EFF, 'CCW_EVAP_EFF:', DEFAULT= CCW_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource( MAPL, TURNRHCRIT_PARAM, 'TURNRHCRIT:'      , DEFAULT= -9999., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 1     , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource( MAPL, ANV_ICEFALL     , 'ANV_ICEFALL:'     , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource( MAPL, LS_ICEFALL      , 'LS_ICEFALL:'      , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource( MAPL, LIQ_RADII_PARAM , 'LIQ_RADII_PARAM:' , DEFAULT= 2     , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource( MAPL, ICE_RADII_PARAM , 'ICE_RADII_PARAM:' , DEFAULT= 1     , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource( MAPL, FAC_RI          , 'FAC_RI:'          , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource( MAPL, MIN_RI          , 'MIN_RI:'          , DEFAULT=  5.e-6, RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource( MAPL, MAX_RI          , 'MAX_RI:'          , DEFAULT=100.e-6, RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource( MAPL, FAC_RL          , 'FAC_RL:'          , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource( MAPL, MIN_RL          , 'MIN_RL:'          , DEFAULT= 2.5e-6, RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource( MAPL, MAX_RL          , 'MAX_RL:'          , DEFAULT=60.0e-6, RC=STATUS); VERIFY_(STATUS)
 
-                                 CCI_EVAP_EFF = 1.e-2
-                    if (do_subl) CCI_EVAP_EFF = 0.0 ! Subl done inside GFDL-MP
-    call MAPL_GetResource( MAPL, CCI_EVAP_EFF, 'CCI_EVAP_EFF:', DEFAULT= CCI_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
+                                  CCW_EVAP_EFF = 1.e-2
+                      if (do_evap) CCW_EVAP_EFF = 0.0 ! Evap done inside GFDL-MP
+      call MAPL_GetResource( MAPL, CCW_EVAP_EFF, 'CCW_EVAP_EFF:', DEFAULT= CCW_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
+
+                                  CCI_EVAP_EFF = 1.e-2
+                      if (do_subl) CCI_EVAP_EFF = 0.0 ! Subl done inside GFDL-MP
+      call MAPL_GetResource( MAPL, CCI_EVAP_EFF, 'CCI_EVAP_EFF:', DEFAULT= CCI_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
+    endif ! USE_PYMOIST_GFDL1M
 
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
@@ -381,6 +386,10 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
     DT_MOIST = DT_R8
+
+    if (USE_PYMOIST_GFDL1M) then
+      call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.microphysics.GFDL1M_interface", MAPL, IMPORT, EXPORT, INTERNAL )
+    else
 
     call MAPL_GetPointer(INTERNAL, Q,        'Q'       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QRAIN,    'QRAIN'   , RC=STATUS); VERIFY_(STATUS)
@@ -572,7 +581,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           QRAIN = QRAIN + PTR3D*DT_MOIST
         endif
         call MAPL_GetPointer(EXPORT, PTR3D,  'SHLW_SNO3', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR3D)) then 
+        if (associated(PTR3D)) then
           QSNOW = QSNOW + PTR3D*DT_MOIST
         endif
        ! evap/subl/pdf
@@ -971,8 +980,31 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         call MAPL_GetPointer(EXPORT, PTR3D, 'QGTOT', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) PTR3D = QGRAUPEL
 
+    endif ! USE_PYMOIST_GFDL1M
+
      call MAPL_TimerOff(MAPL,"--GFDL_1M",RC=STATUS)
 
 end subroutine GFDL_1M_Run
+
+subroutine GFDL_1M_Finalize(gc, import, export, rc)
+
+  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
+  type(ESMF_State),    intent(inout) :: IMPORT ! Import state
+  type(ESMF_State),    intent(inout) :: EXPORT ! Export state
+  integer, optional,   intent(  out) :: RC     ! Error code
+  
+  type (MAPL_MetaComp), pointer   :: MAPL
+  
+  ! Get my internal MAPL_Generic state
+  !-----------------------------------
+  call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+  VERIFY_(STATUS)
+
+
+  if (USE_PYMOIST_GFDL1M) then
+    call MAPL_pybridge_gcfinalize( "pyMoist.fortran.param_interfaces.microphysics.GFDL1M_interface", MAPL, IMPORT, EXPORT )
+  endif
+
+end subroutine GFDL_1M_Finalize
 
 end module GEOS_GFDL_1M_InterfaceMod
