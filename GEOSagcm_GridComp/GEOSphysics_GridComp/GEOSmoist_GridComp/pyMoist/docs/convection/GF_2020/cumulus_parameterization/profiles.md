@@ -1,3 +1,3 @@
 # profiles
 
-::: pyMoist.convection.GF_2020.profiles
+::: pyMoist.convection.GF_2020.cumulus_parameterization.profiles
