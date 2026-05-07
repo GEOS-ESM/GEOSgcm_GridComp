@@ -55,7 +55,7 @@ class TranslateGFDL_1M_FallSpeed(TranslateFortranData2Py):
         config_dependent_constants = GFDL1MDriverConfigDependentConstants.make(config)
 
         # get the shape of the field
-        nx, ny, nz = inputs["driver_local_p_dry_fallspeed"].shape
+        nx, ny, nz, _ntimes = inputs["driver_local_p_dry_fallspeed"].shape
 
         # preset output dictionary to be filled inside the for loop
         outputs = {}
