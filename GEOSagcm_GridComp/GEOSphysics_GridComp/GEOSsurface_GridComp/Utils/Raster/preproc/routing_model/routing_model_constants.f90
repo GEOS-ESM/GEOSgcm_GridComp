@@ -10,9 +10,9 @@ module routing_model_constants
   ! Define constant parameters 
   integer,parameter :: nlon        =   21600    ! Number of longitude grid points in the original grid
   integer,parameter :: nlat        =   10800    ! Number of latitude grid points in the original grid
-  integer,parameter :: nlon09      =    3856    ! Lon dimension for the M09 grid
-  integer,parameter :: nlat09      =    1624    ! Lat dimension for the M09 grid
-  integer,parameter :: nt_global09 = 1684725    ! Total number of global tiles for area mapping for M09
+  integer,parameter :: nlonE       =    3856    ! Lon dimension for the M09 grid
+  integer,parameter :: nlatE       =    1624    ! Lat dimension for the M09 grid
+  integer,parameter :: np_tot      = 8789108    ! Total number of sub-catchments for the M09-Catchment grid
   
   ! Define grid dimensions for 15-second resolution data (HydroSHEDS high-res grid)
   integer,parameter :: nlonh       =   86400
