@@ -56,10 +56,10 @@ module rmTinyCatchParaMod
   public Get_MidTime, Time_Interp_Fac
   public ascat_r0, jpl_canoph, NC_VarID, init_bcs_config  
   
-  ! The following variables define the details of the BCS version (data sources).
+  ! The following variables define the details of the BCs versions (data sources).
   ! Initialize to dummy values here and set to desired values in init_bcs_config().
   
-  logical,      public, save :: use_PEATMAP = .false.
+  integer,      public, save :: PEAT_INFO   = 0
   logical,      public, save :: jpl_height  = .false.
   character*8,  public, save :: LAIBCS      = 'UNDEF'
   character*6,  public, save :: SOILBCS     = 'UNDEF'
@@ -105,142 +105,164 @@ contains
     !   NGDC      : Soil parameters from Reynolds et al. 2000, doi:10.1029/2000WR900130 (MERRA-2, Fortuna, Ganymed, Icarus)
     !   HWSD      : Merged HWSDv1.21-STATSGO2 soil properties on 43200x21600 with Woesten et al. (1999) parameters   
     !   HWSD_b    : As in HWSD but with surgical fix of Argentina peatland issue (38S,60W)
+    !   HWSDv2    : As in HWSD but using HWSDv2 instead of HWSDv1.21; uses HWSDv2 layer 2 ("D2") texture for "top" *and* "sub" layers.
+    !                 HWSDv2 was developed and tested ~2024-2025.  Soil moisture simulation skill was found to be mostly neutral,
+    !                 while the soil moisture climatology changed substantially, which is undesirable for operational products.
+    !                 Therefore, HWSDv2 was not used in released bcs versions as of May 2026.
     !
     ! OUTLETV: Definition of outlet locations.  DEFAULT : N/A
     !   N/A       : No information (do not create routing "TRN" files).
     !   v1        : Outlet locations file produced manually by Randy Koster.
     !   v2        : Outlet locations file produced by run_routing_raster.py using routing information encoded 
     !               in SRTM-based Pfafstetter catchments and Greenland outlets info provided by Lauren Andrews.
-
+    !
+    ! PEAT_INFO: Source of peat information
+    !   0         : HWSD texture
+    !   1         : HWSD texture + PEATMAP (Xu et al 2017, doi:10.5518/252)
+    !   2         : Global Peatland Map 2.0 (GPM 2.0; Greifswald Mire Centre)
+    !
+    ! -----------------------------------------------------------------------------------------------------------------
+    
     character(*), intent (in) :: LBCSV     ! land BCs version 
 
     select case (trim(LBCSV))
        
     case ("F25")
-       LAIBCS  = 'GSWP2'
-       SOILBCS = 'NGDC'
-       MODALB  = 'MODIS1'
-       SNOWALB = 'LUT'
-       OUTLETV = "N/A"
-       GNU     = 2.17
-       use_PEATMAP = .false.
-       jpl_height  = .false.
+       LAIBCS     = 'GSWP2'
+       SOILBCS    = 'NGDC'
+       MODALB     = 'MODIS1'
+       SNOWALB    = 'LUT'
+       OUTLETV    = "N/A"
+       GNU        = 2.17
+       PEAT_INFO  = 0
+       jpl_height = .false.
        
     case ("GM4", "ICA")
-       LAIBCS  = 'GSWP2'
-       SOILBCS = 'NGDC'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'LUT'
-       OUTLETV = "N/A"
-       GNU     = 1.0
-       use_PEATMAP = .false.
-       jpl_height  = .false.
+       LAIBCS     = 'GSWP2'
+       SOILBCS    = 'NGDC'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'LUT'
+       OUTLETV    = "N/A"
+       GNU        = 1.0
+       PEAT_INFO  = 0
+       jpl_height = .false.
 
     case ("NL3")
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'LUT'
-       OUTLETV = "N/A"
-       GNU     = 1.0
-       use_PEATMAP = .false.
-       jpl_height  = .false.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'LUT'
+       OUTLETV    = "N/A"
+       GNU        = 1.0
+       PEAT_INFO  = 0
+       jpl_height = .false.
 
     case ("NL4")
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
-       MODALB  = 'MODIS2'      
-       SNOWALB = 'LUT'
-       OUTLETV = "N/A"
-       GNU     = 1.0
-       use_PEATMAP = .false.
-       jpl_height  = .true.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD'
+       MODALB     = 'MODIS2'      
+       SNOWALB    = 'LUT'
+       OUTLETV    = "N/A"
+       GNU        = 1.0
+       PEAT_INFO  = 0
+       jpl_height = .true.
 
     case ("NL5")
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'LUT'
-       OUTLETV = "N/A"
-       GNU     = 1.0
-       use_PEATMAP = .true.
-       jpl_height  = .true.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'LUT'
+       OUTLETV    = "N/A"
+       GNU        = 1.0
+       PEAT_INFO  = 1
+       jpl_height = .true.
 
     case ("v06")   
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'MODC061'
-       OUTLETV = "N/A"
-       GNU     = 1.0
-       use_PEATMAP = .true.
-       jpl_height  = .true.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'MODC061'
+       OUTLETV    = "N/A"
+       GNU        = 1.0
+       PEAT_INFO  = 1
+       jpl_height = .true.
 
     case ("v07")   
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'LUT'
-       OUTLETV = "N/A"
-       GNU     = 1.0
-       use_PEATMAP = .true.
-       jpl_height  = .false.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'LUT'
+       OUTLETV    = "N/A"
+       GNU        = 1.0
+       PEAT_INFO  = 1
+       jpl_height = .false.
        
     case ("v08")   
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'MODC061'
-       OUTLETV = "N/A"
-       GNU     = 1.0
-       use_PEATMAP = .false.
-       jpl_height  = .false.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'MODC061'
+       OUTLETV    = "N/A"
+       GNU        = 1.0
+       PEAT_INFO  = 0
+       jpl_height = .false.
        
     case ("v09")   
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'MODC061'
-       OUTLETV = "N/A"
-       GNU     = 1.0
-       use_PEATMAP = .true.
-       jpl_height  = .false.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'MODC061'
+       OUTLETV    = "N/A"
+       GNU        = 1.0
+       PEAT_INFO  = 1
+       jpl_height = .false.
 
     case ("v10")   
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'MODC061v2'
-       OUTLETV = "N/A"
-       GNU     = 1.0
-       use_PEATMAP = .true.
-       jpl_height  = .false.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'MODC061v2'
+       OUTLETV    = "N/A"
+       GNU        = 1.0
+       PEAT_INFO  = 1
+       jpl_height = .false.
 
     case ("v11")   
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'MODC061v2'
-       OUTLETV = "v1"
-       GNU     = 1.0
-       use_PEATMAP = .true.
-       jpl_height  = .true.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'MODC061v2'
+       OUTLETV    = "v1"
+       GNU        = 1.0
+       PEAT_INFO  = 1
+       jpl_height = .true.
 
     case ("v12","v13")  
-
-       ! "v12" and "v13" are identical except for:
-       ! - topography used for the atm (processed outside of make_bcs)
-       ! - bug fix for land elevation in catchment.def file
-       ! - generation of nc4-formatted tile file
+       !   v12 are v13 BCs are identical except for the following updates and bug fixes in v13:
+       !   - Fix for land elevation in catchment.def file.
+       !   - Generation of netCDF-4 (NC4) tile file (supplemental to ASCII file).
+       !   - Fix for inconsistency in land tile properties of coupled-model BCs vs. AGCM BCs.
+       !   - Coupled-model BCs use MOM6/v2 (OM4) ocean bathymetry.
  
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD_b'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'MODC061v2'
-       OUTLETV = "v2"       
-       GNU     = 1.0
-       use_PEATMAP = .true.
-       jpl_height  = .true.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD_b'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'MODC061v2'
+       OUTLETV    = "v2"       
+       GNU        = 1.0
+       PEAT_INFO  = 1
+       jpl_height = .true.
+
+    case ("v14")  
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD_b'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'MODC061v2'
+       OUTLETV    = "v2"       
+       GNU        = 1.0
+       PEAT_INFO  = 2
+       jpl_height = .true.
+      
 
     case default
        
@@ -929,7 +951,7 @@ contains
 
     REAL (REAL64), PARAMETER           :: RADIUS=MAPL_RADIUS, pi= MAPL_PI 
 
-    character*512                      :: fname
+    character*512                      :: fname, catch_file
     character*512                      :: gtopo30
     CHARACTER*512                      :: version
 
@@ -948,6 +970,10 @@ contains
     integer,           allocatable         :: iTable(:,:)
     character(len=128)                     :: gName(2)
     logical,           allocatable         :: IsOcean(:)
+    ! This is used to adjust EASE grid from 1-based to 0-based indexes
+    ! The tile file with only one EASE grid is already 0-based and may not go through this subroutine
+    ! This is a special case for river-routing. The ocean grid is also EASE just for convenience
+    logical                                :: two_EASE 
 
     ! -----------------------------------------------------
     !
@@ -1011,7 +1037,8 @@ contains
        IM(n)    = nc_gcm
        JM(n)    = nr_gcm
     end do
-    
+    two_EASE = index(gName(1), 'EASE') /=0 .and. index(gName(2), 'EASE') /=0    
+
 !    dx_gcm = 360./float(nc_gcm)
     
     allocate(iTable(ip,0:7))
@@ -1178,9 +1205,9 @@ contains
     ! --------------------------------------------------------------------------
     !
     ! write (ASCII) catchment.def file (land tiles only!)
-    
-    open (10,file='clsm//catchment.def',  &
-         form='formatted',status='unknown')
+    catch_file = 'clsm//catchment.def'
+    if (two_EASE) catch_file = 'clsm//catchment-route.def' 
+    open (10,file=catch_file, form='formatted',status='unknown')
     write (10,*) n_land
     
     do j=1,n_land
@@ -1193,6 +1220,17 @@ contains
     end do
     close(10,status='keep')
     
+    if (two_EASE) then
+       iTable(:,2) = iTable(:,2) - 1
+       iTable(:,3) = iTable(:,3) - 1
+       where (iTable(:,0) == 0)
+          iTable(:,4) = iTable(:,4) -1
+          iTable(:,5) = iTable(:,5) -1
+       endwhere
+       j = index(gName(2), "-Pfafstetter")
+       gName(2) = gName(2)(1:j-1)
+    endif
+
     ! --------------------------------------------------------------------------
     !
     ! write nc4-formatted tile file (all tile types)
@@ -2573,6 +2611,8 @@ contains
     logical :: file_exists
     REAL, ALLOCATABLE, DIMENSION (:,:) :: parms4file
     integer :: ncid, status
+    ! peat GPM 2.0 additions
+    logical :: target_is_peat, donor_is_peat
 
     ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
     !
@@ -2630,7 +2670,7 @@ contains
 
     call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR)
 
-    if(use_PEATMAP) then 
+    if(PEAT_INFO>=1) then 
        fname = trim(MAKE_BCS_INPUT_DIR)//'/land/soil/SOIL-DATA/SoilClasses-SoilHyd-TauParam.peatmap' 
     else
        fname = trim(MAKE_BCS_INPUT_DIR)//'land/soil/SOIL-DATA/SoilClasses-SoilHyd-TauParam.dat'
@@ -2659,7 +2699,7 @@ contains
 
        ! open and read loss parameter file for class n (defined through sand/clay/orgC)
 
-       if(n == n_SoilClasses .and. use_PEATMAP) then 
+       if(n == n_SoilClasses .and. PEAT_INFO>=1) then 
           open (120,file=trim(losfile)//trim(fout)//'.peat',  &
                form='formatted',status='old')
        else
@@ -2805,7 +2845,7 @@ contains
           write(*,*)'Warnning 1: pfafstetter mismatched' 
           stop
        endif
-       if((use_PEATMAP).and.(soil_class_top(n) == 253)) then
+       if((PEAT_INFO>=1).and.(soil_class_top(n) == 253)) then
           meanlu = 9.3
           stdev  = 0.12
           minlu  = 8.5
@@ -2891,7 +2931,7 @@ contains
     !$OMP        taberr1,taberr2,normerr1,normerr2,         &
     !$OMP        taberr3,taberr4,normerr3,normerr4,         &
     !$OMP        gwatdep,gwan,grzexcn,gfrc,soil_class_com,  &
-    !$OMP        n_threads, low_ind, upp_ind, use_PEATMAP ) &
+    !$OMP        n_threads, low_ind, upp_ind, PEAT_INFO )   &
     !$OMP PRIVATE(k,li,ui,n,i,watdep,wan,rzexcn,frc,ST,AC,  &
     !$OMP COESKEW,profdep)
 
@@ -2942,7 +2982,7 @@ contains
                tsa1(n),tsa2(n),tsb1(n),tsb2(n)  &
                )
 
-          if(soil_class_com(n) == 253 .and. use_PEATMAP) then
+          if(soil_class_com(n) == 253 .and. PEAT_INFO>=1) then
 
              ! Michel Bechtold paper - PEATCLSM_fitting_CLSM_params.R produced these data values.
 
@@ -2979,8 +3019,10 @@ contains
 
     DO n=1,nbcatch
 
-       ! Read soil_param.first again...; this is (almost certainly) needed to maintain consistency
-       ! between soil_param.first and soil_param.dat, see comments above.
+       ! Re-read soil_param.first for tile n so soil_param.dat starts from the
+       ! original tile identity/properties written by mod_process_hres_data.
+       ! This preserves consistency between soil_param.first and soil_param.dat
+       ! before any bad-SAT donor repair is applied below.       
 
        read(10,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)') &
             tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),         &
@@ -2989,34 +3031,76 @@ contains
             a_sand_surf(n),a_clay_surf(n),atile_sand(n),atile_clay(n) ,   &
             wpwet_surf(n),poros_surf(n), pmap(n)
 
-       ! This revised if block replaces the complex, nested if block commented out above
+       ! If ars1/arw1 parameters are invalid for tile n, replace tile n soil class and 
+       !   soil parameters with those from donor tile k.
+       !
+       ! PEAT_INFO<=1
+       !   use the nearest tile with valid SAT parameters.
+       !
+       ! PEAT_INFO>=2
+       !   first prefer a donor with the same peat/mineral state as the
+       !   target tile, so repaired bulk hydraulics do not cross peat and
+       !   mineral regimes.  If no same-state donor exists, fall back to
+       !   the original nearest-valid donor search.
 
-       if ( (ars1(n)==9999.) .or. (arw1(n)==9999.) ) then 
-
-          ! some parameter values are no-data --> find nearest tile k with good parameters
-
+       if ( (ars1(n)==9999.) .or. (arw1(n)==9999.) ) then          
           dist_save = 1000000.
           k = 0
-          do i = 1,nbcatch
-             if(i /= n) then
-                if((ars1(i).ne.9999.).and.(arw1(i).ne.9999.)) then
 
-                   tile_distance = (tile_lon(i) - tile_lon(n)) * (tile_lon(i) - tile_lon(n)) + &
-                        (tile_lat(i) - tile_lat(n)) * (tile_lat(i) - tile_lat(n))
-                   if(tile_distance < dist_save) then
-                      k = i
-                      dist_save = tile_distance
-                   endif
-                endif
+          ! Define target tile peat/mineral state from its current top/profile classes.
+          target_is_peat = (soil_class_top(n) == 253) .or. (soil_class_com(n) == 253)
+
+          do i = 1,nbcatch
+             if (i == n) cycle
+             if ((ars1(i) == 9999.) .or. (arw1(i) == 9999.)) cycle
+
+             if (PEAT_INFO>=2) then
+                ! Only consider donors with same peat/mineral class as target tile.
+                donor_is_peat = (soil_class_top(i) == 253) .or. (soil_class_com(i) == 253)
+                if (donor_is_peat .neqv. target_is_peat) cycle
+             endif
+
+             tile_distance = (tile_lon(i) - tile_lon(n)) * (tile_lon(i) - tile_lon(n)) + &
+                             (tile_lat(i) - tile_lat(n)) * (tile_lat(i) - tile_lat(n))
+
+             if (tile_distance < dist_save) then
+                k = i
+                dist_save = tile_distance
              endif
           enddo
-          ! record in file clsm/bad_sat_param.tiles
-          write (41,*)n,k        ! n="bad" tile, k=tile from which parameters are taken
+
+          if ((k == 0) .and. PEAT_INFO>=2) then
+             
+             ! if no same-class donor exists, revert to original nearest-valid donor search so a donor is still always found.          
+
+             dist_save = 1000000.
+             do i = 1,nbcatch
+                if (i == n) cycle
+                if ((ars1(i) == 9999.) .or. (arw1(i) == 9999.)) cycle
+
+                tile_distance = (tile_lon(i) - tile_lon(n)) * (tile_lon(i) - tile_lon(n)) + &
+                                (tile_lat(i) - tile_lat(n)) * (tile_lat(i) - tile_lat(n))
+
+                if (tile_distance < dist_save) then
+                   k = i
+                   dist_save = tile_distance
+                endif
+             enddo
+          endif
+
+          if (k == 0) then
+             write(*,*) 'ERROR: no donor tile found for tile ', n
+             stop
+          endif
+
+          ! Record indices of (repaired) target tile "n" and donor tile "k" in file "clsm/bad_sat_param.tiles"
+          write (41,*) n, k   
 
           ! Overwrite parms4file when filling in parameters from neighboring tile k.
           ! For "good" tiles, keep parms4file as read earlier from catch_params.nc4,
-          ! which is why this must be done within the "then" block of the "if" statement.
-          ! This is necessary for backward 0-diff compatibility of catch_params.nc4.
+          ! which is why this must be done within the "then" block of the "if"
+          ! statement.  This is necessary for backward 0-diff compatibility of
+          ! catch_params.nc4.
 
           parms4file (n,12) = BEE(k)
           parms4file (n,16) = COND(k)
@@ -3027,11 +3111,10 @@ contains
 
        else
 
-          ! nominal case, all parameters are good
-
+          ! Nominal case: current tile n already has valid parameters.
           k = n
 
-       end if
+       end if    
 
        ! for current tile n, write parameters of tile k into ar.new (20), bf.dat (30), ts.dat (40), 
        !   and soil_param.dat (42)
@@ -3041,21 +3124,36 @@ contains
             ars1(k),ars2(k),ars3(k),                   &
             ara1(k),ara2(k),ara3(k),ara4(k),           &
             arw1(k),arw2(k),arw3(k),arw4(k) 
-
+       
        write(30,'(i10,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(k),bf2(k),bf3(k)
-
+       
        write(40,'(i10,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,                      &
             tsa1(k),tsa2(k),tsb1(k),tsb2(k)
+       
+       ! write "soil_param.dat" file;  n = target tile, k = donor tile.
 
-       write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')         &
-            tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),                      &
-            BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k),                       &
-            grav_vec(k),soc_vec(k),poc_vec(k),                                            &
-            a_sand_surf(k),a_clay_surf(k),atile_sand(k),atile_clay(k) ,                   &
-            wpwet_surf(k),poros_surf(k), pmap(k)
-
+       if (PEAT_INFO>=2) then
+          ! write only bulk hydraulic fields from donor tile k.
+          write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')  &
+               tindex2(n),pfaf2(n),                                                   &     ! n (target)
+               soil_class_top(n),soil_class_com(n),                                   &     ! n (target)
+               BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k),                &     ! k (donor)
+               grav_vec(n),soc_vec(n),poc_vec(n),                                     &     ! n (target)
+               a_sand_surf(n),a_clay_surf(n),atile_sand(n),atile_clay(n),             &     ! n (target)
+               wpwet_surf(n),poros_surf(n), pmap(n)                                         ! n (target)
+       else
+          ! Legacy path: preserve original donor-copy behavior.
+          write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')  &
+               tindex2(n),pfaf2(n),                                                   &     ! n (target) 
+               soil_class_top(k),soil_class_com(k),                                   &     ! k (donor)
+               BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k),                &     ! k (donor)
+               grav_vec(k),soc_vec(k),poc_vec(k),                                     &     ! k (donor)
+               a_sand_surf(k),a_clay_surf(k),atile_sand(k),atile_clay(k),             &     ! k (donor)
+               wpwet_surf(k),poros_surf(k), pmap(k)                                         ! k (donor)
+       endif
+       
        ! record ar.new, bf.dat, and ts.dat parameters for later writing into catch_params.nc4
-
+       
        if (allocated (parms4file)) then
           parms4file (n, 1) = ara1(k)
           parms4file (n, 2) = ara2(k)
@@ -5514,10 +5612,10 @@ contains
     REAL*8 b(m),u(m,n),v(n,n),w(n),x(n) 
     PARAMETER (NMAX=500)  !Maximum anticipated value of n
     !------------------------------------------------------------------------------------------- 
-    ! Solves A · X = B for a vector X, where A is specified by the arrays u, w, v as returned by 
-    ! svdcmp. m and n are the dimensions of a, and will be equal for square matrices. b(1:m) is 
-    ! the input right-hand side. x(1:n) is the output solution vector. No input quantities are 
-    ! destroyed, so the routine may be called sequentially with different b’s. 
+    ! Solves A . X = B for a vector X, where A is specified by the arrays u, w, v as returned by 
+    ! svdcmp.  m and n are the dimensions of a, and will be equal for square matrices. b(1:m) is 
+    ! the input right-hand side. x(1:n) is the output solution vector.  No input quantities are 
+    ! destroyed, so the routine may be called sequentially with different b values. 
     !-------------------------------------------------------------------------------------------
 
     INTEGER i,j,jj 
@@ -5552,7 +5650,7 @@ contains
     PARAMETER (NMAX=500)  !Maximum anticipated value of n. 
     !-------------------------------------------------------------------------------------- 
     ! Given a matrix A(1:m,1:n), this routine computes its singular value decomposition, 
-    ! A = U · W · Vt. The matrix U replaces A on output. The diagonal matrix of singular 
+    ! A = U . W . Vt. The matrix U replaces A on output.  The diagonal matrix of singular 
     ! values W is output as a vector W(1:n). The matrix V (not the transpose Vt) is output 
     ! as V(1:n,1:n). 
     !--------------------------------------------------------------------------------------
