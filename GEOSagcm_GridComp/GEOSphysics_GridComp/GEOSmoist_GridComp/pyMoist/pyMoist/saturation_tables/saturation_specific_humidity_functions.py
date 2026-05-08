@@ -131,9 +131,7 @@ def saturation_specific_humidity(
         dqsat (Float): derivative saturation specific humidity with respect to temperature
     """
     if use_ramp:
-        uramp = -abs(ramp)
-    else:
-        uramp = TMIX
+        raise NotImplementedError("The option `use_ramp=True` is not implemented.")
 
     if t <= TMINTBL:
         t = TMINTBL
@@ -144,12 +142,8 @@ def saturation_specific_humidity(
     t_integer = int32(floor(t))
     IT_MINUS_1 = t_integer - 1
 
-    if uramp == TMIX:
-        dq = esx.A[t_integer] - esx.A[IT_MINUS_1]  # type: ignore
-        qsat = (t - t_integer) * dq + esx.A[IT_MINUS_1]  # type: ignore
-    else:
-        dq = ese.A[t_integer] - ese.A[IT_MINUS_1]  # type: ignore
-        qsat = (t - t_integer) * dq + ese.A[IT_MINUS_1]  # type: ignore
+    dq = esx.A[t_integer] - esx.A[IT_MINUS_1]  # type: ignore
+    qsat = (t - t_integer) * dq + esx.A[IT_MINUS_1]  # type: ignore
 
     if p <= qsat:
         qsat = MAX_MIXING_RATIO
