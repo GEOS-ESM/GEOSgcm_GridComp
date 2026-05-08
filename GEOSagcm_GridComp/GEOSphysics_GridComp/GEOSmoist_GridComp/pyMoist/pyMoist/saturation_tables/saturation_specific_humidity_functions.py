@@ -1,6 +1,6 @@
 from ndsl.dsl.gt4py import floor, function, int32
 
-from pyMoist.saturation_tables.constants import DEGSUBS, ERFAC, ESFAC, MAPL_TICE, MAX_MIXING_RATIO, TABLESIZE, TMAXTBL, TMINLQU, TMINTBL, TMIX
+from pyMoist.saturation_tables.constants import DEGSUBS, ERFAC, ESFAC, MAPL_TICE, MAX_MIXING_RATIO, TABLESIZE, TMAXTBL, TMINLQU, TMINTBL
 
 
 @function
