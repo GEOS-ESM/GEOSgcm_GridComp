@@ -17,7 +17,6 @@ python -m pytest -s -v --multimodal_metric \
     --data_path=$1 \
     --backend=$2 \
     --grid=default \
-    --no_report \
     --threshold_overrides_file=./overrides.yml \
     --which_rank=0 \
     ../translate_tests
