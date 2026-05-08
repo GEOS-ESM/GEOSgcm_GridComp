@@ -19,7 +19,7 @@ dependencies = [
   "build",
   "coverage",
   "flake8-pyproject",
-  "ndsl @ git+https://github.com/NOAA-GFDL/NDSL.git@2026.03.00",
+  "ndsl @ git+https://github.com/NOAA-GFDL/NDSL.git@develop",
   "mkdocs-material",
   "mkdocstrings[python]",
   "mkdocs-exclude",
