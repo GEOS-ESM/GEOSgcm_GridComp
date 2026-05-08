@@ -266,7 +266,7 @@ def hydrostatic_pdf(
         qc_n = (mixing_ratio_large_scale_liquid + mixing_ratio_large_scale_ice) * inv_clcn
         qc_i = mixing_ratio_large_scale_ice * inv_clcn
         t_n = t
-        qs_x, _ = saturation_specific_humidity(t=t, p=p_mb * 100.0, ese=ese, esx=esx)
+        qs_x, _ = saturation_specific_humidity(t=t, p=p_mb * 100.0, esx=esx)
         qv_n = (mixing_ratio_vapor - qs_x * convective_cloud_fraction) * inv_clcn
 
         qt = qc_n + qv_n  # Total LS water after microphysics
@@ -277,7 +277,7 @@ def hydrostatic_pdf(
             qc_p = qc_n
             cf_p = cf_n
             t_p = t_n
-            qs_n, dqs = saturation_specific_humidity(t=t_n, p=p_mb * 100.0, ese=ese, esx=esx)
+            qs_n, dqs = saturation_specific_humidity(t=t_n, p=p_mb * 100.0, esx=esx)
 
             if PDF_SHAPE < 3:  # 1 = top-hat 2 = triangulat
                 sigmaqt1 = alpha * qs_n
@@ -417,5 +417,5 @@ def hydrostatic_pdf(
             mixing_ratio_convective_liquid = 0.0
             convective_cloud_fraction = 0.0
 
-        denom, _ = saturation_specific_humidity(t=t, p=p_mb * 100.0, ese=ese, esx=esx)
+        denom, _ = saturation_specific_humidity(t=t, p=p_mb * 100.0, esx=esx)
         relative_humidity = mixing_ratio_vapor / denom

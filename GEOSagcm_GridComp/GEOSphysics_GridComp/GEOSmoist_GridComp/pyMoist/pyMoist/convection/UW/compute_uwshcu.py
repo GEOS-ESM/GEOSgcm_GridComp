@@ -694,7 +694,7 @@ def compute_thv0_thvl0(
         thl0bot: float32 = thl0 + ssthl0 * (pifc0 - pmid0)
         qt0bot: float32 = qt0 + ssqt0 * (pifc0 - pmid0)
 
-        thj, qvj, qlj, qij, qse, id_check = conden(pifc0, thl0bot, qt0bot, ese, esx)
+        thj, qvj, qlj, qij, qse, id_check = conden(pifc0, thl0bot, qt0bot, esx)
 
     with computation(FORWARD), interval(...):
         if id_check == 1:
@@ -735,7 +735,7 @@ def compute_thv0_thvl0(
 
     with computation(PARALLEL), interval(...):
         if not condensation:
-            thj, qvj, qlj, qij, qse, id_check = conden(pifc0[0, 0, 1], thl0top, qt0top, ese, esx)
+            thj, qvj, qlj, qij, qse, id_check = conden(pifc0[0, 0, 1], thl0top, qt0top, esx)
 
     with computation(FORWARD), interval(...):
         if not condensation:
@@ -1289,7 +1289,6 @@ def find_klcl(
     pifc0: FloatField,
     qtsrc: FloatField,
     thlsrc: FloatField,
-    ese: GlobalTable_saturation_tables,
     esx: GlobalTable_saturation_tables,
     thl0: FloatField,
     ssthl0: FloatField,
@@ -1331,7 +1330,6 @@ def find_klcl(
         pifc0 [FloatField]: Environmental pressure at the interfaces [Pa]
         qtsrc [FloatField]: Mixing ratio of cumulus source air [?]
         thlsrc [FloatField]: Temperature of cumulus source air [K] [?]
-        ese [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
         esx [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
         k0 [Int]: Number of levels
         thl0 [FloatField]: Temperature [?]
@@ -1464,7 +1462,7 @@ def find_klcl(
 
     with computation(FORWARD), interval(...):
         if not condensation:
-            plcl = qsinvert(qtsrc, thlsrc, pifc0.at(K=0), ese, esx)
+            plcl = qsinvert(qtsrc, thlsrc, pifc0.at(K=0), esx)
             lev = 0
             klcl_flag = 0.0
             while lev < k0 + 1 and klcl_flag == 0.0:
@@ -1518,7 +1516,7 @@ def find_klcl(
                 # in fully consistent with the other parts of the code.
                 thl0lcl = thl0.at(K=klcl) + ssthl0.at(K=klcl) * (plcl - pmid0.at(K=klcl))
                 qt0lcl = qt0.at(K=klcl) + ssqt0.at(K=klcl) * (plcl - pmid0.at(K=klcl))
-                thj, qvj, qlj, qij, qse, id_check = conden(plcl, thl0lcl, qt0lcl, ese, esx)
+                thj, qvj, qlj, qij, qse, id_check = conden(plcl, thl0lcl, qt0lcl, esx)
 
                 if id_check == 1:
                     condensation = True
@@ -1702,13 +1700,7 @@ def compute_cin_cinlcl(
                     qij,
                     qse,
                     id_check,
-                ) = conden(
-                    pifc0[0, 0, 1],
-                    thlsrc,
-                    qtsrc,
-                    ese,
-                    esx,
-                )
+                ) = conden(pifc0[0, 0, 1], thlsrc, qtsrc, esx)
 
                 if id_check == 1:
                     condensation = True
@@ -1766,13 +1758,7 @@ def compute_cin_cinlcl(
                         qij,
                         qse,
                         id_check,
-                    ) = conden(
-                        pifc0[0, 0, 1],
-                        thlsrc,
-                        qtsrc,
-                        ese,
-                        esx,
-                    )
+                    ) = conden(pifc0[0, 0, 1], thlsrc, qtsrc, esx)
 
                     if id_check == 1:
                         condensation = True
@@ -1829,13 +1815,7 @@ def compute_cin_cinlcl(
                     qij,
                     qse,
                     id_check,
-                ) = conden(
-                    pifc0,
-                    thlsrc,
-                    qtsrc,
-                    ese,
-                    esx,
-                )
+                ) = conden(pifc0, thlsrc, qtsrc, esx)
 
                 if id_check == 1 and not stop_cin:
                     condensation = True
@@ -1874,13 +1854,7 @@ def compute_cin_cinlcl(
                         qij,
                         qse,
                         id_check,
-                    ) = conden(
-                        pifc0[0, 0, 1],
-                        thlsrc,
-                        qtsrc,
-                        ese,
-                        esx,
-                    )
+                    ) = conden(pifc0[0, 0, 1], thlsrc, qtsrc, esx)
 
                 if id_check == 1 and not stop_cin:
                     condensation = True
@@ -2877,7 +2851,7 @@ def define_updraft_properties(
                 thlu[0, 0, 1] = thlsrc
                 qtu[0, 0, 1] = qtsrc
 
-            thj, qvj, qlj, qij, qse, id_check = conden(prel, thlsrc, qtsrc, ese, esx)
+            thj, qvj, qlj, qij, qse, id_check = conden(prel, thlsrc, qtsrc, esx)
 
             if id_check == 1:
                 condensation = True
@@ -3281,7 +3255,7 @@ def buoyancy_sorting(
                 # liquid water temperature instead of temperature  as the argument
                 # of "qsat". But note normal argument of "qsat" is temperature.
 
-                thj, qvj, qlj, qij, qse, id_check = conden(pe, thle, qte, ese, esx)
+                thj, qvj, qlj, qij, qse, id_check = conden(pe, thle, qte, esx)
 
                 if id_check == 1:
                     condensation = True
@@ -3317,10 +3291,10 @@ def buoyancy_sorting(
                     rhomid0j = pe / (constants.MAPL_RDRY * thv0j * exne)
                     qsat_arg = thle * exne
                     qsatpe_tmp = qsat_pe / 100.0
-                    qs, _ = saturation_specific_humidity(qsat_arg, qsatpe_tmp * 100.0, ese, esx)
+                    qs, _ = saturation_specific_humidity(qsat_arg, qsatpe_tmp * 100.0, esx)
                     excess0 = qte - qs
 
-                    thj, qvj, qlj, qij, qse, id_check = conden(pe, thlue, qtue, ese, esx)
+                    thj, qvj, qlj, qij, qse, id_check = conden(pe, thlue, qtue, esx)
 
                     if id_check == 1:
                         condensation = True
@@ -3371,7 +3345,7 @@ def buoyancy_sorting(
                                 + ((constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP / exne) * exqi)
                             )
 
-                        thj, qvj, qlj, qij, qse, id_check = conden(pe, thlue, qtue, ese, esx)
+                        thj, qvj, qlj, qij, qse, id_check = conden(pe, thlue, qtue, esx)
 
                         if id_check == 1:
                             condensation = True
@@ -3407,7 +3381,7 @@ def buoyancy_sorting(
                             tj = thj * exne  # This 'tj' is used for computing thermo. coeffs. below
                             qsat_arg = thlue * exne
                             pe_tmp = qsat_pe / 100.0
-                            qs, _ = saturation_specific_humidity(qsat_arg, pe_tmp * 100.0, ese, esx)
+                            qs, _ = saturation_specific_humidity(qsat_arg, pe_tmp * 100.0, esx)
                             excessu = qtue - qs
 
                             # Calculate critical mixing fraction, 'xc'. Mixture with
@@ -3461,7 +3435,7 @@ def buoyancy_sorting(
                                 thlxsat = thlue + xsat * (thle - thlue)
                                 qtxsat = qtue + xsat * (qte - qtue)
 
-                                thj, qvj, qlj, qij, qse, id_check = conden(pe, thlxsat, qtxsat, ese, esx)
+                                thj, qvj, qlj, qij, qse, id_check = conden(pe, thlxsat, qtxsat, esx)
 
                                 if id_check == 1:
                                     condensation = True
@@ -3674,13 +3648,7 @@ def buoyancy_sorting(
                                 # significantly modify this cloud microphysics,
                                 # including precipitation-induced downdraft also.
 
-                                thj, qvj, qlj, qij, qse, id_check = conden(
-                                    pifc0[0, 0, 1],
-                                    thlu[0, 0, 1],
-                                    qtu[0, 0, 1],
-                                    ese,
-                                    esx,
-                                )
+                                thj, qvj, qlj, qij, qse, id_check = conden(pifc0[0, 0, 1], thlu[0, 0, 1], qtu[0, 0, 1], esx)
 
                                 if id_check == 1:
                                     condensation = True
@@ -3753,13 +3721,7 @@ def buoyancy_sorting(
 
                                     # Update 'thvu(k)' after detraining condensate
                                     # from cumulus updraft.
-                                    thj, qvj, qlj, qij, qse, id_check = conden(
-                                        pifc0[0, 0, 1],
-                                        thlu[0, 0, 1],
-                                        qtu[0, 0, 1],
-                                        ese,
-                                        esx,
-                                    )
+                                    thj, qvj, qlj, qij, qse, id_check = conden(pifc0[0, 0, 1], thlu[0, 0, 1], qtu[0, 0, 1], esx)
 
                                     if id_check == 1:
                                         condensation = True
@@ -4201,7 +4163,7 @@ def recalc_condensate(
 
     with computation(FORWARD), interval(...):
         if not condensation:
-            thj, qvj, qlj, qij, qse, id_check = conden(pifc0.at(K=kpen) + ppen, thlu_top, qtu_top, ese, esx)
+            thj, qvj, qlj, qij, qse, id_check = conden(pifc0.at(K=kpen) + ppen, thlu_top, qtu_top, esx)
 
     with computation(FORWARD), interval(...):
         if not condensation:
@@ -5309,7 +5271,7 @@ def penetrative_entrainment_fluxes(
             if K <= kpen:
                 thl_prog = thl0 + thlten_sub * dt
                 qt_prog = max(qt0 + qtten_sub * dt, 1.0e-12)
-                thj, qvj, qlj, qij, qse, id_check = conden(pmid0, thl_prog, qt_prog, ese, esx)
+                thj, qvj, qlj, qij, qse, id_check = conden(pmid0, thl_prog, qt_prog, esx)
 
                 if id_check == 1:
                     condensation = True
@@ -5637,7 +5599,7 @@ def calc_thermodynamic_tendencies(
                     qlj_2D = 0.0
                     qij_2D = 0.0
                 elif K == krel:
-                    thj, qvj, qlj_2D, qij_2D, qse, id_check = conden(prel, thlu, qtu, ese, esx)
+                    thj, qvj, qlj_2D, qij_2D, qse, id_check = conden(prel, thlu, qtu, esx)
 
                     if id_check == 1:
                         condensation = True
@@ -5670,7 +5632,7 @@ def calc_thermodynamic_tendencies(
                     if not condensation:
                         qlubelow = qlj_2D
                         qiubelow = qij_2D
-                        thj, qvj, qlj_2D, qij_2D, qse, id_check = conden(pifc0[0, 0, 1], thlu[0, 0, 1], qtu[0, 0, 1], ese, esx)
+                        thj, qvj, qlj_2D, qij_2D, qse, id_check = conden(pifc0[0, 0, 1], thlu[0, 0, 1], qtu[0, 0, 1], esx)
 
                         if id_check == 1:
                             condensation = True
@@ -5707,7 +5669,7 @@ def calc_thermodynamic_tendencies(
 
                 elif K == kpen:
                     if not condensation:
-                        thj, qvj, qlj_2D, qij_2D, qse, id_check = conden(pifc0 + ppen, thlu_top, qtu_top, ese, esx)
+                        thj, qvj, qlj_2D, qij_2D, qse, id_check = conden(pifc0 + ppen, thlu_top, qtu_top, esx)
 
                         if id_check == 1:
                             condensation = True
@@ -5746,7 +5708,7 @@ def calc_thermodynamic_tendencies(
 
                 else:
                     if not condensation:
-                        thj, qvj, qlj_2D, qij_2D, qse, id_check = conden(pifc0[0, 0, 1], thlu[0, 0, 1], qtu[0, 0, 1], ese, esx)
+                        thj, qvj, qlj_2D, qij_2D, qse, id_check = conden(pifc0[0, 0, 1], thlu[0, 0, 1], qtu[0, 0, 1], esx)
 
                         if id_check == 1:
                             condensation = True
@@ -5813,13 +5775,7 @@ def calc_thermodynamic_tendencies(
                     # entrained airs in k = kbup layer.
 
                 if K == kbup:
-                    thj, qvj, ql_emf_kbup, qi_emf_kbup, qse, id_check = conden(
-                        pmid0,
-                        thlu_emf[0, 0, 1],
-                        qtu_emf[0, 0, 1],
-                        ese,
-                        esx,
-                    )
+                    thj, qvj, ql_emf_kbup, qi_emf_kbup, qse, id_check = conden(pmid0, thlu_emf[0, 0, 1], qtu_emf[0, 0, 1], esx)
 
                     if id_check == 1:
                         condensation = True
@@ -6163,7 +6119,7 @@ def compute_diagnostic_outputs(
     """
     with computation(FORWARD), interval(...):
         if not condensation:
-            thj, qvj, qlj, qij, qse, id_check = conden(prel, thlu.at(K=krel), qtu.at(K=krel), ese, esx)
+            thj, qvj, qlj, qij, qse, id_check = conden(prel, thlu.at(K=krel), qtu.at(K=krel), esx)
 
             if id_check == 1:
                 condensation = True
@@ -6310,9 +6266,9 @@ def calc_cumulus_condensate_at_interface(
                     # Note 'ppen < 0' and at 'k=kpen' layer, I used 'thlu_top'&'qtu_top'
                     # which explicitly considered zero or non-zero 'fer(kpen)'.
                     if K == kpen:
-                        thj, qvj, qlj, qij, qse, id_check = conden(pifc0 + ppen, thlu_top, qtu_top, ese, esx)
+                        thj, qvj, qlj, qij, qse, id_check = conden(pifc0 + ppen, thlu_top, qtu_top, esx)
                     else:
-                        thj, qvj, qlj, qij, qse, id_check = conden(pifc0[0, 0, 1], thlu[0, 0, 1], qtu[0, 0, 1], ese, esx)
+                        thj, qvj, qlj, qij, qse, id_check = conden(pifc0[0, 0, 1], thlu[0, 0, 1], qtu[0, 0, 1], esx)
 
                     if id_check == 1:
                         condensation = True
@@ -6803,7 +6759,7 @@ def recalc_environmental_variables(
         if not condensation:
             thl0bot = thl0 + ssthl0 * (pifc0 - pmid0)
             qt0bot = qt0 + ssqt0 * (pifc0 - pmid0)
-            thj, qvj, qlj, qij, qse, id_check = conden(pifc0, thl0bot, qt0bot, ese, esx)
+            thj, qvj, qlj, qij, qse, id_check = conden(pifc0, thl0bot, qt0bot, esx)
             if id_check == 1:
                 condensation = True
                 umf_out = 0.0
@@ -6838,7 +6794,7 @@ def recalc_environmental_variables(
 
                 thl0top = thl0 + ssthl0 * (pifc0[0, 0, 1] - pmid0)
                 qt0top = qt0 + ssqt0 * (pifc0[0, 0, 1] - pmid0)
-                thj, qvj, qlj, qij, qse, id_check = conden(pifc0[0, 0, 1], thl0top, qt0top, ese, esx)
+                thj, qvj, qlj, qij, qse, id_check = conden(pifc0[0, 0, 1], thl0top, qt0top, esx)
 
                 if id_check == 1:
                     condensation = True
@@ -8571,7 +8527,6 @@ class ComputeUwshcuInv(NDSLRuntime):
                 pifc0=self.locals.pifc0_in,
                 qtsrc=self.locals.qtsrc,
                 thlsrc=self.locals.thlsrc,
-                ese=self.ese,
                 esx=self.esx,
                 thl0=self.locals.thl0,
                 ssthl0=self.locals.ssthl0,
@@ -9031,7 +8986,6 @@ class ComputeUwshcuInv(NDSLRuntime):
                 thlu=self.locals.thlu,
                 qtu=self.locals.qtu,
                 wu=self.locals.wu,
-                ese=self.ese,
                 esx=self.esx,
                 qsat_pe=self.locals.qsat_pe,
                 zifc0=self.locals.zifc0_in,

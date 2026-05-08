@@ -42,7 +42,6 @@ def compute_extra_inputs_from_state(
     area: FloatFieldIJ,
     modified_area: FloatFieldIJ,
     convection_fraction: FloatFieldIJ,
-    ese: GlobalTable_saturation_tables,
     esx: GlobalTable_saturation_tables,
 ):
     """
@@ -73,7 +72,6 @@ def compute_extra_inputs_from_state(
         area (FloatFieldIJ)
         modified_area (FloatFieldIJ)
         convection_fraction (FloatFieldIJ)
-        ese (GlobalTable_saturation_tables)
         esx (GlobalTable_saturation_tables)
     """
     from __externals__ import GF_MIN_AREA, LHYDROSTATIC, STOCH_BOT, STOCH_TOP, STOCHASTIC_CONVECTION, k_end
@@ -96,12 +94,12 @@ def compute_extra_inputs_from_state(
 
     with computation(FORWARD), interval(0, 1):
         tpwi = vapor * mass
-        qsat, _ = saturation_specific_humidity(t, p, ese, esx)
+        qsat, _ = saturation_specific_humidity(t, p, esx)
         tpwi_star = qsat * mass
 
     with computation(FORWARD), interval(1, -1):
         tpwi = tpwi + vapor * mass
-        qsat, _ = saturation_specific_humidity(t, p, ese, esx)
+        qsat, _ = saturation_specific_humidity(t, p, esx)
         tpwi_star = tpwi_star + qsat * mass
 
     with computation(FORWARD), interval(0, 1):
@@ -1327,7 +1325,6 @@ class GF2020Setup(NDSLRuntime):
             area=state.area,
             modified_area=locals.derived_state.modified_area,
             convection_fraction=state.convection_fraction,
-            ese=self.saturation_tables.ese,
             esx=self.saturation_tables.esx,
         )
 

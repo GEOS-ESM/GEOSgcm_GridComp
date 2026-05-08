@@ -14,7 +14,6 @@ def update_humidity(
     pressure: FloatField,
     vapor: FloatField,
     humidity: FloatField,
-    ese: GlobalTable_saturation_tables,
     esx: GlobalTable_saturation_tables,
 ):
     """Update humidity with mixing ratios updated by driver output
@@ -24,11 +23,10 @@ def update_humidity(
         pressure (FloatField)
         vapor (FloatField)
         humidity (FloatField)
-        ese (GlobalTable_saturation_tables)
         esx (GlobalTable_saturation_tables)
     """
     with computation(PARALLEL), interval(...):
-        qsat, _ = saturation_specific_humidity(temperature, pressure * 100.0, ese, esx)
+        qsat, _ = saturation_specific_humidity(temperature, pressure * 100.0, esx)
         humidity = vapor * qsat
 
 
@@ -180,6 +178,5 @@ class GFDL1MRadiationCoupling(NDSLRuntime):
                 pressure=local_p_mb,
                 vapor=mixing_ratio_vapor,
                 humidity=relative_humidity_after_pdf,
-                ese=self.saturation_tables.ese,
                 esx=self.saturation_tables.esx,
             )

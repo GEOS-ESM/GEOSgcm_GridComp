@@ -191,7 +191,6 @@ class TranslateFindKlcl(TranslateFortranData2Py):
         )
 
         saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory.backend)
-        self.ese = saturation_vapor_pressure_table.ese
         self.esx = saturation_vapor_pressure_table.esx
 
         umf_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
@@ -222,7 +221,6 @@ class TranslateFindKlcl(TranslateFortranData2Py):
             pifc0=pifc0,
             qtsrc=qtsrc,
             thlsrc=thlsrc,
-            ese=self.ese,
             esx=self.esx,
             thl0=thl0,
             ssthl0=ssthl0,

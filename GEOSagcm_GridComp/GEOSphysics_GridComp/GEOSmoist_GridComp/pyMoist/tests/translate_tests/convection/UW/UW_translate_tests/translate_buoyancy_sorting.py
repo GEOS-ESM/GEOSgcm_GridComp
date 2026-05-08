@@ -225,7 +225,6 @@ class TranslateBuoyancySorting(TranslateFortranData2Py):
         stop_buoyancy_sort = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a", dtype=bool)
 
         saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory.backend)
-        self.ese = saturation_vapor_pressure_table.ese
         self.esx = saturation_vapor_pressure_table.esx
 
         umf_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
@@ -293,7 +292,6 @@ class TranslateBuoyancySorting(TranslateFortranData2Py):
             thlu=thlu,
             qtu=qtu,
             wu=wu,
-            ese=self.ese,
             esx=self.esx,
             qsat_pe=qsat_pe,
             zifc0=zifc0,

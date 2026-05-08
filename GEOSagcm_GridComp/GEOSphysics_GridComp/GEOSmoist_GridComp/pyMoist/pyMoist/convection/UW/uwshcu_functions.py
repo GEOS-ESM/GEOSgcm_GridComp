@@ -133,7 +133,6 @@ def conden(
     p: Float,
     thl: Float,
     qt: Float,
-    ese: GlobalTable_saturation_tables,
     esx: GlobalTable_saturation_tables,
 ):
     """
@@ -143,7 +142,6 @@ def conden(
         p [Float]: Pressure [Pa]
         thl [Float]: Liquid potential temperature [K]
         qt [Float]: Mixing ratio [kg/kg]
-        ese [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
         esx [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
 
     Returns:
@@ -168,7 +166,7 @@ def conden(
     temps: float32 = tc
     ps: float32 = p
     ps_tmp = ps / 100.0
-    qs, _ = saturation_specific_humidity(temps, ps_tmp * 100.0, ese, esx)
+    qs, _ = saturation_specific_humidity(temps, ps_tmp * 100.0, esx)
     rvls = qs
 
     if qs >= qt:  # no condensation
@@ -185,7 +183,7 @@ def conden(
                 constants.MAPL_CP / leff + constants.EPSILON * leff * rvls / (constants.MAPL_RGAS * temps * temps)
             )
             ps_tmp = ps / 100.0
-            qs, _ = saturation_specific_humidity(temps, ps_tmp * 100.0, ese, esx)
+            qs, _ = saturation_specific_humidity(temps, ps_tmp * 100.0, esx)
             rvls = qs
             iteration += 1
         qc = max(qt - qs, float64(0.0))
@@ -400,7 +398,6 @@ def qsinvert(
     qt: Float,
     thl: Float,
     ps_in: Float,
-    ese: GlobalTable_saturation_tables,
     esx: GlobalTable_saturation_tables,
 ):
     """
@@ -413,7 +410,6 @@ def qsinvert(
         qt [Float]: Mixing ratio [kg/kg]
         thl [Float]: Liquid potential temperature [K]
         ps_in [Float]: Pressure [Pa]
-        ese [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
         esx [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
 
     Returns:
@@ -431,7 +427,7 @@ def qsinvert(
     Ti: float64 = thl * (ps_in / p00) ** rovcp
     Tgeos: float32 = Ti
     Pgeos: float32 = float32(ps_in)
-    qs, dqsdT = saturation_specific_humidity(Tgeos, Pgeos, ese, esx)
+    qs, dqsdT = saturation_specific_humidity(Tgeos, Pgeos, esx)
     es: float64 = ps_in * qs / (constants.EPSILON + (float64(1.0) - constants.EPSILON) * float64(qs))
     rhi: float64 = qt / float64(qs)
 
@@ -449,7 +445,7 @@ def qsinvert(
             Ts: float64 = thl * Pis
             Tgeos = Ts
             Pgeos = ps
-            qs, dqsdT = saturation_specific_humidity(Tgeos, Pgeos, ese, esx)
+            qs, dqsdT = saturation_specific_humidity(Tgeos, Pgeos, esx)
             gam: float64 = (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * float64(dqsdT)
             err: float64 = qt - qs
             nu: float64 = ice_fraction(float32(Ts), 0.0, 0.0)

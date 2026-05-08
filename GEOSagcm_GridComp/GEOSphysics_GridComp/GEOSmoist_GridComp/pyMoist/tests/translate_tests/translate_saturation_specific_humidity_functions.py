@@ -43,7 +43,7 @@ def test_saturation_specific_humidity_functions(
     with computation(FORWARD), interval(...):
         sat_over_ice, dqsat_over_ice = saturation_specific_humidity_frozen_surface(ese=ese, frz=frz, t=t, p=p * 100.0)
         sat_over_liquid, dqsat_over_liquid = saturation_specific_humidity_liquid_surface(esw=esw, lqu=lqu, t=t, p=p * 100.0)
-        sat, dqsat = saturation_specific_humidity(t=t, p=p * 100.0, ese=ese, esx=esx)
+        sat, dqsat = saturation_specific_humidity(t=t, p=p * 100.0, esx=esx)
 
 
 def test_saturation_specific_humidity_functions_2d(
@@ -64,7 +64,7 @@ def test_saturation_specific_humidity_functions_2d(
     with computation(FORWARD), interval(0, 1):
         sat_over_ice, dqsat_over_ice = saturation_specific_humidity_frozen_surface(ese=ese, frz=frz, t=t, p=p * 100.0)
         sat_over_liquid, dqsat_over_liquid = saturation_specific_humidity_liquid_surface(esw=esw, lqu=lqu, t=t, p=p * 100.0)
-        sat, dqsat = saturation_specific_humidity(t=t, p=p * 100.0, ese=ese, esx=esx)
+        sat, dqsat = saturation_specific_humidity(t=t, p=p * 100.0, esx=esx)
 
 
 class Translatesaturation_specific_humidity_functions(TranslateFortranData2Py):

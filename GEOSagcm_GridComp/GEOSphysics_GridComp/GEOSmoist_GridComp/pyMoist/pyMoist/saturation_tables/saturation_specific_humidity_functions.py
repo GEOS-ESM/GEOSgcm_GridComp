@@ -105,14 +105,7 @@ def saturation_specific_humidity_liquid_surface(
 
 
 @function
-def saturation_specific_humidity(
-    t,
-    p,
-    ese,
-    esx,
-    use_ramp=False,
-    ramp=-999.0,
-):
+def saturation_specific_humidity(t, p, esx):
     """Compute saturation specific humidity and derivative saturation specific humidity
     with respect to temperature from saturation pressure tables.
 
@@ -121,17 +114,12 @@ def saturation_specific_humidity(
     Arguments:
         t (Float): temperature in Kelvin
         p (Float): pressure in Pascals
-        ese (Float): saturation pressure table in Pascals, specifics unknown
         esx (Float): saturation pressure table in Pascals, specifics unknown
-        use_ramp (Bool): trigger for "ramp" option. details unknown
-        ramp (Float): parameter used for "ramp" option. details unknown
 
     Returns:
         qsat (Float): saturation specific humidity
         dqsat (Float): derivative saturation specific humidity with respect to temperature
     """
-    if use_ramp:
-        raise NotImplementedError("The option `use_ramp=True` is not implemented.")
 
     if t <= TMINTBL:
         t = TMINTBL
