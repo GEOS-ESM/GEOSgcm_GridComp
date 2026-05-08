@@ -230,6 +230,8 @@ else
     echo "Successfully copied CO2_MonthlyMean_DiurnalCycle.nc4 to bcs dir."
 endif
 
+if ( ! -d route ) mkdir -p route
+
 if(-f route/route_parameters.nc ) then
     echo "route_parameters.nc already present in bcs dir."
 else
@@ -266,7 +268,7 @@ endif
    mv_template = mv_template + """
 
 # adjust permissions (for all grid types)
-chmod +rX -R geometry land logs
+chmod +rX -R geometry land logs route
 
 """
    return mv_template
