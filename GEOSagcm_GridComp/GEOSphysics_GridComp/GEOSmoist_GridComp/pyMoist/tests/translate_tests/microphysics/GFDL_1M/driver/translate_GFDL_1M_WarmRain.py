@@ -71,7 +71,7 @@ class TranslateGFDL_1M_WarmRain(TranslateFortranData2Py):
             dace_config=self.stencil_factory.config.dace_config,
         )
 
-        nx, ny, nz, _ntimes = inputs["driver_local_dp_warmrain"].shape
+        nx, ny, nz = inputs["driver_local_dp_warmrain"].shape
 
         # preset output dictionary to be filled inside the for loop
         outputs = {}

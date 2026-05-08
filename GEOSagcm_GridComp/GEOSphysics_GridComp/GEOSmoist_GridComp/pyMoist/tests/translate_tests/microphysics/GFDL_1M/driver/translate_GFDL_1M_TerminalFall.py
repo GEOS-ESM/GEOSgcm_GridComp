@@ -56,7 +56,7 @@ class TranslateGFDL_1M_TerminalFall(TranslateFortranData2Py):
 
         # get the shape of the field
         state = GFDL1MState.zeros(self.quantity_factory)
-        nx, ny, nz, _ntimes = inputs["driver_local_t_terminalfall"].shape
+        nx, ny, nz = inputs["driver_local_t_terminalfall"].shape
 
         # preset output dictionary to be filled inside the for loop
         outputs = {}

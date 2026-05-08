@@ -63,7 +63,7 @@ class TranslateGFDL_1M_IceCloud(TranslateFortranData2Py):
         )
 
         # get the shape of the field
-        nx, ny, nz, _ntimes = inputs["driver_local_t_icecloud"].shape
+        nx, ny, nz = inputs["driver_local_t_icecloud"].shape
 
         # preset output dictionary to be filled inside the for loop
         outputs = {}
