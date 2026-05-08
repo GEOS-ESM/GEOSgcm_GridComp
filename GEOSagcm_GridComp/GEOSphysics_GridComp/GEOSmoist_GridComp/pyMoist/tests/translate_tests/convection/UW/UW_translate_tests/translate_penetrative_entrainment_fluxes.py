@@ -1,7 +1,7 @@
 from f90nml import Namelist
-from gt4py.cartesian.gtscript import int32
 from ndsl import StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
+from ndsl.dsl.gt4py import int32
 from ndsl.dsl.typing import Int
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
