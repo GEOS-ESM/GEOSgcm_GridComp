@@ -230,6 +230,8 @@ else
     echo "Successfully copied CO2_MonthlyMean_DiurnalCycle.nc4 to bcs dir."
 endif
 
+if ( ! -d route ) mkdir -p route
+
 if(-f route/route_parameters.nc ) then
     echo "route_parameters.nc already present in bcs dir."
 else
@@ -246,6 +248,8 @@ endif
 set topo_version = {TOPO_VERSION}
 
 if ( ! -d TOPO ) mkdir -p TOPO
+echo $topo_version >! TOPO/TOPO_version_info
+
 set topo_dir  = CF{NC}x6C{SGNAME}     # e.g., CF0024x6C or CF0540x6C-SG001
 set topo_root = {MAKE_BCS_INPUT_DIR}/atmosphere/TOPO
 set topo_src  = $topo_root/$topo_version/$topo_dir
@@ -264,7 +268,7 @@ endif
    mv_template = mv_template + """
 
 # adjust permissions (for all grid types)
-chmod +rX -R geometry land logs
+chmod +rX -R geometry land logs route
 
 """
    return mv_template
