@@ -379,7 +379,7 @@ contains
             endif
             call ESMF_FieldBundleGet(bdle, trim(FieldNames(i)), field=tmp_field, _RC)
          endif
-         call MAPL_AllocateCoupling(tmp_field, _RC)
+         call MAPL_FieldEmptyComplete(tmp_field, _RC)
          call ESMF_AttributeGet(tmp_field, NAME='LONG_NAME', VALUE=LONG_NAME, _RC)
          call ESMF_AttributeGet(tmp_field, NAME='UNITS', VALUE=UNITS, _RC)
     
