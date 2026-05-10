@@ -426,10 +426,10 @@ contains
     call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, _RC)
     GigaTrajInternalPtr => wrap%ptr
 
-    call MAPL_GetPointer(state, U, "U", _RC)
-    call MAPL_GetPointer(state, V, "V", _RC)
-    call MAPL_GetPointer(state, W, trim(GigaTrajInternalPtr%vTendency), _RC)
-    call MAPL_GetPointer(state, P, trim(GigaTrajInternalPtr%vCoord), _RC)
+    call MAPL_StateGetPointer(state, U, "U", _RC)
+    call MAPL_StateGetPointer(state, V, "V", _RC)
+    call MAPL_StateGetPointer(state, W, trim(GigaTrajInternalPtr%vTendency), _RC)
+    call MAPL_StateGetPointer(state, P, trim(GigaTrajInternalPtr%vCoord), _RC)
 
     if (GigaTrajInternalPtr%regrid_to_latlon) then
        grid_ = GigaTrajInternalPtr%LatLonGrid
@@ -569,8 +569,8 @@ contains
     call ESMF_StateGet(INTERNAL, itemNameList=item_names, _RC)
 
     do k=1, ItemCount
-       call MAPL_GetPointer(Import, model_field, trim(item_names(k)), _RC)
-       call MAPL_GetPointer(INTERNAL, internal_field, trim(item_names(k)), _RC)
+       call MAPL_StateGetPointer(Import, model_field, trim(item_names(k)), _RC)
+       call MAPL_StateGetPointer(INTERNAL, internal_field, trim(item_names(k)), _RC)
        internal_field(:,:,:) = model_field(:,:,:)
     enddo
     deallocate(item_names)
@@ -604,10 +604,10 @@ contains
 !---------------
 ! Step 1) Regrid the metData field from cubed to lat-lon
 !---------------
-    call MAPL_GetPointer(Import, U_cube, "U", _RC)
-    call MAPL_GetPointer(Import, V_cube, "V", _RC)
-    call MAPL_GetPointer(Import, W_cube, GigaTrajInternalPtr%vTendency, _RC)
-    call MAPL_GetPointer(Import, P_cube, GigaTrajInternalPtr%vCoord, _RC)
+    call MAPL_StateGetPointer(Import, U_cube, "U", _RC)
+    call MAPL_StateGetPointer(Import, V_cube, "V", _RC)
+    call MAPL_StateGetPointer(Import, W_cube, GigaTrajInternalPtr%vTendency, _RC)
+    call MAPL_StateGetPointer(Import, P_cube, GigaTrajInternalPtr%vCoord, _RC)
 
     lm = size(u_cube,3)
     d1 = size(u_cube,1)
@@ -1104,7 +1104,7 @@ contains
               index(var_name, 'bcSV') /= 0 .or.   &
               index(var_name, 'ocSV') /= 0 ) then
 
-            call MAPL_GetPointer(state, field, var_name, _RC)
+            call MAPL_StateGetPointer(state, field, var_name, _RC)
             count3 = size(field,3)
             allocate(values_2d(GigaTrajInternalPtr%parcels%num_parcels, count3))
             call get_metsrc_data2d (GC, state, ctime, var_name, values_2d, RC )
@@ -1369,7 +1369,7 @@ contains
        call ESMF_StateGet(leaf_export,  trim(bundlename), bdle,  _RC)
        call ESMFL_BundleGetPointerToData(bdle, fieldname, ptr3d, _RC)
     else
-       call MAPL_GetPointer(leaf_export, ptr3d, fieldname, _RC)
+       call MAPL_StateGetPointer(leaf_export, ptr3d, fieldname, _RC)
     endif
 
     call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, _RC)
@@ -1434,7 +1434,7 @@ contains
 
     Iam = "get_metsrc_data"
 
-    call MAPL_GetPointer(state, field, fieldname, _RC)
+    call MAPL_StateGetPointer(state, field, fieldname, _RC)
     count3 = size(field,3)
 
     call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, _RC)
