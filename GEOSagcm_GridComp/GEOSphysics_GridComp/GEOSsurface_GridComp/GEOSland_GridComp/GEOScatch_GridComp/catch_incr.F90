@@ -6,7 +6,7 @@ module catch_incr
   ! reichle+csdraper,  3 Apr 2012
   ! reichle,          29 Sep 2023 - added snow checks 
 
-  use MAPL_BaseMod,      ONLY:               &
+  use MAPL_Constants,    ONLY:               &
        MAPL_Land
 
 

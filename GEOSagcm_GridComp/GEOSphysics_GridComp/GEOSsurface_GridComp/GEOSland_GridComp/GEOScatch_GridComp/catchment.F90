@@ -62,7 +62,7 @@
 
       MODULE CATCHMENT_MODEL
 
-      USE MAPL_BaseMod,      ONLY:               &
+      USE MAPL_Constants,    ONLY:               &
            NTYPS             => MAPL_NumVegTypes, &
            MAPL_Land,                             &
            MAPL_UNDEF

@@ -22,7 +22,7 @@ module StieglitzSnow
        TF   => MAPL_TICE,       &  ! K          
        RHOW => MAPL_RHOWTR         ! kg/m^3     
   
-  USE MAPL_BaseMod,      ONLY: MAPL_LANDICE
+  USE MAPL_Constants,    ONLY: MAPL_LANDICE
  
   USE SurfParams,        ONLY: WEMIN, AICEV, AICEN
   

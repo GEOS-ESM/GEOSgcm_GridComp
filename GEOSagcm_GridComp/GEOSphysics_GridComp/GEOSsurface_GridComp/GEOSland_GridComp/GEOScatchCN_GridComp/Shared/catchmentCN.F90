@@ -64,7 +64,7 @@
 
 MODULE CATCHMENT_CN_MODEL
   
-  USE MAPL_BaseMod,      ONLY: MAPL_Land
+  USE MAPL_Constants,    ONLY: MAPL_Land
   
   USE MAPL_Constants, ONLY:           &
        PIE               => MAPL_PI,     &  ! -                       
