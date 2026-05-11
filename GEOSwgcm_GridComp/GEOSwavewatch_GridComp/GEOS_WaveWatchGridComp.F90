@@ -17,6 +17,7 @@ module GEOS_WaveWatchGridCompMod
 
     use ESMF
     use MAPL_Mod
+    use mapl3g_GridGet, only: grid_get_interior
     use NUOPC
     use NUOPC_Model, only: label_Advance, label_DataInitialize
 
@@ -598,7 +599,11 @@ contains
       call MAPL_Get ( MAPL, GCS=GCS, GIM=GIM, GEX=GEX, RC=STATUS )
       VERIFY_(STATUS)
 
-      call MAPL_GRID_INTERIOR(GRID,I1,IN,J1,JN)
+      block
+        integer, allocatable :: interior_(:)
+        call grid_get_interior(GRID, interior_)
+        I1=interior_(1); IN=interior_(2); J1=interior_(3); JN=interior_(4)
+      end block
       i1 = i1-1
       j1 = j1-1
 
