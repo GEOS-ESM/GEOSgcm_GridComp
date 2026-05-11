@@ -25,6 +25,7 @@ module GEOS_RouteGridCompMod
 
   use ESMF
   use MAPL_Mod
+  use mapl_Partition, only: mapl_GetPartition
   use MAPL_Constants
   use ROUTING_MODEL,          ONLY:     &
        river_routing, ROUTE_DT
@@ -400,7 +401,7 @@ contains
     route%mype = mype
     
     ! define minCatch, maxCatch
-    call MAPL_DecomposeDim ( n_catg,ims,ndes ) ! ims(mype+1) gives the size of my partition
+    ims = mapl_GetPartition(n_catg, k=ndes) ! ims(mype+1) gives the size of my partition
     ! myPE is 0-based!
     beforeMe = sum(ims(1:mype))
     minCatch = beforeMe + 1
