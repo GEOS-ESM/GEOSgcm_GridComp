@@ -64,6 +64,13 @@ class TranslateGFDL_1M_MeltFreeze(TranslateFortranData2Py):
             mixing_ratio_liquid=state.mixing_ratio.convective_liquid,
             mixing_ratio_ice=state.mixing_ratio.convective_ice,
         )
+        code(
+            convection_fraction=state.convection_fraction,
+            surface_type=state.surface_type,
+            t=state.t,
+            mixing_ratio_liquid=state.mixing_ratio.large_scale_liquid,
+            mixing_ratio_ice=state.mixing_ratio.large_scale_ice,
+        )
 
         return {
             "t": state.t.field[:],
