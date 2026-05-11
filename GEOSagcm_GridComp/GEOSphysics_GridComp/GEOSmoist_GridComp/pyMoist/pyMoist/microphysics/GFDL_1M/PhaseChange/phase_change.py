@@ -45,7 +45,7 @@ class PhaseChange(NDSLRuntime):
         self.config = config
         self.saturation_tables = saturation_tables
 
-        # innitalize locals
+        # initialize locals
         self._alpha: Local = self.make_local(quantity_factory, [I_DIM, J_DIM, K_DIM], Float)
 
         # construct stencils
