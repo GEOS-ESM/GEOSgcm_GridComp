@@ -343,9 +343,6 @@ module gfdl_mp_mod
     logical :: do_psd_water_num = .false. ! calculate cloud water number concentration based on PSD
     logical :: do_psd_ice_num = .true. ! calculate cloud ice number concentration based on PSD
 
-    logical :: do_3d_acc_cliq = .true.  ! perform the new 3d accretion for cloud water
-    logical :: do_3d_acc_cice = .false. ! perform the new 3d accretion for cloud ice
-
     logical :: cp_heating = .false. ! update temperature based on constant pressure
 
     logical :: delay_cond_evap = .true. ! do condensation evaporation only at the last time step
@@ -439,22 +436,31 @@ module gfdl_mp_mod
     real :: pwbf_qi_crt  = 0.8e-4 ! WBF liquid to ice freezing threshold (kg/m^3)
     real :: pgaut_qs_crt = 0.6e-3 ! snow to graupel autoconversion threshold (0.6e-3 in Purdue Lin scheme) (kg/m^3)
 
-    real :: c_paut  = 1.0 ! cloud water to rain autoconversion efficiency
+    real :: c_paut  = 0.75 ! cloud water to rain autoconversion efficiency
 
+    ! -----------------------------------------------------------------------
     ! collection efficiencies for accretion
-    !   Dry processes (frozen to/from frozen)
-    real :: c_psaci = 0.05 ! cloud ice to snow accretion efficiency (was 0.1 in ZETAC)
-    real :: c_pgaci = 0.01 ! cloud ice to graupel accretion efficiency
-    real :: c_pgacs = 0.01 ! snow to graupel accretion efficiency
-    !   Mixed processes (liquid to/from frozen)
-    real :: c_psacw = 1.0 ! cloud water to snow accretion efficiency
-    real :: c_pgacw = 1.0 ! cloud water to graupel accretion efficiency
-    !   Rain processes (to/from rain)
-    real :: c_pracw = 1.0 ! cloud water to rain accretion efficiency
-    real :: c_praci = 1.0 ! cloud ice to rain accretion efficiency
-    real :: c_pracs = 1.0 ! snow to rain accretion efficiency
-    real :: c_psacr = 1.0 ! rain to snow accretion efficiency
-    real :: c_pgacr = 1.0 ! rain to graupel accretion efficiency
+    ! -----------------------------------------------------------------------
+    ! --- Cloud Water (Liquid) 3D Accretion ---
+    ! When .true., these coefficients act as Aerodynamic Stokes Efficiencies 
+    ! applied to the raw 3D geometric integral.
+    logical :: do_3d_acc_cliq = .true.  ! perform the new 3d accretion for cloud water
+    real :: c_psacw = 0.05 ! cloud water to snow (HEAVY aerodynamic reduction required)
+    real :: c_pgacw = 0.80 ! cloud water to graupel/hail (Punches through air)
+    real :: c_pracw = 1.00 ! cloud water to rain 
+    ! --- Cloud Ice (Frozen) 3D Accretion ---
+    ! When .true., these coefficients account for both Aerodynamics AND "Bounce" 
+    ! (Sticking Efficiency) applied to the raw 3D geometric integral.
+    logical :: do_3d_acc_cice = .false. ! perform the new 3d accretion for cloud ice
+    real :: c_psaci = 0.05 ! cloud ice to snow accretion (Aerodynamics + Low sticking)
+    real :: c_pgaci = 0.01 ! cloud ice to graupel accretion (Aerodynamics + Very low sticking)
+    real :: c_praci = 1.00 ! cloud ice to rain accretion (High sticking to liquid)
+    ! --- Standard Macro-Particle Accretion ---
+    ! Interactions between precipitation species (Unaffected by 3D cice/cliq flags)
+    real :: c_pgacs = 0.03 ! snow to graupel accretion efficiency
+    real :: c_pracs = 1.00 ! snow to rain accretion efficiency
+    real :: c_psacr = 1.00 ! rain to snow accretion efficiency
+    real :: c_pgacr = 1.00 ! rain to graupel accretion efficiency
 
     real :: is_fac = 0.2 ! cloud ice sublimation temperature factor
     real :: ss_fac = 0.2 ! snow sublimation temperature factor
@@ -3527,7 +3533,7 @@ subroutine ice_cloud (ks, ke, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, v
         ! -----------------------------------------------------------------------
 
         call pgacw_pgacr (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den, &
-            denfac, vtr, vtg, lcpk, icpk, tcpk, tcp3, mpprg, convt)
+            denfac, vtw, vtr, vtg, lcpk, icpk, tcpk, tcp3, mpprg, convt)
 
     endif ! do_warm_rain_mp
 
@@ -3906,6 +3912,9 @@ subroutine pgmlt (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den
 
     real :: tc, factor, sink, qden, dqdt, tin, dq, qsi
     real :: pgacw, pgacr
+    real :: oms_cgacw
+
+    oms_cgacw = cgacw * (1.e-2*(1.0-onemsig) + onemsig)
 
     do k = ks, ke
 
@@ -3917,13 +3926,13 @@ subroutine pgmlt (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den
             qden = qg (k) * den (k)
             if (ql (k) .gt. qcmin) then
                 if (do_3d_acc_cliq) then
-                    pgacw = acr3d (vtg (k), vtw (k), ql (k), qg (k), cgacw, acco (:, 9), &
+                    pgacw = acr3d (vtg (k), vtw (k), ql (k), qg (k), oms_cgacw, acco (:, 9), &
                         acc (17), acc (18), den (k))
                 else
                     if (do_hail) then
-                        factor = acr2d (qden, cgacw, denfac (k), blinh, muh)
+                        factor = acr2d (qden, oms_cgacw, denfac (k), blinh, muh)
                     else
-                        factor = acr2d (qden, cgacw, denfac (k), bling, mug)
+                        factor = acr2d (qden, oms_cgacw, denfac (k), bling, mug)
                     endif
                     pgacw = factor / (1. + dts * factor) * ql (k)
                 endif
@@ -4352,7 +4361,7 @@ end subroutine pgaut
 ! =======================================================================
 
 subroutine pgacw_pgacr (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, &
-        den, denfac, vtr, vtg, lcpk, icpk, tcpk, tcp3, mpprg, convt)
+        den, denfac, vtw, vtr, vtg, lcpk, icpk, tcpk, tcp3, mpprg, convt)
 
     implicit none
 
@@ -4364,7 +4373,7 @@ subroutine pgacw_pgacr (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te
 
     real, intent (in) :: dts, convt
 
-    real, intent (in), dimension (ks:ke) :: den, denfac, vtr, vtg, dp
+    real, intent (in), dimension (ks:ke) :: den, denfac, vtw, vtr, vtg, dp
 
     real (kind = r8), intent (in), dimension (ks:ke) :: te8
 
@@ -4384,43 +4393,52 @@ subroutine pgacw_pgacr (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te
     real :: tc, factor, sink, qden
     real :: pgacw, pgacr
 
-    do k = ks, ke
+    real :: oms_cgacw
 
+    oms_cgacw = cgacw * (1.e-2*(1.0-onemsig) + onemsig)
+
+    do k = ks, ke 
+            
         if (tz (k) .lt. tice .and. qg (k) .gt. qpmin) then
-
+                
             tc = tz (k) - tice
-
+                        
             pgacw = 0.
             if (ql (k) .gt. qcmin) then
-                qden = qg (k) * den (k)
-                if (do_hail) then
-                    factor = dts * acr2d (qden, cgacw, denfac (k), blinh, muh)
+                if (do_3d_acc_cliq) then
+                    pgacw = dts * acr3d (vtg (k), vtw (k), ql (k), qg (k), oms_cgacw, acco (:, 9), &
+                        acc (17), acc (18), den (k))
                 else
-                    factor = dts * acr2d (qden, cgacw, denfac (k), bling, mug)
+                    qden = qg (k) * den (k)
+                    if (do_hail) then
+                        factor = dts * acr2d (qden, oms_cgacw, denfac (k), blinh, muh)
+                    else
+                        factor = dts * acr2d (qden, oms_cgacw, denfac (k), bling, mug)
+                    endif
+                    pgacw = factor / (1. + factor) * ql (k)
                 endif
-                pgacw = factor / (1. + factor) * ql (k)
             endif
-
-            pgacr = 0.
-            if (qr (k) .gt. qpmin) then
+            
+            pgacr = 0. 
+            if (qr (k) .gt. qpmin) then 
                 pgacr = min (dts * acr3d (vtg (k), vtr (k), qr (k), qg (k), cgacr, acco (:, 3), &
                     acc (5), acc (6), den (k)), qr (k))
             endif
-
+            
             factor = min (pgacr, qr (k), dim (tice, tz (k)) / icpk (k)) / max (pgacr, qcmin)
             pgacr = factor * pgacr
             factor = min (pgacw, ql (k), dim (tice, tz (k)) / icpk (k)) / max (pgacw, qcmin)
             pgacw = factor * pgacw
-
+                    
             sink = pgacr + pgacw
             mpprg = mpprg + sink * dp (k) * convt
-
+                    
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 0., - pgacw, - pgacr, 0., 0., sink, te8 (k), cvm (k), tz (k), &
                 lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pgacw_pgacr')
-
+            
         endif
-
+            
     enddo
 
 end subroutine pgacw_pgacr
