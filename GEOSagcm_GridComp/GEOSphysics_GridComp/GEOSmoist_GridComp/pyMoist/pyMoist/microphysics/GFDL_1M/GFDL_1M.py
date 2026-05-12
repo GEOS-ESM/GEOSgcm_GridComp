@@ -123,7 +123,7 @@ class GFDL1M(NDSLRuntime):
         self,
         state: GFDL1MState,
     ):
-        # miscelaneous setup for GFDL1M microphysics
+        # miscellaneous setup for GFDL1M microphysics
         # compute additional inputs, prefill outputs, reset temporaries
         self._setup(
             p_interface=state.p_interface,

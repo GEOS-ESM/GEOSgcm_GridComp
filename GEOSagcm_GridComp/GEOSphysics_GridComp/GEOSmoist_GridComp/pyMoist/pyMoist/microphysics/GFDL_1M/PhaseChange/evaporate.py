@@ -34,7 +34,7 @@ def evaporate(
     from __externals__ import CCW_EVAP_EFF, DT_MOIST
 
     with computation(PARALLEL), interval(...):
-        rh_crit = 1
+        rh_crit = 1.0
         # Evaporation of cloud water. DelGenio et al formulation
         # (Eq.s 15-17, 1996, J. Clim., 9, 270-303)
         es = (

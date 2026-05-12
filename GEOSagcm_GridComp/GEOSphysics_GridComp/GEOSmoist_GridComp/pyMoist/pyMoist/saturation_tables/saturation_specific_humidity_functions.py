@@ -33,7 +33,7 @@ def saturation_specific_humidity_frozen_surface(
         qsat = frz
         ddq = 0.0
     else:
-        t = (t - TMINTBL) * DEGSUBS + 1
+        t = (t - TMINTBL) * DEGSUBS + 1.0
         t_integer = int(floor(t))
         ddq = ese.A[t_integer] - ese.A[t_integer - 1]  # type: ignore
         qsat = (t - t_integer) * ddq + ese.A[t_integer - 1]  # type: ignore
@@ -84,7 +84,7 @@ def saturation_specific_humidity_liquid_surface(
         qsat = esw.A[TABLESIZE_MINUS_1]  # type: ignore
         ddq = 0.0
     else:
-        t = (t - TMINTBL) * DEGSUBS + 1
+        t = (t - TMINTBL) * DEGSUBS + 1.0
         t_integer = int(floor(t))
         ddq = esw.A[t_integer] - esw.A[t_integer - 1]  # type: ignore
         qsat = (t - t_integer) * ddq + esw.A[t_integer - 1]  # type: ignore
@@ -126,7 +126,7 @@ def saturation_specific_humidity(t, p, esx):
     elif t >= TMAXTBL - 0.001:
         t = TMAXTBL - 0.001
 
-    t = (t - TMINTBL) * DEGSUBS + 1
+    t = (t - TMINTBL) * DEGSUBS + 1.0
     t_integer = int32(floor(t))
     IT_MINUS_1 = t_integer - 1
 

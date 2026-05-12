@@ -5,7 +5,7 @@
 # NDSL configuration
 export NDSL_LITERAL_PRECISION=32
 export GT4PY_COMPILE_OPT_LEVEL=0
-export NDSL_LOGLEVEL=Info
+export NDSL_LOGLEVEL=Debug
 
 # pyMoist configuration
 export EXP_NAME='gcm-fp'

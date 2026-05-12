@@ -156,9 +156,9 @@ def find_lcl_level(
     # get LCL pressure
     with computation(PARALLEL), interval(-1, None):
         qsat, _ = saturation_specific_humidity(t=t, p=p_mb * 100.0, esx=esx)
-        rhsfc = 100 * vapor / qsat
+        rhsfc = 100.0 * vapor / qsat
         tlcl = find_t_lcl(t=t, rh=rhsfc)
-        rm = (1 - vapor) * MAPL_RGAS + vapor * MAPL_RVAP
+        rm = (1.0 - vapor) * MAPL_RGAS + vapor * MAPL_RVAP
         cpm = (1.0 - vapor) * MAPL_CPDRY + vapor * MAPL_CPVAP
         plcl = p_mb * ((tlcl / t) ** (cpm / rm))
 
@@ -215,12 +215,14 @@ def compute_estimated_inversion_strength(
         lower_tropospheric_stability (FloatFieldIJ)
         estimated_inversion_strength (FloatFieldIJ)
     """
-    with computation(FORWARD), interval(-1, None):
-        lower_tropospheric_stability = th700 - th
+    with computation(FORWARD), interval(0, 1):
+        from __externals__ import k_end
+
+        lower_tropospheric_stability = th700 - th.at(K=k_end)
         lcl_height = layer_height_above_surface.at(K=lcl_level - 1)
 
         # Simplified single adiabat eq4 of https://doi.org/10.1175/JCLI3988.1
-        t850 = 0.5 * (t + t700)
+        t850 = 0.5 * (t.at(K=k_end) + t700)
         qs850, _ = saturation_specific_humidity(t=t850, p=100.0 * 850.0, esx=esx)
         gamma850 = (1.0 + (MAPL_ALHL * qs850 / (MAPL_RGAS * t850))) / (1.0 + (MAPL_ALHL * MAPL_ALHL * qs850 / (MAPL_CP * MAPL_RVAP * t850 * t850)))
         gamma850 = MAPL_GRAV / MAPL_CP * (1.0 - gamma850)
