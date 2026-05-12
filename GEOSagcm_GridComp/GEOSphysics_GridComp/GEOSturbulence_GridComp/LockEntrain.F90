@@ -735,7 +735,7 @@ contains
                   u_star,           &
                   evap,             &
                   sh,               &
-                  ipbl,zsml         )
+                  ipbl,zsml,use_eis)
 
 !------------------------------------------------------
 ! Define velocity scales vsurf and vshear
@@ -1093,9 +1093,8 @@ contains
            ! Original depth-only scaling (preserved for backward compatibility)
            if ( zradtop .le. 800. ) then
               wentr_rad = wentr_rad * max(0.0,(zradtop-500.)/300.)
-           else
-              wentr_rad = wentr_rad * min(3.0,(zradtop/800.))
-           endif  
+           endif
+           wentr_rad = wentr_rad * min(3.0,(zradtop/800.))
          endif    
 !-----------------------------------------
 
@@ -1234,7 +1233,8 @@ contains
 #ifdef _CUDA
    attributes(device) &
 #endif
-   subroutine mpbl_depth(i,j,icol,jcol,nlev, tpfac_min, tpfac_max, entrate, pceff, vscale, t, q, u, v, z, p, frland, b_star, u_star , evap, sh, ipbl, ztop )
+   subroutine mpbl_depth(i,j,icol,jcol,nlev, tpfac_min, tpfac_max, entrate, pceff, vscale, &
+                         t, q, u, v, z, p, frland, b_star, u_star, evap, sh, ipbl, ztop, use_eis)
 
 !
 !  -----
@@ -1266,6 +1266,7 @@ contains
       real,    intent(in   )                            :: tpfac_min, tpfac_max, entrate, pceff, vscale
       integer, intent(  out)                            :: ipbl
       real,    intent(  out),dimension(icol,jcol)       :: ztop
+      logical, intent(in   )                            :: use_eis
 
 
       real     :: lts_min,lts_max,lts_fac
@@ -1349,8 +1350,12 @@ contains
          du = sqrt ( ( u2 - u1 )**2 + ( v2 - v1 )**2 ) / (z2-z1)
          du = min(du,1.0e-8)
 
-         entrate_x = (entrate - 0.6e-3*LTS_FAC) * & ! adjust entrate based on LTS_FAC
-                     ( 1.0 + du / vscale )
+         if (use_eis) then
+            entrate_x = (entrate - 0.6e-3*LTS_FAC) * & ! adjust entrate based on LTS_FAC
+                        ( 1.0 + du / vscale )
+         else
+            entrate_x = entrate * ( 1.0 + du / vscale )
+         endif
 
          entfr = min( entrate_x*(z2-z1), 0.99 )
 

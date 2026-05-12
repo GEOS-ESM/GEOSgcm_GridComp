@@ -7,7 +7,7 @@ module uwshcu
 
    use GEOS_UtilsMod, only: GEOS_QSAT, GEOS_DQSAT
    use GEOSmoist_Process_Library
-   use MAPL_ConstantsMod, only: MAPL_TICE , MAPL_CP   , &
+   use MAPL_Constants, only: MAPL_TICE , MAPL_CP   , &
                                 MAPL_GRAV , MAPL_ALHS , &
                                 MAPL_ALHL , MAPL_ALHF , &
                                 MAPL_RGAS , MAPL_H2OMW, &
