@@ -35,6 +35,8 @@ def evaporate(
 
     with computation(PARALLEL), interval(...):
         rh_crit = 1.0
+        evaporation = mixing_ratio_vapor
+
         # Evaporation of cloud water. DelGenio et al formulation
         # (Eq.s 15-17, 1996, J. Clim., 9, 270-303)
         es = (
@@ -61,4 +63,5 @@ def evaporate(
         mixing_ratio_vapor = mixing_ratio_vapor + evap
         mixing_ratio_convective_liquid = mixing_ratio_convective_liquid - evap
         t = t - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CPDRY) * evap
+
         evaporation = (mixing_ratio_vapor - evaporation) / DT_MOIST
