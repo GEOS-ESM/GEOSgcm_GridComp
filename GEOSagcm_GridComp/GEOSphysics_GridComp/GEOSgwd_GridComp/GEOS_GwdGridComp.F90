@@ -39,6 +39,7 @@ module GEOS_GwdGridCompMod
    use gw_drag_ncar, only: gw_intr_ncar
 
    use gw_drag, only: gw_intr
+   !$ use omp_lib
 
    implicit none
    private
@@ -131,9 +132,6 @@ contains
       allocate (self, _STAT)
       wrap%ptr => self
 
-      num_threads = MAPL_get_num_threads()
-      allocate(self%workspaces(0:num_threads-1), _STAT)
-
       ! Set the Run entry point
       ! -----------------------
 
@@ -147,8 +145,13 @@ contains
       call ESMF_ConfigGetAttribute (myCF, use_threads, label='use_threads:', default=.FALSE., _RC)
       !   set use_threads
       call MAPL%set_use_threads(use_threads)
+      !   set num_threads
+      num_threads = 1
+      if (use_threads) num_threads = omp_get_max_threads()
+      call MAPL%set_num_threads(num_threads)
       call ESMF_ConfigDestroy(myCF, _RC)
 
+      allocate(self%workspaces(0:num_threads-1), _STAT)
       ! We need to get NCAR_NRDG because this is used in the GWD_Internal___.h auto-generated
       ! code via the MAPL ACG
       call MAPL_GetResource( MAPL, self%NCAR_NRDG,     Label="NCAR_NRDG:",     default=0, _RC)
@@ -383,7 +386,8 @@ contains
       ! Beres DeepCu
       call MAPL_GetResource( MAPL, NCAR_DC_BERES_SRC_LEVEL, "NCAR_DC_BERES_SRC_LEVEL:", DEFAULT=70000.0, _RC)
       call MAPL_GetResource( MAPL, NCAR_DC_BERES, "NCAR_DC_BERES:", DEFAULT=.TRUE., _RC)
-      num_threads = MAPL_get_num_threads()
+      !num_threads = MAPL_get_num_threads()
+      num_threads = MAPL%get_num_threads()
       bounds = MAPL_find_bounds(JM, num_threads)
       do thread = 0, num_threads-1
             JM_thread = bounds(thread+1)%max - bounds(thread+1)%min + 1
