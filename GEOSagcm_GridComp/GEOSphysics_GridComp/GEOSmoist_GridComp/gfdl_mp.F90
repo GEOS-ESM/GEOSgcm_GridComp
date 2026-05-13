@@ -88,7 +88,7 @@ module gfdl_mp_mod
     public :: c_liq, c_ice, rhow, wet_bulb
     public :: cv_air, cv_vap, mtetw, mte
     public :: hlv, hlf, tice
-    public :: do_hail, do_sedi_heat, do_sedi_melt_qi, do_sedi_melt_qs, do_sedi_melt_qg, ifflag
+    public :: do_ref, do_hail, do_sedi_heat, do_sedi_melt_qi, do_sedi_melt_qs, do_sedi_melt_qg, ifflag
 
     ! -----------------------------------------------------------------------
     ! precision definition
@@ -343,9 +343,6 @@ module gfdl_mp_mod
     logical :: do_psd_water_num = .false. ! calculate cloud water number concentration based on PSD
     logical :: do_psd_ice_num = .true. ! calculate cloud ice number concentration based on PSD
 
-    logical :: do_3d_acc_cliq = .true. ! perform the new 3d accretion for cloud water
-    logical :: do_3d_acc_cice = .true. ! perform the new 3d accretion for cloud ice
-
     logical :: cp_heating = .false. ! update temperature based on constant pressure
 
     logical :: delay_cond_evap = .true. ! do condensation evaporation only at the last time step
@@ -404,13 +401,13 @@ module gfdl_mp_mod
 
     ! simple process timescales
     real :: tau_r2g  =  900.0 ! rain freezing to graupel time scale (s)
-    real :: tau_i2s  =  150.0 ! cloud ice to snow autoconversion time scale (s)
-    real :: tau_l2r  =  900.0 ! cloud water to rain autoconversion time scale (s)
+    real :: tau_i2s  =  300.0 ! cloud ice to snow autoconversion time scale (s)
+    real :: tau_l2r  =  450.0 ! cloud water to rain autoconversion time scale (s)
     ! other timescales
-    real :: tau_v2l  =  120.0 ! water vapor to cloud water condensation time scale (s)
-    real :: tau_l2v  =  300.0 ! cloud water to water vapor evaporation time scale (s)
+    real :: tau_v2l  =   75.0 ! water vapor to cloud water condensation time scale (s)
+    real :: tau_l2v  =  150.0 ! cloud water to water vapor evaporation time scale (s)
     real :: tau_revp =  600.0 ! rain evaporation time scale (s)
-    real :: tau_frez =  150.0 ! cloud liquid freezing time scale (s)
+    real :: tau_frez =  600.0 ! cloud liquid freezing time scale (s)
     real :: tau_imlt =  600.0 ! cloud ice melting time scale (s)
     real :: tau_smlt =  900.0 ! snow melting time scale (s)
     real :: tau_gmlt = 1200.0 ! graupel melting time scale (s)
@@ -434,30 +431,38 @@ module gfdl_mp_mod
     real :: qs_mlt = 1.0e-6 ! maximum cloud water allowed from melted snow (kg/kg)
 
     real :: ql0_max = 2.0e-3 ! maximum cloud water value (autoconverted to rain) (kg/kg)
-    real :: qi0_max = 9.82679e-5 ! maximum cloud ice value (autoconverted to snow) (kg/m^3)
 
-    real :: psaut_qi_crt = 0.7e-4 ! cloud ice to snow autoconversion threshold (kg/m^3)
+    real :: psaut_qi_crt = 2.0e-4 ! cloud ice to snow autoconversion threshold (kg/m^3)
     real :: pwbf_qi_crt  = 0.8e-4 ! WBF liquid to ice freezing threshold (kg/m^3)
     real :: pgaut_qs_crt = 0.6e-3 ! snow to graupel autoconversion threshold (0.6e-3 in Purdue Lin scheme) (kg/m^3)
 
-    real :: c_paut  = 1.0 ! cloud water to rain autoconversion efficiency
+    real :: c_paut  = 0.75 ! cloud water to rain autoconversion efficiency
 
+    ! -----------------------------------------------------------------------
     ! collection efficiencies for accretion
-    !   Dry processes (frozen to/from frozen)
-    real :: c_psaci = 0.05 ! cloud ice to snow accretion efficiency (was 0.1 in ZETAC)
-    real :: c_pgaci = 0.01 ! cloud ice to graupel accretion efficiency
-    real :: c_pgacs = 0.01 ! snow to graupel accretion efficiency
-    !   Mixed processes (liquid to/from frozen)
-    real :: c_psacw = 1.0 ! cloud water to snow accretion efficiency
-    real :: c_pgacw = 1.0 ! cloud water to graupel accretion efficiency
-    !   Rain processes (to/from rain)
-    real :: c_pracw = 1.0 ! cloud water to rain accretion efficiency
-    real :: c_praci = 1.0 ! cloud ice to rain accretion efficiency
-    real :: c_pracs = 1.0 ! snow to rain accretion efficiency
-    real :: c_psacr = 1.0 ! rain to snow accretion efficiency
-    real :: c_pgacr = 1.0 ! rain to graupel accretion efficiency
+    ! -----------------------------------------------------------------------
+    ! --- Cloud Water (Liquid) 3D Accretion ---
+    ! When .true., these coefficients act as Aerodynamic Stokes Efficiencies 
+    ! applied to the raw 3D geometric integral.
+    logical :: do_3d_acc_cliq = .true.  ! perform the new 3d accretion for cloud water
+    real :: c_psacw = 0.05 ! cloud water to snow (HEAVY aerodynamic reduction required)
+    real :: c_pgacw = 0.80 ! cloud water to graupel/hail (Punches through air)
+    real :: c_pracw = 1.00 ! cloud water to rain 
+    ! --- Cloud Ice (Frozen) 3D Accretion ---
+    ! When .true., these coefficients account for both Aerodynamics AND "Bounce" 
+    ! (Sticking Efficiency) applied to the raw 3D geometric integral.
+    logical :: do_3d_acc_cice = .false. ! perform the new 3d accretion for cloud ice
+    real :: c_psaci = 0.05 ! cloud ice to snow accretion (Aerodynamics + Low sticking)
+    real :: c_pgaci = 0.01 ! cloud ice to graupel accretion (Aerodynamics + Very low sticking)
+    real :: c_praci = 1.00 ! cloud ice to rain accretion (High sticking to liquid)
+    ! --- Standard Macro-Particle Accretion ---
+    ! Interactions between precipitation species (Unaffected by 3D cice/cliq flags)
+    real :: c_pgacs = 0.03 ! snow to graupel accretion efficiency
+    real :: c_pracs = 1.00 ! snow to rain accretion efficiency
+    real :: c_psacr = 1.00 ! rain to snow accretion efficiency
+    real :: c_pgacr = 1.00 ! rain to graupel accretion efficiency
 
-    real :: is_fac = 0.5 ! cloud ice sublimation temperature factor
+    real :: is_fac = 0.2 ! cloud ice sublimation temperature factor
     real :: ss_fac = 0.2 ! snow sublimation temperature factor
     real :: gs_fac = 0.2 ! graupel sublimation temperature factor
 
@@ -505,7 +510,7 @@ module gfdl_mp_mod
 
     real :: fi2s_fac = 1.00 ! maximum sink of cloud ice to form snow: 0-1
     real :: fi2g_fac = 1.00 ! maximum sink of cloud ice to form graupel/hail: 0-1
-    real :: fs2g_fac = 1.00 ! maximum sink of snow to form graupel/hail: 0-1
+    real :: fs2g_fac = 0.75 ! maximum sink of snow to form graupel: 0-1
 
     real :: beta = 1.22 ! defined in Heymsfield and Mcfarquhar (1996)
 
@@ -533,11 +538,14 @@ module gfdl_mp_mod
     real :: cracs, csacr, cgacr, cgacs, csacw, craci, csaci, cgacw, cgaci, cracw
     real :: cssub (5), cgsub (5), crevp (5), cgfr (2), csmlt (4), cgmlt (4)
 
-    real :: t_wfr, fac_rc, c_air, c_vap, d0_vap
+    real :: t_wfr, c_air, c_vap, d0_vap
 
-    real :: srf_type, cnv_fraction, onemsig, fac_eis
+    ! these variables should be passed throughout the code as arguments
+    ! but the lazy approach is to make them threadprivate here
+    real :: cnv_fraction, fac_eis, cpaut, fac_rc, onemsig, srf_type
+    !$OMP THREADPRIVATE(cnv_fraction, fac_eis, cpaut, fac_rc, onemsig, srf_type)
 
-    real (kind = r8) :: lv00, li00, li20, cpaut0, cpaut
+    real (kind = r8) :: lv00, li00, li20, cpaut0
     real (kind = r8) :: d1_vap, d1_ice, c1_vap, c1_liq, c1_ice
     real (kind = r8) :: normw, normr, normi, norms, normg, normh
     real (kind = r8) :: expow, expor, expoi, expos, expog, expoh
@@ -562,7 +570,7 @@ module gfdl_mp_mod
     namelist / gfdl_mp_nml / &
         t_min, t_sub, tau_r2g, tau_smlt, tau_gmlt, do_ice_pres_scaling, vw_min, vi_min, &
         vr_min, vs_min, vg_min, vh_min, ql_mlt, do_qa, fix_negative, vw_max, vi_max, vs_max, &
-        vh_max, vg_max, vr_max, qs_mlt, ql0_max, qi0_max, psaut_qi_crt, pwbf_qi_crt, pgaut_qs_crt, ifflag, &
+        vh_max, vg_max, vr_max, qs_mlt, ql0_max, psaut_qi_crt, pwbf_qi_crt, pgaut_qs_crt, ifflag, &
         rh_inc, rh_inr, const_vw, const_vi, const_vs, const_vg, const_vr, rthreshu, rthreshs, &
         ccn_l, ccn_o, igflag, c_paut, tau_imlt, tau_v2l, tau_l2v, tau_i2s, &
         tau_l2r, qi_lim, do_hail, inflag, c_psacw, c_psaci, c_pracs, &
@@ -679,7 +687,7 @@ end subroutine gfdl_mp_init
 !        mpprs, mpprg, mppxr, mppxs, mppxg, last_step, do_inline_mp, &
 !        use_cond, moist_kappa)
 
-subroutine gfdl_mp_driver (qv, ql, qr, qi, qs, qg, qa, qnl, qni, pt, wa, &
+subroutine gfdl_mp_driver (qv, ql, qr, qi, qs, qg, qa, zet, qnl, qni, pt, wa, &
         ua, va, delz, delp, dtm, rhcrit, hs, cnv_frc, eis, area, srft,   &
         water, rain, ice, snow, graupel, hydrostatic, is, ie, ks, ke, ktop, &
         qa_dt, &
@@ -706,11 +714,13 @@ subroutine gfdl_mp_driver (qv, ql, qr, qi, qs, qg, qa, qnl, qni, pt, wa, &
     real, intent (inout),  dimension (is:ie, ks:ke) :: pt, ua, va, wa
     real, intent (inout),  dimension (is:ie, ks:ke) :: qv, ql, qr, qi, qs, qg, qa
 
+    real, intent (out), dimension (is:ie, ks:ke) :: zet
     real, intent (out), dimension (is:ie, ks:ke) :: qa_dt
     real, intent (out), dimension (is:ie, ks:ke) :: revap, rsubl
     real, intent (out), dimension (is:ie, ks:ke) :: prefluxw, prefluxr, prefluxi, prefluxs, prefluxg
 
     real, intent (out), dimension (is:ie) :: water, rain, ice, snow, graupel
+
 !   real, intent (inout), dimension (is:ie) :: mppcw, mppew, mppe1, mpper, mppdi
 !   real, intent (inout), dimension (is:ie) :: mppd1, mppds, mppdg, mppsi, mpps1
 !   real, intent (inout), dimension (is:ie) :: mppss, mppsg, mppfw, mppfr, mppar
@@ -720,7 +730,7 @@ subroutine gfdl_mp_driver (qv, ql, qr, qi, qs, qg, qa, qnl, qni, pt, wa, &
 
 !   real, intent (inout), dimension (is:, ks:) :: q_con, cappa
 
-    real, dimension (is:ie, ks:ke) :: adj_vmr, te, zet, q_con, cappa
+    real, dimension (is:ie, ks:ke) :: adj_vmr, te, q_con, cappa
 
     real (kind = r8), dimension (is:ie) :: dte
 
@@ -1365,9 +1375,8 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
 
     integer :: i, k
 
-    real :: ccn0, cin0, q1, q2
+    real :: ccn0, cin0
     real :: convt, rdt, dts, q_cond, tmp, nl, ni
-    real :: rthreshs_, rthreshu_
 
     real, dimension (ks:ke) :: h_var
     real, dimension (ks:ke) :: q_liq, q_sol, dp, dz, dp0
@@ -1381,7 +1390,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
     real, dimension (ks:ke) :: pcs, eds, oes, rrs, tvs
     real, dimension (ks:ke) :: pcg, edg, oeg, rrg, tvg
 
-    real (kind = r8) :: con_r8, c8, cp8
+    real (kind = r8) :: mass_fac, con_r8, c8, cp8
 
     real (kind = r8), dimension (is:ie, ks:ke) :: te_beg_d, te_end_d, tw_beg_d, tw_end_d
     real (kind = r8), dimension (is:ie, ks:ke) :: te_beg_m, te_end_m, tw_beg_m, tw_end_m
@@ -1411,6 +1420,16 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
 
     convt = 86400. * rgrav / dtm
 
+    ! -----------------------------------------------------------------------
+    ! Begin Parallel Loop
+    ! -----------------------------------------------------------------------
+    !$OMP PARALLEL DO DEFAULT(SHARED) &
+    !$OMP PRIVATE(i, k, ccn0, cin0, q_cond, tmp, nl, ni, mass_fac, con_r8, c8, cp8, &
+    !$OMP         h_var, q_liq, q_sol, dp, dz, dp0, qvz, qlz, qrz, qiz, qsz, &
+    !$OMP         qgz, qaz, zez, den, pz, denfac, ccn, cin, u, v, w, &
+    !$OMP         pcw, edw, oew, rrw, tvw, pci, edi, oei, rri, tvi, &
+    !$OMP         pcr, edr, oer, rrr, tvr, pcs, eds, oes, rrs, tvs, &
+    !$OMP         pcg, edg, oeg, rrg, tvg, tz, tzuv, tzw)
     do i = is, ie
 
         ! -----------------------------------------------------------------------
@@ -1434,23 +1453,12 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         fac_eis = get_fac_eis(eis(i),srf_type) ! Estimated inversion strength determine stable regime
 
         ! -----------------------------------------------------------------------
-        ! Resolution dependence on autoconversion parameters
-        ! -----------------------------------------------------------------------
-        ! Stable critical radius [default: 10.0e-6]
-        !   unchanged
-        rthreshs_ = rthreshs 
-        ! Unstable critical radius [default: 7.0e-6]
-        !   Coarse (onemsig=0):  7.0e-6 + 3.e-6  = 10.0e-6
-        !   Fine   (onemsig=1):  7.0e-6 + 0.0    = 7.0e-6
-        rthreshu_ = rthreshu + (1.0-onemsig)*3.e-6
-
-        ! -----------------------------------------------------------------------
         ! adjust autoconversion rates and thresholds for stable vs unstable 
         ! -----------------------------------------------------------------------
         ! include stability dependence
-        cpaut  = cpaut0 * (    0.75*fac_eis +          (1.0-fac_eis))
+        cpaut  = cpaut0 * (     0.75*fac_eis +          (1.0-fac_eis))
         ! include stability dependence
-        fac_rc =      rc * (rthreshs_*fac_eis + rthreshu_*(1.0-fac_eis)) ** 3
+        fac_rc =      rc * (rthreshs*fac_eis + rthreshu*(1.0-fac_eis)) ** 3
 
         ! -----------------------------------------------------------------------
         ! conversion of temperature
@@ -1509,21 +1517,26 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
             qsz (k) = qs (i, k)
             qgz (k) = qg (i, k)
             qaz (k) = qa (i, k)
-            zez (k) = zet (i, k)
+            zez (k) = -30.0
 
+            ! Determine the dry air fraction based on inline_mp setting.
             if (do_inline_mp) then
                 q_cond = qlz (k) + qrz (k) + qiz (k) + qsz (k) + qgz (k)
                 con_r8 = one_r8 - (qvz (k) + q_cond)
             else
-                con_r8 = one_r8 - qvz (k)
+                con_r8 = one_r8 - qvz (k) 
             endif
-
-            ! dp0: original moist air_mass
+        
+            ! Store original moist pressure thickness
             dp0 (k) = delp (i, k)
-            ! dp: dry air_mass
-            dp (k) = delp (i, k) * con_r8
+        
+            ! Convert total pressure thickness (delp) to dry air pressure thickness (dp)
+            dp (k) = dp0 (k) * con_r8
+          
+            ! Calculate factor to go from specific humidity to dry mixing ratio
+            con_r8 = one_r8 / con_r8
 
-            con_r8  = dp0 (k) / dp (k)
+            ! Convert all species to dry mixing ratios
             qvz (k) = qvz (k) * con_r8
             qlz (k) = qlz (k) * con_r8
             qrz (k) = qrz (k) * con_r8
@@ -1781,9 +1794,15 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         do k = ks, ke
 
             ! -----------------------------------------------------------------------
-            ! convert mass mixing ratios back to specific ratios
+            ! Use dp (dry mass) and dp0 (initial total mass) to return safely 
+            ! to specific humidities consistent with the host model's current timestep.
             ! -----------------------------------------------------------------------
-
+           
+            ! -----------------------------------------------------------------
+            ! 1. Calculate the NEW total-to-dry mass ratio
+            ! -----------------------------------------------------------------
+            ! If inline MP is used, total mass includes vapor and all condensates.
+            ! If not, total mass is just dry air + vapor (condensates are "massless").
             if (do_inline_mp) then
                 q_cond = qlz (k) + qrz (k) + qiz (k) + qsz (k) + qgz (k)
                 con_r8 = one_r8 + qvz (k) + q_cond
@@ -1791,7 +1810,21 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
                 con_r8 = one_r8 + qvz (k)
             endif
 
-            con_r8  =  dp (k) / dp0 (k)
+            ! -----------------------------------------------------------------
+            ! 2. Reconstruct the new moist pressure thickness
+            ! -----------------------------------------------------------------
+            ! dp(k) currently holds the DRY pressure thickness.
+            ! Update dp(k) to represent the NEW total moist pressure thickness.
+            dp (k) = dp (k) * con_r8
+
+            ! -----------------------------------------------------------------
+            ! 3. Convert water species back to specific humidities
+            ! -----------------------------------------------------------------
+            ! Calculate the reciprocal: (Dry Mass / New Total Mass)
+            con_r8 = one_r8 / con_r8
+
+            ! Normalize the water species by the NEW total mass of the grid cell.
+            ! (This perfectly restores your original, stable model behavior).
             qvz (k) = qvz (k) * con_r8
             qlz (k) = qlz (k) * con_r8
             qrz (k) = qrz (k) * con_r8
@@ -1799,16 +1832,18 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
             qsz (k) = qsz (k) * con_r8
             qgz (k) = qgz (k) * con_r8
 
-            ! convert dry air mass to wet
-            dp  (k) = dp (k) * con_r8
+            ! -----------------------------------------------------------------
+            ! 4. Calculate the Tracer Dilution Adjustment (adj_vmr)
+            ! -----------------------------------------------------------------
+            ! Instead of the complex q1/q2 algebraic formula, we use the exact 
+            ! physical definition of tracer dilution: Old Mass / New Mass.
+            ! dp0(k) is the old total mass, and dp(k) is the new total mass.
+            adj_vmr (i, k) = dp0 (k) / dp (k)
 
-            q1 = qv (i, k) + ql (i, k) + qr (i, k) + qi (i, k) + qs (i, k) + qg (i, k)
-            q2 = qvz (k) + qlz (k) + qrz (k) + qiz (k) + qsz (k) + qgz (k)
-            adj_vmr (i, k) = ((one_r8 - q1) / (one_r8 - q2)) / (one_r8 + q2 - q1)
-
+            ! return reflectivity
             zet (i, k) = zez (k)
 
-! return QA tendencies for GEOS
+            ! return QA tendencies for GEOS
             if (.not. do_qa) then
                qa_dt (i, k) = rdt * &
                       ( qa (i, k)*SQRT( max(qiz(k)+qlz(k),qcmin) / max(qi(i,k)+ql(i,k),qcmin) ) - & ! New Cloud -
@@ -1959,6 +1994,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         endif
 
     enddo ! i loop
+    !$OMP END PARALLEL DO
 
 end subroutine mpdrv
 
@@ -3168,11 +3204,14 @@ subroutine prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
             if (use_enhanced_dry_evap) then
                 ! True scale-aware target RH based on subgrid moisture variance
                 rh_rain = max (0.70, 1.0 - h_var (k)) 
-                ! Calculate total mass needed to hit the target RH threshold
-                tmp = min (qr (k), dim (rh_rain * qsat, qv (k)) / (1. + lcpk (k) * dqdt))
-                ! Apply the evaporation timescale factor to avoid shocking the model
-                tmp = dts * fac_revp * tmp 
-                ! Ensure the evaporation rate doesn't fall below this enhanced baseline
+                ! Calculate total mass NEEDED to hit the target RH threshold (Units: kg/kg)
+                tmp = dim (rh_rain * qsat, qv (k)) / (1. + lcpk (k) * dqdt)
+                ! Apply the dimensionless timescale factor so it doesn't evaporate instantly
+                ! (Units: dimensionless * kg/kg = kg/kg)
+                tmp = fac_revp * tmp 
+                ! Bound by the actual rain available (Units: kg/kg)
+                tmp = min (qr (k), tmp)
+                ! Update the final sink amount (Units: kg/kg)
                 sink = max (sink, tmp)
             endif
 
@@ -3298,9 +3337,10 @@ subroutine praut (ks, ke, dts, dp, tz, qak, qvk, qlk, qrk, qik, qsk, qgk, den, c
 
     real, dimension (ks:ke) :: ql, dl, qadum, c_praut
 
-    ! Use In-Cloud condensates
+    ! Use In-Cloud condensates with scale-aware blending
     if (in_cloud_liq) then
-      qadum = max(qak,cfmin)
+      ! Enforce minimum bound to prevent vanishing values
+      qadum = max(qak, cfmin)
     else
       qadum = 1.0
     endif
@@ -3493,7 +3533,7 @@ subroutine ice_cloud (ks, ke, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, v
         ! -----------------------------------------------------------------------
 
         call pgacw_pgacr (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den, &
-            denfac, vtr, vtg, lcpk, icpk, tcpk, tcp3, mpprg, convt)
+            denfac, vtw, vtr, vtg, lcpk, icpk, tcpk, tcp3, mpprg, convt)
 
     endif ! do_warm_rain_mp
 
@@ -3532,6 +3572,11 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
     real :: ql, qi, qim, qadum, newliq, newice
     real :: tmp, sink, fac_imlt, fac_frez
+    real :: critical_qi_factor
+
+    ! psaut_qi_crt (ice to snow conversion) has strong resolution dependence
+    !    account for this using onemsig to convert more ice to snow at coarser resolutions
+    critical_qi_factor = psaut_qi_crt*(1.e-1*(1.0-onemsig) + onemsig)
 
     fac_imlt = 1. - exp (- dts / tau_imlt)
     fac_frez = 1. - exp (- dts / tau_frez)
@@ -3540,18 +3585,19 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
         if (tz (k) .gt. tice .and. qik (k) .gt. qcmin) then
 
-            ! Use In-Cloud condensates
+            ! Use In-Cloud condensates with scale-aware blending
             if (in_cloud_ice) then
-              qadum = max(qak(k),cfmin)
+              ! Enforce minimum bound to prevent vanishing values
+              qadum = max(qak(k), cfmin)
             else
-              qadum = 1.0
+              qadum = 1.0 
             endif
             ql = qlk (k)/qadum
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newliq = fac_imlt * new_liq_condensate(tmp, ql, qi)
-            sink = min (qi, newliq, (tz (k) - tice) / icpk (k))
+            newliq = new_liq_condensate(tmp, ql, qi)
+            sink = fac_imlt * min (qi, newliq, (tz (k) - tice) / icpk (k) / qadum)
             tmp = min (sink, dim (ql_mlt/qadum, ql))
 
             tmp = tmp * qadum
@@ -3564,9 +3610,10 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
         elseif (tz (k) <= tice .and. qlk (k) > qcmin) then
 
-            ! Use In-Cloud condensates
+            ! Use In-Cloud condensates with scale-aware blending
             if (in_cloud_ice) then
-              qadum = max(qak(k),cfmin)
+              ! Enforce minimum bound to prevent vanishing values
+              qadum = max(qak(k), cfmin)            
             else
               qadum = 1.0
             endif
@@ -3574,9 +3621,9 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newice = fac_frez * new_ice_condensate(tmp, ql, qi)
-            sink = min(ql, newice, (tice - tz (k)) / icpk (k))
-            qim = qi0_max / den (k)
+            newice = new_ice_condensate(tmp, ql, qi)
+            sink = fac_frez * min(ql, newice, (tice - tz (k)) / icpk (k) / qadum)
+            qim = critical_qi_factor / den (k)
             tmp = min (sink, dim (qim/qadum, qi))
 
             tmp = tmp*qadum
@@ -3636,9 +3683,10 @@ subroutine pimlt (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, t
 
         if (tz (k) .gt. tice .and. qik (k) .gt. qcmin) then
 
-            ! Use In-Cloud condensates
+            ! Use In-Cloud condensates with scale-aware blending
             if (in_cloud_ice) then
-              qadum = max(qak(k),cfmin)
+              ! Enforce minimum bound to prevent vanishing values
+              qadum = max(qak(k), cfmin)            
             else
               qadum = 1.0
             endif
@@ -3646,8 +3694,8 @@ subroutine pimlt (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, t
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newliq = fac_imlt * new_liq_condensate(tmp, ql, qi)
-            sink = min (qi, newliq, (tz (k) - tice) / icpk (k))
+            newliq = new_liq_condensate(tmp, ql, qi)
+            sink = fac_imlt * min (qi, newliq, (tz (k) - tice) / icpk (k) / qadum)
             tmp = min (sink, dim (ql_mlt/qadum, ql))
 
             tmp = tmp * qadum
@@ -3700,6 +3748,11 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
 
     real :: ql, qi, qadum, newice 
     real :: tmp, sink, qim, fac_frez
+    real :: critical_qi_factor 
+
+    ! psaut_qi_crt (ice to snow conversion) has strong resolution dependence
+    !    account for this using onemsig to convert more ice to snow at coarser resolutions
+    critical_qi_factor = psaut_qi_crt*(1.e-1*(1.0-onemsig) + onemsig)
 
     fac_frez = 1. - exp (- dts / tau_frez)
 
@@ -3707,9 +3760,10 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
 
         if (tz (k) .le. tice .and. qlk (k) .gt. qcmin) then
 
-            ! Use In-Cloud condensates
+            ! Use In-Cloud condensates with scale-aware blending
             if (in_cloud_ice) then
-              qadum = max(qak(k),cfmin)
+              ! Enforce minimum bound to prevent vanishing values
+              qadum = max(qak(k), cfmin)            
             else
               qadum = 1.0
             endif
@@ -3717,9 +3771,9 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newice = fac_frez * new_ice_condensate(tmp, ql, qi)
-            sink = min(ql, newice, (tice - tz (k)) / icpk (k))
-            qim = qi0_max / den (k)
+            newice = new_ice_condensate(tmp, ql, qi)
+            sink = fac_frez * min(ql, newice, (tice - tz (k)) / icpk (k) / qadum)
+            qim = critical_qi_factor / den (k)
             tmp = min (sink, dim (qim/qadum, qi))
 
             tmp = tmp*qadum
@@ -3858,6 +3912,9 @@ subroutine pgmlt (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den
 
     real :: tc, factor, sink, qden, dqdt, tin, dq, qsi
     real :: pgacw, pgacr
+    real :: oms_cgacw
+
+    oms_cgacw = cgacw * (1.e-2*(1.0-onemsig) + onemsig)
 
     do k = ks, ke
 
@@ -3869,13 +3926,13 @@ subroutine pgmlt (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den
             qden = qg (k) * den (k)
             if (ql (k) .gt. qcmin) then
                 if (do_3d_acc_cliq) then
-                    pgacw = acr3d (vtg (k), vtw (k), ql (k), qg (k), cgacw, acco (:, 9), &
+                    pgacw = acr3d (vtg (k), vtw (k), ql (k), qg (k), oms_cgacw, acco (:, 9), &
                         acc (17), acc (18), den (k))
                 else
                     if (do_hail) then
-                        factor = acr2d (qden, cgacw, denfac (k), blinh, muh)
+                        factor = acr2d (qden, oms_cgacw, denfac (k), blinh, muh)
                     else
-                        factor = acr2d (qden, cgacw, denfac (k), bling, mug)
+                        factor = acr2d (qden, oms_cgacw, denfac (k), bling, mug)
                     endif
                     pgacw = factor / (1. + dts * factor) * ql (k)
                 endif
@@ -4003,7 +4060,6 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
     integer :: k
 
     real :: tc, sink, fac_i2s, q_plus, qim, dq, tmp
-
     real :: di, qi, critical_qi_factor, qadum
 
     ! psaut_qi_crt (ice to snow conversion) has strong resolution dependence
@@ -4018,9 +4074,10 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
 
             tc = tz (k) - tice
 
-            ! Use In-Cloud condensates
+            ! Use In-Cloud condensates with scale-aware blending
             if (in_cloud_ice) then
-              qadum = max(qak(k),cfmin)
+              ! Enforce minimum bound to prevent vanishing values
+              qadum = max(qak(k), cfmin)            
             else
               qadum = 1.0
             endif
@@ -4030,8 +4087,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
             sink = 0.
             di  = max (di, qcmin)
             q_plus = qi + di
-            ! Use of ice_fraction here is critical to producing the proper snow in reflectivity vs too much cloud ice
-            qim = max(ice_fraction(real(tz(k)), cnv_fraction, srf_type), 0.01) * critical_qi_factor / den (k)
+            qim = critical_qi_factor / den (k) / qadum
             if (q_plus .gt. (qim + qcmin)) then
                 if (qim .gt. (qi - di)) then
                     dq = (0.25 * (q_plus - qim) ** 2) / di
@@ -4171,14 +4227,17 @@ subroutine psacr_pgfr (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8
             pgfr = dts * cgfr (1) / den (k) * (exp (- cgfr (2) * tc) - 1.) * &
                 exp ((6 + mur) / (mur + 3) * log (6 * qr (k) * den (k)))
 
+            ! --- Apply Mass and Thermal Limits ---
             sink = psacr + pgfr
-            factor = min (sink, qr (k), - tc / icpk (k)) / max (sink, qcmin)
-            psacr = factor * psacr
-            pgfr = factor * pgfr
+            if (sink .gt. qcmin) then
+               factor = min (sink, qr (k), max (0.0, - tc / icpk (k))) / sink
+               psacr = factor * psacr
+               pgfr = factor * pgfr
+            endif
+            sink = psacr + pgfr
+
             mpprs = mpprs + psacr * dp (k) * convt
             mppfr = mppfr + pgfr * dp (k) * convt
-
-            sink = psacr + pgfr
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 0., 0., - sink, 0., psacr, pgfr, te8 (k), cvm (k), tz (k), &
@@ -4305,7 +4364,7 @@ end subroutine pgaut
 ! =======================================================================
 
 subroutine pgacw_pgacr (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, &
-        den, denfac, vtr, vtg, lcpk, icpk, tcpk, tcp3, mpprg, convt)
+        den, denfac, vtw, vtr, vtg, lcpk, icpk, tcpk, tcp3, mpprg, convt)
 
     implicit none
 
@@ -4317,7 +4376,7 @@ subroutine pgacw_pgacr (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te
 
     real, intent (in) :: dts, convt
 
-    real, intent (in), dimension (ks:ke) :: den, denfac, vtr, vtg, dp
+    real, intent (in), dimension (ks:ke) :: den, denfac, vtw, vtr, vtg, dp
 
     real (kind = r8), intent (in), dimension (ks:ke) :: te8
 
@@ -4337,43 +4396,68 @@ subroutine pgacw_pgacr (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te
     real :: tc, factor, sink, qden
     real :: pgacw, pgacr
 
-    do k = ks, ke
+    real :: oms_cgacw
 
+    oms_cgacw = cgacw * (1.e-2*(1.0-onemsig) + onemsig)
+
+    do k = ks, ke 
+            
         if (tz (k) .lt. tice .and. qg (k) .gt. qpmin) then
-
+                
             tc = tz (k) - tice
-
+                        
             pgacw = 0.
             if (ql (k) .gt. qcmin) then
-                qden = qg (k) * den (k)
-                if (do_hail) then
-                    factor = dts * acr2d (qden, cgacw, denfac (k), blinh, muh)
+                if (do_3d_acc_cliq) then
+                    pgacw = dts * acr3d (vtg (k), vtw (k), ql (k), qg (k), oms_cgacw, acco (:, 9), &
+                        acc (17), acc (18), den (k))
                 else
-                    factor = dts * acr2d (qden, cgacw, denfac (k), bling, mug)
+                    qden = qg (k) * den (k)
+                    if (do_hail) then
+                        factor = dts * acr2d (qden, oms_cgacw, denfac (k), blinh, muh)
+                    else
+                        factor = dts * acr2d (qden, oms_cgacw, denfac (k), bling, mug)
+                    endif
+                    pgacw = factor / (1. + factor) * ql (k)
                 endif
-                pgacw = factor / (1. + factor) * ql (k)
             endif
-
-            pgacr = 0.
-            if (qr (k) .gt. qpmin) then
+            
+            pgacr = 0. 
+            if (qr (k) .gt. qpmin) then 
                 pgacr = min (dts * acr3d (vtg (k), vtr (k), qr (k), qg (k), cgacr, acco (:, 3), &
                     acc (5), acc (6), den (k)), qr (k))
             endif
-
-            factor = min (pgacr, qr (k), dim (tice, tz (k)) / icpk (k)) / max (pgacr, qcmin)
-            pgacr = factor * pgacr
-            factor = min (pgacw, ql (k), dim (tice, tz (k)) / icpk (k)) / max (pgacw, qcmin)
-            pgacw = factor * pgacw
-
+            
+            ! --- 1. Apply Mass Limits First ---
+            if (pgacr .gt. qcmin) then
+               factor = min (pgacr, qr (k)) / pgacr
+               pgacr  = factor * pgacr
+            else
+               pgacr  = 0.0
+            endif
+            if (pgacw .gt. qcmin) then
+               factor = min (pgacw, ql (k)) / pgacw
+               pgacw  = factor * pgacw
+            else
+               pgacw  = 0.0
+            endif
+            ! --- 2. Apply Combined Thermal Limit ---
             sink = pgacr + pgacw
+            if (sink .gt. qcmin) then
+               factor = min (sink, max (0.0, - tc / icpk (k))) / sink
+               pgacr  = factor * pgacr
+               pgacw  = factor * pgacw
+               sink   = pgacr + pgacw ! Update sink for the final update_qt call
+            endif
+            
             mpprg = mpprg + sink * dp (k) * convt
-
+                    
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 0., - pgacw, - pgacr, 0., 0., sink, te8 (k), cvm (k), tz (k), &
                 lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pgacw_pgacr')
-
+            
         endif
-
+            
     enddo
 
 end subroutine pgacw_pgacr
@@ -6485,7 +6569,7 @@ subroutine psaut_simp (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, den, mpp
 
         tc = tz (k) - tice
 
-        qim = qi0_max / den (k)
+        qim = psaut_qi_crt / den (k)
 
         if (tc .lt. 0. .and. qi (k) .gt. qim) then
 
