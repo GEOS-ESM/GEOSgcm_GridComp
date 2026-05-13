@@ -4227,14 +4227,17 @@ subroutine psacr_pgfr (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8
             pgfr = dts * cgfr (1) / den (k) * (exp (- cgfr (2) * tc) - 1.) * &
                 exp ((6 + mur) / (mur + 3) * log (6 * qr (k) * den (k)))
 
+            ! --- Apply Mass and Thermal Limits ---
             sink = psacr + pgfr
-            factor = min (sink, qr (k), - tc / icpk (k)) / max (sink, qcmin)
-            psacr = factor * psacr
-            pgfr = factor * pgfr
+            if (sink .gt. qcmin) then
+               factor = min (sink, qr (k), max (0.0, - tc / icpk (k))) / sink
+               psacr = factor * psacr
+               pgfr = factor * pgfr
+            endif
+            sink = psacr + pgfr
+
             mpprs = mpprs + psacr * dp (k) * convt
             mppfr = mppfr + pgfr * dp (k) * convt
-
-            sink = psacr + pgfr
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 0., 0., - sink, 0., psacr, pgfr, te8 (k), cvm (k), tz (k), &
@@ -4425,12 +4428,28 @@ subroutine pgacw_pgacr (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te
                     acc (5), acc (6), den (k)), qr (k))
             endif
             
-            factor = min (pgacr, qr (k), dim (tice, tz (k)) / icpk (k)) / max (pgacr, qcmin)
-            pgacr = factor * pgacr
-            factor = min (pgacw, ql (k), dim (tice, tz (k)) / icpk (k)) / max (pgacw, qcmin)
-            pgacw = factor * pgacw
-                    
+            ! --- 1. Apply Mass Limits First ---
+            if (pgacr .gt. qcmin) then
+               factor = min (pgacr, qr (k)) / pgacr
+               pgacr  = factor * pgacr
+            else
+               pgacr  = 0.0
+            endif
+            if (pgacw .gt. qcmin) then
+               factor = min (pgacw, ql (k)) / pgacw
+               pgacw  = factor * pgacw
+            else
+               pgacw  = 0.0
+            endif
+            ! --- 2. Apply Combined Thermal Limit ---
             sink = pgacr + pgacw
+            if (sink .gt. qcmin) then
+               factor = min (sink, max (0.0, - tc / icpk (k))) / sink
+               pgacr  = factor * pgacr
+               pgacw  = factor * pgacw
+               sink   = pgacr + pgacw ! Update sink for the final update_qt call
+            endif
+            
             mpprg = mpprg + sink * dp (k) * convt
                     
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
