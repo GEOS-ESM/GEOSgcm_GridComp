@@ -1095,7 +1095,11 @@ contains
            
            wentr_rad = wentr_rad * depth_factor * max(eis_floor, eis_factor)
          else
-            wentr_rad = wentr_rad * min(3.0,(zradtop/800.))
+           ! Original depth-only scaling (preserved for backward compatibility)
+           if ( zradtop .le. 800. ) then
+              wentr_rad = wentr_rad * max(0.0,(zradtop-500.)/300.)
+           endif
+           wentr_rad = wentr_rad * min(3.0,(zradtop/800.))
          endif
 !-----------------------------------------
 
