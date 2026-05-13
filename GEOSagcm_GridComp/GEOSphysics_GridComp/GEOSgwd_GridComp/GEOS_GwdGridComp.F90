@@ -36,7 +36,6 @@ module GEOS_GwdGridCompMod
    use MAPL, only : MAPL_find_bounds => find_bounds
    use MAPL, only : MAPL_Interval => Interval
    use MAPL_CommsMod, only: MAPL_AM_I_ROOT, ArrayGather
-   use MAPL_MaplGrid, only: MAPL2_GridGet => MAPL_GridGet
    use MAPL_Constants, only: MAPL_RADIUS, MAPL_RGAS, MAPL_GRAV, MAPL_VIREPS, MAPL_PI, MAPL_P00, MAPL_CP
 
    use mapl3g_generic, only: MAPL_GridCompSetEntryPoint
@@ -47,7 +46,7 @@ module GEOS_GwdGridCompMod
    use mapl3g_RestartModes, only: MAPL_RESTART_SKIP
    use mapl3g_VerticalStaggerLoc, only: VERTICAL_STAGGER_NONE, VERTICAL_STAGGER_CENTER, VERTICAL_STAGGER_EDGE
    use mapl3g_UngriddedDims, only: UngriddedDims
-   use mapl3g_Geom_API, only: MAPL_GridGet, MAPL_GridGetCoordinates
+   use MAPL, only: MAPL_GridGet, MAPL_GridGetCoordinates, mapl_GridGetGlobalCellCountPerDim
    use mapl3g_State_API, only: MAPL_StateGetPointer
    use mapl3g_UngriddedDim, only: UngriddedDim
 
@@ -1150,11 +1149,13 @@ contains
       real, allocatable :: avar_global(:,:)
       real :: rng(3)
       integer :: DIMS(3), IM, JM, STATUS, rc
+      integer, allocatable :: global_dims(:)
 
       call MAPL_GridGet(GRID, IM=IM, JM=JM, _RC); DIMS(1:2) = [IM, JM]
       allocate (      locArr(DIMS(1),DIMS(2)) )
 
-      call MAPL2_GridGet(GRID, globalCellCountPerDim=DIMS, _RC)
+      call mapl_GridGetGlobalCellCountPerDim(GRID, globalCellCountPerDim=global_dims, _RC)
+      DIMS(1:size(global_dims)) = global_dims
       allocate (      glbArr(DIMS(1),DIMS(2)) )
       allocate ( area_global(DIMS(1),DIMS(2)) )
       allocate ( avar_global(DIMS(1),DIMS(2)) )
