@@ -2018,19 +2018,19 @@ contains
     VERIFY_(STATUS) 
 
     call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'REFL10CM_MAX',                                          &
+         LONG_NAME = 'Maximum_composite_10cm_radar_reflectivity',                  &
+         UNITS     = 'dBZ',                                     &
+         DIMS      = MAPL_DimsHorzOnly,                            & 
+         VLOCATION = MAPL_VLocationNone,              RC=STATUS  ) 
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'DBZ',                                          &
          LONG_NAME = 'Simulated_radar_reflectivity',                  &
          UNITS     = 'dBZ',                                     &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'REFL10CM_MAX',                                          &
-         LONG_NAME = 'Maximum_composite_10cm_radar_reflectivity',                  &
-         UNITS     = 'dBZ',                                     &
-         DIMS      = MAPL_DimsHorzOnly,                            &
-         VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
@@ -5845,8 +5845,12 @@ contains
        call MAPL_GetPointer(EXPORT, LFC,     'ZLFC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, LNB,     'ZLNB'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, LCL_AGL, 'LCL_AGL', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+
+       call MAPL_TimerOn(MAPL,"-----BUOYANCY2")
        call BUOYANCY2( IM, JM, LM, T, Q, QST3, DQST3, DZET, ZL0, PLmb, PLEmb(:,:,LM), &
                        SBCAPE, MLCAPE, MUCAPE, SBCIN, MLCIN, MUCIN, BYNCY, LFC, LNB, LCL_AGL )
+       call MAPL_TimerOff(MAPL,"-----BUOYANCY2")
+
        call BUOYANCY( T, Q, QST3, DQST3, DZET, ZL0, BYNCY, CAPE, INHB)
 
        ! initialize diagnosed convective fraction
@@ -5869,6 +5873,7 @@ contains
             END WHERE
          endif
        endif
+
        call MAPL_TimerOff(MAPL,"---MOIST_PROLOGUE")
 
        ! Extract convective tracers from the TR bundle
@@ -6010,10 +6015,14 @@ contains
        if (associated(PTRDC)) PTR3D = PTR3D + PTRDC
        if (associated(PTRSC)) PTR3D = PTR3D + PTRSC
 
+       call MAPL_TimerOff(MAPL,"---MOIST_EPILOGUE")
+
        if (adjustl(CLDMICR_OPTION)=="BACM_1M") call BACM_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CLDMICR_OPTION)=="THOM_1M") call THOM_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
+
+       call MAPL_TimerOn(MAPL,"---MOIST_EPILOGUE")
 
        if (DEBUG_MST) then
           call MAPL_MaxMin('MST: Q_AF_MP  ', Q)      
