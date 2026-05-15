@@ -45,6 +45,9 @@ module GEOS_AgcmGridCompMod
   use Chem_GroupMod
   use Bundle_IncrementMod
 
+  use MAPL_Mod,          only: MAPL_Get
+  use MAPL_PythonBridge, only: initialize_python_bridge
+
   implicit none
   private
 
@@ -1203,6 +1206,8 @@ contains
    character(len=ESMF_MAXSTR)          :: STRING
    character(len=ESMF_MAXSTR)          :: rplMode
 
+   integer :: IM, JM, LM ! +++ awlee
+
 ! =============================================================================
 
 ! Begin...
@@ -1222,6 +1227,14 @@ contains
 
 
     call MAPL_TimerOn(STATE,"INITIALIZE")
+
+    ! +++ awlee
+    ! Spin the MAPL python bridge
+    call MAPL_Get ( STATE, IM=IM, JM=JM, LM=LM, RC=STATUS )
+    VERIFY_(STATUS)
+    call initialize_python_bridge( IM, JM, LM )
+    ! --- awlee
+
 
 ! Call Initialize for every Child
 
