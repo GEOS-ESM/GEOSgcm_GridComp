@@ -859,6 +859,8 @@ contains
 ! Imports
     REAL_, pointer                     :: TAUX(:,:)          => null()
     REAL_, pointer                     :: TAUY(:,:)          => null()
+    REAL_, pointer                     :: UW(:,:)            => null()
+    REAL_, pointer                     :: VW(:,:)            => null()
     REAL_, pointer                     :: UWB(:,:)           => null()
     REAL_, pointer                     :: VWB(:,:)           => null()
     REAL_, pointer                     :: UWC(:,:)           => null()
@@ -916,6 +918,8 @@ contains
     call MAPL_GetPointer(IMPORT, TAUX,     'TAUX'        ,                 _RC)
     call MAPL_GetPointer(IMPORT, TAUY,     'TAUY'        ,                 _RC)
     call MAPL_GetPointer(IMPORT,  SLV,     'SLV'         ,                 _RC)
+    call MAPL_GetPointer(IMPORT,  UW,      'UW'          ,                 _RC)
+    call MAPL_GetPointer(IMPORT,  VW,      'VW'          ,                 _RC)
     call MAPL_GetPointer(IMPORT,  UWB,     'UWB'         ,                 _RC)
     call MAPL_GetPointer(IMPORT,  VWB,     'VWB'         ,                 _RC)
     call MAPL_GetPointer(IMPORT,  UWC,     'UWC'         ,                 _RC)
@@ -937,7 +941,7 @@ contains
 
     !call ice_import_thermo2()
 
-    call ice_import_dyna(TAUX, TAUY, SLV, UWB, VWB, UWC, VWC, _RC)
+    call ice_import_dyna(TAUX, TAUY, SLV, UW, VW, UWB, VWB, UWC, VWC, _RC)
 
 
     call CICE_Run
