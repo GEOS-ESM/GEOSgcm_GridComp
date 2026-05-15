@@ -545,9 +545,9 @@ contains
       real, dimension(GPU_MAXLEVS) :: k_rad_col
       real, dimension(GPU_MAXLEVS) :: dqs
       !real, dimension(GPU_MAXLEVS) :: qs ! Not used in current code
-      real                         :: qs_dummy
-      real                         :: khsfcfac, depth_factor, eis_factor
-      real                         :: eis_stability, surface_suppression, radiative_modulation
+      real :: vbulk3, qs_dummy
+      real :: khsfcfac, depth_factor, depth_scale, depth_cap, land_factor
+      real :: eis_stability, eis_floor, eis_factor 
 !-----------------------------------------------------------------------
 !
 !     initialize variables
@@ -795,19 +795,26 @@ contains
 !   - Depth: Deeper BL → more TKE → stronger entrainment
 !   - EIS: Strong inversion → resistance → weaker entrainment
             if (use_eis) then
-               ! Component 1: Depth effect (0 to 2.0)
-               depth_factor = MIN(2.0, zsml(i,j)/800.)
+               ! 1. Define Land vs Ocean depth scales
+               ! Land PBLs are deeper; we increase the pivot point (denominator)
+               ! and the cap for land to allow more vigorous deep-afternoon mixing.
+               depth_scale  = 800.0 * (1.0 - frland(i,j)) + 1200.0 * frland(i,j)
+               depth_cap    = 2.0   * (1.0 - frland(i,j)) + 2.5    * frland(i,j)
                
-               ! Component 2: Inversion strength effect (0.5 to 1.2)
-               ! High EIS (stable): 0.5 (strong suppression)
-               ! Low EIS (unstable): 1.2 (enhancement)
-               eis_factor = 1.2 - 0.7*eis_stability
+               depth_factor = MIN(depth_cap, zsml(i,j) / depth_scale)
                
-               ! Combined: multiplicative interaction
-               ! Range: ~0 to 2.4
-               wentr_tmp = wentr_tmp * depth_factor * eis_factor
+               ! 2. Component 2: Inversion strength effect
+               ! Over land, we increase sensitivity to low EIS (unstable conditions)
+               land_factor  = 0.5 * frland(i,j) 
+               eis_factor   = (1.2 + land_factor) - (0.7 + land_factor) * eis_stability
+               
+               ! 3. Apply combined factor
+               ! Ensure the floor isn't too low for marine clouds
+               ! (0.5 is a safer floor for marine Sc than 0.4)
+               eis_floor = 0.5 - (0.1 * frland(i,j))
+               wentr_tmp = wentr_tmp * depth_factor * max(eis_floor, eis_factor)
             else
-               ! Original depth-only scaling (backward compatible)
+               ! Original depth-only scaling
                wentr_tmp = wentr_tmp * MIN(2.0, zsml(i,j)/800.)
             endif
     !-----------------------------------------
@@ -1070,25 +1077,23 @@ contains
 ! - Depth: Deeper BL has more TKE available for entrainment
 ! - EIS: Strong inversion resists penetration by turbulence
          if (use_eis) then
-           
-           ! Depth component (0.5 to 2.0)
-           ! Captures available turbulent kinetic energy
+           ! Use the 'softer' depth factor
            if ( zradtop .le. 800. ) then
               depth_factor = 0.5 + 0.5*max(0.0, (zradtop-500.)/300.)
            else
               depth_factor = min(2.0, (zradtop/800.))
            endif
+ 
+           ! Over land, we want to be more aggressive with entrainment when EIS is low
+           ! Over ocean, we want to be more conservative to protect clouds
+           land_factor = 0.4 * frland(i,j) 
+           eis_factor = (1.2 + land_factor) - (0.8 + land_factor)*eis_stability
+ 
+           ! Ensure the floor isn't too low for marine clouds
+           ! (0.5 is a safer floor for marine Sc than 0.4)
+           eis_floor = 0.5 - (0.1 * frland(i,j))
            
-           ! EIS component (0.4 to 1.2)
-           ! Captures resistance to entrainment from inversion strength
-           ! High EIS (stable): 0.4 (strong suppression)
-           ! Low EIS (unstable): 1.2 (slight enhancement)
-           eis_factor = 1.2 - 0.8*eis_stability
-           
-           ! Combined: Range approximately 0.2 to 2.4
-           radiative_modulation = depth_factor * eis_factor
-           wentr_rad = wentr_rad * radiative_modulation
-           
+           wentr_rad = wentr_rad * depth_factor * max(eis_floor, eis_factor)
          else
            ! Original depth-only scaling (preserved for backward compatibility)
            if ( zradtop .le. 800. ) then

@@ -2546,6 +2546,14 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='CIWP',                                        & 
+         LONG_NAME ='cloud_ice_water_path',                        &
+         UNITS     ='kg m-2'  ,                                    & 
+         DIMS      = MAPL_DimsHorzOnly,                            & 
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  ) 
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='IWP',                                         &
          LONG_NAME ='ice_water_path',                              &
          UNITS     ='kg m-2'  ,                                    &
@@ -5975,28 +5983,22 @@ contains
        ! initialize diagnosed convective fraction
        CNV_FRC = 0.0
        if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
-         ! CAPE ramps
-           WHERE (CAPE .ne. MAPL_UNDEF)
-              CNV_FRC = (1.0-COS(MAPL_PI*(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN)))/2.0
-           END WHERE
-           WHERE ((CAPE .le. CNV_FRACTION_MIN) .and. (CAPE .ne. MAPL_UNDEF))
-              CNV_FRC = 0.0
-           END WHERE
-           WHERE ((CAPE .ge. CNV_FRACTION_MAX) .and. (CAPE .ne. MAPL_UNDEF))
-              CNV_FRC = 1.0
-           END WHERE
-       else
-         ! use -1.0*EIS so CNV_FRC 0:1 for EIS 0:-1
-         CNV_FRC = MAX(0.0,MIN(1.0,-1.0*EIS))
-        !!
-        !CNV_CAPE_SCALE = 0.5*(CNV_FRACTION_MIN+CNV_FRACTION_MAX)
-        !CNV_CAPE_NORM = SQRT(CNV_FRACTION_MAX-CNV_FRACTION_MIN) / &
-        !               (SQRT(CNV_FRACTION_MAX-CNV_FRACTION_MIN)+SQRT(CNV_CAPE_SCALE-CNV_FRACTION_MIN))
-        !WHERE (MUCAPE .ne. MAPL_UNDEF)
-        !   CNV_FRC = MIN(  SQRT(MAX(0.0,MUCAPE-CNV_FRACTION_MIN)) / &
-        !                  (SQRT(MAX(0.0,MUCAPE-CNV_FRACTION_MIN)+SQRT(CNV_CAPE_SCALE-CNV_FRACTION_MIN))) / &
-        !                  CNV_CAPE_NORM , 1.0)
-        !END WHERE
+         if (CNV_FRACTION_EXP /= 1.0) then
+            WHERE (CAPE .ne. MAPL_UNDEF)
+               CNV_FRC =(MAX(1.e-6,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN))))
+            END WHERE
+            CNV_FRC = CNV_FRC**CNV_FRACTION_EXP
+         else
+            WHERE (CAPE .ne. MAPL_UNDEF)
+               CNV_FRC = (1.0-COS(MAPL_PI*(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN)))/2.0
+            END WHERE
+            WHERE ((CAPE .le. CNV_FRACTION_MIN) .and. (CAPE .ne. MAPL_UNDEF))
+               CNV_FRC = 0.0
+            END WHERE
+            WHERE ((CAPE .ge. CNV_FRACTION_MAX) .and. (CAPE .ne. MAPL_UNDEF))
+               CNV_FRC = 1.0
+            END WHERE
+         endif
        endif
 
        ! Extract convective tracers from the TR bundle
@@ -6592,14 +6594,19 @@ contains
 
        call MAPL_GetPointer(EXPORT, PTR3D, 'RH2', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = MAX(MIN( Q/GEOS_QSAT (T, PLmb) , 1.02 ),0.0)
+
+       ! Cloud Water Path
        call MAPL_GetPointer(EXPORT, PTR2D, 'CWP', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR2D)) PTR2D = SUM( ( QLCN+QLLS+QICN+QILS )*MASS , 3 )
+       ! Cloud Liquid Water Path
        call MAPL_GetPointer(EXPORT, PTR2D, 'CLWP', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR2D)) PTR2D = SUM( ( QLCN+QLLS ) *MASS , 3 )
-       call MAPL_GetPointer(EXPORT, PTR2D, 'LWP', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR2D)) PTR2D = SUM( ( QLCN+QLLS ) *MASS , 3 )
-       call MAPL_GetPointer(EXPORT, PTR2D, 'IWP', RC=STATUS); VERIFY_(STATUS)
+       ! Cloud Ice Water Path
+       call MAPL_GetPointer(EXPORT, PTR2D, 'CIWP', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR2D)) PTR2D = SUM( ( QICN+QILS ) *MASS , 3 )
+       ! Total LWP and IWP need to be defined inside the microphysics depends on number was water species
+
+       ! Total Precipitable Water
        call MAPL_GetPointer(EXPORT, PTR2D, 'TPW', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR2D)) PTR2D = SUM( ( Q         ) *MASS , 3 )
 
