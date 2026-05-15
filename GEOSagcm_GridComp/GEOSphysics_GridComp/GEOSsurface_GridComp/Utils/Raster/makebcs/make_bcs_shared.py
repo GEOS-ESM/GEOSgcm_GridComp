@@ -26,13 +26,36 @@ _VERSION_MATRIX = {
     "v11": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
     "v12": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"},
     "v13": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v2"},
+    "v14": {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v2"},
 }
 
-_DEFAULTS = {"TOPO_VERSION": "v1", "MOM6_BATHY_VERSION": "v1"}
+_REQUIRED_VERSION_KEYS = ("TOPO_VERSION", "MOM6_BATHY_VERSION")
 
 def resolve_bcs_matrix(bcs_version: str):
     key = (bcs_version or "").strip()
-    return {**_DEFAULTS, **_VERSION_MATRIX.get(key, {})}
+
+    if not key:
+        valid = ", ".join(sorted(_VERSION_MATRIX))
+        raise ValueError(
+            f"BCS version is not defined. Must be one of: {valid}"
+        )
+
+    if key not in _VERSION_MATRIX:
+        valid = ", ".join(sorted(_VERSION_MATRIX))
+        raise ValueError(
+            f"Unknown BCS version '{key}'. Must be one of: {valid}"
+        )
+
+    entry = _VERSION_MATRIX[key]
+
+    missing = [name for name in _REQUIRED_VERSION_KEYS if name not in entry]
+    if missing:
+        raise ValueError(
+            f"BCS version '{key}' is missing required version setting(s): "
+            f"{', '.join(missing)}"
+        )
+
+    return entry
 
 def topo_version_for_bcs(bcs_version: str) -> str:
     return resolve_bcs_matrix(bcs_version)["TOPO_VERSION"]
@@ -198,7 +221,7 @@ cd ../..
 
 /bin/rm -r {TMP_DIR}
 
-# if necessary, copy resolution-independent CO2 file from MAKE_BCS_INPUT_DIR to bcs dir
+# if necessary, copy resolution-independent CO2 and route files from MAKE_BCS_INPUT_DIR to bcs dir
 
 if(-f land/shared/CO2_MonthlyMean_DiurnalCycle.nc4) then
     echo "CO2_MonthlyMean_DiurnalCycle.nc4 already present in bcs dir."
@@ -207,10 +230,12 @@ else
     echo "Successfully copied CO2_MonthlyMean_DiurnalCycle.nc4 to bcs dir."
 endif
 
-if(-f land/shared/route_parameters.nc ) then
+if ( ! -d route ) mkdir -p route
+
+if(-f route/route_parameters.nc ) then
     echo "route_parameters.nc already present in bcs dir."
 else
-    /bin/cp -p {MAKE_BCS_INPUT_DIR}/route/routing_model/v1/route_parameters.nc land/shared/route_parameters.nc
+    /bin/cp -p {MAKE_BCS_INPUT_DIR}/route/routing_model/v1/route_parameters.nc route/route_parameters.nc
     echo "Successfully copied route_parameters.nc to bcs dir."
 endif
 
@@ -223,6 +248,8 @@ endif
 set topo_version = {TOPO_VERSION}
 
 if ( ! -d TOPO ) mkdir -p TOPO
+echo $topo_version >! TOPO/TOPO_version_info
+
 set topo_dir  = CF{NC}x6C{SGNAME}     # e.g., CF0024x6C or CF0540x6C-SG001
 set topo_root = {MAKE_BCS_INPUT_DIR}/atmosphere/TOPO
 set topo_src  = $topo_root/$topo_version/$topo_dir
@@ -241,7 +268,7 @@ endif
    mv_template = mv_template + """
 
 # adjust permissions (for all grid types)
-chmod +rX -R geometry land logs
+chmod +rX -R geometry land logs route
 
 """
    return mv_template
