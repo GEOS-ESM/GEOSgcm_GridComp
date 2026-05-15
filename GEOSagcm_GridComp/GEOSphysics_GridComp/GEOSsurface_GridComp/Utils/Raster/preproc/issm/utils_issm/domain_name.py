@@ -12,7 +12,7 @@ mean_edges = np.array([ ])
 
 models = [
     p.name
-    for p in Path("..").iterdir()
+    for p in Path(".").iterdir()
     if p.is_dir() and p.name != "utils_issm"
 ]
 
@@ -52,5 +52,5 @@ print(f'mean edge length: {global_mean} m')
 
 print('\n')
 print('============================================================')
-print(f'Domain name: ISSM_ME{global_mean}_N{total_nodes}_AIS_GRIS')
+print(f'Domain name: ISSM_ME{global_mean}_N{total_nodes}_{"_".join(models)}')
 print('============================================================')

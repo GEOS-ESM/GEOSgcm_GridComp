@@ -1,15 +1,19 @@
 find . -mindepth 1 -type d ! -name utils_issm -exec bash -c '
 for dir do
+(
+    cd "$dir" || exit
+
     name=$(basename "$dir")
-    script="$dir/generate_${name}_input.sh"
+    script="generate_${name}_input.sh"
 
     if [[ -x "$script" ]]; then
-        "$script"
+        "./$script"
     elif [[ -f "$script" ]]; then
         bash "$script"
     fi
+)
 done
 ' bash {} +
 
-source issm_env
-(export LD_LIBRARY_PATH=$PYTHON_LIB:$LD_LIBRARY_PATH; python ./utils_issm/domain_name.py)
+#source issm_env
+#(export LD_LIBRARY_PATH=$PYTHON_LIB:$LD_LIBRARY_PATH; python ./utils_issm/domain_name.py)

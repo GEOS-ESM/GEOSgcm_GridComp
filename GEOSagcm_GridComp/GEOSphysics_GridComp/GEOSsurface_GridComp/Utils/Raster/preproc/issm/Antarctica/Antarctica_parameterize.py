@@ -42,7 +42,7 @@ Temp_change = 0           # default [0 K]
 
 # NetCDF Loading
 print('   Loading SeaRISE data from NetCDF')
-ncdata = Dataset('./discover/nobackup/agstubbl/ISSM/data/Antarctica_5km_withshelves_v0.75.nc')
+ncdata = Dataset('/discover/nobackup/agstubbl/ISSM/data/Antarctica_5km_withshelves_v0.75.nc')
 x1 = ncdata['x1'][:].data
 y1 = ncdata['y1'][:].data
 usrf = ncdata['usrf'][:].data[0]
