@@ -796,6 +796,24 @@ contains
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
     VERIFY_(STATUS)
+    call MAPL_AddImportSpec(GC,                             &
+        LONG_NAME          = 'turbulence_liquid_water_tendency',  &
+        UNITS              = 'kg kg-1 s-1',                       &
+        SHORT_NAME         = 'DQLDTTRB',                          &
+        RESTART    = MAPL_RestartSkip,                            &
+        DIMS               = MAPL_DimsHorzVert,                   &
+        VLOCATION          = MAPL_VLocationCenter,                  &
+                                                       RC=STATUS  )
+    VERIFY_(STATUS)    
+    call MAPL_AddImportSpec(GC,                             &
+        LONG_NAME          = 'turbulence_ice_water_tendency',     &
+        UNITS              = 'kg kg-1 s-1',                       &
+        SHORT_NAME         = 'DQIDTTRB',                          &
+        RESTART    = MAPL_RestartSkip,                            &
+        DIMS               = MAPL_DimsHorzVert,                   &
+        VLOCATION          = MAPL_VLocationCenter,                  &
+                                                       RC=STATUS  )
+    VERIFY_(STATUS)    
 !-srf-gf-scheme
 
     ! !EXPORT STATE:
