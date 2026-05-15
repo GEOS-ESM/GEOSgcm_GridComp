@@ -450,6 +450,8 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, QITOT, 'QITOT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     QLTOT = QLLS+QLCN
     QITOT = QILS+QICN
+    DQLDT_SC = QLTOT
+    DQIDT_SC = QITOT
  
       !  Call UW shallow convection
       !----------------------------------------------------------------
@@ -458,7 +460,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             U, V, Q, QLTOT, QITOT, T, TKE, RKFRE, KPBL_SC,&
             SH, EVAP, CNPCPRATE, FRLAND, RKM2D, MIX2D, RMAXFRAC2D, &
             CUSH,                                         & ! INOUT
-            UMF_SC, DCM_SC, DQVDT_SC, DQLDT_SC, DQIDT_SC, & ! OUT
+            UMF_SC, DCM_SC, DQVDT_SC,                     & ! OUT
             DTDT_SC, DUDT_SC, DVDT_SC, DQRDT_SC,          &
             DQSDT_SC, CUFRC_SC, ENTR_SC, DETR_SC,         &
             QLDET_SC, QIDET_SC, QLSUB_SC, QISUB_SC,       &
@@ -563,6 +565,9 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
   call MAPL_GetPointer(EXPORT, QIENT_SC, 'QIENT_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
   QILS = MAX(0.0, QILS + (QISUB_SC+QIENT_SC)*MOIST_DT)
 
+  DQLDT_SC = (QLLS + QLCN - DQLDT_SC) / MOIST_DT
+  DQIDT_SC = (QILS + QICN - DQIDT_SC) / MOIST_DT
+  
 ! Cleanup negative water species
 ! ------------------------------
   call MAPL_GetPointer(EXPORT,   DQVDT_FILL,   'DQVDT_FILL_SC', RC=STATUS); VERIFY_(STATUS)
