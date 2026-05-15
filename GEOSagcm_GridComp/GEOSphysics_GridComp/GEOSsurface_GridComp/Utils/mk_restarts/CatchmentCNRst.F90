@@ -2,7 +2,7 @@
 
 module CatchmentCNRstMod
   use mk_restarts_getidsMod, ONLY:      &
-       GetIds  
+       GetIds
   use mpi
   use ESMF
   use MAPL
@@ -11,7 +11,7 @@ module CatchmentCNRstMod
                                  VAR_COL_40, VAR_PFT_40, VAR_COL_45, VAR_PFT_45, &
                                  npft => numpft_CN
   use nanMod         , only : nan
-  
+
   implicit none
 
   real,    parameter :: fmin= 1.e-4 ! ignore vegetation fractions at or below this value
@@ -41,7 +41,7 @@ module CatchmentCNRstMod
      real, allocatable ::    FIELDCAP(:)
      real, allocatable ::    HDM     (:)
      real, allocatable ::    GDP     (:)
-     real, allocatable ::    PEATF   (:) 
+     real, allocatable ::    PEATF   (:)
 
      real, allocatable :: bflowm(:)
      real, allocatable :: totwatm(:)
@@ -62,11 +62,11 @@ module CatchmentCNRstMod
      real, allocatable :: sfmcm(:)
      real, allocatable :: psnsunm(:,:,:)
      real, allocatable :: psnsham(:,:,:)
-     
+
   contains
      procedure :: write_nc4
-     procedure :: allocate_cn   
-     procedure :: add_bcs_to_cnrst   
+     procedure :: allocate_cn
+     procedure :: add_bcs_to_cnrst
      procedure :: re_tile
   endtype CatchmentCNRst
 
@@ -95,9 +95,9 @@ contains
      if (filetype /= 0) then
         _ASSERT( .false., "CatchmentCN only support nc4 file restart")
      endif
-  
+
      call MPI_COMM_RANK( MPI_COMM_WORLD, myid, mpierr )
- 
+
      catch%isCLM45 = .false.
      catch%isCLM40 = .false.
      call formatter%open(filename, pFIO_READ, __RC__)
@@ -162,21 +162,21 @@ contains
         ! (to be merged into the "develop" branch in late 2020):
         ! The length of the 2nd dim of CNPFT differs from that of CNCOL.  Prior to this fix,
         ! CNPFT was not read in its entirety and some elements remained uninitialized (or zero),
-        ! resulting in bad values in the "regridded" (re-tiled) restart file. 
+        ! resulting in bad values in the "regridded" (re-tiled) restart file.
         ! This impacted re-tiled restarts for both CNCLM40 and CLCLM45.
         ! - reichle, 23 Nov 2020
         call MAPL_VarRead(formatter,"CNPFT",catch%CNPFT, __RC__)
 
         ! more reading
-        call MAPL_VarRead(formatter,  "BFLOWM",  catch%bflowm ,_RC) 
-        call MAPL_VarRead(formatter,  "TOTWATM", catch%totwatm,_RC) 
-        call MAPL_VarRead(formatter,  "TAIRM",   catch%tairm  ,_RC) 
-        call MAPL_VarRead(formatter,  "TPM",     catch%tpm    ,_RC) 
-        call MAPL_VarRead(formatter,  "CNSUM",   catch%cnsum  ,_RC) 
-        call MAPL_VarRead(formatter,  "SNDZM",   catch%sndzm  ,_RC) 
-        call MAPL_VarRead(formatter,  "ASNOWM",  catch%asnowm ,_RC) 
-        call MAPL_VarRead(formatter,  "PSNSUNM", catch%psnsunm,_RC) 
-        call MAPL_VarRead(formatter,  "PSNSHAM", catch%psnsham,_RC) 
+        call MAPL_VarRead(formatter,  "BFLOWM",  catch%bflowm ,_RC)
+        call MAPL_VarRead(formatter,  "TOTWATM", catch%totwatm,_RC)
+        call MAPL_VarRead(formatter,  "TAIRM",   catch%tairm  ,_RC)
+        call MAPL_VarRead(formatter,  "TPM",     catch%tpm    ,_RC)
+        call MAPL_VarRead(formatter,  "CNSUM",   catch%cnsum  ,_RC)
+        call MAPL_VarRead(formatter,  "SNDZM",   catch%sndzm  ,_RC)
+        call MAPL_VarRead(formatter,  "ASNOWM",  catch%asnowm ,_RC)
+        call MAPL_VarRead(formatter,  "PSNSUNM", catch%psnsunm,_RC)
+        call MAPL_VarRead(formatter,  "PSNSHAM", catch%psnsham,_RC)
         call MAPL_VarRead(formatter,  "RZMM",    catch%rzmm   ,_RC)
         call MAPL_VarRead(formatter,  "TGWM",    catch%tgwm   ,_RC)
      endif
@@ -286,7 +286,7 @@ contains
      call MAPL_VarWrite(formatter,"PSNSHAM", this%PSNSHAM )
 
      call formatter%close()
-     
+
      _RETURN(_SUCCESS)
    end subroutine write_nc4
 
@@ -297,7 +297,7 @@ contains
      integer  :: ncol,npft, ntiles
 
      ntiles = this%ntiles
-     ncol = nzone* this%VAR_COL 
+     ncol = nzone* this%VAR_COL
      npft = nzone*nveg*this%VAR_PFT
 
      call this%CatchmentRst%allocate_catch(__RC__)
@@ -359,8 +359,8 @@ contains
     character(*), intent (in)            :: OutBcsDir
     integer, optional, intent(out) :: rc
     real, allocatable :: CLMC_pf1(:), CLMC_pf2(:), CLMC_sf1(:), CLMC_sf2(:)
-    real, allocatable :: CLMC_pt1(:), CLMC_pt2(:), CLMC_st1(:), CLMC_st2(:)    
-    real, allocatable :: NDEP(:), BVISDR(:), BVISDF(:), BNIRDR(:), BNIRDF(:) 
+    real, allocatable :: CLMC_pt1(:), CLMC_pt2(:), CLMC_st1(:), CLMC_st2(:)
+    real, allocatable :: NDEP(:), BVISDR(:), BVISDF(:), BNIRDR(:), BNIRDF(:)
     real, allocatable :: T2(:), hdm(:), fc(:), gdp(:), peatf(:)
     integer, allocatable :: ity(:), abm (:)
     integer       :: STATUS, ntiles, unit27, unit28, unit29, unit30
@@ -375,12 +375,12 @@ contains
     open (10,file =trim(OutBcsDir)//"/clsm/catchment.def",status='old',form='formatted')
     read (10,*) ntiles
     close (10, status = 'keep')
- 
+
     !ntiles = this%ntiles
     !call this%CatchmentRst%add_bcs_to_rst(surflay, OutBcsDir, __RC__)
 
     allocate (BVISDR(ntiles),  BVISDF(ntiles),  BNIRDR(ntiles)  )
-    allocate (BNIRDF(ntiles),      T2(ntiles),    NDEP(ntiles)  )    
+    allocate (BNIRDF(ntiles),      T2(ntiles),    NDEP(ntiles)  )
     allocate (CLMC_pf1(ntiles), CLMC_pf2(ntiles), CLMC_sf1(ntiles))
     allocate (CLMC_sf2(ntiles), CLMC_pt1(ntiles), CLMC_pt2(ntiles))
     allocate (CLMC_st1(ntiles), CLMC_st2(ntiles))
@@ -392,7 +392,7 @@ contains
     _ASSERT(Newland, "catchcn should get bc from newland")
 
     if(file_exists) then
-       call CatchCNFmt%Open(trim(OutBcsDir)//'/clsm/catchcn_params.nc4', pFIO_READ, __RC__)    
+       call CatchCNFmt%Open(trim(OutBcsDir)//'/clsm/catchcn_params.nc4', pFIO_READ, __RC__)
        call MAPL_VarRead ( CatchCNFmt ,'BGALBNF', BNIRDF, __RC__)
        call MAPL_VarRead ( CatchCNFmt ,'BGALBNR', BNIRDR, __RC__)
        call MAPL_VarRead ( CatchCNFmt ,'BGALBVF', BVISDF, __RC__)
@@ -416,10 +416,10 @@ contains
        do n=1,ntiles
           read (unit27, *) i,j, CLMC_pt1(n), CLMC_pt2(n), CLMC_st1(n), CLMC_st2(n), &
                 CLMC_pf1(n), CLMC_pf2(n), CLMC_sf1(n), CLMC_sf2(n)
-             
+
           read (unit28, *) NDEP(n), BVISDR(n), BVISDF(n), BNIRDR(n), BNIRDF(n), T2(n) ! MERRA-2 Annual Mean Temp is default.
        end do
-       
+
        CLOSE (unit27, STATUS = 'KEEP')
        CLOSE (unit28, STATUS = 'KEEP')
 
@@ -434,7 +434,7 @@ contains
       end do
       CLOSE (unit30, STATUS = 'KEEP')
     endif
-    
+
     do n=1,ntiles
       BVISDR(n) = amax1(1.e-6, BVISDR(n))
       BVISDF(n) = amax1(1.e-6, BVISDF(n))
@@ -442,36 +442,36 @@ contains
       BNIRDF(n) = amax1(1.e-6, BNIRDF(n))
 
       ! convert % to fractions
-      
+
       CLMC_pf1(n) = CLMC_pf1(n) / 100.
       CLMC_pf2(n) = CLMC_pf2(n) / 100.
       CLMC_sf1(n) = CLMC_sf1(n) / 100.
       CLMC_sf2(n) = CLMC_sf2(n) / 100.
-      
+
       fvg(1) = CLMC_pf1(n)
       fvg(2) = CLMC_pf2(n)
       fvg(3) = CLMC_sf1(n)
       fvg(4) = CLMC_sf2(n)
-      
-      BARE = 1.      
-      
+
+      BARE = 1.
+
       DO NV = 1, NVEG
-         BARE = BARE - FVG(NV)! subtract vegetated fractions 
+         BARE = BARE - FVG(NV)! subtract vegetated fractions
       END DO
-      
+
       if (BARE /= 0.) THEN
          IB = MAXLOC(FVG(:),1)
          FVG (IB) = FVG(IB) + BARE ! This also corrects all cases sum ne 0.
       ENDIF
-      
+
       CLMC_pf1(n) = fvg(1)
       CLMC_pf2(n) = fvg(2)
       CLMC_sf1(n) = fvg(3)
       CLMC_sf2(n) = fvg(4)
     enddo
-       
+
     NDEP = NDEP * 1.e-9
-    
+
     ! prevent trivial fractions
     ! -------------------------
      do n = 1,ntiles
@@ -479,12 +479,12 @@ contains
           CLMC_pf2(n) = CLMC_pf2(n) + CLMC_pf1(n)
           CLMC_pf1(n) = 0.
         endif
-       
+
         if(CLMC_pf2(n) <= 1.e-4) then
           CLMC_pf1(n) = CLMC_pf1(n) + CLMC_pf2(n)
           CLMC_pf2(n) = 0.
         endif
-       
+
         if(CLMC_sf1(n) <= 1.e-4) then
           if(CLMC_sf2(n) > 1.e-4) then
              CLMC_sf2(n) = CLMC_sf2(n) + CLMC_sf1(n)
@@ -497,7 +497,7 @@ contains
           endif
           CLMC_sf1(n) = 0.
         endif
-       
+
         if(CLMC_sf2(n) <= 1.e-4) then
           if(CLMC_sf1(n) > 1.e-4) then
              CLMC_sf1(n) = CLMC_sf1(n) + CLMC_sf2(n)
@@ -510,7 +510,7 @@ contains
           endif
           CLMC_sf2(n) = 0.
         endif
-     enddo 
+     enddo
 
      this%cnity = reshape([CLMC_pt1,CLMC_pt2,CLMC_st1,CLMC_st2],[ntiles,4])
      this%fvg   = reshape([CLMC_pf1,CLMC_pf2,CLMC_sf1,CLMC_sf2],[ntiles,4])
@@ -521,7 +521,7 @@ contains
      this%BGALBVF = BVISDF
      this%BGALBNR = BNIRDR
      this%BGALBNF = BNIRDF
- 
+
      if (this%isCLM45) then
        this%abm       = real(abm)
        this%fieldcap  = fc
@@ -531,7 +531,7 @@ contains
      endif
 
      deallocate (BVISDR,  BVISDF,  BNIRDR  )
-     deallocate (BNIRDF,      T2,    NDEP  )    
+     deallocate (BNIRDF,      T2,    NDEP  )
      deallocate (CLMC_pf1, CLMC_pf2, CLMC_sf1)
      deallocate (CLMC_sf2, CLMC_pt1, CLMC_pt2)
      deallocate (CLMC_st1,CLMC_st2)
@@ -546,7 +546,7 @@ contains
      character(*), intent(in) :: OutTileFile
      real, intent(in)         :: surflay
      integer, optional, intent(out) :: rc
-     
+
      real   , allocatable, dimension (:)   :: DAYX
      integer, allocatable, dimension (:)   :: low_ind, upp_ind, nt_local
      integer, allocatable, dimension (:,:) :: Id_glb_cn, id_loc_cn
@@ -565,7 +565,7 @@ contains
      type(MAPL_SunOrbit)         :: ORBIT
      type(ESMF_Time)             :: CURRENT_TIME
      type(ESMF_TimeInterval)     :: timeStep
-     type(ESMF_Clock)            :: CLOCK  
+     type(ESMF_Clock)            :: CLOCK
      type(ESMF_Config)           :: CF
 
      character(*), parameter :: Iam = "CatchmentCN::Re_tile"
@@ -576,7 +576,7 @@ contains
      var_col = this%var_col
      call this%CatchmentRst%re_tile(InTileFile, OutBcsDir, OutTileFile, surflay, _RC)
 
-     out_ntiles = this%ntiles 
+     out_ntiles = this%ntiles
      call MPI_COMM_RANK( MPI_COMM_WORLD, myid, mpierr )
      call MPI_COMM_SIZE( MPI_COMM_WORLD, numprocs, mpierr )
 
@@ -657,7 +657,7 @@ contains
         VERIFY_(status)
 
         ORBIT = MAPL_SunOrbitCreateFromConfig(CF, CLOCK, .false., RC=status)
-        VERIFY_(status) 
+        VERIFY_(status)
 
         !4) current daylight duration
         lat_tmp = this%latg*MAPL_PI/180.
@@ -736,7 +736,7 @@ contains
     endif
 
     call MPI_Barrier(MPI_COMM_WORLD, STATUS)
- 
+
     if(root_proc) print*, "GetIDs...."
 
     call GetIds(this%lonc,this%latc,this%lonn,this%latt,id_loc_cn, tid_offl, &
@@ -786,7 +786,7 @@ contains
         allocate (tg_tmp(out_ntiles, 4),source = 0.)
         do i = 1, 3
           tg_tmp(:,i) = this%tg(this%id_glb(:),i)
-        enddo        
+        enddo
         this%tg = tg_tmp
         deallocate(tg_tmp)
 
@@ -955,10 +955,10 @@ contains
               offl_cell    = Id_glb(n,nv)
 
               if(ityp_new      == ityp_offl (offl_cell,nv) .and. fveg_offl (offl_cell,nv)> fmin) then
-                 iv = nv                                     ! same type fraction (primary of secondary)                          
+                 iv = nv                                     ! same type fraction (primary of secondary)
               else if(ityp_new == ityp_offl (offl_cell,nx) .and. fveg_offl (offl_cell,nx)> fmin) then
                  iv = nx                                     ! not same fraction
-              else if(iclass(ityp_new)==iclass(ityp_offl(offl_cell,nv)) .and. fveg_offl (offl_cell,nv)> fmin) then
+              else if(iclass(ityp_new)==iclass(int(ityp_offl(offl_cell,nv))) .and. fveg_offl (offl_cell,nv)> fmin) then
                  iv = nv                                     ! primary, other type (same class)
               else if(fveg_offl (offl_cell,nx)> fmin) then
                  iv = nx                                     ! secondary, other type (same class)
@@ -967,7 +967,7 @@ contains
               ! Get col and pft variables for the Id_glb(nv) grid cell from offline catchcn_internal_rst
               ! ----------------------------------------------------------------------------------------
 
-              ! call NCDF_reshape_getOput (NCFID,Id_glb(n,nv),var_off_col,var_off_pft,.true.)  
+              ! call NCDF_reshape_getOput (NCFID,Id_glb(n,nv),var_off_col,var_off_pft,.true.)
 
               var_pft_out (n,:,nv,:) = var_off_pft(Id_glb(n,nv), :,iv,:)
               var_col_out (n,:,:)    = var_col_out(n,:,:) + fveg_new * var_off_col(Id_glb(n,nv), :,:) ! gkw: column state simple weighted mean; ! could use "woody" fraction?
@@ -977,9 +977,9 @@ contains
                  do j = 1, VAR_PFT
                     if (isnan(var_pft_out (n, nz,nv,j))) print *,j,nv,nz,n,var_pft_out (n, nz,nv,j),fveg_new
                     !if(isnan(var_pft_out (n, nz,nv,69))) var_pft_out (n, nz,nv,69) = 1.e-6
-                    !if(isnan(var_pft_out (n, nz,nv,70))) var_pft_out (n, nz,nv,70) = 1.e-6   
+                    !if(isnan(var_pft_out (n, nz,nv,70))) var_pft_out (n, nz,nv,70) = 1.e-6
                     !if(isnan(var_pft_out (n, nz,nv,73))) var_pft_out (n, nz,nv,73) = 1.e-6
-                    !if(isnan(var_pft_out (n, nz,nv,74))) var_pft_out (n, nz,nv,74) = 1.e-6                 
+                    !if(isnan(var_pft_out (n, nz,nv,74))) var_pft_out (n, nz,nv,74) = 1.e-6
                  end do
               end do
            endif
@@ -1001,7 +1001,7 @@ contains
               var_col_out(n, nz,10) = max(var_col_out(n, nz,10), 0.)
               var_col_out(n, nz,11) = max(var_col_out(n, nz,11), 0.)
               var_col_out(n, nz,12) = max(var_col_out(n, nz,12), 0.)
-              var_col_out(n, nz,13) = max(var_col_out(n, nz,13),10.)   ! soil4c       
+              var_col_out(n, nz,13) = max(var_col_out(n, nz,13),10.)   ! soil4c
               var_col_out(n, nz,14) = max(var_col_out(n, nz,14), 0.)
               var_col_out(n, nz,15) = max(var_col_out(n, nz,15), 0.)
               var_col_out(n, nz,16) = max(var_col_out(n, nz,16), 0.)
@@ -1100,8 +1100,8 @@ contains
                     var_pft_out(n, nz,nv,74) = max(var_pft_out(n, nz,nv,74),0.)
                     if(this%isCLM45) var_pft_out(n, nz,nv,75) = max(var_pft_out(n, nz,nv,75),0.)
                  endif
-              end do NVLOOP3  ! end veg loop                 
-           endif    ! end carbon check         
+              end do NVLOOP3  ! end veg loop
+           endif    ! end carbon check
         end do NZLOOP ! end zone loop
 
         ! Update dayx variable var_pft_out (:,:,28)
@@ -1114,163 +1114,163 @@ contains
            end do
         end do
 
-        ! call NCDF_reshape_getOput (OutID,N,var_col_out,var_pft_out,.false.)  
+        ! call NCDF_reshape_getOput (OutID,N,var_col_out,var_pft_out,.false.)
 
         ! column vars clm40                         clm45
         ! -----------------                         ---------------------
-        !  1 clm3%g%l%c%ccs%col_ctrunc            !  1 ccs%col_ctrunc_vr   (:,1)              
-        !  2 clm3%g%l%c%ccs%cwdc            !  2 ccs%decomp_cpools_vr(:,1,4)   ! cwdc        
-        !  3 clm3%g%l%c%ccs%litr1c                 !  3 ccs%decomp_cpools_vr(:,1,1)   ! litr1c 
-        !  4 clm3%g%l%c%ccs%litr2c             !  4 ccs%decomp_cpools_vr(:,1,2)   ! litr2c 
-        !  5 clm3%g%l%c%ccs%litr3c             !  5 ccs%decomp_cpools_vr(:,1,3)   ! litr3c 
-        !  6 clm3%g%l%c%ccs%pcs_a%totvegc          !  6 ccs%totvegc_col                        
-        !  7 clm3%g%l%c%ccs%prod100c              !  7 ccs%prod100c                           
-        !  8 clm3%g%l%c%ccs%prod10c            !  8 ccs%prod10c                            
-        !  9 clm3%g%l%c%ccs%seedc                  !  9 ccs%seedc                              
-        ! 10 clm3%g%l%c%ccs%soil1c                 ! 10 ccs%decomp_cpools_vr(:,1,5)   ! soil1c 
-        ! 11 clm3%g%l%c%ccs%soil2c                 ! 11 ccs%decomp_cpools_vr(:,1,6)   ! soil2c 
-        ! 12 clm3%g%l%c%ccs%soil3c                 ! 12 ccs%decomp_cpools_vr(:,1,7)   ! soil3c 
-        ! 13 clm3%g%l%c%ccs%soil4c                 ! 13 ccs%decomp_cpools_vr(:,1,8)   ! soil4c 
-        ! 14 clm3%g%l%c%ccs%totcolc                ! 14 ccs%totcolc                            
-        ! 15 clm3%g%l%c%ccs%totlitc                ! 15 ccs%totlitc                            
-        ! 16 clm3%g%l%c%cns%col_ntrunc            ! 16 cns%col_ntrunc_vr   (:,1)              
-        ! 17 clm3%g%l%c%cns%cwdn            ! 17 cns%decomp_npools_vr(:,1,4)   ! cwdn        
-        ! 18 clm3%g%l%c%cns%litr1n                 ! 18 cns%decomp_npools_vr(:,1,1)   ! litr1n 
-        ! 19 clm3%g%l%c%cns%litr2n             ! 19 cns%decomp_npools_vr(:,1,2)   ! litr2n 
-        ! 20 clm3%g%l%c%cns%litr3n             ! 20 cns%decomp_npools_vr(:,1,3)   ! litr3n 
-        ! 21 clm3%g%l%c%cns%prod100n              ! 21 cns%prod100n                           
-        ! 22 clm3%g%l%c%cns%prod10n                ! 22 cns%prod10n                            
-        ! 23 clm3%g%l%c%cns%seedn                  ! 23 cns%seedn                              
-        ! 24 clm3%g%l%c%cns%sminn                  ! 24 cns%sminn_vr        (:,1)              
-        ! 25 clm3%g%l%c%cns%soil1n                 ! 25 cns%decomp_npools_vr(:,1,5)   ! soil1n 
-        ! 26 clm3%g%l%c%cns%soil2n                 ! 26 cns%decomp_npools_vr(:,1,6)   ! soil2n 
-        ! 27 clm3%g%l%c%cns%soil3n                 ! 27 cns%decomp_npools_vr(:,1,7)   ! soil3n 
-        ! 28 clm3%g%l%c%cns%soil4n                 ! 28 cns%decomp_npools_vr(:,1,8)   ! soil4n 
-        ! 29 clm3%g%l%c%cns%totcoln                ! 29 cns%totcoln                            
-        ! 30 clm3%g%l%c%cps%ann_farea_burned       ! 30 cps%fpg                                
-        ! 31 clm3%g%l%c%cps%annsum_counter         ! 31 cps%annsum_counter                     
-        ! 32 clm3%g%l%c%cps%cannavg_t2m              ! 32 cps%cannavg_t2m                             
-        ! 33 clm3%g%l%c%cps%cannsum_npp              ! 33 cps%cannsum_npp                             
-        ! 34 clm3%g%l%c%cps%farea_burned           ! 34 cps%farea_burned                            
-        ! 35 clm3%g%l%c%cps%fire_prob             ! 35 cps%fpi_vr          (:,1)              
-        ! 36 clm3%g%l%c%cps%fireseasonl              ! OLD           ! 30 cps%altmax                   
-        ! 37 clm3%g%l%c%cps%fpg                     ! OLD           ! 31 cps%annsum_counter            
-        ! 38 clm3%g%l%c%cps%fpi                     ! OLD           ! 32 cps%cannavg_t2m               
-        ! 39 clm3%g%l%c%cps%me                      ! OLD           ! 33 cps%cannsum_npp          
-        ! 40 clm3%g%l%c%cps%mean_fire_prob         ! OLD           ! 34 cps%farea_burned         
-                                                   ! OLD           ! 35 cps%altmax_lastyear      
-                                                   ! OLD           ! 36 cps%altmax_indx          
-                                                   ! OLD           ! 37 cps%fpg                  
+        !  1 clm3%g%l%c%ccs%col_ctrunc            !  1 ccs%col_ctrunc_vr   (:,1)
+        !  2 clm3%g%l%c%ccs%cwdc            !  2 ccs%decomp_cpools_vr(:,1,4)   ! cwdc
+        !  3 clm3%g%l%c%ccs%litr1c                 !  3 ccs%decomp_cpools_vr(:,1,1)   ! litr1c
+        !  4 clm3%g%l%c%ccs%litr2c             !  4 ccs%decomp_cpools_vr(:,1,2)   ! litr2c
+        !  5 clm3%g%l%c%ccs%litr3c             !  5 ccs%decomp_cpools_vr(:,1,3)   ! litr3c
+        !  6 clm3%g%l%c%ccs%pcs_a%totvegc          !  6 ccs%totvegc_col
+        !  7 clm3%g%l%c%ccs%prod100c              !  7 ccs%prod100c
+        !  8 clm3%g%l%c%ccs%prod10c            !  8 ccs%prod10c
+        !  9 clm3%g%l%c%ccs%seedc                  !  9 ccs%seedc
+        ! 10 clm3%g%l%c%ccs%soil1c                 ! 10 ccs%decomp_cpools_vr(:,1,5)   ! soil1c
+        ! 11 clm3%g%l%c%ccs%soil2c                 ! 11 ccs%decomp_cpools_vr(:,1,6)   ! soil2c
+        ! 12 clm3%g%l%c%ccs%soil3c                 ! 12 ccs%decomp_cpools_vr(:,1,7)   ! soil3c
+        ! 13 clm3%g%l%c%ccs%soil4c                 ! 13 ccs%decomp_cpools_vr(:,1,8)   ! soil4c
+        ! 14 clm3%g%l%c%ccs%totcolc                ! 14 ccs%totcolc
+        ! 15 clm3%g%l%c%ccs%totlitc                ! 15 ccs%totlitc
+        ! 16 clm3%g%l%c%cns%col_ntrunc            ! 16 cns%col_ntrunc_vr   (:,1)
+        ! 17 clm3%g%l%c%cns%cwdn            ! 17 cns%decomp_npools_vr(:,1,4)   ! cwdn
+        ! 18 clm3%g%l%c%cns%litr1n                 ! 18 cns%decomp_npools_vr(:,1,1)   ! litr1n
+        ! 19 clm3%g%l%c%cns%litr2n             ! 19 cns%decomp_npools_vr(:,1,2)   ! litr2n
+        ! 20 clm3%g%l%c%cns%litr3n             ! 20 cns%decomp_npools_vr(:,1,3)   ! litr3n
+        ! 21 clm3%g%l%c%cns%prod100n              ! 21 cns%prod100n
+        ! 22 clm3%g%l%c%cns%prod10n                ! 22 cns%prod10n
+        ! 23 clm3%g%l%c%cns%seedn                  ! 23 cns%seedn
+        ! 24 clm3%g%l%c%cns%sminn                  ! 24 cns%sminn_vr        (:,1)
+        ! 25 clm3%g%l%c%cns%soil1n                 ! 25 cns%decomp_npools_vr(:,1,5)   ! soil1n
+        ! 26 clm3%g%l%c%cns%soil2n                 ! 26 cns%decomp_npools_vr(:,1,6)   ! soil2n
+        ! 27 clm3%g%l%c%cns%soil3n                 ! 27 cns%decomp_npools_vr(:,1,7)   ! soil3n
+        ! 28 clm3%g%l%c%cns%soil4n                 ! 28 cns%decomp_npools_vr(:,1,8)   ! soil4n
+        ! 29 clm3%g%l%c%cns%totcoln                ! 29 cns%totcoln
+        ! 30 clm3%g%l%c%cps%ann_farea_burned       ! 30 cps%fpg
+        ! 31 clm3%g%l%c%cps%annsum_counter         ! 31 cps%annsum_counter
+        ! 32 clm3%g%l%c%cps%cannavg_t2m              ! 32 cps%cannavg_t2m
+        ! 33 clm3%g%l%c%cps%cannsum_npp              ! 33 cps%cannsum_npp
+        ! 34 clm3%g%l%c%cps%farea_burned           ! 34 cps%farea_burned
+        ! 35 clm3%g%l%c%cps%fire_prob             ! 35 cps%fpi_vr          (:,1)
+        ! 36 clm3%g%l%c%cps%fireseasonl              ! OLD           ! 30 cps%altmax
+        ! 37 clm3%g%l%c%cps%fpg                     ! OLD           ! 31 cps%annsum_counter
+        ! 38 clm3%g%l%c%cps%fpi                     ! OLD           ! 32 cps%cannavg_t2m
+        ! 39 clm3%g%l%c%cps%me                      ! OLD           ! 33 cps%cannsum_npp
+        ! 40 clm3%g%l%c%cps%mean_fire_prob         ! OLD           ! 34 cps%farea_burned
+                                                   ! OLD           ! 35 cps%altmax_lastyear
+                                                   ! OLD           ! 36 cps%altmax_indx
+                                                   ! OLD           ! 37 cps%fpg
                                                    ! OLD           ! 38 cps%fpi_vr          (:,1)
-                                                   ! OLD           ! 39 cps%altmax_lastyear_indx 
+                                                   ! OLD           ! 39 cps%altmax_lastyear_indx
 
-        ! PFT vars CLM40                                CLM45    
+        ! PFT vars CLM40                                CLM45
         ! --------------                                -----
-        !  1 clm3%g%l%c%p%pcs%cpool                    !  1 pcs%cpool                           
-        !  2 clm3%g%l%c%p%pcs%deadcrootc             !  2 pcs%deadcrootc                      
-        !  3 clm3%g%l%c%p%pcs%deadcrootc_storage      !  3 pcs%deadcrootc_storage              
-        !  4 clm3%g%l%c%p%pcs%deadcrootc_xfer              !  4 pcs%deadcrootc_xfer                 
-        !  5 clm3%g%l%c%p%pcs%deadstemc              !  5 pcs%deadstemc                       
-        !  6 clm3%g%l%c%p%pcs%deadstemc_storage       !  6 pcs%deadstemc_storage               
-        !  7 clm3%g%l%c%p%pcs%deadstemc_xfer               !  7 pcs%deadstemc_xfer                  
-        !  8 clm3%g%l%c%p%pcs%frootc                      !  8 pcs%frootc                          
-        !  9 clm3%g%l%c%p%pcs%frootc_storage               !  9 pcs%frootc_storage                  
-        ! 10 clm3%g%l%c%p%pcs%frootc_xfer                  ! 10 pcs%frootc_xfer                     
-        ! 11 clm3%g%l%c%p%pcs%gresp_storage                ! 11 pcs%gresp_storage                   
-        ! 12 clm3%g%l%c%p%pcs%gresp_xfer             ! 12 pcs%gresp_xfer                      
-        ! 13 clm3%g%l%c%p%pcs%leafc                    ! 13 pcs%leafc                           
-        ! 14 clm3%g%l%c%p%pcs%leafc_storage             ! 14 pcs%leafc_storage                   
-        ! 15 clm3%g%l%c%p%pcs%leafc_xfer             ! 15 pcs%leafc_xfer                      
-        ! 16 clm3%g%l%c%p%pcs%livecrootc        ! 16 pcs%livecrootc                      
-        ! 17 clm3%g%l%c%p%pcs%livecrootc_storage      ! 17 pcs%livecrootc_storage              
-        ! 18 clm3%g%l%c%p%pcs%livecrootc_xfer              ! 18 pcs%livecrootc_xfer                 
-        ! 19 clm3%g%l%c%p%pcs%livestemc              ! 19 pcs%livestemc                       
-        ! 20 clm3%g%l%c%p%pcs%livestemc_storage       ! 20 pcs%livestemc_storage               
-        ! 21 clm3%g%l%c%p%pcs%livestemc_xfer               ! 21 pcs%livestemc_xfer                  
-        ! 22 clm3%g%l%c%p%pcs%pft_ctrunc             ! 22 pcs%pft_ctrunc                      
-        ! 23 clm3%g%l%c%p%pcs%xsmrpool                     ! 23 pcs%xsmrpool                        
-        ! 24 clm3%g%l%c%p%pepv%annavg_t2m                  ! 24 pepv%annavg_t2m                     
-        ! 25 clm3%g%l%c%p%pepv%annmax_retransn             ! 25 pepv%annmax_retransn                
-        ! 26 clm3%g%l%c%p%pepv%annsum_npp                  ! 26 pepv%annsum_npp                     
-        ! 27 clm3%g%l%c%p%pepv%annsum_potential_gpp        ! 27 pepv%annsum_potential_gpp           
-        ! 28 clm3%g%l%c%p%pepv%dayl                    ! 28 pepv%dayl                           
-        ! 29 clm3%g%l%c%p%pepv%days_active                 ! 29 pepv%days_active                    
-        ! 30 clm3%g%l%c%p%pepv%dormant_flag                ! 30 pepv%dormant_flag                   
-        ! 31 clm3%g%l%c%p%pepv%offset_counter              ! 31 pepv%offset_counter                 
-        ! 32 clm3%g%l%c%p%pepv%offset_fdd                  ! 32 pepv%offset_fdd                     
-        ! 33 clm3%g%l%c%p%pepv%offset_flag                 ! 33 pepv%offset_flag                    
-        ! 34 clm3%g%l%c%p%pepv%offset_swi                  ! 34 pepv%offset_swi                     
-        ! 35 clm3%g%l%c%p%pepv%onset_counter               ! 35 pepv%onset_counter                  
-        ! 36 clm3%g%l%c%p%pepv%onset_fdd             ! 36 pepv%onset_fdd      
-        ! 37 clm3%g%l%c%p%pepv%onset_flag                  ! 37 pepv%onset_flag                     
-        ! 38 clm3%g%l%c%p%pepv%onset_gdd             ! 38 pepv%onset_gdd                      
-        ! 39 clm3%g%l%c%p%pepv%onset_gddflag               ! 39 pepv%onset_gddflag                  
-        ! 40 clm3%g%l%c%p%pepv%onset_swi             ! 40 pepv%onset_swi                      
-        ! 41 clm3%g%l%c%p%pepv%prev_frootc_to_litter       ! 41 pepv%prev_frootc_to_litter          
-        ! 42 clm3%g%l%c%p%pepv%prev_leafc_to_litter        ! 42 pepv%prev_leafc_to_litter           
-        ! 43 clm3%g%l%c%p%pepv%tempavg_t2m                 ! 43 pepv%tempavg_t2m                    
-        ! 44 clm3%g%l%c%p%pepv%tempmax_retransn       ! 44 pepv%tempmax_retransn               
-        ! 45 clm3%g%l%c%p%pepv%tempsum_npp                 ! 45 pepv%tempsum_npp                    
-        ! 46 clm3%g%l%c%p%pepv%tempsum_potential_gpp       ! 46 pepv%tempsum_potential_gpp          
-        ! 47 clm3%g%l%c%p%pepv%xsmrpool_recover       ! 47 pepv%xsmrpool_recover               
-        ! 48 clm3%g%l%c%p%pns%deadcrootn             ! 48 pns%deadcrootn                      
-        ! 49 clm3%g%l%c%p%pns%deadcrootn_storage      ! 49 pns%deadcrootn_storage              
-        ! 50 clm3%g%l%c%p%pns%deadcrootn_xfer              ! 50 pns%deadcrootn_xfer                 
-        ! 51 clm3%g%l%c%p%pns%deadstemn              ! 51 pns%deadstemn                       
-        ! 52 clm3%g%l%c%p%pns%deadstemn_storage       ! 52 pns%deadstemn_storage               
-        ! 53 clm3%g%l%c%p%pns%deadstemn_xfer               ! 53 pns%deadstemn_xfer                  
-        ! 54 clm3%g%l%c%p%pns%frootn                      ! 54 pns%frootn                          
-        ! 55 clm3%g%l%c%p%pns%frootn_storage               ! 55 pns%frootn_storage                  
-        ! 56 clm3%g%l%c%p%pns%frootn_xfer                  ! 56 pns%frootn_xfer                     
-        ! 57 clm3%g%l%c%p%pns%leafn                    ! 57 pns%leafn                           
-        ! 58 clm3%g%l%c%p%pns%leafn_storage                ! 58 pns%leafn_storage                   
-        ! 59 clm3%g%l%c%p%pns%leafn_xfer             ! 59 pns%leafn_xfer                      
-        ! 60 clm3%g%l%c%p%pns%livecrootn             ! 60 pns%livecrootn                      
-        ! 61 clm3%g%l%c%p%pns%livecrootn_storage      ! 61 pns%livecrootn_storage              
-        ! 62 clm3%g%l%c%p%pns%livecrootn_xfer              ! 62 pns%livecrootn_xfer                 
-        ! 63 clm3%g%l%c%p%pns%livestemn              ! 63 pns%livestemn                       
-        ! 64 clm3%g%l%c%p%pns%livestemn_storage       ! 64 pns%livestemn_storage               
-        ! 65 clm3%g%l%c%p%pns%livestemn_xfer               ! 65 pns%livestemn_xfer                  
-        ! 66 clm3%g%l%c%p%pns%npool                    ! 66 pns%npool                           
-        ! 67 clm3%g%l%c%p%pns%pft_ntrunc        ! 67 pns%pft_ntrunc                      
-        ! 68 clm3%g%l%c%p%pns%retransn                    ! 68 pns%retransn                        
-        ! 69 clm3%g%l%c%p%pps%elai                     ! 69 pps%elai                            
-        ! 70 clm3%g%l%c%p%pps%esai                     ! 70 pps%esai                            
-        ! 71 clm3%g%l%c%p%pps%hbot                     ! 71 pps%hbot                            
-        ! 72 clm3%g%l%c%p%pps%htop                     ! 72 pps%htop                            
-        ! 73 clm3%g%l%c%p%pps%tlai                     ! 73 pps%tlai                            
-        ! 74 clm3%g%l%c%p%pps%tsai                     ! 74 pps%tsai                            
-                                                           ! 75 pepv%plant_ndemand                  
-                                                           ! OLD           ! 75 pps%gddplant        
-                                                           ! OLD           ! 76 pps%gddtsoi         
-                                                           ! OLD           ! 77 pps%peaklai         
-                                                           ! OLD           ! 78 pps%idop            
-                                                           ! OLD           ! 79 pps%aleaf           
-                                                           ! OLD           ! 80 pps%aleafi          
-                                                           ! OLD           ! 81 pps%astem           
-                                                           ! OLD           ! 82 pps%astemi          
-                                                           ! OLD           ! 83 pps%htmx            
-                                                           ! OLD           ! 84 pps%hdidx           
-                                                           ! OLD           ! 85 pps%vf              
-                                                           ! OLD           ! 86 pps%cumvd           
-                                                           ! OLD           ! 87 pps%croplive        
-                                                           ! OLD           ! 88 pps%cropplant       
-                                                           ! OLD           ! 89 pps%harvdate        
-                                                           ! OLD           ! 90 pps%gdd1020         
-                                                           ! OLD           ! 91 pps%gdd820          
-                                                           ! OLD           ! 92 pps%gdd020          
-                                                           ! OLD           ! 93 pps%gddmaturity     
-                                                           ! OLD           ! 94 pps%huileaf         
-                                                           ! OLD           ! 95 pps%huigrain        
-                                                           ! OLD           ! 96 pcs%grainc          
-                                                           ! OLD           ! 97 pcs%grainc_storage  
-                                                           ! OLD           ! 98 pcs%grainc_xfer     
-                                                           ! OLD           ! 99 pns%grainn          
-                                                           ! OLD           !100 pns%grainn_storage  
-                                                           ! OLD           !101 pns%grainn_xfer     
-                                                           ! OLD           !102 pepv%fert_counter   
-                                                           ! OLD           !103 pnf%fert            
-                                                           ! OLD           !104 pepv%grain_flag     
+        !  1 clm3%g%l%c%p%pcs%cpool                    !  1 pcs%cpool
+        !  2 clm3%g%l%c%p%pcs%deadcrootc             !  2 pcs%deadcrootc
+        !  3 clm3%g%l%c%p%pcs%deadcrootc_storage      !  3 pcs%deadcrootc_storage
+        !  4 clm3%g%l%c%p%pcs%deadcrootc_xfer              !  4 pcs%deadcrootc_xfer
+        !  5 clm3%g%l%c%p%pcs%deadstemc              !  5 pcs%deadstemc
+        !  6 clm3%g%l%c%p%pcs%deadstemc_storage       !  6 pcs%deadstemc_storage
+        !  7 clm3%g%l%c%p%pcs%deadstemc_xfer               !  7 pcs%deadstemc_xfer
+        !  8 clm3%g%l%c%p%pcs%frootc                      !  8 pcs%frootc
+        !  9 clm3%g%l%c%p%pcs%frootc_storage               !  9 pcs%frootc_storage
+        ! 10 clm3%g%l%c%p%pcs%frootc_xfer                  ! 10 pcs%frootc_xfer
+        ! 11 clm3%g%l%c%p%pcs%gresp_storage                ! 11 pcs%gresp_storage
+        ! 12 clm3%g%l%c%p%pcs%gresp_xfer             ! 12 pcs%gresp_xfer
+        ! 13 clm3%g%l%c%p%pcs%leafc                    ! 13 pcs%leafc
+        ! 14 clm3%g%l%c%p%pcs%leafc_storage             ! 14 pcs%leafc_storage
+        ! 15 clm3%g%l%c%p%pcs%leafc_xfer             ! 15 pcs%leafc_xfer
+        ! 16 clm3%g%l%c%p%pcs%livecrootc        ! 16 pcs%livecrootc
+        ! 17 clm3%g%l%c%p%pcs%livecrootc_storage      ! 17 pcs%livecrootc_storage
+        ! 18 clm3%g%l%c%p%pcs%livecrootc_xfer              ! 18 pcs%livecrootc_xfer
+        ! 19 clm3%g%l%c%p%pcs%livestemc              ! 19 pcs%livestemc
+        ! 20 clm3%g%l%c%p%pcs%livestemc_storage       ! 20 pcs%livestemc_storage
+        ! 21 clm3%g%l%c%p%pcs%livestemc_xfer               ! 21 pcs%livestemc_xfer
+        ! 22 clm3%g%l%c%p%pcs%pft_ctrunc             ! 22 pcs%pft_ctrunc
+        ! 23 clm3%g%l%c%p%pcs%xsmrpool                     ! 23 pcs%xsmrpool
+        ! 24 clm3%g%l%c%p%pepv%annavg_t2m                  ! 24 pepv%annavg_t2m
+        ! 25 clm3%g%l%c%p%pepv%annmax_retransn             ! 25 pepv%annmax_retransn
+        ! 26 clm3%g%l%c%p%pepv%annsum_npp                  ! 26 pepv%annsum_npp
+        ! 27 clm3%g%l%c%p%pepv%annsum_potential_gpp        ! 27 pepv%annsum_potential_gpp
+        ! 28 clm3%g%l%c%p%pepv%dayl                    ! 28 pepv%dayl
+        ! 29 clm3%g%l%c%p%pepv%days_active                 ! 29 pepv%days_active
+        ! 30 clm3%g%l%c%p%pepv%dormant_flag                ! 30 pepv%dormant_flag
+        ! 31 clm3%g%l%c%p%pepv%offset_counter              ! 31 pepv%offset_counter
+        ! 32 clm3%g%l%c%p%pepv%offset_fdd                  ! 32 pepv%offset_fdd
+        ! 33 clm3%g%l%c%p%pepv%offset_flag                 ! 33 pepv%offset_flag
+        ! 34 clm3%g%l%c%p%pepv%offset_swi                  ! 34 pepv%offset_swi
+        ! 35 clm3%g%l%c%p%pepv%onset_counter               ! 35 pepv%onset_counter
+        ! 36 clm3%g%l%c%p%pepv%onset_fdd             ! 36 pepv%onset_fdd
+        ! 37 clm3%g%l%c%p%pepv%onset_flag                  ! 37 pepv%onset_flag
+        ! 38 clm3%g%l%c%p%pepv%onset_gdd             ! 38 pepv%onset_gdd
+        ! 39 clm3%g%l%c%p%pepv%onset_gddflag               ! 39 pepv%onset_gddflag
+        ! 40 clm3%g%l%c%p%pepv%onset_swi             ! 40 pepv%onset_swi
+        ! 41 clm3%g%l%c%p%pepv%prev_frootc_to_litter       ! 41 pepv%prev_frootc_to_litter
+        ! 42 clm3%g%l%c%p%pepv%prev_leafc_to_litter        ! 42 pepv%prev_leafc_to_litter
+        ! 43 clm3%g%l%c%p%pepv%tempavg_t2m                 ! 43 pepv%tempavg_t2m
+        ! 44 clm3%g%l%c%p%pepv%tempmax_retransn       ! 44 pepv%tempmax_retransn
+        ! 45 clm3%g%l%c%p%pepv%tempsum_npp                 ! 45 pepv%tempsum_npp
+        ! 46 clm3%g%l%c%p%pepv%tempsum_potential_gpp       ! 46 pepv%tempsum_potential_gpp
+        ! 47 clm3%g%l%c%p%pepv%xsmrpool_recover       ! 47 pepv%xsmrpool_recover
+        ! 48 clm3%g%l%c%p%pns%deadcrootn             ! 48 pns%deadcrootn
+        ! 49 clm3%g%l%c%p%pns%deadcrootn_storage      ! 49 pns%deadcrootn_storage
+        ! 50 clm3%g%l%c%p%pns%deadcrootn_xfer              ! 50 pns%deadcrootn_xfer
+        ! 51 clm3%g%l%c%p%pns%deadstemn              ! 51 pns%deadstemn
+        ! 52 clm3%g%l%c%p%pns%deadstemn_storage       ! 52 pns%deadstemn_storage
+        ! 53 clm3%g%l%c%p%pns%deadstemn_xfer               ! 53 pns%deadstemn_xfer
+        ! 54 clm3%g%l%c%p%pns%frootn                      ! 54 pns%frootn
+        ! 55 clm3%g%l%c%p%pns%frootn_storage               ! 55 pns%frootn_storage
+        ! 56 clm3%g%l%c%p%pns%frootn_xfer                  ! 56 pns%frootn_xfer
+        ! 57 clm3%g%l%c%p%pns%leafn                    ! 57 pns%leafn
+        ! 58 clm3%g%l%c%p%pns%leafn_storage                ! 58 pns%leafn_storage
+        ! 59 clm3%g%l%c%p%pns%leafn_xfer             ! 59 pns%leafn_xfer
+        ! 60 clm3%g%l%c%p%pns%livecrootn             ! 60 pns%livecrootn
+        ! 61 clm3%g%l%c%p%pns%livecrootn_storage      ! 61 pns%livecrootn_storage
+        ! 62 clm3%g%l%c%p%pns%livecrootn_xfer              ! 62 pns%livecrootn_xfer
+        ! 63 clm3%g%l%c%p%pns%livestemn              ! 63 pns%livestemn
+        ! 64 clm3%g%l%c%p%pns%livestemn_storage       ! 64 pns%livestemn_storage
+        ! 65 clm3%g%l%c%p%pns%livestemn_xfer               ! 65 pns%livestemn_xfer
+        ! 66 clm3%g%l%c%p%pns%npool                    ! 66 pns%npool
+        ! 67 clm3%g%l%c%p%pns%pft_ntrunc        ! 67 pns%pft_ntrunc
+        ! 68 clm3%g%l%c%p%pns%retransn                    ! 68 pns%retransn
+        ! 69 clm3%g%l%c%p%pps%elai                     ! 69 pps%elai
+        ! 70 clm3%g%l%c%p%pps%esai                     ! 70 pps%esai
+        ! 71 clm3%g%l%c%p%pps%hbot                     ! 71 pps%hbot
+        ! 72 clm3%g%l%c%p%pps%htop                     ! 72 pps%htop
+        ! 73 clm3%g%l%c%p%pps%tlai                     ! 73 pps%tlai
+        ! 74 clm3%g%l%c%p%pps%tsai                     ! 74 pps%tsai
+                                                           ! 75 pepv%plant_ndemand
+                                                           ! OLD           ! 75 pps%gddplant
+                                                           ! OLD           ! 76 pps%gddtsoi
+                                                           ! OLD           ! 77 pps%peaklai
+                                                           ! OLD           ! 78 pps%idop
+                                                           ! OLD           ! 79 pps%aleaf
+                                                           ! OLD           ! 80 pps%aleafi
+                                                           ! OLD           ! 81 pps%astem
+                                                           ! OLD           ! 82 pps%astemi
+                                                           ! OLD           ! 83 pps%htmx
+                                                           ! OLD           ! 84 pps%hdidx
+                                                           ! OLD           ! 85 pps%vf
+                                                           ! OLD           ! 86 pps%cumvd
+                                                           ! OLD           ! 87 pps%croplive
+                                                           ! OLD           ! 88 pps%cropplant
+                                                           ! OLD           ! 89 pps%harvdate
+                                                           ! OLD           ! 90 pps%gdd1020
+                                                           ! OLD           ! 91 pps%gdd820
+                                                           ! OLD           ! 92 pps%gdd020
+                                                           ! OLD           ! 93 pps%gddmaturity
+                                                           ! OLD           ! 94 pps%huileaf
+                                                           ! OLD           ! 95 pps%huigrain
+                                                           ! OLD           ! 96 pcs%grainc
+                                                           ! OLD           ! 97 pcs%grainc_storage
+                                                           ! OLD           ! 98 pcs%grainc_xfer
+                                                           ! OLD           ! 99 pns%grainn
+                                                           ! OLD           !100 pns%grainn_storage
+                                                           ! OLD           !101 pns%grainn_xfer
+                                                           ! OLD           !102 pepv%fert_counter
+                                                           ! OLD           !103 pnf%fert
+                                                           ! OLD           !104 pepv%grain_flag
 
      end do OUT_TILE
 

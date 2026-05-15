@@ -9,16 +9,16 @@ program Scale_CatchCN
        catch_calc_soil_moist,           &
        catch_calc_tp,                   &
        catch_calc_ght
-  
+
   USE CATCH_CONSTANTS,   ONLY:          &
        N_GT              => CATCH_N_GT, &
        DZGT              => CATCH_DZGT, &
        PEATCLSM_POROS_THRESHOLD
-  
+
   implicit none
 
   character(256)    :: fname1, fname2, fname3
-#ifndef __GFORTRAN__
+#if !defined(__GFORTRAN__) && !defined(__flang__)
   integer           :: ftell
   external          :: ftell
 #endif
@@ -35,10 +35,10 @@ program Scale_CatchCN
   integer            :: VAR_COL, VAR_PFT
   integer, parameter :: VAR_COL_CLM40 = 40 ! number of CN column restart variables
   integer, parameter :: VAR_PFT_CLM40 = 74 ! number of CN PFT variables per column
-  integer, parameter :: npft    = 19  
+  integer, parameter :: npft    = 19
   integer, parameter :: VAR_COL_CLM45 = 35 ! number of CN column restart variables
   integer, parameter :: VAR_PFT_CLM45 = 75 ! number of CN PFT variables per column
-  
+
   logical            :: clm45  = .false.
   integer :: un_dim3
 
@@ -115,7 +115,7 @@ program Scale_CatchCN
        real, pointer ::    FIELDCAP(:)
        real, pointer ::    HDM     (:)
        real, pointer ::    GDP     (:)
-       real, pointer ::    PEATF   (:)       
+       real, pointer ::    PEATF   (:)
   endtype catch_rst
 
   type(catch_rst) catch(3)
@@ -127,9 +127,9 @@ program Scale_CatchCN
   type(Netcdf4_fileformatter) :: formatter(3)
   type(Filemetadata) :: cfg(3)
   integer :: i, rc, filetype
-  integer :: status  
+  integer :: status
   character(256) :: Iam = "Scale_CatchCN"
-  
+
 ! Usage
 ! -----
   if (iargc() /= 6) then
@@ -156,14 +156,14 @@ program Scale_CatchCN
   if (filetype == 0) then
      call formatter(1)%open(trim(fname1),pFIO_READ, __RC__)
      call formatter(2)%open(trim(fname2),pFIO_READ, __RC__)
-     cfg(1)=formatter(1)%read(__RC__) 
+     cfg(1)=formatter(1)%read(__RC__)
      cfg(2)=formatter(2)%read(__RC__)
  ! else
  !    open(unit=10, file=trim(fname1),  form='unformatted')
  !    open(unit=20, file=trim(fname2),  form='unformatted')
  !    open(unit=30, file=trim(fname3),  form='unformatted')
   end if
-  
+
 ! Get SURFLAY Value
 ! -----------------
   read(arg(4),*) SURFLAY
@@ -178,7 +178,7 @@ program Scale_CatchCN
   end if
   print *, 'SURFLAY: ',SURFLAY
 
-  VAR_COL = VAR_COL_CLM40 
+  VAR_COL = VAR_COL_CLM40
   VAR_PFT = VAR_PFT_CLM40
 
   if (filetype ==0) then
@@ -187,7 +187,7 @@ program Scale_CatchCN
      un_dim3 = cfg(1)%get_dimension('unknown_dim3', __RC__)
      if(un_dim3 == 105) then
         clm45  = .true.
-        VAR_COL = VAR_COL_CLM45 
+        VAR_COL = VAR_COL_CLM45
         VAR_PFT = VAR_PFT_CLM45
         print *, 'Processing CLM45 restarts : ', VAR_COL, VAR_PFT, clm45
      else
@@ -200,7 +200,7 @@ program Scale_CatchCN
 !     bpos=0
 !     read(10)
 !     epos = ftell(10)            ! ending position of file pointer
-!     ntiles = (epos-bpos)/4-2    ! record size (in 4 byte words; 
+!     ntiles = (epos-bpos)/4-2    ! record size (in 4 byte words;
 !     rewind 10
 
   end if
@@ -217,7 +217,7 @@ program Scale_CatchCN
 ! ------------------
   old = 1
   new = 2
-  
+
   if (filetype ==0) then
      call readcatchcn_nc4 ( catch(old), formatter(old), cfg(old), __RC__ )
      call readcatchcn_nc4 ( catch(new), formatter(new), cfg(new), __RC__ )
@@ -229,7 +229,7 @@ program Scale_CatchCN
 ! Create Scaled Catch
 ! -------------------
   sca = 3
-  
+
   catch(sca) = catch(new)
 
 ! 1) soil moisture prognostics
@@ -241,7 +241,7 @@ program Scale_CatchCN
 !
 !  where( (catch(old)%catdef .gt. catch(old)%cdcr1) .and. &
 !         (catch(new)%cdcr2  .gt. catch(old)%cdcr2) )
-! 
+!
 !      catch(sca)%rzexc  = catch(old)%rzexc * ( catch(new)%vgwmax / &
 !                                               catch(old)%vgwmax )
 !
@@ -252,7 +252,7 @@ program Scale_CatchCN
 !  end where
 
   n =count((catch(old)%catdef .gt. catch(old)%cdcr1))
-  
+
   write(6,200) n,100*n/ntiles
 
 ! Scale rxexc regardless of CDCR1, CDCR2 differences
@@ -263,7 +263,7 @@ program Scale_CatchCN
 ! Scale catdef regardless of whether CDCR2 is larger or smaller in the new situation
 ! ----------------------------------------------------------------------------------
   where (catch(old)%catdef .gt. catch(old)%cdcr1)
- 
+
       catch(sca)%catdef = catch(new)%cdcr1 +                     &
                         ( catch(old)%catdef-catch(old)%cdcr1 ) / &
                         ( catch(old)%cdcr2 -catch(old)%cdcr1 ) * &
@@ -295,7 +295,7 @@ program Scale_CatchCN
        catch(sca)%bf1,    catch(sca)%bf2,                                              &
        catch(sca)%srfexc, catch(sca)%rzexc, catch(sca)%catdef,                         &
        ar1,               ar2,              ar4                                 )
-  
+
   n = count( catch(sca)%catdef .ne. catch(new)%catdef )
   write(6,300) n,100*n/ntiles
   n = count( catch(sca)%srfexc .ne. catch(new)%srfexc )
@@ -318,7 +318,7 @@ program Scale_CatchCN
   GHT_IN (4,:) = catch(old)%ghtcnt4
   GHT_IN (5,:) = catch(old)%ghtcnt5
   GHT_IN (6,:) = catch(old)%ghtcnt6
-  
+
   call catch_calc_tp ( NTILES, catch(old)%poros, GHT_IN, tp_in, FICE)
   GHT_OUT = GHT_IN
 
@@ -338,7 +338,7 @@ program Scale_CatchCN
   catch(sca)%ghtcnt3 = GHT_IN (3,:)
   catch(sca)%ghtcnt4 = GHT_IN (4,:)
   catch(sca)%ghtcnt5 = GHT_IN (5,:)
-  catch(sca)%ghtcnt6 = GHT_IN (6,:) 
+  catch(sca)%ghtcnt6 = GHT_IN (6,:)
 
 ! Deep soil temp sanity check
 ! ---------------------------
@@ -371,7 +371,7 @@ program Scale_CatchCN
 
      !  catch(sca)%sndzn1=catch(old)%sndzn1
      !  catch(sca)%sndzn2=catch(old)%sndzn2
-     !  catch(sca)%sndzn3=catch(old)%sndzn3     
+     !  catch(sca)%sndzn3=catch(old)%sndzn3
      !     do i = 1, ntiles
      !         if((swe_in(i) > 0.).and. ((areasc_in(i) < 1.).OR.(areasc_out(i) < 1.))) then
      !        print *, i, areasc_in(i), depth_in(i)
@@ -382,9 +382,9 @@ program Scale_CatchCN
      !            catch(sca)%sndzn1(i) = catch(new)%sndzn1(i)*wemin_out/wemin_in   ! depth_out(i)/3.
      !            catch(sca)%sndzn2(i) = catch(new)%sndzn2(i)*wemin_out/wemin_in   ! depth_out(i)/3.
      !            catch(sca)%sndzn3(i) = catch(new)%sndzn3(i)*wemin_out/wemin_in   ! depth_out(i)/3.
-     !         endif 
+     !         endif
      !      end do
-     
+
      where (swe_in .gt. 0.)
         where (areasc_in .lt. 1. .or. areasc_out .lt. 1.)
            !      density_in= swe_in/(areasc_in *  depth_in + 1.e-20)
@@ -398,8 +398,8 @@ program Scale_CatchCN
 
      print *, 'Snow scaling summary'
      print *, '....................'
-     print *, 'Percent tiles SNDZ scaled : ', 100.* count (catch(sca)%sndzn3 .ne. catch(old)%sndzn3) /float (count (catch(sca)%sndzn3 > 0.)) 
-          
+     print *, 'Percent tiles SNDZ scaled : ', 100.* count (catch(sca)%sndzn3 .ne. catch(old)%sndzn3) /float (count (catch(sca)%sndzn3 > 0.))
+
   endif
 
   ! PEATCLSM - ensure low CATDEF on peat tiles where "old" restart is not also peat
@@ -433,9 +433,9 @@ program Scale_CatchCN
   contains
 
     subroutine allocatch (ntiles,catch)
-      
+
       integer ntiles
-      
+
       type(catch_rst) catch
 
        allocate( catch%        bf1(ntiles) )
@@ -511,7 +511,7 @@ program Scale_CatchCN
        allocate( catch%        HDM(ntiles) )
        allocate( catch%        GDP(ntiles) )
        allocate( catch%      PEATF(ntiles) )
-       
+
    return
    end subroutine allocatch
 
@@ -602,7 +602,7 @@ program Scale_CatchCN
       myVariable => cfg%get_variable("CNCOL")
       dname => myVariable%get_ith_dimension(2)
       dim1 = cfg%get_dimension(dname)
-      if(clm45) then          
+      if(clm45) then
          call MAPL_VarRead(formatter,"ABM",     catch%ABM, __RC__)
          call MAPL_VarRead(formatter,"FIELDCAP",catch%FIELDCAP, __RC__)
          call MAPL_VarRead(formatter,"HDM",     catch%HDM     , __RC__)
@@ -616,12 +616,12 @@ program Scale_CatchCN
       ! (to be merged into the "develop" branch in late 2020):
       ! The length of the 2nd dim of CNPFT differs from that of CNCOL.  Prior to this fix,
       ! CNPFT was not read in its entirety and some elements remained uninitialized (or zero),
-      ! resulting in bad values in the "regridded" (re-tiled) restart file. 
+      ! resulting in bad values in the "regridded" (re-tiled) restart file.
       ! This impacted re-tiled restarts for both CNCLM40 and CLCLM45.
       ! - reichle, 23 Nov 2020
       myVariable => cfg%get_variable("CNPFT")
       dname => myVariable%get_ith_dimension(2)
-      dim1 = cfg%get_dimension(dname)       
+      dim1 = cfg%get_dimension(dname)
       do j=1,dim1
          call MAPL_VarRead(formatter,"CNPFT",catch%CNPFT(:,j),offset1=j, __RC__)
       enddo
@@ -852,15 +852,15 @@ program Scale_CatchCN
           call MAPL_VarWrite(formatter,"TPREC10D",var)
           call MAPL_VarWrite(formatter,"TPREC60D",var)
        else
-          call MAPL_VarWrite(formatter,"SFMCM",  var)          
+          call MAPL_VarWrite(formatter,"SFMCM",  var)
        endif
-       
+
        myVariable => cfg%get_variable("PSNSUNM")
        dname => myVariable%get_ith_dimension(2)
        dim1 = cfg%get_dimension(dname)
        dname => myVariable%get_ith_dimension(3)
        dim2 = cfg%get_dimension(dname)
-       do i=1,dim2 
+       do i=1,dim2
           do j=1,dim1
              call MAPL_VarWrite(formatter,"PSNSUNM",var,offset1=j,offset2=i)
              call MAPL_VarWrite(formatter,"PSNSHAM",var,offset1=j,offset2=i)
