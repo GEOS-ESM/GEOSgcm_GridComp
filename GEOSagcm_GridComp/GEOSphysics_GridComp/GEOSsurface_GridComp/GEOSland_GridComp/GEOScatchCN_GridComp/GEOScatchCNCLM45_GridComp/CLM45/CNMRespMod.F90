@@ -11,7 +11,7 @@ module CNMRespMod
 ! nitrogen code.
 !
 ! !USES:
-   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+   use MAPL_Constants, ONLY: r8 => MAPL_R4
    use clm_varpar   , only: nlevgrnd
    use shr_const_mod, only: SHR_CONST_TKFRZ
    implicit none

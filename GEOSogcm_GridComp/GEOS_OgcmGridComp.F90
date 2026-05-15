@@ -1090,6 +1090,7 @@ contains
     type (MAPL_MetaComp    ), pointer   :: MAPL => null()
     type (MAPL_LocStream       )            :: EXCH
     type (ESMF_State           ), pointer   :: GIM(:) => null()
+    type (ESMF_State           ), pointer   :: GEX(:) => null()
     type (ESMF_GridComp        ), pointer   :: GCS(:) => null()
     type(ESMF_FIELDBUNDLE      )            :: BUNDLE
     type(ESMF_FIELD            )            :: FIELD
@@ -1180,6 +1181,7 @@ contains
          TILELONS  = LONS,                       &
          TILELATS  = LATS,                       &
          GIM       = GIM,                        &
+         GEX       = GEX,                        &
                                        RC=STATUS )
     VERIFY_(STATUS)
 
@@ -1223,11 +1225,11 @@ contains
        end if
     end do
 
+    ! 2nd initialization phase for CICE6
     if (DO_CICE_THERMO > 1) then
-        call ESMF_StateGet(EXPORT, 'SURFSTATE', SURFST, __RC__)
-        call MAPL_GetPointer(SURFST, FROCEAN, 'FROCEAN', __RC__)
-        call MAPL_LocStreamFracArea( EXCH, MAPL_OCEAN, FROCEAN, RC=STATUS) 
-        VERIFY_(STATUS)
+       call ESMF_GRIDCOMPInitialize(GCS(SEAICE), IMPORTSTATE=GIM(SEAICE), &
+                         EXPORTSTATE=GEX(SEAICE), CLOCK=CLOCK, PHASE=2, UserRC=STATUS)
+       VERIFY_(STATUS)
     endif 
 
 ! Put OBIO tracers into the OCEAN's tracer bundle.

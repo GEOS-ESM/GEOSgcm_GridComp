@@ -1,7 +1,7 @@
 MODULE ConvPar_GF_SharedParams
 
 USE MAPL
-USE GEOSmoist_Process_Library, only : CNV_Tracers 
+USE GEOSmoist_Process_Library, only : CNV_Tracers
 
  IMPLICIT NONE
 
@@ -120,7 +120,7 @@ USE GEOSmoist_Process_Library, only : CNV_Tracers
      real   , dimension (mtp) :: conc_mxr
      real :: x_add,dz,XZZ,XZD,XZE,denom,henry_coef,w_upd,fliq,dp
      integer :: i,k,ispc
-     real, parameter :: cte_w_upd = 10. ! m/s
+     real, parameter :: w_upd_floor = 0.1 ! m/s
 !    real, parameter :: kc = 5.e-3  ! s-1
      real, parameter :: kc = 2.e-3  ! s-1        !!! autoconversion parameter in GF is lower than what is used in GOCART
      real, dimension (mtp ,its:ite,kts:kte) ::  factor_temp
@@ -168,7 +168,7 @@ loopk:      do k=k22(i)+1,ktop(i)+1
             dz=z_cup(i,k)-z_cup(i,k-1)
 
             !-- in-cloud vert velocity for scavenging formulation 2
-            w_upd = vvel2d(i,k)
+            w_upd = max(vvel2d(i,k),w_upd_floor)
 
             do ispc = 1,mtp
                 !--use GEOS-Chem washout parameterization?
@@ -184,22 +184,21 @@ loopk:      do k=k22(i)+1,ktop(i)+1
 
                        ! Use GEOS-Chem formulation for GEOS-Chem species
                        if ( is_gcc ) then
-                          if ( CNV_Tracers(ispc)%use_gocart ) then
-                             kc_scaled  = kc
-                             this_w_upd = w_upd
+                           if ( CNV_Tracers(ispc)%use_gocart ) then
+                              kc_scaled  = kc
+                              this_w_upd = w_upd
                              ftemp = 1.0
                              if ( tempco(i,k) < CNV_Tracers(ispc)%ftemp_threshold ) ftemp = 0.0
-                          else
-                             call compute_ki_gcc_aerosol ( ispc, tempco(i,k), kc_scaled )
-                             ftemp      = CNV_Tracers(ispc)%fscav  ! apply aerosol scavenging efficiency 
-                             this_w_upd = get_w_upd_gcc( vvel2d(i,k), xland(i), CNV_Tracers(ispc)%online_vud )
+                              ftemp      = CNV_Tracers(ispc)%fscav  ! apply aerosol scavenging efficiency
+                              this_w_upd = get_w_upd_gcc( vvel2d(i,k), xland(i), CNV_Tracers(ispc)%online_vud )
                           endif
                           ! if it's not a wetdep species, force kc_scaled to 0. This ensures no washout
-                          if ( .not. CNV_Tracers(ispc)%is_wetdep ) kc_scaled = 0.0 
+                          if ( .not. CNV_Tracers(ispc)%is_wetdep ) kc_scaled = 0.0
                           ! calculate soluble fraction and apply to tracer
+                          this_w_upd = max(this_w_upd,w_upd_floor)
                           fsol = min(1.,max(0.,(1.-exp(- kc_scaled * (dz/this_w_upd)))*ftemp))
                           pw_up(ispc,i,k) = sc_up(ispc,i,k)*fsol
- 
+
                        ! Original formulation
                        else
                           pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(- kc * (dz/w_upd)))*factor_temp(ispc,i,k))
@@ -236,7 +235,7 @@ loopk:      do k=k22(i)+1,ktop(i)+1
 
                     else
 
-                       ! Use GEOS-Chem definitions if it's a GEOS-Chem tracer 
+                       ! Use GEOS-Chem definitions if it's a GEOS-Chem tracer
                        if ( is_gcc ) then
                           call compute_ki_gcc_gas ( ispc, tempco(i,k), po_cup(i,k), qco(i,k), qrco(i,k), henry_coef, &
                              kc_scaled, l2g )
@@ -244,6 +243,7 @@ loopk:      do k=k22(i)+1,ktop(i)+1
                           ! if it's not a wetdep species, force kc_scaled to 0. This ensures no washout
                           if ( .not. CNV_Tracers(ispc)%is_wetdep ) kc_scaled = 0.0
                           ! calculate soluble fraction and apply to tracer
+                          this_w_upd = max(this_w_upd,w_upd_floor)
                           fsol = min(1.,max(0.,(1.-exp(-kc_scaled*dz/this_w_upd)))) !*factor_temp(ispc,i,k))
                           pw_up(ispc,i,k) = sc_up(ispc,i,k)*fsol
 
@@ -312,12 +312,12 @@ loopk:      do k=k22(i)+1,ktop(i)+1
     !BOP
     ! !DESCRIPTION:
     !  Return henry coefficient (liquid to gas) as defined by GEOS-Chem
-    !EOP  
+    !EOP
     !=====================================================================================
     implicit none
     integer, intent(in) :: ispc
     real   , intent(in) :: temp,rhoair
-    real                :: henry_coef          ! effective gas/aq constant [-] 
+    real                :: henry_coef          ! effective gas/aq constant [-]
     ! parameter
     real*8, parameter :: pH   = 4.5d0
     REAL*8, PARAMETER :: TREF = 298.15d0        ! [K          ]
@@ -327,7 +327,7 @@ loopk:      do k=k22(i)+1,ktop(i)+1
     real*8          :: hstar8, dhr8, ak08, temp8, h8 !, dak8
     ! cast all variables to r*8 locally to prevent overflows
     hstar8 = CNV_Tracers(ispc)%Vect_Hcts(1) ! Henry coefficient [M/atm]]
-    dhr8   = CNV_Tracers(ispc)%Vect_Hcts(2) ! temperature dependency of hstar [-d ln(kH) / d(1/T)] 
+    dhr8   = CNV_Tracers(ispc)%Vect_Hcts(2) ! temperature dependency of hstar [-d ln(kH) / d(1/T)]
     ak08   = CNV_Tracers(ispc)%Vect_Hcts(3) ! pKa value [-]
     !dak8   = CNV_Tracers(ispc)%Vect_Hcts(4) ! temperature dependency of ak0, currently not used
     temp8  = temp
@@ -335,7 +335,7 @@ loopk:      do k=k22(i)+1,ktop(i)+1
     h8 = hstar8 * exp ( dhr8 * (1./temp8 - 1./TREF) ) * R * temp8 / ATM
     if ( ak08 > 0.0d0 ) then
        h8 = h8 * ( 1.0 + 10.0**(pH-ak08) )
-    endif       
+    endif
     ! limit henry coefficient to 1.0e30
     henry_coef = real( min(h8,1.0d+30) )
 
@@ -445,72 +445,85 @@ loopk:      do k=k22(i)+1,ktop(i)+1
     real   ,optional ,intent(in)  :: add
     real   ,optional ,intent(in)  :: Tpert(kts:kte)
     real   ,intent(out)           :: x_aver
-    integer                       :: i,local_order_aver,order_aver, i_beg,i_end,ic
-    real,    parameter            :: frac_ave_layer_ocean= 0.3
-    real                          :: count,dp,dp_layer,effec_frac,x_ave_layer
 
-    !-- dimensions of the average:
-    !-- a) to pick the value at k22 level, instead of an average between
-    !--    (k22-order_aver, ..., k22-1, k22) set order_aver=kts
-    !-- b) to average between kts and k22 => set order_aver = k22
-    !order_aver = 4    !=> bc_meth 0: average between k22, k22-1, k22-2 ...
-                       !=> bc_meth 1: average between ... k22+1,k22, k22-1 ...
-    !-- order_aver = kts !=> average between k22, k22-1 and k22-2
+    integer                       :: i, local_order_aver, order_aver, i_beg, i_end, ic
+    real,    parameter            :: frac_ave_layer_ocean = 0.3
+    real                          :: count, dp, dp_layer, effec_frac, x_ave_layer
 
-     if(bc_meth == 0) then
+    !===========================================================================
+    ! bc_meth 0: Fixed level averaging (Legacy)
+    !===========================================================================
+    if(bc_meth == 0) then
 
       order_aver = 3
-      local_order_aver=min(k22,order_aver)
+      local_order_aver = min(k22, order_aver)
 
-      x_aver=0.
-      do i = kts,local_order_aver
-        x_aver = x_aver + array(k22-i+1)
+      x_aver = 0.
+      do i = kts, local_order_aver
+        x_aver = x_aver + array(k22 - i + 1)
       enddo
-      x_aver = x_aver/float(local_order_aver)
+      x_aver = x_aver / float(local_order_aver)
 
-     elseif(bc_meth == 1) then
-      effec_frac  = (1.-xland) +xland*frac_ave_layer_ocean
-      if(trim(cumulus) == 'deep'   ) x_ave_layer = cum_ave_layer(deep)*effec_frac
-      if(trim(cumulus) == 'shallow') x_ave_layer = cum_ave_layer(shal)*effec_frac
-      if(trim(cumulus) == 'mid'    ) x_ave_layer = cum_ave_layer(mid )*effec_frac
+    !===========================================================================
+    ! bc_meth 1: Pressure layer averaging (Uses CUM_AVE_LAYER runtime tuning)
+    !===========================================================================
+    elseif(bc_meth == 1) then
 
-      i_beg = minloc(abs(po(kts:ktf)-(po(k22)+0.5*x_ave_layer)),1)
-      i_end = minloc(abs(po(kts:ktf)-(po(k22)-0.5*x_ave_layer)),1)
-      i_beg = min(ktf,max(i_beg,kts))
-      i_end = min(ktf,max(i_end,kts))
+      !-- Apply ocean fraction multiplier (Marine PBLs are significantly shallower)
+      effec_frac = (1.0 - xland) + (xland * frac_ave_layer_ocean)
 
+      !-- Pull layer depth from runtime tuning array
+      SELECT CASE(trim(cumulus))
+        CASE('deep')
+           x_ave_layer = CUM_AVE_LAYER(1) * effec_frac
+        CASE('shallow')
+           x_ave_layer = CUM_AVE_LAYER(2) * effec_frac
+        CASE('mid')
+           x_ave_layer = CUM_AVE_LAYER(3) * effec_frac
+        CASE DEFAULT
+           x_ave_layer = 50.0 * effec_frac  ! Failsafe
+      END SELECT
+
+      !-- Find vertical bounds corresponding to this pressure depth
+      i_beg = minloc(abs(po(kts:ktf) - (po(k22) + 0.5 * x_ave_layer)), 1)
+      i_end = minloc(abs(po(kts:ktf) - (po(k22) - 0.5 * x_ave_layer)), 1)
+      i_beg = min(ktf, max(i_beg, kts))
+      i_end = min(ktf, max(i_end, kts))
+
+      !-- Perform the weighted average
       if(i_beg >= i_end) then
          x_aver   = array(k22)
          dp_layer = 0.
          ic       = i_beg
-
       else
          dp_layer = 1.e-06
          x_aver   = 0.
          ic       = 0
-         do i = i_beg,ktf
-              dp = -(po(i+1)-po(i))
-              if(dp_layer + dp <= x_ave_layer)  then
-                  dp_layer =  dp_layer  + dp
-                  x_aver   =  x_aver    + array(i)*dp
 
-              else
-                  dp       =  x_ave_layer - dp_layer
-                  dp_layer =  dp_layer    + dp
-                  x_aver   =  x_aver      + array(i)*dp
-
-                  exit
-              endif
-      enddo
-      x_aver = x_aver/dp_layer
-         ic  = max(i_beg,i)
+         do i = i_beg, ktf
+            dp = -(po(i+1) - po(i))
+            if(dp_layer + dp <= x_ave_layer) then
+               dp_layer = dp_layer + dp
+               x_aver   = x_aver + array(i) * dp
+            else
+               dp       = x_ave_layer - dp_layer
+               dp_layer = dp_layer + dp
+               x_aver   = x_aver + array(i) * dp
+               exit
+            endif
+         enddo
+         x_aver = x_aver / dp_layer
+         ic  = max(i_beg, i)
       endif
-      !print*,"xaver1=",real(x_aver,4),real(dp_layer,4)
 
-      !-- this perturbation is included only for MSE
-      if(present(Tpert)) x_aver = x_aver + cp*maxval(Tpert(i_beg:ic))  ! version 2 - maxval in the layer
+      !-- Apply thermodynamic perturbation (if passed, e.g., for MSE)
+      if(present(Tpert)) then
+         x_aver = x_aver + cp * maxval(Tpert(i_beg:ic))  ! maxval in the layer
+      endif
 
     endif
+
+    !-- Apply general additive forcing (if passed)
     IF(present(add)) x_aver = x_aver + add
 
    end subroutine get_cloud_bc
@@ -519,15 +532,15 @@ loopk:      do k=k22(i)+1,ktop(i)+1
     !=====================================================================================
     !BOP
     ! !DESCRIPTION:
-    !  Return updraft vertical velocity to be used for GEOS-Chem convective washout. 
-    !EOP  
+    !  Return updraft vertical velocity to be used for GEOS-Chem convective washout.
+    !EOP
     !=====================================================================================
     implicit none
     real, intent(in) :: vud        ! online updraft velocity [m/s]
-    real, intent(in) :: xland      ! land flag (1.-FRLAND): greater value means more water 
+    real, intent(in) :: xland      ! land flag (1.-FRLAND): greater value means more water
     real, intent(in) :: online_vud ! use online vud (1.0) or set vud based on land/water (0.0)
-    real             :: w_upd      ! updraft velocity to use 
-    ! use environment vud if specified so 
+    real             :: w_upd      ! updraft velocity to use
+    ! use environment vud if specified so
     if ( online_vud == 1.0 ) then
        w_upd = vud
     ! use parameterization otherwise: 10m/s over land, 5m/s over water.
@@ -571,7 +584,7 @@ loopk:      do k=k22(i)+1,ktop(i)+1
     !=====================================================================================
     !BOP
     ! !DESCRIPTION:
-    ! Compute the loss rate of a GEOS-Chem aerosol. This follows the parameterization described 
+    ! Compute the loss rate of a GEOS-Chem aerosol. This follows the parameterization described
     ! in Jacob et al. 2000, as implemented in GEOS-Chem.
     !EOP
     !=====================================================================================
@@ -581,17 +594,17 @@ loopk:      do k=k22(i)+1,ktop(i)+1
     real,    intent(in)      :: temp               ! temperature [K]
     real,    intent(out)     :: kc_scaled          ! loss rate [s-1]
     ! local variables
-    real                     :: kcscal1            ! temperature-dependent scale factor for temperature range 1 
-    real                     :: kcscal2            ! temperature-dependent scale factor for temperature range 2 
-    real                     :: kcscal3            ! temperature-dependent scale factor for temperature range 3 
+    real                     :: kcscal1            ! temperature-dependent scale factor for temperature range 1
+    real                     :: kcscal2            ! temperature-dependent scale factor for temperature range 2
+    real                     :: kcscal3            ! temperature-dependent scale factor for temperature range 3
     ! parameter
     real, parameter          :: TEMP1  = 237.0        ! K
     real, parameter          :: TEMP2  = 258.0        ! K
 
     ! Get scale factors
-    kcscal1 = CNV_Tracers(ispc)%KcScal(1) 
-    kcscal2 = CNV_Tracers(ispc)%KcScal(2) 
-    kcscal3 = CNV_Tracers(ispc)%KcScal(3) 
+    kcscal1 = CNV_Tracers(ispc)%KcScal(1)
+    kcscal2 = CNV_Tracers(ispc)%KcScal(2)
+    kcscal3 = CNV_Tracers(ispc)%KcScal(3)
     ! start with default kc, then scale based on temperature and aerosol-specific scale factor
     kc_scaled = KC_DEFAULT_GCC
     if ( temp < TEMP1 ) then
@@ -608,7 +621,7 @@ loopk:      do k=k22(i)+1,ktop(i)+1
     !=====================================================================================
     !BOP
     ! !DESCRIPTION:
-    !  Compute the loss rate of a GEOS-Chem gas. This follows the parameterization described 
+    !  Compute the loss rate of a GEOS-Chem gas. This follows the parameterization described
     !  in Jacob et al. 2000, as implemented in GEOS-Chem.
     !EOP
     !=====================================================================================
@@ -616,15 +629,15 @@ loopk:      do k=k22(i)+1,ktop(i)+1
 
      integer, intent(in)      :: ispc
      real,    intent(in)      :: temp               ! temperature [K]
-     real,    intent(in)      :: press              ! pressure [Pa] 
-     real,    intent(in)      :: q                  ! water vapor mixing ratio [kg/kg] 
-     real,    intent(in)      :: cldh2o             ! cloud total water [kg/kg] 
+     real,    intent(in)      :: press              ! pressure [Pa]
+     real,    intent(in)      :: q                  ! water vapor mixing ratio [kg/kg]
+     real,    intent(in)      :: cldh2o             ! cloud total water [kg/kg]
      real,    intent(in)      :: Heff               ! effective gas/aq Henry constant [-]
      real,    intent(out)     :: kc_scaled          ! loss rate [s-1]
-     real,    intent(out)     :: l2g                ! liquid to gas ratio 
+     real,    intent(out)     :: l2g                ! liquid to gas ratio
 
      ! parameter
-     real, parameter       :: T_zero = 273.16  ! K, as in ConvPar_GF_GEOS5 
+     real, parameter       :: T_zero = 273.16  ! K, as in ConvPar_GF_GEOS5
      real, parameter       :: T_ice  = 250.16  ! K, as in ConvPar_GF_GEOS5
      real, parameter       :: TEMP3  = 248.0   ! K
      real, parameter       :: TEMP4  = 268.0   ! K
@@ -640,12 +653,12 @@ loopk:      do k=k22(i)+1,ktop(i)+1
      ! This corresponds to the computations done in SETUP_WETSCAV in module
      ! wetscav_mod.F90 in GEOS-Chem.
 
-     ! compute cloud liquid water content and cloud ice water. 
+     ! compute cloud liquid water content and cloud ice water.
      ! Compute either based on environmental variables or use original GEOS-Chem formulation
      if ( CNV_Tracers(ispc)%online_cldliq == 1.0 ) then
         ! compute from cloud total water, using formulation as suggested by Saulo Freitas
         fract_liq_f = min(1., (max(0.,(temp-T_ice))/(T_zero-T_ice))**2)
-        ! liquid and ice water in kg/kg 
+        ! liquid and ice water in kg/kg
         cldliq = cldh2o * fract_liq_f       ! kg/kg
         cldice = cldh2o * (1.-fract_liq_f)  ! kg/kg
         ! to convert to cm3/cm3, need air density
@@ -669,7 +682,7 @@ loopk:      do k=k22(i)+1,ktop(i)+1
      ! mixing ratio of H2O [v/v]: compute using Dalton's law
      c_h2o = gcc_e_ice(temp) / press
 
-     ! ice to gas ratio 
+     ! ice to gas ratio
      i2g = 0.0
      if ( (CNV_Tracers(ispc)%liq_and_gas==1.) .and. (c_h2o>0.0) ) then
         i2g = ( cldice / c_h2o ) * CNV_Tracers(ispc)%convfaci2g

@@ -13,7 +13,7 @@ module cloudnew
    ! NOTE: GPUs use the QSAT and DQSAT at the end of this module
 #endif
 
-   use MAPL_ConstantsMod, only: MAPL_TICE , MAPL_CP   , &
+   use MAPL_Constants, only: MAPL_TICE , MAPL_CP   , &
                                 MAPL_GRAV , MAPL_ALHS , &
                                 MAPL_ALHL , MAPL_ALHF , &
                                 MAPL_RGAS , MAPL_H2OMW, &
@@ -1996,6 +1996,7 @@ contains
                                  TEn,          &
                                  QVn,          &
                                  QCn,          &
+                                 qsn,          &
                                  0.0,          & ! assume OMEGA=0
                                  ZL,           &
                                  PL*100.,      &
