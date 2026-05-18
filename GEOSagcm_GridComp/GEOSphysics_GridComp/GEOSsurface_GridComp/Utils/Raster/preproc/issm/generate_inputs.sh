@@ -3,12 +3,12 @@ for dir do
 (
     hdir=$(pwd)
     cd "$dir" || exit
+    name=$(basename "$dir")
     
     for f in "${name}_meshgen.py" "${name}_parameterize.py" "${name}_control.py" "${name}_finalize.py"; do
     [[ -f "$f" ]] || exit
     done
 
-    name=$(basename "$dir")
     source "$hdir/issm_env"
     rm -f ISSM_${name}.bin ISSM_${name}.outbin ISSM_${name}.outlog ISSM_${name}.errlog
     rm -rf netcdfs
