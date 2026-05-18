@@ -97,9 +97,10 @@ CONTAINS
     real, parameter                         :: small    = 1.e-20 
 
     real, dimension(NCAT)                   :: Qrunf,Ws,Wr
-    real, dimension(NCAT)                   :: Qs0,ks,Ws_last
+    real, dimension(NCAT)                   :: Qs0,ks,Ws_last, tmpR1, tmpR2
     
-    real                                    :: dt
+    real                                    :: dt, exp1, exp2
+    integer                                 :: i
 
     ! convert volume units to mass
     Qrunf     = Qrunf0     * rho          ! m3/s -> kg/s  
@@ -110,8 +111,20 @@ CONTAINS
 
     ! Update state variables: ks, Ws, and Qs 
     where(Qrunf<=small)Qrunf=0.                                            ! Set runoff to zero if it's too small
+#ifdef __GFORTRAN__
+    exp1 = 1./(1.-RRM_mm)
+    exp2 = RRM_mm/(1.-RRM_mm)
+    
+    do i = 1, NCAT
+      tmpR1(i) = Ws(i)**exp1
+      tmpR2(i) = Ws(i)**exp2
+    enddo
+    Qs0=max(0.,RRM_ALPHA_STR * tmpR1)                       ! Initial flow from local stream storage (kg/s)
+    ks =max(0.,(RRM_ALPHA_STR/(1.-RRM_mm)) * tmpR2)         ! Flow coefficient (s^-1)
+#else
     Qs0=max(0.,RRM_ALPHA_STR * Ws**(1./(1.-RRM_mm)))                       ! Initial flow from local stream storage (kg/s)
     ks =max(0.,(RRM_ALPHA_STR/(1.-RRM_mm)) * Ws**(RRM_mm/(1.-RRM_mm)))     ! Flow coefficient (s^-1)
+#endif
     Ws_last=Ws                                                             ! Store the current water storage 
     where(ks>small)  Ws=Ws + (Qrunf-Qs0)/ks*(1.-exp(-ks*dt))               ! Update storage (kg)
     where(ks<=small) Ws=Ws + (Qrunf-Qs0)*dt                                ! Simplified update if ks is small
@@ -120,7 +133,14 @@ CONTAINS
 
     ! Calculate variables related to river routing: Qr0, kr
     Wr=Wr+Qs*dt
+#ifdef __GFORTRAN__
+    do i = 1, NCAT
+      tmpR1(i) = Wr(i)**exp1
+    enddo
+    Qout=max(0.,RRM_ALPHA_RIV * tmpR1 )                      ! River flow based on water storage (kg/s)
+#else
     Qout=max(0.,RRM_ALPHA_RIV * Wr**(1./(1.-RRM_mm)))                      ! River flow based on water storage (kg/s)
+#endif
     Qout=min(Qout,Wr/dt)
     Wr=max(0.,Wr-Qout*dt) 
 
