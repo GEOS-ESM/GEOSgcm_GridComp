@@ -9,7 +9,7 @@ from setflowequation import setflowequation
 from pathlib import Path
 
 #Name and Coordinate system
-md.miscellaneous.name=Path(__file__).parent.name
+md.miscellaneous.name="AIS"
 md.mesh.epsg=3031
 
 nsidc_vel = Dataset('/discover/nobackup/agstubbl/ISSM/data/Antarctica_ice_velocity.nc')

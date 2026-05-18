@@ -1,6 +1,6 @@
 import devpath
 import numpy as np
-import os
+import os,sys
 from pathlib import Path
 from contextlib import redirect_stdout
 ISSM_DIR = os.getenv('ISSM_DIR') # for binaries
@@ -22,17 +22,13 @@ models = sorted({
     and p.parent != ROOT
 })
 
-model_names = sorted({
-    Path(p).name
-    for p in models
-})
+model_names = [Path(p).name for p in models]
 
-# print(f'available glaciers: {models}')
-
+i=0
 for model in models:
    with open(os.devnull, "w") as f: 
       with redirect_stdout(f): 
-         md = loadmodel(f'./{model}/netcdfs/{model}_mesh.nc')
+         md = loadmodel(f'{model}/netcdfs/{model_names[i]}_mesh.nc')
 
    v1_idx = md.mesh.edges[:,0]-1
    v2_idx = md.mesh.edges[:,1]-1
@@ -52,6 +48,7 @@ for model in models:
    
    num_nodes = np.append(num_nodes,[md.mesh.x.size])
    mean_edges = np.append(mean_edges,[mean_edge_length])
+   i += 1
 
 global_mean = 0
 total_nodes = int(np.sum(num_nodes))

@@ -8,7 +8,7 @@ from SetIceSheetBC import SetIceSheetBC
 from pathlib import Path
 
 #Name and Coordinate system
-md.miscellaneous.name = Path(__file__).parent.name
+md.miscellaneous.name = "GRIS"
 md.mesh.epsg = 3413
 
 # interpolate velocities
