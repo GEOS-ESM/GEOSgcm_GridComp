@@ -18,14 +18,14 @@ if not os.path.exists('./netcdfs'):
 # Step 1: Mesh generation
 #Generate initial uniform mesh (resolution = 20000 m)
 # project mesh onto new coordinate system
-md = triangle(model(), '/discover/nobackup/agstubbl/ISSM/data/GreenlandOutline.exp', 20000)
+md = triangle(model(), '/discover/nobackup/agstubbl/ISSM/data/GRIS/GreenlandOutline.exp', 20000)
 [md.mesh.lat, md.mesh.long] = xy2ll(md.mesh.x, md.mesh.y, + 1, 39, 71)
 [xi, yi] = ll2xy(md.mesh.lat, md.mesh.long, + 1, 45, 70)
 md.mesh.x = xi
 md.mesh.y = yi
 
-ncdata_vx = Dataset('/discover/nobackup/agstubbl/ISSM/data/greenland_vel_mosaic200_2017_2018_vx_v02.1.nc', mode='r')
-ncdata_vy = Dataset('/discover/nobackup/agstubbl/ISSM/data/greenland_vel_mosaic200_2017_2018_vy_v02.1.nc', mode='r')
+ncdata_vx = Dataset('/discover/nobackup/agstubbl/ISSM/data/GRIS/greenland_vel_mosaic200_2017_2018_vx_v02.1.nc', mode='r')
+ncdata_vy = Dataset('/discover/nobackup/agstubbl/ISSM/data/GRIS/greenland_vel_mosaic200_2017_2018_vy_v02.1.nc', mode='r')
 
 # Get velocities (Note: You can use ncprint('file') to see an ncdump)
 x1 = np.squeeze(ncdata_vx.variables['x'][:].data)

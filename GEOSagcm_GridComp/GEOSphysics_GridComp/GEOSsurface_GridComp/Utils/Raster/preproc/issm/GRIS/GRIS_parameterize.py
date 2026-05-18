@@ -12,8 +12,8 @@ md.miscellaneous.name = "GRIS"
 md.mesh.epsg = 3413
 
 # interpolate velocities
-ncdata_x = Dataset('/discover/nobackup/agstubbl/ISSM/data/greenland_vel_mosaic200_2017_2018_vx_v02.1.nc', mode='r')
-ncdata_y = Dataset('/discover/nobackup/agstubbl/ISSM/data/greenland_vel_mosaic200_2017_2018_vy_v02.1.nc', mode='r')
+ncdata_x = Dataset('/discover/nobackup/agstubbl/ISSM/data/GRIS/greenland_vel_mosaic200_2017_2018_vx_v02.1.nc', mode='r')
+ncdata_y = Dataset('/discover/nobackup/agstubbl/ISSM/data/GRIS/greenland_vel_mosaic200_2017_2018_vy_v02.1.nc', mode='r')
 
 x1 = np.squeeze(ncdata_x.variables['x'][:].data)
 y1 = np.squeeze(ncdata_x.variables['y'][:].data)
@@ -40,7 +40,7 @@ md.inversion.vy_obs = vy
 md.inversion.vel_obs = speed
 
 # initialize ice thickness
-ncdata_H = Dataset('/discover/nobackup/agstubbl/ISSM/data/BedMachineGreenland-v5.nc', mode='r')
+ncdata_H = Dataset('/discover/nobackup/agstubbl/ISSM/data/GRIS/BedMachineGreenland-v5.nc', mode='r')
 H = np.flipud(ncdata_H['thickness'][:].data.astype(np.float64))
 surf = np.flipud(ncdata_H['surface'][:].data.astype(np.float64))
 bed = np.flipud(ncdata_H['bed'][:].data.astype(np.float64))
@@ -66,7 +66,7 @@ md.geometry.surface = md.geometry.thickness + md.geometry.base
 md.mesh.x = xi
 md.mesh.y = yi
 
-ncdata = Dataset('/discover/nobackup/agstubbl/ISSM/data/Greenland_5km_dev1.2.nc', mode='r')
+ncdata = Dataset('/discover/nobackup/agstubbl/ISSM/data/GRIS/Greenland_5km_dev1.2.nc', mode='r')
 x1 = np.squeeze(ncdata.variables['x1'][:].data)
 y1 = np.squeeze(ncdata.variables['y1'][:].data)
 usrf = np.squeeze(ncdata.variables['usrf'][:].data)

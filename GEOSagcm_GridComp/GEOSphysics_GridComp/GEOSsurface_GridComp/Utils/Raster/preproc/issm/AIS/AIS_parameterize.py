@@ -12,7 +12,7 @@ from pathlib import Path
 md.miscellaneous.name="AIS"
 md.mesh.epsg=3031
 
-nsidc_vel = Dataset('/discover/nobackup/agstubbl/ISSM/data/Antarctica_ice_velocity.nc')
+nsidc_vel = Dataset('/discover/nobackup/agstubbl/ISSM/data/AIS/Antarctica_ice_velocity.nc')
 xmin = nsidc_vel.xmin
 xmin = float(xmin.lstrip()[0:10])
 ymax = nsidc_vel.ymax
@@ -40,7 +40,7 @@ Temp_change = 0           # default [0 K]
 
 # NetCDF Loading
 print('   Loading SeaRISE data from NetCDF')
-ncdata = Dataset('/discover/nobackup/agstubbl/ISSM/data/Antarctica_5km_withshelves_v0.75.nc')
+ncdata = Dataset('/discover/nobackup/agstubbl/ISSM/data/AIS/Antarctica_5km_withshelves_v0.75.nc')
 x1 = ncdata['x1'][:].data
 y1 = ncdata['y1'][:].data
 usrf = ncdata['usrf'][:].data[0]

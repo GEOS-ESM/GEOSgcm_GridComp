@@ -16,10 +16,10 @@ if not os.path.exists('./netcdfs'):
 # Step 1: Mesh generation
 # Generate initial uniform mesh (resolution = 60000 m)
 # project mesh onto new coordinate system
-md = triangle(model(), '/discover/nobackup/agstubbl/ISSM/data/AntarcticaOutline.exp', 60000)
+md = triangle(model(), '/discover/nobackup/agstubbl/ISSM/data/AIS/AntarcticaOutline.exp', 60000)
 
 print('   Loading velocities data from NetCDF')
-nsidc_vel = Dataset('/discover/nobackup/agstubbl/ISSM/data/Antarctica_ice_velocity.nc')
+nsidc_vel = Dataset('/discover/nobackup/agstubbl/ISSM/data/AIS/Antarctica_ice_velocity.nc')
 xmin = nsidc_vel.xmin
 xmin = float(xmin.lstrip()[0:10])
 ymax = nsidc_vel.ymax
