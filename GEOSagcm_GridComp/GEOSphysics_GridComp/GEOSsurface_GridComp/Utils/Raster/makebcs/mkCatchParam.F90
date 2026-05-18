@@ -45,7 +45,7 @@ PROGRAM mkCatchParam
   character*128        :: ARG, MaskFile
   character*256        :: CMD
   character*1          :: opt
-  character*7          :: PEATSOURCE   = 'GDLHWSD'
+  character*128        :: PEATSOURCE   = ''
   character*3          :: VEGZSOURCE   = 'D&S'
   character*2          :: DL ='DC'    
   integer              :: II, JJ, Type
@@ -206,60 +206,97 @@ PROGRAM mkCatchParam
    else
       fnameRst='rst/'//trim(Gridname)  
       fnameTil='til/'//trim(Gridname)  
-   endif
+    endif 
+    
+    select case (PEAT_INFO)
+    case (0)
+       PEATSOURCE = 'HWSDv1.21 (formerly "GDLHWSD")'
+    case (1)
+       PEATSOURCE = 'HWSDv1.21 + PEATMAP (Xu et al 2017, doi:10.5518/252)'
+    case (2)
+       PEATSOURCE = 'Global Peatland Map 2.0 (Greifswald)'
+    case default
+       write (log_file,'(a)') 'Unknown PEAT_INFO.  Stopping!'
+       stop
+    end select
+    
+    if(jpl_height)   VEGZSOURCE   = 'JPL'
 
-   if(use_PEATMAP)  PEATSOURCE   = 'PEATMAP'
-   if(jpl_height)   VEGZSOURCE   = 'JPL'
+    if (trim(SNOWALB)=='MODC061' .or. trim(SNOWALB) =='MODC061v2')  process_snow_albedo=.true.
 
-   if (trim(SNOWALB)=='MODC061' .or. trim(SNOWALB) =='MODC061v2')  process_snow_albedo=.true.
+!    if(n_threads == 1) then
 
-   !    if(n_threads == 1) then
+       write (log_file,'(a)')trim(LAIBCS)
+       write (log_file,'(a)')trim(MODALB)
+       write (log_file,'(a)')trim(SOILBCS)   
+       write (log_file,'(a)')trim(SNOWALB)
+       write (log_file,'(a)')trim(MaskFile)
+       write (log_file,'(a)')trim(PEATSOURCE)
+       write (log_file,'(a)')trim(VEGZSOURCE)
+       write (log_file,'(a)')'                              '
+       write (log_file,'(a)')'============================================================'
+       write (log_file,'(a)')'............ Begin CLSM parameter generation:...............'    
+       write (log_file,'(a)')'                                               '
+       write (log_file,'(a)')'CLSM parameters are being generated for the tile space :'
+       write (log_file,'(a)')'     ',trim(fnameTil)
+       write (log_file,'(a)')'                                               '
+       write (log_file,'(a)')'============================================================'
+       write (log_file,'(a)')'                                               '
+       
+       if(index(Gridname,'CF')/=0) then 
+          DL = 'DE'
+          write (log_file,'(a)')'Cube-Sphere Grid - assuming dateline-on-edge (DE)'
+       endif
+       
+       ! ******************************************************************************
+       !
+       ! IMPORTANT: The top-level make_bcs script should not allow this program to
+       !            run when ./clsm/ exists.  Consequently, across "Steps [xx]" below,
+       !            the "inquire()" statements should be obsolete, and the case 
+       !            "Using existing file" should never happen.
+       !
+       ! ******************************************************************************
 
-   write (log_file,'(a)')trim(LAIBCS)
-   write (log_file,'(a)')trim(MODALB)
-   write (log_file,'(a)')trim(SOILBCS)   
-   write (log_file,'(a)')trim(SNOWALB)
-   write (log_file,'(a)')trim(MaskFile)
-   write (log_file,'(a)')trim(PEATSOURCE)
-   write (log_file,'(a)')trim(VEGZSOURCE)
-   write (log_file,'(a)')'                              '
-   write (log_file,'(a)')'============================================================'
-   write (log_file,'(a)')'............ Begin CLSM parameter generation:...............'    
-   write (log_file,'(a)')'                                               '
-   write (log_file,'(a)')'CLSM parameters are being generated for the tile space :'
-   write (log_file,'(a)')'     ',trim(fnameTil)
-   write (log_file,'(a)')'                                               '
-   write (log_file,'(a)')'============================================================'
-   write (log_file,'(a)')'                                               '
+       allocate(tile_id(nc, nr))
+       fname_tmp = trim(fnameRst)//'.rst'
+       open (newunit=unit,file=fname_tmp,status='old',action='read',form='unformatted',convert='little_endian', IOSTAT=status)
+       if (status /=0) then
+          write (log_file,'(a)')'         '//trim(fname_tmp) // 'cannot be opened, exit '
+          call exit(1)
+       endif
+       do j = 1, nr
+         read(unit)tile_id(:,j)
+       end do        
+       close(unit)
+       ! Creating catchment.def 
+       ! ----------------------
+       
+       tmpstring = 'Step 01: Supplemental tile attributes and nc4-formatted tile file'
+       fname_tmp = 'clsm/catchment.def'
+       write (log_file,'(a,a,a,a)') trim(tmpstring), ' (', trim(fname_tmp), ')'
+       if(.not.ease_grid) then  
+          inquire(file=trim(fname_tmp), exist=file_exists)
+          if (.not.file_exists) then
+             write (log_file,'(a)')'         Creating catchment def and nc4 tile file...'
+             call system_clock(clock1)
+             call supplemental_tile_attributes(nc,nr,regrid,dl,fnameTil, tile_id) 
+             call system_clock(clock2)
+             seconds = (clock2-clock1)/real(clock_rate)
+             write (log_file, *) '         Done. Spent   ', seconds, "  seconds"
+          else
+             write (log_file,'(a)')'         Using existing file.'
+          endif
+       else 
+          write (log_file,'(a)')'Skipping step for EASE grid. '
+          write (log_file,'(a)')'catchment.def file and tile file should already be created by mkEASETilesParam.x '
+       endif
+       write (log_file,'(a)')' '
 
-   if(index(Gridname,'CF')/=0) then 
-      DL = 'DE'
-      write (log_file,'(a)')'Cube-Sphere Grid - assuming dateline-on-edge (DE)'
-   endif
-
-   ! ******************************************************************************
-   !
-   ! IMPORTANT: The top-level make_bcs script should not allow this program to
-   !            run when ./clsm/ exists.  Consequently, across "Steps [xx]" below,
-   !            the "inquire()" statements should be obsolete, and the case 
-   !            "Using existing file" should never happen.
-   !
-   ! ******************************************************************************
-
-   allocate(tile_id(nc, nr))
-   fname_tmp = trim(fnameRst)//'.rst'
-   open (newunit=unit,file=fname_tmp,status='old',action='read',form='unformatted',convert='little_endian', IOSTAT=status)
-   if (status /=0) then
-      write (log_file,'(a)')'         '//trim(fname_tmp) // 'cannot be opened, exit '
-      call exit(1)
-   endif
-   do j = 1, nr
-      read(unit)tile_id(:,j)
-   end do
-   close(unit)
-   
-   ! Creating catchment.def 
-   ! ----------------------
+       if (trim(withbcs) == 'no') then
+         write (log_file,'(a)')'Skipping MOM BCs. BCs will be extracted from the corresponding BCs. '
+         close (log_file,status='keep')
+         call exit(0)
+       endif
    
    tmpstring = 'Step 01: Supplemental tile attributes and nc4-formatted tile file'
    fname_tmp = 'clsm/catchment.def'
