@@ -6,12 +6,10 @@ from InterpFromGridToMesh import InterpFromGridToMesh
 from SetMarineIceSheetBC import SetMarineIceSheetBC
 from m1qn3inversion import m1qn3inversion 
 from setflowequation import setflowequation
-import os
-ISSM_DIR = os.getenv('ISSM_DIR')
-
+from pathlib import Path
 
 #Name and Coordinate system
-md.miscellaneous.name='AntarcticaGEOS'
+md.miscellaneous.name=Path(__file__).parent.name
 md.mesh.epsg=3031
 
 nsidc_vel = Dataset('/discover/nobackup/agstubbl/ISSM/data/Antarctica_ice_velocity.nc')

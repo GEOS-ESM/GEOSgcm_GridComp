@@ -1,5 +1,5 @@
 import devpath
-import os,sys
+import os
 ISSM_DIR = os.getenv('ISSM_DIR') # for binaries
 
 from model import *
@@ -9,8 +9,8 @@ from loadresultsfromdisk import loadresultsfromdisk
 from marshall import marshall
 from verbose import verbose 
 
-md = loadmodel('./netcdfs/Greenland_inversion.nc')
-md = loadresultsfromdisk(md,'GreenlandGEOS.outbin')
+md = loadmodel('./netcdfs/GRIS_inversion.nc')
+md = loadresultsfromdisk(md,'ISSM_GRIS.outbin')
 md.friction.coefficient = md.results.StressbalanceSolution.FrictionCoefficient
 
 
@@ -23,7 +23,7 @@ md.settings.waitonlock = 0
 md.private.solution = 'Transient'
 md.verbose = verbose('000000000')
 md.toolkits = toolkits()
-marshall(md,md.miscellaneous.name+'.bin') # create .bin file
-md.toolkits.ToolkitsFile(md.miscellaneous.name + '.toolkits')
-export_discover(md,'./netcdfs/Greenland_initialization.nc',delete_rundir=True)
+marshall(md,'ISSM_'+md.miscellaneous.name+'.bin') # create .bin file
+md.toolkits.ToolkitsFile('ISSM_'+md.miscellaneous.name + '.toolkits')
+export_discover(md,'./netcdfs/GRIS_initialization.nc',delete_rundir=True)
 

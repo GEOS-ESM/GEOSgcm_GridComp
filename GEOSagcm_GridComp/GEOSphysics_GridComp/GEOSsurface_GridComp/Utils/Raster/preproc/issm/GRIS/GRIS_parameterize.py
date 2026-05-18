@@ -5,12 +5,10 @@ from ll2xy import ll2xy
 from xy2ll import xy2ll
 from InterpFromGridToMesh import InterpFromGridToMesh
 from SetIceSheetBC import SetIceSheetBC
-import os
-ISSM_DIR = os.getenv('ISSM_DIR')
-
+from pathlib import Path
 
 #Name and Coordinate system
-md.miscellaneous.name = 'GreenlandGEOS'
+md.miscellaneous.name = Path(__file__).parent.name
 md.mesh.epsg = 3413
 
 # interpolate velocities
