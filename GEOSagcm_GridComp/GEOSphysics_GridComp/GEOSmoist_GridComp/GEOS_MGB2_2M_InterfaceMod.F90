@@ -1323,8 +1323,12 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
       !shallow convection
       call MAPL_GetPointer(EXPORT, PTR3D, 'DQLDT_SC'   , RC=STATUS); VERIFY_(STATUS)      
       if (associated(PTR3D)) DNDCNV = DNDCNV + MAX(AIRDEN*PTR3D*QNcnvfac/(DROPSZCNV*DROPSZCNV*DROPSZCNV), 0.0)
+      call MAPL_GetPointer(IMPORT, PTR3D, 'DQLDTTRB'   , RC=STATUS); VERIFY_(STATUS)      
+      if (associated(PTR3D)) DNDCNV = DNDCNV + MAX(AIRDEN*PTR3D*QNcnvfac/(DROPSZCNV*DROPSZCNV*DROPSZCNV), 0.0)
       
       call MAPL_GetPointer(EXPORT, PTR3D, 'DQIDT_SC'   , RC=STATUS); VERIFY_(STATUS)      
+      if (associated(PTR3D)) DNICNV = DNICNV + MAX(AIRDEN*PTR3D*QNcnvfac/CFX, 0.0)
+      call MAPL_GetPointer(IMPORT, PTR3D, 'DQIDTTRB'   , RC=STATUS); VERIFY_(STATUS)      
       if (associated(PTR3D)) DNICNV = DNICNV + MAX(AIRDEN*PTR3D*QNcnvfac/CFX, 0.0)
       
       
@@ -1560,7 +1564,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
                       .false.        , & 
                       .true., &
                       SC_ICE(I, J, L), &
-                      ITER_METHOD)
+                      ITER_METHOD=ITER_METHOD)
                       
          	DLPDF_X(I, J, L)=((QLLS(I, J, L)+QLCN(I, J, L)) - DLPDF_X(I, J, L))/DT_MOIST
          	DIPDF_X(I, J, L)=((QILS(I, J, L)+QICN(I, J, L)) - DIPDF_X(I, J, L))/DT_MOIST

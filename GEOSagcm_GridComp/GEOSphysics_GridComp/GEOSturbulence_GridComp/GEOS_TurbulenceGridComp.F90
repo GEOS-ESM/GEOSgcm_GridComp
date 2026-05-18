@@ -689,7 +689,7 @@ end if
 !
 ! mass-flux export states
 ! 
-
+    
     call MAPL_AddExportSpec(GC,                                                &
        LONG_NAME      = 'EDMF_rain_tendency',                                  &
        UNITS          = 'kg kg-1 s-1',                                         &
@@ -3217,7 +3217,7 @@ end if
        call MAPL_GetResource (MAPL, USE_EIS,      trim(COMP_NAME)//"_USE_EIS:",      default=.false.,RC=STATUS); VERIFY_(STATUS)
      else
        call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=15.,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=1.3,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PRANDTLSFC,   trim(COMP_NAME)//"_PRANDTLSFC:",   default=1.0,    RC=STATUS); VERIFY_(STATUS)
@@ -3632,7 +3632,7 @@ end if
       call MAPL_GetResource (MAPL, MFPARAMS%ENTUFAC,   "EDMF_ENTUFAC:",       default=2.0,   RC=STATUS)  
       call MAPL_GetResource (MAPL, MFPARAMS%WA,        "EDMF_WA:",            default=1.0,   RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%WB,        "EDMF_WB:",            default=1.5,   RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%WC,        "EDMF_WC:",            default=0.016, RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%WC,        "EDMF_WC:",            default=0.05,  RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%WCTHRESH,  "EDMF_WCTHRESH:",      default=11.,   RC=STATUS)
       ! coefficients for surface forcing, appropriate for L137
       call MAPL_GetResource (MAPL, MFPARAMS%AlphaW,    "EDMF_ALPHAW:",        default=0.05,  RC=STATUS)
@@ -3654,7 +3654,7 @@ end if
       call MAPL_GetResource (MAPL, MFPARAMS%IMPLICIT,  "EDMF_IMPLICIT:",      default=1,     RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%PRCPCRIT,  "EDMF_PRCPCRIT:",      default=-1.,   RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%UPABUOYDEP,"EDMF_UPABUOYDEP:",    default=1,     RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%TREFF,     "EDMF_TREFF:",         default=100.,  RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%TREFF,     "EDMF_TREFF:",         default=1.,    RC=STATUS)
     else
        MFPARAMS%TREFF = 0.
        MFPARAMS%DOTRACERS = .false.
@@ -5412,7 +5412,7 @@ if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
                  L = L-1
                end do
                do ll = 1,2    ! substep
-                 SX(I,J,2:LM) = SX(I,J,2:LM) + 0.5*(DT*MAPL_GRAV/DP(I,J,L+1))* &
+                 SX(I,J,2:LM) = SX(I,J,2:LM) + 0.5*(DT*MAPL_GRAV/DP(I,J,2:LM))* &
                                       ( edmf_mf(I,J,2:LM)   * (UPSX(2:LM)   - SX(I,J,2:LM) )  &
                                        -edmf_mf(I,J,1:LM-1) * (UPSX(1:LM-1) - SX(I,J,1:LM-1) ) )
                end do
@@ -6720,7 +6720,6 @@ subroutine LOUIS_KS_OPTIMIZED( IM,JM,LM,MO_MAX_ITER,DTIME, &
    ! Physical constants
    real, parameter :: BLACKADAR_SCALE = 0.1     ! PBL local scaling factor
    real, parameter :: R13 = 1.0/3.0             ! 1/3 power
-   real, parameter :: GRAV = 9.81               ! Gravitational acceleration
    real, parameter :: MIN_DIFFUSIVITY = 0.01    ! Minimum diffusivity
    real, parameter :: STABILITY_EPS = 1.e-10    ! Small number for stability
    real, parameter :: MAX_PS_DIVISOR = 0.1      ! Maximum PS divisor
@@ -6798,7 +6797,7 @@ subroutine LOUIS_KS_OPTIMIZED( IM,JM,LM,MO_MAX_ITER,DTIME, &
             
             ! Richardson number
             shear_sq = max(shear_sq, MINSHEAR**2) ! Limit SHEAR^2 in RI calculation
-            ri_local = (GRAV/th_avg) * dth_local * dz_inv / shear_sq
+            ri_local = (MAPL_GRAV/th_avg) * dth_local * dz_inv / shear_sq
             RI(i,j,l) = ri_local
 
             ! Cap asymptotic mixing lengths to boundary layer height if provided
