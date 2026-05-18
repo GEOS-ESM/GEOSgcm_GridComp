@@ -282,6 +282,7 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
 
     real                     :: DBZ_DT
     type(ESMF_Calendar)      :: calendar
+    type(ESMF_Time)          :: currTime
     type(ESMF_Alarm)         :: DBZ_RunAlarm
     type(ESMF_TimeInterval)  :: ringInterval
     integer                  :: LM, year, month, day, hh, mm, ss
@@ -290,13 +291,17 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
     call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
     DT_MOIST = DT_R8
+
     DBZ_DT = max(DT_MOIST,900.0)
     call MAPL_GetResource(MAPL, DBZ_DT, 'DBZ_DT:', default=DBZ_DT, RC=STATUS); VERIFY_(STATUS)
-    call ESMF_ClockGet(CLOCK, calendar=calendar, RC=STATUS); VERIFY_(STATUS)
+    ! Get the current time in addition to the calendar
+    call ESMF_ClockGet(CLOCK, currTime=currTime, calendar=calendar, RC=STATUS); VERIFY_(STATUS)
     call ESMF_TimeIntervalSet(ringInterval, S=nint(DBZ_DT), calendar=calendar, RC=STATUS); VERIFY_(STATUS)
-    DBZ_RunAlarm = ESMF_AlarmCreate(Clock       = CLOCK,        &
-                                   Name         = 'DBZ_RunAlarm',&
-                                   RingInterval = ringInterval, &
+    ! Add RingTime = currTime to anchor the alarm
+    DBZ_RunAlarm = ESMF_AlarmCreate(Clock       = CLOCK,          &
+                                   Name         = 'DBZ_RunAlarm', &
+                                   RingTime     = currTime,       &
+                                   RingInterval = ringInterval,   &
                                    Sticky       = .false.  , RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, LPHYS_HYDROSTATIC, Label="PHYS_HYDROSTATIC:",  default=.TRUE., RC=STATUS)
