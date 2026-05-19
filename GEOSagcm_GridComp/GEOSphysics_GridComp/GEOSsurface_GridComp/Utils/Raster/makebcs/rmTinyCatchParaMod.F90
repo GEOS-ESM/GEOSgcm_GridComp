@@ -55,7 +55,7 @@ module rmTinyCatchParaMod
   public REFORMAT_VEGFILES
   public Get_MidTime, Time_Interp_Fac
   public ascat_r0, jpl_canoph, NC_VarID, init_bcs_config  
-  public LakeTopoCat_on_tiles_from_raster, AppendLakeVarsToTileNC4
+  public LakeTopoCat_on_tiles_from_raster, AppendLakeTypeToTileNC4
   
   ! The following variables define the details of the BCs versions (data sources).
   ! Initialize to dummy values here and set to desired values in init_bcs_config().
@@ -927,44 +927,51 @@ contains
   !----------------------------------------------------------------------
   !----------------------------------------------------------------------  
   !----------------------------------------------------------------------
-  
   SUBROUTINE LakeTopoCat_on_tiles_from_raster( n_tile, nc_rst, nr_rst, tile_id, &
-       tile_lake_frac, tile_is_lake_50, rc)
+       tile_typ, tile_lake_type, rc)
 
-    ! Map preprocessed HydroLAKES-TopoCat lake area fraction (30 arcsec resolution, 10 deg x 10 deg chunks) 
+    ! Map preprocessed LakeTopoCat / ReachTopoCat any-touch support
+    ! (30 arcsec resolution, 10 deg x 10 deg chunks)
     ! to tile space using the 30 arcsec raster tile-id map.
     !
     ! Why NOT use rmap/create_mapping here?
     ! ------------------------------------
     ! 1) In mkCatchParam, the "tile creation" step (Step 01) happens BEFORE any
-    !    precomputed rmap exists (those are built later for other products).
-    ! 2) create_mapping() is explicitly designed for *land* tiles only (1..n_land),
-    !    which is perfect for MODIS snow albedo etc., but lakes need to be computed
-    !    for *all* tiles in the tile file (land + lake + ice + ocean).
-    ! 3) Lake inputs are already on the same global 30-arcsec grid as the raster
-    !    tile-id map (43200x21600), so we can map each 30" pixel directly to a tile
-    !    via tile_id(iG,jG) with unit weights (or count weights if desired).
+    !    precomputed rmap exists. Those mappings are built later for other products.
+    ! 2) create_mapping() is designed for land tiles only (1..n_land),
+    !    which is appropriate for land-only products such as MODIS snow albedo,
+    !    but this LakeTopoCat / ReachTopoCat diagnostic must be computed for
+    !    all candidate tile types in the tile file, including lake-like and
+    !    ocean tiles where present.
+    ! 3) Lake/reach support inputs are already on the same global 30-arcsec
+    !    grid as the raster tile-id map (43200x21600), so each 30" pixel can
+    !    be mapped directly to a tile via tile_id(iG,jG). For this diagnostic
+    !    we only need any-touch support, not area-weighted remapping.
     !
-    ! Inputs:
-    !   n_tile          : number of tiles in the tile file (all types)
-    !   nc_rst, nr_rst  : dims of tile_id raster grid (must match global 30" for this routine)
-    !   tile_id         : raster->tile mapping on 30-arcsec global grid; tile_id(iG,jG) in [1..n_tile]
+    ! Output tile_lake_type:
+    !   -9999 = UNDEF / excluded, e.g. typ==100
+    !       0 = no LakeTopoCat lake or ReachTopoCat reach touch
+    !       1 = lake touch only
+    !       2 = reach touch only
+    !       3 = lake + reach touch
     !
-    ! Outputs:
-    !   tile_lake_frac  : mean lake fraction per tile (0..1)
-    !   tile_is_lake_50 : 1 if tile_lake_frac >= 0.5, else 0
+    ! Candidate tile types:
+    !   typ == 0, typ == 19, typ == 20
     !
-    ! Biljana Orescanin Feb 2026, SSAI@NASA
+    ! For current standard EASE, typ==0 is absent, so this is effectively
+    ! typ==19 or typ==20 only. For CF / future files, typ==0 can be defined.
 
     implicit none
 
     integer,           intent(in)            :: n_tile
     integer,           intent(in)            :: nc_rst, nr_rst
     integer,           intent(in)            :: tile_id(1:nc_rst, 1:nr_rst)
+    integer,           intent(in)            :: tile_typ(1:n_tile)
 
-    real,              intent(out)           :: tile_lake_frac(1:n_tile)
-    integer(1),        intent(out)           :: tile_is_lake_50(1:n_tile)
+    integer,           intent(out)           :: tile_lake_type(1:n_tile)
     integer,           intent(out), optional :: rc
+
+    integer, parameter :: LAKETYPE_UNDEF = -9999
 
     integer(kind=4), parameter :: nc_10 = 1200
     integer(kind=4), parameter :: nr_10 = 1200
@@ -972,76 +979,95 @@ contains
     integer       :: status, ncid, varid
     integer       :: ix, jx, ii, jj
     integer       :: iLL, jLL, iG, jG, tid
-    character*512 :: fname
+    character*512 :: lake_fname, reach_fname
     character*2   :: HH, VV
     character*512 :: MAKE_BCS_INPUT_DIR
 
-    real,         allocatable :: lake_frac(:,:)         ! 10 deg x 10 deg chunk, 30 arcsec
-    real,         allocatable :: sum_w(:), sum_fw(:)    ! counts + weighted fraction
+    integer, allocatable :: lake_any(:,:)    ! 10 deg x 10 deg chunk, 30 arcsec
+    integer, allocatable :: reach_any(:,:)   ! 10 deg x 10 deg chunk, 30 arcsec
 
     call get_environment_variable("MAKE_BCS_INPUT_DIR", MAKE_BCS_INPUT_DIR)
 
     ! ------------------------------------------------------------------
     ! IMPORTANT:
-    ! LakeTopoCat inputs are preprocessed onto a 30-arcsec raster grid
-    ! (43200 x 21600). This routine assumes that the tile_id raster
-    ! (nc_rst x nr_rst) is also on that same 30 arcsec grid.
+    ! LakeTopoCat / ReachTopoCat inputs are preprocessed onto a
+    ! 30-arcsec raster grid (43200 x 21600). This routine assumes that
+    ! the tile_id raster (nc_rst x nr_rst) is also on that same 30 arcsec grid.
     !
     ! For workflows using GEOS5_10arcsec_mask, nx=43200 and ny=21600,
-    ! lake fractions can thus be mapped directly via tile_id(iG,jG).
+    ! lake/reach presence can be mapped directly via tile_id(iG,jG).
     !
     ! For coarser or alternative masks (e.g., 8640x4320), there is no
     ! consistent 30" raster-to-tile alignment here. In those cases we
-    ! skip LakeTopoCat generation rather than attempting an implicit
-    ! remap that could introduce silent errors.
+    ! skip LakeTopoCat / ReachTopoCat generation rather than attempting
+    ! an implicit remap that could introduce silent errors.
     !
-    ! Lake variables are therefore only added when the
-    ! raster resolution matches the 30 arcsec grid.
+    ! tile_lake_type is therefore only populated when the raster resolution
+    ! matches the 30 arcsec grid. If skipped, tile_lake_type remains UNDEF.
     ! ------------------------------------------------------------------
 
-    ! initialize
-    tile_lake_frac  = 0.0
-    tile_is_lake_50 = 0_1
-    
+    ! Start as UNDEF. If we skip generation, do NOT report candidate tiles as
+    ! LakeType=0, because that would incorrectly mean "checked and no touch".
+    tile_lake_type(:) = LAKETYPE_UNDEF
+
     if (nc_rst /= 43200 .or. nr_rst /= 21600) then
-       print *, 'NOTE: Skipping LakeTopoCat (requires 43200x21600). Got ', nc_rst, nr_rst
+       print *, 'NOTE: Skipping LakeTopoCat / ReachTopoCat LakeType generation.'
+       print *, '      Requires 43200x21600 raster. Got ', nc_rst, nr_rst
        if (present(rc)) rc = 1
        return
     endif
 
-    allocate(lake_frac(1:nc_10, 1:nr_10))
-    allocate(sum_w (1:n_tile))
-    allocate(sum_fw(1:n_tile))
+    ! Define LakeType only for candidate MAPL tile types.
+    do tid = 1, n_tile
+       if (tile_typ(tid) == 0 .or. tile_typ(tid) == 19 .or. tile_typ(tid) == 20) then
+          tile_lake_type(tid) = 0
+       endif
+    enddo
 
-    sum_w  = 0.0
-    sum_fw = 0.0
+    allocate(lake_any (1:nc_10, 1:nr_10))
+    allocate(reach_any(1:nc_10, 1:nr_10))
 
-    ! Loop through 36x18 tiles (HxxVyy)
-    
+    ! Loop through 36x18 10-degree chunks.
     do jx = 1, 18
        do ix = 1, 36
 
           write(HH,'(i2.2)') ix
           write(VV,'(i2.2)') jx
 
-          fname = trim(MAKE_BCS_INPUT_DIR)//'/lake/lake_mask/v1/LakeTopoCat_30arcsec_H'//HH//'V'//VV//'.nc4'
+          lake_fname  = trim(MAKE_BCS_INPUT_DIR)// &
+               '/lake/lake_mask/v1/LakeTopoCat_30arcsec_H'//HH//'V'//VV//'.nc4'
 
-          status = NF_OPEN(trim(fname), NF_NOWRITE, ncid)
+          reach_fname = trim(MAKE_BCS_INPUT_DIR)// &
+               '/lake/reach_mask/v1/ReachTopoCat_30arcsec_H'//HH//'V'//VV//'.nc4'
+
+          ! Read lake_presence_any.
+          status = NF_OPEN(trim(lake_fname), NF_NOWRITE, ncid)
           if (status /= NF_NOERR) then
-             print *, 'ERROR: Lake mask tile file not found: ', trim(fname)
+             print *, 'ERROR: Lake mask tile file not found: ', trim(lake_fname)
              print *, 'STOPPING.'
              stop
           endif
 
-          status = NF_INQ_VARID(ncid, 'lake_area_frac', varid) ; VERIFY_(status)
-          status = NF_GET_VARA_REAL(ncid, varid, (/1,1/), (/nc_10,nr_10/), lake_frac) ; VERIFY_(status)
+          status = NF_INQ_VARID(ncid, 'lake_presence_any', varid) ; VERIFY_(status)
+          status = NF_GET_VARA_INT(ncid, varid, (/1,1/), (/nc_10,nr_10/), lake_any) ; VERIFY_(status)
           status = NF_CLOSE(ncid) ; VERIFY_(status)
 
-          ! Lower-left global indices of this 10 deg x 10 deg chunk (1-based)
+          ! Read reach_presence_any.
+          status = NF_OPEN(trim(reach_fname), NF_NOWRITE, ncid)
+          if (status /= NF_NOERR) then
+             print *, 'ERROR: Reach mask tile file not found: ', trim(reach_fname)
+             print *, 'STOPPING.'
+             stop
+          endif
+
+          status = NF_INQ_VARID(ncid, 'reach_presence_any', varid) ; VERIFY_(status)
+          status = NF_GET_VARA_INT(ncid, varid, (/1,1/), (/nc_10,nr_10/), reach_any) ; VERIFY_(status)
+          status = NF_CLOSE(ncid) ; VERIFY_(status)
+
+          ! Lower-left global indices of this 10 deg x 10 deg chunk, 1-based.
           iLL = (ix-1)*nc_10 + 1
           jLL = (jx-1)*nr_10 + 1
 
-          ! Loop through chunk pixels
           do jj = 1, nr_10
              do ii = 1, nc_10
 
@@ -1052,114 +1078,135 @@ contains
 
                 if (tid < 1 .or. tid > n_tile) cycle
 
-                ! unit weight: each 30" pixel counts once for its tile
-                sum_fw(tid) = sum_fw(tid) + lake_frac(ii,jj)
-                sum_w (tid) = sum_w (tid) + 1.0
+                ! Only candidate tile types get LakeType.
+                if (tile_lake_type(tid) == LAKETYPE_UNDEF) cycle
 
-             end do
-          end do
+                ! Bit 1: lake touch.
+                if (lake_any(ii,jj) > 0) then
+                   tile_lake_type(tid) = IOR(tile_lake_type(tid), 1)
+                endif
 
-       end do
-    end do
+                ! Bit 2: reach touch.
+                if (reach_any(ii,jj) > 0) then
+                   tile_lake_type(tid) = IOR(tile_lake_type(tid), 2)
+                endif
 
-    ! Finalize fraction and binary flag
+             enddo
+          enddo
 
-    where (sum_w > 0.0)
-       tile_lake_frac = sum_fw / sum_w
-    endwhere
-
-    do tid = 1, n_tile
-       if (tile_lake_frac(tid) >= 0.5) tile_is_lake_50(tid) = 1_1
-    end do
+       enddo
+    enddo
 
     if (present(rc)) rc = 0
 
-    if (allocated(lake_frac)) deallocate(lake_frac)
-    if (allocated(sum_w))     deallocate(sum_w)
-    if (allocated(sum_fw))    deallocate(sum_fw)    
+    if (allocated(lake_any))  deallocate(lake_any)
+    if (allocated(reach_any)) deallocate(reach_any)
 
   END SUBROUTINE LakeTopoCat_on_tiles_from_raster
-  
-  !----------------------------------------------------------------------  
+  !----------------------------------------------------------------------
+  !----------------------------------------------------------------------
+  SUBROUTINE AppendLakeTypeToTileNC4( tilefile, n_tile, tile_lake_type )
 
-  SUBROUTINE AppendLakeVarsToTileNC4( tilefile, n_tile, tile_lake_frac, tile_is_lake_50 )
-    
     implicit none
-    
+
     character(*), intent(in) :: tilefile
     integer,      intent(in) :: n_tile
-    real,         intent(in) :: tile_lake_frac( 1:n_tile)
-    integer(1),   intent(in) :: tile_is_lake_50(1:n_tile)
-    
+    integer,      intent(in) :: tile_lake_type(1:n_tile)
+
+    integer, parameter :: LAKETYPE_UNDEF = -9999
+
     integer :: status, ncid, ndims, nvars, ngatts, unlimdimid
     integer :: dimid_tile, dimlen, dd
-    integer :: varid_frac, varid_l50
-    
-    character(len=NF_MAX_NAME)              :: dname
-    character(len=128)                      :: mylongname
-    integer,                    allocatable :: tmp_int(:)
-        
-    ! convert "tile_is_lake_50" from integer(1) to int*4
-    
-    allocate(tmp_int(n_tile), stat=status)
-    
-    tmp_int = int(tile_is_lake_50)                                            
-    
+    integer :: varid_lake_type
+    integer :: fill_value(1)
+    integer :: flag_values(5)
+    logical :: var_exists
+
+    character(len=NF_MAX_NAME) :: dname
+    character(len=256)         :: mylongname
+    character(len=256)         :: flagmeanings
+    character(len=512)         :: comment
+
+    fill_value(1) = LAKETYPE_UNDEF
+    flag_values   = (/ LAKETYPE_UNDEF, 0, 1, 2, 3 /)
+
     ! append data into nc4 tile file
-    
-    status = NF_OPEN(trim(tilefile), NF_WRITE, ncid)                                               ; VERIFY_(status)
-    
+
+    status = NF_OPEN(trim(tilefile), NF_WRITE, ncid)                                  ; VERIFY_(status)
+
     ! find tile dimension by matching length
-    
-    status = NF_INQ(ncid, ndims, nvars, ngatts, unlimdimid)                                        ; VERIFY_(status)
-    
+
+    status = NF_INQ(ncid, ndims, nvars, ngatts, unlimdimid)                           ; VERIFY_(status)
+
     dimid_tile = -1
     do dd = 1, ndims
-       status = NF_INQ_DIM(ncid, dd, dname, dimlen)                                                ; VERIFY_(status)
+       status = NF_INQ_DIM(ncid, dd, dname, dimlen)                                   ; VERIFY_(status)
        if (dimlen == n_tile) then
           dimid_tile = dd
           exit
        endif
     enddo
-    
+
     if (dimid_tile < 0) then
        print *, 'ERROR: could not find tile dimension of length ', n_tile, ' in ', trim(tilefile)
        stop
     endif
 
-    ! define lake variables
-    
-    status = NF_REDEF(ncid)                                                                        ; VERIFY_(status)
-    
-    status = NF_DEF_VAR(ncid, 'tile_lake_frac',     NF_FLOAT,  1, (/dimid_tile/), varid_frac)      ; VERIFY_(status)
-    status = NF_DEF_VAR(ncid, 'tile_is_lake_50pct', NF_INT,    1, (/dimid_tile/), varid_l50)       ; VERIFY_(status)
-    
-    status = NF_ENDDEF(ncid)                                                                       ; VERIFY_(status)
+    ! Define tile_lake_type if it is not already present.
+    ! This makes reruns safer: if the variable exists, just overwrite the data.
 
-    ! add metadata
+    status = NF_INQ_VARID(ncid, 'tile_lake_type', varid_lake_type)
+    var_exists = (status == NF_NOERR)
 
-    mylongname = 'Lake area fraction'
-    
-    status = NF_PUT_ATT_TEXT(ncid, varid_frac, 'long_name', len_trim(mylongname), mylongname)      ; VERIFY_(status)
-    status = NF_PUT_ATT_TEXT(ncid, varid_frac, 'units',     1,                    '1')             ; VERIFY_(status)
+    if (.not. var_exists) then
 
+       status = NF_REDEF(ncid)                                                        ; VERIFY_(status)
 
-    mylongname = 'Binary flag (0/1): Lake area fraction >= 0.5'
-    
-    status = NF_PUT_ATT_TEXT(ncid, varid_frac, 'long_name', len_trim(mylongname), mylongname)      ; VERIFY_(status)    
-    status = NF_PUT_ATT_TEXT(ncid, varid_l50,  'units',     1,                    '1')             ; VERIFY_(status)
-        
+       status = NF_DEF_VAR(ncid, 'tile_lake_type', NF_INT, 1, (/dimid_tile/), &
+            varid_lake_type)                                                          ; VERIFY_(status)
+
+       ! _FillValue should be defined before leaving define mode.
+
+       status = NF_PUT_ATT_INT(ncid, varid_lake_type, '_FillValue', NF_INT, 1, &
+            fill_value)                                                               ; VERIFY_(status)
+
+       status = NF_PUT_ATT_INT(ncid, varid_lake_type, 'missing_value', NF_INT, 1, &
+            fill_value)                                                               ; VERIFY_(status)
+
+       mylongname = 'LakeTopoCat/ReachTopoCat touch type for candidate lake tiles'
+       status = NF_PUT_ATT_TEXT(ncid, varid_lake_type, 'long_name', &
+            len_trim(mylongname), mylongname)                                         ; VERIFY_(status)
+
+       status = NF_PUT_ATT_TEXT(ncid, varid_lake_type, 'units', 1, '1')               ; VERIFY_(status)
+
+       status = NF_PUT_ATT_INT(ncid, varid_lake_type, 'flag_values', NF_INT, 5, &
+            flag_values)                                                              ; VERIFY_(status)
+
+       flagmeanings = 'undefined no_lake_or_reach_touch lake_touch_only reach_touch_only lake_and_reach_touch'
+       status = NF_PUT_ATT_TEXT(ncid, varid_lake_type, 'flag_meanings', &
+            len_trim(flagmeanings), flagmeanings)                                     ; VERIFY_(status)
+
+       comment = 'Defined for typ==0, typ==19, and typ==20; set to -9999 for typ==100/excluded tiles.'
+       status = NF_PUT_ATT_TEXT(ncid, varid_lake_type, 'comment', &
+            len_trim(comment), comment)                                               ; VERIFY_(status)
+
+       status = NF_ENDDEF(ncid)                                                       ; VERIFY_(status)
+
+    else
+
+       print *, 'NOTE: tile_lake_type already exists in ', trim(tilefile)
+       print *, '      Overwriting tile_lake_type data.'
+
+    endif
+
     ! write data and close file
-    
-    status = NF_PUT_VARA_REAL(  ncid, varid_frac, (/1/), (/n_tile/), tile_lake_frac)               ; VERIFY_(status)
-    status = NF_PUT_VARA_INT(   ncid, varid_l50,  (/1/), (/n_tile/), tmp_int)                      ; VERIFY_(status)
-    
-    status = NF_CLOSE(ncid)                                                                        ; VERIFY_(status)
-    
-    deallocate(tmp_int)
-        
-  END SUBROUTINE AppendLakeVarsToTileNC4
-  
+
+    status = NF_PUT_VARA_INT(ncid, varid_lake_type, (/1/), (/n_tile/), &
+         tile_lake_type)                                                              ; VERIFY_(status)
+
+    status = NF_CLOSE(ncid)                                                           ; VERIFY_(status)
+
+  END SUBROUTINE AppendLakeTypeToTileNC4
   !----------------------------------------------------------------------  
   
   SUBROUTINE supplemental_tile_attributes(nx,ny,regrid,dateline,fnameTil, Rst_id)
@@ -1212,10 +1259,9 @@ contains
     ! This is a special case for river-routing. The ocean grid is also EASE just for convenience
     logical                                :: two_EASE 
 
-    ! LakeTopoCat
-    real,         allocatable :: tile_lake_frac( :)
-    integer(1),   allocatable :: tile_is_lake_50(:)
-    integer                   :: rc_lake
+    ! LakeTopoCat / ReachTopoCat LakeType
+    integer, allocatable :: tile_lake_type(:)
+    integer              :: rc_lake
 
     ! -----------------------------------------------------
     !
@@ -1491,20 +1537,27 @@ contains
     fname=trim(fnameTil)//'.nc4'
     call MAPL_WriteTilingNC4(fname,  gName(1:n_grid), im(1:n_grid), jm(1:n_grid), nx, ny, iTable, rTable, N_PfafCat=SRTM_maxcat, rc=status)
 
-    ! LakeTopoCat: compute lake fraction in tile space and append to nc4 tile file 
-
-    allocate(tile_lake_frac( ip))     ! ip = n_tile
-    allocate(tile_is_lake_50(ip))
-
-    ! LakeTopoCat data are on the global 30-arcsec grid (43200x21600).
-    ! The following runs only with nx=43200, ny=21600 for GEOS5_10arcsec_mask workflows; returns rc_lake>0 otherwise.
+    ! LakeTopoCat / ReachTopoCat:
+    ! compute encoded LakeType in tile space and append to nc4 tile file.
+    !
+    ! tile_lake_type:
+    !   -9999 = UNDEF / excluded, e.g. typ==100
+    !       0 = no LakeTopoCat lake or ReachTopoCat reach touch
+    !       1 = lake touch only
+    !       2 = reach touch only
+    !       3 = lake + reach touch
+    !
+    ! This runs only with nx=43200, ny=21600 for GEOS5_10arcsec_mask workflows;
+    ! returns rc_lake>0 otherwise.
     
-    call LakeTopoCat_on_tiles_from_raster(ip, nx, ny, Rst_id, tile_lake_frac, tile_is_lake_50, rc_lake)
+    allocate(tile_lake_type(ip))   ! ip = n_tile
     
-    if (rc_lake == 0)  call AppendLakeVarsToTileNC4(fname, ip, tile_lake_frac, tile_is_lake_50)
-
-    deallocate(tile_lake_frac, tile_is_lake_50)
-
+    call LakeTopoCat_on_tiles_from_raster(ip, nx, ny, Rst_id, &
+         iTable(1:ip,0), tile_lake_type, rc_lake)
+    
+    if (rc_lake == 0) call AppendLakeTypeToTileNC4(fname, ip, tile_lake_type)
+    
+    deallocate(tile_lake_type)
     ! --------------------------------------------
     
     deallocate (rTable, iTable)

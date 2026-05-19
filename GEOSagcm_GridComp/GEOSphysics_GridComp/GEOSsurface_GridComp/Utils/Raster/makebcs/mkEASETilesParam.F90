@@ -33,7 +33,7 @@ PROGRAM mkEASETilesParam
   use rmTinyCatchParaMod,    only : i_raster, j_raster 
   use rmTinyCatchParaMod,    only : RegridRasterReal     
   use rmTinyCatchParaMod,    only : Target_mean_land_elev
-  use rmTinyCatchParaMod,    only : LakeTopoCat_on_tiles_from_raster, AppendLakeVarsToTileNC4
+  use rmTinyCatchParaMod,    only : LakeTopoCat_on_tiles_from_raster, AppendLakeTypeToTileNC4
   use process_hres_data,     only : histogram
   use LogRectRasterizeMod,   only : SRTM_maxcat, MAPL_UNDEF_R8   ! rasterize.F90
   use MAPL_SortMod
@@ -113,13 +113,11 @@ PROGRAM mkEASETilesParam
   character(len=512)     :: fname_mask
   character(len=400)     :: MAKE_BCS_INPUT_DIR
 
-  ! LakeTopoCat
-  real,       allocatable :: tile_lake_frac( :)
-  integer(1), allocatable :: tile_is_lake_50(:)
-  integer                 :: rc_lake
+ ! LakeTopoCat / ReachTopoCat LakeType
+  integer, allocatable :: tile_lake_type(:)
+  integer              :: rc_lake  
+ ! ----------------------------------------------
 
-  ! --------------------------------------------------------------------------------------
-  
   call get_environment_variable( "MAKE_BCS_INPUT_DIR", MAKE_BCS_INPUT_DIR )
   
   usage1 = 'USAGE : bin/mkEASETilesParam.x -ease_label EASELabel                    '
@@ -983,16 +981,28 @@ PROGRAM mkEASETilesParam
   call MAPL_WriteTilingNC4('til/'//trim(gfile)//'.nc4', [EASELabel],[nc_ease],[nr_ease], &
        nc, nr, iTable, rTable)
 
-  ! LakeTopoCat: compute lake fraction in tile space and append to nc4 tile file
+  ! LakeTopoCat / ReachTopoCat:
+  ! compute encoded LakeType in tile space and append to nc4 tile file.
+  !
+  ! tile_lake_type:
+  !   -9999 = UNDEF / excluded, e.g. typ==100
+  !       0 = no LakeTopoCat lake or ReachTopoCat reach touch
+  !       1 = lake touch only
+  !       2 = reach touch only
+  !       3 = lake + reach touch
+  !
+  ! This runs only with nc=43200, nr=21600 for GEOS5_10arcsec_mask workflows;
+  ! returns rc_lake>0 otherwise.
   
-  allocate(tile_lake_frac( n_landlakelandice))
-  allocate(tile_is_lake_50(n_landlakelandice))
+  allocate(tile_lake_type(n_landlakelandice))
   
-  call LakeTopoCat_on_tiles_from_raster(n_landlakelandice, nc, nr, tileid_index, tile_lake_frac, tile_is_lake_50, rc_lake)
+  call LakeTopoCat_on_tiles_from_raster(n_landlakelandice, nc, nr, tileid_index, &
+       iTable(1:n_landlakelandice,0), tile_lake_type, rc_lake)
   
-  if (rc_lake == 0)  call AppendLakeVarsToTileNC4('til/'//trim(gfile)//'.nc4', n_landlakelandice, tile_lake_frac, tile_is_lake_50 )
+  if (rc_lake == 0) call AppendLakeTypeToTileNC4( &
+       'til/'//trim(gfile)//'.nc4', n_landlakelandice, tile_lake_type)
   
-  deallocate( tile_lake_frac, tile_is_lake_50)  
+  deallocate(tile_lake_type)
 
   ! -------------------------------------------- 
 
