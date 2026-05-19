@@ -26,7 +26,7 @@ A domain name is then prescribed as:
 ISSM_ME{ mean edge length }_N{ total nodes }_{ top-level glacier names separated by _ }
 
 Top-level glacier names are those that exist at the issm directory level. So, in the iceland
-example above, iceland would appear in domain_name while vatnajokull and snaefellsjökull would not. 
+example above, iceland would appear in domain_name while vatnajokull and snaefellsjokull would not. 
 
 Finally, the script creates a directory named domain_name and copies all *.bin and *toolkits there.
 
