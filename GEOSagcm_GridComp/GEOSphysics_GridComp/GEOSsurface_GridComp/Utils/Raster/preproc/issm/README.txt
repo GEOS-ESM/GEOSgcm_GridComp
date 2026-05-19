@@ -1,8 +1,14 @@
 generate_issm_bcs.sh creates ISSM input files (ISSM*.bin and ISSM*.toolkits) to be used in GEOS. 
 The "ISSM" prefix is used to make sure ISSM doesn't inadvertently try to read other binary files.   
 Run via: sbatch generate_issm_bcs.sh 
+
 Data is currently read from: /discover/nobackup/agstubbl/ISSM/data/
 That directory is organized into AIS (Antarctica) and GRIS (Greenland) subdirectories.
+
+Output is currently stored here (for reference):
+/discover/nobackup/agstubbl/ISSM/geos_bcs/ISSM_ME40000_N9080_AIS_GRIS
+
+The domain naming convention (ISSM_ME*_N*...) is described below.
 
 The script finds all subdirectories containing files of the form:
 glaciername/glaciername_meshgen.py
@@ -36,6 +42,8 @@ ISSM_ME{ mean edge length }_N{ total nodes }_{ top-level glacier names separated
 
 *Top-level glacier names are those that exist at the issm directory level. In the iceland example
  above, iceland would appear in domain_name while vatnajokull and snaefellsjokull would not. 
+
+Currently, the generated domain name is: ISSM_ME40000_N9080_AIS_GRIS
 
 Finally, the script creates a directory with this domain name and copies all ISSM*.bin and 
 ISSM*toolkits files there.
