@@ -95,7 +95,7 @@ setenv MAKE_BCS_INPUT_DIR {MAKE_BCS_INPUT_DIR}
 limit stacksize unlimited
 
 if( ! -d geometry ) then
-  mkdir -p geometry land/shared til rst data/MOM5 data/MOM6 clsm/plots
+  mkdir -p geometry land/shared landice/shared til rst data/MOM5 data/MOM6 clsm/plots
 endif
 """
   return head
@@ -203,7 +203,7 @@ cd ../../
 
 # move output into final directory tree (layout as of July 2023)
 
-mkdir -p ../../geometry ../../land/shared ../../logs
+mkdir -p ../../geometry ../../land/shared ../../landice/shared ../../logs
 
 echo "-----------------------------"
 echo "make_bcs ends date/time"
@@ -229,6 +229,10 @@ else
     /bin/cp -p {MAKE_BCS_INPUT_DIR}/land/CO2/v1/CO2_MonthlyMean_DiurnalCycle.nc4 land/shared/CO2_MonthlyMean_DiurnalCycle.nc4
     echo "Successfully copied CO2_MonthlyMean_DiurnalCycle.nc4 to bcs dir."
 endif
+
+# copy ISSM files to bcs dir
+/bin/cp -p /discover/nobackup/agstubbl/ISSM/geos_bcs/ISSM_ME40000_N9080_AIS_GRIS/* landice/shared/
+echo "Successfully copied ISSM binary and toolkits files to bcs dir."
 
 if ( ! -d route ) mkdir -p route
 
@@ -268,7 +272,7 @@ endif
    mv_template = mv_template + """
 
 # adjust permissions (for all grid types)
-chmod +rX -R geometry land logs route
+chmod +rX -R geometry land logs route landice
 
 """
    return mv_template
