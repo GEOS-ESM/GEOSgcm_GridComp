@@ -955,11 +955,6 @@ contains
     !       2 = reach touch only
     !       3 = lake + reach touch
     !
-    ! Candidate tile types:
-    !   typ == 0, typ == 19, typ == 20
-    !
-    ! For current standard EASE, typ==0 is absent, so this is effectively
-    ! typ==19 or typ==20 only. For CF / future files, typ==0 can be defined.
 
     implicit none
 
