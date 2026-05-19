@@ -22,7 +22,8 @@ models = sorted({
     and p.parent != ROOT
 })
 
-model_names = [Path(p).name for p in models]
+# top-level glacier names
+model_names = sorted({Path(p).relative_to(ROOT).parts[0] for p in models})
 
 i=0
 for model in models:
