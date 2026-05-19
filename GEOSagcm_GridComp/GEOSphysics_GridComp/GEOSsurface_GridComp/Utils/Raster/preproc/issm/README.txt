@@ -37,7 +37,7 @@ ISSM_ME{ mean edge length }_N{ total nodes }_{ top-level glacier names separated
 *Top-level glacier names are those that exist at the issm directory level. In the iceland example
  above, iceland would appear in domain_name while vatnajokull and snaefellsjokull would not. 
 
-Finally, the script creates a directory named domain_name and copies all ISSM*.bin and 
+Finally, the script creates a directory with this domain name and copies all ISSM*.bin and 
 ISSM*toolkits files there.
 
 
