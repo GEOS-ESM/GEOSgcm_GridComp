@@ -45,6 +45,8 @@ module GEOS_LandiceGridCompMod
   use DragCoefficientsMod
   
   implicit none
+  public :: NUM_SNOW_LAYERS
+  public :: NUM_ICE_LAYERS
   private
 
   integer, parameter :: ICE   = 1
