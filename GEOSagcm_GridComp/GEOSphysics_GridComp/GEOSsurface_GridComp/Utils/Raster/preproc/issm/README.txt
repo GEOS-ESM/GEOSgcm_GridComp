@@ -1,5 +1,6 @@
 generate_issm_bcs.sh creates ISSM input files (ISSM*.bin and ISSM*.toolkits) to be used in GEOS. 
 The "ISSM" prefix is used to make sure ISSM doesn't inadvertently try to read other binary files.   
+Run via: sbatch generate_issm_bcs.sh 
 
 The script finds all subdirectories containing files of the form:
 glaciername/glaciername_meshgen.py
