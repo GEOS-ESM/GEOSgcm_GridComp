@@ -1,4 +1,5 @@
-generate_issm_bcs.sh creates ISSM input files (extension *.bin and *toolkits) to be used in GEOS.   
+generate_issm_bcs.sh creates ISSM input files (ISSM*.bin and ISSM*.toolkits) to be used in GEOS. 
+The "ISSM" prefix is used to make sure ISSM doesn't inadvertently try to read other binary files.   
 
 The script finds all subdirectories containing files of the form:
 glaciername/glaciername_meshgen.py
@@ -8,27 +9,33 @@ glaciername/glaciername_finalize.py
 
 where "glaciername" (e.g., AIS, GRIS, etc...) is the name of the subdirectory. 
 
-The subdirectories can be nested or organized in any way (i.e., directories without the require 
-python files are passed over), so future development could have a structure like:
+The subdirectories can be nested or organized in any way (i.e., directories without the required 
+python files are passed over), so future development could add a structure like:
 
 iceland/vatnajokull/vatnajokull*.py
 iceland/snaefellsjokull/snaefellsjokull*.py
 ...
 
 Upon running the required python files, two files will be produced for each glacier found: 
-glaciername.bin and glaciername.toolkits.
+ISSM_glaciername.bin and ISSM_glaciername.toolkits
+
+The bin file contains the mesh, boundary conditions, physical parameters, etc., while the toolkits
+file contains configuration options for external packages (usually just PETSc solver options).
 
 The script then calls utils_issm/domain_name.py, which calculates the mean length of every triangle
-edge across all glaciers and calculates the total number of nodes across all glaciers. 
+edge across all glaciers (i.e. mean node spacing) and calculates the total number of nodes.
 
 A domain name is then prescribed as:
 
 ISSM_ME{ mean edge length }_N{ total nodes }_{ top-level glacier names separated by _ }
 
-Top-level glacier names are those that exist at the issm directory level. So, in the iceland
-example above, iceland would appear in domain_name while vatnajokull and snaefellsjokull would not. 
+*The mean edge length (in meters) is rounded to the nearest 1000m.
 
-Finally, the script creates a directory named domain_name and copies all *.bin and *toolkits there.
+*Top-level glacier names are those that exist at the issm directory level. In the iceland example
+ above, iceland would appear in domain_name while vatnajokull and snaefellsjokull would not. 
+
+Finally, the script creates a directory named domain_name and copies all ISSM*.bin and 
+ISSM*toolkits files there.
 
 
 
