@@ -38,7 +38,7 @@ A domain name is then prescribed as:
 
 ISSM_ME{ mean edge length }_N{ total nodes }_{ top-level glacier names separated by _ }
 
-*The mean edge length (in meters) is rounded to the nearest 1000m.
+*The mean edge length (in meters) is rounded to the nearest meter.
 
 *Top-level glacier names are those that exist at the issm directory level. In the iceland example
  above, iceland would appear in domain_name while vatnajokull and snaefellsjokull would not. 

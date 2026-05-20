@@ -57,7 +57,7 @@ total_nodes = int(np.sum(num_nodes))
 for j in range(np.size(num_nodes)):
    global_mean += num_nodes[j]*mean_edges[j]/total_nodes
 
-global_mean = int(np.round(global_mean/1000,0)*1000)
+global_mean = int(np.round(global_mean,0))
 
 # print(f'mean edge length: {global_mean} m')
 
