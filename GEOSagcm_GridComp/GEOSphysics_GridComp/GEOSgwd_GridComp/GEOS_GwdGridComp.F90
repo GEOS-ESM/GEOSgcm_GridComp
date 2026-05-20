@@ -38,17 +38,12 @@ module GEOS_GwdGridCompMod
    use MAPL_CommsMod, only: MAPL_AM_I_ROOT, ArrayGather
    use MAPL_Constants, only: MAPL_RADIUS, MAPL_RGAS, MAPL_GRAV, MAPL_VIREPS, MAPL_PI, MAPL_P00, MAPL_CP
 
-   use mapl3g_generic, only: MAPL_GridCompSetEntryPoint
-   use mapl3g_generic, only: MAPL_GridCompGet
-   use mapl3g_generic, only: MAPL_GridCompGetResource
-   use mapl3g_generic, only: MAPL_GridCompGetInternalState
-   use mapl3g_generic, only: MAPL_GridCompAddSpec
-   use mapl3g_RestartModes, only: MAPL_RESTART_SKIP
-   use mapl3g_VerticalStaggerLoc, only: VERTICAL_STAGGER_NONE, VERTICAL_STAGGER_CENTER, VERTICAL_STAGGER_EDGE
-   use mapl3g_UngriddedDims, only: UngriddedDims
-   use MAPL, only: MAPL_GridGet, MAPL_GridGetCoordinates, mapl_GridGetGlobalCellCountPerDim
-   use mapl3g_State_API, only: MAPL_StateGetPointer
-   use mapl3g_UngriddedDim, only: UngriddedDim
+   use MAPL, only: MAPL_GridGet, MAPL_GridGetCoordinates, mapl_GridGetGlobalCellCountPerDim, &
+                   MAPL_GridCompSetEntryPoint, MAPL_GridCompGet, MAPL_GridCompGetResource, &
+                   MAPL_GridCompGetInternalState, MAPL_GridCompAddSpec, MAPL_RESTART_SKIP, &
+                   VERTICAL_STAGGER_NONE, VERTICAL_STAGGER_CENTER, VERTICAL_STAGGER_EDGE, &
+                   UngriddedDims, MAPL_StateGetPointer
+   use mapl_UngriddedDim, only: UngriddedDim
 
    use gw_rdg, only : gw_rdg_init
    use gw_oro, only : gw_oro_init
