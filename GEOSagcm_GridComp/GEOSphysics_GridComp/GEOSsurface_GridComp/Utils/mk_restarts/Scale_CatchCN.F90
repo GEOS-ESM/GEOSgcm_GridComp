@@ -132,13 +132,13 @@ program Scale_CatchCN
   
 ! Usage
 ! -----
-  if (iargc() /= 6) then
+  if (command_argument_count() /= 6) then
      write(*,*) "Usage: Scale_CatchCN <Input_Catch> <Regridded_Catch> <Scaled_Catch> <SURFLAY> <WEMIN_IN> <WEMIN_OUT>"
-     call exit(2)
+     error stop 2
   end if
 
   do n=1,6
-  call getarg(n,arg(n))
+  call get_command_argument(n,arg(n))
   enddo
 
 ! Open INPUT and Regridded Catch Files
@@ -174,7 +174,7 @@ program Scale_CatchCN
      print *, "You must supply a valid SURFLAY value:"
      print *, "(Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params"
      print *, "(Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params"
-     call exit(2)
+     error stop 2
   end if
   print *, 'SURFLAY: ',SURFLAY
 

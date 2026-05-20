@@ -212,7 +212,7 @@ program  mk_CatchCNRestarts
   integer  :: myid=0, numprocs=1, mpierr, mpistatus(MPI_STATUS_SIZE)  
   logical  :: root_proc=.true.
 
-  real, parameter :: nan = O'17760000000'
+  real, parameter :: nan = huge(1.0)
   real, parameter :: fmin= 1.e-4 ! ignore vegetation fractions at or below this value
   integer, parameter :: OutUnit = 40, InUnit = 50
 
@@ -286,7 +286,7 @@ program  mk_CatchCNRestarts
 
   call ESMF_Initialize(LogKindFlag=ESMF_LOGKIND_NONE) 
   
-  I = iargc()
+  I = command_argument_count()
   
   if( I /=5 ) then
      print *, "Wrong Number of arguments: ", i
@@ -295,7 +295,7 @@ program  mk_CatchCNRestarts
   end if
   
   do n=1,I
-     call getarg(n,arg(n))
+     call get_command_argument(n,arg(n))
   enddo
 
   read(arg(1),'(a)') OutTileFile
@@ -308,7 +308,7 @@ program  mk_CatchCNRestarts
      print *, "You must supply a valid SURFLAY value:"
      print *, "(Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params"
      print *, "(Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params"
-     call exit(2)
+     error stop 2
   end if
 
   ! Are BCs data available? 
@@ -1388,7 +1388,7 @@ contains
            do nz = 1,nzone
               STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'CNCOL'), (/1,i/), (/NTILES_CN,1 /),VAR_DUM2)
               do k = 1, NTILES_CN
-                 var_off_col(TILE_ID(K), nz,nv) = VAR_DUM2(K)
+                 var_off_col(int(TILE_ID(K)), nz,nv) = VAR_DUM2(K)
               end do
               i = i + 1
            end do
@@ -1400,7 +1400,7 @@ contains
               do nz = 1,nzone
                  STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'CNPFT'), (/1,i/), (/NTILES_CN,1 /),VAR_DUM2)
                  do k = 1, NTILES_CN
-                    var_off_pft(TILE_ID(K), nz,nv,iv) = VAR_DUM2(K)
+                    var_off_pft(int(TILE_ID(K)), nz,nv,iv) = VAR_DUM2(K)
                  end do
                  i = i + 1
               end do
@@ -1442,7 +1442,7 @@ contains
                     iv = nv                                     ! same type fraction (primary of secondary)                          
                  else if(ityp_new == ityp_offl (offl_cell,nx) .and. fveg_offl (offl_cell,nx)> fmin) then
                     iv = nx                                     ! not same fraction
-                 else if(iclass(ityp_new)==iclass(ityp_offl(offl_cell,nv)) .and. fveg_offl (offl_cell,nv)> fmin) then
+                 else if(iclass(ityp_new)==iclass(int(ityp_offl(offl_cell,nv))) .and. fveg_offl (offl_cell,nv)> fmin) then
                     iv = nv                                     ! primary, other type (same class)
                  else if(fveg_offl (offl_cell,nx)> fmin) then
                     iv = nx                                     ! secondary, other type (same class)

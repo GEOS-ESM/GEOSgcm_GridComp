@@ -2,7 +2,10 @@ program main
 
   use outlets_constants,only : nc
   implicit none
-  
+
+  ! NAG: int() is non-standard; use portable int(x, i8, i8) with i8 parameter
+  integer, parameter :: i8 = selected_int_kind(18)
+
   integer,allocatable,dimension(:)   :: downid,finalid
   real*8,allocatable,dimension(:)    :: pfaf
   integer,allocatable,dimension(:,:) :: pfaf_digit
@@ -43,11 +46,11 @@ program main
   enddo
   
 ! Separate Pfafstetter number into individual digits  
-  res=int8(pfaf)
-  pfaf_digit(:,1)=res/(int8(10)**int8(11))
+  res=int(pfaf, i8)
+  pfaf_digit(:,1)=res/(int(10,i8)**int(11,i8))
   do i=2,12
-     res=res-int8(10)**int8(13-i)*int8(pfaf_digit(:,i-1))
-     pfaf_digit(:,i)=res/(int8(10)**int8(12-i))
+     res=res-int(10,i8)**int(13-i,i8)*int(pfaf_digit(:,i-1),i8)
+     pfaf_digit(:,i)=res/(int(10,i8)**int(12-i,i8))
   enddo
 
 ! Determine positions of last nonzero digit (pfaf_last) and the last digit that’s neither 0 nor 1 (at the end)  

@@ -74,7 +74,7 @@
     if(I < 2 .or. I > 17) then
        print *, "Wrong Number of arguments: ", i
        print *, trim(Usage)
-       call exit(1)
+       stop 1
     end if
 
     nxt = 1
@@ -111,7 +111,7 @@
           UseType = .true.
        case default
           print *, trim(Usage)
-          call exit(1)
+          stop 1
        end select
        nxt = nxt + 1
        call get_command_argument(nxt,arg)
@@ -130,7 +130,7 @@
     allocate(xs(ii+1),ys(jj+1),stat=STATUS)
     VERIFY_(STATUS)
 
-    dx = 360.0_8/float(ii)
+    dx = 360.0d0/float(ii)
    
     select case (dq(1:2))
     case ('DC')
@@ -150,20 +150,20 @@
        xs(i) = lon0 + (i-1)*dx
     enddo
 
-    ys(   1) = -90._8
-    ys(jj+1) =  90._8
+    ys(   1) = -90.d0
+    ys(jj+1) =  90.d0
 
     select case (pt)
     case ('PC')
-       dy = 180._8 / (jj-1)
+       dy = 180.d0 / (jj-1)
        ys(2) = ys(1) + 0.5*dy
     case ('PE')
-       dy = 180._8 / (jj  )
+       dy = 180.d0 / (jj  )
        ys(2) = ys(1) +     dy
     case default
        print *, " Bad pole grid type. Must be PE or PC:", PT
        print *, trim(Usage)
-       call exit(1)
+       stop 1
     end select
 
     if(trim(Gridname) == '') then
@@ -214,7 +214,7 @@
 ! All Done
 !---------
 
-    call Exit(0)
+    stop 0
 
   end program MkLatLonRaster
 

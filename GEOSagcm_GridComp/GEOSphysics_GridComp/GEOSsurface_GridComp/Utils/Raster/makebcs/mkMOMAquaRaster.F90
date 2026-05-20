@@ -47,7 +47,7 @@ INCLUDE "netcdf.inc"
     if(I < 1 .or. I > 8) then
        print *, "Wrong Number of arguments: ", i
        print *, trim(Usage)
-       call exit(1)
+       stop 1
     end if
 
     nxt = 1
@@ -79,7 +79,7 @@ INCLUDE "netcdf.inc"
           OCEAN_VERSION = trim(arg) 
        case default
           print *, trim(Usage)
-          call exit(1)
+          stop 1
        end select
        nxt = nxt + 1
        call get_command_argument(nxt,arg)
@@ -113,7 +113,7 @@ INCLUDE "netcdf.inc"
     call LRRasterize(GridName,xvert,yvert,nc=nc,nr=nr,&
                      SurfaceType=0,Verb=Verb,Here=Here,tol=tol)
 
-    call exit(0)
+    stop 0
 
 contains
 

@@ -46,7 +46,7 @@
     if(I < 2 .or. I > 13) then
        print *, "Wrong Number of arguments: ", i
        print *, trim(Usage)
-       call exit(1)
+       stop 1
     end if
 
     nxt = 1
@@ -79,7 +79,7 @@
           UseType = .true.
        case default
           print *, trim(Usage)
-          call exit(1)
+          stop 1
        end select
        nxt = nxt + 1
        call get_command_argument(nxt,arg)

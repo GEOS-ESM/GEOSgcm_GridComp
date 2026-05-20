@@ -20,8 +20,7 @@ module CatchmentRstMod
 
   implicit none
 #ifndef __GFORTRAN__
-  integer           :: ftell
-  external          :: ftell
+
 #endif
 
   type :: CatchmentRst
@@ -158,7 +157,7 @@ contains
        open(newunit=unit, file=filename,  form='unformatted', action = 'read')
        bpos=0
        read(unit)
-       epos = ftell(unit)          ! ending position of file pointer
+       inquire(unit=unit, pos=epos)  ! ending position of file pointer (Fortran 2003)
        close(unit)
        ntiles = (epos-bpos)/4-2    ! record size (in 4 byte words; 
        catch%ntiles = ntiles

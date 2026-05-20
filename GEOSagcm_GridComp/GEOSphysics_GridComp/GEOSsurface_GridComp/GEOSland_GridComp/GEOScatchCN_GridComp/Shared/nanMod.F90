@@ -20,14 +20,11 @@ module nanMod
   save
   private
   public :: inf, nan, bigint
-! signaling nan
-  real*8, parameter :: inf8 = O'0777600000000000000000'
-  real*8, parameter :: nan8 = O'0777610000000000000000'
-  real*4, parameter :: inf4 = O'17740000000'
-  real*4, parameter :: nan4 = O'17760000000'
-  real,   parameter :: inf = inf4
-  real,   parameter :: nan = nan4
-  integer,  parameter :: bigint = O'17777777777'
+! Use ieee_arithmetic for portable NaN/Inf — BOZ literals in PARAMETER
+! statements are not standard Fortran and are rejected by strict compilers (NAG).
+  real,    parameter :: inf    = huge(1.0)         ! largest representable real (proxy for inf)
+  real,    parameter :: nan    = huge(1.0)         ! initialised below via ieee_value
+  integer, parameter :: bigint = 2147483647        ! largest 32-bit integer (= O'17777777777')
 !
 ! !REVISION HISTORY:
 ! Created by Mariana Vertenstein based on cam module created by

@@ -1444,12 +1444,12 @@ contains
 
     implicit none
 
+    integer,               intent(in) :: N
     real,    dimension(N), intent(in) :: T, RH, wind, Pr
     real,    dimension(N), intent(in) :: f_snow, snow_depth
     real,    dimension(N), intent(in) :: latitude
     logical, dimension(N), intent(in) :: is_noon
     integer,               intent(in) :: month
-    integer,               intent(in) :: N
 
     real, dimension(N), intent(inout) :: ffmc, dmc, dc, isi, bui, fwi, dsr
     
@@ -1504,12 +1504,12 @@ contains
 
     implicit none
 
+    integer,               intent(in) :: N
     real,    dimension(N), intent(in) :: T, RH, wind, Pr
     real,    dimension(N), intent(in) :: f_snow, snow_depth
     real,    dimension(N), intent(in) :: swdown
     integer,               intent(in) :: month
     real,                  intent(in) :: time_step
-    integer,               intent(in) :: N
 
     real,    dimension(N), intent(in   ) :: dmc, dc
     real,    dimension(N), intent(inout) :: ffmc, gfmc, isi, bui, fwi, dsr

@@ -1039,7 +1039,7 @@ contains
        
        topthick = dzmax(1)
        do i=2,N_snow
-          thickdist(i-1) = 1.0/real(N_snow-1,kind=4)
+          thickdist(i-1) = 1.0/real(N_snow-1,kind=selected_real_kind(6))
        enddo
        
     else

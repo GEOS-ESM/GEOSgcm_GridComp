@@ -90,7 +90,7 @@ INCLUDE "netcdf.inc"
 
     if(I < 2 .or. I > 11) then
        print *, trim(Usage)
-       call exit(1)
+       stop 1
     end if
 
     nxt = 1
@@ -127,7 +127,7 @@ INCLUDE "netcdf.inc"
        !   OverlayO = trim(arg)
        case default
           print *, trim(Usage)
-          call exit(1)
+          stop 1
        end select
 
        nxt = nxt + 1
@@ -148,11 +148,11 @@ INCLUDE "netcdf.inc"
 
     if(trim(Overlay)=='') then
       print*, 'Must Provide Overlay'
-      call exit(0)
+      stop 0
     end if
     !if(trim(OverlayO)=='') then
     !  print*, 'Must Provide OverlayO'
-    !  call exit(0)
+    !  stop 0
     !end if
 
     call ReadGridFile(GridFile, MOMLAT, MOMWET)
@@ -259,14 +259,14 @@ INCLUDE "netcdf.inc"
        endif
     enddo
 
-    xmin = -180.0_8
-    xmax =  180.0_8
-    ymin =  -90.0_8
-    ymax =   90.0_8
+    xmin = -180.0d0
+    xmax =  180.0d0
+    ymin =  -90.0d0
+    ymax =   90.0d0
 
     dx    = (xmax-xmin)/nx
     dy    = (ymax-ymin)/ny
-    d2r   = (2._8*PI)/360.0_8
+    d2r   = (2.d0*PI)/360.0d0
 
     if(Verb) then
        call system_clock(count1)
@@ -279,7 +279,7 @@ INCLUDE "netcdf.inc"
 
     LATITUDES: do j=1,ny
 
-       lats = -90._8 + (j - 0.5_8)*dy
+       lats = -90.d0 + (j - 0.5d0)*dy
        da   = (sin(d2r*(lats+0.5*dy)) - &
                sin(d2r*(lats-0.5*dy))   )*(dx*d2r)
 
@@ -402,7 +402,7 @@ INCLUDE "netcdf.inc"
 ! All done
 
     print * , 'Terminated Normally'
-    call exit(0)
+    stop 0
 
 contains
 

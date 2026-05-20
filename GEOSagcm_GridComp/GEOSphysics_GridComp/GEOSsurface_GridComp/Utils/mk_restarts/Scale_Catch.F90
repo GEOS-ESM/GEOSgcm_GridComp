@@ -19,8 +19,6 @@ program Scale_Catch
 
   character(256)    :: fname1, fname2, fname3
 #ifndef __GFORTRAN__
-  integer           :: ftell
-  external          :: ftell
 #endif
   integer           :: bpos, epos, ntiles, n, nargs
   integer           :: old,  new,  sca
@@ -104,13 +102,13 @@ program Scale_Catch
  
 ! Usage
 ! -----
-  if (iargc() /= 6) then
+  if (command_argument_count() /= 6) then
      write(*,*) "Usage: Scale_Catch <Input_Catch> <Regridded_Catch> <Scaled_Catch> <SURFLAY> <WEMIN_IN> <WEMIN_OUT>"
-     call exit(2)
+     error stop 2
   end if
 
   do n=1,6
-  call getarg(n,arg(n))
+  call get_command_argument(n,arg(n))
   enddo
 
 ! Open INPUT and Regridded Catch Files
@@ -146,7 +144,7 @@ program Scale_Catch
      print *, "You must supply a valid SURFLAY value:"
      print *, "(Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params"
      print *, "(Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params"
-     call exit(2)
+     error stop 2
   end if
   print *, 'SURFLAY: ',SURFLAY
 
@@ -160,7 +158,7 @@ program Scale_Catch
 !    ----------------
      bpos=0
      read(10)
-     epos = ftell(10)            ! ending position of file pointer
+     inquire(unit=10, pos=epos) ! ftell replacement            ! ending position of file pointer
      ntiles = (epos-bpos)/4-2    ! record size (in 4 byte words; 
      rewind 10
 

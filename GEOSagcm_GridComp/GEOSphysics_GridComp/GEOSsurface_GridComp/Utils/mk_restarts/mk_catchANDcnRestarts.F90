@@ -51,65 +51,65 @@ PROGRAM mk_catchANDcnRestarts
        integer :: nxt
        character(len=256) :: arg
        nxt = 1
-       call getarg(nxt,arg)
+       call get_command_argument(nxt,arg)
 
        do while(trim(arg) /= '')
           select case (trim(arg))
           case ('-h')
               call print_usage()
-              call exit(0)
+              stop 0
           case ('-out_bcs')
             nxt = nxt + 1
-            call getarg(nxt,arg)
+            call get_command_argument(nxt,arg)
             out_bcsdir = trim(arg)
           case ('-time')
             nxt = nxt + 1
-            call getarg(nxt,arg)
+            call get_command_argument(nxt,arg)
             YYYYMMDDHHMM = trim(arg)
           case ('-out_dir')
             nxt = nxt + 1
-            call getarg(nxt,arg)
+            call get_command_argument(nxt,arg)
             out_dir = trim(arg)
           case ('-model')
             nxt = nxt + 1
-            call getarg(nxt,arg)
+            call get_command_argument(nxt,arg)
             model = trim(arg)
           case ('-surflay')
             nxt = nxt + 1
-            call getarg(nxt,arg)
+            call get_command_argument(nxt,arg)
             read(arg,*)  surflay
           case ('-in_tilefile')
             nxt = nxt + 1
-            call getarg(nxt,arg)
+            call get_command_argument(nxt,arg)
             in_tilefile =  trim(arg)
           case ('-out_tilefile')
             nxt = nxt + 1
-            call getarg(nxt,arg)
+            call get_command_argument(nxt,arg)
             out_tilefile =  trim(arg)
           case ('-in_rst')
             nxt = nxt + 1
-            call getarg(nxt,arg)
+            call get_command_argument(nxt,arg)
             in_rstfile   =  trim(arg)
           case ('-out_rst')
             nxt = nxt + 1
-            call getarg(nxt,arg)
+            call get_command_argument(nxt,arg)
             out_rstfile   =  trim(arg)
           case ('-in_wemin')
             nxt = nxt + 1
-            call getarg(nxt,arg)
+            call get_command_argument(nxt,arg)
             read(arg,*)  wemin_in
           case ('-out_wemin')
             nxt = nxt + 1
-            call getarg(nxt,arg)
+            call get_command_argument(nxt,arg)
             read(arg,*)  wemin_out
           case default
             print*, trim(arg)
             call print_usage()
             print*, "wong command line"
-            call exit(1)
+            stop 1
           end select
           nxt = nxt + 1
-          call getarg(nxt,arg)
+          call get_command_argument(nxt,arg)
        end do
        if (index(model, 'catchcn') /=0 ) then
          if((INDEX(out_bcsdir, '/ICA/') /= 0) .or. (INDEX(out_bcsdir, '/GM4/') /= 0)) then

@@ -129,7 +129,7 @@ Program MakeLandRaster
   if(I > 13) then
      print *, "Wrong Number of arguments: ", i
      print *, trim(Usage)
-     call exit(1)
+     stop 1
   end if
   
   nxt = 1
@@ -138,7 +138,7 @@ Program MakeLandRaster
      call get_command_argument(nxt,arg)
      if(arg(1:1)/='-') then
         print *, trim(Usage)
-        call exit(1)
+        stop 1
      end if
      opt=arg(2:2)
      if(len(trim(arg))==2) then
@@ -167,7 +167,7 @@ Program MakeLandRaster
         read(arg,*) maxtiles
      case default
         print *, trim(Usage)
-        call exit(1)
+        stop 1
      end select
      
      nxt = nxt + 1
@@ -390,20 +390,20 @@ Program MakeLandRaster
       
   ! lat/lon coords of raster grid cells
 
-  xmin = -180.0_8               ! western  edge of grid
-  xmax =  180.0_8               ! eastern  edge of grid
-  ymin =  -90.0_8               ! southern edge of grid
-  ymax =   90.0_8               ! northern edge of grid
+  xmin = -180.0d0               ! western  edge of grid
+  xmax =  180.0d0               ! eastern  edge of grid
+  ymin =  -90.0d0               ! southern edge of grid
+  ymax =   90.0d0               ! northern edge of grid
   
   dx    = (xmax-xmin)/nx        ! raster grid spacing (longitude)
   dy    = (ymax-ymin)/ny        ! raster grid spacing (latitude)
 
-  d2r   = (2._8*PI)/360.0_8     ! degree-to-radians conversion
+  d2r   = (2.d0*PI)/360.0d0     ! degree-to-radians conversion
   
   ! Compute sin and cos at longitude centers of raster cells
   
   do i = 1,nx
-     xs = (xmin + dx*(i-0.5_8))*d2r    ! radians
+     xs = (xmin + dx*(i-0.5d0))*d2r    ! radians
      cc(i) = cos(xs)
      ss(i) = sin(xs)
   enddo
@@ -414,7 +414,7 @@ Program MakeLandRaster
         raster(:,j) = (raster(:,j)/10000)*10000
      end where
 
-     ys  = ymin + dy*(j-0.5_8)
+     ys  = ymin + dy*(j-0.5d0)
      da  = (sin(d2r*(ys+0.5*dy)) -   &
             sin(d2r*(ys-0.5*dy)) )*(dx*d2r)
 
@@ -443,7 +443,7 @@ Program MakeLandRaster
            if(ip>maxtiles) then
               print *, "Exceeded maxtiles = ", maxtiles, &
                        ". Use -t option to increase."
-              call exit(1)
+              stop 1
            end if
            
            select case (Pix)
@@ -541,7 +541,7 @@ Program MakeLandRaster
   ! All done
   
   if(Verb) print * , 'Terminated normally'
-  call exit(0)
+  stop 0
   
 end Program MakeLandRaster
   

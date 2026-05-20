@@ -24,8 +24,6 @@ program SaltImpConverter
 
   integer, parameter   :: zoom=1
 #ifndef __GFORTRAN__
-  integer              :: ftell
-  external             :: ftell
 #endif
   integer              :: bpos, epos, ntot
   integer              :: foutID, status, TimID, TileID 
@@ -94,17 +92,17 @@ program SaltImpConverter
     'TS_FOUND'       &
       /
 
-  I = iargc()
+  I = command_argument_count()
 
   if(I /= 3) then
      print *, "Wrong Number of arguments: ", i
      print *, trim(Usage)
-     call exit(1)
+     stop 1
   end if
 
-  call getarg(1,InTileFile)
-  call getarg(2,InImpRestart)
-  call getarg(3,InIntRestart)
+  call get_command_argument(1,InTileFile)
+  call get_command_argument(2,InImpRestart)
+  call get_command_argument(3,InIntRestart)
 
   InRestart = trim(InImpRestart)
 
@@ -243,7 +241,7 @@ program SaltImpConverter
        read (50,iostat=rc)
        if( rc.eq.0 ) then
            ntot = ntot + 1
-           epos = ftell(50)          ! ending position of file pointer
+           inquire(unit=50, pos=epos) ! ftell replacement          ! ending position of file pointer
          nwords = (epos-bpos)/4-2    ! record size (in 4 byte words;
          write(6,100) ntot, nwords
          if( ntot.eq.1 ) then

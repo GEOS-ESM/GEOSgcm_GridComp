@@ -103,7 +103,7 @@ end subroutine WriteRaster
 !
 !  if(DoZip) then
 !     print *, "Reading zipped raster files not supported"
-!     call exit(1)
+!     stop 1
 !  else
 !     call READRST(RASTER(1,1),nx,ny,trim(FILE)//CHAR(0))
 !  end if

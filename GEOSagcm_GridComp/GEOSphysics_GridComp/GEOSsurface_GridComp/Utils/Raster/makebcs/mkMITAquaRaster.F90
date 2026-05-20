@@ -7,6 +7,7 @@
       use MAPL_ExceptionHandling
       use, intrinsic :: iso_fortran_env, only: REAL64
       implicit none
+      integer, parameter :: I8 = selected_int_kind(18)  ! NAG-portable 64-bit integer kind
 
       integer, parameter      :: IUNIT  = 11,   OUNIT = 12
       integer                 :: iargc
@@ -14,9 +15,8 @@
       INTEGER                 :: NC
       INTEGER                 :: NX, NY
 
-      integer                 :: STATARRAY(12)
-      integer(REAL64)         :: filesize
-      integer(REAL64)         :: Length
+      integer(I8)         :: filesize
+      integer(I8)         :: Length
       integer                 :: K
       integer                 :: i, j
       integer                 :: KF, L, NF
@@ -110,7 +110,7 @@
    if(I < 2 .or. i > 7) then
       print *, "Wrong Number of arguments: ", i
       print *, trim(Usage)
-      call exit(1)
+      stop 1
    end if
    
    nxt = 1
@@ -137,7 +137,7 @@
          Verb  = .true.
       case default
          print *, trim(Usage)
-         call exit(1)
+         stop 1
       end select
       nxt = nxt + 1
       call get_command_argument(nxt,arg)
@@ -153,12 +153,11 @@
 
       ! Open Facet 3 first. It is always a square (CS or LLC)
       open (IUNIT,file=trim(GridDir)//'/tile003.mitgrid', status='old')
-      call fstat(IUNIT,statarray)
+      inquire(unit=IUNIT, size=filesize)  ! Fortran 2003 replacement for fstat
       close (IUNIT)
-      filesize = statarray(8)
 
       !ALT: Kludge for LLC4320
-      if (filesize <= 0) filesize = 2389893248
+      if (filesize <= 0) filesize = 2389893248_I8
 !      print *,'file size=',filesize
 
       LENGTH = filesize/REAL64
@@ -169,7 +168,7 @@
 
       if(k==21) then
          print *, 'Bad GMIT grid file', trim(GridDir)//'/tile003.mitgrid'
-         call exit(1)
+         stop 1
       end if
 
       nc  = nint(sqrt(length/real(k,kind=REAL64)))
@@ -182,13 +181,11 @@
 
       ! Open Facet 1 to check sizes CS or LLC)
       open (IUNIT,file=trim(GridDir)//'/tile001.mitgrid', status='old')
-      call fstat(IUNIT,statarray)
+      inquire(unit=IUNIT, size=filesize)  ! Fortran 2003 replacement for fstat
       close (IUNIT)
 
-      filesize = statarray(8)
-
       !ALT: Kludge for LLC4320
-      if (filesize <= 0) filesize = 7168573568
+      if (filesize <= 0) filesize = 7168573568_I8
 !      print *,'file size=',filesize
 
       LENGTH = filesize/(REAL64 * k)
@@ -199,7 +196,7 @@
          isLLC = .true.
       else
          print *, 'ERROR: Unknown grid type'
-         call exit(1)
+         stop 1
       end if
 
       if(Verb) then
@@ -371,6 +368,6 @@
    call LRRasterize(RASTERFILE,XV,YV,nc=ncol,nr=nrow,&
                     SurfaceType=0,Verb=Verb)
 
-   call exit(0)
+   stop 0
 
  end program MAIN

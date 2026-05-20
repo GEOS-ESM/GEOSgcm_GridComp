@@ -50,7 +50,7 @@
 
     if(I < 1 .or. I > 16) then
        print *, Usage
-       call exit(66)
+       error stop 66
     end if
 
     nxt = 1
@@ -95,7 +95,7 @@
           g_case=.true. 
        case default
           print *, Usage
-          call exit(1)
+          stop 1
        end select
 
        nxt = nxt + 1
@@ -165,6 +165,6 @@
 ! All done
 !---------
 
-    call exit(0)
+    stop 0
 
   end program mkCubeFVRaster

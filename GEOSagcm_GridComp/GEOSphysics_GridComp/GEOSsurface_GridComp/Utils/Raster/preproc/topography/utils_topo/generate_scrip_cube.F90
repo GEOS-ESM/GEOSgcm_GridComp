@@ -495,11 +495,11 @@
         ! Correct for longitude periodicity
         lon_w = minval(node_xy(1,:))
         lon_e = maxval(node_xy(1,:))
-        if (abs(lon_e - lon_w) > 1.5_8*pi) then
+        if (abs(lon_e - lon_w) > 1.5d0*pi) then
           if (tmp_center_lons(i,j) < pi) then
-            where (node_xy(1,:) > pi) node_xy_tmp(1,:) = node_xy(1,:) - 2._8*pi
+            where (node_xy(1,:) > pi) node_xy_tmp(1,:) = node_xy(1,:) - 2.d0*pi
           else
-            where (node_xy(1,:) < pi) node_xy_tmp(1,:) = node_xy(1,:) + 2._8*pi
+            where (node_xy(1,:) < pi) node_xy_tmp(1,:) = node_xy(1,:) + 2.d0*pi
           endif
         endif
     
@@ -567,8 +567,8 @@
          
            if (found_degenerate) then
              ! build a tiny fallback polygon around the center
-             tiny_dlon = 1.0d-2 * pi/180._8
-             tiny_dlat = 1.0d-2 * pi/180._8
+             tiny_dlon = 1.0d-2 * pi/180.d0
+             tiny_dlat = 1.0d-2 * pi/180.d0
              clon = tmp_center_lons(i,j)   ! radians
              clat = tmp_center_lats(i,j)   ! radians
              p1 = [clon - tiny_dlon, clat - tiny_dlat]
@@ -590,8 +590,8 @@
              SCRIP_Area(n) = abs(area_signed)
          
              ! write fallback into SCRIP arrays
-             SCRIP_CornerLon(:,n) = modulo([p1(1),p2(1),p3(1),p4(1)]*(180._8/pi),360.0_8)
-             SCRIP_CornerLat(:,n) =        [p1(2),p2(2),p3(2),p4(2)]*(180._8/pi)
+             SCRIP_CornerLon(:,n) = modulo([p1(1),p2(1),p3(1),p4(1)]*(180.d0/pi),360.0d0)
+             SCRIP_CornerLat(:,n) =        [p1(2),p2(2),p3(2),p4(2)]*(180.d0/pi)
              fallback_mask(n)     = .true.
              failed_cells         = failed_cells + 1
          
@@ -648,8 +648,8 @@
            if (bad_corner) then
              clon = tmp_center_lons(i,j)
              clat = tmp_center_lats(i,j)
-             tiny_dlon = 1.0d-4 * pi/180._8
-             tiny_dlat = 1.0d-4 * pi/180._8
+             tiny_dlon = 1.0d-4 * pi/180.d0
+             tiny_dlat = 1.0d-4 * pi/180.d0
              node_xy_tmp(:,1) = [modulo(clon-tiny_dlon,2*pi), clat-tiny_dlat]
              node_xy_tmp(:,2) = [modulo(clon+tiny_dlon,2*pi), clat-tiny_dlat]
              node_xy_tmp(:,3) = [modulo(clon+tiny_dlon,2*pi), clat+tiny_dlat]
@@ -668,8 +668,8 @@
            if (area_signed /= area_signed .or. abs(area_signed) < 1.0d-12 .or. abs(area_signed) > 1.0d10) then
              clon = tmp_center_lons(i,j)
              clat = tmp_center_lats(i,j)
-             tiny_dlon = 1.0d-4 * pi/180._8
-             tiny_dlat = 1.0d-4 * pi/180._8
+             tiny_dlon = 1.0d-4 * pi/180.d0
+             tiny_dlat = 1.0d-4 * pi/180.d0
              p1 = [modulo(clon-tiny_dlon,2*pi), clat-tiny_dlat]
              p2 = [modulo(clon+tiny_dlon,2*pi), clat-tiny_dlat]
              p3 = [modulo(clon+tiny_dlon,2*pi), clat+tiny_dlat]
@@ -685,8 +685,8 @@
            endif
          
            ! Write CCW corners and POSITIVE area
-           SCRIP_CornerLon(:,n) = modulo([p1(1),p2(1),p3(1),p4(1)]*(180._8/pi), 360.0_8)
-           SCRIP_CornerLat(:,n) =        [p1(2),p2(2),p3(2),p4(2)]*(180._8/pi)
+           SCRIP_CornerLon(:,n) = modulo([p1(1),p2(1),p3(1),p4(1)]*(180.d0/pi), 360.0d0)
+           SCRIP_CornerLat(:,n) =        [p1(2),p2(2),p3(2),p4(2)]*(180.d0/pi)
            SCRIP_Area(n)        = area_signed
          
          else
@@ -705,8 +705,8 @@
             swap_p = p2;  p2 = p4;  p4 = swap_p   ! make CW
           end if
           
-          SCRIP_CornerLon(:,n) = modulo([p1(1),p2(1),p3(1),p4(1)]*(180._8/pi), 360.0_8)
-          SCRIP_CornerLat(:,n) =        [p1(2),p2(2),p3(2),p4(2)]*(180._8/pi)
+          SCRIP_CornerLon(:,n) = modulo([p1(1),p2(1),p3(1),p4(1)]*(180.d0/pi), 360.0d0)
+          SCRIP_CornerLat(:,n) =        [p1(2),p2(2),p3(2),p4(2)]*(180.d0/pi)
           
           SCRIP_Area(n) = sph_tri_area_rad(p1,p2,p3) + sph_tri_area_rad(p1,p3,p4)  ! steradians
           if (SCRIP_Area(n) <= 0.d0) SCRIP_Area(n) = 1.d-12          
@@ -904,7 +904,7 @@
         end do
       
         pair_local(1) = best_dist
-        pair_local(2) = real(max(0,best_idx), 8)
+        pair_local(2) = real(max(0,best_idx), REAL64)
         call MPI_Allreduce(pair_local, pair_global, 1, MPI_2DOUBLE_PRECISION, MPI_MINLOC, mpiC, mpi_err)
         global_idx_max_rrfac = int(pair_global(2))
       
@@ -1670,13 +1670,14 @@ subroutine remove_duplicate_points(points, num_points, eps, unique_points, num_u
 end subroutine
 
 subroutine safe_reorder_hull(node_xy_tmp, hull, p1, p2, p3, p4, n, i, j)
+  use, intrinsic :: iso_fortran_env, only: REAL64
   implicit none
-  real(8), intent(in)  :: node_xy_tmp(2,4)
+  real(REAL64), intent(in)  :: node_xy_tmp(2,4)
   integer, intent(in)  :: hull(4)
-  real(8), intent(out) :: p1(2), p2(2), p3(2), p4(2)
+  real(REAL64), intent(out) :: p1(2), p2(2), p3(2), p4(2)
   integer, intent(in)  :: n, i, j
   integer :: idx
-  real(8) :: tmp_nodes(2,4)
+  real(REAL64) :: tmp_nodes(2,4)
 
   do idx = 1,4
      if (hull(idx) < 1 .or. hull(idx) > 4) then
@@ -1692,6 +1693,7 @@ subroutine safe_reorder_hull(node_xy_tmp, hull, p1, p2, p3, p4, n, i, j)
 end subroutine safe_reorder_hull
 
 subroutine handle_polar_cell(node_num, points, hull_num, hull)
+   use, intrinsic :: iso_fortran_env, only: REAL64
    implicit none
    integer, intent(in) :: node_num
    real(REAL64), intent(in) :: points(2,node_num)
@@ -1713,6 +1715,7 @@ subroutine handle_polar_cell(node_num, points, hull_num, hull)
 end subroutine
 
 subroutine sort_by_angles(n, angles, idx)
+   use, intrinsic :: iso_fortran_env, only: REAL64
    implicit none
    integer, intent(in) :: n
    real(REAL64), intent(inout) :: angles(n)
@@ -1730,18 +1733,19 @@ subroutine sort_by_angles(n, angles, idx)
 end subroutine
 
 subroutine reorder_hull_quad(node_xy, p1, p2, p3, p4)
+  use, intrinsic :: iso_fortran_env, only: REAL64
   implicit none
-  real(8), intent(in) :: node_xy(2,4)
-  real(8), intent(out) :: p1(2), p2(2), p3(2), p4(2)
-  real(8) :: centroid(2), angles(4)
+  real(REAL64), intent(in) :: node_xy(2,4)
+  real(REAL64), intent(out) :: p1(2), p2(2), p3(2), p4(2)
+  real(REAL64) :: centroid(2), angles(4)
   integer :: i, order(4), temp_order
-  real(8) :: temp_angle, temp_x(4), temp_y(4)
+  real(REAL64) :: temp_angle, temp_x(4), temp_y(4)
   logical :: swapped
-  real(8) :: xyz1(3), xyz2(3), xyz3(3), xyz4(3), normal(3), xyz_centroid(3), orientation, tmp_p(2)
+  real(REAL64) :: xyz1(3), xyz2(3), xyz3(3), xyz4(3), normal(3), xyz_centroid(3), orientation, tmp_p(2)
   logical, parameter :: verbose = .false.
 
   ! Compute centroid
-  centroid = [sum(node_xy(1,:))/4.0_8, sum(node_xy(2,:))/4.0_8]
+  centroid = [sum(node_xy(1,:))/4.0d0, sum(node_xy(2,:))/4.0d0]
 
   ! Compute angles from centroid to each corner
   do i = 1,4
@@ -1795,10 +1799,10 @@ subroutine reorder_hull_quad(node_xy, p1, p2, p3, p4)
    xyz4 = lonlat_to_xyz(p4(1), p4(2))
 
    normal = cross(xyz1, xyz2) + cross(xyz2, xyz3) + cross(xyz3, xyz4) + cross(xyz4, xyz1)
-   xyz_centroid = (xyz1 + xyz2 + xyz3 + xyz4) / 4.0_8
+   xyz_centroid = (xyz1 + xyz2 + xyz3 + xyz4) / 4.0d0
    orientation = dot_product(normal, xyz_centroid)
 
-   if (orientation > 0.0_8) then
+   if (orientation > 0.0d0) then
        tmp_p = p2
        p2 = p4
        p4 = tmp_p
@@ -1816,11 +1820,12 @@ end subroutine reorder_hull_quad
 
 ! Calculate signed spherical polygon area using Girard's formula:
 function get_signed_area_spherical_polygon(p1, p2, p3, p4) result(area_signed)
+  use, intrinsic :: iso_fortran_env, only: REAL64
   implicit none
-  real(8), intent(in) :: p1(2), p2(2), p3(2), p4(2)
-  real(8) :: area_signed
-  real(8) :: angles(4), excess
-  real(8), dimension(3) :: xyz1, xyz2, xyz3, xyz4
+  real(REAL64), intent(in) :: p1(2), p2(2), p3(2), p4(2)
+  real(REAL64) :: area_signed
+  real(REAL64) :: angles(4), excess
+  real(REAL64), dimension(3) :: xyz1, xyz2, xyz3, xyz4
 
   xyz1 = lonlat_to_xyz(p1(1), p1(2))
   xyz2 = lonlat_to_xyz(p2(1), p2(2))
@@ -1832,17 +1837,18 @@ function get_signed_area_spherical_polygon(p1, p2, p3, p4) result(area_signed)
   angles(3) = vertex_angle(xyz2, xyz3, xyz4)
   angles(4) = vertex_angle(xyz3, xyz4, xyz1)
 
-  excess = sum(angles) - 2.0_8*pi
+  excess = sum(angles) - 2.0d0*pi
   area_signed = excess  ! negative for CW, positive for CCW
 end function
 
 ! Helper function to calculate vertex angle:
 function vertex_angle(xyzA, xyzB, xyzC) result(angle)
+  use, intrinsic :: iso_fortran_env, only: REAL64
   implicit none
-  real(8), intent(in) :: xyzA(3), xyzB(3), xyzC(3)
-  real(8) :: angle
-  real(8), dimension(3) :: AB, CB, cross_prod
-  real(8) :: norm_cross, dot_prod
+  real(REAL64), intent(in) :: xyzA(3), xyzB(3), xyzC(3)
+  real(REAL64) :: angle
+  real(REAL64), dimension(3) :: AB, CB, cross_prod
+  real(REAL64) :: norm_cross, dot_prod
 
   AB = xyzA - xyzB
   CB = xyzC - xyzB
@@ -1856,8 +1862,10 @@ end function
 
 ! Convert spherical coordinates (lon,lat) to Cartesian coordinates
 function lonlat_to_xyz(lon, lat) result(xyz)
-  real(kind=8), intent(in) :: lon, lat
-  real(kind=8) :: xyz(3)
+  use, intrinsic :: iso_fortran_env, only: REAL64
+  implicit none
+  real(REAL64), intent(in) :: lon, lat
+  real(REAL64) :: xyz(3)
 
   xyz(1) = cos(lat) * cos(lon)
   xyz(2) = cos(lat) * sin(lon)
@@ -1865,8 +1873,10 @@ function lonlat_to_xyz(lon, lat) result(xyz)
 end function
 
 function cross(a, b) result(c)
-  real(kind=8), intent(in) :: a(3), b(3)
-  real(kind=8) :: c(3)
+  use, intrinsic :: iso_fortran_env, only: REAL64
+  implicit none
+  real(REAL64), intent(in) :: a(3), b(3)
+  real(REAL64) :: c(3)
 
   c(1) = a(2)*b(3) - a(3)*b(2)
   c(2) = a(3)*b(1) - a(1)*b(3)
