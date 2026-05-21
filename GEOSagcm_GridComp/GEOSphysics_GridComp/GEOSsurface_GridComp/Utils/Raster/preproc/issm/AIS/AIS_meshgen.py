@@ -1,7 +1,5 @@
 import devpath
-import os
-ISSM_DIR = os.getenv('ISSM_DIR') # for binaries
-
+import sys,os
 import numpy as np
 from triangle import triangle
 from model import *
@@ -9,6 +7,14 @@ from netCDF4 import Dataset
 from InterpFromGridToMesh import InterpFromGridToMesh
 from bamg import bamg
 from clusters.discover_geos import export_discover
+
+h_max = sys.argv[1] if len(sys.argv) > 1 else 50000
+h_min = sys.argv[2] if len(sys.argv) > 2 else 5000
+h_max = float(h_max)
+h_min = float(h_min)
+
+print(f'h_max: {h_max}')
+print(f'h_min: {h_min}')
 
 if not os.path.exists('./netcdfs'):
     os.mkdir('./netcdfs')
@@ -28,20 +34,18 @@ spacing = nsidc_vel.spacing
 spacing = float((spacing.lstrip())[0:4])
 nx = nsidc_vel.nx
 ny = nsidc_vel.ny
-velx = nsidc_vel['vx'][:].data
-vely = nsidc_vel['vy'][:].data
+vx = nsidc_vel['vx'][:].data
+vy = nsidc_vel['vy'][:].data
 # Build coordinates
 x2 = xmin + np.arange(nx + 1) * spacing
 y2 = (ymax - ny * spacing) + np.arange(ny + 1) * spacing
 
-# print('   Set observed velocities')
-md.initialization.vx = InterpFromGridToMesh(x2, y2, np.flipud(velx), md.mesh.x, md.mesh.y, 0)
-md.initialization.vy = InterpFromGridToMesh(x2, y2, np.flipud(vely), md.mesh.x, md.mesh.y, 0)
-md.initialization.vz = np.zeros(md.mesh.numberofvertices)
-md.initialization.vel = np.sqrt(md.initialization.vx**2 + md.initialization.vy**2)
-del velx, vely
+vx_ = InterpFromGridToMesh(x2, y2, np.flipud(vx), md.mesh.x, md.mesh.y, 0)
+vy_ = InterpFromGridToMesh(x2, y2, np.flipud(vy), md.mesh.x, md.mesh.y, 0)
+speed = np.sqrt(vx_**2 + vy_**2)
+del vx, vy, vx_, vy_
 
-md = bamg(md, 'hmax', 75000, 'hmin', 5000, 'gradation', 1.4, 'field', md.initialization.vel, 'err', 8)
+md = bamg(md, 'hmax', h_max, 'hmin', h_min, 'gradation', 1.4, 'field', speed, 'err', 8)
 
 # export mesh
 export_discover(md, './netcdfs/AIS_mesh.nc')

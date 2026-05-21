@@ -9,6 +9,7 @@ from model import *
 from loadmodel import loadmodel
 
 num_nodes = np.array([ ])
+num_edges = np.array([ ])
 mean_edges = np.array([ ])
 
 # find all subdirectories with python code
@@ -47,19 +48,21 @@ for model in models:
    # print(f'number of nodes: {md.mesh.x.size}')
    # print('\n')
    
+   num_edges = np.append(num_edges,[v1_x.size])
    num_nodes = np.append(num_nodes,[md.mesh.x.size])
    mean_edges = np.append(mean_edges,[mean_edge_length])
    i += 1
 
 global_mean = 0
 total_nodes = int(np.sum(num_nodes))
+total_edges = int(np.sum(num_edges))
 # print(f'total nodes: {total_nodes}')
 for j in range(np.size(num_nodes)):
-   global_mean += num_nodes[j]*mean_edges[j]/total_nodes
+   global_mean += num_edges[j]*mean_edges[j]/total_edges
 
 global_mean = int(np.round(global_mean,0))
 
-# print(f'mean edge length: {global_mean} m')
+#print(f'mean edge length method: {global_mean} m')
 
 #print('\n')
 #print('============================================================')

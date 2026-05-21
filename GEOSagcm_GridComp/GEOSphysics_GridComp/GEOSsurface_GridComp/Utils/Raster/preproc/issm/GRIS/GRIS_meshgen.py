@@ -1,7 +1,5 @@
 import devpath
-import os
-ISSM_DIR = os.getenv('ISSM_DIR') # for binaries
-
+import sys,os
 import numpy as np
 from triangle import triangle
 from model import *
@@ -14,6 +12,14 @@ from clusters.discover_geos import export_discover
 
 if not os.path.exists('./netcdfs'):
     os.mkdir('./netcdfs')
+
+h_max = sys.argv[1] if len(sys.argv) > 1 else 50000
+h_min = sys.argv[2] if len(sys.argv) > 2 else 5000
+h_max = float(h_max)
+h_min = float(h_min)
+
+print(f'h_max: {h_max}')
+print(f'h_min: {h_min}')
 
 # Step 1: Mesh generation
 #Generate initial uniform mesh (resolution = 20000 m)
@@ -43,7 +49,7 @@ vy = InterpFromGridToMesh(x1, y1, vely, md.mesh.x, md.mesh.y, 0)
 speed = np.sqrt(vx**2 + vy**2)
 
 # Mesh Greenland (refine according to flow speed)
-md = bamg(md, 'hmax', 75000, 'hmin', 5000, 'gradation', 1.4, 'field', speed, 'err', 8)
+md = bamg(md, 'hmax', h_max, 'hmin', h_min, 'gradation', 1.4, 'field', speed, 'err', 8)
 
 # export mesh
 export_discover(md, './netcdfs/GRIS_mesh.nc')

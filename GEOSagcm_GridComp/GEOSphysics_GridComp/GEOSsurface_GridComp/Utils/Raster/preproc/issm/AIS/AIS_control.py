@@ -22,10 +22,10 @@ export_discover(md, "./netcdfs/AIS_parameterization.nc",delete_rundir=True)
 
 # Step 3: basal friction inversion 
 	# Control general
-md.inversion.nsteps = 400
+md.inversion.nsteps = 100
 md.inversion.iscontrol=1
-md.inversion.maxsteps=400
-md.inversion.maxiter=400
+md.inversion.maxsteps=100
+md.inversion.maxiter=100
 md.inversion.dxmin=0.01
 md.inversion.gttol=1.0e-8
 
