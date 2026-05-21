@@ -48,7 +48,7 @@ MODULE ConvPar_GF2020
   INTEGER :: OUTPUT_SOUND        = 0       ! Diagnostic profile output flag
 
   LOGICAL :: wrtgrads            = .FALSE.
-  INTEGER :: nrec = 0, ntimes = 0
+  INTEGER :: ntimes = 0
   REAL    :: int_time = 0.
 
   !=============================================================================
@@ -155,6 +155,15 @@ MODULE ConvPar_GF2020
   REAL, PARAMETER :: PI         = 3.1415926536
 
   INTEGER :: whoami_all, JCOL
+
+  !=============================================================================
+  ! OPENMP THREAD-PRIVATE STATE
+  !=============================================================================
+  !$OMP THREADPRIVATE( &
+  !$OMP    HEI_DOWN_LAND, HEI_DOWN_OCEAN, HEI_UPDF_LAND, HEI_UPDF_OCEAN, &
+  !$OMP    MIN_EDT_LAND, MIN_EDT_OCEAN, MAX_EDT_LAND, MAX_EDT_OCEAN, &
+  !$OMP    FADJ_MASSFLX, USE_EXCESS, &
+  !$OMP    JCOL )
 
 CONTAINS
 
@@ -774,7 +783,7 @@ CONTAINS
    INTEGER, DIMENSION(its:ite)             :: kpbli, last_ierr
 
    INTEGER :: i, j, k, kr, n, itf, jtf, ktf, ispc, zmax, status, imemory, irun, jlx, kk, kss, plume, ii_plume
-   REAL    :: dp, dq, exner, dtdt, PTEN, PQEN, PAPH, ZRHO, PAHFS, PQHFL, ZKHVFL, PGEOH, fixouts, dt_inv
+   REAL    :: dp, dq, exner, dtdt, PTEN, PQEN, PAPH, ZRHO, PAHFS, PQHFL, ZKHVFL, PGEOH, fixouts, dt_inv, min_dist
 
    !===========================================================================
    ! 2. INITIALIZATION & SETUP
@@ -800,6 +809,41 @@ CONTAINS
    !===========================================================================
    ! 3. MAIN HORIZONTAL (J) LOOP
    !===========================================================================
+   !$OMP PARALLEL DO DEFAULT(NONE) &
+   !$OMP SHARED(jts, jtf, its, itf, kts, ktf, kte, dt, ite, dx2d, &
+   !$OMP        conprr, lightn_dens, Tpert_h, Tpert_v, xland, sfc_press, &
+   !$OMP        temp2m, topt, kpbl, lons, lats, zt, press, temp, rvap, &
+   !$OMP        curr_rvap, u, v, dm, om, buoy_exc, rth_advten, rqvften, &
+   !$OMP        rthblten, rqvblten, rthften, ccn_in, cnvfrc, srftype, &
+   !$OMP        stochastic_sig, col_sat, mp_ice, mp_liq, mp_cf, CNV_Tracers, &
+   !$OMP        flip, sflux_t, sflux_r, ADV_TRIGGER, APPLY_SUB_MP, &
+   !$OMP        USE_TRACER_TRANSP, mtp, nmp, SH_MD_DP, &
+   !$OMP        icumulus_gf, cum_hei_down_land, cum_hei_down_ocean, &
+   !$OMP        cum_hei_updf_land, cum_hei_updf_ocean, cum_min_edt_land, &
+   !$OMP        cum_min_edt_ocean, cum_max_edt_land, cum_max_edt_ocean, &
+   !$OMP        cum_fadj_massflx, cum_use_excess, cumulus_type, closure_choice, &
+   !$OMP        cum_entr_rate, cum_cap_maxs, FIX_NEGATIVES, USE_MOMENTUM_TRANSP, &
+   !$OMP        CONVECTION_TRACER, do_this_column, &
+   !$OMP        ierr4d, jmin4d, klcl4d, k224d, kbcon4d, ktop4d, kstabi4d, kstabm4d, &
+   !$OMP        cprr4d, xmb4d, edt4d, pwav4d, sigma4d, pcup5d, entr5d, &
+   !$OMP        up_massentr5d, up_massdetr5d, dd_massentr5d, dd_massdetr5d, &
+   !$OMP        zup5d, zdn5d, prup5d, prdn5d, clwup5d, tup5d, conv_cld_fr5d, &
+   !$OMP        sgs_vvel_5d, AA0, AA1, AA2, AA3, AA1_BL, AA1_CIN, TAU_BL, &
+   !$OMP        TAU_DP, TAU_MD, RTHCUTEN, RVCUTEN, RUCUTEN, RQVCUTEN, RQCCUTEN, &
+   !$OMP        REVSU_GF, PRFIL_GF, SUB_MPQL, SUB_MPQI, SUB_MPCF, RCHEMCUTEN, &
+   !$OMP        RBUOYCUTEN) &
+   !$OMP PRIVATE(j, i, k, kr, n, ii_plume, plume, ispc, zmax, &
+   !$OMP         pten, pqen, paph, zrho, pahfs, pqhfl, zkhvfl, pgeoh, &
+   !$OMP         ztexec, zqexec, last_ierr, fixout_qv, revsu_gf_2d, &
+   !$OMP         prfil_gf_2d, Tpert_2d, temp_tendqv, outt, outu, outv, &
+   !$OMP         outq, outqc, outnice, outnliq, outbuoy, omeg, outmpqi, &
+   !$OMP         outmpql, outmpcf, out_chem, xlandi, psur, tsur, ter11, &
+   !$OMP         kpbli, xlons, xlats, zo, po, temp_old, qv_old, qv_curr, &
+   !$OMP         rhoi, tkeg, rcpg, us, vs, dm2d, buoy_exc2d, temp_new_ADV, &
+   !$OMP         qv_new_ADV, mpqi, mpql, mpcf, se_chem, pbl, h_sfc_flux, &
+   !$OMP         le_sfc_flux, zws, TAU_, temp_new, qv_new, dhdt, &
+   !$OMP         temp_new_BL, qv_new_BL, min_dist, distance, fixouts, cum_ztexec, &
+   !$OMP         cum_zqexec)
    DO j = jts, jtf
       JCOL = j
 
@@ -1067,12 +1111,21 @@ CONTAINS
       if (FIX_NEGATIVES) then
          DO i = its, itf
             if(do_this_column(i,j) == 0) cycle
+            
+            zmax = kts
+            min_dist = 99999.0
+            
             do k = kts, ktf
                temp_tendqv(i,k) = outq(i,k,shal) + outq(i,k,deep) + outq(i,k,mid)
                distance(k)      = qv_curr(i,k) + temp_tendqv(i,k) * dt
+               
+               if (distance(k) < min_dist) then
+                  min_dist = distance(k)
+                  zmax = k
+               end if
             enddo
-            if(minval(distance(kts:ktf)) < 0.0) then
-               zmax = MINLOC(distance(kts:ktf), 1)
+            
+            if(min_dist < 0.0) then
                if(abs(temp_tendqv(i,zmax) * dt) < mintracer) then
                   fixout_qv(i) = 0.999999
                else
@@ -1705,11 +1758,11 @@ CONTAINS
               entr_rate(i,k) = entr_rate(i,k) * rh_fac
            endif
            entr_rate(i,k) = max(entr_rate(i,k), min_entr_rate)
-           SELECT CASE(trim(cumulus))
-             CASE('deep');    cd(i,k) = 0.10 * entr_rate(i,k)
-             CASE('mid');     cd(i,k) = 0.50 * entr_rate(i,k)
-             CASE('shallow'); cd(i,k) = 0.75 * entr_rate(i,k)
-           END SELECT
+           ! --- Dynamic Updraft Detrainment (Physically driven by RH) ---
+           ! Uses incoming cd(i,k) [which is entr_rate_plume] and scales it.
+           ! Drier air (frh -> 0) increases detrainment.
+           ! Moist air (frh -> 1) decreases detrainment.
+           cd(i,k) = cd(i,k) * (1.6 - frh)
         endif
      enddo
   ENDDO
@@ -1725,29 +1778,22 @@ CONTAINS
                         use_excess, zqexec, ztexec, x_add_buoy, xland, cnvfrc, itf, ktf, its, ite, kts, kte)
 
   !- Setup initial Downdraft Profile Parameters
-  if (ZERO_DIFF_ENTR == 1) then     
+  if (ZERO_DIFF_ENTR == 1) then
       mentrd_rate = entr_rate_plume
       cdd = mentrd_rate
       sigd(:) = MERGE(1.0, 0.0, DOWNDRAFT)
   else
-      !- Scale-aware downdraft switch (matches updraft scaling perfectly)
+      !- Dynamically scale downdraft mixing using resolution awareness (sig)
+      ! At coarse resolutions (sig ~ 1), it mixes normally (multiplier ~1.0). 
+      ! At fine resolutions (sig -> 0), the downdraft core is protected (multiplier drops to 0.5).
+      DO k = kts, kte
+         DO i = its, itf
+            if(ierr(i) /= 0) cycle
+            mentrd_rate(i,k) = entr_rate_plume * max(0.5, sig(i))
+            cdd(i,k)         = mentrd_rate(i,k)
+         ENDDO
+      ENDDO
       sigd(:) = MERGE(sig(:), 0.0, DOWNDRAFT)
-      !- Physically-based downdraft lateral mixing (Entrainment/Detrainment)
-      SELECT CASE(trim(cumulus))
-        CASE('deep')
-           ! Restrict lateral mixing so the downdraft preserves its cold,
-           ! heavy core and transports moisture/mass forcefully into the lower levels
-           mentrd_rate = entr_rate_plume * 0.3  ! <--- DECREASED FROM 1.0
-        CASE('mid')
-           ! Optionally reduce this too, or leave at 1.0 if you want mid-level
-           ! convection to remain leaky
-           mentrd_rate = entr_rate_plume * 0.5
-        CASE('shallow')
-           mentrd_rate = entr_rate_plume * 0.3
-        CASE DEFAULT
-           mentrd_rate = entr_rate_plume * 0.3
-      END SELECT
-      cdd = mentrd_rate
   endif
 
   !- Update Source Parcels
@@ -2143,6 +2189,7 @@ CONTAINS
   T_star = MERGE(5.0, 40.0, trim(cumulus) == 'deep')
 
   IF(SGS_W_TIMESCALE == 0.0) THEN
+     ! Option 1: Legacy / Default Method (Bechtold dx scaling)
      DO i = its, itf
         if(ierr(i) /= 0) cycle
         if(xland(i) > 0.99) then
@@ -2158,17 +2205,37 @@ CONTAINS
         tau_ecmwf(i) = tau_ecmwf(i) * (1. + 1.66 * (dx(i) / 125000.))
      ENDDO
   ELSE
+     ! Option 2: Dynamic / w_eff Method (Fixed logic, uses GF sig(i) scaling)
      DO i = its, itf
         if(ierr(i) /= 0) cycle
+
+        ! 1. Boundary Layer Timescale Calculation
         umean = (1.0 - xland(i)) * 2.0 + xland(i) * (1.0 + sqrt(0.5 * (US(i,1)**2 + VS(i,1)**2 + US(i,kbcon(i))**2 + VS(i,kbcon(i))**2)))
         tau_bl(i) = max(1800.0, min(max(zo_cup(i,kbcon(i)) - z1(i), 1.0) / umean, 7200.0))
 
+        ! 2. Dynamic ECMWF Timescale Calculation with GF sig(i) scale-awareness
         dz = max(zo_cup(i,ktop(i)) - zo_cup(i,kbcon(i)), 1.e-16)
         w_eff = min(max(vvel1d(i), 0.3), 4.0)
         tau_ecmwf(i) = (dz / w_eff) * (1.0 + sig(i)) * SGS_W_TIMESCALE
-        if(trim(cumulus) == 'deep') tau_ecmwf(i) = min(tau_deep, max(7200.0, max(tau_ecmwf(i), dtime)))
-        if(trim(cumulus) == 'mid')  tau_ecmwf(i) = min(tau_mid , max(3600.0, max(tau_ecmwf(i), dtime)))
-        tau_ecmwf(i) = max(tau_ecmwf(i), tau_bl(i))
+
+        ! 3. Fix Min/Max Bounding Logic 
+        ! Prevents hardcoding to tau_deep by keeping it between timestep and tau_deep
+        if(trim(cumulus) == 'deep') then
+           tau_ecmwf(i) = min(tau_deep, max(dtime, tau_ecmwf(i)))
+        elseif(trim(cumulus) == 'mid') then
+           tau_ecmwf(i) = min(tau_mid , max(dtime, tau_ecmwf(i)))
+        endif
+
+        ! 4. Safely apply tau_bl as a lower limit without overriding tau_deep/tau_mid
+        ! Prevents a sluggish boundary layer wind from accidentally dragging the timescale to 7200s
+        if(trim(cumulus) == 'deep') then
+           tau_ecmwf(i) = max(tau_ecmwf(i), min(tau_bl(i), tau_deep))
+        elseif(trim(cumulus) == 'mid') then
+           tau_ecmwf(i) = max(tau_ecmwf(i), min(tau_bl(i), tau_mid))
+        else
+           tau_ecmwf(i) = max(tau_ecmwf(i), tau_bl(i))
+        endif
+
      ENDDO
   ENDIF
 
@@ -5019,7 +5086,7 @@ CONTAINS
   real   , intent(inout) :: zu(kts:kte)
   character*(*), intent(in) ::draft,cumulus
   !- local var
-  integer :: kk,add,i,nrec=0,k,kb_adj,kpbli_adj,level_max_zu,ktarget
+  integer :: kk,add,i,k,kb_adj,kpbli_adj,level_max_zu,ktarget
   real :: zumax,ztop_adj,a2,beta, alpha,kratio,tunning,FZU,krmax,dzudk,hei_updf,hei_down
   real :: zuh(kts:kte),zul(kts:kte),  pmaxzu ! pressure height of max zu for deep
   real,   parameter :: px =45./120. ! px sets the pressure level of max zu. its range is from 1 to 120.
@@ -5569,7 +5636,7 @@ CONTAINS
  character*(*), intent(in) ::draft
 
  !- local var
- integer :: add,i,nrec=0,k,kb_adj
+ integer :: add,i,k,kb_adj
  real ::zumax,ztop_adj
  real ::beta, alpha,kratio,tunning
 
@@ -5671,14 +5738,6 @@ ENDIF
    endif
 
    return
-
-!OPEN(19,FILE= 'zu.gra', FORM='unformatted',ACCESS='direct'&
-!       ,STATUS='unknown',RECL=4)
-! DO k = kts,kte
-!    nrec=nrec+1
-!     WRITE(19,REC=nrec) zu(k)
-! END DO
-!close (19)
 
   END SUBROUTINE get_zu_zd_pdf_orig
 !------------------------------------------------------------------------------------

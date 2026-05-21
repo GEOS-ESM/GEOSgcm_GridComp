@@ -1450,7 +1450,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         ! -----------------------------------------------------------------------
         ! Use estimated inversion strength to determine stable vs unstable areas
         ! -----------------------------------------------------------------------
-        fac_eis = get_fac_eis(eis(i),srf_type) ! Estimated inversion strength determine stable regime
+        fac_eis = 1.0 !get_fac_eis(eis(i),srf_type) ! Estimated inversion strength determine stable regime
 
         ! -----------------------------------------------------------------------
         ! adjust autoconversion rates and thresholds for stable vs unstable 

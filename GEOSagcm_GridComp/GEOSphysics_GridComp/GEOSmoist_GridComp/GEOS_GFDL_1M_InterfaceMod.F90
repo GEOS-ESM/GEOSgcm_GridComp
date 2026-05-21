@@ -300,7 +300,7 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
     ! Add RingTime = currTime to anchor the alarm
     DBZ_RunAlarm = ESMF_AlarmCreate(Clock       = CLOCK,          &
                                    Name         = 'DBZ_RunAlarm', &
-                                   RingTime     = currTime,       &
+                                   RingTime     = currTime-TINT,  &
                                    RingInterval = ringInterval,   &
                                    Sticky       = .false.  , RC=STATUS); VERIFY_(STATUS)
 
@@ -389,8 +389,7 @@ subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
     call MAPL_GetResource( MAPL, CCI_EVAP_EFF, 'CCI_EVAP_EFF:', DEFAULT= CCI_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 3000.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    2.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, GFDL_MP_KLID    , 'GFDL_MP_KLID:'    , DEFAULT= -999.0, RC=STATUS); VERIFY_(STATUS)
 
