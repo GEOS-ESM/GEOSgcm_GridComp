@@ -1758,11 +1758,11 @@ CONTAINS
               entr_rate(i,k) = entr_rate(i,k) * rh_fac
            endif
            entr_rate(i,k) = max(entr_rate(i,k), min_entr_rate)
-           SELECT CASE(trim(cumulus))
-             CASE('deep');    cd(i,k) = 0.10 * entr_rate(i,k)
-             CASE('mid');     cd(i,k) = 0.50 * entr_rate(i,k)
-             CASE('shallow'); cd(i,k) = 0.75 * entr_rate(i,k)
-           END SELECT
+           ! --- Dynamic Updraft Detrainment (Physically driven by RH) ---
+           ! Uses incoming cd(i,k) [which is entr_rate_plume] and scales it.
+           ! Drier air (frh -> 0) increases detrainment.
+           ! Moist air (frh -> 1) decreases detrainment.
+           cd(i,k) = cd(i,k) * (1.6 - frh)
         endif
      enddo
   ENDDO
@@ -1778,29 +1778,22 @@ CONTAINS
                         use_excess, zqexec, ztexec, x_add_buoy, xland, cnvfrc, itf, ktf, its, ite, kts, kte)
 
   !- Setup initial Downdraft Profile Parameters
-  if (ZERO_DIFF_ENTR == 1) then     
+  if (ZERO_DIFF_ENTR == 1) then
       mentrd_rate = entr_rate_plume
       cdd = mentrd_rate
       sigd(:) = MERGE(1.0, 0.0, DOWNDRAFT)
   else
-      !- Scale-aware downdraft switch (matches updraft scaling perfectly)
+      !- Dynamically scale downdraft mixing using resolution awareness (sig)
+      ! At coarse resolutions (sig ~ 1), it mixes normally (multiplier ~1.0). 
+      ! At fine resolutions (sig -> 0), the downdraft core is protected (multiplier drops to 0.5).
+      DO k = kts, kte
+         DO i = its, itf
+            if(ierr(i) /= 0) cycle
+            mentrd_rate(i,k) = entr_rate_plume * max(0.5, sig(i))
+            cdd(i,k)         = mentrd_rate(i,k)
+         ENDDO
+      ENDDO
       sigd(:) = MERGE(sig(:), 0.0, DOWNDRAFT)
-      !- Physically-based downdraft lateral mixing (Entrainment/Detrainment)
-      SELECT CASE(trim(cumulus))
-        CASE('deep')
-           ! Restrict lateral mixing so the downdraft preserves its cold,
-           ! heavy core and transports moisture/mass forcefully into the lower levels
-           mentrd_rate = entr_rate_plume * 0.3  ! <--- DECREASED FROM 1.0
-        CASE('mid')
-           ! Optionally reduce this too, or leave at 1.0 if you want mid-level
-           ! convection to remain leaky
-           mentrd_rate = entr_rate_plume * 0.5
-        CASE('shallow')
-           mentrd_rate = entr_rate_plume * 0.3
-        CASE DEFAULT
-           mentrd_rate = entr_rate_plume * 0.3
-      END SELECT
-      cdd = mentrd_rate
   endif
 
   !- Update Source Parcels
@@ -2196,6 +2189,7 @@ CONTAINS
   T_star = MERGE(5.0, 40.0, trim(cumulus) == 'deep')
 
   IF(SGS_W_TIMESCALE == 0.0) THEN
+     ! Option 1: Legacy / Default Method (Bechtold dx scaling)
      DO i = its, itf
         if(ierr(i) /= 0) cycle
         if(xland(i) > 0.99) then
@@ -2211,17 +2205,37 @@ CONTAINS
         tau_ecmwf(i) = tau_ecmwf(i) * (1. + 1.66 * (dx(i) / 125000.))
      ENDDO
   ELSE
+     ! Option 2: Dynamic / w_eff Method (Fixed logic, uses GF sig(i) scaling)
      DO i = its, itf
         if(ierr(i) /= 0) cycle
+
+        ! 1. Boundary Layer Timescale Calculation
         umean = (1.0 - xland(i)) * 2.0 + xland(i) * (1.0 + sqrt(0.5 * (US(i,1)**2 + VS(i,1)**2 + US(i,kbcon(i))**2 + VS(i,kbcon(i))**2)))
         tau_bl(i) = max(1800.0, min(max(zo_cup(i,kbcon(i)) - z1(i), 1.0) / umean, 7200.0))
 
+        ! 2. Dynamic ECMWF Timescale Calculation with GF sig(i) scale-awareness
         dz = max(zo_cup(i,ktop(i)) - zo_cup(i,kbcon(i)), 1.e-16)
         w_eff = min(max(vvel1d(i), 0.3), 4.0)
         tau_ecmwf(i) = (dz / w_eff) * (1.0 + sig(i)) * SGS_W_TIMESCALE
-        if(trim(cumulus) == 'deep') tau_ecmwf(i) = min(tau_deep, max(7200.0, max(tau_ecmwf(i), dtime)))
-        if(trim(cumulus) == 'mid')  tau_ecmwf(i) = min(tau_mid , max(3600.0, max(tau_ecmwf(i), dtime)))
-        tau_ecmwf(i) = max(tau_ecmwf(i), tau_bl(i))
+
+        ! 3. Fix Min/Max Bounding Logic 
+        ! Prevents hardcoding to tau_deep by keeping it between timestep and tau_deep
+        if(trim(cumulus) == 'deep') then
+           tau_ecmwf(i) = min(tau_deep, max(dtime, tau_ecmwf(i)))
+        elseif(trim(cumulus) == 'mid') then
+           tau_ecmwf(i) = min(tau_mid , max(dtime, tau_ecmwf(i)))
+        endif
+
+        ! 4. Safely apply tau_bl as a lower limit without overriding tau_deep/tau_mid
+        ! Prevents a sluggish boundary layer wind from accidentally dragging the timescale to 7200s
+        if(trim(cumulus) == 'deep') then
+           tau_ecmwf(i) = max(tau_ecmwf(i), min(tau_bl(i), tau_deep))
+        elseif(trim(cumulus) == 'mid') then
+           tau_ecmwf(i) = max(tau_ecmwf(i), min(tau_bl(i), tau_mid))
+        else
+           tau_ecmwf(i) = max(tau_ecmwf(i), tau_bl(i))
+        endif
+
      ENDDO
   ENDIF
 

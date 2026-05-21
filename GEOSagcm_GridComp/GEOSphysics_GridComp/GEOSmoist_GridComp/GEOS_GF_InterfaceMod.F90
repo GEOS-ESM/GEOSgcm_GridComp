@@ -40,7 +40,6 @@ module GEOS_GF_InterfaceMod
   logical :: FIX_CNV_CLOUD
   logical :: REPORT_GF_NEGATIVES
   integer :: ZERO_DIFF_TAU
-  integer :: ZERO_DIFF_AUTOCONV
   integer :: ZERO_DIFF_VGRID
   integer :: ZERO_DIFF_OTHER
 
@@ -123,7 +122,6 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, ZERO_DIFF_VVEL            , 'ZERO_DIFF_VVEL:'        ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_ENTR            , 'ZERO_DIFF_ENTR:'        ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_TAU             , 'ZERO_DIFF_TAU:'         ,default= 1,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, ZERO_DIFF_AUTOCONV        , 'ZERO_DIFF_AUTOCONV:'    ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_VGRID           , 'ZERO_DIFF_VGRID:'       ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_OTHER           , 'ZERO_DIFF_OTHER:'       ,default= 1,    RC=STATUS );VERIFY_(STATUS)
     else
@@ -132,7 +130,6 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, ZERO_DIFF_VVEL            , 'ZERO_DIFF_VVEL:'        ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_ENTR            , 'ZERO_DIFF_ENTR:'        ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_TAU             , 'ZERO_DIFF_TAU:'         ,default= 0,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, ZERO_DIFF_AUTOCONV        , 'ZERO_DIFF_AUTOCONV:'    ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_VGRID           , 'ZERO_DIFF_VGRID:'       ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_OTHER           , 'ZERO_DIFF_OTHER:'       ,default= 0,    RC=STATUS );VERIFY_(STATUS)
     endif
@@ -168,23 +165,20 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, C0_SHAL                   , 'C0_SHAL:'               ,default= 0.0   ,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, QRC_CRIT_OCN              , 'QRC_CRIT_OCN:'          ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, QRC_CRIT_LND              , 'QRC_CRIT_LND:'          ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
-      if (INT(ZERO_DIFF_AUTOCONV) == 0) then
-        ! C1: Explicit cloud condensate detrainment rate [m^-1].
-        ! Controls how much suspended liquid/ice is forcibly shed into the grid-scale environment.
-        ! Default (1.0e-3) favors convective precipitation; increasing (e.g., 2.0e-3 to 3.0e-3) shifts 
-        ! moisture to host microphysics, where evaporation can moisten the 700-300 mb free troposphere.
-        call MAPL_GetResource(MAPL, C1                        , 'C1:'                    ,default= 3.0e-3,RC=STATUS );VERIFY_(STATUS)
-      else
-        call MAPL_GetResource(MAPL, C1                        , 'C1:'                    ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
-      endif
+      ! C1: Explicit cloud condensate detrainment rate [m^-1].
+      ! Controls how much suspended liquid/ice is forcibly shed into the grid-scale environment.
+      ! Default (1.0e-3) favors convective precipitation; increasing (e.g., 2.0e-3 to 3.0e-3) shifts 
+      ! moisture to host microphysics, where evaporation can moisten the 700-300 mb free troposphere.
+      ! Caution: impact may inadvertantly flatten the ITCZ too much
+      call MAPL_GetResource(MAPL, C1                        , 'C1:'                    ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
 
       if (INT(ZERO_DIFF_TAU) == 0) then
          call MAPL_GetResource(MAPL, GF_MIN_AREA               , 'GF_MIN_AREA:'           ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
                                      SGS_W_TIMESCALE = 1.0 ! factor for adjusting GF2020 timescales
          call MAPL_GetResource(MAPL, SGS_W_TIMESCALE           , 'SGS_W_TIMESCALE:'       ,default= SGS_W_TIMESCALE, RC=STATUS );VERIFY_(STATUS)
          ! These are UPPER bounds for new GF timescales
-         call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 7200., RC=STATUS );VERIFY_(STATUS)
-         call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default=10800., RC=STATUS );VERIFY_(STATUS)
+         call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 3600., RC=STATUS );VERIFY_(STATUS)
+         call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default= 5400., RC=STATUS );VERIFY_(STATUS)
         ! FADJ_MASSFLX is a fractional mass flux tuning factor (1.0 is no reduction) in low CAPE environments
         call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(DEEP)    , 'FADJ_MASSFLX_DP:'       ,default= 1.0,   RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(SHAL)    , 'FADJ_MASSFLX_SH:'       ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
