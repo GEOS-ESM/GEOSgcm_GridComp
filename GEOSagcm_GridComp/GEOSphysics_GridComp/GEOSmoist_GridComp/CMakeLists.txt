@@ -16,6 +16,8 @@ set (srcs
   GEOS_MoistGridComp.F90 Wnet.F90
   # files that are sometimes present?
   # ras00.F90 cloud.F90
+  # Python interface files that doesn't fit the MAPL_PythonBridge pattern
+  ./pyMoist/pyMoist/fortran/moist_workarounds.F90
   )
 
 if (CMAKE_Fortran_COMPILER_ID MATCHES Intel AND CMAKE_BUILD_TYPE MATCHES Aggressive)
@@ -77,3 +79,11 @@ foreach ( file ${rc_files} )
    get_filename_component( dir ${file} DIRECTORY )
    install( FILES ${file} DESTINATION etc/${dir} )
 endforeach()
+
+# Install the `pyMoist` python source files
+# Install the Python/MAPL directory
+install (
+  DIRECTORY pyMoist/pyMoist
+  DESTINATION lib/Python
+  USE_SOURCE_PERMISSIONS
+  )

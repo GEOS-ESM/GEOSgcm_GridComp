@@ -33,7 +33,3 @@ else ()
   esma_add_subdirectories (${alldirs})
 
 endif()
-
-
-
-

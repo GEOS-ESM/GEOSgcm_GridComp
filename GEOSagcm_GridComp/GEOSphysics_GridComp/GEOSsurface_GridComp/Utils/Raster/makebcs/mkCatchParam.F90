@@ -12,7 +12,7 @@ PROGRAM mkCatchParam
 !     -y: Size of latitude dimension of input raster.             DEFAULT: 4320
 !     -b: Position of dateline w.r.t. first grid cell boundaries. DEFAULT: DC (dateline-on-center)
 !     -g: Gridname (name of the .til or .rst file without file extension)  
-!     -v: LBCSV : Land bcs version (F25, GM4, ICA, NL3, NL4, NL5, v06, v07, v08, v09)
+!     -v: LBCSV : Land bcs version (F25, GM4, ICA, NL3, NL4, NL5, v06, v07, v08, v09, v11, v12 and v13 )
 !     
 !
 ! This program is good to generate  
@@ -44,7 +44,7 @@ PROGRAM mkCatchParam
   character*128        :: ARG, MaskFile
   character*256        :: CMD
   character*1          :: opt
-  character*7          :: PEATSOURCE   = 'GDLHWSD'
+  character*128        :: PEATSOURCE   = ''
   character*3          :: VEGZSOURCE   = 'D&S'
   character*2          :: DL ='DC'    
   integer              :: II, JJ, Type
@@ -207,8 +207,19 @@ integer :: n_threads=1
       fnameRst='rst/'//trim(Gridname)  
       fnameTil='til/'//trim(Gridname)  
     endif 
-
-    if(use_PEATMAP)  PEATSOURCE   = 'PEATMAP'
+    
+    select case (PEAT_INFO)
+    case (0)
+       PEATSOURCE = 'HWSDv1.21 (formerly "GDLHWSD")'
+    case (1)
+       PEATSOURCE = 'HWSDv1.21 + PEATMAP (Xu et al 2017, doi:10.5518/252)'
+    case (2)
+       PEATSOURCE = 'Global Peatland Map 2.0 (Greifswald)'
+    case default
+       write (log_file,'(a)') 'Unknown PEAT_INFO.  Stopping!'
+       stop
+    end select
+    
     if(jpl_height)   VEGZSOURCE   = 'JPL'
 
     if (trim(SNOWALB)=='MODC061' .or. trim(SNOWALB) =='MODC061v2')  process_snow_albedo=.true.
