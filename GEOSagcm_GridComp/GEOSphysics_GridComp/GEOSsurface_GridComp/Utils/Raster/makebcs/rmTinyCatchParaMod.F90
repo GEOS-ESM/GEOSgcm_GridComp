@@ -1222,7 +1222,9 @@ contains
     
     if (two_EASE) then
        iTable(:,2) = iTable(:,2) - 1
-       iTable(:,3) = iTable(:,3) - 1
+       !flip to make it consistent with conventional EASE indexing
+       iTable(:,3) = JM(1) - iTable(:,3)
+       
        where (iTable(:,0) == 0)
           iTable(:,4) = iTable(:,4) -1
           iTable(:,5) = iTable(:,5) -1
