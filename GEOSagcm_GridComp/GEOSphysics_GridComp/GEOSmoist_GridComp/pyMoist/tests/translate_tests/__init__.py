@@ -350,7 +350,7 @@ from .microphysics.GFDL_1M.translate_GFDL_1M_RadiationCoupling import TranslateG
 from .microphysics.GFDL_1M.translate_GFDL_1M_RedistributeClouds import TranslateGFDL_1M_RedistributeClouds
 from .microphysics.GFDL_1M.translate_GFDL_1M_Setup import TranslateGFDL_1M_Setup
 from .translate_saturation_specific_humidity_functions import Translatesaturation_specific_humidity_functions
-
+from .translate_aerosol_activation import TranslateAerosolActivation
 
 __all__ = [
     "TranslateGFDL_1M_Driver",
