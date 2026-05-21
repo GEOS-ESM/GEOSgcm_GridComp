@@ -30,20 +30,19 @@ module GEOS_GwdGridCompMod
    ! !USES:
 
    use esmf
-   use mapl_ErrorHandling, only: MAPL_Verify, MAPL_RTRN, MAPL_ASSERT
-   use MAPL, only : MAPL_get_current_thread => get_current_thread
+   use MAPL, only: MAPL_Verify, MAPL_RTRN, MAPL_ASSERT, &
+                   MAPL_get_current_thread => get_current_thread
    use MAPL, only : MAPL_get_num_threads => get_num_threads
    use MAPL, only : MAPL_find_bounds => find_bounds
    use MAPL, only : MAPL_Interval => Interval
-   use MAPL_CommsMod, only: MAPL_AM_I_ROOT, ArrayGather
+   use MAPL, only: MAPL_AM_I_ROOT, ArrayGather
    use MAPL_Constants, only: MAPL_RADIUS, MAPL_RGAS, MAPL_GRAV, MAPL_VIREPS, MAPL_PI, MAPL_P00, MAPL_CP
 
    use MAPL, only: MAPL_GridGet, MAPL_GridGetCoordinates, mapl_GridGetGlobalCellCountPerDim, &
                    MAPL_GridCompSetEntryPoint, MAPL_GridCompGet, MAPL_GridCompGetResource, &
                    MAPL_GridCompGetInternalState, MAPL_GridCompAddSpec, MAPL_RESTART_SKIP, &
                    VERTICAL_STAGGER_NONE, VERTICAL_STAGGER_CENTER, VERTICAL_STAGGER_EDGE, &
-                   UngriddedDims, MAPL_StateGetPointer
-   use mapl3g_UngriddedDim, only: UngriddedDim
+                   UngriddedDims, MAPL_StateGetPointer, UngriddedDim
 
    use gw_rdg, only : gw_rdg_init
    use gw_oro, only : gw_oro_init
