@@ -759,11 +759,9 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       call MAPL_GetPointer(EXPORT, PTR2D, 'CCWP', RC=STATUS); VERIFY_(STATUS)
       if (associated(PTR2D)) PTR2D = SUM( CNV_QC*MASS , 3 )
 
+    endif ! alarm_is_ringing
+
     endif ! USE_PYMOIST_GF2020
-
-    call MAPL_TimerOff (MAPL,"--GF")
-
-    endif
 
     ! add tendencies to the moist import state
     U  = U  +  DUDT_DC*MOIST_DT
