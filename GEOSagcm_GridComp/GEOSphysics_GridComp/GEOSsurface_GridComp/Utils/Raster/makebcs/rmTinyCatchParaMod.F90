@@ -1227,7 +1227,7 @@ contains
        
        where (iTable(:,0) == 0)
           iTable(:,4) = iTable(:,4) -1
-          iTable(:,5) = iTable(:,5) -1
+          iTable(:,5) = JM(1) - iTable(:,5)
        endwhere
        j = index(gName(2), "-Pfafstetter")
        gName(2) = gName(2)(1:j-1)
