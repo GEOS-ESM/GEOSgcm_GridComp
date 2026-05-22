@@ -74,6 +74,7 @@ module GEOS_GFDL_1M_InterfaceMod
   logical :: REPORT_GFDL_1M_NEGATIVES
 
   logical :: GFDL_MP3
+  logical :: USE_PYMOIST_GFDL1M
 
   public :: GFDL_1M_Setup, GFDL_1M_Initialize, GFDL_1M_Run, GFDL_1M_Finalize
 
@@ -263,7 +264,7 @@ subroutine GFDL_1M_Setup (GC, CF, RC)
 
 end subroutine GFDL_1M_Setup
 
-subroutine GFDL_1M_Initialize (MAPL, CLOCK, RC)
+subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     type (MAPL_MetaComp), intent(inout) :: MAPL
     type (ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
     integer, optional                   :: RC  ! return code
@@ -1579,6 +1580,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         if (associated(PTR2D)) PTR2D = SUM( ( QICN+QILS+QSNOW+QGRAUPEL ) *MASS , 3 )
 
         call MAPL_TimerOff(MAPL,"---CLDDIAGS")
+
+    endif ! USE_PYMOIST_GFDL1M
 
      call MAPL_TimerOff(MAPL,"--GFDL_1M",RC=STATUS)
 

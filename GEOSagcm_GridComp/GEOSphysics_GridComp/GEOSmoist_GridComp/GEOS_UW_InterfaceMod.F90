@@ -25,6 +25,7 @@ module GEOS_UW_InterfaceMod
   logical :: JASON_UW, JASON_MFD_SC
   logical :: REPORT_UW_NEGATIVES
   logical :: USE_EIS
+  logical :: USE_PYMOIST_UW = .false.
 
   private
 
@@ -114,6 +115,12 @@ subroutine UW_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
 
     call MAPL_GetResource(MAPL, REPORT_UW_NEGATIVES, 'REPORT_UW_NEGATIVES:', default=.FALSE., RC=STATUS) ; VERIFY_(STATUS)
 
+    call MAPL_GetResource(MAPL, USE_PYMOIST_UW, 'USE_PYMOIST_UW:', default=.FALSE., RC=STATUS); VERIFY_(STATUS)
+
+    if (USE_PYMOIST_UW) then
+      call MAPL_ConfigSetAttribute(CF, UW_DT, 'DSL__UW_DT:', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.convection.UW_interface", MAPL, IMPORT, EXPORT )
+    else
     call MAPL_GetResource(MAPL, USE_TRACER_TRANSP_UW,        'USE_TRACER_TRANSP_UW:',default= 1      , RC=STATUS) ; VERIFY_(STATUS)
     if (JASON_UW) then
       call MAPL_GetResource(MAPL, SHLWPARAMS%WINDSRCAVG,       'WINDSRCAVG:'      ,DEFAULT=0,      RC=STATUS) ; VERIFY_(STATUS)
@@ -334,6 +341,16 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! Get parameters from generic state.
     !-----------------------------------
 
+    call MAPL_Get( MAPL, IM=IM, JM=JM, LM=LM,   &
+         INTERNAL_ESMF_STATE=INTERNAL, &
+         RC=STATUS )
+    VERIFY_(STATUS)
+    
+    if (USE_PYMOIST_UW) then
+      call CNV_Tracers_To_SOA()
+      call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.convection.UW_interface", MAPL, IMPORT, EXPORT, INTERNAL )
+      call CNV_Tracers_To_AOS()
+    else
     ! Internals
     call MAPL_GetPointer(INTERNAL, CUSH,   'CUSH'    , RC=STATUS); VERIFY_(STATUS)
 

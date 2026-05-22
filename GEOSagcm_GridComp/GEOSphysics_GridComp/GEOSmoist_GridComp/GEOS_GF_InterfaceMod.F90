@@ -44,6 +44,7 @@ module GEOS_GF_InterfaceMod
   integer :: ZERO_DIFF_AUTOCONV
   integer :: ZERO_DIFF_VGRID
   integer :: ZERO_DIFF_OTHER
+  logical :: USE_PYMOIST_GF2020
 
   public :: GF_Setup, GF_Initialize, GF_Run, GF_Finalize
 
@@ -459,6 +460,9 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     type( ESMF_VM )                 :: VMG
 
+    ! DSL fields
+    real, pointer, dimension(:,:) :: DSL__GF2020_LONS, DSL__GF2020_LATS
+
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS); VERIFY_(STATUS)
     call MAPL_Get( MAPL, IM=IM, JM=JM, LM=LM,   &
          CF       = CF,                &
@@ -508,6 +512,16 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Get parameters from generic state.
     !-----------------------------------
+
+    if (USE_PYMOIST_GF2020) then
+      call MAPL_GetPointer(INTERNAL, DSL__GF2020_LONS, 'DSL__GF2020_LONS', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(INTERNAL, DSL__GF2020_LATS, 'DSL__GF2020_LATS', RC=STATUS); VERIFY_(STATUS)
+      DSL__GF2020_LONS = LONS
+      DSL__GF2020_LATS = LATS
+      call CNV_Tracers_To_SOA()
+      call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.convection.GF2020_interface", MAPL, IMPORT, EXPORT, INTERNAL )
+      call CNV_Tracers_To_AOS()
+    else
 
     ! Imports
     call MAPL_GetPointer(IMPORT, FRLAND    ,'FRLAND'    ,RC=STATUS); VERIFY_(STATUS)
@@ -745,7 +759,9 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       call MAPL_GetPointer(EXPORT, PTR2D, 'CCWP', RC=STATUS); VERIFY_(STATUS)
       if (associated(PTR2D)) PTR2D = SUM( CNV_QC*MASS , 3 )
 
-    endif
+    endif ! alarm_is_ringing
+
+    endif ! USE_PYMOIST_GF2020
 
     ! add tendencies to the moist import state
     U  = U  +  DUDT_DC*MOIST_DT
