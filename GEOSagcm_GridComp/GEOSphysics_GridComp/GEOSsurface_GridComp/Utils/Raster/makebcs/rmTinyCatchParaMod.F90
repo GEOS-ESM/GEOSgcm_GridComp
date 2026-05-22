@@ -968,12 +968,17 @@ contains
     real*4,            allocatable, target :: q0 (:,:)
     real(REAL64),      allocatable         :: rTable(:,:)
     integer,           allocatable         :: iTable(:,:)
+   real(REAL64),      allocatable         :: rTable_keep(:,:)
+   integer,           allocatable         :: iTable_keep(:,:)
     character(len=128)                     :: gName(2)
     logical,           allocatable         :: IsOcean(:)
+   logical,           allocatable         :: keep_tile(:)
     ! This is used to adjust EASE grid from 1-based to 0-based indexes
     ! The tile file with only one EASE grid is already 0-based and may not go through this subroutine
     ! This is a special case for river-routing. The ocean grid is also EASE just for convenience
     logical                                :: two_EASE 
+   integer                                :: ip_keep, k
+   real(REAL64), parameter                :: EASE_LAT_MAX = 85.04459_REAL64
 
     ! -----------------------------------------------------
     !
@@ -1249,7 +1254,33 @@ contains
     endwhere
     
     fname=trim(fnameTil)//'.nc4'
-    call MAPL_WriteTilingNC4(fname,  gName(1:n_grid), im(1:n_grid), jm(1:n_grid), nx, ny, iTable, rTable, N_PfafCat=SRTM_maxcat, rc=status)
+    if (two_EASE) then
+       ! remove tiles outside EASE grid domain
+       allocate(keep_tile(ip))
+       keep_tile = (rTable(1:ip,2) <= EASE_LAT_MAX) .and. (rTable(1:ip,2) >= -EASE_LAT_MAX)
+       ip_keep = count(keep_tile)
+       ASSERT_(ip_keep > 0)
+
+       allocate(iTable_keep(ip_keep,0:7))
+       allocate(rTable_keep(ip_keep,10))
+
+       k = 0
+       do n = 1, ip
+          if (keep_tile(n)) then
+             k = k + 1
+             iTable_keep(k,0:7) = iTable(n,0:7)
+             rTable_keep(k,1:10) = rTable(n,1:10)
+          endif
+       enddo
+
+        call MAPL_WriteTilingNC4(fname,  gName(1:n_grid), im(1:n_grid), jm(1:n_grid),  &
+           nx, ny, iTable_keep, rTable_keep, N_PfafCat=SRTM_maxcat, rc=status)
+
+       deallocate(iTable_keep, rTable_keep, keep_tile)
+    else
+        call MAPL_WriteTilingNC4(fname,  gName(1:n_grid), im(1:n_grid), jm(1:n_grid),  &
+           nx, ny, iTable, rTable, N_PfafCat=SRTM_maxcat, rc=status)
+    endif
     
     deallocate (rTable, iTable)
     deallocate (limits)
