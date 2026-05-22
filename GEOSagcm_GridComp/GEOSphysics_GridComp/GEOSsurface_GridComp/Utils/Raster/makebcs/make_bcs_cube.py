@@ -5,15 +5,37 @@
 import os
 from make_bcs_questionary import *
 from make_bcs_shared import * 
+from datetime import datetime
+import subprocess
 
 cube_template = """
 
 ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/360x200 data/MOM5/360x200
 ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/720x410 data/MOM5/720x410
 ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/1440x1080 data/MOM5/1440x1080
-ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/72x36 data/MOM6/72x36
-ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/540x458 data/MOM6/540x458
-ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/1440x1080 data/MOM6/1440x1080
+
+if ( {TRIPOL_OCEAN} == True ) then
+  set mom6v    = {mom6_bathy_version}
+  set mom6root = {MAKE_BCS_INPUT_DIR}/ocean/MOM6/$mom6v
+  set req      = {imo}x{jmo}
+
+  if ( ! -d $mom6root/$req ) then
+    echo "ERROR: MOM6/$mom6v/$req missing under {MAKE_BCS_INPUT_DIR}/ocean/MOM6"
+    echo "       Selected via questionnaire '{lbcsv}' -> MOM6_BATHY_VERSION=$mom6v"
+    exit 10
+  endif
+
+  if ( ! -d data/MOM6 ) mkdir -p data/MOM6
+  if ( -e data/MOM6/$req ) /bin/rm -f data/MOM6/$req
+  ln -s $mom6root/$req data/MOM6/$req
+endif
+
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/{mom6_bathy_version}/72x36 data/MOM6/72x36
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/{mom6_bathy_version}/540x458 data/MOM6/540x458
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/{mom6_bathy_version}/1440x1080 data/MOM6/1440x1080
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/{mom6_bathy_version}/720x576 data/MOM6/720x576
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/{mom6_bathy_version}/2880x2240 data/MOM6/2880x2240
+
 
 if( -e CF{NC}x6C{SGNAME}_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout ) /bin/rm -f CF{NC}x6C{SGNAME}_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout
 
@@ -137,6 +159,35 @@ def make_bcs_cube(config):
   if not os.path.exists(log_dir):
     os.makedirs(log_dir)
 
+  TOPO_VERSION       = topo_version_for_bcs(config['lbcsv'])
+  MOM6_BATHY_VERSION = mom6_bathy_version_for_bcs(config['lbcsv'])
+
+  # ---------- INPUT CHECKS (abort before sbatch) ----------
+  # 1) TOPO must exist for this grid
+  topo_dir = f"CF{NC}x6C{SGNAME}"              # CF0090x6C or CF0540x6C-SG001
+  topo_src = os.path.join(config['inputdir'], "atmosphere", "TOPO", TOPO_VERSION, topo_dir)
+  if not os.path.isdir(topo_src):
+      print(f"ABORT: Missing TOPO: {topo_src} "
+            f"(LBCSV={config['lbcsv']} TOPO_VERSION={TOPO_VERSION})")
+      return
+  
+  # 2) MOM6 bathymetry: strict, check ONLY the size used by this run
+  if config["TRIPOL_OCEAN"]:
+      req = f"{config['imo']}x{config['jmo']}"  # 540x458 or 1440x1080
+      mom6_src = os.path.join(config['inputdir'], "ocean", "MOM6", MOM6_BATHY_VERSION, req)
+      if not os.path.isdir(mom6_src):
+          print(f"ABORT: Missing MOM6 bathymetry: {mom6_src} "
+                f"(LBCSV={config['lbcsv']} MOM6={MOM6_BATHY_VERSION})")
+          return
+
+  msg = f"[make_bcs_cube] LBCSV={config['lbcsv']}  TOPO={TOPO_VERSION}  GRID={GRIDNAME}"
+  
+  if config["TRIPOL_OCEAN"]:
+      msg = msg + f"  MOM6={MOM6_BATHY_VERSION}  REQ={config['imo']}x{config['jmo']}"
+  
+  print(msg)
+  # -------------------------------------------------------------------
+
   script_template = get_script_head() + cube_template + get_script_mv(config['grid_type'])
 
   script_string = script_template.format(\
@@ -175,8 +226,10 @@ def make_bcs_cube(config):
            STRETCH = STRETCH, \
            SGNAME  = SGNAME, \
            SGPARAM = SGPARAM, \
+           TOPO_VERSION = TOPO_VERSION, \
+           mom6_bathy_version = MOM6_BATHY_VERSION, \
            IS_STRETCHED = IS_STRETCHED, \
-           NCPUS = config['NCPUS'])
+           NCPUS = config['NCPUS'])           
 
   cube_job = open(bcjob,'wt')
   cube_job.write(script_string)
@@ -211,6 +264,5 @@ if __name__ == "__main__":
    answers = ask_questions()
    configs = get_configs_from_answers(answers)
    for config in configs:
-      if grid_type in ["Stretched_CS", "Cubed-Sphere"] :
-         make_bcs_cube(config)
-
+       if config['grid_type'] in ["Stretched_CS", "Cubed-Sphere"]:
+           make_bcs_cube(config)   

@@ -133,6 +133,11 @@ contains
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run, RC=status )
     VERIFY_(STATUS)
 
+    ! Set the Finalize entry point
+    ! -----------------------
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE, Finalize, RC=status )
+    VERIFY_(status)
+
     ! Get the configuration from the component
     !-----------------------------------------
     call ESMF_GridCompGet( GC, CONFIG = CF, RC=STATUS )
@@ -5647,8 +5652,8 @@ contains
     call MAPL_GetResource( MAPL, MOVE_CN_TO_LS, Label="MOVE_CN_TO_LS:",  default=.FALSE., RC=STATUS); VERIFY_(STATUS)
 
     if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
-    if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Initialize(MAPL, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
-    if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Initialize(MAPL, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Initialize(MAPL, CF, CLOCK, IMPORT, EXPORT, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Initialize(MAPL, CF, CLOCK, IMPORT, EXPORT, RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CLDMICR_OPTION)=="BACM_1M") call BACM_1M_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Initialize(MAPL, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CLDMICR_OPTION)=="THOM_1M") call THOM_1M_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
@@ -6678,6 +6683,36 @@ contains
     RETURN_(ESMF_SUCCESS)
 
   end subroutine RUN
+
+  subroutine FINALIZE ( GC, IMPORT, EXPORT, CLOCK, RC )
+    type(ESMF_GridComp), intent(inout) :: gc     ! Gridded component
+    type(ESMF_State),    intent(inout) :: import ! Import state
+    type(ESMF_State),    intent(inout) :: export ! Export state
+    type(ESMF_Clock),    intent(inout) :: clock  ! The clock
+    integer, optional,   intent(  out) :: rc     ! Error code
+
+    ! ErrLog variables
+    integer :: status
+    character(len=ESMF_MAXSTR) :: Iam
+    character(len=ESMF_MAXSTR) :: comp_name
+    ! Begin...
+    ! Get component's name and setup traceback handle
+    call ESMF_GridCompget(gc, name=comp_name, rc=status)
+    VERIFY_(status)
+    Iam = trim(comp_name) // "::Finalize"
+
+
+    if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_FINALIZE(GC, IMPORT, EXPORT, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(SHALLOW_OPTION)=="UW"     ) call UW_Finalize(GC, IMPORT, EXPORT, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(CONVPAR_OPTION)=="GF"     ) call GF_Finalize(GC, IMPORT, EXPORT, RC=STATUS) ; VERIFY_(STATUS)
+
+    ! Call Finalize for every child
+    call MAPL_GenericFinalize(gc, import, export, clock, rc=status)
+    VERIFY_(status)
+    ! End
+    RETURN_(ESMF_SUCCESS)
+
+  end subroutine FINALIZE
 
 end module GEOS_MoistGridCompMod
 
