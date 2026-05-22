@@ -1,12 +1,12 @@
 &setup_nml
     days_per_year  = 365
     use_leap_years = .true.
-    year_init      = 2005
-    month_init     = 1
-    day_init       = 1
-    sec_init       = 0
+    year_init      = @YEAR_INIT
+    month_init     = @MONTH_INIT
+    day_init       = @DAY_INIT
+    sec_init       = @SEC_INIT
     istep0         = 0
-    dt             = 900.0
+    dt             = 450.0
     npt_unit       = '1'
     npt            = 9999999
     ndtd           = 1
@@ -59,12 +59,11 @@
 /
 
 &grid_nml
-    grid_format  = 'nc'
+    grid_format  = 'geosnc'
     grid_type    = 'tripole'
-    grid_subtype = 'geosmom'
     grid_ice     = 'C'
     grid_atm     = 'A'
-    grid_ocn     = 'C'
+    grid_ocn     = 'A'
     grid_file    = 'cice6_grid.nc'
     kmt_file     = 'cice6_kmt.nc'
     bathymetry_file = 'cice6_global.bathy.nc'
@@ -136,7 +135,7 @@
     brlx            = 300.0
     arlx            = 300.0
     advection       = 'remap'
-    kstrength       = 1
+    kstrength       = 0
     krdg_partic     = 1
     krdg_redist     = 1
     mu_rdg          = 3
@@ -231,6 +230,8 @@
     rotate_wind     = .true.
     calc_strair     = .true.
     calc_Tsfc       = .true.
+    semi_implicit_Tsfc = .true.
+    vapor_flux_correction = .ture.
     highfreq        = .false.
     natmiter        = 5
     atmiter_conv    = 0.0d0
@@ -271,11 +272,11 @@
 /
 
 &domain_nml
-    nprocs = -1
+    nprocs            = @NPROC
     nx_global         = 540
     ny_global         = 458
-    block_size_x      = -1
-    block_size_y      = -1
+    block_size_x      = @BLOCK_SIZE_X
+    block_size_y      = @BLOCK_SIZE_Y
     max_blocks        = 1
     processor_shape   = 'square-pop'
     distribution_type = 'cartesian'
