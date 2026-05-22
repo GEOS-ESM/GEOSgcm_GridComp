@@ -116,7 +116,6 @@ class GFDL1M(NDSLRuntime):
             quantity_factory=quantity_factory,
             config=config,
             saturation_tables=saturation_tables,
-            update_tendencies=self._update_tendencies,
         )
 
     def __call__(
