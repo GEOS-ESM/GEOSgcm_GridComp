@@ -1,6 +1,5 @@
 from f90nml import Namelist
 from ndsl import StencilFactory
-from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
@@ -8,7 +7,6 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.finalize import GFDL1MFinalize
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
-from pyMoist.microphysics.GFDL_1M.shared_stencils import update_tendencies
 from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 
@@ -146,19 +144,11 @@ class TranslateGFDL_1M_Finalize(TranslateFortranData2Py):
         state.tendencies.dvdt_micro.field[:] = inputs["dvdt_micro"]
         state.tendencies.dtdt_micro.field[:] = inputs["dtdt_micro"]
 
-        # construct test stencil
-        _update_tendencies = self.stencil_factory.from_dims_halo(
-            func=update_tendencies,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"DT_MOIST": config.DT_MOIST},
-        )
-
         code = GFDL1MFinalize(
             stencil_factory=self.stencil_factory,
             quantity_factory=self.quantity_factory,
             config=config,
             saturation_tables=saturation_tables,
-            update_tendencies=_update_tendencies,
         )
         code(
             t=state.t,

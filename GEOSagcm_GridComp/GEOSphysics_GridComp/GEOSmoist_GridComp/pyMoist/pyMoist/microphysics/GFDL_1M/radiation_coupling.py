@@ -77,6 +77,11 @@ class GFDL1MRadiationCoupling(NDSLRuntime):
         if config.DO_QA:
             ndsl_log.log("[Radiation Coupling] DO_QA option implemented, but untested. " "Running untested code... proceed with caution")
 
+        # Dev NOTE: this is an orchestration workaround. Direct call to
+        #           `self.saturation_tables.X` fails closure capture for
+        #           argument reconstruction at call time
+        self._esx = self.saturation_tables.esx
+
     def __call__(
         self,
         t: Quantity,
@@ -178,5 +183,5 @@ class GFDL1MRadiationCoupling(NDSLRuntime):
                 pressure=local_p_mb,
                 vapor=mixing_ratio_vapor,
                 humidity=relative_humidity_after_pdf,
-                esx=self.saturation_tables.esx,
+                esx=self._esx,
             )

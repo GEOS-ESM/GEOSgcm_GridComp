@@ -215,14 +215,12 @@ def compute_estimated_inversion_strength(
         lower_tropospheric_stability (FloatFieldIJ)
         estimated_inversion_strength (FloatFieldIJ)
     """
-    with computation(FORWARD), interval(0, 1):
-        from __externals__ import k_end
-
-        lower_tropospheric_stability = th700 - th.at(K=k_end)
+    with computation(FORWARD), interval(-1, None):
+        lower_tropospheric_stability = th700 - th
         lcl_height = layer_height_above_surface.at(K=lcl_level - 1)
 
         # Simplified single adiabat eq4 of https://doi.org/10.1175/JCLI3988.1
-        t850 = 0.5 * (t.at(K=k_end) + t700)
+        t850 = 0.5 * (t + t700)
         qs850, _ = saturation_specific_humidity(t=t850, p=100.0 * 850.0, esx=esx)
         gamma850 = (1.0 + (MAPL_ALHL * qs850 / (MAPL_RGAS * t850))) / (1.0 + (MAPL_ALHL * MAPL_ALHL * qs850 / (MAPL_CP * MAPL_RVAP * t850 * t850)))
         gamma850 = MAPL_GRAV / MAPL_CP * (1.0 - gamma850)
@@ -528,7 +526,7 @@ class GFDL1MSetup(NDSLRuntime):
             mass=local_mass,
             mass_inverse=local_mass_inverse,
             t=t,
-            esx=self.saturation_tables.esx,
+            esx=self._esx,
             sat=local_saturation_specific_humidity,
             dsat=local_dsaturation_specific_humidity,
             u=u,

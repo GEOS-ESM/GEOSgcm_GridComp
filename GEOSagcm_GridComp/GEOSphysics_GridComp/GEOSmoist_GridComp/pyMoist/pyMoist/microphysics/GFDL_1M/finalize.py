@@ -7,6 +7,7 @@ from ndsl.stencils.basic_operations import copy
 from pyMoist.constants import MAPL_CP, MAPL_GRAV
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.radiation_coupling import GFDL1MRadiationCoupling
+from pyMoist.microphysics.GFDL_1M.shared_stencils import update_tendencies
 from pyMoist.saturation_tables import GlobalTable_saturation_tables, SaturationVaporPressureTable, saturation_specific_humidity
 from pyMoist.shared.redistribute_clouds import redistribute_clouds
 
@@ -220,14 +221,12 @@ class GFDL1MFinalize(NDSLRuntime):
         quantity_factory: QuantityFactory,
         config: GFDL1MConfig,
         saturation_tables: SaturationVaporPressureTable,
-        update_tendencies,
     ):
         # init NDSLRuntime
         super().__init__(stencil_factory)
 
         # make the config, pre-build stencil, and saturation tables visible at runtime
         self.config = config
-        self.update_tendencies = update_tendencies
         self.saturation_tables = saturation_tables
 
         # construct stencils
@@ -266,6 +265,14 @@ class GFDL1MFinalize(NDSLRuntime):
         self._fix_radii = stencil_factory.from_dims_halo(
             func=fix_radii,
             compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+
+        self._update_tendencies = stencil_factory.from_dims_halo(
+            func=update_tendencies,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={
+                "DT_MOIST": config.DT_MOIST,
+            },
         )
 
         self._update_rainwater_source = stencil_factory.from_dims_halo(
@@ -501,7 +508,7 @@ class GFDL1MFinalize(NDSLRuntime):
             liquid_radius=cloud_particle_effective_radius_liquid,
         )
 
-        self.update_tendencies(
+        self._update_tendencies(
             u=u,
             v=v,
             t=t,

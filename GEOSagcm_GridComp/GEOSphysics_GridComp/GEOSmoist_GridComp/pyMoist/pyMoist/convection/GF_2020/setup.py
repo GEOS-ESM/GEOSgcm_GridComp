@@ -1285,6 +1285,11 @@ class GF2020Setup(NDSLRuntime):
             },
         )
 
+        # Dev NOTE: this is an orchestration workaround. Direct call to
+        #           `self.saturation_tables.X` fails closure capture for
+        #           argument reconstruction at call time
+        self._esx = self.saturation_tables.esx
+
     def __call__(
         self,
         state: GF2020State,
@@ -1325,7 +1330,7 @@ class GF2020Setup(NDSLRuntime):
             area=state.area,
             modified_area=locals.derived_state.modified_area,
             convection_fraction=state.convection_fraction,
-            esx=self.saturation_tables.esx,
+            esx=self._esx,
         )
 
         if state.seed_convection is not None:
