@@ -5,6 +5,7 @@ from ndsl import StencilFactory
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
+from ndsl.utils import safe_assign_array
 
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
@@ -87,21 +88,21 @@ class TranslateGFDL_1M_Setup(TranslateFortranData2Py):
         locals_ = GFDL1MLocals.make_as_state(self.quantity_factory)
 
         # fill relevant parts of dataclasses
-        state.p_interface.field[:] = inputs["p_interface"]
-        state.z_interface.field[:] = inputs["z_interface"]
-        state.t.field[:] = inputs["t"]
-        state.u.field[:] = inputs["u"]
-        state.v.field[:] = inputs["v"]
-        state.mixing_ratio.vapor.field[:] = inputs["mixing_ratio_vapor"]
-        state.mixing_ratio.rain.field[:] = inputs["mixing_ratio_rain"]
-        state.mixing_ratio.snow.field[:] = inputs["mixing_ratio_snow"]
-        state.mixing_ratio.graupel.field[:] = inputs["mixing_ratio_graupel"]
-        state.mixing_ratio.large_scale_liquid.field[:] = inputs["mixing_ratio_large_scale_liquid"]
-        state.mixing_ratio.convective_liquid.field[:] = inputs["mixing_ratio_convective_liquid"]
-        state.cloud_fraction.convective.field[:] = inputs["cloud_fraction_convective"]
-        state.cloud_fraction.large_scale.field[:] = inputs["cloud_fraction_large_scale"]
-        state.mixing_ratio.large_scale_ice.field[:] = inputs["mixing_ratio_large_scale_ice"]
-        state.mixing_ratio.convective_ice.field[:] = inputs["mixing_ratio_convective_ice"]
+        safe_assign_array(state.p_interface.field[:], inputs["p_interface"])
+        safe_assign_array(state.z_interface.field[:], inputs["z_interface"])
+        safe_assign_array(state.t.field[:], inputs["t"])
+        safe_assign_array(state.u.field[:], inputs["u"])
+        safe_assign_array(state.v.field[:], inputs["v"])
+        safe_assign_array(state.mixing_ratio.vapor.field[:], inputs["mixing_ratio_vapor"])
+        safe_assign_array(state.mixing_ratio.rain.field[:], inputs["mixing_ratio_rain"])
+        safe_assign_array(state.mixing_ratio.snow.field[:], inputs["mixing_ratio_snow"])
+        safe_assign_array(state.mixing_ratio.graupel.field[:], inputs["mixing_ratio_graupel"])
+        safe_assign_array(state.mixing_ratio.large_scale_liquid.field[:], inputs["mixing_ratio_large_scale_liquid"])
+        safe_assign_array(state.mixing_ratio.convective_liquid.field[:], inputs["mixing_ratio_convective_liquid"])
+        safe_assign_array(state.cloud_fraction.convective.field[:], inputs["cloud_fraction_convective"])
+        safe_assign_array(state.cloud_fraction.large_scale.field[:], inputs["cloud_fraction_large_scale"])
+        safe_assign_array(state.mixing_ratio.large_scale_ice.field[:], inputs["mixing_ratio_large_scale_ice"])
+        safe_assign_array(state.mixing_ratio.convective_ice.field[:], inputs["mixing_ratio_convective_ice"])
 
         # initialize test class
         code = GFDL1MSetup(
