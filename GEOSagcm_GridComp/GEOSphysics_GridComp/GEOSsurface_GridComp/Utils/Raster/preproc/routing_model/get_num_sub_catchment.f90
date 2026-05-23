@@ -3,7 +3,7 @@ program main
 
 use MAPL
 use river_ncfile_helper
-use routing_model_constants, only : nc, nlon, nlat, np=>np_tot
+use routing_model_constants, only : nc, nlon, nlat, np=>np_tot, nlatE
 
 implicit none
 
@@ -51,7 +51,7 @@ call read_ncfile_int1d(trim(file_path1),"typ",type_tile,np)
 call read_ncfile_int1d(trim(file_path1),"i_indg",xi_tile,np)
 xi_tile = xi_tile + 1
 call read_ncfile_int1d(trim(file_path1),"j_indg",yi_tile,np)
-yi_tile = yi_tile + 1
+yi_tile = nlatE - yi_tile
 call read_ncfile_int1d(trim(file_path1),"pfaf_index",catid_tile,np) 
 call read_ncfile_real1d(trim(file_path1),"area",area_tile,np) 
 area_tile = area_tile * MAPL_RADIUS**2 / 1.e6 !km^2
