@@ -10,7 +10,7 @@ module rmTinyCatchParaMod
   use LDAS_DateTimeMod
   use MAPL_ConstantsMod
   use MAPL_Base,           ONLY: MAPL_UNDEF
-  use MAPL,                only: MAPL_WriteTilingNC4
+  use MAPL,                only: MAPL_WriteTilingNC4, MAPL_ease_extent
   use lsm_routines,        ONLY: sibalb
   use LogRectRasterizeMod, ONLY: SRTM_maxcat, MAPL_UNDEF_R8 
   use, intrinsic :: iso_fortran_env, only: REAL64 
@@ -968,17 +968,17 @@ contains
     real*4,            allocatable, target :: q0 (:,:)
     real(REAL64),      allocatable         :: rTable(:,:)
     integer,           allocatable         :: iTable(:,:)
-   real(REAL64),      allocatable         :: rTable_keep(:,:)
-   integer,           allocatable         :: iTable_keep(:,:)
+    real(REAL64),      allocatable         :: rTable_keep(:,:)
+    integer,           allocatable         :: iTable_keep(:,:)
     character(len=128)                     :: gName(2)
     logical,           allocatable         :: IsOcean(:)
-   logical,           allocatable         :: keep_tile(:)
+    logical,           allocatable         :: keep_tile(:)
     ! This is used to adjust EASE grid from 1-based to 0-based indexes
     ! The tile file with only one EASE grid is already 0-based and may not go through this subroutine
     ! This is a special case for river-routing. The ocean grid is also EASE just for convenience
-    logical                                :: two_EASE 
-   integer                                :: ip_keep, k
-   real(REAL64), parameter                :: EASE_LAT_MAX = 85.04459_REAL64
+    logical                                 :: two_EASE 
+    integer                                 :: ip_keep, k, nc_tmp, nr_tmp
+    real                                    :: EASE_LAT_MAX !
 
     ! -----------------------------------------------------
     !
@@ -1256,6 +1256,7 @@ contains
     fname=trim(fnameTil)//'.nc4'
     if (two_EASE) then
        ! remove tiles outside EASE grid domain
+       call MAPL_ease_extent(gName(1), nc_tmp, nr_tmp, ur_lat = EASE_LAT_MAX)
        allocate(keep_tile(ip))
        keep_tile = (rTable(1:ip,2) <= EASE_LAT_MAX) .and. (rTable(1:ip,2) >= -EASE_LAT_MAX)
        ip_keep = count(keep_tile)
