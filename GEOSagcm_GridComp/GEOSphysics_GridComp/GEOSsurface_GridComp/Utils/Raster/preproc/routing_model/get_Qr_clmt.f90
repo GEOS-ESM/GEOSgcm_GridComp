@@ -8,7 +8,7 @@ program main
   implicit none
 
   ! Define variables:
-  real, allocatable    :: runoff(:,:), qrunf(:), temp(:,:), qri(:), qin(:)
+  real, allocatable    :: runoff(:,:), qrunf(:), qri(:), qin(:)
   integer, allocatable :: nts(:), downid(:), upstream(:,:)
   integer              :: i, j, nmax, did
 
