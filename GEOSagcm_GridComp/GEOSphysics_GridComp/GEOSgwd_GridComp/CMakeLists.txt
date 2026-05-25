@@ -31,7 +31,7 @@ esma_add_library (
   SRCS ${srcs}
   # GEOS_Shared removed: no GWD source file actually uses it (leftover dependency)
   # not yet ported to MAPL3 - restore GEOS_Shared when ported
-  DEPENDENCIES MAPL MAPL.generic3g MAPL.geom ESMF::ESMF NetCDF::NetCDF_Fortran TYPE SHARED
+  DEPENDENCIES MAPL MAPL.geom ESMF::ESMF NetCDF::NetCDF_Fortran TYPE SHARED
   )
 
 mapl_acg (
