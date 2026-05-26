@@ -202,7 +202,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:)   :: TPERT_SC, QPERT_SC, LTS, EIS
     real, pointer, dimension(:,:)   :: CBMF_SC, PLCL_SC, PLFC_SC,     &
                                        PINV_SC, PREL_SC, PBUP_SC,    &
-                                       CLDTOP_SC
+                                       CLDTOP_SC, SC_QT, SC_MSE
 #ifdef UWDIAG
     real, pointer, dimension(:,:)   :: CIN_SC, CNT_SC, CNB_SC,      &
                                        WLCL_SC, QTSRC_SC, THLSRC_SC, &
@@ -245,7 +245,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real :: eis_mix2d_factor           ! EIS modification factor for MIX2D [0-1]
     real :: eis_rmaxfrac_factor        ! EIS modification factor for RMAXFRAC [1.0-1.1]
 
-    integer                         :: I, J, L
+    integer                         :: I, J, L, K
     integer                         :: IM,JM,LM
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS); VERIFY_(STATUS)
@@ -357,15 +357,48 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( RMAXFRAC2D (IM,JM) )
 
     ! Derived States
-    PKE      = (PLE/MAPL_P00)**(MAPL_KAPPA)
-    PL       = 0.5*(PLE(:,:,0:LM-1) + PLE(:,:,1:LM))
-    PK       = (PL/MAPL_P00)**(MAPL_KAPPA)
-    DO L=0,LM
-       ZLE0(:,:,L)= ZLE(:,:,L) - ZLE(:,:,LM)   ! Edge Height (m) above the surface
-    END DO
-    ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
-    DP       = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )
-    MASS     = DP/MAPL_GRAV
+    !--------------------------------------------------------------
+      
+    ! 1. Compute the top-of-atmosphere edge (k = 0)
+    !$OMP PARALLEL DO DEFAULT(NONE) &
+    !$OMP SHARED(IM, JM, LM, PKE, PLE, ZLE0, ZLE) &
+    !$OMP PRIVATE(i, j)
+    do j = 1, JM
+       !DIR$ IVDEP
+       do i = 1, IM
+          PKE(i,j,0)  = (PLE(i,j,0) / MAPL_P00)**(MAPL_KAPPA)
+          ZLE0(i,j,0) = ZLE(i,j,0) - ZLE(i,j,LM)
+       end do
+    end do
+    !$OMP END PARALLEL DO
+
+    ! 2. Compute the remaining edges and all layer variables (k = 1 to LM)
+    !$OMP PARALLEL DO DEFAULT(NONE) &
+    !$OMP SHARED(IM, JM, LM, PKE, PLE, PL, PK, &
+    !$OMP        ZLE0, ZLE, ZL0, DP, MASS) &
+    !$OMP PRIVATE(i, j, k)
+    do k = 1, LM
+       do j = 1, JM
+          !DIR$ IVDEP
+          do i = 1, IM
+               
+             ! Edge variables
+             PKE(i,j,k)  = (PLE(i,j,k) / MAPL_P00)**(MAPL_KAPPA)
+             ZLE0(i,j,k) = ZLE(i,j,k) - ZLE(i,j,LM)
+               
+             ! Layer variables
+             PL(i,j,k)   = 0.5 * (PLE(i,j,k-1) + PLE(i,j,k))
+             PK(i,j,k)   = (PL(i,j,k) / MAPL_P00)**(MAPL_KAPPA)
+               
+             ZL0(i,j,k)  = 0.5 * (ZLE0(i,j,k-1) + ZLE0(i,j,k))
+               
+             DP(i,j,k)   = PLE(i,j,k) - PLE(i,j,k-1)
+             MASS(i,j,k) = DP(i,j,k) / MAPL_GRAV
+               
+          end do
+       end do
+    end do
+    !$OMP END PARALLEL DO
 
     call ESMF_ClockGetAlarm(clock, 'UW_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
     alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
@@ -402,55 +435,76 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, UFLX_SC,    'UFLX_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, VFLX_SC,    'VFLX_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 
-    if (JASON_UW) then
-      RKFRE = SHLWPARAMS%RKFRE
-      RKM2D = SHLWPARAMS%RKM
-      MIX2D = SHLWPARAMS%MIXSCALE
-      RMAXFRAC2D = SHLWPARAMS%RMAXFRAC
-    else
-      ! resolution dependent throttle on UW via TKE and scaling of cloud-base mass flux
-      call MAPL_GetPointer(IMPORT, PTR2D, 'AREA', RC=STATUS); VERIFY_(STATUS)
-      do J=1,JM
-        do I=1,IM
-                        fac_eis = 0.0
-           if (USE_EIS) fac_eis = get_fac_eis(EIS(i,j),srf_type(i,j))      ! Estimated inversion strength determine stable regime
-           SIG   = SIGMA(SQRT(PTR2D(i,j)))                    ! Coarse     -> Fine
-
-           ! Base resolution-dependent parameters
-           ! Support for varying UW parameters by resolution  ! Coarse*SIG -> Fine*(1.0-SIG)
-           rkfre_base    = SHLWPARAMS%RKFRE   *SIG  + SHLWPARAMS%RKFRE_HR   *(1.0-SIG)
-           rkm_base      = SHLWPARAMS%RKM     *SIG  + SHLWPARAMS%RKM_HR     *(1.0-SIG) 
-           mix2d_base    = SHLWPARAMS%MIXSCALE*SIG  + SHLWPARAMS%MIXSCALE_HR*(1.0-SIG)
-           rmaxfrac_base = SHLWPARAMS%RMAXFRAC*SIG  + SHLWPARAMS%RMAXFRAC_HR*(1.0-SIG)
-           
-           ! EIS-based regime modifications for marine stratocumulus enhancement
-           ! Reduce shallow convection activity in high EIS (stable inversion) regions
-           eis_rkfre_factor = 1.0 - 0.8*fac_eis              ! Reduce RKFRE by up to 80% in stable regimes
-           eis_rkm_factor   = 1.0 + 0.4*fac_eis              ! Increase RKM by up to 40% in stable regimes
-           eis_mix2d_factor = 1.0 - 0.3*fac_eis              ! Reduce mixing scale by up to 30% in stable regimes
-           eis_rmaxfrac_factor = 1.0 + 0.1*fac_eis           ! INCREASE rmaxfrac in stable (high EIS) regimes
-           
-           ! Apply EIS modifications
-           RKFRE(i,j) = rkfre_base * eis_rkfre_factor
-           RKM2D(i,j) = rkm_base   * eis_rkm_factor
-           MIX2D(i,j) = mix2d_base * eis_mix2d_factor
-           RMAXFRAC2D(i,j) = rmaxfrac_base * eis_rmaxfrac_factor
- 
-           ! Optional: Add minimum limits to prevent unrealistically low values
-           RKFRE(i,j) = max(RKFRE(i,j), 0.1)                 ! Minimum RKFRE threshold
-           RKM2D(i,j) = min(RKM2D(i,j), 14.0)                ! Maximum RKM threshold
-           MIX2D(i,j) = max(MIX2D(i,j), 1500.0)              ! Minimum mixing scale threshold
-           RMAXFRAC2D(i,j) = max(min(RMAXFRAC2D(i,j), 0.8), 0.05) ! Bounds: 5% to 80%
-        enddo
-      enddo 
-    endif
-
-    ! combine condensates for input (not updated within UW) 
+    ! 1. Fetch all pointers first
+    !--------------------------------------------------------------
+    call MAPL_GetPointer(IMPORT, PTR2D, 'AREA', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, QLTOT, 'QLTOT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, QITOT, 'QITOT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    QLTOT = QLLS+QLCN
-    QITOT = QILS+QICN
- 
+
+    ! 2. 2D parameters for UW
+    !--------------------------------------------------------------
+    !$OMP PARALLEL DO DEFAULT(NONE) &
+    !$OMP SHARED(IM, JM, JASON_UW, SHLWPARAMS, RKFRE, RKM2D, MIX2D, RMAXFRAC2D, &
+    !$OMP        USE_EIS, EIS, srf_type, PTR2D) &
+    !$OMP PRIVATE(i, j, fac_eis, SIG, rkfre_base, rkm_base, mix2d_base, rmaxfrac_base, &
+    !$OMP        eis_rkfre_factor, eis_rkm_factor, eis_mix2d_factor, eis_rmaxfrac_factor)
+    do j = 1, JM
+       !DIR$ IVDEP
+       do i = 1, IM
+          if (JASON_UW) then
+             RKFRE(i,j)      = SHLWPARAMS%RKFRE
+             RKM2D(i,j)      = SHLWPARAMS%RKM
+             MIX2D(i,j)      = SHLWPARAMS%MIXSCALE
+             RMAXFRAC2D(i,j) = SHLWPARAMS%RMAXFRAC
+          else
+             fac_eis = 0.0
+             if (USE_EIS) fac_eis = get_fac_eis(EIS(i,j), srf_type(i,j))
+             SIG = SIGMA(SQRT(PTR2D(i,j)))
+
+             ! Base resolution-dependent parameters
+             rkfre_base    = SHLWPARAMS%RKFRE    * SIG + SHLWPARAMS%RKFRE_HR    * (1.0 - SIG)
+             rkm_base      = SHLWPARAMS%RKM      * SIG + SHLWPARAMS%RKM_HR      * (1.0 - SIG)
+             mix2d_base    = SHLWPARAMS%MIXSCALE * SIG + SHLWPARAMS%MIXSCALE_HR * (1.0 - SIG)
+             rmaxfrac_base = SHLWPARAMS%RMAXFRAC * SIG + SHLWPARAMS%RMAXFRAC_HR * (1.0 - SIG)
+
+             ! EIS-based regime modifications
+             eis_rkfre_factor    = 1.0 - 0.8 * fac_eis
+             eis_rkm_factor      = 1.0 + 0.4 * fac_eis
+             eis_mix2d_factor    = 1.0 - 0.3 * fac_eis
+             eis_rmaxfrac_factor = 1.0 + 0.1 * fac_eis
+
+             ! Apply EIS modifications
+             RKFRE(i,j)      = rkfre_base * eis_rkfre_factor
+             RKM2D(i,j)      = rkm_base   * eis_rkm_factor
+             MIX2D(i,j)      = mix2d_base * eis_mix2d_factor
+             RMAXFRAC2D(i,j) = rmaxfrac_base * eis_rmaxfrac_factor
+
+             ! Optional: Add minimum limits
+             RKFRE(i,j)      = max(RKFRE(i,j), 0.1)
+             RKM2D(i,j)      = min(RKM2D(i,j), 14.0)
+             MIX2D(i,j)      = max(MIX2D(i,j), 1500.0)
+             RMAXFRAC2D(i,j) = max(min(RMAXFRAC2D(i,j), 0.8), 0.05)
+          end if
+       end do
+    end do
+    !$OMP END PARALLEL DO
+
+    ! 3. Combine condensates for input (not updated within UW) 
+    !--------------------------------------------------------------
+    !$OMP PARALLEL DO DEFAULT(NONE) &
+    !$OMP SHARED(IM, JM, LM, QLTOT, QLLS, QLCN, QITOT, QILS, QICN) &
+    !$OMP PRIVATE(i, j, k)
+    do k = 1, LM
+       do j = 1, JM
+          !DIR$ IVDEP
+          do i = 1, IM
+             QLTOT(i,j,k) = QLLS(i,j,k) + QLCN(i,j,k)
+             QITOT(i,j,k) = QILS(i,j,k) + QICN(i,j,k)
+          end do
+       end do
+    end do
+    !$OMP END PARALLEL DO
+
       !  Call UW shallow convection
       !----------------------------------------------------------------
       call compute_uwshcu_inv(IM*JM, LM, UW_DT,           & ! IN
@@ -476,92 +530,145 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 #endif 
             USE_TRACER_TRANSP_UW)
 
-      !  Calculate detrained mass flux
+      ! 1. Fetch ALL pointers at the top
       !--------------------------------------------------------------
-        if (JASON_MFD_SC) then
-          where (DETR_SC.ne.MAPL_UNDEF)
-            MFD_SC = 0.5*(UMF_SC(:,:,1:LM)+UMF_SC(:,:,0:LM-1))*DETR_SC*DP
-          elsewhere
-            MFD_SC = 0.0
-          end where
-        else
-          MFD_SC = DCM_SC
-        endif
-        DQADT_SC= MFD_SC*SCLM_SHALLOW/MASS   
-      !  Convert detrained water units before passing to cloud
-      !---------------------------------------------------------------
-        call MAPL_GetPointer(EXPORT, QLENT_SC, 'QLENT_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT, QIENT_SC, 'QIENT_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-        QLENT_SC = 0.
-        QIENT_SC = 0.
-        WHERE (QLDET_SC.lt.0.)
-          QLENT_SC = QLDET_SC
-          QLDET_SC = 0.
-        END WHERE
-        WHERE (QIDET_SC.lt.0.)
-          QIENT_SC = QIDET_SC
-          QIDET_SC = 0.
-        END WHERE
-       ! scale the detrained fluxes before exporting
-        QLDET_SC = QLDET_SC*MASS
-        QIDET_SC = QIDET_SC*MASS
-      !  Precipitation
+      call MAPL_GetPointer(EXPORT, QLENT_SC, 'QLENT_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, QIENT_SC, 'QIENT_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, SC_QT,   'SC_QT',     RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, SC_MSE,  'SC_MSE',    RC=STATUS); VERIFY_(STATUS)
+
+      ! 2. Fused 3D Loop for Detrainment and Conversions
       !--------------------------------------------------------------
-        call MAPL_GetPointer(EXPORT, PTR3D, 'SHLW_PRC3', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR3D)) PTR3D = DQRDT_SC    ! [kg/kg/s]
-        call MAPL_GetPointer(EXPORT, PTR3D, 'SHLW_SNO3', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR3D)) PTR3D = DQSDT_SC    ! [kg/kg/s]
+      !$OMP PARALLEL DO DEFAULT(NONE) &
+      !$OMP SHARED(IM, JM, LM, JASON_MFD_SC, DETR_SC, UMF_SC, DP, MFD_SC, &
+      !$OMP        DCM_SC, DQADT_SC, SCLM_SHALLOW, MASS, QLENT_SC, QLDET_SC, QIENT_SC, QIDET_SC) &
+      !$OMP PRIVATE(i, j, k)
+      do k = 1, LM
+         do j = 1, JM
+            !DIR$ IVDEP 
+            do i = 1, IM
+               ! Calculate detrained mass flux
+               if (JASON_MFD_SC) then
+                  if (DETR_SC(i,j,k) /= MAPL_UNDEF) then
+                     MFD_SC(i,j,k) = 0.5 * (UMF_SC(i,j,k) + UMF_SC(i,j,k-1)) * DETR_SC(i,j,k) * DP(i,j,k)
+                  else
+                     MFD_SC(i,j,k) = 0.0
+                  end if
+               else
+                  MFD_SC(i,j,k) = DCM_SC(i,j,k)
+               end if
+               
+               DQADT_SC(i,j,k) = MFD_SC(i,j,k) * SCLM_SHALLOW / MASS(i,j,k)
 
-       ! Additional exports
-        call MAPL_GetPointer(EXPORT, PTR2D, 'SC_QT', RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR2D)) then
-        ! column integral of UW total water tendency, for checking conservation
-        PTR2D = 0.  
-        DO L = 1,LM 
-           PTR2D = PTR2D + ( DQSDT_SC(:,:,L)+DQRDT_SC(:,:,L)+DQVDT_SC(:,:,L) &
-                         +   QLENT_SC(:,:,L)+QLSUB_SC(:,:,L)+QIENT_SC(:,:,L) &
-                         +   QISUB_SC(:,:,L) )*MASS(:,:,L) &
-                         +   QLDET_SC(:,:,L)+QIDET_SC(:,:,L)
-        END DO
-        end if 
-    
-        call MAPL_GetPointer(EXPORT, PTR2D, 'SC_MSE', RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR2D)) then
-        ! column integral of UW moist static energy tendency
-        PTR2D = 0.
-        DO L = 1,LM
-           PTR2D = PTR2D + (MAPL_CP  * DTDT_SC(:,:,L) &
-                         +  MAPL_ALHL*DQVDT_SC(:,:,L) &
-                         -  MAPL_ALHF*DQIDT_SC(:,:,L))*MASS(:,:,L)
-        END DO
-        end if 
+               ! Convert detrained water units before passing to cloud
+               QLENT_SC(i,j,k) = 0.0
+               QIENT_SC(i,j,k) = 0.0
+               
+               if (QLDET_SC(i,j,k) < 0.0) then
+                  QLENT_SC(i,j,k) = QLDET_SC(i,j,k)
+                  QLDET_SC(i,j,k) = 0.0
+               end if
+               
+               if (QIDET_SC(i,j,k) < 0.0) then
+                  QIENT_SC(i,j,k) = QIDET_SC(i,j,k)
+                  QIDET_SC(i,j,k) = 0.0
+               end if
 
-        call MAPL_GetPointer(EXPORT, PTR2D,  'CUSH_SC', RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR2D)) PTR2D = CUSH
+               ! Scale the detrained fluxes before exporting
+               QLDET_SC(i,j,k) = QLDET_SC(i,j,k) * MASS(i,j,k)
+               QIDET_SC(i,j,k) = QIDET_SC(i,j,k) * MASS(i,j,k)
+            end do
+         end do
+      end do
+      !$OMP END PARALLEL DO
+
+      ! 3. Whole-array copies for direct 3D variables
+      !--------------------------------------------------------------
+      call MAPL_GetPointer(EXPORT, PTR3D, 'SHLW_PRC3', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+      if (associated(PTR3D)) PTR3D = DQRDT_SC    ! [kg/kg/s]
+      call MAPL_GetPointer(EXPORT, PTR3D, 'SHLW_SNO3', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+      if (associated(PTR3D)) PTR3D = DQSDT_SC    ! [kg/kg/s]
+      call MAPL_GetPointer(EXPORT, PTR2D,  'CUSH_SC', RC=STATUS); VERIFY_(STATUS)
+      if (associated(PTR2D)) PTR2D = CUSH
+
+      ! 4. Fused 2D Loop for Column Integrals
+      !--------------------------------------------------------------
+      ! We parallelize over j,i and accumulate over k internally
+      !$OMP PARALLEL DO DEFAULT(NONE) &
+      !$OMP SHARED(IM, JM, LM, SC_QT, SC_MSE, DQSDT_SC, DQRDT_SC, DQVDT_SC, &
+      !$OMP        QLENT_SC, QLSUB_SC, QIENT_SC, QISUB_SC, MASS, QLDET_SC, QIDET_SC, &
+      !$OMP        DTDT_SC, DQIDT_SC) &
+      !$OMP PRIVATE(i, j, k)
+      do j = 1, JM
+         do i = 1, IM
+            if (associated(SC_QT)) SC_QT(i,j) = 0.0
+            if (associated(SC_MSE)) SC_MSE(i,j) = 0.0
+            
+            do k = 1, LM
+               if (associated(SC_QT)) then
+                  SC_QT(i,j) = SC_QT(i,j) + &
+                     ( DQSDT_SC(i,j,k) + DQRDT_SC(i,j,k) + DQVDT_SC(i,j,k) + &
+                       QLENT_SC(i,j,k) + QLSUB_SC(i,j,k) + QIENT_SC(i,j,k) + &
+                       QISUB_SC(i,j,k) ) * MASS(i,j,k) + &
+                       QLDET_SC(i,j,k) + QIDET_SC(i,j,k)
+               end if
+               
+               if (associated(SC_MSE)) then
+                  SC_MSE(i,j) = SC_MSE(i,j) + &
+                     ( MAPL_CP   * DTDT_SC(i,j,k) + &
+                       MAPL_ALHL * DQVDT_SC(i,j,k) - &
+                       MAPL_ALHF * DQIDT_SC(i,j,k) ) * MASS(i,j,k)
+               end if
+            end do
+         end do
+      end do
+      !$OMP END PARALLEL DO
 
   endif
 
-  ! Apply tendencies
+
+  ! 1. Fetch all pointers FIRST before doing any math
   !--------------------------------------------------------------
-  Q  = Q  + DQVDT_SC * MOIST_DT
-  T  = T  +  DTDT_SC * MOIST_DT
-  U  = U  +  DUDT_SC * MOIST_DT
-  V  = V  +  DVDT_SC * MOIST_DT
-  ! Tiedtke-style cloud fraction !!
-  CLCN = MAX(0.0, MIN(CLCN + DQADT_SC*MOIST_DT, 1.0))
-  ! add detrained shallow convective ice/liquid source
   call MAPL_GetPointer(EXPORT, QLDET_SC, 'QLDET_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-  QLCN = MAX(0.0, QLCN + QLDET_SC*MOIST_DT/MASS)
   call MAPL_GetPointer(EXPORT, QIDET_SC, 'QIDET_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-  QICN = MAX(0.0, QICN + QIDET_SC*MOIST_DT/MASS)
-  ! Apply condensate tendency from subsidence, and sink from
-  ! condensate entrained into shallow updraft. 
   call MAPL_GetPointer(EXPORT, QLSUB_SC, 'QLSUB_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
   call MAPL_GetPointer(EXPORT, QLENT_SC, 'QLENT_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-  QLLS = MAX(0.0, QLLS + (QLSUB_SC+QLENT_SC)*MOIST_DT)
   call MAPL_GetPointer(EXPORT, QISUB_SC, 'QISUB_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
   call MAPL_GetPointer(EXPORT, QIENT_SC, 'QIENT_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-  QILS = MAX(0.0, QILS + (QISUB_SC+QIENT_SC)*MOIST_DT)
+
+  ! 2. Apply tendencies in a single fused loop with OpenMP
+  !--------------------------------------------------------------
+  !$OMP PARALLEL DO DEFAULT(NONE) &
+  !$OMP SHARED(IM, JM, LM, Q, DQVDT_SC, MOIST_DT, T, DTDT_SC, U, DUDT_SC, V, DVDT_SC, &
+  !$OMP        CLCN, DQADT_SC, QLCN, QLDET_SC, MASS, QICN, QIDET_SC, &
+  !$OMP        QLLS, QLSUB_SC, QLENT_SC, QILS, QISUB_SC, QIENT_SC) &
+  !$OMP PRIVATE(i, j, k)
+  do k = 1, LM
+     do j = 1, JM
+        !DIR$ IVDEP 
+        !DIR$ VECTOR ALWAYS
+        do i = 1, IM
+           ! Apply tendencies
+           Q(i,j,k) = Q(i,j,k) + DQVDT_SC(i,j,k) * MOIST_DT
+           T(i,j,k) = T(i,j,k) + DTDT_SC(i,j,k)  * MOIST_DT
+           U(i,j,k) = U(i,j,k) + DUDT_SC(i,j,k)  * MOIST_DT
+           V(i,j,k) = V(i,j,k) + DVDT_SC(i,j,k)  * MOIST_DT
+           
+           ! Tiedtke-style cloud fraction 
+           CLCN(i,j,k) = MAX(0.0, MIN(CLCN(i,j,k) + DQADT_SC(i,j,k)*MOIST_DT, 1.0))
+           
+           ! Add detrained shallow convective ice/liquid source
+           QLCN(i,j,k) = MAX(0.0, QLCN(i,j,k) + QLDET_SC(i,j,k)*MOIST_DT/MASS(i,j,k))
+           QICN(i,j,k) = MAX(0.0, QICN(i,j,k) + QIDET_SC(i,j,k)*MOIST_DT/MASS(i,j,k))
+           
+           ! Apply condensate tendency from subsidence, and sink from
+           ! condensate entrained into shallow updraft. 
+           QLLS(i,j,k) = MAX(0.0, QLLS(i,j,k) + (QLSUB_SC(i,j,k)+QLENT_SC(i,j,k))*MOIST_DT)
+           QILS(i,j,k) = MAX(0.0, QILS(i,j,k) + (QISUB_SC(i,j,k)+QIENT_SC(i,j,k))*MOIST_DT)
+        end do
+     end do
+  end do
+  !$OMP END PARALLEL DO
 
 ! Cleanup negative water species
 ! ------------------------------
