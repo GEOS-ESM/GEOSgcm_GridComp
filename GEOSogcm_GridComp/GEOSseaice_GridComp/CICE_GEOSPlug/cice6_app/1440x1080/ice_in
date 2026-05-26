@@ -1,12 +1,12 @@
 &setup_nml
     days_per_year  = 365
     use_leap_years = .true.
-    year_init      = 2005
-    month_init     = 1
-    day_init       = 1
-    sec_init       = 0
+    year_init      = @YEAR_INIT
+    month_init     = @MONTH_INIT
+    day_init       = @DAY_INIT
+    sec_init       = @SEC_INIT
     istep0         = 0
-    dt             = 900.0
+    dt             = @DT
     npt_unit       = '1'
     npt            = 9999999
     ndtd           = 1
@@ -271,11 +271,11 @@
 /
 
 &domain_nml
-    nprocs = -1
+    nprocs            = @NPROCS
     nx_global         = 1440
     ny_global         = 1080
-    block_size_x      = -1
-    block_size_y      = -1
+    block_size_x      = @BLOCK_SIZE_X
+    block_size_y      = @BLOCK_SIZE_Y
     max_blocks        = 1
     processor_shape   = 'square-pop'
     distribution_type = 'cartesian'
