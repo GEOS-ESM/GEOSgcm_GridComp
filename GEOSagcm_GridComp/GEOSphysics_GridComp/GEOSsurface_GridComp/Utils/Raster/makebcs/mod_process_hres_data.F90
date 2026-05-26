@@ -143,10 +143,10 @@ contains
     ! CLM description (17)                                    CatchmentCNCLM description (19)        
     ! --------------------                                    ------------------------------ 
 
-    ! 'BARE'   1     bare                                     (does not have bare soil)
+    ! 'BARE'   1  bare                                     (does not have bare soil)
     ! 'NLEt'   2  needleleaf evergreen temperate tree    1
     ! 'NLEB'   3  needleleaf evergreen boreal tree       2
-    ! 'NLDB'   4     needleleaf deciduous boreal tree       3
+    ! 'NLDB'   4  needleleaf deciduous boreal tree       3
     ! 'BLET'   5  broadleaf evergreen tropical tree      4
     ! 'BLEt'   6  broadleaf evergreen temperate tree     5
     ! 'BLDT'   7  broadleaf deciduous tropical tree      6
@@ -158,12 +158,12 @@ contains
     ! 'BLDBS' 12  broadleaf deciduous boreal shrub      12
     ! 'AC3G'  13  arctic c3 grass                       13
     ! 'CC3G'  14  cool c3 grass                         14  cool c3 grass [moisture +  deciduous]
-    ! 'CC3Gm'           cool c3 grass                         15  cool c3 grass [moisture stress only]
+    ! 'CC3Gm'     cool c3 grass                         15  cool c3 grass [moisture stress only]
     ! 'WC4G'  15  warm c4 grass                         16
     ! 'WC4Gm'     warm c4 grass                         17
     ! 'CROP'  16  crop                                  18  crop [moisture +  deciduous]
     ! 'CROPm'     crop                                  19  crop [moisture stress only]
-    !         17        water
+    !         17  water
 
     dx_clm = 360./N_lon_clm
     dy_clm = 180./N_lat_clm
@@ -3394,8 +3394,8 @@ contains
 
     implicit none
     integer,         intent(in) :: nx, ny, n_land
-    integer,         intent(in) :: tile_pfs(:)
-    integer, target, intent(in) :: tile_id(:,:)
+    integer,         intent(in) :: tile_pfs(:)               ! Pfafstetter index of tile (tile-space)
+    integer, target, intent(in) :: tile_id(:,:)              ! tile ID on raster grid (0=ocean, otherwise land or landice or lake)
 
 
     real, dimension (:), allocatable ::           &
@@ -3425,7 +3425,6 @@ contains
     integer (kind=2), allocatable, dimension (:) ::  &
          data_vec1, data_vec2,data_vec3, data_vec4,data_vec5, data_vec6
     REAL, ALLOCATABLE, dimension (:) :: soildepth, grav_vec,soc_vec,poc_vec  
-    !           ncells_top,ncells_top_pro,ncells_sub_pro                          ! ncells_* not used
     integer(kind=2) , allocatable, dimension (:) :: ss_clay,    &
          ss_sand,ss_clay_all,ss_sand_all,ss_oc_all
     REAL, ALLOCATABLE :: count_soil(:)
@@ -3436,16 +3435,19 @@ contains
     logical :: first_entry = .true.
     logical :: regrid,write_debug
     INTEGER, allocatable, dimension (:) :: soil_class_top,soil_class_com
-    REAL :: sf,factor,wp_wetness,fac_count,this_cond
+    REAL :: sf,factor,wp_wetness,fac_count,this_cond, tmp_oc_top_real
     logical                            :: CatchParamsNC_file_exists
     REAL, ALLOCATABLE, DIMENSION (:,:) :: parms4file
 
     ! PEATCLSM:
-    REAL, PARAMETER :: PEATMAP_THRESHOLD_1 = 0.5  ! for converting PEATMAP area fraction into peat/non-peat (on raster grid)
-    REAL, PARAMETER :: PEATMAP_THRESHOLD_2 = 0.5  ! for aggregation from raster grid cells to tiles
-
+    REAL, PARAMETER :: PEATMAP_THRESHOLD_1 = 0.5  ! for converting PEATMAP or GPM 2.0 peat area fraction into binary peat/non-peat (on raster grid)
+    REAL, PARAMETER :: PEATMAP_THRESHOLD_2 = 0.5  ! for aggregating PEATMAP or GPM 2.0 based oc_top class from raster grid cells to tiles
+    REAL, PARAMETER :: PEAT_CROP_THRESHOLD = 0.1  ! for screening GPM 2.0 raster grid cells that should not be peat but are identified as peat by GPM 2.0
+    
     REAL, DIMENSION (:), POINTER       :: PMAP
-    REAL, ALLOCATABLE, DIMENSION (:,:) :: PMAPR
+    REAL, ALLOCATABLE, DIMENSION (:,:) :: PMAPR, cropmapr
+
+    integer :: n_valid_top, n_valid_prof
 
 
     ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
@@ -3504,9 +3506,9 @@ contains
 
     ! define number of mineral classes in each orgC class
 
-    nsoil_pcarbon(1) = 84 ! 84
-    nsoil_pcarbon(2) = nsoil_pcarbon(1) + 84 ! 84
-    nsoil_pcarbon(3) = nsoil_pcarbon(2) + 84 ! 57
+    nsoil_pcarbon(1) =                    84   !  =  84
+    nsoil_pcarbon(2) = nsoil_pcarbon(1) + 84   !  = 168
+    nsoil_pcarbon(3) = nsoil_pcarbon(2) + 84   !  = 252
 
 
     ! read soil depth data from GSWP2_soildepth_H[xx]V[yy].nc
@@ -3649,15 +3651,27 @@ contains
     ! get info common to all H[xx]V[yy] rectangles (could in theory differ from that
     !   of soildepth data read above but is the same as of 29 Apr 2022).
 
-    if      (trim(SOILBCS)=='HWSD_b')  then
-       tmpversion = 'v3'
-    else if (trim(SOILBCS)=='HWSD')    then
-       tmpversion = 'v2'
-    else
-       print *, 'Unknown SOILBCS: ', SOILBCS  
-       stop         
-    end if
+    select case (trim(SOILBCS))
+       
+    case ('HWSD')   ; tmpversion = 'v2'             ! HWSDv1.21 as in De Lannoy et al 2014:   first introduced in "new land" (NL) bcs
 
+    case ('HWSD_b') ; tmpversion = 'v3'             ! as in 'HWSD' but with Argentina peatland fix: first introduced in v12 bcs
+       
+    case ('HWSDv2') ; tmpversion = 'v4'             ! HWSD version 2 (inactive)
+       
+       ! HWSDv2 was developed and tested ~2024-2025.  Soil moisture simulation skill was found to be mostly neutral,
+       ! while the soil moisture climatology changed substantially, which is undesirable for operational products.
+       ! Therefore, HWSDv2 was not used in released bcs versions as of May 2026.
+       ! 
+       ! v4 is /discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/land/soil/soil_properties/v2/out_HWSDv2_NGDC_STATSGO_noMASK/
+       ! New soil files with HWSDv2 - D2 layer both top and sub
+       
+    case default    ;  print *, 'Unknown SOILBCS: ', SOILBCS; stop
+
+    end select
+    
+    ! read HWSD[x] soil texture
+    
     fname =trim(MAKE_BCS_INPUT_DIR)//'/land/soil/SOIL-DATA/soil_properties/' // tmpversion // '/SoilProperties_H11V13.nc'
     status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
     !status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)  ! cannot be needed here
@@ -3719,17 +3733,19 @@ contains
           if(status == 0) then
              status = NF_GET_att_INT  (ncid, NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
              status = NF_GET_att_INT  (ncid, NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
+             
+             ! read UNDEF and ScaleFactor (sf) for Clay0-30 only (variable 4);
              ! assume UNDEF and ScaleFactor (sf) are the same for *all* variables read below
              ! (ok for SoilProperties_H[xx]V[yy].nc as of 29 Apr 2022).
-             status = NF_GET_att_INT  (ncid, 4,'UNDEF',d_undef); VERIFY_(STATUS) 
-             status = NF_GET_att_REAL (ncid, 4,'ScaleFactor',sf); VERIFY_(STATUS)
-             status = NF_GET_VARA_INT (ncid, 4,(/1,1/),(/nc_10,nr_10/),net_data1); VERIFY_(STATUS)
-             status = NF_GET_VARA_INT (ncid, 5,(/1,1/),(/nc_10,nr_10/),net_data2); VERIFY_(STATUS)
-             status = NF_GET_VARA_INT (ncid, 6,(/1,1/),(/nc_10,nr_10/),net_data3); VERIFY_(STATUS)
-             status = NF_GET_VARA_INT (ncid, 7,(/1,1/),(/nc_10,nr_10/),net_data4); VERIFY_(STATUS)
-             status = NF_GET_VARA_INT (ncid, 8,(/1,1/),(/nc_10,nr_10/),net_data5); VERIFY_(STATUS)
-             status = NF_GET_VARA_INT (ncid, 9,(/1,1/),(/nc_10,nr_10/),net_data6); VERIFY_(STATUS)
-             status = NF_GET_VARA_INT (ncid,10,(/1,1/),(/nc_10,nr_10/),net_data7); VERIFY_(STATUS)
+             status = NF_GET_att_INT  (ncid, 4,'UNDEF',d_undef);                   VERIFY_(STATUS) 
+             status = NF_GET_att_REAL (ncid, 4,'ScaleFactor',sf);                  VERIFY_(STATUS)             
+             status = NF_GET_VARA_INT (ncid, 4,(/1,1/),(/nc_10,nr_10/),net_data1); VERIFY_(STATUS)   ! Clay 0-30
+             status = NF_GET_VARA_INT (ncid, 5,(/1,1/),(/nc_10,nr_10/),net_data2); VERIFY_(STATUS)   ! Sand 0-30
+             status = NF_GET_VARA_INT (ncid, 6,(/1,1/),(/nc_10,nr_10/),net_data3); VERIFY_(STATUS)   ! OrgC 0-30
+             status = NF_GET_VARA_INT (ncid, 7,(/1,1/),(/nc_10,nr_10/),net_data4); VERIFY_(STATUS)   ! Clay 30-100
+             status = NF_GET_VARA_INT (ncid, 8,(/1,1/),(/nc_10,nr_10/),net_data5); VERIFY_(STATUS)   ! Sand 30-100
+             status = NF_GET_VARA_INT (ncid, 9,(/1,1/),(/nc_10,nr_10/),net_data6); VERIFY_(STATUS)   ! OrgC 30-100
+             status = NF_GET_VARA_INT (ncid,10,(/1,1/),(/nc_10,nr_10/),net_data7); VERIFY_(STATUS)   ! Gravel
              do j = jLL,jLL + nr_10 -1 
                 do i = iLL, iLL + nc_10 -1 
                    if(net_data1(i-iLL +1 ,j - jLL +1) /= d_undef) &
@@ -3761,28 +3777,106 @@ contains
     deallocate (net_data6)
     deallocate (net_data7)
 
-    ! ----------------------------------------------------------------------------
+    ! ------------------------------------------------------------------------------------
+    !
+    ! PEATMAP / GPM 2.0 preprocessing of HWSD organic carbon fields on raster grid, used later
+    !   for soil classification in tile space.
+    !
+    ! When PEAT_INFO=1, peat support is introduced through the top/subsurface OC raster 
+    !   arrays that are later copied into ss_oc_all:
+    !     oc_top --> ss_oc_all(  1:  i)
+    !     oc_sub --> ss_oc_all(i+1:2*i)
+    !   where i is the number of raster grid cells wihtin a given tile.
+    !   Top-layer organic carbon content is forced to 33% when PEATMAP indicates peat.
+    !   Raster grid cells can be peat based on HWSD oc_top even when PEATMAP does not indicate peat.
+    !   Subsurface peat from HWSD is not allowed; oc_sub peat is moved to peat-rich mineral Group 3.
+    !   IMPORTANT:
+    !   - Bugs in processing logic result in tiles with inconsistent parameter values.
+    !   - PEATMAP wrongly indicates peat in patches across US Midwest.
+    !
+    ! When PEAT_INFO=2, peat/mineral is determined at the raster grid cell level
+    !   based solely on Global Peatland Map 2.0 (GPM 2.0), regardless of HWSD organic
+    !   carbon content values.
+    !   A crop mask derived from MODIS MCD12Q1 is used to screen out raster grid cells that
+    !   are identified as peat by GPM 2.0 but are in agricultural use. 
+    !   GPM 2.0 preprocessing assigns a value of 1.0 for "peat dominated" and 0.5 for 
+    !   "peat in soil mosaic" and then remaps to the 30-arcsec raster grid using nearest neighbor.
+    !   Top-layer organic carbon content is forced to 33% when GPM 2.0 indicates peat. 
+    !   Thereafter, organic carbon content values are derived from HWSD data, without the
+    !   latter impacting the peat/mineral classification.
+    !
+    ! Final tile top/profile classes are assigned later from the raster-based fields.
 
-    if(use_PEATMAP) then 
+    if (PEAT_INFO>=1) then
+
        print *, 'PEATMAP_THRESHOLD_1 : ', PEATMAP_THRESHOLD_1
-       allocate(pmapr (1:i_highd,1:j_highd))
-       status  = NF_OPEN (trim(MAKE_BCS_INPUT_DIR)//'/land/soil/SOIL-DATA/PEATMAP_mask.nc4', NF_NOWRITE, ncid)
-       status  = NF_GET_VARA_REAL (ncid,NC_VarID(NCID,'PEATMAP'), (/1,1/),(/i_highd, j_highd/), pmapr) ; VERIFY_(STATUS)      
 
-       ! move HWSD sub-surface peat to peat-rich mineral Group 3 because merged surface peat defines sub-surface peat
+       allocate(pmapr(1:i_highd,1:j_highd))
 
-       where (oc_sub*sf >= cF_lim(4))
-          oc_sub = NINT(8./sf)
-       endwhere
+       select case (PEAT_INFO)
+       case (1)
+          ! Legacy PEATMAP mask 
+          fname = trim(MAKE_BCS_INPUT_DIR)// '/land/soil/SOIL-DATA/peat/v1/PEATMAP_mask.nc4'
+       case (2)
 
-       ! Hybridize: add OC 1km PEATMAP pixels to HWSD oc_top
+          ! Preprocessed GPM 2.0 peat fraction on the standard 30-arcsec raster grid.
+          ! Values are:
+          !   1.0 = peat dominated
+          !   0.5 = peat in soil mosaic
+          !   0.0 = non-peat/mineral          
+          fname = trim(MAKE_BCS_INPUT_DIR) // '/land/soil/SOIL-DATA/peat/v2/peatGPA22WGS_2cl_real_30arcsec.nc4'
+          
+       case default
+          print *, 'unknown value of PEAT_INFO'
+          stop
+       end select
 
-       where (pmapr >= PEATMAP_THRESHOLD_1)
-          oc_top = NINT(33.0/sf)
-       endwhere
+       status = NF_OPEN(trim(fname), NF_NOWRITE, ncid)                                                ; VERIFY_(STATUS)
+       
+       status = NF_GET_VARA_REAL(ncid, NC_VarID(ncid,'PEATMAP'), (/1,1/), (/i_highd,j_highd/), pmapr) ; VERIFY_(STATUS)
+       
+       status = NF_CLOSE(ncid)                                                                        ; VERIFY_(STATUS)
+       
+       if (PEAT_INFO==1) then
+          
+          ! Subsurface orgC must *not* fall into peat class.  Limit HWSD subsurface peat to peat-rich mineral Group 3.
+          
+          where (oc_sub*sf >= cF_lim(4))  oc_sub = NINT(8./sf)
+          
+       end if
+       
+       if (PEAT_INFO==2) then
+          
+          ! load crop info
+          
+          allocate(cropmapr(1:i_highd,1:j_highd))
+          
+          fname = trim(MAKE_BCS_INPUT_DIR) // '/land/soil/SOIL-DATA/peat/v2/MCD12Q1_LCType1_crop_climatology_30arcsec.nc4'
+          
+          status = NF_OPEN(trim(fname), NF_NOWRITE, ncid)                                                           ; VERIFY_(STATUS)
+          
+          status = NF_GET_VARA_REAL(ncid, NC_VarID(ncid,'crop12or14_clim'), (/1,1/), (/i_highd,j_highd/), cropmapr) ; VERIFY_(STATUS)
+    
+          status = NF_CLOSE(ncid)                                                                                   ; VERIFY_(STATUS)
+          
+          ! Where GPM 2.0 is "not peat" or is "crop", limit HWSD oc_top to max possible value for mineral.
+          ! (Ensures that GPM 2.0 takes precedence over HWSD when determining peat/mineral class from oc_top below.)
+          
+          !where (pmapr < PEATMAP_THRESHOLD_1)  oc_top = min( oc_top, FLOOR(cF_lim(4)/sf) )  ! force oc_top<=872   (cF_lim(4)/sf=872.0930)
 
-       deallocate (pmapr)
-       status = NF_CLOSE(ncid)
+
+          where ( (pmapr < PEATMAP_THRESHOLD_1) .or. (cropmapr > PEAT_CROP_THRESHOLD) ) oc_top = min( oc_top, FLOOR(cF_lim(4)/sf) )  ! force oc_top<=872   (cF_lim(4)/sf=872.0930)
+
+          deallocate(cropmapr)
+          
+       endif
+       
+       ! Where GPM 2.0 (after crop screening ) or PEATMAP is peat, set top-layer OrgC to value associated with peat.
+       
+       where (pmapr >= PEATMAP_THRESHOLD_1)  oc_top = NINT(33.0/sf)
+       
+       deallocate(pmapr)
+
     endif
 
     ! ----------------------------------------------------------------------------
@@ -3862,7 +3956,7 @@ contains
 
     ! ----------------------------------------------------------------------------
 
-    ! compute peat fraction on tile for CLM45+ (for fires?)
+    ! from raster oc_top, compute peat area fraction of land tiles for CLM45+ (for fires?)
 
     allocate(pmap  (1:n_land))
     !allocate(count_soil(1:n_land))            ! already allocated above
@@ -3909,19 +4003,12 @@ contains
     allocate (grav_vec  (1:n_land))
     allocate (soc_vec   (1:n_land))
     allocate (poc_vec   (1:n_land))
-    !allocate (ncells_top  (1:n_land))            ! ncells_* not used
-    !allocate (ncells_top_pro  (1:n_land))        ! ncells_* not used
-    !allocate (ncells_sub_pro  (1:n_land))        ! ncells_* not used
     !allocate(count_soil(1:n_land))               
 
     count_soil = 0.
     grav_vec   = 0.
     soc_vec    = 0.            ! soil orgC (top layer 0-30)
     poc_vec    = 0.            ! soil orgC (profile layer 0-100)
-
-    !ncells_top = 0.           ! ncells_* not used
-    !ncells_top_pro = 0.       ! ncells_* not used
-    !ncells_sub_pro = 0.       ! ncells_* not used
 
     n =1
     do j=1,ny_adj
@@ -4005,20 +4092,20 @@ contains
     !
     ! Read Woesten soil parameters and CLSM tau parameters for soil classes (1:253)
 
-    allocate(a_sand  (1:n_SoilClasses))
-    allocate(a_clay  (1:n_SoilClasses))
-    allocate(a_silt  (1:n_SoilClasses))
-    allocate(a_oc    (1:n_SoilClasses))
-    allocate(a_bee   (1:n_SoilClasses))
-    allocate(a_psis  (1:n_SoilClasses))
-    allocate(a_poros (1:n_SoilClasses))
-    allocate(a_wp    (1:n_SoilClasses))
-    allocate(a_aksat (1:n_SoilClasses))
-    allocate(atau    (1:n_SoilClasses))
-    allocate(btau    (1:n_SoilClasses))
-    allocate(atau_2cm(1:n_SoilClasses))
-    allocate(btau_2cm(1:n_SoilClasses))
-    allocate(a_wpsurf(1:n_SoilClasses))
+    allocate(a_sand  (  1:n_SoilClasses))
+    allocate(a_clay  (  1:n_SoilClasses))
+    allocate(a_silt  (  1:n_SoilClasses))
+    allocate(a_oc    (  1:n_SoilClasses))
+    allocate(a_bee   (  1:n_SoilClasses))
+    allocate(a_psis  (  1:n_SoilClasses))
+    allocate(a_poros (  1:n_SoilClasses))
+    allocate(a_wp    (  1:n_SoilClasses))
+    allocate(a_aksat (  1:n_SoilClasses))
+    allocate(atau    (  1:n_SoilClasses))
+    allocate(btau    (  1:n_SoilClasses))
+    allocate(atau_2cm(  1:n_SoilClasses))
+    allocate(btau_2cm(  1:n_SoilClasses))
+    allocate(a_wpsurf(  1:n_SoilClasses))
     allocate(a_porosurf(1:n_SoilClasses))
 
     ! SoilClasses-SoilHyd-TauParam.dat and SoilClasses-SoilHyd-TauParam.peatmap differ
@@ -4031,7 +4118,7 @@ contains
     ! NLv4  7.86e-7   5.81e-6
     ! NLv5  3.79e-6   2.80e-5   <== note *typo* in Table 2 of Bechtold et al. 2019, which erroneously lists K_s=2.8e-5
 
-    if(use_PEATMAP) then 
+    if(PEAT_INFO>=1) then 
        fname = trim(MAKE_BCS_INPUT_DIR)//'/land/soil/SOIL-DATA/SoilClasses-SoilHyd-TauParam.peatmap'
     else
        fname = trim(MAKE_BCS_INPUT_DIR)//'/land/soil/SOIL-DATA/SoilClasses-SoilHyd-TauParam.dat'
@@ -4148,25 +4235,23 @@ contains
     !$OMP         sf,data_vec1,data_vec2,data_vec3,         &
     !$OMP         data_vec4,data_vec5,data_vec6,cF_lim,     &
     !$OMP         table_map,soil_class_top,soil_class_com,  &
-    !$OMP         soc_vec,poc_vec,use_PEATMAP)              &
-    !ncells_* not used !$OMP         soc_vec,poc_vec,ncells_top,ncells_top_pro,&
-    !ncells_* not used !$OMP         ncells_sub_pro,use_PEATMAP)               &
+    !$OMP         soc_vec,poc_vec,PEAT_INFO)                &
     !$OMP PRIVATE(n,i,j,k,icount,t_count,i1,i2,ss_clay,     &
     !$OMP         ss_sand,ss_clay_all,ss_sand_all,          &
     !$OMP         ss_oc_all,cFamily,factor,o_cl,o_clp,ktop, &
-    !$OMP         min_percs, fac_count, write_debug)
+    !$OMP         min_percs, fac_count, write_debug,        &
+    !$OMP         n_valid_top, n_valid_prof,tmp_oc_top_real)
 
     ! loop through tiles (split into two loops for OpenMP)
 
     DO t_count = 1,n_threads
        DO n = low_ind(t_count),upp_ind(t_count)
-
           write_debug = .false.
 
           !  if (n==171010)  write_debug = .true.
 
           ! initialize "icount" when starting loop through n at low_ind(t_count)
-          ! recall: tileid_vec is a 1-d vector that covers all land pixels on the raster grid that
+          ! recall: tileid_vec is a 1-d vector that covers all land pixels on the raster grid and
           !         contains the (sorted) tile IDs, with matching parameter vectors data_vec[x]
 
           if(n==low_ind(t_count)) then
@@ -4192,12 +4277,11 @@ contains
 
           loop: do while (tileid_vec(icount)== n)
              if(icount <= size(tileid_vec,1)) icount = icount + 1
-             if(icount > size(tileid_vec,1)) exit loop
+             if(icount >  size(tileid_vec,1)) exit loop
           end do loop
 
           i2 = icount -1
-          i = i2 - i1 + 1                ! number of land raster grid cells that make up tile n (?)
-
+          i  = i2 - i1 + 1               ! number of land raster grid cells that make up tile n (?)
 
           ! -------------------------------------------------------------------
           ! 
@@ -4225,104 +4309,156 @@ contains
           ss_sand_all (1+i:2*i) = data_vec5(i1:i2)
           ss_oc_all   (1+i:2*i) = data_vec6(i1:i2)  ! <-- oc_sub 
 
-
           ! -----------------------------------------------------------------------
           !
-          ! determine aggregate/dominant orgC *top* layer soil class ("o_cl") of tile n
+          ! Determine aggregate/dominant orgC *top* class (o_cl) for tile n from raster orgC classes.
+          !
+          ! cFamily(1:4) counts raster pixels whose top-layer orgC falls into
+          ! orgC classes 1:4. Raster grid cells with invalid orgC do not contribute.
+          !
+          ! n_valid_top counts raster pixels with valid top-layer orgC and is
+          ! used only to detect tiles with no valid top-layer support.
+          !
+          cFamily     = 0.
+          n_valid_top = 0
 
-          cFamily = 0.
-          !!         factor  = 1.
+          do j=1,i          ! loop through top orgC of raster grid cells that make up tile n
+             
+             if (ss_oc_all(j)*sf >=  cF_lim(1)) n_valid_top = n_valid_top + 1    ! count all raster pixels with valid top orgC
 
-          do j=1,i
-             if(j <= i) factor = 1.
-             if((ss_oc_all(j)*sf >=  cF_lim(1)).and. (ss_oc_all(j)*sf < cF_lim(2))) cFamily(1) = cFamily(1) + factor
-             if((ss_oc_all(j)*sf >=  cF_lim(2)).and. (ss_oc_all(j)*sf < cF_lim(3))) cFamily(2) = cFamily(2) + factor
-             if((ss_oc_all(j)*sf >=  cF_lim(3)).and. (ss_oc_all(j)*sf < cF_lim(4))) cFamily(3) = cFamily(3) + factor
-             if((ss_oc_all(j)*sf >=  cF_lim(4) ))                                   cFamily(4) = cFamily(4) + factor
+             if((ss_oc_all(j)*sf >=  cF_lim(1)).and.(ss_oc_all(j)*sf < cF_lim(2))) cFamily(1) = cFamily(1) + 1.
+             if((ss_oc_all(j)*sf >=  cF_lim(2)).and.(ss_oc_all(j)*sf < cF_lim(3))) cFamily(2) = cFamily(2) + 1.
+             if((ss_oc_all(j)*sf >=  cF_lim(3)).and.(ss_oc_all(j)*sf < cF_lim(4))) cFamily(3) = cFamily(3) + 1.
+             if((ss_oc_all(j)*sf >=  cF_lim(4))                                  ) cFamily(4) = cFamily(4) + 1.
+             
           end do
 
-          if (sum(cFamily) == 0.) o_cl  = 1    ! default is o_cl=1 (if somehow no grid cell has top-layer orgC >=0.)
+          if (n_valid_top == 0) then
+             
+             o_cl = 1    ! No valid top-layer orgC values: fall back to (mineral) orgC class 1.
 
-          !!          if (.not. use_PEATMAP) then
-
-          ! assign dominant *top* layer org soil class (even if only a minority of the contributing 
-          !   raster grid cells is peat)
-
-          if (sum(cFamily)  > 0.) o_cl  = maxloc(cFamily, dim = 1)
-
-          !!          else
-
-          if (use_PEATMAP) then
-
-             ! PEATMAP: tile has *top* layer peat class only if more than 50% of the contributing 
-             !   raster grid cells are peat (may loose some peat tiles w.r.t. non-PEATMAP bcs version)
-
-             if (cFamily(4)/real(i) > PEATMAP_THRESHOLD_2) then 
-                o_cl  = 4
+          else if (PEAT_INFO>=2) then
+             
+             ! Classify as peat only when peat support exceeds the threshold relative to the full tile pixel count.
+             ! Otherwise choose the dominant mineral orgC class (1–3).
+             
+             if (cFamily(4)/real(i) > PEATMAP_THRESHOLD_2) then  
+                o_cl = 4
              else
-                if (sum(cFamily(1:3)) > 0.) o_cl  = maxloc(cFamily(1:3), dim = 1)  ! o_cl = 1, 2, or 3
+                if (sum(cFamily(1:3)) > 0.) then
+                   o_cl = maxloc(cFamily(1:3), dim = 1)    ! NOTE: maxloc picks *first* index if tied (biased towards lower orgC class)
+                else
+                   o_cl = 1
+                endif
+             endif
+             
+          else
+             
+             ! Legacy behavior preserved for backward compatibility (PEAT_INFO=0,1)
+             
+             o_cl = maxloc(cFamily, dim = 1)
+
+             if (PEAT_INFO==1) then
+                if (cFamily(4)/real(i) > PEATMAP_THRESHOLD_2) then
+                   o_cl = 4
+                else
+                   if (sum(cFamily(1:3)) > 0.) o_cl = maxloc(cFamily(1:3), dim = 1)    ! o_cl = 1, 2, or 3
+                endif
              endif
 
           endif
-
-
-          ! determine aggregate/dominant orgC *profile* (0-100) soil class ("o_clp") of tile n,
-          ! weight factor=1. for top (0-30) layer and weight factor=2.33 for sub (30-100) layer
+          
+          ! -----------------------------------------------------------------------
+          !
+          ! Determine aggregate/dominant orgC *profile* class (o_clp) for tile n from raster orgC classes.
+          ! Top layer (0–30 cm) class has weight 1.0 and the sub layer (30–100 cm) class has weight 2.33.
+          !
+          ! cFamily(1:4) counts (weighted) occurrence of prof orgC classes 1:4.
+          ! Raster grid cells and layers with invalid orgC do not contribute.
+          !
+          ! n_valid_prof counts layers with valid top or sub orgC and is used only to detect
+          ! tiles with no valid profile support.
 
           cFamily = 0.
+          n_valid_prof = 0
 
-          do j=1,2*i
+          do j=1,2*i         ! loop through top *and* sub orgC of raster grid cells that make up tile n
+             
              if(j <= i) factor = 1.
-             if(j  > i) factor = 2.33
-             if((ss_oc_all(j)*sf >=  cF_lim(1)).and. (ss_oc_all(j)*sf < cF_lim(2))) cFamily(1) = cFamily(1) + factor
-             if((ss_oc_all(j)*sf >=  cF_lim(2)).and. (ss_oc_all(j)*sf < cF_lim(3))) cFamily(2) = cFamily(2) + factor
-             if((ss_oc_all(j)*sf >=  cF_lim(3)).and. (ss_oc_all(j)*sf < cF_lim(4))) cFamily(3) = cFamily(3) + factor
-             if((ss_oc_all(j)*sf >=  cF_lim(4) ))                                   cFamily(4) = cFamily(4) + factor
+             if(j >  i) factor = 2.33
+             
+             if (ss_oc_all(j)*sf >=  cF_lim(1)) n_valid_prof = n_valid_prof + 1  ! count all raster pixels with valid top or sub orgC  
+
+             if((ss_oc_all(j)*sf >=  cF_lim(1)).and.(ss_oc_all(j)*sf < cF_lim(2))) cFamily(1) = cFamily(1) + factor
+             if((ss_oc_all(j)*sf >=  cF_lim(2)).and.(ss_oc_all(j)*sf < cF_lim(3))) cFamily(2) = cFamily(2) + factor
+             if((ss_oc_all(j)*sf >=  cF_lim(3)).and.(ss_oc_all(j)*sf < cF_lim(4))) cFamily(3) = cFamily(3) + factor
+             if((ss_oc_all(j)*sf >=  cF_lim(4))                                  ) cFamily(4) = cFamily(4) + factor
+             
           end do
 
-          ! NOTE: For PEATMAP, oc_sub was cut back to 8./sf above:
-          !       "! move HWSD sub-surface peat to peat-rich mineral Group 3 because merged surface peat defines sub-surface peat"
-          !       "where (oc_sub*sf >= cF_lim(4))                                                                                "
-          !       "    oc_sub = NINT(8./sf)                                                                                      "
-          !       "endwhere                                                                                                      "
-          !       For PEATMAP, the sub-layer weight of 2.33 should only count towards cFamily(1:3), and in most cases the 
-          !       maxloc statement below should therefore result in o_clp = 1, 2, or 3 only.  However, if the top-layer orgC
-          !       is peat for most contributing raster grid cells and the sub-layer orgC values are relatively evenly spread 
-          !       over orgC classes 1, 2, and 3, then maxloc(cFamily) can result in o_clp=4.
+          if (n_valid_prof == 0) then
+             
+             o_clp = 1   ! No valid top or sub orgC values: fall back to (mineral) orgC class 1.
+             
+          else if (PEAT_INFO>=2) then
+             
+             if (o_cl == 4) then
 
-          if (sum(cFamily) == 0.) o_clp = 1
-          if (sum(cFamily)  > 0.) o_clp = maxloc(cFamily, dim = 1)        
+                o_clp = 4     ! If top-layer orgC class is peat, then profile orgC class is peat.
+
+             else
+                
+                ! Use weighted profile support only to distinguish mineral orgC classes 1–3.
+                
+                if (sum(cFamily(1:3)) > 0.) then
+                   o_clp = maxloc(cFamily(1:3), dim = 1)    ! NOTE: maxloc picks *first* index if tied (biased towards lower orgC class)
+                else
+                   o_clp = 1
+                endif
+                
+             endif
+             
+          else
+             
+             ! Legacy behavior preserved for backward compatibility (PEAT_INFO=0,1).
+                         
+             o_clp = maxloc(cFamily, dim = 1)               ! NOTE: maxloc picks *first* index if tied (biased towards lower orgC class)
+
+          endif         
 
           ! ----------------------------------------------------------------------------------------
           ! 
-          ! Determine *top* layer mineral/organic soil class of tile n 
+          ! Determine *top* layer *soil* class of tile n from the dominant
+          ! top-layer orgC class (o_cl) and representative top-layer clay/sand.
 
-          if(o_cl == 4) then 
-
-             ! Top-layer soil class of tile n is peat. 
+          if (o_cl == 4) then 
+             
+             ! Top-layer soil class of tile n is *peat*.
+             
              ! Compute average top-layer orgC (only across raster grid cells whose top layer is peat).
-
-             soil_class_top(n) = n_SoilClasses
+             
+             soil_class_top(n) = n_SoilClasses          ! assign peat soil class 253
+             
              ktop = 0
+             
              do j=1,i
                 ! avg only across contributing raster grid cells that are peat
                 if(ss_oc_all(j)*sf >= cF_lim(4)) then           
-                   soc_vec (n) = soc_vec(n) + ss_oc_all(j)*sf
+                   soc_vec (n) = soc_vec(n) + ss_oc_all(j)*sf           ! "soc" = "surface orgC"
                    ktop = ktop + 1
                 endif
              end do
+             
              if(ktop.ne.0) soc_vec (n)   = soc_vec(n)/ktop
-             !ncells_top(n) = 100.*float(ktop)/float(i)            ! ncells_* not used
-
+             
           else 
+             
+             ! Top-layer soil class of tile n is *mineral*.
+             
+             ! Compute average top-layer orgC across raster grid cells in the assigned
+             ! orgC class and collect clay/sand pairs from those cells where texture data are valid.             
 
-             ! Top-layer soil class of tile n is mineral.
-             ! Compute average top-layer orgC (only across raster grid cells within same orgC class)
-             ! and collect all clay/sand pairs of raster grid cells within same orgC class. 
-
-             !k = 1        !cleanup k counter
-             !ktop = 1     !cleanup k counter
-             ktop = 0      !cleanup k counter
+             ktop = 0      ! counter of raster grid cells with assigned orgC class
 
              do j=1,i      ! loop only through top-layer elements of ss_*_all
 
@@ -4331,11 +4467,12 @@ contains
 
                    if((ss_clay_all(j)*sf >= 0.).and.(ss_sand_all(j)*sf >= 0.)) then    ! avoiding no-data-values
 
-                      ktop = ktop + 1      !cleanup k counter
+                      ktop = ktop + 1      
                       ss_clay (ktop) = ss_clay_all(j)                    
                       ss_sand (ktop) = ss_sand_all(j)                    
 
-                      ! adjust clay and sand content if outside joint physical bounds
+                      ! adjust clay and sand content if outside joint physical bounds:
+                      ! must have sand+clay<=100; if violated, reset smaller of the two
                       if((ss_clay (ktop) + ss_sand (ktop)) > 9999) then  ! note: 9999 = 99.99%  (scale factor = 0.01)
                          if(ss_clay (ktop) >= ss_sand (ktop)) then
                             ss_sand (ktop) = 10000 - ss_clay (ktop)
@@ -4344,18 +4481,11 @@ contains
                          endif
                       endif
                       soc_vec (n) = soc_vec(n) + ss_oc_all(j)*sf    ! sum up top-layer orgC
-                      !k = k + 1            !cleanup k counter
-                      !ktop = ktop + 1      !cleanup k counter
                    endif
                 endif
              end do
 
-             !k = k - 1           !cleanup k counter
-             !ktop = ktop -1      !cleanup k counter
-
              if(ktop.ne.0) soc_vec (n) = soc_vec(n)/ktop     ! normalize top-layer orgC
-
-             !ncells_top(n) = 100.*float(ktop)/float(i)            ! ncells_* not used
 
              ! debugging output
              if (write_debug) write(80+n,*)ktop,o_cl
@@ -4368,68 +4498,100 @@ contains
              ! to the average (top-layer) clay/sand across all raster grid cells within the 
              ! dominant orgC class.
 
-             j = center_pix_int0(sf, ktop,ktop, ss_clay(1:ktop),ss_sand(1:ktop))
+             j = center_pix_int0(sf, ktop, ktop, ss_clay(1:ktop),ss_sand(1:ktop))
 
              ! Assign soil class of raster grid cell j to tile n
-
+             
              if(j >=1) then 
                 min_percs%clay_perc = ss_clay(j)*sf
                 min_percs%sand_perc = ss_sand(j)*sf
                 min_percs%silt_perc = 100. - ss_clay(j)*sf - ss_sand(j)*sf
                 soil_class_top (n) = table_map(soil_class (min_percs),o_cl)   
              endif
-
+             
              ! debugging output
              if (write_debug) write(80+n,*)j
 
           endif  ! o_cl==4
-
+          
           ! debugging output
-          if (write_debug) write(80+n,*)soil_class_top (n) 
+          if (write_debug) write(80+n,*) soil_class_top (n) 
 
           ! -------------------------------------------------------------------------------
-          ! 
-          ! determine aggregate sand/clay/orgC for *profile* layer of tile n 
+          !
+          ! Determine *profile* layer *soil* class of tile n from the dominant
+          ! profile orgC class (o_clp) and representative profile clay/sand.
+          ! Profile orgC support is weighted by 1.0 for the top layer (0–30 cm)
+          ! and 2.33 for the sub layer (30–100 cm).
 
           if(o_clp == 4) then 
 
-             ! Profile-layer soil class of tile n is peat. 
-             ! Compute average profile-layer orgC (only across raster grid cells and layers that are peat)
+             ! *Profile* soil class of tile n is *peat*.
+             
+             soil_class_com(n) = n_SoilClasses             ! assign peat soil class 253
 
-             soil_class_com(n) = n_SoilClasses
              fac_count = 0.
-             k =0
-             ktop =0
-             do j=1,2*i
-                if(ss_oc_all(j)*sf >= cF_lim(4)) then
-                   if(j <= i) factor = 1.                ! top layer contribution  1   <= j <=i
-                   if(j  > i) factor = 2.33              ! sub layer contribution  i+1 <= j <=2*i
-                   if(j  > i) k = k + 1                  ! sub layer counter
-                   if(j <= i) ktop = ktop + 1            ! top layer counter
-                   poc_vec (n) = poc_vec(n) + ss_oc_all(j)*sf*factor     ! weighted sum of orgC
-                   fac_count = fac_count + factor                        ! sum of weights
-                endif
-             end do
+
+             if (PEAT_INFO<=1) then
+
+                ! Legacy behavior: Compute weighted average profile orgC (only across raster grid cells/layers whose orgC class is peat).
+                
+                do j=1,2*i
+                   if (ss_oc_all(j)*sf >= cF_lim(4)) then
+                      if(j <= i) factor = 1.                                ! top layer contribution  1   <= j <=i
+                      if(j  > i) factor = 2.33                              ! sub layer contribution  i+1 <= j <=2*i
+                      poc_vec (n) = poc_vec(n) + ss_oc_all(j)*sf*factor     ! weighted sum of orgC ("poc" = "profile orgC")
+                      fac_count = fac_count + factor                        ! sum of weights
+                   endif
+                end do
+                
+             else
+                
+                ! Compute weighted average profile orgC only for raster grid cells that are peat (based on oc_top)
+                
+                do j=1,2*i
+                   
+                   ! determine top orgC that corresponds to element j:
+                   
+                   if(j <= i) then
+                      tmp_oc_top_real = ss_oc_all(j  )*sf   ! j is for top layer
+                   else
+                      tmp_oc_top_real = ss_oc_all(j-i)*sf   ! j is for sub layer
+                   end if
+
+                   if ( (tmp_oc_top_real >= cF_lim(4)) .and. (ss_oc_all(j)*sf >= cF_lim(1)) ) then   
+                      
+                      ! top orgC is peat *and* top/sub orgC is valid data
+                      
+                      if(j <= i) factor = 1.                                ! top layer contribution  1   <= j <=i
+                      if(j  > i) factor = 2.33                              ! sub layer contribution  i+1 <= j <=2*i
+                      poc_vec (n) = poc_vec(n) + ss_oc_all(j)*sf*factor     ! weighted sum of orgC ("poc" = "profile orgC")
+                      fac_count = fac_count + factor                        ! sum of weights
+                   endif
+                end do
+
+             end if
+                
              if(fac_count.ne.0) poc_vec (n) = poc_vec (n)/fac_count   ! normalize
-             !ncells_sub_pro(n) = 100.*float(k)/float(i)              ! ncells_* not used
-             !ncells_top_pro(n) = 100.*float(ktop)/float(i)           ! ncells_* not used
+             
           else
+             
+             ! *Profile* soil class of tile n is *mineral*.
 
-             ! Profile-layer soil class of tile n is mineral.
-             ! Compute average profile-layer orgC (only across raster grid cells within same orgC class)
-             ! and collect all clay/sand pairs of raster grid cells within same orgC class. 
+             ! Compute weighted average profile orgC across raster grid cells/layers
+             ! in the assigned orgC class and collect clay/sand pairs where texture
+             ! data are valid.             
 
-             !k = 1        !cleanup k counter
-             !ktop = 1     !cleanup k counter
-             k = 0         !cleanup k counter
-             ktop = 0      !cleanup k counter
+             k         = 0      
+             ktop      = 0 
 
-             ss_clay=0
-             ss_sand=0
+             ss_clay   = 0
+             ss_sand   = 0
              fac_count = 0.
 
              do j=1,2*i    ! loop through both top (1<=j<=i) layer and sub (i+1<=j<=2*i) layer elements
-                ! avg only across contributing raster grid cells and layers with orgC class as that assigned to tile n 
+                ! Average only across contributing raster grid cells/layers whose
+                ! orgC class matches the assigned profile orgC class.                
                 if((ss_oc_all(j)*sf >=  cF_lim(o_clp)).and.(ss_oc_all(j)*sf < cF_lim(o_clp + 1))) then 
 
                    if((ss_clay_all(j)*sf >= 0.).and.(ss_sand_all(j)*sf >= 0.)) then    ! avoiding no-data-values 
@@ -4440,15 +4602,9 @@ contains
                       poc_vec (n) = poc_vec(n) + ss_oc_all(j)*sf*factor   ! weighted sum of orgC
                       fac_count = fac_count + factor
 
-                      k = k + 1                  ! counter for top and sub contributions        !cleanup k counter  
+                      k = k + 1                  ! counter for top and sub contributions
 
-                      if (j<=i) ktop = ktop + 1  ! counter for top contributions only           !cleanup k counter
-
-
-                      !obsolete20220502  The code within the if-then and if-else statements below was nearly identical,
-                      !obsolete20220502  except for the omission of the ktop counter from the else block.
-                      !obsolete20220502
-                      !obsolete20220502          if(j <= i) then
+                      if (j<=i) ktop = ktop + 1  ! counter for top contributions only
 
                       ss_clay (k) = ss_clay_all(j)
                       ss_sand (k) = ss_sand_all(j)
@@ -4461,51 +4617,30 @@ contains
                             ss_clay (k) = 10000 - ss_sand (k)
                          endif
                       endif
-                      !k = k + 1           !cleanup k counter
-                      !ktop = ktop + 1     !cleanup k counter
-
-                      !obsolete20220502           else
-                      !obsolete20220502                ss_clay (k) = ss_clay_all(j)
-                      !obsolete20220502          ss_sand (k) = ss_sand_all(j)
-                      !obsolete20220502                           if((ss_clay (k) + ss_sand (k)) > 9999) then
-                      !obsolete20220502                              if(ss_clay (k) >= ss_sand (k)) then
-                      !obsolete20220502                                ss_sand (k) = 10000 - ss_clay (k)
-                      !obsolete20220502                              else
-                      !obsolete20220502                                ss_clay (k) = 10000 - ss_sand (k)
-                      !obsolete20220502                              endif
-                      !obsolete20220502                           endif
-                      !obsolete20220502                           !k = k + 1          !cleanup k counter                         
-                      !obsolete20220502           endif   
                    endif
                 endif
              end do
 
-             !k = k - 1            !cleanup k counter
-             !ktop = ktop -1       !cleanup k counter
-
              if(fac_count.ne.0) poc_vec (n) = poc_vec(n)/fac_count     ! normalize profile-layer orgC
 
-             !ncells_top_pro(n) = 100.*float(ktop)/float(i)              ! ncells_* not used
-             !ncells_sub_pro(n) = 100.*float(k-ktop)/float(i)            ! ncells_* not used
 
              ! debugging output
-             if (write_debug) write (80+n,*)ktop,k,o_cl
+             if (write_debug) write (80+n,*)ktop,k,o_clp
              if (write_debug) write (80+n,*)ss_clay(1:k)
              if (write_debug) write (80+n,*)ss_sand(1:k)
 
-             ! Determine the raster grid cell and layer j that has clay/sand content closest
-             ! to the average (profile) clay/sand across all raster grid cells within the 
+             ! Determine the raster grid cell/layer j whose clay/sand is closest
+             ! to the mean profile clay/sand across all raster grid cells within the 
              ! dominant orgC class.
 
-             j = center_pix_int0 (sf, ktop,k, ss_clay(1:k),ss_sand(1:k))
+             j = center_pix_int0 (sf, ktop, k, ss_clay(1:k),ss_sand(1:k))
 
-             ! Assign soil class of raster grid cell and layer j to tile n
-
+             ! Assign the soil class of representative raster grid cell/layer j to tile n.
              if(j >=1) then 
                 min_percs%clay_perc = ss_clay(j)*sf
                 min_percs%sand_perc = ss_sand(j)*sf
                 min_percs%silt_perc = 100. - ss_clay(j)*sf - ss_sand(j)*sf
-                soil_class_com (n) = table_map(soil_class (min_percs),o_clp)  
+                soil_class_com (n) = table_map(soil_class (min_percs),o_clp)  ! "com" = combined = "profile"
              endif
 
              ! debugging output
@@ -4514,7 +4649,7 @@ contains
              if (write_debug) close(80+n)          
 
           endif ! o_clp==4
-
+          
           deallocate (ss_clay,ss_sand,ss_clay_all,ss_sand_all,ss_oc_all)
        END DO
     END DO              ! loop through tiles
@@ -4544,73 +4679,125 @@ contains
     fname ='clsm/tau_param.dat'
     open (12,file=trim(fname),form='formatted',status='unknown',action = 'write')
 
-
-    !obsolete20220502      fname ='clsm/mosaic_veg_typs_fracs'
-    !obsolete20220502      open (13,file=trim(fname),form='formatted',status='old',action = 'read')
-
+    ! Fill remaining missing soil classes after tile classification.
+    
     do n = 1, n_land
+       
+       if ( (soil_class_top(n) == -9999) .or. (soil_class_com(n) == -9999) ) then
+          
+          ! top and/or profile class remain undefined
+          
+          ! if only the top class is missing, set top class to profile class
+          
+          if (soil_class_com(n) >= 1)  soil_class_top(n) = soil_class_com(n)
+          
+          if (PEAT_INFO<=1) then
+             
+             ! Legacy processing
+             
+             ! If the profile class is missing, search "neighboring" tiles for a fill value,
+             !   where "neighbors" are defined in terms of proximity of tile index (not necessarily geographical proximity)
+             
+             if (soil_class_com(n) == -9999) then     
 
-       !obsolete20220502         read (13,*) tindex,pfafindex,vtype
+                ! Look for neighbor j (regardless of soil_class_top) and set both
+                ! soil_class_com(n) and soil_class_top(n) equal to the neighbor's 
+                ! soil_class_com(j).
+                
+                do k = 1, n_land
+                   j  = 0
+                   i1 = n - k
+                   i2 = n + k
 
-       ! fill gaps from neighbor for rare missing values caused by inconsistent masks
+                   ! Copy top class from the neighbor's profile class.                   
+                   if (i1 >= 1) then
+                      if (soil_class_com(i1) >= 1) j = i1  ! tentatively use "lower" neighbor unless out of range
+                   endif
 
-       if ((soil_class_top (n) == -9999).or.(soil_class_com (n) == -9999)) then
+                   if (1 <= i2 .and. i2 <= n_land) then
+                      if (soil_class_com(i2) >= 1) j = i2  ! "upper" neighbor prevails unless out of range
+                   endif
 
-          ! if com-layer has data, the issue is only with top-layer
+                   if (j > 0) then
+                      soil_class_com(n) = soil_class_com(j)
+                      soil_class_top(n) = soil_class_com(j)
+                      grav_vec(n)       = grav_vec(j)
+                      soc_vec(n)        = soc_vec(j)
+                      poc_vec(n)        = poc_vec(j)
+                   endif
 
-          if(soil_class_com (n) >= 1) soil_class_top (n) = soil_class_com (n)
+                   if (soil_class_com(n) >= 1) exit
+                end do
+                
+             endif
 
-          ! if there is nothing, look for the neighbor 
-          ! 
-          !  ^
-          !  |
-          !  | The comment above seems wrong; could have soil_class_top(n)>=1, unless
-          !      earlier soil_class_com was set equal to soil_class_top whenever
-          !      soil_class_top was available and soil_class_com was not. 
+          else
 
-          if (soil_class_com (n) == -9999) then
+             ! PEAT_INFO>=2
+             
+             ! If the profile class is missing, search "neighboring" tiles for a fill value,
+             !   where "neighbors" are defined in terms of proximity of tile index (not necessarily geographical proximity)
 
-             ! Look for neighbor j (regardless of soil_class_top) and set both
-             ! soil_class_com(n) and soil_class_top(n) equal to the neighbor's 
-             ! soil_class_com(j).
+             if (soil_class_com (n) == -9999) then
 
-             do k = 1, n_land
-                j  = 0
-                i1 = n - k
-                i2 = n + k
-                if(i1 >=     1) then
-                   if (soil_class_com (i1) >=1) j = i1  ! tentatively use "lower" neighbor unless out of range
-                endif
+                do k = 1, n_land
+                   j  = 0
+                   i1 = n - k
+                   i2 = n + k
+                   
+                   ! borrow only from a neighbor with both top and profile classes
+                   ! defined, and copy the associated tile properties consistently.
+                   if (i1 >= 1) then
+                      if ((soil_class_top(i1) >= 1) .and. (soil_class_com(i1) >= 1)) j = i1  ! start with "lower" neighbor unless out of range
+                   endif
+                   
+                   if (i2 <= n_land) then
+                      if ((soil_class_top(i2) >= 1) .and. (soil_class_com(i2) >= 1)) j = i2  ! "upper" neighbor prevails unless out of range
+                   endif
+                   
+                   if (j > 0) then
+                      soil_class_com(n) = soil_class_com(j)
+                      soil_class_top(n) = soil_class_top(j)
+                      grav_vec(n)       = grav_vec(j)
+                      soc_vec(n)        = soc_vec(j)
+                      poc_vec(n)        = poc_vec(j)
+                      pmap(n)           = pmap(j)
+                      soildepth(n)      = soildepth(j)
+                   endif
 
-                if(1 <= i2 .and. i2 <=n_land) then
-                   if (soil_class_com (i2) >=1) j = i2  ! "upper" neighbor prevails unless out of range
-                endif
+                   if (soil_class_com(n) >= 1) exit
+                end do
+                
+             endif
+             
+          endif   ! (PEAT_INFO<=1) 
 
-                if (j > 0) then
-                   soil_class_com (n) = soil_class_com (j)
-                   !soil_class_top (n) = soil_class_com (n)    
-                   soil_class_top (n) = soil_class_com (j)   ! should be faster/safer than usin gsoil_class_com(n)
-                   grav_vec(n)        = grav_vec(j)
-                   soc_vec(n)         = soc_vec (j)
-                   poc_vec(n)         = poc_vec (j)
-                endif
-
-                if (soil_class_com (n) >=1) exit
-             end do
-          endif
-
-       endif
-
+       end if  ! (soil_class_top(n) == -9999) .or. (soil_class_com(n) == -9999)
+       
+       ! done filling missing soil class
+       !
+       ! ---------------------------------------------------------------------------------------------------------
+       
        fac_surf = soil_class_top(n)
        fac      = soil_class_com(n)
 
-       if(use_PEATMAP) then
-          ! the maximum peat soil depth is set to the value Michel used to derive parameters (5000.) 
-          if (fac_surf == 253)  soildepth(n) = 5000. ! max(soildepth(n),5000.)
-          ! reset subsurface to peat if surface soil type is peat
-          if (fac_surf == 253)  fac      = 253
+       if (PEAT_INFO==1) then
+
+          ! Legacy PEATMAP behavior:
+          ! if the surface class is peat, force the written profile class to peat.
+
+          if (fac_surf == 253) fac = 253
+
        endif
 
+       ! determine/write soil parameters that are based on soil class
+       
+       if (PEAT_INFO>=1) then
+          
+          if (fac_surf == 253) soildepth(n) = 5000.  ! For peat, set soil depth is set to the value Michel used to derive parameters (5000.).
+          
+       endif
+       
        wp_wetness = a_wp(fac) /a_poros(fac)
 
        this_cond  = a_aksat(fac)/exp(-1.0*zks*gnu)
@@ -4620,7 +4807,6 @@ contains
        pfafindex = tile_pfs(n)     
 
        ! write soil_param.first
-
        write (11,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')tindex,pfafindex,      &
             fac_surf, fac, a_bee(fac),a_psis(fac),a_poros(fac),&
             this_cond,wp_wetness,soildepth(n),                 &
@@ -4660,15 +4846,12 @@ contains
     close (11, status = 'keep')               
     close (12, status = 'keep')               
 
-    !obsolete20220502      close (13, status = 'keep')
-
     deallocate (data_vec1, data_vec2,data_vec3, data_vec4,data_vec5, data_vec6)
     deallocate (tileid_vec)
     deallocate (a_sand,a_clay,a_silt,a_oc,a_bee,a_psis,       &
          a_poros,a_wp,a_aksat,atau,btau,a_wpsurf,a_porosurf, &
          atau_2cm,btau_2cm)
     deallocate (soildepth, grav_vec,soc_vec,poc_vec,soil_class_top,soil_class_com)        
-    !ncells_top,ncells_top_pro,ncells_sub_pro,soil_class_top,soil_class_com)            ! ncells_* not used
 
     ! write catch_params.nc4 [soil hydraulic and srfexc-rzexc time scale parameters]
 
@@ -4755,7 +4938,7 @@ contains
   ! ====================================================================
   !
   
-  INTEGER FUNCTION center_pix_int0 (sf,ktop, ktot, x,y)
+  INTEGER FUNCTION center_pix_int0 (sf, ktop, ktot, x, y)
 
     implicit none
 
@@ -4778,10 +4961,10 @@ contains
     integer,                          intent (in) :: ktop,ktot
     real,                             intent (in) :: sf
 
-    real :: xi,xj,yi,yj
+    real :: xi,yi
     real :: length
 
-    integer :: i,j,npix
+    integer :: i,j
     real :: zi, zj, mindist,xc,yc,zc
 
     length          = 0.
@@ -4860,7 +5043,7 @@ contains
   !     ! READ PEATMAP source data files and regrid
   !     ! -----------------------------------------
   !     
-  !     status  = NF_OPEN (''//trim(MAKE_BCS_INPUT_DIR)//'/land/soil/SOIL-DATA/PEATMAP_mask.nc4', NF_NOWRITE, ncid)
+  !     status  = NF_OPEN (''//trim(MAKE_BCS_INPUT_DIR)//'/land/soil/SOIL-DATA/peat/v1/PEATMAP_mask.nc4', NF_NOWRITE, ncid)
   !     
   !     allocate (pm_grid   (1 : NC      , 1 : NR))
   !     allocate (data_grid (1 : N_lon_pm, 1 : N_lat_pm)) 

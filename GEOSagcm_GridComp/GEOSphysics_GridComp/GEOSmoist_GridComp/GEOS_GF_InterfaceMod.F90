@@ -18,6 +18,7 @@ module GEOS_GF_InterfaceMod
   use ConvPar_GF_SharedParams
   use ConvPar_GF_GEOS5
   use ConvPar_GF2020
+  use moist_dsl_workarounds
 
   implicit none
 
@@ -43,8 +44,9 @@ module GEOS_GF_InterfaceMod
   integer :: ZERO_DIFF_AUTOCONV
   integer :: ZERO_DIFF_VGRID
   integer :: ZERO_DIFF_OTHER
+  logical :: USE_PYMOIST_GF2020
 
-  public :: GF_Setup, GF_Initialize, GF_Run
+  public :: GF_Setup, GF_Initialize, GF_Run, GF_Finalize
 
 contains
 
@@ -76,13 +78,34 @@ subroutine GF_Setup (GC, CF, RC)
          DEFAULT    = 0.0,   RC=STATUS  )
          VERIFY_(STATUS)
 
+   call MAPL_AddInternalSpec(GC,                                &
+         SHORT_NAME = 'DSL__GF2020_LONS',                       &
+         LONG_NAME  = 'DSL_longitude',                          &
+         UNITS      = 'radians',                                &
+         DIMS       = MAPL_DimsHorzOnly,                        &
+         VLOCATION  = MAPL_VLocationNone,                       &
+         RESTART    = MAPL_RestartSkip,              RC=STATUS  )
+   VERIFY_(STATUS)
+
+   call MAPL_AddInternalSpec(GC,                                &
+         SHORT_NAME = 'DSL__GF2020_LATS',                       &
+         LONG_NAME  = 'DSL_longitude',                          &
+         UNITS      = 'radians',                                &
+         DIMS       = MAPL_DimsHorzOnly,                        &
+         VLOCATION  = MAPL_VLocationNone,                       &
+         RESTART    = MAPL_RestartSkip,              RC=STATUS  )
+   VERIFY_(STATUS)
+
     call MAPL_TimerAdd(GC, name="--GF", RC=STATUS)
     VERIFY_(STATUS)
 
 end subroutine GF_Setup
 
-subroutine GF_Initialize (MAPL, CLOCK, RC)
+subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     type (MAPL_MetaComp), intent(inout) :: MAPL
+    type (ESMF_Config),   intent(inout) :: CF
+    type (ESMF_State),    intent(inout) :: IMPORT
+    type (ESMF_State),    intent(inout) :: EXPORT
     type (ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
     integer, optional                   :: RC  ! return code
     integer :: LM
@@ -117,6 +140,18 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
                                    Enabled      = .true.   ,    &
                                    Sticky       = .false.  , RC=STATUS); VERIFY_(STATUS)
 
+    call MAPL_GetResource(MAPL, USE_PYMOIST_GF2020, 'USE_PYMOIST_GF2020:', default=.FALSE., RC=STATUS); VERIFY_(STATUS)
+
+    if (USE_PYMOIST_GF2020) then
+      call MAPL_ConfigSetAttribute(CF, MOIST_DT, 'DSL__GF2020_DT', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, GF_ENV_SETTING            , 'GF_ENV_SETTING:'        ,default= 'DYNAMICS', RC=STATUS); VERIFY_(STATUS)
+      if (trim(GF_ENV_SETTING)=='CURRENT') then
+         call MAPL_ConfigSetAttribute(CF, 0, 'DSL__GF_ENV_SETTING:', RC=STATUS); VERIFY_(STATUS)
+      elseif (trim(GF_ENV_SETTING)=='DYNAMICS') then
+         call MAPL_ConfigSetAttribute(CF, 1, 'DSL__GF_ENV_SETTING:', RC=STATUS); VERIFY_(STATUS)
+      endif
+      call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.convection.GF2020_interface", MAPL, IMPORT, EXPORT )
+    else
     if (LM .eq. 72) then
       call MAPL_GetResource(MAPL, USE_GF2020                , 'USE_GF2020:'            ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_LAND            , 'ZERO_DIFF_LAND:'        ,default= 1,    RC=STATUS );VERIFY_(STATUS)
@@ -338,6 +373,8 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, FIX_CNV_CLOUD       ,'FIX_CNV_CLOUD:'    ,default= .FALSE., RC=STATUS); VERIFY_(STATUS)
     ENDIF
 
+    endif ! USE_PYMOIST_GF2020
+
 end subroutine GF_Initialize
 
 
@@ -423,6 +460,9 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     type( ESMF_VM )                 :: VMG
 
+    ! DSL fields
+    real, pointer, dimension(:,:) :: DSL__GF2020_LONS, DSL__GF2020_LATS
+
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS); VERIFY_(STATUS)
     call MAPL_Get( MAPL, IM=IM, JM=JM, LM=LM,   &
          CF       = CF,                &
@@ -472,6 +512,16 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Get parameters from generic state.
     !-----------------------------------
+
+    if (USE_PYMOIST_GF2020) then
+      call MAPL_GetPointer(INTERNAL, DSL__GF2020_LONS, 'DSL__GF2020_LONS', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(INTERNAL, DSL__GF2020_LATS, 'DSL__GF2020_LATS', RC=STATUS); VERIFY_(STATUS)
+      DSL__GF2020_LONS = LONS
+      DSL__GF2020_LATS = LATS
+      call CNV_Tracers_To_SOA()
+      call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.convection.GF2020_interface", MAPL, IMPORT, EXPORT, INTERNAL )
+      call CNV_Tracers_To_AOS()
+    else
 
     ! Imports
     call MAPL_GetPointer(IMPORT, FRLAND    ,'FRLAND'    ,RC=STATUS); VERIFY_(STATUS)
@@ -709,7 +759,9 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       call MAPL_GetPointer(EXPORT, PTR2D, 'CCWP', RC=STATUS); VERIFY_(STATUS)
       if (associated(PTR2D)) PTR2D = SUM( CNV_QC*MASS , 3 )
 
-    endif
+    endif ! alarm_is_ringing
+
+    endif ! USE_PYMOIST_GF2020
 
     ! add tendencies to the moist import state
     U  = U  +  DUDT_DC*MOIST_DT
@@ -764,5 +816,26 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_TimerOff (MAPL,"--GF")
 
 end subroutine GF_Run
+
+subroutine GF_Finalize(gc, import, export, rc)
+
+  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
+  type(ESMF_State),    intent(inout) :: IMPORT ! Import state
+  type(ESMF_State),    intent(inout) :: EXPORT ! Export state
+  integer, optional,   intent(  out) :: RC     ! Error code
+
+  type (MAPL_MetaComp), pointer   :: MAPL
+
+  ! Get my internal MAPL_Generic state
+  !-----------------------------------
+  call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+  VERIFY_(STATUS)
+
+
+  if (USE_PYMOIST_GF2020) then
+    call MAPL_pybridge_gcfinalize( "pyMoist.fortran.param_interfaces.convection.GF2020_interface", MAPL, IMPORT, EXPORT )
+  endif
+
+end subroutine GF_Finalize
 
 end module GEOS_GF_InterfaceMod
