@@ -5690,16 +5690,18 @@ contains
        call MAPL_GetPointer(IMPORT, SNOMAS,    'SNOMAS'    , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, SRF_TYPE,  'SRF_TYPE'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 
-       where ( (FRLANDICE > 0.5) .OR. (FRACI > 0.5) )
-          SRF_TYPE = 3.0 ! Ice
+       where (FRLANDICE > 0.5)
+          SRF_TYPE = SRF_TYPE_LANDICE
+       elsewhere (FRACI > 0.5)
+          SRF_TYPE = SRF_TYPE_ICE
        elsewhere ( SNOMAS > 0.1 .AND. SNOMAS /= MAPL_UNDEF )
           ! NOTE: SNOMAS has UNDEFs so we need to make sure we don't
           !       allow that to infect this comparison
-          SRF_TYPE = 2.0 ! Snow
+          SRF_TYPE = SRF_TYPE_SNOW
        elsewhere (FRLAND > 0.1)
-          SRF_TYPE = 1.0 ! Land
+          SRF_TYPE = SRF_TYPE_LAND
        elsewhere
-          SRF_TYPE = 0.0 ! Ocean
+          SRF_TYPE = SRF_TYPE_OCEAN
        end where
 
        ! Allocatables

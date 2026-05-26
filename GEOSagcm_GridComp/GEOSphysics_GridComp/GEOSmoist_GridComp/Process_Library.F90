@@ -35,38 +35,64 @@ module GEOSmoist_Process_Library
   end interface ICE_FRACTION
 
   ! SRF_TYPE constants
-  integer, parameter :: SRF_TYPE_LAND  = 1
-  integer, parameter :: SRF_TYPE_SNOW  = 2
-  integer, parameter :: SRF_TYPE_ICE   = 3
-  integer, parameter :: SRF_TYPE_OCEAN = 0
+  integer, parameter :: SRF_TYPE_OCEAN   = 0
+  integer, parameter :: SRF_TYPE_LAND    = 1
+  integer, parameter :: SRF_TYPE_SNOW    = 2
+  integer, parameter :: SRF_TYPE_ICE     = 3
+  integer, parameter :: SRF_TYPE_LANDICE = 4
 
   ! ICE_FRACTION constants
    logical :: constrain_modis_ice = .FALSE.
    ! In anvil/convective clouds
-   real, parameter :: aT_ICE_ALL = 252.16
-   real, parameter :: aT_ICE_MAX = 268.16
+   real, parameter :: aT_ICE_ALL = 243.66
+   real, parameter :: aT_ICE_MAX = 265.66
    real, parameter :: aICEFRPWR  = 2.0
-   ! Over snow SRF_TYPE = 2 and over ice SRF_TYPE = 3
+   ! Over Land Ice SRF_TYPE == 4
+   real, parameter :: liT_ICE_ALL = 233.16
+   real, parameter :: liT_ICE_MAX = 258.16
+   real, parameter :: liICEFRPWR  = 6.0
+   ! Over Ice SRF_TYPE == 3
    real, parameter :: iT_ICE_ALL = 236.16
    real, parameter :: iT_ICE_MAX = 261.16
-   real, parameter :: iICEFRPWR  = 5.0
+   real, parameter :: iICEFRPWR  = 4.0
+   ! Over Snow SRF_TYPE = 2
+   real, parameter :: sT_ICE_ALL = 235.16
+   real, parameter :: sT_ICE_MAX = 260.16
+   real, parameter :: sICEFRPWR  = 6.0
    ! Over Land     SRF_TYPE = 1
-   real, parameter :: lT_ICE_ALL = 239.16
-   real, parameter :: lT_ICE_MAX = 261.16
+   real, parameter :: lT_ICE_ALL = 240.16
+   real, parameter :: lT_ICE_MAX = 262.16
    real, parameter :: lICEFRPWR  = 2.0
    ! Over Oceans   SRF_TYPE = 0
    real, parameter :: oT_ICE_ALL = 238.16
    real, parameter :: oT_ICE_MAX = 263.16
-   real, parameter :: oICEFRPWR  = 4.0
-   ! Jason
+   real, parameter :: oICEFRPWR  = 3.0
+
+   ! Jason constants
    ! In anvil/convective clouds
    real, parameter :: JaT_ICE_ALL = 245.16
    real, parameter :: JaT_ICE_MAX = 261.16
    real, parameter :: JaICEFRPWR  = 2.0
-        ! Over snow/ice
+   ! Over Land Ice SRF_TYPE == 4
+   real, parameter :: JliT_ICE_ALL = MAPL_TICE-40.0
+   real, parameter :: JliT_ICE_MAX = MAPL_TICE
+   real, parameter :: JliICEFRPWR  = 5.0
+   ! Over Ice SRF_TYPE == 3
    real, parameter :: JiT_ICE_ALL = MAPL_TICE-40.0
    real, parameter :: JiT_ICE_MAX = MAPL_TICE
-   real, parameter :: JiICEFRPWR  = 4.0
+   real, parameter :: JiICEFRPWR  = 5.0
+   ! Over Snow SRF_TYPE = 2
+   real, parameter :: JsT_ICE_ALL = MAPL_TICE-40.0
+   real, parameter :: JsT_ICE_MAX = MAPL_TICE
+   real, parameter :: JsICEFRPWR  = 5.0
+   ! Over Land     SRF_TYPE = 1
+   real, parameter :: JlT_ICE_ALL = 239.16
+   real, parameter :: JlT_ICE_MAX = 261.16
+   real, parameter :: JlICEFRPWR  = 2.0
+   ! Over Oceans   SRF_TYPE = 0
+   real, parameter :: JoT_ICE_ALL = 238.16
+   real, parameter :: JoT_ICE_MAX = 263.16
+   real, parameter :: JoICEFRPWR  = 4.0
 
  ! parameters
   real, parameter :: EPSILON =  MAPL_H2OMW/MAPL_AIRMW
@@ -245,6 +271,7 @@ module GEOSmoist_Process_Library
   public :: AeroPropsNew
   public :: CNV_Tracer_Type, CNV_Tracers, CNV_Tracers_Init
   public :: constrain_modis_ice
+  public :: SRF_TYPE_OCEAN, SRF_TYPE_LAND, SRF_TYPE_SNOW, SRF_TYPE_ICE, SRF_TYPE_LANDICE
   public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, BUOYANCY2
   public :: REDISTRIBUTE_CLOUDS_SCALAR, REDISTRIBUTE_CLOUDS, RADCOUPLE_SCALE_AWARE, RADCOUPLE, FIX_UP_CLOUDS
   public :: hystpdf, fix_up_clouds_2M
@@ -583,6 +610,7 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
       real             :: ICEFRCT
       real             :: tc, ptc
       real             :: ICEFRCT_C, ICEFRCT_M, ICEFRCT_PHYS
+      real             :: t_all_loc, t_max_loc, pwr_loc
 
 #ifdef USE_MODIS_ICE_POLY
      ! Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384)
@@ -590,71 +618,105 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
       ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
       ICEFRCT = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
 #else
-     ! Use sigmoidal functions based on surface type from Hu et al, DOI: (10.1029/2009JD012384)
-     ! Anvil clouds
-     ! Anvil-Convective sigmoidal function like figure 6(right)
-     ! Sigmoidal functions Hu et al 2010, doi:10.1029/2009JD012384
+      ! ------------------------------------------------------------------
+      ! 1. Convective / Anvil Cloud Ice Fraction (ICEFRCT_C)
+      ! ------------------------------------------------------------------
+      ! Select the correct constants based on parameterization
       if (ICE_RADII_PARAM == 1) then
-        ! Jason formula
-        ICEFRCT_C  = 0.00
-        if ( TEMP <= JaT_ICE_ALL ) then
-           ICEFRCT_C = 1.000
-        else if ( (TEMP > JaT_ICE_ALL) .AND. (TEMP <= JaT_ICE_MAX) ) then
-           ICEFRCT_C = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - JaT_ICE_ALL ) / ( JaT_ICE_MAX - JaT_ICE_ALL ) ) )
-        end if
+         t_all_loc = JaT_ICE_ALL
+         t_max_loc = JaT_ICE_MAX
+         pwr_loc   = JaICEFRPWR
       else
-        ICEFRCT_C  = 0.00
-        if ( TEMP <= aT_ICE_ALL ) then
-           ICEFRCT_C = 1.000
-        else if ( (TEMP > aT_ICE_ALL) .AND. (TEMP <= aT_ICE_MAX) ) then
-           ICEFRCT_C = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - aT_ICE_ALL ) / ( aT_ICE_MAX - aT_ICE_ALL ) ) )
-        end if
+         t_all_loc = aT_ICE_ALL
+         t_max_loc = aT_ICE_MAX
+         pwr_loc   = aICEFRPWR
       end if
-      ICEFRCT_C = MIN(ICEFRCT_C,1.00)
-      ICEFRCT_C = MAX(ICEFRCT_C,0.00)
-      ICEFRCT_C = ICEFRCT_C**aICEFRPWR
-     ! Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
+
+      ! Calculate ICEFRCT_C once
+      ICEFRCT_C = 0.00
+      if ( TEMP <= t_all_loc ) then
+         ICEFRCT_C = 1.000
+      else if ( TEMP <= t_max_loc ) then
+         ICEFRCT_C = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - t_all_loc ) / ( t_max_loc - t_all_loc ) ) )
+      end if
+      ICEFRCT_C = MAX(0.00, MIN(1.00, ICEFRCT_C)) ** pwr_loc
+
+      ! ------------------------------------------------------------------
+      ! 2. Grid-Scale / Mesh Cloud Ice Fraction (ICEFRCT_M)
+      ! ------------------------------------------------------------------
+      ! Select the correct constants based on surface type and parameterization
       select case (nint(SRF_TYPE))
-      case (SRF_TYPE_SNOW, SRF_TYPE_ICE)
-        ! Over snow (SRF_TYPE == 2.0) and ice (SRF_TYPE == 3.0)
-        ICEFRCT_M  = 0.00
-        if ( TEMP <= iT_ICE_ALL ) then
-           ICEFRCT_M = 1.000
-        else if ( (TEMP > iT_ICE_ALL) .AND. (TEMP <= iT_ICE_MAX) ) then
-           ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - iT_ICE_ALL ) / ( iT_ICE_MAX - iT_ICE_ALL ) ) )
-        end if
-        ICEFRCT_M = MIN(ICEFRCT_M,1.00)
-        ICEFRCT_M = MAX(ICEFRCT_M,0.00)
-        ICEFRCT_M = ICEFRCT_M**iICEFRPWR
-      case (SRF_TYPE_LAND)
-        ! Over Land (SRF_TYPE == 1)
-        ICEFRCT_M  = 0.00
-        if ( TEMP <= lT_ICE_ALL ) then
-           ICEFRCT_M = 1.000
-        else if ( (TEMP > lT_ICE_ALL) .AND. (TEMP <= lT_ICE_MAX) ) then
-           ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - lT_ICE_ALL ) / ( lT_ICE_MAX - lT_ICE_ALL ) ) )
-        end if
-        ICEFRCT_M = MIN(ICEFRCT_M,1.00)
-        ICEFRCT_M = MAX(ICEFRCT_M,0.00)
-        ICEFRCT_M = ICEFRCT_M**lICEFRPWR
-      case (SRF_TYPE_OCEAN)
-        ! Over Oceans (SRF_TYPE == 0)
-        ICEFRCT_M  = 0.00
-        if ( TEMP <= oT_ICE_ALL ) then
-           ICEFRCT_M = 1.000
-        else if ( (TEMP > oT_ICE_ALL) .AND. (TEMP <= oT_ICE_MAX) ) then
-           ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - oT_ICE_ALL ) / ( oT_ICE_MAX - oT_ICE_ALL ) ) )
-        end if
-        ICEFRCT_M = MIN(ICEFRCT_M,1.00)
-        ICEFRCT_M = MAX(ICEFRCT_M,0.00)
-        ICEFRCT_M = ICEFRCT_M**oICEFRPWR
+
+      case (SRF_TYPE_LANDICE)  ! SRF_TYPE == 4
+         if (ICE_RADII_PARAM == 1) then
+            t_all_loc = JliT_ICE_ALL
+            t_max_loc = JliT_ICE_MAX
+            pwr_loc   = JliICEFRPWR
+         else
+            t_all_loc = liT_ICE_ALL
+            t_max_loc = liT_ICE_MAX
+            pwr_loc   = liICEFRPWR
+         end if
+
+      case (SRF_TYPE_ICE)      ! SRF_TYPE == 3
+         if (ICE_RADII_PARAM == 1) then
+            t_all_loc = JiT_ICE_ALL
+            t_max_loc = JiT_ICE_MAX
+            pwr_loc   = JiICEFRPWR
+         else
+            t_all_loc = iT_ICE_ALL
+            t_max_loc = iT_ICE_MAX
+            pwr_loc   = iICEFRPWR
+         end if
+
+      case (SRF_TYPE_SNOW)     ! SRF_TYPE == 2
+         if (ICE_RADII_PARAM == 1) then
+            t_all_loc = JsT_ICE_ALL
+            t_max_loc = JsT_ICE_MAX
+            pwr_loc   = JsICEFRPWR
+         else
+            t_all_loc = sT_ICE_ALL
+            t_max_loc = sT_ICE_MAX
+            pwr_loc   = sICEFRPWR
+         end if
+
+      case (SRF_TYPE_LAND)     ! SRF_TYPE == 1
+         if (ICE_RADII_PARAM == 1) then
+            t_all_loc = JlT_ICE_ALL
+            t_max_loc = JlT_ICE_MAX
+            pwr_loc   = JlICEFRPWR
+         else
+            t_all_loc = lT_ICE_ALL
+            t_max_loc = lT_ICE_MAX
+            pwr_loc   = lICEFRPWR
+         end if
+
+      case (SRF_TYPE_OCEAN)    ! SRF_TYPE == 0
+         if (ICE_RADII_PARAM == 1) then
+            t_all_loc = JoT_ICE_ALL
+            t_max_loc = JoT_ICE_MAX
+            pwr_loc   = JoICEFRPWR
+         else
+            t_all_loc = oT_ICE_ALL
+            t_max_loc = oT_ICE_MAX
+            pwr_loc   = oICEFRPWR
+         end if
+
       case default
-        ! You should not be here
-        print *, 'ICE_FRACTION_SC: Unknown SRF_TYPE = ',SRF_TYPE
-        error stop
+         print *, 'ICE_FRACTION_SC: Unknown SRF_TYPE = ', SRF_TYPE
+         error stop
       end select
-      ! Combine the Convective and MODIS functions
-        ICEFRCT  = ICEFRCT_M*(1.0-CNV_FRACTION) + ICEFRCT_C*(CNV_FRACTION)
+
+      ! Calculate ICEFRCT_M once
+      ICEFRCT_M = 0.00
+      if ( TEMP <= t_all_loc ) then
+         ICEFRCT_M = 1.000
+      else if ( TEMP <= t_max_loc ) then
+         ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - t_all_loc ) / ( t_max_loc - t_all_loc ) ) )
+      end if
+      ICEFRCT_M = MAX(0.00, MIN(1.00, ICEFRCT_M)) ** pwr_loc
+
+      ICEFRCT  = ICEFRCT_M*(1.0-CNV_FRACTION) + ICEFRCT_C*(CNV_FRACTION)
 #endif
 
       if (constrain_modis_ice) then
@@ -3002,24 +3064,53 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
 
    subroutine MELTFRZ_SC( DT, CNVFRC, SRFTYPE, TE, QL, QI )
       real, intent(in   ) :: DT, CNVFRC, SRFTYPE
-      real, intent(inout) :: TE,QL,QI
-      real  :: fQi,dQil
-      integer :: K
+      real, intent(inout) :: TE, QL, QI
+      
+      real :: fQi, dQil, target_ice, target_melt, max_phase_change
+      real :: L_f
+
+      ! Latent heat of fusion
+      L_f = MAPL_ALHS - MAPL_ALHL
+
       if ( TE <= MAPL_TICE ) then
-        ! freeze liquid 
-         fQi  = ice_fraction( TE, CNVFRC, SRFTYPE )
-         dQil = Ql *(1.0 - EXP( -DT * fQi / max(DT,taufrz) ) )
-         dQil = max(  0., dQil )
-         Qi   = Qi + dQil
-         Ql   = Ql - dQil
-         TE   = TE + (MAPL_ALHS-MAPL_ALHL)*dQil/MAPL_CP
+         ! -------------------------------------------------------------
+         ! FREEZING REGIME (TE <= TICE)
+         ! -------------------------------------------------------------
+         
+         ! 1. Target ice deficit (new_ice_condensate)
+         fQi = ice_fraction( TE, CNVFRC, SRFTYPE )
+         target_ice = min( max(0.0, fQi*(QL + QI) - QI), QL )
+
+         ! 2. Thermodynamic limit (prevent latent heating above freezing point)
+         max_phase_change = max( 0.0, (MAPL_TICE - TE) * MAPL_CP / L_f )
+
+         ! 3. Apply relaxation timescale (fQi is no longer in the exponent)
+         dQil = ( 1.0 - EXP( -DT / max(DT,taufrz) ) ) * min( target_ice, max_phase_change )
+
+         ! 4. Update states (liquid -> ice, temp warms)
+         Qi = Qi + dQil
+         Ql = Ql - dQil
+         TE = TE + (L_f * dQil) / MAPL_CP
+
       else
-        ! melt ice above 0^C
-         dQil = -Qi *(1.0 - EXP( -DT / max(DT,taumlt) ) )
-         dQil = min(  0., dQil )
-         Qi   = Qi + dQil
-         Ql   = Ql - dQil
-         TE   = TE + (MAPL_ALHS-MAPL_ALHL)*dQil/MAPL_CP
+         ! -------------------------------------------------------------
+         ! MELTING REGIME (TE > TICE)
+         ! -------------------------------------------------------------
+         
+         ! 1. Target melt (assuming 0% ice fraction above freezing)
+         target_melt = QI
+
+         ! 2. Thermodynamic limit (prevent latent cooling below freezing point)
+         max_phase_change = max( 0.0, (TE - MAPL_TICE) * MAPL_CP / L_f )
+
+         ! 3. Apply relaxation timescale
+         dQil = ( 1.0 - EXP( -DT / max(DT,taumlt) ) ) * min( target_melt, max_phase_change )
+
+         ! 4. Update states (ice -> liquid, temp cools)
+         Qi = Qi - dQil
+         Ql = Ql + dQil
+         TE = TE - (L_f * dQil) / MAPL_CP
+
       end if
    end subroutine MELTFRZ_SC
 
