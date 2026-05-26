@@ -1963,10 +1963,10 @@ class GFDL1MIceCloud(NDSLRuntime):
         # Dev NOTE: this is an orchestration workaround. Direct call to
         #           `self.saturation_tables.X` fails closure capture for
         #           argument reconstruction at call time
-        self._table2 = self.saturation_tables._table2
-        self._table3 = self.saturation_tables._table3
-        self._des2 = self.saturation_tables._des2
-        self._des3 = self.saturation_tables._des3
+        self._table2 = self.saturation_tables.table2
+        self._table3 = self.saturation_tables.table3
+        self._des2 = self.saturation_tables.des2
+        self._des3 = self.saturation_tables.des3
 
     def __call__(
         self,
