@@ -333,7 +333,7 @@ module gfdl_mp_mod
 
     logical :: do_warm_rain_mp = .false. ! do warm rain cloud microphysics only
 
-    logical :: do_wbf = .false. ! do Wegener Bergeron Findeisen process
+    logical :: do_wbf = .true. ! do Wegener Bergeron Findeisen process
 
     logical :: do_bigg = .false. ! do Bigg process
 
@@ -1450,15 +1450,20 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         ! -----------------------------------------------------------------------
         ! Use estimated inversion strength to determine stable vs unstable areas
         ! -----------------------------------------------------------------------
-        fac_eis = 1.0 !get_fac_eis(eis(i),srf_type) ! Estimated inversion strength determine stable regime
+        fac_eis = get_fac_eis(eis(i),srf_type) ! Estimated inversion strength determine stable regime
 
         ! -----------------------------------------------------------------------
-        ! adjust autoconversion rates and thresholds for stable vs unstable 
+        ! Adjust autoconversion rates and thresholds using decoupled regimes 
         ! -----------------------------------------------------------------------
-        ! include stability dependence
-        cpaut  = cpaut0 * (     0.75*fac_eis +          (1.0-fac_eis))
-        ! include stability dependence
-        fac_rc =      rc * (rthreshs*fac_eis + rthreshu*(1.0-fac_eis)) ** 3
+        ! 1. Rate scaling based on Boundary Layer Stability (EIS)
+        ! High inversion (fac_eis=1.0) -> reduced to 0.5 * cpaut0
+        ! Low inversion (fac_eis=0.0)  -> stays at 1.0 * cpaut0
+        cpaut = cpaut0 * (0.5 * fac_eis + 1.0 * (1.0 - fac_eis))
+        ! 2. Threshold scaling based on Deep Instability (CAPE / cnv_fraction)
+        ! convective (cnv_fraction=1) -> rthreshu
+        ! stratiform (cnv_fraction=0) -> rthreshs
+        ! NOTE: Consider raising rthreshu from 7.0e-6 to 8.0e-6 or 8.5e-6 to help suppress ITCZ over-precipitation
+        fac_rc = rc * (rthreshu * cnv_fraction + rthreshs * (1.0 - cnv_fraction)) ** 3
 
         ! -----------------------------------------------------------------------
         ! conversion of temperature
@@ -3913,7 +3918,7 @@ subroutine pgmlt (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den
     real :: tc, factor, sink, qden, dqdt, tin, dq, qsi
     real :: pgacw, pgacr
     real :: oms_cgacw
-                    
+
     oms_cgacw = cgacw * (1.e-2*(1.0-onemsig) + onemsig)
 
     do k = ks, ke
@@ -4894,14 +4899,14 @@ subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den,
     real :: tc, tin, sink, dqdt, qsw, qsi, qim, tmp, fac_wbf
 
     real :: tau_wbf_eff
-    real, parameter :: wbf_coarse_mult = 10.0 ! How much slower WBF is at 50km vs 2km
+    real, parameter :: wbf_coarse_mult = 3.0 ! How much slower WBF is at 50km vs 2km
 
     if (.not. do_wbf) return
 
     ! -------------------------------------------------------------------
     ! Scale tau_wbf: 
-    ! If onemsig = 1.0 (2km),   tau_wbf_eff = tau_wbf * 1.0
-    ! If onemsig = 0.0 (50km),  tau_wbf_eff = tau_wbf * 10.0
+    ! If onemsig = 1.0 (2km),   tau_wbf_eff = tau_wbf
+    ! If onemsig = 0.0 (50km),  tau_wbf_eff = tau_wbf * wbf_coarse_mult
     ! -------------------------------------------------------------------
     tau_wbf_eff = tau_wbf * (wbf_coarse_mult * (1.0 - onemsig) + onemsig)
 
@@ -4916,8 +4921,11 @@ subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den,
         qsw = wqs (tin, den (k), dqdt)
         qsi = iqs (tin, den (k), dqdt)
 
+        ! heterogeneity and allow WBF to operate in large-scale updrafts
+        ! when the environment is supersaturated with respect to ice (qv > qsi)
+        ! and there is both liquid and ice present 
         if (tc .gt. 0. .and. ql (k) .gt. qcmin .and. qi (k) .gt. qcmin .and. &
-            qv (k) .gt. qsi .and. qv (k) .lt. qsw) then
+            qv (k) .gt. qsi) then
 
             sink = min (fac_wbf * ql (k), tc / icpk (k))
             qim = pwbf_qi_crt / den (k)
