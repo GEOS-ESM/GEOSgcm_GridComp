@@ -803,14 +803,14 @@ class GFDL1MWarmRain(NDSLRuntime):
         # Dev NOTE: this is an orchestration workaround. Direct call to
         #           `self.saturation_tables.X` fails closure capture for
         #           argument reconstruction at call time
-        self._table1 = (self.saturation_tables.table1,)
-        self._table2 = (self.saturation_tables.table2,)
-        self._table3 = (self.saturation_tables.table3,)
-        self._table4 = (self.saturation_tables.table4,)
-        self._des1 = (self.saturation_tables.des1,)
-        self._des2 = (self.saturation_tables.des2,)
-        self._des3 = (self.saturation_tables.des3,)
-        self._des4 = (self.saturation_tables.des4,)
+        self._table1 = self.saturation_tables.table1
+        self._table2 = self.saturation_tables.table2
+        self._table3 = self.saturation_tables.table3
+        self._table4 = self.saturation_tables.table4
+        self._des1 = self.saturation_tables.des1
+        self._des2 = self.saturation_tables.des2
+        self._des3 = self.saturation_tables.des3
+        self._des4 = self.saturation_tables.des4
 
     def __call__(
         self,
