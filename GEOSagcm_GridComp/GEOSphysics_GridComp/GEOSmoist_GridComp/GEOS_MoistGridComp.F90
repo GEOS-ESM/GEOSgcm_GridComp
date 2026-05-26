@@ -2090,6 +2090,14 @@ contains
          UNITS     = '# m-3',                                     &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS) 
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'REFL10CM_MAX',                                          &
+         LONG_NAME = 'Maximum_composite_10cm_radar_reflectivity',                  &
+         UNITS     = 'dBZ',                                     &
+         DIMS      = MAPL_DimsHorzOnly,                            & 
+         VLOCATION = MAPL_VLocationNone,              RC=STATUS  ) 
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
@@ -2098,38 +2106,6 @@ contains
          UNITS     = 'dBZ',                                     &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'DBZ_MAX_S',                                          &
-         LONG_NAME = 'Maximum_composite_radar_reflectivity_snow',                  &
-         UNITS     = 'dBZ',                                     &
-         DIMS      = MAPL_DimsHorzOnly,                            &
-         VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'DBZ_MAX_R',                                          &
-         LONG_NAME = 'Maximum_composite_radar_reflectivity_rain',                  &
-         UNITS     = 'dBZ',                                     &
-         DIMS      = MAPL_DimsHorzOnly,                            &
-         VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'DBZ_MAX_G',                                          &
-         LONG_NAME = 'Maximum_composite_radar_reflectivity_graupel',                  &
-         UNITS     = 'dBZ',                                     &
-         DIMS      = MAPL_DimsHorzOnly,                            &
-         VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'REFL10CM_MAX',                                          &
-         LONG_NAME = 'Maximum_composite_10cm_radar_reflectivity',                  &
-         UNITS     = 'dBZ',                                     &
-         DIMS      = MAPL_DimsHorzOnly,                            &
-         VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
@@ -5761,6 +5737,8 @@ contains
 
     if ( ESMF_AlarmIsRinging( ALARM, RC=STATUS) ) then
 
+       call MAPL_TimerOn(MAPL,"---MOIST_PROLOGUE")
+
        call ESMF_AlarmRingerOff(ALARM, RC=STATUS) ; VERIFY_(STATUS)
 
        ! Internal State
@@ -5803,16 +5781,18 @@ contains
 			call MAPL_GetPointer(IMPORT, NCPI_CLIM,     'NCPI_CLIM'     , RC=STATUS); VERIFY_(STATUS)
         end if
 
-       where ( (FRLANDICE > 0.5) .OR. (FRACI > 0.5) )
-          SRF_TYPE = 3.0 ! Ice
+       where (FRLANDICE > 0.5)
+          SRF_TYPE = SRF_TYPE_LANDICE
+       elsewhere (FRACI > 0.5)
+          SRF_TYPE = SRF_TYPE_ICE
        elsewhere ( SNOMAS > 0.1 .AND. SNOMAS /= MAPL_UNDEF )
           ! NOTE: SNOMAS has UNDEFs so we need to make sure we don't
           !       allow that to infect this comparison
-          SRF_TYPE = 2.0 ! Snow
+          SRF_TYPE = SRF_TYPE_SNOW
        elsewhere (FRLAND > 0.1)
-          SRF_TYPE = 1.0 ! Land
+          SRF_TYPE = SRF_TYPE_LAND
        elsewhere
-          SRF_TYPE = 0.0 ! Ocean
+          SRF_TYPE = SRF_TYPE_OCEAN
        end where
 
        ! Allocatables
@@ -5958,8 +5938,12 @@ contains
        call MAPL_GetPointer(EXPORT, LFC,     'ZLFC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, LNB,     'ZLNB'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, LCL_AGL, 'LCL_AGL', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+
+       call MAPL_TimerOn(MAPL,"-----BUOYANCY2")
        call BUOYANCY2( IM, JM, LM, T, Q, QST3, DQST3, DZET, ZL0, PLmb, PLEmb(:,:,LM), &
                        SBCAPE, MLCAPE, MUCAPE, SBCIN, MLCIN, MUCIN, BYNCY, LFC, LNB, LCL_AGL )
+       call MAPL_TimerOff(MAPL,"-----BUOYANCY2")
+
        call BUOYANCY( T, Q, QST3, DQST3, DZET, ZL0, BYNCY, CAPE, INHB)
 
        ! initialize diagnosed convective fraction
@@ -5982,6 +5966,8 @@ contains
             END WHERE
          endif
        endif
+
+       call MAPL_TimerOff(MAPL,"---MOIST_PROLOGUE")
 
        ! Extract convective tracers from the TR bundle
        call MAPL_TimerOn (MAPL,"---CONV_TRACERS")
@@ -6076,6 +6062,8 @@ contains
          endif
        endif
 
+       call MAPL_TimerOn(MAPL,"---MOIST_EPILOGUE")
+
        ! Mass fluxes
        ! accumuated over deep and shalow convection
        call MAPL_GetPointer(EXPORT, PTR3D,   'CNV_MFC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -6112,10 +6100,14 @@ contains
        if (associated(PTRDC)) PTR3D = PTR3D + PTRDC
        if (associated(PTRSC)) PTR3D = PTR3D + PTRSC
 
+       call MAPL_TimerOff(MAPL,"---MOIST_EPILOGUE")
+
        if (adjustl(CLDMICR_OPTION)=="BACM_1M") call BACM_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CLDMICR_OPTION)=="THOM_1M") call THOM_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
+
+       call MAPL_TimerOn(MAPL,"---MOIST_EPILOGUE")
 
        if (DEBUG_MST) then
           call MAPL_MaxMin('MST: Q_AF_MP  ', Q)
@@ -6596,7 +6588,9 @@ contains
        call MAPL_GetPointer(EXPORT, PTR2D, 'LFR_GCC', NotFoundOk=.TRUE., RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR2D)) PTR2D = 0.0
 
-    else
+       call MAPL_TimerOff(MAPL,"---MOIST_EPILOGUE")
+
+    else ! Alarm ringing
 
        ! Internal State
        call MAPL_GetPointer(INTERNAL, Q,        'Q'    , RC=STATUS); VERIFY_(STATUS)
@@ -6653,7 +6647,7 @@ contains
        call MAPL_GetPointer(EXPORT, PTR3D, 'RH2', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = MAX(MIN( Q/GEOS_QSAT (T, PLmb) , 1.02 ),0.0)
 
-    endif
+    endif ! Alarm
 
     call MAPL_TimerOff(MAPL,"TOTAL")
 
