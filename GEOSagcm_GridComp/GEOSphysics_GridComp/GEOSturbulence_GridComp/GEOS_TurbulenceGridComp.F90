@@ -1074,6 +1074,15 @@ end if
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'EDMF_detrained_mass_flux',                              &
+       UNITS      = 'kg m-2 s-1',                                            &
+       SHORT_NAME = 'EDMF_DMF',                                              &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'EDMF_dry_static_energy_source_term',                    &
        UNITS      = 'J kg-1 s-1',                                            &
        SHORT_NAME = 'SSRCMF',                                                &
@@ -2969,7 +2978,7 @@ end if
                                             edmf_dry_u,edmf_moist_u,  &
                                             edmf_dry_v,edmf_moist_v,  &
                                             edmf_moist_qc,edmf_buoyf,edmf_mfx, &
-                                            edmf_w2, & !edmf_qt2, edmf_sl2, & 
+                                            edmf_dmfx, edmf_w2, &
                                             edmf_w3, edmf_wqt, edmf_slqt, & 
                                             edmf_wsl, edmf_qt3, edmf_sl3, &
                                             edmf_entx, edmf_tke,          &
@@ -3434,6 +3443,8 @@ end if
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_mfx,    'EDMF_MF', ALLOC=PDFALLOC, RC=STATUS)
      VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_dmfx,   'EDMF_DMF', RC=STATUS)
+     VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_dry_a,  'EDMF_DRY_A',       RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_moist_a, 'EDMF_MOIST_A',   RC=STATUS)
@@ -3811,6 +3822,7 @@ end if
                     edmf_mf,                  & ! needed for ADG PDF
                     edmfdrya, edmfmoista,     & ! outputs for ADG PDF
                     edmf_dqrdt, edmf_dqsdt,   & ! output for micro
+                    edmf_dmfx,                &
                     !== Diagnostics, not used elsewhere ==
                     edmf_dry_w,               &
                     edmf_moist_w,             &
