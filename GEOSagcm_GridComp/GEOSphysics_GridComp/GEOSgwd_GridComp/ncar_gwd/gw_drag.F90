@@ -254,10 +254,31 @@ contains
      dtdt_gwd_dev = dtdt_gwd_dev + dtdt_org_dev
      endif
 
+     ! GEOS_MLT: Zero out gravity wave drag tendencies above 0.01 hPa.
+     ! k=1 is at model top, k=pver is near the surface.
+     ! pmid_dev is layer-midpoint pressure in Pa; 0.01 hPa = 1 Pa.
+
+     do k = 1, pver
+        do i = 1, pcols
+           if (pmid_dev(i,k) < 1.0) then
+              dudt_gwd_dev(i,k) = 0.0
+              dvdt_gwd_dev(i,k) = 0.0
+              dtdt_gwd_dev(i,k) = 0.0
+              dudt_org_dev(i,k) = 0.0
+              dvdt_org_dev(i,k) = 0.0
+              dtdt_org_dev(i,k) = 0.0
+           end if
+        end do
+     end do
+
+
      taugwdx_dev(1:pcols)         = 0.0  !zonal      gravity wave surface    stress
      taugwdy_dev(1:pcols)         = 0.0  !meridional gravity wave surface    stress
      taubkgx_dev(1:pcols)         = 0.0  !zonal      gravity wave background stress
      taubkgy_dev(1:pcols)         = 0.0  !meridional gravity wave background stress
+
+
+
 
     return
   end subroutine gw_intr_ncar
