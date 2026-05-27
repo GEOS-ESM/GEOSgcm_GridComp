@@ -8,7 +8,7 @@ program main
   implicit none
 
   ! Define variables:
-  real, allocatable    :: runoff(:,:), qrunf(:), temp(:,:), qri(:), qin(:)
+  real, allocatable    :: runoff(:,:), qrunf(:), qri(:), qin(:)
   integer, allocatable :: nts(:), downid(:), upstream(:,:)
   integer              :: i, j, nmax, did
 
@@ -21,16 +21,12 @@ program main
   call get_command_argument(1, file_path)
 
   ! Allocate arrays for runoff (grid), catchment runoff, and a temporary grid array:
-  allocate(runoff(nlon, nlat), qrunf(nc), temp(nlon, nlat))
+  allocate(runoff(nlon, nlat), qrunf(nc))
   
   ! Read the "mean_runoff_flux" variable from the NetCDF file:
   call read_ncfile_real2d(trim(file_path), "mean_runoff_flux", runoff, nlon, nlat)
   ! Replace missing values (-9999) with 0:
   !where(runoff == -9999.) runoff = 0.
-  
-  ! Flip the grid vertically (reverse the latitude order) and assign back to runoff:
-  temp = runoff(:, nlat:1:-1)
-  runoff = temp
   
   ! Map runoff from the EASE grid to catchments using the function EASE_to_cat.
   qrunf = EASE_to_cat(runoff, nlon, nlat, nc)  ! m3/s
