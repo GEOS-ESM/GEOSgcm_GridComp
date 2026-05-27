@@ -2797,7 +2797,7 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetResource(STATE, DOPHYSICS, 'DOPHYSICS:', DEFAULT= 1.0, RC=STATUS)
     VERIFY_(STATUS)
-                    HGT_SURFACE = 50.0
+                    HGT_SURFACE =  0.0
     if (LM .eq. 72) HGT_SURFACE =  0.0
     call MAPL_GetResource(STATE, HGT_SURFACE, Label="HGT_SURFACE:", DEFAULT= HGT_SURFACE, RC=STATUS)
     VERIFY_(STATUS)
