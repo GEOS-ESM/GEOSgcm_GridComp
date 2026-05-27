@@ -8,8 +8,8 @@ from InterpFromGridToMesh import InterpFromGridToMesh
 from bamg import bamg
 from clusters.discover_geos import export_discover
 
-h_max = sys.argv[1] if len(sys.argv) > 1 else 50000
-h_min = sys.argv[2] if len(sys.argv) > 2 else 5000
+h_max = sys.argv[1] if len(sys.argv) > 1 else 24000
+h_min = sys.argv[2] if len(sys.argv) > 2 else 2000
 h_max = float(h_max)
 h_min = float(h_min)
 

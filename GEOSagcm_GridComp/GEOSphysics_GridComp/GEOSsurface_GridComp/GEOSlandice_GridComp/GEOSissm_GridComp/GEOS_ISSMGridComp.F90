@@ -253,6 +253,7 @@ subroutine SetServices ( GC, RC )
          UNITS      = 'm',                         &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
+		 RESTART    = MAPL_RestartOptional,        &    
          RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -262,24 +263,27 @@ subroutine SetServices ( GC, RC )
          UNITS      = 'm',                         &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
+		 RESTART    = MAPL_RestartOptional,        & 
          RC=STATUS  )
     VERIFY_(STATUS)
     
     call MAPL_AddInternalSpec(GC,                  &
-         SHORT_NAME = 'IMLS',                 &
+         SHORT_NAME = 'IMLS',                      &
          LONG_NAME  = 'ice_mask_levelset',         &
          UNITS      = 'none',                      &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
+		 RESTART    = MAPL_RestartOptional,        & 
          RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                  &
-         SHORT_NAME = 'OMLS',                 &
+         SHORT_NAME = 'OMLS',                      &
          LONG_NAME  = 'ocean_mask_levelset',       &
          UNITS      = 'none',                      &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
+		 RESTART    = MAPL_RestartOptional,        & 
          RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -365,15 +369,6 @@ subroutine SetServices ( GC, RC )
     character(len=ESMF_MAXSTR)             :: ISSM_EXPDIR             ! directory containing ISSM input files
     character(len=ESMF_MAXSTR)             :: EXPDIR                  ! C++ compatible ISSM_EXPDIR string
 
-    ! variables for saving mesh output
-    type(ESMF_Field)                       :: field                   ! for fieldwrites
-    real(dp),    pointer, dimension(:)     :: field_saver => null()
-    real(dp),    pointer, dimension(:)     :: nodelons    => null()
-    real(dp),    pointer, dimension(:)     :: nodelats    => null()
-    integer, pointer, dimension(:)         :: conn_slice  => null()
-    character(len=16) :: varname
-    character(len=1)  :: istr
-
     ! variables for creating mesh tile space
     type(ESMF_Grid)                        :: mesh_grid               
     type(MAPL_LocStream)                   :: mesh_locstream   
@@ -386,6 +381,7 @@ subroutine SetServices ( GC, RC )
     integer                                :: n1,n2,n3
 
     ! restarts from internal state
+	logical                                :: issm_rst_found          ! process issm_internal_rst if found
     real, pointer, dimension(:)            :: ICESURF_IN    => null() ! ice surface elevation restart
     real, pointer, dimension(:)            :: ICETHICK_IN   => null() ! ice thickness restart
     real, pointer, dimension(:)            :: IMLS_IN       => null() ! ice-mask levelset restart
@@ -564,64 +560,6 @@ subroutine SetServices ( GC, RC )
     call ESMF_UserCompSetInternalState ( GC, 'ISSM_WRAP', wrap, status )
     VERIFY_(STATUS)
 
-  ! ------------------------------ BEGIN SAVE MESH ---------------------------
-    allocate(field_saver(num_elements))
-    allocate(nodelons(num_nodes))
-    allocate(nodelats(num_nodes))
-    allocate(conn_slice(num_elements))
-
-    nodelons = nodeCoords(1::2)
-    nodelats = nodeCoords(2::2)
-    
-    ! save nodes for reconstructing mesh output after running
-    ! looping over three nodes per triangle
-    do i = 1, 3
-        conn_slice = [( elementConn(j), j=i, size(elementConn), 3 )]
-    
-        write(istr, '(I1)') i
-    
-        ! ---- longitude ----
-        varname = "node" // istr // "lon"
-        field_saver = nodelons(conn_slice)
-        field = ESMF_FieldCreate(mesh=mesh,farrayPtr=field_saver,meshloc=ESMF_MESHLOC_ELEMENT, rc=STATUS)
-        VERIFY_(STATUS)
-        call ESMF_FieldWrite(field, trim(ISSM_EXPDIR)//"/"//"issm_mesh.nc", variableName=varname, rc=STATUS)
-        VERIFY_(STATUS)
-        call ESMF_FieldDestroy(field, rc=STATUS)
-        VERIFY_(STATUS)
-    
-        ! ---- latitude ----
-        varname = "node" // istr // "lat"
-        field_saver = nodelats(conn_slice)
-        field = ESMF_FieldCreate(mesh=mesh, farrayPtr=field_saver,meshloc=ESMF_MESHLOC_ELEMENT, rc=STATUS)
-        VERIFY_(STATUS)
-        call ESMF_FieldWrite(field, trim(ISSM_EXPDIR)//"/"//"issm_mesh.nc", variableName=varname, rc=STATUS)
-        VERIFY_(STATUS)
-        call ESMF_FieldDestroy(field, rc=STATUS)
-        VERIFY_(STATUS)
-    end do
-
-    ! ---- save element IDs ----
-    varname = "elementIds"
-    field_saver = elementIds(:)
-    field = ESMF_FieldCreate(mesh=mesh, farrayPtr=field_saver,meshloc=ESMF_MESHLOC_ELEMENT, rc=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_FieldWrite(field, trim(ISSM_EXPDIR)//"/"//"issm_mesh.nc", variableName=varname, rc=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_FieldDestroy(field, rc=STATUS)
-    VERIFY_(STATUS)
-  
-    ! ---- save glacier IDs ----
-    varname = "glacIds"
-    field_saver = glacIds(:)
-    field = ESMF_FieldCreate(mesh=mesh, farrayPtr=field_saver,meshloc=ESMF_MESHLOC_ELEMENT, rc=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_FieldWrite(field, trim(ISSM_EXPDIR)//"/"//"issm_mesh.nc", variableName=varname, rc=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_FieldDestroy(field, rc=STATUS)
-    VERIFY_(STATUS)
-  ! ------------------------------ END SAVE MESH ---------------------------
-
     ! Create losctream that match mesh element id, then set it to this GC and MAPL
     ! note: original attached/atmospheric grid and landice tile locstream have
     ! been stored in the internal state
@@ -654,6 +592,16 @@ subroutine SetServices ( GC, RC )
     call MAPL_GetPointer(INTERNAL, IMLS_IN, 'IMLS', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, OMLS_IN, 'OMLS', RC=STATUS); VERIFY_(STATUS)
 
+    ! if restart has been read, apply halo operation and send pointers to ISSM
+    ! else, ISSM will just use default initial values in ISSM*.bin input files
+	issm_rst_found = .false.
+	if (associated(ICETHICK_IN)) then
+    ! check for positive ice thickness (initialized to zero if restart not found)
+	    issm_rst_found = minval(ICETHICK_IN) > epsilon(ICETHICK_IN)
+	end if
+	
+	if (issm_rst_found) then
+
     ! variables for halo operations
     allocate(ICESURF_HALO(num_nodes))
     allocate(ICETHICK_HALO(num_nodes))
@@ -683,11 +631,9 @@ subroutine SetServices ( GC, RC )
 
     call ESMF_VMBarrier(vm, rc=status); VERIFY_(STATUS)
 
+    end if 
+
     ! deallocate pointers
-    if(associated(field_saver))     deallocate(field_saver)
-    if(associated(nodelons))        deallocate(nodelons)
-    if(associated(nodelats))        deallocate(nodelats)
-    if(associated(conn_slice))      deallocate(conn_slice)
     if(associated(nodeCoords))      deallocate(nodeCoords)
     if(associated(nodeIds))         deallocate(nodeIds)
     if(associated(elementTypes))    deallocate(elementTypes)
