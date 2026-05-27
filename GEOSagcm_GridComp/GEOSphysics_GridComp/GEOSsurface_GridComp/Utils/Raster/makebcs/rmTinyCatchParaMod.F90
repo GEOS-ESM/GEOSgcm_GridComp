@@ -8,7 +8,7 @@
 module rmTinyCatchParaMod
 
   use LDAS_DateTimeMod
-  use MAPL_ConstantsMod
+  use MAPL_Constants
   use MAPL_Base,           ONLY: MAPL_UNDEF
   use MAPL,                only: MAPL_WriteTilingNC4
   use lsm_routines,        ONLY: sibalb

@@ -7,12 +7,13 @@ set (srcs
   GEOS_MGB2_2M_InterfaceMod.F90 micro_mg3_0.F90 micro_mg_utils.F90
   cldwat2m_micro.F90 wv_saturation.F90 aer_cloud.F90
   wv_sat_methods.F90
-  GEOS_GFDL_1M_InterfaceMod.F90 gfdl_cloud_microphys.F90
+  GEOS_GFDL_1M_InterfaceMod.F90 gfdl_cloud_microphys.F90 gfdl_mp.F90
   GEOS_THOM_1M_InterfaceMod.F90 module_mp_thompson.F90 module_mp_radar.F90 machine.F
+  GEOS_NSSL_2M_InterfaceMod.F90 module_mp_nssl_2mom.F90
   GEOS_GF_InterfaceMod.F90 ConvPar_GF_GEOS5.F90 ConvPar_GF2020.F90 ConvPar_GF_Shared.F90 module_gate.F90
   GEOS_UW_InterfaceMod.F90 uwshcu.F90
   aer_actv_single_moment.F90
-  GEOS_MoistGridComp.F90
+  GEOS_MoistGridComp.F90 Wnet.F90
   # files that are sometimes present?
   # ras00.F90 cloud.F90
   # Python interface files that doesn't fit the MAPL_PythonBridge pattern
@@ -23,8 +24,22 @@ if (CMAKE_Fortran_COMPILER_ID MATCHES Intel AND CMAKE_BUILD_TYPE MATCHES Aggress
    set (CMAKE_Fortran_FLAGS_AGGRESSIVE "${GEOS_Fortran_FLAGS_VECT}")
 endif ()
 
-if (CMAKE_Fortran_COMPILER_ID MATCHES GNU AND CMAKE_BUILD_TYPE MATCHES Release)
-  string (REPLACE "${FOPT3}" "${FOPT2}" CMAKE_Fortran_FLAGS_RELEASE ${CMAKE_Fortran_FLAGS_RELEASE})
+# Apply only for GNU in Release or Aggressive builds
+if (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU"
+    AND CMAKE_BUILD_TYPE MATCHES "^(Release|Aggressive)$")
+
+  # If Aggressive, start from your release flags. If you use the 'default'
+  # aggressive flags, the model is quickly unstable.
+  if (CMAKE_BUILD_TYPE STREQUAL "Aggressive")
+    set(CMAKE_Fortran_FLAGS_AGGRESSIVE "${GEOS_Fortran_FLAGS_RELEASE}")
+    # drop -O3 -> -O2
+    string(REPLACE "${FOPT3}" "${FOPT2}"
+           CMAKE_Fortran_FLAGS_AGGRESSIVE "${CMAKE_Fortran_FLAGS_AGGRESSIVE}")
+  else()
+    # drop -O3 -> -O2
+    string(REPLACE "${FOPT3}" "${FOPT2}"
+           CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS_RELEASE}")
+  endif()
 
   # GCC 15+ workaround for some moist sources
   # There is some odd interaction between GCC 15 and some moist code. FPEs
@@ -41,18 +56,18 @@ if (CMAKE_Fortran_COMPILER_ID MATCHES GNU AND CMAKE_BUILD_TYPE MATCHES Release)
     set_source_files_properties(${degrade_o1_sources}
       PROPERTIES COMPILE_OPTIONS "${FOPT1}")
   endif()
-endif ()
+endif()
 
 # Note For unknown reasons, BACM_1M_Interface takes 20 minutes to compile at O3
 #      and 10 minutes at O2. But only 7 seconds with O1. So we compile at O1
 if (CMAKE_Fortran_COMPILER_ID MATCHES Intel AND CMAKE_BUILD_TYPE MATCHES Release)
   set_source_files_properties(GEOS_BACM_1M_InterfaceMod.F90 PROPERTIES COMPILE_OPTIONS ${FOPT1})
- # set_source_files_properties(GEOS_MGB2_2M_InterfaceMod.F90 PROPERTIES COMPILE_OPTIONS ${FOPT1})
+# set_source_files_properties(GEOS_MGB2_2M_InterfaceMod.F90 PROPERTIES COMPILE_OPTIONS ${FOPT1})
 endif ()
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES GEOS_Shared GMAO_mpeu MAPL Chem_Shared Chem_Base ESMF::ESMF TYPE SHARED)
+  DEPENDENCIES GEOS_Shared GMAO_mpeu MAPL Chem_Shared Chem_Base ESMF::ESMF BLAS::BLAS LAPACK::LAPACK TYPE SHARED)
 
 file (GLOB_RECURSE rc_files CONFIGURE_DEPENDS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.rc *.yaml)
 foreach ( file ${rc_files} )

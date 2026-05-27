@@ -29,7 +29,7 @@ module catch_constants
   !
   ! ---------------------------------------------------------------------------
 
-  USE MAPL_ConstantsMod, ONLY:                   &
+  USE MAPL_Constants, ONLY:                   &
        MAPL_ALHF
   
   ! use constants from SURFPARAMS in echo_catch_contants()
