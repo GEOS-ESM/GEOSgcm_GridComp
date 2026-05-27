@@ -12,7 +12,7 @@ module CNSoilLittVertTranspMod
 ! calculate vertical mixing of all decomposing C and N pools
 !
 ! !USES:
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+  use MAPL_Constants, ONLY: r8 => MAPL_R4
   use clm_varctl  , only : iulog, use_c13, use_c14, spinup_state
   use clm_varcon  , only : secspday
 !
