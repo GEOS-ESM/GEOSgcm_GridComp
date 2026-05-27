@@ -1,0 +1,30 @@
+---
+# DEBUG_DYN: true
+# DEBUG_ADV: true
+COLDSTART: true
+RUN_DT: 1800
+DYCORE: FV3
+CASE_ID: 1
+ADIABATIC: true
+fix_mass: false
+EXCLUDE_ADVECTION_TRACERS_LIST: []
+
+geometry:
+  esmf_geom:
+    class: CubedSphere
+    im_world: 12
+    nx_face: 1
+    ny_face: 1
+  vertical_grid:
+    class: model
+    standard_name: air_pressure
+    units: hPa
+    num_levels: 91
+    field_edge: PLE
+    field_center: PE
+
+mapl:
+  misc:
+    checkpoint:
+      export: true
+      internal: true

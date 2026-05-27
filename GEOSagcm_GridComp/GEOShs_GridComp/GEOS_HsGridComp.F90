@@ -131,9 +131,8 @@ module GEOS_HSGridCompMod
    use MAPL, only: MAPL_GridCompGet, MAPL_GridCompGetInternalState, MAPL_GridCompGetResource
    use MAPL, only: VERTICAL_STAGGER_CENTER, VERTICAL_STAGGER_EDGE, VERTICAL_STAGGER_NONE
    use MAPL, only: MAPL_GridGet, MAPL_GridGetCoordinates
-   use MAPL, only: MAPL_StateGetPointer
-   use MAPL, only: MAPL_RESTART_SKIP
-   use MAPL, only: MAPL_STATEITEM_FIELDBUNDLE
+   use MAPL, only: MAPL_StateGetPointer, MAPL_FieldBundleGetPointer
+   use MAPL, only: MAPL_RESTART_SKIP, MAPL_STATEITEM_VECTOR
    use MAPL, only: MAPL_Verify, MAPL_Return, MAPL_Assert
    use MAPL_Constants, only: MAPL_PI, MAPL_GRAV, MAPL_P00, MAPL_KAPPA, MAPL_RGAS, MAPL_CP
 
@@ -176,6 +175,16 @@ contains
 #include "HS_Import___.h"
 #include "HS_Export___.h"
 #include "HS_Internal___.h"
+
+      ! TODO: pchakrab - till we have a way to specify a VECTOR in acg
+      call MAPL_GridCompAddSpec(gc, &
+           state_intent=ESMF_STATEINTENT_IMPORT, &
+           short_name="UV", &
+           standard_name="(eastward_wind, northward_wind)", &
+           dims="xyz", &
+           vstagger=VERTICAL_STAGGER_CENTER, &
+           units="m/s", &
+           itemtype=MAPL_STATEITEM_VECTOR, _RC)
 
       ! Set the Initialize and Run entry points
       call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_INITIALIZE, Initialize, _RC)
@@ -287,10 +296,12 @@ contains
       type(ESMF_State) :: internal
       type(ESMF_Grid) :: grid
       type(ESMF_Logical) :: friendly
+      type(ESMF_FieldBundle) :: uv
 
       ! Pointers to imports/internals/exports
 #include "HS_DeclarePointer___.h"
       real, pointer, contiguous :: PLE0(:,:,:) ! 0-based PLE
+      real, pointer :: u(:, :, :), v(:, :, :)
 
       ! Scratch arrays and working pointers
       real, allocatable, dimension(:, :) :: pii, dp, pl, uu, vv, vr, te, f1, rr, ds, dm, pk
@@ -389,6 +400,11 @@ contains
       ka = 1.0 / (DAYLEN * taua)
       ks = 1.0 / (DAYLEN * taus)
       kf = 1.0 / (DAYLEN * tauf)
+
+      ! u/v
+      call ESMF_StateGet(import, "UV", uv, _RC)
+      call MAPL_FieldBundleGetPointer(uv, 1, u, _RC)
+      call MAPL_FieldBundleGetPointer(uv, 2, v, _RC)
 
       LEVELS: do level = 1, lm
 

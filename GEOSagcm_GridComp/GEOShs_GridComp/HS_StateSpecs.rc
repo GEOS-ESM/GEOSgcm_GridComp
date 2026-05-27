@@ -18,8 +18,8 @@ category: IMPORT
 #-------------------------------------------------------
  SHORT_NAME | UNITS | DEFAULT | DIMS | VLOC | LONG_NAME
 #-------------------------------------------------------
- U          | m s-1 | 0.0     | xyz  | C    | eastward_wind
- V          | m s-1 | 0.0     | xyz  | C    | northward_wind
+#U          | m s-1 | 0.0     | xyz  | C    | eastward_wind
+#V          | m s-1 | 0.0     | xyz  | C    | northward_wind
  TEMP       | K     | 300.0   | xyz  | C    | air_temperature
  PLE        | Pa    |         | xyz  | E    | edge_pressure
 
