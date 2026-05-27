@@ -257,3 +257,14 @@
 
 # =============== EOF =====================================================================================
 
+#--------------------------------------------------------#
+#      Ice-Sheet and Sea-Level System Model (ISSM)       #
+#                                                        #
+#   * DO_ISSM is the run flag , turned off by default    #
+#   * ISSM_DT is ISSM's time step, semiweekly by default #   
+#--------------------------------------------------------#
+# GEOSagcm=>DO_ISSM: 0 
+# GEOSagcm=>ISSM_DT: 302400 
+#
+# GEOSldas=>DO_ISSM: 0 
+# GEOSldas=>ISSM_DT: 302400 

@@ -1,0 +1,11 @@
+#ISSM
+module purge
+source $NOBACKUP/GEOS/GEOSldas/@env/g5_modules.sh #point to 'current' once geos/v1.0.2 is in latest env
+export ISSM_ARCH="linux-gnu-amd64"
+export ISSM_DIR=$ISSM_ROOT_DIR
+export PATH="$PATH:$ISSM_DIR/scripts:/usr/include:/usr/lib64:/usr/lib"
+export PYTHONPATH="$PYTHONPATH:$ISSM_DIR/src/m/dev"
+export PYTHON_LIB="$(python -c "import sys; print(sys.prefix)")/lib/"
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ISSM_DIR/lib
+source $ISSM_DIR/etc/environment.sh
+
