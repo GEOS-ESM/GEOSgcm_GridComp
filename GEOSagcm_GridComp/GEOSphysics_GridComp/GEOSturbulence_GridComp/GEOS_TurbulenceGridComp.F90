@@ -5405,16 +5405,16 @@ if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
        end if
 
 ! Fill exports of U,V and S after diffusion
-      if( trim(NAME)=='U' ) then
+      if( TYPE=='U' ) then
           if(associated(UAFDIFFUSE)) UAFDIFFUSE = SX
        endif
-      if( trim(NAME)=='V' ) then
+      if( TYPE=='V' ) then
           if(associated(VAFDIFFUSE)) VAFDIFFUSE = SX
        endif
-       if( trim(NAME)=='S' ) then 
+       if( TYPE=='S' ) then 
           if(associated(SAFDIFFUSE)) SAFDIFFUSE = SX
        endif
-       if( trim(NAME)=='Q' ) then
+       if( TYPE=='Q' ) then
           if(associated(QAFDIFFUSE)) QAFDIFFUSE = SX
        endif
 

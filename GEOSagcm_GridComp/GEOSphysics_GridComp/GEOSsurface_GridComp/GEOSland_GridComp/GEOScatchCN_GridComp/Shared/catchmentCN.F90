@@ -135,9 +135,9 @@ CONTAINS
   ! and the most recent version of the "unified" model (from Sept. 20, 2006).
   
   SUBROUTINE CATCHCN (                                           &
-       NCH, LONS, LATS, DTSTEP, UFW4RO, FWETC, FWETL, cat_id,    &  ! LONS, LATS are in [radians] !!!
+       NCH, LONS, LATS, DTSTEP, UFW4RO, FWETC, FWETL, cat_id,    &
        ITYP1,ITYP2,FVEG1,FVEG2,                                  &
-       DZSF, TRAINC,TRAINL, TSNOW, TICE, TFRZR, UM,              &  ! TFRZR=0 as of Jun 2025; needs attention if ever TFRZR/=0
+       DZSF, TRAINC,TRAINL, TSNOW, TICE, TFRZR, UM,              &
        ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
        ETURB2, DEDQA2, DEDTC2, HSTURB2,DHSDQA2, DHSDTC2,         &
        ETURB4, DEDQA4, DEDTC4, HSTURB4,DHSDQA4, DHSDTC4,         &
@@ -802,8 +802,8 @@ CONTAINS
         END IF
         AREA(2)= AR2(N) 
         AREA(3)= AR4(N) 
-        pr     = trainc(n)+trainl(n)+tsnow(n)+tice(n)  ! see comment re. FRZR in GEOS_CatchGridComp.F90 by reichle, 6/6/2025:
-        snowf  = tsnow(n)+tice(n)                      !   freezing rain is liquid not solid, (probably) included in trainl+trainc
+        pr     = trainc(n)+trainl(n)+tsnow(n)+tice(n)+tfrzr(n)
+        snowf  = tsnow(n)+tice(n)+tfrzr(n)
         dedea  = dedqas(n)*epsilon/psur(n) 
         dhsdea = dhsdqas(n)*epsilon/psur(n) 
         ea     = qm(n)*psur(n)/epsilon 
@@ -870,7 +870,6 @@ CONTAINS
         sumdepth=sum(sndz)
 
         CALL StieglitzSnow_snowrt(                                             &
-                   LONS(N), LATS(N),                                           &  ! in      [radians]  !!!
                    N_sm, N_snow, MAPL_Land,                                    &  ! in   
                    CATCH_SNOW_MAXDEPTH, CATCH_SNOW_RHOFS, CATCH_SNOW_DZPARAM,  &  ! in   
                    t1, area, tkgnd, pr, snowf, ts, DTSTEP,                     &  ! in   
@@ -1248,11 +1247,11 @@ CONTAINS
 
       DO N=1,NCH
 
+        RUNOFF(N) = RUNSRF(N)+BFLOW(N)
         IF(CAPAC(N).LT.1.E-10) THEN
-           RUNSRF(N) = RUNSRF(N)+CAPAC(N)/DTSTEP
+           RUNOFF(N) = RUNOFF(N)+CAPAC(N)/DTSTEP
            CAPAC(N) = 0.0
            endif
-        RUNOFF(N) = RUNSRF(N)+BFLOW(N)
 
         EINT(N) = EINT(N) * ALHE
         ESOI(N) = ESOI(N) * ALHE
@@ -1283,7 +1282,7 @@ CONTAINS
         !FSW_CHANGE IS THE CHANGE IN THE FREE-STANDING WATER, RELEVANT FOR PEATLAND ONLY
         FSW_CHANGE(N) = 0.
         IF(POROS(N) >= PEATCLSM_POROS_THRESHOLD) THEN
-           pr = trainc(n)+trainl(n)+tsnow(n)+tice(n)              ! see comment re. FRZR in GEOS_CatchGridComp.F90 by reichle, 6/6/2025
+           pr = trainc(n)+trainl(n)+tsnow(n)+tice(n)+tfrzr(n)
            FSW_CHANGE(N) = PR - EVAP(N) - RUNOFF(N) - WCHANGE(N)
         ENDIF
 

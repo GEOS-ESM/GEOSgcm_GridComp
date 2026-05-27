@@ -3,20 +3,21 @@
 
       program MAIN
 
-      use LogRectRasterizeMod,     ONLY: LRRasterize
+      use LogRectRasterizeMod
       use MAPL_ExceptionHandling
-      use, intrinsic :: iso_fortran_env, only: REAL64
+
       implicit none
 
       integer, parameter      :: IUNIT  = 11,   OUNIT = 12
       integer                 :: iargc
 
+      integer, parameter      :: RKIND  = 8
       INTEGER                 :: NC
       INTEGER                 :: NX, NY
 
       integer                 :: STATARRAY(12)
-      integer(REAL64)         :: filesize
-      integer(REAL64)         :: Length
+      integer(kind=8)         :: filesize
+      integer(kind=8)         :: Length
       integer                 :: K
       integer                 :: i, j
       integer                 :: KF, L, NF
@@ -26,9 +27,9 @@
       integer                 :: J1,JN
       integer                 :: N
       integer                 :: nxt
-      REAL(kind=REAL64), POINTER      :: XG(:,:), YG(:,:)
-      real(kind=REAL64), pointer      :: XT(:,:  ), YT(:,:  )
-      real(kind=REAL64), allocatable  :: XV(:,:,:), YV(:,:,:)
+      REAL(kind=RKIND), POINTER      :: XG(:,:), YG(:,:)
+      real(kind=RKIND), pointer      :: XT(:,:  ), YT(:,:  )
+      real(kind=RKIND), allocatable  :: XV(:,:,:), YV(:,:,:)
 
       character(len=128)      :: GridDir
       character(len=128)      :: &
@@ -51,7 +52,7 @@
       integer                 :: Ncol    = 8640, NRow   = 4320
 
       type Ptr2
-         real(kind=REAL64), pointer  :: V(:,:)
+         real(kind=RKIND), pointer  :: V(:,:)
       end type Ptr2
 
       type(Ptr2)              :: X(4), Y(4)
@@ -98,7 +99,7 @@
       integer            :: BLNKSZ
       integer, dimension(MAXBLNKSZ) :: blankList
 
-      real(kind=REAL64) :: areamin, xc, yc
+      real(kind=RKIND) :: areamin, xc, yc
       character(len=128)      :: Iam = "mkMITAquaRaster"
       NAMELIST /W2_EXCH2_PARM01/   sNx, SNy,  blankList
 
@@ -161,7 +162,7 @@
       if (filesize <= 0) filesize = 2389893248
 !      print *,'file size=',filesize
 
-      LENGTH = filesize/REAL64
+      LENGTH = filesize/rkind
 
       do k=16,20
          if(mod(length,k)==0) exit
@@ -172,13 +173,13 @@
          call exit(1)
       end if
 
-      nc  = nint(sqrt(length/real(k,kind=REAL64)))
+      nc  = nint(sqrt(length/real(k,kind=rkind)))
  !     nc = 4321
 
       nx  = nc-1
       ny  = nc-1
 
-      LENGTH = nx*ny*REAL64
+      LENGTH = nx*ny*rkind
 
       ! Open Facet 1 to check sizes CS or LLC)
       open (IUNIT,file=trim(GridDir)//'/tile001.mitgrid', status='old')
@@ -191,7 +192,7 @@
       if (filesize <= 0) filesize = 7168573568
 !      print *,'file size=',filesize
 
-      LENGTH = filesize/(REAL64 * k)
+      LENGTH = filesize/(rkind * k)
 
       if (LENGTH == NC*NC) then ! cubed-sphere
          isLLC = .false.
@@ -294,8 +295,8 @@
       xg=0.0
       yg=0.0
 
-      LENGTH = size(XG)*REAL64
-!      print *,'DEBUG:length=',length, REAL64
+      LENGTH = size(XG)*rkind
+!      print *,'DEBUG:length=',length, rkind
 
 ! Read vertcies for each face
 !----------------------------

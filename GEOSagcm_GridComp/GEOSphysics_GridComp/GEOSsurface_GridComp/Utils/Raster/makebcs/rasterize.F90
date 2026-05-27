@@ -3,11 +3,9 @@
 module LogRectRasterizeMod
 
   use MAPL_SORTMOD
+  use rmTinyCatchParaMod, ONLY: SRTM_maxcat
   use MAPL_ExceptionHandling  
-  use MAPL_Constants,          only: PI=>MAPL_PI_R8
-  use MAPL
-  use catch_constants,        ONLY: CATCH_N_PFAFS
-  use, intrinsic :: iso_fortran_env, only: INT32, REAL64
+  use MAPL_Constants, only: PI=>MAPL_PI_R8
   implicit none
   private
 
@@ -22,29 +20,24 @@ module LogRectRasterizeMod
 !EOP
 
   public LRRasterize
-! public ReadRaster
+  public ReadRaster
   public WriteRaster
   public Writetiling
   public Sorttiling
-  public MAPL_UNDEF_R8
-  ! SRTM_maxcat = number of Pfafstetter catchments defined in raster file produced by Kristine Version in 2013
-  !               (based on DEMs from 3.0-arcsec HydroSHEDS/SRTM south of 60N, 
-  !                                   7.5-arcsec GMTED2010 north of 60N, and 
-  !                                   CGIAR/SRTM where HydroSHEDS/SRTM is undefined [typically islands])  
+  public Opentiling
+  public Closetiling
+  public WriteLine
 
-  ! -------------------------------------------------------------------------------------------------------------
-  INTEGER, PARAMETER, public:: SRTM_maxcat = CATCH_N_PFAFS
+  integer, parameter :: PUSHLEFT     = 10000
+  real(kind=8)  , parameter :: Zero         = 0.0
 
-  integer,      parameter :: PUSHLEFT      = 10000
-  real(REAL64), parameter :: Zero          = 0.0d0
+  integer, parameter :: NX           = 8640
+  integer, parameter :: NY           = 4320
 
-  integer,      parameter :: NX            = 8640
-  integer,      parameter :: NY            = 4320
-  real(REAL64), parameter :: MAPL_UNDEF_R8 = 1.0D15
 
-  real(REAL64)            :: garea_
-  integer                 :: ctg_
-
+  real(kind=8)   :: garea_
+  integer :: ctg_
+  
   interface LRRasterize
      module procedure LRRasterize2File
      module procedure LRRasterize2File0
@@ -84,38 +77,42 @@ subroutine WriteRaster(File, Raster, Zip)
   return
 end subroutine WriteRaster
 
-! subroutine ReadRaster(File, Raster, Zip)
-!  character*(*), intent(IN) :: File
-!  integer,       intent(IN) :: Raster(:,:)
-!  logical, optional         :: Zip
-!
-!  logical :: DoZip, Opened
-!  integer :: nx, ny
-!
-!  nx = size(Raster,1)
-!  ny = size(Raster,2)
-!
-!  if(present(Zip)) then
-!     DoZip = Zip
-!  else
-!     DoZip = .false.
-!  endif
-!
-!  if(DoZip) then
-!     print *, "Reading zipped raster files not supported"
-!     call exit(1)
-!  else
-!     call READRST(RASTER(1,1),nx,ny,trim(FILE)//CHAR(0))
-!  end if
-!
-!  return
-! end subroutine ReadRaster
+
+
+
+
+subroutine ReadRaster(File, Raster, Zip)
+  character*(*), intent(IN) :: File
+  integer,       intent(IN) :: Raster(:,:)
+  logical, optional         :: Zip
+
+  logical :: DoZip, Opened
+  integer :: nx, ny
+
+  nx = size(Raster,1)
+  ny = size(Raster,2)
+
+  if(present(Zip)) then
+     DoZip = Zip
+  else
+     DoZip = .false.
+  endif
+
+  if(DoZip) then
+     print *, "Reading zipped raster files not supported"
+     call exit(1)
+  else
+     call READRST(RASTER(1,1),nx,ny,trim(FILE)//CHAR(0))
+  end if
+
+  return
+end subroutine ReadRaster
 
 
 
 subroutine SortTiling(Raster,rTable,iTable)
   integer, intent(INOUT) :: Raster(:,:), iTable(0:,:)
-  real(REAL64),   intent(INOUT) :: rTable(:,:)
+  real(kind=8),   intent(INOUT) :: rTable(:,:)
 
   integer,   dimension(size(iTable,2)) :: old, new
   integer*8, dimension(size(iTable,2)) :: key, key0
@@ -165,34 +162,12 @@ subroutine SortTiling(Raster,rTable,iTable)
   return
 end subroutine SortTiling
 
-! --------------------------------------------------------------------------------------------
-
 subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zip, Verb, rc)
-
-  ! Write ASCII tile file 
-  !
-  ! We have ascii tile files that support either 1 or 2 grids. The most typcal case for GEOS is a tile file with
-  ! 2 grids (although to generate the final file, we generate a lot of intermediate tile files with a single grid).
-  ! For the 2-grid tile file, the pfaf index number should be in column 9 (basically that file has 3 groups, 
-  ! each of which has 4 columns: the "global" info part (type, area, lat, lon), and then for each grid we have 
-  ! (index1 (i.e. "i"), index2 (i.e. "j"), weight, dummy). Here "dummy" is a variable, used internally for 
-  ! bookkeeping purposes, but it is totally ignored by GEOS, MAPL, etc. So, for the typical case, ATM and OCN 
-  ! grids, columns 1-4 represent the global variables, then the next 4 columns refer to the ATM grid (but this 
-  ! is to a large extend an artifact of the ordering of the "combine" calls that generate the final tile file). 
-  ! Then for type=0 (i.e., "ocean") the last 4 columns are the i, j, weight, dummy of the ocean grid. 
-  ! But for type=100 (i.e., land) the convention is the first index, i.e. column 9, is the pfaf index
-  ! (that is, the index of the Pfafstetter hydrological catchment). 
-  ! I do not think we use the content of column 10 anywhere in the model.
-  ! So my bottom line is the pfaf index should be in column 9. If it appears in column 8, it won't do any harm 
-  ! to the atmosphere, but we cannot use it properly to do river routing inside the land model.
-  ! (From https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/1028#issuecomment-2599275578, lightly edited.)
-
-
   character*(*),     intent(IN) :: File
   character*(*),     intent(IN) :: GridName(:)
   integer,           intent(IN) :: nx,ny
   integer,           intent(IN) :: iTable(0:,:)
-  real(REAL64),      intent(IN) :: rTable(:,:)
+  real(kind=8),             intent(IN) :: rTable(:,:)
   integer,           intent(IN) :: IM(:), JM(:), ipx(:)
   logical, optional, intent(IN) :: Zip
   logical, optional, intent(IN) :: Verb
@@ -202,12 +177,10 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
 !
 !  iTable(0)    :: Surface type
 !  iTable(1)    :: tile count 
-!  iTable(2)    :: I_1 I of 1st grid
+!  iTable(2)    :: I_1 I of first grid
 !  iTable(3)    :: J_1
-!  iTable(4)    :: I_2 I of 2nd grid *OR* for land tiles: index of Pfafstetter catchment (see comment above)
+!  iTable(4)    :: I_2 I of 2nd   grid
 !  iTable(5)    :: J_2
-!  iTable(6)    :: kk_1 (dummy variable for internal bookkeeping)
-!  iTable(7)    :: kk_2 (dummy variable for internal bookkeeping)
 !
 !  rTable(1)    :: sum of lons
 !  rTable(2)    :: sum of lats
@@ -215,23 +188,22 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
 !  rTable(4)    :: of first grid box area
 !  rTable(5)    :: of 2nd   grid box area
 
-  logical        :: DoZip, Opened
-  integer        :: j, unit, ng, ip, l, i, k, ix
+  logical :: DoZip, Opened
+  integer :: j, unit, ng, ip, l, i, k, ix
   character*1000 :: Line
-  integer        :: ii(size(GridName)), jj(size(GridName)), kk(size(GridName))
-  real(REAL64)   :: fr(size(GridName))
-  real(REAL64)   :: xc, yc, area
-  real(REAL64)   :: garea, ctg(size(Gridname))
-  real(REAL64)   :: sphere, error
-  integer        :: status, tmp_in1, tmp_in2, ncat
-  logical        :: file_exists
+  integer :: ii(size(GridName)), jj(size(GridName)), kk(size(GridName))
+  real(kind=8)   :: fr(size(GridName))
+  real(kind=8)   :: xc, yc, area
+  real(kind=8)   :: garea, ctg(size(Gridname))
+  real(kind=8)   :: sphere, error
+  integer :: status
 
   ip = size(iTable,2)
   ng = size(GridName)
 
   _ASSERT(IP==size(rTable,2),'needs informative message')
-  _ASSERT(NG==size(IM),      'needs informative message')
-  _ASSERT(NG==size(JM),      'needs informative message')
+  _ASSERT(NG==size(IM),'needs informative message')
+  _ASSERT(NG==size(JM),'needs informative message')
 
   if(present(Zip)) then
      DoZip = Zip
@@ -277,8 +249,8 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
 ! Write tile info, one line per tile.
 
 #define LINE_FORMAT     '(I10,3E20.12,9(2I10,E20.12,I10))'
-#define LINE_VARIABLES  iTable(0,k),area,xc,yc, (ii(l),jj(l),fr(l),kk(l),l=1,ng)       ! for *land* tiles, ii(2) = index of Pfafstetter catchment
- 
+#define LINE_VARIABLES  iTable(0,k),area,xc,yc, (ii(l),jj(l),fr(l),kk(l),l=1,ng)
+
   garea = 0.0
   ctg   = 0.0
 
@@ -292,11 +264,10 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
      do l=0,ng-1
         ii(l+1) = iTable(2 +L*2,K)
         jj(l+1) = iTable(3 +L*2,K)
-        ! kk = "dummy" variable, used internally for bookkeeping purposes, ignored by GEOS, MAPL, etc
         if(ng==1) then
-           kk(l+1) = K                 
+           kk(l+1) = K
         else
-           kk(l+1) = iTable(6 +L,K)    
+           kk(l+1) = iTable(6 +L,K)
         end if
         if(rTable(4+L,K)/=0.0) then
            fr (l+1) = area / rTable(4+L,K)
@@ -315,7 +286,7 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
   end do
 
   if(present(Verb)) then
-     sphere = 4.*PI
+     sphere = 4.*pi
      error  = (sphere-garea)/garea
      if(Verb) then
         print '(A,3e20.13)','Stats for the globe:',garea, sphere, error
@@ -334,12 +305,11 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
      close(UNIT)
   end if
 
+  return
 end subroutine WriteTilingIR
 
-! ----------------------------------------------------------------------------------
 
 subroutine OpenTiling(Unit, File, GridName, im, jm, ip, nx, ny, Zip, Verb)
-
   integer,           intent(OUT) :: Unit
   character*(*),     intent(IN) :: File
   character*(*),     intent(IN) :: GridName
@@ -410,16 +380,16 @@ subroutine OpenTiling(Unit, File, GridName, im, jm, ip, nx, ny, Zip, Verb)
   end if
 
   return
-
 end subroutine OpenTiling
 
-! --------------------------------------------------------------------------
+
+
 
 subroutine WriteLine(File, Unit, iTable, rTable, k, Zip, Verb)
   character*(*),     intent(IN) :: File
   integer,           intent(IN) :: Unit, k
   integer,           intent(IN) :: iTable(0:)
-  real(REAL64),             intent(IN) :: rTable(:)
+  real(kind=8),             intent(IN) :: rTable(:)
   logical, optional, intent(IN) :: Zip
   logical, optional, intent(IN) :: Verb
 
@@ -441,8 +411,8 @@ subroutine WriteLine(File, Unit, iTable, rTable, k, Zip, Verb)
   logical :: DoZip
   character*1000 :: Line
   integer :: ii, jj
-  real(REAL64)   :: fr
-  real(REAL64)   :: xc, yc, area
+  real(kind=8)   :: fr
+  real(kind=8)   :: xc, yc, area
 
   if(present(Zip)) then
      DoZip = Zip
@@ -508,7 +478,7 @@ subroutine CloseTiling(FIle, Unit, ip,  Zip, Verb)
 !  rTable(5)    :: of 2nd   grid box area
 
   logical :: DoZip
-  real(REAL64)   :: sphere, error
+  real(kind=8)   :: sphere, error
   character*1000 :: Line
 
   Line=""
@@ -520,7 +490,7 @@ subroutine CloseTiling(FIle, Unit, ip,  Zip, Verb)
   endif
 
   if(present(Verb)) then
-     sphere = 4.*PI
+     sphere = 4.*pi
      error  = (sphere-garea_)/garea_
      if(Verb) then
         print '(A,3e20.13)','Stats for the globe:',garea_, sphere, error
@@ -539,6 +509,9 @@ subroutine CloseTiling(FIle, Unit, ip,  Zip, Verb)
 
   return
 end subroutine CloseTiling
+
+
+
 
 
 end module LogRectRasterizeMod

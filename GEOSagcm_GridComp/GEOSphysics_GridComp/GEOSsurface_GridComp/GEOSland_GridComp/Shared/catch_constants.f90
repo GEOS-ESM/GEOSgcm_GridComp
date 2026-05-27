@@ -141,11 +141,10 @@ module catch_constants
   ! Use of peat-specific hydrology (PEATCLSM) is triggered by a porosity threshold.
   ! Porosity of peat tiles depends on bcs version.
   !
-  !     bcs version           | source of peat info       | porosity   | PEATCLSM 
-  !     --------------------------------------------------------------------------
-  !     NLv3, NLv4            | HWSDv1.21                 | poros=0.80 |   no
-  !     NLv5, v11, v12, v13   | HWSDv1.21 + PEATMAP       | poros=0.93 |   yes
-  !     v14                   | Global Peatland Map 2.0   | poros=0.93 |   yes
+  !     bcs version           | source of peat info       | porosity
+  !     -----------------------------------------------------------------
+  !     NLv3, NLv4            | HWSD                      | poros=0.80
+  !     NLv5                  | PEATMAP                   | poros=0.93
   !
   ! - reichle, 26 Jan 2022
   

@@ -1,3 +1,0 @@
-# saturation_specific_humidity_functions
-
-::: pyMoist.saturation_tables.saturation_specific_humidity_functions

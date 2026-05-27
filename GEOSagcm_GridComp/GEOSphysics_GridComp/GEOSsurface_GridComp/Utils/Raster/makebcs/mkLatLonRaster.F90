@@ -44,7 +44,7 @@
 ! The rasterization fails if there are not an integer number of pixels
 ! in each box.
 
-    use LogRectRasterizeMod,         ONLY: LRRasterize
+    use LogRectRasterizeMod
     use MAPL_ExceptionHandling
 
     implicit none

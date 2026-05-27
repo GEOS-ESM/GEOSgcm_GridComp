@@ -31,6 +31,7 @@ module GEOS_LandGridCompMod
   use GEOS_CatchGridCompMod,   only : CatchSetServices    => SetServices
   use GEOS_CatchCNGridCompMod, only : CatchCNSetServices  => SetServices
   use GEOS_IgniGridCompMod,    only : IgniSetServices     => SetServices
+!  use GEOS_RouteGridCompMod,   only : RouteSetServices    => SetServices
 
   implicit none
   private
@@ -44,8 +45,8 @@ module GEOS_LandGridCompMod
 
 
   integer                                 :: VEGDYN
-  integer, allocatable                    :: CATCH(:), CATCHCN(:)
-  integer                                 :: LSM_CHOICE, DO_GOSWIM
+  integer, allocatable                    :: CATCH(:), ROUTE (:), CATCHCN (:)
+  integer                                 :: LSM_CHOICE, RUN_ROUTE, DO_GOSWIM
   integer                                 :: IGNI
   logical                                 :: DO_FIRE_DANGER
 
@@ -67,7 +68,7 @@ contains
 ! !DESCRIPTION:  The SetServices for the Physics GC needs to register its
 !   Initialize and Run.  It uses the MAPL\_Generic construct for defining 
 !   state specs and couplings among its children.  In addition, it creates the   
-!   children GCs (VegDyn, Catch, CatchCN) and runs their respective SetServices.
+!   children GCs (VegDyn, Catch, CatchCN, Route) and runs their respective SetServices.
 
 !EOP
 
@@ -83,7 +84,7 @@ contains
     
     character(len=ESMF_MAXSTR)              :: GCName
     type(ESMF_Config)                       :: CF, SCF
-    integer                                 :: NUM_CATCH_ENS
+    integer                                 :: NUM_CATCH
     integer                                 :: I
     character(len=ESMF_MAXSTR)              :: TMP
     type(MAPL_MetaComp),pointer             :: MAPL=>null()
@@ -133,7 +134,7 @@ contains
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN, Run2, RC=STATUS )
     VERIFY_(STATUS)
 
-    call ESMF_ConfigGetAttribute ( CF, NUM_CATCH_ENS, Label="NUM_CATCH_ENSEMBLES:", default=1, RC=STATUS)
+    call ESMF_ConfigGetAttribute ( CF, NUM_CATCH, Label="NUM_CATCH_ENSEMBLES:", default=1, RC=STATUS)
     VERIFY_(STATUS)
 
 !------------------------------------------------------------
@@ -145,6 +146,7 @@ contains
     VERIFY_(STATUS)
 
 ! Get CHOICE OF  Land Surface Model (1:Catch, 2:Catch-CN)
+! and Runoff Routing Model (0: OFF, 1: ON)
 ! -------------------------------------------------------
 
     call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=1, RC=STATUS)
@@ -152,6 +154,7 @@ contains
     call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
+    call MAPL_GetResource (SCF, RUN_ROUTE, label='RUN_ROUTE:',           DEFAULT=0, __RC__ )
     call MAPL_GetResource (SCF, DO_GOSWIM, label='N_CONST_LAND4SNWALB:', DEFAULT=0, __RC__ )
     call MAPL_GetResource (SCF, DO_FIRE_DANGER, label='FIRE_DANGER:',    DEFAULT=.false., __RC__ )
     call ESMF_ConfigDestroy      (SCF, __RC__)
@@ -160,13 +163,13 @@ contains
 
     CASE (1) 
     
-       allocate (CATCH(NUM_CATCH_ENS), stat=status)
+       allocate (CATCH(NUM_CATCH), stat=status)
        VERIFY_(STATUS)
-       if (NUM_CATCH_ENS == 1) then
+       if (NUM_CATCH == 1) then
           CATCH(1) = MAPL_AddChild(GC, NAME='CATCH'//trim(tmp), SS=CatchSetServices, RC=STATUS)
           VERIFY_(STATUS)
        else
-          do I = 1, NUM_CATCH_ENS
+          do I = 1, NUM_CATCH
              WRITE(TMP,'(I3.3)') I
              GCName  = 'ens' // trim(TMP) // ':CATCH'
              CATCH(I) = MAPL_AddChild(GC, NAME=GCName, SS=CatchSetServices, RC=STATUS)
@@ -176,13 +179,13 @@ contains
        
     CASE (2,3) 
        
-       allocate (CATCHCN(NUM_CATCH_ENS), stat=status)
+       allocate (CATCHCN(NUM_CATCH), stat=status)
        VERIFY_(STATUS)
-       if (NUM_CATCH_ENS == 1) then
+       if (NUM_CATCH == 1) then
           CATCHCN(1) = MAPL_AddChild(GC, NAME='CATCHCN'//trim(tmp), SS=CatchCNSetServices, RC=STATUS)
           VERIFY_(STATUS)
        else
-          do I = 1, NUM_CATCH_ENS
+          do I = 1, NUM_CATCH
              WRITE(TMP,'(I3.3)') I
              GCName  = 'ens' // trim(TMP) // ':CATCHCN'
              CATCHCN(I) = MAPL_AddChild(GC, NAME=GCName, SS=CatchCNSetServices, RC=STATUS)
@@ -192,6 +195,20 @@ contains
        
     END SELECT
 
+!    IF(RUN_ROUTE == 1) THEN
+!       if (NUM_CATCH == 1) then
+!          ROUTE(1) = MAPL_AddChild(GC, NAME='ROUTE', SS=RouteSetServices, RC=STATUS)
+!          VERIFY_(STATUS)
+!       else
+!          do I = 1, NUM_CATCH
+!             WRITE(TMP,'(I3.3)') I
+!             GCName  = 'ens' // trim(TMP) // ':ROUTE'
+!             ROUTE(I) = MAPL_AddChild(GC, NAME=GCName, SS=RouteSetServices, RC=STATUS)
+!             VERIFY_(STATUS)
+!          end do
+!       end if
+!    ENDIF
+   
     if (DO_FIRE_DANGER) then
         IGNI = MAPL_AddChild(GC, NAME='IGNI'//trim(tmp), SS=IgniSetServices, RC=STATUS)
         VERIFY_(STATUS)
@@ -217,7 +234,7 @@ contains
 ! These are from RUN2 of the first catchment instance
     SELECT CASE (LSM_CHOICE)
 
-    CASE (1)                                    ! Catchment model
+    CASE (1) 
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'LST', &
             CHILD_ID = CATCH(1), &
@@ -639,11 +656,6 @@ contains
             RC=STATUS  )
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
-            SHORT_NAME = 'SPLH', &
-            CHILD_ID = CATCH(1), &
-            RC=STATUS  )
-       VERIFY_(STATUS)
-       call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'SPWATR', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
@@ -674,17 +686,18 @@ contains
             RC=STATUS  )
        VERIFY_(STATUS)
 
-    ! the following constants are needed by GEOSldas (to assemble the catparam structure)   
-
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'POROS', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'COND' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'PSIS' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BEE'  , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'WPWET', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'GNU'  , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'VGWMAX',CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BF1'  , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BF2'  , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BF3'  , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'CDCR1', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'CDCR2', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARS1' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARS2' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARS3' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
@@ -702,28 +715,6 @@ contains
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSB2' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'ATAU' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BTAU' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
-
-    ! the following constants are needed by GEOSldas and for the "land constants" output collection
-
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'WPWET', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'CDCR2', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'POROS', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
-
-    ! the following constants are needed for the "land constants" output collection
-
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZGT1', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZGT2', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZGT3', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZGT4', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZGT5', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZGT6', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZPR',  CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZRZ',  CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZSF',  CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZTS',  CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'WPEMW', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'WPMC',  CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
-
 
 !   From catment grid internal to be perturbed by land_pert grid
 !   WESNN1-3 are originally exported
@@ -955,7 +946,7 @@ contains
           call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ROC002', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
        end if
 
-    CASE (2,3)           ! CatchmentCN model
+    CASE (2,3) 
        
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'LST',      CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
@@ -1123,12 +1114,9 @@ contains
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DHLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )              ! a.k.a. SPSHLAND
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
-! will need later for CatchCN:
-!       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPLH'   ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-!       VERIFY_(STATUS)
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPWATR' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )              ! a.k.a. SPEVLAND
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPWATR' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPSNOW' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
@@ -1141,17 +1129,18 @@ contains
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CAPAC'  ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
 
-    ! the following constants are needed by GEOSldas (to assemble the catparam structure)   
-
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'POROS', CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'COND' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'PSIS' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BEE'  , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'WPWET', CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'GNU'  , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'VGWMAX',CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BF1'  , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BF2'  , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BF3'  , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'CDCR1', CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'CDCR2', CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARS1' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARS2' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARS3' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
@@ -1170,9 +1159,6 @@ contains
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'ATAU' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BTAU' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
 
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'WPWET', CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'CDCR2', CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'POROS', CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
 
 !   From catmentcn grid internal to be perturbed by land_pert grid
 !   WESNN1-3 are originally exported
@@ -1360,6 +1346,14 @@ contains
                               CHILD_ID = VEGDYN,&
                               RC=STATUS  )
     VERIFY_(STATUS) 
+!    IF(RUN_ROUTE == 1) THEN
+!       call MAPL_AddExportSpec ( GC, &
+!            SHORT_NAME = 'QOUTFLOW', &
+!            CHILD_ID = ROUTE(1),     &
+!            RC=STATUS  )
+!       VERIFY_(STATUS)       
+!    ENDIF
+
 
     if (DO_FIRE_DANGER) then
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FFMC',        CHILD_ID = IGNI,  __RC__ )
@@ -1401,7 +1395,7 @@ contains
 
 ! !CONNECTIONS:
 
-    DO I = 1, NUM_CATCH_ENS
+    DO I = 1, NUM_CATCH
 
        SELECT CASE (LSM_CHOICE)
 
@@ -1428,6 +1422,17 @@ contains
               VERIFY_(STATUS)
           end if
 
+!          IF(RUN_ROUTE == 1) THEN
+!             call MAPL_AddConnectivity (                              &
+!                  GC                                                 ,&
+!                  SHORT_NAME  = (/'RUNOFF  '/)                       ,&
+!                  SRC_ID =  CATCH(I)                                 ,&
+!                  DST_ID =  ROUTE(I)                                 ,&
+!                  
+!                  RC=STATUS )
+!             VERIFY_(STATUS)            
+!          ENDIF
+
        CASE (2,3)
           call MAPL_AddConnectivity (                                    & 
             GC                                                 ,         &
@@ -1450,9 +1455,19 @@ contains
               VERIFY_(STATUS)
           end if
 
+!          IF(RUN_ROUTE == 1) THEN
+!             call MAPL_AddConnectivity (                              &
+!                  GC                                                 ,&
+!                  SHORT_NAME  = (/'RUNOFF  '/)                       ,&
+!                  SRC_ID =  CATCHCN(I)                               ,&
+!                  DST_ID =  ROUTE(I)                                 ,&
+!                  
+!                  RC=STATUS )
+!             VERIFY_(STATUS)            
+!          ENDIF
        END SELECT
     END DO
-    
+
 
     call MAPL_TimerAdd(GC, name="INITIALIZE"    ,RC=STATUS)
     VERIFY_(STATUS)
@@ -1668,7 +1683,7 @@ contains
    type (ESMF_State),     pointer  :: GEX(:)
    character(len=ESMF_MAXSTR),pointer  :: GCnames(:)
 
-   integer :: I, phase
+   integer :: I
   
 !=============================================================================
 

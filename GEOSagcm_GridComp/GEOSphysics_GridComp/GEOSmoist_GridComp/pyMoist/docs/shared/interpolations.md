@@ -1,3 +1,0 @@
-# interpolations
-
-::: pyMoist.shared.interpolations

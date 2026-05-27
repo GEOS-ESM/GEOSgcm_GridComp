@@ -16,7 +16,7 @@
 ! !USES:
 !
     use CubedSphere_GridMod
-    use LogRectRasterizeMod,      ONLY: LRRasterize
+    use LogRectRasterizeMod
     use MAPL_ExceptionHandling
 !EOP
 

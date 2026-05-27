@@ -3,13 +3,11 @@
 
 program mkOverlaySimple
 
-  use LogRectRasterizeMod,     ONLY: WriteRaster, WriteTiling, SortTiling
-  use rmTinyCatchParaMod,      only: i_raster, j_raster, supplemental_tile_attributes
+  use LogRectRasterizeMod
   use MAPL_SortMod
   use MAPL_HashMod
   use MAPL_ExceptionHandling
   use MAPL_Constants
-  use, intrinsic :: iso_fortran_env, only: REAL64
 
 ! Overlay atmosphere, land, and ocean rasters, creating a .idx file.
 ! The ocean raster should be defined everywhere, or at least, everywhere
@@ -30,7 +28,7 @@ program mkOverlaySimple
   integer, parameter     :: TILUNIT1  = 22
   integer, parameter     :: TILUNIT2  = 23
 
-  real(REAL64),   parameter     :: PI        = MAPL_PI_R8
+  real(kind=8),   parameter     :: PI        = MAPL_PI_R8
 
   integer                :: command_argument_count
   integer                :: nxt, argl, fill
@@ -45,17 +43,17 @@ program mkOverlaySimple
   integer,   allocatable :: RST2(:  )
   integer,   allocatable :: iTable(:,:)
 
-  real(REAL64) ,    allocatable :: Table1(:,:) 
-  real(REAL64) ,    allocatable :: Table2(:,:) 
-  real(REAL64) ,    allocatable :: rTable(:,:)
-  real(REAL64) ,    allocatable :: cc(:), ss(:)
-  real(REAL64)                  :: dx, dy, area, xc, yc, d2r, vv(4)
-  real(REAL64)                  :: lats, lons, da
+  real(kind=8) ,    allocatable :: Table1(:,:) 
+  real(kind=8) ,    allocatable :: Table2(:,:) 
+  real(kind=8) ,    allocatable :: rTable(:,:)
+  real(kind=8) ,    allocatable :: cc(:), ss(:)
+  real(kind=8)                  :: dx, dy, area, xc, yc, d2r, vv(4)
+  real(kind=8)                  :: lats, lons, da
 
   logical                :: DoZip
   logical                :: Verb
   logical                :: found
-  logical                :: Merge, regrid
+  logical                :: Merge
   logical                :: s_flag=.false.
                          
   character*4            :: tildir, rstdir
@@ -65,9 +63,9 @@ program mkOverlaySimple
   character*128          :: Overlay=''
   character*128          :: GridName1, GridName2
   character*128          :: Grid1, Grid2
-  character*128          :: TilFile, RstFile, FilenameNc4
+  character*128          :: TilFile, RstFile
   character*128          :: &
-      Usage = "CombineRasters -v -h -z -t MT -g GF -f fill -s SG BOTTOMRASTER TOPRASTER"
+      Usage = "CombineRasters -v -h -z -t MT -g GF -f TYPE -s SG BOTTOMRASTER TOPRASTER"
 
   character*128          :: Iam = "CombineRasters"
   integer :: Pix1, Pix2
@@ -212,11 +210,8 @@ program mkOverlaySimple
 
     allocate(iTable(0:nvars,maxtiles),stat=status)
     VERIFY_(STATUS)
-    iTable = 0
-
     allocate(rTable(1:rvars,maxtiles),stat=status)
     VERIFY_(STATUS)
-    rTable = 0.0_REAL64
 
     allocate(rst1(nx,ny),             stat=status)
     VERIFY_(STATUS)
@@ -284,7 +279,7 @@ program mkOverlaySimple
     end if
 
     ip    = 0
-    Hash  = MAPL_HashCreate(512*1024)
+    Hash  = MAPL_HashCreate(8*1024)
 
     if(Verb) write (6, '(A)', advance='NO') ' Started Overlay'
 
@@ -467,16 +462,10 @@ program mkOverlaySimple
        count0 = count1
     end if
 
-    if (.not. merge) then
-      if ( index(Grid1, "EASE") /=0 .and. index(Grid2, "EASE") /=0) then
-         l = index(TilFile, '.til')
-         regrid = nx /= i_raster .or. ny /= j_raster
-         call supplemental_tile_attributes(nx, ny, regrid, 'DE',TilFile(1:l-1), Rst1)
-      endif
-    endif
-
 ! Clean up
+
     deallocate(Rst1, iTable, rTable)
+
 ! All done
 
     if(Verb) print * , 'Terminated Normally'

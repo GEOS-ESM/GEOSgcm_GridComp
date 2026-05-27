@@ -33,6 +33,7 @@ module CICE_GEOSPlugMod
   public :: SetServices
 
   integer            :: NUM_ICE_CATEGORIES
+  logical, private   :: ice_grid_init2 
   logical, private   :: running_regular_replay 
 
 contains
@@ -80,6 +81,7 @@ contains
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // Iam
 
+    ice_grid_init2 = .false.
     running_regular_replay = .false.
 
     call ESMF_ConfigGetAttribute(CF, NUM_ICE_CATEGORIES, Label="CICE_N_ICE_CATEGORIES:" , RC=STATUS)
@@ -89,11 +91,10 @@ contains
 ! ----------------------------------------------
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE,   Initialize, _RC)
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE,   Initialize2, _RC)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,          Run,        _RC)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE,     Finalize,   _RC)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_WRITERESTART, Record,     _RC)
-    call MAPL_GridCompSetEntryPoint ( GC, MAPL_METHOD_REFRESH,      Refresh,    _RC)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_READRESTART,  Refresh,    _RC)
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -218,14 +219,16 @@ contains
           DEFAULT            = 33.0,                        &
           _RC  )
 
-  call MAPL_AddImportSpec(GC,                               &
-         SHORT_NAME         = 'FROCEAN',                           &
-         LONG_NAME          = 'fraction_of_gridbox_covered_by_skin',&
-         UNITS              = '1',                                 &
-         DIMS               = MAPL_DimsHorzOnly,                   &
-         VLOCATION          = MAPL_VLocationNone,                  &
-         RESTART            = MAPL_RestartSkip,                    &
-         _RC  )
+
+  !call MAPL_AddImportSpec(GC,                               &
+  !       SHORT_NAME         = 'FROCEAN',                           &
+  !       LONG_NAME          = 'fraction_of_gridbox_covered_by_skin',&
+  !       UNITS              = '1',                                 &
+  !       DIMS               = MAPL_DimsHorzOnly,                   &
+  !       VLOCATION          = MAPL_VLocationNone,                  &
+  !       RESTART            = MAPL_RestartSkip,                    &
+  !       RC=status  )
+  !VERIFY_(status)
 
   call MAPL_AddImportSpec(GC,                                 &
         SHORT_NAME         = 'SI',                                &
@@ -450,6 +453,9 @@ contains
 
     type(ESMF_State)                       :: SURFST
 
+
+    REAL_, pointer                         :: FROCEAN(:,:)        => null()
+
     integer                                :: DT_SEAICE
 
 ! Begin...
@@ -485,6 +491,7 @@ contains
 
 ! Get the grid, configuration
 !----------------------------
+    !call MAPL_GetPointer(IMPORT, FROCEAN,     'FROCEAN'  ,    __RC__)
 
     call ESMF_GridCompGet( GC, grid=Grid,  RC=status )
     VERIFY_(STATUS)
@@ -544,6 +551,7 @@ contains
     call cice_init1(Comm, NPES, BLK_NX, BLK_NY, &
                     DT_SEAICE, MAPL_TICE, MAPL_ALHL, MAPL_ALHS)
 
+    !call ice_import_grid(FROCEAN, __RC__)
     !if (counts(2) /= BLK_NY) &
     !     print*,counts(2),BLK_NY
     ! there should be an ASSERT here to make sure the block size from CICE and MAPL agree
@@ -637,6 +645,8 @@ contains
     call AddSurfField('DFUVR', SURFST, GRID,  __RC__)
     call AddSurfField('COSZ',  SURFST, GRID,  __RC__)
 
+    call AddSurfField('FROCEAN',  SURFST, GRID,  __RC__)
+
     ! callback return fields
 
     ! fields with categories
@@ -709,94 +719,7 @@ contains
 
   end subroutine Initialize
 
-!=============================================================================
 
-!BOP
-
-! !IROUTINE: INITIALIZE2 -- Initialize method2 for CICE wrapper
-
-! !INTERFACE:
-
-  subroutine Initialize2 ( GC, IMPORT, EXPORT, CLOCK, RC )
-
-! !ARGUMENTS:
-
-    type(ESMF_GridComp),     intent(INOUT) :: GC     ! Gridded component
-    type(ESMF_State),        intent(INOUT) :: IMPORT ! Import state
-    type(ESMF_State),        intent(INOUT) :: EXPORT ! Export state
-    type(ESMF_Clock),        intent(INOUT) :: CLOCK  ! The clock
-    integer, optional,       intent(  OUT) :: RC     ! Error code:
-
-!EOP
-
-! ErrLog Variables
-
-    character(len=ESMF_MAXSTR)             :: IAm
-    integer                                :: STATUS
-    character(len=ESMF_MAXSTR)             :: COMP_NAME
-
-! Locals
-    type(MAPL_MetaComp), pointer           :: MAPL
-
-    REAL_, pointer                         :: FRO(:,:)        => null()
-
-
-
-! Begin...
-
-! Get the target components name and set-up traceback handle.
-! -----------------------------------------------------------
-
-    Iam = "Initialize2"
-    call ESMF_GridCompGet( gc, NAME=comp_name, RC=status )
-    VERIFY_(STATUS)
-    Iam = trim(comp_name) // trim(Iam)
-
-
-! Get my internal MAPL_Generic state
-!-----------------------------------
-
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    VERIFY_(STATUS)
-
-
-! Profilers
-!----------
-
-    call MAPL_TimerOn(MAPL,"INITIALIZE")
-
-! Generic initialize
-! ------------------
-
-
-    call MAPL_TimerOn(MAPL,"TOTAL"     )
-
-    call MAPL_GetPointer(IMPORT, FRO,     'FROCEAN'  ,    __RC__)
-
-    call ice_import_grid(FRO, rc=STATUS)
-    VERIFY_(STATUS)
-    call cice_init2
-    if (running_regular_replay) then
-       call save_record_state
-    endif
-
-    call MAPL_TimerOff(MAPL,"TOTAL"     )
-
-
-! Profilers
-! ---------
-    call MAPL_TimerOff(MAPL,"INITIALIZE")
-
-! Make sure exports neede by the parent prior to our run call are initialized
-!----------------------------------------------------------------------------
-
-
-! All Done
-!---------
-
-    RETURN_(ESMF_SUCCESS)
-
-  end subroutine Initialize2
 
 
 !=================================================================================
@@ -1010,8 +933,6 @@ contains
     type(MAPL_MetaComp),     pointer :: MAPL
 
 ! ErrLog Variables
-    character(len=ESMF_MAXSTR)       :: IAm
-    integer                          :: STATUS
 
     character(len=ESMF_MAXSTR)       :: COMP_NAME
 
@@ -1019,7 +940,7 @@ contains
     character(len=14)                :: timeStamp
     logical                          :: doRecord
 
-    Iam = "Record"
+    __Iam__('Record')
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -1082,18 +1003,18 @@ contains
   integer, optional,   intent(  OUT) :: RC     ! Error code
 
 !EOP
+
     type(MAPL_MetaComp),     pointer :: MAPL
 
 ! ErrLog Variables
-    character(len=ESMF_MAXSTR)       :: IAm
-    integer                          :: STATUS
+
     character(len=ESMF_MAXSTR)       :: COMP_NAME
 
 ! Locals
     character(len=14)                :: timeStamp
     logical                          :: doRecord
 
-    IAm = "Restore"
+    __Iam__('Restore')
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -1214,10 +1135,23 @@ contains
 !EOP
 
      integer                               :: status
+     REAL_, pointer                        :: FRO(:,:)          => null()
+
 
 ! ErrLog Variables
 
      character(len=ESMF_MAXSTR), parameter   :: IAm=' thermo_coupling'
+
+     if (.not. ice_grid_init2) then
+        call MAPL_GetPointer(state, FRO, 'FROCEAN', __RC__)
+        call ice_import_grid(FRO, rc=STATUS)
+        VERIFY_(STATUS)
+        call cice_init2
+        if (running_regular_replay) then
+           call save_record_state
+        endif
+        ice_grid_init2 = .TRUE.
+     endif
 
      ! unpack fields and send them to cice
      call ice_import_thermo1(state, rc=STATUS)

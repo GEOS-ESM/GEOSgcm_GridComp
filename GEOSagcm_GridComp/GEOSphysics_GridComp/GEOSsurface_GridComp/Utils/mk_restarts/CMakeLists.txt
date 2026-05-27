@@ -16,13 +16,14 @@ set (exe_srcs
   mk_CatchCNRestarts.F90
   mk_CatchRestarts.F90
   mk_LakeLandiceSaltRestarts.F90
+  mk_RouteRestarts.F90
   mk_GEOSldasRestarts.F90
   mk_catchANDcnRestarts.F90
 )
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES MAPL GEOS_SurfaceShared GEOS_LandShared ESMF::ESMF NetCDF::NetCDF_Fortran GEOS_CatchCNShared)
+  DEPENDENCIES MAPL GEOS_SurfaceShared GEOS_LandShared esmf NetCDF::NetCDF_Fortran GEOS_CatchCNShared)
 
 foreach (src ${exe_srcs})
   string (REGEX REPLACE ".F90" ".x" exe ${src})

@@ -44,7 +44,7 @@
     lonpnt(1)      =  0.
     latpnt(2)      = -65.
     lonpnt(2)      = -45.
-    histfreq       = 'm','x','x','x','x'
+    histfreq       = 'm','d','x','x','x'
     histfreq_n     =  1 , 1 , 1 , 1 , 1
     histfreq_base  = 'zero'
     hist_avg       = .true.
@@ -62,9 +62,9 @@
     grid_format  = 'nc'
     grid_type    = 'tripole'
     grid_subtype = 'geosmom'
-    grid_ice     = 'C'
+    grid_ice     = 'B'
     grid_atm     = 'A'
-    grid_ocn     = 'C'
+    grid_ocn     = 'B'
     grid_file    = 'cice6_grid.nc'
     kmt_file     = 'cice6_kmt.nc'
     bathymetry_file = 'cice6_global.bathy.nc'
@@ -101,8 +101,8 @@
     restart_lvl  = .true.
     tr_pond_topo = .false.
     restart_pond_topo = .false.
-    tr_pond_lvl  = .true.
-    restart_pond_lvl  = .true.
+    tr_pond_lvl  = .false.
+    restart_pond_lvl  = .false.
     tr_snow      = .false.
     restart_snow = .false.
     tr_iso       = .false.
@@ -115,7 +115,7 @@
 
 &thermo_nml
     kitd              = 1
-    ktherm            = 2
+    ktherm            = 1
     conduct           = 'bubbly'
     ksno              = 0.3d0
     a_rapid_mode      =  0.5e-3
@@ -174,19 +174,19 @@
 /
 
 &shortwave_nml
-    shortwave       = 'dEdd'
+    shortwave       = 'ccsm3'
     albedo_type     = 'ccsm3'
     albicev         = 0.78
     albicei         = 0.36
     albsnowv        = 0.98
     albsnowi        = 0.70 
     ahmax           = 0.3
-    R_ice           = -1.
-    R_pnd           = -1.
-    R_snw           = -1.
+    R_ice           = 0.
+    R_pnd           = 0.
+    R_snw           = 1.5
     dT_mlt          = 1.5
     rsnw_mlt        = 1500.
-    kalg            = 0.0
+    kalg            = 0.6
     sw_redist         = .true.
     sw_frac           = 0.9d0
     sw_dtemp          = 0.02d0
@@ -241,8 +241,6 @@
     emissivity      = 0.985
     fbot_xfer_type  = 'constant'
     update_ocn_f    = .false.
-    cpl_frazil      = 'fresh_ice_correction'
-    saltflux_option = 'prognostic'
     l_mpond_fresh   = .false.
     tfrz_option     = 'linear_salt'
     oceanmixed_ice  = .false.
@@ -295,6 +293,8 @@
     restart_hbrine  = .false.
     tr_zaero        = .false.
     modal_aero      = .false.
+    optics_file     = 'unknown'
+    optics_file_fieldname = 'modalBCabsorptionParameter5band'
     skl_bgc         = .false.
     z_tracers       = .false.
     dEdd_algae      = .false.
@@ -472,7 +472,7 @@
     f_snowfrac     = 'x'
     f_snow         = 'x' 
     f_snow_ai      = 'm' 
-    f_rain         = 'm' 
+    f_rain         = 'x' 
     f_rain_ai      = 'm' 
     f_sst          = 'm' 
     f_sss          = 'm' 
@@ -494,7 +494,7 @@
     f_alidf_ai     = 'x'
     f_albice       = 'md'
     f_albsno       = 'md'
-    f_albpnd       = 'md'
+    f_albpnd       = 'x'
     f_coszen       = 'x'
     f_flat         = 'md' 
     f_flat_ai      = 'md' 

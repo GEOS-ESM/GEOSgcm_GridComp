@@ -181,7 +181,7 @@ module GEOS_CICE4ColumnPhysGridComp
                                                        _RC  )
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_reflectivity_for_visible_beam',   &
+        LONG_NAME          = 'surface_albedo_for_visible_beam',   &
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBVR',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -189,7 +189,7 @@ module GEOS_CICE4ColumnPhysGridComp
                                                        _RC  )
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_reflectivity_for_visible_diffuse',&
+        LONG_NAME          = 'surface_albedo_for_visible_diffuse',&
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBVF',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -197,7 +197,7 @@ module GEOS_CICE4ColumnPhysGridComp
                                                        _RC  )
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_reflectivity_for_near_infrared_beam', &
+        LONG_NAME          = 'surface_albedo_for_near_infrared_beam', &
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBNR',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -205,7 +205,7 @@ module GEOS_CICE4ColumnPhysGridComp
                                                        _RC  )
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_reflectivity_for_near_infrared_diffuse', &
+        LONG_NAME          = 'surface_albedo_for_near_infrared_diffuse', &
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBNF',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -255,7 +255,7 @@ module GEOS_CICE4ColumnPhysGridComp
                                                _RC  )
 
      call MAPL_AddExportSpec(GC,                     &
-        LONG_NAME          = 'sea_ice_emitted_longwave_flux',&
+        LONG_NAME          = 'sea_ice_outgoing_longwave_flux',&
         UNITS              = 'W m-2'                     ,&
         SHORT_NAME         = 'HLWUPICE'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
@@ -623,7 +623,7 @@ module GEOS_CICE4ColumnPhysGridComp
         _RC  )
 
      call MAPL_AddExportSpec(GC                     ,&
-        LONG_NAME          = 'surface_absorbed_longwave_flux',&
+        LONG_NAME          = 'surface_downward_longwave_flux',&
         UNITS              = 'W m-2'                     ,&
         SHORT_NAME         = 'LWDNSRF'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
@@ -860,23 +860,6 @@ module GEOS_CICE4ColumnPhysGridComp
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC  )
-
-    call MAPL_AddImportSpec(GC,                              &
-         LONG_NAME          = 'icefall',                          &
-         UNITS              = 'kg m-2 s-1',                       &
-         SHORT_NAME         = 'ICE',                              &
-         DIMS               = MAPL_DimsTileOnly,                  &
-         VLOCATION          = MAPL_VLocationNone,                 &
-                                                       _RC  )
-
-    call MAPL_AddImportSpec(GC,                              &
-         LONG_NAME          = 'freezing_rain_fall',               &
-         UNITS              = 'kg m-2 s-1',                       &
-         SHORT_NAME         = 'FRZR',                             &
-         DIMS               = MAPL_DimsTileOnly,                  &
-         VLOCATION          = MAPL_VLocationNone,                 &
-                                                       _RC  )
-
 
 ! Surface air quantities
 
@@ -1283,7 +1266,7 @@ module GEOS_CICE4ColumnPhysGridComp
 
   call MAPL_AddExportSpec(GC,                             &
     SHORT_NAME         = 'SIALB'                       ,&
-    LONG_NAME          = 'broad_band_sea_ice_reflectivity'   ,&
+    LONG_NAME          = 'broad_band_sea_ice_albedo'   ,&
     UNITS              = '1'                           ,&
     DIMS               = MAPL_DimsTileOnly             ,&
     VLOCATION          = MAPL_VLocationNone            ,&
@@ -1405,7 +1388,7 @@ module GEOS_CICE4ColumnPhysGridComp
 
   call MAPL_AddExportSpec(GC,                             &
          SHORT_NAME         = 'ialb_CMIP5'                   ,&
-        LONG_NAME          = 'bare_sea_ice_reflectivity'          ,&
+        LONG_NAME          = 'bare_sea_ice_albedo'          ,&
         UNITS              = '1'                            ,&
         DIMS               = MAPL_DimsTileOnly              ,&
         VLOCATION          = MAPL_VLocationNone             ,&
@@ -1508,7 +1491,7 @@ module GEOS_CICE4ColumnPhysGridComp
 
    call MAPL_AddExportSpec(GC,                     &
         SHORT_NAME         = 'HLWUPN'                     ,&
-        LONG_NAME          = 'emitted_longwave_flux_at_ice_snow_surface_over_ice_categories',&
+        LONG_NAME          = 'outgoing_longwave_flux_at_ice_snow_surface_over_ice_categories',&
         UNITS              = 'W m-2'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/)      ,&
@@ -1544,7 +1527,7 @@ module GEOS_CICE4ColumnPhysGridComp
 
    call MAPL_AddExportSpec(GC,                     &
         SHORT_NAME         = 'ALBIN'                    ,&
-        LONG_NAME          = 'ice_surface_reflectivity_over_ice_categories' ,&
+        LONG_NAME          = 'ice_surface_albedo_over_ice_categories' ,&
         UNITS              = '1'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/)      ,&
@@ -1553,7 +1536,7 @@ module GEOS_CICE4ColumnPhysGridComp
 
    call MAPL_AddExportSpec(GC,                     &
         SHORT_NAME         = 'ALBSN'                    ,&
-        LONG_NAME          = 'snow_surface_reflectivity_over_ice_categories' ,&
+        LONG_NAME          = 'snow_surface_albedo_over_ice_categories' ,&
         UNITS              = '1'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/)      ,&
@@ -2897,8 +2880,6 @@ contains
    real, pointer, dimension(:)    :: DEV => null()
    real, pointer, dimension(:)    :: DSH => null()
    real, pointer, dimension(:)    :: SNO => null()
-   real, pointer, dimension(:)    :: ICEF => null()
-   real, pointer, dimension(:)    :: FRZR => null()
    real, pointer, dimension(:)    :: PLS => null()
    real, pointer, dimension(:)    :: PCU => null()
    real, pointer, dimension(:)    :: PS => null()
@@ -3491,7 +3472,7 @@ contains
     if(associated(USTARI))   USTARI     = sqrt(sqrt(TAUXBOT**2+TAUYBOT**2)/MAPL_RHO_SEAWATER)
 
     if(associated(PR_C5)) then
-          PR_C5 = FRCICE * (PLS + PCU) ! as of Jun/2025, FRZR is included in PCU+PLS; see github issue #1111
+          PR_C5 = FRCICE * (PLS + PCU)
           where(FRCICE == 0.0)
              PR_C5 = 0.0
           endwhere
@@ -3560,7 +3541,7 @@ contains
                            FSWTHRU,FCOND,FCONDBOT,EVP,FRESHN,FSALTN,FHOCNN,              &
                            MELTT,MELTS,MELTB,CONGEL,SNOICE,VOLICE,VOLSNO,SHF,LHF,        &
                            VOLPOND,APONDN,HPONDN,TAUAGE,TRACERS,ALW,BLW,    &
-                           FSWSFC,FSWINT,FSWABS,LWDNSRF,EVD,SHD,SNO,ICEF,FRZR,SBLX,_RC)
+                           FSWSFC,FSWINT,FSWABS,LWDNSRF,EVD,SHD,SNO,SBLX,_RC)
 
 !         Some aggregation of fluxes to the Ocean has to be done now, before using in step2
 
@@ -4386,7 +4367,7 @@ contains
                            FSWTHRU,FCOND,FCONDBOT,EVP,FRESHN,FSALTN,FHOCNN,              &
                            MELTT,MELTS,MELTB,CONGEL,SNOICE,VOLICE,VOLSNO,SHF,LHF,        &
                            VOLPOND,APONDN,HPONDN,TAUAGE,TRACERS,ALW,BLW,    &
-                           FSWSFC,FSWINT,FSWABS,LWDNSRF,EVD,SHD,SNO,ICEF,FRZR,SBLX,RC)
+                           FSWSFC,FSWINT,FSWABS,LWDNSRF,EVD,SHD,SNO,SBLX,RC)
 ! not passing TFfresh,saltwatercap,nt_tsfc,nt_iage,nt_volpn
 
 ! !ARGUMENTS:
@@ -4418,8 +4399,6 @@ contains
     real,    intent(IN)  :: EVD        (:)     ! related to evap
     real,    intent(IN)  :: SHD        (:)     ! related to sensible heat
     real,    intent(IN)  :: SNO        (:)     ! ?
-    real,    intent(IN)  :: ICEF       (:)     ! ?
-    real,    intent(IN)  :: FRZR       (:)     ! ?
 
     real,    intent(INOUT)  :: FSWSFC  (:,:)   ! ?
     real,    intent(INOUT)  :: EVP     (:)     ! evaporation
@@ -4546,7 +4525,7 @@ contains
 
           TRACERSDB      =  TRACERS(:,NSUB)
           LWDNSRFDB      =  LWDNSRF(K)
-          SNODB          =  SNO(K) + ICEF(K)
+          SNODB          =  SNO(K)
           TBOTDB         =  TBOT(K)
           FBOTDB         =  FBOT(K)
           FSWABSDB       =  FSWABS(K)
@@ -4660,7 +4639,7 @@ contains
              VOLSNODB        =  VOLSNO(K,NSUB)
              APONDNDB        =  APONDN(K,NSUB)
              HPONDNDB        =  HPONDN(K,NSUB)
-             FRAINDB         =  PCU(K) + PLS(K) ! as of Jun/2025, FRZR is included in PCU+PLS; see github issue #1111
+             FRAINDB         =  PCU(K) + PLS(K)
              call compute_ponds(1, 1,                      &
                            1, 1, 1, 1,                     &
                            MELTTDB, MELTSDB, FRAINDB,      &

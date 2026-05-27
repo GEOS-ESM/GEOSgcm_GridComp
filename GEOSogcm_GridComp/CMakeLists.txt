@@ -7,7 +7,7 @@ set (alldirs
   GEOS_OceanGridComp
   )
 
-set (dependencies GEOS_Seaice_GridComp MAPL CICE4 ESMF::ESMF)
+set (dependencies GEOS_Seaice_GridComp MAPL CICE4 esmf)
 
 if ( BUILD_MIT_OCEAN )
   add_compile_definitions(BUILD_MIT_OCEAN)

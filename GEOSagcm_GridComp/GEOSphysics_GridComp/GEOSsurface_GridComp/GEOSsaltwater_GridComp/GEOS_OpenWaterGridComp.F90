@@ -192,7 +192,7 @@ module GEOS_OpenwaterGridCompMod
                                                        _RC)
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_reflectivity_for_visible_beam',   &
+        LONG_NAME          = 'surface_albedo_for_visible_beam',   &
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBVR',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -200,7 +200,7 @@ module GEOS_OpenwaterGridCompMod
                                                        _RC)
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_reflectivity_for_visible_diffuse',&
+        LONG_NAME          = 'surface_albedo_for_visible_diffuse',&
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBVF',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -208,7 +208,7 @@ module GEOS_OpenwaterGridCompMod
                                                        _RC)
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_reflectivity_for_near_infrared_beam', &
+        LONG_NAME          = 'surface_albedo_for_near_infrared_beam', &
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBNR',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -216,7 +216,7 @@ module GEOS_OpenwaterGridCompMod
                                                        _RC)
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_reflectivity_for_near_infrared_diffuse', &
+        LONG_NAME          = 'surface_albedo_for_near_infrared_diffuse', &
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBNF',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -238,22 +238,6 @@ module GEOS_OpenwaterGridCompMod
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
                                                _RC  ) 
-
-     call MAPL_AddExportSpec(GC,                     &
-        LONG_NAME          = 'ocean_icefall'            ,&
-        UNITS              = 'kg m-2 s-1'                ,&
-        SHORT_NAME         = 'ICEFOCN'                   ,&
-        DIMS               = MAPL_DimsTileOnly           ,&
-        VLOCATION          = MAPL_VLocationNone          ,&
-                                               _RC  )
-
-     call MAPL_AddExportSpec(GC,                     &
-        LONG_NAME          = 'ocean_snow_and_ice_fall'   ,&
-        UNITS              = 'kg m-2 s-1'                ,&
-        SHORT_NAME         = 'SPTOTOCN'                  ,&
-        DIMS               = MAPL_DimsTileOnly           ,&
-        VLOCATION          = MAPL_VLocationNone          ,&
-                                               _RC  )
 
      call MAPL_AddExportSpec(GC,                     &
         LONG_NAME          = 'ocean_rainfall'            ,&
@@ -1088,25 +1072,6 @@ module GEOS_OpenwaterGridCompMod
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
-     call MAPL_AddImportSpec(GC                         ,&
-         LONG_NAME          = 'icefall'                     ,&
-         UNITS              = 'kg m-2 s-1'                  ,&
-         SHORT_NAME         = 'ICE'                         ,&
-         DIMS               = MAPL_DimsTileOnly             ,&
-         VLOCATION          = MAPL_VLocationNone            ,&
-         RC=STATUS  )
-
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC                         ,&
-         LONG_NAME          = 'freezing_rain_fall'          ,&
-         UNITS              = 'kg m-2 s-1'                  ,&
-         SHORT_NAME         = 'FRZR'                        ,&
-         DIMS               = MAPL_DimsTileOnly             ,&
-         VLOCATION          = MAPL_VLocationNone            ,&
-         RC=STATUS  )
-
-    VERIFY_(STATUS)
 
 ! Surface air quantities
 
@@ -2042,8 +2007,6 @@ contains
    real, pointer, dimension(:  )  :: EVAPOUT => null()
    real, pointer, dimension(:  )  :: SUBLIM  => null()
    real, pointer, dimension(:  )  :: SNOWOCN => null()
-   real, pointer, dimension(:  )  :: ICEFOCN => null()
-   real, pointer, dimension(:  )  :: SPTOTOCN => null()
    real, pointer, dimension(:  )  :: RAINOCN => null()
    real, pointer, dimension(:  )  :: SHWTR   => null()
    real, pointer, dimension(:  )  :: SHOUT   => null()
@@ -2130,8 +2093,6 @@ contains
    real, pointer, dimension(:)    :: DEV => null()
    real, pointer, dimension(:)    :: DSH => null()
    real, pointer, dimension(:)    :: SNO => null()
-   real, pointer, dimension(:)    :: ICE => null()
-   real, pointer, dimension(:)    :: FRZR => null()
    real, pointer, dimension(:)    :: PLS => null()
    real, pointer, dimension(:)    :: PCU => null()
    real, pointer, dimension(:)    :: PS => null()
@@ -2259,8 +2220,6 @@ contains
    call MAPL_GetPointer(IMPORT,DEV    , 'DEVAP'  ,    _RC)
    call MAPL_GetPointer(IMPORT,DSH    , 'DSH'    ,    _RC)
    call MAPL_GetPointer(IMPORT,SNO    , 'SNO'    ,    _RC)
-   call MAPL_GetPointer(IMPORT,ICE    , 'ICE'    ,    _RC)
-   call MAPL_GetPointer(IMPORT,FRZR   , 'FRZR'   ,    _RC)
    call MAPL_GetPointer(IMPORT,PLS    , 'PLS'    ,    _RC)
    call MAPL_GetPointer(IMPORT,PCU    , 'PCU'    ,    _RC)
    call MAPL_GetPointer(IMPORT,PS     , 'PS'     ,    _RC)
@@ -2321,8 +2280,6 @@ contains
    call MAPL_GetPointer(EXPORT,PENPAF , 'PENPAF'  ,    _RC)
    call MAPL_GetPointer(EXPORT,EVAPOUT, 'EVAPOUT' ,    _RC)
    call MAPL_GetPointer(EXPORT,SNOWOCN, 'SNOWOCN' ,    _RC)
-   call MAPL_GetPointer(EXPORT,ICEFOCN, 'ICEFOCN' ,    _RC)
-   call MAPL_GetPointer(EXPORT,SPTOTOCN,'SPTOTOCN',    _RC)
    call MAPL_GetPointer(EXPORT,RAINOCN, 'RAINOCN' ,    _RC)
    call MAPL_GetPointer(EXPORT,SHOUT  , 'SHOUT'   ,    _RC)
    call MAPL_GetPointer(EXPORT,SHWTR  , 'SHWTR'   ,    _RC)
@@ -2574,7 +2531,7 @@ contains
 
     call AOIL_v0 (NT, DO_SKIN_LAYER, DO_DATASEA, n_iter_cool, fr_ice_thresh, trim(DO_GRAD_DECAY_warmLayer), &
                   DT, MUSKIN, epsilon_d, MaxWaterDepth, MinWaterDepth, MaxSalinity, MinSalinity,            &
-                  STOKES_SPEED, CM(:,WATER), CFT, CFQ, SH, EVAP, DSH, DEV, THATM, QHATM, PS, SNO+ICE, PCU+PLS,  &
+                  STOKES_SPEED, CM(:,WATER), CFT, CFQ, SH, EVAP, DSH, DEV, THATM, QHATM, PS, SNO, PCU+PLS,  &
                   UUA, VVA, UW, VW, FRWATER, SWN, SWN_surf, PEN, PEN_ocean, LWDNSRF, ALW, BLW,              &
                   HH(:,WATER), TS(:,WATER), SS(:,WATER), QS(:,WATER), TS_FOUNDi,                            &
                   DWARM_, TBAR_, USTARW_, DCOOL_, TDROP_, SWCOOL_, QCOOL_, BCOOL_, LCOOL_,                  &
@@ -2631,17 +2588,15 @@ contains
     if(associated(AOSHFLX)) AOSHFLX = SHF    *FRWATER
     if(associated(AOQFLUX)) AOQFLUX = EVP    *FRWATER
     if(associated(AOLWFLX)) AOLWFLX = (LWDNSRF-ALW-BLW*TS(:,WATER))*FRWATER
-    if(associated(AORAIN )) AORAIN  = PCU + PLS ! + FRZR  as of Jun/2025, FRZR is included in PCU+PLS; see github issue #1111
-    if(associated(AOSNOW )) AOSNOW  = (SNO+ICE) *FRWATER
+    if(associated(AORAIN )) AORAIN  = PCU + PLS
+    if(associated(AOSNOW )) AOSNOW  = SNO    *FRWATER
     if(associated(AODRNIR)) AODRNIR = (1.-ALBNRO)*DRNIR*FRWATER
     if(associated(AODFNIR)) AODFNIR = (1.-ALBNFO)*DFNIR*FRWATER
     if(associated(FSURF  )) FSURF   = SWN+LWDNSRF-(ALW+BLW*TS(:,WATER))-SHF-LHF
     if(associated(PENOCNe)) PENOCNe = PEN_ocean * FRWATER
 
     if(associated(SNOWOCN)) SNOWOCN = SNO*FR(:,WATER)
-    if(associated(ICEFOCN)) ICEFOCN = ICE*FR(:,WATER)
-    if(associated(SPTOTOCN))SPTOTOCN = (SNO+ICE)*FR(:,WATER)
-    if(associated(RAINOCN)) RAINOCN = PCU + PLS ! + FRZR as of Jun/2025, FRZR is included in PCU+PLS; see github issue #1111
+    if(associated(RAINOCN)) RAINOCN = PCU + PLS
     if(associated(HLWUP  )) HLWUP   = ALW*FR(:,WATER) 
     if(associated(LWNDSRF)) LWNDSRF = (LWDNSRF - ALW)*FR(:,WATER)
 

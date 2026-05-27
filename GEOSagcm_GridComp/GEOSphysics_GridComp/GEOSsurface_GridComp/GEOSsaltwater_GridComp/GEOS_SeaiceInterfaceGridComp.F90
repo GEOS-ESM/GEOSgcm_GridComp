@@ -164,7 +164,7 @@ module GEOS_SeaiceInterfaceGridComp
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_reflectivity_for_visible_beam',   &
+        LONG_NAME          = 'surface_albedo_for_visible_beam',   &
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBVR',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -173,7 +173,7 @@ module GEOS_SeaiceInterfaceGridComp
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_reflectivity_for_visible_diffuse',&
+        LONG_NAME          = 'surface_albedo_for_visible_diffuse',&
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBVF',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -182,7 +182,7 @@ module GEOS_SeaiceInterfaceGridComp
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_reflectivity_for_near_infrared_beam', &
+        LONG_NAME          = 'surface_albedo_for_near_infrared_beam', &
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBNR',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -191,7 +191,7 @@ module GEOS_SeaiceInterfaceGridComp
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_reflectivity_for_near_infrared_diffuse', &
+        LONG_NAME          = 'surface_albedo_for_near_infrared_diffuse', &
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBNF',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -943,27 +943,6 @@ module GEOS_SeaiceInterfaceGridComp
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
-     call MAPL_AddImportSpec(GC                         ,&
-         LONG_NAME          = 'icefall'                     ,&
-         UNITS              = 'kg m-2 s-1'                  ,&
-         SHORT_NAME         = 'ICE'                         ,&
-         DIMS               = MAPL_DimsTileOnly             ,&
-         VLOCATION          = MAPL_VLocationNone            ,&
-         RC=STATUS  )
-
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC                         ,&
-         LONG_NAME          = 'freezing_rain_fall'          ,&
-         UNITS              = 'kg m-2 s-1'                  ,&
-         SHORT_NAME         = 'FRZR'                        ,&
-         DIMS               = MAPL_DimsTileOnly             ,&
-         VLOCATION          = MAPL_VLocationNone            ,&
-         RC=STATUS  )
-
-    VERIFY_(STATUS)
-
-
 ! Surface air quantities
 
      call MAPL_AddImportSpec(GC,                             &
@@ -1304,7 +1283,7 @@ module GEOS_SeaiceInterfaceGridComp
 
    call MAPL_AddExportSpec(GC,                     &
         SHORT_NAME         = 'ALBIN'                    ,&
-        LONG_NAME          = 'ice_surface_reflectivity_over_ice_categories' ,&
+        LONG_NAME          = 'ice_surface_albedo_over_ice_categories' ,&
         UNITS              = '1'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/)      ,&
@@ -1314,7 +1293,7 @@ module GEOS_SeaiceInterfaceGridComp
 
    call MAPL_AddExportSpec(GC,                     &
         SHORT_NAME         = 'ALBSN'                    ,&
-        LONG_NAME          = 'snow_surface_reflectivity_over_ice_categories' ,&
+        LONG_NAME          = 'snow_surface_albedo_over_ice_categories' ,&
         UNITS              = '1'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/)      ,&
@@ -2278,8 +2257,6 @@ contains
    real, pointer, dimension(:)    :: DEV => null()
    real, pointer, dimension(:)    :: DSH => null()
    real, pointer, dimension(:)    :: SNO => null()
-   real, pointer, dimension(:)    :: ICEF => null()
-   real, pointer, dimension(:)    :: FRZR => null()
    real, pointer, dimension(:)    :: PLS => null()
    real, pointer, dimension(:)    :: PCU => null()
    real, pointer, dimension(:)    :: PS => null()
@@ -2343,6 +2320,15 @@ contains
 
 
    real                                :: YDAY 
+   real,    dimension(NT)              :: ALBVRI
+   real,    dimension(NT)              :: ALBVFI
+   real,    dimension(NT)              :: ALBNRI
+   real,    dimension(NT)              :: ALBNFI
+
+   real,               allocatable    :: ALBVRN        (:,:)
+   real,               allocatable    :: ALBNRN        (:,:)
+   real,               allocatable    :: ALBVFN        (:,:)
+   real,               allocatable    :: ALBNFN        (:,:)
 
    real,               allocatable    :: TS_OLD        (:,:)
 
@@ -2352,7 +2338,6 @@ contains
    real,               allocatable    :: EVAPN         (:,:) ! 
    real,               allocatable    :: LHFN          (:,:) ! 
    real,               allocatable    :: RAIN          (:)   !
-   real,               allocatable    :: SNOW          (:)   !
 
 
 
@@ -2397,8 +2382,6 @@ contains
    call MAPL_GetPointer(IMPORT,DEV    , 'DEVAP'  ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,DSH    , 'DSH'    ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,SNO    , 'SNO'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,ICEF   , 'ICE'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,FRZR   , 'FRZR'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,PLS    , 'PLS'    ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,PCU    , 'PCU'    ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,PS     , 'PS'     ,    RC=STATUS); VERIFY_(STATUS)
@@ -2498,15 +2481,12 @@ contains
     allocate(   TS_OLD(size(TS,1),   size(TS,2)), __STAT__) 
 
     allocate(    RAIN(size(TS,1)),  __STAT__) 
-    allocate(    SNOW(size(TS,1)),  __STAT__) 
 
 
 ! Aggregate imports if required
 !-----------------------------------
 
-    RAIN = PLS + PCU ! + FRZR  as of Jun/2025, FRZR is included in PCU+PLS; see github issue #1111
-
-    SNOW = SNO + ICEF
+    RAIN = PLS + PCU
 
 ! Initialize PAR and UVR beam fluxes
 !-----------------------------------
@@ -2690,7 +2670,7 @@ contains
     call RegridA2O_2d(    EVAPN, SURFST,      'EVAP', XFORM_A2O, locstreamO, __RC__)
 
     call RegridA2O_1d(     RAIN, SURFST,      'RAIN', XFORM_A2O, locstreamO, __RC__)
-    call RegridA2O_1d(     SNOW, SURFST,      'SNOW', XFORM_A2O, locstreamO, __RC__)
+    call RegridA2O_1d(      SNO, SURFST,      'SNOW', XFORM_A2O, locstreamO, __RC__)
     call RegridA2O_1d(      ZTH, SURFST,      'COSZ', XFORM_A2O, locstreamO, __RC__)
     call RegridA2O_1d(    DRPAR, SURFST,     'DRPAR', XFORM_A2O, locstreamO, __RC__)
     call RegridA2O_1d(    DFPAR, SURFST,     'DFPAR', XFORM_A2O, locstreamO, __RC__)
@@ -2724,13 +2704,9 @@ contains
           DQS     = GEOS_QSAT(TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.) - QS(:,N)
           QS(:,N) = QS(:,N) + DQS
 
-          EVP     = EVP + EVD * DTS
+          LHF     = LHF + EVD * MAPL_ALHS * DTS
           SHF     = SHF + SHD * DTS
-          LHF     = EVP * MAPL_ALHS
 
-
-          if(associated(SUBLIM )) SUBLIM  = SUBLIM  + EVP    *FR(:,N)
-          if(associated(EVAPOUT)) EVAPOUT = EVAPOUT + EVP    *FR(:,N)
           if(associated(DELTS  )) DELTS   = DELTS   + DTS*CFT*FR(:,N)
           if(associated(DELQS  )) DELQS   = DELQS   + DQS*CFQ*FR(:,N)
           if(associated(TST    )) TST     = TST     + TS(:,N)*FR(:,N)
@@ -2738,7 +2714,6 @@ contains
           if(associated(HLATICE)) HLATICE = HLATICE + LHF    *FR(:,N)
           if(associated(SHICE  )) SHICE   = SHICE   + SHF    *FR(:,N)
           if(associated(LWNDICE)) LWNDICE = LWNDICE + (LWDNSRF - ALW - BLW*TS(:,N))*FR(:,N)
-          if(associated(LWNDSRF)) LWNDSRF = LWNDSRF + (LWDNSRF - ALW - BLW*TS(:,N))*FR(:,N)
     end do update_surf
 
     EMISS = EMSICE
@@ -2749,9 +2724,6 @@ contains
     if(associated(QST    )) call Normalize(QST,    FRCICE) 
     if(associated(HLATICE)) call Normalize(HLATICE,FRCICE)
     if(associated(SHICE  )) call Normalize(SHICE,  FRCICE)
-    if(associated(SUBLIM )) call Normalize(SUBLIM, FRCICE)
-    if(associated(EVAPOUT)) call Normalize(EVAPOUT, FRCICE)
-    if(associated(LWNDSRF)) call Normalize(LWNDSRF, FRCICE)
 
     if(associated(LWNDICE)) call Normalize(LWNDICE,  FRCICE, set_undef=.True.)
           
@@ -2787,11 +2759,6 @@ contains
              XFORM_O2A, locstreamO, __RC__)
     endif
 
-    if(associated(SWNDSRF)) then
-       SWNDSRF = &
-           (1.-ALBVR)*VSUVR + (1.-ALBVF)*VSUVF + &
-           (1.-ALBNR)*DRNIR + (1.-ALBNF)*DFNIR
-    endif
 
     !************************************************************************************************
     !
@@ -2848,7 +2815,6 @@ contains
     deallocate(      EVAPN,      __STAT__)
     deallocate(       LHFN,      __STAT__)
     deallocate(       RAIN,      __STAT__)
-    deallocate(       SNOW,      __STAT__)
 
     !deallocate(ALBIN)
     !deallocate(ALBSN)

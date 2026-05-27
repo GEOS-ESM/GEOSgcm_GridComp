@@ -2,9 +2,8 @@
 #include "MAPL_ErrLog.h"
 program MOMraster
 
-  use LogRectRasterizeMod,       ONLY: LRRasterize
+  use LogRectRasterizeMod
   use MAPL_ExceptionHandling
-  use, intrinsic :: iso_fortran_env, only: REAL64
   implicit none
 
 ! this program builds a rasterized grid whose cells are 2.5 by 2.5 minutes
@@ -14,9 +13,9 @@ program MOMraster
 ! via namelist hence can be changed at runtime
 
   integer                :: im, jm                ! dimensions of MOM grid
-  real(REAL64),     pointer     :: xvert(:,:,:)          ! Lons of MOM's vertices
-  real(REAL64),     pointer     :: yvert(:,:,:)          ! Lats of MOM's vertices
-  real(REAL64)                  :: xmin, xmax
+  real(kind=8),     pointer     :: xvert(:,:,:)          ! Lons of MOM's vertices
+  real(kind=8),     pointer     :: yvert(:,:,:)          ! Lats of MOM's vertices
+  real(kind=8)                  :: xmin, xmax
   integer                :: i, j, nxt,k
   integer                :: status, command_argument_count
   character*(128)        :: GridFile
@@ -36,7 +35,7 @@ program MOMraster
   integer                :: Nc    = 8640
   integer                :: NR    = 4320
 
-  real(REAL64)                  :: tol
+  real(kind=8)                  :: tol
 INCLUDE "netcdf.inc"
 
 ! Process Arguments
@@ -148,13 +147,13 @@ contains
   subroutine ReadGridFile(FILE,XVERT,YVERT)
     
     character*(*),      intent(IN ) :: FILE
-    real(REAL64), pointer                  :: XVERT(:,:,:)
-    real(REAL64), pointer                  :: YVERT(:,:,:)
+    real(kind=8), pointer                  :: XVERT(:,:,:)
+    real(kind=8), pointer                  :: YVERT(:,:,:)
 
     integer :: STATUS, NCID, VARID
     integer :: SIZ_XVERT_X, SIZ_XVERT_Y
     integer :: SIZ_YVERT_X, SIZ_YVERT_Y 
-    real(REAL64), pointer :: VERTX(:,:),VERTY(:,:)
+    real(kind=8), pointer :: VERTX(:,:),VERTY(:,:)
 
     Status=NF_OPEN(FILE,NF_NOWRITE,NCID)
     _ASSERT(STATUS==NF_NOERR,'needs informative message')

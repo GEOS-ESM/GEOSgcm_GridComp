@@ -4,13 +4,12 @@
 Program MakeLandRaster
   
   use MAPL_ExceptionHandling
-  use LogRectRasterizeMod,     ONLY: WriteRaster, WriteTiling, SortTiling, SRTM_maxcat
+  use LogRectRasterizeMod
   use MAPL_HashMod
   use process_hres_data
   use MAPL_SortMod
-  use rmTinyCatchParaMod,      ONLY: RegridRaster
-  use MAPL_Constants,          ONLY: PI=>MAPL_PI_R8
-  use, intrinsic :: iso_fortran_env, only: REAL64
+  use rmTinyCatchParaMod, ONLY: SRTM_maxcat, RegridRaster
+  use MAPL_Constants, only: PI=>MAPL_PI_R8
   
   ! Program to create a surface raster file that has
   ! the ocean divided with a regular lat-lon DE grid. Its inputs
@@ -53,12 +52,12 @@ Program MakeLandRaster
   integer                :: type, maxtiles, nx, ny
   integer                :: count0,count1,count_rate
   
-  real(REAL64)           :: dx, dy, d2r                          ! Grid spacing of raster grid
-  real(REAL64)           :: xmin, ymin, xmax, ymax, xs, ys, da
+  real(kind=8)           :: dx, dy, d2r                          ! Grid spacing of raster grid
+  real(kind=8)           :: xmin, ymin, xmax, ymax, xs, ys, da
   
-  real(REAL64),  allocatable          :: cc(:), ss(:)
+  real(kind=8),  allocatable          :: cc(:), ss(:)
   
-  real(REAL64) , allocatable          :: rTable( :,:)
+  real(kind=8) , allocatable          :: rTable( :,:)
   
   integer,                    pointer :: Raster( :,:)
   integer,       allocatable, target  :: Raster0(:,:)
@@ -71,7 +70,7 @@ Program MakeLandRaster
   logical                :: Verb
   logical                :: regrid=.false., reynolds_sst=.false.
   
-  real(REAL64)           :: VV(4)
+  real(kind=8)           :: VV(4)
   
   ! ESA/SRTM ocean/land/ice/lake mask parameters
   ! --------------------------------------------

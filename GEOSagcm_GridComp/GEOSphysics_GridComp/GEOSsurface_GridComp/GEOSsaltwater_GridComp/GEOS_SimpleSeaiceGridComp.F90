@@ -135,33 +135,33 @@ module GEOS_SimpleSeaiceGridCompMod
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
 
-     call MAPL_AddExportSpec(GC,                                  &
+     call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'ALBVR',                             &
-        LONG_NAME          = 'surface_reflectivity_for_visible_beam', &
+        LONG_NAME          = 'surface_albedo_for_visible_beam',   &
         UNITS              = '1',                                 &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
 
-     call MAPL_AddExportSpec(GC,                                  &
+     call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'ALBVF',                             &
-        LONG_NAME          = 'surface_reflectivity_for_visible_diffuse', &
+        LONG_NAME          = 'surface_albedo_for_visible_diffuse',&
         UNITS              = '1',                                 &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
 
-     call MAPL_AddExportSpec(GC,                                  &
+     call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'ALBNR',                             &
-        LONG_NAME          = 'surface_reflectivity_for_near_infrared_beam', &
+        LONG_NAME          = 'surface_albedo_for_near_infrared_beam', &
         UNITS              = '1',                                 &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
 
-     call MAPL_AddExportSpec(GC,                                  &
+     call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'ALBNF',                             &
-        LONG_NAME          = 'surface_reflectivity_for_near_infrared_diffuse', &
+        LONG_NAME          = 'surface_albedo_for_near_infrared_diffuse', &
         UNITS              = '1',                                 &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -824,24 +824,6 @@ module GEOS_SimpleSeaiceGridCompMod
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        _RC)
-
-     call MAPL_AddImportSpec(GC                         ,&
-         LONG_NAME          = 'icefall'                     ,&
-         UNITS              = 'kg m-2 s-1'                  ,&
-         SHORT_NAME         = 'ICE'                         ,&
-         DIMS               = MAPL_DimsTileOnly             ,&
-         VLOCATION          = MAPL_VLocationNone            ,&
-                                                       _RC)
-
-
-    call MAPL_AddImportSpec(GC                         ,&
-         LONG_NAME          = 'freezing_rain_fall'          ,&
-         UNITS              = 'kg m-2 s-1'                  ,&
-         SHORT_NAME         = 'FRZR'                        ,&
-         DIMS               = MAPL_DimsTileOnly             ,&
-         VLOCATION          = MAPL_VLocationNone            ,&
-                                                       _RC)
-
 
 ! Surface air quantities
 
@@ -1790,8 +1772,6 @@ contains
    real, pointer, dimension(:)    :: DEV => null()
    real, pointer, dimension(:)    :: DSH => null()
    real, pointer, dimension(:)    :: SNO => null()
-   real, pointer, dimension(:)    :: ICEF => null()
-   real, pointer, dimension(:)    :: FRZR => null()
    real, pointer, dimension(:)    :: PLS => null()
    real, pointer, dimension(:)    :: PCU => null()
    real, pointer, dimension(:)    :: PS => null()
@@ -1896,8 +1876,6 @@ contains
    call MAPL_GetPointer(IMPORT,DEV    , 'DEVAP'  ,    _RC)
    call MAPL_GetPointer(IMPORT,DSH    , 'DSH'    ,    _RC)
    call MAPL_GetPointer(IMPORT,SNO    , 'SNO'    ,    _RC)
-   call MAPL_GetPointer(IMPORT,ICEF   , 'ICE'    ,    _RC)
-   call MAPL_GetPointer(IMPORT,FRZR   , 'FRZR'   ,    _RC)
    call MAPL_GetPointer(IMPORT,PLS    , 'PLS'    ,    _RC)
    call MAPL_GetPointer(IMPORT,PCU    , 'PCU'    ,    _RC)
    call MAPL_GetPointer(IMPORT,PS     , 'PS'     ,    _RC)
@@ -2172,7 +2150,7 @@ contains
        QS(:,N) = QS(:,N) + DQS
 
        if (.not. seaIceT_extData) then
-         HH(:,N) = HH(:,N) + DT*(SNO + ICEF - EVP)
+         HH(:,N) = HH(:,N) + DT*(SNO - EVP)
          HH(:,N) = max(min(HH(:,N),  MAXICEDEPTH),  MINICEDEPTH)
        endif
 
@@ -2184,7 +2162,7 @@ contains
        if(associated(DELQS  )) DELQS   = DELQS   + DQS*CFQ*FR(:,N)
 
        if (seaIceT_extData) then
-         if(associated(HSNO )) HSNO = (DT*(SNO + ICEF - EVP))/water_RHO('fresh_water')
+         if(associated(HSNO )) HSNO = (DT*(SNO - EVP))/water_RHO('fresh_water')
          if(associated(SEAICETHICKNESSe )) SEAICETHICKNESSe = SEAICETHICKNESSi
        endif
 
