@@ -692,7 +692,7 @@ contains
             kk=0
             do ii=1,np
                if(type_tile(ii)==100)then
-                  tile_id=map_tile(xi_tile(ii)+1,ny-yi_tile(ii))              ! note: EASE indices are 0-based
+                  tile_id=map_tile(xi_tile(ii)+1, yi_tile(ii)+1)              ! note: EASE indices are 0-based
                   if(1<=tile_id.and.tile_id<=route%nt_global)then             
                      kk=kk+1 
                      tid_patch(  kk)=tile_id                                  ! the EASE id for the patch (src)
