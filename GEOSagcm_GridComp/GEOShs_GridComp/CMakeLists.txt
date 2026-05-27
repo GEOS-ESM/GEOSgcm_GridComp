@@ -1,7 +1,6 @@
 esma_set_this()
 
 set (srcs
-  held_suarez_oacc.F90
   GEOS_HsGridComp.F90
   )
 
@@ -10,4 +9,15 @@ esma_add_library (${this}
   DEPENDENCIES GEOS_Shared MAPL)
 target_include_directories (${this} PUBLIC ${INC_ESMF} ${INC_NETCDF})
 
-target_compile_options(${this} PRIVATE -fopenacc -foffload=nvptx-none)
+set (resource_files
+  GEOShs.rc
+  )
+
+install(FILES ${resource_files}
+  DESTINATION etc
+  )
+
+mapl_acg (
+  ${this} HS_StateSpecs.rc
+  IMPORT_SPECS EXPORT_SPECS INTERNAL_SPECS GET_POINTERS DECLARE_POINTERS
+  )

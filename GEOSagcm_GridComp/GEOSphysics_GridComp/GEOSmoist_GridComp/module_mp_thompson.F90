@@ -67,7 +67,7 @@ MODULE module_mp_thompson
 
       private     
 
-      public thompson_init, mp_gt_driver
+      public thompson_init, mp_gt_driver, calc_refl10cm
 
       LOGICAL, PARAMETER, PRIVATE:: iiwarm = .false.
       LOGICAL, PRIVATE:: is_aerosol_aware = .false.
@@ -1649,12 +1649,12 @@ MODULE module_mp_thompson
              endif
 !
              if (present(vt_dbz_wt)) then
-               call calc_refl10cm (qv1d, qc1d, qr1d, nr1d, qs1d, qg1d,   &
+               call calc_refl10cm (qv1d, qr1d, nr1d, qs1d, qg1d,   &
                                    t1d, p1d, dBZ, rand1, kts, kte, i, j, &
                                    melti, vt_dbz_wt(i,:,j),              &
                                    first_time_step)
              else
-               call calc_refl10cm (qv1d, qc1d, qr1d, nr1d, qs1d, qg1d,   &
+               call calc_refl10cm (qv1d, qr1d, nr1d, qs1d, qg1d,   &
                                    t1d, p1d, dBZ, rand1, kts, kte, i, j, &
                                    melti)
              end if
@@ -1955,7 +1955,7 @@ MODULE module_mp_thompson
       REAL:: dtsave, odts, odt, odzq, hgt_agl, SR
       REAL:: xslw1, ygra1, zans1, eva_factor
       REAL:: av_i
-      INTEGER:: i, k, k2, n, nn, nstep, k_0, kbot, IT, iexfrq
+      INTEGER:: i, k, k2, n, nn, nstep, k_0, IT, iexfrq
       INTEGER, DIMENSION(5):: ksed1
       INTEGER:: nir, nis, nig, nii, nic, niin
       INTEGER:: idx_tc, idx_t, idx_s, idx_g1, idx_g, idx_r1, idx_r,     &
@@ -5859,9 +5859,9 @@ MODULE module_mp_thompson
 !! of frozen species remaining from what initially existed at the
 !! melting level interface.
 
-      subroutine calc_refl10cm (qv1d, qc1d, qr1d, nr1d, qs1d, qg1d, &
+      subroutine calc_refl10cm (qv1d, qr1d, nr1d, qs1d, qg1d, &
                t1d, p1d, dBZ, rand1, kts, kte, ii, jj, melti,       &
-               vt_dBZ, first_time_step)
+               vt_dBZ, first_time_step, ktopin, kbotin)
 
       IMPLICIT NONE
 
@@ -5869,17 +5869,18 @@ MODULE module_mp_thompson
       INTEGER, INTENT(IN):: kts, kte, ii, jj
       REAL, INTENT(IN):: rand1
       REAL, DIMENSION(kts:kte), INTENT(IN)::                            &
-                          qv1d, qc1d, qr1d, nr1d, qs1d, qg1d, t1d, p1d
+                          qv1d, qr1d, nr1d, qs1d, qg1d, t1d, p1d
       REAL, DIMENSION(kts:kte), INTENT(INOUT):: dBZ
       REAL, DIMENSION(kts:kte), OPTIONAL, INTENT(INOUT):: vt_dBZ
       LOGICAL, OPTIONAL, INTENT(IN) :: first_time_step
+      INTEGER, OPTIONAL, INTENT(IN) :: ktopin, kbotin
 
 !..Local variables
       LOGICAL :: do_vt_dBZ
       LOGICAL :: allow_wet_graupel
       LOGICAL :: allow_wet_snow
       REAL, DIMENSION(kts:kte):: temp, pres, qv, rho, rhof
-      REAL, DIMENSION(kts:kte):: rc, rr, nr, rs, rg
+      REAL, DIMENSION(kts:kte):: rr, nr, rs, rg
 
       DOUBLE PRECISION, DIMENSION(kts:kte):: ilamr, ilamg, N0_r, N0_g
       REAL, DIMENSION(kts:kte):: mvd_r
@@ -5894,7 +5895,7 @@ MODULE module_mp_thompson
       REAL:: a_, b_, loga_, tc0, SR
       DOUBLE PRECISION:: fmelt_s, fmelt_g
 
-      INTEGER:: i, k, k_0, kbot, n
+      INTEGER:: i, k, k_0, ktop, kbot, kdwn, n
       LOGICAL, INTENT(IN):: melti
       LOGICAL, DIMENSION(kts:kte):: L_qr, L_qs, L_qg
 
@@ -5902,6 +5903,20 @@ MODULE module_mp_thompson
       REAL:: xslw1, ygra1, zans1
 
 !+---+
+      if (present(ktopin) .and. present(kbotin)) then
+         ktop=ktopin
+         kbot=kbotin
+         if (ktop < kbot) then
+           kdwn= 1
+         else
+           kdwn=-1
+         endif
+      else
+         ktop=kte
+         kbot=kts
+         kdwn=-1
+      endif
+
       if (present(vt_dBZ) .and. present(first_time_step)) then
          do_vt_dBZ = .true.
          if (first_time_step) then
@@ -5930,7 +5945,6 @@ MODULE module_mp_thompson
          pres(k) = p1d(k)
          rho(k) = 0.622*pres(k)/(R*temp(k)*(qv(k)+0.622))
          rhof(k) = SQRT(RHO_NOT/rho(k))
-         rc(k) = MAX(R1, qc1d(k)*rho(k))
          if (qr1d(k) .gt. R1) then
             rr(k) = qr1d(k)*rho(k)
             nr(k) = MAX(R2, nr1d(k)*rho(k))
@@ -6028,7 +6042,7 @@ MODULE module_mp_thompson
 !+---+-----------------------------------------------------------------+
 
       if (ANY(L_qg .eqv. .true.)) then
-      do k = kte, kts, -1
+      do k = ktop, kbot, kdwn
          ygra1 = alog10(max(1.E-9, rg(k)))
          zans1 = 3.4 + 2./7.*(ygra1+8.) + rand1
          N0_exp = 10.**(zans1)
@@ -6043,12 +6057,16 @@ MODULE module_mp_thompson
 !+---+-----------------------------------------------------------------+
 !..Locate K-level of start of melting (k_0 is level above).
 !+---+-----------------------------------------------------------------+
-      k_0 = kts
+      k_0 = kbot
       if ( melti ) then
-        K_LOOP:do k = kte-1, kts, -1
+        K_LOOP:do k = ktop+kdwn, kbot, kdwn
           if ((temp(k).gt.273.15) .and. L_qr(k)                         &
-     &                            .and. (L_qs(k+1).or.L_qg(k+1)) ) then
-             k_0 = MAX(k+1, k_0)
+     &                            .and. (L_qs(k-kdwn).or.L_qg(k-kdwn)) ) then
+             if (kdwn < 0) then
+                k_0 = MAX(k-kdwn, k_0)
+             else
+                k_0 = MIN(k-kdwn, k_0)
+             endif
              EXIT K_LOOP
           endif
         enddo K_LOOP
@@ -6080,7 +6098,7 @@ MODULE module_mp_thompson
 !+---+-----------------------------------------------------------------+
 
       if (.not. iiwarm .and. melti .and. k_0.ge.2) then
-       do k = k_0-1, kts, -1
+       do k = k_0+kdwn, kbot, kdwn
 
 !..Reflectivity contributed by melting snow
           if (allow_wet_snow .and. L_qs(k) .and. L_qs(k_0) ) then
@@ -6128,13 +6146,13 @@ MODULE module_mp_thompson
        enddo
       endif
 
-      do k = kte, kts, -1
+      do k = ktop, kbot, kdwn
          dBZ(k) = 10.*log10((ze_rain(k)+ze_snow(k)+ze_graupel(k))*1.d18)
       enddo
 
 !..Reflectivity-weighted terminal velocity (snow, rain, graupel, mix).
       if (do_vt_dBZ) then
-         do k = kte, kts, -1
+         do k = ktop, kbot, kdwn
             vt_dBZ(k) = 1.E-3
             if (rs(k).gt.R2) then
              Mrat = smob(k) / smoc(k)
