@@ -54,22 +54,22 @@
 
     character*(*),   intent(INOUT)  :: GridName  ! Raster file name
 #ifdef MESH
-    real(kind=8),  intent(INOUT)  :: xv(:,:) ! X coordinates of vertices
-    real(kind=8),  intent(INOUT)  :: yv(:,:) ! Y coordinates of vertices
+    real(REAL64),  intent(INOUT)  :: xv(:,:) ! X coordinates of vertices
+    real(REAL64),  intent(INOUT)  :: yv(:,:) ! Y coordinates of vertices
 #else
-    real(kind=8),  intent(INOUT)  :: xv(:,:,:) ! X coordinates of vertices
-    real(kind=8),  intent(INOUT)  :: yv(:,:,:) ! Y coordinates of vertices 
+    real(REAL64),  intent(INOUT)  :: xv(:,:,:) ! X coordinates of vertices
+    real(REAL64),  intent(INOUT)  :: yv(:,:,:) ! Y coordinates of vertices 
 #endif
     integer, optional, intent(IN) :: nc,nr ! Raster field sizes
-    real(kind=8),   optional, intent(IN) :: xmn   ! LL x of LL raster cell (-180)
-    real(kind=8),   optional, intent(IN) :: ymn   ! LL y of LL raster cell ( -90)
-    real(kind=8),   optional, intent(IN) :: xmx   ! UR x of UR raster cell ( 180)
-    real(kind=8),   optional, intent(IN) :: ymx   ! UR y of UR raster cell (  90)
+    real(REAL64),   optional, intent(IN) :: xmn   ! LL x of LL raster cell (-180)
+    real(REAL64),   optional, intent(IN) :: ymn   ! LL y of LL raster cell ( -90)
+    real(REAL64),   optional, intent(IN) :: xmx   ! UR x of UR raster cell ( 180)
+    real(REAL64),   optional, intent(IN) :: ymx   ! UR y of UR raster cell (  90)
     logical, optional, intent(IN) :: verb  ! Verbose
     logical, optional, intent(IN) :: here  ! write here
     integer, optional, intent(IN) :: SurfaceType
     integer, optional, intent(IN) :: jseg
-    real(kind=8), optional   :: tol
+    real(REAL64), optional   :: tol
     integer, optional, intent(out)   :: rc
 
     character*(128)       :: TileFile
@@ -191,42 +191,42 @@
 
     integer,       intent(INOUT) :: Raster(:,:)  ! Raster field to be filled
 #ifdef MESH
-    real(kind=8),         intent(INOUT) :: xv(:,:  )    ! X coordinates of vertices
-    real(kind=8),         intent(INOUT) :: yv(:,:  )    ! Y coordinates of vertices 
+    real(REAL64),         intent(INOUT) :: xv(:,:  )    ! X coordinates of vertices
+    real(REAL64),         intent(INOUT) :: yv(:,:  )    ! Y coordinates of vertices 
 #else
-    real(kind=8),         intent(INOUT) :: xv(:,:,:)    ! X coordinates of vertices
-    real(kind=8),         intent(INOUT) :: yv(:,:,:)    ! Y coordinates of vertices 
+    real(REAL64),         intent(INOUT) :: xv(:,:,:)    ! X coordinates of vertices
+    real(REAL64),         intent(INOUT) :: yv(:,:,:)    ! Y coordinates of vertices 
 #endif
     character*(*), intent(IN   ) :: TileFile
 
-    real(kind=8),   optional, intent(IN) :: xmn   ! LL x of LL raster cell (-180)
-    real(kind=8),   optional, intent(IN) :: ymn   ! LL y of LL raster cell ( -90)
-    real(kind=8),   optional, intent(IN) :: xmx   ! UR x of UR raster cell ( 180)
-    real(kind=8),   optional, intent(IN) :: ymx   ! UR y of UR raster cell (  90)
+    real(REAL64),   optional, intent(IN) :: xmn   ! LL x of LL raster cell (-180)
+    real(REAL64),   optional, intent(IN) :: ymn   ! LL y of LL raster cell ( -90)
+    real(REAL64),   optional, intent(IN) :: xmx   ! UR x of UR raster cell ( 180)
+    real(REAL64),   optional, intent(IN) :: ymx   ! UR y of UR raster cell (  90)
     logical, optional, intent(IN) :: verb  ! Verbose
     integer, optional, intent(IN) :: SurfaceType
     integer, optional, intent(IN) :: jseg
-    real(kind=8), optional   :: tol
+    real(REAL64), optional   :: tol
     integer, optional, intent(out) :: rc
 
     !  X abd Y bounds of each polygon
 
-    real(kind=8) ::  xmin, xmax
-    real(kind=8) ::  ymin, ymax
-    real(kind=8) ::  minx, miny
-    real(kind=8) ::  maxx, maxy
+    real(REAL64) ::  xmin, xmax
+    real(REAL64) ::  ymin, ymax
+    real(REAL64) ::  minx, miny
+    real(REAL64) ::  maxx, maxy
 
     !  x and y coordinates of the Raster grid
 
-    real(kind=8), dimension(size(Raster,1))        :: xs, xcs, xss
-    real(kind=8), dimension(size(Raster,2))        :: ys, ycs, yss, da
+    real(REAL64), dimension(size(Raster,1))        :: xs, xcs, xss
+    real(REAL64), dimension(size(Raster,2))        :: ys, ycs, yss, da
 
     integer :: IM, JM, NV                   ! Shape of input grid
-    real(kind=8)   :: dx, dy, dxi, dyi             ! Grid spacing of raster grid
+    real(REAL64)   :: dx, dy, dxi, dyi             ! Grid spacing of raster grid
     integer :: xsize, ysize                 ! Dimensions of Raster grid
 
     integer :: i, j, jn, n, ib, jb, fill, uType, js, k
-    real(kind=8)   :: range, d2r, r2d, ddx, grid_ymin, grid_ymax, xc, yc, Area, xx
+    real(REAL64)   :: range, d2r, r2d, ddx, grid_ymin, grid_ymax, xc, yc, Area, xx
     logical :: DoZip, uVerb
     integer :: idx, ct
     integer :: count0,count1,count_rate
@@ -235,18 +235,18 @@
     character*(128)  :: GridName, TilFile
 
     integer, allocatable :: iTable(:,:)
-    real(kind=8),   allocatable :: rTable(:,:)
+    real(REAL64),   allocatable :: rTable(:,:)
 
     integer :: useg, unit, fq
 
 
     integer, dimension(POLYSIZE) &
             :: nxt
-    real(kind=8),   dimension(POLYSIZE) &
+    real(REAL64),   dimension(POLYSIZE) &
             :: xvc, yvc, xvs, yvs, xrd, yrd, x3, y3, z3, &
                dx3, dy3, dz3, x31, x32, y31, y32, z31, z32, &
                dx4, dy4, x4, y4,   xu,  yu
-    real(kind=8)   :: tol_
+    real(REAL64)   :: tol_
 
 ! Process optionals
 
@@ -558,14 +558,14 @@
 
   subroutine FillPoly(sh)
 
-    real(kind=8), intent(IN) :: sh
+    real(REAL64), intent(IN) :: sh
 
     logical :: IsIn
     integer :: i1, i2, jj1
     integer :: ii, jj, n1, n2, jx
     integer, save :: j1, j2
     integer :: HALO=10
-    real(kind=8)   :: x0, y0
+    real(REAL64)   :: x0, y0
 
 
     if    (abs(miny+90._8) < 1.e-10_8) then

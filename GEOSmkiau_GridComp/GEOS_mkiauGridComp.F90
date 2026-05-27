@@ -18,7 +18,12 @@ module GEOS_mkiauGridCompMod
   use ESMF_CFIOFileMod
   use GEOS_UtilsMod
 ! use GEOS_RemapMod, only: myremap => remap
+  use MAPL_CubedSphereGridFactoryMod
   use m_set_eta, only: set_eta
+#ifdef PYMKIAU_INTEGRATION
+  use pyMKIAU_interface_mod
+  use ieee_exceptions, only: ieee_get_halting_mode, ieee_set_halting_mode, ieee_all
+#endif
   implicit none
   private
 
@@ -91,8 +96,16 @@ contains
     type (ESMF_Config)                      :: CF
 
     logical                                 :: BLEND_AT_PBL
-
-!=============================================================================
+    logical                                 :: BLEND_QV_AT_TP
+#ifdef PYMKIAU_INTEGRATION
+    ! IEEE trapping see below
+    logical                                 :: halting_mode(5)
+    ! BOGUS DATA TO SHOW USAGE
+    type(a_pod_struct_type) :: options
+    real, allocatable, dimension(:,:,:) :: in_buffer
+    real, allocatable, dimension(:,:,:) :: out_buffer
+#endif
+  !=============================================================================
 
 ! Begin...
 
@@ -112,6 +125,11 @@ contains
 
     call MAPL_GetResource(MAPL, BLEND_AT_PBL,    LABEL="REPLAY_BLEND_AT_PBL:",   default=.FALSE., RC=status)
     VERIFY_(STATUS)
+
+    call MAPL_GetResource(MAPL, BLEND_QV_AT_TP,  LABEL="REPLAY_BLEND_QV_AT_TP:", default=.FALSE., RC=status)
+    VERIFY_(STATUS)
+
+    if ( BLEND_AT_PBL ) BLEND_QV_AT_TP = .FALSE.
 
 ! Set the Run entry points (phase 1 for regular IAU and phase 2 for clearing
 ! --------------------------------------------------------------------------
@@ -236,6 +254,17 @@ contains
          DIMS       = MAPL_DimsHorzOnly,                               &
          VLOCATION  = MAPL_VLocationNone,                              &
          RC=STATUS  )
+    VERIFY_(STATUS)
+    endif
+
+    if( BLEND_QV_AT_TP ) then
+    call MAPL_AddImportSpec(GC,                                        &
+         SHORT_NAME = 'TROPP_BLENDED',                                 &
+         LONG_NAME  = 'tropopause_pressure_based_on_blended_estimate', &
+         UNITS      = 'Pa',                                            &
+         DIMS       = MAPL_DimsHorzOnly,                               &
+         VLOCATION  = MAPL_VLocationNone,                              &
+         RC=STATUS  )                 
     VERIFY_(STATUS)
     endif
 
@@ -459,6 +488,25 @@ contains
     call MAPL_GenericSetServices    ( gc, RC=STATUS)
     VERIFY_(STATUS)
 
+#ifdef PYMKIAU_INTEGRATION
+    ! Spin the interface - we have to deactivate the ieee error
+    ! to be able to load numpy, scipy and other numpy packages
+    ! that generate NaN as an init mechanism for numerical solving
+    call ieee_get_halting_mode(ieee_all, halting_mode)
+    call ieee_set_halting_mode(ieee_all, .false.)
+    call pyMKIAU_interface_f_setservice()
+    call ieee_set_halting_mode(ieee_all, halting_mode)
+
+    ! BOGUS CODE TO SHOW USAGE
+    options%npx = 10
+    options%npy = 11
+    options%npz = 12
+    allocate (in_buffer(10,11,12), source = 42.42 )
+    allocate (out_buffer(10,11,12), source = 0.0 )
+    call pyMKIAU_interface_f_run(options, in_buffer, out_buffer)
+    write(*,*) "[pyMKIAU] From fortran OUT[5,5,5] is ", out_buffer(5,5,5)
+#endif
+
     RETURN_(ESMF_SUCCESS)
 
   end subroutine SetServices
@@ -566,6 +614,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real,     pointer, dimension(:,:,:) :: pdum1 => null()
   real,     pointer, dimension(:,:,:) :: pdum2 => null()
   real,     pointer, dimension(:,:)   :: blnpp => null()
+  real,     pointer, dimension(:,:)   :: tropp => null()
 
   real, allocatable, dimension(:,:,:) ::  du_fix
   real, allocatable, dimension(:,:,:) ::  dv_fix
@@ -588,6 +637,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   character(len=ESMF_MAXSTR)          :: REPLAY_FILEP0
   character(len=ESMF_MAXSTR)          :: REPLAY_FILEM1
   character(len=ESMF_MAXSTR)          :: REPLAY_FILEM2
+  character(len=ESMF_MAXSTR)          :: REPLAY_FILEP1_TMPL
+  character(len=ESMF_MAXSTR)          :: REPLAY_FILEP0_TMPL
+  character(len=ESMF_MAXSTR)          :: REPLAY_FILEM1_TMPL
+  character(len=ESMF_MAXSTR)          :: REPLAY_FILEM2_TMPL
   character(len=ESMF_MAXSTR)          :: REPLAY_TIME_INTERP
   character(len=ESMF_MAXSTR)          :: FILETMPL
   character(len=ESMF_MAXSTR)          :: GRIDINC
@@ -631,6 +684,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real                                :: FACP1, FACP0, FACM1, FACM2
   real                                :: DAMPBEG, DAMPEND
   logical                             :: BLEND_AT_PBL
+  logical                             :: BLEND_QV_AT_TP
   integer                             :: i,j,L,n
   integer                             :: nt,nvars,natts
   integer                             :: nymd, nhms
@@ -641,6 +695,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   integer                             :: nymdm1,nhmsm1
   integer                             :: nymdm2,nhmsm2
   integer                             :: NX,NY,IMG,JMG
+  integer                             :: NX_CUBE,NY_CUBE
   integer                             :: method
   integer                             :: DIMS(ESMF_MAXGRIDDIM)
   integer                             :: JCAP,LMP1
@@ -664,6 +719,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real                                :: REPLAY_QV_FACTOR
   real                                :: REPLAY_O3_FACTOR
   real                                :: REPLAY_TS_FACTOR
+
+  type (CubedSphereGridFactory) :: cs_factory
+  type (LatlonGridFactory) :: ll_factory
 
   class (AbstractRegridder), pointer :: ANA2BKG => null()
   class (AbstractRegridder), pointer :: BKG2ANA => null()
@@ -859,6 +917,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetResource(MAPL, BLEND_AT_PBL,  LABEL="REPLAY_BLEND_AT_PBL:", default=.FALSE., RC=status)
     VERIFY_(STATUS)
 
+    call MAPL_GetResource(MAPL, BLEND_QV_AT_TP,  LABEL="REPLAY_BLEND_QV_AT_TP:", default=.FALSE., RC=status)
+    VERIFY_(STATUS)                   
+
        CREMAP = ESMF_UtilStringUpperCase(CREMAP)
       FIXWIND = ESMF_UtilStringUpperCase(FIXWIND)
     DOWINDFIX = trim(FIXWIND)=="YES"
@@ -926,6 +987,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         REPLAY_TIMEP0 = REPLAY_TIME
 
+        REPLAY_FILEP0_TMPL = FILETMPL
         call ESMF_CFIOstrTemplate ( REPLAY_FILEP0, FILETMPL, 'GRADS', nymd=nymd, nhms=nhms, stat=STATUS )
         VERIFY_(STATUS)
 
@@ -951,24 +1013,28 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
         call ESMF_TimeGet(REPLAY_TIMEP1, timeString=DATE, RC=STATUS)
         VERIFY_(STATUS)
         call strToInt(DATE, nymdp1, nhmsp1)
+        REPLAY_FILEP1_TMPL = FILETMPL
         call ESMF_CFIOstrTemplate ( REPLAY_FILEP1, FILETMPL, 'GRADS', nymd=nymdp1, nhms=nhmsp1, stat=STATUS )
         VERIFY_(STATUS)
 
         call ESMF_TimeGet(REPLAY_TIMEP0, timeString=DATE, RC=STATUS)
         VERIFY_(STATUS)
         call strToInt(DATE, nymdp0, nhmsp0)
+        REPLAY_FILEP0_TMPL = FILETMPL
         call ESMF_CFIOstrTemplate ( REPLAY_FILEP0, FILETMPL, 'GRADS', nymd=nymdp0, nhms=nhmsp0, stat=STATUS )
         VERIFY_(STATUS)
 
         call ESMF_TimeGet(REPLAY_TIMEM1, timeString=DATE, RC=STATUS)
         VERIFY_(STATUS)
         call strToInt(DATE, nymdm1, nhmsm1)
+        REPLAY_FILEM1_TMPL = FILETMPL
         call ESMF_CFIOstrTemplate ( REPLAY_FILEM1, FILETMPL, 'GRADS', nymd=nymdm1, nhms=nhmsm1, stat=STATUS )
         VERIFY_(STATUS)
 
         call ESMF_TimeGet(REPLAY_TIMEM2, timeString=DATE, RC=STATUS)
         VERIFY_(STATUS)
         call strToInt(DATE, nymdm2, nhmsm2)
+        REPLAY_FILEM2_TMPL = FILETMPL
         call ESMF_CFIOstrTemplate ( REPLAY_FILEM2, FILETMPL, 'GRADS', nymd=nymdm2, nhms=nhmsm2, stat=STATUS )
         VERIFY_(STATUS)
 
@@ -1047,30 +1113,36 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
           VERIFY_(STATUS)
        end if
 
+       call CFIO_Open       ( REPLAY_FILEP0, 1, fid, STATUS )
+       VERIFY_(STATUS)
+       call CFIO_DimInquire ( fid, IMana_World, JMana_world, LMana, nt, nvars, natts, rc=STATUS )
+       VERIFY_(STATUS)
+       call CFIO_Close      ( fid, STATUS )
+       VERIFY_(STATUS)
+
        call WRITE_PARALLEL("Creating GRIDana...")
        write(imstr,*) IMana_World
        write(jmstr,*) JMana_World
        gridAnaName='PC'//trim(adjustl(imstr))//'x'//trim(adjustl(jmstr))//'-DC'
 
        ! Get grid_dimensions from file.
-       call CFIO_Open(REPLAY_FILEP0, 1, fid, rc=status)
-       VERIFY_(status)
-       call CFIO_DimInquire (fid, IMana_World, JMana_World, LMana, nt, nvars, natts, rc=status)
-       VERIFY_(status)
-       call CFIO_Close(fid, rc=status)
-       VERIFY_(status)
+       if ( JMana_world == 6*IMana_World ) then
 
-       block
-         use MAPL_LatLonGridFactoryMod
-         GRIDrep = grid_manager%make_grid(                                                 &
-                   LatLonGridFactory(im_world=IMana_World, jm_world=JMana_World, lm=LMana, &
-                   nx=NX, ny=NY, pole='PC', dateline= 'DC', rc=status)                     )
-         VERIFY_(STATUS)
-         GRIDana = grid_manager%make_grid(                                                 &
-                   LatLonGridFactory(im_world=IMana_World, jm_world=JMana_World, lm=LMbkg, &
-                   nx=NX, ny=NY, pole='PC', dateline= 'DC', rc=status)                     )
-         VERIFY_(STATUS)
-       end block
+          call MAPL_MakeDecomposition(NX_CUBE,NY_CUBE,reduceFactor=6,__RC__)
+          cs_factory = CubedSphereGridFactory(im_world=IMana_World,lm=LMana,nx=nx_cube,ny=ny_cube,__RC__)
+          GRIDana = grid_manager%make_grid(cs_factory,__RC__)
+          GRIDrep = grid_manager%make_grid(cs_factory,__RC__)
+
+       else
+
+         block
+           class(AbstractGridFactory), allocatable :: factory
+           allocate(factory, source = grid_manager%make_factory(trim(REPLAY_FILEP0),force_file_coordinates = .false.)) 
+           GRIDrep = grid_manager%make_grid(factory)
+           GRIDana = grid_manager%make_grid(factory)
+         end block
+
+       endif
 
        mkiau_internal_state%im      =   IMana_World
        mkiau_internal_state%jm      =   JMana_World
@@ -1193,7 +1265,7 @@ CONTAINS
     VERIFY_(STATUS)
     call ESMF_FieldBundleSet(RBUNDLEP0, grid=GRIDana, rc=status)
     VERIFY_(STATUS)
-    call MAPL_CFIORead ( REPLAY_FILEP0, REPLAY_TIMEP0, RBUNDLEP0, RC=status)
+    call MAPL_read_bundle( RBUNDLEP0, REPLAY_FILEP0_TMPL, REPLAY_TIMEP0, RC=status)
     VERIFY_(STATUS)
     call ESMF_FieldBundleGet ( RBUNDLEP0, fieldCount=NQ, RC=STATUS )
     VERIFY_(STATUS)
@@ -1483,13 +1555,13 @@ CONTAINS
         if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEP0, grid=GRIDrep, rc=status)
         if ( trim(GRIDINC)=="BKG" ) call ESMF_FieldBundleSet(RBUNDLEP0, grid=GRIDbkg, rc=status)
         VERIFY_(STATUS)
-        call MAPL_CFIORead ( REPLAY_FILEP0, REPLAY_TIMEP0, RBUNDLEP0 , RC=status)
+        call MAPL_read_bundle( RBUNDLEP0, REPLAY_FILEP0_TMPL, REPLAY_TIMEP0, RC=status)
         VERIFY_(STATUS)
              FILEP0 = REPLAY_FILEP0
         FILE_TIMEP0 = REPLAY_TIMEP0
         NEED_BUNDLEP0 = .FALSE.
     else if( (FILE_TIMEP0 .ne. REPLAY_TIMEP0) .or. (FILEP0 .ne. REPLAY_FILEP0) ) then
-        call MAPL_CFIORead ( REPLAY_FILEP0, REPLAY_TIMEP0, RBUNDLEP0 , RC=status)
+        call MAPL_read_bundle( RBUNDLEP0, REPLAY_FILEP0_TMPL, REPLAY_TIMEP0, RC=status)
         VERIFY_(STATUS)
              FILEP0 = REPLAY_FILEP0
         FILE_TIMEP0 = REPLAY_TIMEP0
@@ -1502,13 +1574,13 @@ CONTAINS
             if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEM1, grid=GRIDrep, rc=status)
             if ( trim(GRIDINC)=="BKG" ) call ESMF_FieldBundleSet(RBUNDLEM1, grid=GRIDbkg, rc=status)
             VERIFY_(STATUS)
-            call MAPL_CFIORead ( REPLAY_FILEM1, REPLAY_TIMEM1, RBUNDLEM1 , RC=status)
+            call MAPL_read_bundle( RBUNDLEM1, REPLAY_FILEM1_TMPL, REPLAY_TIMEM1, RC=status)
             VERIFY_(STATUS)
                  FILEM1 = REPLAY_FILEM1
             FILE_TIMEM1 = REPLAY_TIMEM1
             NEED_BUNDLEM1 = .FALSE.
         else if ( (FILE_TIMEM1 .ne. REPLAY_TIMEM1) .or. (FILEM1 .ne. REPLAY_FILEM1) ) then
-            call MAPL_CFIORead ( REPLAY_FILEM1, REPLAY_TIMEM1, RBUNDLEM1 , RC=status)
+            call MAPL_read_bundle( RBUNDLEM1, REPLAY_FILEM1_TMPL, REPLAY_TIMEM1, RC=status)
             VERIFY_(STATUS)
                  FILEM1 = REPLAY_FILEM1
             FILE_TIMEM1 = REPLAY_TIMEM1
@@ -1521,13 +1593,13 @@ CONTAINS
                 if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEP1, grid=GRIDrep, rc=status)
                 if ( trim(GRIDINC)=="BKG" ) call ESMF_FieldBundleSet(RBUNDLEP1, grid=GRIDbkg, rc=status)
                 VERIFY_(STATUS)
-                call MAPL_CFIORead ( REPLAY_FILEP1, REPLAY_TIMEP1, RBUNDLEP1 , RC=status)
+                call MAPL_read_bundle( RBUNDLEP1, REPLAY_FILEP1_TMPL, REPLAY_TIMEP1, RC=status)
                 VERIFY_(STATUS)
                      FILEP1 = REPLAY_FILEP1
                 FILE_TIMEP1 = REPLAY_TIMEP1
                 NEED_BUNDLEP1 = .FALSE.
             else if ( FILE_TIMEP1 .ne. REPLAY_TIMEP1 .or. (FILEP1 .ne. REPLAY_FILEP1) ) then
-                call MAPL_CFIORead ( REPLAY_FILEP1, REPLAY_TIMEP1, RBUNDLEP1 , RC=status)
+                call MAPL_read_bundle( RBUNDLEP1, REPLAY_FILEP1_TMPL, REPLAY_TIMEP1, RC=status)
                 VERIFY_(STATUS)
                      FILEP1 = REPLAY_FILEP1
                 FILE_TIMEP1 = REPLAY_TIMEP1
@@ -1539,13 +1611,13 @@ CONTAINS
                 if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEM2, grid=GRIDrep, rc=status)
                 if ( trim(GRIDINC)=="BKG" ) call ESMF_FieldBundleSet(RBUNDLEM2, grid=GRIDbkg, rc=status)
                 VERIFY_(STATUS)
-                call MAPL_CFIORead ( REPLAY_FILEM2, REPLAY_TIMEM2, RBUNDLEM2 , RC=status)
+                call MAPL_read_bundle( RBUNDLEM2, REPLAY_FILEM2_TMPL, REPLAY_TIMEM2, RC=status)
                 VERIFY_(STATUS)
                      FILEM2 = REPLAY_FILEM2
                 FILE_TIMEM2 = REPLAY_TIMEM2
                 NEED_BUNDLEM2 = .FALSE.
             else if ( FILE_TIMEM2 .ne. REPLAY_TIMEM2 .or. (FILEM2 .ne. REPLAY_FILEM2) ) then
-                call MAPL_CFIORead ( REPLAY_FILEM2, REPLAY_TIMEM2, RBUNDLEM2 , RC=status)
+                call MAPL_read_bundle( RBUNDLEM2, REPLAY_FILEM2_TMPL, REPLAY_TIMEM2, RC=status)
                 VERIFY_(STATUS)
                      FILEM2 = REPLAY_FILEM2
                 FILE_TIMEM2 = REPLAY_TIMEM2
@@ -1561,6 +1633,7 @@ CONTAINS
          VERIFY_(STATUS)
          call ESMF_FieldBundleGet ( RBUNDLEP0, fieldNameList=RNAMES, rc=STATUS )
          VERIFY_(STATUS)
+         call RedanduncyCheck(RNAMES)
          if( first ) then
              if(MAPL_AM_I_ROOT() ) then
              print *
@@ -2103,7 +2176,7 @@ CONTAINS
 ! ****   with option to blend QV specially, starting at tropopause. ****
 ! **********************************************************************
 
-      if( DAMPBEG.ne.DAMPEND .or. BLEND_AT_PBL ) then
+      if( DAMPBEG.ne.DAMPEND .or. BLEND_AT_PBL .or. BLEND_QV_AT_TP ) then
 
           if(first .and. MAPL_AM_I_ROOT()) then
              if(DAMPBEG.ne.DAMPEND) then
@@ -2116,8 +2189,20 @@ CONTAINS
              else
                 print *, 'No blending based on PBL'
              endif
+             if(BLEND_QV_AT_TP) then
+                if(BLEND_AT_PBL) then
+                   print *, 'Blending at PBL supercedes QV blending at TROPP'
+                else
+                   print *, 'Blending ANA and BKG QV based on TROPP'
+                endif
+             else
+                print *, 'No blending of QV based on TROPP'
+             endif
              print *
           endif
+
+          ! Enforce priority now that warning has been logged
+          if ( BLEND_AT_PBL ) BLEND_QV_AT_TP = .FALSE.
 
           if( BLEND_AT_PBL ) then
              allocate ( pdum1(IMbkg,JMbkg,1) )
@@ -2136,13 +2221,30 @@ CONTAINS
              endif
              blnpp => pdum2(:,:,1)
           endif
+          if( BLEND_QV_AT_TP ) then
+             allocate ( pdum1(IMbkg,JMbkg,1) )
+             allocate ( pdum2(IM,   JM,   1) )
+             pdum1=0.0
+
+             call MAPL_GetPointer(import, ptr2d, 'TROPP_BLENDED', RC=STATUS)
+             VERIFY_(STATUS)
+             pdum1(:,:,1) = ptr2d
+
+             if (trim(GRIDINC)=="ANA" .and. do_transforms) then
+                call mkiau_internal_state%bkg2ana_regridder%regrid(pdum1, pdum2, RC=STATUS)
+                VERIFY_(STATUS)
+             else
+                pdum2=pdum1
+             endif
+             tropp => pdum2(:,:,1)
+          endif
 
           call blend ( ple_ana,u_ana,v_ana,t_ana,q_ana,o3_ana,     &
                        ple_bkg,u_bkg,v_bkg,t_bkg,q_bkg,o3_bkg,     &
                        im,jm,LMbkg, DAMPBEG,DAMPEND, BLEND_AT_PBL,  &
-                       blnpp=blnpp )
+                       BLEND_QV_AT_TP, blnpp=blnpp, tropp=tropp )
 
-          if( BLEND_AT_PBL ) then
+          if( BLEND_AT_PBL .or. BLEND_QV_AT_TP ) then
              deallocate ( pdum1 )
              deallocate ( pdum2 )
           endif
@@ -2586,17 +2688,21 @@ CONTAINS
   subroutine blend ( plea,ua,va,ta,qa,oa,     &
                      pleb,ub,vb,tb,qb,ob,     &
                      im,jm,lm, pabove,pbelow, &
-                     BLEND_AT_PBL, blnpp    )
+                     BLEND_AT_PBL,            &
+                     BLEND_QV_AT_TP,          &
+                     blnpp, tropp    )
 
 ! Blends Anaylsis and Background values.
-! This routine is called if pabove /= pbelow or BLEND_AT_PBL
+! This routine is called if pabove /= pbelow or BLEND_AT_PBL or BLEND_QV_AT_TP
 ! ***************************************************************************
 
       implicit none
       integer, intent(IN)    :: im,jm,lm
       real,    intent(IN)    :: pabove,pbelow
       logical, intent(IN)    :: BLEND_AT_PBL
+      logical, intent(IN)    :: BLEND_QV_AT_TP
 
+      ! Background values
       real,    intent(IN)    :: pleb(im,jm,lm+1)
       real,    intent(IN)    ::   ub(im,jm,lm)
       real,    intent(IN)    ::   vb(im,jm,lm)
@@ -2604,6 +2710,8 @@ CONTAINS
       real,    intent(IN)    ::   qb(im,jm,lm)
       real,    intent(IN)    ::   ob(im,jm,lm)
 
+      ! IN: Anaylsis values
+      ! OUT: Blended values
       real,    intent(INOUT) :: plea(im,jm,lm+1)
       real,    intent(INOUT) ::   ua(im,jm,lm)
       real,    intent(INOUT) ::   va(im,jm,lm)
@@ -2612,6 +2720,7 @@ CONTAINS
       real,    intent(INOUT) ::   oa(im,jm,lm)
 
       real,    intent(IN), optional, pointer :: blnpp(:,:)   ! blending pressure when BLEND_AT_PBL is TRUE
+      real,    intent(IN), optional, pointer :: tropp(:,:)   ! Tropopause Pressure used when BLEND_QV_AT_TP is TRUE
 
 ! Locals
 ! ------
@@ -2627,6 +2736,9 @@ CONTAINS
 
       real pabove_BL,pbelow_BL
       real bl_press
+
+      real pabove_QV,pbelow_QV  ! compute from tropp
+      real tp_press
 
       real alf,eps,p
       integer i,j,L
@@ -2667,7 +2779,7 @@ CONTAINS
                                    ua(i,j,L) =   ub(i,j,L) + alf*(   ua(i,j,L)-  ub(i,j,L) )
                                    va(i,j,L) =   vb(i,j,L) + alf*(   va(i,j,L)-  vb(i,j,L) )
                                    oa(i,j,L) =   ob(i,j,L) + alf*(   oa(i,j,L)-  ob(i,j,L) )
-                                   qa(i,j,L) =   qb(i,j,L) + alf*(   qa(i,j,L)-  qb(i,j,L) )
+         IF (.NOT. BLEND_QV_AT_TP) qa(i,j,L) =   qb(i,j,L) + alf*(   qa(i,j,L)-  qb(i,j,L) )
       enddo
       enddo
       enddo
@@ -2732,6 +2844,41 @@ CONTAINS
 
            enddo
            plea(i,j,LM+1) = pleb(i,j,LM+1)
+
+           enddo
+           enddo
+      endif
+
+! Use Analysis values of water vapor in the troposphere
+! Relax to Background values in the stratosphere
+! -----------------------------------------------------
+      if ( BLEND_QV_AT_TP ) then
+           do j=1,jm
+           do i=1,im
+
+           IF ( tropp(i,j) == MAPL_UNDEF ) THEN
+                tp_press = 100.0 * 100.0   ! 100 hPa
+           ELSE
+                tp_press = tropp(i,j)
+           ENDIF
+
+           pabove_QV = tp_press * 0.5
+           pbelow_QV = tp_press * 1.0
+
+           do L=1,lm
+             p = 0.5*( pleb(i,j,L)+pleb(i,j,L+1) )
+             if( p.le.pabove_QV ) then
+                 alf = 0.0   !  use the background value
+             else if( p.gt.pabove_QV .and. p.le.pbelow_QV ) then
+                 alf = (LOG(p)        -LOG(pabove_QV))/ &
+                       (LOG(pbelow_QV)-LOG(pabove_QV))
+             else
+                 alf = 1.0   !  use the analysis value
+             endif
+
+             qa(i,j,L) = qb(i,j,L) + alf*(   qa(i,j,L)-  qb(i,j,L) )
+
+           enddo
 
            enddo
            enddo
@@ -2833,11 +2980,13 @@ CONTAINS
 
       if(     trim(name) == 'U'        ) then
           if( trim(var)  == 'U'        ) match = .true.
+          if( trim(var)  == 'UA'       ) match = .true.
           if( trim(var)  == 'UGRD'     ) match = .true.
       endif
 
       if(     trim(name) == 'V'        ) then
           if( trim(var)  == 'V'        ) match = .true.
+          if( trim(var)  == 'VA'       ) match = .true.
           if( trim(var)  == 'VGRD'     ) match = .true.
       endif
 
@@ -2877,6 +3026,7 @@ CONTAINS
 
       if(     trim(name) == 'O3'       ) then
           if( trim(var)  == 'O3'       ) match = .true.
+          if( trim(var)  == 'O3PPMV'   ) match = .true.
           if( trim(var)  == 'OZONE'    ) match = .true.
       endif
 
@@ -3379,5 +3529,34 @@ CONTAINS
 
       return
       end subroutine myremap
+
+      subroutine RedanduncyCheck(rnames)
+
+      character(len=*), intent(inout) :: rnames(:)
+      ! completely wired
+      ! at the moment, the files generated for/by JEDI
+      ! largely ignore GEOS naming convensions, this
+      ! here a paliative to a solution/clean-up to come
+      ! in the future (Todling).
+
+      ! when both t and tv are in file, bypass t
+      if (any(rnames=='t') .and. any(rnames=='tv')) then
+        where(rnames=='t')
+          rnames = 't-bypass' 
+        endwhere
+      endif
+      ! when both u and ua are in file, bypass u
+      if (any(rnames=='u') .and. any(rnames=='ua')) then
+        where(rnames=='u')
+          rnames = 'u-bypass' 
+        endwhere
+      endif
+      ! when both v and va are in file, bypass v
+      if (any(rnames=='v') .and. any(rnames=='va')) then
+        where(rnames=='v')
+          rnames = 'v-bypass' 
+        endwhere
+      endif
+      end subroutine RedanduncyCheck
 
 end module GEOS_mkiauGridCompMod

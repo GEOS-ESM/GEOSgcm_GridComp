@@ -8,5 +8,5 @@ set (srcs
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES GEOS_Shared MAPL CICE4 esmf NetCDF::NetCDF_Fortran)
+  DEPENDENCIES GEOS_Shared MAPL CICE4 ESMF::ESMF NetCDF::NetCDF_Fortran)
 

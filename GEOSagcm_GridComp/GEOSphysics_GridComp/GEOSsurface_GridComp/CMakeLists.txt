@@ -4,6 +4,7 @@ set (alldirs
    GEOSlandice_GridComp
    GEOSlake_GridComp
    GEOSland_GridComp
+   GEOSroute_GridComp
    GEOSsaltwater_GridComp
    )
 
@@ -15,7 +16,7 @@ if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_SurfaceGridComp.F90)
     SRCS GEOS_SurfaceGridComp.F90
     SUBCOMPONENTS ${alldirs}
     SUBDIRS Shared
-    DEPENDENCIES GEOS_SurfaceShared MAPL GMAO_mpeu esmf)
+    DEPENDENCIES GEOS_SurfaceShared MAPL GMAO_mpeu ESMF::ESMF)
 
   target_compile_definitions (${this} PRIVATE $<$<BOOL:${AQUAPLANET}>:AQUA_PLANET>)
 

@@ -1,0 +1,275 @@
+Updated: Dec 2025
+===============================================
+HWSDv2 Soil Processing Workflow (D2 Prototype)
+All codes are on GitHub here:
+ /@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/Utils/Raster/preproc/soil/soil_properties/v2/
+only data is stored here:
+/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/land/soil/soil_properties/v2/
+
+STEP3 merging data set -/NGDC-Reynolds/ - Read NGDC/Reynolds 0.5° (4320×2160) fields from `path` (native bin/img inputs).
+STEP4 merging data set -/STATSGO2/
+STEP4 merging data set -/Africa-AFSIS/
+
+===============================================
+IMPORTANT: Source database formats and conversion
+--------------------------------------
+HWSD and STATSGO source datasets are distributed as Microsoft Access databases (*.mdb).
+
+Specifically:
+- HWSDv2 attributes are provided in HWSD2.mdb
+- STATSGO / STATSGO2 attributes are provided in soildb_*.mdb
+
+While IDL can read *.mdb files directly, this proved fragile and
+difficult to maintain for large-scale, vectorized processing.
+Python-based solutions were explored; however, reliable access to the
+required ODBC drivers and database schema support was only available
+in specific parallel Python environments and was not portable across
+platforms. Probably duable but SI team would have to help with libraries. 
+
+Therefore, as a first preprocessing step:
+- The *.mdb databases are converted to SQLite
+- SQLite is used as the authoritative attribute store
+- R is used to query SQLite and rasterize HWSDv2 fields efficiently
+
+This conversion is a structural preprocessing step and does not modify
+any scientific content of the datasets.
+
+STATSGO since old verion was used we use files Sarith converted with IDL. 
+
+===============================================
+D2 Prototype STEPs:
+HWSDv2 (D2) → R (extract & rasterize works for all layers) 
+            → Python (global mosaic per layer D2 now)  
+            → symlink D2→top/sub  
+            → Fortran STEP3 (merge NGDC–Reynolds gap fill HWSDv2)  
+            → Fortran STEP4 (overlay STATSGO + optional AFSIS over STEP3)  
+            → IDL STEP5 (NetCDF writer setup / attributes)
+            → IDL STEP5 (final gap fill + write 36×18 BCS NetCDF tiles).
+===============================================
+STEP3: Background gap-fill using NGDC–Reynolds
+
+HWSDv2 provides the primary global soil properties.
+NGDC–Reynolds fields are used only as a background fill where HWSDv2 is missing.
+No external land mask is used; validity is determined directly from HWSDv2 fields.
+
+STEP4: Regional overlays (STATSGO2 / AFSIS)
+
+Higher-resolution regional datasets overwrite the STEP3 result
+where available (STATSGO2 over CONUS, optional AFSIS over Africa).
+===============================================
+
+This workflow generates global 30-arcsecond soil fields from HWSDv2, fills spatial gaps
+, and applies regional refinements for use in GEOS BCS generation.
+
+Only D2 (20–40 cm) is processed from HWSDv2 for final product.
+
+Legacy tools require separate top and sub layers, so the prototype currently maps:
+
+*_top → D2
+*_sub → D2
+
+
+Datasets and tools
+===============================================
+
+HWSDv2 – primary global soil dataset (30-arcsec)
+NGDC–Reynolds – coarse global fallback (gap filling)
+STATSGO – CONUS refinement
+AFSIS  – Africa refinement
+
+Note:
+===========
+STATSGO (v2, ~2006) - GSM-based national soil map- NAD83- Distributed with soildb_US_2002.mdb
+STATSGO2 (v3, ~2016)- Updated GSM (still STATSGO) - WGS84- Distributed with soildb_US_2003.mdb
+This is what code refers to as STATSGO2
+
+Tools
+===============================================
+
+R – HWSDv2 tile generation from raster + SQLite DB
+Python – global mosaicking and diagnostics
+Fortran – gap filling and regional overlays
+IDL – final BCS-ready NetCDF generation
+
+Higher-quality datasets always override coarser ones while preserving global coverage.
+
+Workflow summary
+==============================================
+R        → HWSDv2 10° tiles (D2 only)
+Python   → global 30″ NetCDF (Global_*_D2.nc4)
+Symlinks → *_top / *_sub → D2
+Fortran  → merge Reynolds + overlays (STATSGO, AFSIS)
+IDL      → final BCS NetCDF tiles (36×18)
+
+Detailed steps
+-----------------------------------------
+1) HWSDv2 preprocessing (R)
+-----------------------------------------
+Inputs:
+HWSDv2 SMU raster
+HWSDv2 attribute DB (SQLite)
+
+Processing:
+D2 only (20–40 cm)
+dominant component selection (largest SHARE)
+QC and derived fields (OM, porosity, etc.)
+
+Outputs:
+10° × 10° NetCDF tiles at 30″
+
+Example:
+Lon_-180_-170_Lat_70_80_D2.nc
+
+-----------------------------------------
+2) Global mosaicking (Python)
+-----------------------------------------
+Stitch 10° tiles into global grids
+
+Outputs:
+Global_Sand_D2.nc4
+Global_Clay_D2.nc4
+Global_OC_D2.nc4
+
+Grid size: 43200 × 21600
+
+-----------------------------------------
+3) Top/sub workaround (prototype)
+-----------------------------------------
+Legacy Fortran requires separate layers:
+
+ln -sf Global_Sand_D2.nc4 sand_top.nc4
+ln -sf Global_Sand_D2.nc4 sand_sub.nc4
+
+Applied to clay, sand, silt, OC, texture.
+
+-----------------------------------------
+4) Fortran stage 1 — Reynolds gap fill
+-----------------------------------------
+
+Code : STEP3_process_soildata.f90
+
+Regrid NGDC–Reynolds to 30″
+Overwrite NGDC–Reynolds wherever HWSDv2 provides valid (non-missing) data
+Fallback to NGDC–Reynolds only where HWSDv2 is missing
+(No external land mask is used in STEP3)
+
+Outputs
+MERGED-DATA/*.dat
+
+
+This step performs the actual Reynolds merge.
+
+-----------------------------------------
+5) Fortran stage 2 — regional overlays
+-----------------------------------------
+Code STEP4_process_soildata.f90
+
+Purpose:
+Overlay STATSGO over CONUS
+Optionally overlay AFSIS over Africa
+
+Outputs:
+
+HWSDv2-NGDC-STATSGO/
+HWSDv2-NGDC-STATSGO-AFSIS/
+data_sources.msk
+
+-----------------------------------------
+6) Final BCS generation (IDL)
+-----------------------------------------
+
+Function:
+Read merged global binaries
+Apply horizontal gap filling
+Write 36 × 18 NetCDF tiles (1200 × 1200 each)
+
+Gap filling expands neighborhood until a donor is found.
+Entire vertical column (top+sub) is copied from the donor pixel.
+Guards prevent empty-median and indexing failures.
+
+STEP5 operates in "noMASK" mode:
+- Internal mask controls gap-fill logic only.
+- mask(*) = 1 is applied solely to force creation of all 36×18 tiles.
+- The NetCDF Mask variable is NOT a land/ocean or provenance mask.
+
+Outputs:
+SoilProperties_H01V01.nc
+...
+SoilProperties_H36V18.nc
+
+Coarse fragments / Gravel handling
+----------------------------------
+HWSDv2 provides a native coarse fragments (Gravel) field.
+This replaces the legacy texture-derived gravel proxy used in HWSDv1.2.
+
+For compatibility with legacy STEP5 logic:
+- The HWSDv2 coarse fragments field (D2) is mapped to both *_top and *_sub inputs.
+- STEP5 combines top and sub using the legacy 0.3 / 0.7 weighting.
+- The final Gravel field is stored as short with ScaleFactor = 0.01 (percent).
+
+======================================================
+Notes on masks:
+======================================================
+Three distinct mask concepts exist in the HWSDv2 pipeline:
+
+1) Legacy HWSD land mask (hwsd_mask.bin)
+   Used in older HWSDv1.x pipelines.
+   NOT used anywhere in the HWSDv2 workflow.
+
+2) Data-driven validity mask (STEP3 + STEP5 internal)
+   Soil presence is inferred directly from variable validity
+   (e.g., clay/sand values not equal to missing_value).
+   This mask controls overwrite and horizontal gap-fill behavior
+   and naturally preserves islands and small land features.
+
+3) STEP5 tile output mask
+   Written to the NetCDF tiles as the variable "Mask".
+   This mask reflects data validity and fill state at write time.
+   It is NOT a land/ocean mask and must not be interpreted scientifically.
+
+==================================================================
+Minimal reproducible run order
+==================================================================
+1.
+-----
+R: HWSDv2 → 10° tiles (D2) - STEP1_vectorized_final_processing_soil.R (needs HWSDv2 raster + SQLite DB)
+module load R
+Rscript STEP1_vectorized_final_processing_soil.R
+
+2.
+-----
+Python: tiles → global NetCDF - STEP2_stich_global_var_layer.py ( + diagnostics / plots)
+module load python
+python3 STEP2_stich_global_var_layer.py
+
+Symlinks: D2 → *_top / *_sub
+3.
+-----
+Fortran: STEP3 (Reynolds merge) - STEP3_process_soildata.f90 / .x
+Fortran: STEP4 (STATSGO / AFSIS overlays) - STEP4_process_soildata.f90 / .x
+Instructions on modules and compilation in header
+4.
+----
+IDL: final BCS NetCDF tiles - 
+                              STEP5_create_netcdf_soildata_bcs_shared_path_noMASK_2.pro 
+                              STEP5_write_netcdf_file.pro
+                              gravel helper: nc4_coarse_D2_to_gravel_dat.pro
+module load idl
+.r nc4_coarse_D2_to_gravel_dat.pro
+.r STEP5_write_netcdf_file.pro
+.r STEP5_create_netcdf_soildata_bcs_shared_path_noMASK_2.pro
+
+==================================================================
+Outputs:
+MERGED-DATA/
+HWSDv2-NGDC-STATSGO*
+opt_HWSDv2_NGDC_STATSGO*_*
+
+Final comments: 
+---------------------
+This prototype preserves the scientific intent and behavior of the legacy pipeline while:
+
+cleaning R / Python / IDL logic
+making gap filling cleaner
+isolating remaining cleanup to Fortran only, if we want to update statsgo as well
+No new interpolation assumptions have been introduced.

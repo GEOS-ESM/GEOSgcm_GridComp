@@ -1,16 +1,26 @@
-"""File containing all constants used for pyMoist"""
+"""File containing constants used in multiple components of pyMoist"""
+
+import os
 
 import numpy as np
-
-from ndsl.dsl.typing import Float
+from ndsl.dsl.typing import Float, Int
 
 
 _f32 = np.float32
 _f64 = np.float64
 _i32 = np.int32
 
-# Define number of tracers
-NCNST = _i32(23)
+# Define number of tracers in UW
+EXPERIMENT_TRACERS = {"arm_97jul": 18, "arm_97jun": 18, "armtwp_ice": 18, "bomex": 18, "gcm-fp": 23}
+EXP_NAME = os.getenv("EXP_NAME", "")
+if EXP_NAME == "":
+    raise ValueError(f"EXP_NAME env var is not set - experiment unknown. Options are {list(EXPERIMENT_TRACERS.keys())}")
+if EXP_NAME not in EXPERIMENT_TRACERS:
+    raise ValueError(f"Experiment {EXP_NAME} unknown - tracers can't be initialized.")
+NCNST = _i32(EXPERIMENT_TRACERS[EXP_NAME])
+NUMBER_OF_TRACERS = NCNST
+
+NUMBER_OF_TRACERS = NCNST
 
 # MAPL_UNDEF is set to 1E15 in the Fortran
 # We keep it as is for now to match 11.5.2 GEOS
@@ -62,12 +72,15 @@ MAPL_AIRMW = Float(28.965)  # kg/Kmole
 MAPL_RDRY = MAPL_RUNIV / MAPL_AIRMW  # J/(kg K)
 MAPL_CPDRY = Float(3.5) * MAPL_RDRY  # J/(kg K)
 MAPL_KAPPA = MAPL_RDRY / MAPL_CPDRY  # (2.0/7.0)
+MAPL_EPSILON = MAPL_H2OMW / MAPL_AIRMW  # --
 MAPL_CVDRY = MAPL_CPDRY - MAPL_RDRY  # J/(kg K)
 MAPL_RVAP = MAPL_RUNIV / MAPL_H2OMW  # J/(kg K)
 MAPL_CPVAP = Float(4) * MAPL_RVAP  # J/(kg K)
 MAPL_CVVAP = MAPL_CPVAP - MAPL_RVAP  # J/(kg K)
 MAPL_RGAS = MAPL_RDRY  # MAPL_RDRY  # J/(kg K) (DEPRECATED)
 MAPL_CP = MAPL_RGAS / MAPL_KAPPA  # J/(kg K) (DEPRECATED)
+MAPL_VIREPS = Float(1.0) / MAPL_EPSILON - Float(1.0)  # (DEPRECATED)
+MAPL_P00 = Float(100000.0)  # Pa
 
 EPSILON = MAPL_H2OMW / MAPL_AIRMW  # --
 MAPL_CELSIUS_TO_KELVIN = Float(273.15)  # K
@@ -115,28 +128,20 @@ ALHLBCP = MAPL_ALHL / MAPL_CP
 ALHSBCP = MAPL_ALHS / MAPL_CP
 
 # Constants for cloud_effective_radius_liquid and cloud_effective_radius_ice
-LIQ_RADII_PARAM = 2
-ICE_RADII_PARAM = 1
+LIQ_RADII_PARAM = Int(2)
+ICE_RADII_PARAM = Int(1)
 BX = Float(100.0) * (Float(3.0) / (Float(4.0) * MAPL_PI)) ** (Float(1.0) / Float(3.0))
 R13BBETA = Float(1.0) / Float(3.0) - Float(0.14)
 ABETA = Float(0.07)
 RHO_W = Float(1000.0)
 LDISS = Float(0.07)
 LK = Float(0.75)
-LBX = (
-    LDISS
-    * Float(1.0e3)
-    * (Float(3.0) / (Float(4.0) * MAPL_PI * LK * RHO_W * Float(1.0e-3)))
-    ** (Float(1.0) / Float(3.0))
-)
+LBX = LDISS * Float(1.0e3) * (Float(3.0) / (Float(4.0) * MAPL_PI * LK * RHO_W * Float(1.0e-3))) ** (Float(1.0) / Float(3.0))
 LBE = Float(1.0) / Float(3.0) - Float(0.14)
 
 # Aer Activation constants
 R_AIR = Float(3.47e-3)  # m3 Pa kg-1K-1, also used in GFDL_1M, but defined in aer
 
 
-# Python euqivalent of Fortran's tiny(X)
+# Python equivalent of Fortran's tiny(X)
 FLOAT_TINY = np.finfo(Float).tiny
-
-# Define how many modes in an Aerosol Activation
-N_MODES = 14

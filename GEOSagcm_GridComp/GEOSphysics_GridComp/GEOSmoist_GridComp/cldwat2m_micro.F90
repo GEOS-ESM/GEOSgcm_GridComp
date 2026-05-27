@@ -206,7 +206,7 @@ contains
 #ifndef GEOS5
       use cloud_fraction, only: cldfrc_getparams
 #endif
-      real(r8), intent(in) ::  QCVAR_
+      real, intent(in) ::  QCVAR_
 
 
       integer k
@@ -221,8 +221,6 @@ contains
       logical           :: history_microphysics     ! output variables for microphysics diagnostics package
 
 
- 
- 
       real(r8),         intent(in)  :: micro_mg_berg_eff_factor_in     ! berg efficiency factor
       logical, intent(in)   :: nccons_in
       logical, intent(in)   :: nicons_in
@@ -432,7 +430,7 @@ contains
    
    subroutine set_qcvar (qcvar_) !!DONIF
 
-   real(r8), intent(in) ::  qcvar_
+   real, intent(in) ::  qcvar_
       
       qcvar =  qcvar_
       
@@ -4944,9 +4942,11 @@ contains
             real(r8) :: MUI_HEMP_L
             REAL(r8), intent(in)  :: lambda_
             REAL(r8)              :: TC, mui, lx
-            lx = lambda_*0.01
+            
+            
+            lx = max(min(lambda_, lammaxi),lammini)*0.01
 
-            mui=(0.008_r8*(lx**0.87_r8))
+            mui=(0.008_r8*(lx**(0.87_r8)))
             MUI_HEMP_L=max(min(mui, 5.0_r8), 0.1_r8)
 
 
@@ -4965,7 +4965,7 @@ contains
             alfa=min(max(muice+1._r8, 1._r8), 20._r8)
 
             xog = log(alfa -0.3068_r8)
-            kg= 1.44818*(alfa**0.5357_r8)
+            kg= 1.44818*(alfa**(0.5357_r8))
             auxx =  max(min(kg*(log(x)-xog), 30._r8), -30._r8)
             gamma_incomp= 1._r8/(1._r8 +exp(-auxx))     
             gamma_incomp = max(gamma_incomp, 1.0e-20) 

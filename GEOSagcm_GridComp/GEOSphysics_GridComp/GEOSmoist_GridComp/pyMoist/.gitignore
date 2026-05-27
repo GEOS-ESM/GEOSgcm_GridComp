@@ -10,3 +10,12 @@ test_data/
 test_data/
 sandbox/
 *.mod
+.gt4py_cache/
+.gt_cache_*/
+.translate*/
+_dacegraphs/
+**/build/
+.venv/
+site/
+.debug.yaml
+_dacegraphs/

@@ -120,6 +120,10 @@ contains
     character(len=ESMF_MAXSTR)              :: SURFRC
     type(ESMF_Config)                       :: SCF
 
+    ! <<>> MSL DEV
+    character(len=ESMF_MAXSTR)              :: co2provider
+    real                                    :: co2_
+
 !=============================================================================
 
 ! Begin...
@@ -1114,6 +1118,27 @@ contains
                             'CFC11 ','CFC12 ','HCFC22'       /), &
                            DST_ID=RAD, SRC_ID=CHEM, RC=STATUS    )
       VERIFY_(STATUS)
+
+! <<>> MSL DEV
+! CO2 is not listed as a RAT, so add it here outside of the RATs code logic
+! It also doesn't appear in PCHEM, so we can't make it part of the RATs list
+  ! -- get info from AGCM.rc
+  call ESMF_ConfigGetAttribute(CF, co2provider, Default='None', &
+                               Label="CO2_PROVIDER:", __RC__ )
+  call ESMF_ConfigGetAttribute(CF, co2_, Default=-1.0, &
+                               Label="CO2:", __RC__ )
+  if (trim(co2provider) .eq. 'GOCART' .and. CO2_ .eq. -2.0) then
+     CALL MAPL_AddConnectivity( GC, &
+          SHORT_NAME  = (/'CO2'/), &
+          DST_ID=RAD, SRC_ID=CHEM, RC=STATUS    )
+     VERIFY_(STATUS)
+  endif
+  if (trim(co2provider) .eq. 'RRG' .and. CO2_ .eq. -2.0) then
+     CALL MAPL_AddConnectivity( GC, &
+          SHORT_NAME  = (/'CO2'/), &
+          DST_ID=RAD, SRC_ID=CHEM, RC=STATUS    )
+     VERIFY_(STATUS)
+  endif
 ! -----------------------------------------------------------------
 
      call MAPL_AddConnectivity ( GC,                               &
@@ -1170,7 +1195,7 @@ contains
         VERIFY_(STATUS)
      ENDIF
 
-     IF (DO_OBIO /= 0) THEN 
+     IF (DO_OBIO /= 0) THEN
         call MAPL_AddConnectivity ( GC,                               &
              SHORT_NAME  = (/'DROBIO', 'DFOBIO'/),                    &
              SRC_ID      = RAD,                                       &
@@ -1215,8 +1240,8 @@ contains
      call MAPL_AddConnectivity ( GC,                                      &
         SHORT_NAME  = (/ 'RL      ',  'QL      ', 'QLTOT   ', 'DQLDT   ', &
                          'RI      ',  'QI      ', 'QITOT   ', 'DQIDT   ', &
-                         'QLCN    ',  'PFL_CN  ', 'PFL_LSAN',             &
-                         'QICN    ',  'PFI_CN  ', 'PFI_LSAN',             &
+                         'QLCN    ',  'PFL_CN  ', 'PFL_LSAN', 'ZLCL    ', &
+                         'QICN    ',  'PFI_CN  ', 'PFI_LSAN', 'ZLFC    ', &
                          'FCLD    ',  'QCTOT   ', 'CNV_QC  ',             &
                          'REV_LS  ',  'REV_AN  ', 'REV_CN  ', 'TPREC   ', &
                          'Q       ',  'DQDT    ', 'DQRL    ', 'DQRC    ', &
@@ -1245,7 +1270,7 @@ contains
 
      call MAPL_AddConnectivity ( GC,                              &
         SHORT_NAME  = (/ 'LWI      ', 'FRLAND   ', 'FRLANDICE',   &
-                         'FROCEAN  ', 'FRLAKE   ', 'WET1     ',   &
+                         'FROCEAN  ', 'FRLAKE   ',                &
                          'GRN      ', 'USTAR    ', 'U10M     ',   &
                          'V10M     ', 'SH       ', 'Z0H      ',   &
                          'LAI      ', 'TSOIL1   ', 'FRACI    ',   &
@@ -1259,6 +1284,18 @@ contains
                          'PRECTOT  '                          /), &
         DST_ID      = CHEM,                                       &
         SRC_ID      = SURF,                                       &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     ! NOTE: GOCART's dust code expects WET1 to have all the cells with MAPL_UNDEF
+     !       (aka not land) to be replaced with 1.0. We want WET1 to have
+     !       MAPL_UNDEF over non-land points, so we need a separate export to pass
+     !       to GOCART which is WET1 with all non-land points set to 1.0.
+     call MAPL_AddConnectivity ( GC,                              &
+        SRC_NAME  = [ 'WET1_FOR_CHEM' ],                          &
+        SRC_ID      = SURF,                                       &
+        DST_NAME  = [ 'WET1' ],                                   &
+        DST_ID      = CHEM,                                       &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -1432,7 +1469,7 @@ contains
           CHILD      = TURBL,                           &
           RC=STATUS  )
        VERIFY_(STATUS)
-     endif 
+     endif
 
      call MAPL_TerminateImport    ( GC,        &
           SHORT_NAME = (/'TR ','TRG','DTG' /), &
@@ -1981,10 +2018,10 @@ contains
 ! The original 3D increments:
 
     call Initialize_IncBundle_init(GC, GIM(MOIST), EXPORT, MTRIinc, __RC__)
-  
+
 #ifdef PRINT_STATES
     call ESMF_StateGet(EXPORT, 'MTRI', iBUNDLE, rc=STATUS)
-    VERIFY_(STATUS)                           
+    VERIFY_(STATUS)
 
     call WRITE_PARALLEL ( trim(Iam)//": MTRI - Convective Transport and Scavenging 3D Tendency Bundle" )
     if ( MAPL_am_I_root() ) call ESMF_FieldBundlePrint ( iBUNDLE, rc=STATUS )
@@ -1996,7 +2033,7 @@ contains
 
 #ifdef PRINT_STATES
     call ESMF_StateGet(EXPORT, 'MCHEMTRI', iBUNDLE, rc=STATUS)
-    VERIFY_(STATUS)                           
+    VERIFY_(STATUS)
 
     call WRITE_PARALLEL ( trim(Iam)//": MCHEMTRI - Convective Transport and Scavenging 2D Tendency Bundle" )
     if ( MAPL_am_I_root() ) call ESMF_FieldBundlePrint ( iBUNDLE, rc=STATUS )

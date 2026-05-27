@@ -54,12 +54,19 @@ USE utils_ppser_kbuff
     module procedure ICE_FRACTION_1D
     module procedure ICE_FRACTION_SC
   end interface ICE_FRACTION
+
+  ! SRF_TYPE constants
+  integer, parameter :: SRF_TYPE_LAND  = 1
+  integer, parameter :: SRF_TYPE_SNOW  = 2
+  integer, parameter :: SRF_TYPE_ICE   = 3
+  integer, parameter :: SRF_TYPE_OCEAN = 0
+
   ! ICE_FRACTION constants
    ! In anvil/convective clouds
    real, parameter :: aT_ICE_ALL = 252.16
    real, parameter :: aT_ICE_MAX = 268.16
    real, parameter :: aICEFRPWR  = 2.0
-   ! Over snow/ice SRF_TYPE = 2
+   ! Over snow SRF_TYPE = 2 and over ice SRF_TYPE = 3
    real, parameter :: iT_ICE_ALL = 236.16
    real, parameter :: iT_ICE_MAX = 261.16
    real, parameter :: iICEFRPWR  = 6.0
@@ -428,29 +435,20 @@ public :: serialize_process_libraries_constants
       ICEFRCT_C = MAX(ICEFRCT_C,0.00)
       ICEFRCT_C = ICEFRCT_C**aICEFRPWR
      ! Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
-      if (SRF_TYPE == 2.0) then
-        ! Over snow/ice
-        if (ICE_RADII_PARAM == 1) then
-          ! Jason formula
-          ICEFRCT_M  = 0.00
-          if ( TEMP <= JiT_ICE_ALL ) then
-             ICEFRCT_M = 1.000
-          else if ( (TEMP > JiT_ICE_ALL) .AND. (TEMP <= JiT_ICE_MAX) ) then
-             ICEFRCT_M = 1.00 -  ( TEMP - JiT_ICE_ALL ) / ( JiT_ICE_MAX - JiT_ICE_ALL )
-          end if
-        else
-          ICEFRCT_M  = 0.00
-          if ( TEMP <= iT_ICE_ALL ) then
-             ICEFRCT_M = 1.000
-          else if ( (TEMP > iT_ICE_ALL) .AND. (TEMP <= iT_ICE_MAX) ) then
-             ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - iT_ICE_ALL ) / ( iT_ICE_MAX - iT_ICE_ALL ) ) )
-          end if
+      select case (nint(SRF_TYPE))
+      case (SRF_TYPE_SNOW, SRF_TYPE_ICE)
+        ! Over snow (SRF_TYPE == 2.0) and ice (SRF_TYPE == 3.0)
+        ICEFRCT_M  = 0.00
+        if ( TEMP <= iT_ICE_ALL ) then
+           ICEFRCT_M = 1.000
+        else if ( (TEMP > iT_ICE_ALL) .AND. (TEMP <= iT_ICE_MAX) ) then
+           ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - iT_ICE_ALL ) / ( iT_ICE_MAX - iT_ICE_ALL ) ) )
         end if
         ICEFRCT_M = MIN(ICEFRCT_M,1.00)
         ICEFRCT_M = MAX(ICEFRCT_M,0.00)
         ICEFRCT_M = ICEFRCT_M**iICEFRPWR
-      else if (SRF_TYPE > 1.0) then
-        ! Over Land
+      case (SRF_TYPE_LAND)
+        ! Over Land (SRF_TYPE == 1)
         ICEFRCT_M  = 0.00
         if ( TEMP <= lT_ICE_ALL ) then
            ICEFRCT_M = 1.000
@@ -460,8 +458,8 @@ public :: serialize_process_libraries_constants
         ICEFRCT_M = MIN(ICEFRCT_M,1.00)
         ICEFRCT_M = MAX(ICEFRCT_M,0.00)
         ICEFRCT_M = ICEFRCT_M**lICEFRPWR
-      else
-        ! Over Oceans
+      case (SRF_TYPE_OCEAN)
+        ! Over Oceans (SRF_TYPE == 0)
         ICEFRCT_M  = 0.00
         if ( TEMP <= oT_ICE_ALL ) then
            ICEFRCT_M = 1.000
@@ -471,7 +469,11 @@ public :: serialize_process_libraries_constants
         ICEFRCT_M = MIN(ICEFRCT_M,1.00)
         ICEFRCT_M = MAX(ICEFRCT_M,0.00)
         ICEFRCT_M = ICEFRCT_M**oICEFRPWR
-      endif
+      case default
+        ! You should not be here
+        print *, 'ICE_FRACTION_SC: Unknown SRF_TYPE = ',SRF_TYPE
+        error stop
+      end select
       ! Combine the Convective and MODIS functions
         ICEFRCT  = ICEFRCT_M*(1.0-CNV_FRACTION) + ICEFRCT_C*(CNV_FRACTION)
 #endif
@@ -1137,16 +1139,19 @@ public :: serialize_process_libraries_constants
          QG, &
          NR, &
          NS, &
-         NG)
+         NG, &
+         MASS, & 
+         TMP2D)
 
       real, intent(inout), dimension(:,:,:) :: TE,QV,QLC,CF,QLA,AF,QIC,QIA, QR, QS, QG
       real, intent(inout), dimension(:,:,:) :: NI, NL, NS, NR, NG
+      real, dimension(:,:,:),   intent(in)     :: MASS
+      real, dimension(:,:),     intent(  out)  :: TMP2D
+      integer :: IM, JM, LM
 
       real, parameter  :: qmin  = 1.0e-12
       real, parameter :: cfmin  = 1.0e-4
       real, parameter :: nmin  = 100.0
-
-
 
 
       ! Fix if Anvil cloud fraction too small
@@ -1209,9 +1214,22 @@ public :: serialize_process_libraries_constants
          QLC = 0.
          QIC = 0.
       end where
+      
+        IM = SIZE( QV, 1 )
+    	JM = SIZE( QV, 2 )
+    	LM = SIZE( QV, 3 )
 
 
-
+      !make sure QI , NI stay within T limits 
+         call meltfrz_inst2M  ( IM, JM, LM,    &
+              TE              , &
+              QLC          , &
+              QLA         , &
+              QIC           , &
+              QIA          , &               
+              NL         , &
+              NI          )
+              
       !make sure no negative number concentrations are passed
       !and that N goes to minimum defaults in the microphysics when mass is too small
 
@@ -1230,6 +1248,18 @@ public :: serialize_process_libraries_constants
       where (QS .le. qmin) NS = 0.
 
       where (QG .le. qmin) NG = 0.
+      
+      ! need to clean up small negative values. MG does can't handle them
+          call FILLQ2ZERO( QV, MASS, TMP2D) 
+          call FILLQ2ZERO( QG, MASS, TMP2D) 
+          call FILLQ2ZERO( QR, MASS, TMP2D) 
+          call FILLQ2ZERO( QS, MASS, TMP2D) 
+          call FILLQ2ZERO( QLC, MASS, TMP2D)
+          call FILLQ2ZERO( QLA, MASS, TMP2D)  
+          call FILLQ2ZERO( QIC, MASS, TMP2D)
+          call FILLQ2ZERO( QIA, MASS, TMP2D)
+          call FILLQ2ZERO( CF, MASS, TMP2D)
+          call FILLQ2ZERO( AF, MASS, TMP2D)
 
    end subroutine fix_up_clouds_2M
 
@@ -1705,7 +1735,7 @@ public :: serialize_process_libraries_constants
 
 !            corrtest2 = max(-1.0,min(1.0,wqtntrgs/(sqrtw2*sqrtqt)))
             corrtest2 = max(-1.0,min(1.0,0.5*wqwsec/(sqrtw2*sqrtqt)))
-          
+
             qw1_1 = - corrtest2 / w1_2            ! A.7
             qw1_2 = - corrtest2 / w1_1            ! A.8
 
@@ -2301,17 +2331,17 @@ public :: serialize_process_libraries_constants
 
 !==========Estimate RHcrit========================
 !==============================
- subroutine pdf_alpha(PP,P_LM, ALPHA, FRLAND, MINRHCRIT, TURNRHCRIT, EIS, RHC_OPTION)
+ subroutine pdf_alpha(PP,P_LM, ALPHA, FRLAND, MINRHCRIT, TURNRHCRIT, TURNRHCRIT_UPPER, EIS, RHC_OPTION)
 
       real,    intent(in)  :: PP, P_LM !mbar
       real,    intent(out) :: ALPHA
       real,    intent(in)  :: FRLAND
-      real,    intent(in)  :: MINRHCRIT, TURNRHCRIT, EIS
+      real,    intent(in)  :: MINRHCRIT, TURNRHCRIT, EIS, TURNRHCRIT_UPPER
       integer, intent(in)  :: RHC_OPTION !0-Slingo(1985), 1-QUAAS (2012)
       real :: dw_land = 0.20 !< base value for subgrid deviation / variability over land
       real :: dw_ocean = 0.10 !< base value for ocean
       real :: sloperhcrit =20.
-      real :: TURNRHCRIT_UPPER = 300.
+      !real :: TURNRHCRIT_UPPER = 300.
       real ::  aux1, aux2, maxalpha
 
       IF (RHC_OPTION .lt. 1) then
@@ -2329,9 +2359,13 @@ public :: serialize_process_libraries_constants
              aux1 = 1.0/(1.0+exp(aux1)) !this function reproduces the old Sligo function.
           end if
 
-          !aux2= 1.0/(1.0+exp(aux2)) !this function would reverse the profile P< TURNRHCRIT_UPPER
-           aux2=1.0
-           ALPHA  = min(maxalpha*aux1*aux2, 0.3)
+           if (TURNRHCRIT_UPPER .gt. 0.0) then 
+          	 aux2= 1.0/(1.0+exp(aux2)) !this function reverses the profile P< TURNRHCRIT_UPPER
+           else
+            aux2=1.0
+           end if 
+           
+           ALPHA  = min(maxalpha*aux1*aux2, 0.4)
 
        ELSE
            ! based on Quass 2012 https://doi.org/10.1029/2012JD017495
@@ -3338,9 +3372,12 @@ subroutine update_cld( &
       QSLIQ  = GEOS_QsatLQU( TE, PL*100.0 , DQ=DQx )
       QSICE  = GEOS_QsatICE( TE, PL*100.0 , DQ=DQX )
 
-      if ((QC+QA) .gt. 1.0e-13) then
-         QSx=((QCl+QAl)*QSLIQ + QSICE*(QCi+QAi))/(QC+QA)
-      else
+      
+      IF (QCl + QAl .gt. 0.) then 
+        QSx =  QSLIQ
+      ELSEIF (QCi + QAi.gt. 0.) then 
+        QSx =  QSICE        
+      ELSE
 		 DQSx  = GEOS_DQSAT( TE, PL, QSAT=QSx )
       end if
 
@@ -3377,8 +3414,10 @@ subroutine update_cld( &
       if  (QSx .gt. tiny(1.0)) then
          RHCmicro = SCICE - 0.5*DELQ/Qsx
       else
-         RHCmicro = 0.0
+         RHCmicro = 1.0-ALPHA
       end if
+      
+      RHCmicro =  max(min(RHCmicro, 0.99), 0.6)
 
       CFALL   = max(CFo, 0.0)
       CFALL   = min(CFo, 1.0)
@@ -3392,8 +3431,7 @@ subroutine update_cld( &
 
 
 
-   subroutine meltfrz_inst2M  (     &
-         IM,JM,LM , &
+   subroutine meltfrz_inst2M  ( IM, JM, LM,    &
          TE       , &
          QCL       , &
          QAL       , &
@@ -3402,8 +3440,8 @@ subroutine update_cld( &
          NL       , &
          NI            )
 
-      integer, intent(in)                             :: IM,JM,LM
       real ,   intent(inout), dimension(:,:,:)   :: TE,QCL,QCI, QAL, QAI, NI, NL
+      integer, intent(in) :: IM, JM, LM
 
       real ,   dimension(im,jm,lm)              :: dQil, DQmax, QLTOT, QITOT, dNil, FQA
       real :: T_ICE_ALL =  240.
@@ -3413,8 +3451,7 @@ subroutine update_cld( &
       QLTOT=QCL + QAL
       FQA = 0.0
 
-
-      where (QITOT+QLTOT .gt. 0.0)
+      where (QITOT+QLTOT .gt. tiny(0.0))
          FQA= (QAI+QAL)/(QITOT+QLTOT)
       end where
 
@@ -3433,7 +3470,7 @@ subroutine update_cld( &
          dNil = NL
       end where
 
-      where ((dQil .gt. DQmax) .and. (dQil .gt. 0.0))
+      where ((dQil .gt. DQmax) .and. (dQil .gt. tiny(0.0)))
          dNil  =  NL*DQmax/dQil
       end where
 
@@ -3457,7 +3494,7 @@ subroutine update_cld( &
       where ((dQil .le. DQmax) .and. (dQil .gt. 0.0))
          dNil = NI
       end where
-      where ((dQil .gt. DQmax) .and. (dQil .gt. 0.0))
+      where ((dQil .gt. DQmax) .and. (dQil .gt. tiny(0.0)))
          dNil  =  NI*DQmax/dQil
       end where
       dQil = max(  0., dQil )

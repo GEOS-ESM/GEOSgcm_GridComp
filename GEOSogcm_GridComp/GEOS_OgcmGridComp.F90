@@ -805,12 +805,14 @@ contains
             SRC_ID = SEAICE,            &
             RC=STATUS  )
        VERIFY_(STATUS)
-       call MAPL_AddConnectivity ( GC,   &
-          SHORT_NAME  = (/'UWC','VWC'/), &
-          SRC_ID = OCEAN,                &
-          DST_ID = SEAICE,               &
-          _RC)
-     endif
+       if (trim(OCEAN_NAME) /= "MIT") then  !
+          call MAPL_AddConnectivity ( GC,   &
+               SHORT_NAME  = (/'UWC','VWC'/), &
+               SRC_ID = OCEAN,                &
+               DST_ID = SEAICE,               &
+               _RC)
+       endif
+    end if
   end if
 
   if (DO_CICE_THERMO > 1) then
@@ -846,7 +848,11 @@ contains
       call MAPL_TerminateImport    ( GC, ["DATA_KPAR "], [orad], RC=STATUS  ) ! need to terminate others as well: cosz, discharge, frocean, pice, taux, tauy
     endif
   else
-    call MAPL_TerminateImport(GC, ['DATA_UW', 'DATA_VW'], [OCEAN, OCEAN], _RC)
+     if(DO_DATA_ATM4OCN) then
+       call MAPL_TerminateImport(GC, ['DATA_UW  ', 'DATA_VW  ', 'DISCHARGE', 'CALVING  '], [OCEAN, OCEAN, OCEAN, OCEAN], _RC)
+    else
+       call MAPL_TerminateImport(GC, ['DATA_UW', 'DATA_VW'], [OCEAN, OCEAN], _RC)
+    endif
   endif
 
 ! Set the Profiling timers
@@ -1084,6 +1090,7 @@ contains
     type (MAPL_MetaComp    ), pointer   :: MAPL => null()
     type (MAPL_LocStream       )            :: EXCH
     type (ESMF_State           ), pointer   :: GIM(:) => null()
+    type (ESMF_State           ), pointer   :: GEX(:) => null()
     type (ESMF_GridComp        ), pointer   :: GCS(:) => null()
     type(ESMF_FIELDBUNDLE      )            :: BUNDLE
     type(ESMF_FIELD            )            :: FIELD
@@ -1174,6 +1181,7 @@ contains
          TILELONS  = LONS,                       &
          TILELATS  = LATS,                       &
          GIM       = GIM,                        &
+         GEX       = GEX,                        &
                                        RC=STATUS )
     VERIFY_(STATUS)
 
@@ -1217,11 +1225,11 @@ contains
        end if
     end do
 
+    ! 2nd initialization phase for CICE6
     if (DO_CICE_THERMO > 1) then
-        call ESMF_StateGet(EXPORT, 'SURFSTATE', SURFST, __RC__)
-        call MAPL_GetPointer(SURFST, FROCEAN, 'FROCEAN', __RC__)
-        call MAPL_LocStreamFracArea( EXCH, MAPL_OCEAN, FROCEAN, RC=STATUS) 
-        VERIFY_(STATUS)
+       call ESMF_GRIDCOMPInitialize(GCS(SEAICE), IMPORTSTATE=GIM(SEAICE), &
+                         EXPORTSTATE=GEX(SEAICE), CLOCK=CLOCK, PHASE=2, UserRC=STATUS)
+       VERIFY_(STATUS)
     endif 
 
 ! Put OBIO tracers into the OCEAN's tracer bundle.
@@ -1822,8 +1830,10 @@ contains
     VERIFY_(STATUS)
 
     if(DO_DATASEAONLY==0) then
-       call MAPL_LocStreamTransform( ExchGrid, DISCHARGEO, DISCHARGE, RC=STATUS) 
-       VERIFY_(STATUS)
+       if(.not. DO_DATA_ATM4OCN) then
+          call MAPL_LocStreamTransform( ExchGrid, DISCHARGEO, DISCHARGE, RC=STATUS)
+          VERIFY_(STATUS)
+       endif
      
        PENUVRM= PENUVRO
        PENUVFM= PENUVFO

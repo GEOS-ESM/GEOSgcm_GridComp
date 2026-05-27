@@ -413,9 +413,8 @@ end subroutine micro_mg_init
 ! Written by Donifan Barahona
 
 
-subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_tmp,  &
+subroutine micro_mg_tend_interface ( DT_MICRO, &
                              ncol,             LM,               dt_moist,       & 
-                             cnvfrc, srftype, &
                              ter8,                            qvr8,                              &
                              qcr8,                          qir8,                          &
                              ncr8,                          nir8,                          &
@@ -491,10 +490,7 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
 
    REAL, intent(in)     :: DT_MICRO
    real(r8), intent(in) :: DT_MOIST
-   REAL, dimension(1,1:LM) :: SCICE_tmp, FQA_tmp, ALPH_tmp
-   INTEGER, intent(in) :: LM, shape, ncol
-  
-   real                         :: cnvfrc, srftype
+   INTEGER, intent(in) :: LM, ncol  
    real(r8), dimension(1,1:LM)  ::                                                     &  
                              ter8,                          qvr8,                              &
                              qcr8,                          qir8,                          &
@@ -909,9 +905,9 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
        precir8_accum = precir8_accum  + precir8
 
  
-!       effcr8_accum = effcr8_accum  + effcr8
-!       effc_fnr8_accum = effc_fnr8_accum +effc_fnr8
-!       effir8_accum = effir8_accum + effir8
+       !effcr8_accum = effcr8_accum  + effcr8
+       !effc_fnr8_accum = effc_fnr8_accum +effc_fnr8
+       !effir8_accum = effir8_accum + effir8
        
        !use the final size instad of the average
        effcr8_accum = effcr8

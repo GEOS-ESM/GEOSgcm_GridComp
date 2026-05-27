@@ -43,6 +43,8 @@ def get_configs_from_answers(answers):
    else:
       make_bcs_input_dir = '/nobackup/gmao_SIteam/ModelData/make_bcs_inputs/'
 
+   bcs_dir ='/discover/nobackup/projects/gmao/bcs_shared/fvInput/ExtData/esm/tiles/'
+
    user   = get_user()
    expdir = answers["out_path"]
    now    = datetime.now()
@@ -63,7 +65,7 @@ def get_configs_from_answers(answers):
      
         maskfile = ''
      
-        if orslv in['O1','T2','T3','T4','T1MOM6','T3MOM6','T4MOM6']:
+        if orslv in['O1','T2','T3','T4','T1MOM6','T3MOM6','T4MOM6','T5MOM6','T8MOM6']:
            maskfile = 'GEOS5_10arcsec_mask_freshwater-lakes.nc'
            if lbcsv in ['F25', 'GM4', 'ICA']:
               maskfile = 'global.cat_id.catch.DL'
@@ -73,7 +75,7 @@ def get_configs_from_answers(answers):
            if lbcsv in ['F25', 'GM4', 'ICA']:
               maskfile = 'global.cat_id.catch.GreatLakesCaspian_Updated.DL'
         if (maskfile == ''):
-           print(" \!\!\!\! Invalid Ocean Resolution, stopping ")
+           print(" !!! Invalid Ocean Resolution, stopping !!!")
            exit()
  
         if 'EASEv1' == grid_type or 'EASEv2' == grid_type:
@@ -148,7 +150,8 @@ def get_configs_from_answers(answers):
         config ['expdir']    = expdir
         config ['outdir']    = outdir
         config ['inputdir']  = make_bcs_input_dir
-        config ['NCPUS'] = 20
+        config ['bcs_dir']   = bcs_dir
+        config ['NCPUS'] = 16
 
         for x in answers.get('Stretched_CS',[]):
             config ['SG'] = answers['SG']
@@ -181,24 +184,33 @@ def ask_questions(default_grid="Cubed-Sphere"):
     fixes that were implemented since the archived BCs in the above-mentioned \n \
     directories were originally created.  The impact of these differences on \n \
     science is insignificant, and the parameter files produced by current \n \
-    code are scientifically equivalent to the corresponding archived BCs. \n",
+    code are scientifically equivalent to corresponding archived BCs. \n \
+    Current code always applies \"mean land elevation fix\" of v13.  For v12 and earlier, land elevation produced \n \
+    by current code thus differs from that in bcs_shared project disk. \n",
             "choices": [ \
    "NL3 : Icarus-NLv3   (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv3/)", \
    "NL4 : NLv4 [SMAPL4] (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv4/) \n\
           = NL3 + JPL veg height", \
    "NL5 : NLv5 [SMAPL4] (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv5/)\n \
          = NL3 + JPL veg height + PEATMAP", \
-   "v06 : NL3 + JPL veg height + PEATMAP + MODIS snow alb", \
-   "v07 : NL3 + PEATMAP", \
-   "v08 : NL3 + MODIS snow alb", \
-   "v09 : NL3 + PEATMAP + MODIS snow alb", \
-   "v10 : NL3 + PEATMAP + MODIS snow alb v2", \
    "v11 : NL3 + JPL veg height + PEATMAP + MODIS snow alb v2", \
+   "v12 : NL3 + JPL veg height + PEATMAP + MODIS snow alb v2 + Argentina peatland fix", \
+   "v13 : As in v12 + mean land elevation fix + MOM6 v2 (OM4) ocean-seaice bathymetry", \
+   "v14 : As in v13 but with GPM 2.0 peat", \
    "ICA : Icarus        (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus/)", \
    "GM4 : Ganymed-4_0   (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Ganymed-4_0/)", \
    "F25 : Fortuna-2_5   (archived*: n/a)"], 
         },
 
+# The following bcs versions were never used for major model versions or products and thus are not in
+# the bcs_shared project directory on Discover:
+#
+#  "v06 : NL3 + JPL veg height + PEATMAP + MODIS snow alb", \
+#  "v07 : NL3 + PEATMAP", \
+#  "v08 : NL3 + MODIS snow alb", \
+#  "v09 : NL3 + PEATMAP + MODIS snow alb", \
+#  "v10 : NL3 + PEATMAP + MODIS snow alb v2", \
+      
        {
             "type": "select",
             "name": "grid_type",
@@ -266,7 +278,8 @@ def ask_questions(default_grid="Cubed-Sphere"):
                  "c720  -- 1/8  deg ( 14   km)", \
                  "c768  -- 1/10 deg ( 12   km)", \
                  "c1000 -- 1/10 deg ( 10   km)", \
-                 "c1152 -- 1/10 deg (  8   km)", \
+                 "c1120 -- 1/12 deg (  8   km)", \
+                 "c1152 -- 1/12 deg (  8   km)", \
                  "c1440 -- 1/16 deg (  7   km)", \
                  "c2880 -- 1/32 deg (  3   km)", \
                  "c3072 -- 1/32 deg (  3   km)", \
@@ -279,7 +292,7 @@ def ask_questions(default_grid="Cubed-Sphere"):
             "name": "EASEv1",
             "message": "Select EASEv1 grid resolution: \n ",
             "choices": [ \
-                 #"M01  --  1km $34668x14688$", \
+                 "M01  --  1km $34668x14688$", \
                  "M03  --  3km $11556x4896$", \
                  "M09  --  9km  $3852x1632$", \
                  "M25  -- 25km  $1383x586$", \
@@ -292,7 +305,7 @@ def ask_questions(default_grid="Cubed-Sphere"):
             "name": "EASEv2",
             "message": "Select EASEv2 grid resolution: \n ",
             "choices": [ \
-                 #"M01  --  1km $34704x14616$", \
+                 "M01  --  1km $34704x14616$", \
                  "M03  --  3km $11568x4872$", \
                  "M09  --  9km  $3856x1624$", \
                  "M25  -- 25km  $1388x584$", \
@@ -314,6 +327,8 @@ def ask_questions(default_grid="Cubed-Sphere"):
                  "T1MOM6 --  Tripolar (MOM6-Tripolar-Ocean:    $72x36$  )", \
                  "T3MOM6 --  Tripolar (MOM6-Tripolar-Ocean:   $540x458$ )", \
                  "T4MOM6 --  Tripolar (MOM6-Tripolar-Ocean:  $1440x1080$)", \
+                 "T5MOM6 --  Tripolar (MOM6-Tripolar-Ocean:   $720x576$ )", \
+                 "T8MOM6 --  Tripolar (MOM6-Tripolar-Ocean:  $2880x2240$)", \
                  "CS     --  Cubed-Sphere Ocean  (Cubed-Sphere Data-Ocean)"],
             "when": lambda x:  "Stretched_CS" == x['grid_type'] or "Cubed-Sphere" == x['grid_type'],
         },

@@ -5,84 +5,85 @@
 import os
 from make_bcs_questionary import *
 from make_bcs_shared import * 
+from datetime import datetime
+import subprocess
 
 cube_template = """
 
-if ( {STEP1} == True ) then
-  ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/360x200 data/MOM5/360x200
-  ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/720x410 data/MOM5/720x410
-  ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/1440x1080 data/MOM5/1440x1080
-  ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/72x36 data/MOM6/72x36
-  ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/540x458 data/MOM6/540x458
-  ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/1440x1080 data/MOM6/1440x1080
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/360x200 data/MOM5/360x200
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/720x410 data/MOM5/720x410
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/1440x1080 data/MOM5/1440x1080
 
-  if( -e CF{NC}x6C{SGNAME}_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout ) /bin/rm -f CF{NC}x6C{SGNAME}_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout
+if ( {TRIPOL_OCEAN} == True ) then
+  set mom6v    = {mom6_bathy_version}
+  set mom6root = {MAKE_BCS_INPUT_DIR}/ocean/MOM6/$mom6v
+  set req      = {imo}x{jmo}
 
-endif 
+  if ( ! -d $mom6root/$req ) then
+    echo "ERROR: MOM6/$mom6v/$req missing under {MAKE_BCS_INPUT_DIR}/ocean/MOM6"
+    echo "       Selected via questionnaire '{lbcsv}' -> MOM6_BATHY_VERSION=$mom6v"
+    exit 10
+  endif
 
-if ( {STEP1} == True ) then
-  bin/mkCubeFVRaster.x -x {NX} -y {NY} {SGPARAM} {STRETCH} {NC} >/dev/null 
-  bin/mkLandRaster.x -x {NX} -y {NY} -v -t {NT}
+  if ( ! -d data/MOM6 ) mkdir -p data/MOM6
+  if ( -e data/MOM6/$req ) /bin/rm -f data/MOM6/$req
+  ln -s $mom6root/$req data/MOM6/$req
 endif
 
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/{mom6_bathy_version}/72x36 data/MOM6/72x36
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/{mom6_bathy_version}/540x458 data/MOM6/540x458
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/{mom6_bathy_version}/1440x1080 data/MOM6/1440x1080
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/{mom6_bathy_version}/720x576 data/MOM6/720x576
+ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/{mom6_bathy_version}/2880x2240 data/MOM6/2880x2240
+
+
+if( -e CF{NC}x6C{SGNAME}_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout ) /bin/rm -f CF{NC}x6C{SGNAME}_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout
+
+bin/mkCubeFVRaster.x -x {NX} -y {NY} {SGPARAM} {STRETCH} {NC} >/dev/null 
+bin/mkLandRaster.x -x {NX} -y {NY} -v -t {NT}
+
 if( {LATLON_OCEAN} == True ) then
-
-   if ( {STEP1} == True ) then 
-      bin/mkLatLonRaster.x -x {NX} -y {NY} -b DE -p PE -t 0 {IMO} {JMO} >/dev/null
-      bin/CombineRasters.x -f 0 -t {NT} DE{IMO}xPE{JMO} Pfafstetter >/dev/null
-      bin/CombineRasters.x -t {NT} CF{NC}x6C{SGNAME} DE{IMO}xPE{JMO}-Pfafstetter
-      setenv OMP_NUM_THREADS 1
-      if ( {SKIPLAND} != True ) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C{SGNAME}_DE{IMO}xPE{JMO}-Pfafstetter -v {lbcsv}
-   endif
-
-   if ( {STEP2} == True ) then 
-      setenv OMP_NUM_THREADS {NCPUS}
-      if ( {SKIPLAND} != True ) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C{SGNAME}_DE{IMO}xPE{JMO}-Pfafstetter -v {lbcsv}
-      chmod 755 bin/create_README.csh
-      bin/create_README.csh
-   endif
+    bin/mkLatLonRaster.x -x {NX} -y {NY} -b DE -p PE -t 0 {IMO} {JMO} >/dev/null
+    bin/CombineRasters.x -f 0 -t {NT} DE{IMO}xPE{JMO} Pfafstetter >/dev/null
+    bin/CombineRasters.x -t {NT} CF{NC}x6C{SGNAME} DE{IMO}xPE{JMO}-Pfafstetter
+    setenv OMP_NUM_THREADS {NCPUS}
+    if ( {SKIPLAND} != True ) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C{SGNAME}_DE{IMO}xPE{JMO}-Pfafstetter -v {lbcsv}
+    setenv OMP_NUM_THREADS 1
+    chmod 755 bin/create_README.csh
+    bin/create_README.csh
 endif
 
 if( {TRIPOL_OCEAN} == True ) then
-   if ( {STEP1} == True ) then 
-      bin/mkMOMAquaRaster.x -x {NX} -y {NY} -w {OCEAN_VERSION} data/{MOM_VERSION}/{imo}x{jmo}/MAPL_Tripolar.nc > /dev/null
-      /bin/cp til/Pfafstetter.til til/Pfafstetter-ORIG.til
-      /bin/cp rst/Pfafstetter.rst rst/Pfafstetter-ORIG.rst
-      bin/FillMomGrid.x -f 0 -g Pfafstetter-M {OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO} Pfafstetter data/{MOM_VERSION}/{imo}x{jmo}/MAPL_Tripolar.nc 
-      /bin/mv til/Pfafstetter-M.til til/Pfafstetter.til
-      /bin/mv rst/Pfafstetter-M.rst rst/Pfafstetter.rst
-      bin/CombineRasters.x -f 0 -t {NT} {OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO} Pfafstetter >/dev/null
-      bin/CombineRasters.x -t {NT} CF{NC}x6C{SGNAME} {OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
-      bin/mk_runofftbl.x CF{NC}x6C{SGNAME}_{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
-      setenv OMP_NUM_THREADS 1
-      if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C{SGNAME}_{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv}
-   endif
+    bin/mkMOMAquaRaster.x -x {NX} -y {NY} -w {OCEAN_VERSION} data/{MOM_VERSION}/{imo}x{jmo}/MAPL_Tripolar.nc > /dev/null
+    /bin/cp til/Pfafstetter.til til/Pfafstetter-ORIG.til
+    /bin/cp rst/Pfafstetter.rst rst/Pfafstetter-ORIG.rst
+    bin/FillMomGrid.x -f 0 -g Pfafstetter-M {OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO} Pfafstetter data/{MOM_VERSION}/{imo}x{jmo}/MAPL_Tripolar.nc 
+    /bin/mv til/Pfafstetter-M.til til/Pfafstetter.til
+    /bin/mv rst/Pfafstetter-M.rst rst/Pfafstetter.rst
+    bin/CombineRasters.x -f 0 -t {NT} {OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO} Pfafstetter >/dev/null
+    bin/CombineRasters.x -t {NT} CF{NC}x6C{SGNAME} {OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
+    bin/mk_runofftbl.x -g CF{NC}x6C{SGNAME}_{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv}
 
-   if ( {STEP2} == True ) then 
-      setenv OMP_NUM_THREADS {NCPUS}
-      if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C{SGNAME}_{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv}
-      chmod 755 bin/create_README.csh
-      bin/create_README.csh
-   endif
+    if ({SKIPLAND} != True) then
+      bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C{SGNAME}_{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv} -p no
+      bin/ExtractBCsFromOrig.py {BCS_DIR}  {lbcsv} CF{NC}x6C{SGNAME} {OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}
+    endif
+ 
+    chmod 755 bin/create_README.csh
+    bin/create_README.csh
 endif
 
 if( {CUBED_SPHERE_OCEAN} == True ) then
-   if ( {STEP1} == True ) then 
-      if ( {IS_STRETCHED} == True ) then
-         bin/mkCubeFVRaster.x -x {NX} -y {NY} {STRETCH} {NC} >/dev/null 
-      endif
-      bin/CombineRasters.x -f 0 -t {NT} CF{NC}x6C Pfafstetter >/dev/null
-      bin/CombineRasters.x -t {NT} {SGPARAM} CF{NC}x6C CF{NC}x6C-Pfafstetter
-      setenv OMP_NUM_THREADS 1
-      if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C{SGNAME}_CF{NC}x6C-Pfafstetter -v {lbcsv}
-   endif
-
-   if ( {STEP2} == True ) then 
-      setenv OMP_NUM_THREADS {NCPUS}
-      if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C{SGNAME}_CF{NC}x6C-Pfafstetter -v {lbcsv} 
-      chmod 755 bin/create_README.csh
-      bin/create_README.csh
-   endif
+    if ( {IS_STRETCHED} == True ) then
+       bin/mkCubeFVRaster.x -x {NX} -y {NY} {STRETCH} {NC} >/dev/null 
+    endif
+    bin/CombineRasters.x -f 0 -t {NT} CF{NC}x6C Pfafstetter >/dev/null
+    bin/CombineRasters.x -t {NT} {SGPARAM} CF{NC}x6C CF{NC}x6C-Pfafstetter
+    setenv OMP_NUM_THREADS {NCPUS}
+    if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C{SGNAME}_CF{NC}x6C-Pfafstetter -v {lbcsv}
+    setenv OMP_NUM_THREADS 1
+    chmod 755 bin/create_README.csh
+    bin/create_README.csh
 endif
 
 """
@@ -158,26 +159,46 @@ def make_bcs_cube(config):
   if not os.path.exists(log_dir):
     os.makedirs(log_dir)
 
-  STEP1 = True
-  STEP2 = True
-  GRIDNAME2 = GRIDNAME
+  TOPO_VERSION       = topo_version_for_bcs(config['lbcsv'])
+  MOM6_BATHY_VERSION = mom6_bathy_version_for_bcs(config['lbcsv'])
+
+  # ---------- INPUT CHECKS (abort before sbatch) ----------
+  # 1) TOPO must exist for this grid
+  topo_dir = f"CF{NC}x6C{SGNAME}"              # CF0090x6C or CF0540x6C-SG001
+  topo_src = os.path.join(config['inputdir'], "atmosphere", "TOPO", TOPO_VERSION, topo_dir)
+  if not os.path.isdir(topo_src):
+      print(f"ABORT: Missing TOPO: {topo_src} "
+            f"(LBCSV={config['lbcsv']} TOPO_VERSION={TOPO_VERSION})")
+      return
+  
+  # 2) MOM6 bathymetry: strict, check ONLY the size used by this run
+  if config["TRIPOL_OCEAN"]:
+      req = f"{config['imo']}x{config['jmo']}"  # 540x458 or 1440x1080
+      mom6_src = os.path.join(config['inputdir'], "ocean", "MOM6", MOM6_BATHY_VERSION, req)
+      if not os.path.isdir(mom6_src):
+          print(f"ABORT: Missing MOM6 bathymetry: {mom6_src} "
+                f"(LBCSV={config['lbcsv']} MOM6={MOM6_BATHY_VERSION})")
+          return
+
+  msg = f"[make_bcs_cube] LBCSV={config['lbcsv']}  TOPO={TOPO_VERSION}  GRID={GRIDNAME}"
+  
+  if config["TRIPOL_OCEAN"]:
+      msg = msg + f"  MOM6={MOM6_BATHY_VERSION}  REQ={config['imo']}x{config['jmo']}"
+  
+  print(msg)
+  # -------------------------------------------------------------------
+
   script_template = get_script_head() + cube_template + get_script_mv(config['grid_type'])
-  if resolution in ['c1080' ,'c1536', 'c2160', 'c2880', 'c3072','c5760'] :
-     STEP1 = True
-     STEP2 = False
-     script_template = get_script_head() + cube_template 
 
   script_string = script_template.format(\
            account = account, \
            EXPDIR = config['expdir'], \
            TMP_DIR = tmp_dir, \
            GRIDNAME  = GRIDNAME, \
-           GRIDNAME2 = GRIDNAME2, \
-           STEP1   = STEP1, \
-           STEP2   = STEP2, \
            SCRATCH_DIR = scratch_dir, \
            bin_dir = bin_dir, \
            MAKE_BCS_INPUT_DIR = config['inputdir'], \
+           BCS_DIR  = config['bcs_dir'], \
            DATENAME = DATENAME, \
            POLENAME = POLENAME, \
            OCEAN_VERSION = OCEAN_VERSION, \
@@ -205,62 +226,14 @@ def make_bcs_cube(config):
            STRETCH = STRETCH, \
            SGNAME  = SGNAME, \
            SGPARAM = SGPARAM, \
+           TOPO_VERSION = TOPO_VERSION, \
+           mom6_bathy_version = MOM6_BATHY_VERSION, \
            IS_STRETCHED = IS_STRETCHED, \
-           NCPUS = config['NCPUS'])
+           NCPUS = config['NCPUS'])           
 
   cube_job = open(bcjob,'wt')
   cube_job.write(script_string)
   cube_job.close()
-
-  if resolution in ['c1080' ,'c1536', 'c2160', 'c2880', 'c3072','c5760'] :
-     STEP1 = False
-     STEP2 = True
-     GRIDNAME2 = GRIDNAME+'-2'
-     script_template = get_script_head() + cube_template + get_script_mv(config['grid_type'])
-     script_string = script_template.format(\
-           account = account, \
-           EXPDIR = config['expdir'], \
-           TMP_DIR = tmp_dir, \
-           GRIDNAME  = GRIDNAME, \
-           GRIDNAME2 = GRIDNAME2, \
-           STEP1   = STEP1, \
-           STEP2   = STEP2, \
-           SCRATCH_DIR = scratch_dir, \
-           bin_dir = bin_dir, \
-           MAKE_BCS_INPUT_DIR = config['inputdir'], \
-           DATENAME = DATENAME, \
-           POLENAME = POLENAME, \
-           OCEAN_VERSION = OCEAN_VERSION, \
-           SKIPLAND = SKIPLAND, \
-           MOM_VERSION = config['MOM_VERSION'], \
-           LATLON_OCEAN= config['LATLON_OCEAN'], \
-           TRIPOL_OCEAN= config['TRIPOL_OCEAN'], \
-           CUBED_SPHERE_OCEAN = config['CUBED_SPHERE_OCEAN'], \
-           nc  = nc, \
-           nc6 = nc6, \
-           imo = config['imo'], \
-           jmo = config['jmo'], \
-           IRRIGTHRES = 2, \
-           IMO = IMO, \
-           JMO = JMO, \
-           NC  = NC, \
-           MASKFILE = config['MASKFILE'], \
-           lbcsv    = config['lbcsv'], \
-           NX = config['NX'], \
-           NY = config['NY'], \
-           NT = config['NT'], \
-           RC = RC,\
-           SG = SG,\
-           STRETCH = STRETCH, \
-           SGNAME  = SGNAME, \
-           SGPARAM = SGPARAM, \
-           IS_STRETCHED = IS_STRETCHED, \
-           RS = '-Pfafstetter',\
-           NCPUS = config['NCPUS'])
-
-     cube_job = open(bcjob+'-2','wt')
-     cube_job.write(script_string)
-     cube_job.close()
 
   interactive = os.getenv('SLURM_JOB_ID', default = None)
   if ( interactive ) :
@@ -280,10 +253,6 @@ def make_bcs_cube(config):
     out = subprocess.check_output(['sbatch', bcjob])
     jobid = str(int(out.split()[3]))
     print( "Submitted batch job " + jobid)
-    if resolution in ['c1080' ,'c1536', 'c2160', 'c2880', 'c3072','c5760'] :
-      print("sbatch " + bcjob+'-2' + " depending on " + bcjob + "\n")
-      subprocess.call(['sbatch', '--dependency=afterok:'+jobid, bcjob+'-2'])
-      print()
        
   print( "cd " + bin_dir)
   os.chdir(bin_dir)
@@ -295,6 +264,5 @@ if __name__ == "__main__":
    answers = ask_questions()
    configs = get_configs_from_answers(answers)
    for config in configs:
-      if grid_type in ["Stretched_CS", "Cubed-Sphere"] :
-         make_bcs_cube(config)
-
+       if config['grid_type'] in ["Stretched_CS", "Cubed-Sphere"]:
+           make_bcs_cube(config)   
