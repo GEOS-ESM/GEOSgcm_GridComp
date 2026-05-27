@@ -13,7 +13,6 @@ if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_AgcmSimpleGridComp.F90)
     SUBCOMPONENTS GEOSsuperdyn_GridComp GEOShs_GridComp
     DEPENDENCIES MAPL ESMF::ESMF
     TYPE SHARED)
-  install(FILES agcm-simple.yaml DESTINATION etc)
 
 # Temporarily bypass GEOSagcm top-level library: GEOS_AgcmGridComp.F90
 # USE-s non-ported components (e.g. GEOS_superdynGridCompMod). Restore

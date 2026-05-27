@@ -1,0 +1,13 @@
+active_collections:
+  - HeldSuarez
+
+time_specs:
+  three_hour: &one_hour
+    frequency: PT1H
+
+collections:
+  HeldSuarez:
+    template: "%c.nc4"
+    time_spec: *one_hour
+    var_list:
+      DISS_HS: {source: PHYS.DISS}

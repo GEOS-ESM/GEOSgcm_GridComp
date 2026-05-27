@@ -121,8 +121,9 @@ contains
       end if
 
       ! Re-export, use MAPL_GridCompReexport(gc, src_comp="DYN", src_name="U", _RC)
-      call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="U", _RC)
-      call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="V", _RC)
+      ! call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="U", _RC)
+      ! call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="V", _RC)
+      call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="UV", _RC) ! vector
       call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="W", _RC)
       call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="T", _RC)
       call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="S", _RC)

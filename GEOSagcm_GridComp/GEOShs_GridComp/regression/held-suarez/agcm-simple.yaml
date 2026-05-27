@@ -3,17 +3,6 @@ mapl:
   geometry:
     kind: from_child
     provider: SDYN
-    # geometry:
-    # esmf_geom:
-    #   class: CubedSphere
-    #   im_world: 12
-    # vertical_grid:
-    #   class: model
-    #   standard_name: air_pressure
-    #   units: hPa
-    #   num_levels: 91
-    #   field_edge: PLE
-    #   field_center: PE
 
   children:
     DataMoist:

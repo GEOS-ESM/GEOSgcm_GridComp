@@ -1,0 +1,4 @@
+mapl:
+  geometry:
+    kind: from_child
+    provider: DYN

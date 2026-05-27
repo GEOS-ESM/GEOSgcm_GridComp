@@ -1,0 +1,33 @@
+mapl:
+  states:
+    internal:
+      DQVANA:
+        standard_name: "specific_humidity_increment_from_analysis"
+        units: "kg kg-1"
+        vertical_dim_spec: "c"
+        fill_value: 0.0
+      DQLANA:
+        standard_name: "specific_humidity_liquid_increment_from_analysis"
+        units: "kg kg-1"
+        vertical_dim_spec: "c"
+        fill_value: 0.0
+      DQIANA:
+        standard_name: "specific_humidity_ice_increment_from_analysis"
+        units: "kg kg-1"
+        vertical_dim_spec: "c"
+        fill_value: 0.0
+      DQRANA:
+        standard_name: "specific_humidity_rain_increment_from_analysis"
+        units: "kg kg-1"
+        vertical_dim_spec: "c"
+        fill_value: 0.0
+      DQSANA:
+        standard_name: "specific_humidity_snow_increment_from_analysis"
+        units: "kg kg-1"
+        vertical_dim_spec: "c"
+        fill_value: 0.0
+      DQGANA:
+        standard_name: "specific_humidity_graupel_increment_from_analysis"
+        units: "kg kg-1"
+        vertical_dim_spec: "c"
+        fill_value: 0.0

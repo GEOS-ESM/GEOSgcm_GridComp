@@ -1,0 +1,36 @@
+---
+cap:
+  name: CAP
+  restart: cap_restart.yaml
+
+  clock:
+    dt: PT30M
+    start: 1891-03-01T00:00:00
+    stop: 2999-03-02T21:00:00
+    segment_duration: PT1H # PT1H, P1D etc.
+
+  run_extdata: false
+  run_history: true
+  history_name: History
+  root_name: AGCM
+
+  mapl:
+    children:
+      History:
+        dso: libMAPL.history
+        config_file: history.yaml
+      AGCM:
+        dso: libGEOSagcm_GridComp.so
+        config_file: agcm-simple.yaml
+
+  checkpointing:
+    enabled: true
+    final: true
+    path: checkpoints
+
+esmf:
+  logKindFlag: ESMF_LOGKIND_MULTI_ON_ERROR
+  logAppendFlag: false
+
+mapl:
+  model_petcount: 6

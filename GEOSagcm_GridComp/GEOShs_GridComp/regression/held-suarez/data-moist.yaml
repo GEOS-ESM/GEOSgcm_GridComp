@@ -1,0 +1,58 @@
+mapl:
+  states:
+    internal:
+      Q:
+        standard_name: "specific_humidity"
+        units: "kg kg-1"
+        vertical_dim_spec: "c"
+        fill_value: 1.0e-6
+      QLLS:
+        standard_name: "mass_fraction_of_large_scale_cloud_liquid_water"
+        units: "kg kg-1"
+        vertical_dim_spec: "c"
+        fill_value: 0.0
+      QLCN:
+        standard_name: "mass_fraction_of_convective_cloud_liquid_water"
+        units: "kg kg-1"
+        vertical_dim_spec: "c"
+        fill_value: 0.0
+      QILS:
+        standard_name: "mass_fraction_of_large_scale_cloud_ice_water"
+        units: "kg kg-1"
+        vertical_dim_spec: "c"
+        fill_value: 0.0
+      QICN:
+        standard_name: "mass_fraction_of_convective_cloud_ice_water"
+        units: "kg kg-1"
+        vertical_dim_spec: "c"
+        fill_value: 0.0
+      CLLS:
+        standard_name: "large_scale_cloud_area_fraction"
+        units: "1"
+        vertical_dim_spec: "c"
+        fill_value: 0.0
+      CLCN:
+        standard_name: "convective_cloud_area_fraction"
+        units: "1"
+        vertical_dim_spec: "c"
+        fill_value: 0.0
+      QRAIN:
+        standard_name: "mass_fraction_of_rain"
+        units: "kg kg-1"
+        vertical_dim_spec: "c"
+        fill_value: 0.0
+      QSNOW:
+        standard_name: "mass_fraction_of_snow"
+        units: "kg kg-1"
+        vertical_dim_spec: "c"
+        fill_value: 0.0
+      QGRAUPEL:
+        standard_name: "mass_fraction_of_graupel"
+        units: "kg kg-1"
+        vertical_dim_spec: "c"
+        fill_value: 0.0
+
+    import:
+      TRADV:
+        class: service
+        items: [Q, QLLS, QLCN, QILS, QICN, CLLS, CLCN, QRAIN, QSNOW, QGRAUPEL]

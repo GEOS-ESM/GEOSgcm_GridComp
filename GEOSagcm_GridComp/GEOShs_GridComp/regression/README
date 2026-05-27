@@ -1,0 +1,1 @@
+This is a regression test for the AgcmSimple gridcomp (and its children), placed here for convenience so that no additional directories need to be excluded when checking out GEOSgcm.
