@@ -59,12 +59,11 @@
 /
 
 &grid_nml
-    grid_format  = 'nc'
+    grid_format  = 'geosnc'
     grid_type    = 'tripole'
-    grid_subtype = 'geosmom'
     grid_ice     = 'C'
     grid_atm     = 'A'
-    grid_ocn     = 'C'
+    grid_ocn     = 'A'
     grid_file    = 'cice6_grid.nc'
     kmt_file     = 'cice6_kmt.nc'
     bathymetry_file = 'cice6_global.bathy.nc'
@@ -231,6 +230,8 @@
     rotate_wind     = .true.
     calc_strair     = .true.
     calc_Tsfc       = .true.
+    semi_implicit_Tsfc = .true.
+    vapor_flux_correction = .ture.
     highfreq        = .false.
     natmiter        = 5
     atmiter_conv    = 0.0d0
