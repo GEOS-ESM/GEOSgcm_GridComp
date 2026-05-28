@@ -61,8 +61,14 @@ def finalize_precip(
         icefall = precipitated_ice + precipitated_graupel
         freezing_rainfall = 0.0
 
+        # Convert precipitation fluxes from (Pa kg/kg) to (kg m-2 s-1)
+        # do lowest level first
+        large_scale_nonanvil_ice_flux = large_scale_nonanvil_ice_flux / (MAPL_GRAV * DT_MOIST)
+        large_scale_nonanvil_liquid_flux = large_scale_nonanvil_liquid_flux / (MAPL_GRAV * DT_MOIST)
+
     with computation(FORWARD), interval(...):
         # Convert precipitation fluxes from (Pa kg/kg) to (kg m-2 s-1)
+        # all other levels (k_interface_dim)
         large_scale_nonanvil_ice_flux[0, 0, 1] = large_scale_nonanvil_ice_flux[0, 0, 1] / (MAPL_GRAV * DT_MOIST)
         large_scale_nonanvil_liquid_flux[0, 0, 1] = large_scale_nonanvil_liquid_flux[0, 0, 1] / (MAPL_GRAV * DT_MOIST)
 
