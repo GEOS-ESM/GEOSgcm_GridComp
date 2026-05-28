@@ -5,7 +5,6 @@ import os
 import numpy as np
 from ndsl.dsl.typing import Float, Int
 
-
 _f32 = np.float32
 _f64 = np.float64
 _i32 = np.int32
@@ -145,3 +144,6 @@ R_AIR = Float(3.47e-3)  # m3 Pa kg-1K-1, also used in GFDL_1M, but defined in ae
 
 # Python equivalent of Fortran's tiny(X)
 FLOAT_TINY = np.finfo(Float).tiny
+
+# Define number of modes for Aerosol Activation
+N_MODES = 14
