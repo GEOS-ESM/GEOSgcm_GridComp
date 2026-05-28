@@ -6,9 +6,9 @@
 module rmTinyCatchParaMod
 
   use LDAS_DateTimeMod
-  use MAPL_ConstantsMod
+  use MAPL_Constants
   use MAPL_Base,           ONLY: MAPL_UNDEF
-  use MAPL,                only: MAPL_WriteTilingNC4
+  use MAPL,                only: MAPL_WriteTilingNC4, MAPL_ease_extent
   use lsm_routines,        ONLY: sibalb
   use LogRectRasterizeMod, ONLY: SRTM_maxcat, MAPL_UNDEF_R8
   
@@ -1247,12 +1247,17 @@ contains
     real*4,            allocatable, target :: q0 (:,:)
     real(REAL64),      allocatable         :: rTable(:,:)
     integer,           allocatable         :: iTable(:,:)
+    real(REAL64),      allocatable         :: rTable_keep(:,:)
+    integer,           allocatable         :: iTable_keep(:,:)
     character(len=128)                     :: gName(2)
     logical,           allocatable         :: IsOcean(:)
+    logical,           allocatable         :: keep_tile(:)
     ! This is used to adjust EASE grid from 1-based to 0-based indexes
     ! The tile file with only one EASE grid is already 0-based and may not go through this subroutine
     ! This is a special case for river-routing. The ocean grid is also EASE just for convenience
-    logical                                :: two_EASE 
+    logical                                 :: two_EASE 
+    integer                                 :: ip_keep, k, nc_tmp, nr_tmp
+    real                                    :: EASE_LAT_MAX !
 
     ! LakeTopoCat / ReachTopoCat LakeType
     integer, allocatable :: tile_lake_type(:)
@@ -1505,10 +1510,12 @@ contains
     
     if (two_EASE) then
        iTable(:,2) = iTable(:,2) - 1
-       iTable(:,3) = iTable(:,3) - 1
+       !flip to make it consistent with conventional EASE indexing
+       iTable(:,3) = JM(1) - iTable(:,3)
+       
        where (iTable(:,0) == 0)
           iTable(:,4) = iTable(:,4) -1
-          iTable(:,5) = iTable(:,5) -1
+          iTable(:,5) = JM(1) - iTable(:,5)
        endwhere
        j = index(gName(2), "-Pfafstetter")
        gName(2) = gName(2)(1:j-1)
@@ -1530,8 +1537,36 @@ contains
     endwhere
     
     fname=trim(fnameTil)//'.nc4'
-    call MAPL_WriteTilingNC4(fname,  gName(1:n_grid), im(1:n_grid), jm(1:n_grid), nx, ny, iTable, rTable, N_PfafCat=SRTM_maxcat, rc=status)
 
+    if (two_EASE) then
+       ! remove tiles outside EASE grid domain
+       call MAPL_ease_extent(gName(1), nc_tmp, nr_tmp, ur_lat = EASE_LAT_MAX)
+       allocate(keep_tile(ip))
+       keep_tile = (rTable(1:ip,2) <= EASE_LAT_MAX) .and. (rTable(1:ip,2) >= -EASE_LAT_MAX)
+       ip_keep = count(keep_tile)
+       ASSERT_(ip_keep > 0)
+
+       allocate(iTable_keep(ip_keep,0:7))
+       allocate(rTable_keep(ip_keep,10))
+
+       k = 0
+       do n = 1, ip
+          if (keep_tile(n)) then
+             k = k + 1
+             iTable_keep(k,0:7) = iTable(n,0:7)
+             rTable_keep(k,1:10) = rTable(n,1:10)
+          endif
+       enddo
+
+       call MAPL_WriteTilingNC4(fname,  gName(1:n_grid), im(1:n_grid), jm(1:n_grid),  &
+            nx, ny, iTable_keep, rTable_keep, N_PfafCat=SRTM_maxcat, rc=status)
+
+       deallocate(iTable_keep, rTable_keep, keep_tile)
+    else
+       call MAPL_WriteTilingNC4(fname,  gName(1:n_grid), im(1:n_grid), jm(1:n_grid),  &
+             nx, ny, iTable, rTable, N_PfafCat=SRTM_maxcat, rc=status)
+    endif
+    
     ! LakeTopoCat / ReachTopoCat:
     ! compute encoded LakeType in tile space and append to nc4 tile file.
     !
@@ -1553,8 +1588,9 @@ contains
     if (rc_lake == 0) call AppendLakeTypeToTileNC4(fname, ip, tile_lake_type)
     
     deallocate(tile_lake_type)
+
     ! --------------------------------------------
-    
+
     deallocate (rTable, iTable)
     deallocate (limits)
     deallocate (catid)

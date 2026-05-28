@@ -10,3 +10,4 @@ test_data/
 test_data/
 sandbox/
 *.mod
+*geos_state_bias*
