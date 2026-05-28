@@ -1,8 +1,10 @@
 name: NDSL Lint & Translate Tests
 
 on:
-  push:
-    paths: "./GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist/**"
+  pull_request:
+    paths:
+      - '.github/workflows/ndsl-checks.yml'
+      - 'GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist/**'
   workflow_dispatch:
 
 # cancel running jobs if theres a newer push
@@ -14,30 +16,29 @@ jobs:
   main:
     env:
       DATA_PATH: ./test_data/11.5.2/TBC_C24_L72/moist
-      DATA_URL: "https://portal.nccs.nasa.gov/datashare/astg/smt/geos-fp/translate/11.5.2/x86_GNU/Moist/TBC_C24L72.tar.gz"
+      DATA_URL: "https://portal.nccs.nasa.gov/datashare/astg/smt/geos-fp/translate/11.5.2/x86_GNU/Moist/TBC_C24L72_20251208.tar.gz"
     runs-on: ubuntu-latest
     steps:
-      - name: Step Python 3.11
+      - name: Step Python 3.12
         uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          python-version: '3.12'
 
       - name: Install MPI
         run: pip install mpich
 
       - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          submodules: 'recursive'
 
       - name: Install Python packages
         run: |
-          pip install ./GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist[develop]
+          cd GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
+          pip install .
 
       - name: Run lint via pre-commit
         run: |
           cd GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
-          pre-commit run --all-files
+          pre-commit run --all-files --show-diff-on-failure
 
       - name: Build Documentation
         run: |
@@ -48,15 +49,31 @@ jobs:
         run: |
           cd GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
           mkdir -p ${{ env.DATA_PATH }} && cd ${{ env.DATA_PATH }}
-          wget ${{ env.DATA_URL }}
-          tar -xzvf TBC_C24L72.tar.gz
+          wget --no-verbose ${{ env.DATA_URL }}
+          tar -xzf TBC_C24L72_20251208.tar.gz
+          # These don't have translate tests
+          rm Constants.MAPL-In.nc
+          rm Constants.ProcessLibrary-In.nc
+          rm GF2020_CumulusParameterization_TriggerFunctionConvection-In.nc
+          rm ComputeUwshcu-In.nc
+          rm AerActivation-In.nc
+          rm GF2020_CumulusParameterization_GetBuoyancy_1-In.nc
+          rm GF2020_CumulusParameterization_UpdraftCIN-In.nc
+          rm GF2020_CumulusParameterization_InCloudTemperature-In.nc
+          rm GF2020_CumulusParameterization_EnvironmentCloudLevels_1-In.nc
+          rm GF2020_CumulusParameterization_UpdraftInitialWorkfunctions-In.nc
+          rm GF2020_CumulusParameterization_MeltingProfile-In.nc
 
       - name: Run regular unit tests
+        env:
+          EXP_NAME: 'gcm-fp'
         run : |
           cd GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
-          pytests ./tests/numerical
+          pytest ./tests/numerical
           
       - name: Run translate tests
+        env:
+          EXP_NAME: 'gcm-fp'
         run: |
           cd GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist/tests/scripts/
           ./run_all.sh ../../${{ env.DATA_PATH }} st:dace:cpu:KIJ
