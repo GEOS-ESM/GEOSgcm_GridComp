@@ -1564,7 +1564,7 @@ contains
        deallocate(iTable_keep, rTable_keep, keep_tile)
     else
        call MAPL_WriteTilingNC4(fname,  gName(1:n_grid), im(1:n_grid), jm(1:n_grid),  &
-             nx, ny, iTable, rTable, N_PfafCat=SRTM_maxcat, rc=status)
+            nx, ny, iTable, rTable, N_PfafCat=SRTM_maxcat, rc=status)
     endif
     
     ! LakeTopoCat / ReachTopoCat:
@@ -1581,12 +1581,12 @@ contains
     ! returns rc_lake>0 otherwise.
     
     allocate(tile_lake_type(ip))   ! ip = n_tile
-    
+
     call LakeTopoCat_on_tiles_from_raster(ip, nx, ny, Rst_id, &
          iTable(1:ip,0), tile_lake_type, rc_lake)
-    
+
     if (rc_lake == 0) call AppendLakeTypeToTileNC4(fname, ip, tile_lake_type)
-    
+
     deallocate(tile_lake_type)
 
     ! --------------------------------------------

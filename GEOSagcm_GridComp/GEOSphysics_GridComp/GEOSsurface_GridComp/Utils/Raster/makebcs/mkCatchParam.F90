@@ -12,7 +12,7 @@ PROGRAM mkCatchParam
   !     -y: Size of latitude dimension of input raster.             DEFAULT: 4320
   !     -b: Position of dateline w.r.t. first grid cell boundaries. DEFAULT: DC (dateline-on-center)
   !     -g: Gridname (name of the .til or .rst file without file extension)  
-  !     -v: LBCSV : Land bcs version (F25, GM4, ICA, NL3, NL4, NL5, v06, v07, v08, v09)
+  !     -v: LBCSV : Land bcs version (F25, GM4, ICA, NL3, NL4, NL5, v06, v07, v08, v09, v11, ...)
   !     
   !
   ! This program is good to generate  

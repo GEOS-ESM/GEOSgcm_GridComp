@@ -50,8 +50,8 @@ from affine import Affine
 # Paths (edit as needed)
 # ------------------------------------------------------------------
 shapefile_dir = "/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/lake/Lake_TopoCat/v1/Lakes/"
-out_dir = "/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/lake/Lake_TopoCat/v1/lake_mask_build/"
-out_global = "/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/lake/lake_mask/v1/before_splitting_nc4/LakeTopoCat_Global_30arcsec.nc4"
+out_dir       = "/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/lake/Lake_TopoCat/v1/lake_mask_build/"
+out_global    = "/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/lake/lake_mask/v1/before_splitting_nc4/LakeTopoCat_Global_30arcsec.nc4"
 
 
 os.makedirs(out_dir, exist_ok=True)
