@@ -113,11 +113,11 @@ PROGRAM mkEASETilesParam
   character(len=512)     :: fname_mask
   character(len=400)     :: MAKE_BCS_INPUT_DIR
 
- ! LakeTopoCat / ReachTopoCat LakeType
+  ! LakeTopoCat / ReachTopoCat LakeType
   integer, allocatable :: tile_lake_type(:)
   integer              :: rc_lake  
- ! ----------------------------------------------
-
+  ! ----------------------------------------------
+  
   call get_environment_variable( "MAKE_BCS_INPUT_DIR", MAKE_BCS_INPUT_DIR )
   
   usage1 = 'USAGE : bin/mkEASETilesParam.x -ease_label EASELabel                    '
@@ -981,6 +981,11 @@ PROGRAM mkEASETilesParam
   call MAPL_WriteTilingNC4('til/'//trim(gfile)//'.nc4', [EASELabel],[nc_ease],[nr_ease], &
        nc, nr, iTable, rTable)
 
+  ! GEOS lake tiles include coastal ocean surfaces such as fjords and estuaries
+  !
+  ! To distinguish between these surfaces and "real" lakes (inland water), add
+  ! a tile-space flag (field) to the nc4 tile file with information based on LakeTopoCat v1.1 data.
+  !  
   ! LakeTopoCat / ReachTopoCat:
   ! compute encoded LakeType in tile space and append to nc4 tile file.
   !
