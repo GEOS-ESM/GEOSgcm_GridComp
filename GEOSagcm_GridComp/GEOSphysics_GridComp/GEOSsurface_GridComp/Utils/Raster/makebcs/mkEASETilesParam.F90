@@ -29,10 +29,11 @@ PROGRAM mkEASETilesParam
   ! - removed repetition of identical operations
   ! - added comments
   ! - white-space changes for improved readability
-  use, intrinsic :: iso_fortran_env, only: REAL64 
+  use, intrinsic :: iso_fortran_env, only: REAL64
   use rmTinyCatchParaMod,    only : i_raster, j_raster 
   use rmTinyCatchParaMod,    only : RegridRasterReal     
   use rmTinyCatchParaMod,    only : Target_mean_land_elev
+  use rmTinyCatchParaMod,    only : LakeTopoCat_on_tiles_from_raster, AppendLakeTypeToTileNC4
   use process_hres_data,     only : histogram
   use LogRectRasterizeMod,   only : SRTM_maxcat, MAPL_UNDEF_R8   ! rasterize.F90
   use MAPL_SortMod
@@ -112,7 +113,10 @@ PROGRAM mkEASETilesParam
   character(len=512)     :: fname_mask
   character(len=400)     :: MAKE_BCS_INPUT_DIR
 
-  ! --------------------------------------------------------------------------------------
+  ! LakeTopoCat / ReachTopoCat LakeType
+  integer, allocatable :: tile_lake_type(:)
+  integer              :: rc_lake  
+  ! ----------------------------------------------
   
   call get_environment_variable( "MAKE_BCS_INPUT_DIR", MAKE_BCS_INPUT_DIR )
   
@@ -976,7 +980,37 @@ PROGRAM mkEASETilesParam
 
   call MAPL_WriteTilingNC4('til/'//trim(gfile)//'.nc4', [EASELabel],[nc_ease],[nr_ease], &
        nc, nr, iTable, rTable)
+
+  ! GEOS lake tiles include coastal ocean surfaces such as fjords and estuaries
+  !
+  ! To distinguish between these surfaces and "real" lakes (inland water), add
+  ! a tile-space flag (field) to the nc4 tile file with information based on LakeTopoCat v1.1 data.
+  !  
+  ! LakeTopoCat / ReachTopoCat:
+  ! compute encoded LakeType in tile space and append to nc4 tile file.
+  !
+  ! tile_lake_type:
+  !   -9999 = UNDEF / excluded, e.g. typ==100
+  !       0 = no LakeTopoCat lake or ReachTopoCat reach touch
+  !       1 = lake touch only
+  !       2 = reach touch only
+  !       3 = lake + reach touch
+  !
+  ! This runs only with nc=43200, nr=21600 for GEOS5_10arcsec_mask workflows;
+  ! returns rc_lake>0 otherwise.
   
+  allocate(tile_lake_type(n_landlakelandice))
+  
+  call LakeTopoCat_on_tiles_from_raster(n_landlakelandice, nc, nr, tileid_index, &
+       iTable(1:n_landlakelandice,0), tile_lake_type, rc_lake)
+  
+  if (rc_lake == 0) call AppendLakeTypeToTileNC4( &
+       'til/'//trim(gfile)//'.nc4', n_landlakelandice, tile_lake_type)
+  
+  deallocate(tile_lake_type)
+
+  ! -------------------------------------------- 
+
   deallocate( tileid_index, catid_index,veg )
   deallocate( tile_area, ease_grid_area, tile_elev, my_land, all_id )
  
