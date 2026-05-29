@@ -1298,7 +1298,7 @@ module GEOS_OpenwaterGridCompMod
           UNITS              = 'PSU',                             &
           DIMS               = MAPL_DimsTileOnly,                 &
           VLOCATION          = MAPL_VLocationNone,                &
-          DEFAULT            = 30.0,                              &
+          DEFAULT            = 33.3333,                           &  !SK - Match the SS_FOUND in OpenWater and SeaiceInterface
           _RC)
 
      call MAPL_AddImportSpec(GC,                                  &
