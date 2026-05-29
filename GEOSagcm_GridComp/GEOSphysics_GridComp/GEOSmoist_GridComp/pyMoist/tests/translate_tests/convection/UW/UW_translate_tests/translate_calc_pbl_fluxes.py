@@ -75,7 +75,11 @@ class TranslateCalcPblFluxes(TranslateFortranData2Py):
         self._calc_pbl_fluxes = self.stencil_factory.from_dims_halo(
             func=calc_pbl_fluxes,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"ncnst": config.NCNST, "dt": config.dt, "dotransport": config.dotransport},
+            externals={
+                "ncnst": config.NCNST,
+                "dt": config.dt,
+                "dotransport": config.dotransport,
+            },
         )
 
         # Inputs
@@ -136,7 +140,7 @@ class TranslateCalcPblFluxes(TranslateFortranData2Py):
         uflx = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
         vflx = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
         xflx = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
-        xflx_ndim = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM, "ntracers"], units="n/a")
+        xflx_ndim = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM, "ntracers"], units="n/a")
 
         saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory.backend)
         self.ese = saturation_vapor_pressure_table.ese
