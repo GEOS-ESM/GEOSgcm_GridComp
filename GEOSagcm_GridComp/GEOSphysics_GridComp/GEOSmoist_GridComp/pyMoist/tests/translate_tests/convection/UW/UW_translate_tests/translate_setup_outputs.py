@@ -81,7 +81,7 @@ class TranslateSetupOutputs(TranslateFortranData2Py):
             externals={
                 "dt": config.dt,
                 "SCLM_SHALLOW": config.SCLM_SHALLOW,
-                "ASON": config.JASON,
+                "JASON": config.JASON,
             },
         )
 
