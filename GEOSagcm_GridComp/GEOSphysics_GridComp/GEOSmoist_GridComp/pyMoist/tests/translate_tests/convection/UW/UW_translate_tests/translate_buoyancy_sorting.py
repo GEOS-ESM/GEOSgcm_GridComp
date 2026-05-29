@@ -8,7 +8,6 @@ from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
 
-import pyMoist.constants as constants
 from pyMoist.convection.UW.compute_uwshcu import buoyancy_sorting
 from pyMoist.convection.UW.config import UWConfiguration
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
@@ -83,13 +82,14 @@ class TranslateBuoyancySorting(TranslateFortranData2Py):
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("ComputeUwshcuInv-constants")
+        self.constants["JASON"] = True
 
     def compute(self, inputs):
         config = UWConfiguration(**self.constants)
 
         self.quantity_factory.add_data_dimensions(
             {
-                "ntracers": constants.NCNST,
+                "ntracers": config.NCNST,
             }
         )
 
@@ -292,6 +292,7 @@ class TranslateBuoyancySorting(TranslateFortranData2Py):
             thlu=thlu,
             qtu=qtu,
             wu=wu,
+            ese=self.ese,
             esx=self.esx,
             qsat_pe=qsat_pe,
             zifc0=zifc0,

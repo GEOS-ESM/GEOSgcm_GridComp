@@ -7,7 +7,6 @@ from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
 
-import pyMoist.constants as constants
 from pyMoist.convection.UW.compute_uwshcu import prevent_negative_condensate
 from pyMoist.convection.UW.config import UWConfiguration
 
@@ -48,13 +47,14 @@ class TranslatePreventNegativeCondensate(TranslateFortranData2Py):
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("ComputeUwshcuInv-constants")
+        self.constants["JASON"] = True
 
     def compute(self, inputs):
         config = UWConfiguration(**self.constants)
 
         self.quantity_factory.add_data_dimensions(
             {
-                "ntracers": constants.NCNST,
+                "ntracers": config.NCNST,
             }
         )
 

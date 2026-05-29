@@ -47,6 +47,7 @@ class TranslateSetupInputs(TranslateFortranData2Py):
         _setup_inputs = self.stencil_factory.from_dims_halo(
             func=setup_inputs,
             compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"JASON": True},
         )
 
         # Inputs

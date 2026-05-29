@@ -8986,6 +8986,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                 thlu=self.locals.thlu,
                 qtu=self.locals.qtu,
                 wu=self.locals.wu,
+                ese=self.ese,
                 esx=self.esx,
                 qsat_pe=self.locals.qsat_pe,
                 zifc0=self.locals.zifc0_in,
