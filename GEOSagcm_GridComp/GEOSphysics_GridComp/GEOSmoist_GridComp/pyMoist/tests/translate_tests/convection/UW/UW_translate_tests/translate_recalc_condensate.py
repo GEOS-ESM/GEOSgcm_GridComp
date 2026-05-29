@@ -64,11 +64,6 @@ class TranslateRecalcCondensate(TranslateFortranData2Py):
             "ufrc": self.grid.compute_dict(),
             "umf": self.grid.compute_dict(),
             "xco": self.grid.compute_dict(),
-            "testvar3D_1": self.grid.compute_dict(),
-            "testvar3D_2": self.grid.compute_dict(),
-            "testvar3D_3": self.grid.compute_dict(),
-            "testvar3D_4": self.grid.compute_dict(),
-            "testvar3D_5": self.grid.compute_dict(),
         }
 
     def extra_data_load(self, data_loader: DataLoader):
@@ -184,12 +179,6 @@ class TranslateRecalcCondensate(TranslateFortranData2Py):
         qsten_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         cufrc_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
 
-        testvar3D_1 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        testvar3D_2 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        testvar3D_3 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        testvar3D_4 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        testvar3D_5 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-
         # The iteration you want to test
         iter_test = int32(0)
 
@@ -250,11 +239,6 @@ class TranslateRecalcCondensate(TranslateFortranData2Py):
             vflx_out=vflx_out,
             fer_out=fer_out,
             fdr_out=fdr_out,
-            testvar3D_1=testvar3D_1,
-            testvar3D_2=testvar3D_2,
-            testvar3D_3=testvar3D_3,
-            testvar3D_4=testvar3D_4,
-            testvar3D_5=testvar3D_5,
         )
 
         return {
@@ -269,9 +253,4 @@ class TranslateRecalcCondensate(TranslateFortranData2Py):
             "umf": umf.view[:],
             "xco": xco.view[:],
             "fer": fer.view[:],
-            "testvar3D_1": testvar3D_1.view[:],
-            "testvar3D_2": testvar3D_2.view[:],
-            "testvar3D_3": testvar3D_3.view[:],
-            "testvar3D_4": testvar3D_4.view[:],
-            "testvar3D_5": testvar3D_5.view[:],
         }

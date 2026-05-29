@@ -10,9 +10,6 @@ export NDSL_LOGLEVEL=Debug
 # pyMoist configuration
 export EXP_NAME='gcm-fp'
 
-# UW specific
-export GT4PY_EXTRA_COMPILE_OPT_FLAGS='-fconstexpr-ops-limit=1000000000'
-
 python -m pytest -s -v --multimodal_metric \
     --data_path=$1 \
     --backend=$2\
@@ -21,3 +18,5 @@ python -m pytest -s -v --multimodal_metric \
     --threshold_overrides_file=./overrides.yml \
     --which_rank=0 \
     ../translate_tests
+
+
