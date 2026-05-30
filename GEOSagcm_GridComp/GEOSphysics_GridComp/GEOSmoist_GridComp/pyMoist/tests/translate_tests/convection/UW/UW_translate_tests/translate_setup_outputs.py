@@ -159,6 +159,7 @@ class TranslateSetupOutputs(TranslateFortranData2Py):
             MFD_SC=MFD_SC,
             DETR_SC=DETR_SC,
             UMF_SC=UMF_SC,
+            DCM_SC=DCM_SC,
             DP=DP,
             DQADT_SC=DQADT_SC,
             MASS=MASS,
