@@ -53,7 +53,6 @@ def calculate_derived_states(
     mass: FloatField,
     mass_inverse: FloatField,
     t: FloatField,
-    ese: GlobalTable_saturation_tables,
     esx: GlobalTable_saturation_tables,
     sat: FloatField,
     dsat: FloatField,
@@ -80,7 +79,6 @@ def calculate_derived_states(
         mass (FloatField)
         mass_inverse (FloatField)
         t (FloatField)
-        ese (GlobalTable_saturation_tables)
         esx (GlobalTable_saturation_tables)
         sat (FloatField)
         dsat (FloatField)
@@ -103,7 +101,7 @@ def calculate_derived_states(
         dp = p_interface[0, 0, 1] - p_interface
         mass = dp / MAPL_GRAV
         mass_inverse = 1 / mass
-        sat, dsat = saturation_specific_humidity(t=t, p=p_mb * 100, ese=ese, esx=esx)
+        sat, dsat = saturation_specific_humidity(t=t, p=p_mb * 100.0, esx=esx)
         u_unmodified = u
         v_unmodified = v
         th = (100.0 * p_mb / MAPL_P00) ** (MAPL_KAPPA)
@@ -136,7 +134,6 @@ def find_lcl_level(
     t: FloatField,
     p_mb: FloatField,
     vapor: FloatField,
-    ese: GlobalTable_saturation_tables,
     esx: GlobalTable_saturation_tables,
     lcl_level: IntFieldIJ,
 ):
@@ -147,7 +144,6 @@ def find_lcl_level(
         t (FloatField): (in) Atmospheric temperature (K)
         p_mb (FloatField): (in) pressure (mb)
         vapor (FloatField): (in) water vapor mixing radio (kg/kg)
-        ese (GlobalTable_saturation_tables): (in) saturation vapor pressure table, details unknown
         esx (GlobalTable_saturation_tables): (in) saturation vapor pressure table, details unknown
         lcl_level (IntFieldIJ): (out) LCL level
     """
@@ -159,10 +155,10 @@ def find_lcl_level(
 
     # get LCL pressure
     with computation(PARALLEL), interval(-1, None):
-        qsat, _ = saturation_specific_humidity(t=t, p=p_mb * 100, ese=ese, esx=esx)
-        rhsfc = 100 * vapor / qsat
+        qsat, _ = saturation_specific_humidity(t=t, p=p_mb * 100.0, esx=esx)
+        rhsfc = 100.0 * vapor / qsat
         tlcl = find_t_lcl(t=t, rh=rhsfc)
-        rm = (1 - vapor) * MAPL_RGAS + vapor * MAPL_RVAP
+        rm = (1.0 - vapor) * MAPL_RGAS + vapor * MAPL_RVAP
         cpm = (1.0 - vapor) * MAPL_CPDRY + vapor * MAPL_CPVAP
         plcl = p_mb * ((tlcl / t) ** (cpm / rm))
 
@@ -198,7 +194,6 @@ def compute_estimated_inversion_strength(
     th700: FloatFieldIJ,
     z700: FloatFieldIJ,
     lcl_level: IntFieldIJ,
-    ese: GlobalTable_saturation_tables,
     esx: GlobalTable_saturation_tables,
     lower_tropospheric_stability: FloatFieldIJ,
     estimated_inversion_strength: FloatFieldIJ,
@@ -216,7 +211,6 @@ def compute_estimated_inversion_strength(
         th700 (FloatFieldIJ)
         z700 (FloatFieldIJ)
         lcl_level (IntFieldIJ)
-        ese (GlobalTable_saturation_tables)
         esx (GlobalTable_saturation_tables)
         lower_tropospheric_stability (FloatFieldIJ)
         estimated_inversion_strength (FloatFieldIJ)
@@ -227,7 +221,7 @@ def compute_estimated_inversion_strength(
 
         # Simplified single adiabat eq4 of https://doi.org/10.1175/JCLI3988.1
         t850 = 0.5 * (t + t700)
-        qs850, _ = saturation_specific_humidity(t=t850, p=100 * 850, ese=ese, esx=esx)
+        qs850, _ = saturation_specific_humidity(t=t850, p=100.0 * 850.0, esx=esx)
         gamma850 = (1.0 + (MAPL_ALHL * qs850 / (MAPL_RGAS * t850))) / (1.0 + (MAPL_ALHL * MAPL_ALHL * qs850 / (MAPL_CP * MAPL_RVAP * t850 * t850)))
         gamma850 = MAPL_GRAV / MAPL_CP * (1.0 - gamma850)
         estimated_inversion_strength = lower_tropospheric_stability - gamma850 * (z700 - lcl_height)
@@ -374,7 +368,6 @@ class GFDL1MSetup(NDSLRuntime):
         # Dev NOTE: this is an orchestration workaround. Direct call to
         #           `self.saturation_tables.X` fails closure capture for
         #           argument reconstruction at call time
-        self._ese = self.saturation_tables.ese
         self._esx = self.saturation_tables.esx
 
     def __call__(
@@ -533,8 +526,7 @@ class GFDL1MSetup(NDSLRuntime):
             mass=local_mass,
             mass_inverse=local_mass_inverse,
             t=t,
-            ese=self._ese,
-            esx=self.saturation_tables.esx,
+            esx=self._esx,
             sat=local_saturation_specific_humidity,
             dsat=local_dsaturation_specific_humidity,
             u=u,
@@ -548,7 +540,6 @@ class GFDL1MSetup(NDSLRuntime):
             t=t,
             p_mb=local_p_mb,
             vapor=mixing_ratio_vapor,
-            ese=self._ese,
             esx=self._esx,
             lcl_level=local_lcl_level,
         )
@@ -589,7 +580,6 @@ class GFDL1MSetup(NDSLRuntime):
             th700=self._locals.th700,
             z700=self._locals.z700,
             lcl_level=local_lcl_level,
-            ese=self._ese,
             esx=self._esx,
             lower_tropospheric_stability=lower_tropospheric_stability,
             estimated_inversion_strength=estimated_inversion_strength,

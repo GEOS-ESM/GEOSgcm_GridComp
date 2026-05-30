@@ -1,5 +1,4 @@
-from gt4py.cartesian.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval
-from ndsl.dsl.gt4py import function
+from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, exp, function, interval
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
 
 import pyMoist.constants as constants

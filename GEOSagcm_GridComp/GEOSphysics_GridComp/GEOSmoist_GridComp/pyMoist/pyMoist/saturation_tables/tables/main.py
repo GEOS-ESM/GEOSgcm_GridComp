@@ -1,5 +1,7 @@
 from typing import Dict, Optional
 
+from mpi4py import MPI
+from ndsl import Backend, DaceConfig
 from ndsl.boilerplate import get_factories_single_tile
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import PARALLEL, K, computation, interval
@@ -127,7 +129,7 @@ class SaturationVaporPressureTable:
 
     def __init__(
         self,
-        backend,
+        backend: Backend,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
     ) -> None:
         table_compute_domain = (1, 1, TABLESIZE)

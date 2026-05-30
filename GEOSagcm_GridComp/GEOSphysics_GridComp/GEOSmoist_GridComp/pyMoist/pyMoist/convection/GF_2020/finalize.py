@@ -796,7 +796,6 @@ def update_state_with_tendencies(
     convective_cloud_fraction: FloatField,
     convective_rainwater_source: FloatField,
     convective_precipitation_RAS: FloatField,
-    ese: GlobalTable_saturation_tables,
     esx: GlobalTable_saturation_tables,
     fraction_ice: FloatField,
 ):
@@ -875,7 +874,7 @@ def update_state_with_tendencies(
 
         # fix convective cloud fraction
         if FIX_CONVECTIVE_CLOUD:
-            saturation_humidity, _ = saturation_specific_humidity(t, p, ese, esx)
+            saturation_humidity, _ = saturation_specific_humidity(t, p, esx)
 
             if convective_cloud_fraction < 1.0:
                 modification = (vapor - saturation_humidity * convective_cloud_fraction) / (1.0 - convective_cloud_fraction)
@@ -964,7 +963,6 @@ class GF2020Finalize(NDSLRuntime):
         # NOTE: this is an orchestration workaround. Direct call to
         #   `self.tables.X` fails closure capture for
         #   argument reconstruction at call time
-        self._ese = saturation_tables.ese
         self._esw = saturation_tables.esw
         self._esx = saturation_tables.esx
         self._estfrz = saturation_tables.frz
@@ -1329,7 +1327,6 @@ class GF2020Finalize(NDSLRuntime):
             convective_cloud_fraction=state.convective_cloud_fraction,
             convective_rainwater_source=state.convective_rainwater_source,
             convective_precipitation_RAS=state.convective_precipitation_RAS,
-            ese=self._ese,
             esx=self._esx,
             fraction_ice=self.fraction_ice,
         )

@@ -135,8 +135,9 @@ class NDSLPhysicsStack:
             f"        Backend : {self.backend}\n"
             f"      Precision : {get_precision()} bit\n"
             f"  Orchestration : {self._is_orchestrated}\n"
-            f"          Sizer : {sizer.nx}x{sizer.ny}x{sizer.nz}"
+            f"   Local domain : {sizer.nx}x{sizer.ny}x{sizer.nz}"
             f"(halo: {sizer.n_halo})\n"
+            f"         Layout : {partitioner.layout}\n"
             f" Strides for 3D : {default_3D_memory_desc[1]}\n"
             f"     Device ord : {device_ordinal_info}\n"
             f"     Nvidia MPS : {MPS_is_on}\n"
@@ -164,8 +165,8 @@ def _set_NDSL_physics(mapl_state) -> NDSLPhysicsStack:
 
     return NDSLPhysicsStack(
         NDSLPhysicsConfiguration(
-            grid_infos.im * grid_infos.nx,
-            grid_infos.jm * ny,
+            grid_infos.im,
+            grid_infos.jm,
             grid_infos.lm,
             grid_infos.nx,
             ny,

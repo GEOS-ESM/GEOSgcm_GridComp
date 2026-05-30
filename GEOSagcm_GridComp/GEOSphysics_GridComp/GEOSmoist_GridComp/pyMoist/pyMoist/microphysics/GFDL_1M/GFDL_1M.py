@@ -116,14 +116,13 @@ class GFDL1M(NDSLRuntime):
             quantity_factory=quantity_factory,
             config=config,
             saturation_tables=saturation_tables,
-            update_tendencies=self._update_tendencies,
         )
 
     def __call__(
         self,
         state: GFDL1MState,
     ):
-        # miscelaneous setup for GFDL1M microphysics
+        # miscellaneous setup for GFDL1M microphysics
         # compute additional inputs, prefill outputs, reset temporaries
         self._setup(
             p_interface=state.p_interface,

@@ -45,7 +45,7 @@ class PhaseChange(NDSLRuntime):
         self.config = config
         self.saturation_tables = saturation_tables
 
-        # innitalize locals
+        # initialize locals
         self._alpha: Local = self.make_local(quantity_factory, [I_DIM, J_DIM, K_DIM], Float)
 
         # construct stencils
@@ -95,7 +95,7 @@ class PhaseChange(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "DT_MOIST": config.DT_MOIST,
-                "CCI_EVAP_EFF": config.CCW_EVAP_EFF,
+                "CCI_EVAP_EFF": config.CCI_EVAP_EFF,
             },
         )
         self._fix_up_clouds = stencil_factory.from_dims_halo(

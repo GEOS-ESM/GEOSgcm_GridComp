@@ -7,14 +7,13 @@ from ndsl.stencils.basic_operations import copy
 from pyMoist.constants import MAPL_CP, MAPL_GRAV
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.radiation_coupling import GFDL1MRadiationCoupling
+from pyMoist.microphysics.GFDL_1M.shared_stencils import update_tendencies
 from pyMoist.saturation_tables import GlobalTable_saturation_tables, SaturationVaporPressureTable, saturation_specific_humidity
 from pyMoist.shared.redistribute_clouds import redistribute_clouds
 
 
 @function
-def fix_negative_precip(
-    precip: Float,
-):
+def fix_negative_precip(precip: Float):
     if precip < 1.0e-8:
         precip = 0.0
 
@@ -62,8 +61,14 @@ def finalize_precip(
         icefall = precipitated_ice + precipitated_graupel
         freezing_rainfall = 0.0
 
+        # Convert precipitation fluxes from (Pa kg/kg) to (kg m-2 s-1)
+        # do lowest level first
+        large_scale_nonanvil_ice_flux = large_scale_nonanvil_ice_flux / (MAPL_GRAV * DT_MOIST)
+        large_scale_nonanvil_liquid_flux = large_scale_nonanvil_liquid_flux / (MAPL_GRAV * DT_MOIST)
+
     with computation(FORWARD), interval(...):
         # Convert precipitation fluxes from (Pa kg/kg) to (kg m-2 s-1)
+        # all other levels (k_interface_dim)
         large_scale_nonanvil_ice_flux[0, 0, 1] = large_scale_nonanvil_ice_flux[0, 0, 1] / (MAPL_GRAV * DT_MOIST)
         large_scale_nonanvil_liquid_flux[0, 0, 1] = large_scale_nonanvil_liquid_flux[0, 0, 1] / (MAPL_GRAV * DT_MOIST)
 
@@ -102,11 +107,10 @@ def fix_humidity(
     vapor: FloatField,
     t: FloatField,
     p_mb: FloatField,
-    ese: GlobalTable_saturation_tables,
     esx: GlobalTable_saturation_tables,
 ):
     with computation(PARALLEL), interval(...):
-        qsat, _ = saturation_specific_humidity(t, p_mb * 100, ese, esx)
+        qsat, _ = saturation_specific_humidity(t, p_mb * 100.0, esx)
         relative_humidity = vapor / qsat
 
 
@@ -223,14 +227,12 @@ class GFDL1MFinalize(NDSLRuntime):
         quantity_factory: QuantityFactory,
         config: GFDL1MConfig,
         saturation_tables: SaturationVaporPressureTable,
-        update_tendencies,
     ):
         # init NDSLRuntime
         super().__init__(stencil_factory)
 
         # make the config, pre-build stencil, and saturation tables visible at runtime
         self.config = config
-        self.update_tendencies = update_tendencies
         self.saturation_tables = saturation_tables
 
         # construct stencils
@@ -271,6 +273,14 @@ class GFDL1MFinalize(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
+        self._update_tendencies = stencil_factory.from_dims_halo(
+            func=update_tendencies,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={
+                "DT_MOIST": config.DT_MOIST,
+            },
+        )
+
         self._update_rainwater_source = stencil_factory.from_dims_halo(
             func=update_rainwater_source,
             compute_dims=[I_DIM, J_DIM, K_DIM],
@@ -289,7 +299,6 @@ class GFDL1MFinalize(NDSLRuntime):
         # Dev NOTE: this is an orchestration workaround. Direct call to
         #           `self.saturation_tables.X` fails closure capture for
         #           argument reconstruction at call time
-        self._ese = self.saturation_tables.ese
         self._esx = self.saturation_tables.esx
 
     def __call__(
@@ -433,7 +442,6 @@ class GFDL1MFinalize(NDSLRuntime):
                 vapor=mixing_ratio_vapor,
                 t=t,
                 p_mb=local_p_mb,
-                ese=self._ese,
                 esx=self._esx,
             )
 
@@ -506,7 +514,7 @@ class GFDL1MFinalize(NDSLRuntime):
             liquid_radius=cloud_particle_effective_radius_liquid,
         )
 
-        self.update_tendencies(
+        self._update_tendencies(
             u=u,
             v=v,
             t=t,

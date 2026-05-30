@@ -1,6 +1,6 @@
 from ndsl.dsl.gt4py import floor, function, int32
 
-from pyMoist.saturation_tables.constants import DEGSUBS, ERFAC, ESFAC, MAPL_TICE, MAX_MIXING_RATIO, TABLESIZE, TMAXTBL, TMINLQU, TMINTBL, TMIX
+from pyMoist.saturation_tables.constants import DEGSUBS, ERFAC, ESFAC, MAPL_TICE, MAX_MIXING_RATIO, TABLESIZE, TMAXTBL, TMINLQU, TMINTBL
 
 
 @function
@@ -33,7 +33,7 @@ def saturation_specific_humidity_frozen_surface(
         qsat = frz
         ddq = 0.0
     else:
-        t = (t - TMINTBL) * DEGSUBS + 1
+        t = (t - TMINTBL) * DEGSUBS + 1.0
         t_integer = int(floor(t))
         ddq = ese.A[t_integer] - ese.A[t_integer - 1]  # type: ignore
         qsat = (t - t_integer) * ddq + ese.A[t_integer - 1]  # type: ignore
@@ -84,7 +84,7 @@ def saturation_specific_humidity_liquid_surface(
         qsat = esw.A[TABLESIZE_MINUS_1]  # type: ignore
         ddq = 0.0
     else:
-        t = (t - TMINTBL) * DEGSUBS + 1
+        t = (t - TMINTBL) * DEGSUBS + 1.0
         t_integer = int(floor(t))
         ddq = esw.A[t_integer] - esw.A[t_integer - 1]  # type: ignore
         qsat = (t - t_integer) * ddq + esw.A[t_integer - 1]  # type: ignore
@@ -105,14 +105,7 @@ def saturation_specific_humidity_liquid_surface(
 
 
 @function
-def saturation_specific_humidity(
-    t,
-    p,
-    ese,
-    esx,
-    use_ramp=False,
-    ramp=-999.0,
-):
+def saturation_specific_humidity(t, p, esx):
     """Compute saturation specific humidity and derivative saturation specific humidity
     with respect to temperature from saturation pressure tables.
 
@@ -121,35 +114,24 @@ def saturation_specific_humidity(
     Arguments:
         t (Float): temperature in Kelvin
         p (Float): pressure in Pascals
-        ese (Float): saturation pressure table in Pascals, specifics unknown
         esx (Float): saturation pressure table in Pascals, specifics unknown
-        use_ramp (Bool): trigger for "ramp" option. details unknown
-        ramp (Float): parameter used for "ramp" option. details unknown
 
     Returns:
         qsat (Float): saturation specific humidity
         dqsat (Float): derivative saturation specific humidity with respect to temperature
     """
-    if use_ramp:
-        uramp = -abs(ramp)
-    else:
-        uramp = TMIX
 
     if t <= TMINTBL:
         t = TMINTBL
     elif t >= TMAXTBL - 0.001:
         t = TMAXTBL - 0.001
 
-    t = (t - TMINTBL) * DEGSUBS + 1
+    t = (t - TMINTBL) * DEGSUBS + 1.0
     t_integer = int32(floor(t))
     IT_MINUS_1 = t_integer - 1
 
-    if uramp == TMIX:
-        dq = esx.A[t_integer] - esx.A[IT_MINUS_1]  # type: ignore
-        qsat = (t - t_integer) * dq + esx.A[IT_MINUS_1]  # type: ignore
-    else:
-        dq = ese.A[t_integer] - ese.A[IT_MINUS_1]  # type: ignore
-        qsat = (t - t_integer) * dq + ese.A[IT_MINUS_1]  # type: ignore
+    dq = esx.A[t_integer] - esx.A[IT_MINUS_1]  # type: ignore
+    qsat = (t - t_integer) * dq + esx.A[IT_MINUS_1]  # type: ignore
 
     if p <= qsat:
         qsat = MAX_MIXING_RATIO

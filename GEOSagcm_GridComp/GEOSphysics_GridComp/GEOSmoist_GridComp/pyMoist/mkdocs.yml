@@ -53,10 +53,12 @@ nav:
   - Home: index.md
   - Top Level:
       - "constants": top/constants.md
+      - "convective_tracers": top/convective_tracers.md
       - "field_types": top/field_types.md
   - Fortran interface:
       - "geos_pymoist": fortran/geos_pymoist.md
       - "Parametrization interfaces":
+          - "GF2020_interface": fortran/param_interfaces/convection/GF202_interface.md
           - "UW_interface": fortran/param_interfaces/convection/UW_interface.md
           - "GFDL_1M": fortran/param_interfaces/microphysics/GFDL1M_interface.md
       - "Internals":
@@ -108,12 +110,19 @@ nav:
       - "setup": microphysics/GFDL_1M/setup.md
       - "state": microphysics/GFDL_1M/state.md
       - "shared_stencils": microphysics/GFDL_1M/shared_stencils.md
-  - Universtiy of Washington Shallow Convection (UW):
+  - University of Washington Shallow Convection (UW):
       - "compute_uwshcu": convection/UW/compute_uwshcu.md
       - "config": convection/UW/config.md
       - "locals": convection/UW/locals.md
       - "state": convection/UW/state.md
       - "uwshcu_functions": convection/UW/uwshcu_functions.md
+  - Grell-Freitas Deep Convection (GF 2020):
+      - "config": convection/GF_2020/config.md
+      - "finalize": convection/GF_2020/finalize.md
+      - "GF_2020": convection/GF_2020/GF_2020.md
+      - "locals": convection/GF_2020/locals.md
+      - "setup": convection/GF_2020/setup.md
+      - "state": convection/GF_2020/state.md
   - Shared:
       - "Interpolations": shared/interpolations.md
       - "Numerical Recipes": shared/numerical_recipes.md

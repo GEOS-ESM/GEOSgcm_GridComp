@@ -1,13 +1,12 @@
 from f90nml import Namelist
-from gt4py.cartesian.gtscript import int32
 from ndsl import StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
+from ndsl.dsl.gt4py import int32
 from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
 
-import pyMoist.constants as constants
 from pyMoist.convection.UW.compute_uwshcu import update_output_variables2
 from pyMoist.convection.UW.config import UWConfiguration
 
@@ -24,12 +23,6 @@ class TranslateUpdateOutputVars2(TranslateFortranData2Py):
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
         # self.UW_config = UW_config
-
-        self._update_output_vars2 = self.stencil_factory.from_dims_halo(
-            func=update_output_variables2,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"ncnst": 23},
-        )
 
         # FloatField Inputs
         self.in_vars["data_vars"] = {
@@ -106,7 +99,7 @@ class TranslateUpdateOutputVars2(TranslateFortranData2Py):
 
         self.quantity_factory.add_data_dimensions(
             {
-                "ntracers": constants.NCNST,
+                "ntracers": self.UW_config.NCNST,
             }
         )
 
@@ -139,6 +132,15 @@ class TranslateUpdateOutputVars2(TranslateFortranData2Py):
         use_momenflx = Int(inputs["use_momenflx"])
         rdrop = Float(inputs["rdrop"])
         iter_cin = Int(inputs["iter_cin"])
+
+        self._update_output_vars2 = self.stencil_factory.from_dims_halo(
+            func=update_output_variables2,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={
+                "ncnst": self.UW_config.NCNST,
+                "rdrop": rdrop,
+            },
+        )
 
         # Inputs
         condensation = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a", dtype=bool)

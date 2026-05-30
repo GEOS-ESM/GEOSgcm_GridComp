@@ -136,13 +136,13 @@ def get_lcl(p_source, t_source, vapor_source):
     p00ki = 1.0 / p00k
 
     # convert to pascals
-    p_source = 100 * p_source
+    p_source = 100.0 * p_source
 
     # simpler, cheaper method
     dewpoint = compute_dewpoint(p_source, vapor_source)
     t_lcl = dewpoint - (0.001296 * dewpoint + 0.1963) * (t_source - dewpoint)
     p_lcl = p_source * (t_lcl / t_source) ** cpor
-    dz_lcl = 127 * (t_source - dewpoint)
+    dz_lcl = 127.0 * (t_source - dewpoint)
     if dz_lcl <= 0.0:
         dz_lcl = -999.0
 

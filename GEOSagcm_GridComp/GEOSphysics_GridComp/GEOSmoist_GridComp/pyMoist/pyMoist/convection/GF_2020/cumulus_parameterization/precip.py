@@ -84,7 +84,7 @@ def partition_liquid_ice(
         if cumulus_parameterization_constants.MELT_GLAC and plume == cumulus_parameterization_constants.DEEP:
             if error_code[0, 0][plume] == 0:
                 # normalize vertical integral of melting_layer to 1
-                melting_layer = melting_layer / (norm + 1.0e-6) * (100 * (p.at(K=0, ddim=[plume]) - p.at(K=k_end - 1, ddim=[plume])) / constants.MAPL_GRAV)
+                melting_layer = melting_layer / (norm + 1.0e-6) * (100.0 * (p.at(K=0, ddim=[plume]) - p.at(K=k_end - 1, ddim=[plume])) / constants.MAPL_GRAV)
 
 
 class PrecipFactor:

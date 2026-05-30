@@ -1,4 +1,4 @@
-from ndsl.dsl.gt4py import FORWARD, PARALLEL, atan, computation, interval, sqrt, tan
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, atan, computation, interval, sqrt, tan
 from ndsl.dsl.typing import FloatField, FloatFieldIJ, IntFieldIJ
 
 import pyMoist.constants as constants
@@ -32,35 +32,32 @@ def rh_calculations(
 
     with computation(PARALLEL), interval(...):
         # determine the turn pressure using the LCL
-        if TURNRHCRIT_PARAM <= 0:
-            turnrhcrit = p_mb.at(K=lcl_level) - 250
+        if TURNRHCRIT_PARAM <= 0.0:
+            turn_rh_crit = p_mb.at(K=lcl_level) - 250.0
         else:
-            turnrhcrit = TURNRHCRIT_PARAM
+            turn_rh_crit = TURNRHCRIT_PARAM
 
-    with computation(PARALLEL), interval(0, -1):
-        # Use Slingo-Ritter (1985) formulation for critical relative humidity
-        rh_crit = 1.0
+    # Use Slingo-Ritter (1985) formulation for critical relative humidity
+    with computation(PARALLEL), interval(...):
         # lower turn from maxrhcrit=1.0
-        if p_mb <= turnrhcrit:
+        if p_mb <= turn_rh_crit:
             rh_crit = min_rh_crit
         else:
-            rh_crit = min_rh_crit + (1.0 - min_rh_crit) / (19.0) * (
-                (
-                    atan(
-                        (2.0 * (p_mb - turnrhcrit) / (p_interface_mb.at(K=k_end + 1) - turnrhcrit) - 1.0) * tan(20.0 * constants.MAPL_PI / 21.0 - 0.5 * constants.MAPL_PI)
+            if K == k_end:
+                rh_crit = 1.0
+            else:
+                rh_crit = min_rh_crit + (1.0 - min_rh_crit) / (19.0) * (
+                    (
+                        atan(
+                            (2.0 * (p_mb - turn_rh_crit) / (p_interface_mb.at(K=k_end + 1) - turn_rh_crit) - 1.0)
+                            * tan(20.0 * constants.MAPL_PI / 21.0 - 0.5 * constants.MAPL_PI)
+                        )
+                        + 0.5 * constants.MAPL_PI
                     )
-                    + 0.5 * constants.MAPL_PI
+                    * 21.0
+                    / constants.MAPL_PI
+                    - 1.0
                 )
-                * 21.0
-                / constants.MAPL_PI
-                - 1.0
-            )
-    with computation(PARALLEL), interval(-1, None):
-        # lower turn from maxrhcrit=1.0
-        if p_mb <= turnrhcrit:
-            rh_crit = min_rh_crit
-        else:
-            rh_crit = 1.0
 
     with computation(PARALLEL), interval(...):
         # include grid cell area scaling and limit RHcrit to > 70%\

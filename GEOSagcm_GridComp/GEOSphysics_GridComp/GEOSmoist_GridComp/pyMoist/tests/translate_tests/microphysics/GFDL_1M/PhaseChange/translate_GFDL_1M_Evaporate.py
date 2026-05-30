@@ -67,9 +67,9 @@ class TranslateGFDL_1M_Evaporate(TranslateFortranData2Py):
         code(
             p_mb=locals_.p_mb,
             t=state.t,
-            vapor=state.mixing_ratio.vapor,
-            convective_liquid=state.mixing_ratio.convective_liquid,
-            convective_ice=state.mixing_ratio.convective_ice,
+            mixing_ratio_vapor=state.mixing_ratio.vapor,
+            mixing_ratio_convective_liquid=state.mixing_ratio.convective_liquid,
+            mixing_ratio_convective_ice=state.mixing_ratio.convective_ice,
             convective_cloud_fraction=state.cloud_fraction.convective,
             liquid_concentration=state.concentration.liquid,
             ice_concentration=state.concentration.ice,
