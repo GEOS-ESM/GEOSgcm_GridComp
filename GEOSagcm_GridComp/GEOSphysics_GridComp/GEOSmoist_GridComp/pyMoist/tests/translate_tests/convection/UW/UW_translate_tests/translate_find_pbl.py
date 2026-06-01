@@ -1,7 +1,6 @@
 from f90nml import Namelist
 from ndsl import StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.dsl.gt4py import int32
 from ndsl.dsl.typing import Int
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
@@ -145,12 +144,8 @@ class TranslateFindPbl(TranslateFortranData2Py):
         fer_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         fdr_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
 
-        # The iteration you want to test
-        iter_test = int32(0)
-
-        # # Call stencils
+        # Call stencils
         self._find_pbl_height(
-            iteration=iter_test,
             kpbl_in=kpbl_in,
             condensation=condensation,
             kinv=kinv,
@@ -196,7 +191,6 @@ class TranslateFindPbl(TranslateFortranData2Py):
             vavg=vavg,
             thvlavg=thvlavg,
             qtavg=qtavg,
-            iteration=iter_test,
         )
 
         return {

@@ -1,4 +1,3 @@
-
 GFDL_1M_PhaseChange:
   - backend: st:dace:cpu:KJI
     multimodal:

@@ -1,7 +1,6 @@
 from f90nml import Namelist
 from ndsl import StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.dsl.gt4py import int32
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
@@ -160,10 +159,7 @@ class TranslateRecalcEnvVariables(TranslateFortranData2Py):
         qsten_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         cufrc_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
 
-        # The iteration you want to test
-        iter_test = int32(0)
-
-        # # Call stencils
+        # Call stencils
         self._recalc_environmental_variables(
             condensation=condensation,
             qv0_s=qv0_s,
@@ -197,7 +193,6 @@ class TranslateRecalcEnvVariables(TranslateFortranData2Py):
             s0=s0,
             t0=t0,
             tr0_temp=tr0_temp,
-            iteration=iter_test,
             cush=cush,
             umf_out=umf_out,
             dcm_out=dcm_out,

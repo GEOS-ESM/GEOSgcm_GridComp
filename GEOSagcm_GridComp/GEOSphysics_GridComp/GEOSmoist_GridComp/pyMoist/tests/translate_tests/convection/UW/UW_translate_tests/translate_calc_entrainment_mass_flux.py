@@ -1,7 +1,6 @@
 from f90nml import Namelist
 from ndsl import StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.dsl.gt4py import int32
 from ndsl.dsl.typing import Int
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
@@ -172,10 +171,7 @@ class TranslateCalcEntrainmentMassFlux(TranslateFortranData2Py):
         vflx_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
         cush_inout = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
 
-        # The iteration you want to test
-        iter_test = int32(0)
-
-        # # Call stencils
+        # Call stencils
         self._calc_entrainment_mass_flux(
             condensation=condensation,
             thlu=thlu,
@@ -210,7 +206,6 @@ class TranslateCalcEntrainmentMassFlux(TranslateFortranData2Py):
             uu_emf=uu_emf,
             vu_emf=vu_emf,
             emf=emf,
-            iteration=iter_test,
         )
 
         return {

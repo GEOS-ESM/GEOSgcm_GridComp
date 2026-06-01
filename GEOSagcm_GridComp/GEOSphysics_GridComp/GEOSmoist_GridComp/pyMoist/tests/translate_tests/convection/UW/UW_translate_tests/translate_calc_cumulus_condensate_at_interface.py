@@ -1,7 +1,6 @@
 from f90nml import Namelist
 from ndsl import StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.dsl.gt4py import int32
 from ndsl.dsl.typing import Int
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
@@ -182,10 +181,7 @@ class TranslateCalcCumulusCondensate(TranslateFortranData2Py):
         qsten_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         cufrc_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
 
-        # The iteration you want to test
-        iter_test = int32(0)
-
-        # # Call stencils
+        # Call stencils
         self._calc_cumulus_condensate_at_interfaces(
             condensation=condensation,
             krel=krel,
@@ -211,7 +207,6 @@ class TranslateCalcCumulusCondensate(TranslateFortranData2Py):
             rlwp=rlwp,
             riwp=riwp,
             cufrc=cufrc,
-            iteration=iter_test,
             cush=cush,
             umf_out=umf_out,
             dcm_out=dcm_out,

@@ -273,7 +273,7 @@ class GFDL_driver_tables:
 
 
 # Table needs to be calculated only once
-_cached_table = {
+_cached_table: dict[str, GFDL_driver_tables | None] = {
     "driver_qsat": None,
 }
 

@@ -222,7 +222,7 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
         kpbl_in = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], dtype=Int, units="n/a")
         cnvtrmax = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
 
-        # # Call stencils
+        # Call stencils
         self._compute_uwshcu_invert_before(
             # Inputs
             pmid0_inv=pmid0_inv,

@@ -1,7 +1,6 @@
 from f90nml import Namelist
 from ndsl import StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.dsl.gt4py import int32
 from ndsl.dsl.typing import Int
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
@@ -204,10 +203,8 @@ class TranslatePenetrativeEntrainmentFluxes(TranslateFortranData2Py):
         uemf = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
         qlten_sink = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         qiten_sink = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        # The iteration you want to test
-        iter_test = int32(0)
 
-        # # Call stencils
+        # Call stencils
         self._penetrative_entrainment_fluxes(
             condensation=condensation,
             kbup=kbup,
@@ -247,7 +244,6 @@ class TranslatePenetrativeEntrainmentFluxes(TranslateFortranData2Py):
             esx=self.esx,
             qlten_sink=qlten_sink,
             qiten_sink=qiten_sink,
-            iteration=iter_test,
             cush=cush,
             umf_out=umf_out,
             dcm_out=dcm_out,

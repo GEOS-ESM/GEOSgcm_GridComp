@@ -1,7 +1,6 @@
 from f90nml import Namelist
 from ndsl import StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.dsl.gt4py import int32
 from ndsl.dsl.typing import Int
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
@@ -57,7 +56,11 @@ class TranslateMomentumTendency(TranslateFortranData2Py):
             }
         )
 
-        self._calc_momentum_tendency = self.stencil_factory.from_dims_halo(func=calc_momentum_tendency, compute_dims=[I_DIM, J_DIM, K_DIM], externals={"dt": config.dt})
+        self._calc_momentum_tendency = self.stencil_factory.from_dims_halo(
+            func=calc_momentum_tendency,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"dt": config.dt},
+        )
 
         # Inputs
         condensation = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a", dtype=bool)
@@ -90,10 +93,7 @@ class TranslateMomentumTendency(TranslateFortranData2Py):
         uten = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         vten = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
 
-        # The iteration you want to test
-        iter_test = int32(0)
-
-        # # Call stencils
+        # Call stencils
         self._calc_momentum_tendency(
             condensation=condensation,
             kpen=kpen,
@@ -106,7 +106,6 @@ class TranslateMomentumTendency(TranslateFortranData2Py):
             vf=vf,
             uten=uten,
             vten=vten,
-            iteration=iter_test,
         )
 
         return {

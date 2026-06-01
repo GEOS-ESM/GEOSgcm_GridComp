@@ -1,7 +1,6 @@
 from f90nml import Namelist
 from ndsl import StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.dsl.gt4py import int32
 from ndsl.dsl.typing import Int
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
@@ -156,10 +155,8 @@ class TranslateFindKlcl(TranslateFortranData2Py):
         qpert_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
         shfx = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
         evap = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
-        # The iteration you want to test
-        iter_test = int32(0)
 
-        # # Call stencils
+        # Call stencils
         self._find_cumulus_characteristics(
             condensation=condensation,
             pifc0=pifc0,
@@ -187,7 +184,6 @@ class TranslateFindKlcl(TranslateFortranData2Py):
             vsrc=vsrc,
             tpert_out=tpert_out,
             qpert_out=qpert_out,
-            iteration=iter_test,
         )
 
         saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory.backend)
@@ -217,7 +213,6 @@ class TranslateFindKlcl(TranslateFortranData2Py):
 
         self._find_klcl(
             condensation=condensation,
-            iteration=iter_test,
             pifc0=pifc0,
             qtsrc=qtsrc,
             thlsrc=thlsrc,

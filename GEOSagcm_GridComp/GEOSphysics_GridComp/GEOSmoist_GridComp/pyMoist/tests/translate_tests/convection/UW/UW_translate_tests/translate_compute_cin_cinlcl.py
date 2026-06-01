@@ -1,7 +1,6 @@
 from f90nml import Namelist
 from ndsl import StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.dsl.gt4py import int32
 from ndsl.dsl.typing import Int
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
@@ -189,10 +188,7 @@ class TranslateComputeCinCinlcl(TranslateFortranData2Py):
 
         stop_cin = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a", dtype=bool)
 
-        # The iteration you want to test
-        iter_test = int32(0)
-
-        # # Call stencils
+        # Call stencils
         self._compute_cin_cinlcl(
             condensation=condensation,
             stop_cin=stop_cin,
@@ -218,7 +214,6 @@ class TranslateComputeCinCinlcl(TranslateFortranData2Py):
             RKFRE=rkfre,
             thvubot=thvubot,
             thvutop=thvutop,
-            iteration=iter_test,
             tkeavg=tkeavg,
             thvlmin=thvlmin,
             usrc=usrc,

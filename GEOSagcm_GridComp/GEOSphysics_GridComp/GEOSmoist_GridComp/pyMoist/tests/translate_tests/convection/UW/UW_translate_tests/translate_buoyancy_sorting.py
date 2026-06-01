@@ -249,7 +249,7 @@ class TranslateBuoyancySorting(TranslateFortranData2Py):
         # The iteration you want to test
         iter_test = int32(0)
 
-        # # Call stencils
+        # Call stencils
         self._buoyancy_sorting(
             condensation=condensation,
             tscaleh=tscaleh,
