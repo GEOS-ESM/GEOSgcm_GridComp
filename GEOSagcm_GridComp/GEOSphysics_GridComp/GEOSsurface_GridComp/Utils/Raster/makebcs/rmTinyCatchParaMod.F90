@@ -954,7 +954,7 @@ contains
     !    we only need any-touch support, not area-weighted remapping.
     !
     ! Output tile_lake_type:
-    !   -9999 = UNDEF / excluded, e.g. typ==100 or typ=20
+    !   -9999 = UNDEF / excluded, e.g. land typ==100 or landice typ==20
     !       0 = no LakeTopoCat lake or ReachTopoCat reach touch
     !       1 = lake touch only
     !       2 = reach touch only
@@ -1122,7 +1122,6 @@ contains
     integer :: varid_lake_type
     integer :: fill_value(1)
     integer :: flag_values(5)
-    logical :: var_exists
 
     character(len=NF_MAX_NAME) :: dname
     character(len=256)         :: mylongname
@@ -1154,13 +1153,9 @@ contains
        stop
     endif
 
-    ! Define lake_type if it is not already present.
-    ! This makes reruns safer: if the variable exists, just overwrite the data.
-
-    status = NF_INQ_VARID(ncid, 'lake_type', varid_lake_type)
-    var_exists = (status == NF_NOERR)
-
-    if (.not. var_exists) then
+    ! Define lake_type in the freshly written nc4 tile file.
+    ! In the normal make_bcs workflow this variable should not already exist;
+    ! if it does, NF_DEF_VAR will fail rather than silently replacing data.    
 
        status = NF_REDEF(ncid)                                                        ; VERIFY_(status)
 
@@ -1194,14 +1189,7 @@ contains
 
        status = NF_ENDDEF(ncid)                                                       ; VERIFY_(status)
 
-    else
-
-       print *, 'NOTE: lake_type already exists in ', trim(tilefile)
-       print *, '      Overwriting lake_type data.'
-
-    endif
-
-    ! write data and close file
+    ! Write lake_type data and close file.
 
     status = NF_PUT_VARA_INT(ncid, varid_lake_type, (/1/), (/n_tile/), &
          lake_type)                                                              ; VERIFY_(status)

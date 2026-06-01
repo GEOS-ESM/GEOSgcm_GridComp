@@ -219,5 +219,6 @@ These are retained for QA and diagnostics, but the Fortran `lake_type` product i
 - `lake_presence_any`
 - `reach_presence_any`
 
-The variable is appended during supplemental tile attribute generation when the 30 arcsecond raster tile-id grid is available. If `lake_type` already exists in the nc4 tile file during regeneration, its data values are overwritten while the existing variable metadata are retained.
+The variable is appended during supplemental tile attribute generation when the 30 arcsecond raster tile-id grid is available. 
+In the normal `make_bcs` workflow, `lake_type` is created once in the freshly written nc4 tile file; rerunning on an already modified tile file is not expected.
 
