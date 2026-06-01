@@ -140,9 +140,7 @@ class TranslateComputeUwshcuInv(TranslateFortranData2Py):
         state.input_output.cnvtr.field[:] = inputs["cnvtr"]
         state.input_output.CLCN.field[:] = inputs["CLCN"]
 
-        compute_uwshcu(
-            state,
-        )
+        compute_uwshcu(state)
 
         return {
             "CNV_Tracers": state.input_output.CNV_Tracers.field[:],

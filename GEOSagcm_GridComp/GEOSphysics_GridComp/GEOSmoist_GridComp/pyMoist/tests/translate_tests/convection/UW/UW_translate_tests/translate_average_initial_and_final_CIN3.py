@@ -1,7 +1,6 @@
 from f90nml import Namelist
 from ndsl import StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.dsl.gt4py import int32
 from ndsl.dsl.typing import Int
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
@@ -118,6 +117,7 @@ class TranslateAverageInitialFinalCIN3(TranslateFortranData2Py):
         qlsub_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         qisub_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         qisub_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        cush = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
         cush_inout = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
         cush_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         cufrc_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
@@ -131,10 +131,7 @@ class TranslateAverageInitialFinalCIN3(TranslateFortranData2Py):
         fer_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         fdr_s = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
 
-        # The iteration you want to test
-        iter_test = int32(1)
-
-        # # Call stencils
+        # Call stencils
         self._avg_initial_and_final_cin3(
             condensation=condensation,
             del_CIN=del_CIN,
@@ -170,6 +167,7 @@ class TranslateAverageInitialFinalCIN3(TranslateFortranData2Py):
             qisub_s=qisub_s,
             cush_inout=cush_inout,
             cush_s=cush_s,
+            cush=cush,
             cufrc_out=cufrc_out,
             cufrc_s=cufrc_s,
             qtflx_out=qtflx_out,
