@@ -6524,16 +6524,8 @@ def adjust_implicit_CIN_inputs2(
             qtflx_s[0, 0, 1] = qtflx[0, 0, 1]
             uflx_s[0, 0, 1] = uflx[0, 0, 1]
             vflx_s[0, 0, 1] = vflx[0, 0, 1]
-            qcu_s = qcu
-            qlu_s = qlu
-            qiu_s = qiu
             fer_s = fer
             fdr_s = fdr
-            xc_s = xco
-            cin_s = cin_IJ
-            cinlcl_s = cinlcl_IJ
-            cbmf_s = cbmf
-            qc_s = qc
             qldet_s = qlten_det
             qidet_s = qiten_det
             qlsub_s = qlten_sink
