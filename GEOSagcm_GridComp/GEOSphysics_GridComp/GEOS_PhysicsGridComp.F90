@@ -547,6 +547,24 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                          &
+         SHORT_NAME = 'QLCNIT',                                          &
+         LONG_NAME  = 'tendency_of_liquid_condensate_due_to_turbulence', &
+         UNITS      = 'kg kg-1 s-1',                                     &
+         DIMS       = MAPL_DimsHorzVert,                                 &
+         VLOCATION  = MAPL_VLocationCenter,                              &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                          &
+         SHORT_NAME = 'QICNIT',                                          &
+         LONG_NAME  = 'tendency_of_frozen_condensate_due_to_turbulence', &
+         UNITS      = 'kg kg-1 s-1',                                     &
+         DIMS       = MAPL_DimsHorzVert,                                 &
+         VLOCATION  = MAPL_VLocationCenter,                              &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+    
+    call MAPL_AddExportSpec(GC,                                          &
          SHORT_NAME = 'TKESHOCIT',                                       &
          LONG_NAME  = 'tendency_of_TKE_due_to_turbulence_transport',     &
          UNITS      = 'm2 s-3',                                          &
@@ -767,6 +785,24 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'DQLDTTRBINT',                                                       &
+         LONG_NAME  = 'vertically_integrated_liquid_water_tendency_due_to_turbulence',&
+         UNITS      = 'kg m-2 s-1',                                                        &
+         DIMS       = MAPL_DimsHorzOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'DQIDTTRBINT',                                                       &
+         LONG_NAME  = 'vertically_integrated_ice_tendency_due_to_turbulence',         &
+         UNITS      = 'kg m-2 s-1',                                                        &
+         DIMS       = MAPL_DimsHorzOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+    
     call MAPL_AddExportSpec(GC,                                                            &
          SHORT_NAME = 'DOXDTCHMINT',                                                       &
          LONG_NAME  = 'vertically_integrated_odd_oxygen_tendency_due_to_chemistry',        &
@@ -2607,7 +2643,8 @@ contains
 
    real, pointer, dimension(:,:,:)     :: DOXDTCHM
    real, pointer, dimension(:,:,:)     :: DQVDTMST, DQVDTTRB, DQVDTCHM
-   real, pointer, dimension(:,:,:)     :: DQLDTTRB, DQIDTTRB, TKEIT
+   real, pointer, dimension(:,:,:)     :: QLLSIT, QLCNIT, TKEIT
+   real, pointer, dimension(:,:,:)     :: QILSIT, QICNIT
    real, pointer, dimension(:,:,:)     :: DQLDTSCL, DQIDTSCL, DQVDTSCL
    real, pointer, dimension(:,:,:)     :: DQLDTMST, DQIDTMST
    real, pointer, dimension(:,:,:)     :: DQRDTMST, DQSDTMST, DQGDTMST
@@ -2643,6 +2680,7 @@ contains
    real, pointer, dimension(:,:  )     :: DQVDTTRBINT, DQVDTMSTINT, DQVDTCHMINT
    real, pointer, dimension(:,:  )     :: DQLDTMSTINT, DQIDTMSTINT, DOXDTCHMINT
    real, pointer, dimension(:,:  )     :: DQRDTMSTINT, DQSDTMSTINT, DQGDTMSTINT
+   real, pointer, dimension(:,:  )     :: DQLDTTRBINT, DQIDTTRBINT
    real, pointer, dimension(:,:  )     :: PERAD,PETRB,PEMST,PEFRI,PEGWD,PECUF
    real, pointer, dimension(:,:  )     :: PEPHY
    real, pointer, dimension(:,:  )     :: KEPHY
@@ -2892,6 +2930,8 @@ contains
     call MAPL_GetPointer(EXPORT, DQGDTMSTINT, 'DQGDTMSTINT', RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetPointer(EXPORT, DQVDTTRBINT, 'DQVDTTRBINT', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQLDTTRBINT, 'DQLDTTRBINT', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQIDTTRBINT, 'DQIDTTRBINT', RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetPointer(EXPORT, DQVDTCHMINT, 'DQVDTCHMINT', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DOXDTCHMINT, 'DOXDTCHMINT', RC=STATUS); VERIFY_(STATUS)
@@ -2961,11 +3001,15 @@ contains
     
        call MAPL_GetPointer ( EXPORT,     DQVDTTRB, 'QVIT',     alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetPointer ( EXPORT,     DQLDTTRB, 'QLLSIT',   alloc=.true., RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer ( EXPORT,     DQIDTTRB, 'QILSIT',   alloc=.true., RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer ( EXPORT,     TKEIT,   'TKESHOCIT', alloc=.true., RC=STATUS)
+       if ( associated(DQLDTTRBINT) .or. associated(DQLDTPHYINT) ) then
+          call MAPL_GetPointer ( EXPORT,  QLLSIT,   'QLLSIT',   alloc=.true., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer ( EXPORT,  QLCNIT,   'QLCNIT',   alloc=.true., RC=STATUS); VERIFY_(STATUS)
+       end if
+       if ( associated(DQIDTTRBINT) .or. associated(DQIDTPHYINT) ) then
+          call MAPL_GetPointer ( EXPORT,  QILSIT,   'QILSIT',   alloc=.true., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer ( EXPORT,  QICNIT,   'QICNIT',   alloc=.true., RC=STATUS); VERIFY_(STATUS)
+       end if
+       call MAPL_GetPointer ( EXPORT,     TKEIT,    'TKESHOCIT', alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer ( GEX(TURBL), DPDTTRB , 'DPDTTRB',  alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
@@ -4029,33 +4073,53 @@ contains
     if(associated(DQLDTPHYINT)) then
        DQLDTPHYINT = 0.0
        do L=1,LM
-       DQLDTPHYINT = DQLDTPHYINT + DQLDTMST(:,:,L)*DM(:,:,L)
-       end do
+          DQLDTPHYINT = DQLDTPHYINT + ( DQLDTMST(:,:,L)   &
+                                      + QLLSIT(:,:,L) &
+                                      + QLCNIT(:,:,L) ) * DM(:,:,L)
+        end do
     end if
 
     if(associated(DQLDTMSTINT)) then
        DQLDTMSTINT = 0.0
        do L=1,LM
-       DQLDTMSTINT = DQLDTMSTINT + DQLDTMST(:,:,L)*DM(:,:,L)
+          DQLDTMSTINT = DQLDTMSTINT + DQLDTMST(:,:,L)*DM(:,:,L)
        end do
     end if
 
+    if(associated(DQLDTTRBINT)) then
+       DQLDTTRBINT = 0.0
+       do L=1,LM
+          DQLDTTRBINT = DQLDTTRBINT + ( QLLSIT(:,:,L) &
+                                      + QLCNIT(:,:,L) ) * DM(:,:,L)
+       end do
+    end if
+    
 ! QI Tendencies
 ! -------------
     if(associated(DQIDTPHYINT)) then
        DQIDTPHYINT = 0.0
        do L=1,LM
-       DQIDTPHYINT = DQIDTPHYINT + DQIDTMST(:,:,L)*DM(:,:,L)
+          DQIDTPHYINT = DQIDTPHYINT + ( DQIDTMST(:,:,L) &
+                                      + QILSIT(:,:,L)   &
+                                      + QICNIT(:,:,L) ) * DM(:,:,L)
        end do
     end if
 
     if(associated(DQIDTMSTINT)) then
        DQIDTMSTINT = 0.0
        do L=1,LM
-       DQIDTMSTINT = DQIDTMSTINT + DQIDTMST(:,:,L)*DM(:,:,L)
+          DQIDTMSTINT = DQIDTMSTINT + DQIDTMST(:,:,L)*DM(:,:,L)
        end do
     end if
 
+    if(associated(DQIDTTRBINT)) then
+       DQIDTTRBINT = 0.0
+       do L=1,LM
+          DQIDTTRBINT = DQIDTTRBINT + ( QILSIT(:,:,L) &
+                                      + QICNIT(:,:,L) )*DM(:,:,L)
+       end do
+    end if
+    
 ! QRAIN Tendencies
 ! -------------
     if(associated(DQRDTPHYINT)) then
