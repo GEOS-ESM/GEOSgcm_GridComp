@@ -93,7 +93,9 @@ For this reason, the reach product is stored separately from the lake product an
 
 ## Step 2 — Split into GEOS 10°×10° Tiles
 
-**Scripts:** `split_lake_30arcsec_to_HV.py`, `split_reach_30arcsec_to_HV.py`
+**Scripts:** `split_lake_30arcsec_to_HV_generic.py`
+
+The configuration block is switched between lake and reach inputs.
 
 Produces:
 
@@ -138,15 +140,17 @@ For both lake and reach tile products:
 
 **HydroLAKES-TopoCat v1.1 (2023)**
 
-- Derived from HydroLAKES v1.0
-- Hydrography source: **MERIT Hydro v1.0.1 (3 arc-sec resolution)**
+- Source product is vector data, not a regular raster grid.
+- Constructed from the HydroLAKES v1.0 lake mask and MERIT Hydro v1.0.1 hydrography.
+- MERIT Hydro v1.0.1 is a 3 arc-second hydrography dataset, approximately 90 m at the equator.
 - CRS: EPSG:4326
 
 ### Lake input
 
 - Input: `Lakes_pfaf_*.shp`
 - Geometry used: polygon geometry only
-- No filtering by lake size, permanence, or type is applied
+- HydroLAKES includes global lake/reservoir shoreline polygons for lakes with surface area of at least 10 ha.
+- No filtering by lake size, permanence, or type is applied in this preprocessing workflow.
 
 ### Reach input
 
@@ -154,50 +158,54 @@ For both lake and reach tile products:
 - Geometry used: line geometry only
 - Reaches are rasterized as touch-based linear features, not polygon area
 
+### GEOS rasterization used here
+
+The GEOS preprocessing does not use the source vector data directly in `make_bcs`.
+Instead, the LakeTopoCat / ReachTopoCat vector features are rasterized first at 10 arc-second resolution and then aggregated to the 30 arc-second products used by the Fortran tile aggregation.
+
 ## GEOS Usage (mkCatchParam Step 01)
 
 ### Current implementation
 
-LakeTopoCat and ReachTopoCat data are mapped directly from the native 30″ raster products to GEOS tile space using the raster `tile_id` grid.
+During `mkCatchParam` Step 01, the LakeTopoCat and ReachTopoCat products are mapped from the 30 arcsecond H/V raster files to GEOS tile space using the raster `tile_id` grid.
 
-The Fortran aggregation reads the binary any-touch fields from the 10°×10° H/V files:
+The Fortran aggregation reads only the binary any-touch fields:
 
 - `lake_presence_any`
 - `reach_presence_any`
 
-It does not use interpolation or a separate spatial remapping step. Each 30″ raster cell is mapped directly to a GEOS tile using `tile_id(iG,jG)`.
+No interpolation or separate spatial remapping is used. Each 30″ raster cell is assigned directly to a GEOS tile using `tile_id(iG,jG)`.
 
-Processing runs only when the raster resolution is `43200 × 21600`. For coarser or alternative masks, LakeTopoCat / ReachTopoCat tile aggregation is skipped to avoid an implicit remap.
+This processing is enabled only when the raster tile-id grid is `43200 × 21600`.
+For coarser or alternative masks, LakeTopoCat / ReachTopoCat tile aggregation is skipped to avoid an implicit remap.
+
 
 ### Tile-Level Variable Created
 
 | Variable | Type | Description |
 |----------|------|-------------|
-| `tile_lake_type` | int | Encoded LakeTopoCat / ReachTopoCat touch type for candidate lake tiles |
+| `lake_type` | int | Encoded LakeTopoCat / ReachTopoCat intersection type for candidate water tiles |
 
-### `tile_lake_type` Coding
+### `lake_type` Coding
 
 | Value | Meaning |
 |-------|---------|
-| `-9999` | UNDEF / excluded tile, usually `typ==100` |
-| `0` | candidate tile with no LakeTopoCat lake touch and no ReachTopoCat reach touch |
-| `1` | lake touch only |
-| `2` | reach touch only |
-| `3` | lake + reach touch |
+| `-9999` | undefined / excluded tile |
+| `0` | candidate water tile with no LakeTopoCat lake intersection and no ReachTopoCat reach intersection |
+| `1` | LakeTopoCat lake intersection only |
+| `2` | ReachTopoCat reach intersection only |
+| `3` | both LakeTopoCat lake and ReachTopoCat reach intersection |
 
 ### Candidate Tile Types
 
-`tile_lake_type` is defined for:
+`lake_type` is defined only for candidate water tile types:
 
-- `typ == 0`
-- `typ == 19`
-- `typ == 20`
+- `typ == 0` — ocean
+- `typ == 19` — lake
 
-and set to `-9999` for excluded tiles such as:
+All other tile types, including land and land ice, are assigned `-9999`.
 
-- `typ == 100`
-
-For the current standard EASE file, `typ==0` is absent, so the defined candidate space is effectively `typ==19` and `typ==20`. For CF and future tile files, `typ==0` may be present and will use the same coding.
+For the current standard EASE file, `typ == 0` is absent, so the defined candidate space is effectively `typ == 19`. For CF and future tile files, `typ == 0` may be present and will use the same coding.
 
 ### Notes
 
@@ -206,7 +214,10 @@ The intermediate preprocessing products still include fractional/occupancy diagn
 - `lake_area_frac`
 - `reach_occupancy_frac`
 
-These are retained for QA and diagnostics, but the Fortran `tile_lake_type` product is based on the binary any-touch fields:
+These are retained for QA and diagnostics, but the Fortran `lake_type` product is based on the binary any-touch fields:
 
 - `lake_presence_any`
 - `reach_presence_any`
+
+The variable is appended during supplemental tile attribute generation when the 30 arcsecond raster tile-id grid is available. If `lake_type` already exists in the nc4 tile file during regeneration, its data values are overwritten while the existing variable metadata are retained.
+
