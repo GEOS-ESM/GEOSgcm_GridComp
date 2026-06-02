@@ -1,6 +1,7 @@
 from f90nml import Namelist
 from ndsl import StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
+from ndsl.dsl.gt4py import int32
 from ndsl.dsl.typing import Int
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
@@ -155,9 +156,13 @@ class TranslateDefinePrelCbmf(TranslateFortranData2Py):
         self.ese = saturation_vapor_pressure_table.ese
         self.esx = saturation_vapor_pressure_table.esx
 
+        # The iteration you want to test
+        iter_test = int32(0)
+
         # Call stencils
         self._define_prel_krel(
             condensation=condensation,
+            iteration=iter_test,
             klcl=klcl,
             kinv=kinv,
             pifc0=pifc0,
@@ -171,6 +176,7 @@ class TranslateDefinePrelCbmf(TranslateFortranData2Py):
 
         self._calc_cumulus_base_mass_flux(
             condensation=condensation,
+            iteration=iter_test,
             cin_IJ=cin,
             cinlcl_IJ=cinlcl,
             RKFRE=rkfre,
