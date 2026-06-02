@@ -1387,9 +1387,9 @@ CONTAINS
        lambau_dn(:) = lambau_shdn
 
     CASE('mid')
-       z_cloud_top_min = 2500.  ! Mid-level cloud
-       z_cloud_top_max = 5500.  ! Capped below upper troposphere
-       depth_min       = 1200.  ! Noticeable mid-layer depth
+       z_cloud_top_min = 2000.  ! Mid-level cloud
+       z_cloud_top_max = 6500.  ! Capped below upper troposphere
+       depth_min       = 1000.  ! Noticeable mid-layer depth
        zkbmax          = 5000.  ! Elevated origin (above cold pools/PBL)
        zcutdown        = 4000.  ! Lower mid-levels
        z_detr          = 1000.  ! Evaporates in deep sub-cloud layer
@@ -1748,7 +1748,8 @@ CONTAINS
            cd(i,k) = 0.75e-4 * (1.6 - frh)
         else
            ! --- RH dependence ---
-           rh_fac = max(0.5, min(1.1, 1.15 - 0.7*frh))
+           ! Increase lateral mixing to reduce precipitation efficiency and moisten
+           rh_fac = max(0.5, min(1.3, 1.3 - 0.7*frh))
            ! --- vertical scaling ---
            if (k >= klcl(i)) then
               z_fac = (qeso_cup(i,k) / qeso_cup(i,klcl(i)))**2.0
@@ -1759,10 +1760,11 @@ CONTAINS
            endif
            entr_rate(i,k) = max(entr_rate(i,k), min_entr_rate)
            ! --- Dynamic Updraft Detrainment (Physically driven by RH) ---
-           ! Uses incoming cd(i,k) [which is entr_rate_plume] and scales it.
+           ! Uses incoming cd(i,k) [which is entr_rate_plume] and scales it
+           !  to shed more water into the environment to moisten the column
            ! Drier air (frh -> 0) increases detrainment.
            ! Moist air (frh -> 1) decreases detrainment.
-           cd(i,k) = cd(i,k) * (1.6 - frh)
+           cd(i,k) = cd(i,k) * (2.0 - frh)
         endif
      enddo
   ENDDO
@@ -1917,10 +1919,10 @@ CONTAINS
         denom = (zu(i,k-1) - 0.5 * up_massdetro(i,k-1) + up_massentro(i,k-1))
         if(denom > 0.0) then
            hco(i,k) = (hco(i,k-1) * zuo(i,k-1) - 0.5 * up_massdetro(i,k-1) * hco(i,k-1) + up_massentro(i,k-1) * heo(i,k-1)) / denom
-           if ( (ZERO_DIFF_ENTR /= 1) .AND. (k == start_level(i) + 1) ) then
-               x_add = (xlv*zqexec(i)+cp*ztexec(i)) +  x_add_buoy(i)
-               hco(i,k)= hco(i,k) + x_add*up_massentro(i,k-1)/denom
-           endif
+          !if ( (ZERO_DIFF_ENTR /= 1) .AND. (k == start_level(i) + 1) ) then
+          !    x_add = (xlv*zqexec(i)+cp*ztexec(i)) +  x_add_buoy(i)
+          !    hco(i,k)= hco(i,k) + x_add*up_massentro(i,k-1)/denom
+          !endif
         else
            hco(i,k) = hco(i,k-1)
         endif
@@ -1985,12 +1987,11 @@ CONTAINS
         if(denom > 0.0 .and. denomU > 0.0) then
            hc(i,k)  = (hc(i,k-1)  * zu(i,k-1)  - 0.5 * up_massdetr(i,k-1)  * hc(i,k-1)  + up_massentr(i,k-1)  * he(i,k-1))  / denom
            hco(i,k) = (hco(i,k-1) * zuo(i,k-1) - 0.5 * up_massdetro(i,k-1) * hco(i,k-1) + up_massentro(i,k-1) * heo(i,k-1)) / denom
-
-           if ( (ZERO_DIFF_ENTR /= 1) .AND. (k == start_level(i) + 1) ) then
-               x_add = (xlv*zqexec(i)+cp*ztexec(i)) +  x_add_buoy(i)
-               hco(i,k)= hco(i,k) + x_add*up_massentro(i,k-1)/denom
-               hc (i,k)= hc (i,k) + x_add*up_massentr (i,k-1)/denom
-           endif
+          !if ( (ZERO_DIFF_ENTR /= 1) .AND. (k == start_level(i) + 1) ) then
+          !    x_add = (xlv*zqexec(i)+cp*ztexec(i)) +  x_add_buoy(i)
+          !    hco(i,k)= hco(i,k) + x_add*up_massentro(i,k-1)/denom
+          !    hc (i,k)= hc (i,k) + x_add*up_massentr (i,k-1)/denom
+          !endif
 
            uc(i,k) = (uc(i,k-1) * zu(i,k-1) - 0.5 * up_massdetru(i,k-1) * uc(i,k-1) + up_massentru(i,k-1) * us(i,k-1) &
                      - pgcon * 0.5 * (zu(i,k) + zu(i,k-1)) * (u_cup(i,k) - u_cup(i,k-1))) / denomU
@@ -2777,10 +2778,10 @@ CONTAINS
               xhc(i,k) = xhc(i,k-1)
            else
               xhc(i,k) = (xhc(i,k-1) * xzu(i,k-1) - .5 * up_massdetro(i,k-1) * xhc(i,k-1) + up_massentro(i,k-1) * xhe(i,k-1)) / denom
-              if ( (ZERO_DIFF_ENTR /= 1) .AND. (k == start_level(i) + 1) ) then
-                  x_add = (xlv*zqexec(i)+cp*ztexec(i)) +  x_add_buoy(i)
-                  xhc(i,k)= xhc(i,k) + x_add*up_massentro(i,k-1)/denom
-              endif
+             !if ( (ZERO_DIFF_ENTR /= 1) .AND. (k == start_level(i) + 1) ) then
+             !    x_add = (xlv*zqexec(i)+cp*ztexec(i)) +  x_add_buoy(i)
+             !    xhc(i,k)= xhc(i,k) + x_add*up_massentro(i,k-1)/denom
+             !endif
            endif
            xhc(i,k) = xhc(i,k) + xlf * (1. - p_liq_ice(i,k)) * qrco(i,k)
         enddo

@@ -870,7 +870,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              if (LMELTFRZ_CLDMACRO) then
            ! meltfrz new condensates
              call MELTFRZ ( DT_MOIST     , &
-                            1.0          , & ! since we are explicitly operating on CN types pass this always as 1.0
+                            1.0          , & ! since we are explicitly operating on CN types pass CNV_FRC always as 1.0
                             SRF_TYPE(I,J), &
                             T(I,J,L)     , &
                             QLCN(I,J,L)  , &

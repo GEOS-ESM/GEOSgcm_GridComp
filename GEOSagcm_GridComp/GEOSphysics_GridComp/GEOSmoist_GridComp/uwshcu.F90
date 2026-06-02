@@ -28,11 +28,10 @@ module uwshcu
      real     :: rpen               ! Penentrative entrainment factor
      real     :: rle
      real     :: rkfre              ! fraction_of_tke_associated_with_vertical_velocity
-     real     :: rkm                ! Factor controlling lateral mixing rate
-     real     :: mixscale           ! Controls vertical structure of mixing
      real     :: rkfre_hr           ! fraction_of_tke_associated_with_vertical_velocity High Resolution
+     real     :: rkm                ! Factor controlling lateral mixing rate
      real     :: rkm_hr             ! Factor controlling lateral mixing rate High Resolution
-     real     :: mixscale_hr        ! Controls vertical structure of mixing High Resolution
+     real     :: mixscale           ! Controls vertical structure of mixing
      real     :: detrhgt            ! Mixing rate increases above this height
      real     :: rmaxfrac           ! Maximum core updraft fraction
      real     :: rmaxfrac_hr        ! Maximum core updraft fraction  High Resolution
@@ -1520,16 +1519,6 @@ contains
          thvlavg = thvlavg/dpsum
          qtavg   = qtavg/dpsum
 
-!       ! weighted average over lowest 20mb
-!        dpsum = 0.
-!        qtavg = 0.
-!        do k = 1,kinv
-!            dpi = max(0.,(2e3+pmid0(k)-pifc0(0))/2e3)
-!            qtavg  = qtavg  + dpi*qt0(k)
-!            dpsum = dpsum + dpi
-!        end do
-!        qtavg = qtavg/dpsum
- 
        ! Interpolate qt to specified height or the PBL edge height
          if (qtsrchgt > 1.0) then
             k = 1
@@ -1555,22 +1544,22 @@ contains
          if (windsrcavg) then
             zrho = pifc0(0)/(287.04*(t0(1)*(1.+0.608*qv0(1))))
             buoyflx = (-shfx/cp-0.608*t0(1)*evap)/zrho ! K m s-1
-!            delzg = (zifc0(1)-zifc0(0))*g
-            delzg = (50.0)*g   ! assume 50m surface scale
+            ! Use actual PBL depth for convective velocity scale
+            delzg = (zifc0(kinv-1) - zifc0(0)) * g
+            ! Put a 50m safety minimum just in case the PBL is extremely shallow
+            delzg = max(delzg, 50.0*g)
             wstar = max(0.,0.001-0.41*buoyflx*delzg/t0(1)) ! m3 s-3
             qpert_out = 0.0
             tpert_out = 0.0
             if (wstar > 0.001) then
               wstar = 1.0*wstar**.3333
               tpert_out = thlsrc_fac*shfx/(zrho*wstar*cp)  ! K
-              qpert_out = qtsrc_fac*evap/(zrho*wstar)    ! kg kg-1
+              qpert_out =  qtsrc_fac*evap/(zrho*wstar)     ! kg kg-1
             end if
-            qpert_out = max(min(qpert_out,0.02*qt0(1)),0.)  ! limit to 1% of QT
-            tpert_out = 0.1+max(min(tpert_out,1.0),0.)          ! limit to 1K
+            qpert_out = max(min(qpert_out,0.01*qt0(1)),0.)  ! limit to 1% of QT
+            tpert_out = max(min(tpert_out,1.0),0.) + 0.1    ! limit to 1K and give a 0.1K bouyancy kick
             qtsrc   = qtavg + qpert_out
-!           qtsrc   = qt0(1) + qpert_out
-!           thvlsrc = thvlavg + tpert_out*(1.0+zvir*qtsrc) !/exnmid0(1)
-            thvlsrc = thvlmin + tpert_out*(1.0+zvir*qtsrc) !/exnmid0(1)
+            thvlsrc = thvlmin + tpert_out*(1.0+zvir*qtsrc)
             thlsrc  = thvlsrc / ( 1. + zvir * qtsrc )
             usrc  = uavg
             vsrc  = vavg

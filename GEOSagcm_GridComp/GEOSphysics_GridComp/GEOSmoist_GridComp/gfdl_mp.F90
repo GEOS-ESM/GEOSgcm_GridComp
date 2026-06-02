@@ -306,9 +306,9 @@ module gfdl_mp_mod
     logical :: z_slope_ice = .true. ! use linear mono slope for autocconversions
 
     logical :: use_rhc_cevap = .false. ! cap of rh for cloud water evaporation
-    logical :: use_rhc_revap = .false. ! cap of rh for rain evaporation
+    logical :: use_rhc_revap = .true. ! cap of rh for rain evaporation
 
-    logical :: use_enhanced_dry_evap = .false. ! Alternative minimum evaporation formula
+    logical :: use_enhanced_dry_evap = .true. ! Alternative minimum evaporation formula
 
     logical :: const_vw = .false. ! if .ture., the constants are specified by v * _fac
     logical :: const_vi = .false. ! if .ture., the constants are specified by v * _fac
@@ -436,7 +436,7 @@ module gfdl_mp_mod
     real :: pwbf_qi_crt  = 0.8e-4 ! WBF liquid to ice freezing threshold (kg/m^3)
     real :: pgaut_qs_crt = 0.6e-3 ! snow to graupel autoconversion threshold (0.6e-3 in Purdue Lin scheme) (kg/m^3)
 
-    real :: c_paut  = 0.75 ! cloud water to rain autoconversion efficiency
+    real :: c_paut  = 0.5 ! cloud water to rain autoconversion efficiency
 
     ! -----------------------------------------------------------------------
     ! collection efficiencies for accretion
