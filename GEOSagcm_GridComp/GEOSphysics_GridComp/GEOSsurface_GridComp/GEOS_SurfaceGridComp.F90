@@ -55,6 +55,7 @@ module GEOS_SurfaceGridCompMod
   use GEOS_LandiceGridCompMod,   only : LandiceSetServices  => SetServices
   use GEOS_LandGridCompMod,      only : LandSetServices     => SetServices
   use GEOS_SaltwaterGridCompMod, only : OceanSetServices    => SetServices
+  use GEOS_RouteGridCompMod,     only : RouteSetServices    => SetServices  
 
   use m_mpif90, only: MP_INTEGER, MP_REAL, MP_STATUS_SIZE
   use StieglitzSnow, only : NUM_DUDP, NUM_DUSV, NUM_DUWT, NUM_DUSD, &
@@ -85,11 +86,12 @@ module GEOS_SurfaceGridCompMod
   integer ::     LANDICE
   integer ::       OCEAN
   integer ::        LAND
+  integer ::       ROUTE
 
 #ifdef AQUA_PLANET
   integer, parameter :: NUM_CHILDREN = 1
 #else
-  integer, parameter :: NUM_CHILDREN = 4
+  integer, parameter :: NUM_CHILDREN = 5
 #endif
 
   INTEGER            :: catchswim,landicegoswim
@@ -876,6 +878,15 @@ module GEOS_SurfaceGridCompMod
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'FRLAND',                            &
         LONG_NAME          = 'fraction_of_land',                  &
+        UNITS              = '1',                                 &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME         = 'FRROUTE',                           &
+        LONG_NAME          = 'fraction_of_route_area',            &
         UNITS              = '1',                                 &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -3500,6 +3511,8 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
     LAND     = MAPL_AddChild(GC, NAME='LAND', SS=LandSetServices, RC=STATUS)
     VERIFY_(STATUS)
+    ROUTE     = MAPL_AddChild(GC, NAME='ROUTE', SS=RouteSetServices, RC=STATUS)
+    VERIFY_(STATUS)    
 #endif
 
 ! Get my internal MAPL_Generic state
@@ -3517,6 +3530,7 @@ module GEOS_SurfaceGridCompMod
     CHILD_MASK(LAKE   ) = MAPL_LAKE
     CHILD_MASK(LANDICE) = MAPL_LANDICE
     CHILD_MASK(LAND   ) = MAPL_LAND
+    CHILD_MASK(ROUTE  ) = MAPL_LAND
 #endif
 
 ! By default MAPL_Generic tries to resolve Imports and Exports among
@@ -3543,6 +3557,15 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
     call MAPL_TerminateImport    ( GC, CHILD = LAND,    RC=STATUS  )
     VERIFY_(STATUS)
+    call MAPL_TerminateImport    ( GC, CHILD = ROUTE,    RC=STATUS  )
+    VERIFY_(STATUS)     
+    call MAPL_AddConnectivity (                                    &
+       GC                                                         ,&
+       SHORT_NAME  = (/'RUNOFF  '/)                               ,&   ! RUNOFF = total runoff = surface runoff + baseflow
+       SRC_ID =  LAND                                             ,&
+       DST_ID =  ROUTE                                            ,&
+       RC=STATUS )
+    VERIFY_(STATUS)      
 #endif
 
 ! Set the Profiling timers
@@ -3659,7 +3682,7 @@ module GEOS_SurfaceGridCompMod
     type (MAPL_MetaComp    ), pointer   :: CHILD_MAPL
     type (MAPL_LocStream       )            :: LOCSTREAM
     type (MAPL_LocStream       )            :: EXCH
-    type (MAPL_LocStream       )            :: CHILD_LS
+    type (MAPL_LocStream       )            :: CHILD_LS  
     type (ESMF_Grid            )            :: GRID
     type (ESMF_GridComp        ), pointer   :: GCS(:)
     type (ESMF_State           ), pointer   :: GIM(:), GEX(:)
@@ -3671,6 +3694,7 @@ module GEOS_SurfaceGridCompMod
     type (SURF_wrap)                        :: WRAP
     integer                                 :: I
     real, pointer                           :: FRLAND   (:,:) => NULL()
+    real, pointer                           :: FRROUTE  (:,:) => NULL()       
     real, pointer                           :: FRLANDICE(:,:) => NULL()
     real, pointer                           :: FRLAKE   (:,:) => NULL()
     real, pointer                           :: FROCEAN  (:,:) => NULL()
@@ -3695,9 +3719,10 @@ module GEOS_SurfaceGridCompMod
     integer                                 :: userRC, NumInitPhases
     INTEGER                                 :: LSM_CHOICE
 
-    character(len=ESMF_MAXSTR), parameter   :: INITIALIZED_EXPORTS(4) = (/'FROCEAN  ', &
+    character(len=ESMF_MAXSTR), parameter   :: INITIALIZED_EXPORTS(5) = (/'FROCEAN  ', &
                              'FRLAKE   ', &
                              'FRLAND   ', &
+                             'FRROUTE  ', &
                              'FRLANDICE' /)
 
 
@@ -3762,7 +3787,7 @@ module GEOS_SurfaceGridCompMod
     call MAPL_TimerOn(MAPL,"LocStreamCreate")
 
     do I = 1, NUM_CHILDREN
-
+       if (I == ROUTE) cycle
        call MAPL_LocStreamCreate(CHILD_LS, LOCSTREAM,                  &
                                  NAME = GCNAMES(I) ,                   &
                                  MASK = (/CHILD_MASK(I)/),             &
@@ -3772,8 +3797,14 @@ module GEOS_SurfaceGridCompMod
        VERIFY_(STATUS)
        call MAPL_Set (CHILD_MAPL, LOCSTREAM=CHILD_LS, RC=STATUS )
        VERIFY_(STATUS)
+       if(I == LAND)then
+          call MAPL_GetObjectFromGC ( GCS(ROUTE) ,   CHILD_MAPL,   RC=STATUS )
+          VERIFY_(STATUS)
+          call MAPL_Set (CHILD_MAPL, LOCSTREAM=CHILD_LS, RC=STATUS )
+          VERIFY_(STATUS)          
+       endif
 
-    end do
+    end do  
     call MAPL_TimerOff(MAPL,"LocStreamCreate")
 
 ! Call Initialize for every Child
@@ -3799,7 +3830,9 @@ module GEOS_SurfaceGridCompMod
 !--------------------
 
     call MAPL_GetPointer(EXPORT,    FRLAND,     'FRLAND', ALLOC=.true.,  RC=STATUS)
-    VERIFY_(STATUS)
+    VERIFY_(STATUS)  
+    call MAPL_GetPointer(EXPORT,    FRROUTE,   'FRROUTE', ALLOC=.true.,  RC=STATUS)
+    VERIFY_(STATUS) 
     call MAPL_GetPointer(EXPORT,    FRLAKE,     'FRLAKE', ALLOC=.true.,  RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, FRLANDICE,  'FRLANDICE', ALLOC=.true.,  RC=STATUS)
@@ -3815,13 +3848,16 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
     call MAPL_LocStreamFracArea( LOCSTREAM, MAPL_LAND   ,  FRLAND   , RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_LocStreamFracArea( LOCSTREAM, MAPL_LAND   ,  FRROUTE  , RC=STATUS)
+    VERIFY_(STATUS)    
     call MAPL_LocStreamFracArea( LOCSTREAM, MAPL_LAKE   ,  FRLAKE   , RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_LocStreamFracArea( LOCSTREAM, MAPL_LANDICE,  FRLANDICE, RC=STATUS)
     VERIFY_(STATUS)
 
     FRLANDICE = max(min(FRLANDICE,1.0),0.0)
-    FRLAND    = max(min(FRLAND   ,1.0),0.0)
+    FRLAND    = max(min(FRLAND   ,1.0),0.0) 
+    FRROUTE   = max(min(FRROUTE  ,1.0),0.0)   
     FRLAKE    = max(min(FRLAKE   ,1.0),0.0)
     FROCEAN   = max(min(FROCEAN  ,1.0),0.0)
 
@@ -4714,6 +4750,7 @@ module GEOS_SurfaceGridCompMod
 !--------------------------------------------------------
 
     do I = 1, NUM_CHILDREN
+       if (I == ROUTE) cycle
        call DOCDS(I, NT, RC=STATUS)
        VERIFY_(STATUS)
     end do
@@ -9707,10 +9744,15 @@ module GEOS_SurfaceGridCompMod
 
 ! Run the child
 !--------------
-
-      call ESMF_GridCompRun(GCS(type), &
-           importState=GIM(type), exportState=GEX(type), &
-           clock=CLOCK, PHASE=2, userRC=STATUS )
+      if(type/=ROUTE)then
+         call ESMF_GridCompRun(GCS(type), &
+              importState=GIM(type), exportState=GEX(type), &
+              clock=CLOCK, PHASE=2, userRC=STATUS )
+      else
+         call ESMF_GridCompRun(GCS(type), &
+              importState=GIM(type), exportState=GEX(type), &
+              clock=CLOCK, PHASE=1, userRC=STATUS ) 
+      endif     
       VERIFY_(STATUS)
 
 ! Fill variables on Surface's location stream from the child's
