@@ -4,6 +4,7 @@ set (alldirs
    GEOSlandice_GridComp
    GEOSlake_GridComp
    GEOSland_GridComp
+   GEOSroute_GridComp
    GEOSsaltwater_GridComp
    )
 
