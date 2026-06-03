@@ -57,10 +57,7 @@ class TranslateGFDL_1M_IceCloud(TranslateFortranData2Py):
         config_dependent_constants = GFDL1MDriverConfigDependentConstants.make(config)
 
         # initialize saturation tables
-        saturation_tables = get_tables(
-            backend=self.stencil_factory.backend,
-            dace_config=self.stencil_factory.config.dace_config,
-        )
+        saturation_tables = get_tables(self.stencil_factory)
 
         # get the shape of the field
         nx, ny, nz = inputs["driver_local_t_icecloud"].shape

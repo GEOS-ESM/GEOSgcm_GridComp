@@ -1,9 +1,8 @@
 from mpi4py import MPI
-from ndsl import StencilFactory
-from ndsl.boilerplate import get_factories_single_tile
+from ndsl import QuantityFactory, StencilFactory, SubtileGridSizer
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, GlobalTable, K, computation, exp, interval, log, log10
-from ndsl.dsl.typing import Float, FloatField, Int
+from ndsl.dsl.typing import Float, FloatField
 
 from pyMoist.microphysics.GFDL_1M.driver.constants import constants
 from pyMoist.shared.incloud_processes import ice_fraction
@@ -13,7 +12,7 @@ from pyMoist.shared.incloud_processes import ice_fraction
 GlobalTable_driver_qsat = GlobalTable[(Float, (int(constants.LENGTH)))]
 
 
-def qs_table_1(length: Int, table1: FloatField, esupc: FloatField):
+def qs_table_1(table1: FloatField, esupc: FloatField):
     """
     Compute saturation water vapor pressure table 1
     three phase table
@@ -57,7 +56,7 @@ def qs_table_1(length: Int, table1: FloatField, esupc: FloatField):
         table1 = wice * table1 + wh2o * esupc[0, 0, -1200]
 
 
-def qs_table_2(length: Int, table2: FloatField):
+def qs_table_2(table2: FloatField):
     """
     Compute saturation water vapor pressure table 2
     one phase table
@@ -72,7 +71,7 @@ def qs_table_2(length: Int, table2: FloatField):
         table2 = constants.E_00 * exp(fac2)
 
 
-def qs_table_3(length: Int, table3: FloatField, table1: FloatField):
+def qs_table_3(table3: FloatField, table1: FloatField):
     """
     Compute saturation water vapor pressure table 3
     two phase table
@@ -112,7 +111,7 @@ def qs_table_3(length: Int, table3: FloatField, table1: FloatField):
             table3 = t1[0, 0, -1]  # type: ignore
 
 
-def qs_table_4(length: Int, table4: FloatField, table1: FloatField):
+def qs_table_4(table4: FloatField, table1: FloatField):
     """
     Compute saturation water vapor pressure table 4
     two phase table with " - 2 c" as the transition point
@@ -158,7 +157,6 @@ def qs_table_4(length: Int, table4: FloatField, table1: FloatField):
 
 
 def des_tables(
-    length: Int,
     des1: FloatField,
     des2: FloatField,
     des3: FloatField,
@@ -190,16 +188,18 @@ class GFDL_driver_tables:
     Reference Fortran: gfdl_cloud_microphys.F90: qsmith_init.py
     """
 
-    def __init__(self, stencil_factory: StencilFactory):
+    def __init__(self, stencil_factory: StencilFactory) -> None:
         table_compute_domain = (1, 1, constants.LENGTH)
 
-        _, quantity_factory = get_factories_single_tile(
-            table_compute_domain[0],
-            table_compute_domain[1],
-            table_compute_domain[2],
-            0,
-            stencil_factory.backend,
+        sizer = SubtileGridSizer(
+            nx=table_compute_domain[0],
+            ny=table_compute_domain[1],
+            nz=table_compute_domain[2],
+            n_halo=0,
+            data_dimensions={},
+            backend=stencil_factory.backend,
         )
+        quantity_factory = QuantityFactory(sizer, backend=stencil_factory.backend)
 
         self._table1 = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
         self._table2 = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
@@ -243,12 +243,11 @@ class GFDL_driver_tables:
             domain=table_compute_domain,
         )
 
-        compute_qs_table_1(constants.LENGTH, self._table1, self._esupc)
-        compute_qs_table_2(constants.LENGTH, self._table2)
-        compute_qs_table_3(constants.LENGTH, self._table3, self._table1)
-        compute_qs_table_4(constants.LENGTH, self._table4, self._table1)
+        compute_qs_table_1(self._table1, self._esupc)
+        compute_qs_table_2(self._table2)
+        compute_qs_table_3(self._table3, self._table1)
+        compute_qs_table_4(self._table4, self._table1)
         compute_des_tables(
-            constants.LENGTH,
             self._des1,
             self._des2,
             self._des3,
