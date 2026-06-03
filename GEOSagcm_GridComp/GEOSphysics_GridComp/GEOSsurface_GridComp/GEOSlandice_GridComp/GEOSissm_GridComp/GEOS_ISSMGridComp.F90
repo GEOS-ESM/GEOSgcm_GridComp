@@ -91,6 +91,7 @@ type T_ISSM_TILE_STATE
     real, pointer :: ICETHICK_TILE(:)
     real, pointer :: ICEVEL_TILE(:)
     real, pointer :: ICESMB_TILE(:)
+    integer       :: NSTEPS_INIT
 end type T_ISSM_TILE_STATE
 
 type ISSM_TILE_WRAP
@@ -287,7 +288,6 @@ subroutine SetServices ( GC, RC )
          RC=STATUS  )
     VERIFY_(STATUS)
 
-
 ! Set the Profiling timers
 ! ------------------------
 
@@ -314,8 +314,21 @@ subroutine SetServices ( GC, RC )
     integer, optional,       intent(OUT)   :: RC                      ! Error code
     
     type(MAPL_MetaComp), pointer           :: MAPL   
-    type(ESMF_State)                       :: INTERNAL                !internal state
+    type(ESMF_State)                       :: INTERNAL                ! internal state
 
+    ! ISSM alarm variables
+    type(ESMF_Alarm)                       :: ISSM_ALARM              ! custom ISSM RUNALARM
+    integer                                :: sec_to_ring             ! seconds remaining until first ISSM run
+    type(ESMF_Time)                        :: startTime               ! initial time
+    type(ESMF_TimeInterval)                :: startInterval           ! time interval to first ring
+    type(ESMF_Time)                        :: ringTime                ! time of first ring
+    type(ESMF_TimeInterval)                :: ringInterval            ! ring time interval (ISSM_DT)
+    integer                                :: ISSM_DT                 ! ISSM time step [s] (ISSM_DT set in AGCM.rc)
+    integer                                :: HEARTBEAT_DT            ! landice time step [s] (ISSM_DT set in AGCM.rc)
+    integer                                :: NSTEPS_INIT             ! landice timesteps since last ISSM run
+    integer                                :: NSTEPS_RING             ! total landice timesteps between ISSM runs
+    type(T_ISSM_TILE_STATE), pointer       :: issm_tile_state
+    type(ISSM_TILE_WRAP)                   :: issm_tile_wrap
 
     ! ErrLog Variables
     character(len=ESMF_MAXSTR)             :: IAm
@@ -381,7 +394,7 @@ subroutine SetServices ( GC, RC )
     integer                                :: n1,n2,n3
 
     ! restarts from internal state
-	logical                                :: issm_rst_found          ! process issm_internal_rst if found
+	  logical                                :: issm_rst_found          ! process issm_internal_rst if found
     real, pointer, dimension(:)            :: ICESURF_IN    => null() ! ice surface elevation restart
     real, pointer, dimension(:)            :: ICETHICK_IN   => null() ! ice thickness restart
     real, pointer, dimension(:)            :: IMLS_IN       => null() ! ice-mask levelset restart
@@ -573,13 +586,47 @@ subroutine SetServices ( GC, RC )
               tilelons=ownedNodeLons, tilelats=ownedNodeLats,  _RC)
     call MAPL%grid%set(mesh_grid, _RC)
     call ESMF_GridCompSet(gc, grid=mesh_grid, _RC)
-    call MAPL_set(MAPL, locstream = mesh_locstream, _RC)
+    call MAPL_Set(MAPL, locstream = mesh_locstream, _RC)
 
-    ! generic initialize 
+    ! Create ISSM Run Alarm 
+    !-----------------------------------
+    call ESMF_UserCompGetInternalState(GC, 'ISSM_TILES', issm_tile_wrap, status); VERIFY_(STATUS)
+    issm_tile_state => issm_tile_wrap%ptr
+
+    NSTEPS_INIT = issm_tile_state%NSTEPS_INIT
+
+    ! get timestep for landice (heartbeat)
+    call MAPL_Get(MAPL, HEARTBEAT = HEARTBEAT_DT, RC=STATUS)
+    VERIFY_(STATUS)
+
+    ! get timestep for ISSM
+    call MAPL_GetResource(MAPL, ISSM_DT, Label=trim(COMP_NAME)//"_DT:",DEFAULT=302400, RC=STATUS)
+    VERIFY_(STATUS)
+    
+    ! total landice time steps between ISSM runs
+    NSTEPS_RING = nint(ISSM_DT/HEARTBEAT_DT)
+    
+    ! calculate initial ring time from initial time and remaining timesteps
+    startTime = ESMF_ClockGet(clock,currTime=startTime)
+    sec_to_ring = (NSTEPS_RING-NSTEPS_INIT)*HEARTBEAT_DT
+    call ESMF_TimeIntervalSet(startInterval,s = sec_to_ring )
+    ringTime = startTime + startInterval
+
+    ! set ring interval to ISSM time step
+    call ESMF_TimeIntervalSet(ringInterval,s=ISSM_DT,_RC)
+
+    ! create ISSM_ALARM
+    ISSM_ALARM = ESMF_AlarmCreate(CLOCK,ringTime=ringTime,ringInterval=ringInterval,sticky=.false.)   
+
+    call MAPL_Set(MAPL, RUNALARM = ISSM_ALARM, _RC)
+
+    ! Generic initialize
+    !-----------------------------------
     call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
     VERIFY_(STATUS)
 
     ! Next, send GEOS restarts to ISSM
+    !-----------------------------------
     call MAPL_GetObjectFromGC(GC, MAPL, STATUS)
     VERIFY_(STATUS)
 
@@ -753,7 +800,10 @@ subroutine SetServices ( GC, RC )
 
 
 subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
-! ! Run ISSM ice-sheet model 
+! ! ****** Run ISSM ice-sheet model ******
+! !  the core C++ solvers and associated pre/post-processing of imports/exports
+! !  are only performed at ISSM_DT intervals. However, the Run method is engaged
+! !  at every landice timestep to ensure that ISSM restarts persist  
 ! !ARGUMENTS:
   type(ESMF_GridComp), intent(inout)   :: GC                      ! Gridded component 
   type(ESMF_State),    intent(inout)   :: IMPORT                  ! Import state
@@ -874,7 +924,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! *************************************************************************** !
 
     ! get timestep for ISSM
-    call MAPL_GetResource (MAPL, dt, Label=trim(COMP_NAME)//"_DT:",DEFAULT=302400.0, RC=STATUS)
+    call MAPL_GetResource(MAPL, dt, Label=trim(COMP_NAME)//"_DT:",DEFAULT=302400.0, RC=STATUS)
     VERIFY_(STATUS)
 
     ! get number of mesh elements

@@ -1006,6 +1006,31 @@ module GEOS_LandiceGridCompMod
   VERIFY_(STATUS)
 
 !  !Internal state:
+#ifdef HAVE_ISSM  
+     call MAPL_AddInternalSpec(GC,                                &
+        SHORT_NAME = "NSTEPS_ISSM",                               &
+        LONG_NAME  = "steps_since_issm",                          &
+        UNITS      = "none",                                      &
+        PRECISION  = ESMF_KIND_I4,                                &
+        DIMS       = MAPL_DimsNone,                               &
+        UNGRIDDED_DIMS = (/1/),                                   &
+        VLOCATION  = MAPL_VlocationNone,                          &
+        RESTART    = MAPL_RestartOptional,                        & 
+        DEFAULT    = 0,                                           &
+        RC         = STATUS                                       &
+      )
+     VERIFY_(STATUS)
+
+     call MAPL_AddInternalSpec(GC,                                &
+        SHORT_NAME         = 'ICESMB_ISSM',                       &
+        LONG_NAME          = 'issm_surface_mass_balance',         &
+        UNITS              = 'kg m-2 s-1',                        &
+        DIMS               = MAPL_DimsTileOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        DEFAULT            = 0.0 ,                                &
+                                                    RC=STATUS  )
+
+#endif
 
      call MAPL_AddInternalSpec(GC,                           &
         SHORT_NAME         = 'TS',                                &
@@ -1721,6 +1746,9 @@ module GEOS_LandiceGridCompMod
        type(ESMF_State),    intent(inout) :: EXPORT ! Export state
        type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
        integer, optional,   intent(  out) :: RC     ! Error code
+
+       type (ESMF_State)                  :: INTERNAL
+       integer, pointer                   :: NSTEPS_ISSM(:)
    
    ! !DESCRIPTION: The Initialize method of the Landice Gridded Component.
    
@@ -1773,11 +1801,17 @@ module GEOS_LandiceGridCompMod
    
        call MAPL_Get (MAPL, LOCSTREAM=LOCSTREAM, GCS=GCS, GCNAMES=gcnames, RC=STATUS )
        VERIFY_(STATUS)
-       call MAPL_LocStreamGet(locstream, NT_LOCAL=nt_local, rc=status)
-       VERIFY_(status)
+       call MAPL_LocStreamGet(locstream, NT_LOCAL=nt_local, rc=STATUS)
+       VERIFY_(STATUS)
    ! Place the land tilegrid in the generic state of each child component
    !---------------------------------------------------------------------
+
 #ifdef HAVE_ISSM
+       call MAPL_Get(MAPL, INTERNAL_ESMF_STATE = INTERNAL, RC=STATUS) 
+       VERIFY_(STATUS)   
+
+       call MAPL_GetPointer(INTERNAL,NSTEPS_ISSM,'NSTEPS_ISSM', RC=STATUS); VERIFY_(STATUS)
+
        do I = 1, SIZE(GCS)
           call MAPL_GetObjectFromGC( GCS(I), CHILD_MAPL, RC=STATUS )
           VERIFY_(STATUS)
@@ -1790,6 +1824,7 @@ module GEOS_LandiceGridCompMod
              allocate(issm_tile_state%ICETHICK_TILE(nt_local))
              allocate(issm_tile_state%ICEVEL_TILE(nt_local))
              allocate(issm_tile_state%ICESMB_TILE(nt_local))
+             issm_tile_state%NSTEPS_INIT = NSTEPS_ISSM(:)
              issm_tile_wrap%ptr => issm_tile_state
              call ESMF_UserCompSetInternalState(GCS(I), 'ISSM_TILES', issm_tile_wrap, status)
              VERIFY_(STATUS)
@@ -2334,6 +2369,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 #ifdef HAVE_ISSM    
   type(T_ISSM_TILE_STATE), pointer    :: issm_tile_state
   type(ISSM_TILE_WRAP)                :: issm_tile_wrap
+  real, pointer                       :: ICESMB_ISSM_IN(:) ! pointer to internal for time-averaged SMB
+  integer, pointer                    :: NSTEPS_ISSM_IN(:) ! pointer to internal for steps since last ISSM run
 #endif
 !=============================================================================
 
@@ -2417,7 +2454,7 @@ contains
 ! pointer to ISSM import via private internal state
 ! accumulate over time steps for averaging
    real, pointer, dimension(:), save :: ICESMB_ISSM=>null()
-   integer, save                     :: NSTEPS_ISSM = 0 ! time steps since last ISSM
+   integer, save                     :: NSTEPS_ISSM = 0 ! time steps since last ISSM run
 
 ! pointers to export
    real, pointer, dimension(:  )  :: ICESMB
@@ -2710,6 +2747,11 @@ contains
 
 ! Pointers to internals
 !----------------------
+   
+#ifdef HAVE_ISSM
+   call MAPL_GetPointer(INTERNAL,ICESMB_ISSM_IN,'ICESMB_ISSM', RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(INTERNAL,NSTEPS_ISSM_IN,'NSTEPS_ISSM', RC=STATUS); VERIFY_(STATUS)
+#endif
 
    call MAPL_GetPointer(INTERNAL,TS   , 'TS'     , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,QS   , 'QS'     , RC=STATUS); VERIFY_(STATUS)
@@ -2830,11 +2872,15 @@ contains
 
     NT = size(ALW)
 
+   
     if (.not. associated(ICESMB_ISSM)) then
-    allocate(ICESMB_ISSM(NT),STAT=STATUS)
-    VERIFY_(STATUS)
-    ! accumulated between timesteps, so init to zero:
-    ICESMB_ISSM(:) = 0 
+        allocate(ICESMB_ISSM(NT),STAT=STATUS)
+        VERIFY_(STATUS)
+       
+        ! initialize from restart 
+        ! (defaults to zero; i.e. ISSM has not run yet)
+        ICESMB_ISSM(:) = ICESMB_ISSM_IN(:) 
+        NSTEPS_ISSM = NSTEPS_ISSM_IN(:) ! steps since last ISSM run
     end if 
 
     allocate(MLT (NT), STAT=STATUS)
@@ -3455,10 +3501,15 @@ contains
     ! Calculate surface mass balance (SMB) for ISSM
     if(associated(ICESMB)) ICESMB    = ACCUM - RUNOFF
     
-    ! accumulate ICESMB over time steps between ISSM runs
+    ! average ICESMB over time steps between ISSM runs
     if(DO_ISSM==1) then
-    if(associated(ICESMB_ISSM)) ICESMB_ISSM = ICESMB_ISSM+ICESMB
-    NSTEPS_ISSM = NSTEPS_ISSM + 1 ! accumulate timesteps since last ISSM run
+        if(associated(ICESMB_ISSM)) ICESMB_ISSM = ICESMB_ISSM + (ICESMB-ICESMB_ISSM)/(NSTEPS_ISSM+1)
+        NSTEPS_ISSM = NSTEPS_ISSM + 1 ! accumulated timesteps since last ISSM run
+
+        ! update internal states
+        if(associated(ICESMB_ISSM_IN)) ICESMB_ISSM_IN = ICESMB_ISSM
+        if(associated(NSTEPS_ISSM_IN)) NSTEPS_ISSM_IN(:) = NSTEPS_ISSM
+
     end if 
 ! Update snow and landice albedos to anticipate
 !   next radiation calculation
@@ -3593,7 +3644,7 @@ contains
        WEBOT =  WESNBOT / DT
     end if
 
-    ! Run ISSM (checks if ISSM_ALARM is ringing)
+! Run ISSM 
 #ifdef HAVE_ISSM
     if (DO_ISSM==1) then
       call MAPL_Get (MAPL, GCS=GCS, GCNAMES=GCNAMES, RC=STATUS )
@@ -3609,19 +3660,28 @@ contains
                issm_tile_state =>issm_tile_wrap%ptr
 
                ! send ICESMB that has been averaged over time steps since last ISSM run
-               if(associated(ICESMB_ISSM)) issm_tile_state%ICESMB_TILE = ICESMB_ISSM/NSTEPS_ISSM
+               if(associated(ICESMB_ISSM)) issm_tile_state%ICESMB_TILE = ICESMB_ISSM
 
-               call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, CLOCK, RC=STATUS)
-               VERIFY_(STATUS)
+            end if 
 
-               ! get exports on tile space
+            ! call ISSM run method every time landice runs so that restarts will persist
+            ! ISSM Run method only calls the ISSM C++ solvers at ISSM_DT intervals
+            call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, CLOCK, RC=STATUS)
+            VERIFY_(STATUS)
+
+            if (ESMF_AlarmIsRinging (ISSM_ALARM, RC=STATUS)) then   
+               ! if ISSM solvers were called, get exports on tile space
                if(associated(ICESURF))  ICESURF = issm_tile_state%ICESURF_TILE
                if(associated(ICETHICK)) ICETHICK = issm_tile_state%ICETHICK_TILE
                if(associated(ICEVEL))   ICEVEL = issm_tile_state%ICEVEL_TILE
 
                ! refresh ICESMB accumulator
                NSTEPS_ISSM = 0    ! set ISSM time step accumulation back to zero
-               ICESMB_ISSM(:) = 0 ! zero out ICESMB accumulator
+               ICESMB_ISSM(:) = 0 ! zero out ICESMB running average
+
+               ! update internal states after refresh
+               if(associated(ICESMB_ISSM_IN)) ICESMB_ISSM_IN = ICESMB_ISSM
+               if(associated(NSTEPS_ISSM_IN)) NSTEPS_ISSM_IN(:) = NSTEPS_ISSM
             end if 
          endif
       enddo
