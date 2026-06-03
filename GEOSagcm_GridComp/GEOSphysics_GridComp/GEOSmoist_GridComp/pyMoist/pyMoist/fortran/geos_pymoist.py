@@ -109,7 +109,7 @@ class NDSLPhysicsStack:
 
         # Figure out the interface mode
         tmp_quantity = self.quantity_factory.empty([I_DIM, J_DIM, K_DIM], units="")
-        default_3D_memory_desc = (tmp_quantity.data.shape, tmp_quantity.data.strides)
+        default_3D_memory_desc = (tmp_quantity.shape, tmp_quantity._data.strides)
         if fortran_mem_space != MemorySpace.CPU:
             raise NotImplementedError("Interface cannot stream Fortran memory resident on GPU")
         if self.backend.is_gpu_backend():
