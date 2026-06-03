@@ -1394,63 +1394,63 @@ def find_klcl(
                 fer_out = constants.MAPL_UNDEF
                 fdr_out = constants.MAPL_UNDEF
 
-            if not condensation:
-                if qtsrc > 0.1 or qtsrc < 1e-8:
-                    condensation = True
-                    umf_out = 0.0
-                    umf_out[0, 0, 1] = 0.0
-                    dcm_out = 0.0
-                    qvten_out = 0.0
-                    qlten_out = 0.0
-                    qiten_out = 0.0
-                    sten_out = 0.0
-                    uten_out = 0.0
-                    vten_out = 0.0
-                    qrten_out = 0.0
-                    qsten_out = 0.0
-                    cufrc_out = 0.0
-                    cush_inout = -1.0
-                    qldet_out = 0.0
-                    qidet_out = 0.0
-                    qtflx_out = 0.0
-                    slflx_out = 0.0
-                    uflx_out = 0.0
-                    vflx_out = 0.0
-                    qtflx_out[0, 0, 1] = 0.0
-                    slflx_out[0, 0, 1] = 0.0
-                    uflx_out[0, 0, 1] = 0.0
-                    vflx_out[0, 0, 1] = 0.0
-                    fer_out = constants.MAPL_UNDEF
-                    fdr_out = constants.MAPL_UNDEF
+        if not condensation:
+            if qtsrc > 0.1 or qtsrc < 1e-8:
+                condensation = True
+                umf_out = 0.0
+                umf_out[0, 0, 1] = 0.0
+                dcm_out = 0.0
+                qvten_out = 0.0
+                qlten_out = 0.0
+                qiten_out = 0.0
+                sten_out = 0.0
+                uten_out = 0.0
+                vten_out = 0.0
+                qrten_out = 0.0
+                qsten_out = 0.0
+                cufrc_out = 0.0
+                cush_inout = -1.0
+                qldet_out = 0.0
+                qidet_out = 0.0
+                qtflx_out = 0.0
+                slflx_out = 0.0
+                uflx_out = 0.0
+                vflx_out = 0.0
+                qtflx_out[0, 0, 1] = 0.0
+                slflx_out[0, 0, 1] = 0.0
+                uflx_out[0, 0, 1] = 0.0
+                vflx_out[0, 0, 1] = 0.0
+                fer_out = constants.MAPL_UNDEF
+                fdr_out = constants.MAPL_UNDEF
 
-                if not condensation:
-                    if thlsrc > 400.0 or thlsrc < 100.0:
-                        condensation = True
-                        umf_out = 0.0
-                        umf_out[0, 0, 1] = 0.0
-                        dcm_out = 0.0
-                        qvten_out = 0.0
-                        qlten_out = 0.0
-                        qiten_out = 0.0
-                        sten_out = 0.0
-                        uten_out = 0.0
-                        vten_out = 0.0
-                        qrten_out = 0.0
-                        qsten_out = 0.0
-                        cufrc_out = 0.0
-                        cush_inout = -1.0
-                        qldet_out = 0.0
-                        qidet_out = 0.0
-                        qtflx_out = 0.0
-                        slflx_out = 0.0
-                        uflx_out = 0.0
-                        vflx_out = 0.0
-                        qtflx_out[0, 0, 1] = 0.0
-                        slflx_out[0, 0, 1] = 0.0
-                        uflx_out[0, 0, 1] = 0.0
-                        vflx_out[0, 0, 1] = 0.0
-                        fer_out = constants.MAPL_UNDEF
-                        fdr_out = constants.MAPL_UNDEF
+        if not condensation:
+            if thlsrc > 400.0 or thlsrc < 100.0:
+                condensation = True
+                umf_out = 0.0
+                umf_out[0, 0, 1] = 0.0
+                dcm_out = 0.0
+                qvten_out = 0.0
+                qlten_out = 0.0
+                qiten_out = 0.0
+                sten_out = 0.0
+                uten_out = 0.0
+                vten_out = 0.0
+                qrten_out = 0.0
+                qsten_out = 0.0
+                cufrc_out = 0.0
+                cush_inout = -1.0
+                qldet_out = 0.0
+                qidet_out = 0.0
+                qtflx_out = 0.0
+                slflx_out = 0.0
+                uflx_out = 0.0
+                vflx_out = 0.0
+                qtflx_out[0, 0, 1] = 0.0
+                slflx_out[0, 0, 1] = 0.0
+                uflx_out[0, 0, 1] = 0.0
+                vflx_out[0, 0, 1] = 0.0
+                fer_out = constants.MAPL_UNDEF
+                fdr_out = constants.MAPL_UNDEF
 
     with computation(FORWARD), interval(...):
         if not condensation:
@@ -1458,8 +1458,7 @@ def find_klcl(
             lev = 0
             klcl_found = False
             while lev < k0 + 1 and not klcl_found:
-                kidx = lev
-                if pifc0.at(K=kidx) < plcl:
+                if pifc0.at(K=lev) < plcl:
                     klcl_found = True
                 # Don't increase the level further if we found the layer
                 else:
@@ -1498,43 +1497,43 @@ def find_klcl(
                 fer_out = constants.MAPL_UNDEF
                 fdr_out = constants.MAPL_UNDEF
 
-            if not condensation:
-                # Calculate environmental virtual potential temperature at LCL,
-                # 'thv0lcl' which is solely used in the 'cin' calculation. Note
-                # that 'thv0lcl' is calculated first by calculating  'thl0lcl'
-                # and 'qt0lcl' at the LCL, and performing 'conden' afterward,
-                # in fully consistent with the other parts of the code.
-                thl0lcl = thl0.at(K=klcl) + ssthl0.at(K=klcl) * (plcl - pmid0.at(K=klcl))
-                qt0lcl = qt0.at(K=klcl) + ssqt0.at(K=klcl) * (plcl - pmid0.at(K=klcl))
-                thj, qvj, qlj, qij, qse, id_check = conden(plcl, thl0lcl, qt0lcl, esx)
+        if not condensation:
+            # Calculate environmental virtual potential temperature at LCL,
+            # 'thv0lcl' which is solely used in the 'cin' calculation. Note
+            # that 'thv0lcl' is calculated first by calculating  'thl0lcl'
+            # and 'qt0lcl' at the LCL, and performing 'conden' afterward,
+            # in fully consistent with the other parts of the code.
+            thl0lcl = thl0.at(K=klcl) + ssthl0.at(K=klcl) * (plcl - pmid0.at(K=klcl))
+            qt0lcl = qt0.at(K=klcl) + ssqt0.at(K=klcl) * (plcl - pmid0.at(K=klcl))
+            thj, qvj, qlj, qij, qse, id_check = conden(plcl, thl0lcl, qt0lcl, esx)
 
-                if id_check == 1:
-                    condensation = True
-                    umf_out = 0.0
-                    umf_out[0, 0, 1] = 0.0
-                    dcm_out = 0.0
-                    qvten_out = 0.0
-                    qlten_out = 0.0
-                    qiten_out = 0.0
-                    sten_out = 0.0
-                    uten_out = 0.0
-                    vten_out = 0.0
-                    qrten_out = 0.0
-                    qsten_out = 0.0
-                    cufrc_out = 0.0
-                    cush_inout = -1.0
-                    qldet_out = 0.0
-                    qidet_out = 0.0
-                    qtflx_out = 0.0
-                    slflx_out = 0.0
-                    uflx_out = 0.0
-                    vflx_out = 0.0
-                    qtflx_out[0, 0, 1] = 0.0
-                    slflx_out[0, 0, 1] = 0.0
-                    uflx_out[0, 0, 1] = 0.0
-                    vflx_out[0, 0, 1] = 0.0
-                    fer_out = constants.MAPL_UNDEF
-                    fdr_out = constants.MAPL_UNDEF
+            if id_check == 1:
+                condensation = True
+                umf_out = 0.0
+                umf_out[0, 0, 1] = 0.0
+                dcm_out = 0.0
+                qvten_out = 0.0
+                qlten_out = 0.0
+                qiten_out = 0.0
+                sten_out = 0.0
+                uten_out = 0.0
+                vten_out = 0.0
+                qrten_out = 0.0
+                qsten_out = 0.0
+                cufrc_out = 0.0
+                cush_inout = -1.0
+                qldet_out = 0.0
+                qidet_out = 0.0
+                qtflx_out = 0.0
+                slflx_out = 0.0
+                uflx_out = 0.0
+                vflx_out = 0.0
+                qtflx_out[0, 0, 1] = 0.0
+                slflx_out[0, 0, 1] = 0.0
+                uflx_out[0, 0, 1] = 0.0
+                vflx_out[0, 0, 1] = 0.0
+                fer_out = constants.MAPL_UNDEF
+                fdr_out = constants.MAPL_UNDEF
 
     with computation(FORWARD), interval(...):
         if not condensation:
