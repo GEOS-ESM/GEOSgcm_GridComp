@@ -395,8 +395,8 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
 
         # collapse plume dim for chemistry_tracers_output
         # NOTE ideally this has no numpy dependency
-        chemistry_tracers_output_5d_reordered = cumulus_parameterization_state.input_output.chemistry_tracers_output.field[:, :, :, [2, 0, 1], :]
-        grid_size = self.stencil_factory.grid_indexing.get_shape([I_DIM, J_DIM, K_DIM])
+        chemistry_tracers_output_5d_reordered = cumulus_parameterization_state.input_output.chemistry_tracers_output.field[:, :, :, [2, 0, 1], :].copy()
+        grid_size = self.stencil_factory.grid_indexing.domain
         chemistry_tracers_output_4d = np.full([grid_size[0], grid_size[1], grid_size[2], NUMBER_OF_PLUMES * NUMBER_OF_TRACERS], np.nan)
         for plume in range(NUMBER_OF_PLUMES):
             chemistry_tracers_output_4d[
