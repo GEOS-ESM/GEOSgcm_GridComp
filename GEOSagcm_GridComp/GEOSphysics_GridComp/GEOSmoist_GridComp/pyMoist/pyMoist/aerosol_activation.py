@@ -1,11 +1,12 @@
 from gt4py.cartesian.gtscript import PARALLEL, computation, exp, float64, interval, log, sqrt
-
-import pyMoist.constants as constants
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
+
+import pyMoist.constants as constants
 from pyMoist.field_types import FloatField_NModes
 from pyMoist.shared.numerical_recipes import Erf
+
 
 # 64 bit
 ZERO_PAR = float64(1.0e-6)  # small non-zero value
