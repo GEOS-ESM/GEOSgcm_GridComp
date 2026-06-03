@@ -323,8 +323,8 @@ subroutine SetServices ( GC, RC )
     type(ESMF_TimeInterval)                :: startInterval           ! time interval to first ring
     type(ESMF_Time)                        :: ringTime                ! time of first ring
     type(ESMF_TimeInterval)                :: ringInterval            ! ring time interval (ISSM_DT)
-    integer                                :: ISSM_DT                 ! ISSM time step [s] (ISSM_DT set in AGCM.rc)
-    integer                                :: HEARTBEAT_DT            ! landice time step [s] (ISSM_DT set in AGCM.rc)
+    real                                   :: ISSM_DT                 ! ISSM time step [s] (ISSM_DT set in AGCM.rc)
+    real                                   :: HEARTBEAT_DT            ! landice time step [s] (ISSM_DT set in AGCM.rc)
     integer                                :: NSTEPS_INIT             ! landice timesteps since last ISSM run
     integer                                :: NSTEPS_RING             ! total landice timesteps between ISSM runs
     type(T_ISSM_TILE_STATE), pointer       :: issm_tile_state
@@ -590,7 +590,7 @@ subroutine SetServices ( GC, RC )
 
     ! Create ISSM Run Alarm 
     !-----------------------------------
-    call ESMF_UserCompGetInternalState(GC, 'ISSM_TILES', issm_tile_wrap, status); VERIFY_(STATUS)
+    call ESMF_UserCompGetInternalState(GC, 'ISSM_TILES', issm_tile_wrap, STATUS); VERIFY_(STATUS)
     issm_tile_state => issm_tile_wrap%ptr
 
     NSTEPS_INIT = issm_tile_state%NSTEPS_INIT
@@ -607,13 +607,14 @@ subroutine SetServices ( GC, RC )
     NSTEPS_RING = nint(ISSM_DT/HEARTBEAT_DT)
     
     ! calculate initial ring time from initial time and remaining timesteps
-    startTime = ESMF_ClockGet(clock,currTime=startTime)
-    sec_to_ring = (NSTEPS_RING-NSTEPS_INIT)*HEARTBEAT_DT
+    call ESMF_ClockGet(CLOCK,currTime=startTime)
+    sec_to_ring = (NSTEPS_RING-NSTEPS_INIT)*nint(HEARTBEAT_DT)
     call ESMF_TimeIntervalSet(startInterval,s = sec_to_ring )
     ringTime = startTime + startInterval
 
     ! set ring interval to ISSM time step
-    call ESMF_TimeIntervalSet(ringInterval,s=ISSM_DT,_RC)
+    call ESMF_TimeIntervalSet(ringInterval,s=nint(ISSM_DT),RC=STATUS)
+    VERIFY_(STATUS)
 
     ! create ISSM_ALARM
     ISSM_ALARM = ESMF_AlarmCreate(CLOCK,ringTime=ringTime,ringInterval=ringInterval,sticky=.false.)   
