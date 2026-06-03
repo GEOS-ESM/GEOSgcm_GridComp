@@ -108,7 +108,7 @@ nav:
       - "setup": microphysics/GFDL_1M/setup.md
       - "state": microphysics/GFDL_1M/state.md
       - "shared_stencils": microphysics/GFDL_1M/shared_stencils.md
-  - Universtiy of Washington Shallow Convection (UW):
+  - University of Washington Shallow Convection (UW):
       - "compute_uwshcu": convection/UW/compute_uwshcu.md
       - "config": convection/UW/config.md
       - "locals": convection/UW/locals.md

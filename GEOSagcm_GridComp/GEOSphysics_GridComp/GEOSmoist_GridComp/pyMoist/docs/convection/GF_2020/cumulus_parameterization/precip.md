@@ -1,3 +1,3 @@
 # precip
 
-::: pyMoist.convection.GF_2020.precip
+::: pyMoist.convection.GF_2020.cumulus_parameterization.precip
