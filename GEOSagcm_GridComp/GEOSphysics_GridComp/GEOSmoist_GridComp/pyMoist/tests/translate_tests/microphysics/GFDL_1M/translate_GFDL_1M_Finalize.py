@@ -88,7 +88,7 @@ class TranslateGFDL_1M_Finalize(TranslateFortranData2Py):
         locals_ = GFDL1MLocals.make_as_state(self.quantity_factory)
 
         # Initialize saturation tables
-        saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
+        saturation_tables = SaturationVaporPressureTable(self.stencil_factory)
 
         state.t.field[:] = inputs["t"]
         state.u.field[:] = inputs["u"]

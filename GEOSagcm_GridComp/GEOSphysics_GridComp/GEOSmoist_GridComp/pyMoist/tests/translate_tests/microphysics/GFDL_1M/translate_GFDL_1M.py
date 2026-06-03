@@ -142,7 +142,7 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
         self.out_vars = self.in_vars["data_vars"].copy()
 
         # Initialize saturation tables
-        self.saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
+        self.saturation_tables = SaturationVaporPressureTable(self.stencil_factory)
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GFDL_1M-constants")

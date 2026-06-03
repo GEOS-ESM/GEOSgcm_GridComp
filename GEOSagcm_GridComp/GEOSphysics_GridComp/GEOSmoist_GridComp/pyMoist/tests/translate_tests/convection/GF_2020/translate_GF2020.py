@@ -130,7 +130,7 @@ class TranslateGF2020(TranslateFortranData2Py):
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**self.cu_param_constants)
 
         # initialize saturation tables
-        saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
+        saturation_tables = SaturationVaporPressureTable(self.stencil_factory)
 
         # initialize convection tracers
         convection_tracers = ConvectionTracers.ones(

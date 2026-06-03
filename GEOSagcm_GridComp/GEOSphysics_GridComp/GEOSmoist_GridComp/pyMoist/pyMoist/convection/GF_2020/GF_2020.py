@@ -49,7 +49,7 @@ class GF2020(NDSLRuntime):
 
         # make saturation tables visible at runtime
         if saturation_tables is None:
-            saturation_tables = SaturationVaporPressureTable(stencil_factory.backend)
+            saturation_tables = SaturationVaporPressureTable(stencil_factory)
         else:
             self.saturation_tables = saturation_tables
 

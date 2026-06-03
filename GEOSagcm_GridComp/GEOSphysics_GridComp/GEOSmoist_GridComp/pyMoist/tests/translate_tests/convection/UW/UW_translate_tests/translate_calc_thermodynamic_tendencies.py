@@ -142,7 +142,7 @@ class TranslateThermodynamicTendencies(TranslateFortranData2Py):
         qsten = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         slten = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
 
-        saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory.backend)
+        saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory)
         self.ese = saturation_vapor_pressure_table.ese
         self.esx = saturation_vapor_pressure_table.esx
 

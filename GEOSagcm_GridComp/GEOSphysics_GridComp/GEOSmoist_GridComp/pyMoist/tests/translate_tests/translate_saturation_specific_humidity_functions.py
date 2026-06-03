@@ -146,7 +146,7 @@ class Translatesaturation_specific_humidity_functions(TranslateFortranData2Py):
         meshgrid_sat = meshgrid_quantity_factory.zeros([I_DIM, J_DIM], "n/a")
         meshgrid_dqsat = meshgrid_quantity_factory.zeros([I_DIM, J_DIM], "n/a")
 
-        saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory.backend)
+        saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory)
 
         self.data_saturation_specific_humidity_functions(
             t=t,

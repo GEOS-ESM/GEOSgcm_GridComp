@@ -61,7 +61,7 @@ class TranslateGFDL_1M_HydrostaticPDF(TranslateFortranData2Py):
         alpha = self.quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
 
         # Initialize saturation tables
-        saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
+        saturation_tables = SaturationVaporPressureTable(self.stencil_factory)
 
         # fill relevant parts of dataclasses
         state.convection_fraction.field[:] = inputs["convection_fraction"]

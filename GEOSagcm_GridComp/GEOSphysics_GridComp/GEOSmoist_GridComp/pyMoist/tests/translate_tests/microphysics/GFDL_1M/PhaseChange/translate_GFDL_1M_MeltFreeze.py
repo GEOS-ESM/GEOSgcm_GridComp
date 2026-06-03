@@ -40,7 +40,7 @@ class TranslateGFDL_1M_MeltFreeze(TranslateFortranData2Py):
         state = GFDL1MState.zeros(self.quantity_factory)
 
         # Initialize saturation tables
-        self.saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
+        self.saturation_tables = SaturationVaporPressureTable(self.stencil_factory)
 
         state.t.field[:] = inputs["t"]
         state.mixing_ratio.convective_liquid.field[:] = inputs["mixing_ratio_convective_liquid"]

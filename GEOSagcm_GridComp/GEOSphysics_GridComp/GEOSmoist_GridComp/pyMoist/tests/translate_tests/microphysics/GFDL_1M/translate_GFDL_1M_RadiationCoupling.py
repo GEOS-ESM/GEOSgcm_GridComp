@@ -60,7 +60,7 @@ class TranslateGFDL_1M_RadiationCoupling(TranslateFortranData2Py):
         locals_ = GFDL1MLocals.make_as_state(self.quantity_factory)
 
         # Initialize saturation tables
-        saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
+        saturation_tables = SaturationVaporPressureTable(self.stencil_factory)
 
         safe_assign_array(state.mixing_ratio.vapor.field[:], inputs["mixing_ratio_vapor"])
         safe_assign_array(state.t.field[:], inputs["t"])

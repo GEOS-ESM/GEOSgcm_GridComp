@@ -225,7 +225,7 @@ class GF2020Interface(UserCode):
             MAX_TEMP_VAPOR_TENDENCY=Float(maplpy.get_resource("MAX_TQ_TEND:", mapl_state, default=Float(100.0))),
         )
 
-        saturation_tables = SaturationVaporPressureTable(ndsl_stack.stencil_factory.backend)
+        saturation_tables = SaturationVaporPressureTable(ndsl_stack.stencil_factory)
 
         # Initialize the module
         with StencilBackendCompilerOverride(

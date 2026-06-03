@@ -186,7 +186,7 @@ class TranslateFindKlcl(TranslateFortranData2Py):
             qpert_out=qpert_out,
         )
 
-        saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory.backend)
+        saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory)
         self.esx = saturation_vapor_pressure_table.esx
 
         umf_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")

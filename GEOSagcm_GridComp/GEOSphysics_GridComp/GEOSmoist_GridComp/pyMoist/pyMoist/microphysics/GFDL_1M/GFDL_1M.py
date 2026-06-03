@@ -49,7 +49,7 @@ class GFDL1M(NDSLRuntime):
         super().__init__(stencil_factory)
 
         # Initialize saturation tables
-        saturation_tables = get_saturation_vapor_pressure_table(stencil_factory.backend)
+        saturation_tables = get_saturation_vapor_pressure_table(stencil_factory)
 
         # Locals
         self._locals = GFDL1MLocals.make_locals(quantity_factory)
