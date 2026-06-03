@@ -1461,11 +1461,12 @@ def find_klcl(
                 kidx = lev
                 if pifc0.at(K=kidx) < plcl:
                     klcl_found = True
-                lev += 1
+                # Don't increase the level further if we found the layer
+                else:
+                    lev += 1
 
-            klcl = lev - 1 if klcl_found else 0  # Adjust klcl by 1
-
-            klcl = max(0, klcl)
+            # Adjust level by -1 to account for python starting at 0 while Fortran starts at 1
+            klcl = lev - 1 if klcl_found and lev > 0 else 0
 
     with computation(FORWARD), interval(...):
         if not condensation:
