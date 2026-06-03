@@ -250,6 +250,15 @@ class TranslateFindKlcl(TranslateFortranData2Py):
             fdr_out=fdr_out,
         )
 
+        # Adjust klcl level to match Fortran starting to count at 1 and python starting at 0.
+        # However, only add +1 if klcl is ever written. Both, Fortran and python, initialize
+        # their fields to 0, which means they are both 0 if klcl is never written (e.g. in the
+        # cases of where condensation is True).
+        for i in range(0, 24):
+            for j in range(0, 24):
+                if not condensation.view[i, j]:
+                    klcl.view[i, j, :] += 1
+
         return {
             "qtsrc": qtsrc.view[:],
             "thlsrc": thlsrc.view[:],
@@ -257,7 +266,7 @@ class TranslateFindKlcl(TranslateFortranData2Py):
             "usrc": usrc.view[:],
             "vsrc": vsrc.view[:],
             "trsrc": trsrc.view[:],
-            "klcl": klcl.view[:],  # klcl should fail by 1
+            "klcl": klcl.view[:],
             "plcl": plcl.view[:],
             "qt0lcl": qt0lcl.view[:],
             "thl0lcl": thl0lcl.view[:],
