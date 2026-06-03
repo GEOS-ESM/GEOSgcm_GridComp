@@ -1011,7 +1011,6 @@ module GEOS_LandiceGridCompMod
         SHORT_NAME = "NSTEPS_ISSM",                               &
         LONG_NAME  = "steps_since_issm",                          &
         UNITS      = "none",                                      &
-        PRECISION  = ESMF_KIND_I4,                                &
         DIMS       = MAPL_DimsNone,                               &
         UNGRIDDED_DIMS = (/1/),                                   &
         VLOCATION  = MAPL_VlocationNone,                          &
@@ -1748,7 +1747,7 @@ module GEOS_LandiceGridCompMod
        integer, optional,   intent(  out) :: RC     ! Error code
 
        type (ESMF_State)                  :: INTERNAL
-       integer, pointer                   :: NSTEPS_ISSM(:)
+       real, pointer                   :: NSTEPS_ISSM(:)
    
    ! !DESCRIPTION: The Initialize method of the Landice Gridded Component.
    
@@ -1824,7 +1823,7 @@ module GEOS_LandiceGridCompMod
              allocate(issm_tile_state%ICETHICK_TILE(nt_local))
              allocate(issm_tile_state%ICEVEL_TILE(nt_local))
              allocate(issm_tile_state%ICESMB_TILE(nt_local))
-             issm_tile_state%NSTEPS_INIT = NSTEPS_ISSM(:)
+             issm_tile_state%NSTEPS_INIT = nint(NSTEPS_ISSM(1))
              issm_tile_wrap%ptr => issm_tile_state
              call ESMF_UserCompSetInternalState(GCS(I), 'ISSM_TILES', issm_tile_wrap, status)
              VERIFY_(STATUS)
@@ -2880,7 +2879,7 @@ contains
         ! initialize from restart 
         ! (defaults to zero; i.e. ISSM has not run yet)
         ICESMB_ISSM(:) = ICESMB_ISSM_IN(:) 
-        NSTEPS_ISSM = NSTEPS_ISSM_IN(:) ! steps since last ISSM run
+        NSTEPS_ISSM = nint(NSTEPS_ISSM_IN(1)) ! steps since last ISSM run
     end if 
 
     allocate(MLT (NT), STAT=STATUS)
@@ -3508,7 +3507,7 @@ contains
 
         ! update internal states
         if(associated(ICESMB_ISSM_IN)) ICESMB_ISSM_IN = ICESMB_ISSM
-        if(associated(NSTEPS_ISSM_IN)) NSTEPS_ISSM_IN(:) = NSTEPS_ISSM
+        if(associated(NSTEPS_ISSM_IN)) NSTEPS_ISSM_IN(1) = real(NSTEPS_ISSM)
 
     end if 
 ! Update snow and landice albedos to anticipate
@@ -3681,7 +3680,7 @@ contains
 
                ! update internal states after refresh
                if(associated(ICESMB_ISSM_IN)) ICESMB_ISSM_IN = ICESMB_ISSM
-               if(associated(NSTEPS_ISSM_IN)) NSTEPS_ISSM_IN(:) = NSTEPS_ISSM
+               if(associated(NSTEPS_ISSM_IN)) NSTEPS_ISSM_IN(1) = real(NSTEPS_ISSM)
             end if 
          endif
       enddo
