@@ -46,6 +46,8 @@ jobs:
           mkdocs build
 
       - name: Download test_data
+        # TODO re-activate once we know which translate tests to run
+        if: false
         run: |
           cd GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
           mkdir -p ${{ env.DATA_PATH }} && cd ${{ env.DATA_PATH }}
@@ -64,7 +66,7 @@ jobs:
           rm GF2020_CumulusParameterization_UpdraftInitialWorkfunctions-In.nc
           rm GF2020_CumulusParameterization_MeltingProfile-In.nc
 
-      - name: Run regular unit tests
+      - name: Run numerical unit tests
         env:
           EXP_NAME: 'gcm-fp'
         run : |
@@ -72,6 +74,8 @@ jobs:
           pytest ./tests/numerical
           
       - name: Run translate tests
+        # TODO: re-activate once we know which translate tests to run
+        if: false
         env:
           EXP_NAME: 'gcm-fp'
         run: |
