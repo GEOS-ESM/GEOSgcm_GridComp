@@ -162,44 +162,34 @@ class UWGEOSInterface(UserCode):
         # CNV_FRC = MAPLPy.get_pointer("CNV_FRC", export_state, dtype=np.float32, alloc=True)
         # SRF_TYPE = MAPLPy.get_pointer("SRF_TYPE", export_state, dtype=np.float32, alloc=True)
 
-        debug = False
-
-        if not debug:
-            with TimedCUDAProfiler("UW", {}):
-                with TimedCUDAProfiler("UW - State copy", {}):
-                    self._managed_state.fortran_to_ndsl()
+        with TimedCUDAProfiler("UW", {}):
+            with TimedCUDAProfiler("UW - State copy", {}):
+                self._managed_state.fortran_to_ndsl()
+                if ndsl_stack.backend.is_fortran_aligned():
                     safe_assign_array(
                         self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
                         MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
                     )
-
-                with TimedCUDAProfiler("UW Numerics", {}):
-                    self._uw(self._managed_state.ndsl_state)
-
-                with TimedCUDAProfiler("UW - State copy-back", {}):
-                    safe_assign_array(
-                        MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
-                        self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
-                    )
-                    self._managed_state.ndsl_to_fortran()
-        else:
-            with TimedCUDAProfiler("UW", {}):
-                with TimedCUDAProfiler("UW - State copy", {}):
-                    self._managed_state.fortran_to_ndsl()
+                else:
+                    # Don't copy the extra ghost point that we allocate
                     safe_assign_array(
                         self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
-                        MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
+                        MOIST_WORKAROUNDS.CNV_Tracers().Q[:-1,:-1,:-1,:],
                     )
 
-                with TimedCUDAProfiler("UW Numerics", {}):
-                    self._uw(self._managed_state.ndsl_state)
+            with TimedCUDAProfiler("UW Numerics", {}):
+                self._uw(self._managed_state.ndsl_state)
 
-                with TimedCUDAProfiler("UW - State copy-back", {}):
+            with TimedCUDAProfiler("UW - State copy-back", {}):
+                if ndsl_stack.backend.is_fortran_aligned():
                     safe_assign_array(
-                        MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
+                        MOIST_WORKAROUNDS.CNV_Tracers().Q[:-1,:-1,:-1,:],
                         self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
                     )
-                    self._managed_state.ndsl_to_fortran()
+                else:
+                    # Don't copy the extra ghost point that we allocate
+                    pass
+                self._managed_state.ndsl_to_fortran()
 
     def finalize(self, mapl_state, import_state, export_state) -> None:
         self._managed_state.save_recorded()
