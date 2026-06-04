@@ -26,7 +26,6 @@ class TranslateSetupInputs(TranslateFortranData2Py):
             "QLCN": {},
             "QLLS": {},
             "ZLE": {},
-            "AREA": {},
         }
 
         # FloatField Outputs
@@ -66,8 +65,9 @@ class TranslateSetupInputs(TranslateFortranData2Py):
         safe_assign_array(QLLS.view[:, :, :], inputs["QLLS"])
         ZLE = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
         safe_assign_array(ZLE.view[:, :, :], inputs["ZLE"])
+
+        # AREA is only used in case of JASON=False (which we never have here)
         AREA = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM], units="n/a")
-        safe_assign_array(AREA.view[:, :, :], inputs["AREA"])
 
         # Outputs
         PKE = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
