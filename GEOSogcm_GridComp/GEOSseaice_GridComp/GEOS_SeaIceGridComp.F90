@@ -553,6 +553,7 @@ contains
 ! ----------------------------------------------
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, __RC__ )
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize2, __RC__ )
 ! phase 1
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run,        __RC__ )
     if (DUAL_OCEAN) then
@@ -678,6 +679,91 @@ contains
     RETURN_(ESMF_SUCCESS)
 
   end subroutine Initialize
+
+! -----------------------------------------------------------------
+
+!BOP
+
+! !IROUTINE: INITIALIZE -- Initialize method for ExternalSeaice wrapper
+
+! !INTERFACE:
+
+  subroutine Initialize2 ( GC, IMPORT, EXPORT, CLOCK, RC )
+
+! !ARGUMENTS:
+
+    type(ESMF_GridComp),      intent(INOUT) :: GC     ! Gridded component
+    type(ESMF_State),         intent(INOUT) :: IMPORT ! Import state
+    type(ESMF_State),         intent(INOUT) :: EXPORT ! Export state
+    type(ESMF_Clock),         intent(INOUT) :: CLOCK  ! The clock
+    integer, optional,        intent(  OUT) :: RC     ! Error code:
+
+!EOP
+
+! ErrLog Variables
+
+    character(len=ESMF_MAXSTR)          :: IAm
+    integer                             :: STATUS
+    character(len=ESMF_MAXSTR)          :: COMP_NAME
+
+! Local derived type aliases
+
+    type (MAPL_MetaComp),     pointer   :: State
+    real                                :: DT
+
+    type (ESMF_GridComp    ), pointer   :: GCS(:) => null()
+    type (ESMF_State       ), pointer   :: GIM(:)
+    type (ESMF_State       ), pointer   :: GEX(:)
+
+    integer                             :: DO_CICE_THERMO
+
+
+!=============================================================================
+
+! Begin...
+
+! Get the target components name and set-up traceback handle.
+! -----------------------------------------------------------
+
+    Iam = "Initialize2"
+    call ESMF_GridCompGet( GC, NAME=COMP_NAME,  __RC__ )
+    Iam = trim(comp_name) // trim(Iam)
+
+! Get my internal MAPL_Generic state
+!-----------------------------------
+
+    call MAPL_GetObjectFromGC ( GC, State, __RC__ )
+
+! Profilers
+!----------
+
+    call MAPL_TimerOn(STATE,"INITIALIZE")
+    call MAPL_TimerOn(STATE,"TOTAL"     )
+
+    call MAPL_Get(STATE, GCS = GCS,     &
+                         GIM = GIM,     &
+                         GEX = GEX,     &
+                                     _RC)
+
+    call MAPL_GetResource ( STATE,       DO_CICE_THERMO,     Label="USE_CICE_Thermo:" ,       DEFAULT=0, _RC)
+
+    if (DO_CICE_THERMO > 1) then
+       call ESMF_GRIDCOMPInitialize(GCS(ICE), IMPORTSTATE=GIM(ICE),     &
+                                    EXPORTSTATE=GEX(ICE), CLOCK=CLOCK,  &
+                                    PHASE=2, UserRC=STATUS)
+       VERIFY_(STATUS)
+    endif
+
+    call MAPL_TimerOff(STATE,"TOTAL"     )
+    call MAPL_TimerOff(STATE,"INITIALIZE")
+
+
+
+! All Done
+!---------
+    RETURN_(ESMF_SUCCESS)
+
+  end subroutine Initialize2
 
 ! ========================================================
 !BOP

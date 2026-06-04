@@ -17,7 +17,8 @@ module shoc
                               lcond  => MAPL_ALHL,   &
                               lfus   => MAPL_ALHS,   &
                               pi     => MAPL_PI,     &
-                              MAPL_H2OMW, MAPL_AIRMW
+                              MAPL_P00,              &
+                              MAPL_EPSILON
 
  use MAPL,              only: MAPL_UNDEF
 
@@ -74,7 +75,7 @@ module shoc
                      tkef1=0.5,                 &
                      tkef2=1.0-tkef1,           &
                      tkhmax=1000.0,             &
-                     epsv=MAPL_H2OMW/MAPL_AIRMW
+                     epsv=1./MAPL_EPSILON-1.
 
   integer, intent(in) :: nx    ! Number of points in the physics window in the x
   integer, intent(in) :: ny    ! and y directions
@@ -249,7 +250,7 @@ module shoc
         qpl(i,j,k)     = 0.0  ! comment or remove when using with prognostic rain/snow
         qpi(i,j,k)     = 0.0  ! comment or remove when using with prognostic rain/snow
         total_water(i,j,k) = qcl(i,j,k) + qci(i,j,k) + qv(i,j,k)
-        prespot        = (100000.0*wrk) ** kapa        ! Exner function
+        prespot        = (MAPL_P00*wrk) ** kapa        ! Exner function
         bet(i,j,k)     = ggr/(tabs(i,j,k)*prespot)     ! Moorthi
         thv(i,j,k)     = thv(i,j,k)*prespot            ! Moorthi
 !      
@@ -328,7 +329,7 @@ contains
 
     call tke_shear_prod(def2)   ! Calculate shear production of TKE
 
-    call calc_numbers()     ! returns RI and PRNUM
+    call calc_numbers(ri,prnum)     ! returns RI and PRNUM
 
     do k=1,nzm
       do j=1,ny
@@ -451,8 +452,11 @@ contains
 
   end subroutine tke_shoc
 
-  subroutine calc_numbers()
+  subroutine calc_numbers(RI, PRNUM)
     ! Defines Richardson number and Prandtl number on edges
+    real, intent(out), dimension(nx,ny,nz) :: RI
+    real, intent(out), dimension(nx,ny,nzm) :: PRNUM
+    
     real, dimension(nx,ny,nzm-1) :: DU
 
      DU  = (U(:,:,1:nzm-1) - U(:,:,2:nzm))**2 + &    ! shear on edges
@@ -908,10 +912,10 @@ contains
                           * min(0.01,wrk1/(ZL(:,:,k)-ZL(:,:,k+1))) ! limit gradient to 1K/100m
 
         ! Total water gradient
-        ! Here we limit very large negative gradients to 20%/100m
+        ! Here we limit very large negative gradients to 15%/100m
         ! to avoid excessive QT2 production in stratocumulus layers.
         wrk2 = (QT(:,:,k) - QT(:,:,k+1))
-        qtgrad(:,:,k)   = max(-0.002*qt(:,:,k+1),wrk2 / (ZL(:,:,k)-ZL(:,:,k+1))) 
+        qtgrad(:,:,k)   = max(-0.0015*qt(:,:,k+1),wrk2 / (ZL(:,:,k)-ZL(:,:,k+1))) 
 
         ! Mean gradient production of total water variance, with and without MF contribution
         qt2prod_edge(:,:,k) = (KH(:,:,k)*qtgrad(:,:,k)-MFWQT(:,:,k)-0.*WQT_DC(:,:,k))*qtgrad(:,:,k)

@@ -18,6 +18,7 @@ module GEOS_GF_InterfaceMod
   use ConvPar_GF_SharedParams
   use ConvPar_GF_GEOS5
   use ConvPar_GF2020
+  use moist_dsl_workarounds
 
   implicit none
 
@@ -43,8 +44,9 @@ module GEOS_GF_InterfaceMod
   integer :: ZERO_DIFF_AUTOCONV
   integer :: ZERO_DIFF_VGRID
   integer :: ZERO_DIFF_OTHER
+  logical :: USE_PYMOIST_GF2020
 
-  public :: GF_Setup, GF_Initialize, GF_Run
+  public :: GF_Setup, GF_Initialize, GF_Run, GF_Finalize
 
 contains
 
@@ -76,13 +78,34 @@ subroutine GF_Setup (GC, CF, RC)
          DEFAULT    = 0.0,   RC=STATUS  )
          VERIFY_(STATUS)
 
+   call MAPL_AddInternalSpec(GC,                                &
+         SHORT_NAME = 'DSL__GF2020_LONS',                       &
+         LONG_NAME  = 'DSL_longitude',                          &
+         UNITS      = 'radians',                                &
+         DIMS       = MAPL_DimsHorzOnly,                        &
+         VLOCATION  = MAPL_VLocationNone,                       &
+         RESTART    = MAPL_RestartSkip,              RC=STATUS  )
+   VERIFY_(STATUS)
+
+   call MAPL_AddInternalSpec(GC,                                &
+         SHORT_NAME = 'DSL__GF2020_LATS',                       &
+         LONG_NAME  = 'DSL_longitude',                          &
+         UNITS      = 'radians',                                &
+         DIMS       = MAPL_DimsHorzOnly,                        &
+         VLOCATION  = MAPL_VLocationNone,                       &
+         RESTART    = MAPL_RestartSkip,              RC=STATUS  )
+   VERIFY_(STATUS)
+
     call MAPL_TimerAdd(GC, name="--GF", RC=STATUS)
     VERIFY_(STATUS)
 
 end subroutine GF_Setup
 
-subroutine GF_Initialize (MAPL, CLOCK, RC)
+subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     type (MAPL_MetaComp), intent(inout) :: MAPL
+    type (ESMF_Config),   intent(inout) :: CF
+    type (ESMF_State),    intent(inout) :: IMPORT
+    type (ESMF_State),    intent(inout) :: EXPORT
     type (ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
     integer, optional                   :: RC  ! return code
     integer :: LM
@@ -117,8 +140,20 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
                                    Enabled      = .true.   ,    &
                                    Sticky       = .false.  , RC=STATUS); VERIFY_(STATUS)
 
+    call MAPL_GetResource(MAPL, USE_PYMOIST_GF2020, 'USE_PYMOIST_GF2020:', default=.FALSE., RC=STATUS); VERIFY_(STATUS)
+
+    if (USE_PYMOIST_GF2020) then
+      call MAPL_ConfigSetAttribute(CF, MOIST_DT, 'DSL__GF2020_DT', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, GF_ENV_SETTING            , 'GF_ENV_SETTING:'        ,default= 'DYNAMICS', RC=STATUS); VERIFY_(STATUS)
+      if (trim(GF_ENV_SETTING)=='CURRENT') then
+         call MAPL_ConfigSetAttribute(CF, 0, 'DSL__GF_ENV_SETTING:', RC=STATUS); VERIFY_(STATUS)
+      elseif (trim(GF_ENV_SETTING)=='DYNAMICS') then
+         call MAPL_ConfigSetAttribute(CF, 1, 'DSL__GF_ENV_SETTING:', RC=STATUS); VERIFY_(STATUS)
+      endif
+      call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.convection.GF2020_interface", MAPL, IMPORT, EXPORT )
+    else
     if (LM .eq. 72) then
-      call MAPL_GetResource(MAPL, USE_GF2020                , 'USE_GF2020:'            ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, USE_GF2020                , 'USE_GF2020:'            ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_LAND            , 'ZERO_DIFF_LAND:'        ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_VVEL            , 'ZERO_DIFF_VVEL:'        ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_ENTR            , 'ZERO_DIFF_ENTR:'        ,default= 1,    RC=STATUS );VERIFY_(STATUS)
@@ -132,7 +167,7 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, ZERO_DIFF_VVEL            , 'ZERO_DIFF_VVEL:'        ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_ENTR            , 'ZERO_DIFF_ENTR:'        ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_TAU             , 'ZERO_DIFF_TAU:'         ,default= 0,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, ZERO_DIFF_AUTOCONV        , 'ZERO_DIFF_AUTOCONV:'    ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, ZERO_DIFF_AUTOCONV        , 'ZERO_DIFF_AUTOCONV:'    ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_VGRID           , 'ZERO_DIFF_VGRID:'       ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_OTHER           , 'ZERO_DIFF_OTHER:'       ,default= 0,    RC=STATUS );VERIFY_(STATUS)
     endif
@@ -151,7 +186,7 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, DICYCLE                   , 'DICYCLE:'               ,default= 1,    RC=STATUS );VERIFY_(STATUS)
 
       if (INT(ZERO_DIFF_ENTR) == 0) then
-        call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 0.2e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 0.1e-4,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 0.8e-4,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)        , 'ENTR_MD:'               ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)       , 'ENTR_SH:'               ,default= 6.0e-4,RC=STATUS );VERIFY_(STATUS)
@@ -162,21 +197,19 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)       , 'ENTR_SH:'               ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
       endif
 
+      call MAPL_GetResource(MAPL, AUTOCONV                  , 'AUTOCONV:'              ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, C0_DEEP                   , 'C0_DEEP:'               ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, C0_MID                    , 'C0_MID:'                ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, C0_SHAL                   , 'C0_SHAL:'               ,default= 0.0   ,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, QRC_CRIT_OCN              , 'QRC_CRIT_OCN:'          ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, QRC_CRIT_LND              , 'QRC_CRIT_LND:'          ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
       if (INT(ZERO_DIFF_AUTOCONV) == 0) then
-        call MAPL_GetResource(MAPL, AUTOCONV                  , 'AUTOCONV:'              ,default= 3,     RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, C0_DEEP                   , 'C0_DEEP:'               ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, C0_MID                    , 'C0_MID:'                ,default= 0.8e-3,RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, C0_SHAL                   , 'C0_SHAL:'               ,default= 0.0   ,RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, QRC_CRIT_OCN              , 'QRC_CRIT_OCN:'          ,default= 3.5e-4,RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, QRC_CRIT_LND              , 'QRC_CRIT_LND:'          ,default= 3.5e-4,RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, C1                        , 'C1:'                    ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+        ! C1: Explicit cloud condensate detrainment rate [m^-1].
+        ! Controls how much suspended liquid/ice is forcibly shed into the grid-scale environment.
+        ! Default (1.0e-3) favors convective precipitation; increasing (e.g., 2.0e-3 to 3.0e-3) shifts 
+        ! moisture to host microphysics, where evaporation can moisten the 700-300 mb free troposphere.
+        call MAPL_GetResource(MAPL, C1                        , 'C1:'                    ,default= 3.0e-3,RC=STATUS );VERIFY_(STATUS)
       else
-        call MAPL_GetResource(MAPL, AUTOCONV                  , 'AUTOCONV:'              ,default= 1,     RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, C0_DEEP                   , 'C0_DEEP:'               ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, C0_MID                    , 'C0_MID:'                ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, C0_SHAL                   , 'C0_SHAL:'               ,default= 0.0   ,RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, QRC_CRIT_OCN              , 'QRC_CRIT_OCN:'          ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, QRC_CRIT_LND              , 'QRC_CRIT_LND:'          ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, C1                        , 'C1:'                    ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
       endif
 
@@ -188,7 +221,7 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
          call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 7200., RC=STATUS );VERIFY_(STATUS)
          call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default=10800., RC=STATUS );VERIFY_(STATUS)
         ! FADJ_MASSFLX is a fractional mass flux tuning factor (1.0 is no reduction) in low CAPE environments
-        call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(DEEP)    , 'FADJ_MASSFLX_DP:'       ,default= 0.1,   RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(DEEP)    , 'FADJ_MASSFLX_DP:'       ,default= 1.0,   RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(SHAL)    , 'FADJ_MASSFLX_SH:'       ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(MID)     , 'FADJ_MASSFLX_MD:'       ,default= 1.0,   RC=STATUS );VERIFY_(STATUS)
       else
@@ -277,15 +310,27 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(DEEP)   , 'HEI_UPDF_LAND_DP:'      ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(SHAL)   , 'HEI_UPDF_LAND_SH:'      ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(MID)    , 'HEI_UPDF_LAND_MD:'      ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(DEEP)  , 'HEI_UPDF_OCEAN_DP:'     ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(SHAL)  , 'HEI_UPDF_OCEAN_SH:'     ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(MID)   , 'HEI_UPDF_OCEAN_MD:'     ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
+      if (INT(ZERO_DIFF_OTHER) == 0) then
+        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(DEEP)  , 'HEI_UPDF_OCEAN_DP:'     ,default= 0.55,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(SHAL)  , 'HEI_UPDF_OCEAN_SH:'     ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(MID)   , 'HEI_UPDF_OCEAN_MD:'     ,default= 0.55,  RC=STATUS );VERIFY_(STATUS)
+      else
+        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(DEEP)  , 'HEI_UPDF_OCEAN_DP:'     ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(SHAL)  , 'HEI_UPDF_OCEAN_SH:'     ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(MID)   , 'HEI_UPDF_OCEAN_MD:'     ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
+      endif
       call MAPL_GetResource(MAPL, CUM_MIN_EDT_LAND(DEEP)    , 'MIN_EDT_LAND_DP:'       ,default= 0.1,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_MIN_EDT_LAND(SHAL)    , 'MIN_EDT_LAND_SH:'       ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_MIN_EDT_LAND(MID)     , 'MIN_EDT_LAND_MD:'       ,default= 0.1,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(DEEP)   , 'MIN_EDT_OCEAN_DP:'      ,default= 0.1,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(SHAL)   , 'MIN_EDT_OCEAN_SH:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(MID)    , 'MIN_EDT_OCEAN_MD:'      ,default= 0.1,   RC=STATUS );VERIFY_(STATUS)
+      if (INT(ZERO_DIFF_OTHER) == 0) then
+        call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(DEEP)   , 'MIN_EDT_OCEAN_DP:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(SHAL)   , 'MIN_EDT_OCEAN_SH:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(MID)    , 'MIN_EDT_OCEAN_MD:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
+      else
+        call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(DEEP)   , 'MIN_EDT_OCEAN_DP:'      ,default= 0.1,   RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(SHAL)   , 'MIN_EDT_OCEAN_SH:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(MID)    , 'MIN_EDT_OCEAN_MD:'      ,default= 0.1,   RC=STATUS );VERIFY_(STATUS)
+      endif
       call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(DEEP)    , 'MAX_EDT_LAND_DP:'       ,default= 0.9,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(SHAL)    , 'MAX_EDT_LAND_SH:'       ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(MID)     , 'MAX_EDT_LAND_MD:'       ,default= 0.9,   RC=STATUS );VERIFY_(STATUS)
@@ -327,6 +372,8 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, SCLM_DEEP           ,'SCLM_DEEP:'        ,default= 1.0    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, FIX_CNV_CLOUD       ,'FIX_CNV_CLOUD:'    ,default= .FALSE., RC=STATUS); VERIFY_(STATUS)
     ENDIF
+
+    endif ! USE_PYMOIST_GF2020
 
 end subroutine GF_Initialize
 
@@ -413,6 +460,9 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     type( ESMF_VM )                 :: VMG
 
+    ! DSL fields
+    real, pointer, dimension(:,:) :: DSL__GF2020_LONS, DSL__GF2020_LATS
+
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS); VERIFY_(STATUS)
     call MAPL_Get( MAPL, IM=IM, JM=JM, LM=LM,   &
          CF       = CF,                &
@@ -462,6 +512,16 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Get parameters from generic state.
     !-----------------------------------
+
+    if (USE_PYMOIST_GF2020) then
+      call MAPL_GetPointer(INTERNAL, DSL__GF2020_LONS, 'DSL__GF2020_LONS', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(INTERNAL, DSL__GF2020_LATS, 'DSL__GF2020_LATS', RC=STATUS); VERIFY_(STATUS)
+      DSL__GF2020_LONS = LONS
+      DSL__GF2020_LATS = LATS
+      call CNV_Tracers_To_SOA()
+      call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.convection.GF2020_interface", MAPL, IMPORT, EXPORT, INTERNAL )
+      call CNV_Tracers_To_AOS()
+    else
 
     ! Imports
     call MAPL_GetPointer(IMPORT, FRLAND    ,'FRLAND'    ,RC=STATUS); VERIFY_(STATUS)
@@ -699,7 +759,9 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       call MAPL_GetPointer(EXPORT, PTR2D, 'CCWP', RC=STATUS); VERIFY_(STATUS)
       if (associated(PTR2D)) PTR2D = SUM( CNV_QC*MASS , 3 )
 
-    endif
+    endif ! alarm_is_ringing
+
+    endif ! USE_PYMOIST_GF2020
 
     ! add tendencies to the moist import state
     U  = U  +  DUDT_DC*MOIST_DT
@@ -754,5 +816,26 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_TimerOff (MAPL,"--GF")
 
 end subroutine GF_Run
+
+subroutine GF_Finalize(gc, import, export, rc)
+
+  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
+  type(ESMF_State),    intent(inout) :: IMPORT ! Import state
+  type(ESMF_State),    intent(inout) :: EXPORT ! Export state
+  integer, optional,   intent(  out) :: RC     ! Error code
+
+  type (MAPL_MetaComp), pointer   :: MAPL
+
+  ! Get my internal MAPL_Generic state
+  !-----------------------------------
+  call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+  VERIFY_(STATUS)
+
+
+  if (USE_PYMOIST_GF2020) then
+    call MAPL_pybridge_gcfinalize( "pyMoist.fortran.param_interfaces.convection.GF2020_interface", MAPL, IMPORT, EXPORT )
+  endif
+
+end subroutine GF_Finalize
 
 end module GEOS_GF_InterfaceMod

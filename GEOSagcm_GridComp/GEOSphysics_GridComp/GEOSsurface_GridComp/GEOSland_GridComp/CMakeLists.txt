@@ -5,7 +5,6 @@ set (alldirs
   GEOScatch_GridComp
   GEOScatchCN_GridComp
   GEOSlana_GridComp
-  GEOSroute_GridComp
   GEOSigni_GridComp
   )
 

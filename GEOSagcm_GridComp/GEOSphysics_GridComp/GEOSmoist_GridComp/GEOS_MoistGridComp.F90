@@ -133,6 +133,11 @@ contains
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run, RC=status )
     VERIFY_(STATUS)
 
+    ! Set the Finalize entry point
+    ! -----------------------
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE, Finalize, RC=status )
+    VERIFY_(status)
+
     ! Get the configuration from the component
     !-----------------------------------------
     call ESMF_GridCompGet( GC, CONFIG = CF, RC=STATUS )
@@ -796,6 +801,24 @@ contains
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
     VERIFY_(STATUS)
+    call MAPL_AddImportSpec(GC,                             &
+        LONG_NAME          = 'turbulence_liquid_water_tendency',  &
+        UNITS              = 'kg kg-1 s-1',                       &
+        SHORT_NAME         = 'DQLDTTRB',                          &
+        RESTART    = MAPL_RestartSkip,                            &
+        DIMS               = MAPL_DimsHorzVert,                   &
+        VLOCATION          = MAPL_VLocationCenter,                  &
+                                                       RC=STATUS  )
+    VERIFY_(STATUS)    
+    call MAPL_AddImportSpec(GC,                             &
+        LONG_NAME          = 'turbulence_ice_water_tendency',     &
+        UNITS              = 'kg kg-1 s-1',                       &
+        SHORT_NAME         = 'DQIDTTRB',                          &
+        RESTART    = MAPL_RestartSkip,                            &
+        DIMS               = MAPL_DimsHorzVert,                   &
+        VLOCATION          = MAPL_VLocationCenter,                  &
+                                                       RC=STATUS  )
+    VERIFY_(STATUS)    
 !-srf-gf-scheme
 
     ! !EXPORT STATE:
@@ -2525,6 +2548,14 @@ contains
          UNITS     ='kg m-2'  ,                                    &
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='CIWP',                                        & 
+         LONG_NAME ='cloud_ice_water_path',                        &
+         UNITS     ='kg m-2'  ,                                    & 
+         DIMS      = MAPL_DimsHorzOnly,                            & 
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  ) 
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
@@ -5621,10 +5652,10 @@ contains
     call MAPL_GetResource( MAPL, MOVE_CN_TO_LS, Label="MOVE_CN_TO_LS:",  default=.FALSE., RC=STATUS); VERIFY_(STATUS)
 
     if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
-    if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Initialize(MAPL, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
-    if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Initialize(MAPL, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Initialize(MAPL, CF, CLOCK, IMPORT, EXPORT, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Initialize(MAPL, CF, CLOCK, IMPORT, EXPORT, RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CLDMICR_OPTION)=="BACM_1M") call BACM_1M_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
-    if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Initialize(MAPL, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Initialize(MAPL, CF, CLOCK, IMPORT, EXPORT, RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CLDMICR_OPTION)=="THOM_1M") call THOM_1M_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
 
@@ -5957,28 +5988,22 @@ contains
        ! initialize diagnosed convective fraction
        CNV_FRC = 0.0
        if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
-         ! CAPE ramps
-           WHERE (CAPE .ne. MAPL_UNDEF)
-              CNV_FRC = (1.0-COS(MAPL_PI*(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN)))/2.0
-           END WHERE
-           WHERE ((CAPE .le. CNV_FRACTION_MIN) .and. (CAPE .ne. MAPL_UNDEF))
-              CNV_FRC = 0.0
-           END WHERE
-           WHERE ((CAPE .ge. CNV_FRACTION_MAX) .and. (CAPE .ne. MAPL_UNDEF))
-              CNV_FRC = 1.0
-           END WHERE
-       else
-         ! use -1.0*EIS so CNV_FRC 0:1 for EIS 0:-1
-         CNV_FRC = MAX(0.0,MIN(1.0,-1.0*EIS))
-        !!
-        !CNV_CAPE_SCALE = 0.5*(CNV_FRACTION_MIN+CNV_FRACTION_MAX)
-        !CNV_CAPE_NORM = SQRT(CNV_FRACTION_MAX-CNV_FRACTION_MIN) / &
-        !               (SQRT(CNV_FRACTION_MAX-CNV_FRACTION_MIN)+SQRT(CNV_CAPE_SCALE-CNV_FRACTION_MIN))
-        !WHERE (MUCAPE .ne. MAPL_UNDEF)
-        !   CNV_FRC = MIN(  SQRT(MAX(0.0,MUCAPE-CNV_FRACTION_MIN)) / &
-        !                  (SQRT(MAX(0.0,MUCAPE-CNV_FRACTION_MIN)+SQRT(CNV_CAPE_SCALE-CNV_FRACTION_MIN))) / &
-        !                  CNV_CAPE_NORM , 1.0)
-        !END WHERE
+         if (CNV_FRACTION_EXP /= 1.0) then
+            WHERE (CAPE .ne. MAPL_UNDEF)
+               CNV_FRC =(MAX(1.e-6,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN))))
+            END WHERE
+            CNV_FRC = CNV_FRC**CNV_FRACTION_EXP
+         else
+            WHERE (CAPE .ne. MAPL_UNDEF)
+               CNV_FRC = (1.0-COS(MAPL_PI*(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN)))/2.0
+            END WHERE
+            WHERE ((CAPE .le. CNV_FRACTION_MIN) .and. (CAPE .ne. MAPL_UNDEF))
+               CNV_FRC = 0.0
+            END WHERE
+            WHERE ((CAPE .ge. CNV_FRACTION_MAX) .and. (CAPE .ne. MAPL_UNDEF))
+               CNV_FRC = 1.0
+            END WHERE
+         endif
        endif
 
        ! Extract convective tracers from the TR bundle
@@ -6574,14 +6599,19 @@ contains
 
        call MAPL_GetPointer(EXPORT, PTR3D, 'RH2', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = MAX(MIN( Q/GEOS_QSAT (T, PLmb) , 1.02 ),0.0)
+
+       ! Cloud Water Path
        call MAPL_GetPointer(EXPORT, PTR2D, 'CWP', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR2D)) PTR2D = SUM( ( QLCN+QLLS+QICN+QILS )*MASS , 3 )
+       ! Cloud Liquid Water Path
        call MAPL_GetPointer(EXPORT, PTR2D, 'CLWP', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR2D)) PTR2D = SUM( ( QLCN+QLLS ) *MASS , 3 )
-       call MAPL_GetPointer(EXPORT, PTR2D, 'LWP', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR2D)) PTR2D = SUM( ( QLCN+QLLS ) *MASS , 3 )
-       call MAPL_GetPointer(EXPORT, PTR2D, 'IWP', RC=STATUS); VERIFY_(STATUS)
+       ! Cloud Ice Water Path
+       call MAPL_GetPointer(EXPORT, PTR2D, 'CIWP', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR2D)) PTR2D = SUM( ( QICN+QILS ) *MASS , 3 )
+       ! Total LWP and IWP need to be defined inside the microphysics depends on number was water species
+
+       ! Total Precipitable Water
        call MAPL_GetPointer(EXPORT, PTR2D, 'TPW', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR2D)) PTR2D = SUM( ( Q         ) *MASS , 3 )
 
@@ -6653,6 +6683,36 @@ contains
     RETURN_(ESMF_SUCCESS)
 
   end subroutine RUN
+
+  subroutine FINALIZE ( GC, IMPORT, EXPORT, CLOCK, RC )
+    type(ESMF_GridComp), intent(inout) :: gc     ! Gridded component
+    type(ESMF_State),    intent(inout) :: import ! Import state
+    type(ESMF_State),    intent(inout) :: export ! Export state
+    type(ESMF_Clock),    intent(inout) :: clock  ! The clock
+    integer, optional,   intent(  out) :: rc     ! Error code
+
+    ! ErrLog variables
+    integer :: status
+    character(len=ESMF_MAXSTR) :: Iam
+    character(len=ESMF_MAXSTR) :: comp_name
+    ! Begin...
+    ! Get component's name and setup traceback handle
+    call ESMF_GridCompget(gc, name=comp_name, rc=status)
+    VERIFY_(status)
+    Iam = trim(comp_name) // "::Finalize"
+
+
+    if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_FINALIZE(GC, IMPORT, EXPORT, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(SHALLOW_OPTION)=="UW"     ) call UW_Finalize(GC, IMPORT, EXPORT, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(CONVPAR_OPTION)=="GF"     ) call GF_Finalize(GC, IMPORT, EXPORT, RC=STATUS) ; VERIFY_(STATUS)
+
+    ! Call Finalize for every child
+    call MAPL_GenericFinalize(gc, import, export, clock, rc=status)
+    VERIFY_(status)
+    ! End
+    RETURN_(ESMF_SUCCESS)
+
+  end subroutine FINALIZE
 
 end module GEOS_MoistGridCompMod
 
