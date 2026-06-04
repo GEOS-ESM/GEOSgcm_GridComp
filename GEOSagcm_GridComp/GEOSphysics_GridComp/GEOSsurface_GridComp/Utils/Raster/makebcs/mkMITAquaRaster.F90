@@ -5,7 +5,7 @@
 
       use LogRectRasterizeMod,     ONLY: LRRasterize
       use MAPL_ExceptionHandling
-      use, intrinsic :: iso_fortran_env, only: REAL64
+      use, intrinsic :: iso_fortran_env, only: REAL64, INT64
       implicit none
 
       integer, parameter      :: IUNIT  = 11,   OUNIT = 12
@@ -14,9 +14,9 @@
       INTEGER                 :: NC
       INTEGER                 :: NX, NY
 
-      integer                 :: STATARRAY(12)
-      integer(REAL64)         :: filesize
-      integer(REAL64)         :: Length
+      integer                 :: ios
+      integer(INT64)          :: filesize
+      integer(INT64)          :: Length
       integer                 :: K
       integer                 :: i, j
       integer                 :: KF, L, NF
@@ -84,7 +84,7 @@
 !            161,162,179,180,197,198,215,216,233,234]
 !#15x15   nprocs = 360
 !#  blankList(1:108)
-! [1,2,3,4,5,6,7,8,9,10,11,12,14,15,16,17,18,21,22,23,24,& 
+! [1,2,3,4,5,6,7,8,9,10,11,12,14,15,16,17,18,21,22,23,24,&
 !  65,71,75,76,90,95,96,101,102,109,110,111,112,113,114,115,116,117,118,119,&
 !  120,121,122,123,124,125,126,127,128,129,130,131,132,&
 !  188,189,190,193,194,195,196,199,&
@@ -112,7 +112,7 @@
       print *, trim(Usage)
       call exit(1)
    end if
-   
+
    nxt = 1
    call get_command_argument(nxt,arg)
    do while(arg(1:1)=='-')
@@ -152,10 +152,11 @@
    BLNKSZ =  count(blanklist /= 0)
 
       ! Open Facet 3 first. It is always a square (CS or LLC)
-      open (IUNIT,file=trim(GridDir)//'/tile003.mitgrid', status='old')
-      call fstat(IUNIT,statarray)
-      close (IUNIT)
-      filesize = statarray(8)
+      inquire(file=trim(GridDir)//'/tile003.mitgrid', size=filesize, iostat=ios)
+      if (ios /= 0) then
+         print *, 'Error opening file: ', trim(GridDir)//'/tile003.mitgrid'
+         call exit(1)
+      end if
 
       !ALT: Kludge for LLC4320
       if (filesize <= 0) filesize = 2389893248
@@ -181,11 +182,11 @@
       LENGTH = nx*ny*REAL64
 
       ! Open Facet 1 to check sizes CS or LLC)
-      open (IUNIT,file=trim(GridDir)//'/tile001.mitgrid', status='old')
-      call fstat(IUNIT,statarray)
-      close (IUNIT)
-
-      filesize = statarray(8)
+      inquire(file=trim(GridDir)//'/tile001.mitgrid', size=filesize, iostat=ios)
+      if (ios /= 0) then
+         print *, 'Error opening file: ', trim(GridDir)//'/tile001.mitgrid'
+         call exit(1)
+      end if
 
       !ALT: Kludge for LLC4320
       if (filesize <= 0) filesize = 7168573568
@@ -303,7 +304,7 @@
       open (IUNIT, FILE=trim(GridDir)//trim(FACEFILE), &
             ACCESS='DIRECT', RECL=LENGTH, STATUS='OLD',convert='big_endian')
 
-!      read (IUNIT,REC=5) rA 
+!      read (IUNIT,REC=5) rA
       read (IUNIT,REC=6) XG
       read (IUNIT,REC=7) YG
 
