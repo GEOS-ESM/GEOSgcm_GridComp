@@ -167,7 +167,7 @@ class UWGEOSInterface(UserCode):
                 self._managed_state.fortran_to_ndsl()
                 if ndsl_stack.backend.is_fortran_aligned():
                     safe_assign_array(
-                        self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:-1,:-1,:-1,:],
+                        self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
                         MOIST_WORKAROUNDS.CNV_Tracers().Q,
                     )
                 else:
@@ -184,7 +184,7 @@ class UWGEOSInterface(UserCode):
                 if ndsl_stack.backend.is_fortran_aligned():
                     safe_assign_array(
                         MOIST_WORKAROUNDS.CNV_Tracers().Q,
-                        self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:-1,:-1,:-1,:],
+                        self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
                     )
                 else:
                     # Don't copy the extra ghost point that we allocate
