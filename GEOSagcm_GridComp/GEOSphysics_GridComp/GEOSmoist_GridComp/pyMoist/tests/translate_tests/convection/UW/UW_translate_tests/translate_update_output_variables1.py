@@ -28,7 +28,6 @@ class TranslateUpdateOutputVars1(TranslateFortranData2Py):
             "cufrc": {},
             "cush": {},
             "dcm": {},
-            "del_CIN": {},
             "kinv": {},
             "qiten": {},
             "qlten": {},
@@ -95,8 +94,6 @@ class TranslateUpdateOutputVars1(TranslateFortranData2Py):
         safe_assign_array(cush.view[:], inputs["cush"])
         dcm = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(dcm.view[:], inputs["dcm"])
-        del_CIN = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
-        safe_assign_array(del_CIN.view[:], inputs["del_CIN"])
         kinv = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a", dtype=Int)
         safe_assign_array(kinv.view[:], inputs["kinv"])
         qiten = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
@@ -122,7 +119,7 @@ class TranslateUpdateOutputVars1(TranslateFortranData2Py):
 
         # Outputs
         cufrc_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        cush_inout = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        cush_inout = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
         dcm_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         qiten_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         qlten_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
@@ -137,7 +134,6 @@ class TranslateUpdateOutputVars1(TranslateFortranData2Py):
         # Call stencils
         self._update_output_vars1(
             condensation=condensation,
-            del_CIN=del_CIN,
             umf_zint=umf,
             kinv=kinv,
             zifc0=zifc0,
@@ -166,9 +162,15 @@ class TranslateUpdateOutputVars1(TranslateFortranData2Py):
             cush_inout=cush_inout,
         )
 
+        # For some reason, `cush_inout` is a 3d field in the translate test
+        # data. We thus just copy the lowest level into all other levels.
+        cush_inout_3d = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        for k in range(self.grid.npz):
+            cush_inout_3d[:, :, k] = cush_inout[:, :]
+
         return {
             "cufrc_out": cufrc_out.view[:],
-            "cush_inout": cush_inout.view[:],
+            "cush_inout": cush_inout_3d.view[:],
             "dcm_out": dcm_out.view[:],
             "qiten_out": qiten_out.view[:],
             "qlten_out": qlten_out.view[:],

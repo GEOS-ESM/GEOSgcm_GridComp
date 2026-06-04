@@ -6800,7 +6800,6 @@ def _reset_mask(
 
 def update_output_variables1(
     condensation: BoolFieldIJ,
-    del_CIN: FloatFieldIJ,
     umf_zint: FloatField,
     kinv: IntField,
     zifc0: FloatField,
@@ -6915,8 +6914,8 @@ def update_output_variables1(
         if not condensation:
             umf_out = umf_zint
 
-            if K <= kinv:
-                umf_out = umf_zint.at(K=kinv) * zifc0 / zifc0.at(K=kinv)
+            if K < kinv:
+                umf_out = umf_zint.at(K=kinv - 1) * zifc0 / zifc0.at(K=kinv - 1)
 
             cufrc_out = cufrc
             dcm_out = dcm
@@ -6929,24 +6928,6 @@ def update_output_variables1(
             qrten_out = qrten
             qsten_out = qsten
             cush_inout = cush
-
-    with computation(FORWARD), interval(...):
-        if del_CIN <= 0.0:
-            umf_outvar = umf_out
-            cufrc_outvar = cufrc_out
-            dcm_outvar = dcm_out
-            qvten_outvar = qvten_out
-            qlten_outvar = qlten_out
-            qiten_outvar = qiten_out
-            sten_outvar = sten_out
-            uten_outvar = uten_out
-            vten_outvar = vten_out
-            qrten_outvar = qrten_out
-            qsten_outvar = qsten_out
-            cush_inoutvar = cush_inout
-
-        if del_CIN > 0.0:
-            umf_outvar = umf_zint
 
 
 def update_output_variables2(
@@ -9608,7 +9589,6 @@ class ComputeUwshcuInv(NDSLRuntime):
 
         self._update_output_variables1(
             condensation=self.condensation,
-            del_CIN=self.locals.del_CIN,
             umf_zint=self.locals.umf_zint,
             kinv=self.locals.kinv,
             zifc0=self.locals.zifc0_in,
