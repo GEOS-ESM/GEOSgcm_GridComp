@@ -47,7 +47,7 @@ module GEOS_MoistGridCompMod
   logical :: LUPDATE_PRECIP_TYPE
   real    :: CCN_OCN
   real    :: CCN_LND
-  logical :: MOVE_CN_TO_LS
+  real    :: DETRAIN_INACTIVE_CNV
   logical :: USE_NCLOUD_CLIM
 
   ! !PUBLIC MEMBER FUNCTIONS:
@@ -182,7 +182,7 @@ contains
 
     call MAPL_GetResource( CF, DEBUG_MST, Label="DEBUG_MST:",  default=.false., RC=STATUS) ; VERIFY_(STATUS)
 
-
+    call MAPL_GetResource( CF, DEBUG_TQ_ERRORS, Label="DEBUG_TQ_ERRORS:",  default=.false., RC=STATUS) ; VERIFY_(STATUS)
     !***********Aerosol-Cloud related
 
     call MAPL_GetResource( CF, USE_NCLOUD_CLIM, Label='USE_NCLOUD_CLIM:',   default=.FALSE.,        RC=STATUS)
@@ -5602,7 +5602,7 @@ contains
     call MAPL_GetResource( MAPL, CCN_OCN, 'NCCN_OCN:', DEFAULT= 100., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CCN_LND, 'NCCN_LND:', DEFAULT= 300., RC=STATUS); VERIFY_(STATUS)
 
-    call MAPL_GetResource( MAPL, MOVE_CN_TO_LS, Label="MOVE_CN_TO_LS:",  default=.FALSE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, DETRAIN_INACTIVE_CNV, Label="DETRAIN_INACTIVE_CNV:",  default=1.e-5, RC=STATUS); VERIFY_(STATUS)
 
     if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Initialize(MAPL, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
@@ -6067,31 +6067,31 @@ contains
        ! Mass fluxes
        ! accumuated over deep and shalow convection
        call MAPL_GetPointer(EXPORT, PTR3D,   'CNV_MFC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       if (DETRAIN_INACTIVE_CNV > 0.0) then
+         do L = 1, LM
+           do J = 1, JM
+             do I = 1, IM
+               if (0.5*(PTR3D(I,J,L)+PTR3D(I,J,L+1)) < DETRAIN_INACTIVE_CNV) then
+                 ! Move all QL, QI to LS when cnv_mfc is ~0.0 (Mass is conserved linearly)
+                 QLLS(I,J,L) = QLLS(I,J,L) + QLCN(I,J,L)
+                 QLCN(I,J,L) = 0.0
+                 
+                 QILS(I,J,L) = QILS(I,J,L) + QICN(I,J,L)
+                 QICN(I,J,L) = 0.0
+                 
+                 ! Combine cloud area using Random Overlap (prevents exceeding 1.0)
+                 CLLS(I,J,L) = CLLS(I,J,L) + CLCN(I,J,L) - (CLLS(I,J,L) * CLCN(I,J,L))
+                 CLCN(I,J,L) = 0.0
+               endif
+            enddo
+          enddo
+         enddo
+       endif
        call MAPL_GetPointer(EXPORT, PTRDC,   'UMF_DC' ,               RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, PTRSC,   'UMF_SC' ,               RC=STATUS); VERIFY_(STATUS)
                               PTR3D = 0.0
        if (associated(PTRDC)) PTR3D = PTR3D + PTRDC
        if (associated(PTRSC)) PTR3D = PTR3D + PTRSC
-
-       if (MOVE_CN_TO_LS) then
-         do L = 1, LM
-           do J = 1, JM
-             do I = 1, IM
-               if (0.5*(PTR3D(I,J,L)+PTR3D(I,J,L+1)) < 1.e-5) then
-                ! Move all QL,QI,CL to LS when cnv_mfc is 0.0
-                 QLLS(I,J,L) = QLLS(I,J,L)+QLCN(I,J,L)
-                 QLCN(I,J,L) = 0.0
-                 QILS(I,J,L) = QILS(I,J,L)+QICN(I,J,L)
-                 QICN(I,J,L) = 0.0
-                 CLLS(I,J,L) = CLLS(I,J,L)+CLCN(I,J,L)
-                 CLCN(I,J,L) = 0.0
-               endif
-              ! cleanup clouds
-               call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L) )
-            enddo
-          enddo
-         enddo
-       endif
 
        call MAPL_GetPointer(EXPORT, PTR3D,   'CNV_MFD', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, PTRDC,   'MFD_DC' ,               RC=STATUS); VERIFY_(STATUS)

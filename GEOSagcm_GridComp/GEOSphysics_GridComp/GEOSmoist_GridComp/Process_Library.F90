@@ -10,10 +10,6 @@ module GEOSmoist_Process_Library
   use ESMF
   use MAPL
   use GEOS_UtilsMod
-  !use Aer_Actv_Single_Moment
-  !use aer_cloud
-  USE module_mp_radar
-
 
   implicit none
   private
@@ -250,8 +246,6 @@ module GEOSmoist_Process_Library
   real    :: CNV_FRACTION_EXP =    1.0
 
   ! Storage of aerosol properties for activation
-  !type(AerPropsNew) :: AeroPropsNew(nsmx_par)
-  !type(AerProps), allocatable, dimension (:,:,:) :: AeroProps
 
   ! Tracer Bundle things for convection
   type CNV_Tracer_Type
@@ -2895,6 +2889,8 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
       
       ! =======================================================================
       ! PHASE 4: Finalization & Mapping back to Absolute Grid Box
+      ! Scale the environmental values back down to grid-box absolutes, 
+      ! partition into ice/liquid, and update prognostic variables.
       ! =======================================================================
       
       CLLS   = cf_env * (1.0 - CLCN)
@@ -4717,6 +4713,8 @@ subroutine update_cld( &
 
    subroutine init_refl10cm ()
 
+      USE module_mp_radar
+
       IMPLICIT NONE
 
       integer :: n
@@ -4850,6 +4848,8 @@ subroutine update_cld( &
                t1d, p1d, dBZ, rand1, kts, kte, ii, jj, &
                vt_dBZ, first_time_step, ktopin, kbotin)
 
+      USE module_mp_radar
+ 
       IMPLICIT NONE
 
 !..Sub arguments
