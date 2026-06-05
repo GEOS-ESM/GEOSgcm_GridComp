@@ -1732,8 +1732,6 @@ module GEOS_LandiceGridCompMod
        type(ESMF_State),    intent(inout) :: EXPORT ! Export state
        type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
        integer, optional,   intent(  out) :: RC     ! Error code
-
-       type (ESMF_State)                  :: INTERNAL
    
    ! !DESCRIPTION: The Initialize method of the Landice Gridded Component.
    
@@ -1792,9 +1790,6 @@ module GEOS_LandiceGridCompMod
    !---------------------------------------------------------------------
 
 #ifdef HAVE_ISSM
-       call MAPL_Get(MAPL, INTERNAL_ESMF_STATE = INTERNAL, RC=STATUS) 
-       VERIFY_(STATUS)   
-
        do I = 1, SIZE(GCS)
           call MAPL_GetObjectFromGC( GCS(I), CHILD_MAPL, RC=STATUS )
           VERIFY_(STATUS)
