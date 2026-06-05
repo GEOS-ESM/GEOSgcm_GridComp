@@ -1183,7 +1183,8 @@ contains
                             ! else: Coriolis acceleration on
     integer :: SCM_WIND ! 0:    use observed winds
                         ! else: use interactive winds
-
+    real :: SCM_F0
+    
     integer :: IM,JM,LM,L,K,NQ,ii,NOT1,COLDSTART,Ktrc,iip1,itr,ntracs
 
     real, pointer, dimension(:,:,:) :: PLE,PLEOUT
@@ -1340,6 +1341,8 @@ contains
                                          DEFAULT=0,  __RC__)
     call ESMF_ConfigGetAttribute ( CF, SCM_CORIOLIS, Label="SCM_CORIOLIS:", &
                                          DEFAULT=0,  __RC__)
+    call ESMF_ConfigGetAttribute ( CF, SCM_F0, Label="SCM_F0:", &
+                                         DEFAULT=-999.,  __RC__)
     call ESMF_ConfigGetAttribute ( CF, SCM_UG,  Label="SCM_UG:", &
                                          DEFAULT=0.,  __RC__)
     call ESMF_ConfigGetAttribute ( CF, SCM_VG,  Label="SCM_VG:", &
@@ -1836,8 +1839,12 @@ contains
 
       if ( SCM_CORIOLIS /= 0 ) then
          allocate(F0(IM,JM))
-         F0(:,:) = 2.*MAPL_OMEGA*sin( LATS(:,:) )
-      end if
+         if (SCM_F0.gt.-1.) then
+            F0(:,:) = SCM_F0
+         else
+            F0(:,:) = 2.*MAPL_OMEGA*sin( LATS(:,:) )
+         end if
+       end if
 
        do l=1,lm
           if ( SCM_CORIOLIS == 0 ) then
