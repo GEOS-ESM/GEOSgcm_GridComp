@@ -43,9 +43,9 @@ subroutine InitializeISSM(expdir, num_elements, num_nodes, comm) bind(c, name="I
   integer(c_int)                  :: comm
 end subroutine InitializeISSM
     
-subroutine RunISSM(dt, gcm_forcings, issm_outputs) bind(C,NAME="RunISSM")
+subroutine RunISSM(ISSM_DT, gcm_forcings, issm_outputs) bind(C,NAME="RunISSM")
    import :: c_ptr, c_double
-   real(c_double),   value        :: dt
+   real(c_double),   value        :: ISSM_DT
    type(c_ptr),      value        :: gcm_forcings
    type(c_ptr),      value        :: issm_outputs
 end subroutine RunISSM
@@ -90,8 +90,8 @@ type T_ISSM_TILE_STATE
     real, pointer :: ICESURF_TILE(:)
     real, pointer :: ICETHICK_TILE(:)
     real, pointer :: ICEVEL_TILE(:)
-    real, pointer :: ICESMB_TILE(:)
-    integer       :: NSTEPS_INIT
+    real, pointer :: ICESMB_ISSM(:)
+	integer       :: NSTEPS_ISSM
 end type T_ISSM_TILE_STATE
 
 type ISSM_TILE_WRAP
@@ -118,8 +118,10 @@ type ISSM_WRAP
   type (T_ISSM_STATE), pointer :: ptr
 end type ISSM_WRAP
 
-! number of output fields that ISSM sends to GEOS
-integer :: num_outputs = 6   
+
+integer :: num_outputs = 6          ! number of output fields that ISSM sends to GEOS
+logical :: ISSM_RAN = .false.       ! run flag for ISSM C++ solvers
+logical :: ISSM_RST_FOUND = .false. ! restart found flag
 
 contains
                                 
@@ -158,7 +160,7 @@ subroutine SetServices ( GC, RC )
 
     type (ESMF_Config)                 :: CF
 
-    real                               :: dt     ! time step [s] (ISSM_DT set in AGCM.rc)
+    real                               :: ISSM_DT     ! time step [s] (ISSM_DT set in AGCM.rc)
 
     ! Get my internal MAPL_Generic state
 
@@ -192,7 +194,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     ! get timestep for ISSM
-    call ESMF_ConfigGetAttribute(CF, dt, Label=trim(COMP_NAME)//"_DT:", DEFAULT=302400.0, RC=STATUS)
+    call ESMF_ConfigGetAttribute(CF, ISSM_DT, Label=trim(COMP_NAME)//"_DT:", DEFAULT=302400.0, RC=STATUS)
     VERIFY_(STATUS)
 
 
@@ -254,7 +256,7 @@ subroutine SetServices ( GC, RC )
          UNITS      = 'm',                         &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
-		 RESTART    = MAPL_RestartOptional,        &    
+		 RESTART    = MAPL_RestartOptional,        &   
          RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -287,6 +289,7 @@ subroutine SetServices ( GC, RC )
 		 RESTART    = MAPL_RestartOptional,        & 
          RC=STATUS  )
     VERIFY_(STATUS)
+
 
 ! Set the Profiling timers
 ! ------------------------
@@ -327,8 +330,7 @@ subroutine SetServices ( GC, RC )
     real                                   :: HEARTBEAT_DT            ! landice time step [s] (ISSM_DT set in AGCM.rc)
     integer                                :: NSTEPS_INIT             ! landice timesteps since last ISSM run
     integer                                :: NSTEPS_RING             ! total landice timesteps between ISSM runs
-    type(T_ISSM_TILE_STATE), pointer       :: issm_tile_state
-    type(ISSM_TILE_WRAP)                   :: issm_tile_wrap
+	integer                                :: ios, u                  ! for reading ISSM_NSTEPS.txt file
 
     ! ErrLog Variables
     character(len=ESMF_MAXSTR)             :: IAm
@@ -394,7 +396,6 @@ subroutine SetServices ( GC, RC )
     integer                                :: n1,n2,n3
 
     ! restarts from internal state
-	  logical                                :: issm_rst_found          ! process issm_internal_rst if found
     real, pointer, dimension(:)            :: ICESURF_IN    => null() ! ice surface elevation restart
     real, pointer, dimension(:)            :: ICETHICK_IN   => null() ! ice thickness restart
     real, pointer, dimension(:)            :: IMLS_IN       => null() ! ice-mask levelset restart
@@ -588,19 +589,28 @@ subroutine SetServices ( GC, RC )
     call ESMF_GridCompSet(gc, grid=mesh_grid, _RC)
     call MAPL_Set(MAPL, locstream = mesh_locstream, _RC)
 
-    ! Create ISSM Run Alarm 
+    ! Generic initialize
     !-----------------------------------
-    call ESMF_UserCompGetInternalState(GC, 'ISSM_TILES', issm_tile_wrap, STATUS); VERIFY_(STATUS)
-    issm_tile_state => issm_tile_wrap%ptr
+    call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
+    VERIFY_(STATUS)
 
-    NSTEPS_INIT = issm_tile_state%NSTEPS_INIT
+	! Create Custom ISSM Run Alarm 
+    !-----------------------------------
+
+	! get number of time steps since last ISSM run
+    NSTEPS_INIT = 0
+	open(newunit=u, file="ISSM_NSTEPS.txt", status="old", iostat=ios)
+	if (ios == 0) then
+	  read(u, *) NSTEPS_INIT
+	  close(u)
+	end if
 
     ! get timestep for landice (heartbeat)
-    call MAPL_Get(MAPL, HEARTBEAT = HEARTBEAT_DT, RC=STATUS)
+    call MAPL_Get(MAPL, HEARTBEAT=HEARTBEAT_DT,RC=STATUS)
     VERIFY_(STATUS)
 
     ! get timestep for ISSM
-    call MAPL_GetResource(MAPL, ISSM_DT, Label=trim(COMP_NAME)//"_DT:",DEFAULT=302400, RC=STATUS)
+    call MAPL_GetResource(MAPL, ISSM_DT, Label=trim(COMP_NAME)//"_DT:",DEFAULT=302400.0, RC=STATUS)
     VERIFY_(STATUS)
     
     ! total landice time steps between ISSM runs
@@ -616,21 +626,15 @@ subroutine SetServices ( GC, RC )
     call ESMF_TimeIntervalSet(ringInterval,s=nint(ISSM_DT),RC=STATUS)
     VERIFY_(STATUS)
 
-    ! create ISSM_ALARM
-    ISSM_ALARM = ESMF_AlarmCreate(CLOCK,ringTime=ringTime,ringInterval=ringInterval,sticky=.false.)   
+    ! create new ISSM_ALARM
+    ISSM_ALARM = ESMF_AlarmCreate(CLOCK,ringTime=ringTime,ringInterval=ringInterval,sticky=.false.,rc=STATUS)
+	VERIFY_(STATUS)
 
+	! set run alarm
     call MAPL_Set(MAPL, RUNALARM = ISSM_ALARM, _RC)
-
-    ! Generic initialize
-    !-----------------------------------
-    call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
-    VERIFY_(STATUS)
 
     ! Next, send GEOS restarts to ISSM
     !-----------------------------------
-    call MAPL_GetObjectFromGC(GC, MAPL, STATUS)
-    VERIFY_(STATUS)
-
     call MAPL_Get(MAPL,INTERNAL_ESMF_STATE = INTERNAL,RC=STATUS)
     VERIFY_(STATUS)
 
@@ -642,13 +646,12 @@ subroutine SetServices ( GC, RC )
 
     ! if restart has been read, apply halo operation and send pointers to ISSM
     ! else, ISSM will just use default initial values in ISSM*.bin input files
-	issm_rst_found = .false.
 	if (associated(ICETHICK_IN)) then
     ! check for positive ice thickness (initialized to zero if restart not found)
-	    issm_rst_found = minval(ICETHICK_IN) > epsilon(ICETHICK_IN)
+	    ISSM_RST_FOUND = minval(ICETHICK_IN) > epsilon(ICETHICK_IN)
 	end if
 	
-	if (issm_rst_found) then
+	if (ISSM_RST_FOUND) then
 
     ! variables for halo operations
     allocate(ICESURF_HALO(num_nodes))
@@ -892,7 +895,14 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
  
   ! physical parameters
   real(dp), parameter                  :: rho_ice   = 917.0     ! pure ice density [kg m-3]
-  real(dp)                             :: dt                    ! time step [s] (ISSM_DT set in AGCM.rc)
+  real(dp)                             :: ISSM_DT               ! time step [s] (ISSM_DT set in AGCM.rc)
+
+  ! testing
+  type(ESMF_Time)                      :: currTime
+  type(ESMF_Time)                      :: stopTime
+  type(ESMF_TimeInterval)              :: timeStep
+  logical                              :: NEED_RST
+  integer                              :: localPET
 
 ! Get the target components name, mesh and vm
 ! -----------------------------------------------------------
@@ -917,16 +927,29 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   call MAPL_Get(MAPL, RUNALARM = ALARM, RC=STATUS )
   VERIFY_(STATUS)
 
-  ! run ISSM at specified time steps
-  if ( ESMF_AlarmIsRinging (ALARM, RC=STATUS) ) then
+  call ESMF_ClockGet(CLOCK,currTime=currTime,stopTime=stopTime,timeStep=timeStep,rc=STATUS); VERIFY_(STATUS)
+
+  ! if bootstrapping, and at final timestep, we will get restarts from run method
+  NEED_RST = (currTime==(stopTime-timeStep)) .and. ((.not. ISSM_RAN) .and. (.not. ISSM_RST_FOUND))
+
+  call ESMF_VMGet(vm,localPET=localPET,rc=STATUS); VERIFY_(STATUS)
+
+  ! run ISSM at specified time steps, 
+  ! if bootstrapping restart and issm has not by final time step, run anyways
+  ! with timestep of zero, which just gets restart values
+  if ( ESMF_AlarmIsRinging(ALARM, RC=STATUS) .or. NEED_RST ) then
 
     ! *************************************************************************** !
     ! BASIC SETUP
     ! *************************************************************************** !
 
     ! get timestep for ISSM
-    call MAPL_GetResource(MAPL, dt, Label=trim(COMP_NAME)//"_DT:",DEFAULT=302400.0, RC=STATUS)
+    call MAPL_GetResource(MAPL, ISSM_DT, Label=trim(COMP_NAME)//"_DT:",DEFAULT=302400.0, RC=STATUS)
     VERIFY_(STATUS)
+
+    if (NEED_RST) then
+        ISSM_DT = 0.0_dp
+	end if 
 
     ! get number of mesh elements
     call ESMF_MeshGet(mesh,elementCount=num_elements,nodeCount=num_nodes,numOwnedNodes=num_owned_nodes)
@@ -995,7 +1018,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     end if
     
     ! copy import values into tile array 
-    ICESMB_TILE = issm_tile_state%ICESMB_TILE
+    ICESMB_TILE = issm_tile_state%ICESMB_ISSM
 
     ! *************************************************************************** !
     ! TRANSFORM ICESMB FROM TILES TO MESH 
@@ -1016,9 +1039,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_VMBarrier(vm, rc=status); VERIFY_(STATUS)
 
     ! call run method from ISSM library 
-    call RunISSM(dt, c_loc(ICESMB_MESH), c_loc(ISSM_OUTPUTS))
+    call RunISSM(ISSM_DT, c_loc(ICESMB_MESH), c_loc(ISSM_OUTPUTS))
 
     call ESMF_VMBarrier(vm, rc=status); VERIFY_(STATUS)
+
+    ! update ISSM run flag (for C++ library calls)
+	ISSM_RAN = .true.
 
     ! *************************************************************************** !
     ! UNPACK AND EXPORT ISSM OUTPUTS ON MESH TILES
@@ -1220,8 +1246,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     
     ! ErrLog Variables
     character(len=ESMF_MAXSTR)	       :: IAm
-    integer			                       :: STATUS
+    integer			                   :: STATUS
     character(len=ESMF_MAXSTR)         :: COMP_NAME
+
+    ! testing
+	integer :: u
+	type(T_ISSM_TILE_STATE), pointer     :: issm_tile_state
+    type(ISSM_TILE_WRAP)                 :: issm_tile_wrap
 
     ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -1230,8 +1261,23 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     Iam = trim(comp_name) // Iam
 
+
+	! save number of steps since last issm run as a little txt file
+	call ESMF_UserCompGetInternalState(GC, 'ISSM_TILES', issm_tile_wrap, status); VERIFY_(STATUS)
+    issm_tile_state => issm_tile_wrap%ptr
+	
+	open(newunit=u, file="ISSM_NSTEPS.txt", status="replace")
+	write(u, *) issm_tile_state%NSTEPS_ISSM
+	close(u)
+
     ! call ISSM finalize (saves binary output .outbin file)
-    call FinalizeISSM()
+	if (ISSM_RAN) then
+	! NOTE: only call if ISSM C++ solvers were called, because OutputResultsx
+	! in C++ source throws error if 'results' is empty... 
+	! not actually a problem, but this case won't call FemModel destructors,
+	! should really just remove OutputResultsx from FinalizeISSM()....
+        call FinalizeISSM()
+	end if 
 
 ! Generic Finalize
 ! ------------------
