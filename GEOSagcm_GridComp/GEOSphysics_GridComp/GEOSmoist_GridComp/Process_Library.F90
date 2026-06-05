@@ -10,6 +10,7 @@ module GEOSmoist_Process_Library
   use ESMF
   use MAPL
   use GEOS_UtilsMod
+  use GEOS_RadarMod     
   use module_mp_radar
 
   implicit none
@@ -136,11 +137,16 @@ module GEOSmoist_Process_Library
   ! control for order of plumes
   logical :: SH_MD_DP = .FALSE.
 
-  ! Radar parameter
+  ! Radar parameters
   integer :: DBZ_VAR_INTERCP=2 ! use variable intercept parameters: 1 - on, 2 - snow boost, 3 - hail instead of graupel
   integer :: DBZ_LIQUID_SKIN=1 ! use liquid skin on snow(1) and graupel/hail(2) in warm environments
-  LOGICAL :: refl10cm_allow_wet_graupel = .false.
-  LOGICAL :: refl10cm_allow_wet_snow = .true.
+  logical :: refl10cm_allow_wet_graupel = .false.
+  logical :: refl10cm_allow_wet_snow = .true.
+  logical :: LIQUID_SKIN_SNOW = .false.
+  logical :: LIQUID_SKIN_GRAUPEL = .false.
+  logical :: LIQUID_SKIN_HAIL = .true.
+  real, PARAMETER :: W_START = 6.0
+  real, PARAMETER :: W_FULL  = 12.0
 
   ! Thompson radar constants
   LOGICAL, PARAMETER:: iiwarm = .false.
@@ -310,8 +316,7 @@ module GEOSmoist_Process_Library
   public :: pdffrac, pdfcondensate, precalc_dblgss, partition_dblgss, partition_dblgss2
   public :: SIGMA_DX, SIGMA_EXP
   public :: CNV_FRACTION_MIN, CNV_FRACTION_MAX, CNV_FRACTION_EXP
-  public :: SH_MD_DP, DBZ_VAR_INTERCP, DBZ_LIQUID_SKIN, LIQ_RADII_PARAM, ICE_RADII_PARAM
-  public :: refl10cm_allow_wet_graupel, refl10cm_allow_wet_snow
+  public :: SH_MD_DP, LIQ_RADII_PARAM, ICE_RADII_PARAM
   public :: update_cld, meltfrz_inst2M
   public :: FIX_NEGATIVE_PRECIP
   public :: FIND_KLID
@@ -319,11 +324,15 @@ module GEOSmoist_Process_Library
   public :: smooth_cloud_binary
   public :: pdf_alpha
   public :: get_fac_eis
-  public :: init_refl10cm, calc_refl10cm
   public :: neg_adj_external
   public :: compute_sgs_vvel
   public :: cf_geom_correction
-
+  public :: compute_radar_diagnostics
+  public :: init_refl10cm, calc_refl10cm
+  public :: refl10cm_allow_wet_graupel, refl10cm_allow_wet_snow
+  public :: DBZ_VAR_INTERCP, DBZ_LIQUID_SKIN
+  public :: LIQUID_SKIN_SNOW, LIQUID_SKIN_GRAUPEL, LIQUID_SKIN_HAIL
+  
   contains
 
   !=========Aerosol properties utilities
@@ -5494,5 +5503,185 @@ enddo
 enddo
 
 end subroutine compute_sgs_vvel
+
+    subroutine compute_radar_diagnostics(EXPORT, clock, IM, JM, LM, &
+                                         Q, QRAIN, QSNOW, QGRAUPEL, T, PLmb, W, ZLE0, &
+                                         RC)
+  
+        implicit none
+  
+        ! --- Arguments ---
+        type(ESMF_State),    intent(inout) :: EXPORT
+        type(ESMF_Clock),    intent(in)    :: clock
+        integer,             intent(in)    :: IM, JM, LM
+        real,                intent(in)    :: Q(IM,JM,LM), QRAIN(IM,JM,LM), QSNOW(IM,JM,LM)
+        real,                intent(in)    :: QGRAUPEL(IM,JM,LM), T(IM,JM,LM), PLmb(IM,JM,LM)
+        real,                intent(in)    :: W(IM,JM,LM), ZLE0(IM,JM,LM)
+        integer,             intent(out)   :: RC
+
+        ! --- Local Variables ---
+        integer :: I, J, L, STATUS
+        type(ESMF_Alarm) :: alarm
+        logical :: alarm_is_ringing
+        real :: rand1, fraction_hail
+        
+        ! MAPL Export Pointers
+        real, pointer :: NACTR(:,:,:)
+        real, pointer :: PTR2D(:,:)
+        real, pointer :: DBZ(:,:,:)
+        real, pointer :: DBZ_MAX(:,:)
+        real, pointer :: DBZ_1KM(:,:)
+        real, pointer :: DBZ_TOP(:,:)
+        real, pointer :: DBZ_M10C(:,:)
+        
+        ! Temporary arrays
+        real, allocatable :: TMP3D(:,:,:)
+        real, allocatable :: TMP_NACTR(:,:,:)
+        real, allocatable :: DBZ3D(:,:,:)
+        
+        ! Automatic arrays for 1D columns (Thread-safe for OpenMP)
+        real :: qg_col(LM), qh_col(LM), prs_col(LM), dbz_col(LM)
+
+        RC = ESMF_SUCCESS
+        STATUS = ESMF_SUCCESS
+
+        ! Compute DBZ radar reflectivity
+        call ESMF_ClockGetAlarm(clock, 'DBZ_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
+        alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
+            
+        call MAPL_GetPointer(EXPORT,  NACTR,  'NACTR',        RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,  PTR2D,  'REFL10CM_MAX', RC=STATUS); VERIFY_(STATUS)
+    
+        ! 1. If the user explicitly requested NACTR export, fill it every time (or whenever needed)
+        if (associated(NACTR)) then
+            NACTR = 1.e8 * QRAIN**0.8 
+        endif
+
+        ! 2. Handle the reflectivity alarm
+        if (alarm_is_ringing) then
+           call ESMF_AlarmRingerOff(alarm, RC=STATUS); VERIFY_(STATUS)
+           
+           ! Only compute if the user actually requested the reflectivity output
+           if (associated(PTR2D)) then 
+               rand1 = 0.0
+               
+               ALLOCATE(TMP3D(IM,JM,LM))
+               TMP3D = 0.0
+               
+               if (.not. associated(NACTR)) then
+                   ALLOCATE ( TMP_NACTR(IM,JM,LM) )
+                   TMP_NACTR = 1.e8 * QRAIN**0.8
+               endif
+               
+               DO J=1,JM ; DO I=1,IM
+                 if (associated(NACTR)) then
+                     call calc_refl10cm(Q(I,J,:), QRAIN(I,J,:), NACTR(I,J,:), QSNOW(I,J,:), QGRAUPEL(I,J,:), &
+                        T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J) 
+                 else
+                     call calc_refl10cm(Q(I,J,:), QRAIN(I,J,:), TMP_NACTR(I,J,:), QSNOW(I,J,:), QGRAUPEL(I,J,:), &
+                        T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J) 
+                 endif
+               END DO ; END DO
+              
+               if (.not. associated(NACTR)) DEALLOCATE ( TMP_NACTR )
+ 
+               PTR2D = -9999.0
+               DO L=1,LM ; DO J=1,JM ; DO I=1,IM 
+                  PTR2D(I,J) = MAX(PTR2D(I,J),TMP3D(I,J,L))
+               END DO ; END DO ; END DO
+               
+               DEALLOCATE(TMP3D)
+           endif
+        endif
+
+        call MAPL_GetPointer(EXPORT, DBZ     , 'DBZ'     , RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, DBZ_MAX , 'DBZ_MAX' , RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, DBZ_1KM , 'DBZ_1KM' , RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, DBZ_TOP , 'DBZ_TOP' , RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, DBZ_M10C, 'DBZ_M10C', RC=STATUS); VERIFY_(STATUS)
+        
+        if ( (associated(DBZ) .OR. &
+              associated(DBZ_MAX) .OR. associated(DBZ_1KM) .OR. associated(DBZ_TOP) .OR. associated(DBZ_M10C)) ) then
+            
+            ALLOCATE(DBZ3D(IM,JM,LM))
+              
+            !$OMP parallel do default(none) &
+            !$OMP shared(IM, JM, LM, W, QGRAUPEL, PLmb, T, Q, QRAIN, QSNOW, DBZ3D, &
+            !$OMP        DBZ_VAR_INTERCP, LIQUID_SKIN_SNOW, LIQUID_SKIN_GRAUPEL, LIQUID_SKIN_HAIL) &
+            !$OMP private(I, J, L, fraction_hail, qg_col, qh_col, prs_col, dbz_col)
+            DO J = 1, JM
+                DO I = 1, IM
+                    ! 1. Prepare the 1D column data for this specific (I,J) location
+                    DO L = 1, LM
+                        fraction_hail = MAX(0.0, MIN(1.0, (W(I,J,L) - W_START) / (W_FULL - W_START)))
+                        qh_col(L)  = QGRAUPEL(I,J,L) * fraction_hail
+                        qg_col(L)  = QGRAUPEL(I,J,L) * (1.0 - fraction_hail)
+                        prs_col(L) = 100.0 * PLmb(I,J,L)
+                    END DO
+                    
+                    ! 2. Call the newly refactored 1D column function
+                    dbz_col = compute_radar_reflectivity( &
+                              PRS = prs_col, &
+                              TMK = T(I,J,:), &
+                              QVP = Q(I,J,:), &
+                              QRAIN = QRAIN(I,J,:), &
+                              QSNOW = QSNOW(I,J,:), &
+                              QGRAUPEL = qg_col, &
+                              QHAIL = qh_col, &
+                              disable_variable_intercept_params = (DBZ_VAR_INTERCP == 0), &
+                              liqskin_snow = LIQUID_SKIN_SNOW, &
+                              liqskin_graupel = LIQUID_SKIN_GRAUPEL, &
+                              liqskin_hail = LIQUID_SKIN_HAIL)
+                              
+                    ! 3. Store the returned column back into the 3D state
+                    DO L = 1, LM
+                        DBZ3D(I,J,L) = dbz_col(L)
+                    END DO
+                END DO
+            END DO
+            
+            if (associated(DBZ)) DBZ(:,:,:) = DBZ3D(:,:,:)
+            
+            if (associated(DBZ_MAX)) then
+               DBZ_MAX=-9999.0
+               DO L=1,LM ; DO J=1,JM ; DO I=1,IM
+                  DBZ_MAX(I,J) = MAX(DBZ_MAX(I,J),DBZ3D(I,J,L))
+               END DO ; END DO ; END DO
+            endif
+            
+            if (associated(DBZ_1KM)) then
+               call cs_interpolator(1, IM, 1, JM, LM, DBZ3D, 1000., ZLE0, DBZ_1KM, -20.)
+            endif
+            
+            if (associated(DBZ_TOP)) then
+               DBZ_TOP=MAPL_UNDEF
+               DO J=1,JM ; DO I=1,IM
+                  DO L=LM,1,-1
+                     if (ZLE0(i,j,l) >= 25000.) continue
+                     if (DBZ3D(i,j,l) >= 18.5 ) then
+                         DBZ_TOP(I,J) = ZLE0(I,J,L)
+                         exit
+                     endif
+                  END DO
+               END DO ; END DO
+            endif
+            
+            if (associated(DBZ_M10C)) then
+               DBZ_M10C=MAPL_UNDEF
+               DO J=1,JM ; DO I=1,IM
+                  DO L=LM,1,-1
+                     if (ZLE0(i,j,l) >= 25000.) continue
+                     if (T(i,j,l) <= MAPL_TICE-10.0) then
+                         DBZ_M10C(I,J) = DBZ3D(I,J,L)
+                         exit
+                     endif
+                  END DO
+               END DO ; END DO
+            endif
+            
+            DEALLOCATE(DBZ3D)
+        end if
+        
+    end subroutine compute_radar_diagnostics
 
 end module GEOSmoist_Process_Library

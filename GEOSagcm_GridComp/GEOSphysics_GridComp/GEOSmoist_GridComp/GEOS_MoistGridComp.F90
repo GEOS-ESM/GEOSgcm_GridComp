@@ -5579,6 +5579,16 @@ contains
 
     logical :: initialize_aer_cloud
 
+    type (ESMF_Alarm   )     :: ALARM
+    type (ESMF_TimeInterval) :: TINT
+    real(ESMF_KIND_R8)       :: DT_R8
+    real                     :: DT_MOIST
+    real                     :: DBZ_DT
+    type(ESMF_Calendar)      :: calendar
+    type(ESMF_Time)          :: currTime
+    type(ESMF_Alarm)         :: DBZ_RunAlarm
+    type(ESMF_TimeInterval)  :: ringInterval
+
     !=============================================================================
 
     ! Begin...
@@ -5636,6 +5646,30 @@ contains
     if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Initialize(MAPL, CF, CLOCK, IMPORT, EXPORT, RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CLDMICR_OPTION)=="THOM_1M") call THOM_1M_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
+
+    call MAPL_Get(MAPL, RUNALARM=ALARM, RC=STATUS );VERIFY_(STATUS)
+    call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
+    DT_MOIST = DT_R8                
+
+    DBZ_DT = max(DT_MOIST,900.0)
+    call MAPL_GetResource(MAPL, DBZ_DT, 'DBZ_DT:', default=DBZ_DT, RC=STATUS); VERIFY_(STATUS)
+    ! Get the current time in addition to the calendar
+    call ESMF_ClockGet(CLOCK, currTime=currTime, calendar=calendar, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_TimeIntervalSet(ringInterval, S=nint(DBZ_DT), calendar=calendar, RC=STATUS); VERIFY_(STATUS)
+    ! Add RingTime = currTime to anchor the alarm
+    DBZ_RunAlarm = ESMF_AlarmCreate(Clock       = CLOCK,          &
+                                   Name         = 'DBZ_RunAlarm', &
+                                   RingTime     = currTime-TINT,  &
+                                   RingInterval = ringInterval,   &
+                                   Sticky       = .false.  , RC=STATUS); VERIFY_(STATUS)
+    call init_refl10cm()
+    call MAPL_GetResource( MAPL, refl10cm_allow_wet_graupel , 'refl10cm_allow_wet_graupel:' , DEFAULT= .FALSE. , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, refl10cm_allow_wet_snow    , 'refl10cm_allow_wet_snow:'    , DEFAULT= .FALSE. , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, DBZ_VAR_INTERCP , 'DBZ_VAR_INTERCP:' , DEFAULT= DBZ_VAR_INTERCP, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, LIQUID_SKIN_SNOW    , 'LIQUID_SKIN_SNOW:'    , DEFAULT= .FALSE. , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, LIQUID_SKIN_GRAUPEL , 'LIQUID_SKIN_GRAUPEL:' , DEFAULT= .FALSE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, LIQUID_SKIN_HAIL    , 'LIQUID_SKIN_HAIL:'    , DEFAULT= .TRUE. , RC=STATUS); VERIFY_(STATUS)
 
     ! All done
     !---------
