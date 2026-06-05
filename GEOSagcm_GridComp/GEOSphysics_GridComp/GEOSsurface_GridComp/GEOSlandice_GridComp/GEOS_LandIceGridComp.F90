@@ -1755,7 +1755,7 @@ module GEOS_LandiceGridCompMod
        integer                                 :: I
 #ifdef HAVE_ISSM
        type(T_ISSM_TILE_STATE), pointer :: issm_tile_state
-       type(ISSM_TILE_WRAP) :: issm_tile_wrap
+       type(ISSM_TILE_WRAP)             :: issm_tile_wrap
 #endif
        integer :: nt_local
         
@@ -1802,7 +1802,7 @@ module GEOS_LandiceGridCompMod
              allocate(issm_tile_state%ICETHICK_TILE(nt_local))
              allocate(issm_tile_state%ICEVEL_TILE(nt_local))
              allocate(issm_tile_state%ICESMB_ISSM(nt_local))
-			 issm_tile_state%NSTEPS_ISSM = 0
+			    issm_tile_state%NSTEPS_ISSM = 0 ! initialize to zero
              issm_tile_wrap%ptr => issm_tile_state
              call ESMF_UserCompSetInternalState(GCS(I), 'ISSM_TILES', issm_tile_wrap, status)
              VERIFY_(STATUS)
@@ -2847,27 +2847,26 @@ contains
 
     NT = size(ALW)
 
-    ! initialize running mean for ICESMB and 
-	! number of steps since last ISSM solve
+    ! initialize running mean ICESMB and number of steps since last ISSM solve
     if(DO_ISSM==1) then
         if (.not. associated(ICESMB_ISSM)) then
-	        ! initialize running-mean ICESMB for ISSM (ICESMB_ISSM)  
             allocate(ICESMB_ISSM(NT),STAT=STATUS)
             VERIFY_(STATUS)
-		    if (associated(ICESMB_IN)) then 
-		        ICESMB_ISSM(:) = ICESMB_IN(:) 
-		    else
-                ICESMB_ISSM(:) = 0
-		    end if 
+
+            ! initialize from restart:
+            if (associated(ICESMB_IN)) then 
+               ICESMB_ISSM(:) = ICESMB_IN(:) 
+            else
+               ICESMB_ISSM(:) = 0
+            end if 
 		
-		    ! initialize steos since last ISSM run
-	        NSTEPS_ISSM = 0    
-	        open(newunit=u, file="ISSM_NSTEPS.txt", status="old", iostat=ios)
-	        if (ios == 0) then
-		        read(u, *) NSTEPS_ISSM
-		        close(u)
-	        end if
-			
+            ! initialize steps since last ISSM run:
+            NSTEPS_ISSM = 0    
+            open(newunit=u, file="ISSM_NSTEPS.txt", status="old", iostat=ios)
+            if (ios == 0) then
+               read(u, *) NSTEPS_ISSM
+               close(u)
+            end if
 	    end if 	
 	end if 
         
@@ -3494,7 +3493,7 @@ contains
         if(associated(ICESMB_ISSM)) ICESMB_ISSM = ICESMB_ISSM + (ICESMB-ICESMB_ISSM)/(NSTEPS_ISSM+1)
         NSTEPS_ISSM = NSTEPS_ISSM + 1 ! accumulated timesteps since last ISSM run
 
-		!update internal state
+		! update internal state
 		ICESMB_IN(:) = ICESMB_ISSM(:)
     end if 
 ! Update snow and landice albedos to anticipate
@@ -3638,14 +3637,14 @@ contains
          if (index(GCNAMES(N), 'ISSM') /=0 ) then ! check if issm alarm is ringing too
             call MAPL_GetObjectFromGC(GCS(N), CHILD_MAPL, RC=STATUS); VERIFY_(STATUS)
             call MAPL_Get(CHILD_MAPL, RUNALARM = ISSM_ALARM, RC=STATUS); VERIFY_(STATUS)
-            VERIFY_(STATUS) 
 
-			! update private internal states to send to ISSM
-			call ESMF_UserCompGetInternalState(GCS(N), 'ISSM_TILES', issm_tile_wrap, status)
-		    VERIFY_(STATUS)
-		    issm_tile_state =>issm_tile_wrap%ptr
-	        issm_tile_state%ICESMB_ISSM   = ICESMB_ISSM
-	        issm_tile_state%NSTEPS_ISSM = NSTEPS_ISSM
+            ! update private internal states to send to ISSM
+            call ESMF_UserCompGetInternalState(GCS(N), 'ISSM_TILES', issm_tile_wrap, status)
+            VERIFY_(STATUS)
+            
+            issm_tile_state =>issm_tile_wrap%ptr
+            issm_tile_state%ICESMB_ISSM   = ICESMB_ISSM
+            issm_tile_state%NSTEPS_ISSM = NSTEPS_ISSM
 
             ! call ISSM run method every time landice runs so that restarts will persist
             ! ISSM Run method only calls the ISSM C++ solvers at ISSM_DT intervals
@@ -3662,12 +3661,12 @@ contains
                NSTEPS_ISSM = 0    ! set ISSM time step accumulation back to zero
                ICESMB_ISSM(:) = 0 ! zero out ICESMB running average
 
-			   ! update private internal state
-			   issm_tile_state%ICESMB_ISSM   = ICESMB_ISSM
+               ! update private internal state
+               issm_tile_state%ICESMB_ISSM   = ICESMB_ISSM
                issm_tile_state%NSTEPS_ISSM = NSTEPS_ISSM
 
-			   ! update internal state for running-mean ICESMB
-			   ICESMB_IN(:) = ICESMB_ISSM(:)
+               ! update internal state for running-mean ICESMB
+               ICESMB_IN(:) = ICESMB_ISSM(:)
 
             end if 
          end if

@@ -935,7 +935,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   call ESMF_VMGet(vm,localPET=localPET,rc=STATUS); VERIFY_(STATUS)
 
   ! run ISSM at specified time steps, 
-  ! if bootstrapping restart and issm has not by final time step, run anyways
+  ! if bootstrapping restart and issm has run not by final time step, run anyways
   ! with timestep of zero, which just gets restart values
   if ( ESMF_AlarmIsRinging(ALARM, RC=STATUS) .or. NEED_RST ) then
 
@@ -947,9 +947,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetResource(MAPL, ISSM_DT, Label=trim(COMP_NAME)//"_DT:",DEFAULT=302400.0, RC=STATUS)
     VERIFY_(STATUS)
 
+    ! if just getting restart, set timestep to zero
     if (NEED_RST) then
         ISSM_DT = 0.0_dp
-	end if 
+	  end if 
 
     ! get number of mesh elements
     call ESMF_MeshGet(mesh,elementCount=num_elements,nodeCount=num_nodes,numOwnedNodes=num_owned_nodes)
@@ -1044,7 +1045,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_VMBarrier(vm, rc=status); VERIFY_(STATUS)
 
     ! update ISSM run flag (for C++ library calls)
-	ISSM_RAN = .true.
+	  ISSM_RAN = .true.
 
     ! *************************************************************************** !
     ! UNPACK AND EXPORT ISSM OUTPUTS ON MESH TILES
@@ -1249,9 +1250,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer			                   :: STATUS
     character(len=ESMF_MAXSTR)         :: COMP_NAME
 
-    ! testing
-	integer :: u
-	type(T_ISSM_TILE_STATE), pointer     :: issm_tile_state
+    ! variables for writing out timesteps since ISSM (via ISSM_NSTEPS.txt)
+	  integer :: u
+	  type(T_ISSM_TILE_STATE), pointer     :: issm_tile_state
     type(ISSM_TILE_WRAP)                 :: issm_tile_wrap
 
     ! Get the target components name and set-up traceback handle.
@@ -1262,26 +1263,25 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     Iam = trim(comp_name) // Iam
 
 
-	! save number of steps since last issm run as a little txt file
-	call ESMF_UserCompGetInternalState(GC, 'ISSM_TILES', issm_tile_wrap, status); VERIFY_(STATUS)
+	! save number of steps since last ISSM run as a little txt file
+	  call ESMF_UserCompGetInternalState(GC, 'ISSM_TILES', issm_tile_wrap, status); VERIFY_(STATUS)
     issm_tile_state => issm_tile_wrap%ptr
 	
-	open(newunit=u, file="ISSM_NSTEPS.txt", status="replace")
-	write(u, *) issm_tile_state%NSTEPS_ISSM
-	close(u)
+	  open(newunit=u, file="ISSM_NSTEPS.txt", status="replace")
+	  write(u, *) issm_tile_state%NSTEPS_ISSM
+	  close(u)
 
     ! call ISSM finalize (saves binary output .outbin file)
-	if (ISSM_RAN) then
-	! NOTE: only call if ISSM C++ solvers were called, because OutputResultsx
-	! in C++ source throws error if 'results' is empty... 
-	! not actually a problem, but this case won't call FemModel destructors,
-	! should really just remove OutputResultsx from FinalizeISSM()....
+	  if (ISSM_RAN) then
+	  ! NOTE: only call if ISSM C++ solvers were called, because OutputResultsx
+	  ! in C++ source throws error if 'results' is empty... 
+	  ! not actually a problem, but this case won't call FemModel destructors,
+	  ! should probably just remove OutputResultsx from FinalizeISSM()....
         call FinalizeISSM()
-	end if 
+	  end if 
 
 ! Generic Finalize
 ! ------------------
-    
     call MAPL_GenericFinalize( GC, IMPORT, EXPORT, CLOCK, RC=status )
     VERIFY_(STATUS)
 
