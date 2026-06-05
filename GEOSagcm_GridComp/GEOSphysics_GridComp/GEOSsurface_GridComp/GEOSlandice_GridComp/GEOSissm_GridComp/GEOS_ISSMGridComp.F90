@@ -91,7 +91,7 @@ type T_ISSM_TILE_STATE
     real, pointer :: ICETHICK_TILE(:)
     real, pointer :: ICEVEL_TILE(:)
     real, pointer :: ICESMB_ISSM(:)
-	integer       :: NSTEPS_ISSM
+	integer       :: ISSM_NSTEPS
 end type T_ISSM_TILE_STATE
 
 type ISSM_TILE_WRAP
@@ -1268,7 +1268,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     issm_tile_state => issm_tile_wrap%ptr
 	
 	  open(newunit=u, file="ISSM_NSTEPS.txt", status="replace")
-	  write(u, *) issm_tile_state%NSTEPS_ISSM
+	  write(u, *) issm_tile_state%ISSM_NSTEPS
 	  close(u)
 
     ! call ISSM finalize (saves binary output .outbin file)

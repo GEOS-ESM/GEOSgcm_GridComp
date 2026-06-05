@@ -1802,7 +1802,7 @@ module GEOS_LandiceGridCompMod
              allocate(issm_tile_state%ICETHICK_TILE(nt_local))
              allocate(issm_tile_state%ICEVEL_TILE(nt_local))
              allocate(issm_tile_state%ICESMB_ISSM(nt_local))
-			    issm_tile_state%NSTEPS_ISSM = 0 ! initialize to zero
+			    issm_tile_state%ISSM_NSTEPS = 0 ! initialize to zero
              issm_tile_wrap%ptr => issm_tile_state
              call ESMF_UserCompSetInternalState(GCS(I), 'ISSM_TILES', issm_tile_wrap, status)
              VERIFY_(STATUS)
@@ -2430,7 +2430,7 @@ contains
 ! pointer to ISSM import via private internal state
 ! accumulate over time steps for averaging
    real, pointer, dimension(:), save :: ICESMB_ISSM=>null()
-   integer, save                     :: NSTEPS_ISSM = 0 ! time steps since last ISSM run
+   integer, save                     :: ISSM_NSTEPS = 0 ! time steps since last ISSM run
 
 ! pointers to export
    real, pointer, dimension(:  )  :: ICESMB
@@ -2861,10 +2861,10 @@ contains
             end if 
 		
             ! initialize steps since last ISSM run:
-            NSTEPS_ISSM = 0    
+            ISSM_NSTEPS = 0    
             open(newunit=u, file="ISSM_NSTEPS.txt", status="old", iostat=ios)
             if (ios == 0) then
-               read(u, *) NSTEPS_ISSM
+               read(u, *) ISSM_NSTEPS
                close(u)
             end if
 	    end if 	
@@ -3490,8 +3490,8 @@ contains
     
     ! average ICESMB over time steps between ISSM runs
     if(DO_ISSM==1) then
-        if(associated(ICESMB_ISSM)) ICESMB_ISSM = ICESMB_ISSM + (ICESMB-ICESMB_ISSM)/(NSTEPS_ISSM+1)
-        NSTEPS_ISSM = NSTEPS_ISSM + 1 ! accumulated timesteps since last ISSM run
+        if(associated(ICESMB_ISSM)) ICESMB_ISSM = ICESMB_ISSM + (ICESMB-ICESMB_ISSM)/(ISSM_NSTEPS+1)
+        ISSM_NSTEPS = ISSM_NSTEPS + 1 ! accumulated timesteps since last ISSM run
 
 		! update internal state
 		ICESMB_IN(:) = ICESMB_ISSM(:)
@@ -3644,7 +3644,7 @@ contains
             
             issm_tile_state =>issm_tile_wrap%ptr
             issm_tile_state%ICESMB_ISSM   = ICESMB_ISSM
-            issm_tile_state%NSTEPS_ISSM = NSTEPS_ISSM
+            issm_tile_state%ISSM_NSTEPS = ISSM_NSTEPS
 
             ! call ISSM run method every time landice runs so that restarts will persist
             ! ISSM Run method only calls the ISSM C++ solvers at ISSM_DT intervals
@@ -3658,12 +3658,12 @@ contains
                if(associated(ICEVEL))   ICEVEL = issm_tile_state%ICEVEL_TILE
 
                ! refresh ICESMB accumulator
-               NSTEPS_ISSM = 0    ! set ISSM time step accumulation back to zero
+               ISSM_NSTEPS = 0    ! set ISSM time step accumulation back to zero
                ICESMB_ISSM(:) = 0 ! zero out ICESMB running average
 
                ! update private internal state
                issm_tile_state%ICESMB_ISSM   = ICESMB_ISSM
-               issm_tile_state%NSTEPS_ISSM = NSTEPS_ISSM
+               issm_tile_state%ISSM_NSTEPS = ISSM_NSTEPS
 
                ! update internal state for running-mean ICESMB
                ICESMB_IN(:) = ICESMB_ISSM(:)
