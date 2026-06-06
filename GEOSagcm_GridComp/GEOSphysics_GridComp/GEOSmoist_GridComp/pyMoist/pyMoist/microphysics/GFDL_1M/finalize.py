@@ -301,6 +301,11 @@ class GFDL1MFinalize(NDSLRuntime):
         #           argument reconstruction at call time
         self._esx = self.saturation_tables.esx
 
+    def post_init(self, do_radar_diagnostic: bool):
+        self._do_radar_diagnostic = do_radar_diagnostic
+        if self._do_radar_diagnostic:
+            ndsl_log.warning("pyMoist.GFDL_1M: Radar diagnostic not implemented!")
+
     def __call__(
         self,
         t,
@@ -559,14 +564,7 @@ class GFDL1MFinalize(NDSLRuntime):
                 t_tendency=dtdt_friction_pressure_weighted,
             )
 
-        if (
-            simulated_reflectivity is not None
-            or maximum_composite_reflectivity is not None
-            or base_1km_agl_reflectivity is not None
-            or echo_top_reflectivity is not None
-            or minus_10c_reflectivity is not None
-        ):
-            ndsl_log.warning("Diagnostic radar output not implemented yet.")
+        # TODO: implement radar diagnostic here
 
         # new code from v11.8.1, is not tested (translate tests are based on data from v11.5.2)
         if mass_fraction_suspended_rain is not None:

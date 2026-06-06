@@ -117,11 +117,22 @@ class GFDL1M(NDSLRuntime):
             config=config,
             saturation_tables=saturation_tables,
         )
+        self._post_init_done = False
+
+    def post_init(self, do_radar_diagnostic: bool) -> None:
+        if self._post_init_done:
+            raise RuntimeError("pyMoist.GFDL_1M: post_init is called more than once.")
+        self._post_init_done = True
+
+        self._finalize.post_init(do_radar_diagnostic=do_radar_diagnostic)
 
     def __call__(
         self,
         state: GFDL1MState,
     ):
+        if not self._post_init_done:
+            raise RuntimeError("pyMoist.GFDL_1M: post_init wasn't called.")
+
         # miscellaneous setup for GFDL1M microphysics
         # compute additional inputs, prefill outputs, reset temporaries
         self._setup(
