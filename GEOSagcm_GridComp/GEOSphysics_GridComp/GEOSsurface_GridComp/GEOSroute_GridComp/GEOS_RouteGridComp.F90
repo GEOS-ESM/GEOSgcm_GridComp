@@ -947,7 +947,6 @@ contains
 
     integer                            :: nt_global, nt_local
 
-    real,                  pointer     :: arrayPtr(:)
     real(kind=8),          pointer     :: arrayPtr8(:)
     type (RES_STATE),      pointer     :: res 
 
