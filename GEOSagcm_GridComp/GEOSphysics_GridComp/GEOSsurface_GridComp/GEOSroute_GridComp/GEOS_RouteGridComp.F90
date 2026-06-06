@@ -597,12 +597,8 @@ contains
       logical, allocatable :: mask(:)
       integer, allocatable :: srcIndices(:), positions(:), factorIndexList(:,:),map_tile(:,:)
       real,    allocatable :: weights(:), global_frac(:), global_area(:)
-      !!real(kind=8), allocatable :: weights(:), global_frac(:), global_area(:)
       integer, allocatable :: local_src(:), local_dst(:), global_src(:), global_dst(:)
       real,    allocatable :: areacat_glob(:),area_tile(:)
-      !real(kind=8), allocatable :: areacat_glob(:)
-      !real,         allocatable :: area_tile(:)
-      !real(kind=8), allocatable :: areacat_glob(:), area_tile(:)
       integer, pointer     :: pfaf_index(:), local_id(:), local_i(:), local_j(:)
       real   , pointer     :: tilearea(:),frac_tot(:),fscale(:),area_patch(:)
       integer, pointer     :: pfaf_patch(:),tid_patch(:)     
@@ -1033,7 +1029,7 @@ contains
     if (ESMF_AlarmIsRinging(CollectWaterAlarm)) then
 
        ! finalize runoff accumulation over ROUTE_DT
-       route%runoff_acc = (route%runoff_acc + RUNOFF_SRC0)/real(ROUTE_DT/HEARTBEAT)
+       route%runoff_acc = (route%runoff_acc + RUNOFF_SRC0)/real(ROUTE_DT/HEARTBEAT) ! time-avg runoff over ROUTE_DT in land[ice] tile space [kg/m2/s]
        
        ! Redistribute time-averaged runoff from GEOS_LandGridComp tile space
        ! to GEOS_RouteGridComp Pfafstetter catchment space.
