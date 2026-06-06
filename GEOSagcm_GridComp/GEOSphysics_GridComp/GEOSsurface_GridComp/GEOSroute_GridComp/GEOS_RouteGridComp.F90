@@ -597,8 +597,12 @@ contains
       logical, allocatable :: mask(:)
       integer, allocatable :: srcIndices(:), positions(:), factorIndexList(:,:),map_tile(:,:)
       real,    allocatable :: weights(:), global_frac(:), global_area(:)
+      !!real(kind=8), allocatable :: weights(:), global_frac(:), global_area(:)
       integer, allocatable :: local_src(:), local_dst(:), global_src(:), global_dst(:)
       real,    allocatable :: areacat_glob(:),area_tile(:)
+      !real(kind=8), allocatable :: areacat_glob(:)
+      !real,         allocatable :: area_tile(:)
+      !real(kind=8), allocatable :: areacat_glob(:), area_tile(:)
       integer, pointer     :: pfaf_index(:), local_id(:), local_i(:), local_j(:)
       real   , pointer     :: tilearea(:),frac_tot(:),fscale(:),area_patch(:)
       integer, pointer     :: pfaf_patch(:),tid_patch(:)     
@@ -608,10 +612,10 @@ contains
       character(len=MAPL_TileNameLength), pointer :: GNAMES(:)
 
       ! create source for orignal tile space
-      route%field_src = ESMF_FieldCreate(grid=tilegrid,      typekind=ESMF_TYPEKIND_R4, _RC)
+      route%field_src = ESMF_FieldCreate(grid=tilegrid,      typekind=ESMF_TYPEKIND_R8, _RC)
 
       ! create destination for pfaf tile space
-      route%field     = ESMF_FieldCreate(grid=pfaf_tilegrid, typekind=ESMF_TYPEKIND_R4, _RC)
+      route%field     = ESMF_FieldCreate(grid=pfaf_tilegrid, typekind=ESMF_TYPEKIND_R8, _RC)
 
       call MAPL_LocstreamGet(LOCSTREAM, GRIDNAMES=GNAMES, pfaf_index=pfaf_index, tilearea=tilearea, local_id=local_id, local_i=local_i, local_j=local_j, _RC)
       ! ESMF use global indices increasing with mpi_rank, no mask here for tile grid 
@@ -948,6 +952,7 @@ contains
     integer                            :: nt_global, nt_local
 
     real,                  pointer     :: arrayPtr(:)
+    real(kind=8),          pointer     :: arrayPtr8(:)
     type (RES_STATE),      pointer     :: res 
 
     !real,                  allocatable :: WTOT_BEFORE(:)
@@ -1028,21 +1033,36 @@ contains
     if (ESMF_AlarmIsRinging(CollectWaterAlarm)) then
 
        ! finalize runoff accumulation over ROUTE_DT
-       route%runoff_acc = (route%runoff_acc + RUNOFF_SRC0)/real(ROUTE_DT/HEARTBEAT)   ! time-avg runoff over ROUTE_DT in land[ice] tile space  [kg/m2/s]
-
-       ! redistribute runoff from tile space of GEOS_LandGridComp to Pfafstetter catchment space of GEOS_RouteGridComp
-       call ESMF_FieldGet(route%field_src, farrayPtr=arrayPtr, rc=status)
+       route%runoff_acc = (route%runoff_acc + RUNOFF_SRC0)/real(ROUTE_DT/HEARTBEAT)
+       
+       ! Redistribute time-averaged runoff from GEOS_LandGridComp tile space
+       ! to GEOS_RouteGridComp Pfafstetter catchment space.
+       ! The route remap fields are R8 to reduce non-BFB roundoff in the
+       ! EASE/Pfaf sparse remap before casting back to the route runoff array.       
+       
+       ! Clear destination route/Pfaf field before remapping.
+       call ESMF_FieldGet(route%field, farrayPtr=arrayPtr8, rc=status)
        VERIFY_(STATUS)
-       ArrayPtr = route%runoff_acc(:)
-       call ESMF_FieldSMM(srcField=route%field_src, dstField=route%Field, &
-            routeHandle=route%routeHandle, rc=rc)
-       call ESMF_FieldGet(route%field, farrayPtr=arrayPtr, rc=status)
+       arrayPtr8 = 0.0_8
+       
+       ! Fill source field from accumulated runoff in original land tile space.
+       call ESMF_FieldGet(route%field_src, farrayPtr=arrayPtr8, rc=status)
        VERIFY_(STATUS)
-       ! convert units [kg/m2/s] --> [m3/s]
-       QRUNOFF     = arrayPtr*route%areacat/1000.                                   ! time-avg runoff over ROUTE_DT in Pfaf catch space [m3/s] 
-       !WTOT_BEFORE = WSTREAM + WRIVER + WRES
-
-
+       arrayPtr8 = real(route%runoff_acc(:), kind=8)
+       
+       ! Map accumulated runoff from land tile space to route/Pfaf space.
+       call ESMF_FieldSMM(srcField=route%field_src, dstField=route%field, &
+                          routeHandle=route%routeHandle, rc=status)
+       VERIFY_(STATUS)
+       
+       ! Get mapped route/Pfaf runoff field.
+       call ESMF_FieldGet(route%field, farrayPtr=arrayPtr8, rc=status)
+       VERIFY_(STATUS)
+       
+       ! Convert units [kg/m2/s] --> [m3/s].
+       QRUNOFF = real(arrayPtr8 * real(route%areacat, kind=8) / 1000.0_8, &
+                      kind=kind(QRUNOFF(1)))
+       
        ! Compute outflow from main river and (optionally) reservoirs
        !
        ! Call river_routing_model (get outflows from main river and local streams, also updates storage of main river and local streams)
