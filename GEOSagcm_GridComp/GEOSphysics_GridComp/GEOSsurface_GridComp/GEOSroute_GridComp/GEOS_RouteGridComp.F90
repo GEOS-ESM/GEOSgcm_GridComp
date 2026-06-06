@@ -1032,9 +1032,9 @@ contains
        
        ! Redistribute time-averaged runoff from GEOS_LandGridComp tile space
        ! to GEOS_RouteGridComp Pfafstetter catchment space.
-       ! The route remap fields are R8 to reduce non-BFB roundoff in the
-       ! EASE/Pfaf sparse remap before casting back to the route runoff array.       
-       
+       ! Use R8 remap fields to avoid small run-to-run roundoff differences in
+       ! the EASE/Pfaf sparse remap before casting back to the route runoff array.       
+
        ! Clear destination route/Pfaf field before remapping.
        call ESMF_FieldGet(route%field, farrayPtr=arrayPtr8, rc=status)
        VERIFY_(STATUS)
