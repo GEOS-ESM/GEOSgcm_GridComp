@@ -27,7 +27,7 @@ from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.typing import get_precision
 from ndsl.logging import ndsl_log_on_rank_0
 from ndsl.optional_imports import cupy as cp
-
+from gt4py.cartesian.config import GT4PY_COMPILE_OPT_LEVEL # isort: skip
 from pyMoist.fortran.build_helper import InterfaceTransferType, MemorySpace
 
 
@@ -131,16 +131,17 @@ class NDSLPhysicsStack:
         MPS_is_on = MPS_pipe_directory is not None and self.backend.is_gpu_backend() and os.path.exists(f"{MPS_pipe_directory}/log")
         ndsl_log_on_rank_0.info(
             "pyMoist <> GEOS wrapper initialized (Rank 0):\n"
-            f"         Bridge : {self._interface_type.name}\n"
-            f"        Backend : {self.backend}\n"
-            f"      Precision : {get_precision()} bit\n"
-            f"  Orchestration : {self._is_orchestrated}\n"
-            f"   Local domain : {sizer.nx}x{sizer.ny}x{sizer.nz}"
+            f"           Bridge : {self._interface_type.name}\n"
+            f"          Backend : {self.backend}\n"
+            f"        Precision : {get_precision()} bit\n"
+            f"     Optimization : -O{GT4PY_COMPILE_OPT_LEVEL}\n"
+            f"    Orchestration : {self._is_orchestrated}\n"
+            f"     Local domain : {sizer.nx}x{sizer.ny}x{sizer.nz}"
             f"(halo: {sizer.n_halo})\n"
-            f"         Layout : {partitioner.layout}\n"
-            f" Strides for 3D : {default_3D_memory_desc[1]}\n"
-            f"     Device ord : {device_ordinal_info}\n"
-            f"     Nvidia MPS : {MPS_is_on}\n"
+            f"           Layout : {partitioner.layout}\n"
+            f"   Strides for 3D : {default_3D_memory_desc[1]}\n"
+            f"       Device ord : {device_ordinal_info}\n"
+            f"       Nvidia MPS : {MPS_is_on}\n"
         )
 
     @property
