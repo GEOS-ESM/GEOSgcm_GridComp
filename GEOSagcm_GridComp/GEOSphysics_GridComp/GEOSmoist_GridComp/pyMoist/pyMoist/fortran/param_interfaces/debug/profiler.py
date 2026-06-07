@@ -1,9 +1,12 @@
 import os
+
+import numpy as np
+import yaml
 from MAPL_PythonBridge import UserCode, get_MAPLPy
 from MAPL_PythonBridge.types import CVoidPointer
+
 from pyMoist.fortran.cuda_profiler import CUDAProfiler
-import yaml
-import numpy as np
+
 
 try:
     import pyitt
@@ -16,10 +19,10 @@ class PyProfiler(UserCode):
         config_filename = os.getenv("GEOS_PYPROFILER_CONFIG", "")
         if os.path.exists(config_filename):
             with open(config_filename) as file:
-                self._config = yaml.load(file.read(), Loader=yaml.SafeLoader)    
+                self._config = yaml.load(file.read(), Loader=yaml.SafeLoader)
         else:
             self._config = None
-                
+
         if pyitt:
             self._pyitt_domain = pyitt.domain("GEOS Numerics")
 

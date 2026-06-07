@@ -12,10 +12,10 @@ from pyMoist.convection.GF_2020 import GF2020, GF2020Config, GF2020CumulusParame
 from pyMoist.convection_tracers import ConvectionTracers
 from pyMoist.fortran import get_NDSL_physics
 from pyMoist.fortran.build_helper import StencilBackendCompilerOverride
+from pyMoist.fortran.cuda_profiler import TimedCUDAProfiler
 from pyMoist.fortran.managed_state import MAPLManagedState
 from pyMoist.fortran.memory_factory import MAPLMemoryRepository
 from pyMoist.fortran.moist_workarounds import MOIST_WORKAROUNDS
-from pyMoist.fortran.cuda_profiler import TimedCUDAProfiler
 from pyMoist.saturation_tables import SaturationVaporPressureTable
 
 
