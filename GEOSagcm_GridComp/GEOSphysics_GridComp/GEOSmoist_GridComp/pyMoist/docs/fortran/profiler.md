@@ -1,3 +1,0 @@
-# profiler
-
-::: pyMoist.fortran.profiler
