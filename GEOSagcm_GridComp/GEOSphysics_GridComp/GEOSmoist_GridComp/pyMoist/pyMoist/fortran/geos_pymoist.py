@@ -129,7 +129,7 @@ class NDSLPhysicsStack:
         # Feedback information
         device_ordinal_info = "N/A"
         if cp is not None:
-            device_ordinal_info = f"  Device PCI bus id: {cp.cuda.Device(0).pci_bus_id}" if self.backend.is_gpu_backend() else "N/A"
+            device_ordinal_info = f"Device PCI bus id: {cp.cuda.Device(0).pci_bus_id}" if self.backend.is_gpu_backend() else "N/A"
         MPS_pipe_directory = os.getenv("CUDA_MPS_PIPE_DIRECTORY", None)
         MPS_is_on = MPS_pipe_directory is not None and self.backend.is_gpu_backend() and os.path.exists(f"{MPS_pipe_directory}/log")
         ndsl_log_on_rank_0.info(

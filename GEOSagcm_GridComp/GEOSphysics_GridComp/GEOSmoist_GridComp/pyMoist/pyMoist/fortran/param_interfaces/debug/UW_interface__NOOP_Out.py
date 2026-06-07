@@ -9,7 +9,7 @@ from pyMoist.fortran import get_NDSL_physics
 from pyMoist.fortran.managed_state import MAPLManagedState
 from pyMoist.fortran.memory_factory import MAPLMemoryRepository
 from pyMoist.fortran.moist_workarounds import MOIST_WORKAROUNDS
-from pyMoist.fortran.profiler import TimedCUDAProfiler
+from pyMoist.fortran.cuda_profiler import TimedCUDAProfiler
 
 
 class UWGEOSInterface_NOOP_OUT(UserCode):

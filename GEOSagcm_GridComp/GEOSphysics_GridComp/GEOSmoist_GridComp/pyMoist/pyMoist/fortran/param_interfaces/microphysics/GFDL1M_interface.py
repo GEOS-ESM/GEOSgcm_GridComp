@@ -12,7 +12,7 @@ from pyMoist.fortran import get_NDSL_physics
 from pyMoist.fortran.build_helper import StencilBackendCompilerOverride
 from pyMoist.fortran.managed_state import MAPLManagedState
 from pyMoist.fortran.memory_factory import MAPLMemoryRepository
-from pyMoist.fortran.profiler import TimedCUDAProfiler
+from pyMoist.fortran.cuda_profiler import TimedCUDAProfiler
 from pyMoist.microphysics.GFDL_1M import GFDL1M, GFDL1MConfig, GFDL1MState
 
 
