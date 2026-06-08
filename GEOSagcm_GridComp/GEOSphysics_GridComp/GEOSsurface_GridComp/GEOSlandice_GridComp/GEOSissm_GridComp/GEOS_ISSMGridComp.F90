@@ -385,7 +385,12 @@ subroutine SetServices ( GC, RC )
     type(ESMF_Field)                       :: meshField               ! field on mesh
     type(ESMF_Field)                       :: gridField               ! field on grid
     type(ISSM_WRAP)                        :: wrap                    ! wrapper for internal state
+
+    ! tile information
     integer                                :: NT                      ! local number of landice tiles
+    type(T_ISSM_TILE_STATE), pointer       :: issm_tile_state
+    type(ISSM_TILE_WRAP)                   :: issm_tile_wrap
+
 
     ! field halo
     integer                                :: num_halo_nodes          ! num_nodes minus num_owned_nodes
@@ -786,13 +791,16 @@ subroutine SetServices ( GC, RC )
     ! calculate ice flow speed
     ICEVEL_HALO = sqrt(ICEVX_HALO**2 + ICEVY_HALO**2)
 
-    call mesh_to_tile(ICESURF_HALO,ICESURF_TILE)
+    call ESMF_UserCompGetInternalState(GC, 'ISSM_TILES', issm_tile_wrap, status); VERIFY_(STATUS)
+    issm_tile_state => issm_tile_wrap%ptr
+
+    call mesh_to_tile(ICESURF_HALO,ICESURF_TILE,rc=STATUS); VERIFY_(STATUS)
     issm_tile_state%ICESURF_TILE = ICESURF_TILE
 
-    call mesh_to_tile(ICETHICK_HALO,ICETHICK_TILE)
+    call mesh_to_tile(ICETHICK_HALO,ICETHICK_TILE,rc=STATUS); VERIFY_(STATUS)
     issm_tile_state%ICETHICK_TILE = ICETHICK_TILE
 
-    call mesh_to_tile(ICEVEL_HALO,ICEVEL_TILE)
+    call mesh_to_tile(ICEVEL_HALO,ICEVEL_TILE,rc=STATUS); VERIFY_(STATUS)
     issm_tile_state%ICEVEL_TILE = ICEVEL_TILE
 
 
@@ -951,7 +959,6 @@ subroutine SetServices ( GC, RC )
 
     ! tile information
     integer                              :: NT                      ! number of landice tiles
-
     type(T_ISSM_TILE_STATE), pointer     :: issm_tile_state
     type(ISSM_TILE_WRAP)                 :: issm_tile_wrap
 
@@ -1036,7 +1043,7 @@ subroutine SetServices ( GC, RC )
       VERIFY_(STATUS)
 
       ! get number of mesh elements
-      call ESMF_MeshGet(mesh,elementCount=num_elements,nodeCount=num_nodes)
+      call ESMF_MeshGet(mesh,nodeCount=num_nodes)
 
       ! allocate ice-elevation output (export from ISSM)
       allocate(ISSM_OUTPUTS(num_outputs*num_nodes))  
@@ -1085,7 +1092,7 @@ subroutine SetServices ( GC, RC )
       ! *************************************************************************** !
       ! TRANSFORM ICESMB FROM TILES TO MESH 
       ! *************************************************************************** !
-      call tile_to_mesh(ICESMB_TILE,ICESMB_MESH)
+      call tile_to_mesh(ICESMB_TILE,ICESMB_MESH,rc=STATUS); VERIFY_(STATUS)
 
       ! save ICESMB on mesh elements 
       call MAPL_GetPointer(EXPORT  , ICESMB_EX , 'ICESMB' , RC=STATUS); VERIFY_(STATUS)
@@ -1152,13 +1159,13 @@ subroutine SetServices ( GC, RC )
       ! REGRID MESH FIELDS ONTO LANDICE TILES AND EXPORT VIA INTERNAL STATE
       ! *************************************************************************** !
       ! transform from mesh to tiles
-      call mesh_to_tile(ICESURF_MESH,ICESURF_TILE)
+      call mesh_to_tile(ICESURF_MESH,ICESURF_TILE,rc=STATUS); VERIFY_(STATUS)
       issm_tile_state%ICESURF_TILE = ICESURF_TILE
 
-      call mesh_to_tile(ICETHICK_MESH,ICETHICK_TILE)
+      call mesh_to_tile(ICETHICK_MESH,ICETHICK_TILE,rc=STATUS); VERIFY_(STATUS)
       issm_tile_state%ICETHICK_TILE = ICETHICK_TILE
 
-      call mesh_to_tile(ICEVEL_MESH,ICEVEL_TILE)
+      call mesh_to_tile(ICEVEL_MESH,ICEVEL_TILE,rc=STATUS); VERIFY_(STATUS)
       issm_tile_state%ICEVEL_TILE = ICEVEL_TILE
 
     end if 
@@ -1255,10 +1262,11 @@ subroutine SetServices ( GC, RC )
   end subroutine Finalize
 
 
-  subroutine mesh_to_tile(VAR_MESH,VAR_TILE)
+  subroutine mesh_to_tile(VAR_MESH,VAR_TILE,RC)
     ! regrid from mesh to grid, then transform from grid to landice tiles
     real(dp),    pointer, dimension(:), intent(inout)   :: VAR_MESH           ! var on mesh nodes
     real, pointer, dimension(:), intent(inout)          :: VAR_TILE           ! var on landice tiles
+    integer, optional,       intent(OUT)                :: RC                 ! Error code
 
     real, pointer, dimension(:,:)                       :: VAR_GRID => null() ! var on attached grid
     real(dp),    pointer, dimension(:)                  :: VAR_MESH_OWN       ! var on owned mesh nodes
@@ -1270,7 +1278,8 @@ subroutine SetServices ( GC, RC )
   
     num_owned_nodes = size(internal_state%owned_idx)
 
-    call MAPL_LocStreamGet(internal_state%locstream, NT_LOCAL=NT, _RC)
+    call MAPL_LocStreamGet(internal_state%locstream, NT_LOCAL=NT, rc=STATUS)
+    VERIFY_(STATUS)
 
     allocate(VAR_MESH_OWN(num_owned_nodes))
 
@@ -1308,10 +1317,11 @@ subroutine SetServices ( GC, RC )
 
   end subroutine mesh_to_tile
 
-  subroutine tile_to_mesh(VAR_TILE,VAR_MESH)
+  subroutine tile_to_mesh(VAR_TILE,VAR_MESH,RC)
     ! transform from landice tile to grid, then regrid onto mesh
     real, pointer, dimension(:), intent(inout)     :: VAR_TILE           ! var on landice tiles
     real(dp), pointer, dimension(:), intent(inout) :: VAR_MESH           ! var on mesh elements
+    integer, optional,       intent(OUT)           :: RC                 ! Error code
 
     real, pointer, dimension(:,:)                  :: VAR_GRID => null() ! var on attached grid
     real(dp), pointer, dimension(:)                :: MESH_PTR           ! pointer for ESMF_FieldGet 
