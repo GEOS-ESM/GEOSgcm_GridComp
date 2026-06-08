@@ -14,7 +14,7 @@ module GEOS_RouteGridCompMod
 !   IMPORTS   : RUNOFF \\
 
 ! !USES: 
-
+  use, intrinsic :: iso_fortran_env, only: REAL64
   use ESMF
   use MAPL_Mod
   use MAPL_ConstantsMod
@@ -549,7 +549,7 @@ contains
       type (ESMF_Grid) :: pfaf_grid
       integer, optional, intent(out) :: rc
       integer :: status
-      real(kind=8), pointer :: centers(:,:)
+      real(kind=REAL64), pointer :: centers(:,:)
       ! create catchment grid and it is tile space
       pfaf_Grid = ESMF_GridCreate(       &
            name='CATCHMENT_GRID',         &
@@ -947,7 +947,7 @@ contains
 
     integer                            :: nt_global, nt_local
 
-    real(kind=8),          pointer     :: arrayPtr8(:)
+    real(kind=REAL64),     pointer     :: arrayPtr8(:)
     type (RES_STATE),      pointer     :: res 
 
     !real,                  allocatable :: WTOT_BEFORE(:)
@@ -1029,21 +1029,21 @@ contains
 
        ! finalize runoff accumulation over ROUTE_DT
        route%runoff_acc = (route%runoff_acc + RUNOFF_SRC0)/real(ROUTE_DT/HEARTBEAT) ! time-avg runoff over ROUTE_DT in land[ice] tile space [kg/m2/s]
-       
+
        ! Redistribute time-averaged runoff from GEOS_LandGridComp tile space
        ! to GEOS_RouteGridComp Pfafstetter catchment space.
        ! Use R8 remap fields to avoid small run-to-run roundoff differences in
-       ! the EASE/Pfaf sparse remap before casting back to the route runoff array.       
-
+       ! the EASE/Pfaf sparse remap before casting back to the route runoff array.        
+       
        ! Clear destination route/Pfaf field before remapping.
        call ESMF_FieldGet(route%field, farrayPtr=arrayPtr8, rc=status)
        VERIFY_(STATUS)
-       arrayPtr8 = 0.0_8
+       arrayPtr8 = 0.0_REAL64
        
        ! Fill source field from accumulated runoff in original land tile space.
        call ESMF_FieldGet(route%field_src, farrayPtr=arrayPtr8, rc=status)
        VERIFY_(STATUS)
-       arrayPtr8 = real(route%runoff_acc(:), kind=8)
+       arrayPtr8 = real(route%runoff_acc(:), kind=REAL64)
        
        ! Map accumulated runoff from land tile space to route/Pfaf space.
        call ESMF_FieldSMM(srcField=route%field_src, dstField=route%field, &
@@ -1054,9 +1054,9 @@ contains
        call ESMF_FieldGet(route%field, farrayPtr=arrayPtr8, rc=status)
        VERIFY_(STATUS)
        
-       ! Convert units [kg/m2/s] --> [m3/s].
-       QRUNOFF = real(arrayPtr8 * real(route%areacat, kind=8) / 1000.0_8, &
-                      kind=kind(QRUNOFF(1)))
+       ! Convert units [kg m-2 s-1] --> [m3 s-1].
+       QRUNOFF = real(arrayPtr8 * real(route%areacat, kind=REAL64) / 1000.0_REAL64, &
+                      kind=kind(QRUNOFF(1)))       
        
        ! Compute outflow from main river and (optionally) reservoirs
        !
