@@ -698,7 +698,7 @@ subroutine SetServices ( GC, RC )
       ZEROS = 0.0_dp
 
       call ESMF_VMBarrier(vm, _RC)
-      call RunISSM(epsilon(ISSM_DT), c_loc(ZEROS), c_loc(GEOS_RESTARTS))
+      call RunISSM(0.0_dp, c_loc(ZEROS), c_loc(GEOS_RESTARTS))
       call ESMF_VMBarrier(vm, _RC)
 
       ! update ISSM run flag (for C++ library calls)
@@ -1285,6 +1285,7 @@ subroutine SetServices ( GC, RC )
     real(dp), pointer, dimension(:)                :: MESH_PTR           ! pointer for ESMF_FieldGet 
     type(ESMF_Field)                               :: srcField
     type(ESMF_Field)                               :: dstField
+    type(ESMF_Array)                               :: meshArray
     integer                                        :: num_owned_nodes
     integer                                        :: num_nodes
     integer                                        :: IM, JM, local_dims(3)   
