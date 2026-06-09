@@ -86,8 +86,10 @@ class MAPLManagedState:
                     getattr(ndsl_state_, ndsl_field_).field[:] = cp.asarray(mapl_array)[:]
                 elif self._transfer_type == InterfaceTransferType.CPU_COPY:
                     getattr(ndsl_state_, ndsl_field_).field[:] = mapl_array[:]
-                elif self._transfer_type in [InterfaceTransferType.CPU_ZERO_COPY, InterfaceTransferType.GPU_MAPPING]:
+                elif self._transfer_type == InterfaceTransferType.CPU_ZERO_COPY:
                     getattr(ndsl_state_, ndsl_field_).data = mapl_array
+                elif self._transfer_type == InterfaceTransferType.GPU_MAPPING:
+                    getattr(ndsl_state_, ndsl_field_).data = cp.asarray(mapl_array)
                 else:
                     raise ValueError("Transfer type unknown for Fortran/NDSL")
 
