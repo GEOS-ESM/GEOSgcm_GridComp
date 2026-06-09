@@ -30,7 +30,7 @@ module GEOS_GwdGridCompMod
    ! !USES:
 
    use esmf
-   use MAPL, only: MAPL_Verify, MAPL_Assert, MAPL_Return&
+   use MAPL, only: MAPL_Verify, MAPL_Assert, MAPL_Return
    use MAPL, only: MAPL_get_current_thread
    use MAPL, only : MAPL_get_num_threads
    use MAPL, only : MAPL_find_bounds
