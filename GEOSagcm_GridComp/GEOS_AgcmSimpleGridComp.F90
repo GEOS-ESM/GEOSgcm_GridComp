@@ -137,11 +137,11 @@ contains
       call MAPL_GridCompAddConnection(gc, &
            src_comp="PHYS", &
            dst_comp="SDYN", &
-           src_names="DUDT, DVDT, DTDT", _RC)
+           src_names="D_UV_DT, DTDT", _RC)
       call MAPL_GridCompAddConnection(gc, &
            src_comp="SDYN", &
            dst_comp="PHYS", &
-           src_names="UV, T, PLE", &
+           src_names="UV, T, PLE4", &
            dst_names="UV, TEMP, PLE", _RC)
       call MAPL_GridCompAddConnection(gc, &
            src_comp="<self>", &
