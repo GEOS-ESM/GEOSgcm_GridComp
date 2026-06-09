@@ -87,9 +87,9 @@ class MAPLManagedState:
                 elif self._transfer_type == InterfaceTransferType.CPU_COPY:
                     getattr(ndsl_state_, ndsl_field_).field[:] = mapl_array[:]
                 elif self._transfer_type == InterfaceTransferType.CPU_ZERO_COPY:
-                    getattr(ndsl_state_, ndsl_field_).data = mapl_array
+                    getattr(ndsl_state_, ndsl_field_).swap_buffer(mapl_array)
                 elif self._transfer_type == InterfaceTransferType.GPU_MAPPING:
-                    getattr(ndsl_state_, ndsl_field_).data = cp.asarray(mapl_array)
+                    getattr(ndsl_state_, ndsl_field_).swap_buffer(cp.asarray(mapl_array))
                 else:
                     raise ValueError("Transfer type unknown for Fortran/NDSL")
 
@@ -107,7 +107,7 @@ class MAPLManagedState:
         """Copy all Python memory back in Fortran"""
 
         # Skip sending back - we are mapped
-        if self._transfer_type == InterfaceTransferType.CPU_ZERO_COPY:
+        if self._transfer_type in [InterfaceTransferType.CPU_ZERO_COPY, InterfaceTransferType.GPU_MAPPING]:
             return
 
         def _push_back_to_fortran(
