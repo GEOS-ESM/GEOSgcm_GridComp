@@ -176,16 +176,6 @@ contains
 #include "HS_Export___.h"
 #include "HS_Internal___.h"
 
-      ! TODO: pchakrab - till we have a way to specify a VECTOR in acg
-      call MAPL_GridCompAddSpec(gc, &
-           state_intent=ESMF_STATEINTENT_IMPORT, &
-           short_name="UV", &
-           standard_name="(eastward_wind, northward_wind)", &
-           dims="xyz", &
-           vstagger=VERTICAL_STAGGER_CENTER, &
-           units="m/s", &
-           itemtype=MAPL_STATEITEM_VECTOR, _RC)
-
       ! Set the Initialize and Run entry points
       call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_INITIALIZE, Initialize, _RC)
       call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_RUN, Run, phase_name="run", _RC)
@@ -216,7 +206,6 @@ contains
       real :: dx, dy, x0, y0, afac, phi0, qmax
       ! Pointers to internals
 #include "HS_DeclarePointer___.h"
-      real, pointer :: phis(:, :)
       integer :: status
 
       ! Get coordinate information
@@ -227,7 +216,12 @@ contains
       call MAPL_GridCompGetInternalState(gc, internal, _RC)
 
       ! Get pointers to internal variables
-#include "HS_GetPointer___.h"
+      ! TODO: pchakrab - till ACG bug is fixed
+! #include "HS_GetPointer___.h"
+      call MAPL_StateGetPointer(internal, SPHI2,  'SPHI2' , _RC)
+      call MAPL_StateGetPointer(internal, CPHI2,  'CPHI2' , _RC)
+      call MAPL_StateGetPointer(internal, HFCN,  'HFCN' , _RC)
+      call MAPL_StateGetPointer(internal, P_I,  'P_I' , _RC)
 
       ! Initialize geometric factors
       SPHI2 = sin(lats)**2
@@ -296,17 +290,18 @@ contains
       type(ESMF_State) :: internal
       type(ESMF_Grid) :: grid
       type(ESMF_Logical) :: friendly
-      type(ESMF_FieldBundle) :: uv
+      type(ESMF_FieldBundle) :: tmp_bundle
 
       ! Pointers to imports/internals/exports
 #include "HS_DeclarePointer___.h"
       real, pointer, contiguous :: PLE0(:,:,:) ! 0-based PLE
       real, pointer :: u(:, :, :), v(:, :, :)
+      real, pointer, dimension(:, :, :) :: dudt, dvdt
 
       ! Scratch arrays and working pointers
       real, allocatable, dimension(:, :) :: pii, dp, pl, uu, vv, vr, te, f1, rr, ds, dm, pk
       real, pointer, dimension(:, :) :: ps, pt
-      integer :: level, im, jm, lm, fricq
+      integer :: field_count, level, im, jm, lm, fricq
       integer :: i1, in, j1, jn, status
       logical :: friendly_temp, friendly_wind
       real :: dt, ka, ks, kf
@@ -328,7 +323,31 @@ contains
 
       ! Pointers to internals
       call MAPL_GridCompGetInternalState(gc, internal, _RC)
-#include "HS_GetPointer___.h"
+      ! TODO: pchakrab - till ACG bug is fixed
+! #include "HS_GetPointer___.h"
+      call MAPL_StateGetPointer(export, DTDT,  'DTDT' , _RC)
+      ! DUDT/DVDT
+      call ESMF_StateGet(export, "D_UV_DT", tmp_bundle, _RC) ! DUDT/DVDT
+      call ESMF_FieldBundleGet(tmp_bundle, fieldCount=field_count, _RC)
+      if (field_count == 2) then ! export bundle is connected
+         call MAPL_FieldBundleGetPointer(tmp_bundle, 1, dudt, _RC) ! DUDT
+         call MAPL_FieldBundleGetPointer(tmp_bundle, 2, dvdt, _RC) ! DVDT
+      end if
+      call MAPL_StateGetPointer(export, T_EQ,  'T_EQ' , _RC)
+      call MAPL_StateGetPointer(export, THEQ,  'THEQ' , _RC)
+      call MAPL_StateGetPointer(export, TAUX,  'TAUX' , _RC)
+      call MAPL_StateGetPointer(export, TAUY,  'TAUY' , _RC)
+      call MAPL_StateGetPointer(export, DISS,  'DISS' , _RC)
+      call ESMF_StateGet(import, "UV", tmp_bundle, _RC) ! U/V
+      call MAPL_FieldBundleGetPointer(tmp_bundle, 1, u, _RC) ! U
+      call MAPL_FieldBundleGetPointer(tmp_bundle, 2, v, _RC) ! V
+      call MAPL_StateGetPointer(import, TEMP,  'TEMP' , _RC)
+      call MAPL_StateGetPointer(import, PLE,  'PLE' , _RC)
+      call MAPL_StateGetPointer(internal, SPHI2,  'SPHI2' , _RC)
+      call MAPL_StateGetPointer(internal, CPHI2,  'CPHI2' , _RC)
+      call MAPL_StateGetPointer(internal, HFCN,  'HFCN' , _RC)
+      call MAPL_StateGetPointer(internal, P_I,  'P_I' , _RC)
+
       ! Edge variable PLE is expected to be 0-based
       i1 = lbound(PLE, 1); in = ubound(PLE, 1); j1 = lbound(PLE, 2); jn = ubound(PLE, 2)
       PLE0(i1:in, j1:jn, 0:lm) => PLE(i1:in, j1:jn, 1:lm+1)
@@ -400,12 +419,6 @@ contains
       ka = 1.0 / (DAYLEN * taua)
       ks = 1.0 / (DAYLEN * taus)
       kf = 1.0 / (DAYLEN * tauf)
-
-      ! u/v
-      call ESMF_StateGet(import, "UV", uv, _RC)
-      call MAPL_FieldBundleGetPointer(uv, 1, u, _RC)
-      call MAPL_FieldBundleGetPointer(uv, 2, v, _RC)
-
       LEVELS: do level = 1, lm
 
          dp = (PLE0(:, :, level) - PLE0(:, :, level - 1))
