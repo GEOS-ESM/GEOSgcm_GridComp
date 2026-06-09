@@ -169,19 +169,15 @@ class UWGEOSInterface(UserCode):
                     self._managed_state.ndsl_state.input_output.CNV_Tracers.field[:],
                     MOIST_WORKAROUNDS.CNV_Tracers().Q,
                 )
-            
+
             with TimedCUDAProfiler("UW Numerics", {}):
                 self._uw(self._managed_state.ndsl_state)
 
             with TimedCUDAProfiler("UW - State copy-back", {}):
-                if ndsl_stack.backend.is_fortran_aligned():
-                    safe_assign_array(
-                        MOIST_WORKAROUNDS.CNV_Tracers().Q,
-                        self._managed_state.ndsl_state.input_output.CNV_Tracers.field[:],
-                    )
-                else:
-                    # Don't copy the extra ghost point that we allocate
-                    pass
+                safe_assign_array(
+                    MOIST_WORKAROUNDS.CNV_Tracers().Q,
+                    self._managed_state.ndsl_state.input_output.CNV_Tracers.field[:],
+                )
                 self._managed_state.ndsl_to_fortran()
 
     def finalize(self, mapl_state, import_state, export_state) -> None:
