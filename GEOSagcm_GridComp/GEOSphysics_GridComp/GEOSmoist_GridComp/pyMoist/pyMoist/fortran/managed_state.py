@@ -82,11 +82,11 @@ class MAPLManagedState:
                 mapl_array = mapl_state_.get_from_fortran(mapl_field_, allow_device_transfer=False)
                 if mapl_array is None:
                     setattr(ndsl_state_, ndsl_field_, None)
-                elif self._transfer_type == InterfaceTransferType.CPU_TO_GPU_TO_CPU:
+                elif self._transfer_type == InterfaceTransferType.GPU_TRANSFER:
                     getattr(ndsl_state_, ndsl_field_).field[:] = cp.asarray(mapl_array)[:]
                 elif self._transfer_type == InterfaceTransferType.CPU_COPY:
                     getattr(ndsl_state_, ndsl_field_).field[:] = mapl_array[:]
-                elif self._transfer_type == InterfaceTransferType.CPU_MAP:
+                elif self._transfer_type in [InterfaceTransferType.CPU_ZERO_COPY, InterfaceTransferType.GPU_MAPPING]:
                     getattr(ndsl_state_, ndsl_field_).data = mapl_array
                 else:
                     raise ValueError("Transfer type unknown for Fortran/NDSL")
@@ -98,14 +98,14 @@ class MAPLManagedState:
                 e.add_note(f"Mapping {ndsl_field} to {mapl_field}")
                 raise e
 
-        if self._transfer_type == InterfaceTransferType.CPU_TO_GPU_TO_CPU:
+        if self._transfer_type == InterfaceTransferType.GPU_TRANSFER:
             cp.cuda.runtime.deviceSynchronize()
 
     def ndsl_to_fortran(self) -> None:
         """Copy all Python memory back in Fortran"""
 
         # Skip sending back - we are mapped
-        if self._transfer_type == InterfaceTransferType.CPU_MAP:
+        if self._transfer_type == InterfaceTransferType.CPU_ZERO_COPY:
             return
 
         def _push_back_to_fortran(
@@ -126,7 +126,7 @@ class MAPLManagedState:
                 mapl_array = mapl_state_.get_from_fortran(mapl_field_, allow_device_transfer=False)
                 if mapl_array is None:
                     pass
-                elif self._transfer_type == InterfaceTransferType.CPU_TO_GPU_TO_CPU:
+                elif self._transfer_type == InterfaceTransferType.GPU_TRANSFER:
                     ndsl_array = cp.asnumpy(getattr(ndsl_state_, ndsl_field_).field[:])
                     mapl_array[:] = ndsl_array[:]
                     mapl_state_.send_to_fortran(mapl_field_)
@@ -134,7 +134,7 @@ class MAPLManagedState:
                     ndsl_array = getattr(ndsl_state_, ndsl_field_).field[:]
                     mapl_array[:] = ndsl_array[:]
                     mapl_state_.send_to_fortran(mapl_field_)
-                elif self._transfer_type == InterfaceTransferType.CPU_MAP:
+                elif self._transfer_type in [InterfaceTransferType.CPU_ZERO_COPY, InterfaceTransferType.GPU_MAPPING]:
                     raise RuntimeError("Coding issue. We should never send back mapped data")
                 else:
                     raise ValueError("Transfer type unknown for NDSL/Fortran")
@@ -142,7 +142,7 @@ class MAPLManagedState:
         for ndsl_field, (mapl_state, mapl_field) in self._state_to_mapl_mapping.items():
             _push_back_to_fortran(mapl_field, mapl_state, ndsl_field, self._ndsl_state)
 
-        if self._transfer_type == InterfaceTransferType.CPU_TO_GPU_TO_CPU:
+        if self._transfer_type == InterfaceTransferType.GPU_TRANSFER:
             cp.cuda.runtime.deviceSynchronize()
 
     def record(self, key: str) -> None:
