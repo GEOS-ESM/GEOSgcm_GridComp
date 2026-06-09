@@ -315,6 +315,120 @@ contains
          DIMS               = MAPL_DimsTileOnly          ,&
          VLOCATION          = MAPL_VLocationNone         ,&
          _RC )    
+
+
+    call MAPL_AddExportSpec(GC,                           &
+         LONG_NAME          = 'change_surface_skin_temperature'                  ,&
+         UNITS              = 'K'                        ,&
+         SHORT_NAME         = 'DELTS'                    ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         _RC ) 
+
+    call MAPL_AddExportSpec(GC,                           &
+         LONG_NAME          = 'change_surface_specific_humidity'                 ,&
+         UNITS              = 'kg kg-1'                  ,&
+         SHORT_NAME         = 'DELQS'                    ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         _RC )
+         
+    call MAPL_AddExportSpec(GC,                           &
+         LONG_NAME          = 'total_latent_heat_flux_consistent_with_evaporation_from_turbulence'  ,&
+         UNITS              = 'W m-2'                    ,&
+         SHORT_NAME         = 'HLATN'                    ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         _RC  )
+        
+    call MAPL_AddExportSpec(GC,                           &
+         LONG_NAME          = 'evaporation'              ,&
+         UNITS              = 'kg m-2 s-1'               ,&
+         SHORT_NAME         = 'EVAPOUT'                  ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         _RC )
+        
+    call MAPL_AddExportSpec(GC,                           &
+         LONG_NAME          = 'sublimation'              ,&
+         UNITS              = 'kg m-2 s-1'               ,&
+         SHORT_NAME         = 'SUBLIM'                   ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         _RC ) 
+
+    call MAPL_AddExportSpec(GC,                           &
+         LONG_NAME          = 'upward_sensible_heat_flux',&
+         UNITS              = 'W m-2'                    ,&
+         SHORT_NAME         = 'SHOUT'                    ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         _RC ) 
+
+    call MAPL_AddExportSpec(GC,                           &
+         LONG_NAME          = 'surface_emitted_longwave_flux',&
+         UNITS              = 'W m-2'                    ,&
+         SHORT_NAME         = 'HLWUP'                    ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         _RC ) 
+
+    call MAPL_AddExportSpec(GC,                           &
+         LONG_NAME          = 'surface_net_downward_longwave_flux',&
+         UNITS              = 'W m-2'                    ,&
+         SHORT_NAME         = 'LWNDSRF'                  ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         _RC ) 
+
+    call MAPL_AddExportSpec(GC,                           &
+         LONG_NAME          = 'surface_net_downward_shortwave_flux',&
+         UNITS              = 'W m-2'                    ,&
+         SHORT_NAME         = 'SWNDSRF'                  ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         _RC ) 
+
+    call MAPL_AddExportSpec(GC,                           &
+         LONG_NAME          = 'surface_reflectivity_visible_beam',&
+         UNITS              = '1'                        ,&
+         SHORT_NAME         = 'ALBVR'                    ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         _RC ) 
+
+    call MAPL_AddExportSpec(GC,                           &
+         LONG_NAME          = 'surface_reflectivity_visible_diffuse',&
+         UNITS              = '1'                        ,&
+         SHORT_NAME         = 'ALBVF'                    ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         _RC ) 
+
+    call MAPL_AddExportSpec(GC,                           &
+         LONG_NAME          = 'surface_reflectivity_near_infrared_beam',&
+         UNITS              = '1'                        ,&
+         SHORT_NAME         = 'ALBNR'                    ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         _RC ) 
+
+    call MAPL_AddExportSpec(GC,                           &
+         LONG_NAME          = 'surface_reflectivity_near_infrared_diffuse',&
+         UNITS              = '1'                        ,&
+         SHORT_NAME         = 'ALBNF'                    ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         _RC ) 
+
+    call MAPL_AddExportSpec(GC,                           &
+         LONG_NAME          = 'surface_emissivity'       ,&
+         UNITS              = '1'                        ,&
+         SHORT_NAME         = 'EMIS'                     ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         _RC ) 
+
 !EOS
 
     call MAPL_TimerAdd(GC,    name="-RRM" ,RC=STATUS)
@@ -530,10 +644,10 @@ contains
     if(route_flag==2)then
         route%reservoir = Reservoir(GC, _RC)
         route%reservoir%use_res=.True.        
+        if(mapl_am_I_root()) print *,"reservoir init success"
     else
         route%reservoir%use_res=.False.
     endif
-    if(mapl_am_I_root()) print *,"reservoir init success"     
 
     call create_mapping_handler(tilegrid, pfaf_tilegrid, _RC)
     call setup_exchange_water(pfaf_tilegrid, _RC)
@@ -619,7 +733,6 @@ contains
       call ESMFL_Fcollect(tilegrid, global_id, local_id, _RC)
 
       ! get weights for aggregation of runoff from tile space to Pfafstetter catchments
-      
       if (index(GNAMES(1), 'EASEv') /=0) then
 
          ! For the EASE tile space, there is at most one land tile per EASE grid cell; Pfafstetter catchment outlines are
@@ -640,7 +753,7 @@ contains
          call ESMFL_Fcollect(tilegrid, global_jj, local_jj, _RC)
 
          call MAPL_ease_extent(GNAMES(1), nx, ny)                    ! nx=cols;ny=rows
-
+          
          if (MAPL_AM_I_ROOT()) then
             
             allocate(map_tile(nx,ny),source=fillvalue)
@@ -923,6 +1036,22 @@ contains
     real, dimension(:), pointer :: QOUTFLOW
     real, dimension(:), pointer :: QRES
     real, dimension(:), pointer :: QCAT
+
+! --- Variable declarations for dummy pointers ---
+    real, pointer :: delts_ptr(:)   => null()
+    real, pointer :: delqs_ptr(:)   => null()
+    real, pointer :: hlatn_ptr(:)   => null()
+    real, pointer :: evapout_ptr(:) => null()
+    real, pointer :: sublim_ptr(:)  => null()
+    real, pointer :: shout_ptr(:)   => null()
+    real, pointer :: hlwup_ptr(:)   => null()
+    real, pointer :: lwndsrf_ptr(:) => null()
+    real, pointer :: swndsrf_ptr(:) => null()
+    real, pointer :: albvr_ptr(:)   => null()
+    real, pointer :: albvf_ptr(:)   => null()
+    real, pointer :: albnr_ptr(:)   => null()
+    real, pointer :: albnf_ptr(:)   => null()
+    real, pointer :: emis_ptr(:)    => null()
   
 ! Time attributes and placeholders
 
@@ -992,6 +1121,22 @@ contains
     call MAPL_GetPointer(EXPORT, QRES,     'QRES',        ALLOC=.true., _RC)
     call MAPL_GetPointer(EXPORT, QCAT,     'QCAT',        ALLOC=.true., _RC)
 
+! --- Retrieve pointers from MAPL ExportState ---
+    call MAPL_GetPointer(Export, delts_ptr,   'DELTS',    ALLOC=.true., _RC)
+    call MAPL_GetPointer(Export, delqs_ptr,   'DELQS',    ALLOC=.true., _RC)
+    call MAPL_GetPointer(Export, hlatn_ptr,   'HLATN',    ALLOC=.true., _RC)
+    call MAPL_GetPointer(Export, evapout_ptr, 'EVAPOUT',  ALLOC=.true., _RC)
+    call MAPL_GetPointer(Export, sublim_ptr,  'SUBLIM',   ALLOC=.true., _RC)
+    call MAPL_GetPointer(Export, shout_ptr,   'SHOUT',    ALLOC=.true., _RC)
+    call MAPL_GetPointer(Export, hlwup_ptr,   'HLWUP',    ALLOC=.true., _RC)
+    call MAPL_GetPointer(Export, lwndsrf_ptr, 'LWNDSRF',  ALLOC=.true., _RC)
+    call MAPL_GetPointer(Export, swndsrf_ptr, 'SWNDSRF',  ALLOC=.true., _RC)
+    call MAPL_GetPointer(Export, albvr_ptr,   'ALBVR',    ALLOC=.true., _RC)
+    call MAPL_GetPointer(Export, albvf_ptr,   'ALBVF',    ALLOC=.true., _RC)
+    call MAPL_GetPointer(Export, albnr_ptr,   'ALBNR',    ALLOC=.true., _RC)
+    call MAPL_GetPointer(Export, albnf_ptr,   'ALBNF',    ALLOC=.true., _RC)
+    call MAPL_GetPointer(Export, emis_ptr,    'EMIS',     ALLOC=.true., _RC)
+
 ! Start timers
 ! ------------
     call MAPL_TimerOn(MAPL,"RUN")
@@ -1000,7 +1145,22 @@ contains
 
     !   call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS)
     !   VERIFY_(STATUS)
-    
+    if (associated(delts_ptr))   delts_ptr   = 0.0
+    if (associated(delqs_ptr))   delqs_ptr   = 0.0
+    if (associated(hlatn_ptr))   hlatn_ptr   = 0.0
+    if (associated(evapout_ptr)) evapout_ptr = 0.0
+    if (associated(sublim_ptr))  sublim_ptr  = 0.0
+    if (associated(shout_ptr))   shout_ptr   = 0.0
+    if (associated(hlwup_ptr))   hlwup_ptr   = 0.0
+    if (associated(lwndsrf_ptr)) lwndsrf_ptr = 0.0
+    if (associated(swndsrf_ptr)) swndsrf_ptr = 0.0
+      
+    if (associated(albvr_ptr))   albvr_ptr   = 0.1
+    if (associated(albvf_ptr))   albvf_ptr   = 0.1
+    if (associated(albnr_ptr))   albnr_ptr   = 0.1
+    if (associated(albnf_ptr))   albnf_ptr   = 0.1
+    if (associated(emis_ptr))    emis_ptr    = 0.98    
+
 ! get pointers to inputs variables
 ! ----------------------------------
 

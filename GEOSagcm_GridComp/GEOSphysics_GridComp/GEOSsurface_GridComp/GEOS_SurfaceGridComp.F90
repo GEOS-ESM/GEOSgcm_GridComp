@@ -3867,6 +3867,7 @@ module GEOS_SurfaceGridCompMod
 
     call MAPL_TimerOn(MAPL,"LocStreamXForm")
     do I = 1, NUM_CHILDREN
+       if (I == ROUTE) cycle
        call MAPL_GetObjectFromGC ( GCS(I) ,   CHILD_MAPL,   RC=STATUS )
        VERIFY_(STATUS)
        call MAPL_Get (CHILD_MAPL, LOCSTREAM=CHILD_LS, RC=STATUS )
@@ -3884,6 +3885,20 @@ module GEOS_SurfaceGridCompMod
                                         MASK_OUT=TILETYPE == CHILD_MASK(I), &
                                         RC=STATUS )
        VERIFY_(STATUS)
+       if(I == LAND)then
+         call MAPL_LocStreamCreateXform ( XFORM=SURF_INTERNAL_STATE%XFORM_IN(ROUTE), &
+                                          LocStreamOut=CHILD_LS, &
+                                          LocStreamIn=LOCSTREAM, &
+                                          NAME=GCNAMES(ROUTE), &
+                                          RC=STATUS )
+         VERIFY_(STATUS)
+         call MAPL_LocStreamCreateXform ( XFORM=SURF_INTERNAL_STATE%XFORM_OUT(ROUTE), &
+                                          LocStreamOut=LOCSTREAM, &
+                                          LocStreamIn=CHILD_LS, &
+                                          NAME=GCNAMES(ROUTE), &
+                                          MASK_OUT=SPREAD(.false., 1, size(TILETYPE)), &
+                                          RC=STATUS )       
+       endif
     end do
     call MAPL_TimerOff(MAPL,"LocStreamXForm")
 
