@@ -326,13 +326,12 @@ contains
       ! TODO: pchakrab - till ACG bug is fixed
 ! #include "HS_GetPointer___.h"
       call MAPL_StateGetPointer(export, DTDT,  'DTDT' , _RC)
-      DTDT = 0.0
       ! DUDT/DVDT
-      call ESMF_StateGet(export, "D_UV_DT", tmp_bundle, _RC)
+      call ESMF_StateGet(export, "D_UV_DT", tmp_bundle, _RC) ! DUDT/DVDT
       call ESMF_FieldBundleGet(tmp_bundle, fieldCount=field_count, _RC)
       if (field_count == 2) then ! export bundle is connected
-         call MAPL_FieldBundleGetPointer(tmp_bundle, 1, dudt, _RC)
-         call MAPL_FieldBundleGetPointer(tmp_bundle, 2, dvdt, _RC)
+         call MAPL_FieldBundleGetPointer(tmp_bundle, 1, dudt, _RC) ! DUDT
+         call MAPL_FieldBundleGetPointer(tmp_bundle, 2, dvdt, _RC) ! DVDT
       end if
       call MAPL_StateGetPointer(export, T_EQ,  'T_EQ' , _RC)
       call MAPL_StateGetPointer(export, THEQ,  'THEQ' , _RC)
