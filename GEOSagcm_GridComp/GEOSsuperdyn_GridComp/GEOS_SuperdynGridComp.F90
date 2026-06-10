@@ -7,7 +7,7 @@ module GEOS_SuperdynGridCompMod
    !USES:
    use ESMF
    use MAPL, only: MAPL_GridCompSetEntryPoint
-   use MAPL, only: MAPL_GridCompAddChild, user_setservices, MAPL_GridCompRunChild
+   use MAPL, only: MAPL_GridCompAddChild, MAPL_GridCompRunChild
    use MAPL, only: MAPL_GridCompGetResource
    use MAPL, only: MAPL_GridCompAddSpec, MAPL_GridCompReexport, MAPL_GridCompAddConnection
    use MAPL, only: VERTICAL_STAGGER_CENTER
@@ -99,16 +99,16 @@ contains
 
       select case (trim(dycore))
       ! case ("FV")
-      !    call MAPL_GridCompAddChild(gc, "DYN", user_setservices(FV_SetServices), "dyn.yaml", _RC)
+      !    call MAPL_GridCompAddChild(gc, "DYN", FV_SetServices, "dyn.yaml", _RC)
       case ("FV3")
-         call MAPL_GridCompAddChild(gc, "DYN", user_setservices(FV3_SetServices), "dyn.yaml", _RC)
+         call MAPL_GridCompAddChild(gc, "DYN", FV3_SetServices, "dyn.yaml", _RC)
       ! case ("FV3+ADV")
-      !    call MAPL_GridCompAddChild(gc, "DYN", user_setservices(FV3_SetServices), "dyn.yaml", _RC)
-      !    call MAPL_GridCompAddChild(gc, "ADV", user_setservices(ADV_SetServices), "dyn.yaml", _RC)
+      !    call MAPL_GridCompAddChild(gc, "DYN", FV3_SetServices, "dyn.yaml", _RC)
+      !    call MAPL_GridCompAddChild(gc, "ADV", ADV_SetServices, "dyn.yaml", _RC)
       ! case ("ARIES")
-      !    call MAPL_GridCompAddChild(gc, "DYN", user_setservices(ARIES_SetServices), "dyn.yaml", _RC)
+      !    call MAPL_GridCompAddChild(gc, "DYN", ARIES_SetServices, "dyn.yaml", _RC)
       ! case ("DATMO")
-      !    call MAPL_GridCompAddChild(gc, "DYN", user_setservices(DATMO_SetServices), "dyn.yaml", _RC)
+      !    call MAPL_GridCompAddChild(gc, "DYN", DATMO_SetServices, "dyn.yaml", _RC)
       case default
          _FAIL("Invalid DYCORE specified for SuperDyn: " // trim(dycore))
       end select
