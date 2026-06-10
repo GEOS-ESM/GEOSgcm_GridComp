@@ -25,9 +25,9 @@ from ndsl import (
 )
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.typing import get_precision
+from ndsl.internal.hmm import is_hmm_available
 from ndsl.logging import ndsl_log_on_rank_0
 from ndsl.optional_imports import cupy as cp
-from ndsl.internal.hmm import is_hmm_available
 
 from pyMoist.fortran.build_helper import InterfaceTransferType, MemorySpace
 
