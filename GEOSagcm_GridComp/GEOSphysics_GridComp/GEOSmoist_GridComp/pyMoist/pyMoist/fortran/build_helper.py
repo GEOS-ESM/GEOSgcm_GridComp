@@ -16,8 +16,9 @@ class MemorySpace(enum.Enum):
 
 class InterfaceTransferType(enum.Enum):
     CPU_COPY = enum.auto()  # Copies because of layout mismatch
-    CPU_MAP = enum.auto()  # No copy - memory map - same layout
-    CPU_TO_GPU_TO_CPU = enum.auto()
+    CPU_ZERO_COPY = enum.auto()  # No copy - reuse the memory given (case of same layout)
+    GPU_TRANSFER = enum.auto()  # Upload from central RAM to device, then download
+    GPU_MAPPING = enum.auto()  # Paged memory mapped onto GPU memory space (HMM, ATS, ...)
 
 
 class StencilBackendCompilerOverride:

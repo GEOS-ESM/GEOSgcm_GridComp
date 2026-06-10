@@ -27,6 +27,7 @@ from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.typing import get_precision
 from ndsl.logging import ndsl_log_on_rank_0
 from ndsl.optional_imports import cupy as cp
+from ndsl.internal.hmm import is_hmm_available
 
 from pyMoist.fortran.build_helper import InterfaceTransferType, MemorySpace
 
@@ -116,11 +117,14 @@ class NDSLPhysicsStack:
         if fortran_mem_space != MemorySpace.CPU:
             raise NotImplementedError("Interface cannot stream Fortran memory resident on GPU")
         if self.backend.is_gpu_backend():
-            self._interface_type = InterfaceTransferType.CPU_TO_GPU_TO_CPU
+            if self.backend.is_fortran_aligned() and is_hmm_available():
+                self._interface_type = InterfaceTransferType.GPU_MAPPING
+            else:
+                self._interface_type = InterfaceTransferType.GPU_TRANSFER
         else:
             if self.backend.is_fortran_aligned():
                 # This is Fortran layout - we can Map the memory
-                self._interface_type = InterfaceTransferType.CPU_MAP
+                self._interface_type = InterfaceTransferType.CPU_ZERO_COPY
             else:
                 # All other layout have to copy the data in/out of Fortran layout
                 self._interface_type = InterfaceTransferType.CPU_COPY
