@@ -120,9 +120,7 @@ contains
          call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="SHOBS", _RC)
       end if
 
-      ! Re-export, use MAPL_GridCompReexport(gc, src_comp="DYN", src_name="U", _RC)
-      ! call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="U", _RC)
-      ! call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="V", _RC)
+      ! Re-export
       call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="UV", _RC) ! vector
       call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="W", _RC)
       call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="T", _RC)
@@ -141,8 +139,7 @@ contains
       call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="PKE", _RC)
       call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="PS", _RC)
       call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="DELP", _RC)
-      call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="US", _RC)
-      call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="VS", _RC)
+      call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="UV_S", _RC)
       call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="TA", _RC)
       call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="QA", _RC)
       call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="SPEED", _RC)
@@ -168,8 +165,7 @@ contains
       call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="PE", _RC)
       call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="QV_DYN_IN", _RC)
       call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="T_DYN_IN", _RC)
-      call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="U_DYN_IN", _RC)
-      call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="V_DYN_IN", _RC)
+      call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="UV_DYN_IN", _RC)
       call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="PLE_DYN_IN", _RC)
       call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="DTDTDYN", _RC)
       call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="DQVDTDYN", _RC)
