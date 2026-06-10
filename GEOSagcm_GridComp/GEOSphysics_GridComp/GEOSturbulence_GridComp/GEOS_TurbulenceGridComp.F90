@@ -3660,7 +3660,7 @@ end if
       call MAPL_GetResource (MAPL, MFPARAMS%MFLIMFAC,  "EDMF_MFLIMFAC:",      default=2.0,   RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%ICE_RAMP,  "EDMF_ICE_RAMP:",      default=-40.0, RC=STATUS )
       call MAPL_GetResource (MAPL, MFPARAMS%ENTRAIN,   "EDMF_ENTRAIN:",       default=0,     RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%STOCHFRAC, "EDMF_STOCHASTIC:",    default=0.5,   RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%STOCHFRAC, "EDMF_STOCHASTIC:",    default=0.4,   RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%DISCRETE,  "EDMF_DISCRETE_TYPE:", default=1,     RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%IMPLICIT,  "EDMF_IMPLICIT:",      default=1,     RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%PRCPCRIT,  "EDMF_PRCPCRIT:",      default=-1.,   RC=STATUS)
@@ -3950,7 +3950,9 @@ end if
                        WTHV2(:,:,1:LM),       &
                        BUOYF(:,:,1:LM),       &
                        MFTKE(:,:,0:LM),       &
-                       DRYCBLH(:,:),          &    
+                       DRYCBLH(:,:),          &
+!                       AWU3(:,:,0:LM),        &
+!                       AWV3(:,:,0:LM),        &
                        !== Input-Outputs ==
                        TKESHOC(:,:,1:LM),     &
                        TKH(:,:,1:LM),         &

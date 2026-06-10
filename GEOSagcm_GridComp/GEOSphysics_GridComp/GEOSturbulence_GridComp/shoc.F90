@@ -54,6 +54,7 @@ module shoc
                  qi_inv, qc_inv, qpi_inv,                        &  ! in
                  qpl_inv, cld_sgs_inv, wthv_sec_inv,             &  ! in
                  wthv_mf_inv, tke_mf, dryzpbl,                   &  ! in
+!                 awu_mf, awv_mf,                                 &  ! in
                  tke_inv, tkh_inv,                               &  ! inout
                  tkm_inv, isotropy_inv,                          &  ! out
                  tkesbdiss_inv, tkesbbuoy_inv,                   &  ! out
@@ -395,6 +396,7 @@ contains
           wrk  = (dtn*Cee)/smixt(i,j,k)
           wrk1 = wtke + dtn*(a_prod_sh+a_prod_bu)
 
+          ! Inflate minimum TKE near surface, and include MF TKE component
           wrk2 = min_tke*(1.+9.*exp(-zl(i,j,k)/100.))+0.5*(tke_mf(i,j,nz-k+1)+tke_mf(i,j,nz-k))
           do itr=1,nitr                        ! iterate for implicit solution
             wtke   = min(max(wrk2, wtke), max_tke)
