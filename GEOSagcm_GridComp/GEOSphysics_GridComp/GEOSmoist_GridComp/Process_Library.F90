@@ -2742,10 +2742,6 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
                                  
          elseif (PDFSHAPE == 6) then
             if (qt_env + q2 + 2.*sigmaqt2 > qs_env) then
-               fQi     = ice_fraction(t_env, CNVFRC, SRF_TYPE)
-               alhxbcp = (1.0-fQi)*alhlbcp + fQi*alhsbcp
-               hl_env  = t_env + gravbcp*ZL - alhxbcp*qc_env
-            
                call partition_dblgss2( exner, PDF_A, beta, rwqt, rwhl, rhlqt, t1, t2, &
                                        sigt1, sigt2, qt_env, q1, q2, sigmaqt1, sigmaqt2, &
                                        w1, w2, sigw1, sigw2, qs_env, dqs, qc_env, cf_env, WQC )
