@@ -12,7 +12,7 @@ module GEOS_IssmGridCompMod
 !
 !   {\tt GEOS\_ISSM} is a wrapper that calls ISSM (C++) IRF methods
 !   Imports: ICESMB (defined on landice tiles)  [private internal state]
-!   Exports: ICESURF, ICETHICK, ICESMB, ICEVX, ICEVY (defined on mesh) [true export state]
+!   Exports: ICESURF, ICETHICK, ICESMB_ISSM, ICEVX, ICEVY (defined on mesh) [true export state]
 !   Exports: ICESURF, ICETHICK, ICEVEL (defined on landice tiles) [private internal state]
 !   Internals: ICESURF, ICETHICK, IMLS, OMLS (defined on mesh) [true internal state]
 ! *** NOTES: 
@@ -74,9 +74,7 @@ end subroutine FinalizeISSM
 
 end interface
 
-
 private
-
 
 public SetServices
 
@@ -158,8 +156,6 @@ subroutine SetServices ( GC, RC )
 !=============================================================================
 
     type(MAPL_MetaComp), pointer       :: MAPL
-    type (ESMF_Config)                 :: CF
-    real                               :: ISSM_DT     ! time step [s] (ISSM_DT set in AGCM.rc)
 
     ! Get my internal MAPL_Generic state
 
@@ -175,20 +171,12 @@ subroutine SetServices ( GC, RC )
 !-----------------------------------
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE,   Initialize, _RC)
-
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,          Run,        _RC)
-    
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE,     Finalize,   _RC)
     
-
 !-----------------------------------
 
     call MAPL_GetObjectFromGC (GC, MAPL, _RC)
-    
-    call ESMF_GridCompGet(GC, CONFIG = CF, _RC)
-
-    ! get timestep for ISSM
-    call ESMF_ConfigGetAttribute(CF, ISSM_DT, Label=trim(COMP_NAME)//"_DT:", DEFAULT=302400.0, _RC)
     
 ! Set the state variable specs.
 !-----------------------------------
@@ -227,14 +215,14 @@ subroutine SetServices ( GC, RC )
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
          _RC  )
-    
+		 
     call MAPL_AddExportSpec(GC,                    &
-         SHORT_NAME = 'ICESMB',                    &
-         LONG_NAME  = 'ice_surface_mass_balance',  &
+         SHORT_NAME = 'ICESMB_ISSM',               &
+         LONG_NAME  = 'issm_surface_mass_balance', &
          UNITS      = 'kg m-2 s-1',                &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
-         _RC  )
+         _RC  )	 
     
     !   Internal states:
     call MAPL_AddInternalSpec(GC,                  &
@@ -243,7 +231,7 @@ subroutine SetServices ( GC, RC )
          UNITS      = 'm',                         &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
-		     RESTART    = MAPL_RestartOptional,        &   
+         RESTART    = MAPL_RestartOptional,        &   
          _RC  )
     
     call MAPL_AddInternalSpec(GC,                  &
@@ -252,7 +240,7 @@ subroutine SetServices ( GC, RC )
          UNITS      = 'm',                         &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
-		     RESTART    = MAPL_RestartOptional,        & 
+         RESTART    = MAPL_RestartOptional,        & 
          _RC  )
     
     call MAPL_AddInternalSpec(GC,                  &
@@ -261,7 +249,7 @@ subroutine SetServices ( GC, RC )
          UNITS      = 'none',                      &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
-		     RESTART    = MAPL_RestartOptional,        & 
+         RESTART    = MAPL_RestartOptional,        & 
          _RC  )
     
     call MAPL_AddInternalSpec(GC,                  &
@@ -270,7 +258,7 @@ subroutine SetServices ( GC, RC )
          UNITS      = 'none',                      &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
-		     RESTART    = MAPL_RestartOptional,        & 
+         RESTART    = MAPL_RestartOptional,        & 
          _RC  )
     
     call MAPL_AddInternalSpec(GC,                  &
@@ -290,8 +278,17 @@ subroutine SetServices ( GC, RC )
          VLOCATION  = MAPL_VLocationNone,          &
          RESTART    = MAPL_RestartOptional,        &
          _RC  )
-    
-
+! ! want to track steps since last ISSM run via internal state checkpoints
+!    call MAPL_AddInternalSpec(GC,                  &
+!         SHORT_NAME = 'ISSM_NSTEPS',               &
+!         LONG_NAME  = 'steps_since_issm',          &
+!         UNITS      = 'none',                      &
+!         DIMS       = MAPL_DimsNone,               &
+!		 PRECISION  = ESMF_KIND_R8,                &
+!		 UNGRIDDED_DIMS = (/1/),                   &
+!         VLOCATION  = MAPL_VLocationNone,          &
+!		 RESTART    = MAPL_RestartSkipInitial,     &
+!         _RC  )
 
 ! Set the Profiling timers
 ! ------------------------
@@ -325,11 +322,13 @@ subroutine SetServices ( GC, RC )
     type(ESMF_Time)                        :: ringTime                ! time of first ring
     type(ESMF_TimeInterval)                :: ringInterval            ! ring time interval (ISSM_DT)
     real                                   :: ISSM_DT                 ! ISSM time step [s] (ISSM_DT set in AGCM.rc)
-    real                                   :: HEARTBEAT_DT            ! landice time step [s] (ISSM_DT set in AGCM.rc)
+    real                                   :: LANDICE_DT              ! landice time step [s] 
     integer                                :: NSTEPS_INIT             ! landice timesteps since last ISSM run
     integer                                :: NSTEPS_RING             ! total landice timesteps between ISSM runs
-	  integer                                :: ios, u                  ! for reading ISSM_NSTEPS.txt file
-
+    integer                                :: ios, u                  ! for reading ISSM_NSTEPS.txt file
+	real(dp), pointer, dimension(:)        :: ISSM_NSTEPS => null()   ! steps since last ISSM run (from internal state)
+    integer                                :: ATTR                    ! internal state attribute
+	
     ! ErrLog Variables
     character(len=ESMF_MAXSTR)             :: IAm
     integer                                :: STATUS
@@ -394,7 +393,6 @@ subroutine SetServices ( GC, RC )
     ! (needed for elements,this is not needed for regridding fields defined on nodes)
     real(dp)                               :: dlon,lon1,lon2,lon3
     integer, pointer, dimension(:)         :: elementMask => null()
-    integer, pointer, dimension(:)         :: nodeMask => null()
     integer                                :: n1,n2,n3
 
     ! pointers to internal state for restart
@@ -469,7 +467,6 @@ subroutine SetServices ( GC, RC )
     allocate(elementConn(3*num_elements))
     allocate(elementCoords(2*num_elements))
     allocate(elementMask(num_elements))
-    allocate(nodeMask(num_nodes))
     allocate(nodeOwners(num_nodes))
 
     ! get information about nodes and elements
@@ -479,13 +476,13 @@ subroutine SetServices ( GC, RC )
 
     elementTypes(:) = ESMF_MESHELEMTYPE_TRI ! triangular elements
 
-    ! mask triangles that cross the seam (longitude +/- 180)
-    ! possibly mask nodes... (note: you don't have to 'activate' these
-    ! masks, they can just be associated with the mesh)
-    ! note: this is only relevant in regridding when fields are
-    !       defined on esmf_meshloc_element (rather than esmf_meshloc_node)
+    ! mask for triangles that cross the seam (longitude +/- 180)
+    ! (you don't have to 'activate' this mask, it can just be 'associated' with the mesh)
+	!
+    ! NOTE: This is only relevant in regridding when fields are defined
+    !       on ESMF_MESHLOC_ELEMENT (rather than ESMF_MESHLOC_NODE)
+	!       so is NOT CURRENTLY USED, but retained for possible future developments 
     elementMask(:) = 0
-    nodeMask(:) = 0
     do j=1,num_elements
       n1 = elementConn(3*(j-1)+1)
       n2 = elementConn(3*(j-1)+2)
@@ -496,18 +493,14 @@ subroutine SetServices ( GC, RC )
       dlon = maxval((/lon1,lon2,lon3/)) - minval((/lon1,lon2,lon3/))
       if ( dlon>180.0 ) then
         elementMask(j) = 1
-        nodeMask(n1) = 1
-        nodeMask(n2) = 1
-        nodeMask(n3) = 1
       end if
     end do
 
     ! create the ESMF mesh from ISSM mesh properties
     mesh = ESMF_MeshCreate(parametricDim=2, spatialDim=2, nodeIds=nodeIds, nodeCoords=nodeCoords, &
             elementIds=elementIds, elementTypes=elementTypes, elementConn=elementConn,elementMask=elementMask,& 
-            nodeMask=nodeMask,elementCoords=elementCoords,coordSys=ESMF_COORDSYS_SPH_DEG, _RC)
+            elementCoords=elementCoords,coordSys=ESMF_COORDSYS_SPH_DEG, _RC)
     
-
     ! associate ESMF_Mesh representation of ISSM mesh with GC for regridding imports/exports in Run method       
     call ESMF_GridCompSet(GC,mesh=mesh,_RC)
     
@@ -604,8 +597,20 @@ subroutine SetServices ( GC, RC )
 
     ! Generic initialize
     !-----------------------------------
+
     call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, _RC )
-    
+
+	! ! Modify the internal state to only have MAPL_AttrTile attribute because 
+	! ! ISSM_NSTEPS has DIMS=MAPL_DimsNone, which adds a MAPL_AttrGrid attribute.... 
+	! ! NOTE: this hack works only for *writing* checkpoints; the code will still crash 
+	! !       if you try to read back in for the same reason     
+	! ! get internal state
+	! call MAPL_Get(MAPL,INTERNAL_ESMF_STATE = INTERNAL,_RC)
+	! ! Following MAPL_StateCreateFromVarSpecNew:
+	! ATTR = 0
+	! ATTR = IOR(ATTR, MAPL_AttrTile)
+	! call ESMF_AttributeSet(INTERNAL, NAME = "MAPL_GridTypeBits", VALUE=ATTR, RC=status)   
+
 	  ! Create Custom ISSM Run Alarm 
     !-----------------------------------
 
@@ -617,18 +622,19 @@ subroutine SetServices ( GC, RC )
       close(u)
     end if
 
-    ! get timestep for landice (heartbeat)
-    call MAPL_Get(MAPL, HEARTBEAT=HEARTBEAT_DT,_RC)
+    ! get timestep for landice 
+    call MAPL_Get(MAPL, HEARTBEAT=LANDICE_DT,_RC)
+    call MAPL_GetResource (MAPL, LANDICE_DT, Label="DT:", DEFAULT=LANDICE_DT, RC=STATUS)	
     
     ! get timestep for ISSM
     call MAPL_GetResource(MAPL, ISSM_DT, Label=trim(COMP_NAME)//"_DT:",DEFAULT=302400.0, _RC)
     
     ! total landice time steps between ISSM runs
-    NSTEPS_RING = nint(ISSM_DT/HEARTBEAT_DT)
+    NSTEPS_RING = nint(ISSM_DT/LANDICE_DT)
     
     ! calculate initial ring time from initial time and remaining timesteps
     call ESMF_ClockGet(CLOCK,currTime=startTime)
-    sec_to_ring = (NSTEPS_RING-NSTEPS_INIT)*nint(HEARTBEAT_DT)
+    sec_to_ring = (NSTEPS_RING-NSTEPS_INIT)*nint(LANDICE_DT)
     call ESMF_TimeIntervalSet(startInterval,s = sec_to_ring )
     ringTime = startTime + startInterval
 
@@ -654,15 +660,20 @@ subroutine SetServices ( GC, RC )
     allocate(OMLS_HALO(num_nodes))
     allocate(ZEROS(num_nodes))
 
-    call MAPL_Get(MAPL,INTERNAL_ESMF_STATE = INTERNAL,_RC)
+    ! get internal state
+	call MAPL_Get(MAPL,INTERNAL_ESMF_STATE = INTERNAL,_RC)
     
     ! get pointers to restarts
     call MAPL_GetPointer(INTERNAL, ICESURF_IN, 'ICESURF', _RC)
-    call MAPL_GetPointer(INTERNAL, ICETHICK_IN, 'ICETHICK', _RC)
-    call MAPL_GetPointer(INTERNAL, ICEVX_IN, 'ICEVX', _RC)
-    call MAPL_GetPointer(INTERNAL, ICEVY_IN, 'ICEVY', _RC)
+    call MAPL_GetPointer(INTERNAL, ICETHICK_IN, 'ICETHICK',_RC)
+    call MAPL_GetPointer(INTERNAL, ICEVX_IN, 'ICEVX',_RC)
+    call MAPL_GetPointer(INTERNAL, ICEVY_IN, 'ICEVY',_RC)
     call MAPL_GetPointer(INTERNAL, IMLS_IN, 'IMLS', _RC)
-    call MAPL_GetPointer(INTERNAL, OMLS_IN, 'OMLS', _RC)
+    call MAPL_GetPointer(INTERNAL, OMLS_IN, 'OMLS',_RC)
+    
+	! ! tracking NSTEPS via internal state not functional yet... 
+	! call MAPL_GetPointer(INTERNAL, ISSM_NSTEPS, 'ISSM_NSTEPS',alloc=.true.,_RC)
+	! ISSM_NSTEPS(:) = 19.0 ! test value
 
     ! if restart has been read, apply halo operation and send pointers to ISSM
     ! else, ISSM will just use default initial values in ISSM*.bin input files
@@ -673,10 +684,10 @@ subroutine SetServices ( GC, RC )
     
     if (ISSM_RST_FOUND) then
       ! apply halo operation to all restart variables
-      call apply_halo(ICESURF_IN,ICESURF_HALO)
-      call apply_halo(ICETHICK_IN,ICETHICK_HALO)
-      call apply_halo(IMLS_IN,IMLS_HALO)
-      call apply_halo(OMLS_IN,OMLS_HALO)
+      call apply_halo(ICESURF_IN,ICESURF_HALO,_RC)
+      call apply_halo(ICETHICK_IN,ICETHICK_HALO,_RC)
+      call apply_halo(IMLS_IN,IMLS_HALO,_RC)
+      call apply_halo(OMLS_IN,OMLS_HALO,_RC)
 
       ! package restarts into one pointer
       GEOS_RESTARTS(:) = 0.0_dp
@@ -694,11 +705,10 @@ subroutine SetServices ( GC, RC )
 
     else
       ! bootstrap restart values from ISSM input files (ISSM*.bin)
-      ! by running with zero time step and zero forcing
-      ZEROS = 0.0_dp
+      ! by running with near-zero time step and zero forcing
 
       call ESMF_VMBarrier(vm, _RC)
-      call RunISSM(0.0_dp, c_loc(ZEROS), c_loc(GEOS_RESTARTS))
+      call RunISSM(1.0_dp, c_loc(ZEROS), c_loc(GEOS_RESTARTS))
       call ESMF_VMBarrier(vm, _RC)
 
       ! update ISSM run flag (for C++ library calls)
@@ -715,6 +725,8 @@ subroutine SetServices ( GC, RC )
       ! filter out halo points (keep the owned indices) for restarts
       if(associated(ICESURF_IN)) ICESURF_IN = ICESURF_HALO(owned_idx)
       if(associated(ICETHICK_IN)) ICETHICK_IN = ICETHICK_HALO(owned_idx)
+	  if(associated(ICEVX_IN)) ICEVX_IN = ICEVX_HALO(owned_idx)
+      if(associated(ICEVY_IN)) ICEVY_IN = ICEVY_HALO(owned_idx)
       if(associated(OMLS_IN)) OMLS_IN = OMLS_HALO(owned_idx)
       if(associated(IMLS_IN)) IMLS_IN = IMLS_HALO(owned_idx)
 
@@ -723,20 +735,23 @@ subroutine SetServices ( GC, RC )
     ! Initialize Export pointers on mesh tile space so history has something to write
     !-----------------------------------
 
-    call MAPL_GetPointer(EXPORT, ICESURF_EX, 'ICESURF', _RC)
+    call MAPL_GetPointer(EXPORT, ICESURF_EX, 'ICESURF',alloc=.true., _RC)
     if(associated(ICESURF_EX)) ICESURF_EX = ICESURF_HALO(owned_idx)
 
-    call MAPL_GetPointer(EXPORT, ICETHICK_EX, 'ICETHICK', _RC)
+    call MAPL_GetPointer(EXPORT, ICETHICK_EX, 'ICETHICK',alloc=.true., _RC)
     if(associated(ICETHICK_EX)) ICETHICK_EX = ICETHICK_HALO(owned_idx)
 
-    call MAPL_GetPointer(EXPORT, ICEVX_EX, 'ICEVX', _RC)
+    call MAPL_GetPointer(EXPORT, ICEVX_EX, 'ICEVX',alloc=.true.,_RC)
     if(associated(ICEVX_EX)) ICEVX_EX = ICEVX_HALO(owned_idx)
 
-    call MAPL_GetPointer(EXPORT, ICEVY_EX, 'ICEVY', _RC)
+    call MAPL_GetPointer(EXPORT, ICEVY_EX, 'ICEVY',alloc=.true.,_RC)
     if(associated(ICEVY_EX)) ICEVY_EX = ICEVY_HALO(owned_idx)
 
     ! Finally, set the tile export state so landice can access values before ISSM runs
     !-----------------------------------
+	call ESMF_UserCompGetInternalState(GC, 'ISSM_TILES', issm_tile_wrap, status); _VERIFY(STATUS)
+    issm_tile_state => issm_tile_wrap%ptr
+	
     ! Regrid from mesh to tile
     call MAPL_LocStreamGet(internal_state%locstream, NT_LOCAL=NT, _RC)
 
@@ -748,9 +763,6 @@ subroutine SetServices ( GC, RC )
     ! calculate ice flow speed
     ICEVEL_HALO = sqrt(ICEVX_HALO**2 + ICEVY_HALO**2)
 
-    call ESMF_UserCompGetInternalState(GC, 'ISSM_TILES', issm_tile_wrap, status); _VERIFY(STATUS)
-    issm_tile_state => issm_tile_wrap%ptr
-
     call mesh_to_tile(ICESURF_HALO,ICESURF_TILE,_RC)
     issm_tile_state%ICESURF_TILE = ICESURF_TILE
 
@@ -759,7 +771,6 @@ subroutine SetServices ( GC, RC )
 
     call mesh_to_tile(ICEVEL_HALO,ICEVEL_TILE,_RC)
     issm_tile_state%ICEVEL_TILE = ICEVEL_TILE
-
 
     call ESMF_VMBarrier(vm, _RC)
 
@@ -772,7 +783,6 @@ subroutine SetServices ( GC, RC )
     if(associated(elementCoords))   deallocate(elementCoords)
     if(associated(glacIds))         deallocate(glacIds)
     if(associated(elementMask))     deallocate(elementMask)
-    if(associated(nodeMask))        deallocate(nodeMask)
     if(associated(halo_idx))        deallocate(halo_idx)
     if(associated(owned_idx))       deallocate(owned_idx)
     if(associated(halolist))        deallocate(halolist)
@@ -799,10 +809,14 @@ subroutine SetServices ( GC, RC )
     _RETURN(_SUCCESS)
 
     contains
-       subroutine apply_halo(VAR_IN,VAR_HALO)
+       subroutine apply_halo(VAR_IN,VAR_HALO,RC)
           ! apply halo operation to a restart variable
+		  ! arguments:
           real, pointer, dimension(:), intent(inout)     :: VAR_IN            ! var on owned_nodes
           real(dp), pointer, dimension(:), intent(inout) :: VAR_HALO          ! var on all nodes
+		  integer, optional, intent(out)                 :: RC
+
+		  ! local variables:
           real(dp), pointer, dimension(:)                :: VAR_DP            ! double version of VAR_IN
           real(dp), pointer, dimension(:)                :: MESH_PTR          ! pointer for ESMF_FieldGet
           real(dp), pointer, dimension(:)                :: ARRAY_PTR         ! pointer for ESMF_FieldGet 
@@ -822,7 +836,6 @@ subroutine SetServices ( GC, RC )
           ! create field on ISSM mesh 
           meshField=ESMF_FieldCreate(mesh, array=meshArray, meshLoc=ESMF_MESHLOC_NODE, _RC)
           
-
           ! append halo values to end of "owned" array
           call ESMF_FieldHalo(meshField, routehandle=halohandle, _RC)
       
@@ -837,12 +850,13 @@ subroutine SetServices ( GC, RC )
           call ESMF_FieldDestroy(meshField,_RC)  
           call ESMF_ArrayDestroy(meshArray,_RC)  
           deallocate(VAR_DP)
-        
+
+		  _RETURN(_SUCCESS)
        end subroutine apply_halo
 
        function create_mesh_grid(rc) result(mesh_grid)
           type (ESMF_Grid) :: mesh_grid
-          integer, optional, intent(out) :: rc
+          integer, optional, intent(out) :: RC
           integer :: status, nDEs, num(1)
           real(kind=8), pointer :: centers(:,:)
           integer, allocatable  :: IMs(:)
@@ -920,9 +934,10 @@ subroutine SetServices ( GC, RC )
     type(ISSM_TILE_WRAP)                 :: issm_tile_wrap
 
     ! surface mass balance on mesh and landice tiles
+	! note: SMB has been time-averaged between ISSM runs
     real(dp), pointer, dimension(:)      :: ICESMB_MESH   => null() ! surface mass balce on mesh elements
     real, pointer, dimension(:)          :: ICESMB_TILE   => null() ! surface mass balance on landice tiles
-    real, pointer, dimension(:)          :: ICESMB_EX     => null() ! pointer to SMB export (mesh)
+	real, pointer, dimension(:)          :: ICESMB_EX     => null() ! pointer to export state (mesh tiles)
 
     ! ISSM Outputs
     real(dp),    pointer, dimension(:)   :: ISSM_OUTPUTS  => null() ! pointer containing all outputs
@@ -942,10 +957,13 @@ subroutine SetServices ( GC, RC )
     ! ice-flow velocity in x direction (in projection coordinates)
     real(dp),    pointer, dimension(:)   :: ICEVX_MESH   => null() ! ice x-velocity on mesh
     real, pointer, dimension(:)          :: ICEVX_EX     => null() ! pointer to export state (mesh tiles)
+    real, pointer, dimension(:)          :: ICEVX_IN     => null() ! pointer to internal state (mesh tiles)
+	
 
     ! ice-flow velocity in y direction (in projection coordinates)
     real(dp),    pointer, dimension(:)   :: ICEVY_MESH   => null() ! ice y-velocity on mesh
     real, pointer, dimension(:)          :: ICEVY_EX     => null() ! pointer to export state (mesh tiles)
+    real, pointer, dimension(:)          :: ICEVY_IN     => null() ! pointer to export state (mesh tiles)
 
     ! ice mask level set (tracks glacier terminus)
     real(dp),    pointer, dimension(:)   :: IMLS_MESH    => null() ! ice mask level set
@@ -998,7 +1016,6 @@ subroutine SetServices ( GC, RC )
       ! get timestep for ISSM
       call MAPL_GetResource(MAPL, ISSM_DT, Label=trim(COMP_NAME)//"_DT:",DEFAULT=302400.0, _RC)
       
-
       ! get number of mesh elements
       call ESMF_MeshGet(mesh,nodeCount=num_nodes)
 
@@ -1035,7 +1052,10 @@ subroutine SetServices ( GC, RC )
       
       ! *************************************************************************** !
       ! GET ICESMB IMPORT (surface mass balance)
-      ! *************************************************************************** !    
+      ! *************************************************************************** ! 
+	  ! NOTE: ICESMB (from landice) has been time-averaged between ISSM runs
+	  !       hence the name ICESMB_ISSM
+	  
       ! allocate tiles for ICESMB 
       if(.not.associated(ICESMB_TILE)) then
         allocate(ICESMB_TILE(NT), STAT=STATUS)
@@ -1046,13 +1066,11 @@ subroutine SetServices ( GC, RC )
       ! copy import values into tile array 
       ICESMB_TILE = issm_tile_state%ICESMB_ISSM
 
-      ! *************************************************************************** !
-      ! TRANSFORM ICESMB FROM TILES TO MESH 
-      ! *************************************************************************** !
+	  ! transform ICESMB from landice tiles to mesh 
       call tile_to_mesh(ICESMB_TILE,ICESMB_MESH,_RC)
 
       ! save ICESMB on mesh elements 
-      call MAPL_GetPointer(EXPORT  , ICESMB_EX , 'ICESMB' , _RC)
+      call MAPL_GetPointer(EXPORT  , ICESMB_EX , 'ICESMB_ISSM' , _RC)
 
       if(associated(ICESMB_EX)) ICESMB_EX = ICESMB_MESH(internal_state%owned_idx)
 
@@ -1106,6 +1124,12 @@ subroutine SetServices ( GC, RC )
       call MAPL_GetPointer(INTERNAL, ICETHICK_IN, 'ICETHICK', _RC)
       if(associated(ICETHICK_IN)) ICETHICK_IN = ICETHICK_MESH(internal_state%owned_idx)
 
+	  call MAPL_GetPointer(INTERNAL, ICEVX_IN, 'ICEVX', _RC)
+      if(associated(ICEVX_IN)) ICEVX_IN = ICEVX_MESH(internal_state%owned_idx)
+
+	  call MAPL_GetPointer(INTERNAL, ICEVY_IN, 'ICEVY', _RC)
+      if(associated(ICEVY_IN)) ICEVY_IN = ICEVY_MESH(internal_state%owned_idx)
+
       call MAPL_GetPointer(INTERNAL, OMLS_IN, 'OMLS', _RC)
       if(associated(OMLS_IN)) OMLS_IN = OMLS_MESH(internal_state%owned_idx)
 
@@ -1130,7 +1154,6 @@ subroutine SetServices ( GC, RC )
     ! barrier to ensure regridding completes before any deallocates
     call ESMF_VMBarrier(vm,_RC)
     
-
     ! deallocates
     if(associated(ICESURF_MESH))  deallocate(ICESURF_MESH)
     if(associated(ICETHICK_MESH)) deallocate(ICETHICK_MESH)
@@ -1174,13 +1197,13 @@ subroutine SetServices ( GC, RC )
     
     ! ErrLog Variables
     character(len=ESMF_MAXSTR)	       :: IAm
-    integer			                       :: STATUS
+    integer			                   :: STATUS
     character(len=ESMF_MAXSTR)         :: COMP_NAME
 
     ! variables for writing out timesteps since ISSM (via ISSM_NSTEPS.txt)
-	  integer :: u
-	  type(T_ISSM_TILE_STATE), pointer     :: issm_tile_state
-    type(ISSM_TILE_WRAP)                 :: issm_tile_wrap
+    integer :: u
+    type(T_ISSM_TILE_STATE), pointer   :: issm_tile_state
+    type(ISSM_TILE_WRAP)               :: issm_tile_wrap
 
     ! Get the target components name and set-up traceback handle.
     ! -----------------------------------------------------------
@@ -1191,21 +1214,21 @@ subroutine SetServices ( GC, RC )
 
 
 	! save number of steps since last ISSM run as a little txt file
-	  call ESMF_UserCompGetInternalState(GC, 'ISSM_TILES', issm_tile_wrap, STATUS); _VERIFY(STATUS)
+    call ESMF_UserCompGetInternalState(GC, 'ISSM_TILES', issm_tile_wrap, STATUS); _VERIFY(STATUS)
     issm_tile_state => issm_tile_wrap%ptr
 	
-	  open(newunit=u, file="ISSM_NSTEPS.txt", status="replace")
-	  write(u, *) issm_tile_state%ISSM_NSTEPS
-	  close(u)
+    open(newunit=u, file="ISSM_NSTEPS.txt", status="replace")
+    write(u, *) issm_tile_state%ISSM_NSTEPS
+    close(u)
 
     ! call ISSM finalize (saves binary output .outbin file)
-	  if (ISSM_RAN) then
+    if (ISSM_RAN) then
 	  ! NOTE: only call if ISSM C++ solvers were called, because OutputResultsx
 	  ! in C++ source throws error if 'results' is empty... 
 	  ! not actually a problem, but this case won't call FemModel destructors,
 	  ! should probably just remove OutputResultsx from FinalizeISSM()....
-        call FinalizeISSM()
-	  end if 
+       call FinalizeISSM()
+    end if 
 
     ! Generic Finalize
     ! ------------------
@@ -1221,10 +1244,12 @@ subroutine SetServices ( GC, RC )
 
   subroutine mesh_to_tile(VAR_MESH,VAR_TILE,RC)
     ! regrid from mesh to grid, then transform from grid to landice tiles
+	! arguments:
     real(dp),    pointer, dimension(:), intent(inout)   :: VAR_MESH           ! var on mesh nodes
     real, pointer, dimension(:), intent(inout)          :: VAR_TILE           ! var on landice tiles
     integer, optional,       intent(OUT)                :: RC                 ! Error code
 
+    ! local variables:
     real, pointer, dimension(:,:)                       :: VAR_GRID => null() ! var on attached grid
     real(dp),    pointer, dimension(:)                  :: VAR_MESH_OWN       ! var on owned mesh nodes
     type(ESMF_Field)                                    :: srcField
@@ -1237,7 +1262,6 @@ subroutine SetServices ( GC, RC )
 
     call MAPL_LocStreamGet(internal_state%locstream, NT_LOCAL=NT, _RC)
     
-
     allocate(VAR_MESH_OWN(num_owned_nodes))
 
     VAR_MESH_OWN = VAR_MESH(internal_state%owned_idx)
@@ -1252,11 +1276,9 @@ subroutine SetServices ( GC, RC )
     srcField = ESMF_FieldCreate(mesh=internal_state%mesh,farrayPtr=VAR_MESH_OWN,meshloc=ESMF_MESHLOC_NODE, & 
     datacopyflag=ESMF_DATACOPY_VALUE,_RC)
     
-    
     ! create destination field: field on grid
     dstField = ESMF_FieldCreate(grid=internal_state%grid,typekind=ESMF_TYPEKIND_R4,_RC)
     
-
     ! regrid field from mesh to grid
     call ESMF_FieldRegrid(srcField, dstField, internal_state%routehandle_m2g, _RC)
 
@@ -1266,7 +1288,6 @@ subroutine SetServices ( GC, RC )
     ! transform from grid to tiles  
     call MAPL_LocStreamTransform(internal_state%locstream,VAR_TILE,VAR_GRID, _RC)
     
-
     ! destroy regridding fields so they can be reused
     call ESMF_FieldDestroy(srcField,_RC)
     call ESMF_FieldDestroy(dstField,_RC)
@@ -1277,10 +1298,12 @@ subroutine SetServices ( GC, RC )
 
   subroutine tile_to_mesh(VAR_TILE,VAR_MESH,RC)
     ! transform from landice tile to grid, then regrid onto mesh
+	! arguments:
     real, pointer, dimension(:), intent(inout)     :: VAR_TILE           ! var on landice tiles
     real(dp), pointer, dimension(:), intent(inout) :: VAR_MESH           ! var on mesh elements
     integer, optional,       intent(OUT)           :: RC                 ! Error code
 
+    ! local variables:
     real, pointer, dimension(:,:)                  :: VAR_GRID => null() ! var on attached grid
     real(dp), pointer, dimension(:)                :: MESH_PTR           ! pointer for ESMF_FieldGet 
     type(ESMF_Field)                               :: srcField
@@ -1294,7 +1317,6 @@ subroutine SetServices ( GC, RC )
     ! get number of ndoes
     call ESMF_MeshGet(internal_state%mesh,nodeCount=num_nodes,numOwnedNodes=num_owned_nodes,_RC)
     
-
     ! get grid dimensions
     call MAPL_GridGet(internal_state%grid, localCellCountPerDim=local_dims, _RC)
     IM = local_dims(1)
@@ -1309,19 +1331,15 @@ subroutine SetServices ( GC, RC )
     ! (rather than MAPL_UNDEF, which leads to errors when regridding onto mesh)
     call MAPL_LocStreamTransform(internal_state%locstream, VAR_TILE, VAR_GRID, TRANSPOSE=.true., _RC)
     
-
     ! create source field on grid
     srcField = ESMF_FieldCreate(grid=internal_state%grid,farrayPtr=VAR_GRID, datacopyflag=ESMF_DATACOPY_VALUE,_RC)
     
-
     ! create destination field on mesh elements
     meshArray=ESMF_ArrayCreate(internal_state%nodalDistgrid,typekind=ESMF_TYPEKIND_R8,haloSeqIndexList=internal_state%halolist,_RC)
     
-
     ! create field on ISSM mesh
     dstField=ESMF_FieldCreate(internal_state%mesh, array=meshArray, meshLoc=ESMF_MESHLOC_NODE, _RC)
     
-
     ! regrid from grid to mesh
     call ESMF_FieldRegrid(srcField, dstField, internal_state%routehandle_g2m, _RC)
 

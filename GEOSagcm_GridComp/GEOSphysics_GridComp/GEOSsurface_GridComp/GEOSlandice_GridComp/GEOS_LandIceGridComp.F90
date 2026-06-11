@@ -1756,6 +1756,9 @@ module GEOS_LandiceGridCompMod
 #ifdef HAVE_ISSM
        type(T_ISSM_TILE_STATE), pointer :: issm_tile_state
        type(ISSM_TILE_WRAP)             :: issm_tile_wrap
+	   real, pointer, dimension(:)      :: ICESURF
+       real, pointer, dimension(:)      :: ICETHICK
+       real, pointer, dimension(:)      :: ICEVEL
 #endif
        integer :: nt_local
         
@@ -1790,6 +1793,7 @@ module GEOS_LandiceGridCompMod
    !---------------------------------------------------------------------
 
 #ifdef HAVE_ISSM
+   ! Get Landice timestep to send to ISSM
        do I = 1, SIZE(GCS)
           call MAPL_GetObjectFromGC( GCS(I), CHILD_MAPL, RC=STATUS )
           VERIFY_(STATUS)
@@ -1802,7 +1806,7 @@ module GEOS_LandiceGridCompMod
              allocate(issm_tile_state%ICETHICK_TILE(nt_local))
              allocate(issm_tile_state%ICEVEL_TILE(nt_local))
              allocate(issm_tile_state%ICESMB_ISSM(nt_local))
-			    issm_tile_state%ISSM_NSTEPS = 0 ! initialize to zero
+             issm_tile_state%ISSM_NSTEPS = 0 ! initialize to zero
              issm_tile_wrap%ptr => issm_tile_state
              call ESMF_UserCompSetInternalState(GCS(I), 'ISSM_TILES', issm_tile_wrap, status)
              VERIFY_(STATUS)
@@ -1813,10 +1817,19 @@ module GEOS_LandiceGridCompMod
    
    ! Call Initialize for every Child
    !--------------------------------
-   
        call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK,  RC=STATUS)
        VERIFY_(STATUS)
-   
+
+#ifdef HAVE_ISSM
+       ! initialize exports to restart values set by ISSM GridComp's Initialize, 
+	   ! because ISSM typically has a multi-day timestep and exports will remain empty otherwise
+       call MAPL_GetPointer(EXPORT,ICESURF , 'ICESURF',alloc=.true., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT,ICETHICK ,'ICETHICK',alloc=.true., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT,ICEVEL ,'ICEVEL',alloc=.true., RC=STATUS); VERIFY_(STATUS)
+       if(associated(ICESURF))  ICESURF = issm_tile_state%ICESURF_TILE
+       if(associated(ICETHICK)) ICETHICK = issm_tile_state%ICETHICK_TILE
+       if(associated(ICEVEL))   ICEVEL = issm_tile_state%ICEVEL_TILE
+#endif   
        call MAPL_TimerOff(MAPL,"INITIALIZE", RC=STATUS ); VERIFY_(STATUS)
    
        RETURN_(ESMF_SUCCESS)
