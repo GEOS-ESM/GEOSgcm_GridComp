@@ -89,7 +89,7 @@ type T_ISSM_TILE_STATE
     real, pointer :: ICETHICK_TILE(:)
     real, pointer :: ICEVEL_TILE(:)
     real, pointer :: ICESMB_ISSM(:)
-	integer       :: ISSM_NSTEPS
+	  integer       :: ISSM_NSTEPS
 end type T_ISSM_TILE_STATE
 
 type ISSM_TILE_WRAP
@@ -278,17 +278,15 @@ subroutine SetServices ( GC, RC )
          VLOCATION  = MAPL_VLocationNone,          &
          RESTART    = MAPL_RestartOptional,        &
          _RC  )
-! ! want to track steps since last ISSM run via internal state checkpoints
-!    call MAPL_AddInternalSpec(GC,                  &
-!         SHORT_NAME = 'ISSM_NSTEPS',               &
-!         LONG_NAME  = 'steps_since_issm',          &
-!         UNITS      = 'none',                      &
-!         DIMS       = MAPL_DimsNone,               &
-!		 PRECISION  = ESMF_KIND_R8,                &
-!		 UNGRIDDED_DIMS = (/1/),                   &
-!         VLOCATION  = MAPL_VLocationNone,          &
-!		 RESTART    = MAPL_RestartSkipInitial,     &
-!         _RC  )
+    
+    call MAPL_AddInternalSpec(GC,                  &
+         SHORT_NAME = 'ISSM_NSTEPS',               &
+         LONG_NAME  = 'steps_since_last_issm',     &
+         UNITS      = 'none',                      &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone,          &
+         RESTART    = MAPL_RestartOptional,        &
+         _RC  )
 
 ! Set the Profiling timers
 ! ------------------------
@@ -326,7 +324,7 @@ subroutine SetServices ( GC, RC )
     integer                                :: NSTEPS_INIT             ! landice timesteps since last ISSM run
     integer                                :: NSTEPS_RING             ! total landice timesteps between ISSM runs
     integer                                :: ios, u                  ! for reading ISSM_NSTEPS.txt file
-	real(dp), pointer, dimension(:)        :: ISSM_NSTEPS => null()   ! steps since last ISSM run (from internal state)
+	  real, pointer, dimension(:)            :: ISSM_NSTEPS => null()   ! steps since last ISSM run (from internal state)
     integer                                :: ATTR                    ! internal state attribute
 	
     ! ErrLog Variables
@@ -411,7 +409,6 @@ subroutine SetServices ( GC, RC )
     real(dp), pointer, dimension(:)        :: ICEVX_HALO    => null()
     real(dp), pointer, dimension(:)        :: ICEVY_HALO    => null()
     real(dp), pointer, dimension(:)        :: ICEVEL_HALO   => null()
-
 
     real(dp), pointer, dimension(:)        :: GEOS_RESTARTS => null() ! concatenate restart fields
     real(dp), pointer, dimension(:)        :: ZEROS         => null() ! zero input for bootstrapping
@@ -600,27 +597,15 @@ subroutine SetServices ( GC, RC )
 
     call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, _RC )
 
-	! ! Modify the internal state to only have MAPL_AttrTile attribute because 
-	! ! ISSM_NSTEPS has DIMS=MAPL_DimsNone, which adds a MAPL_AttrGrid attribute.... 
-	! ! NOTE: this hack works only for *writing* checkpoints; the code will still crash 
-	! !       if you try to read back in for the same reason     
-	! ! get internal state
-	! call MAPL_Get(MAPL,INTERNAL_ESMF_STATE = INTERNAL,_RC)
-	! ! Following MAPL_StateCreateFromVarSpecNew:
-	! ATTR = 0
-	! ATTR = IOR(ATTR, MAPL_AttrTile)
-	! call ESMF_AttributeSet(INTERNAL, NAME = "MAPL_GridTypeBits", VALUE=ATTR, RC=status)   
-
 	  ! Create Custom ISSM Run Alarm 
     !-----------------------------------
 
-	! get number of time steps since last ISSM run
-    NSTEPS_INIT = 0
-    open(newunit=u, file="ISSM_NSTEPS.txt", status="old", iostat=ios)
-    if (ios == 0) then
-      read(u, *) NSTEPS_INIT
-      close(u)
-    end if
+    ! get internal state
+	  call MAPL_Get(MAPL,INTERNAL_ESMF_STATE = INTERNAL,_RC)
+
+	  ! get number of time steps since last ISSM run
+    call MAPL_GetPointer(INTERNAL, ISSM_NSTEPS, 'ISSM_NSTEPS',_RC)
+    NSTEPS_INIT = nint(maxval(ISSM_NSTEPS))
 
     ! get timestep for landice 
     call MAPL_Get(MAPL, HEARTBEAT=LANDICE_DT,_RC)
@@ -659,9 +644,6 @@ subroutine SetServices ( GC, RC )
     allocate(IMLS_HALO(num_nodes))
     allocate(OMLS_HALO(num_nodes))
     allocate(ZEROS(num_nodes))
-
-    ! get internal state
-	call MAPL_Get(MAPL,INTERNAL_ESMF_STATE = INTERNAL,_RC)
     
     ! get pointers to restarts
     call MAPL_GetPointer(INTERNAL, ICESURF_IN, 'ICESURF', _RC)
@@ -670,10 +652,6 @@ subroutine SetServices ( GC, RC )
     call MAPL_GetPointer(INTERNAL, ICEVY_IN, 'ICEVY',_RC)
     call MAPL_GetPointer(INTERNAL, IMLS_IN, 'IMLS', _RC)
     call MAPL_GetPointer(INTERNAL, OMLS_IN, 'OMLS',_RC)
-    
-	! ! tracking NSTEPS via internal state not functional yet... 
-	! call MAPL_GetPointer(INTERNAL, ISSM_NSTEPS, 'ISSM_NSTEPS',alloc=.true.,_RC)
-	! ISSM_NSTEPS(:) = 19.0 ! test value
 
     ! if restart has been read, apply halo operation and send pointers to ISSM
     ! else, ISSM will just use default initial values in ISSM*.bin input files
@@ -749,7 +727,7 @@ subroutine SetServices ( GC, RC )
 
     ! Finally, set the tile export state so landice can access values before ISSM runs
     !-----------------------------------
-	call ESMF_UserCompGetInternalState(GC, 'ISSM_TILES', issm_tile_wrap, status); _VERIFY(STATUS)
+	  call ESMF_UserCompGetInternalState(GC, 'ISSM_TILES', issm_tile_wrap, status); _VERIFY(STATUS)
     issm_tile_state => issm_tile_wrap%ptr
 	
     ! Regrid from mesh to tile
@@ -771,6 +749,8 @@ subroutine SetServices ( GC, RC )
 
     call mesh_to_tile(ICEVEL_HALO,ICEVEL_TILE,_RC)
     issm_tile_state%ICEVEL_TILE = ICEVEL_TILE
+
+    issm_tile_state%ISSM_NSTEPS = NSTEPS_INIT
 
     call ESMF_VMBarrier(vm, _RC)
 
@@ -1212,14 +1192,13 @@ subroutine SetServices ( GC, RC )
     
     Iam = trim(comp_name) // Iam
 
-
 	! save number of steps since last ISSM run as a little txt file
     call ESMF_UserCompGetInternalState(GC, 'ISSM_TILES', issm_tile_wrap, STATUS); _VERIFY(STATUS)
     issm_tile_state => issm_tile_wrap%ptr
-	
-    open(newunit=u, file="ISSM_NSTEPS.txt", status="replace")
-    write(u, *) issm_tile_state%ISSM_NSTEPS
-    close(u)
+
+    ! get number of time steps since last ISSM run
+    call MAPL_GetPointer(INTERNAL, ISSM_NSTEPS, 'ISSM_NSTEPS',_RC)
+    ISSM_NSTEPS(:) = issm_tile_state%ISSM_NSTEPS
 
     ! call ISSM finalize (saves binary output .outbin file)
     if (ISSM_RAN) then

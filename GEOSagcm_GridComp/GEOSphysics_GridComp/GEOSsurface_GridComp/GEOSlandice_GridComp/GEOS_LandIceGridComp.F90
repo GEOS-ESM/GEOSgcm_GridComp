@@ -1756,7 +1756,7 @@ module GEOS_LandiceGridCompMod
 #ifdef HAVE_ISSM
        type(T_ISSM_TILE_STATE), pointer :: issm_tile_state
        type(ISSM_TILE_WRAP)             :: issm_tile_wrap
-	   real, pointer, dimension(:)      :: ICESURF
+	   real, pointer, dimension(:)       :: ICESURF
        real, pointer, dimension(:)      :: ICETHICK
        real, pointer, dimension(:)      :: ICEVEL
 #endif
@@ -1806,7 +1806,6 @@ module GEOS_LandiceGridCompMod
              allocate(issm_tile_state%ICETHICK_TILE(nt_local))
              allocate(issm_tile_state%ICEVEL_TILE(nt_local))
              allocate(issm_tile_state%ICESMB_ISSM(nt_local))
-             issm_tile_state%ISSM_NSTEPS = 0 ! initialize to zero
              issm_tile_wrap%ptr => issm_tile_state
              call ESMF_UserCompSetInternalState(GCS(I), 'ISSM_TILES', issm_tile_wrap, status)
              VERIFY_(STATUS)
@@ -2872,16 +2871,19 @@ contains
             else
                ICESMB_ISSM(:) = 0
             end if 
-		
-            ! initialize steps since last ISSM run:
-            ISSM_NSTEPS = 0    
-            open(newunit=u, file="ISSM_NSTEPS.txt", status="old", iostat=ios)
-            if (ios == 0) then
-               read(u, *) ISSM_NSTEPS
-               close(u)
-            end if
-	    end if 	
-	end if 
+	     end if 	
+        
+        ! get number of timesteps from issm tile internal state
+        call MAPL_Get (MAPL, GCS=GCS, GCNAMES=GCNAMES, RC=STATUS )
+        do N=1, size(GCS)
+          if (index(GCNAMES(N), 'ISSM') /=0 ) then
+             call ESMF_UserCompGetInternalState(GCS(N), 'ISSM_TILES', issm_tile_wrap, status)
+             VERIFY_(STATUS)
+             issm_tile_state =>issm_tile_wrap%ptr
+             ISSM_NSTEPS = issm_tile_state%ISSM_NSTEPS 
+          end if
+        end do         
+	 end if 
         
     allocate(MLT (NT), STAT=STATUS)
     VERIFY_(STATUS)                
@@ -3651,11 +3653,6 @@ contains
             call MAPL_GetObjectFromGC(GCS(N), CHILD_MAPL, RC=STATUS); VERIFY_(STATUS)
             call MAPL_Get(CHILD_MAPL, RUNALARM = ISSM_ALARM, RC=STATUS); VERIFY_(STATUS)
 
-            ! update private internal states to send to ISSM
-            call ESMF_UserCompGetInternalState(GCS(N), 'ISSM_TILES', issm_tile_wrap, status)
-            VERIFY_(STATUS)
-            
-            issm_tile_state =>issm_tile_wrap%ptr
             issm_tile_state%ICESMB_ISSM   = ICESMB_ISSM
             issm_tile_state%ISSM_NSTEPS = ISSM_NSTEPS
 
