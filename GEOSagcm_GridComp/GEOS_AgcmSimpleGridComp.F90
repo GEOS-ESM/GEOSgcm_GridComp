@@ -16,12 +16,14 @@ module GEOS_AgcmSimpleGridCompMod
    !USES:
    use ESMF
    use MAPL, only: MAPL_GridCompSetEntryPoint
-   use MAPL, only: MAPL_GridCompAddSpec, user_setservices, MAPL_GridCompReexport
+   use MAPL, only: MAPL_GridCompAddSpec, MAPL_GridCompReexport
    use MAPL, only: MAPL_GridCompAddChild, MAPL_GridCompAddConnection
-   use MAPL, only: user_setservices, MAPL_StateGetPointer
+   use MAPL, only: MAPL_StateGetPointer
    use MAPL, only: MAPL_GridCompGet, MAPL_GridCompGetResource, MAPL_GridCompGetChildName
    use MAPL, only: MAPL_GridCompGetInternalState, MAPL_GridCompRunChild
-   use MAPL, only: VERTICAL_STAGGER_CENTER, VERTICAL_STAGGER_EDGE, VERTICAL_STAGGER_NONE
+   use MAPL, only: MAPL_VERTICAL_STAGGER_CENTER
+   use MAPL, only: MAPL_VERTICAL_STAGGER_EDGE
+   use MAPL, only: MAPL_VERTICAL_STAGGER_NONE
    use MAPL, only: MAPL_RESTART_SKIP, MAPL_STATEITEM_SERVICE
    use MAPL, only: MAPL_Verify, MAPL_Return
    ! use GEOS_TopoGetMod, only: GEOS_TopoGet
@@ -97,7 +99,7 @@ contains
            standard_name="surface_geopotential_height", &
            units="m+2 s-2", &
            dims="xy", &
-           vstagger=VERTICAL_STAGGER_NONE, &
+           vertical_stagger=MAPL_VERTICAL_STAGGER_NONE, &
            add_to_export=.true., _RC)
       call MAPL_GridCompAddSpec(gc, &
            state_intent=ESMF_STATEINTENT_INTERNAL, &
@@ -105,7 +107,7 @@ contains
            standard_name="variance_of_filtered_topography", &
            units="m+2", &
            dims="xy", &
-           vstagger=VERTICAL_STAGGER_NONE, &
+           vertical_stagger=MAPL_VERTICAL_STAGGER_NONE, &
            add_to_export=.true., _RC)
 
       ! SUBSCRIBED "FAKE" spec to bundle tracers for FV3
@@ -122,12 +124,12 @@ contains
       !      standard_name='advected_quantities', &
       !      units="unknown", &
       !      dims="xyz", & ! TODO: we shouldn't need dims/vstagger for bundles
-      !      vstagger=VERTICAL_STAGGER_NONE, &
+      !      vertical_stagger=MAPL_VERTICAL_STAGGER_NONE, &
       !      itemtype=MAPL_STATEITEM_SERVICE, &
       !      service_items=service_items, _RC)
 
-      call MAPL_GridCompAddChild(gc, "SDYN", user_setservices(SDYN_SetServices), "superdyn.yaml", _RC)
-      call MAPL_GridCompAddChild(gc, "PHYS", user_setservices(PHYS_SetServices), "held-suarez.yaml", _RC)
+      call MAPL_GridCompAddChild(gc, "SDYN", SDYN_SetServices, "superdyn.yaml", _RC)
+      call MAPL_GridCompAddChild(gc, "PHYS", PHYS_SetServices, "held-suarez.yaml", _RC)
 
       ! TODO: pchakrab - we don't really need these, do we?
       ! call MAPL_GridCompReexport(gc, src_comp="SDYN", src_name="T", _RC)

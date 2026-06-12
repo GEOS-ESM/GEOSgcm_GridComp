@@ -129,7 +129,9 @@ module GEOS_HSGridCompMod
    use ESMF
    use MAPL, only: MAPL_GridCompSetEntryPoint, MAPL_GridCompAddSpec
    use MAPL, only: MAPL_GridCompGet, MAPL_GridCompGetInternalState, MAPL_GridCompGetResource
-   use MAPL, only: VERTICAL_STAGGER_CENTER, VERTICAL_STAGGER_EDGE, VERTICAL_STAGGER_NONE
+   use MAPL, only: MAPL_VERTICAL_STAGGER_CENTER
+   use MAPL, only: MAPL_VERTICAL_STAGGER_EDGE
+   use MAPL, only: MAPL_VERTICAL_STAGGER_NONE
    use MAPL, only: MAPL_GridGet, MAPL_GridGetCoordinates
    use MAPL, only: MAPL_StateGetPointer, MAPL_FieldBundleGetPointer
    use MAPL, only: MAPL_RESTART_SKIP, MAPL_STATEITEM_VECTOR
@@ -294,7 +296,6 @@ contains
 
       ! Pointers to imports/internals/exports
 #include "HS_DeclarePointer___.h"
-      real, pointer, contiguous :: PLE0(:,:,:) ! 0-based PLE
       real, pointer :: u(:, :, :), v(:, :, :)
       real, pointer, dimension(:, :, :) :: dudt, dvdt
 
@@ -347,10 +348,6 @@ contains
       call MAPL_StateGetPointer(internal, CPHI2,  'CPHI2' , _RC)
       call MAPL_StateGetPointer(internal, HFCN,  'HFCN' , _RC)
       call MAPL_StateGetPointer(internal, P_I,  'P_I' , _RC)
-
-      ! Edge variable PLE is expected to be 0-based
-      i1 = lbound(PLE, 1); in = ubound(PLE, 1); j1 = lbound(PLE, 2); jn = ubound(PLE, 2)
-      PLE0(i1:in, j1:jn, 0:lm) => PLE(i1:in, j1:jn, 1:lm+1)
 
       ! Get parameters from the configuration
 
@@ -405,8 +402,8 @@ contains
       allocate(pk(im, jm), _STAT)
 
       ! Begin calculations.
-      ps => PLE0(:, :, lm)
-      pt => PLE0(:, :, 0)
+      ps => PLE(:, :, lm+1)
+      pt => PLE(:, :, 1)
 
       pii = p_d - (p_d - pt) * 0.5 * P_I
 
@@ -421,8 +418,8 @@ contains
       kf = 1.0 / (DAYLEN * tauf)
       LEVELS: do level = 1, lm
 
-         dp = (PLE0(:, :, level) - PLE0(:, :, level - 1))
-         pl = (PLE0(:, :, level) + PLE0(:, :, level - 1)) * 0.5
+         dp = (PLE(:, :, level+1) - PLE(:, :, level))
+         pl = (PLE(:, :, level+1) + PLE(:, :, level)) * 0.5
          dm = dp / MAPL_GRAV
          pk = (pl / MAPL_P00)**MAPL_KAPPA
 
