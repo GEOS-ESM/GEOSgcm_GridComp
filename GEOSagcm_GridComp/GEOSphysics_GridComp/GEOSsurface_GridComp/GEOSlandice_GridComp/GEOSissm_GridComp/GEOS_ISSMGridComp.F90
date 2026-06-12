@@ -89,7 +89,7 @@ type T_ISSM_TILE_STATE
     real, pointer :: ICETHICK_TILE(:)
     real, pointer :: ICEVEL_TILE(:)
     real, pointer :: ICESMB_ISSM(:)
-	  integer       :: ISSM_NSTEPS
+    integer       :: ISSM_NSTEPS
 end type T_ISSM_TILE_STATE
 
 type ISSM_TILE_WRAP
@@ -324,8 +324,7 @@ subroutine SetServices ( GC, RC )
     integer                                :: NSTEPS_INIT             ! landice timesteps since last ISSM run
     integer                                :: NSTEPS_RING             ! total landice timesteps between ISSM runs
     integer                                :: ios, u                  ! for reading ISSM_NSTEPS.txt file
-	  real, pointer, dimension(:)            :: ISSM_NSTEPS => null()   ! steps since last ISSM run (from internal state)
-    integer                                :: ATTR                    ! internal state attribute
+	real, pointer, dimension(:)            :: ISSM_NSTEPS => null()   ! steps since last ISSM run (from internal state)
 	
     ! ErrLog Variables
     character(len=ESMF_MAXSTR)             :: IAm
@@ -601,22 +600,22 @@ subroutine SetServices ( GC, RC )
     !-----------------------------------
 
     ! get internal state
-	  call MAPL_Get(MAPL,INTERNAL_ESMF_STATE = INTERNAL,_RC)
+	call MAPL_Get(MAPL,INTERNAL_ESMF_STATE = INTERNAL,_RC)
 
-	  ! get number of time steps since last ISSM run
+	! get number of time steps since last ISSM run
     call MAPL_GetPointer(INTERNAL, ISSM_NSTEPS, 'ISSM_NSTEPS',_RC)
     NSTEPS_INIT = nint(maxval(ISSM_NSTEPS))
 
     ! get timestep for landice 
     call MAPL_Get(MAPL, HEARTBEAT=LANDICE_DT,_RC)
-    call MAPL_GetResource (MAPL, LANDICE_DT, Label="DT:", DEFAULT=LANDICE_DT, RC=STATUS)	
+    !call MAPL_GetResource (MAPL, LANDICE_DT, Label="DT:", DEFAULT=LANDICE_DT, RC=STATUS)	
     
     ! get timestep for ISSM
     call MAPL_GetResource(MAPL, ISSM_DT, Label=trim(COMP_NAME)//"_DT:",DEFAULT=302400.0, _RC)
     
     ! total landice time steps between ISSM runs
     NSTEPS_RING = nint(ISSM_DT/LANDICE_DT)
-    
+	
     ! calculate initial ring time from initial time and remaining timesteps
     call ESMF_ClockGet(CLOCK,currTime=startTime)
     sec_to_ring = (NSTEPS_RING-NSTEPS_INIT)*nint(LANDICE_DT)
@@ -1174,6 +1173,8 @@ subroutine SetServices ( GC, RC )
     
     !EOP
     type(MAPL_MetaComp), pointer       :: MAPL 
+
+	type(ESMF_State)                   :: INTERNAL
     
     ! ErrLog Variables
     character(len=ESMF_MAXSTR)	       :: IAm
@@ -1184,21 +1185,28 @@ subroutine SetServices ( GC, RC )
     integer :: u
     type(T_ISSM_TILE_STATE), pointer   :: issm_tile_state
     type(ISSM_TILE_WRAP)               :: issm_tile_wrap
+	real, pointer, dimension(:)        :: ISSM_NSTEPS
 
     ! Get the target components name and set-up traceback handle.
     ! -----------------------------------------------------------
     Iam = "Finalize"
-    call ESMF_GridCompGet( gc, NAME=comp_name, _RC )
+    call ESMF_GridCompGet( GC, NAME=COMP_NAME, _RC )
     
     Iam = trim(comp_name) // Iam
+
+    call MAPL_GetObjectFromGC(GC, MAPL, STATUS)
+    _VERIFY(STATUS)
 
 	! save number of steps since last ISSM run as a little txt file
     call ESMF_UserCompGetInternalState(GC, 'ISSM_TILES', issm_tile_wrap, STATUS); _VERIFY(STATUS)
     issm_tile_state => issm_tile_wrap%ptr
 
+    ! get internal state
+	call MAPL_Get(MAPL,INTERNAL_ESMF_STATE = INTERNAL,_RC)
+
     ! get number of time steps since last ISSM run
     call MAPL_GetPointer(INTERNAL, ISSM_NSTEPS, 'ISSM_NSTEPS',_RC)
-    ISSM_NSTEPS(:) = issm_tile_state%ISSM_NSTEPS
+    ISSM_NSTEPS(:) = real(issm_tile_state%ISSM_NSTEPS)
 
     ! call ISSM finalize (saves binary output .outbin file)
     if (ISSM_RAN) then
