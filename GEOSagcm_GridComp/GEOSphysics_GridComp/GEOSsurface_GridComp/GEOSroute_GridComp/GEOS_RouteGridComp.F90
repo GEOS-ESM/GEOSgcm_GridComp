@@ -43,6 +43,7 @@ module GEOS_RouteGridCompMod
      integer :: minCatch
      integer :: maxCatch
      integer :: route_dt
+     integer :: route_flag
 
      real,    allocatable :: areacat(:)      ! m2
      integer, allocatable :: downid(:) 
@@ -544,12 +545,13 @@ contains
     ! get LocStream
     call MAPL_Get(MAPL, LocStream = locstream, RC=status)
     VERIFY_(STATUS) 
-    
+
     call ESMF_UserCompGetInternalState ( GC, 'RiverRoute_state',wrap,status )
     VERIFY_(STATUS)
 
     route => wrap%ptr
-    ! get vm
+
+   ! get vm
     ! extract comm
     call ESMF_VMGetCurrent(VM,                                RC=STATUS)
     VERIFY_(STATUS)
@@ -557,7 +559,6 @@ contains
     VERIFY_(STATUS)
     call ESMF_VMGet       (VM, localpet=MYPE, petcount=nDEs,  RC=STATUS)
     VERIFY_(STATUS)
-
 
     route%comm = comm
     route%ndes = ndes
@@ -593,7 +594,8 @@ contains
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
     call MAPL_GetResource (SCF, route_flag, label='RUN_ROUTE:', DEFAULT=1, RC=STATUS )
-    call MAPL_GetResource (SCF, ROUTE_DT, label='RRM_DT:', DEFAULT=3600, RC=STATUS )    
+    route%route_flag=route_flag
+    call MAPL_GetResource (SCF, ROUTE_DT, label='RRM_DT:', DEFAULT=3600, RC=STATUS )
     route%route_dt = ROUTE_DT
 
     allocate(route%runoff_acc(nt_local), source = 0.)
@@ -624,6 +626,11 @@ contains
     deallocate(ims)
     call MAPL_GenericInitialize ( GC, import, export, clock, rc=status )
     VERIFY_(STATUS)
+
+    if(route%route_flag/=1 .and. route%route_flag/=2)then
+      if(mapl_am_I_root()) print *,"routing model is not active"
+      RETURN_(ESMF_SUCCESS)
+    endif
 
     call ESMF_UserCompGetInternalState ( GC, 'RiverRoute_state',wrap,status )
     VERIFY_(STATUS)
@@ -1088,6 +1095,10 @@ contains
     call ESMF_UserCompGetInternalState ( GC, 'RiverRoute_state',wrap,status )
     VERIFY_(STATUS)
     route => wrap%ptr
+
+    if(route%route_flag/=1 .and. route%route_flag/=2)then
+      RETURN_(ESMF_SUCCESS)
+    endif
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
