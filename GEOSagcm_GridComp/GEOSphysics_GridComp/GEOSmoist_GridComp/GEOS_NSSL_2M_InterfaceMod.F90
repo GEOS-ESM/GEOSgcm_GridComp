@@ -1087,31 +1087,6 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
 
         endif
 
-        call MAPL_GetPointer(EXPORT, PTR2D , 'DBZ_MAX_R' , RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR2D)) then
-            call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,0.0*QSNOW,0.0*QGRAUPEL,IM,JM,LM,1,0,DBZ_LIQUID_SKIN)
-             PTR2D=-9999.0
-             DO L=1,LM ; DO J=1,JM ; DO I=1,IM
-                PTR2D(I,J) = MAX(PTR2D(I,J),TMP3D(I,J,L))
-             END DO ; END DO ; END DO
-        endif
-        call MAPL_GetPointer(EXPORT, PTR2D , 'DBZ_MAX_S' , RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR2D)) then
-            call CALCDBZ(TMP3D,100*PLmb,T,Q,0.0*QRAIN,QSNOW,0.0*QGRAUPEL,IM,JM,LM,1,0,DBZ_LIQUID_SKIN)
-             PTR2D=-9999.0
-             DO L=1,LM ; DO J=1,JM ; DO I=1,IM
-                PTR2D(I,J) = MAX(PTR2D(I,J),TMP3D(I,J,L))
-             END DO ; END DO ; END DO 
-        endif
-        call MAPL_GetPointer(EXPORT, PTR2D , 'DBZ_MAX_G' , RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR2D)) then
-            call CALCDBZ(TMP3D,100*PLmb,T,Q,0.0*QRAIN,0.0*QSNOW,QGRAUPEL,IM,JM,LM,1,0,DBZ_LIQUID_SKIN)
-             PTR2D=-9999.0
-             DO L=1,LM ; DO J=1,JM ; DO I=1,IM
-                PTR2D(I,J) = MAX(PTR2D(I,J),TMP3D(I,J,L))
-             END DO ; END DO ; END DO  
-        endif
-
         call MAPL_GetPointer(EXPORT, PTR3D, 'QRTOT', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) PTR3D = QRAIN
 

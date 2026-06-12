@@ -810,8 +810,7 @@ contains
                
                ! 3. Apply combined factor
                ! Ensure the floor isn't too low for marine clouds
-               ! (0.5 is a safer floor for marine Sc than 0.4)
-               eis_floor = 0.5 - (0.1 * frland(i,j))
+               eis_floor = 0.2 - (0.1 * frland(i,j))
                wentr_tmp = wentr_tmp * depth_factor * max(eis_floor, eis_factor)
             else
                ! Original depth-only scaling
@@ -840,8 +839,11 @@ contains
 
             if (ipbl .lt. ibot) then
                if (use_eis) then
-                  khsfcfac = khsfcfac_lnd*(    eis_stability) + &
-                             khsfcfac_ocn*(1.0-eis_stability)
+                  ! Calculate the base geographic factor first
+                  khsfcfac = khsfcfac_lnd*frland(i,j) + khsfcfac_ocn*(1.0-frland(i,j))
+                  ! Then modulate it based on stability (e.g., reduce it under high stability)
+                  ! (Adjust the 0.5 factor to whatever tuning you prefer)
+                  khsfcfac = khsfcfac * (1.0 - 0.5 * eis_stability) 
                else
                   khsfcfac = khsfcfac_lnd*frland(i,j) + khsfcfac_ocn*(1.0-frland(i,j))
                endif
@@ -1100,7 +1102,7 @@ contains
               wentr_rad = wentr_rad * max(0.0,(zradtop-500.)/300.)
            endif
            wentr_rad = wentr_rad * min(3.0,(zradtop/800.))
-         endif    
+         endif
 !-----------------------------------------
 
          k_entr_tmp = min ( akmax, wentr_rad*(zfull(i,j,kcldtop-1)-zfull(i,j,kcldtop)) )
@@ -1353,7 +1355,14 @@ contains
          pp = p(i,j,k)
 
          du = sqrt ( ( u2 - u1 )**2 + ( v2 - v1 )**2 ) / (z2-z1)
-         du = min(du,1.0e-8)
+         if (tpfac_max /= tpfac_min) then
+            ! Prevent negative/zero shear, but allow real shear (e.g., 0.01 to 0.1 s-1)
+            du = max(du, 1.0e-8) 
+            ! Optional: If we need to cap extreme shear
+            du = min(du, 0.1)
+         else
+            du = min(du, 1.0e-8) ! This is likely a bug
+         endif
 
          if (use_eis) then
             entrate_x = (entrate - 0.6e-3*LTS_FAC) * & ! adjust entrate based on LTS_FAC
