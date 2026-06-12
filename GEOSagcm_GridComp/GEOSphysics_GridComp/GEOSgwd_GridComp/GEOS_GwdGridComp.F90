@@ -35,14 +35,14 @@ module GEOS_GwdGridCompMod
    use MAPL, only : MAPL_get_num_threads
    use MAPL, only : MAPL_find_bounds
    use MAPL, only : MAPL_Interval
-   use MAPL, only: MAPL_AM_I_ROOT, ArrayGather
+   use MAPL, only: MAPL_AM_I_ROOT, mapl_ArrayGather
    use MAPL_Constants, only: MAPL_RADIUS, MAPL_RGAS, MAPL_GRAV, MAPL_VIREPS, MAPL_PI, MAPL_P00, MAPL_CP
 
    use MAPL, only: MAPL_GridGet, MAPL_GridGetCoordinates, mapl_GridGetGlobalCellCountPerDim, &
                    MAPL_GridCompSetEntryPoint, MAPL_GridCompGet, MAPL_GridCompGetResource, &
                    MAPL_GridCompGetInternalState, MAPL_GridCompAddSpec, MAPL_RESTART_SKIP, &
-                   VERTICAL_STAGGER_NONE, VERTICAL_STAGGER_CENTER, VERTICAL_STAGGER_EDGE, &
-                   UngriddedDims, MAPL_StateGetPointer, UngriddedDim
+                   MAPL_VERTICAL_STAGGER_NONE, MAPL_VERTICAL_STAGGER_CENTER, MAPL_VERTICAL_STAGGER_EDGE, &
+                   mapl_UngriddedDims, MAPL_StateGetPointer, mapl_UngriddedDim
 
    use gw_rdg, only : gw_rdg_init
    use gw_oro, only : gw_oro_init
@@ -124,7 +124,7 @@ contains
 
       type (wrap_)                                :: wrap
       type (GEOS_GwdGridComp), pointer            :: self
-      type(UngriddedDim) :: ungrd_16
+      type(mapl_UngriddedDim) :: ungrd_16
       integer :: num_threads
 
       ! Begin...
@@ -160,7 +160,7 @@ contains
 
       ! Set the state variable specs.
       ! -----------------------------
-      ungrd_16 = UngriddedDim(16, name="sixteen", units="1")
+      ungrd_16 = mapl_UngriddedDim(16, name="sixteen", units="1")
 #include "GWD_Import___.h"
 #include "GWD_Export___.h"
 #include "GWD_Internal___.h"
@@ -1156,11 +1156,11 @@ contains
 
 #if 1
       locArr = avar
-      call ArrayGather(locArr, glbArr, grid)
+      call mapl_ArrayGather(locArr, glbArr, grid)
       avar_global = glbArr
 
       locArr = area
-      call ArrayGather(locArr, glbArr, grid)
+      call mapl_ArrayGather(locArr, glbArr, grid)
       area_global = glbArr
 
       IF (MAPL_AM_I_ROOT()) Then
