@@ -8,7 +8,7 @@ macro(run_case CASE)
   # Run the case
   set(num_procs "6")
   execute_process(
-    COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${num_procs} -prepend-rank ${MPIEXEC_PREFLAGS} ${MY_BINARY_DIR}/GEOS.x cap.yaml
+    COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${num_procs} ${MPIEXEC_PREFLAGS} ${MY_BINARY_DIR}/GEOS.x cap.yaml
     RESULT_VARIABLE CMD_RESULT
     WORKING_DIRECTORY ${tempdir}
     COMMAND_ECHO STDOUT
