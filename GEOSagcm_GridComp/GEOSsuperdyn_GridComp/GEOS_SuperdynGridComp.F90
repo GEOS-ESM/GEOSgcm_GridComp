@@ -10,7 +10,7 @@ module GEOS_SuperdynGridCompMod
    use MAPL, only: MAPL_GridCompAddChild, MAPL_GridCompRunChild
    use MAPL, only: MAPL_GridCompGetResource
    use MAPL, only: MAPL_GridCompAddSpec, MAPL_GridCompReexport, MAPL_GridCompAddConnection
-   use MAPL, only: VERTICAL_STAGGER_CENTER
+   use MAPL, only: MAPL_VERTICAL_STAGGER_CENTER
    use MAPL, only: MAPL_Verify, MAPL_Return, MAPL_Assert
 
    ! use FVdycore_GridCompMod, only : FV_SetServices => SetServices
