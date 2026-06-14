@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Drop-in Python replacement for GEOS makebcs clsm_plots.pro.
+Python replacement/extension for GEOS makebcs clsm_plots.pro
 
 This script is intended to be run from the same place the IDL driver was run
 (usually clsm/plots). With no arguments it reads $gfile, $workdir, $NC, and 
@@ -17,8 +17,8 @@ Notes:
     markers by default.  Use --endian/--record-marker if your files differ.
   * Cartopy is optional.  If available, this script can draw coastlines with
     --coastlines.  Otherwise plots are still generated with lon/lat axes.
-  * Movie generation is optional and potentially slow; use --plots movies or
-    --plots default.
+   * Movie generation is optional and potentially slow. Use --plots movies
+    for movies only, or --plots legacy for fixed JPGs plus movies.  
 """
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ import re
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Callable, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -54,12 +54,6 @@ try:
     from scipy.stats import mode as scipy_mode  # type: ignore
 except Exception:  # pragma: no cover
     scipy_mode = None
-
-try:
-    import imageio.v2 as imageio  # type: ignore
-except Exception:  # pragma: no cover
-    imageio = None
-
 
 class FFMpegPipeWriter:
     """Small MP4 writer that pipes RGB frames to the system ffmpeg executable.
@@ -303,16 +297,53 @@ LAI_RGB = _as_rgb([
     [0, 139, 0], [0, 128, 0], [0, 100, 0], [48, 128, 20],
     [110, 139, 61], [85, 107, 47],
 ])
-LAI_LEVELS = np.asarray([0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5] + list(np.arange(11) * 0.5 + 2.0), dtype=np.float32)
+# White is reserved for missing / invalid / no-data only.
+# It is not used as a valid data color in LAI, GREEN, NDVI, VISDF, or NIRDF.
+NO_DATA_COLOR = (1.0, 1.0, 1.0)
 
-# Fraction-style seasonal diagnostics (GREEN and NDVI).  These reuse the
-# working LAI/GREEN movie time-series reader, but use a 0..1 scale.
-FRACTION_LEVELS = np.asarray([
-    0.0, 0.025, 0.05, 0.075, 0.10, 0.125, 0.15, 0.20,
-    0.30, 0.35, 0.40, 0.45, 0.50, 0.60, 0.70, 0.80, 0.90, 1.00
+# LAI is plotted from 0.0 to 7.5 using 0.5 increments.
+# There are 16 boundaries and therefore 15 valid color intervals.
+# Drop the first nearly-white color from LAI_RGB so the first valid data
+# interval, 0.0-0.5, is light gray instead of white.
+LAI_LEVELS = np.asarray([
+    0.0, 0.5, 1.0, 1.5, 2.0, 2.5,
+    3.0, 3.5, 4.0, 4.5, 5.0, 5.5,
+    6.0, 6.5, 7.0, 7.5,
 ], dtype=np.float32)
-FRACTION_TICKS = np.asarray([0.0, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0], dtype=float)
-FRACTION_TICK_LABELS = ["0", "0.1", "0.2", "0.4", "0.6", "0.8", "1"]
+
+LAI_PLOT_RGB = LAI_RGB[1:len(LAI_LEVELS)].copy()
+
+LAI_TICKS = LAI_LEVELS.astype(float)
+
+LAI_TICK_LABELS = [
+    "0", "0.5", "1", "1.5", "2", "2.5",
+    "3", "3.5", "4", "4.5", "5", "5.5",
+    "6", "6.5", "7", "7.5",
+]
+
+# Fraction fields use FRACTION_LEVELS as true 0..1 bin boundaries.
+# FRACTION_LEVELS has 18 boundaries, so it needs 17 colors.
+# White is reserved for missing/no-data; valid zero values use light blue.
+FRACTION_LEVELS = np.asarray([
+    0.00, 0.025, 0.050, 0.075, 0.10,
+    0.15, 0.20, 0.25, 0.30, 0.35,
+    0.40, 0.45, 0.50,
+    0.60, 0.70, 0.80, 0.90, 1.00,
+], dtype=np.float32)
+
+FRACTION_RGB = LAI_RGB[1:len(FRACTION_LEVELS)].copy()
+
+FRACTION_TICKS = FRACTION_LEVELS.astype(float)
+
+FRACTION_TICK_LABELS = [
+    "0", "0.025", "0.05", "0.075", "0.1",
+    "0.15", "0.2", "0.25", "0.3", "0.35",
+    "0.4", "0.45", "0.5",
+    "0.6", "0.7", "0.8", "0.9", "1",
+]
+
+FRACTION_RGB = LAI_RGB[1:].copy()
+FRACTION_RGB[0] = _as_rgb([[210, 230, 255]])[0]
 
 # IDL Z0 levels used by compute_zo for ascat/icarus/merged.  Keep
 # labels as strings so matplotlib cannot round the sub-1 bins to repeated
@@ -362,13 +393,14 @@ class F77Layout:
 
 @dataclasses.dataclass(frozen=True)
 class TimeSeriesLayout:
-    """Layout for LAI/GREEN/NDVI-style seasonal time series files.
-
-    Most make_bcs files are F77 sequential records with a 9-value header
-    record followed by an ncat-value data record.  Some completed BCS trees
-    expose renamed/symlinked files whose first header record is double
-    precision, and a few test copies may be raw streams.
-    """
+    """Layout for LAI/GREEN/NDVI/AlbMap-style seasonal time-series files.
+    
+    Most make_bcs files are F77 sequential records with a header record
+    containing at least the 9 IDL date fields, followed by an ncat-value data
+    record. Finished BCS trees may expose renamed/symlinked files with extended
+    headers or double-precision header fields. A few test copies may be raw
+    header+data streams without F77 record markers.
+    """    
     mode: str = "f77"
     endian: str = "<"
     marker_bytes: int = 4
@@ -498,8 +530,9 @@ def choose_timeseries_layout(path: Path, ncat: int, endian: str = "auto", marker
     if endian == "auto" or marker_bytes == 0:
         return detect_timeseries_layout(path, ncat)
     endian_char = "<" if endian in ("little", "<") else ">"
-    # Try single-precision first; detect_timeseries_layout will still be used
-    # if this explicit guess is wrong in the caller.
+    # When endian and record-marker are explicitly specified, assume a
+    # single-precision F77 layout. Use auto detection for files that may
+    # have extended or double-precision headers.    
     return TimeSeriesLayout("f77", endian_char, marker_bytes, "f4", "f4")
 
 class FortranSequentialReader:
@@ -1321,7 +1354,6 @@ def build_boundary_segments_from_tile_ids(
     rows, cols = np.where(draw_v)
     for r, c in zip(rows.tolist(), cols.tolist()):
         x = float(lon_edges[c + 1])
-        h_segments_dummy = None
         v_segments.append(((x, float(lat_edges[r])), (x, float(lat_edges[r + 1]))))
     # Left/right outside edges where a valid cell borders the regional/ocean edge.
     for r in range(tile_ids.shape[0]):
@@ -1481,7 +1513,6 @@ def decorate_geo(
         except Exception:
             pass
 
-
 def plot_continuous_on_ax(
     ax,
     grid: np.ndarray,
@@ -1495,6 +1526,7 @@ def plot_continuous_on_ax(
     coastlines: bool = False,
     show_xlabel: bool = True,
     show_ylabel: bool = True,
+    bad_color = "white",
 ):
     sub, lon_sub, lat_sub, extent = crop_to_limits(grid, lon, lat, limits)
     finite = np.isfinite(sub)
@@ -1519,7 +1551,7 @@ def plot_continuous_on_ax(
     # on the axes.  On Discover some Agg/pcolormesh combinations were producing
     # blank-looking panels even though the arrays contained valid data.  This
     # follows the successful direct-image debug path.
-    cmap.set_bad("white")
+    cmap.set_bad(bad_color)
     rgba = cmap(norm(np.ma.masked_invalid(sub)))
     imshow_kwargs = dict(
         origin="lower",
@@ -1625,6 +1657,7 @@ def panel_continuous(
     rgb_list: Optional[Sequence[np.ndarray]] = None,
     figsize: Tuple[float, float] = (10, 8),
     coastlines: bool = False,
+    bad_color = "white",
 ) -> None:
     n = len(grids)
     nrows = int(math.ceil(n / ncols))
@@ -1674,6 +1707,7 @@ def panel_continuous(
             coastlines=coastlines,
             show_xlabel=show_xlabel,
             show_ylabel=show_ylabel,
+            bad_color=bad_color,
         )
         cbar = fig.colorbar(last_im, ax=ax, shrink=0.65, pad=0.02)
         cbar.ax.tick_params(labelsize=7)
@@ -1872,7 +1906,6 @@ def plot_country_codes(base_dir: Path, tile_id: np.ndarray, lon: np.ndarray, lat
         print(f"  plot Country / state codes: finite=0/{sub.size} -- output will be blank")
     cmap = ListedColormap(colors)
     cmap.set_bad("white")
-    vals = np.ma.masked_invalid(sub)
     # Wrap arbitrary numeric country/state codes into the available palette for
     # a stable categorical image.  The exact colors do not need to encode the
     # numeric magnitude.
@@ -2190,6 +2223,7 @@ def panel_continuous_shared_colorbar(
     cbar_ticks: Optional[Sequence[float]] = None,
     cbar_ticklabels: Optional[Sequence[str]] = None,
     cbar_tick_rotation: float = 90.0,
+    bad_color = "white",
 ) -> None:
     """Multi-panel plot with one shared colorbar.
 
@@ -2218,9 +2252,10 @@ def panel_continuous_shared_colorbar(
             coastlines=coastlines,
             show_xlabel=(row == nrows - 1),
             show_ylabel=(col == 0),
+            bad_color=bad_color,
         )
     if last_im is not None:
-        cax = fig.add_axes([0.20, 0.060, 0.60, 0.024])
+        cax = fig.add_axes([0.14, 0.060, 0.72, 0.024])
         if cbar_ticks is not None:
             tick_values = np.asarray(cbar_ticks, dtype=float)
             cbar = fig.colorbar(
@@ -2262,10 +2297,11 @@ def plot_monthly_timeseries(
     product_label: str,
     layout: Optional[TimeSeriesLayout],
     coastlines: bool,
+    bad_color = NO_DATA_COLOR,
     *,
     kind: str = "raw",
     levels: Sequence[float] = FRACTION_LEVELS,
-    rgb: np.ndarray = LAI_RGB,
+    rgb: np.ndarray = FRACTION_RGB,
     cbar_label: str = "",
     cbar_ticks: Optional[Sequence[float]] = None,
     cbar_ticklabels: Optional[Sequence[str]] = None,
@@ -2303,22 +2339,25 @@ def plot_monthly_timeseries(
         cbar_ticks=cbar_ticks,
         cbar_ticklabels=cbar_ticklabels,
         cbar_tick_rotation=0.0 if cbar_ticks is not None else 90.0,
-    )
+        bad_color=bad_color,
+    )    
 
 
 def plot_lai(base_dir: Path, tile_id: np.ndarray, lon: np.ndarray, lat: np.ndarray, limits, outdir: Path, ncat: int, layout: Optional[TimeSeriesLayout], coastlines: bool) -> None:
     plot_monthly_timeseries(
         base_dir, tile_id, lon, lat, limits, outdir, ncat,
         "lai.dat", "lai.jpg", "LAI", layout, coastlines,
-        kind="lai", levels=LAI_LEVELS, rgb=LAI_RGB, cbar_label="LAI",
-    )
+        kind="lai", levels=LAI_LEVELS, rgb=LAI_PLOT_RGB, cbar_label="LAI",
+        cbar_ticks=LAI_TICKS,
+        cbar_ticklabels=LAI_TICK_LABELS,
+    )    
 
 
 def plot_green(base_dir: Path, tile_id: np.ndarray, lon: np.ndarray, lat: np.ndarray, limits, outdir: Path, ncat: int, layout: Optional[TimeSeriesLayout], coastlines: bool) -> None:
     plot_monthly_timeseries(
         base_dir, tile_id, lon, lat, limits, outdir, ncat,
         "green.dat", "green.jpg", "GREEN", layout, coastlines,
-        kind="fraction", levels=FRACTION_LEVELS, rgb=LAI_RGB,
+        kind="fraction", levels=FRACTION_LEVELS, rgb=FRACTION_RGB,
         cbar_label="Green vegetation fraction",
         cbar_ticks=FRACTION_TICKS,
         cbar_ticklabels=FRACTION_TICK_LABELS,
@@ -2329,7 +2368,7 @@ def plot_ndvi(base_dir: Path, tile_id: np.ndarray, lon: np.ndarray, lat: np.ndar
     plot_monthly_timeseries(
         base_dir, tile_id, lon, lat, limits, outdir, ncat,
         "ndvi.dat", "ndvi.jpg", "NDVI", layout, coastlines,
-        kind="ndvi", levels=FRACTION_LEVELS, rgb=LAI_RGB,
+        kind="ndvi", levels=FRACTION_LEVELS, rgb=FRACTION_RGB,
         cbar_label="NDVI",
         cbar_ticks=FRACTION_TICKS,
         cbar_ticklabels=FRACTION_TICK_LABELS,
@@ -2373,7 +2412,6 @@ def seasonal_z0_and_ndvi(base_dir: Path, ncat: int, z2ch: np.ndarray, scale4z0: 
     if not lai_path.exists() or not ndvi_path.exists():
         raise ClsmPlotError(f"Missing {lai_path} or {ndvi_path}; required for icarus/merged Z0")
     mdays = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-    season_months = {0: [12, 1, 2], 1: [3, 4, 5], 2: [6, 7, 8], 3: [9, 10, 11]}
     # Accumulate valid daily means only.  Invalid LAI/NDVI should not become
     # zero roughness; otherwise it appears as artificial brown/underflow bins.
     zo_sum = np.zeros((ncat, 4), dtype=np.float64)
@@ -2534,7 +2572,7 @@ def plot_lai_minmax(base_dir: Path, tile_id: np.ndarray, lon, lat, limits, outdi
         g = vector_to_grid(tile_id, vec)
         g[g == 0.0] = np.nan
         grids.append(g)
-    panel_continuous(grids, ["LAI Minimum", "LAI Maximum"], lon, lat, limits, outdir / "LAI_minmax.png", ncols=1, levels_list=[LAI_LEVELS, LAI_LEVELS], rgb_list=[LAI_RGB, LAI_RGB], figsize=(9, 11), coastlines=coastlines)
+    panel_continuous(grids, ["LAI Minimum", "LAI Maximum"], lon, lat, limits, outdir / "LAI_minmax.png", ncols=1, levels_list=[LAI_LEVELS, LAI_LEVELS], rgb_list=[LAI_PLOT_RGB, LAI_PLOT_RGB], figsize=(9, 11), coastlines=coastlines)
 
 
 def plot_irrig_fractions(base_dir: Path, tile_id: np.ndarray, lon, lat, limits, outdir: Path, coastlines: bool) -> None:
@@ -2664,24 +2702,18 @@ def _format_movie_tick_label(x: float) -> str:
 
 
 def movie_colorbar_ticks(vname: str) -> Tuple[np.ndarray, List[str], str]:
-    """Return stable, readable colorbar ticks for seasonal movies.
-
-    LAI uses the same color scale as lai.jpg but labels integer values.  GREEN,
-    VISDF, and NIRDF are fractional fields, so label 0..1 directly.  The map
-    still uses the full level set; these are only the displayed colorbar ticks.
-    """
-    if vname == "LAI":
-        ticks = np.asarray([0, 1, 2, 3, 4, 5, 6, 7], dtype=float)
-        return ticks, [_format_movie_tick_label(x) for x in ticks], "LAI"
-    ticks = np.asarray([0.0, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0], dtype=float)
+    """Return movie colorbar ticks consistent with static plots."""
     label_map = {
         "GREEN": "Green vegetation fraction",
         "VISDF": "VIS diffuse albedo",
         "NIRDF": "NIR diffuse albedo",
         "NDVI": "NDVI",
     }
-    return ticks, [_format_movie_tick_label(x) for x in ticks], label_map.get(vname, vname)
 
+    if vname == "LAI":
+        return LAI_TICKS, list(LAI_TICK_LABELS), "LAI"
+
+    return FRACTION_TICKS, list(FRACTION_TICK_LABELS), label_map.get(vname, vname)
 
 def add_movie_colorbar(fig: plt.Figure, ax, sm: ScalarMappable, vname: str, levels: Sequence[float]) -> None:
     """Add one horizontal colorbar to every movie frame.
@@ -2691,11 +2723,11 @@ def add_movie_colorbar(fig: plt.Figure, ax, sm: ScalarMappable, vname: str, leve
     every frame has a stable scale and readable labels.
     """
     ticks, labels, label = movie_colorbar_ticks(vname)
-    cax = fig.add_axes([0.19, 0.075, 0.62, 0.030])
+    cax = fig.add_axes([0.08, 0.075, 0.84, 0.030])
     cbar = fig.colorbar(sm, cax=cax, orientation="horizontal", ticks=ticks, spacing="uniform")
     cbar.ax.xaxis.set_major_locator(FixedLocator(ticks))
     cbar.ax.xaxis.set_major_formatter(FixedFormatter(labels))
-    cbar.ax.tick_params(labelsize=7, rotation=0, pad=2)
+    cbar.ax.tick_params(labelsize=5, rotation=0, pad=2)
     cbar.set_label(label, fontsize=8, labelpad=3)
 
 def make_movie(
@@ -2725,6 +2757,12 @@ def make_movie(
     # movie-only runs to fail with: 'TimeSeriesLayout' object has no attribute
     # 'marker_dtype'.
     mat = build_fractional_sparse_from_rst(rst_file, nc, nr, ncat, nc_movie, nr_movie, rst_layout, mapping_cache)
+    # Rows with no contributing land/catchment tiles are ocean/no-data.
+    # Sparse matrix multiplication returns 0.0 for empty rows, which would
+    # otherwise be plotted as a valid zero/low-value color in movies.  Static
+    # climatology plots get NaN from vector_to_grid() for invalid cells; do
+    # the equivalent here so cmap.set_bad(NO_DATA_COLOR) is used consistently.
+    movie_cell_has_data = np.asarray(mat.getnnz(axis=1)).ravel() > 0
     filename_map = {
         "LAI": "lai.dat",
         "GREEN": "green.dat",
@@ -2737,7 +2775,8 @@ def make_movie(
         print(f"Skipping {vname} movie; missing {path}")
         return
     levels = LAI_LEVELS if vname == "LAI" else FRACTION_LEVELS
-    rgb = LAI_RGB
+    rgb = LAI_PLOT_RGB if vname == "LAI" else FRACTION_RGB
+    bad_color = NO_DATA_COLOR    
     lon, lat = lon_lat_centers(nc_movie, nr_movie)
     mdays = [31,28,31,30,31,30,31,31,30,31,30,31]
     outpath = outdir / f"{vname}.mp4"
@@ -2768,8 +2807,9 @@ def make_movie(
                         bad = (~np.isfinite(vec)) | (vec < 0.0) | (vec > 1.0) | (np.abs(vec) > 1.0e10)
                         vec = vec.copy()
                         vec[bad] = np.nan
-                    flat = mat @ vec.astype(np.float32)
-                    grid = np.asarray(flat).reshape(nr_movie, nc_movie)
+                    flat = np.asarray(mat @ vec.astype(np.float32), dtype=np.float32).ravel()
+                    flat[~movie_cell_has_data] = np.nan
+                    grid = flat.reshape(nr_movie, nc_movie)
                     fig = plt.figure(figsize=(7.8, 5.85), dpi=100)
                     # Leave room for lon/lat tick labels and a fixed colorbar.
                     # Movie frames are captured from the raw canvas, not through
@@ -2777,7 +2817,7 @@ def make_movie(
                     fig.subplots_adjust(left=0.085, right=0.985, bottom=0.205, top=0.90)
                     ax = make_axes(fig, 1, 1, 1, coastlines)
                     date_stamp = f"{2001 + current_year_offset:04d}{month:02d}{day:02d}"
-                    sm = plot_continuous_on_ax(ax, grid, lon, lat, limits, f"{vname}: {date_stamp}", levels, rgb=rgb, coastlines=coastlines)
+                    sm = plot_continuous_on_ax(ax, grid, lon, lat, limits, f"{vname}: {date_stamp}", levels, rgb=rgb, coastlines=coastlines, bad_color=bad_color)                    
                     add_movie_colorbar(fig, ax, sm, vname, levels)
                     fig.canvas.draw()
                     frame = np.asarray(fig.canvas.buffer_rgba())[:, :, :3]
@@ -3023,3 +3063,4 @@ if __name__ == "__main__":
     except ClsmPlotError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         raise SystemExit(2)
+
