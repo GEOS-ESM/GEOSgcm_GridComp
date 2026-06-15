@@ -2368,7 +2368,7 @@ end if
     VERIFY_(STATUS)
 
     call ESMF_ConfigGetAttribute( CF, DO_SHOC, Label=trim(COMP_NAME)//"_DO_SHOC:", &
-                                  default=0, RC=STATUS)
+                                  default=1, RC=STATUS)
     VERIFY_(STATUS)
     FRIENDLIES_SHOC = trim(COMP_NAME)
     if (DO_SHOC /= 0) then
@@ -2749,7 +2749,7 @@ end if
 
 !----- SHOC-related variables -----
     call MAPL_GetResource (MAPL, DO_SHOC, trim(COMP_NAME)//"_DO_SHOC:", &
-                           default=0, RC=STATUS)
+                           default=1, RC=STATUS)
     call MAPL_GetPointer(INTERNAL, TKESHOC,'TKESHOC', RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, TKH,    'TKH',     RC=STATUS)
@@ -3242,7 +3242,7 @@ end if
        call MAPL_GetResource (MAPL, USE_EIS,      trim(COMP_NAME)//"_USE_EIS:",      default=.false.,RC=STATUS); VERIFY_(STATUS)
      endif
 
-     call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",       default=0,           RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",       default=1,           RC=STATUS); VERIFY_(STATUS)
      if (DO_SHOC /= 0) then
        call MAPL_GetResource (MAPL, SHOCPARAMS%PRNUM,   trim(COMP_NAME)//"_SHC_PRNUM:",       default=-0.9, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%LAMBDA,  trim(COMP_NAME)//"_SHC_LAMBDA:",      default=0.5,  RC=STATUS); VERIFY_(STATUS)
@@ -3631,7 +3631,7 @@ end if
     QT=Q+QL+QI
 
 ! get updraft constants
-    call MAPL_GetResource (MAPL, DOMF, "EDMF_DOMF:", default=0,  RC=STATUS)
+    call MAPL_GetResource (MAPL, DOMF, "EDMF_DOMF:", default=1,  RC=STATUS)
     
     if ( DOMF /= 0 ) then
       ! number of updrafts
@@ -5176,8 +5176,6 @@ end if
     real,               dimension(IM,JM,LM) :: DP,DZ
     real(kind=MAPL_R8), dimension(IM,JM,LM) :: SX
 
-    real :: DOMF
-
     integer :: i, j, ll
 
     ! Parameters for idealized SCM surface layer
@@ -5825,7 +5823,7 @@ end subroutine RUN1
       if (LM .eq. 72) CAP_TOPDIS = 0.0
       call MAPL_GetResource (MAPL, CAP_TOPDIS,   trim(COMP_NAME)//"_CAP_TOPDIS:",     default=CAP_TOPDIS,  RC=STATUS); VERIFY_(STATUS)
 
-      call MAPL_GetResource (MAPL, DO_SHOC, trim(COMP_NAME)//"_DO_SHOC:", default=0, RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource (MAPL, DO_SHOC, trim(COMP_NAME)//"_DO_SHOC:", default=1, RC=STATUS); VERIFY_(STATUS)
 
 
 ! SHVC Resource parameters. SHVC_EFFECT can be set to zero to turn-off SHVC.
