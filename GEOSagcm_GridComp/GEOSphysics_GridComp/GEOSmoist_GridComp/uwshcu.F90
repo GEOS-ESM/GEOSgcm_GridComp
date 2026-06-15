@@ -28,11 +28,10 @@ module uwshcu
      real     :: rpen               ! Penentrative entrainment factor
      real     :: rle
      real     :: rkfre              ! fraction_of_tke_associated_with_vertical_velocity
-     real     :: rkm                ! Factor controlling lateral mixing rate
-     real     :: mixscale           ! Controls vertical structure of mixing
      real     :: rkfre_hr           ! fraction_of_tke_associated_with_vertical_velocity High Resolution
+     real     :: rkm                ! Factor controlling lateral mixing rate
      real     :: rkm_hr             ! Factor controlling lateral mixing rate High Resolution
-     real     :: mixscale_hr        ! Controls vertical structure of mixing High Resolution
+     real     :: mixscale           ! Controls vertical structure of mixing
      real     :: detrhgt            ! Mixing rate increases above this height
      real     :: rmaxfrac           ! Maximum core updraft fraction
      real     :: rmaxfrac_hr        ! Maximum core updraft fraction  High Resolution
@@ -86,7 +85,7 @@ contains
          dp0_inv, u0_inv, v0_inv, qv0_inv, ql0_inv, qi0_inv,        &
          t0_inv, tke_inv, rkfre, kpbl_inv, shfx,evap, cnvtr, frland, rkm2d, mix2d, rmaxfrac, & 
          cush,                                                      & ! INOUT
-         umf_inv, dcm_inv, qvten_inv, tten_inv,                     & ! OUTPUT
+         umf_inv, dcm_inv, qvten_inv, qlten_inv, qiten_inv, tten_inv, & ! OUTPUT
          uten_inv, vten_inv, qrten_inv, qsten_inv, cufrc_inv,       &
          fer_inv, fdr_inv, qldet_inv, qidet_inv, qlsub_inv,         &
          qisub_inv, ndrop_inv, nice_inv, tpert_out, qpert_out,      & 
@@ -136,10 +135,11 @@ contains
       real, intent(out)   :: umf_inv(idim,k0+1)         !  Updraft mass flux at interfaces [kg/m2/s]
       real, intent(out)   :: dcm_inv(idim,k0)           !  Detrained cloudy air mass
       real, intent(out)   :: qvten_inv(idim,k0)         !  Tendency of water vapor specific humidity [ kg/kg/s ]
+      real, intent(out)   :: qlten_inv(idim,k0)         !  Tendency of liquid water specific humidity [ kg/kg/s ]
+      real, intent(out)   :: qiten_inv(idim,k0)         !  Tendency of ice specific humidity [ kg/kg/s ]
       real, intent(out)   ::  tten_inv(idim,k0)         !  Tendency of temperature [ K/s ]
       real, intent(out)   :: uten_inv(idim,k0)          !  Tendency of zonal wind [ m/s2 ]
       real, intent(out)   :: vten_inv(idim,k0)          !  Tendency of meridional wind [ m/s2 ]
-!      real, intent(out)   :: trten_inv(idim,k0,ncnst)  !  Tendency of tracers [ #/s, kg/kg/s ]
       real, intent(out)   :: qrten_inv(idim,k0)         !  Tendency of rain water specific humidity [ kg/kg/s ]
       real, intent(out)   :: qsten_inv(idim,k0)         !  Tendency of snow specific humidity [ kg/kg/s ]
       real, intent(out)   :: cufrc_inv(idim,k0)         !  Shallow cumulus cloud fraction at the layer mid-point [ fraction ]
@@ -190,8 +190,6 @@ contains
 #endif
 
   !----- Local variables -----
-      real              :: qlten_inv(idim,k0)       !  Tendency of liquid water specific humidity [ kg/kg/s ]
-      real              :: qiten_inv(idim,k0)       !  Tendency of ice specific humidity [ kg/kg/s ]
       real              :: pifc0(idim,0:k0)         !  Environmental pressure at the interfaces [ Pa ]
       real              :: zifc0(idim,0:k0)         !  Environmental height at the interfaces   [ m ]
       real              :: exnifc0(idim,0:k0)       !  Exner function on interfaces
