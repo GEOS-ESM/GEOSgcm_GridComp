@@ -68,6 +68,7 @@ subroutine surface_layer(IM, JM, LM, &
   
   real, dimension(IM,JM) :: w_star, bw_surf, wspd
 
+  bw_surf(:,:) = 0.
   if ( flux_type == 3 ) then
      niter = 1
   else
@@ -94,7 +95,7 @@ subroutine surface_layer(IM, JM, LM, &
         end if
 
         ! Compute windspeed
-        wspd(i,j) = sqrt( u(i,j,LM)**2. + v(i,j,LM)**2. + w_star(i,j)**2. )
+        wspd(i,j) = max(1e-3,sqrt( u(i,j,LM)**2. + v(i,j,LM)**2. + w_star(i,j)**2. ))
 
         ! Approximate zeta using Newton's method
         work1 = ( zl(i,j,LM) + z0 )/z0

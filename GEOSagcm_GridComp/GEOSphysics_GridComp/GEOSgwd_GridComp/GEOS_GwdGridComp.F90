@@ -68,6 +68,9 @@ module GEOS_GwdGridCompMod
       type(GWBand)          :: rdg_band
    end type ThreadWorkspace
 
+   logical :: use_threads
+   integer :: num_threads
+
    type       :: GEOS_GwdGridComp
       real :: GEOS_BGSTRESS
       real :: GEOS_EFFGWBKG
@@ -141,9 +144,6 @@ contains
       allocate (self, _STAT)
       wrap%ptr => self
 
-      num_threads = MAPL_get_num_threads()
-      allocate(self%workspaces(0:num_threads-1), _STAT)
-
       ! Set the Run entry point
       ! -----------------------
 
@@ -153,6 +153,13 @@ contains
       ! myCF = ESMF_ConfigCreate (_RC)
       ! call ESMF_ConfigLoadFile (myCF, 'GWD_GridComp.rc', _RC)
       ! call ESMF_ConfigDestroy(myCF, _RC)
+
+      if (use_threads) then
+         num_threads = MAPL_get_num_threads()
+      else
+         num_threads = 1
+      endif
+      allocate(self%workspaces(0:num_threads-1), _STAT)
 
       ! We need to get NCAR_NRDG because this is used in the GWD_Internal___.h auto-generated
       ! code via the MAPL ACG
@@ -248,7 +255,7 @@ contains
 
       type (wrap_) :: wrap
       type (GEOS_GwdGridComp), pointer        :: self
-      integer :: num_threads, thread
+      integer :: thread
 
       type(MAPL_Interval), allocatable :: bounds(:)
       integer :: JM_thread
@@ -371,19 +378,29 @@ contains
       ! Beres DeepCu
       call MAPL_GridCompGetResource(gc, "NCAR_DC_BERES_SRC_LEVEL", NCAR_DC_BERES_SRC_LEVEL, DEFAULT=70000.0, _RC)
       call MAPL_GridCompGetResource(gc, "NCAR_DC_BERES", NCAR_DC_BERES, DEFAULT=.TRUE., _RC)
-      num_threads = MAPL_get_num_threads()
-      bounds = MAPL_find_bounds(JM, num_threads)
-      do thread = 0, num_threads-1
-            JM_thread = bounds(thread+1)%max - bounds(thread+1)%min + 1
-            call gw_beres_init( BERES_FILE_NAME ,  &
-                                self%workspaces(thread)%beres_band, &
-                                self%workspaces(thread)%beres_dc_desc, &
-                                NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, &
-                                NCAR_BKG_WAVELENGTH, NCAR_DC_BERES_SRC_LEVEL, &
-                                1000.0, .TRUE., NCAR_TR_EFF, NCAR_ET_EFF, NCAR_ET_TAUBGND, NCAR_ET_USE_DQCDT, &
-                                NCAR_BKG_TNDMAX, NCAR_DC_BERES, &
-                                IM*JM_thread, LATS(:,bounds(thread+1)%min:bounds(thread+1)%max))
-      end do
+      if (use_threads) then
+          bounds = MAPL_find_bounds(JM, num_threads)
+          do thread = 0, num_threads-1
+                JM_thread = bounds(thread+1)%max - bounds(thread+1)%min + 1
+                call gw_beres_init( BERES_FILE_NAME ,  &
+                                    self%workspaces(thread)%beres_band, &
+                                    self%workspaces(thread)%beres_dc_desc, &
+                                    NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, &
+                                    NCAR_BKG_WAVELENGTH, NCAR_DC_BERES_SRC_LEVEL, &
+                                    1000.0, .TRUE., NCAR_TR_EFF, NCAR_ET_EFF, NCAR_ET_TAUBGND, NCAR_ET_USE_DQCDT, &
+                                    NCAR_BKG_TNDMAX, NCAR_DC_BERES, &
+                                    IM*JM_thread, LATS(:,bounds(thread+1)%min:bounds(thread+1)%max))
+          end do
+      else
+          call gw_beres_init( BERES_FILE_NAME ,  &
+                              self%workspaces(0)%beres_band, &
+                              self%workspaces(0)%beres_dc_desc, &
+                              NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, &
+                              NCAR_BKG_WAVELENGTH, NCAR_DC_BERES_SRC_LEVEL, &
+                              1000.0, .TRUE., NCAR_TR_EFF, NCAR_ET_EFF, NCAR_ET_TAUBGND, NCAR_ET_USE_DQCDT, &
+                              NCAR_BKG_TNDMAX, NCAR_DC_BERES, &
+                              IM*JM, LATS )
+      endif
 
       ! Orographic Scheme
       call MAPL_GridCompGetResource(gc, "NCAR_ORO_PGWV",       NCAR_ORO_PGWV,       default=0,    _RC)

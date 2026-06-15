@@ -465,7 +465,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
          do while (zlo(ktmp).lt.zlo(k)+1e3)
             ktmp = ktmp+1
          end do
-         wcfac(1:k) = min(10.,max(0.,thv(ktmp)-thv(k)-MFPARAMS%WCTHRESH))*exp(-(zlo(k)-zlo(1:k))/100. )
+         wcfac(1:k) = min(10.,max(0.,thv(ktmp)-thv(k)-MFPARAMS%WCTHRESH))*exp(-(zlo(k)-zlo(1:k))/200. )
       end if
 
       ! define surface conditions
@@ -907,11 +907,11 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
      tmp3d = min(YQL,-YQI)
      YQL = YQL - tmp3d
      YQI = YQI + tmp3d
-     YS = YS + tmp3d*MAPL_ALHF
+     YS = YS + tmp3d*MAPL_ALHF  ! condensation heating
   end where
-  where (YQI.lt.0.)       ! where WQI diverges and no WQL
-     YQV = YQV - YQI
-     YS = YS - YQI*MAPL_ALHS
+  where (YQI.lt.0.)           ! where WQI diverges and no WQL convergence
+     YQV = YQV + YQI          ! remove QI from QV
+     YS = YS - YQI*MAPL_ALHS  ! condensation heating
      YQI = 0.
   end where
   where (YQL.lt.0.)       ! where WQL diverges, assume condensation occurred
@@ -1145,6 +1145,8 @@ do ih=istart,iend
     poi(IH,JH)=poidev(mu(IH,JH))
   enddo
 enddo
+
+deallocate(theseed)
 
 end subroutine Poisson
 
