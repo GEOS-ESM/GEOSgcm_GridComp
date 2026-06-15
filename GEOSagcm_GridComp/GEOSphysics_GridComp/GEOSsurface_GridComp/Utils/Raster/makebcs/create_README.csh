@@ -1616,28 +1616,36 @@ cat clsm/intro clsm/soil clsm/veg1 clsm/veg2 clsm/README1 clsm/README2 clsm/READ
 #################################################################################
 
 mkdir -p clsm/plots
-/bin/cp bin/clsm_plots.pro clsm/plots/.
+/bin/cp -p bin/clsm_plots.py clsm/plots/.
 
 cd clsm/plots/
 
 module purge
-module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES12
+module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES15
 source ../../bin/g5_modules
-module load idl/8.5
+module load python/GEOSpyD/26.3.2-0/3.14
+module load ffmpeg/5.0  # we need this for movies mp4
 
-idl  <<EOB
+# Prevent any X-display requirement
+setenv MPLBACKEND Agg
 
-.compile clsm_plots
+# Plot/movie selection:
+# quick   = small smoke test
+# default = JPGs only
+# movies  = seasonal MP4s only
+# legacy  = active legacy IDL-equivalent outputs: fixed JPGs + movies
+# all     = same as legacy; experimental irrigation plots are not run by default
+if (! $?CLSM_PLOTS) setenv CLSM_PLOTS legacy
+#if (! $?CLSM_PLOTS) setenv CLSM_PLOTS default
 
-clsm_plots
-
-exit
-EOB
+python3 ./clsm_plots.py --plots $CLSM_PLOTS
+set plot_status = $status
 
 cd $workdir
 
-/bin/rm clsm/plots/clsm_plots.pro
+/bin/rm -f clsm/plots/clsm_plots.py
 
 module purge
 
+if ($plot_status != 0) exit $plot_status
 
