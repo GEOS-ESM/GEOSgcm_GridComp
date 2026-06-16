@@ -324,7 +324,7 @@ subroutine SetServices ( GC, RC )
     integer                                :: NSTEPS_INIT             ! landice timesteps since last ISSM run
     integer                                :: NSTEPS_RING             ! total landice timesteps between ISSM runs
     integer                                :: ios, u                  ! for reading ISSM_NSTEPS.txt file
-	real, pointer, dimension(:)            :: ISSM_NSTEPS => null()   ! steps since last ISSM run (from internal state)
+	  real, pointer, dimension(:)            :: ISSM_NSTEPS => null()   ! steps since last ISSM run (from internal state)
 	
     ! ErrLog Variables
     character(len=ESMF_MAXSTR)             :: IAm
@@ -600,9 +600,9 @@ subroutine SetServices ( GC, RC )
     !-----------------------------------
 
     ! get internal state
-	call MAPL_Get(MAPL,INTERNAL_ESMF_STATE = INTERNAL,_RC)
+	  call MAPL_Get(MAPL,INTERNAL_ESMF_STATE = INTERNAL,_RC)
 
-	! get number of time steps since last ISSM run
+	  ! get number of time steps since last ISSM run
     call MAPL_GetPointer(INTERNAL, ISSM_NSTEPS, 'ISSM_NSTEPS',_RC)
     NSTEPS_INIT = nint(maxval(ISSM_NSTEPS))
 
@@ -663,6 +663,8 @@ subroutine SetServices ( GC, RC )
       ! apply halo operation to all restart variables
       call apply_halo(ICESURF_IN,ICESURF_HALO,_RC)
       call apply_halo(ICETHICK_IN,ICETHICK_HALO,_RC)
+      call apply_halo(ICEVX_IN,ICEVX_HALO,_RC)
+      call apply_halo(ICEVY_IN,ICEVY_HALO,_RC)
       call apply_halo(IMLS_IN,IMLS_HALO,_RC)
       call apply_halo(OMLS_IN,OMLS_HALO,_RC)
 
@@ -702,7 +704,7 @@ subroutine SetServices ( GC, RC )
       ! filter out halo points (keep the owned indices) for restarts
       if(associated(ICESURF_IN)) ICESURF_IN = ICESURF_HALO(owned_idx)
       if(associated(ICETHICK_IN)) ICETHICK_IN = ICETHICK_HALO(owned_idx)
-	  if(associated(ICEVX_IN)) ICEVX_IN = ICEVX_HALO(owned_idx)
+	    if(associated(ICEVX_IN)) ICEVX_IN = ICEVX_HALO(owned_idx)
       if(associated(ICEVY_IN)) ICEVY_IN = ICEVY_HALO(owned_idx)
       if(associated(OMLS_IN)) OMLS_IN = OMLS_HALO(owned_idx)
       if(associated(IMLS_IN)) IMLS_IN = IMLS_HALO(owned_idx)
@@ -790,12 +792,12 @@ subroutine SetServices ( GC, RC )
     contains
        subroutine apply_halo(VAR_IN,VAR_HALO,RC)
           ! apply halo operation to a restart variable
-		  ! arguments:
+		      ! arguments:
           real, pointer, dimension(:), intent(inout)     :: VAR_IN            ! var on owned_nodes
           real(dp), pointer, dimension(:), intent(inout) :: VAR_HALO          ! var on all nodes
-		  integer, optional, intent(out)                 :: RC
+		      integer, optional, intent(out)                 :: RC
 
-		  ! local variables:
+		      ! local variables:
           real(dp), pointer, dimension(:)                :: VAR_DP            ! double version of VAR_IN
           real(dp), pointer, dimension(:)                :: MESH_PTR          ! pointer for ESMF_FieldGet
           real(dp), pointer, dimension(:)                :: ARRAY_PTR         ! pointer for ESMF_FieldGet 
@@ -830,7 +832,7 @@ subroutine SetServices ( GC, RC )
           call ESMF_ArrayDestroy(meshArray,_RC)  
           deallocate(VAR_DP)
 
-		  _RETURN(_SUCCESS)
+		      _RETURN(_SUCCESS)
        end subroutine apply_halo
 
        function create_mesh_grid(rc) result(mesh_grid)
@@ -913,10 +915,10 @@ subroutine SetServices ( GC, RC )
     type(ISSM_TILE_WRAP)                 :: issm_tile_wrap
 
     ! surface mass balance on mesh and landice tiles
-	! note: SMB has been time-averaged between ISSM runs
+	  ! note: SMB has been time-averaged between ISSM runs
     real(dp), pointer, dimension(:)      :: ICESMB_MESH   => null() ! surface mass balce on mesh elements
     real, pointer, dimension(:)          :: ICESMB_TILE   => null() ! surface mass balance on landice tiles
-	real, pointer, dimension(:)          :: ICESMB_EX     => null() ! pointer to export state (mesh tiles)
+	  real, pointer, dimension(:)          :: ICESMB_EX     => null() ! pointer to export state (mesh tiles)
 
     ! ISSM Outputs
     real(dp),    pointer, dimension(:)   :: ISSM_OUTPUTS  => null() ! pointer containing all outputs
@@ -1032,8 +1034,8 @@ subroutine SetServices ( GC, RC )
       ! *************************************************************************** !
       ! GET ICESMB IMPORT (surface mass balance)
       ! *************************************************************************** ! 
-	  ! NOTE: ICESMB (from landice) has been time-averaged between ISSM runs
-	  !       hence the name ICESMB_ISSM
+	    ! NOTE: ICESMB (from landice) has been time-averaged between ISSM runs
+	    !       hence the name ICESMB_ISSM
 	  
       ! allocate tiles for ICESMB 
       if(.not.associated(ICESMB_TILE)) then
@@ -1103,10 +1105,10 @@ subroutine SetServices ( GC, RC )
       call MAPL_GetPointer(INTERNAL, ICETHICK_IN, 'ICETHICK', _RC)
       if(associated(ICETHICK_IN)) ICETHICK_IN = ICETHICK_MESH(internal_state%owned_idx)
 
-	  call MAPL_GetPointer(INTERNAL, ICEVX_IN, 'ICEVX', _RC)
+	    call MAPL_GetPointer(INTERNAL, ICEVX_IN, 'ICEVX', _RC)
       if(associated(ICEVX_IN)) ICEVX_IN = ICEVX_MESH(internal_state%owned_idx)
 
-	  call MAPL_GetPointer(INTERNAL, ICEVY_IN, 'ICEVY', _RC)
+	    call MAPL_GetPointer(INTERNAL, ICEVY_IN, 'ICEVY', _RC)
       if(associated(ICEVY_IN)) ICEVY_IN = ICEVY_MESH(internal_state%owned_idx)
 
       call MAPL_GetPointer(INTERNAL, OMLS_IN, 'OMLS', _RC)
@@ -1174,7 +1176,7 @@ subroutine SetServices ( GC, RC )
     !EOP
     type(MAPL_MetaComp), pointer       :: MAPL 
 
-	type(ESMF_State)                   :: INTERNAL
+	  type(ESMF_State)                   :: INTERNAL
     
     ! ErrLog Variables
     character(len=ESMF_MAXSTR)	       :: IAm
@@ -1185,7 +1187,7 @@ subroutine SetServices ( GC, RC )
     integer :: u
     type(T_ISSM_TILE_STATE), pointer   :: issm_tile_state
     type(ISSM_TILE_WRAP)               :: issm_tile_wrap
-	real, pointer, dimension(:)        :: ISSM_NSTEPS
+	  real, pointer, dimension(:)        :: ISSM_NSTEPS
 
     ! Get the target components name and set-up traceback handle.
     ! -----------------------------------------------------------
@@ -1202,7 +1204,7 @@ subroutine SetServices ( GC, RC )
     issm_tile_state => issm_tile_wrap%ptr
 
     ! get internal state
-	call MAPL_Get(MAPL,INTERNAL_ESMF_STATE = INTERNAL,_RC)
+	  call MAPL_Get(MAPL,INTERNAL_ESMF_STATE = INTERNAL,_RC)
 
     ! get number of time steps since last ISSM run
     call MAPL_GetPointer(INTERNAL, ISSM_NSTEPS, 'ISSM_NSTEPS',_RC)
