@@ -19,7 +19,7 @@ if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_GcmGridComp.F90)
 
  ecbuild_declare_project()
   esma_add_library(${this}
-    SRCS GEOS_GcmGridComp.F90
+    SRCS GEOS_GcmGridComp.F90 gc2gc.F90
     SUBCOMPONENTS ${alldirs}
     DEPENDENCIES MAPL ESMF::ESMF)
 
