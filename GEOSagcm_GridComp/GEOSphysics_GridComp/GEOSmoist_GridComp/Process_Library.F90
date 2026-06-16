@@ -41,7 +41,7 @@ module GEOSmoist_Process_Library
   integer, parameter :: SRF_TYPE_ICE     = 3
   integer, parameter :: SRF_TYPE_LANDICE = 4
 
-  logical :: USE_JASON_ICE_FRACTIONS = .true.
+  logical :: USE_JASON_ICE_FRACTIONS = .false.
 
   ! ICE_FRACTION constants
    ! In anvil/convective clouds
@@ -94,6 +94,13 @@ module GEOSmoist_Process_Library
    real, parameter :: JoT_ICE_ALL = 238.16
    real, parameter :: JoT_ICE_MAX = 263.16
    real, parameter :: JoICEFRPWR  = 4.0
+
+   logical :: USE_BERGERON = .FALSE.
+   logical :: USE_AEROSOL_NN = .TRUE.
+   logical :: USE_NCLOUD_CLIM = .FALSE.
+
+   integer :: WSUB_OPTION = -1
+   integer :: PDFSHAPE = 1
 
  ! parameters
   real, parameter :: EPSILON =  MAPL_H2OMW/MAPL_AIRMW
@@ -246,14 +253,11 @@ module GEOSmoist_Process_Library
   ! option for cloud liq/ice radii
   integer :: LIQ_RADII_PARAM = 1
   integer :: ICE_RADII_PARAM = 1
-  integer, parameter :: nsmx_par =  15
 
   ! defined to determine CNV_FRACTION
   real    :: CNV_FRACTION_MIN =  500.0
   real    :: CNV_FRACTION_MAX = 1500.0
   real    :: CNV_FRACTION_EXP =    1.0
-
-  ! Storage of aerosol properties for activation
 
   ! Tracer Bundle things for convection
   type CNV_Tracer_Type
@@ -277,30 +281,9 @@ module GEOSmoist_Process_Library
 
   public :: DEBUG_TQ_ERRORS
 
-  type :: AerPropsNew
-      integer :: nmods  ! total number of modes (nmods<nmodmax)
-      real, dimension(:,:,:), allocatable :: num !Num conc m-3
-      real, dimension(:,:,:), allocatable :: dpg !dry Geometric size, m
-      real, dimension(:,:,:), allocatable :: sig  !logarithm (base e) of the dry geometric disp
-      real, dimension(:,:,:), allocatable :: den  !dry density , Kg m-3
-      real, dimension(:,:,:), allocatable :: kap !Hygroscopicity parameter
-      real, dimension(:,:,:), allocatable :: fdust! mass fraction of dust
-      real, dimension(:,:,:), allocatable :: fsoot ! mass fraction of soot
-      real, dimension(:,:,:), allocatable :: forg ! mass fraction of organics
-  end type AerPropsNew
-
-  ! Storage of aerosol properties for activation
- type(AerPropsNew) :: AeroPropsNew(nsmx_par)
-
-
-  interface assignment (=)
-      module procedure copy_AerProp
-  end interface
-
-
-  public :: AerPropsNew, copy_AerProp, init_AerProp
-  public :: AeroPropsNew
+  public :: WSUB_OPTION, PDFSHAPE
   public :: CNV_Tracer_Type, CNV_Tracers, CNV_Tracers_Init
+  public :: USE_BERGERON, USE_AEROSOL_NN, USE_NCLOUD_CLIM
   public :: USE_JASON_ICE_FRACTIONS
   public :: SRF_TYPE_OCEAN, SRF_TYPE_LAND, SRF_TYPE_SNOW, SRF_TYPE_ICE, SRF_TYPE_LANDICE
   public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, BUOYANCY2
@@ -335,37 +318,6 @@ module GEOSmoist_Process_Library
   public :: LIQUID_SKIN_SNOW, LIQUID_SKIN_GRAUPEL, LIQUID_SKIN_HAIL
   
   contains
-
-  !=========Aerosol properties utilities
-   subroutine copy_AerProp(a,b)
-      type (AerPropsNew), intent(out) :: a
-      type (AerPropsNew), intent(in) :: b
-      a%num= b%num
-      a%sig = b%sig
-      a%dpg = b%dpg
-      a%kap = b%kap
-      a%den = b%den
-      a%fdust = b%fdust
-      a%fsoot = b%fsoot
-      a%forg= b%forg
-      a%nmods =  b%nmods
-   end subroutine copy_AerProp
-
-  subroutine init_AerProp(aerout)
-
-    type (AerPropsNew), intent(inout) :: aerout
-        aerout%num = 0.0
-	   aerout%dpg =  1.0e-9
-	   aerout%sig =  2.0
-	   aerout%kap =  0.2
-	   aerout%den = 2200.0
-	   aerout%fdust  =  0.0
-       aerout%fsoot  =  0.0
-	   aerout%forg   =  0.0
-	   aerout%nmods = 1
-   end subroutine init_AerProp
-	!========================
-
 
   subroutine CNV_Tracers_Init(TR, RC)
     type (ESMF_FieldBundle), intent(inout) :: TR

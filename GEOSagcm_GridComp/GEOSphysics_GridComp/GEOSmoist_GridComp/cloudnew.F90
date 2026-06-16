@@ -22,7 +22,6 @@ module cloudnew
                                 MAPL_R4   , MAPL_AVOGAD
 
    use MAPL_BaseMod,      only: MAPL_UNDEF
-   use Aer_Actv_Single_Moment,only: USE_BERGERON, USE_AEROSOL_NN
    use GEOSmoist_Process_Library
 
    implicit none

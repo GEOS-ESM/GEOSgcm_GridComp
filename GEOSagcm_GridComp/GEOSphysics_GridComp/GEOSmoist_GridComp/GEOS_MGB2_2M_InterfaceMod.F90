@@ -55,7 +55,6 @@ module GEOS_MGB2_2M_InterfaceMod
   real    :: MINRHCRIT  
   real    :: CCW_EVAP_EFF
   real    :: CCI_EVAP_EFF
-  integer :: PDFSHAPE
   real    :: MIN_RL
   real    :: MAX_RL
   real    :: FAC_RI
@@ -64,7 +63,6 @@ module GEOS_MGB2_2M_InterfaceMod
   real    :: MAX_RI
   logical :: USE_AV_V
   logical :: SECOND_HYSTPDF, DO_UPD_CLD 
-  logical :: USE_NCLOUD_CLIM
   logical :: MAKE_SNOW_ICE
 
 
@@ -79,7 +77,7 @@ module GEOS_MGB2_2M_InterfaceMod
            DTST, RHC_STRAT_SCALE
            
 
-  INTEGER :: WSUB_OPTION, ST_OPTION, ITER_METHOD 
+  INTEGER :: ST_OPTION, ITER_METHOD 
   
   public :: MGB2_2M_Setup, MGB2_2M_Initialize, MGB2_2M_Run
   public :: MGVERSION
@@ -99,6 +97,9 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
     Iam = trim(COMP_NAME) // Iam
     
     call ESMF_ConfigGetAttribute( CF, MGVERSION, Label="MGVERSION:",  default=3, __RC__)
+
+    call MAPL_GetResource( CF, WSUB_OPTION,  'WSUB_OPTION:',   DEFAULT= 1 , __RC__) !0- param 1- Use Wsub climatology 2-Wnet
+    call MAPL_GetResource( CF, USE_NCLOUD_CLIM,  'USE_NCLOUD_CLIM:',   DEFAULT= .FALSE.,    __RC__) !0- param 1- Use Wsub climatology 2-Wnet
 
     ! !INTERNAL STATE:
 
@@ -418,8 +419,6 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, MUI_CST,  'MUI_CST:', DEFAULT= -1. ,__RC__) !value of the dispersion exponent in ice size dist.
     call MAPL_GetResource(MAPL, SED_STEP_SC,  'SED_STEP_SC:', DEFAULT= 1. ,__RC__) !scales the number of sedimentation substeps
     
-    call MAPL_GetResource(MAPL, WSUB_OPTION,  'WSUB_OPTION:',   DEFAULT= 1 , __RC__) !0- param 1- Use Wsub climatology 2-Wnet
-    call MAPL_GetResource(MAPL, USE_NCLOUD_CLIM,  'USE_NCLOUD_CLIM:',   DEFAULT= .FALSE.,    __RC__) !0- param 1- Use Wsub climatology 2-Wnet
     call MAPL_GetResource(MAPL, SECOND_HYSTPDF, 'SECOND_HYSTPDF:', DEFAULT= .FALSE. ,RC=STATUS) !TRUE to call hyspdf after the microphysics
     call MAPL_GetResource(MAPL, ITER_METHOD, 'ITER_METHOD:', DEFAULT= 1 ,RC=STATUS) !iteration method in hystpdf 1-Fixed point 2-Bisection
     call MAPL_GetResource(MAPL, DO_UPD_CLD, 'DO_UPD_CLD:', DEFAULT= .TRUE. ,RC=STATUS) !Udate cloud fraction after micro using top hat approx
@@ -459,8 +458,12 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
       use_wnet =  .TRUE.
       call WRITE_PARALLEL ('Using Wnet***************') 
     end if 
-    
+
+    call MAPL_GetResource( MAPL, USE_AEROSOL_NN , 'USE_AEROSOL_NN:'  , DEFAULT=USE_AEROSOL_NN, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, USE_BERGERON   , 'USE_BERGERON:'    , DEFAULT=USE_BERGERON  , RC=STATUS); VERIFY_(STATUS)
+
     call aer_cloud_init(use_wnet)
+    call WRITE_PARALLEL ("INITIALIZED aer_cloud_init")
 
     call WRITE_PARALLEL ("INITIALIZED MGB2_2M microphysics in non-generic GC INIT")
 

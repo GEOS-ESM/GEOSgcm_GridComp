@@ -13,7 +13,25 @@
 
       implicit none
       private
-      
+     
+      integer, parameter :: nsmx_par = 20 !maximum number of modes allowed    
+      integer, parameter :: npgauss  = 10
+
+      ! Storage of aerosol properties for activation
+      type :: AerPropsNew
+         integer :: nmods  ! total number of modes (nmods<nmodmax)
+         real, dimension(:,:,:), allocatable :: num !Num conc m-3
+         real, dimension(:,:,:), allocatable :: dpg !dry Geometric size, m
+         real, dimension(:,:,:), allocatable :: sig  !logarithm (base e) of the dry geometric disp
+         real, dimension(:,:,:), allocatable :: den  !dry density , Kg m-3
+         real, dimension(:,:,:), allocatable :: kap !Hygroscopicity parameter
+         real, dimension(:,:,:), allocatable :: fdust! mass fraction of dust
+         real, dimension(:,:,:), allocatable :: fsoot ! mass fraction of soot
+         real, dimension(:,:,:), allocatable :: forg ! mass fraction of organics
+      end type AerPropsNew
+
+      type(AerPropsNew) :: AeroPropsNew(nsmx_par)
+ 
       public :: aerosol_activate
       public :: aer_cloud_init
       public :: vertical_vel_variance
@@ -23,25 +41,7 @@
       public :: estimate_qcvar
       public :: Wneuralnet
 
-      integer, parameter :: nsmx_par = 20 !maximum number of modes allowed    
-      integer, parameter :: npgauss  = 10
-    
-    
-      ! type :: AerProps            
-      ! sequence 
-      !real, dimension(nsmx_par)  :: num !Num conc m-3
-      !real, dimension(nsmx_par)  :: dpg !dry Geometric size, m
-      !real, dimension(nsmx_par)  :: sig  !logarithm (base e) of the dry geometric disp
-	  !real, dimension(nsmx_par)  :: den  !dry density , Kg m-3
-  	  !real, dimension(nsmx_par)  :: kap !Hygroscopicity parameter 
- 	  !real, dimension(nsmx_par)  :: fdust! mass fraction of dust 
-	  !real, dimension(nsmx_par)  :: fsoot ! mass fraction of soot
-	  !real, dimension(nsmx_par)  :: forg ! mass fraction of organics
-	  !integer   :: nmods  ! total number of modes (nmods<nmodmax)
-      !end type AerProps     
-   
-           
-      
+      public :: AerPropsNew, AeroPropsNew
 
 !==================================================================
 
