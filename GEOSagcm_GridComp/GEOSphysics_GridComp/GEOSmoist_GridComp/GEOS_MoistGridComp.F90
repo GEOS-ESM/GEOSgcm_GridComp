@@ -189,13 +189,19 @@ contains
     call MAPL_GetResource( CF, DEBUG_MST, Label="DEBUG_MST:",  default=.false., RC=STATUS) ; VERIFY_(STATUS)
 
     call MAPL_GetResource( CF, DEBUG_TQ_ERRORS, Label="DEBUG_TQ_ERRORS:",  default=.false., RC=STATUS) ; VERIFY_(STATUS)
-    !***********Aerosol-Cloud related
 
+    !***********Aerosol-Cloud related
     call MAPL_GetResource( CF, USE_NCLOUD_CLIM, Label='USE_NCLOUD_CLIM:',   default=.FALSE.,        RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource( CF, WSUB_OPTION, Label='WSUB_OPTION:',   default= 1,        RC=STATUS) !0- param 1- Use Wsub climatology 2-USE WNET`
     VERIFY_(STATUS)
 
+
+    if (adjustl(CLDMICR_OPTION)=="BACM_1M") then
+       call MAPL_GetResource( CF, USE_JASON_ICE_FRACTIONS, Label="USE_JASON_ICE_FRACTIONS:",  default=.TRUE., RC=STATUS) ; VERIFY_(STATUS)
+    else
+       call MAPL_GetResource( CF, USE_JASON_ICE_FRACTIONS, Label="USE_JASON_ICE_FRACTIONS:",  default=.FALSE., RC=STATUS) ; VERIFY_(STATUS)
+    endif
 
     ! NOTE: Binary restarts expect Q to be the first field in the moist_internal_rst. Thus,
     !       the first MAPL_AddInternalSpec call must be from the microphysics

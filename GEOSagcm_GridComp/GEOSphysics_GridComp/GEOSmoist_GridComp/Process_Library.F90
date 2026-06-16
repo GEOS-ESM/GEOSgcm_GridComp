@@ -41,6 +41,8 @@ module GEOSmoist_Process_Library
   integer, parameter :: SRF_TYPE_ICE     = 3
   integer, parameter :: SRF_TYPE_LANDICE = 4
 
+  logical :: USE_JASON_ICE_FRACTIONS = .true.
+
   ! ICE_FRACTION constants
    ! In anvil/convective clouds
    real, parameter :: aT_ICE_ALL = 243.66
@@ -299,6 +301,7 @@ module GEOSmoist_Process_Library
   public :: AerPropsNew, copy_AerProp, init_AerProp
   public :: AeroPropsNew
   public :: CNV_Tracer_Type, CNV_Tracers, CNV_Tracers_Init
+  public :: USE_JASON_ICE_FRACTIONS
   public :: SRF_TYPE_OCEAN, SRF_TYPE_LAND, SRF_TYPE_SNOW, SRF_TYPE_ICE, SRF_TYPE_LANDICE
   public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, BUOYANCY2
   public :: REDISTRIBUTE_CLOUDS_SCALAR, REDISTRIBUTE_CLOUDS, RADCOUPLE_SCALE_AWARE, RADCOUPLE, FIX_UP_CLOUDS
@@ -668,7 +671,7 @@ module GEOSmoist_Process_Library
       enddo
   end function ICE_FRACTION_1D
 
-function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
+  function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
       real, intent(in) :: TEMP,CNV_FRACTION,SRF_TYPE
       real             :: ICEFRCT
       real             :: tc, ptc
@@ -707,72 +710,88 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
       ! ------------------------------------------------------------------
       ! 2. Grid-Scale / Mesh Cloud Ice Fraction (ICEFRCT_M)
       ! ------------------------------------------------------------------
-      ! Select the correct constants based on surface type and parameterization
+      ! Select the correct constants based on surface type and Jason flag
       select case (nint(SRF_TYPE))
       case (SRF_TYPE_LANDICE)
-        t_all_loc = JliT_ICE_ALL
-        t_max_loc = JliT_ICE_MAX
-        pwr_loc   = JliICEFRPWR
-        ICEFRCT_M  = 0.00
-        if ( TEMP <= t_all_loc ) then
-           ICEFRCT_M = 1.000
-        else if ( (TEMP > t_all_loc) .AND. (TEMP <= t_max_loc) ) then
-           ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - t_all_loc ) / ( t_max_loc - t_all_loc ) ) )
+        if (USE_JASON_ICE_FRACTIONS) then
+           t_all_loc = JliT_ICE_ALL
+           t_max_loc = JliT_ICE_MAX
+           pwr_loc   = JliICEFRPWR
+        else
+           t_all_loc = liT_ICE_ALL
+           t_max_loc = liT_ICE_MAX
+           pwr_loc   = liICEFRPWR
         end if
-        ICEFRCT_M = MAX(0.00, MIN(1.00, ICEFRCT_M)) ** pwr_loc
       case (SRF_TYPE_ICE)
-        t_all_loc = JiT_ICE_ALL
-        t_max_loc = JiT_ICE_MAX
-        pwr_loc   = JiICEFRPWR
-        ICEFRCT_M  = 0.00
-        if ( TEMP <= t_all_loc ) then
-           ICEFRCT_M = 1.000
-        else if ( (TEMP > t_all_loc) .AND. (TEMP <= t_max_loc) ) then
-           ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - t_all_loc ) / ( t_max_loc - t_all_loc ) ) )
+        if (USE_JASON_ICE_FRACTIONS) then
+           t_all_loc = JiT_ICE_ALL
+           t_max_loc = JiT_ICE_MAX
+           pwr_loc   = JiICEFRPWR
+        else
+           t_all_loc = iT_ICE_ALL
+           t_max_loc = iT_ICE_MAX
+           pwr_loc   = iICEFRPWR
         end if
-        ICEFRCT_M = MAX(0.00, MIN(1.00, ICEFRCT_M)) ** pwr_loc
       case (SRF_TYPE_SNOW)
-        t_all_loc = JsT_ICE_ALL
-        t_max_loc = JsT_ICE_MAX
-        pwr_loc   = JsICEFRPWR
-        ICEFRCT_M  = 0.00
-        if ( TEMP <= t_all_loc ) then
-           ICEFRCT_M = 1.000
-        else if ( (TEMP > t_all_loc) .AND. (TEMP <= t_max_loc) ) then
-           ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - t_all_loc ) / ( t_max_loc - t_all_loc ) ) )
+        if (USE_JASON_ICE_FRACTIONS) then
+           t_all_loc = JsT_ICE_ALL
+           t_max_loc = JsT_ICE_MAX
+           pwr_loc   = JsICEFRPWR
+        else
+           t_all_loc = sT_ICE_ALL
+           t_max_loc = sT_ICE_MAX
+           pwr_loc   = sICEFRPWR
         end if
-        ICEFRCT_M = MAX(0.00, MIN(1.00, ICEFRCT_M)) ** pwr_loc
       case (SRF_TYPE_LAND)
-        t_all_loc = JlT_ICE_ALL
-        t_max_loc = JlT_ICE_MAX
-        pwr_loc   = JlICEFRPWR
-        ICEFRCT_M  = 0.00
-        if ( TEMP <= JlT_ICE_ALL ) then    
-           ICEFRCT_M = 1.000 
-        else if ( (TEMP > JlT_ICE_ALL) .AND. (TEMP <= JlT_ICE_MAX) ) then
-           ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - JlT_ICE_ALL ) / ( JlT_ICE_MAX - JlT_ICE_ALL ) ) )
+        if (USE_JASON_ICE_FRACTIONS) then
+           t_all_loc = JlT_ICE_ALL
+           t_max_loc = JlT_ICE_MAX
+           pwr_loc   = JlICEFRPWR
+        else
+           t_all_loc = lT_ICE_ALL
+           t_max_loc = lT_ICE_MAX
+           pwr_loc   = lICEFRPWR
         end if
-        ICEFRCT_M = MIN(ICEFRCT_M,1.00)
-        ICEFRCT_M = MAX(ICEFRCT_M,0.00)
-        ICEFRCT_M = ICEFRCT_M**JlICEFRPWR
       case (SRF_TYPE_OCEAN)
-        t_all_loc = JoT_ICE_ALL
-        t_max_loc = JoT_ICE_MAX
-        pwr_loc   = JoICEFRPWR
-        ICEFRCT_M = 0.00
-        if ( TEMP <= t_all_loc ) then
-           ICEFRCT_M = 1.000
-        else if ( TEMP <= t_max_loc ) then
-           ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - t_all_loc ) / ( t_max_loc - t_all_loc ) ) )
+        if (USE_JASON_ICE_FRACTIONS) then
+           t_all_loc = JoT_ICE_ALL
+           t_max_loc = JoT_ICE_MAX
+           pwr_loc   = JoICEFRPWR
+        else
+           t_all_loc = oT_ICE_ALL
+           t_max_loc = oT_ICE_MAX
+           pwr_loc   = oICEFRPWR
         end if
-        ICEFRCT_M = MAX(0.00, MIN(1.00, ICEFRCT_M)) ** pwr_loc
       case default
         ! You should not be here
         print *, 'ICE_FRACTION_SC: Unknown SRF_TYPE = ',SRF_TYPE
         error stop
       end select
 
-      ! Combine the Convective and MODIS functions
+      ! Calculate ICEFRCT_M
+      if ((nint(SRF_TYPE) == SRF_TYPE_LAND) .and. USE_JASON_ICE_FRACTIONS) then
+         ! Exact sequence required to maintain zero-diff for LAND
+         ICEFRCT_M  = 0.00
+         if ( TEMP <= JlT_ICE_ALL ) then    
+            ICEFRCT_M = 1.000 
+         else if ( (TEMP > JlT_ICE_ALL) .AND. (TEMP <= JlT_ICE_MAX) ) then
+            ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - JlT_ICE_ALL ) / ( JlT_ICE_MAX - JlT_ICE_ALL ) ) )
+         end if
+         ICEFRCT_M = MIN(ICEFRCT_M,1.00)
+         ICEFRCT_M = MAX(ICEFRCT_M,0.00)
+         ICEFRCT_M = ICEFRCT_M**JlICEFRPWR
+      else
+         ! Cleaned up sequence for all other surface types
+         ICEFRCT_M = 0.00
+         if ( TEMP <= t_all_loc ) then
+            ICEFRCT_M = 1.000
+         else if ( TEMP <= t_max_loc ) then
+            ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - t_all_loc ) / ( t_max_loc - t_all_loc ) ) )
+         end if
+         ICEFRCT_M = MAX(0.00, MIN(1.00, ICEFRCT_M)) ** pwr_loc
+      end if
+
+      ! Combine the Convective and Mesh functions
       ICEFRCT  = ICEFRCT_M*(1.0-CNV_FRACTION) + ICEFRCT_C*(CNV_FRACTION)
 #endif
 
