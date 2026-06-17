@@ -1756,7 +1756,7 @@ module GEOS_LandiceGridCompMod
 #ifdef HAVE_ISSM
        type(T_ISSM_TILE_STATE), pointer        :: issm_tile_state
        type(ISSM_TILE_WRAP)                    :: issm_tile_wrap
-	    real, pointer, dimension(:)            :: ICESURF
+       real, pointer, dimension(:)             :: ICESURF 
        real, pointer, dimension(:)             :: ICETHICK
        real, pointer, dimension(:)             :: ICEVEL
 #endif
@@ -2868,6 +2868,7 @@ contains
     NT = size(ALW)
 
     ! initialize running mean ICESMB and number of steps since last ISSM solve
+#ifdef HAVE_ISSM	
     if(DO_ISSM==1) then
         if (.not. associated(ICESMB_ISSM)) then
             allocate(ICESMB_ISSM(NT),STAT=STATUS)
@@ -2883,6 +2884,7 @@ contains
         
         ! get number of timesteps from issm tile internal state
         call MAPL_Get (MAPL, GCS=GCS, GCNAMES=GCNAMES, RC=STATUS )
+		VERIFY_(STATUS)
         do N=1, size(GCS)
           if (index(GCNAMES(N), 'ISSM') /=0 ) then
              call ESMF_UserCompGetInternalState(GCS(N), 'ISSM_TILES', issm_tile_wrap, status)
@@ -2892,7 +2894,8 @@ contains
           end if
         end do         
 	 end if 
-        
+#endif
+		
     allocate(MLT (NT), STAT=STATUS)
     VERIFY_(STATUS)                
     allocate(DTS (NT), STAT=STATUS)
