@@ -25,7 +25,6 @@ module GEOS_GwdGridCompMod
    ! ations are based on Lindzen's [1981] formulation. The interested reader
    ! is referred to those publications for details of the mathematical
    ! derivations.
-   !
 
    !USES:
 
@@ -39,7 +38,8 @@ module GEOS_GwdGridCompMod
    use MAPL, only: MAPL_GridCompSetEntryPoint
    use MAPL, only: MAPL_GridCompGet, MAPL_GridCompGetResource
    use MAPL, only: MAPL_GridCompGetInternalState
-   use MAPL, only: MAPL_GridCompAddSpec, MAPL_StateGetPointer
+   use MAPL, only: MAPL_GridCompAddSpec, MAPL_GridCompTimerStart, MAPL_GridCompTimerStop
+   use MAPL, only: MAPL_StateGetPointer, MAPL_ClockGet
    use MAPL, only: MAPL_RESTART_SKIP
    use MAPL, only: MAPL_VERTICAL_STAGGER_NONE, MAPL_VERTICAL_STAGGER_CENTER, MAPL_VERTICAL_STAGGER_EDGE
    use MAPL, only: MAPL_UngriddedDims, MAPL_UngriddedDim
@@ -113,7 +113,7 @@ contains
       type(wrap_) :: wrap
       type(GEOS_GwdGridComp), pointer :: self
       type(MAPL_UngriddedDim) :: ungrd_16
-      integer :: num_threads, status
+      integer :: status
 
       allocate(self, _STAT)
       wrap%PTR => self
@@ -403,11 +403,10 @@ contains
       ! If its time, recalculate the GWD tendency
       ! if ( ESMF_AlarmIsRinging( ALARM ) ) then
       ! call ESMF_AlarmRingerOff(ALARM, _RC)
-      ! call MAPL_TimerOn (MAPL,"DRIVER")
+      call MAPL_GridCompTimerStart(gc, "gwd_driver", _RC)
       call Gwd_Driver(_RC)
-      ! call MAPL_TimerOff(MAPL,"DRIVER")
+      call MAPL_GridCompTimerStop(gc, "gwd_driver", _RC)
       ! endif
-      ! call MAPL_TimerOff(MAPL,"TOTAL")
 
       _RETURN(_SUCCESS)
 
@@ -450,14 +449,12 @@ contains
          real, allocatable, target, dimension(:, :, :) :: scratch_ridge
 
          integer :: j, K, L, nrdg, ikpbl
-         real(kind=ESMF_KIND_R8) :: DT_R8
          real :: DT ! time interval in sec
          real :: a1, wsp, var_temp
          integer :: i, irun
          type(ESMF_State) :: internal
 
-         call ESMF_ClockGet(clock, timeStep=TINT, _RC)
-         call ESMF_TimeIntervalGet(TINT, S_R8=DT_R8, _RC)
+         call MAPL_ClockGet(clock, dt=DT, _RC)
 
          ! Pointers to import, export and internal variables
          call MAPL_GridCompGetInternalState(gc, internal)
@@ -502,7 +499,7 @@ contains
          DTDT_ORG_NCAR = 0.0
          TAUXO_TMP_NCAR = 0.0
          TAUYO_TMP_NCAR = 0.0
-         !call MAPL_TimerOn(MAPL,"-INTR_NCAR")
+         call MAPL_GridCompTimerStart(gc, "gw_intr_ncar", _RC)
          if ((self%NCAR_EFFGWORO /= 0.0) .or. (self%NCAR_EFFGWBKG /= 0.0)) then
             do L = 1, LM
                TMP3D(:, :, L) = (1.0 - CNV_FRC) * (DQLDT(:, :, L) + DQIDT(:, :, L))
@@ -527,7 +524,7 @@ contains
                  self%NCAR_EFFGWBKG, self%alpha, &
                  _RC)
          end if
-         !call MAPL_TimerOff(MAPL,"-INTR_NCAR")
+         call MAPL_GridCompTimerStop(gc, "gw_intr_ncar", _RC)
 
          ! Use GEOS GWD only for Extratropical background sources...
          DUDT_GWD_GEOS = 0.0
@@ -540,7 +537,7 @@ contains
          DTDT_ORG_GEOS = 0.0
          TAUXO_TMP_GEOS = 0.0
          TAUYO_TMP_GEOS = 0.0
-         !call MAPL_TimerOn(MAPL,"-INTR_GEOS")
+         ! call MAPL_GridCompTimerStart(gc, "gw_intr_geos", _RC)
          if ((self%GEOS_EFFGWORO /= 0.0) .or. (self%GEOS_EFFGWBKG /= 0.0)) then
             call gw_intr(im * jm, LM, DT, &
                  self%GEOS_PGWV, &
@@ -556,7 +553,7 @@ contains
                  self%GEOS_EFFGWBKG, &
                  _RC)
          end if
-         !call MAPL_TimerOff(MAPL,"-INTR_GEOS")
+         ! call MAPL_GridCompTimerStop(gc, "gw_intr_geos", _RC)
 
          ! Total
          DUDT_GWD = DUDT_GWD_GEOS + DUDT_GWD_NCAR
@@ -1000,7 +997,7 @@ contains
       allocate(area_global(DIMS(1), DIMS(2)))
       allocate(avar_global(DIMS(1), DIMS(2)))
 
-      !#if 1
+#if 1
       locArr = avar
       call MAPL_ArrayGather(locArr, glbArr, grid)
       avar_global = glbArr
@@ -1016,13 +1013,13 @@ contains
               SUM(SUM(area_global, DIM=1), DIM=1)
          write(*, '(A," ",3(f21.9,1x))') trim(NAME), rng(:)
       end if
-      !#else
+#else
       rng(1) = MINVAL(MINVAL(avar, DIM=1), DIM=1)
       rng(2) = MAXVAL(MAXVAL(avar, DIM=1), DIM=1)
       rng(3) = SUM(SUM(avar * area, DIM=1), DIM=1) / &
            SUM(SUM(area, DIM=1), DIM=1)
       write(*, '(A," ",3(f21.9,1x))'), trim(NAME), rng(:)
-      !#endif
+#endif
 
       deallocate(locArr)
       deallocate(glbArr)
@@ -1033,10 +1030,10 @@ contains
 
 end module GEOS_GwdGridCompMod
 
-subroutine SetServices(gc, rc)
+subroutine GWD_SetServices(gc, rc)
    use esmf
    use GEOS_GwdGridCompMod, only : mySetservices => SetServices
    type(ESMF_GridComp) :: gc
    integer, intent(out) :: rc
    call mySetservices(gc, rc=rc)
-end subroutine SetServices
+end subroutine GWD_SetServices

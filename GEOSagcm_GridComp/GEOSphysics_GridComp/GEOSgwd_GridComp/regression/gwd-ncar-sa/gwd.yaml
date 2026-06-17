@@ -1,0 +1,36 @@
+AGCM.GRIDNAME: PE48x288-CF
+BERES_FILE_NAME: newmfspectra40_dc25.nc
+
+GEOS_EFFGWBKG: 0.0
+NCAR_EFFGWBKG: 1.0
+RAYLEIGH_TAU1: 0.0
+
+GEOS_EFFGWORO: 0.0
+NCAR_EFFGWORO: 1.0
+NCAR_NRDG: 16
+
+mapl:
+  geometry:
+    esmf_geom:
+      class: CubedSphere
+      im_world: 48
+      nx_face: 1
+      ny_face: 1
+    vertical_grid:
+      class: model
+      standard_name: air_pressure
+      units: hPa
+      num_levels: 72
+      field_edge: PLE
+      field_center: PE
+
+  misc:
+    activate_all_imports: true
+    activate_all_exports: true
+    restart:
+      internal: true
+      import: true
+    checkpoint:
+      export: true
+      import: true
+      internal: true
