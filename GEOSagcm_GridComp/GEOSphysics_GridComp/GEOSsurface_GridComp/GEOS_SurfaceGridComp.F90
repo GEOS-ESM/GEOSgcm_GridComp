@@ -6208,46 +6208,31 @@ module GEOS_SurfaceGridCompMod
 
     end if
 
-! Read in precip data. This is used in 'coupled' replay
-!------------------------------------------------------
+! Read in precip or precip clim scaling data. This is used in 'coupled' replay
+!-----------------------------------------------------------------------------
+! This code is used to have the surface components (land, salwater, etc.) see
+!  a "corrected" precip according to Rolf et al. This was used in MERRA-2 and
+!  would typically be done during reanalysis or replay. Also, OGCM-coupled
+!  replays require special treatment.
+! Alternatively, read climatological scaling factors that convert the model
+!  precipitation to an observed climatology.  This rescaled precip is then
+!  processed just like the "corrected" precipitation (that is, disaggregated
+!  into components and tapered with the (raw) model precipitation.  Introduced 
+!  for M21C to address IMERG-Late V07B quality issues while preserving the
+!  climatology of the corrected precip after the end of IMERG-Final on data-day 1 Oct 2025.
+!------------------------------------------------------------------------------------------
 
-    call MAPL_GetResource(MAPL,PRECIP_FILE,LABEL="PRECIP_FILE:",default="null", RC=STATUS)
+    call MAPL_GetResource(MAPL,PRECIP_FILE,          LABEL="PRECIP_FILE:",          default="null", RC=STATUS)
     VERIFY_(STATUS)
-
-    call ESMF_ClockGet(CLOCK, currTime=CurrentTime, rc=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_TimeGet (currentTime,               &
-                       YY=YEAR, MM=MONTH, DD=DAY, &
-                       H=HR,    M=MN,     S=SE,   &
-                                        RC=STATUS )
-    VERIFY_(STATUS)
-    call ESMF_TimeSet (currentTime,               &
-                       YY=YEAR, MM=MONTH, DD=DAY, &
-                       H=HR,    M =30,    S = 0,  &
-                                        RC=STATUS )
-    VERIFY_(STATUS)
-
-! Read in precip scale data as a second option to get "corrected" precip 
-!------------------------------------------------------
     
-    call MAPL_GetResource(MAPL,PRECIP_SCALE_FILE,LABEL="PRECIP_SCALE_FILE:",default="null", RC=STATUS)
+    call MAPL_GetResource(MAPL,PRECIP_FILE_CLIMSCALE,LABEL="PRECIP_FILE_CLIMSCALE:",default="null", RC=STATUS)
     VERIFY_(STATUS)
 
-    call ESMF_ClockGet(CLOCK, currTime=CurrentTime, rc=STATUS)     
-    VERIFY_(STATUS)
-    call ESMF_TimeGet (currentTime,               &                
-                       YY=YEAR, MM=MONTH, DD=DAY, &
-                       H=HR,    M=MN,     S=SE,   &
-                                        RC=STATUS ) 
-    VERIFY_(STATUS)  
-    ! daily climatology, only need month/day information                   
-    call ESMF_TimeSet (currentTime,               &
-                       YY=8888, MM=MONTH, DD=DAY, & 
-                       H=0,    M =0,    S = 0,  & 
-                                        RC=STATUS ) 
-    VERIFY_(STATUS)
-
-
+    ! for now, do not allow the combination of precip replacement and clim rescaling
+    
+    _ASSERT( .not. (PRECIP_FILE /= "null" .and. PRECIP_FILE_CLIMSCALE /= "null"), &
+         "only one of PRECIP_FILE *or* PRECIP_FILE_CLIMSCALE can be set" )
+    
 ! These exports are the rainfalls and total snowfall that
 !  the children of surface see. They can be the exports of
 !  moist or can be read from a file.
@@ -6280,15 +6265,7 @@ module GEOS_SurfaceGridCompMod
     ICE = ICEFL
     FRZR= FRZRFL
 
-! This code is used to have the surface components (land, salwater, etc.) see
-!  a "corrected" precip according to Rolf et al. This was used in MERRA-2 and
-!  would typically be done one during reanalysis or replay. Also, OGCM-coupled
-!  replays require special treatment.
-! Option to read a scale factor and compute the "corrected" precipiation to 
-! address IMERG-Late v7B quality issues.
-!-----------------------------------------------------------------------------
-
-    REPLACE_PRECIP: if(PRECIP_FILE /= "null" or PRECIP_FILE /= "null") then
+    REPLACE_PRECIP: if(PRECIP_FILE /= "null" .or. PRECIP_FILE_CLIMSCALE /= "null") then
 
        bundle = ESMF_FieldBundleCreate (NAME='PRECIP', RC=STATUS)
        VERIFY_(STATUS)
@@ -6300,16 +6277,45 @@ module GEOS_SurfaceGridCompMod
 
        PRECSUM = RCU+RLS+SNO+ICE+FRZR
 
+       ! get and parse current time (needed to create file time stamp)
+       
+       call ESMF_ClockGet(CLOCK, currTime=CurrentTime, rc=STATUS)
+       VERIFY_(STATUS)
+       call ESMF_TimeGet (currentTime,               &
+                          YY=YEAR, MM=MONTH, DD=DAY, &
+                          H=HR,    M=MN,     S=SE,   &
+                          RC=STATUS )
+       VERIFY_(STATUS)
+       
        if(PRECIP_FILE /= "null") then
-          ! read corrected precip (PTTe) directly from file if file exists
-          call MAPL_read_bundle( Bundle,PRECIP_FILE, CurrentTime, regrid_method=REGRID_METHOD_CONSERVE, RC=status)
+          
+          ! read corrected precip (PTTe) directly from (hourly) file if file exists (crashes otherwise?)
+          
+          call ESMF_TimeSet (currentTime,               &
+                             YY=YEAR, MM=MONTH, DD=DAY, &
+                             H=HR,    M =30,    S = 0,  &
+                             RC=STATUS )
+          VERIFY_(STATUS)
+          
+          call MAPL_read_bundle( Bundle, PRECIP_FILE, CurrentTime, regrid_method=REGRID_METHOD_CONSERVE, RC=status)
           VERIFY_(STATUS)
           call ESMFL_BundleGetPointerToData(Bundle,'PRECTOT',PTTe, RC=STATUS)
           VERIFY_(STATUS)
+          
        else
-          ! read scale factor from file and apply to uncorrected precip (PRECSUM) 
+          
+          ! read clim scale factor from file and apply to uncorrected (model) precip (PRECSUM) 
           ! to create the "corrected" precip (PTTe)
-          call MAPL_read_bundle( Bundle,PRECIP_SCALE_FILE, CurrentTime, regrid_method=REGRID_METHOD_CONSERVE, RC=status)
+          
+          ! climatology is daily, only need month/day information, use leap year (8888) as nominal year
+          ! (matching time stamps in files)
+          call ESMF_TimeSet (currentTime,               &
+                             YY=8888, MM=MONTH, DD=DAY, & 
+                             H=0,     M =0,     S = 0,  & 
+                             RC=STATUS ) 
+          VERIFY_(STATUS)
+                    
+          call MAPL_read_bundle( Bundle, PRECIP_FILE_CLIMSCALE, CurrentTime, regrid_method=REGRID_METHOD_CONSERVE, RC=status)
           VERIFY_(STATUS)
           call ESMFL_BundleGetPointerToData(Bundle,'factor_clim',PTTe, RC=STATUS)
           PTTe = PTTe * PRECSUM
