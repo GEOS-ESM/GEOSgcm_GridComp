@@ -1013,7 +1013,7 @@ module GEOS_LandiceGridCompMod
         UNITS              = 'kg m-2 s-1',                        &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-		RESTART            = MAPL_RestartOptional,                & 
+		  RESTART            = MAPL_RestartOptional,                & 
         DEFAULT            = 0.0 ,                                &
                                                     RC=STATUS  )
 #endif
@@ -1756,7 +1756,7 @@ module GEOS_LandiceGridCompMod
 #ifdef HAVE_ISSM
        type(T_ISSM_TILE_STATE), pointer :: issm_tile_state
        type(ISSM_TILE_WRAP)             :: issm_tile_wrap
-	   real, pointer, dimension(:)       :: ICESURF
+	    real, pointer, dimension(:)      :: ICESURF
        real, pointer, dimension(:)      :: ICETHICK
        real, pointer, dimension(:)      :: ICEVEL
 #endif
@@ -1821,7 +1821,7 @@ module GEOS_LandiceGridCompMod
 
 #ifdef HAVE_ISSM
        ! initialize exports to restart values set by ISSM GridComp's Initialize, 
-	   ! because ISSM typically has a multi-day timestep and exports will remain empty otherwise
+       ! because ISSM typically has a multi-day timestep and exports will remain empty otherwise
        call MAPL_GetPointer(EXPORT,ICESURF , 'ICESURF',alloc=.true., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT,ICETHICK ,'ICETHICK',alloc=.true., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT,ICEVEL ,'ICEVEL',alloc=.true., RC=STATUS); VERIFY_(STATUS)
@@ -2681,7 +2681,6 @@ contains
    real, parameter :: LANDICECOND_  = 1.2  ! ice conductivity divided by depth of bottom layer
    real, parameter :: LANDICETDEEP_ = 230. ! deep ice temperature
 
-   integer :: u, ios      ! read ISSM_NSTEPS txt file
 !  Begin...
 !----------
 
@@ -3649,7 +3648,7 @@ contains
     if (DO_ISSM==1) then
       call MAPL_Get (MAPL, GCS=GCS, GCNAMES=GCNAMES, RC=STATUS )
       do N=1, size(GCS)
-         if (index(GCNAMES(N), 'ISSM') /=0 ) then ! check if issm alarm is ringing too
+         if (index(GCNAMES(N), 'ISSM') /=0 ) then 
             call MAPL_GetObjectFromGC(GCS(N), CHILD_MAPL, RC=STATUS); VERIFY_(STATUS)
             call MAPL_Get(CHILD_MAPL, RUNALARM = ISSM_ALARM, RC=STATUS); VERIFY_(STATUS)
 

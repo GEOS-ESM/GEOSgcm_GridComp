@@ -10,11 +10,11 @@ module GEOS_IssmGridCompMod
 !
 ! !DESCRIPTION:
 !
-!   {\tt GEOS\_ISSM} is a wrapper that calls ISSM (C++) IRF methods
-!   Imports: ICESMB (defined on landice tiles)  [private internal state]
+!   {\tt GEOS\_ISSM} runs ISSM (Ice-sheet and Sea-level System Model)
+!   Imports: ICESMB (defined on landice tiles)  [via private internal state]
 !   Exports: ICESURF, ICETHICK, ICESMB_ISSM, ICEVX, ICEVY (defined on mesh) [true export state]
-!   Exports: ICESURF, ICETHICK, ICEVEL (defined on landice tiles) [private internal state]
-!   Internals: ICESURF, ICETHICK, IMLS, OMLS (defined on mesh) [true internal state]
+!   Exports: ICESURF, ICETHICK, ICEVEL (defined on landice tiles) [via private internal state]
+!   Internals: ICESURF, ICETHICK, IMLS, OMLS, ISSM_NSTEPS (defined on mesh) [true internal state]
 ! *** NOTES: 
 !            (*) currently we run over all input files (*.bin) that are found in ISSM_EXPDIR (scratch directory)
 !                (e.g., Greenland + Antarctica + any other glaciers that have been configured)
@@ -22,7 +22,12 @@ module GEOS_IssmGridCompMod
 !                imports/exports that is the global combination of all ISSM meshes
 !            (*) we transform imports from landice tiles to attached grid, then regrid to the mesh 
 !            (*) ISSM outputs are saved with HISTORY via a 'mesh tile space' developed by Weiyuan Jiang (GMAO SI Team)  
-!
+!            (*) ISSM time step is generally larger than LANDICE timestep, or even a job duration. We persist ISSM 
+!                variables across job segments through internal state checkpoints (restarts). We make sure that INTERNAL 
+!                and EXPORT variables are 'filled in' by Initialize so that LANDICE and HISTORY have access to ISSM 
+!                variables before it runs.  
+!            (*) Related, we use a custom ISSM run alarm that is keyed to the last time ISSM ran, not the simulation 
+!                start time. The number of LANDICE time steps since ISSM last ran is tracked via the internal state.  
 
 ! !USES:
 use iso_fortran_env, only: dp=>real64
@@ -612,7 +617,6 @@ subroutine SetServices ( GC, RC )
 
     ! get timestep for landice 
     call MAPL_Get(MAPL, HEARTBEAT=LANDICE_DT,_RC)
-    !call MAPL_GetResource (MAPL, LANDICE_DT, Label="DT:", DEFAULT=LANDICE_DT, RC=STATUS)	
     
     ! get timestep for ISSM
     call MAPL_GetResource(MAPL, ISSM_DT, Label=trim(COMP_NAME)//"_DT:",DEFAULT=302400.0, _RC)
@@ -660,7 +664,7 @@ subroutine SetServices ( GC, RC )
     ! else, ISSM will just use default initial values in ISSM*.bin input files
     if (associated(ICETHICK_IN)) then
        ! simple check for positive ice thickness (initialized to zero if restart not found)
-	   ! ISSM throws error for zero ice thickness
+	     ! ISSM throws error for zero ice thickness
         ISSM_RST_FOUND = minval(ICETHICK_IN) > epsilon(ICETHICK_IN)
     end if
     
@@ -1181,7 +1185,7 @@ subroutine SetServices ( GC, RC )
     
     ! ErrLog Variables
     character(len=ESMF_MAXSTR)	       :: IAm
-    integer			                   :: STATUS
+    integer			                       :: STATUS
     character(len=ESMF_MAXSTR)         :: COMP_NAME
 
     ! variables for writing out timesteps since ISSM (via ISSM_NSTEPS.txt)
@@ -1200,7 +1204,7 @@ subroutine SetServices ( GC, RC )
     call MAPL_GetObjectFromGC(GC, MAPL, STATUS)
     _VERIFY(STATUS)
 
-	! save number of steps since last ISSM run as a little txt file
+	  ! save number of steps since last ISSM run via internal state checkpoints (restarts)
     call ESMF_UserCompGetInternalState(GC, 'ISSM_TILES', issm_tile_wrap, STATUS); _VERIFY(STATUS)
     issm_tile_state => issm_tile_wrap%ptr
 
