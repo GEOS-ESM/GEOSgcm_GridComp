@@ -5137,6 +5137,7 @@ module GEOS_SurfaceGridCompMod
     type (ESMF_Grid)                    :: GRID
     type (ESMF_Time)                    :: CurrentTime
     character(len=ESMF_MAXSTR)          :: PRECIP_FILE
+    character(len=ESMF_MAXSTR)          :: PRECIP_SCALE_FILE
 
     type (T_SURFACE_STATE), pointer     :: surf_internal_state 
     type (SURF_wrap)                    :: wrap
@@ -6226,6 +6227,26 @@ module GEOS_SurfaceGridCompMod
                                         RC=STATUS )
     VERIFY_(STATUS)
 
+! Read in precip scale data as a second option to get "corrected" precip 
+!------------------------------------------------------
+    
+    call MAPL_GetResource(MAPL,PRECIP_SCALE_FILE,LABEL="PRECIP_SCALE_FILE:",default="null", RC=STATUS)
+    VERIFY_(STATUS)
+
+    call ESMF_ClockGet(CLOCK, currTime=CurrentTime, rc=STATUS)     
+    VERIFY_(STATUS)
+    call ESMF_TimeGet (currentTime,               &                
+                       YY=YEAR, MM=MONTH, DD=DAY, &
+                       H=HR,    M=MN,     S=SE,   &
+                                        RC=STATUS ) 
+    VERIFY_(STATUS)  
+    ! daily climatology, only need month/day information                   
+    call ESMF_TimeSet (currentTime,               &
+                       YY=8888, MM=MONTH, DD=DAY, & 
+                       H=0,    M =0,    S = 0,  & 
+                                        RC=STATUS ) 
+    VERIFY_(STATUS)
+
 
 ! These exports are the rainfalls and total snowfall that
 !  the children of surface see. They can be the exports of
@@ -6263,19 +6284,32 @@ module GEOS_SurfaceGridCompMod
 !  a "corrected" precip according to Rolf et al. This was used in MERRA-2 and
 !  would typically be done one during reanalysis or replay. Also, OGCM-coupled
 !  replays require special treatment.
+! Option to read a scale factor and compute the "corrected" precipiation to 
+! address IMERG-Late v7B quality issues.
 !-----------------------------------------------------------------------------
 
-    REPLACE_PRECIP: if(PRECIP_FILE /= "null") then
+    REPLACE_PRECIP: if(PRECIP_FILE /= "null" or PRECIP_FILE /= "null") then
 
        bundle = ESMF_FieldBundleCreate (NAME='PRECIP', RC=STATUS)
        VERIFY_(STATUS)
        call ESMF_FieldBundleSet(bundle, GRID=GRID, RC=STATUS)
        VERIFY_(STATUS)
 
-       call MAPL_read_bundle( Bundle,PRECIP_FILE, CurrentTime, regrid_method=REGRID_METHOD_CONSERVE, RC=status)
-       VERIFY_(STATUS)
-       call ESMFL_BundleGetPointerToData(Bundle,'PRECTOT',PTTe, RC=STATUS)
-       VERIFY_(STATUS)
+       if(PRECIP_FILE /= "null") then
+          ! read corrected precip (PTTe) directly from file if file exists
+          call MAPL_read_bundle( Bundle,PRECIP_FILE, CurrentTime, regrid_method=REGRID_METHOD_CONSERVE, RC=status)
+          VERIFY_(STATUS)
+          call ESMFL_BundleGetPointerToData(Bundle,'PRECTOT',PTTe, RC=STATUS)
+          VERIFY_(STATUS)
+       else
+          ! read scale factor from file and apply to uncorrected precip (PRECSUM) 
+          ! to create the "corrected" precip (PTTe)
+          call MAPL_read_bundle( Bundle,PRECIP_SCALE_FILE, CurrentTime, regrid_method=REGRID_METHOD_CONSERVE, RC=status)
+          VERIFY_(STATUS)
+          call ESMFL_BundleGetPointerToData(Bundle,'factor_clim',PTTe, RC=STATUS)
+          PTTe = PTTe * PRECSUM
+          VERIFY_(STATUS)
+       end if
 
 
 ! Catchment required convective and large-scale rain and total snowfall,
