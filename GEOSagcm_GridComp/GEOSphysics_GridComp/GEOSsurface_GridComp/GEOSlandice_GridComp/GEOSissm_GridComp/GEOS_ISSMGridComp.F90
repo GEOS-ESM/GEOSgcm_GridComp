@@ -70,6 +70,9 @@ subroutine GetElementsISSM(elementIds, elementConn, elementCoords, glacIds) bind
 end subroutine GetElementsISSM
 
 subroutine FinalizeISSM() bind(C,NAME="FinalizeISSM")
+! produces binary output files from ISSM
+! not currently used because we use GEOS restarts, and this
+! will throw an error if ISSM has not run during a job segment.
 end subroutine FinalizeISSM
 
 end interface
@@ -118,7 +121,6 @@ type ISSM_WRAP
 end type ISSM_WRAP
 
 integer                      :: num_outputs = 6          ! number of output fields that ISSM sends to GEOS
-logical                      :: ISSM_RAN = .false.       ! run flag for ISSM C++ solvers
 logical                      :: ISSM_RST_FOUND = .false. ! restart found flag
 type(T_ISSM_STATE), pointer  :: internal_state=>null()   ! internal state for regridding and halo operations
 
@@ -292,6 +294,8 @@ subroutine SetServices ( GC, RC )
 ! ------------------------
 
     call MAPL_TimerAdd(GC,    name="RUN"   ,_RC)
+    call MAPL_TimerAdd(GC,    name="ISSMCore"   ,_RC)
+	
        
 ! ----------------------------------
     call MAPL_GenericSetServices    ( GC, _RC)
@@ -655,7 +659,8 @@ subroutine SetServices ( GC, RC )
     ! if restart has been read, apply halo operation and send pointers to ISSM
     ! else, ISSM will just use default initial values in ISSM*.bin input files
     if (associated(ICETHICK_IN)) then
-      ! check for positive ice thickness (initialized to zero if restart not found)
+       ! simple check for positive ice thickness (initialized to zero if restart not found)
+	   ! ISSM throws error for zero ice thickness
         ISSM_RST_FOUND = minval(ICETHICK_IN) > epsilon(ICETHICK_IN)
     end if
     
@@ -684,14 +689,11 @@ subroutine SetServices ( GC, RC )
 
     else
       ! bootstrap restart values from ISSM input files (ISSM*.bin)
-      ! by running with near-zero time step and zero forcing
+      ! by running with 'fake' time step with zero forcing
 
       call ESMF_VMBarrier(vm, _RC)
-      call RunISSM(1.0_dp, c_loc(ZEROS), c_loc(GEOS_RESTARTS))
+      call RunISSM(real(ISSM_DT,kind=dp), c_loc(ZEROS), c_loc(GEOS_RESTARTS))
       call ESMF_VMBarrier(vm, _RC)
-
-      ! update ISSM run flag (for C++ library calls)
-      ISSM_RAN = .true.
 
       ! Unpack restart array 
       ICESURF_HALO(:)  = GEOS_RESTARTS(1:num_nodes) 
@@ -704,7 +706,7 @@ subroutine SetServices ( GC, RC )
       ! filter out halo points (keep the owned indices) for restarts
       if(associated(ICESURF_IN)) ICESURF_IN = ICESURF_HALO(owned_idx)
       if(associated(ICETHICK_IN)) ICETHICK_IN = ICETHICK_HALO(owned_idx)
-	    if(associated(ICEVX_IN)) ICEVX_IN = ICEVX_HALO(owned_idx)
+      if(associated(ICEVX_IN)) ICEVX_IN = ICEVX_HALO(owned_idx)
       if(associated(ICEVY_IN)) ICEVY_IN = ICEVY_HALO(owned_idx)
       if(associated(OMLS_IN)) OMLS_IN = OMLS_HALO(owned_idx)
       if(associated(IMLS_IN)) IMLS_IN = IMLS_HALO(owned_idx)
@@ -1062,14 +1064,13 @@ subroutine SetServices ( GC, RC )
       ICESMB_MESH = ICESMB_MESH/rho_ice
 
       call ESMF_VMBarrier(vm, _RC)
+	  call MAPL_TimerOn(MAPL,"ISSMCore" )
 
       ! call run method from ISSM library 
       call RunISSM(ISSM_DT, c_loc(ICESMB_MESH), c_loc(ISSM_OUTPUTS))
 
       call ESMF_VMBarrier(vm, _RC)
-
-      ! update ISSM run flag (for C++ library calls)
-      ISSM_RAN = .true.
+	  call MAPL_TimerOff(MAPL,"ISSMCore" )
 
       ! *************************************************************************** !
       ! UNPACK AND EXPORT ISSM OUTPUTS ON MESH TILES
@@ -1204,26 +1205,16 @@ subroutine SetServices ( GC, RC )
     issm_tile_state => issm_tile_wrap%ptr
 
     ! get internal state
-	  call MAPL_Get(MAPL,INTERNAL_ESMF_STATE = INTERNAL,_RC)
+    call MAPL_Get(MAPL,INTERNAL_ESMF_STATE = INTERNAL,_RC)
 
     ! get number of time steps since last ISSM run
     call MAPL_GetPointer(INTERNAL, ISSM_NSTEPS, 'ISSM_NSTEPS',_RC)
     ISSM_NSTEPS(:) = real(issm_tile_state%ISSM_NSTEPS)
 
-    ! call ISSM finalize (saves binary output .outbin file)
-    if (ISSM_RAN) then
-	  ! NOTE: only call if ISSM C++ solvers were called, because OutputResultsx
-	  ! in C++ source throws error if 'results' is empty... 
-	  ! not actually a problem, but this case won't call FemModel destructors,
-	  ! should probably just remove OutputResultsx from FinalizeISSM()....
-       call FinalizeISSM()
-    end if 
-
     ! Generic Finalize
     ! ------------------
     call MAPL_GenericFinalize( GC, IMPORT, EXPORT, CLOCK, _RC )
     
-
     ! All Done
     ! ------------------
 
