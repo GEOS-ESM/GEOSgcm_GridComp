@@ -6295,6 +6295,11 @@ module GEOS_SurfaceGridCompMod
        call ESMF_FieldBundleSet(bundle, GRID=GRID, RC=STATUS)
        VERIFY_(STATUS)
 
+       allocate( PRECSUM(IM,JM), stat=STATUS )
+       VERIFY_(STATUS)
+
+       PRECSUM = RCU+RLS+SNO+ICE+FRZR
+
        if(PRECIP_FILE /= "null") then
           ! read corrected precip (PTTe) directly from file if file exists
           call MAPL_read_bundle( Bundle,PRECIP_FILE, CurrentTime, regrid_method=REGRID_METHOD_CONSERVE, RC=status)
@@ -6329,11 +6334,7 @@ module GEOS_SurfaceGridCompMod
 
        allocate( PCSCALE(IM,JM), stat=STATUS )
        VERIFY_(STATUS)
-       allocate( PRECSUM(IM,JM), stat=STATUS )
-       VERIFY_(STATUS)
 
-       PRECSUM = RCU+RLS+SNO+ICE+FRZR
-       
        where (PTTe == MAPL_UNDEF)
           RCU = PCU
           RLS = PLS
