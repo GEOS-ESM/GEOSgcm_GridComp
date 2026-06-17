@@ -1739,9 +1739,9 @@ module GEOS_LandiceGridCompMod
    
    ! ErrLog Variables
    
-       character(len=ESMF_MAXSTR)           :: IAm 
-       integer                              :: STATUS
-       character(len=ESMF_MAXSTR)           :: COMP_NAME
+       character(len=ESMF_MAXSTR)              :: IAm 
+       integer                                 :: STATUS
+       character(len=ESMF_MAXSTR)              :: COMP_NAME
        
    ! Local derived type aliases
    
@@ -1754,13 +1754,14 @@ module GEOS_LandiceGridCompMod
      
        integer                                 :: I
 #ifdef HAVE_ISSM
-       type(T_ISSM_TILE_STATE), pointer :: issm_tile_state
-       type(ISSM_TILE_WRAP)             :: issm_tile_wrap
-	    real, pointer, dimension(:)      :: ICESURF
-       real, pointer, dimension(:)      :: ICETHICK
-       real, pointer, dimension(:)      :: ICEVEL
+       type(T_ISSM_TILE_STATE), pointer        :: issm_tile_state
+       type(ISSM_TILE_WRAP)                    :: issm_tile_wrap
+	    real, pointer, dimension(:)            :: ICESURF
+       real, pointer, dimension(:)             :: ICETHICK
+       real, pointer, dimension(:)             :: ICEVEL
 #endif
-       integer :: nt_local
+       integer                                 :: nt_local
+	   integer                                 :: DO_ISSM	   
         
    !=============================================================================
    
@@ -1791,6 +1792,12 @@ module GEOS_LandiceGridCompMod
        VERIFY_(STATUS)
    ! Place the land tilegrid in the generic state of each child component
    !---------------------------------------------------------------------
+
+       call MAPL_GetResource (MAPL, DO_ISSM, label='DO_ISSM:', DEFAULT=0, __RC__ )
+   
+#ifndef HAVE_ISSM
+       DO_ISSM=0
+#endif
 
 #ifdef HAVE_ISSM
    ! Get Landice timestep to send to ISSM
@@ -1825,9 +1832,11 @@ module GEOS_LandiceGridCompMod
        call MAPL_GetPointer(EXPORT,ICESURF , 'ICESURF',alloc=.true., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT,ICETHICK ,'ICETHICK',alloc=.true., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT,ICEVEL ,'ICEVEL',alloc=.true., RC=STATUS); VERIFY_(STATUS)
-       if(associated(ICESURF))  ICESURF = issm_tile_state%ICESURF_TILE
-       if(associated(ICETHICK)) ICETHICK = issm_tile_state%ICETHICK_TILE
-       if(associated(ICEVEL))   ICEVEL = issm_tile_state%ICEVEL_TILE
+	   if (DO_ISSM==1) then
+          if(associated(ICESURF))  ICESURF = issm_tile_state%ICESURF_TILE
+          if(associated(ICETHICK)) ICETHICK = issm_tile_state%ICETHICK_TILE
+          if(associated(ICEVEL))   ICEVEL = issm_tile_state%ICEVEL_TILE
+	   end if 
 #endif   
        call MAPL_TimerOff(MAPL,"INITIALIZE", RC=STATUS ); VERIFY_(STATUS)
    
