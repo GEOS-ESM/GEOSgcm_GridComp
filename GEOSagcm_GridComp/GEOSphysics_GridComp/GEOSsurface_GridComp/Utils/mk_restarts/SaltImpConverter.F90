@@ -3,7 +3,7 @@
 
 program SaltImpConverter
 
-  use MAPL_ConstantsMod,only: MAPL_PI,  MAPL_radius
+  use MAPL_Constants,only: MAPL_PI,  MAPL_radius
   use netcdf
   use MAPL
   use mk_restarts_getidsMod, only: ReadTileFile_RealLatLon

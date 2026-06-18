@@ -13,7 +13,7 @@ module CNNitrifDenitrifMod
 ! Calculate nitrification and denitrification rates
 !
 ! !USES:
-   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+   use MAPL_Constants, ONLY: r8 => MAPL_R4
    use shr_const_mod, only: SHR_CONST_TKFRZ
    use clm_varcon   , only: secspday
 

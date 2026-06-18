@@ -12,7 +12,7 @@ PROGRAM dbg_cnlsm_offline
 ! - Sarith Mahanama (9-1-2018)
 !
 use ESMF
-use MAPL_ConstantsMod
+use MAPL_Constants
 use MAPL_ExceptionHandling
 USE SURFPARAMS
 use CATCHMENT_CN_MODEL

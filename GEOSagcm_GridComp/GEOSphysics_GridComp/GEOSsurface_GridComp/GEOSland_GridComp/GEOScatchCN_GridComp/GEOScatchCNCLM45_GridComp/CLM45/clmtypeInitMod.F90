@@ -9,7 +9,7 @@ module clmtypeInitMod
 ! Allocate clmtype components and initialize them to signaling NaN.
 !
 ! !USES:
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+  use MAPL_Constants, ONLY: r8 => MAPL_R4
 ! use shr_infnan_mod, only : nan => shr_infnan_nan, assignment(=)
   use nanMod      , only : nan, bigint
   use clmtype

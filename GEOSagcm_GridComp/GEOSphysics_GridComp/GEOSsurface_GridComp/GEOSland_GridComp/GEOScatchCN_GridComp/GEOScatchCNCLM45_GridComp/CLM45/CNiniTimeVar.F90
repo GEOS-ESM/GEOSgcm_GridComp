@@ -14,7 +14,7 @@ subroutine CNiniTimeVar(begg, endg, begl, endl, begc, endc, begp, endp)
 !
 ! !USES:
    use clmtype
-   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+   use MAPL_Constants, ONLY: r8 => MAPL_R4
    use clm_varcon  , only: istsoil, zsoi
    use clm_varpar  , only: nlevgrnd, nlevsoi, nlevdecomp, ndecomp_pools, nlevdecomp_full
    use clm_varcon  , only: istcrop, c13ratio, c14ratio

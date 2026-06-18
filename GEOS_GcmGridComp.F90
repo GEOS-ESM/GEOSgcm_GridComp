@@ -204,8 +204,8 @@ contains
        call ESMF_ConfigGetAttribute(CF, NUM_ICE_CATEGORIES, Label="CICE_N_ICE_CATEGORIES:" , _RC)
        if (DO_CICE_THERMO == 1) then
           call ESMF_ConfigGetAttribute(CF,  NUM_ICE_LAYERS, Label="CICE_N_ICE_LAYERS:"     , _RC)
-       endif  
-    else 
+       endif
+    else
        NUM_ICE_CATEGORIES = 1
        NUM_ICE_LAYERS     = 1
     endif
@@ -577,8 +577,15 @@ contains
        VERIFY_(STATUS)
     endif
 
-  
-    if (DO_CICE_THERMO == 2) then  
+    call MAPL_AddConnectivity ( GC,                                 &
+         SHORT_NAME  = (/'QLTOT', 'QITOT', 'QRTOT',                 &
+         'QSTOT', 'QGTOT'/),                                        &
+         DST_ID = AIAU,                                             &
+         SRC_ID = AGCM,                                             &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    if (DO_CICE_THERMO == 2) then
        call MAPL_AddConnectivity ( GC,                              &
             SHORT_NAME  = (/'SURFSTATE'/),                          &
             DST_ID = AGCM,                                          &
@@ -618,15 +625,15 @@ contains
             _RC)
     endif
 
-    if (DO_CICE_THERMO <= 1) then  
+    if (DO_CICE_THERMO <= 1) then
       call MAPL_TerminateImport    ( GC,   &
            SHORT_NAME = [character(len=5) :: &
                         'HI', 'FRESH', 'FSALT', 'FHOCN'],          &
            CHILD      = OGCM,                                      &
            _RC)
-    endif 
+    endif
 
-    if (DO_CICE_THERMO == 1) then  
+    if (DO_CICE_THERMO == 1) then
        call MAPL_TerminateImport    ( GC,   &
           SHORT_NAME = (/ &
                          'FRACICE', 'VOLICE ', 'VOLSNO ',              &
@@ -640,7 +647,7 @@ contains
     end if
 
    if (DO_WAVES /= 0) then
-      ! Terminate the imports of WGCM with the exception 
+      ! Terminate the imports of WGCM with the exception
       ! of the few that have to be sent to ExtData
       call MAPL_TerminateImport(GC,                         &
          SHORT_NAME = (/                                    &
@@ -843,6 +850,7 @@ contains
 
     type(ESMF_Calendar)                 :: cal
     type(ESMF_Time)                     :: rep_StartTime
+    type(ESMF_Time)                     :: rep_EndTime
     type(ESMF_Time)                     :: rep_RefTime
     type(ESMF_Time)                     :: currTime
     type(ESMF_Time)                     :: ringTime
@@ -866,6 +874,7 @@ contains
     integer                             ::   MKIAU_REFERENCE_TIME
     integer                             :: rplshut
     integer                             :: rep_startdate(2)
+    integer                             :: rep_enddate(2)
     integer                             :: rep_YY
     integer                             :: rep_MM
     integer                             :: rep_DD
@@ -919,7 +928,7 @@ contains
     if (DO_WAVES /= 0) then
        call MAPL_GridCreate(GCS(WGCM), rc=status)
        VERIFY_(STATUS)
-    end if    
+    end if
 
 ! Create Ocean grid
 !------------------
@@ -995,17 +1004,12 @@ contains
        i_MKIAU_FREQUENCY      = gcm_internal_state%rplfreq
          MKIAU_REFERENCE_TIME = gcm_internal_state%rplreft
 
-       call MAPL_GetResource(MAPL, rplshut, Label="REPLAY_SHUTOFF:", default=-3600, rc=status)
-       VERIFY_(STATUS)
        call ESMF_ClockGet(clock, currTime=currTime, calendar=cal, rc=status)
        VERIFY_(STATUS)
 
        call ESMF_TimeIntervalSet(CORRECTOR_DURATION,    S=i_CORRECTOR_DURATION, rc=status)
        VERIFY_(STATUS)
        call ESMF_TimeIntervalSet(MKIAU_FREQUENCY, S=i_MKIAU_FREQUENCY, rc=status)
-       VERIFY_(STATUS)
-
-       call ESMF_TimeIntervalSet(Shutoff, S=abs(rplshut), rc=status)
        VERIFY_(STATUS)
 
        rep_StartTime = currTime
@@ -1028,7 +1032,9 @@ contains
        ! Update REPLAY_STARTDATE with User-Supplied values from CONFIG
        ! -------------------------------------------------------------
        call MAPL_GetResource( MAPL, rep_startdate(1), label='REPLAY_STARTDATE:', default=rep_startdate(1), rc=STATUS )
+       VERIFY_(STATUS)
        call MAPL_GetResource( MAPL, rep_startdate(2), label='REPLAY_STARTTIME:', default=rep_startdate(2), rc=STATUS )
+       VERIFY_(STATUS)
 
        ! REPACK REPLAY_STARTTIME
        ! -----------------------
@@ -1061,6 +1067,54 @@ contains
                                          M = rep_M , &
                                          S = rep_S , &
                           calendar=cal, rc = STATUS  )
+       VERIFY_(STATUS)
+
+       ! Initialize REPLAY_ENDDATE in YYYYMMDD & HHMMSS format
+       ! -------------------------------------------------------
+       rep_enddate(1) = -10000*rep_YY - 100*rep_MM - rep_DD
+       rep_enddate(2) =  10000*rep_H  + 100*rep_M  + rep_S
+
+       ! Update REPLAY_ENDDATE with User-Supplied values from CONFIG
+       ! -------------------------------------------------------------
+       call MAPL_GetResource( MAPL, rep_enddate(1), label='REPLAY_ENDDATE:', default=rep_enddate(1), rc=STATUS )
+       VERIFY_(STATUS)
+       call MAPL_GetResource( MAPL, rep_enddate(2), label='REPLAY_ENDTIME:', default=rep_enddate(2), rc=STATUS )
+       VERIFY_(STATUS)
+
+       ! REPACK REPLAY_ENDTIME
+       ! -----------------------
+       if (rep_enddate(1) > 0) then
+         rep_YY =     rep_enddate(1)/10000
+         rep_MM = mod(rep_enddate(1),10000)/100
+         rep_DD = mod(rep_enddate(1),100)
+         rep_H  =     rep_enddate(2)/10000
+         rep_M  = mod(rep_enddate(2),10000)/100
+         rep_S  = mod(rep_enddate(2),100)
+
+         call ESMF_TimeSet( rep_EndTime,   YY = rep_YY, &
+                                           MM = rep_MM, &
+                                           DD = rep_DD, &
+                                            H = rep_H , &
+                                            M = rep_M , &
+                                            S = rep_S , &
+                            calendar=cal,  rc = STATUS  )
+         VERIFY_(STATUS)
+
+         ! Determine REPLAY_INTERVAL
+         ! --------------------------
+         Shutoff = rep_EndTime - currTime
+         call ESMF_TimeIntervalGet(Shutoff, S=rplshut, rc=STATUS)
+         VERIFY_(STATUS)
+         rplshut = MAX(0,rplshut)
+       else
+         rplshut = -3600
+       endif
+
+       ! Initialize REPLAY_SHUTOFF (if USER specified this overrides REPLAY_ENDDATE)
+       ! ---------------------------------------------------------------------------
+       call MAPL_GetResource(MAPL, rplshut, Label="REPLAY_SHUTOFF:", default=rplshut, rc=status)
+       VERIFY_(STATUS)
+       call ESMF_TimeIntervalSet(Shutoff, S=abs(rplshut), rc=status)
        VERIFY_(STATUS)
 
      ! Compute Time of First Call to MKIAU
@@ -1224,7 +1278,7 @@ contains
            VERIFY_(ESMF_FAILURE)
        endif
 
-       if (rplshut <= 0) then ! this is a "flag" to never use Shutoff alarm
+       if (rplshut < 0) then ! this is a "flag" to never use Shutoff alarm
           call ESMF_AlarmDisable(replayShutoffAlarm, RC=STATUS)
           VERIFY_(STATUS)
        end if
@@ -1316,7 +1370,7 @@ contains
          result=GCM_INTERNAL_STATE%SURF_EXP, rc=status)
     VERIFY_(STATUS)
 
-    !select SURFACE import 
+    !select SURFACE import
     call MAPL_ImportStateGet(GC, import=import, name='SURFACE', &
          result=GCM_INTERNAL_STATE%SURF_IMP, rc=status)
     VERIFY_(STATUS)
@@ -1327,7 +1381,7 @@ contains
            result=GCM_INTERNAL_STATE%TURB_EXP, rc=status)
       VERIFY_(STATUS)
 
-      !select TURBULENCE import 
+      !select TURBULENCE import
       call MAPL_ImportStateGet(GC, import=import, name='TURBULENCE', &
            result=GCM_INTERNAL_STATE%TURB_IMP, rc=status)
       VERIFY_(STATUS)
@@ -1346,7 +1400,7 @@ contains
     if (DO_WAVES /= 0) then
        !select WAVE import
        GCM_INTERNAL_STATE%WGCM_IMP = GIM(WGCM)
-   
+
        !select WAVE export
        GCM_INTERNAL_STATE%WGCM_EXP = GEX(WGCM)
     end if
@@ -1437,7 +1491,7 @@ contains
         RC=STATUS)
    VERIFY_(STATUS)
 
-   if (DO_CICE_THERMO <= 1) then  
+   if (DO_CICE_THERMO <= 1) then
       call AllocateExports(GCM_INTERNAL_STATE%expSKIN, &
         [ character(len=8) :: &
         'FRESH', 'FSALT','FHOCN'],                     &
@@ -1867,8 +1921,8 @@ contains
 
                 ! Run the WGCM Gridded Component
                 ! ------------------------------
-                ! ...not safe for WW3. It is also unneccessary, unless 
-                ! there are two-way interactions between W and O/A, 
+                ! ...not safe for WW3. It is also unneccessary, unless
+                ! there are two-way interactions between W and O/A,
                 ! so for now we opt not to run a wave model
                 if (DO_WAVES /= 0) then
 #if (0)
@@ -2032,7 +2086,7 @@ contains
     else
       call MAPL_TimerOn(MAPL,"AGCM"        )
     endif
-   
+
 #ifdef HAS_GIGATRAJ
     ! use agcm export as gigatraj's import to get the initial state.
     ! it only runs at the begining of the first time step
@@ -2133,11 +2187,11 @@ contains
        if (.not. seaIceT_extData) then
          call MAPL_CopyFriendliness(GIM(OGCM),'TI',expSKIN,'TSKINI' ,_RC)
          call MAPL_CopyFriendliness(GIM(OGCM),'SI',expSKIN,'SSKINI', _RC)
-         if (DO_CICE_THERMO <= 1) then  
+         if (DO_CICE_THERMO <= 1) then
             call MAPL_CopyFriendliness(GIM(OGCM),'HI',expSKIN,'HSKINI', _RC)
          endif
        endif
-       if (DO_CICE_THERMO == 1) then  
+       if (DO_CICE_THERMO == 1) then
           call MAPL_CopyFriendliness(GIM(OGCM),'FRACICE',expSKIN,'FR',    _RC)
           call MAPL_CopyFriendliness(GIM(OGCM),'VOLICE',expSKIN,'VOLICE', _RC)
           call MAPL_CopyFriendliness(GIM(OGCM),'VOLSNO',expSKIN,'VOLSNO', _RC)
@@ -2150,7 +2204,7 @@ contains
 ! Do the routing between the atm and ocean's decompositions of the exchage grid
 !------------------------------------------------------------------------------
        if (.not. seaIceT_extData) then
-         if (DO_CICE_THERMO <= 1) then  
+         if (DO_CICE_THERMO <= 1) then
             call DO_A2O(GIM(OGCM),'HI'  ,expSKIN,'HSKINI' , _RC)
          endif
          call DO_A2O(GIM(OGCM),'SI'     ,expSKIN,'SSKINI' , _RC)
@@ -2223,7 +2277,7 @@ contains
        VERIFY_(STATUS)
        call DO_A2O(GIM(OGCM),'DFNIR',expSKIN,'AO_DFNIR', RC=STATUS)
        VERIFY_(STATUS)
-       if (DO_CICE_THERMO <= 1) then  
+       if (DO_CICE_THERMO <= 1) then
            call DO_A2O(GIM(OGCM),'FRESH'  ,expSKIN,'FRESH'  , _RC)
            call DO_A2O(GIM(OGCM),'FSALT'  ,expSKIN,'FSALT'  , _RC)
            call DO_A2O(GIM(OGCM),'FHOCN'  ,expSKIN,'FHOCN'  , _RC)
@@ -2265,7 +2319,7 @@ contains
        if (.not. seaIceT_extData) then
          if (DO_CICE_THERMO <= 1) then
             call DO_O2A(expSKIN, 'HSKINI'   , GIM(OGCM), 'HI'    , _RC)
-         endif 
+         endif
          call DO_O2A(expSKIN, 'SSKINI'   , GIM(OGCM), 'SI'    , _RC)
        endif
 
@@ -2809,18 +2863,18 @@ contains
 
    subroutine DO_A2W(SRC,DST,NAME,RC)
      implicit none
-       
+
      type(ESMF_STATE), intent(INout) :: SRC
      type(ESMF_STATE), intent(inout) :: DST
      character(len=*), intent(in)    :: NAME
      integer, optional,intent(out)   :: RC
 
-     character(len=ESMF_MAXSTR), parameter :: Iam = 'A2W' 
+     character(len=ESMF_MAXSTR), parameter :: Iam = 'A2W'
      integer :: status
 
      type(ESMF_RouteHandle), pointer :: rh
      type(ESMF_Field) :: srcField, dstField
-     
+
      call ESMF_StateGet(SRC, name, srcField, rc=status)
      VERIFY_(STATUS)
      call ESMF_StateGet(DST, name, dstField, rc=status)
@@ -2851,19 +2905,19 @@ contains
 
      RETURN_(ESMF_SUCCESS)
    end subroutine DO_A2W
-     
+
    subroutine DO_W2A(SRC,DST,NAME,RC)
      type(ESMF_STATE), intent(INout) :: SRC
      type(ESMF_STATE), intent(inout) :: DST
      character(len=*), intent(in)    :: NAME
      integer, optional,intent(out)   :: RC
 
-     character(len=ESMF_MAXSTR), parameter :: Iam = 'W2A' 
+     character(len=ESMF_MAXSTR), parameter :: Iam = 'W2A'
      integer :: status
 
      type(ESMF_RouteHandle), pointer :: rh
      type(ESMF_Field) :: srcField, dstField
-     
+
      call ESMF_StateGet(SRC, name, srcField, rc=status)
      VERIFY_(STATUS)
      call ESMF_StateGet(DST, name, dstField, rc=status)
@@ -2894,19 +2948,19 @@ contains
 
      RETURN_(ESMF_SUCCESS)
    end subroutine DO_W2A
-     
+
    subroutine DO_O2W(SRC,DST,NAME,RC)
      type(ESMF_STATE), intent(INout) :: SRC
      type(ESMF_STATE), intent(inout) :: DST
      character(len=*), intent(in)    :: NAME
      integer, optional,intent(out)   :: RC
 
-     character(len=ESMF_MAXSTR), parameter :: Iam = 'O2W' 
+     character(len=ESMF_MAXSTR), parameter :: Iam = 'O2W'
      integer :: status
 
      type(ESMF_RouteHandle), pointer :: rh
      type(ESMF_Field) :: srcField, dstField
-     
+
      call ESMF_StateGet(SRC, name, srcField, rc=status)
      VERIFY_(STATUS)
      call ESMF_StateGet(DST, name, dstField, rc=status)
@@ -2937,19 +2991,19 @@ contains
 
      RETURN_(ESMF_SUCCESS)
    end subroutine DO_O2W
-     
+
    subroutine DO_W2O(SRC,DST,NAME,RC)
      type(ESMF_STATE), intent(INout) :: SRC
      type(ESMF_STATE), intent(inout) :: DST
      character(len=*), intent(in)    :: NAME
      integer, optional,intent(out)   :: RC
 
-     character(len=ESMF_MAXSTR), parameter :: Iam = 'W2O' 
+     character(len=ESMF_MAXSTR), parameter :: Iam = 'W2O'
      integer :: status
 
      type(ESMF_RouteHandle), pointer :: rh
      type(ESMF_Field) :: srcField, dstField
-     
+
      call ESMF_StateGet(SRC, name, srcField, rc=status)
      VERIFY_(STATUS)
      call ESMF_StateGet(DST, name, dstField, rc=status)
@@ -2970,7 +3024,7 @@ contains
         ! we could specify a regridMethod as additional argument in call above.
         ! The default is ESMF_REGRID_METHOD_BILINEAR.
         ! For conservative regridding, in addition to specify
-        ! ESMF_REGRID_METHOD_CONSERVATIVE, we need the corners of both grids  
+        ! ESMF_REGRID_METHOD_CONSERVATIVE, we need the corners of both grids
         ! Also, we could have specified srcMaskValues, and dstMaskValues,
         ! we might need to attach a mask to the grid
 
@@ -2982,7 +3036,7 @@ contains
 
      RETURN_(ESMF_SUCCESS)
    end subroutine DO_W2O
-     
+
  end subroutine Run
 
 !ALT we could have a finalize method to release memory

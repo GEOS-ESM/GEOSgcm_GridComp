@@ -12,7 +12,7 @@ module CNPhenologyMod
 !
 ! !USES:
   use clmtype
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+  use MAPL_Constants, ONLY: r8 => MAPL_R4
   use clm_varcon  , only: tfrz
   use clm_varctl  , only: iulog
   use clm_varpar  , only: numpft

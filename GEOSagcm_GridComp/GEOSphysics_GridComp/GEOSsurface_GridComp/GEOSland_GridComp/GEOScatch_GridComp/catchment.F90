@@ -67,7 +67,7 @@
            MAPL_Land,                             &
            MAPL_UNDEF
       
-      USE MAPL_ConstantsMod, ONLY:          &
+      USE MAPL_Constants, ONLY:          &
            PIE               => MAPL_PI,     &  ! -                       
            ALHE              => MAPL_ALHL,   &  ! J/kg  @15C              
            ALHM              => MAPL_ALHF,   &  ! J/kg                    

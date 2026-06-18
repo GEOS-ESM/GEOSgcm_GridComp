@@ -5,7 +5,7 @@
 
 MODULE shr_const_mod
    
-   use MAPL_ConstantsMod ! use GEOS5 constants
+   use MAPL_Constants ! use GEOS5 constants
 
    !----------------------------------------------------------------------------
    ! physical constants (all data public)

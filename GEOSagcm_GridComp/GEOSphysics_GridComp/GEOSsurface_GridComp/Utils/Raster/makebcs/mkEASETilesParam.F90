@@ -36,7 +36,7 @@ PROGRAM mkEASETilesParam
   use process_hres_data,     only : histogram
   use LogRectRasterizeMod,   only : SRTM_maxcat, MAPL_UNDEF_R8   ! rasterize.F90
   use MAPL_SortMod
-  use MAPL_ConstantsMod,     only : MAPL_PI_r8, MAPL_RADIUS
+  use MAPL_Constants,     only : MAPL_PI_r8, MAPL_RADIUS
   use MAPL_ExceptionHandling
   use MAPL,                  only : MAPL_ease_extent, MAPL_ease_convert, MAPL_ease_inverse, MAPL_WriteTilingNC4
   use netcdf

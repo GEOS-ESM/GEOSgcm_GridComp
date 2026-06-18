@@ -62,7 +62,7 @@ module GEOS_CatchCNCLM40GridCompMod
        CN_zone_weight, map_cat, firefac, numpft
  
   USE MAPL
-  use MAPL_ConstantsMod,only: Tzero => MAPL_TICE, pi => MAPL_PI 
+  use MAPL_Constants,only: Tzero => MAPL_TICE, pi => MAPL_PI 
   use clm_time_manager, only: get_days_per_year, get_step_size
   use pftvarcon,        only: noveg
   USE lsm_routines,     ONLY : sibalb, catch_calc_soil_moist,            &

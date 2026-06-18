@@ -17,7 +17,7 @@ module CNSetValueMod
 !     these variables need to be initialized outside of the clumps loop.
 !
 ! !USES:
-    use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+    use MAPL_Constants, ONLY: r8 => MAPL_R4
     use clm_varpar  , only: nlevgrnd, nlevdecomp_full, ndecomp_pools, ndecomp_cascade_transitions, nlevdecomp
     use clm_varctl  , only: iulog, use_c13, use_c14
     use clmtype
