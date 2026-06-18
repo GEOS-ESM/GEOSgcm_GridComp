@@ -6,7 +6,7 @@
 #SBATCH --constraint=mil
 
 h_max=${1:-24000}
-h_min=${1:-2000}
+h_min=${2:-2000}
 
 find . -mindepth 1 -type d ! -name utils_issm -exec bash -c '
 h_max="$1"
