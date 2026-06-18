@@ -34,6 +34,7 @@ module GEOS_GwdGridCompMod
    use MAPL_Constants, only: MAPL_RADIUS, MAPL_RGAS, MAPL_GRAV, MAPL_VIREPS, MAPL_PI, MAPL_P00, MAPL_CP
    use MAPL, only: MAPL_GridGet, MAPL_GridGetCoordinates, mapl_GridGetGlobalCellCountPerDim
    use MAPL, only: MAPL_GridCompSetEntryPoint
+   use MAPL, only: MAPL_UserCompSetInternalState, MAPL_UserCompGetInternalState
    use MAPL, only: MAPL_GridCompGet, MAPL_GridCompGetResource
    use MAPL, only: MAPL_GridCompGetInternalState
    use MAPL, only: MAPL_GridCompAddSpec, MAPL_GridCompTimerStart, MAPL_GridCompTimerStop
@@ -83,9 +84,7 @@ module GEOS_GwdGridCompMod
       type(ThreadWorkspace), allocatable :: workspaces(:)
    end type GEOS_GwdGridComp
 
-   type wrap_
-      type(GEOS_GwdGridComp), pointer :: PTR
-   end type wrap_
+   character(*), parameter :: PRIVATE_STATE = "GWD_PRIVATE_STATE"
 
    logical :: DEBUG_TQ_ERRORS
    logical :: DEBUG_GWD
@@ -108,13 +107,12 @@ contains
       !   of the generic state. This is the way our true state variables get into
       !   the ESMF\_State INTERNAL, which is in the MAPL\_MetaComp.
 
-      type(wrap_) :: wrap
       type(GEOS_GwdGridComp), pointer :: self
       type(MAPL_UngriddedDim) :: ungrd_16
       integer :: status
 
-      allocate(self, _STAT)
-      wrap%PTR => self
+      _SET_NAMED_PRIVATE_STATE(gc, GEOS_GwdGridComp, PRIVATE_STATE)
+      _GET_NAMED_PRIVATE_STATE(gc, GEOS_GwdGridComp, PRIVATE_STATE, self)
 
       call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_INITIALIZE, Initialize, _RC)
       call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_RUN, Run, phase_name="run", _RC)
@@ -133,8 +131,6 @@ contains
 #include "GWD_Import___.h"
 #include "GWD_Export___.h"
 #include "GWD_Internal___.h"
-
-      call ESMF_UserCompSetInternalState(gc, 'GEOS_GwdGridComp', wrap, _RC)
 
       _RETURN(_SUCCESS)
    end subroutine SetServices
@@ -191,14 +187,12 @@ contains
       logical :: NCAR_ET_USE_DQCDT
       logical :: NCAR_DC_BERES
 
-      type(wrap_) :: wrap
       type(GEOS_GwdGridComp), pointer :: self
       integer :: thread
       type(MAPL_Interval), allocatable :: bounds(:)
       integer :: status
 
-      call ESMF_UserCompGetInternalState(gc, 'GEOS_GwdGridComp', wrap, _RC)
-      self => wrap%PTR
+      _GET_NAMED_PRIVATE_STATE(gc, GEOS_GwdGridComp, PRIVATE_STATE, self)
 
       ! Grid info
       call MAPL_GridCompGet(gc, grid=grid, num_levels=LM, _RC)
@@ -379,13 +373,11 @@ contains
       real, allocatable, dimension(:, :) :: lats, lons
       ! Rayleigh friction parameters
       real :: H0, HH, Z1, TAU1
-      type(wrap_) :: wrap
       type(GEOS_GwdGridComp), pointer :: self
       type(ThreadWorkspace), pointer :: workspace
       integer :: thread, status
 
-      call ESMF_UserCompGetInternalState(gc, 'GEOS_GwdGridComp', wrap, _RC)
-      self => wrap%PTR
+      _GET_NAMED_PRIVATE_STATE(gc, GEOS_GwdGridComp, PRIVATE_STATE, self)
 
       H0 = self%H0
       HH = self%HH
