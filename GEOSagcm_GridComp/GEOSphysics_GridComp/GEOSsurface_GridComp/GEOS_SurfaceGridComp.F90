@@ -5136,8 +5136,8 @@ module GEOS_SurfaceGridCompMod
     type (ESMF_Field)                   :: Field
     type (ESMF_Grid)                    :: GRID
     type (ESMF_Time)                    :: CurrentTime
-    character(len=ESMF_MAXSTR)          :: PRECIP_FILE
-    character(len=ESMF_MAXSTR)          :: PRECIP_SCALE_FILE
+    character(len=ESMF_MAXPATHLEN)      :: PRECIP_FILE
+    character(len=ESMF_MAXPATHLEN)      :: PRECIP_FILE_CLIMSCALE
 
     type (T_SURFACE_STATE), pointer     :: surf_internal_state 
     type (SURF_wrap)                    :: wrap
@@ -6230,7 +6230,7 @@ module GEOS_SurfaceGridCompMod
 
     ! for now, do not allow the combination of precip replacement and clim rescaling
     
-    _ASSERT( .not. (PRECIP_FILE /= "null" .and. PRECIP_FILE_CLIMSCALE /= "null"), &
+    _ASSERT( .not. (trim(PRECIP_FILE) /= "null" .and. trim(PRECIP_FILE_CLIMSCALE) /= "null"), &
          "only one of PRECIP_FILE *or* PRECIP_FILE_CLIMSCALE can be set" )
     
 ! These exports are the rainfalls and total snowfall that
@@ -6265,7 +6265,7 @@ module GEOS_SurfaceGridCompMod
     ICE = ICEFL
     FRZR= FRZRFL
 
-    REPLACE_PRECIP: if(PRECIP_FILE /= "null" .or. PRECIP_FILE_CLIMSCALE /= "null") then
+    REPLACE_PRECIP: if(trim(PRECIP_FILE) /= "null" .or. trim(PRECIP_FILE_CLIMSCALE) /= "null") then
 
        bundle = ESMF_FieldBundleCreate (NAME='PRECIP', RC=STATUS)
        VERIFY_(STATUS)
@@ -6287,7 +6287,7 @@ module GEOS_SurfaceGridCompMod
                           RC=STATUS )
        VERIFY_(STATUS)
        
-       if(PRECIP_FILE /= "null") then
+       if( trim(PRECIP_FILE) /= "null") then
           
           ! read corrected precip (PTTe) directly from (hourly) file if file exists (crashes otherwise?)
           
@@ -7431,7 +7431,7 @@ module GEOS_SurfaceGridCompMod
        VERIFY_(STATUS)
 
        ! Do not correct the precip over ocean tiles
-       if(Precip_File /= "null") then
+       if( trim(Precip_File) /= "null"  .or. trim(PRECIP_FILE_CLIMSCALE) /= "null" ) then
 
           call MAPL_LocStreamTransform( LOCSTREAM, TMPTILE  , PCU,     RC=STATUS); VERIFY_(STATUS)
           where(tiletype == MAPL_OCEAN)  PCUTILE = TMPTILE
@@ -7451,7 +7451,7 @@ module GEOS_SurfaceGridCompMod
        end if
 
        ! Adjust the discharge going to the ocean
-       if(Precip_File /= "null" .and. DischargeAdjustFile /= "null") then
+       if( (trim(Precip_File) /= "null"  .or. trim(PRECIP_FILE_CLIMSCALE) /= "null") .and. DischargeAdjustFile /= "null") then
 
           call MAPL_GetPointer(INTERNAL, DISCHARGE_ADJUST, 'DISCHARGE_ADJUST',  RC=STATUS)
           VERIFY_(STATUS)
@@ -7490,7 +7490,7 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT, CN_PRCP, 'CN_PRCP', ALLOC=.true., RC=STATUS)
     VERIFY_(STATUS)
 
-    if(PRECIP_FILE /= "null") then
+    if( trim(PRECIP_FILE) /= "null" .or. trim(PRECIP_FILE_CLIMSCALE) /= "null" ) then
        TMPTILE = PCUTILE
        call MAPL_LocStreamTransform( LOCSTREAM, CN_PRCP, TMPTILE, RC=STATUS)
        VERIFY_(STATUS)
@@ -7503,7 +7503,7 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT, PRECTOT, 'PRECTOT', ALLOC=.true., RC=STATUS)
     VERIFY_(STATUS)
 
-    if(PRECIP_FILE /= "null") then
+    if( trim(PRECIP_FILE) /= "null" .or. trim(PRECIP_FILE_CLIMSCALE) /= "null" ) then
        TMPTILE = PCUTILE + PLSTILE + SNOFLTILE + ICEFLTILE + FRZRFLTILE
        call MAPL_LocStreamTransform( LOCSTREAM, PRECTOT, TMPTILE, RC=STATUS)
        VERIFY_(STATUS)
