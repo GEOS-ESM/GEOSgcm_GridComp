@@ -1819,6 +1819,7 @@ module GEOS_LandiceGridCompMod
              allocate(issm_tile_state%ICETHICK_TILE(nt_local))
              allocate(issm_tile_state%ICEVEL_TILE(nt_local))
              allocate(issm_tile_state%ICESMB_ISSM(nt_local))
+             issm_tile_state%LANDICE_DT = LANDICE_DT
              issm_tile_wrap%ptr => issm_tile_state
              call ESMF_UserCompSetInternalState(GCS(I), 'ISSM_TILES', issm_tile_wrap, status)
              VERIFY_(STATUS)

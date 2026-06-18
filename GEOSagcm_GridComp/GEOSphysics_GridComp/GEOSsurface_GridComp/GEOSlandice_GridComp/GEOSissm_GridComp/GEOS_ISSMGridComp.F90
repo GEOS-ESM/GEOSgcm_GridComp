@@ -98,7 +98,7 @@ type T_ISSM_TILE_STATE
     real, pointer :: ICEVEL_TILE(:)
     real, pointer :: ICESMB_ISSM(:)
     integer       :: ISSM_NSTEPS
-	real          :: LANDICE_DT
+	  real          :: LANDICE_DT
 end type T_ISSM_TILE_STATE
 
 type ISSM_TILE_WRAP
