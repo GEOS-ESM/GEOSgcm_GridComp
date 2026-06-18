@@ -5,12 +5,10 @@
 module GEOS_GwdGridCompMod
 
    !BOP
-
-   ! !MODULE: GEOS_Gwd -- A Module to compute the forcing due to parameterized gravity wave drag
-
-   ! !DESCRIPTION:
+   !MODULE: GEOS_Gwd -- A Module to compute the forcing due to parameterized gravity wave drag
+   !DESCRIPTION:
    !
-   !   {\tt GWD} is a light-weight gridded component to compute the forcing
+   ! {\tt GWD} is a light-weight gridded component to compute the forcing
    ! due to gravity wave drags. It operates on the ESMF grid that appears in the
    ! gridded component passed to its {\tt Initialize} method. Unlike
    ! heavier gridded components, it does not enforce its own grid.
@@ -21,7 +19,7 @@ module GEOS_GwdGridCompMod
    ! The gravity wave drag scheme is based on NCAR WACCM1b gw\_drag routine.
    ! The scheme includes parameterizations for orographic (stationary) gravity
    ! waves (Kiehl et al. 1996), and for a spectrum of traveling gravity waves
-   !(Sassi et al. 2003; http://acd.ucar.edu/models/WACCM). Both parameteriz-
+   ! (Sassi et al. 2003; http://acd.ucar.edu/models/WACCM). Both parameteriz-
    ! ations are based on Lindzen's [1981] formulation. The interested reader
    ! is referred to those publications for details of the mathematical
    ! derivations.
@@ -119,7 +117,7 @@ contains
       wrap%PTR => self
 
       call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_INITIALIZE, Initialize, _RC)
-      call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_RUN, Run, _RC)
+      call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_RUN, Run, phase_name="run", _RC)
 
       num_threads = 1
       if (use_threads) then

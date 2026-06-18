@@ -10,14 +10,14 @@ cap:
 
   run_extdata: false
   run_history: false
-  root_name: GWD
+  root_name: Root
 
   mapl:
     children:
-      GWD:
-        dso: libGEOSgwd_GridComp.so
-        setservice: gwd_setservices_
-        config_file: gwd.yaml
+      Root:
+        dso: libconfigurable_gridcomp
+        config_file: root.yaml
+        setservice: setservices_
 
   checkpointing:
     enabled: true

@@ -1,0 +1,64 @@
+mapl:
+  misc:
+    restart:
+      internal: true
+
+  states:
+    internal:
+      PLE:
+        standard_name: "air_pressure"
+        units: "Pa"
+        vertical_dim_spec: "edge"
+      T:
+        standard_name: "air_temperature"
+        units: "K"
+        vertical_dim_spec: "center"
+      Q:
+        standard_name: "specific_humidity"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      U:
+        standard_name: "eastward_wind"
+        units: "m s-1"
+        vertical_dim_spec: "center"
+      V:
+        standard_name: "northward_wind"
+        units: "m s-1"
+        vertical_dim_spec: "center"
+      PHIS:
+        standard_name: "surface geopotential height"
+        units: "m+2 s-2"
+        vertical_dim_spec: "none"
+      SGH:
+        standard_name: "standard_deviation_of_topography"
+        units: "m"
+        vertical_dim_spec: "none"
+      VARFLT:
+        standard_name: "variance_of_the_filtered_topography"
+        units: "m+2"
+        vertical_dim_spec: "none"
+      PREF:
+        standard_name: "reference_air_pressure"
+        units: "Pa"
+        dims: "z"
+        vertical_dim_spec: "edge"
+      AREA:
+        standard_name: "grid_box_area"
+        units: "m^2"
+        vertical_dim_spec: "none"
+      DTDT_DC:
+        standard_name: "T tendency due to deep convection"
+        units: "K s-1"
+        vertical_dim_spec: "center"
+      DQLDT:
+        standard_name: "total_liq_water_tendency_due_to_moist"
+        units: "kg kg-1 s-1"
+        vertical_dim_spec: "center"
+      DQIDT:
+        standard_name: "total_ice_water_tendency_due_to_moist"
+        units: "kg kg-1 s-1"
+        vertical_dim_spec: "center"
+      CNV_FRC:
+        standard_name: "convective_fraction"
+        units: "1"
+        vertical_dim_spec: "none"
