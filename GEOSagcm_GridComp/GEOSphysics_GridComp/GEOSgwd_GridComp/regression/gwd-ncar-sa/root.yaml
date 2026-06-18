@@ -1,0 +1,112 @@
+mapl:
+  states: {}
+
+  geometry:
+    esmf_geom:
+      class: CubedSphere
+      im_world: 48
+      nx_face: 1
+      ny_face: 1
+    vertical_grid:
+      class: model
+      standard_name: air_pressure
+      units: hPa
+      num_levels: 72
+      field_edge: PLE
+      field_center: PE
+
+  children:
+    GWD:
+      dso: libGEOSgwd_GridComp.so
+      config_file: gwd.yaml
+      setservice: gwd_setservices_
+
+    DataGwdImports:
+      dso: libconfigurable_gridcomp
+      config_file: data-gwd-imports.yaml
+      setservice: setservices_
+
+  connections:
+    - src_name: PLE
+      src_intent: internal
+      src_comp: DataGwdImports
+      dst_name: PLE
+      dst_comp: GWD
+
+    - src_name: T
+      src_intent: internal
+      src_comp: DataGwdImports
+      dst_name: T
+      dst_comp: GWD
+
+    - src_name: Q
+      src_intent: internal
+      src_comp: DataGwdImports
+      dst_name: Q
+      dst_comp: GWD
+
+    - src_name: U
+      src_intent: internal
+      src_comp: DataGwdImports
+      dst_name: U
+      dst_comp: GWD
+
+    - src_name: V
+      src_intent: internal
+      src_comp: DataGwdImports
+      dst_name: V
+      dst_comp: GWD
+
+    - src_name: PHIS
+      src_intent: internal
+      src_comp: DataGwdImports
+      dst_name: PHIS
+      dst_comp: GWD
+
+    - src_name: SGH
+      src_intent: internal
+      src_comp: DataGwdImports
+      dst_name: SGH
+      dst_comp: GWD
+
+    - src_name: VARFLT
+      src_intent: internal
+      src_comp: DataGwdImports
+      dst_name: VARFLT
+      dst_comp: GWD
+
+    - src_name: PREF
+      src_intent: internal
+      src_comp: DataGwdImports
+      dst_name: PREF
+      dst_comp: GWD
+
+    - src_name: AREA
+      src_intent: internal
+      src_comp: DataGwdImports
+      dst_name: AREA
+      dst_comp: GWD
+
+    - src_name: DTDT_DC
+      src_intent: internal
+      src_comp: DataGwdImports
+      dst_name: DTDT_DC
+      dst_comp: GWD
+
+    - src_name: DQLDT
+      src_intent: internal
+      src_comp: DataGwdImports
+      dst_name: DQLDT
+      dst_comp: GWD
+
+    - src_name: DQIDT
+      src_intent: internal
+      src_comp: DataGwdImports
+      dst_name: DQIDT
+      dst_comp: GWD
+
+    - src_name: CNV_FRC
+      src_intent: internal
+      src_comp: DataGwdImports
+      dst_name: CNV_FRC
+      dst_comp: GWD

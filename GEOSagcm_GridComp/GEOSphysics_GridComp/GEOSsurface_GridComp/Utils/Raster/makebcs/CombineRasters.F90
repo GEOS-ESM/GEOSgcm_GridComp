@@ -4,6 +4,7 @@
 program mkOverlaySimple
 
   use LogRectRasterizeMod,     ONLY: WriteRaster, WriteTiling, SortTiling
+  use rmTinyCatchParaMod,      only: i_raster, j_raster, supplemental_tile_attributes
   use MAPL_SortMod
   use MAPL_HashMod
   use MAPL_ExceptionHandling
@@ -54,7 +55,7 @@ program mkOverlaySimple
   logical                :: DoZip
   logical                :: Verb
   logical                :: found
-  logical                :: Merge
+  logical                :: Merge, regrid
   logical                :: s_flag=.false.
                          
   character*4            :: tildir, rstdir
@@ -64,9 +65,9 @@ program mkOverlaySimple
   character*128          :: Overlay=''
   character*128          :: GridName1, GridName2
   character*128          :: Grid1, Grid2
-  character*128          :: TilFile, RstFile
+  character*128          :: TilFile, RstFile, FilenameNc4
   character*128          :: &
-      Usage = "CombineRasters -v -h -z -t MT -g GF -f TYPE -s SG BOTTOMRASTER TOPRASTER"
+      Usage = "CombineRasters -v -h -z -t MT -g GF -f fill -s SG BOTTOMRASTER TOPRASTER"
 
   character*128          :: Iam = "CombineRasters"
   integer :: Pix1, Pix2
@@ -466,10 +467,16 @@ program mkOverlaySimple
        count0 = count1
     end if
 
+    if (.not. merge) then
+      if ( index(Grid1, "EASE") /=0 .and. index(Grid2, "EASE") /=0) then
+         l = index(TilFile, '.til')
+         regrid = nx /= i_raster .or. ny /= j_raster
+         call supplemental_tile_attributes(nx, ny, regrid, 'DE',TilFile(1:l-1), Rst1)
+      endif
+    endif
+
 ! Clean up
-
     deallocate(Rst1, iTable, rTable)
-
 ! All done
 
     if(Verb) print * , 'Terminated Normally'

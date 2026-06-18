@@ -1,0 +1,162 @@
+from __future__ import annotations
+
+import dataclasses
+from typing import Any
+
+import numpy as np
+import numpy.typing as npt
+from MAPL_PythonBridge import get_MAPLPy
+from MAPL_PythonBridge.memory.fortran_python_converter import FortranPythonConverter
+from MAPL_PythonBridge.types import CVoidPointer
+from ndsl import QuantityFactory
+from ndsl.optional_imports import cupy as cp
+
+
+if cp is None:
+    cp = np
+
+
+class MAPLMemoryRepository:
+    """A factory capable of accessing memory handled by MAPL and formatting it
+    for direct use in DSL application."""
+
+    @dataclasses.dataclass
+    class FortranMemory:
+        pointer: CVoidPointer
+        """C-binded Fortran layout memory"""
+        associated: bool
+        """Is the pointer properly associated in Fortran"""
+        shape: tuple[int, ...]
+        """Shape of the array"""
+        python_array: npt.NDArray | None
+        """Synced python memory, check dirty"""
+        dirty: bool = False
+        """Does the memory need to be synced"""
+
+    def __init__(self, state: CVoidPointer, quantity_factory: QuantityFactory) -> None:
+        self._quantity_factory = quantity_factory
+        self._state = state
+        self._bridge = get_MAPLPy()._mapl_bridge
+        self._quantity_factory.backend
+        self._f_py_converter = FortranPythonConverter(
+            self._quantity_factory.sizer.nx,
+            self._quantity_factory.sizer.ny,
+            self._quantity_factory.sizer.nz,
+            cp if self._quantity_factory.backend.is_gpu_backend() else np,
+        )
+        self._fortran_pointers: dict[str, MAPLMemoryRepository.FortranMemory] = {}
+
+    def register(
+        self,
+        name: str,
+        dtype: npt.DTypeLike,
+        dims: list[str],
+        alloc: bool = False,
+    ):
+        """Register the fortran memory with the factory"""
+        # MAPL Fortran call retrieve memory as a void* - we will cast
+        if len(dims) == 3:
+            is_associated = self._bridge.associated_3d(self._state, name, alloc=alloc)
+            void_fptr = self._bridge.MAPL_GetPointer_3D(self._state, name, alloc=alloc) if is_associated else None
+        elif len(dims) == 2:
+            is_associated = self._bridge.associated_2d(self._state, name, alloc=alloc)
+            void_fptr = self._bridge.MAPL_GetPointer_2D(self._state, name, alloc=alloc) if is_associated else None
+        else:
+            raise NotImplementedError(f"Only 2D & 3D fields implemented, missing support for {len(dims)}D arrays.")
+        cast_ptr = self._f_py_converter.cast(dtype, void_fptr) if void_fptr else None
+        self._fortran_pointers[name] = MAPLMemoryRepository.FortranMemory(
+            pointer=cast_ptr,
+            associated=is_associated,
+            shape=self._quantity_factory.sizer.get_extent(dims),
+            python_array=None,
+        )
+
+    def get_from_fortran(
+        self,
+        name: str,
+        *,
+        allow_device_transfer: bool = True,
+    ) -> npt.NDArray | None:
+        """Retrieve the data from Fortran. Prefer using a MAPLManager."""
+        try:
+            fmem = self._fortran_pointers[name]
+        except KeyError:
+            raise KeyError(f"Pointer {name} was never registered.")
+
+        if not fmem.associated:
+            return None
+
+        # We rely here on `fmem.pointer` constant, therefore we could
+        # go ahead an _not_ re-map. We don't because we want to introduce
+        # a ZERO TRUST mode where we don't rely on Fortran  being constant
+        #     return fmem.python_array
+
+        fmem.python_array = self._f_py_converter.fortran_to_python(
+            fptr=fmem.pointer,
+            dims=list(fmem.shape),
+            allow_device_transfer=allow_device_transfer,
+        )
+
+        return fmem.python_array
+
+    def send_to_fortran(
+        self,
+        name: str,
+    ) -> None:
+        """Move the data back to Fortran. Prefer using a MAPLManager."""
+        try:
+            fmem = self._fortran_pointers[name]
+
+        except KeyError:
+            raise KeyError(f"Pointer {name} was never registered.")
+        if not fmem.associated:
+            return
+
+        self._f_py_converter.python_to_fortran(fmem.python_array, fmem.pointer)
+
+    def associated(self, name: str) -> bool:
+        try:
+            fmem = self._fortran_pointers[name]
+        except KeyError:
+            raise KeyError(f"Pointer {name} was never registered.")
+        return fmem.associated
+
+    def get_resource(self, name: str, dtype: npt.DTypeLike, default: Any) -> npt.DTypeLike:
+        return self._bridge.MAPL_GetResource(self._state, name, dtype(default))  # type: ignore
+
+
+class MAPLManagedMemory:
+    """Context manager capable of get/send the memory from/to Fortran.
+
+    Usage:
+        with MAPLManagedMemory(mapl_memory_repository) as mmm:
+            mmm.Field[...] # access memory "Field" as a NDArray
+            mmm.associated('Field') # see if Fortran associated the memory
+
+    """
+
+    def __init__(self, mapl_factory: MAPLMemoryRepository) -> None:
+        self._mapl_factory = mapl_factory
+        self._local_memory: dict[str, npt.NDArray | None] = {}
+
+    def __enter__(self) -> MAPLManagedMemory:
+        return self
+
+    def __exit__(self, _exc_type, _exc_value, _traceback) -> None:
+        for array_name, value in self._local_memory.items():
+            if value is None:
+                continue
+            self._mapl_factory.send_to_fortran(array_name)
+
+    def associated(self, name: str) -> bool:
+        return self._mapl_factory.associated(name)
+
+    def __getattr__(self, name: str) -> npt.NDArray | None:
+        if name in self._local_memory.keys():
+            return self._local_memory[name]
+        if self.associated(name):
+            array = self._mapl_factory.get_from_fortran(name)
+        else:
+            array = None
+        self._local_memory[name] = array
+        return array

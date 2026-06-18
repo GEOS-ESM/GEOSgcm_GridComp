@@ -20,7 +20,7 @@ category: IMPORT
 #-------------------------------------------------------------------------------------------------------
 #  VARIABLE    | DIMENSIONS  |          Additional Metadata
 #-------------------------------------------------------------------------------------------------------
- NAME    | ALIAS | UNITS   | DIMS | VLOC | RESTART | LONG NAME
+ NAME    | ALIAS | UNITS       | DIMS | VLOC | RESTART | LONG NAME
 #-------------------------------------------------------------------------------------------------------
  PLE     |       | Pa          | xyz  | E    | SKIP    | air_pressure
  T       |       | K           | xyz  | C    | SKIP    | air_temperature

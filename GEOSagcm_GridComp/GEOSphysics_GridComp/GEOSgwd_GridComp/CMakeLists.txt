@@ -16,15 +16,15 @@ set (srcs
   ncar_gwd/gw_rdg.F90
   ncar_gwd/gw_oro.F90
   ncar_gwd/gw_drag.F90
-  )
+)
 
 set (resource_files
   GWD_GridComp.rc
-  )
+)
 
 install( FILES ${resource_files}
   DESTINATION etc
-  )
+)
 
 esma_add_library (
   ${this}
@@ -32,14 +32,16 @@ esma_add_library (
   # GEOS_Shared removed: no GWD source file actually uses it (leftover dependency)
   # not yet ported to MAPL3 - restore GEOS_Shared when ported
   DEPENDENCIES MAPL ESMF::ESMF NetCDF::NetCDF_Fortran TYPE SHARED
-  )
+)
 
 mapl_acg (
   ${this} GWD_StateSpecs.rc
   IMPORT_SPECS EXPORT_SPECS INTERNAL_SPECS GET_POINTERS DECLARE_POINTERS
-  )
+)
 
 # CMake has an OpenMP issue with NAG Fortran: https://gitlab.kitware.com/cmake/cmake/-/issues/21280
 if (NOT CMAKE_Fortran_COMPILER_ID MATCHES "NAG")
    target_link_libraries(${this} PRIVATE OpenMP::OpenMP_Fortran)
 endif ()
+
+add_subdirectory(regression)

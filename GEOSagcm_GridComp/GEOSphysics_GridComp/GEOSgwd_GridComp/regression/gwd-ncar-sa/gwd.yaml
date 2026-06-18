@@ -1,0 +1,20 @@
+AGCM.GRIDNAME: PE48x288-CF
+BERES_FILE_NAME: newmfspectra40_dc25.nc
+
+GEOS_EFFGWBKG: 0.0
+NCAR_EFFGWBKG: 1.0
+RAYLEIGH_TAU1: 0.0
+
+GEOS_EFFGWORO: 0.0
+NCAR_EFFGWORO: 1.0
+NCAR_NRDG: 16
+
+mapl:
+  misc:
+    activate_all_exports: true
+    restart:
+      internal: true
+    checkpoint:
+      export: true
+      import: true
+      internal: true
