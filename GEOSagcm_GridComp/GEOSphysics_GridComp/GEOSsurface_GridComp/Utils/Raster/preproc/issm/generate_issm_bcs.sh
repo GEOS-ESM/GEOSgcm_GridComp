@@ -51,6 +51,8 @@ rm -rf "$domain_name" && mkdir "$domain_name"
 find . -type f -name "ISSM*.bin" -not -path "./ISSM_ME*/*" -exec cp -t "$domain_name" {} +
 find . -type f -name "ISSM*.toolkits" -not -path "./ISSM_ME*/*" -exec cp -t "$domain_name" {} +
 
+cp ISSM_MESH.nc "$domain_name"
+
 echo ""
 echo "================================================================================================================"
 echo "Created ISSM BCs!"
