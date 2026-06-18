@@ -1,12 +1,12 @@
 generate_issm_bcs.sh creates ISSM input files (ISSM*.bin and ISSM*.toolkits) to be used in GEOS. 
 The "ISSM" prefix is used to make sure ISSM doesn't inadvertently try to read other binary files.   
 Run via: sbatch generate_issm_bcs.sh h_max h_min
-where the required arguments h_min and h_max are (approximately) the maxium and minumum element
-edge length in meters, respectively. 
+where the (optional) arguments h_min and h_max are (approximately) the maxium and minumum element
+edge length in meters, respectively. The default arguments are h_max=24000 and h_min=2000.
 
 Default example is produced with:
 
-sbatch generate_issm_bcs.sh 24000 2000
+sbatch generate_issm_bcs.sh 
 
 Data is currently read from: /discover/nobackup/agstubbl/ISSM/data/
 That directory is organized into AIS (Antarctica) and GRIS (Greenland) subdirectories.
