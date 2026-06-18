@@ -1,6 +1,6 @@
 #ISSM
 module purge
-source $NOBACKUP/GEOS/GEOSldas/@env/g5_modules.sh #point to 'current' once geos/v1.0.2 is in latest env
+source /discover/nobackup/mathomp4/SystemTests/builds/AGCM/CURRENT/GEOSgcm/@env/g5_modules.sh
 export ISSM_ARCH="linux-gnu-amd64"
 export ISSM_DIR=$ISSM_ROOT_DIR
 export PATH="$PATH:$ISSM_DIR/scripts:/usr/include:/usr/lib64:/usr/lib"
