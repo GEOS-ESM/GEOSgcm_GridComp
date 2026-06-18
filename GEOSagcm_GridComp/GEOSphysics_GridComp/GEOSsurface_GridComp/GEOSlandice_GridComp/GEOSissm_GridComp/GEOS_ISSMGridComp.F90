@@ -98,6 +98,7 @@ type T_ISSM_TILE_STATE
     real, pointer :: ICEVEL_TILE(:)
     real, pointer :: ICESMB_ISSM(:)
     integer       :: ISSM_NSTEPS
+	real          :: LANDICE_DT
 end type T_ISSM_TILE_STATE
 
 type ISSM_TILE_WRAP
@@ -333,7 +334,7 @@ subroutine SetServices ( GC, RC )
     integer                                :: NSTEPS_INIT             ! landice timesteps since last ISSM run
     integer                                :: NSTEPS_RING             ! total landice timesteps between ISSM runs
     integer                                :: ios, u                  ! for reading ISSM_NSTEPS.txt file
-	  real, pointer, dimension(:)            :: ISSM_NSTEPS => null()   ! steps since last ISSM run (from internal state)
+    real, pointer, dimension(:)            :: ISSM_NSTEPS => null()   ! steps since last ISSM run (from internal state)
 	
     ! ErrLog Variables
     character(len=ESMF_MAXSTR)             :: IAm
@@ -605,18 +606,24 @@ subroutine SetServices ( GC, RC )
 
     call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, _RC )
 
-	  ! Create Custom ISSM Run Alarm 
+    ! Get private internal state for sending information to/from LANDICE
+	!-----------------------------------
+	
+    call ESMF_UserCompGetInternalState(GC, 'ISSM_TILES', issm_tile_wrap, status); _VERIFY(STATUS)
+    issm_tile_state => issm_tile_wrap%ptr
+
+	! Create Custom ISSM Run Alarm 
     !-----------------------------------
 
     ! get internal state
-	  call MAPL_Get(MAPL,INTERNAL_ESMF_STATE = INTERNAL,_RC)
+    call MAPL_Get(MAPL,INTERNAL_ESMF_STATE = INTERNAL,_RC)
 
-	  ! get number of time steps since last ISSM run
+	! get number of time steps since last ISSM run
     call MAPL_GetPointer(INTERNAL, ISSM_NSTEPS, 'ISSM_NSTEPS',_RC)
     NSTEPS_INIT = nint(maxval(ISSM_NSTEPS))
 
     ! get timestep for landice 
-    call MAPL_Get(MAPL, HEARTBEAT=LANDICE_DT,_RC)
+    LANDICE_DT = issm_tile_state%LANDICE_DT
     
     ! get timestep for ISSM
     call MAPL_GetResource(MAPL, ISSM_DT, Label=trim(COMP_NAME)//"_DT:",DEFAULT=302400.0, _RC)
@@ -734,8 +741,6 @@ subroutine SetServices ( GC, RC )
 
     ! Finally, set the tile export state so landice can access values before ISSM runs
     !-----------------------------------
-	  call ESMF_UserCompGetInternalState(GC, 'ISSM_TILES', issm_tile_wrap, status); _VERIFY(STATUS)
-    issm_tile_state => issm_tile_wrap%ptr
 	
     ! Regrid from mesh to tile
     call MAPL_LocStreamGet(internal_state%locstream, NT_LOCAL=NT, _RC)

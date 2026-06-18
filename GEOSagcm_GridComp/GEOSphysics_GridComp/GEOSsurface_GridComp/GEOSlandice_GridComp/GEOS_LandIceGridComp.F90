@@ -1761,7 +1761,8 @@ module GEOS_LandiceGridCompMod
        real, pointer, dimension(:)             :: ICEVEL
 #endif
        integer                                 :: nt_local
-	   integer                                 :: DO_ISSM	   
+       integer                                 :: DO_ISSM
+       real                                    :: LANDICE_DT                     
         
    !=============================================================================
    
@@ -1793,6 +1794,11 @@ module GEOS_LandiceGridCompMod
    ! Place the land tilegrid in the generic state of each child component
    !---------------------------------------------------------------------
 
+       ! get model timestep, overwrite with component-specific timestep if found
+       call MAPL_GetResource (MAPL, LANDICE_DT, label='RUN_DT:',_RC)
+       call MAPL_GetResource (MAPL, LANDICE_DT, label='DT:',default=LANDICE_DT,_RC)
+       
+       ! get ISSM flag
        call MAPL_GetResource (MAPL, DO_ISSM, label='DO_ISSM:', DEFAULT=0, __RC__ )
    
 #ifndef HAVE_ISSM
