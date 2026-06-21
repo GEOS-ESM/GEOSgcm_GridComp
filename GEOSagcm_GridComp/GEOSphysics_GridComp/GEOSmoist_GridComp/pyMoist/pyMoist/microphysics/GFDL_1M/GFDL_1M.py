@@ -1,10 +1,11 @@
-from ndsl import NDSLRuntime, OptimizationConfig, QuantityFactory, StencilFactory
+from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.driver import GFDL1MDriver
 from pyMoist.microphysics.GFDL_1M.finalize import GFDL1MFinalize
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
+from pyMoist.microphysics.GFDL_1M.optimization import get_optimization_config
 from pyMoist.microphysics.GFDL_1M.PhaseChange import PhaseChange
 from pyMoist.microphysics.GFDL_1M.setup import GFDL1MSetup
 from pyMoist.microphysics.GFDL_1M.shared_stencils import (
@@ -46,8 +47,7 @@ class GFDL1M(NDSLRuntime):
         quantity_factory: QuantityFactory,
         config: GFDL1MConfig,
     ):
-        oconfig = OptimizationConfig(stree=OptimizationConfig.Tree(enabled=True))
-        super().__init__(stencil_factory, oconfig)
+        super().__init__(stencil_factory, get_optimization_config(stencil_factory))
 
         # Initialize saturation tables
         saturation_tables = get_saturation_vapor_pressure_table(stencil_factory)
