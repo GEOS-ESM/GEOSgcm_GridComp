@@ -1183,7 +1183,51 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
 
       
        call MAPL_TimerOn(MAPL,"---ACTIV") !Activation timer
+        ! These diagnostics are only overwritten on active levels below.
+        ! Reset the full fields so edge levels and optional outputs are
+        ! deterministic for every layout.
         SC_ICE  =  1.0
+        CDNC_NUC = 0.0
+        INC_NUC = 0.0
+        PFRZ = 0.0
+        SMAX_LIQ = 0.0
+        SMAX_ICE = 0.0
+        CCN01 = 0.0
+        CCN02 = 0.0
+        CCN1 = 0.0
+        NHET_NUC = 0.0
+        NLIM_NUC = 0.0
+        SO4 = 0.0
+        ORG = 0.0
+        BCARBON = 0.0
+        DUST = 0.0
+        SEASALT = 0.0
+        NHET_IMM = 0.0
+        NHET_DEP = 0.0
+        DUST_IMM = 0.0
+        DUST_DEP = 0.0
+        DNHET_IMM = 0.0
+        BERG = 0.0
+        BERGS = 0.0
+        MELT = 0.0
+        DNHET_CT = 0.0
+        QCRES = 0.0
+        QIRES = 0.0
+        AUTICE = 0.0
+        FRZPP_LS = 0.0
+        SNOWMELT_LS = 0.0
+        DNCNUC = 0.0
+        DNCSUBL = 0.0
+        DNCHMSPLIT = 0.0
+        DNCAUTICE = 0.0
+        DNCACRIS = 0.0
+        DNDCCN = 0.0
+        DNDACRLS = 0.0
+        DNDACRLR = 0.0
+        DNDEVAPC = 0.0
+        DNDAUTLIQ = 0.0
+        DNDCNV = 0.0
+        DNICNV = 0.0
         
         
         
@@ -1840,10 +1884,15 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
         
     do I=1,IM
 	    do J=1,JM       
-               kbmin =1                          
-               rndstr8 = 2.0e-7
-               naconr8   = 0.
-               cldfr8(1,1:LM)  = RAD_CF(I,J,1:LM) !Assume minimum overlap 
+	               kbmin =1
+	               rndstr8 = 2.0e-7
+	               naconr8   = 0.
+	               nsootr8 = 0.0_r8
+	               rnsootr8 = 0.0_r8
+	               nccons = .false.
+	               nicons = .false.
+	               ngcons = .false.
+	               cldfr8(1,1:LM)  = RAD_CF(I,J,1:LM) !Assume minimum overlap
                cldor8          = cldfr8  
                ter8(1,1:LM)       = T(I,J,1:LM)
                qvr8(1,1:LM)       = RAD_QV(I,J,1:LM)
@@ -1888,7 +1937,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
                 end if
                 
                
-               nbincontactdust = 1 
+	               nbincontactdust = 0
                  
                if (USE_NCLOUD_CLIM) then !!!!!climatological ND, NI options
                 
@@ -1926,11 +1975,13 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
                         rnsootr8(1, K) = rnsootr8(1, K) + AeroPropsNew(n)%dpg(I, J, K)
                         naux =naux+1
                        END IF
-                      end do 
-                        rnsootr8(1, K) = rnsootr8(1, K) / naux
-                        nsootr8(1, K)  =  nsootr8(1, K) /naux
+	                      end do
+	                      if (naux .gt. 0) then
+	                        rnsootr8(1, K) = rnsootr8(1, K) / naux
+	                        nsootr8(1, K)  =  nsootr8(1, K) /naux
+	                      end if
 
-                   END DO
+	                   END DO
 
                end if
                
