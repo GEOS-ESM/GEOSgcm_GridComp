@@ -213,6 +213,11 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     integer                         :: I, J, L
     integer                         :: IM,JM,LM
 
+    ! Timing vars - to delete
+    real :: start, finish
+    type(ESMF_VM) :: vm
+    integer :: comm, rank, mpierr
+
     call ESMF_ClockGetAlarm(clock, 'UW_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
     alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
     
@@ -239,6 +244,12 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          RC=STATUS )
     VERIFY_(STATUS)
     
+    ! Local timing - delete
+    call ESMF_VMGetCurrent(vm, rc=status) ! pchakrab: replace with ESMF_GridCompGet(gc, VM=VM, _RC)
+    call ESMF_VMGet(vm, mpiCommunicator=comm)
+    call MPI_Comm_rank(comm, rank, mpierr)
+    call cpu_time(start)
+
     if (USE_PYMOIST_UW) then
       call CNV_Tracers_To_SOA()
       call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.convection.UW_interface", MAPL, IMPORT, EXPORT, INTERNAL )
@@ -455,6 +466,10 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         if (associated(PTR2D)) PTR2D = CUSH
   
     endif ! USE_PYMOIST_UW
+
+    ! End profiler marker for Microphysics
+    call cpu_time(finish)
+    if (rank == 0) print *, '0: uw: time taken = ', finish - start, 's'    
 
     call MAPL_TimerOff (MAPL,"--UW")
 
