@@ -1,4 +1,4 @@
-from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
+from ndsl import NDSLRuntime, OptimizationConfig, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
@@ -46,7 +46,8 @@ class GFDL1M(NDSLRuntime):
         quantity_factory: QuantityFactory,
         config: GFDL1MConfig,
     ):
-        super().__init__(stencil_factory)
+        oconfig = OptimizationConfig(stree=OptimizationConfig.Tree(enabled=True))
+        super().__init__(stencil_factory, oconfig)
 
         # Initialize saturation tables
         saturation_tables = get_saturation_vapor_pressure_table(stencil_factory)
