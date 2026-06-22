@@ -1,5 +1,10 @@
-from ndsl import OptimizationConfig, StencilFactory
+from ndsl import OptimizationConfig
 
 
-def get_optimization_config(stencil_factory: StencilFactory):
-    return OptimizationConfig(stree=OptimizationConfig.Tree(enabled=True, merger=OptimizationConfig.Tree.Merger(enabled=True, overcompute=True)))
+def get_optimization_config() -> OptimizationConfig:
+    return OptimizationConfig(
+        stree=OptimizationConfig.Tree(
+            enabled=True,
+            merger=OptimizationConfig.Tree.Merger(enabled=True, overcompute=True),
+        ),
+    )
