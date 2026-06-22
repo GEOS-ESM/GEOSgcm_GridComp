@@ -53,11 +53,16 @@ function(run_case case_name regression_data_dir)
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/${case_name} ${expdir}
   )
 
+  set(root_dir ${regression_data_dir}/${case_name})
   set(num_procs "6")
-  set(root_dir ${regression_data_dir}/${case_name}/checkpoints)
   set(start_date_time "1891-03-01T00:00:00")
-  set(restart_dir ${root_dir}/${start_date_time})
-  set(checkpoints_dir ${root_dir}/last)
+  set(restart_dir ${root_dir}/checkpoints/${start_date_time})
+  set(checkpoints_dir ${root_dir}/checkpoints/last)
+
+  if(NOT EXISTS ${root_dir})
+    message(STATUS "Regression data not found for ${case_name}: ${root_dir} -- skipping")
+    return()
+  endif()
 
   copy_restarts(${restart_dir} ${expdir}/checkpoints/${start_date_time})
   copy_file(${regression_data_dir}/newmfspectra40_dc25.nc ${expdir})
