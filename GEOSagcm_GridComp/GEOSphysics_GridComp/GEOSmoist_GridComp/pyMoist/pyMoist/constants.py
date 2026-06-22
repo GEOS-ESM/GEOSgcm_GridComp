@@ -21,9 +21,7 @@ EXPERIMENT_TRACERS = {
 }
 EXP_NAME = os.getenv("EXP_NAME", "")
 if EXP_NAME == "":
-    raise ValueError(
-        f"EXP_NAME env var is not set - experiment unknown. Options are {list(EXPERIMENT_TRACERS.keys())}"
-    )
+    raise ValueError(f"EXP_NAME env var is not set - experiment unknown. Options are {list(EXPERIMENT_TRACERS.keys())}")
 if EXP_NAME not in EXPERIMENT_TRACERS:
     raise ValueError(f"Experiment {EXP_NAME} unknown - tracers can't be initialized.")
 NCNST = _i32(EXPERIMENT_TRACERS[EXP_NAME])
@@ -145,11 +143,7 @@ ABETA = Float(0.07)
 RHO_W = Float(1000.0)
 LDISS = Float(0.07)
 LK = Float(0.75)
-LBX = (
-    LDISS
-    * Float(1.0e3)
-    * (Float(3.0) / (Float(4.0) * MAPL_PI * LK * RHO_W * Float(1.0e-3))) ** (Float(1.0) / Float(3.0))
-)
+LBX = LDISS * Float(1.0e3) * (Float(3.0) / (Float(4.0) * MAPL_PI * LK * RHO_W * Float(1.0e-3))) ** (Float(1.0) / Float(3.0))
 LBE = Float(1.0) / Float(3.0) - Float(0.14)
 
 # Aer Activation constants
