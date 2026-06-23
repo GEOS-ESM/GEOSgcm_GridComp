@@ -47,7 +47,7 @@ class GFDL1M(NDSLRuntime):
         quantity_factory: QuantityFactory,
         config: GFDL1MConfig,
     ):
-        super().__init__(stencil_factory, get_optimization_config())
+        super().__init__(stencil_factory, get_optimization_config(stencil_factory))
 
         # Initialize saturation tables
         saturation_tables = get_saturation_vapor_pressure_table(stencil_factory)
