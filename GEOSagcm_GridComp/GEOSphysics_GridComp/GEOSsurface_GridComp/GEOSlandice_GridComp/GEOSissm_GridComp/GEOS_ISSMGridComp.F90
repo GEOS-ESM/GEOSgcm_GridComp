@@ -295,6 +295,15 @@ subroutine SetServices ( GC, RC )
          VLOCATION  = MAPL_VLocationNone,          &
          RESTART    = MAPL_RestartOptional,        &
          _RC  )
+	 call MAPL_AddInternalSpec(GC,                 &
+         SHORT_NAME = 'RS_NODEIDS',                &
+         LONG_NAME  = 'restart_node_ids',           &
+         UNITS      = 'none',                      &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone,          &
+         RESTART    = MAPL_RestartOptional,        &
+         _RC  )
+
 
 ! Set the Profiling timers
 ! ------------------------
@@ -433,6 +442,15 @@ subroutine SetServices ( GC, RC )
     real, pointer, dimension(:)            :: ICEVX_EX      => null() ! ice velocity (x direction) on mesh tiles
     real, pointer, dimension(:)            :: ICEVY_EX      => null() ! ice velocity (y direction) on mesh tiles
 
+	! restart redistribution
+    real, pointer, dimension(:)            :: restartNodeIds=> null() ! nodeIds for restart ordering
+    type(ESMF_DistGrid)                    :: restartDistgrid         ! distgrid from reading restarts
+    logical                                :: distgrid_match          ! check if distgrid from restarts matches nodal disgrid (locally)
+    logical                                :: needRedist              ! global check for consistent distgrid across all processes
+    integer,allocatable,dimension(:)       :: localFlag, globalFlag   ! arrays for vm operations
+    type(ESMF_Array)                       :: restartArray            ! array corresponding to restartDistgrid 
+    type(ESMF_Array)                       :: nodalArray              ! array corresponding to nodalDistgrid 
+    type(ESMF_RouteHandle)                 :: redisthandle            ! routehandle for redistribution
 
 
     ! Get the target components name and set-up traceback handle.
@@ -666,16 +684,50 @@ subroutine SetServices ( GC, RC )
     call MAPL_GetPointer(INTERNAL, ICEVY_IN, 'ICEVY',_RC)
     call MAPL_GetPointer(INTERNAL, IMLS_IN, 'IMLS', _RC)
     call MAPL_GetPointer(INTERNAL, OMLS_IN, 'OMLS',_RC)
-
+    call MAPL_GetPointer(INTERNAL, restartNodeIds, 'RS_NODEIDS',_RC)
+	
     ! if restart has been read, apply halo operation and send pointers to ISSM
     ! else, ISSM will just use default initial values in ISSM*.bin input files
     if (associated(ICETHICK_IN)) then
-       ! simple check for positive ice thickness (initialized to zero if restart not found)
-	     ! ISSM throws error for zero ice thickness
+        ! simple check for positive ice thickness (initialized to zero if restart not found)
+        ! ISSM throws error for zero ice thickness
         ISSM_RST_FOUND = minval(ICETHICK_IN) > epsilon(ICETHICK_IN)
     end if
     
     if (ISSM_RST_FOUND) then
+	  ! check if the nodal distgrid created above matches the distgrid read from the restart
+	  ! it will only be different if running over a different number of processes than when
+	  ! the restart was written. if it is, we redistribute the restart arrays correctly
+      allocate(localFlag(1))
+      allocate(globalFlag(1))
+	  distgrid_match = all(ownedNodeIds==nint(restartNodeIds))
+      localFlag(1) = 0
+      if (distgrid_match) localFlag(1) = 1
+      call ESMF_VMAllReduce(vm, sendData=localFlag, recvData=globalFlag, count=1, reduceflag=ESMF_REDUCE_MIN, _RC)
+      needRedist = (globalFlag(1) == 0)
+	  
+      if (needRedist) then
+	  ! create routehandle for redistribution, and redistribute all restarts from the 
+	  ! restart distgrid to the current distgrid (nodalDistgrid) 
+          restartDistgrid = ESMF_DistGridCreate(arbSeqIndexList=nint(restartNodeIds), _RC)
+          restartArray=ESMF_ArrayCreate(distgrid=restartDistgrid,typekind=ESMF_TYPEKIND_R4,_RC)
+          nodalArray=ESMF_ArrayCreate(distgrid=nodalDistgrid,typekind=ESMF_TYPEKIND_R4,_RC)
+          call ESMF_ArrayRedistStore(srcArray=restartArray, dstArray=nodalArray, routehandle=redisthandle,_RC)
+
+		  call apply_redist(ICESURF_IN,_RC)
+		  call apply_redist(ICETHICK_IN,_RC)
+		  call apply_redist(ICEVX_IN,_RC)
+		  call apply_redist(ICEVY_IN,_RC)
+		  call apply_redist(IMLS_IN,_RC)
+		  call apply_redist(OMLS_IN,_RC)
+
+          call ESMF_VMBarrier(vm, _RC)   
+		  
+		  call ESMF_ArrayDestroy(restartArray, _RC)
+          call ESMF_ArrayDestroy(nodalArray, _RC)
+		  
+      end if 
+	
       ! apply halo operation to all restart variables
       call apply_halo(ICESURF_IN,ICESURF_HALO,_RC)
       call apply_halo(ICETHICK_IN,ICETHICK_HALO,_RC)
@@ -764,6 +816,10 @@ subroutine SetServices ( GC, RC )
 
     issm_tile_state%ISSM_NSTEPS = NSTEPS_INIT
 
+
+	! set nodeIds internal associated with restart
+	if(associated(restartNodeIds)) restartNodeIds(:) = ownedNodeIds(:)
+
     call ESMF_VMBarrier(vm, _RC)
 
     ! deallocate pointers
@@ -803,15 +859,15 @@ subroutine SetServices ( GC, RC )
     contains
        subroutine apply_halo(VAR_IN,VAR_HALO,RC)
           ! apply halo operation to a restart variable
-		      ! arguments:
+          ! arguments:
           real, pointer, dimension(:), intent(inout)     :: VAR_IN            ! var on owned_nodes
           real(dp), pointer, dimension(:), intent(inout) :: VAR_HALO          ! var on all nodes
-		      integer, optional, intent(out)                 :: RC
+          integer, optional, intent(out)                 :: RC
 
 		      ! local variables:
           real(dp), pointer, dimension(:)                :: VAR_DP            ! double version of VAR_IN
           real(dp), pointer, dimension(:)                :: MESH_PTR          ! pointer for ESMF_FieldGet
-          real(dp), pointer, dimension(:)                :: ARRAY_PTR         ! pointer for ESMF_FieldGet 
+          real(dp), pointer, dimension(:)                :: ARRAY_PTR         ! pointer for ESMF_ArrayGet 
           type(ESMF_Array)                               :: meshArray         ! array for creating mesh fields
           type(ESMF_Field)                               :: meshField         ! field associated with meshArray
 
@@ -843,14 +899,46 @@ subroutine SetServices ( GC, RC )
           call ESMF_ArrayDestroy(meshArray,_RC)  
           deallocate(VAR_DP)
 
-		      _RETURN(_SUCCESS)
+          _RETURN(_SUCCESS)
        end subroutine apply_halo
+
+       subroutine apply_redist(VAR_RS,RC)
+	      ! arguments:
+          real, pointer, dimension(:), intent(inout)     :: VAR_RS       ! var from restsart
+          integer, optional, intent(out)                 :: RC
+
+          type(ESMF_Array)                               :: restartArray ! restart array
+          type(ESMF_Array)                               :: redistArray  ! redistributed array
+          real, pointer, dimension(:)                    :: redistPtr	  
+
+          restartArray=ESMF_ArrayCreate(distgrid=restartDistgrid,farrayPtr=VAR_RS,_RC)
+          redistArray=ESMF_ArrayCreate(distgrid=nodalDistgrid,typekind=ESMF_TYPEKIND_R4,_RC)
+
+          ! redistribute the data
+          call ESMF_ArrayRedist(srcArray=restartArray, dstArray=redistArray, routehandle=redisthandle,_RC)
+
+          ! get the pointer to the data
+		  call ESMF_ArrayGet(redistArray,farrayPtr=redistPtr)
+
+          ! make sure all processes have finished redistribution
+          call ESMF_VMBarrier(vm, _RC)
+ 
+		  ! copy values into output
+		  VAR_RS(:) = redistPtr(:)
+
+          call ESMF_VMBarrier(vm, _RC)
+		  call ESMF_ArrayDestroy(restartArray,_RC)
+		  call ESMF_ArrayDestroy(redistArray,_RC)  
+
+          _RETURN(_SUCCESS)
+       end subroutine apply_redist
 
        function create_mesh_grid(rc) result(mesh_grid)
           type (ESMF_Grid) :: mesh_grid
           integer, optional, intent(out) :: RC
           integer :: status, nDEs, num(1)
-          real(kind=8), pointer :: centers(:,:)
+          real(kind=8), pointer :: centers_lon(:,:)
+          real(kind=8), pointer :: centers_lat(:,:)
           integer, allocatable  :: IMs(:)
           
 
@@ -879,12 +967,12 @@ subroutine SetServices ( GC, RC )
 
           call ESMF_GridGetCoord(mesh_grid, coordDim=1, localDE=0, &
                staggerloc=ESMF_STAGGERLOC_CENTER, &
-               farrayPtr=centers, _RC)
-          centers = 0 
+               farrayPtr=centers_lon, _RC)
+          centers_lon(:,1) = ownedNodeLons 
           call ESMF_GridGetCoord(mesh_grid, coordDim=2, localDE=0, &
                staggerloc=ESMF_STAGGERLOC_CENTER, &
-               farrayPtr=centers, _RC)
-          centers = 0 
+               farrayPtr=centers_lat, _RC)
+          centers_lat(:,1) = ownedNodeLats 
 
           _RETURN(_SUCCESS)
        end function create_mesh_grid      
