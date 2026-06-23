@@ -308,7 +308,6 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     if (DT_R8 <= 150.0) do_sedi_melt_qi = .true.
     if (DT_R8 <= 150.0) do_sedi_melt_qs = .true.
     if (DT_R8 <= 150.0) do_sedi_melt_qg = .true.
-    if (DT_R8 <= 150.0) ifflag = 1
 
     if (GFDL_MP3) then
       call gfdl_mp_init(LHYDROSTATIC,DT_MOIST)
@@ -350,6 +349,8 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
 
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 2500.0, RC=STATUS); VERIFY_(STATUS)
+
+    call MAPL_GetResource( MAPL, ICE_FRACTION_POLYNOMIAL, Label="ICE_FRACTION_POLYNOMIAL:",  default=V12_ICE_POLYNOMIAL, RC=STATUS) ; VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, USE_AEROSOL_NN , 'USE_AEROSOL_NN:'  , DEFAULT=USE_AEROSOL_NN, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, USE_BERGERON   , 'USE_BERGERON:'    , DEFAULT=USE_AEROSOL_NN, RC=STATUS); VERIFY_(STATUS)

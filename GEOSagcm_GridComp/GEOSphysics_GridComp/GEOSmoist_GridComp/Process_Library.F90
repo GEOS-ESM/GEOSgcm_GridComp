@@ -41,7 +41,10 @@ module GEOSmoist_Process_Library
   integer, parameter :: SRF_TYPE_ICE     = 3
   integer, parameter :: SRF_TYPE_LANDICE = 4
 
-  logical :: USE_JASON_ICE_FRACTIONS = .false.
+  integer, parameter :: RAW_MODIS_POLYNOMIAL = 1
+  integer, parameter :: JASON_ICE_POLYNOMIAL = 2
+  integer, parameter :: V12_ICE_POLYNOMIAL   = 3
+  integer :: ICE_FRACTION_POLYNOMIAL = 3
 
   ! ICE_FRACTION constants
    ! In anvil/convective clouds
@@ -284,7 +287,8 @@ module GEOSmoist_Process_Library
   public :: WSUB_OPTION, PDFSHAPE
   public :: CNV_Tracer_Type, CNV_Tracers, CNV_Tracers_Init
   public :: USE_BERGERON, USE_AEROSOL_NN, USE_NCLOUD_CLIM
-  public :: USE_JASON_ICE_FRACTIONS
+  public :: RAW_MODIS_POLYNOMIAL, JASON_ICE_POLYNOMIAL, V12_ICE_POLYNOMIAL
+  public :: ICE_FRACTION_POLYNOMIAL
   public :: SRF_TYPE_OCEAN, SRF_TYPE_LAND, SRF_TYPE_SNOW, SRF_TYPE_ICE, SRF_TYPE_LANDICE
   public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, BUOYANCY2
   public :: REDISTRIBUTE_CLOUDS_SCALAR, REDISTRIBUTE_CLOUDS, RADCOUPLE_SCALE_AWARE, RADCOUPLE, FIX_UP_CLOUDS
@@ -630,43 +634,34 @@ module GEOSmoist_Process_Library
       real             :: ICEFRCT_C, ICEFRCT_M, ICEFRCT_PHYS
       real             :: t_all_loc, t_max_loc, pwr_loc
 
-#ifdef USE_MODIS_ICE_POLY
-     ! Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384)
-      tc = MAX(-46.0,MIN(TEMP-MAPL_TICE,46.0)) ! convert to celcius and limit range from -46:46 C
-      ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
-      ICEFRCT = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
-#else
-      ! ------------------------------------------------------------------
-      ! 1. Convective / Anvil Cloud Ice Fraction (ICEFRCT_C)
-      ! ------------------------------------------------------------------
-      ! Select the correct constants based on parameterization
-      if (ICE_RADII_PARAM == 1) then
-         t_all_loc = JaT_ICE_ALL
-         t_max_loc = JaT_ICE_MAX
-         pwr_loc   = JaICEFRPWR
-      else
-         t_all_loc = aT_ICE_ALL
-         t_max_loc = aT_ICE_MAX
-         pwr_loc   = aICEFRPWR
-      end if
+      select case (ICE_FRACTION_POLYNOMIAL)
+      case (RAW_MODIS_POLYNOMIAL)
 
-      ! Calculate ICEFRCT_C once
-      ICEFRCT_C = 0.00
-      if ( TEMP <= t_all_loc ) then
-         ICEFRCT_C = 1.000
-      else if ( TEMP <= t_max_loc ) then
-         ICEFRCT_C = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - t_all_loc ) / ( t_max_loc - t_all_loc ) ) )
-      end if
-      ICEFRCT_C = MAX(0.00, MIN(1.00, ICEFRCT_C)) ** pwr_loc
+          ! Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384)
+          tc = MAX(-46.0,MIN(TEMP-MAPL_TICE,46.0)) ! convert to celcius and limit range from -46:46 C
+          ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
+          ICEFRCT = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
 
-      ! ------------------------------------------------------------------
-      ! 2. Grid-Scale / Mesh Cloud Ice Fraction (ICEFRCT_M)
-      ! ------------------------------------------------------------------
+      case (JASON_ICE_POLYNOMIAL)
       
-      if (USE_JASON_ICE_FRACTIONS) then
-      
+         ! ------------------------------------------------------------------
+         ! 1. Convective / Anvil Cloud Ice Fraction (ICEFRCT_C)
+         ! ------------------------------------------------------------------
+         ICEFRCT_C  = 0.00
+         if ( TEMP <= JaT_ICE_ALL ) then
+            ICEFRCT_C = 1.000
+         else if ( (TEMP > JaT_ICE_ALL) .AND. (TEMP <= JaT_ICE_MAX) ) then
+            ICEFRCT_C = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - JaT_ICE_ALL ) / ( JaT_ICE_MAX - JaT_ICE_ALL ) ) )
+         end if
+         ICEFRCT_C = MIN(ICEFRCT_C,1.00)
+         ICEFRCT_C = MAX(ICEFRCT_C,0.00)
+         ICEFRCT_C = ICEFRCT_C**aICEFRPWR
+
+         ! ------------------------------------------------------------------
+         ! 2. Grid-Scale / Mesh Cloud Ice Fraction (ICEFRCT_M)
+         ! ------------------------------------------------------------------
          ! Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
-         select case (nint(SRF_TYPE))
+         select case (NINT(SRF_TYPE))
          case (SRF_TYPE_SNOW, SRF_TYPE_ICE, SRF_TYPE_LANDICE)
            ! Over snow (SRF_TYPE == 2.0) and ice (SRF_TYPE >= 3.0)
            ICEFRCT_M  = 0.00
@@ -705,11 +700,28 @@ module GEOSmoist_Process_Library
            print *, 'ICE_FRACTION_SC: Unknown SRF_TYPE = ',SRF_TYPE
            error stop
          end select
-         
-      else
+
+         ! Combine the Convective and Mesh functions
+         ICEFRCT  = ICEFRCT_M*(1.0-CNV_FRACTION) + ICEFRCT_C*(CNV_FRACTION)
+ 
+      case (V12_ICE_POLYNOMIAL)
       
+         ! ------------------------------------------------------------------
+         ! 1. Convective / Anvil Cloud Ice Fraction (ICEFRCT_C)
+         ! ------------------------------------------------------------------
+         ICEFRCT_C = 0.00
+         if ( TEMP <= aT_ICE_ALL ) then
+            ICEFRCT_C = 1.000
+         else if ( TEMP <= aT_ICE_MAX ) then
+            ICEFRCT_C = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - aT_ICE_ALL ) / ( aT_ICE_MAX - aT_ICE_ALL ) ) )
+         end if
+         ICEFRCT_C = MAX(0.00, MIN(1.00, ICEFRCT_C)) ** aICEFRPWR
+
+         ! ------------------------------------------------------------------
+         ! 2. Grid-Scale / Mesh Cloud Ice Fraction (ICEFRCT_M)
+         ! ------------------------------------------------------------------
          ! Select the correct constants based on surface type
-         select case (nint(SRF_TYPE))
+         select case (NINT(SRF_TYPE))
          case (SRF_TYPE_LANDICE)
               t_all_loc = liT_ICE_ALL
               t_max_loc = liT_ICE_MAX
@@ -737,7 +749,7 @@ module GEOSmoist_Process_Library
          end select
 
          ! Calculate ICEFRCT_M
-         ! Cleaned up sequence for all other surface types
+         ! Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
          ICEFRCT_M = 0.00
          if ( TEMP <= t_all_loc ) then
             ICEFRCT_M = 1.000
@@ -745,15 +757,18 @@ module GEOSmoist_Process_Library
             ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - t_all_loc ) / ( t_max_loc - t_all_loc ) ) )
          end if
          ICEFRCT_M = MAX(0.00, MIN(1.00, ICEFRCT_M)) ** pwr_loc
-         
-      end if
 
-      ! Combine the Convective and Mesh functions
-      ICEFRCT  = ICEFRCT_M*(1.0-CNV_FRACTION) + ICEFRCT_C*(CNV_FRACTION)
-#endif
+         ! Combine the Convective and Mesh functions
+         ICEFRCT  = ICEFRCT_M*(1.0-CNV_FRACTION) + ICEFRCT_C*(CNV_FRACTION)
 
-      ! Final bounds check
-      ICEFRCT = MIN(1.0, MAX(0.0, ICEFRCT))
+     case default
+       ! You should not be here
+       print *, 'ICE_FRACTION_SC: Unknown ICE_FRACTION_POLYNOMIAL = ',ICE_FRACTION_POLYNOMIAL
+       error stop
+     end select
+
+     ! Final bounds check
+     ICEFRCT = MIN(1.0, MAX(0.0, ICEFRCT))
 
   end function ICE_FRACTION_SC
 
