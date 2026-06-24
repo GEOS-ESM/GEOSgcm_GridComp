@@ -196,6 +196,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real,    allocatable, dimension(:,:,:) :: ZLE0, ZL0
     real,    allocatable, dimension(:,:,:) :: PL, PK, PKE, DP
     real,    allocatable, dimension(:,:,:) :: MASS
+    real,    allocatable, dimension(:,:,:) :: DQLDT_SC_, DQIDT_SC_
     real,    allocatable, dimension(:,:)   :: RKM2D, RKFRE, MIX2D, RMAXFRAC2D
     real,    allocatable, dimension(:,:,:) :: TMP3D
 
@@ -374,6 +375,9 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( PK   (IM,JM,LM  ) )
     ALLOCATE ( DP   (IM,JM,LM  ) )
     ALLOCATE ( MASS (IM,JM,LM  ) )
+     ! Temporary UW exports
+    ALLOCATE ( DQLDT_SC_(IM,JM,LM  ) )
+    ALLOCATE ( DQIDT_SC_(IM,JM,LM  ) )
      ! 2D Variables
     ALLOCATE ( RKFRE  (IM,JM) )
     ALLOCATE ( RKM2D  (IM,JM) )
@@ -522,7 +526,8 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! 3. Combine condensates for input (not updated within UW) 
     !--------------------------------------------------------------
     !$OMP PARALLEL DO DEFAULT(NONE) &
-    !$OMP SHARED(IM, JM, LM, QLTOT, QLLS, QLCN, QITOT, QILS, QICN) &
+    !$OMP SHARED(IM, JM, LM, QLTOT, DQLDT_SC, QLLS, QLCN, &
+    !$OMP                    QITOT, DQIDT_SC, QILS, QICN) &
     !$OMP PRIVATE(i, j, k)
     do k = 1, LM
        do j = 1, JM
@@ -530,6 +535,9 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           do i = 1, IM
              QLTOT(i,j,k) = QLLS(i,j,k) + QLCN(i,j,k)
              QITOT(i,j,k) = QILS(i,j,k) + QICN(i,j,k)
+             ! Initialize tendencies
+             DQLDT_SC(i,j,k) = QLTOT(i,j,k)
+             DQIDT_SC(i,j,k) = QITOT(i,j,k)
           end do
        end do
     end do
@@ -542,7 +550,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             U, V, Q, QLTOT, QITOT, T, TKE, RKFRE, KPBL_SC,&
             SH, EVAP, CNPCPRATE, FRLAND, RKM2D, MIX2D, RMAXFRAC2D, &
             CUSH,                                         & ! INOUT
-            UMF_SC, DCM_SC, DQVDT_SC, DQLDT_SC, DQIDT_SC, & ! OUT
+            UMF_SC, DCM_SC, DQVDT_SC, DQLDT_SC_, DQIDT_SC_, & ! OUT
             DTDT_SC, DUDT_SC, DVDT_SC, DQRDT_SC,          &
             DQSDT_SC, CUFRC_SC, ENTR_SC, DETR_SC,         &
             QLDET_SC, QIDET_SC, QLSUB_SC, QISUB_SC,       &
@@ -670,7 +678,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
   !--------------------------------------------------------------
   !$OMP PARALLEL DO DEFAULT(NONE) &
   !$OMP SHARED(IM, JM, LM, Q, DQVDT_SC, MOIST_DT, T, DTDT_SC, U, DUDT_SC, V, DVDT_SC, &
-  !$OMP        CLCN, DQADT_SC, QLCN, QLDET_SC, MASS, QICN, QIDET_SC, &
+  !$OMP        CLCN, DQADT_SC, QLCN, QLDET_SC, DQLDT_SC, MASS, QICN, QIDET_SC, DQIDT_SC, &
   !$OMP        QLLS, QLSUB_SC, QLENT_SC, QILS, QISUB_SC, QIENT_SC) &
   !$OMP PRIVATE(i, j, k)
   do k = 1, LM
@@ -695,6 +703,10 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            ! condensate entrained into shallow updraft. 
            QLLS(i,j,k) = MAX(0.0, QLLS(i,j,k) + (QLSUB_SC(i,j,k)+QLENT_SC(i,j,k))*MOIST_DT)
            QILS(i,j,k) = MAX(0.0, QILS(i,j,k) + (QISUB_SC(i,j,k)+QIENT_SC(i,j,k))*MOIST_DT)
+
+           ! Get export QL/QI tendencies
+           DQLDT_SC(i,j,k) = (QLLS(i,j,k) + QLCN(i,j,k) - DQLDT_SC(i,j,k)) / MOIST_DT
+           DQIDT_SC(i,j,k) = (QILS(i,j,k) + QICN(i,j,k) - DQIDT_SC(i,j,k)) / MOIST_DT
         end do
      end do
   end do
