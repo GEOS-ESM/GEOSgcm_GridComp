@@ -7670,6 +7670,7 @@ module GEOS_SurfaceGridCompMod
     else
        CN_PRCP = PRECCU
     endif
+    CN_PRCP = MAX(CN_PRCP, 0.0)
 
   ! Total Precipitation
   ! -------------------
@@ -7683,6 +7684,7 @@ module GEOS_SurfaceGridCompMod
     else
        PRECTOT = TPREC
     endif
+    PRECTOT = MAX(PRECTOT, 0.0)
 
 ! New effective temperature and humidity
 !---------------------------------------

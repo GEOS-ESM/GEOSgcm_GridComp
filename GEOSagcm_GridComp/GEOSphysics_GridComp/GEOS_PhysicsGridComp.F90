@@ -114,6 +114,7 @@ contains
     integer                                 :: DO_OBIO, DO_CO2CNNEE, ATM_CO2, nCols, NQ
     integer                                 :: DO_WAVES, DO_SEA_SPRAY
 
+    real                                    :: SYNCUV
     real                                    :: SYNCTQ
     character(len=ESMF_MAXSTR), allocatable :: NAMES(:)
     character(len=ESMF_MAXSTR)              :: TendUnits
@@ -189,10 +190,13 @@ contains
     call ESMF_ConfigGetAttribute (SCF, label='USE_CNNEE:', value=DO_CO2CNNEE,   DEFAULT=0, __RC__ )
     call ESMF_ConfigDestroy      (SCF, __RC__)
 
-! Get SYNCTQ flag from config to know whether to terminate some imports
+! Get SYNCTQ & SYNCUV flag from config to know whether to terminate some imports
 ! ---------------------------------------------------------------------------
+    call MAPL_GetResource ( MAPL, SYNCUV, Label="SYNCUV:", DEFAULT= 1.0, RC=STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, SYNCTQ, Label="SYNCTQ:", DEFAULT= 1.0, RC=STATUS)
     VERIFY_(STATUS)
+
 !BOS
 
 ! !INTERNAL STATE
@@ -542,6 +546,15 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                                          &
+         SHORT_NAME = 'TKESHOCIT',                                       &
+         LONG_NAME  = 'tendency_of_TKE_due_to_turbulence_transport',     &
+         UNITS      = 'm2 s-3',                                          &
+         DIMS       = MAPL_DimsHorzVert,                                 &
+         VLOCATION  = MAPL_VLocationCenter,                              &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
     call MAPL_AddExportSpec(GC,                                      &
          SHORT_NAME = 'TIF',                                         &
          LONG_NAME  = 'tendency_of_air_temperature_due_to_friction', &
@@ -728,6 +741,33 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'DQRDTMSTINT',                                                       &
+         LONG_NAME  = 'vertically_integrated_rain_tendency_due_to_moist_processes',        &
+         UNITS      = 'kg m-2 s-1',                                                        &
+         DIMS       = MAPL_DimsHorzOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'DQSDTMSTINT',                                                       &
+         LONG_NAME  = 'vertically_integrated_snow_tendency_due_to_moist_processes',        &
+         UNITS      = 'kg m-2 s-1',                                                        &
+         DIMS       = MAPL_DimsHorzOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'DQGDTMSTINT',                                                       &
+         LONG_NAME  = 'vertically_integrated_graupel_tendency_due_to_moist_processes',     &
+         UNITS      = 'kg m-2 s-1',                                                        &
+         DIMS       = MAPL_DimsHorzOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                                            &
          SHORT_NAME = 'DOXDTCHMINT',                                                       &
          LONG_NAME  = 'vertically_integrated_odd_oxygen_tendency_due_to_chemistry',        &
          UNITS      = 'kg m-2 s-1',                                                        &
@@ -764,6 +804,33 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'DQRDTPHYINT',                                                       &
+         LONG_NAME  = 'vertically_integrated_rain_tendency_due_to_physics',                &
+         UNITS      = 'kg m-2 s-1',                                                        &
+         DIMS       = MAPL_DimsHorzOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'DQSDTPHYINT',                                                       &
+         LONG_NAME  = 'vertically_integrated_snow_tendency_due_to_physics',                &
+         UNITS      = 'kg m-2 s-1',                                                        &
+         DIMS       = MAPL_DimsHorzOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'DQGDTPHYINT',                                                       &
+         LONG_NAME  = 'vertically_integrated_graupel_tendency_due_to_physics',             &
+         UNITS      = 'kg m-2 s-1',                                                        &
+         DIMS       = MAPL_DimsHorzOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                                            &
          SHORT_NAME = 'DOXDTPHYINT',                                                       &
          LONG_NAME  = 'vertically_integrated_odd_oxygen_tendency_due_to_physics',          &
          UNITS      = 'kg m-2 s-1',                                                        &
@@ -793,6 +860,367 @@ contains
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME = 'DQIDTSCL',                                     &
          LONG_NAME  = 'tendency_of_cloud_ice_due_to_mass_scaling',    &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQVDT_FILL_PHYS0',                             &
+         LONG_NAME  = 'tendency_of_water_vapor_due_to_negative_fill_before_phys', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQLLSDT_FILL_PHYS0',                           &
+         LONG_NAME  = 'tendency_of_liquid_ls_due_to_negative_fill_before_phys', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQLCNDT_FILL_PHYS0',                           &
+         LONG_NAME  = 'tendency_of_liquid_cn_due_to_negative_fill_before_phys', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQILSDT_FILL_PHYS0',                           &
+         LONG_NAME  = 'tendency_of_ice_ls_due_to_negative_fill_before_phys', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQICNDT_FILL_PHYS0',                           &
+         LONG_NAME  = 'tendency_of_ice_cn_due_to_negative_fill_before_phys', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQRDT_FILL_PHYS0',                             &
+         LONG_NAME  = 'tendency_of_rain_due_to_negative_fill_before_phys', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQSDT_FILL_PHYS0',                             &
+         LONG_NAME  = 'tendency_of_snow_due_to_negative_fill_before_phys', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQGDT_FILL_PHYS0',                             &
+         LONG_NAME  = 'tendency_of_graupel_due_to_negative_fill_before_phys', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQVDT_FILL_AFMST',                             &
+         LONG_NAME  = 'tendency_of_water_vapor_due_to_negative_fill_after_moist', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQLLSDT_FILL_AFMST',                           &
+         LONG_NAME  = 'tendency_of_liquid_ls_due_to_negative_fill_after_moist', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQLCNDT_FILL_AFMST',                           &
+         LONG_NAME  = 'tendency_of_liquid_cn_due_to_negative_fill_after_moist', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQILSDT_FILL_AFMST',                           &
+         LONG_NAME  = 'tendency_of_ice_ls_due_to_negative_fill_after_moist', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQICNDT_FILL_AFMST',                           &
+         LONG_NAME  = 'tendency_of_ice_cn_due_to_negative_fill_after_moist', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQRDT_FILL_AFMST',                             &
+         LONG_NAME  = 'tendency_of_rain_due_to_negative_fill_after_moist', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQSDT_FILL_AFMST',                             &
+         LONG_NAME  = 'tendency_of_snow_due_to_negative_fill_after_moist', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQGDT_FILL_AFMST',                             &
+         LONG_NAME  = 'tendency_of_graupel_due_to_negative_fill_after_moist', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQVDT_FILL_AFSTG1',                             &
+         LONG_NAME  = 'tendency_of_water_vapor_due_to_negative_fill_after_stage1', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQLLSDT_FILL_AFSTG1',                           &
+         LONG_NAME  = 'tendency_of_liquid_ls_due_to_negative_fill_after_stage1', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQLCNDT_FILL_AFSTG1',                           &
+         LONG_NAME  = 'tendency_of_liquid_cn_due_to_negative_fill_after_stage1', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQILSDT_FILL_AFSTG1',                           &
+         LONG_NAME  = 'tendency_of_ice_ls_due_to_negative_fill_after_stage1', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQICNDT_FILL_AFSTG1',                           &
+         LONG_NAME  = 'tendency_of_ice_cn_due_to_negative_fill_after_stage1', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQRDT_FILL_AFSTG1',                             &
+         LONG_NAME  = 'tendency_of_rain_due_to_negative_fill_after_stage1', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQSDT_FILL_AFSTG1',                             &
+         LONG_NAME  = 'tendency_of_snow_due_to_negative_fill_after_stage1', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQGDT_FILL_AFSTG1',                             &
+         LONG_NAME  = 'tendency_of_graupel_due_to_negative_fill_after_stage1', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQVDT_FILL_AFSTG2',                             &
+         LONG_NAME  = 'tendency_of_water_vapor_due_to_negative_fill_after_phys', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQLLSDT_FILL_AFSTG2',                           &
+         LONG_NAME  = 'tendency_of_liquid_ls_due_to_negative_fill_after_phys', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQLCNDT_FILL_AFSTG2',                           &
+         LONG_NAME  = 'tendency_of_liquid_cn_due_to_negative_fill_after_phys', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQILSDT_FILL_AFSTG2',                           &
+         LONG_NAME  = 'tendency_of_ice_ls_due_to_negative_fill_after_phys', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQICNDT_FILL_AFSTG2',                           &
+         LONG_NAME  = 'tendency_of_ice_cn_due_to_negative_fill_after_phys', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQRDT_FILL_AFSTG2',                             &
+         LONG_NAME  = 'tendency_of_rain_due_to_negative_fill_after_phys', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQSDT_FILL_AFSTG2',                             &
+         LONG_NAME  = 'tendency_of_snow_due_to_negative_fill_after_phys', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQGDT_FILL_AFSTG2',                             &
+         LONG_NAME  = 'tendency_of_graupel_due_to_negative_fill_after_phys', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQVDT_FILL_PHYS1',                             &
+         LONG_NAME  = 'tendency_of_water_vapor_due_to_negative_fill_after_phys', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQLLSDT_FILL_PHYS1',                           &
+         LONG_NAME  = 'tendency_of_liquid_ls_due_to_negative_fill_after_phys', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQLCNDT_FILL_PHYS1',                           &
+         LONG_NAME  = 'tendency_of_liquid_cn_due_to_negative_fill_after_phys', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQILSDT_FILL_PHYS1',                           &
+         LONG_NAME  = 'tendency_of_ice_ls_due_to_negative_fill_after_phys', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQICNDT_FILL_PHYS1',                           &
+         LONG_NAME  = 'tendency_of_ice_cn_due_to_negative_fill_after_phys', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQRDT_FILL_PHYS1',                             &
+         LONG_NAME  = 'tendency_of_rain_due_to_negative_fill_after_phys', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQSDT_FILL_PHYS1',                             &
+         LONG_NAME  = 'tendency_of_snow_due_to_negative_fill_after_phys', &
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQGDT_FILL_PHYS1',                             &
+         LONG_NAME  = 'tendency_of_graupel_due_to_negative_fill_after_phys', &
          UNITS      = 'kg m-2 s-1',                                   &
          DIMS       =  MAPL_DimsHorzVert,                             &
          VLOCATION  =  MAPL_VLocationCenter,                          &
@@ -909,6 +1337,60 @@ contains
          UNITS      = 'm s-2',                                        &
          DIMS       =  MAPL_DimsHorzVert,                             &
          VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'TIME_IN_GWD',                                                       &
+         LONG_NAME  = 'time_spent_in_gwd_physics',                 &
+         UNITS      = 's',                                                        &
+         DIMS       = MAPL_DimsHorzOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'TIME_IN_MST',                                                       &
+         LONG_NAME  = 'time_spent_in_moist_physics',                 &
+         UNITS      = 's',                                                        &
+         DIMS       = MAPL_DimsHorzOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'TIME_IN_TRB',                                                       &
+         LONG_NAME  = 'time_spent_in_turbulence_physics',                 &
+         UNITS      = 's',                                                        &
+         DIMS       = MAPL_DimsHorzOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'TIME_IN_SFC',                                                       &
+         LONG_NAME  = 'time_spent_in_surface_physics',                 &
+         UNITS      = 's',                                                        &
+         DIMS       = MAPL_DimsHorzOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'TIME_IN_CHM',                                                       &
+         LONG_NAME  = 'time_spent_in_chemistry_physics',                 &
+         UNITS      = 's',                                                        &
+         DIMS       = MAPL_DimsHorzOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'TIME_IN_RAD',                                                       &
+         LONG_NAME  = 'time_spent_in_radiation_physics',                 &
+         UNITS      = 's',                                                        &
+         DIMS       = MAPL_DimsHorzOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
          RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -1056,29 +1538,23 @@ contains
                                                         RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddConnectivity ( GC,                   &
-         SHORT_NAME  = [character(len=6) ::           &
-                         'QV','QLTOT','QITOT','FCLD', &
-                         'WTHV2','WQT_DC'],           &
-         DST_ID      = TURBL,                         &
-         SRC_ID      = MOIST,                         &
-                                           RC=STATUS  )
+    call MAPL_AddConnectivity ( GC,                                &
+         SHORT_NAME  = [character(len=6) ::                        &
+                         'QV','QLTOT','QITOT','QRTOT','QSTOT','QGTOT','FCLD', &
+                         'WTHV2','WQT_DC','EIS'],                  &
+         DST_ID      = TURBL,                                      &
+         SRC_ID      = MOIST,                                      &
+                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddConnectivity ( GC,                               &
-         SHORT_NAME  = (/'CT   ','CM   ','CQ   ',                  &
-                         'BSTAR','USTAR'              /),          &
+         SHORT_NAME  = (/'CT    ','CM    ','CQ    ',               &
+                         'BSTAR ','USTAR ','Z0    ','Z0H   ',      &
+                         'FRLAND','EVAP  ','SH    '/),             &
          DST_ID      = TURBL,                                      &
          SRC_ID      = SURF,                                       &
                                                         RC=STATUS  )
      VERIFY_(STATUS)
-
-    call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'FRLAND','EVAP  ','SH    '/),             &
-         DST_ID      = TURBL,                                      &
-         SRC_ID      = SURF,                                       &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
 
 ! Radiation Imports
 !-------------------
@@ -1196,12 +1672,12 @@ contains
      ENDIF
 
      IF (DO_OBIO /= 0) THEN
-        call MAPL_AddConnectivity ( GC,                               &
+     call MAPL_AddConnectivity ( GC,                               &
              SHORT_NAME  = (/'DROBIO', 'DFOBIO'/),                    &
              SRC_ID      = RAD,                                       &
-             DST_ID      = SURF,                                      &
-             RC=STATUS  )
-        VERIFY_(STATUS)
+         DST_ID      = SURF,                                       &
+                                                        RC=STATUS  )
+     VERIFY_(STATUS)
      ENDIF
 
      call MAPL_AddConnectivity ( GC,                               &
@@ -1213,11 +1689,11 @@ contains
 
 ! Imports for GWD
 !----------------
-    call MAPL_AddConnectivity ( GC,                                      &
+    call MAPL_AddConnectivity ( GC,                                    &
          SHORT_NAME  = [character(len=7) :: 'Q', 'DTDT_DC', 'CNV_FRC' ], &
-         DST_ID      = GWD,                                              &
-         SRC_ID      = MOIST,                                            &
-                                                        RC=STATUS        )
+         DST_ID      = GWD,                                            &
+         SRC_ID      = MOIST,                                          &
+                                                        RC=STATUS      )
     VERIFY_(STATUS)
     call MAPL_AddConnectivity ( GC,                                      &
          SRC_NAME    = 'DQIDT_micro',                                    &
@@ -1246,7 +1722,7 @@ contains
                          'REV_LS  ',  'REV_AN  ', 'REV_CN  ', 'TPREC   ', &
                          'Q       ',  'DQDT    ', 'DQRL    ', 'DQRC    ', &
                          'CNV_MFC ',  'CNV_MFD ', 'CNV_CVW ', 'CNV_FRC ', &
-                         'LFR_GCC ',  'RH2     ', 'CN_PRCP ',             &
+                         'LFR_GCC ',  'RH2     ',                         &
                          'BYNCY   ',  'CAPE    ', 'INHB    ' /),          &
         DST_ID      = CHEM,                                               &
         SRC_ID      = MOIST,                                              &
@@ -1373,13 +1849,6 @@ contains
     !-------------- DONIF Additional Moist Imports
 
 
-    call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'VSCSFC'/),                         &
-         DST_ID      = MOIST,                                      &
-         SRC_ID      = TURBL,                                      &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-
     !Aerosol
     call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'AERO'/),                           &
@@ -1402,7 +1871,6 @@ contains
                                                         RC=STATUS  )
    VERIFY_(STATUS)
 
-
    call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'RADLW'/),                                 &
          DST_ID      =  MOIST,                                     &
@@ -1418,20 +1886,11 @@ contains
    VERIFY_(STATUS)
 
    call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'ALH'/),                                 &
+         SHORT_NAME  = (/'ALH', 'KM ', 'RI '/),                                 &
          DST_ID      =  MOIST,                                     &
          SRC_ID      =  TURBL,                                      &
                                                         RC=STATUS  )
    VERIFY_(STATUS)
-
-   call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'TAUX', 'TAUY'/),                                 &
-         DST_ID      =  MOIST,                                     &
-         SRC_ID      =  SURF,                                      &
-                                                        RC=STATUS  )
-
-   VERIFY_(STATUS)
-
 
 !EOP
 
@@ -1446,10 +1905,18 @@ contains
           RC=STATUS  )
      VERIFY_(STATUS)
 
+! terminate imports to SURF for SYNCUV
+     if ( SYNCUV.ge.1.) then
+       call MAPL_TerminateImport    ( GC,  &
+          SHORT_NAME = [character(len=5) :: 'UA','VA','SPEED' ], &
+          CHILD      = SURF,               &
+          RC=STATUS  )
+       VERIFY_(STATUS)
+     endif
 ! terminate imports to SURF for SYNCTQ
      if ( SYNCTQ.ge.1.) then
        call MAPL_TerminateImport    ( GC,  &
-          SHORT_NAME = [character(len=5) :: 'UA','VA','TA','QA','SPEED' ], &
+          SHORT_NAME = [character(len=5) :: 'TA','QA' ], &
           CHILD      = SURF,               &
           RC=STATUS  )
        VERIFY_(STATUS)
@@ -1477,20 +1944,35 @@ contains
           RC=STATUS  )
      VERIFY_(STATUS)
 
+! terminate imports to turb for SYNCUV
+     if ( SYNCUV.ge.1.) then
+       call MAPL_TerminateImport    ( GC,  &
+          SHORT_NAME = (/'U ','V ' /),     &
+          CHILD      = TURBL,              &
+          RC=STATUS  )
+       VERIFY_(STATUS)
+     endif
 ! terminate imports to turb for SYNCTQ
      if ( SYNCTQ.ge.1.) then
        call MAPL_TerminateImport    ( GC,  &
-          SHORT_NAME = (/'U ','V ','T ','TH' /),     &
+          SHORT_NAME = (/'T ','TH' /),     &
           CHILD      = TURBL,              &
           RC=STATUS  )
        VERIFY_(STATUS)
      endif
 
      call MAPL_TerminateImport    ( GC,    &
+          SHORT_NAME = (/'DQLDTTRB','DQIDTTRB'/),          &
+          CHILD = MOIST,                   &
+          RC=STATUS)
+     VERIFY_(STATUS)
+     
+     call MAPL_TerminateImport    ( GC,    &
           SHORT_NAME = (/'MTR'/),          &
           CHILD = MOIST,                   &
           RC=STATUS)
      VERIFY_(STATUS)
+
      call MAPL_TerminateImport    ( GC,    &
           SHORT_NAME = (/'DQDT_BL','DTDT_BL'/),          &
           CHILD = MOIST,                   &
@@ -1552,7 +2034,7 @@ contains
   integer, optional,   intent(  out) :: RC     ! Error code
 
 ! !DESCRIPTION: The Initialize method of the Physics Composite Gridded Component.
-!  It acts as a driver for the initializtion of the five children: Radiation,
+  !  It acts as a driver for the initializtion of the five children: Radiation,
 !  Turbulence, Moist, Chem, and Surface. It also sets up the frieldly connections
 !  between the children and their sibling Turbulence, as well as with their
 !  ``uncles'' Advection and Analysis.
@@ -2103,7 +2585,8 @@ contains
    logical                             :: NEED_STN
    logical                             :: DPEDT_PHYS
    real                                :: DT
-   real                                :: SYNCTQ, DOPHYSICS
+   logical                             :: DEBUG_SYNCTQ, DEBUG_PHYINC
+   real                                :: SYNCUV, SYNCTQ, DOPHYSICS
    real                                :: HGT_SURFACE
 
    real, pointer, dimension(:,:,:)     :: S, T, ZLE, PLE, PK, U, V, W
@@ -2124,10 +2607,21 @@ contains
 
    real, pointer, dimension(:,:,:)     :: DOXDTCHM
    real, pointer, dimension(:,:,:)     :: DQVDTMST, DQVDTTRB, DQVDTCHM
-   real, pointer, dimension(:,:,:)     :: DQLDTTRB, DQIDTTRB
+   real, pointer, dimension(:,:,:)     :: DQLDTTRB, DQIDTTRB, TKEIT
    real, pointer, dimension(:,:,:)     :: DQLDTSCL, DQIDTSCL, DQVDTSCL
    real, pointer, dimension(:,:,:)     :: DQLDTMST, DQIDTMST
+   real, pointer, dimension(:,:,:)     :: DQRDTMST, DQSDTMST, DQGDTMST
    real, pointer, dimension(:,:,:)     :: DPDTMST,  DPDTTRB
+   real, pointer, dimension(:,:,:)     :: DQLMST, DQIMST
+   
+   real, pointer, dimension(:,:,:)     ::   DQVDT_FILL
+   real, pointer, dimension(:,:,:)     :: DQLLSDT_FILL
+   real, pointer, dimension(:,:,:)     :: DQLCNDT_FILL
+   real, pointer, dimension(:,:,:)     :: DQILSDT_FILL
+   real, pointer, dimension(:,:,:)     :: DQICNDT_FILL
+   real, pointer, dimension(:,:,:)     ::   DQRDT_FILL
+   real, pointer, dimension(:,:,:)     ::   DQSDT_FILL
+   real, pointer, dimension(:,:,:)     ::   DQGDT_FILL
 
    real, pointer, dimension(:,:,:)     :: RNDPERT,RNDPTR
    real, pointer, dimension(:,:,:)     :: SKEBU_WT,SKEBV_WT
@@ -2145,14 +2639,15 @@ contains
    real, pointer, dimension(:,:  )     :: SRFDIS
 
    real, pointer, dimension(:,:  )     :: DQVDTPHYINT, DQLDTPHYINT, DQIDTPHYINT, DOXDTPHYINT
+   real, pointer, dimension(:,:  )     :: DQRDTPHYINT, DQSDTPHYINT, DQGDTPHYINT
    real, pointer, dimension(:,:  )     :: DQVDTTRBINT, DQVDTMSTINT, DQVDTCHMINT
    real, pointer, dimension(:,:  )     :: DQLDTMSTINT, DQIDTMSTINT, DOXDTCHMINT
+   real, pointer, dimension(:,:  )     :: DQRDTMSTINT, DQSDTMSTINT, DQGDTMSTINT
    real, pointer, dimension(:,:  )     :: PERAD,PETRB,PEMST,PEFRI,PEGWD,PECUF
    real, pointer, dimension(:,:  )     :: PEPHY
    real, pointer, dimension(:,:  )     :: KEPHY
    real, pointer, dimension(:,:  )     :: AREA
 
-   real*8, allocatable, dimension(:,:)   :: sumq
    real*8, allocatable, dimension(:,:,:) :: ple_new
 
    character(len=ESMF_MAXSTR), allocatable  :: NAMES(:)
@@ -2160,13 +2655,15 @@ contains
 
 
 ! SYNCTQ & UV pointers
-   real, pointer, dimension(:,:,:)     :: UAFMOIST, VAFMOIST,  TAFMOIST, QAFMOIST, THAFMOIST, SAFMOIST
+   real, pointer, dimension(:,:,:)     :: UAFMOIST, VAFMOIST,  SAFMOIST, TAFMOIST, QAFMOIST, THAFMOIST
    real, pointer, dimension(:,:)       ::  UFORSURF, VFORSURF, TFORSURF, QFORSURF, SPD4SURF
    real, pointer, dimension(:,:,:)     ::  UFORCHEM, VFORCHEM, TFORCHEM, THFORCHEM
    real, pointer, dimension(:,:,:)     ::  UFORTURB, VFORTURB, TFORTURB, THFORTURB, SFORTURB
    real, pointer, dimension(:,:,:)     ::                      TFORRAD
-   real, pointer, dimension(:,:,:)     :: UAFDIFFUSE, VAFDIFFUSE, QAFDIFFUSE, SAFDIFFUSE, SAFUPDATE
+   real, pointer, dimension(:,:,:)     :: UAFDIFFUSE, VAFDIFFUSE
+   real, pointer, dimension(:,:,:)     :: SAFDIFFUSE, SAFUPDATE
 
+   real, allocatable, dimension(:,:,:) :: TMP3D
    real, allocatable, dimension(:,:,:) :: HGT
    real, allocatable, dimension(:,:,:) :: TDPOLD, TDPNEW
    real, allocatable, dimension(:,:,:) :: TFORQS
@@ -2180,6 +2677,9 @@ contains
    real(kind=MAPL_R8), allocatable, dimension(:,:,:) :: dq
 
    real, pointer, dimension(:,:,:)     :: DTDT_BL, DQDT_BL
+   real, pointer, dimension(:,:)       :: LONS, LATS
+   real, pointer, dimension(:,:)       :: PTR2D
+   real(kind=8) :: t1, t2
 
    real*8, allocatable, dimension(:,:)   :: sum_qdp_b4
    real*8, allocatable, dimension(:,:)   :: sum_qdp_af
@@ -2221,10 +2721,8 @@ contains
     call MAPL_GetResource(STATE, SCM_NO_RAD, Label="SCM_NO_RAD:", default=.FALSE., RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource(STATE, DUMMY, Label="DPEDT_PHYS:", default='YES', RC=STATUS)
+    call MAPL_GetResource(STATE, DPEDT_PHYS, Label="DPEDT_PHYS:", default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
-         DUMMY = ESMF_UtilStringUpperCase(DUMMY)
-    DPEDT_PHYS = TRIM(DUMMY).eq.'YES'
 
 ! Get the children`s states from the generic state
 !-------------------------------------------------
@@ -2232,6 +2730,7 @@ contains
     call MAPL_Get ( STATE,   &
         GCS=GCS, GIM=GIM, GEX=GEX,       &
         IM = IM, JM = JM, LM = LM,       &
+        LONS=LONS, LATS=LATS,            &
         GCNames = GCNames,               &
         INTERNAL_ESMF_STATE = INTERNAL,  &
                                RC=STATUS )
@@ -2286,18 +2785,21 @@ contains
        QGRAUPEL => zero
     end if
 
-! Initialize Passive Tracer QW
-! ----------------------------
-    call MAPL_GetPointer(INTERNAL, QW, 'QW', RC=STATUS); VERIFY_(STATUS)
-    QW = QV+QLLS+QLCN+QILS+QICN+QRAIN+QSNOW+QGRAUPEL
-
 ! Get Global PHYSICS Parameters
 ! -----------------------------
+    call MAPL_GetResource(STATE, SYNCUV,    'SYNCUV:',    DEFAULT= 1.0, RC=STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource(STATE, SYNCTQ,    'SYNCTQ:',    DEFAULT= 1.0, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(STATE, DEBUG_SYNCTQ, Label="DEBUG_SYNCTQ:", DEFAULT= .false., RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(STATE, DEBUG_PHYINC, Label="DEBUG_PHYINC:", DEFAULT= .false., RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource(STATE, DOPHYSICS, 'DOPHYSICS:', DEFAULT= 1.0, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource(STATE, HGT_SURFACE, Label="HGT_SURFACE:", DEFAULT= 50.0, RC=STATUS)
+                    HGT_SURFACE = 50.0
+    if (LM .eq. 72) HGT_SURFACE =  0.0
+    call MAPL_GetResource(STATE, HGT_SURFACE, Label="HGT_SURFACE:", DEFAULT= HGT_SURFACE, RC=STATUS)
     VERIFY_(STATUS)
 
 
@@ -2313,23 +2815,47 @@ contains
     call MAPL_GetPointer(IMPORT,  PLE,     'PLE'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT,  AREA,    'AREA'   , RC=STATUS); VERIFY_(STATUS)
 
-    allocate( TDPOLD(IM,JM,LM),stat=STATUS )
-    VERIFY_(STATUS)
-
-    TDPOLD = T(:,:,1:LM) * (PLE(:,:,1:LM)-PLE(:,:,0:LM-1))
-
     allocate(DM(IM,JM,LM),stat=STATUS)
     VERIFY_(STATUS)
-    DM = (PLE(:,:,1:LM)-PLE(:,:,0:LM-1))*(1.0/MAPL_GRAV)
+    DM = (PLE(:,:,1:LM)-PLE(:,:,0:LM-1))/MAPL_GRAV
 
     allocate(DPI(IM,JM,LM),stat=STATUS)
     VERIFY_(STATUS)
     DPI = 1./(PLE(:,:,1:LM)-PLE(:,:,0:LM-1))
 
-   ! Create Old Dry Mass Variables
-   ! -----------------------------
-     allocate(   sumq( IM,JM ),    STAT=STATUS ) ; VERIFY_(STATUS)
-     allocate( ple_new(IM,JM,0:LM),STAT=STATUS ) ; VERIFY_(STATUS)
+    allocate( TDPOLD(IM,JM,LM),stat=STATUS )
+    VERIFY_(STATUS)
+    TDPOLD = T(:,:,1:LM) / DPI
+
+    allocate( TMP3D(IM,JM,LM),stat=STATUS )
+    VERIFY_(STATUS)
+
+! Get fill negative export pointers if requested
+! ----------------------------------------------
+    call MAPL_GetPointer(EXPORT,   DQVDT_FILL,   'DQVDT_FILL_PHYS0', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQLLSDT_FILL, 'DQLLSDT_FILL_PHYS0', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQLCNDT_FILL, 'DQLCNDT_FILL_PHYS0', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQILSDT_FILL, 'DQILSDT_FILL_PHYS0', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQICNDT_FILL, 'DQICNDT_FILL_PHYS0', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,   DQRDT_FILL,   'DQRDT_FILL_PHYS0', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,   DQSDT_FILL,   'DQSDT_FILL_PHYS0', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,   DQGDT_FILL,   'DQGDT_FILL_PHYS0', RC=STATUS); VERIFY_(STATUS)
+
+! Cleanup negative water species
+! ------------------------------
+    call FILLQ2ZERO( QV      , DM, DT=DT, DQDT=  DQVDT_FILL, WARNING_LABEL="QV Before Physics"  , VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QLLS    , DM, DT=DT, DQDT=DQLLSDT_FILL, WARNING_LABEL="QLLS Before Physics", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QLCN    , DM, DT=DT, DQDT=DQLCNDT_FILL, WARNING_LABEL="QLCN Before Physics", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QILS    , DM, DT=DT, DQDT=DQILSDT_FILL, WARNING_LABEL="QILS Before Physics", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QICN    , DM, DT=DT, DQDT=DQICNDT_FILL, WARNING_LABEL="QICN Before Physics", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QRAIN   , DM, DT=DT, DQDT=  DQRDT_FILL, WARNING_LABEL="QR Before Physics"  , VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QSNOW   , DM, DT=DT, DQDT=  DQSDT_FILL, WARNING_LABEL="QS Before Physics"  , VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QGRAUPEL, DM, DT=DT, DQDT=  DQGDT_FILL, WARNING_LABEL="QG Before Physics"  , VM=VMG, RC=STATUS); VERIFY_(STATUS)
+
+! Initialize Passive Tracer QW
+! ----------------------------
+    call MAPL_GetPointer(INTERNAL, QW, 'QW', RC=STATUS); VERIFY_(STATUS)
+    QW = QV+QLLS+QLCN+QILS+QICN+QRAIN+QSNOW+QGRAUPEL
 
 ! Pointers to Exports
 !--------------------
@@ -2361,6 +2887,9 @@ contains
     call MAPL_GetPointer(EXPORT, DQVDTMSTINT, 'DQVDTMSTINT', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQLDTMSTINT, 'DQLDTMSTINT', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQIDTMSTINT, 'DQIDTMSTINT', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQRDTMSTINT, 'DQRDTMSTINT', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQSDTMSTINT, 'DQSDTMSTINT', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQGDTMSTINT, 'DQGDTMSTINT', RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetPointer(EXPORT, DQVDTTRBINT, 'DQVDTTRBINT', RC=STATUS); VERIFY_(STATUS)
 
@@ -2370,6 +2899,9 @@ contains
     call MAPL_GetPointer(EXPORT, DQVDTPHYINT, 'DQVDTPHYINT', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQLDTPHYINT, 'DQLDTPHYINT', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQIDTPHYINT, 'DQIDTPHYINT', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQRDTPHYINT, 'DQRDTPHYINT', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQSDTPHYINT, 'DQSDTPHYINT', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQGDTPHYINT, 'DQGDTPHYINT', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DOXDTPHYINT, 'DOXDTPHYINT', RC=STATUS); VERIFY_(STATUS)
 
 ! Get and allocate pointers to Exports that have been put in turbulence
@@ -2426,12 +2958,14 @@ contains
        call MAPL_GetPointer(GEX(MOIST),   TICU,'DTDTFRIC', alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
     end if
-
+    
        call MAPL_GetPointer ( EXPORT,     DQVDTTRB, 'QVIT',     alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer ( EXPORT,     DQLDTTRB, 'QLLSIT',   alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer ( EXPORT,     DQIDTTRB, 'QILSIT',   alloc=.true., RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_GetPointer ( EXPORT,     TKEIT,   'TKESHOCIT', alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer ( GEX(TURBL), DPDTTRB , 'DPDTTRB',  alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
@@ -2445,7 +2979,19 @@ contains
        VERIFY_(STATUS)
        call MAPL_GetPointer ( GEX(MOIST), DQIDTMST, 'DQIDT',    alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
+       call MAPL_GetPointer ( GEX(MOIST), DQRDTMST, 'DQRDT',    alloc=.true., RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_GetPointer ( GEX(MOIST), DQSDTMST, 'DQSDT',    alloc=.true., RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_GetPointer ( GEX(MOIST), DQGDTMST, 'DQGDT',    alloc=.true., RC=STATUS)
+       VERIFY_(STATUS)
 
+       ! Pass Turbulence QL, QI tendencies to Moist Import state
+       call MAPL_GetPointer ( GIM(MOIST), DQLMST, 'DQLDTTRB', RC=STATUS)
+       DQLMST = DQLDTTRB
+       call MAPL_GetPointer ( GIM(MOIST), DQIMST, 'DQLDTTRB', RC=STATUS)
+       DQIMST = DQIDTTRB
+       
        call MAPL_GetPointer (EXPORT, DQVDTSCL, 'DQVDTSCL', RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer (EXPORT, DQLDTSCL, 'DQLDTSCL', RC=STATUS)
@@ -2494,11 +3040,11 @@ contains
 
     if ( DOPHYSICS.eq.1. ) then
 
-     if ( SYNCTQ.ge.1. ) then
+     if ( (SYNCTQ.ge.1.) .OR. (SYNCUV.ge.1.) ) then
       !  Will need PK to get from T to TH and back
       allocate(PK(IM,JM,LM),stat=STATUS);VERIFY_(STATUS)
       PK = ((0.5*(PLE(:,:,0:LM-1)+PLE(:,:,1:LM))) / MAPL_P00)**MAPL_KAPPA
-      if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
+      if ( HGT_SURFACE .gt. 0.0 ) then
          allocate(HGT(IM,JM,LM+1),stat=STATUS);VERIFY_(STATUS)
          do k = 1,LM+1
            HGT(:,:,k) = (ZLE(:,:,k-1) - ZLE(:,:,LM))
@@ -2512,9 +3058,12 @@ contains
 !----------------------------------------
 
     I=GWD
-
     call MAPL_TimerOn (STATE,GCNames(I))
+     t1 = MPI_Wtime(status); VERIFY_(STATUS)
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, userRC=STATUS ); VERIFY_(STATUS)
+     t2 = MPI_Wtime(status); VERIFY_(STATUS)
+     call MAPL_GetPointer (EXPORT, PTR2D, 'TIME_IN_GWD', RC=STATUS); VERIFY_(STATUS)
+     if (associated(PTR2D)) PTR2D = t2-t1
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
 
@@ -2527,49 +3076,89 @@ contains
     I=MOIST
 
     call MAPL_TimerOn (STATE,GCNames(I))
+     t1 = MPI_Wtime(status); VERIFY_(STATUS)
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, userRC=STATUS ); VERIFY_(STATUS)
+     t2 = MPI_Wtime(status); VERIFY_(STATUS)
+     call MAPL_GetPointer (EXPORT, PTR2D, 'TIME_IN_MST', RC=STATUS); VERIFY_(STATUS)
+     if (associated(PTR2D)) PTR2D = t2-t1
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
+
+! Get fill negative export pointers if requested
+! ----------------------------------------------
+    call MAPL_GetPointer(EXPORT,   DQVDT_FILL,   'DQVDT_FILL_AFMST', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQLLSDT_FILL, 'DQLLSDT_FILL_AFMST', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQLCNDT_FILL, 'DQLCNDT_FILL_AFMST', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQILSDT_FILL, 'DQILSDT_FILL_AFMST', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQICNDT_FILL, 'DQICNDT_FILL_AFMST', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,   DQRDT_FILL,   'DQRDT_FILL_AFMST', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,   DQSDT_FILL,   'DQSDT_FILL_AFMST', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,   DQGDT_FILL,   'DQGDT_FILL_AFMST', RC=STATUS); VERIFY_(STATUS)
+
+! Cleanup negative water species
+! ------------------------------
+    call FILLQ2ZERO( QV      , DM, DT=DT, DQDT=  DQVDT_FILL, WARNING_LABEL="QV After Moist"  , VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QLLS    , DM, DT=DT, DQDT=DQLLSDT_FILL, WARNING_LABEL="QLLS After Moist", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QLCN    , DM, DT=DT, DQDT=DQLCNDT_FILL, WARNING_LABEL="QLCN After Moist", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QILS    , DM, DT=DT, DQDT=DQILSDT_FILL, WARNING_LABEL="QILS After Moist", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QICN    , DM, DT=DT, DQDT=DQICNDT_FILL, WARNING_LABEL="QICN After Moist", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QRAIN   , DM, DT=DT, DQDT=  DQRDT_FILL, WARNING_LABEL="QR After Moist"  , VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QSNOW   , DM, DT=DT, DQDT=  DQSDT_FILL, WARNING_LABEL="QS After Moist"  , VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QGRAUPEL, DM, DT=DT, DQDT=  DQGDT_FILL, WARNING_LABEL="QG After Moist"  , VM=VMG, RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetObjectFromGC ( GCS(I), CMETA, _RC)
 
     call Compute_IncBundle( GIM(MOIST), EXPORT, MTRIinc, STATE, __RC__)  ! 3D non-weighted
     call Compute_IncMBundle(GIM(MOIST), EXPORT, CMETA, DM=DM,   __RC__)  ! 2D mass-weighted
 
-    call MAPL_GetPointer(GIM(MOIST), DTDT_BL, 'DTDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(GIM(MOIST), DQDT_BL, 'DQDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
+!  SYNCUV - Stage 1 SYNC of U/V
+!--------------------------------------
+    if ( SYNCUV.ge.1. ) then
+    ! From Moist
+     call MAPL_GetPointer ( GEX(MOIST),  UAFMOIST,  'UAFMOIST', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GEX(MOIST),  VAFMOIST,  'VAFMOIST', RC=STATUS); VERIFY_(STATUS)
+    ! For SURF
+     call MAPL_GetPointer ( GIM(SURF),  UFORSURF,  'UA',    RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(SURF),  VFORSURF,  'VA',    RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(SURF),  SPD4SURF,  'SPEED', RC=STATUS); VERIFY_(STATUS)
+     if ( HGT_SURFACE .gt. 0.0 ) then
+       call VertInterp(UFORSURF,UAFMOIST,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
+       call VertInterp(VFORSURF,VAFMOIST,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
+     else
+       UFORSURF = UAFMOIST(:,:,LM)
+       VFORSURF = VAFMOIST(:,:,LM)
+     endif
+     SPD4SURF = SQRT( UFORSURF*UFORSURF + VFORSURF*VFORSURF )
+    ! For TURBL
+     call MAPL_GetPointer ( GIM(TURBL), UFORTURB,   'U', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(TURBL), VFORTURB,   'V', RC=STATUS); VERIFY_(STATUS)
+     UFORTURB =  UAFMOIST
+     VFORTURB =  VAFMOIST
+    endif
 
 !  SYNCTQ - Stage 1 SYNC of T/Q and U/V
 !--------------------------------------
     if ( SYNCTQ.ge.1. ) then
+     call MAPL_GetPointer(GIM(MOIST), DTDT_BL, 'DTDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer(GIM(MOIST), DQDT_BL, 'DQDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
     ! From Moist
-     call MAPL_GetPointer ( GEX(MOIST),  UAFMOIST,  'UAFMOIST', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer ( GEX(MOIST),  VAFMOIST,  'VAFMOIST', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GEX(MOIST),  TAFMOIST,  'TAFMOIST', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GEX(MOIST), THAFMOIST, 'THAFMOIST', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer ( GEX(MOIST),  SAFMOIST,  'SAFMOIST', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GEX(MOIST),  QAFMOIST,  'QAFMOIST', RC=STATUS); VERIFY_(STATUS)
     ! Boundary Layer Tendencies for GF
      DTDT_BL=TAFMOIST
      DQDT_BL=QV
     ! For SURF
-     call MAPL_GetPointer ( GIM(SURF),  UFORSURF,  'UA',    RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer ( GIM(SURF),  VFORSURF,  'VA',    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  TFORSURF,  'TA',    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  QFORSURF,  'QA',    RC=STATUS); VERIFY_(STATUS)
-     if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
-       call VertInterp(UFORSURF,UAFMOIST,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
-       call VertInterp(VFORSURF,VAFMOIST,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
-       call VertInterp(TFORSURF,TAFMOIST,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
-       call VertInterp(QFORSURF,QAFMOIST,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(SURF),  SPD4SURF,  'SPEED', RC=STATUS); VERIFY_(STATUS)
+     if ( HGT_SURFACE .gt. 0.0 ) then
+       call VertInterp(TFORSURF,TAFMOIST,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
+       call VertInterp(QFORSURF,QAFMOIST,-HGT,-HGT_SURFACE, positive_definite=.true., rc=status); VERIFY_(STATUS)
      else
-       UFORSURF = UAFMOIST(:,:,LM)
-       VFORSURF = VAFMOIST(:,:,LM)
        TFORSURF = TAFMOIST(:,:,LM)
        QFORSURF = QAFMOIST(:,:,LM)
      endif
-     call MAPL_GetPointer ( GIM(SURF),  SPD4SURF,  'SPEED', RC=STATUS); VERIFY_(STATUS)
-     SPD4SURF = SQRT( UFORSURF*UFORSURF + VFORSURF*VFORSURF )
     ! For CHEM
      if ( SYNCTQ.eq.1. ) then
        call MAPL_GetPointer ( GIM(CHEM), TFORCHEM,   'T',  RC=STATUS); VERIFY_(STATUS)
@@ -2578,17 +3167,42 @@ contains
        THFORCHEM = THAFMOIST
      endif
     ! For TURBL
-     call ESMF_StateGet(GIM(TURBL), 'TR', BUNDLE, RC=STATUS ); VERIFY_(STATUS)
-     call ESMFL_BundleGetPointerToData(BUNDLE,'S',SFORTURB, RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer ( GIM(TURBL), UFORTURB,   'U', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer ( GIM(TURBL), VFORTURB,   'V', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(TURBL), TFORTURB,   'T', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(TURBL), THFORTURB, 'TH', RC=STATUS); VERIFY_(STATUS)
-      UFORTURB =  UAFMOIST
-      VFORTURB =  VAFMOIST
       TFORTURB =  TAFMOIST
      THFORTURB = THAFMOIST
-      SFORTURB =  SAFMOIST
+     call ESMF_StateGet(GIM(TURBL), 'TR', BUNDLE, RC=STATUS ); VERIFY_(STATUS)
+     call ESMFL_BundleGetPointerToData(BUNDLE,'S',SFORTURB, RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GEX(MOIST),  SAFMOIST,  'SAFMOIST', RC=STATUS); VERIFY_(STATUS)
+      SFORTURB = SAFMOIST
+    endif
+
+    if (DEBUG_SYNCTQ) then
+       if ( SYNCTQ.ge.1. ) then
+         call MAPL_MaxMin('DEBUG S: SFORTURB', SFORTURB)
+         call MAPL_MaxMin('SYNCTQ: TAFMOIST', TAFMOIST)
+         call MAPL_MaxMin('SYNCTQ: QAFMOIST', QAFMOIST)
+         call MAPL_MaxMin('SYNCTQ: TFORSURF', TFORSURF)
+         call MAPL_MaxMin('SYNCTQ: QFORSURF', QFORSURF)
+       endif
+       if ( SYNCUV.ge.1. ) then
+         call MAPL_MaxMin('SYNCTQ: UFORSURF', UFORSURF)
+         call MAPL_MaxMin('SYNCTQ: VFORSURF', VFORSURF)
+       endif
+       call MAPL_GetPointer ( GIM(SURF), PTR2D, 'TPREC', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_MaxMin('SYNCTQ: TPREC   ', PTR2D)
+       call MAPL_GetPointer ( GIM(SURF), PTR2D, 'CN_PRCP', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_MaxMin('SYNCTQ: CN_PRCP ', PTR2D)
+       call MAPL_GetPointer ( GIM(SURF), PTR2D, 'PCU', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_MaxMin('SYNCTQ: PCU     ', PTR2D)
+       call MAPL_GetPointer ( GIM(SURF), PTR2D, 'PLS', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_MaxMin('SYNCTQ: PLS     ', PTR2D)
+       call MAPL_GetPointer ( GIM(SURF), PTR2D, 'SNO', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_MaxMin('SYNCTQ: SNO     ', PTR2D)
+       call MAPL_GetPointer ( GIM(SURF), PTR2D, 'ICE', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_MaxMin('SYNCTQ: ICE     ', PTR2D)
+       call MAPL_GetPointer ( GIM(SURF), PTR2D, 'FRZR', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_MaxMin('SYNCTQ: FRZR    ', PTR2D)
     endif
 
 ! Surface Stage 1
@@ -2597,7 +3211,11 @@ contains
     I=SURF
 
     call MAPL_TimerOn(STATE,GCNames(I))
+     t1 = MPI_Wtime(status); VERIFY_(STATUS)
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=1, userRC=STATUS ); VERIFY_(STATUS)
+     t2 = MPI_Wtime(status); VERIFY_(STATUS)
+     call MAPL_GetPointer (EXPORT, PTR2D, 'TIME_IN_SFC', RC=STATUS); VERIFY_(STATUS)
+     if (associated(PTR2D)) PTR2D = t2-t1
     call MAPL_TimerOff(STATE,GCNames(I))
 
 ! Aerosol/Chemistry Stage 1
@@ -2606,7 +3224,11 @@ contains
     I=CHEM
 
     call MAPL_TimerOn(STATE,GCNames(I))
+     t1 = MPI_Wtime(status); VERIFY_(STATUS)
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, phase=1, userRC=STATUS ); VERIFY_(STATUS)
+     t2 = MPI_Wtime(status); VERIFY_(STATUS)
+     call MAPL_GetPointer (EXPORT, PTR2D, 'TIME_IN_CHM', RC=STATUS); VERIFY_(STATUS)
+     if (associated(PTR2D)) PTR2D = t2-t1
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
 
@@ -2616,48 +3238,116 @@ contains
     I=TURBL
 
     call MAPL_TimerOn(STATE,GCNames(I))
+     t1 = MPI_Wtime(status); VERIFY_(STATUS)
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=1, userRC=STATUS ); VERIFY_(STATUS)
+     t2 = MPI_Wtime(status); VERIFY_(STATUS)
+     call MAPL_GetPointer (EXPORT, PTR2D, 'TIME_IN_TRB', RC=STATUS); VERIFY_(STATUS)
+     if (associated(PTR2D)) PTR2D = t2-t1
     call MAPL_TimerOff(STATE,GCNames(I))
 
-!  SYNCTQ - Stage 2 SYNC of T/Q and U/V
+! Get fill negative export pointers if requested
+! ----------------------------------------------
+    call MAPL_GetPointer(EXPORT,   DQVDT_FILL,   'DQVDT_FILL_AFSTG1', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQLLSDT_FILL, 'DQLLSDT_FILL_AFSTG1', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQLCNDT_FILL, 'DQLCNDT_FILL_AFSTG1', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQILSDT_FILL, 'DQILSDT_FILL_AFSTG1', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQICNDT_FILL, 'DQICNDT_FILL_AFSTG1', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,   DQRDT_FILL,   'DQRDT_FILL_AFSTG1', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,   DQSDT_FILL,   'DQSDT_FILL_AFSTG1', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,   DQGDT_FILL,   'DQGDT_FILL_AFSTG1', RC=STATUS); VERIFY_(STATUS)
+
+! Cleanup negative water species
+! ------------------------------
+    call FILLQ2ZERO( QV      , DM, DT=DT, DQDT=  DQVDT_FILL, WARNING_LABEL="QV After Stage1"  , VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QLLS    , DM, DT=DT, DQDT=DQLLSDT_FILL, WARNING_LABEL="QLLS After Stage1", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QLCN    , DM, DT=DT, DQDT=DQLCNDT_FILL, WARNING_LABEL="QLCN After Stage1", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QILS    , DM, DT=DT, DQDT=DQILSDT_FILL, WARNING_LABEL="QILS After Stage1", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QICN    , DM, DT=DT, DQDT=DQICNDT_FILL, WARNING_LABEL="QICN After Stage1", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QRAIN   , DM, DT=DT, DQDT=  DQRDT_FILL, WARNING_LABEL="QR After Stage1"  , VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QSNOW   , DM, DT=DT, DQDT=  DQSDT_FILL, WARNING_LABEL="QS After Stage1"  , VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QGRAUPEL, DM, DT=DT, DQDT=  DQGDT_FILL, WARNING_LABEL="QG After Stage1"  , VM=VMG, RC=STATUS); VERIFY_(STATUS)
+
+!  SYNCUV - Stage 2 SYNC of U/V
 !--------------------------------------
-    if ( SYNCTQ.ge.1. ) then
+    if ( SYNCUV.ge.1. ) then
     ! From TURBL Run 1
      call MAPL_GetPointer ( GEX(TURBL), UAFDIFFUSE, 'UAFDIFFUSE', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GEX(TURBL), VAFDIFFUSE, 'VAFDIFFUSE', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer ( GEX(TURBL), SAFDIFFUSE, 'SAFDIFFUSE', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer ( GEX(TURBL), QAFDIFFUSE, 'QAFDIFFUSE', RC=STATUS); VERIFY_(STATUS)
     ! For TURBL
-     call ESMF_StateGet(GIM(TURBL), 'TR', BUNDLE, RC=STATUS ); VERIFY_(STATUS)
-     call ESMFL_BundleGetPointerToData(BUNDLE,'S',SFORTURB, RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(TURBL), UFORTURB,   'U', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(TURBL), VFORTURB,   'V', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer ( GIM(TURBL), TFORTURB,   'T', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer ( GIM(TURBL), THFORTURB, 'TH', RC=STATUS); VERIFY_(STATUS)
       UFORTURB = UAFDIFFUSE
       VFORTURB = VAFDIFFUSE
-     ! For Stage 2 - Changes in S from TURBL assumed to be all in T
-      TFORTURB = TFORTURB + (SAFDIFFUSE-SFORTURB)/MAPL_CP
-     THFORTURB = TFORTURB/PK
-      SFORTURB = SAFDIFFUSE
     ! For SURF
      call MAPL_GetPointer ( GIM(SURF),  UFORSURF,  'UA',    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  VFORSURF,  'VA',    RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer ( GIM(SURF),  TFORSURF,  'TA',    RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer ( GIM(SURF),  QFORSURF,  'QA',    RC=STATUS); VERIFY_(STATUS)
-     if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
-       call VertInterp(TFORSURF,TFORTURB,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
-       call VertInterp(UFORSURF,UAFDIFFUSE,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
-       call VertInterp(VFORSURF,VAFDIFFUSE,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
-       call VertInterp(QFORSURF,QAFDIFFUSE,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
+     if ( HGT_SURFACE .gt. 0.0  ) then
+       call VertInterp(UFORSURF,UAFDIFFUSE,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
+       call VertInterp(VFORSURF,VAFDIFFUSE,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
      else
-       TFORSURF =   TFORTURB(:,:,LM)
        UFORSURF = UAFDIFFUSE(:,:,LM)
        VFORSURF = VAFDIFFUSE(:,:,LM)
-       QFORSURF = QAFDIFFUSE(:,:,LM)
      endif
      call MAPL_GetPointer ( GIM(SURF),  SPD4SURF,  'SPEED', RC=STATUS); VERIFY_(STATUS)
      SPD4SURF = SQRT( UFORSURF*UFORSURF + VFORSURF*VFORSURF )
+    endif
+
+!  SYNCTQ - Stage 2 SYNC of T/Q
+!--------------------------------------
+    if ( SYNCTQ.ge.1. ) then
+    ! For TURBL
+     call MAPL_GetPointer ( GEX(TURBL), SAFDIFFUSE, 'SAFDIFFUSE', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(TURBL), TFORTURB,   'T', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(TURBL), THFORTURB, 'TH', RC=STATUS); VERIFY_(STATUS)
+     ! For Stage 2 - Changes in S from TURBL assumed to be all in T
+     TFORTURB = (SAFDIFFUSE - MAPL_GRAV*0.5*(ZLE(:,:,1:LM)+ZLE(:,:,0:LM-1)))/MAPL_CP
+     THFORTURB = TFORTURB/PK
+     call ESMF_StateGet(GIM(TURBL), 'TR', BUNDLE, RC=STATUS ); VERIFY_(STATUS)
+     call ESMFL_BundleGetPointerToData(BUNDLE,'S',SFORTURB, RC=STATUS); VERIFY_(STATUS)
+     if (DEBUG_SYNCTQ) then
+       call MAPL_MaxMin('DEBUG S: S_FRM_TURB', SFORTURB)
+       call MAPL_MaxMin('DEBUG S: SAFDIFFUSE', SAFDIFFUSE)
+     endif
+     SFORTURB = SAFDIFFUSE
+     if (DEBUG_SYNCTQ) then
+       call MAPL_MaxMin('DEBUG S: SFORTURB', SFORTURB)
+     endif
+    ! For SURF
+     call MAPL_GetPointer ( GIM(SURF),  TFORSURF,  'TA',    RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(SURF),  QFORSURF,  'QA',    RC=STATUS); VERIFY_(STATUS)
+     if ( HGT_SURFACE .gt. 0.0 ) then
+       call VertInterp(TFORSURF,TFORTURB,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
+       call VertInterp(QFORSURF,QV      ,-HGT,-HGT_SURFACE, positive_definite=.true., rc=status); VERIFY_(STATUS)
+     else
+       TFORSURF =   TFORTURB(:,:,LM)
+       QFORSURF =         QV(:,:,LM)
+     endif
+    endif
+
+    if (DEBUG_SYNCTQ) then
+     if ( SYNCTQ.ge.1. ) then
+       call MAPL_MaxMin('SYNCTQ: TFORSURF', TFORSURF)
+       call MAPL_MaxMin('SYNCTQ: QFORSURF', QFORSURF)
+       call MAPL_MaxMin('SYNCTQ: TFORTURB', TFORTURB)
+     endif
+     if ( SYNCUV.ge.1. ) then
+       call MAPL_MaxMin('SYNCTQ: UFORSURF', UFORSURF)
+       call MAPL_MaxMin('SYNCTQ: VFORSURF', VFORSURF)
+     endif
+     call MAPL_GetPointer ( GIM(SURF), PTR2D, 'TPREC', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_MaxMin('SYNCTQ: TPREC   ', PTR2D)
+     call MAPL_GetPointer ( GIM(SURF), PTR2D, 'CN_PRCP', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_MaxMin('SYNCTQ: CN_PRCP ', PTR2D)
+     call MAPL_GetPointer ( GIM(SURF), PTR2D, 'PCU', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_MaxMin('SYNCTQ: PCU     ', PTR2D)
+     call MAPL_GetPointer ( GIM(SURF), PTR2D, 'PLS', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_MaxMin('SYNCTQ: PLS     ', PTR2D)
+     call MAPL_GetPointer ( GIM(SURF), PTR2D, 'SNO', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_MaxMin('SYNCTQ: SNO     ', PTR2D)
+     call MAPL_GetPointer ( GIM(SURF), PTR2D, 'ICE', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_MaxMin('SYNCTQ: ICE     ', PTR2D)
+     call MAPL_GetPointer ( GIM(SURF), PTR2D, 'FRZR', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_MaxMin('SYNCTQ: FRZR    ', PTR2D)
     endif
 
 ! Surface Stage 2
@@ -2666,7 +3356,11 @@ contains
     I=SURF
 
     call MAPL_TimerOn(STATE,GCNames(I))
+     t1 = MPI_Wtime(status); VERIFY_(STATUS)
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=2, userRC=STATUS ); VERIFY_(STATUS)
+     t2 = MPI_Wtime(status); VERIFY_(STATUS)
+     call MAPL_GetPointer (EXPORT, PTR2D, 'TIME_IN_SFC', RC=STATUS); VERIFY_(STATUS)
+     if (associated(PTR2D)) PTR2D = PTR2D + t2-t1
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
 
@@ -2676,24 +3370,77 @@ contains
     I=TURBL
 
     call MAPL_TimerOn(STATE,GCNames(I))
+     t1 = MPI_Wtime(status); VERIFY_(STATUS)
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=2, userRC=STATUS ); VERIFY_(STATUS)
+     t2 = MPI_Wtime(status); VERIFY_(STATUS)
+     call MAPL_GetPointer (EXPORT, PTR2D, 'TIME_IN_TRB', RC=STATUS); VERIFY_(STATUS)
+     if (associated(PTR2D)) PTR2D = PTR2D + t2-t1
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
 
+! Get fill negative export pointers if requested
+! ----------------------------------------------
+    call MAPL_GetPointer(EXPORT,   DQVDT_FILL,   'DQVDT_FILL_AFSTG2', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQLLSDT_FILL, 'DQLLSDT_FILL_AFSTG2', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQLCNDT_FILL, 'DQLCNDT_FILL_AFSTG2', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQILSDT_FILL, 'DQILSDT_FILL_AFSTG2', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQICNDT_FILL, 'DQICNDT_FILL_AFSTG2', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,   DQRDT_FILL,   'DQRDT_FILL_AFSTG2', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,   DQSDT_FILL,   'DQSDT_FILL_AFSTG2', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,   DQGDT_FILL,   'DQGDT_FILL_AFSTG2', RC=STATUS); VERIFY_(STATUS)
+
+! Cleanup negative water species
+! ------------------------------
+    call FILLQ2ZERO( QV      , DM, DT=DT, DQDT=  DQVDT_FILL, WARNING_LABEL="QV After Stage2"  , VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QLLS    , DM, DT=DT, DQDT=DQLLSDT_FILL, WARNING_LABEL="QLLS After Stage2", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QLCN    , DM, DT=DT, DQDT=DQLCNDT_FILL, WARNING_LABEL="QLCN After Stage2", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QILS    , DM, DT=DT, DQDT=DQILSDT_FILL, WARNING_LABEL="QILS After Stage2", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QICN    , DM, DT=DT, DQDT=DQICNDT_FILL, WARNING_LABEL="QICN After Stage2", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QRAIN   , DM, DT=DT, DQDT=  DQRDT_FILL, WARNING_LABEL="QR After Stage2"  , VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QSNOW   , DM, DT=DT, DQDT=  DQSDT_FILL, WARNING_LABEL="QS After Stage2"  , VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QGRAUPEL, DM, DT=DT, DQDT=  DQGDT_FILL, WARNING_LABEL="QG After Stage2"  , VM=VMG, RC=STATUS); VERIFY_(STATUS)
+
     if ( SYNCTQ.ge.1. ) then
-     ! From TURBL Stage 2
-     call MAPL_GetPointer ( GEX(TURBL), SAFUPDATE,  'SAFUPDATE', RC=STATUS); VERIFY_(STATUS)
-     ! For RAD
-     call MAPL_GetPointer ( GIM(RAD), TFORRAD, 'T', RC=STATUS); VERIFY_(STATUS)
+    ! For RAD
+     call MAPL_GetPointer ( GIM(RAD), TFORRAD, 'T',  RC=STATUS); VERIFY_(STATUS)
      ! For Stage 2 - Changes in S from TURBL assumed to be all in T
-      TFORRAD = TFORTURB + (SAFUPDATE-SAFDIFFUSE)/MAPL_CP
-     ! For CHEM use the same T as CHEM
+     call MAPL_GetPointer ( GEX(TURBL), SAFUPDATE, 'SAFUPDATE', RC=STATUS); VERIFY_(STATUS)
+     TFORRAD = (SAFUPDATE - MAPL_GRAV*0.5*(ZLE(:,:,1:LM)+ZLE(:,:,0:LM-1)))/MAPL_CP
+     call ESMFL_BundleGetPointerToData(BUNDLE,'S',SFORTURB, RC=STATUS); VERIFY_(STATUS)
+     if (DEBUG_SYNCTQ) then
+       call MAPL_MaxMin('DEBUG S: S_FRM_TURB', SFORTURB)
+       call MAPL_MaxMin('DEBUG S: SAFUPDATE', SAFUPDATE)
+     endif
+     SFORTURB = SAFUPDATE
+     if (DEBUG_SYNCTQ) then
+       call MAPL_MaxMin('DEBUG S: SFORTURB', SFORTURB)
+     endif
+     ! For CHEM use the same T as RAD
      if ( SYNCTQ.eq.1. ) then
        call MAPL_GetPointer ( GIM(CHEM), TFORCHEM,   'T',  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer ( GIM(CHEM), THFORCHEM,  'TH', RC=STATUS); VERIFY_(STATUS)
         TFORCHEM = TFORRAD
        THFORCHEM = TFORRAD/PK
      endif
+
+     if (DEBUG_SYNCTQ) then
+     call MAPL_MaxMin('SYNCTQ: QFORRAD ', QV)
+     call MAPL_MaxMin('SYNCTQ: TFORRAD ', TFORRAD)
+     endif
+        do L=1,LM
+          do J=1,JM
+           do I=1,IM
+             if ( (TFORRAD(I,J,L) > 333.0) .OR. (QV(I,J,L) < 0.0) .OR. (QV(I,J,L) > 1.0) ) then
+                 print *, "SYNTQ for Radiation error  T= : ", TFORRAD(I,J,L)
+                 print *, "                           Q= : ", QV(I,J,L)
+                 print *, "  Latitude       =", LATS(I,J)*180.0/MAPL_PI
+                 print *, "  Longitude      =", LONS(I,J)*180.0/MAPL_PI
+                 print *, "  Pressure (mb)  =", 0.5*(PLE(I,J,L)+PLE(I,J,L-1))/100.0
+             endif
+           end do ! IM loop
+         end do ! JM loop
+       end do ! LM loop
+
     endif
 
 ! Boundary Layer Tendencies for GF
@@ -2709,7 +3456,11 @@ contains
     I=CHEM
 
     call MAPL_TimerOn(STATE,GCNames(I))
+     t1 = MPI_Wtime(status); VERIFY_(STATUS)
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=2, userRC=STATUS ); VERIFY_(STATUS)
+     t2 = MPI_Wtime(status); VERIFY_(STATUS)
+     call MAPL_GetPointer (EXPORT, PTR2D, 'TIME_IN_CHM', RC=STATUS); VERIFY_(STATUS)
+     if (associated(PTR2D)) PTR2D = PTR2D + t2-t1
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
 
@@ -2719,14 +3470,24 @@ contains
     I=RAD
 
     call MAPL_TimerOn (STATE,GCNames(I))
+     t1 = MPI_Wtime(status); VERIFY_(STATUS)
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, userRC=STATUS ); VERIFY_(STATUS)
+     t2 = MPI_Wtime(status); VERIFY_(STATUS)
+     call MAPL_GetPointer (EXPORT, PTR2D, 'TIME_IN_RAD', RC=STATUS); VERIFY_(STATUS)
+     if (associated(PTR2D)) PTR2D = t2-t1
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
+
+    if (DEBUG_SYNCTQ) then
+      call MAPL_MaxMin('SYNCTQ: TAFRAD ', TFORRAD + DT*TIR*DPI)
+    endif
 
 ! Clean up SYNTQ things
     if ( SYNCTQ.ge.1. ) then
       deallocate(PK)
-      if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) deallocate(HGT)
+      if ( HGT_SURFACE .gt. 0.0 ) then
+          deallocate(HGT)
+      endif
     endif
 
     endif     !   end of if do physics condition
@@ -2776,13 +3537,13 @@ contains
     if(NEED_FRI) then
        allocate(FRI(IM,JM,LM),stat=STATUS)
        VERIFY_(STATUS)
-       FRI         = INTDIS + TOPDIS
+       FRI = INTDIS + TOPDIS
     end if
 
     if(NEED_STN) then
        allocate(STN(IM,JM,LM),stat=STATUS)
        VERIFY_(STATUS)
-       STN = SIT*(1./MAPL_CP)
+       STN = SIT/MAPL_CP
     end if
 
     if(associated(DUDT   )) DUDT    = UIM + UIT + UIG
@@ -2863,6 +3624,41 @@ contains
               + TICU     ! Mass-Weighted Temperature Tendency due to Cumulus Friction
        end if
 
+      if (DEBUG_SYNCTQ) then
+        call MAPL_GetPointer ( GEX(RAD), PTR3D, 'RADLW', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) call MAPL_MaxMin('RAD: LW  ', TDPOLD*DPI + DT*PTR3D)
+        call MAPL_GetPointer ( GEX(RAD), PTR3D, 'RADLWC', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) call MAPL_MaxMin('RAD: LWC ', TDPOLD*DPI + DT*PTR3D)
+        call MAPL_GetPointer ( GEX(RAD), PTR3D, 'RADLWNA', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) call MAPL_MaxMin('RAD: LWNA', TDPOLD*DPI + DT*PTR3D)
+
+        call MAPL_GetPointer ( GEX(RAD), PTR3D, 'RADSW', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) call MAPL_MaxMin('RAD: SW  ', TDPOLD*DPI + DT*PTR3D)
+        call MAPL_GetPointer ( GEX(RAD), PTR3D, 'RADSWC', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) call MAPL_MaxMin('RAD: SWC ', TDPOLD*DPI + DT*PTR3D)
+        call MAPL_GetPointer ( GEX(RAD), PTR3D, 'RADSWNA', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) call MAPL_MaxMin('RAD: SWNA', TDPOLD*DPI + DT*PTR3D)
+      endif
+
+      if (DEBUG_PHYINC) then
+        call MAPL_MaxMin('FRI: INT ', (TDPOLD + DT*INTDIS)*DPI)
+        call MAPL_MaxMin('FRI: TOP ', (TDPOLD + DT*TOPDIS)*DPI)
+        call MAPL_MaxMin('PHYINC: OLD ', (TDPOLD          )*DPI)
+     !  call MAPL_MaxMin('PHYINC: TIG ', (TDPOLD + DT*TIG )*DPI)
+     !  call MAPL_MaxMin('PHYINC: TTN ', (TDPOLD + DT*TIG + DT*TTN )*DPI)
+     !  call MAPL_MaxMin('PHYINC: TICU', (TDPOLD + DT*TIG + DT*TTN + DT*TICU )*DPI)
+     !  call MAPL_MaxMin('PHYINC: STN ', (TDPOLD + DT*TIG + DT*TTN + DT*TICU + DT*STN )*DPI)
+     !  call MAPL_MaxMin('PHYINC: FRI ', (TDPOLD + DT*TIG + DT*TTN + DT*TICU + DT*STN + DT*FRI )*DPI)
+     !  call MAPL_MaxMin('PHYINC: TIR ', (TDPOLD + DT*TIG + DT*TTN + DT*TICU + DT*STN + DT*FRI + DT*TIR)*DPI)
+        call MAPL_MaxMin('PHYINC: TIG ', (TDPOLD + DT*TIG )*DPI)
+        call MAPL_MaxMin('PHYINC: TTN ', (TDPOLD + DT*TTN )*DPI)
+        call MAPL_MaxMin('PHYINC: TICU', (TDPOLD + DT*TICU)*DPI)
+        call MAPL_MaxMin('PHYINC: STN ', (TDPOLD + DT*STN )*DPI)
+        call MAPL_MaxMin('PHYINC: FRI ', (TDPOLD + DT*FRI )*DPI)
+        call MAPL_MaxMin('PHYINC: TIR ', (TDPOLD + DT*TIR )*DPI)
+        call MAPL_MaxMin('PHYINC: TOT ', (TDPOLD + DT*TOT )*DPI)
+      endif
+
        IF(DO_SPPT) THEN
           allocate(TFORQS(IM,JM,LM))
           TFORQS = T + DT*TOT*DPI
@@ -2933,14 +3729,37 @@ contains
     if(associated(TIT    )) TIT     = STN * DPI
     if(associated(TIF    )) TIF     = FRI * DPI
 
-   !  Compute Total Water Mass Change due to Physics Sources and Sinks
-   !  ----------------------------------------------------------------
+! Get fill negative export pointers if requested
+! ----------------------------------------------
+    call MAPL_GetPointer(EXPORT,   DQVDT_FILL,   'DQVDT_FILL_PHYS1', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQLLSDT_FILL, 'DQLLSDT_FILL_PHYS1', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQLCNDT_FILL, 'DQLCNDT_FILL_PHYS1', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQILSDT_FILL, 'DQILSDT_FILL_PHYS1', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQICNDT_FILL, 'DQICNDT_FILL_PHYS1', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,   DQRDT_FILL,   'DQRDT_FILL_PHYS1', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,   DQSDT_FILL,   'DQSDT_FILL_PHYS1', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,   DQGDT_FILL,   'DQGDT_FILL_PHYS1', RC=STATUS); VERIFY_(STATUS)
+
+! Cleanup negative water species
+! ------------------------------
+    call FILLQ2ZERO( QV      , DM, DT=DT, DQDT=  DQVDT_FILL, WARNING_LABEL="QV After Physics"  , VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QLLS    , DM, DT=DT, DQDT=DQLLSDT_FILL, WARNING_LABEL="QLLS After Physics", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QLCN    , DM, DT=DT, DQDT=DQLCNDT_FILL, WARNING_LABEL="QLCN After Physics", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QILS    , DM, DT=DT, DQDT=DQILSDT_FILL, WARNING_LABEL="QILS After Physics", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QICN    , DM, DT=DT, DQDT=DQICNDT_FILL, WARNING_LABEL="QICN After Physics", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QRAIN   , DM, DT=DT, DQDT=  DQRDT_FILL, WARNING_LABEL="QR After Physics"  , VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QSNOW   , DM, DT=DT, DQDT=  DQSDT_FILL, WARNING_LABEL="QS After Physics"  , VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( QGRAUPEL, DM, DT=DT, DQDT=  DQGDT_FILL, WARNING_LABEL="QG After Physics"  , VM=VMG, RC=STATUS); VERIFY_(STATUS)
+
+!  Compute Total Water Mass Change due to Physics Sources and Sinks
+!  ----------------------------------------------------------------
     allocate( DQ(IM,JM,LM) )
     DQ = QV+QLLS+QLCN+QILS+QICN+QRAIN+QSNOW+QGRAUPEL - QW
 
     if( DPEDT_PHYS ) then
-       allocate(sumdq(IM,JM))
-       allocate(  dpe(IM,JM))
+       allocate( ple_new(IM,JM,0:LM),STAT=STATUS ) ; VERIFY_(STATUS)
+       allocate(   sumdq(IM,JM)     ,STAT=STATUS ) ; VERIFY_(STATUS)
+       allocate(     dpe(IM,JM)     ,STAT=STATUS ) ; VERIFY_(STATUS)
 
        call ESMF_StateGet (EXPORT, 'TRADV', BUNDLE, RC=STATUS )
        VERIFY_(STATUS)
@@ -2995,8 +3814,6 @@ contains
        deallocate( sumdq   )
        deallocate( dpe     )
        deallocate( names   )
-       deallocate( sumq    )
-       deallocate( ple_new )
 
     else
                                       DPDT = 0.0
@@ -3015,14 +3832,20 @@ contains
         enddo
     endif
 
-    allocate( TDPNEW(IM,JM,LM),stat=STATUS )
-    VERIFY_(STATUS)
-    do L=1,LM
-       TDPNEW(:,:,L) = ( T(:,:,L) + DT*DTDT(:,:,L)*DPI(:,:,L) ) * ( PLE(:,:,L)-PLE(:,:,L-1) + DT*(DPDT(:,:,L)-DPDT(:,:,L-1)) )
-    enddo
-       DTDT = ( TDPNEW - TDPOLD )/DT
-    deallocate( TDPNEW )
-    deallocate( TDPOLD )
+    if( DPEDT_PHYS ) then
+      allocate( TDPNEW(IM,JM,LM),stat=STATUS )
+      VERIFY_(STATUS)
+      do L=1,LM
+         TDPNEW(:,:,L) = ( T(:,:,L) + DT*DTDT(:,:,L)*DPI(:,:,L) ) * ( PLE(:,:,L)-PLE(:,:,L-1) + DT*(DPDT(:,:,L)-DPDT(:,:,L-1)) )
+      enddo
+      DTDT = ( TDPNEW - TDPOLD )/DT
+      if (DEBUG_PHYINC) then
+        call MAPL_MaxMin('PHYINC: NEW ', TDPNEW/(ple_new(:,:,1:LM)-ple_new(:,:,0:LM-1)))
+      endif
+      deallocate( ple_new )
+      deallocate( TDPNEW )
+      deallocate( TDPOLD )
+    endif
 
     if(associated(FTU)) then
        FTU(:,:,0) = 0.0
@@ -3233,6 +4056,54 @@ contains
        end do
     end if
 
+! QRAIN Tendencies
+! -------------
+    if(associated(DQRDTPHYINT)) then
+       DQRDTPHYINT = 0.0
+       do L=1,LM
+       DQRDTPHYINT = DQRDTPHYINT + DQRDTMST(:,:,L)*DM(:,:,L)
+       end do
+    end if
+
+    if(associated(DQRDTMSTINT)) then
+       DQRDTMSTINT = 0.0
+       do L=1,LM
+       DQRDTMSTINT = DQRDTMSTINT + DQRDTMST(:,:,L)*DM(:,:,L)
+       end do
+    end if
+
+! QSNOW Tendencies
+! -------------
+    if(associated(DQSDTPHYINT)) then
+       DQSDTPHYINT = 0.0
+       do L=1,LM
+       DQSDTPHYINT = DQSDTPHYINT + DQSDTMST(:,:,L)*DM(:,:,L)
+       end do
+    end if
+
+    if(associated(DQSDTMSTINT)) then
+       DQSDTMSTINT = 0.0
+       do L=1,LM
+       DQSDTMSTINT = DQSDTMSTINT + DQSDTMST(:,:,L)*DM(:,:,L)
+       end do
+    end if
+
+! QGRAUPEL Tendencies
+! -------------
+    if(associated(DQGDTPHYINT)) then
+       DQGDTPHYINT = 0.0
+       do L=1,LM
+       DQGDTPHYINT = DQGDTPHYINT + DQGDTMST(:,:,L)*DM(:,:,L)
+       end do
+    end if
+
+    if(associated(DQGDTMSTINT)) then
+       DQGDTMSTINT = 0.0
+       do L=1,LM
+       DQGDTMSTINT = DQGDTMSTINT + DQGDTMST(:,:,L)*DM(:,:,L)
+       end do
+    end if
+
 ! OX Tendencies
 ! -------------
     if(associated(DOXDTPHYINT)) then
@@ -3252,12 +4123,14 @@ contains
     end if
 
     if(SYNCTQ.eq.0.) then
+      call MAPL_GetPointer(GIM(MOIST), DTDT_BL, 'DTDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(MOIST), DQDT_BL, 'DQDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
       !- save 'boundary layer' tendencies of Q and T for the convection scheme
       DQDT_BL = DQVDTTRB
       DTDT_BL = 0.
       !- for SCM setup, TIT/TIF are not associated
-      if( associated(TIF)) DTDT_BL = DTDT_BL + TIF
-      if( associated(TIT)) DTDT_BL = DTDT_BL + TIT
+      if( associated(TIF)) DTDT_BL = DTDT_BL + TIF/DPI
+      if( associated(TIT)) DTDT_BL = DTDT_BL + TIT/DPI
     endif
 
     if(associated(DM )) deallocate(DM )
@@ -3283,12 +4156,13 @@ contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-  subroutine VertInterp(v2,v3,ple,pp,rc)
+  subroutine VertInterp(v2,v3,ple,pp,positive_definite,rc)
 
     real    , intent(OUT) :: v2(:,:)
     real    , intent(IN ) :: v3(:,:,:)
     real    , intent(IN ) :: ple(:,:,:)
     real    , intent(IN ) :: pp
+    logical, optional, intent(IN ) :: positive_definite
     integer, optional, intent(OUT) :: rc
 
     real, dimension(size(v2,1),size(v2,2)) :: al,PT,PB
@@ -3333,7 +4207,128 @@ contains
           end where
     end if
 
+    if (present(positive_definite)) then
+       if (positive_definite) then
+          where (v2 < tiny(0.0))
+             v2 = 0.0
+          endwhere
+       endif
+    endif
+
     RETURN_(ESMF_SUCCESS)
   end subroutine VertInterp
+
+  subroutine FILLQ2ZERO(Q, MASS, DT, DQDT, WARNING_LABEL, VM, RC)
+
+    real, dimension(:,:,:),   intent(inout)  :: Q
+    real, dimension(:,:,:),   intent(in)     :: MASS
+    real, optional,           intent(in)     :: DT
+    real, optional, pointer,  intent(out)    :: DQDT(:,:,:)
+    character(*), optional,   intent(in)     :: WARNING_LABEL
+    type(ESMF_VM), optional,  intent(in)     :: VM
+    integer,                  intent(out)    :: RC
+
+    integer :: IM, JM, LM
+    integer :: i, j, l
+    integer :: neg_count_local, total_count_local
+    integer :: I1D(2), RANK, STATUS
+    real    :: tpw_before, tpw_after, d_tpw
+    real    :: positive_mass
+    real    :: q_old
+
+    character(len=ESMF_MAXSTR) :: IAm="FILLQ2ZERO"
+
+    RC = 0
+
+    IM = size(Q,1)
+    JM = size(Q,2)
+    LM = size(Q,3)
+
+    !===============================================================
+    ! 1. Count negative values BEFORE fixing
+    !===============================================================
+    if (present(WARNING_LABEL) .and. present(VM)) then
+      neg_count_local   = count(Q < 0.0)
+      total_count_local = size(Q)
+
+      call ESMF_VMGet(VM, localPet=RANK, rc=STATUS)
+      VERIFY_(STATUS)
+
+      call ESMF_VMAllReduce(VM, sendData=[neg_count_local,total_count_local], &
+                            recvData=I1D, count=2, &
+                            reduceflag=ESMF_REDUCE_SUM, rc=STATUS)
+      VERIFY_(STATUS)
+
+      if ((RANK == 0) .and. (I1D(1) > 0)) then
+        write(*,'(A,A,A,2X,"Count: ",I0,"/",I0," (",F5.1,"%)")')  &
+             'WARNING: Negative values filled in ', trim(WARNING_LABEL), ':', &
+             I1D(1), I1D(2), real(I1D(1))/real(I1D(2))*100.0
+      endif
+    endif
+
+    !===============================================================
+    ! 2. Save original Q if tendency is requested
+    !===============================================================
+    if (present(DQDT) .and. present(DT)) then
+      if (associated(DQDT)) DQDT = Q
+    endif
+
+    !===============================================================
+    ! 3. Moisture limiter: per-column mass-conserving Q fix
+    !===============================================================
+    do j = 1, JM
+      do i = 1, IM
+
+        !--- TPW_before: using the *original* Q
+        tpw_before = 0.0
+        do l = 1, LM
+          tpw_before = tpw_before + Q(i,j,l) * MASS(i,j,l)
+        end do
+
+        !--- Clip negative Q locally
+        do l = 1, LM
+          if (Q(i,j,l) < 0.0) Q(i,j,l) = 0.0
+        end do
+
+        !--- TPW_after: using clipped Q
+        tpw_after = 0.0
+        do l = 1, LM
+          tpw_after = tpw_after + Q(i,j,l) * MASS(i,j,l)
+        end do
+
+        d_tpw = tpw_before - tpw_after   ! >0 means mass was removed
+
+        !--- Redistribute delta TPW to positive layers only
+        if (abs(d_tpw) > 1.0e-15) then
+
+          positive_mass = 0.0
+          do l = 1, LM
+            if (Q(i,j,l) > 0.0) positive_mass = positive_mass + MASS(i,j,l)
+          end do
+
+          if (positive_mass > 0.0) then
+            do l = 1, LM
+              if (Q(i,j,l) > 0.0) then
+                Q(i,j,l) = Q(i,j,l) + d_tpw * ( MASS(i,j,l) / positive_mass )
+                if (Q(i,j,l) < 0.0) Q(i,j,l) = 0.0  ! safety
+              end if
+            end do
+          end if
+
+        end if
+
+      end do
+    end do
+
+    !===============================================================
+    ! 4. Final DQDT tendencies if requested
+    !===============================================================
+    if (present(DQDT) .and. present(DT)) then
+      if (associated(DQDT) .and. DT > 0.0) then
+        DQDT = (Q - DQDT) / DT
+      endif
+    endif
+
+  end subroutine FILLQ2ZERO
 
 end module GEOS_PhysicsGridCompMod

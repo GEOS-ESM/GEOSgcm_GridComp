@@ -1,6 +1,6 @@
 
 module CubedSphere_GridMod
-use MAPL_ConstantsMod
+use MAPL_Constants
 
 #define r8 REAL64
 

@@ -51,7 +51,7 @@ ecbuild_add_executable (TARGET mk_runofftbl.x SOURCES mk_runofftbl.F90 LIBS MAPL
 ecbuild_add_executable (TARGET mkEASETilesParam.x SOURCES mkEASETilesParam.F90 LIBS MAPL ${this})
 ecbuild_add_executable (TARGET TileFile_ASCII_to_nc4.x SOURCES TileFile_ASCII_to_nc4.F90 LIBS MAPL ${this})
 
-install(PROGRAMS clsm_plots.pro create_README.csh  DESTINATION bin)
+install(PROGRAMS clsm_plots.py create_README.csh DESTINATION bin)
 file(GLOB MAKE_BCS_PYTHON CONFIGURE_DEPENDS "./make_bcs*.py")
 list(FILTER MAKE_BCS_PYTHON EXCLUDE REGEX "make_bcs_shared.py")
 install(PROGRAMS ${MAKE_BCS_PYTHON} DESTINATION bin)

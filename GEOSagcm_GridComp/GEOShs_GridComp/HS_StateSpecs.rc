@@ -1,0 +1,33 @@
+schema_version: 2.0.0
+component: HS
+
+category: EXPORT
+#-------------------------------------------------------------
+ SHORT_NAME | UNITS    | DIMS              | VLOC | LONG_NAME
+#-------------------------------------------------------------
+ DTDT       | Pa K s-1 | MAPL_DimsHorzVert | C    | pressure_weighted_air_temperature_tendency
+ DUDT       | m s-2    | MAPL_DimsHorzVert | C    | eastward_wind_tendency
+ DVDT       | m s-2    | MAPL_DimsHorzVert | C    | northward_wind_tendency
+ T_EQ       | K        | MAPL_DimsHorzVert | C    | equilibrium_temperature
+ THEQ       | K        | MAPL_DimsHorzVert | C    | equilibrium_potential_temperature
+ TAUX       | N m-2    | MAPL_DimsHorzOnly | N    | eastward_surface_stress
+ TAUY       | N m-2    | MAPL_DimsHorzOnly | N    | northward_surface_stress
+ DISS       | W m-2    | MAPL_DimsHorzOnly | N    | frictional_dissipation
+
+category: IMPORT
+#---------------------------------------------------------------------
+ SHORT_NAME | UNITS | DEFAULT | DIMS               | VLOC | LONG_NAME
+#---------------------------------------------------------------------
+ U          | m s-1 | 0.0     | MAPL_DimsHorzVert  | C    | eastward_wind
+ V          | m s-1 | 0.0     | MAPL_DimsHorzVert  | C    | northward_wind
+ TEMP       | K     | 300.0   | MAPL_DimsHorzVert  | C    | air_temperature
+ PLE        | Pa    |         | MAPL_DimsHorzVert  | E    | edge_pressure
+
+category: INTERNAL
+#-------------------------------------------------------------------------------
+ SHORT_NAME | UNITS | DEFAULT | DIMS               | VLOC | RESTART | LONG_NAME
+#-------------------------------------------------------------------------------
+ SPHI2      | 1     | 0.0     | MAPL_DimsHorzOnly  | N    | SKIP    | sine_latitude_squared
+ CPHI2      | 1     | 0.0     | MAPL_DimsHorzOnly  | N    | SKIP    | cosine_latitude_squared
+ HFCN       | 1     | 0.0     | MAPL_DimsHorzOnly  | N    | SKIP    | horizontal_structure_of_localized_heating
+ P_I        | 1     | 0.0     | MAPL_DimsHorzOnly  | N    | SKIP    | Williamson_interface_pressure

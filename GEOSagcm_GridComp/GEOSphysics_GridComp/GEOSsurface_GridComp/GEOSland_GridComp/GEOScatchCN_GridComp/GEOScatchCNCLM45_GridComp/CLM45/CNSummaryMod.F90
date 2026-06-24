@@ -11,7 +11,7 @@ module CNSummaryMod
 ! Module for carbon and nitrogen summary calculations
 !
 ! !USES:
-    use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+    use MAPL_Constants, ONLY: r8 => MAPL_R4
     use clm_varcon, only: dzsoi_decomp, zisoi
     use pftvarcon   , only: npcropmin
     use clm_varctl  , only: crop_prog

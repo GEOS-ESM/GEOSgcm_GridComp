@@ -41,7 +41,7 @@ module mkiau_specmod
 ! this version is thread safe (can be called within an OMP parallel region)
 !
 !$$$
-  use MAPL_ConstantsMod, only: MAPL_I4, MAPL_R4
+  use MAPL_Constants, only: MAPL_I4, MAPL_R4
   implicit none
 
   integer(MAPL_I4) jcap

@@ -22,7 +22,7 @@
 MODULE process_hres_data
 
   use MAPL_SortMod
-  use MAPL_ConstantsMod
+  use MAPL_Constants
   use MAPL_Base,              ONLY: MAPL_UNDEF  
 
   use LDAS_DateTimeMod  

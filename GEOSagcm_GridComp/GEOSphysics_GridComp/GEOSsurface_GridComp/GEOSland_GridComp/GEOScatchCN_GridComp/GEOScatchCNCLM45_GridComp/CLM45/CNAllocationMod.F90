@@ -11,7 +11,7 @@ module CNAllocationMod
 ! nitrogen code.
 !
 ! !USES:
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+  use MAPL_Constants, ONLY: r8 => MAPL_R4
   use clm_varcon, only: dzsoi_decomp
   use clm_varctl, only: use_c13, use_c14
   implicit none

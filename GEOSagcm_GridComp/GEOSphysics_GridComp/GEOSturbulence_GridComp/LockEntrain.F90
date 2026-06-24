@@ -88,12 +88,7 @@ module LockEntrain
    ! NOTE: GPUs use the QSAT and DQSAT at the end of this module
 #endif 
 
-   use MAPL_ConstantsMod, only: MAPL_GRAV,  MAPL_KARMAN, MAPL_CP,     &
-                                MAPL_RGAS,  MAPL_RVAP,   MAPL_ALHL,   &
-                                MAPL_ALHS,  MAPL_TICE,   MAPL_VIREPS, &
-                                MAPL_P00,   MAPL_KAPPA,  MAPL_H2OMW,  &
-                                MAPL_AIRMW, MAPL_R4,     MAPL_R8
-   use MAPL,              only: MAPL_UNDEF
+   use MAPL
 
    implicit none
 
@@ -129,6 +124,7 @@ module LockEntrain
    REAL, ALLOCATABLE, DIMENSION(:,:,:), DEVICE :: PFULL_dev
    REAL, ALLOCATABLE, DIMENSION(:,:,:), DEVICE :: ZHALF_dev
    REAL, ALLOCATABLE, DIMENSION(:,:,:), DEVICE :: PHALF_dev
+   REAL, ALLOCATABLE, DIMENSION(:,:  ), DEVICE :: EIS_dev
 
    ! Inoutputs
    ! ---------
@@ -260,6 +256,7 @@ module LockEntrain
 
    real, parameter :: ramp       =  20.
 
+   real, parameter :: r13        =  1.0/3.0
 
 !-----------------------------------------------------------------------
 !
@@ -313,6 +310,7 @@ contains
          pfull,          &
          zhalf,          &
          phalf,          &
+         eis,            &
 ! Inoutputs
          diff_m,         &
          diff_t,         &
@@ -342,15 +340,16 @@ contains
          cldradf_diag,   &
          radrcode_diag,  &
 ! Constants
+         use_eis,        &
          prandtlsfc,     &
          prandtlrad,     &
          beta_surf,      &
          beta_rad,       &
-         tpfac_sfc,      &
+         tpfac_min,      &
+         tpfac_max,      &
          entrate_sfc,    &
          pceff_sfc,      &
          vscale_sfc,     &
-         pertopt_sfc,    &
          khradfac,       &
          khsfcfac_lnd,   &
          khsfcfac_ocn    )
@@ -469,15 +468,16 @@ contains
 #ifdef _CUDA
       integer, value,  intent(in) :: icol,jcol,nlev
 
+      logical, value,  intent(in) :: use_eis
       real,    value,  intent(in) :: prandtlsfc,prandtlrad,beta_surf,beta_rad
-      real,    value,  intent(in) :: khradfac,tpfac_sfc,entrate_sfc,vscale_sfc,pertopt_sfc
+      real,    value,  intent(in) :: khradfac,tpfac_min,tpfac_max,entrate_sfc,vscale_sfc
       real,    value,  intent(in) :: pceff_sfc,khsfcfac_lnd,khsfcfac_ocn
 
       real,    device, intent(in),    dimension(icol,jcol,nlev)      :: tdtlw_in       
-      real,    device, intent(in),    dimension(icol,jcol)           :: u_star,b_star,frland,evap,sh
+      real,    device, intent(in),    dimension(icol,jcol)           :: u_star,b_star,frland,evap,sh,eis
       real,    device, intent(in),    dimension(icol,jcol,nlev)      :: t,qv,qlls,qils
       real,    device, intent(in),    dimension(icol,jcol,nlev)      :: u,v,zfull,pfull
-      real,    device, intent(in),    dimension(icol,jcol,1:nlev+1)  :: zhalf, phalf ! 0:72 in GC, 1:73 here.
+      real,    device, intent(in),    dimension(icol,jcol,1:nlev+1)  :: zhalf, phalf
       real,    device, intent(inout), dimension(icol,jcol,1:nlev+1)  :: diff_m,diff_t
       real,    device, intent(out),   dimension(icol,jcol,1:nlev+1)  :: k_m_entr,k_t_entr
       real,    device, intent(out),   dimension(icol,jcol,1:nlev+1)  :: k_rad,k_sfc
@@ -492,17 +492,18 @@ contains
       integer, intent(in)                                    :: icol,jcol,nlev
 
       real,    intent(in),    dimension(icol,jcol,nlev)      :: tdtlw_in       
-      real,    intent(in),    dimension(icol,jcol)           :: u_star,b_star,frland,evap,sh
+      real,    intent(in),    dimension(icol,jcol)           :: u_star,b_star,frland,evap,sh,eis
       real,    intent(in),    dimension(icol,jcol,nlev)      :: t,qv,qlls,qils
       real,    intent(in),    dimension(icol,jcol,nlev)      :: u,v,zfull,pfull
-      real,    intent(in),    dimension(icol,jcol,1:nlev+1)  :: zhalf, phalf ! 0:72 in GC, 1:73 here.
+      real,    intent(in),    dimension(icol,jcol,1:nlev+1)  :: zhalf, phalf
       real,    intent(inout), dimension(icol,jcol,1:nlev+1)  :: diff_m,diff_t
       real,    intent(out),   dimension(icol,jcol,1:nlev+1)  :: k_m_entr,k_t_entr
       real,    intent(out),   dimension(icol,jcol,1:nlev+1)  :: k_rad,k_sfc
       real,    intent(out),   dimension(icol,jcol)           :: zsml,zradml,zcloud,zradbase
 
+      logical, intent(in) :: use_eis
       real,    intent(in) :: prandtlsfc,prandtlrad,beta_surf,beta_rad
-      real,    intent(in) :: khradfac,tpfac_sfc,entrate_sfc, vscale_sfc, pertopt_sfc
+      real,    intent(in) :: khradfac,tpfac_min,tpfac_max,entrate_sfc, vscale_sfc
       real,    intent(in) :: pceff_sfc,khsfcfac_lnd,khsfcfac_ocn
 
       real, pointer, dimension(:,:) :: wentr_rad_diag, wentr_sfc_diag ,del_buoy_diag
@@ -544,8 +545,9 @@ contains
       real, dimension(GPU_MAXLEVS) :: k_rad_col
       real, dimension(GPU_MAXLEVS) :: dqs
       !real, dimension(GPU_MAXLEVS) :: qs ! Not used in current code
-      real                         :: qs_dummy
-
+      real :: vbulk3, qs_dummy
+      real :: khsfcfac, depth_factor, depth_scale, depth_cap, land_factor
+      real :: eis_stability, eis_floor, eis_factor 
 !-----------------------------------------------------------------------
 !
 !     initialize variables
@@ -606,6 +608,18 @@ contains
          k_m_entr(i,j,nlev+1)   = 0.0
          k_sfc(i,j,nlev+1) = 0.0
          k_rad(i,j,nlev+1) = 0.0
+
+         ! Use EIS to determine appropriate depth threshold
+         if (eis(i,j) >= 12.0) then        
+            ! Very stable regime
+            eis_stability = 1.0
+         elseif (eis(i,j) <= 0.0) then
+            ! Very unstable regime  
+            eis_stability = 0.0
+         else
+            ! Smooth cubic interpolation from 0 to 1 over EIS range 0-12
+            eis_stability = (eis(i,j) / 12.0)**1.5
+         endif
 
 !--------------------------------------------------------------------------
 ! Initialize optional outputs
@@ -705,22 +719,23 @@ contains
 ! through phase changes to find parcel top
 
             call mpbl_depth(i,j,icol,jcol,nlev,&
-                  tpfac_sfc,        &
+                  tpfac_min,        &
+                  tpfac_max,        &
                   entrate_sfc,      &
                   pceff_sfc,        &
                   vscale_sfc,       & 
-                  pertopt_sfc,      &
                   t,                &
                   qv,               &
                   u,                &
                   v,                &
                   zfull,            &
                   pfull,            &
+                  frland,           &
                   b_star,           &
                   u_star,           &
                   evap,             &
                   sh,               &
-                  ipbl,zsml         )
+                  ipbl,zsml,use_eis)
 
 !------------------------------------------------------
 ! Define velocity scales vsurf and vshear
@@ -775,26 +790,35 @@ contains
                            (tmp1+tmp2) ) )
 
 !----------------------------------------
-! fudgey adjustment of entrainment to reduce it
-! for shallow boundary layers, and increase for 
-! deep ones
-            if ( zsml(i,j) .lt. 1600. ) then 
-               wentr_tmp = wentr_tmp * ( zsml(i,j) / 800. )
+! Entrainment velocity scaling
+! Physical basis:
+!   - Depth: Deeper BL → more TKE → stronger entrainment
+!   - EIS: Strong inversion → resistance → weaker entrainment
+            if (use_eis) then
+               ! 1. Define Land vs Ocean depth scales
+               ! Land PBLs are deeper; we increase the pivot point (denominator)
+               ! and the cap for land to allow more vigorous deep-afternoon mixing.
+               depth_scale  = 800.0 * (1.0 - frland(i,j)) + 1200.0 * frland(i,j)
+               depth_cap    = 2.0   * (1.0 - frland(i,j)) + 2.5    * frland(i,j)
+               
+               depth_factor = MIN(depth_cap, zsml(i,j) / depth_scale)
+               
+               ! 2. Component 2: Inversion strength effect
+               ! Over land, we increase sensitivity to low EIS (unstable conditions)
+               land_factor  = 0.5 * frland(i,j) 
+               eis_factor   = (1.2 + land_factor) - (0.7 + land_factor) * eis_stability
+               
+               ! 3. Apply combined factor
+               ! Ensure the floor isn't too low for marine clouds
+               ! (0.5 is a safer floor for marine Sc than 0.4)
+               eis_floor = 0.5 - (0.1 * frland(i,j))
+               wentr_tmp = wentr_tmp * depth_factor * max(eis_floor, eis_factor)
             else
-               wentr_tmp = 2.*wentr_tmp
+               ! Original depth-only scaling
+               wentr_tmp = wentr_tmp * MIN(2.0, zsml(i,j)/800.)
             endif
-!-----------------------------------------
-
-!!AMM106 !----------------------------------------
-!!AMM106 ! More fudgey adjustment of entrainment.
-!!AMM106 ! Zeroes entr if bulk shear in PBL > vbulk_scale
-!!AMM106 if ( vbulkshr .gt. vbulk_scale ) wentr_tmp = 0.0
-!!AMM106 if (    ( vbulkshr .gt. 0.5*vbulk_scale  )   &
-!!AMM106   .and. ( vbulkshr .le.     vbulk_scale  ) ) then 
-!!AMM106      wentr_tmp = wentr_tmp * ( vbulk_scale -  vbulkshr ) *2 &
-!!AMM106                                  / vbulk_scale
-!!AMM106 endif
-
+    !-----------------------------------------
+     
             k_entr_tmp = wentr_tmp*(zfull(i,j,ipbl-1)-zfull(i,j,ipbl))  
             k_entr_tmp = min ( k_entr_tmp, akmax )
 
@@ -815,10 +839,15 @@ contains
 ! the PBL
 
             if (ipbl .lt. ibot) then
-
+               if (use_eis) then
+                  khsfcfac = khsfcfac_lnd*(    eis_stability) + &
+                             khsfcfac_ocn*(1.0-eis_stability)
+               else
+                  khsfcfac = khsfcfac_lnd*frland(i,j) + khsfcfac_ocn*(1.0-frland(i,j))
+               endif
                call diffusivity_pbl2(i,j,icol,jcol,nlev, &
                      zsml,                  &
-                     khsfcfac_lnd, khsfcfac_ocn, k_entr_tmp,  & 
+                     khsfcfac, k_entr_tmp,  & 
                      vsurf,frland,          & 
                      zhalf,                 &
                      k_m_troen,             &
@@ -911,14 +940,6 @@ contains
          maxradf = maxradf*MAPL_CP*( (phalf(i,j,kcldtop+1)-phalf(i,j,kcldtop)) / MAPL_GRAV )
 
          maxradf = max( maxradf , 0. ) ! do not consider cloud tops that are heating
-
-!!AMM108 ! Break out of "rad" plume if layer above cloud is 
-!!AMM108 ! wetter than RH = somenumber
-!!AMM108 if ( rh(kcldtop-1) .gt. 0.5 ) then 
-!!AMM108    if(associated(radrcode_diag)) if radrcode_diag(i,j)=5.
-!!AMM108    go to 55 
-!!AMM108 endif  
-
 
 !-----------------------------------------------------------
 ! Calculate optimal mixing fraction - chis - for buoyancy 
@@ -1051,25 +1072,35 @@ contains
 
          wentr_brv = beta_rad*vbr3/zradml(i,j)/(tmp1+tmp2)
 
-
 !----------------------------------------
-! fudgey adjustment of entrainment to reduce it
-! for shallow boundary layers, and increase for 
-! deep ones
-
-!!AMM107
-         if ( zradtop .lt. 500. ) then
-            wentr_rad = 0.00
-         endif
-         if (( zradtop .gt. 500.) .and. (zradtop .le. 800. )) then
-            wentr_rad = wentr_rad * ( zradtop-500.) / 300.
-         endif
-
-         if ( zradtop .lt. 2400. ) then 
-            wentr_rad = wentr_rad * ( zradtop / 800. )
+! Entrainment modulation: Depth AND inversion strength both matter
+! - Depth: Deeper BL has more TKE available for entrainment
+! - EIS: Strong inversion resists penetration by turbulence
+         if (use_eis) then
+           ! Use the 'softer' depth factor
+           if ( zradtop .le. 800. ) then
+              depth_factor = 0.5 + 0.5*max(0.0, (zradtop-500.)/300.)
+           else
+              depth_factor = min(2.0, (zradtop/800.))
+           endif
+ 
+           ! Over land, we want to be more aggressive with entrainment when EIS is low
+           ! Over ocean, we want to be more conservative to protect clouds
+           land_factor = 0.4 * frland(i,j) 
+           eis_factor = (1.2 + land_factor) - (0.8 + land_factor)*eis_stability
+ 
+           ! Ensure the floor isn't too low for marine clouds
+           ! (0.5 is a safer floor for marine Sc than 0.4)
+           eis_floor = 0.5 - (0.1 * frland(i,j))
+           
+           wentr_rad = wentr_rad * depth_factor * max(eis_floor, eis_factor)
          else
-            wentr_rad = 3.*wentr_rad
-         endif
+           ! Original depth-only scaling (preserved for backward compatibility)
+           if ( zradtop .le. 800. ) then
+              wentr_rad = wentr_rad * max(0.0,(zradtop-500.)/300.)
+           endif
+           wentr_rad = wentr_rad * min(3.0,(zradtop/800.))
+         endif    
 !-----------------------------------------
 
          k_entr_tmp = min ( akmax, wentr_rad*(zfull(i,j,kcldtop-1)-zfull(i,j,kcldtop)) )
@@ -1207,7 +1238,8 @@ contains
 #ifdef _CUDA
    attributes(device) &
 #endif
-   subroutine mpbl_depth(i,j,icol,jcol,nlev,tpfac, entrate, pceff, vscale, pertopt, t, q, u, v, z, p, b_star, u_star , evap, sh, ipbl, ztop )
+   subroutine mpbl_depth(i,j,icol,jcol,nlev, tpfac_min, tpfac_max, entrate, pceff, vscale, &
+                         t, q, u, v, z, p, frland, b_star, u_star, evap, sh, ipbl, ztop, use_eis)
 
 !
 !  -----
@@ -1235,48 +1267,17 @@ contains
 
       integer, intent(in   )                            :: i, j, nlev, icol, jcol
       real,    intent(in   ), dimension(icol,jcol,nlev) :: t, z, q, p, u, v
-      real,    intent(in   ), dimension(icol,jcol)      :: b_star, u_star, evap, sh
-      real,    intent(in   )                            :: tpfac, entrate, pceff, vscale, pertopt
+      real,    intent(in   ), dimension(icol,jcol)      :: frland, b_star, u_star, evap, sh
+      real,    intent(in   )                            :: tpfac_min, tpfac_max, entrate, pceff, vscale
       integer, intent(  out)                            :: ipbl
       real,    intent(  out),dimension(icol,jcol)       :: ztop
+      logical, intent(in   )                            :: use_eis
 
 
-      real     :: tep,z1,z2,t1,t2,qp,pp,qsp,dqp,dqsp,u1,v1,u2,v2,du
+      real     :: lts_min,lts_max,lts_fac
+      real     :: tpfac,tep,z1,z2,t1,t2,qp,pp,qsp,dqp,dqsp,u1,v1,u2,v2,du
       real     :: entfr,entrate_x,lts,zrho,buoyflx,delzg,wstar
       integer  :: k
-
-
-      !real, dimension(nlev) :: qst ! Not used in this code?
-
-
-!calculate surface parcel properties
-
-    if (pertopt /= 0) then
-      zrho = p(i,j,nlev)/(287.04*(t(i,j,nlev)*(1.+0.608*q(i,j,nlev))))
-
-      buoyflx = (sh(i,j)/MAPL_CP+0.608*t(i,j,nlev)*evap(i,j))/zrho ! K m s-1                                                                                                  
-      delzg = (50.0)*MAPL_GRAV   ! assume 50m surface scale                                                                                                               
-      wstar = max(0.,0.001+0.41*buoyflx*delzg/t(i,j,nlev)) ! m3 s-3      
-
-      if (wstar > 0.001) then
-        wstar = 1.0*wstar**.3333
-!        print *,'sh=',sh(i,j),'evap=',evap(i,j),'wstar=',wstar
-        tep  = t(i,j,nlev) + 0.4 + 2.*sh(i,j)/(zrho*wstar*MAPL_CP)
-        qp   = q(i,j,nlev) + 2.*evap(i,j)/(zrho*wstar)
-!        print *,'tpert=',2.*sh(i,j)/(zrho*wstar*MAPL_CP)
-      else
-         tep  = t(i,j,nlev) + 0.4
-         qp   = q(i,j,nlev)
-      end if
-    else   ! tpfac scales up bstar by inv. ratio of
-           ! heat-bubble area to stagnant area
-      if (nlev.eq.72) then
-        tep  = (t(i,j,nlev) + 0.4) * (1.+ tpfac * b_star(i,j)/MAPL_GRAV)
-      else
-        tep  = (t(i,j,nlev) + 0.4) * (1.+ min(0.01,tpfac * b_star(i,j)/MAPL_GRAV))
-      end if
-      qp   = q(i,j,nlev)
-    end if
 
 !--------------------------------------------
 ! wind dependence of plume character. 
@@ -1291,15 +1292,52 @@ contains
 !search for level where this is exceeded              
 
       lts =  0.0
-!  LTS using TH at 3km abve surface
-      if (nlev.ne.72) then
-         do k = nlev-1,2,-1
-            if (z(i,j,k).gt.3000.0) then
-              lts = t(i,j,k-1)*(1e5/p(i,j,k))**0.286
-              exit
-            end if
-         end do
-         lts = lts - t(i,j,nlev-1)*(1e5/p(i,j,nlev-1))**0.286
+     ! LTS using TH at 3km abve surface
+      do k = nlev-1,2,-1
+         if (z(i,j,k).gt.3000.0) then
+           lts = t(i,j,k-1)*(1e5/p(i,j,k))**0.286
+           exit
+         end if
+      end do
+      lts = lts - t(i,j,nlev-1)*(1e5/p(i,j,nlev-1))**0.286
+
+     ! Linear LTS factor
+      LTS_MIN = 10.0  ! Weak inversion threshold
+      if (frland(i,j) < 0.1) then ! over water
+         LTS_MAX = 22.0  ! Strong inversion threshold
+      else
+         LTS_MAX = LTS_MIN
+      endif
+      if (LTS <= LTS_MIN) then
+         LTS_FAC = 0.0
+      elseif (LTS >= LTS_MAX) then
+         LTS_FAC = 1.0
+      else
+         LTS_FAC = (LTS - LTS_MIN) / (LTS_MAX - LTS_MIN)
+      endif
+
+!calculate surface parcel properties
+
+      if (tpfac_max == 0) then
+        zrho = p(i,j,nlev)/(MAPL_RDRY*(t(i,j,nlev)*(1.+MAPL_VIREPS*q(i,j,nlev))))
+        buoyflx = (sh(i,j)/MAPL_CP+MAPL_VIREPS*t(i,j,nlev)*evap(i,j))/zrho ! K m s-1
+        delzg = 50.0*MAPL_GRAV   ! assume 50m surface scale
+        wstar = max(0.,0.001+0.41*buoyflx*delzg/t(i,j,nlev)) ! m3 s-3
+        if (wstar > 0.0) then
+          wstar = wstar**r13
+          tep  = t(i,j,nlev) + 0.4 + 2.*  sh(i,j)/(zrho*wstar*MAPL_CP)
+          qp   = q(i,j,nlev) +       2.*evap(i,j)/(zrho*wstar)
+        else
+          tep  = (t(i,j,nlev) + 0.4) * (1.+ min(0.01, b_star(i,j)/MAPL_GRAV))
+          qp   = q(i,j,nlev)
+        end if
+      else
+        ! tpfac scales up bstar by inv. ratio of
+        ! heat-bubble area to stagnant area
+        ! Linear interpolation for TPFAC based on LTS
+        tpfac = TPFAC_MIN*(1.0-LTS_FAC) + TPFAC_MAX*LTS_FAC
+        tep  = (t(i,j,nlev) + 0.4) * (1.+ min(0.01,tpfac * b_star(i,j)/MAPL_GRAV))
+        qp   = q(i,j,nlev)
       end if
 
       t1   = t(i,j,nlev)
@@ -1314,11 +1352,15 @@ contains
          v2 = v(i,j,k)
          pp = p(i,j,k)
 
-!!Old Shear     du = sqrt ( ( u(i,j,k) - u1 )**2 + ( v(i,j,k) - v1 )**2 )
          du = sqrt ( ( u2 - u1 )**2 + ( v2 - v1 )**2 ) / (z2-z1)
          du = min(du,1.0e-8)
 
-         entrate_x = entrate * ( 1.0 + du / vscale )
+         if (use_eis) then
+            entrate_x = (entrate - 0.6e-3*LTS_FAC) * & ! adjust entrate based on LTS_FAC
+                        ( 1.0 + du / vscale )
+         else
+            entrate_x = entrate * ( 1.0 + du / vscale )
+         endif
 
          entfr = min( entrate_x*(z2-z1), 0.99 )
 
@@ -1426,11 +1468,7 @@ contains
       svpar   = svp
       h1      = zf(i,j,toplev)
       t1      = t(toplev)
-      if (nlev.eq.72) then
-        entrate = 0.2/200.
-      else
-        entrate = 1.0/1000.
-      endif
+      entrate = 1.0/1000.
 
       !search for level where parcel is warmer than env             
 
@@ -1503,19 +1541,17 @@ contains
 #ifdef _CUDA
    attributes(device) &
 #endif
-   subroutine diffusivity_pbl2(i, j, icol, jcol, lm, h, kfac_l, kfac_o, k_ent, vsurf, frland, zm, k_m, k_t)
+   subroutine diffusivity_pbl2(i, j, icol, jcol, lm, h, kfac, k_ent, vsurf, frland, zm, k_m, k_t)
 
       integer, intent(in   )                              :: i, j, lm, icol, jcol
       real,    intent(in   ), dimension(icol,jcol)        :: h, frland
-      real,    intent(in   )                              :: k_ent, vsurf, kfac_l, kfac_o
+      real,    intent(in   )                              :: k_ent, vsurf, kfac
       real,    intent(in   ), dimension(icol,jcol,1:lm+1) :: zm
       real,    intent(  out), dimension(lm)               :: k_m, k_t
 
-      real    :: EE, hin, kfacx 
+      real    :: EE, hin
 
       integer :: k
-
-      kfacx = kfac_l*frland(i,j) + kfac_o*(1.0-frland(i,j))
 
       hin = 0.0 ! 200.  ! "Organization" scale for plume (m).
 
@@ -1527,11 +1563,11 @@ contains
 !! factor = (zm(i,j,k)/hinner)* (1.0 -(zm(i,j,k)-hinner)/(h(i,j)-hinner))**2
 
       if ( vsurf*h(i,j) .gt. 0. ) then
-         EE  = 1.0 - sqrt( k_ent / ( kfacx * MAPL_KARMAN * vsurf * h(i,j) ) )
+         EE  = 1.0 - sqrt( k_ent / ( kfac * MAPL_KARMAN * vsurf * h(i,j) ) )
          EE  = max( EE , 0.7 )  ! If EE is too small, then punt, as LCs
          do k = 1, lm
             if ( ( zm(i,j,k) .le. h(i,j) ) .and.  ( zm(i,j,k) .gt. hin )  ) then
-               k_t(k) = kfacx * MAPL_KARMAN * vsurf * ( zm(i,j,k)-hin ) * ( 1. - EE*( (zm(i,j,k)-hin)/(h(i,j)-hin) ))**2
+               k_t(k) = kfac * MAPL_KARMAN * vsurf * ( zm(i,j,k)-hin ) * ( 1. - EE*( (zm(i,j,k)-hin)/(h(i,j)-hin) ))**2
             end if
          end do
       endif
