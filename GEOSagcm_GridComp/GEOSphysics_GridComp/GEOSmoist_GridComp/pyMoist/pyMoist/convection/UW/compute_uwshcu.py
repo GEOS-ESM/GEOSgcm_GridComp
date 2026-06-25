@@ -6914,8 +6914,8 @@ def update_output_variables1(
         if not condensation:
             umf_out = umf_zint
 
-            if K < kinv:
-                umf_out = umf_zint.at(K=kinv - 1) * zifc0 / zifc0.at(K=kinv - 1)
+            if K <= kinv:
+                umf_out = umf_zint.at(K=kinv) * zifc0 / zifc0.at(K=kinv)
 
             cufrc_out = cufrc
             dcm_out = dcm
