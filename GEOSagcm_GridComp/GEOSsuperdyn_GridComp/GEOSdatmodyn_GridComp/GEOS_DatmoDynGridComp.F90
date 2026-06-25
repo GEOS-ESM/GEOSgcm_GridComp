@@ -1178,7 +1178,7 @@ contains
     real    :: OROGSGH,SCMAREA
 
     real, dimension(:,:), allocatable :: F0
-    real :: SCM_UG, SCM_VG
+    real :: SCM_UG, SCM_VG, SCM_PERT_SEED
     integer :: SCM_CORIOLIS ! 0:    Coriolis acceleration off
                             ! else: Coriolis acceleration on
     integer :: SCM_WIND ! 0:    use observed winds
@@ -1346,6 +1346,8 @@ contains
     call ESMF_ConfigGetAttribute ( CF, SCM_UG,  Label="SCM_UG:", &
                                          DEFAULT=0.,  __RC__)
     call ESMF_ConfigGetAttribute ( CF, SCM_VG,  Label="SCM_VG:", &
+                                         DEFAULT=0.,  __RC__)
+    call ESMF_ConfigGetAttribute ( CF, SCM_PERT_SEED,  Label="SCM_PERT_SEED:", &
                                          DEFAULT=0.,  __RC__)
 
     call ESMF_ConfigGetAttribute ( CF, RELAX_TO_OBS,  Label="RELAX_TO_OBS:", &
@@ -1917,6 +1919,9 @@ contains
         Q  = QOBS
         T  = TOBS
         OM = OMOBS
+        if (SCM_PERT_SEED.ne.0.) then
+!           T = T+0.1*random_number(rand_arr)
+        end if
         QTEST        =0.
         QTEST(:,:,55:60)=1.
       endif
