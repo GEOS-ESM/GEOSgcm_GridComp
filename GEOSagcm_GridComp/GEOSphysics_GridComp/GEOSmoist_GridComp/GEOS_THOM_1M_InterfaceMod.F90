@@ -14,7 +14,7 @@ module GEOS_THOM_1M_InterfaceMod
   use MAPL
   use GEOS_UtilsMod
   use GEOSmoist_Process_Library
-  use Aer_Actv_Single_Moment
+  use aer_cloud
   use module_mp_thompson
 
   implicit none
@@ -49,7 +49,6 @@ module GEOS_THOM_1M_InterfaceMod
   real    :: TURNRHCRIT_PARAM
   real    :: CCW_EVAP_EFF
   real    :: CCI_EVAP_EFF
-  integer :: PDFSHAPE
   real    :: ANV_ICEFALL 
   real    :: LS_ICEFALL
   real    :: FAC_RL
@@ -288,6 +287,17 @@ subroutine THOM_1M_Initialize (MAPL, RC)
 
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  200.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 4000.0, RC=STATUS); VERIFY_(STATUS)
+
+    call MAPL_GetResource( MAPL, ICE_FRACTION_POLYNOMIAL, Label="ICE_FRACTION_POLYNOMIAL:",  default=V12_ICE_POLYNOMIAL, RC=STATUS) ; VERIFY_(STATUS)
+
+    call MAPL_GetResource( MAPL, USE_AEROSOL_NN , 'USE_AEROSOL_NN:'  , DEFAULT=USE_AEROSOL_NN, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, USE_BERGERON   , 'USE_BERGERON:'    , DEFAULT=USE_BERGERON  , RC=STATUS); VERIFY_(STATUS)
+
+    if (USE_AEROSOL_NN) then
+      ! NOTE: For now we hard code in .false. for use_wnet as that is only an option with MG and will be handled there
+      call aer_cloud_init(use_wnet = .false.)
+      call WRITE_PARALLEL ("INITIALIZED aer_cloud_init")
+    endif
 
 end subroutine THOM_1M_Initialize
 
