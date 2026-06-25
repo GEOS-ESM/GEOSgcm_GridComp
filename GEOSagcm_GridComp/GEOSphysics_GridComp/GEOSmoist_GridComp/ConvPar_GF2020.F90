@@ -589,10 +589,11 @@ CONTAINS
                         if (CNV_DQCDT(i,j,k).gt.0 .and.CNV_DQCDT(i,j,k+1).eq.0.) tmp2 = k
                      end do
 !                     print *,'IENS=',IENS,' tmp1=',tmp1,' tmp2=',tmp2,' P(tmp1)=',PLO_N(i,j,tmp1),' P(tmp2)=',PLO_N(i,j,tmp2)
-!                     print *,'P fac=',((press(flip(tmp2):flip(tmp1),i,j)-press(flip(tmp2),i,j))/(press(flip(tmp2),i,j)-press(flip(tmp1),i,j))),' cnvmfd=',CNV_MFD(i,j,tmp1)
                      if (tmp2.gt.tmp1) then
                         do k=tmp1,tmp2
-                           CNV_MFD(i,j,k) = CNV_MFD(i,j,tmp1)*((PLO_N(i,j,k)-PLO_N(i,j,tmp2))/(PLO_N(i,j,tmp2)-PLO_N(i,j,tmp1)))
+                           CNV_MFD(i,j,k) = CNV_MFD(i,j,tmp1)*((PLO_N(i,j,k)-PLO_N(i,j,tmp2))/(PLO_N(i,j,tmp1)-PLO_N(i,j,tmp2)))
+!                           print *,'P fac=',(PLO_N(i,j,k)-PLO_N(i,j,tmp2))/(PLO_N(i,j,tmp1)-PLO_N(i,j,tmp2))
+!                           print *,'cnvmfd=',CNV_MFD(i,j,k)
                         end do
                      end if
                    end if

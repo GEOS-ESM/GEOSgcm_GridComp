@@ -2478,7 +2478,7 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
     beta = (MAPL_RGAS/MAPL_RVAP) * (MAPL_ALHL/(MAPL_RGAS*tbar)) * (MAPL_ALHL/(MAPL_CP*tbar))
 
     ! If some skewness is present
-    if (a > 0.001 .and. a /= 0.5 .and. &
+    if (a > 0.001 .and. a < 0.5 .and. &
         (qt3bar > 0.0 .or. t3bar > 0.0 .or. w3bar > 0.0)) then
 
       ! Empirical adjustment to ensure realizability
@@ -2499,6 +2499,8 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
       t1 = a * t2 / (a - 1.0)
       w1 = a * w2 / (a - 1.0)
 
+      ! Factor scaling sigma of 2nd gaussian relative to 1st. Designed to
+      ! approach 1 as relative area approaches 0.5.
       fac = sqrt(a / (1.0 - a))
       tmp = max(0.0, t2bar - (1.0 - a) * t1**2 - a * t2**2)
       sigt1 = sqrt(tmp / (1.0 - a + a * fac))
@@ -2520,7 +2522,7 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
 
     end if
 
-    if (a > 0.001 .and. qt3bar > 0.0 .and. a /= 0.5) then
+    if (a > 0.001 .and. qt3bar > 0.0 .and. a < 0.5) then
 
       qt1 = a * qt2 / (1.0 - a)
 
