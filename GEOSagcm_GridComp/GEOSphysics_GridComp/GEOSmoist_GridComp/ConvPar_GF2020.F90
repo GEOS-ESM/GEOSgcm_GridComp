@@ -231,7 +231,7 @@ CONTAINS
     ! 2. LOCAL GEOS-to-GF MAPPING ARRAYS
     !===========================================================================
 
-    INTEGER :: ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, mynum
+    INTEGER :: ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, mynum, tmp1, tmp2
     INTEGER :: k, i, j, iens, ispc, mtp, status, alloc_stat, wantrank=-99999
     REAL    :: tem1, src_cnvtr, snk_cnvtr, tau_cp, dtqw, qsatup
 
@@ -556,8 +556,8 @@ CONTAINS
 
                       !- Deep convective total water flux
                       qsatup = MAPL_EQsat(tup5d(i,flip(k),j,IENS), press(flip(k),i,j), dtqw) + clwup5d(i,flip(k),j,IENS) / 0.033
-                      WQT_DC(i,j,k) = WQT_DC(i,j,k) + xmb4d(i,j,IENS) * zup5d(i,flip(k),j,IENS) * (qsatup - rvap(flip(k),i,j))
-
+                      WQT_DC(i,j,k) = WQT_DC(i,j,k) + xmb4d(i,j,IENS) * zup5d(i,flip(k),j,IENS) * (qsatup - rvap(flip(k),i,j)-QLIQ(i,j,k)-QICE(i,j,k))
+                      
                       !- Entrainment Profiles
                       if(zup5d(i,flip(k),j,IENS) > 1.0e-6) then
                          SELECT CASE(IENS)
@@ -582,6 +582,20 @@ CONTAINS
                       if(zup5d(i,flip(k),j,IENS) > 1.0e-6) CNV_UPDF(i,j,k) = 0.033
 
                    ENDDO
+                   ! Interpolate CNV_MFD from its first nonzero value at mid-trop MFC maximum, down to cloud base
+                   if (maxval(CNV_MFD(i,j,:)).gt.0.) then
+                     do k=mzp,2,-1
+                        if (CNV_MFD(i,j,k).gt.0 .and.CNV_MFD(i,j,k+1).eq.0.) tmp1 = k
+                        if (CNV_DQCDT(i,j,k).gt.0 .and.CNV_DQCDT(i,j,k+1).eq.0.) tmp2 = k
+                     end do
+!                     print *,'IENS=',IENS,' tmp1=',tmp1,' tmp2=',tmp2,' P(tmp1)=',PLO_N(i,j,tmp1),' P(tmp2)=',PLO_N(i,j,tmp2)
+!                     print *,'P fac=',((press(flip(tmp2):flip(tmp1),i,j)-press(flip(tmp2),i,j))/(press(flip(tmp2),i,j)-press(flip(tmp1),i,j))),' cnvmfd=',CNV_MFD(i,j,tmp1)
+                     if (tmp2.gt.tmp1) then
+                        do k=tmp1,tmp2
+                           CNV_MFD(i,j,k) = CNV_MFD(i,j,tmp1)*((PLO_N(i,j,k)-PLO_N(i,j,tmp2))/(PLO_N(i,j,tmp2)-PLO_N(i,j,tmp1)))
+                        end do
+                     end if
+                   end if
                 ENDDO
              ENDDO
           ENDIF

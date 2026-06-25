@@ -466,7 +466,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: PFI_LS, PFI_AN
     real, pointer, dimension(:,:,:) :: PFR_LS, PFS_LS, PFG_LS
     real, pointer, dimension(:,:,:) :: PDFITERS
-    real, pointer, dimension(:,:,:) :: RHCRIT3D
+    real, pointer, dimension(:,:,:) :: RHCRIT3D,SIGMA_S
     real, pointer, dimension(:,:,:) :: CNV_PRC3
     real, pointer, dimension(:,:)   :: EIS, LTS
     real, pointer, dimension(:,:)   :: DBZ_MAX, DBZ_1KM, DBZ_TOP, DBZ_M10C
@@ -804,6 +804,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
        ! evap/subl/pdf
         call MAPL_GetPointer(EXPORT, RHCRIT3D,  'RHCRIT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, SIGMA_S,  'SIGMA_S', RC=STATUS); VERIFY_(STATUS)
 
         !$OMP parallel do default(none) &
         !$OMP shared(LM, JM, IM, Q, T, QLLS, QILS, CLLS, QLCN, QICN, CLCN, KLID, &
@@ -879,6 +880,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                       .false.        , &
                       USE_BERGERON)
              RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
+             if (associated(SIGMA_S)) SIGMA_S(I,J,L) = SQRT(QT2(I,J,L))/GEOS_QSAT(T(I,J,L), PLmb(I,J,L) )
              if (LMELTFRZ_CLDMACRO) then
            ! meltfrz new condensates
              call MELTFRZ ( DT_MOIST     , &

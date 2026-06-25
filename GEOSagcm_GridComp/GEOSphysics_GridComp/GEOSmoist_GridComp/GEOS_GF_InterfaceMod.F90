@@ -40,6 +40,7 @@ module GEOS_GF_InterfaceMod
   real    :: GF_MIN_AREA
   logical :: FIX_CNV_CLOUD
   logical :: REPORT_GF_NEGATIVES
+  logical :: GF_UPDATE_LS
   integer :: ZERO_DIFF_TAU
   integer :: ZERO_DIFF_AUTOCONV
   integer :: ZERO_DIFF_VGRID
@@ -171,6 +172,8 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
       call MAPL_GetResource(MAPL, ZERO_DIFF_VGRID           , 'ZERO_DIFF_VGRID:'       ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_OTHER           , 'ZERO_DIFF_OTHER:'       ,default= 0,    RC=STATUS );VERIFY_(STATUS)
     endif
+    call MAPL_GetResource(MAPL, GF_UPDATE_LS, 'GF_UPDATE_LS:', default=.FALSE., RC=STATUS) ; VERIFY_(STATUS)
+
     call MAPL_GetResource(MAPL, REPORT_GF_NEGATIVES, 'REPORT_GF_NEGATIVES:', default=.FALSE., RC=STATUS) ; VERIFY_(STATUS)
     IF (USE_GF2020==1) THEN
       call MAPL_GetResource(MAPL, ICUMULUS_GF(DEEP)         , 'DEEP:'                  ,default= 1,    RC=STATUS );VERIFY_(STATUS)
@@ -401,7 +404,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     integer                         :: IM,JM,LM
     real, pointer, dimension(:,:)   :: LONS
     real, pointer, dimension(:,:)   :: LATS
-    real                            :: minrhx
+    real                            :: minrhx,tmp
 
     ! Internals
     real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN
@@ -439,8 +442,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: DUDT_DC, DVDT_DC, DTDT_DC, DQVDT_DC, DQIDT_DC, DQLDT_DC, DQADT_DC
     real, pointer, dimension(:,:  ) :: CNV_FRC, SRF_TYPE
     ! Exports
-    real, pointer, dimension(:,:,:) :: BYNCY, CNV_MF0, ENTLAM
-    real, pointer, dimension(:,:,:) :: MUPDP,MDNDP,MUPSH,MUPMD,WQT_DC
+    real, pointer, dimension(:,:,:) :: BYNCY, CNV_MF0, ENTLAM, SIGMAS_CN, SKEW_CN
+    real, pointer, dimension(:,:,:) :: MUPDP,MDNDP,MUPSH,MUPMD,QT2_DC,QT3_DC,WQT_DC
     real, pointer, dimension(:,:  ) :: T2M,Q2M,TA,QA,SH,EVAP,PHIS
     real, pointer, dimension(:,:  ) :: MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD
     real, pointer, dimension(:,:  ) :: AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_DP,TAU_MD
@@ -571,7 +574,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( SEEDINI(IM,JM) )
     ALLOCATE ( SEEDCNV(IM,JM) )
     ALLOCATE ( TMP2D  (IM,JM) )
-
+    
     ! derived quantaties
     ! Derived States
     PL       = 0.5*(PLE(:,:,0:LM-1) + PLE(:,:,1:LM))
@@ -640,6 +643,10 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, TAU_DP   ,'TAU_DP'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, TAU_MD   ,'TAU_MD'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, WQT_DC   ,'WQT_DC'    ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, QT2_DC   ,'QT2_DC'    ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, QT3_DC   ,'QT3_DC'    ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SIGMAS_CN,'SIGMAS_CN'    ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SKEW_CN  ,'SKEW_CN'    ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, ENTR_DP  ,'ENTR_DP'   ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, ENTR_MD  ,'ENTR_MD'   ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, ENTR_SH  ,'ENTR_SH'   ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -741,8 +748,17 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       TMP3D    = CNV_DQCDT/MASS
       DQLDT_DC = (1.0-fQi)*TMP3D
       DQIDT_DC =      fQi *TMP3D
-      DQADT_DC = MFD_DC*SCLM_DEEP/MASS
-    ! evap/subl and precip fluxes
+      DO I=1,IM ! inflate the low QA levels while leaving maximum unchanged
+         DO J=1,JM
+            tmp = maxval(MFD_DC(I,J,:)*SCLM_DEEP/MASS(I,J,:))
+            if (tmp.gt.1e-6) then
+               DQADT_DC(I,J,:) = SQRT((MFD_DC(I,J,:)*SCLM_DEEP/MASS(I,J,:))/tmp)*tmp
+            else
+               DQADT_DC(I,J,:) = MFD_DC(I,J,:)*SCLM_DEEP/MASS(I,J,:)
+            end if
+         END DO
+      END DO
+      ! evap/subl and precip fluxes
       do L=1,LM
          !--- sublimation/evaporation tendencies (kg/kg/s)
            RSU_CN (:,:,L) = REVSU(:,:,L)*     fQi(:,:,L)
@@ -763,16 +779,47 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     endif ! USE_PYMOIST_GF2020
 
+    ! variance, skewness calculations
+    where( DQADT_DC.gt.1e-7 )
+       QT2_DC = (DQADT_DC*MOIST_DT)*((GEOS_QSAT(T+DTDT_DC*MOIST_DT,PL,PASCALS=.true.)+CNV_DQCDT*MOIST_DT/(DQADT_DC*MOIST_DT*MASS))-QV_DYN_IN)**2
+       QT3_DC = (DQADT_DC*MOIST_DT)*((GEOS_QSAT(T+DTDT_DC*MOIST_DT,PL,PASCALS=.true.)+CNV_DQCDT*MOIST_DT/(DQADT_DC*MOIST_DT*MASS))-QV_DYN_IN)**3
+    elsewhere
+       QT2_DC = 0.
+       QT3_DC = 0.
+    end where
+    
     ! add tendencies to the moist import state
     U  = U  +  DUDT_DC*MOIST_DT
     V  = V  +  DVDT_DC*MOIST_DT
     Q  = Q  + DQVDT_DC*MOIST_DT
     T  = T  +  DTDT_DC*MOIST_DT
     ! add QI/QL/CL tendencies
-    QLCN =         QLCN + DQLDT_DC*MOIST_DT
-    QICN =         QICN + DQIDT_DC*MOIST_DT
-    CLCN = MAX(MIN(CLCN + DQADT_DC*MOIST_DT, 1.0), 0.0)
+    if (GF_UPDATE_LS) then
+       QLLS =         QLLS + DQLDT_DC*MOIST_DT
+       QILS =         QILS + DQIDT_DC*MOIST_DT
+       CLLS = MAX(MIN(CLLS + DQADT_DC*MOIST_DT, 1.0), 0.0)
+    else
+       QLCN =         QLCN + DQLDT_DC*MOIST_DT
+       QICN =         QICN + DQIDT_DC*MOIST_DT
+       CLCN = MAX(MIN(CLCN + DQADT_DC*MOIST_DT, 1.0), 0.0)
+    end if
 
+    tmp3d = GEOS_QSAT(T,PL,PASCALS=.true.)
+    if (associated(SIGMAS_CN)) then
+    where (CLCN.gt.1e-6)
+       SIGMAS_CN = SQRT( CLCN*(tmp3d+(QLCN+QICN)/CLCN-Q)**2 )/tmp3d
+    elsewhere
+       SIGMAS_CN = 0.
+    end where
+    end if
+    if (associated(SKEW_CN)) then
+    where (CLCN.gt.1e-6)
+       SKEW_CN = CLCN*(tmp3d+(QLCN+QICN)/CLCN-Q)**3 / (CLCN*(tmp3d+(QLCN+QICN)/CLCN-Q)**2)**1.5
+    elsewhere
+       SKEW_CN = 0.
+    end where
+    end if
+       
 ! Cleanup negative water species
 ! ------------------------------
     call MAPL_GetPointer(EXPORT,   DQVDT_FILL,   'DQVDT_FILL_DC', RC=STATUS); VERIFY_(STATUS)

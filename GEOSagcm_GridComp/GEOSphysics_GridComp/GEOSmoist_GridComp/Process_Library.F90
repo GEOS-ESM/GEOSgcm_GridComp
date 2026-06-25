@@ -2619,8 +2619,8 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
       ! --- Arguments ---
       real,    intent(in)    :: DT, ALPHA, PL, ZL, NL, NI, CNVFRC, SRF_TYPE
       integer, intent(in)    :: PDFSHAPE
-      real,    intent(in)    :: WHL, WQT, HL2, QT2, HLQT, W3, W2bar, QT3, HL3
-      real,    intent(inout) :: TE, QV, QLLS, QILS, CLLS, QLCN, QICN, CLCN, PDF_A
+      real,    intent(in)    :: WHL, WQT, HL2, QT2, HLQT, W3, W2bar, QT3, HL3, QLCN, QICN, CLCN
+      real,    intent(inout) :: TE, QV, QLLS, QILS, CLLS, PDF_A
       logical, intent(in)    :: needs_preexisting, USE_BERGERON
       real,    optional, intent(in) :: SC_ICE
       integer, optional, intent(in) :: ITER_METHOD

@@ -979,6 +979,42 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
+       SHORT_NAME = 'QT2_DC',                                                &
+       LONG_NAME  = 'Diagnosed_total_water_variance_from_deep_convection',   &
+       UNITS      = 'kg2 kg-2',                                              &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       SHORT_NAME = 'QT3_DC',                                                &
+       LONG_NAME  = 'Diagnosed_third_moment_total_water_from_deep_convection',&
+       UNITS      = 'kg3 kg-3',                                              &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       SHORT_NAME = 'SIGMAS_CN',                                                &
+       LONG_NAME  = 'Diagnosed_sigma_s_from_cn_cloud',      &
+       UNITS      = '1',                                              &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+    
+    call MAPL_AddExportSpec(GC,                                              &
+       SHORT_NAME = 'SKEW_CN',                                                &
+       LONG_NAME  = 'Diagnosed_skewness_from_cn_cloud',      &
+       UNITS      = '1',                                              &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+    
+    call MAPL_AddExportSpec(GC,                                              &
        SHORT_NAME = 'WTHV2',                                                 &
        LONG_NAME  = 'Buoyancy_flux_for_SHOC',                                &
        UNITS      = '1',                                                     &
@@ -1111,7 +1147,7 @@ contains
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'DQADT ',                                      &
          LONG_NAME = 'total_cloud_tendency_due_to_moist',       &
-         UNITS     = 'kg kg-1 s-1',                                 &
+         UNITS     = 's-1',                                 &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
          RC=STATUS  )
@@ -1486,8 +1522,8 @@ contains
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'DQADT_SC',                             &
-         LONG_NAME  = 'shallow_cumulus_condensate_tendency',            &
-         UNITS      = 'kg kg-1 s-1',                               &
+         LONG_NAME  = 'shallow_cumulus_QA_tendency',            &
+         UNITS      = 's-1',                                       &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
@@ -2933,6 +2969,14 @@ contains
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='RHCRIT',                                         &
          LONG_NAME ='critical_relative_humidity_for_PDF',               &
+         UNITS     ='1',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME='SIGMA_S',                                     &
+         LONG_NAME ='normalized_total_water_std_dev',              &
          UNITS     ='1',                                           &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
@@ -4575,7 +4619,7 @@ contains
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='DQADT_micro',                                         &
          LONG_NAME ='QA tendency due to microphysics ',               &
-         UNITS     ='kg kg-1 s-1',                                           &
+         UNITS     ='s-1',                                           &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
@@ -4993,7 +5037,7 @@ contains
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='DQADT_macro',                                         &
          LONG_NAME ='QA tendency due to macrophysics ',               &
-         UNITS     ='kg kg-1 s-1',                                           &
+         UNITS     ='s-1',                                           &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
@@ -5073,7 +5117,7 @@ contains
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='DQADT_DC',                                         &
          LONG_NAME ='QA tendency due to deep convection ',               &
-         UNITS     ='kg kg-1 s-1',                                           &
+         UNITS     ='s-1',                                           &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
@@ -5886,6 +5930,9 @@ contains
        DZET     =     (ZLE0(:,:,0:LM-1) - ZLE0(:,:,1:LM) ) ! Layer thickness (m)
        DQST3    = GEOS_DQSAT(T, PLmb, QSAT=QST3)
 
+       call MAPL_GetPointer(EXPORT, PTR3D, 'QSATL', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = QST3
+       
        ! Lower tropospheric stability and estimated inversion strength
        call MAPL_GetPointer(EXPORT, LTS,   'LTS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, EIS,   'EIS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)

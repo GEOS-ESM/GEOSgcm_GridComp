@@ -828,6 +828,9 @@ contains
                              MFWHL,    &  ! in
                              MFHLQT,   &  ! in
                              WQT_DC,   &  ! in
+                             DQADT_DC, &  ! in
+                             QT2_DC,   &  ! in
+                             QT3_DC,   &  ! in
                              PDF_A,    &  ! inout
                              qt2,      &  ! inout
                              qt3,      &  ! inout
@@ -842,7 +845,13 @@ contains
                            hlqt2tune,  &
                            skew_tgen,  &
                            skew_tdis,  &
-                           free_atm_qt2 )
+                           free_atm_qt2,&
+                           USE_DEEP_WQT,&
+                           USE_DEEP_QT2,&
+                           USE_DEEP_QT3,&
+                           QT2DC_TGEN,  &
+                           QT3DC_TGEN,  &
+                           QADC_FAC )
 
 
     integer, intent(in   ) :: IM, JM, LM       ! dimensions
@@ -868,6 +877,9 @@ contains
     real,    intent(in   ) :: MFWHL(IM,JM,0:LM)  !
     real,    intent(in   ) :: MFHLQT(IM,JM,LM) !
     real,    intent(in   ) :: WQT_DC(IM,JM,0:LM)  !
+    real,    intent(in   ) :: DQADT_DC(IM,JM,LM)  !
+    real,    intent(in   ) :: QT2_DC(IM,JM,LM)  !
+    real,    intent(in   ) :: QT3_DC(IM,JM,LM)  !
     real,    intent(inout) :: PDF_A(IM,JM,LM)  ! first plume area fraction
     real,    intent(inout) :: qt2  (IM,JM,LM)  ! total water variance
     real,    intent(inout) :: qt3  (IM,JM,LM)  ! third moment of total water
@@ -882,8 +894,15 @@ contains
                               QT2TUNE,     &
                               SKEW_TGEN,   &
                               SKEW_TDIS,   &
-                              FREE_ATM_QT2
+                              FREE_ATM_QT2,&
+                              QT2DC_TGEN,  &
+                              QT3DC_TGEN,  &
+                              QADC_FAC
+    logical, intent(in   ) :: USE_DEEP_WQT,&
+                              USE_DEEP_QT2,&
+                              USE_DEEP_QT3
 
+    
     integer, intent(in   ) :: DOPROGQT2   ! prognostic QT2 switch
 
     real, parameter :: HL2MIN = 0.0005
@@ -920,8 +939,12 @@ contains
         qtgrad(:,:,k)   = max(-0.0015*qt(:,:,k+1),wrk2 / (ZL(:,:,k)-ZL(:,:,k+1))) 
 
         ! Mean gradient production of total water variance, with and without MF contribution
-        qt2prod_edge(:,:,k) = (KH(:,:,k)*qtgrad(:,:,k)-MFWQT(:,:,k)-0.*WQT_DC(:,:,k))*qtgrad(:,:,k)
-
+        if (USE_DEEP_WQT) then
+           qt2prod_edge(:,:,k) = (KH(:,:,k)*qtgrad(:,:,k)-MFWQT(:,:,k)-WQT_DC(:,:,k))*qtgrad(:,:,k)
+        else
+           qt2prod_edge(:,:,k) = (KH(:,:,k)*qtgrad(:,:,k)-MFWQT(:,:,k))*qtgrad(:,:,k)
+        end if
+        
         ! Covariance of total water mixing ratio and liquid/ice water static energy.  Eq 5 in BK13
         hlqt_edge(:,:,k) = HLQT2TUNE * sm * wrk1 * wrk2
     end do
@@ -956,7 +979,11 @@ contains
            elsewhere
               wrk2 = 0.
            end where
-           qt2(:,:,k) = (qt2(:,:,k)+(wrk1+wrk2/SKEW_TDIS)*DT) / (1. + DT/SKEW_TDIS)
+           if (USE_DEEP_QT2) then
+              qt2(:,:,k) = (qt2(:,:,k)+(wrk1+wrk2/SKEW_TDIS+QT2_DC(:,:,k)/QT2DC_TGEN)*DT) / (1. + DT/SKEW_TDIS)
+           else
+              qt2(:,:,k) = (qt2(:,:,k)+(wrk1+wrk2/SKEW_TDIS)*DT) / (1. + DT/SKEW_TDIS)
+           end if
         else
            qt2(:,:,k) = QT2TUNE*SKEW_TGEN*wrk1
         end if
@@ -964,7 +991,7 @@ contains
         hlqt(:,:,k) = onemmf*0.5*( hlqt_edge(:,:,kd) + hlqt_edge(:,:,ku) ) + MFHLQT(:,:,k)
 
         ! Restrict QT variance, 2-25% of total water.
-        qt2(:,:,k) = max(min(qt2(:,:,k),(0.25*QT(:,:,k))**2),(0.02*QT(:,:,k))**2)
+        qt2(:,:,k) = max(min(qt2(:,:,k),(0.4*QT(:,:,k))**2),(0.01*QT(:,:,k))**2)
         ! Restrict HL variance
         hl2(:,:,k) = max(min(hl2(:,:,k),HL2MAX),HL2MIN)
 
@@ -975,23 +1002,32 @@ contains
        
     ! Update PDF_A and third moments
     if (DOPROGQT2 /= 0) then
-       if (SKEW_TDIS.gt.0.) then
-         pdf_a = (pdf_a+mffrc*DT/SKEW_TGEN)/(1.+DT/SKEW_TDIS)
+       !       if (SKEW_TDIS.gt.0.) then
+       if (USE_DEEP_QT3) then
+          pdf_a = (pdf_a+DT*(mffrc/SKEW_TGEN+dqadt_dc*QADC_FAC))/(1.+DT/SKEW_TDIS)
        else
-         pdf_a = pdf_a/(1.-DT/SKEW_TDIS)
+          pdf_a = (pdf_a+DT*(mffrc/SKEW_TGEN))/(1.+DT/SKEW_TDIS)
        end if
+       if (USE_DEEP_QT3) then
+          qt3 = ( qt3 + max(MFQT3/SKEW_TGEN+QT3_DC/QT3DC_TGEN,0.)*DT ) / ( 1. + DT/SKEW_TDIS )
+       else
+          qt3 = ( qt3 + max(MFQT3,0.)*DT/SKEW_TGEN ) / ( 1. + DT/SKEW_TDIS )
+       end if
+!       else
+!         pdf_a = pdf_a/(1.-DT/SKEW_TDIS)
+!       end if
        where (mffrc.gt.pdf_a)
          pdf_a = mffrc
        end where
-       qt3 = ( qt3 + max(MFQT3,0.)*DT/SKEW_TGEN ) / ( 1. + DT/SKEW_TDIS )
     else
        pdf_a = mffrc
-       qt3 = max(MFQT3,0.) 
+       qt3 = max(MFQT3+QT3_DC,0.) 
     end if
     pdf_a = min(0.5,max(0.,pdf_a))
 
-    qt3 = min(( qt3 + max(MFQT3,0.)*DT/SKEW_TGEN ) / ( 1. + DT/SKEW_TDIS ),10.*qt2**1.5)
-    hl3 = max(MFHL3,-10.*hl2**1.5)
+    ! limit skewness to 20?
+    qt3 = min( qt3, 20.*qt2**1.5)
+    hl3 = max( MFHL3, -20.*hl2**1.5)
     w3  = MFW3
 
  end subroutine update_moments

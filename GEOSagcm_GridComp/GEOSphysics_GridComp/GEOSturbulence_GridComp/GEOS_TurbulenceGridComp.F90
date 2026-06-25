@@ -655,12 +655,39 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                                    &
+       SHORT_NAME = 'DQADT_DC',                                    &
+       LONG_NAME  = 'Cloud_fraction_tendency_from_deep_convection',&
+       UNITS      = 's-1',                                         &
+       DEFAULT    = 0.0,                                           &
+       DIMS       = MAPL_DimsHorzVert,                             &
+       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                    &
        SHORT_NAME = 'WQT_DC',                                      &
        LONG_NAME  = 'Total_water_flux_from_deep_convection',       &
        UNITS      = 'kg kg-1 m s-1',                               &
        DEFAULT    = 0.0,                                           &
        DIMS       = MAPL_DimsHorzVert,                             &
        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                    &
+       SHORT_NAME = 'QT2_DC',                                      &
+       LONG_NAME  = 'Total_water_variance_from_deep_convection',       &
+       UNITS      = 'kg2 kg-2',                                    &
+       DEFAULT    = 0.0,                                           &
+       DIMS       = MAPL_DimsHorzVert,                             &
+       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                    &
+       SHORT_NAME = 'QT3_DC',                                      &
+       LONG_NAME  = 'Total_water_third_moment_from_deep_convection',&
+       UNITS      = 'kg3 kg-3',                                    &
+       DEFAULT    = 0.0,                                           &
+       DIMS       = MAPL_DimsHorzVert,                             &
+       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
     VERIFY_(STATUS)
 
 if (SCM_SL /= 0) then
@@ -928,6 +955,15 @@ end if
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'total_water_skewness',                                  &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'SKEW_QT'    ,                                           &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+        
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'Total_water_third_moment_from_updrafts',                &
        UNITS      = 'kg3 kg-3',                                              &
@@ -2592,8 +2628,8 @@ end if
 
 ! SHOC-related variables
     integer                             :: DO_SHOC, SCM_SL
-    real, dimension(:,:,:), pointer     :: TKESHOC,TKH,QT2,QT3,WTHV2,WQT_DC, &
-                                           PDF_A,MFAW,QTFLXMF,SLFLXMF
+    real, dimension(:,:,:), pointer     :: TKESHOC,TKH,QT2,QT3,WTHV2,WQT_DC,DQADT_DC, &
+                                           QT2_DC,QT3_DC,PDF_A,MFAW,QTFLXMF,SLFLXMF
    
     real, dimension(:,:), pointer   :: EVAP, SH
 
@@ -2695,6 +2731,12 @@ end if
     call MAPL_GetPointer(IMPORT, WTHV2, 'WTHV2',    RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, WQT_DC, 'WQT_DC',    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, DQADT_DC, 'DQADT_DC',    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, QT2_DC, 'QT2_DC',    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, QT3_DC, 'QT3_DC',    RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, PHIS,   'PHIS',    RC=STATUS)
     VERIFY_(STATUS)
@@ -2982,7 +3024,7 @@ end if
                                             edmf_w3, edmf_wqt, edmf_slqt, & 
                                             edmf_wsl, edmf_qt3, edmf_sl3, &
                                             edmf_entx, edmf_tke,          &
-                                            edmf_dqrdt, edmf_dqsdt
+                                            edmf_dqrdt, edmf_dqsdt, skew_qt
 
    real, dimension(IM,JM,0:LM)          ::  ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3
 
@@ -3076,7 +3118,11 @@ end if
      real, dimension( IM, JM, LM )       :: QPL,QPI
      integer                             :: DO_SHOC, DOPROGQT2
      real                                :: SL2TUNE, QT2TUNE, SLQT2TUNE,          &
-                                            SKEW_TGEN, SKEW_TDIS, FREE_ATM_QT2
+                                            SKEW_TGEN, SKEW_TDIS, FREE_ATM_QT2,   &
+                                            QT2DC_TGEN, QT3DC_TGEN, QADC_FAC
+
+     logical :: USE_DEEP_WQT, USE_DEEP_QT2, USE_DEEP_QT3
+     
      real    :: PDFSHAPE
 
      real    :: lambdadiss
@@ -3267,6 +3313,12 @@ end if
      call MAPL_GetResource (MAPL, SKEW_TDIS,  'SKEW_TDIS:',  DEFAULT = 900.0,  RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, SKEW_TGEN,  'SKEW_TGEN:',  DEFAULT = 900.0,  RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, FREE_ATM_QT2, 'FREE_ATM_QT2:', DEFAULT = 0.05,  RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, USE_DEEP_WQT, 'USE_DEEP_WQT:', DEFAULT = .FALSE.,  RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, USE_DEEP_QT2, 'USE_DEEP_QT2:', DEFAULT = .FALSE.,  RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, USE_DEEP_QT3, 'USE_DEEP_QT3:', DEFAULT = .FALSE.,  RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, QT2DC_TGEN,   'QT2DC_TGEN:', DEFAULT = 900.,  RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, QT3DC_TGEN,   'QT3DC_TGEN:', DEFAULT = 900.,  RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, QADC_FAC,     'QADC_FAC:', DEFAULT = 1.,  RC=STATUS); VERIFY_(STATUS)
 
 ! Get pointers from export state...
 !-----------------------------------
@@ -3408,6 +3460,8 @@ end if
      call MAPL_GetPointer(EXPORT,  edmf_w2,   'EDMF_W2', RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_w3,   'EDMF_W3', RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,  skew_qt,   'SKEW_QT', RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_qt3,  'EDMF_QT3', RC=STATUS)
      VERIFY_(STATUS)
@@ -3627,8 +3681,8 @@ end if
 
    ! Calculate liquid water potential temperature (THL) and total water (QT)
     EXF=T/TH 
-    THL=TH-(MAPL_ALHL*QL+MAPL_ALHS*QI)/(MAPL_CP*EXF)
-    QT=Q+QL+QI
+    THL=TH-(MAPL_ALHL*QLTOT+MAPL_ALHS*QITOT)/(MAPL_CP*EXF)
+    QT=Q+QLTOT+QITOT
 
 ! get updraft constants
     call MAPL_GetResource (MAPL, DOMF, "EDMF_DOMF:", default=1,  RC=STATUS)
@@ -3942,8 +3996,8 @@ end if
                        OMEGA(:,:,1:LM),       &
                        T(:,:,1:LM),           &
                        Q(:,:,1:LM),           &
-                       QI(:,:,1:LM),          &
-                       QL(:,:,1:LM),          &
+                       QITOT(:,:,1:LM),       &
+                       QLTOT(:,:,1:LM),       &
                        QPI(:,:,1:LM),         &
                        QPL(:,:,1:LM),         &
                        QA(:,:,1:LM),          &
@@ -4495,6 +4549,9 @@ end if
                           MFWSL,          &
                           MFSLQT,         &
                           WQT_DC,         &
+                          DQADT_DC,       &
+                          QT2_DC,         &
+                          QT3_DC,         &
                           PDF_A,          &  ! inout
                           qt2,            &
                           qt3,            &
@@ -4509,8 +4566,15 @@ end if
                           slqt2tune,      &
                           skew_tgen,      &
                           skew_tdis,      &
-                          free_atm_qt2 )
+                          free_atm_qt2,   &
+                          use_deep_wqt,   &
+                          use_deep_qt2,   &
+                          use_deep_qt3,   &
+                          qt2dc_tgen,     &
+                          qt3dc_tgen,     &
+                          qadc_fac )
 
+          skew_qt = qt3 / qt2**1.5
        end if
 
       KPBLMIN  = count(PREF < 50000.)
