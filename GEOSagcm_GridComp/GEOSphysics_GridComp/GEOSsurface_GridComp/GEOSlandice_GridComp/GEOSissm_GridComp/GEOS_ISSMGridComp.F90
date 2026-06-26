@@ -621,18 +621,18 @@ subroutine SetServices ( GC, RC )
     call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, _RC )
 
     ! Get private internal state for sending information to/from LANDICE
-	!-----------------------------------
+	  !-----------------------------------
 	
     call ESMF_UserCompGetInternalState(GC, 'ISSM_TILES', issm_tile_wrap, status); _VERIFY(STATUS)
     issm_tile_state => issm_tile_wrap%ptr
 
-	! Create Custom ISSM Run Alarm 
+	  ! Create Custom ISSM Run Alarm 
     !-----------------------------------
 
     ! get internal state
     call MAPL_Get(MAPL,INTERNAL_ESMF_STATE = INTERNAL,_RC)
 
-	! get number of time steps since last ISSM run
+	  ! get number of time steps since last ISSM run
     call MAPL_GetPointer(INTERNAL, ISSM_NSTEPS, 'ISSM_NSTEPS',_RC)
     NSTEPS_INIT = nint(maxval(ISSM_NSTEPS))
 
@@ -657,7 +657,7 @@ subroutine SetServices ( GC, RC )
     ! create new ISSM_ALARM
     ISSM_ALARM = ESMF_AlarmCreate(CLOCK,ringTime=ringTime,ringInterval=ringInterval,sticky=.false.,_RC)
 	  
-	! set run alarm
+	  ! set run alarm
     call MAPL_Set(MAPL, RUNALARM = ISSM_ALARM, _RC)
 
     ! Next, send GEOS restarts to ISSM
@@ -696,7 +696,7 @@ subroutine SetServices ( GC, RC )
 	  ! the restart was written. if it is, we redistribute the restart arrays correctly
       allocate(localFlag(1))
       allocate(globalFlag(1))
-	  distgrid_match = all(ownedNodeIds==nint(restartNodeIds))
+	    distgrid_match = all(ownedNodeIds==nint(restartNodeIds))
       localFlag(1) = 0
       if (distgrid_match) localFlag(1) = 1
       call ESMF_VMAllReduce(vm, sendData=localFlag, recvData=globalFlag, count=1, reduceflag=ESMF_REDUCE_MIN, _RC)
@@ -710,16 +710,16 @@ subroutine SetServices ( GC, RC )
           nodalArray=ESMF_ArrayCreate(distgrid=nodalDistgrid,typekind=ESMF_TYPEKIND_R4,_RC)
           call ESMF_ArrayRedistStore(srcArray=restartArray, dstArray=nodalArray, routehandle=redisthandle,_RC)
 
-		  call apply_redist(ICESURF_IN,_RC)
-		  call apply_redist(ICETHICK_IN,_RC)
-		  call apply_redist(ICEVX_IN,_RC)
-		  call apply_redist(ICEVY_IN,_RC)
-		  call apply_redist(IMLS_IN,_RC)
-		  call apply_redist(OMLS_IN,_RC)
+		      call apply_redist(ICESURF_IN,_RC)
+		      call apply_redist(ICETHICK_IN,_RC)
+		      call apply_redist(ICEVX_IN,_RC)
+		      call apply_redist(ICEVY_IN,_RC)
+		      call apply_redist(IMLS_IN,_RC)
+		      call apply_redist(OMLS_IN,_RC)
 
           call ESMF_VMBarrier(vm, _RC)   
 		  
-		  call ESMF_ArrayDestroy(restartArray, _RC)
+		      call ESMF_ArrayDestroy(restartArray, _RC)
           call ESMF_ArrayDestroy(nodalArray, _RC)
 		  
       end if 
@@ -813,8 +813,8 @@ subroutine SetServices ( GC, RC )
     issm_tile_state%ISSM_NSTEPS = NSTEPS_INIT
 
 
-	! set nodeIds internal associated with restart
-	if(associated(restartNodeIds)) restartNodeIds(:) = ownedNodeIds(:)
+	  ! set nodeIds internal associated with restart
+	  if(associated(restartNodeIds)) restartNodeIds(:) = ownedNodeIds(:)
 
     call ESMF_VMBarrier(vm, _RC)
 
@@ -914,17 +914,17 @@ subroutine SetServices ( GC, RC )
           call ESMF_ArrayRedist(srcArray=restartArray, dstArray=redistArray, routehandle=redisthandle,_RC)
 
           ! get the pointer to the data
-		  call ESMF_ArrayGet(redistArray,farrayPtr=redistPtr)
+		      call ESMF_ArrayGet(redistArray,farrayPtr=redistPtr)
 
           ! make sure all processes have finished redistribution
           call ESMF_VMBarrier(vm, _RC)
  
-		  ! copy values into output
-		  VAR_RS(:) = redistPtr(:)
+		      ! copy values into output
+		      VAR_RS(:) = redistPtr(:)
 
           call ESMF_VMBarrier(vm, _RC)
-		  call ESMF_ArrayDestroy(restartArray,_RC)
-		  call ESMF_ArrayDestroy(redistArray,_RC)  
+		      call ESMF_ArrayDestroy(restartArray,_RC)
+		      call ESMF_ArrayDestroy(redistArray,_RC)  
 
           _RETURN(_SUCCESS)
        end subroutine apply_redist
@@ -937,7 +937,6 @@ subroutine SetServices ( GC, RC )
           real(kind=8), pointer :: centers_lat(:,:)
           integer, allocatable  :: IMs(:)
           
-
           !comm, VM, num_owned_nodes are from containing subroutine
           call ESMF_VMGet(vm, petcount=nDEs,  _RC) 
           allocate(IMS(nDEs))
@@ -1034,7 +1033,6 @@ subroutine SetServices ( GC, RC )
     real(dp),    pointer, dimension(:)   :: ICEVX_MESH   => null() ! ice x-velocity on mesh
     real, pointer, dimension(:)          :: ICEVX_EX     => null() ! pointer to export state (mesh tiles)
     real, pointer, dimension(:)          :: ICEVX_IN     => null() ! pointer to internal state (mesh tiles)
-	
 
     ! ice-flow velocity in y direction (in projection coordinates)
     real(dp),    pointer, dimension(:)   :: ICEVY_MESH   => null() ! ice y-velocity on mesh
@@ -1142,7 +1140,7 @@ subroutine SetServices ( GC, RC )
       ! copy import values into tile array 
       ICESMB_TILE = issm_tile_state%ICESMB_ISSM
 
-	  ! transform ICESMB from landice tiles to mesh 
+	    ! transform ICESMB from landice tiles to mesh 
       call tile_to_mesh(ICESMB_TILE,ICESMB_MESH,_RC)
 
       ! save ICESMB on mesh elements 
@@ -1157,13 +1155,13 @@ subroutine SetServices ( GC, RC )
       ICESMB_MESH = ICESMB_MESH/rho_ice
 
       call ESMF_VMBarrier(vm, _RC)
-	  call MAPL_TimerOn(MAPL,"ISSMCore" )
+	    call MAPL_TimerOn(MAPL,"ISSMCore" )
 
       ! call run method from ISSM library 
       call RunISSM(ISSM_DT, c_loc(ICESMB_MESH), c_loc(ISSM_OUTPUTS))
 
       call ESMF_VMBarrier(vm, _RC)
-	  call MAPL_TimerOff(MAPL,"ISSMCore" )
+	    call MAPL_TimerOff(MAPL,"ISSMCore" )
 
       ! *************************************************************************** !
       ! UNPACK AND EXPORT ISSM OUTPUTS ON MESH TILES
@@ -1225,9 +1223,9 @@ subroutine SetServices ( GC, RC )
       issm_tile_state%ICEVEL_TILE = ICEVEL_TILE
 
       ! *************************************************************************** !
-	  ! Round ISSM output to single precision and reset on the C++ side
-	  ! this ensures the same result as reading in (single-precision) restarts 
-	  ! *************************************************************************** !
+	    ! Round ISSM output to single precision and reset on the C++ side
+	    ! This ensures the same result as reading in (single-precision) restarts 
+	    ! *************************************************************************** !
       ISSM_OUTPUTS = real(ISSM_OUTPUTS, kind=sp) 
       call ESMF_VMBarrier(vm, _RC)      
       call InputFromRestarts(c_loc(ISSM_OUTPUTS)) 
@@ -1289,7 +1287,7 @@ subroutine SetServices ( GC, RC )
 
     type(T_ISSM_TILE_STATE), pointer   :: issm_tile_state
     type(ISSM_TILE_WRAP)               :: issm_tile_wrap
-	real, pointer, dimension(:)        :: ISSM_NSTEPS
+	  real, pointer, dimension(:)        :: ISSM_NSTEPS
 
     ! Get the target components name and set-up traceback handle.
     ! -----------------------------------------------------------
@@ -1382,7 +1380,7 @@ subroutine SetServices ( GC, RC )
 
   subroutine tile_to_mesh(VAR_TILE,VAR_MESH,RC)
     ! transform from landice tile to grid, then regrid onto mesh
-	! arguments:
+	  ! arguments:
     real, pointer, dimension(:), intent(inout)     :: VAR_TILE           ! var on landice tiles
     real(dp), pointer, dimension(:), intent(inout) :: VAR_MESH           ! var on mesh elements
     integer, optional,       intent(OUT)           :: RC                 ! Error code
@@ -1398,7 +1396,7 @@ subroutine SetServices ( GC, RC )
     integer                                        :: IM, JM, local_dims(3)   
     integer                                        :: STATUS
 
-    ! get number of ndoes
+    ! get number of nodes
     call ESMF_MeshGet(internal_state%mesh,nodeCount=num_nodes,numOwnedNodes=num_owned_nodes,_RC)
     
     ! get grid dimensions
