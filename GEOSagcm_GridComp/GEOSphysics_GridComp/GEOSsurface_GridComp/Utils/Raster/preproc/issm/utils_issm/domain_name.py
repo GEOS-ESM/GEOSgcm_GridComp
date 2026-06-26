@@ -32,6 +32,7 @@ models = sorted({
     for p in ROOT.rglob("*.py")
     if EXCLUDE not in p.resolve().parents
     and p.parent != ROOT
+    and not any(part.startswith(".") for part in p.relative_to(ROOT).parts)
 })
 
 # top-level glacier names

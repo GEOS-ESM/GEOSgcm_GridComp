@@ -49,8 +49,8 @@ md.inversion.min_parameters=1*np.ones(np.shape(md.mesh.x))
 md.inversion.max_parameters=200*np.ones(np.shape(md.mesh.x))
 
 # Additional parameters
-md.stressbalance.restol=0.0000001
-md.stressbalance.reltol=0.0000001
+md.stressbalance.restol=1.0e-12
+md.stressbalance.reltol=1.0e-12
 md.stressbalance.abstol=np.nan
 
 # Solve

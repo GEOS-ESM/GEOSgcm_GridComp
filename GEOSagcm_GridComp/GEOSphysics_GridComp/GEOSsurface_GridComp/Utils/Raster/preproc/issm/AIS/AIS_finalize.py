@@ -17,6 +17,8 @@ md.friction.coefficient = md.results.StressbalanceSolution.FrictionCoefficient
 # Write the binary input file
 # Additional options
 md.inversion.iscontrol = 0
+md.stressbalance.restol=1.0e-12
+md.stressbalance.reltol=1.0e-12
 md.transient.requested_outputs = ['default']
 md.transient.isthermal=0
 md.settings.waitonlock = 0

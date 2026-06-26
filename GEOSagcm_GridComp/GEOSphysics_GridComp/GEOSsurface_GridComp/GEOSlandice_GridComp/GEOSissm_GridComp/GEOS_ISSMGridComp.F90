@@ -30,7 +30,7 @@ module GEOS_IssmGridCompMod
 !                start time. The number of LANDICE time steps since ISSM last ran is tracked via the internal state.  
 
 ! !USES:
-use iso_fortran_env, only: dp=>real64
+use iso_fortran_env, only: dp=>real64, sp=>real32
 use iso_c_binding, only: c_ptr, c_double, c_f_pointer, c_null_char, c_char, c_loc, c_int
 use ESMF
 use MAPL
@@ -75,9 +75,6 @@ subroutine GetElementsISSM(elementIds, elementConn, elementCoords, glacIds) bind
 end subroutine GetElementsISSM
 
 subroutine FinalizeISSM() bind(C,NAME="FinalizeISSM")
-! produces binary output files from ISSM
-! not currently used because we use GEOS restarts, and this
-! will throw an error if ISSM has not run during a job segment.
 end subroutine FinalizeISSM
 
 end interface
@@ -237,7 +234,6 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME = 'ICESURF',                   &
          LONG_NAME  = 'ice_sheet_elevation',       &
          UNITS      = 'm',                         &
-         PRECISION  = ESMF_KIND_R8,                &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
          RESTART    = MAPL_RestartOptional,        &   
@@ -247,7 +243,6 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME = 'ICETHICK',                  &
          LONG_NAME  = 'ice_sheet_thickness',       &
          UNITS      = 'm',                         &
-         PRECISION  = ESMF_KIND_R8,                &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
          RESTART    = MAPL_RestartOptional,        & 
@@ -257,7 +252,6 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME = 'IMLS',                      &
          LONG_NAME  = 'ice_mask_levelset',         &
          UNITS      = 'none',                      &
-         PRECISION  = ESMF_KIND_R8,                &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
          RESTART    = MAPL_RestartOptional,        & 
@@ -267,7 +261,6 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME = 'OMLS',                      &
          LONG_NAME  = 'ocean_mask_levelset',       &
          UNITS      = 'none',                      &
-         PRECISION  = ESMF_KIND_R8,                &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
          RESTART    = MAPL_RestartOptional,        & 
@@ -277,7 +270,6 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME = 'ICEVX',                     &
          LONG_NAME  = 'ice_velocity_x_direction',  &
          UNITS      = 'm s-1',                     &
-         PRECISION  = ESMF_KIND_R8,                &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
          RESTART    = MAPL_RestartOptional,        &
@@ -287,7 +279,6 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME = 'ICEVY',                     &
          LONG_NAME  = 'ice_velocity_y_direction',  &
          UNITS      = 'm s-1',                     &
-         PRECISION  = ESMF_KIND_R8,                &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
          RESTART    = MAPL_RestartOptional,        &
@@ -417,12 +408,12 @@ subroutine SetServices ( GC, RC )
     integer                                :: n1,n2,n3
 
     ! pointers to internal state for restarts
-    real(dp), pointer, dimension(:)        :: ICESURF_IN    => null() ! ice surface elevation restart
-    real(dp), pointer, dimension(:)        :: ICETHICK_IN   => null() ! ice thickness restart
-    real(dp), pointer, dimension(:)        :: ICEVX_IN      => null() ! ice velocity (x direction) restart
-    real(dp), pointer, dimension(:)        :: ICEVY_IN      => null() ! ice velocity (y direction) restart
-    real(dp), pointer, dimension(:)        :: IMLS_IN       => null() ! ice-mask levelset restart
-    real(dp), pointer, dimension(:)        :: OMLS_IN       => null() ! ocean-mask levelset restart
+    real, pointer, dimension(:)        :: ICESURF_IN    => null() ! ice surface elevation restart
+    real, pointer, dimension(:)        :: ICETHICK_IN   => null() ! ice thickness restart
+    real, pointer, dimension(:)        :: ICEVX_IN      => null() ! ice velocity (x direction) restart
+    real, pointer, dimension(:)        :: ICEVY_IN      => null() ! ice velocity (y direction) restart
+    real, pointer, dimension(:)        :: IMLS_IN       => null() ! ice-mask levelset restart
+    real, pointer, dimension(:)        :: OMLS_IN       => null() ! ocean-mask levelset restart
 
     ! restarts with halo points (interleaved), to send to ISSM
     real(dp), pointer, dimension(:)        :: ICESURF_HALO  => null()
@@ -715,8 +706,8 @@ subroutine SetServices ( GC, RC )
 	  ! create routehandle for redistribution, and redistribute all restarts from the 
 	  ! restart distgrid to the current distgrid (nodalDistgrid) 
           restartDistgrid = ESMF_DistGridCreate(arbSeqIndexList=nint(restartNodeIds), _RC)
-          restartArray=ESMF_ArrayCreate(distgrid=restartDistgrid,typekind=ESMF_TYPEKIND_R8,_RC)
-          nodalArray=ESMF_ArrayCreate(distgrid=nodalDistgrid,typekind=ESMF_TYPEKIND_R8,_RC)
+          restartArray=ESMF_ArrayCreate(distgrid=restartDistgrid,typekind=ESMF_TYPEKIND_R4,_RC)
+          nodalArray=ESMF_ArrayCreate(distgrid=nodalDistgrid,typekind=ESMF_TYPEKIND_R4,_RC)
           call ESMF_ArrayRedistStore(srcArray=restartArray, dstArray=nodalArray, routehandle=redisthandle,_RC)
 
 		  call apply_redist(ICESURF_IN,_RC)
@@ -865,7 +856,7 @@ subroutine SetServices ( GC, RC )
        subroutine apply_halo(VAR_IN,VAR_HALO,RC)
           ! apply halo operation to a restart variable
           ! arguments:
-          real(dp), pointer, dimension(:), intent(inout) :: VAR_IN            ! var on owned_nodes
+          real, pointer, dimension(:), intent(inout)     :: VAR_IN            ! var on owned_nodes
           real(dp), pointer, dimension(:), intent(inout) :: VAR_HALO          ! var on all nodes
           integer, optional, intent(out)                 :: RC
 
@@ -909,7 +900,7 @@ subroutine SetServices ( GC, RC )
 
        subroutine apply_redist(VAR_RS,RC)
 	      ! arguments:
-          real(dp), pointer, dimension(:), intent(inout) :: VAR_RS       ! var from restsart
+          real, pointer, dimension(:), intent(inout)     :: VAR_RS       ! var from restsart
           integer, optional, intent(out)                 :: RC
 
           type(ESMF_Array)                               :: restartArray ! restart array
@@ -917,7 +908,7 @@ subroutine SetServices ( GC, RC )
           real, pointer, dimension(:)                    :: redistPtr	  
 
           restartArray=ESMF_ArrayCreate(distgrid=restartDistgrid,farrayPtr=VAR_RS,_RC)
-          redistArray=ESMF_ArrayCreate(distgrid=nodalDistgrid,typekind=ESMF_TYPEKIND_R8,_RC)
+          redistArray=ESMF_ArrayCreate(distgrid=nodalDistgrid,typekind=ESMF_TYPEKIND_R4,_RC)
 
           ! redistribute the data
           call ESMF_ArrayRedist(srcArray=restartArray, dstArray=redistArray, routehandle=redisthandle,_RC)
@@ -1031,32 +1022,32 @@ subroutine SetServices ( GC, RC )
     real(dp),    pointer, dimension(:)   :: ICESURF_MESH  => null() ! ice elevation on mesh
     real, pointer, dimension(:)          :: ICESURF_TILE  => null() ! ice elevation on landice tiles
     real, pointer, dimension(:)          :: ICESURF_EX    => null() ! pointer to export state (mesh tiles)
-    real(dp), pointer, dimension(:)      :: ICESURF_IN    => null() ! pointer to internal state (mesh tiles)
+    real, pointer, dimension(:)          :: ICESURF_IN    => null() ! pointer to internal state (mesh tiles)
 
     ! ice thickness on mesh and landice tiles
     real(dp),    pointer, dimension(:)   :: ICETHICK_MESH => null() ! ice thickness on mesh
     real, pointer, dimension(:)          :: ICETHICK_TILE => null() ! ice thickness on landice tiles
     real, pointer, dimension(:)          :: ICETHICK_EX   => null() ! pointer to ice thickness export state (mesh tiles)
-    real(dp), pointer, dimension(:)      :: ICETHICK_IN   => null() ! pointer to ice thicknesss internal state (mesh tiles)
+    real, pointer, dimension(:)          :: ICETHICK_IN   => null() ! pointer to ice thicknesss internal state (mesh tiles)
 
     ! ice-flow velocity in x direction (in projection coordinates)
     real(dp),    pointer, dimension(:)   :: ICEVX_MESH   => null() ! ice x-velocity on mesh
     real, pointer, dimension(:)          :: ICEVX_EX     => null() ! pointer to export state (mesh tiles)
-    real(dp), pointer, dimension(:)      :: ICEVX_IN     => null() ! pointer to internal state (mesh tiles)
+    real, pointer, dimension(:)          :: ICEVX_IN     => null() ! pointer to internal state (mesh tiles)
 	
 
     ! ice-flow velocity in y direction (in projection coordinates)
     real(dp),    pointer, dimension(:)   :: ICEVY_MESH   => null() ! ice y-velocity on mesh
     real, pointer, dimension(:)          :: ICEVY_EX     => null() ! pointer to export state (mesh tiles)
-    real(dp), pointer, dimension(:)      :: ICEVY_IN     => null() ! pointer to export state (mesh tiles)
+    real, pointer, dimension(:)          :: ICEVY_IN     => null() ! pointer to export state (mesh tiles)
 
     ! ice mask level set (tracks glacier terminus)
     real(dp),    pointer, dimension(:)   :: IMLS_MESH    => null() ! ice mask level set
-    real(dp), pointer, dimension(:)      :: IMLS_IN      => null() ! pointer to internal state (mesh tiles)
+    real, pointer, dimension(:)          :: IMLS_IN      => null() ! pointer to internal state (mesh tiles)
 
     ! ocean mask level set (tracks grounding line)
     real(dp),    pointer, dimension(:)   :: OMLS_MESH    => null() ! ocean mask level set
-    real(dp), pointer, dimension(:)      :: OMLS_IN      => null() ! pointer to internal state (mesh tiles)
+    real, pointer, dimension(:)          :: OMLS_IN      => null() ! pointer to internal state (mesh tiles)
 
     ! ice-flow speed on mesh and landice tiles  
     real(dp),    pointer, dimension(:)   :: ICEVEL_MESH  => null() ! ice flow speed on mesh tiles
@@ -1221,7 +1212,7 @@ subroutine SetServices ( GC, RC )
       if(associated(IMLS_IN)) IMLS_IN = IMLS_MESH(internal_state%owned_idx)
 
       ! *************************************************************************** !
-      ! REGRID MESH FIELDS ONTO LANDICE TILES AND EXPORT VIA INTERNAL STATE
+      ! REGRID MESH FIELDS ONTO LANDICE TILES AND EXPORT VIA PRIVATE INTERNAL STATE
       ! *************************************************************************** !
       ! transform from mesh to tiles
       call mesh_to_tile(ICESURF_MESH,ICESURF_TILE,_RC)
@@ -1232,6 +1223,15 @@ subroutine SetServices ( GC, RC )
 
       call mesh_to_tile(ICEVEL_MESH,ICEVEL_TILE,_RC)
       issm_tile_state%ICEVEL_TILE = ICEVEL_TILE
+
+      ! *************************************************************************** !
+	  ! Round ISSM output to single precision and reset on the C++ side
+	  ! this ensures the same result as reading in (single-precision) restarts 
+	  ! *************************************************************************** !
+      ISSM_OUTPUTS = real(ISSM_OUTPUTS, kind=sp) 
+      call ESMF_VMBarrier(vm, _RC)      
+      call InputFromRestarts(c_loc(ISSM_OUTPUTS)) 
+      call ESMF_VMBarrier(vm, _RC)
 
     end if 
     
@@ -1311,6 +1311,9 @@ subroutine SetServices ( GC, RC )
     ! get number of time steps since last ISSM run
     call MAPL_GetPointer(INTERNAL, ISSM_NSTEPS, 'ISSM_NSTEPS',_RC)
     ISSM_NSTEPS(:) = real(issm_tile_state%ISSM_NSTEPS)
+
+    ! call ISSM's finalize method
+    call FinalizeISSM()
 
     ! Generic Finalize
     ! ------------------
