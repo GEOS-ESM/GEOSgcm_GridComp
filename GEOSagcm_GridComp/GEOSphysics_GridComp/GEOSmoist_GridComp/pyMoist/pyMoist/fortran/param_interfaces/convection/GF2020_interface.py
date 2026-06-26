@@ -475,6 +475,10 @@ class GF2020Interface(UserCode):
 
             with TimedCUDAProfiler("GF 2020 Convection - State copy-back", {}):
                 self._managed_state.ndsl_to_fortran()
+                safe_assign_array(
+                    MOIST_WORKAROUNDS.CNV_Tracers().Q,
+                    self._managed_convection_tracers.ndsl_state.tracers.data[:],
+                )
 
     def finalize(
         self,
