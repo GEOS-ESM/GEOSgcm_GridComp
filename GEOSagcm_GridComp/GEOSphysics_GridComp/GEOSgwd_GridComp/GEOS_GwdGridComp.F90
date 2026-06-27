@@ -34,7 +34,6 @@ module GEOS_GwdGridCompMod
    use MAPL_Constants, only: MAPL_RADIUS, MAPL_RGAS, MAPL_GRAV, MAPL_VIREPS, MAPL_PI, MAPL_P00, MAPL_CP
    use MAPL, only: MAPL_GridGet, MAPL_GridGetCoordinates, mapl_GridGetGlobalCellCountPerDim
    use MAPL, only: MAPL_GridCompSetEntryPoint
-   use MAPL, only: MAPL_UserCompSetInternalState, MAPL_UserCompGetInternalState
    use MAPL, only: MAPL_GridCompGet, MAPL_GridCompGetResource
    use MAPL, only: MAPL_GridCompGetInternalState
    use MAPL, only: MAPL_GridCompAddSpec, MAPL_GridCompTimerStart, MAPL_GridCompTimerStop
