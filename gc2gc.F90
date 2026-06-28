@@ -82,9 +82,7 @@ contains
        ! get rank,typekind to use the appropriate overload
        call ESMF_FieldGet(field, rank=rank, typekind=tk, _RC)
 
-       _ASSERT(tk==ESMF_TYPEKIND_R4, &
-            "Currently the averaging coupler supports only R4. Var: "//&
-            trim(this%vars(n)%vIn))
+       _ASSERT(tk==ESMF_TYPEKIND_R4, "Currently the averaging coupler supports only R4. Var: "//trim(this%vars(n)%vIn))
 
        select case (rank)
        case (1)
