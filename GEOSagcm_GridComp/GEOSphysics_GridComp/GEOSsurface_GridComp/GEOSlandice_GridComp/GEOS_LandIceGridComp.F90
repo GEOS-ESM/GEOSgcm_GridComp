@@ -1838,15 +1838,16 @@ module GEOS_LandiceGridCompMod
        VERIFY_(STATUS)
 
 #ifdef HAVE_ISSM
+      if (DO_ISSM==1) then
        ! initialize exports to restart values set by ISSM GridComp's Initialize, 
        ! because ISSM typically has a multi-day timestep and exports will remain empty otherwise
        call MAPL_GetPointer(EXPORT,ICESURF , 'ICESURF',alloc=.true., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT,ICETHICK ,'ICETHICK',alloc=.true., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT,ICEVEL ,'ICEVEL',alloc=.true., RC=STATUS); VERIFY_(STATUS)
-	   if (DO_ISSM==1) then
-          if(associated(ICESURF))  ICESURF = issm_tile_state%ICESURF_TILE
-          if(associated(ICETHICK)) ICETHICK = issm_tile_state%ICETHICK_TILE
-          if(associated(ICEVEL))   ICEVEL = issm_tile_state%ICEVEL_TILE
+	   
+       if(associated(ICESURF))  ICESURF = issm_tile_state%ICESURF_TILE
+       if(associated(ICETHICK)) ICETHICK = issm_tile_state%ICETHICK_TILE
+       if(associated(ICEVEL))   ICEVEL = issm_tile_state%ICEVEL_TILE
 	   end if 
 #endif   
        call MAPL_TimerOff(MAPL,"INITIALIZE", RC=STATUS ); VERIFY_(STATUS)
@@ -2895,7 +2896,7 @@ contains
         
         ! get number of timesteps from issm tile internal state
         call MAPL_Get (MAPL, GCS=GCS, GCNAMES=GCNAMES, RC=STATUS )
-		VERIFY_(STATUS)
+		  VERIFY_(STATUS)
         do N=1, size(GCS)
           if (index(GCNAMES(N), 'ISSM') /=0 ) then
              call ESMF_UserCompGetInternalState(GCS(N), 'ISSM_TILES', issm_tile_wrap, status)
