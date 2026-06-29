@@ -1,5 +1,7 @@
 ! $Id$
 
+#define PDFDIAG 1
+
 #include "MAPL_Generic.h"
 
 !=============================================================================
@@ -423,7 +425,12 @@ subroutine NSSL_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:)   :: DBZ_MAX, DBZ_1KM, DBZ_TOP, DBZ_M10C
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
-
+#ifdef PDFDIAG
+    real, pointer, dimension(:,:,:) :: PDF_SIGW1, PDF_SIGW2, PDF_W1, PDF_W2, PDF_SIGSL1, PDF_SIGSL2, &
+                                       PDF_SL1, PDF_SL2, PDF_SIGQT1, PDF_SIGQT2, PDF_QT1, PDF_QT2, &
+                                       PDF_RSLQT, PDF_RWSL, PDF_RWQT
+#endif
+    
     ! Local variables
     real    :: facEIS
     real    :: minrhcrit, turnrhcrit, ALPHA, RHCRIT
@@ -601,6 +608,24 @@ subroutine NSSL_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     TMP3D = (100.0*PLmb/MAPL_P00)**(MAPL_KAPPA)
     call FIND_EIS(T/TMP3D, QST3, T, ZL0, PLEmb, KLCL, IM, JM, LM, LTS, EIS)
 
+#ifdef PDFDIAG
+    call MAPL_GetPointer(EXPORT, PDF_SIGW1, 'PDF_SIGW1', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_SIGW2, 'PDF_SIGW2', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_W1,    'PDF_W1',    ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_W2,    'PDF_W2',    ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_SIGSL1,'PDF_SIGSL1',ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_SIGSL2,'PDF_SIGSL2',ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_SL1,   'PDF_SL1',   ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_SL2,   'PDF_SL2',   ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_SIGQT1,'PDF_SIGQT1',ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_SIGQT2,'PDF_SIGQT2',ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_QT1,   'PDF_QT1',   ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_QT2,   'PDF_QT2',   ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_RSLQT, 'PDF_RSLQT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_RWSL,  'PDF_RWSL',  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_RWQT,  'PDF_RWQT',  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+#endif
+    
     call MAPL_TimerOn(MAPL,"---CLDMACRO")
     call MAPL_GetPointer(EXPORT, DQVDT_macro, 'DQVDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQIDT_macro, 'DQIDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -695,6 +720,11 @@ subroutine NSSL_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                       SL3(I,J,L)     , &
                       PDF_A(I,J,L)   , &
                       PDFITERS(I,J,L), &
+#ifdef PDFDIAG
+         PDF_SIGW1(I,J,L), PDF_SIGW2(I,J,L), PDF_W1(I,J,L), PDF_W2(I,J,L), PDF_SIGSL1(I,J,L), PDF_SIGSL2(I,J,L), &
+         PDF_SL1(I,J,L), PDF_SL2(I,J,L), PDF_SIGQT1(I,J,L), PDF_SIGQT2(I,J,L), PDF_QT1(I,J,L), PDF_QT2(I,J,L), &
+         PDF_RSLQT(I,J,L), PDF_RWSL(I,J,L), PDF_RWQT(I,J,L), &
+#endif                      
                       WTHV2(I,J,L)   , &
                       WQL(I,J,L)     , &
                       .false.        , &

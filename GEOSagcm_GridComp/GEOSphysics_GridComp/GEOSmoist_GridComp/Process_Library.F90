@@ -1,5 +1,7 @@
 ! $Id$
 
+#define PDFDIAG 1
+
 #include "MAPL_Generic.h"
 
 !=============================================================================
@@ -2524,7 +2526,7 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
 
     if (a > 0.001 .and. qt3bar > 0.0 .and. a < 0.5) then
 
-      qt1 = a * qt2 / (1.0 - a)
+      qt1 = a * qt2 / (a - 1.0)
 
       fac = sqrt(a / (1.0 - a))
       tmp = max(0.0, qt2bar - (1.0 - a) * qt1**2 - a * qt2**2)
@@ -2685,10 +2687,10 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
 #ifdef PDFDIAG
          PDF_SIGW1  = sigw1; PDF_SIGW2 = sigw2; PDF_W1 = w1; PDF_W2 = w2
          PDF_SIGHL1 = sigt1; PDF_SIGHL2 = sigt2
-         PDF_HL1    = TE + gravbcp*ZL - alhxbcp*qc_env + t1
-         PDF_HL2    = TE + gravbcp*ZL - alhxbcp*qc_env + t2
-         PDF_SIGQT1 = sigmaqt1; PDF_SIGQT2 = sigmaqt2
-         PDF_QT1    = qt_env + q1; PDF_QT2 = qt_env + q2
+         PDF_HL1    = 0.*(TE + gravbcp*ZL - alhxbcp*qc_env) + t1
+         PDF_HL2    = 0.*(TE + gravbcp*ZL - alhxbcp*qc_env) + t2
+         PDF_SIGQT1 = sigmaqt1/qsx; PDF_SIGQT2 = sigmaqt2/qsx
+         PDF_QT1    = 0.*qt_env + q1/qsx; PDF_QT2 = 0.*qt_env + q2/qsx
          PDF_RHLQT  = rhlqt; PDF_RWHL = rwhl; PDF_RWQT = rwqt
 #endif
       end if
@@ -2738,7 +2740,7 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
 #ifdef PDFDIAG
                                    , PDF_SIGW1, PDF_SIGW2, PDF_W1, PDF_W2, PDF_SIGHL1, &
                                    PDF_SIGHL2, PDF_HL1, PDF_HL2, PDF_SIGQT1, PDF_SIGQT2, &
-                                   PDF_QT1, PDF_QT2, PDF_RHLQT, PDF_RWHL, PDF_RWQT
+                                   PDF_QT1, PDF_QT2, PDF_RHLQT, PDF_RWHL, PDF_RWQT &
 #endif
                                  )
                                  

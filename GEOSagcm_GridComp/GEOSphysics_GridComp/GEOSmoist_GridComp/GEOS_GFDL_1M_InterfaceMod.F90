@@ -1,5 +1,7 @@
 ! $Id$
 
+#define PDFDIAG 1
+
 #include "MAPL_Generic.h"
 
 !=============================================================================
@@ -481,7 +483,11 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) ::   DQGDT_FILL
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
-
+#ifdef PDFDIAG
+    real, pointer, dimension(:,:,:) :: PDF_SIGW1, PDF_SIGW2, PDF_W1, PDF_W2, PDF_SIGSL1, PDF_SIGSL2, &
+                                       PDF_SL1, PDF_SL2, PDF_SIGQT1, PDF_SIGQT2, PDF_QT1, PDF_QT2, &
+                                       PDF_RSLQT, PDF_RWSL, PDF_RWQT
+#endif
     ! Local variables
     real    :: tmp_val, rand1
     real    :: x_norm, safe_max_rh_crit
@@ -626,6 +632,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         KLID = 1
     endif
 
+   
     ! Export and/or scratch Variable
     call MAPL_GetPointer(EXPORT, RAD_CF,   'FCLD', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, RAD_QV,   'QV'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -679,7 +686,25 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! Lower tropospheric stability and estimated inversion strength from MoistGC
     call MAPL_GetPointer(EXPORT, LTS,   'LTS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, EIS,   'EIS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-
+#ifdef PDFDIAG
+    call MAPL_GetPointer(EXPORT, PDF_SIGW1, 'PDF_SIGW1', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_SIGW2, 'PDF_SIGW2', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_W1,    'PDF_W1',    ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_W2,    'PDF_W2',    ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_SIGSL1,'PDF_SIGSL1',ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_SIGSL2,'PDF_SIGSL2',ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_SL1,   'PDF_SL1',   ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_SL2,   'PDF_SL2',   ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_SIGQT1,'PDF_SIGQT1',ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_SIGQT2,'PDF_SIGQT2',ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_QT1,   'PDF_QT1',   ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_QT2,   'PDF_QT2',   ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_RSLQT, 'PDF_RSLQT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_RWSL,  'PDF_RWSL',  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_RWQT,  'PDF_RWQT',  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+#endif
+    
+    
 
     if (DEBUG_TQ_ERRORS) then
          do L = 1, LM
@@ -875,6 +900,11 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                       SL3(I,J,L)     , &
                       PDF_A(I,J,L)   , &
                       PDFITERS(I,J,L), &
+#ifdef PDFDIAG
+         PDF_SIGW1(I,J,L), PDF_SIGW2(I,J,L), PDF_W1(I,J,L), PDF_W2(I,J,L), PDF_SIGSL1(I,J,L), PDF_SIGSL2(I,J,L), &
+         PDF_SL1(I,J,L), PDF_SL2(I,J,L), PDF_SIGQT1(I,J,L), PDF_SIGQT2(I,J,L), PDF_QT1(I,J,L), PDF_QT2(I,J,L), &
+         PDF_RSLQT(I,J,L), PDF_RWSL(I,J,L), PDF_RWQT(I,J,L), &
+#endif                      
                       WTHV2(I,J,L)   , &
                       WQL(I,J,L)     , &
                       .false.        , &

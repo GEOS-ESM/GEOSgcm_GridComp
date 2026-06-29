@@ -2,7 +2,7 @@
 ! VERIFY_ and RETURN_ macros for error handling.
 
 !#define UWDIAG 1
-!#define PDFDIAG 1
+#define PDFDIAG 1
 
 #include "MAPL_Generic.h"
 
@@ -872,7 +872,7 @@ contains
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'SHOC_PDF_stddev_liq_wat_pot_temp_of_first_plume',       &
        UNITS      = 'K',                                                     &
-       SHORT_NAME = 'PDF_SIGTH1',                                            &
+       SHORT_NAME = 'PDF_SIGSL1',                                            &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
@@ -881,7 +881,7 @@ contains
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'SHOC_PDF_stddev_liq_wat_pot_temp_of_second_plume',      &
        UNITS      = 'K',                                                     &
-       SHORT_NAME = 'PDF_SIGTH2',                                            &
+       SHORT_NAME = 'PDF_SIGSL2',                                            &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
@@ -890,7 +890,7 @@ contains
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'SHOC_PDF_avg_liq_wat_pot_temp_of_first_plume',          &
        UNITS      = 'K',                                                     &
-       SHORT_NAME = 'PDF_TH1',                                               &
+       SHORT_NAME = 'PDF_SL1',                                               &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
@@ -899,7 +899,7 @@ contains
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'SHOC_PDF_avg_liq_wat_pot_temp_of_second_plume',         &
        UNITS      = 'K',                                                     &
-       SHORT_NAME = 'PDF_TH2',                                               &
+       SHORT_NAME = 'PDF_SL2',                                               &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
@@ -944,7 +944,7 @@ contains
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'SHOC_PDF_corr_total_water_liq_wat_pot_temp',            &
        UNITS      = '1',                                                     &
-       SHORT_NAME = 'PDF_RQTTH',                                               &
+       SHORT_NAME = 'PDF_RSLQT',                                               &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
@@ -953,7 +953,7 @@ contains
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'SHOC_PDF_corr_vertical_velocity_liq_wat_pot_temp',      &
        UNITS      = '1',                                                     &
-       SHORT_NAME = 'PDF_RWTH',                                              &
+       SHORT_NAME = 'PDF_RWSL',                                              &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )

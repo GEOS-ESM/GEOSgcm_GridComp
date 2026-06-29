@@ -1,5 +1,7 @@
 ! $Id$
 
+#define PDFDIAG 1
+
 #include "MAPL_Generic.h"
 
 !=============================================================================
@@ -350,7 +352,11 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:  ) :: LS_SNR,  CN_SNR,  AN_SNR,  SC_SNR
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
-
+    real, pointer, dimension(:,:,:) :: PDF_SIGW1_dev, PDF_SIGW2_dev, PDF_W1_dev, PDF_W2_dev, &
+         PDF_SIGTH1_dev, PDF_SIGTH2_dev, PDF_TH1_dev, PDF_TH2_dev, &
+         PDF_SIGQT1_dev, PDF_SIGQT2_dev, PDF_QT1_dev, PDF_QT2_dev, &
+         PDF_RQTTH_dev, PDF_RWTH_dev, PDF_RWQT_dev
+    
     call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS ) 
     VERIFY_(STATUS)
 
@@ -593,6 +599,22 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, WTHV2,     'WTHV2'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, WQL,       'WQL'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 
+    call MAPL_GetPointer(EXPORT, PDF_SIGW1_dev, 'PDF_SIGW1', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_SIGW2_dev, 'PDF_SIGW2', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_W1_dev, 'PDF_W1', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_W2_dev,  'PDF_W2',  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_SIGTH1_dev, 'PDF_SIGSL1', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_SIGTH2_dev, 'PDF_SIGSL2', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_TH1_dev, 'PDF_SL1', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_TH2_dev,  'PDF_SL2',  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_SIGQT1_dev, 'PDF_SIGQT1', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_SIGQT2_dev, 'PDF_SIGQT2', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_QT1_dev, 'PDF_QT1', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_QT2_dev,  'PDF_QT2',  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_RQTTH_dev, 'PDF_RSLQT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_RWTH_dev, 'PDF_RWSL', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PDF_RWQT_dev, 'PDF_RWQT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    
          call  PROGNO_CLOUD (     &
               IM*JM, LM         , &
               DT_MOIST          , &
@@ -691,7 +713,13 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                VFALLRN_AN  , VFALLRN_LS  ,VFALLRN_CN  ,VFALLRN_SC  ,  &
               PDF_A, PDFITERS, &
               DQVDT_macro, DQLDT_macro, DQIDT_macro, DQADT_macro, &
-              WTHV2, WQL, &
+#ifdef PDFDIAG
+         PDF_SIGW1_dev, PDF_SIGW2_dev, PDF_W1_dev, PDF_W2_dev, &
+         PDF_SIGTH1_dev, PDF_SIGTH2_dev, PDF_TH1_dev, PDF_TH2_dev, &
+         PDF_SIGQT1_dev, PDF_SIGQT2_dev, PDF_QT1_dev, PDF_QT2_dev, &
+         PDF_RQTTH_dev, PDF_RWTH_dev, PDF_RWQT_dev, &
+#endif
+         WTHV2, WQL, &
               NACTL,    &
               NACTI,    &
               "GF" )
