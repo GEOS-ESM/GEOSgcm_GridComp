@@ -219,6 +219,7 @@ module GEOS_LandiceGridCompMod
      VERIFY_(STATUS)
 
 #ifdef HAVE_ISSM
+   if (DO_ISSM==1) then
      call MAPL_AddExportSpec(GC,                   &
         SHORT_NAME = 'ICESURF',                    &
         LONG_NAME  = 'ice_surface_elevation',      &
@@ -245,6 +246,7 @@ module GEOS_LandiceGridCompMod
         VLOCATION  = MAPL_VLocationNone,           &
         RC=STATUS  )
      VERIFY_(STATUS)
+   end if 
 #endif
 
      call MAPL_AddExportSpec(GC,                             &
@@ -1007,6 +1009,7 @@ module GEOS_LandiceGridCompMod
 
 !  !Internal state:
 #ifdef HAVE_ISSM  
+   if (DO_ISSM==1) then
      call MAPL_AddInternalSpec(GC,                                &
         SHORT_NAME         = 'ICESMB_ISSM',                       &
         LONG_NAME          = 'issm_surface_mass_balance',         &
@@ -1016,6 +1019,7 @@ module GEOS_LandiceGridCompMod
 		  RESTART            = MAPL_RestartOptional,                & 
         DEFAULT            = 0.0 ,                                &
                                                     RC=STATUS  )
+   end if 
 #endif
 
      call MAPL_AddInternalSpec(GC,                           &
