@@ -817,6 +817,8 @@ contains
                              BRUNT,    &  ! in
                              TKE,      &  ! in
                              ISOTROPY, &  ! in
+                             RH,       &  ! in
+                             T,        &  ! in
                              QT,       &  ! in
                              HL,       &  ! in
                              MFFRC,    &  ! in
@@ -844,7 +846,8 @@ contains
                            qt2tune,    &
                            hlqt2tune,  &
                            skew_tgen,  &
-                           skew_tdis,  &
+                           cold_tdis,  &
+                           warm_tdis,  &
                            free_atm_qt2,&
                            USE_DEEP_WQT,&
                            USE_DEEP_QT2,&
@@ -866,6 +869,8 @@ contains
     real,    intent(in   ) :: BRUNT(IM,JM,LM)  ! Brunt-Vaisala frequency
     real,    intent(in   ) :: TKE  (IM,JM,LM)  ! turbulent kinetic energy
     real,    intent(in   ) :: ISOTROPY(IM,JM,0:LM)  ! isotropy timescale
+    real,    intent(in   ) :: T    (IM,JM,LM)  ! absolute temperature [K]
+    real,    intent(in   ) :: RH   (IM,JM,LM)  ! relative humidity
     real,    intent(in   ) :: QT   (IM,JM,LM)  ! total water
     real,    intent(in   ) :: HL   (IM,JM,LM)  ! liquid water static energy
     real,    intent(in   ) :: MFFRC(IM,JM,LM)  ! mass flux area fraction
@@ -893,7 +898,8 @@ contains
                               HLQT2TUNE,   &
                               QT2TUNE,     &
                               SKEW_TGEN,   &
-                              SKEW_TDIS,   &
+                              COLD_TDIS,   &
+                              WARM_TDIS,   &
                               FREE_ATM_QT2,&
                               QT2DC_TGEN,  &
                               QT3DC_TGEN,  &
@@ -916,7 +922,16 @@ contains
                                    hl2_edge, &
                                    hlqt_edge,&
                                    qtgrad
+    real, dimension(IM,JM,LM) :: skew_tdis
 
+    where (T<233.15)
+       skew_tdis = cold_tdis
+    elsewhere (T>273.15)
+       skew_tdis = warm_tdis
+    elsewhere
+       skew_tdis = cold_tdis*(273.15-T)/40.+warm_tdis*(T-233.15)/40.
+    endwhere
+    skew_tdis = skew_tdis*0.25/max(0.01,1-RH)
 
     ! Initial calculations on edges
     do k=1,LM-1
@@ -980,9 +995,9 @@ contains
               wrk2 = 0.
            end where
            if (USE_DEEP_QT2) then
-              qt2(:,:,k) = (qt2(:,:,k)+(wrk1+wrk2/SKEW_TDIS+QT2_DC(:,:,k)/QT2DC_TGEN)*DT) / (1. + DT/SKEW_TDIS)
+              qt2(:,:,k) = (qt2(:,:,k)+(wrk1+wrk2/SKEW_TDIS(:,:,k)+QT2_DC(:,:,k)/QT2DC_TGEN)*DT) / (1. + DT/SKEW_TDIS(:,:,k))
            else
-              qt2(:,:,k) = (qt2(:,:,k)+(wrk1+wrk2/SKEW_TDIS)*DT) / (1. + DT/SKEW_TDIS)
+              qt2(:,:,k) = (qt2(:,:,k)+(wrk1+wrk2/SKEW_TDIS(:,:,k))*DT) / (1. + DT/SKEW_TDIS(:,:,k))
            end if
         else
            qt2(:,:,k) = QT2TUNE*SKEW_TGEN*wrk1

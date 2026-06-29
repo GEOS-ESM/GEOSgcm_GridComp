@@ -3118,7 +3118,7 @@ end if
      real, dimension( IM, JM, LM )       :: QPL,QPI
      integer                             :: DO_SHOC, DOPROGQT2
      real                                :: SL2TUNE, QT2TUNE, SLQT2TUNE,          &
-                                            SKEW_TGEN, SKEW_TDIS, FREE_ATM_QT2,   &
+                                            SKEW_TGEN, COLD_TDIS, WARM_TDIS, FREE_ATM_QT2,   &
                                             QT2DC_TGEN, QT3DC_TGEN, QADC_FAC
 
      logical :: USE_DEEP_WQT, USE_DEEP_QT2, USE_DEEP_QT3
@@ -3141,7 +3141,8 @@ end if
 
      real(kind=MAPL_R8), dimension(IM,JM,LM) :: AKX, BKX
      real, dimension(IM,JM,LM) :: DZ, DTM, TM
-
+     real, dimension(IM,JM,LM) :: RH
+     
      logical :: JASON_TRB, JASON_BELJAARS, JASON_LOUIS, JASON_LOCK
      real(kind=MAPL_R8), dimension(IM,JM,LM) :: AERTOT
      real, dimension(:,:,:), pointer     :: S
@@ -3310,7 +3311,8 @@ end if
      call MAPL_GetResource (MAPL, SL2TUNE,    'SL2TUNE:',    DEFAULT = 4.0   , RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, QT2TUNE,    'QT2TUNE:',    DEFAULT = 1.0   , RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, SLQT2TUNE,  'SLQT2TUNE:',  DEFAULT = 7.0   , RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, SKEW_TDIS,  'SKEW_TDIS:',  DEFAULT = 900.0,  RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, COLD_TDIS,  'COLD_TDIS:',  DEFAULT = 21600.0,RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, WARM_TDIS,  'WARM_TDIS:',  DEFAULT = 1200.0, RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, SKEW_TGEN,  'SKEW_TGEN:',  DEFAULT = 900.0,  RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, FREE_ATM_QT2, 'FREE_ATM_QT2:', DEFAULT = 0.05,  RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, USE_DEEP_WQT, 'USE_DEEP_WQT:', DEFAULT = .FALSE.,  RC=STATUS); VERIFY_(STATUS)
@@ -4527,6 +4529,7 @@ end if
       ! Update the higher order moments required for the ADG PDF
       if ( (PDFSHAPE.ge.5) ) then
       SL = T + (MAPL_GRAV*Z - MAPL_ALHL*QLTOT - MAPL_ALHS*QITOT)/MAPL_CP
+      RH = Q/MAPL_EQSAT(T,PLO)
       call update_moments(IM, JM, LM, DT, &
                           SH,             &  ! in
                           EVAP,           &
@@ -4538,6 +4541,8 @@ end if
                           BRUNTSHOC,      &
                           TKESHOC,        &
                           ISOTROPY,       &
+                          RH,             &
+                          T,              &
                           QT,             &
                           SL,             &
                           EDMF_FRC,       &
@@ -4565,7 +4570,8 @@ end if
                           qt2tune,        &
                           slqt2tune,      &
                           skew_tgen,      &
-                          skew_tdis,      &
+                          cold_tdis,      &
+                          warm_tdis,      &
                           free_atm_qt2,   &
                           use_deep_wqt,   &
                           use_deep_qt2,   &
