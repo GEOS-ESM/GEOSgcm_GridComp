@@ -880,7 +880,7 @@ module GEOS_LakeGridCompMod
     call ESMF_ConfigDestroy      (SCF, __RC__)
     wrap%ptr => mystate
     call ESMF_UserCompSetInternalState(gc, 'lake_private', wrap,status)
-    VERIFY_(status)
+    VERIFY_(status)    
 
 ! Set the Profiling timers
 ! ------------------------
@@ -1411,7 +1411,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
   real, pointer                       :: LONS(:)
   real, pointer                       :: LATS(:)
 
-
+  integer                             :: LAKE_OFFLINE
 !=============================================================================
 
 ! Begin... 
@@ -1450,14 +1450,21 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Do the calculations
 !--------------------
-
     if ( ESMF_AlarmIsRinging(ALARM, RC=STATUS) ) then
        VERIFY_(STATUS)
+    
        call ESMF_AlarmRingerOff(ALARM, RC=STATUS)
        VERIFY_(STATUS)
-       call LAKECORE(NT=size(LATS), RC=STATUS )
+    
+       ! LDAS/offline lake follows the LandIce convention.
+       ! Default is coupled/GCM behavior.
+       call MAPL_GetResource ( MAPL, LAKE_OFFLINE, Label="CATCHMENT_OFFLINE:", &
+                               DEFAULT=0, RC=STATUS )
        VERIFY_(STATUS)
-    end if
+    
+       call LAKECORE(NT=size(LATS), RC=STATUS)
+       VERIFY_(STATUS)
+    endif
     VERIFY_(STATUS)
 
 !  All done
@@ -1523,6 +1530,8 @@ contains
    real, pointer, dimension(:)    :: PCU
    real, pointer, dimension(:)    :: PLS    
    real, pointer, dimension(:)    :: PS     
+   real, pointer, dimension(:)    :: TA !offline
+   real, pointer, dimension(:)    :: QA !offline
    real, pointer, dimension(:)    :: THATM
    real, pointer, dimension(:)    :: QHATM
    real, pointer, dimension(:)    :: CTATM
@@ -1559,6 +1568,8 @@ contains
    real,          dimension(NT)   :: ALBNFI
    real,          dimension(NT)   :: VSUVR
    real,          dimension(NT)   :: VSUVF
+   real,          dimension(NT)   :: ALWN !offline
+   real,          dimension(NT)   :: BLWN !offline
 
    real                           :: DT
    integer                        :: N, I
@@ -1585,22 +1596,35 @@ contains
 
 ! Pointers to inputs
 !-------------------
+   if (LAKE_OFFLINE == 0) then
+      call MAPL_GetPointer(IMPORT,ALW    , 'ALW'    ,    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,BLW    , 'BLW'    ,    RC=STATUS); VERIFY_(STATUS)
+   endif
 
-   call MAPL_GetPointer(IMPORT,ALW    , 'ALW'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,BLW    , 'BLW'    ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,LWDNSRF, 'LWDNSRF',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,EVAP   , 'EVAP'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,SH     , 'SH'     ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,DEV    , 'DEVAP'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,DSH    , 'DSH'    ,    RC=STATUS); VERIFY_(STATUS)
+
+   if (LAKE_OFFLINE == 0) then
+      call MAPL_GetPointer(IMPORT,EVAP   , 'EVAP'   ,    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,SH     , 'SH'     ,    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,DEV    , 'DEVAP'  ,    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,DSH    , 'DSH'    ,    RC=STATUS); VERIFY_(STATUS)
+   endif
+
    call MAPL_GetPointer(IMPORT,SNO    , 'SNO'    ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,PCU    , 'PCU'    ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,PLS    , 'PLS'    ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,PS     , 'PS'     ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,THATM  , 'THATM'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,QHATM  , 'QHATM'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,CTATM  , 'CTATM'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,CQATM  , 'CQATM'  ,    RC=STATUS); VERIFY_(STATUS)
+
+   if (LAKE_OFFLINE /= 0) then
+      call MAPL_GetPointer(IMPORT,TA     , 'TA'     ,    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,QA     , 'QA'     ,    RC=STATUS); VERIFY_(STATUS)
+   else
+      call MAPL_GetPointer(IMPORT,THATM  , 'THATM'  ,    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,QHATM  , 'QHATM'  ,    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,CTATM  , 'CTATM'  ,    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,CQATM  , 'CQATM'  ,    RC=STATUS); VERIFY_(STATUS)
+   endif
+
    call MAPL_GetPointer(IMPORT,DRPAR  , 'DRPAR'  ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,DFPAR  , 'DFPAR'  ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,DRNIR  , 'DRNIR'  ,    RC=STATUS); VERIFY_(STATUS)
@@ -1735,8 +1759,13 @@ contains
     if(associated(SWNDSRF)) SWNDSRF = 0.0
     if(associated(TST    )) TST     = 0.0
     if(associated(QST    )) QST     = 0.0
-    if(associated(HLWUP  )) HLWUP   = ALW 
-    if(associated(LWNDSRF)) LWNDSRF = LWDNSRF - ALW
+    if (LAKE_OFFLINE == 0) then
+       if(associated(HLWUP  )) HLWUP   = ALW
+       if(associated(LWNDSRF)) LWNDSRF = LWDNSRF - ALW
+    else
+       if(associated(HLWUP  )) HLWUP   = 0.0
+       if(associated(LWNDSRF)) LWNDSRF = LWDNSRF
+    endif    
     ! datalake addition
     !==================
 
@@ -1813,37 +1842,82 @@ contains
     end if
 
     do N=1,NUM_SUBTILES
-       CFT = (CH(:,N)/CTATM)
-       CFQ = (CQ(:,N)/CQATM)
-       EVP = CFQ*(EVAP + DEV*(QS(:,N)-QHATM))
-       SHF = CFT*(SH   + DSH*(TS(:,N)-THATM))
-       SHD = CFT*DSH
-       EVD = CFQ*DEV*GEOS_DQSAT(TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.)
-       DTS = LWDNSRF - (ALW + BLW*TS(:,N)) - SHF
+
+       if (LAKE_OFFLINE == 0) then
+
+          ! Coupled/GCM path: original behavior.
+          CFT = (CH(:,N)/CTATM)
+          CFQ = (CQ(:,N)/CQATM)
+
+          EVP = CFQ*(EVAP + DEV*(QS(:,N)-QHATM))
+          SHF = CFT*(SH   + DSH*(TS(:,N)-THATM))
+          SHD = CFT*DSH
+          EVD = CFQ*DEV*GEOS_DQSAT(TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.)
+
+          DTS = LWDNSRF - (ALW + BLW*TS(:,N)) - SHF
+
+       else
+
+          ! LDAS/offline path: compute the equivalent terms internally.
+          CFT = 1.0
+          CFQ = 1.0
+
+          EVP = CQ(:,N)*(QS(:,N)-QA)
+          SHF = MAPL_CP*CH(:,N)*(TS(:,N)-TA)
+          SHD = MAPL_CP*CH(:,N)
+          EVD = CQ(:,N)*GEOS_DQSAT(TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.)
+
+          if (N == WATER) then
+             BLWN = LAKEEMISS*MAPL_STFBOL*TS(:,N)*TS(:,N)*TS(:,N)
+          else
+             BLWN = LAKEICEEMISS*MAPL_STFBOL*TS(:,N)*TS(:,N)*TS(:,N)
+          endif
+
+          ALWN = -3.0*BLWN*TS(:,N)
+          BLWN =  4.0*BLWN
+
+          DTS = LWDNSRF - (ALWN + BLWN*TS(:,N)) - SHF
+
+       endif
 
        if (N==WATER) then
           DTX = (DT/LAKECAP)*FR(:,N) ! FR accounts for skin under ice
           SWN =   (1.-ALBVRO)*VSUVR + (1.-ALBVFO)*VSUVF + &
                   (1.-ALBNRO)*DRNIR + (1.-ALBNFO)*DFNIR
+
           DTS = DTX * ( DTS + SWN - EVP*MAPL_ALHL - MAPL_ALHF*SNO )
-          DTS = DTS   / ( 1.0 + DTX*(BLW + SHD + EVD*MAPL_ALHL) )
+
+          if (LAKE_OFFLINE == 0) then
+             DTS = DTS   / ( 1.0 + DTX*(BLW  + SHD + EVD*MAPL_ALHL) )
+          else
+             DTS = DTS   / ( 1.0 + DTX*(BLWN + SHD + EVD*MAPL_ALHL) )
+          endif
+
           EVP = EVP + EVD * DTS
           SHF = SHF + SHD * DTS
           LHF = EVP * MAPL_ALHL
+
        else
           DTX = (DT / LAKEICECAP)
           SWN = (1.-ALBVRI)*VSUVR + (1.-ALBVFI)*VSUVF + &
-                (1.-ALBNRI)*DRNIR + (1.-ALBNFI)*DFNIR 
+                (1.-ALBNRI)*DRNIR + (1.-ALBNFI)*DFNIR
+
           DTS = DTX * ( DTS + SWN - EVP*MAPL_ALHS )
-          DTS = DTS   / ( 1.0 + DTX*(BLW + SHD + EVD*MAPL_ALHS) )
+
+          if (LAKE_OFFLINE == 0) then
+             DTS = DTS   / ( 1.0 + DTX*(BLW  + SHD + EVD*MAPL_ALHS) )
+          else
+             DTS = DTS   / ( 1.0 + DTX*(BLWN + SHD + EVD*MAPL_ALHS) )
+          endif
+
           EVP = EVP + EVD * DTS
           SHF = SHF + SHD * DTS
           LHF = EVP * MAPL_ALHS
+
           if(associated(SUBLIM)) SUBLIM = EVP*FR(:,N)
-       end if
+       endif
 
        RNF = PCU + PLS + SNO - EVP
-
 ! Update surface temperature and moisture
 !----------------------------------------
 
@@ -1863,8 +1937,13 @@ contains
        if(associated(SWNDSRF)) SWNDSRF = SWNDSRF + SWN    *FR(:,N)
        if(associated(TST    )) TST     = TST     + TS(:,N)*FR(:,N)
        if(associated(QST    )) QST     = QST     + QS(:,N)*FR(:,N)
-       if(associated(LWNDSRF)) LWNDSRF = LWNDSRF - TS(:,N)*FR(:,N)*BLW
-       if(associated(HLWUP  )) HLWUP   = HLWUP   + TS(:,N)*FR(:,N)*BLW
+       if (LAKE_OFFLINE == 0) then
+          if(associated(LWNDSRF)) LWNDSRF = LWNDSRF - TS(:,N)*FR(:,N)*BLW
+          if(associated(HLWUP  )) HLWUP   = HLWUP   + TS(:,N)*FR(:,N)*BLW
+       else
+          if(associated(LWNDSRF)) LWNDSRF = LWNDSRF - FR(:,N)*(ALWN + TS(:,N)*BLWN)
+          if(associated(HLWUP  )) HLWUP   = HLWUP   + FR(:,N)*(ALWN + TS(:,N)*BLWN)
+       endif       
 
     end do
 
