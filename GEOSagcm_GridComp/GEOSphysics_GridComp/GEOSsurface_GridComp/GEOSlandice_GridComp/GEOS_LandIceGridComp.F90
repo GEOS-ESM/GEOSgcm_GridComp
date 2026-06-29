@@ -2758,7 +2758,9 @@ contains
 ! Pointers to internals
 !----------------------
 #ifdef HAVE_ISSM
+if (DO_ISSM==1) then
    call MAPL_GetPointer(INTERNAL,ICESMB_IN , 'ICESMB_ISSM',alloc=.true., RC=STATUS); VERIFY_(STATUS)
+end if    
 #endif
    call MAPL_GetPointer(INTERNAL,TS   , 'TS'     , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,QS   , 'QS'     , RC=STATUS); VERIFY_(STATUS)
@@ -2786,9 +2788,11 @@ contains
 ! Pointers to outputs
 !--------------------
 #ifdef HAVE_ISSM
+if (DO_ISSM==1) then
    call MAPL_GetPointer(EXPORT,ICESURF , 'ICESURF',alloc=.true., RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,ICETHICK ,'ICETHICK',alloc=.true., RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,ICEVEL ,'ICEVEL',alloc=.true., RC=STATUS); VERIFY_(STATUS)
+end if    
 #endif
    
    call MAPL_GetPointer(EXPORT,ICESMB  , 'ICESMB',alloc=.true., RC=STATUS); VERIFY_(STATUS)
