@@ -1121,7 +1121,10 @@ contains
                   WTHV2_dev(I,K),      &
                   wql_dev(I,K),        &
                   .false.,             &
-                  USE_BERGERON)
+                  USE_BERGERON,        &
+                  0.,                  &
+                  0.,                  &
+                  -0.2            )
             endif
 
             RHX_dev(I,K)   = Q_dev(I,K)/QSAT( TEMP, PP_dev(I,K) )

@@ -48,6 +48,7 @@ module GEOS_GFDL_1M_InterfaceMod
   real    :: MIN_RH_CRIT, MAX_RH_CRIT, MIN_RH_UNSTABLE, MIN_RH_STABLE
   real    :: TAU_EVAP, CCW_EVAP_EFF
   real    :: TAU_SUBL, CCI_EVAP_EFF
+  real    :: SET_RWQT, SET_RWSL, SET_RQTSL
   integer :: PDFSHAPE
   real    :: ANV_ICEFALL
   real    :: LS_ICEFALL
@@ -401,6 +402,10 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
 
     call MAPL_GetResource( MAPL, GFDL_MP_KLID    , 'GFDL_MP_KLID:'    , DEFAULT= -999.0, RC=STATUS); VERIFY_(STATUS)
 
+    call MAPL_GetResource( MAPL, SET_RWQT, 'SET_RWQT:', DEFAULT= 0., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, SET_RWSL, 'SET_RWSL:', DEFAULT= 0., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, SET_RQTSL, 'SET_RQTSL:', DEFAULT= -0.2, RC=STATUS); VERIFY_(STATUS)
+    
     call init_refl10cm()
 
 end subroutine GFDL_1M_Initialize
@@ -877,7 +882,10 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                       WTHV2(I,J,L)   , &
                       WQL(I,J,L)     , &
                       .false.        , &
-                      USE_BERGERON)
+                      USE_BERGERON   , &
+                      SET_RWQT       , &
+                      SET_RWSL       , &
+                      SET_RQTSL )
              RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
              if (LMELTFRZ_CLDMACRO) then
            ! meltfrz new condensates

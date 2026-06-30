@@ -174,7 +174,8 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     integer                    :: nn
     integer                    :: LM
     real                       :: tmprhL, tmprhO, TMP_ICEFALL
-
+    real    :: SET_RWQT, SET_RWSL, SET_RQTSL
+    
     call MAPL_Get ( MAPL, LM=LM, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS )
     VERIFY_(STATUS)
 
@@ -184,6 +185,10 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     call MAPL_GetPointer(INTERNAL, QILS,     'QILS'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , RC=STATUS); VERIFY_(STATUS)
 
+    call MAPL_GetResource( MAPL, SET_RWQT, 'SET_RWQT:', DEFAULT= 0., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, SET_RWSL, 'SET_RWSL:', DEFAULT= 0., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, SET_RQTSL, 'SET_RQTSL:', DEFAULT= -0.2, RC=STATUS); VERIFY_(STATUS)
+    
     call MAPL_GetResource( MAPL, CLDPARAMS%CCW_EVAP_EFF,   'CCW_EVAP_EFF:',   DEFAULT= 4.0e-3  )
     call MAPL_GetResource( MAPL, CLDPARAMS%CCI_EVAP_EFF,   'CCI_EVAP_EFF:',   DEFAULT= 4.0e-3  )
     call MAPL_GetResource( MAPL, CLDPARAMS%HYSTPDFOPT,     'HYSTPDFOPT:',     DEFAULT= 1.0     )

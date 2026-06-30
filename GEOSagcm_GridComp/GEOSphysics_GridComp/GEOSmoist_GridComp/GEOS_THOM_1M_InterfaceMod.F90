@@ -49,6 +49,7 @@ module GEOS_THOM_1M_InterfaceMod
   real    :: TURNRHCRIT_PARAM
   real    :: CCW_EVAP_EFF
   real    :: CCI_EVAP_EFF
+  real    :: SET_RWQT, SET_RWSL, SET_RQTSL
   integer :: PDFSHAPE
   real    :: ANV_ICEFALL 
   real    :: LS_ICEFALL
@@ -286,6 +287,10 @@ subroutine THOM_1M_Initialize (MAPL, RC)
                                  CCI_EVAP_EFF = 4.e-3
     call MAPL_GetResource( MAPL, CCI_EVAP_EFF, 'CCI_EVAP_EFF:', DEFAULT= CCI_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
 
+    call MAPL_GetResource( MAPL, SET_RWQT, 'SET_RWQT:', DEFAULT= 0., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, SET_RWSL, 'SET_RWSL:', DEFAULT= 0., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, SET_RQTSL, 'SET_RQTSL:', DEFAULT= -0.2, RC=STATUS); VERIFY_(STATUS)
+    
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  200.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 4000.0, RC=STATUS); VERIFY_(STATUS)
 
@@ -749,7 +754,10 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                       WTHV2(I,J,L)   , &
                       WQL(I,J,L)     , &
                       .false.        , & 
-                      USE_BERGERON)
+                      USE_BERGERON   , &
+                      SET_RWQT       , &
+		      SET_RWSL       , &
+                      SET_RQTSL )
              RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
            ! meltfrz new condensates
              call MELTFRZ ( DT_MOIST     , &

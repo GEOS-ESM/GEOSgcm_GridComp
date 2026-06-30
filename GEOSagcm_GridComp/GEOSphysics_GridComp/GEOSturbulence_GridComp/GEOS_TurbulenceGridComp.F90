@@ -3253,7 +3253,7 @@ end if
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENOPT,  trim(COMP_NAME)//"_SHC_LENOPT:",      default=3,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1, trim(COMP_NAME)//"_SHC_LENFAC1:",     default=8.,   RC=STATUS); VERIFY_(STATUS)       
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2, trim(COMP_NAME)//"_SHC_LENFAC2:",     default=2.,   RC=STATUS); VERIFY_(STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=1.,   RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=0.5,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT, trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=2,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 6.0 , RC=STATUS); VERIFY_(STATUS)
      else
@@ -3266,7 +3266,7 @@ end if
      call MAPL_GetResource (MAPL, SLQT2TUNE,  'SLQT2TUNE:',  DEFAULT = 7.0   , RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, SKEW_TDIS,  'SKEW_TDIS:',  DEFAULT = 900.0,  RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, SKEW_TGEN,  'SKEW_TGEN:',  DEFAULT = 900.0,  RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, FREE_ATM_QT2, 'FREE_ATM_QT2:', DEFAULT = 0.05,  RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, FREE_ATM_QT2, 'FREE_ATM_QT2:', DEFAULT = 0.05, RC=STATUS); VERIFY_(STATUS)
 
 ! Get pointers from export state...
 !-----------------------------------

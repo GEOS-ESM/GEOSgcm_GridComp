@@ -2463,10 +2463,11 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
   subroutine precalc_dblgss(a, wqt, wth, tbar, t2bar, t3bar, qt2bar, qt3bar, &
                             w2bar, w3bar, beta, rwqt, rwth, rtqt, t1, t2, &
                             sigt1, sigt2, qt1, qt2, sigqt1, sigqt2, w1, w2, &
-                            sigw1, sigw2)
+                            sigw1, sigw2, set_rwqt, set_rwsl, set_rqtsl)
     ! Input arguments
     real(4), intent(in) :: a, wqt, wth, tbar, t2bar, t3bar, qt2bar, qt3bar, w2bar, w3bar
-
+    real(4), intent(in) :: set_rwqt, set_rwsl, set_rqtsl
+    
     ! Output arguments
     real(4), intent(out) :: beta, rwqt, rwth, rtqt, t1, t2, sigt1, sigt2
     real(4), intent(out) :: qt1, qt2, sigqt1, sigqt2, w1, w2, sigw1, sigw2
@@ -2478,7 +2479,7 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
     beta = (MAPL_RGAS/MAPL_RVAP) * (MAPL_ALHL/(MAPL_RGAS*tbar)) * (MAPL_ALHL/(MAPL_CP*tbar))
 
     ! If some skewness is present
-    if (a > 0.001 .and. a /= 0.5 .and. &
+    if (a > 0.001 .and. a < 0.5 .and. &
         (qt3bar > 0.0 .or. t3bar > 0.0 .or. w3bar > 0.0)) then
 
       ! Empirical adjustment to ensure realizability
@@ -2520,9 +2521,9 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
 
     end if
 
-    if (a > 0.001 .and. qt3bar > 0.0 .and. a /= 0.5) then
+    if (a > 0.001 .and. qt3bar > 0.0 .and. a < 0.5) then
 
-      qt1 = a * qt2 / (1.0 - a)
+      qt1 = a * qt2 / (a - 1.0)
 
       fac = sqrt(a / (1.0 - a))
       tmp = max(0.0, qt2bar - (1.0 - a) * qt1**2 - a * qt2**2)
@@ -2539,9 +2540,9 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
     end if
 
     ! Set correlation coefficients
-    rwqt = 0.
-    rwth = 0.
-    rtqt = -0.2
+    rwqt = set_rwqt
+    rwth = set_rwsl
+    rtqt = set_rqtsl
 
   end subroutine precalc_dblgss
 
@@ -2594,11 +2595,11 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
 
     qc = qc1 * (1.0 - a) + qc2 * a
 
-    wqc = (1.0 - a) * w1 * qc1 + a * w2 * qc2
-!    wqc = (1.0 - a) * (w1 * qc1 + cld1 * (cq * sigw1 * sigqt1 * rwqt - &
-!                                         ct * sigw1 * sigt1 * rwth)) + &
-!                  a * (w2 * qc2 + cld2 * (cq * sigw2 * sigqt2 * rwqt - &
-!                                         ct * sigw2 * sigt2 * rwth))
+!    wqc = (1.0 - a) * w1 * qc1 + a * w2 * qc2
+    wqc = (1.0 - a) * (w1 * qc1 + cld1 * (cq * sigw1 * sigqt1 * rwqt - &
+                                         ct * sigw1 * sigt1 * rwth)) + &
+                  a * (w2 * qc2 + cld2 * (cq * sigw2 * sigqt2 * rwqt - &
+                                         ct * sigw2 * sigt2 * rwth))
 
     cld = (1.0 - a) * cld1 + a * cld2
 
@@ -2614,7 +2615,7 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
          PDF_HL1, PDF_HL2, PDF_SIGQT1, PDF_SIGQT2, PDF_QT1, PDF_QT2, &
          PDF_RHLQT, PDF_RWHL, PDF_RWQT, &
 #endif
-         WTHV2, WQC, needs_preexisting, USE_BERGERON, SC_ICE, ITER_METHOD )
+         WTHV2, WQC, needs_preexisting, USE_BERGERON, set_rwqt, set_rwsl, set_rqtsl, SC_ICE, ITER_METHOD)
 
       ! --- Arguments ---
       real,    intent(in)    :: DT, ALPHA, PL, ZL, NL, NI, CNVFRC, SRF_TYPE
@@ -2622,6 +2623,7 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
       real,    intent(in)    :: WHL, WQT, HL2, QT2, HLQT, W3, W2bar, QT3, HL3
       real,    intent(inout) :: TE, QV, QLLS, QILS, CLLS, QLCN, QICN, CLCN, PDF_A
       logical, intent(in)    :: needs_preexisting, USE_BERGERON
+      real,    intent(in)    :: set_rwqt, set_rwsl, set_rqtsl
       real,    optional, intent(in) :: SC_ICE
       integer, optional, intent(in) :: ITER_METHOD
       real,    intent(out)   :: WTHV2, WQC, PDFITERS
@@ -2679,7 +2681,8 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
          exner = (PL / 1e3)**MAPL_KAPPA
          call precalc_dblgss( PDF_A, WQT, WHL, t_env, HL2, HL3, QT2, QT3, W2bar, W3, &
                               beta, rwqt, rwhl, rhlqt, t1, t2, sigt1, sigt2, &
-                              q1, q2, sigmaqt1, sigmaqt2, w1, w2, sigw1, sigw2 )
+                              q1, q2, sigmaqt1, sigmaqt2, w1, w2, sigw1, sigw2, &
+                              set_rwqt, set_rwsl, set_rqtsl)
 #ifdef PDFDIAG
          PDF_SIGW1  = sigw1; PDF_SIGW2 = sigw2; PDF_W1 = w1; PDF_W2 = w2
          PDF_SIGHL1 = sigt1; PDF_SIGHL2 = sigt2

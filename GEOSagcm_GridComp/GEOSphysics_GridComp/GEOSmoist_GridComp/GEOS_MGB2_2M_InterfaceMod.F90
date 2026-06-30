@@ -55,6 +55,7 @@ module GEOS_MGB2_2M_InterfaceMod
   real    :: MINRHCRIT  
   real    :: CCW_EVAP_EFF
   real    :: CCI_EVAP_EFF
+  real    :: SET_RWQT, SET_RWSL, SET_RQTSL
   integer :: PDFSHAPE
   real    :: MIN_RL
   real    :: MAX_RL
@@ -363,7 +364,9 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    1.0, RC=STATUS); VERIFY_(STATUS)
 
-
+    call MAPL_GetResource( MAPL, SET_RWQT, 'SET_RWQT:', DEFAULT= 0., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, SET_RWSL, 'SET_RWSL:', DEFAULT= 0., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, SET_RQTSL, 'SET_RQTSL:', DEFAULT= -0.2, RC=STATUS); VERIFY_(STATUS)
      
     !2M==tuning and options======
     
@@ -1561,8 +1564,11 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
 #endif
                       WTHV2(I,J,L)   , &
                       WQL(I,J,L)     , &
-                      .false.        , & 
+                      .false.        , &
                       .true., &
+                      SET_RWQT       , &
+                      SET_RWSL       , &
+		      SET_RQTSL      , &
                       SC_ICE(I, J, L), &
                       ITER_METHOD=ITER_METHOD)
                       
@@ -2280,8 +2286,11 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
 #endif
                       WTHV2(I,J,K)   , &
                       WQL(I,J,K)     , &
-                      .false.        , & 
+                      .false.        , &
                       .true., &
+                      SET_RWQT       , &
+                      SET_RWSL       , &
+                      SET_RQTSL      , &
                       SC_ICE(I, J, K), &
                       ITER_METHOD)
          
