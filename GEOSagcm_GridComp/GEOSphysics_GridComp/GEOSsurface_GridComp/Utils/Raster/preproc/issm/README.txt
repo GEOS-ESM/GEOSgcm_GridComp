@@ -8,12 +8,13 @@ Default example is produced with:
 
 sbatch generate_issm_bcs.sh 
 
-Data is currently read from: /discover/nobackup/agstubbl/ISSM/data/
+Data is read from: /discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/landice/issm/v1/
 That directory is organized into AIS (Antarctica) and GRIS (Greenland) subdirectories.
 
-Output is currently stored here (for reference):
-/discover/nobackup/agstubbl/ISSM/geos_bcs/
+Output is currently archived here:
+/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/landice/issm/v1/
 
+There is only one resolution for v1 ISSM BCs, ISSM_ME23083_N34534_AIS_GRIS.
 The domain naming convention (ISSM_ME*_N*...) is described below.
 
 The script finds all subdirectories containing files of the form:
