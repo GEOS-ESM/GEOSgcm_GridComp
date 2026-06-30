@@ -113,9 +113,9 @@ class GF2020Interface(UserCode):
             maximum_evap_fraction_ocean_deep = Float(maplpy.get_resource("MAX_EDT_OCEAN_DP:", mapl_state, default=Float(0.9)))
             sgs_w_timescale = Int(maplpy.get_resource("SGS_W_TIMESCALE:", mapl_state, default=Int(0)))
             min_entrainment_rate = Float(maplpy.get_resource("MIN_ENTR_RATE:", mapl_state, default=Float(0.1e-4)))
-            entrainment_rate_shallow = Float(maplpy.get_resource("ENTR_SH:", mapl_state, default=Float(1.0e-4)))
+            entrainment_rate_shallow = Float(maplpy.get_resource("ENTR_SH:", mapl_state, default=Float(1.0e-3)))
             entrainment_rate_mid = Float(maplpy.get_resource("ENTR_MD:", mapl_state, default=Float(9.0e-4)))
-            entrainment_rate_deep = Float(maplpy.get_resource("ENTR_DP:", mapl_state, default=Float(1.0e-3)))
+            entrainment_rate_deep = Float(maplpy.get_resource("ENTR_DP:", mapl_state, default=Float(1.0e-4)))
 
         config = GF2020Config(
             DT_MOIST=Float(maplpy.get_resource("DSL__GF2020_DT", mapl_state, default=Float(0.0))),
@@ -461,6 +461,7 @@ class GF2020Interface(UserCode):
                 )
 
             with TimedCUDAProfiler("GF 2020 Convection Numerics", {}):
+                self._managed_state.record("GF2020-In")
                 # adjust pbl_level from fortran indexing to python indexing
                 self._managed_state.ndsl_state.pbl_level.field[:] = self._managed_state.ndsl_state.pbl_level.field[:] - 1
 
@@ -472,6 +473,7 @@ class GF2020Interface(UserCode):
 
                 # adjust pbl_level from python indexing to fortran indexing
                 self._managed_state.ndsl_state.pbl_level.field[:] = self._managed_state.ndsl_state.pbl_level.field[:] + 1
+                self._managed_state.record("GF2020-Out")
 
             with TimedCUDAProfiler("GF 2020 Convection - State copy-back", {}):
                 safe_assign_array(
