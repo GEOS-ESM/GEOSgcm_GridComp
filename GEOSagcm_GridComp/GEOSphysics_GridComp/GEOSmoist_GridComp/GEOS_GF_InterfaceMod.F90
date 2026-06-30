@@ -18,6 +18,7 @@ module GEOS_GF_InterfaceMod
   use ConvPar_GF_SharedParams
   use ConvPar_GF_GEOS5
   use ConvPar_GF2020
+  use moist_dsl_workarounds
 
   implicit none
 
@@ -40,11 +41,11 @@ module GEOS_GF_InterfaceMod
   logical :: FIX_CNV_CLOUD
   logical :: REPORT_GF_NEGATIVES
   integer :: ZERO_DIFF_TAU
-  integer :: ZERO_DIFF_AUTOCONV
   integer :: ZERO_DIFF_VGRID
   integer :: ZERO_DIFF_OTHER
+  logical :: USE_PYMOIST_GF2020
 
-  public :: GF_Setup, GF_Initialize, GF_Run
+  public :: GF_Setup, GF_Initialize, GF_Run, GF_Finalize
 
 contains
 
@@ -76,13 +77,34 @@ subroutine GF_Setup (GC, CF, RC)
          DEFAULT    = 0.0,   RC=STATUS  )
          VERIFY_(STATUS)
 
+   call MAPL_AddInternalSpec(GC,                                &
+         SHORT_NAME = 'DSL__GF2020_LONS',                       &
+         LONG_NAME  = 'DSL_longitude',                          &
+         UNITS      = 'radians',                                &
+         DIMS       = MAPL_DimsHorzOnly,                        &
+         VLOCATION  = MAPL_VLocationNone,                       &
+         RESTART    = MAPL_RestartSkip,              RC=STATUS  )
+   VERIFY_(STATUS)
+
+   call MAPL_AddInternalSpec(GC,                                &
+         SHORT_NAME = 'DSL__GF2020_LATS',                       &
+         LONG_NAME  = 'DSL_longitude',                          &
+         UNITS      = 'radians',                                &
+         DIMS       = MAPL_DimsHorzOnly,                        &
+         VLOCATION  = MAPL_VLocationNone,                       &
+         RESTART    = MAPL_RestartSkip,              RC=STATUS  )
+   VERIFY_(STATUS)
+
     call MAPL_TimerAdd(GC, name="--GF", RC=STATUS)
     VERIFY_(STATUS)
 
 end subroutine GF_Setup
 
-subroutine GF_Initialize (MAPL, CLOCK, RC)
+subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     type (MAPL_MetaComp), intent(inout) :: MAPL
+    type (ESMF_Config),   intent(inout) :: CF
+    type (ESMF_State),    intent(inout) :: IMPORT
+    type (ESMF_State),    intent(inout) :: EXPORT
     type (ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
     integer, optional                   :: RC  ! return code
     integer :: LM
@@ -117,13 +139,24 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
                                    Enabled      = .true.   ,    &
                                    Sticky       = .false.  , RC=STATUS); VERIFY_(STATUS)
 
+    call MAPL_GetResource(MAPL, USE_PYMOIST_GF2020, 'USE_PYMOIST_GF2020:', default=.FALSE., RC=STATUS); VERIFY_(STATUS)
+
+    if (USE_PYMOIST_GF2020) then
+      call MAPL_ConfigSetAttribute(CF, MOIST_DT, 'DSL__GF2020_DT', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, GF_ENV_SETTING            , 'GF_ENV_SETTING:'        ,default= 'DYNAMICS', RC=STATUS); VERIFY_(STATUS)
+      if (trim(GF_ENV_SETTING)=='CURRENT') then
+         call MAPL_ConfigSetAttribute(CF, 0, 'DSL__GF_ENV_SETTING:', RC=STATUS); VERIFY_(STATUS)
+      elseif (trim(GF_ENV_SETTING)=='DYNAMICS') then
+         call MAPL_ConfigSetAttribute(CF, 1, 'DSL__GF_ENV_SETTING:', RC=STATUS); VERIFY_(STATUS)
+      endif
+      call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.convection.GF2020_interface", MAPL, IMPORT, EXPORT )
+    else
     if (LM .eq. 72) then
       call MAPL_GetResource(MAPL, USE_GF2020                , 'USE_GF2020:'            ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_LAND            , 'ZERO_DIFF_LAND:'        ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_VVEL            , 'ZERO_DIFF_VVEL:'        ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_ENTR            , 'ZERO_DIFF_ENTR:'        ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_TAU             , 'ZERO_DIFF_TAU:'         ,default= 1,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, ZERO_DIFF_AUTOCONV        , 'ZERO_DIFF_AUTOCONV:'    ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_VGRID           , 'ZERO_DIFF_VGRID:'       ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_OTHER           , 'ZERO_DIFF_OTHER:'       ,default= 1,    RC=STATUS );VERIFY_(STATUS)
     else
@@ -132,7 +165,6 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, ZERO_DIFF_VVEL            , 'ZERO_DIFF_VVEL:'        ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_ENTR            , 'ZERO_DIFF_ENTR:'        ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_TAU             , 'ZERO_DIFF_TAU:'         ,default= 0,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, ZERO_DIFF_AUTOCONV        , 'ZERO_DIFF_AUTOCONV:'    ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_VGRID           , 'ZERO_DIFF_VGRID:'       ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF_OTHER           , 'ZERO_DIFF_OTHER:'       ,default= 0,    RC=STATUS );VERIFY_(STATUS)
     endif
@@ -157,34 +189,31 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)       , 'ENTR_SH:'               ,default= 6.0e-4,RC=STATUS );VERIFY_(STATUS)
       else
         call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 0.1e-4,RC=STATUS );VERIFY_(STATUS)  
-        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 1.0e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 1.2e-4,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)        , 'ENTR_MD:'               ,default= 9.0e-4,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)       , 'ENTR_SH:'               ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
       endif
 
       call MAPL_GetResource(MAPL, AUTOCONV                  , 'AUTOCONV:'              ,default= 1,     RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, C0_DEEP                   , 'C0_DEEP:'               ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, C0_MID                    , 'C0_MID:'                ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, C0_MID                    , 'C0_MID:'                ,default= 0.5e-3,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, C0_SHAL                   , 'C0_SHAL:'               ,default= 0.0   ,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, QRC_CRIT_OCN              , 'QRC_CRIT_OCN:'          ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, QRC_CRIT_LND              , 'QRC_CRIT_LND:'          ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
-      if (INT(ZERO_DIFF_AUTOCONV) == 0) then
-        ! C1: Explicit cloud condensate detrainment rate [m^-1].
-        ! Controls how much suspended liquid/ice is forcibly shed into the grid-scale environment.
-        ! Default (1.0e-3) favors convective precipitation; increasing (e.g., 2.0e-3 to 3.0e-3) shifts 
-        ! moisture to host microphysics, where evaporation can moisten the 700-300 mb free troposphere.
-        call MAPL_GetResource(MAPL, C1                        , 'C1:'                    ,default= 3.0e-3,RC=STATUS );VERIFY_(STATUS)
-      else
-        call MAPL_GetResource(MAPL, C1                        , 'C1:'                    ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
-      endif
+      ! C1: Explicit cloud condensate detrainment rate [m^-1].
+      ! Controls how much suspended liquid/ice is forcibly shed into the grid-scale environment.
+      ! Default (1.0e-3) favors convective precipitation; increasing (e.g., 2.0e-3 to 3.0e-3) shifts 
+      ! moisture to host microphysics, where evaporation can moisten the 700-300 mb free troposphere.
+      ! Caution: impact may inadvertantly flatten the ITCZ too much
+      call MAPL_GetResource(MAPL, C1                        , 'C1:'                    ,default= 1.5e-3,RC=STATUS );VERIFY_(STATUS)
 
       if (INT(ZERO_DIFF_TAU) == 0) then
          call MAPL_GetResource(MAPL, GF_MIN_AREA               , 'GF_MIN_AREA:'           ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
                                      SGS_W_TIMESCALE = 1.0 ! factor for adjusting GF2020 timescales
          call MAPL_GetResource(MAPL, SGS_W_TIMESCALE           , 'SGS_W_TIMESCALE:'       ,default= SGS_W_TIMESCALE, RC=STATUS );VERIFY_(STATUS)
          ! These are UPPER bounds for new GF timescales
-         call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 7200., RC=STATUS );VERIFY_(STATUS)
-         call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default=10800., RC=STATUS );VERIFY_(STATUS)
+         call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 3600., RC=STATUS );VERIFY_(STATUS)
+         call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default= 5400., RC=STATUS );VERIFY_(STATUS)
         ! FADJ_MASSFLX is a fractional mass flux tuning factor (1.0 is no reduction) in low CAPE environments
         call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(DEEP)    , 'FADJ_MASSFLX_DP:'       ,default= 1.0,   RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(SHAL)    , 'FADJ_MASSFLX_SH:'       ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
@@ -338,6 +367,8 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, FIX_CNV_CLOUD       ,'FIX_CNV_CLOUD:'    ,default= .FALSE., RC=STATUS); VERIFY_(STATUS)
     ENDIF
 
+    endif ! USE_PYMOIST_GF2020
+
 end subroutine GF_Initialize
 
 
@@ -364,7 +395,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     integer                         :: IM,JM,LM
     real, pointer, dimension(:,:)   :: LONS
     real, pointer, dimension(:,:)   :: LATS
-    real                            :: minrhx
+    real                            :: minrhx, fqi_local, tmp_local
+    logical                         :: ptr_is_assoc
 
     ! Internals
     real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN
@@ -423,6 +455,9 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     type( ESMF_VM )                 :: VMG
 
+    ! DSL fields
+    real, pointer, dimension(:,:) :: DSL__GF2020_LONS, DSL__GF2020_LATS
+
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS); VERIFY_(STATUS)
     call MAPL_Get( MAPL, IM=IM, JM=JM, LM=LM,   &
          CF       = CF,                &
@@ -473,6 +508,16 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! Get parameters from generic state.
     !-----------------------------------
 
+    if (USE_PYMOIST_GF2020) then
+      call MAPL_GetPointer(INTERNAL, DSL__GF2020_LONS, 'DSL__GF2020_LONS', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(INTERNAL, DSL__GF2020_LATS, 'DSL__GF2020_LATS', RC=STATUS); VERIFY_(STATUS)
+      DSL__GF2020_LONS = LONS
+      DSL__GF2020_LATS = LATS
+      call CNV_Tracers_To_SOA()
+      call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.convection.GF2020_interface", MAPL, IMPORT, EXPORT, INTERNAL )
+      call CNV_Tracers_To_AOS()
+    else
+
     ! Imports
     call MAPL_GetPointer(IMPORT, FRLAND    ,'FRLAND'    ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, AREA      ,'AREA'      ,RC=STATUS); VERIFY_(STATUS)
@@ -522,16 +567,48 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( SEEDCNV(IM,JM) )
     ALLOCATE ( TMP2D  (IM,JM) )
 
-    ! derived quantaties
     ! Derived States
-    PL       = 0.5*(PLE(:,:,0:LM-1) + PLE(:,:,1:LM))
-    PK       = (PL/MAPL_P00)**(MAPL_KAPPA)
-    DO L=0,LM
-       ZLE0(:,:,L)= ZLE(:,:,L) - ZLE(:,:,LM)   ! Edge Height (m) above the surface
-    END DO
-    ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
-    TH       = T/PK
-    MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
+    !--------------------------------------------------------------
+    
+    ! 1. Top-of-atmosphere edge (L = 0)
+    !$OMP PARALLEL DO DEFAULT(NONE) &
+    !$OMP SHARED(IM, JM, LM, ZLE0, ZLE) &
+    !$OMP PRIVATE(I, J)
+    do J = 1, JM
+       !DIR$ IVDEP
+       do I = 1, IM
+          ZLE0(I,J,0) = ZLE(I,J,0) - ZLE(I,J,LM)
+       end do
+    end do
+    !$OMP END PARALLEL DO
+
+    ! 2. Remaining edges and all layer variables (L = 1 to LM)
+    !$OMP PARALLEL DO DEFAULT(NONE) &
+    !$OMP SHARED(IM, JM, LM, ZLE0, ZLE, PL, PLE, PK, &
+    !$OMP        ZL0, TH, T, MASS) &
+    !$OMP PRIVATE(I, J, L)
+    do L = 1, LM
+       do J = 1, JM
+          !DIR$ IVDEP
+          do I = 1, IM
+             
+             ! Edge variables
+             ZLE0(I,J,L) = ZLE(I,J,L) - ZLE(I,J,LM)
+             
+             ! Layer variables
+             PL(I,J,L)   = 0.5 * (PLE(I,J,L-1) + PLE(I,J,L))
+             PK(I,J,L)   = (PL(I,J,L) / MAPL_P00)**(MAPL_KAPPA)
+             
+             ZL0(I,J,L)  = 0.5 * (ZLE0(I,J,L-1) + ZLE0(I,J,L))
+             
+             TH(I,J,L)   = T(I,J,L) / PK(I,J,L)
+             
+             MASS(I,J,L) = (PLE(I,J,L) - PLE(I,J,L-1)) / MAPL_GRAV
+             
+          end do
+       end do
+    end do
+    !$OMP END PARALLEL DO
 
     call ESMF_ClockGetAlarm(clock, 'GF_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
     alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
@@ -686,40 +763,78 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,REVSU, PRFIL)
     ENDIF
 
-    ! update DeepCu QL/QI/CF tendencies
-      fQi = ice_fraction( T+DTDT_DC*GF_DT, CNV_FRC, SRF_TYPE )
-      TMP3D    = CNV_DQCDT/MASS
-      DQLDT_DC = (1.0-fQi)*TMP3D
-      DQIDT_DC =      fQi *TMP3D
-      DQADT_DC = MFD_DC*SCLM_DEEP/MASS
-    ! evap/subl and precip fluxes
-      do L=1,LM
-         !--- sublimation/evaporation tendencies (kg/kg/s)
-           RSU_CN (:,:,L) = REVSU(:,:,L)*     fQi(:,:,L)
-           REV_CN (:,:,L) = REVSU(:,:,L)*(1.0-fQi(:,:,L))
-         !--- preciptation fluxes (kg/kg/s)
-           PFI_CN (:,:,L) = PRFIL(:,:,L)*     fQi(:,:,L)
-           PFL_CN (:,:,L) = PRFIL(:,:,L)*(1.0-fQi(:,:,L))
-      enddo
-    ! Export
-      call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_FICE', RC=STATUS); VERIFY_(STATUS)
-      if (associated(PTR3D)) PTR3D = fQi
-      call MAPL_GetPointer(EXPORT, PTR3D, 'DQRC', RC=STATUS); VERIFY_(STATUS)
-      if(associated(PTR3D)) PTR3D = CNV_PRC3 / GF_DT
-      call MAPL_GetPointer(EXPORT, PTR2D, 'CCWP', RC=STATUS); VERIFY_(STATUS)
-      if (associated(PTR2D)) PTR2D = SUM( CNV_QC*MASS , 3 )
 
-    endif
+    call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_FICE', RC=STATUS); VERIFY_(STATUS)
+    ptr_is_assoc = associated(PTR3D)
 
-    ! add tendencies to the moist import state
-    U  = U  +  DUDT_DC*MOIST_DT
-    V  = V  +  DVDT_DC*MOIST_DT
-    Q  = Q  + DQVDT_DC*MOIST_DT
-    T  = T  +  DTDT_DC*MOIST_DT
-    ! add QI/QL/CL tendencies
-    QLCN =         QLCN + DQLDT_DC*MOIST_DT
-    QICN =         QICN + DQIDT_DC*MOIST_DT
-    CLCN = MAX(MIN(CLCN + DQADT_DC*MOIST_DT, 1.0), 0.0)
+    ! Update DeepCu QL/QI/CF tendencies, evap/subl and precip fluxes
+    !--------------------------------------------------------------
+    !$OMP PARALLEL DO DEFAULT(NONE) &
+    !$OMP SHARED(IM, JM, LM, T, DTDT_DC, GF_DT, CNV_FRC, SRF_TYPE, &
+    !$OMP        CNV_DQCDT, MASS, DQLDT_DC, DQIDT_DC, DQADT_DC, &
+    !$OMP        MFD_DC, SCLM_DEEP, RSU_CN, REVSU, REV_CN, &
+    !$OMP        PFI_CN, PRFIL, PFL_CN, ptr_is_assoc, PTR3D) &
+    !$OMP PRIVATE(I, J, L, fQi_local, tmp_local)
+    do L = 1, LM
+       do J = 1, JM
+          !DIR$ IVDEP
+          do I = 1, IM
+             ! 1. Calculate local ice fraction and tmp scalar
+             fQi_local = ice_fraction(T(I,J,L) + DTDT_DC(I,J,L) * GF_DT, CNV_FRC(I,J), SRF_TYPE(I,J))
+             tmp_local = CNV_DQCDT(I,J,L) / MASS(I,J,L)
+
+             ! Fill the exported 3D pointer if associated
+             if (ptr_is_assoc) PTR3D(I,J,L) = fQi_local
+             
+             ! 2. Update DeepCu QL/QI/CF tendencies
+             DQLDT_DC(I,J,L) = (1.0 - fQi_local) * tmp_local
+             DQIDT_DC(I,J,L) = fQi_local * tmp_local
+             DQADT_DC(I,J,L) = MFD_DC(I,J,L) * SCLM_DEEP / MASS(I,J,L)
+             
+             ! 3. Evap/subl and precip fluxes (kg/kg/s)
+             RSU_CN(I,J,L) = REVSU(I,J,L) * fQi_local
+             REV_CN(I,J,L) = REVSU(I,J,L) * (1.0 - fQi_local)
+             
+             PFI_CN(I,J,L) = PRFIL(I,J,L) * fQi_local
+             PFL_CN(I,J,L) = PRFIL(I,J,L) * (1.0 - fQi_local)
+          end do
+       end do
+    end do
+    !$OMP END PARALLEL DO
+
+    ! Other Exports
+    call MAPL_GetPointer(EXPORT, PTR3D, 'DQRC', RC=STATUS); VERIFY_(STATUS)
+    if(associated(PTR3D)) PTR3D = CNV_PRC3 / GF_DT
+    call MAPL_GetPointer(EXPORT, PTR2D, 'CCWP', RC=STATUS); VERIFY_(STATUS)
+    if (associated(PTR2D)) PTR2D = SUM( CNV_QC*MASS , 3 )
+
+    endif ! Alarm ringing
+
+    endif ! USE_PYMOIST_GF2020
+
+    ! Add tendencies to the moist import state
+    !--------------------------------------------------------------
+    !$OMP PARALLEL DO DEFAULT(NONE) &
+    !$OMP SHARED(IM, JM, LM, U, DUDT_DC, MOIST_DT, V, DVDT_DC, Q, DQVDT_DC, &
+    !$OMP        T, DTDT_DC, QLCN, DQLDT_DC, QICN, DQIDT_DC, CLCN, DQADT_DC) &
+    !$OMP PRIVATE(I, J, L)
+    do L = 1, LM
+       do J = 1, JM
+          !DIR$ IVDEP
+          do I = 1, IM
+             U(I,J,L) = U(I,J,L) + DUDT_DC(I,J,L) * MOIST_DT
+             V(I,J,L) = V(I,J,L) + DVDT_DC(I,J,L) * MOIST_DT
+             Q(I,J,L) = Q(I,J,L) + DQVDT_DC(I,J,L) * MOIST_DT
+             T(I,J,L) = T(I,J,L) + DTDT_DC(I,J,L) * MOIST_DT
+             
+             ! Add QI/QL/CL tendencies
+             QLCN(I,J,L) = QLCN(I,J,L) + DQLDT_DC(I,J,L) * MOIST_DT
+             QICN(I,J,L) = QICN(I,J,L) + DQIDT_DC(I,J,L) * MOIST_DT
+             CLCN(I,J,L) = MAX(0.0, MIN(CLCN(I,J,L) + DQADT_DC(I,J,L) * MOIST_DT, 1.0))
+          end do
+       end do
+    end do
+    !$OMP END PARALLEL DO
 
 ! Cleanup negative water species
 ! ------------------------------
@@ -764,5 +879,26 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_TimerOff (MAPL,"--GF")
 
 end subroutine GF_Run
+
+subroutine GF_Finalize(gc, import, export, rc)
+
+  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
+  type(ESMF_State),    intent(inout) :: IMPORT ! Import state
+  type(ESMF_State),    intent(inout) :: EXPORT ! Export state
+  integer, optional,   intent(  out) :: RC     ! Error code
+
+  type (MAPL_MetaComp), pointer   :: MAPL
+
+  ! Get my internal MAPL_Generic state
+  !-----------------------------------
+  call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+  VERIFY_(STATUS)
+
+
+  if (USE_PYMOIST_GF2020) then
+    call MAPL_pybridge_gcfinalize( "pyMoist.fortran.param_interfaces.convection.GF2020_interface", MAPL, IMPORT, EXPORT )
+  endif
+
+end subroutine GF_Finalize
 
 end module GEOS_GF_InterfaceMod

@@ -550,14 +550,27 @@ APPENDIX I - mkCatchParam input options and log ................................
 	 across a given catchment land element to determine that catchment’s effective soil 
 	 depth.
 
+         PEAT_INFO=0:
+         Peat tiles are determined based solely on the organic carbon content provided 
+         by the HWSDv1.21 texture data. 
+
+         PEAT_INFO=1:
 	 For PEATMAP, sixteen ARC/GIS shapefiles were obtained from Xu et al. (2017). Canada and 
 	 Hokaido-Mongolia-NorthKorea provided peat fractions inside designated polygons. All 
-	 other regional shape files give exact perimeter of of the peatland. A global 30-arcsec
+	 other regional shape files give exact perimeter of the peatland. A global 30-arcsec
 	 raster array (43200x21600) of peatland fraction was constructed using those 16 shapefiles.
-	 Soil types derived on tiles are now further updated using the peatmap data. If the computed
+	 Soil types derived on tiles are now further updated using the PEATMAP data. If the computed
 	 fractional coverage of peatland based on PEATMAP data at a given catchment-tile excceeds 0.5(?), 
 	 we assume the dominant soil type is as peatland. Soil hydraulic parameters for all
-	 peatland tiles are now obtained from Bechtold et al. (2019).
+	 peatland tiles are now obtained from Bechtold et al. (2019).  Bugs in the processing logic
+         result in inconsistent parameter values for some tiles; the number of tiles with
+         inconsistent parameters depends on resolution. 
+
+         PEAT_INFO=2:
+         The Global Peatland Map 2.0 (GPM 2.0) from the Greifwald Mire Centre is used to 
+         determine peat/mineral on the 30-arcsec raster grid.  Tiles are considered peat
+         if the majority of the contributing raster grid cells is peat based on GPM 2.0, 
+         regardless of the HWSDv1.21 organic carbon content values. 
          
    2.2 Data files and images
 
@@ -1603,28 +1616,36 @@ cat clsm/intro clsm/soil clsm/veg1 clsm/veg2 clsm/README1 clsm/README2 clsm/READ
 #################################################################################
 
 mkdir -p clsm/plots
-/bin/cp bin/clsm_plots.pro clsm/plots/.
+/bin/cp -p bin/clsm_plots.py clsm/plots/.
 
 cd clsm/plots/
 
 module purge
-module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES12
+module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES15
 source ../../bin/g5_modules
-module load idl/8.5
+module load python/GEOSpyD/26.3.2-0/3.14
+module load ffmpeg/5.0  # we need this for movies mp4
 
-idl  <<EOB
+# Prevent any X-display requirement
+setenv MPLBACKEND Agg
 
-.compile clsm_plots
+# Plot/movie selection:
+# quick   = small smoke test
+# default = JPGs only
+# movies  = seasonal MP4s only
+# legacy  = active legacy IDL-equivalent outputs: fixed JPGs + movies
+# all     = same as legacy; experimental irrigation plots are not run by default
+if (! $?CLSM_PLOTS) setenv CLSM_PLOTS legacy
+#if (! $?CLSM_PLOTS) setenv CLSM_PLOTS default
 
-clsm_plots
-
-exit
-EOB
+python3 ./clsm_plots.py --plots $CLSM_PLOTS
+set plot_status = $status
 
 cd $workdir
 
-/bin/rm clsm/plots/clsm_plots.pro
+/bin/rm -f clsm/plots/clsm_plots.py
 
 module purge
 
+if ($plot_status != 0) exit $plot_status
 

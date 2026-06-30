@@ -13,8 +13,8 @@ program mk_runofftbl
 ! This program generates the runoff table *.trn and *.TRN files that are used in the Catchment model for
 ! directing runoff to its ocean sink.  The inputs are (i) bcs geometry files associated with the Gridname 
 ! and (ii) a binary file ("Outlet_latlon.43200x21600") that provides the land raster grid cells where the 
-! outlets are located.  The latter file is either created by [..]/Raster/preproc/routing/run_routing_raster.py 
-! or from Randy's (Randal.d.koster@nasa.gov) old file under {MAKE_BCS_INPUT_DIR}/land/route/v1.  The version
+! outlets are located.  The latter file is either created by [..]/Raster/preproc/outlets/run_routing_raster.py 
+! or from Randy's (Randal.d.koster@nasa.gov) old file under {MAKE_BCS_INPUT_DIR}/route/outlets/v1.  The version
 ! of the outlet file used by mk_runofftbl.x is determined via the LBCSV argument.
 ! The program first moves the outlet locations from the land raster grid cells to the nearest ocean pixels 
 ! by calling outlets_to_ocean() and then generates the runoff table files.
@@ -100,7 +100,7 @@ program mk_runofftbl
   end do
 
   if (trim(OUTLETV)=="v1" .or. trim(OUTLETV)=="v2") then
-     fileLL=trim(MAKE_BCS_INPUT_DIR)//'/land/route/'//trim(OUTLETV)//'/Outlet_latlon.'
+     fileLL=trim(MAKE_BCS_INPUT_DIR)//'/route/outlets/'//trim(OUTLETV)//'/Outlet_latlon.'
   else
      print *, "Routing files will not be produced with the selected land BCs version (too old)"
      stop
