@@ -12,7 +12,6 @@ set (exe_srcs
   SaltImpConverter.F90
   mk_CICERestart.F90
   mk_LakeLandiceSaltRestarts.F90
-  mk_GEOSldasRestarts.F90
   mk_catchANDcnRestarts.F90
 )
 
