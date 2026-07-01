@@ -1,5 +1,5 @@
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
-from ndsl.constants import I_DIM, J_DIM, K_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, abs, computation, interval, max, min
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 from ndsl.stencils.column_operations import column_min
@@ -844,7 +844,7 @@ def update_state_with_tendencies(
     """
     from __externals__ import DT_MOIST, FIX_CONVECTIVE_CLOUD, SCLM_DEEP
 
-    with computation(PARALLEL), interval(...):
+    with computation(PARALLEL), interval(0, -1):
         u = u + dudt_deep_convection * DT_MOIST
         v = v + dvdt_deep_convection * DT_MOIST
         vapor = vapor + dvapordt_deep_convection * DT_MOIST
@@ -861,12 +861,12 @@ def update_state_with_tendencies(
         sublimation_of_convective_precipitation = evaporation_sublimation_tendency * fraction_ice
         evaporation_of_convective_precipitation = evaporation_sublimation_tendency * (1.0 - fraction_ice)
 
-    with computation(FORWARD), interval(...):
+    with computation(FORWARD), interval(0, -1):
         # preciptation fluxes (kg/kg/s)
         ice_precip_flux_interface[0, 0, 1] = convective_precip_flux * fraction_ice
         liquid_precip_flux_interface[0, 0, 1] = convective_precip_flux * (1.0 - fraction_ice)
 
-    with computation(PARALLEL), interval(...):
+    with computation(PARALLEL), interval(0, -1):
         # add liquid/ice/cloud fraction tendencies
         convective_liquid = convective_liquid + dliquiddt_deep_convection * DT_MOIST
         convective_ice = convective_ice + dicedt_deep_convection * DT_MOIST
@@ -894,8 +894,10 @@ def update_state_with_tendencies(
                 convective_liquid = 0.0
                 convective_ice = 0.0
 
-        total_cumulative_mass_flux_interface = total_cumulative_mass_flux_interface + mass_flux_deep_updraft_interface
         total_detraining_mass_flux = total_detraining_mass_flux + mass_flux_deep_updraft_detrained
+
+    with computation(PARALLEL), interval(...):
+        total_cumulative_mass_flux_interface = total_cumulative_mass_flux_interface + mass_flux_deep_updraft_interface
 
 
 def update_ice_fraction_in_convective_tower(
@@ -1068,7 +1070,7 @@ class GF2020Finalize(NDSLRuntime):
 
         self._update_state_with_tendencies = stencil_factory.from_dims_halo(
             func=update_state_with_tendencies,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
             externals={
                 "SCLM_DEEP": config.SCLM_DEEP,
                 "DT_MOIST": config.DT_MOIST,
