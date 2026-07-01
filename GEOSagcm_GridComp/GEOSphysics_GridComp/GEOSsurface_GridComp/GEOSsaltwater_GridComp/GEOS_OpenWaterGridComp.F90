@@ -2215,6 +2215,7 @@ contains
    real                                :: epsilon_d                 ! ratio: (thickness of AOIL)/(thickness of OGCM top level) = epsilon_d in AS2018
    character(len=3)                    :: DO_GRAD_DECAY_warmLayer   ! simulate gradual decay of warm layer: yes or no. Follows Zeng and Beljaars, 2005.
    character(len=3)                    :: DO_UPDATE_FLUXES_AOIL_SECOND_STEP  ! update fluxes and other variables following second update step in AOIL: yes or no.
+   integer                             :: DO_CICE_THERMO  ! default (=0) is to run saltwater, with no LANL CICE Thermodynamics
 
 ! following are related  to CICE
 
@@ -2436,6 +2437,7 @@ contains
     call MAPL_GetResource ( MAPL, DO_GRAD_DECAY_warmLayer,   Label="WARM_LAYER_GRAD_DECAY:" ,  DEFAULT="no"  ,   _RC)
 
     call MAPL_GetResource ( MAPL, DO_UPDATE_FLUXES_AOIL_SECOND_STEP, Label="UPDATE_FLUXES_AOIL_SECOND_STEP:" ,  DEFAULT="no"  ,   _RC)
+    call MAPL_GetResource ( MAPL, DO_CICE_THERMO,     Label="USE_CICE_Thermo:" ,    DEFAULT=0, _RC)
 
 !   Copy internals into local variables
 !   ------------------------------------
@@ -2631,7 +2633,13 @@ contains
     if(associated(AOSHFLX)) AOSHFLX = SHF    *FRWATER
     if(associated(AOQFLUX)) AOQFLUX = EVP    *FRWATER
     if(associated(AOLWFLX)) AOLWFLX = (LWDNSRF-ALW-BLW*TS(:,WATER))*FRWATER
-    if(associated(AORAIN )) AORAIN  = PCU + PLS ! + FRZR  as of Jun/2025, FRZR is included in PCU+PLS; see github issue #1111
+    if(associated(AORAIN )) then
+        if(DO_CICE_THERMO == 2) then ! CICE6 passes portion of rain over sea ice to ocean via FRESH
+           AORAIN  = (1. - FI) * (PCU + PLS) ! + FRZR  as of Jun/2025, FRZR is included in PCU+PLS; see github issue #1111
+        else
+           AORAIN  = PCU + PLS ! + FRZR  as of Jun/2025, FRZR is included in PCU+PLS; see github issue #1111
+        endif
+    endif
     if(associated(AOSNOW )) AOSNOW  = (SNO+ICE) *FRWATER
     if(associated(AODRNIR)) AODRNIR = (1.-ALBNRO)*DRNIR*FRWATER
     if(associated(AODFNIR)) AODFNIR = (1.-ALBNFO)*DFNIR*FRWATER
@@ -2641,7 +2649,13 @@ contains
     if(associated(SNOWOCN)) SNOWOCN = SNO*FR(:,WATER)
     if(associated(ICEFOCN)) ICEFOCN = ICE*FR(:,WATER)
     if(associated(SPTOTOCN))SPTOTOCN = (SNO+ICE)*FR(:,WATER)
-    if(associated(RAINOCN)) RAINOCN = PCU + PLS ! + FRZR as of Jun/2025, FRZR is included in PCU+PLS; see github issue #1111
+    if(associated(RAINOCN)) then
+        if(DO_CICE_THERMO == 2) then ! CICE6 passes portion of rain over sea ice to ocean via FRESH
+           RAINOCN = (1. - FI) * (PCU + PLS) ! + FRZR as of Jun/2025, FRZR is included in PCU+PLS; see github issue #1111
+        else
+           RAINOCN = PCU + PLS ! + FRZR as of Jun/2025, FRZR is included in PCU+PLS; see github issue #1111
+        endif
+    endif
     if(associated(HLWUP  )) HLWUP   = ALW*FR(:,WATER) 
     if(associated(LWNDSRF)) LWNDSRF = (LWDNSRF - ALW)*FR(:,WATER)
 
