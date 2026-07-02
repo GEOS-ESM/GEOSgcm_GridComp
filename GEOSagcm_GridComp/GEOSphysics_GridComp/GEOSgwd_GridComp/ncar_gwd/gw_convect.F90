@@ -184,7 +184,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
       ! Include dependence on latitude:
        latdeg = lats(i)*rad2deg
        if (desc%et_bkg_dqcdt_forcing) then
-          flat_gw = 0.15
+          flat_gw = 0.05 ! weak background forcing
        else
           if (ABS(latdeg) <  60.) then
             flat_gw =  max(0.15,0.50*exp(-((abs(latdeg)-60.)/23.)**2))
@@ -482,7 +482,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
            topi(i) = desc%k(i)
         else
           ! Find largest condensate change level, for frontal detection
-          ! condensate tendencies from microphysics will be negative
+          ! Using POSITIVE tendencies which correctly align with precipitation fronts
            q0(i) = 0.0
            do k = desc%k(i), 1, -1 ! tend-level to the surface [avoid convective overlap]
              if (dqcdt(i,k) > q0(i)) then ! Find largest positive DQCDT tendency
@@ -490,10 +490,8 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
              endif
            end do
           ! include forced background stress in extra tropical large-scale systems
-          ! Set the phase speeds and wave numbers in the direction of the source wind.
-          ! Set the source stress magnitude (positive only, note that the sign of the 
-          ! stress is the same as (c-u).
-           tau(i,:,desc%k(i)+1) = desc%taubck(i,:) * MIN(10.0,MAX(1.0,abs(q0(i)/1.e-9)))
+          ! Using 1.e-8 so that values of 100-1000 (scaled) provide 10x multiplier
+           tau(i,:,desc%k(i)+1) = desc%taubck(i,:) * MIN(10.0,MAX(1.0,q0(i)/1.e-8))
            topi(i) = desc%k(i)
         endif
 
