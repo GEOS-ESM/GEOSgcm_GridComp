@@ -326,8 +326,8 @@ program  mk_CatchCNRestarts
   MPI_PROC0 : if (root_proc) then
      
      ! Read Output/Input  .til files
-     call ReadTileFile_RealLatLon(OutTileFile, ntiles, lono, lato)  
-     call ReadTileFile_RealLatLon(InTileFile,ntiles_in,loni,lati)
+     call ReadTileFile_RealLatLon(OutTileFile, ntiles, xlon=lono, xlat=lato)  
+     call ReadTileFile_RealLatLon(InTileFile,ntiles_in,xlon=loni, xlat=lati)
      allocate(Id (ntiles))
      
      ! ------------------------------------------------
@@ -1154,7 +1154,7 @@ contains
        allocate (latg   (ntiles))
        allocate (DAYX   (NTILES))
 
-       call ReadTileFile_RealLatLon (OutTileFile, i, long, latg)
+       call ReadTileFile_RealLatLon (OutTileFile, i, xlon=long, xlat=latg)
 
        !-----------------------
        ! COMPUTE DAYX
@@ -1201,7 +1201,7 @@ contains
        ! Read exact lonc, latc from offline .til File 
        ! ---------------------------------------------
 
-       call ReadTileFile_RealLatLon(InCNTilFile,i,lonc,latc)
+       call ReadTileFile_RealLatLon(InCNTilFile,i,xlon=lonc,xlat=latc)
 
     endif
 
@@ -1921,13 +1921,13 @@ contains
        allocate (latg   (ntiles))
        allocate (ld_reorder(ntiles_cn)) 
 
-       call ReadTileFile_RealLatLon (OutTileFile, i, long, latg)
+       call ReadTileFile_RealLatLon (OutTileFile, i, xlon=long, xlat=latg)
 
        ! ---------------------------------------------
        ! Read exact lonc, latc from offline .til File 
        ! ---------------------------------------------
 
-       call ReadTileFile_RealLatLon(trim(InCNTilFile), i,lonc,latc)
+       call ReadTileFile_RealLatLon(trim(InCNTilFile), i,xlon=lonc,xlat=latc)
 
        STATUS = NF_OPEN (trim(InCNRestart),NF_NOWRITE,NCFID)
        STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'TILE_ID'   ), (/1/), (/NTILES_CN/),tmp_var)

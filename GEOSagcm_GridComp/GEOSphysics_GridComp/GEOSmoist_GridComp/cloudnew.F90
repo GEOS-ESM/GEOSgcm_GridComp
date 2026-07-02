@@ -13,7 +13,7 @@ module cloudnew
    ! NOTE: GPUs use the QSAT and DQSAT at the end of this module
 #endif
 
-   use MAPL_ConstantsMod, only: MAPL_TICE , MAPL_CP   , &
+   use MAPL_Constants, only: MAPL_TICE , MAPL_CP   , &
                                 MAPL_GRAV , MAPL_ALHS , &
                                 MAPL_ALHL , MAPL_ALHF , &
                                 MAPL_RGAS , MAPL_H2OMW, &
@@ -22,7 +22,6 @@ module cloudnew
                                 MAPL_R4   , MAPL_AVOGAD
 
    use MAPL_BaseMod,      only: MAPL_UNDEF
-   use Aer_Actv_Single_Moment,only: USE_BERGERON, USE_AEROSOL_NN
    use GEOSmoist_Process_Library
 
    implicit none
@@ -1996,6 +1995,7 @@ contains
                                  TEn,          &
                                  QVn,          &
                                  QCn,          &
+                                 qsn,          &
                                  0.0,          & ! assume OMEGA=0
                                  ZL,           &
                                  PL*100.,      &

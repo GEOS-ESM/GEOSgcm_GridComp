@@ -13,7 +13,7 @@ module gw_drag_ncar
 !
 !---------------------------------------------------------------------------------
 
-  use MAPL_ConstantsMod, only: MAPL_RGAS, MAPL_GRAV
+  use MAPL_Constants, only: MAPL_RGAS, MAPL_GRAV
 
   use gw_rdg, only     : gw_rdg_ifc
   use gw_oro, only     : gw_oro_ifc

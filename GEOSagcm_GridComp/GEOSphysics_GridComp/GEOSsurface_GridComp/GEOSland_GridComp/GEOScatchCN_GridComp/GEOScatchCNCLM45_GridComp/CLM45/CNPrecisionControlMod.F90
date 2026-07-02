@@ -11,7 +11,7 @@ module CNPrecisionControlMod
 ! controls on very low values in critical state variables 
 ! 
 ! !USES:
-    use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+    use MAPL_Constants, ONLY: r8 => MAPL_R4
     use clm_varpar  , only: ndecomp_pools
     implicit none
     save

@@ -10,76 +10,48 @@ on:
       - "**.sh"
       - "**.perl"
       - ".github/CODEOWNERS"
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
 
 jobs:
   build_gcm:
-    name: Build GEOSgcm
-    if: "!contains(github.event.pull_request.labels.*.name, '0 diff trivial')"
-    runs-on: ubuntu-24.04
-    container:
-      image: gmao/ubuntu24-geos-env:v7.33.0-intelmpi_2021.13-ifort_2021.13
-      # Per https://github.com/actions/virtual-environments/issues/1445#issuecomment-713861495
-      # It seems like we might not need secrets on GitHub Actions which is good for forked
-      # pull requests
-      #credentials:
-        #username: ${{ secrets.DOCKERHUB_USERNAME }}
-        #password: ${{ secrets.DOCKERHUB_TOKEN }}
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [ifort, gfortran-15, ifx]
+        build-type: [Debug]
+        fixture-repo: [GEOS-ESM/GEOSgcm, GEOS-ESM/GEOSldas]
+        include:
+          # Set run-mepo-develop: false for GEOSldas builds
+          - fixture-repo: GEOS-ESM/GEOSldas
+            run-mepo-develop: false
+          # GEOSgcm uses run-mepo-develop: true
+          - fixture-repo: GEOS-ESM/GEOSgcm
+            run-mepo-develop: true
 
-    env:
-      OMPI_ALLOW_RUN_AS_ROOT: 1
-      OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: 1
-      OMPI_MCA_btl_vader_single_copy_mechanism: none
+    uses: GEOS-ESM/CI-workflows/.github/workflows/geosgcm_build_tests.yml@project/geosgcm
+    with:
+      compiler: ${{ matrix.compiler }}
+      cmake-build-type: ${{ matrix.build-type }}
+      fixture-repo: GEOS-ESM/GEOSgcm
 
-    steps:
-      # https://github.com/orgs/community/discussions/25678#discussioncomment-5242449
-      - name: Delete huge unnecessary tools folder
-        run: rm -rf /opt/hostedtoolcache
+  spack_build:
+    strategy:
+      fail-fast: false
+      matrix:
+        fixture-repo: [GEOS-ESM/GEOSgcm]
+        include:
+          # GEOSgcm uses run-mepo-develop: true
+          - fixture-repo: GEOS-ESM/GEOSgcm
+            run-mepo-develop: true
+    uses: GEOS-ESM/CI-workflows/.github/workflows/spack_gcc_build.yml@project/geosgcm
+    secrets:
+      BUILDCACHE_USERNAME: ${{ secrets.BUILDCACHE_USERNAME }}
+      BUILDCACHE_TOKEN: ${{ secrets.BUILDCACHE_TOKEN }}
+    with:
+      fixture-repo: GEOS-ESM/GEOSgcm
+      load-fms: true
 
-      - name: Checkout GCM
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-          filter: blob:none
-          repository: GEOS-ESM/GEOSgcm
-
-      - name: Set all directories as git safe
-        run: |
-          git config --global --add safe.directory '*'
-
-      - name: Versions etc.
-        run: |
-          ifort --version
-          mpirun --version
-          echo $BASEDIR
-
-      - name: Mepo clone external repos
-        run: |
-          mepo clone --partial blobless
-          mepo status
-
-      - name: Mepo develop usual suspects
-        run: |
-          mepo develop GEOSgcm_GridComp GEOSgcm_App GMAO_Shared GEOS_Util
-          mepo status
-
-      - name: Debug PR branch
-        run: echo "PR is coming from ${{ github.event.pull_request.head.ref }}"
-
-      - name: Update other branches
-        if: ${{ github.event.pull_request.head.ref != 'main' && github.event.pull_request.head.ref != 'develop' }}
-        run: |
-          mepo checkout-if-exists ${GITHUB_HEAD_REF}
-          mepo status
-
-      - name: CMake
-        run: |
-          cmake -B build -S . --install-prefix=${pwd}/install -DCMAKE_Fortran_COMPILER=ifort -DCMAKE_BUILD_TYPE=Debug -DMPIEXEC_PREFLAGS='--oversubscribe' -DUSE_F2PY=OFF
-
-      - name: Build
-        run: |
-          cmake --build build -j 4
-          cmake --install build

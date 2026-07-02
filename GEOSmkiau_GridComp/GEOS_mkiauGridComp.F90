@@ -20,8 +20,8 @@ module GEOS_mkiauGridCompMod
 ! use GEOS_RemapMod, only: myremap => remap
   use MAPL_CubedSphereGridFactoryMod
   use m_set_eta, only: set_eta
-#ifdef PYMKIAU_INTEGRATION
-  use pyMKIAU_interface_mod
+#ifdef HAS_PYMLINC
+  use pyMLINC_interface_mod, only: pyMLINC_interface_init_f, pyMLINC_interface_run_f
   use ieee_exceptions, only: ieee_get_halting_mode, ieee_set_halting_mode, ieee_all
 #endif
   implicit none
@@ -96,13 +96,11 @@ contains
     type (ESMF_Config)                      :: CF
 
     logical                                 :: BLEND_AT_PBL
-#ifdef PYMKIAU_INTEGRATION
+    logical                                 :: BLEND_QV_AT_TP
+#ifdef HAS_PYMLINC
     ! IEEE trapping see below
     logical                                 :: halting_mode(5)
-    ! BOGUS DATA TO SHOW USAGE
-    type(a_pod_struct_type) :: options
-    real, allocatable, dimension(:,:,:) :: in_buffer
-    real, allocatable, dimension(:,:,:) :: out_buffer
+    integer, parameter                      :: magic_number = 123456789
 #endif
   !=============================================================================
 
@@ -124,6 +122,11 @@ contains
 
     call MAPL_GetResource(MAPL, BLEND_AT_PBL,    LABEL="REPLAY_BLEND_AT_PBL:",   default=.FALSE., RC=status)
     VERIFY_(STATUS)
+
+    call MAPL_GetResource(MAPL, BLEND_QV_AT_TP,  LABEL="REPLAY_BLEND_QV_AT_TP:", default=.FALSE., RC=status)
+    VERIFY_(STATUS)
+
+    if ( BLEND_AT_PBL ) BLEND_QV_AT_TP = .FALSE.
 
 ! Set the Run entry points (phase 1 for regular IAU and phase 2 for clearing
 ! --------------------------------------------------------------------------
@@ -240,6 +243,51 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddImportSpec(GC,                                    &
+         SHORT_NAME = 'QLTOT',                                     &
+         LONG_NAME  = 'water_vapor_specific_humdity',              &
+         UNITS      = 'kg/kg',                                     &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,                        &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                    &
+         SHORT_NAME = 'QITOT',                                     &
+         LONG_NAME  = 'water_vapor_specific_humdity',              &
+         UNITS      = 'kg/kg',                                     &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,                        &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                    &
+         SHORT_NAME = 'QRTOT',                                     &
+         LONG_NAME  = 'water_vapor_specific_humdity',              &
+         UNITS      = 'kg/kg',                                     &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,                        &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                    &
+         SHORT_NAME = 'QSTOT',                                     &
+         LONG_NAME  = 'water_vapor_specific_humdity',              &
+         UNITS      = 'kg/kg',                                     &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,                        &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                    &
+         SHORT_NAME = 'QGTOT',                                     &
+         LONG_NAME  = 'water_vapor_specific_humdity',              &
+         UNITS      = 'kg/kg',                                     &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,                        &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
     if( BLEND_AT_PBL ) then
     call MAPL_AddImportSpec(GC,                                        &
          SHORT_NAME = 'PPBL',                                          &
@@ -248,6 +296,17 @@ contains
          DIMS       = MAPL_DimsHorzOnly,                               &
          VLOCATION  = MAPL_VLocationNone,                              &
          RC=STATUS  )
+    VERIFY_(STATUS)
+    endif
+
+    if( BLEND_QV_AT_TP ) then
+    call MAPL_AddImportSpec(GC,                                        &
+         SHORT_NAME = 'TROPP_BLENDED',                                 &
+         LONG_NAME  = 'tropopause_pressure_based_on_blended_estimate', &
+         UNITS      = 'Pa',                                            &
+         DIMS       = MAPL_DimsHorzOnly,                               &
+         VLOCATION  = MAPL_VLocationNone,                              &
+         RC=STATUS  )                 
     VERIFY_(STATUS)
     endif
 
@@ -279,6 +338,14 @@ contains
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc, &
+         SHORT_NAME = 'DTDT_ML', &
+         LONG_NAME  = 'ml_computed_temperature_analysis_increment', &
+         UNITS      = 'K', &
+         DIMS       = MAPL_DimsHorzVert, &
+         VLOCATION  = MAPL_VLocationCenter, &
+         _RC)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'DPEDT',                                     &
@@ -471,23 +538,16 @@ contains
     call MAPL_GenericSetServices    ( gc, RC=STATUS)
     VERIFY_(STATUS)
 
-#ifdef PYMKIAU_INTEGRATION
-    ! Spin the interface - we have to deactivate the ieee error
+#ifdef HAS_PYMLINC
+    ! Spin the interface - we have to deactivate the ieee fpe error
     ! to be able to load numpy, scipy and other numpy packages
     ! that generate NaN as an init mechanism for numerical solving
     call ieee_get_halting_mode(ieee_all, halting_mode)
     call ieee_set_halting_mode(ieee_all, .false.)
-    call pyMKIAU_interface_f_setservice()
+    if (MAPL_AM_I_ROOT()) then
+       call pyMLINC_interface_init_f(magic_number)
+    end if
     call ieee_set_halting_mode(ieee_all, halting_mode)
-
-    ! BOGUS CODE TO SHOW USAGE
-    options%npx = 10
-    options%npy = 11
-    options%npz = 12
-    allocate (in_buffer(10,11,12), source = 42.42 )
-    allocate (out_buffer(10,11,12), source = 0.0 )
-    call pyMKIAU_interface_f_run(options, in_buffer, out_buffer)
-    write(*,*) "[pyMKIAU] From fortran OUT[5,5,5] is ", out_buffer(5,5,5)
 #endif
 
     RETURN_(ESMF_SUCCESS)
@@ -597,6 +657,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real,     pointer, dimension(:,:,:) :: pdum1 => null()
   real,     pointer, dimension(:,:,:) :: pdum2 => null()
   real,     pointer, dimension(:,:)   :: blnpp => null()
+  real,     pointer, dimension(:,:)   :: tropp => null()
 
   real, allocatable, dimension(:,:,:) ::  du_fix
   real, allocatable, dimension(:,:,:) ::  dv_fix
@@ -619,6 +680,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   character(len=ESMF_MAXSTR)          :: REPLAY_FILEP0
   character(len=ESMF_MAXSTR)          :: REPLAY_FILEM1
   character(len=ESMF_MAXSTR)          :: REPLAY_FILEM2
+  character(len=ESMF_MAXSTR)          :: REPLAY_FILEP1_TMPL
+  character(len=ESMF_MAXSTR)          :: REPLAY_FILEP0_TMPL
+  character(len=ESMF_MAXSTR)          :: REPLAY_FILEM1_TMPL
+  character(len=ESMF_MAXSTR)          :: REPLAY_FILEM2_TMPL
   character(len=ESMF_MAXSTR)          :: REPLAY_TIME_INTERP
   character(len=ESMF_MAXSTR)          :: FILETMPL
   character(len=ESMF_MAXSTR)          :: GRIDINC
@@ -662,6 +727,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real                                :: FACP1, FACP0, FACM1, FACM2
   real                                :: DAMPBEG, DAMPEND
   logical                             :: BLEND_AT_PBL
+  logical                             :: BLEND_QV_AT_TP
   integer                             :: i,j,L,n
   integer                             :: nt,nvars,natts
   integer                             :: nymd, nhms
@@ -707,6 +773,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   type (ESMF_VM)                      :: VM
   integer                             :: vm_comm
   integer                             :: IHAVEAINC
+  integer                             :: IHAVEMLINC
 
   type (T_MKIAU_STATE), pointer       :: mkiau_internal_state
   type (MKIAU_wrap)                   :: wrap
@@ -835,6 +902,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call MAPL_GetResource(MAPL, IHAVEAINC,     Label='REPLAY_TO_ANAINC:', default=0,  RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, IHAVEMLINC,    Label='REPLAY_TO_MLINC:', default=0,  RC=STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, REPLAY_PHIS,   Label="REPLAY_PHIS:",   default='YES',           RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, REPLAY_TS,     Label="REPLAY_TS:",     default=trim(REPLAY_TS), RC=STATUS)
@@ -893,6 +962,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call MAPL_GetResource(MAPL, BLEND_AT_PBL,  LABEL="REPLAY_BLEND_AT_PBL:", default=.FALSE., RC=status)
     VERIFY_(STATUS)
+
+    call MAPL_GetResource(MAPL, BLEND_QV_AT_TP,  LABEL="REPLAY_BLEND_QV_AT_TP:", default=.FALSE., RC=status)
+    VERIFY_(STATUS)                   
 
        CREMAP = ESMF_UtilStringUpperCase(CREMAP)
       FIXWIND = ESMF_UtilStringUpperCase(FIXWIND)
@@ -961,6 +1033,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         REPLAY_TIMEP0 = REPLAY_TIME
 
+        REPLAY_FILEP0_TMPL = FILETMPL
         call ESMF_CFIOstrTemplate ( REPLAY_FILEP0, FILETMPL, 'GRADS', nymd=nymd, nhms=nhms, stat=STATUS )
         VERIFY_(STATUS)
 
@@ -986,24 +1059,28 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
         call ESMF_TimeGet(REPLAY_TIMEP1, timeString=DATE, RC=STATUS)
         VERIFY_(STATUS)
         call strToInt(DATE, nymdp1, nhmsp1)
+        REPLAY_FILEP1_TMPL = FILETMPL
         call ESMF_CFIOstrTemplate ( REPLAY_FILEP1, FILETMPL, 'GRADS', nymd=nymdp1, nhms=nhmsp1, stat=STATUS )
         VERIFY_(STATUS)
 
         call ESMF_TimeGet(REPLAY_TIMEP0, timeString=DATE, RC=STATUS)
         VERIFY_(STATUS)
         call strToInt(DATE, nymdp0, nhmsp0)
+        REPLAY_FILEP0_TMPL = FILETMPL
         call ESMF_CFIOstrTemplate ( REPLAY_FILEP0, FILETMPL, 'GRADS', nymd=nymdp0, nhms=nhmsp0, stat=STATUS )
         VERIFY_(STATUS)
 
         call ESMF_TimeGet(REPLAY_TIMEM1, timeString=DATE, RC=STATUS)
         VERIFY_(STATUS)
         call strToInt(DATE, nymdm1, nhmsm1)
+        REPLAY_FILEM1_TMPL = FILETMPL
         call ESMF_CFIOstrTemplate ( REPLAY_FILEM1, FILETMPL, 'GRADS', nymd=nymdm1, nhms=nhmsm1, stat=STATUS )
         VERIFY_(STATUS)
 
         call ESMF_TimeGet(REPLAY_TIMEM2, timeString=DATE, RC=STATUS)
         VERIFY_(STATUS)
         call strToInt(DATE, nymdm2, nhmsm2)
+        REPLAY_FILEM2_TMPL = FILETMPL
         call ESMF_CFIOstrTemplate ( REPLAY_FILEM2, FILETMPL, 'GRADS', nymd=nymdm2, nhms=nhmsm2, stat=STATUS )
         VERIFY_(STATUS)
 
@@ -1193,6 +1270,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        call handleANA_
     endif
 
+#ifdef HAS_PYMLINC
+    if ( IHAVEMLINC/=0 ) then
+       call compute_ml_inc(MAPL, GRIDbkg, import, export, _RC) ! GRIDbkg is current gridcomp's grid
+    end if
+#endif
+
     call MAPL_TimerOff(MAPL,"-RUN")
     call MAPL_TimerOff(MAPL,"TOTAL")
     RETURN_(ESMF_SUCCESS)
@@ -1234,7 +1317,7 @@ CONTAINS
     VERIFY_(STATUS)
     call ESMF_FieldBundleSet(RBUNDLEP0, grid=GRIDana, rc=status)
     VERIFY_(STATUS)
-    call MAPL_read_bundle( RBUNDLEP0, REPLAY_FILEP0, REPLAY_TIMEP0, RC=status)
+    call MAPL_read_bundle( RBUNDLEP0, REPLAY_FILEP0_TMPL, REPLAY_TIMEP0, RC=status)
     VERIFY_(STATUS)
     call ESMF_FieldBundleGet ( RBUNDLEP0, fieldCount=NQ, RC=STATUS )
     VERIFY_(STATUS)
@@ -1524,13 +1607,13 @@ CONTAINS
         if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEP0, grid=GRIDrep, rc=status)
         if ( trim(GRIDINC)=="BKG" ) call ESMF_FieldBundleSet(RBUNDLEP0, grid=GRIDbkg, rc=status)
         VERIFY_(STATUS)
-        call MAPL_read_bundle( RBUNDLEP0, REPLAY_FILEP0, REPLAY_TIMEP0, RC=status)
+        call MAPL_read_bundle( RBUNDLEP0, REPLAY_FILEP0_TMPL, REPLAY_TIMEP0, RC=status)
         VERIFY_(STATUS)
              FILEP0 = REPLAY_FILEP0
         FILE_TIMEP0 = REPLAY_TIMEP0
         NEED_BUNDLEP0 = .FALSE.
     else if( (FILE_TIMEP0 .ne. REPLAY_TIMEP0) .or. (FILEP0 .ne. REPLAY_FILEP0) ) then
-        call MAPL_read_bundle( RBUNDLEP0, REPLAY_FILEP0, REPLAY_TIMEP0, RC=status)
+        call MAPL_read_bundle( RBUNDLEP0, REPLAY_FILEP0_TMPL, REPLAY_TIMEP0, RC=status)
         VERIFY_(STATUS)
              FILEP0 = REPLAY_FILEP0
         FILE_TIMEP0 = REPLAY_TIMEP0
@@ -1543,13 +1626,13 @@ CONTAINS
             if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEM1, grid=GRIDrep, rc=status)
             if ( trim(GRIDINC)=="BKG" ) call ESMF_FieldBundleSet(RBUNDLEM1, grid=GRIDbkg, rc=status)
             VERIFY_(STATUS)
-            call MAPL_read_bundle( RBUNDLEM1, REPLAY_FILEM1, REPLAY_TIMEM1, RC=status)
+            call MAPL_read_bundle( RBUNDLEM1, REPLAY_FILEM1_TMPL, REPLAY_TIMEM1, RC=status)
             VERIFY_(STATUS)
                  FILEM1 = REPLAY_FILEM1
             FILE_TIMEM1 = REPLAY_TIMEM1
             NEED_BUNDLEM1 = .FALSE.
         else if ( (FILE_TIMEM1 .ne. REPLAY_TIMEM1) .or. (FILEM1 .ne. REPLAY_FILEM1) ) then
-            call MAPL_read_bundle( RBUNDLEM1, REPLAY_FILEM1, REPLAY_TIMEM1, RC=status)
+            call MAPL_read_bundle( RBUNDLEM1, REPLAY_FILEM1_TMPL, REPLAY_TIMEM1, RC=status)
             VERIFY_(STATUS)
                  FILEM1 = REPLAY_FILEM1
             FILE_TIMEM1 = REPLAY_TIMEM1
@@ -1562,13 +1645,13 @@ CONTAINS
                 if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEP1, grid=GRIDrep, rc=status)
                 if ( trim(GRIDINC)=="BKG" ) call ESMF_FieldBundleSet(RBUNDLEP1, grid=GRIDbkg, rc=status)
                 VERIFY_(STATUS)
-                call MAPL_read_bundle( RBUNDLEP1, REPLAY_FILEP1, REPLAY_TIMEP1, RC=status)
+                call MAPL_read_bundle( RBUNDLEP1, REPLAY_FILEP1_TMPL, REPLAY_TIMEP1, RC=status)
                 VERIFY_(STATUS)
                      FILEP1 = REPLAY_FILEP1
                 FILE_TIMEP1 = REPLAY_TIMEP1
                 NEED_BUNDLEP1 = .FALSE.
             else if ( FILE_TIMEP1 .ne. REPLAY_TIMEP1 .or. (FILEP1 .ne. REPLAY_FILEP1) ) then
-                call MAPL_read_bundle( RBUNDLEP1, REPLAY_FILEP1, REPLAY_TIMEP1, RC=status)
+                call MAPL_read_bundle( RBUNDLEP1, REPLAY_FILEP1_TMPL, REPLAY_TIMEP1, RC=status)
                 VERIFY_(STATUS)
                      FILEP1 = REPLAY_FILEP1
                 FILE_TIMEP1 = REPLAY_TIMEP1
@@ -1580,13 +1663,13 @@ CONTAINS
                 if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEM2, grid=GRIDrep, rc=status)
                 if ( trim(GRIDINC)=="BKG" ) call ESMF_FieldBundleSet(RBUNDLEM2, grid=GRIDbkg, rc=status)
                 VERIFY_(STATUS)
-                call MAPL_read_bundle( RBUNDLEM2, REPLAY_FILEM2, REPLAY_TIMEM2, RC=status)
+                call MAPL_read_bundle( RBUNDLEM2, REPLAY_FILEM2_TMPL, REPLAY_TIMEM2, RC=status)
                 VERIFY_(STATUS)
                      FILEM2 = REPLAY_FILEM2
                 FILE_TIMEM2 = REPLAY_TIMEM2
                 NEED_BUNDLEM2 = .FALSE.
             else if ( FILE_TIMEM2 .ne. REPLAY_TIMEM2 .or. (FILEM2 .ne. REPLAY_FILEM2) ) then
-                call MAPL_read_bundle( RBUNDLEM2, REPLAY_FILEM2, REPLAY_TIMEM2, RC=status)
+                call MAPL_read_bundle( RBUNDLEM2, REPLAY_FILEM2_TMPL, REPLAY_TIMEM2, RC=status)
                 VERIFY_(STATUS)
                      FILEM2 = REPLAY_FILEM2
                 FILE_TIMEM2 = REPLAY_TIMEM2
@@ -2145,7 +2228,7 @@ CONTAINS
 ! ****   with option to blend QV specially, starting at tropopause. ****
 ! **********************************************************************
 
-      if( DAMPBEG.ne.DAMPEND .or. BLEND_AT_PBL ) then
+      if( DAMPBEG.ne.DAMPEND .or. BLEND_AT_PBL .or. BLEND_QV_AT_TP ) then
 
           if(first .and. MAPL_AM_I_ROOT()) then
              if(DAMPBEG.ne.DAMPEND) then
@@ -2158,8 +2241,20 @@ CONTAINS
              else
                 print *, 'No blending based on PBL'
              endif
+             if(BLEND_QV_AT_TP) then
+                if(BLEND_AT_PBL) then
+                   print *, 'Blending at PBL supercedes QV blending at TROPP'
+                else
+                   print *, 'Blending ANA and BKG QV based on TROPP'
+                endif
+             else
+                print *, 'No blending of QV based on TROPP'
+             endif
              print *
           endif
+
+          ! Enforce priority now that warning has been logged
+          if ( BLEND_AT_PBL ) BLEND_QV_AT_TP = .FALSE.
 
           if( BLEND_AT_PBL ) then
              allocate ( pdum1(IMbkg,JMbkg,1) )
@@ -2178,13 +2273,30 @@ CONTAINS
              endif
              blnpp => pdum2(:,:,1)
           endif
+          if( BLEND_QV_AT_TP ) then
+             allocate ( pdum1(IMbkg,JMbkg,1) )
+             allocate ( pdum2(IM,   JM,   1) )
+             pdum1=0.0
+
+             call MAPL_GetPointer(import, ptr2d, 'TROPP_BLENDED', RC=STATUS)
+             VERIFY_(STATUS)
+             pdum1(:,:,1) = ptr2d
+
+             if (trim(GRIDINC)=="ANA" .and. do_transforms) then
+                call mkiau_internal_state%bkg2ana_regridder%regrid(pdum1, pdum2, RC=STATUS)
+                VERIFY_(STATUS)
+             else
+                pdum2=pdum1
+             endif
+             tropp => pdum2(:,:,1)
+          endif
 
           call blend ( ple_ana,u_ana,v_ana,t_ana,q_ana,o3_ana,     &
                        ple_bkg,u_bkg,v_bkg,t_bkg,q_bkg,o3_bkg,     &
                        im,jm,LMbkg, DAMPBEG,DAMPEND, BLEND_AT_PBL,  &
-                       blnpp=blnpp )
+                       BLEND_QV_AT_TP, blnpp=blnpp, tropp=tropp )
 
-          if( BLEND_AT_PBL ) then
+          if( BLEND_AT_PBL .or. BLEND_QV_AT_TP ) then
              deallocate ( pdum1 )
              deallocate ( pdum2 )
           endif
@@ -2628,17 +2740,21 @@ CONTAINS
   subroutine blend ( plea,ua,va,ta,qa,oa,     &
                      pleb,ub,vb,tb,qb,ob,     &
                      im,jm,lm, pabove,pbelow, &
-                     BLEND_AT_PBL, blnpp    )
+                     BLEND_AT_PBL,            &
+                     BLEND_QV_AT_TP,          &
+                     blnpp, tropp    )
 
 ! Blends Anaylsis and Background values.
-! This routine is called if pabove /= pbelow or BLEND_AT_PBL
+! This routine is called if pabove /= pbelow or BLEND_AT_PBL or BLEND_QV_AT_TP
 ! ***************************************************************************
 
       implicit none
       integer, intent(IN)    :: im,jm,lm
       real,    intent(IN)    :: pabove,pbelow
       logical, intent(IN)    :: BLEND_AT_PBL
+      logical, intent(IN)    :: BLEND_QV_AT_TP
 
+      ! Background values
       real,    intent(IN)    :: pleb(im,jm,lm+1)
       real,    intent(IN)    ::   ub(im,jm,lm)
       real,    intent(IN)    ::   vb(im,jm,lm)
@@ -2646,6 +2762,8 @@ CONTAINS
       real,    intent(IN)    ::   qb(im,jm,lm)
       real,    intent(IN)    ::   ob(im,jm,lm)
 
+      ! IN: Anaylsis values
+      ! OUT: Blended values
       real,    intent(INOUT) :: plea(im,jm,lm+1)
       real,    intent(INOUT) ::   ua(im,jm,lm)
       real,    intent(INOUT) ::   va(im,jm,lm)
@@ -2654,6 +2772,7 @@ CONTAINS
       real,    intent(INOUT) ::   oa(im,jm,lm)
 
       real,    intent(IN), optional, pointer :: blnpp(:,:)   ! blending pressure when BLEND_AT_PBL is TRUE
+      real,    intent(IN), optional, pointer :: tropp(:,:)   ! Tropopause Pressure used when BLEND_QV_AT_TP is TRUE
 
 ! Locals
 ! ------
@@ -2669,6 +2788,9 @@ CONTAINS
 
       real pabove_BL,pbelow_BL
       real bl_press
+
+      real pabove_QV,pbelow_QV  ! compute from tropp
+      real tp_press
 
       real alf,eps,p
       integer i,j,L
@@ -2709,7 +2831,7 @@ CONTAINS
                                    ua(i,j,L) =   ub(i,j,L) + alf*(   ua(i,j,L)-  ub(i,j,L) )
                                    va(i,j,L) =   vb(i,j,L) + alf*(   va(i,j,L)-  vb(i,j,L) )
                                    oa(i,j,L) =   ob(i,j,L) + alf*(   oa(i,j,L)-  ob(i,j,L) )
-                                   qa(i,j,L) =   qb(i,j,L) + alf*(   qa(i,j,L)-  qb(i,j,L) )
+         IF (.NOT. BLEND_QV_AT_TP) qa(i,j,L) =   qb(i,j,L) + alf*(   qa(i,j,L)-  qb(i,j,L) )
       enddo
       enddo
       enddo
@@ -2774,6 +2896,41 @@ CONTAINS
 
            enddo
            plea(i,j,LM+1) = pleb(i,j,LM+1)
+
+           enddo
+           enddo
+      endif
+
+! Use Analysis values of water vapor in the troposphere
+! Relax to Background values in the stratosphere
+! -----------------------------------------------------
+      if ( BLEND_QV_AT_TP ) then
+           do j=1,jm
+           do i=1,im
+
+           IF ( tropp(i,j) == MAPL_UNDEF ) THEN
+                tp_press = 100.0 * 100.0   ! 100 hPa
+           ELSE
+                tp_press = tropp(i,j)
+           ENDIF
+
+           pabove_QV = tp_press * 0.5
+           pbelow_QV = tp_press * 1.0
+
+           do L=1,lm
+             p = 0.5*( pleb(i,j,L)+pleb(i,j,L+1) )
+             if( p.le.pabove_QV ) then
+                 alf = 0.0   !  use the background value
+             else if( p.gt.pabove_QV .and. p.le.pbelow_QV ) then
+                 alf = (LOG(p)        -LOG(pabove_QV))/ &
+                       (LOG(pbelow_QV)-LOG(pabove_QV))
+             else
+                 alf = 1.0   !  use the analysis value
+             endif
+
+             qa(i,j,L) = qb(i,j,L) + alf*(   qa(i,j,L)-  qb(i,j,L) )
+
+           enddo
 
            enddo
            enddo
@@ -3424,6 +3581,179 @@ CONTAINS
 
       return
       end subroutine myremap
+
+#ifdef HAS_PYMLINC
+   subroutine compute_ml_inc(mapl, grid_bkg, import_state, export_state, rc)
+      use MAPL_LatLonGridFactoryMod
+      type (MAPL_MetaComp), pointer, intent(in) :: mapl
+      type(ESMF_Grid), intent(in) :: grid_bkg
+      type(ESMF_State), intent(inout) :: import_state
+      type(ESMF_State), intent(inout) :: export_state
+      integer, optional, intent(out) :: rc
+
+      type(ESMF_Grid) :: grid_1deg
+      class(AbstractRegridder), pointer :: to_1deg => null(), to_native => null()
+      real, pointer :: ptr3d(:, :, :), ptr2d(:, :)
+      real, allocatable, dimension(:,:,:) :: u_1deg, v_1deg, t_1deg
+      real, allocatable, dimension(:,:,:) :: u_global, v_global, t_global
+      real, allocatable, dimension(:,:,:) :: qv_1deg, ql_1deg, qi_1deg, qr_1deg, qs_1deg, qg_1deg
+      real, allocatable, dimension(:,:,:) :: qv_global, ql_global, qi_global, qr_global, qs_global, qg_global
+      real, allocatable, dimension(:,:) :: ps_1deg
+      real, allocatable, dimension(:,:) :: ps_global
+      real, allocatable, dimension(:,:,:) :: dtdt_global
+      real, allocatable, dimension(:,:,:) :: dtdt_1deg
+      real, allocatable, dimension(:,:,:) :: dtdt
+      real, pointer, dimension(:, :, :) :: dtdt_ml
+      integer :: ushape(3), nx_, ny_, num_levels, im_world_tmp, jm_world_tmp
+      integer :: dims_(3), im_, jm_, im_1deg, jm_1deg, level, status
+
+      integer, parameter :: magic_number = 123456789
+      integer, parameter :: im_world_1deg = 360, jm_world_1deg = 181, lm=181
+
+      ! Grid stuff (native and 1deg lat/lon)
+      ! -native
+      call MAPL_GridGet(grid_bkg, localCellCountPerDim=dims_, _RC)
+      im_ = dims_(1); jm_ = dims_(2)
+      ! -1-degree-lat-lon
+      call MAPL_GetResource(MAPL, nx_, 'NX:', default=MAPL_UNDEFINED_INTEGER, _RC)
+      call MAPL_GetResource(MAPL, ny_, 'NY:', default=MAPL_UNDEFINED_INTEGER, _RC)
+      grid_1deg = grid_manager%make_grid( &
+           LatLonGridFactory( &
+                im_world=im_world_1deg, jm_world=jm_world_1deg, lm=lm, &
+                nx=nx_, ny=ny_, &
+                pole="PC", dateline= "DC", &
+                rc=status))
+      call MAPL_GridGet(grid_1deg, localCellCountPerDim=dims_, _RC)
+      im_1deg = dims_(1); jm_1deg = dims_(2); num_levels = dims_(3)
+
+      ! Regrid - native to 1deg lat/lon
+      to_1deg => new_regridder_manager%make_regridder(grid_bkg, grid_1deg, REGRID_METHOD_BILINEAR, _RC)
+      allocate(u_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      nullify(ptr3d)
+      call MAPL_GetPointer(import_state, ptr3d, "U", _RC)
+      call to_1deg%regrid(ptr3d, u_1deg, _RC)
+      allocate(v_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      nullify(ptr3d)
+      call MAPL_GetPointer(import_state, ptr3d, "V", _RC)
+      call to_1deg%regrid(ptr3d, v_1deg, _RC)
+      allocate(t_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      nullify(ptr3d)
+      call MAPL_GetPointer(import_state, ptr3d, "TV", _RC)
+      call to_1deg%regrid(ptr3d, t_1deg, _RC)
+      allocate(qv_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      nullify(ptr3d)
+      call MAPL_GetPointer(import_state, ptr3d, "QV", _RC)
+      call to_1deg%regrid(ptr3d, qv_1deg, _RC)
+      allocate(ql_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      nullify(ptr3d)
+      call MAPL_GetPointer(import_state, ptr3d, "QLTOT", _RC)
+      call to_1deg%regrid(ptr3d, ql_1deg, _RC)
+      allocate(qi_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      nullify(ptr3d)
+      call MAPL_GetPointer(import_state, ptr3d, "QITOT", _RC)
+      call to_1deg%regrid(ptr3d, qi_1deg, _RC)
+      allocate(qr_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      nullify(ptr3d)
+      call MAPL_GetPointer(import_state, ptr3d, "QRTOT", _RC)
+      call to_1deg%regrid(ptr3d, qr_1deg, _RC)
+      allocate(qs_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      nullify(ptr3d)
+      call MAPL_GetPointer(import_state, ptr3d, "QSTOT", _RC)
+      call to_1deg%regrid(ptr3d, qs_1deg, _RC)
+      allocate(qg_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      nullify(ptr3d)
+      call MAPL_GetPointer(import_state, ptr3d, "QGTOT", _RC)
+      call to_1deg%regrid(ptr3d, qg_1deg, _RC)
+      allocate(ps_1deg(im_1deg, jm_1deg), source=MAPL_UNDEFINED_REAL)
+      nullify(ptr2d)
+      call MAPL_GetPointer(import_state, ptr2d, "PS", _RC)
+      call to_1deg%regrid(ptr2d, ps_1deg, _RC)
+
+      ! Gather inputs (u, v, t, q's, ps) on rank 0
+      if (MAPL_AM_I_ROOT()) then
+         im_world_tmp = im_world_1deg
+         jm_world_tmp = jm_world_1deg
+      else
+         im_world_tmp = 0
+         jm_world_tmp = 0
+      end if
+      allocate(u_global(im_world_tmp, jm_world_tmp, lm), source=MAPL_UNDEFINED_REAL)
+      allocate(v_global(im_world_tmp, jm_world_tmp, lm), source=MAPL_UNDEFINED_REAL)
+      allocate(t_global(im_world_tmp, jm_world_tmp, lm), source=MAPL_UNDEFINED_REAL)
+      allocate(qv_global(im_world_tmp, jm_world_tmp, lm), source=MAPL_UNDEFINED_REAL)
+      allocate(ql_global(im_world_tmp, jm_world_tmp, lm), source=MAPL_UNDEFINED_REAL)
+      allocate(qi_global(im_world_tmp, jm_world_tmp, lm), source=MAPL_UNDEFINED_REAL)
+      allocate(qr_global(im_world_tmp, jm_world_tmp, lm), source=MAPL_UNDEFINED_REAL)
+      allocate(qs_global(im_world_tmp, jm_world_tmp, lm), source=MAPL_UNDEFINED_REAL)
+      allocate(qg_global(im_world_tmp, jm_world_tmp, lm), source=MAPL_UNDEFINED_REAL)
+      allocate(ps_global(im_world_tmp, jm_world_tmp), source=MAPL_UNDEFINED_REAL)
+      allocate(dtdt_global(im_world_tmp, jm_world_tmp, lm), source = MAPL_UNDEFINED_REAL)
+      do level = 1, num_levels
+         call ArrayGather(local_array=u_1deg(:, :, level), global_array=u_global(:, :, level), grid=grid_1deg, _RC)
+         call ArrayGather(local_array=v_1deg(:, :, level), global_array=v_global(:, :, level), grid=grid_1deg, _RC)
+         call ArrayGather(local_array=t_1deg(:, :, level), global_array=t_global(:, :, level), grid=grid_1deg, _RC)
+         call ArrayGather(local_array=qv_1deg(:, :, level), global_array=qv_global(:, :, level), grid=grid_1deg, _RC)
+         call ArrayGather(local_array=ql_1deg(:, :, level), global_array=ql_global(:, :, level), grid=grid_1deg, _RC)
+         call ArrayGather(local_array=qi_1deg(:, :, level), global_array=qi_global(:, :, level), grid=grid_1deg, _RC)
+         call ArrayGather(local_array=qr_1deg(:, :, level), global_array=qr_global(:, :, level), grid=grid_1deg, _RC)
+         call ArrayGather(local_array=qs_1deg(:, :, level), global_array=qs_global(:, :, level), grid=grid_1deg, _RC)
+         call ArrayGather(local_array=qg_1deg(:, :, level), global_array=qg_global(:, :, level), grid=grid_1deg, _RC)
+      end do
+      call ArrayGather(local_array=ps_1deg(:, :), global_array=ps_global(:, :), grid=grid_1deg, _RC)
+      deallocate(u_1deg, v_1deg, t_1deg)
+      deallocate(qv_1deg, ql_1deg, qi_1deg, qr_1deg, qs_1deg, qg_1deg)
+      deallocate(ps_1deg)
+
+      ! Root calls the interface to pyMLINC
+      if (MAPL_AM_I_ROOT()) then
+         ushape = shape(u_global)
+         print *, "[pyMLINC] Fortran - u_global: ", ushape
+         print *, "[pyMLINC] Fortran - u_global: ", sum(u_global), minval(u_global), maxval(u_global)
+         print *, "[pyMLINC] Fortran - v_global: ", sum(v_global), minval(v_global), maxval(v_global)
+         print *, "[pyMLINC] Fortran - t_global: ", sum(t_global), minval(t_global), maxval(t_global)
+         print *, "[pyMLINC] Fortran - qv_global: ", sum(qv_global), minval(qv_global), maxval(qv_global)
+         print *, "[pyMLINC] Fortran - ql_global: ", sum(ql_global), minval(ql_global), maxval(ql_global)
+         print *, "[pyMLINC] Fortran - qi_global: ", sum(qi_global), minval(qi_global), maxval(qi_global)
+         print *, "[pyMLINC] Fortran - qr_global: ", sum(qr_global), minval(qr_global), maxval(qr_global)
+         print *, "[pyMLINC] Fortran - qs_global: ", sum(qs_global), minval(qs_global), maxval(qs_global)
+         print *, "[pyMLINC] Fortran - qg_global: ", sum(qg_global), minval(qg_global), maxval(qg_global)
+         print *, "[pyMLINC] Fortran - ps_global: ", sum(ps_global), minval(ps_global), maxval(ps_global)
+         print *, "[pyMLINC] Fortran - calling interface to Py code"
+         call pyMLINC_interface_run_f( &
+              ! input
+              ushape(1), ushape(2), ushape(3), &
+              u_global, v_global, t_global, &
+              qv_global, ql_global, qi_global, qr_global, qs_global, qg_global, &
+              ps_global, &
+              ! output
+              dtdt_global, &
+              ! LAST ARGUMENT - input
+              magic_number)
+         write(*,*) "[pyMLINC] Fortran - dtdt", sum(dtdt_global), minval(dtdt_global), maxval(dtdt_global)
+      end if
+      deallocate(u_global, v_global, t_global)
+      deallocate(qv_global, ql_global, qi_global, qr_global, qs_global, qg_global)
+      deallocate(ps_global)
+
+      ! Scatter dtdt back to all ranks
+      allocate(dtdt_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      do level = 1, num_levels
+         call ArrayScatter(local_array=dtdt_1deg(:, :, level), global_array=dtdt_global(:, :, level), grid=grid_1deg, _RC)
+      end do
+      deallocate(dtdt_global)
+
+      ! Regrid dtdt from 1deg lat/lon to native grid
+      to_native => new_regridder_manager%make_regridder(grid_1deg, grid_bkg, REGRID_METHOD_BILINEAR, _RC)
+      allocate(dtdt(im_, jm_, lm), source=MAPL_UNDEFINED_REAL)      
+      call to_native%regrid(dtdt_1deg, dtdt, _RC)
+
+      ! Add to export spec
+      call MAPL_GetPointer(export_state, dtdt_ml, "DTDT_ML", _RC)
+      if (associated(dtdt_ml)) dtdt_ml = dtdt
+
+      _RETURN(_SUCCESS)
+   end subroutine compute_ml_inc
+#endif
 
       subroutine RedanduncyCheck(rnames)
 
