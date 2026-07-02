@@ -33,7 +33,7 @@ module GEOS_UW_InterfaceMod
   integer                                 :: STATUS
 
   public :: UW_Setup, UW_Initialize, UW_Run, UW_Finalize
-   
+
 contains
 
 subroutine UW_Setup (GC, CF, RC)
@@ -178,7 +178,7 @@ subroutine UW_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
 end subroutine UW_Initialize
 
 subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
-    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
     type(ESMF_State),    intent(inout) :: IMPORT ! Import state
     type(ESMF_State),    intent(inout) :: EXPORT ! Export state
     type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
@@ -221,7 +221,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                        WLCL_SC, QTSRC_SC, THLSRC_SC, &
                                        THVLSRC_SC, TKEAVG_SC
     real, pointer, dimension(:,:,:) :: SHL_DQCDT, WUP_SC, QTUP_SC,   &
-                                       THLUP_SC, THVUP_SC, UUP_SC,   & 
+                                       THLUP_SC, THVUP_SC, UUP_SC,   &
                                        VUP_SC, XC_SC, QCU_SC,        &
                                        QLU_SC, QIU_SC
 #endif
@@ -250,7 +250,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     real :: fac_eis                    ! Estimated enversion strength 0:1 factor
     real :: rkfre_base                 ! Base fractional entrainment rate before EIS modification
-    real :: rkm_base                   ! Base momentum entrainment rate before EIS modification  
+    real :: rkm_base                   ! Base momentum entrainment rate before EIS modification
     real :: rkm_scale_fac
     real :: mix2d_base                 ! Base mixing length scale before EIS modification
     real :: rmaxfrac_base              ! Base maximum updraft area fraction before EIS modification
@@ -330,7 +330,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       call MAPL_GetPointer(EXPORT, QLU_SC,    'QLU_SC'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, QIU_SC,    'QIU_SC'    , RC=STATUS); VERIFY_(STATUS)
 #endif
-    
+
     ! Get my internal MAPL_Generic state
     !-----------------------------------
 
@@ -346,7 +346,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          INTERNAL_ESMF_STATE=INTERNAL, &
          RC=STATUS )
     VERIFY_(STATUS)
-    
+
     if (USE_PYMOIST_UW) then
       call CNV_Tracers_To_SOA()
       call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.convection.UW_interface", MAPL, IMPORT, EXPORT, INTERNAL )
@@ -366,7 +366,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(IMPORT, TKE       ,'TKE'       ,RC=STATUS); VERIFY_(STATUS)
 
     ! Allocatables
-     ! Edge variables 
+     ! Edge variables
     ALLOCATE ( ZLE0 (IM,JM,0:LM) )
     ALLOCATE ( PKE  (IM,JM,0:LM) )
      ! Layer variables
@@ -386,7 +386,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Derived States
     !--------------------------------------------------------------
-      
+
     ! 1. Compute the top-of-atmosphere edge (k = 0)
     !$OMP PARALLEL DO DEFAULT(NONE) &
     !$OMP SHARED(IM, JM, LM, PKE, PLE, ZLE0, ZLE) &
@@ -409,20 +409,20 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        do j = 1, JM
           !DIR$ IVDEP
           do i = 1, IM
-               
+
              ! Edge variables
              PKE(i,j,k)  = (PLE(i,j,k) / MAPL_P00)**(MAPL_KAPPA)
              ZLE0(i,j,k) = ZLE(i,j,k) - ZLE(i,j,LM)
-               
+
              ! Layer variables
              PL(i,j,k)   = 0.5 * (PLE(i,j,k-1) + PLE(i,j,k))
              PK(i,j,k)   = (PL(i,j,k) / MAPL_P00)**(MAPL_KAPPA)
-               
+
              ZL0(i,j,k)  = 0.5 * (ZLE0(i,j,k-1) + ZLE0(i,j,k))
-               
+
              DP(i,j,k)   = PLE(i,j,k) - PLE(i,j,k-1)
              MASS(i,j,k) = DP(i,j,k) / MAPL_GRAV
-               
+
           end do
        end do
     end do
@@ -492,10 +492,10 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
              ! (If RKM=4.0, multiplier is 2.5. If RKM=8.0, multiplier is 5.0)
              rkm_scale_fac = (SHLWPARAMS%RKM / 4.0) * 2.5
-             
+
              ! This ensures the dominant eddies scale with the PBL thickness and RKM
-             mix2d_phys = MAX(rkm_scale_fac * ZL0(i,j,KPBL_SC(i,j)), 1000.0 )
-             
+             mix2d_phys = MAX(rkm_scale_fac * ZL0(i,j,int(KPBL_SC(i,j))), 1000.0 )
+
              ! The subgrid mixing scale cannot exceed half the grid box
              MIX2D(i,j) = MIN(0.5*DX, mix2d_phys, SHLWPARAMS%MIXSCALE)
 
@@ -523,7 +523,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     end do
     !$OMP END PARALLEL DO
 
-    ! 3. Combine condensates for input (not updated within UW) 
+    ! 3. Combine condensates for input (not updated within UW)
     !--------------------------------------------------------------
     !$OMP PARALLEL DO DEFAULT(NONE) &
     !$OMP SHARED(IM, JM, LM, QLTOT, DQLDT_SC, QLLS, QLCN, &
@@ -558,14 +558,14 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             QTFLX_SC, SLFLX_SC, UFLX_SC, VFLX_SC,         &
             CBMF_SC, PLCL_SC, PLFC_SC, PINV_SC,           & ! DIAG ONLY
             PREL_SC, PBUP_SC, CLDTOP_SC,                  &
-#ifdef UWDIAG 
-            QCU_SC, QLU_SC,                               & 
+#ifdef UWDIAG
+            QCU_SC, QLU_SC,                               &
             QIU_SC, SHL_DQCDT, CNT_SC, CNB_SC,            &
             CIN_SC, WLCL_SC, QTSRC_SC, THLSRC_SC,         &
             THVLSRC_SC, TKEAVG_SC, CLDTOP_SC, WUP_SC,     &
             QTUP_SC, THLUP_SC, THVUP_SC, UUP_SC, VUP_SC,  &
             XC_SC,                                        &
-#endif 
+#endif
             USE_TRACER_TRANSP_UW)
 
       ! 1. Fetch ALL pointers at the top
@@ -583,7 +583,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       !$OMP PRIVATE(i, j, k)
       do k = 1, LM
          do j = 1, JM
-            !DIR$ IVDEP 
+            !DIR$ IVDEP
             do i = 1, IM
                ! Calculate detrained mass flux
                if (JASON_MFD_SC) then
@@ -595,18 +595,18 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                else
                   MFD_SC(i,j,k) = DCM_SC(i,j,k)
                end if
-               
+
                DQADT_SC(i,j,k) = MFD_SC(i,j,k) * SCLM_SHALLOW / MASS(i,j,k)
 
                ! Convert detrained water units before passing to cloud
                QLENT_SC(i,j,k) = 0.0
                QIENT_SC(i,j,k) = 0.0
-               
+
                if (QLDET_SC(i,j,k) < 0.0) then
                   QLENT_SC(i,j,k) = QLDET_SC(i,j,k)
                   QLDET_SC(i,j,k) = 0.0
                end if
-               
+
                if (QIDET_SC(i,j,k) < 0.0) then
                   QIENT_SC(i,j,k) = QIDET_SC(i,j,k)
                   QIDET_SC(i,j,k) = 0.0
@@ -641,7 +641,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          do i = 1, IM
             if (associated(SC_QT)) SC_QT(i,j) = 0.0
             if (associated(SC_MSE)) SC_MSE(i,j) = 0.0
-            
+
             do k = 1, LM
                if (associated(SC_QT)) then
                   SC_QT(i,j) = SC_QT(i,j) + &
@@ -650,7 +650,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                        QISUB_SC(i,j,k) ) * MASS(i,j,k) + &
                        QLDET_SC(i,j,k) + QIDET_SC(i,j,k)
                end if
-               
+
                if (associated(SC_MSE)) then
                   SC_MSE(i,j) = SC_MSE(i,j) + &
                      ( MAPL_CP   * DTDT_SC(i,j,k) + &
@@ -683,7 +683,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
   !$OMP PRIVATE(i, j, k)
   do k = 1, LM
      do j = 1, JM
-        !DIR$ IVDEP 
+        !DIR$ IVDEP
         !DIR$ VECTOR ALWAYS
         do i = 1, IM
            ! Apply tendencies
@@ -691,16 +691,16 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            T(i,j,k) = T(i,j,k) + DTDT_SC(i,j,k)  * MOIST_DT
            U(i,j,k) = U(i,j,k) + DUDT_SC(i,j,k)  * MOIST_DT
            V(i,j,k) = V(i,j,k) + DVDT_SC(i,j,k)  * MOIST_DT
-           
-           ! Tiedtke-style cloud fraction 
+
+           ! Tiedtke-style cloud fraction
            CLCN(i,j,k) = MAX(0.0, MIN(CLCN(i,j,k) + DQADT_SC(i,j,k)*MOIST_DT, 1.0))
-           
+
            ! Add detrained shallow convective ice/liquid source
            QLCN(i,j,k) = MAX(0.0, QLCN(i,j,k) + QLDET_SC(i,j,k)*MOIST_DT/MASS(i,j,k))
            QICN(i,j,k) = MAX(0.0, QICN(i,j,k) + QIDET_SC(i,j,k)*MOIST_DT/MASS(i,j,k))
-           
+
            ! Apply condensate tendency from subsidence, and sink from
-           ! condensate entrained into shallow updraft. 
+           ! condensate entrained into shallow updraft.
            QLLS(i,j,k) = MAX(0.0, QLLS(i,j,k) + (QLSUB_SC(i,j,k)+QLENT_SC(i,j,k))*MOIST_DT)
            QILS(i,j,k) = MAX(0.0, QILS(i,j,k) + (QISUB_SC(i,j,k)+QIENT_SC(i,j,k))*MOIST_DT)
 
@@ -734,22 +734,22 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
   endif
 
   if (DEBUG_TQ_ERRORS) then
-        do L=1,LM                
-          do J=1,JM              
-           do I=1,IM             
+        do L=1,LM
+          do J=1,JM
+           do I=1,IM
              if (T(I,J,L) > 333.0) then
                  print *, "Temperature spike detected : ", T(I,J,L)
                  print *, "         UW Temp Increment : ", DTDT_SC(I,J,L)*MOIST_DT
                  print *, "    AFTER UW ShallowCu"
                  print *, "  Latitude       =", LATS(I,J)*180.0/MAPL_PI
                  print *, "  Longitude      =", LONS(I,J)*180.0/MAPL_PI
-                 print *, "  Pressure (mb)  =", 0.5*(PLE(I,J,L)+PLE(I,J,L-1))/100.0                  
+                 print *, "  Pressure (mb)  =", 0.5*(PLE(I,J,L)+PLE(I,J,L-1))/100.0
                  print *, "                       CLLS=",  CLLS(I,J,L),             "CLCN=", CLCN(I,J,L)
                  print *, "  QV=",     Q(I,J,L), "  QL=",  QLLS(I,J,L)+QLCN(I,J,L), "  QI=", QILS(I,J,L)+QICN(I,J,L)
-             endif               
-           end do ! IM loop      
-         end do ! JM loop        
-       end do ! LM loop          
+             endif
+           end do ! IM loop
+         end do ! JM loop
+       end do ! LM loop
   endif
 
   call MAPL_TimerOff (MAPL,"--UW")
@@ -762,9 +762,9 @@ subroutine UW_Finalize(gc, import, export, rc)
   type(ESMF_State),    intent(inout) :: IMPORT ! Import state
   type(ESMF_State),    intent(inout) :: EXPORT ! Export state
   integer, optional,   intent(  out) :: RC     ! Error code
-  
+
   type (MAPL_MetaComp), pointer   :: MAPL
-  
+
   ! Get my internal MAPL_Generic state
   !-----------------------------------
   call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
