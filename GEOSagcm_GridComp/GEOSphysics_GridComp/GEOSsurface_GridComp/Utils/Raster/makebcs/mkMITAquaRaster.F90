@@ -158,8 +158,6 @@
          call exit(1)
       end if
 
-      !ALT: Kludge for LLC4320
-      if (filesize <= 0) filesize = 2389893248
 !      print *,'file size=',filesize
 
       LENGTH = filesize/REAL64
@@ -188,8 +186,6 @@
          call exit(1)
       end if
 
-      !ALT: Kludge for LLC4320
-      if (filesize <= 0) filesize = 7168573568
 !      print *,'file size=',filesize
 
       LENGTH = filesize/(REAL64 * k)

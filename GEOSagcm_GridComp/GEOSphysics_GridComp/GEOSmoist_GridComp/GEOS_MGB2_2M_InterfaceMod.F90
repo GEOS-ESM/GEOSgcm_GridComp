@@ -55,7 +55,6 @@ module GEOS_MGB2_2M_InterfaceMod
   real    :: MINRHCRIT  
   real    :: CCW_EVAP_EFF
   real    :: CCI_EVAP_EFF
-  integer :: PDFSHAPE
   real    :: MIN_RL
   real    :: MAX_RL
   real    :: FAC_RI
@@ -64,7 +63,6 @@ module GEOS_MGB2_2M_InterfaceMod
   real    :: MAX_RI
   logical :: USE_AV_V
   logical :: SECOND_HYSTPDF, DO_UPD_CLD 
-  logical :: USE_NCLOUD_CLIM
   logical :: MAKE_SNOW_ICE
 
 
@@ -79,7 +77,7 @@ module GEOS_MGB2_2M_InterfaceMod
            DTST, RHC_STRAT_SCALE
            
 
-  INTEGER :: WSUB_OPTION, ST_OPTION, ITER_METHOD 
+  INTEGER :: ST_OPTION, ITER_METHOD 
   
   public :: MGB2_2M_Setup, MGB2_2M_Initialize, MGB2_2M_Run
   public :: MGVERSION
@@ -99,6 +97,9 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
     Iam = trim(COMP_NAME) // Iam
     
     call ESMF_ConfigGetAttribute( CF, MGVERSION, Label="MGVERSION:",  default=3, __RC__)
+
+    call MAPL_GetResource( CF, WSUB_OPTION,  'WSUB_OPTION:',   DEFAULT= 1 , __RC__) !0- param 1- Use Wsub climatology 2-Wnet
+    call MAPL_GetResource( CF, USE_NCLOUD_CLIM,  'USE_NCLOUD_CLIM:',   DEFAULT= .FALSE.,    __RC__) !0- param 1- Use Wsub climatology 2-Wnet
 
     ! !INTERNAL STATE:
 
@@ -418,8 +419,6 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, MUI_CST,  'MUI_CST:', DEFAULT= -1. ,__RC__) !value of the dispersion exponent in ice size dist.
     call MAPL_GetResource(MAPL, SED_STEP_SC,  'SED_STEP_SC:', DEFAULT= 1. ,__RC__) !scales the number of sedimentation substeps
     
-    call MAPL_GetResource(MAPL, WSUB_OPTION,  'WSUB_OPTION:',   DEFAULT= 1 , __RC__) !0- param 1- Use Wsub climatology 2-Wnet
-    call MAPL_GetResource(MAPL, USE_NCLOUD_CLIM,  'USE_NCLOUD_CLIM:',   DEFAULT= .FALSE.,    __RC__) !0- param 1- Use Wsub climatology 2-Wnet
     call MAPL_GetResource(MAPL, SECOND_HYSTPDF, 'SECOND_HYSTPDF:', DEFAULT= .FALSE. ,RC=STATUS) !TRUE to call hyspdf after the microphysics
     call MAPL_GetResource(MAPL, ITER_METHOD, 'ITER_METHOD:', DEFAULT= 1 ,RC=STATUS) !iteration method in hystpdf 1-Fixed point 2-Bisection
     call MAPL_GetResource(MAPL, DO_UPD_CLD, 'DO_UPD_CLD:', DEFAULT= .TRUE. ,RC=STATUS) !Udate cloud fraction after micro using top hat approx
@@ -459,8 +458,12 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
       use_wnet =  .TRUE.
       call WRITE_PARALLEL ('Using Wnet***************') 
     end if 
-    
+
+    call MAPL_GetResource( MAPL, USE_AEROSOL_NN , 'USE_AEROSOL_NN:'  , DEFAULT=USE_AEROSOL_NN, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, USE_BERGERON   , 'USE_BERGERON:'    , DEFAULT=USE_BERGERON  , RC=STATUS); VERIFY_(STATUS)
+
     call aer_cloud_init(use_wnet)
+    call WRITE_PARALLEL ("INITIALIZED aer_cloud_init")
 
     call WRITE_PARALLEL ("INITIALIZED MGB2_2M microphysics in non-generic GC INIT")
 
@@ -473,7 +476,8 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    1.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, DBZ_LIQUID_SKIN , 'DBZ_LIQUID_SKIN:' , DEFAULT= 0     , RC=STATUS); VERIFY_(STATUS)
+
+    call MAPL_GetResource( MAPL, ICE_FRACTION_POLYNOMIAL, Label="ICE_FRACTION_POLYNOMIAL:",  default=V12_ICE_POLYNOMIAL, RC=STATUS) ; VERIFY_(STATUS)
 
 end subroutine MGB2_2M_Initialize
 
@@ -534,7 +538,6 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: PFI_LS, PFI_AN
     real, pointer, dimension(:,:,:) :: PDF_A, PDFITERS
     real, pointer, dimension(:,:,:) :: RHCRIT
-    real, pointer, dimension(:,:  ) :: DBZ_MAX, DBZ_1KM, DBZ_TOP, DBZ_M10C
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
 #ifdef PDFDIAG
@@ -2605,82 +2608,12 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
                                       DVDT_macro+DVDT_micro,PTR3D)
         endif
 
-        ! Compute DBZ radar reflectivity
-        call MAPL_GetPointer(EXPORT, PTR3D   , 'DBZ'     , RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT, DBZ_MAX , 'DBZ_MAX' , RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT, DBZ_1KM , 'DBZ_1KM' , RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT, DBZ_TOP , 'DBZ_TOP' , RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT, DBZ_M10C, 'DBZ_M10C', RC=STATUS); VERIFY_(STATUS)
-
-        if (associated(PTR3D) .OR. &
-            associated(DBZ_MAX) .OR. associated(DBZ_1KM) .OR. associated(DBZ_TOP) .OR. associated(DBZ_M10C)) then
-
-            call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,0,DBZ_LIQUID_SKIN)
-            if (associated(PTR3D)) PTR3D = TMP3D
-
-            if (associated(DBZ_MAX)) then
-               DBZ_MAX=-9999.0
-               DO L=1,LM ; DO J=1,JM ; DO I=1,IM
-                  DBZ_MAX(I,J) = MAX(DBZ_MAX(I,J),TMP3D(I,J,L))
-               END DO ; END DO ; END DO
-            endif
-
-            if (associated(DBZ_1KM)) then
-               call cs_interpolator(1, IM, 1, JM, LM, TMP3D, 1000., ZLE0, DBZ_1KM, -20.)
-            endif
-
-            if (associated(DBZ_TOP)) then
-               DBZ_TOP=MAPL_UNDEF
-               DO J=1,JM ; DO I=1,IM
-                  DO L=LM,1,-1
-                     if (ZLE0(i,j,l) >= 25000.) continue
-                     if (TMP3D(i,j,l) >= 18.5 ) then
-                         DBZ_TOP(I,J) = ZLE0(I,J,L)
-                         exit
-                     endif
-                  END DO
-               END DO ; END DO
-            endif
-
-            if (associated(DBZ_M10C)) then
-               DBZ_M10C=MAPL_UNDEF
-               DO J=1,JM ; DO I=1,IM
-                  DO L=LM,1,-1
-                     if (ZLE0(i,j,l) >= 25000.) continue
-                     if (T(i,j,l) <= MAPL_TICE-10.0) then
-                         DBZ_M10C(I,J) = TMP3D(I,J,L)
-                         exit
-                     endif
-                  END DO
-               END DO ; END DO
-            endif
-
-        endif
-
-        call MAPL_GetPointer(EXPORT, PTR2D , 'DBZ_MAX_R' , RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR2D)) then
-            call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,0.0*QSNOW,0.0*QGRAUPEL,IM,JM,LM,1,0,DBZ_LIQUID_SKIN)
-             PTR2D=-9999.0
-             DO L=1,LM ; DO J=1,JM ; DO I=1,IM
-                PTR2D(I,J) = MAX(PTR2D(I,J),TMP3D(I,J,L))
-             END DO ; END DO ; END DO
-        endif
-        call MAPL_GetPointer(EXPORT, PTR2D , 'DBZ_MAX_S' , RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR2D)) then
-            call CALCDBZ(TMP3D,100*PLmb,T,Q,0.0*QRAIN,QSNOW,0.0*QGRAUPEL,IM,JM,LM,1,0,DBZ_LIQUID_SKIN)
-             PTR2D=-9999.0
-             DO L=1,LM ; DO J=1,JM ; DO I=1,IM
-                PTR2D(I,J) = MAX(PTR2D(I,J),TMP3D(I,J,L))
-             END DO ; END DO ; END DO 
-        endif
-        call MAPL_GetPointer(EXPORT, PTR2D , 'DBZ_MAX_G' , RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR2D)) then
-            call CALCDBZ(TMP3D,100*PLmb,T,Q,0.0*QRAIN,0.0*QSNOW,QGRAUPEL,IM,JM,LM,1,0,DBZ_LIQUID_SKIN)
-             PTR2D=-9999.0
-             DO L=1,LM ; DO J=1,JM ; DO I=1,IM
-                PTR2D(I,J) = MAX(PTR2D(I,J),TMP3D(I,J,L))
-             END DO ; END DO ; END DO  
-        endif
+        ! Call the shared radar diagnostics routine
+        call MAPL_TimerOn(MAPL,"---RADAR_DIAGS",RC=STATUS); VERIFY_(STATUS)
+        call compute_radar_diagnostics(EXPORT, CLOCK, IM, JM, LM, &
+                                       Q, QRAIN, QSNOW, QGRAUPEL, T, PLmb, W, ZLE0, &
+                                       STATUS); VERIFY_(STATUS)
+        call MAPL_TimerOff(MAPL,"---RADAR_DIAGS",RC=STATUS); VERIFY_(STATUS)
 
         call MAPL_GetPointer(EXPORT, PTR3D, 'QRTOT', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) PTR3D = QRAIN
