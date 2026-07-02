@@ -77,7 +77,7 @@ contains
     call MAPL_AddInternalSpec ( gc,                                  &
          SHORT_NAME = 'W',                                         &
          LONG_NAME  = 'vertical_velocity',                         &
-         UNITS      = 'm s-1',                                     & 
+         UNITS      = 'm s-1',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter, _RC)
 
@@ -98,38 +98,39 @@ contains
 
     allocate(GigaTrajInternalPtr)
     wrap%ptr => GigaTrajInternalPtr
-    call ESMF_UserCompSetInternalState(GC, 'GigaTrajInternal', wrap, _RC) 
+    call ESMF_UserCompSetInternalState(GC, 'GigaTrajInternal', wrap, status)
+    _VERIFY(status)
 
     call MAPL_GenericSetServices(GC, _RC )
 
     call MAPL_TimerAdd(GC, name="INITIALIZE"    ,_RC)
     call MAPL_TimerAdd(GC, name="RUN"           ,_RC)
 
-    RETURN_(ESMF_SUCCESS)  
+    RETURN_(ESMF_SUCCESS)
   end subroutine SetServices
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
-    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
     type(ESMF_State),    intent(inout) :: IMPORT ! Import state
     type(ESMF_State),    intent(inout) :: EXPORT ! Export state
     type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
     integer, optional,   intent(  out) :: RC     ! Error code
-  
-    character(len=ESMF_MAXSTR)           :: IAm 
+
+    character(len=ESMF_MAXSTR)           :: IAm
     integer                              :: STATUS
     character(len=ESMF_MAXSTR)           :: COMP_NAME
-  
+
     ! Local derived type aliases
-    type (MAPL_MetaComp),  pointer  :: MPL 
+    type (MAPL_MetaComp),  pointer  :: MPL
     type (ESMF_VM)                  :: vm
     integer :: I1, I2, J1, J2, comm, npes, my_rank, rank, ierror, NX, NY, NPZ
     type(ESMF_Grid) :: CubedGrid
     integer, allocatable :: I1s(:), J1s(:), I2s(:),J2s(:)
     integer :: DIMS(3)
-    type (GigaTrajInternal), pointer :: GigaTrajInternalPtr 
+    type (GigaTrajInternal), pointer :: GigaTrajInternalPtr
     type (GigatrajInternalWrap)   :: wrap
     type (ESMF_TIME) :: CurrentTime
     type(ESMF_Alarm)  :: GigaTrajOutAlarm, GigaTrajRebalanceAlarm, GigaTrajIntegrateAlarm
@@ -155,14 +156,14 @@ contains
     call ESMF_ClockGet(clock, timeStep=ModelTimeStep, _RC)
 
     call ESMF_TimeIntervalGet(ModelTimeStep, h = hh, m = mm, s = ss, _RC)
-    
-    call MAPL_GetResource(MPL, integrate_time, "GIGATRAJ_INTEGRATE_DT:", default = hh*10000+mm*100+ss, _RC) 
+
+    call MAPL_GetResource(MPL, integrate_time, "GIGATRAJ_INTEGRATE_DT:", default = hh*10000+mm*100+ss, _RC)
     hh = integrate_time/10000
     mm = mod(integrate_time, 10000)/100
     ss = mod(integrate_time, 100)
     call ESMF_TimeIntervalSet(Integrate_DT,  h = hh, m = mm, s = ss, _RC)
 
-    call MAPL_GetResource(MPL, r_time, "GIGATRAJ_REBALANCE_DT:", default = integrate_time, _RC) 
+    call MAPL_GetResource(MPL, r_time, "GIGATRAJ_REBALANCE_DT:", default = integrate_time, _RC)
     hh = r_time/10000
     mm = mod(r_time, 10000)/100
     ss = mod(r_time, 100)
@@ -204,7 +205,7 @@ contains
     call ESMF_VMGet(vm, mpiCommunicator=comm, _RC)
     call MPI_Comm_size(comm, npes, ierror); _VERIFY(ierror)
     call MPI_Comm_rank(comm, my_rank, ierror); _VERIFY(ierror)
-    
+
     call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, status); _VERIFY(STATUS)
     GigaTrajInternalPtr => wrap%ptr
     GigaTrajInternalPtr%npes = npes
@@ -225,7 +226,7 @@ contains
        GigaTrajInternalPtr%vTendency = 'W'
     case default
        _ASSERT(.false., "vertical coordinate is needed")
-    end select    
+    end select
 
     npz = Dims(3)
     GigaTrajInternalPtr%npz = npz
@@ -249,7 +250,7 @@ contains
 
         GigaTrajInternalPtr%LatLonGrid = grid_manager%make_grid( &
                  LatLonGridFactory(im_world=DIMS(1)*4, jm_world=DIMS(1)*2+1, lm=npz,  &
-                 nx=NX, ny=NY, pole='PC', dateline= 'DC', rc=status) ); _VERIFY(status) 
+                 nx=NX, ny=NY, pole='PC', dateline= 'DC', rc=status) ); _VERIFY(status)
 
         GigaTrajInternalPtr%cube2latlon => new_regridder_manager%make_regridder(GigaTrajInternalPtr%CubedGrid,  GigaTrajInternalPtr%LatLonGrid, REGRID_METHOD_CONSERVE, _RC)
 
@@ -258,7 +259,7 @@ contains
     else
         grid_  = CubedGrid
     endif
- 
+
     call MAPL_Grid_interior(grid_, i1,i2,j1,j2)
 
     allocate(I1s(npes),J1s(npes))
@@ -273,7 +274,7 @@ contains
 
     do rank = 0, npes -1
        I1 = I1s(rank+1)
-       I2 = I2s(rank+1)      
+       I2 = I2s(rank+1)
        J1 = J1s(rank+1)
        J2 = J2s(rank+1)
        GigaTrajInternalPtr%CellToRank(I1:I2,J1:J2) = rank
@@ -290,23 +291,23 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
  subroutine GetInitVars ( GC, IMPORT, EXPORT, CLOCK, RC )
-   type(ESMF_GridComp), intent(inout) :: GC      
-   type(ESMF_State),    intent(inout) :: IMPORT 
+   type(ESMF_GridComp), intent(inout) :: GC
+   type(ESMF_State),    intent(inout) :: IMPORT
    type(ESMF_State),    intent(inout) :: EXPORT
-   type(ESMF_Clock),    intent(inout) :: CLOCK  
-   integer, optional,   intent(  out) :: RC     
+   type(ESMF_Clock),    intent(inout) :: CLOCK
+   integer, optional,   intent(  out) :: RC
 
    integer :: i, status, k
-   character(len=ESMF_MAXSTR) :: IAm 
+   character(len=ESMF_MAXSTR) :: IAm
    type (ESMF_State)          :: INTERNAL, leaf_export
-   type (GigaTrajInternal), pointer :: GigaTrajInternalPtr 
+   type (GigaTrajInternal), pointer :: GigaTrajInternalPtr
    type (GigatrajInternalWrap)   :: wrap
    character(len=ESMF_MAXSTR)    :: GigaRstFile
    character(len=ESMF_MAXSTR)    :: other_fields
    type(ESMF_Field) :: tmp_field
    type (ESMF_FieldBundle)       :: bdle
    type (ESMF_TIME) :: CurrentTime
-   character(len=20), target :: ctime 
+   character(len=20), target :: ctime
    type (MAPL_MetaComp),  pointer  :: MPL
    logical, save :: init = .false.
    real, dimension(:,:,:) , pointer :: ptr3d
@@ -333,12 +334,13 @@ contains
    call MAPL_GetObjectFromGC ( GC, MPL, _RC)
 
    call ESMF_ClockGet(clock, currTime=CurrentTime, _RC)
-   call ESMF_TimeGet(CurrentTime, timeStringISOFrac=ctime) 
+   call ESMF_TimeGet(CurrentTime, timeStringISOFrac=ctime)
    ctime(20:20) = c_null_char
 
    call MAPL_Get(MPL, INTERNAL_ESMF_STATE=INTERNAL, _RC)
 
-   call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, _RC)
+   call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, status)
+   _VERIFY(status)
    GigaTrajInternalPtr => wrap%ptr
 
    call MAPL_GetResource(MPL, GigaRstFile, 'GIGATRAJ_INTERNAL_RESTART_FILE:', default="NONE", RC=STATUS )
@@ -347,7 +349,7 @@ contains
       ! without restart file, get value from import
       call init_metsrc_field0(GC,  IMPORT,  ctime,  _RC)
    else
-      INQUIRE(FILE= GigaRstFile, EXIST=file_exists) 
+      INQUIRE(FILE= GigaRstFile, EXIST=file_exists)
       _ASSERT( file_exists, " GIGATRAJ_INTERNAL_RESTART_FILE does not exist")
       call init_metsrc_field0(GC, INTERNAL, ctime,  _RC)
    endif
@@ -382,7 +384,7 @@ contains
          call MAPL_AllocateCoupling(tmp_field, _RC)
          call ESMF_AttributeGet(tmp_field, NAME='LONG_NAME', VALUE=LONG_NAME, _RC)
          call ESMF_AttributeGet(tmp_field, NAME='UNITS', VALUE=UNITS, _RC)
-    
+
          call create_new_vars( meta, formatter, trim(long_name), trim(aliasnames(i)), trim(units))
 
      enddo
@@ -398,12 +400,12 @@ contains
  end subroutine GetInitVars
 
  subroutine Init_metsrc_field0 (GC, state, ctime, RC )
-    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
     type(ESMF_State),    intent(inout) :: state
     character(*), target,   intent(in) :: ctime
     integer, optional,     intent(out) :: RC     ! Error code
 
-    character(len=ESMF_MAXSTR)    :: IAm 
+    character(len=ESMF_MAXSTR)    :: IAm
     integer                       :: STATUS
 
     type(GigaTrajInternal), pointer :: GigaTrajInternalPtr
@@ -423,7 +425,8 @@ contains
 
     call ESMF_VMGetCurrent(vm, _RC)
     call ESMF_VMGet(vm, mpiCommunicator=comm, _RC)
-    call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, _RC)
+    call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, status)
+    _VERIFY(status)
     GigaTrajInternalPtr => wrap%ptr
 
     call MAPL_GetPointer(state, U, "U", _RC)
@@ -507,20 +510,20 @@ contains
     if(associated(PL0)) deallocate(PL0)
     deallocate(haloU, haloV, haloW, haloP)
     RETURN_(ESMF_SUCCESS)
-    
+
  end subroutine init_metsrc_field0
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
  subroutine Run ( GC, IMPORT, EXPORT, CLOCK, RC )
-    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
     type(ESMF_State),    intent(inout) :: IMPORT ! Import state
     type(ESMF_State),    intent(inout) :: EXPORT ! Export state
     type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
     integer, optional,   intent(  out) :: RC     ! Error code
 
-    character(len=ESMF_MAXSTR)       :: IAm 
+    character(len=ESMF_MAXSTR)       :: IAm
     integer                          :: STATUS
     integer        :: CSTAT, ESTAT, YY, DD
     character(512) :: CMSG
@@ -530,14 +533,14 @@ contains
     type(ESMF_TimeInterval) :: ModelTimeStep
     type(ESMF_Time)         :: CurrentTime, preTime
     type(ESMF_Grid)         :: grid_
-  
+
     type (GigaTrajInternal), pointer :: GigaTrajInternalPtr
     type (GigatrajInternalWrap)   :: wrap
-  
+
     integer :: lm, d1, d2, k, itemCount
     integer ::counts(3), DIMS(3), comm, ierror
     type (ESMF_VM)   :: vm
-  
+
     real, dimension(:,:,:), pointer     :: U_cube, V_cube, W_cube, P_cube, PLE_Cube, with_halo
     real, dimension(:,:,:), pointer     :: internal_field, model_field
     real, dimension(:,:,:), pointer     :: tmp_ptr
@@ -550,16 +553,17 @@ contains
 
     character(len=20), target :: ctime, ctime0
     type(ESMF_State)            :: INTERNAL
-    type(MAPL_MetaComp),pointer :: MPL  
+    type(MAPL_MetaComp),pointer :: MPL
     type(ESMF_Alarm)  :: GigaTrajIntegrateAlarm
     type(MAPL_VarSpec ), pointer:: internal_specs(:)
     character(len=ESMF_MAXSTR)  :: SHORT_NAME
     character(len=ESMF_MAXSTR), allocatable  :: item_names(:)
 
 !---------------
-!  Update internal 
+!  Update internal
 !---------------
-    call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, _RC)
+    call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, status)
+    _VERIFY(status)
     GigaTrajInternalPtr => wrap%ptr
     call MAPL_GetObjectFromGC ( GC, MPL, _RC)
     call MAPL_Get (MPL, INTERNAL_ESMF_STATE=INTERNAL, _RC)
@@ -587,16 +591,16 @@ contains
 
     call ESMF_ClockGet(clock, currTime=CurrentTime, _RC)
     call ESMF_ClockGet(clock, timeStep=ModelTimeStep, _RC)
- 
+
     ! W.J note: this run is after agcm's run. The clock is not yet ticked
     !           So the values we are using are at (CurrentTime + ModelTimeStep)
 
     CurrentTime = CurrentTime + ModelTimeStep
-    call ESMF_TimeGet(CurrentTime, timeStringISOFrac=ctime) 
+    call ESMF_TimeGet(CurrentTime, timeStringISOFrac=ctime)
     ctime(20:20) = c_null_char
 
-    preTime = CurrentTime - GigaTrajInternalPtr%Integrate_DT 
-    call ESMF_TimeGet(preTime, timeStringISOFrac=ctime0) 
+    preTime = CurrentTime - GigaTrajInternalPtr%Integrate_DT
+    call ESMF_TimeGet(preTime, timeStringISOFrac=ctime0)
     ctime0(20:20) = c_null_char
 
     call ESMF_TimeIntervalGet(GigaTrajInternalPtr%Integrate_DT, d_r8=DT, _RC)
@@ -647,7 +651,7 @@ contains
       call esmf_halo(grid_, W_Latlon, haloW, _RC)
       call esmf_halo(grid_, P_Latlon, haloP, _RC)
 
-      deallocate( U_Latlon, V_latlon, W_latlon, P_latlon) 
+      deallocate( U_Latlon, V_latlon, W_latlon, P_latlon)
     else
       call esmf_halo(grid_, U_cube, haloU, _RC)
       call esmf_halo(grid_, V_cube, haloV, _RC)
@@ -662,22 +666,22 @@ contains
     call updateFields( GigaTrajInternalPtr%metSrc, c_loc(ctime), c_loc(haloU), c_loc(haloV), c_loc(haloW), c_loc(haloP))
 
 !---------------
-! Step 4) Time advance 
+! Step 4) Time advance
 !---------------
     call RK4_advance( GigaTrajInternalPtr%metSrc, c_loc(ctime0), DT, GigaTrajInternalPtr%parcels%num_parcels,  &
                        c_loc(GigaTrajInternalPtr%parcels%lons), &
                        c_loc(GigaTrajInternalPtr%parcels%lats), &
                        c_loc(GigaTrajInternalPtr%parcels%zs))
-   
+
     deallocate(haloU, haloV, haloW, haloP)
-  
+
 !---------------
-! Step 5) rebalance parcels among processors ( configurable with alarm) 
+! Step 5) rebalance parcels among processors ( configurable with alarm)
 !---------------
     call rebalance_parcels(clock, GigaTrajInternalPtr%parcels, GigaTrajInternalPtr%CellToRank, comm, grid_, _RC)
 
 !---------------
-! Step 6) write out parcel positions and related fields ( configurable with alarm) 
+! Step 6) write out parcel positions and related fields ( configurable with alarm)
 !---------------
 
     call write_parcels(GC, import, clock, currentTime, _RC)
@@ -781,7 +785,7 @@ contains
 
     call MPI_Comm_size(comm, npes, ierror)
     call MPI_Comm_rank(comm, my_rank, ierror)
-    
+
     allocate(ranks    (num_parcels0))
     allocate(lons_send(num_parcels0))
     allocate(lats_send(num_parcels0))
@@ -815,7 +819,7 @@ contains
     ! re-arranged lats lons, and ids
     tmp_position = disp_send
     parcels%num_parcels  = sum(counts_recv)
-    num_parcels =  parcels%num_parcels 
+    num_parcels =  parcels%num_parcels
     allocate(parcels%lons(num_parcels ))
     allocate(parcels%lats(num_parcels ))
     allocate(parcels%zs  (num_parcels ))
@@ -846,7 +850,7 @@ contains
     real, dimension(:), intent(in)    :: lats0, zs0
     integer, dimension(:), intent(in) :: IDs0
     integer, dimension(:,:), intent(in) :: CellToRank
-    type(ESMF_GRID), intent(inout) :: Grid 
+    type(ESMF_GRID), intent(inout) :: Grid
     integer, intent(in) :: comm
     real, dimension(:), allocatable, intent(out) :: lons, lats, zs
     integer, dimension(:), allocatable, intent(out) :: IDs
@@ -865,8 +869,8 @@ contains
     call MPI_Comm_size(comm, npes, ierror)
     call MPI_Comm_rank(comm, my_rank, ierror)
 
-    call MAPL_GridGet(Grid, globalCellCountPerDim=DIMS)  
-  
+    call MAPL_GridGet(Grid, globalCellCountPerDim=DIMS)
+
     allocate(II(num_parcels0), JJ(num_parcels0))
 
     allocate(counts_send(npes), source = 0)
@@ -999,12 +1003,12 @@ contains
   end subroutine gather_onefield
 
   subroutine write_parcels(GC, state, CLOCK, currentTime, rc)
-    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
     type(ESMF_State),    intent(inout) :: state  ! Import state
     type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
-    type(ESMF_TIME), intent(in) :: currentTime 
+    type(ESMF_TIME), intent(in) :: currentTime
     integer, optional, intent(out) :: rc
-  
+
     character(len=:), allocatable :: Iam
     type (ESMF_VM)  :: vm
     type(Netcdf4_fileformatter) :: formatter
@@ -1021,7 +1025,7 @@ contains
     character(len=ESMF_MAXSTR)   :: parcels_file, other_fields
     character(len=ESMF_MAXSTR), allocatable   :: varnames(:)
     character(len=:), allocatable:: var_name, var_, comp_name, var_alias, bdlename
-    
+
     type (GigaTrajInternal), pointer :: GigaTrajInternalPtr
     type (GigatrajInternalWrap)      :: wrap
     character(len=20), target :: ctime
@@ -1035,7 +1039,8 @@ contains
     endif
 
     call MAPL_GetObjectFromGC ( GC, MPL, _RC)
-    call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, _RC)
+    call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, status)
+    _VERIFY(status)
     GigaTrajInternalPtr => wrap%ptr
 
     call MAPL_GetResource(MPL, parcels_file, "GIGATRAJ_PARCELS_FILE:", default='parcels.nc4', _RC)
@@ -1043,7 +1048,7 @@ contains
     call ESMF_VMGetCurrent(vm, _RC)
     call ESMF_VMGet(vm, mpiCommunicator=comm, _RC)
     call gather_parcels(total_num, lons0, lats0, zs0, IDs0, &
-                          comm,                             & 
+                          comm,                             &
                           GigaTrajInternalPtr%parcels%lons, &
                           GigaTrajInternalPtr%parcels%lats, &
                           GigaTrajInternalPtr%parcels%zs,   &
@@ -1065,7 +1070,7 @@ contains
       ! do k = 1, size(ids0)
       !    if (k /= ids0_in(k)) then
       !      RETURN_(-1)
-      !    endif 
+      !    endif
       ! enddo
 
        lats0 = lats0(ids0(:)) ! id is zero-bases, plus 1 Fortran
@@ -1094,7 +1099,7 @@ contains
          var_name  = trim(GigaTrajInternalPtr%ExtraFieldNames(k))
          bdlename  = trim(GigaTrajInternalPtr%ExtraBundleNames(k))
          var_alias = trim(GigaTrajInternalPtr%ExtraAliasNames(k))
-         
+
          if ( index(var_name, 'bcDP') /= 0 .or.   &
               index(var_name, 'ocDP') /= 0 .or.   &
               index(var_name, 'bcWT') /= 0 .or.   &
@@ -1162,7 +1167,7 @@ contains
        enddo
      endif
 
-     if (my_rank ==0) then 
+     if (my_rank ==0) then
        call formatter%close(_RC)
      endif
      RETURN_(ESMF_SUCCESS)
@@ -1171,12 +1176,12 @@ contains
   end subroutine write_parcels
 
   subroutine read_parcels(GC,internal, rc)
-     type(ESMF_GridComp), intent(inout) :: GC      
+     type(ESMF_GridComp), intent(inout) :: GC
      type(GigaTrajInternal), intent(inout) :: internal
      integer, optional, intent(out) :: rc
 
      type(Netcdf4_fileformatter) :: formatter
-     type(FileMetadata) :: meta 
+     type(FileMetadata) :: meta
      integer :: comm, my_rank, total_num, ierror, last_time
      real, allocatable :: lats0(:), lons0(:), zs0(:)
      !real(kind=ESMF_KIND_R8), allocatable :: ids0_r(:)
@@ -1194,7 +1199,7 @@ contains
 
      call ESMF_VMGetCurrent(vm, _RC)
      call ESMF_VMGet(vm, mpiCommunicator=comm, _RC)
-     
+
      call MPI_Comm_rank(comm, my_rank, ierror); _VERIFY(ierror)
      call MAPL_GetObjectFromGC ( GC, MPL, _RC)
      call MAPL_GetResource(MPL, parcels_file, "GIGATRAJ_PARCELS_FILE:", default='parcels.nc4', _RC)
@@ -1216,7 +1221,7 @@ contains
      endif
 
      allocate(lats0(total_num), lons0(total_num), zs0(total_num),ids0(total_num))
-        
+
      if (my_rank ==0) then
         call formatter%get_var('lat', lats0, start = [1,last_time], _RC)
         call formatter%get_var('lon', lons0, start = [1,last_time], _RC)
@@ -1235,8 +1240,8 @@ contains
                               Internal%parcels%lons, &
                               Internal%parcels%lats, &
                               Internal%parcels%zs,   &
-                              Internal%parcels%IDS,  & 
-                              Internal%parcels%num_parcels) 
+                              Internal%parcels%IDS,  &
+                              Internal%parcels%num_parcels)
 
      RETURN_(ESMF_SUCCESS)
      contains
@@ -1244,24 +1249,24 @@ contains
           function parse_time_string(timeUnits,rc) result(time)
              character(len=*), intent(inout) :: timeUnits
              integer, optional, intent(out) :: rc
-         
+
              type(ESMF_Time) :: time
              integer :: status
-         
+
              integer        year               ! 4-digit year
              integer        month              ! month
              integer        day                ! day
              integer        hour               ! hour
              integer        min                ! minute
              integer        sec                ! second
-         
+
              integer ypos(2), mpos(2), dpos(2), hpos(2), spos(2)
              integer strlen
              integer firstdash, lastdash
              integer firstcolon, lastcolon
              integer lastspace
              strlen = LEN_TRIM (TimeUnits)
-         
+
              firstdash = index(TimeUnits, '-')
              lastdash  = index(TimeUnits, '-', BACK=.TRUE.)
              if (firstdash .LE. 0 .OR. lastdash .LE. 0) then
@@ -1270,20 +1275,20 @@ contains
              ypos(2) = firstdash - 1
              mpos(1) = firstdash + 1
              ypos(1) = ypos(2) - 3
-         
+
              mpos(2) = lastdash - 1
              dpos(1) = lastdash + 1
              dpos(2) = dpos(1) + 1
-         
+
              read ( TimeUnits(ypos(1):ypos(2)), * ) year
              read ( TimeUnits(mpos(1):mpos(2)), * ) month
              read ( TimeUnits(dpos(1):dpos(2)), * ) day
-         
+
              firstcolon = index(TimeUnits, ':')
              if (firstcolon .LE. 0) then
-         
+
                 ! If no colons, check for hour.
-         
+
                 ! Logic below assumes a null character or something else is after the hour
                 ! if we do not find a null character add one so that it correctly parses time
                 if (TimeUnits(strlen:strlen) /= char(0)) then
@@ -1322,7 +1327,7 @@ contains
                    read (TimeUnits(spos(1):spos(2)), * ) sec
                 endif
              endif
-         
+
              call ESMF_TimeSet(time,yy=year,mm=month,dd=day,h=hour,m=min,s=sec,rc=status)
              _VERIFY(status)
              RETURN_(ESMF_SUCCESS)
@@ -1330,7 +1335,7 @@ contains
   end subroutine read_parcels
 
   subroutine get_metsrc_data (GC, state, ctime, compname, bundlename, fieldname, values, RC )
-    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
     type(ESMF_State),    intent(inout) :: state
     character(*), target,   intent(in) :: ctime
     character(*), intent(in) :: compname
@@ -1372,7 +1377,8 @@ contains
        call MAPL_GetPointer(leaf_export, ptr3d, fieldname, _RC)
     endif
 
-    call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, _RC)
+    call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, status)
+    _VERIFY(status)
     GigaTrajInternalPtr => wrap%ptr
 
     lm = size(ptr3d,3)
@@ -1413,7 +1419,7 @@ contains
   end subroutine get_metsrc_data
 
   subroutine get_metsrc_data2d (GC, state, ctime, fieldname, values, RC )
-    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
     type(ESMF_State),    intent(inout) :: state
     character(*), target,   intent(in) :: ctime
     character(*), intent(in) :: fieldname
@@ -1437,7 +1443,8 @@ contains
     call MAPL_GetPointer(state, field, fieldname, _RC)
     count3 = size(field,3)
 
-    call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, _RC)
+    call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, status)
+    _VERIFY(status)
     GigaTrajInternalPtr => wrap%ptr
     if (GigaTrajInternalPtr%regrid_to_latlon) then
        grid_ = GigaTrajInternalPtr%LatLonGrid
@@ -1473,5 +1480,5 @@ contains
     RETURN_(ESMF_SUCCESS)
 
   end subroutine get_metsrc_data2d
- 
-end module GEOS_GigatrajGridCompMod 
+
+end module GEOS_GigatrajGridCompMod
