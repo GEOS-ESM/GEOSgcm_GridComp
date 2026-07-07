@@ -14,17 +14,34 @@ endif()
 
 # Sync regression test data from S3
 set(GWD_PATH GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSgwd_GridComp)
-set(REGRESSION_DATA_DIR ${CMAKE_BINARY_DIR}/regression-data/${GWD_PATH})
-if (NOT EXISTS ${REGRESSION_DATA_DIR})
-  message(STATUS "Syncing regression data from S3: ${GWD_PATH}")
-  esma_sync_data(
-    TARGET sync_regression_data_gwd
-    URI "s3://gmao-usw2-si-team/regression-data/${GWD_PATH}"
-    DESTINATION "${REGRESSION_DATA_DIR}"
-    CREDENTIALS_URL "https://llvsm4u7ij.execute-api.us-east-1.amazonaws.com/credentials"
-    ALL
-  )
+if(DEFINED ENV{LOCAL_REGRESSION_DATA_DIR} AND NOT "$ENV{LOCAL_REGRESSION_DATA_DIR}" STREQUAL "")
+  set(REGRESSION_DATA_DIR "$ENV{LOCAL_REGRESSION_DATA_DIR}/${GWD_PATH}")
+else()
+  set(REGRESSION_DATA_DIR ${CMAKE_BINARY_DIR}/regression-data/${GWD_PATH})
 endif()
+
+set(SYNC_WORK_DIR "${CMAKE_BINARY_DIR}/regression-data/sync_work/gwd")
+
+# Locate the cmake script used internally by esma_sync_data()
+find_file(ESMA_SYNC_DATA_SCRIPT
+  NAMES esma_sync_data_script.cmake
+  PATHS ${CMAKE_MODULE_PATH}
+  NO_DEFAULT_PATH
+  REQUIRED
+)
+
+# Fixture test: sync regression data from S3 at ctest (NOT configure) time
+add_test(
+  NAME gwd/sync_data
+  COMMAND ${CMAKE_COMMAND}
+    "-DLOCAL_DIR=${REGRESSION_DATA_DIR}"
+    "-DWORK_DIR=${SYNC_WORK_DIR}"
+    "-DESMA_SYNC_DATA_SCRIPT=${ESMA_SYNC_DATA_SCRIPT}"
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/sync_data.cmake
+)
+set_tests_properties(gwd/sync_data PROPERTIES
+  FIXTURES_SETUP gwd_regression_data
+)
 
 # Regression tests
 foreach(TEST_CASE ${TEST_CASES})
@@ -42,5 +59,6 @@ foreach(TEST_CASE ${TEST_CASES})
   set_tests_properties("${TEST_CASE}" PROPERTIES
     LABELS "REGRESSION"
     ENVIRONMENT "${LD_PATH}=${CMAKE_BINARY_DIR}/lib:$ENV{${LD_PATH}}"
+    FIXTURES_REQUIRED gwd_regression_data
   )
 endforeach()
