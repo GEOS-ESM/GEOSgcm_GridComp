@@ -234,7 +234,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME = 'ICESURF',                   &
          LONG_NAME  = 'ice_sheet_elevation',       &
          UNITS      = 'm',                         &
-         PRESCISION = ESMF_TYPEKIND_R8,            &
+         PRECISION = ESMF_TYPEKIND_R8,            &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
          RESTART    = MAPL_RestartOptional,        &   
@@ -244,7 +244,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME = 'ICETHICK',                  &
          LONG_NAME  = 'ice_sheet_thickness',       &
          UNITS      = 'm',                         &
-         PRESCISION = ESMF_TYPEKIND_R8,            &
+         PRECISION = ESMF_TYPEKIND_R8,            &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
          RESTART    = MAPL_RestartOptional,        & 
@@ -254,7 +254,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME = 'IMLS',                      &
          LONG_NAME  = 'ice_mask_levelset',         &
          UNITS      = 'none',                      &
-         PRESCISION = ESMF_TYPEKIND_R8,            &
+         PRECISION = ESMF_TYPEKIND_R8,            &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
          RESTART    = MAPL_RestartOptional,        & 
@@ -264,7 +264,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME = 'OMLS',                      &
          LONG_NAME  = 'ocean_mask_levelset',       &
          UNITS      = 'none',                      &
-         PRESCISION = ESMF_TYPEKIND_R8,            &
+         PRECISION = ESMF_TYPEKIND_R8,            &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
          RESTART    = MAPL_RestartOptional,        & 
@@ -274,7 +274,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME = 'ICEVX',                     &
          LONG_NAME  = 'ice_velocity_x_direction',  &
          UNITS      = 'm s-1',                     &
-         PRESCISION = ESMF_TYPEKIND_R8,            &
+         PRECISION = ESMF_TYPEKIND_R8,            &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
          RESTART    = MAPL_RestartOptional,        &
@@ -284,7 +284,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME = 'ICEVY',                     &
          LONG_NAME  = 'ice_velocity_y_direction',  &
          UNITS      = 'm s-1',                     &
-         PRESCISION = ESMF_TYPEKIND_R8,            &
+         PRECISION = ESMF_TYPEKIND_R8,            &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
          RESTART    = MAPL_RestartOptional,        &
@@ -294,7 +294,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME = 'ISSM_NSTEPS',               &
          LONG_NAME  = 'steps_since_last_issm',     &
          UNITS      = 'none',                      &
-         PRESCISION = ESMF_TYPEKIND_R8,            &
+         PRECISION = ESMF_TYPEKIND_R8,            &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
          RESTART    = MAPL_RestartOptional,        &
@@ -303,7 +303,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME = 'RS_NODEIDS',                &
          LONG_NAME  = 'restart_node_ids',          &
          UNITS      = 'none',                      &
-         PRESCISION = ESMF_TYPEKIND_R8,            &
+         PRECISION = ESMF_TYPEKIND_R8,            &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
          RESTART    = MAPL_RestartOptional,        &
@@ -864,7 +864,7 @@ subroutine SetServices ( GC, RC )
        subroutine apply_halo(VAR_IN,VAR_HALO,RC)
           ! apply halo operation to a restart variable
           ! arguments:
-          real, pointer, dimension(:), intent(inout)     :: VAR_IN            ! var on owned_nodes
+          real(dp), pointer, dimension(:), intent(inout) :: VAR_IN            ! var on owned_nodes
           real(dp), pointer, dimension(:), intent(inout) :: VAR_HALO          ! var on all nodes
           integer, optional, intent(out)                 :: RC
 
