@@ -1047,6 +1047,15 @@ end if
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'Monin_Obukhov_length',                                  &
+       UNITS      = 'm',                                                     &
+       SHORT_NAME = 'LOBUKHOV',                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+    
+    call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'EDMF_mean_updraft_lateral_entrainment_rate',            &
        UNITS      = 'm-1',                                                   &
        SHORT_NAME = 'EDMF_ENTR',                                             &
@@ -2969,7 +2978,7 @@ end if
                                             SHOCPRNUM,&
                                             TKEBUOY,TKESHEAR,TKEDISS,TKEDISSx, &
                                             SL2, SL3, W2, W3, WSL, SLQT !, W3CANUTO, QT2DIAG,SL2DIAG,SLQTDIAG
-     real, dimension(:,:), pointer       :: edmf_depth
+     real, dimension(:,:), pointer       :: edmf_depth, lobukhov
 
 ! EDMF variables
      real, dimension(:,:,:), pointer     :: edmf_dry_a,edmf_moist_a,edmf_frc, edmf_dry_w,edmf_moist_w, &
@@ -3045,7 +3054,7 @@ end if
      integer :: DOMF, NumUp
      real    :: L0,L0fac
 
-     real, dimension(IM,JM)    :: L02
+     real, dimension(IM,JM)    :: L02, tmp2d
      real, dimension(IM,JM,LM) :: QT,THL,SL,EXF
 
      ! Variables for idealized surface layer     
@@ -3076,7 +3085,7 @@ end if
      real, dimension( IM, JM, LM )       :: QPL,QPI
      integer                             :: DO_SHOC, DOPROGQT2
      real                                :: SL2TUNE, QT2TUNE, SLQT2TUNE,          &
-                                            SKEW_TGEN, SKEW_TDIS, FREE_ATM_QT2
+                                            SKEW_TGEN, SKEW_TDIS, QT2_TDIS, FREE_ATM_QT2
      real    :: PDFSHAPE
 
      real    :: lambdadiss
@@ -3266,6 +3275,7 @@ end if
      call MAPL_GetResource (MAPL, SLQT2TUNE,  'SLQT2TUNE:',  DEFAULT = 7.0   , RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, SKEW_TDIS,  'SKEW_TDIS:',  DEFAULT = 900.0,  RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, SKEW_TGEN,  'SKEW_TGEN:',  DEFAULT = 900.0,  RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, QT2_TDIS,   'QT2_TDIS:',   DEFAULT = 900.0,  RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, FREE_ATM_QT2, 'FREE_ATM_QT2:', DEFAULT = 0.05, RC=STATUS); VERIFY_(STATUS)
 
 ! Get pointers from export state...
@@ -3428,6 +3438,8 @@ end if
 !     call MAPL_GetPointer(EXPORT,  wqt,   'WQT', ALLOC=PDFALLOC,   RC=STATUS)
 !     VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  wsl,   'WSL', ALLOC=PDFALLOC,   RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,  lobukhov,  'LOBUKHOV', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
 !     call MAPL_GetPointer(EXPORT,  qt2diag,   'QT2DIAG', ALLOC=PDFALLOC,   RC=STATUS)
 !     VERIFY_(STATUS)
@@ -3919,6 +3931,10 @@ end if
    call MAPL_TimerOff(MAPL,"---MASSFLUX")
 
 
+   if (associated(lobukhov)) then
+      LOBUKHOV = -USTAR**3 * THV(:,:,LM) / (0.4*MAPL_GRAV*SH/(MAPL_CP*rhoe(:,:,LM)))
+   end if
+   
 !!!=================================================================
 !!!===========================  SHOC  ==============================
 !!!=================================================================
@@ -3934,6 +3950,7 @@ end if
         call RUN_SHOC( IM, JM, LM, LM+1, DT,  &
                        !== Inputs ==
                        SH(:,:),               &
+                       LOBUKHOV(:,:),         &
                        PLO(:,:,1:LM),         &
                        ZL0(:,:,0:LM),         &
                        Z(:,:,1:LM),           &
@@ -4509,6 +4526,7 @@ end if
                           slqt2tune,      &
                           skew_tgen,      &
                           skew_tdis,      &
+                          qt2_tdis,      &
                           free_atm_qt2 )
 
        end if
