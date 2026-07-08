@@ -58,7 +58,7 @@ foreach(TEST_CASE ${TEST_CASES})
   )
   set_tests_properties("${TEST_CASE}" PROPERTIES
     LABELS "REGRESSION"
-    ENVIRONMENT "${LD_PATH}=${CMAKE_BINARY_DIR}/lib:$ENV{${LD_PATH}}"
+    ENVIRONMENT "${LD_PATH}=${CMAKE_BINARY_DIR}/lib:$ENV{${LD_PATH}};OMP_NUM_THREADS=1"
     FIXTURES_REQUIRED gwd_regression_data
   )
 endforeach()
