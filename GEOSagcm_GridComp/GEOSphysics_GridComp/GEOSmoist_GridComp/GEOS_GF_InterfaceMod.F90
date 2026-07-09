@@ -455,8 +455,14 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: DQLCNDT_FILL
     real, pointer, dimension(:,:,:) :: DQILSDT_FILL
     real, pointer, dimension(:,:,:) :: DQICNDT_FILL
+    
+    real, pointer, dimension(:,:,:) :: DNDCNV
+    real, pointer, dimension(:,:,:) :: DNICNV
+    
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
+    
+    character(len=256) :: DIAG_MSG
 
     type( ESMF_VM )                 :: VMG
 
@@ -651,6 +657,11 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, CNV_TOPP_DP, 'CNV_TOPP_DP' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNV_TOPP_MD, 'CNV_TOPP_MD' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNV_TOPP_SH, 'CNV_TOPP_SH' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    
+    call MAPL_GetPointer(EXPORT, DNDCNV,      'DNDCNV'      , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DNICNV,      'DNICNV'      , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)    
+
+
 
     if (STOCHASTIC_CNV) then
        ! Create bit-processor-reproducible random white noise for convection [0:1]
@@ -681,6 +692,11 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        TMP2D = AREA
     endif
 
+    DNDCNV   = 0.0
+    DNICNV   = 0.0
+    DQLDT_DC = 0.0
+    DQIDT_DC = 0.0
+        
     IF (USE_GF2020==1) THEN
          ! Convert OMEGA (Pa/s) to W (m/s)
          TMP3D = -1*OMEGA/(MAPL_GRAV*PL/(MAPL_RDRY*T*(1.0+MAPL_VIREPS*Q)))
@@ -713,7 +729,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
               CNV_MF0, CNV_PRC3, MFD_DC, CNV_DQCDT, ENTLAM, &
               UMF_DC, CNV_UPDF, CNV_CVW, CNV_QC, WQT_DC, &
               REVSU, PRFIL, ENTR_DP, ENTR_MD, ENTR_SH, &
-              MUPDP, MUPSH, MUPMD, MDNDP)
+              MUPDP, MUPSH, MUPMD, MDNDP, &
+              AeroPropsNew, DNDCNV, DNICNV, DQLDT_DC, DQIDT_DC)
     ELSE
          !- call GF/GEOS5 interface routine
          ! PLE and PL are passed in Pa
@@ -736,12 +753,67 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,REVSU, PRFIL)
     ENDIF
 
+        
+    
     ! update DeepCu QL/QI/CF tendencies
-      fQi = ice_fraction( T+DTDT_DC*GF_DT, CNV_FRC, SRF_TYPE )
-      TMP3D    = CNV_DQCDT/MASS
-      DQLDT_DC = (1.0-fQi)*TMP3D
-      DQIDT_DC =      fQi *TMP3D
-      DQADT_DC = MFD_DC*SCLM_DEEP/MASS
+    
+    IF (USE_GF2020 == 1 .AND. USE_CUP_2M_MOISTURE) THEN
+    
+       call WRITE_PARALLEL ('Using CUP_2M_MOISTURE') 
+      
+       TMP3D = DQLDT_DC + DQIDT_DC
+      
+       WHERE (TMP3D > 1.0e-30)
+          fQi = DQIDT_DC / TMP3D
+       ELSEWHERE
+          fQi = ice_fraction(T + DTDT_DC*GF_DT, CNV_FRC, SRF_TYPE)
+       END WHERE
+
+       CNV_DQCDT = TMP3D * MASS   ! keep diagnostic total consistent
+        
+    
+    ELSE
+       fQi = ice_fraction(T + DTDT_DC*GF_DT, CNV_FRC, SRF_TYPE)
+       TMP3D    = CNV_DQCDT/MASS
+       DQLDT_DC = (1.0-fQi)*TMP3D
+       DQIDT_DC =      fQi *TMP3D
+    ENDIF
+
+  
+    if (.false.) then
+
+        !-----------------------------------------------------------------------
+        ! Single-column debug print for 2M convective mass/number tendencies.
+        !
+        ! DQLDT_DC, DQIDT_DC : kg kg-1 s-1
+        ! DNDCNV, DNICNV     : # kg-1 s-1
+        ! CNV_FICE           : ice condensate fraction = fQi
+        !-----------------------------------------------------------------------
+
+        IF (USE_GF2020 == 1 .AND. USE_CUP_2M_MOISTURE) THEN
+
+           call WRITE_PARALLEL(' ')
+           call WRITE_PARALLEL('CUP_2M_DRIVER_DIAG: single-column full vertical profile')
+           call WRITE_PARALLEL( &
+                '   L      DQLDT_DC      DQIDT_DC       DNDCNV        DNICNV       CNV_FICE' )
+
+           do L = 1, LM
+
+              write(DIAG_MSG,'(i5,1x,es10.1,1x,es10.1,1x,es10.1,1x,es10.1,1x,f8.2)') &
+                   L, DQLDT_DC(1,1,L), DQIDT_DC(1,1,L),                               &
+                      DNDCNV  (1,1,L), DNICNV  (1,1,L),                               &
+                      fQi     (1,1,L)
+
+              call WRITE_PARALLEL(trim(DIAG_MSG))
+
+           enddo
+
+        ENDIF
+
+
+   end if   
+     
+     DQADT_DC = MFD_DC*SCLM_DEEP/MASS
     ! evap/subl and precip fluxes
       do L=1,LM
          !--- sublimation/evaporation tendencies (kg/kg/s)
@@ -751,6 +823,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            PFI_CN (:,:,L) = PRFIL(:,:,L)*     fQi(:,:,L)
            PFL_CN (:,:,L) = PRFIL(:,:,L)*(1.0-fQi(:,:,L))
       enddo
+
+    
     ! Export
       call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_FICE', RC=STATUS); VERIFY_(STATUS)
       if (associated(PTR3D)) PTR3D = fQi

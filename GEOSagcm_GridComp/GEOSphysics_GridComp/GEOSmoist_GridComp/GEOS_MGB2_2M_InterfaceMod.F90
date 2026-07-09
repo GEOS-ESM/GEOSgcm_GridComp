@@ -66,6 +66,12 @@ module GEOS_MGB2_2M_InterfaceMod
   logical :: SECOND_HYSTPDF, DO_UPD_CLD 
   logical :: USE_NCLOUD_CLIM
   logical :: MAKE_SNOW_ICE
+  logical :: WBF_partition
+  logical :: USE_CF_GEOM_CORR
+  logical :: DO_EVAP_SUBL = .TRUE.
+  
+  logical :: DEBUG_MAMnet = .false.
+  integer :: DEBUG_MAMnet_I = 1, DEBUG_MAMnet_J = 1  
 
 
   real  :: DCS, WBFFACTOR, ND_CST, NI_CST, NG_CST, &
@@ -79,7 +85,7 @@ module GEOS_MGB2_2M_InterfaceMod
            DTST, RHC_STRAT_SCALE
            
 
-  INTEGER :: WSUB_OPTION, ST_OPTION, ITER_METHOD 
+  INTEGER :: WSUB_OPTION, ST_OPTION, RHC_OPTION 
   
   public :: MGB2_2M_Setup, MGB2_2M_Initialize, MGB2_2M_Run
   public :: MGVERSION
@@ -346,6 +352,9 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
 
     call WRITE_PARALLEL ("INITIALIZED MGB2_2M microphysics in non-generic GC INIT")
 
+    
+    !====================large scale condensation tuning/options======
+      
     call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 1     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, FAC_RI          , 'FAC_RI:'          , DEFAULT= 1.   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, FAC_RL          , 'FAC_RL:'          , DEFAULT= 1.   , RC=STATUS); VERIFY_(STATUS)
@@ -354,18 +363,61 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, MIN_RL          , 'MIN_RL:'          , DEFAULT= 2.5e-6, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MAX_RL          , 'MAX_RL:'          , DEFAULT= 60.0e-6, RC=STATUS); VERIFY_(STATUS)
 
+    call MAPL_GetResource( MAPL, DO_EVAP_SUBL, 'DO_EVAP_SUBL:', DEFAULT= .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CCW_EVAP_EFF, 'CCW_EVAP_EFF:', DEFAULT= 4.e-3, RC=STATUS); VERIFY_(STATUS)
 	call MAPL_GetResource( MAPL, CCI_EVAP_EFF, 'CCI_EVAP_EFF:', DEFAULT= 4.e-3, RC=STATUS); VERIFY_(STATUS)  
+    
+    
     call MAPL_GetResource( MAPL, MINRHCRIT, 'MINRHCRIT:', DEFAULT =9.51e-01, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, TURNRHCRIT, 'TURNRHCRIT:', DEFAULT = 791., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, TURNRHCRIT_UP, 'TURNRHCRIT_UP:', DEFAULT = 235.6, RC=STATUS); VERIFY_(STATUS) !pressure to turn the profile back at upper trop -1 dsiables it
+    call MAPL_GetResource( MAPL, TURNRHCRIT_UP, 'TURNRHCRIT_UP:', DEFAULT =1., RC=STATUS); VERIFY_(STATUS) !pressure to turn the profile back at upper trop -1 dsiables it
+   
+    call MAPL_GetResource( MAPL, WBF_partition    , 'USE_BERGERON:'    , DEFAULT=.TRUE.  , RC=STATUS); VERIFY_(STATUS) !WBF partitioning in hystpdf
+
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    1.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, DBZ_LIQUID_SKIN , 'DBZ_LIQUID_SKIN:' , DEFAULT= 0     , RC=STATUS); VERIFY_(STATUS)
+    
+    
+    
+    !====================general options======
+    
+     call MAPL_GetResource(MAPL, USE_NCLOUD_CLIM,  'USE_NCLOUD_CLIM:',   DEFAULT= .FALSE.,    __RC__) !0- param 1- Use Wsub climatology 2-Wnet
+    call MAPL_GetResource(MAPL, SECOND_HYSTPDF, 'SECOND_HYSTPDF:', DEFAULT= .TRUE. ,RC=STATUS) !TRUE to call hyspdf after the microphysics
+    call MAPL_GetResource(MAPL, DO_UPD_CLD, 'DO_UPD_CLD:', DEFAULT= .TRUE. ,RC=STATUS) !Udate cloud fraction after micro using top hat approx
+    
+    call MAPL_GetResource(MAPL, RHC_OPTION,  'RHC_OPTION:',   DEFAULT= 2 , __RC__) !0- SLingo (1980) 1- Quaas (2012) 2- Wang (2025)
+    
+    call MAPL_GetResource(MAPL, MAKE_SNOW_ICE,  'MAKE_SNOW_ICE:',   DEFAULT= .FALSE.,    __RC__) !treat snow radiatively as ice
+    call MAPL_GetResource(MAPL, PRECIPRAD,     'PRECIPRAD:',    DEFAULT= 1.,  __RC__) !0 disables rad effect of precip
+    
+    call MAPL_GetResource(MAPL, USE_AREA,     'USE_AREA:',    DEFAULT= 1.,  __RC__) !set to zero for SCM 
+    
+    call MAPL_GetResource(MAPL, RRTMG_IRRAD ,  'USE_RRTMG_IRRAD:',DEFAULT=1.0,     __RC__)
+    call MAPL_GetResource(MAPL, RRTMG_SORAD ,  'USE_RRTMG_SORAD:',DEFAULT=1.0,     __RC__)   
+    
+    
+    !====================== Cloud Fraction Geometric correction options =====================================
+    
+     call MAPL_GetResource(MAPL, USE_CF_GEOM_CORR, 'USE_CF_GEOM_CORR:', DEFAULT=    .TRUE. , RC=STATUS); VERIFY_(STATUS)
+
+    call MAPL_GetResource(MAPL, ST_OPTION, 'ST_OPTION:', DEFAULT= 0 ,RC=STATUS) !0 uses LTS, 1 uses EIS for CF geometric correction
+   
+    if (ST_OPTION .gt. 0) then     
+        call MAPL_GetResource(MAPL, MIN_ST, 'MIN_ST:',      DEFAULT= 7.,   __RC__) !lower LTS for morphology correction. MIN_EIS = MIN_LTS-10         
+    else
+        call MAPL_GetResource(MAPL, MIN_ST, 'MIN_ST:',      DEFAULT= 18.,   __RC__) !lower LTS for morphology correction. MIN_EIS = MIN_LTS-10
+    end if   
+    call MAPL_GetResource(MAPL, DTST, '  DTST:',      DEFAULT= 1.282,   __RC__) !DLTS from minExp to MaxExp
+    call MAPL_GetResource(MAPL, TMAXLL, 'TMAXLL:',         DEFAULT= 248.7,  __RC__) !Liquid clouds min T         
+    call MAPL_GetResource(MAPL, MIN_EXP,  'MIN_EXP:',        DEFAULT= 0.5,  __RC__) !Exponent of the relation CFA=CFV^n
+    call MAPL_GetResource(MAPL, MAX_EXP, 'MAX_EXP:',       DEFAULT= 1.,   __RC__) !Exponent of the relation CFA=CFV^n
+    call MAPL_GetResource(MAPL, RHC_STRAT_SCALE, 'RHC_STRAT_SCALE:',         DEFAULT= 1.0,  __RC__) ! Decrease alpha in high EIS regions    
 
 
-     
-    !2M==tuning and options======
+ 
+    !=====================2M==tuning and options======
     
     
     call MAPL_GetResource(MAPL, UISCALE,        'UISCALE:',        DEFAULT= 1.0,    __RC__) !Scaling factor for sed vel of ice      
@@ -379,35 +431,28 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, Immersion_param,'ImmersionPARAM:', DEFAULT= 6.0,    __RC__) !Immersion param
     call MAPL_GetResource(MAPL, ACC_ENH,        'ACC_ENH:',        DEFAULT= 1.0,    __RC__) !accretion rain-liquid scaling for MG2
     call MAPL_GetResource(MAPL, ACC_ENH_ICE,    'ACC_ENH_ICE:',    DEFAULT= 0.3287,    __RC__) !accretion snow-ice scaling for MG2
+    
     call MAPL_GetResource(MAPL, FDROP_DUST,     'FDROP_DUST:',     DEFAULT= 0.5,    __RC__) !Fraction of dust within droplets for immersion freezing
     call MAPL_GetResource(MAPL, FDROP_SOOT,     'FDROP_SOOT:',     DEFAULT= 0.05,   __RC__) !Fraction of soot within droplets for immersion freezing        
     call MAPL_GetResource(MAPL, MINCDNC,        'MINCDNC:',        DEFAULT= 25.0,    __RC__) !min nucleated droplet conc. cm-3
     call MAPL_GetResource(MAPL, MTIME,          'MTIME:',          DEFAULT= -1.0,   __RC__) !Mixing time scale for aerosol within the cloud. Default is time step
     call MAPL_GetResource(MAPL, LCCIRRUS,       'LCCIRRUS:',       DEFAULT= 500.0,  __RC__) !Characteristic Length (m) of high freq gravity waves    
     call MAPL_GetResource(MAPL, QCVAR_CST,     'QCVAR_CST:',    DEFAULT= -1.,  __RC__) !with of P(QL). Set to -1 to use Xie 2012 correlation.
-    call MAPL_GetResource(MAPL, PRECIPRAD,     'PRECIPRAD:',    DEFAULT= 1.,  __RC__) !0 disables rad effect of precip
-    call MAPL_GetResource(MAPL, USE_AREA,     'USE_AREA:',    DEFAULT= 1.,  __RC__) !set to zero for SCM 
-    
-    call MAPL_GetResource(MAPL, DROPSZCNV, 'DROPSZCNV:', DEFAULT= 27.6e-6 ,RC=STATUS) !drop vol radius in cnv
-    call MAPL_GetResource(MAPL, ICESZCNV_SC, 'ICESZCNV_SC:', DEFAULT= 1.248 ,RC=STATUS) !scaling ice eff radius in cnv
-    call MAPL_GetResource(MAPL, MAX_CNVNDROP, 'MAX_CNVNDROP:', DEFAULT= 5000.e6 ,RC=STATUS) !Sanity check
-    call MAPL_GetResource(MAPL, MAX_CNVNICE, 'MAX_CNVNICE:', DEFAULT= 5.e6 ,RC=STATUS) !sanity check
 
-    
-    !============
-
+  
     call MAPL_GetResource(MAPL, DUST_INFAC,     'DUST_INFAC:',     DEFAULT= 1.0,    __RC__) !scalings for the INP concentrations for dep mode
     call MAPL_GetResource(MAPL, BC_INFAC,       'BC_INFAC:',       DEFAULT= 0.1,    __RC__)
     call MAPL_GetResource(MAPL, ORG_INFAC,      'ORG_INFAC:',      DEFAULT= 1.0,    __RC__)
     call MAPL_GetResource(MAPL, SS_INFAC,       'SS_INFAC:',       DEFAULT= 1.0,    __RC__)    
     call MAPL_GetResource(MAPL, DT_MICRO,       'DT_MICRO:',       DEFAULT= 300.0,  __RC__)  ! time step of the microphysics substepping (s) (MG2) (5 min)
     call MAPL_GetResource(MAPL, URSCALE,       'URSCALE:',        DEFAULT= 1.0,    __RC__)  !Scaling factor for sed vel of rain    
-    call MAPL_GetResource(MAPL, RRTMG_IRRAD ,  'USE_RRTMG_IRRAD:',DEFAULT=1.0,     __RC__)
-    call MAPL_GetResource(MAPL, RRTMG_SORAD ,  'USE_RRTMG_SORAD:',DEFAULT=1.0,     __RC__)      
-    !call MAPL_GetResource(MAPL, CNV_GSC,   'CNV_GSC:', DEFAULT= 1.0e-4 ,RC=STATUS) !linear scaling for NCPL of conv detrainment 
-    !call MAPL_GetResource(MAPL, CNV_BSC,   'CNV_BSC:', DEFAULT= 0.1, RC=STATUS) !scaling for N=B*Nad for conv detrainment     
-    call MAPL_GetResource(MAPL, DCS,      'DCS:'    , DEFAULT=3.657e-04, __RC__ ) !ice/snow separation diameter   
+    call MAPL_GetResource(MAPL, DCS,      'DCS:'    , DEFAULT=2.657e-04, __RC__ ) !ice/snow separation diameter   
+  
     Dcsr8 = DCS
+    FDROPDUST=FDROP_DUST
+    FDROPSOOT=FDROP_SOOT
+    FHETSOOT=BC_INFAC
+    FHETDUST=DUST_INFAC
     
     call MAPL_GetResource(MAPL, WBFFACTOR,   'WBFFACTOR:', DEFAULT= 0.78 ,__RC__) !scaling for the Bergeron-Findeinsen process rate    
     
@@ -418,31 +463,52 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, MUI_CST,  'MUI_CST:', DEFAULT= -1. ,__RC__) !value of the dispersion exponent in ice size dist.
     call MAPL_GetResource(MAPL, SED_STEP_SC,  'SED_STEP_SC:', DEFAULT= 1. ,__RC__) !scales the number of sedimentation substeps
     
-    call MAPL_GetResource(MAPL, WSUB_OPTION,  'WSUB_OPTION:',   DEFAULT= 1 , __RC__) !0- param 1- Use Wsub climatology 2-Wnet
-    call MAPL_GetResource(MAPL, USE_NCLOUD_CLIM,  'USE_NCLOUD_CLIM:',   DEFAULT= .FALSE.,    __RC__) !0- param 1- Use Wsub climatology 2-Wnet
-    call MAPL_GetResource(MAPL, SECOND_HYSTPDF, 'SECOND_HYSTPDF:', DEFAULT= .FALSE. ,RC=STATUS) !TRUE to call hyspdf after the microphysics
-    call MAPL_GetResource(MAPL, ITER_METHOD, 'ITER_METHOD:', DEFAULT= 1 ,RC=STATUS) !iteration method in hystpdf 1-Fixed point 2-Bisection
-    call MAPL_GetResource(MAPL, DO_UPD_CLD, 'DO_UPD_CLD:', DEFAULT= .TRUE. ,RC=STATUS) !Udate cloud fraction after micro using top hat approx
-    
-    call MAPL_GetResource(MAPL, MAKE_SNOW_ICE,  'MAKE_SNOW_ICE:',   DEFAULT= .FALSE.,    __RC__) !treat snow radiatively as ice
-    
-
-    call MAPL_GetResource(MAPL, ST_OPTION, 'ST_OPTION:', DEFAULT= 0 ,RC=STATUS) !0 uses LTS, 1 uses EIS for CF geometric correction
+    call MAPL_GetResource(MAPL, WSUB_OPTION,  'WSUB_OPTION:',   DEFAULT= 3 , __RC__) !0- param 1- Use Wsub climatology 2-Wnet 3- Symbolic Wnet 
+  
+    call MAPL_GetResource(MAPL, DEBUG_MAMnet, 'DEBUG_MAMnet:', DEFAULT= .FALSE. , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, DEBUG_MAMnet_I, 'DEBUG_MAMnet_I:', DEFAULT= 1 , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, DEBUG_MAMnet_J, 'DEBUG_MAMnet_J:', DEFAULT= 1 , RC=STATUS); VERIFY_(STATUS)
    
-    if (ST_OPTION .gt. 0) then     
-        call MAPL_GetResource(MAPL, MIN_ST, 'MIN_ST:',      DEFAULT= 7.,   __RC__) !lower LTS for morphology correction. MIN_EIS = MIN_LTS-10         
-    else
-        call MAPL_GetResource(MAPL, MIN_ST, 'MIN_ST:',      DEFAULT= 18.,   __RC__) !lower LTS for morphology correction. MIN_EIS = MIN_LTS-10
-    end if   
-      
-         
-    call MAPL_GetResource(MAPL, DTST, '  DTST:',      DEFAULT= 1.282,   __RC__) !DLTS from minExp to MaxExp
-    call MAPL_GetResource(MAPL, TMAXLL, 'TMAXLL:',         DEFAULT= 248.7,  __RC__) !Liquid clouds min T         
-    call MAPL_GetResource(MAPL, MIN_EXP,  'MIN_EXP:',        DEFAULT= 0.3864,  __RC__) !Exponent of the relation CFA=CFV^n
-    call MAPL_GetResource(MAPL, MAX_EXP, 'MAX_EXP:',       DEFAULT= 1.545,   __RC__) !Exponent of the relation CFA=CFV^n
-    call MAPL_GetResource(MAPL, RHC_STRAT_SCALE, 'RHC_STRAT_SCALE:',         DEFAULT= 0.8139,  __RC__) ! Decrease alpha in high EIS regions    
+   !================================================ GF2M options/tuning nobs =================================
+   
+    
+    call MAPL_GetResource(MAPL, USE_CUP_2M_MOISTURE, 'USE_CUP_2M_MOISTURE:', DEFAULT= .TRUE. , RC=STATUS); VERIFY_(STATUS) !activates 
+    call MAPL_GetResource(MAPL, DEBUG_GF2M, 'DEBUG_GF2M:', DEFAULT=    .FALSE. , RC=STATUS); VERIFY_(STATUS)
 
+    
+    call MAPL_GetResource(MAPL, DROPSZCNV, 'DROPSZCNV:', DEFAULT= 27.6e-6 ,RC=STATUS) !drop vol radius in cnv !only active if not USE_CUP_2M
+    call MAPL_GetResource(MAPL, ICESZCNV_SC, 'ICESZCNV_SC:', DEFAULT= 1.248 ,RC=STATUS) !scaling ice eff radius in cnv !only active if not USE_CUP_2M
+  
+    call MAPL_GetResource(MAPL, ICE_AUTO_TSC_CNV, 'ICE_AUTO_TSC_CNV:', DEFAULT=TS_AUTO_ICE  ,RC=STATUS) !cnv ice autoconversion time scale
+    call MAPL_GetResource(MAPL, DCS_CNV, 'DCS_CNV:', DEFAULT= DCS ,RC=STATUS) ! CNV ice/snow critical diameter
+    
+    call MAPL_GetResource(MAPL, ACC_ENH_CNV,        'ACC_ENH_CNV:',        DEFAULT= 1.,    __RC__) !accretion rain-liquid efficiency for convective clouds
+    call MAPL_GetResource(MAPL, AUT_SCALE_CNV,      'AUT_SCALE_CNV:',      DEFAULT= 1.,    __RC__) !scale factor for liquid autoconversion
+ 
+ 
+    call MAPL_GetResource(MAPL, MAX_CNVNDROP, 'MAX_CNVNDROP:', DEFAULT= 5000.e6 ,RC=STATUS) !Sanity check
+    call MAPL_GetResource(MAPL, MAX_CNVNICE, 'MAX_CNVNICE:', DEFAULT= 5.e6 ,RC=STATUS) !sanity check
+    
+    
+    call MAPL_GetResource(MAPL,  GF2M_USE_CORRECTOR,      'GF2M_USE_CORRECTOR:',      DEFAULT= .TRUE.,    __RC__) ! Activates predictor/corrector in GF_2M
 
+    call MAPL_GetResource(MAPL,  GF2M_W_OPTION,           'GF2M_W_OPTION:',           DEFAULT= 1,         __RC__) ! 1=internal 2M W; 2=parent legacy W; 3=max(internal,parent)
+
+    call MAPL_GetResource(MAPL,  GF2M_PLIQ_EFF_OPTION,    'GF2M_PLIQ_EFF_OPTION:',    DEFAULT= 1,         __RC__) ! 0=legacy temperature/liquid phase; 1=use 2M phase for retained-cloud thermodynamics
+
+    call MAPL_GetResource(MAPL,  GF2M_DET_SCALE,          'GF2M_DET_SCALE:',          DEFAULT= 1.0,       __RC__) ! Scales explicit mass-detrainment part of the 2M split operator in mode 6
+
+    call MAPL_GetResource(MAPL,  GF2M_C1D_SCALE,          'GF2M_C1D_SCALE:',          DEFAULT= 1.0,       __RC__) ! Scales c1d part of the 2M split operator in mode 6
+
+    call MAPL_GetResource(MAPL,  GF2M_TOP_DET_SCALE,      'GF2M_TOP_DET_SCALE:',      DEFAULT= 1.0,       __RC__) ! Scales cloud-top explicit detrainment part of the 2M split operator in mode 6 
+    
+    call MAPL_GetResource(MAPL,  BKG_INP_SC_CNV,      'BKG_INP_SC_CNV:',      DEFAULT= 0.01,       __RC__) ! Scales background INP source
+   
+   
+    !==============================================================
+ 
+    mui_cnstr8 = MUI_CST
+    
     if  (MGVERSION .gt. 1) then
         do_graupel = .false.
         if (MGVERSION .gt. 2) do_graupel = .true.
@@ -455,26 +521,22 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
       call WRITE_PARALLEL ('Using Wsub param***************') 
     elseif(WSUB_OPTION .eq. 1)  then  
       call WRITE_PARALLEL ('Using Wclim***************')
-    else  
+    elseif(WSUB_OPTION .eq. 2) then
       use_wnet =  .TRUE.
       call WRITE_PARALLEL ('Using Wnet***************') 
+    elseif(WSUB_OPTION .eq. 3) then     
+   	 call WRITE_PARALLEL ('Using symbolic Wnet***************')
+    else
+     call WRITE_PARALLEL ('Unsupported Wnet option')
     end if 
     
     call aer_cloud_init(use_wnet)
 
     call WRITE_PARALLEL ("INITIALIZED MGB2_2M microphysics in non-generic GC INIT")
 
-                                 CCW_EVAP_EFF = 4.e-3
-    call MAPL_GetResource( MAPL, CCW_EVAP_EFF, 'CCW_EVAP_EFF:', DEFAULT= CCW_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
-
-                                 CCI_EVAP_EFF = 4.e-3
-    call MAPL_GetResource( MAPL, CCI_EVAP_EFF, 'CCI_EVAP_EFF:', DEFAULT= CCI_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
-
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    1.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, DBZ_LIQUID_SKIN , 'DBZ_LIQUID_SKIN:' , DEFAULT= 0     , RC=STATUS); VERIFY_(STATUS)
-
+    if (USE_CUP_2M_MOISTURE) call WRITE_PARALLEL ('************ USE_CUP_2M_MOISTURE = TRUE') 
+    
+    
 end subroutine MGB2_2M_Initialize
 
 subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
@@ -554,7 +616,9 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
        SNOWMELT_LS, DNCNUC, DNCSUBL, DNCHMSPLIT, DNCAUTICE, DNCACRIS, DNDCCN, &
        DNDACRLS, DNDACRLR, DNDEVAPC, DNDAUTLIQ, DNDCNV, DNICNV, &
         DNHET_IMM, CNV_MFD, KAPPA, RHCmicro, RHLIQ, &
-       CNV_NICE, CNV_NDROP, NWFA, CNV_FICE 
+        CNV_NICE, CNV_NDROP, NWFA, &
+        DQLDT_DC_PTR, DQIDT_DC_PTR, MFD_SC_PTR
+
         
      real, pointer, dimension(:,:)   :: EIS, LTS, QCVAR, &
        CCNCOLUMN, NDCOLUMN, NCCOLUMN
@@ -563,7 +627,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
     
     real, allocatable, dimension(:,:,:) :: CFX, &
        ACIL_LS_X, ACIL_AN_X, ACLL_LS_X, ACLL_AN_X, DLPDF_X, DIPDF_X, DLFIX_X, DIFIX_X, &
-       AUT_X, SDM_X, FRZ_TT_X, FRZ_PP_X,  AIRDEN, TH1 !check how much of these we are actually using
+       AUT_X, SDM_X, FRZ_TT_X, FRZ_PP_X,  AIRDEN, TH1, CNVFICE !check how much of these we are actually using
     
     integer, allocatable, dimension(:, :)   ::   KLCL
     real, allocatable, dimension(:, :)  ::  EIS_LTS, CLDREFFI_TOP_X, CLDREFFL_TOP_X,  NCPL_TOP_X, NCPI_TOP_X, NCPL_CLDBASEX, uwind_gw
@@ -627,8 +691,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
       
       integer,  parameter :: ncolmicro = 1
       
-      logical :: nccons,nicons, ngcons
-      
+      logical :: nccons,nicons, ngcons 
  
     call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS ) 
     VERIFY_(STATUS)
@@ -840,6 +903,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
     allocate(TH1(IM,JM,LM ), __STAT__)
     allocate(PK(IM,JM,LM ), __STAT__)
     allocate(CFX(IM,JM,LM), __STAT__)
+    allocate(CNVFICE(IM,JM,LM), __STAT__)
     allocate(AIRDEN(IM,JM,LM), __STAT__)
 
     allocate(ACIL_AN_X(IM,JM,LM ), __STAT__)
@@ -922,7 +986,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
         call MAPL_GetPointer(IMPORT, TKE,    'TKE'       , __RC__)
      ELSEIF (WSUB_OPTION .eq. 1) then 
      	call MAPL_GetPointer(IMPORT, WSUB_CLIM,  'WSUB_CLIM'     , __RC__)
-     ELSE
+     ELSEIF (WSUB_OPTION .eq. 2) then 
         call MAPL_GetPointer(IMPORT, RI, 'RI'  ,  __RC__)
         call MAPL_GetPointer(IMPORT, KMN, 'KM' ,  __RC__)     
     END IF 
@@ -995,10 +1059,11 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, DNDACRLR,    'DNDACRLR'    , ALLOC=.TRUE., __RC__)
     call MAPL_GetPointer(EXPORT, DNDEVAPC,    'DNDEVAPC'    , ALLOC=.TRUE., __RC__)
     call MAPL_GetPointer(EXPORT, DNDAUTLIQ,   'DNDAUTLIQ'   , ALLOC=.TRUE., __RC__)
-    call MAPL_GetPointer(EXPORT, DNDCNV,      'DNDCNV'      , ALLOC=.TRUE., __RC__)
-    call MAPL_GetPointer(EXPORT, DNICNV,      'DNICNV'      , ALLOC=.TRUE., __RC__)    
     call MAPL_GetPointer(EXPORT, DNHET_IMM,   'DNHET_IMM'     , ALLOC=.TRUE., __RC__)
     call MAPL_GetPointer(EXPORT, KAPPA,   'KAPPA'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DNDCNV,      'DNDCNV'      ,  __RC__)
+    call MAPL_GetPointer(EXPORT, DNICNV,      'DNICNV'      ,  __RC__)    
+
 
   ! This export MUST have been filled in the GridComp
     call MAPL_GetPointer(EXPORT, CNV_FRC,      'CNV_FRC'      , RC=STATUS); VERIFY_(STATUS)
@@ -1143,39 +1208,35 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
         elseif(WSUB_OPTION .eq. 1) then   !WSUB climatology 
 
           WSUB  =  WSUB_CLIM   
-          DO J=1, JM
-            DO I = 1, IM 
-               xscale = log10(AREA(I, J)) 
-               xscale = 0.089*xscale*xscale - 1.1812*xscale + 4.2627 ! scale for resolutions =! 50 km for WSUB_OPTION >= 1                   
-               xscale  =  min(max(xscale, 0.1), 1.6)
-               WSUB(I, J, :)  = WSUB_CLIM(I, J, :)*xscale 
-           END DO
-          END DO 
-          SIGW_TURB = WSUB                    
           
         
-        
-        else !Use Wnet
+        elseif (WSUB_OPTION .eq. 2) then !Use Wnet
         !print *, '=================================='
          	RAD_QL = QLLS + QLCN
             RAD_QI = QILS + QICN
             call Wneuralnet(WSUB, T, AIRDEN, U, V, W, KMN, RI, Q, RAD_QI, RAD_QL , IM, JM, LM)    
-         !   print * ,  '====1=====' , WSUB         
+        
+       elseif(WSUB_OPTION .eq. 3) then !Use Wnet_sym
+                 
+         call  Wnet_sym(WSUB, T, PLmb, ZL0, AIRDEN, U, V, Q, MASS,  KPBL_SC)   
+
+       end if      
+       
+        IF (WSUB_OPTION .gt. 0) then !scale it for resolutipns other than 0.5 degrees 
             DO J=1, JM
                 DO I = 1, IM 
                    xscale = log10(AREA(I, J)) 
                    xscale = 0.089*xscale*xscale - 1.1812*xscale + 4.2627 ! scale for resolutions =! 50 km for WSUB_OPTION >= 1                   
-                   xscale  =  min(max(xscale, 0.1), 1.6)
+                   xscale  =  min(max(xscale, 0.1), 1.2)
                    WSUB(I, J, :)  = WSUB(I, J, :)*xscale 
                END DO
-              END DO               
-           
-          !   print *,  '====2=====' , WSUB
-           
-            SIGW_TURB = WSUB 
-
-        end if      
-       
+              END DO 
+         	SIGW_TURB = WSUB  
+         
+         END IF  
+              
+          
+          
         call MAPL_TimerOff(MAPL,"---WSUB", __RC__)
                           
    ! ==========================================================================================    
@@ -1183,7 +1244,51 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
 
       
        call MAPL_TimerOn(MAPL,"---ACTIV") !Activation timer
+        ! These diagnostics are only overwritten on active levels below.
+        ! Reset the full fields so edge levels and optional outputs are
+        ! deterministic for every layout.
         SC_ICE  =  1.0
+        CDNC_NUC = 0.0
+        INC_NUC = 0.0
+        PFRZ = 0.0
+        SMAX_LIQ = 0.0
+        SMAX_ICE = 0.0
+        CCN01 = 0.0
+        CCN02 = 0.0
+        CCN1 = 0.0
+        NHET_NUC = 0.0
+        NLIM_NUC = 0.0
+        SO4 = 0.0
+        ORG = 0.0
+        BCARBON = 0.0
+        DUST = 0.0
+        SEASALT = 0.0
+        NHET_IMM = 0.0
+        NHET_DEP = 0.0
+        DUST_IMM = 0.0
+        DUST_DEP = 0.0
+        DNHET_IMM = 0.0
+        BERG = 0.0
+        BERGS = 0.0
+        MELT = 0.0
+        DNHET_CT = 0.0
+        QCRES = 0.0
+        QIRES = 0.0
+        AUTICE = 0.0
+        FRZPP_LS = 0.0
+        SNOWMELT_LS = 0.0
+        DNCNUC = 0.0
+        DNCSUBL = 0.0
+        DNCHMSPLIT = 0.0
+        DNCAUTICE = 0.0
+        DNCACRIS = 0.0
+        DNDCCN = 0.0
+        DNDACRLS = 0.0
+        DNDACRLR = 0.0
+        DNDEVAPC = 0.0
+        DNDAUTLIQ = 0.0
+        !DNDCNV = 0.0
+        !DNICNV = 0.0
         
         
         
@@ -1231,6 +1336,23 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
                        forg_tmp(n)  = AeroPropsNew(n)%forg(I,J,K)
                   enddo  
 
+              if (DEBUG_MAMnet .and. I .eq. DEBUG_MAMnet_I .and. J .eq. DEBUG_MAMnet_J) then
+                            
+                 if (K >  LM-5) then 
+
+    
+                    write(*,'(A,3(I5,A),4(1X,ES13.5))') &
+                         'DEBUG_MAMnet before aerosol_activate: I=', I, ' J=', J, ' K=', K, &
+                         ' T_K P WSUB_m_s W_m_s=', T(I,J,K), PLmb(I,J,K), WSUB(I,J,K), W(I,J,K)
+                    write(*,'(A)') 'DEBUG_MAMnet mode diagnostics: mode number_cm-3 kappa size_microns'
+                    do n=1,nmodes
+                       write(*,'(A,I5,3(1X,ES13.5))') 'DEBUG_MAMnet mode=', n, &
+                            num_tmp(n)*1.0e-6, kap_tmp(n), dpg_tmp(n)*1.0e6
+                    enddo
+                 end if 
+             endif
+             
+             
              !!Subroutine aerosol_activate contains the CCN activation and ice nucleation parameterizations. Lives in aer_cloud.F90.
                  
   
@@ -1273,121 +1395,73 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
  !===============================================================================================================
  
  
- !====== Add convective detrainment of number concentration
-      
-        ! CNV_MFD includes Deep+Shallow mass flux
+        
+         
+!==========================================================================================================
+!===================================Convective detrainment of number concentration ========================
+!==========================================================================================================
+
+
+
+    call MAPL_GetPointer(EXPORT, DQLDT_DC_PTR, 'DQLDT_DC', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQIDT_DC_PTR, 'DQIDT_DC', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, MFD_SC_PTR, 'MFD_SC', RC=STATUS); VERIFY_(STATUS)
+
+    CNVFICE = ice_fraction(T, CNV_FRC, SRF_TYPE)
+    CNVFICE = min(max(CNVFICE, 0.0), 1.0)
+
+    call make_cnv_detrain_number_tendencies(                         &
+         DNDCNV, DNICNV,                                             &
+         USE_CUP_2M_MOISTURE,                                        &
+         DQLDT_DC_PTR, DQIDT_DC_PTR, MFD_SC_PTR,                     &
+         CNVFICE,                                                    &
+         CDNC_NUC, KPBL_SC, iMASS, ZL0,                              &
+         QNcnvfac, DROPSZCNV, ICESZCNV_SC,                           &
+         min_RI, max_RI )
+             
+ 
+      ! CNV_MFD includes Deep+Shallow mass flux
       call MAPL_GetPointer(EXPORT, CNV_MFD, 'CNV_MFD', RC=STATUS); VERIFY_(STATUS)
+  
+  
       call MAPL_GetPointer(EXPORT, CNV_NICE,  'CNV_NICE', ALLOC=.TRUE.,  RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, CNV_NDROP, 'CNV_NDROP', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, CNV_FICE,   'CNV_FICE', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
          
-      CNV_NDROP  =  0.
-      CNV_NICE =  0.
-      CNV_FICE =  0.
-       
- 
-    
-      
-      DO I=  1, IM
-       DO J =  1, JM 
-          Do K  =  1, LM 
-           
-             aux1 = ZL0(I, J, K)/1000. 
-             aux2 = 3.2e-4*exp(0.0391*T(I, J, K)) !correction for dispersion. DErived from Heymsphield 2002
-             aux3 = (0.3667*aux1*aux1 - 12.014*aux1 + 113.86)*1.e-6*ICESZCNV_SC !estimated effective radius from VanDiedenHover 2016
-             
-             aux3 = min(max(aux3, min_RI), max_RI)
-             !CFX(I, J, K) = 2.21e3*aux3*aux3*aux3/aux2 
-             CFX(I, J, K) = aux3*aux3*aux3
-              
-                
-      !          call   make_cnv_ice_drop_number(CNV_NDROP(I, J, K), CNV_NICE(I, J, K), NHET_IMM(I, J, K),  \
-       !                          aux3, ZL0(I, J, K), aux2, T(I, J, K), CNV_FICE(I, J, K), CNV_GSC, CNV_BSC)
+         !test for limits in detrained number 
+  
+       if (associated(CNV_MFD)) then 
+             where (CNV_MFD .gt. 0.) 
+                CNV_NDROP =  DNDCNV*MASS/CNV_MFD
+                CNV_NICE =   DNICNV*MASS/CNV_MFD
+             end where 
 
-               end do
-              end do
-            end do   
-      
-      
-      DNDCNV =  0.
-      DNICNV =  0.
-      
-      !deep convection
-      call MAPL_GetPointer(EXPORT, PTR3D, 'DQLDT_DC'   , RC=STATUS); VERIFY_(STATUS)      
-      if (associated(PTR3D)) DNDCNV = DNDCNV + max(AIRDEN*PTR3D*QNcnvfac/(DROPSZCNV*DROPSZCNV*DROPSZCNV), 0.0)
 
-      
-      call MAPL_GetPointer(EXPORT, PTR3D, 'DQIDT_DC'   , RC=STATUS); VERIFY_(STATUS)      
-      if (associated(PTR3D)) DNICNV = DNICNV + MAX(AIRDEN*PTR3D*QNcnvfac/CFX, 0.0)
-      
-      !shallow convection
-      call MAPL_GetPointer(EXPORT, PTR3D, 'DQLDT_SC'   , RC=STATUS); VERIFY_(STATUS)      
-      if (associated(PTR3D)) DNDCNV = DNDCNV + MAX(AIRDEN*PTR3D*QNcnvfac/(DROPSZCNV*DROPSZCNV*DROPSZCNV), 0.0)
-      call MAPL_GetPointer(IMPORT, PTR3D, 'DQLDTTRB'   , RC=STATUS); VERIFY_(STATUS)      
-      if (associated(PTR3D)) DNDCNV = DNDCNV + MAX(AIRDEN*PTR3D*QNcnvfac/(DROPSZCNV*DROPSZCNV*DROPSZCNV), 0.0)
-      
-      call MAPL_GetPointer(EXPORT, PTR3D, 'DQIDT_SC'   , RC=STATUS); VERIFY_(STATUS)      
-      if (associated(PTR3D)) DNICNV = DNICNV + MAX(AIRDEN*PTR3D*QNcnvfac/CFX, 0.0)
-      call MAPL_GetPointer(IMPORT, PTR3D, 'DQIDTTRB'   , RC=STATUS); VERIFY_(STATUS)      
-      if (associated(PTR3D)) DNICNV = DNICNV + MAX(AIRDEN*PTR3D*QNcnvfac/CFX, 0.0)
-      
-      
-       
-      if (associated(CNV_MFD)) then !test for limits in detrained number 
-         where (CNV_MFD .gt. 0.) 
-            CNV_NDROP =  DNDCNV*MASS/CNV_MFD
-            CNV_NICE =   DNICNV*MASS/CNV_MFD
-            CNV_FICE =  min(1.0, DNICNV/(DNICNV + DNDCNV + 1.e-12))
-         end where 
-      
-      
-          where  (CNV_NDROP .gt. MAX_CNVNDROP)
-           CNV_NDROP  = MAX_CNVNDROP  
-           DNDCNV =  MAX_CNVNDROP*CNV_MFD/MASS 
-          end where 
+              where  (CNV_NDROP .gt. MAX_CNVNDROP)
+               CNV_NDROP  = MAX_CNVNDROP  
+               DNDCNV =  MAX_CNVNDROP*CNV_MFD/MASS 
+              end where 
 
-          where  (CNV_NICE .gt. MAX_CNVNICE) 
-           DNICNV =  MAX_CNVNICE*CNV_MFD/MASS 
-           CNV_NICE  = MAX_CNVNICE
-          end where 
+              where  (CNV_NICE .gt. MAX_CNVNICE) 
+               DNICNV =  MAX_CNVNICE*CNV_MFD/MASS 
+               CNV_NICE  = MAX_CNVNICE
+              end where 
 
-      end if 
+             where (CNV_MFD .gt. tiny(1.0))
+               CNV_NDROP = DNDCNV*MASS/CNV_MFD
+               CNV_NICE  = DNICNV*MASS/CNV_MFD
+		     end where
         
-      !update Number concentrations   
-      NCPL = NCPL + DNDCNV*DT_MOIST
-      NCPI = NCPI + DNICNV*DT_MOIST
-      
-      
-      
-      
-      !CNV_FICE = ice_fraction( T, CNV_FRC, SRF_TYPE )
-      
-      ! 
-         
-      !    DO I=  1, IM
-      !        DO J =  1, JM 
-      !         kbmin =  max(min(NINT(KPBL_SC(I,J)), LM-1), NINT(0.8*LM))
-      !         aux2= ZL0(I, J, kbmin ) !assume cldbase as PBLheight
-      !         aux3  =  CDNC_NUC(I, J, kbmin)
-               !aux3 =  NWFA(I, J, LM-1)
-      !         Do K  =  1, LM       
-      !          call   make_cnv_ice_drop_number(CNV_NDROP(I, J, K), CNV_NICE(I, J, K), NHET_IMM(I, J, K),  \
-       !                          aux3, ZL0(I, J, K), aux2, T(I, J, K), CNV_FICE(I, J, K), CNV_GSC, CNV_BSC)
-
-        !       end do
-        !      end do
-        !     end do                            
-
           
-          !print *, 'DNDCNV', DNDCNV
-          !#print *, 'DNICNV', DNICNV
-         !#rint *, 'CNV_MFD', CNV_MFD
-
-             
-         
-    !  NACTL =  50.0e6
-    !  NACTI = 1.e6
+          end if
+          
  
+      !update Number concentrations   
+     if (associated(DNDCNV))  NCPL = NCPL + DNDCNV*DT_MOIST
+     if (associated(DNICNV))  NCPI = NCPI + DNICNV*DT_MOIST
+
+
+
+       
          
     !==========================================================================================================
     !===================================Cloud Macrophysics ====================================================
@@ -1501,7 +1575,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
             AUX1  = MAX(PLmb(I, J, NAUX), TURNRHCRIT)
             
             call pdf_alpha(PLmb(I, J, L),PLmb(I, J, LM), T(I, J, L), ALPHA, FRLAND(I, J),  &
-                              MINRHCRIT, AUX1, TURNRHCRIT_UP, EIS_LTS(I, J), MIN_ST, DTST, RHC_STRAT_SCALE, TMAXLL,  0) !0 uses old Slingo formulation 
+                              MINRHCRIT, AUX1, TURNRHCRIT_UP, EIS_LTS(I, J), MIN_ST, DTST, RHC_STRAT_SCALE, TMAXLL,  RHC_OPTION) !0 uses old Slingo formulation 
      		                       
             
             !include area scaling
@@ -1513,7 +1587,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
             RHCRIT(I, J, L) =  1.0 - ALPHA
             
            
-            call hystpdf( &
+            call hystpdf_2M( &
                       DT_MOIST       , &
                       ALPHA          , &
                       PDFSHAPE       , &
@@ -1561,10 +1635,9 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
 #endif
                       WTHV2(I,J,L)   , &
                       WQL(I,J,L)     , &
-                      .false.        , & 
-                      .true., &
-                      SC_ICE(I, J, L), &
-                      ITER_METHOD=ITER_METHOD)
+                      .true.        , & 
+                      WBF_partition, &
+                      SC_ICE(I, J, L))
                       
          	DLPDF_X(I, J, L)=((QLLS(I, J, L)+QLCN(I, J, L)) - DLPDF_X(I, J, L))/DT_MOIST
          	DIPDF_X(I, J, L)=((QILS(I, J, L)+QICN(I, J, L)) - DIPDF_X(I, J, L))/DT_MOIST
@@ -1581,7 +1654,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
     
       call MAPL_TimerOff(MAPL,"----hystpdf")
       
-      !IF (.FALSE.) then 
+      IF (DO_EVAP_SUBL) then 
          do I=1,IM
           do J=1,JM
            do L=1,LM
@@ -1625,7 +1698,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
          end do ! JM loop
        end do ! LM loop
 
-      !end if 
+      end if 
 
   	 call fix_up_clouds_2M( &
          Q, &
@@ -1840,10 +1913,15 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
         
     do I=1,IM
 	    do J=1,JM       
-               kbmin =1                          
-               rndstr8 = 2.0e-7
-               naconr8   = 0.
-               cldfr8(1,1:LM)  = RAD_CF(I,J,1:LM) !Assume minimum overlap 
+	               kbmin =1
+	               rndstr8 = 2.0e-7
+	               naconr8   = 0.
+	               nsootr8 = 0.0_r8
+	               rnsootr8 = 0.0_r8
+	               nccons = .false.
+	               nicons = .false.
+	               ngcons = .false.
+	               cldfr8(1,1:LM)  = RAD_CF(I,J,1:LM) !Assume minimum overlap
                cldor8          = cldfr8  
                ter8(1,1:LM)       = T(I,J,1:LM)
                qvr8(1,1:LM)       = RAD_QV(I,J,1:LM)
@@ -1852,8 +1930,8 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
                ncr8(1,1:LM)        = MAX(  NCPL(I,J,1:LM), 0.0) 
                nir8(1,1:LM)        = MAX(  NCPI(I,J,1:LM), 0.0) 
                
-               liqcldfr8  =  cldfr8!*(qcr8/(qir8 + qcr8 + 1.e-12)) 
-               icecldfr8  = cldfr8! max(cldfr8- liqcldfr8, 0.)                   
+               liqcldfr8  = cldfr8  !cldfr8*(qcr8/(qir8 + qcr8 + 1.e-12)) 
+               icecldfr8  = cldfr8 !max(cldfr8- liqcldfr8, 0.)                   
   
                ! Nucleation  tendencies 
                naair8(1,1:LM)     = max(( INC_NUC(I, J, 1:LM)*cldfr8(1,1:LM) - nir8(1,1:LM))/DT_MOIST, 0.0) 
@@ -1926,9 +2004,11 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
                         rnsootr8(1, K) = rnsootr8(1, K) + AeroPropsNew(n)%dpg(I, J, K)
                         naux =naux+1
                        END IF
-                      end do 
-                        rnsootr8(1, K) = rnsootr8(1, K) / naux
-                        nsootr8(1, K)  =  nsootr8(1, K) /naux
+	                      end do
+	                      if (naux .gt. 0) then
+	                        rnsootr8(1, K) = rnsootr8(1, K) / naux
+	                        nsootr8(1, K)  =  nsootr8(1, K) /naux
+	                      end if
 
                    END DO
 
@@ -2205,6 +2285,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
 			  do J=1,JM
     			do K= 1, LM
         
+        ! DO_UP_CLD how much does the variance change after microphysics 
               if (DO_UPD_CLD) then   
                   call update_cld( &
                          DT_MOIST                , &
@@ -2228,13 +2309,13 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
                          
                end if           
 
-      ! second call to hystpdf
+      ! second call to hystpdf with updated variance
       
         if (SECOND_HYSTPDF) then   
            
-            call hystpdf( &
+            call hystpdf_2M( &
                       DT_MOIST       , &
-                      1. - RHCRIT(I, J, K) , &
+                      1. - RHCmicro(I, J, K) , &
                       PDFSHAPE       , &
                       CNV_FRC(I,J)   , &
                       SRF_TYPE(I,J)  , &
@@ -2280,10 +2361,9 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
 #endif
                       WTHV2(I,J,K)   , &
                       WQL(I,J,K)     , &
-                      .false.        , & 
+                      WBF_partition        , & 
                       .true., &
-                      SC_ICE(I, J, K), &
-                      ITER_METHOD)
+                      SC_ICE(I, J, K))
          
            end if 
            
@@ -2294,15 +2374,16 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
         
         RAD_CF = MAX(MIN(CLLS + CLCN, 1.0), 0.)
         
-         do I=1,IM
-			  do J=1,JM
-    			do K= 1, LM
-                    call  cf_geom_correction(RAD_CF(I, J, K), EIS_LTS(I, J), MIN_ST, MIN_EXP, MAX_EXP, T(I, J, K), TMAXLL, CNV_FRC(I, J), DTST) 
-                    
-                  end do
-                end do
-           end do 
-       
+       if (USE_CF_GEOM_CORR) then 
+             do I=1,IM
+			      do J=1,JM
+    			    do K= 1, LM
+                        call  cf_geom_correction(RAD_CF(I, J, K), EIS_LTS(I, J), MIN_ST, MIN_EXP, MAX_EXP, T(I, J, K), TMAXLL, CNV_FRC(I, J), DTST) 
+
+                      end do
+                    end do
+               end do 
+        end if 
        
          CLCN =  RAD_CF * FQA
          CLLS = MAX( RAD_CF - CLCN, 0.)
@@ -2690,10 +2771,10 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
         if (associated(PTR3D)) PTR3D = QGRAUPEL
 
         call MAPL_GetPointer(EXPORT, PTR2D, 'LWP', RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR2D)) PTR2D = SUM( ( QLCN+QLLS+QRAIN ) *MASS , 3 )
+        if (associated(PTR2D)) PTR2D = SUM( ( QLCN+QLLS) *MASS , 3 )
 
         call MAPL_GetPointer(EXPORT, PTR2D, 'IWP', RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR2D)) PTR2D = SUM( ( QICN+QILS+QSNOW+QGRAUPEL ) *MASS , 3 )
+        if (associated(PTR2D)) PTR2D = SUM( ( QICN+QILS) *MASS , 3 )
 
      call MAPL_TimerOff(MAPL,"--MGB2_2M",RC=STATUS)
 
