@@ -47,6 +47,7 @@ type :: BeresSourceDesc
    ! Efficiency TR:ET function
    real, allocatable :: effbck(:)
    logical :: et_bkg_dqcdt_forcing
+   logical :: et_bkg_speed_forcing
 end type BeresSourceDesc
 
 
@@ -57,7 +58,7 @@ contains
 !------------------------------------
 subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength, &
                           spectrum_source, min_hdepth, storm_shift, eff_tr, eff_et, &
-                          tau_et, et_use_dqcdt, tndmax, &
+                          tau_et, et_use_dqcdt, et_use_speed, tndmax, &
                           active, ncol, lats)
 #include <netcdf.inc>
 
@@ -69,7 +70,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
   integer, intent(in) :: pgwv, ncol
   real, intent(in) :: gw_dc, fcrit2, wavelength
   real, intent(in) :: spectrum_source, min_hdepth, eff_tr, eff_et, tau_et, tndmax
-  logical, intent(in) :: storm_shift, active, et_use_dqcdt
+  logical, intent(in) :: storm_shift, active, et_use_dqcdt, et_use_speed
   real, intent(in) :: lats(ncol)
 
   ! Stuff for Beres convective gravity wave source.
@@ -178,24 +179,30 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
     enddo
     cw = cw*(sum(cw4)/sum(cw)) 
     desc%et_bkg_dqcdt_forcing = et_use_dqcdt
+    desc%et_bkg_speed_forcing = et_use_speed
     do i=1,ncol
       ! include forced background stress in extra tropics
       ! Determine the background stress at c=0
-      ! Include dependence on latitude:
-       latdeg = lats(i)*rad2deg
-       if (desc%et_bkg_dqcdt_forcing) then
+       if (desc%et_bkg_dqcdt_forcing .or. desc%et_bkg_speed_forcing) then
           flat_gw = 0.05 ! weak background forcing
+          ! Scale the extratropical stress to account for changes in tropical efficiency
+          ! (e.g., if tau_et=8.0, eff_et=1.0, eff_tr=0.625, tau_et_scaled becomes 12.8)
+          desc%taubck(i,:) = tau_et*(eff_et/eff_tr)*0.001*flat_gw*cw
+         ! efficiency function (now constant based on QBO tuning)
+          desc%effbck(i) = eff_tr
        else
+         ! Include dependence on latitude:
+          latdeg = lats(i)*rad2deg
           if (ABS(latdeg) <  60.) then
             flat_gw =  max(0.15,0.50*exp(-((abs(latdeg)-60.)/23.)**2))
           elseif (ABS(latdeg) >= 60.) then
             flat_gw =           0.50*exp(-((abs(latdeg)-60.)/70.)**2)
           endif
+          desc%taubck(i,:) = tau_et*0.001*flat_gw*cw
+         ! efficiency function
+          desc%effbck(i) = eff_tr*cos(lats(i))**2 + &
+                           eff_et*sin(lats(i))**2
        endif
-       desc%taubck(i,:) = tau_et*0.001*flat_gw*cw
-      ! efficiency function
-       desc%effbck(i) = eff_tr*cos(lats(i))**2 + &
-                        eff_et*sin(lats(i))**2
     enddo
     deallocate( cw, cw4 )
   end if
@@ -205,7 +212,7 @@ end subroutine gw_beres_init
 !------------------------------------
 subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
      netdt, zm, src_level, tend_level, tau, ubm, ubi, xv, yv, &
-     c, hdepth, maxq0, lats, dqcdt)
+     c, hdepth, maxq0, dqcdt, speed)
 !-----------------------------------------------------------------------
 ! Driver for multiple gravity wave drag parameterization.
 !
@@ -239,8 +246,6 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
   real, intent(in) :: netdt(:,:)
   ! Midpoint altitudes.
   real, intent(in) :: zm(ncol,pver)
-  ! latitudes.
-  real, intent(in) :: lats(ncol)
 
   ! Indices of top gravity wave source level and lowest level where wind
   ! tendencies are allowed.
@@ -260,8 +265,9 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
   ! Heating depth [m] and maximum heating in each column.
   real, intent(out) :: hdepth(ncol), maxq0(ncol)
 
-  ! Condensate tendency due to large-scale (kg kg-1 s-1)
+  ! Frontal and Jet proxy inputs
   real, intent(in) :: dqcdt(ncol,pver)  ! Condensate tendency due to large-scale (kg kg-1 s-1)
+  real, intent(in) :: speed(ncol)       ! Katabatic proxy: Max wind speed in lowest 300m stable layer (m s-1)
 
 !---------------------------Local Storage-------------------------------
   ! Column and level indices.
@@ -272,6 +278,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
 
   ! Maximum heating rate.
   real(GW_PRC) :: q0(ncol)
+  real(GW_PRC) :: moist_mult, dry_mult, phys_mult
 
   ! Bottom/top heating range index.
   integer  :: boti(ncol), topi(ncol)
@@ -472,7 +479,36 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
      else
 
         tau(i,:,:) = 0.0
-        if (.not. desc%et_bkg_dqcdt_forcing) then
+        if (desc%et_bkg_dqcdt_forcing .or. desc%et_bkg_speed_forcing) then
+          ! -----------------------------------------------------------------
+          ! Frontal Detection via Combined Physical Proxies
+          ! 1. DQCDT_LS captures the wet, lifting cores of the storm tracks.
+          ! 2. SPEED    captures dry katabatic winds and broad, windy storm flanks.
+          ! -----------------------------------------------------------------
+          ! Proxy 1: The Moist Condensate (Precipitation)
+           if (desc%et_bkg_dqcdt_forcing) then
+               q0(i) = 0.0
+               do k = desc%k(i), 1, -1
+                 if (dqcdt(i,k) > q0(i)) q0(i) = dqcdt(i,k)
+               end do
+               ! Scale moist multiplier (using the optimized * 5.e8 factor)
+               moist_mult = MAX(1.0, MIN(10.0,q0(i) * 5.e8))
+           else
+               moist_mult = 1.0
+           endif
+          ! Proxy 2: The Dry Wind (Katabatic winds)
+           if (desc%et_bkg_speed_forcing) then
+               ! A baseline     5 m/s wind yields a 1.0x multiplier (no extra drag).
+               ! A linear 5 to 25 m/s ramp (1 - 20)x
+               ! A howling    +25 m/s katabatic wind yields 20.0x drag.
+               dry_mult = MAX(1.0, MIN(20.0,1.0 + (speed(i) - 5.0) * (19.0 / 20.0)))
+           else
+               dry_mult = 1.0
+           endif
+           phys_mult = MAX(1.0, moist_mult+dry_mult-1.0)
+           tau(i,:,desc%k(i)+1) = desc%taubck(i,:) * phys_mult
+           topi(i) = desc%k(i)
+        else
           ! use latitudinal dependence
           ! include forced background stress in extra tropical large-scale systems
           ! Set the phase speeds and wave numbers in the direction of the source wind.
@@ -480,21 +516,8 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
           ! stress is the same as (c-u).
            tau(i,:,desc%k(i)+1) = desc%taubck(i,:)
            topi(i) = desc%k(i)
-        else
-          ! Find largest condensate change level, for frontal detection
-          ! Using POSITIVE tendencies which correctly align with precipitation fronts
-           q0(i) = 0.0
-           do k = desc%k(i), 1, -1 ! tend-level to the surface [avoid convective overlap]
-             if (dqcdt(i,k) > q0(i)) then ! Find largest positive DQCDT tendency
-                q0(i) = dqcdt(i,k)
-             endif
-           end do
-          ! include forced background stress in extra tropical large-scale systems
-          ! Using 1.e-8 so that values of 100-1000 (scaled) provide 10x multiplier
-           tau(i,:,desc%k(i)+1) = desc%taubck(i,:) * MIN(10.0,MAX(1.0,q0(i)/1.e-8))
-           topi(i) = desc%k(i)
         endif
-
+ 
      endif
 
   enddo
@@ -520,8 +543,8 @@ subroutine gw_beres_ifc( band, &
    ncol, pver, dt, effgw_dp,  &
    u, v, t, pref, pint, delp, rdelp, piln, &
    zm, zi, nm, ni, rhoi, kvtt,  &
-   netdt,desc,lats, alpha, &
-   utgw,vtgw,ttgw,flx_heat,dqcdt)
+   netdt,desc, alpha, &
+   utgw,vtgw,ttgw,flx_heat,dqcdt,speed)
 
    type(BeresSourceDesc), intent(inout) :: desc
    type(GWBand), intent(in) :: band         ! I hate this variable  ... it just hides information from view
@@ -546,7 +569,6 @@ subroutine gw_beres_ifc( band, &
    real,         intent(in) :: rhoi(ncol,pver+1) ! Interface density (kg m-3).
    real,         intent(in) :: kvtt(ncol,pver+1) ! Molecular thermal diffusivity.
 
-   real,         intent(in) :: lats(ncol)      ! latitudes
    real,         intent(in) :: alpha(:)
 
    real,         intent(out) :: utgw(ncol,pver)       ! zonal wind tendency
@@ -555,6 +577,7 @@ subroutine gw_beres_ifc( band, &
    real,         intent(inout) :: flx_heat(ncol)        ! Energy change
 
    real,         intent(in) :: dqcdt(ncol,pver)  ! Condensate tendency due to large-scale (kg kg-1 s-1)
+   real,         intent(in) :: speed(ncol)       ! max_wind_speed_in_stable_cold_surface_layer_to_300m (m s-1)
 
    !---------------------------Local storage-------------------------------
 
@@ -613,7 +636,8 @@ subroutine gw_beres_ifc( band, &
      ! Determine wave sources for Beres deep scheme
      call gw_beres_src(ncol, pver, band, desc, pint, &
           u, v, netdt, zm, src_level, tend_level, tau, &
-          ubm, ubi, xv, yv, c, hdepth, maxq0, lats, dqcdt=dqcdt)
+          ubm, ubi, xv, yv, c, hdepth, maxq0, &
+          dqcdt=dqcdt, speed=speed)
 
      ! Solve for the drag profile with convective sources.
      call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 

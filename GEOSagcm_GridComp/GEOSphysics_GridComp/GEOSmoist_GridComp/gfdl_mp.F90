@@ -4919,7 +4919,15 @@ subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den,
     real :: tc, tin, sink, dqdt, qsw, qsi, qim, tmp, fac_wbf
 
     real :: tau_wbf_eff
-    real, parameter :: wbf_coarse_mult = 9.0 ! How much slower WBF is at 50km vs 2km
+    real, parameter :: wbf_coarse_mult = 2.5 ! How much slower WBF is at 50km vs 2km
+
+    ! Change from parameter to variable
+    real :: pwbf_qi_crt_eff, ramp_factor
+    
+    ! Linear ramp parameters (tc = Tfreezing - T)
+    real, parameter :: tc_warm = 5.0   ! Start ramping down at -5C
+    real, parameter :: tc_cold = 20.0  ! Fully ramped down at -20C
+    real, parameter :: min_scale = 0.25 ! Minimum scale factor (25% of default)
 
     if (.not. do_wbf) return
 
@@ -4944,11 +4952,30 @@ subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den,
         ! heterogeneity and allow WBF to operate in large-scale updrafts
         ! when the environment is supersaturated with respect to ice (qv > qsi)
         ! and there is both liquid and ice present 
-        if (tc .gt. 0. .and. ql (k) .gt. qcmin .and. qi (k) .gt. qcmin .and. &
+        ! Bypassed qi > qcmin constraint for colder temperatures to ensure initiation
+        if (tc .gt. 0. .and. ql (k) .gt. qcmin .and. &
+           (qi (k) .gt. qcmin .or. tc .gt. 15.0) .and. &
             qv (k) .gt. qsi) then
 
+            ! --- Smooth Linear Temperature Ramp ---
+            if (tc .le. tc_warm) then
+                ramp_factor = 1.0
+            else if (tc .ge. tc_cold) then
+                ramp_factor = min_scale
+            else
+                ramp_factor = 1.0 - (1.0 - min_scale) * ((tc - tc_warm) / (tc_cold - tc_warm))
+            endif
+            ! 1. Dynamically shrink the threshold (forces ice to precipitate as snow)
+            pwbf_qi_crt_eff = pwbf_qi_crt * ramp_factor
+            ! 2. Dynamically accelerate the timescale (shorter tau = faster QL destruction)
+            ! At tc_cold, this drops tau_wbf to 60s and completely removes the coarse multiplier bias
+            tau_wbf_eff = tau_wbf * (wbf_coarse_mult * (1.0 - onemsig) + onemsig) * ramp_factor
+            ! 3. Final timescale factor
+            fac_wbf = 1. - exp (- dts / tau_wbf_eff)
+            ! --------------------------------------
+
             sink = min (fac_wbf * ql (k), tc / icpk (k))
-            qim = pwbf_qi_crt / den (k)
+            qim = pwbf_qi_crt_eff / den (k)
             tmp = min (sink, dim (qim, qi (k)))
             mppfw = mppfw + sink * dp (k) * convt
 
