@@ -50,53 +50,56 @@ module GEOSmoist_Process_Library
    ! In anvil/convective clouds
    real, parameter :: aT_ICE_ALL = 243.66
    real, parameter :: aT_ICE_MAX = 265.66
-   real, parameter :: aICEFRPWR  = 2.0
-   ! Over Land Ice SRF_TYPE == 4
-   real, parameter :: liT_ICE_ALL = 233.16
-   real, parameter :: liT_ICE_MAX = 258.16
-   real, parameter :: liICEFRPWR  = 6.0
-   ! Over Ice SRF_TYPE == 3
-   real, parameter :: iT_ICE_ALL = 236.16
-   real, parameter :: iT_ICE_MAX = 261.16
-   real, parameter :: iICEFRPWR  = 4.0
-   ! Over Snow SRF_TYPE = 2
-   real, parameter :: sT_ICE_ALL = 235.16
-   real, parameter :: sT_ICE_MAX = 260.16
-   real, parameter :: sICEFRPWR  = 6.0
-   ! Over Land     SRF_TYPE = 1
+   real, parameter :: aT_ICE_PWR = 2.0
+   ! Over Land Ice SRF_TYPE == 4 (Antarctica / Greenland)
+   ! OLD: 233.16 / 258.16 / 6.0
+   real, parameter :: liT_ICE_ALL = 245.16  ! 100% ice at -28C (was -40C)
+   real, parameter :: liT_ICE_MAX = 268.16  ! Ice starts at -5C (was -15C)
+   real, parameter :: liT_ICE_PWR = 1.5     ! Linear-quadratic transition (was 6.0)
+   ! Over Ice SRF_TYPE == 3 (Arctic Sea Ice)
+   ! OLD: 236.16 / 261.16 / 4.0
+   real, parameter :: iT_ICE_ALL = 246.16   ! 100% ice at -27C (was -37C)
+   real, parameter :: iT_ICE_MAX = 268.16   ! Ice starts at -5C (was -12C)
+   real, parameter :: iT_ICE_PWR = 1.5      ! (was 4.0)
+   ! Over Snow SRF_TYPE = 2 (Winter high-latitude land)
+   ! OLD: 235.16 / 260.16 / 6.0
+   real, parameter :: sT_ICE_ALL = 245.16   ! 100% ice at -28C (was -38C)
+   real, parameter :: sT_ICE_MAX = 268.16   ! Ice starts at -5C (was -13C)
+   real, parameter :: sT_ICE_PWR = 1.5      ! (was 6.0)
+   ! Over Land SRF_TYPE = 1 (Keep default or lower power slightly)
    real, parameter :: lT_ICE_ALL = 240.16
    real, parameter :: lT_ICE_MAX = 262.16
-   real, parameter :: lICEFRPWR  = 2.0
+   real, parameter :: lT_ICE_PWR = 1.5      ! (was 2.0)
    ! Over Oceans   SRF_TYPE = 0
    real, parameter :: oT_ICE_ALL = 238.16
    real, parameter :: oT_ICE_MAX = 263.16
-   real, parameter :: oICEFRPWR  = 3.0
+   real, parameter :: oT_ICE_PWR = 3.0
 
    ! Jason constants
    ! In anvil/convective clouds
    real, parameter :: JaT_ICE_ALL = 245.16
    real, parameter :: JaT_ICE_MAX = 261.16
-   real, parameter :: JaICEFRPWR  = 2.0
+   real, parameter :: JaT_ICE_PWR = 2.0
    ! Over Land Ice SRF_TYPE == 4
    real, parameter :: JliT_ICE_ALL = 236.16
    real, parameter :: JliT_ICE_MAX = 261.16
-   real, parameter :: JliICEFRPWR  = 5.0
+   real, parameter :: JliT_ICE_PWR = 5.0
    ! Over Ice SRF_TYPE == 3
    real, parameter :: JiT_ICE_ALL = 236.16
    real, parameter :: JiT_ICE_MAX = 261.16
-   real, parameter :: JiICEFRPWR  = 5.0
+   real, parameter :: JiT_ICE_PWR = 5.0
    ! Over Snow SRF_TYPE = 2
    real, parameter :: JsT_ICE_ALL = 236.16
    real, parameter :: JsT_ICE_MAX = 261.16 
-   real, parameter :: JsICEFRPWR  = 5.0
+   real, parameter :: JsT_ICE_PWR = 5.0
    ! Over Land     SRF_TYPE = 1
    real, parameter :: JlT_ICE_ALL = 239.16
    real, parameter :: JlT_ICE_MAX = 261.16
-   real, parameter :: JlICEFRPWR  = 2.0
+   real, parameter :: JlT_ICE_PWR = 2.0
    ! Over Oceans   SRF_TYPE = 0
    real, parameter :: JoT_ICE_ALL = 238.16
    real, parameter :: JoT_ICE_MAX = 263.16
-   real, parameter :: JoICEFRPWR  = 4.0
+   real, parameter :: JoT_ICE_PWR = 4.0
 
    logical :: USE_BERGERON = .FALSE.
    logical :: USE_AEROSOL_NN = .TRUE.
@@ -655,7 +658,7 @@ module GEOSmoist_Process_Library
          end if
          ICEFRCT_C = MIN(ICEFRCT_C,1.00)
          ICEFRCT_C = MAX(ICEFRCT_C,0.00)
-         ICEFRCT_C = ICEFRCT_C**aICEFRPWR
+         ICEFRCT_C = ICEFRCT_C**aT_ICE_PWR
 
          ! ------------------------------------------------------------------
          ! 2. Grid-Scale / Mesh Cloud Ice Fraction (ICEFRCT_M)
@@ -672,7 +675,7 @@ module GEOSmoist_Process_Library
            end if
            ICEFRCT_M = MIN(ICEFRCT_M,1.00)
            ICEFRCT_M = MAX(ICEFRCT_M,0.00) 
-           ICEFRCT_M = ICEFRCT_M**JiICEFRPWR
+           ICEFRCT_M = ICEFRCT_M**JiT_ICE_PWR
          case (SRF_TYPE_LAND)
            ! Over Land (SRF_TYPE == 1)
            ICEFRCT_M  = 0.00
@@ -683,7 +686,7 @@ module GEOSmoist_Process_Library
            end if
            ICEFRCT_M = MIN(ICEFRCT_M,1.00)
            ICEFRCT_M = MAX(ICEFRCT_M,0.00)
-           ICEFRCT_M = ICEFRCT_M**JlICEFRPWR
+           ICEFRCT_M = ICEFRCT_M**JlT_ICE_PWR
          case (SRF_TYPE_OCEAN)
            ! Over Oceans (SRF_TYPE == 0)
            ICEFRCT_M  = 0.00
@@ -694,7 +697,7 @@ module GEOSmoist_Process_Library
            end if
            ICEFRCT_M = MIN(ICEFRCT_M,1.00)
            ICEFRCT_M = MAX(ICEFRCT_M,0.00)
-           ICEFRCT_M = ICEFRCT_M**JoICEFRPWR
+           ICEFRCT_M = ICEFRCT_M**JoT_ICE_PWR
          case default
            ! You should not be here
            print *, 'ICE_FRACTION_SC: Unknown SRF_TYPE = ',SRF_TYPE
@@ -715,7 +718,7 @@ module GEOSmoist_Process_Library
          else if ( TEMP <= aT_ICE_MAX ) then
             ICEFRCT_C = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - aT_ICE_ALL ) / ( aT_ICE_MAX - aT_ICE_ALL ) ) )
          end if
-         ICEFRCT_C = MAX(0.00, MIN(1.00, ICEFRCT_C)) ** aICEFRPWR
+         ICEFRCT_C = MAX(0.00, MIN(1.00, ICEFRCT_C)) ** aT_ICE_PWR
 
          ! ------------------------------------------------------------------
          ! 2. Grid-Scale / Mesh Cloud Ice Fraction (ICEFRCT_M)
@@ -725,23 +728,23 @@ module GEOSmoist_Process_Library
          case (SRF_TYPE_LANDICE)
               t_all_loc = liT_ICE_ALL
               t_max_loc = liT_ICE_MAX
-              pwr_loc   = liICEFRPWR
+              pwr_loc   = liT_ICE_PWR
          case (SRF_TYPE_ICE)
               t_all_loc = iT_ICE_ALL
               t_max_loc = iT_ICE_MAX
-              pwr_loc   = iICEFRPWR
+              pwr_loc   = iT_ICE_PWR
          case (SRF_TYPE_SNOW)
               t_all_loc = sT_ICE_ALL
               t_max_loc = sT_ICE_MAX
-              pwr_loc   = sICEFRPWR
+              pwr_loc   = sT_ICE_PWR
          case (SRF_TYPE_LAND)
               t_all_loc = lT_ICE_ALL
               t_max_loc = lT_ICE_MAX
-              pwr_loc   = lICEFRPWR
+              pwr_loc   = lT_ICE_PWR
          case (SRF_TYPE_OCEAN)
               t_all_loc = oT_ICE_ALL
               t_max_loc = oT_ICE_MAX
-              pwr_loc   = oICEFRPWR
+              pwr_loc   = oT_ICE_PWR
          case default
            ! You should not be here
            print *, 'ICE_FRACTION_SC: Unknown SRF_TYPE = ',SRF_TYPE
