@@ -48,7 +48,7 @@ module GEOS_MoistGridCompMod
   real    :: CCN_OCN
   real    :: CCN_LND
   logical :: MOVE_CN_TO_LS
-  logical :: USE_NCLOUD_CLIM
+  logical :: USE_NCLOUD_CLIM=.FALSE.
 
   ! !PUBLIC MEMBER FUNCTIONS:
 
@@ -192,7 +192,7 @@ contains
 
     call MAPL_GetResource( CF, USE_NCLOUD_CLIM, Label='USE_NCLOUD_CLIM:',   default=.FALSE.,        RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource( CF, WSUB_OPTION, Label='WSUB_OPTION:',   default= 1,        RC=STATUS) !0- param 1- Use Wsub climatology 2-USE WNET`
+    call MAPL_GetResource( CF, WSUB_OPTION, Label='WSUB_OPTION:',   default= 3,        RC=STATUS) !0- param 1- Use Wsub climatology 2-USE WNET`
     VERIFY_(STATUS)
 
 
@@ -598,7 +598,7 @@ contains
              VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
          VERIFY_(STATUS)
 
-      else
+      elseif (WSUB_OPTION .eq. 2) then
 
         call MAPL_AddImportSpec ( GC,                                   &
             LONG_NAME  = 'total_momentum_diffusivity',                            &
@@ -801,6 +801,8 @@ contains
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
     VERIFY_(STATUS)
+    
+    
     call MAPL_AddImportSpec(GC,                             &
         LONG_NAME          = 'turbulence_liquid_water_tendency',  &
         UNITS              = 'kg kg-1 s-1',                       &
@@ -1810,6 +1812,15 @@ contains
     VERIFY_(STATUS)
 
 
+      call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'EDMF_DMF',                                      &
+         LONG_NAME = 'EDMF_updraft_detrained_mass_flux', &
+         UNITS     = 'kg m-2 s-1',                                 &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,                         &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+    
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'DCM_SC',                                      &
          LONG_NAME = 'Shallow_convection_detrained_cloud_mass', &

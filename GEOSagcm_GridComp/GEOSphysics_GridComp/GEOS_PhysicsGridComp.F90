@@ -1886,7 +1886,7 @@ contains
    VERIFY_(STATUS)
 
    call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'ALH', 'KM ', 'RI '/),                                 &
+         SHORT_NAME  = (/'ALH', 'KM', 'RI', 'EDMF_DMF'/),                                 &
          DST_ID      =  MOIST,                                     &
          SRC_ID      =  TURBL,                                      &
                                                         RC=STATUS  )

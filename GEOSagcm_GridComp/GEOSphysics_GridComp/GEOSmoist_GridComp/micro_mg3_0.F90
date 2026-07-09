@@ -2151,7 +2151,6 @@ subroutine micro_mg_tend ( &
   !-------------------------------------------------------
 
 
-  if (.true.) then
      where (naai > 0._r8 .and. t < icenuct .and. &
           relhum*esl/esi > 1.05_r8)
 
@@ -2163,7 +2162,7 @@ subroutine micro_mg_tend ( &
         !nimax = naai*icldm
 
         !since GEOS produces condensate in the same way as liquid we need to apply the nucleation tendency here DONIF
-        ni = max(ni + naai*deltat, 0._r8)
+        !ni = max(ni + naai*deltat, 0._r8)
         nimax = naai*deltat/icldm ! DONIF
 
         !Calc mass of new particles using new crystal mass...
@@ -2177,26 +2176,7 @@ subroutine micro_mg_tend ( &
         mnuccd = 0._r8
      end where
 
-  end if
 
-
-   !DONIF since our approach to ice condensate is similar to liquid, we just need to add the new particles here.
-
-  !--------------------------------------------------
-
-  if (.false.) then
-      where (qi >= qsmall)
-      	 nnuccd = naai
-         !ni = max(ni + naai*deltat, 0._r8)
-         nimax = naai*deltat/icldm ! DONIF
-         mnuccd = nnuccd * mi0
-      elsewhere
-        nnuccd = 0._r8
-        nimax = 0._r8
-        mnuccd = 0._r8
-     end where
-
-  end if
 
   !=============================================================================
   do k=1,nlev
