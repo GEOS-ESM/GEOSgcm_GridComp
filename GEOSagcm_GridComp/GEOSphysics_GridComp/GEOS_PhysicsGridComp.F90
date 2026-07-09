@@ -1886,7 +1886,7 @@ contains
    VERIFY_(STATUS)
 
    call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'ALH'/),                                 &
+         SHORT_NAME  = (/'ALH', 'KM ', 'RI '/),                                 &
          DST_ID      =  MOIST,                                     &
          SRC_ID      =  TURBL,                                      &
                                                         RC=STATUS  )
@@ -1961,6 +1961,12 @@ contains
        VERIFY_(STATUS)
      endif
 
+     call MAPL_TerminateImport    ( GC,    &
+          SHORT_NAME = (/'DQLDTTRB','DQIDTTRB'/),          &
+          CHILD = MOIST,                   &
+          RC=STATUS)
+     VERIFY_(STATUS)
+     
      call MAPL_TerminateImport    ( GC,    &
           SHORT_NAME = (/'MTR'/),          &
           CHILD = MOIST,                   &
@@ -2606,7 +2612,8 @@ contains
    real, pointer, dimension(:,:,:)     :: DQLDTMST, DQIDTMST
    real, pointer, dimension(:,:,:)     :: DQRDTMST, DQSDTMST, DQGDTMST
    real, pointer, dimension(:,:,:)     :: DPDTMST,  DPDTTRB
-
+   real, pointer, dimension(:,:,:)     :: DQLMST, DQIMST
+   
    real, pointer, dimension(:,:,:)     ::   DQVDT_FILL
    real, pointer, dimension(:,:,:)     :: DQLLSDT_FILL
    real, pointer, dimension(:,:,:)     :: DQLCNDT_FILL
@@ -2979,6 +2986,12 @@ contains
        call MAPL_GetPointer ( GEX(MOIST), DQGDTMST, 'DQGDT',    alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
 
+       ! Pass Turbulence QL, QI tendencies to Moist Import state
+       call MAPL_GetPointer ( GIM(MOIST), DQLMST, 'DQLDTTRB', RC=STATUS)
+       DQLMST = DQLDTTRB
+       call MAPL_GetPointer ( GIM(MOIST), DQIMST, 'DQLDTTRB', RC=STATUS)
+       DQIMST = DQIDTTRB
+       
        call MAPL_GetPointer (EXPORT, DQVDTSCL, 'DQVDTSCL', RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer (EXPORT, DQLDTSCL, 'DQLDTSCL', RC=STATUS)

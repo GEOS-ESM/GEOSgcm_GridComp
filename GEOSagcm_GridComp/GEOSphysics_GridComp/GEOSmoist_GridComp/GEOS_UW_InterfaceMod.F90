@@ -30,7 +30,7 @@ module GEOS_UW_InterfaceMod
   character(len=ESMF_MAXSTR)              :: IAm
   integer                                 :: STATUS
 
-  public :: UW_Setup, UW_Initialize, UW_Run
+  public :: UW_Setup, UW_Initialize, UW_Run, UW_Finalize
    
 contains
 
@@ -60,8 +60,11 @@ subroutine UW_Setup (GC, CF, RC)
 
 end subroutine UW_Setup
 
-subroutine UW_Initialize (MAPL, CLOCK, RC)
+subroutine UW_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     type (MAPL_MetaComp), intent(inout) :: MAPL
+    type (ESMF_State),    intent(inout) :: IMPORT
+    type (ESMF_State),    intent(inout) :: EXPORT
+    type (ESMF_Config),   intent(inout) :: CF
     type (ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
     integer, optional                   :: RC  ! return code
     integer :: LM
@@ -129,22 +132,21 @@ subroutine UW_Initialize (MAPL, CLOCK, RC)
     else
       call MAPL_GetResource(MAPL, SHLWPARAMS%WINDSRCAVG,       'WINDSRCAVG:'      ,DEFAULT=1,      RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%MIXSCALE,         'MIXSCALE:'        ,DEFAULT=3000.0, RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%MIXSCALE_HR,      'MIXSCALE_HR:'     ,DEFAULT=3000.0, RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%CRIQC,            'CRIQC:'           ,DEFAULT=0.9e-3, RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%CRIQC,            'CRIQC:'           ,DEFAULT=3.0e-3, RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%THLSRC_FAC,       'THLSRC_FAC:'      ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRC_FAC,        'QTSRC_FAC:'       ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRCHGT,         'QTSRCHGT:'        ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE,            'RKFRE:'           ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE_HR,         'RKFRE_HR:'        ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 12.0,  RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE,            'RKFRE:'           ,DEFAULT= 1.5,   RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE_HR,         'RKFRE_HR:'        ,DEFAULT= 0.75,  RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 8.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RKM_HR,           'RKM_HR:'          ,DEFAULT= 12.0,  RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RMAXFRAC,         'RMAXFRAC:'        ,DEFAULT= 0.1,   RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RMAXFRAC,         'RMAXFRAC:'        ,DEFAULT= 0.25,  RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RMAXFRAC_HR,      'RMAXFRAC_HR:'     ,DEFAULT= 0.1,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%FRC_RASN,         'FRC_RASN:'        ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RPEN,             'RPEN:'            ,DEFAULT= 3.0,   RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RPEN,             'RPEN:'            ,DEFAULT= 1.5,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SCLM_SHALLOW,                'SCLM_SHALLOW:'    ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%NITER_XC,         'NITER_XC:'        ,DEFAULT=2,      RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, USE_EIS,                     'UW_USE_EIS:'      ,DEFAULT=.FALSE.,RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, USE_EIS,                     'UW_USE_EIS:'      ,DEFAULT=.TRUE., RC=STATUS) ; VERIFY_(STATUS)
     endif
     call MAPL_GetResource(MAPL, SHLWPARAMS%ITER_CIN,         'ITER_CIN:'        ,DEFAULT=2,      RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%USE_CINCIN,       'USE_CINCIN:'      ,DEFAULT=1,      RC=STATUS) ; VERIFY_(STATUS)
@@ -184,6 +186,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real,    allocatable, dimension(:,:,:) :: ZLE0, ZL0
     real,    allocatable, dimension(:,:,:) :: PL, PK, PKE, DP
     real,    allocatable, dimension(:,:,:) :: MASS
+    real,    allocatable, dimension(:,:,:) :: DQLDT_SC_, DQIDT_SC_
     real,    allocatable, dimension(:,:)   :: RKM2D, RKFRE, MIX2D, RMAXFRAC2D
     real,    allocatable, dimension(:,:,:) :: TMP3D
 
@@ -228,7 +231,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     type (ESMF_TimeInterval)        :: TINT
     real(ESMF_KIND_R8)              :: DT_R8
     real                            :: UW_DT, MOIST_DT
-    real                            :: SIG
+    real                            :: DX, SIG, mix2d_phys
     type(ESMF_Alarm)                :: alarm
     logical                         :: alarm_is_ringing
     type( ESMF_VM )                 :: VMG
@@ -238,6 +241,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real :: fac_eis                    ! Estimated enversion strength 0:1 factor
     real :: rkfre_base                 ! Base fractional entrainment rate before EIS modification
     real :: rkm_base                   ! Base momentum entrainment rate before EIS modification  
+    real :: rkm_scale_fac
     real :: mix2d_base                 ! Base mixing length scale before EIS modification
     real :: rmaxfrac_base              ! Base maximum updraft area fraction before EIS modification
     real :: eis_rkfre_factor           ! EIS modification factor for RKFRE [0-1]
@@ -350,6 +354,9 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( PK   (IM,JM,LM  ) )
     ALLOCATE ( DP   (IM,JM,LM  ) )
     ALLOCATE ( MASS (IM,JM,LM  ) )
+     ! Temporary UW exports
+    ALLOCATE ( DQLDT_SC_(IM,JM,LM  ) )
+    ALLOCATE ( DQIDT_SC_(IM,JM,LM  ) )
      ! 2D Variables
     ALLOCATE ( RKFRE  (IM,JM) )
     ALLOCATE ( RKM2D  (IM,JM) )
@@ -445,9 +452,9 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     !--------------------------------------------------------------
     !$OMP PARALLEL DO DEFAULT(NONE) &
     !$OMP SHARED(IM, JM, JASON_UW, SHLWPARAMS, RKFRE, RKM2D, MIX2D, RMAXFRAC2D, &
-    !$OMP        USE_EIS, EIS, srf_type, PTR2D) &
-    !$OMP PRIVATE(i, j, fac_eis, SIG, rkfre_base, rkm_base, mix2d_base, rmaxfrac_base, &
-    !$OMP        eis_rkfre_factor, eis_rkm_factor, eis_mix2d_factor, eis_rmaxfrac_factor)
+    !$OMP        USE_EIS, EIS, srf_type, PTR2D, ZL0, KPBL_SC) &
+    !$OMP PRIVATE(i, j, fac_eis, DX, SIG, rkm_scale_fac, mix2d_phys, rkfre_base, rkm_base, &
+    !$OMP        rmaxfrac_base, eis_rkfre_factor, eis_rkm_factor, eis_rmaxfrac_factor)
     do j = 1, JM
        !DIR$ IVDEP
        do i = 1, IM
@@ -459,30 +466,36 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           else
              fac_eis = 0.0
              if (USE_EIS) fac_eis = get_fac_eis(EIS(i,j), srf_type(i,j))
-             SIG = SIGMA(SQRT(PTR2D(i,j)))
+             DX  = SQRT(PTR2D(i,j))
+             SIG = SIGMA(DX)
+
+             ! (If RKM=4.0, multiplier is 2.5. If RKM=8.0, multiplier is 5.0)
+             rkm_scale_fac = (SHLWPARAMS%RKM / 4.0) * 2.5
+             
+             ! This ensures the dominant eddies scale with the PBL thickness and RKM
+             mix2d_phys = MAX(rkm_scale_fac * ZL0(i,j,KPBL_SC(i,j)), 1000.0 )
+             
+             ! The subgrid mixing scale cannot exceed half the grid box
+             MIX2D(i,j) = MIN(0.5*DX, mix2d_phys, SHLWPARAMS%MIXSCALE)
 
              ! Base resolution-dependent parameters
              rkfre_base    = SHLWPARAMS%RKFRE    * SIG + SHLWPARAMS%RKFRE_HR    * (1.0 - SIG)
              rkm_base      = SHLWPARAMS%RKM      * SIG + SHLWPARAMS%RKM_HR      * (1.0 - SIG)
-             mix2d_base    = SHLWPARAMS%MIXSCALE * SIG + SHLWPARAMS%MIXSCALE_HR * (1.0 - SIG)
              rmaxfrac_base = SHLWPARAMS%RMAXFRAC * SIG + SHLWPARAMS%RMAXFRAC_HR * (1.0 - SIG)
 
              ! EIS-based regime modifications
              eis_rkfre_factor    = 1.0 - 0.8 * fac_eis
              eis_rkm_factor      = 1.0 + 0.4 * fac_eis
-             eis_mix2d_factor    = 1.0 - 0.3 * fac_eis
              eis_rmaxfrac_factor = 1.0 + 0.1 * fac_eis
 
              ! Apply EIS modifications
              RKFRE(i,j)      = rkfre_base * eis_rkfre_factor
              RKM2D(i,j)      = rkm_base   * eis_rkm_factor
-             MIX2D(i,j)      = mix2d_base * eis_mix2d_factor
              RMAXFRAC2D(i,j) = rmaxfrac_base * eis_rmaxfrac_factor
 
              ! Optional: Add minimum limits
              RKFRE(i,j)      = max(RKFRE(i,j), 0.1)
              RKM2D(i,j)      = min(RKM2D(i,j), 14.0)
-             MIX2D(i,j)      = max(MIX2D(i,j), 1500.0)
              RMAXFRAC2D(i,j) = max(min(RMAXFRAC2D(i,j), 0.8), 0.05)
           end if
        end do
@@ -492,7 +505,8 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! 3. Combine condensates for input (not updated within UW) 
     !--------------------------------------------------------------
     !$OMP PARALLEL DO DEFAULT(NONE) &
-    !$OMP SHARED(IM, JM, LM, QLTOT, QLLS, QLCN, QITOT, QILS, QICN) &
+    !$OMP SHARED(IM, JM, LM, QLTOT, DQLDT_SC, QLLS, QLCN, &
+    !$OMP                    QITOT, DQIDT_SC, QILS, QICN) &
     !$OMP PRIVATE(i, j, k)
     do k = 1, LM
        do j = 1, JM
@@ -500,6 +514,9 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           do i = 1, IM
              QLTOT(i,j,k) = QLLS(i,j,k) + QLCN(i,j,k)
              QITOT(i,j,k) = QILS(i,j,k) + QICN(i,j,k)
+             ! Initialize tendencies
+             DQLDT_SC(i,j,k) = QLTOT(i,j,k)
+             DQIDT_SC(i,j,k) = QITOT(i,j,k)
           end do
        end do
     end do
@@ -512,7 +529,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             U, V, Q, QLTOT, QITOT, T, TKE, RKFRE, KPBL_SC,&
             SH, EVAP, CNPCPRATE, FRLAND, RKM2D, MIX2D, RMAXFRAC2D, &
             CUSH,                                         & ! INOUT
-            UMF_SC, DCM_SC, DQVDT_SC, DQLDT_SC, DQIDT_SC, & ! OUT
+            UMF_SC, DCM_SC, DQVDT_SC, DQLDT_SC_, DQIDT_SC_, & ! OUT
             DTDT_SC, DUDT_SC, DVDT_SC, DQRDT_SC,          &
             DQSDT_SC, CUFRC_SC, ENTR_SC, DETR_SC,         &
             QLDET_SC, QIDET_SC, QLSUB_SC, QISUB_SC,       &
@@ -640,7 +657,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
   !--------------------------------------------------------------
   !$OMP PARALLEL DO DEFAULT(NONE) &
   !$OMP SHARED(IM, JM, LM, Q, DQVDT_SC, MOIST_DT, T, DTDT_SC, U, DUDT_SC, V, DVDT_SC, &
-  !$OMP        CLCN, DQADT_SC, QLCN, QLDET_SC, MASS, QICN, QIDET_SC, &
+  !$OMP        CLCN, DQADT_SC, QLCN, QLDET_SC, DQLDT_SC, MASS, QICN, QIDET_SC, DQIDT_SC, &
   !$OMP        QLLS, QLSUB_SC, QLENT_SC, QILS, QISUB_SC, QIENT_SC) &
   !$OMP PRIVATE(i, j, k)
   do k = 1, LM
@@ -665,6 +682,10 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            ! condensate entrained into shallow updraft. 
            QLLS(i,j,k) = MAX(0.0, QLLS(i,j,k) + (QLSUB_SC(i,j,k)+QLENT_SC(i,j,k))*MOIST_DT)
            QILS(i,j,k) = MAX(0.0, QILS(i,j,k) + (QISUB_SC(i,j,k)+QIENT_SC(i,j,k))*MOIST_DT)
+
+           ! Get export QL/QI tendencies
+           DQLDT_SC(i,j,k) = (QLLS(i,j,k) + QLCN(i,j,k) - DQLDT_SC(i,j,k)) / MOIST_DT
+           DQIDT_SC(i,j,k) = (QILS(i,j,k) + QICN(i,j,k) - DQIDT_SC(i,j,k)) / MOIST_DT
         end do
      end do
   end do
@@ -713,5 +734,23 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
   call MAPL_TimerOff (MAPL,"--UW")
 
 end subroutine UW_Run
+
+subroutine UW_Finalize(gc, import, export, rc)
+
+  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
+  type(ESMF_State),    intent(inout) :: IMPORT ! Import state
+  type(ESMF_State),    intent(inout) :: EXPORT ! Export state
+  integer, optional,   intent(  out) :: RC     ! Error code
+  
+  type (MAPL_MetaComp), pointer   :: MAPL
+  
+  ! Get my internal MAPL_Generic state
+  !-----------------------------------
+  call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+  VERIFY_(STATUS)
+
+
+
+end subroutine UW_Finalize
 
 end module GEOS_UW_InterfaceMod

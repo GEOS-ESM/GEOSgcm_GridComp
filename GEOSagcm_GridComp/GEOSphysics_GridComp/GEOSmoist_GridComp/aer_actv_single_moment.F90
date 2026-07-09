@@ -4,16 +4,17 @@ MODULE Aer_Actv_Single_Moment
 
    USE ESMF
    USE MAPL
-   USE aer_cloud, only: AerPropsNew
+   USE aer_cloud, only: AeroPropsNew 
    !-------------------------------------------------------------------------------------------------------------------------
    IMPLICIT NONE
-   PUBLIC ::  Aer_Activation, USE_BERGERON, USE_AEROSOL_NN, R_AIR
+   PUBLIC ::  Aer_Activation
+   PUBLIC :: NN_MIN_LIQ, NN_MAX_LIQ
+   PUBLIC :: NN_MIN_ICE, NN_MAX_ICE
    PRIVATE
 
    ! Real kind for activation.
-   integer,public,parameter :: AER_PR = MAPL_R4
+   integer, parameter :: AER_PR = MAPL_R4
 
-   real        , parameter :: R_AIR     =  3.47e-3 !m3 Pa kg-1K-1
    real(AER_PR), parameter :: ai        =  0.0000594
    real(AER_PR), parameter :: bi        =  3.33
    real(AER_PR), parameter :: ci        =  0.0264
@@ -24,26 +25,23 @@ MODULE Aer_Actv_Single_Moment
    real(AER_PR), parameter :: deltai    =  2.809e+3
    real(AER_PR), parameter :: densic    =  917.0   !Ice crystal density in kgm-3
 
-   real, parameter :: NN_MIN_LIQ  =  100.0e6
-   real, parameter :: NN_MAX_LIQ  =  500.0e6
+   real :: NN_MIN_LIQ  =  100.0e6
+   real :: NN_MAX_LIQ  =  500.0e6
 
-   real, parameter :: NN_MIN_ICE  =   10.0e6
-   real, parameter :: NN_MAX_ICE  =   50.0e6
+   real :: NN_MIN_ICE  =  10.0e6
+   real :: NN_MAX_ICE  =  50.0e6
 
-   LOGICAL  :: USE_BERGERON = .FALSE.
-   LOGICAL  :: USE_AEROSOL_NN = .TRUE.
 CONTAINS
 
    !>----------------------------------------------------------------------------------------------------------------------
    !>----------------------------------------------------------------------------------------------------------------------
 
    SUBROUTINE Aer_Activation(MAPL, IM,JM,LM, q, t, plo, ple, tke, vvel, FRLAND, &
-        AeroPropsNew, aero_aci, NACTL, NACTI, NWFA,  &
+        aero_aci, NACTL, NACTI, NWFA,  &
         NN_LAND, NN_OCEAN, need_extra_fields, rc)
       IMPLICIT NONE
       type (MAPL_MetaComp), pointer   :: MAPL
       integer, intent(in)::IM,JM,LM
-      TYPE(AerPropsNew), dimension (:), intent(inout) :: AeroPropsNew
       type(ESMF_State)            ,intent(inout) :: aero_aci
       real, dimension (IM,JM,LM)  ,intent(in ) :: plo ! Pa
       real, dimension (IM,JM,0:LM),intent(in ) :: ple ! Pa
@@ -74,16 +72,6 @@ CONTAINS
       integer                                 :: STATUS
 
       NWFA = 0.0
-
-      if (.not. USE_AEROSOL_NN) then
-
-         do k = 1, LM
-            NACTL(:,:,k) = NN_LAND*FRLAND + NN_OCEAN*(1.0-FRLAND)
-            NACTI(:,:,k) = NN_LAND*FRLAND + NN_OCEAN*(1.0-FRLAND)
-         end do
-
-         RETURN_(ESMF_SUCCESS)
-      end if
 
       call ESMF_AttributeGet(aero_aci, name='number_of_aerosol_modes', value=n_modes, __RC__)
 
@@ -195,7 +183,7 @@ CONTAINS
 
       !$OMP parallel do default(none) &
       !$OMP shared(IM, JM, LM, n_modes, T, plo, vvel, tke, AeroPropsNew, &
-      !$OMP        NACTL, NACTI) &
+      !$OMP        NACTL, NACTI, NN_MIN_LIQ, NN_MAX_LIQ, NN_MIN_ICE, NN_MAX_ICE) &
       !$OMP private(k, n, i, j, tk, press, air_den, wupdraft, ni, rg, bibar, &
       !$OMP         sig0, nact, numbinit)
       DO k=1,LM

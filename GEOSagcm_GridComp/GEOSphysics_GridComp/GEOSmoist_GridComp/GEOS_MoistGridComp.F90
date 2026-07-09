@@ -28,7 +28,6 @@ module GEOS_MoistGridCompMod
   use GEOS_GF_InterfaceMod
   use GEOS_UW_InterfaceMod
 
-  use aer_cloud
   use Aer_Actv_Single_Moment
   use Lightning_mod, only: HEMCO_FlashRate
   use GEOSmoist_Process_Library
@@ -47,7 +46,8 @@ module GEOS_MoistGridCompMod
   logical :: LUPDATE_PRECIP_TYPE
   real    :: CCN_OCN
   real    :: CCN_LND
-  logical :: MOVE_CN_TO_LS 
+  real    :: DETRAIN_INACTIVE_CNV
+  real    :: TAU_DETRAIN_CNV
 
   ! !PUBLIC MEMBER FUNCTIONS:
 
@@ -174,9 +174,16 @@ contains
                adjustl(CLDMICR_OPTION)=="MGB2_2M"
     _ASSERT( LCLDMICR, 'Unsupported Cloud Microphysics Option' )
 
+
     call MAPL_GetResource( CF, DEBUG_MST, Label="DEBUG_MST:",  default=.false., RC=STATUS) ; VERIFY_(STATUS)
 
     call MAPL_GetResource( CF, DEBUG_TQ_ERRORS, Label="DEBUG_TQ_ERRORS:",  default=.false., RC=STATUS) ; VERIFY_(STATUS)
+
+    ! MAT These have to be defined as they are passed into Aer_Activate below and are intent(in)
+    !     Note: It's possible these aren't *used* if USE_AEROSOL_NN=.TRUE. but they are still passed
+    !           in so they have to be defined
+    call MAPL_GetResource( CF, CCN_OCN, 'NCCN_OCN:', DEFAULT= 100., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( CF, CCN_LND, 'NCCN_LND:', DEFAULT= 300., RC=STATUS); VERIFY_(STATUS)
 
     ! NOTE: Binary restarts expect Q to be the first field in the moist_internal_rst. Thus,
     !       the first MAPL_AddInternalSpec call must be from the microphysics
@@ -508,23 +515,7 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddImportSpec(GC,                             &
-         SHORT_NAME = 'TAUOROX',                                   &
-         LONG_NAME  = 'surface_eastward_orographic_gravity_wave_stress',      &
-         UNITS      = 'N m-2',                                     &
-         RESTART    = MAPL_RestartSkip,                            &
-         DIMS       = MAPL_DimsHorzOnly,                           &
-         VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
 
-    call MAPL_AddImportSpec(GC,                             &
-         SHORT_NAME = 'TAUOROY',                                   &
-         LONG_NAME  = 'surface_northward_orographic_gravity_wave_stress',     &
-         UNITS      = 'N m-2',                                     &
-         RESTART    = MAPL_RestartSkip,                            &
-         DIMS       = MAPL_DimsHorzOnly,                           &
-         VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
 
 
     call MAPL_AddImportSpec ( gc,                                  &
@@ -536,14 +527,10 @@ contains
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddImportSpec(GC,                                              &
-         LONG_NAME  = 'Blackadar_length_scale_for_scalars',                    &
-         UNITS      = 'm',                                                     &
-         SHORT_NAME = 'ALH',                                                   &
-         DIMS       = MAPL_DimsHorzVert,                                       &
-         VLOCATION  = MAPL_VLocationEdge,                                      &
-         RC=STATUS  )
-    VERIFY_(STATUS)
+
+
+
+
 
     call MAPL_AddImportSpec ( GC,                                   &
         SHORT_NAME         = 'AREA',                              &
@@ -555,14 +542,89 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddImportSpec ( GC,                                   &
-         SHORT_NAME = 'WSUB_CLIM',                                 &
-         LONG_NAME  = 'stdev in vertical velocity',     &
-         UNITS      = 'm s-1',                                    &
-         RESTART    = MAPL_RestartSkip,                           & ! Read WSUB from a climatology
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     VERIFY_(STATUS)
+    select case (WSUB_OPTION)
+      case (0)
+            call MAPL_AddImportSpec(GC,                                              &
+             LONG_NAME  = 'Blackadar_length_scale_for_scalars',                    &
+             UNITS      = 'm',                                                     &
+             SHORT_NAME = 'ALH',                                                   &
+             DIMS       = MAPL_DimsHorzVert,                                       &
+             VLOCATION  = MAPL_VLocationEdge,                                      &
+             RC=STATUS  )
+            VERIFY_(STATUS)
+
+           call MAPL_AddImportSpec(GC,                                             &
+             SHORT_NAME = 'TAUOROX',                                               &
+             LONG_NAME  = 'surface_eastward_orographic_gravity_wave_stress',      &
+             UNITS      = 'N m-2',                                                 &
+             RESTART    = MAPL_RestartSkip,                                        &
+             DIMS       = MAPL_DimsHorzOnly,                                       &
+             VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+            VERIFY_(STATUS)
+
+            call MAPL_AddImportSpec(GC,                                            &
+             SHORT_NAME = 'TAUOROY',                                               &
+             LONG_NAME  = 'surface_northward_orographic_gravity_wave_stress',     &
+             UNITS      = 'N m-2',                                                 &
+             RESTART    = MAPL_RestartSkip,                                        &
+             DIMS       = MAPL_DimsHorzOnly,                                       &
+             VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+            VERIFY_(STATUS)
+
+      case (1)
+            call MAPL_AddImportSpec ( GC,                                          &
+             SHORT_NAME = 'WSUB_CLIM',                                             &
+             LONG_NAME  = 'stdev in vertical velocity',                            &
+             UNITS      = 'm s-1',                                                 &
+             RESTART    = MAPL_RestartSkip,                                        & ! Read WSUB from a climatology
+             DIMS       = MAPL_DimsHorzVert,                                       &
+             VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+            VERIFY_(STATUS)
+
+      case (2)
+            call MAPL_AddImportSpec ( GC,                                          &
+             LONG_NAME  = 'total_momentum_diffusivity',                            &
+             UNITS      = 'm+2 s-1',                                               &
+             SHORT_NAME = 'KM',                                                    &
+             DIMS       = MAPL_DimsHorzVert,                                       &
+             RESTART    = MAPL_RestartSkip,                                        &
+             VLOCATION  = MAPL_VLocationEdge,                                      &
+                                                              RC=STATUS  )
+            VERIFY_(STATUS)
+
+            call MAPL_AddImportSpec ( GC,                                          &
+             LONG_NAME  = 'Richardson_number_from_Louis',                          &
+             UNITS      = '1',                                                     &
+             SHORT_NAME = 'RI',                                                    &
+             DIMS       = MAPL_DimsHorzVert,                                       &
+             RESTART    = MAPL_RestartSkip,                                        &
+             VLOCATION  = MAPL_VLocationEdge,                                      &
+                                                              RC=STATUS  )
+            VERIFY_(STATUS)
+
+      case default
+            ! Do nothing
+      end select
+
+     IF (USE_NCLOUD_CLIM) then
+        call MAPL_AddImportSpec ( GC,                                 &
+            SHORT_NAME = 'NCPL_CLIM',                                 &
+            LONG_NAME  = 'In-Cloud NCPL climatology',     &
+            UNITS      = 'm-3',                                    &
+            RESTART    = MAPL_RestartSkip,                            &
+            DIMS       = MAPL_DimsHorzVert,                           &
+            VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+        VERIFY_(STATUS)
+
+        call MAPL_AddImportSpec ( GC,                                          &
+            SHORT_NAME = 'NCPI_CLIM',                                 &
+            LONG_NAME  = 'In-Cloud NCPI climatology',     &
+            UNITS      = 'm-3',                                    &
+            RESTART    = MAPL_RestartSkip,                            &
+            DIMS       = MAPL_DimsHorzVert,                           &
+            VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+        VERIFY_(STATUS)
+     end if
 
     call MAPL_AddImportSpec ( gc,                                    &
          SHORT_NAME = 'DTDTDYN',                                     &
@@ -721,6 +783,24 @@ contains
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
     VERIFY_(STATUS)
+    call MAPL_AddImportSpec(GC,                             &
+        LONG_NAME          = 'turbulence_liquid_water_tendency',  &
+        UNITS              = 'kg kg-1 s-1',                       &
+        SHORT_NAME         = 'DQLDTTRB',                          &
+        RESTART    = MAPL_RestartSkip,                            &
+        DIMS               = MAPL_DimsHorzVert,                   &
+        VLOCATION          = MAPL_VLocationCenter,                  &
+                                                       RC=STATUS  )
+    VERIFY_(STATUS)    
+    call MAPL_AddImportSpec(GC,                             &
+        LONG_NAME          = 'turbulence_ice_water_tendency',     &
+        UNITS              = 'kg kg-1 s-1',                       &
+        SHORT_NAME         = 'DQIDTTRB',                          &
+        RESTART    = MAPL_RestartSkip,                            &
+        DIMS               = MAPL_DimsHorzVert,                   &
+        VLOCATION          = MAPL_VLocationCenter,                  &
+                                                       RC=STATUS  )
+    VERIFY_(STATUS)    
 !-srf-gf-scheme
 
     ! !EXPORT STATE:
@@ -1255,7 +1335,7 @@ contains
          RC=STATUS  )
 
     VERIFY_(STATUS)
-  
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'SGS_VVEL_MD',                                    &
          LONG_NAME = 'subgridscale_vert_vel_in_gf_mid_convection_updraft',  &
@@ -1263,9 +1343,9 @@ contains
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
          RC=STATUS  )
-  
+
     VERIFY_(STATUS)
-  
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'SGS_VVEL_SH',                                    &
          LONG_NAME = 'subgridscale_vert_vel_in_gf_shallow_convection_updraft',  &
@@ -2012,7 +2092,7 @@ contains
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'NACTR',                                          &
          LONG_NAME = 'rain_number_concentration',                  &
-         UNITS     = '# m-3',                                     &  
+         UNITS     = '# m-3',                                     &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS) 
@@ -2065,7 +2145,7 @@ contains
          VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddExportSpec(GC,                               &  
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME ='PRCP_WATER',                                     &
          LONG_NAME ='falling_water_at_surface',          &
          UNITS     ='kg m-2 s-1',                                  &
@@ -2599,12 +2679,12 @@ contains
 
     call MAPL_AddExportSpec(GC,                                     &
          SHORT_NAME='LCL_AGL',                                      &
-         LONG_NAME ='lifted_condensation_level_above_ground_level', & 
+         LONG_NAME ='lifted_condensation_level_above_ground_level', &
          UNITS     ='m'  ,                                          &
          DIMS      = MAPL_DimsHorzOnly,                             &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS   )
     VERIFY_(STATUS)
-         
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='ZCBL',                                        &
          LONG_NAME ='height_of_cloud_base_layer',                  &
@@ -3996,8 +4076,8 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                          &
-         SHORT_NAME='CCN04',                                             &
-         LONG_NAME ='CCN conc at 0.4 % supersaturation (grid_avg)',                 &
+         SHORT_NAME='CCN02',                                             &
+         LONG_NAME ='CCN conc at 0.2 % supersaturation (grid_avg)',                 &
          UNITS     ='m-3',                                             &
          DIMS      = MAPL_DimsHorzVert,                                  &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
@@ -4115,16 +4195,16 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'DQVDT_FILL_SC',                             &                    
+         SHORT_NAME = 'DQVDT_FILL_SC',                             &
          LONG_NAME  = 'tendency_of_water_vapor_due_to_negative_fill_after_shallow_cu', &
-         UNITS      = 'kg m-2 s-1',                                   &                    
-         DIMS       =  MAPL_DimsHorzVert,                             &                    
-         VLOCATION  =  MAPL_VLocationCenter,                          &                    
-         RC=STATUS  ) 
-    VERIFY_(STATUS) 
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'DQLLSDT_FILL_SC',                           &  
+         SHORT_NAME = 'DQLLSDT_FILL_SC',                           &
          LONG_NAME  = 'tendency_of_liquid_ls_due_to_negative_fill_after_shallow_cu', &
          UNITS      = 'kg m-2 s-1',                                   &
          DIMS       =  MAPL_DimsHorzVert,                             &
@@ -4133,7 +4213,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'DQLCNDT_FILL_SC',                           &  
+         SHORT_NAME = 'DQLCNDT_FILL_SC',                           &
          LONG_NAME  = 'tendency_of_liquid_cn_due_to_negative_fill_after_shallow_cu', &
          UNITS      = 'kg m-2 s-1',                                   &
          DIMS       =  MAPL_DimsHorzVert,                             &
@@ -4142,7 +4222,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'DQILSDT_FILL_SC',                           &  
+         SHORT_NAME = 'DQILSDT_FILL_SC',                           &
          LONG_NAME  = 'tendency_of_ice_ls_due_to_negative_fill_after_shallow_cu', &
          UNITS      = 'kg m-2 s-1',                                   &
          DIMS       =  MAPL_DimsHorzVert,                             &
@@ -4151,7 +4231,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'DQICNDT_FILL_SC',                           &  
+         SHORT_NAME = 'DQICNDT_FILL_SC',                           &
          LONG_NAME  = 'tendency_of_ice_cn_due_to_negative_fill_after_shallow_cu', &
          UNITS      = 'kg m-2 s-1',                                   &
          DIMS       =  MAPL_DimsHorzVert,                             &
@@ -4160,7 +4240,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'DQRDT_FILL_SC',                             &  
+         SHORT_NAME = 'DQRDT_FILL_SC',                             &
          LONG_NAME  = 'tendency_of_rain_due_to_negative_fill_after_shallow_cu', &
          UNITS      = 'kg m-2 s-1',                                   &
          DIMS       =  MAPL_DimsHorzVert,                             &
@@ -4169,7 +4249,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'DQSDT_FILL_SC',                             &  
+         SHORT_NAME = 'DQSDT_FILL_SC',                             &
          LONG_NAME  = 'tendency_of_snow_due_to_negative_fill_after_shallow_cu', &
          UNITS      = 'kg m-2 s-1',                                   &
          DIMS       =  MAPL_DimsHorzVert,                             &
@@ -4187,16 +4267,16 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'DQVDT_FILL_DC',                             &                    
+         SHORT_NAME = 'DQVDT_FILL_DC',                             &
          LONG_NAME  = 'tendency_of_water_vapor_due_to_negative_fill_after_deep_cu', &
-         UNITS      = 'kg m-2 s-1',                                   &                    
-         DIMS       =  MAPL_DimsHorzVert,                             &                    
-         VLOCATION  =  MAPL_VLocationCenter,                          &                    
-         RC=STATUS  ) 
-    VERIFY_(STATUS) 
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'DQLLSDT_FILL_DC',                           &  
+         SHORT_NAME = 'DQLLSDT_FILL_DC',                           &
          LONG_NAME  = 'tendency_of_liquid_ls_due_to_negative_fill_after_deep_cu', &
          UNITS      = 'kg m-2 s-1',                                   &
          DIMS       =  MAPL_DimsHorzVert,                             &
@@ -4205,7 +4285,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'DQLCNDT_FILL_DC',                           &  
+         SHORT_NAME = 'DQLCNDT_FILL_DC',                           &
          LONG_NAME  = 'tendency_of_liquid_cn_due_to_negative_fill_after_deep_cu', &
          UNITS      = 'kg m-2 s-1',                                   &
          DIMS       =  MAPL_DimsHorzVert,                             &
@@ -4214,7 +4294,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'DQILSDT_FILL_DC',                           &  
+         SHORT_NAME = 'DQILSDT_FILL_DC',                           &
          LONG_NAME  = 'tendency_of_ice_ls_due_to_negative_fill_after_deep_cu', &
          UNITS      = 'kg m-2 s-1',                                   &
          DIMS       =  MAPL_DimsHorzVert,                             &
@@ -4223,7 +4303,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'DQICNDT_FILL_DC',                           &  
+         SHORT_NAME = 'DQICNDT_FILL_DC',                           &
          LONG_NAME  = 'tendency_of_ice_cn_due_to_negative_fill_after_deep_cu', &
          UNITS      = 'kg m-2 s-1',                                   &
          DIMS       =  MAPL_DimsHorzVert,                             &
@@ -4232,7 +4312,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'DQRDT_FILL_DC',                             &  
+         SHORT_NAME = 'DQRDT_FILL_DC',                             &
          LONG_NAME  = 'tendency_of_rain_due_to_negative_fill_after_deep_cu', &
          UNITS      = 'kg m-2 s-1',                                   &
          DIMS       =  MAPL_DimsHorzVert,                             &
@@ -4241,7 +4321,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'DQSDT_FILL_DC',                             &  
+         SHORT_NAME = 'DQSDT_FILL_DC',                             &
          LONG_NAME  = 'tendency_of_snow_due_to_negative_fill_after_deep_cu', &
          UNITS      = 'kg m-2 s-1',                                   &
          DIMS       =  MAPL_DimsHorzVert,                             &
@@ -4259,16 +4339,16 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'DQVDT_FILL_CLDMACRO',                             &                    
+         SHORT_NAME = 'DQVDT_FILL_CLDMACRO',                             &
          LONG_NAME  = 'tendency_of_water_vapor_due_to_negative_fill_after_cldmacro', &
-         UNITS      = 'kg m-2 s-1',                                   &                    
-         DIMS       =  MAPL_DimsHorzVert,                             &                    
-         VLOCATION  =  MAPL_VLocationCenter,                          &                    
-         RC=STATUS  ) 
-    VERIFY_(STATUS) 
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'DQLLSDT_FILL_CLDMACRO',                           &  
+         SHORT_NAME = 'DQLLSDT_FILL_CLDMACRO',                           &
          LONG_NAME  = 'tendency_of_liquid_ls_due_to_negative_fill_after_cldmacro', &
          UNITS      = 'kg m-2 s-1',                                   &
          DIMS       =  MAPL_DimsHorzVert,                             &
@@ -4277,7 +4357,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'DQLCNDT_FILL_CLDMACRO',                           &  
+         SHORT_NAME = 'DQLCNDT_FILL_CLDMACRO',                           &
          LONG_NAME  = 'tendency_of_liquid_cn_due_to_negative_fill_after_cldmacro', &
          UNITS      = 'kg m-2 s-1',                                   &
          DIMS       =  MAPL_DimsHorzVert,                             &
@@ -4286,7 +4366,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'DQILSDT_FILL_CLDMACRO',                           &  
+         SHORT_NAME = 'DQILSDT_FILL_CLDMACRO',                           &
          LONG_NAME  = 'tendency_of_ice_ls_due_to_negative_fill_after_cldmacro', &
          UNITS      = 'kg m-2 s-1',                                   &
          DIMS       =  MAPL_DimsHorzVert,                             &
@@ -4295,7 +4375,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'DQICNDT_FILL_CLDMACRO',                           &  
+         SHORT_NAME = 'DQICNDT_FILL_CLDMACRO',                           &
          LONG_NAME  = 'tendency_of_ice_cn_due_to_negative_fill_after_cldmacro', &
          UNITS      = 'kg m-2 s-1',                                   &
          DIMS       =  MAPL_DimsHorzVert,                             &
@@ -4304,7 +4384,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'DQRDT_FILL_CLDMACRO',                             &  
+         SHORT_NAME = 'DQRDT_FILL_CLDMACRO',                             &
          LONG_NAME  = 'tendency_of_rain_due_to_negative_fill_after_cldmacro', &
          UNITS      = 'kg m-2 s-1',                                   &
          DIMS       =  MAPL_DimsHorzVert,                             &
@@ -4313,7 +4393,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'DQSDT_FILL_CLDMACRO',                             &  
+         SHORT_NAME = 'DQSDT_FILL_CLDMACRO',                             &
          LONG_NAME  = 'tendency_of_snow_due_to_negative_fill_after_cldmacro', &
          UNITS      = 'kg m-2 s-1',                                   &
          DIMS       =  MAPL_DimsHorzVert,                             &
@@ -4331,16 +4411,16 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'DQVDT_FILL_CLDMICRO',                             &                    
+         SHORT_NAME = 'DQVDT_FILL_CLDMICRO',                             &
          LONG_NAME  = 'tendency_of_water_vapor_due_to_negative_fill_after_cldmicro', &
-         UNITS      = 'kg m-2 s-1',                                   &                    
-         DIMS       =  MAPL_DimsHorzVert,                             &                    
-         VLOCATION  =  MAPL_VLocationCenter,                          &                    
-         RC=STATUS  ) 
-    VERIFY_(STATUS) 
+         UNITS      = 'kg m-2 s-1',                                   &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'DQLLSDT_FILL_CLDMICRO',                           &  
+         SHORT_NAME = 'DQLLSDT_FILL_CLDMICRO',                           &
          LONG_NAME  = 'tendency_of_liquid_ls_due_to_negative_fill_after_cldmicro', &
          UNITS      = 'kg m-2 s-1',                                   &
          DIMS       =  MAPL_DimsHorzVert,                             &
@@ -4349,7 +4429,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'DQLCNDT_FILL_CLDMICRO',                           &  
+         SHORT_NAME = 'DQLCNDT_FILL_CLDMICRO',                           &
          LONG_NAME  = 'tendency_of_liquid_cn_due_to_negative_fill_after_cldmicro', &
          UNITS      = 'kg m-2 s-1',                                   &
          DIMS       =  MAPL_DimsHorzVert,                             &
@@ -4358,7 +4438,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'DQILSDT_FILL_CLDMICRO',                           &  
+         SHORT_NAME = 'DQILSDT_FILL_CLDMICRO',                           &
          LONG_NAME  = 'tendency_of_ice_ls_due_to_negative_fill_after_cldmicro', &
          UNITS      = 'kg m-2 s-1',                                   &
          DIMS       =  MAPL_DimsHorzVert,                             &
@@ -4367,7 +4447,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'DQICNDT_FILL_CLDMICRO',                           &  
+         SHORT_NAME = 'DQICNDT_FILL_CLDMICRO',                           &
          LONG_NAME  = 'tendency_of_ice_cn_due_to_negative_fill_after_cldmicro', &
          UNITS      = 'kg m-2 s-1',                                   &
          DIMS       =  MAPL_DimsHorzVert,                             &
@@ -4376,7 +4456,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'DQRDT_FILL_CLDMICRO',                             &  
+         SHORT_NAME = 'DQRDT_FILL_CLDMICRO',                             &
          LONG_NAME  = 'tendency_of_rain_due_to_negative_fill_after_cldmicro', &
          UNITS      = 'kg m-2 s-1',                                   &
          DIMS       =  MAPL_DimsHorzVert,                             &
@@ -4385,7 +4465,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'DQSDT_FILL_CLDMICRO',                             &  
+         SHORT_NAME = 'DQSDT_FILL_CLDMICRO',                             &
          LONG_NAME  = 'tendency_of_snow_due_to_negative_fill_after_cldmicro', &
          UNITS      = 'kg m-2 s-1',                                   &
          DIMS       =  MAPL_DimsHorzVert,                             &
@@ -5371,7 +5451,7 @@ contains
 
         call MAPL_AddExportSpec(GC,                               &
         SHORT_NAME         = 'TAU_MD',                            &
-        LONG_NAME          = 'congestus cape removal time scale', &       
+        LONG_NAME          = 'congestus cape removal time scale', &
         UNITS              = 's',                                 &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -5478,6 +5558,16 @@ contains
 
     type (ESMF_Config)                  :: CF
 
+    type (ESMF_Alarm   )     :: ALARM
+    type (ESMF_TimeInterval) :: TINT
+    real(ESMF_KIND_R8)       :: DT_R8
+    real                     :: DT_MOIST
+    real                     :: DBZ_DT
+    type(ESMF_Calendar)      :: calendar
+    type(ESMF_Time)          :: currTime
+    type(ESMF_Alarm)         :: DBZ_RunAlarm
+    type(ESMF_TimeInterval)  :: ringInterval
+
     !=============================================================================
 
     ! Begin...
@@ -5506,26 +5596,40 @@ contains
     call MAPL_GetResource( MAPL, LDIAGNOSE_PRECIP_TYPE, Label="DIAGNOSE_PRECIP_TYPE:",  default=.FALSE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LUPDATE_PRECIP_TYPE,   Label="UPDATE_PRECIP_TYPE:",    default=.FALSE., RC=STATUS); VERIFY_(STATUS)
 
-    call MAPL_GetResource( MAPL, USE_AEROSOL_NN  , 'USE_AEROSOL_NN:'  , DEFAULT=USE_AEROSOL_NN, RC=STATUS); VERIFY_(STATUS)
-    if (USE_AEROSOL_NN) then
-      call aer_cloud_init()
-      call WRITE_PARALLEL ("INITIALIZED aer_cloud_init")
-    endif
-    ! MAT These have to be defined as they are passed into Aer_Activate below and are intent(in)
-    !     Note: It's possible these aren't *used* if USE_AEROSOL_NN=.TRUE. but they are still passed
-    !           in so they have to be defined
-    call MAPL_GetResource( MAPL, CCN_OCN, 'NCCN_OCN:', DEFAULT= 100., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CCN_LND, 'NCCN_LND:', DEFAULT= 300., RC=STATUS); VERIFY_(STATUS)
-
-    call MAPL_GetResource( MAPL, MOVE_CN_TO_LS, Label="MOVE_CN_TO_LS:",  default=.FALSE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, DETRAIN_INACTIVE_CNV, Label="DETRAIN_INACTIVE_CNV:",  default=0.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, TAU_DETRAIN_CNV, Label="TAU_DETRAIN_CNV:",  default=1800.0, RC=STATUS); VERIFY_(STATUS)
 
     if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
-    if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Initialize(MAPL, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
-    if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Initialize(MAPL, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Initialize(MAPL, CF, CLOCK, IMPORT, EXPORT, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Initialize(MAPL, CF, CLOCK, IMPORT, EXPORT, RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CLDMICR_OPTION)=="BACM_1M") call BACM_1M_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
-    if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Initialize(MAPL, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Initialize(MAPL, CF, CLOCK, IMPORT, EXPORT, RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CLDMICR_OPTION)=="THOM_1M") call THOM_1M_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
+
+    call MAPL_Get(MAPL, RUNALARM=ALARM, RC=STATUS );VERIFY_(STATUS)
+    call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
+    DT_MOIST = DT_R8                
+
+    DBZ_DT = max(DT_MOIST,900.0)
+    call MAPL_GetResource(MAPL, DBZ_DT, 'DBZ_DT:', default=DBZ_DT, RC=STATUS); VERIFY_(STATUS)
+    ! Get the current time in addition to the calendar
+    call ESMF_ClockGet(CLOCK, currTime=currTime, calendar=calendar, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_TimeIntervalSet(ringInterval, S=nint(DBZ_DT), calendar=calendar, RC=STATUS); VERIFY_(STATUS)
+    ! Add RingTime = currTime to anchor the alarm
+    DBZ_RunAlarm = ESMF_AlarmCreate(Clock       = CLOCK,          &
+                                   Name         = 'DBZ_RunAlarm', &
+                                   RingTime     = currTime-TINT,  &
+                                   RingInterval = ringInterval,   &
+                                   Sticky       = .false.  , RC=STATUS); VERIFY_(STATUS)
+    call init_refl10cm()
+    call MAPL_GetResource( MAPL, refl10cm_allow_wet_graupel , 'refl10cm_allow_wet_graupel:' , DEFAULT= .FALSE. , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, refl10cm_allow_wet_snow    , 'refl10cm_allow_wet_snow:'    , DEFAULT= .FALSE. , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, DBZ_VAR_INTERCP , 'DBZ_VAR_INTERCP:' , DEFAULT= DBZ_VAR_INTERCP, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, LIQUID_SKIN_SNOW    , 'LIQUID_SKIN_SNOW:'    , DEFAULT= .FALSE. , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, LIQUID_SKIN_GRAUPEL , 'LIQUID_SKIN_GRAUPEL:' , DEFAULT= .FALSE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, LIQUID_SKIN_HAIL    , 'LIQUID_SKIN_HAIL:'    , DEFAULT= .TRUE. , RC=STATUS); VERIFY_(STATUS)
 
     ! All done
     !---------
@@ -5577,6 +5681,12 @@ contains
     real                            :: DT_MOIST
 
     ! Local variables
+    real :: MFC                 ! Layer-centered mass flux [kg m-2 s-1]
+    real :: inactivity_weight   ! Scale from 0.0 to 1.0 based on MFC
+    real :: transfer_rate       ! Fraction of mass to transfer this timestep
+    real :: dq_l                ! Liquid mass being transferred
+    real :: dq_i                ! Ice mass being transferred
+    real :: d_cf                ! Cloud fraction being transferred
     real                                :: Tmax, KCBLMIN, PMIN_CBL
     real                                :: CNV_CAPE_NORM, CNV_CAPE_SCALE
     real, allocatable, dimension(:,:,:) :: PLEmb, PKE, ZLE0, PK, MASS
@@ -5736,8 +5846,8 @@ contains
        if(associated(PTR3D)) PTR3D = 50.e-6
        call MAPL_GetPointer(EXPORT, PTR3D, 'RS', RC=STATUS); VERIFY_(STATUS)
        if(associated(PTR3D)) PTR3D = 50.e-6
-       call MAPL_GetPointer(EXPORT, PTR3D, 'RG', RC=STATUS); VERIFY_(STATUS) 
-       if(associated(PTR3D)) PTR3D = 50.e-6   
+       call MAPL_GetPointer(EXPORT, PTR3D, 'RG', RC=STATUS); VERIFY_(STATUS)
+       if(associated(PTR3D)) PTR3D = 50.e-6
 
        ! Derived States
        MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
@@ -5885,51 +5995,32 @@ contains
 
        ! Get aerosol activation properties
        call MAPL_TimerOn (MAPL,"---AERO_ACTIVATE")
-       if (USE_AEROSOL_NN) then
-         ! get veritical velocity
-         if (all(W == 0.0)) then
-           TMP3D = -OMEGA/(MAPL_GRAV*PLmb*100.0/(MAPL_RGAS*T))
-         else
-           TMP3D = W
-         endif
-         ! Pressures in Pa
-         call Aer_Activation(MAPL, IM,JM,LM, Q, T, PLmb*100.0, PLE, TKE, TMP3D, FRLAND, &
-                             AeroPropsNew, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6, &
-                             (adjustl(CLDMICR_OPTION)=="MGB2_2M"), __RC__)
-! Temporary
-!        call MAPL_MaxMin('MST: NWFA     ', NWFA *1.e-6)
-!        call MAPL_MaxMin('MST: NACTL    ', NACTL*1.e-6)
-!        call MAPL_MaxMin('MST: NACTI    ', NACTI*1.e-6)
-! Temporary
-         if (adjustl(CLDMICR_OPTION)=="MGB2_2M") then
-            call MAPL_TimerOn (MAPL,"----AERO_ACTIVATE_MGB2_2M")
-            call ESMF_AttributeGet(AERO, name='number_of_aerosol_modes', value=n_modes, RC=STATUS); VERIFY_(STATUS)
-            allocate ( AeroProps(IM,JM,LM) )
-            do L=1,LM
-              do J=1,JM
-                do I=1,IM
-                  AeroProps(I,J,L)%nmods    = n_modes
-                  do n=1,n_modes
-                  AeroProps(I,J,L)%num(n)   = AeroPropsNew(n)%num(I,J,L)
-                  AeroProps(I,J,L)%dpg(n)   = AeroPropsNew(n)%dpg(I,J,L)
-                  AeroProps(I,J,L)%sig(n)   = AeroPropsNew(n)%sig(I,J,L)
-                  AeroProps(I,J,L)%den(n)   = AeroPropsNew(n)%den(I,J,L)
-                  AeroProps(I,J,L)%kap(n)   = AeroPropsNew(n)%kap(I,J,L)
-                  AeroProps(I,J,L)%fdust(n) = AeroPropsNew(n)%fdust(I,J,L)
-                  AeroProps(I,J,L)%fsoot(n) = AeroPropsNew(n)%fsoot(I,J,L)
-                  AeroProps(I,J,L)%forg(n)  = AeroPropsNew(n)%forg(I,J,L)
-                  enddo
-                enddo
-              enddo
-            enddo
-            call MAPL_TimerOff (MAPL,"----AERO_ACTIVATE_MGB2_2M")
-         endif
+
+       if (USE_NCLOUD_CLIM) then  !Setup ND/NI climatology from GiOcean
+          call MAPL_GetPointer(IMPORT, PTR3D, 'NCPL_CLIM', RC=STATUS); VERIFY_(STATUS)
+          NACTL = PTR3D
+          call MAPL_GetPointer(IMPORT, PTR3D, 'NCPI_CLIM', RC=STATUS); VERIFY_(STATUS)
+          NACTI = PTR3D
        else
-         do L=1,LM
-           NACTL(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6 ! #/m^3
-           NACTI(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6 ! #/m^3
-         end do
+           if (USE_AEROSOL_NN) then
+             ! get veritical velocity
+             if (all(W == 0.0)) then
+               TMP3D = -OMEGA/(MAPL_GRAV*PLmb*100.0/(MAPL_RGAS*T))
+             else
+               TMP3D = W
+             endif
+             ! Pressures in Pa
+             call Aer_Activation(MAPL, IM,JM,LM, Q, T, PLmb*100.0, PLE, TKE, TMP3D, FRLAND, &
+                                 AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6, &
+                                 (adjustl(CLDMICR_OPTION)=="MGB2_2M"), __RC__)
+           else
+              do L=1,LM
+                 NACTL(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6 ! #/m^3
+                 NACTI(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6 ! #/m^3
+              end do
+           endif
        endif
+
        call MAPL_GetPointer(EXPORT, PTR3D, 'NCCN_LIQ', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = NACTL*1.e-6
        call MAPL_GetPointer(EXPORT, PTR3D, 'NCCN_ICE', RC=STATUS); VERIFY_(STATUS)
@@ -5989,22 +6080,33 @@ contains
                               PTR3D = 0.0
        if (associated(PTRDC)) PTR3D = PTR3D + PTRDC
        if (associated(PTRSC)) PTR3D = PTR3D + PTRSC
-
-       if (MOVE_CN_TO_LS) then
+       if (DETRAIN_INACTIVE_CNV > 0.0) then
          do L = 1, LM
            do J = 1, JM
              do I = 1, IM
-               if (0.5*(PTR3D(I,J,L)+PTR3D(I,J,L+1)) < 1.e-5) then
-                ! Move all QL,QI,CL to LS when cnv_mfc is 0.0
-                 QLLS(I,J,L) = QLLS(I,J,L)+QLCN(I,J,L)
-                 QLCN(I,J,L) = 0.0
-                 QILS(I,J,L) = QILS(I,J,L)+QICN(I,J,L)
-                 QICN(I,J,L) = 0.0
-                 CLLS(I,J,L) = CLLS(I,J,L)+CLCN(I,J,L)
-                 CLCN(I,J,L) = 0.0
+               ! Calculate local mass flux
+               MFC = 0.5 * (PTR3D(I,J,L) + PTR3D(I,J,L+1))
+               if (MFC < DETRAIN_INACTIVE_CNV) then
+                 ! 1. Calculate a smooth inactivity factor (0.0 at threshold, 1.0 when MFC is 0)
+                 ! 2. Scale it by the timestep vs relaxation time (DT_MOIST / TAU)
+                 inactivity_weight = 1.0 - (MFC / DETRAIN_INACTIVE_CNV)
+                 transfer_rate = inactivity_weight * (DT_MOIST / TAU_DETRAIN_CNV)
+                 ! Bound the rate safely between 0 and 1
+                 transfer_rate = min(1.0, max(0.0, transfer_rate))
+                 ! Calculate the exact amounts to transfer this timestep
+                 dq_l = QLCN(I,J,L) * transfer_rate
+                 dq_i = QICN(I,J,L) * transfer_rate
+                 d_cf = CLCN(I,J,L) * transfer_rate
+                 ! Move the Liquid
+                 QLLS(I,J,L) = QLLS(I,J,L) + dq_l
+                 QLCN(I,J,L) = QLCN(I,J,L) - dq_l
+                 ! Move the Ice
+                 QILS(I,J,L) = QILS(I,J,L) + dq_i
+                 QICN(I,J,L) = QICN(I,J,L) - dq_i
+                 ! Move the Cloud Fraction using Random Overlap for the transferred piece
+                 CLLS(I,J,L) = CLLS(I,J,L) + d_cf - (CLLS(I,J,L) * d_cf)
+                 CLCN(I,J,L) = CLCN(I,J,L) - d_cf
                endif
-              ! cleanup clouds
-               call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L) )
             enddo
           enddo
          enddo
@@ -6027,7 +6129,7 @@ contains
        call MAPL_TimerOn(MAPL,"---MOIST_EPILOGUE")
 
        if (DEBUG_MST) then
-          call MAPL_MaxMin('MST: Q_AF_MP  ', Q)      
+          call MAPL_MaxMin('MST: Q_AF_MP  ', Q)
           call MAPL_MaxMin('MST: T_AF_MP  ', T)
           call MAPL_MaxMin('MST: U_AF_MP  ', U)
           call MAPL_MaxMin('MST: V_AF_MP  ', V)
@@ -6097,13 +6199,9 @@ contains
          LS_PRCP = LS_PRCP + PTR2D
          Q = Q - TMP3D
          T = T + (MAPL_ALHL/MAPL_CP)*TMP3D
-        
+
          DTDT_ER = (T -  DTDT_ER)/DT_MOIST
          DQVDT_ER = (Q - DQVDT_ER)/DT_MOIST
-
-       if (USE_AEROSOL_NN .and. adjustl(CLDMICR_OPTION)=="MGB2_2M") then
-         deallocate ( AeroProps )
-       endif
 
        ! Export Total Moist Tendencies
 
@@ -6434,7 +6532,7 @@ contains
        if (associated(PTR3D)) PTR3D = QILS+QICN
 
        call MAPL_GetPointer(EXPORT, PTR3D, 'QCTOT', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR3D)) then 
+       if (associated(PTR3D)) then
           PTR3D = QLLS+QLCN+QILS+QICN
           call MAPL_GetPointer(EXPORT, QRTOT, 'QRTOT', RC=STATUS); VERIFY_(STATUS)
           if (associated(QRTOT)) PTR3D=PTR3D+QRTOT
@@ -6575,6 +6673,36 @@ contains
     RETURN_(ESMF_SUCCESS)
 
   end subroutine RUN
+
+  subroutine FINALIZE ( GC, IMPORT, EXPORT, CLOCK, RC )
+    type(ESMF_GridComp), intent(inout) :: gc     ! Gridded component
+    type(ESMF_State),    intent(inout) :: import ! Import state
+    type(ESMF_State),    intent(inout) :: export ! Export state
+    type(ESMF_Clock),    intent(inout) :: clock  ! The clock
+    integer, optional,   intent(  out) :: rc     ! Error code
+
+    ! ErrLog variables
+    integer :: status
+    character(len=ESMF_MAXSTR) :: Iam
+    character(len=ESMF_MAXSTR) :: comp_name
+    ! Begin...
+    ! Get component's name and setup traceback handle
+    call ESMF_GridCompget(gc, name=comp_name, rc=status)
+    VERIFY_(status)
+    Iam = trim(comp_name) // "::Finalize"
+
+
+    if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_FINALIZE(GC, IMPORT, EXPORT, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(SHALLOW_OPTION)=="UW"     ) call UW_Finalize(GC, IMPORT, EXPORT, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(CONVPAR_OPTION)=="GF"     ) call GF_Finalize(GC, IMPORT, EXPORT, RC=STATUS) ; VERIFY_(STATUS)
+
+    ! Call Finalize for every child
+    call MAPL_GenericFinalize(gc, import, export, clock, rc=status)
+    VERIFY_(status)
+    ! End
+    RETURN_(ESMF_SUCCESS)
+
+  end subroutine FINALIZE
 
 end module GEOS_MoistGridCompMod
 

@@ -227,7 +227,7 @@ module gfdl_mp_mod
     ! 3: WSM6 with 0 at 0 C and fixed value at - 10 C
     ! 4: combination of 1 and 3
 
-    integer :: ifflag = 3 ! ice fall scheme
+    integer :: ifflag = 1 ! ice fall scheme
     ! 1: Deng and Mace (2008)
     ! 2: Heymsfield and Donner (1990)
     ! 3: Combination of Deng and Mace (2008) and Mishra et al (2014, JGR)
@@ -306,9 +306,9 @@ module gfdl_mp_mod
     logical :: z_slope_ice = .true. ! use linear mono slope for autocconversions
 
     logical :: use_rhc_cevap = .false. ! cap of rh for cloud water evaporation
-    logical :: use_rhc_revap = .false. ! cap of rh for rain evaporation
+    logical :: use_rhc_revap = .true. ! cap of rh for rain evaporation
 
-    logical :: use_enhanced_dry_evap = .false. ! Alternative minimum evaporation formula
+    logical :: use_enhanced_dry_evap = .true. ! Alternative minimum evaporation formula
 
     logical :: const_vw = .false. ! if .ture., the constants are specified by v * _fac
     logical :: const_vi = .false. ! if .ture., the constants are specified by v * _fac
@@ -436,7 +436,7 @@ module gfdl_mp_mod
     real :: pwbf_qi_crt  = 0.8e-4 ! WBF liquid to ice freezing threshold (kg/m^3)
     real :: pgaut_qs_crt = 0.6e-3 ! snow to graupel autoconversion threshold (0.6e-3 in Purdue Lin scheme) (kg/m^3)
 
-    real :: c_paut  = 0.75 ! cloud water to rain autoconversion efficiency
+    real :: c_paut  = 0.5 ! cloud water to rain autoconversion efficiency
 
     ! -----------------------------------------------------------------------
     ! collection efficiencies for accretion
@@ -2598,24 +2598,44 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
                 ! -----------------------------------------------------------
                 ! 1. Calculate Base Fall Speeds based on chosen formulation
                 ! -----------------------------------------------------------
-                if (ifflag .eq. 1) then
-                    qden = q (k) * den (k) * 1.e3
-                    viLSC = 10.0**(log10(qden) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
-                    viCNV = 10.0**(log10(qden) * (tc (k) * (aaC * tc (k) + bbC) + ccC) + ddC * tc (k) + eeC)
-                    vt (k) = 0.01 * (viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction))
-                endif
-
-                if (ifflag .eq. 2) then
-                    qden = q (k) * den (k)
-                    vt (k) = 3.29 * exp (0.16 * log (qden))
-                endif
-
-                if (ifflag .eq. 3) then
-                    qden = q (k) * den (k) * 1.e3
-                    viLSC = 10.0**(log10(qden) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
-                    viCNV = MAX(10.0,(1.119*tc (k) + 14.21*log10(qden*1.e3) + 68.85))
-                    vt (k) = 0.01 * (viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction))
-                endif
+                select case (ifflag)
+                    
+                    case (1)
+                        ! Pure Deng and Mace (2008)
+                        qden = q (k) * den (k) * 1.e3
+                        viLSC = 10.0**(log10(qden) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
+                        viCNV = 10.0**(log10(qden) * (tc (k) * (aaC * tc (k) + bbC) + ccC) + ddC * tc (k) + eeC)
+                        vt (k) = 0.01 * (viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction))
+            
+                    case (2)
+                        ! Pure Heymsfield and Donner (1990)
+                        qden = q (k) * den (k)
+                        vt (k) = 3.29 * exp (0.16 * log (qden))
+            
+                    case (3)
+                        ! Pure Mishra et al (2014, JGR)
+                        qden = q (k) * den (k) * 1.e3
+                        ! Synoptic Vm: a=1.411, b=11.71, c=82.35
+                        viLSC = MAX(10.0, (1.411*tc (k) + 11.71*log10(qden*1.e3) + 82.35))
+                        ! Anvil Vm: a=1.119, b=14.21, c=68.85
+                        viCNV = MAX(10.0, (1.119*tc (k) + 14.21*log10(qden*1.e3) + 68.85))
+                        vt (k) = 0.01 * (viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction))
+            
+                    case (4)
+                        ! Combination: Deng & Mace (2008) LSC + Mishra et al (2014) Anvil CNV
+                        qden = q (k) * den (k) * 1.e3
+                        viLSC = 10.0**(log10(qden) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
+                        ! Anvil Vm: a=1.119, b=14.21, c=68.85
+                        viCNV = MAX(10.0, (1.119*tc (k) + 14.21*log10(qden*1.e3) + 68.85))
+                        vt (k) = 0.01 * (viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction))
+                        
+                    case default
+                        ! Fail execution if an invalid flag is provided
+                        print *, "ERROR: Invalid ifflag (", ifflag, ") provided for ice fall scheme."
+                        print *, "Valid options are 1, 2, 3, or 4."
+                        stop "Execution halted in ice settling code due to invalid ifflag."
+                        
+                end select
 
                 ! -----------------------------------------------------------
                 ! 2. Apply Universal Pressure Scaling (Accelerates high-alt ice)
@@ -4899,7 +4919,7 @@ subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den,
     real :: tc, tin, sink, dqdt, qsw, qsi, qim, tmp, fac_wbf
 
     real :: tau_wbf_eff
-    real, parameter :: wbf_coarse_mult = 3.0 ! How much slower WBF is at 50km vs 2km
+    real, parameter :: wbf_coarse_mult = 9.0 ! How much slower WBF is at 50km vs 2km
 
     if (.not. do_wbf) return
 
