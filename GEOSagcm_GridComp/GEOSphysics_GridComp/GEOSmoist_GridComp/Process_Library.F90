@@ -52,24 +52,22 @@ module GEOSmoist_Process_Library
    real, parameter :: aT_ICE_MAX = 265.66
    real, parameter :: aT_ICE_PWR = 2.0
    ! Over Land Ice SRF_TYPE == 4 (Antarctica / Greenland)
-   ! OLD: 233.16 / 258.16 / 6.0
-   real, parameter :: liT_ICE_ALL = 245.16  ! 100% ice at -28C (was -40C)
-   real, parameter :: liT_ICE_MAX = 268.16  ! Ice starts at -5C (was -15C)
-   real, parameter :: liT_ICE_PWR = 1.5     ! Linear-quadratic transition (was 6.0)
+   real, parameter :: liT_ICE_ALL = 233.16
+   real, parameter :: liT_ICE_MAX = 258.16
+   real, parameter :: liT_ICE_PWR = 6.0
    ! Over Ice SRF_TYPE == 3 (Arctic Sea Ice)
    ! OLD: 236.16 / 261.16 / 4.0
-   real, parameter :: iT_ICE_ALL = 246.16   ! 100% ice at -27C (was -37C)
-   real, parameter :: iT_ICE_MAX = 268.16   ! Ice starts at -5C (was -12C)
-   real, parameter :: iT_ICE_PWR = 1.5      ! (was 4.0)
+   real, parameter :: iT_ICE_ALL = 236.16
+   real, parameter :: iT_ICE_MAX = 261.16
+   real, parameter :: iT_ICE_PWR = 4.0
    ! Over Snow SRF_TYPE = 2 (Winter high-latitude land)
-   ! OLD: 235.16 / 260.16 / 6.0
-   real, parameter :: sT_ICE_ALL = 245.16   ! 100% ice at -28C (was -38C)
-   real, parameter :: sT_ICE_MAX = 268.16   ! Ice starts at -5C (was -13C)
-   real, parameter :: sT_ICE_PWR = 1.5      ! (was 6.0)
-   ! Over Land SRF_TYPE = 1 (Keep default or lower power slightly)
+   real, parameter :: sT_ICE_ALL = 235.16
+   real, parameter :: sT_ICE_MAX = 260.16
+   real, parameter :: sT_ICE_PWR = 6.0
+   ! Over Land SRF_TYPE = 1
    real, parameter :: lT_ICE_ALL = 240.16
    real, parameter :: lT_ICE_MAX = 262.16
-   real, parameter :: lT_ICE_PWR = 1.5      ! (was 2.0)
+   real, parameter :: lT_ICE_PWR = 2.0
    ! Over Oceans   SRF_TYPE = 0
    real, parameter :: oT_ICE_ALL = 238.16
    real, parameter :: oT_ICE_MAX = 263.16
