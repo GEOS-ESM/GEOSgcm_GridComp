@@ -260,6 +260,7 @@ contains
     real    :: NCAR_ET_EFF     ! Frontal region efficiency factor
     real    :: NCAR_ET_TAUBGND ! Extratropical background frontal forcing
     logical :: NCAR_ET_USE_DQCDT
+    logical :: NCAR_ET_USE_SPEED
     logical :: NCAR_DC_BERES
     integer :: GEOS_PGWV
     real :: NCAR_EFFGWBKG
@@ -379,10 +380,18 @@ contains
       call MAPL_GetResource( MAPL, NCAR_BKG_GW_DC,      Label="NCAR_BKG_GW_DC:",      default=2.5,    _RC)
       call MAPL_GetResource( MAPL, NCAR_BKG_FCRIT2,     Label="NCAR_BKG_FCRIT2:",     default=1.0,    _RC)
       call MAPL_GetResource( MAPL, NCAR_BKG_WAVELENGTH, Label="NCAR_BKG_WAVELENGTH:", default=1.e5,   _RC)
-      call MAPL_GetResource( MAPL, NCAR_TR_EFF,         Label="NCAR_TR_EFF:",         default=1.0,    _RC)
+      call MAPL_GetResource( MAPL, NCAR_TR_EFF,         Label="NCAR_TR_EFF:",         default=0.625,  _RC)
       call MAPL_GetResource( MAPL, NCAR_ET_EFF,         Label="NCAR_ET_EFF:",         default=1.0,    _RC)
-      call MAPL_GetResource( MAPL, NCAR_ET_TAUBGND,     Label="NCAR_ET_TAUBGND:",     default=6.4,    _RC)
-      call MAPL_GetResource( MAPL, NCAR_ET_USE_DQCDT,   Label="NCAR_ET_USE_DQCDT:",   default=.FALSE., _RC)
+
+      call MAPL_GetResource( MAPL, NCAR_ET_USE_DQCDT,   Label="NCAR_ET_USE_DQCDT:",   default=.TRUE., _RC)
+      call MAPL_GetResource( MAPL, NCAR_ET_USE_SPEED,   Label="NCAR_ET_USE_SPEED:",   default=.TRUE., _RC)
+
+      ! 1. Default to classic rigid latitude tuning
+      NCAR_ET_TAUBGND = 6.4 
+      ! 2. Set baselines for independent runs
+      if (NCAR_ET_USE_DQCDT .or. NCAR_ET_USE_SPEED) NCAR_ET_TAUBGND = 6.75
+      call MAPL_GetResource( MAPL, NCAR_ET_TAUBGND,     Label="NCAR_ET_TAUBGND:",     default=NCAR_ET_TAUBGND, _RC)
+
       call MAPL_GetResource( MAPL, NCAR_BKG_TNDMAX,     Label="NCAR_BKG_TNDMAX:",     default=250.0,  _RC)
       NCAR_BKG_TNDMAX = NCAR_BKG_TNDMAX/86400.0
       ! Beres DeepCu
@@ -397,7 +406,7 @@ contains
                                     self%workspaces(thread)%beres_dc_desc, &
                                     NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, &
                                     NCAR_BKG_WAVELENGTH, NCAR_DC_BERES_SRC_LEVEL, &
-                                    1000.0, .TRUE., NCAR_TR_EFF, NCAR_ET_EFF, NCAR_ET_TAUBGND, NCAR_ET_USE_DQCDT, &
+                                    1000.0, .TRUE., NCAR_TR_EFF, NCAR_ET_EFF, NCAR_ET_TAUBGND, NCAR_ET_USE_DQCDT, NCAR_ET_USE_SPEED, &
                                     NCAR_BKG_TNDMAX, NCAR_DC_BERES, &
                                     IM*JM_thread, LATS(:,bounds(thread+1)%min:bounds(thread+1)%max))
           end do
@@ -407,7 +416,7 @@ contains
                               self%workspaces(0)%beres_dc_desc, &
                               NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, &
                               NCAR_BKG_WAVELENGTH, NCAR_DC_BERES_SRC_LEVEL, &
-                              1000.0, .TRUE., NCAR_TR_EFF, NCAR_ET_EFF, NCAR_ET_TAUBGND, NCAR_ET_USE_DQCDT, &
+                              1000.0, .TRUE., NCAR_TR_EFF, NCAR_ET_EFF, NCAR_ET_TAUBGND, NCAR_ET_USE_DQCDT, NCAR_ET_USE_SPEED, &
                               NCAR_BKG_TNDMAX, NCAR_DC_BERES, &
                               IM*JM, LATS )
       endif
@@ -685,7 +694,9 @@ contains
          !call MAPL_TimerOn(MAPL,"-INTR_NCAR")
          if ( (self%NCAR_EFFGWORO /= 0.0) .OR. (self%NCAR_EFFGWBKG /= 0.0) ) then
             DO L=1, LM
-               TMP3D(:,:,L) = (1.0-CNV_FRC)*(DQLDT(:,:,L)+DQIDT(:,:,L))
+               ! Raising the mask to the 4th power aggressively suppresses 
+               ! tendencies in regions with even modest CNV_FRC values
+               TMP3D(:,:,L) = ((1.0-CNV_FRC)**4) * (DQLDT(:,:,L)+DQIDT(:,:,L))
             END DO
             if(associated(DQCDT_LS)) DQCDT_LS = TMP3D
             thread = MAPL_get_current_thread()
@@ -694,7 +705,7 @@ contains
                  workspace%beres_dc_desc, &
                  workspace%beres_band, workspace%oro_band, workspace%rdg_band, &
                  PLE,       T,          U,          V,                   &
-                 HT_dc,                 TMP3D,                           &
+                 HT_dc,     TMP3D,      WSPD_STABLE300M,                 &
                  SGH,       MXDIS,      HWDTH,      CLNGT,  ANGLL,       &
                  ANIXY,     GBXAR_TMP,  KWVRDG,     EFFRDG, PREF,        &
                  PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
