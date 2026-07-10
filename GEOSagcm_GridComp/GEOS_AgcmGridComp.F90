@@ -1074,19 +1074,23 @@ contains
 ! Set internal connections between the childrens IMPORTS and EXPORTS
 ! ------------------------------------------------------------------
 
-    call MAPL_AddConnectivity ( GC,                                                        &
-         SRC_NAME  = (/'U            ','V            ','TH           ','T            ',    &
-                       'ZLE          ','PS           ','TA           ','QA           ',    &
-                       'US           ','VS           ',                                    &
-                       'SPEED        ','DZ           ','PLE          ','W            ',    &
-                       'PREF         ','TROPP_BLENDED','S            ','PLK          ',    &
-                       'PV           ','TROPK_BLENDED','OMEGA        ','PKE          '/),  &
-         DST_NAME  = (/'U     ','V     ','TH    ','T     ',                                &
-                       'ZLE   ','PS    ','TA    ','QA    ',                                &
-                       'UA    ','VA    ',                                                  &
-                       'SPEED ','DZ    ','PLE   ','W     ',                                &
-                       'PREF  ','TROPP ','S     ','PLK   ',                                &
-                       'PV    ','TROPK ','OMEGA ','PKE   '/),                              &
+    ! Set the length of the character array constructor to
+    ! the length of the longest string in the array
+    call MAPL_AddConnectivity ( GC, &
+         SRC_NAME  = [character(len=15) :: &
+            'U',     'V',             'TH',              'T',    &
+            'ZLE',   'PS',            'TA',              'QA',   &
+            'US',    'VS',            'WSPD_STABLE300M',         &
+            'SPEED', 'DZ',            'PLE',             'W',    &
+            'PREF',  'TROPP_BLENDED', 'S',               'PLK',  &
+            'PV',    'TROPK_BLENDED', 'OMEGA',           'PKE'], &
+         DST_NAME  = [character(len=15) :: &
+             'U',     'V',     'TH',              'T',    &
+             'ZLE',   'PS',    'TA',              'QA',   &
+             'UA',    'VA',    'WSPD_STABLE300M',         &
+             'SPEED', 'DZ',    'PLE',             'W',    &
+             'PREF',  'TROPP', 'S',               'PLK',  &
+             'PV',    'TROPK', 'OMEGA',           'PKE'], &
          DST_ID = PHYS,                                                                    &
          SRC_ID = SDYN,                                                                    &
          RC=STATUS  )
@@ -1623,9 +1627,9 @@ contains
    real, pointer, dimension(:,:)       :: TQV    => null()
    real, pointer, dimension(:,:)       :: TQI    => null()
    real, pointer, dimension(:,:)       :: TQL    => null()
-   real, pointer, dimension(:,:)       :: TQR    => null()                
-   real, pointer, dimension(:,:)       :: TQS    => null()                
-   real, pointer, dimension(:,:)       :: TQG    => null()                
+   real, pointer, dimension(:,:)       :: TQR    => null()
+   real, pointer, dimension(:,:)       :: TQS    => null()
+   real, pointer, dimension(:,:)       :: TQG    => null()
    real, pointer, dimension(:,:)       :: TOX    => null()
    real, pointer, dimension(:,:)       :: TROPP1 => null()
    real, pointer, dimension(:,:)       :: TROPP2 => null()
@@ -2668,11 +2672,11 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
     VERIFY_(STATUS)
     call MAPL_GetPointer ( EXPORT, TQL   , 'TQL'   , rc=STATUS )
     VERIFY_(STATUS)
-    call MAPL_GetPointer ( EXPORT, TQR   , 'TQR'   , rc=STATUS )          
+    call MAPL_GetPointer ( EXPORT, TQR   , 'TQR'   , rc=STATUS )
     VERIFY_(STATUS)
-    call MAPL_GetPointer ( EXPORT, TQS   , 'TQS'   , rc=STATUS )          
+    call MAPL_GetPointer ( EXPORT, TQS   , 'TQS'   , rc=STATUS )
     VERIFY_(STATUS)
-    call MAPL_GetPointer ( EXPORT, TQG   , 'TQG'   , rc=STATUS )          
+    call MAPL_GetPointer ( EXPORT, TQG   , 'TQG'   , rc=STATUS )
     VERIFY_(STATUS)
     call MAPL_GetPointer ( EXPORT, QLTOT , 'QLTOT' , rc=STATUS )
     VERIFY_(STATUS)
@@ -2828,7 +2832,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 ! Rain
 ! ------------
        if(NAMES(K)=='QRAIN') then
-          call FILL_Friendly   ( Q,DP,QFILL,QINT ) 
+          call FILL_Friendly   ( Q,DP,QFILL,QINT )
           if(associated(QRFILL))           QRFILL = QRFILL      + QFILL
           if(associated(QTFILL))           QTFILL = QTFILL      + QFILL
           if(associated(DQRDTPHYINT)) DQRDTPHYINT = DQRDTPHYINT + QFILL
