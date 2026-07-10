@@ -693,7 +693,7 @@
              swap_p = p2; p2 = p4; p4 = swap_p
            endif
 
-           ! Write CCW corners and robust positive spherical area.
+           !Write CCW corners and POSITIVE area
            SCRIP_CornerLon(:,n) = modulo([p1(1),p2(1),p3(1),p4(1)]*(180._8/pi), 360.0_8)
            SCRIP_CornerLat(:,n) =        [p1(2),p2(2),p3(2),p4(2)]*(180._8/pi)
 
