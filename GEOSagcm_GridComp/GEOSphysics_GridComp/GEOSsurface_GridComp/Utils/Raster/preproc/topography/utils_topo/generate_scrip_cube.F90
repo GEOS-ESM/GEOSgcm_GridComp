@@ -583,8 +583,7 @@
              p3(1) = modulo(p3(1), 2.0d0*pi)
              p4(1) = modulo(p4(1), 2.0d0*pi)
          
-             ! compute positive spherical area using the same robust method
-             ! used by the regular-grid path
+             ! compute positive spherical area using the same method used by the regular-grid path
              SCRIP_Area(n) = get_area_spherical_polygon(p1,p2,p3,p4)
 
              if (SCRIP_Area(n) /= SCRIP_Area(n) .or. SCRIP_Area(n) <= 0.0d0) then
@@ -804,7 +803,7 @@
 
       if (area_err > 1.0d-6) then
         if (localPet == 0) write(*,*) "ERROR: SCRIP grid_area does not close to 4*pi"
-      !  call MPI_Abort(mpiC, 1, mpi_err)
+        call MPI_Abort(mpiC, 1, mpi_err)
       endif      
 
       !---------------- Global min/max of per-cell length ----------------
