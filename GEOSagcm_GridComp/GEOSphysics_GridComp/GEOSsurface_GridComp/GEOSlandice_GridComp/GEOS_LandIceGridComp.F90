@@ -44,6 +44,12 @@ module GEOS_LandiceGridCompMod
   use GEOS_UtilsMod
   use DragCoefficientsMod
   
+#ifdef HAVE_ISSM
+  use GEOS_IssmGridCompMod,   only : IssmSetServices  => SetServices
+  use GEOS_IssmGridCompMod,   only : T_ISSM_TILE_STATE
+  use GEOS_IssmGridCompMod,   only : ISSM_TILE_WRAP
+#endif
+
   implicit none
   private
 
@@ -100,6 +106,8 @@ module GEOS_LandiceGridCompMod
 
   public SetServices
 
+  integer ::     ISSM
+
 ! !DESCRIPTION:
 ! 
 !   {\tt GEOS\_Landice} is a light-weight gridded component that updates
@@ -149,6 +157,7 @@ module GEOS_LandiceGridCompMod
 
     type(MAPL_MetaComp), pointer            :: MAPL
 
+    integer                                 :: DO_ISSM ! ISSM flag
 
 ! Begin...
 
@@ -159,20 +168,32 @@ module GEOS_LandiceGridCompMod
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // 'SetServices'
 
-! Set the Run entry point
-! -----------------------
-
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run1, RC=STATUS )
-    VERIFY_(STATUS)
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run2, RC=STATUS )
-    VERIFY_(STATUS)
-
-! Get my internal MAPL_Generic state
+    ! Get my internal MAPL_Generic state
 !-----------------------------------
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
 
+! Set the Run entry point
+! -----------------------
+   !add initialize method for child (ISSM)
+   call MAPL_GetResource (MAPL, DO_ISSM, label='DO_ISSM:', DEFAULT=0, __RC__ )
+   
+#ifndef HAVE_ISSM
+   DO_ISSM=0
+#endif
+   
+   call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS ) 
+   VERIFY_(STATUS)
+
+
+   call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run1, RC=STATUS )
+   VERIFY_(STATUS)
+   call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run2, RC=STATUS )
+   VERIFY_(STATUS)
+
+ ! Get resource parameters
+ ! -----------------------
     call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
@@ -187,6 +208,46 @@ module GEOS_LandiceGridCompMod
 !BOS
 
 !  !Export state:
+
+     call MAPL_AddExportSpec(GC,                   &
+        SHORT_NAME = 'ICESMB',                     &
+        LONG_NAME  = 'ice_surface_mass_balance',   &
+        UNITS      = 'kg m-2 s-1',                 &
+        DIMS       = MAPL_DimsTileOnly,            &
+        VLOCATION  = MAPL_VLocationNone,           &
+        RC=STATUS  )
+     VERIFY_(STATUS)
+
+#ifdef HAVE_ISSM
+   if (DO_ISSM==1) then
+     call MAPL_AddExportSpec(GC,                   &
+        SHORT_NAME = 'ICESURF',                    &
+        LONG_NAME  = 'ice_surface_elevation',      &
+        UNITS      = 'm',                          &
+        DIMS       = MAPL_DimsTileOnly,            &
+        VLOCATION  = MAPL_VLocationNone,           &
+        RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                   &
+        SHORT_NAME = 'ICEVEL',                     &
+        LONG_NAME  = 'ice_flow_speed',             &
+        UNITS      = 'm s-1',                      &
+        DIMS       = MAPL_DimsTileOnly,            &
+        VLOCATION  = MAPL_VLocationNone,           &
+        RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                   &
+        SHORT_NAME = 'ICETHICK',                   &
+        LONG_NAME  = 'ice_thickness',              &
+        UNITS      = 'm',                          &
+        DIMS       = MAPL_DimsTileOnly,            &
+        VLOCATION  = MAPL_VLocationNone,           &
+        RC=STATUS  )
+     VERIFY_(STATUS)
+   end if 
+#endif
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'EMIS',                              &
@@ -947,6 +1008,19 @@ module GEOS_LandiceGridCompMod
   VERIFY_(STATUS)
 
 !  !Internal state:
+#ifdef HAVE_ISSM  
+   if (DO_ISSM==1) then
+     call MAPL_AddInternalSpec(GC,                                &
+        SHORT_NAME         = 'ICESMB_ISSM',                       &
+        LONG_NAME          = 'issm_surface_mass_balance',         &
+        UNITS              = 'kg m-2 s-1',                        &
+        DIMS               = MAPL_DimsTileOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+		  RESTART            = MAPL_RestartOptional,                & 
+        DEFAULT            = 0.0 ,                                &
+                                                    RC=STATUS  )
+   end if 
+#endif
 
      call MAPL_AddInternalSpec(GC,                           &
         SHORT_NAME         = 'TS',                                &
@@ -1618,6 +1692,16 @@ module GEOS_LandiceGridCompMod
     VERIFY_(STATUS)
 
 !EOS
+#ifdef HAVE_ISSM    
+    if (DO_ISSM==1) then
+      ! Add ISSM child gridcomp    
+      ISSM  = MAPL_AddChild(GC, NAME='ISSM', SS=IssmSetServices, RC=STATUS)
+      VERIFY_(STATUS)   
+      
+      call MAPL_TerminateImport(GC, CHILD = ISSM,   RC=STATUS)
+      VERIFY_(STATUS)
+    end if 
+#endif
 
 ! Set the Profiling timers
 ! ------------------------
@@ -1640,6 +1724,137 @@ module GEOS_LandiceGridCompMod
 
 
 !BOP
+
+
+  subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
+  ! this is for ISSM to have access to to the tile locstream 
+
+   ! !ARGUMENTS:
+   
+       type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+       type(ESMF_State),    intent(inout) :: IMPORT ! Import state
+       type(ESMF_State),    intent(inout) :: EXPORT ! Export state
+       type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
+       integer, optional,   intent(  out) :: RC     ! Error code
+   
+   ! !DESCRIPTION: The Initialize method of the Landice Gridded Component.
+   
+   !EOP
+   
+   ! ErrLog Variables
+   
+       character(len=ESMF_MAXSTR)              :: IAm 
+       integer                                 :: STATUS
+       character(len=ESMF_MAXSTR)              :: COMP_NAME
+       
+   ! Local derived type aliases
+   
+       type (MAPL_MetaComp    ), pointer       :: MAPL
+       type (MAPL_MetaComp    ), pointer       :: CHILD_MAPL 
+       type (MAPL_LocStream       )            :: LOCSTREAM
+       type (ESMF_Config          )            :: CF
+       type (ESMF_GridComp        ), pointer   :: GCS(:)
+       character(len=ESMF_MAXSTR),   pointer   :: gcnames(:)
+     
+       integer                                 :: I
+#ifdef HAVE_ISSM
+       type(T_ISSM_TILE_STATE), pointer        :: issm_tile_state
+       type(ISSM_TILE_WRAP)                    :: issm_tile_wrap
+       real, pointer, dimension(:)             :: ICESURF 
+       real, pointer, dimension(:)             :: ICETHICK
+       real, pointer, dimension(:)             :: ICEVEL
+#endif
+       integer                                 :: nt_local
+       integer                                 :: DO_ISSM
+       real                                    :: LANDICE_DT                     
+        
+   !=============================================================================
+   
+   ! Begin... 
+   
+   ! Get the target components name and set-up traceback handle.
+   ! -----------------------------------------------------------
+   
+       call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
+       VERIFY_(STATUS)
+       Iam = trim(COMP_NAME) // "Initialize"
+   
+   ! Get my internal MAPL_Generic state
+   !-----------------------------------
+   
+       call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+       VERIFY_(STATUS)
+   
+       call MAPL_TimerOn(MAPL,"INITIALIZE", RC=STATUS ); VERIFY_(STATUS)
+       call MAPL_TimerOn(MAPL,"TOTAL", RC=STATUS ); VERIFY_(STATUS)
+   
+   ! Get the landice tilegrid and the child components
+   !----------------------------------------------- 
+   
+       call MAPL_Get (MAPL, LOCSTREAM=LOCSTREAM, GCS=GCS, GCNAMES=gcnames, RC=STATUS )
+       VERIFY_(STATUS)
+       call MAPL_LocStreamGet(locstream, NT_LOCAL=nt_local, rc=STATUS)
+       VERIFY_(STATUS)
+   ! Place the land tilegrid in the generic state of each child component
+   !---------------------------------------------------------------------
+
+       ! get model timestep, overwrite with component-specific timestep if found
+       call MAPL_GetResource (MAPL, LANDICE_DT, label='RUN_DT:',_RC)
+       call MAPL_GetResource (MAPL, LANDICE_DT, label='DT:',default=LANDICE_DT,_RC)
+       
+       ! get ISSM flag
+       call MAPL_GetResource (MAPL, DO_ISSM, label='DO_ISSM:', DEFAULT=0, __RC__ )
+   
+#ifndef HAVE_ISSM
+       DO_ISSM=0
+#endif
+
+#ifdef HAVE_ISSM
+   ! Get Landice timestep to send to ISSM
+       do I = 1, SIZE(GCS)
+          call MAPL_GetObjectFromGC( GCS(I), CHILD_MAPL, RC=STATUS )
+          VERIFY_(STATUS)
+          call MAPL_Set(CHILD_MAPL, LOCSTREAM=LOCSTREAM, RC=STATUS )
+          VERIFY_(STATUS)
+          if (index(gcnames(I), 'ISSM') /=0 ) then
+            ! allocate landice tilespace variables for ISSM
+             allocate(issm_tile_state)
+             allocate(issm_tile_state%ICESURF_TILE(nt_local))
+             allocate(issm_tile_state%ICETHICK_TILE(nt_local))
+             allocate(issm_tile_state%ICEVEL_TILE(nt_local))
+             allocate(issm_tile_state%ICESMB_ISSM(nt_local))
+             issm_tile_state%LANDICE_DT = LANDICE_DT
+             issm_tile_wrap%ptr => issm_tile_state
+             call ESMF_UserCompSetInternalState(GCS(I), 'ISSM_TILES', issm_tile_wrap, status)
+             VERIFY_(STATUS)
+          endif
+       end do
+#endif
+       call MAPL_TimerOff(MAPL,"TOTAL", RC=STATUS ); VERIFY_(STATUS)
+   
+   ! Call Initialize for every Child
+   !--------------------------------
+       call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK,  RC=STATUS)
+       VERIFY_(STATUS)
+
+#ifdef HAVE_ISSM
+      if (DO_ISSM==1) then
+       ! initialize exports to restart values set by ISSM GridComp's Initialize, 
+       ! because ISSM typically has a multi-day timestep and exports will remain empty otherwise
+       call MAPL_GetPointer(EXPORT,ICESURF , 'ICESURF',alloc=.true., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT,ICETHICK ,'ICETHICK',alloc=.true., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT,ICEVEL ,'ICEVEL',alloc=.true., RC=STATUS); VERIFY_(STATUS)
+	   
+       if(associated(ICESURF))  ICESURF = issm_tile_state%ICESURF_TILE
+       if(associated(ICETHICK)) ICETHICK = issm_tile_state%ICETHICK_TILE
+       if(associated(ICEVEL))   ICEVEL = issm_tile_state%ICEVEL_TILE
+	   end if 
+#endif   
+       call MAPL_TimerOff(MAPL,"INITIALIZE", RC=STATUS ); VERIFY_(STATUS)
+   
+       RETURN_(ESMF_SUCCESS)
+     end subroutine Initialize
+
 
 ! !IROUTINE: RUN1 -- First Run stage for the LandIce component
 
@@ -2135,6 +2350,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 !EOP
 
+   type(MAPL_MetaComp), pointer       :: CHILD_MAPL ! MAPL state for ISSM
+   type(ESMF_Alarm)                   :: ISSM_ALARM ! run alarm for ISSM component 
+
 
 ! ErrLog Variables
 
@@ -2144,7 +2362,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Locals
 
-  type (MAPL_MetaComp), pointer   :: MAPL
+  type (MAPL_MetaComp), pointer       :: MAPL
   type (ESMF_State       )            :: INTERNAL
   type (ESMF_Alarm       )            :: ALARM
   type (ESMF_Config      )            :: CF
@@ -2155,6 +2373,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
   type(MAPL_SunOrbit)                 :: ORBIT
 
   integer                             :: LANDICE_OFFLINE
+  integer                             :: DO_ISSM              ! ISSM run flag
+
+  type (ESMF_GridComp  ), pointer     :: GCS(:)
+  character(len=ESMF_MAXSTR), pointer :: gcnames(:)
+#ifdef HAVE_ISSM    
+  type(T_ISSM_TILE_STATE), pointer    :: issm_tile_state
+  type(ISSM_TILE_WRAP)                :: issm_tile_wrap
+#endif
 !=============================================================================
 
 ! Begin... 
@@ -2172,6 +2398,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
 
+    call MAPL_GetResource (MAPL, DO_ISSM, label='DO_ISSM:', DEFAULT=0, __RC__ )
+
+#ifndef HAVE_ISSM
+    DO_ISSM=0
+#endif
+    
 ! Start Total timer
 !------------------
 
@@ -2227,8 +2459,17 @@ contains
    character(len=ESMF_MAXSTR)     :: IAm
    integer                        :: STATUS
 
-! pointers to export
 
+! pointer to ISSM import via private internal state
+! accumulate over time steps for averaging
+   real, pointer, dimension(:), save :: ICESMB_ISSM=>null()
+   integer, save                     :: ISSM_NSTEPS = 0 ! time steps since last ISSM run
+
+! pointers to export
+   real, pointer, dimension(:  )  :: ICESMB
+   real, pointer, dimension(:  )  :: ICESURF
+   real, pointer, dimension(:  )  :: ICETHICK
+   real, pointer, dimension(:  )  :: ICEVEL
    real, pointer, dimension(:  )  :: EMISS
    real, pointer, dimension(:  )  :: ALBVF 
    real, pointer, dimension(:  )  :: ALBVR 
@@ -2291,7 +2532,7 @@ contains
    real, pointer, dimension(:)   :: RMELTOC002
 
 ! pointers to internal
-
+   real, pointer, dimension(:)    :: ICESMB_IN
    real, pointer, dimension(:,:)  :: TS
    real, pointer, dimension(:,:)  :: QS
    real, pointer, dimension(:,:)  :: FR
@@ -2516,7 +2757,11 @@ contains
 
 ! Pointers to internals
 !----------------------
-
+#ifdef HAVE_ISSM
+if (DO_ISSM==1) then
+   call MAPL_GetPointer(INTERNAL,ICESMB_IN , 'ICESMB_ISSM',alloc=.true., RC=STATUS); VERIFY_(STATUS)
+end if    
+#endif
    call MAPL_GetPointer(INTERNAL,TS   , 'TS'     , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,QS   , 'QS'     , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,FR   , 'FR'     , RC=STATUS); VERIFY_(STATUS)
@@ -2542,7 +2787,15 @@ contains
 
 ! Pointers to outputs
 !--------------------
-
+#ifdef HAVE_ISSM
+if (DO_ISSM==1) then
+   call MAPL_GetPointer(EXPORT,ICESURF , 'ICESURF',alloc=.true., RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,ICETHICK ,'ICETHICK',alloc=.true., RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,ICEVEL ,'ICEVEL',alloc=.true., RC=STATUS); VERIFY_(STATUS)
+end if    
+#endif
+   
+   call MAPL_GetPointer(EXPORT,ICESMB  , 'ICESMB',alloc=.true., RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,EMISS  , 'EMIS'   , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,ALBVF  , 'ALBVF'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,ALBVR  , 'ALBVR'  , RC=STATUS); VERIFY_(STATUS)
@@ -2552,7 +2805,7 @@ contains
    call MAPL_GetPointer(EXPORT,DELQS  , 'DELQS'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,EVPICE , 'EVPICE_GL' , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SUBLIM , 'SUBLIM' , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,ACCUM  , 'ACCUM'  , RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,ACCUM  , 'ACCUM'  , alloc=.true. , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SMELT  , 'SMELT'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,IMELT  , 'IMELT'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,RAINRFZ, 'RAINRFZ', RC=STATUS); VERIFY_(STATUS)
@@ -2561,7 +2814,7 @@ contains
    call MAPL_GetPointer(EXPORT,MELTWTR, 'MELTWTR', RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,MELTWTRCONT, 'MELTWTRCONT', RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,LWC    , 'LWC'    , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,RUNOFF , 'RUNOFF' , RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,RUNOFF , 'RUNOFF' , alloc=.true. ,RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SNOMAS , 'SNOMAS_GL' , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SNOWMASS,'SNOWMASS',RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SNOWDP , 'SNOWDP_GL' , RC=STATUS); VERIFY_(STATUS)
@@ -2630,6 +2883,35 @@ contains
 
     NT = size(ALW)
 
+    ! initialize running mean ICESMB and number of steps since last ISSM solve
+#ifdef HAVE_ISSM	
+    if(DO_ISSM==1) then
+        if (.not. associated(ICESMB_ISSM)) then
+            allocate(ICESMB_ISSM(NT),STAT=STATUS)
+            VERIFY_(STATUS)
+
+            ! initialize from restart:
+            if (associated(ICESMB_IN)) then 
+               ICESMB_ISSM(:) = ICESMB_IN(:) 
+            else
+               ICESMB_ISSM(:) = 0
+            end if 
+	     end if 	
+        
+        ! get number of timesteps from issm tile internal state
+        call MAPL_Get (MAPL, GCS=GCS, GCNAMES=GCNAMES, RC=STATUS )
+		  VERIFY_(STATUS)
+        do N=1, size(GCS)
+          if (index(GCNAMES(N), 'ISSM') /=0 ) then
+             call ESMF_UserCompGetInternalState(GCS(N), 'ISSM_TILES', issm_tile_wrap, status)
+             VERIFY_(STATUS)
+             issm_tile_state =>issm_tile_wrap%ptr
+             ISSM_NSTEPS = issm_tile_state%ISSM_NSTEPS 
+          end if
+        end do         
+	 end if 
+#endif
+		
     allocate(MLT (NT), STAT=STATUS)
     VERIFY_(STATUS)                
     allocate(DTS (NT), STAT=STATUS)
@@ -3241,8 +3523,21 @@ contains
     if(associated(ASNOW))    ASNOW    = FR(:,SNOW)
     if(associated(SMELT ))   SMELT    = PERC
     if(associated(RAINRFZ )) RAINRFZ  = FR(:,ICE)  * RAINRF
+
     if(associated(MELTWTR )) MELTWTR  = MELTWTR + MLT  
 
+
+    ! Calculate surface mass balance (SMB) for ISSM
+    if(associated(ICESMB)) ICESMB    = ACCUM - RUNOFF
+    
+    ! average ICESMB over time steps between ISSM runs
+    if(DO_ISSM==1) then
+        if(associated(ICESMB_ISSM)) ICESMB_ISSM = ICESMB_ISSM + (ICESMB-ICESMB_ISSM)/(ISSM_NSTEPS+1)
+        ISSM_NSTEPS = ISSM_NSTEPS + 1 ! accumulated timesteps since last ISSM run
+
+		! update internal state
+		ICESMB_IN(:) = ICESMB_ISSM(:)
+    end if 
 ! Update snow and landice albedos to anticipate
 !   next radiation calculation
 !-----------------------------------------------
@@ -3375,6 +3670,46 @@ contains
     if(associated(WEBOT )) then
        WEBOT =  WESNBOT / DT
     end if
+
+! Run ISSM 
+#ifdef HAVE_ISSM
+    if (DO_ISSM==1) then
+      call MAPL_Get (MAPL, GCS=GCS, GCNAMES=GCNAMES, RC=STATUS )
+      do N=1, size(GCS)
+         if (index(GCNAMES(N), 'ISSM') /=0 ) then 
+            call MAPL_GetObjectFromGC(GCS(N), CHILD_MAPL, RC=STATUS); VERIFY_(STATUS)
+            call MAPL_Get(CHILD_MAPL, RUNALARM = ISSM_ALARM, RC=STATUS); VERIFY_(STATUS)
+
+            issm_tile_state%ICESMB_ISSM   = ICESMB_ISSM
+            issm_tile_state%ISSM_NSTEPS = ISSM_NSTEPS
+
+            ! call ISSM run method every time landice runs so that restarts will persist
+            ! ISSM Run method only calls the ISSM C++ solvers at ISSM_DT intervals
+            call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, CLOCK, RC=STATUS)
+            VERIFY_(STATUS)
+
+            if (ESMF_AlarmIsRinging (ISSM_ALARM, RC=STATUS)) then   
+               ! if ISSM solvers were called, get exports on tile space
+               if(associated(ICESURF))  ICESURF = issm_tile_state%ICESURF_TILE
+               if(associated(ICETHICK)) ICETHICK = issm_tile_state%ICETHICK_TILE
+               if(associated(ICEVEL))   ICEVEL = issm_tile_state%ICEVEL_TILE
+
+               ! refresh ICESMB accumulator
+               ISSM_NSTEPS = 0    ! set ISSM time step accumulation back to zero
+               ICESMB_ISSM(:) = 0 ! zero out ICESMB running average
+
+               ! update private internal state
+               issm_tile_state%ICESMB_ISSM   = ICESMB_ISSM
+               issm_tile_state%ISSM_NSTEPS = ISSM_NSTEPS
+
+               ! update internal state for running-mean ICESMB
+               ICESMB_IN(:) = ICESMB_ISSM(:)
+
+            end if 
+         end if
+      end do
+    end if 
+#endif
 
     if(allocated (MLT)) deallocate(MLT , STAT=STATUS); VERIFY_(STATUS)              
     if(allocated (DTS)) deallocate(DTS , STAT=STATUS); VERIFY_(STATUS)              
