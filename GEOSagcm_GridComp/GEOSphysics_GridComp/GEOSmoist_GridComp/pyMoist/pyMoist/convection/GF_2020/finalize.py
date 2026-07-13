@@ -395,7 +395,7 @@ def feed_3d_model(
         dconvection_tracersdt (FloatField_ConvectionTracers)
         convection_tracers (FloatField_ConvectionTracers)
     """
-    from __externals__ import DT_MOIST, USE_TRACER_TRANSPORT, k_end
+    from __externals__ import DT_MOIST, USE_TRACER_TRANSPORT, k_end, NUMBER_OF_TRACERS
 
     with computation(FORWARD), interval(0, 1):
         if cumulus_parameterization_constants.FEED_3D_MODEL and do_this_column != 0:
@@ -415,7 +415,7 @@ def feed_3d_model(
             if USE_TRACER_TRANSPORT == 1:
                 # update tracer mass mixing ratios
                 tracer = 0
-                while tracer < constants.NUMBER_OF_TRACERS:
+                while tracer < NUMBER_OF_TRACERS:
                     convection_tracers[0, 0, 0][tracer] = convection_tracers[0, 0, 0][tracer] + DT_MOIST * dconvection_tracersdt.at(K=k_end - K, ddim=[tracer])
 
                     # final check for negative tracer mass mixing ratio
@@ -952,6 +952,9 @@ class GF2020Finalize(NDSLRuntime):
     ):
         super().__init__(stencil_factory)
 
+        # make number of tracers visible at runtime
+        self._NUMBER_OF_TRACERS = config.NUMBER_OF_TRACERS
+
         # make status of plumes visible at runtime
         self._plume_status = [
             cumulus_parameterization_config.ENABLE_SHALLOW,
@@ -1028,6 +1031,7 @@ class GF2020Finalize(NDSLRuntime):
             externals={
                 "USE_TRACER_TRANSPORT": config.USE_TRACER_TRANSPORT,
                 "DT_MOIST": config.DT_MOIST,
+                "NUMBER_OF_TRACERS": config.NUMBER_OF_TRACERS,
             },
         )
 
@@ -1165,7 +1169,7 @@ class GF2020Finalize(NDSLRuntime):
             do_this_column=locals.do_this_column,
         )
 
-        for tracer in range(constants.NUMBER_OF_TRACERS):
+        for tracer in range(self._NUMBER_OF_TRACERS):
             self._feedback_tracers(
                 tracer=Int(tracer),
                 fix_out_vapor=locals.fix_out_vapor,
