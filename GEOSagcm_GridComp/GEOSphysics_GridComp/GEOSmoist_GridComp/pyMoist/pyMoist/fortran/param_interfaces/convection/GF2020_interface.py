@@ -487,11 +487,6 @@ class GF2020Interface(UserCode):
                 ConvectionTracers.empty(
                     ndsl_stack.quantity_factory,
                     data_dimensions=ndsl_stack.quantity_factory.sizer.data_dimensions,
-                    # data_dimensions={
-                    #     "convection_tracers": self.config.NUMBER_OF_TRACERS,
-                    #     "size_three_dimension": 3,
-                    #     "size_four_dimension": 4,
-                    # },
                 ),
                 ndsl_stack.interface_type,
             )
