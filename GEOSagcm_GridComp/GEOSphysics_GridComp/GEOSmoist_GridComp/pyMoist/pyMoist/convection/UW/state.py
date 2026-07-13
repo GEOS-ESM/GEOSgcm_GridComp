@@ -2,6 +2,7 @@ import dataclasses
 
 from ndsl import Quantity, State
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM, Float
+from pyMoist.convection_tracers import CONVECTION_TRACER_DIM
 
 
 @dataclasses.dataclass
@@ -175,7 +176,7 @@ class UWState(State):
         CNV_Tracers: Quantity = dataclasses.field(
             metadata={
                 "name": "CNV_Tracers",
-                "dims": [I_DIM, J_DIM, K_DIM, "ntracers"],
+                "dims": [I_DIM, J_DIM, K_DIM, CONVECTION_TRACER_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,

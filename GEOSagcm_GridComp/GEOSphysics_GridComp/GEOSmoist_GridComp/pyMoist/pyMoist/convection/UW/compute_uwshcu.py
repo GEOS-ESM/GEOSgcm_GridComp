@@ -24,9 +24,9 @@ from pyMoist.convection.UW.uwshcu_functions import (
     slope_mid_tracer,
     zvir,
 )
-from pyMoist.field_types import FloatField_NTracers, FloatFieldIJ_NTracers
 from pyMoist.saturation_tables import GlobalTable_saturation_tables, SaturationFormulation, get_saturation_vapor_pressure_table, saturation_specific_humidity
 from pyMoist.shared.atmos_recipes import sigma
+from pyMoist.convection_tracers import FloatField_ConvectionTracers, FloatFieldIJ_ConvectionTracers
 
 
 def setup_inputs(
@@ -114,8 +114,8 @@ def compute_uwshcu_invert_before(
     kpbl_inv: FloatFieldIJ,
     cnvtr: FloatFieldIJ,
     frland: FloatFieldIJ,
-    CNV_Tracers: FloatField_NTracers,
-    tr0_inout: FloatField_NTracers,
+    CNV_Tracers: FloatField_ConvectionTracers,
+    tr0_inout: FloatField_ConvectionTracers,
     pmid0_in: FloatField,
     u0_in: FloatField,
     v0_in: FloatField,
@@ -156,8 +156,8 @@ def compute_uwshcu_invert_before(
         kpbl_inv [IntFieldIJ]: Height of PBL [m]
         cnvtr [FloatFieldIJ]: Convective tracer
         frland [FloatFieldIJ]: Land fraction
-        CNV_Tracer [FloatField_NTracers]: Convective tracers [?]
-        tr0_inout [FloatField_NTracers]: Environmental tracers [#, kg/kg]
+        CNV_Tracer [FloatField_ConvectionTracers]: Convective tracers [?]
+        tr0_inout [FloatField_ConvectionTracers]: Environmental tracers [#, kg/kg]
         pmid0_in [FloatField]: Environmental pressure at midpoints [Pa]
         u0_in [FloatField]: Environmental zonal wind [m/s]
         v0_in [FloatField]: Environmental meridional wind [m/s]
@@ -241,7 +241,7 @@ def compute_thermodynamic_variables(
     ql0_in: FloatField,
     qi0_in: FloatField,
     th0_in: FloatField,
-    tr0_inout: FloatField_NTracers,
+    tr0_inout: FloatField_ConvectionTracers,
     cush_inout: FloatFieldIJ,
     cush: FloatFieldIJ,
     umf_out: FloatField,
@@ -264,9 +264,9 @@ def compute_thermodynamic_variables(
     qv0: FloatField,
     qi0: FloatField,
     pmid0: FloatField,
-    tr0: FloatField_NTracers,
+    tr0: FloatField_ConvectionTracers,
     tr0_temp: FloatField,
-    sstr0: FloatField_NTracers,
+    sstr0: FloatField_ConvectionTracers,
     ssthl0: FloatField,
     ssqt0: FloatField,
     thl0: FloatField,
@@ -295,7 +295,7 @@ def compute_thermodynamic_variables(
         ql0_in [FloatField]: Environmental liquid water specific humidity [kg/kg]
         qi0_in [FloatField]: Environmental ice specific humidity [kg/kg]
         th0_in [FloatField]: Environmental potential temperature [K]
-        tr0_inout [FloatField_NTracers]: Environmental tracers [#, kg/kg]
+        tr0_inout [FloatField_ConvectionTracers]: Environmental tracers [#, kg/kg]
         cush_inout [FloatFieldIJ]: Convective scale height [m]
         dotransport [Int]: Transport tracers [1 true]
         u0 [FloatField]: Environmental zonal wind [m/s]
@@ -313,9 +313,9 @@ def compute_thermodynamic_variables(
         qv0 [FloatField]: Environmental specific humidity
         qi0 [FloatField]: Environmental ice specific humidity
         pmid0 [FloatField]: Environmental pressure at the layer mid-point [Pa]
-        tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
+        tr0 [FloatField_ConvectionTracers]: Environmental tracers [#, kg/kg]
         tr0_temp [FloatField]: Environmental tracers [#, kg/kg]
-        sstr0 [FloatField_NTracers]: Convective tracer [?]
+        sstr0 [FloatField_ConvectionTracers]: Convective tracer [?]
         ssthl0 [FloatField]: Temperature [?]
         ssqt0 [FloatField]: [?]
         thl0 [FloatField]: Temperature [?]
@@ -442,14 +442,14 @@ def compute_thv0_thvl0(
     condensation: BoolFieldIJ,
     ssu0: FloatField,
     ssv0: FloatField,
-    tr0: FloatField_NTracers,
-    sstr0: FloatField_NTracers,
-    tr0_o: FloatField_NTracers,
-    sstr0_o: FloatField_NTracers,
-    trflx: FloatField_NTracers,
-    trten: FloatField_NTracers,
-    tru: FloatField_NTracers,
-    tru_emf: FloatField_NTracers,
+    tr0: FloatField_ConvectionTracers,
+    sstr0: FloatField_ConvectionTracers,
+    tr0_o: FloatField_ConvectionTracers,
+    sstr0_o: FloatField_ConvectionTracers,
+    trflx: FloatField_ConvectionTracers,
+    trten: FloatField_ConvectionTracers,
+    tru: FloatField_ConvectionTracers,
+    tru_emf: FloatField_ConvectionTracers,
     umf_zint: FloatField,
     emf: FloatField,
     slflx: FloatField,
@@ -578,18 +578,18 @@ def compute_thv0_thvl0(
         dotransport [Int]: Transport tracers [1 true]
         ssu0 [FloatField]: [?]
         ssv0 [FloatField]: [?]
-        tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
-        sstr0 [FloatField_NTracers]: Convective tracer [?]
+        tr0 [FloatField_ConvectionTracers]: Environmental tracers [#, kg/kg]
+        sstr0 [FloatField_ConvectionTracers]: Convective tracer [?]
         t0 [FloatField]: Environmental temperature [K]
         ssthl0 [FloatField]: Temperature [?]
         ssqt0 [FloatField]: Temperature [?]
         condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
-        tr0_o [FloatField_NTracers]: Environmental tracers [#, kg/kg]
-        sstr0_o [FloatField_NTracers]: Convective tracer [?]
-        trflx [FloatField_NTracers]: Tracer PBL flux [?]
-        trten [FloatField_NTracers]: Tendency of [?]
-        tru [FloatField_NTracers]: Updraft tracers [#, kg/kg]
-        tru_emf [FloatField_NTracers]: Penetrative Downdraft tracers at entraining interfaces [#, kg/kg]
+        tr0_o [FloatField_ConvectionTracers]: Environmental tracers [#, kg/kg]
+        sstr0_o [FloatField_ConvectionTracers]: Convective tracer [?]
+        trflx [FloatField_ConvectionTracers]: Tracer PBL flux [?]
+        trten [FloatField_ConvectionTracers]: Tendency of [?]
+        tru [FloatField_ConvectionTracers]: Updraft tracers [#, kg/kg]
+        tru_emf [FloatField_ConvectionTracers]: Penetrative Downdraft tracers at entraining interfaces [#, kg/kg]
         umf_zint [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
         emf [FloatField]: Penetrative [?]
         slflx [FloatField]: Sensible heat flux [?]
@@ -1186,8 +1186,8 @@ def find_cumulus_characteristics(
     ssu0: FloatField,
     ssv0: FloatField,
     pmid0: FloatField,
-    tr0: FloatField_NTracers,
-    trsrc: FloatFieldIJ_NTracers,
+    tr0: FloatField_ConvectionTracers,
+    trsrc: FloatFieldIJ_ConvectionTracers,
     qtsrc: FloatField,
     thvlsrc: FloatField,
     thlsrc: FloatField,
@@ -1227,8 +1227,8 @@ def find_cumulus_characteristics(
         ssv0 [FloatField]: [?]
         pmid0 [FloatField]: Environmental pressure at the layer mid-point [Pa]
         dotransport [Int]: Transport tracers [1 true]
-        tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
-        trsrc [FloatFieldIJ_NTracers]: Tracers of cumulus source air [?]
+        tr0 [FloatField_ConvectionTracers]: Environmental tracers [#, kg/kg]
+        trsrc [FloatFieldIJ_ConvectionTracers]: Tracers of cumulus source air [?]
         qtsrc [FloatField]: Mixing ratio of cumulus source air [?]
         thvlsrc [FloatField]: Temperature of cumulus source air [K] [?]
         thlsrc [FloatField]: Temperature of cumulus source air [K] [?]
@@ -1570,8 +1570,8 @@ def compute_cin_cinlcl(
     thvlmin: FloatField,
     usrc: FloatField,
     vsrc: FloatField,
-    trsrc: FloatFieldIJ_NTracers,
-    trsrc_o: FloatFieldIJ_NTracers,
+    trsrc: FloatFieldIJ_ConvectionTracers,
+    trsrc_o: FloatFieldIJ_ConvectionTracers,
     cin_i: FloatFieldIJ,
     cinlcl_i: FloatFieldIJ,
     ke: FloatFieldIJ,
@@ -2030,12 +2030,12 @@ def avg_initial_and_final_cin1(
     vsrc_o: FloatField,
     thv0lcl: FloatField,
     thv0lcl_o: FloatField,
-    trsrc: FloatFieldIJ_NTracers,
-    trsrc_o: FloatFieldIJ_NTracers,
-    tr0: FloatField_NTracers,
-    tr0_o: FloatField_NTracers,
-    sstr0: FloatField_NTracers,
-    sstr0_o: FloatField_NTracers,
+    trsrc: FloatFieldIJ_ConvectionTracers,
+    trsrc_o: FloatFieldIJ_ConvectionTracers,
+    tr0: FloatField_ConvectionTracers,
+    tr0_o: FloatField_ConvectionTracers,
+    sstr0: FloatField_ConvectionTracers,
+    sstr0_o: FloatField_ConvectionTracers,
     qv0: FloatField,
     qv0_o: FloatField,
     ql0: FloatField,
@@ -2203,10 +2203,10 @@ def avg_initial_and_final_cin2(
     qtu_emf: FloatField,
     uu_emf: FloatField,
     vu_emf: FloatField,
-    trflx: FloatField_NTracers,
-    trten: FloatField_NTracers,
-    tru: FloatField_NTracers,
-    tru_emf: FloatField_NTracers,
+    trflx: FloatField_ConvectionTracers,
+    trten: FloatField_ConvectionTracers,
+    tru: FloatField_ConvectionTracers,
+    tru_emf: FloatField_ConvectionTracers,
 ):
     """
     Part II of the Implicit CIN calculation.
@@ -2886,8 +2886,8 @@ def define_env_properties(
     vu: FloatField,
     usrc: FloatField,
     vsrc: FloatField,
-    tru: FloatField_NTracers,
-    trsrc: FloatFieldIJ_NTracers,
+    tru: FloatField_ConvectionTracers,
+    trsrc: FloatFieldIJ_ConvectionTracers,
     thv0rel: FloatField,
     thl0: FloatField,
     ssthl0: FloatField,
@@ -2896,9 +2896,9 @@ def define_env_properties(
     ssqt0: FloatField,
     u0: FloatField,
     v0: FloatField,
-    tre: FloatFieldIJ_NTracers,
-    tr0: FloatField_NTracers,
-    sstr0: FloatField_NTracers,
+    tre: FloatFieldIJ_ConvectionTracers,
+    tr0: FloatField_ConvectionTracers,
+    sstr0: FloatField_ConvectionTracers,
     uplus: FloatFieldIJ,
     vplus: FloatFieldIJ,
     uplus_3D: FloatField,
@@ -2931,7 +2931,7 @@ def define_env_properties(
         usrc [FloatField]: Zonal wind of cumulus source air [m/s] [?]
         vsrc [FloatField]: Meridional wind of cumulus source air [m/s] [?]
         dotransport [Int]: Transport tracers [1 true]
-        trsrc [FloatFieldIJ_NTracers]: Tracers of cumulus source air [?]
+        trsrc [FloatFieldIJ_ConvectionTracers]: Tracers of cumulus source air [?]
         thv0rel [FloatField]: [?]
         thl0 [FloatField]: Temperature [?]
         ssthl0 [FloatField]: [?]
@@ -2940,12 +2940,12 @@ def define_env_properties(
         ssqt0 [FloatField]: [?]
         u0 [FloatField]: Environmental zonal wind [m/s]
         v0 [FloatField]: Environmental meridional wind [m/s]
-        tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
-        sstr0 [FloatField_NTracers]: Convective tracer [?]
+        tr0 [FloatField_ConvectionTracers]: Environmental tracers [#, kg/kg]
+        sstr0 [FloatField_ConvectionTracers]: Convective tracer [?]
         uu [FloatField]: Updraft zonal wind at the interface [m/s]
         vu [FloatField]: Updraft meridional wind at the interface [m/s]
-        tru [FloatField_NTracers]: Updraft tracers [#, kg/kg]
-        tre [FloatFieldIJ_NTracers]: [?]
+        tru [FloatField_ConvectionTracers]: Updraft tracers [#, kg/kg]
+        tre [FloatFieldIJ_ConvectionTracers]: [?]
         uplus [FloatFieldIJ]: [?]
         vplus [FloatFieldIJ]: [?]
         uplus_3D [FloatField]: [?]
@@ -3031,9 +3031,9 @@ def buoyancy_sorting(
     v0: FloatField,
     ssu0: FloatField,
     ssv0: FloatField,
-    tre: FloatFieldIJ_NTracers,
-    tr0: FloatField_NTracers,
-    sstr0: FloatField_NTracers,
+    tre: FloatFieldIJ_ConvectionTracers,
+    tr0: FloatField_ConvectionTracers,
+    sstr0: FloatField_ConvectionTracers,
     thlu: FloatField,
     qtu: FloatField,
     wu: FloatField,
@@ -3051,7 +3051,7 @@ def buoyancy_sorting(
     exnmid0: FloatField,
     thv0top: FloatField,
     exnifc0: FloatField,
-    tru: FloatField_NTracers,
+    tru: FloatField_ConvectionTracers,
     emf: FloatField,
     thvu: FloatField,
     umf_zint: FloatField,
@@ -4304,8 +4304,8 @@ def calc_entrainment_mass_flux(
     qtu: FloatField,
     uu: FloatField,
     vu: FloatField,
-    tru: FloatField_NTracers,
-    tru_emf: FloatField_NTracers,
+    tru: FloatField_ConvectionTracers,
+    tru_emf: FloatField_ConvectionTracers,
     kpen: IntField,
     kbup: IntField,
     pifc0: FloatField,
@@ -4325,8 +4325,8 @@ def calc_entrainment_mass_flux(
     ssu0: FloatField,
     v0: FloatField,
     ssv0: FloatField,
-    tr0: FloatField_NTracers,
-    sstr0: FloatField_NTracers,
+    tr0: FloatField_ConvectionTracers,
+    sstr0: FloatField_ConvectionTracers,
     thlu_emf: FloatField,
     qtu_emf: FloatField,
     uu_emf: FloatField,
@@ -4345,7 +4345,7 @@ def calc_entrainment_mass_flux(
         qtu [FloatField]: Updraft total specific humidity at the interface [kg/kg]
         uu [FloatField]: Updraft zonal wind at the interface [m/s]
         vu [FloatField]: Updraft meridional wind at the interface [m/s]
-        tru [FloatField_NTracers]: Updraft tracers [#, kg/kg]
+        tru [FloatField_ConvectionTracers]: Updraft tracers [#, kg/kg]
         dotransport [Int]: Transport tracers [1 true]
         kpen [IntField]: Highest layer with positive updraft velocity
         kbup [IntField]: Top layer in which buoyancy is positive at top interface
@@ -4368,10 +4368,10 @@ def calc_entrainment_mass_flux(
         ssu0 [FloatField]: [?]
         v0 [FloatField]: Environmental meridional wind [m/s]
         ssv0 [FloatField]: [?]
-        tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
-        sstr0 [FloatField_NTracers]: Convective tracer [?]
+        tr0 [FloatField_ConvectionTracers]: Environmental tracers [#, kg/kg]
+        sstr0 [FloatField_ConvectionTracers]: Convective tracer [?]
         use_cumpenent [Int]: Cumulative penetrative entrainment
-        tru_emf [FloatField_NTracers]: Penetrative Downdraft tracers at entraining interfaces [#, kg/kg]
+        tru_emf [FloatField_ConvectionTracers]: Penetrative Downdraft tracers at entraining interfaces [#, kg/kg]
         thlu_emf [FloatField]: Penetrative downdraft liquid potential temperature at entraining interfaces [K]
         qtu_emf [FloatField]: Penetrative downdraft total water at entraining interfaces [kg/kg]
         uu_emf [FloatField]: Penetrative downdraft zonal wind at entraining interfaces [m/s]
@@ -4531,11 +4531,11 @@ def calc_pbl_fluxes(
     vsrc: FloatField,
     v0: FloatField,
     ssv0: FloatField,
-    trsrc: FloatFieldIJ_NTracers,
-    tr0: FloatField_NTracers,
-    sstr0: FloatField_NTracers,
-    trflx: FloatField_NTracers,
-    xflx_ndim: FloatField_NTracers,
+    trsrc: FloatFieldIJ_ConvectionTracers,
+    tr0: FloatField_ConvectionTracers,
+    sstr0: FloatField_ConvectionTracers,
+    trflx: FloatField_ConvectionTracers,
+    xflx_ndim: FloatField_ConvectionTracers,
 ):
     """
     Stencil to compute turbulent heat, moisture, momentum flux at all interfaces.
@@ -4561,16 +4561,16 @@ def calc_pbl_fluxes(
         v0 [FloatField]: Environmental meridional wind [m/s]
         ssv0 [FloatField]: [?]
         dotransport [Int]: Transport tracers [1 true]
-        trsrc [FloatFieldIJ_NTracers]: Tracers of cumulus source air [?]
-        tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
-        sstr0 [FloatField_NTracers]: Convective tracer [?]
+        trsrc [FloatFieldIJ_ConvectionTracers]: Tracers of cumulus source air [?]
+        tr0 [FloatField_ConvectionTracers]: Environmental tracers [#, kg/kg]
+        sstr0 [FloatField_ConvectionTracers]: Convective tracer [?]
         xflx [FloatField]: PBL flux [?]
         qtflx [FloatField]: Mixing ratio flux [?]
         uflx [FloatField]: Zonal wind flux [m/s2]
         vflx [FloatField]: Meridional wind flux [m/s2]
         slflx [FloatField]: Sensible heat flux [?]
-        trflx [FloatField_NTracers]: Tracer PBL flux [?]
-        xflx_ndim [FloatField_NTracers]: PBL flux [?]
+        trflx [FloatField_ConvectionTracers]: Tracer PBL flux [?]
+        xflx_ndim [FloatField_ConvectionTracers]: PBL flux [?]
     """
     from __externals__ import dotransport, dt, ncnst
 
@@ -4848,10 +4848,10 @@ def non_buoyancy_sorting_fluxes(
     v0: FloatField,
     usrc: FloatField,
     vsrc: FloatField,
-    trflx: FloatField_NTracers,
-    trsrc: FloatFieldIJ_NTracers,
-    tr0: FloatField_NTracers,
-    sstr0: FloatField_NTracers,
+    trflx: FloatField_ConvectionTracers,
+    trsrc: FloatFieldIJ_ConvectionTracers,
+    tr0: FloatField_ConvectionTracers,
+    sstr0: FloatField_ConvectionTracers,
     uflx: FloatField,
     vflx: FloatField,
     slflx: FloatField,
@@ -4888,10 +4888,10 @@ def non_buoyancy_sorting_fluxes(
         usrc [FloatField]: Zonal wind of cumulus source air [m/s] [?]
         vsrc [FloatField]: Meridional wind of cumulus source air [m/s] [?]
         dotransport [Int]: Transport tracers [1 true]
-        trsrc [FloatFieldIJ_NTracers]: Tracers of cumulus source air [?]
-        tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
-        sstr0 [FloatField_NTracers]: Convective tracer [?]
-        trflx [FloatField_NTracers]: Updraft/pen.entrainment tracer flux [#/m2/s, kg/kg/m2/s]
+        trsrc [FloatFieldIJ_ConvectionTracers]: Tracers of cumulus source air [?]
+        tr0 [FloatField_ConvectionTracers]: Environmental tracers [#, kg/kg]
+        sstr0 [FloatField_ConvectionTracers]: Convective tracer [?]
+        trflx [FloatField_ConvectionTracers]: Updraft/pen.entrainment tracer flux [#/m2/s, kg/kg/m2/s]
         uflx [FloatField]: Zonal wind flux [m/s2]
         vflx [FloatField]: Meridional wind flux [m/s2]
         slflx [FloatField]: Sensible heat flux [?]
@@ -4942,10 +4942,10 @@ def buoyancy_sorting_fluxes(
     vu: FloatField,
     ssu0: FloatField,
     ssv0: FloatField,
-    trflx: FloatField_NTracers,
-    tru: FloatField_NTracers,
-    tr0: FloatField_NTracers,
-    sstr0: FloatField_NTracers,
+    trflx: FloatField_ConvectionTracers,
+    tru: FloatField_ConvectionTracers,
+    tr0: FloatField_ConvectionTracers,
+    sstr0: FloatField_ConvectionTracers,
     qtflx: FloatField,
     uflx: FloatField,
     vflx: FloatField,
@@ -4978,10 +4978,10 @@ def buoyancy_sorting_fluxes(
         ssu0 [FloatField]: [?]
         ssv0 [FloatField]: [?]
         dotransport [Int]: Transport tracers [1 true]
-        tru [FloatField_NTracers]: Updraft tracers [#, kg/kg]
-        tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
-        sstr0 [FloatField_NTracers]: Convective tracer [?]
-        trflx [FloatField_NTracers]: Updraft/pen.entrainment tracer flux [#/m2/s, kg/kg/m2/s]
+        tru [FloatField_ConvectionTracers]: Updraft tracers [#, kg/kg]
+        tr0 [FloatField_ConvectionTracers]: Environmental tracers [#, kg/kg]
+        sstr0 [FloatField_ConvectionTracers]: Convective tracer [?]
+        trflx [FloatField_ConvectionTracers]: Updraft/pen.entrainment tracer flux [#/m2/s, kg/kg/m2/s]
         qtflx [FloatField]: Mixing ratio flux [?]
         uflx [FloatField]: Zonal wind flux [m/s2]
         vflx [FloatField]: Meridional wind flux [m/s2]
@@ -5026,10 +5026,10 @@ def penetrative_entrainment_fluxes(
     v0: FloatField,
     ssu0: FloatField,
     ssv0: FloatField,
-    trflx: FloatField_NTracers,
-    tru_emf: FloatField_NTracers,
-    tr0: FloatField_NTracers,
-    sstr0: FloatField_NTracers,
+    trflx: FloatField_ConvectionTracers,
+    tru_emf: FloatField_ConvectionTracers,
+    tr0: FloatField_ConvectionTracers,
+    sstr0: FloatField_ConvectionTracers,
     kinv: IntField,
     cbmf: FloatField,
     uflx: FloatField,
@@ -5113,9 +5113,9 @@ def penetrative_entrainment_fluxes(
         ssu0 [FloatField]: [?]
         ssv0 [FloatField]: [?]
         dotransport [Int]: Transport tracers [1 true]
-        tru_emf [FloatField_NTracers]: Penetrative Downdraft tracers at entraining interfaces [#, kg/kg]
-        tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
-        sstr0 [FloatField_NTracers]: Convective tracer [?]
+        tru_emf [FloatField_ConvectionTracers]: Penetrative Downdraft tracers at entraining interfaces [#, kg/kg]
+        tr0 [FloatField_ConvectionTracers]: Environmental tracers [#, kg/kg]
+        sstr0 [FloatField_ConvectionTracers]: Convective tracer [?]
         use_momenflx [Int]: Perform momentum transport
         kinv [IntField]: Inversion layer with PBL top interface as lower interface
         cbmf [FloatField]: Cloud base mass flux [kg/m2/s]
@@ -5128,7 +5128,7 @@ def penetrative_entrainment_fluxes(
         ese [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
         esx [GlobalTable_saturation_tables]: Used in QSat_Float [n/a]
         condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
-        trflx [FloatField_NTracers]: Updraft/pen.entrainment tracer flux [#/m2/s, kg/kg/m2/s]
+        trflx [FloatField_ConvectionTracers]: Updraft/pen.entrainment tracer flux [#/m2/s, kg/kg/m2/s]
         uflx [FloatField]: Zonal wind flux [m/s2]
         vflx [FloatField]: Meridional wind flux [m/s2]
         slflx [FloatField]: Sensible heat flux [?]
@@ -5929,12 +5929,12 @@ def prevent_negative_condensate(
 def calc_tracer_tendencies(
     condensation: BoolFieldIJ,
     dp0: FloatField,
-    trflx_d: FloatField_NTracers,
-    trflx_u: FloatField_NTracers,
-    trmin: FloatFieldIJ_NTracers,
-    tr0: FloatField_NTracers,
-    trflx: FloatField_NTracers,
-    trten: FloatField_NTracers,
+    trflx_d: FloatField_ConvectionTracers,
+    trflx_u: FloatField_ConvectionTracers,
+    trmin: FloatFieldIJ_ConvectionTracers,
+    tr0: FloatField_ConvectionTracers,
+    trflx: FloatField_ConvectionTracers,
+    trten: FloatField_ConvectionTracers,
 ):
     """
     Stencil to compute tendencies of convective tracers.
@@ -5944,13 +5944,13 @@ def calc_tracer_tendencies(
         k0 [Int]: Number of levels
         dt [Float]: Timestep [s]
         dp0 [FloatField]: Environmental layer pressure thickness [Pa] > 0
-        tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
-        trflx [FloatField_NTracers]: Updraft/pen.entrainment tracer flux [#/m2/s, kg/kg/m2/s]
+        tr0 [FloatField_ConvectionTracers]: Environmental tracers [#, kg/kg]
+        trflx [FloatField_ConvectionTracers]: Updraft/pen.entrainment tracer flux [#/m2/s, kg/kg/m2/s]
         condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
-        trflx_d [FloatField_NTracers]: Adjustive [?]
-        trflx_u [FloatField_NTracers]: Adjustive [?]
-        trmin [FloatFieldIJ_NTracers]: [?]
-        trten [FloatField_NTracers]: Tendency of [?]
+        trflx_d [FloatField_ConvectionTracers]: Adjustive [?]
+        trflx_u [FloatField_ConvectionTracers]: Adjustive [?]
+        trmin [FloatFieldIJ_ConvectionTracers]: [?]
+        trten [FloatField_ConvectionTracers]: Tendency of [?]
     """
     from __externals__ import dotransport, dt, ncnst
 
@@ -6326,9 +6326,9 @@ def adjust_implicit_CIN_inputs1(
     v0: FloatField,
     vten: FloatField,
     t0: FloatField,
-    tr0_s: FloatField_NTracers,
-    tr0: FloatField_NTracers,
-    trten: FloatField_NTracers,
+    tr0_s: FloatField_ConvectionTracers,
+    tr0: FloatField_ConvectionTracers,
+    trten: FloatField_ConvectionTracers,
     qv0_s: FloatField,
     ql0_s: FloatField,
     qi0_s: FloatField,
@@ -6370,8 +6370,8 @@ def adjust_implicit_CIN_inputs1(
         vten [FloatField]: Tendency of meridional wind [m/s2]
         t0 [FloatField]: Environmental temperature [K]
         dotransport [Int]: Transport tracers [1 true]
-        tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
-        trten [FloatField_NTracers]: Tendency of tracers [#/s, kg/kg/s]
+        tr0 [FloatField_ConvectionTracers]: Environmental tracers [#, kg/kg]
+        trten [FloatField_ConvectionTracers]: Tendency of tracers [#/s, kg/kg/s]
         umf_zint [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
         dcm [FloatField]: Detrained cloudy air mass
         qrten [FloatField]: Tendency of rain water specific humidity [kg/kg/s]
@@ -6398,7 +6398,7 @@ def adjust_implicit_CIN_inputs1(
         qlten_sink [FloatField]: Liquid condensate tendency by compensating subsidence/upwelling [kg/kg/s]
         qiten_sink [FloatField]: Ice condensate tendency by compensating subsidence/upwelling [kg/kg/s]
         ufrc [FloatField]: Cumulus updraft fraction [fraction]
-        tr0_s [FloatField_NTracers]: Environmental tracers [#, kg/kg]
+        tr0_s [FloatField_ConvectionTracers]: Environmental tracers [#, kg/kg]
         umf_s [FloatField]: Updraft mass flux at the interfaces [kg/m2/s]
         slflx_s [FloatField]: [?]
         qtflx_s [FloatField]: [?]
@@ -6541,8 +6541,8 @@ def recalc_environmental_variables(
     t0_s: FloatField,
     exnmid0: FloatField,
     pmid0: FloatField,
-    sstr0: FloatField_NTracers,
-    tr0: FloatField_NTracers,
+    sstr0: FloatField_ConvectionTracers,
+    tr0: FloatField_ConvectionTracers,
     u0: FloatField,
     v0: FloatField,
     pifc0: FloatField,
@@ -6603,7 +6603,7 @@ def recalc_environmental_variables(
         exnmid0 [FloatField]: Exner function at the layer mid-point
         pmid0 [FloatField]: Environmental pressure at the layer mid-point [Pa]
         dotransport [Int]: Transport tracers [1 true]
-        tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
+        tr0 [FloatField_ConvectionTracers]: Environmental tracers [#, kg/kg]
         u0 [FloatField]: Environmental zonal wind [m/s]
         v0 [FloatField]: Environmental meridional wind [m/s]
         pifc0 [FloatField]: Environmental pressure at the interfaces [Pa]
@@ -6612,7 +6612,7 @@ def recalc_environmental_variables(
         tr0_temp [FloatField]: Environmental tracers [#, kg/kg]
         condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
         cush_inout [FloatFieldIJ]: Convective scale height [m]
-        sstr0 [FloatField_NTracers]: Convective tracer [?]
+        sstr0 [FloatField_ConvectionTracers]: Convective tracer [?]
         thvl0bot [FloatField]: Temperature at bottom [?]
         thv0bot [FloatField]: Temperature at bottom [?]
         thvl0top [FloatField]: Temperature at top [?]
@@ -6856,7 +6856,7 @@ def update_output_variables1(
         uflx [FloatField]: Zonal wind flux [m/s2]
         vflx [FloatField]: Meridional wind flux [m/s2]
         dotransport [Int]: Transport tracers [1 true]
-        trten [FloatField_NTracers]: Tendency of tracers [#/s, kg/kg/s]
+        trten [FloatField_ConvectionTracers]: Tendency of tracers [#/s, kg/kg/s]
         dt [Float]: Timestep [s]
         fer [FloatField]: Fractional lateral entrainment rate [1/Pa]
         fdr [FloatField]: Fractional lateral detrainment rate [1/Pa]
@@ -6881,7 +6881,7 @@ def update_output_variables1(
         slflx_out [FloatField]: Sensible heat flux [?]
         uflx_out [FloatField]: Zonal wind flux [?]
         vflx_out [FloatField]: Meridional wind flux [?]
-        tr0_inout [FloatField_NTracers]: Environmental tracers [#, kg/kg]
+        tr0_inout [FloatField_ConvectionTracers]: Environmental tracers [#, kg/kg]
         fer_out [FloatField]: Fractional lateral entrainment rate [1/Pa]
         fdr_out [FloatField]: Fractional lateral detrainment rate [1/Pa]
         qlsub_out [FloatField]: [?]
@@ -6908,7 +6908,7 @@ def update_output_variables1(
         fdr_out [FloatField]: Fractional lateral detrainment rate [1/Pa]
         ndrop_out [FloatField]: [?]
         nice_out [FloatField]: [?]
-        tr0_inout [FloatField_NTracers]: Environmental tracers [#, kg/kg]
+        tr0_inout [FloatField_ConvectionTracers]: Environmental tracers [#, kg/kg]
     """
     with computation(FORWARD), interval(...):
         if not condensation:
@@ -6955,8 +6955,8 @@ def update_output_variables2(
     slflx: FloatField,
     uflx: FloatField,
     vflx: FloatField,
-    tr0_inout: FloatField_NTracers,
-    trten: FloatField_NTracers,
+    tr0_inout: FloatField_ConvectionTracers,
+    trten: FloatField_ConvectionTracers,
 ):
     """
     Part II of Update Output Variables.
@@ -7013,8 +7013,8 @@ def compute_uwshcu_invert_after(
     fdr_out: FloatField,
     ndrop_out: FloatField,
     nice_out: FloatField,
-    tr0: FloatField_NTracers,
-    tr0_inout: FloatField_NTracers,
+    tr0: FloatField_ConvectionTracers,
+    tr0_inout: FloatField_ConvectionTracers,
     cush_inout: FloatFieldIJ,
     umf_inv: FloatField,
     dcm_inv: FloatField,
@@ -7039,7 +7039,7 @@ def compute_uwshcu_invert_after(
     qlsub_inv: FloatField,
     qidet_inv: FloatField,
     qisub_inv: FloatField,
-    CNV_Tracers: FloatField_NTracers,
+    CNV_Tracers: FloatField_ConvectionTracers,
     cush: FloatFieldIJ,
 ):
     """
@@ -7070,8 +7070,8 @@ def compute_uwshcu_invert_after(
         fdr_out [FloatField]: Fractional lateral detrainment rate [1/Pa]
         ndrop_out [FloatField]: [?]
         nice_out [FloatField]: [?]
-        tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
-        tr0_inout [FloatField_NTracers]: Environmental tracers [#, kg/kg]
+        tr0 [FloatField_ConvectionTracers]: Environmental tracers [#, kg/kg]
+        tr0_inout [FloatField_ConvectionTracers]: Environmental tracers [#, kg/kg]
         umf_inv [FloatField]: Updraft mass flux at interfaces [kg/m2/s]
         dcm_inv [FloatField]: Detrained cloudy air mass
         qtflx_inv [FloatField]: [?]
@@ -7095,7 +7095,7 @@ def compute_uwshcu_invert_after(
         qlsub_inv [FloatField]: [?]
         qidet_inv [FloatField]: [?]
         qisub_inv [FloatField]: [?]
-        CNV_Tracers [FloatField_NTracers]: Convective tracers [?]
+        CNV_Tracers [FloatField_ConvectionTracers]: Convective tracers [?]
         dotransport [Int]: Transport tracers [1 true]
     """
     from __externals__ import dotransport, k0, k_end, ncnst
@@ -7414,9 +7414,6 @@ class ComputeUwshcuInv(NDSLRuntime):
         self.locals = UWLocals.make(self, quantity_factory)
         self.stencil_factory = stencil_factory
         self.quantity_factory = quantity_factory
-
-        if constants.NCNST != self.config.NCNST:
-            raise NotImplementedError(f"Coding limitation: {constants.NCNST} tracers are expected, getting {self.config.NCNST}")
 
         if self.config.k0 < 5:
             raise NotImplementedError(f"Coding limitation: Only {self.config.k0} k-levels are available, atleast 5 are expected")

@@ -4,7 +4,6 @@ from mpi4py import MPI
 from ndsl.dsl.typing import Float, Int
 from ndsl.utils import safe_assign_array
 
-from pyMoist.constants import NCNST
 from pyMoist.convection.UW import ComputeUwshcuInv, UWConfiguration, UWState
 from pyMoist.fortran import get_NDSL_physics
 from pyMoist.fortran.build_helper import StencilBackendCompilerOverride
@@ -12,26 +11,33 @@ from pyMoist.fortran.cuda_profiler import TimedCUDAProfiler
 from pyMoist.fortran.managed_state import MAPLManagedState
 from pyMoist.fortran.memory_factory import MAPLMemoryRepository
 from pyMoist.fortran.moist_workarounds import MOIST_WORKAROUNDS
+from pyMoist.convection_tracers import CONVECTION_TRACER_DIM, FloatField_ConvectionTracers, FloatFieldIJ_ConvectionTracers
+from ndsl.dsl.gt4py import IJ, IJK
+from ndsl.quantity.data_dimensions_field import DataDimensionsField
 
 
 class UWGEOSInterface(UserCode):
     def __init__(self, name: str) -> None:
-        pass
+        # these must be defined during the first run call because they require the number of convection tracers
+        self.config = None
+        self._managed_state = None
+        self._uw = None
 
     def init(self, mapl_state, import_state, export_state) -> None:
         # Make sure we have our NDSL stack setup
         MAPLPy = get_MAPLPy()
         ndsl_stack = get_NDSL_physics(mapl_state)
 
-        if ndsl_stack.quantity_factory.sizer.nz == 72:
-            jason_uw = MAPLPy.get_resource("JASON_UW:", mapl_state, default=True)
-        else:
-            jason_uw = MAPLPy.get_resource("JASON_UW:", mapl_state, default=False)
+        # Initialize the configuration for UW
+        if self.config is None:
+            if ndsl_stack.quantity_factory.sizer.nz == 72:
+                jason_uw = MAPLPy.get_resource("JASON_UW:", mapl_state, default=True)
+            else:
+                jason_uw = MAPLPy.get_resource("JASON_UW:", mapl_state, default=False)
 
-        # Compile the configuration for UW
-        config = UWConfiguration(
+        self.config = UWConfiguration(
             JASON=True if ndsl_stack.quantity_factory.sizer.nz == 72 else False,
-            NCNST=NCNST,
+            NCNST=0,  # will be updated during first run call, once tracer packet is built in fortran
             k0=ndsl_stack.quantity_factory.sizer.nz,
             dotransport=1 if MAPLPy.get_resource("USE_TRACER_TRANSP_UW:", mapl_state, default=True) else 0,
             dt=MAPLPy.get_resource("DSL__UW_DT:", mapl_state, default=Float(0)),
@@ -63,24 +69,6 @@ class UWGEOSInterface(UserCode):
             qtsrchgt=MAPLPy.get_resource("QTSRCHGT:", mapl_state, default=Float(40.0)),
         )
 
-        # Build UW
-        with StencilBackendCompilerOverride(
-            MPI.COMM_WORLD,
-            ndsl_stack.stencil_factory.config.dace_config,
-        ):
-            self._uw = ComputeUwshcuInv(ndsl_stack.stencil_factory, ndsl_stack.quantity_factory, config)
-
-        # Init NDSL state
-        self._managed_state = MAPLManagedState(
-            UWState.empty(
-                ndsl_stack.quantity_factory,
-                data_dimensions={
-                    "ntracers": config.NCNST,
-                },
-            ),
-            ndsl_stack.interface_type,
-        )
-
     def run(self, mapl_state, import_state, export_state) -> None:
         raise RuntimeError("UW requires pyMoist integration requires `run_with_internal`")
 
@@ -95,6 +83,32 @@ class UWGEOSInterface(UserCode):
         import_repository = MAPLMemoryRepository(import_state, ndsl_stack.quantity_factory)
         export_repository = MAPLMemoryRepository(export_state, ndsl_stack.quantity_factory)
         internal_repository = MAPLMemoryRepository(internal_state, ndsl_stack.quantity_factory)
+
+        # set correct size for convection tracer data dimension
+        NUMBER_CONVECTION_TRACERS = MOIST_WORKAROUNDS.CNV_Tracers().Q[:].shape[-1]
+
+        # create the data dimensions within the QuantityFactory
+        if CONVECTION_TRACER_DIM not in ndsl_stack.quantity_factory.sizer.data_dimensions:
+            ndsl_stack.quantity_factory.add_data_dimensions({CONVECTION_TRACER_DIM: MOIST_WORKAROUNDS.CNV_Tracers().Q[:].shape[-1]})
+        elif ndsl_stack.quantity_factory.sizer.data_dimensions[CONVECTION_TRACER_DIM] != MOIST_WORKAROUNDS.CNV_Tracers().Q[:].shape[-1]:
+            raise ValueError(f"Convection tracer count has been modified since initialization timesteps. If this is intentional, you must re-initialize the NDSL stack.")
+
+        # register the field types (declard in convection_tracers.py) with the correct ddim size
+        if not DataDimensionsField.exists("FloatFieldIJ_ConvectionTracers"):
+            DataDimensionsField.register(FloatFieldIJ_ConvectionTracers, ndsl_stack.quantity_factory, [CONVECTION_TRACER_DIM], axes=IJ, dtype=Float)
+        if not DataDimensionsField.exists("FloatField_ConvectionTracers"):
+            DataDimensionsField.register(FloatField_ConvectionTracers, ndsl_stack.quantity_factory, [CONVECTION_TRACER_DIM], axes=IJK, dtype=Float)
+
+        if self._managed_state is None:
+            self.config.NCNST = NUMBER_CONVECTION_TRACERS
+            # Initialize NDSL state
+            self._managed_state = MAPLManagedState(
+                UWState.empty(
+                    ndsl_stack.quantity_factory,
+                    data_dimensions=ndsl_stack.quantity_factory.sizer.data_dimensions,
+                ),
+                ndsl_stack.interface_type,
+            )
 
         self._managed_state.register_K_interface("input.PLE", "PLE", import_repository)
         self._managed_state.register_K_interface("input.ZLE", "ZLE", import_repository)
@@ -157,10 +171,13 @@ class UWGEOSInterface(UserCode):
         self._managed_state.register_2D("output.CUSH_SC", "CUSH_SC", export_repository)
         self._managed_state.register("input_output.CLCN", "CLCN", internal_repository)
 
-        # Unused from GEOS ?!
-        # CLLS = MAPLPy.get_pointer("CLLS", internal_state, dtype=np.float32)
-        # CNV_FRC = MAPLPy.get_pointer("CNV_FRC", export_state, dtype=np.float32, alloc=True)
-        # SRF_TYPE = MAPLPy.get_pointer("SRF_TYPE", export_state, dtype=np.float32, alloc=True)
+        if self._uw is None:
+            # Build UW
+            with StencilBackendCompilerOverride(
+                MPI.COMM_WORLD,
+                ndsl_stack.stencil_factory.config.dace_config,
+            ):
+                self._uw = ComputeUwshcuInv(ndsl_stack.stencil_factory, ndsl_stack.quantity_factory, self.config)
 
         with TimedCUDAProfiler("UW", {}):
             with TimedCUDAProfiler("UW - State copy", {}):

@@ -4,10 +4,9 @@ from ndsl.dsl.gt4py import log, sqrt
 from ndsl.dsl.typing import Float, FloatField, Int
 
 import pyMoist.constants as constants
-from pyMoist.field_types import FloatField_NTracers
+from pyMoist.convection_tracers import FloatField_ConvectionTracers
 from pyMoist.saturation_tables import GlobalTable_saturation_tables, saturation_specific_humidity
 from pyMoist.shared.incloud_processes import ice_fraction
-
 
 P00 = Float(1e5)  # Reference pressure
 zvir = Float(0.609)  # r_H2O/r_air-1
@@ -61,7 +60,7 @@ def slope_bot(
 
 @gtfunction
 def slope_bot_tracer(
-    field: FloatField_NTracers,
+    field,  #: FloatField_ConvectionTracers, # disabled b/c it breaks analysis for some reason
     p0: FloatField,
     n: Int,
 ):
@@ -110,7 +109,7 @@ def slope_mid(
 @gtfunction
 def slope_mid_tracer(
     max_k: Int,
-    field: FloatField_NTracers,
+    field,  #: FloatField_ConvectionTracers, # disabled b/c it breaks analysis for some reason
     p0: FloatField,
     n: Int,
 ):
