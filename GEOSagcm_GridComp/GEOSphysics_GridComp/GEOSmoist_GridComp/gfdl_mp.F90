@@ -4944,7 +4944,9 @@ subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den,
         ! heterogeneity and allow WBF to operate in large-scale updrafts
         ! when the environment is supersaturated with respect to ice (qv > qsi)
         ! and there is both liquid and ice present 
-        if (tc .gt. 0. .and. ql (k) .gt. qcmin .and. qi (k) .gt. qcmin .and. &
+        ! Bypassed qi > qcmin constraint for colder temperatures to ensure initiation
+        if (tc .gt. 0. .and. ql (k) .gt. qcmin .and. &
+           (qi (k) .gt. qcmin .or. tc .gt. 15.0) .and. &
             qv (k) .gt. qsi) then
 
             sink = min (fac_wbf * ql (k), tc / icpk (k))
