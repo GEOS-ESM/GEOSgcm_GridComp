@@ -150,7 +150,7 @@ class GF2020Interface(UserCode):
             SCLM_DEEP=Float(maplpy.get_resource("SCLM_DEEP:", mapl_state, default=Float(1.0))),
             FIX_CONVECTIVE_CLOUD=maplpy.get_resource("FIX_CNV_CLOUD:", mapl_state, default=False),
             APPLY_SUBSIDENCE_MICROPHYSICS=Int(maplpy.get_resource("APPLY_SUB_MP:", mapl_state, default=Int(0))),
-            NUMBER_OF_TRACERS=0,
+            NUMBER_OF_TRACERS=0, # will be updated during first run call, once tracer packet is built in fortran
             USE_MOMENTUM_TRANSPORT=Int(maplpy.get_resource("USE_MOMENTUM_TRANSP:", mapl_state, default=Int(1))),
         )
 
