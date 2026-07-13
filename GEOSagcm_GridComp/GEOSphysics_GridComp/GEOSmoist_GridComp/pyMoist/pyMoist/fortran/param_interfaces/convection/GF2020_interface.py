@@ -274,9 +274,9 @@ class GF2020Interface(UserCode):
 
         # create the data dimensions within the QuantityFactory
         if CONVECTION_TRACER_DIM not in ndsl_stack.quantity_factory.sizer.data_dimensions:
-            ndsl_stack.quantity_factory.add_data_dimensions({CONVECTION_TRACER_DIM: MOIST_WORKAROUNDS.CNV_Tracers().Q[:].shape[-1]})
-        elif ndsl_stack.quantity_factory.sizer.data_dimensions[CONVECTION_TRACER_DIM] != MOIST_WORKAROUNDS.CNV_Tracers().Q[:].shape[-1]:
-            raise ValueError(f"Convection tracer count has been modified between timesteps. If this is intentional, you must re-initialize the NDSL stack.")
+            ndsl_stack.quantity_factory.add_data_dimensions({CONVECTION_TRACER_DIM: NUMBER_CONVECTION_TRACERS})
+        elif ndsl_stack.quantity_factory.sizer.data_dimensions[CONVECTION_TRACER_DIM] != NUMBER_CONVECTION_TRACERS:
+            raise ValueError(f"Convection tracer count has been modified since initialization timesteps. If this is intentional, you must re-initialize the NDSL stack.")
 
         if "plumes" not in ndsl_stack.quantity_factory.sizer.data_dimensions:
             # NOTE data dimensions must be defined with a default python int type (non-ndsl/numpy type). Using NDSL types causes an explosion during stencil compilation.
