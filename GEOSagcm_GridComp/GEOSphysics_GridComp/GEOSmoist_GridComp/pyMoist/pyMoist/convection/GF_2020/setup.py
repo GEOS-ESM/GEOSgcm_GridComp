@@ -7,8 +7,6 @@ import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
-    FloatField_ConvectionTracers,
-    FloatField_ConvectionTracers_Plume,
     FloatField_Plume,
     FloatFieldIJ_Plume,
     IntFieldIJ_Plume,
@@ -16,7 +14,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
 from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 from pyMoist.convection.GF_2020.locals import GF2020Locals
 from pyMoist.convection.GF_2020.state import GF2020State
-from pyMoist.convection_tracers import ConvectionTracers
+from pyMoist.convection_tracers import ConvectionTracers, FloatField_ConvectionTracers, FloatField_ConvectionTracers_Plume
 from pyMoist.saturation_tables.saturation_specific_humidity_functions import saturation_specific_humidity
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.saturation_tables.types import GlobalTable_saturation_tables
@@ -389,7 +387,7 @@ def prefill_cumulus_parameterization_state(
         vapor_excess (FloatFieldIJ)
         last_error_code (IntFieldIJ)
     """
-    from __externals__ import APPLY_SUBSIDENCE_MICROPHYSICS, NUMBER_OF_PLUMES
+    from __externals__ import APPLY_SUBSIDENCE_MICROPHYSICS, NUMBER_OF_PLUMES, NUMBER_OF_TRACERS
 
     with computation(FORWARD), interval(0, 1):
         plume = 0
@@ -436,7 +434,7 @@ def prefill_cumulus_parameterization_state(
             dbuoyancydt[0, 0, 0][plume] = 0.0
 
             tracer = 0
-            while tracer < constants.NUMBER_OF_TRACERS:
+            while tracer < NUMBER_OF_TRACERS:
                 chemistry_tracers_output[0, 0, 0][plume, tracer] = 0.0
                 tracer += 1
 
@@ -1067,7 +1065,7 @@ def prepare_cumulus_paramaterization_state(
         t_excess (FloatFieldIJ)
         vapor_excess (FloatFieldIJ)
     """
-    from __externals__ import APPLY_SUBSIDENCE_MICROPHYSICS, AUTOCONV, DT_MOIST, USE_TRACER_TRANSPORT, k_end
+    from __externals__ import APPLY_SUBSIDENCE_MICROPHYSICS, AUTOCONV, DT_MOIST, USE_TRACER_TRANSPORT, NUMBER_OF_TRACERS, k_end
 
     with computation(FORWARD), interval(0, 1):
         if AUTOCONV == 2:
@@ -1120,7 +1118,7 @@ def prepare_cumulus_paramaterization_state(
     with computation(PARALLEL), interval(...):
         if USE_TRACER_TRANSPORT == 1:
             tracer = 0
-            while tracer < constants.NUMBER_OF_TRACERS:
+            while tracer < NUMBER_OF_TRACERS:
                 chemistry_tracers[0, 0, 0][tracer] = max(convection_tracers.at(K=k_end - K, ddim=[tracer]), constants.FLOAT_TINY)
                 tracer += 1
 
@@ -1242,6 +1240,7 @@ class GF2020Setup(NDSLRuntime):
             externals={
                 "NUMBER_OF_PLUMES": cumulus_parameterization_constants.NUMBER_OF_PLUMES,
                 "APPLY_SUBSIDENCE_MICROPHYSICS": config.APPLY_SUBSIDENCE_MICROPHYSICS,
+                "NUMBER_OF_TRACERS": config.NUMBER_OF_TRACERS,
             },
         )
 
@@ -1282,6 +1281,7 @@ class GF2020Setup(NDSLRuntime):
                 "DT_MOIST": config.DT_MOIST,
                 "APPLY_SUBSIDENCE_MICROPHYSICS": config.APPLY_SUBSIDENCE_MICROPHYSICS,
                 "USE_TRACER_TRANSPORT": config.USE_TRACER_TRANSPORT,
+                "NUMBER_OF_TRACERS": config.NUMBER_OF_TRACERS,
             },
         )
 

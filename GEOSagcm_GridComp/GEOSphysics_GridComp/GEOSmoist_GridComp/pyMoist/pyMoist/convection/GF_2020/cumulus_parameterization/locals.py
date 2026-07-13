@@ -3,6 +3,7 @@ import dataclasses
 from ndsl import Quantity, State
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.typing import Float, Int
+from pyMoist.convection_tracers import CONVECTION_TRACER_DIM
 
 
 @dataclasses.dataclass
@@ -1333,7 +1334,7 @@ class GF2020CumulusParameterizationLocals(State):
     chemistry_tracers_cloud_levels: Quantity = dataclasses.field(
         metadata={
             "name": "chemistry_tracers_cloud_levels",
-            "dims": [I_DIM, J_DIM, K_DIM, "convection_tracers"],
+            "dims": [I_DIM, J_DIM, K_DIM, CONVECTION_TRACER_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -1342,7 +1343,7 @@ class GF2020CumulusParameterizationLocals(State):
     chemistry_tracers_sc_updraft: Quantity = dataclasses.field(
         metadata={
             "name": "chemistry_tracers_sc_updraft",
-            "dims": [I_DIM, J_DIM, K_DIM, "convection_tracers"],
+            "dims": [I_DIM, J_DIM, K_DIM, CONVECTION_TRACER_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -1351,7 +1352,7 @@ class GF2020CumulusParameterizationLocals(State):
     chemistry_tracers_sc_downdraft: Quantity = dataclasses.field(
         metadata={
             "name": "chemistry_tracers_sc_downdraft",
-            "dims": [I_DIM, J_DIM, K_DIM, "convection_tracers"],
+            "dims": [I_DIM, J_DIM, K_DIM, CONVECTION_TRACER_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -1360,7 +1361,7 @@ class GF2020CumulusParameterizationLocals(State):
     chemistry_tracers_pw_updraft: Quantity = dataclasses.field(
         metadata={
             "name": "chemistry_tracers_pw_updraft",
-            "dims": [I_DIM, J_DIM, K_DIM, "convection_tracers"],
+            "dims": [I_DIM, J_DIM, K_DIM, CONVECTION_TRACER_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -1369,7 +1370,7 @@ class GF2020CumulusParameterizationLocals(State):
     chemistry_tracers_pw_downdraft: Quantity = dataclasses.field(
         metadata={
             "name": "chemistry_tracers_pw_downdraft",
-            "dims": [I_DIM, J_DIM, K_DIM, "convection_tracers"],
+            "dims": [I_DIM, J_DIM, K_DIM, CONVECTION_TRACER_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -1378,7 +1379,7 @@ class GF2020CumulusParameterizationLocals(State):
     chemistry_tracers_total_pw_updraft: Quantity = dataclasses.field(
         metadata={
             "name": "chemistry_tracers_pw_updraft",
-            "dims": [I_DIM, J_DIM, "convection_tracers"],
+            "dims": [I_DIM, J_DIM, CONVECTION_TRACER_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -1387,71 +1388,12 @@ class GF2020CumulusParameterizationLocals(State):
     chemistry_tracers_total_pw_downdraft: Quantity = dataclasses.field(
         metadata={
             "name": "chemistry_tracers_pw_downdraft",
-            "dims": [I_DIM, J_DIM, "convection_tracers"],
+            "dims": [I_DIM, J_DIM, CONVECTION_TRACER_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
         }
     )
-    #######################################################################
-    # NOTE AtmosphericComposition variables **CAN BE MOVED AND/OR RENAMED**
-    #######################################################################
-    ddtr: Quantity = dataclasses.field(
-        metadata={
-            "name": "ddtr",
-            "dims": [I_DIM, J_DIM, K_DIM, "convection_tracers"],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    trash_: Quantity = dataclasses.field(
-        metadata={
-            "name": "trash_",
-            "dims": [I_DIM, J_DIM, "convection_tracers"],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    trash2_: Quantity = dataclasses.field(
-        metadata={
-            "name": "trash2_",
-            "dims": [I_DIM, J_DIM, "convection_tracers"],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    evap_: Quantity = dataclasses.field(
-        metadata={
-            "name": "evap_",
-            "dims": [I_DIM, J_DIM, "convection_tracers"],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    wetdep_: Quantity = dataclasses.field(
-        metadata={
-            "name": "wetdep_",
-            "dims": [I_DIM, J_DIM, "convection_tracers"],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    residu_: Quantity = dataclasses.field(
-        metadata={
-            "name": "residu_",
-            "dims": [I_DIM, J_DIM, "convection_tracers"],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-
-    # NOTE these can potentially be removed with a better analysis of what they do/where they go
 
     # NOTE these can potentially be removed with a better analysis of what they do/where they go
     psum: Quantity = dataclasses.field(

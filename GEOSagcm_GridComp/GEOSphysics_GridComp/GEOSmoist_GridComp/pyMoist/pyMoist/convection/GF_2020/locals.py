@@ -3,6 +3,7 @@ import dataclasses
 from ndsl import Quantity, State
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.typing import Float, Int
+from pyMoist.convection_tracers import CONVECTION_TRACER_DIM
 
 
 @dataclasses.dataclass
@@ -610,7 +611,7 @@ class GF2020Locals(State):
     dconvection_tracersdt: Quantity = dataclasses.field(
         metadata={
             "name": "dconvection_tracersdt",
-            "dims": [I_DIM, J_DIM, K_DIM, "convection_tracers"],
+            "dims": [I_DIM, J_DIM, K_DIM, CONVECTION_TRACER_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,

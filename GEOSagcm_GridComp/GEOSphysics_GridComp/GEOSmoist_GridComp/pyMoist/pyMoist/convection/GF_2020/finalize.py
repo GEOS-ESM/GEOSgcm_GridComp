@@ -9,8 +9,6 @@ import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
-    FloatField_ConvectionTracers,
-    FloatField_ConvectionTracers_Plume,
     FloatField_Plume,
     FloatFieldIJ_Plume,
     IntFieldIJ_Plume,
@@ -18,7 +16,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
 from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 from pyMoist.convection.GF_2020.locals import GF2020Locals
 from pyMoist.convection.GF_2020.state import GF2020State
-from pyMoist.convection_tracers import ConvectionTracers
+from pyMoist.convection_tracers import ConvectionTracers, FloatField_ConvectionTracers, FloatField_ConvectionTracers_Plume
 from pyMoist.saturation_tables import GlobalTable_saturation_tables, saturation_specific_humidity, saturation_specific_humidity_liquid_surface
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.shared.incloud_processes import ice_fraction
