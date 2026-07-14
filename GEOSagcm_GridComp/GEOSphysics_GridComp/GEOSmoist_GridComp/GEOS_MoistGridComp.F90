@@ -183,7 +183,7 @@ contains
     _ASSERT( LCLDMICR, 'Unsupported Cloud Microphysics Option' )
 
 
-    call MAPL_GetResource( CF, PDFSHAPE, Label="PDFSHAPE:",  default=1, RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetResource( CF, PDFSHAPE, Label="PDFSHAPE:",  default=6, RC=STATUS) ; VERIFY_(STATUS)
 
     call MAPL_GetResource( CF, DEBUG_MST, Label="DEBUG_MST:",  default=.false., RC=STATUS) ; VERIFY_(STATUS)
 
@@ -2949,6 +2949,14 @@ contains
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='SIGMA_S',                                     &
+         LONG_NAME ='normalized_total_water_standard_deviation',   &
+         UNITS     ='1',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+    
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='RHX',                                         &
          LONG_NAME ='relative_humidity_after_PDF',               &
