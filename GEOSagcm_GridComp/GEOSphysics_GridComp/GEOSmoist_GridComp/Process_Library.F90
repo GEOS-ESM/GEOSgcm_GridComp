@@ -2510,7 +2510,7 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
     beta = (MAPL_RGAS/MAPL_RVAP) * (MAPL_ALHL/(MAPL_RGAS*tbar)) * (MAPL_ALHL/(MAPL_CP*tbar))
 
     ! If some skewness is present
-    if (a > 0.001 .and. a /= 0.5 .and. &
+    if (a > 0.001 .and. a < 0.5 .and. &
         (qt3bar > 0.0 .or. t3bar > 0.0 .or. w3bar > 0.0)) then
 
       ! Empirical adjustment to ensure realizability
@@ -2552,9 +2552,9 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
 
     end if
 
-    if (a > 0.001 .and. qt3bar > 0.0 .and. a /= 0.5) then
+    if (a > 0.001 .and. qt3bar > 0.0 .and. a < 0.5) then
 
-      qt1 = a * qt2 / (1.0 - a)
+      qt1 = a * qt2 / (a - 1.0)
 
       fac = sqrt(a / (1.0 - a))
       tmp = max(0.0, qt2bar - (1.0 - a) * qt1**2 - a * qt2**2)
