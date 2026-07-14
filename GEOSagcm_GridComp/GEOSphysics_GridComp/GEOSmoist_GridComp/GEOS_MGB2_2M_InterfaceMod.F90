@@ -355,7 +355,7 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     
     !====================large scale condensation tuning/options======
       
-    call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 1     , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 6    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, FAC_RI          , 'FAC_RI:'          , DEFAULT= 1.   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, FAC_RL          , 'FAC_RL:'          , DEFAULT= 1.   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MIN_RI          , 'MIN_RI:'          , DEFAULT=  5.e-6, RC=STATUS); VERIFY_(STATUS)
@@ -595,7 +595,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: PFL_LS, PFL_AN
     real, pointer, dimension(:,:,:) :: PFI_LS, PFI_AN
     real, pointer, dimension(:,:,:) :: PDF_A, PDFITERS
-    real, pointer, dimension(:,:,:) :: RHCRIT
+    real, pointer, dimension(:,:,:) :: RHCRIT, SIGMA_S
     real, pointer, dimension(:,:  ) :: DBZ_MAX, DBZ_1KM, DBZ_TOP, DBZ_M10C
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
@@ -1560,8 +1560,11 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
          
         call MAPL_TimerOn(MAPL,"----hystpdf")
         call MAPL_GetPointer(EXPORT, RHCRIT,  'RHCRIT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+
+        call MAPL_GetPointer(EXPORT, SIGMA_S,  'SIGMA_S', RC=STATUS); VERIFY_(STATUS)
+        if (associated(SIGMA_S)) SIGMA_S = SQRT(QT2)/QST3
         
-       RHCRIT =  1.0
+        RHCRIT =  1.0
        
         
         do I=1,IM
