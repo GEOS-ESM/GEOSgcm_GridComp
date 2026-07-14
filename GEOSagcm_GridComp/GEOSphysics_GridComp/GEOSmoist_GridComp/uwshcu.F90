@@ -279,9 +279,7 @@ contains
       ncnst = size(CNV_Tracers)
       IM = size(CNV_Tracers(1)%Q,1)
       JM = size(CNV_Tracers(1)%Q,2)
-      allocate(w_tr0(k0, ncnst))
-    
-      !$OMP PARALLEL DO DEFAULT(NONE) &
+      !$OMP PARALLEL DEFAULT(NONE) &
       !$OMP SHARED(idim, k0, dt, ncnst, IM, JM, dotransport, &
       !$OMP        pifc0_inv, zifc0_inv, exnifc0_inv, pmid0_inv, zmid0_inv, &
       !$OMP        exnmid0_inv, dp0_inv, u0_inv, v0_inv, qv0_inv, ql0_inv, &
@@ -313,6 +311,8 @@ contains
       !$OMP         w_thlu, w_thvu, w_uu, w_vu, w_xc &
 #endif
       !$OMP         )
+      allocate(w_tr0(k0, ncnst))
+      !$OMP DO
       do i = 1, idim
      
          ! Calculate 2D grid coordinates from 1D flat index
@@ -465,7 +465,9 @@ contains
 #endif
 
       end do
-      !$OMP END PARALLEL DO
+      !$OMP END DO
+      deallocate(w_tr0)
+      !$OMP END PARALLEL
 
     ! Re-scale liquid/ice water sub-tendencies to enforce conservation
     !$OMP PARALLEL DO DEFAULT(NONE) &
