@@ -96,7 +96,7 @@ CONTAINS
     real, parameter                         :: small = 1.e-20
 
     real, dimension(NCAT)                   :: Qrunf,Ws,Wr
-    real, dimension(NCAT)                   :: Qs0,ks,Ws_last,Wbase
+    real, dimension(NCAT)                   :: Qs0,ks,Ws_last
 
     real                                    :: dt
 
@@ -105,23 +105,24 @@ CONTAINS
     Ws    = Ws0    * rho          ! m3   -> kg
     Wr    = Wr0    * rho          ! m3   -> kg
 
-    dt = ROUTE_DT                                                         ! integer -> real
-
+    dt = ROUTE_DT                                                          ! integer -> real
+    
     ! Update state variables: ks, Ws, and Qs
-    where(Qrunf<=small)Qrunf=0.                                           ! Set runoff to zero if it is too small
 
-    ! Use a positive temporary base for fractional powers;
-    ! zero-storage results are restored to zero below.
-    Wbase=merge(Ws,1.0,Ws>0.0)
-
-    Qs0=max(0.,RRM_ALPHA_STR * Wbase**(1./(1.-RRM_mm)))                    ! Initial flow from local stream storage (kg/s)
-    ks =max(0.,(RRM_ALPHA_STR/(1.-RRM_mm)) * Wbase**(RRM_mm/(1.-RRM_mm)))  ! Flow coefficient (s^-1)
-
-    where(Ws<=0.0)
-       Qs0=0.0
-       ks=0.0
+    where( Qrunf<=small )  Qrunf=0.                                        ! Set runoff to zero if it is too small
+    
+    where( Ws>0.0 )                                                        ! Avoid 0 to the power of something, does not work with gcc15
+       
+       Qs0=max(0.,RRM_ALPHA_STR * Ws**(1./(1.-RRM_mm)))                    ! Initial flow from local stream storage (kg/s)
+       ks =max(0.,(RRM_ALPHA_STR/(1.-RRM_mm)) * Ws**(RRM_mm/(1.-RRM_mm)))  ! Flow coefficient (s^-1)
+       
+    elsewhere
+       
+       Qs0 = 0.
+       ks  = 0.
+       
     end where
-
+    
     Ws_last=Ws                                                             ! Store the current water storage
     where(ks>small)  Ws=Ws + (Qrunf-Qs0)/ks*(1.-exp(-ks*dt))               ! Update storage (kg)
     where(ks<=small) Ws=Ws + (Qrunf-Qs0)*dt                                ! Simplified update if ks is small
@@ -130,14 +131,17 @@ CONTAINS
 
     ! Update river storage and calculate river outflow
     Wr=Wr+Qs*dt
-
-    ! Use a positive temporary base for the fractional power;
-    ! zero-storage outflow is restored to zero below.
-    Wbase=merge(Wr,1.0,Wr>0.0)
-
-    Qout=max(0.,RRM_ALPHA_RIV * Wbase**(1./(1.-RRM_mm)))                   ! River flow based on water storage (kg/s)
-    where(Wr<=0.0)Qout=0.0
-
+    
+    where( Wr>0.0 )                                                        ! Avoid 0 to the power of something, does not work with gcc15
+       
+       Qout=max(0.,RRM_ALPHA_RIV * Wr**(1./(1.-RRM_mm)))                   ! River flow based on water storage (kg/s)
+       
+    elsewhere
+       
+       Qout=0.0
+       
+    end where
+       
     Qout=min(Qout,Wr/dt)                                                   ! Limit outflow to available river storage
     Wr=max(0.,Wr-Qout*dt)                                                  ! Update river storage and keep it non-negative
 
