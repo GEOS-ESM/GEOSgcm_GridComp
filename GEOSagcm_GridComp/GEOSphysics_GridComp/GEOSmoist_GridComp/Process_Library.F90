@@ -670,7 +670,7 @@ module GEOSmoist_Process_Library
          end if
          ICEFRCT_C = MIN(ICEFRCT_C,1.00)
          ICEFRCT_C = MAX(ICEFRCT_C,0.00)
-         ICEFRCT_C = ICEFRCT_C**aT_ICE_PWR
+         ICEFRCT_C = ICEFRCT_C**JaT_ICE_PWR
 
          ! ------------------------------------------------------------------
          ! 2. Grid-Scale / Mesh Cloud Ice Fraction (ICEFRCT_M)
