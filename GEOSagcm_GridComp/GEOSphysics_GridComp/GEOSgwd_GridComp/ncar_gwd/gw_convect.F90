@@ -185,11 +185,10 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
       ! Determine the background stress at c=0
        if (desc%et_bkg_dqcdt_forcing .or. desc%et_bkg_speed_forcing) then
           flat_gw = 0.05 ! weak background forcing
-          ! Scale the extratropical stress to account for changes in tropical efficiency
-          ! (e.g., if tau_et=8.0, eff_et=1.0, eff_tr=0.625, tau_et_scaled becomes 12.8)
-          desc%taubck(i,:) = tau_et*(eff_et/eff_tr)*0.001*flat_gw*cw
-         ! efficiency function (now constant based on QBO tuning)
-          desc%effbck(i) = eff_tr
+          desc%taubck(i,:) = tau_et*0.001*flat_gw*cw
+         ! efficiency function
+          desc%effbck(i) = eff_tr*cos(lats(i))**2 + &
+                           eff_et*sin(lats(i))**2
        else
          ! Include dependence on latitude:
           latdeg = lats(i)*rad2deg
