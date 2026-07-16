@@ -20,23 +20,24 @@ category: IMPORT
 #-------------------------------------------------------------------------------------------------------
 #  VARIABLE    | DIMENSIONS  |          Additional Metadata
 #-------------------------------------------------------------------------------------------------------
- NAME    | ALIAS | UNITS   | DIMS | VLOC | RESTART | LONG NAME
+ NAME      | ALIAS | UNITS   | DIMS | VLOC | RESTART | LONG NAME
 #-------------------------------------------------------------------------------------------------------
- PLE     |       | Pa          | xyz  | E    | SKIP    | air_pressure
- T       |       | K           | xyz  | C    | SKIP    | air_temperature
- Q       |       | kg kg-1     | xyz  | C    | SKIP    | specific_humidity
- U       |       | m s-1       | xyz  | C    | SKIP    | eastward_wind
- V       |       | m s-1       | xyz  | C    | SKIP    | northward_wind
- PHIS    |       | m+2 s-2     | xy   | N    | SKIP    | surface geopotential height
- SGH     |       | m           | xy   | N    | SKIP    | standard_deviation_of_topography
- VARFLT  |       | m+2         | xy   | N    | SKIP    | variance_of_the_filtered_topography
- PREF    |       | Pa          |   z  | E    | SKIP    | reference_air_pressure
- AREA    |       | m^2         | xy   | N    | SKIP    | grid_box_area
+ PLE       |       | Pa          | xyz  | E    | SKIP    | air_pressure
+ T         |       | K           | xyz  | C    | SKIP    | air_temperature
+ Q         |       | kg kg-1     | xyz  | C    | SKIP    | specific_humidity
+ U         |       | m s-1       | xyz  | C    | SKIP    | eastward_wind
+ V         |       | m s-1       | xyz  | C    | SKIP    | northward_wind
+ PHIS      |       | m+2 s-2     | xy   | N    | SKIP    | surface geopotential height
+ SGH       |       | m           | xy   | N    | SKIP    | standard_deviation_of_topography
+ VARFLT    |       | m+2         | xy   | N    | SKIP    | variance_of_the_filtered_topography
+ PREF      |       | Pa          |   z  | E    | SKIP    | reference_air_pressure
+ AREA      |       | m^2         | xy   | N    | SKIP    | grid_box_area
+ WSPD_STABLE300M | | m s-1       | xy   | N    | SKIP    | max_wind_speed_in_stable_cold_surface_layer
 #-from-moist-
- DTDT_DC | HT_dc | K s-1       | xyz  | C    |         | T tendency due to deep convection
- DQLDT   |       | kg kg-1 s-1 | xyz  | C    |         | total_liq_water_tendency_due_to_moist
- DQIDT   |       | kg kg-1 s-1 | xyz  | C    |         | total_ice_water_tendency_due_to_moist
- CNV_FRC |       | 1           | xy   | N    |         | convective_fraction
+ DTDT_DC   | HT_dc | K s-1       | xyz  | C    |         | T tendency due to deep convection
+ DQLDT     |       | kg kg-1 s-1 | xyz  | C    |         | total_liq_water_tendency_due_to_moist
+ DQIDT     |       | kg kg-1 s-1 | xyz  | C    |         | total_ice_water_tendency_due_to_moist
+ CNV_FRC   |       | 1           | xy   | N    |         | convective_fraction
 
 category: EXPORT
 #-------------------------------------------------------------------------------------------------------
