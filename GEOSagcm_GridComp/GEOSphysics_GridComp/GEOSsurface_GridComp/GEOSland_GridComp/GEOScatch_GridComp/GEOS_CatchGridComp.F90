@@ -3620,7 +3620,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
       ENDIF
       D0T  = D0_BY_ZVEG*ZVG
 
-      DZE  = max(DZ - D0T, 10.)
+      DZE  = max(DZ - D0T, min(0.5*DZ,10.0))  ! was previously capped at 10m [problematic for L137/L181 with thinner surface layers]
 
       if(associated(Z0 )) Z0  = Z0T(:,N)
       if(associated(D0 )) D0  = D0T
