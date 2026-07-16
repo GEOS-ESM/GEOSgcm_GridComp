@@ -412,7 +412,7 @@ module gfdl_mp_mod
     real :: tau_smlt =  900.0 ! snow melting time scale (s)
     real :: tau_gmlt = 1200.0 ! graupel melting time scale (s)
     ! subgridz timescales
-    real :: tau_wbf  =  300.0 ! Wegener Bergeron Findeisen time scale (s)
+    real :: tau_wbf  = 1200.0 ! Wegener Bergeron Findeisen time scale (s)
 
     real :: ccn_o = 90.0 ! ccn over ocean (1/cm^3)
     real :: ccn_l = 270.0 ! ccn over land (1/cm^3)
@@ -432,7 +432,7 @@ module gfdl_mp_mod
 
     real :: ql0_max = 2.0e-3 ! maximum cloud water value (autoconverted to rain) (kg/kg)
 
-    real :: psaut_qi_crt = 2.0e-4 ! cloud ice to snow autoconversion threshold (kg/m^3)
+    real :: psaut_qi_crt = 1.0e-4 ! cloud ice to snow autoconversion threshold (kg/m^3)
     real :: pwbf_qi_crt  = 0.8e-4 ! WBF liquid to ice freezing threshold (kg/m^3)
     real :: pgaut_qs_crt = 0.6e-3 ! snow to graupel autoconversion threshold (0.6e-3 in Purdue Lin scheme) (kg/m^3)
 
@@ -4249,8 +4249,16 @@ subroutine psacr_pgfr (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8
                     acc (3), acc (4), den (k))
             endif
 
-            pgfr = dts * cgfr (1) / den (k) * (exp (- cgfr (2) * tc) - 1.) * &
-                exp ((6 + mur) / (mur + 3) * log (6 * qr (k) * den (k)))
+            ! Homogeneous freezing threshold (e.g., -40 C)
+            if (tc .lt. -40.0) then
+                ! Colder than -40C: ALL liquid rain freezes instantaneously.
+                ! We set pgfr to consume all available qr.
+                pgfr = qr(k) 
+            else
+                ! Warmer than -40C: Calculate probabilistic freezing normally.
+                pgfr = dts * cgfr (1) / den (k) * (exp (- cgfr (2) * tc) - 1.) * &
+                    exp ((6 + mur) / (mur + 3) * log (6 * qr (k) * den (k)))
+            endif
 
             ! --- Apply Mass and Thermal Limits ---
             sink = psacr + pgfr
@@ -4918,8 +4926,9 @@ subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den,
 
     real :: tc, tin, sink, dqdt, qsw, qsi, qim, tmp, fac_wbf
 
+    real :: snow_boost_mult
     real :: tau_wbf_eff
-    real, parameter :: wbf_coarse_mult = 9.0 ! How much slower WBF is at 50km vs 2km
+    real, parameter :: wbf_coarse_mult = 10.0 ! How much slower WBF is at 50km vs 2km
 
     if (.not. do_wbf) return
 
@@ -4949,9 +4958,24 @@ subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den,
            (qi (k) .gt. qcmin .or. tc .gt. 15.0) .and. &
             qv (k) .gt. qsi) then
 
-            sink = min (fac_wbf * ql (k), tc / icpk (k))
-            qim = pwbf_qi_crt / den (k)
-            tmp = min (sink, dim (qim, qi (k)))
+            ! 1. Homogeneous Freezing Limit (-40 C)
+            if (tc .ge. 40.0) then
+                sink = ql(k)
+                tmp = 0.0  ! All frozen liquid instantly becomes snow
+            else
+                ! Normal WBF probabilistic freezing
+                sink = min (fac_wbf * ql (k), tc / icpk (k))
+                
+                ! 2. Temperature-Dependent Snow Boost
+                ! Scales from 1.0 (at 0 C) down to 0.0 (at -40 C)
+                ! As tc gets larger (colder), the multiplier shrinks,
+                ! reducing qim and forcing more mass to spill over into qs.
+                snow_boost_mult = max(0.0, 1.0 - (tc / 40.0))
+                
+                qim = (pwbf_qi_crt * snow_boost_mult) / den (k)
+                tmp = min (sink, dim (qim, qi (k)))
+            endif
+
             mppfw = mppfw + sink * dp (k) * convt
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
@@ -5014,7 +5038,15 @@ subroutine pbigg (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den
                 ccn (k) = ccn (k) / den (k)
             endif
 
-            sink = 100. / (rhow * ccn (k)) * dts * (exp (0.66 * tc) - 1.) * ql (k) ** 2
+            ! Homogeneous freezing limit applied here
+            if (tc .ge. 40.0) then
+                ! Colder than -40C: ALL cloud liquid freezes instantaneously.
+                sink = ql(k)
+            else
+                ! Warmer than -40C: Calculate probabilistic Bigg freezing normally
+                sink = 100. / (rhow * ccn (k)) * dts * (exp (0.66 * tc) - 1.) * ql (k) ** 2
+            endif
+
             sink = min (ql (k), sink, tc / icpk (k))
             mppfw = mppfw + sink * dp (k) * convt
 
