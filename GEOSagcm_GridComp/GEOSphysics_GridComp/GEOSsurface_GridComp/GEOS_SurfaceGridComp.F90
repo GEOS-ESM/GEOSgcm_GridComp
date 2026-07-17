@@ -6460,7 +6460,11 @@ module GEOS_SurfaceGridCompMod
        allocate( PRECSUM(IM,JM), stat=STATUS )
        VERIFY_(STATUS)
 
-       PRECSUM = RCU+RLS+SNO+ICE+FRZR
+       ! PRECSUM = uncorrected total precip
+       ! PTTe    = total precip from file
+       
+       PRECSUM = RCU+RLS+SNO+ICE  ! do *not* add FRZR, which is liquid not solid and (probably) incl. in RCU+RLS
+                                  ! see comment re. FRZR in GEOS_CatchGridComp.F90 by reichle, 6/6/2025
 
        ! get and parse current time (needed to create file time stamp)
        
