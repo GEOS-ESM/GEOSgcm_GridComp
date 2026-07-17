@@ -51,19 +51,25 @@ module GEOS_LandiceGridCompMod
 #endif
 
   implicit none
-  public :: NUM_SNOW_LAYERS
-  public :: NUM_ICE_LAYERS
+
   private
 
   integer, parameter :: ICE   = 1
   integer, parameter :: SNOW  = 2
   integer, parameter :: NUM_SUBTILES = 2
+
   integer, parameter :: NUM_SNOW_LAYERS = 15
   integer, parameter :: NUM_ICE_LAYERS  = 15
   integer, parameter :: NUM_SNOICE_LAYERS = NUM_SNOW_LAYERS+NUM_ICE_LAYERS
+  
+  ! make number of snow and ice layers public for the benefit of the ens avg GridComp in GEOSldas
+  ! (and avoid name conflict with NUM_SNOW_LAYERS and NUM_ICE_LAYERS of sea ice model)
+  
+  integer, parameter, public :: NUM_SNOW_LAYERS_LANDICE = NUM_SNOW_LAYERS  
+  integer, parameter, public :: NUM_ICE_LAYERS_LANDICE  = NUM_ICE_LAYERS  
+
   real,    parameter :: rad_to_deg      = 180.0 / 3.1415926
-
-
+  
   ! snowrt related constants
   ! will move these to a global module later
   real,    parameter :: ALHE     = MAPL_ALHL   ! J/kg  @15C
