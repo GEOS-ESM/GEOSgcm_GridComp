@@ -5311,7 +5311,8 @@ module GEOS_SurfaceGridCompMod
     type (ESMF_Field)                   :: Field
     type (ESMF_Grid)                    :: GRID
     type (ESMF_Time)                    :: CurrentTime
-    character(len=ESMF_MAXSTR)          :: PRECIP_FILE
+    character(len=ESMF_MAXPATHLEN)      :: PRECIP_FILE
+    character(len=ESMF_MAXPATHLEN)      :: PRECIP_FILE_CLIMSCALE
 
     type (T_SURFACE_STATE), pointer     :: surf_internal_state
     type (SURF_wrap)                    :: wrap
@@ -6392,26 +6393,31 @@ module GEOS_SurfaceGridCompMod
 
     end if
 
-! Read in precip data. This is used in 'coupled' replay
-!------------------------------------------------------
+! Read in precip or precip clim scaling data. This is used in 'coupled' replay
+!-----------------------------------------------------------------------------
+! This code is used to have the surface components (land, salwater, etc.) see
+!  a "corrected" precip according to Rolf et al. This was used in MERRA-2 and
+!  would typically be done during reanalysis or replay. Also, OGCM-coupled
+!  replays require special treatment.
+! Alternatively, read climatological scaling factors that convert the model
+!  precipitation to an observed climatology.  This rescaled precip is then
+!  processed just like the "corrected" precipitation (that is, disaggregated
+!  into components and tapered with the (raw) model precipitation.  Introduced 
+!  for M21C to address IMERG-Late V07B quality issues while preserving the
+!  climatology of the corrected precip after the end of IMERG-Final on data-day 1 Oct 2025.
+!------------------------------------------------------------------------------------------
 
-    call MAPL_GetResource(MAPL,PRECIP_FILE,LABEL="PRECIP_FILE:",default="null", RC=STATUS)
+    call MAPL_GetResource(MAPL,PRECIP_FILE,          LABEL="PRECIP_FILE:",          default="null", RC=STATUS)
+    VERIFY_(STATUS)
+    
+    call MAPL_GetResource(MAPL,PRECIP_FILE_CLIMSCALE,LABEL="PRECIP_FILE_CLIMSCALE:",default="null", RC=STATUS)
     VERIFY_(STATUS)
 
-    call ESMF_ClockGet(CLOCK, currTime=CurrentTime, rc=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_TimeGet (currentTime,               &
-                       YY=YEAR, MM=MONTH, DD=DAY, &
-                       H=HR,    M=MN,     S=SE,   &
-                                        RC=STATUS )
-    VERIFY_(STATUS)
-    call ESMF_TimeSet (currentTime,               &
-                       YY=YEAR, MM=MONTH, DD=DAY, &
-                       H=HR,    M =30,    S = 0,  &
-                                        RC=STATUS )
-    VERIFY_(STATUS)
-
-
+    ! for now, do not allow the combination of precip replacement and clim rescaling
+    
+    _ASSERT( .not. (trim(PRECIP_FILE) /= "null" .and. trim(PRECIP_FILE_CLIMSCALE) /= "null"), &
+         "only one of PRECIP_FILE *or* PRECIP_FILE_CLIMSCALE can be set" )
+    
 ! These exports are the rainfalls and total snowfall that
 !  the children of surface see. They can be the exports of
 !  moist or can be read from a file.
@@ -6444,25 +6450,62 @@ module GEOS_SurfaceGridCompMod
     ICE = ICEFL
     FRZR= FRZRFL
 
-! This code is used to have the surface components (land, salwater, etc.) see
-!  a "corrected" precip according to Rolf et al. This was used in MERRA-2 and
-!  would typically be done one during reanalysis or replay. Also, OGCM-coupled
-!  replays require special treatment.
-!-----------------------------------------------------------------------------
-
-    REPLACE_PRECIP: if(PRECIP_FILE /= "null") then
+    REPLACE_PRECIP: if(trim(PRECIP_FILE) /= "null" .or. trim(PRECIP_FILE_CLIMSCALE) /= "null") then
 
        bundle = ESMF_FieldBundleCreate (NAME='PRECIP', RC=STATUS)
        VERIFY_(STATUS)
        call ESMF_FieldBundleSet(bundle, GRID=GRID, RC=STATUS)
        VERIFY_(STATUS)
 
-     ! call MAPL_CFIORead( PRECIP_FILE, CurrentTime, Bundle, RC=STATUS)
-     ! VERIFY_(STATUS)
-       call MAPL_read_bundle( Bundle, PRECIP_FILE, CurrentTime, regrid_method=REGRID_METHOD_CONSERVE, RC=status)
+       allocate( PRECSUM(IM,JM), stat=STATUS )
        VERIFY_(STATUS)
-       call ESMFL_BundleGetPointerToData(Bundle,'PRECTOT',PTTe, RC=STATUS)
+
+       PRECSUM = RCU+RLS+SNO+ICE+FRZR
+
+       ! get and parse current time (needed to create file time stamp)
+       
+       call ESMF_ClockGet(CLOCK, currTime=CurrentTime, rc=STATUS)
        VERIFY_(STATUS)
+       call ESMF_TimeGet (currentTime,               &
+                          YY=YEAR, MM=MONTH, DD=DAY, &
+                          H=HR,    M=MN,     S=SE,   &
+                          RC=STATUS )
+       VERIFY_(STATUS)
+       
+       if( trim(PRECIP_FILE) /= "null") then
+          
+          ! read corrected precip (PTTe) directly from (hourly) file if file exists (crashes otherwise?)
+          
+          call ESMF_TimeSet (currentTime,               &
+                             YY=YEAR, MM=MONTH, DD=DAY, &
+                             H=HR,    M =30,    S = 0,  &
+                             RC=STATUS )
+          VERIFY_(STATUS)
+          
+          call MAPL_read_bundle( Bundle, PRECIP_FILE, CurrentTime, regrid_method=REGRID_METHOD_CONSERVE, RC=status)
+          VERIFY_(STATUS)
+          call ESMFL_BundleGetPointerToData(Bundle,'PRECTOT',PTTe, RC=STATUS)
+          VERIFY_(STATUS)
+          
+       else
+          
+          ! read clim scale factor from file and apply to uncorrected (model) precip (PRECSUM) 
+          ! to create the "corrected" precip (PTTe)
+          
+          ! climatology is daily, only need month/day information, use leap year (8888) as nominal year
+          ! (matching time stamps in files)
+          call ESMF_TimeSet (currentTime,               &
+                             YY=8888, MM=MONTH, DD=DAY, & 
+                             H=0,     M =0,     S = 0,  & 
+                             RC=STATUS ) 
+          VERIFY_(STATUS)
+                    
+          call MAPL_read_bundle( Bundle, PRECIP_FILE_CLIMSCALE, CurrentTime, regrid_method=REGRID_METHOD_CONSERVE, RC=status)
+          VERIFY_(STATUS)
+          call ESMFL_BundleGetPointerToData(Bundle,'factor_clim',PTTe, RC=STATUS)
+          PTTe = PTTe * PRECSUM
+          VERIFY_(STATUS)
+       end if
 
 
 ! Catchment required convective and large-scale rain and total snowfall,
@@ -6482,15 +6525,7 @@ module GEOS_SurfaceGridCompMod
 
        allocate( PCSCALE(IM,JM), stat=STATUS )
        VERIFY_(STATUS)
-       allocate( PRECSUM(IM,JM), stat=STATUS )
-       VERIFY_(STATUS)
 
-       ! PRECSUM = uncorrected total precip
-       ! PTTe    = total precip from file
-       
-       PRECSUM = RCU+RLS+SNO+ICE  ! do *not* add FRZR, which is liquid not solid and (probably) incl. in RCU+RLS
-                                  ! see comment re. FRZR in GEOS_CatchGridComp.F90 by reichle, 6/6/2025
-       
        where (PTTe == MAPL_UNDEF)
           RCU = PCU
           RLS = PLS
@@ -7604,7 +7639,7 @@ module GEOS_SurfaceGridCompMod
        VERIFY_(STATUS)
 
        ! Do not correct the precip over ocean tiles
-       if(Precip_File /= "null") then
+       if( trim(Precip_File) /= "null"  .or. trim(PRECIP_FILE_CLIMSCALE) /= "null" ) then
 
           call MAPL_LocStreamTransform( LOCSTREAM, TMPTILE  , PCU,     RC=STATUS); VERIFY_(STATUS)
           where(tiletype == MAPL_OCEAN)  PCUTILE = TMPTILE
@@ -7624,7 +7659,7 @@ module GEOS_SurfaceGridCompMod
        end if
 
        ! Adjust the discharge going to the ocean
-       if(Precip_File /= "null" .and. DischargeAdjustFile /= "null") then
+       if( (trim(Precip_File) /= "null"  .or. trim(PRECIP_FILE_CLIMSCALE) /= "null") .and. DischargeAdjustFile /= "null") then
 
           call MAPL_GetPointer(INTERNAL, DISCHARGE_ADJUST, 'DISCHARGE_ADJUST',  RC=STATUS)
           VERIFY_(STATUS)
@@ -7663,7 +7698,7 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT, CN_PRCP, 'CN_PRCP', ALLOC=.true., RC=STATUS)
     VERIFY_(STATUS)
 
-    if(PRECIP_FILE /= "null") then
+    if( trim(PRECIP_FILE) /= "null" .or. trim(PRECIP_FILE_CLIMSCALE) /= "null" ) then
        TMPTILE = PCUTILE
        call MAPL_LocStreamTransform( LOCSTREAM, CN_PRCP, TMPTILE, RC=STATUS)
        VERIFY_(STATUS)
@@ -7677,7 +7712,7 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT, PRECTOT, 'PRECTOT', ALLOC=.true., RC=STATUS)
     VERIFY_(STATUS)
 
-    if(PRECIP_FILE /= "null") then
+    if( trim(PRECIP_FILE) /= "null" .or. trim(PRECIP_FILE_CLIMSCALE) /= "null" ) then
        TMPTILE = PCUTILE + PLSTILE + SNOFLTILE + ICEFLTILE  ! do *not* add FRZR, which is liquid not solid and (probably) incl. in PCUTILE+PCSTILE
        call MAPL_LocStreamTransform( LOCSTREAM, PRECTOT, TMPTILE, RC=STATUS)
        VERIFY_(STATUS)
