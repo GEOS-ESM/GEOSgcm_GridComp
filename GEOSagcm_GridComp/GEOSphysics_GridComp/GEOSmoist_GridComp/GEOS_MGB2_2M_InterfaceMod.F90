@@ -479,8 +479,8 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, DROPSZCNV, 'DROPSZCNV:', DEFAULT= 27.6e-6 ,RC=STATUS) !drop vol radius in cnv !only active if not USE_CUP_2M
     call MAPL_GetResource(MAPL, ICESZCNV_SC, 'ICESZCNV_SC:', DEFAULT= 1.248 ,RC=STATUS) !scaling ice eff radius in cnv !only active if not USE_CUP_2M
   
-    call MAPL_GetResource(MAPL, ICE_AUTO_TSC_CNV, 'ICE_AUTO_TSC_CNV:', DEFAULT=TS_AUTO_ICE  ,RC=STATUS) !cnv ice autoconversion time scale
-    call MAPL_GetResource(MAPL, DCS_CNV, 'DCS_CNV:', DEFAULT= DCS ,RC=STATUS) ! CNV ice/snow critical diameter
+    call MAPL_GetResource(MAPL, ICE_AUTO_TSC_CNV, 'ICE_AUTO_TSC_CNV:', DEFAULT=180.  ,RC=STATUS) !cnv ice autoconversion time scale
+    call MAPL_GetResource(MAPL, DCS_CNV, 'DCS_CNV:', DEFAULT= 250.e-6 ,RC=STATUS) ! CNV ice/snow critical diameter
     
     call MAPL_GetResource(MAPL, ACC_ENH_CNV,        'ACC_ENH_CNV:',        DEFAULT= 1.,    __RC__) !accretion rain-liquid efficiency for convective clouds
     call MAPL_GetResource(MAPL, AUT_SCALE_CNV,      'AUT_SCALE_CNV:',      DEFAULT= 1.,    __RC__) !scale factor for liquid autoconversion
@@ -1735,6 +1735,37 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
         call MAPL_TimerOff(MAPL,"---CLDMACRO")
         
         
+        do I=1,IM
+          do J=1,JM
+           do K=1,LM
+
+                call Pfreezing( &
+                 1.0 - RHCRIT(I,J,K), &
+                 PDFSHAPE,               &
+                 PLmb(I,J,K),            &
+                 Q(I,J,K),               &
+                 QLLS(I,J,K),            &
+                 QILS(I,J,K),            &
+                 T(I,J,K),               &
+                 CLCN(I,J,K),            &
+                 WSL(I,J,K),             &
+                 WQT(I,J,K),             &
+                 SL2(I,J,K),             &
+                 QT2(I,J,K),             &
+                 W3(I,J,K),              &
+                 W2(I,J,K),              &
+                 QT3(I,J,K),             &
+                 SL3(I,J,K),             &
+                 PDF_A(I,J,K),           &
+                 SC_ICE(I,J,K),          &
+                 CFX(I,J,K),		 & 	
+                 PFRZ(I,J,K) )
+        end do ! IM loop
+         	end do ! JM loop
+       			end do ! LM loop
+         
+         INC_NUC =  INC_NUC*PFRZ !nucleation only happens in the supersaturated portion of the cell
+   
     
     
  !=============================================End cloud macrophysics=====================================
@@ -1772,7 +1803,6 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
   
     CFLIQ=0.0
     CFICE=0.0
-    INC_NUC =  INC_NUC*CLLS !nucleation only happens in the supersaturated portion of the cell
     !Zero-out 3D Precipitation Fluxes
     PFL_LS =  0.0
     PFL_AN =  0.0
@@ -2267,112 +2297,54 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
    
          
          !update water tracers
-       
-          ! Redistribute CN/LS CF/QL/QI
-         ! call REDISTRIBUTE_CLOUDS(RAD_CF, RAD_QL, RAD_QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, RAD_QV, T)
-         !============ Put cloud fraction back in contact with the PDF and create new condensate if neccesary (Barahona et al., GMD, 2014)============
-
-         !recover LS/CN (CF is constant during cloud muphys)
          
          QLCN =  RAD_QL * FQA
          QICN =  RAD_QI * FQA
          QLLS = MAX( RAD_QL - QLCN, 0.)
          QILS = MAX( RAD_QI - QICN, 0.)
           
-         RHCmicro =  RHCRIT
+
           Q =  RAD_QV 
-           do I=1,IM
+        
+        ! DO_UP_CLD how much does the variance change after microphysics 
+          if (DO_UPD_CLD) then   
+            do I=1,IM
 			  do J=1,JM
     			do K= 1, LM
         
-        ! DO_UP_CLD how much does the variance change after microphysics 
-              if (DO_UPD_CLD) then   
-                  call update_cld( &
-                         DT_MOIST                , &
-                         1.- RHCRIT(I, J, K)        , &
-                         PDFSHAPE , &
-                         CNV_FRC(I, J)           , &
-                         SRF_TYPE(I, J)          , &
-                         PLmb(I, J, K)           , &
-                         Q (I, J, K)             , &
-                         QLLS(I, J, K)           , &
-                         QLCN(I, J, K)           , &
-                         QILS(I, J, K)           , &
-                         QICN(I, J, K)           , &
-                         T(I, J, K)              , &
-                         CLLS(I, J, K)           , &
-                         CLCN(I, J, K)           , &
-                         SC_ICE(I, J, K)         , &
-                         NCPI(I, J, K)           , &
-                         NCPL(I, J, K)           , &
-                         RHCmicro(I, J, K))
+                
+                 call update_cld( &
+                     1.0-RHCRIT(I,J,K),       & ! ALPHA
+                     PDFSHAPE,                  &
+                     CNV_FRC(I,J),              &
+                     SRF_TYPE(I,J),             &
+                     PLmb(I,J,K),               &
+                     Q(I,J,K),                  & ! Environmental + parameterized-cloud vapor
+                     QLLS(I,J,K),               & ! Resolved liquid condensate
+                     QILS(I,J,K),               & ! Resolved ice condensate
+                     T(I,J,K),                  &
+                     CLLS(I,J,K),               & ! Updated resolved cloud fraction
+                     CLCN(I,J,K),               & ! Fixed parameterized/anvil cloud fraction
+                     SC_ICE(I,J,K),             &
+                     ZL0(I,J,K),                &
+                     WSL(I,J,K),                &
+                     WQT(I,J,K),                &
+                     SL2(I,J,K),                &
+                     QT2(I,J,K),                &
+                     SLQT(I,J,K),               &
+                     W3(I,J,K),                 &
+                     W2(I,J,K),                 &
+                     QT3(I,J,K),                &
+                     SL3(I,J,K),                &
+                     PDF_A(I,J,K) )
                          
-               end if           
+               
+               end do
+                    end do
+               			end do 
+       end if           
 
-      ! second call to hystpdf with updated variance
-      
-        if (SECOND_HYSTPDF) then   
-           
-            call hystpdf_2M( &
-                      DT_MOIST       , &
-                      1. - RHCmicro(I, J, K) , &
-                      PDFSHAPE       , &
-                      CNV_FRC(I,J)   , &
-                      SRF_TYPE(I,J)  , &
-                      PLmb(I,J,K)    , &
-                      ZL0(I,J,K)     , &
-                      Q(I,J,K)       , &
-                      QLLS(I,J,K)    , &
-                      QLCN(I,J,K)    , &
-                      QILS(I,J,K)    , &
-                      QICN(I,J,K)    , &
-                      T(I,J,K)       , &
-                      CLLS(I,J,K)    , &
-                      CLCN(I,J,K)    , &
-                      NCPL(I,J,K)   , &
-                      NCPI(I,J,K)   , &
-                      WSL(I,J,K)     , &
-                      WQT(I,J,K)     , &
-                      SL2(I,J,K)     , &
-                      QT2(I,J,K)     , &
-                      SLQT(I,J,K)    , &
-                      W3(I,J,K)      , &
-                      W2(I,J,K)      , &
-                      QT3(I,J,K)     , &
-                      SL3(I,J,K)     , &
-                      PDF_A(I,J,K)   , &
-                      TMP3D(I,J,K), &
-#ifdef PDFDIAG
-                      PDF_SIGW1(I,J,K),  &
-                      PDF_SIGW2(I,J,K),  &
-                      PDF_W1(I,J,K),     &
-                      PDF_W2(I,J,K),     &
-                      PDF_SIGTH1(I,J,K), &
-                      PDF_SIGTH2(I,J,K), &
-                      PDF_TH1(I,J,K),    &
-                      PDF_TH2(I,J,K),    &
-                      PDF_SIGQT1(I,J,K), &
-                      PDF_SIGQT2(I,J,K), &
-                      PDF_QT1(I,J,K),    &
-                      PDF_QT2(I,J,K),    &
-                      PDF_RQTTH(I,J,K),  &
-                      PDF_RWTH(I,J,K),   &
-                      PDF_RWQT(I,J,K),   &
-#endif
-                      WTHV2(I,J,K)   , &
-                      WQL(I,J,K)     , &
-                      WBF_partition        , & 
-                      .true., &
-                      SC_ICE(I, J, K))
-         
-           end if 
-           
-           end do ! IM loop
-         end do ! JM loop
-       end do ! LM loop
-     
-        
-        RAD_CF = MAX(MIN(CLLS + CLCN, 1.0), 0.)
+       RAD_CF = MAX(MIN(CLLS + CLCN, 1.0), 0.)
         
        if (USE_CF_GEOM_CORR) then 
              do I=1,IM
@@ -2388,9 +2360,6 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
          CLCN =  RAD_CF * FQA
          CLLS = MAX( RAD_CF - CLCN, 0.)
         
-        !call REDISTRIBUTE_CLOUDS(RAD_CF, RAD_QL, RAD_QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, RAD_QV, T)
-         
-         
          !=============================================End Stratiform cloud processes==========================================
          !======================================================================================================================
 

@@ -62,8 +62,8 @@ module GF2020_2M_MicrophysicsMod
 
   real, parameter :: qsmall_2m = 1.0e-12
   real, parameter :: nsmall_2m = 1.0e4        ! # m-3, numerical floor only
-  real, parameter :: ncond_floor_cm3_liq = 10.0 ! # cm-3 floor if condensate exists
-  real, parameter :: ncond_floor_cm3_ice = 0.05 ! # cm-3 floor if condensate exists
+  real, parameter :: ncond_floor_cm3_liq = 5.0 ! # cm-3 floor if condensate exists
+  real, parameter :: ncond_floor_cm3_ice = 0.01 ! # cm-3 floor if condensate exists
 
   real, parameter :: wmin_2m   = 0.5          ! m s-1
   real, parameter :: wmax_2m   = 20.0         ! m s-1
@@ -94,7 +94,7 @@ module GF2020_2M_MicrophysicsMod
   logical, parameter :: remove_inp_aerosol_with_liq_auto_2m = .true.
 
   real, parameter :: thom_2m  = 238.15        ! K homogeneous freezing T
-  real, parameter :: dthom_2m = 0.1           ! K sigmoid width
+  real, parameter :: dthom_2m = 0.05           ! K sigmoid width
   
   real(r8), parameter :: pi_r8       = 3.14159265358979323846_r8
   real(r8), parameter :: rho_liq_mg  = 1000._r8
