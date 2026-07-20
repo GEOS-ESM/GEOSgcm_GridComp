@@ -782,6 +782,7 @@ contains
 
       logical    id_exit
       logical    forcedCu
+      logical    mumin3_found
 
       real       cin, cinlcl
       real       thlsrc, qtsrc, usrc, vsrc, thvlsrc
@@ -794,7 +795,7 @@ contains
       real       sigmaw, tkeavg, qtavg, thvlavg, uavg, vavg, dpsum, dpi, thvlmin
       real       thlxsat, qtxsat, thvxsat, x_cu, x_en, thv_x0, thv_x1
       real       dpe, exne, thvebot, thle, qte, ue, ve, thlue, qtue, wue
-      real       mu, mumin0, mumin2, mulcl, mulclstar
+      real       mu, mumin0, mumin3, mulcl, mulclstar
       real       cbmf, wcrit, winv, wlcl, ufrcinv, ufrclcl
       real       exql, exqi, ppen
 
@@ -2249,20 +2250,38 @@ contains
          if( rkfre_eff .lt. 1.0 ) limit_cbmf = 1.
          ! 2. limited sigmaw (solving for sigmaw using limited cbmf)
          sigmaw = 2.5066 * cbmf * exp(mu**2) / rho0inv
+         if (sigmaw .le. tiny .or. isnan(sigmaw) .or. &
+             rmaxfrac .le. tiny .or. isnan(rmaxfrac)) then
+            id_exit = .true.
+            go to 333
+         endif
          ! 3. 'ufrcinv' constraint
          mumin0 = sqrt(max(0.0,-log(max(tiny,2.5066*cbmf/rho0inv/sigmaw))))
          mu = max(max(mu,mumin0),mumin1)
+         if (isnan(mu) .or. mu .ge. 3.0) then
+            id_exit = .true.
+            go to 333
+         endif
          ! 4. 'ufrclcl' constraint
          mulcl = sqrt(max(0.0,2.*cinlcl*rbuoy))/1.4142/sigmaw
+         if (isnan(mulcl) .or. mulcl .ge. 3.0) then
+            id_exit = .true.
+            go to 333
+         endif
          mulclstar = sqrt(max(0.,2.*(exp(-mu**2)/2.5066)**2*(1./erfc(mu)**2-0.25/rmaxfrac**2)))
          if( mulcl .gt. 1.e-8 .and. mulcl .gt. mulclstar ) then
-            mumin2 = compute_mumin2(mulcl,rmaxfrac,mu)
-            if( mu .gt. mumin2 ) then
+            ! compute_mumin2 is retained below as the legacy Newton solver.
+            mumin3 = compute_mumin3(mulcl,rmaxfrac,mu,mumin3_found)
+            if (.not. mumin3_found) then
+               id_exit = .true.
+               go to 333
+            endif
+            if( mu .gt. mumin3 ) then
                  call write_parallel('Critical error in mu calculation in UW_ShCu')
 !                call endrun
             endif
-            mu = max(mu,mumin2)
-            if( mu .eq. mumin2 ) limit_ufrc = 1.
+            mu = max(mu,mumin3)
+            if( mu .eq. mumin3 ) limit_ufrc = 1.
          endif
          if( mu .eq. mumin1 ) limit_ufrc = 1.
 
@@ -4844,6 +4863,69 @@ contains
     return
 
   end function compute_mumin2
+
+
+  real function compute_mumin3(mulcl,rmaxfrac,mulow,root_found)
+  ! ------------------------------------------------------------------ !
+  ! Bounded alternative to compute_mumin2.  The root is found by       !
+  ! bisection on [mulow,3], matching the existing no-convection limit !
+  ! for normalized CIN.  Keeping the interval bounded prevents        !
+  ! exp(-mu**2)/erfc(mu) from reaching an underflow-induced 0/0.       !
+  ! ------------------------------------------------------------------ !
+    implicit none
+
+    real,    intent(in)  :: mulcl, rmaxfrac, mulow
+    logical, intent(out) :: root_found
+    real*8 :: xlo, xhi, xmid, ex, ef, exf, f
+    integer :: iteration
+
+    root_found = .false.
+    compute_mumin3 = 3.0
+
+    if (isnan(mulcl) .or. isnan(rmaxfrac) .or. isnan(mulow)) return
+    if (rmaxfrac .le. 0.0 .or. mulow .lt. 0.0 .or. mulow .ge. 3.0) return
+
+    xlo = mulow
+    xhi = 3._r8
+
+    ex  = exp(-xlo**2)
+    ef  = erfc(xlo)
+    exf = ex/ef
+    f   = 0.5_r8*exf**2 - 0.5_r8*(ex/2._r8/rmaxfrac)**2 - &
+          (mulcl*2.5066_r8/2._r8)**2
+    if (f .ge. 0._r8) then
+       compute_mumin3 = xlo
+       root_found = .true.
+       return
+    endif
+
+    ex  = exp(-xhi**2)
+    ef  = erfc(xhi)
+    exf = ex/ef
+    f   = 0.5_r8*exf**2 - 0.5_r8*(ex/2._r8/rmaxfrac)**2 - &
+          (mulcl*2.5066_r8/2._r8)**2
+    if (f .lt. 0._r8) return
+
+    do iteration = 1, 40
+       xmid = 0.5_r8*(xlo + xhi)
+       ex   = exp(-xmid**2)
+       ef   = erfc(xmid)
+       exf  = ex/ef
+       f    = 0.5_r8*exf**2 - 0.5_r8*(ex/2._r8/rmaxfrac)**2 - &
+              (mulcl*2.5066_r8/2._r8)**2
+       if (f .lt. 0._r8) then
+          xlo = xmid
+       else
+          xhi = xmid
+       endif
+    end do
+
+    compute_mumin3 = xhi
+    root_found = .true.
+
+    return
+
+  end function compute_mumin3
 
 
   real function compute_ppen(wtwb,D,bogbot,bogtop,rho0j,dpen)
