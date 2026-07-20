@@ -51,6 +51,7 @@ module gw_drag
   real, parameter :: ROG     = MAPL_RGAS/MAPL_GRAV
   real, parameter :: OROKO2  = 0.5 * KWVO     ! 1/2 * horizontal wavenumber
   real, parameter :: PI_GWD  = 4.0*atan(1.0)  ! This is *not* MAPL_PI
+  real, parameter :: GWD_TOP_PRESSURE = 1.0   ! 0.01 hPa in Pa
 contains
 
 !===============================================================================
@@ -120,6 +121,7 @@ contains
     integer :: kbotoro                  ! launch-level index for orographic
     integer :: kbotbg                   ! launch-level index for background
     integer :: ktopbg, ktoporo          ! top interface of gwd region
+    integer :: ktop_gwd                 ! pressure-based top interface of gwd region
     integer :: kldv                     ! top interface of low level stress divergence region
     integer :: kldvmn                   ! min value of kldv
     integer :: ksrc                     ! index of top interface of source region
@@ -177,6 +179,15 @@ contains
 
     I_LOOP: do i = 1, pcols
 
+! Set the top of the active GWD region from the instantaneous layer pressure.
+! Levels are ordered from the model top downward.  A layer is excluded only
+! when its midpoint pressure is above (less than) 0.01 hPa.
+       ktop_gwd = 0
+       do k = 1, pver
+          if (pmid_dev(i,k) >= GWD_TOP_PRESSURE) exit
+          ktop_gwd = k
+       end do
+
 ! zero net tendencies prior to runs
        do k = 1, pver
          dudt_gwd_dev(i,k) = 0.
@@ -217,7 +228,7 @@ contains
 !-----------------------------------------------------------------------------
        if (effgwbkg > 0.0 .and. pgwv > 0) then
 
-          ktopbg  = 0
+          ktopbg  = ktop_gwd
           do k = 0, pver
              if (pref_dev(k+1) .lt. 40000.) then
                 kbotbg = k    ! spectrum source at 400 mb
@@ -267,7 +278,7 @@ contains
 !-----------------------------------------------------------------------------
        if (effgworo > 0.0) then
 
-          ktoporo = 0
+          ktoporo = ktop_gwd
           kbotoro = pver
 
 ! Determine the orographic wave source
@@ -310,21 +321,8 @@ contains
 
     end do I_LOOP
     
-    !-----------------------------------------------------------------------
-    ! GEOS_MLT: Zero out gravity wave drag tendencies above model top (top 7 levels)
-    ! Levels 1-7 (interfaces 0-7) are above native model top (~80 km / 0.01 hPa
-    ! *** Removed due to zero difference in GWD when included ***
-    !-----------------------------------------------------------------------
-    !do i = 1, pcols
-    !   do k = 1, 7
-    !      dudt_gwd_dev(i,k) = 0.
-    !      dvdt_gwd_dev(i,k) = 0.
-    !      dtdt_gwd_dev(i,k) = 0.
-    !      dudt_org_dev(i,k) = 0.
-    !      dvdt_org_dev(i,k) = 0.
-    !      dtdt_org_dev(i,k) = 0.
-    !   end do
-    !end do   
+    ! The pressure-based ktop_gwd passed to gw_drag_prof leaves tendencies
+    ! above 0.01 hPa at their initialized zero values.
     
     rc = 0    
 
@@ -508,21 +506,15 @@ contains
 
 ! Project the local wind at midpoints onto the source wind.
     
-    !do k = 1, pver
-    do k = 8, pver  ! GEOS_MLT
+    do k = 1, pver
        ubm(k) = u(i,k) * xv + v(i,k) * yv
     end do
 
 ! Compute the interface wind projection by averaging the midpoint winds.
 ! Use the top level wind at the top interface.
     
-    !ubi(0) = ubm(1)
-    !do k = 1, pver
-    !   ubi(k) = ubm(k)
-    !end do
-
-    ubi(0) = ubm(8)             ! GEOS_MLT 
-    do k = 8, pver
+    ubi(0) = ubm(1)
+    do k = 1, pver
        ubi(k) = ubm(k)
     end do
 
@@ -673,14 +665,13 @@ contains
     end if
 
 ! Project the local wind at midpoints onto the source wind.
-    !do k = 1, pver
-    do k = 8, pver
+    do k = 1, pver
        ubm(k) = u(i,k) * xv + v(i,k) * yv
     end do
 
-! Compute the bottom interface wind projection using the midpoint winds.
+    ! Compute the bottom interface wind projection using the midpoint winds.
     ubi(0) = ubm(1)
-    do k = 8, pver
+    do k = 1, pver
        ubi(k) = ubm(k)
     end do
 

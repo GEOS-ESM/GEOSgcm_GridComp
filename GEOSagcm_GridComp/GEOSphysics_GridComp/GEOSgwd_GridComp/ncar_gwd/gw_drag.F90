@@ -50,6 +50,7 @@ module gw_drag_ncar
   real, parameter :: ROG     = MAPL_RGAS/MAPL_GRAV
   real, parameter :: OROKO2  = 0.5 * KWVO     ! 1/2 * horizontal wavenumber
   real, parameter :: PI_GWD  = 4.0*atan(1.0)  ! This is *not* MAPL_PI
+  real, parameter :: GWD_TOP_PRESSURE = 1.0   ! 0.01 hPa in Pa
 contains
 
 !===============================================================================
@@ -254,18 +255,16 @@ contains
      dtdt_gwd_dev = dtdt_gwd_dev + dtdt_org_dev
      endif
 
-     ! GEOS_MLT: Zero out gravity wave drag tendencies above model top
-     ! k=1 is at model top, k=pver is at surface
-     ! Top 7 levels (k=1 to k=7) are above ~80 km / 0.01 hPa
-     
-     do k = 1, 7
-        dudt_gwd_dev(:,k) = 0.
-        dvdt_gwd_dev(:,k) = 0.
-        dtdt_gwd_dev(:,k) = 0.
-        dudt_org_dev(:,k) = 0.
-        dvdt_org_dev(:,k) = 0.
-        dtdt_org_dev(:,k) = 0.
-     end do
+     ! GEOS_MLT: Suppress layer-centered GWD tendencies above 0.01 hPa.
+     ! pmid_dev is in Pa and may vary by column
+     where (pmid_dev < GWD_TOP_PRESSURE)
+        dudt_gwd_dev = 0.
+        dvdt_gwd_dev = 0.
+        dtdt_gwd_dev = 0.
+        dudt_org_dev = 0.
+        dvdt_org_dev = 0.
+        dtdt_org_dev = 0.
+     end where
 
 
      taugwdx_dev(1:pcols)         = 0.0  !zonal      gravity wave surface    stress
