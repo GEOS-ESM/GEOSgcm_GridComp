@@ -279,9 +279,7 @@ contains
       ncnst = size(CNV_Tracers)
       IM = size(CNV_Tracers(1)%Q,1)
       JM = size(CNV_Tracers(1)%Q,2)
-      allocate(w_tr0(k0, ncnst))
-    
-      !$OMP PARALLEL DO DEFAULT(NONE) &
+      !$OMP PARALLEL DEFAULT(NONE) &
       !$OMP SHARED(idim, k0, dt, ncnst, IM, JM, dotransport, &
       !$OMP        pifc0_inv, zifc0_inv, exnifc0_inv, pmid0_inv, zmid0_inv, &
       !$OMP        exnmid0_inv, dp0_inv, u0_inv, v0_inv, qv0_inv, ql0_inv, &
@@ -302,7 +300,7 @@ contains
       !$OMP PRIVATE(i, ii, jj, k, k_inv, m, w_kpbl, w_frland, w_rkfre, w_rkm2d, &
       !$OMP         w_mix2d, w_rmaxfrac, w_cush, w_shfx, w_evap, w_cnvtrmax, w_tpert, &
       !$OMP         w_qpert, w_pifc0, w_zifc0, w_exnifc0, w_pmid0, w_zmid0, w_exnmid0, &
-      !$OMP         w_dp0, w_u0, w_v0, w_qv0, w_ql0, w_qi0, w_th0, w_tke, w_tr0, w_umf, &
+      !$OMP         w_dp0, w_u0, w_v0, w_qv0, w_ql0, w_qi0, w_th0, w_tke, w_umf, &
       !$OMP         w_dcm, w_qvten, w_qlten, w_qiten, w_sten, w_uten, w_vten, w_qrten, &
       !$OMP         w_qsten, w_cufrc, w_fer, w_fdr, w_qldet, w_qidet, w_qlsub, w_qisub, &
       !$OMP         w_ndrop, w_nice, w_qtflx, w_slflx, w_uflx, w_vflx, w_cbmf, w_plcl, &
@@ -312,7 +310,10 @@ contains
       !$OMP         w_qtsrc, w_thlsrc, w_thvlsrc, w_tkeavg, w_wu, w_qtu, &
       !$OMP         w_thlu, w_thvu, w_uu, w_vu, w_xc &
 #endif
-      !$OMP         )
+      !$OMP         ) &
+      !$OMP FIRSTPRIVATE(w_tr0)
+      allocate(w_tr0(k0, ncnst))
+      !$OMP DO
       do i = 1, idim
      
          ! Calculate 2D grid coordinates from 1D flat index
@@ -465,7 +466,9 @@ contains
 #endif
 
       end do
-      !$OMP END PARALLEL DO
+      !$OMP END DO
+      deallocate(w_tr0)
+      !$OMP END PARALLEL
 
     ! Re-scale liquid/ice water sub-tendencies to enforce conservation
     !$OMP PARALLEL DO DEFAULT(NONE) &
@@ -4583,6 +4586,8 @@ contains
      cush_inout                = -1.
      qldet_out(:k0)            = 0.
      qidet_out(:k0)            = 0.
+     qlsub_out(:k0)            = 0.
+     qisub_out(:k0)            = 0.
      qtflx_out(0:k0)           = 0.
      slflx_out(0:k0)           = 0.
      uflx_out(0:k0)            = 0.
