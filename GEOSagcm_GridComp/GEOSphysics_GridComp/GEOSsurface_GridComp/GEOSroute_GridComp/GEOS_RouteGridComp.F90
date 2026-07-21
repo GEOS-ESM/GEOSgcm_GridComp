@@ -43,7 +43,7 @@ module GEOS_RouteGridCompMod
      integer :: minCatch
      integer :: maxCatch
      integer :: route_dt
-     integer :: route_flag
+     integer :: run_route
 
      real,    allocatable :: areacat(:)      ! m2
      integer, allocatable :: downid(:) 
@@ -393,7 +393,7 @@ contains
     integer        :: myPE
     integer        :: beforeMe, minCatch, maxCatch, i
     integer        :: n_pfaf_local, nt_global
-    integer        :: ROUTE_DT, route_flag
+    integer        :: ROUTE_DT, run_route
     REAL           :: HEARTBEAT 
     type(ESMF_Grid)            :: tileGrid
     type(ESMF_Grid)            :: pfaf_tilegrid
@@ -485,8 +485,8 @@ contains
     call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-    call MAPL_GetResource (SCF, route_flag, label='RUN_ROUTE:', DEFAULT=1, RC=STATUS )
-    route%route_flag=route_flag
+    call MAPL_GetResource (SCF, run_route, label='RUN_ROUTE:', DEFAULT=1, RC=STATUS )
+    route%run_route=run_route
     call MAPL_GetResource (SCF, ROUTE_DT, label='RRM_DT:', DEFAULT=3600, RC=STATUS )
     route%route_dt = ROUTE_DT
 
@@ -519,7 +519,7 @@ contains
     call MAPL_GenericInitialize ( GC, import, export, clock, rc=status )
     VERIFY_(STATUS)
 
-    if(route%route_flag/=1 .and. route%route_flag/=2)then
+    if(route%run_route/=1 .and. route%run_route/=2)then
       if(mapl_am_I_root()) print *,"routing model is not active"
       RETURN_(ESMF_SUCCESS)
     endif
@@ -540,7 +540,7 @@ contains
     allocate(route%alpha_str(n_pfaf_local),           source =    RRM_ALPHA_STR_RS)     
 
     !Initial reservoir module
-    if(route_flag==2)then
+    if(run_route==2)then
         route%reservoir = Reservoir(GC, _RC)
         route%reservoir%use_res=.True.        
         if(mapl_am_I_root()) print *,"reservoir init success"
@@ -972,7 +972,7 @@ contains
     VERIFY_(STATUS)
     route => wrap%ptr
 
-    if(route%route_flag/=1 .and. route%route_flag/=2)then
+    if(route%run_route/=1 .and. route%run_route/=2)then
       RETURN_(ESMF_SUCCESS)
     endif
 
