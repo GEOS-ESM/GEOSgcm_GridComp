@@ -485,7 +485,7 @@ contains
     call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-    call MAPL_GetResource (SCF, run_route, label='RUN_ROUTE:', DEFAULT=1, RC=STATUS )
+    call MAPL_GetResource (SCF, run_route, label='RUN_ROUTE:', DEFAULT=0, RC=STATUS )
     route%run_route=run_route
     call MAPL_GetResource (SCF, ROUTE_DT, label='RRM_DT:', DEFAULT=3600, RC=STATUS )
     route%route_dt = ROUTE_DT
