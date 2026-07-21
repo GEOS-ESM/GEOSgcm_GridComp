@@ -519,7 +519,7 @@ contains
     call MAPL_GenericInitialize ( GC, import, export, clock, rc=status )
     VERIFY_(STATUS)
 
-    if(route%run_route/=1 .and. route%run_route/=2)then
+    if (route%run_route==0) then
       if(mapl_am_I_root()) print *,"routing model is not active"
       RETURN_(ESMF_SUCCESS)
     endif
@@ -540,7 +540,7 @@ contains
     allocate(route%alpha_str(n_pfaf_local),           source =    RRM_ALPHA_STR_RS)     
 
     !Initial reservoir module
-    if(run_route==2)then
+    if(route%run_route==2)then
         route%reservoir = Reservoir(GC, _RC)
         route%reservoir%use_res=.True.        
         if(mapl_am_I_root()) print *,"reservoir init success"
@@ -972,8 +972,9 @@ contains
     VERIFY_(STATUS)
     route => wrap%ptr
 
-    if(route%run_route/=1 .and. route%run_route/=2)then
-      RETURN_(ESMF_SUCCESS)
+    if (route%run_route==0) then
+       if(mapl_am_I_root()) print *,"routing model is not active"
+       RETURN_(ESMF_SUCCESS)
     endif
 
 ! Get the target components name and set-up traceback handle.
