@@ -5040,7 +5040,7 @@ module GEOS_SurfaceGridCompMod
 
     RETURN_(ESMF_SUCCESS)
 
-    contains
+  contains
 
       subroutine DOCDS(type, NT, RC)
         integer,           intent( IN) :: type
@@ -5170,12 +5170,13 @@ module GEOS_SurfaceGridCompMod
 
 ! Call Child
 !-----------
-
+        ! Note: In the calling subroutine RUN1(), the present subroutine DOCDS() is skipped for ROUTE
+        ! (i.e., ESMF_GridCompRun() here is *not* called for ROUTE)
         call ESMF_GridCompRun(GCS(type), &
              importState=GIM(type), exportState=GEX(type), &
              clock=CLOCK, PHASE=1, userRC=STATUS )
         VERIFY_(STATUS)
-
+        
 ! Use childs exports to fill exchange grid exports.
 !--------------------------------------------------
 
@@ -9759,15 +9760,24 @@ module GEOS_SurfaceGridCompMod
 
 ! Run the child
 !--------------
-      if(type/=ROUTE)then
+
+      if (type/=ROUTE) then
+
+         ! run phase=2 for all children except ROUTE
+         
          call ESMF_GridCompRun(GCS(type), &
               importState=GIM(type), exportState=GEX(type), &
               clock=CLOCK, PHASE=2, userRC=STATUS )
+
       else
+
+         ! run phase=1 for ROUTE
+         
          call ESMF_GridCompRun(GCS(type), &
               importState=GIM(type), exportState=GEX(type), &
               clock=CLOCK, PHASE=1, userRC=STATUS ) 
-      endif     
+
+      endif
       VERIFY_(STATUS)
 
 ! Fill variables on Surface's location stream from the child's
