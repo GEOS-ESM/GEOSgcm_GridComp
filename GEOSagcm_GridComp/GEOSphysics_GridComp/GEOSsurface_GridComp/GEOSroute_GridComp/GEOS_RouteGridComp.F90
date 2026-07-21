@@ -70,9 +70,14 @@ module GEOS_RouteGridCompMod
   
 ! !PUBLIC MEMBER FUNCTIONS:
 
-  public SetServices
+  public :: SetServices
 
-!EOP
+  ! used by its ensavg
+  public :: pfaf_grid
+  public :: pfaf_locstream
+
+  type (ESMF_Grid)      :: pfaf_grid
+  type (MAPL_LocStream) :: pfaf_locstream
 
 contains
 
@@ -389,12 +394,12 @@ contains
     integer        :: ROUTE_DT, route_flag
     REAL           :: HEARTBEAT 
     type(ESMF_Grid)            :: tileGrid
-    type(ESMF_Grid)            :: pfaf_tilegrid, pfaf_grid
+    type(ESMF_Grid)            :: pfaf_tilegrid
     character(len=ESMF_MAXSTR) :: SURFRC
     type(ESMF_Config)          :: SCF, CF
 
     type(MAPL_MetaComp), pointer   :: MAPL
-    type(MAPL_LocStream)           :: locstream, pfaf_LocStream
+    type(MAPL_LocStream)           :: locstream
 
     character(len=ESMF_MAXSTR)     :: RIVER_INPUT_FILE    
     
