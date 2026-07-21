@@ -393,8 +393,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     DT_MOIST = DT_R8
 
     ! Profiler marker for microphysics
-    call MAPL_ConfigSetAttribute(CF, 1, 'PYPROFILER_TASKID:', RC=STATUS); VERIFY_(STATUS)
-    call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.debug.profiler", MAPL, IMPORT, EXPORT )
+    ! call MAPL_ConfigSetAttribute(CF, 1, 'PYPROFILER_TASKID:', RC=STATUS); VERIFY_(STATUS)
+    ! call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.debug.profiler", MAPL, IMPORT, EXPORT )
     call ESMF_VMGetCurrent(vm, rc=status) ! pchakrab: replace with ESMF_GridCompGet(gc, VM=VM, _RC)
     call ESMF_VMGet(vm, mpiCommunicator=comm)
     call MPI_Comm_rank(comm, rank, mpierr)
@@ -998,7 +998,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! End profiler marker for Microphysics
     call cpu_time(finish)
     if (rank == 0) print *, '0: gfdl_1m: time taken = ', finish - start, 's'    
-    call MAPL_pybridge_gcfinalize( "pyMoist.fortran.param_interfaces.debug.profiler", MAPL, IMPORT, EXPORT )
+    ! call MAPL_pybridge_gcfinalize( "pyMoist.fortran.param_interfaces.debug.profiler", MAPL, IMPORT, EXPORT )
 
      call MAPL_TimerOff(MAPL,"--GFDL_1M",RC=STATUS)
 
