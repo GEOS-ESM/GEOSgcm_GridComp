@@ -4769,7 +4769,9 @@ module GEOS_SurfaceGridCompMod
 !--------------------------------------------------------
 
     do I = 1, NUM_CHILDREN
-       if (I == ROUTE) cycle
+
+       if (I == ROUTE) cycle            ! ROUTE has no "exchange coeffs" run method
+
        call DOCDS(I, NT, RC=STATUS)
        VERIFY_(STATUS)
     end do
