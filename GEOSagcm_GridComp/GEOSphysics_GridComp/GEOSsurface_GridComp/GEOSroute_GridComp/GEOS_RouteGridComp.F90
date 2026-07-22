@@ -519,6 +519,7 @@ contains
     call MAPL_GenericInitialize ( GC, import, export, clock, rc=status )
     VERIFY_(STATUS)
 
+    ! ROUTE is always called from Surface, even when inactive.  If inactive, exit after GenericInitialize():
     if (route%run_route==0) then
       if(mapl_am_I_root()) print *,"routing model is not active"
       RETURN_(ESMF_SUCCESS)
@@ -972,6 +973,8 @@ contains
     VERIFY_(STATUS)
     route => wrap%ptr
 
+    ! ROUTE is always called from Surface, even when inactive.
+    ! If inactive, exit as soon as internal "route" state is available and active/inactive is known.
     if (route%run_route==0) then
        if(mapl_am_I_root()) print *,"routing model is not active"
        RETURN_(ESMF_SUCCESS)
