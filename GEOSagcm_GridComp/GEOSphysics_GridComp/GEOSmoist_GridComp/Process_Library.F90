@@ -2823,6 +2823,9 @@ module GEOSmoist_Process_Library
             
          end if
 
+         ! Bound t_env to physically reasonable values (K) to prevent iteration overshoot
+         t_env = max(100.0, min(t_env, 400.0))
+
       enddo
 
       ! Calculate double gaussian buoyancy flux post-iteration
@@ -3021,8 +3024,8 @@ module GEOSmoist_Process_Library
       ! (n_ice is total. We scale it by the liquid mass fraction to estimate 
       ! how many crystals are interacting with the liquid environment)
       f_mass_ice = 0.0
-      if (q_tot_mass > 0.0) f_mass_ice = q_tot_ice / q_tot_mass
-      n_ice_active = (1.0 - f_mass_ice) * n_ice
+      if (q_tot_mass > 0.0) f_mass_ice = max(0.0, min(1.0, q_tot_ice / q_tot_mass))
+      n_ice_active = max(0.0, (1.0 - f_mass_ice) * n_ice)
 
       ! =======================================================================
       ! PHASE 2: Mixed-Phase Regime & Deposition Physics
@@ -3050,14 +3053,14 @@ module GEOSmoist_Process_Library
       qv_inc = min(qv, qs_liq) 
 
       ! Diffusivity of water vapor in air (Seinfeld and Pandis 2006)
-      diff    = (0.211 * 1013.25 / (pl + 0.1)) * (((t_env + 0.1) / MAPL_TICE)**1.94) * 1e-4
-      den_air = (pl * 100.0) / (MAPL_RGAS * t_env)
+      diff    = (0.211 * 1013.25 / max(pl + 0.1, 0.1)) * (((max(t_env, 1.0) + 0.1) / MAPL_TICE)**1.94) * 1e-4
+      den_air = (pl * 100.0) / (MAPL_RGAS * max(t_env, 1.0))
       den_ice = 1000.0 * (0.9167 - 1.75e-4*t_celsius - 5.0e-7*t_celsius*t_celsius) ! (Pruppacher & Klett 1997)
       lh_corr = 1.0 + dq_sat_ice * (MAPL_ALHS / MAPL_CP)
 
       ! Estimate ice crystal diameter (assumes a monodisperse size distribution)
-      if ((n_ice_active > 1.0) .and. (q_ice_ls > 1.0e-10)) then
-         d_crystal = max((q_ice_ls / (n_ice_active * den_ice * MAPL_PI))**(0.333), 20.0e-6)
+      if ((n_ice_active > 1.0) .and. (q_ice_ls > 1.0e-10) .and. (den_ice > 0.0)) then
+         d_crystal = max((max(q_ice_ls / (n_ice_active * den_ice * MAPL_PI), 0.0))**(0.333), 20.0e-6)
       else
          d_crystal = 20.0e-6
       end if
