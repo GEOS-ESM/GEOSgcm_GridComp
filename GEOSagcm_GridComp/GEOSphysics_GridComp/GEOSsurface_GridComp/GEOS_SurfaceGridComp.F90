@@ -885,15 +885,6 @@ module GEOS_SurfaceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        SHORT_NAME         = 'FRROUTE',                           &
-        LONG_NAME          = 'fraction_of_route_area',            &
-        UNITS              = '1',                                 &
-        DIMS               = MAPL_DimsHorzOnly,                   &
-        VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'FRLANDICE',                         &
         LONG_NAME          = 'fraction_of_land_ice',              &
         UNITS              = '1',                                 &
@@ -3604,7 +3595,7 @@ module GEOS_SurfaceGridCompMod
 
     RETURN_(ESMF_SUCCESS)
 
-    contains
+  contains
 
     subroutine OBIO_setServices(NB_CHOU, RC)
 
@@ -3694,7 +3685,6 @@ module GEOS_SurfaceGridCompMod
     type (SURF_wrap)                        :: WRAP
     integer                                 :: I
     real, pointer                           :: FRLAND   (:,:) => NULL()
-    real, pointer                           :: FRROUTE  (:,:) => NULL()       
     real, pointer                           :: FRLANDICE(:,:) => NULL()
     real, pointer                           :: FRLAKE   (:,:) => NULL()
     real, pointer                           :: FROCEAN  (:,:) => NULL()
@@ -3719,10 +3709,9 @@ module GEOS_SurfaceGridCompMod
     integer                                 :: userRC, NumInitPhases
     INTEGER                                 :: LSM_CHOICE
 
-    character(len=ESMF_MAXSTR), parameter   :: INITIALIZED_EXPORTS(5) = (/'FROCEAN  ', &
+    character(len=ESMF_MAXSTR), parameter   :: INITIALIZED_EXPORTS(4) = (/'FROCEAN  ', &
                              'FRLAKE   ', &
                              'FRLAND   ', &
-                             'FRROUTE  ', &
                              'FRLANDICE' /)
 
 
@@ -3831,8 +3820,6 @@ module GEOS_SurfaceGridCompMod
 
     call MAPL_GetPointer(EXPORT,    FRLAND,     'FRLAND', ALLOC=.true.,  RC=STATUS)
     VERIFY_(STATUS)  
-    call MAPL_GetPointer(EXPORT,    FRROUTE,   'FRROUTE', ALLOC=.true.,  RC=STATUS)
-    VERIFY_(STATUS) 
     call MAPL_GetPointer(EXPORT,    FRLAKE,     'FRLAKE', ALLOC=.true.,  RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, FRLANDICE,  'FRLANDICE', ALLOC=.true.,  RC=STATUS)
@@ -3848,8 +3835,6 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
     call MAPL_LocStreamFracArea( LOCSTREAM, MAPL_LAND   ,  FRLAND   , RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_LocStreamFracArea( LOCSTREAM, MAPL_LAND   ,  FRROUTE  , RC=STATUS)
-    VERIFY_(STATUS)    
     call MAPL_LocStreamFracArea( LOCSTREAM, MAPL_LAKE   ,  FRLAKE   , RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_LocStreamFracArea( LOCSTREAM, MAPL_LANDICE,  FRLANDICE, RC=STATUS)
@@ -3857,7 +3842,6 @@ module GEOS_SurfaceGridCompMod
 
     FRLANDICE = max(min(FRLANDICE,1.0),0.0)
     FRLAND    = max(min(FRLAND   ,1.0),0.0) 
-    FRROUTE   = max(min(FRROUTE  ,1.0),0.0)   
     FRLAKE    = max(min(FRLAKE   ,1.0),0.0)
     FROCEAN   = max(min(FROCEAN  ,1.0),0.0)
 
