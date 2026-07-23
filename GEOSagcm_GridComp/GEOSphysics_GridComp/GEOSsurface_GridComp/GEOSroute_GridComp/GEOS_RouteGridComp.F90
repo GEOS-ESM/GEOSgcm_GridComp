@@ -1203,8 +1203,9 @@ contains
     call ESMF_UserCompGetInternalState ( GC, 'RiverRoute_state',wrap, _RC)
     route => wrap%ptr    
 
-    CALL ESMF_FieldSMMRelease(routeHandle=route%routeHandle, _RC)
-
+    if (route%run_route >0) then
+       CALL ESMF_FieldSMMRelease(routeHandle=route%routeHandle, _RC)
+    endif
     ! Call Finalize for every child
     call MAPL_GenericFinalize(gc, import, export, clock, _RC)
     ! End
