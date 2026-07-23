@@ -62,8 +62,8 @@ module GF2020_2M_MicrophysicsMod
 
   real, parameter :: qsmall_2m = 1.0e-12
   real, parameter :: nsmall_2m = 1.0e4        ! # m-3, numerical floor only
-  real, parameter :: ncond_floor_cm3_liq = 10.0 ! # cm-3 floor if condensate exists
-  real, parameter :: ncond_floor_cm3_ice = 0.05 ! # cm-3 floor if condensate exists
+  real, parameter :: ncond_floor_cm3_liq = 5.0 ! # cm-3 floor if condensate exists
+  real, parameter :: ncond_floor_cm3_ice = 0.01 ! # cm-3 floor if condensate exists
 
   real, parameter :: wmin_2m   = 0.5          ! m s-1
   real, parameter :: wmax_2m   = 20.0         ! m s-1
@@ -91,10 +91,10 @@ module GF2020_2M_MicrophysicsMod
 
   ! If enabled, droplet autoconversion removes the same fraction of the
   ! drop-mediated finite INP aerosol reservoirs that is removed from droplets.
-  logical, parameter :: remove_inp_aerosol_with_liq_auto_2m = .true.
+  logical, parameter :: remove_inp_aerosol_with_liq_auto_2m = .false.
 
   real, parameter :: thom_2m  = 238.15        ! K homogeneous freezing T
-  real, parameter :: dthom_2m = 0.1           ! K sigmoid width
+  real, parameter :: dthom_2m = 0.05           ! K sigmoid width
   
   real(r8), parameter :: pi_r8       = 3.14159265358979323846_r8
   real(r8), parameter :: rho_liq_mg  = 1000._r8
@@ -567,8 +567,8 @@ SUBROUTINE cup_up_moisture_2M(name,start_level,                                 
     accre_eff_rain_2m     = real(ACC_ENH_CNV, r8)
     accre_eff_snow_liq_2m = real(ACC_ENH_CNV, r8)
     accre_eff_snow_ice_2m = real(ACC_ENH_ICE, r8)
-    fdrop_dust_2m         = FDROPDUST*FHETDUST
-    fdrop_soot_2m         = FDROPSOOT*FHETSOOT
+    fdrop_dust_2m         = FDROPDUST
+    fdrop_soot_2m         = FDROPSOOT
     bkg_inp_scaling       = real(BKG_INP_SC_CNV, r8) 
     
     liq_lambda_bounds_mg = 1._r8 / (/ 50.e-6_r8, 2.e-6_r8 /)
