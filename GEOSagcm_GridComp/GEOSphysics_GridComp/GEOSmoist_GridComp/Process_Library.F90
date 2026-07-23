@@ -241,6 +241,7 @@ module GEOSmoist_Process_Library
   real :: GF2M_DET_SCALE     = 1.0
   real :: GF2M_C1D_SCALE     = 1.0
   real :: GF2M_TOP_DET_SCALE = 1.0
+  logical :: GF2M_DET_LEVEL_AVERAGE = .TRUE.
   
  
  
@@ -331,7 +332,7 @@ module GEOSmoist_Process_Library
   public :: GF2M_PLIQ_EFF_OPTION
   public :: GF2M_DET_SCALE
   public :: GF2M_C1D_SCALE
-  public :: GF2M_TOP_DET_SCALE
+  public :: GF2M_TOP_DET_SCALE, GF2M_DET_LEVEL_AVERAGE
   public :: BKG_INP_SC_CNV
 
 
@@ -2740,7 +2741,7 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
 
          ! Apply sub-grid ice supersaturation scaling if requested
          if (present(SC_ICE)) then
-            scice = min(max(SC_ICE, 1.0), 1.7)
+            scice = min(max(SC_ICE, 1.0), 1.8)
             qsnx  = qs_env * scice
             if ((qc_ice_env >= 0.0) .and. (qs_env > qt_env)) qs_env = qsnx
          end if
@@ -5755,7 +5756,7 @@ subroutine hystpdf_2M( &
 
    ! SC_ICE=1 follows the legacy path exactly.
    scice = 1.0
-   if (present(SC_ICE)) scice = min(max(SC_ICE, 1.0), 1.4)
+   if (present(SC_ICE)) scice = min(max(SC_ICE, 1.0), 1.8)
 
    scice_enabled = scice > 1.0
 

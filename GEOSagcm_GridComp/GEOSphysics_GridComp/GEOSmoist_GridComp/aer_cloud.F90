@@ -2269,12 +2269,8 @@ END
       
 
       !Weight to avoid overestimating IN effect NEW 08/01/13
-           
+       
        if (.false.) then 
-          if (FDS .gt. 0.0) then 
-            sc_ice = (shom_ice+1.0)*FDS + sc_ice*(1.0-FDS)    
-          end if    
-       else
            if (nice .gt. zero_par) then 
              sc_ice = ((shom_ice+1.0)*NHOM + sc_ice*nhet)/nice
               else
@@ -3233,7 +3229,8 @@ END
 		            END DO 		      
                 !dust
                     Nd=Naux*fdrop_dust
-                    dNd=dNaux*fdrop_dust	   
+                    dNd=dNaux*fdrop_dust
+                    ndust_imm = Nd	   
                 ! soot    
 
                     ahet=areabc_ice  

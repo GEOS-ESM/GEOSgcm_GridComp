@@ -355,7 +355,7 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     
     !====================large scale condensation tuning/options======
       
-    call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 1     , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 6     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, FAC_RI          , 'FAC_RI:'          , DEFAULT= 1.   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, FAC_RL          , 'FAC_RL:'          , DEFAULT= 1.   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MIN_RI          , 'MIN_RI:'          , DEFAULT=  5.e-6, RC=STATUS); VERIFY_(STATUS)
@@ -370,7 +370,7 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     
     call MAPL_GetResource( MAPL, MINRHCRIT, 'MINRHCRIT:', DEFAULT =9.51e-01, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, TURNRHCRIT, 'TURNRHCRIT:', DEFAULT = 791., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, TURNRHCRIT_UP, 'TURNRHCRIT_UP:', DEFAULT =1., RC=STATUS); VERIFY_(STATUS) !pressure to turn the profile back at upper trop -1 dsiables it
+    call MAPL_GetResource( MAPL, TURNRHCRIT_UP, 'TURNRHCRIT_UP:', DEFAULT =100., RC=STATUS); VERIFY_(STATUS) !pressure to turn the profile back at upper trop -1 dsiables it
    
     call MAPL_GetResource( MAPL, WBF_partition    , 'USE_BERGERON:'    , DEFAULT=.TRUE.  , RC=STATUS); VERIFY_(STATUS) !WBF partitioning in hystpdf
 
@@ -383,11 +383,10 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     
     !====================general options======
     
-     call MAPL_GetResource(MAPL, USE_NCLOUD_CLIM,  'USE_NCLOUD_CLIM:',   DEFAULT= .FALSE.,    __RC__) !0- param 1- Use Wsub climatology 2-Wnet
-    call MAPL_GetResource(MAPL, SECOND_HYSTPDF, 'SECOND_HYSTPDF:', DEFAULT= .TRUE. ,RC=STATUS) !TRUE to call hyspdf after the microphysics
+    call MAPL_GetResource(MAPL, USE_NCLOUD_CLIM,  'USE_NCLOUD_CLIM:',   DEFAULT= .FALSE.,    __RC__) !0- param 1- Use Wsub climatology 2-Wnet
     call MAPL_GetResource(MAPL, DO_UPD_CLD, 'DO_UPD_CLD:', DEFAULT= .TRUE. ,RC=STATUS) !Udate cloud fraction after micro using top hat approx
     
-    call MAPL_GetResource(MAPL, RHC_OPTION,  'RHC_OPTION:',   DEFAULT= 2 , __RC__) !0- SLingo (1980) 1- Quaas (2012) 2- Wang (2025)
+    call MAPL_GetResource(MAPL, RHC_OPTION,  'RHC_OPTION:',   DEFAULT= 0 , __RC__) !0- SLingo (1980) 1- Quaas (2012) 2- Wang (2025)
     
     call MAPL_GetResource(MAPL, MAKE_SNOW_ICE,  'MAKE_SNOW_ICE:',   DEFAULT= .FALSE.,    __RC__) !treat snow radiatively as ice
     call MAPL_GetResource(MAPL, PRECIPRAD,     'PRECIPRAD:',    DEFAULT= 1.,  __RC__) !0 disables rad effect of precip
@@ -411,7 +410,7 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     end if   
     call MAPL_GetResource(MAPL, DTST, '  DTST:',      DEFAULT= 1.282,   __RC__) !DLTS from minExp to MaxExp
     call MAPL_GetResource(MAPL, TMAXLL, 'TMAXLL:',         DEFAULT= 248.7,  __RC__) !Liquid clouds min T         
-    call MAPL_GetResource(MAPL, MIN_EXP,  'MIN_EXP:',        DEFAULT= 0.5,  __RC__) !Exponent of the relation CFA=CFV^n
+    call MAPL_GetResource(MAPL, MIN_EXP,  'MIN_EXP:',        DEFAULT= 0.35,  __RC__) !Exponent of the relation CFA=CFV^n
     call MAPL_GetResource(MAPL, MAX_EXP, 'MAX_EXP:',       DEFAULT= 1.,   __RC__) !Exponent of the relation CFA=CFV^n
     call MAPL_GetResource(MAPL, RHC_STRAT_SCALE, 'RHC_STRAT_SCALE:',         DEFAULT= 1.0,  __RC__) ! Decrease alpha in high EIS regions    
 
@@ -432,8 +431,8 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, ACC_ENH,        'ACC_ENH:',        DEFAULT= 1.0,    __RC__) !accretion rain-liquid scaling for MG2
     call MAPL_GetResource(MAPL, ACC_ENH_ICE,    'ACC_ENH_ICE:',    DEFAULT= 0.3287,    __RC__) !accretion snow-ice scaling for MG2
     
-    call MAPL_GetResource(MAPL, FDROP_DUST,     'FDROP_DUST:',     DEFAULT= 0.5,    __RC__) !Fraction of dust within droplets for immersion freezing
-    call MAPL_GetResource(MAPL, FDROP_SOOT,     'FDROP_SOOT:',     DEFAULT= 0.05,   __RC__) !Fraction of soot within droplets for immersion freezing        
+    call MAPL_GetResource(MAPL, FDROP_DUST,     'FDROP_DUST:',     DEFAULT= 0.1,    __RC__) !Fraction of dust within droplets for immersion freezing
+    call MAPL_GetResource(MAPL, FDROP_SOOT,     'FDROP_SOOT:',     DEFAULT= 0.001,   __RC__) !Fraction of soot within droplets for immersion freezing        
     call MAPL_GetResource(MAPL, MINCDNC,        'MINCDNC:',        DEFAULT= 25.0,    __RC__) !min nucleated droplet conc. cm-3
     call MAPL_GetResource(MAPL, MTIME,          'MTIME:',          DEFAULT= -1.0,   __RC__) !Mixing time scale for aerosol within the cloud. Default is time step
     call MAPL_GetResource(MAPL, LCCIRRUS,       'LCCIRRUS:',       DEFAULT= 500.0,  __RC__) !Characteristic Length (m) of high freq gravity waves    
@@ -441,7 +440,7 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
 
   
     call MAPL_GetResource(MAPL, DUST_INFAC,     'DUST_INFAC:',     DEFAULT= 1.0,    __RC__) !scalings for the INP concentrations for dep mode
-    call MAPL_GetResource(MAPL, BC_INFAC,       'BC_INFAC:',       DEFAULT= 0.1,    __RC__)
+    call MAPL_GetResource(MAPL, BC_INFAC,       'BC_INFAC:',       DEFAULT= 0.001,    __RC__)
     call MAPL_GetResource(MAPL, ORG_INFAC,      'ORG_INFAC:',      DEFAULT= 1.0,    __RC__)
     call MAPL_GetResource(MAPL, SS_INFAC,       'SS_INFAC:',       DEFAULT= 1.0,    __RC__)    
     call MAPL_GetResource(MAPL, DT_MICRO,       'DT_MICRO:',       DEFAULT= 300.0,  __RC__)  ! time step of the microphysics substepping (s) (MG2) (5 min)
@@ -454,7 +453,7 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     FHETSOOT=BC_INFAC
     FHETDUST=DUST_INFAC
     
-    call MAPL_GetResource(MAPL, WBFFACTOR,   'WBFFACTOR:', DEFAULT= 0.78 ,__RC__) !scaling for the Bergeron-Findeinsen process rate    
+    call MAPL_GetResource(MAPL, WBFFACTOR,   'WBFFACTOR:', DEFAULT= 0.05 ,__RC__) !scaling for the Bergeron-Findeinsen process rate    
     
     micro_mg_berg_eff_factor_in = WBFFACTOR
     call MAPL_GetResource(MAPL, ND_CST ,  'ND_CST:' , DEFAULT=  0.0 ,__RC__) !constant nd (set if greather than zero)      
@@ -504,7 +503,8 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     
     call MAPL_GetResource(MAPL,  BKG_INP_SC_CNV,      'BKG_INP_SC_CNV:',      DEFAULT= 0.01,       __RC__) ! Scales background INP source
    
-   
+    call MAPL_GetResource(MAPL,   GF2M_DET_LEVEL_AVERAGE, 'GF2M_DET_LEVEL_AVERAGE:',      DEFAULT= .TRUE.,       __RC__) ! .true. use 0.5*(phi(k)+phi(k+1)) .false. suse the local GF2M value phi(k)
+    
     !==============================================================
  
     mui_cnstr8 = MUI_CST
@@ -1383,7 +1383,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
         where (T .gt. 238.0)
          SC_ICE  =  1.0
         end where 
-        SC_ICE  =  MIN(MAX(SC_ICE, 1.0), 1.4)
+        SC_ICE  =  MIN(MAX(SC_ICE, 1.0), 1.8)
         
         
       end if !USE_NCLOUD_CLIM

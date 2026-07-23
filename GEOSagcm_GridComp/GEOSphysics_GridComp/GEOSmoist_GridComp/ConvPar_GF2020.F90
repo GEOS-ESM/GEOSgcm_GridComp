@@ -17,7 +17,8 @@ MODULE ConvPar_GF2020
   
   USE GEOSmoist_Process_Library, ONLY: sigma, SH_MD_DP, ICE_FRACTION, make_DropletNumber, &
        make_IceNumber, USE_CUP_2M_MOISTURE, AerPropsNew, GF2M_W_OPTION, &
-       GF2M_PLIQ_EFF_OPTION, GF2M_DET_SCALE, GF2M_C1D_SCALE, GF2M_TOP_DET_SCALE
+       GF2M_PLIQ_EFF_OPTION, GF2M_DET_SCALE, GF2M_C1D_SCALE, &
+       GF2M_TOP_DET_SCALE, GF2M_DET_LEVEL_AVERAGE
 
   USE GF2020_2M_MicrophysicsMod, ONLY: cup_up_moisture_2M
                                    
@@ -2933,10 +2934,12 @@ CONTAINS
   !     with Process_Library scaling factors;
   !   * qliq/qice mass tendencies are rescaled to the parent total.
   !
-  ! Scaling factors:
-  !   GF2M_DET_SCALE      explicit half-level detrainment below cloud top
-  !   GF2M_C1D_SCALE      c1d exchange/detrainment branch, inactive when C1=0
-  !   GF2M_TOP_DET_SCALE  explicit cloud-top detrainment
+  ! Process_Library controls:
+  !   GF2M_DET_SCALE          explicit detrainment below cloud top
+  !   GF2M_C1D_SCALE          c1d exchange/detrainment branch, inactive when C1=0
+  !   GF2M_TOP_DET_SCALE      explicit cloud-top detrainment
+  !   GF2M_DET_LEVEL_AVERAGE  .true.  : use 0.5*(phi(k)+phi(k+1)) 
+  !                            .false. : use the local GF2M value phi(k)
   !--------------------------------------------------------------------------
   IF (USE_CUP_2M_MOISTURE) THEN
 
@@ -7175,8 +7178,10 @@ loop0:  do k= kbcon(i),ktop(i)
    SUBROUTINE apply_cup_up_detrain_operator(cumulus, ierr, ktop, po_cup, zo_cup, up_massdetro, zuo, c1d, phi_up, phi_tend, &
                                             itf, ktf, its, ite, kts, kte, det_scale_in, c1d_scale_in, top_det_scale_in)
 
-     ! Apply the same parent updraft detrainment operator used for legacy
-     ! retained condensate (dellaqc) to an arbitrary updraft scalar profile.
+     ! Apply the parent updraft detrainment operator to an arbitrary GF2M
+     ! updraft scalar profile.  Explicit detrainment can use either the legacy
+     ! half-level scalar average or the local GF2M level value, controlled by
+     ! GF2M_DET_LEVEL_AVERAGE.  The C1D term remains local by construction.
      ! This is used only for 2M diagnostics: qliq, qice, nliq, nice.
 
      IMPLICIT NONE
@@ -7190,7 +7195,7 @@ loop0:  do k= kbcon(i),ktop(i)
      REAL, INTENT(IN), OPTIONAL :: det_scale_in, c1d_scale_in, top_det_scale_in
 
      INTEGER :: i, k
-     REAL :: dp, dz, detup
+     REAL :: dp, dz, detup, phi_det
      REAL :: det_scale, c1d_scale, top_det_scale, det_term, c1d_term
 
      det_scale = 1.0
@@ -7214,7 +7219,12 @@ loop0:  do k= kbcon(i),ktop(i)
               IF(dp <= 0.0) CYCLE
 
               detup = up_massdetro(i,k)
-              det_term = detup * 0.5 * (phi_up(i,k+1) + phi_up(i,k)) * g / dp
+              IF(GF2M_DET_LEVEL_AVERAGE) THEN
+                 phi_det = 0.5 * (phi_up(i,k+1) + phi_up(i,k))
+              ELSE
+                 phi_det = phi_up(i,k)
+              ENDIF
+              det_term = detup * phi_det * g / dp
               IF(.NOT. USE_C1D .OR. trim(cumulus) == 'mid' .OR. trim(cumulus) == 'shallow') THEN
                  IF(k == ktop(i)) THEN
                     phi_tend(i,k) = top_det_scale * det_term
@@ -7241,7 +7251,12 @@ loop0:  do k= kbcon(i),ktop(i)
               IF(dp <= 0.0) CYCLE
 
               detup = up_massdetro(i,k)
-              det_term = detup * 0.5 * (phi_up(i,k+1) + phi_up(i,k)) * g / dp
+              IF(GF2M_DET_LEVEL_AVERAGE) THEN
+                 phi_det = 0.5 * (phi_up(i,k+1) + phi_up(i,k))
+              ELSE
+                 phi_det = phi_up(i,k)
+              ENDIF
+              det_term = detup * phi_det * g / dp
               IF(trim(cumulus) == 'mid' .OR. trim(cumulus) == 'shallow') THEN
                  IF(k == ktop(i)) THEN
                     phi_tend(i,k) = top_det_scale * det_term

@@ -91,7 +91,7 @@ module GF2020_2M_MicrophysicsMod
 
   ! If enabled, droplet autoconversion removes the same fraction of the
   ! drop-mediated finite INP aerosol reservoirs that is removed from droplets.
-  logical, parameter :: remove_inp_aerosol_with_liq_auto_2m = .true.
+  logical, parameter :: remove_inp_aerosol_with_liq_auto_2m = .false.
 
   real, parameter :: thom_2m  = 238.15        ! K homogeneous freezing T
   real, parameter :: dthom_2m = 0.05           ! K sigmoid width
@@ -567,8 +567,8 @@ SUBROUTINE cup_up_moisture_2M(name,start_level,                                 
     accre_eff_rain_2m     = real(ACC_ENH_CNV, r8)
     accre_eff_snow_liq_2m = real(ACC_ENH_CNV, r8)
     accre_eff_snow_ice_2m = real(ACC_ENH_ICE, r8)
-    fdrop_dust_2m         = FDROPDUST*FHETDUST
-    fdrop_soot_2m         = FDROPSOOT*FHETSOOT
+    fdrop_dust_2m         = FDROPDUST
+    fdrop_soot_2m         = FDROPSOOT
     bkg_inp_scaling       = real(BKG_INP_SC_CNV, r8) 
     
     liq_lambda_bounds_mg = 1._r8 / (/ 50.e-6_r8, 2.e-6_r8 /)
