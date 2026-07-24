@@ -685,7 +685,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   character(len=ESMF_MAXSTR)          :: REPLAY_P, REPLAY_PS, REPLAY_DP
   character(len=ESMF_MAXSTR)          :: REPLAY_PHIS
   character(len=ESMF_MAXSTR)          :: REPLAY_T_TYPE
+  character(len=ESMF_MAXSTR)          :: REPLAY_DP_FROM_PS
   logical                             :: L_REPLAY_PHIS, L_REPLAY_P, L_REPLAY_U, L_REPLAY_V, L_REPLAY_T, L_REPLAY_QV, L_REPLAY_TS, L_REPLAY_O3
+  logical                             :: L_DP_FROM_PS
   logical                             :: L_CUBE
   logical                             :: do_transforms
   logical                             :: USE_SPECFILT
@@ -857,6 +859,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, REPLAY_T_TYPE, Label="REPLAY_T_TYPE:", default='NULL',          RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, REPLAY_DP_FROM_PS, Label="REPLAY_DP_FROM_PS:", default='NULL',  RC=STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_GetResource(MAPL, REPLAY_P_FACTOR,  Label="REPLAY_P_FACTOR:",  default=1.0 , RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, REPLAY_U_FACTOR,  Label="REPLAY_U_FACTOR:",  default=1.0 , RC=STATUS) ; VERIFY_(STATUS)
@@ -884,6 +888,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     L_REPLAY_T      = trim(REPLAY_T)     .ne.'NO' .and. trim(REPLAY_T)     .ne.'NULL'
     L_REPLAY_QV     = trim(REPLAY_QV)    .ne.'NO' .and. trim(REPLAY_QV)    .ne.'NULL'
     L_REPLAY_O3     = trim(REPLAY_O3)    .ne.'NO' .and. trim(REPLAY_O3)    .ne.'NULL'
+    L_DP_FROM_PS    = trim(REPLAY_DP_FROM_PS) .ne.'NO' .and. trim(REPLAY_DP_FROM_PS) .ne.'NULL'
 
     call MAPL_GetResource(MAPL, DAMPBEG,  LABEL="REPLAY_DAMPBEG:", default=1.0, RC=status)
     VERIFY_(STATUS)
@@ -1789,7 +1794,9 @@ CONTAINS
         if( .not.FOUND .and. L_REPLAY_P ) then
            write(STRING,'(A)') "ANA Variable: DP Not Found!"
            call WRITE_PARALLEL( trim(STRING)   )
-           RETURN_(ESMF_FAILURE)
+           if (.not.L_DP_FROM_PS) then
+              RETURN_(ESMF_FAILURE)
+           endif
         endif
 
 ! ANA U-Wind
@@ -1937,6 +1944,16 @@ CONTAINS
             bk_rep = bk
         else
             call set_eta ( LMana,ksdum,ptopdum,pintdum,ak_rep,bk_rep )
+        endif
+        ! If so, create pressure thickness increment from surface pressure
+        ! increment, regardless of whether thickness increment has been found or not
+        ! --------------------------------------------------------------------------
+        if ( L_DP_FROM_PS ) then
+           write(STRING,'(A)') "ANA increment: DP derived from PS"
+           call WRITE_PARALLEL( trim(STRING)   )
+           do L=1,LMana
+              dp_rep(:,:,L) = (ak_rep(L) - ak_rep(L-1)) + ps_ana(:,:)*(bk_rep(L) - bk_rep(L-1))
+           enddo
         endif
 
         ple_rep(:,:,0) = ak_rep(0)
