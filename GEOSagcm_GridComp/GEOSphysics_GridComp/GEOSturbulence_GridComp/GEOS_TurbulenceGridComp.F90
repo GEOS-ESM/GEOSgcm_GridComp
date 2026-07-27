@@ -3193,7 +3193,7 @@ end if
        call MAPL_GetResource (MAPL, LAMBDAH2,     trim(COMP_NAME)//"_LAMBDAH2:",     default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ZKHMENV,      trim(COMP_NAME)//"_ZKHMENV:",      default=3200.,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, MINTHICK,     trim(COMP_NAME)//"_MINTHICK:",     default=2.0,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, MINSHEAR,     trim(COMP_NAME)//"_MINSHEAR:",     default=0.0030, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, MINSHEAR,     trim(COMP_NAME)//"_MINSHEAR:",     default=0.001,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LAMBDA_B,     trim(COMP_NAME)//"_LAMBDA_B:",     default=1500.,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, AKHMMAX,      trim(COMP_NAME)//"_AKHMMAX:",      default=500.,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, MO_MAX_ITER, trim(COMP_NAME)//"_MO_MAX_ITER:",   default=0,      RC=STATUS); VERIFY_(STATUS)
