@@ -420,14 +420,14 @@ contains
     type (RROUTE_wrap)             :: wrap
     real, allocatable              :: tmp_real(:)
     integer, allocatable           :: tmp_int(:)
-
+    character(len=ESMF_MAXSTR)     :: route_restart_file
 
     type(ESMF_Time)  :: CurrentTime
     type(ESMF_Alarm) :: CollectWaterAlarm
     type(ESMF_TimeInterval) :: CollectWater_DT, ModelTimeStep
     character(len=3) :: resname
     type(Netcdf4_Fileformatter)  :: formatter 
-    integer          :: j,nt_local, mpierr, i1, i2, j1, j2 
+    integer          :: j,nt_local, mpierr, i1, i2, j1, j2
 
     ! ------------------
     ! begin
@@ -489,6 +489,11 @@ contains
     route%run_route=run_route
     call MAPL_GetResource (SCF, ROUTE_DT, label='RRM_DT:', DEFAULT=3600, RC=STATUS )
     route%route_dt = ROUTE_DT
+
+    call MAPL_GetResource (MAPL, route_restart_file, label = 'ROUTE_INTERNAL_RESTART_FILE:', RC=STATUS)
+    if (run_route>0) then
+       _ASSERT( STATUS == ESMF_SUCCESS, "RUN_ROUTE > 0 requires ROUTE_INTERNAL_RESTART_FILE")
+    endif      
 
     allocate(route%runoff_acc(nt_local), source = 0.)
 
