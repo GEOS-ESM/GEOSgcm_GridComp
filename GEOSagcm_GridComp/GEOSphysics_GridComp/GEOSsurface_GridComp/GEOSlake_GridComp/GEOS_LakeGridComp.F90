@@ -39,6 +39,10 @@ module GEOS_LakeGridCompMod
   type lake_state
      private
      integer:: CHOOSEMOSFC
+     real, allocatable :: DCHDTS(:,:)
+     real, allocatable :: DCHDQS(:,:)
+     real, allocatable :: DCQDTS(:,:)
+     real, allocatable :: DCQDQS(:,:)
      logical :: InitDone
      logical, pointer :: mask(:) => null()
      real :: tol_frice
@@ -570,7 +574,7 @@ module GEOS_LakeGridCompMod
 
      call MAPL_AddInternalSpec(GC,                           &
         SHORT_NAME         = 'FR',                                &
-        LONG_NAME          = 'ice_fraction',                      &
+        LONG_NAME          = 'subtile_area_fraction',                      &
         UNITS              = '1',                                 &
         NUM_SUBTILES       = NUM_SUBTILES,                        &
         DIMS               = MAPL_DimsTileTile,                   &
@@ -990,6 +994,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, allocatable              :: TVA(:)
    real, allocatable              :: TVS(:)
    real, allocatable              :: URA(:)
+   real, allocatable              :: DCHDTVA(:,:)
+   real, allocatable              :: DCQDTVA(:,:)
    real, allocatable              :: UUU(:)
    real, allocatable              :: LAI(:)
    real, allocatable              :: CHH(:)
@@ -1206,6 +1212,28 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    allocate(IWATER(NT),STAT=STATUS)
    VERIFY_(STATUS)
 
+   if (CHOOSEMOSFC == 0) then
+      if (.not. allocated(mystate%DCHDTS)) then
+         allocate(mystate%DCHDTS(NT,NUM_SUBTILES),                 &
+                  mystate%DCHDQS(NT,NUM_SUBTILES),                 &
+                  mystate%DCQDTS(NT,NUM_SUBTILES),                 &
+                  mystate%DCQDQS(NT,NUM_SUBTILES), STAT=STATUS)
+         VERIFY_(STATUS)
+      endif
+
+      mystate%DCHDTS = 0.0
+      mystate%DCHDQS = 0.0
+      mystate%DCQDTS = 0.0
+      mystate%DCQDQS = 0.0
+     
+      allocate(DCHDTVA(NT,NUM_SUBTILES),                          &
+               DCQDTVA(NT,NUM_SUBTILES), STAT=STATUS)
+      VERIFY_(STATUS)
+
+      DCHDTVA = 0.0
+      DCQDTVA = 0.0
+   endif   
+
 !  Compute drag corfficient at tiles
 !-----------------------------------
 
@@ -1235,9 +1263,40 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    do N=1,NUM_SUBTILES
 
    if(CHOOSEMOSFC.eq.0) then
+      ! Louis surface-layer scheme.  Request analytical derivatives
+      ! of CH and CQ with respect to the air-minus-surface virtual
+      ! temperature difference and convert them below to derivatives
+      ! with respect to the Lake surface state, Ts and qs.
+      LAI = 0.0
 
-         LAI = 0.
-    call louissurface(2,N,UU,WW,PS,TA,TS,QA,QS,PCU,LAI,Z0,DZ,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE)
+      call louissurface(2,N,UU,WW,PS,TA,TS,QA,QS,PCU,LAI,        &
+                        Z0,DZ,CM,CN,RIB,ZT,ZQ,CH,CQ,              &
+                        UUU,UCN,RE,DCHDTVA,DCQDTVA)
+
+      ! Convert the Louis derivatives with respect to the
+      ! air-minus-surface virtual temperature difference to
+      ! derivatives with respect to the Lake surface state,
+      ! Ts and qs.  The minus sign results from differentiating
+      ! the air-minus-surface difference with respect to the
+      ! surface variables.
+      !
+      ! CH and CQ stored by Lake are mass exchange coefficients,
+      ! so apply the same rho*|U| scaling used for CH and CQ.                      
+
+      TVA = TA*(1.0 + MAPL_VIREPS*QA)
+      URA = UUU*PS/(MAPL_RGAS*TVA)
+
+      mystate%DCHDTS(:,N) = -URA*DCHDTVA(:,N)                    &
+           *(1.0 + MAPL_VIREPS*QS(:,N))
+
+      mystate%DCHDQS(:,N) = -URA*DCHDTVA(:,N)                    &
+           *MAPL_VIREPS*TS(:,N)
+
+      mystate%DCQDTS(:,N) = -URA*DCQDTVA(:,N)                    &
+           *(1.0 + MAPL_VIREPS*QS(:,N))
+
+      mystate%DCQDQS(:,N) = -URA*DCQDTVA(:,N)                    &
+           *MAPL_VIREPS*TS(:,N)
 
    elseif (CHOOSEMOSFC.eq.1)then
 
@@ -1351,6 +1410,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    deallocate(IWATER)
    deallocate(PSMB)
    deallocate(PSL)
+   if (allocated(DCHDTVA)) deallocate(DCHDTVA)
+   if (allocated(DCQDTVA)) deallocate(DCQDTVA)
 
 !  All done
 !-----------
@@ -1549,6 +1610,11 @@ contains
    real,          dimension(NT)   :: RNF
    real,          dimension(NT)   :: EVD
    real,          dimension(NT)   :: SHD
+   real,          dimension(NT)   :: DQSATDT
+   real,          dimension(NT)   :: DEDTS
+   real,          dimension(NT)   :: DEDQS
+   real,          dimension(NT)   :: DHSDTS
+   real,          dimension(NT)   :: DHSDQS
    real,          dimension(NT)   :: SWN
 
    real,          dimension(NT)   :: CFQ
@@ -1861,12 +1927,43 @@ contains
           ! LDAS/offline path: compute the equivalent terms internally.
           CFT = 1.0
           CFQ = 1.0
-
+    
           EVP = CQ(:,N)*(QS(:,N)-QA)
           SHF = MAPL_CP*CH(:,N)*(TS(:,N)-TA)
-          SHD = MAPL_CP*CH(:,N)
-          EVD = CQ(:,N)*GEOS_DQSAT(TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.)
-
+         
+          if (mystate%CHOOSEMOSFC == 0) then
+             _ASSERT(allocated(mystate%DCHDTS), 'Lake Louis derivative arrays not allocated')
+   
+             ! Include the dependence of the Louis exchange coefficients
+             ! on the Lake surface state.  Since qs = qsat(Ts,Ps), combine
+             ! the separate Ts and qs partial derivatives into total
+             ! derivatives with respect to Lake surface temperature.             
+             DQSATDT = GEOS_DQSAT(TS(:,N), PS,                 &
+                                  RAMP=0.0, PASCALS=.TRUE.)
+         
+             ! E = CQ(Ts,qs)*(qs-qa)
+             DEDTS = max(0.0,                                  &
+                  mystate%DCQDTS(:,N)*(QS(:,N)-QA))
+             DEDQS = CQ(:,N) + max(0.0,                        &
+                  mystate%DCQDQS(:,N)*(QS(:,N)-QA))
+    
+             ! H = Cp*CH(Ts,qs)*(Ts-Ta)
+             DHSDTS = MAPL_CP*(CH(:,N) + max(0.0,              &
+                  mystate%DCHDTS(:,N)*(TS(:,N)-TA)))
+             DHSDQS = max(0.0, MAPL_CP*                        &
+                  mystate%DCHDQS(:,N)*(TS(:,N)-TA))
+    
+             ! Lake constrains surface humidity to qs=qsat(Ts,Ps),
+             ! so reduce the two-variable Jacobian to d/dTs
+             EVD = DEDTS  + DEDQS *DQSATDT
+             SHD = DHSDTS + DHSDQS*DQSATDT
+          else
+             ! Preserve the original fixed coefficient Helfand path
+             SHD = MAPL_CP*CH(:,N)
+             EVD = CQ(:,N)*GEOS_DQSAT(TS(:,N), PS,             &
+                                      RAMP=0.0, PASCALS=.TRUE.)
+          endif
+      
           if (N == WATER) then
              BLWN = LAKEEMISS*MAPL_STFBOL*TS(:,N)*TS(:,N)*TS(:,N)
           else
