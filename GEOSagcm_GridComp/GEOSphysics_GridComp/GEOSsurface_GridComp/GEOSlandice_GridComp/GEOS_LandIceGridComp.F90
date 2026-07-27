@@ -110,6 +110,18 @@ module GEOS_LandiceGridCompMod
   integer,    parameter :: TAR_TILE   = 1
   integer               :: N_CONST_LANDICE4SNWALB, AEROSOL_DEPOSITION, CHOOSEMOSFC
 
+  type landice_state
+     private
+     real, allocatable :: DCHDTS(:,:)
+     real, allocatable :: DCHDQS(:,:)
+     real, allocatable :: DCQDTS(:,:)
+     real, allocatable :: DCQDQS(:,:)
+  end type landice_state
+
+  type landice_state_wrap
+     type(landice_state), pointer :: ptr
+  end type landice_state_wrap
+  
 ! !PUBLIC MEMBER FUNCTIONS:
 
   public SetServices
@@ -164,7 +176,8 @@ module GEOS_LandiceGridCompMod
 !=============================================================================
 
     type(MAPL_MetaComp), pointer            :: MAPL
-
+    type(landice_state_wrap)                :: wrap
+    type(landice_state), pointer            :: mystate
     integer                                 :: DO_ISSM ! ISSM flag
 
 ! Begin...
@@ -209,6 +222,11 @@ module GEOS_LandiceGridCompMod
     call MAPL_GetResource (SCF, AEROSOL_DEPOSITION,     label='AEROSOL_DEPOSITION:',     DEFAULT=0, __RC__ )
     call MAPL_GetResource (SCF, CHOOSEMOSFC,            label='CHOOSEMOSFC:',            DEFAULT=1, __RC__ )
     call ESMF_ConfigDestroy      (SCF, __RC__)
+    allocate(mystate, STAT=STATUS)
+    VERIFY_(STATUS)
+    wrap%ptr => mystate
+    call ESMF_UserCompSetInternalState(GC, 'landice_private', wrap, STATUS)
+    VERIFY_(STATUS)    
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -1984,11 +2002,16 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    integer, allocatable           :: IWATER(:)
    real, allocatable              :: PSMB(:)
    real, allocatable              :: PSL(:)
+   real, allocatable              :: TVA(:)
+   real, allocatable              :: DCHDTVA(:,:)
+   real, allocatable              :: DCQDTVA(:,:)
 
    real, parameter :: LANDICEBAREZ0  = 0.005
    real, parameter :: LANDICESNOWZ0  = 0.001
 
    integer                        :: CHOOSEZ0
+   type(landice_state_wrap)       :: wrap
+   type(landice_state), pointer   :: mystate
 !=============================================================================
 
 ! Begin...
@@ -2019,7 +2042,9 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
          INTERNAL_ESMF_STATE = INTERNAL,         &
                                        RC=STATUS )
     VERIFY_(STATUS)
-
+    call ESMF_UserCompGetInternalState(GC, 'landice_private', wrap, STATUS)
+    VERIFY_(STATUS)
+    mystate => wrap%ptr
     call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS)
     VERIFY_(STATUS)
 
@@ -2186,6 +2211,29 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    allocate(IWATER(NT),STAT=STATUS)
    VERIFY_(STATUS)
 
+   ! Allocate analytical derivative storage only for Louis
+   if (CHOOSEMOSFC == 0) then
+      if (.not. allocated(mystate%DCHDTS)) then
+         allocate(mystate%DCHDTS(NT,NUM_SUBTILES),                 &
+                  mystate%DCHDQS(NT,NUM_SUBTILES),                 &
+                  mystate%DCQDTS(NT,NUM_SUBTILES),                 &
+                  mystate%DCQDQS(NT,NUM_SUBTILES), STAT=STATUS)
+         VERIFY_(STATUS)
+      endif
+
+      mystate%DCHDTS = 0.0
+      mystate%DCHDQS = 0.0
+      mystate%DCQDTS = 0.0
+      mystate%DCQDQS = 0.0
+
+      allocate(TVA(NT), DCHDTVA(NT,NUM_SUBTILES),                 &
+               DCQDTVA(NT,NUM_SUBTILES), STAT=STATUS)
+      VERIFY_(STATUS)
+
+      DCHDTVA = 0.0
+      DCQDTVA = 0.0
+   endif
+
 !  Compute drag coefficient at tiles
 !-----------------------------------
    CHT = 0.0
@@ -2215,7 +2263,29 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    if(CHOOSEMOSFC.eq.0) then
 
-    call louissurface(4,N,UU,WW,PS,TA,TS,QA,QS,PCU,LAI,Z0,DZ,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE)
+    call louissurface(4,N,UU,WW,PS,TA,TS,QA,QS,PCU,LAI,Z0,DZ,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE,DCHDTVA,DCQDTVA)
+
+    ! Convert the Louis derivatives with respect to the
+    ! air-minus-surface virtual temperature difference to
+    ! derivatives with respect to the LandIce surface state
+    !
+    ! CH and CQ stored by LandIce are mass exchange coefficients,
+    ! so apply the same rho*|U| factor used for CH and CQ
+    TVA = TA*(1.0 + MAPL_VIREPS*QA)
+    URA = UUU*PS/(MAPL_RGAS*TVA)
+
+    mystate%DCHDTS(:,N) = -URA*DCHDTVA(:,N)                    &
+         *(1.0 + MAPL_VIREPS*QS(:,N))
+
+    mystate%DCHDQS(:,N) = -URA*DCHDTVA(:,N)                    &
+         *MAPL_VIREPS*TS(:,N)
+
+    mystate%DCQDTS(:,N) = -URA*DCQDTVA(:,N)                    &
+         *(1.0 + MAPL_VIREPS*QS(:,N))
+
+    mystate%DCQDQS(:,N) = -URA*DCQDTVA(:,N)                    &
+         *MAPL_VIREPS*TS(:,N)
+   
 
    elseif (CHOOSEMOSFC.eq.1)then
 
@@ -2287,6 +2357,9 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    if(associated(Z0HEXP)) Z0HEXP = ZT
    if(associated(VNT)) VNT = UUU
    if(associated(LST)) LST = TST
+   if (allocated(TVA)) deallocate(TVA)
+   if (allocated(DCHDTVA)) deallocate(DCHDTVA)
+   if (allocated(DCQDTVA)) deallocate(DCQDTVA)
 
    deallocate(URA)
    deallocate(UUU)
@@ -2383,6 +2456,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
   integer                             :: LANDICE_OFFLINE
   integer                             :: DO_ISSM              ! ISSM run flag
 
+  type(landice_state_wrap)            :: wrap
+  type(landice_state), pointer        :: mystate
   type (ESMF_GridComp  ), pointer     :: GCS(:)
   character(len=ESMF_MAXSTR), pointer :: gcnames(:)
 #ifdef HAVE_ISSM
@@ -2405,7 +2480,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
-
+    call ESMF_UserCompGetInternalState(GC, 'landice_private', wrap, STATUS)
+    VERIFY_(STATUS)
+    mystate => wrap%ptr
     call MAPL_GetResource (MAPL, DO_ISSM, label='DO_ISSM:', DEFAULT=0, __RC__ )
 
 #ifndef HAVE_ISSM
@@ -2613,6 +2690,11 @@ contains
    real,    allocatable           :: LHF(:)
    real,    allocatable           :: SHD(:)
    real,    allocatable           :: LHD(:)
+   real,    allocatable           :: DQSATDT(:)
+   real,    allocatable           :: DEDTS(:)
+   real,    allocatable           :: DEDQS(:)
+   real,    allocatable           :: DHSDTS(:)
+   real,    allocatable           :: DHSDQS(:)
    real,    allocatable           :: CFQ(:)
    real,    allocatable           :: CFT(:)
    real,    allocatable           :: MLT(:)
@@ -2934,6 +3016,11 @@ end if
     VERIFY_(STATUS)
     allocate(LHD (NT), STAT=STATUS)
     VERIFY_(STATUS)
+    if (LANDICE_OFFLINE /= 0 .and. CHOOSEMOSFC == 0) then
+       allocate(DQSATDT(NT), DEDTS(NT), DEDQS(NT),              &
+                DHSDTS(NT), DHSDQS(NT), STAT=STATUS)
+       VERIFY_(STATUS)
+    endif    
     allocate(CFT (NT), STAT=STATUS)
     VERIFY_(STATUS)
     allocate(CFQ (NT), STAT=STATUS)
@@ -3307,8 +3394,36 @@ end if
           CFQ    = 1.0
           SHF    = MAPL_CP*CH(:,N)*(TS(:,N)-TA)
           LHF    = CQ(:,N)*(QS(:,N)-QA) * MAPL_ALHS
-          SHD    = MAPL_CP*CH(:,N)
-          LHD    = CQ(:,N)*MAPL_ALHS*GEOS_DQSAT(TS(:,N), PS, PASCALS=.TRUE., RAMP=0.0)
+
+          if (CHOOSEMOSFC == 0) then
+             _ASSERT(allocated(mystate%DCHDTS), 'LandIce Louis derivative arrays not allocated')
+
+             DQSATDT = GEOS_DQSAT(TS(:,N), PS,                  &
+                                  PASCALS=.TRUE., RAMP=0.0)
+
+             ! E = CQ(Ts,qs)*(qs-qa)
+             DEDTS = max(0.0,                                  &
+                  mystate%DCQDTS(:,N)*(QS(:,N)-QA))
+             DEDQS = CQ(:,N) + max(0.0,                        &
+                  mystate%DCQDQS(:,N)*(QS(:,N)-QA))
+
+             ! H = Cp*CH(Ts,qs)*(Ts-Ta)
+             DHSDTS = MAPL_CP*(CH(:,N) + max(0.0,              &
+                  mystate%DCHDTS(:,N)*(TS(:,N)-TA)))
+             DHSDQS = max(0.0, MAPL_CP*                        &
+                  mystate%DCHDQS(:,N)*(TS(:,N)-TA))
+
+             ! LandIce constrains surface humidity to qs=qsat(Ts,Ps),
+             ! so reduce the two-variable Jacobian to d/dTs
+             SHD = DHSDTS + DHSDQS*DQSATDT
+             LHD = MAPL_ALHS*(DEDTS + DEDQS*DQSATDT)
+          else
+             ! Preserve the original fixed-coefficient Helfand path
+             SHD = MAPL_CP*CH(:,N)
+             LHD = CQ(:,N)*MAPL_ALHS*GEOS_DQSAT(                &
+                  TS(:,N), PS, PASCALS=.TRUE., RAMP=0.0)
+          endif          
+
           BLWN   = LANDICEEMISS*MAPL_STFBOL*TS(:,N)*TS(:,N)*TS(:,N)
           ALWN   = -3.0*BLWN*TS(:,N)
           BLWN   =  4.0*BLWN
@@ -3782,6 +3897,11 @@ end if
     if(allocated (WESNN    )) deallocate(WESNN    , STAT=STATUS); VERIFY_(STATUS)
     if(allocated (HTSNN    )) deallocate(HTSNN    , STAT=STATUS); VERIFY_(STATUS)
     if(allocated (SNDZN    )) deallocate(SNDZN    , STAT=STATUS); VERIFY_(STATUS)
+    if(allocated (DQSATDT  )) deallocate(DQSATDT  , STAT=STATUS); VERIFY_(STATUS)
+    if(allocated (DEDTS    )) deallocate(DEDTS    , STAT=STATUS); VERIFY_(STATUS)
+    if(allocated (DEDQS    )) deallocate(DEDQS    , STAT=STATUS); VERIFY_(STATUS)
+    if(allocated (DHSDTS   )) deallocate(DHSDTS   , STAT=STATUS); VERIFY_(STATUS)
+    if(allocated (DHSDQS   )) deallocate(DHSDQS   , STAT=STATUS); VERIFY_(STATUS)    
 
 !  All done
 !-----------
