@@ -1039,8 +1039,8 @@ contains
     real, allocatable              :: PSMB(:)
     real, allocatable              :: PSL(:)
 
-    real,                parameter :: LAKEZ0     = 1.0E-5
-    real,                parameter :: LAKEICEZ0  = 0.01
+    real,                parameter :: LAKEZ0_HELFAND     = 1.0E-5    ! used in Helfand; Louis has value hardwired into louissurface()
+    real,                parameter :: LAKEICEZ0_HELFAND  = 0.01      ! used in Helfand; Louis has value hardwired into louissurface()
 
     integer                        :: CHOOSEMOSFC
     integer                        :: CHOOSEZ0
@@ -1285,8 +1285,10 @@ contains
           
           LAI = 0.0
 
+  
+          
           call louissurface(2,N,UU,WW,PS,TA,TS,QA,QS,PCU,LAI,        &      ! istype=2 for Lake
-               Z0,DZ,CM,CN,RIB,ZT,ZQ,CH,CQ,                          &
+               Z0,DZ,CM,CN,RIB,ZT,ZQ,CH,CQ,                          &      ! z0 is hardwired inside louissurface()
                UUU,UCN,RE,DCHDTVA,DCQDTVA)
 
           ! Convert the Louis derivatives with respect to the
@@ -1319,9 +1321,9 @@ contains
           niter = 6   ! number of internal iterations in the helfand MO surface layer routine
           IWATER=2
           if(N==ICE) then
-             Z0(:,N) = LAKEICEZ0
+             Z0(:,N) = LAKEICEZ0_HELFAND
           else
-             Z0(:,N) = LAKEZ0
+             Z0(:,N) = LAKEZ0_HELFAND
           end if
 
           PSMB = PS * 0.01            ! convert to MB
@@ -1671,7 +1673,9 @@ contains
       integer                                 :: dlk
       real,                       allocatable :: DATA_SST(:), DATA_FR(:)
       character(len=ESMF_MAXSTR)              :: maskfile
+
       real,                         parameter :: Tfreeze = MAPL_TICE - 1.8
+
       type(lake_state_wrap)                   :: wrap
       type(lake_state),               pointer :: mystate
 

@@ -2006,8 +2006,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, allocatable              :: DCHDTVA(:,:)
    real, allocatable              :: DCQDTVA(:,:)
 
-   real, parameter :: LANDICEBAREZ0  = 0.005
-   real, parameter :: LANDICESNOWZ0  = 0.001
+   real, parameter :: LANDICEBAREZ0_HELFAND  = 0.005    ! used in Helfand; Louis has value hardwired into louissurface()
+   real, parameter :: LANDICESNOWZ0_HELFAND  = 0.001    ! used in Helfand; Louis has value hardwired into louissurface()
 
    integer                        :: CHOOSEZ0
    type(landice_state_wrap)       :: wrap
@@ -2211,7 +2211,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    allocate(IWATER(NT),STAT=STATUS)
    VERIFY_(STATUS)
 
-   ! For Loius, allocate variables for analytical derivatives
+   ! For Louis, allocate variables for analytical derivatives
    
    if (CHOOSEMOSFC == 0) then
 
@@ -2268,7 +2268,9 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    if(CHOOSEMOSFC.eq.0) then
 
-    call louissurface(4,N,UU,WW,PS,TA,TS,QA,QS,PCU,LAI,Z0,DZ,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE,DCHDTVA,DCQDTVA)    !istype=4 for landice
+      call louissurface(4,N,UU,WW,PS,TA,TS,QA,QS,PCU,LAI,       &    ! istype=4 for landice
+           Z0,DZ,CM,CN,RIB,ZT,ZQ,CH,CQ,                         &    ! z0 is hardwired in louissurface()
+           UUU,UCN,RE,DCHDTVA,DCQDTVA)  
 
     ! Convert the Louis derivatives with respect to the
     ! air-minus-surface virtual temperature difference to
@@ -2299,9 +2301,9 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
       IWATER = 4
       ! roughness length scale set accroding to Ettema et al. (2010)
       if(N==ICE) then
-         Z0(:,N)=LANDICEBAREZ0
+         Z0(:,N)=LANDICEBAREZ0_HELFAND
       else
-         Z0(:,N)=LANDICESNOWZ0
+         Z0(:,N)=LANDICESNOWZ0_HELFAND
       endif
 
     PSMB = PS * 0.01            ! convert to MB
