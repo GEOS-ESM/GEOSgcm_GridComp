@@ -192,7 +192,7 @@ contains
 
     call MAPL_GetResource( CF, USE_NCLOUD_CLIM, Label='USE_NCLOUD_CLIM:',   default=.FALSE.,        RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource( CF, WSUB_OPTION, Label='WSUB_OPTION:',   default= 3,        RC=STATUS) !0- param 1- Use Wsub climatology 2-USE WNET`
+    call MAPL_GetResource( CF, WSUB_OPTION, Label='WSUB_OPTION:',   default= 3,        RC=STATUS) !0- param 1- Use Wsub climatology 2-USE WNET` 3-Symbolic Wnet
     VERIFY_(STATUS)
 
 

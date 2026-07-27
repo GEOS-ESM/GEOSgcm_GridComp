@@ -355,6 +355,7 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     
     !====================large scale condensation tuning/options======
       
+
     call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 6    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, FAC_RI          , 'FAC_RI:'          , DEFAULT= 1.   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, FAC_RL          , 'FAC_RL:'          , DEFAULT= 1.   , RC=STATUS); VERIFY_(STATUS)
@@ -370,7 +371,7 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     
     call MAPL_GetResource( MAPL, MINRHCRIT, 'MINRHCRIT:', DEFAULT =9.51e-01, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, TURNRHCRIT, 'TURNRHCRIT:', DEFAULT = 791., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, TURNRHCRIT_UP, 'TURNRHCRIT_UP:', DEFAULT =1., RC=STATUS); VERIFY_(STATUS) !pressure to turn the profile back at upper trop -1 dsiables it
+    call MAPL_GetResource( MAPL, TURNRHCRIT_UP, 'TURNRHCRIT_UP:', DEFAULT =100., RC=STATUS); VERIFY_(STATUS) !pressure to turn the profile back at upper trop -1 dsiables it
    
     call MAPL_GetResource( MAPL, WBF_partition    , 'USE_BERGERON:'    , DEFAULT=.TRUE.  , RC=STATUS); VERIFY_(STATUS) !WBF partitioning in hystpdf
 
@@ -383,11 +384,10 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     
     !====================general options======
     
-     call MAPL_GetResource(MAPL, USE_NCLOUD_CLIM,  'USE_NCLOUD_CLIM:',   DEFAULT= .FALSE.,    __RC__) !0- param 1- Use Wsub climatology 2-Wnet
-    call MAPL_GetResource(MAPL, SECOND_HYSTPDF, 'SECOND_HYSTPDF:', DEFAULT= .TRUE. ,RC=STATUS) !TRUE to call hyspdf after the microphysics
+    call MAPL_GetResource(MAPL, USE_NCLOUD_CLIM,  'USE_NCLOUD_CLIM:',   DEFAULT= .FALSE.,    __RC__) !0- param 1- Use Wsub climatology 2-Wnet
     call MAPL_GetResource(MAPL, DO_UPD_CLD, 'DO_UPD_CLD:', DEFAULT= .TRUE. ,RC=STATUS) !Udate cloud fraction after micro using top hat approx
     
-    call MAPL_GetResource(MAPL, RHC_OPTION,  'RHC_OPTION:',   DEFAULT= 2 , __RC__) !0- SLingo (1980) 1- Quaas (2012) 2- Wang (2025)
+    call MAPL_GetResource(MAPL, RHC_OPTION,  'RHC_OPTION:',   DEFAULT= 0 , __RC__) !0- SLingo (1980) 1- Quaas (2012) 2- Wang (2025)
     
     call MAPL_GetResource(MAPL, MAKE_SNOW_ICE,  'MAKE_SNOW_ICE:',   DEFAULT= .FALSE.,    __RC__) !treat snow radiatively as ice
     call MAPL_GetResource(MAPL, PRECIPRAD,     'PRECIPRAD:',    DEFAULT= 1.,  __RC__) !0 disables rad effect of precip
@@ -411,7 +411,7 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     end if   
     call MAPL_GetResource(MAPL, DTST, '  DTST:',      DEFAULT= 1.282,   __RC__) !DLTS from minExp to MaxExp
     call MAPL_GetResource(MAPL, TMAXLL, 'TMAXLL:',         DEFAULT= 248.7,  __RC__) !Liquid clouds min T         
-    call MAPL_GetResource(MAPL, MIN_EXP,  'MIN_EXP:',        DEFAULT= 0.5,  __RC__) !Exponent of the relation CFA=CFV^n
+    call MAPL_GetResource(MAPL, MIN_EXP,  'MIN_EXP:',        DEFAULT= 0.35,  __RC__) !Exponent of the relation CFA=CFV^n
     call MAPL_GetResource(MAPL, MAX_EXP, 'MAX_EXP:',       DEFAULT= 1.,   __RC__) !Exponent of the relation CFA=CFV^n
     call MAPL_GetResource(MAPL, RHC_STRAT_SCALE, 'RHC_STRAT_SCALE:',         DEFAULT= 1.0,  __RC__) ! Decrease alpha in high EIS regions    
 
@@ -432,8 +432,8 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, ACC_ENH,        'ACC_ENH:',        DEFAULT= 1.0,    __RC__) !accretion rain-liquid scaling for MG2
     call MAPL_GetResource(MAPL, ACC_ENH_ICE,    'ACC_ENH_ICE:',    DEFAULT= 0.3287,    __RC__) !accretion snow-ice scaling for MG2
     
-    call MAPL_GetResource(MAPL, FDROP_DUST,     'FDROP_DUST:',     DEFAULT= 0.5,    __RC__) !Fraction of dust within droplets for immersion freezing
-    call MAPL_GetResource(MAPL, FDROP_SOOT,     'FDROP_SOOT:',     DEFAULT= 0.05,   __RC__) !Fraction of soot within droplets for immersion freezing        
+    call MAPL_GetResource(MAPL, FDROP_DUST,     'FDROP_DUST:',     DEFAULT= 0.1,    __RC__) !Fraction of dust within droplets for immersion freezing
+    call MAPL_GetResource(MAPL, FDROP_SOOT,     'FDROP_SOOT:',     DEFAULT= 0.001,   __RC__) !Fraction of soot within droplets for immersion freezing        
     call MAPL_GetResource(MAPL, MINCDNC,        'MINCDNC:',        DEFAULT= 25.0,    __RC__) !min nucleated droplet conc. cm-3
     call MAPL_GetResource(MAPL, MTIME,          'MTIME:',          DEFAULT= -1.0,   __RC__) !Mixing time scale for aerosol within the cloud. Default is time step
     call MAPL_GetResource(MAPL, LCCIRRUS,       'LCCIRRUS:',       DEFAULT= 500.0,  __RC__) !Characteristic Length (m) of high freq gravity waves    
@@ -441,7 +441,7 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
 
   
     call MAPL_GetResource(MAPL, DUST_INFAC,     'DUST_INFAC:',     DEFAULT= 1.0,    __RC__) !scalings for the INP concentrations for dep mode
-    call MAPL_GetResource(MAPL, BC_INFAC,       'BC_INFAC:',       DEFAULT= 0.1,    __RC__)
+    call MAPL_GetResource(MAPL, BC_INFAC,       'BC_INFAC:',       DEFAULT= 0.001,    __RC__)
     call MAPL_GetResource(MAPL, ORG_INFAC,      'ORG_INFAC:',      DEFAULT= 1.0,    __RC__)
     call MAPL_GetResource(MAPL, SS_INFAC,       'SS_INFAC:',       DEFAULT= 1.0,    __RC__)    
     call MAPL_GetResource(MAPL, DT_MICRO,       'DT_MICRO:',       DEFAULT= 300.0,  __RC__)  ! time step of the microphysics substepping (s) (MG2) (5 min)
@@ -454,7 +454,7 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     FHETSOOT=BC_INFAC
     FHETDUST=DUST_INFAC
     
-    call MAPL_GetResource(MAPL, WBFFACTOR,   'WBFFACTOR:', DEFAULT= 0.78 ,__RC__) !scaling for the Bergeron-Findeinsen process rate    
+    call MAPL_GetResource(MAPL, WBFFACTOR,   'WBFFACTOR:', DEFAULT= 0.05 ,__RC__) !scaling for the Bergeron-Findeinsen process rate    
     
     micro_mg_berg_eff_factor_in = WBFFACTOR
     call MAPL_GetResource(MAPL, ND_CST ,  'ND_CST:' , DEFAULT=  0.0 ,__RC__) !constant nd (set if greather than zero)      
@@ -479,8 +479,8 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, DROPSZCNV, 'DROPSZCNV:', DEFAULT= 27.6e-6 ,RC=STATUS) !drop vol radius in cnv !only active if not USE_CUP_2M
     call MAPL_GetResource(MAPL, ICESZCNV_SC, 'ICESZCNV_SC:', DEFAULT= 1.248 ,RC=STATUS) !scaling ice eff radius in cnv !only active if not USE_CUP_2M
   
-    call MAPL_GetResource(MAPL, ICE_AUTO_TSC_CNV, 'ICE_AUTO_TSC_CNV:', DEFAULT=TS_AUTO_ICE  ,RC=STATUS) !cnv ice autoconversion time scale
-    call MAPL_GetResource(MAPL, DCS_CNV, 'DCS_CNV:', DEFAULT= DCS ,RC=STATUS) ! CNV ice/snow critical diameter
+    call MAPL_GetResource(MAPL, ICE_AUTO_TSC_CNV, 'ICE_AUTO_TSC_CNV:', DEFAULT=180.  ,RC=STATUS) !cnv ice autoconversion time scale
+    call MAPL_GetResource(MAPL, DCS_CNV, 'DCS_CNV:', DEFAULT= 250.e-6 ,RC=STATUS) ! CNV ice/snow critical diameter
     
     call MAPL_GetResource(MAPL, ACC_ENH_CNV,        'ACC_ENH_CNV:',        DEFAULT= 1.,    __RC__) !accretion rain-liquid efficiency for convective clouds
     call MAPL_GetResource(MAPL, AUT_SCALE_CNV,      'AUT_SCALE_CNV:',      DEFAULT= 1.,    __RC__) !scale factor for liquid autoconversion
@@ -504,7 +504,8 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     
     call MAPL_GetResource(MAPL,  BKG_INP_SC_CNV,      'BKG_INP_SC_CNV:',      DEFAULT= 0.01,       __RC__) ! Scales background INP source
    
-   
+    call MAPL_GetResource(MAPL,   GF2M_DET_LEVEL_AVERAGE, 'GF2M_DET_LEVEL_AVERAGE:',      DEFAULT= .TRUE.,       __RC__) ! .true. use 0.5*(phi(k)+phi(k+1)) .false. suse the local GF2M value phi(k)
+    
     !==============================================================
  
     mui_cnstr8 = MUI_CST
@@ -1383,7 +1384,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
         where (T .gt. 238.0)
          SC_ICE  =  1.0
         end where 
-        SC_ICE  =  MIN(MAX(SC_ICE, 1.0), 1.4)
+        SC_ICE  =  MIN(MAX(SC_ICE, 1.0), 1.8)
         
         
       end if !USE_NCLOUD_CLIM
@@ -1738,6 +1739,37 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
         call MAPL_TimerOff(MAPL,"---CLDMACRO")
         
         
+        do I=1,IM
+          do J=1,JM
+           do K=1,LM
+
+                call Pfreezing( &
+                 1.0 - RHCRIT(I,J,K), &
+                 PDFSHAPE,               &
+                 PLmb(I,J,K),            &
+                 Q(I,J,K),               &
+                 QLLS(I,J,K),            &
+                 QILS(I,J,K),            &
+                 T(I,J,K),               &
+                 CLCN(I,J,K),            &
+                 WSL(I,J,K),             &
+                 WQT(I,J,K),             &
+                 SL2(I,J,K),             &
+                 QT2(I,J,K),             &
+                 W3(I,J,K),              &
+                 W2(I,J,K),              &
+                 QT3(I,J,K),             &
+                 SL3(I,J,K),             &
+                 PDF_A(I,J,K),           &
+                 SC_ICE(I,J,K),          &
+                 CFX(I,J,K),		 & 	
+                 PFRZ(I,J,K) )
+        end do ! IM loop
+         	end do ! JM loop
+       			end do ! LM loop
+         
+         INC_NUC =  INC_NUC*PFRZ !nucleation only happens in the supersaturated portion of the cell
+   
     
     
  !=============================================End cloud macrophysics=====================================
@@ -1775,7 +1807,6 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
   
     CFLIQ=0.0
     CFICE=0.0
-    INC_NUC =  INC_NUC*CLLS !nucleation only happens in the supersaturated portion of the cell
     !Zero-out 3D Precipitation Fluxes
     PFL_LS =  0.0
     PFL_AN =  0.0
@@ -2270,112 +2301,54 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
    
          
          !update water tracers
-       
-          ! Redistribute CN/LS CF/QL/QI
-         ! call REDISTRIBUTE_CLOUDS(RAD_CF, RAD_QL, RAD_QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, RAD_QV, T)
-         !============ Put cloud fraction back in contact with the PDF and create new condensate if neccesary (Barahona et al., GMD, 2014)============
-
-         !recover LS/CN (CF is constant during cloud muphys)
          
          QLCN =  RAD_QL * FQA
          QICN =  RAD_QI * FQA
          QLLS = MAX( RAD_QL - QLCN, 0.)
          QILS = MAX( RAD_QI - QICN, 0.)
           
-         RHCmicro =  RHCRIT
+
           Q =  RAD_QV 
-           do I=1,IM
+        
+        ! DO_UP_CLD how much does the variance change after microphysics 
+          if (DO_UPD_CLD) then   
+            do I=1,IM
 			  do J=1,JM
     			do K= 1, LM
         
-        ! DO_UP_CLD how much does the variance change after microphysics 
-              if (DO_UPD_CLD) then   
-                  call update_cld( &
-                         DT_MOIST                , &
-                         1.- RHCRIT(I, J, K)        , &
-                         PDFSHAPE , &
-                         CNV_FRC(I, J)           , &
-                         SRF_TYPE(I, J)          , &
-                         PLmb(I, J, K)           , &
-                         Q (I, J, K)             , &
-                         QLLS(I, J, K)           , &
-                         QLCN(I, J, K)           , &
-                         QILS(I, J, K)           , &
-                         QICN(I, J, K)           , &
-                         T(I, J, K)              , &
-                         CLLS(I, J, K)           , &
-                         CLCN(I, J, K)           , &
-                         SC_ICE(I, J, K)         , &
-                         NCPI(I, J, K)           , &
-                         NCPL(I, J, K)           , &
-                         RHCmicro(I, J, K))
+                
+                 call update_cld( &
+                     1.0-RHCRIT(I,J,K),       & ! ALPHA
+                     PDFSHAPE,                  &
+                     CNV_FRC(I,J),              &
+                     SRF_TYPE(I,J),             &
+                     PLmb(I,J,K),               &
+                     Q(I,J,K),                  & ! Environmental + parameterized-cloud vapor
+                     QLLS(I,J,K),               & ! Resolved liquid condensate
+                     QILS(I,J,K),               & ! Resolved ice condensate
+                     T(I,J,K),                  &
+                     CLLS(I,J,K),               & ! Updated resolved cloud fraction
+                     CLCN(I,J,K),               & ! Fixed parameterized/anvil cloud fraction
+                     SC_ICE(I,J,K),             &
+                     ZL0(I,J,K),                &
+                     WSL(I,J,K),                &
+                     WQT(I,J,K),                &
+                     SL2(I,J,K),                &
+                     QT2(I,J,K),                &
+                     SLQT(I,J,K),               &
+                     W3(I,J,K),                 &
+                     W2(I,J,K),                 &
+                     QT3(I,J,K),                &
+                     SL3(I,J,K),                &
+                     PDF_A(I,J,K) )
                          
-               end if           
+               
+               end do
+                    end do
+               			end do 
+       end if           
 
-      ! second call to hystpdf with updated variance
-      
-        if (SECOND_HYSTPDF) then   
-           
-            call hystpdf_2M( &
-                      DT_MOIST       , &
-                      1. - RHCmicro(I, J, K) , &
-                      PDFSHAPE       , &
-                      CNV_FRC(I,J)   , &
-                      SRF_TYPE(I,J)  , &
-                      PLmb(I,J,K)    , &
-                      ZL0(I,J,K)     , &
-                      Q(I,J,K)       , &
-                      QLLS(I,J,K)    , &
-                      QLCN(I,J,K)    , &
-                      QILS(I,J,K)    , &
-                      QICN(I,J,K)    , &
-                      T(I,J,K)       , &
-                      CLLS(I,J,K)    , &
-                      CLCN(I,J,K)    , &
-                      NCPL(I,J,K)   , &
-                      NCPI(I,J,K)   , &
-                      WSL(I,J,K)     , &
-                      WQT(I,J,K)     , &
-                      SL2(I,J,K)     , &
-                      QT2(I,J,K)     , &
-                      SLQT(I,J,K)    , &
-                      W3(I,J,K)      , &
-                      W2(I,J,K)      , &
-                      QT3(I,J,K)     , &
-                      SL3(I,J,K)     , &
-                      PDF_A(I,J,K)   , &
-                      TMP3D(I,J,K), &
-#ifdef PDFDIAG
-                      PDF_SIGW1(I,J,K),  &
-                      PDF_SIGW2(I,J,K),  &
-                      PDF_W1(I,J,K),     &
-                      PDF_W2(I,J,K),     &
-                      PDF_SIGTH1(I,J,K), &
-                      PDF_SIGTH2(I,J,K), &
-                      PDF_TH1(I,J,K),    &
-                      PDF_TH2(I,J,K),    &
-                      PDF_SIGQT1(I,J,K), &
-                      PDF_SIGQT2(I,J,K), &
-                      PDF_QT1(I,J,K),    &
-                      PDF_QT2(I,J,K),    &
-                      PDF_RQTTH(I,J,K),  &
-                      PDF_RWTH(I,J,K),   &
-                      PDF_RWQT(I,J,K),   &
-#endif
-                      WTHV2(I,J,K)   , &
-                      WQL(I,J,K)     , &
-                      WBF_partition        , & 
-                      .true., &
-                      SC_ICE(I, J, K))
-         
-           end if 
-           
-           end do ! IM loop
-         end do ! JM loop
-       end do ! LM loop
-     
-        
-        RAD_CF = MAX(MIN(CLLS + CLCN, 1.0), 0.)
+       RAD_CF = MAX(MIN(CLLS + CLCN, 1.0), 0.)
         
        if (USE_CF_GEOM_CORR) then 
              do I=1,IM
@@ -2391,9 +2364,6 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
          CLCN =  RAD_CF * FQA
          CLLS = MAX( RAD_CF - CLCN, 0.)
         
-        !call REDISTRIBUTE_CLOUDS(RAD_CF, RAD_QL, RAD_QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, RAD_QV, T)
-         
-         
          !=============================================End Stratiform cloud processes==========================================
          !======================================================================================================================
 

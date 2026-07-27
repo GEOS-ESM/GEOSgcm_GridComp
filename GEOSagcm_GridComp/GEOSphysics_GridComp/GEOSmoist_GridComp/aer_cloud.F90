@@ -570,7 +570,7 @@
     if (antot .gt. 1.0e2) then !only if aer is present  
 	    if (tparc .lt. To_ice)  then !only if T below freezing  
     
-        CALL prop_ice(tparc, pparc)
+        	CALL prop_ice(tparc, pparc)
   
             if (tparc .gt. Thom) then !only het freezing
 
@@ -582,7 +582,7 @@
                 fdrop_bc    =  fd_soot   !fraction of  bc incorporated into the droplets
                 fcoa_dust   =  0.0  !fraction of dust that is coated with H2SO4 (not used right now)
 
-            	if (sum(ndust_ice)+ norg_ice+ nbc_ice .gt. 1.e3) then !only if IN are present 
+            	if (sum(ndust_ice)+ norg_ice+ nbc_ice .gt. 1.e2) then !only if IN are present 
                     !Only immersion freezing considered for mixed-phase regime)		            
                     call  INimmersion(INimm, dINimm, waux_ice,  Immersion_param) 		 
 
@@ -591,7 +591,7 @@
 
 
                     call IceParam (sigwparc,  &
-                    nhet, nice, smaxice, nlim) ! don not call deposition above 235 K
+                    nhet, nice, smaxice, nlim) !Deposition INP
                 end if 
 
                 sc_ice = 1.0
@@ -602,13 +602,6 @@
                 nhet, nice, smaxice, nlim) 
 
             end if	
-
-	! the distribution of relative humidity is assumed normal centered around the RH mean%
-
-	          
-		        ! pfrz_inc_r8  =    1.0d0- 0.5d0*(1.0d0+erf(aux))    
-                ! pfrz_inc_r8  =    min(max(pfrz_inc_r8, 0.0), 0.999)	
-
 	    end if
     end if 
 
@@ -705,21 +698,6 @@ real :: aux2, zws
     w_ls  =  w_ls + zws !large scale W (m/s)
 
 
-
-
-! original ZWS code
-    !aux1=PLE(i,j,LM)/(287.04*(T(i,j,LM)*(1.+0.608*Q(i,j,LM)))) ! air_dens (kg m^-3)                          
-                         !hfs = -SH  (i,j) ! W m^-2
-                         !hfl = -EVAP(i,j) ! kg m^-2 s^-1
-                         !aux2= (hfs/MAPL_CP + 0.608*T(i,j,LM)*hfl)/aux1 ! buoyancy flux (h+le)                                                                        
-                         !aux3= ZLE(I, J, NINT(KPBLSC(I,J)))           ! pbl height (m)
-                         !-convective velocity scale W* (m/s)
-                         !ZWS(i,j) = max(0.,0.001-1.5*0.41*MAPL_GRAV*aux2*aux3/T(i,j,LM))
-                        ! ZWS(i,j) = 1.2*ZWS(i,j)**0.3333 ! m/s 
-                         
-    
-     
-
 end subroutine vertical_vel_variance
 !=======================================================================
 !=======================================================================
@@ -791,223 +769,223 @@ end subroutine Wneuralnet
 !=======================================================================
 !============================Emulates the Wnet Neural Network==========
 subroutine Wnet_sym(sigmaw, T, P, Z, AIRD, U, V, QV, MASS, KPBL_SC)
-#ifdef _OPENMP
-  use omp_lib, only: omp_in_parallel
-#endif
-  implicit none
+    #ifdef _OPENMP
+      use omp_lib, only: omp_in_parallel
+    #endif
+      implicit none
 
-  real, intent(in)  :: T(:,:,:)
-  real, intent(in)  :: P(:,:,:)
-  real, intent(in)  :: Z(:,:,:)
-  real, intent(in)  :: AIRD(:,:,:)
-  real, intent(in)  :: U(:,:,:)
-  real, intent(in)  :: V(:,:,:)
-  real, intent(in)  :: QV(:,:,:)
-  real, intent(in)  :: MASS(:,:,:)
-  real, intent(in)  :: KPBL_SC(:,:)
+      real, intent(in)  :: T(:,:,:)
+      real, intent(in)  :: P(:,:,:)
+      real, intent(in)  :: Z(:,:,:)
+      real, intent(in)  :: AIRD(:,:,:)
+      real, intent(in)  :: U(:,:,:)
+      real, intent(in)  :: V(:,:,:)
+      real, intent(in)  :: QV(:,:,:)
+      real, intent(in)  :: MASS(:,:,:)
+      real, intent(in)  :: KPBL_SC(:,:)
 
-  real, intent(out) :: sigmaw(:,:,:)
+      real, intent(out) :: sigmaw(:,:,:)
 
-  integer :: i, j, k, kk
-  integer :: im, jm, nl
-  integer :: ksfc
-  integer :: kpbl
+      integer :: i, j, k, kk
+      integer :: im, jm, nl
+      integer :: ksfc
+      integer :: kpbl
 
-  real :: p_hpa
-  real :: ps_pa
-  real :: fit
-  real :: tmp_sigma
+      real :: p_hpa
+      real :: ps_pa
+      real :: fit
+      real :: tmp_sigma
 
-  real :: v_T
-  real :: v_P
-  real :: v_LOGP
-  real :: v_WIND
-  real :: v_U
-  real :: v_V
-  real :: v_QV
-  real :: v_PS_raw
-  real :: v_PBLH
-  real :: v_TQV
-  real :: v_AIRD_surf
-  real :: v_RHO_DIFF
-  real :: v_AIRD
-  real :: v_ABOVE_PBL
-  real :: v_H
+      real :: v_T
+      real :: v_P
+      real :: v_LOGP
+      real :: v_WIND
+      real :: v_U
+      real :: v_V
+      real :: v_QV
+      real :: v_PS_raw
+      real :: v_PBLH
+      real :: v_TQV
+      real :: v_AIRD_surf
+      real :: v_RHO_DIFF
+      real :: v_AIRD
+      real :: v_ABOVE_PBL
+      real :: v_H
 
-  real :: x_T
-  real :: x_P
-  real :: x_LOGP
-  real :: x_WIND
-  real :: x_QV
-  real :: x_PS
-  real :: x_PBLH
-  real :: x_TQV
-  real :: x_AIRD_surf
-  real :: x_RHO_DIFF
-  real :: x_ABOVE_PBL
+      real :: x_T
+      real :: x_P
+      real :: x_LOGP
+      real :: x_WIND
+      real :: x_QV
+      real :: x_PS
+      real :: x_PBLH
+      real :: x_TQV
+      real :: x_AIRD_surf
+      real :: x_RHO_DIFF
+      real :: x_ABOVE_PBL
 
-  real :: x_PS_sq
-  real :: col_term_tqv
-  real :: col_term_aird
-  real :: col_term_pblh
-  real :: col_abs_aird_ps
-  real :: expr_outer
-  real :: expr_inner
-  real :: logarg1
-  real :: logarg2
+      real :: x_PS_sq
+      real :: col_term_tqv
+      real :: col_term_aird
+      real :: col_term_pblh
+      real :: col_abs_aird_ps
+      real :: expr_outer
+      real :: expr_inner
+      real :: logarg1
+      real :: logarg2
 
-  im = size(T, 1)
-  jm = size(T, 2)
-  nl = size(T, 3)
+      im = size(T, 1)
+      jm = size(T, 2)
+      nl = size(T, 3)
 
 
-  ! Preserve previous near-surface choice.
-  ! If the true surface level is nl, change this to ksfc = nl.
-  ksfc = max(1, nl - 1)
+      ! Preserve previous near-surface choice.
+      ! If the true surface level is nl, change this to ksfc = nl.
+      ksfc = max(1, nl - 1)
 
-#ifdef _OPENMP
-!$omp parallel do collapse(2) schedule(static) default(shared)              &
-!$omp private(i,j,k,kk,kpbl,p_hpa,ps_pa,fit,tmp_sigma,                     &
-!$omp         v_T,v_P,v_LOGP,v_WIND,v_U,v_V,v_QV,v_PS_raw,v_PBLH,          &
-!$omp         v_TQV,v_AIRD_surf,v_RHO_DIFF,v_AIRD,v_ABOVE_PBL,v_H,         &
-!$omp         x_T,x_P,x_LOGP,x_WIND,x_QV,x_PS,x_PBLH,x_TQV,                &
-!$omp         x_AIRD_surf,x_RHO_DIFF,x_ABOVE_PBL,x_PS_sq,                  &
-!$omp         col_term_tqv,col_term_aird,col_term_pblh,                    &
-!$omp         col_abs_aird_ps,expr_outer,expr_inner,logarg1,logarg2)        &
-!$omp if (.not. omp_in_parallel())
-#endif
-  do j = 1, jm
-    do i = 1, im
+    #ifdef _OPENMP
+    !$omp parallel do collapse(2) schedule(static) default(shared)              &
+    !$omp private(i,j,k,kk,kpbl,p_hpa,ps_pa,fit,tmp_sigma,                     &
+    !$omp         v_T,v_P,v_LOGP,v_WIND,v_U,v_V,v_QV,v_PS_raw,v_PBLH,          &
+    !$omp         v_TQV,v_AIRD_surf,v_RHO_DIFF,v_AIRD,v_ABOVE_PBL,v_H,         &
+    !$omp         x_T,x_P,x_LOGP,x_WIND,x_QV,x_PS,x_PBLH,x_TQV,                &
+    !$omp         x_AIRD_surf,x_RHO_DIFF,x_ABOVE_PBL,x_PS_sq,                  &
+    !$omp         col_term_tqv,col_term_aird,col_term_pblh,                    &
+    !$omp         col_abs_aird_ps,expr_outer,expr_inner,logarg1,logarg2)        &
+    !$omp if (.not. omp_in_parallel())
+    #endif
+      do j = 1, jm
+        do i = 1, im
 
-      kpbl = nint(KPBL_SC(i,j))
-      kpbl = max(1, min(nl, kpbl))
+          kpbl = nint(KPBL_SC(i,j))
+          kpbl = max(1, min(nl, kpbl))
 
-      ! TQV = SUM(Q * MASS, 3), computed once per column.
-      v_TQV = 0.0
-      do kk = 1, nl
-        v_TQV = v_TQV + QV(i,j,kk) * MASS(i,j,kk)
+          ! TQV = SUM(Q * MASS, 3), computed once per column.
+          v_TQV = 0.0
+          do kk = 1, nl
+            v_TQV = v_TQV + QV(i,j,kk) * MASS(i,j,kk)
+          end do
+
+          v_PS_raw    = P(i,j,ksfc)
+          v_AIRD_surf = AIRD(i,j,ksfc)
+          v_PBLH      = Z(i,j,kpbl)
+
+          ps_pa = pressure_to_pa(v_PS_raw)
+
+          x_PS = (ps_pa - 9.80545672498281201e+04) / &
+                 7.70553052716232560e+03
+
+          x_PBLH = (v_PBLH - 7.78281741614887210e+02) / &
+                   5.95139611995364589e+02
+
+          x_TQV = (v_TQV - 2.03012595146786659e+01) / &
+                  1.68473199305936454e+01
+
+          x_AIRD_surf = (v_AIRD_surf - 1.21902442134219413e+00) / &
+                        9.15193317051516964e-02
+
+          x_PS_sq = x_PS * x_PS
+
+          col_term_tqv = 0.32735726e0 * x_TQV * x_TQV
+          col_term_aird = 0.32735726e0 * sqrt(abs(0.54877356790403398e0 * x_AIRD_surf))
+          col_term_pblh = abs(x_PBLH) - 0.5929808e0
+          col_abs_aird_ps = abs(x_AIRD_surf + x_PS)
+
+          do k = 1, nl
+
+            v_T    = T(i,j,k)
+            v_P    = P(i,j,k)
+            v_H    = Z(i,j,k)
+            v_AIRD = AIRD(i,j,k)
+            v_U    = U(i,j,k)
+            v_V    = V(i,j,k)
+            v_QV   = QV(i,j,k)
+
+            p_hpa = pressure_to_hpa(v_P)
+
+            v_WIND      = sqrt(v_U*v_U + v_V*v_V)
+            v_RHO_DIFF  = v_AIRD_surf - v_AIRD
+            v_LOGP      = log(max(p_hpa, 1.0e-6))
+            v_ABOVE_PBL = v_H - v_PBLH
+
+            x_T = (v_T - 2.50971579001007086e+02) / &
+                  2.97328627478934067e+01
+
+            x_P = (p_hpa - 5.25304624999999987e+02) / &
+                  3.30695347757735135e+02
+
+            x_LOGP = (v_LOGP - 5.84522665790462526e+00) / &
+                     1.14550578132277692e+00
+
+            x_WIND = (v_WIND - 1.29212317045716834e+01) / &
+                     1.09098966237853272e+01
+
+            x_QV = (v_QV - 2.62224156753656070e-03) / &
+                   4.07880549839211622e-03
+
+            x_RHO_DIFF = (v_RHO_DIFF - 5.30213507748425017e-01) / &
+                         3.96488081788407609e-01
+
+            x_ABOVE_PBL = (v_ABOVE_PBL - 6.87774289437753669e+03) / &
+                          7.68648815647990159e+03
+
+            expr_outer = 0.9981903025485e0 - &
+                         0.4346805e0 * sqrt(abs(x_P - 0.46593115000000002e0))
+
+            logarg1 = x_QV * (x_AIRD_surf + 2.0e0*x_LOGP) + abs(x_RHO_DIFF)
+            logarg2 = 0.110092536e0 - 0.54336566014879639e0*x_AIRD_surf
+
+            expr_inner =                                                          &
+                 -0.025440715507416e0*x_ABOVE_PBL                                &
+                 -0.025440715507416e0*x_AIRD_surf                                &
+                 +0.08306832e0*x_P*(x_AIRD_surf + x_WIND)                        &
+                 +0.08306832e0*x_PS                                               &
+                 -0.08306832e0*x_T*log(abs(logarg1) + 1.0e-6)                    &
+                 +0.08306832e0*x_T                                                &
+                 +0.08306832e0*x_TQV                                              &
+                 +0.08306832e0*(x_P*col_term_tqv + col_term_aird)                 &
+                    *(-x_RHO_DIFF*x_WIND + x_PS_sq + col_term_pblh)               &
+                 -0.0695012982288482e0*log(abs(logarg2) + 1.0e-6)                 &
+                    *abs(x_RHO_DIFF)                                              &
+                 +0.08306832e0*abs(x_ABOVE_PBL)                                  &
+                 +0.08306832e0*col_abs_aird_ps                                   &
+                 +0.08306832e0*abs(x_LOGP*x_QV + x_P*x_QV + x_RHO_DIFF - x_T)     &
+                 +0.811524920937721e0
+
+            fit = expr_outer * expr_inner
+
+            ! Inverse of sqrt target transform: sigmaW = max(fit, 0)^2.
+            tmp_sigma = max(fit, 0.0)**2
+            sigmaw(i,j,k) = max(tmp_sigma, 0.0)
+
+          end do
+        end do
       end do
+    #ifdef _OPENMP
+    !$omp end parallel do
+    #endif
 
-      v_PS_raw    = P(i,j,ksfc)
-      v_AIRD_surf = AIRD(i,j,ksfc)
-      v_PBLH      = Z(i,j,kpbl)
+    contains
 
-      ps_pa = pressure_to_pa(v_PS_raw)
+      pure real function pressure_to_hpa(p_in)
+        real, intent(in) :: p_in
 
-      x_PS = (ps_pa - 9.80545672498281201e+04) / &
-             7.70553052716232560e+03
+        if (abs(p_in) > 2000.0) then
+          pressure_to_hpa = 0.01e0 * p_in
+        else
+          pressure_to_hpa = p_in
+        end if
+      end function pressure_to_hpa
 
-      x_PBLH = (v_PBLH - 7.78281741614887210e+02) / &
-               5.95139611995364589e+02
+      pure real function pressure_to_pa(p_in)
+        real, intent(in) :: p_in
 
-      x_TQV = (v_TQV - 2.03012595146786659e+01) / &
-              1.68473199305936454e+01
-
-      x_AIRD_surf = (v_AIRD_surf - 1.21902442134219413e+00) / &
-                    9.15193317051516964e-02
-
-      x_PS_sq = x_PS * x_PS
-
-      col_term_tqv = 0.32735726e0 * x_TQV * x_TQV
-      col_term_aird = 0.32735726e0 * sqrt(abs(0.54877356790403398e0 * x_AIRD_surf))
-      col_term_pblh = abs(x_PBLH) - 0.5929808e0
-      col_abs_aird_ps = abs(x_AIRD_surf + x_PS)
-
-      do k = 1, nl
-
-        v_T    = T(i,j,k)
-        v_P    = P(i,j,k)
-        v_H    = Z(i,j,k)
-        v_AIRD = AIRD(i,j,k)
-        v_U    = U(i,j,k)
-        v_V    = V(i,j,k)
-        v_QV   = QV(i,j,k)
-
-        p_hpa = pressure_to_hpa(v_P)
-
-        v_WIND      = sqrt(v_U*v_U + v_V*v_V)
-        v_RHO_DIFF  = v_AIRD_surf - v_AIRD
-        v_LOGP      = log(max(p_hpa, 1.0e-6))
-        v_ABOVE_PBL = v_H - v_PBLH
-
-        x_T = (v_T - 2.50971579001007086e+02) / &
-              2.97328627478934067e+01
-
-        x_P = (p_hpa - 5.25304624999999987e+02) / &
-              3.30695347757735135e+02
-
-        x_LOGP = (v_LOGP - 5.84522665790462526e+00) / &
-                 1.14550578132277692e+00
-
-        x_WIND = (v_WIND - 1.29212317045716834e+01) / &
-                 1.09098966237853272e+01
-
-        x_QV = (v_QV - 2.62224156753656070e-03) / &
-               4.07880549839211622e-03
-
-        x_RHO_DIFF = (v_RHO_DIFF - 5.30213507748425017e-01) / &
-                     3.96488081788407609e-01
-
-        x_ABOVE_PBL = (v_ABOVE_PBL - 6.87774289437753669e+03) / &
-                      7.68648815647990159e+03
-
-        expr_outer = 0.9981903025485e0 - &
-                     0.4346805e0 * sqrt(abs(x_P - 0.46593115000000002e0))
-
-        logarg1 = x_QV * (x_AIRD_surf + 2.0e0*x_LOGP) + abs(x_RHO_DIFF)
-        logarg2 = 0.110092536e0 - 0.54336566014879639e0*x_AIRD_surf
-
-        expr_inner =                                                          &
-             -0.025440715507416e0*x_ABOVE_PBL                                &
-             -0.025440715507416e0*x_AIRD_surf                                &
-             +0.08306832e0*x_P*(x_AIRD_surf + x_WIND)                        &
-             +0.08306832e0*x_PS                                               &
-             -0.08306832e0*x_T*log(abs(logarg1) + 1.0e-6)                    &
-             +0.08306832e0*x_T                                                &
-             +0.08306832e0*x_TQV                                              &
-             +0.08306832e0*(x_P*col_term_tqv + col_term_aird)                 &
-                *(-x_RHO_DIFF*x_WIND + x_PS_sq + col_term_pblh)               &
-             -0.0695012982288482e0*log(abs(logarg2) + 1.0e-6)                 &
-                *abs(x_RHO_DIFF)                                              &
-             +0.08306832e0*abs(x_ABOVE_PBL)                                  &
-             +0.08306832e0*col_abs_aird_ps                                   &
-             +0.08306832e0*abs(x_LOGP*x_QV + x_P*x_QV + x_RHO_DIFF - x_T)     &
-             +0.811524920937721e0
-
-        fit = expr_outer * expr_inner
-
-        ! Inverse of sqrt target transform: sigmaW = max(fit, 0)^2.
-        tmp_sigma = max(fit, 0.0)**2
-        sigmaw(i,j,k) = max(tmp_sigma, 0.0)
-
-      end do
-    end do
-  end do
-#ifdef _OPENMP
-!$omp end parallel do
-#endif
-
-contains
-
-  pure real function pressure_to_hpa(p_in)
-    real, intent(in) :: p_in
-
-    if (abs(p_in) > 2000.0) then
-      pressure_to_hpa = 0.01e0 * p_in
-    else
-      pressure_to_hpa = p_in
-    end if
-  end function pressure_to_hpa
-
-  pure real function pressure_to_pa(p_in)
-    real, intent(in) :: p_in
-
-    if (abs(p_in) < 2000.0) then
-      pressure_to_pa = 100.0e0 * p_in
-    else
-      pressure_to_pa = p_in
-    end if
-  end function pressure_to_pa
+        if (abs(p_in) < 2000.0) then
+          pressure_to_pa = 100.0e0 * p_in
+        else
+          pressure_to_pa = p_in
+        end if
+      end function pressure_to_pa
 
 end subroutine Wnet_sym
 
@@ -1015,9 +993,7 @@ end subroutine Wnet_sym
 !=======================aerosol properties utilities====================
 !=======================================================================
 ! ==================================================================== 
- 
    
-      
       
 !!!!!!!!!!!!!!======================================     
 !!!!!!!!!   Subroutine ARG_act: finds the activated droplet number following Abdul_Razzak and Ghan 2000.
@@ -1149,7 +1125,7 @@ end subroutine Wnet_sym
 !!
 !      Code Developer
 !      Donifan Barahona 
-!      donifanb@umbc.edu
+!      donifan.o.barahona@nasa.gov
 !=======================================================================
 !
       subroutine ccnspec (tparc,pparc,nmodes)
@@ -1177,13 +1153,6 @@ end subroutine Wnet_sym
 	 amfi = max(1.0d0-amfs_par(k),zero_par)                              ! insoluble mass.frac.
          denp = amfs_par(k)*dens_par(k) + amfi*deni_par(k)                   ! particle density
 
-       ! if( dens_par(k).eq.0.0 .or. deni_par(k).eq.0.0 ) then
-       !     print *, '    k: ',k
-       !     print *, ' denp: ',denp
-       !     print *, ' amw : ',amw_par,    '  denw: ',denw_par
-       !     print *, ' amfs: ',amfs_par(k),'  dens: ',dens_par(k)
-       !     print *, ' amfi: ',amfi,       '  deni: ',deni_par(k)
-       ! endif
 
         if( denp.ne.0.0D0 ) then
 
@@ -1224,7 +1193,7 @@ end subroutine Wnet_sym
 !
 !      Code Developer
 !      Donifan Barahona 
-!      donifanb@umbc.edu
+!      donifan.o.barahona@nasa.gov
 
 !=======================================================================
 !
@@ -1409,10 +1378,6 @@ end subroutine Wnet_sym
 !     modal formulation according to fountoukis and nenes (2004)
 !
 ! *** written by athanasios nenes
-!
-!!     Code Developer
-!      Donifan Barahona 
-!      donifanb@umbc.edu
 !=======================================================================
 !
       subroutine sintegral (spar, summa, sum, summat)
@@ -1491,11 +1456,6 @@ end subroutine Wnet_sym
 ! *** subroutine props
 ! *** this subroutine calculates the thermophysical properties for the CCN activ param
 !
-! *** written by athanasios nenes
-!      Code Developer
-!      Donifan Barahona 
-!      donifanb@umbc.edu
-
 !=======================================================================
 !
       subroutine props
@@ -1892,7 +1852,7 @@ END
       vmin_ice=0.005d0 !default values             
       vmax_ice=2.5d0 !increased 10/14/14 !DONIF
       sigmav_ice=sigma_w !standard deviation of the V distribution m/s
-      vmax_ice= max(min(miuv_ice+(4d0*sigmav_ice), vmax_ice), vmin_ice +0.01) !Upper limit for integration
+      vmax_ice= max(min(miuv_ice+(2.5d0*sigmav_ice), vmax_ice), vmin_ice +0.01) !Upper limit for integration
       
       if ((sigmav_ice .lt. 0.05) .or. (T_ice .gt. Thom))  then  ! if very narrow distribution just use an average
             use_av_v= .TRUE.
@@ -2309,18 +2269,14 @@ END
       
 
       !Weight to avoid overestimating IN effect NEW 08/01/13
-           
-if (.false.) then 
-      if (FDS .gt. 0.0) then 
-        sc_ice = (shom_ice+1.0)*FDS + sc_ice*(1.0-FDS)    
-      end if    
-  else
-   if (nice .gt. zero_par) then 
-     sc_ice = ((shom_ice+1.0)*NHOM + sc_ice*nhet)/nice
-      else
-     sc_ice = shom_ice+1.0
-    end if      
-  end if 
+       
+       if (.false.) then 
+           if (nice .gt. zero_par) then 
+             sc_ice = ((shom_ice+1.0)*NHOM + sc_ice*nhet)/nice
+              else
+             sc_ice = shom_ice+1.0
+            end if      
+       end if 
       
        sc_ice=min(shom_ice+1.0, sc_ice)
 
@@ -3273,7 +3229,8 @@ if (.false.) then
 		            END DO 		      
                 !dust
                     Nd=Naux*fdrop_dust
-                    dNd=dNaux*fdrop_dust	   
+                    dNd=dNaux*fdrop_dust
+                    ndust_imm = Nd	   
                 ! soot    
 
                     ahet=areabc_ice  
