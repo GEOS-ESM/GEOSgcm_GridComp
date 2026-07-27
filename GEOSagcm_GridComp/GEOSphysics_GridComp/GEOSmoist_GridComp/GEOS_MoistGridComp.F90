@@ -5867,6 +5867,9 @@ contains
        DZET     =     (ZLE0(:,:,0:LM-1) - ZLE0(:,:,1:LM) ) ! Layer thickness (m)
        DQST3    = GEOS_DQSAT(T, PLmb, QSAT=QST3)
 
+       call MAPL_GetPointer(EXPORT, PTR3D, 'RH1', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = MAX(MIN( Q/QST3, 1.02 ),0.0)
+
        ! Lower tropospheric stability and estimated inversion strength
        call MAPL_GetPointer(EXPORT, LTS,   'LTS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, EIS,   'EIS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
