@@ -8417,7 +8417,7 @@ ENDIF
                       ( sqrt(po_cup(i,k)/psur(i))/alpha2 * prec_flx(i,k+1)/eff_c_conv(i) )**alpha3
 
          !--units here: kg[water]/kg[air}/sec * kg[air]/m3 * m = kg[water]/m2/sec
-         evap_bcb(i,k)= evap_bcb(i,k)*dp/g
+         evap_bcb(i,k)= min(evap_bcb(i,k)*dp/g,0.9999*(xmb(i)*(pwo(i,k) + edto(i)*pwdo(i,k))+prec_flx(i,k+1)))
 
         else
 
