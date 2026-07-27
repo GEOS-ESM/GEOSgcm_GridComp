@@ -927,14 +927,15 @@ contains
   !----------------------------------------------------------------------
   !----------------------------------------------------------------------  
   !----------------------------------------------------------------------
+  
   SUBROUTINE LakeTopoCat_on_tiles_from_raster( n_tile, nc_rst, nr_rst, tile_id, &
        tile_typ, tile_lake_type, rc)
 
     ! GEOS lake tiles include coastal ocean surfaces such as fjords and estuaries
     !
-    ! To distinguish between these surfaces and "real" lakes (inland water), create
-    ! a tile-space flag (field) to the nc4 tile file with information based on LakeTopoCat v1.1 data.
-        
+    ! To distinguish between these surfaces and "real" lakes (inland water), create a tile-space
+    ! flag (field) "lake_type" in the nc4 tile file w/ info based on LakeTopoCat v1.1 data.
+    !
     ! Map preprocessed LakeTopoCat / ReachTopoCat any-touch support
     ! (30 arcsec resolution, 10 deg x 10 deg chunks)
     ! to tile space using the 30 arcsec raster tile-id map.
@@ -946,19 +947,19 @@ contains
     ! 2) create_mapping() is designed for land tiles only (1..n_land),
     !    which is appropriate for land-only products such as MODIS snow albedo,
     !    but this LakeTopoCat / ReachTopoCat diagnostic must be computed for
-    !    all candidate tile types in the tile file, including lake-like and
+    !    all water tile types in the tile file, including lake-like and
     !    ocean tiles where present.
     ! 3) Lake/reach support inputs are already on the same global 30-arcsec
     !    grid as the raster tile-id map (43200x21600), so each 30" pixel can
     !    be mapped directly to a tile via tile_id(iG,jG). For this diagnostic
     !    we only need any-touch support, not area-weighted remapping.
     !
-    ! Output tile_lake_type:
+    ! Output vector tile_lake_type ("lake_type"):
     !   -9999 = UNDEF / excluded, e.g. land typ==100 or landice typ==20
-    !       0 = no LakeTopoCat lake or ReachTopoCat reach touch
-    !       1 = lake touch only
-    !       2 = reach touch only
-    !       3 = lake + reach touch
+    !       0 = tile does not intersect  with LakeTopoCat lake or ReachTopoCat reach    ("no touch")
+    !       1 = tile          intersects with LakeTopoCat lake  only                    ("lake  touch only")
+    !       2 = tile          intersects with ReachTopoCat reach only                   ("reach touch only")
+    !       3 = tile          intersects with LakeTopoCat lake and ReachTopoCat reach   ("lake + reach touch")
     !
 
     implicit none
@@ -971,11 +972,15 @@ contains
     integer,           intent(out)           :: tile_lake_type(1:n_tile)
     integer,           intent(out), optional :: rc
 
-    integer, parameter :: LAKETYPE_UNDEF = -9999
+    ! -------------------------------------------------------
+    
+    integer,         parameter :: LAKETYPE_UNDEF = -9999
 
-    integer(kind=4), parameter :: nc_10 = 1200
-    integer(kind=4), parameter :: nr_10 = 1200
+    integer(kind=4), parameter :: nc_10          =  1200
+    integer(kind=4), parameter :: nr_10          =  1200
 
+    ! -------------------------------------------------------
+    
     integer       :: status, ncid, varid
     integer       :: ix, jx, ii, jj
     integer       :: iLL, jLL, iG, jG, tid
@@ -1155,46 +1160,46 @@ contains
 
     ! Define lake_type in the freshly written nc4 tile file.
     ! In the normal make_bcs workflow this variable should not already exist;
-    ! if it does, NF_DEF_VAR will fail rather than silently replacing data.    
+    ! if it does, NF_DEF_VAR will fail rather than silently replace data.    
 
-       status = NF_REDEF(ncid)                                                        ; VERIFY_(status)
+    status = NF_REDEF(ncid)                                                        ; VERIFY_(status)
 
-       status = NF_DEF_VAR(ncid, 'lake_type', NF_INT, 1, (/dimid_tile/), &
-            varid_lake_type)                                                          ; VERIFY_(status)
+    status = NF_DEF_VAR(ncid, 'lake_type', NF_INT, 1, (/dimid_tile/), &
+         varid_lake_type)                                                          ; VERIFY_(status)
 
-       ! _FillValue should be defined before leaving define mode.
+    ! _FillValue should be defined before leaving define mode.
 
-       status = NF_PUT_ATT_INT(ncid, varid_lake_type, '_FillValue', NF_INT, 1, &
-            fill_value)                                                               ; VERIFY_(status)
+    status = NF_PUT_ATT_INT(ncid, varid_lake_type, '_FillValue', NF_INT, 1, &
+         fill_value)                                                               ; VERIFY_(status)
 
-       status = NF_PUT_ATT_INT(ncid, varid_lake_type, 'missing_value', NF_INT, 1, &
-            fill_value)                                                               ; VERIFY_(status)
+    status = NF_PUT_ATT_INT(ncid, varid_lake_type, 'missing_value', NF_INT, 1, &
+         fill_value)                                                               ; VERIFY_(status)
 
-       mylongname = 'flag identifying intersection of lake tile with a lake polygon or reach line from LakeTopoCat v1.1 data'
-       status = NF_PUT_ATT_TEXT(ncid, varid_lake_type, 'long_name', &
-            len_trim(mylongname), mylongname)                                         ; VERIFY_(status)
-       
-       status = NF_PUT_ATT_TEXT(ncid, varid_lake_type, 'units', 1, '1')               ; VERIFY_(status)
-       
-       status = NF_PUT_ATT_INT(ncid, varid_lake_type, 'flag_values', NF_INT, 5, &
-            flag_values)                                                              ; VERIFY_(status)
+    mylongname = 'flag identifying intersection of water-type tile with lake polygon and/or reach line from LakeTopoCat v1.1 data'
+    status = NF_PUT_ATT_TEXT(ncid, varid_lake_type, 'long_name', &
+         len_trim(mylongname), mylongname)                                         ; VERIFY_(status)
 
-       flagmeanings = 'undefined, no_lake_or_reach_intersection, lake_intersection_only, reach_intersection_only, lake_and_reach_intersection'
-       status = NF_PUT_ATT_TEXT(ncid, varid_lake_type, 'flag_meanings', &
-            len_trim(flagmeanings), flagmeanings)                                     ; VERIFY_(status)
-       
-       comment = 'Defined for typ==0 (ocean) and typ==19 (lake); set to -9999 otherwise (land or landice).'
-       status = NF_PUT_ATT_TEXT(ncid, varid_lake_type, 'comment', &
-            len_trim(comment), comment)                                               ; VERIFY_(status)
+    status = NF_PUT_ATT_TEXT(ncid, varid_lake_type, 'units', 1, '1')               ; VERIFY_(status)
 
-       status = NF_ENDDEF(ncid)                                                       ; VERIFY_(status)
+    status = NF_PUT_ATT_INT(ncid, varid_lake_type, 'flag_values', NF_INT, 5, &
+         flag_values)                                                              ; VERIFY_(status)
+
+    flagmeanings = 'undefined, no_lake_or_reach_intersection, lake_intersection_only, reach_intersection_only, lake_and_reach_intersection'
+    status = NF_PUT_ATT_TEXT(ncid, varid_lake_type, 'flag_meanings', &
+         len_trim(flagmeanings), flagmeanings)                                     ; VERIFY_(status)
+
+    comment = 'Defined for typ==0 (ocean) and typ==19 (lake); set to -9999 otherwise (land or landice).'
+    status = NF_PUT_ATT_TEXT(ncid, varid_lake_type, 'comment', &
+         len_trim(comment), comment)                                               ; VERIFY_(status)
+
+    status = NF_ENDDEF(ncid)                                                       ; VERIFY_(status)
 
     ! Write lake_type data and close file.
 
     status = NF_PUT_VARA_INT(ncid, varid_lake_type, (/1/), (/n_tile/), &
-         lake_type)                                                              ; VERIFY_(status)
-
-    status = NF_CLOSE(ncid)                                                           ; VERIFY_(status)
+         lake_type)                                                                ; VERIFY_(status)
+    
+    status = NF_CLOSE(ncid)                                                        ; VERIFY_(status)
 
   END SUBROUTINE AppendLakeTypeToTileNC4
   !----------------------------------------------------------------------  
@@ -1231,7 +1236,7 @@ contains
 
     REAL, allocatable                  :: limits(:,:)
 
-    REAL :: mnx,mxx,mny,mxy,dx,dy,d2r,lats,sum1,dx_gcm,area_rst
+    REAL                               :: mnx,mxx,mny,mxy,dx,dy,d2r,lats,sum1,dx_gcm,area_rst
 
     REAL,    allocatable, dimension(:) :: tile_ele, tile_area,tile_area_rst  
     integer                            :: IM(2), JM(2)
@@ -1247,16 +1252,17 @@ contains
     character(len=128)                     :: gName(2)
     logical,           allocatable         :: IsOcean(:)
     logical,           allocatable         :: keep_tile(:)
+
     ! This is used to adjust EASE grid from 1-based to 0-based indexes
     ! The tile file with only one EASE grid is already 0-based and may not go through this subroutine
     ! This is a special case for river-routing. The ocean grid is also EASE just for convenience
-    logical                                 :: two_EASE 
-    integer                                 :: ip_keep, k, nc_tmp, nr_tmp
-    real                                    :: EASE_LAT_MAX !
+    logical                                :: two_EASE 
+    integer                                :: ip_keep, k, nc_tmp, nr_tmp
+    real                                   :: EASE_LAT_MAX !
 
     ! LakeTopoCat / ReachTopoCat LakeType
-    integer, allocatable :: lake_type(:)
-    integer              :: rc_lake
+    integer,           allocatable         :: lake_type(:)
+    integer                                :: rc_lake
 
     ! -----------------------------------------------------
     !
