@@ -2211,13 +2211,16 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    allocate(IWATER(NT),STAT=STATUS)
    VERIFY_(STATUS)
 
-   ! Allocate analytical derivative storage only for Louis
+   ! For Loius, allocate variables for analytical derivatives
+   
    if (CHOOSEMOSFC == 0) then
+
       if (.not. allocated(mystate%DCHDTS)) then
-         allocate(mystate%DCHDTS(NT,NUM_SUBTILES),                 &
-                  mystate%DCHDQS(NT,NUM_SUBTILES),                 &
-                  mystate%DCQDTS(NT,NUM_SUBTILES),                 &
-                  mystate%DCQDQS(NT,NUM_SUBTILES), STAT=STATUS)
+         allocate(                                             &
+              mystate%DCHDTS(NT,NUM_SUBTILES),                 &
+              mystate%DCHDQS(NT,NUM_SUBTILES),                 &
+              mystate%DCQDTS(NT,NUM_SUBTILES),                 &
+              mystate%DCQDQS(NT,NUM_SUBTILES), STAT=STATUS)
          VERIFY_(STATUS)
       endif
 
@@ -2226,8 +2229,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
       mystate%DCQDTS = 0.0
       mystate%DCQDQS = 0.0
 
-      allocate(TVA(NT), DCHDTVA(NT,NUM_SUBTILES),                 &
-               DCQDTVA(NT,NUM_SUBTILES), STAT=STATUS)
+      allocate(                                                &
+           TVA(NT),                                            &
+           DCHDTVA(NT,NUM_SUBTILES),                           &
+           DCQDTVA(NT,NUM_SUBTILES), STAT=STATUS)
       VERIFY_(STATUS)
 
       DCHDTVA = 0.0
@@ -2241,7 +2246,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    CQT = 0.0
    CNT = 0.0
    RIT = 0.0
-   if(associated(GST)) GST = 0.0
+   if(associated(   GST))    GST = 0.0
    if(associated(MOU50M)) MOU50M = 0.0
    if(associated(MOV50M)) MOV50M = 0.0
    if(associated(MOT10M)) MOT10M = 0.0
@@ -2263,7 +2268,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    if(CHOOSEMOSFC.eq.0) then
 
-    call louissurface(4,N,UU,WW,PS,TA,TS,QA,QS,PCU,LAI,Z0,DZ,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE,DCHDTVA,DCQDTVA)
+    call louissurface(4,N,UU,WW,PS,TA,TS,QA,QS,PCU,LAI,Z0,DZ,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE,DCHDTVA,DCQDTVA)    !istype=4 for landice
 
     ! Convert the Louis derivatives with respect to the
     ! air-minus-surface virtual temperature difference to
@@ -2271,6 +2276,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     !
     ! CH and CQ stored by LandIce are mass exchange coefficients,
     ! so apply the same rho*|U| factor used for CH and CQ
+    
     TVA = TA*(1.0 + MAPL_VIREPS*QA)
     URA = UUU*PS/(MAPL_RGAS*TVA)
 

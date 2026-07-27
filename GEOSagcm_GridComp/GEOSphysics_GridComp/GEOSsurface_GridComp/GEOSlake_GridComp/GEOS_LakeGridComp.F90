@@ -1085,7 +1085,10 @@ contains
     mystate => wrap%ptr
     CHOOSEMOSFC = mystate%CHOOSEMOSFC
 
-    call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS)
+    ! "CHOOSEZ0" is a config variable for Helfand; appears hardwired to 3 for all surface types but has an effect
+    !   only for ocean (and possibly sea ice) as of July 2026
+    
+    call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS) 
     VERIFY_(STATUS)
 
     ! Pointers to inputs
@@ -1218,22 +1221,26 @@ contains
     VERIFY_(STATUS)
     allocate(IWATER(NT),STAT=STATUS)
     VERIFY_(STATUS)
+
+    ! for Louis, allocate variables for analytical derivatives
     
     if (CHOOSEMOSFC == 0) then
        if (.not. allocated(mystate%DCHDTS)) then
-          allocate(mystate%DCHDTS(NT,NUM_SUBTILES),                 &
+          allocate(                                             &
+               mystate%DCHDTS(NT,NUM_SUBTILES),                 &
                mystate%DCHDQS(NT,NUM_SUBTILES),                 &
                mystate%DCQDTS(NT,NUM_SUBTILES),                 &
                mystate%DCQDQS(NT,NUM_SUBTILES), STAT=STATUS)
           VERIFY_(STATUS)
        endif
-
+       
        mystate%DCHDTS = 0.0
        mystate%DCHDQS = 0.0
        mystate%DCQDTS = 0.0
        mystate%DCQDQS = 0.0
        
-       allocate(DCHDTVA(NT,NUM_SUBTILES),                          &
+       allocate(                                                &
+            DCHDTVA(NT,NUM_SUBTILES),                           &
             DCQDTVA(NT,NUM_SUBTILES), STAT=STATUS)
        VERIFY_(STATUS)
        
@@ -1241,7 +1248,7 @@ contains
        DCQDTVA = 0.0
     endif
 
-    !  Compute drag corfficient at tiles
+    !  Compute drag coefficient at tiles
     !-----------------------------------
 
     CHH = 0.0
@@ -1275,10 +1282,11 @@ contains
           ! of CH and CQ with respect to the air-minus-surface virtual
           ! temperature difference and convert them below to derivatives
           ! with respect to the Lake surface state, Ts and qs.
+          
           LAI = 0.0
 
-          call louissurface(2,N,UU,WW,PS,TA,TS,QA,QS,PCU,LAI,        &
-               Z0,DZ,CM,CN,RIB,ZT,ZQ,CH,CQ,              &
+          call louissurface(2,N,UU,WW,PS,TA,TS,QA,QS,PCU,LAI,        &      ! istype=2 for Lake
+               Z0,DZ,CM,CN,RIB,ZT,ZQ,CH,CQ,                          &
                UUU,UCN,RE,DCHDTVA,DCQDTVA)
 
           ! Convert the Louis derivatives with respect to the
@@ -1659,13 +1667,13 @@ contains
       real, parameter :: LAKECAP      = (MAPL_RHOWTR*MAPL_CAPWTR*LAKEDEPTH    )
       real, parameter :: LAKEICECAP   = (MAPL_RHOWTR*MAPL_CAPWTR*LAKEICEDEPTH )
 
-      logical :: datalake
-      integer :: dlk
-      real, allocatable :: DATA_SST(:), DATA_FR(:)
-      character(len=ESMF_MAXSTR) :: maskfile
-      real, parameter :: Tfreeze = MAPL_TICE - 1.8
-      type(lake_state_wrap) :: wrap
-      type(lake_state), pointer :: mystate
+      logical                                 :: datalake
+      integer                                 :: dlk
+      real,                       allocatable :: DATA_SST(:), DATA_FR(:)
+      character(len=ESMF_MAXSTR)              :: maskfile
+      real,                         parameter :: Tfreeze = MAPL_TICE - 1.8
+      type(lake_state_wrap)                   :: wrap
+      type(lake_state),               pointer :: mystate
 
       !  Begin...
       !----------
@@ -1925,7 +1933,8 @@ contains
 
          if (LAKE_OFFLINE == 0) then
 
-            ! Coupled/GCM path: original behavior.
+            ! GCM: Lake coupled to atmosphere
+            
             CFT = (CH(:,N)/CTATM)
             CFQ = (CQ(:,N)/CQATM)
 
@@ -1938,14 +1947,16 @@ contains
 
          else
 
-            ! LDAS/offline path: compute the equivalent terms internally.
+            ! Lake in offline (lake-only) mode with prescribed surface met forcing
+            
             CFT = 1.0
             CFQ = 1.0
 
-            EVP = CQ(:,N)*(QS(:,N)-QA)
+            EVP =         CQ(:,N)*(QS(:,N)-QA)
             SHF = MAPL_CP*CH(:,N)*(TS(:,N)-TA)
 
             if (mystate%CHOOSEMOSFC == 0) then
+               
                _ASSERT(allocated(mystate%DCHDTS), 'Lake Louis derivative arrays not allocated')
 
                ! Include the dependence of the Louis exchange coefficients
@@ -2029,6 +2040,7 @@ contains
          endif
 
          RNF = PCU + PLS + SNO - EVP
+         
          ! Update surface temperature and moisture
          !----------------------------------------
 
@@ -2072,7 +2084,7 @@ contains
             TS(I,WATER) = MAPL_TICE
             TS(I,ICE  ) = MAPL_TICE
          elseif(TS(I,WATER)<MAPL_TICE .and. FR(I,ICE)<1.0) then
-            !FREEZE
+            ! FREEZE
             FR(I,WATER) = 0.0
             FR(I,ICE  ) = 1.0
             TS(I,WATER) = MAPL_TICE
@@ -2085,9 +2097,9 @@ contains
       !-----------------------------------------------
       if(solalarmison) then
          call MAPL_SunGetInsolation(LONS, LATS,      &
-              ORBIT, ZTH, SLR, &
-              INTV = TINT,     &
-              currTime=CURRENT_TIME+DELT,  &
+              ORBIT, ZTH, SLR,                       &
+              INTV = TINT,                           &
+              currTime=CURRENT_TIME+DELT,            &
               RC=STATUS )
          VERIFY_(STATUS)
 
@@ -2102,10 +2114,10 @@ contains
 
       EMISS = LAKEEMISS*FR(:,WATER) + LAKEICEEMISS*FR(:,ICE)
 
-      ALBVR = ALBVRO*FR(:,WATER) + ALBVRI*FR(:,ICE)
-      ALBVF = ALBVFO*FR(:,WATER) + ALBVFI*FR(:,ICE)
-      ALBNR = ALBNRO*FR(:,WATER) + ALBNRI*FR(:,ICE)
-      ALBNF = ALBNFO*FR(:,WATER) + ALBNFI*FR(:,ICE)
+      ALBVR = ALBVRO   *FR(:,WATER) + ALBVRI      *FR(:,ICE)
+      ALBVF = ALBVFO   *FR(:,WATER) + ALBVFI      *FR(:,ICE)
+      ALBNR = ALBNRO   *FR(:,WATER) + ALBNRI      *FR(:,ICE)
+      ALBNF = ALBNFO   *FR(:,WATER) + ALBNFI      *FR(:,ICE)
 
       !  All done
       !-----------
