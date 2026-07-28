@@ -2343,32 +2343,33 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
       if(associated(MOU2M))MOU2M = MOU2M + U2M(:)*FR(:,N)
       if(associated(MOV2M))MOV2M = MOV2M + V2M(:)*FR(:,N)
 
-    endif
+   endif    ! CHOOSEMOSFC
 
 !  Aggregate to tiles
 !--------------------
 
-      CHT     = CHT + CH(:,N)*FR(:,N)
-      CMT     = CMT + CM(:,N)*FR(:,N)
-      CQT     = CQT + CQ(:,N)*FR(:,N)
-      CNT     = CNT + CN(:  )*FR(:,N)
-      RIT     = RIT + RIB(:  )*FR(:,N)
+      CHT     = CHT + CH( :,N)        *FR(:,N)
+      CMT     = CMT + CM( :,N)        *FR(:,N)
+      CQT     = CQT + CQ( :,N)        *FR(:,N)
+      CNT     = CNT + CN( :  )        *FR(:,N)
+      RIT     = RIT + RIB(:  )        *FR(:,N)
 
-      TH      = TH  + CH(:,N)*TS(:,N)*FR(:,N)
-      QH      = QH  + CQ(:,N)*QS(:,N)*FR(:,N)
+      TH      = TH  + CH( :,N)*TS(:,N)*FR(:,N)
+      QH      = QH  + CQ( :,N)*QS(:,N)*FR(:,N)
 
-      TST     = TST + TS(:,N)*FR(:,N)
-      QST     = QST + QS(:,N)*FR(:,N)
+      TST     = TST + TS( :,N)        *FR(:,N)
+      QST     = QST + QS( :,N)        *FR(:,N)
 
    end do
 
-   TH = TH /CHT
-   QH = QH /CQT
-   if(associated(Z0EXP)) Z0EXP = Z0(:,1)
+   if(.true.)             TH     = TH /CHT
+   if(.true.)             QH     = QH /CQT
+   if(associated(Z0EXP))  Z0EXP  = Z0(:,1)
    if(associated(Z0HEXP)) Z0HEXP = ZT
-   if(associated(VNT)) VNT = UUU
-   if(associated(LST)) LST = TST
-   if (allocated(TVA)) deallocate(TVA)
+   if(associated(VNT))    VNT    = UUU
+   if(associated(LST))    LST    = TST
+   
+   if (allocated(TVA))     deallocate(TVA)
    if (allocated(DCHDTVA)) deallocate(DCHDTVA)
    if (allocated(DCQDTVA)) deallocate(DCQDTVA)
 
