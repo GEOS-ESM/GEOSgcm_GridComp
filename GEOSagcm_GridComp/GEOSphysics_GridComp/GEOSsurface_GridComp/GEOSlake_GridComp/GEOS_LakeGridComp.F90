@@ -1285,7 +1285,8 @@ contains
           
           LAI = 0.0
 
-  
+          WW(:,N) = 0.
+          CM(:,N) = 0.
           
           call louissurface(2,N,UU,WW,PS,TA,TS,QA,QS,PCU,LAI,        &      ! istype=2 for Lake
                Z0,DZ,CM,CN,RIB,ZT,ZQ,CH,CQ,                          &      ! z0 is hardwired inside louissurface()

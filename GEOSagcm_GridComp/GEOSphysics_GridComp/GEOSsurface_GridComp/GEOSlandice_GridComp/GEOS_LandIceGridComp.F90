@@ -2267,7 +2267,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    do N=1,NUM_SUBTILES
 
    if(CHOOSEMOSFC.eq.0) then
-
+      
+      WW(:,N) = 0.
+      CM(:,N) = 0.
+      
       call louissurface(4,N,UU,WW,PS,TA,TS,QA,QS,PCU,LAI,       &    ! istype=4 for landice
            Z0,DZ,CM,CN,RIB,ZT,ZQ,CH,CQ,                         &    ! z0 is hardwired in louissurface()
            UUU,UCN,RE,DCHDTVA,DCQDTVA)  
