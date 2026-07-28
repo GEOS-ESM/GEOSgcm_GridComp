@@ -5389,11 +5389,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         !
         ! For analytical derivatives, additionally use the following identities:
         !
-        !    virtual TC: TVC = TC*(1 + eps)*QC   [ eps = MAPL_VIREPS ]
-        !    virtual TA: TVA = TA*(1 + eps)*QA
+        !    virtual TC: TVC = TC*(1 + eps*QC)   [ eps = MAPL_VIREPS ]
+        !    virtual TA: TVA = TA*(1 + eps*QA)
         !
         !    delTVC_delQC =  TC*eps
-        !    delTVC_delTC = (1 + eps)
+        !    delTVC_delTC = (1 + eps*QC)
         !
         !    delCQ_delQC = delCQ_delTVC * delTVC_delQC 
         !    delCH_delTC = delCH_delTVC * delTVC_delTC
