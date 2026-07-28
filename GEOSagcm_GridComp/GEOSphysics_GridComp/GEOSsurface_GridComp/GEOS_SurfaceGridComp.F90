@@ -4013,6 +4013,32 @@ module GEOS_SurfaceGridCompMod
 
   subroutine InitializeRiverRoutingTeleport(RoutingType, RoutingFileTeleport, Stream, rc)
 
+  ! ==============================================================================
+  ! NOTE ON CO-EXISTING RIVER ROUTING SCHEMES
+  ! ==============================================================================
+  ! Currently, GEOS GCM contains two parallel river routing systems:
+  !
+  ! 1. The Legacy Simplistic Scheme (initialized in this subroutine): 
+  !    Used primarily for the coupled atmosphere-ocean model. It instantaneously 
+  !    transports land runoff directly to predefined ocean outlets, ignoring 
+  !    travel time. This scheme relies on the 'RoutingFileTeleport' resource variable 
+  !    to define the basin-to-outlet mappings.
+  !
+  ! 2. The Hydraulic-geometry-based Routing Scheme (GEOSroute_GridComp):
+  !    Recently enabled for AMIP runs. This scheme actively routes water across 
+  !    catchments with realistic travel times. However, it does not yet 
+  !    connect to the ocean outlets. This new scheme is activated via the 
+  !    'RUN_ROUTE' toggle (e.g., RUN_ROUTE > 0) in the resource file (GEOS_SurfaceGridComp.rc).
+  !
+  ! RELATIONSHIP BETWEEN RC VARIABLES:
+  ! - 'RoutingFileTeleport' specifically configures the mapping for this legacy 
+  !   simplistic routing.
+  ! - 'RUN_ROUTE' acts as the trigger for the new active river routing component.
+  !
+  ! Future developments will likely unify these systems, allowing the  
+  ! Hydraulic-geometry-based Routing Scheme to provide freshwater fluxes directly to the ocean model.
+  ! ==============================================================================
+
     ! initialize instantaneous mapping of tile runoff to ocean outlet for coupled atm-ocean model as of July 2026
     
     type(T_RiverRouting), pointer    :: RoutingType
