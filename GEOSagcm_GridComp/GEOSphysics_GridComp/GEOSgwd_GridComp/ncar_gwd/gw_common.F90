@@ -16,10 +16,8 @@ public :: gw_common_init
 public :: gw_newtonian_set
 public :: gw_prof
 public :: gw_drag_prof
-public :: qbo_hdepth_scaling
 public :: calc_taucd, momentum_flux, momentum_fixer
 public :: energy_momentum_adjust, energy_change, energy_fixer
-public :: hr_cf
 
 public :: west, east, north, south
 public :: pi
@@ -48,16 +46,9 @@ real(GW_PRC), protected :: cpair = huge(1._GW_PRC)
 real(GW_PRC) :: rog = huge(1._GW_PRC)
 
 
-! Scaling factor for generating QBO
-real(GW_PRC), protected :: qbo_hdepth_scaling
 ! Pressure (Pa) to begin transition to an upper boundary condition of tau = 0.
 !  default(0.0) is not active
 real :: tau_0_ubc = 0.0
-! Inverse Prandtl number.
-real(GW_PRC) :: prndl
-! Heating rate conversion factor
-real(GW_PRC), protected :: hr_cf
-
 
 !
 ! Private variables
@@ -141,16 +132,13 @@ end function new_GWBand
 
 subroutine gw_common_init(   &
      tau_0_ubc_in, ktop_in, gravit_in, rair_in, cpair_in, & 
-     prndl_in, qbo_hdepth_scaling_in, hr_cf_in, errstring)
+     errstring)
 
   real, intent(in) :: tau_0_ubc_in
   integer,  intent(in) :: ktop_in
   real, intent(in) :: gravit_in
   real, intent(in) :: rair_in       ! Gas constant for dry air (J kg-1 K-1)
   real, intent(in) :: cpair_in      ! Heat cap. for dry air (J kg-1 K-1)
-  real, intent(in) :: prndl_in
-  real, intent(in) :: qbo_hdepth_scaling_in
-  real, intent(in) :: hr_cf_in
   ! Report any errors from this routine.
   character(len=*), intent(out) :: errstring
 
@@ -164,9 +152,6 @@ subroutine gw_common_init(   &
   gravit = gravit_in
   rair   = rair_in
   cpair  = cpair_in
-  prndl  = prndl_in
-  qbo_hdepth_scaling = qbo_hdepth_scaling_in
-  hr_cf = hr_cf_in
 
   rog = rair/gravit
 

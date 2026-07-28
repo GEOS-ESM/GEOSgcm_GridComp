@@ -870,7 +870,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              call EVAP3 (         &
                   DT_MOIST      , &
                   CCW_EVAP_EFF  , &
-                  RHCRIT        , &
+                  1.0           , &
                    PLmb(I,J,L)  , &
                       T(I,J,L)  , &
                       Q(I,J,L)  , &
@@ -888,7 +888,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              call SUBL3 (        &
                   DT_MOIST      , &
                   CCI_EVAP_EFF  , &
-                  RHCRIT        , &
+                  1.0           , &
                    PLmb(I,J,L)  , &
                       T(I,J,L)  , &
                       Q(I,J,L)  , &

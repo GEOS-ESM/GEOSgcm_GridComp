@@ -6,7 +6,7 @@ module gw_convect
 !
 
   use gw_utils, only: GW_PRC, GW_R8, get_unit_vector, dot_2d, midpoint_interp
-  use gw_common, only: GWBand, qbo_hdepth_scaling, gw_drag_prof, hr_cf, &
+  use gw_common, only: GWBand, gw_drag_prof, &
                        calc_taucd, momentum_flux, momentum_fixer, &
                        energy_momentum_adjust, energy_change, energy_fixer 
 
@@ -32,7 +32,7 @@ type :: BeresSourceDesc
    ! Source for wave spectrum
    real :: spectrum_source
    ! Index for level where wind speed is used as the source speed.
-   real, allocatable :: k(:)
+   integer, allocatable :: k(:)
    ! tendency limiter
    real :: tndmax
    ! Table bounds, for convenience. (Could be inferred from shape(mfcc).)
@@ -40,6 +40,10 @@ type :: BeresSourceDesc
    integer :: maxuh
    ! Heating depths [m].
    real, allocatable :: hd(:)
+   ! Convective heating rate conversion factor
+   real :: hr_cf
+   ! Scaling factor for generating QBO
+   real :: qbo_hdepth_scaling
    ! Table of source spectra.
    real, allocatable :: mfcc(:,:,:)
    ! Forced background for extratropics
@@ -57,7 +61,7 @@ contains
 
 !------------------------------------
 subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength, &
-                          spectrum_source, min_hdepth, storm_shift, eff_tr, eff_et, &
+                          spectrum_source, hr_cf, qbo_hdepth_scaling, min_hdepth, storm_shift, eff_tr, eff_et, &
                           tau_et, et_use_dtdtm, et_use_speed, tndmax, &
                           active, ncol, lats)
 #include <netcdf.inc>
@@ -69,7 +73,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
 
   integer, intent(in) :: pgwv, ncol
   real, intent(in) :: gw_dc, fcrit2, wavelength
-  real, intent(in) :: spectrum_source, min_hdepth, eff_tr, eff_et, tau_et, tndmax
+  real, intent(in) :: spectrum_source, hr_cf, qbo_hdepth_scaling, min_hdepth, eff_tr, eff_et, tau_et, tndmax
   logical, intent(in) :: storm_shift, active, et_use_dtdtm, et_use_speed
   real, intent(in) :: lats(ncol)
 
@@ -154,6 +158,10 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
     desc%spectrum_source = spectrum_source
     allocate(desc%k(ncol))
 
+    desc%hr_cf = hr_cf
+
+    desc%qbo_hdepth_scaling = qbo_hdepth_scaling
+
     desc%min_hdepth = min_hdepth
 
     desc%storm_shift = storm_shift
@@ -211,7 +219,7 @@ end subroutine gw_beres_init
 !------------------------------------
 subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
      netdt, zm, src_level, tend_level, tau, ubm, ubi, xv, yv, &
-     c, hdepth, maxq0, dtdtm, speed)
+     c, dtdtm, speed)
 !-----------------------------------------------------------------------
 ! Driver for multiple gravity wave drag parameterization.
 !
@@ -224,8 +232,6 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
 ! pp. 324-337.
 !
 !-----------------------------------------------------------------------
-  !!!use gw_utils, only: get_unit_vector, dot_2d, midpoint_interp
-  !!!use gw_common, only: GWBand, qbo_hdepth_scaling
 
 !------------------------------Arguments--------------------------------
   ! Column and vertical dimensions.
@@ -261,9 +267,6 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
   ! Phase speeds.
   real(GW_PRC), intent(out) :: c(ncol,-band%ngwv:band%ngwv)
 
-  ! Heating depth [m] and maximum heating in each column.
-  real, intent(out) :: hdepth(ncol), maxq0(ncol)
-
   ! Frontal and Jet proxy inputs
   real, intent(in) :: dtdtm(ncol,pver)  ! Microphysics temperature tendency / latent heating (K s-1)
   real, intent(in) :: speed(ncol)       ! Katabatic proxy: Max wind speed in lowest 300m stable layer (m s-1)
@@ -275,9 +278,13 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
   ! Zonal/meridional wind at roughly the level where the convection occurs.
   real :: uconv(ncol), vconv(ncol), ubi1d(ncol)
 
+  ! Heating depth [m] and maximum heating in each column.
+  real(GW_PRC) :: hdepth(ncol)
+
   ! Maximum heating rate.
   real(GW_PRC) :: q0(ncol)
-  real(GW_PRC) :: moist_mult, dry_mult, phys_mult
+  real(GW_PRC) :: moist_mult(ncol)
+  real(GW_PRC) :: dry_mult, phys_mult
 
   ! Bottom/top heating range index.
   integer  :: boti(ncol), topi(ncol)
@@ -297,6 +304,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
   ! Averaging length.
   real, parameter :: AL = 1.0e5
   integer :: thread
+  integer :: k_ceiling, k_max
 
   !----------------------------------------------------------------------
   ! Initialize tau array
@@ -346,7 +354,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
   hdepth = [ ( (zm(i,topi(i))-zm(i,boti(i))), i = 1, ncol ) ]
 
   ! J. Richter: this is an effective reduction of the GW phase speeds (needed to drive the QBO)
-  hdepth = hdepth*qbo_hdepth_scaling
+  hdepth = hdepth*desc%qbo_hdepth_scaling
 
   hd_idx = index_of_nearest(hdepth, desc%hd)
 
@@ -356,31 +364,70 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
   ! Values above the max in the table still get the highest value, though.
   where (hdepth < max(desc%min_hdepth, desc%hd(1))) hd_idx = 0
 
-  ! Maximum heating rate.
-  do k = minval(topi), maxval(boti)
-     where (k >= topi .and. k <= boti)
-        q0 = max(q0, netdt(:,k))
-     end where
+  ! =========================================================================
+  ! NEW CONFIGURATION: DYNAMIC SOURCE & RESOLUTION DECOUPLING BLOCK
+  ! =========================================================================
+
+  do i = 1, ncol
+     if (hd_idx(i) > 0) then
+        ! -------------------------------------------------------------------
+        ! A. DEEP CONVECTIVE SOURCE REGIME (Preserves spectrum_source Baseline)
+        ! -------------------------------------------------------------------
+        q0(i) = 0.0
+        do k = topi(i), boti(i)
+           if (netdt(i,k) > q0(i)) q0(i) = netdt(i,k)
+        end do
+
+        ! Apply the legacy resolution scale awareness factor (hr_cf)
+        q0(i) = q0(i) * desc%hr_cf
+
+        ! Rigidly anchor convective launch level to spectrum_source
+        desc%k(i) = 1
+        do k = 0, pver-2
+           if (pint(i,k+1) < desc%spectrum_source) desc%k(i) = k+1
+        end do
+
+     else
+        ! -------------------------------------------------------------------
+        ! B. SHALLOW/FRONTAL SOURCE REGIME (Frontal Masking & Launch Level)
+        ! -------------------------------------------------------------------
+
+        ! Identify an index for a safe physical ceiling for frontal scheme
+        k_ceiling = 1
+        do k = 1, pver
+           if (pint(i,k+1) >= desc%spectrum_source) then
+               k_ceiling = k
+              exit
+           end if
+        end do
+
+        q0(i) = 0.0
+        k_max = pver ! Default fallback initialization to surface
+
+        if (desc%et_bkg_dtdtm_forcing) then
+           ! Scan upward from surface to  desc%k(i) to find shallow high-lat peaks
+           do k = pver,  k_ceiling, -1  
+              if (dtdtm(i,k) > q0(i)) then
+                 q0(i) = dtdtm(i,k)
+                 k_max = k ! Capture dynamic launch layer
+              endif
+           end do
+           ! Scale moist multiplier based on instantaneous tropospheric heating rates
+           moist_mult(i) = MAX(1.0, MIN(10.0, q0(i) * 86400.0 * 4.0e4))
+        else
+           moist_mult(i) = 1.0
+        endif
+
+        ! Update dynamic launch allocations for frontal waves
+        desc%k(i) = k_max
+        topi(i)   = k_max
+        boti(i)   = pver ! Anchor bottom array to surface
+     endif
   end do
 
-  !output max heating rate in K/day
-  maxq0 = q0*86400.0
-
-  ! Multipy by conversion factor
-  q0 = q0 * hr_cf
-
-  ! Compute source k-index for Convective Scheme (driven by gw_beres_init)
-  do i=1,ncol
-    do k = 0, pver-2
-      if (pint(i,k+1) < desc%spectrum_source) desc%k(i) = k+1
-    end do
-  enddo
-
-  !------------------------------------------------------------------------
-  ! Determine wind and unit vectors approximately at the source level, then
-  ! project winds.
-  !------------------------------------------------------------------------
-
+  ! =========================================================================
+  ! DOWNSTREAM WIND CALCULATIONS (Now fully responsive to dynamic desc%k)
+  ! =========================================================================
   ! Source wind speed and direction.
   do i=1,ncol
    uconv(i) = u(i,desc%k(i))
@@ -391,7 +438,8 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
   ubi1d = 0.0
   call get_unit_vector(uconv, vconv, xv, yv, ubi1d)
   do i=1,ncol
-   ubi(i,desc%k(i)+1) = ubi1d(i)
+   ! SAFEGUARD CAP: Ensure interface indexing does not overshoot pver bounds
+   ubi(i, min(pver, desc%k(i)+1)) = ubi1d(i)
   enddo
 
   ! Project the local wind at midpoints onto the source wind.
@@ -447,27 +495,19 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
   !-----------------------------------------------------------------------
   do i=1,ncol
 
-     !---------------------------------------------------------------------
-     ! Look up spectrum only if the heating depth is large enough, else set
-     ! tau0 = 0. or use frontal scheme forcing
-     !---------------------------------------------------------------------
-
      if (hd_idx(i) > 0) then
 
         !------------------------------------------------------------------
         ! Look up the spectrum using depth and uh.
         !------------------------------------------------------------------
-
         tau0 = desc%mfcc(hd_idx(i),nint(uh(i)),:)
 
         if (desc%storm_shift) then
-           ! For deep convection, the wind was relative to storm cells, so
-           ! shift the spectrum so that it is now relative to the ground.
            shift = -nint(CS(i)/band%dc)
            tau0 = eoshift(tau0, shift)
         end if
 
-        ! Adjust magnitude.
+        ! Adjust magnitude. (q0 already accounts for hr_cf here)
         tau0 = tau0*q0(i)*q0(i)/AL
 
         ! Adjust for critical level filtering.
@@ -480,42 +520,21 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
         tau(i,:,:) = 0.0
         if (desc%et_bkg_dtdtm_forcing .or. desc%et_bkg_speed_forcing) then
           ! -----------------------------------------------------------------
-          ! Frontal Detection via Microphysics Latent Heating
-          ! 1. DTDTM captures the large-scale condensation in storm tracks.
-          ! 2. SPEED captures dry katabatic winds and broad, windy storm flanks.
+          ! Frontal Detection via Physical Multipliers (Calculated Above)
           ! -----------------------------------------------------------------
-          ! Proxy 1: The Moist Condensate (Microphysics Latent Heating)
-           if (desc%et_bkg_dtdtm_forcing) then
-               q0(i) = 0.0
-               do k = desc%k(i), 1, -1  
-                 if (dtdtm(i,k) > q0(i)) q0(i) = dtdtm(i,k)
-               end do
-               ! Scale moist multiplier based on INSTANTANEOUS heating rates.
-               ! (e.g., 4.0e4 assumes an instantaneous peak around 20-25 K/day 
-               !  to hit the 10.0 maximum ceiling smoothly).
-               moist_mult = MAX(1.0, MIN(10.0, q0(i) * 4.0e4))
-           else
-               moist_mult = 1.0
-           endif
-          ! Proxy 2: The Dry Wind (Katabatic winds)
+          ! Proxy 2: The Dry Wind (Katabatic winds - evaluated locally)
            if (desc%et_bkg_speed_forcing) then
-               ! Starts at 10 m/s, ramps up to a max of 10.0x at 30 m/s
                dry_mult = MAX(1.0, MIN(10.0, 1.0 + (speed(i) - 10.0) * (9.0 / 20.0)))
            else
                dry_mult = 1.0
            endif
+           
            ! Apply the dominant physical forcing mechanism
-           phys_mult = MAX(moist_mult,dry_mult)
+           phys_mult = MAX(moist_mult(i), dry_mult)
            tau(i,:,desc%k(i)+1) = desc%taubck(i,:) * phys_mult
-           topi(i) = desc%k(i)
         else
-          ! use latitudinal dependence
-          ! include forced background stress in extra tropical large-scale systems
-          ! Set the phase speeds and wave numbers in the direction of the source wind.
-          ! Set the source stress magnitude (positive only, note that the sign of the 
-          ! stress is the same as (c-u).
+           ! Fallback background stress assignment
            tau(i,:,desc%k(i)+1) = desc%taubck(i,:)
-           topi(i) = desc%k(i)
         endif
 
      endif
@@ -533,8 +552,6 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
   c = spread(band%cref, 1, ncol)
 
 end subroutine gw_beres_src
-
-
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!  Main Interface
@@ -614,9 +631,6 @@ subroutine gw_beres_ifc( band, &
    real :: xv(ncol)
    real :: yv(ncol)
 
-   ! Heating depth [m] and maximum heating in each column.
-   real :: hdepth(ncol), maxq0(ncol)
-
    character(len=1) :: cn
    character(len=9) :: fname(4)
 
@@ -636,7 +650,7 @@ subroutine gw_beres_ifc( band, &
      ! Determine wave sources for Beres deep scheme
      call gw_beres_src(ncol, pver, band, desc, pint, &
           u, v, netdt, zm, src_level, tend_level, tau, &
-          ubm, ubi, xv, yv, c, hdepth, maxq0, &
+          ubm, ubi, xv, yv, c, &
           dtdtm=dtdtm, speed=speed)
 
      ! Solve for the drag profile with convective sources.
