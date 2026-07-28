@@ -579,7 +579,7 @@ contains
 
     call MAPL_AddInternalSpec(GC,                           &
          SHORT_NAME         = 'FR',                                &
-         LONG_NAME          = 'subtile_area_fraction',                      &
+         LONG_NAME          = 'subtile_area_fractions_for_ice_and_water',                      &
          UNITS              = '1',                                 &
          NUM_SUBTILES       = NUM_SUBTILES,                        &
          DIMS               = MAPL_DimsTileTile,                   &
@@ -1995,7 +1995,7 @@ contains
             endif
 
             if (N == WATER) then
-               BLWN = LAKEEMISS*MAPL_STFBOL*TS(:,N)*TS(:,N)*TS(:,N)
+               BLWN = LAKEEMISS   *MAPL_STFBOL*TS(:,N)*TS(:,N)*TS(:,N)
             else
                BLWN = LAKEICEEMISS*MAPL_STFBOL*TS(:,N)*TS(:,N)*TS(:,N)
             endif
