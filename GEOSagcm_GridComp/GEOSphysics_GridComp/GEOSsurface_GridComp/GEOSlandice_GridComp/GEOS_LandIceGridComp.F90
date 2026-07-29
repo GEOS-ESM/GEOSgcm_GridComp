@@ -2992,9 +2992,16 @@ end if
     VERIFY_(STATUS)
     allocate(LHD (NT), STAT=STATUS)
     VERIFY_(STATUS)
+    allocate(DQSATDT(NT), STAT=STATUS)
+    VERIFY_(STATUS)
     if (LANDICE_OFFLINE /= 0 .and. CHOOSEMOSFC == 0) then
-       allocate(DQSATDT(NT), DEDTS(NT), DEDQS(NT),              &
-                DHSDTS(NT), DHSDQS(NT), STAT=STATUS)
+       allocate(DEDTS( NT), STAT=STATUS)
+       VERIFY_(STATUS)
+       allocate(DEDQS( NT), STAT=STATUS)
+       VERIFY_(STATUS)
+       allocate(DHSDTS(NT), STAT=STATUS)
+       VERIFY_(STATUS)
+       allocate(DHSDQS(NT), STAT=STATUS)
        VERIFY_(STATUS)
     endif    
     allocate(CFT (NT), STAT=STATUS)
