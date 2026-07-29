@@ -54,12 +54,12 @@ module GEOS_LandiceGridCompMod
 
   private
 
-  integer, parameter :: ICE   = 1
-  integer, parameter :: SNOW  = 2
-  integer, parameter :: NUM_SUBTILES = 2
+  integer, parameter :: ICE               = 1
+  integer, parameter :: SNOW              = 2
+  integer, parameter :: NUM_SUBTILES      = 2
 
-  integer, parameter :: NUM_SNOW_LAYERS = 15
-  integer, parameter :: NUM_ICE_LAYERS  = 15
+  integer, parameter :: NUM_SNOW_LAYERS   = 15
+  integer, parameter :: NUM_ICE_LAYERS    = 15
   integer, parameter :: NUM_SNOICE_LAYERS = NUM_SNOW_LAYERS+NUM_ICE_LAYERS
   
   ! make number of snow and ice layers public for the benefit of the ens avg GridComp in GEOSldas
@@ -110,18 +110,6 @@ module GEOS_LandiceGridCompMod
   integer,    parameter :: TAR_TILE   = 1
   integer               :: N_CONST_LANDICE4SNWALB, AEROSOL_DEPOSITION, CHOOSEMOSFC
 
-  type landice_state
-     private
-     real, allocatable :: DCHDTS(:,:)
-     real, allocatable :: DCHDQS(:,:)
-     real, allocatable :: DCQDTS(:,:)
-     real, allocatable :: DCQDQS(:,:)
-  end type landice_state
-
-  type landice_state_wrap
-     type(landice_state), pointer :: ptr
-  end type landice_state_wrap
-  
 ! !PUBLIC MEMBER FUNCTIONS:
 
   public SetServices
@@ -176,8 +164,6 @@ module GEOS_LandiceGridCompMod
 !=============================================================================
 
     type(MAPL_MetaComp), pointer            :: MAPL
-    type(landice_state_wrap)                :: wrap
-    type(landice_state), pointer            :: mystate
     integer                                 :: DO_ISSM ! ISSM flag
 
 ! Begin...
@@ -222,11 +208,6 @@ module GEOS_LandiceGridCompMod
     call MAPL_GetResource (SCF, AEROSOL_DEPOSITION,     label='AEROSOL_DEPOSITION:',     DEFAULT=0, __RC__ )
     call MAPL_GetResource (SCF, CHOOSEMOSFC,            label='CHOOSEMOSFC:',            DEFAULT=1, __RC__ )
     call ESMF_ConfigDestroy      (SCF, __RC__)
-    allocate(mystate, STAT=STATUS)
-    VERIFY_(STATUS)
-    wrap%ptr => mystate
-    call ESMF_UserCompSetInternalState(GC, 'landice_private', wrap, STATUS)
-    VERIFY_(STATUS)    
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -1114,6 +1095,34 @@ module GEOS_LandiceGridCompMod
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
+     ! ----------------------------------------------------
+     !
+     ! for *analytical* extra derivatives in louissurface()
+     
+     call MAPL_AddInternalSpec(GC,                          &
+          SHORT_NAME         = 'delCH_delTVA',              &
+          LONG_NAME          = 'partial_derivative_of_CH_wrt_virtual_Tair', & 
+          UNITS              = '1',                         &
+          DIMS               = MAPL_DimsTileTile,           &
+          NUM_SUBTILES       = NUM_SUBTILES                ,&
+          VLOCATION          = MAPL_VLocationNone,          &
+          RESTART            = MAPL_RestartSkip            ,&
+          RC=STATUS  )
+     VERIFY_(STATUS)
+     
+     call MAPL_AddInternalSpec(GC,                          &
+          SHORT_NAME         = 'delCQ_delTVA',              &  
+          LONG_NAME          = 'partial_derivative_of_CQ_wrt_virtual_Tair', &
+          UNITS              = '1',                         &
+          DIMS               = MAPL_DimsTileTile,           &
+          NUM_SUBTILES       = NUM_SUBTILES                ,&
+          VLOCATION          = MAPL_VLocationNone,          &
+          RESTART            = MAPL_RestartSkip            ,&
+          RC=STATUS  )
+     VERIFY_(STATUS)
+
+     ! ----------------------------------------------------
+     
      call MAPL_AddInternalSpec(GC,                           &
         SHORT_NAME         = 'WESN',                              &
         LONG_NAME          = 'snow_layer_mass',                   &
@@ -1950,7 +1959,12 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:,:)  :: CH
    real, pointer, dimension(:,:)  :: CM
    real, pointer, dimension(:,:)  :: CQ
-
+   
+   ! for analytical extra derivatives in louissurface()
+   
+   real, dimension(:,:), pointer :: delCH_delTVA
+   real, dimension(:,:), pointer :: delCQ_delTVA
+      
 ! pointers to import
 
    real, pointer, dimension(:)    :: UU
@@ -2007,8 +2021,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, parameter :: LANDICESNOWZ0_HELFAND  = 0.001    ! used in Helfand; Louis has value hardwired into louissurface()
 
    integer                        :: CHOOSEZ0
-   type(landice_state_wrap)       :: wrap
-   type(landice_state), pointer   :: mystate
+
 !=============================================================================
 
 ! Begin...
@@ -2039,9 +2052,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
          INTERNAL_ESMF_STATE = INTERNAL,         &
                                        RC=STATUS )
     VERIFY_(STATUS)
-    call ESMF_UserCompGetInternalState(GC, 'landice_private', wrap, STATUS)
-    VERIFY_(STATUS)
-    mystate => wrap%ptr
+
     call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS)
     VERIFY_(STATUS)
 
@@ -2079,6 +2090,14 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    call MAPL_GetPointer(INTERNAL,CQ   , 'CQ'     ,    RC=STATUS)
    VERIFY_(STATUS)
 
+   ! for analytical extra derivatives in louissurface()
+
+   call MAPL_GetPointer(INTERNAL,delCH_delTVA , 'delCH_delTVA' ,    RC=STATUS)
+   VERIFY_(STATUS)
+   call MAPL_GetPointer(INTERNAL,delCQ_delTVA , 'delCQ_delTVA' ,    RC=STATUS)
+   VERIFY_(STATUS)
+
+   
 ! Pointers to outputs
 !--------------------
 
@@ -2206,33 +2225,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    allocate(IWATER(NT),STAT=STATUS)
    VERIFY_(STATUS)
 
-   ! For Louis, allocate variables for analytical derivatives
-   
-   if (CHOOSEMOSFC == 0) then
-
-      if (.not. allocated(mystate%DCHDTS)) then
-         allocate(                                             &
-              mystate%DCHDTS(NT,NUM_SUBTILES),                 &
-              mystate%DCHDQS(NT,NUM_SUBTILES),                 &
-              mystate%DCQDTS(NT,NUM_SUBTILES),                 &
-              mystate%DCQDQS(NT,NUM_SUBTILES), STAT=STATUS)
-         VERIFY_(STATUS)
-      endif
-
-      mystate%DCHDTS = 0.0
-      mystate%DCHDQS = 0.0
-      mystate%DCQDTS = 0.0
-      mystate%DCQDQS = 0.0
-
-      allocate(                                                &
-           DCHDTVA(NT,NUM_SUBTILES),                           &
-           DCQDTVA(NT,NUM_SUBTILES), STAT=STATUS)
-      VERIFY_(STATUS)
-
-      DCHDTVA = 0.0
-      DCQDTVA = 0.0
-   endif
-
 !  Compute drag coefficient at tiles
 !-----------------------------------
    CHT = 0.0
@@ -2267,28 +2259,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
       
       call louissurface(4,N,UU,WW,PS,TA,TS,QA,QS,PCU,LAI,       &    ! istype=4 for landice
            Z0,DZ,CM,CN,RIB,ZT,ZQ,CH,CQ,                         &    ! z0 is hardwired in louissurface()
-           UUU,UCN,RE,DCHDTVA,DCQDTVA)  
-
-    ! Convert the Louis derivatives with respect to the
-    ! air-minus-surface virtual temperature difference to
-    ! derivatives with respect to the LandIce surface state
-    !
-    ! CH and CQ stored by LandIce are mass exchange coefficients,
-    ! so apply the same rho*|U| factor used for CH and CQ
-    
-    mystate%DCHDTS(:,N) = -DCHDTVA(:,N)                    &
-         *(1.0 + MAPL_VIREPS*QS(:,N))
-
-    mystate%DCHDQS(:,N) = -DCHDTVA(:,N)                    &
-         *MAPL_VIREPS*TS(:,N)
-
-    mystate%DCQDTS(:,N) = -DCQDTVA(:,N)                    &
-         *(1.0 + MAPL_VIREPS*QS(:,N))
-
-    mystate%DCQDQS(:,N) = -DCQDTVA(:,N)                    &
-         *MAPL_VIREPS*TS(:,N)
-   
-
+           UUU,UCN,RE,delCH_delTVA,delCQ_delTVA)
+      
    elseif (CHOOSEMOSFC.eq.1)then
 
       niter = 6   ! number of internal iterations in the helfand MO surface layer routine
@@ -2300,26 +2272,26 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
          Z0(:,N)=LANDICESNOWZ0_HELFAND
       endif
 
-    PSMB = PS * 0.01            ! convert to MB
-    fakelai = 1.e-4
-! Approximate pressure at top of surface layer: hydrostatic, eqn of state using avg temp and press
-    PSL = PSMB * (1. - (DZ*MAPL_GRAV)/(MAPL_RGAS*(TA+TS(:,N)) ) ) /   &
-               (1. + (DZ*MAPL_GRAV)/(MAPL_RGAS*(TA+TS(:,N)) ) )
+      PSMB = PS * 0.01            ! convert to MB
+      fakelai = 1.e-4
+      ! Approximate pressure at top of surface layer: hydrostatic, eqn of state using avg temp and press
+      PSL = PSMB * (1. - (DZ*MAPL_GRAV)/(MAPL_RGAS*(TA+TS(:,N)) ) ) /   &
+           (1. + (DZ*MAPL_GRAV)/(MAPL_RGAS*(TA+TS(:,N)) ) )
 
-    call helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TS(:,N),QA,QS(:,N),PSL,PSMB,Z0(:,N),fakelai,  &
-                      IWATER,DZ,niter,nt,RHO,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS, &
-                      t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
+      call helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TS(:,N),QA,QS(:,N),PSL,PSMB,Z0(:,N),fakelai,  &
+           IWATER,DZ,niter,nt,RHO,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS, &
+           t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
 
-    CM(:,N)  = VKM
-    CH(:,N)  = VKH
-    CQ(:,N)  = VKH
+      CM(:,N)  = VKM
+      CH(:,N)  = VKH
+      CQ(:,N)  = VKH
 
-    CN = (MAPL_KARMAN/ALOG(DZ/Z0(:,N) + 1.0)) * (MAPL_KARMAN/ALOG(DZ/Z0(:,N) + 1.0))
-    ZT = Z0(:,N)
-    ZQ = Z0(:,N)
-    RE = 0.
-    UUU = UU
-    UCN = 0.
+      CN = (MAPL_KARMAN/ALOG(DZ/Z0(:,N) + 1.0)) * (MAPL_KARMAN/ALOG(DZ/Z0(:,N) + 1.0))
+      ZT = Z0(:,N)
+      ZQ = Z0(:,N)
+      RE = 0.
+      UUU = UU
+      UCN = 0.
 
 !  Aggregate to tiles for MO only diagnostics
 !--------------------------------------------
@@ -2458,10 +2430,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
   integer                             :: LANDICE_OFFLINE
   integer                             :: DO_ISSM              ! ISSM run flag
 
-  type(landice_state_wrap)            :: wrap
-  type(landice_state), pointer        :: mystate
   type (ESMF_GridComp  ), pointer     :: GCS(:)
   character(len=ESMF_MAXSTR), pointer :: gcnames(:)
+
 #ifdef HAVE_ISSM
   type(T_ISSM_TILE_STATE), pointer    :: issm_tile_state
   type(T_ISSM_TILE_WRAP)              :: issm_tile_wrap
@@ -2482,9 +2453,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
-    call ESMF_UserCompGetInternalState(GC, 'landice_private', wrap, STATUS)
-    VERIFY_(STATUS)
-    mystate => wrap%ptr
+
     call MAPL_GetResource (MAPL, DO_ISSM, label='DO_ISSM:', DEFAULT=0, __RC__ )
 
 #ifndef HAVE_ISSM
@@ -2626,6 +2595,11 @@ contains
    real, pointer, dimension(:,:)  :: CH
    real, pointer, dimension(:,:)  :: CM
    real, pointer, dimension(:,:)  :: CQ
+
+   ! for analytical extra derivatives (louissurface)
+   
+   real, pointer, dimension(:,:)  :: delCQ_delTVA
+   real, pointer, dimension(:,:)  :: delCH_delTVA
 
    real, pointer, dimension(:,:)  :: WESN
    real, pointer, dimension(:,:)  :: HTSN
@@ -2861,6 +2835,11 @@ end if
    call MAPL_GetPointer(INTERNAL,CM   , 'CM'     , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,CQ   , 'CQ'     , RC=STATUS); VERIFY_(STATUS)
 
+   ! for analytical extra derivatives (louissurface)
+   
+   call MAPL_GetPointer(INTERNAL,delCQ_delTVA ,'delCQ_delTVA',RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(INTERNAL,delCH_delTVA ,'delCH_delTVA',RC=STATUS); VERIFY_(STATUS)
+   
    call MAPL_GetPointer(INTERNAL,WESN , 'WESN'   , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,HTSN , 'HTSN'   , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,SNDZ , 'SNDZ'   , RC=STATUS); VERIFY_(STATUS)
@@ -3382,60 +3361,83 @@ end if
     ZTH = max(0.0,ZTH)
 
     do N=1,NUM_SUBTILES
+
+       ! --------------------------------------------------------------------
+       ! 
+       ! surface turbulence
+       !
+       ! - for additional documentation, see subroutine run2() of GEOS_CatchGridComp.F90
+       ! - SHD = derivative of sensible heat w.r.t. surface temperature 
+       ! - LHD = derivative of latent heat   w.r.t. surface temperature (note: Catch uses "evap")
+              
+       DQSATDT = GEOS_DQSAT( TS(:,N), PS, PASCALS=.TRUE., RAMP=0.0 )
+       
        if (LANDICE_OFFLINE == 0 ) then
+
+          ! GCM: Landice coupled to atmosphere
+
           CFT   = (CH(:,N)/CTATM)
           CFQ   = (CQ(:,N)/CQATM)
+          
           SHF   = CFT*(SH   + DSH*(TS(:,N)-THATM))
           LHF   = CFQ*(EVAP + DEV*(QS(:,N)-QHATM))*MAPL_ALHS
+          
           SHD   = CFT*DSH
-          LHD   = CFQ*DEV*MAPL_ALHS*GEOS_DQSAT(TS(:,N), PS, PASCALS=.TRUE., RAMP=0.0)
+          LHD   = CFQ*DEV*MAPL_ALHS*DQSATDT
+          
           ALWN  = ALW
           BLWN  = BLW
+
        else
+
+          ! Landice in offline mode
+          
           CFT    = 1.0
           CFQ    = 1.0
+          
           SHF    = MAPL_CP*CH(:,N)*(TS(:,N)-TA)
-          LHF    = CQ(:,N)*(QS(:,N)-QA) * MAPL_ALHS
-
-          if (CHOOSEMOSFC == 0) then
-             _ASSERT(allocated(mystate%DCHDTS), 'LandIce Louis derivative arrays not allocated')
-
-             DQSATDT = GEOS_DQSAT(TS(:,N), PS,                  &
-                                  PASCALS=.TRUE., RAMP=0.0)
-
-             ! E = CQ(Ts,qs)*(qs-qa)
-             DEDTS = max(0.0,                                  &
-                  mystate%DCQDTS(:,N)*(QS(:,N)-QA))
-             DEDQS = CQ(:,N) + max(0.0,                        &
-                  mystate%DCQDQS(:,N)*(QS(:,N)-QA))
-
-             ! H = Cp*CH(Ts,qs)*(Ts-Ta)
-             DHSDTS = MAPL_CP*(CH(:,N) + max(0.0,              &
-                  mystate%DCHDTS(:,N)*(TS(:,N)-TA)))
-             DHSDQS = max(0.0, MAPL_CP*                        &
-                  mystate%DCHDQS(:,N)*(TS(:,N)-TA))
-
-             ! LandIce constrains surface humidity to qs=qsat(Ts,Ps),
-             ! so reduce the two-variable Jacobian to d/dTs
-             SHD = DHSDTS + DHSDQS*DQSATDT
-             LHD = MAPL_ALHS*(DEDTS + DEDQS*DQSATDT)
-          else
-             ! Preserve the original fixed-coefficient Helfand path
-             SHD = MAPL_CP*CH(:,N)
-             LHD = CQ(:,N)*MAPL_ALHS*GEOS_DQSAT(                &
-                  TS(:,N), PS, PASCALS=.TRUE., RAMP=0.0)
-          endif          
-
+          LHF    =         CQ(:,N)*(QS(:,N)-QA)*MAPL_ALHS
+          
           BLWN   = LANDICEEMISS*MAPL_STFBOL*TS(:,N)*TS(:,N)*TS(:,N)
           ALWN   = -3.0*BLWN*TS(:,N)
           BLWN   =  4.0*BLWN
-       endif
+          
+          if     (CHOOSEMOSFC == 0) then
+             
+             ! Louis (incl. extra analytical derivatives of exchange coeffs w.r.t. surface temp/humidity)
+             
+             DEDQS =            CQ(:,N) + max(0.0,         -delCQ_delTVA(:,N)*      MAPL_VIREPS*TS(:,N) *(QS(:,N)-QA) )    ! "DEVSBT" in Catch GC
+             DEDTS =                      max(0.0,         -delCQ_delTVA(:,N)*(1. + MAPL_VIREPS*QS(:,N))*(QS(:,N)-QA) )    ! "DEDTC"  in Catch GC             
+             DHSDTS = MAPL_CP*( CH(:,N) + max(0.0,         -delCH_delTVA(:,N)*(1. + MAPL_VIREPS*QS(:,N))*(TS(:,N)-TA) ) )  ! "DSHSBT" in Catch GC
+             DHSDQS =                     max(0.0, -MAPL_CP*delCH_delTVA(:,N)*      MAPL_VIREPS*TS(:,N) *(TS(:,N)-TA) )    ! "DHSDQC" in Catch GC
 
+             ! LandIce constrains surface humidity to qs=qsat(Ts,Ps),
+             !   so reduce the two-variable Jacobian to d/dTs
+             SHD =            DHSDTS + DHSDQS*DQSATDT
+             LHD = MAPL_ALHS*(DEDTS  + DEDQS *DQSATDT)
+
+          elseif (CHOOSEMOSFC == 1) then
+
+             ! Helfand (no derivatives of exchange coeffs)
+             
+             SHD = MAPL_CP*CH(:,N)
+             LHD =         CQ(:,N)*MAPL_ALHS*DQSATDT
+             
+          else
+             
+             _ASSERT(.false., 'unknown CHOOSEMOSFC')
+
+          endif
+          
+       endif    ! LANDICE_OFFLINE==0
+
+       ! ---------end surface turbulence ------------------------------------------------
+       
        SWN = ((DRUVR+DRPAR+DRNIR) + (DFUVR+DFPAR+DFNIR))*(1.0-LANDICEALB)
        DIF = 0.0
        ULW = ALWN + BLWN*TS(:,N)
 
-       LANDICECAP= (MAPL_RHOWTR*MAPL_CAPICE*LANDICEDEPTH)
+       LANDICECAP = (MAPL_RHOWTR*MAPL_CAPICE*LANDICEDEPTH)
 
        EVAPI   = LHF / MAPL_ALHS
        DEVAPDT = LHD / MAPL_ALHS
