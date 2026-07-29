@@ -652,7 +652,7 @@ module GEOSmoist_Process_Library
          glac_shift = MODIS_SHIFT
       else
          ACTIVE_POLY = ICE_FRACTION_POLYNOMIAL
-         glac_shift = 0.0
+         glac_shift = -3.0
       endif
 
       select case (ACTIVE_POLY)

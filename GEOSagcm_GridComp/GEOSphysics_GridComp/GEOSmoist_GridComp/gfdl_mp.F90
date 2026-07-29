@@ -475,7 +475,7 @@ module gfdl_mp_mod
 
     real :: sed_fac = 1.0 ! coefficient for sedimentation fall, scale from 1.0 (implicit) to 0.0 (lagrangian)
 
-    logical :: do_ice_pres_scaling = .true.  ! optional pressure scaling to accelerate ice settling in the upper troposphere
+    logical :: do_ice_pres_scaling = .false.  ! optional pressure scaling to accelerate ice settling in the upper troposphere
 
     real :: vw_fac = 1.0
     real :: vi_fac_cnv = 1.0

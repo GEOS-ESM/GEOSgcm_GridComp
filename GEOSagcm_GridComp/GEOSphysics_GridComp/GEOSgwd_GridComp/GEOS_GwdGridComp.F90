@@ -246,7 +246,6 @@ contains
 
     logical :: JASON_BKG, JASON_ORO
     real    :: NCAR_TAU_TOP_ZERO
-    real    :: NCAR_PRNDL
     real    :: NCAR_QBO_HDEPTH_SCALING
     integer :: NCAR_ORO_PGWV, NCAR_BKG_PGWV
     real    :: NCAR_ORO_GW_DC, NCAR_BKG_GW_DC
@@ -360,10 +359,12 @@ contains
 
 ! NCAR GWD settings
 ! -----------------
-      call MAPL_GetResource( MAPL, NCAR_TAU_TOP_ZERO, Label="NCAR_TAU_TOP_ZERO:", default=50.0, _RC) ! 0.5 hPa
-      call MAPL_GetResource( MAPL, NCAR_PRNDL, Label="NCAR_PRNDL:", default=0.50, _RC)
+      ! Pressure level to begin TANH shutoff [Pa]
+      call MAPL_GetResource( MAPL, NCAR_TAU_TOP_ZERO, Label="NCAR_TAU_TOP_ZERO:", default=0.0, _RC)
+
                                    NCAR_QBO_HDEPTH_SCALING = 1.0 - 0.75*sigma
       call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=NCAR_QBO_HDEPTH_SCALING, _RC)
+
                                    NCAR_HR_CF = CEILING(20.0*sigma)
       call MAPL_GetResource( MAPL, NCAR_HR_CF, Label="NCAR_HR_CF:", default=NCAR_HR_CF, _RC)
 
@@ -371,7 +372,7 @@ contains
            MAPL_GRAV , &
            MAPL_RGAS , &
            MAPL_CP , &
-           NCAR_PRNDL, NCAR_QBO_HDEPTH_SCALING, NCAR_HR_CF, ERRstring )
+           ERRstring )
 
       ! Beres Scheme File
       call MAPL_GetResource( MAPL, BERES_FILE_NAME, Label="BERES_FILE_NAME:", &
@@ -380,7 +381,7 @@ contains
       call MAPL_GetResource( MAPL, NCAR_BKG_GW_DC,      Label="NCAR_BKG_GW_DC:",      default=2.5,    _RC)
       call MAPL_GetResource( MAPL, NCAR_BKG_FCRIT2,     Label="NCAR_BKG_FCRIT2:",     default=1.0,    _RC)
       call MAPL_GetResource( MAPL, NCAR_BKG_WAVELENGTH, Label="NCAR_BKG_WAVELENGTH:", default=1.e5,   _RC)
-      call MAPL_GetResource( MAPL, NCAR_TR_EFF,         Label="NCAR_TR_EFF:",         default=0.75,   _RC)
+      call MAPL_GetResource( MAPL, NCAR_TR_EFF,         Label="NCAR_TR_EFF:",         default=1.0,    _RC)
       call MAPL_GetResource( MAPL, NCAR_ET_EFF,         Label="NCAR_ET_EFF:",         default=1.0,    _RC)
       call MAPL_GetResource( MAPL, NCAR_ET_USE_DQCDT,   Label="NCAR_ET_USE_DQCDT:",   default=.TRUE., _RC)
       call MAPL_GetResource( MAPL, NCAR_ET_USE_SPEED,   Label="NCAR_ET_USE_SPEED:",   default=.FALSE.,_RC)
@@ -388,7 +389,7 @@ contains
       ! 1. Default to classic rigid latitude tuning
       NCAR_ET_TAUBGND = 6.4 
       ! 2. Set baselines for independent runs
-      if (NCAR_ET_USE_DQCDT .or. NCAR_ET_USE_SPEED) NCAR_ET_TAUBGND = 10.0
+      if (NCAR_ET_USE_DQCDT .or. NCAR_ET_USE_SPEED) NCAR_ET_TAUBGND = 5.0
       call MAPL_GetResource( MAPL, NCAR_ET_TAUBGND,     Label="NCAR_ET_TAUBGND:",     default=NCAR_ET_TAUBGND, _RC)
 
       call MAPL_GetResource( MAPL, NCAR_BKG_TNDMAX,     Label="NCAR_BKG_TNDMAX:",     default=250.0,  _RC)
@@ -404,7 +405,7 @@ contains
                                     self%workspaces(thread)%beres_band, &
                                     self%workspaces(thread)%beres_dc_desc, &
                                     NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, &
-                                    NCAR_BKG_WAVELENGTH, NCAR_DC_BERES_SRC_LEVEL, &
+                                    NCAR_BKG_WAVELENGTH, NCAR_DC_BERES_SRC_LEVEL, NCAR_HR_CF, NCAR_QBO_HDEPTH_SCALING, &
                                     1000.0, .TRUE., NCAR_TR_EFF, NCAR_ET_EFF, NCAR_ET_TAUBGND, NCAR_ET_USE_DQCDT, NCAR_ET_USE_SPEED, &
                                     NCAR_BKG_TNDMAX, NCAR_DC_BERES, &
                                     IM*JM_thread, LATS(:,bounds(thread+1)%min:bounds(thread+1)%max))
@@ -414,7 +415,7 @@ contains
                               self%workspaces(0)%beres_band, &
                               self%workspaces(0)%beres_dc_desc, &
                               NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, &
-                              NCAR_BKG_WAVELENGTH, NCAR_DC_BERES_SRC_LEVEL, &
+                              NCAR_BKG_WAVELENGTH, NCAR_DC_BERES_SRC_LEVEL, NCAR_HR_CF, NCAR_QBO_HDEPTH_SCALING, &
                               1000.0, .TRUE., NCAR_TR_EFF, NCAR_ET_EFF, NCAR_ET_TAUBGND, NCAR_ET_USE_DQCDT, NCAR_ET_USE_SPEED, &
                               NCAR_BKG_TNDMAX, NCAR_DC_BERES, &
                               IM*JM, LATS )

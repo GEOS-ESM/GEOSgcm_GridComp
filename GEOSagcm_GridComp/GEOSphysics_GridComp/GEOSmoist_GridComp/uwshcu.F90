@@ -2731,9 +2731,15 @@ contains
             ee2    = xc**2
             ud2    = 1. - 2.*xc + xc**2  ! (1-xc)**2
             if (min(scaleh,mix2d) .gt. tiny) then
-              rei(k) = ( (rkm2d+max(0.,(zmid0(k)-detrhgt)/200.) ) / min(scaleh,mix2d) / g / rhomid0j )   ! alternative
+              if (detrhgt <= 0.0) then
+                 ! dynamic detrainment height
+                 rei(k) = ( (rkm2d+max(0.,(zmid0(k)-zifc0(kinv-1)) / 500.0)) / min(scaleh,mix2d) / g / rhomid0j ) ! dynamic
+              else
+                 ! fixed detrainment height
+                 rei(k) = ( (rkm2d+max(0.,(zmid0(k)-detrhgt)/200.) ) / min(scaleh,mix2d) / g / rhomid0j )   ! alternative
 ! regression bug due to cnvtr
-! WMP         rei(k) = ( (rkm2d+max(0.,(zmid0(k)-detrhgt)/200.)-max(0.,min(2.,(cnvtr)/2.5e-6))) / min(scaleh,mix2d) / g / rhomid0j )   ! alternative
+! WMP            rei(k) = ( (rkm2d+max(0.,(zmid0(k)-detrhgt)/200.)-max(0.,min(2.,(cnvtr)/2.5e-6))) / min(scaleh,mix2d) / g / rhomid0j )   ! alternative
+              endif
             else
               rei(k) = ( 0.5 * rkm2d / zmid0(k) / g /rhomid0j ) ! Jason-2_0 version
             end if
