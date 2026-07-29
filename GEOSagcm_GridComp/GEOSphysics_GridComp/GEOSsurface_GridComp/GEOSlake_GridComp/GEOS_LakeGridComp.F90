@@ -997,10 +997,6 @@ contains
     integer                        :: NT
     integer                        :: niter
 
-
-    real, allocatable              :: TVA(:)
-    real, allocatable              :: TVS(:)
-    real, allocatable              :: URA(:)
     real, allocatable              :: DCHDTVA(:,:)
     real, allocatable              :: DCQDTVA(:,:)
     real, allocatable              :: UUU(:)
@@ -1145,12 +1141,6 @@ contains
 
     NT = size(TA)
 
-    allocate(TVA(NT),STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(TVS(NT),STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(URA(NT),STAT=STATUS)
-    VERIFY_(STATUS)
     allocate(UUU(NT),STAT=STATUS)
     VERIFY_(STATUS)
     allocate(LAI(NT),STAT=STATUS)
@@ -1302,19 +1292,16 @@ contains
           ! CH and CQ stored by Lake are mass exchange coefficients,
           ! so apply the same rho*|U| scaling used for CH and CQ.                      
 
-          TVA = TA*(1.0 + MAPL_VIREPS*QA)
-          URA = UUU*PS/(MAPL_RGAS*TVA)
-
-          mystate%DCHDTS(:,N) = -URA*DCHDTVA(:,N)                    &
+          mystate%DCHDTS(:,N) = -DCHDTVA(:,N)                    &
                *(1.0 + MAPL_VIREPS*QS(:,N))
 
-          mystate%DCHDQS(:,N) = -URA*DCHDTVA(:,N)                    &
+          mystate%DCHDQS(:,N) = -DCHDTVA(:,N)                    &
                *MAPL_VIREPS*TS(:,N)
 
-          mystate%DCQDTS(:,N) = -URA*DCQDTVA(:,N)                    &
+          mystate%DCQDTS(:,N) = -DCQDTVA(:,N)                    &
                *(1.0 + MAPL_VIREPS*QS(:,N))
 
-          mystate%DCQDQS(:,N) = -URA*DCQDTVA(:,N)                    &
+          mystate%DCQDQS(:,N) = -DCQDTVA(:,N)                    &
                *MAPL_VIREPS*TS(:,N)
 
        elseif (CHOOSEMOSFC.eq.1)then
@@ -1391,9 +1378,6 @@ contains
     if(associated(CHT)) CHT = CHH
     if(associated(CQT)) CQT = CQQ
 
-    deallocate(TVA)
-    deallocate(TVS)
-    deallocate(URA)
     deallocate(UUU)
     deallocate(LAI)
     deallocate(CHH)

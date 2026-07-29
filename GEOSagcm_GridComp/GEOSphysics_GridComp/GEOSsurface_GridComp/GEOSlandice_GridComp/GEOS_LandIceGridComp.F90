@@ -1965,8 +1965,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    integer                        :: NT
    integer                        :: niter
 
-
-   real, allocatable              :: URA(:)
    real, allocatable              :: UUU(:)
    real, allocatable              :: LAI(:)
    real, allocatable              :: CN (:)
@@ -2002,7 +2000,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    integer, allocatable           :: IWATER(:)
    real, allocatable              :: PSMB(:)
    real, allocatable              :: PSL(:)
-   real, allocatable              :: TVA(:)
    real, allocatable              :: DCHDTVA(:,:)
    real, allocatable              :: DCQDTVA(:,:)
 
@@ -2138,8 +2135,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    NT = size(TA)
 
-   allocate(URA(NT),STAT=STATUS)
-   VERIFY_(STATUS)
    allocate(UUU(NT),STAT=STATUS)
    VERIFY_(STATUS)
    allocate(LAI(NT),STAT=STATUS)
@@ -2230,7 +2225,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
       mystate%DCQDQS = 0.0
 
       allocate(                                                &
-           TVA(NT),                                            &
            DCHDTVA(NT,NUM_SUBTILES),                           &
            DCQDTVA(NT,NUM_SUBTILES), STAT=STATUS)
       VERIFY_(STATUS)
@@ -2282,19 +2276,16 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! CH and CQ stored by LandIce are mass exchange coefficients,
     ! so apply the same rho*|U| factor used for CH and CQ
     
-    TVA = TA*(1.0 + MAPL_VIREPS*QA)
-    URA = UUU*PS/(MAPL_RGAS*TVA)
-
-    mystate%DCHDTS(:,N) = -URA*DCHDTVA(:,N)                    &
+    mystate%DCHDTS(:,N) = -DCHDTVA(:,N)                    &
          *(1.0 + MAPL_VIREPS*QS(:,N))
 
-    mystate%DCHDQS(:,N) = -URA*DCHDTVA(:,N)                    &
+    mystate%DCHDQS(:,N) = -DCHDTVA(:,N)                    &
          *MAPL_VIREPS*TS(:,N)
 
-    mystate%DCQDTS(:,N) = -URA*DCQDTVA(:,N)                    &
+    mystate%DCQDTS(:,N) = -DCQDTVA(:,N)                    &
          *(1.0 + MAPL_VIREPS*QS(:,N))
 
-    mystate%DCQDQS(:,N) = -URA*DCQDTVA(:,N)                    &
+    mystate%DCQDQS(:,N) = -DCQDTVA(:,N)                    &
          *MAPL_VIREPS*TS(:,N)
    
 
@@ -2362,18 +2353,17 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    end do
 
-   if(.true.)             TH     = TH /CHT
-   if(.true.)             QH     = QH /CQT
-   if(associated(Z0EXP))  Z0EXP  = Z0(:,1)
-   if(associated(Z0HEXP)) Z0HEXP = ZT
-   if(associated(VNT))    VNT    = UUU
-   if(associated(LST))    LST    = TST
+   if (.true.)             TH     = TH /CHT
+   if (.true.)             QH     = QH /CQT
    
-   if (allocated(TVA))     deallocate(TVA)
+   if (associated(Z0EXP))  Z0EXP  = Z0(:,1)
+   if (associated(Z0HEXP)) Z0HEXP = ZT
+   if (associated(VNT))    VNT    = UUU
+   if (associated(LST))    LST    = TST
+   
    if (allocated(DCHDTVA)) deallocate(DCHDTVA)
    if (allocated(DCQDTVA)) deallocate(DCQDTVA)
 
-   deallocate(URA)
    deallocate(UUU)
    deallocate(LAI)
    deallocate(RE )
