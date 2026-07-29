@@ -2014,8 +2014,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    integer, allocatable           :: IWATER(:)
    real, allocatable              :: PSMB(:)
    real, allocatable              :: PSL(:)
-   real, allocatable              :: DCHDTVA(:,:)
-   real, allocatable              :: DCQDTVA(:,:)
 
    real, parameter :: LANDICEBAREZ0_HELFAND  = 0.005    ! used in Helfand; Louis has value hardwired into louissurface()
    real, parameter :: LANDICESNOWZ0_HELFAND  = 0.001    ! used in Helfand; Louis has value hardwired into louissurface()
@@ -2333,9 +2331,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    if (associated(VNT))    VNT    = UUU
    if (associated(LST))    LST    = TST
    
-   if (allocated(DCHDTVA)) deallocate(DCHDTVA)
-   if (allocated(DCQDTVA)) deallocate(DCQDTVA)
-
    deallocate(UUU)
    deallocate(LAI)
    deallocate(RE )
