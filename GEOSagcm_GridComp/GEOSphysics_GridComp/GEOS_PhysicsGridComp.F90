@@ -1690,21 +1690,21 @@ contains
 ! Imports for GWD
 !----------------
     call MAPL_AddConnectivity ( GC,                                    &
-         SHORT_NAME  = [character(len=7) :: 'Q', 'DTDT_DC', 'CNV_FRC' ], &
+         SHORT_NAME  = [character(len=7) :: 'Q', 'CNV_FRC' ],          &
          DST_ID      = GWD,                                            &
          SRC_ID      = MOIST,                                          &
                                                         RC=STATUS      )
     VERIFY_(STATUS)
     call MAPL_AddConnectivity ( GC,                                      &
-         SRC_NAME    = 'DQIDT_micro',                                    &
-         DST_NAME    = 'DQIDT',                                          &
+         SRC_NAME    = 'DTDT_micro',                                     &
+         DST_NAME    = 'HT_mi',                                          &
          DST_ID      = GWD,                                              &
          SRC_ID      = MOIST,                                            &
                                                        RC=STATUS  )
     VERIFY_(STATUS)
     call MAPL_AddConnectivity ( GC,                                      &
-         SRC_NAME    = 'DQLDT_micro',                                    &
-         DST_NAME    = 'DQLDT',                                          &
+         SRC_NAME    = 'DTDT_DC',                                        &
+         DST_NAME    = 'HT_dc',                                          &
          DST_ID      = GWD,                                              &
          SRC_ID      = MOIST,                                            &
                                                        RC=STATUS  )

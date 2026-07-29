@@ -127,6 +127,9 @@ module gfdl_mp_mod
 
     real, parameter :: tice = 273.15 ! freezing temperature (K): ref: GFDL, GFS
 
+    real, parameter :: tfrz_inst = 273.15 - 38.0 ! homogeneous freezing temperature (K)
+    real, parameter :: tmlt_fast = 273.15 + 2.0  ! fast melting temperature (K)
+
     integer, parameter :: es_table_length = 2621
     real   , parameter :: es_table_tmin = tice - 160.
     real (kind = r8), parameter :: delt = 0.1
@@ -319,8 +322,8 @@ module gfdl_mp_mod
     logical :: liq_ice_combine = .false. ! combine all liquid water, combine all solid water
     logical :: snow_grauple_combine = .true. ! combine snow and graupel
 
-    logical :: prog_ccn = .true. ! do prognostic ccn (Yi Ming's method)
-    logical :: prog_cin = .false. ! do prognostic cin
+    logical :: prog_ccn = .true.  ! use prognostic ccn
+    logical :: prog_cin = .true.  ! use prognostic cin
 
     logical :: fix_negative = .true. ! fix negative water species
 
@@ -395,6 +398,7 @@ module gfdl_mp_mod
 
     real :: t_min = 178.0 ! minimum temperature to freeze - dry all water vapor (K)
     real :: t_sub = 184.0 ! minimum temperature for sublimation of cloud ice (K)
+    real :: t_psc = 188.15 ! Realistic Type II PSC frost point (~ -85 C)
 
     real :: rh_inc = 0.30 ! rh increment for complete evaporation of cloud water and cloud ice
     real :: rh_inr = 0.30 ! rh increment for minimum evaporation of rain
@@ -412,7 +416,7 @@ module gfdl_mp_mod
     real :: tau_smlt =  900.0 ! snow melting time scale (s)
     real :: tau_gmlt = 1200.0 ! graupel melting time scale (s)
     ! subgridz timescales
-    real :: tau_wbf  = 1200.0 ! Wegener Bergeron Findeisen time scale (s)
+    real :: tau_wbf  =  600.0 ! Wegener Bergeron Findeisen time scale (s)
 
     real :: ccn_o = 90.0 ! ccn over ocean (1/cm^3)
     real :: ccn_l = 270.0 ! ccn over land (1/cm^3)
@@ -425,7 +429,7 @@ module gfdl_mp_mod
 
     real :: cld_min = 0.05 ! minimum cloud fraction
 
-    real :: qi_lim = 1.0 ! cloud ice limiter (0: no, 1: full, >1: extra) to prevent large ice build up
+    real :: qi_lim = 0.75 ! cloud ice limiter (0: no, 1: full, >1: extra) to prevent large ice build up
 
     real :: ql_mlt = 2.0e-3 ! maximum cloud water allowed from melted cloud ice (kg/kg)
     real :: qs_mlt = 1.0e-6 ! maximum cloud water allowed from melted snow (kg/kg)
@@ -474,7 +478,8 @@ module gfdl_mp_mod
     logical :: do_ice_pres_scaling = .true.  ! optional pressure scaling to accelerate ice settling in the upper troposphere
 
     real :: vw_fac = 1.0
-    real :: vi_fac = 1.0
+    real :: vi_fac_cnv = 1.0
+    real :: vi_fac_lsc = 1.0
     real :: vs_fac = 1.0
     real :: vg_fac = 1.0
     real :: vr_fac = 1.0
@@ -568,7 +573,7 @@ module gfdl_mp_mod
     ! -----------------------------------------------------------------------
 
     namelist / gfdl_mp_nml / &
-        t_min, t_sub, tau_r2g, tau_smlt, tau_gmlt, do_ice_pres_scaling, vw_min, vi_min, &
+        t_min, t_sub, tau_r2g, tau_smlt, tau_gmlt, do_ice_pres_scaling, vi_fac_cnv, vi_fac_lsc, vw_min, vi_min, &
         vr_min, vs_min, vg_min, vh_min, ql_mlt, do_qa, fix_negative, vw_max, vi_max, vs_max, &
         vh_max, vg_max, vr_max, qs_mlt, ql0_max, psaut_qi_crt, pwbf_qi_crt, pgaut_qs_crt, ifflag, &
         rh_inc, rh_inr, const_vw, const_vi, const_vs, const_vg, const_vr, rthreshu, rthreshs, &
@@ -1599,6 +1604,9 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
               ! ccn (k) = ccn (k) / den (k)
               ! qnl import from GEOS has units # / m^3
                 ccn (k) = qnl (i, k) / den (k)
+                ccn (k) = ccn (k) * (1.0 - ice_fraction(real(tz (k)), cnv_fraction, srf_type))
+                ! Prevent exactly zero or negative values
+                ccn (k) = max(1.0e-3, ccn (k))
             enddo
         else
             ccn0 = (ccn_l *       min (1., abs (hs (i)) / (10. * grav)) + &
@@ -1615,6 +1623,9 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
               ! cin (k) = cin (k) / den (k)
               ! qni import fro GEOS has units # / m^3
                 cin (k) = qni (i, k) / den (k)
+                cin (k) = cin (k) * ice_fraction(real(tz (k)), cnv_fraction, srf_type)
+                ! Prevent exactly zero or negative values
+                cin (k) = max(1.0e-3, cin (k))
             enddo
         else
             cin0 = 0.
@@ -2460,9 +2471,9 @@ subroutine sedimentation (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
     ! -----------------------------------------------------------------------
 
     if (do_psd_ice_fall) then
-        call term_rsg (ks, ke, qi, den, denfac, vi_fac, blini, mui, tvai, tvbi, vi_min, vi_max, const_vi, vti)
+        call term_rsg (ks, ke, qi, den, denfac, 0.5*(vi_fac_cnv+vi_fac_lsc), blini, mui, tvai, tvbi, vi_min, vi_max, const_vi, vti)
     else
-        call term_ice (ks, ke, tz, qi, den, vi_fac, vi_min, vi_max, const_vi, vti)
+        call term_ice (ks, ke, tz, qi, den, vi_fac_cnv, vi_fac_lsc, vi_min, vi_max, const_vi, vti)
     endif
 
     if (do_sedi_melt_qi) then
@@ -2543,7 +2554,7 @@ end subroutine sedimentation
 ! terminal velocity for cloud ice
 ! =======================================================================
 
-subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
+subroutine term_ice (ks, ke, tz, q, den, v_fac_cnv, v_fac_lsc, v_min, v_max, const_v, vt)
 
     implicit none
 
@@ -2553,7 +2564,7 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
 
     integer, intent (in) :: ks, ke
     logical, intent (in) :: const_v
-    real, intent (in) :: v_fac, v_min, v_max
+    real, intent (in) :: v_fac_cnv, v_fac_lsc, v_min, v_max
     real, intent (in), dimension (ks:ke) :: q, den
     real (kind = r8), intent (in), dimension (ks:ke) :: tz
     real, intent (out), dimension (ks:ke) :: vt
@@ -2605,7 +2616,7 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
                         qden = q (k) * den (k) * 1.e3
                         viLSC = 10.0**(log10(qden) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
                         viCNV = 10.0**(log10(qden) * (tc (k) * (aaC * tc (k) + bbC) + ccC) + ddC * tc (k) + eeC)
-                        vt (k) = 0.01 * (viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction))
+                        vt (k) = 0.01 * (v_fac_lsc*viLSC*(1.0-cnv_fraction) + v_fac_cnv*viCNV*(cnv_fraction))
             
                     case (2)
                         ! Pure Heymsfield and Donner (1990)
@@ -2619,15 +2630,15 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
                         viLSC = MAX(10.0, (1.411*tc (k) + 11.71*log10(qden*1.e3) + 82.35))
                         ! Anvil Vm: a=1.119, b=14.21, c=68.85
                         viCNV = MAX(10.0, (1.119*tc (k) + 14.21*log10(qden*1.e3) + 68.85))
-                        vt (k) = 0.01 * (viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction))
-            
+                        vt (k) = 0.01 * (v_fac_lsc*viLSC*(1.0-cnv_fraction) + v_fac_cnv*viCNV*(cnv_fraction))
+ 
                     case (4)
                         ! Combination: Deng & Mace (2008) LSC + Mishra et al (2014) Anvil CNV
                         qden = q (k) * den (k) * 1.e3
                         viLSC = 10.0**(log10(qden) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
                         ! Anvil Vm: a=1.119, b=14.21, c=68.85
                         viCNV = MAX(10.0, (1.119*tc (k) + 14.21*log10(qden*1.e3) + 68.85))
-                        vt (k) = 0.01 * (viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction))
+                        vt (k) = 0.01 * (v_fac_lsc*viLSC*(1.0-cnv_fraction) + v_fac_cnv*viCNV*(cnv_fraction))
                         
                     case default
                         ! Fail execution if an invalid flag is provided
@@ -2653,9 +2664,8 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
                 endif
 
                 ! -----------------------------------------------------------
-                ! 3. Apply user multiplier and safety caps
+                ! 3. Apply safety caps
                 ! -----------------------------------------------------------
-                vt (k) = v_fac * vt (k)
                 vt (k) = min (v_max, max (v_min, vt (k)))
 
             endif
@@ -3596,7 +3606,7 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
     integer :: k
 
     real :: ql, qi, qim, qadum, newliq, newice
-    real :: tmp, sink, fac_imlt, fac_frez
+    real :: tmp, sink, fac_imlt, fac_imlt_loc, fac_frez, fac_frez_loc
     real :: critical_qi_factor
 
     ! psaut_qi_crt (ice to snow conversion) has strong resolution dependence
@@ -3622,7 +3632,15 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
             tmp = tz (k)
             newliq = new_liq_condensate(tmp, ql, qi)
-            sink = fac_imlt * min (qi, newliq, (tz (k) - tice) / icpk (k) / qadum)
+
+            ! Cloud ice melts instantly if it gets too far past freezing (e.g., +2 C)
+            if (tmp > tmlt_fast) then
+                fac_imlt_loc = 1.0 ! Instant melt
+            else
+                fac_imlt_loc = fac_imlt
+            endif
+
+            sink = fac_imlt_loc * min (qi, newliq, (tz (k) - tice) / icpk (k) / qadum)
             tmp = min (sink, dim (ql_mlt/qadum, ql))
 
             tmp = tmp * qadum
@@ -3647,7 +3665,17 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
             tmp = tz (k)
             newice = new_ice_condensate(tmp, ql, qi)
-            sink = fac_frez * min(ql, newice, (tice - tz (k)) / icpk (k) / qadum)
+
+            ! --- NEW: Homogeneous Freezing Hard Stop ---
+            ! If colder than -38 C, freezing is instantaneous and total
+            if (tmp < tfrz_inst) then
+                newice = ql        ! All liquid must become ice
+                fac_frez_loc = 1.0 ! Instantaneous timescale
+            else
+                fac_frez_loc = fac_frez ! Normal 10-minute timescale
+            endif
+
+            sink = fac_frez_loc * min(ql, newice, (tice - tz (k)) / icpk (k) / qadum)
             qim = critical_qi_factor / den (k)
             tmp = min (sink, dim (qim/qadum, qi))
 
@@ -4668,10 +4696,30 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
     do k = ks, ke
 
         ! -----------------------------------------------------------------------
-        ! instant deposit all water vapor to cloud ice when temperature is super low
+        ! Polar Stratospheric Ice Cloud (PSC Type II) Proxy
+        ! Triggers in the ultra-cold winter polar stratosphere before reaching t_min
         ! -----------------------------------------------------------------------
+        if (tz(k) .lt. t_psc .and. tz(k) .ge. t_min) then
+            
+            ! Deposit water vapor down to your microphysical minimum
+            subl = dim (qv (k), qcmin)
+            mppd1 = mppd1 + subl * dp (k) * convt
 
-        if (tz (k) .lt. t_min) then
+            call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
+                 - subl, 0., 0., subl, 0., 0., te8 (k), cvm (k), tz (k), &
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pinst')
+
+            if (.not. do_qa) then
+               ! Force maximum cloud fraction to mimic uniform stratospheric sheets
+               qa (k) = 1.0
+               ! Bypassing the cfmin cloud-clearing filter completely so the 
+               ! ultra-dry stratospheric air doesn't numerically delete the ice.
+            endif
+
+        elseif (tz (k) .lt. t_min) then
+        ! -----------------------------------------------------------------------
+        ! Your original extreme freeze-dry sink (left untouched)
+        ! -----------------------------------------------------------------------
 
             subl = dim (qv (k), qcmin)
             mppd1 = mppd1 + subl * dp (k) * convt
@@ -4680,11 +4728,9 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
                  - subl, 0., 0., subl, 0., 0., te8 (k), cvm (k), tz (k), &
                 lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pinst')
 
-            ! [WMP] avoid high cloud fractions for high troposhere cirrus clouds
             if (.not. do_qa) then
                qa (k) = max(0.0,min(1.0,1.0 - qcmin/max(qi (k), qcmin)))
                if ( qa (k) .lt. cfmin) then
-                  ! remove clouds and qi if qa is too small
                   qa (k) = 0.0
                   subl = qi (k)
                   mppd1 = mppd1 - subl * dp (k) * convt
@@ -4704,7 +4750,8 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
         tin = (te8 (k) - lv00 * qpz + li00 * (qs (k) + qg (k))) / &
             mhc (qpz, qr (k), qs (k) + qg (k))
 
-        if (tin .gt. t_sub + 6.) then
+        ! Only allow standard tropospheric clearing if we are well outside the PSC zone
+        if (tin .gt. t_sub + 6. .and. tz(k) .ge. t_psc) then
 
             ! initialize to 0s
             evap = 0.0
@@ -4928,7 +4975,7 @@ subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den,
 
     real :: snow_boost_mult
     real :: tau_wbf_eff
-    real, parameter :: wbf_coarse_mult = 10.0 ! How much slower WBF is at 50km vs 2km
+    real, parameter :: wbf_coarse_mult = 2.5 ! How much slower WBF is at 50km vs 2km
 
     if (.not. do_wbf) return
 
@@ -5088,7 +5135,7 @@ subroutine pidep_pisub (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
 
     real, intent (inout), dimension (ks:ke) :: rsubl
 
-    real, intent (out) :: mppdi, mppsi
+    real, intent (inout) :: mppdi, mppsi
 
     ! -----------------------------------------------------------------------
     ! local variables
@@ -5096,7 +5143,7 @@ subroutine pidep_pisub (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
 
     integer :: k
 
-    real :: sink, tin, dqdt, qsi, dq, pidep, tmp, tc, qi_gen, qi_crt
+    real :: sink, tin, dqdt, qsi, dq, pidep, tmp, tc, qi_gen, qi_crt, ramp_factor
 
     do k = ks, ke
 
@@ -5114,33 +5161,59 @@ subroutine pidep_pisub (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
                         pca = pcai, pcb = pcbi, pc = cin (k))
                     cin (k) = cin (k) / den (k)
                 elseif (.not. prog_cin) then
-                    if (inflag .eq. 1) &
-                        cin (k) = 5.38e7 * exp (0.75 * log (qi (k) * den (k)))
-                    if (inflag .eq. 2) &
-                        cin (k) = exp (- 2.80 + 0.262 * (tice - tz (k))) * 1000.0
-                    if (inflag .eq. 3) & 
-                        cin (k) = exp (- 0.639 + 12.96 * (qv (k) / qsi - 1.0)) * 1000.0
-                    if (inflag .eq. 4) & 
-                        cin (k) = 5.e-3 * exp (0.304 * (tice - tz (k))) * 1000.0
-                    if (inflag .eq. 5) &
-                        cin (k) = 1.e-5 * exp (0.5 * (tice - tz (k))) * 1000.0
+                    select case (inflag)
+                        case (1)
+                            ! Uses ice mass relationship
+                            ! Simplified from: exp(0.75 * log(x)) -> x**0.75
+                            cin (k) = 5.38e7 * (qi (k) * den (k))**0.75
+                        case (2)
+                            ! Uses temperature dependence (Fletcher-type curve)
+                            ! Simplified from: exp(-2.80) * 1000.0 -> 60.8101
+                            cin (k) = 60.8101 * exp (0.262 * (tice - tz (k)))
+                        case (3)
+                            ! Uses ice supersaturation dependence
+                            ! Simplified from: exp(-0.639) * 1000.0 -> 527.819
+                            cin (k) = 527.819 * exp (12.96 * (qv (k) / qsi - 1.0))
+                        case (4)
+                            ! Steeper temperature dependence
+                            ! Simplified from: 5.e-3 * 1000.0 -> 5.0
+                            cin (k) = 5.0 * exp (0.304 * (tice - tz (k)))
+                        case (5)
+                            ! Very steep temperature dependence (Meyers-type approximation)
+                            ! Simplified from: 1.e-5 * 1000.0 -> 0.01
+                            cin (k) = 0.01 * exp (0.5 * (tice - tz (k)))
+                    end select
                 endif
-                pidep = dts * dq * 4.0 * 11.9 * exp (0.5 * log (qi (k) * den (k) * cin (k))) / &
+                pidep = dts * dq * 4.0 * 11.9 * sqrt(qi (k) * den (k) * cin (k)) / &
                        (qsi * den (k) * (tcpk (k) * cvm (k)) ** 2 / (tcond * rvgas * tz (k) ** 2) + &
                       1. / vdifu)
             endif
 
             if (dq .gt. 0.) then
                 tc = tice - tz (k)
-                qi_gen = 4.92e-11 * exp (1.33 * log (1.e3 * exp (0.1 * tc)))
-                if (igflag .eq. 1) &
-                    qi_crt = qi_gen / den (k)
-                if (igflag .eq. 2) &
-                    qi_crt = qi_gen * min (qi_lim, 0.1 * tc) / den (k)
-                if (igflag .eq. 3) &
-                    qi_crt = 1.82e-6 * min (qi_lim, 0.1 * tc) / den (k)
-                if (igflag .eq. 4) &
-                    qi_crt = max (qi_gen, 1.82e-6) * min (qi_lim, 0.1 * tc) / den (k)
+                ! Calculate the temperature ramp factor used in most flags
+                ! (This saves recalculating it on every case line)
+                ramp_factor = min(qi_lim, 0.1 * tc) / den(k)
+                select case (igflag)
+                    case (1)
+                        ! Requires qi_gen, no temperature ramp
+                        qi_gen = 4.808e-7 * exp(0.133 * tc)
+                        qi_crt = qi_gen / den(k)
+                    case (2)
+                        ! Requires qi_gen, uses temperature ramp
+                        qi_gen = 4.808e-7 * exp(0.133 * tc)
+                        qi_crt = qi_gen * ramp_factor
+                    case (3)
+                        ! Bypasses qi_gen entirely (computationally cheapest)
+                        qi_crt = 1.82e-6 * ramp_factor
+                    case (4)
+                        ! Requires qi_gen, bounded by a minimum, uses temperature ramp
+                        qi_gen = 4.808e-7 * exp(0.133 * tc)
+                        qi_crt = max(qi_gen, 1.82e-6) * ramp_factor
+                    case default
+                        ! Safe fallback just in case an invalid flag is passed
+                        qi_crt = 1.82e-6 * ramp_factor
+                end select
                 sink = min (tmp, max (qi_crt - qi (k), pidep), tc / tcpk (k))
                 mppdi = mppdi + sink * dp (k) * convt
             else

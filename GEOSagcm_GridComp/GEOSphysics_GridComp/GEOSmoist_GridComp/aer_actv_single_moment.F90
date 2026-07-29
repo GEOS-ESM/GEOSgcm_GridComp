@@ -25,10 +25,10 @@ MODULE Aer_Actv_Single_Moment
    real(AER_PR), parameter :: deltai    =  2.809e+3
    real(AER_PR), parameter :: densic    =  917.0   !Ice crystal density in kgm-3
 
-   real :: NN_MIN_LIQ  =  100.0e6
+   real :: NN_MIN_LIQ  =  150.0e6
    real :: NN_MAX_LIQ  =  500.0e6
 
-   real :: NN_MIN_ICE  =  10.0e6
+   real :: NN_MIN_ICE  =  10.0e3
    real :: NN_MAX_ICE  =  50.0e6
 
 CONTAINS
@@ -241,7 +241,8 @@ CONTAINS
          DO n=1,n_modes
            DO j = 1, JM
              DO i = 1, IM
-               if ( (AeroPropsNew(n)%kap(i,j,k) > 0.4) .and. &
+               ! Look for low hygroscopicity (dust/soot) and large size
+               if ( (AeroPropsNew(n)%kap(i,j,k) < 0.2) .and. & 
                     (AeroPropsNew(n)%dpg(i,j,k) .ge. 0.5e-6) ) then
                   numbinit(i,j) = numbinit(i,j) + AeroPropsNew(n)%num(i,j,k)
                endif 

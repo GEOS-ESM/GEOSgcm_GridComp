@@ -380,9 +380,8 @@ contains
       call MAPL_GetResource( MAPL, NCAR_BKG_GW_DC,      Label="NCAR_BKG_GW_DC:",      default=2.5,    _RC)
       call MAPL_GetResource( MAPL, NCAR_BKG_FCRIT2,     Label="NCAR_BKG_FCRIT2:",     default=1.0,    _RC)
       call MAPL_GetResource( MAPL, NCAR_BKG_WAVELENGTH, Label="NCAR_BKG_WAVELENGTH:", default=1.e5,   _RC)
-      call MAPL_GetResource( MAPL, NCAR_TR_EFF,         Label="NCAR_TR_EFF:",         default=1.0,    _RC)
+      call MAPL_GetResource( MAPL, NCAR_TR_EFF,         Label="NCAR_TR_EFF:",         default=0.75,   _RC)
       call MAPL_GetResource( MAPL, NCAR_ET_EFF,         Label="NCAR_ET_EFF:",         default=1.0,    _RC)
-
       call MAPL_GetResource( MAPL, NCAR_ET_USE_DQCDT,   Label="NCAR_ET_USE_DQCDT:",   default=.TRUE., _RC)
       call MAPL_GetResource( MAPL, NCAR_ET_USE_SPEED,   Label="NCAR_ET_USE_SPEED:",   default=.FALSE.,_RC)
 
@@ -693,11 +692,13 @@ contains
          TAUYO_TMP_NCAR = 0.0
          !call MAPL_TimerOn(MAPL,"-INTR_NCAR")
          if ( (self%NCAR_EFFGWORO /= 0.0) .OR. (self%NCAR_EFFGWBKG /= 0.0) ) then
-            DO L=1, LM
-               ! Raising the mask to the 4th power aggressively suppresses 
-               ! tendencies in regions with even modest CNV_FRC values
-               TMP3D(:,:,L) = ((1.0-CNV_FRC)**4) * (DQLDT(:,:,L)+DQIDT(:,:,L))
-            END DO
+           !DO L=1, LM
+           !   ! Isolate purely large-scale/frontal latent heating by removing convective overlap.
+           !   ! Since CNV_FRC is a CAPE-derived proxy for convective activity, raising the 
+           !   ! (1.0 - CNV_FRC) mask to the 4th power aggressively filters out the microphysics 
+           !   ! heating (HT_mi) in regions with even modest convective instability.
+           !   TMP3D(:,:,L) = ((1.0-CNV_FRC)**4) * HT_mi
+           !END DO
             if(associated(DQCDT_LS)) DQCDT_LS = TMP3D
             thread = MAPL_get_current_thread()
             workspace => self%workspaces(thread)
@@ -705,7 +706,7 @@ contains
                  workspace%beres_dc_desc, &
                  workspace%beres_band, workspace%oro_band, workspace%rdg_band, &
                  PLE,       T,          U,          V,                   &
-                 HT_dc,     TMP3D,      WSPD_STABLE300M,                 &
+                 HT_dc,     HT_mi,      WSPD_STABLE300M,                 &
                  SGH,       MXDIS,      HWDTH,      CLNGT,  ANGLL,       &
                  ANIXY,     GBXAR_TMP,  KWVRDG,     EFFRDG, PREF,        &
                  PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
