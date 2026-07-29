@@ -359,8 +359,43 @@ contains
 
 ! NCAR GWD settings
 ! -----------------
-      ! Pressure level to begin TANH shutoff [Pa]
-      call MAPL_GetResource( MAPL, NCAR_TAU_TOP_ZERO, Label="NCAR_TAU_TOP_ZERO:", default=0.0, _RC)
+      ! -------------------------------------------------------------------
+      ! Dynamically match GWD upper boundary to Dynamics Rayleigh Cutoff
+      ! -------------------------------------------------------------------
+      ! Base this on the imsize (equivalent to npx logic in the dynamics)
+      if (STRETCH_FACTOR > 1.0) then
+         ! Stretched Grid Logic (imsize already includes CEILING(STRETCH_FACTOR))
+         if (imsize >= 2160) then
+            NCAR_TAU_TOP_ZERO = 1000.0
+         else if (imsize >= 1080) then
+            NCAR_TAU_TOP_ZERO = 500.0
+         else if (imsize >= 540) then
+            NCAR_TAU_TOP_ZERO = 100.0
+         else
+            NCAR_TAU_TOP_ZERO = 30.0 ! Fallback for mildly stretched low-res
+         endif
+      else
+         ! Uniform Global Grid Logic
+         if (imsize >= 10800) then
+            NCAR_TAU_TOP_ZERO = 750.0
+         else if (imsize >= 5760) then
+            NCAR_TAU_TOP_ZERO = 500.0
+         else if (imsize >= 2880) then
+            NCAR_TAU_TOP_ZERO = 400.0
+         else if (imsize >= 1440) then
+            NCAR_TAU_TOP_ZERO = 300.0
+         else if (imsize >= 1120) then
+            NCAR_TAU_TOP_ZERO = 200.0
+         else if (imsize >= 720) then
+            NCAR_TAU_TOP_ZERO = 100.0
+         else if (imsize >= 360) then
+            NCAR_TAU_TOP_ZERO = 60.0
+         else
+            NCAR_TAU_TOP_ZERO = 30.0 ! Default for C180 and coarser
+         endif
+      endif
+      ! Read from resource file, but use the dynamically calculated cutoff as the default
+      call MAPL_GetResource( MAPL, NCAR_TAU_TOP_ZERO, Label="NCAR_TAU_TOP_ZERO:", default=NCAR_TAU_TOP_ZERO, _RC)
 
                                    NCAR_QBO_HDEPTH_SCALING = 1.0 - 0.75*sigma
       call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=NCAR_QBO_HDEPTH_SCALING, _RC)

@@ -479,7 +479,7 @@ module gfdl_mp_mod
 
     real :: vw_fac = 1.0
     real :: vi_fac_cnv = 1.0
-    real :: vi_fac_lsc = 1.0
+    real :: vi_fac_lsc = 0.5
     real :: vs_fac = 1.0
     real :: vg_fac = 1.0
     real :: vr_fac = 1.0

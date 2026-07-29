@@ -413,7 +413,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
               endif
            end do
            ! Scale moist multiplier based on instantaneous tropospheric heating rates
-           moist_mult(i) = MAX(1.0, MIN(10.0, q0(i) * 86400.0 * 4.0e4))
+           moist_mult(i) = MAX(1.0, MIN(0.5*desc%hr_cf, q0(i) * 86400.0 * 4.0e4))
         else
            moist_mult(i) = 1.0
         endif
@@ -524,11 +524,12 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
           ! -----------------------------------------------------------------
           ! Proxy 2: The Dry Wind (Katabatic winds - evaluated locally)
            if (desc%et_bkg_speed_forcing) then
-               dry_mult = MAX(1.0, MIN(10.0, 1.0 + (speed(i) - 10.0) * (9.0 / 20.0)))
+               ! Dynamically scale the slope so it reaches max hr_cf at speed = 30.0 m/s
+               dry_mult = MAX(1.0, MIN( real(desc%hr_cf), &
+                                  1.0 + (speed(i) - 10.0) * ((real(desc%hr_cf) - 1.0) / 20.0) ))
            else
                dry_mult = 1.0
            endif
-           
            ! Apply the dominant physical forcing mechanism
            phys_mult = MAX(moist_mult(i), dry_mult)
            tau(i,:,desc%k(i)+1) = desc%taubck(i,:) * phys_mult
