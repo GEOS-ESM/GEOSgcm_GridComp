@@ -1053,7 +1053,7 @@ module GEOS_LandiceGridCompMod
 
      call MAPL_AddInternalSpec(GC,                           &
         SHORT_NAME         = 'FR',                                &
-        LONG_NAME          = 'ice_fraction',                      &
+        LONG_NAME          = 'subtile_area_fractions_for_bare_and_snow-covered_ice',                      &
         UNITS              = '1',                                 &
         DIMS               = MAPL_DimsTileOnly,                   &
         UNGRIDDED_DIMS     = (/NUM_SUBTILES/),                    &
