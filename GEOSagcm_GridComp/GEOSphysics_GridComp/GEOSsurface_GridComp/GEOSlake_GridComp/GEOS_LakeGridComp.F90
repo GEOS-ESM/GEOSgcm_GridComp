@@ -1272,11 +1272,6 @@ contains
     do N=1,NUM_SUBTILES
 
        if(CHOOSEMOSFC.eq.0) then
-
-          ! Louis surface-layer scheme.  Request analytical derivatives
-          ! of CH and CQ with respect to the air-minus-surface virtual
-          ! temperature difference and convert them below to derivatives
-          ! with respect to the Lake surface state, Ts and qs.
           
           LAI = 0.0
 
@@ -1334,7 +1329,7 @@ contains
           if(associated(MOU2M)) MOU2M  = MOU2M  + U2M( :)*FR(:,N)
           if(associated(MOV2M)) MOV2M  = MOV2M  + V2M( :)*FR(:,N)
 
-       endif
+       endif    ! CHOOSEMOSFC
 
        !  Aggregate to tiles
        !--------------------
