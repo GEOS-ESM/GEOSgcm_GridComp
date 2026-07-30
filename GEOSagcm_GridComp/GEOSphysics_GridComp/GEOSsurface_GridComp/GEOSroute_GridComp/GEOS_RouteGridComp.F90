@@ -623,17 +623,18 @@ contains
       integer, pointer     :: pfaf_patch(:),tid_patch(:)     
       type(Netcdf4_Fileformatter)    :: formatter
       type(Filemetadata)             :: meta
-      character(len=ESMF_MAXSTR)     :: EASE_pfaf_tile_file, tile_file
+      character(len=ESMF_MAXSTR)     :: EASE_pfaf_tile_file, tiling_file, tiling_nc_file
       character(len=MAPL_TileNameLength), pointer :: GNAMES(:)
 
       ! create source for orignal tile space
       route%field_src = ESMF_FieldCreate(grid=tilegrid,      typekind=ESMF_TYPEKIND_R8, _RC)
 
       ! create destination for pfaf tile space
-      route%field     = ESMF_FieldCreate(grid=pfaf_tilegrid, typekind=ESMF_TYPEKIND_R8, _RC)
+      route%field     = ESMF_FieldCreate(grid=pfaf_tilegrid, typekind=ESMF_TYPEKIND_R8, _RC)    
 
       call MAPL_LocstreamGet(LOCSTREAM, GRIDNAMES=GNAMES, pfaf_index=pfaf_index, tilearea=tilearea, local_id=local_id, local_i=local_i, local_j=local_j, _RC)
-      ! ESMF use global indices increasing with mpi_rank, no mask here for tile grid 
+
+     ! ESMF use global indices increasing with mpi_rank, no mask here for tile grid 
       allocate(global_id(route%nt_global))
       call ESMFL_Fcollect(tilegrid, global_id, local_id, _RC)
 
@@ -752,6 +753,20 @@ contains
          call ESMFL_Fcollect(tilegrid, global_dst,  pfaf_index, _RC)
          call ESMFL_Fcollect(tilegrid, global_area, tilearea,   _RC)
          global_area = global_area*MAPL_RADIUS**2
+
+         call MAPL_GetResource (MAPL, tiling_file, label = 'TILING_FILE:', RC=STATUS); VERIFY_(STATUS)
+         ! Check if "tile.bin" is a substring of tiling_file
+         if (index(trim(tiling_file), "tile.bin") > 0 ) then
+            pfaf_index => NULL()
+            call MAPL_GetResource (SCF, tiling_nc_file, label = 'TILING_NC_FILE:', RC=STATUS); VERIFY_(STATUS)
+            ! read info about Pfafstetter indexes from TILING_NC_FILE 
+            ret=nf90_open(trim(tiling_nc_file),NF90_NOWRITE,ncid)
+            _ASSERT( ret == NF90_NOERR, trim(tiling_nc_file)//" read error: "//trim(nf90_strerror(ret)))
+            ret=nf90_inq_varid(ncid,"pfaf_index",varid)
+            _ASSERT( ret == NF90_NOERR, "Var 'pfaf_index' not found in "//trim(tiling_nc_file)//": "//trim(nf90_strerror(ret)))
+            ret=nf90_get_var(ncid,varid,global_dst)
+            _ASSERT( ret == NF90_NOERR, "Failed to read 'pfaf_index': "//trim(nf90_strerror(ret)))
+         endif
       endif
 
       allocate(areacat_glob(N_pfaf_g),source=0.)
