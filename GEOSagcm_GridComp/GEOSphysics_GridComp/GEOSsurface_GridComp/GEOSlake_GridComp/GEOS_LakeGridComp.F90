@@ -43,10 +43,6 @@ module GEOS_LakeGridCompMod
      private
 
      integer                    :: CHOOSEMOSFC
-     real,    allocatable       :: DCHDTS(:,:)
-     real,    allocatable       :: DCHDQS(:,:)
-     real,    allocatable       :: DCQDTS(:,:)
-     real,    allocatable       :: DCQDQS(:,:)
      logical                    :: InitDone
      logical, pointer           :: mask(:) => null()
      real                       :: tol_frice
@@ -621,6 +617,33 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    ! ----------------------------------------------------
+    !
+    ! for *analytical* extra derivatives in louissurface()
+    
+    call MAPL_AddInternalSpec(GC,                          &
+         SHORT_NAME         = 'delCH_delTVA',              &
+         LONG_NAME          = 'partial_derivative_of_CH_wrt_virtual_Tair', & 
+         UNITS              = '1',                         &
+         DIMS               = MAPL_DimsTileTile,           &
+         NUM_SUBTILES       = NUM_SUBTILES                ,&
+         VLOCATION          = MAPL_VLocationNone,          &
+         RESTART            = MAPL_RestartSkip            ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)
+    
+    call MAPL_AddInternalSpec(GC,                          &
+         SHORT_NAME         = 'delCQ_delTVA',              &  
+         LONG_NAME          = 'partial_derivative_of_CQ_wrt_virtual_Tair', &
+         UNITS              = '1',                         &
+         DIMS               = MAPL_DimsTileTile,           &
+         NUM_SUBTILES       = NUM_SUBTILES                ,&
+         VLOCATION          = MAPL_VLocationNone,          &
+         RESTART            = MAPL_RestartSkip            ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)
+    
+    
     !  !Import state:
 
     ! Flux forcings
@@ -980,6 +1003,11 @@ contains
     real, pointer, dimension(:,:)  :: CM
     real, pointer, dimension(:,:)  :: CQ
 
+    ! for analytical extra derivatives in louissurface()
+    
+    real, dimension(:,:), pointer :: delCH_delTVA
+    real, dimension(:,:), pointer :: delCQ_delTVA
+    
     ! pointers to import
 
     real, pointer, dimension(:)    :: UU
@@ -997,8 +1025,6 @@ contains
     integer                        :: NT
     integer                        :: niter
 
-    real, allocatable              :: DCHDTVA(:,:)
-    real, allocatable              :: DCQDTVA(:,:)
     real, allocatable              :: UUU(:)
     real, allocatable              :: LAI(:)
     real, allocatable              :: CHH(:)
@@ -1111,7 +1137,12 @@ contains
     call MAPL_GetPointer(INTERNAL,CH   , 'CH'  , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL,CM   , 'CM'  , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL,CQ   , 'CQ'  , RC=STATUS); VERIFY_(STATUS)
-
+        
+    ! for analytical extra derivatives in louissurface()
+    
+    call MAPL_GetPointer(INTERNAL, delCH_delTVA, 'delCH_delTVA', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, delCQ_delTVA, 'delCQ_delTVA', RC=STATUS); VERIFY_(STATUS)
+        
     ! Pointers to outputs
     !--------------------
 
@@ -1212,32 +1243,6 @@ contains
     allocate(IWATER(NT),STAT=STATUS)
     VERIFY_(STATUS)
 
-    ! for Louis, allocate variables for analytical derivatives
-    
-    if (CHOOSEMOSFC == 0) then
-       if (.not. allocated(mystate%DCHDTS)) then
-          allocate(                                             &
-               mystate%DCHDTS(NT,NUM_SUBTILES),                 &
-               mystate%DCHDQS(NT,NUM_SUBTILES),                 &
-               mystate%DCQDTS(NT,NUM_SUBTILES),                 &
-               mystate%DCQDQS(NT,NUM_SUBTILES), STAT=STATUS)
-          VERIFY_(STATUS)
-       endif
-       
-       mystate%DCHDTS = 0.0
-       mystate%DCHDQS = 0.0
-       mystate%DCQDTS = 0.0
-       mystate%DCQDQS = 0.0
-       
-       allocate(                                                &
-            DCHDTVA(NT,NUM_SUBTILES),                           &
-            DCQDTVA(NT,NUM_SUBTILES), STAT=STATUS)
-       VERIFY_(STATUS)
-       
-       DCHDTVA = 0.0
-       DCQDTVA = 0.0
-    endif
-
     !  Compute drag coefficient at tiles
     !-----------------------------------
 
@@ -1280,30 +1285,8 @@ contains
           
           call louissurface(2,N,UU,WW,PS,TA,TS,QA,QS,PCU,LAI,        &      ! istype=2 for Lake
                Z0,DZ,CM,CN,RIB,ZT,ZQ,CH,CQ,                          &      ! z0 is hardwired inside louissurface()
-               UUU,UCN,RE,DCHDTVA,DCQDTVA)
-
-          ! Convert the Louis derivatives with respect to the
-          ! air-minus-surface virtual temperature difference to
-          ! derivatives with respect to the Lake surface state,
-          ! Ts and qs.  The minus sign results from differentiating
-          ! the air-minus-surface difference with respect to the
-          ! surface variables.
-          !
-          ! CH and CQ stored by Lake are mass exchange coefficients,
-          ! so apply the same rho*|U| scaling used for CH and CQ.                      
-
-          mystate%DCHDTS(:,N) = -DCHDTVA(:,N)                    &
-               *(1.0 + MAPL_VIREPS*QS(:,N))
-
-          mystate%DCHDQS(:,N) = -DCHDTVA(:,N)                    &
-               *MAPL_VIREPS*TS(:,N)
-
-          mystate%DCQDTS(:,N) = -DCQDTVA(:,N)                    &
-               *(1.0 + MAPL_VIREPS*QS(:,N))
-
-          mystate%DCQDQS(:,N) = -DCQDTVA(:,N)                    &
-               *MAPL_VIREPS*TS(:,N)
-
+               UUU,UCN,RE,delCH_delTVA,delCQ_delTVA)
+          
        elseif (CHOOSEMOSFC.eq.1)then
           
           niter = 6   ! number of internal iterations in the helfand MO surface layer routine
@@ -1413,9 +1396,6 @@ contains
     deallocate(IWATER)
     deallocate(PSMB)
     deallocate(PSL)
-    
-    if (allocated(DCHDTVA)) deallocate(DCHDTVA)
-    if (allocated(DCQDTVA)) deallocate(DCQDTVA)
     
     !  All done
     !-----------
@@ -1585,6 +1565,11 @@ contains
       real, pointer, dimension(:,:)  :: CM
       real, pointer, dimension(:,:)  :: CQ
 
+      ! for analytical extra derivatives (louissurface)
+      
+      real, pointer, dimension(:,:)  :: delCQ_delTVA
+      real, pointer, dimension(:,:)  :: delCH_delTVA
+      
       ! pointers to import
 
       real, pointer, dimension(:)    :: ALW
@@ -1717,6 +1702,11 @@ contains
       call MAPL_GetPointer( INTERNAL, CM     , 'CM'   ,    RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer( INTERNAL, CQ     , 'CQ'   ,    RC=STATUS); VERIFY_(STATUS)
 
+      ! for analytical extra derivatives (louissurface)
+      
+      call MAPL_GetPointer(INTERNAL, delCQ_delTVA, 'delCQ_delTVA', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(INTERNAL, delCH_delTVA, 'delCH_delTVA', RC=STATUS); VERIFY_(STATUS)
+      
       ! Pointers to outputs
       !--------------------
 
@@ -1920,64 +1910,42 @@ contains
       
       do N=1,NUM_SUBTILES
 
+         
+         ! --------------------------------------------------------------------
+         ! 
+         ! surface turbulence
+         !
+         ! - for additional documentation, see subroutine run2() of GEOS_CatchGridComp.F90
+         ! - SHD = (total?) derivative of sensible heat w.r.t. surface temperature 
+         ! - EVD = (total?) derivative of evaporation   w.r.t. surface temperature 
+
+         DQSATDT = GEOS_DQSAT( TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.)
+
          if (LAKE_OFFLINE == 0) then
 
             ! GCM: Lake coupled to atmosphere
             
             CFT = (CH(:,N)/CTATM)
             CFQ = (CQ(:,N)/CQATM)
-
-            EVP = CFQ*(EVAP + DEV*(QS(:,N)-QHATM))
+            
             SHF = CFT*(SH   + DSH*(TS(:,N)-THATM))
+            EVP = CFQ*(EVAP + DEV*(QS(:,N)-QHATM))
+            
             SHD = CFT*DSH
-            EVD = CFQ*DEV*GEOS_DQSAT(TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.)
-
+            EVD = CFQ*DEV*DQSATDT
+            
             DTS = LWDNSRF - (ALW + BLW*TS(:,N)) - SHF
-
+            
          else
-
+            
             ! Lake in offline (lake-only) mode with prescribed surface met forcing
             
             CFT = 1.0
             CFQ = 1.0
-
-            EVP =         CQ(:,N)*(QS(:,N)-QA)
+            
             SHF = MAPL_CP*CH(:,N)*(TS(:,N)-TA)
-
-            if (mystate%CHOOSEMOSFC == 0) then
-               
-               _ASSERT(allocated(mystate%DCHDTS), 'Lake Louis derivative arrays not allocated')
-
-               ! Include the dependence of the Louis exchange coefficients
-               ! on the Lake surface state.  Since qs = qsat(Ts,Ps), combine
-               ! the separate Ts and qs partial derivatives into total
-               ! derivatives with respect to Lake surface temperature.             
-               DQSATDT = GEOS_DQSAT(TS(:,N), PS,                 &
-                    RAMP=0.0, PASCALS=.TRUE.)
-
-               ! E = CQ(Ts,qs)*(qs-qa)
-               DEDTS = max(0.0,                                  &
-                    mystate%DCQDTS(:,N)*(QS(:,N)-QA))
-               DEDQS = CQ(:,N) + max(0.0,                        &
-                    mystate%DCQDQS(:,N)*(QS(:,N)-QA))
-
-               ! H = Cp*CH(Ts,qs)*(Ts-Ta)
-               DHSDTS = MAPL_CP*(CH(:,N) + max(0.0,              &
-                    mystate%DCHDTS(:,N)*(TS(:,N)-TA)))
-               DHSDQS = max(0.0, MAPL_CP*                        &
-                    mystate%DCHDQS(:,N)*(TS(:,N)-TA))
-
-               ! Lake constrains surface humidity to qs=qsat(Ts,Ps),
-               ! so reduce the two-variable Jacobian to d/dTs
-               EVD = DEDTS  + DEDQS *DQSATDT
-               SHD = DHSDTS + DHSDQS*DQSATDT
-            else
-               ! Preserve the original fixed coefficient Helfand path
-               SHD = MAPL_CP*CH(:,N)
-               EVD = CQ(:,N)*GEOS_DQSAT(TS(:,N), PS,             &
-                    RAMP=0.0, PASCALS=.TRUE.)
-            endif
-
+            EVP =         CQ(:,N)*(QS(:,N)-QA)
+            
             if (N == WATER) then
                BLWN = LAKEEMISS   *MAPL_STFBOL*TS(:,N)*TS(:,N)*TS(:,N)
             else
@@ -1986,10 +1954,39 @@ contains
 
             ALWN = -3.0*BLWN*TS(:,N)
             BLWN =  4.0*BLWN
-
+            
             DTS = LWDNSRF - (ALWN + BLWN*TS(:,N)) - SHF
+            
+            if     (mystate%CHOOSEMOSFC == 0) then
+               
+               ! Louis (incl. extra analytical derivatives of exchange coeffs w.r.t. surface temp/humidity)
+               
+               DEDQS =           CQ(:,N) + max(0.0,         -delCQ_delTVA(:,N)*      MAPL_VIREPS*TS(:,N) *(QS(:,N)-QA) )     ! "DEVSBT" in Catch GC
+               DEDTS =                     max(0.0,         -delCQ_delTVA(:,N)*(1. + MAPL_VIREPS*QS(:,N))*(QS(:,N)-QA) )     ! "DEDTC"  in Catch GC
+               DHSDTS = MAPL_CP*(CH(:,N) + max(0.0,         -delCH_delTVA(:,N)*(1. + MAPL_VIREPS*QS(:,N))*(TS(:,N)-TA) ) )   ! "DSHSBT" in Catch GC
+               DHSDQS =                    max(0.0, -MAPL_CP*delCH_delTVA(:,N)*      MAPL_VIREPS*TS(:,N) *(TS(:,N)-TA) )     ! "DHSDQC" in Catch GC
+               
+               ! total derivatives with respect to Lake surface temperature
+               
+               SHD = DHSDTS + DHSDQS*DQSATDT
+               EVD = DEDTS  + DEDQS *DQSATDT
+               
+            else     (mystate%CHOOSEMOSFC == 1) then
 
-         endif
+               ! Helfand (no derivatives of exchange coeffs)
+               
+               SHD = MAPL_CP*CH(:,N)
+               EVD =         CQ(:,N)*DQSATDT
+               
+            else
+               
+               _ASSERT(.false., 'unknown CHOOSEMOSFC')
+               
+            endif
+            
+         endif      ! LAKE_OFFLINE==0
+         
+         ! ---------------------------------------------------------
 
          if (N==WATER) then
             DTX = (DT/LAKECAP)*FR(:,N) ! FR accounts for skin under ice
