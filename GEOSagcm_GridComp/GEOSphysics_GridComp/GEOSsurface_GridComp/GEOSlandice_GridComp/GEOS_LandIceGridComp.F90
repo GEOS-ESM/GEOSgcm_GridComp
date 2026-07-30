@@ -2254,7 +2254,9 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    do N=1,NUM_SUBTILES
 
    if(CHOOSEMOSFC.eq.0) then
-      
+
+      LAI     = 0.0
+
       WW(:,N) = 0.
       CM(:,N) = 0.
       
