@@ -1973,7 +1973,7 @@ contains
                SHD = DHSDTS + DHSDQS*DQSATDT
                EVD = DEDTS  + DEDQS *DQSATDT
                
-            else     (mystate%CHOOSEMOSFC == 1) then
+            elseif (mystate%CHOOSEMOSFC == 1) then
 
                ! Helfand (no derivatives of exchange coeffs)
                
