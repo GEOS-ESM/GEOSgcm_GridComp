@@ -3369,8 +3369,8 @@ end if
        ! surface turbulence
        !
        ! - for additional documentation, see subroutine run2() of GEOS_CatchGridComp.F90
-       ! - SHD = derivative of sensible heat w.r.t. surface temperature 
-       ! - LHD = derivative of latent heat   w.r.t. surface temperature (note: Catch uses "evap")
+       ! - SHD = (total?) derivative of sensible heat w.r.t. surface temperature 
+       ! - LHD = (total?) derivative of latent heat   w.r.t. surface temperature (note: Catch uses "evap")
               
        DQSATDT = GEOS_DQSAT( TS(:,N), PS, PASCALS=.TRUE., RAMP=0.0 )
        
@@ -3413,8 +3413,8 @@ end if
              DHSDTS = MAPL_CP*( CH(:,N) + max(0.0,         -delCH_delTVA(:,N)*(1. + MAPL_VIREPS*QS(:,N))*(TS(:,N)-TA) ) )  ! "DSHSBT" in Catch GC
              DHSDQS =                     max(0.0, -MAPL_CP*delCH_delTVA(:,N)*      MAPL_VIREPS*TS(:,N) *(TS(:,N)-TA) )    ! "DHSDQC" in Catch GC
 
-             ! LandIce constrains surface humidity to qs=qsat(Ts,Ps),
-             !   so reduce the two-variable Jacobian to d/dTs
+             ! total derivatives with respect to Landice surface temperature
+
              SHD =            DHSDTS + DHSDQS*DQSATDT
              LHD = MAPL_ALHS*(DEDTS  + DEDQS *DQSATDT)
 
@@ -3433,7 +3433,7 @@ end if
           
        endif    ! LANDICE_OFFLINE==0
 
-       ! ---------end surface turbulence ------------------------------------------------
+       ! ---------------------------------------------------------
        
        SWN = ((DRUVR+DRPAR+DRNIR) + (DFUVR+DFPAR+DFNIR))*(1.0-LANDICEALB)
        DIF = 0.0
@@ -3441,8 +3441,8 @@ end if
 
        LANDICECAP = (MAPL_RHOWTR*MAPL_CAPICE*LANDICEDEPTH)
 
-       EVAPI   = LHF / MAPL_ALHS
-       DEVAPDT = LHD / MAPL_ALHS
+       EVAPI   = LHF / MAPL_ALHS            ! LHF needed in solveicelayer(); EVAPI   needed in snowrt()
+       DEVAPDT = LHD / MAPL_ALHS            ! LHD needed in solveicelayer(); DEVAPDT needed in snowrt()
        RADDN   = LWDNSRF + SWN
 
        PERC  = 0.0
@@ -3930,15 +3930,15 @@ end if
 
      implicit none
 
-     integer, intent(in)  :: NICE
-     real,    intent(in    ) :: DTS
+     integer, intent(in    ) :: NICE
+     real,    intent(in    ) :: DTS                               ! time step
 
      real,    intent(inout ) :: TICE(NICE)
      real,    intent(in    ) :: ICEDZ(NICE)
      integer, intent(in    ) :: UPPER_BND
      real,    intent(out   ) :: MELT
      !  UPPER_BND == 0
-     real, optional, intent(out) ::  DTSS
+     real, optional, intent(out) ::  DTSS                         ! change in surface temp(?)
      real, optional, intent(out) ::  RUNOFF
      real, optional, intent(in ) ::  lhturb,hlwtc,hsturb,raddn
      real, optional, intent(in ) ::  dlhdtc,dhsdtc,dhlwtc
