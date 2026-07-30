@@ -1107,8 +1107,8 @@ contains
     mystate => wrap%ptr
     CHOOSEMOSFC = mystate%CHOOSEMOSFC
 
-    ! "CHOOSEZ0" is a config variable for Helfand; appears hardwired to 3 for all surface types but has an effect
-    !   only for ocean (and possibly sea ice) as of July 2026
+    ! "CHOOSEZ0" is a config variable for Helfand; as of July 2026, it appears hardwired to 3 
+    !   for all surface types and has an effect only for ocean (and possibly sea ice) 
     
     call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS) 
     VERIFY_(STATUS)
@@ -1499,16 +1499,11 @@ contains
     !--------------------
     if ( ESMF_AlarmIsRinging(ALARM, RC=STATUS) ) then
        VERIFY_(STATUS)
-
        call ESMF_AlarmRingerOff(ALARM, RC=STATUS)
        VERIFY_(STATUS)
-
-       ! LDAS/offline lake follows the LandIce convention.
-       ! Default is coupled/GCM behavior.
-       call MAPL_GetResource ( MAPL, LAKE_OFFLINE, Label="CATCHMENT_OFFLINE:", &
-            DEFAULT=0, RC=STATUS )
+       ! borrow CATCHMENT_OFFLINE; default is "coupled to atmospheric model"
+       call MAPL_GetResource ( MAPL, LAKE_OFFLINE, Label="CATCHMENT_OFFLINE:", DEFAULT=0, RC=STATUS )
        VERIFY_(STATUS)
-
        call LAKECORE(NT=size(LATS), RC=STATUS)
        VERIFY_(STATUS)
     endif
@@ -1626,8 +1621,8 @@ contains
       real,          dimension(NT)   :: ALBNFI
       real,          dimension(NT)   :: VSUVR
       real,          dimension(NT)   :: VSUVF
-      real,          dimension(NT)   :: ALWN !offline
-      real,          dimension(NT)   :: BLWN !offline
+      real,          dimension(NT)   :: ALWN     ! needed for offline
+      real,          dimension(NT)   :: BLWN     ! needed for offline
 
       real                           :: DT
       integer                        :: N, I
@@ -1815,6 +1810,8 @@ contains
       VSUVR = DRPAR + DRUVR
       VSUVF = DFPAR + DFUVR
 
+      ! initialize outputs for sub-tile averaging
+      
       if(associated(   EVAPOUT)) EVAPOUT = 0.0
       if(associated(   RUNOFF )) RUNOFF  = 0.0
       if(associated(   SHOUT  )) SHOUT   = 0.0
@@ -1824,13 +1821,23 @@ contains
       if(associated(   SWNDSRF)) SWNDSRF = 0.0
       if(associated(   TST    )) TST     = 0.0
       if(associated(   QST    )) QST     = 0.0
+
       if (LAKE_OFFLINE == 0) then
-         if(associated(HLWUP  )) HLWUP   = ALW
-         if(associated(LWNDSRF)) LWNDSRF = LWDNSRF - ALW
+         
+         ! include ALW in initialization here (and not in average over sub-tiles below)
+         
+         if(associated(HLWUP  )) HLWUP   = ALW                 ! initialize emitted LW to ALW
+         if(associated(LWNDSRF)) LWNDSRF = LWDNSRF - ALW       ! initialize net LW ("ND") to absorbed LW ("DN") minus ALW 
+
       else
-         if(associated(HLWUP  )) HLWUP   = 0.0
-         if(associated(LWNDSRF)) LWNDSRF = LWDNSRF
+
+         ! when running offline, cannot include ALWN in initialization because ALWN is not yet calculated
+         
+         if(associated(HLWUP  )) HLWUP   = 0.0                 
+         if(associated(LWNDSRF)) LWNDSRF = LWDNSRF             ! initialize net LW to absorbed LW
+         
       endif
+      
       ! datalake addition
       !==================
       
@@ -1916,8 +1923,8 @@ contains
          ! surface turbulence
          !
          ! - for additional documentation, see subroutine run2() of GEOS_CatchGridComp.F90
-         ! - SHD = (total?) derivative of sensible heat w.r.t. surface temperature 
-         ! - EVD = (total?) derivative of evaporation   w.r.t. surface temperature 
+         ! - SHD = (total) derivative of sensible heat w.r.t. surface temperature 
+         ! - EVD = (total) derivative of evaporation   w.r.t. surface temperature 
 
          DQSATDT = GEOS_DQSAT( TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.)
 
@@ -2037,6 +2044,8 @@ contains
          ! Exports
          !--------
 
+         ! compute average over sub-tiles
+         
          if(associated(EVAPOUT   )) EVAPOUT = EVAPOUT + EVP    *FR(:,N)
          if(associated(RUNOFF    )) RUNOFF  = RUNOFF  + RNF    *FR(:,N)
          if(associated(SHOUT     )) SHOUT   = SHOUT   + SHF    *FR(:,N)
@@ -2046,12 +2055,17 @@ contains
          if(associated(SWNDSRF   )) SWNDSRF = SWNDSRF + SWN    *FR(:,N)
          if(associated(TST       )) TST     = TST     + TS(:,N)*FR(:,N)
          if(associated(QST       )) QST     = QST     + QS(:,N)*FR(:,N)
+         
          if (LAKE_OFFLINE == 0) then
-            if(associated(LWNDSRF)) LWNDSRF = LWNDSRF - TS(:,N)*FR(:,N)*BLW
-            if(associated(HLWUP  )) HLWUP   = HLWUP   + TS(:,N)*FR(:,N)*BLW
+
+            if(associated(LWNDSRF)) LWNDSRF = LWNDSRF - TS(:,N)*FR(:,N)*BLW             ! net LW was initialized to absorbed LW minus ALW
+            if(associated(HLWUP  )) HLWUP   = HLWUP   + TS(:,N)*FR(:,N)*BLW             ! emitted LW was initialized to ALW
+
          else
-            if(associated(LWNDSRF)) LWNDSRF = LWNDSRF - FR(:,N)*(ALWN + TS(:,N)*BLWN)
-            if(associated(HLWUP  )) HLWUP   = HLWUP   + FR(:,N)*(ALWN + TS(:,N)*BLWN)
+
+            if(associated(LWNDSRF)) LWNDSRF = LWNDSRF - FR(:,N)*(ALWN + TS(:,N)*BLWN)   ! net LW was initialized to absorbed LW (not incl. ALWN)
+            if(associated(HLWUP  )) HLWUP   = HLWUP   + FR(:,N)*(ALWN + TS(:,N)*BLWN)   ! emitted LW was initialized to 0.0
+
          endif
 
       end do   ! do N=1,NUM_SUBTILES

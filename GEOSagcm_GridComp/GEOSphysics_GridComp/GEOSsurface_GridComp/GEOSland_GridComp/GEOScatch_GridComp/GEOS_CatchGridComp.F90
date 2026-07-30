@@ -5476,6 +5476,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
               
               SHSBT (:,N) = (SH  + DSH  *(TC(:,N)-THATM))*CFT(:,N)
               EVSBT (:,N) = (EVAP+ DEVAP*(QC(:,N)-QHATM))*CFQ(:,N)
+              
               DSHSBT(:,N) =        DSH  *                 CFT(:,N)
               DEVSBT(:,N) =        DEVAP*                 CFQ(:,N)
 
@@ -6150,7 +6151,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ALBNF   = ALBNF    *(1.-ASNOW) + SNONF    *ASNOW
         call MAPL_TimerOff(MAPL,"-ALBEDO")
 
-        LWNDSRF = LWDNSRF - HLWUP
+        LWNDSRF = LWDNSRF - HLWUP              ! net = absorbed minus upward  (note: "ND" = "DN" - UP)
 
         ! --------------------------------------------------------------------------
         ! update outputs
