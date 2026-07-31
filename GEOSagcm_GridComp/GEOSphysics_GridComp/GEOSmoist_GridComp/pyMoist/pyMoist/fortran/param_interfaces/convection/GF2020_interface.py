@@ -6,17 +6,31 @@ from mpi4py import MPI
 from ndsl.constants import I_DIM, J_DIM, K_INTERFACE_DIM
 from ndsl.dsl.typing import Float, Int
 from ndsl.utils import safe_assign_array
+from ndsl.dsl.gt4py import IJ, IJK
 
-from pyMoist.constants import NUMBER_OF_TRACERS
 from pyMoist.convection.GF_2020 import GF2020, GF2020Config, GF2020CumulusParameterizationConfig, GF2020State
-from pyMoist.convection_tracers import ConvectionTracers
+from pyMoist.convection_tracers import (
+    ConvectionTracers,
+    CONVECTION_TRACER_DIM,
+    SIZE_THREE_DIM,
+    SIZE_FOUR_DIM,
+    FloatFieldIJ_ConvectionTracers,
+    FloatField_ConvectionTracers,
+    FloatField_ConvectionTracers_Plume,
+    ConvectionTracerMetaDataTable_Float,
+    ConvectionTracerMetaDataTable_Bool,
+    ConvectionTracerMetaDataTable_x3,
+    ConvectionTracerMetaDataTable_x4,
+)
 from pyMoist.fortran import get_NDSL_physics
 from pyMoist.fortran.build_helper import StencilBackendCompilerOverride
+from pyMoist.fortran.cuda_profiler import TimedCUDAProfiler
 from pyMoist.fortran.managed_state import MAPLManagedState
 from pyMoist.fortran.memory_factory import MAPLMemoryRepository
 from pyMoist.fortran.moist_workarounds import MOIST_WORKAROUNDS
-from pyMoist.fortran.profiler import TimedCUDAProfiler
 from pyMoist.saturation_tables import SaturationVaporPressureTable
+from ndsl.quantity.data_dimensions_field import DataDimensionsField
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import NUMBER_OF_PLUMES
 
 
 def _default_or_get_from_namelist(default, name_in_namelist: str, namelist: dict[str, Any]) -> Any:
@@ -25,7 +39,9 @@ def _default_or_get_from_namelist(default, name_in_namelist: str, namelist: dict
 
 class GF2020Interface(UserCode):
     def __init__(self) -> None:
-        pass
+        # these two must be defined during the first run call because they require the number of convection tracers
+        self._gf_2020 = None
+        self._managed_convection_tracers = None
 
     def init(self, mapl_state: CVoidPointer, import_state: CVoidPointer, export_state: CVoidPointer):
         maplpy = get_MAPLPy()
@@ -113,11 +129,11 @@ class GF2020Interface(UserCode):
             maximum_evap_fraction_ocean_deep = Float(maplpy.get_resource("MAX_EDT_OCEAN_DP:", mapl_state, default=Float(0.9)))
             sgs_w_timescale = Int(maplpy.get_resource("SGS_W_TIMESCALE:", mapl_state, default=Int(0)))
             min_entrainment_rate = Float(maplpy.get_resource("MIN_ENTR_RATE:", mapl_state, default=Float(0.1e-4)))
-            entrainment_rate_shallow = Float(maplpy.get_resource("ENTR_SH:", mapl_state, default=Float(1.0e-4)))
+            entrainment_rate_shallow = Float(maplpy.get_resource("ENTR_SH:", mapl_state, default=Float(1.0e-3)))
             entrainment_rate_mid = Float(maplpy.get_resource("ENTR_MD:", mapl_state, default=Float(9.0e-4)))
-            entrainment_rate_deep = Float(maplpy.get_resource("ENTR_DP:", mapl_state, default=Float(1.0e-3)))
+            entrainment_rate_deep = Float(maplpy.get_resource("ENTR_DP:", mapl_state, default=Float(1.0e-4)))
 
-        config = GF2020Config(
+        self.config = GF2020Config(
             DT_MOIST=Float(maplpy.get_resource("DSL__GF2020_DT", mapl_state, default=Float(0.0))),
             LHYDROSTATIC=hydrostatic,
             STOCHASTIC_CNV=maplpy.get_resource("STOCHASTIC_CNV:", mapl_state, default=False),
@@ -134,11 +150,11 @@ class GF2020Interface(UserCode):
             SCLM_DEEP=Float(maplpy.get_resource("SCLM_DEEP:", mapl_state, default=Float(1.0))),
             FIX_CONVECTIVE_CLOUD=maplpy.get_resource("FIX_CNV_CLOUD:", mapl_state, default=False),
             APPLY_SUBSIDENCE_MICROPHYSICS=Int(maplpy.get_resource("APPLY_SUB_MP:", mapl_state, default=Int(0))),
-            NUMBER_OF_TRACERS=NUMBER_OF_TRACERS,
+            NUMBER_OF_TRACERS=0, # will be updated during first run call, once tracer packet is built in fortran
             USE_MOMENTUM_TRANSPORT=Int(maplpy.get_resource("USE_MOMENTUM_TRANSP:", mapl_state, default=Int(1))),
         )
 
-        cumulus_parameterization_config = GF2020CumulusParameterizationConfig(
+        self.cumulus_parameterization_config = GF2020CumulusParameterizationConfig(
             # plume dependent
             DOWNDRAFT_MAX_HEIGHT_LAND_SHALLOW=downdraft_max_height_land_shallow,
             DOWNDRAFT_MAX_HEIGHT_LAND_MID=downdraft_max_height_land_mid,
@@ -191,7 +207,7 @@ class GF2020Interface(UserCode):
             SHALLOW_MID_DEEP=maplpy.get_resource("SH_MD_DP:", mapl_state, default=True),
             ZERO_DIFF=zero_diff,
             MOIST_TRIGGER=Int(maplpy.get_resource("MOIST_TRIGGER:", mapl_state, default=Int(0))),
-            LAMBDA_DEEP=Float(maplpy.get_resource("LAMBDAU_DEEP:", mapl_state, default=Float(0.0))),
+            LAMBDA_DEEP=Float(maplpy.get_resource("LAMBAU_DEEP:", mapl_state, default=Float(0.0))),
             LAMBDA_SHALLOW_DOWN=Float(maplpy.get_resource("LAMBAU_SHDN:", mapl_state, default=Float(2.0))),
             CAP_MAXS=Float(maplpy.get_resource("CAP_MAXS:", mapl_state, default=Float(50.0))),
             OUTPUT_SOUNDING=Int(maplpy.get_resource("OUTPUT_SOUND:", mapl_state, default=Int(0))),
@@ -204,7 +220,7 @@ class GF2020Interface(UserCode):
             USE_MEMORY=Int(maplpy.get_resource("USE_MEMORY:", mapl_state, default=Int(-1))),
             DOWNDRAFT=Int(maplpy.get_resource("DOWNDRAFT:", mapl_state, default=Int(1))),
             USE_WETBULB=Int(maplpy.get_resource("USE_WETBULB:", mapl_state, default=Int(0))),
-            DIURNAL_CYCLE=Int(maplpy.get_resource("DICYCL:", mapl_state, default=Int(1))),
+            DIURNAL_CYCLE=Int(maplpy.get_resource("DICYCLE:", mapl_state, default=Int(1))),
             USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES=Int(maplpy.get_resource("USE_LINEAR_SUBCL_MF:", mapl_state, default=Int(0))),
             CRITICAL_MIXING_RATIO_OVER_OCEAN=Float(maplpy.get_resource("QRC_CRIT_OCN:", mapl_state, default=Float(2.0e-4))),
             CRITICAL_MIXING_RATIO_OVER_LAND=Float(maplpy.get_resource("QRC_CRIT_LND:", mapl_state, default=Float(2.0e-4))),
@@ -225,36 +241,11 @@ class GF2020Interface(UserCode):
             MAX_TEMP_VAPOR_TENDENCY=Float(maplpy.get_resource("MAX_TQ_TEND:", mapl_state, default=Float(100.0))),
         )
 
-        saturation_tables = SaturationVaporPressureTable(ndsl_stack.stencil_factory.backend)
-
-        # Initialize the module
-        with StencilBackendCompilerOverride(
-            MPI.COMM_WORLD,
-            ndsl_stack.stencil_factory.config.dace_config,
-        ):
-            self._gf_2020 = GF2020(
-                stencil_factory=ndsl_stack.stencil_factory,
-                quantity_factory=ndsl_stack.quantity_factory,
-                config=config,
-                cumulus_parameterization_config=cumulus_parameterization_config,
-                saturation_tables=saturation_tables,
-            )
+        self.saturation_tables = SaturationVaporPressureTable(ndsl_stack.stencil_factory)
 
         # Make the state
         self._managed_state = MAPLManagedState(
             GF2020State.empty(ndsl_stack.quantity_factory),
-            ndsl_stack.interface_type,
-        )
-
-        self._managed_convection_tracers = MAPLManagedState(
-            ConvectionTracers.empty(
-                ndsl_stack.quantity_factory,
-                data_dimensions={
-                    "convection_tracers": config.NUMBER_OF_TRACERS,
-                    "size_three_dimension": 3,
-                    "size_four_dimension": 4,
-                },
-            ),
             ndsl_stack.interface_type,
         )
 
@@ -277,6 +268,44 @@ class GF2020Interface(UserCode):
         import_repository = MAPLMemoryRepository(import_state, ndsl_stack.quantity_factory)
         internal_repository = MAPLMemoryRepository(internal_state, ndsl_stack.quantity_factory)
         export_repository = MAPLMemoryRepository(export_state, ndsl_stack.quantity_factory)
+
+        # set correct size for convection tracer data dimension
+        NUMBER_CONVECTION_TRACERS = MOIST_WORKAROUNDS.CNV_Tracers().Q[:].shape[-1]
+
+        # create the data dimensions within the QuantityFactory
+        if CONVECTION_TRACER_DIM not in ndsl_stack.quantity_factory.sizer.data_dimensions:
+            ndsl_stack.quantity_factory.add_data_dimensions({CONVECTION_TRACER_DIM: NUMBER_CONVECTION_TRACERS})
+        elif ndsl_stack.quantity_factory.sizer.data_dimensions[CONVECTION_TRACER_DIM] != NUMBER_CONVECTION_TRACERS:
+            raise ValueError(f"Convection tracer count has been modified since initialization timesteps. If this is intentional, you must re-initialize the NDSL stack.")
+
+        if "plumes" not in ndsl_stack.quantity_factory.sizer.data_dimensions:
+            # NOTE data dimensions must be defined with a default python int type (non-ndsl/numpy type). Using NDSL types causes an explosion during stencil compilation.
+            # In this particular situation, NUMBER_OF_PLUMES must be a NDSL Int so that it retains the correct precision later on during stencil compilation
+            # but must NOT be a NDSL Int for quantity factory dimension purposes.
+            NON_NDSL_TYPE_NUMBER_OF_PLUMES = int(NUMBER_OF_PLUMES)
+            ndsl_stack.quantity_factory.add_data_dimensions({"plumes": NON_NDSL_TYPE_NUMBER_OF_PLUMES})
+
+        if SIZE_THREE_DIM not in ndsl_stack.quantity_factory.sizer.data_dimensions:
+            ndsl_stack.quantity_factory.add_data_dimensions({SIZE_THREE_DIM: 3})
+
+        if SIZE_FOUR_DIM not in ndsl_stack.quantity_factory.sizer.data_dimensions:
+            ndsl_stack.quantity_factory.add_data_dimensions({SIZE_FOUR_DIM: 4})
+
+        # register the field types (declard in convection_tracers.py) with the correct ddim size
+        if not DataDimensionsField.exists("FloatFieldIJ_ConvectionTracers"):
+            DataDimensionsField.register(FloatFieldIJ_ConvectionTracers, ndsl_stack.quantity_factory, [CONVECTION_TRACER_DIM], axes=IJ, dtype=Float)
+        if not DataDimensionsField.exists("FloatField_ConvectionTracers"):
+            DataDimensionsField.register(FloatField_ConvectionTracers, ndsl_stack.quantity_factory, [CONVECTION_TRACER_DIM], axes=IJK, dtype=Float)
+        if not DataDimensionsField.exists("FloatField_ConvectionTracers_Plume"):
+            DataDimensionsField.register(FloatField_ConvectionTracers_Plume, ndsl_stack.quantity_factory, ["plumes", CONVECTION_TRACER_DIM], axes=IJK, dtype=Float)
+        if not DataDimensionsField.exists("ConvectionTracerMetaDataTable_Float"):
+            DataDimensionsField.register(ConvectionTracerMetaDataTable_Float, ndsl_stack.quantity_factory, [CONVECTION_TRACER_DIM], axes=[], dtype=Float)
+        if not DataDimensionsField.exists("ConvectionTracerMetaDataTable_Bool"):
+            DataDimensionsField.register(ConvectionTracerMetaDataTable_Bool, ndsl_stack.quantity_factory, [CONVECTION_TRACER_DIM], axes=[], dtype=bool)
+        if not DataDimensionsField.exists("ConvectionTracerMetaDataTable_x3"):
+            DataDimensionsField.register(ConvectionTracerMetaDataTable_x3, ndsl_stack.quantity_factory, [CONVECTION_TRACER_DIM, SIZE_THREE_DIM], axes=[], dtype=Float)
+        if not DataDimensionsField.exists("ConvectionTracerMetaDataTable_x4"):
+            DataDimensionsField.register(ConvectionTracerMetaDataTable_x4, ndsl_stack.quantity_factory, [CONVECTION_TRACER_DIM, SIZE_FOUR_DIM], axes=[], dtype=Float)
 
         self._managed_state.register("latitude", "DSL__GF2020_LATS", internal_repository, dims=[I_DIM, J_DIM])
         self._managed_state.register("longitude", "DSL__GF2020_LONS", internal_repository, dims=[I_DIM, J_DIM])
@@ -438,7 +467,29 @@ class GF2020Interface(UserCode):
         self._managed_state.register("convection_tracer", "CNV_TR", internal_repository)
 
         if self._gf_2020 is None:
-            raise RuntimeError("GF2020 Runtime called before initialization was done. Abort.")
+            # Update number of tracers in config
+            self.config.NUMBER_OF_TRACERS = NUMBER_CONVECTION_TRACERS
+            # Initialize the module
+            with StencilBackendCompilerOverride(
+                MPI.COMM_WORLD,
+                ndsl_stack.stencil_factory.config.dace_config,
+            ):
+                self._gf_2020 = GF2020(
+                    stencil_factory=ndsl_stack.stencil_factory,
+                    quantity_factory=ndsl_stack.quantity_factory,
+                    config=self.config,
+                    cumulus_parameterization_config=self.cumulus_parameterization_config,
+                    saturation_tables=self.saturation_tables,
+                )
+
+        if self._managed_convection_tracers is None:
+            self._managed_convection_tracers = MAPLManagedState(
+                ConvectionTracers.empty(
+                    ndsl_stack.quantity_factory,
+                    data_dimensions=ndsl_stack.quantity_factory.sizer.data_dimensions,
+                ),
+                ndsl_stack.interface_type,
+            )
 
         with TimedCUDAProfiler("GF 2020 Convection", {}):
             with TimedCUDAProfiler("GF 2020 Convection - State copy", {}):
@@ -461,6 +512,7 @@ class GF2020Interface(UserCode):
                 )
 
             with TimedCUDAProfiler("GF 2020 Convection Numerics", {}):
+                self._managed_state.record("GF2020-In")
                 # adjust pbl_level from fortran indexing to python indexing
                 self._managed_state.ndsl_state.pbl_level.field[:] = self._managed_state.ndsl_state.pbl_level.field[:] - 1
 
@@ -472,8 +524,13 @@ class GF2020Interface(UserCode):
 
                 # adjust pbl_level from python indexing to fortran indexing
                 self._managed_state.ndsl_state.pbl_level.field[:] = self._managed_state.ndsl_state.pbl_level.field[:] + 1
+                self._managed_state.record("GF2020-Out")
 
             with TimedCUDAProfiler("GF 2020 Convection - State copy-back", {}):
+                safe_assign_array(
+                    MOIST_WORKAROUNDS.CNV_Tracers().Q,
+                    self._managed_convection_tracers.ndsl_state.tracers.data[:],
+                )
                 self._managed_state.ndsl_to_fortran()
 
     def finalize(

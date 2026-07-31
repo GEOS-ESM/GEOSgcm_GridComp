@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 from types import ModuleType
 
 import xarray as xr
@@ -16,23 +16,19 @@ def _get_constant_from_module(my_module: ModuleType) -> list[str]:
     # All public module var
     module_var = [item for item in dir(my_module) if not item.startswith("_")]
     # Get rid of the imports
-    imports = ["np", "Float", "Int"]
+    imports = ["np", "os", "Float", "Int"]
     for i in imports:
         module_var.remove(i)
     # Remove non testable constants
-    non_testable_const = ["MAPL_UNDEF", "NCNST", "FLOAT_TINY"]
+    non_testable_const = ["MAPL_UNDEF", "NCNST", "FLOAT_TINY", "EXP_NAME", "NUMBER_OF_TRACERS", "EXPERIMENT_TRACERS"]
     for nc in non_testable_const:
         module_var.remove(nc)
     return module_var
 
 
-def _load_refrence_nc() -> xr.Dataset:
-    this_dir_path = os.path.dirname(os.path.realpath(__file__))
-    data_dir = os.path.abspath(os.path.join(this_dir_path, "./data"))
-    print(f"Looking in {data_dir}")
-    ds = xr.open_mfdataset(f"{data_dir}/Constants.*.nc")
-
-    return ds
+def _load_reference_nc() -> xr.Dataset:
+    data_dir = Path(__file__).parent / "data"
+    return xr.open_mfdataset(f"{data_dir}/Constants.*.nc")
 
 
 def _run_python_vs_fortran(fortran_value_as_dataset: xr.Dataset, my_module: ModuleType) -> None:
@@ -70,7 +66,7 @@ def _run_python_vs_fortran(fortran_value_as_dataset: xr.Dataset, my_module: Modu
 
 
 def test_shared_constants() -> None:
-    ds = _load_refrence_nc()
+    ds = _load_reference_nc()
     _run_python_vs_fortran(ds, shared_const)
 
 

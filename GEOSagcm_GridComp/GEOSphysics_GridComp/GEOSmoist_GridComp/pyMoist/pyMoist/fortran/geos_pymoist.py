@@ -25,10 +25,14 @@ from ndsl import (
 )
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.typing import get_precision
+from ndsl.internal.hmm import is_hmm_available
 from ndsl.logging import ndsl_log_on_rank_0
 from ndsl.optional_imports import cupy as cp
 
 from pyMoist.fortran.build_helper import InterfaceTransferType, MemorySpace
+
+
+from gt4py.cartesian.config import GT4PY_COMPILE_OPT_LEVEL  # isort: skip
 
 
 @dataclasses.dataclass
@@ -109,15 +113,18 @@ class NDSLPhysicsStack:
 
         # Figure out the interface mode
         tmp_quantity = self.quantity_factory.empty([I_DIM, J_DIM, K_DIM], units="")
-        default_3D_memory_desc = (tmp_quantity.data.shape, tmp_quantity.data.strides)
+        default_3D_memory_desc = (tmp_quantity.shape, tmp_quantity._data.strides)
         if fortran_mem_space != MemorySpace.CPU:
             raise NotImplementedError("Interface cannot stream Fortran memory resident on GPU")
         if self.backend.is_gpu_backend():
-            self._interface_type = InterfaceTransferType.CPU_TO_GPU_TO_CPU
+            if self.backend.is_fortran_aligned() and is_hmm_available():
+                self._interface_type = InterfaceTransferType.GPU_MAPPING
+            else:
+                self._interface_type = InterfaceTransferType.GPU_TRANSFER
         else:
             if self.backend.is_fortran_aligned():
                 # This is Fortran layout - we can Map the memory
-                self._interface_type = InterfaceTransferType.CPU_MAP
+                self._interface_type = InterfaceTransferType.CPU_ZERO_COPY
             else:
                 # All other layout have to copy the data in/out of Fortran layout
                 self._interface_type = InterfaceTransferType.CPU_COPY
@@ -126,20 +133,22 @@ class NDSLPhysicsStack:
         # Feedback information
         device_ordinal_info = "N/A"
         if cp is not None:
-            device_ordinal_info = f"  Device PCI bus id: {cp.cuda.Device(0).pci_bus_id}" if self.backend.is_gpu_backend() else "N/A"
+            device_ordinal_info = f"Device PCI bus id: {cp.cuda.Device(0).pci_bus_id}" if self.backend.is_gpu_backend() else "N/A"
         MPS_pipe_directory = os.getenv("CUDA_MPS_PIPE_DIRECTORY", None)
         MPS_is_on = MPS_pipe_directory is not None and self.backend.is_gpu_backend() and os.path.exists(f"{MPS_pipe_directory}/log")
         ndsl_log_on_rank_0.info(
             "pyMoist <> GEOS wrapper initialized (Rank 0):\n"
-            f"         Bridge : {self._interface_type.name}\n"
-            f"        Backend : {self.backend}\n"
-            f"      Precision : {get_precision()} bit\n"
-            f"  Orchestration : {self._is_orchestrated}\n"
-            f"          Sizer : {sizer.nx}x{sizer.ny}x{sizer.nz}"
+            f"           Bridge : {self._interface_type.name}\n"
+            f"          Backend : {self.backend}\n"
+            f"        Precision : {get_precision()} bit\n"
+            f"     Optimization : -O{GT4PY_COMPILE_OPT_LEVEL}\n"
+            f"    Orchestration : {self._is_orchestrated}\n"
+            f"     Local domain : {sizer.nx}x{sizer.ny}x{sizer.nz}"
             f"(halo: {sizer.n_halo})\n"
-            f" Strides for 3D : {default_3D_memory_desc[1]}\n"
-            f"     Device ord : {device_ordinal_info}\n"
-            f"     Nvidia MPS : {MPS_is_on}\n"
+            f"           Layout : {partitioner.layout}\n"
+            f"   Strides for 3D : {default_3D_memory_desc[1]}\n"
+            f"       Device ord : {device_ordinal_info}\n"
+            f"       Nvidia MPS : {MPS_is_on}\n"
         )
 
     @property
@@ -164,8 +173,8 @@ def _set_NDSL_physics(mapl_state) -> NDSLPhysicsStack:
 
     return NDSLPhysicsStack(
         NDSLPhysicsConfiguration(
-            grid_infos.im * grid_infos.nx,
-            grid_infos.jm * ny,
+            grid_infos.im,
+            grid_infos.jm,
             grid_infos.lm,
             grid_infos.nx,
             ny,

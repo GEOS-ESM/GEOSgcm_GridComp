@@ -27,11 +27,19 @@ class CUDAProfiler:
         self.label = label
 
     def __enter__(self):
-        if GPU_AVAILABLE:
-            cp.cuda.runtime.deviceSynchronize()
-            cp.cuda.nvtx.RangePush(self.label)
+        CUDAProfiler.range_push(self.label)
 
     def __exit__(self, _type, _val, _traceback):
+        CUDAProfiler.range_pop()
+
+    @classmethod
+    def range_push(cls, name: str) -> None:
+        if GPU_AVAILABLE:
+            cp.cuda.runtime.deviceSynchronize()
+            cp.cuda.nvtx.RangePush(name)
+
+    @classmethod
+    def range_pop(cls) -> None:
         if GPU_AVAILABLE:
             cp.cuda.runtime.deviceSynchronize()
             cp.cuda.nvtx.RangePop()

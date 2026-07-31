@@ -67,10 +67,7 @@ class GFDL1MDriver(NDSLRuntime):
         self._locals = GFDL1MDriverLocals.make_locals(quantity_factory)
 
         # pull saturation specific humidity tables, generate if first call
-        self.driver_saturation_tables = get_tables(
-            stencil_factory.backend,
-            stencil_factory.config.dace_config,
-        )
+        self.driver_saturation_tables = get_tables(stencil_factory)
 
         # construct stencils
         self._setup = GFDL1MDriverSetup(
