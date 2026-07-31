@@ -247,7 +247,7 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
 
       if (INT(ZERO_DIFF_OTHER) == 0) then
         call MAPL_GetResource(MAPL, USE_INV_LAYERS            , 'USE_INV_LAYERS:'        ,default= .FALSE., RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, USE_SMOOTH_TEND           , 'USE_SMOOTH_TEND:'       ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_SMOOTH_TEND           , 'USE_SMOOTH_TEND:'       ,default= 0,     RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, SATUR_CALC                , 'SATUR_CALC:'            ,default= 1,     RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, BC_METH                   , 'BC_METH:'               ,default= 1,     RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, USE_REBCB                 , 'USE_REBCB:'             ,default= 1,     RC=STATUS );VERIFY_(STATUS)
