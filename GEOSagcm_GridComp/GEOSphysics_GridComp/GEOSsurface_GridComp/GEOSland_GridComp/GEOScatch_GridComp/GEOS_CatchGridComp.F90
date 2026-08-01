@@ -3203,7 +3203,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real,   allocatable :: UCN(:)
     real,   allocatable :: TVA(:)
     real,   allocatable :: TVS(:)
-    real,   allocatable :: URA(:)
     real,   allocatable :: UUU(:)
     real,   allocatable :: ZVG(:)
     real,   allocatable :: DZE(:)
@@ -3441,8 +3440,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     allocate(TVA(NT),STAT=STATUS)
     VERIFY_(STATUS)
     allocate(TVS(NT),STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(URA(NT),STAT=STATUS)
     VERIFY_(STATUS)
     allocate(UUU(NT),STAT=STATUS)
     VERIFY_(STATUS)
@@ -3842,7 +3839,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     deallocate(TVA)
     deallocate(TVS)
-    deallocate(URA)
     deallocate(UUU)
     deallocate(ZVG)
     deallocate(DZE)
@@ -5349,7 +5345,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Correction to RDC formulation -Randy Koster, 4/1/2011
 !        RDC = max(VGRDA(VEG)*min(VGRDB(VEG),LAI),0.001)
         RDC = max(VGRDA(VEG)*min(1., LAI/VGRDB(VEG)),0.001)
-        RHO = PS/(MAPL_RGAS*(TA*(1+MAPL_VIREPS*QA)))
+
+        RHO = PS/(MAPL_RGAS*(TA*(1+MAPL_VIREPS*QA)))             ! [kg/m3]
 
 
         !--------------------------------------------------------------------------------------------------------
@@ -5511,7 +5508,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            DQS(:,N) = GEOS_DQSAT ( TC(:,N), PS, QSAT=QSAT(:,N), PASCALS=.true., RAMP=0.0 )
            QC (:,N) = min(max(QA(:),QSAT(:,N)),QC(:,N))
            QC (:,N) = max(min(QA(:),QSAT(:,N)),QC(:,N))
-           RA (:,N) = RHO/CH(:,N)
+           RA (:,N) = RHO/CH(:,N)                              ! [ kg/(m3) / (kg/(m2*s)) ] = [ s/m ] 
         end do
 
         QC(:,FSNW) = QSAT(:,FSNW)
