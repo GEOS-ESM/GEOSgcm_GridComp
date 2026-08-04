@@ -232,6 +232,7 @@ module GEOSmoist_Process_Library
       real, pointer              :: Q(:,:,:) => null()
       real                       :: fscav = 0.0
       real                       :: Vect_Hcts(4)
+      real                       :: AerScavEff = 0.0
       real                       :: KcScal(3)
       real                       :: convfaci2g
       real                       :: retfactor
@@ -239,7 +240,7 @@ module GEOSmoist_Process_Library
       real                       :: online_cldliq
       real                       :: online_vud
       real                       :: ftemp_threshold
-      logical                    :: use_gcc_washout
+      logical                    :: is_gcc_species
       logical                    :: use_gocart
       logical                    :: is_wetdep
       character(len=ESMF_MAXSTR) :: QNAME ! Tracer Name
@@ -404,21 +405,31 @@ module GEOSmoist_Process_Library
                !-------------------------------------------------------------------------------------
                ! Defaults
                CNV_Tracers(F)%is_wetdep       = .FALSE.
-               CNV_Tracers(F)%use_gcc_washout = .FALSE.
+               CNV_Tracers(F)%is_gcc_species  = .FALSE.
+               CNV_Tracers(F)%AerScavEff      = 0.0
                CNV_Tracers(F)%KcScal(:)       = 1.0
                CNV_Tracers(F)%retfactor       = 1.0
                CNV_Tracers(F)%liq_and_gas     = 0.0
                CNV_Tracers(F)%convfaci2g      = 0.0
                CNV_Tracers(F)%online_cldliq   = 0.0
-               CNV_Tracers(F)%online_vud      = 1.0
+               CNV_Tracers(F)%online_vud      = 0.0
                CNV_Tracers(F)%use_gocart      = .FALSE.
                CNV_Tracers(F)%ftemp_threshold = -999.0
                ! Check if GEOS-Chem washout should be used. Assume this is the case if Kc scale factors are
                ! present
-               call ESMF_AttributeGet(FIELD, "SetofKcScalFactors", isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
-               CNV_Tracers(F)%use_gcc_washout = isPresent
+               call ESMF_AttributeGet(FIELD, "is_gcc_species", isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
+               if (isPresent) then
+                     call ESMF_AttributeGet(FIELD, "is_gcc_species", CNV_Tracers(F)%is_gcc_species, RC=STATUS); VERIFY_(STATUS)
+               end if
+               
                ! If using GEOS-Chem parameterization, retrieve all necessary parameter
-               if ( CNV_Tracers(F)%use_gcc_washout ) then
+               if ( CNV_Tracers(F)%is_gcc_species ) then
+                  ! Aerosol scavenging efficiency
+                  call ESMF_AttributeGet(FIELD, "AerScavEff", isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
+                  if (isPresent) then
+                     call ESMF_AttributeGet(FIELD, "AerScavEff", CNV_Tracers(F)%AerScavEff, RC=STATUS); VERIFY_(STATUS)
+                  end if
+                  
                   ! KC scale factors
                   call ESMF_AttributeGet(FIELD, "SetofKcScalFactors", isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
                   if (isPresent) then
@@ -427,8 +438,7 @@ module GEOSmoist_Process_Library
                   ! is this a wetdep species?
                   call ESMF_AttributeGet(FIELD, "IsWetDep", isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
                   if (isPresent) then
-                     call ESMF_AttributeGet(FIELD, "IsWetDep", rtmp, RC=STATUS); VERIFY_(STATUS)
-                     CNV_Tracers(F)%is_wetdep = ( rtmp == 1.0 )
+                     call ESMF_AttributeGet(FIELD, "IsWetDep", CNV_Tracers(F)%is_wetdep, RC=STATUS); VERIFY_(STATUS)
                   end if
                   ! Gas-phase washout parameter for GEOS-Chem
                   call ESMF_AttributeGet (FIELD, "RetentionFactor",isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
@@ -456,60 +466,74 @@ module GEOSmoist_Process_Library
                      call ESMF_AttributeGet (FIELD,"UseGOCART", rtmp, RC=STATUS); VERIFY_(STATUS)
                      CNV_Tracers(F)%use_gocart = ( rtmp == 1.0 )
                   endif
+                  if (CNV_Tracers(F)%use_gocart) then
+                     CNV_Tracers(F)%fscav = CNV_Tracers(F)%AerScavEff
+                  endif
                   call ESMF_AttributeGet (FIELD,"GOCARTfTempThreshold",isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
                   if (isPresent) then
                      call ESMF_AttributeGet (FIELD,"GOCARTfTempThreshold", CNV_Tracers(F)%ftemp_threshold, RC=STATUS); VERIFY_(STATUS)
                   endif
-               end if ! use_gcc_washout
+               end if ! is_gcc_species
                ! Get pointer to friendly tracers
                !-----------------------------------------
                call ESMFL_BundleGetPointerToData(TR, trim(QNAME), CNV_Tracers(F)%Q, RC=STATUS); VERIFY_(STATUS)
                ! Report tracer status
                !-----------------------------------------
-               if (CNV_Tracers(F)%fscav > 1.e-6) then
-                   WRITE(STR_CNV_TRACER,101) TRIM(QNAME), CNV_Tracers(F)%fscav
-                   call WRITE_PARALLEL (trim(STR_CNV_TRACER))
-               elseif (CNV_Tracers(F)%Vect_Hcts(1)>1.e-6) then
-                   WRITE(STR_CNV_TRACER,102) TRIM(QNAME), CNV_Tracers(F)%Vect_Hcts
-                   call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+               if (.not. CNV_Tracers(F)%is_gcc_species) then
+                  if (CNV_Tracers(F)%fscav > 1.e-6) then
+                     WRITE(STR_CNV_TRACER,101) TRIM(QNAME), CNV_Tracers(F)%fscav
+                     call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+                  elseif (CNV_Tracers(F)%Vect_Hcts(1)>1.e-6) then
+                     WRITE(STR_CNV_TRACER,102) TRIM(QNAME), CNV_Tracers(F)%Vect_Hcts
+                     call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+                  else
+                     WRITE(STR_CNV_TRACER,103) TRIM(QNAME)
+                     call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+                  endif
                else
-                   WRITE(STR_CNV_TRACER,103) TRIM(QNAME)
-                   call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+                  ! Information for GEOS-Chem species
+                  !-----------------------------------------------------
+                  if (CNV_Tracers(F)%is_wetdep) then
+                     STR_CNV_TRACER = TRIM(QNAME)//": will use GEOS-Chem washout formulation"
+                     call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+                     WRITE(STR_CNV_TRACER,104) TRIM(QNAME), CNV_Tracers(F)%KcScal
+                     call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+                     WRITE(STR_CNV_TRACER,105) TRIM(QNAME), CNV_Tracers(F)%AerScavEff
+                     call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+                     WRITE(STR_CNV_TRACER,102) TRIM(QNAME), CNV_Tracers(F)%Vect_Hcts
+                     call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+                     WRITE(STR_CNV_TRACER,106) TRIM(QNAME), CNV_Tracers(F)%retfactor
+                     call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+                     WRITE(STR_CNV_TRACER,107) TRIM(QNAME), CNV_Tracers(F)%liq_and_gas
+                     call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+                     WRITE(STR_CNV_TRACER,108) TRIM(QNAME), CNV_Tracers(F)%convfaci2g
+                     call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+                     WRITE(STR_CNV_TRACER,109) TRIM(QNAME), CNV_Tracers(F)%online_cldliq
+                     call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+                     WRITE(STR_CNV_TRACER,110) TRIM(QNAME), CNV_Tracers(F)%online_vud
+                     call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+                     if (CNV_Tracers(F)%use_gocart)then
+                        STR_CNV_TRACER = TRIM(QNAME)//": will treat like GOCART aerosol"
+                        call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+                        WRITE(STR_CNV_TRACER,111) TRIM(QNAME), CNV_Tracers(F)%ftemp_threshold
+                        call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+                     endif
+                  else
+                     WRITE(STR_CNV_TRACER,103) TRIM(QNAME)
+                     call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+                  endif
                endif
 101            FORMAT(a,' ScavengingFractionPerKm:',1(1x,f3.1))
-102            FORMAT(a,' SetofHenryLawCts:',4(1x,es9.2))
+102            FORMAT(a,' SetofHenryLawCts:',4(1x,es8.1))
 103            FORMAT(a,' is transported by Moist')
-               ! Additional information for GEOS-Chem washout species
-               !-----------------------------------------------------
-               if (CNV_Tracers(F)%use_gcc_washout .and. CNV_Tracers(F)%is_wetdep) then
-                   STR_CNV_TRACER = TRIM(QNAME)//": will use GEOS-Chem washout formulation"
-                   call WRITE_PARALLEL (trim(STR_CNV_TRACER))
-                   WRITE(STR_CNV_TRACER,104) TRIM(QNAME), CNV_Tracers(F)%KcScal
-                   call WRITE_PARALLEL (trim(STR_CNV_TRACER))
-                   WRITE(STR_CNV_TRACER,105) TRIM(QNAME), CNV_Tracers(F)%retfactor
-                   call WRITE_PARALLEL (trim(STR_CNV_TRACER))
-                   WRITE(STR_CNV_TRACER,106) TRIM(QNAME), CNV_Tracers(F)%liq_and_gas
-                   call WRITE_PARALLEL (trim(STR_CNV_TRACER))
-                   WRITE(STR_CNV_TRACER,107) TRIM(QNAME), CNV_Tracers(F)%convfaci2g
-                   call WRITE_PARALLEL (trim(STR_CNV_TRACER))
-                   WRITE(STR_CNV_TRACER,108) TRIM(QNAME), CNV_Tracers(F)%online_cldliq
-                   call WRITE_PARALLEL (trim(STR_CNV_TRACER))
-                   WRITE(STR_CNV_TRACER,109) TRIM(QNAME), CNV_Tracers(F)%online_vud
-                   call WRITE_PARALLEL (trim(STR_CNV_TRACER))
-                   if (CNV_Tracers(F)%use_gocart)then
-                       STR_CNV_TRACER = TRIM(QNAME)//": will treat like GOCART aerosol"
-                       call WRITE_PARALLEL (trim(STR_CNV_TRACER))
-                       WRITE(STR_CNV_TRACER,110) TRIM(QNAME), CNV_Tracers(F)%ftemp_threshold
-                       call WRITE_PARALLEL (trim(STR_CNV_TRACER))
-                   endif
-               endif
-104            FORMAT(a,' KcScaleFactors:',3(1x,es9.2))
-105            FORMAT(a,' RetentionFactor:',1(1x,es9.2))
-106            FORMAT(a,' Liq_and_gas:',1(1x,es9.2))
-107            FORMAT(a,' ConvFacI2G:',1(1x,es9.2))
-108            FORMAT(a,' online_cldliq:',1(1x,es9.2))
-109            FORMAT(a,' online_vud:',1(1x,es9.2))
-110            FORMAT(a,' ftemp_threshold:',1(1x,es9.2))
+104            FORMAT(a,' KcScaleFactors:',3(1x,f3.1))
+105            FORMAT(a,' AerScavEff:',1(1x,f3.1))
+106            FORMAT(a,' RetentionFactor:',1(1x,f3.1))
+107            FORMAT(a,' Liq_and_gas:',1(1x,es9.2))
+108            FORMAT(a,' ConvFacI2G:',1(1x,es9.2))
+109            FORMAT(a,' online_cldliq:',1(1x,f3.1))
+110            FORMAT(a,' online_vud:',1(1x,f3.1))
+111            FORMAT(a,' ftemp_threshold:',1(1x,f5.1))
             end if
          end if
       enddo

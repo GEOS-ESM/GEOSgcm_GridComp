@@ -44,7 +44,7 @@ subroutine CNV_Tracers_To_SOA()
         do n = 1, ncnst
             CNV_Tracers_SOA__fscav(n) = CNV_Tracers(n)%fscav
             CNV_Tracers_SOA__Vect_Hcts(n, :) = CNV_Tracers(n)%Vect_Hcts(:)
-            CNV_Tracers_SOA__use_gcc_washout(n) = CNV_Tracers(n)%use_gcc_washout
+            CNV_Tracers_SOA__use_gcc_washout(n) = CNV_Tracers(n)%is_gcc_species
         enddo
         call WRITE_PARALLEL("CNV_Tracers_SOA ready")
     endif
