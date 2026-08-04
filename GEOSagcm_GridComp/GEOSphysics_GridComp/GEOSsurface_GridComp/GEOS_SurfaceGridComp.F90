@@ -6076,6 +6076,7 @@ module GEOS_SurfaceGridCompMod
     character(len=ESMF_MAXPATHLEN) :: SolCycFileName
     logical :: PersistSolar
     logical :: allocateRunoff
+    logical :: tmp_logical
 
 !=============================================================================
 
@@ -6414,9 +6415,10 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
 
     ! for now, do not allow the combination of precip replacement and clim rescaling
-    
-    _ASSERT( (.not. (trim(PRECIP_FILE) /= 'null' .and. trim(PRECIP_FILE_CLIMSCALE) /= 'null')), &
-         'only one of PRECIP_FILE *or* PRECIP_FILE_CLIMSCALE can be set' )
+
+    tmp_logical = .not. (trim(PRECIP_FILE) /= 'null' .and. trim(PRECIP_FILE_CLIMSCALE) /= 'null')   ! for GNU, avoid complex logical inside _ASSERT() macro
+
+    _ASSERT( tmp_logical, 'only one of PRECIP_FILE *or* PRECIP_FILE_CLIMSCALE can be set' )
     
 ! These exports are the rainfalls and total snowfall that
 !  the children of surface see. They can be the exports of
