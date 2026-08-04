@@ -6415,7 +6415,7 @@ module GEOS_SurfaceGridCompMod
 
     ! for now, do not allow the combination of precip replacement and clim rescaling
     
-    _ASSERT( .not. (trim(PRECIP_FILE) /= "null" .and. trim(PRECIP_FILE_CLIMSCALE) /= "null"), &
+    _ASSERT( (.not. (trim(PRECIP_FILE) /= "null" .and. trim(PRECIP_FILE_CLIMSCALE) /= "null")), &
          "only one of PRECIP_FILE *or* PRECIP_FILE_CLIMSCALE can be set" )
     
 ! These exports are the rainfalls and total snowfall that
