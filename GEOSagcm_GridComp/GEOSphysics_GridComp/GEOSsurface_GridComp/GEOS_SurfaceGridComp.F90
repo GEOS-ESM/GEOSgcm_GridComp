@@ -6415,9 +6415,10 @@ module GEOS_SurfaceGridCompMod
 
     ! for now, do not allow the combination of precip replacement and clim rescaling
 
-    if (trim(PRECIP_FILE) /= 'null' .and. trim(PRECIP_FILE_CLIMSCALE) /= 'null')            &
-      _ASSERT( .FALSE., 'only one of PRECIP_FILE *or* PRECIP_FILE_CLIMSCALE can be set' )
-    
+    if (trim(PRECIP_FILE) /= 'null' .and. trim(PRECIP_FILE_CLIMSCALE) /= 'null') then
+       _ASSERT( .FALSE., 'only one of PRECIP_FILE *or* PRECIP_FILE_CLIMSCALE can be set' )
+    end if
+
 ! These exports are the rainfalls and total snowfall that
 !  the children of surface see. They can be the exports of
 !  moist or can be read from a file.
