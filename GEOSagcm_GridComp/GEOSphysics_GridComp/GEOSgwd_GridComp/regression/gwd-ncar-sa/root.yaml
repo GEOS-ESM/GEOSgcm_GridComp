@@ -19,12 +19,12 @@ mapl:
     GWD:
       dso: libGEOSgwd_GridComp.so
       config_file: gwd.yaml
-      setservice: gwd_setservices_
+      setservices: gwd_setservices_
 
     DataGwdImports:
       dso: libconfigurable_gridcomp
       config_file: data-gwd-imports.yaml
-      setservice: setservices_
+      setservices: setservices_
 
   connections:
     - src_name: PLE
