@@ -1204,21 +1204,20 @@ contains
   END SUBROUTINE AppendLakeTypeToTileNC4
   !----------------------------------------------------------------------  
   
-  SUBROUTINE supplemental_tile_attributes(nx,ny,regrid,fnameTil, Rst_id)
+  SUBROUTINE supplemental_tile_attributes(nx,ny,fnameTil, fnameRst, write_catch)
     
     ! 1) get supplemental tile attributes not provided in MAPL-generated (ASCII) tile file,
     !    incl. min/max lat/lon of each tile and tile elevation
     ! 2) write nc4-formatted til file (incl. supplemental tile attributes)
     
-    integer,      intent(in) :: nx, ny
-
-    logical,      intent(in) :: regrid    
-
-    character(*), intent(in) :: fnameTil   ! file name (w/o extension) of tile file
-    integer, intent(in)      :: Rst_id(:,:)   
- 
+    integer,           intent(in) :: nx, ny
+    character(*),      intent(in) :: fnameTil   ! file name (w/o extension) of tile file
+    character(*),      intent(in) :: fnameRst   ! file name (with extension) of raster file
+    logical, optional, intent(in) :: write_catch
     ! ---------------------------------------------------------
 
+    integer, allocatable               :: Rst_id(:,:)   
+    logical                            :: regrid    
     INTEGER, allocatable, dimension(:) :: CATID  
     integer                            :: n, ip, n_land, i, j, i_sib, j_sib, status
     INTEGER, allocatable, dimension(:) :: id, I_INDEX, J_INDEX 
@@ -1249,20 +1248,20 @@ contains
     real(REAL64),      allocatable         :: rTable_keep(:,:)
     integer,           allocatable         :: iTable_keep(:,:)
     character(len=128)                     :: gName(2)
-    character(:), allocatable              :: Combined_gName
+    character(:),      allocatable         :: Combined_gName
     logical,           allocatable         :: IsOcean(:)
     logical,           allocatable         :: keep_tile(:)
 
     ! This is used to adjust EASE grid from 1-based to 0-based indexes
     ! The tile file with only one EASE grid is already 0-based and may not go through this subroutine
     ! This is a special case for river-routing. The ocean grid is also EASE just for convenience
-    logical                                :: two_EASE 
+    logical                                :: two_EASE, write_catch_, file_exist 
     integer                                :: ip_keep, k, nc_tmp, nr_tmp
     real                                   :: EASE_LAT_MAX !
 
     ! LakeTopoCat / ReachTopoCat LakeType
     integer,           allocatable         :: lake_type(:)
-    integer                                :: rc_lake
+    integer                                :: rc_lake, unit
 
     ! -----------------------------------------------------
     !
@@ -1270,6 +1269,12 @@ contains
     
     call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR)
     gtopo30   = trim(MAKE_BCS_INPUT_DIR)//'/land/topo/v1/srtm30_withKMS_2.5x2.5min.data'
+    inquire(file = gtopo30, exist=file_exist) 
+    if ( .not. file_exist ) then
+       print*, gtopo30 //' does not exist. Make sure you set env MAKE_BCS_INPUT_DIR right'
+       stop 1
+    endif 
+
     allocate (q0(1:i_raster,1:j_raster))
 
     i_sib = nx
@@ -1281,17 +1286,30 @@ contains
 
     open (10,file=trim(gtopo30),form='unformatted',status='old')
     read (10) q0
-    close (10,status='keep')
-    
+    close(10,status='keep')
+
+    regrid = nx/=i_raster .or. ny /= j_raster   
+ 
     if(regrid) then
        allocate(raster(nx,ny),stat=STATUS); VERIFY_(STATUS)
+       call RegridRasterReal(q0,raster)
     else
        raster => q0
     end if
-    
-    if(regrid) then
-       call RegridRasterReal(q0,raster)
+
+    ! read raste id from raster file
+
+    allocate(rst_id(nx, ny))
+    open (newunit=unit,file=fnameRst,status='old',action='read',form='unformatted',convert='little_endian', IOSTAT=status)
+    if (status /=0) then
+       write (*,*)'         '//trim(fnameRst) // 'cannot be opened, exit '
+       call exit(1)
     endif
+    do j = 1, ny
+       read(unit)rst_id(:,j)
+    end do
+    close(unit) 
+
 
     ! -----------------------------------------------------------
     !
@@ -1504,20 +1522,26 @@ contains
     !
     ! write (ASCII) catchment.def file (land tiles only!)
     catch_file = 'clsm//catchment.def'
-    if (two_EASE) catch_file = 'clsm//catchment-route.def' 
-    open (10,file=catch_file, form='formatted',status='unknown')
-    write (10,*) n_land
+    if (two_EASE) catch_file = 'clsm//catchment-route.def'
+
+    write_catch_ = .true.
+    if (present(write_catch)) write_catch_ = write_catch
+
+    if (write_catch_) then 
+       open (10,file=catch_file, form='formatted',status='unknown')
+       write (10,*) n_land
     
-    do j=1,n_land
- !      if(trim(dateline)=='DC')then
- !         limits(j,1) = max(limits(j,1),(i_index(j)-1)*dx_gcm -180. - dx_gcm/2.)       
- !         limits(j,2) = min(limits(j,2),(i_index(j)-1)*dx_gcm -180. + dx_gcm/2.)  
- !      endif
-       write (10,'(i10,i8,5(2x,f9.4))')j+ip1,id(j+ip1),limits(j,1),   &
+       do j=1,n_land
+          !if(trim(dateline)=='DC')then
+          !   limits(j,1) = max(limits(j,1),(i_index(j)-1)*dx_gcm -180. - dx_gcm/2.)       
+          !   limits(j,2) = min(limits(j,2),(i_index(j)-1)*dx_gcm -180. + dx_gcm/2.)  
+          !endif
+          write (10,'(i10,i8,5(2x,f9.4))')j+ip1,id(j+ip1),limits(j,1),   &
             limits(j,2),limits(j,3),limits(j,4),tile_ele(j)       
-    end do
-    close(10,status='keep')
-    
+       end do
+       close(10,status='keep')
+    endif
+
     if (two_EASE) then
        iTable(:,2) = iTable(:,2) - 1
        !flip to make it consistent with conventional EASE indexing

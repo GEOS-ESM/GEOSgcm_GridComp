@@ -46,9 +46,13 @@ if( {LATLON_OCEAN} == True ) then
     bin/mkLatLonRaster.x -x {NX} -y {NY} -b DE -p PE -t 0 {IMO} {JMO} >/dev/null
     bin/CombineRasters.x -f 0 -t {NT} DE{IMO}xPE{JMO} Pfafstetter >/dev/null
     bin/CombineRasters.x -t {NT} CF{NC}x6C{SGNAME} DE{IMO}xPE{JMO}-Pfafstetter
-    setenv OMP_NUM_THREADS {NCPUS}
-    if ( {SKIPLAND} != True ) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C{SGNAME}_DE{IMO}xPE{JMO}-Pfafstetter -v {lbcsv}
-    setenv OMP_NUM_THREADS 1
+    if ( {SKIPLAND} != True ) then
+       setenv OMP_NUM_THREADS {NCPUS}
+       bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C{SGNAME}_DE{IMO}xPE{JMO}-Pfafstetter -v {lbcsv}
+       setenv OMP_NUM_THREADS 1
+    else
+       bin/TileFile_ASCII_to_nc4.x {NX} {NY} CF{NC}x6C{SGNAME}_DE{IMO}xPE{JMO}-Pfafstetter  write_catch=.false.
+    endif
     chmod 755 bin/create_README.csh
     bin/create_README.csh
 endif
@@ -65,8 +69,10 @@ if( {TRIPOL_OCEAN} == True ) then
     bin/mk_runofftbl.x -g CF{NC}x6C{SGNAME}_{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv}
 
     if ({SKIPLAND} != True) then
-      bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C{SGNAME}_{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv} -p no
-      bin/ExtractBCsFromOrig.py {BCS_DIR}  {lbcsv} CF{NC}x6C{SGNAME} {OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}
+       bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C{SGNAME}_{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv} -p no
+       bin/ExtractBCsFromOrig.py {BCS_DIR}  {lbcsv} CF{NC}x6C{SGNAME} {OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}
+    else
+       bin/TileFile_ASCII_to_nc4.x {NX} {NY} CF{NC}x6C{SGNAME}_{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter  write_catch=.false.
     endif
  
     chmod 755 bin/create_README.csh
@@ -79,9 +85,13 @@ if( {CUBED_SPHERE_OCEAN} == True ) then
     endif
     bin/CombineRasters.x -f 0 -t {NT} CF{NC}x6C Pfafstetter >/dev/null
     bin/CombineRasters.x -t {NT} {SGPARAM} CF{NC}x6C CF{NC}x6C-Pfafstetter
-    setenv OMP_NUM_THREADS {NCPUS}
-    if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C{SGNAME}_CF{NC}x6C-Pfafstetter -v {lbcsv}
-    setenv OMP_NUM_THREADS 1
+    if ({SKIPLAND} != True) then
+       setenv OMP_NUM_THREADS {NCPUS}
+       bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C{SGNAME}_CF{NC}x6C-Pfafstetter -v {lbcsv}
+       setenv OMP_NUM_THREADS 1
+    else
+       bin/TileFile_ASCII_to_nc4.x {NX} {NY} CF{NC}x6C{SGNAME}_CF{NC}x6C-Pfafstetter write_catch=.false.
+    endif
     chmod 755 bin/create_README.csh
     bin/create_README.csh
 endif

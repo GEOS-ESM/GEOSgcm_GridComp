@@ -271,7 +271,7 @@ PROGRAM mkCatchParam
      if (.not.file_exists) then
         write (log_file,'(a)')'         Creating catchment def and nc4 tile file...'
         call system_clock(clock1)
-        call supplemental_tile_attributes(nc,nr,regrid,fnameTil, tile_id) 
+        call supplemental_tile_attributes(nc,nr,fnameTil, trim(fnameRst)//'.rst') 
         call system_clock(clock2)
         seconds = (clock2-clock1)/real(clock_rate)
         write (log_file, *) '         Done. Spent   ', seconds, "  seconds"
