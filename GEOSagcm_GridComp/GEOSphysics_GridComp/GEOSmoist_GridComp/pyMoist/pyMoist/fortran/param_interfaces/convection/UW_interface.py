@@ -32,22 +32,28 @@ class UWGEOSInterface(UserCode):
         if self.config is None:
             if ndsl_stack.quantity_factory.sizer.nz == 72:
                 jason_uw = MAPLPy.get_resource("JASON_UW:", mapl_state, default=True)
+                jason_mfd_sc = MAPLPy.get_resource("JASON_MFD_SC:", mapl_state, default=True)
             else:
                 jason_uw = MAPLPy.get_resource("JASON_UW:", mapl_state, default=False)
+                jason_mfd_sc = MAPLPy.get_resource("JASON_MFD_SC:", mapl_state, default=True)
 
         self.config = UWConfiguration(
             JASON=True if ndsl_stack.quantity_factory.sizer.nz == 72 else False,
+            JASON_MFD_SC=True if ndsl_stack.quantity_factory.sizer.nz == 72 else False,
+            REPORT_UW_NEGATIVES=MAPLPy.get_resource("REPORT_UW_NEGATIVES:", mapl_state, default=False),
+            USE_UW_EIS=MAPLPy.get_resource("USE_UW_EIS:", mapl_state, default=False if jason_uw else True),
             NCNST=0,  # will be updated during first run call, once tracer packet is built in fortran
+            rkfre=MAPLPy.get_resource("RKFRE:", mapl_state, default=Float(1.0) if jason_uw else Float(1.5)),
             k0=ndsl_stack.quantity_factory.sizer.nz,
             dotransport=1 if MAPLPy.get_resource("USE_TRACER_TRANSP_UW:", mapl_state, default=True) else 0,
             dt=MAPLPy.get_resource("DSL__UW_DT:", mapl_state, default=Float(0)),
             windsrcavg=MAPLPy.get_resource("WINDSRCAVG:", mapl_state, default=Int(0) if jason_uw else Int(1)),
             mixscale=MAPLPy.get_resource("MIXSCALE:", mapl_state, default=Float(0.0) if jason_uw else Float(3000.0)),
-            criqc=MAPLPy.get_resource("CRIQC:", mapl_state, default=Float(1.0e-3) if jason_uw else Float(0.9e-3)),
+            criqc=MAPLPy.get_resource("CRIQC:", mapl_state, default=Float(1.0e-3) if jason_uw else Float(3.0e-3)),
             thlsrc_fac=MAPLPy.get_resource("THLSRC_FAC:", mapl_state, default=Float(0.0) if jason_uw else Float(1.0)),
-            frc_rasn=MAPLPy.get_resource("FRC_RASN:", mapl_state, default=Float(0.0) if jason_uw else Float(1.0)),
+            frc_rasn=MAPLPy.get_resource("FRC_RASN:", mapl_state, default=Float(0.0)),
             rkm=MAPLPy.get_resource("RKM:", mapl_state, default=Float(12.0) if jason_uw else Float(8.0)),
-            rpen=MAPLPy.get_resource("RPEN:", mapl_state, default=Float(3.0)),
+            rpen=MAPLPy.get_resource("RPEN:", mapl_state, default=Float(3.0) if jason_uw else Float(1.5)),
             SCLM_SHALLOW=MAPLPy.get_resource("SCLM_SHALLOW:", mapl_state, default=Float(1.0)),
             niter_xc=MAPLPy.get_resource("NITER_XC:", mapl_state, default=Int(2)),
             iter_cin=MAPLPy.get_resource("ITER_CIN:", mapl_state, default=Int(2)),
@@ -57,7 +63,7 @@ class UWGEOSInterface(UserCode):
             use_momenflx=1 if MAPLPy.get_resource("USE_MOMENFLX:", mapl_state, default=True) else 0,
             use_cumpenent=1 if MAPLPy.get_resource("USE_CUMPENENT:", mapl_state, default=True) else 0,
             rle=MAPLPy.get_resource("RLE:", mapl_state, default=Float(0.1)),
-            rmaxfrac=MAPLPy.get_resource("RMAXFRAC:", mapl_state, default=Float(0.1)),
+            rmaxfrac=MAPLPy.get_resource("RMAXFRAC:", mapl_state, default=Float(0.1) if jason_uw else Float(0.25)),
             mumin1=MAPLPy.get_resource("MUMIN1:", mapl_state, default=Float(0.906)),
             rbuoy=MAPLPy.get_resource("RBUOY:", mapl_state, default=Float(1.0)),
             rdrag=MAPLPy.get_resource("RDRAG:", mapl_state, default=Float(1.0)),
@@ -66,7 +72,7 @@ class UWGEOSInterface(UserCode):
             rdrop=MAPLPy.get_resource("SHLW_RDROP:", mapl_state, default=Float(8.0e-6)),
             detrhgt=MAPLPy.get_resource("DETRHGT:", mapl_state, default=Float(1800.0)),
             qtsrc_fac=MAPLPy.get_resource("QTSRC_FAC:", mapl_state, default=Float(0.0)),
-            qtsrchgt=MAPLPy.get_resource("QTSRCHGT:", mapl_state, default=Float(40.0)),
+            qtsrchgt=MAPLPy.get_resource("QTSRCHGT:", mapl_state, default=Float(0.0)),
         )
 
     def run(self, mapl_state, import_state, export_state) -> None:
@@ -112,7 +118,6 @@ class UWGEOSInterface(UserCode):
 
         self._managed_state.register_K_interface("input.PLE", "PLE", import_repository)
         self._managed_state.register_K_interface("input.ZLE", "ZLE", import_repository)
-        self._managed_state.register_2D("input.AREA", "AREA", import_repository)
         self._managed_state.register("input.QLLS", "QLLS", internal_repository)
         self._managed_state.register("input.QILS", "QILS", internal_repository)
         self._managed_state.register("input.QLCN", "QLCN", internal_repository)
@@ -130,7 +135,16 @@ class UWGEOSInterface(UserCode):
         self._managed_state.register_2D("input_output.cush", "CUSH", internal_repository)
         self._managed_state.register_2D("input_output.cnvtr", "CNPCPRATE", export_repository, alloc=True)
 
-        self._managed_state.register_2D("output.RKFRE", "RKFRE", export_repository, alloc=True)
+        self._managed_state.register("output.plcl_out", "PLCL_SC", export_repository, alloc=True)
+        self._managed_state.register("output.plfc_out", "PLFC_SC", export_repository, alloc=True)
+        self._managed_state.register("output.pinv_out", "PINV_SC", export_repository, alloc=True)
+        self._managed_state.register("output.prel_out", "PREL_SC", export_repository, alloc=True)
+        self._managed_state.register("output.pbup_out", "PBUP_SC", export_repository, alloc=True)
+        self._managed_state.register("output.cbmf_out", "CBMF_SC", export_repository, alloc=True)
+        self._managed_state.register("output.cldhgt_out", "CLDTOP_SC", export_repository, alloc=True)
+
+        self._managed_state.register("output.LTS", "LTS", export_repository, alloc=True)
+        self._managed_state.register("output.EIS", "EIS", export_repository, alloc=True)
         self._managed_state.register("output.MFD_SC", "MFD_SC", export_repository, alloc=True)
         self._managed_state.register("output.QLENT_SC", "QLENT_SC", export_repository, alloc=True)
         self._managed_state.register("output.QIENT_SC", "QIENT_SC", export_repository, alloc=True)
@@ -162,14 +176,20 @@ class UWGEOSInterface(UserCode):
         self._managed_state.register_2D("output.qpert_out", "QPERT_SC", export_repository, alloc=True)
         self._managed_state.register("output.qidet_inv", "QIDET_SC", export_repository, alloc=True)
         self._managed_state.register("output.qldet_inv", "QLDET_SC", export_repository, alloc=True)
-        self._managed_state.register_K_interface("output.CNV_MFC", "CNV_MFC", export_repository, alloc=True)
-        self._managed_state.register("output.CNV_MFD", "CNV_MFD", export_repository, alloc=True)
+        #self._managed_state.register_K_interface("output.CNV_MFC", "CNV_MFC", export_repository, alloc=True)
+        #self._managed_state.register("output.CNV_MFD", "CNV_MFD", export_repository, alloc=True)
         self._managed_state.register("output.SHLW_PRC3", "SHLW_PRC3", export_repository, alloc=True)
         self._managed_state.register("output.SHLW_SNO3", "SHLW_SNO3", export_repository, alloc=True)
         self._managed_state.register_2D("output.SC_QT", "SC_QT", export_repository)
         self._managed_state.register_2D("output.SC_MSE", "SC_MSE", export_repository)
         self._managed_state.register_2D("output.CUSH_SC", "CUSH_SC", export_repository)
         self._managed_state.register("input_output.CLCN", "CLCN", internal_repository)
+
+        self._managed_state.register("output.DQVDT_FILL", "DQVDT_FILL_SC", export_repository)
+        self._managed_state.register("output.DQLLSDT_FILL", "DQLLSDT_FILL_SC", export_repository)
+        self._managed_state.register("output.DQLCNDT_FILL", "DQLCNDT_FILL_SC", export_repository)
+        self._managed_state.register("output.DQILSDT_FILL", "DQILSDT_FILL_SC", export_repository)
+        self._managed_state.register("output.DQICNDT_FILL", "DQICNDT_FILL_SC", export_repository)
 
         if self._uw is None:
             # Build UW

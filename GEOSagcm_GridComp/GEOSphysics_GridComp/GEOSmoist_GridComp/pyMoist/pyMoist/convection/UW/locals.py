@@ -306,6 +306,18 @@ class UWLocals:
     qc_i: Local
     qtten: Local
     tke_flip: Local
+    cbmf_out: Local
+    cbmf_s: Local
+    plcl_out: Local
+    plcl_s: Local
+    pinv_out: Local
+    pinv_s: Local
+    prel_out: Local
+    prel_s: Local
+    plfc_out: Local
+    plfc_s: Local
+    pbup_out: Local
+    pbup_s: Local
 
     @classmethod
     def make(cls, runtime: NDSLRuntime, quantity_factory: QuantityFactory):
@@ -556,6 +568,18 @@ class UWLocals:
         tscaleh = runtime.make_local(quantity_factory, [I_DIM, J_DIM])
         wtwb = runtime.make_local(quantity_factory, [I_DIM, J_DIM])
         cnvtrmax = runtime.make_local(quantity_factory, [I_DIM, J_DIM])
+        cbmf_out= runtime.make_local(quantity_factory, [I_DIM, J_DIM])
+        cbmf_s= runtime.make_local(quantity_factory, [I_DIM, J_DIM])
+        plcl_out= runtime.make_local(quantity_factory, [I_DIM, J_DIM])
+        plcl_s= runtime.make_local(quantity_factory, [I_DIM, J_DIM])
+        pinv_out= runtime.make_local(quantity_factory, [I_DIM, J_DIM])
+        pinv_s= runtime.make_local(quantity_factory, [I_DIM, J_DIM])
+        prel_out= runtime.make_local(quantity_factory, [I_DIM, J_DIM])
+        prel_s= runtime.make_local(quantity_factory, [I_DIM, J_DIM])
+        plfc_out= runtime.make_local(quantity_factory, [I_DIM, J_DIM])
+        plfc_s= runtime.make_local(quantity_factory, [I_DIM, J_DIM])
+        pbup_out= runtime.make_local(quantity_factory, [I_DIM, J_DIM])
+        pbup_s= runtime.make_local(quantity_factory, [I_DIM, J_DIM])
 
         # Interface FloatFields
         qtu_emf = runtime.make_local(quantity_factory, [I_DIM, J_DIM, K_INTERFACE_DIM])
@@ -918,4 +942,16 @@ class UWLocals:
             qc_i=qc_i,
             qtten=qtten,
             tke_flip=tke_flip,
+            cbmf_out=cbmf_out,
+            cbmf_s=cbmf_s,
+            plcl_out=plcl_out,
+            plcl_s=plcl_s,
+            pinv_out=pinv_out,
+            pinv_s=pinv_s,
+            prel_out=prel_out,
+            prel_s=prel_s,
+            plfc_out=plfc_out,
+            plfc_s=plfc_s,
+            pbup_out=pbup_out,
+            pbup_s=pbup_s,
         )
