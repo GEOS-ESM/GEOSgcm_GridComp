@@ -1249,7 +1249,7 @@ contains
     real(REAL64),      allocatable         :: rTable_keep(:,:)
     integer,           allocatable         :: iTable_keep(:,:)
     character(len=128)                     :: gName(2)
-    character(:), allocatable              :: Combined_gName
+    character(:),      allocatable         :: Combined_gName
     logical,           allocatable         :: IsOcean(:)
     logical,           allocatable         :: keep_tile(:)
 
@@ -1307,11 +1307,13 @@ contains
     n = index(fnameTil, '/', back=.true.)
     Combined_gName= fnameTil(n+1:)
 
-    if(index(Combined_gName,'CF')/=0 .or. index(Combined_gName,'EASE') /=0) then 
+    if      (Combined_gName(1:2)=='CF' .or. index(Combined_gName,'EASE')/=0) then 
       dateline = 'DE'
       write (*,*) 'Cube-Sphere or EASE Grid - assuming dateline-on-edge (DE)'
-    else
+    else if (Combined_gName(1:2)=='DE' .or. Combined_gName(1:2)=='DC')       then
       dateline = Combined_gName(1:2)
+    else
+      ASSERT_(.false.)        ! unknown (atm) grid, stopping
     endif
 
     open (10,file=fname,status='old',action='read',form='formatted')
