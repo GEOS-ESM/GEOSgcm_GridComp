@@ -9,8 +9,6 @@ function(run_case case_name regression_data_dir)
 
   set(root_dir ${regression_data_dir}/${case_name})
   set(num_procs "6")
-  set(start_date_time "1891-03-01T00:00:00")
-  set(restart_dir ${root_dir}/checkpoints/${start_date_time})
   set(checkpoints_dir ${root_dir}/checkpoints/last)
 
   if(NOT EXISTS ${root_dir})
@@ -18,14 +16,12 @@ function(run_case case_name regression_data_dir)
     return()
   endif()
 
-  copy_directory(${restart_dir} ${expdir}/checkpoints/${start_date_time})
+  copy_restarts(${root_dir} ${expdir})
   copy_file(${regression_data_dir}/newmfspectra40_dc25.nc ${expdir})
   run_geos(${num_procs} ${case_name} ${expdir})
   compare_results(${checkpoints_dir} ${expdir}/checkpoints/last)
 
-  # execute_process(
-  #   COMMAND ${CMAKE_COMMAND} -E rm -rf ${expdir}
-  # )
+  file(REMOVE_RECURSE ${expdir})
 endfunction()
 
 run_case(${TEST_CASE} ${REGRESSION_DATA_DIR})
