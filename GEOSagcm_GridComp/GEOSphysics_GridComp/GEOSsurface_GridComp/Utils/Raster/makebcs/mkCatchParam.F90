@@ -10,7 +10,7 @@ PROGRAM mkCatchParam
   !  Usage = "mkCatchParam -x nx -y ny -g Gridname  -v LBCSV "       
   !     -x: Size of longitude dimension of input raster.            DEFAULT: 8640
   !     -y: Size of latitude dimension of input raster.             DEFAULT: 4320
-  !    !! -b: Position of dateline w.r.t. first grid cell boundaries. DEFAULT: DC (dateline-on-center)
+  !     DISCONTINUED: -b: Position of dateline w.r.t. first grid cell boundaries. DEFAULT: DC (dateline-on-center)
   !     -g: Gridname (name of the .til or .rst file without file extension)  
   !     -v: LBCSV : Land bcs version (F25, GM4, ICA, NL3, NL4, NL5, v06, v07, v08, v09, v11, ...)
   !     
@@ -117,7 +117,7 @@ PROGRAM mkCatchParam
   USAGE(2) ="     -x: Size of longitude dimension of input raster. DEFAULT: 8640              "
   USAGE(3) ="     -y: Size of latitude dimension of input raster.  DEFAULT: 4320              "
   USAGE(4) ="     -g: Gridname  (name of the .til or .rst file *without* file extension)      "
-  USAGE(5) ="   not used anymore !!-b: Position of the dateline in the first grid box (DC or DE). DEFAULT: DC  "
+  USAGE(5) ="     DISCONTINUED: -b: Position of the dateline in the first grid box (DC or DE). DEFAULT: DC  "
   USAGE(6) ="     -v: Land bcs version (F25, GM4, ICA, NL3, NL4, NL5, v06, v07, v08 v09 )     "
   USAGE(7) ="     -p: if no, it creates catchment_def and nc4 tile files then exits           "
 
