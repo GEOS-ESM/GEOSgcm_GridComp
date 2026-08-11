@@ -17,7 +17,7 @@ cap:
       Root:
         dso: libconfigurable_gridcomp
         config_file: root.yaml
-        setservice: setservices_
+        setservices: setservices_
 
   checkpointing:
     enabled: true

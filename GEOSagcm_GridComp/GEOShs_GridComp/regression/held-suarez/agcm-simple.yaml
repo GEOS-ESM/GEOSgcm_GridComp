@@ -8,12 +8,12 @@ mapl:
     DataMoist:
       dso: libconfigurable_gridcomp
       config_file: data-moist.yaml
-      setservice: setservices_
+      setservices: setservices_
 
     DataAna:
       dso: libconfigurable_gridcomp
       config_file: data-ana.yaml
-      setservice: setservices_
+      setservices: setservices_
 
   connections:
     - src_name: TRADV
