@@ -17,9 +17,7 @@ function(run_case case_name regression_data_dir)
     compare_results(${checkpoints_dir} ${expdir}/checkpoints/last)
   endif()
 
-  # execute_process(
-  #   COMMAND ${CMAKE_COMMAND} -E rm -rf ${expdir}
-  # )
+  file(REMOVE_RECURSE ${expdir})
 endfunction()
 
 run_case(${TEST_CASE} ${REGRESSION_DATA_DIR})
