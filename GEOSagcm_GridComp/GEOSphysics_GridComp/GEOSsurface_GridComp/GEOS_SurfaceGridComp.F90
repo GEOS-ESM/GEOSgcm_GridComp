@@ -5963,8 +5963,9 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: HLWUPTILE        => NULL()
     real, pointer, dimension(:) :: LWNDSRFTILE      => NULL()
     real, pointer, dimension(:) :: SWNDSRFTILE      => NULL()
-    real, pointer, dimension(:) :: RUNOFFTILE       => NULL()
+    real, pointer, dimension(:) :: RUNOFFTILE       => NULL()   
     real, pointer, dimension(:) :: RUNSURFTILE      => NULL()
+    real, pointer, dimension(:) :: DISTERTILE       => NULL()     
     real, pointer, dimension(:) :: DISCHARGETILE    => NULL()
     real, pointer, dimension(:) :: BASEFLOWTILE     => NULL()
     real, pointer, dimension(:) :: ACCUMTILE        => NULL()
@@ -7493,6 +7494,8 @@ module GEOS_SurfaceGridCompMod
     if (allocateRunoff) then
        allocate(RUNOFFTILE(NT),stat=STATUS); VERIFY_(STATUS)
        RUNOFFTILE = 0.0
+       allocate(DISTERTILE(NT),stat=STATUS); VERIFY_(STATUS)
+       DISTERTILE = 0.0
     end if
 
     call MKTILE(RUNSURF ,RUNSURFTILE ,NT,RC=STATUS); VERIFY_(STATUS)
@@ -7665,7 +7668,7 @@ module GEOS_SurfaceGridCompMod
           DISCHARGETILE = RUNOFFTILE
 
        else
-          call RouteRunoffTeleport(SURF_INTERNAL_STATE%RoutingType, RUNOFFTILE, DISCHARGETILE, RC=STATUS)
+          call RouteRunoffTeleport(SURF_INTERNAL_STATE%RoutingType, DISTERTILE, DISCHARGETILE, RC=STATUS)
           VERIFY_(STATUS)
        end if
 
@@ -9078,6 +9081,7 @@ module GEOS_SurfaceGridCompMod
     if(associated(LWNDSRFTILE )) deallocate(LWNDSRFTILE )
     if(associated(SWNDSRFTILE )) deallocate(SWNDSRFTILE )
     if(associated(RUNOFFTILE  )) deallocate(RUNOFFTILE  )
+    if(associated(DISTERTILE  )) deallocate(DISTERTILE  )    
     if(associated(DISCHARGETILE))deallocate(DISCHARGETILE)
     if(associated(RUNSURFTILE )) deallocate(RUNSURFTILE )
     if(associated(BASEFLOWTILE)) deallocate(BASEFLOWTILE)
@@ -9371,6 +9375,8 @@ module GEOS_SurfaceGridCompMod
       VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'RUNSURF' , ALLOC=associated(RUNSURFTILE ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'DISTER'  , ALLOC=associated(DISTERTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)      
       call MAPL_GetPointer(GEX(type), dum, 'BASEFLOW', ALLOC=associated(BASEFLOWTILE), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'ACCUM'   , ALLOC=associated(ACCUMTILE   ), notFoundOK=.true., RC=STATUS)
@@ -9986,6 +9992,10 @@ module GEOS_SurfaceGridCompMod
          call FILLOUT_TILE(GEX(type), 'RUNSURF',RUNSURFTILE,XFORM, RC=STATUS)
          VERIFY_(STATUS)
       end if
+      if(associated(DISTERTILE)) then
+         call FILLOUT_TILE(GEX(type), 'DISTER', DISTERTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if      
       if(associated(BASEFLOWTILE)) then
          call FILLOUT_TILE(GEX(type), 'BASEFLOW',BASEFLOWTILE,XFORM, RC=STATUS)
          VERIFY_(STATUS)

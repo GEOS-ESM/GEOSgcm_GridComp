@@ -33,6 +33,7 @@ module GEOS_RouteGridCompMod
      type (ESMF_Field)       :: field_src
      type (ESMF_Field)       :: field
      type (RES_STATE)        :: reservoir
+     type (ESMF_Grid)        :: pfaf_tilegrid     
 
      integer :: n_pfaf_local
      integer :: nt_global
@@ -44,6 +45,7 @@ module GEOS_RouteGridCompMod
      integer :: maxCatch
      integer :: route_dt
      integer :: run_route
+     logical :: do_discharge_outlet
 
      real,    allocatable :: areacat(:)      ! m2
      integer, allocatable :: downid(:) 
@@ -56,6 +58,8 @@ module GEOS_RouteGridCompMod
      integer, allocatable :: re_order(:),   to_down(:)
      integer, allocatable :: send_count(:), displ_send(:)
      integer, allocatable :: recv_count(:), displ_recv(:)
+
+     integer, allocatable :: global_src(:), global_dis(:)
 
      integer              :: total_send,    total_recv
   end type T_RROUTE_STATE
@@ -322,6 +326,14 @@ contains
          VLOCATION          = MAPL_VLocationNone         ,&
          _RC )    
 
+    call MAPL_AddExportSpec(GC,                           &
+         LONG_NAME          = 'discharge_from_terminal_catchment'                ,&
+         UNITS              = 'kg m-2 s-1'               ,&
+         SHORT_NAME         = 'DISTER'                  ,&
+         DIMS               = MAPL_DimsTileOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+         _RC ) 
+
 !EOS
 
     call MAPL_TimerAdd(GC,    name="-RRM" ,RC=STATUS)
@@ -498,12 +510,13 @@ contains
     allocate(route%runoff_acc(nt_local), source = 0.)
 
     pfaf_grid = create_pfaf_grid(_RC)
-    call MAPL_LocstreamCreate(pfaf_Locstream, pfaf_Grid, _RC)
-    call MAPL_LocStreamGet(pfaf_LocStream, TILEGRID=pfaf_tilegrid, _RC)
+    call MAPL_LocStreamCreate(pfaf_locstream, pfaf_grid, _RC)
+    call MAPL_LocStreamGet(pfaf_locstream, TILEGRID=pfaf_tilegrid, _RC)
+    route%pfaf_tilegrid = pfaf_tilegrid
     call MAPL%grid%set(pfaf_grid, _RC)
     call ESMF_GridCompSet(gc, grid=pfaf_grid, RC=status)
     VERIFY_(STATUS)
-    call MAPL_set(MAPL, locstream = pfaf_locstream, rc=status)
+    call MAPL_Set(MAPL, locstream = pfaf_locstream, rc=status)
     VERIFY_(STATUS)
 
     call ESMF_TimeIntervalSet(CollectWater_DT, s=ROUTE_DT, rc=status)
@@ -634,18 +647,21 @@ contains
 
       call MAPL_LocstreamGet(LOCSTREAM, GRIDNAMES=GNAMES, pfaf_index=pfaf_index, tilearea=tilearea, local_id=local_id, local_i=local_i, local_j=local_j, _RC)
 
+
      ! ESMF use global indices increasing with mpi_rank, no mask here for tile grid 
       allocate(global_id(route%nt_global))
       call ESMFL_Fcollect(tilegrid, global_id, local_id, _RC)
 
       ! get weights for aggregation of runoff from tile space to Pfafstetter catchments
       if (index(GNAMES(1), 'EASEv') /=0) then
-
+         
          ! For the EASE tile space, there is at most one land tile per EASE grid cell; Pfafstetter catchment outlines are
          ! not considered in the construction of the tile space (i.e., the "tile file" associated with MAPL LocStream).
          ! EASE grid boundary conditions contain a supplemental "Pfafstetter" nc4 tile file in which tiles are 
          ! constructed by intersecting the EASE grid with the Pfafstetter catchments.  This supplemental file provides the 
          ! desired information about the weights.
+        
+         route%do_discharge_outlet = .False.
 
          call MAPL_GetResource (MAPL, EASE_pfaf_tile_file, label = 'EASE_PFAF_TILE_FILE:',  default = '../input/EASE_pfaf_tile_file.nc4', RC=STATUS )
          
@@ -746,6 +762,8 @@ contains
          ! If not EASE tile space, the tile space is constructed by intersecting the (typically cube-sphere) grid
          ! with the Pfafstetter catchments, and the tile file associated with MAPL LocStream contains the
          ! desired information ("pfaf_index" and "tilearea").
+
+         route%do_discharge_outlet = .True.
          
          nWeights = route%nt_global
          allocate(global_src(nWeights), global_dst(nWeights), global_area(nWeights), global_frac(nWeights))
@@ -793,6 +811,10 @@ contains
       local_src = pack(global_src(:),  mask)
       local_dst = pack(global_dst(:),  mask)
       weights   = pack(global_frac(:), mask)
+
+      allocate(route%global_src(nWeights), route%global_dst(nWeights))
+      route%global_src = global_src
+      route%global_dst = global_dst      
       deallocate(global_src, global_dst, global_area, global_frac)
 
       nLocal_weights = count(mask)
@@ -965,6 +987,7 @@ contains
     real, dimension(:), pointer :: QOUTFLOW
     real, dimension(:), pointer :: QRES
     real, dimension(:), pointer :: QCAT
+    real, dimension(:), pointer :: DISTER    
 
 ! Time attributes and placeholders
 
@@ -978,7 +1001,7 @@ contains
     integer                            :: n_pfaf_local
     integer                            :: ROUTE_DT
 
-    integer                            :: I
+    integer                            :: I, pfaf_id, tile_id
     REAL                               :: HEARTBEAT 
 
     type(ESMF_Field)                   :: runoff_src
@@ -991,6 +1014,9 @@ contains
 
     real(kind=REAL64),     pointer     :: arrayPtr8(:)
     type (RES_STATE),      pointer     :: res 
+
+    real,                  pointer     :: QCAT_global(:), QCAT_tile_global(:)
+    integer,               pointer     :: downid_global(:)    
 
     !real,                  allocatable :: WTOT_BEFORE(:)
    
@@ -1040,6 +1066,7 @@ contains
     call MAPL_GetPointer(EXPORT, QOUTFLOW, 'QOUTFLOW',    ALLOC=.true., _RC)
     call MAPL_GetPointer(EXPORT, QRES,     'QRES',        ALLOC=.true., _RC)
     call MAPL_GetPointer(EXPORT, QCAT,     'QCAT',        ALLOC=.true., _RC)
+    call MAPL_GetPointer(EXPORT, DISTER,   'DISTER',      ALLOC=.true., _RC)    
 
 ! Start timers
 ! ------------
@@ -1141,6 +1168,28 @@ contains
 
 
        route%runoff_acc = 0.                                     ! re-initialize runoff accumulation
+
+       ! This is only needed for coupled model (with non-EASE grid) who needs discharge from terminal catchments
+       if (route%do_discharge_outlet) then 
+          allocate(QCAT_global(N_pfaf_g),downid_global(N_pfaf_g),QCAT_tile_global(nt_global))
+          call ESMFL_FCollect(route%pfaf_tilegrid, QCAT_global, QCAT, _RC)
+          call ESMFL_FCollect(route%pfaf_tilegrid, downid_global, route%downid, _RC)
+          QCAT_tile_global = 0.
+          ! Transfer discharge from terminal catchments (no downstream) to the associated tiles.
+          ! This transfer also includes inland catchments (not connected to the ocean);
+          ! however, their discharge will not be routed to the ocean, as defined by the ROUTING_FILE.
+          do i=1,nt_global
+             pfaf_id = route%global_dst(i)
+             _ASSERT(1<=pfaf_id .and. pfaf_id<=N_pfaf_g, "pfaf id is out of range")
+             if(downid_global(pfafid)==-1)then
+                tile_id = route%global_src(i)
+                ! Convert units [m3 s-1] --> [kg m-2 s-1].
+                QCAT_tile_global(tile_id) = QCAT_global(pfaf_id) * 1.e3 / route%areacat(pfaf_id)
+             endif
+          enddo
+          DISTER(1:nt_local) = QCAT_tile_global( local_id(1:nt_local) )
+          deallocate(QCAT_global,downid_global,QCAT_tile_global)          
+       endif
        
     else
        
