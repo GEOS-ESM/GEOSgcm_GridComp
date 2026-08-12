@@ -51,7 +51,6 @@ module gw_drag
   real, parameter :: ROG     = MAPL_RGAS/MAPL_GRAV
   real, parameter :: OROKO2  = 0.5 * KWVO     ! 1/2 * horizontal wavenumber
   real, parameter :: PI_GWD  = 4.0*atan(1.0)  ! This is *not* MAPL_PI
-  real, parameter :: GWD_TOP_PRESSURE = 1.0   ! 0.01 hPa in Pa
 contains
 
 !===============================================================================
@@ -64,7 +63,7 @@ contains
           taugwdx_dev,  taugwdy_dev,  tauox_dev,    tauoy_dev,  feo_dev,           &
           taubkgx_dev,  taubkgy_dev,  taubx_dev,    tauby_dev,  feb_dev,           &
           fepo_dev,     fepb_dev,     utbsrc_dev,   vtbsrc_dev, ttbsrc_dev,        &
-          bgstressmax,  effgworo,     effgwbkg,     rc            )
+          bgstressmax,  effgworo,     effgwbkg,     geos_mlt, gwd_top_pressure, rc )
 
 !-----------------------------------------------------------------------
 ! Interface for multiple gravity wave drag parameterization.
@@ -78,6 +77,8 @@ contains
     real,    intent(in   ) :: bgstressmax              ! Max of equatorial profile of BG stress factor
     real,    intent(in   ) :: effgwbkg                 ! tendency efficiency for background gwd (Default = 0.125)
     real,    intent(in   ) :: effgworo                 ! tendency efficiency for orographic gwd (Default = 0.125)
+    logical, intent(in   ) :: geos_mlt                 ! apply GEOS-MLT-specific GWD top cutoff
+    real,    intent(in   ) :: gwd_top_pressure         ! GEOS-MLT top pressure cutoff for GWD tendencies (Pa)
     real,    intent(in   ) :: pint_dev(pcols,pver+1)   ! pressure at the layer edges
     real,    intent(in   ) :: t_dev(pcols,pver)        ! temperature at layers
     real,    intent(in   ) :: u_dev(pcols,pver)        ! zonal wind at layers
@@ -179,14 +180,15 @@ contains
 
     I_LOOP: do i = 1, pcols
 
-! Set the top of the active GWD region from the instantaneous layer pressure.
-! Levels are ordered from the model top downward.  A layer is excluded only
-! when its midpoint pressure is above (less than) 0.01 hPa.
+! GEOS_MLT: Set the top of the active GWD region from the instantaneous
+! layer pressure. Native GEOS retains the original full-column GWD behavior.
        ktop_gwd = 0
-       do k = 1, pver
-          if (pmid_dev(i,k) >= GWD_TOP_PRESSURE) exit
-          ktop_gwd = k
-       end do
+       if (geos_mlt) then
+          do k = 1, pver
+             if (pmid_dev(i,k) >= gwd_top_pressure) exit
+             ktop_gwd = k
+          end do
+       end if
 
 ! zero net tendencies prior to runs
        do k = 1, pver
@@ -321,8 +323,8 @@ contains
 
     end do I_LOOP
     
-    ! The pressure-based ktop_gwd passed to gw_drag_prof leaves tendencies
-    ! above 0.01 hPa at their initialized zero values.
+    ! For GEOS_MLT, pressure-based ktop_gwd leaves tendencies above
+    ! gwd_top_pressure at their initialized zero values.
     
     rc = 0    
 

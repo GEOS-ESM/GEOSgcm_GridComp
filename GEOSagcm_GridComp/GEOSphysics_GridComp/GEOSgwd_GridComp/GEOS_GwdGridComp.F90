@@ -60,6 +60,8 @@ module GEOS_GwdGridCompMod
       real :: GEOS_BGSTRESS
       real :: GEOS_EFFGWBKG
       real :: GEOS_EFFGWORO
+      logical :: GEOS_MLT
+      real :: GWD_TOP_PRESSURE
       integer :: GEOS_PGWV
       real :: NCAR_EFFGWBKG
       real :: NCAR_EFFGWORO
@@ -299,6 +301,17 @@ contains
       call MAPL_GetResource(MAPL,STRETCH_FACTOR,'AGCM.STRETCH_FACTOR:', default=1.0, _RC)
       imsize = imsize*CEILING(STRETCH_FACTOR)
       sigma = 1.0-0.9839*exp(-0.09835*4.e7*0.9/imsize/1000.) ! Based on Arakawa 2011 sigma used in GF2020
+
+      ! GEOS-MLT gravity wave drag top pressure cutoff
+      ! ----------------------------------------------
+      ! The cutoff is active only for GEOS-MLT. Pressure is in Pa, and the
+      ! default 1.0 Pa corresponds to 0.01 hPa.
+      call MAPL_GetResource( MAPL, self%GEOS_MLT, Label="GEOS_MLT:", default=.false., _RC)
+      self%GWD_TOP_PRESSURE = 1.0
+      if (self%GEOS_MLT) then
+         call MAPL_GetResource( MAPL, self%GWD_TOP_PRESSURE, &
+              Label="GWD_TOP_PRESSURE:", default=1.0, _RC)
+      end if
 
       ! Background Gravity wave drag
       ! ----------------------------
@@ -688,6 +701,7 @@ contains
                  TAUXB_TMP_NCAR, TAUYB_TMP_NCAR,  &
                  self%NCAR_EFFGWORO, &
                  self%NCAR_EFFGWBKG, self%alpha, &
+                 self%GEOS_MLT, self%GWD_TOP_PRESSURE, &
                  _RC)
          endif
          !call MAPL_TimerOff(MAPL,"-INTR_NCAR")
@@ -717,6 +731,7 @@ contains
                  self%GEOS_BGSTRESS, &
                  self%GEOS_EFFGWORO, &
                  self%GEOS_EFFGWBKG, &
+                 self%GEOS_MLT, self%GWD_TOP_PRESSURE, &
                  _RC)
          endif
          !call MAPL_TimerOff(MAPL,"-INTR_GEOS")
