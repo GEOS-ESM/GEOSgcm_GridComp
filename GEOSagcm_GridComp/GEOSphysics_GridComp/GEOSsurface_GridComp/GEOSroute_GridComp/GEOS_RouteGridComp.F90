@@ -1016,7 +1016,7 @@ contains
     real(kind=REAL64),     pointer     :: arrayPtr8(:)
     type (RES_STATE),      pointer     :: res 
 
-    real,                  pointer     :: QCAT_global(:), QCAT_tile_global(:)
+    real,                  pointer     :: QCAT_global(:), QCAT_tile_global(:), areacat_global(:)
     integer,               pointer     :: downid_global(:)    
 
     !real,                  allocatable :: WTOT_BEFORE(:)
@@ -1172,9 +1172,10 @@ contains
 
        ! This is only needed for coupled model (with non-EASE grid) who needs discharge from terminal catchments
        if (route%do_discharge_outlet) then 
-          allocate(QCAT_global(N_pfaf_g),downid_global(N_pfaf_g),QCAT_tile_global(nt_global))
-          call ESMFL_FCollect(route%pfaf_tilegrid, QCAT_global, QCAT, _RC)
-          call ESMFL_FCollect(route%pfaf_tilegrid, downid_global, route%downid, _RC)
+          allocate(QCAT_global(N_pfaf_g),downid_global(N_pfaf_g),areacat_global(N_pfaf_g), QCAT_tile_global(nt_global))
+          call ESMFL_FCollect(route%pfaf_tilegrid, QCAT_global,   QCAT,          _RC)
+          call ESMFL_FCollect(route%pfaf_tilegrid, downid_global, route%downid,  _RC)
+          call ESMFL_FCollect(route%pfaf_tilegrid, areacat_global,route%areacat, _RC)          
           QCAT_tile_global = 0.
           ! Transfer discharge from terminal catchments (no downstream) to the associated tiles.
           ! This transfer also includes inland catchments (not connected to the ocean);
@@ -1185,12 +1186,13 @@ contains
              if(downid_global(pfaf_id)==-1)then
                 tile_id = route%global_src(i)
                 _ASSERT(1<=tile_id .and. tile_id<=nt_global, "tile id is out of range")
+                _ASSERT(areacat_global(pfaf_id)>0., "catchment area is not greater than 0")                
                 ! Convert units [m3 s-1] --> [kg m-2 s-1].
-                QCAT_tile_global(tile_id) = QCAT_global(pfaf_id) * 1.e3 / route%areacat(pfaf_id)
+                QCAT_tile_global(tile_id) = QCAT_global(pfaf_id) * 1.e3 / areacat_global(pfaf_id)
              endif
           enddo
           DISTER(1:nt_local) = QCAT_tile_global( route%local_id(1:nt_local) )
-          deallocate(QCAT_global,downid_global,QCAT_tile_global)          
+          deallocate(QCAT_global,downid_global,areacat_global,QCAT_tile_global)          
        endif
        
     else
