@@ -387,10 +387,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
     DT_MOIST = DT_R8
 
-    ! Profiler marker for microphysics
-    call MAPL_ConfigSetAttribute(CF, 1, 'PYPROFILER_TASKID:', RC=STATUS); VERIFY_(STATUS)
-    call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.debug.profiler", MAPL, IMPORT, EXPORT )
-
     if (USE_PYMOIST_GFDL1M) then
       call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.microphysics.GFDL1M_interface", MAPL, IMPORT, EXPORT, INTERNAL )
     else
@@ -985,9 +981,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         if (associated(PTR3D)) PTR3D = QGRAUPEL
 
     endif ! USE_PYMOIST_GFDL1M
-
-    ! End profiler marker for Microphysics
-    call MAPL_pybridge_gcfinalize( "pyMoist.fortran.param_interfaces.debug.profiler", MAPL, IMPORT, EXPORT )
 
      call MAPL_TimerOff(MAPL,"--GFDL_1M",RC=STATUS)
 
