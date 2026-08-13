@@ -10,7 +10,7 @@ module CNCStateUpdate1Mod
 ! Module for carbon state variable update, non-mortality fluxes.
 !
 ! !USES:
-    use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+    use MAPL_Constants, ONLY: r8 => MAPL_R4
     use clm_varpar   , only: ndecomp_cascade_transitions, nlevdecomp
 
     implicit none

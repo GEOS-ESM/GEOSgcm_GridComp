@@ -3,7 +3,7 @@ program mk_CiceRestart
 ! This utility will work with CICE saltwater internal restart from Fortuna-2_4.
 ! For CICE import restart use mk_LakeLandiceSaltRestarts.
 
-  use MAPL_ConstantsMod,only: MAPL_PI,  MAPL_radius
+  use MAPL_Constants,only: MAPL_PI,  MAPL_radius
   use MAPL_HashMod
   use mk_restarts_getidsMod, only: GetIDs,ReadTileFile_IntLatLon
 

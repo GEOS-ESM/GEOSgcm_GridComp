@@ -36,7 +36,7 @@ contains
 ! Tridiagonal matrix solution
 !
 ! !USES:
-    use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+    use MAPL_Constants, ONLY: r8 => MAPL_R4
     use clmtype
     use clm_varpar    , only : nlevurb
     use clm_varcon    , only : icol_roof, icol_sunwall, icol_shadewall

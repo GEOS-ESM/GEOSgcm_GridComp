@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        compiler: [ifort, gfortran-14, gfortran-15]
+        compiler: [ifort, gfortran-15, ifx]
         build-type: [Debug]
         fixture-repo: [GEOS-ESM/GEOSgcm, GEOS-ESM/GEOSldas]
         include:
@@ -36,8 +36,7 @@ jobs:
     with:
       compiler: ${{ matrix.compiler }}
       cmake-build-type: ${{ matrix.build-type }}
-      fixture-repo: ${{ matrix.fixture-repo }}
-      run-mepo-develop: ${{ matrix.run-mepo-develop }}
+      fixture-repo: GEOS-ESM/GEOSgcm
 
   spack_build:
     strategy:
@@ -53,6 +52,6 @@ jobs:
       BUILDCACHE_USERNAME: ${{ secrets.BUILDCACHE_USERNAME }}
       BUILDCACHE_TOKEN: ${{ secrets.BUILDCACHE_TOKEN }}
     with:
-      fixture-repo: ${{ matrix.fixture-repo }}
-      run-mepo-develop: ${{ matrix.run-mepo-develop }}
+      fixture-repo: GEOS-ESM/GEOSgcm
+      load-fms: true
 

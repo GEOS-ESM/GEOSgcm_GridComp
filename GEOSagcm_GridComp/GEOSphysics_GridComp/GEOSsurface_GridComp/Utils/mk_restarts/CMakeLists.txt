@@ -7,16 +7,11 @@ set(srcs
 )
 
 set (exe_srcs
-  Scale_Catch.F90
-  Scale_CatchCN.F90
   cv_SaltRestart.F90
   SaltIntSplitter.F90
   SaltImpConverter.F90
   mk_CICERestart.F90
-  mk_CatchCNRestarts.F90
-  mk_CatchRestarts.F90
   mk_LakeLandiceSaltRestarts.F90
-  mk_GEOSldasRestarts.F90
   mk_catchANDcnRestarts.F90
 )
 
@@ -32,7 +27,6 @@ foreach (src ${exe_srcs})
     LIBS MAPL GFTL_SHARED::gftl-shared GEOS_SurfaceShared GEOSroute_GridComp GEOS_LandShared GEOS_CatchCNShared ${this})
 endforeach ()
 
-install(PROGRAMS mk_Restarts DESTINATION bin)
 foreach (src ${exe_srcs})
   string (REGEX REPLACE ".F90" ".x" exe ${src})
   string (REGEX REPLACE ".F90" ""  lname ${src})

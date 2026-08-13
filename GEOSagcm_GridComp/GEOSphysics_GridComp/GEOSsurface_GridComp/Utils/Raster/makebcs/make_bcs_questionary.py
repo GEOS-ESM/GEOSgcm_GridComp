@@ -184,26 +184,33 @@ def ask_questions(default_grid="Cubed-Sphere"):
     fixes that were implemented since the archived BCs in the above-mentioned \n \
     directories were originally created.  The impact of these differences on \n \
     science is insignificant, and the parameter files produced by current \n \
-    code are scientifically equivalent to the corresponding archived BCs. \n",
+    code are scientifically equivalent to corresponding archived BCs. \n \
+    Current code always applies \"mean land elevation fix\" of v13.  For v12 and earlier, land elevation produced \n \
+    by current code thus differs from that in bcs_shared project disk. \n",
             "choices": [ \
    "NL3 : Icarus-NLv3   (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv3/)", \
    "NL4 : NLv4 [SMAPL4] (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv4/) \n\
           = NL3 + JPL veg height", \
    "NL5 : NLv5 [SMAPL4] (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv5/)\n \
          = NL3 + JPL veg height + PEATMAP", \
-   "v06 : NL3 + JPL veg height + PEATMAP + MODIS snow alb", \
-   "v07 : NL3 + PEATMAP", \
-   "v08 : NL3 + MODIS snow alb", \
-   "v09 : NL3 + PEATMAP + MODIS snow alb", \
-   "v10 : NL3 + PEATMAP + MODIS snow alb v2", \
    "v11 : NL3 + JPL veg height + PEATMAP + MODIS snow alb v2", \
    "v12 : NL3 + JPL veg height + PEATMAP + MODIS snow alb v2 + Argentina peatland fix", \
    "v13 : As in v12 + mean land elevation fix + MOM6 v2 (OM4) ocean-seaice bathymetry", \
+   "v14 : As in v13 but with GPM 2.0 peat", \
    "ICA : Icarus        (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus/)", \
    "GM4 : Ganymed-4_0   (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Ganymed-4_0/)", \
    "F25 : Fortuna-2_5   (archived*: n/a)"], 
         },
 
+# The following bcs versions were never used for major model versions or products and thus are not in
+# the bcs_shared project directory on Discover:
+#
+#  "v06 : NL3 + JPL veg height + PEATMAP + MODIS snow alb", \
+#  "v07 : NL3 + PEATMAP", \
+#  "v08 : NL3 + MODIS snow alb", \
+#  "v09 : NL3 + PEATMAP + MODIS snow alb", \
+#  "v10 : NL3 + PEATMAP + MODIS snow alb v2", \
+      
        {
             "type": "select",
             "name": "grid_type",

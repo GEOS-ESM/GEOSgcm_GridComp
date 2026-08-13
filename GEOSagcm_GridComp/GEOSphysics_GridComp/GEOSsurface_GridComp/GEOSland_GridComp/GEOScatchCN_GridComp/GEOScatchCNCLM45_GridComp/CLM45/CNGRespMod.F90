@@ -11,7 +11,7 @@ module CNGRespMod
 ! for coupled carbon-nitrogen code.
 !
 ! !USES:
-   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+   use MAPL_Constants, ONLY: r8 => MAPL_R4
    implicit none
    save
    private

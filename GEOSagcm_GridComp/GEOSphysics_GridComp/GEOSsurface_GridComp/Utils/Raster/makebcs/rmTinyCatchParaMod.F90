@@ -2,18 +2,18 @@
 #define ASSERT_(A)   if(.not.A)then;print *,'Error:',__FILE__,__LINE__;stop;endif
 !
 ! A Collection subroutines needed by mkCatchParam.F90
-!   Contact: Sarith Mahanama  sarith.p.mahanama@nasa.gov
-!   Email  : sarith.p.mahanama@nasa.gov
 
 module rmTinyCatchParaMod
 
   use LDAS_DateTimeMod
-  use MAPL_ConstantsMod
+  use MAPL_Constants
   use MAPL_Base,           ONLY: MAPL_UNDEF
-  use MAPL,                only: MAPL_WriteTilingNC4
+  use MAPL,                only: MAPL_WriteTilingNC4, MAPL_ease_extent
   use lsm_routines,        ONLY: sibalb
-  use LogRectRasterizeMod, ONLY: SRTM_maxcat, MAPL_UNDEF_R8 
+  use LogRectRasterizeMod, ONLY: SRTM_maxcat, MAPL_UNDEF_R8
+  
   use, intrinsic :: iso_fortran_env, only: REAL64 
+
   implicit none
   
   logical, parameter :: error_file=.true.
@@ -31,7 +31,7 @@ module rmTinyCatchParaMod
   logical, parameter :: bug =.false.
 
   include 'netcdf.inc'
-
+  
   logical :: preserve_soiltype = .false.
   
   ! Bugfix for Target_mean_land_elev: 
@@ -55,11 +55,12 @@ module rmTinyCatchParaMod
   public REFORMAT_VEGFILES
   public Get_MidTime, Time_Interp_Fac
   public ascat_r0, jpl_canoph, NC_VarID, init_bcs_config  
+  public LakeTopoCat_on_tiles_from_raster, AppendLakeTypeToTileNC4
   
   ! The following variables define the details of the BCs versions (data sources).
   ! Initialize to dummy values here and set to desired values in init_bcs_config().
   
-  logical,      public, save :: use_PEATMAP = .false.
+  integer,      public, save :: PEAT_INFO   = 0
   logical,      public, save :: jpl_height  = .false.
   character*8,  public, save :: LAIBCS      = 'UNDEF'
   character*6,  public, save :: SOILBCS     = 'UNDEF'
@@ -105,126 +106,137 @@ contains
     !   NGDC      : Soil parameters from Reynolds et al. 2000, doi:10.1029/2000WR900130 (MERRA-2, Fortuna, Ganymed, Icarus)
     !   HWSD      : Merged HWSDv1.21-STATSGO2 soil properties on 43200x21600 with Woesten et al. (1999) parameters   
     !   HWSD_b    : As in HWSD but with surgical fix of Argentina peatland issue (38S,60W)
+    !   HWSDv2    : As in HWSD but using HWSDv2 instead of HWSDv1.21; uses HWSDv2 layer 2 ("D2") texture for "top" *and* "sub" layers.
+    !                 HWSDv2 was developed and tested ~2024-2025.  Soil moisture simulation skill was found to be mostly neutral,
+    !                 while the soil moisture climatology changed substantially, which is undesirable for operational products.
+    !                 Therefore, HWSDv2 was not used in released bcs versions as of May 2026.
     !
     ! OUTLETV: Definition of outlet locations.  DEFAULT : N/A
     !   N/A       : No information (do not create routing "TRN" files).
     !   v1        : Outlet locations file produced manually by Randy Koster.
     !   v2        : Outlet locations file produced by run_routing_raster.py using routing information encoded 
     !               in SRTM-based Pfafstetter catchments and Greenland outlets info provided by Lauren Andrews.
-
+    !
+    ! PEAT_INFO: Source of peat information
+    !   0         : HWSD texture
+    !   1         : HWSD texture + PEATMAP (Xu et al 2017, doi:10.5518/252)
+    !   2         : Global Peatland Map 2.0 (GPM 2.0; Greifswald Mire Centre)
+    !
+    ! -----------------------------------------------------------------------------------------------------------------
+    
     character(*), intent (in) :: LBCSV     ! land BCs version 
 
     select case (trim(LBCSV))
        
     case ("F25")
-       LAIBCS  = 'GSWP2'
-       SOILBCS = 'NGDC'
-       MODALB  = 'MODIS1'
-       SNOWALB = 'LUT'
-       OUTLETV = "N/A"
-       GNU     = 2.17
-       use_PEATMAP = .false.
-       jpl_height  = .false.
+       LAIBCS     = 'GSWP2'
+       SOILBCS    = 'NGDC'
+       MODALB     = 'MODIS1'
+       SNOWALB    = 'LUT'
+       OUTLETV    = "N/A"
+       GNU        = 2.17
+       PEAT_INFO  = 0
+       jpl_height = .false.
        
     case ("GM4", "ICA")
-       LAIBCS  = 'GSWP2'
-       SOILBCS = 'NGDC'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'LUT'
-       OUTLETV = "N/A"
-       GNU     = 1.0
-       use_PEATMAP = .false.
-       jpl_height  = .false.
+       LAIBCS     = 'GSWP2'
+       SOILBCS    = 'NGDC'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'LUT'
+       OUTLETV    = "N/A"
+       GNU        = 1.0
+       PEAT_INFO  = 0
+       jpl_height = .false.
 
     case ("NL3")
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'LUT'
-       OUTLETV = "N/A"
-       GNU     = 1.0
-       use_PEATMAP = .false.
-       jpl_height  = .false.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'LUT'
+       OUTLETV    = "N/A"
+       GNU        = 1.0
+       PEAT_INFO  = 0
+       jpl_height = .false.
 
     case ("NL4")
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
-       MODALB  = 'MODIS2'      
-       SNOWALB = 'LUT'
-       OUTLETV = "N/A"
-       GNU     = 1.0
-       use_PEATMAP = .false.
-       jpl_height  = .true.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD'
+       MODALB     = 'MODIS2'      
+       SNOWALB    = 'LUT'
+       OUTLETV    = "N/A"
+       GNU        = 1.0
+       PEAT_INFO  = 0
+       jpl_height = .true.
 
     case ("NL5")
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'LUT'
-       OUTLETV = "N/A"
-       GNU     = 1.0
-       use_PEATMAP = .true.
-       jpl_height  = .true.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'LUT'
+       OUTLETV    = "N/A"
+       GNU        = 1.0
+       PEAT_INFO  = 1
+       jpl_height = .true.
 
     case ("v06")   
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'MODC061'
-       OUTLETV = "N/A"
-       GNU     = 1.0
-       use_PEATMAP = .true.
-       jpl_height  = .true.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'MODC061'
+       OUTLETV    = "N/A"
+       GNU        = 1.0
+       PEAT_INFO  = 1
+       jpl_height = .true.
 
     case ("v07")   
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'LUT'
-       OUTLETV = "N/A"
-       GNU     = 1.0
-       use_PEATMAP = .true.
-       jpl_height  = .false.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'LUT'
+       OUTLETV    = "N/A"
+       GNU        = 1.0
+       PEAT_INFO  = 1
+       jpl_height = .false.
        
     case ("v08")   
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'MODC061'
-       OUTLETV = "N/A"
-       GNU     = 1.0
-       use_PEATMAP = .false.
-       jpl_height  = .false.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'MODC061'
+       OUTLETV    = "N/A"
+       GNU        = 1.0
+       PEAT_INFO  = 0
+       jpl_height = .false.
        
     case ("v09")   
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'MODC061'
-       OUTLETV = "N/A"
-       GNU     = 1.0
-       use_PEATMAP = .true.
-       jpl_height  = .false.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'MODC061'
+       OUTLETV    = "N/A"
+       GNU        = 1.0
+       PEAT_INFO  = 1
+       jpl_height = .false.
 
     case ("v10")   
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'MODC061v2'
-       OUTLETV = "N/A"
-       GNU     = 1.0
-       use_PEATMAP = .true.
-       jpl_height  = .false.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'MODC061v2'
+       OUTLETV    = "N/A"
+       GNU        = 1.0
+       PEAT_INFO  = 1
+       jpl_height = .false.
 
     case ("v11")   
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'MODC061v2'
-       OUTLETV = "v1"
-       GNU     = 1.0
-       use_PEATMAP = .true.
-       jpl_height  = .true.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'MODC061v2'
+       OUTLETV    = "v1"
+       GNU        = 1.0
+       PEAT_INFO  = 1
+       jpl_height = .true.
 
     case ("v12","v13")  
        !   v12 are v13 BCs are identical except for the following updates and bug fixes in v13:
@@ -233,14 +245,25 @@ contains
        !   - Fix for inconsistency in land tile properties of coupled-model BCs vs. AGCM BCs.
        !   - Coupled-model BCs use MOM6/v2 (OM4) ocean bathymetry.
  
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD_b'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'MODC061v2'
-       OUTLETV = "v2"
-       GNU     = 1.0
-       use_PEATMAP = .true.
-       jpl_height  = .true.
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD_b'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'MODC061v2'
+       OUTLETV    = "v2"       
+       GNU        = 1.0
+       PEAT_INFO  = 1
+       jpl_height = .true.
+
+    case ("v14")  
+       LAIBCS     = 'MODGEO'
+       SOILBCS    = 'HWSD_b'
+       MODALB     = 'MODIS2'
+       SNOWALB    = 'MODC061v2'
+       OUTLETV    = "v2"       
+       GNU        = 1.0
+       PEAT_INFO  = 2
+       jpl_height = .true.
+      
 
     case default
        
@@ -902,6 +925,284 @@ contains
   ! subroutine pick_cat(sam,clr)
   !
   !----------------------------------------------------------------------
+  !----------------------------------------------------------------------  
+  !----------------------------------------------------------------------
+  
+  SUBROUTINE LakeTopoCat_on_tiles_from_raster( n_tile, nc_rst, nr_rst, tile_id, &
+       tile_typ, tile_lake_type, rc)
+
+    ! GEOS lake tiles include coastal ocean surfaces such as fjords and estuaries
+    !
+    ! To distinguish between these surfaces and "real" lakes (inland water), create a tile-space
+    ! flag (field) "lake_type" in the nc4 tile file w/ info based on LakeTopoCat v1.1 data.
+    !
+    ! Map preprocessed LakeTopoCat / ReachTopoCat any-touch support
+    ! (30 arcsec resolution, 10 deg x 10 deg chunks)
+    ! to tile space using the 30 arcsec raster tile-id map.
+    !
+    ! Why NOT use rmap/create_mapping here?
+    ! ------------------------------------
+    ! 1) In mkCatchParam, the "tile creation" step (Step 01) happens BEFORE any
+    !    precomputed rmap exists. Those mappings are built later for other products.
+    ! 2) create_mapping() is designed for land tiles only (1..n_land),
+    !    which is appropriate for land-only products such as MODIS snow albedo,
+    !    but this LakeTopoCat / ReachTopoCat diagnostic must be computed for
+    !    all water tile types in the tile file, including lake-like and
+    !    ocean tiles where present.
+    ! 3) Lake/reach support inputs are already on the same global 30-arcsec
+    !    grid as the raster tile-id map (43200x21600), so each 30" pixel can
+    !    be mapped directly to a tile via tile_id(iG,jG). For this diagnostic
+    !    we only need any-touch support, not area-weighted remapping.
+    !
+    ! Output vector tile_lake_type ("lake_type"):
+    !   -9999 = UNDEF / excluded, e.g. land typ==100 or landice typ==20
+    !       0 = tile does not intersect  with LakeTopoCat lake or ReachTopoCat reach    ("no touch")
+    !       1 = tile          intersects with LakeTopoCat lake  only                    ("lake  touch only")
+    !       2 = tile          intersects with ReachTopoCat reach only                   ("reach touch only")
+    !       3 = tile          intersects with LakeTopoCat lake and ReachTopoCat reach   ("lake + reach touch")
+    !
+
+    implicit none
+
+    integer,           intent(in)            :: n_tile
+    integer,           intent(in)            :: nc_rst, nr_rst
+    integer,           intent(in)            :: tile_id(1:nc_rst, 1:nr_rst)
+    integer,           intent(in)            :: tile_typ(1:n_tile)
+
+    integer,           intent(out)           :: tile_lake_type(1:n_tile)
+    integer,           intent(out), optional :: rc
+
+    ! -------------------------------------------------------
+    
+    integer,         parameter :: LAKETYPE_UNDEF = -9999
+
+    integer(kind=4), parameter :: nc_10          =  1200
+    integer(kind=4), parameter :: nr_10          =  1200
+
+    ! -------------------------------------------------------
+    
+    integer       :: status, ncid, varid
+    integer       :: ix, jx, ii, jj
+    integer       :: iLL, jLL, iG, jG, tid
+    character*512 :: lake_fname, reach_fname
+    character*2   :: HH, VV
+    character*512 :: MAKE_BCS_INPUT_DIR
+
+    integer, allocatable :: lake_any(:,:)    ! 10 deg x 10 deg chunk, 30 arcsec
+    integer, allocatable :: reach_any(:,:)   ! 10 deg x 10 deg chunk, 30 arcsec
+
+    call get_environment_variable("MAKE_BCS_INPUT_DIR", MAKE_BCS_INPUT_DIR)
+
+    ! ------------------------------------------------------------------
+    ! IMPORTANT:
+    ! LakeTopoCat / ReachTopoCat inputs are preprocessed onto a
+    ! 30-arcsec raster grid (43200 x 21600). This routine assumes that
+    ! the tile_id raster (nc_rst x nr_rst) is also on that same 30 arcsec grid.
+    !
+    ! For workflows using GEOS5_10arcsec_mask, nx=43200 and ny=21600,
+    ! lake/reach presence can be mapped directly via tile_id(iG,jG).
+    !
+    ! For coarser or alternative masks (e.g., 8640x4320), there is no
+    ! consistent 30" raster-to-tile alignment here. In those cases we
+    ! skip LakeTopoCat / ReachTopoCat generation rather than attempting
+    ! an implicit remap that could introduce silent errors.
+    !
+    ! tile_lake_type is therefore only populated when the raster resolution
+    ! matches the 30 arcsec grid. If skipped, tile_lake_type remains UNDEF.
+    ! ------------------------------------------------------------------
+
+    ! Start as UNDEF. If we skip generation, do NOT report candidate tiles as
+    ! LakeType=0, because that would incorrectly mean "checked and no touch".
+
+    tile_lake_type(:) = LAKETYPE_UNDEF
+
+    if (nc_rst /= 43200 .or. nr_rst /= 21600) then
+       print *, 'NOTE: Skipping LakeTopoCat / ReachTopoCat LakeType generation.'
+       print *, '      Requires 43200x21600 raster. Got ', nc_rst, nr_rst
+       if (present(rc)) rc = 1
+       return
+    endif
+
+    ! Define LakeType only for candidate MAPL tile types (water surfaces).  Set default to 0 (no touch).
+    do tid = 1, n_tile
+       if (tile_typ(tid) == 0 .or. tile_typ(tid) == 19 ) then
+          tile_lake_type(tid) = 0
+       endif
+    enddo
+
+    allocate(lake_any (1:nc_10, 1:nr_10))
+    allocate(reach_any(1:nc_10, 1:nr_10))
+
+    ! Loop through 36x18 10-degree chunks.
+    do jx = 1, 18
+       do ix = 1, 36
+
+          write(HH,'(i2.2)') ix
+          write(VV,'(i2.2)') jx
+
+          lake_fname  = trim(MAKE_BCS_INPUT_DIR)// &
+               '/lake/lake_mask/v1/LakeTopoCat_30arcsec_H'//HH//'V'//VV//'.nc4'
+
+          reach_fname = trim(MAKE_BCS_INPUT_DIR)// &
+               '/lake/reach_mask/v1/ReachTopoCat_30arcsec_H'//HH//'V'//VV//'.nc4'
+
+          ! Read lake_presence_any.
+          status = NF_OPEN(trim(lake_fname), NF_NOWRITE, ncid)
+          if (status /= NF_NOERR) then
+             print *, 'ERROR: Lake mask tile file not found: ', trim(lake_fname)
+             print *, 'STOPPING.'
+             stop
+          endif
+
+          status = NF_INQ_VARID(ncid, 'lake_presence_any', varid) ; VERIFY_(status)
+          status = NF_GET_VARA_INT(ncid, varid, (/1,1/), (/nc_10,nr_10/), lake_any) ; VERIFY_(status)
+          status = NF_CLOSE(ncid) ; VERIFY_(status)
+
+          ! Read reach_presence_any.
+          status = NF_OPEN(trim(reach_fname), NF_NOWRITE, ncid)
+          if (status /= NF_NOERR) then
+             print *, 'ERROR: Reach mask tile file not found: ', trim(reach_fname)
+             print *, 'STOPPING.'
+             stop
+          endif
+
+          status = NF_INQ_VARID(ncid, 'reach_presence_any', varid) ; VERIFY_(status)
+          status = NF_GET_VARA_INT(ncid, varid, (/1,1/), (/nc_10,nr_10/), reach_any) ; VERIFY_(status)
+          status = NF_CLOSE(ncid) ; VERIFY_(status)
+
+          ! Lower-left global indices of this 10 deg x 10 deg chunk, 1-based.
+          iLL = (ix-1)*nc_10 + 1
+          jLL = (jx-1)*nr_10 + 1
+
+          do jj = 1, nr_10
+             do ii = 1, nc_10
+
+                iG = ii + iLL - 1
+                jG = jj + jLL - 1
+
+                tid = tile_id(iG, jG)
+
+                if (tid < 1 .or. tid > n_tile) cycle
+
+                ! Only candidate tile types get LakeType.
+                if (tile_lake_type(tid) == LAKETYPE_UNDEF) cycle
+
+                ! Bit 1: lake touch.
+                if (lake_any(ii,jj) > 0) then
+                   tile_lake_type(tid) = IOR(tile_lake_type(tid), 1)
+                endif
+
+                ! Bit 2: reach touch.
+                if (reach_any(ii,jj) > 0) then
+                   tile_lake_type(tid) = IOR(tile_lake_type(tid), 2)
+                endif
+
+             enddo
+          enddo
+
+       enddo
+    enddo
+
+    if (present(rc)) rc = 0
+
+    if (allocated(lake_any))  deallocate(lake_any)
+    if (allocated(reach_any)) deallocate(reach_any)
+
+  END SUBROUTINE LakeTopoCat_on_tiles_from_raster
+
+  !----------------------------------------------------------------------
+
+  SUBROUTINE AppendLakeTypeToTileNC4( tilefile, n_tile, lake_type )
+
+    implicit none
+
+    character(*), intent(in) :: tilefile
+    integer,      intent(in) :: n_tile
+    integer,      intent(in) :: lake_type(1:n_tile)
+
+    integer, parameter :: LAKETYPE_UNDEF = -9999
+
+    integer :: status, ncid, ndims, nvars, ngatts, unlimdimid
+    integer :: dimid_tile, dimlen, dd
+    integer :: varid_lake_type
+    integer :: fill_value(1)
+    integer :: flag_values(5)
+
+    character(len=NF_MAX_NAME) :: dname
+    character(len=256)         :: mylongname
+    character(len=256)         :: flagmeanings
+    character(len=512)         :: comment
+
+    fill_value(1) = LAKETYPE_UNDEF
+    flag_values   = (/ LAKETYPE_UNDEF, 0, 1, 2, 3 /)
+
+    ! append data into nc4 tile file
+
+    status = NF_OPEN(trim(tilefile), NF_WRITE, ncid)                                  ; VERIFY_(status)
+
+    ! find tile dimension by matching length
+
+    status = NF_INQ(ncid, ndims, nvars, ngatts, unlimdimid)                           ; VERIFY_(status)
+
+    dimid_tile = -1
+    do dd = 1, ndims
+       status = NF_INQ_DIM(ncid, dd, dname, dimlen)                                   ; VERIFY_(status)
+       if (dimlen == n_tile) then
+          dimid_tile = dd
+          exit
+       endif
+    enddo
+
+    if (dimid_tile < 0) then
+       print *, 'ERROR: could not find tile dimension of length ', n_tile, ' in ', trim(tilefile)
+       stop
+    endif
+
+    ! Define lake_type in the freshly written nc4 tile file.
+    ! In the normal make_bcs workflow this variable should not already exist;
+    ! if it does, NF_DEF_VAR will fail rather than silently replace data.    
+
+    status = NF_REDEF(ncid)                                                        ; VERIFY_(status)
+
+    status = NF_DEF_VAR(ncid, 'lake_type', NF_INT, 1, (/dimid_tile/), &
+         varid_lake_type)                                                          ; VERIFY_(status)
+
+    ! _FillValue should be defined before leaving define mode.
+
+    status = NF_PUT_ATT_INT(ncid, varid_lake_type, '_FillValue', NF_INT, 1, &
+         fill_value)                                                               ; VERIFY_(status)
+
+    status = NF_PUT_ATT_INT(ncid, varid_lake_type, 'missing_value', NF_INT, 1, &
+         fill_value)                                                               ; VERIFY_(status)
+
+    mylongname = 'flag identifying intersection of water-type tile with lake polygon and/or reach line from LakeTopoCat v1.1 data'
+    status = NF_PUT_ATT_TEXT(ncid, varid_lake_type, 'long_name', &
+         len_trim(mylongname), mylongname)                                         ; VERIFY_(status)
+
+    status = NF_PUT_ATT_TEXT(ncid, varid_lake_type, 'units', 1, '1')               ; VERIFY_(status)
+
+    status = NF_PUT_ATT_INT(ncid, varid_lake_type, 'flag_values', NF_INT, 5, &
+         flag_values)                                                              ; VERIFY_(status)
+
+    flagmeanings = 'undefined, no_lake_or_reach_intersection, lake_intersection_only, reach_intersection_only, lake_and_reach_intersection'
+    status = NF_PUT_ATT_TEXT(ncid, varid_lake_type, 'flag_meanings', &
+         len_trim(flagmeanings), flagmeanings)                                     ; VERIFY_(status)
+
+    comment = 'Defined for typ==0 (ocean) and typ==19 (lake); set to -9999 otherwise (land or landice).'
+    status = NF_PUT_ATT_TEXT(ncid, varid_lake_type, 'comment', &
+         len_trim(comment), comment)                                               ; VERIFY_(status)
+
+    status = NF_ENDDEF(ncid)                                                       ; VERIFY_(status)
+
+    ! Write lake_type data and close file.
+
+    status = NF_PUT_VARA_INT(ncid, varid_lake_type, (/1/), (/n_tile/), &
+         lake_type)                                                                ; VERIFY_(status)
+    
+    status = NF_CLOSE(ncid)                                                        ; VERIFY_(status)
+
+  END SUBROUTINE AppendLakeTypeToTileNC4
+  !----------------------------------------------------------------------  
   
   SUBROUTINE supplemental_tile_attributes(nx,ny,regrid,dateline,fnameTil, Rst_id)
     
@@ -935,7 +1236,7 @@ contains
 
     REAL, allocatable                  :: limits(:,:)
 
-    REAL :: mnx,mxx,mny,mxy,dx,dy,d2r,lats,sum1,dx_gcm,area_rst
+    REAL                               :: mnx,mxx,mny,mxy,dx,dy,d2r,lats,sum1,dx_gcm,area_rst
 
     REAL,    allocatable, dimension(:) :: tile_ele, tile_area,tile_area_rst  
     integer                            :: IM(2), JM(2)
@@ -946,12 +1247,22 @@ contains
     real*4,            allocatable, target :: q0 (:,:)
     real(REAL64),      allocatable         :: rTable(:,:)
     integer,           allocatable         :: iTable(:,:)
+    real(REAL64),      allocatable         :: rTable_keep(:,:)
+    integer,           allocatable         :: iTable_keep(:,:)
     character(len=128)                     :: gName(2)
     logical,           allocatable         :: IsOcean(:)
+    logical,           allocatable         :: keep_tile(:)
+
     ! This is used to adjust EASE grid from 1-based to 0-based indexes
     ! The tile file with only one EASE grid is already 0-based and may not go through this subroutine
     ! This is a special case for river-routing. The ocean grid is also EASE just for convenience
     logical                                :: two_EASE 
+    integer                                :: ip_keep, k, nc_tmp, nr_tmp
+    real                                   :: EASE_LAT_MAX !
+
+    ! LakeTopoCat / ReachTopoCat LakeType
+    integer,           allocatable         :: lake_type(:)
+    integer                                :: rc_lake
 
     ! -----------------------------------------------------
     !
@@ -1200,10 +1511,12 @@ contains
     
     if (two_EASE) then
        iTable(:,2) = iTable(:,2) - 1
-       iTable(:,3) = iTable(:,3) - 1
+       !flip to make it consistent with conventional EASE indexing
+       iTable(:,3) = JM(1) - iTable(:,3)
+       
        where (iTable(:,0) == 0)
           iTable(:,4) = iTable(:,4) -1
-          iTable(:,5) = iTable(:,5) -1
+          iTable(:,5) = JM(1) - iTable(:,5)
        endwhere
        j = index(gName(2), "-Pfafstetter")
        gName(2) = gName(2)(1:j-1)
@@ -1225,12 +1538,65 @@ contains
     endwhere
     
     fname=trim(fnameTil)//'.nc4'
-    call MAPL_WriteTilingNC4(fname,  gName(1:n_grid), im(1:n_grid), jm(1:n_grid), nx, ny, iTable, rTable, N_PfafCat=SRTM_maxcat, rc=status)
+
+    if (two_EASE) then
+       ! remove tiles outside EASE grid domain
+       call MAPL_ease_extent(gName(1), nc_tmp, nr_tmp, ur_lat = EASE_LAT_MAX)
+       allocate(keep_tile(ip))
+       keep_tile = (rTable(1:ip,2) <= EASE_LAT_MAX) .and. (rTable(1:ip,2) >= -EASE_LAT_MAX)
+       ip_keep = count(keep_tile)
+       ASSERT_(ip_keep > 0)
+
+       allocate(iTable_keep(ip_keep,0:7))
+       allocate(rTable_keep(ip_keep,10))
+
+       k = 0
+       do n = 1, ip
+          if (keep_tile(n)) then
+             k = k + 1
+             iTable_keep(k,0:7) = iTable(n,0:7)
+             rTable_keep(k,1:10) = rTable(n,1:10)
+          endif
+       enddo
+
+       call MAPL_WriteTilingNC4(fname,  gName(1:n_grid), im(1:n_grid), jm(1:n_grid),  &
+            nx, ny, iTable_keep, rTable_keep, N_PfafCat=SRTM_maxcat, rc=status)
+
+       deallocate(iTable_keep, rTable_keep, keep_tile)
+    else
+       call MAPL_WriteTilingNC4(fname,  gName(1:n_grid), im(1:n_grid), jm(1:n_grid),  &
+            nx, ny, iTable, rTable, N_PfafCat=SRTM_maxcat, rc=status)
+    endif
     
+    ! LakeTopoCat / ReachTopoCat:
+    ! compute encoded LakeType in tile space and append to nc4 tile file.
+    !
+    ! lake_type:
+    !   -9999 = UNDEF / excluded, e.g. typ==100
+    !       0 = no LakeTopoCat lake or ReachTopoCat reach touch
+    !       1 = lake touch only
+    !       2 = reach touch only
+    !       3 = lake + reach touch
+    !
+    ! This runs only with nx=43200, ny=21600 for GEOS5_10arcsec_mask workflows;
+    ! returns rc_lake>0 otherwise.
+    
+    allocate(lake_type(ip))   ! ip = n_tile
+
+    call LakeTopoCat_on_tiles_from_raster(ip, nx, ny, Rst_id, &
+         iTable(1:ip,0), lake_type, rc_lake)
+
+    if (rc_lake == 0) call AppendLakeTypeToTileNC4(fname, ip, lake_type)
+
+    deallocate(lake_type)
+
+    ! --------------------------------------------
+
     deallocate (rTable, iTable)
     deallocate (limits)
     deallocate (catid)
     deallocate (q0)
+
     if(regrid) then
        deallocate(raster)
     endif
@@ -2589,6 +2955,8 @@ contains
     logical :: file_exists
     REAL, ALLOCATABLE, DIMENSION (:,:) :: parms4file
     integer :: ncid, status
+    ! peat GPM 2.0 additions
+    logical :: target_is_peat, donor_is_peat
 
     ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
     !
@@ -2646,7 +3014,7 @@ contains
 
     call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR)
 
-    if(use_PEATMAP) then 
+    if(PEAT_INFO>=1) then 
        fname = trim(MAKE_BCS_INPUT_DIR)//'/land/soil/SOIL-DATA/SoilClasses-SoilHyd-TauParam.peatmap' 
     else
        fname = trim(MAKE_BCS_INPUT_DIR)//'land/soil/SOIL-DATA/SoilClasses-SoilHyd-TauParam.dat'
@@ -2675,7 +3043,7 @@ contains
 
        ! open and read loss parameter file for class n (defined through sand/clay/orgC)
 
-       if(n == n_SoilClasses .and. use_PEATMAP) then 
+       if(n == n_SoilClasses .and. PEAT_INFO>=1) then 
           open (120,file=trim(losfile)//trim(fout)//'.peat',  &
                form='formatted',status='old')
        else
@@ -2821,7 +3189,7 @@ contains
           write(*,*)'Warnning 1: pfafstetter mismatched' 
           stop
        endif
-       if((use_PEATMAP).and.(soil_class_top(n) == 253)) then
+       if((PEAT_INFO>=1).and.(soil_class_top(n) == 253)) then
           meanlu = 9.3
           stdev  = 0.12
           minlu  = 8.5
@@ -2907,7 +3275,7 @@ contains
     !$OMP        taberr1,taberr2,normerr1,normerr2,         &
     !$OMP        taberr3,taberr4,normerr3,normerr4,         &
     !$OMP        gwatdep,gwan,grzexcn,gfrc,soil_class_com,  &
-    !$OMP        n_threads, low_ind, upp_ind, use_PEATMAP ) &
+    !$OMP        n_threads, low_ind, upp_ind, PEAT_INFO )   &
     !$OMP PRIVATE(k,li,ui,n,i,watdep,wan,rzexcn,frc,ST,AC,  &
     !$OMP COESKEW,profdep)
 
@@ -2958,7 +3326,7 @@ contains
                tsa1(n),tsa2(n),tsb1(n),tsb2(n)  &
                )
 
-          if(soil_class_com(n) == 253 .and. use_PEATMAP) then
+          if(soil_class_com(n) == 253 .and. PEAT_INFO>=1) then
 
              ! Michel Bechtold paper - PEATCLSM_fitting_CLSM_params.R produced these data values.
 
@@ -2995,8 +3363,10 @@ contains
 
     DO n=1,nbcatch
 
-       ! Read soil_param.first again...; this is (almost certainly) needed to maintain consistency
-       ! between soil_param.first and soil_param.dat, see comments above.
+       ! Re-read soil_param.first for tile n so soil_param.dat starts from the
+       ! original tile identity/properties written by mod_process_hres_data.
+       ! This preserves consistency between soil_param.first and soil_param.dat
+       ! before any bad-SAT donor repair is applied below.       
 
        read(10,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)') &
             tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),         &
@@ -3005,34 +3375,76 @@ contains
             a_sand_surf(n),a_clay_surf(n),atile_sand(n),atile_clay(n) ,   &
             wpwet_surf(n),poros_surf(n), pmap(n)
 
-       ! This revised if block replaces the complex, nested if block commented out above
+       ! If ars1/arw1 parameters are invalid for tile n, replace tile n soil class and 
+       !   soil parameters with those from donor tile k.
+       !
+       ! PEAT_INFO<=1
+       !   use the nearest tile with valid SAT parameters.
+       !
+       ! PEAT_INFO>=2
+       !   first prefer a donor with the same peat/mineral state as the
+       !   target tile, so repaired bulk hydraulics do not cross peat and
+       !   mineral regimes.  If no same-state donor exists, fall back to
+       !   the original nearest-valid donor search.
 
-       if ( (ars1(n)==9999.) .or. (arw1(n)==9999.) ) then 
-
-          ! some parameter values are no-data --> find nearest tile k with good parameters
-
+       if ( (ars1(n)==9999.) .or. (arw1(n)==9999.) ) then          
           dist_save = 1000000.
           k = 0
-          do i = 1,nbcatch
-             if(i /= n) then
-                if((ars1(i).ne.9999.).and.(arw1(i).ne.9999.)) then
 
-                   tile_distance = (tile_lon(i) - tile_lon(n)) * (tile_lon(i) - tile_lon(n)) + &
-                        (tile_lat(i) - tile_lat(n)) * (tile_lat(i) - tile_lat(n))
-                   if(tile_distance < dist_save) then
-                      k = i
-                      dist_save = tile_distance
-                   endif
-                endif
+          ! Define target tile peat/mineral state from its current top/profile classes.
+          target_is_peat = (soil_class_top(n) == 253) .or. (soil_class_com(n) == 253)
+
+          do i = 1,nbcatch
+             if (i == n) cycle
+             if ((ars1(i) == 9999.) .or. (arw1(i) == 9999.)) cycle
+
+             if (PEAT_INFO>=2) then
+                ! Only consider donors with same peat/mineral class as target tile.
+                donor_is_peat = (soil_class_top(i) == 253) .or. (soil_class_com(i) == 253)
+                if (donor_is_peat .neqv. target_is_peat) cycle
+             endif
+
+             tile_distance = (tile_lon(i) - tile_lon(n)) * (tile_lon(i) - tile_lon(n)) + &
+                             (tile_lat(i) - tile_lat(n)) * (tile_lat(i) - tile_lat(n))
+
+             if (tile_distance < dist_save) then
+                k = i
+                dist_save = tile_distance
              endif
           enddo
-          ! record in file clsm/bad_sat_param.tiles
-          write (41,*)n,k        ! n="bad" tile, k=tile from which parameters are taken
+
+          if ((k == 0) .and. PEAT_INFO>=2) then
+             
+             ! if no same-class donor exists, revert to original nearest-valid donor search so a donor is still always found.          
+
+             dist_save = 1000000.
+             do i = 1,nbcatch
+                if (i == n) cycle
+                if ((ars1(i) == 9999.) .or. (arw1(i) == 9999.)) cycle
+
+                tile_distance = (tile_lon(i) - tile_lon(n)) * (tile_lon(i) - tile_lon(n)) + &
+                                (tile_lat(i) - tile_lat(n)) * (tile_lat(i) - tile_lat(n))
+
+                if (tile_distance < dist_save) then
+                   k = i
+                   dist_save = tile_distance
+                endif
+             enddo
+          endif
+
+          if (k == 0) then
+             write(*,*) 'ERROR: no donor tile found for tile ', n
+             stop
+          endif
+
+          ! Record indices of (repaired) target tile "n" and donor tile "k" in file "clsm/bad_sat_param.tiles"
+          write (41,*) n, k   
 
           ! Overwrite parms4file when filling in parameters from neighboring tile k.
           ! For "good" tiles, keep parms4file as read earlier from catch_params.nc4,
-          ! which is why this must be done within the "then" block of the "if" statement.
-          ! This is necessary for backward 0-diff compatibility of catch_params.nc4.
+          ! which is why this must be done within the "then" block of the "if"
+          ! statement.  This is necessary for backward 0-diff compatibility of
+          ! catch_params.nc4.
 
           parms4file (n,12) = BEE(k)
           parms4file (n,16) = COND(k)
@@ -3043,11 +3455,10 @@ contains
 
        else
 
-          ! nominal case, all parameters are good
-
+          ! Nominal case: current tile n already has valid parameters.
           k = n
 
-       end if
+       end if    
 
        ! for current tile n, write parameters of tile k into ar.new (20), bf.dat (30), ts.dat (40), 
        !   and soil_param.dat (42)
@@ -3057,21 +3468,36 @@ contains
             ars1(k),ars2(k),ars3(k),                   &
             ara1(k),ara2(k),ara3(k),ara4(k),           &
             arw1(k),arw2(k),arw3(k),arw4(k) 
-
+       
        write(30,'(i10,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(k),bf2(k),bf3(k)
-
+       
        write(40,'(i10,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,                      &
             tsa1(k),tsa2(k),tsb1(k),tsb2(k)
+       
+       ! write "soil_param.dat" file;  n = target tile, k = donor tile.
 
-       write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')         &
-            tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),                      &
-            BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k),                       &
-            grav_vec(k),soc_vec(k),poc_vec(k),                                            &
-            a_sand_surf(k),a_clay_surf(k),atile_sand(k),atile_clay(k) ,                   &
-            wpwet_surf(k),poros_surf(k), pmap(k)
-
+       if (PEAT_INFO>=2) then
+          ! write only bulk hydraulic fields from donor tile k.
+          write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')  &
+               tindex2(n),pfaf2(n),                                                   &     ! n (target)
+               soil_class_top(n),soil_class_com(n),                                   &     ! n (target)
+               BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k),                &     ! k (donor)
+               grav_vec(n),soc_vec(n),poc_vec(n),                                     &     ! n (target)
+               a_sand_surf(n),a_clay_surf(n),atile_sand(n),atile_clay(n),             &     ! n (target)
+               wpwet_surf(n),poros_surf(n), pmap(n)                                         ! n (target)
+       else
+          ! Legacy path: preserve original donor-copy behavior.
+          write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')  &
+               tindex2(n),pfaf2(n),                                                   &     ! n (target) 
+               soil_class_top(k),soil_class_com(k),                                   &     ! k (donor)
+               BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k),                &     ! k (donor)
+               grav_vec(k),soc_vec(k),poc_vec(k),                                     &     ! k (donor)
+               a_sand_surf(k),a_clay_surf(k),atile_sand(k),atile_clay(k),             &     ! k (donor)
+               wpwet_surf(k),poros_surf(k), pmap(k)                                         ! k (donor)
+       endif
+       
        ! record ar.new, bf.dat, and ts.dat parameters for later writing into catch_params.nc4
-
+       
        if (allocated (parms4file)) then
           parms4file (n, 1) = ara1(k)
           parms4file (n, 2) = ara2(k)

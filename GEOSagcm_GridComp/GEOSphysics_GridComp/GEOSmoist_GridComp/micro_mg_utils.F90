@@ -1167,7 +1167,7 @@ subroutine ice_autoconversion(t, qiic, lami, niic, dcs, prci, nprci, mgncol, ac_
   ! Assume autoconversion timescale of 180 seconds.
  ! real(r8), parameter :: ac_time = 180._r8
 
-   real(r8), intent(in) :: ac_time 
+   real, intent(in) :: ac_time 
 
   ! Average mass of an ice particle.
   real(r8) :: m_ip

@@ -12,7 +12,7 @@ module CNDecompCascadeMod_BGC
 ! Module that sets the coeffiecients used in the decomposition cascade submodel.  This uses the BGC parameters as in CLMCN 4.0
 !
 ! !USES:
-   use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+   use MAPL_Constants, ONLY: r8 => MAPL_R4
    use shr_const_mod, only: SHR_CONST_TKFRZ
    use clm_varpar   , only: nlevsoi, nlevgrnd, nlevdecomp, ndecomp_cascade_transitions, ndecomp_pools, nsompools
    use clm_varpar   , only: i_met_lit, i_cel_lit, i_lig_lit, i_cwd

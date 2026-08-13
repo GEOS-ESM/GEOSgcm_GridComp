@@ -137,8 +137,8 @@
 #           - NOTE: bcs v06, v08, and v09 used approximate averaging of MODIS-based snow albedo to tile space;
 #                   bcs v11, v12 and v13  employ more accurate, raster-based averaging.
 #
-# GEOSagcm=>SNOW_ALBEDO_INFO: 0
-# GEOSldas=>SNOW_ALBEDO_INFO: 0
+# GEOSagcm=>SNOW_ALBEDO_INFO: 1
+# GEOSldas=>SNOW_ALBEDO_INFO: 1
 
 
 #--------------------------------------------------------#
@@ -257,3 +257,15 @@
 
 # =============== EOF =====================================================================================
 
+#--------------------------------------------------------#
+#      Ice-Sheet and Sea-Level System Model (ISSM)       #
+#                                                        #
+#   * DO_ISSM is the run flag, turned off (0) by default #
+#     set DO_ISSM: 1 to run ISSM                         #
+#   * ISSM_DT is ISSM's time step, semiweekly by default #   
+#--------------------------------------------------------#
+# GEOSagcm=>DO_ISSM: 0 
+# GEOSagcm=>ISSM_DT: 302400 
+#
+# GEOSldas=>DO_ISSM: 0 
+# GEOSldas=>ISSM_DT: 302400 

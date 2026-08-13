@@ -3313,6 +3313,11 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS)
     VERIFY_(STATUS)
+
+    niter  = 6   ! number of internal iterations in the helfand MO surface layer routine
+    call MAPL_GetResource ( MAPL, niter, Label="NITER_HELFSURFACE:", DEFAULT=niter, RC=STATUS)
+    VERIFY_(STATUS)
+
     call ESMF_VMGetCurrent(VM,       rc=STATUS)
     VERIFY_(STATUS)
     
@@ -3615,7 +3620,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
       ENDIF
       D0T  = D0_BY_ZVEG*ZVG
 
-      DZE  = max(DZ - D0T, 10.)
+      DZE  = max(DZ - D0T, min(0.5*DZ,10.0))  ! was previously capped at 10m [problematic for L137/L181 with thinner surface layers]
 
       if(associated(Z0 )) Z0  = Z0T(:,N)
       if(associated(D0 )) D0  = D0T
@@ -3741,7 +3746,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
          RE = 0.
          UUU = UU  
          UCN = 0.
-         
 !  Aggregate to tiles for MO only diagnostics
 !--------------------------------------------
          if(associated(MOU50M))MOU50M = MOU50M + U50M(:)*FR(:,N)

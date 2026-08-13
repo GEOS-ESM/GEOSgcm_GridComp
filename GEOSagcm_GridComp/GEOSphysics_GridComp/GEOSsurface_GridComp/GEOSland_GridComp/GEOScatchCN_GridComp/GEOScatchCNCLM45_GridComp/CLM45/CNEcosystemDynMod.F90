@@ -10,7 +10,7 @@ module CNEcosystemDynMod
 ! Ecosystem dynamics: phenology, vegetation
 !
 ! !USES:
-  use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
+  use MAPL_Constants, ONLY: r8 => MAPL_R4
   use clm_varctl  , only: fpftdyn, use_c13, use_c14
 !
 ! !PUBLIC TYPES:

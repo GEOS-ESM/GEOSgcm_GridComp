@@ -13,7 +13,7 @@ module gw_drag_ncar
 !
 !---------------------------------------------------------------------------------
 
-  use MAPL_ConstantsMod, only: MAPL_RGAS, MAPL_GRAV
+  use MAPL_Constants, only: MAPL_RGAS, MAPL_GRAV
 
   use gw_rdg, only     : gw_rdg_ifc
   use gw_oro, only     : gw_oro_ifc
@@ -58,7 +58,7 @@ contains
   subroutine gw_intr_ncar(pcols,      pver,         dt,         nrdg,                &    
           beres_dc_desc, beres_band,   oro_band, rdg_band,                           &
           pint_dev,      t_dev,         u_dev,        v_dev,                         &
-          ht_dc_dev,     dqcdt_dev,                                                  &
+          ht_dc_dev,     dqcdt_dev,     speed_dev,                                   &
           sgh_dev,       mxdis_dev,     hwdth_dev,    clngt_dev,  angll_dev,         &
           anixy_dev,     gbxar_dev,     kwvrdg_dev,   effrdg_dev, pref_dev,          & 
           pmid_dev,      pdel_dev,      rpdel_dev,    lnpint_dev, zm_dev,  rlat_dev, &
@@ -92,6 +92,7 @@ contains
     real,    intent(in   ) :: v_dev(pcols,pver)        ! meridional wind at layers
     real,    intent(in   ) :: ht_dc_dev(pcols,pver)    ! DeepCu heating in layers
     real,    intent(in   ) :: dqcdt_dev(pcols,pver)    ! Condensate tendencies due to large-scale
+    real,    intent(in   ) :: speed_dev(pcols,pver)    ! max_wind_speed_in_stable_cold_surface_layer_to_300m
     real,    intent(in   ) :: sgh_dev(pcols)           ! standard deviation of orography
 !++jtb 01/25/21 New topo vars
     real,    intent(in   ) :: mxdis_dev(pcols,nrdg)     ! obstacle/ridge height 
@@ -211,8 +212,8 @@ contains
        pdel_dev , rpdel_dev, lnpint_dev, &
        zm_dev, zi, &
        nm, ni, rhoi, kvtt,  &
-       ht_dc_dev,beres_dc_desc,rlat_dev, alpha, &
-       utgw, vtgw, ttgw, flx_heat, dqcdt_dev)
+       ht_dc_dev,beres_dc_desc, alpha, &
+       utgw, vtgw, ttgw, flx_heat, dqcdt_dev, speed_dev)
        dudt_gwd_dev = dudt_gwd_dev + utgw
        dvdt_gwd_dev = dvdt_gwd_dev + vtgw
        dtdt_gwd_dev = dtdt_gwd_dev + ttgw

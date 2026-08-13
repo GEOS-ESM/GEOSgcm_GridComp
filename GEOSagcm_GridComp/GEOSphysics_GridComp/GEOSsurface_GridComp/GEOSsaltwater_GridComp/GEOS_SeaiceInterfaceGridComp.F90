@@ -2343,15 +2343,6 @@ contains
 
 
    real                                :: YDAY 
-   real,    dimension(NT)              :: ALBVRI
-   real,    dimension(NT)              :: ALBVFI
-   real,    dimension(NT)              :: ALBNRI
-   real,    dimension(NT)              :: ALBNFI
-
-   real,               allocatable    :: ALBVRN        (:,:)
-   real,               allocatable    :: ALBNRN        (:,:)
-   real,               allocatable    :: ALBVFN        (:,:)
-   real,               allocatable    :: ALBNFN        (:,:)
 
    real,               allocatable    :: TS_OLD        (:,:)
 
@@ -2747,6 +2738,7 @@ contains
           if(associated(HLATICE)) HLATICE = HLATICE + LHF    *FR(:,N)
           if(associated(SHICE  )) SHICE   = SHICE   + SHF    *FR(:,N)
           if(associated(LWNDICE)) LWNDICE = LWNDICE + (LWDNSRF - ALW - BLW*TS(:,N))*FR(:,N)
+          if(associated(LWNDSRF)) LWNDSRF = LWNDSRF + (LWDNSRF - ALW - BLW*TS(:,N))*FR(:,N)
     end do update_surf
 
     EMISS = EMSICE
@@ -2759,6 +2751,7 @@ contains
     if(associated(SHICE  )) call Normalize(SHICE,  FRCICE)
     if(associated(SUBLIM )) call Normalize(SUBLIM, FRCICE)
     if(associated(EVAPOUT)) call Normalize(EVAPOUT, FRCICE)
+    if(associated(LWNDSRF)) call Normalize(LWNDSRF, FRCICE)
 
     if(associated(LWNDICE)) call Normalize(LWNDICE,  FRCICE, set_undef=.True.)
           
@@ -2794,6 +2787,11 @@ contains
              XFORM_O2A, locstreamO, __RC__)
     endif
 
+    if(associated(SWNDSRF)) then
+       SWNDSRF = &
+           (1.-ALBVR)*VSUVR + (1.-ALBVF)*VSUVF + &
+           (1.-ALBNR)*DRNIR + (1.-ALBNF)*DFNIR
+    endif
 
     !************************************************************************************************
     !

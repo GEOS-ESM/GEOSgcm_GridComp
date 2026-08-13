@@ -541,7 +541,15 @@ contains
          UNITS     ='m s-1',                                        &
          DIMS      = MAPL_DimsHorzOnly,                             &
          VLOCATION = MAPL_VLocationNone,                            &
-                                                        __RC__  )
+                                                         __RC__  )
+
+    call MAPL_AddExportSpec(GC,                                &
+         SHORT_NAME='WSPD_STABLE300M',                              &
+         LONG_NAME ='max_wind_speed_in_stable_cold_surface_layer',  &
+         UNITS     ='m s-1',                                        &
+         DIMS      = MAPL_DimsHorzOnly,                             &
+         VLOCATION = MAPL_VLocationNone,                            &
+                                                         __RC__  )
 
 
     call MAPL_AddExportSpec(GC,                                &
@@ -1175,7 +1183,7 @@ contains
     type (ESMF_TimeInterval) :: timeStep
 
     real    :: DT,Fac0,Fac1,DTXX,RELAX_TO_OBS
-    real    :: OROGSGH
+    real    :: OROGSGH,SCMAREA
 
     real, dimension(:,:), allocatable :: F0
     real :: SCM_UG, SCM_VG
@@ -1185,6 +1193,7 @@ contains
                         ! else: use interactive winds
 
     integer :: IM,JM,LM,L,K,NQ,ii,NOT1,COLDSTART,Ktrc,iip1,itr,ntracs
+    logical :: is_stable
 
     real, pointer, dimension(:,:,:) :: PLE,PLEOUT
     real, pointer, dimension(:,:,:) :: ZLE
@@ -1212,6 +1221,7 @@ contains
     real, pointer, dimension(:,:)   :: DZ
     real, pointer, dimension(:,:)   :: TA
     real, pointer, dimension(:,:)   :: SPEED
+    real, pointer, dimension(:,:)   :: WSPD_STABLE300M
     real, pointer, dimension(:,:)   :: QA
     real, pointer, dimension(:,:)   :: US
     real, pointer, dimension(:,:)   :: VS
@@ -1387,6 +1397,11 @@ contains
     call ESMF_ConfigGetAttribute ( CF, OROGSGH,  Label="OROG_STDEV:", &
                                          DEFAULT=100.,  __RC__)
 
+    call ESMF_ConfigGetAttribute( cf, SCMAREA, label ='SCM_AREA:', &
+                                    DEFAULT=1e10, rc = status )
+
+   
+    
     if ( CFMIP .and. CFMIP2) then
             print *, " Error - SCM_CFMIP and SCM_CFMIP2 cannot be set at the same time  "  ! This should never happen
             RETURN_(ESMF_FAILURE)
@@ -1629,11 +1644,12 @@ contains
 ! whenever datmodyn starts using gocart, this will need to be a real value --
 ! see fvdycore for example
       if(associated(DUMMYAREA)) then
-          DUMMYAREA=1.0
+         DUMMYAREA = SCMAREA
+         print *,'SCM AREA = ',DUMMYAREA
       end if
 
       if(associated(DUMMYDXC)) then
-          DUMMYDXC=1.0
+          DUMMYDXC=sqrt(SCMAREA)
       end if
 
       if(associated(DUMMYW)) then
@@ -1645,7 +1661,7 @@ contains
       end if
 
       if(associated(DUMMYDYC)) then
-          DUMMYDYC=1.0
+          DUMMYDYC=sqrt(SCMAREA)
       end if
 
 ! added to satisfy desires of da
@@ -1837,6 +1853,14 @@ contains
           if ( SCM_CORIOLIS == 0 ) then
              UTDYN(:,:,l) = 0.
              VTDYN(:,:,l) = 0.
+          else if (SCM_CORIOLIS == -1 ) then
+             if (L.gt.110.) then
+               UTDYN(:,:,l) = F0*( V(:,:,l) - V(:,:,110) )
+               VTDYN(:,:,l) = -F0*( U(:,:,l) - U(:,:,110) )
+             else
+               UTDYN(:,:,l) = 0.
+               VTDYN(:,:,l) = 0.
+             end if
           else
              UTDYN(:,:,l) = F0*( V(:,:,l) - SCM_VG )
              VTDYN(:,:,l) = -F0*( U(:,:,l) - SCM_UG )
@@ -2016,7 +2040,7 @@ contains
 !    Forcing based on Phase 2 of CGILS intercomparison. See Blossey et al. (2016)
       if ( CFMIP3 ) then
 
-         ZLO = 0.5*(ZLE(:,:,0:LM-1)+ZLE(:,:,1:LM))
+     ZLO = 0.5*(ZLE(:,:,0:LM-1)+ZLE(:,:,1:LM))
 
          if (CFCSE .eq. 12) then
            zrel=1200.
@@ -2025,7 +2049,7 @@ contains
          elseif (CFCSE .eq. 11) then
            zrel=2500.
            zrelp=3000.
-           qfloor=0.  !3.55e-3  ! not used in Blossey LES, but recommended for future
+           qfloor=3.55e-3  ! not used in Blossey LES, but recommended for future
          elseif (CFCSE .eq. 6) then
            zrel=4000.
            zrelp=4800.
@@ -2110,10 +2134,44 @@ contains
          if (associated(DQVDTDYN))  DQVDTDYN = DQVDTDYN - CFMIPRLX * ( Q - QOBS )
       end if
 
+      call MAPL_GetPointer(EXPORT, WSPD_STABLE300M, 'WSPD_STABLE300M', &
+                           ALLOC=.true., __RC__)
+      if (associated(WSPD_STABLE300M)) then
+         WSPD_STABLE300M = 0.0
+         do J = 1, JM
+            do I = 1, IM
+               ! 1. Check if surface air is freezing (T at lowest model level)
+               if (T(I,J,LM) <= MAPL_TICE) then
+                  ! Assume no inversion until proven otherwise
+                  is_stable = .false.
+                  ! Start max wind tracking with the lowest model level
+                  WSPD_STABLE300M(I,J) = SQRT(U(I,J,LM)**2 + V(I,J,LM)**2)
+                  ! 2. Scan the lowest 300m AGL (ZLE(I,J,LM) is the surface height)
+                  do K = LM-1, 1, -1
+                     ! Height AGL at mid-level using ZLO (0.5*(ZLE(K-1)+ZLE(K)))
+                     if ( (ZLO(I,J,K) - ZLE(I,J,LM)) <= 300.0 ) then
+                        ! Track maximum wind speed
+                        WSPD_STABLE300M(I,J) = MAX(WSPD_STABLE300M(I,J), &
+                                                   SQRT(U(I,J,K)**2 + V(I,J,K)**2))
+                        ! 3. Check for temperature inversion anywhere in the 300m layer
+                        if (T(I,J,K) > T(I,J,LM)) then
+                           is_stable = .true.
+                        endif
+                     else
+                        exit ! Reached top of 300m layer
+                     endif
+                  end do
+                  ! 4. If no inversion found, not a katabatic zone; zero out wind speed
+                  if (.not. is_stable) then
+                     WSPD_STABLE300M(I,J) = 0.0
+                  endif
+               endif
+            end do
+         end do
+      end if
+
       call MAPL_GetPointer(EXPORT, PREF,   'PREF'    , &
                            ALLOC=.true., __RC__)
-
-
       PREF = PREF_IN
 
       VARFLT = 0.
