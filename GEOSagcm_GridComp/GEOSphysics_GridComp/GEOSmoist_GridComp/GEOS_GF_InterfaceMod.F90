@@ -208,14 +208,14 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
       !   suspended cloud condensate (liquid/ice) into falling precipitation (rain/snow).
       !   Increasing C0 wrings out the plume internally, resulting in thinner, drier anvils aloft.
       !   Decreasing C0 allows the plume to transport more mass to the upper troposphere.
-      call MAPL_GetResource(MAPL, C0_DEEP                   , 'C0_DEEP:'               ,default= 4.0e-3,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, C0_DEEP                   , 'C0_DEEP:'               ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, C0_MID                    , 'C0_MID:'                ,default= 0.5e-3,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, C0_SHAL                   , 'C0_SHAL:'               ,default= 0.0   ,RC=STATUS );VERIFY_(STATUS)
 
       ! QRC_CRIT_*: Critical Cloud Liquid Water Threshold [kg/kg].
       !   The updraft must hold this much liquid before Kessler autoconversion is allowed to begin.
-      call MAPL_GetResource(MAPL, QRC_CRIT_OCN              , 'QRC_CRIT_OCN:'          ,default= 3.0e-4,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, QRC_CRIT_LND              , 'QRC_CRIT_LND:'          ,default= 1.0e-4,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, QRC_CRIT_OCN              , 'QRC_CRIT_OCN:'          ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, QRC_CRIT_LND              , 'QRC_CRIT_LND:'          ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
 
       ! C1_*: Lateral Detrainment / Plume Shape Parameter [m^-1].
       !   Macro-physics knob. Completely decoupled from C0 internal microphysics.
@@ -225,9 +225,9 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
       !   - C1_DEEP : Low detrainment; keeps the deep chimney insulated to transport mass to ~250mb.
       !   - C1_MID  : Moderate detrainment; allows congestus to battle dry mid-level air.
       !   - C1_SHAL : High detrainment; forces shallow cumulus to mix heavily and terminate early.
-      call MAPL_GetResource(MAPL, C1_DEEP                   , 'C1_DEEP:'               ,default= 0.4e-3,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, C1_MID                    , 'C1_MID:'                ,default= 0.4e-3,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, C1_SHAL                   , 'C1_SHAL:'               ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, C1_DEEP                   , 'C1_DEEP:'               ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, C1_MID                    , 'C1_MID:'                ,default= 1.5e-3,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, C1_SHAL                   , 'C1_SHAL:'               ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
       ! -----------------------------------------------------------------------------------------
 
       if (INT(ZERO_DIFF_TAU) == 0) then
@@ -269,6 +269,7 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
         call MAPL_GetResource(MAPL, BC_METH                   , 'BC_METH:'               ,default= 1,     RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, USE_REBCB                 , 'USE_REBCB:'             ,default= 1,     RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, LAMBAU_DEEP               , 'LAMBAU_DEEP:'           ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, LAMBAU_MID                , 'LAMBAU_MID:'            ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, MOIST_TRIGGER             , 'MOIST_TRIGGER:'         ,default= 1,     RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL ,FRAC_MODIS                , 'FRAC_MODIS:'            ,default= 1,     RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL ,EVAP_FIX                  , 'EVAP_FIX:'              ,default= 1,     RC=STATUS );VERIFY_(STATUS)
@@ -282,6 +283,7 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
         call MAPL_GetResource(MAPL, BC_METH                   , 'BC_METH:'               ,default= 0,     RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, USE_REBCB                 , 'USE_REBCB:'             ,default= 0,     RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, LAMBAU_DEEP               , 'LAMBAU_DEEP:'           ,default= 2.0,   RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, LAMBAU_MID                , 'LAMBAU_MID:'            ,default= 2.0,   RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, MOIST_TRIGGER             , 'MOIST_TRIGGER:'         ,default= 0,     RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL ,FRAC_MODIS                , 'FRAC_MODIS:'            ,default= 0,     RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL ,EVAP_FIX                  , 'EVAP_FIX:'              ,default= 0,     RC=STATUS );VERIFY_(STATUS)

@@ -58,7 +58,7 @@ contains
   subroutine gw_intr_ncar(pcols,      pver,         dt,         nrdg,                &    
           beres_dc_desc, beres_band,   oro_band, rdg_band,                           &
           pint_dev,      t_dev,         u_dev,        v_dev,                         &
-          ht_dc_dev,     dtdtm_dev,     speed_dev,                                   &
+          ht_dc_dev,     dtdtm_dev,                                                  &
           sgh_dev,       mxdis_dev,     hwdth_dev,    clngt_dev,  angll_dev,         &
           anixy_dev,     gbxar_dev,     kwvrdg_dev,   effrdg_dev, pref_dev,          & 
           pmid_dev,      pdel_dev,      rpdel_dev,    lnpint_dev, zm_dev,  rlat_dev, &
@@ -92,7 +92,6 @@ contains
     real,    intent(in   ) :: v_dev(pcols,pver)        ! meridional wind at layers
     real,    intent(in   ) :: ht_dc_dev(pcols,pver)    ! DeepCu heating in layers
     real,    intent(in   ) :: dtdtm_dev(pcols,pver)    ! Microphysics temperature tendency / latent heating (K s-1)
-    real,    intent(in   ) :: speed_dev(pcols,pver)    ! Katabatic proxy: Max wind speed in lowest 300m stable layer (m s-1)
     real,    intent(in   ) :: sgh_dev(pcols)           ! standard deviation of orography
 !++jtb 01/25/21 New topo vars
     real,    intent(in   ) :: mxdis_dev(pcols,nrdg)     ! obstacle/ridge height 
@@ -213,7 +212,7 @@ contains
        zm_dev, zi, &
        nm, ni, rhoi, kvtt,  &
        ht_dc_dev,beres_dc_desc, alpha, &
-       utgw, vtgw, ttgw, flx_heat, dtdtm_dev, speed_dev)
+       utgw, vtgw, ttgw, flx_heat, dtdtm_dev)
        dudt_gwd_dev = dudt_gwd_dev + utgw
        dvdt_gwd_dev = dvdt_gwd_dev + vtgw
        dtdt_gwd_dev = dtdt_gwd_dev + ttgw

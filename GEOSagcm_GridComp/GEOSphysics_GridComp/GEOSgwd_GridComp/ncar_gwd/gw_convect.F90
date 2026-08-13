@@ -219,7 +219,7 @@ end subroutine gw_beres_init
 !------------------------------------
 subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
      netdt, zm, src_level, tend_level, tau, ubm, ubi, xv, yv, &
-     c, dtdtm, speed)
+     c, dtdtm)
 !-----------------------------------------------------------------------
 ! Driver for multiple gravity wave drag parameterization.
 !
@@ -269,7 +269,6 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
 
   ! Frontal and Jet proxy inputs
   real, intent(in) :: dtdtm(ncol,pver)  ! Microphysics temperature tendency / latent heating (K s-1)
-  real, intent(in) :: speed(ncol)       ! Katabatic proxy: Max wind speed in lowest 300m stable layer (m s-1)
 
 !---------------------------Local Storage-------------------------------
   ! Column and level indices.
@@ -524,9 +523,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
           ! -----------------------------------------------------------------
           ! Proxy 2: The Dry Wind (Katabatic winds - evaluated locally)
            if (desc%et_bkg_speed_forcing) then
-               ! Dynamically scale the slope so it reaches max hr_cf at speed = 30.0 m/s
-               dry_mult = MAX(1.0, MIN( real(desc%hr_cf), &
-                                  1.0 + (speed(i) - 10.0) * ((real(desc%hr_cf) - 1.0) / 20.0) ))
+               dry_mult = 1.0
            else
                dry_mult = 1.0
            endif
@@ -562,7 +559,7 @@ subroutine gw_beres_ifc( band, &
    u, v, t, pref, pint, delp, rdelp, piln, &
    zm, zi, nm, ni, rhoi, kvtt,  &
    netdt,desc, alpha, &
-   utgw,vtgw,ttgw,flx_heat,dtdtm,speed)
+   utgw,vtgw,ttgw,flx_heat,dtdtm)
 
    type(BeresSourceDesc), intent(inout) :: desc
    type(GWBand), intent(in) :: band         ! I hate this variable  ... it just hides information from view
@@ -595,7 +592,6 @@ subroutine gw_beres_ifc( band, &
    real,         intent(inout) :: flx_heat(ncol)        ! Energy change
 
    real,         intent(in) :: dtdtm(ncol,pver)  ! Microphysics temperature tendency / latent heating (K s-1)
-   real,         intent(in) :: speed(ncol)       ! Katabatic proxy: Max wind speed in lowest 300m stable layer (m s-1)
 
    !---------------------------Local storage-------------------------------
 
@@ -652,7 +648,7 @@ subroutine gw_beres_ifc( band, &
      call gw_beres_src(ncol, pver, band, desc, pint, &
           u, v, netdt, zm, src_level, tend_level, tau, &
           ubm, ubi, xv, yv, c, &
-          dtdtm=dtdtm, speed=speed)
+          dtdtm=dtdtm)
 
      ! Solve for the drag profile with convective sources.
      call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 

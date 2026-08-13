@@ -449,7 +449,7 @@ module gfdl_mp_mod
     ! When .true., these coefficients act as Aerodynamic Stokes Efficiencies 
     ! applied to the raw 3D geometric integral.
     logical :: do_3d_acc_cliq = .true.  ! perform the new 3d accretion for cloud water
-    real :: c_psacw = 0.05 ! cloud water to snow (HEAVY aerodynamic reduction required)
+    real :: c_psacw = 0.25 ! cloud water to snow (HEAVY aerodynamic reduction required)
     real :: c_pgacw = 0.80 ! cloud water to graupel/hail (Punches through air)
     real :: c_pracw = 1.00 ! cloud water to rain 
     ! --- Cloud Ice (Frozen) 3D Accretion ---
@@ -547,8 +547,8 @@ module gfdl_mp_mod
 
     ! these variables should be passed throughout the code as arguments
     ! but the lazy approach is to make them threadprivate here
-    real :: cnv_fraction, fac_eis, cpaut, fac_rc, onemsig, srf_type
-    !$OMP THREADPRIVATE(cnv_fraction, fac_eis, cpaut, fac_rc, onemsig, srf_type)
+    real :: cnv_fraction, fac_eis, cpaut, fac_rc, onemsig, srf_type, glac_shift
+    !$OMP THREADPRIVATE(cnv_fraction, fac_eis, cpaut, fac_rc, onemsig, srf_type, glac_shift)
 
     real (kind = r8) :: lv00, li00, li20, cpaut0
     real (kind = r8) :: d1_vap, d1_ice, c1_vap, c1_liq, c1_ice
@@ -693,7 +693,7 @@ end subroutine gfdl_mp_init
 !        use_cond, moist_kappa)
 
 subroutine gfdl_mp_driver (qv, ql, qr, qi, qs, qg, qa, zet, qnl, qni, pt, wa, &
-        ua, va, delz, delp, dtm, rhcrit, hs, cnv_frc, eis, area, srft,   &
+        ua, va, delz, delp, pl, dtm, rhcrit, hs, cnv_frc, eis, area, srft, gshift,   &
         water, rain, ice, snow, graupel, hydrostatic, is, ie, ks, ke, ktop, &
         qa_dt, &
         revap, rsubl, &
@@ -711,11 +711,12 @@ subroutine gfdl_mp_driver (qv, ql, qr, qi, qs, qg, qa, zet, qnl, qni, pt, wa, &
 
     real, intent (in) :: dtm
 
-    real, intent (in), dimension (is:ie) :: hs, cnv_frc, eis, area, srft
+    real, intent (in), dimension (is:ie) :: hs, cnv_frc, eis, area, srft, gshift
 
     real, intent (in), dimension (is:ie, ks:ke) :: rhcrit, qnl, qni
 
     real, intent (in),  dimension (is:ie, ks:ke) :: delp, delz
+    real, intent (in),  dimension (is:ie, ks:ke) :: pl ! Pa
     real, intent (inout),  dimension (is:ie, ks:ke) :: pt, ua, va, wa
     real, intent (inout),  dimension (is:ie, ks:ke) :: qv, ql, qr, qi, qs, qg, qa
 
@@ -810,9 +811,9 @@ subroutine gfdl_mp_driver (qv, ql, qr, qi, qs, qg, qa, zet, qnl, qni, pt, wa, &
     ! major cloud microphysics driver
     ! -----------------------------------------------------------------------
 
-    call mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa, &
+    call mpdrv (hydrostatic, ua, va, wa, delp, pl, pt, qv, ql, qr, qi, qs, qg, qa, &
         zet, qnl, qni, delz, is, ie, ktop, ke, dtm, water, rain, ice, snow, graupel, &
-        rhcrit, hs, cnv_frc, eis, area, srft, q_con, cappa, consv_te, adj_vmr, te, dte, &
+        rhcrit, hs, cnv_frc, eis, area, srft, gshift, q_con, cappa, consv_te, adj_vmr, te, dte, &
         revap, rsubl, &
         prefluxw, prefluxr, prefluxi, prefluxs, prefluxg, &
         qa_dt, &
@@ -1323,9 +1324,9 @@ end subroutine setup_mhc_lhc
 ! major cloud microphysics driver
 ! =======================================================================
 
-subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa, &
+subroutine mpdrv (hydrostatic, ua, va, wa, delp, pl, pt, qv, ql, qr, qi, qs, qg, qa, &
         zet, qnl, qni, delz, is, ie, ks, ke, dtm, water, rain, ice, snow, graupel, &
-        rhcrit, hs, cnv_frc, eis, area, srft, q_con, cappa, consv_te, adj_vmr, te, dte, &
+        rhcrit, hs, cnv_frc, eis, area, srft, gshift, q_con, cappa, consv_te, adj_vmr, te, dte, &
         revap, rsubl, &
         prefluxw, prefluxr, prefluxi, prefluxs, prefluxg, &
         qa_dt, &
@@ -1348,11 +1349,12 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
 
     real, intent (in) :: dtm
 
-    real, intent (in), dimension (is:ie) :: hs, cnv_frc, eis, area, srft
+    real, intent (in), dimension (is:ie) :: hs, cnv_frc, eis, area, srft, gshift
 
     real, intent (in), dimension (:, :) :: rhcrit, qnl, qni
 
     real, intent (in   ), dimension (:, :) :: delp, delz
+    real, intent (in   ), dimension (:, :) :: pl ! Pa
     real, intent (inout), dimension (:, :) :: pt, ua, va, wa
     real, intent (inout), dimension (:, :) :: qv, ql, qr, qi, qs, qg, qa
     real, intent (inout), dimension (:, :) :: zet
@@ -1430,7 +1432,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
     ! -----------------------------------------------------------------------
     !$OMP PARALLEL DO DEFAULT(SHARED) &
     !$OMP PRIVATE(i, k, ccn0, cin0, q_cond, tmp, nl, ni, mass_fac, con_r8, c8, cp8, &
-    !$OMP         h_var, q_liq, q_sol, dp, dz, dp0, qvz, qlz, qrz, qiz, qsz, &
+    !$OMP         h_var, q_liq, q_sol, pl, dp, dz, dp0, qvz, qlz, qrz, qiz, qsz, &
     !$OMP         qgz, qaz, zez, den, pz, denfac, ccn, cin, u, v, w, &
     !$OMP         pcw, edw, oew, rrw, tvw, pci, edi, oei, rri, tvi, &
     !$OMP         pcr, edr, oer, rrr, tvr, pcs, eds, oes, rrs, tvs, &
@@ -1442,6 +1444,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         ! -----------------------------------------------------------------------
         cnv_fraction = cnv_frc(i)
         srf_type = srft(i)
+        glac_shift = gshift(i)
 
         ! -----------------------------------------------------------------------
         ! 1 minus sigma used to control resolution sensitive parameters
@@ -1604,7 +1607,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
               ! ccn (k) = ccn (k) / den (k)
               ! qnl import from GEOS has units # / m^3
                 ccn (k) = qnl (i, k) / den (k)
-                ccn (k) = ccn (k) * (1.0 - ice_fraction(real(tz (k)), cnv_fraction, srf_type))
+                ccn (k) = ccn (k) * (1.0 - ice_fraction(real(tz (k)), cnv_fraction, srf_type, glac_shift))
                 ! Prevent exactly zero or negative values
                 ccn (k) = max(1.0e-3, ccn (k))
             enddo
@@ -1623,7 +1626,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
               ! cin (k) = cin (k) / den (k)
               ! qni import fro GEOS has units # / m^3
                 cin (k) = qni (i, k) / den (k)
-                cin (k) = cin (k) * ice_fraction(real(tz (k)), cnv_fraction, srf_type)
+                cin (k) = cin (k) * ice_fraction(real(tz (k)), cnv_fraction, srf_type, glac_shift)
                 ! Prevent exactly zero or negative values
                 cin (k) = max(1.0e-3, cin (k))
             enddo
@@ -1657,7 +1660,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
 
         if (do_mp_fast) then
 
-            call mp_fast (ks, ke, tz, qaz, qvz, qlz, qrz, qiz, qsz, qgz, dtm, dp, den, &
+            call mp_fast (ks, ke, tz, qaz, qvz, qlz, qrz, qiz, qsz, qgz, dtm, pl(i, ks:), dp, den, &
                 ccn, cin, mppcw (i), mppew (i), mppdi (i), mppds (i), mppdg (i), &
                 mppsi (i), mppss (i), mppsg (i), mppfw (i), mppfr (i), mppmi (i), &
                 mppms (i), mppar (i), mppas (i), denfac, rsubl (i, ks:), convt, last_step)
@@ -1670,7 +1673,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
 
         if (do_mp_full) then
 
-            call mp_full (ks, ke, ntimes, tz, qaz, qvz, qlz, qrz, qiz, qsz, qgz, dp, dz, &
+            call mp_full (ks, ke, ntimes, tz, qaz, qvz, qlz, qrz, qiz, qsz, qgz, pl(i, ks:), dp, dz, &
                 u, v, w, den, denfac, ccn, cin, dts, h_var, dte (i), &
                 water (i), rain (i), ice (i), snow (i), graupel (i), &
                 revap (i, ks:), rsubl (i, ks:), prefluxw (i, ks:), &
@@ -2136,7 +2139,7 @@ end subroutine neg_adj
 ! full microphysics loop
 ! =======================================================================
 
-subroutine mp_full (ks, ke, ntimes, tz, qa, qv, ql, qr, qi, qs, qg, dp, dz, u, v, w, &
+subroutine mp_full (ks, ke, ntimes, tz, qa, qv, ql, qr, qi, qs, qg, pl, dp, dz, u, v, w, &
         den, denfac, ccn, cin, dts, h_var, dte, water, rain, ice, &
         snow, graupel, revap, rsubl, prefluxw, prefluxr, prefluxi, prefluxs, prefluxg, mppcw, &
         mppew, mppe1, mpper, mppdi, mppd1, mppds, mppdg, mppsi, mpps1, mppss, &
@@ -2155,7 +2158,7 @@ subroutine mp_full (ks, ke, ntimes, tz, qa, qv, ql, qr, qi, qs, qg, dp, dz, u, v
 
     real, intent (in) :: dts, convt
 
-    real, intent (in), dimension (ks:ke) :: h_var, dp, dz, den, denfac
+    real, intent (in), dimension (ks:ke) :: h_var, pl, dp, dz, den, denfac
 
     real, intent (inout), dimension (ks:ke) :: qa, qv, ql, qr, qi, qs, qg, u, v, w, ccn, cin
     real, intent (inout), dimension (ks:ke) :: revap, rsubl
@@ -2216,7 +2219,7 @@ subroutine mp_full (ks, ke, ntimes, tz, qa, qv, ql, qr, qi, qs, qg, dp, dz, u, v
         ! ice cloud microphysics
         ! -----------------------------------------------------------------------
 
-        call ice_cloud (ks, ke, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, vtw, &
+        call ice_cloud (ks, ke, pl, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, vtw, &
             vtr, vti, vts, vtg, dts, h_var, mppfw, mppfr, mppmi, mppms, mppmg, mppas, &
             mppag, mpprs, mpprg, mppxs, mppxg, convt)
 
@@ -2240,7 +2243,7 @@ end subroutine mp_full
 ! fast microphysics loop
 ! =======================================================================
 
-subroutine mp_fast (ks, ke, tz, qa, qv, ql, qr, qi, qs, qg, dtm, dp, den, ccn, &
+subroutine mp_fast (ks, ke, tz, qa, qv, ql, qr, qi, qs, qg, dtm, pl, dp, den, ccn, &
         cin, mppcw, mppew, mppdi, mppds, mppdg, mppsi, mppss, mppsg, mppfw, &
         mppfr, mppmi, mppms, mppar, mppas, denfac, rsubl, convt, last_step)
 
@@ -2256,7 +2259,7 @@ subroutine mp_fast (ks, ke, tz, qa, qv, ql, qr, qi, qs, qg, dtm, dp, den, ccn, &
 
     real, intent (in) :: dtm, convt
 
-    real, intent (in), dimension (ks:ke) :: dp, den, denfac
+    real, intent (in), dimension (ks:ke) :: pl, dp, den, denfac
 
     real, intent (inout), dimension (ks:ke) :: qa, qv, ql, qr, qi, qs, qg, ccn, cin
 
@@ -2292,7 +2295,7 @@ subroutine mp_fast (ks, ke, tz, qa, qv, ql, qr, qi, qs, qg, dtm, dp, den, ccn, &
         ! cloud ice melting to form cloud water and rain
         ! -----------------------------------------------------------------------
 
-        call pimlt (ks, ke, dtm, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den, &
+        call pimlt (ks, ke, dtm, qa, qv, ql, qr, qi, qs, qg, pl, dp, tz, cvm, te8, den, &
             lcpk, icpk, tcpk, tcp3, mppmi, convt)
 
         ! -----------------------------------------------------------------------
@@ -2327,7 +2330,7 @@ subroutine mp_fast (ks, ke, tz, qa, qv, ql, qr, qi, qs, qg, dtm, dp, den, ccn, &
         ! cloud water homogeneous freezing to form cloud ice and snow
         ! -----------------------------------------------------------------------
 
-        call pifr (ks, ke, dtm, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den, &
+        call pifr (ks, ke, dtm, qa, qv, ql, qr, qi, qs, qg, pl, dp, tz, cvm, te8, den, &
             lcpk, icpk, tcpk, tcp3, mppfw, convt)
 
         ! -----------------------------------------------------------------------
@@ -3457,7 +3460,7 @@ end subroutine praut
 ! ice cloud microphysics
 ! =======================================================================
 
-subroutine ice_cloud (ks, ke, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, vtw, &
+subroutine ice_cloud (ks, ke, pl, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, vtw, &
         vtr, vti, vts, vtg, dts, h_var, mppfw, mppfr, mppmi, mppms, mppmg, mppas, &
         mppag, mpprs, mpprg, mppxs, mppxg, convt)
 
@@ -3471,7 +3474,7 @@ subroutine ice_cloud (ks, ke, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, v
 
     real, intent (in) :: dts, convt
 
-    real, intent (in), dimension (ks:ke) :: h_var, den, denfac, vtw, vtr, vti, vts, vtg, dp
+    real, intent (in), dimension (ks:ke) :: h_var, den, denfac, vtw, vtr, vti, vts, vtg, pl, dp
 
     real, intent (inout), dimension (ks:ke) :: qa, qv, ql, qr, qi, qs, qg
 
@@ -3501,7 +3504,7 @@ subroutine ice_cloud (ks, ke, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, v
         ! cloud ice/liq melt/freeze to form cloud water/ice and rain/snow
         ! -----------------------------------------------------------------------
 
-        call pimltfrz (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den, &
+        call pimltfrz (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, pl, dp, tz, cvm, te8, den, &
             lcpk, icpk, tcpk, tcp3, mppmi, mppfw, convt)
 
         ! -----------------------------------------------------------------------
@@ -3575,7 +3578,7 @@ subroutine ice_cloud (ks, ke, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, v
 end subroutine ice_cloud
 
 
-subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te8, den, &
+subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, pl, dp, tz, cvm, te8, den, &
         lcpk, icpk, tcpk, tcp3, mppmi, mppfw, convt)
 
     implicit none
@@ -3590,7 +3593,7 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
     real (kind = r8), intent (in), dimension (ks:ke) :: te8
 
-    real, intent (in), dimension (ks:ke) :: den, dp
+    real, intent (in), dimension (ks:ke) :: den, pl, dp
 
     real, intent (inout), dimension (ks:ke) :: qak, qvk, qlk, qrk, qik, qsk, qgk
     real, intent (inout), dimension (ks:ke) :: lcpk, icpk, tcpk, tcp3
@@ -3609,9 +3612,22 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
     real :: tmp, sink, fac_imlt, fac_imlt_loc, fac_frez, fac_frez_loc
     real :: critical_qi_factor
 
-    ! psaut_qi_crt (ice to snow conversion) has strong resolution dependence
-    !    account for this using onemsig to convert more ice to snow at coarser resolutions
-    critical_qi_factor = psaut_qi_crt*(1.e-1*(1.0-onemsig) + onemsig)
+    ! -------------------------------------------------------------------------
+    ! Scale-Aware Cloud Ice Threshold (critical_qi_factor)
+    ! -------------------------------------------------------------------------
+    ! Applies a resolution-dependent penalty to the critical ice threshold,
+    ! partitioning the grid box into unresolved and resolved fractions.
+    !   
+    ! - Unresolved scales (1.0 - onemsig): Applies a strict 10x penalty (1.e-1)
+    !   to sub-grid parameterizations. This forces sub-grid ice to precipitate
+    !   as snow earlier, preventing global QI from skyrocketing and negatively 
+    !   impacting the radiation budget.
+    ! - Resolved scales (onemsig): The penalty vanishes (1.0 multiplier).
+    !   Grid-scale clouds get the full ice bucket, allowing resolved large-scale 
+    !   ascent to loft and suspend ice normally.
+    ! -------------------------------------------------------------------------
+    ! Apply the 10% bucket to the unresolved fraction, and 100% to the resolved
+    critical_qi_factor = psaut_qi_crt * (1.e-1 * (1.0 - onemsig) + 1.0 * onemsig)
 
     fac_imlt = 1. - exp (- dts / tau_imlt)
     fac_frez = 1. - exp (- dts / tau_frez)
@@ -3697,7 +3713,7 @@ end subroutine pimltfrz
 ! cloud ice melting to form cloud water and rain, Lin et al. (1983)
 ! =======================================================================
 
-subroutine pimlt (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te8, den, lcpk, icpk, &
+subroutine pimlt (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, pl, dp, tz, cvm, te8, den, lcpk, icpk, &
         tcpk, tcp3, mppmi, convt)
 
     implicit none
@@ -3712,7 +3728,7 @@ subroutine pimlt (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, t
 
     real (kind = r8), intent (in), dimension (ks:ke) :: te8
 
-    real, intent (in), dimension (ks:ke) :: den, dp
+    real, intent (in), dimension (ks:ke) :: den, pl, dp
 
     real, intent (inout), dimension (ks:ke) :: qak, qvk, qlk, qrk, qik, qsk, qgk
     real, intent (inout), dimension (ks:ke) :: lcpk, icpk, tcpk, tcp3
@@ -3769,7 +3785,7 @@ end subroutine pimlt
 ! cloud water homogeneous freezing to form cloud ice and snow, Lin et al. (1983)
 ! =======================================================================
 
-subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te8, den, lcpk, icpk, &
+subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, pl, dp, tz, cvm, te8, den, lcpk, icpk, &
         tcpk, tcp3, mppfw, convt)
 
     implicit none
@@ -3782,7 +3798,7 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
 
     real, intent (in) :: dts, convt
 
-    real, intent (in), dimension (ks:ke) :: den, dp
+    real, intent (in), dimension (ks:ke) :: den, pl, dp
 
     real (kind = r8), intent (in), dimension (ks:ke) :: te8
 
@@ -3803,9 +3819,22 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
     real :: tmp, sink, qim, fac_frez
     real :: critical_qi_factor 
 
-    ! psaut_qi_crt (ice to snow conversion) has strong resolution dependence
-    !    account for this using onemsig to convert more ice to snow at coarser resolutions
-    critical_qi_factor = psaut_qi_crt*(1.e-1*(1.0-onemsig) + onemsig)
+    ! -------------------------------------------------------------------------
+    ! Scale-Aware Cloud Ice Threshold (critical_qi_factor)
+    ! -------------------------------------------------------------------------
+    ! Applies a resolution-dependent penalty to the critical ice threshold,
+    ! partitioning the grid box into unresolved and resolved fractions.
+    !   
+    ! - Unresolved scales (1.0 - onemsig): Applies a strict 10x penalty (1.e-1)
+    !   to sub-grid parameterizations. This forces sub-grid ice to precipitate
+    !   as snow earlier, preventing global QI from skyrocketing and negatively 
+    !   impacting the radiation budget.
+    ! - Resolved scales (onemsig): The penalty vanishes (1.0 multiplier).
+    !   Grid-scale clouds get the full ice bucket, allowing resolved large-scale 
+    !   ascent to loft and suspend ice normally.
+    ! -------------------------------------------------------------------------
+    ! Apply the 10% bucket to the unresolved fraction, and 100% to the resolved
+    critical_qi_factor = psaut_qi_crt * (1.e-1 * (1.0 - onemsig) + 1.0 * onemsig)
 
     fac_frez = 1. - exp (- dts / tau_frez)
 
@@ -3967,6 +3996,14 @@ subroutine pgmlt (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den
     real :: pgacw, pgacr
     real :: oms_cgacw
 
+    ! -----------------------------------------------------------------------
+    ! Graupel Accretion of Cloud Water (cgacw) Resolution Penalty
+    ! -----------------------------------------------------------------------
+    ! Applies a massive 100x penalty (1.e-2) at coarse resolutions (onemsig=0).
+    ! This is physically required because true graupel is a convective phenomenon.
+    ! At 50km, large-scale graupel accretion is aggressively paralyzed to prevent 
+    ! it from artificially sweeping out all large-scale cloud liquid water (QL).
+    ! -----------------------------------------------------------------------
     oms_cgacw = cgacw * (1.e-2*(1.0-onemsig) + onemsig)
 
     do k = ks, ke
@@ -4115,9 +4152,22 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
     real :: tc, sink, fac_i2s, q_plus, qim, dq, tmp
     real :: di, qi, critical_qi_factor, qadum
 
-    ! psaut_qi_crt (ice to snow conversion) has strong resolution dependence
-    !    account for this using onemsig to convert more ice to snow at coarser resolutions
-    critical_qi_factor = psaut_qi_crt*(1.e-1*(1.0-onemsig) + onemsig)
+    ! -------------------------------------------------------------------------
+    ! Scale-Aware Cloud Ice Threshold (critical_qi_factor)
+    ! -------------------------------------------------------------------------
+    ! Applies a resolution-dependent penalty to the critical ice threshold,
+    ! partitioning the grid box into unresolved and resolved fractions.
+    !   
+    ! - Unresolved scales (1.0 - onemsig): Applies a strict 10x penalty (1.e-1)
+    !   to sub-grid parameterizations. This forces sub-grid ice to precipitate
+    !   as snow earlier, preventing global QI from skyrocketing and negatively 
+    !   impacting the radiation budget.
+    ! - Resolved scales (onemsig): The penalty vanishes (1.0 multiplier).
+    !   Grid-scale clouds get the full ice bucket, allowing resolved large-scale 
+    !   ascent to loft and suspend ice normally.
+    ! -------------------------------------------------------------------------
+    ! Apply the 10% bucket to the unresolved fraction, and 100% to the resolved
+    critical_qi_factor = psaut_qi_crt * (1.e-1 * (1.0 - onemsig) + 1.0 * onemsig)
 
     fac_i2s = 1. - exp (- dts / tau_i2s)
 
@@ -4459,6 +4509,14 @@ subroutine pgacw_pgacr (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te
 
     real :: oms_cgacw
 
+    ! -----------------------------------------------------------------------
+    ! Graupel Accretion of Cloud Water (cgacw) Resolution Penalty
+    ! -----------------------------------------------------------------------
+    ! Applies a massive 100x penalty (1.e-2) at coarse resolutions (onemsig=0).
+    ! This is physically required because true graupel is a convective phenomenon.
+    ! At 50km, large-scale graupel accretion is aggressively paralyzed to prevent 
+    ! it from artificially sweeping out all large-scale cloud liquid water (QL).
+    ! -----------------------------------------------------------------------
     oms_cgacw = cgacw * (1.e-2*(1.0-onemsig) + onemsig)
 
     do k = ks, ke 
@@ -4788,6 +4846,18 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
                 subl = 0.0
              endif
 
+            ! -------------------------------------------------------------------------
+            ! Resolution-Dependent Evaporation and Sublimation Shutoff
+            ! -------------------------------------------------------------------------
+            ! At coarse resolutions (onemsig=0), this explicitly zeroes out grid-scale
+            ! evaporation and sublimation inside the GFDL microphysics. 
+            ! Why? Coarse grid-scale microphysics assumes precipitation is uniform across 
+            ! the 50km grid box, which would over-expose it to dry air and artificially 
+            ! evaporate almost all falling rain before it hits the ground.
+            ! Instead, evaporation of sub-grid precipitation shafts is handled upstream 
+            ! by the macro-physics scheme (cldmacro using CCW_EVAP_EFF/CCI_EVAP_EFF).
+            ! This onemsig switch safely prevents double-evaporation.
+            ! -------------------------------------------------------------------------
              evap = evap*onemsig ! resolution dependent evap 0:1 coarse:fine
              subl = subl*onemsig ! resolution dependent subl 0:1 coarse:fine
 
@@ -4871,6 +4941,18 @@ subroutine pcond_pevap (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
             sink = - min (qv (k), factor * (- dq) / (1. + tcp3 (k) * dqdt))
             mppcw = mppcw - sink * dp (k) * convt
         endif
+        ! -------------------------------------------------------------------------
+        ! Resolution-Dependent Evaporation and Sublimation Shutoff
+        ! -------------------------------------------------------------------------
+        ! At coarse resolutions (onemsig=0), this explicitly zeroes out grid-scale
+        ! evaporation and sublimation inside the GFDL microphysics. 
+        ! Why? Coarse grid-scale microphysics assumes precipitation is uniform across 
+        ! the 50km grid box, which would over-expose it to dry air and artificially 
+        ! evaporate almost all falling rain before it hits the ground.
+        ! Instead, evaporation of sub-grid precipitation shafts is handled upstream 
+        ! by the macro-physics scheme (cldmacro using CCW_EVAP_EFF/CCI_EVAP_EFF).
+        ! This onemsig switch safely prevents double-evaporation.
+        ! -------------------------------------------------------------------------
         sink = sink*onemsig ! resolution dependent evap 0:1 coarse:fine
 
         call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
@@ -4975,10 +5057,19 @@ subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den,
 
     real :: snow_boost_mult
     real :: tau_wbf_eff
-    real, parameter :: wbf_coarse_mult = 2.5 ! How much slower WBF is at 50km vs 2km
+    real, parameter :: wbf_coarse_mult = 3.0  ! How much slower WBF is at 50km vs 2km
 
     if (.not. do_wbf) return
 
+    ! -------------------------------------------------------------------------
+    ! Scale tau_wbf (Wegener-Bergeron-Findeisen Timescale)
+    ! -------------------------------------------------------------------------
+    ! At coarse resolutions (e.g., 50km, onemsig=0), WBF is slowed down by a 
+    ! factor of the multiplier. This physically compensates for sub-grid cloud patchiness.
+    ! In reality, mixed-phase clouds have separated pockets of liquid and ice. 
+    ! Using a coarse grid-mean assumes perfect mixing, which would cause the scheme
+    ! to over-aggressively glaciate the cloud. Slowing the timescale artificially 
+    ! protects supercooled liquid water from being consumed too fast.
     ! -------------------------------------------------------------------
     ! Scale tau_wbf: 
     ! If onemsig = 1.0 (2km),   tau_wbf_eff = tau_wbf
@@ -5219,6 +5310,18 @@ subroutine pidep_pisub (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
             else
                 pidep = pidep * min (1., dim (tz (k), t_sub) * is_fac)
                 sink = max (pidep, tmp, - qi (k))
+                ! -------------------------------------------------------------------------
+                ! Resolution-Dependent Evaporation and Sublimation Shutoff
+                ! -------------------------------------------------------------------------
+                ! At coarse resolutions (onemsig=0), this explicitly zeroes out grid-scale
+                ! evaporation and sublimation inside the GFDL microphysics. 
+                ! Why? Coarse grid-scale microphysics assumes precipitation is uniform across 
+                ! the 50km grid box, which would over-expose it to dry air and artificially 
+                ! evaporate almost all falling rain before it hits the ground.
+                ! Instead, evaporation of sub-grid precipitation shafts is handled upstream 
+                ! by the macro-physics scheme (cldmacro using CCW_EVAP_EFF/CCI_EVAP_EFF).
+                ! This onemsig switch safely prevents double-evaporation.
+                ! -------------------------------------------------------------------------
                 sink = sink*onemsig ! resolution dependent subl 0:1 coarse:fine
                 mppsi = mppsi - sink * dp (k) * convt
                 ! 3D ice sublimation export
@@ -7765,7 +7868,7 @@ subroutine qs_table_core (n, n_blend, do_smith_table, table)
 
     real             :: ifrac
     real (kind = r8) :: tmin, tem, esh
-    real (kind = r8) :: wice, wh2o, fac0, fac1, fac2
+    real (kind = r8) :: tc, ptc, wice, wh2o, fac0, fac1, fac2
     real (kind = r8) :: esbasw, tbasw, esbasi, a, b, c, d, e
     real (kind = r8) :: esupc (n_blend)
 
@@ -7857,10 +7960,12 @@ subroutine qs_table_core (n, n_blend, do_smith_table, table)
 
     do i = 1, n_blend
         tem = tice + delt * (real (i - 1) - n_blend)
-       ! WMP impose CALIPSO ice polynomial for mixed phase
-        ifrac = ice_fraction(real(tem),0.0,0.0)
-        wice = ifrac
-        wh2o = 1.0 - wice
+        ! WMP impose CALIPSO ice polynomial for mixed phase (INLINED)
+        tc = max(-46.0_r8, min(tem - tice, 46.0_r8))
+        ptc = 7.6725_r8 + 1.0118_r8*tc + 0.1422_r8*(tc**2) + 0.0106_r8*(tc**3) + &
+              0.000339_r8*(tc**4) + 0.00000395_r8*(tc**5)
+        wice = 1.0_r8 - (1.0_r8 / (1.0_r8 + exp(-ptc)))
+        wh2o = 1.0_r8 - wice
         table (i + n_min - n_blend) = wice * table (i + n_min - n_blend) + wh2o * esupc (i)
     enddo
 
@@ -8440,7 +8545,7 @@ real function new_liq_condensate(tk, qlk, qik)
      real, intent(in) :: tk, qlk, qik
      real :: ptc, ifrac                      
 
-     ifrac = ice_fraction(tk,cnv_fraction, srf_type)
+     ifrac = ice_fraction(tk,cnv_fraction, srf_type, glac_shift)
      new_liq_condensate = min(max(0.0,(1.0-ifrac)*(qlk+qik) - qlk),qik)
             
 end function new_liq_condensate
@@ -8450,7 +8555,7 @@ real function new_ice_condensate(tk, qlk, qik)
      real, intent(in) :: tk, qlk, qik
      real :: ptc, ifrac
         
-     ifrac = ice_fraction(tk,cnv_fraction, srf_type)
+     ifrac = ice_fraction(tk,cnv_fraction, srf_type, glac_shift)
      new_ice_condensate = min(max(0.0,ifrac*(qlk+qik) - qik),qlk)
 
 end function new_ice_condensate

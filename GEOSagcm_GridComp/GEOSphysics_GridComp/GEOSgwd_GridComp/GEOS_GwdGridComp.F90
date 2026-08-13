@@ -246,6 +246,7 @@ contains
 
     logical :: JASON_BKG, JASON_ORO
     real    :: NCAR_TAU_TOP_ZERO
+    real    :: NCAR_PRNDL
     real    :: NCAR_QBO_HDEPTH_SCALING
     integer :: NCAR_ORO_PGWV, NCAR_BKG_PGWV
     real    :: NCAR_ORO_GW_DC, NCAR_BKG_GW_DC
@@ -424,7 +425,7 @@ contains
       ! 1. Default to classic rigid latitude tuning
       NCAR_ET_TAUBGND = 6.4 
       ! 2. Set baselines for independent runs
-      if (NCAR_ET_USE_DQCDT .or. NCAR_ET_USE_SPEED) NCAR_ET_TAUBGND = 5.0
+      if (NCAR_ET_USE_DQCDT .or. NCAR_ET_USE_SPEED) NCAR_ET_TAUBGND = 2.5
       call MAPL_GetResource( MAPL, NCAR_ET_TAUBGND,     Label="NCAR_ET_TAUBGND:",     default=NCAR_ET_TAUBGND, _RC)
 
       call MAPL_GetResource( MAPL, NCAR_BKG_TNDMAX,     Label="NCAR_BKG_TNDMAX:",     default=250.0,  _RC)
@@ -728,21 +729,20 @@ contains
          TAUYO_TMP_NCAR = 0.0
          !call MAPL_TimerOn(MAPL,"-INTR_NCAR")
          if ( (self%NCAR_EFFGWORO /= 0.0) .OR. (self%NCAR_EFFGWBKG /= 0.0) ) then
-           !DO L=1, LM
-           !   ! Isolate purely large-scale/frontal latent heating by removing convective overlap.
-           !   ! Since CNV_FRC is a CAPE-derived proxy for convective activity, raising the 
-           !   ! (1.0 - CNV_FRC) mask to the 4th power aggressively filters out the microphysics 
-           !   ! heating (HT_mi) in regions with even modest convective instability.
-           !   TMP3D(:,:,L) = ((1.0-CNV_FRC)**4) * HT_mi
-           !END DO
-            if(associated(DQCDT_LS)) DQCDT_LS = TMP3D
+            DO L=1, LM
+               ! Isolate purely large-scale/frontal latent heating by removing convective overlap.
+               ! Since CNV_FRC is a CAPE-derived proxy for convective activity, raising the 
+               ! (1.0 - CNV_FRC) mask to the 4th power aggressively filters out the microphysics 
+               ! heating (HT_mi) in regions with even modest convective instability.
+               TMP3D(:,:,L) = ((1.0-CNV_FRC)**4) * HT_mi(:,:,L)
+            END DO
             thread = MAPL_get_current_thread()
             workspace => self%workspaces(thread)
             call gw_intr_ncar(IM*JM,    LM,         DT,     self%NCAR_NRDG,   &
                  workspace%beres_dc_desc, &
                  workspace%beres_band, workspace%oro_band, workspace%rdg_band, &
                  PLE,       T,          U,          V,                   &
-                 HT_dc,     HT_mi,      WSPD_STABLE300M,                 &
+                 HT_dc,     TMP3D,                                       &
                  SGH,       MXDIS,      HWDTH,      CLNGT,  ANGLL,       &
                  ANIXY,     GBXAR_TMP,  KWVRDG,     EFFRDG, PREF,        &
                  PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &

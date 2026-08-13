@@ -44,7 +44,7 @@ module GEOS_GFDL_1M_InterfaceMod
   character(len=ESMF_MAXSTR)        :: COMP_NAME
 
   ! Local resource variables
-  real    :: TURNRHCRIT_PARAM
+  real    :: TURNRHCRIT_TOP, TURNRHCRIT_SFC
   real    :: MIN_RH_CRIT, MAX_RH_CRIT, MIN_RH_UNSTABLE, MIN_RH_STABLE
   real    :: TAU_EVAP, CCW_EVAP_EFF
   real    :: TAU_SUBL, CCI_EVAP_EFF
@@ -299,7 +299,7 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     call MAPL_GetResource( MAPL, LPHYS_HYDROSTATIC, Label="PHYS_HYDROSTATIC:",  default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
     LHYDROSTATIC = LPHYS_HYDROSTATIC
-    call MAPL_GetResource( MAPL, LMELTFRZ_CLDMACRO, Label="MELTFRZ_CLDMACRO:",  default=.FALSE., RC=STATUS)
+    call MAPL_GetResource( MAPL, LMELTFRZ_CLDMACRO, Label="MELTFRZ_CLDMACRO:",  default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LMELTFRZ_CLDMICRO, Label="MELTFRZ_CLDMICRO:",  default=.FALSE., RC=STATUS)
     VERIFY_(STATUS)
@@ -339,17 +339,21 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
 
     call MAPL_GetResource( MAPL, SH_MD_DP        , 'SH_MD_DP:'        , DEFAULT= .TRUE., RC=STATUS); VERIFY_(STATUS)
 
-    call MAPL_GetResource( MAPL, TURNRHCRIT_PARAM, 'TURNRHCRIT:'      , DEFAULT= -9999., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MAX_RH_CRIT     , 'MAX_RH_CRIT:'     , DEFAULT= 1.0000, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MIN_RH_UNSTABLE , 'MIN_RH_UNSTABLE:' , DEFAULT= 0.9500, RC=STATUS); VERIFY_(STATUS)
+    ! critical relative humidity profiles
+    call MAPL_GetResource( MAPL, TURNRHCRIT_SFC  , 'TURNRHCRIT_SFC:'  , DEFAULT= -1.   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, MAX_RH_CRIT     , 'MAX_RH_CRIT:'     , DEFAULT= 0.9900, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, MIN_RH_UNSTABLE , 'MIN_RH_UNSTABLE:' , DEFAULT= 0.9750, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MIN_RH_STABLE   , 'MIN_RH_STABLE:'   , DEFAULT= 0.8250, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, MIN_RH_CRIT     , 'MIN_RH_CRIT:'     , DEFAULT= 0.7500, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, TURNRHCRIT_TOP  , 'TURNRHCRIT_TOP:'  , DEFAULT= 3250. , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 1     , RC=STATUS); VERIFY_(STATUS)
+    ! cloud ice/liq settling and radii
     call MAPL_GetResource( MAPL, ICE_LSC_VFALL_PARAM, 'ICE_LSC_VFALL_PARAM:',DEFAULT= 1, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, ICE_CNV_VFALL_PARAM, 'ICE_CNV_VFALL_PARAM:',DEFAULT= 1, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, ANV_ICEFALL     , 'ANV_ICEFALL:'     , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LS_ICEFALL      , 'LS_ICEFALL:'      , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, LIQ_RADII_PARAM , 'LIQ_RADII_PARAM:' , DEFAULT= 3     , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, ICE_RADII_PARAM , 'ICE_RADII_PARAM:' , DEFAULT= 3     , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, LIQ_RADII_PARAM , 'LIQ_RADII_PARAM:' , DEFAULT= 1     , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, ICE_RADII_PARAM , 'ICE_RADII_PARAM:' , DEFAULT= 2     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, FAC_RI          , 'FAC_RI:'          , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MIN_RI          , 'MIN_RI:'          , DEFAULT= 15.e-6, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MAX_RI          , 'MAX_RI:'          , DEFAULT=150.e-6, RC=STATUS); VERIFY_(STATUS)
@@ -366,7 +370,7 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 2500.0, RC=STATUS); VERIFY_(STATUS)
 
-    call MAPL_GetResource( MAPL, ICE_FRACTION_POLYNOMIAL, Label="ICE_FRACTION_POLYNOMIAL:",  default=RAW_MODIS_POLYNOMIAL, RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, ICE_FRACTION_POLYNOMIAL, Label="ICE_FRACTION_POLYNOMIAL:",  default=V12_ICE_POLYNOMIAL, RC=STATUS) ; VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, USE_AEROSOL_NN , 'USE_AEROSOL_NN:'  , DEFAULT=USE_AEROSOL_NN, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, USE_BERGERON   , 'USE_BERGERON:'    , DEFAULT=.FALSE., RC=STATUS); VERIFY_(STATUS)
@@ -412,6 +416,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, allocatable, dimension(:,:,:) :: U0, V0
     real, allocatable, dimension(:,:,:) :: PLEmb, ZLE0
     real, allocatable, dimension(:,:,:) :: PLmb,  ZL0
+    real, allocatable, dimension(:,:,:) :: PL
     real, allocatable, dimension(:,:,:) :: DZ, DZET, DP, MASS, iMASS
     real, allocatable, dimension(:,:,:) :: DQST3, QST3
     real, allocatable, dimension(:,:,:) :: DBZ3D
@@ -460,9 +465,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Local variables
     real    :: tmp_val, rand1
-    real    :: x_norm, safe_max_rh_crit
+    real    :: x_norm, transition_thickness, start_height, upper_scale
     real    :: ALPHA, RHCRIT
-    real    :: one_minus_sigma
     real    :: fraction_hail
 
     real, allocatable :: facEIS_2d(:,:), minrhcrit_2d(:,:), turnrhcrit_2d(:,:)
@@ -552,6 +556,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( V0   (IM,JM,LM  ) )
     ALLOCATE ( ZL0  (IM,JM,LM  ) )
     ALLOCATE ( PLmb (IM,JM,LM  ) )
+    ALLOCATE ( PL   (IM,JM,LM  ) )
     ALLOCATE ( DZET (IM,JM,LM  ) )
     ALLOCATE ( DZ   (IM,JM,LM  ) )
     ALLOCATE ( DP   (IM,JM,LM  ) )
@@ -584,6 +589,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! Derived States
     PLEmb    =  PLE*.01
     PLmb     = 0.5*(PLEmb(:,:,0:LM-1) + PLEmb(:,:,1:LM))
+    PL       = 100.0*PLmb
     DO L=0,LM
        ZLE0(:,:,L)= ZLE(:,:,L) - ZLE(:,:,LM)   ! Edge Height (m) above the surface
     END DO
@@ -761,7 +767,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
         !$OMP parallel do default(none) &
         !$OMP shared(IM, JM, EIS, SRF_TYPE, MIN_RH_UNSTABLE, MIN_RH_STABLE, &
-        !$OMP        TURNRHCRIT_PARAM, PLmb, KPBLSC, facEIS_2d, minrhcrit_2d, &
+        !$OMP        TURNRHCRIT_SFC, ZL0, KPBLSC, facEIS_2d, minrhcrit_2d, &
         !$OMP        turnrhcrit_2d) &
         !$OMP private(I, J)
         do J=1,JM
@@ -769,26 +775,29 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              facEIS_2d(I,J) = get_fac_eis(EIS(I,J),SRF_TYPE(I,J))
              minrhcrit_2d(I,J) = MIN_RH_UNSTABLE*(1.0-facEIS_2d(I,J)) + MIN_RH_STABLE*facEIS_2d(I,J)
              minrhcrit_2d(I,J) = max(0.7, minrhcrit_2d(I,J))
-
-             if (TURNRHCRIT_PARAM <= 0.0) then
-                turnrhcrit_2d(I,J) = PLmb(I, J, NINT(KPBLSC(I,J))) - 50.
+    
+             if (TURNRHCRIT_SFC <= 0.0) then
+                ! Dynamically track the PBL top height level (meters above surface)
+                turnrhcrit_2d(I,J) = ZL0(I, J, NINT(KPBLSC(I,J)))
              else
-                turnrhcrit_2d(I,J) = TURNRHCRIT_PARAM
+                ! If positive, TURNRHCRIT_SFC is now interpreted directly as a height in meters (e.g., 500.0)
+                turnrhcrit_2d(I,J) = TURNRHCRIT_SFC
              endif
-          enddo
+          enddo                  
         enddo
-
+    
        ! evap/subl/pdf
         call MAPL_GetPointer(EXPORT, RHCRIT3D,  'RHCRIT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-        
+         
         !$OMP parallel do default(none) &
         !$OMP shared(LM, JM, IM, Q, T, QLLS, QILS, CLLS, QLCN, QICN, CLCN, KLID, &
-        !$OMP        facEIS_2d, minrhcrit_2d, turnrhcrit_2d, MAX_RH_CRIT, PLmb, PLEmb, &
+        !$OMP        facEIS_2d, minrhcrit_2d, turnrhcrit_2d, TURNRHCRIT_TOP, MIN_RH_CRIT, MAX_RH_CRIT, PLmb, &
         !$OMP        AREA, RHCRIT3D, DT_MOIST, PDFSHAPE, CNV_FRC, SRF_TYPE, ZL0, NACTL, &
         !$OMP        NACTI, WSL, WQT, SL2, QT2, SLQT, W3, W2, QT3, SL3, PDF_A, PDFITERS, &
         !$OMP        WTHV2, WQL, USE_BERGERON, RHX, LMELTFRZ_CLDMACRO, CCW_EVAP_EFF, &
         !$OMP        EVAPC, CCI_EVAP_EFF, SUBLC, QST3) &
-        !$OMP private(L, J, I, safe_max_rh_crit, x_norm, MIN_RH_CRIT, RHCRIT, ALPHA)
+        !$OMP private(L, J, I, transition_thickness, start_height, upper_scale, &
+        !$OMP         x_norm, RHCRIT, ALPHA)
         do L=1,LM
           do J=1,JM
            do I=1,IM
@@ -796,26 +805,46 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), &
                                                      QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L), &
                                                      REMOVE_CLOUDS=(L < KLID) )
-           
-           ! Use Slingo-Ritter (1985) formulation for critical relative humidity
-             ! Ensure the max is never lower than the min
-             safe_max_rh_crit = MAX(MAX_RH_CRIT, minrhcrit_2d(I,J))
-             if (PLmb(i,j,l) .le. turnrhcrit_2d(I,J)) then 
-                MIN_RH_CRIT = minrhcrit_2d(I,J)
-             else if (L .eq. LM) then
-                MIN_RH_CRIT = safe_max_rh_crit
-             else             
-                x_norm = (PLmb(i,j,l) - turnrhcrit_2d(I,J)) / (PLEmb(i,j,LM) - turnrhcrit_2d(I,J))
-                ! Cubic smoothstep S-curve: x^2 * (3 - 2x)
-                MIN_RH_CRIT = minrhcrit_2d(I,J) + (safe_max_rh_crit - minrhcrit_2d(I,J)) * &
+
+           ! -----------------------------------------------------------------
+           ! Turn RHCRIT in the vertical column
+           ! -----------------------------------------------------------------
+             transition_thickness = 0.25 * turnrhcrit_2d(I,J)
+             start_height = turnrhcrit_2d(I,J) - transition_thickness
+    
+             if (ZL0(i,j,l) .ge. turnrhcrit_2d(I,J)) then
+                ! 1. Free Troposphere: Sharp relaxation targeting the RH floor
+                if (ZL0(i,j,l) < TURNRHCRIT_TOP) then
+                   upper_scale = (ZL0(i,j,l) - turnrhcrit_2d(I,J)) / (TURNRHCRIT_TOP - turnrhcrit_2d(I,J))
+                   RHCRIT = minrhcrit_2d(I,J) - (minrhcrit_2d(I,J) - MIN_RH_CRIT) * upper_scale
+                else
+                   ! Lock straight onto your loose MIN_RH_CRIT default floor at and above TURNRHCRIT_TOP
+                   RHCRIT = MIN_RH_CRIT
+                endif
+                         
+             else if (ZL0(i,j,l) .le. start_height) then
+                ! 2. Hard plateau: Lock at MAX_RH_CRIT near the ground
+                RHCRIT = MAX_RH_CRIT   
+                      
+             else
+                ! 3. Boundary Layer S-curve transition
+                x_norm = (turnrhcrit_2d(I,J) - ZL0(i,j,l)) / transition_thickness
+                x_norm = MAX(0.0, MIN(1.0, x_norm))
+
+                RHCRIT = minrhcrit_2d(I,J) + (MAX_RH_CRIT - minrhcrit_2d(I,J)) * &
                          (x_norm * x_norm * (3.0 - 2.0 * x_norm))
              endif
+
            ! -----------------------------------------------------------------
            ! Scale-Aware Blending for RHCRIT
            ! -----------------------------------------------------------------
-             RHCRIT = MAX_RH_CRIT + (MIN_RH_CRIT-MAX_RH_CRIT)*SQRT(SQRT(AREA(I,J)/1.e10)) 
-           ! limit ALPHA to < 30%
-             ALPHA = max(0.0,min(0.30, (1.0-RHCRIT)))
+             RHCRIT = MAX_RH_CRIT + (RHCRIT-MAX_RH_CRIT)*SQRT(SQRT(AREA(I,J)/1.e10)) 
+           ! ===============================================================
+           ! STRUCTURAL FIX: Relax the upper limit of ALPHA.
+           ! This allows the final exported RHCRIT3D to drop to 0.50, 
+           ! unlocking the missing 2250m cloud layer.
+           ! ===============================================================
+             ALPHA = max(0.0, min(0.5000, (1.0-RHCRIT)))
            ! fill RHCRIT export
              if (associated(RHCRIT3D)) RHCRIT3D(I,J,L) = 1.0-ALPHA
            ! Do CLOUD MACRO below the pressure lid
@@ -858,7 +887,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              if (LMELTFRZ_CLDMACRO) then
            ! meltfrz new condensates
              call MELTFRZ ( DT_MOIST     , &
-                            1.0          , & ! since we are explicitly operating on CN types pass CNV_FRC always as 1.0
+                            CNV_FRC(I,J) , &
                             SRF_TYPE(I,J), &
                             T(I,J,L)     , &
                             QLCN(I,J,L)  , &
@@ -870,7 +899,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              call EVAP3 (         &
                   DT_MOIST      , &
                   CCW_EVAP_EFF  , &
-                  1.0           , &
+               RHCRIT3D(I,J,L)  , &
                    PLmb(I,J,L)  , &
                       T(I,J,L)  , &
                       Q(I,J,L)  , &
@@ -888,7 +917,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              call SUBL3 (        &
                   DT_MOIST      , &
                   CCI_EVAP_EFF  , &
-                  1.0           , &
+               RHCRIT3D(I,J,L)  , &
                    PLmb(I,J,L)  , &
                       T(I,J,L)  , &
                       Q(I,J,L)  , &
@@ -1042,7 +1071,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              PFL_LS(I,J,L) = 0.0
 
              ! Cloud fractions and condensates for radiation
-             RAD_CF(I,J,L) = MIN(MAX(CLCN(I,J,L),CLLS(I,J,L)), 1.0) ! Maximum Overlap
+             ! Using Maximum-Random Overlap for horizontal combination
+             RAD_CF(I,J,L) = CLCN(I,J,L) + CLLS(I,J,L) - (CLCN(I,J,L) * CLLS(I,J,L))
+             RAD_CF(I,J,L) = MIN(MAX(RAD_CF(I,J,L), 0.0), 1.0) ! Safegaurd to [0,1]
              RAD_QL(I,J,L) = QLCN(I,J,L) + QLLS(I,J,L)
              RAD_QI(I,J,L) = QICN(I,J,L) + QILS(I,J,L)
              RAD_QV(I,J,L) = Q(I,J,L)
@@ -1059,9 +1090,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                              ! Input water/cloud species and liquid+ice CCN NACTL & NACTI (#/m^3)
                                RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, DBZ3D, NACTL, NACTI, &
                              ! Input fields
-                               T, W, U, V, DZ, DP, &
+                               T, W, U, V, DZ, DP, PL, &
                              ! Other inputs
-                               DT_MOIST, RHCRIT3D, PHIS, CNV_FRC, EIS, AREA, SRF_TYPE, &
+                               DT_MOIST, RHCRIT3D, PHIS, CNV_FRC, EIS, AREA, SRF_TYPE, GLAC_SHIFT_MODIS, &
                              ! Output precipitates
                                PRCP_WATER, PRCP_RAIN, PRCP_ICE, PRCP_SNOW, PRCP_GRAUPEL, &
                              ! constant grid/time information
@@ -1275,7 +1306,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
      !$OMP        QRAIN, QSNOW, QGRAUPEL, NACTL, NACTI, RAD_QV, RAD_QR, RAD_QS, &
      !$OMP        RAD_QG, RAD_CF, CLDREFFL, CLDREFFI, FAC_RL, MIN_RL, MAX_RL, &
      !$OMP        FAC_RI, MIN_RI, MAX_RI, AREA) &
-     !$OMP private(I, J, L, tmp_val, one_minus_sigma)
+     !$OMP private(I, J, L, tmp_val)
      do L = 1, LM
        do J = 1, JM
          do I = 1, IM
@@ -1296,12 +1327,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                 QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L), REMOVE_CLOUDS=(L < KLID))
            endif
 
-           ! Get radiative properties (Scale-Aware)
-           one_minus_sigma = 1.0 - SIGMA(sqrt(AREA(I,J)))
            call RADCOUPLE_SCALE_AWARE(T(I,J,L), PLmb(I,J,L), CLLS(I,J,L), CLCN(I,J,L), &
                  Q(I,J,L), QLLS(I,J,L), QILS(I,J,L), QLCN(I,J,L), QICN(I,J,L), &
                  QRAIN(I,J,L), QSNOW(I,J,L), QGRAUPEL(I,J,L), NACTL(I,J,L), NACTI(I,J,L), &
-                 one_minus_sigma, &
                  RAD_QV(I,J,L), RAD_QL(I,J,L), RAD_QI(I,J,L), RAD_QR(I,J,L), RAD_QS(I,J,L), &
                  RAD_QG(I,J,L), RAD_CF(I,J,L), CLDREFFL(I,J,L), CLDREFFI(I,J,L), &
                  FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI)

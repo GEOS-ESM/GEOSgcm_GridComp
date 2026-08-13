@@ -2723,6 +2723,14 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='GLAC_SHIFT_MODIS',                                      &
+         LONG_NAME ='surface type glacial shift for MODIS ice_fraction polynomial', &
+         UNITS     =''  ,                                         &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='CNV_FRC',                                      &
          LONG_NAME ='convective_fraction',               &
          UNITS     =''  ,                                         &
@@ -5601,8 +5609,10 @@ contains
     call MAPL_GetResource( MAPL, LDIAGNOSE_PRECIP_TYPE, Label="DIAGNOSE_PRECIP_TYPE:",  default=.FALSE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LUPDATE_PRECIP_TYPE,   Label="UPDATE_PRECIP_TYPE:",    default=.FALSE., RC=STATUS); VERIFY_(STATUS)
 
-    call MAPL_GetResource( MAPL, DETRAIN_INACTIVE_CNV, Label="DETRAIN_INACTIVE_CNV:",  default=0.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, TAU_DETRAIN_CNV, Label="TAU_DETRAIN_CNV:",  default=1800.0, RC=STATUS); VERIFY_(STATUS)
+                                            DETRAIN_INACTIVE_CNV = 0.0
+    if (adjustl(CLDMICR_OPTION)=="GFDL_1M") DETRAIN_INACTIVE_CNV = 5.0e-4
+    call MAPL_GetResource( MAPL, DETRAIN_INACTIVE_CNV, Label="DETRAIN_INACTIVE_CNV:",  default=DETRAIN_INACTIVE_CNV, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, TAU_DETRAIN_CNV, Label="TAU_DETRAIN_CNV:",  default=3600.0, RC=STATUS); VERIFY_(STATUS)
 
     if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Initialize(MAPL, CF, CLOCK, IMPORT, EXPORT, RC=STATUS) ; VERIFY_(STATUS)
@@ -5990,6 +6000,30 @@ contains
             END WHERE
          endif
        endif
+
+       ! ---------------------------------------------------------------------------------
+       ! Compute continuous fraction-weighted GLAC_SHIFT for MODIS ice_fraction polynomial
+       ! ---------------------------------------------------------------------------------
+       call MAPL_GetPointer(EXPORT, GLAC_SHIFT_MODIS,'GLAC_SHIFT_MODIS', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       ! Initialize to zero
+       GLAC_SHIFT_MODIS = 0.0
+       ! Add Land Ice and Sea Ice components
+       GLAC_SHIFT_MODIS = GLAC_SHIFT_MODIS + (FRLANDICE * GLAC_SHIFT_LANDICE)
+       GLAC_SHIFT_MODIS = GLAC_SHIFT_MODIS + (FRACI * GLAC_SHIFT_SEAICE)
+       ! Add Ocean component (residual of land and ice fractions)
+       ! MAX is used to protect against small numerical negatives
+       GLAC_SHIFT_MODIS = GLAC_SHIFT_MODIS + ( MAX(0.0, 1.0 - (FRLANDICE + FRACI + FRLAND)) * GLAC_SHIFT_OCEAN )
+       ! Add Land component (partitioned between Snow and Bare Land)
+       ! Use 'where' to safely handle SNOMAS MAPL_UNDEFs
+       where (SNOMAS /= MAPL_UNDEF .and. SNOMAS > 0.0)
+          ! Linearly scale snow fraction up to 1.0 at 0.1 kg/m2
+          GLAC_SHIFT_MODIS = GLAC_SHIFT_MODIS &
+                     + (FRLAND * MIN(SNOMAS / 0.1, 1.0) * GLAC_SHIFT_SNOW) &
+                     + (FRLAND * (1.0 - MIN(SNOMAS / 0.1, 1.0)) * GLAC_SHIFT_LAND)
+       elsewhere
+          ! No snow or undefined snow = 100% bare land
+          GLAC_SHIFT_MODIS = GLAC_SHIFT_MODIS + (FRLAND * GLAC_SHIFT_LAND)
+       end where
 
        call MAPL_TimerOff(MAPL,"---MOIST_PROLOGUE")
 

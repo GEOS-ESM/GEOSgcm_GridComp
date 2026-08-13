@@ -1077,13 +1077,13 @@ contains
     call MAPL_AddConnectivity ( GC,                                                        &
          SRC_NAME  = (/'U            ','V            ','TH           ','T            ',    &
                        'ZLE          ','PS           ','TA           ','QA           ',    &
-                       'US           ','VS           ','WSPD_STABLE300M ',                 &
+                       'US           ','VS           ',                                    &
                        'SPEED        ','DZ           ','PLE          ','W            ',    &
                        'PREF         ','TROPP_BLENDED','S            ','PLK          ',    &
                        'PV           ','TROPK_BLENDED','OMEGA        ','PKE          '/),  &
          DST_NAME  = (/'U     ','V     ','TH    ','T     ',                                &
                        'ZLE   ','PS    ','TA    ','QA    ',                                &
-                       'UA    ','VA    ','WSPD_STABLE300M',                                &
+                       'UA    ','VA    ',                                                  &
                        'SPEED ','DZ    ','PLE   ','W     ',                                &
                        'PREF  ','TROPP ','S     ','PLK   ',                                &
                        'PV    ','TROPK ','OMEGA ','PKE   '/),                              &
