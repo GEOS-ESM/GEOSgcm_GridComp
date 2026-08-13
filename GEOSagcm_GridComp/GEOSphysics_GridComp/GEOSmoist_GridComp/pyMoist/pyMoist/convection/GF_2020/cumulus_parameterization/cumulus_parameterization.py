@@ -6,7 +6,6 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.air_density import hydr
 from pyMoist.convection.GF_2020.cumulus_parameterization.buoyancy import get_buoyancy
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from pyMoist.convection.GF_2020.cumulus_parameterization.constants import FIRST_GUESS_W, MAXENS1, MAXENS2, MAXENS3
-from pyMoist.convection_tracers import CONVECTION_TRACER_DIM
 from pyMoist.convection.GF_2020.cumulus_parameterization.convective_tracers import AtmosphericComposition, ColdPoolParameterization
 from pyMoist.convection.GF_2020.cumulus_parameterization.diurnal_cycle import DiurnalCycle
 from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft import (
@@ -76,7 +75,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.updraft import (
     updraft_temperature,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.vertical_discretization import VerticalDiscretization
-from pyMoist.convection_tracers import ConvectionTracers
+from pyMoist.convection_tracers import CONVECTION_TRACER_DIM, ConvectionTracers
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 
 

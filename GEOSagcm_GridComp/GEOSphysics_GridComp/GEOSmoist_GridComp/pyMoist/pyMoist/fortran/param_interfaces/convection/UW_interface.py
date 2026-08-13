@@ -1,19 +1,19 @@
 from MAPL_PythonBridge import UserCode, get_MAPLPy
 from MAPL_PythonBridge.types import CVoidPointer
 from mpi4py import MPI
+from ndsl.dsl.gt4py import IJ, IJK
 from ndsl.dsl.typing import Float, Int
+from ndsl.quantity.data_dimensions_field import DataDimensionsField
 from ndsl.utils import safe_assign_array
 
 from pyMoist.convection.UW import ComputeUwshcuInv, UWConfiguration, UWState
+from pyMoist.convection_tracers import CONVECTION_TRACER_DIM, FloatField_ConvectionTracers, FloatFieldIJ_ConvectionTracers
 from pyMoist.fortran import get_NDSL_physics
 from pyMoist.fortran.build_helper import StencilBackendCompilerOverride
 from pyMoist.fortran.cuda_profiler import TimedCUDAProfiler
 from pyMoist.fortran.managed_state import MAPLManagedState
 from pyMoist.fortran.memory_factory import MAPLMemoryRepository
 from pyMoist.fortran.moist_workarounds import MOIST_WORKAROUNDS
-from pyMoist.convection_tracers import CONVECTION_TRACER_DIM, FloatField_ConvectionTracers, FloatFieldIJ_ConvectionTracers
-from ndsl.dsl.gt4py import IJ, IJK
-from ndsl.quantity.data_dimensions_field import DataDimensionsField
 
 
 class UWGEOSInterface(UserCode):
@@ -91,7 +91,7 @@ class UWGEOSInterface(UserCode):
         if CONVECTION_TRACER_DIM not in ndsl_stack.quantity_factory.sizer.data_dimensions:
             ndsl_stack.quantity_factory.add_data_dimensions({CONVECTION_TRACER_DIM: MOIST_WORKAROUNDS.CNV_Tracers().Q[:].shape[-1]})
         elif ndsl_stack.quantity_factory.sizer.data_dimensions[CONVECTION_TRACER_DIM] != MOIST_WORKAROUNDS.CNV_Tracers().Q[:].shape[-1]:
-            raise ValueError(f"Convection tracer count has been modified since initialization timesteps. If this is intentional, you must re-initialize the NDSL stack.")
+            raise ValueError("Convection tracer count has been modified since initialization timesteps. If this is intentional, you must re-initialize the NDSL stack.")
 
         # register the field types (declard in convection_tracers.py) with the correct ddim size
         if not DataDimensionsField.exists("FloatFieldIJ_ConvectionTracers"):
@@ -100,7 +100,8 @@ class UWGEOSInterface(UserCode):
             DataDimensionsField.register(FloatField_ConvectionTracers, ndsl_stack.quantity_factory, [CONVECTION_TRACER_DIM], axes=IJK, dtype=Float)
 
         if self._managed_state is None:
-            self.config.NCNST = NUMBER_CONVECTION_TRACERS
+            assert self.config
+            self.config.NCNST = NUMBER_CONVECTION_TRACERS  # type: ignore[unreachable]
             # Initialize NDSL state
             self._managed_state = MAPLManagedState(
                 UWState.empty(
@@ -110,6 +111,7 @@ class UWGEOSInterface(UserCode):
                 ndsl_stack.interface_type,
             )
 
+        assert self._managed_state  # type: ignore[unreachable]
         self._managed_state.register_K_interface("input.PLE", "PLE", import_repository)
         self._managed_state.register_K_interface("input.ZLE", "ZLE", import_repository)
         self._managed_state.register_2D("input.AREA", "AREA", import_repository)
@@ -198,7 +200,8 @@ class UWGEOSInterface(UserCode):
                 self._managed_state.ndsl_to_fortran()
 
     def finalize(self, mapl_state, import_state, export_state) -> None:
-        self._managed_state.save_recorded()
+        assert self._managed_state
+        self._managed_state.save_recorded()  # type: ignore[unreachable]
 
 
 CODE = UWGEOSInterface("UW")

@@ -3,6 +3,7 @@ from ndsl.dsl.typing import Float, Int
 
 from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES
 
+
 # NOTE must cast to int because numpy types are not acceptable for data dimensions
 # plume field types
 IntFieldIJ_Plume = Field[IJ, (Int, int(NUMBER_OF_PLUMES))]

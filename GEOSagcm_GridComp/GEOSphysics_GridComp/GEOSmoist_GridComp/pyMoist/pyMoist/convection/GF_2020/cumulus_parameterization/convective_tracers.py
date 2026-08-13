@@ -2,29 +2,26 @@ from ndsl import Local, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, computation, exp, interval
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
-from pyMoist.convection_tracers import CONVECTION_TRACER_DIM
 
 import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
-    FloatField_Plume,
-    FloatFieldIJ_Plume,
-    IntFieldIJ_Plume,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, FloatFieldIJ_Plume, IntFieldIJ_Plume
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import get_cloud_boundary_conditions
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import tridiag
 from pyMoist.convection_tracers import (
+    CONVECTION_TRACER_DIM,
+    ConvectionTracerMetaDataTable_Bool,
+    ConvectionTracerMetaDataTable_Float,
+    ConvectionTracerMetaDataTable_x4,
     ConvectionTracers,
     FloatField_ConvectionTracers,
     FloatField_ConvectionTracers_Plume,
     FloatFieldIJ_ConvectionTracers,
-    ConvectionTracerMetaDataTable_Bool,
-    ConvectionTracerMetaDataTable_Float,
-    ConvectionTracerMetaDataTable_x4,
 )
+
 
 # from pyMoist.field_types import ConvectionTracerMetaDataTable_Bool, ConvectionTracerMetaDataTable_Float, ConvectionTracerMetaDataTable_x4
 

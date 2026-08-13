@@ -4,23 +4,25 @@ from MAPL_PythonBridge import UserCode, get_MAPLPy
 from MAPL_PythonBridge.types import CVoidPointer
 from mpi4py import MPI
 from ndsl.constants import I_DIM, J_DIM, K_INTERFACE_DIM
-from ndsl.dsl.typing import Float, Int
-from ndsl.utils import safe_assign_array
 from ndsl.dsl.gt4py import IJ, IJK
+from ndsl.dsl.typing import Float, Int
+from ndsl.quantity.data_dimensions_field import DataDimensionsField
+from ndsl.utils import safe_assign_array
 
 from pyMoist.convection.GF_2020 import GF2020, GF2020Config, GF2020CumulusParameterizationConfig, GF2020State
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import NUMBER_OF_PLUMES
 from pyMoist.convection_tracers import (
-    ConvectionTracers,
     CONVECTION_TRACER_DIM,
-    SIZE_THREE_DIM,
     SIZE_FOUR_DIM,
-    FloatFieldIJ_ConvectionTracers,
-    FloatField_ConvectionTracers,
-    FloatField_ConvectionTracers_Plume,
-    ConvectionTracerMetaDataTable_Float,
+    SIZE_THREE_DIM,
     ConvectionTracerMetaDataTable_Bool,
+    ConvectionTracerMetaDataTable_Float,
     ConvectionTracerMetaDataTable_x3,
     ConvectionTracerMetaDataTable_x4,
+    ConvectionTracers,
+    FloatField_ConvectionTracers,
+    FloatField_ConvectionTracers_Plume,
+    FloatFieldIJ_ConvectionTracers,
 )
 from pyMoist.fortran import get_NDSL_physics
 from pyMoist.fortran.build_helper import StencilBackendCompilerOverride
@@ -29,8 +31,6 @@ from pyMoist.fortran.managed_state import MAPLManagedState
 from pyMoist.fortran.memory_factory import MAPLMemoryRepository
 from pyMoist.fortran.moist_workarounds import MOIST_WORKAROUNDS
 from pyMoist.saturation_tables import SaturationVaporPressureTable
-from ndsl.quantity.data_dimensions_field import DataDimensionsField
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import NUMBER_OF_PLUMES
 
 
 def _default_or_get_from_namelist(default, name_in_namelist: str, namelist: dict[str, Any]) -> Any:
@@ -150,7 +150,7 @@ class GF2020Interface(UserCode):
             SCLM_DEEP=Float(maplpy.get_resource("SCLM_DEEP:", mapl_state, default=Float(1.0))),
             FIX_CONVECTIVE_CLOUD=maplpy.get_resource("FIX_CNV_CLOUD:", mapl_state, default=False),
             APPLY_SUBSIDENCE_MICROPHYSICS=Int(maplpy.get_resource("APPLY_SUB_MP:", mapl_state, default=Int(0))),
-            NUMBER_OF_TRACERS=0, # will be updated during first run call, once tracer packet is built in fortran
+            NUMBER_OF_TRACERS=0,  # will be updated during first run call, once tracer packet is built in fortran
             USE_MOMENTUM_TRANSPORT=Int(maplpy.get_resource("USE_MOMENTUM_TRANSP:", mapl_state, default=Int(1))),
         )
 
@@ -276,7 +276,7 @@ class GF2020Interface(UserCode):
         if CONVECTION_TRACER_DIM not in ndsl_stack.quantity_factory.sizer.data_dimensions:
             ndsl_stack.quantity_factory.add_data_dimensions({CONVECTION_TRACER_DIM: NUMBER_CONVECTION_TRACERS})
         elif ndsl_stack.quantity_factory.sizer.data_dimensions[CONVECTION_TRACER_DIM] != NUMBER_CONVECTION_TRACERS:
-            raise ValueError(f"Convection tracer count has been modified since initialization timesteps. If this is intentional, you must re-initialize the NDSL stack.")
+            raise ValueError("Convection tracer count has been modified since initialization timesteps. If this is intentional, you must re-initialize the NDSL stack.")
 
         if "plumes" not in ndsl_stack.quantity_factory.sizer.data_dimensions:
             # NOTE data dimensions must be defined with a default python int type (non-ndsl/numpy type). Using NDSL types causes an explosion during stencil compilation.
@@ -491,7 +491,9 @@ class GF2020Interface(UserCode):
                 ndsl_stack.interface_type,
             )
 
-        with TimedCUDAProfiler("GF 2020 Convection", {}):
+        assert self._managed_convection_tracers
+
+        with TimedCUDAProfiler("GF 2020 Convection", {}):  # type: ignore[unreachable]
             with TimedCUDAProfiler("GF 2020 Convection - State copy", {}):
                 self._managed_state.fortran_to_ndsl()
                 safe_assign_array(

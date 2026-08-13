@@ -6,11 +6,7 @@ from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, IntFieldIJ
 import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
-    FloatField_Plume,
-    FloatFieldIJ_Plume,
-    IntFieldIJ_Plume,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, FloatFieldIJ_Plume, IntFieldIJ_Plume
 from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 from pyMoist.convection.GF_2020.locals import GF2020Locals
 from pyMoist.convection.GF_2020.state import GF2020State
@@ -1065,7 +1061,7 @@ def prepare_cumulus_paramaterization_state(
         t_excess (FloatFieldIJ)
         vapor_excess (FloatFieldIJ)
     """
-    from __externals__ import APPLY_SUBSIDENCE_MICROPHYSICS, AUTOCONV, DT_MOIST, USE_TRACER_TRANSPORT, NUMBER_OF_TRACERS, k_end
+    from __externals__ import APPLY_SUBSIDENCE_MICROPHYSICS, AUTOCONV, DT_MOIST, NUMBER_OF_TRACERS, USE_TRACER_TRANSPORT, k_end
 
     with computation(FORWARD), interval(0, 1):
         if AUTOCONV == 2:

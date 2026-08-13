@@ -4,9 +4,9 @@ from ndsl.dsl.gt4py import log, sqrt
 from ndsl.dsl.typing import Float, FloatField, Int
 
 import pyMoist.constants as constants
-from pyMoist.convection_tracers import FloatField_ConvectionTracers
 from pyMoist.saturation_tables import GlobalTable_saturation_tables, saturation_specific_humidity
 from pyMoist.shared.incloud_processes import ice_fraction
+
 
 P00 = Float(1e5)  # Reference pressure
 zvir = Float(0.609)  # r_H2O/r_air-1

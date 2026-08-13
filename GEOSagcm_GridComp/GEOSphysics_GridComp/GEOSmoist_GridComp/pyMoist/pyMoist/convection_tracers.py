@@ -5,6 +5,7 @@ from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.typing import Bool, Float
 from ndsl.quantity.data_dimensions_field import DataDimensionsField
 
+
 # dimension names for convection tracers
 CONVECTION_TRACER_DIM = "convection_tracers"
 SIZE_THREE_DIM = "size_three_dimension"

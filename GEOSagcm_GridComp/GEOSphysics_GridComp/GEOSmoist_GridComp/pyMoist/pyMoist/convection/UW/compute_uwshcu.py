@@ -24,9 +24,9 @@ from pyMoist.convection.UW.uwshcu_functions import (
     slope_mid_tracer,
     zvir,
 )
+from pyMoist.convection_tracers import FloatField_ConvectionTracers, FloatFieldIJ_ConvectionTracers
 from pyMoist.saturation_tables import GlobalTable_saturation_tables, SaturationFormulation, get_saturation_vapor_pressure_table, saturation_specific_humidity
 from pyMoist.shared.atmos_recipes import sigma
-from pyMoist.convection_tracers import FloatField_ConvectionTracers, FloatFieldIJ_ConvectionTracers
 
 
 def setup_inputs(

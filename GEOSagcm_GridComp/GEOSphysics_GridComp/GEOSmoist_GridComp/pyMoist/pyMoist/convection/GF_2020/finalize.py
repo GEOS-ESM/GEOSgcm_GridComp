@@ -8,11 +8,7 @@ import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
-    FloatField_Plume,
-    FloatFieldIJ_Plume,
-    IntFieldIJ_Plume,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, FloatFieldIJ_Plume, IntFieldIJ_Plume
 from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 from pyMoist.convection.GF_2020.locals import GF2020Locals
 from pyMoist.convection.GF_2020.state import GF2020State
@@ -395,7 +391,7 @@ def feed_3d_model(
         dconvection_tracersdt (FloatField_ConvectionTracers)
         convection_tracers (FloatField_ConvectionTracers)
     """
-    from __externals__ import DT_MOIST, USE_TRACER_TRANSPORT, k_end, NUMBER_OF_TRACERS
+    from __externals__ import DT_MOIST, NUMBER_OF_TRACERS, USE_TRACER_TRANSPORT, k_end
 
     with computation(FORWARD), interval(0, 1):
         if cumulus_parameterization_constants.FEED_3D_MODEL and do_this_column != 0:
