@@ -345,8 +345,7 @@ contains
          prandtlrad,     &
          beta_surf,      &
          beta_rad,       &
-         tpfac_min,      &
-         tpfac_max,      &
+         tpfac,          &
          entrate_sfc,    &
          pceff_sfc,      &
          vscale_sfc,     &
@@ -470,7 +469,7 @@ contains
 
       logical, value,  intent(in) :: use_eis
       real,    value,  intent(in) :: prandtlsfc,prandtlrad,beta_surf,beta_rad
-      real,    value,  intent(in) :: khradfac,tpfac_min,tpfac_max,entrate_sfc,vscale_sfc
+      real,    value,  intent(in) :: khradfac,tpfac,entrate_sfc,vscale_sfc
       real,    value,  intent(in) :: pceff_sfc,khsfcfac_lnd,khsfcfac_ocn
 
       real,    device, intent(in),    dimension(icol,jcol,nlev)      :: tdtlw_in       
@@ -503,7 +502,7 @@ contains
 
       logical, intent(in) :: use_eis
       real,    intent(in) :: prandtlsfc,prandtlrad,beta_surf,beta_rad
-      real,    intent(in) :: khradfac,tpfac_min,tpfac_max,entrate_sfc, vscale_sfc
+      real,    intent(in) :: khradfac,tpfac,entrate_sfc, vscale_sfc
       real,    intent(in) :: pceff_sfc,khsfcfac_lnd,khsfcfac_ocn
 
       real, pointer, dimension(:,:) :: wentr_rad_diag, wentr_sfc_diag ,del_buoy_diag
@@ -719,8 +718,7 @@ contains
 ! through phase changes to find parcel top
 
             call mpbl_depth(i,j,icol,jcol,nlev,&
-                  tpfac_min,        &
-                  tpfac_max,        &
+                  tpfac,            &
                   entrate_sfc,      &
                   pceff_sfc,        &
                   vscale_sfc,       & 
@@ -1240,7 +1238,7 @@ contains
 #ifdef _CUDA
    attributes(device) &
 #endif
-   subroutine mpbl_depth(i,j,icol,jcol,nlev, tpfac_min, tpfac_max, entrate, pceff, vscale, &
+   subroutine mpbl_depth(i,j,icol,jcol,nlev, tpfac, entrate, pceff, vscale, &
                          t, q, u, v, z, p, frland, b_star, u_star, evap, sh, ipbl, ztop, use_eis)
 
 !
@@ -1270,14 +1268,14 @@ contains
       integer, intent(in   )                            :: i, j, nlev, icol, jcol
       real,    intent(in   ), dimension(icol,jcol,nlev) :: t, z, q, p, u, v
       real,    intent(in   ), dimension(icol,jcol)      :: frland, b_star, u_star, evap, sh
-      real,    intent(in   )                            :: tpfac_min, tpfac_max, entrate, pceff, vscale
+      real,    intent(in   )                            :: tpfac, entrate, pceff, vscale
       integer, intent(  out)                            :: ipbl
       real,    intent(  out),dimension(icol,jcol)       :: ztop
       logical, intent(in   )                            :: use_eis
 
 
       real     :: lts_min,lts_max,lts_fac
-      real     :: tpfac,tep,z1,z2,t1,t2,qp,pp,qsp,dqp,dqsp,u1,v1,u2,v2,du
+      real     :: tep,z1,z2,t1,t2,qp,pp,qsp,dqp,dqsp,u1,v1,u2,v2,du
       real     :: entfr,entrate_x,lts,zrho,buoyflx,delzg,wstar
       integer  :: k
 
@@ -1320,7 +1318,7 @@ contains
 
 !calculate surface parcel properties
 
-      if (tpfac_max == 0) then
+      if (tpfac == 0) then
         zrho = p(i,j,nlev)/(MAPL_RDRY*(t(i,j,nlev)*(1.+MAPL_VIREPS*q(i,j,nlev))))
         buoyflx = (sh(i,j)/MAPL_CP+MAPL_VIREPS*t(i,j,nlev)*evap(i,j))/zrho ! K m s-1
         delzg = 50.0*MAPL_GRAV   ! assume 50m surface scale
@@ -1336,8 +1334,6 @@ contains
       else
         ! tpfac scales up bstar by inv. ratio of
         ! heat-bubble area to stagnant area
-        ! Linear interpolation for TPFAC based on LTS
-        tpfac = TPFAC_MIN*(1.0-LTS_FAC) + TPFAC_MAX*LTS_FAC
         tep  = (t(i,j,nlev) + 0.4) * (1.+ min(0.01,tpfac * b_star(i,j)/MAPL_GRAV))
         qp   = q(i,j,nlev)
       end if
@@ -1355,7 +1351,7 @@ contains
          pp = p(i,j,k)
 
          du = sqrt ( ( u2 - u1 )**2 + ( v2 - v1 )**2 ) / (z2-z1)
-         if (tpfac_max /= tpfac_min) then
+         if (tpfac == 0.0) then
             ! Prevent negative/zero shear, but allow real shear (e.g., 0.01 to 0.1 s-1)
             du = max(du, 1.0e-8) 
             ! Optional: If we need to cap extreme shear

@@ -2998,7 +2998,7 @@ end if
      real                                :: AKHMMAX
      real                                :: C_B, LAMBDA_B
      logical                             :: USE_EIS
-     real                                :: PRANDTLSFC,PRANDTLRAD,BETA_RAD,BETA_SURF,KHRADFAC,TPFAC_MIN,TPFAC_MAX,ENTRATE_SURF
+     real                                :: PRANDTLSFC,PRANDTLRAD,BETA_RAD,BETA_SURF,KHRADFAC,TPFAC,ENTRATE_SURF
      real                                :: PCEFF_SURF, VSCALE_SURF, KHSFCFAC_LND, KHSFCFAC_OCN
 
      real                                :: SMTH_HGT
@@ -3087,7 +3087,7 @@ end if
      real(kind=MAPL_R8), dimension(IM,JM,LM) :: AKX, BKX
      real, dimension(IM,JM,LM) :: DZ, DTM, TM
 
-     logical :: JASON_TRB, JASON_BELJAARS, JASON_LOUIS, JASON_LOCK
+     logical :: JASON_BELJAARS, JASON_LOUIS, JASON_LOCK, JASON_PBL_SC
      real(kind=MAPL_R8), dimension(IM,JM,LM) :: AERTOT
      real, dimension(:,:,:), pointer     :: S
      integer :: NTR, K, LTOP, LMAX
@@ -3137,14 +3137,15 @@ end if
 
 ! Get turbulence parameters from configuration
 !---------------------------------------------
-     call MAPL_GetResource (MAPL, JASON_TRB, "JASON_TRB:", default=.FALSE.,  RC=STATUS); VERIFY_(STATUS)
-     if ( (LM .eq. 72) .OR. (JASON_TRB) ) then
+     if (LM .eq. 72) then
+       call MAPL_GetResource (MAPL, JASON_PBL_SC  , "JASON_PBL_SC:"  , default=.TRUE.,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, JASON_BELJAARS, "JASON_BELJAARS:", default=.TRUE.,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, JASON_LOUIS   , "JASON_LOUIS:"   , default=.TRUE.,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, JASON_LOCK    , "JASON_LOCK:"    , default=.TRUE.,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PBLHT_OPTION  , trim(COMP_NAME)//"_PBLHT_OPTION:", default=4,      RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SMTH_HGT      , trim(COMP_NAME)//"_SMTH_HGT:",     default=0.0,    RC=STATUS); VERIFY_(STATUS)
      else
+       call MAPL_GetResource (MAPL, JASON_PBL_SC  , "JASON_PBL_SC:"  , default=.FALSE.,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, JASON_BELJAARS, "JASON_BELJAARS:", default=.FALSE.,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, JASON_LOUIS   , "JASON_LOUIS:"   , default=.FALSE.,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, JASON_LOCK    , "JASON_LOCK:"    , default=.FALSE.,  RC=STATUS); VERIFY_(STATUS)
@@ -3209,24 +3210,22 @@ end if
        call MAPL_GetResource (MAPL, BETA_RAD,     trim(COMP_NAME)//"_BETA_RAD:",     default=0.20,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, BETA_SURF,    trim(COMP_NAME)//"_BETA_SURF:",    default=0.25,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.5e-3, RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, TPFAC_MIN,    trim(COMP_NAME)//"_TPFAC_MIN:",    default=20.0,   RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, TPFAC_MAX,    trim(COMP_NAME)//"_TPFAC_MAX:",    default=20.0,   RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, TPFAC,        trim(COMP_NAME)//"_TPFAC:",        default=20.0,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.5,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LOCK_ON,      trim(COMP_NAME)//"_LOCK_ON:",      default=1,      RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, VSCALE_SURF,  trim(COMP_NAME)//"_VSCALE_SURF:",  default=2.5e-3, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, USE_EIS,      trim(COMP_NAME)//"_USE_EIS:",      default=.false.,RC=STATUS); VERIFY_(STATUS)
      else
        call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=15.,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=0.8,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=0.85,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PRANDTLSFC,   trim(COMP_NAME)//"_PRANDTLSFC:",   default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PRANDTLRAD,   trim(COMP_NAME)//"_PRANDTLRAD:",   default=0.75,   RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, BETA_RAD,     trim(COMP_NAME)//"_BETA_RAD:",     default=0.15,   RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, BETA_SURF,    trim(COMP_NAME)//"_BETA_SURF:",    default=0.10,   RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, BETA_RAD,     trim(COMP_NAME)//"_BETA_RAD:",     default=0.20,   RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, BETA_SURF,    trim(COMP_NAME)//"_BETA_SURF:",    default=0.25,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.5e-3, RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, TPFAC_MIN,    trim(COMP_NAME)//"_TPFAC_MIN:",    default=10.0,   RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, TPFAC_MAX,    trim(COMP_NAME)//"_TPFAC_MAX:",    default=20.0,   RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, TPFAC,        trim(COMP_NAME)//"_TPFAC:",        default=0.0,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.375,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LOCK_ON,      trim(COMP_NAME)//"_LOCK_ON:",      default=1,      RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, VSCALE_SURF,  trim(COMP_NAME)//"_VSCALE_SURF:",  default=2.5e-3, RC=STATUS); VERIFY_(STATUS)
@@ -4200,7 +4199,7 @@ end if
                                       USE_EIS, &
                                       PRANDTLSFC, PRANDTLRAD,   &
                                       BETA_SURF, BETA_RAD,      &
-                                      TPFAC_MIN, TPFAC_MAX, ENTRATE_SURF, &
+                                      TPFAC, ENTRATE_SURF, &
                                       PCEFF_SURF, VSCALE_SURF, KHRADFAC, KHSFCFAC_LND, KHSFCFAC_OCN )
 
 
@@ -4406,7 +4405,7 @@ end if
                       USE_EIS,                  &
                       PRANDTLSFC, PRANDTLRAD,   &
                       BETA_SURF, BETA_RAD,      &
-                      TPFAC_MIN, TPFAC_MAX, ENTRATE_SURF, &
+                      TPFAC, ENTRATE_SURF, &
                       PCEFF_SURF, VSCALE_SURF, KHRADFAC, KHSFCFAC_LND, KHSFCFAC_OCN )
 
 #endif
@@ -4826,7 +4825,7 @@ end if
             else
               temparray(1:LM+1) = KH(I,J,0:LM)
             endif
-            if ( (LM .eq. 72) .OR. (JASON_TRB) ) then
+            if ( JASON_PBL_SC ) then
                 maxkh = maxval(temparray)
                 kh_thresh = 0.1
                 do L=LM-1,2,-1
