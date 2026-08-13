@@ -59,7 +59,7 @@ module GEOS_RouteGridCompMod
      integer, allocatable :: send_count(:), displ_send(:)
      integer, allocatable :: recv_count(:), displ_recv(:)
 
-     integer, allocatable :: global_src(:), global_dis(:)
+     integer, allocatable :: global_src(:), global_dst(:), local_id(:)
 
      integer              :: total_send,    total_recv
   end type T_RROUTE_STATE
@@ -646,7 +646,8 @@ contains
       route%field     = ESMF_FieldCreate(grid=pfaf_tilegrid, typekind=ESMF_TYPEKIND_R8, _RC)    
 
       call MAPL_LocstreamGet(LOCSTREAM, GRIDNAMES=GNAMES, pfaf_index=pfaf_index, tilearea=tilearea, local_id=local_id, local_i=local_i, local_j=local_j, _RC)
-
+      allocate(route%local_id(route%nt_local))
+      route%local_id = local_id
 
      ! ESMF use global indices increasing with mpi_rank, no mask here for tile grid 
       allocate(global_id(route%nt_global))
@@ -1181,13 +1182,14 @@ contains
           do i=1,nt_global
              pfaf_id = route%global_dst(i)
              _ASSERT(1<=pfaf_id .and. pfaf_id<=N_pfaf_g, "pfaf id is out of range")
-             if(downid_global(pfafid)==-1)then
+             if(downid_global(pfaf_id)==-1)then
                 tile_id = route%global_src(i)
+                _ASSERT(1<=tile_id .and. tile_id<=nt_global, "tile id is out of range")
                 ! Convert units [m3 s-1] --> [kg m-2 s-1].
                 QCAT_tile_global(tile_id) = QCAT_global(pfaf_id) * 1.e3 / route%areacat(pfaf_id)
              endif
           enddo
-          DISTER(1:nt_local) = QCAT_tile_global( local_id(1:nt_local) )
+          DISTER(1:nt_local) = QCAT_tile_global( route%local_id(1:nt_local) )
           deallocate(QCAT_global,downid_global,QCAT_tile_global)          
        endif
        
