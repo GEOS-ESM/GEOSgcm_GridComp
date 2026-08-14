@@ -33,7 +33,7 @@ PROGRAM mkEASETilesParam
   use rmTinyCatchParaMod,    only : i_raster, j_raster 
   use rmTinyCatchParaMod,    only : RegridRasterReal     
   use rmTinyCatchParaMod,    only : Target_mean_land_elev
-  use rmTinyCatchParaMod,    only : LakeTopoCat_on_tiles_from_raster, AppendLakeTypeToTileNC4
+  use rmTinyCatchParaMod,    only : LakeTopoCat_on_tiles_from_raster
   use process_hres_data,     only : histogram
   use LogRectRasterizeMod,   only : SRTM_maxcat, MAPL_UNDEF_R8   ! rasterize.F90
   use MAPL_SortMod
@@ -976,18 +976,13 @@ PROGRAM mkEASETilesParam
   close(10,status='keep')      
   close(11,status='keep')
   
-  ! write nc4-formatted tile file (including supplemental tile attributes ["catchment.def"])
-
-  call MAPL_WriteTilingNC4('til/'//trim(gfile)//'.nc4', [EASELabel],[nc_ease],[nr_ease], &
-       nc, nr, iTable, rTable)
-
   ! GEOS lake tiles include coastal ocean surfaces such as fjords and estuaries
   !
   ! To distinguish between these surfaces and "real" lakes (inland water), add
   ! a tile-space flag (field) to the nc4 tile file with information based on LakeTopoCat v1.1 data.
   !  
   ! LakeTopoCat / ReachTopoCat:
-  ! compute encoded LakeType in tile space and append to nc4 tile file.
+  ! compute encoded LakeType in tile space before writing the nc4 tile file.
   !
   ! tile_lake_type:
   !   -9999 = UNDEF / excluded, e.g. typ==100
@@ -1004,8 +999,13 @@ PROGRAM mkEASETilesParam
   call LakeTopoCat_on_tiles_from_raster(n_landlakelandice, nc, nr, tileid_index, &
        iTable(1:n_landlakelandice,0), tile_lake_type, rc_lake)
   
-  if (rc_lake == 0) call AppendLakeTypeToTileNC4( &
-       'til/'//trim(gfile)//'.nc4', n_landlakelandice, tile_lake_type)
+  if (rc_lake == 0) then
+      call MAPL_WriteTilingNC4('til/'//trim(gfile)//'.nc4', [EASELabel], [nc_ease], [nr_ease], &
+           nc, nr, iTable, rTable, LakeType=tile_lake_type)
+  else
+      call MAPL_WriteTilingNC4('til/'//trim(gfile)//'.nc4', [EASELabel], [nc_ease], [nr_ease], &
+           nc, nr, iTable, rTable)
+  endif
   
   deallocate(tile_lake_type)
 
@@ -1132,4 +1132,3 @@ PROGRAM mkEASETilesParam
   
   
 END PROGRAM mkEASETilesParam
-
