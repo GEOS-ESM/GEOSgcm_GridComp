@@ -59,6 +59,7 @@ USE GEOSmoist_Process_Library, only : CNV_Tracers
  REAL    ::  C0_DEEP          = 2.e-3 != default= 3.e-3   conversion rate (cloud to rain, m-1) - for deep      plume
  REAL    ::  C0_MID           = 2.e-3 != default= 2.e-3   conversion rate (cloud to rain, m-1) - for congestus plume
  REAL    ::  C0_SHAL          = 0.    != default= 0.e-3   conversion rate (cloud to rain, m-1) - for shallow   plume
+ REAL    ::  C0_ICE_EFF       = 0.25  !=                  Ice Precipitation Efficiency Multiplier [fraction]
  REAL    ::  QRC_CRIT         = 2.e-4 != default= 2.e-4   kg/kg
  REAL    ::  QRC_CRIT_LND     = 3.e-4 != default= 2.e-4   kg/kg
  REAL    ::  QRC_CRIT_OCN     = 3.e-4 != default= 2.e-4   kg/kg

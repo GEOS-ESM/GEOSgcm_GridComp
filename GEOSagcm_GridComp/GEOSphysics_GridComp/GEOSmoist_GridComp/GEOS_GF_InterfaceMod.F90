@@ -182,25 +182,37 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
       call MAPL_GetResource(MAPL, USE_MOMENTUM_TRANSP       , 'USE_MOMENTUM_TRANSP:'   ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, DICYCLE                   , 'DICYCLE:'               ,default= 1,    RC=STATUS );VERIFY_(STATUS)
 
+      ! -----------------------------------------------------------------------------------------
+      ! GRELL-FREITAS ENTRAINMENT, MICROPHYSICS & DETRAINMENT CONTROLS
+      ! -----------------------------------------------------------------------------------------
+
+
+      ! ENTRAINMENT / PLUME DILUTION RATES [m^-1]
+      ! Controls the fractional rate at which dry environmental air is mixed into the updraft.
+      ! Entrainment acts as the primary thermodynamic brake on convective growth. Higher values 
+      ! dilute the plume's latent heat, reduce buoyancy, and force the cloud to terminate at 
+      ! lower altitudes. 
+      !   - MIN_ENTR_RATE : Absolute physical floor to prevent unphysical adiabatic ascent.
+      !   - ENTR_DP : Low rate; allows deep, wide plumes to punch through to the tropopause.
+      !   - ENTR_MD : Moderate rate; forces congestus clouds to terminate in the mid-troposphere.
+      !   - ENTR_SH : High rate; ensures shallow boundary-layer clouds dilute and mix out rapidly.
       if (INT(ZERO_DIFF_ENTR) == 0) then
         call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 0.1e-4,RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 0.5e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 0.6e-4,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)        , 'ENTR_MD:'               ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)       , 'ENTR_SH:'               ,default= 6.0e-4,RC=STATUS );VERIFY_(STATUS)
       else
-        call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 0.1e-4,RC=STATUS );VERIFY_(STATUS)  
-        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 1.2e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 0.1e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 1.0e-4,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)        , 'ENTR_MD:'               ,default= 9.0e-4,RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)       , 'ENTR_SH:'               ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)       , 'ENTR_SH:'               ,default= 1.4e-3,RC=STATUS );VERIFY_(STATUS)
       endif
 
-      ! -----------------------------------------------------------------------------------------
-      ! GRELL-FREITAS MICROPHYSICS & DETRAINMENT CONTROLS
-      ! -----------------------------------------------------------------------------------------
-
       ! AUTOCONV: Toggles the convective autoconversion scheme.
+      !   1 = Classic phase-agnostic Kessler scheme (applies a constant autoconversion rate 
+      !       to all total condensate regardless of temperature or phase).
       !   2 = Kessler scheme with temperature dependence (uses Hu et al. phase partitioning
-      !       to shut off liquid rain production in glaciated sub-freezing updrafts).
+      !       to scale efficiency and protect ice in glaciated sub-freezing updrafts).
       call MAPL_GetResource(MAPL, AUTOCONV                  , 'AUTOCONV:'              ,default= 2,     RC=STATUS );VERIFY_(STATUS)
 
       ! C0_*: Internal Core Precipitation Efficiency [m^-1].
@@ -209,26 +221,31 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
       !   Increasing C0 wrings out the plume internally, resulting in thinner, drier anvils aloft.
       !   Decreasing C0 allows the plume to transport more mass to the upper troposphere.
       call MAPL_GetResource(MAPL, C0_DEEP                   , 'C0_DEEP:'               ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, C0_MID                    , 'C0_MID:'                ,default= 0.5e-3,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, C0_MID                    , 'C0_MID:'                ,default= 1.5e-3,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, C0_SHAL                   , 'C0_SHAL:'               ,default= 0.0   ,RC=STATUS );VERIFY_(STATUS)
+
+      ! C0_ICE_EFF: Ice Precipitation Efficiency Multiplier [fraction].
+      !   Scales the base C0 autoconversion rate for the ice phase in AUTOCONV=2. 
+      !   Decreasing this value protects upper-level ice from precipitating internally, 
+      !   forcing it to detrain into the grid and build thicker cirrus anvils (increases TQI).
+      call MAPL_GetResource(MAPL, C0_ICE_EFF                , 'C0_ICE_EFF:'            ,default= 0.10  ,RC=STATUS );VERIFY_(STATUS)
 
       ! QRC_CRIT_*: Critical Cloud Liquid Water Threshold [kg/kg].
       !   The updraft must hold this much liquid before Kessler autoconversion is allowed to begin.
-      call MAPL_GetResource(MAPL, QRC_CRIT_OCN              , 'QRC_CRIT_OCN:'          ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, QRC_CRIT_OCN              , 'QRC_CRIT_OCN:'          ,default= 1.5e-4,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, QRC_CRIT_LND              , 'QRC_CRIT_LND:'          ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
 
       ! C1_*: Lateral Detrainment / Plume Shape Parameter [m^-1].
       !   Macro-physics knob. Completely decoupled from C0 internal microphysics.
-      !   Controls how much mass the plume dynamically sheds into the grid environment as it rises.
-      !   These values establish the baseline leakiness at cloud base, which scales vertically 
-      !   (e.g., doubling by cloud top) to mimic plumes spreading as they lose buoyancy.
-      !   - C1_DEEP : Low detrainment; keeps the deep chimney insulated to transport mass to ~250mb.
-      !   - C1_MID  : Moderate detrainment; allows congestus to battle dry mid-level air.
-      !   - C1_SHAL : High detrainment; forces shallow cumulus to mix heavily and terminate early.
-      call MAPL_GetResource(MAPL, C1_DEEP                   , 'C1_DEEP:'               ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, C1_MID                    , 'C1_MID:'                ,default= 1.5e-3,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, C1_SHAL                   , 'C1_SHAL:'               ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
-      ! -----------------------------------------------------------------------------------------
+      !   Controls the continuous fractional mass shed by the plume into the environment during ascent.
+      !   A value > 0.0 activates explicit lateral shedding. A value of 0.0 treats the plume 
+      !   as laterally closed, deferring entirely to the bulk detrainment logic.
+      !   - C1_DEEP : Low detrainment; insulates the core to efficiently transport mass to the upper troposphere.
+      !   - C1_MID  : Zero detrainment; maintains a closed plume laterally, retaining mass for internal precipitation.
+      !   - C1_SHAL : Zero detrainment; restricts shallow cumulus exclusively to bulk mass detrainment profiles.
+      call MAPL_GetResource(MAPL, C1_DEEP                   , 'C1_DEEP:'               ,default= 1.5e-4,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, C1_MID                    , 'C1_MID:'                ,default= 0.0   ,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, C1_SHAL                   , 'C1_SHAL:'               ,default= 0.0   ,RC=STATUS );VERIFY_(STATUS)
 
       if (INT(ZERO_DIFF_TAU) == 0) then
          call MAPL_GetResource(MAPL, GF_MIN_AREA               , 'GF_MIN_AREA:'           ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)

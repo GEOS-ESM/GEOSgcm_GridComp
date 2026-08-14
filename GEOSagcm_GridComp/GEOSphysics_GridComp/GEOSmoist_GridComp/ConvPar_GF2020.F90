@@ -136,7 +136,6 @@ MODULE ConvPar_GF2020
   LOGICAL, PARAMETER :: COUPL_MPHYSICS = .TRUE.  ! MUST be true: Couple w/ microphysics
   LOGICAL, PARAMETER :: MELT_GLAC      = .TRUE.  ! Turn ON/OFF ice phase/melting
   LOGICAL, PARAMETER :: FEED_3DMODEL   = .TRUE.  ! Send tendencies back to host model
-  LOGICAL            :: USE_C1D        = .TRUE.  ! 'c1d' detrainment approach flag
   LOGICAL            :: FIRST_GUESS_W  = .FALSE. ! 1st guess updraft vert velocity
 
   INTEGER, PARAMETER :: LIQ_ICE_NUMBER_CONC = 0
@@ -1345,7 +1344,7 @@ CONTAINS
   INTEGER :: iversion, bl=1, fa=2, step, start_k22, ipr=0, jpr=0, fase, i_wb=0, status, ispc, kmp, istep, lstep
 
   !- Local Reals (Scalars)
-  REAL :: day, dz, dzo, radius, entrd_rate, zktop
+  REAL :: day, dz, dzo, radius, entrd_rate, zktop, c0
   REAL :: z_cloud_top_min, z_cloud_top_max, zcutdown, depth_min, zkbmax, z_detr
   REAL :: massfld, dh, trash, p_scale_fac, p_weight, frh, rh_fac, z_fac, xlamdd, radiusd, frhd, effec_entrain
   REAL :: detdo1, detdo2, entdo, dp, subin, detdo, entup, detup, subdown, entdoj, entupk, detupk, totmas
@@ -1375,7 +1374,7 @@ CONTAINS
   ! --- Convection Physical Limits & Triggers
   SELECT CASE(trim(cumulus))
     CASE('deep')
-       z_cloud_top_min = 6000.  ! Must pass mid-level congestus layer (~500 hPa) before deep scheme takes over
+       z_cloud_top_min = 4500.  ! Must pass freezing level
        z_cloud_top_max = 18000. ! Tropopause bound
        depth_min       = 3000.  ! Needs deep instability
        zkbmax          = 3000.  ! Surface or low-level based
@@ -1385,6 +1384,8 @@ CONTAINS
        cap_max_inc  = MERGE(90.0, 20.0, MOIST_TRIGGER /= 0)
        lambau_dp(:) = lambau_deep
        lambau_dn(:) = lambau_shdn
+
+       c0 = c0_deep
 
     CASE('mid')
        z_cloud_top_min = 2000.  ! Mid-level cloud
@@ -1398,6 +1399,8 @@ CONTAINS
        lambau_dp(:) = lambau_mid
        lambau_dn(:) = lambau_shdn
 
+       c0 = c0_mid
+
     CASE('shallow')
        z_cloud_top_min =  500.  ! Just needs to clear the LCL
        z_cloud_top_max = 2500.  ! Capped by trade inversion
@@ -1410,6 +1413,8 @@ CONTAINS
        lambau_dp(:) = lambau_shdn
        lambau_dn(:) = lambau_shdn
 
+       c0 = c0_shal
+
     CASE DEFAULT
        ! Failsafe initialization
        z_cloud_top_min = 0.
@@ -1421,6 +1426,7 @@ CONTAINS
        cap_max_inc     = 20.0
        lambau_dp(:)    = 0.0
        lambau_dn(:)    = 0.0
+       c0              = 0.0
   END SELECT
 
   if(pgcon /= 0.) then
@@ -1954,22 +1960,20 @@ CONTAINS
   !-----------------------------------------------------------------------------
   ! 4.5 Updraft Microphysics & Vertical Velocity
   !-----------------------------------------------------------------------------
-  IF(USE_C1D) THEN
-      do i = its, itf
-         if(ierr(i) == 0) then
-            do k = kbcon(i)+1, ktop(i)-1
-               SELECT CASE(trim(cumulus))
-                 CASE('deep')
-                    c1d(i,k) = abs(C1_DEEP)
-                 CASE('mid')
-                    c1d(i,k) = abs(C1_MID)
-                 CASE('shallow')
-                    c1d(i,k) = abs(C1_SHAL)
-               END SELECT
-            enddo
-         endif
-      enddo
-  ENDIF
+  do i = its, itf
+     if(ierr(i) == 0) then
+        do k = kbcon(i)+1, ktop(i)-1
+           SELECT CASE(trim(cumulus))
+             CASE('deep')
+                c1d(i,k) = abs(C1_DEEP)
+             CASE('mid')
+                c1d(i,k) = abs(C1_MID)
+             CASE('shallow')
+                c1d(i,k) = abs(C1_SHAL)
+           END SELECT
+        enddo
+     endif
+  enddo
 
   IF(FIRST_GUESS_W .or. AUTOCONV == 4) THEN
      call cup_up_moisture_light(cumulus, start_level, klcl, ierr, ierrc, zo_cup, qco, qrco, pwo, pwavo, hco, tempco, xland, &
@@ -2523,15 +2527,14 @@ CONTAINS
                               +(zdo(i,k+1) * (-heo_cup(i,k+1)) - zdo(i,k) * (-heo_cup(i,k))) * g / dp * edto(i)
 
               detup = up_massdetro(i,k)
-              if(.not. USE_C1D .or. trim(cumulus) == 'shallow') then
-                 dellaqc(i,k) = detup * 0.5 * (qrco(i,k+1) + qrco(i,k)) * g / dp
+              ! cleaner refactor to remove logical and string if checks
+              if (c1d(i,k) > 0.0 .and. k < ktop(i)) then
+                 dz = zo_cup(i,k+1) - zo_cup(i,k)
+                 ! Pure explicit lateral shedding driven by C1_* 
+                 dellaqc(i,k) = zuo(i,k) * c1d(i,k) * qrco(i,k) * dz / dp * g
               else
-                 if(k == ktop(i)) then
-                    dellaqc(i,k) = detup * 0.5 * (qrco(i,k+1) + qrco(i,k)) * g / dp
-                 else
-                    dz = zo_cup(i,k+1) - zo_cup(i,k)
-                    dellaqc(i,k) = zuo(i,k) * c1d(i,k) * qrco(i,k) * dz / dp * g
-                 endif
+                 !    (This is always used at cloud top)
+                 dellaqc(i,k) = detup * 0.5 * (qrco(i,k+1) + qrco(i,k)) * g / dp
               endif
 
               G_rain =  0.5 * (pwo(i,k) + pwo(i,k+1)) * g / dp
@@ -2631,25 +2634,18 @@ CONTAINS
               dp = 100. * (po_cup(i,k) - po_cup(i,k+1))
               detup = up_massdetro(i,k)
               
-              ! 1. Calculate the standard organized mass detrainment
-              !    (This is always used at cloud top, or if USE_C1D is false)
-              dellaqc(i,k) = detup * 0.5 * (qrco(i,k+1) + qrco(i,k)) * g / dp
-
-              ! 2. Apply explicit lateral detrainment below cloud top if active
+              ! 1. Apply explicit lateral detrainment below cloud top if active
               !    (Now safely applies to deep, mid, and shallow based on the c1d array)
-              if (USE_C1D .and. k < ktop(i)) then
+              if (c1d(i,k) > 0.0 .and. k < ktop(i)) then
                  dz = zo_cup(i,k+1) - zo_cup(i,k)
-                 
-                 if (c1d(i,k) > 0.0) then
-                    ! Pure explicit lateral shedding driven by C1_*
-                    dellaqc(i,k) = zuo(i,k) * c1d(i,k) * qrco(i,k) * dz / dp * g
-                 else
-                    ! Legacy 50/50 blended formulation (used if C1_* <= 0.0)
-                    dellaqc(i,k) = 0.5 * ( (zuo(i,k) * c1d(i,k) * qrco(i,k) * dz / dp * g) + dellaqc(i,k) )
-                 endif
+                 ! Pure explicit lateral shedding driven by C1_*
+                 dellaqc(i,k) = zuo(i,k) * c1d(i,k) * qrco(i,k) * dz / dp * g
+              else
+                 !    (This is always used at cloud top)
+                 dellaqc(i,k) = detup * 0.5 * (qrco(i,k+1) + qrco(i,k)) * g / dp 
               endif
                        
-              ! 3. Calculate budget terms
+              ! 2. Calculate budget terms
               G_rain =  0.5 * (pwo(i,k) + pwo(i,k+1)) * g / dp
               E_dn   = -0.5 * (pwdo(i,k) + pwdo(i,k+1)) * g / dp * edto(i)
               C_up   = dellaqc(i,k) + (zuo(i,k+1) * qrco(i,k+1) - zuo(i,k) * qrco(i,k)) * g / dp + G_rain
@@ -2830,7 +2826,7 @@ CONTAINS
                  pr_ens(i,nens3) = pr_ens(i,nens3) + pwo(i,k) + edto(i) * pwdo(i,k)
               enddo
            enddo
-           if(pr_ens(i,7) < 1.e-6 .and. c0_mid > 0. .and. trim(cumulus) /= 'shallow') then
+           if(pr_ens(i,7) < 1.e-6 .and. c0 > 0.) then
               ierr(i) = 18
               ierrc(i) = "total normalized condensate too small"
               pr_ens(i,:) = 0.
@@ -4317,8 +4313,8 @@ CONTAINS
                 liq_frac = fract_liq_f(tempc(i,k), cnvfrc(i), srftype(i), gshift(i))
                 ice_frac = 1.0 - liq_frac
                 ! 2. Calculate effective autoconversion rate
-                !    Liquid uses 100% of c0. Ice uses a reduced efficiency (e.g., 20%).
-                c0_effective = (c0 * liq_frac) + (c0 * 0.20 * ice_frac)
+                !    Liquid uses 100% of c0. Ice uses a reduced efficiency (C0_ICE_EFF).
+                c0_effective = (c0 * liq_frac) + (c0 * C0_ICE_EFF * ice_frac)
                 ! 3. Calculate spatial conversion multiplier
                 cx0 = c0_effective * DZ
                 ! 4. Apply critical liquid threshold based on surface type

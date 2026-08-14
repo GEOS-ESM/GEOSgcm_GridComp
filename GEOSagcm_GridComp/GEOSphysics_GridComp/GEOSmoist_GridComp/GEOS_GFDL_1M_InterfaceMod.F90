@@ -339,20 +339,68 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
 
     call MAPL_GetResource( MAPL, SH_MD_DP        , 'SH_MD_DP:'        , DEFAULT= .TRUE., RC=STATUS); VERIFY_(STATUS)
 
-    ! critical relative humidity profiles
+    ! -----------------------------------------------------------------------------------------
+    ! MACROPHYSICS: CRITICAL RELATIVE HUMIDITY (RHCRIT) PROFILES
+    ! -----------------------------------------------------------------------------------------
+    ! Controls the grid-mean relative humidity threshold required for sub-grid cloud formation 
+    ! and maintenance. A higher RHCRIT assumes a highly homogeneous grid box (requiring near 
+    ! 100% RH to form clouds), while a lower RHCRIT assumes high sub-grid moisture variance.
+    ! The vertical profile transitions from a high, well-mixed boundary layer plateau to a 
+    ! lower free-troposphere floor, modulated by the Estimated Inversion Strength (EIS).
+    !
+    !   - TURNRHCRIT_SFC  : Height [m] of the boundary layer top. If <= 0.0, dynamically tracks 
+    !                       the prognostic PBL height (KPBLSC). If > 0.0, acts as a static height.
+    !   - MAX_RH_CRIT     : Absolute ceiling [fraction] applied near the surface (well-mixed BL).
+    !   - MIN_RH_UNSTABLE : Target RHCRIT at PBL top for unstable regimes (e.g., Trade Cumulus).
+    !   - MIN_RH_STABLE   : Target RHCRIT at PBL top for highly stable regimes (e.g., Stratocumulus).
+    !   - MIN_RH_CRIT     : Absolute floor [fraction] reached in the heterogeneous free troposphere.
+    !   - TURNRHCRIT_TOP  : Height [m] at which the profile fully relaxes to the MIN_RH_CRIT floor.
     call MAPL_GetResource( MAPL, TURNRHCRIT_SFC  , 'TURNRHCRIT_SFC:'  , DEFAULT= -1.   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MAX_RH_CRIT     , 'MAX_RH_CRIT:'     , DEFAULT= 0.9900, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MIN_RH_UNSTABLE , 'MIN_RH_UNSTABLE:' , DEFAULT= 0.9750, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MIN_RH_STABLE   , 'MIN_RH_STABLE:'   , DEFAULT= 0.8250, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MIN_RH_CRIT     , 'MIN_RH_CRIT:'     , DEFAULT= 0.7500, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, MIN_RH_STABLE   , 'MIN_RH_STABLE:'   , DEFAULT= 0.8750, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, MIN_RH_CRIT     , 'MIN_RH_CRIT:'     , DEFAULT= 0.7250, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, TURNRHCRIT_TOP  , 'TURNRHCRIT_TOP:'  , DEFAULT= 3250. , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 1     , RC=STATUS); VERIFY_(STATUS)
-    ! cloud ice/liq settling and radii
+
+    ! -----------------------------------------------------------------------------------------
+    ! ICE SETTLING & FALL SPEED MULTIPLIERS
+    ! -----------------------------------------------------------------------------------------
+    ! Controls the prognostic fall speeds of cloud ice, which directly dictates the residence 
+    ! time of cirrus anvils and large-scale stratiform ice in the upper troposphere.
+    !   - ICE_*_VFALL_PARAM : Selects the empirical fall-speed relationship (1 = Standard).
+    !   - ANV_ICEFALL       : Linear multiplier on convective anvil ice fall speed.
+    !   - LS_ICEFALL        : Linear multiplier on large-scale (grid-scale) ice fall speed.
     call MAPL_GetResource( MAPL, ICE_LSC_VFALL_PARAM, 'ICE_LSC_VFALL_PARAM:',DEFAULT= 1, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, ICE_CNV_VFALL_PARAM, 'ICE_CNV_VFALL_PARAM:',DEFAULT= 1, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, ANV_ICEFALL     , 'ANV_ICEFALL:'     , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, LS_ICEFALL      , 'LS_ICEFALL:'      , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, LIQ_RADII_PARAM , 'LIQ_RADII_PARAM:' , DEFAULT= 1     , RC=STATUS); VERIFY_(STATUS)
+    if (.not. GFDL_MP3) then ! GFDL_MP3 has internal parameters for this
+        call MAPL_GetResource( MAPL, ANV_ICEFALL    , 'ANV_ICEFALL:'        ,DEFAULT= 1.0, RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetResource( MAPL, LS_ICEFALL     , 'LS_ICEFALL:'         ,DEFAULT= 1.0, RC=STATUS); VERIFY_(STATUS)
+    endif
+
+    ! -----------------------------------------------------------------------------------------
+    ! CLOUD OPTICS & EFFECTIVE RADII [m]
+    ! -----------------------------------------------------------------------------------------
+    ! Determines the coupling between prognostic cloud mass and the radiation scheme.
+    ! LIQUID RADIUS OPTIONS (LIQ_RADII_PARAM):
+    !   1 = Baseline Empirical: Standard bulk power-law relationship scaling with the ratio 
+    !       of mass to number concentration.
+    !   2 = Liu & Daum (2000/2005): Advanced empirical relationship that accounts for droplet 
+    !       spectral dispersion (relative variance of the size distribution) in warm clouds.
+    !   3 = Morrison & Gettelman (2008): Analytical 2-moment closure integrating a Gamma 
+    !       distribution (shape parameter mu=5). Explicitly derives the 3rd/2nd moment ratio.
+    !       (Requires a highly trusted, prognostic droplet number concentration).
+    ! ICE RADIUS OPTIONS (ICE_RADII_PARAM):
+    !   1 = Wyser (1998): 1-moment empirical closure. Relies purely on Ice Water Content (IWC) 
+    !       and the temperature deficit below freezing. Ignores number concentration.
+    !   2 = Sun (2001): 1-moment empirical closure. Derives effective dimension assuming 
+    !       hexagonal columns, using explicit temperature and IWC. Safe for 1-moment schemes.
+    !   3 = Morrison & Gettelman (2008): 2-moment physical closure. Employs a mass-dimension 
+    !       power law (b=2 for non-spherical ice). 
+    !       (Requires a highly trusted, prognostic ice number concentration).
+    ! FAC_R* : Linear multiplier to artificially scale radii up/down for radiation tuning.
+    ! MIN/MAX_R* : Hard numerical ceilings and floors for effective radius [meters].
+    call MAPL_GetResource( MAPL, LIQ_RADII_PARAM , 'LIQ_RADII_PARAM:' , DEFAULT= 3     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, ICE_RADII_PARAM , 'ICE_RADII_PARAM:' , DEFAULT= 2     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, FAC_RI          , 'FAC_RI:'          , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MIN_RI          , 'MIN_RI:'          , DEFAULT= 15.e-6, RC=STATUS); VERIFY_(STATUS)
@@ -361,17 +409,35 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     call MAPL_GetResource( MAPL, MIN_RL          , 'MIN_RL:'          , DEFAULT= 2.5e-6, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MAX_RL          , 'MAX_RL:'          , DEFAULT=60.0e-6, RC=STATUS); VERIFY_(STATUS)
 
+    ! -----------------------------------------------------------------------------------------
+    ! GRID-SCALE EVAPORATION / SUBLIMATION EFFICIENCIES [s^-1]
+    ! -----------------------------------------------------------------------------------------
+    ! Controls the baseline efficiency (A_EFF) of clear-air entrainment and sub-grid evaporation
+    ! when grid-mean relative humidity drops below RHCRIT. 
+    !   - CCW_EVAP_EFF : Efficiency for Cloud Liquid Water.
+    !   - CCI_EVAP_EFF : Efficiency for Cloud Ice.
                                  CCW_EVAP_EFF = 4.e-3
     call MAPL_GetResource( MAPL, CCW_EVAP_EFF, 'CCW_EVAP_EFF:', DEFAULT= CCW_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
-
                                  CCI_EVAP_EFF = 4.e-3
     call MAPL_GetResource( MAPL, CCI_EVAP_EFF, 'CCI_EVAP_EFF:', DEFAULT= CCI_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
 
+    ! -----------------------------------------------------------------------------------------
+    ! CONVECTIVE CLOUD FRACTION (CAPE THRESHOLDS) [J/kg]
+    ! -----------------------------------------------------------------------------------------
+    ! Diagnoses macrophysical convective area fraction derived from Convective Available Potential 
+    ! Energy (CAPE). Scales linearly from 0.0 at MIN to 1.0 at MAX.
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 2500.0, RC=STATUS); VERIFY_(STATUS)
 
+    ! -----------------------------------------------------------------------------------------
+    ! MACROPHYSICS & PHASE SWITCHES
+    ! -----------------------------------------------------------------------------------------
+    ! ICE_FRACTION_POLYNOMIAL : Selects the temperature-dependent liquid/ice partitioning curve.
+    ! USE_AEROSOL_NN          : Activates aerosol coupling for nucleation.
+    ! USE_BERGERON            : Activates macrophysical Wegener-Bergeron-Findeisen logic 
+    !                           (e.g., modifying mixed-phase cloud fraction and phase overlap). 
+    !                           Note: Microphysical WBF mass transfer is controlled separately.
     call MAPL_GetResource( MAPL, ICE_FRACTION_POLYNOMIAL, Label="ICE_FRACTION_POLYNOMIAL:",  default=V12_ICE_POLYNOMIAL, RC=STATUS) ; VERIFY_(STATUS)
-
     call MAPL_GetResource( MAPL, USE_AEROSOL_NN , 'USE_AEROSOL_NN:'  , DEFAULT=USE_AEROSOL_NN, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, USE_BERGERON   , 'USE_BERGERON:'    , DEFAULT=.FALSE., RC=STATUS); VERIFY_(STATUS)
 
@@ -418,7 +484,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, allocatable, dimension(:,:,:) :: PLmb,  ZL0
     real, allocatable, dimension(:,:,:) :: PL
     real, allocatable, dimension(:,:,:) :: DZ, DZET, DP, MASS, iMASS
-    real, allocatable, dimension(:,:,:) :: DQST3, QST3
+    real, allocatable, dimension(:,:,:) :: QSliq, QSice
     real, allocatable, dimension(:,:,:) :: DBZ3D
     real, allocatable, dimension(:,:,:) :: DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
                                            DQSDTmic, DQGDTmic, DQADTmic, &
@@ -470,6 +536,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real    :: fraction_hail
 
     real, allocatable :: facEIS_2d(:,:), minrhcrit_2d(:,:), turnrhcrit_2d(:,:)
+    real, allocatable :: min_rh_free_2d(:,:)
     real, allocatable :: qg_col(:), qh_col(:), prs_col(:), dbz_col(:)
 
     integer :: IM,JM,LM
@@ -562,8 +629,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( DP   (IM,JM,LM  ) )
     ALLOCATE ( MASS (IM,JM,LM  ) )
     ALLOCATE ( iMASS(IM,JM,LM  ) )
-    ALLOCATE ( DQST3(IM,JM,LM  ) )
-    ALLOCATE (  QST3(IM,JM,LM  ) )
+    ALLOCATE ( QSliq(IM,JM,LM  ) )
+    ALLOCATE ( QSice(IM,JM,LM  ) )
     ALLOCATE ( DBZ3D(IM,JM,LM  ) )
     ALLOCATE ( TMP3D(IM,JM,LM  ) )
      ! Local tendencies
@@ -595,7 +662,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     END DO
     ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
     DZET     =     (ZLE0(:,:,0:LM-1) - ZLE0(:,:,1:LM) ) ! Layer thickness (m)
-    DQST3    = GEOS_DQSAT(T, PLmb, QSAT=QST3)
+    QSliq    = GEOS_QsatLQU(T, PL)
+    QSice    = GEOS_QsatICE(T, PL)
     DP       = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )
     MASS     = DP/MAPL_GRAV
     iMASS    = 1.0/MASS
@@ -764,23 +832,31 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       ! Precalculate 2D arrays (Hoisted out of the L loop)
       ! -----------------------------------------------------------------
         allocate(facEIS_2d(IM,JM), minrhcrit_2d(IM,JM), turnrhcrit_2d(IM,JM))
+        allocate(min_rh_free_2d(IM,JM))
+
+        ! Call RANDOM_NUMBER OUTSIDE the OpenMP loop to ensure thread safety!
+        ! This fills the array with random numbers between 0.0 and 1.0
+        call RANDOM_NUMBER(min_rh_free_2d)
 
         !$OMP parallel do default(none) &
         !$OMP shared(IM, JM, EIS, SRF_TYPE, MIN_RH_UNSTABLE, MIN_RH_STABLE, &
         !$OMP        TURNRHCRIT_SFC, ZL0, KPBLSC, facEIS_2d, minrhcrit_2d, &
-        !$OMP        turnrhcrit_2d) &
+        !$OMP        turnrhcrit_2d, min_rh_free_2d, MIN_RH_CRIT) &
         !$OMP private(I, J)
         do J=1,JM
           do I=1,IM
+             
              facEIS_2d(I,J) = get_fac_eis(EIS(I,J),SRF_TYPE(I,J))
              minrhcrit_2d(I,J) = MIN_RH_UNSTABLE*(1.0-facEIS_2d(I,J)) + MIN_RH_STABLE*facEIS_2d(I,J)
+
+             ! Add the 0.1*[0.0 to 1.0] random number to your MIN_RH_CRIT
+             min_rh_free_2d(I,J) = MIN(minrhcrit_2d(I,J), MIN_RH_CRIT + (min_rh_free_2d(I,J) * 0.1))
+             
              minrhcrit_2d(I,J) = max(0.7, minrhcrit_2d(I,J))
     
              if (TURNRHCRIT_SFC <= 0.0) then
-                ! Dynamically track the PBL top height level (meters above surface)
                 turnrhcrit_2d(I,J) = ZL0(I, J, NINT(KPBLSC(I,J)))
              else
-                ! If positive, TURNRHCRIT_SFC is now interpreted directly as a height in meters (e.g., 500.0)
                 turnrhcrit_2d(I,J) = TURNRHCRIT_SFC
              endif
           enddo                  
@@ -791,11 +867,11 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          
         !$OMP parallel do default(none) &
         !$OMP shared(LM, JM, IM, Q, T, QLLS, QILS, CLLS, QLCN, QICN, CLCN, KLID, &
-        !$OMP        facEIS_2d, minrhcrit_2d, turnrhcrit_2d, TURNRHCRIT_TOP, MIN_RH_CRIT, MAX_RH_CRIT, PLmb, &
+        !$OMP        facEIS_2d, minrhcrit_2d, turnrhcrit_2d, TURNRHCRIT_TOP, min_rh_free_2d, MAX_RH_CRIT, PLmb, &
         !$OMP        AREA, RHCRIT3D, DT_MOIST, PDFSHAPE, CNV_FRC, SRF_TYPE, ZL0, NACTL, &
         !$OMP        NACTI, WSL, WQT, SL2, QT2, SLQT, W3, W2, QT3, SL3, PDF_A, PDFITERS, &
         !$OMP        WTHV2, WQL, USE_BERGERON, RHX, LMELTFRZ_CLDMACRO, CCW_EVAP_EFF, &
-        !$OMP        EVAPC, CCI_EVAP_EFF, SUBLC, QST3) &
+        !$OMP        EVAPC, CCI_EVAP_EFF, SUBLC, QSliq, QSice) &
         !$OMP private(L, J, I, transition_thickness, start_height, upper_scale, &
         !$OMP         x_norm, RHCRIT, ALPHA)
         do L=1,LM
@@ -816,10 +892,10 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                 ! 1. Free Troposphere: Sharp relaxation targeting the RH floor
                 if (ZL0(i,j,l) < TURNRHCRIT_TOP) then
                    upper_scale = (ZL0(i,j,l) - turnrhcrit_2d(I,J)) / (TURNRHCRIT_TOP - turnrhcrit_2d(I,J))
-                   RHCRIT = minrhcrit_2d(I,J) - (minrhcrit_2d(I,J) - MIN_RH_CRIT) * upper_scale
+                   RHCRIT = minrhcrit_2d(I,J) - (minrhcrit_2d(I,J) - min_rh_free_2d(I,J)) * upper_scale
                 else
-                   ! Lock straight onto your loose MIN_RH_CRIT default floor at and above TURNRHCRIT_TOP
-                   RHCRIT = MIN_RH_CRIT
+                   ! Lock straight onto your min_rh_free_2d(I,J) default floor at and above TURNRHCRIT_TOP
+                   RHCRIT = min_rh_free_2d(I,J)
                 endif
                          
              else if (ZL0(i,j,l) .le. start_height) then
@@ -840,11 +916,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            ! -----------------------------------------------------------------
              RHCRIT = MAX_RH_CRIT + (RHCRIT-MAX_RH_CRIT)*SQRT(SQRT(AREA(I,J)/1.e10)) 
            ! ===============================================================
-           ! STRUCTURAL FIX: Relax the upper limit of ALPHA.
-           ! This allows the final exported RHCRIT3D to drop to 0.50, 
-           ! unlocking the missing 2250m cloud layer.
-           ! ===============================================================
-             ALPHA = max(0.0, min(0.5000, (1.0-RHCRIT)))
+             ALPHA = max(0.0, min(0.3, (1.0-RHCRIT)))
            ! fill RHCRIT export
              if (associated(RHCRIT3D)) RHCRIT3D(I,J,L) = 1.0-ALPHA
            ! Do CLOUD MACRO below the pressure lid
@@ -908,7 +980,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                    CLCN(I,J,L)  , &
                   NACTL(I,J,L)  , &
                   NACTI(I,J,L)  , &
-                   QST3(I,J,L)  )
+                  QSliq(I,J,L)  )
              EVAPC(I,J,L) = ( Q(I,J,L) - EVAPC(I,J,L) ) / DT_MOIST
              endif
            ! sublimation for CN
@@ -926,7 +998,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                    CLCN(I,J,L)  , &
                   NACTL(I,J,L)  , &
                   NACTI(I,J,L)  , &
-                   QST3(I,J,L)  )
+                  QSice(I,J,L)  )
              SUBLC(I,J,L) = ( Q(I,J,L) - SUBLC(I,J,L) ) / DT_MOIST
              endif
              endif

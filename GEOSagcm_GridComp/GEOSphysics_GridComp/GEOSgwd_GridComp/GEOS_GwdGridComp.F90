@@ -367,13 +367,13 @@ contains
       if (STRETCH_FACTOR > 1.0) then
          ! Stretched Grid Logic (imsize already includes CEILING(STRETCH_FACTOR))
          if (imsize >= 2160) then
-            NCAR_TAU_TOP_ZERO = 1000.0
+            NCAR_TAU_TOP_ZERO = 750.0
          else if (imsize >= 1080) then
             NCAR_TAU_TOP_ZERO = 500.0
          else if (imsize >= 540) then
-            NCAR_TAU_TOP_ZERO = 100.0
+            NCAR_TAU_TOP_ZERO = 250.0
          else
-            NCAR_TAU_TOP_ZERO = 30.0 ! Fallback for mildly stretched low-res
+            NCAR_TAU_TOP_ZERO = 100.0 ! Fallback for mildly stretched low-res
          endif
       else
          ! Uniform Global Grid Logic
@@ -382,17 +382,17 @@ contains
          else if (imsize >= 5760) then
             NCAR_TAU_TOP_ZERO = 500.0
          else if (imsize >= 2880) then
-            NCAR_TAU_TOP_ZERO = 400.0
+            NCAR_TAU_TOP_ZERO = 250.0
          else if (imsize >= 1440) then
-            NCAR_TAU_TOP_ZERO = 300.0
-         else if (imsize >= 1120) then
-            NCAR_TAU_TOP_ZERO = 200.0
-         else if (imsize >= 720) then
             NCAR_TAU_TOP_ZERO = 100.0
+         else if (imsize >= 1120) then
+            NCAR_TAU_TOP_ZERO = 75.0
+         else if (imsize >= 720) then
+            NCAR_TAU_TOP_ZERO = 50.0
          else if (imsize >= 360) then
-            NCAR_TAU_TOP_ZERO = 60.0
+            NCAR_TAU_TOP_ZERO = 25.0
          else
-            NCAR_TAU_TOP_ZERO = 30.0 ! Default for C180 and coarser
+            NCAR_TAU_TOP_ZERO = 10.0 ! Default for C180 and coarser
          endif
       endif
       ! Read from resource file, but use the dynamically calculated cutoff as the default

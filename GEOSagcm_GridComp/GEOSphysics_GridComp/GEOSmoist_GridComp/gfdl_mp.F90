@@ -217,14 +217,14 @@ module gfdl_mp_mod
     ! 0: subgrid variability based scheme
     ! 1: no subgrid varaibility
 
-    integer :: inflag = 1 ! ice nucleation scheme
+    integer :: inflag = 2 ! ice nucleation scheme
     ! 1: Hong et al. (2004)
     ! 2: Meyers et al. (1992)
     ! 3: Meyers et al. (1992)
     ! 4: Cooper (1986)
     ! 5: Fletcher (1962)
 
-    integer :: igflag = 3 ! ice generation scheme
+    integer :: igflag = 4 ! ice generation scheme
     ! 1: WSM6
     ! 2: WSM6 with 0 at 0 C
     ! 3: WSM6 with 0 at 0 C and fixed value at - 10 C
@@ -323,7 +323,7 @@ module gfdl_mp_mod
     logical :: snow_grauple_combine = .true. ! combine snow and graupel
 
     logical :: prog_ccn = .true.  ! use prognostic ccn
-    logical :: prog_cin = .true.  ! use prognostic cin
+    logical :: prog_cin = .false. ! use prognostic cin
 
     logical :: fix_negative = .true. ! fix negative water species
 
@@ -479,7 +479,7 @@ module gfdl_mp_mod
 
     real :: vw_fac = 1.0
     real :: vi_fac_cnv = 1.0
-    real :: vi_fac_lsc = 0.5
+    real :: vi_fac_lsc = 1.0
     real :: vs_fac = 1.0
     real :: vg_fac = 1.0
     real :: vr_fac = 1.0
@@ -1382,7 +1382,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pl, pt, qv, ql, qr, qi, qs, qg,
 
     integer :: i, k
 
-    real :: ccn0, cin0
+    real :: ccn0
     real :: convt, rdt, dts, q_cond, tmp, nl, ni
 
     real, dimension (ks:ke) :: h_var
@@ -1431,7 +1431,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pl, pt, qv, ql, qr, qi, qs, qg,
     ! Begin Parallel Loop
     ! -----------------------------------------------------------------------
     !$OMP PARALLEL DO DEFAULT(SHARED) &
-    !$OMP PRIVATE(i, k, ccn0, cin0, q_cond, tmp, nl, ni, mass_fac, con_r8, c8, cp8, &
+    !$OMP PRIVATE(i, k, ccn0, q_cond, tmp, nl, ni, mass_fac, con_r8, c8, cp8, &
     !$OMP         h_var, q_liq, q_sol, pl, dp, dz, dp0, qvz, qlz, qrz, qiz, qsz, &
     !$OMP         qgz, qaz, zez, den, pz, denfac, ccn, cin, u, v, w, &
     !$OMP         pcw, edw, oew, rrw, tvw, pci, edi, oei, rri, tvi, &
@@ -1621,9 +1621,6 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pl, pt, qv, ql, qr, qi, qs, qg,
 
         if (prog_cin) then
             do k = ks, ke
-              ! ni = qni (i, k)
-              ! cin (k) = max (10.0, ni) * 1.e6
-              ! cin (k) = cin (k) / den (k)
               ! qni import fro GEOS has units # / m^3
                 cin (k) = qni (i, k) / den (k)
                 cin (k) = cin (k) * ice_fraction(real(tz (k)), cnv_fraction, srf_type, glac_shift)
@@ -1631,10 +1628,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pl, pt, qv, ql, qr, qi, qs, qg,
                 cin (k) = max(1.0e-3, cin (k))
             enddo
         else
-            cin0 = 0.
-            do k = ks, ke
-                cin (k) = cin0 / den (k)
-            enddo
+            cin (k) = 0.
         endif
 
         ! -----------------------------------------------------------------------

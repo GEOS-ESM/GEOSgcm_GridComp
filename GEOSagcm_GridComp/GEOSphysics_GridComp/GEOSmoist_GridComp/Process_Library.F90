@@ -872,7 +872,7 @@ module GEOSmoist_Process_Library
       
       ! 3. Thermodynamic and Psychrometric microphysical diffusion factors
       ! Standardized to use your explicit project parameter: rho_i (890.0 kg/m^3)
-      K1 = (MAPL_ALHL**2) * rho_i / ( K_COND*MAPL_RVAP*(TE**2))
+      K1 = (MAPL_ALHS**2) * rho_i / ( K_COND*MAPL_RVAP*(TE**2))
       K2 = MAPL_RVAP * TE * rho_i / ( DIFFU * (1000.0/PL) * ES )
       
       ! 4. ICE RADII EVALUATION
@@ -913,11 +913,9 @@ module GEOSmoist_Process_Library
        REAL  :: RADIUS
        INTEGER, PARAMETER  :: LIQUID=1, ICE=2
        REAL :: NNX,RHO,BB,WC
-       REAL :: TE_eff,TC,AA,Rmin
+       REAL :: TC,AA,Rmin
   
        ! Explicitly named physical parameters to replace magic numbers
-       real, parameter :: t_flat_ice = 233.15 ! Capping threshold in Kelvin (-40 C)
-       real, parameter :: t_offset   = 83.15  ! Sun (2001) empirical tuning offset (K)
        real, parameter :: geom_hex   = 0.64952! Diameter-to-radius factor (3*sqrt(3)/8) for columns
 
        ! Reference constants for empirical closures
@@ -988,9 +986,8 @@ module GEOSmoist_Process_Library
              ! by flatlining the temperature dependency above -40C (233.15 K).
              WC = 1.e3*RHO*QC ! air density [g/m3] * ice cloud mixing ratio [kg/kg]
              
-             ! Apply effective temperature capping to prevent unphysical particle growth near cloud top
-             TE_eff = MIN(t_flat_ice, TE)
-             TC = TE_eff - MAPL_TICE ! Standardize to Celsius to strictly match Sun (2001) empirical coefficients
+             ! Safely capped at 0C (MAPL_TICE) to prevent unphysical blow-up for melting ice.
+             TC = MIN(0.0, TE - MAPL_TICE)! Standardize to Celsius to strictly match Sun (2001) empirical coefficients
              
              AA = 45.8966 * (MAX(WC, 1.e-10)**0.2214)
              BB = 0.79570 * (MAX(WC, 1.e-10)**0.2535) * TC 
