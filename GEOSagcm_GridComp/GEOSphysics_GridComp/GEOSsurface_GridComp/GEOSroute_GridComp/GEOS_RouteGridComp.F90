@@ -179,6 +179,17 @@ contains
          VLOCATION          = MAPL_VLocationNone          ,&
          _RC ) 
 
+    call MAPL_AddImportSpec(GC,                            &
+         LONG_NAME          = 'discharge_from_terminal_catchment',&
+         UNITS              = 'kg m-2 s-1'                ,&
+         SHORT_NAME         = 'DISTER'                    ,&
+         DIMS               = MAPL_DimsTileOnly           ,&
+         VLOCATION          = MAPL_VLocationNone          ,&
+         _RC ) 
+
+
+    VERIFY_(STATUS)
+
 ! -----------------------------------------------------------
 ! Internal States
 ! -----------------------------------------------------------
@@ -325,15 +336,6 @@ contains
          DIMS               = MAPL_DimsTileOnly          ,&
          VLOCATION          = MAPL_VLocationNone         ,&
          _RC )    
-
-    call MAPL_AddExportSpec(GC,                           &
-         LONG_NAME          = 'discharge_from_terminal_catchment'                ,&
-         UNITS              = 'kg m-2 s-1'               ,&
-         SHORT_NAME         = 'DISTER'                  ,&
-         DIMS               = MAPL_DimsTileOnly          ,&
-         VLOCATION          = MAPL_VLocationNone         ,&
-         _RC ) 
-
 !EOS
 
     call MAPL_TimerAdd(GC,    name="-RRM" ,RC=STATUS)
@@ -1067,7 +1069,8 @@ contains
     call MAPL_GetPointer(EXPORT, QOUTFLOW, 'QOUTFLOW',    ALLOC=.true., _RC)
     call MAPL_GetPointer(EXPORT, QRES,     'QRES',        ALLOC=.true., _RC)
     call MAPL_GetPointer(EXPORT, QCAT,     'QCAT',        ALLOC=.true., _RC)
-    call MAPL_GetPointer(EXPORT, DISTER,   'DISTER',      ALLOC=.true., _RC)    
+    
+    call MAPL_GetPointer(IMPORT, DISTER,   'DISTER',      ALLOC=.true., _RC)    
 
 ! Start timers
 ! ------------

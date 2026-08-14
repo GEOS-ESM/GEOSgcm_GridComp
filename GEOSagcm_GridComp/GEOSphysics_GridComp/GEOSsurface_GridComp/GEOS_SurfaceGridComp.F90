@@ -9292,6 +9292,10 @@ module GEOS_SurfaceGridCompMod
       call FILLIN_TILE(GIM(type), 'SSWT', SSWTTILE, XFORM, RC=STATUS); VERIFY_(STATUS)
       call FILLIN_TILE(GIM(type), 'SSSD', SSSDTILE, XFORM, RC=STATUS); VERIFY_(STATUS)
 
+      if (associated(DISTERTILE)) then
+         call FILLIN_TILE(GIM(type), 'DISTER',  DISTERTILE,  XFORM, RC=STATUS); VERIFY_(STATUS)
+      end if
+
       if (associated(DISCHARGETILE)) then
          call FILLIN_TILE(GIM(type), 'DISCHARGE',  DISCHARGETILE,  XFORM, RC=STATUS); VERIFY_(STATUS)
       end if
@@ -9991,11 +9995,7 @@ module GEOS_SurfaceGridCompMod
       if(associated(RUNSURFTILE)) then
          call FILLOUT_TILE(GEX(type), 'RUNSURF',RUNSURFTILE,XFORM, RC=STATUS)
          VERIFY_(STATUS)
-      end if
-      if(associated(DISTERTILE)) then
-         call FILLOUT_TILE(GEX(type), 'DISTER', DISTERTILE, XFORM, RC=STATUS)
-         VERIFY_(STATUS)
-      end if      
+      end if     
       if(associated(BASEFLOWTILE)) then
          call FILLOUT_TILE(GEX(type), 'BASEFLOW',BASEFLOWTILE,XFORM, RC=STATUS)
          VERIFY_(STATUS)
