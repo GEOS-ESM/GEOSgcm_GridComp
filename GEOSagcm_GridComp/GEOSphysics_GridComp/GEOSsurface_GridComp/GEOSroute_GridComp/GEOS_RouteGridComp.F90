@@ -188,8 +188,6 @@ contains
          _RC ) 
 
 
-    VERIFY_(STATUS)
-
 ! -----------------------------------------------------------
 ! Internal States
 ! -----------------------------------------------------------
@@ -1209,7 +1207,7 @@ contains
     endif ! CollectWaterAlarm
 
     DISTER = route%DISTER
-    
+
     ! All done
     ! --------
     call MAPL_TimerOff ( MAPL, "-RRM" ) 

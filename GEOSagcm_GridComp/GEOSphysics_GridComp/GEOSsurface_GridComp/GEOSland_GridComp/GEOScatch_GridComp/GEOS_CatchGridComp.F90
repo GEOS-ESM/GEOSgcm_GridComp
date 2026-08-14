@@ -1598,6 +1598,15 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'discharge_from_terminal_catchment',&
+    UNITS              = 'kg m-2 s-1'                ,&
+    SHORT_NAME         = 'DISTER'                    ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'runoff_total_flux'         ,&
     UNITS              = 'kg m-2 s-1'                ,&
     SHORT_NAME         = 'RUNOFF'                    ,&
@@ -4172,6 +4181,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: sublim
         real, dimension(:),   pointer :: shout
         real, dimension(:),   pointer :: runoff
+        real, dimension(:),   pointer :: DISTER        
         real, dimension(:),   pointer :: evpint
         real, dimension(:),   pointer :: evpsoi
         real, dimension(:),   pointer :: evpveg
@@ -4739,6 +4749,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,SUBLIM,'SUBLIM',ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SHOUT,  'SHOUT'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RUNOFF, 'RUNOFF' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,DISTER, 'DISTER' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS) 
+        DISTER = 0.       
         call MAPL_GetPointer(EXPORT,EVPINT, 'EVPINT' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,EVPSOI, 'EVPSOI' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,EVPVEG, 'EVPVEG' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)

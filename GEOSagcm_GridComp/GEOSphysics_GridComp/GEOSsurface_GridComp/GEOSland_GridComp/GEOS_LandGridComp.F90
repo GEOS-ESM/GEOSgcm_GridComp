@@ -417,7 +417,12 @@ contains
             SHORT_NAME = 'RUNOFF', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       VERIFY_(STATUS)                                                                         
+       VERIFY_(STATUS)    
+       call MAPL_AddExportSpec ( GC, &
+            SHORT_NAME = 'DISTER', &
+            CHILD_ID = CATCH(1), &
+            RC=STATUS  )
+       VERIFY_(STATUS)                                                                              
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'EVPINT', &
             CHILD_ID = CATCH(1), &

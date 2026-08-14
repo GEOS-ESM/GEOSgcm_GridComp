@@ -3560,7 +3560,7 @@ module GEOS_SurfaceGridCompMod
     
     call MAPL_AddConnectivity (                                    &
        GC                                                         ,&
-       SHORT_NAME  = (/'RUNOFF  '/)                               ,&   ! RUNOFF = total runoff = surface runoff + baseflow
+       SHORT_NAME  = (/'RUNOFF  ', 'DISTER  '/)                               ,&   ! RUNOFF = total runoff = surface runoff + baseflow
        SRC_ID      =  LAND                                        ,&
        DST_ID      =  ROUTE                                       ,&
        RC=STATUS )
@@ -9292,7 +9292,7 @@ module GEOS_SurfaceGridCompMod
       call FILLIN_TILE(GIM(type), 'SSWT', SSWTTILE, XFORM, RC=STATUS); VERIFY_(STATUS)
       call FILLIN_TILE(GIM(type), 'SSSD', SSSDTILE, XFORM, RC=STATUS); VERIFY_(STATUS)
 
-      call FILLIN_TILE(GIM(type), 'DISTER',  DISTERTILE,  XFORM, RC=STATUS); VERIFY_(STATUS)
+      !call FILLIN_TILE(GIM(type), 'DISTER',  DISTERTILE,  XFORM, RC=STATUS); VERIFY_(STATUS)
 
       if (associated(DISCHARGETILE)) then
          call FILLIN_TILE(GIM(type), 'DISCHARGE',  DISCHARGETILE,  XFORM, RC=STATUS); VERIFY_(STATUS)
