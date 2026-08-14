@@ -7,10 +7,10 @@ PROGRAM mkCatchParam
   !
   ! !ARGUMENTS:
   !
-  !  Usage = "mkCatchParam -x nx -y ny -g Gridname -b DL -v LBCSV "       
+  !  Usage = "mkCatchParam -x nx -y ny -g Gridname  -v LBCSV "       
   !     -x: Size of longitude dimension of input raster.            DEFAULT: 8640
   !     -y: Size of latitude dimension of input raster.             DEFAULT: 4320
-  !     -b: Position of dateline w.r.t. first grid cell boundaries. DEFAULT: DC (dateline-on-center)
+  !    !! -b: Position of dateline w.r.t. first grid cell boundaries. DEFAULT: DC (dateline-on-center)
   !     -g: Gridname (name of the .til or .rst file without file extension)  
   !     -v: LBCSV : Land bcs version (F25, GM4, ICA, NL3, NL4, NL5, v06, v07, v08, v09, v11, ...)
   !     
@@ -47,7 +47,6 @@ PROGRAM mkCatchParam
   character*1          :: opt
   character*128        :: PEATSOURCE   = ''
   character*3          :: VEGZSOURCE   = 'D&S'
-  character*2          :: DL ='DC'    
   integer              :: II, JJ, Type
   integer              :: I, J, command_argument_count, nxt
   real*8               :: dx, dy, lon0
@@ -114,11 +113,11 @@ PROGRAM mkCatchParam
   !
   !$OMP ENDPARALLEL
 
-  USAGE(1) ="Usage: mkCatchParam -x nx -y ny -g Gridname -b DL -v LBCSV                       "
+  USAGE(1) ="Usage: mkCatchParam -x nx -y ny -g Gridname  -v LBCSV                            "
   USAGE(2) ="     -x: Size of longitude dimension of input raster. DEFAULT: 8640              "
   USAGE(3) ="     -y: Size of latitude dimension of input raster.  DEFAULT: 4320              "
   USAGE(4) ="     -g: Gridname  (name of the .til or .rst file *without* file extension)      "
-  USAGE(5) ="     -b: Position of the dateline in the first grid box (DC or DE). DEFAULT: DC  "
+  USAGE(5) ="   not used anymore !!-b: Position of the dateline in the first grid box (DC or DE). DEFAULT: DC  "
   USAGE(6) ="     -v: Land bcs version (F25, GM4, ICA, NL3, NL4, NL5, v06, v07, v08 v09 )     "
   USAGE(7) ="     -p: if no, it creates catchment_def and nc4 tile files then exits           "
 
@@ -168,8 +167,6 @@ PROGRAM mkCatchParam
         LBCSV = trim(arg)
         if (trim(arg).eq."F25") F25Tag = .true.
         call init_bcs_config (trim(LBCSV))       ! get bcs details from version string
-     case ('b')
-        DL = trim(arg)
      case ('p')
         withbcs = trim(arg)
      case default
@@ -243,11 +240,6 @@ PROGRAM mkCatchParam
   write (log_file,'(a)')'============================================================'
   write (log_file,'(a)')'                                               '
 
-  if(index(Gridname,'CF')/=0) then 
-     DL = 'DE'
-     write (log_file,'(a)')'Cube-Sphere Grid - assuming dateline-on-edge (DE)'
-  endif
-
   ! ******************************************************************************
   !
   ! IMPORTANT: The top-level make_bcs script should not allow this program to
@@ -279,7 +271,7 @@ PROGRAM mkCatchParam
      if (.not.file_exists) then
         write (log_file,'(a)')'         Creating catchment def and nc4 tile file...'
         call system_clock(clock1)
-        call supplemental_tile_attributes(nc,nr,regrid,dl,fnameTil, tile_id) 
+        call supplemental_tile_attributes(nc,nr,fnameTil, trim(fnameRst)//'.rst') 
         call system_clock(clock2)
         seconds = (clock2-clock1)/real(clock_rate)
         write (log_file, *) '         Done. Spent   ', seconds, "  seconds"

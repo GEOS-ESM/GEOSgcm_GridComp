@@ -55,7 +55,7 @@ program mkOverlaySimple
   logical                :: DoZip
   logical                :: Verb
   logical                :: found
-  logical                :: Merge, regrid
+  logical                :: Merge
   logical                :: s_flag=.false.
                          
   character*4            :: tildir, rstdir
@@ -470,8 +470,7 @@ program mkOverlaySimple
     if (.not. merge) then
       if ( index(Grid1, "EASE") /=0 .and. index(Grid2, "EASE") /=0) then
          l = index(TilFile, '.til')
-         regrid = nx /= i_raster .or. ny /= j_raster
-         call supplemental_tile_attributes(nx, ny, regrid, 'DE',TilFile(1:l-1), Rst1)
+         call supplemental_tile_attributes(nx, ny, TilFile(1:l-1), RstFile)
       endif
     endif
 

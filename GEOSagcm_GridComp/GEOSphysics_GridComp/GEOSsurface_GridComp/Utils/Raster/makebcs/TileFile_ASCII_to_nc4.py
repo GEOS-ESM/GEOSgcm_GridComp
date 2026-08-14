@@ -7,7 +7,7 @@
 
 import os
 import glob
-import subprocess
+import subprocess as sp
 
 if __name__ == "__main__":
 
@@ -32,7 +32,8 @@ if __name__ == "__main__":
          catch_file = til.replace('geometry', 'land')
          fname = os.path.basename(til)
          catch_file = catch_file.replace(fname, 'clsm/catchment.def')
-         result = sp.run["./TileFile_ASCII_to_nc4.x", til, catch_file, capture_output=True, text=True)
-         print(result.stdout)
-
+      
+         #result = sp.run(["./TileFile_ASCII_to_nc4.x", til, catch_file], capture_output=True, text=True)
+         #print(result.stdout)
+         print("Need to revisit this program")
    os.chdir(PWD)

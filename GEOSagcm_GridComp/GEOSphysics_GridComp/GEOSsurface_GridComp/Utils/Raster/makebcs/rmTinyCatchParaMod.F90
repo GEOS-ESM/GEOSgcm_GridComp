@@ -55,7 +55,7 @@ module rmTinyCatchParaMod
   public REFORMAT_VEGFILES
   public Get_MidTime, Time_Interp_Fac
   public ascat_r0, jpl_canoph, NC_VarID, init_bcs_config  
-  public LakeTopoCat_on_tiles_from_raster, AppendLakeTypeToTileNC4
+  public LakeTopoCat_on_tiles_from_raster
   
   ! The following variables define the details of the BCs versions (data sources).
   ! Initialize to dummy values here and set to desired values in init_bcs_config().
@@ -1112,115 +1112,20 @@ contains
 
   !----------------------------------------------------------------------
 
-  SUBROUTINE AppendLakeTypeToTileNC4( tilefile, n_tile, lake_type )
-
-    implicit none
-
-    character(*), intent(in) :: tilefile
-    integer,      intent(in) :: n_tile
-    integer,      intent(in) :: lake_type(1:n_tile)
-
-    integer, parameter :: LAKETYPE_UNDEF = -9999
-
-    integer :: status, ncid, ndims, nvars, ngatts, unlimdimid
-    integer :: dimid_tile, dimlen, dd
-    integer :: varid_lake_type
-    integer :: fill_value(1)
-    integer :: flag_values(5)
-
-    character(len=NF_MAX_NAME) :: dname
-    character(len=256)         :: mylongname
-    character(len=256)         :: flagmeanings
-    character(len=512)         :: comment
-
-    fill_value(1) = LAKETYPE_UNDEF
-    flag_values   = (/ LAKETYPE_UNDEF, 0, 1, 2, 3 /)
-
-    ! append data into nc4 tile file
-
-    status = NF_OPEN(trim(tilefile), NF_WRITE, ncid)                                  ; VERIFY_(status)
-
-    ! find tile dimension by matching length
-
-    status = NF_INQ(ncid, ndims, nvars, ngatts, unlimdimid)                           ; VERIFY_(status)
-
-    dimid_tile = -1
-    do dd = 1, ndims
-       status = NF_INQ_DIM(ncid, dd, dname, dimlen)                                   ; VERIFY_(status)
-       if (dimlen == n_tile) then
-          dimid_tile = dd
-          exit
-       endif
-    enddo
-
-    if (dimid_tile < 0) then
-       print *, 'ERROR: could not find tile dimension of length ', n_tile, ' in ', trim(tilefile)
-       stop
-    endif
-
-    ! Define lake_type in the freshly written nc4 tile file.
-    ! In the normal make_bcs workflow this variable should not already exist;
-    ! if it does, NF_DEF_VAR will fail rather than silently replace data.    
-
-    status = NF_REDEF(ncid)                                                        ; VERIFY_(status)
-
-    status = NF_DEF_VAR(ncid, 'lake_type', NF_INT, 1, (/dimid_tile/), &
-         varid_lake_type)                                                          ; VERIFY_(status)
-
-    ! _FillValue should be defined before leaving define mode.
-
-    status = NF_PUT_ATT_INT(ncid, varid_lake_type, '_FillValue', NF_INT, 1, &
-         fill_value)                                                               ; VERIFY_(status)
-
-    status = NF_PUT_ATT_INT(ncid, varid_lake_type, 'missing_value', NF_INT, 1, &
-         fill_value)                                                               ; VERIFY_(status)
-
-    mylongname = 'flag identifying intersection of water-type tile with lake polygon and/or reach line from LakeTopoCat v1.1 data'
-    status = NF_PUT_ATT_TEXT(ncid, varid_lake_type, 'long_name', &
-         len_trim(mylongname), mylongname)                                         ; VERIFY_(status)
-
-    status = NF_PUT_ATT_TEXT(ncid, varid_lake_type, 'units', 1, '1')               ; VERIFY_(status)
-
-    status = NF_PUT_ATT_INT(ncid, varid_lake_type, 'flag_values', NF_INT, 5, &
-         flag_values)                                                              ; VERIFY_(status)
-
-    flagmeanings = 'undefined, no_lake_or_reach_intersection, lake_intersection_only, reach_intersection_only, lake_and_reach_intersection'
-    status = NF_PUT_ATT_TEXT(ncid, varid_lake_type, 'flag_meanings', &
-         len_trim(flagmeanings), flagmeanings)                                     ; VERIFY_(status)
-
-    comment = 'Defined for typ==0 (ocean) and typ==19 (lake); set to -9999 otherwise (land or landice).'
-    status = NF_PUT_ATT_TEXT(ncid, varid_lake_type, 'comment', &
-         len_trim(comment), comment)                                               ; VERIFY_(status)
-
-    status = NF_ENDDEF(ncid)                                                       ; VERIFY_(status)
-
-    ! Write lake_type data and close file.
-
-    status = NF_PUT_VARA_INT(ncid, varid_lake_type, (/1/), (/n_tile/), &
-         lake_type)                                                                ; VERIFY_(status)
-    
-    status = NF_CLOSE(ncid)                                                        ; VERIFY_(status)
-
-  END SUBROUTINE AppendLakeTypeToTileNC4
-  !----------------------------------------------------------------------  
-  
-  SUBROUTINE supplemental_tile_attributes(nx,ny,regrid,dateline,fnameTil, Rst_id)
+  SUBROUTINE supplemental_tile_attributes(nx,ny,fnameTil, fnameRst, write_catch)
     
     ! 1) get supplemental tile attributes not provided in MAPL-generated (ASCII) tile file,
     !    incl. min/max lat/lon of each tile and tile elevation
     ! 2) write nc4-formatted til file (incl. supplemental tile attributes)
     
-    integer,      intent(in) :: nx, ny
-
-    logical,      intent(in) :: regrid    
-
-    character(*), intent(in) :: dateline
-
-    character(*), intent(in) :: fnameTil   ! file name (w/o extension) of tile file
-    integer, intent(in)      :: Rst_id(:,:)   
- 
+    integer,           intent(in) :: nx, ny
+    character(*),      intent(in) :: fnameTil   ! file name (w/o extension) of tile file
+    character(*),      intent(in) :: fnameRst   ! file name (with extension) of raster file
+    logical, optional, intent(in) :: write_catch
     ! ---------------------------------------------------------
 
+    integer, allocatable               :: Rst_id(:,:)   
+    logical                            :: regrid    
     INTEGER, allocatable, dimension(:) :: CATID  
     integer                            :: n, ip, n_land, i, j, i_sib, j_sib, status
     INTEGER, allocatable, dimension(:) :: id, I_INDEX, J_INDEX 
@@ -1233,6 +1138,7 @@ contains
     character*512                      :: fname, catch_file
     character*512                      :: gtopo30
     CHARACTER*512                      :: version
+    character(len=2)                   :: dateline
 
     REAL, allocatable                  :: limits(:,:)
 
@@ -1250,19 +1156,20 @@ contains
     real(REAL64),      allocatable         :: rTable_keep(:,:)
     integer,           allocatable         :: iTable_keep(:,:)
     character(len=128)                     :: gName(2)
+    character(:),      allocatable         :: Combined_gName
     logical,           allocatable         :: IsOcean(:)
     logical,           allocatable         :: keep_tile(:)
 
     ! This is used to adjust EASE grid from 1-based to 0-based indexes
     ! The tile file with only one EASE grid is already 0-based and may not go through this subroutine
     ! This is a special case for river-routing. The ocean grid is also EASE just for convenience
-    logical                                :: two_EASE 
+    logical                                :: two_EASE, write_catch_, file_exist 
     integer                                :: ip_keep, k, nc_tmp, nr_tmp
     real                                   :: EASE_LAT_MAX !
 
     ! LakeTopoCat / ReachTopoCat LakeType
     integer,           allocatable         :: lake_type(:)
-    integer                                :: rc_lake
+    integer                                :: rc_lake, unit
 
     ! -----------------------------------------------------
     !
@@ -1270,6 +1177,12 @@ contains
     
     call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR)
     gtopo30   = trim(MAKE_BCS_INPUT_DIR)//'/land/topo/v1/srtm30_withKMS_2.5x2.5min.data'
+    inquire(file = gtopo30, exist=file_exist) 
+    if ( .not. file_exist ) then
+       print*, gtopo30 //' does not exist. Make sure you set env MAKE_BCS_INPUT_DIR right'
+       stop 1
+    endif 
+
     allocate (q0(1:i_raster,1:j_raster))
 
     i_sib = nx
@@ -1281,17 +1194,30 @@ contains
 
     open (10,file=trim(gtopo30),form='unformatted',status='old')
     read (10) q0
-    close (10,status='keep')
-    
+    close(10,status='keep')
+
+    regrid = nx/=i_raster .or. ny /= j_raster   
+ 
     if(regrid) then
        allocate(raster(nx,ny),stat=STATUS); VERIFY_(STATUS)
+       call RegridRasterReal(q0,raster)
     else
        raster => q0
     end if
-    
-    if(regrid) then
-       call RegridRasterReal(q0,raster)
+
+    ! read raste id from raster file
+
+    allocate(rst_id(nx, ny))
+    open (newunit=unit,file=fnameRst,status='old',action='read',form='unformatted',convert='little_endian', IOSTAT=status)
+    if (status /=0) then
+       write (*,*)'         '//trim(fnameRst) // 'cannot be opened, exit '
+       call exit(1)
     endif
+    do j = 1, ny
+       read(unit)rst_id(:,j)
+    end do
+    close(unit) 
+
 
     ! -----------------------------------------------------------
     !
@@ -1304,6 +1230,15 @@ contains
     allocate (catid(1:i_sib))
     catid=0
     fname=trim(fnameTil)//'.til'
+    n = index(fnameTil, '/', back=.true.)
+    Combined_gName= fnameTil(n+1:)
+
+    if(index(Combined_gName,'CF')/=0 .or. index(Combined_gName,'EASE') /=0) then 
+      dateline = 'DE'
+      write (*,*) 'Cube-Sphere or EASE Grid - assuming dateline-on-edge (DE)'
+    else
+      dateline = Combined_gName(1:2)
+    endif
 
     open (10,file=fname,status='old',action='read',form='formatted')
     read (10,*)ip
@@ -1417,7 +1352,7 @@ contains
        mny=-90. + float(j-1)*180./float(j_sib)
        mxy=-90. + float(j)  *180./float(j_sib)
        
-       if (index(dateline,'DE')/=0) then
+       if ( dateline == 'DE' ) then
           do i=1,i_sib          
              if( .not. IsOcean(catid(i)- ip1))then
                 mnx =-180. + float(i-1)*360./float(i_sib)
@@ -1495,20 +1430,26 @@ contains
     !
     ! write (ASCII) catchment.def file (land tiles only!)
     catch_file = 'clsm//catchment.def'
-    if (two_EASE) catch_file = 'clsm//catchment-route.def' 
-    open (10,file=catch_file, form='formatted',status='unknown')
-    write (10,*) n_land
+    if (two_EASE) catch_file = 'clsm//catchment-route.def'
+
+    write_catch_ = .true.
+    if (present(write_catch)) write_catch_ = write_catch
+
+    if (write_catch_) then 
+       open (10,file=catch_file, form='formatted',status='unknown')
+       write (10,*) n_land
     
-    do j=1,n_land
- !      if(trim(dateline)=='DC')then
- !         limits(j,1) = max(limits(j,1),(i_index(j)-1)*dx_gcm -180. - dx_gcm/2.)       
- !         limits(j,2) = min(limits(j,2),(i_index(j)-1)*dx_gcm -180. + dx_gcm/2.)  
- !      endif
-       write (10,'(i10,i8,5(2x,f9.4))')j+ip1,id(j+ip1),limits(j,1),   &
+       do j=1,n_land
+          !if(trim(dateline)=='DC')then
+          !   limits(j,1) = max(limits(j,1),(i_index(j)-1)*dx_gcm -180. - dx_gcm/2.)       
+          !   limits(j,2) = min(limits(j,2),(i_index(j)-1)*dx_gcm -180. + dx_gcm/2.)  
+          !endif
+          write (10,'(i10,i8,5(2x,f9.4))')j+ip1,id(j+ip1),limits(j,1),   &
             limits(j,2),limits(j,3),limits(j,4),tile_ele(j)       
-    end do
-    close(10,status='keep')
-    
+       end do
+       close(10,status='keep')
+    endif
+
     if (two_EASE) then
        iTable(:,2) = iTable(:,2) - 1
        !flip to make it consistent with conventional EASE indexing
@@ -1539,6 +1480,12 @@ contains
     
     fname=trim(fnameTil)//'.nc4'
 
+    ! LakeTopoCat / ReachTopoCat:
+    ! compute encoded LakeType in tile space before writing the nc4 tile file.
+    allocate(lake_type(ip))
+    call LakeTopoCat_on_tiles_from_raster(ip, nx, ny, Rst_id, &
+         iTable(1:ip,0), lake_type, rc_lake)
+
     if (two_EASE) then
        ! remove tiles outside EASE grid domain
        call MAPL_ease_extent(gName(1), nc_tmp, nr_tmp, ur_lat = EASE_LAT_MAX)
@@ -1559,34 +1506,25 @@ contains
           endif
        enddo
 
-       call MAPL_WriteTilingNC4(fname,  gName(1:n_grid), im(1:n_grid), jm(1:n_grid),  &
-            nx, ny, iTable_keep, rTable_keep, N_PfafCat=SRTM_maxcat, rc=status)
+       if (rc_lake == 0) then
+          call MAPL_WriteTilingNC4(fname, gName(1:n_grid), im(1:n_grid), jm(1:n_grid), &
+               nx, ny, iTable_keep, rTable_keep, N_PfafCat=SRTM_maxcat, &
+               LakeType=pack(lake_type, keep_tile), rc=status)
+       else
+          call MAPL_WriteTilingNC4(fname, gName(1:n_grid), im(1:n_grid), jm(1:n_grid), &
+               nx, ny, iTable_keep, rTable_keep, N_PfafCat=SRTM_maxcat, rc=status)
+       endif
 
        deallocate(iTable_keep, rTable_keep, keep_tile)
     else
-       call MAPL_WriteTilingNC4(fname,  gName(1:n_grid), im(1:n_grid), jm(1:n_grid),  &
-            nx, ny, iTable, rTable, N_PfafCat=SRTM_maxcat, rc=status)
+       if (rc_lake == 0) then
+          call MAPL_WriteTilingNC4(fname, gName(1:n_grid), im(1:n_grid), jm(1:n_grid), &
+               nx, ny, iTable, rTable, N_PfafCat=SRTM_maxcat, LakeType=lake_type, rc=status)
+       else
+          call MAPL_WriteTilingNC4(fname, gName(1:n_grid), im(1:n_grid), jm(1:n_grid), &
+               nx, ny, iTable, rTable, N_PfafCat=SRTM_maxcat, rc=status)
+       endif
     endif
-    
-    ! LakeTopoCat / ReachTopoCat:
-    ! compute encoded LakeType in tile space and append to nc4 tile file.
-    !
-    ! lake_type:
-    !   -9999 = UNDEF / excluded, e.g. typ==100
-    !       0 = no LakeTopoCat lake or ReachTopoCat reach touch
-    !       1 = lake touch only
-    !       2 = reach touch only
-    !       3 = lake + reach touch
-    !
-    ! This runs only with nx=43200, ny=21600 for GEOS5_10arcsec_mask workflows;
-    ! returns rc_lake>0 otherwise.
-    
-    allocate(lake_type(ip))   ! ip = n_tile
-
-    call LakeTopoCat_on_tiles_from_raster(ip, nx, ny, Rst_id, &
-         iTable(1:ip,0), lake_type, rc_lake)
-
-    if (rc_lake == 0) call AppendLakeTypeToTileNC4(fname, ip, lake_type)
 
     deallocate(lake_type)
 
