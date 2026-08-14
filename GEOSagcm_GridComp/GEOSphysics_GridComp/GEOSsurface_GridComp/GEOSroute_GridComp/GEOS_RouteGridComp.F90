@@ -50,7 +50,7 @@ module GEOS_RouteGridCompMod
      real,    allocatable :: areacat(:)      ! m2
      integer, allocatable :: downid(:) 
 
-     real,    allocatable :: runoff_acc(:)  
+     real,    allocatable :: runoff_acc(:), DISTER(:)  
   
      real,    allocatable :: alpha_riv(:)
      real,    allocatable :: alpha_str(:)      
@@ -510,6 +510,7 @@ contains
     endif      
 
     allocate(route%runoff_acc(nt_local), source = 0.)
+    allocate(route%DISTER(nt_local), source = 0.)    
 
     pfaf_grid = create_pfaf_grid(_RC)
     call MAPL_LocStreamCreate(pfaf_locstream, pfaf_grid, _RC)
@@ -967,7 +968,7 @@ contains
 ! IMPORT pointers
 ! ----------------------------------------------------- 
 
-    real, dimension(:), pointer :: RUNOFF_SRC0   
+    real, dimension(:), pointer :: RUNOFF_SRC0, DISTER
 
 ! -----------------------------------------------------
 ! INTERNAL pointers
@@ -989,8 +990,7 @@ contains
     real, dimension(:), pointer :: QINFLOW
     real, dimension(:), pointer :: QOUTFLOW
     real, dimension(:), pointer :: QRES
-    real, dimension(:), pointer :: QCAT
-    real, dimension(:), pointer :: DISTER    
+    real, dimension(:), pointer :: QCAT 
 
 ! Time attributes and placeholders
 
@@ -1007,7 +1007,7 @@ contains
     integer                            :: I, pfaf_id, tile_id
     REAL                               :: HEARTBEAT 
 
-    type(ESMF_Field)                   :: runoff_src
+    type(ESMF_Field)                   :: runoff_src, DISTER_field
 
     integer                            :: ndes, mype
     type (T_RROUTE_STATE), pointer     :: route 
@@ -1068,9 +1068,7 @@ contains
     call MAPL_GetPointer(EXPORT, QINFLOW,  'QINFLOW' ,    ALLOC=.true., _RC)
     call MAPL_GetPointer(EXPORT, QOUTFLOW, 'QOUTFLOW',    ALLOC=.true., _RC)
     call MAPL_GetPointer(EXPORT, QRES,     'QRES',        ALLOC=.true., _RC)
-    call MAPL_GetPointer(EXPORT, QCAT,     'QCAT',        ALLOC=.true., _RC)
-    
-    call MAPL_GetPointer(IMPORT, DISTER,   'DISTER',      ALLOC=.true., _RC)    
+    call MAPL_GetPointer(EXPORT, QCAT,     'QCAT',        ALLOC=.true., _RC)   
 
 ! Start timers
 ! ------------
@@ -1096,7 +1094,11 @@ contains
     call ESMF_StateGet(IMPORT, 'RUNOFF', field=runoff_src, RC=STATUS)
     VERIFY_(STATUS)    
     call ESMF_FieldGet(runoff_src, farrayPtr=RUNOFF_SRC0, rc=status)   
-    VERIFY_(STATUS) 
+    VERIFY_(STATUS)
+    call ESMF_StateGet(IMPORT, 'DISTER', field=DISTER_field, RC=STATUS)
+    VERIFY_(STATUS)    
+    call ESMF_FieldGet(DISTER_field, farrayPtr=DISTER, rc=status)   
+    VERIFY_(STATUS)      
     call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
     VERIFY_(STATUS)   
     call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS)
@@ -1194,7 +1196,7 @@ contains
                 QCAT_tile_global(tile_id) = QCAT_global(pfaf_id) * 1.e3 / areacat_global(pfaf_id)
              endif
           enddo
-          DISTER(1:nt_local) = QCAT_tile_global( route%local_id(1:nt_local) )
+          route%DISTER(1:nt_local) = QCAT_tile_global( route%local_id(1:nt_local) )
           deallocate(QCAT_global,downid_global,areacat_global,QCAT_tile_global)          
        endif
        
@@ -1206,6 +1208,8 @@ contains
 
     endif ! CollectWaterAlarm
 
+    DISTER = route%DISTER
+    
     ! All done
     ! --------
     call MAPL_TimerOff ( MAPL, "-RRM" ) 
