@@ -7157,6 +7157,8 @@ module GEOS_SurfaceGridCompMod
 
 ! Allocate tile versions of imports
 !----------------------------------
+    allocate(DISTERTILE(NT),stat=STATUS); VERIFY_(STATUS)
+    DISTERTILE = 0.0
 
     allocate(   PSTILE(NT), STAT=STATUS)
     VERIFY_(STATUS)
@@ -7494,8 +7496,6 @@ module GEOS_SurfaceGridCompMod
     if (allocateRunoff) then
        allocate(RUNOFFTILE(NT),stat=STATUS); VERIFY_(STATUS)
        RUNOFFTILE = 0.0
-       allocate(DISTERTILE(NT),stat=STATUS); VERIFY_(STATUS)
-       DISTERTILE = 0.0
     end if
 
     call MKTILE(RUNSURF ,RUNSURFTILE ,NT,RC=STATUS); VERIFY_(STATUS)
@@ -9292,9 +9292,7 @@ module GEOS_SurfaceGridCompMod
       call FILLIN_TILE(GIM(type), 'SSWT', SSWTTILE, XFORM, RC=STATUS); VERIFY_(STATUS)
       call FILLIN_TILE(GIM(type), 'SSSD', SSSDTILE, XFORM, RC=STATUS); VERIFY_(STATUS)
 
-      if (associated(DISTERTILE)) then
-         call FILLIN_TILE(GIM(type), 'DISTER',  DISTERTILE,  XFORM, RC=STATUS); VERIFY_(STATUS)
-      end if
+      call FILLIN_TILE(GIM(type), 'DISTER',  DISTERTILE,  XFORM, RC=STATUS); VERIFY_(STATUS)
 
       if (associated(DISCHARGETILE)) then
          call FILLIN_TILE(GIM(type), 'DISCHARGE',  DISCHARGETILE,  XFORM, RC=STATUS); VERIFY_(STATUS)
@@ -9378,9 +9376,7 @@ module GEOS_SurfaceGridCompMod
       call MAPL_GetPointer(GEX(type), dum, 'RUNOFF'  , ALLOC=associated(RUNOFFTILE  ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'RUNSURF' , ALLOC=associated(RUNSURFTILE ), notFoundOK=.true., RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(GEX(type), dum, 'DISTER'  , ALLOC=associated(DISTERTILE  ), notFoundOK=.true., RC=STATUS)
-      VERIFY_(STATUS)      
+      VERIFY_(STATUS)    
       call MAPL_GetPointer(GEX(type), dum, 'BASEFLOW', ALLOC=associated(BASEFLOWTILE), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'ACCUM'   , ALLOC=associated(ACCUMTILE   ), notFoundOK=.true., RC=STATUS)
