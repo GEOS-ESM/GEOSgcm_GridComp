@@ -1,12 +1,12 @@
 esma_set_this ()
 
 set (alldirs
-  GEOSchem_GridComp       # restricted to GOCART only - see GEOSchem_GridComp/CMakeLists.txt
-  # GEOSmoist_GridComp     # not yet ported to MAPL3 - restore when ported
-  # GEOSsurface_GridComp   # not yet ported to MAPL3 - restore when ported
+  GEOSchem_GridComp         # restricted to GOCART only - see GEOSchem_GridComp/CMakeLists.txt
+  # GEOSmoist_GridComp      # not yet ported to MAPL3 - restore when ported
+  # GEOSsurface_GridComp    # not yet ported to MAPL3 - restore when ported
   # GEOSturbulence_GridComp # not yet ported to MAPL3 - restore when ported
   GEOSgwd_GridComp
-  # GEOSradiation_GridComp # not yet ported to MAPL3 - restore when ported
+  GEOSradiation_GridComp    # restricted to IRRAD only - see GEOSradiation_GridComp/CMakeLists.txt
   )
 
 # Temporarily bypass GEOSphysics top-level library: GEOS_PhysicsGridComp.F90
