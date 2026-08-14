@@ -11,7 +11,6 @@ classifiers = [
   "Private :: Do Not Upload",
   "Natural Language :: English",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13"
 ]
@@ -31,7 +30,7 @@ license = "Apache-2.0"
 license-files = ["LICENSE.txt"]
 name = "pyMoist"
 readme = "README.md"
-requires-python = ">=3.11,<3.13"
+requires-python = ">=3.12,<3.13"
 urls = {Repository = "https://github.com/GEOS-ESM/GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist"}
 version = "2026.dev"
 
