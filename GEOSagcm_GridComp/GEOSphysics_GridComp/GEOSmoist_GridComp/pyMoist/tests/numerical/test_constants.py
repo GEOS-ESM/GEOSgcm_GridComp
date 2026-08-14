@@ -14,16 +14,10 @@ def _check_type(type_A, type_B):
 
 def _get_constant_from_module(my_module: ModuleType) -> list[str]:
     # All public module var
-    module_var = [item for item in dir(my_module) if not item.startswith("_")]
-    # Get rid of the imports
     imports = ["np", "os", "Float", "Int"]
-    for i in imports:
-        module_var.remove(i)
-    # Remove non testable constants
     non_testable_const = ["MAPL_UNDEF", "NCNST", "FLOAT_TINY", "EXP_NAME", "NUMBER_OF_TRACERS", "EXPERIMENT_TRACERS"]
-    for nc in non_testable_const:
-        module_var.remove(nc)
-    return module_var
+    excludes = imports + non_testable_const
+    return [item for item in dir(my_module) if not item.startswith("_") and item not in excludes]
 
 
 def _load_reference_nc() -> xr.Dataset:

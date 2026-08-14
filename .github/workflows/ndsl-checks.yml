@@ -33,7 +33,7 @@ jobs:
       - name: Install Python packages
         run: |
           cd GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
-          pip install .
+          pip install .[ndsl]
 
       - name: Run lint via pre-commit
         run: |
