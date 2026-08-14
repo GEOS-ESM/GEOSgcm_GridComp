@@ -23,9 +23,6 @@ from pyMoist.convection_tracers import (
 )
 
 
-# from pyMoist.field_types import ConvectionTracerMetaDataTable_Bool, ConvectionTracerMetaDataTable_Float, ConvectionTracerMetaDataTable_x4
-
-
 def environment_cloud_levels_chemistry(
     error_code: IntFieldIJ_Plume,
     chemistry_tracers: FloatField_ConvectionTracers,
