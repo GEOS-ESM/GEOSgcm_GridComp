@@ -320,6 +320,11 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     endif
 
     call MAPL_GetResource(MAPL, USE_PYMOIST_GFDL1M, 'USE_PYMOIST_GFDL1M:', default=.FALSE., RC=STATUS); VERIFY_(STATUS)
+    
+    if (USE_PYMOIST_GFDL1M) then
+      call MAPL_ConfigSetAttribute(CF, DT_MOIST, 'DSL__GFLD1M_DT:', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.microphysics.GFDL1M_interface", MAPL, IMPORT, EXPORT )
+    endif
 
     call MAPL_GetResource( MAPL, SH_MD_DP        , 'SH_MD_DP:'        , DEFAULT= .TRUE., RC=STATUS); VERIFY_(STATUS)
 
