@@ -8,7 +8,7 @@ class UWConfiguration:
     JASON: bool
     JASON_MFD_SC: bool
     REPORT_UW_NEGATIVES: bool
-    USE_UW_EIS: bool
+    UW_USE_EIS: bool
     NCNST: Int
     rkfre: Float
     k0: Int
