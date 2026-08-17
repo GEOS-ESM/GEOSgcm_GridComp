@@ -10,6 +10,7 @@ class UWConfiguration:
     REPORT_UW_NEGATIVES: bool
     USE_UW_EIS: bool
     NCNST: Int
+    rkfre: Float
     k0: Int
     windsrcavg: Int
     dotransport: Int
