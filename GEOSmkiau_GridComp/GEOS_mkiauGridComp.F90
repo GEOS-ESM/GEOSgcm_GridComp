@@ -3456,18 +3456,31 @@ CONTAINS
         where(rnames=='t')
           rnames = 't-bypass' 
         endwhere
+        if(MAPL_AM_I_ROOT() ) then
+          print *
+          print *, ' MKIAU: found both T and TV in ana, bypassing T'
+          print *
+        endif
       endif
       ! when both u and ua are in file, bypass u
       if (any(rnames=='u') .and. any(rnames=='ua')) then
         where(rnames=='u')
           rnames = 'u-bypass' 
         endwhere
+        if(MAPL_AM_I_ROOT() ) then
+          print *
+          print *, ' MKIAU: found both U and UA in ana, bypassing U'
+          print *
+        endif
       endif
       ! when both v and va are in file, bypass v
       if (any(rnames=='v') .and. any(rnames=='va')) then
         where(rnames=='v')
           rnames = 'v-bypass' 
         endwhere
+          print *
+          print *, ' MKIAU: found both V and VA in ana, bypassing U'
+          print *
       endif
       end subroutine RedanduncyCheck
 
