@@ -7329,7 +7329,6 @@ def setup_outputs(
     SHLW_PRC3: FloatField,
     SHLW_SNO3: FloatField,
     DQLDT_SC: FloatField,
-    DQIDT_SC: FloatField,
 ):
     """
     Stencil to finalize UW outputs after k-flip.
@@ -9967,7 +9966,6 @@ class ComputeUwshcuInv(NDSLRuntime):
             SHLW_PRC3=state.output.SHLW_PRC3,
             SHLW_SNO3=state.output.SHLW_SNO3,
             DQLDT_SC=state.output.qlten_inv,
-            DQIDT_SC=state.output.qiten_inv,
         )
 
         # Raise an error if REPORT_UW_NEGATIVES is True: This code has not been ported
