@@ -41,7 +41,7 @@ class UWGEOSInterface(UserCode):
             JASON=True if ndsl_stack.quantity_factory.sizer.nz == 72 else False,
             JASON_MFD_SC=True if ndsl_stack.quantity_factory.sizer.nz == 72 else False,
             REPORT_UW_NEGATIVES=MAPLPy.get_resource("REPORT_UW_NEGATIVES:", mapl_state, default=False),
-            USE_UW_EIS=MAPLPy.get_resource("USE_UW_EIS:", mapl_state, default=False if jason_uw else True),
+            UW_USE_EIS=MAPLPy.get_resource("UW_USE_EIS:", mapl_state, default=False if jason_uw else True),
             NCNST=0,  # will be updated during first run call, once tracer packet is built in fortran
             rkfre=MAPLPy.get_resource("RKFRE:", mapl_state, default=Float(1.0) if jason_uw else Float(1.5)),
             k0=ndsl_stack.quantity_factory.sizer.nz,
