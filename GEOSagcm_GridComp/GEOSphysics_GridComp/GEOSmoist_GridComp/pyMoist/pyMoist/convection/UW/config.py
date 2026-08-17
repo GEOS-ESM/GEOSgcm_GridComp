@@ -7,6 +7,8 @@ from ndsl.dsl.typing import Float, Int
 class UWConfiguration:
     JASON: bool
     JASON_MFD_SC: bool
+    REPORT_UW_NEGATIVES: bool
+    USE_UW_EIS: bool
     NCNST: Int
     k0: Int
     windsrcavg: Int
