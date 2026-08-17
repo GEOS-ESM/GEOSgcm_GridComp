@@ -236,14 +236,17 @@ module GEOSmoist_Process_Library
   logical :: GF2M_USE_CORRECTOR = .true.
 
   integer :: GF2M_W_OPTION        = 2
-  integer :: GF2M_PLIQ_EFF_OPTION = 0
+  integer :: GF2M_PLIQ_EFF_OPTION = 1
 
   real :: GF2M_DET_SCALE     = 1.0
   real :: GF2M_C1D_SCALE     = 1.0
   real :: GF2M_TOP_DET_SCALE = 1.0
   logical :: GF2M_DET_LEVEL_AVERAGE = .TRUE.
   
- 
+  real    :: GF2M_HOM_NEW_ICE_DIAM = 40.0e-6
+  logical :: GF2M_ACTIVATE_ABOVE_CLOUD_BASE = .false.
+   
+  real :: GF2M_MIXED_PHASE_ICE_ONSET_T = 258.15
  
   ! Storage of aerosol properties for activation
   !type(AerPropsNew) :: AeroPropsNew(nsmx_par)
@@ -296,7 +299,7 @@ module GEOSmoist_Process_Library
   public :: AeroPropsNew
   public :: CNV_Tracer_Type, CNV_Tracers, CNV_Tracers_Init
   public :: constrain_modis_ice
-  public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, BUOYANCY2
+  public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, BUOYANCY2, ANVIL_EVAP_SUBL3
   public :: REDISTRIBUTE_CLOUDS_SCALAR, REDISTRIBUTE_CLOUDS, RADCOUPLE_SCALE_AWARE, RADCOUPLE, FIX_UP_CLOUDS
   public :: hystpdf, fix_up_clouds_2M, hystpdf_2M
   public :: FILLQ2ZERO
@@ -334,6 +337,10 @@ module GEOSmoist_Process_Library
   public :: GF2M_C1D_SCALE
   public :: GF2M_TOP_DET_SCALE, GF2M_DET_LEVEL_AVERAGE
   public :: BKG_INP_SC_CNV
+  public :: GF2M_HOM_NEW_ICE_DIAM
+  public :: GF2M_ACTIVATE_ABOVE_CLOUD_BASE
+  public :: GF2M_MIXED_PHASE_ICE_ONSET_T
+
 
 
   contains
@@ -6456,4 +6463,285 @@ contains
    end function normal_exceedance
 
 end subroutine Pfreezing
+
+subroutine ANVIL_EVAP_SUBL3( &
+      DT       , &
+      A_EFF_L  , &
+      A_EFF_I  , &
+      F_EXP    , &
+      PL       , &
+      TE       , &
+      QV       , &
+      QL       , &
+      QI       , &
+      F        , &
+      NL       , &
+      NI         )
+
+   implicit none
+
+   !-------------------------------------------------------------------
+   ! Arguments
+   !-------------------------------------------------------------------
+   real, intent(in   ) :: DT
+   real, intent(in   ) :: A_EFF_L
+   real, intent(in   ) :: A_EFF_I
+   real, intent(in   ) :: F_EXP
+   real, intent(in   ) :: PL
+
+   real, intent(inout) :: TE
+   real, intent(inout) :: QV
+   real, intent(inout) :: QL
+   real, intent(inout) :: QI
+   real, intent(inout) :: F
+
+   real, intent(in   ) :: NL
+   real, intent(in   ) :: NI
+
+   !-------------------------------------------------------------------
+   ! Local variables
+   !-------------------------------------------------------------------
+   real :: QSLIQ, QSICE, QSMIX
+   real :: ESLIQ, ESICE
+
+   real :: RHLIQ, RHICE
+   real :: ENVF, QV_ENV
+
+   real :: QC_OLD, QC_NEW
+   real :: FLIQ
+
+   real :: QCM_L, QCM_I
+   real :: RADIUS_L, RADIUS_I
+
+   real :: K1_L, K2_L
+   real :: K1_I, K2_I
+
+   real :: EVAP_POT, SUBL_POT
+   real :: EVAP, SUBL
+
+   real :: DQ_POT
+   real :: DQ_MAX
+   real :: SCALE
+
+   real :: FRATIO
+   real :: FEXP_USE
+
+   real, parameter :: QSMALL = 1.0e-12
+   real, parameter :: FSMALL = 1.0e-8
+
+   !===================================================================
+   ! Combined evaporation/sublimation of parameterized anvil condensate
+   !
+   ! Fraction scaling:
+   !
+   !   Fnew = Fold * (QCnew/QCold)**F_EXP
+   !
+   ! Therefore:
+   !
+   !   F_EXP = 0    : F unchanged
+   !   F_EXP = 0.5  : weak fraction response
+   !   F_EXP = 1    : legacy-like proportional response
+   !   F_EXP > 1    : stronger fraction response
+   !
+   ! Liquid and ice tendencies are diagnosed from the SAME initial
+   ! environmental state. This removes the EVAP3 -> SUBL3 ordering
+   ! dependence.
+   !===================================================================
+
+   QC_OLD = max(QL + QI, 0.0)
+
+   if (QC_OLD <= QSMALL) return
+   if (F      <= FSMALL) return
+   if (DT     <= 0.0   ) return
+
+   !-------------------------------------------------------------------
+   ! Fraction of the grid box outside the parameterized anvil
+   !-------------------------------------------------------------------
+
+   ENVF = max(1.0 - F, 0.0)
+
+   ! If essentially the entire grid box is occupied by anvil, there is
+   ! no external environment into which condensate can evaporate.
+   if (ENVF <= FSMALL) return
+
+   !===================================================================
+   ! Saturation values
+   !
+   ! GEOS_QsatLQU and GEOS_QsatICE expect pressure in Pa.
+   !===================================================================
+
+   QSLIQ = GEOS_QsatLQU(TE, PL*100.0)
+   QSICE = GEOS_QsatICE(TE, PL*100.0)
+
+   QSLIQ = max(QSLIQ, QSMALL)
+   QSICE = max(QSICE, QSMALL)
+
+   !-------------------------------------------------------------------
+   ! Condensate-weighted saturation state.
+   !
+   ! This is used only to separate the mean vapor associated with the
+   ! parameterized anvil from the surrounding environment.
+   !-------------------------------------------------------------------
+
+   FLIQ = min(max(QL/QC_OLD, 0.0), 1.0)
+
+   QSMIX = FLIQ*QSLIQ + &
+           (1.0-FLIQ)*QSICE
+
+   !-------------------------------------------------------------------
+   ! Environmental vapor outside the anvil.
+   !
+   ! Assume the vapor within the parameterized anvil is approximately
+   ! saturated at QSMIX.
+   !-------------------------------------------------------------------
+
+   QV_ENV = (QV - F*QSMIX) / ENVF
+   QV_ENV = max(QV_ENV, 0.0)
+
+   RHLIQ = min(max(QV_ENV/QSLIQ, 0.0), 1.0)
+   RHICE = min(max(QV_ENV/QSICE, 0.0), 1.0)
+
+   !===================================================================
+   ! Diffusional resistance terms
+   !===================================================================
+
+   ESLIQ = 100.0*PL*QSLIQ / &
+           (EPSILON + (1.0-EPSILON)*QSLIQ)
+
+   ESICE = 100.0*PL*QSICE / &
+           (EPSILON + (1.0-EPSILON)*QSICE)
+
+   !-------------------------------------------------------------------
+   ! Liquid
+   !-------------------------------------------------------------------
+
+   K1_L = MAPL_ALHL**2 * RHO_W / &
+          (K_COND*MAPL_RVAP*TE**2)
+
+   K2_L = MAPL_RVAP*TE*RHO_W / &
+          (DIFFU*(1000.0/PL)*ESLIQ)
+
+   !-------------------------------------------------------------------
+   ! Ice
+   !-------------------------------------------------------------------
+
+   K1_I = MAPL_ALHS**2 * RHO_I / &
+          (K_COND*MAPL_RVAP*TE**2)
+
+   K2_I = MAPL_RVAP*TE*RHO_I / &
+          (DIFFU*(1000.0/PL)*ESICE)
+
+   !===================================================================
+   ! Effective particle radii
+   !
+   ! F remains fixed while both tendencies are calculated.
+   !===================================================================
+
+   if (QL > 0.0) then
+      QCM_L = QL/F
+   else
+      QCM_L = 0.0
+   end if
+
+   if (QI > 0.0) then
+      QCM_I = QI/F
+   else
+      QCM_I = 0.0
+   end if
+
+   RADIUS_L = LDRADIUS4(PL, TE, QCM_L, NL, NI, 1)
+   RADIUS_I = LDRADIUS4(PL, TE, QCM_I, NL, NI, 2)
+
+   !===================================================================
+   ! Potential liquid evaporation
+   !===================================================================
+
+   EVAP_POT = 0.0
+
+   if (QL > 0.0 .and. &
+       RADIUS_L > 0.0 .and. &
+       RHLIQ < 1.0) then
+
+      EVAP_POT = A_EFF_L * QL * DT * (1.0-RHLIQ) / &
+                 ((K1_L+K2_L)*RADIUS_L**2)
+
+      EVAP_POT = min(max(EVAP_POT, 0.0), QL)
+
+   end if
+
+   !===================================================================
+   ! Potential ice sublimation
+   !===================================================================
+
+   SUBL_POT = 0.0
+
+   if (QI > 0.0 .and. &
+       RADIUS_I > 0.0 .and. &
+       RHICE < 1.0) then
+
+      SUBL_POT = A_EFF_I * QI * DT * (1.0-RHICE) / &
+                 ((K1_I+K2_I)*RADIUS_I**2)
+
+      SUBL_POT = min(max(SUBL_POT, 0.0), QI)
+
+   end if
+
+   !===================================================================
+   ! Joint environmental vapor-capacity limit
+   !
+   ! Both liquid evaporation and ice sublimation add vapor to the same
+   ! environmental air. Do not independently use the same vapor deficit
+   ! twice.
+   !
+   ! QSMIX provides a simple mixed-phase saturation closure.
+   !===================================================================
+
+   DQ_POT = EVAP_POT + SUBL_POT
+
+   DQ_MAX = ENVF * max(QSMIX-QV_ENV, 0.0)
+
+   if (DQ_POT > QSMALL) then
+      SCALE = min(1.0, DQ_MAX/DQ_POT)
+   else
+      SCALE = 0.0
+   end if
+
+   EVAP = EVAP_POT*SCALE
+   SUBL = SUBL_POT*SCALE
+
+   !===================================================================
+   ! Apply tendencies
+   !===================================================================
+
+   QL = max(QL-EVAP, 0.0)
+   QI = max(QI-SUBL, 0.0)
+
+   QV = QV + EVAP + SUBL
+
+   TE = TE - alhlbcp*EVAP &
+           - alhsbcp*SUBL
+
+   !===================================================================
+   ! Optional anvil-fraction response
+   !
+   ! This is deliberately applied ONCE after both phase changes.
+   !===================================================================
+
+   QC_NEW = max(QL + QI, 0.0)
+
+   FEXP_USE = max(F_EXP, 0.0)
+
+   if (FEXP_USE > 0.0 .and. QC_OLD > QSMALL) then
+
+      FRATIO = QC_NEW/QC_OLD
+      FRATIO = min(max(FRATIO, 0.0), 1.0)
+
+      F = F * FRATIO**FEXP_USE
+      F = min(max(F, 0.0), 1.0)
+
+   end if
+
+end subroutine ANVIL_EVAP_SUBL3
+
+
 end module GEOSmoist_Process_Library

@@ -19,7 +19,9 @@ module GF2020_2M_MicrophysicsMod
   use ConvPar_GF_SharedParams
   use GEOSmoist_Process_Library, only: AerPropsNew, ERFAPP, ICE_AUTO_TSC_CNV, DCS_CNV, &
        DEBUG_GF2M, ACC_ENH_CNV, ACC_ENH_ICE, FDROPDUST, FDROPSOOT, GF2M_USE_CORRECTOR, &
-       FHETSOOT, FHETDUST, AUT_SCALE_CNV, GF2M_W_OPTION, BKG_INP_SC_CNV
+       FHETSOOT, FHETDUST, AUT_SCALE_CNV, GF2M_W_OPTION, BKG_INP_SC_CNV, &
+       GF2M_HOM_NEW_ICE_DIAM, GF2M_ACTIVATE_ABOVE_CLOUD_BASE, &
+       GF2M_MIXED_PHASE_ICE_ONSET_T
 
 
   use micro_mg_utils, only: r8, MGHydrometeorProps, size_dist_param_liq, &
@@ -102,15 +104,18 @@ module GF2020_2M_MicrophysicsMod
   real(r8), parameter :: rho_snow_2m = 600._r8
 
   ! Homogeneous-freezing ice-number closure.
-  ! Homogeneous freezing can consume all selected liquid mass, but the
-  ! resulting ice crystals are not assumed one-to-one with frozen droplets.
-  ! Approximate the new ice number source using the mass ratio of a 12 um
-  ! liquid drop to a 40 um ice particle.
-  real(r8), parameter :: dliq_hom_number_ref_2m = 12.0e-6_r8  ! m diameter
-  real(r8), parameter :: dice_hom_number_ref_2m = 40.0e-6_r8  ! m diameter
-  real(r8), parameter :: hom_ice_number_ratio_2m =                  &
-       (rho_liq_mg/rho_ice_mg) *                                    &
-       (dliq_hom_number_ref_2m/dice_hom_number_ref_2m)**3
+  ! Homogeneous freezing consumes a liquid mass increment qhom_mass.  The
+  ! number of newly formed ice crystals is diagnosed from that frozen mass
+  ! and an assumed effective diameter GF2M_HOM_NEW_ICE_DIAM.
+  ! The number source is still capped by the number of liquid droplets removed,
+  ! so homogeneous freezing cannot create more ice crystals than droplets.
+  !
+  ! Mixed-phase retained-cloud ice leak.  This is an intentionally simple
+  ! global retained-cloud phase correction: below GF2M_MIXED_PHASE_ICE_ONSET_T
+  ! a smooth temperature-dependent fraction of remaining retained liquid is
+  ! converted to retained cloud ice, reaching complete glaciation at thom_2m.
+  ! It does not compare against a target ice fraction; it always acts on the
+  ! remaining liquid.  Total retained condensate is conserved.
 
   ! Diagnostic convective precipitation distributions.
   ! Rain/snow use exponential Marshall-Palmer form, N(D)=N0 exp(-lambda D).
@@ -326,6 +331,8 @@ SUBROUTINE cup_up_moisture_2M(name,start_level,                                 
   real :: dn_freeze_bkg_mix
   real :: dn_hom_mix
   real :: dn_hom_ice_src_mix
+  real :: dice_hom_new_m
+  real :: mice_hom_new_kg
   real :: nliq_before_freeze_mix
   real :: nliq_freeze_avail_mix
 
@@ -565,7 +572,7 @@ SUBROUTINE cup_up_moisture_2M(name,start_level,                                 
     dcs_mg = real(DCS_CNV, r8)
     auto_eff_liq_2m       = real(AUT_SCALE_CNV, r8)
     accre_eff_rain_2m     = real(ACC_ENH_CNV, r8)
-    accre_eff_snow_liq_2m = real(ACC_ENH_CNV, r8)
+    accre_eff_snow_liq_2m = 1. 
     accre_eff_snow_ice_2m = real(ACC_ENH_ICE, r8)
     fdrop_dust_2m         = FDROPDUST
     fdrop_soot_2m         = FDROPSOOT
@@ -843,9 +850,12 @@ SUBROUTINE cup_up_moisture_2M(name,start_level,                                 
         !   nice_up_mix
         !   ndust_up_mix
         !
-        ! Activation is a point source of liquid droplets at each level.
-        ! Only the droplet reservoir is transported upward. Newly activated
-        ! droplets are added locally after transport:
+        ! Activation is a point source of liquid droplets.  By default it
+        ! can occur above cloud base using the remaining cloud-base aerosol
+        ! reservoir.  If GF2M_ACTIVATE_ABOVE_CLOUD_BASE=.FALSE., activation
+        ! is restricted to k == kbase_2m and only transported droplets remain
+        ! above cloud base. Newly activated droplets are added locally after
+        ! transport:
         !
         !   nliq(k) = transported nliq(k-1) + activated_from_remaining_aerosol(k)
         !
@@ -1005,7 +1015,9 @@ SUBROUTINE cup_up_moisture_2M(name,start_level,                                 
         !   .true. : dNdrop_act = max(Ndrop_act - Ndrop, 0)
         !   .false.: dNdrop_act = Ndrop_act  (legacy additive source)
         nact_target_mix = 0.0
-        if(k >= kbase_2m .and. aer_reservoir_initialized .and. nmodes > 0) then
+        if(((GF2M_ACTIVATE_ABOVE_CLOUD_BASE .and. k >= kbase_2m) .or. &
+            ((.not. GF2M_ACTIVATE_ABOVE_CLOUD_BASE) .and. k == kbase_2m)) .and. &
+            aer_reservoir_initialized .and. nmodes > 0) then
 
            call activate_from_aerp_arg2002_local( &
                 nmodes, aer_num_work_m3, aer_dpg_work_m, aer_sig_work, aer_kap_work, &
@@ -1195,14 +1207,20 @@ SUBROUTINE cup_up_moisture_2M(name,start_level,                                 
         dn_hom_mix = fhom * nliq_mix
         dn_hom_mix = max(0.0, min(dn_hom_mix, nliq_mix))
 
-        ! Homogeneous freezing consumes the selected liquid mass, but the
-        ! resulting ice crystal number is not one-to-one with the frozen
-        ! droplet sink. Use the 12 um liquid / 40 um ice mass-ratio closure.
-        dn_hom_ice_src_mix = real(hom_ice_number_ratio_2m) * dn_hom_mix
-        dn_hom_ice_src_mix = max(0.0, min(dn_hom_ice_src_mix, dn_hom_mix))
-
         qhom_mass = fhom * qliq_mass
         qhom_mass = max(0.0, min(qhom_mass, qliq_mass))
+
+        ! Diagnose new homogeneous-freezing ice number from the frozen liquid
+        ! mass increment and the assumed newborn-ice effective diameter. Prevents very large Nliq from mapping
+        ! directly into very large Nice.
+        dice_hom_new_m = max(5.0e-6, real(GF2M_HOM_NEW_ICE_DIAM))
+        mice_hom_new_kg = real(rho_ice_mg) * real(pi_r8) / 6.0 * dice_hom_new_m**3
+        if(qhom_mass > qsmall_2m .and. mice_hom_new_kg > 1.0e-30) then
+           dn_hom_ice_src_mix = qhom_mass / mice_hom_new_kg
+        else
+           dn_hom_ice_src_mix = 0.0
+        endif
+        dn_hom_ice_src_mix = max(0.0, min(dn_hom_ice_src_mix, dn_hom_mix))
 
         nliq_mix = max(0.0, nliq_mix - dn_hom_mix)
         nice_mix = max(0.0, nice_mix + dn_hom_ice_src_mix)
@@ -1505,8 +1523,14 @@ SUBROUTINE cup_up_moisture_2M(name,start_level,                                 
         nliq_mix = max(0.0, nliq_mix)
         nice_mix = max(0.0, nice_mix_before_ice_auto - dn_auto_ice_mix)
 
-        qice_up_mix(i,k) = max(0.0, qice_mass - dq_auto_ice)
-        qice_up_mix(i,k) = min(qice_up_mix(i,k), qcloud_after_all_auto)
+        qice_mass = max(0.0, qice_mass - dq_auto_ice)
+        qice_mass = min(qice_mass, qcloud_after_all_auto)
+        qliq_mass = max(0.0, qcloud_after_all_auto - qice_mass)
+
+        call apply_mixed_phase_retained_ice_leak_2m(tempc(i,k), qliq_mass, qice_mass, nliq_mix, nice_mix)
+
+        qcloud_after_all_auto = max(0.0, qliq_mass + qice_mass)
+        qice_up_mix(i,k) = max(0.0, min(qice_mass, qcloud_after_all_auto))
 
         !--------------------------------------------------------------------
         ! Final post-autoconversion safeguard.
@@ -1517,7 +1541,7 @@ SUBROUTINE cup_up_moisture_2M(name,start_level,                                 
 
         if(qcloud_after_all_auto > qsmall_2m) then
            ncond_floor_mix = ncond_floor_cm3_liq * 1.0e6 / max(rho(i,k), 1.0e-12)
-           qliq_mass = max(0.0, qcloud_after_all_auto - qice_mass)
+           qliq_mass = max(0.0, qcloud_after_all_auto - qice_up_mix(i,k))
 
            if(qliq_mass > qsmall_2m .and. nliq_mix < ncond_floor_mix) then
               nliq_mix = ncond_floor_mix
@@ -1792,6 +1816,8 @@ SUBROUTINE cup_up_moisture_2M(name,start_level,                                 
               nliq_mix  = max(0.0, nliq_col(k))
               nice_mix  = max(0.0, nice_col(k))
 
+              call apply_mixed_phase_retained_ice_leak_2m(tempc(i,k), qliq_mass, qice_mass, nliq_mix, nice_mix)
+
               qcloud_after_all_auto = max(0.0, qliq_mass + qice_mass)
 
               qrc(i,k)         = qcloud_after_all_auto
@@ -1974,15 +2000,18 @@ SUBROUTINE cup_up_moisture_2M(name,start_level,                                 
            endif
 
            ! Reuse the predictor activation result.  This avoids a second
-           ! mutation of the local aerosol reservoir.  With target-increment
-           ! activation, recompute the positive increment against the corrected
-           ! transported droplet number.  With legacy additive activation, reuse
-           ! the predictor-pass source directly.
-           nact_target_mix = max(0.0, nact_target_mix_col(k))
-           if(use_activation_target_increment_2m) then
-              nact_lev_mix = max(0.0, nact_target_mix - nliq_up_mix(i,k))
+           ! mutation of the local aerosol reservoir.  If requested, prevent
+           ! any new 2M activation above cloud base in the corrector as well.
+           if(GF2M_ACTIVATE_ABOVE_CLOUD_BASE .or. k == kbase_2m) then
+              nact_target_mix = max(0.0, nact_target_mix_col(k))
+              if(use_activation_target_increment_2m) then
+                 nact_lev_mix = max(0.0, nact_target_mix - nliq_up_mix(i,k))
+              else
+                 nact_lev_mix = max(0.0, nact_lev_mix_col(k))
+              endif
            else
-              nact_lev_mix = max(0.0, nact_lev_mix_col(k))
+              nact_target_mix = 0.0
+              nact_lev_mix    = 0.0
            endif
            nliq_up_mix(i,k) = max(0.0, nliq_up_mix(i,k) + nact_lev_mix)
            nact_lev_mix_col(k) = nact_lev_mix
@@ -2116,14 +2145,21 @@ SUBROUTINE cup_up_moisture_2M(name,start_level,                                 
            dn_hom_mix = fhom * nliq_mix
            dn_hom_mix = max(0.0, min(dn_hom_mix, nliq_mix))
 
-           ! Homogeneous freezing consumes the selected liquid mass, but the
-           ! resulting ice crystal number is not one-to-one with the frozen
-           ! droplet sink. Use the 12 um liquid / 40 um ice mass-ratio closure.
-           dn_hom_ice_src_mix = real(hom_ice_number_ratio_2m) * dn_hom_mix
-           dn_hom_ice_src_mix = max(0.0, min(dn_hom_ice_src_mix, dn_hom_mix))
-
            qhom_mass = fhom * qliq_mass
            qhom_mass = max(0.0, min(qhom_mass, qliq_mass))
+
+           ! Diagnose new homogeneous-freezing ice number from the frozen liquid
+           ! mass increment and the assumed newborn-ice effective diameter.  This
+           ! keeps the corrector path consistent with the predictor path and
+           ! avoids mapping all remaining liquid droplet number directly to ice.
+           dice_hom_new_m = max(1.0e-6, real(GF2M_HOM_NEW_ICE_DIAM))
+           mice_hom_new_kg = real(rho_ice_mg) * real(pi_r8) / 6.0 * dice_hom_new_m**3
+           if(qhom_mass > qsmall_2m .and. mice_hom_new_kg > 1.0e-30) then
+              dn_hom_ice_src_mix = qhom_mass / mice_hom_new_kg
+           else
+              dn_hom_ice_src_mix = 0.0
+           endif
+           dn_hom_ice_src_mix = max(0.0, min(dn_hom_ice_src_mix, dn_hom_mix))
 
            nliq_mix = max(0.0, nliq_mix - dn_hom_mix)
            nice_mix = max(0.0, nice_mix + dn_hom_ice_src_mix)
@@ -2321,6 +2357,8 @@ SUBROUTINE cup_up_moisture_2M(name,start_level,                                 
            qice_mass = max(0.0, qice_mass - dq_auto_ice)
            nice_mix  = max(0.0, nice_mix  - dn_auto_ice_mix)
 
+           call apply_mixed_phase_retained_ice_leak_2m(tempc(i,k), qliq_mass, qice_mass, nliq_mix, nice_mix)
+
            qcloud_after_all_auto = max(0.0, qliq_mass + qice_mass)
 
            ! Final post-autoconversion safeguards.
@@ -2446,6 +2484,87 @@ SUBROUTINE cup_up_moisture_2M(name,start_level,                                 
 
 
 END SUBROUTINE cup_up_moisture_2M
+
+
+!----------------------------------------------------------------------
+
+  SUBROUTINE apply_mixed_phase_retained_ice_leak_2m(temp_k, qliq, qice, nliq, nice)
+
+    !-------------------------------------------------------------------
+    ! Kludgy retained-cloud mixed-phase correction.
+    !
+    ! Below GF2M_MIXED_PHASE_ICE_ONSET_T, convert a smooth fraction of
+    ! the remaining retained liquid to retained cloud ice.  The conversion
+    ! reaches complete glaciation at thom_2m.  This is deliberately not a
+    ! target/floor check; it adds ice at the expense of whatever liquid is
+    ! still present at that level.
+    !
+    ! Total retained condensate is conserved.  Rain/snow are untouched.
+    ! Liquid number is reduced in proportion to the liquid mass converted.
+    ! Ice number is not increased if an ice population already exists, so
+    ! the adjustment primarily grows existing ice.  If no ice population is
+    ! present, a mass-limited seed number is diagnosed with the same assumed
+    ! new-ice diameter used by homogeneous freezing.
+    !-------------------------------------------------------------------
+
+    implicit none
+
+    real, intent(in)    :: temp_k
+    real, intent(inout) :: qliq, qice
+    real, intent(inout) :: nliq, nice
+
+    real(r8) :: onset_t, denom, xglac, fglac
+    real(r8) :: qliq0, qice0, nliq0, nice0
+    real(r8) :: dq_phase, dn_liq_loss
+    real(r8) :: dice_new, mice_new, dn_seed
+
+    qliq0 = max(0._r8, real(qliq, r8))
+    qice0 = max(0._r8, real(qice, r8))
+    nliq0 = max(0._r8, real(nliq, r8))
+    nice0 = max(0._r8, real(nice, r8))
+
+    if(qliq0 <= real(qsmall_2m, r8)) return
+
+    onset_t = max(real(thom_2m, r8) + 1.0e-3_r8, real(GF2M_MIXED_PHASE_ICE_ONSET_T, r8))
+    if(real(temp_k, r8) >= onset_t) return
+
+    denom = max(onset_t - real(thom_2m, r8), 1.0e-6_r8)
+    xglac = (onset_t - real(temp_k, r8)) / denom
+    xglac = max(0._r8, min(1._r8, xglac))
+
+    ! Smoothstep: small response just below onset, full response at thom_2m.
+    fglac = xglac*xglac*(3._r8 - 2._r8*xglac)
+    fglac = max(0._r8, min(1._r8, fglac))
+
+    dq_phase = fglac * qliq0
+    dq_phase = max(0._r8, min(dq_phase, qliq0))
+    if(dq_phase <= real(qsmall_2m, r8)) return
+
+    dn_liq_loss = fglac * nliq0
+    dn_liq_loss = max(0._r8, min(dn_liq_loss, nliq0))
+
+    qliq0 = qliq0 - dq_phase
+    qice0 = qice0 + dq_phase
+    nliq0 = max(0._r8, nliq0 - dn_liq_loss)
+
+    if(nice0 <= 1._r8) then
+       dice_new = max(5.0e-6_r8, real(GF2M_HOM_NEW_ICE_DIAM, r8))
+       mice_new = rho_ice_mg * pi_r8 / 6._r8 * dice_new**3
+       if(mice_new > 1.0e-30_r8) then
+          dn_seed = dq_phase / mice_new
+       else
+          dn_seed = 0._r8
+       endif
+       dn_seed = max(0._r8, min(dn_seed, dn_liq_loss))
+       nice0 = nice0 + dn_seed
+    endif
+
+    qliq = real(max(0._r8, qliq0))
+    qice = real(max(0._r8, qice0))
+    nliq = real(max(0._r8, nliq0))
+    nice = real(max(0._r8, nice0))
+
+  END SUBROUTINE apply_mixed_phase_retained_ice_leak_2m
 
 
 !============================ helpers ========================= 
@@ -2758,7 +2877,7 @@ END SUBROUTINE cup_up_moisture_2M
     !     et al. (2007)-style rate, coupled only to the presence of liquid.
     !
     ! Supersaturation over ice at water saturation follows the Murphy and Koop
-    ! (2005)-based linear approximation used in the original helper.
+    ! (2005)-based linear approximation.
 
     implicit none
 

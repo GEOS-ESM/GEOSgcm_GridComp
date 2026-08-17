@@ -55,6 +55,7 @@ module GEOS_MGB2_2M_InterfaceMod
   real    :: MINRHCRIT  
   real    :: CCW_EVAP_EFF
   real    :: CCI_EVAP_EFF
+  real    :: ANV_FEXP
   integer :: PDFSHAPE
   real    :: MIN_RL
   real    :: MAX_RL
@@ -363,10 +364,10 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, MIN_RL          , 'MIN_RL:'          , DEFAULT= 2.5e-6, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MAX_RL          , 'MAX_RL:'          , DEFAULT= 60.0e-6, RC=STATUS); VERIFY_(STATUS)
 
-    call MAPL_GetResource( MAPL, DO_EVAP_SUBL, 'DO_EVAP_SUBL:', DEFAULT= .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, DO_EVAP_SUBL, 'DO_EVAP_SUBL:', DEFAULT= .FALSE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CCW_EVAP_EFF, 'CCW_EVAP_EFF:', DEFAULT= 4.e-3, RC=STATUS); VERIFY_(STATUS)
 	call MAPL_GetResource( MAPL, CCI_EVAP_EFF, 'CCI_EVAP_EFF:', DEFAULT= 4.e-3, RC=STATUS); VERIFY_(STATUS)  
-    
+    call MAPL_GetResource( MAPL, ANV_FEXP, 'ANV_FEXP:', DEFAULT= 0.5, RC=STATUS); VERIFY_(STATUS) 
     
     call MAPL_GetResource( MAPL, MINRHCRIT, 'MINRHCRIT:', DEFAULT =9.51e-01, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, TURNRHCRIT, 'TURNRHCRIT:', DEFAULT = 791., RC=STATUS); VERIFY_(STATUS)
@@ -429,10 +430,10 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, IN_PARAM,       'INPARAM:',        DEFAULT= 6.0,    __RC__) !IN param
     call MAPL_GetResource(MAPL, Immersion_param,'ImmersionPARAM:', DEFAULT= 6.0,    __RC__) !Immersion param
     call MAPL_GetResource(MAPL, ACC_ENH,        'ACC_ENH:',        DEFAULT= 1.0,    __RC__) !accretion rain-liquid scaling for MG2
-    call MAPL_GetResource(MAPL, ACC_ENH_ICE,    'ACC_ENH_ICE:',    DEFAULT= 0.3287,    __RC__) !accretion snow-ice scaling for MG2
+    call MAPL_GetResource(MAPL, ACC_ENH_ICE,    'ACC_ENH_ICE:',    DEFAULT= 1.,    __RC__) !accretion snow-ice scaling for MG2
     
-    call MAPL_GetResource(MAPL, FDROP_DUST,     'FDROP_DUST:',     DEFAULT= 0.1,    __RC__) !Fraction of dust within droplets for immersion freezing
-    call MAPL_GetResource(MAPL, FDROP_SOOT,     'FDROP_SOOT:',     DEFAULT= 0.001,   __RC__) !Fraction of soot within droplets for immersion freezing        
+    call MAPL_GetResource(MAPL, FDROP_DUST,     'FDROP_DUST:',     DEFAULT= 0.5,    __RC__) !Fraction of dust within droplets for immersion freezing
+    call MAPL_GetResource(MAPL, FDROP_SOOT,     'FDROP_SOOT:',     DEFAULT= 0.05,   __RC__) !Fraction of soot within droplets for immersion freezing        
     call MAPL_GetResource(MAPL, MINCDNC,        'MINCDNC:',        DEFAULT= 25.0,    __RC__) !min nucleated droplet conc. cm-3
     call MAPL_GetResource(MAPL, MTIME,          'MTIME:',          DEFAULT= -1.0,   __RC__) !Mixing time scale for aerosol within the cloud. Default is time step
     call MAPL_GetResource(MAPL, LCCIRRUS,       'LCCIRRUS:',       DEFAULT= 500.0,  __RC__) !Characteristic Length (m) of high freq gravity waves    
@@ -440,7 +441,7 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
 
   
     call MAPL_GetResource(MAPL, DUST_INFAC,     'DUST_INFAC:',     DEFAULT= 1.0,    __RC__) !scalings for the INP concentrations for dep mode
-    call MAPL_GetResource(MAPL, BC_INFAC,       'BC_INFAC:',       DEFAULT= 0.001,    __RC__)
+    call MAPL_GetResource(MAPL, BC_INFAC,       'BC_INFAC:',       DEFAULT= 0.01,    __RC__)
     call MAPL_GetResource(MAPL, ORG_INFAC,      'ORG_INFAC:',      DEFAULT= 1.0,    __RC__)
     call MAPL_GetResource(MAPL, SS_INFAC,       'SS_INFAC:',       DEFAULT= 1.0,    __RC__)    
     call MAPL_GetResource(MAPL, DT_MICRO,       'DT_MICRO:',       DEFAULT= 300.0,  __RC__)  ! time step of the microphysics substepping (s) (MG2) (5 min)
@@ -453,8 +454,9 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     FHETSOOT=BC_INFAC
     FHETDUST=DUST_INFAC
     
-    call MAPL_GetResource(MAPL, WBFFACTOR,   'WBFFACTOR:', DEFAULT= 0.05 ,__RC__) !scaling for the Bergeron-Findeinsen process rate    
-    
+    call MAPL_GetResource(MAPL, WBFFACTOR,   'WBFFACTOR:', DEFAULT= 0.05 ,__RC__) !scaling for the Bergeron-Findeinsen process rate        
+    !>0 Constant scaling.  < 0 modified Tan (2025) correction: WBFFACTOR =max(abs(WBFFACTOR), ftan)
+     
     micro_mg_berg_eff_factor_in = WBFFACTOR
     call MAPL_GetResource(MAPL, ND_CST ,  'ND_CST:' , DEFAULT=  0.0 ,__RC__) !constant nd (set if greather than zero)      
     call MAPL_GetResource(MAPL, NI_CST ,  'NI_CST:' , DEFAULT=  0.0 ,__RC__) !constant nd (set if greather than zero)     
@@ -474,19 +476,15 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, USE_CUP_2M_MOISTURE, 'USE_CUP_2M_MOISTURE:', DEFAULT= .TRUE. , RC=STATUS); VERIFY_(STATUS) !activates 
     call MAPL_GetResource(MAPL, DEBUG_GF2M, 'DEBUG_GF2M:', DEFAULT=    .FALSE. , RC=STATUS); VERIFY_(STATUS)
 
-    
+    call MAPL_GetResource(MAPL, MAX_CNVNDROP, 'MAX_CNVNDROP:', DEFAULT= 5000.e6 ,RC=STATUS) !Sanity check
+    call MAPL_GetResource(MAPL, MAX_CNVNICE, 'MAX_CNVNICE:', DEFAULT= 5.e6 ,RC=STATUS) !sanity check
     call MAPL_GetResource(MAPL, DROPSZCNV, 'DROPSZCNV:', DEFAULT= 27.6e-6 ,RC=STATUS) !drop vol radius in cnv !only active if not USE_CUP_2M
     call MAPL_GetResource(MAPL, ICESZCNV_SC, 'ICESZCNV_SC:', DEFAULT= 1.248 ,RC=STATUS) !scaling ice eff radius in cnv !only active if not USE_CUP_2M
   
     call MAPL_GetResource(MAPL, ICE_AUTO_TSC_CNV, 'ICE_AUTO_TSC_CNV:', DEFAULT=180.  ,RC=STATUS) !cnv ice autoconversion time scale
-    call MAPL_GetResource(MAPL, DCS_CNV, 'DCS_CNV:', DEFAULT= 250.e-6 ,RC=STATUS) ! CNV ice/snow critical diameter
-    
+    call MAPL_GetResource(MAPL, DCS_CNV, 'DCS_CNV:', DEFAULT= 250.e-6 ,RC=STATUS) ! CNV ice/snow critical diameter    
     call MAPL_GetResource(MAPL, ACC_ENH_CNV,        'ACC_ENH_CNV:',        DEFAULT= 1.,    __RC__) !accretion rain-liquid efficiency for convective clouds
     call MAPL_GetResource(MAPL, AUT_SCALE_CNV,      'AUT_SCALE_CNV:',      DEFAULT= 1.,    __RC__) !scale factor for liquid autoconversion
- 
- 
-    call MAPL_GetResource(MAPL, MAX_CNVNDROP, 'MAX_CNVNDROP:', DEFAULT= 5000.e6 ,RC=STATUS) !Sanity check
-    call MAPL_GetResource(MAPL, MAX_CNVNICE, 'MAX_CNVNICE:', DEFAULT= 5.e6 ,RC=STATUS) !sanity check
     
     
     call MAPL_GetResource(MAPL,  GF2M_USE_CORRECTOR,      'GF2M_USE_CORRECTOR:',      DEFAULT= .TRUE.,    __RC__) ! Activates predictor/corrector in GF_2M
@@ -501,10 +499,15 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
 
     call MAPL_GetResource(MAPL,  GF2M_TOP_DET_SCALE,      'GF2M_TOP_DET_SCALE:',      DEFAULT= 1.0,       __RC__) ! Scales cloud-top explicit detrainment part of the 2M split operator in mode 6 
     
-    call MAPL_GetResource(MAPL,  BKG_INP_SC_CNV,      'BKG_INP_SC_CNV:',      DEFAULT= 0.01,       __RC__) ! Scales background INP source
+    call MAPL_GetResource(MAPL,  BKG_INP_SC_CNV,      'BKG_INP_SC_CNV:',      DEFAULT= 0.1,       __RC__) ! Scales background INP source
    
     call MAPL_GetResource(MAPL,   GF2M_DET_LEVEL_AVERAGE, 'GF2M_DET_LEVEL_AVERAGE:',      DEFAULT= .TRUE.,       __RC__) ! .true. use 0.5*(phi(k)+phi(k+1)) .false. suse the local GF2M value phi(k)
+   
+    call MAPL_GetResource(MAPL,   GF2M_HOM_NEW_ICE_DIAM,          'GF2M_HOM_NEW_ICE_DIAM:',          DEFAULT= 40.0e-6,  __RC__) ! Assumed effective diameter [m] of new homogeneous-freezing ice crystals used to convert frozen liquid mass to ice number
+
+    call MAPL_GetResource(MAPL,   GF2M_ACTIVATE_ABOVE_CLOUD_BASE, 'GF2M_ACTIVATE_ABOVE_CLOUD_BASE:', DEFAULT= .FALSE.,  __RC__) ! .true. allow 2M aerosol activation above cloud base .false. activate new droplets only at cloud base 
     
+        call MAPL_GetResource(MAPL,   GF2M_MIXED_PHASE_ICE_ONSET_T, 'GF2M_MIXED_PHASE_ICE_ONSET_T:', DEFAULT= 248.15,      __RC__) ! Onset temperature [K] for smooth retained-cloud liquid-to-ice leak; reaches full glaciation at thom_2m
     !==============================================================
  
     mui_cnstr8 = MUI_CST
@@ -1654,53 +1657,46 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
     
       call MAPL_TimerOff(MAPL,"----hystpdf")
       
+      
+      EVAPC=QLCN
+      SUBLC = QICN
       IF (DO_EVAP_SUBL) then 
          do I=1,IM
           do J=1,JM
            do L=1,LM
+           
+              ! Combined evaporation/sublimation for CN/anvil condensate
 
-         
-       ! evaporation for CN/LS
-             EVAPC(I,J,L) = Q(I,J,L)
-             call EVAP3 (         &
-                  DT_MOIST      , &
-                  CCW_EVAP_EFF  , &
-                  RHCRIT(I, J, L) , &
-                   PLmb(I,J,L)  , &
-                      T(I,J,L)  , &
-                      Q(I,J,L)  , &
-                   QLCN(I,J,L)  , &
-                   QICN(I,J,L)  , &
-                   CLCN(I,J,L)  , &
-                  NCPL(I,J,L)  , &
-                  NCPI(I,J,L)  , &
-                   QST3(I,J,L)  )
-             EVAPC(I,J,L) = ( Q(I,J,L) - EVAPC(I,J,L) ) / DT_MOIST
-       ! sublimation for CN/LS
-
-             SUBLC(I,J,L) =   Q(I,J,L)
-             call SUBL3 (        &
-                  DT_MOIST      , &
-                  CCI_EVAP_EFF  , &
-                  RHCRIT(I, J, L) , &
-                   PLmb(I,J,L)  , &
-                      T(I,J,L)  , &
-                      Q(I,J,L)  , &
-                   QLCN(I,J,L)  , &
-                   QICN(I,J,L)  , &
-                   CLCN(I,J,L)  , &
-                  NCPL(I,J,L)  , &
-                  NCPI(I,J,L)  , &
-                   QST3(I,J,L)  )
-             SUBLC(I,J,L) = ( Q(I,J,L) - SUBLC(I,J,L) ) / DT_MOIST
+ 
+                call ANVIL_EVAP_SUBL3( &
+                     DT_MOIST,          &
+                     CCW_EVAP_EFF,      & ! liquid evaporation efficiency
+                     CCI_EVAP_EFF,      & ! ice sublimation efficiency
+                     ANV_FEXP,           & ! 0=no CF change; 1=legacy-like scaling
+                     PLmb(I,J,L),        &
+                     T(I,J,L),           &
+                     Q(I,J,L),           &
+                     QLCN(I,J,L),        &
+                     QICN(I,J,L),        &
+                     CLCN(I,J,L),        &
+                     NCPL(I,J,L),        &
+                     NCPI(I,J,L) )
+   
           
            end do ! IM loop
          end do ! JM loop
        end do ! LM loop
-
+ 
       end if 
 
-  	 call fix_up_clouds_2M( &
+         ! Diagnostic evaporation/sublimation rates [kg kg-1 s-1]
+            EVAPC = max(EVAPC - QLCN, 0.0) / DT_MOIST
+            SUBLC = max(SUBLC - QICN, 0.0) / DT_MOIST
+
+
+  	 
+     
+     call fix_up_clouds_2M( &
          Q, &
          T, &
          QLLS,&
