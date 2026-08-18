@@ -136,7 +136,6 @@ class GFDL1MInterface(UserCode):
             FAST_SAT_ADJ=_default_or_get_from_namelist(False, "fast_sat_adj", gfdl1m_namelist),
             Z_SLOPE_LIQ=_default_or_get_from_namelist(True, "z_slope_liq", gfdl1m_namelist),
             Z_SLOPE_ICE=_default_or_get_from_namelist(False, "z_slope_ice", gfdl1m_namelist),
-            USE_CCN=_default_or_get_from_namelist(False, "use_ccn", gfdl1m_namelist),
             USE_PPM=_default_or_get_from_namelist(False, "use_ppm", gfdl1m_namelist),
             MONO_PROF=_default_or_get_from_namelist(True, "mono_prof", gfdl1m_namelist),
             MP_PRINT=_default_or_get_from_namelist(False, "mp_print", gfdl1m_namelist),
