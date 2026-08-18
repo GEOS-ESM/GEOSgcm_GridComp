@@ -7907,11 +7907,6 @@ class ComputeUwshcuInv(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
-        self._update_convective_mass_fluxes = self.stencil_factory.from_dims_halo(
-            func=update_convective_mass_fluxes,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
-        )
-
         self._update_convective_scale_height = self.stencil_factory.from_dims_halo(
             func=update_convective_scale_height,
             compute_dims=[I_DIM, J_DIM, K_DIM],
