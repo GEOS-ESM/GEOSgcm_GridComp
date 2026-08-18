@@ -6,6 +6,7 @@ from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentConstants
 from pyMoist.microphysics.GFDL_1M.driver.constants import constants
+from pyMoist.microphysics.GFDL_1M.driver.stencils import fix_negative_values
 from pyMoist.shared.atmos_recipes import sigma
 
 
@@ -186,188 +187,6 @@ def init_temporaries(
         ice = 0
 
 
-@function
-def fix_negative_core(
-    t: Float,
-    mixing_ratio_vapor: Float,
-    mixing_ratio_liquid: Float,
-    mixing_ratio_rain: Float,
-    mixing_ratio_ice: Float,
-    mixing_ratio_snow: Float,
-    mixing_ratio_graupel: Float,
-    c_air: Float,
-    c_vap: Float,
-    lv00: Float,
-    d0_vap: Float,
-):
-    """Adjusts/removes negative mixing ratios
-
-    reference Fortran: gfdl_cloud_microphys.F90: subroutine neg_adj
-
-    Args:
-        t (Float): temperature (Kelvin)
-        mixing_ratio_vapor (Float): water vapor mixing ratio (kg/kg)
-        mixing_ratio_liquid (Float): liquid water mixing ratio (kg/kg)
-        mixing_ratio_rain (Float): rain mixing ratio (kg/kg)
-        mixing_ratio_ice (Float): ice mixing ratio (kg/kg)
-        mixing_ratio_snow (Float): snow mixing ratio (kg/kg)
-        mixing_ratio_graupel (Float): graupel mixing ratio (kg/kg)
-        c_air (Float)
-        c_vap (Float)
-        lv00 (Float)
-        d0_vap (Float)
-
-    Returns:
-        Float: t
-        Float: mixing_ratio_vapor
-        Float: mixing_ratio_liquid
-        Float: mixing_ratio_rain
-        Float: mixing_ratio_ice
-        Float: mixing_ratio_snow
-        Float: mixing_ratio_graupel
-    """
-    # -----------------------------------------------------------------------
-    # define heat capacity and latent heat coefficient
-    # -----------------------------------------------------------------------
-
-    cvm = (
-        c_air
-        + mixing_ratio_vapor * c_vap
-        + (mixing_ratio_rain + mixing_ratio_liquid) * constants.C_LIQ
-        + (mixing_ratio_ice + mixing_ratio_snow + mixing_ratio_graupel) * constants.C_ICE
-    )
-    lcpk = (lv00 + d0_vap * t) / cvm
-    icpk = (constants.LI00 + constants.DC_ICE * t) / cvm
-
-    # -----------------------------------------------------------------------
-    # ice phase:
-    # -----------------------------------------------------------------------
-
-    # if cloud ice < 0, borrow from snow
-    if mixing_ratio_ice < 0.0:
-        mixing_ratio_snow = mixing_ratio_snow + mixing_ratio_ice
-        mixing_ratio_ice = 0.0
-    # if snow < 0, borrow from graupel
-    if mixing_ratio_snow < 0.0:
-        mixing_ratio_graupel = mixing_ratio_graupel + mixing_ratio_snow
-        mixing_ratio_snow = 0.0
-    # if graupel < 0, borrow from rain
-    if mixing_ratio_graupel < 0.0:
-        mixing_ratio_rain = mixing_ratio_rain + mixing_ratio_graupel
-        t = t - mixing_ratio_graupel * icpk  # heating
-        mixing_ratio_graupel = 0.0
-
-    # -----------------------------------------------------------------------
-    # liquid phase:
-    # -----------------------------------------------------------------------
-
-    # if rain < 0, borrow from cloud water
-    if mixing_ratio_rain < 0.0:
-        mixing_ratio_liquid = mixing_ratio_liquid + mixing_ratio_rain
-        mixing_ratio_rain = 0.0
-    # if cloud water < 0, borrow from water vapor
-    if mixing_ratio_liquid < 0.0:
-        mixing_ratio_vapor = mixing_ratio_vapor + mixing_ratio_liquid
-        t = t - mixing_ratio_liquid * lcpk  # heating
-        mixing_ratio_liquid = 0.0
-
-    return (
-        t,
-        mixing_ratio_vapor,
-        mixing_ratio_liquid,
-        mixing_ratio_rain,
-        mixing_ratio_ice,
-        mixing_ratio_snow,
-        mixing_ratio_graupel,
-    )
-
-
-def fix_negative_values(
-    t: FloatField,
-    dry_air_mixing_ratio_vapor: FloatField,
-    dry_air_mixing_ratio_liquid: FloatField,
-    dry_air_mixing_ratio_rain: FloatField,
-    dry_air_mixing_ratio_ice: FloatField,
-    dry_air_mixing_ratio_snow: FloatField,
-    dry_air_mixing_ratio_graupel: FloatField,
-    dp: FloatField,
-):
-    """Adjusts/removes negative mixing ratios and updates vapor and temperature
-    where necessary. Core math is done in fix_negative_core
-
-    reference Fortran: gfdl_cloud_microphys.F90: subroutine mpdrv
-
-    Args:
-        t (FloatField): temperature (Kelvin)
-        dry_air_mixing_ratio_vapor (FloatField): water vapor mixing ratio (kg/kg)
-        dry_air_mixing_ratio_liquid (FloatField): liquid water mixing ratio (kg/kg)
-        dry_air_mixing_ratio_rain (FloatField): rain mixing ratio (kg/kg)
-        dry_air_mixing_ratio_ice (FloatField): ice mixing ratio (kg/kg)
-        dry_air_mixing_ratio_snow (FloatField): snow mixing ratio (kg/kg)
-        dry_air_mixing_ratio_graupel (FloatField): graupel mixing ratio (kg/kg)
-        dp (FloatField): pressure change between model layers (Pa)
-    """
-    from __externals__ import c_air, c_vap, d0_vap, lv00
-
-    # -----------------------------------------------------------------------
-    # fix all negative water species
-    # -----------------------------------------------------------------------
-
-    with computation(FORWARD), interval(0, -1):
-        (
-            t,
-            dry_air_mixing_ratio_vapor,
-            dry_air_mixing_ratio_liquid,
-            dry_air_mixing_ratio_rain,
-            dry_air_mixing_ratio_ice,
-            dry_air_mixing_ratio_snow,
-            dry_air_mixing_ratio_graupel,
-        ) = fix_negative_core(
-            t,
-            dry_air_mixing_ratio_vapor,
-            dry_air_mixing_ratio_liquid,
-            dry_air_mixing_ratio_rain,
-            dry_air_mixing_ratio_ice,
-            dry_air_mixing_ratio_snow,
-            dry_air_mixing_ratio_graupel,
-            c_air,
-            c_vap,
-            lv00,
-            d0_vap,
-        )
-        if dry_air_mixing_ratio_vapor < 0.0:
-            dry_air_mixing_ratio_vapor[0, 0, 1] = dry_air_mixing_ratio_vapor[0, 0, 1] + dry_air_mixing_ratio_vapor * dp / dp[0, 0, 1]
-            dry_air_mixing_ratio_vapor = 0.0
-
-    with computation(FORWARD), interval(-1, None):
-        (
-            t,
-            dry_air_mixing_ratio_vapor,
-            dry_air_mixing_ratio_liquid,
-            dry_air_mixing_ratio_rain,
-            dry_air_mixing_ratio_ice,
-            dry_air_mixing_ratio_snow,
-            dry_air_mixing_ratio_graupel,
-        ) = fix_negative_core(
-            t,
-            dry_air_mixing_ratio_vapor,
-            dry_air_mixing_ratio_liquid,
-            dry_air_mixing_ratio_rain,
-            dry_air_mixing_ratio_ice,
-            dry_air_mixing_ratio_snow,
-            dry_air_mixing_ratio_graupel,
-            c_air,
-            c_vap,
-            lv00,
-            d0_vap,
-        )
-
-        if dry_air_mixing_ratio_vapor < 0.0 and dry_air_mixing_ratio_vapor[0, 0, -1] > 0.0:
-            dq = min(-dry_air_mixing_ratio_vapor * dp, dry_air_mixing_ratio_vapor[0, 0, -1] * dp[0, 0, -1])
-            dry_air_mixing_ratio_vapor[0, 0, -1] = dry_air_mixing_ratio_vapor[0, 0, -1] - dq / dp[0, 0, -1]
-            dry_air_mixing_ratio_vapor = dry_air_mixing_ratio_vapor + dq / dp
-
-
 class GFDL1MDriverSetup(NDSLRuntime):
     def __init__(
         self,
@@ -386,6 +205,9 @@ class GFDL1MDriverSetup(NDSLRuntime):
         """
         # init NDSLRuntime
         super().__init__(stencil_factory)
+
+        # make config visible at runtime
+        self.config = config
 
         # construct stencils
         self._init_temporaries = stencil_factory.from_dims_halo(
@@ -576,13 +398,14 @@ class GFDL1MDriverSetup(NDSLRuntime):
             sublimation=sublimation,
         )
 
-        self._fix_negative_values(
-            t=t,
-            dry_air_mixing_ratio_vapor=dry_air_mixing_ratio_vapor,
-            dry_air_mixing_ratio_liquid=dry_air_mixing_ratio_liquid,
-            dry_air_mixing_ratio_rain=dry_air_mixing_ratio_rain,
-            dry_air_mixing_ratio_ice=dry_air_mixing_ratio_ice,
-            dry_air_mixing_ratio_snow=dry_air_mixing_ratio_snow,
-            dry_air_mixing_ratio_graupel=dry_air_mixing_ratio_graupel,
-            dp=dp,
-        )
+        if self.config.FIX_NEGATIVE:
+            self._fix_negative_values(
+                t=t,
+                dry_air_mixing_ratio_vapor=dry_air_mixing_ratio_vapor,
+                dry_air_mixing_ratio_liquid=dry_air_mixing_ratio_liquid,
+                dry_air_mixing_ratio_rain=dry_air_mixing_ratio_rain,
+                dry_air_mixing_ratio_ice=dry_air_mixing_ratio_ice,
+                dry_air_mixing_ratio_snow=dry_air_mixing_ratio_snow,
+                dry_air_mixing_ratio_graupel=dry_air_mixing_ratio_graupel,
+                dp=dp,
+            )

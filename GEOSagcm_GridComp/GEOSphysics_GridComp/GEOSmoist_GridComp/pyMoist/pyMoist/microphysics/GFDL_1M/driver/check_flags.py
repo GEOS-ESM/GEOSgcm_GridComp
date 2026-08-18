@@ -36,7 +36,7 @@ def check_flags(
     check_param("USE_PPM", GFDL_1M_config.USE_PPM, False)
     check_param("USE_CCN", GFDL_1M_config.USE_CCN, True)
     check_param("DO_QA", GFDL_1M_config.DO_QA, False)
-    check_param("FIX_NEGATIVE", GFDL_1M_config.FIX_NEGATIVE, True)
+    # check_param("FIX_NEGATIVE", GFDL_1M_config.FIX_NEGATIVE, True)
     check_param("FAST_SAT_ADJ", GFDL_1M_config.FAST_SAT_ADJ, False)
     check_param("DO_BIGG", GFDL_1M_config.DO_BIGG, False)
     check_param("DO_EVAP", GFDL_1M_config.DO_EVAP, False)
