@@ -6596,7 +6596,7 @@ def adjust_implicit_CIN_inputs2(
     prel_s: FloatFieldIJ,
     prel: FloatField,
     pbup_s: FloatFieldIJ,
-    kbup: IntFieldIJ,
+    kbup: IntField,
 ):
     """
     Part II of Adjust Implicit CIN Inputs
@@ -7075,7 +7075,7 @@ def update_output_variables2(
     prel_out: FloatFieldIJ,
     prel: FloatField,
     pbup_out: FloatFieldIJ,
-    kbup: IntFieldIJ,
+    kbup: IntField,
 ):
     """
     Part II of Update Output Variables.
