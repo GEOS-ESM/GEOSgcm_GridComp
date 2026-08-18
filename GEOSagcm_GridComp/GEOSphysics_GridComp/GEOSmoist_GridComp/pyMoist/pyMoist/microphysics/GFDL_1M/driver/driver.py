@@ -13,9 +13,9 @@ from pyMoist.microphysics.GFDL_1M.driver.ice_cloud import GFDL1MIceCloud
 from pyMoist.microphysics.GFDL_1M.driver.locals import GFDL1MDriverLocals
 from pyMoist.microphysics.GFDL_1M.driver.sat_tables import get_tables
 from pyMoist.microphysics.GFDL_1M.driver.setup import GFDL1MDriverSetup
+from pyMoist.microphysics.GFDL_1M.driver.stencils import fix_negative_values
 from pyMoist.microphysics.GFDL_1M.driver.terminal_fall import GFDL1MTerminalFall
 from pyMoist.microphysics.GFDL_1M.driver.warm_rain import GFDL1MWarmRain
-from pyMoist.microphysics.GFDL_1M.driver.stencils import fix_negative_values
 
 
 class GFDL1MDriver(NDSLRuntime):
@@ -126,10 +126,10 @@ class GFDL1MDriver(NDSLRuntime):
             func=fix_negative_values,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
-                "c_air": config_dependent_constants.C_AIR,
-                "c_vap": config_dependent_constants.C_VAP,
-                "d0_vap": config_dependent_constants.D0_VAP,
-                "lv00": config_dependent_constants.LV00,
+                "c_air": self.config_dependent_constants.C_AIR,
+                "c_vap": self.config_dependent_constants.C_VAP,
+                "d0_vap": self.config_dependent_constants.D0_VAP,
+                "lv00": self.config_dependent_constants.LV00,
             },
         )
 

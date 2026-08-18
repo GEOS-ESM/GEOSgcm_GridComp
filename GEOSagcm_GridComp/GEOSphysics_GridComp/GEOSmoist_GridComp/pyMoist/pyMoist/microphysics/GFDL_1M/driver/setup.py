@@ -1,7 +1,7 @@
 from ndsl import NDSLRuntime, Quantity, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM
-from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, function, interval, sqrt
-from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, interval, sqrt
+from ndsl.dsl.typing import FloatField, FloatFieldIJ
 
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentConstants
