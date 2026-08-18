@@ -17,63 +17,45 @@ def check_flags(
             within the module
 
     Raises:
-        ValueError: list of non-compliant constants
+        ValueError: list of non-compliant constants with actual and expected values
     """
-    failed_keywords = []
-    if not GFDL_1M_config.LPHYS_HYDROSTATIC:
-        failed_keywords.append("PHYS_HYDROSTATIC")
-    if GFDL_1M_config.LHYDROSTATIC:
-        failed_keywords.append("HYDROSTATIC")
-    if GFDL_1M_config.CONST_VI:
-        failed_keywords.append("CONST_VI")
-    if GFDL_1M_config.CONST_VS:
-        failed_keywords.append("CONST_VS")
-    if GFDL_1M_config.CONST_VG:
-        failed_keywords.append("CONST_VG")
-    if GFDL_1M_config.CONST_VR:
-        failed_keywords.append("CONST_VR")
-    if GFDL_1M_config.USE_PPM:
-        failed_keywords.append("USE_PPM")
-    if not GFDL_1M_config.USE_CCN:
-        failed_keywords.append("USE_CCN")
-    if GFDL_1M_config.DO_QA:
-        failed_keywords.append("DO_QA")
-    if not GFDL_1M_config.FIX_NEGATIVE:
-        failed_keywords.append("FIX_NEGATIVE")
-    if GFDL_1M_config.FAST_SAT_ADJ:
-        failed_keywords.append("FAST_SAT_ADJ")
-    if GFDL_1M_config.DO_BIGG:
-        failed_keywords.append("DO_BIGG")
-    if GFDL_1M_config.DO_EVAP:
-        failed_keywords.append("DO_EVAP")
-    if GFDL_1M_config.DO_SUBL:
-        failed_keywords.append("DO_SUBL")
-    if not GFDL_1M_config.Z_SLOPE_LIQ:
-        failed_keywords.append("Z_SLOPE_LIQ")
-    if not GFDL_1M_config.Z_SLOPE_ICE:
-        failed_keywords.append("Z_SLOPE_ICE")
-    if not GFDL_1M_config.PROG_CCN:
-        failed_keywords.append("PROG_CCN")
-    if not GFDL_1M_config.PRECIPRAD:
-        failed_keywords.append("PRECIPRAD")
-    if not GFDL_1M_config.MONO_PROF:
-        failed_keywords.append("MONO_PROF")
-    if GFDL_1M_config.DO_SEDI_HEAT:
-        failed_keywords.append("DO_SEDI_HEAT")
-    if not GFDL_1M_config.SEDI_TRANSPORT:
-        failed_keywords.append("SEDI_TRANSPORT")
-    if GFDL_1M_config.DO_SEDI_W:
-        failed_keywords.append("DO_SEDI_W")
-    if GFDL_1M_config.DE_ICE:
-        failed_keywords.append("DE_ICE")
-    if GFDL_1M_config.MP_PRINT:
-        failed_keywords.append("MP_PRINT")
-    if config_dependent_constants.DTS >= 300.0:
-        failed_keywords.append("DTS")
+    failures = []
 
-    if len(failed_keywords) > 0:
-        raise ValueError(
-            "One or more namelist parameters do not meet \
-                expected values. Failing parameters: ",
-            failed_keywords,
-        )
+    # Helper function to evaluate and record non-compliant flags
+    def check_param(param_name, actual, expected):
+        if actual != expected:
+            failures.append({"parameter": param_name, "actual": actual, "expected": expected})
+
+    # Flag checks (Boolean flags)
+    check_param("PHYS_HYDROSTATIC", GFDL_1M_config.LPHYS_HYDROSTATIC, True)
+    check_param("HYDROSTATIC", GFDL_1M_config.LHYDROSTATIC, False)
+    check_param("CONST_VI", GFDL_1M_config.CONST_VI, False)
+    check_param("CONST_VS", GFDL_1M_config.CONST_VS, False)
+    check_param("CONST_VG", GFDL_1M_config.CONST_VG, False)
+    check_param("CONST_VR", GFDL_1M_config.CONST_VR, False)
+    check_param("USE_PPM", GFDL_1M_config.USE_PPM, False)
+    check_param("USE_CCN", GFDL_1M_config.USE_CCN, True)
+    check_param("DO_QA", GFDL_1M_config.DO_QA, False)
+    check_param("FIX_NEGATIVE", GFDL_1M_config.FIX_NEGATIVE, True)
+    check_param("FAST_SAT_ADJ", GFDL_1M_config.FAST_SAT_ADJ, False)
+    check_param("DO_BIGG", GFDL_1M_config.DO_BIGG, False)
+    check_param("DO_EVAP", GFDL_1M_config.DO_EVAP, False)
+    check_param("DO_SUBL", GFDL_1M_config.DO_SUBL, False)
+    check_param("Z_SLOPE_LIQ", GFDL_1M_config.Z_SLOPE_LIQ, True)
+    check_param("Z_SLOPE_ICE", GFDL_1M_config.Z_SLOPE_ICE, True)
+    check_param("PROG_CCN", GFDL_1M_config.PROG_CCN, True)
+    check_param("PRECIPRAD", GFDL_1M_config.PRECIPRAD, True)
+    check_param("MONO_PROF", GFDL_1M_config.MONO_PROF, True)
+    check_param("DO_SEDI_HEAT", GFDL_1M_config.DO_SEDI_HEAT, False)
+    check_param("SEDI_TRANSPORT", GFDL_1M_config.SEDI_TRANSPORT, True)
+    check_param("DO_SEDI_W", GFDL_1M_config.DO_SEDI_W, False)
+    check_param("DE_ICE", GFDL_1M_config.DE_ICE, False)
+    check_param("MP_PRINT", GFDL_1M_config.MP_PRINT, False)
+
+    # Threshold checks
+    if config_dependent_constants.DTS >= 300.0:
+        failures.append({"parameter": "DTS", "actual": config_dependent_constants.DTS, "expected": "< 300.0"})
+
+    if failures:
+        formatted_failures = "\n".join(f"  - Parameter: {f['parameter']}, Actual: {f['actual']}, Expected: {f['expected']}" for f in failures)
+        raise ValueError(f"One or more namelist parameters do not meet expected values:\n{formatted_failures}")
