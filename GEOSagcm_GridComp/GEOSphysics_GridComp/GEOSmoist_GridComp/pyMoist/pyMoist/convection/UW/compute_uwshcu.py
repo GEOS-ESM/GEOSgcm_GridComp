@@ -2608,7 +2608,7 @@ def calc_cumulus_base_mass_flux(
                 wcrit = sqrt(max(0.0, 2.0 * cin_IJ * rbuoy))
 
             else:
-                wcrit = sqrt(max(0,0, 2.0 * cinlcl_IJ * rbuoy))
+                wcrit = sqrt(max(0.0, 2.0 * cinlcl_IJ * rbuoy))
 
             sigmaw = sqrt(max(0.0,tkeavg + epsvarw))
             mu = wcrit / sigmaw / 1.4142
