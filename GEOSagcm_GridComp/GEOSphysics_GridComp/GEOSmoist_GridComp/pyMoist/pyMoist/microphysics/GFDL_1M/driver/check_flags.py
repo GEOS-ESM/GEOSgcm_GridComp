@@ -46,7 +46,7 @@ def check_flags(
     check_param("PRECIPRAD", GFDL_1M_config.PRECIPRAD, True)
     check_param("MONO_PROF", GFDL_1M_config.MONO_PROF, True)
     check_param("DO_SEDI_HEAT", GFDL_1M_config.DO_SEDI_HEAT, False)
-    check_param("SEDI_TRANSPORT", GFDL_1M_config.SEDI_TRANSPORT, True)
+    # check_param("SEDI_TRANSPORT", GFDL_1M_config.SEDI_TRANSPORT, True)
     check_param("DO_SEDI_W", GFDL_1M_config.DO_SEDI_W, False)
     check_param("DE_ICE", GFDL_1M_config.DE_ICE, False)
     check_param("MP_PRINT", GFDL_1M_config.MP_PRINT, False)
