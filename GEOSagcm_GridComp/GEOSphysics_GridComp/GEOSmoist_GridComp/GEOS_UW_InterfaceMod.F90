@@ -353,8 +353,8 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       call CNV_Tracers_To_AOS()
     else
       ! Internals
-      call MAPL_GetPointer(INTERNAL, CUSH,   'CUSH'    , RC=STATUS); VERIFY_(STATUS)
-    endif ! USE_PYMOIST_UW
+    call MAPL_GetPointer(INTERNAL, CUSH,   'CUSH'    , RC=STATUS); VERIFY_(STATUS)
+
 
     ! Imports
     call MAPL_GetPointer(IMPORT, FRLAND    ,'FRLAND'    ,RC=STATUS); VERIFY_(STATUS)
@@ -751,6 +751,8 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          end do ! JM loop        
        end do ! LM loop          
   endif
+
+  end if ! endif USE_PYMOIST_UW
 
   call MAPL_TimerOff (MAPL,"--UW")
 
