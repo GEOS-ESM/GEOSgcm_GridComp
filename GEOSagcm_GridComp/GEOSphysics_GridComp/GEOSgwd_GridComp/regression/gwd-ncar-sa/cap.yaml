@@ -13,6 +13,10 @@ cap:
   root_name: Root
 
   mapl:
+
+    setServices:
+      sharedObj: libMAPL.cap
+
     children:
       Root:
         config_file: root.yaml
