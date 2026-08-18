@@ -50,7 +50,7 @@ class GFDL1MInterface(UserCode):
         use_aerosol_nn = maplpy.get_resource("USE_AEROSOL_NN:", mapl_state, default=True)
 
         # v11.10 ties these two together, but preserves the existance of both as independent parameters
-        LPHYS_HYDROSTATIC = maplpy.get_resource("PHYS_HYDROSTATIC", mapl_state, default=True),
+        LPHYS_HYDROSTATIC = maplpy.get_resource("PHYS_HYDROSTATIC", mapl_state, default=True)
         LHYDROSTATIC = LPHYS_HYDROSTATIC
 
         config = GFDL1MConfig(
