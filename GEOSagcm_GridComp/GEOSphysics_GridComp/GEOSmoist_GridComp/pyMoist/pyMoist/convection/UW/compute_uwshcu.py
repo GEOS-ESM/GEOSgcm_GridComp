@@ -6586,16 +6586,16 @@ def adjust_implicit_CIN_inputs2(
     cufrc_s: FloatField,
     fer_s: FloatField,
     fdr_s: FloatField,
-    plcl_s: FloatFieldIJ,
-    plcl: FloatFieldIJ,
-    pinv_s: FloatFieldIJ,
+    plcl_s: FloatField,
+    plcl: FloatField,
+    pinv_s: FloatField,
     pifc0: FloatField,
     kinv: IntFieldIJ,
-    plfc_s: FloatFieldIJ,
-    plfc: FloatFieldIJ,
-    prel_s: FloatFieldIJ,
-    prel: FloatFieldIJ,
-    pbup_s: FloatFieldIJ,
+    plfc_s: FloatField,
+    plfc: FloatField,
+    prel_s: FloatField,
+    prel: FloatField,
+    pbup_s: FloatField,
     kbup: IntFieldIJ,
 ):
     """
@@ -7064,16 +7064,16 @@ def update_output_variables2(
     cldhgt_out: FloatFieldIJ,
     cldhgt: FloatFieldIJ,
     cbmf_out: FloatFieldIJ,
-    cbmf: FloatFieldIJ,
+    cbmf: FloatField,
     plcl_out: FloatFieldIJ,
-    plcl: FloatFieldIJ,
+    plcl: FloatField,
     pinv_out: FloatFieldIJ,
     pifc0: FloatField,
     kinv: IntFieldIJ,
     plfc_out: FloatFieldIJ,
-    plfc: FloatFieldIJ,
+    plfc: FloatField,
     prel_out: FloatFieldIJ,
-    prel: FloatFieldIJ,
+    prel: FloatField,
     pbup_out: FloatFieldIJ,
     kbup: IntFieldIJ,
 ):
@@ -7108,11 +7108,11 @@ def update_output_variables2(
                 fdr_out = fdr
 
             cldhgt_out = cldhgt
-            cbmf_out = cbmf
-            plcl_out = plcl
+            cbmf_out = cbmf.at(K=0)
+            plcl_out = plcl.at(K=0)
             pinv_out = pifc0.at(K=kinv)
-            plfc_out = plfc    
-            prel_out = prel    
+            plfc_out = plfc.at(K=0)    
+            prel_out = prel.at(K=0)    
             pbup_out = pifc0.at(K=kbup+1) 
 
 
