@@ -6629,10 +6629,10 @@ def adjust_implicit_CIN_inputs2(
             ufrc_s = ufrc
             ufrc_s[0, 0, 1] = ufrc[0, 0, 1]
 
-            plcl_s = plcl
+            plcl_s = plcl.at(K=0)
             pinv_s = pifc0.at(K=kinv)
-            plfc_s = plfc        
-            prel_s = prel        
+            plfc_s = plfc.at(K=0)        
+            prel_s = prel.at(K=0)        
             pbup_s = pifc0.at(K=kbup+1)
 
 
