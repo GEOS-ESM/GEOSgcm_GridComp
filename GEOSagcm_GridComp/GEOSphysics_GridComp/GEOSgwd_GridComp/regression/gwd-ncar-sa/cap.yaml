@@ -16,6 +16,7 @@ cap:
     children:
       Root:
         config_file: root.yaml
+        dso: libconfigurable_gridcomp
 
   checkpointing:
     enabled: true
