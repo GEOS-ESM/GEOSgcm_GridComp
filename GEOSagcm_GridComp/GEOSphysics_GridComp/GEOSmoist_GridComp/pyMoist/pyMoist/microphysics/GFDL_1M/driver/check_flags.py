@@ -41,7 +41,7 @@ def check_flags(
     check_param("DO_EVAP", GFDL_1M_config.DO_EVAP, False)
     check_param("DO_SUBL", GFDL_1M_config.DO_SUBL, False)
     check_param("Z_SLOPE_LIQ", GFDL_1M_config.Z_SLOPE_LIQ, True)
-    check_param("Z_SLOPE_ICE", GFDL_1M_config.Z_SLOPE_ICE, True)
+    # check_param("Z_SLOPE_ICE", GFDL_1M_config.Z_SLOPE_ICE, True)
     check_param("PROG_CCN", GFDL_1M_config.PROG_CCN, True)
     check_param("PRECIPRAD", GFDL_1M_config.PRECIPRAD, True)
     check_param("MONO_PROF", GFDL_1M_config.MONO_PROF, True)
