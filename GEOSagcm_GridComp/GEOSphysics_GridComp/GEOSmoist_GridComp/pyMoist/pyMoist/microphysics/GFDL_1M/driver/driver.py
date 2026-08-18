@@ -15,6 +15,7 @@ from pyMoist.microphysics.GFDL_1M.driver.sat_tables import get_tables
 from pyMoist.microphysics.GFDL_1M.driver.setup import GFDL1MDriverSetup
 from pyMoist.microphysics.GFDL_1M.driver.terminal_fall import GFDL1MTerminalFall
 from pyMoist.microphysics.GFDL_1M.driver.warm_rain import GFDL1MWarmRain
+from pyMoist.microphysics.GFDL_1M.driver.stencils import fix_negative_values
 
 
 class GFDL1MDriver(NDSLRuntime):
@@ -54,6 +55,9 @@ class GFDL1MDriver(NDSLRuntime):
         """
         # init NDSLRuntime
         super().__init__(stencil_factory)
+
+        # make config visible at runtime
+        self.config = config
 
         self.config_dependent_constants = GFDL1MDriverConfigDependentConstants.make(config)
 
@@ -116,6 +120,17 @@ class GFDL1MDriver(NDSLRuntime):
             config=config,
             config_dependent_constants=self.config_dependent_constants,
             saturation_tables=self.driver_saturation_tables,
+        )
+
+        self._fix_negative_values = stencil_factory.from_dims_halo(
+            func=fix_negative_values,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={
+                "c_air": config_dependent_constants.C_AIR,
+                "c_vap": config_dependent_constants.C_VAP,
+                "d0_vap": config_dependent_constants.D0_VAP,
+                "lv00": config_dependent_constants.LV00,
+            },
         )
 
         self._finish = stencil_factory.from_dims_halo(
@@ -358,6 +373,18 @@ class GFDL1MDriver(NDSLRuntime):
                 ccn=self._locals.ccn,
                 convection_fraction=convection_fraction,
                 surface_type=surface_type,
+            )
+
+        if self.config.FIX_NEGATIVE:
+            self._fix_negative_values(
+                t=self._locals.t,
+                dry_air_mixing_ratio_vapor=self._locals.dry_air_mixing_ratio.vapor,
+                dry_air_mixing_ratio_liquid=self._locals.dry_air_mixing_ratio.liquid,
+                dry_air_mixing_ratio_rain=self._locals.dry_air_mixing_ratio.rain,
+                dry_air_mixing_ratio_ice=self._locals.dry_air_mixing_ratio.ice,
+                dry_air_mixing_ratio_snow=self._locals.dry_air_mixing_ratio.snow,
+                dry_air_mixing_ratio_graupel=self._locals.dry_air_mixing_ratio.graupel,
+                dp=self._locals.dp,
             )
 
         self._finish(
