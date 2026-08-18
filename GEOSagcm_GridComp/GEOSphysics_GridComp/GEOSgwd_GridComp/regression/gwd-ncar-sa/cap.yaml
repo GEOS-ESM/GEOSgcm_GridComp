@@ -15,9 +15,7 @@ cap:
   mapl:
     children:
       Root:
-        dso: libconfigurable_gridcomp
         config_file: root.yaml
-        setservices: setservices_
 
   checkpointing:
     enabled: true
