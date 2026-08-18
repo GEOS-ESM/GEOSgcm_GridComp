@@ -751,9 +751,10 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        end do ! LM loop          
   endif
 
+  endif ! endif USE_PYMOIST_UW
+
   call MAPL_TimerOff (MAPL,"--UW")
 
-  endif ! endif USE_PYMOIST_UW
 
 end subroutine UW_Run
 
