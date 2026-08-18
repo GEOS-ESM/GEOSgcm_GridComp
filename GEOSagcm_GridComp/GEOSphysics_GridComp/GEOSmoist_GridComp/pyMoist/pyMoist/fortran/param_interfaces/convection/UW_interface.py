@@ -143,8 +143,8 @@ class UWGEOSInterface(UserCode):
         self._managed_state.register_2D("output.cbmf_out", "CBMF_SC", export_repository, alloc=True)
         self._managed_state.register_2D("output.cldhgt_out", "CLDTOP_SC", export_repository, alloc=True)
 
-        self._managed_state.register("output.LTS", "LTS", export_repository, alloc=True)
-        self._managed_state.register("output.EIS", "EIS", export_repository, alloc=True)
+        self._managed_state.register_2D("output.LTS", "LTS", export_repository, alloc=True)
+        self._managed_state.register_2D("output.EIS", "EIS", export_repository, alloc=True)
         self._managed_state.register("output.MFD_SC", "MFD_SC", export_repository, alloc=True)
         self._managed_state.register("output.QLENT_SC", "QLENT_SC", export_repository, alloc=True)
         self._managed_state.register("output.QIENT_SC", "QIENT_SC", export_repository, alloc=True)
