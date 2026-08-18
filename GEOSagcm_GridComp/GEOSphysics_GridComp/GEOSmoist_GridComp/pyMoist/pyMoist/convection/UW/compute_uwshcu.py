@@ -1228,6 +1228,7 @@ def find_cumulus_characteristics(
     vsrc: FloatField,
     tpert_out: FloatFieldIJ,
     qpert_out: FloatFieldIJ,
+    zifc0: FloatField,
 ):
     """
     Stencil to find characteristics of cumulus source air:
@@ -8653,6 +8654,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                 vsrc=self.locals.vsrc,
                 tpert_out=state.output.tpert_out,
                 qpert_out=state.output.qpert_out,
+                zifc0=self.locals.zifc0_in,
             )
 
             self._find_klcl(
