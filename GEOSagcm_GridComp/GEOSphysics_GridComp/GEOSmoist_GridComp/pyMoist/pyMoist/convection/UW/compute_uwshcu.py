@@ -9972,32 +9972,36 @@ class ComputeUwshcuInv(NDSLRuntime):
         )
 
         # Raise an error if REPORT_UW_NEGATIVES is True: This code has not been ported
-
-        self._fillq2zeros(
-            Q=state.input_output.qv0_inv,
-            MASS=self.locals.MASS,
-            DQDT=state.output.DQVDT_FILL,
-        )
-        self._fillq2zeros(
-            Q=state.input.QLLS,
-            MASS=self.locals.MASS,
-            DQDT=state.output.DQLLSDT_FILL,
-        )
-        self._fillq2zeros(
-            Q=state.input.QLCN,
-            MASS=self.locals.MASS,
-            DQDT=state.output.DQLCNDT_FILL,
-        )
-        self._fillq2zeros(
-            Q=state.input.QILS,
-            MASS=self.locals.MASS,
-            DQDT=state.output.DQILSDT_FILL,
-        )
-        self._fillq2zeros(
-            Q=state.input.QICN,
-            MASS=self.locals.MASS,
-            DQDT=state.output.DQICNDT_FILL,
-        )
+        if state.output.DQVDT_FILL is not None:
+            self._fillq2zeros(
+                Q=state.input_output.qv0_inv,
+                MASS=self.locals.MASS,
+                DQDT=state.output.DQVDT_FILL,
+            )
+        if state.output.DQLLSDT_FILL is not None:
+            self._fillq2zeros(
+                Q=state.input.QLLS,
+                MASS=self.locals.MASS,
+                DQDT=state.output.DQLLSDT_FILL,
+            )
+        if state.output.DQLCNDT_FILL is not None:
+            self._fillq2zeros(
+                Q=state.input.QLCN,
+                MASS=self.locals.MASS,
+                DQDT=state.output.DQLCNDT_FILL,
+            )
+        if state.output.DQILSDT_FILL is not None:
+            self._fillq2zeros(
+                Q=state.input.QILS,
+                MASS=self.locals.MASS,
+                DQDT=state.output.DQILSDT_FILL,
+            )
+        if state.output.DQICNDT_FILL is not None:
+            self._fillq2zeros(
+                Q=state.input.QICN,
+                MASS=self.locals.MASS,
+                DQDT=state.output.DQICNDT_FILL,
+            )
 
 
         if state.output.SC_QT is not None:

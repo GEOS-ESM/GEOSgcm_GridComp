@@ -657,7 +657,7 @@ class UWState(State):
                 "dtype": Float,
             }
         )
-        DQVDT_FILL: Quantity = dataclasses.field(
+        DQVDT_FILL: Quantity | None = dataclasses.field(
             metadata={
                 "name": "DQVDT_FILL",
                 "dims": [I_DIM, J_DIM, K_DIM],
@@ -666,7 +666,7 @@ class UWState(State):
                 "dtype": Float,
             }
         )
-        DQLLSDT_FILL: Quantity = dataclasses.field(
+        DQLLSDT_FILL: Quantity | None = dataclasses.field(
             metadata={
                 "name": "DQLLSDT_FILL",
                 "dims": [I_DIM, J_DIM, K_DIM],
@@ -675,7 +675,7 @@ class UWState(State):
                 "dtype": Float,
             }
         )
-        DQLCNDT_FILL: Quantity = dataclasses.field(
+        DQLCNDT_FILL: Quantity | None = dataclasses.field(
             metadata={
                 "name": "DQLCNDT_FILL",
                 "dims": [I_DIM, J_DIM, K_DIM],
@@ -684,7 +684,7 @@ class UWState(State):
                 "dtype": Float,
             }
         )
-        DQILSDT_FILL: Quantity = dataclasses.field(
+        DQILSDT_FILL: Quantity | None = dataclasses.field(
             metadata={
                 "name": "DQILSDT_FILL",
                 "dims": [I_DIM, J_DIM, K_DIM],
@@ -693,7 +693,7 @@ class UWState(State):
                 "dtype": Float,
             }
         )
-        DQICNDT_FILL: Quantity = dataclasses.field(
+        DQICNDT_FILL: Quantity | None = dataclasses.field(
             metadata={
                 "name": "DQICNDT_FILL",
                 "dims": [I_DIM, J_DIM, K_DIM],
