@@ -7908,6 +7908,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                 "dt": config.dt,
                 "SCLM_SHALLOW": config.SCLM_SHALLOW,
                 "JASON": config.JASON,
+                "JASON_MFD_SC": config.JASON_MFD_SC,
             },
         )
 
