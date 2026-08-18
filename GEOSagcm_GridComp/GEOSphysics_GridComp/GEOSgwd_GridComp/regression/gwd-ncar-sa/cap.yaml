@@ -13,11 +13,14 @@ cap:
   root_name: Root
 
   mapl:
+
+    setServices:
+      sharedObj: libMAPL.cap
+
     children:
       Root:
-        dso: libconfigurable_gridcomp
         config_file: root.yaml
-        setservices: setservices_
+        dso: libconfigurable_gridcomp
 
   checkpointing:
     enabled: true

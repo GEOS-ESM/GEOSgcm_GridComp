@@ -10,6 +10,10 @@ NCAR_EFFGWORO: 1.0
 NCAR_NRDG: 16
 
 mapl:
+  setServices:
+    sharedObj: libGEOSgwd_GridComp
+    userRoutine: gwd_setservices_
+
   misc:
     activate_all_exports: true
     restart:
