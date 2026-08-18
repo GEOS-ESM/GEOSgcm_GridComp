@@ -7467,7 +7467,7 @@ def fillq2zeros(
     with computation(PARALLEL), interval(...):
         # Finalize DQDT tendency
         if dt > 0.0:
-            DQDT = (Q - DQDT) / DT
+            DQDT = (Q - DQDT) / dt
 
 
 
