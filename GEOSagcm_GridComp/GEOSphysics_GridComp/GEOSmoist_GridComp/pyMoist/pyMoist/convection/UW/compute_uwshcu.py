@@ -7531,29 +7531,6 @@ def update_moist_static_energy_tendency(
         SC_MSE = SC_MSE + (constants.MAPL_CP * DTDT_SC + constants.MAPL_ALHL * DQVDT_SC - constants.MAPL_ALHF * DQIDT_SC) * MASS
 
 
-def update_convective_mass_fluxes(
-    CNV_MFC: FloatField,
-    CNV_MFD: FloatField,
-    UMF_SC: FloatField,
-    MFD_SC: FloatField,
-):
-    """
-    Stencil to update UW mass fluxes.
-
-    Arguments:
-        CNV_MFC [FloatField]: Total mass flux at interfaces [kg/m2/s]
-        UMF_SC [FloatField]: Updraft mass flux at interfaces [kg/m2/s]
-        CNV_MFD [FloatField]: Detrainment mass flux [kg/m2/s]
-        MFD_SC [FloatField]: Detrainment mass flux [kg/m2/s]
-        CNV_MFC [FloatField]: Total mass flux at interfaces [kg/m2/s]
-        CNV_MFD [FloatField]: Detrainment mass flux [kg/m2/s]
-    """
-    with computation(PARALLEL), interval(...):
-        CNV_MFC = CNV_MFC + UMF_SC
-
-    with computation(PARALLEL), interval(...):
-        CNV_MFD = CNV_MFD + MFD_SC
-
 
 def update_convective_scale_height(
     CUSH_SC: FloatFieldIJ,
@@ -10028,12 +10005,6 @@ class ComputeUwshcuInv(NDSLRuntime):
                 MASS=self.locals.MASS,
             )
 
-        self._update_convective_mass_fluxes(
-            CNV_MFC=state.output.CNV_MFC,
-            CNV_MFD=state.output.CNV_MFD,
-            UMF_SC=state.output.umf_inv,
-            MFD_SC=state.output.MFD_SC,
-        )
 
         if state.output.CUSH_SC is not None:
             self._update_convective_scale_height(
