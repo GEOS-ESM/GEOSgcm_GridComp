@@ -81,7 +81,7 @@ def setup_inputs(
     from __externals__ import JASON, k_end, rkfre, rkm, mixscale, rmaxfrac, USE_EIS, rkfre_hr, rkm_hr, rmaxfrac_hr
 
     with computation(FORWARD), interval(...):
-        if K = 0:
+        if K == 0:
             PKE = (PLE / constants.MAPL_P00) ** (constants.MAPL_KAPPA)
             ZLE0 = ZLE - ZLE.at(K=k_end + 1)
 
