@@ -30,7 +30,7 @@ def sigma(dx) -> Float:
     sigma = 1.0 - 0.9839 * exp(-0.09835 * (dx / 1000.0))
     return sigma
 
-@functions
+@function
 def get_fac_eis(eis: Float, srf_type: Float) -> Float:
     if (eis >= 10.0):
        # Very stable regime
