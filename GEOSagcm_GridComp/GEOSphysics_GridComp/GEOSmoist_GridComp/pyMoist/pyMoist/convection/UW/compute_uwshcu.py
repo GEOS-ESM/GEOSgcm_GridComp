@@ -25,7 +25,7 @@ from pyMoist.convection.UW.uwshcu_functions import (
     zvir,
 )
 from pyMoist.saturation_tables import GlobalTable_saturation_tables, SaturationFormulation, get_saturation_vapor_pressure_table, saturation_specific_humidity
-from pyMoist.shared.atmos_recipes import sigma
+from pyMoist.shared.atmos_recipes import sigma, get_fac_eis
 from pyMoist.convection_tracers import FloatField_ConvectionTracers, FloatFieldIJ_ConvectionTracers
 
 
@@ -49,6 +49,10 @@ def setup_inputs(
     RKM2D: FloatFieldIJ,
     MIX2D: FloatFieldIJ,
     RMAXFRAC2D: FloatFieldIJ,
+    EIS: FloatFieldIJ,
+    SRF_TYPE: FloatFieldIJ,
+    AREA: FloatFieldIJ,
+    KPBL_SC: FloatFieldIJ,
 ):
     """
     Some preliminary calculations before the main UW calculation.
@@ -74,10 +78,11 @@ def setup_inputs(
         MIX2D [FloatFieldIJ]:
         RMAXFRAC2D [FloatFieldIJ]:
     """
-    from __externals__ import JASON, k_end, rkfre, rkm, mixscale, rmaxfrac
+    from __externals__ import JASON, k_end, rkfre, rkm, mixscale, rmaxfrac, USE_EIS, rkfre_hr, rkm_hr, rmaxfrac_hr
 
     with computation(FORWARD), interval(...):
         PKE = (PLE / constants.MAPL_P00) ** (constants.MAPL_KAPPA)
+
     with computation(FORWARD), interval(...):
         PKE[0, 0, 1] = (PLE[0, 0, 1] / constants.MAPL_P00) ** (constants.MAPL_KAPPA)
         PL = 0.5 * (PLE + PLE[0, 0, 1])
@@ -89,6 +94,9 @@ def setup_inputs(
         DP = PLE[0, 0, 1] - PLE
         MASS = DP / constants.MAPL_GRAV
 
+        # Set fac_eis to zero for the if not JASON block below
+        fac_eis = 0.0
+
     with computation(FORWARD), interval(0, 1):
         if JASON:
             RKFRE = rkfre
@@ -96,9 +104,41 @@ def setup_inputs(
             MIX2D = mixscale
             RMAXFRAC2D = rmaxfrac
 
-        # v12 changes: raise not implemented error if Jason = false
-        # else:
-        #     RKFRE = sigma(sqrt(AREA))
+    with computation(FORWARD), interval(...):
+        if not JASON:
+            if USE_EIS:
+                fac_eis = get_fac_eis(EIS, srf_type)
+            DX = sqrt(AREA)
+            SIG = sigma(DX)
+
+            # (If RKM=4.0, multiplier is 2.5. If RKM=8.0, multiplier is 5.0)
+            rkm_scale_fac =(rkm / 4.0) * 2.5
+
+            # This ensures the dominant eddies scale with the PBL thickness and RKM
+            mix2d_phys = max(rkm_scale_fac * ZL0.at(K=KPBL_SC), 1000.0 )
+
+            # The subgrid mixing scale cannot exceed half the grid box
+            MIX2D = min(0.5*DX, mix2d_phys, mixscale)
+
+            # Base resolution-dependent parameters
+            rkfre_base = rkfre * SIG + rkfre_hr * (1.0 - SIG)
+            rkm_base = rkm * SIG + rkm_hr * (1.0 - SIG)
+            rmaxfrac_base = rmaxfrac * SIG + rmaxfrac_hr * (1.0 - SIG)
+
+            # EIS-based regime modifications
+            eis_rkfre_factor = 1.0 - 0.8 * fac_eis
+            eis_rkm_factor = 1.0 + 0.4 * fac_eis
+            eis_rmaxfrac_factor = 1.0 + 0.1 * fac_eis
+
+            # Apply EIS modifications
+            RKFRE = rkfre_base * eis_rkfre_factor
+            RKM2D = rkm_base   * eis_rkm_factor
+            RMAXFRAC2D = rmaxfrac_base * eis_rmaxfrac_factor
+
+            # Optional: Add minimum limits
+            RKFRE = max(RKFRE, 0.1)
+            RKM2D = min(RKM2D, 14.0)
+            RMAXFRAC2D = max(min(RMAXFRAC2D, 0.8), 0.05)
 
     with computation(PARALLEL), interval(...):
         QLTOT = QLLS + QLCN
@@ -7577,7 +7617,7 @@ class ComputeUwshcuInv(NDSLRuntime):
         if self.config.k0 < 5:
             raise NotImplementedError(f"Coding limitation: Only {self.config.k0} k-levels are available, atleast 5 are expected")
 
-        self._setup_inputs = self.stencil_factory.from_dims_halo(func=setup_inputs, compute_dims=[I_DIM, J_DIM, K_DIM], externals={"JASON": config.JASON, "rkfre": config.rkfre,"rkm": config.rkm, "mixscale": config.mixscale, "rmaxfrac": config.rmaxfrac})
+        self._setup_inputs = self.stencil_factory.from_dims_halo(func=setup_inputs, compute_dims=[I_DIM, J_DIM, K_DIM], externals={"JASON": config.JASON, "rkfre": config.rkfre,"rkm": config.rkm, "mixscale": config.mixscale, "rmaxfrac": config.rmaxfrac, "rkfre_hr": config.rkfre_hr,"USE_EIS": config.USE_EIS, "rkm_hr": config.rkm_hr, "rmaxfrac_hr": config.rmaxfrac_hr})
 
         self._compute_uwshcu_invert_before = self.stencil_factory.from_dims_halo(
             func=compute_uwshcu_invert_before,
@@ -8315,6 +8355,10 @@ class ComputeUwshcuInv(NDSLRuntime):
             RKM2D=state.output.RKM2D,
             MIX2D=state.output.MIX2D,
             RMAXFRAC2D=state.output.RMAXFRAC2D,
+            EIS=state.output.EIS,
+            SRF_TYPE=state.output.SRF_TYPE,
+            AREA=state.input.AREA,
+            KPBL_SC=state.input.kpbl_inv,
         )
 
         self._compute_uwshcu_invert_before(
@@ -9943,7 +9987,39 @@ class ComputeUwshcuInv(NDSLRuntime):
             DQLDT_SC=state.output.qlten_inv,
         )
 
-        # Raise an error if REPORT_UW_NEGATIVES is True: This code has not been ported
+        if state.output.SC_QT is not None:
+            self._update_total_water_tendency(
+                SC_QT=state.output.SC_QT,
+                DQRDT_SC=state.output.qrten_inv,
+                DQSDT_SC=state.output.qsten_inv,
+                DQVDT_SC=state.output.qvten_inv,
+                QLENT_SC=state.output.QLENT_SC,
+                QLSUB_SC=state.output.qlsub_inv,
+                QIENT_SC=state.output.QIENT_SC,
+                QISUB_SC=state.output.qisub_inv,
+                QLDET_SC=state.output.qldet_inv,
+                QIDET_SC=state.output.qidet_inv,
+                MASS=self.locals.MASS,
+            )
+
+        if state.output.SC_MSE is not None:
+            self._update_moist_static_energy_tendency(
+                SC_MSE=state.output.SC_MSE,
+                DTDT_SC=state.output.tten_inv,
+                DQVDT_SC=state.output.qvten_inv,
+                DQIDT_SC=state.output.qiten_inv,
+                MASS=self.locals.MASS,
+            )
+
+
+        if state.output.CUSH_SC is not None:
+            self._update_convective_scale_height(
+                CUSH_SC=state.output.CUSH_SC,
+                CUSH=state.input_output.cush,
+            )
+
+        # NOTE: 'if REPORT_UW_NEGATIVES:' block has not been ported
+        
         if state.output.DQVDT_FILL is not None:
             self._fillq2zeros(
                 Q=state.input_output.qv0_inv,
@@ -9975,34 +10051,4 @@ class ComputeUwshcuInv(NDSLRuntime):
                 DQDT=state.output.DQICNDT_FILL,
             )
 
-
-        if state.output.SC_QT is not None:
-            self._update_total_water_tendency(
-                SC_QT=state.output.SC_QT,
-                DQRDT_SC=state.output.qrten_inv,
-                DQSDT_SC=state.output.qsten_inv,
-                DQVDT_SC=state.output.qvten_inv,
-                QLENT_SC=state.output.QLENT_SC,
-                QLSUB_SC=state.output.qlsub_inv,
-                QIENT_SC=state.output.QIENT_SC,
-                QISUB_SC=state.output.qisub_inv,
-                QLDET_SC=state.output.qldet_inv,
-                QIDET_SC=state.output.qidet_inv,
-                MASS=self.locals.MASS,
-            )
-
-        if state.output.SC_MSE is not None:
-            self._update_moist_static_energy_tendency(
-                SC_MSE=state.output.SC_MSE,
-                DTDT_SC=state.output.tten_inv,
-                DQVDT_SC=state.output.qvten_inv,
-                DQIDT_SC=state.output.qiten_inv,
-                MASS=self.locals.MASS,
-            )
-
-
-        if state.output.CUSH_SC is not None:
-            self._update_convective_scale_height(
-                CUSH_SC=state.output.CUSH_SC,
-                CUSH=state.input_output.cush,
-            )
+        # NOTE: 'if DEBUG_TQ_ERRORS:' block has not been ported

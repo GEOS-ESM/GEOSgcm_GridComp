@@ -112,6 +112,15 @@ class UWState(State):
                 "dtype": Float,
             }
         )
+        AREA: Quantity = dataclasses.field(
+            metadata={
+                "name": "AREA",
+                "dims": [I_DIM, J_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
 
     @dataclasses.dataclass
     class Input_Output:
@@ -697,6 +706,15 @@ class UWState(State):
             metadata={
                 "name": "DQICNDT_FILL",
                 "dims": [I_DIM, J_DIM, K_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        SRF_TYPE: Quantity = dataclasses.field(
+            metadata={
+                "name": "SRF_TYPE",
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,

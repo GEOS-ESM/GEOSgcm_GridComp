@@ -41,7 +41,7 @@ class UWGEOSInterface(UserCode):
             JASON=True if ndsl_stack.quantity_factory.sizer.nz == 72 else False,
             JASON_MFD_SC=True if ndsl_stack.quantity_factory.sizer.nz == 72 else False,
             REPORT_UW_NEGATIVES=MAPLPy.get_resource("REPORT_UW_NEGATIVES:", mapl_state, default=False),
-            UW_USE_EIS=MAPLPy.get_resource("UW_USE_EIS:", mapl_state, default=False if jason_uw else True),
+            USE_EIS=MAPLPy.get_resource("UW_USE_EIS:", mapl_state, default=False if jason_uw else True),
             NCNST=0,  # will be updated during first run call, once tracer packet is built in fortran
             rkfre=MAPLPy.get_resource("RKFRE:", mapl_state, default=Float(1.0) if jason_uw else Float(1.5)),
             k0=ndsl_stack.quantity_factory.sizer.nz,
@@ -53,6 +53,9 @@ class UWGEOSInterface(UserCode):
             thlsrc_fac=MAPLPy.get_resource("THLSRC_FAC:", mapl_state, default=Float(0.0) if jason_uw else Float(1.0)),
             frc_rasn=MAPLPy.get_resource("FRC_RASN:", mapl_state, default=Float(0.0)),
             rkm=MAPLPy.get_resource("RKM:", mapl_state, default=Float(12.0) if jason_uw else Float(8.0)),
+            rkfre_hr=MAPLPy.get_resource("RKFRE_HR:", mapl_state, default=Float(0.75)),
+            rkm_hr=MAPLPy.get_resource("RKM_HR:", mapl_state, default=Float(12.0)),
+            rmaxfrac_hr=MAPLPy.get_resource("RMAXFRAC_HR:", mapl_state, default=Float(0.1)),
             rpen=MAPLPy.get_resource("RPEN:", mapl_state, default=Float(3.0) if jason_uw else Float(1.5)),
             SCLM_SHALLOW=MAPLPy.get_resource("SCLM_SHALLOW:", mapl_state, default=Float(1.0)),
             niter_xc=MAPLPy.get_resource("NITER_XC:", mapl_state, default=Int(2)),
@@ -184,6 +187,8 @@ class UWGEOSInterface(UserCode):
         self._managed_state.register_2D("output.SC_MSE", "SC_MSE", export_repository)
         self._managed_state.register_2D("output.CUSH_SC", "CUSH_SC", export_repository)
         self._managed_state.register("input_output.CLCN", "CLCN", internal_repository)
+        self._managed_state.register_2D("output.SRF_TYPE", "SRF_TYPE", export_repository, alloc=True)
+        self._managed_state.register_2D("input.AREA", "AREA", import_repository)
 
         self._managed_state.register("output.DQVDT_FILL", "DQVDT_FILL_SC", export_repository)
         self._managed_state.register("output.DQLLSDT_FILL", "DQLLSDT_FILL_SC", export_repository)

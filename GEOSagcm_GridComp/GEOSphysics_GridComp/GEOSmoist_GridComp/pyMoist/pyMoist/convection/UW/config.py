@@ -8,9 +8,12 @@ class UWConfiguration:
     JASON: bool
     JASON_MFD_SC: bool
     REPORT_UW_NEGATIVES: bool
-    UW_USE_EIS: bool
+    USE_EIS: bool
     NCNST: Int
     rkfre: Float
+    rkfre_hr: Float
+    rkm_hr: Float
+    rmaxfrac_hr: Float
     k0: Int
     windsrcavg: Int
     dotransport: Int
