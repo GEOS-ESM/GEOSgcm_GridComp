@@ -115,7 +115,7 @@ def setup_inputs(
             rkm_scale_fac =(rkm / 4.0) * 2.5
 
             # This ensures the dominant eddies scale with the PBL thickness and RKM
-            mix2d_phys = max(rkm_scale_fac * ZL0.at(K=KPBL_SC), 1000.0 )
+            mix2d_phys = max(rkm_scale_fac * ZL0.at(K=int32(KPBL_SC)), 1000.0 )
 
             # The subgrid mixing scale cannot exceed half the grid box
             min_temp = min(0.5*DX, mix2d_phys)
