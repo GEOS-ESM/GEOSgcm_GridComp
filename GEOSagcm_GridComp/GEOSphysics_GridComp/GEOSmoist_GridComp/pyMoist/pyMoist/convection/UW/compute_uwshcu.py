@@ -81,13 +81,15 @@ def setup_inputs(
     from __externals__ import JASON, k_end, rkfre, rkm, mixscale, rmaxfrac, USE_EIS, rkfre_hr, rkm_hr, rmaxfrac_hr
 
     with computation(FORWARD), interval(...):
-        PKE = (PLE / constants.MAPL_P00) ** (constants.MAPL_KAPPA)
+        if K = 0:
+            PKE = (PLE / constants.MAPL_P00) ** (constants.MAPL_KAPPA)
+            ZLE0 = ZLE - ZLE.at(K=k_end + 1)
 
     with computation(FORWARD), interval(...):
         PKE[0, 0, 1] = (PLE[0, 0, 1] / constants.MAPL_P00) ** (constants.MAPL_KAPPA)
+        ZLE0[0,0,1] = ZLE[0,0,1] - ZLE.at(K=k_end+1)
         PL = 0.5 * (PLE + PLE[0, 0, 1])
         PK = (PL / constants.MAPL_P00) ** (constants.MAPL_KAPPA)
-        ZLE0 = ZLE - ZLE.at(K=k_end + 1)
 
     with computation(FORWARD), interval(...):
         ZL0 = 0.5 * (ZLE0 + ZLE0[0, 0, 1])
@@ -8361,6 +8363,8 @@ class ComputeUwshcuInv(NDSLRuntime):
             AREA=state.input.AREA,
             KPBL_SC=state.input.kpbl_inv,
         )
+        print("PKE:",state.input.PKE.data[:],verbose=True)
+        print("ZLE0:",state.input.ZLE0.data[:],verbose=True)
 
         self._compute_uwshcu_invert_before(
             pmid0_inv=self.locals.pmid0_inv,
