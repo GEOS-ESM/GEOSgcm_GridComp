@@ -118,7 +118,8 @@ def setup_inputs(
             mix2d_phys = max(rkm_scale_fac * ZL0.at(K=KPBL_SC), 1000.0 )
 
             # The subgrid mixing scale cannot exceed half the grid box
-            MIX2D = min(0.5*DX, mix2d_phys, mixscale)
+            min_temp = min(0.5*DX, mix2d_phys)
+            MIX2D = min(min_temp, mixscale)
 
             # Base resolution-dependent parameters
             rkfre_base = rkfre * SIG + rkfre_hr * (1.0 - SIG)
