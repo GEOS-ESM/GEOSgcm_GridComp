@@ -107,7 +107,7 @@ def setup_inputs(
     with computation(FORWARD), interval(...):
         if not JASON:
             if USE_EIS:
-                fac_eis = get_fac_eis(EIS, srf_type)
+                fac_eis = get_fac_eis(EIS, SRF_TYPE)
             DX = sqrt(AREA)
             SIG = sigma(DX)
 
