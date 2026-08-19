@@ -427,8 +427,8 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     end do
     !$OMP END PARALLEL DO
 
-    print *, "PKE:",PKE(:)
-    print *, "ZLE0:",ZLE0(:)
+    print *, "PKE:",PKE
+    print *, "ZLE0:",ZLE0
 
     call ESMF_ClockGetAlarm(clock, 'UW_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
     alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
