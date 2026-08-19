@@ -8363,8 +8363,8 @@ class ComputeUwshcuInv(NDSLRuntime):
             AREA=state.input.AREA,
             KPBL_SC=state.input.kpbl_inv,
         )
-        print("PKE:",self.locals.exnifc0_in.data[:])
-        print("ZLE0:",self.locals.zifc0_in.data[:])
+        print("PKE:",self.locals.exnifc0_inv.data[:])
+        print("ZLE0:",self.locals.zifc0_inv.data[:])
 
         self._compute_uwshcu_invert_before(
             pmid0_inv=self.locals.pmid0_inv,
