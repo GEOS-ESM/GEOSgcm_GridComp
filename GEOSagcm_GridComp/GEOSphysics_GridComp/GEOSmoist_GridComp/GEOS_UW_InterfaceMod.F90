@@ -680,6 +680,8 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
   !$OMP        CLCN, DQADT_SC, QLCN, QLDET_SC, DQLDT_SC, MASS, QICN, QIDET_SC, DQIDT_SC, &
   !$OMP        QLLS, QLSUB_SC, QLENT_SC, QILS, QISUB_SC, QIENT_SC) &
   !$OMP PRIVATE(i, j, k)
+  print *, "QLCN1: ",QLCN
+
   do k = 1, LM
      do j = 1, JM
         !DIR$ IVDEP 
@@ -711,7 +713,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
   end do
   !$OMP END PARALLEL DO
 
-  print *, "QLCN: ",QLCN
+  print *, "QLCN2: ",QLCN
   print *, "QLDET_SC: ",QLDET_SC
 
 ! Cleanup negative water species
