@@ -672,7 +672,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
   call MAPL_GetPointer(EXPORT, QLENT_SC, 'QLENT_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
   call MAPL_GetPointer(EXPORT, QISUB_SC, 'QISUB_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
   call MAPL_GetPointer(EXPORT, QIENT_SC, 'QIENT_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-  print *, "QLCN1: ",QLCN
+  
   ! 2. Apply tendencies in a single fused loop with OpenMP
   !--------------------------------------------------------------
   !$OMP PARALLEL DO DEFAULT(NONE) &
@@ -710,9 +710,6 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
      end do
   end do
   !$OMP END PARALLEL DO
-
-  print *, "QLCN2: ",QLCN
-  print *, "QLDET_SC: ",QLDET_SC
 
 ! Cleanup negative water species
 ! ------------------------------
