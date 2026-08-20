@@ -711,8 +711,8 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
   end do
   !$OMP END PARALLEL DO
 
-  print *, "CLCN: ",CLCN
-  print *, "DQADT_SC: ",DQADT_SC
+  print *, "QLCN: ",QLCN
+  print *, "QLDET_SC: ",QLDET_SC
 
 ! Cleanup negative water species
 ! ------------------------------
@@ -735,9 +735,6 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call FILLQ2ZERO( QICN    , MASS, DT=MOIST_DT, DQDT=DQICNDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
   endif
 
-  print *, "QLCN:",QLCN
-  print *, "QILS:",QILS
-  print *, "QICN:",QICN
 
   if (DEBUG_TQ_ERRORS) then
         do L=1,LM                

@@ -10002,8 +10002,8 @@ class ComputeUwshcuInv(NDSLRuntime):
             SHLW_SNO3=state.output.SHLW_SNO3,
             DQLDT_SC=state.output.qlten_inv,
         )
-        print("CLCN: ",state.input_output.CLCN.data[:])
-        print("DQADT_SC: ",state.output.DQADT_SC.data[:])
+        print("QLCN: ",state.input.QLCN.data[:])
+        print("QLDETT_SC: ",state.output.qldet_inv.data[:])
 
         if state.output.SC_QT is not None:
             self._update_total_water_tendency(
@@ -10069,8 +10069,8 @@ class ComputeUwshcuInv(NDSLRuntime):
                 DQDT=state.output.DQICNDT_FILL,
             )
 
-        print("QLCN: ",state.input.QLCN.data[:])
-        print("QILS: ",state.input.QILS.data[:])
-        print("QICN: ",state.input.QICN.data[:])
+        # print("QLCN: ",state.input.QLCN.data[:])
+        # print("QILS: ",state.input.QILS.data[:])
+        # print("QICN: ",state.input.QICN.data[:])
 
         # NOTE: 'if DEBUG_TQ_ERRORS:' block has not been ported
