@@ -8332,6 +8332,18 @@ class ComputeUwshcuInv(NDSLRuntime):
         self.locals.klfc_IJ[:] = 0
         self.locals.kpen_IJ[:] = 0
         self.locals.kpbl_in[:] = 0
+        self.locals.cbmf_out[:] = 0
+        self.locals.cbmf_s[:] = 0
+        self.locals.plcl_out[:] = 0
+        self.locals.plcl_s[:] = 0
+        self.locals.pinv_out[:] = 0
+        self.locals.pinv_s[:] = 0
+        self.locals.prel_out[:] = 0
+        self.locals.prel_s[:] = 0
+        self.locals.plfc_out[:] = 0
+        self.locals.plfc_s[:] = 0
+        self.locals.pbup_out[:] = 0
+        self.locals.pbup_s[:] = 0
 
         # Initialize masks, default for all masks is False.
         self._reset_mask(self.condensation, False)
