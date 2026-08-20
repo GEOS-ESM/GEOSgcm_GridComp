@@ -7443,15 +7443,15 @@ def setup_outputs(
         if QIDET_SC < 0.0:
             QIENT_SC = QIDET_SC
             QIDET_SC = 0.0
+    
+    with computation(PARALLEL), interval(...):
+        QLDET_SC = QLDET_SC * MASS
+        QIDET_SC = QIDET_SC * MASS
 
     with computation(PARALLEL), interval(...):
         # Add detrained shallow convective ice/liquid source
         QLCN = max(0.0, QLCN + QLDET_SC*dt/MASS)
         QICN = max(0.0, QICN + QIDET_SC*dt/MASS)
-
-    with computation(PARALLEL), interval(...):
-        QLDET_SC = QLDET_SC * MASS
-        QIDET_SC = QIDET_SC * MASS
 
     with computation(PARALLEL), interval(...):
         # Apply condensate tendency from subsidence, and sink from
