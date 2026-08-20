@@ -672,7 +672,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
   call MAPL_GetPointer(EXPORT, QLENT_SC, 'QLENT_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
   call MAPL_GetPointer(EXPORT, QISUB_SC, 'QISUB_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
   call MAPL_GetPointer(EXPORT, QIENT_SC, 'QIENT_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-
+  print *, "QLCN1: ",QLCN
   ! 2. Apply tendencies in a single fused loop with OpenMP
   !--------------------------------------------------------------
   !$OMP PARALLEL DO DEFAULT(NONE) &
@@ -680,8 +680,6 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
   !$OMP        CLCN, DQADT_SC, QLCN, QLDET_SC, DQLDT_SC, MASS, QICN, QIDET_SC, DQIDT_SC, &
   !$OMP        QLLS, QLSUB_SC, QLENT_SC, QILS, QISUB_SC, QIENT_SC) &
   !$OMP PRIVATE(i, j, k)
-  print *, "QLCN1: ",QLCN
-
   do k = 1, LM
      do j = 1, JM
         !DIR$ IVDEP 
