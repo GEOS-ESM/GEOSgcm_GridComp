@@ -10069,7 +10069,8 @@ class ComputeUwshcuInv(NDSLRuntime):
                 DQDT=state.output.DQICNDT_FILL,
             )
 
-        print("Q: ",state.input_output.qv0_inv.data[:])
-        print("QLLS: ",state.input.QLLS.data[:])
+        print("QLCN: ",state.input.QLCN.data[:])
+        print("QILS: ",state.input.QILS.data[:])
+        print("QICN: ",state.input.QICN.data[:])
 
         # NOTE: 'if DEBUG_TQ_ERRORS:' block has not been ported
