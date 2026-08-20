@@ -427,10 +427,6 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     end do
     !$OMP END PARALLEL DO
 
-    print *, "PL:",PL
-    print *, "PK:",PK
-    print *, "ZL0",ZL0
-
     call ESMF_ClockGetAlarm(clock, 'UW_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
     alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
 
@@ -714,6 +710,9 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
      end do
   end do
   !$OMP END PARALLEL DO
+
+  print *, "CLCN: ",CLCN
+  print *, "DQADT_SC: ",DQADT_SC
 
 ! Cleanup negative water species
 ! ------------------------------

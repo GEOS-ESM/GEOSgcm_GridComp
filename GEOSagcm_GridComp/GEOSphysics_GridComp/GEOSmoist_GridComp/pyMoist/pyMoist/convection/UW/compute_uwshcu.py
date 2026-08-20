@@ -93,7 +93,7 @@ def setup_inputs(
 
     with computation(FORWARD), interval(...):
         ZL0 = 0.5 * (ZLE0 + ZLE0[0, 0, 1])
-        DP = PLE[0, 0, 1] - PLE
+        DP = PLE[0,0,1] - PLE
         MASS = DP / constants.MAPL_GRAV
 
         # Set fac_eis to zero for the if not JASON block below
@@ -9992,6 +9992,8 @@ class ComputeUwshcuInv(NDSLRuntime):
             SHLW_SNO3=state.output.SHLW_SNO3,
             DQLDT_SC=state.output.qlten_inv,
         )
+        print("CLCN: ",state.input_output.CLCN.data[:])
+        print("DQADT_SC: ",state.output.DQADT_SC.data[:])
 
         if state.output.SC_QT is not None:
             self._update_total_water_tendency(
