@@ -8375,9 +8375,7 @@ class ComputeUwshcuInv(NDSLRuntime):
             AREA=state.input.AREA,
             KPBL_SC=state.input.kpbl_inv,
         )
-        print("PL:",self.locals.pmid0_inv.data[:])
-        print("PK:",self.locals.exnmid0_inv.data[:])
-        print("ZL0:",self.locals.zmid0_inv.data[:])
+
 
         self._compute_uwshcu_invert_before(
             pmid0_inv=self.locals.pmid0_inv,
@@ -10070,5 +10068,8 @@ class ComputeUwshcuInv(NDSLRuntime):
                 MASS=self.locals.MASS,
                 DQDT=state.output.DQICNDT_FILL,
             )
+
+        print("Q: ",state.input_output.qv0_inv.data[:])
+        print("QLLS: ",state.input.QLLS.data[:])
 
         # NOTE: 'if DEBUG_TQ_ERRORS:' block has not been ported

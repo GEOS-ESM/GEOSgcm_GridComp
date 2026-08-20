@@ -735,6 +735,9 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call FILLQ2ZERO( QICN    , MASS, DT=MOIST_DT, DQDT=DQICNDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
   endif
 
+  print *, "Q:",Q
+  print *, "QLLS:",QLLS
+
   if (DEBUG_TQ_ERRORS) then
         do L=1,LM                
           do J=1,JM              
