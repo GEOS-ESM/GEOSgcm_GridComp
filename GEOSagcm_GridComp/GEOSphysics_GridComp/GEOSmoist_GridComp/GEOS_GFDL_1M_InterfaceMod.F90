@@ -15,7 +15,8 @@ module GEOS_GFDL_1M_InterfaceMod
   use GEOS_UtilsMod
   use GEOS_RadarMod
   use GEOSmoist_Process_Library
-  use aer_cloud
+  use Aer_Actv_Single_Moment
+  use aer_cloud, only : aer_cloud_init
   use gfdl2_cloud_microphys_mod, only : gfdl_cloud_microphys_init, gfdl_cloud_microphys_driver, ICE_LSC_VFALL_PARAM, ICE_CNV_VFALL_PARAM
   use gfdl_mp_mod, only : gfdl_mp_init, gfdl_mp_driver, do_ref, do_hail, do_sedi_heat, do_sedi_melt_qi, do_sedi_melt_qs, do_sedi_melt_qg, ifflag
 
@@ -211,22 +212,6 @@ subroutine GFDL_1M_Setup (GC, CF, RC)
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'CCN',                                  &
-         LONG_NAME = '# conc liq phase for 1-mom',            &
-         UNITS     = 'm-3',                                   &
-         DIMS      = MAPL_DimsHorzVert,                       &
-         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
-    VERIFY_(STATUS) 
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'CIN',                                  &       
-         LONG_NAME = '# conc ice phase for 1-mom',            &     
-         UNITS     = 'm-3',                                   & 
-         DIMS      = MAPL_DimsHorzVert,                       &    
-         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'REF_DBZ',                                          &
          LONG_NAME = 'Simulated_gfdl_radar_reflectivity',                  &
          UNITS     = 'dBZ',                                     &  
@@ -401,14 +386,19 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     ! FAC_R* : Linear multiplier to artificially scale radii up/down for radiation tuning.
     ! MIN/MAX_R* : Hard numerical ceilings and floors for effective radius [meters].
     call MAPL_GetResource( MAPL, LIQ_RADII_PARAM , 'LIQ_RADII_PARAM:' , DEFAULT= 3     , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, ICE_RADII_PARAM , 'ICE_RADII_PARAM:' , DEFAULT= 2     , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, ICE_RADII_PARAM , 'ICE_RADII_PARAM:' , DEFAULT= 3     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, FAC_RI          , 'FAC_RI:'          , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MIN_RI          , 'MIN_RI:'          , DEFAULT= 15.e-6, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, MIN_RI          , 'MIN_RI:'          , DEFAULT=  5.e-6, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MAX_RI          , 'MAX_RI:'          , DEFAULT=150.e-6, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, FAC_RL          , 'FAC_RL:'          , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MIN_RL          , 'MIN_RL:'          , DEFAULT= 2.5e-6, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MAX_RL          , 'MAX_RL:'          , DEFAULT=60.0e-6, RC=STATUS); VERIFY_(STATUS)
 
+    ! ICE_RAD3_DISP : Size distribution dispersion scaling factor for ICE_RADII_PARAM == 3.
+    !                 Increasing this value increases effective radius, which raises OLR.
+    ! -----------------------------------------------------------------------------------------
+    call MAPL_GetResource( MAPL, ICE_RAD3_DISP , 'ICE_RAD3_DISP:', DEFAULT= 1.35 , RC=STATUS); VERIFY_(STATUS)
+    
     ! -----------------------------------------------------------------------------------------
     ! GRID-SCALE EVAPORATION / SUBLIMATION EFFICIENCIES [s^-1]
     ! -----------------------------------------------------------------------------------------
@@ -440,6 +430,41 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     call MAPL_GetResource( MAPL, ICE_FRACTION_POLYNOMIAL, Label="ICE_FRACTION_POLYNOMIAL:",  default=V12_ICE_POLYNOMIAL, RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, USE_AEROSOL_NN , 'USE_AEROSOL_NN:'  , DEFAULT=USE_AEROSOL_NN, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, USE_BERGERON   , 'USE_BERGERON:'    , DEFAULT=.FALSE., RC=STATUS); VERIFY_(STATUS)
+
+    ! -----------------------------------------------------------------------------------------
+    ! AEROSOL-ACTIVATED NUMBER CONCENTRATION BOUNDS
+    ! -----------------------------------------------------------------------------------------
+    ! Clamp limits (min/max) applied to the activated hydrometeor number concentrations
+    ! returned from the aerosol activation scheme (Aer_Activation). All values are in
+    ! SI number density [# m^-3]. These bounds act as physical guardrails and as the
+    ! effective default when the activation scheme returns values outside a plausible range;
+    ! they are exposed as resources so they can be tuned without recompilation.
+    !
+    ! Radiative relevance: the liquid number NN feeds the droplet effective radius via
+    ! Reff ~ (rho*qc / N)^(1/3) (see LDRADIUS4), so an overly high NN_MIN_LIQ forces
+    ! droplets too small over clean marine air, brightening low cloud in shortwave.
+    ! The ice bounds constrain the DeMott (2010) ice-nucleus number and thus high/anvil
+    ! cloud amount and OLR.
+    !
+    ! NN_MIN_LIQ : Minimum cloud-droplet number concentration [# m^-3].
+    ! NN_MAX_LIQ : Maximum cloud-droplet number concentration [# m^-3].
+    ! NN_MIN_ICE : Minimum ice-crystal / ice-nucleus number concentration [# m^-3].
+    ! NN_MAX_ICE : Maximum ice-crystal / ice-nucleus number concentration [# m^-3].
+    ! -----------------------------------------------------------------------------------------
+    call MAPL_GetResource( MAPL, NN_MIN_LIQ , 'NN_MIN_LIQ:'  , DEFAULT=  50.0e6, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, NN_MAX_LIQ , 'NN_MAX_LIQ:'  , DEFAULT= 500.0e6, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, NN_MIN_ICE , 'NN_MIN_ICE:'  , DEFAULT=   1.0e0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, NN_MAX_ICE , 'NN_MAX_ICE:'  , DEFAULT=  50.0e6, RC=STATUS); VERIFY_(STATUS)
+
+    ! MG_LIQ_DD_FLOOR : Liquid droplet density floor
+    ! MG_LIQ_MU : Shape parameter for droplet gamma dist [range: 0 to 5]
+    ! MG_ICE_MU : Shape parameter for ice crystal gamma dist [range: 0 to 2]
+    ! MG_ICE_A  : his is the empirical prefactor (a) [units: kg m^-2]
+    !             derived from standard empirical fits for non-spherical ice crystals
+    call MAPL_GetResource( MAPL, MG_LIQ_DD_FLOOR , 'MG_LIQ_DD_FLOOR:', DEFAULT= 5.e7, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, MG_LIQ_MU , 'MG_LIQ_MU:'  , DEFAULT=  5.0   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, MG_ICE_MU , 'MG_ICE_MU:'  , DEFAULT=  2.0   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, MG_ICE_A  , 'MG_ICE_A:'   , DEFAULT=  0.022 , RC=STATUS); VERIFY_(STATUS)
 
     if (USE_AEROSOL_NN) then
       ! NOTE: For now we hard code in .false. for use_wnet as that is only an option with MG and will be handled there
@@ -1159,7 +1184,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         ! Run the driver
          if (GFDL_MP3) then
          call gfdl_mp_driver( &
-                             ! Input water/cloud species and liquid+ice CCN NACTL & NACTI (#/m^3)
+                             ! Input water/cloud species and liquid+ice NACTL & NACTI (#/m^3)
                                RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, DBZ3D, NACTL, NACTI, &
                              ! Input fields
                                T, W, U, V, DZ, DP, PL, &
@@ -1237,7 +1262,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            endif
          else
          call gfdl_cloud_microphys_driver( &
-                             ! Input water/cloud species and liquid+ice CCN NACTL & NACTI (#/m^3)
+                             ! Input water/cloud species and liquid+ice NACTL & NACTI (#/m^3)
                                RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, NACTL, NACTI, &
                              ! Output tendencies
                                DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
@@ -1522,12 +1547,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
         call MAPL_GetPointer(EXPORT, PTR2D, 'IWP', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR2D)) PTR2D = SUM( ( QICN+QILS+QSNOW+QGRAUPEL ) *MASS , 3 )
-
-        call MAPL_GetPointer(EXPORT, PTR3D, 'CCN', RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR3D)) PTR3D = NACTL
-
-        call MAPL_GetPointer(EXPORT, PTR3D, 'CIN', RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR3D)) PTR3D = NACTI
 
         call MAPL_TimerOff(MAPL,"---CLDDIAGS",RC=STATUS); VERIFY_(STATUS)
     endif ! USE_PYMOIST_GFDL1M

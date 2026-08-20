@@ -1953,7 +1953,7 @@ contains
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME ='NCCN_LIQ',                                     &
          LONG_NAME ='number_concentration_of_cloud_liquid_particles',     &
-         UNITS     ='cm-3',                                         &
+         UNITS     ='m-3',                                         &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
@@ -1961,14 +1961,6 @@ contains
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME ='NCCN_ICE',                                     &
          LONG_NAME ='number_concentration_of_ice_cloud_particles',     &
-         UNITS     ='cm-3',                                         &
-         DIMS      = MAPL_DimsHorzVert,                            &
-         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME ='CLDNCCN',                                     &
-         LONG_NAME ='number_concentration_of_cloud_particles',     &
          UNITS     ='m-3',                                         &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
@@ -4759,11 +4751,18 @@ contains
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='NWFA',                                      &
          LONG_NAME ='Number concentration of water-friendly aerosol',               &
-         UNITS     ='Kg-1'  ,                                         &
+         UNITS     ='m-3'  ,                                         &
          DIMS      = MAPL_DimsHorzVert,                                  &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='NIFA',                                      &
+         LONG_NAME ='Number concentration of ice-friendly aerosol',               &
+         UNITS     ='m-3'  ,                                         &
+         DIMS      = MAPL_DimsHorzVert,                                  &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                          &
          SHORT_NAME='CNV_NICE',                                          &
@@ -5732,7 +5731,7 @@ contains
     real, pointer, dimension(:,:  ) :: CAPE, INHB, MLCAPE, SBCAPE, MLCIN, MUCAPE, MUCIN, SBCIN, LFC, LNB, LCL_AGL
     real, pointer, dimension(:,:  ) :: CNV_FRC, SRF_TYPE
     real, pointer, dimension(:,:,:) :: CFICE, CFLIQ
-    real, pointer, dimension(:,:,:) :: NWFA
+    real, pointer, dimension(:,:,:) :: NWFA, NIFA
     real, pointer, dimension(:,:)   :: EIS, LTS
     real, pointer, dimension(:,:,:) :: PTRDC, PTRSC
     real, pointer, dimension(:,:,:) :: PTR3D
@@ -5959,6 +5958,7 @@ contains
 
        ! These may be used by children
        call MAPL_GetPointer(EXPORT, NWFA,    'NWFA'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, NIFA,    'NIFA'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, CNV_FRC, 'CNV_FRC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, BYNCY,   'BYNCY'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, CAPE,    'CAPE'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -6050,8 +6050,8 @@ contains
              endif
              ! Pressures in Pa
              call Aer_Activation(MAPL, IM,JM,LM, Q, T, PLmb*100.0, PLE, TKE, TMP3D, FRLAND, &
-                                 AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6, &
-                                 (adjustl(CLDMICR_OPTION)=="MGB2_2M"), __RC__)
+                                 AERO, NACTL, NACTI, NWFA, NIFA, CCN_LND*1.e6, CCN_OCN*1.e6, &
+                                 .true., __RC__)
            else
               do L=1,LM
                  NACTL(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6 ! #/m^3
@@ -6061,9 +6061,9 @@ contains
        endif
 
        call MAPL_GetPointer(EXPORT, PTR3D, 'NCCN_LIQ', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR3D)) PTR3D = NACTL*1.e-6
+       if (associated(PTR3D)) PTR3D = NACTL
        call MAPL_GetPointer(EXPORT, PTR3D, 'NCCN_ICE', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR3D)) PTR3D = NACTI*1.e-6
+       if (associated(PTR3D)) PTR3D = NACTI
 
        call MAPL_TimerOff(MAPL,"---AERO_ACTIVATE")
 

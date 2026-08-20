@@ -230,10 +230,11 @@ module gfdl_mp_mod
     ! 3: WSM6 with 0 at 0 C and fixed value at - 10 C
     ! 4: combination of 1 and 3
 
-    integer :: ifflag = 1 ! ice fall scheme
+    integer :: ifflag = 3 ! ice fall scheme
     ! 1: Deng and Mace (2008)
     ! 2: Heymsfield and Donner (1990)
-    ! 3: Combination of Deng and Mace (2008) and Mishra et al (2014, JGR)
+    ! 3: Mishra et al (2014, JGR)
+    ! 4: Combination of Deng and Mace (2008) and Mishra et al (2014, JGR)
 
     integer :: rewflag = 1 ! cloud water effective radius scheme
     ! 1: Martin et al. (1994)
@@ -323,7 +324,7 @@ module gfdl_mp_mod
     logical :: snow_grauple_combine = .true. ! combine snow and graupel
 
     logical :: prog_ccn = .true.  ! use prognostic ccn
-    logical :: prog_cin = .false. ! use prognostic cin
+    logical :: prog_cin = .true.  ! use prognostic cin
 
     logical :: fix_negative = .true. ! fix negative water species
 
@@ -421,8 +422,8 @@ module gfdl_mp_mod
     real :: ccn_o = 90.0 ! ccn over ocean (1/cm^3)
     real :: ccn_l = 270.0 ! ccn over land (1/cm^3)
 
-    real :: rthreshu =  7.0e-6 ! unstable critical cloud drop radius (micro m)
-    real :: rthreshs = 10.0e-6 !   stable critical cloud drop radius (micro m)
+    real :: rthreshu =  8.5e-6 ! unstable critical cloud drop radius (micro m)
+    real :: rthreshs = 12.0e-6 !   stable critical cloud drop radius (micro m)
 
     logical :: in_cloud_liq = .true. ! use in-cloud liquid
     logical :: in_cloud_ice = .true. ! use in-cloud frozen
@@ -478,8 +479,8 @@ module gfdl_mp_mod
     logical :: do_ice_pres_scaling = .false.  ! optional pressure scaling to accelerate ice settling in the upper troposphere
 
     real :: vw_fac = 1.0
-    real :: vi_fac_cnv = 1.0
-    real :: vi_fac_lsc = 1.0
+    real :: vi_fac_cnv = 0.6
+    real :: vi_fac_lsc = 0.7
     real :: vs_fac = 1.0
     real :: vg_fac = 1.0
     real :: vr_fac = 1.0
@@ -1598,18 +1599,8 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pl, pt, qv, ql, qr, qi, qs, qg,
 
         if (prog_ccn) then
             do k = ks, ke
-              ! ! boucher and lohmann (1995)
-              ! nl =       min (1., abs (hs (i)) / (10. * grav)) * &
-              !      (10. ** 2.24 * (qnl (i, k) * den (k) * 1.e9) ** 0.257) + &
-              !      (1. - min (1., abs (hs (i)) / (10. * grav))) * &
-              !      (10. ** 2.06 * (qnl (i, k) * den (k) * 1.e9) ** 0.48)
-              ! ccn (k) = max (10.0, nl) * 1.e6
-              ! ccn (k) = ccn (k) / den (k)
               ! qnl import from GEOS has units # / m^3
                 ccn (k) = qnl (i, k) / den (k)
-                ccn (k) = ccn (k) * (1.0 - ice_fraction(real(tz (k)), cnv_fraction, srf_type, glac_shift))
-                ! Prevent exactly zero or negative values
-                ccn (k) = max(1.0e-3, ccn (k))
             enddo
         else
             ccn0 = (ccn_l *       min (1., abs (hs (i)) / (10. * grav)) + &
@@ -1623,9 +1614,6 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pl, pt, qv, ql, qr, qi, qs, qg,
             do k = ks, ke
               ! qni import fro GEOS has units # / m^3
                 cin (k) = qni (i, k) / den (k)
-                cin (k) = cin (k) * ice_fraction(real(tz (k)), cnv_fraction, srf_type, glac_shift)
-                ! Prevent exactly zero or negative values
-                cin (k) = max(1.0e-3, cin (k))
             enddo
         else
             cin (k) = 0.

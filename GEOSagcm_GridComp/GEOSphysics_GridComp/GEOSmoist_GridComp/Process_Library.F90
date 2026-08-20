@@ -86,6 +86,18 @@ module GEOSmoist_Process_Library
    logical :: USE_AEROSOL_NN = .TRUE.
    logical :: USE_NCLOUD_CLIM = .FALSE.
 
+   ! ICE_RAD3_DISP : Size distribution dispersion scaling factor for ICE_RADII_PARAM == 3.
+   !                 Increasing this value increases effective radius, which raises OLR.
+   ! -----------------------------------------------------------------------------------------
+   REAL :: ICE_RAD3_DISP = 1.15
+
+   !- Morrison-Gettelman (2008) Liquid Gamma Closure
+   REAL :: MG_LIQ_DD_FLOOR = 5.e7 ! Droplet density floor
+   REAL :: MG_LIQ_MU = 0.0        ! Shape parameter for droplet gamma dist
+   !- Morrison-Gettelman (2008) ice mass-dimension power law:  m = a * D^b, b = 2
+   REAL :: MG_ICE_A  = 0.0042     ! prefactor a [kg m^-2] for b=2  (VERIFY against MG08)
+   REAL :: MG_ICE_MU = 2.0        ! gamma-distribution shape parameter (tune; MG08 ice)
+
    integer :: WSUB_OPTION = -1
    integer :: PDFSHAPE = 1
 
@@ -272,6 +284,8 @@ module GEOSmoist_Process_Library
   public :: WSUB_OPTION, PDFSHAPE
   public :: CNV_Tracer_Type, CNV_Tracers, CNV_Tracers_Init
   public :: USE_BERGERON, USE_AEROSOL_NN, USE_NCLOUD_CLIM
+  public :: ICE_RAD3_DISP
+  public :: MG_ICE_MU, MG_ICE_A, MG_LIQ_DD_FLOOR, MG_LIQ_MU
   public :: RAW_MODIS_POLYNOMIAL, JASON_ICE_POLYNOMIAL, V12_ICE_POLYNOMIAL
   public :: ICE_FRACTION_POLYNOMIAL
   public :: SRF_TYPE_OCEAN, SRF_TYPE_LAND, SRF_TYPE_SNOW, SRF_TYPE_ICE, SRF_TYPE_LANDICE
@@ -908,110 +922,224 @@ module GEOSmoist_Process_Library
    function LDRADIUS4(PL,TE,QC,NNL,NNI,ITYPE) RESULT(RADIUS)
 
        REAL   , INTENT(IN) :: TE,PL,QC
-       REAL   , INTENT(IN) :: NNL,NNI ! input in #/m^3
+       REAL   , INTENT(IN) :: NNL,NNI       ! number concentration [m-3]
        INTEGER, INTENT(IN) :: ITYPE
        REAL  :: RADIUS
-       INTEGER, PARAMETER  :: LIQUID=1, ICE=2
-       REAL :: NNX,RHO,BB,WC
-       REAL :: TC,AA,Rmin
-  
-       ! Explicitly named physical parameters to replace magic numbers
-       real, parameter :: geom_hex   = 0.64952! Diameter-to-radius factor (3*sqrt(3)/8) for columns
 
-       ! Reference constants for empirical closures
-       real, parameter :: rho_ice_pure = 917.0   ! Physical baseline density of pure solid ice (kg/m^3)
- 
-       !- Local helpers for Morrison-Gettelman (MG) closures
-       REAL :: DROP_DENS, ICE_DENS, WC_kg
-       REAL, PARAMETER :: MG_LIQ_MU = 5.0    ! Shape parameter for droplet gamma dist
+       INTEGER, PARAMETER :: LIQUID=1, ICE=2
 
-       !- air density (kg/m^3)
-       RHO = (100.*PL) / (MAPL_RGAS*TE )
-       IF(ITYPE == LIQUID) THEN
+       REAL :: NNX
+       REAL :: RHO
+       REAL :: BB
+       REAL :: LWC, IWC
+       REAL :: TC
+       REAL :: AA
+       REAL :: DROP_DENS
+       REAL :: ICE_DENS
+       REAL :: MEAN_MASS
+       REAL :: inv_lambda
+       REAL :: frac
+       REAL :: R_VOLUME
 
-           !=======================================================================
-           !- LIQUID CLOUD SECTION
-           !=======================================================================
-           !- cloud drop number concentration from the aerosol model
-           NNX = max(NNL*1.e-6, 10.0) ! Converted to #/cm^3 for legacy param 1
-           
-           !- radius in meters
-           if (LIQ_RADII_PARAM == 1) then
-             !- Jason Version
-             WC = 1.e3*RHO*QC ! air density [g/m3] * liquid cloud mixing ratio [kg/kg]
-             RADIUS= MIN(60.e-6,MAX(2.5e-6, 1.e-6*bx*(WC/NNX)**r13bbeta*abeta*6.92))
-             
-           else  if (LIQ_RADII_PARAM == 2) then
-             !- [liu&daum, 2000 and 2005. liu et al 2008]
-             WC = 1.e3*RHO*QC ! air density [g/m3] * liquid cloud mixing ratio [kg/kg]
-             RADIUS = MIN(60.e-6,MAX(2.5e-6, 1.e-6*Lbx*(WC/NNX)**Lbe))
-             
-           else                         
-             !- Morrison-Gettelman Gamma Closure [Morrison & Gettelman, 2008, J. Climate]
-             DROP_DENS = MAX(NNL, 1.e7) ! Keep native #/m^3 with a physical floor
-             WC_kg     = RHO*QC ! air density [kg/m3] * liquid cloud mixing ratio [kg/kg]
-             
-             !- CORRECTED Analytical moment scaling for Effective Radius (M3 / M2 ratio)
-             !- Derived from Gamma distribution: Reff = [ (3 * (mu+2)*(mu+1)) / (4*pi*rhow * (mu+3)) ]^(1/3) * (LWC/N)^(1/3)
-             AA = ((3.0 * (MG_LIQ_MU + 2.0) * (MG_LIQ_MU + 1.0)) / &
-                   (4.0 * 3.14159265 * RHO_W * (MG_LIQ_MU + 3.0)))**(1.0/3.0)
-                   
-             !- Extract physical radius in meters
-             RADIUS = MIN(60.e-6, MAX(2.5e-6, AA * (WC_kg / DROP_DENS)**(1.0/3.0)))
-           endif
+       ! Diameter-to-radius factor used by the Sun ice formulation.
+       ! 3*sqrt(3)/8 for the assumed hexagonal-column geometry.
+       REAL, PARAMETER :: geom_hex = 0.64952
 
-       ELSEIF(ITYPE == ICE) THEN
-         
-           !=======================================================================
-           !- ICE CLOUD SECTION
-           !=======================================================================
-           !- radius in meters
-           if (ICE_RADII_PARAM == 1) then
-             !------ice cloud effective radius ----- [klaus wyser, 1998]
-             WC = 1.e3*RHO*QC ! air density [g/m3] * ice cloud mixing ratio [kg/kg]
+       !-----------------------------------------------------------------------
+       ! Air density
+       !
+       ! PL is assumed to be supplied in hPa.
+       ! Convert to Pa for the ideal-gas equation.
+       !-----------------------------------------------------------------------
+       RHO = (100.0 * PL) / (MAPL_RGAS * TE)
+
+       IF (ITYPE == LIQUID) THEN
+
+          !====================================================================
+          ! LIQUID CLOUD EFFECTIVE RADIUS
+          !====================================================================
+
+          !--------------------------------------------------------------------
+          ! Liquid cloud-drop number concentration from aerosol activation.
+          !
+          ! NNL is supplied in m-3.
+          ! Legacy parameterizations below require number concentration
+          ! in cm-3, hence the factor 1.e-6.
+          !--------------------------------------------------------------------
+          NNX = MAX(NNL * 1.e-6, 10.0)
+          IF (LIQ_RADII_PARAM == 1) THEN
+             !-----------------------------------------------------------------
+             ! Jason version
+             !-----------------------------------------------------------------
+             LWC = 1.e3 * RHO * QC
+             RADIUS = MIN(60.e-6, MAX(2.5e-6, &
+                       1.e-6 * bx * (LWC/NNX)**r13bbeta * abeta * 6.92))
+          ELSE IF (LIQ_RADII_PARAM == 2) THEN
+             !-----------------------------------------------------------------
+             ! Liu and Daum (2000, 2005); Liu et al. (2008)
+             !-----------------------------------------------------------------
+             LWC = 1.e3 * RHO * QC
+             RADIUS = MIN(60.e-6, MAX(2.5e-6, &
+                       1.e-6 * Lbx * (LWC/NNX)**Lbe))
+          ELSE IF (LIQ_RADII_PARAM == 3) THEN
+              !====================================================================
+              ! LIQUID DROPLET EFFECTIVE RADIUS
+              !====================================================================
+              ! Convert mixing ratio [kg/kg] to liquid water content [kg/m3]
+              LWC = QC * RHO ! air density [kg/m3] * ice cloud mixing ratio [kg/kg]
+              ! Guard against clear-sky or unactivated cloud droplets
+              IF (LWC > 1.e-12 .and. NNL > 1.e-3) THEN
+                 ! 1. Volume Mean Radius calculation (meters)
+                 ! Uses liquid water density (1000.0 kg/m3)
+                 R_VOLUME = ( (3.0 * LWC) / (4.0 * MAPL_PI * 1000.0 * NNL) )**(1.0/3.0)
+                 ! 2. Scale to Effective Radius using liquid dispersion factor (1.10)
+                 RADIUS = 1.10 * R_VOLUME
+              ELSE
+                 ! Default background liquid droplet radius (4 microns)
+                 RADIUS = 4.e-6
+              END IF
+              ! RRTMGP liquid cloud lookup bounds limits (typically 4 to 32 microns)
+              RADIUS = MIN(60.e-6, MAX(2.5e-6, RADIUS))
+          ELSE
+             !-----------------------------------------------------------------
+             ! Morrison-Gettelman gamma closure.
+             !
+             ! NNL is the aerosol-activation-derived liquid number
+             ! concentration [m-3].
+             ! For a gamma distribution, the effective radius is
+             !   re = M3 / M2
+             ! and, using liquid water content and number concentration,
+             !   re^3 =
+             !       [3/(4*pi*rho_w)] *
+             !       [(mu+1)(mu+2)/(mu+3)^2] *
+             !       [LWC/N].
+             !-----------------------------------------------------------------
+             DROP_DENS = MAX(NNL, MG_LIQ_DD_FLOOR)
+             LWC       = RHO * QC ! air density [kg/m3] * ice cloud mixing ratio [kg/kg]
+             IF (LWC > 0.0 .AND. DROP_DENS > 0.0) THEN
+                AA = ((3.0 * (MG_LIQ_MU + 2.0) * (MG_LIQ_MU + 1.0)) / &
+                      (4.0 * MAPL_PI * RHO_W * (MG_LIQ_MU + 3.0)**2))**(1.0/3.0)
+                RADIUS = AA * (LWC / DROP_DENS)**(1.0/3.0)
+             ELSE
+                RADIUS = 2.5e-6
+             END IF
+             RADIUS = MIN(60.e-6, MAX(2.5e-6, RADIUS))
+          END IF
+
+       ELSE IF (ITYPE == ICE) THEN
+
+          !====================================================================
+          ! ICE CLOUD EFFECTIVE RADIUS
+          !====================================================================
+          IF (ICE_RADII_PARAM == 1) THEN
+             !-----------------------------------------------------------------
+             ! Klaus/Wyser (1998)
+             !-----------------------------------------------------------------
+             IWC = 1.e3*RHO*QC ! air density [g/m3] * ice cloud mixing ratio [kg/kg]
              if(TE>MAPL_TICE .or. QC < 1.e-9) then
                BB = -2.
              else
                !- Added a safe numerical floor to prevent log10(0) or unphysical values
-               BB = -2. + log10(MAX(WC, 1.e-5)/50.)*(1.e-3*(MAPL_TICE-TE)**1.5)
+               BB = -2. + log10(MAX(IWC, 1.e-5)/50.)*(1.e-3*(MAPL_TICE-TE)**1.5)
              endif
              BB     = MIN((MAX(BB,-6.)),-2.)
              RADIUS = 377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
              RADIUS = MIN(150.e-6, MAX(5.e-6, 1.e-6*RADIUS)) ! Preserve legacy micron scaling
-             
-           else if (ICE_RADII_PARAM == 2) then
-             !------ice cloud effective radius ----- [Sun, 2001]
-             ! https://wiley.com
-             ! Modified to fix warm sub-zero bias from Stengel et al. (2023)
-             ! by flatlining the temperature dependency above -40C (233.15 K).
-             WC = 1.e3*RHO*QC ! air density [g/m3] * ice cloud mixing ratio [kg/kg]
-             
-             ! Safely capped at 0C (MAPL_TICE) to prevent unphysical blow-up for melting ice.
-             TC = MIN(0.0, TE - MAPL_TICE)! Standardize to Celsius to strictly match Sun (2001) empirical coefficients
-             
-             AA = 45.8966 * (MAX(WC, 1.e-10)**0.2214)
-             BB = 0.79570 * (MAX(WC, 1.e-10)**0.2535) * TC 
-             
+          ELSE IF (ICE_RADII_PARAM == 2) THEN
+             !-----------------------------------------------------------------
+             ! Sun (2001)
+             !
+             ! Modified temperature dependence: flatline at -40 C.
+             !-----------------------------------------------------------------
+             IWC = 1.e3*RHO*QC ! air density [g/m3] * ice cloud mixing ratio [kg/kg]
+             TC = MAX(MIN(0.0, TE-MAPL_TICE),-40.0)
+             AA = 45.8966 * MAX(IWC,1.e-10)**0.2214
+             BB = 0.79570 * MAX(IWC,1.e-10)**0.2535 * TC
              RADIUS = geom_hex * (1.2351 + 0.0105*TC) * (AA + BB)
              RADIUS = MIN(150.e-6, MAX(5.e-6, 1.e-6*RADIUS)) ! Preserve legacy micron scaling
-             
-           else
-             !- Morrison-Gettelman Power-Law Closure [Morrison & Gettelman, 2008]
-             !- Uses a mass-dimension power law (m = a*D^b, b=2) for non-spherical ice
-             ICE_DENS  = MAX(NNI, 10.0) ! Keep native #/m^3 with safe numeric floor
-             WC_kg     = RHO*QC ! air density [kg/m3] * ice cloud mixing ratio [kg/kg]
-             
-             !- MG08 exponential mass-dimension lookup parameterization ratio
-             !- Scales literature unrimed factor (0.022) to map explicitly to your model's ice density (rho_i)
-             RADIUS = 0.5 * ( (WC_kg / ICE_DENS) / (0.022 * (rho_i / rho_ice_pure)) )**0.5
-             RADIUS = MIN(150.e-6, MAX(15.e-6, RADIUS)) ! Native evaluation in meters
-           endif
+          ELSE IF (ICE_RADII_PARAM == 3) THEN
+             !-----------------------------------------------------------------
+             ! Two-Moment Aerosol Activation Physical Sizing
+             !
+             ! Uses Ice Water Content [kg/m3] and Number Concentration [m-3]
+             !-----------------------------------------------------------------
+             IWC = QC * RHO  ! Ice Water Content [kg/m3]
+             ! Guard against clear-sky zones or unactivated aerosol grids
+             IF (IWC > 1.e-12 .and. NNI > 1.e-3) THEN
+                ! 1. Volume Mean Radius calculation (meters)
+                ! Uses pure ice density (917.0 kg/m3) and MAPL_PI constant
+                R_VOLUME = ( (3.0 * IWC) / (4.0 * MAPL_PI * 917.0 * NNI) )**(1.0/3.0)
+                ! 2. Scale to Effective Radius using a standard dispersion factor
+                RADIUS = ICE_RAD3_DISP * R_VOLUME
+             ELSE
+                ! Fallback value for clear sky
+                RADIUS = 5.e-6
+             END IF
+             ! Apply matching RRTMGP bounds limits to keep data uniform
+             RADIUS = MIN(150.e-6, MAX(5.e-6, RADIUS))
+          ELSE
+             !-----------------------------------------------------------------
+             ! Morrison-Gettelman ice power-law closure.
+             ! This closure uses:
+             !   QI  -> ice mass concentration
+             !   NNI -> characteristic ice-particle number concentration
+             ! NNI is the activation-derived INP concentration from the
+             ! aerosol activation calculation.  In this radiation closure
+             ! it is being used as the particle-number constraint that
+             ! determines the characteristic ice size.
+             !
+             ! Mass-dimension relationship:
+             !       m = MG_ICE_A * D^2
+             ! for the MG ice b=2 assumption.
+             !-----------------------------------------------------------------
+             ICE_DENS = MAX(NNI, 1.0e-2)
+             IWC      = RHO * QC ! air density [kg/m3] * ice cloud mixing ratio [kg/kg]
+             IF (IWC > 1.0e-12 .AND. ICE_DENS > 0.0) THEN
+                !--------------------------------------------------------------
+                ! Mean mass per ice particle [kg]
+                !--------------------------------------------------------------
+                MEAN_MASS = IWC / ICE_DENS
+                !--------------------------------------------------------------
+                ! Characteristic inverse size.
+                ! For a gamma distribution in particle diameter D:
+                !   <D^2> = (mu+1)(mu+2) / lambda^2
+                ! and therefore
+                !   <m> = A (mu+1)(mu+2) / lambda^2.
+                !--------------------------------------------------------------
+                frac = MG_ICE_A * &
+                       (MG_ICE_MU + 2.0) * &
+                       (MG_ICE_MU + 1.0)
+                IF (frac > 0.0 .AND. MEAN_MASS > 0.0) THEN
+                   inv_lambda = SQRT(MEAN_MASS / frac)
+                   !-----------------------------------------------------------
+                   ! Effective radius.
+                   ! For spherical-equivalent volume and projected area:
+                   !       re = (2/3) M3/M2
+                   ! For the gamma distribution:
+                   !       M3/M2 = (mu+3)/lambda
+                   ! Therefore:
+                   !       re = (2/3)(mu+3)/lambda
+                   !-----------------------------------------------------------
+                   RADIUS = (2.0/3.0) * &
+                            (MG_ICE_MU + 3.0) * &
+                            inv_lambda
+                ELSE
+                   RADIUS = 15.e-6
+                END IF
+             ELSE
+                ! Negligible ice water content.
+                RADIUS = 15.e-6
+             END IF
+             !-----------------------------------------------------------------
+             ! Radiation-scheme bounds.
+             !-----------------------------------------------------------------
+             RADIUS = MIN(150.e-6, MAX(5.e-6, RADIUS))
+          END IF
+       ELSE
+          STOP "WRONG HYDROMETEOR type: CLOUD = 1 OR ICE = 2"
+       END IF
 
-      ELSE
-        STOP "WRONG HYDROMETEOR type: CLOUD = 1 OR ICE = 2"
-      ENDIF
-
-   end function LDRADIUS4
+   END FUNCTION LDRADIUS4
 
   subroutine RETURN_CAPE_CIN( L_max, ZLO, PLO, DZ, MSEp, Qp, Tve, Qsate, DQS, CAPE, CIN, BYNCY, LFC, LNB )
 

@@ -37,7 +37,7 @@ CONTAINS
    !>----------------------------------------------------------------------------------------------------------------------
 
    SUBROUTINE Aer_Activation(MAPL, IM,JM,LM, q, t, plo, ple, tke, vvel, FRLAND, &
-        aero_aci, NACTL, NACTI, NWFA,  &
+        aero_aci, NACTL, NACTI, NWFA, NIFA,  &
         NN_LAND, NN_OCEAN, need_extra_fields, rc)
       IMPLICIT NONE
       type (MAPL_MetaComp), pointer   :: MAPL
@@ -51,7 +51,7 @@ CONTAINS
       logical                     ,intent(in ) :: need_extra_fields
       integer, optional           ,intent(out) :: rc
 
-      real, dimension (IM,JM,LM),intent(OUT) :: NACTL, NACTI, NWFA
+      real, dimension (IM,JM,LM),intent(OUT) :: NACTL, NACTI, NWFA, NIFA
 
       real(AER_PR), allocatable, dimension (:,:,:) :: sig0,rg,ni,bibar,nact
       real(AER_PR), dimension(IM,JM)               :: wupdraft,tk,press,air_den
@@ -65,13 +65,27 @@ CONTAINS
 
       integer :: n_modes
       REAL :: numbinit(IM,JM)
+      REAL :: frac_large, z
       integer :: i,j,k,n
       integer :: nn
+
+      !--------------------------------------------------------------------
+      ! STP conversion constants.
+      !--------------------------------------------------------------------
+      real(AER_PR), parameter :: P0_STP = 101325.0
+      real(AER_PR), parameter :: T0_STP = 273.15
+      real(AER_PR), parameter :: RHO_STP = &
+           P0_STP / (MAPL_RGAS * T0_STP)
+      ! m^-3 -> cm^-3
+      real(AER_PR), parameter :: M3_TO_CM3 = 1.0e-6
+      ! L^-1 -> m^-3 
+      real(AER_PR), parameter :: L_TO_M3 = 1.0e3
 
       character(len=ESMF_MAXSTR)              :: IAm="Aer_Activation"
       integer                                 :: STATUS
 
       NWFA = 0.0
+      NIFA = 0.0
 
       call ESMF_AttributeGet(aero_aci, name='number_of_aerosol_modes', value=n_modes, __RC__)
 
@@ -152,20 +166,6 @@ CONTAINS
 
          AeroPropsNew(n)%nmods = n_modes
 
-         ! Replace the slow 'where' construct with a threaded explicit loop
-         !$OMP parallel do default(none) &
-         !$OMP shared(IM, JM, LM, AeroPropsNew, n, NWFA) &
-         !$OMP private(i, j, k)
-         do k = 1, LM
-            do j = 1, JM
-               do i = 1, IM
-                  if (AeroPropsNew(n)%kap(i,j,k) > 0.4) then
-                     NWFA(i,j,k) = NWFA(i,j,k) + AeroPropsNew(n)%num(i,j,k)
-                  endif
-               enddo
-            enddo
-         enddo
-
       end do ACTIVATION_PROPERTIES
 
       deallocate(aero_aci_modes, __STAT__)
@@ -183,9 +183,9 @@ CONTAINS
 
       !$OMP parallel do default(none) &
       !$OMP shared(IM, JM, LM, n_modes, T, plo, vvel, tke, AeroPropsNew, &
-      !$OMP        NACTL, NACTI, NN_MIN_LIQ, NN_MAX_LIQ, NN_MIN_ICE, NN_MAX_ICE) &
+      !$OMP        NACTL, NACTI, NWFA, NIFA, NN_MIN_LIQ, NN_MAX_LIQ, NN_MIN_ICE, NN_MAX_ICE) &
       !$OMP private(k, n, i, j, tk, press, air_den, wupdraft, ni, rg, bibar, &
-      !$OMP         sig0, nact, numbinit)
+      !$OMP         sig0, nact, frac_large, z, numbinit)
       DO k=1,LM
 
          tk                 = T(:,:,k)                         ! K
@@ -219,6 +219,7 @@ CONTAINS
            DO j = 1, JM
              DO i = 1, IM
                if (AeroPropsNew(n)%kap(i,j,k) > 0.4) then
+                  NWFA(i,j,k) = NWFA(i,j,k) + AeroPropsNew(n)%num(i,j,k)
                   numbinit(i,j) = numbinit(i,j) + AeroPropsNew(n)%num(i,j,k)
                   NACTL(i,j,k)= NACTL(i,j,k) + nact(i,j,n) !#/m3
                endif
@@ -241,29 +242,51 @@ CONTAINS
          DO n=1,n_modes
            DO j = 1, JM
              DO i = 1, IM
-               ! Look for low hygroscopicity (dust/soot) and large size
-               if ( (AeroPropsNew(n)%kap(i,j,k) < 0.2) .and. & 
-                    (AeroPropsNew(n)%dpg(i,j,k) .ge. 0.5e-6) ) then
-                  numbinit(i,j) = numbinit(i,j) + AeroPropsNew(n)%num(i,j,k)
-               endif 
+                ! Select modes containing significant dust or soot
+                ! Potential INP: dust/soot-containing aerosol with Dp > 0.5 micron
+                if ( (AeroPropsNew(n)%fdust(i,j,k) > 0.1) .or. &
+                     (AeroPropsNew(n)%fsoot(i,j,k) > 0.1) ) then
+                   ! Fraction of the number-lognormal distribution with Dp > 0.5 um
+                   if ( (AeroPropsNew(n)%dpg(i,j,k) > 0.0) .and. &
+                        (AeroPropsNew(n)%sig(i,j,k) > 1.0e-10) ) then
+                      z = log(0.5e-6 / AeroPropsNew(n)%dpg(i,j,k)) / &
+                          (sqrt(2.0) * AeroPropsNew(n)%sig(i,j,k))
+                      frac_large = 0.5 * erfc(z)
+                   else
+                      ! Limit for an effectively monodisperse mode
+                      if (AeroPropsNew(n)%dpg(i,j,k) >= 0.5e-6) then
+                         frac_large = 1.0
+                      else 
+                         frac_large = 0.0  
+                      endif
+                   endif
+                   numbinit(i,j) = numbinit(i,j) + AeroPropsNew(n)%num(i,j,k) * frac_large
+                endif  
              ENDDO
            ENDDO
          ENDDO
-         
+
          ! Optimized conditional calculation
          DO j = 1, JM
            DO i = 1, IM
              numbinit(i,j) = numbinit(i,j) * air_den(i,j)
+             NIFA(i,j,k)   = numbinit(i,j)
              numbinit(i,j) = max(numbinit(i,j),0.0)
-             
-             ! Only compute expensive exponents if cold enough AND aerosols exist
              if (tk(i,j) < MAPL_TICE .and. numbinit(i,j) > 0.0) then
-                ! Number of activated IN following deMott (2010) [#/m3]
-                NACTI(i,j,k) = (ai*(max(0.0,(MAPL_TICE-tk(i,j)))**bi)) * (numbinit(i,j)**(ci*max((MAPL_TICE-tk(i,j)),0.0)+di))
+                ! DeMott (2010): input n_aer in cm^-3 at STP -> output NACTI in L^-1 (STP).
+                NACTI(i,j,k) = ai * (max(0.0,(MAPL_TICE-tk(i,j)))**bi) &
+                     * ( ( numbinit(i,j) * M3_TO_CM3 * (RHO_STP/air_den(i,j)) ) &
+                         ** (ci*max((MAPL_TICE-tk(i,j)),0.0)+di) )
+                ! Convert DeMott output: L^-1 (STP) -> m^-3 (ambient)
+                NACTI(i,j,k) = NACTI(i,j,k) * L_TO_M3 * (air_den(i,j)/RHO_STP)
+                !------------------------------------------------
+                ! Physical upper bound:
+                ! INPs cannot exceed candidate aerosol.
+                !------------------------------------------------
+                NACTI(i,j,k) = min(NACTI(i,j,k), numbinit(i,j))
              else
                 NACTI(i,j,k) = 0.0
              endif
-             
              NACTI(i,j,k) = MAX(MIN(NACTI(i,j,k),NN_MAX_ICE),NN_MIN_ICE)
            ENDDO
          ENDDO
