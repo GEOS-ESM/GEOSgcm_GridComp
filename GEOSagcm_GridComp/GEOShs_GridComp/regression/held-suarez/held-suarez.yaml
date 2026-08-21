@@ -3,6 +3,9 @@ P_D: 0.0
 TAUF: 10.
 
 mapl:
+  # We don't need the setServices block here, since
+  # the parent creates this child in source, via
+  # call MAPL_GridCompAddChild(gc, "PHYS", PHYS_SetServices, "held-suarez.yaml", _RC)
   misc:
     checkpoint:
       export: true

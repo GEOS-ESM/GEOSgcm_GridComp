@@ -11,3 +11,7 @@ collections:
     time_spec: *one_hour
     var_list:
       DISS_HS: {source: PHYS.DISS}
+
+mapl:
+  setServices:
+    sharedObj: libMAPL.history
