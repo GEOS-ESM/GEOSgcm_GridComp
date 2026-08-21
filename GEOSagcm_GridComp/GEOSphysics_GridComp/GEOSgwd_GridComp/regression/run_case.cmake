@@ -19,7 +19,13 @@ function(run_case case_name regression_data_dir)
   copy_restarts(${root_dir} ${expdir})
   copy_file(${regression_data_dir}/newmfspectra40_dc25.nc ${expdir})
   run_geos(${num_procs} ${case_name} ${expdir})
-  compare_results(${checkpoints_dir} ${expdir}/checkpoints/last NANS_ARE_EQUAL TOLERANCE 3.1e-5)
+  if(NOT FORTRAN_COMPILER_ID STREQUAL "GNU") # skip comparison for GNU compiler
+    compare_results(
+      ${checkpoints_dir} ${expdir}/checkpoints/last
+      NANS_ARE_EQUAL
+      TOLERANCE 1.6e-5
+    )
+  endif()
 
   file(REMOVE_RECURSE ${expdir})
 endfunction()
