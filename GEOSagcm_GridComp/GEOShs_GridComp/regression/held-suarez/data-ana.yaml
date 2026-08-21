@@ -1,4 +1,8 @@
 mapl:
+  setServices:
+    sharedObj: libconfigurable_gridcomp
+    userRoutine: setservices_
+
   states:
     internal:
       DQVANA:

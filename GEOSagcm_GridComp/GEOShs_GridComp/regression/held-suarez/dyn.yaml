@@ -24,6 +24,10 @@ geometry:
     field_center: PE
 
 mapl:
+  setServices:
+    sharedObj: libFVdycoreCubed_GridComp
+    userRoutine: fvdycorecubed_setservices_
+
   misc:
     checkpoint:
       export: true

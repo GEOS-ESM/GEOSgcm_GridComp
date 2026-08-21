@@ -1,5 +1,9 @@
 ---
 mapl:
+  setServices:
+    sharedObj: libGEOSagcm_GridComp.so
+    userRoutine: setservices_
+
   geometry:
     kind: from_child
     provider: SDYN
