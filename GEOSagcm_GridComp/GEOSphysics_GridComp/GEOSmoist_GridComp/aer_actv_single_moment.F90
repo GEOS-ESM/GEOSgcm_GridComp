@@ -8,8 +8,8 @@ MODULE Aer_Actv_Single_Moment
    !-------------------------------------------------------------------------------------------------------------------------
    IMPLICIT NONE
    PUBLIC ::  Aer_Activation
-   PUBLIC :: NN_MIN_LIQ, NN_MAX_LIQ
-   PUBLIC :: NN_MIN_ICE, NN_MAX_ICE
+   PUBLIC :: NN_MIN_LIQ, NN_MAX_LIQ, NN_FAC_LIQ
+   PUBLIC :: NN_MIN_ICE, NN_MAX_ICE, NN_FAC_ICE
    PRIVATE
 
    ! Real kind for activation.
@@ -27,9 +27,11 @@ MODULE Aer_Actv_Single_Moment
 
    real :: NN_MIN_LIQ  =  100.0e6
    real :: NN_MAX_LIQ  =  500.0e6
+   real :: NN_FAC_LIQ  =  1.0
 
    real :: NN_MIN_ICE  =  10.0e3
    real :: NN_MAX_ICE  =  50.0e6
+   real :: NN_FAC_ICE  =  1.0
 
 CONTAINS
 
@@ -183,7 +185,7 @@ CONTAINS
 
       !$OMP parallel do default(none) &
       !$OMP shared(IM, JM, LM, n_modes, T, plo, vvel, tke, AeroPropsNew, &
-      !$OMP        NACTL, NACTI, NWFA, NIFA, NN_MIN_LIQ, NN_MAX_LIQ, NN_MIN_ICE, NN_MAX_ICE) &
+      !$OMP        NACTL, NACTI, NWFA, NIFA) &
       !$OMP private(k, n, i, j, tk, press, air_den, wupdraft, ni, rg, bibar, &
       !$OMP         sig0, nact, frac_large, z, numbinit)
       DO k=1,LM
@@ -233,7 +235,6 @@ CONTAINS
               numbinit(i,j) = numbinit(i,j) * air_den(i,j)
               numbinit(i,j) = max(numbinit(i,j),0.0)
               NACTL(i,j,k) = MIN(NACTL(i,j,k),0.99*numbinit(i,j))
-              NACTL(i,j,k) = MAX(MIN(NACTL(i,j,k),NN_MAX_LIQ),NN_MIN_LIQ)
            ENDDO
          ENDDO
 
@@ -287,7 +288,6 @@ CONTAINS
              else
                 NACTI(i,j,k) = 0.0
              endif
-             NACTI(i,j,k) = MAX(MIN(NACTI(i,j,k),NN_MAX_ICE),NN_MIN_ICE)
            ENDDO
          ENDDO
 

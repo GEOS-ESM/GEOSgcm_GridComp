@@ -19,6 +19,8 @@ public :: gw_drag_prof
 public :: calc_taucd, momentum_flux, momentum_fixer
 public :: energy_momentum_adjust, energy_change, energy_fixer
 
+public :: tau_0_ubc_bkg, tau_0_ubc_oro
+
 public :: west, east, north, south
 public :: pi
 public :: gravit
@@ -47,8 +49,8 @@ real(GW_PRC) :: rog = huge(1._GW_PRC)
 
 
 ! Pressure (Pa) to begin transition to an upper boundary condition of tau = 0.
-!  default(0.0) is not active
-real :: tau_0_ubc = 0.0
+real :: tau_0_ubc_bkg = 30.0
+real :: tau_0_ubc_oro = 10.0
 
 !
 ! Private variables
@@ -131,10 +133,10 @@ end function new_GWBand
 !==========================================================================
 
 subroutine gw_common_init(   &
-     tau_0_ubc_in, ktop_in, gravit_in, rair_in, cpair_in, & 
+     tau_0_ubc_bkg_in, tau_0_ubc_oro_in, ktop_in, gravit_in, rair_in, cpair_in, & 
      errstring)
 
-  real, intent(in) :: tau_0_ubc_in
+  real, intent(in) :: tau_0_ubc_bkg_in, tau_0_ubc_oro_in
   integer,  intent(in) :: ktop_in
   real, intent(in) :: gravit_in
   real, intent(in) :: rair_in       ! Gas constant for dry air (J kg-1 K-1)
@@ -147,7 +149,8 @@ subroutine gw_common_init(   &
 
   errstring = ""
 
-  tau_0_ubc = tau_0_ubc_in
+  tau_0_ubc_bkg = tau_0_ubc_bkg_in
+  tau_0_ubc_oro = tau_0_ubc_oro_in
   ktop   = ktop_in
   gravit = gravit_in
   rair   = rair_in
@@ -244,7 +247,7 @@ end subroutine gw_prof
 subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
      src_level, tend_level, dt, t,    &
      piln, rhoi,    nm,   ni, ubm,  ubi,  xv,    yv,   &
-     c, kvtt, tau,  utgw,  vtgw, &
+     c, kvtt, tau, tau_0_ubc,  utgw,  vtgw, &
      ttgw,  gwut, alpha, ro_adjust, kwvrdg)
 
   !-----------------------------------------------------------------------
@@ -301,13 +304,8 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   ! Molecular thermal diffusivity.
   real, intent(in) :: kvtt(ncol,pver+1)
 
-!++jtb 
-! remove q and dse for now (3/26/20)
-  ! Constituent array.
-  !real(GW_PRC), intent(in) :: q(:,:,:)
-  ! Dry static energy.
-  !real(GW_PRC), intent(in) :: dse(ncol,pver)
-!--jtb
+  ! Top level scaling pressure for setting tau to 0.0
+  real, intent(in) :: tau_0_ubc
 
   ! Wave Reynolds stress.
   real(GW_PRC), intent(inout) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)

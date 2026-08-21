@@ -6048,10 +6048,16 @@ contains
              else
                TMP3D = W
              endif
-             ! Pressures in Pa
+             ! Call aerosol activation (pressures in Pa)
              call Aer_Activation(MAPL, IM,JM,LM, Q, T, PLmb*100.0, PLE, TKE, TMP3D, FRLAND, &
                                  AERO, NACTL, NACTI, NWFA, NIFA, CCN_LND*1.e6, CCN_OCN*1.e6, &
                                  .true., __RC__)
+             ! Apply scaling factors
+             NACTL = NACTL*NN_FAC_LIQ
+             NACTI = NACTI*NN_FAC_ICE
+             ! Apply min/max limits
+             NACTL = max(NN_MIN_LIQ, min(NACTL, NN_MAX_LIQ))
+             NACTI = max(NN_MIN_ICE, min(NACTI, NN_MAX_ICE))
            else
               do L=1,LM
                  NACTL(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6 ! #/m^3

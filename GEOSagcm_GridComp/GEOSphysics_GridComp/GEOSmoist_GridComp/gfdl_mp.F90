@@ -127,7 +127,7 @@ module gfdl_mp_mod
 
     real, parameter :: tice = 273.15 ! freezing temperature (K): ref: GFDL, GFS
 
-    real, parameter :: tfrz_inst = 273.15 - 38.0 ! homogeneous freezing temperature (K)
+    real, parameter :: tfrz_inst = 273.15 - 40.0 ! homogeneous freezing temperature (K)
     real, parameter :: tmlt_fast = 273.15 + 2.0  ! fast melting temperature (K)
 
     integer, parameter :: es_table_length = 2621
@@ -417,7 +417,7 @@ module gfdl_mp_mod
     real :: tau_smlt =  900.0 ! snow melting time scale (s)
     real :: tau_gmlt = 1200.0 ! graupel melting time scale (s)
     ! subgridz timescales
-    real :: tau_wbf  =  600.0 ! Wegener Bergeron Findeisen time scale (s)
+    real :: tau_wbf  = 900.0 ! Wegener Bergeron Findeisen time scale (s)
 
     real :: ccn_o = 90.0 ! ccn over ocean (1/cm^3)
     real :: ccn_l = 270.0 ! ccn over land (1/cm^3)
@@ -3665,7 +3665,6 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, pl, dp, tz,
             newice = new_ice_condensate(tmp, ql, qi)
 
             ! --- NEW: Homogeneous Freezing Hard Stop ---
-            ! If colder than -38 C, freezing is instantaneous and total
             if (tmp < tfrz_inst) then
                 newice = ql        ! All liquid must become ice
                 fac_frez_loc = 1.0 ! Instantaneous timescale
@@ -5035,11 +5034,17 @@ subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den,
 
     integer :: k
 
-    real :: tc, tin, sink, dqdt, qsw, qsi, qim, tmp, fac_wbf
-
+    real :: tau_wbf_eff, fac_wbf
+    real :: qadum, qi_in, ql_in
+    real :: tc, tin, sink, dqdt, qsw, qsi, qim, tmp
     real :: snow_boost_mult
-    real :: tau_wbf_eff
-    real, parameter :: wbf_coarse_mult = 3.0  ! How much slower WBF is at 50km vs 2km
+    real :: ifrac, lfrac, q_total, q_liq_eq, q_liq_deficit
+
+    real :: q_ice_bulk
+    real :: liquid_fraction, ice_fraction_bulk, eta_mixing
+
+    real, parameter :: wbf_coarse_mult = 4.0  ! How much slower WBF is at 50km vs 2km
+    real, parameter :: qcmin_wbf = 1.0e-6  ! Minimum for WBF to operate (kg/kg)
 
     if (.not. do_wbf) return
 
@@ -5067,41 +5072,93 @@ subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den,
         tc = tice - tz (k)
 
         tin = tz (k)
-        qsw = wqs (tin, den (k), dqdt)
-        qsi = iqs (tin, den (k), dqdt)
 
-        ! heterogeneity and allow WBF to operate in large-scale updrafts
-        ! when the environment is supersaturated with respect to ice (qv > qsi)
-        ! and there is both liquid and ice present 
-        ! Bypassed qi > qcmin constraint for colder temperatures to ensure initiation
-        if (tc .gt. 0. .and. ql (k) .gt. qcmin .and. &
-           (qi (k) .gt. qcmin .or. tc .gt. 15.0) .and. &
-            qv (k) .gt. qsi) then
+        sink = 0.0
+        tmp = 0.0
 
-            ! 1. Homogeneous Freezing Limit (-40 C)
-            if (tc .ge. 40.0) then
-                sink = ql(k)
-                tmp = 0.0  ! All frozen liquid instantly becomes snow
-            else
-                ! Normal WBF probabilistic freezing
-                sink = min (fac_wbf * ql (k), tc / icpk (k))
+        ! =====================================================================
+        ! 1. Convert Grid-Mean Condensates to In-Cloud Values
+        ! =====================================================================
+        if (in_cloud_ice) then
+            ! Enforce minimum bound to prevent division by zero or vanishing values
+            qadum = MAX(qa(k), cfmin)
+        else
+            qadum = 1.0
+        endif
+
+        ! Local in-cloud mixing ratios (scaled up)
+        ql_in = ql(k) / qadum
+        qi_in = qi(k) / qadum
+
+        if (tc .ge. 40.0) then
+            ! -----------------------------------------------------------------
+            ! PATHWAY A: Spontaneous Homogeneous Freezing (T <= -40 C)
+            ! All remaining liquid water must freeze instantly.
+            ! -----------------------------------------------------------------
+            sink = ql_in
+            tmp = 0.0  ! All frozen liquid instantly becomes snow
+
+        elseif (tc .gt. 0.) then
+            ! -----------------------------------------------------------------
+            ! PATHWAY B: Mixed-Phase Regime (0 C > T > -40 C)
+            ! Calculate saturation vapor pressures only when physically needed.
+            ! -----------------------------------------------------------------
+            qsw = wqs (tin, den (k), dqdt)
+            qsi = iqs (tin, den (k), dqdt)
+            ! Check physical activation conditions for WBF
+            if (ql_in .gt. qcmin_wbf .and. qi_in .gt. qcmin_wbf .and. &
+                qv (k) .gt. qsi .and. qv (k) .lt. qsw) then
+
+                ! Calculate the total incloud bulk ice phase to correctly gauge storm presence
+                q_ice_bulk = (qi(k) + qs(k) + qg(k)) / qadum
                 
-                ! 2. Temperature-Dependent Snow Boost
-                ! Scales from 1.0 (at 0 C) down to 0.0 (at -40 C)
-                ! As tc gets larger (colder), the multiplier shrinks,
-                ! reducing qim and forcing more mass to spill over into qs.
-                snow_boost_mult = max(0.0, 1.0 - (tc / 40.0))
+                ! Retrieve equilibrium phase split from the Hu et al. polynomial
+                ifrac = ice_fraction(tin, cnv_fraction, srf_type, glac_shift)
+                lfrac = 1.0 - ifrac
                 
-                qim = (pwbf_qi_crt * snow_boost_mult) / den (k)
-                tmp = min (sink, dim (qim, qi (k)))
+                q_total = ql_in + qi_in
+                q_liq_eq = lfrac * q_total
+                
+                ! Check if we have excess liquid to relax toward equilibrium
+                if (ql_in .gt. max(q_liq_eq, qcmin_wbf) .and. q_ice_bulk .gt. qcmin_wbf) then
+                    
+                    ! Heterogeneous mixing inefficiency factor (eta)
+                    liquid_fraction   = ql_in / (ql_in + q_ice_bulk)
+                    ice_fraction_bulk = q_ice_bulk / (ql_in + q_ice_bulk)
+                    
+                    eta_mixing = 4.0 * liquid_fraction * ice_fraction_bulk
+                    eta_mixing = max(0.05, min(eta_mixing, 1.0))
+                    
+                    q_liq_deficit = ql_in - q_liq_eq
+                    
+                    ! Apply the rate sink (with heterogeneity multiplier and thermodynamic limit)
+                    sink = min(fac_wbf * q_liq_deficit * eta_mixing, ql_in, tc / icpk(k))
+                    
+                    ! Temperature-dependent snow boost mass distribution split
+                    snow_boost_mult = max(0.0, 1.0 - (tc / 40.0))
+                    qim = (pwbf_qi_crt * snow_boost_mult) / den(k)
+                    tmp = min(sink, dim(qim, qi_in))
+                endif
             endif
+        endif
 
+        ! =====================================================================
+        ! Convert In-Cloud Sinks Back to Grid-Mean Tendencies & Update State
+        ! =====================================================================
+        ! Only execute state updates if a physical phase change actually occurred.
+        ! This saves significant CPU overhead on warm or completely dry levels.
+        ! =====================================================================
+        if (sink .gt. 0.0) then
+            sink = sink * qadum
+            tmp  = tmp * qadum
+
+            ! Accumulate vertical column integrated mass flux
             mppfw = mppfw + sink * dp (k) * convt
 
+            ! Apply physical state updates
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                 0., - sink, 0., tmp, sink - tmp, 0., te8 (k), cvm (k), tz (k), &
                 lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pwbf')
-
         endif
 
     enddo

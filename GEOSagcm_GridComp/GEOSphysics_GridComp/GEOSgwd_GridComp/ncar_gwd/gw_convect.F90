@@ -6,7 +6,7 @@ module gw_convect
 !
 
   use gw_utils, only: GW_PRC, GW_R8, get_unit_vector, dot_2d, midpoint_interp
-  use gw_common, only: GWBand, gw_drag_prof, &
+  use gw_common, only: GWBand, gw_drag_prof, tau_0_ubc_bkg, &
                        calc_taucd, momentum_flux, momentum_fixer, &
                        energy_momentum_adjust, energy_change, energy_fixer 
 
@@ -654,7 +654,7 @@ subroutine gw_beres_ifc( band, &
      call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
           src_level, tend_level, dt, t,    &
           piln, rhoi, nm, ni, ubm, ubi, xv, yv, &
-          c, kvtt, tau, utgw, vtgw, ttgw, gwut, alpha)
+          c, kvtt, tau, tau_0_ubc_bkg, utgw, vtgw, ttgw, gwut, alpha)
 
      ! Apply efficiency and limiters
      call energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau, &

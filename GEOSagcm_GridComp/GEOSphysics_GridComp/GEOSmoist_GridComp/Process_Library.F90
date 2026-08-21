@@ -112,7 +112,8 @@ module GEOSmoist_Process_Library
   real, parameter :: QCMIN   =  1.e-12    ! minimum condensate (ql & qi) values
   real, parameter :: QPMIN   =  1.e-15    ! minimum precipitate (qr, qs, qg) values
   real, parameter :: dQCmax  =  1.e-4
-
+  real, parameter :: T_HOM   = -40.0      ! Homogeneous freezing at -40 C
+  real, parameter :: T_WIDTH =  10.0      ! Homogeneous freezing with -40 : -30 C
   real, parameter :: R_AIR     =  3.47e-3 !m3 Pa kg-1K-1
 
   ! LDRADIUS4
@@ -657,7 +658,8 @@ module GEOSmoist_Process_Library
       real, intent(in) :: TEMP,CNV_FRACTION,SRF_TYPE
       real, intent(in), optional :: GLAC_SHIFT
       real             :: ICEFRCT
-      real             :: tc, ptc
+      real             :: t_cels, liq_frac_raw, taper, u
+      real             :: tc_shifted, tc, ptc
       real             :: glac_shift_local
       real             :: ICEFRCT_C, ICEFRCT_M
 
@@ -755,11 +757,29 @@ module GEOSmoist_Process_Library
          ! include the convective fraction
          glac_shift_local = glac_shift_local + GLAC_SHIFT_CONV*CNV_FRACTION
 
-         tc = MAX(-46.0,MIN(TEMP-MAPL_TICE,46.0)) 
+         ! Calculate the actual unclipped Celsius temperature
+         t_cels = TEMP - MAPL_TICE
 
-         ! 2. Calculate ICEFRCT_M
-         ptc = 7.6725 + 1.0118*(tc+glac_shift_local) + 0.1422*(tc+glac_shift_local)**2 + 0.0106*(tc+glac_shift_local)**3 + 0.000339*(tc+glac_shift_local)**4 + 0.00000395*(tc+glac_shift_local)**5
-         ICEFRCT = 1.0 - (1.0/(1.0 + exp(-1.0*ptc)))
+         tc = MAX(-46.0,MIN(t_cels,46.0)) 
+         tc_shifted = tc + glac_shift_local
+
+         ! Calculate new polynomial
+         ptc = 7.6725 + 1.0118*(tc_shifted) + 0.1422*(tc_shifted)**2 + 0.0106*(tc_shifted)**3 + 0.000339*(tc_shifted)**4 + 0.00000395*(tc_shifted)**5
+         liq_frac_raw = 1.0/(1.0 + exp(-1.0*ptc))
+
+         ! Calculate the smooth taper to force liquid to 0.0 at and below T_HOM
+         ! u scales from 0.0 (at T_HOM = -40 C) to 1.0 (at T_HOM + T_WIDTH = -30 C)
+         u = (t_cels - T_HOM) / T_WIDTH
+         u = MAX(0.0, MIN(u, 1.0))
+
+         ! C2-continuous Smootherstep: 6u^5 - 15u^4 + 10u^3
+         ! Evaluated using Horner's method to avoid slow power (**) operators
+         taper = (u**3) * (10.0 + u * (-15.0 + u * 6.0))
+
+         ! 4. Apply the taper to the liquid fraction and compute the final ice fraction
+         ! At and below -40 C: taper = 0.0 -> ICEFRCT = 1.0 (100% Ice)
+         ! At and above -30 C: taper = 1.0 -> ICEFRCT = 1.0 - liq_frac_raw (Original Hu)
+         ICEFRCT = 1.0 - (liq_frac_raw * taper)
 
      case default
        print *, 'ICE_FRACTION_SC: Unknown ICE_FRACTION_POLYNOMIAL = ', ICE_FRACTION_POLYNOMIAL
@@ -1052,7 +1072,7 @@ module GEOSmoist_Process_Library
              ! Modified temperature dependence: flatline at -40 C.
              !-----------------------------------------------------------------
              IWC = 1.e3*RHO*QC ! air density [g/m3] * ice cloud mixing ratio [kg/kg]
-             TC = MAX(MIN(0.0, TE-MAPL_TICE),-40.0)
+             TC = MAX(MIN(0.0, TE-MAPL_TICE),T_HOM)
              AA = 45.8966 * MAX(IWC,1.e-10)**0.2214
              BB = 0.79570 * MAX(IWC,1.e-10)**0.2535 * TC
              RADIUS = geom_hex * (1.2351 + 0.0105*TC) * (AA + BB)
@@ -3309,7 +3329,7 @@ module GEOSmoist_Process_Library
       real :: L_f, fac_phase
       
       ! Define the physical hard-stop temperatures based on TICE
-      real, parameter :: TFRZ_INST = MAPL_TICE - 38.0 ! Homogeneous freezing limit
+      real, parameter :: TFRZ_INST = MAPL_TICE - 40.0 ! Homogeneous freezing limit
       real, parameter :: TMLT_FAST = MAPL_TICE + 2.0  ! Fast melt limit for surviving cloud ice
 
       ! Latent heat of fusion
