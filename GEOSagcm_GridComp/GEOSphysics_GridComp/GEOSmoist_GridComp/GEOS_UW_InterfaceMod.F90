@@ -354,8 +354,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     else
       ! Internals
     call MAPL_GetPointer(INTERNAL, CUSH,   'CUSH'    , RC=STATUS); VERIFY_(STATUS)
-
-
+   
     ! Imports
     call MAPL_GetPointer(IMPORT, FRLAND    ,'FRLAND'    ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, ZLE       ,'ZLE'       ,RC=STATUS); VERIFY_(STATUS)
@@ -673,7 +672,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
   call MAPL_GetPointer(EXPORT, QLENT_SC, 'QLENT_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
   call MAPL_GetPointer(EXPORT, QISUB_SC, 'QISUB_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
   call MAPL_GetPointer(EXPORT, QIENT_SC, 'QIENT_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-
+  
   ! 2. Apply tendencies in a single fused loop with OpenMP
   !--------------------------------------------------------------
   !$OMP PARALLEL DO DEFAULT(NONE) &
@@ -733,6 +732,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call FILLQ2ZERO( QICN    , MASS, DT=MOIST_DT, DQDT=DQICNDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
   endif
 
+
   if (DEBUG_TQ_ERRORS) then
         do L=1,LM                
           do J=1,JM              
@@ -752,9 +752,10 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        end do ! LM loop          
   endif
 
-  end if ! endif USE_PYMOIST_UW
+  endif ! endif USE_PYMOIST_UW
 
   call MAPL_TimerOff (MAPL,"--UW")
+
 
 end subroutine UW_Run
 

@@ -32,15 +32,6 @@ class UWState(State):
                 "dtype": Float,
             }
         )
-        AREA: Quantity = dataclasses.field(
-            metadata={
-                "name": "AREA",
-                "dims": [I_DIM, J_DIM],
-                "units": "m^2",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
         QLLS: Quantity = dataclasses.field(
             metadata={
                 "name": "QLLS",
@@ -118,6 +109,15 @@ class UWState(State):
                 "name": "evap",
                 "dims": [I_DIM, J_DIM],
                 "units": "kg/m^2/s",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        AREA: Quantity = dataclasses.field(
+            metadata={
+                "name": "AREA",
+                "dims": [I_DIM, J_DIM],
+                "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
@@ -213,6 +213,33 @@ class UWState(State):
                 "name": "RKFRE",
                 "dims": [I_DIM, J_DIM],
                 "units": "fraction",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        RKM2D: Quantity = dataclasses.field(
+            metadata={
+                "name": "RKM2D",
+                "dims": [I_DIM, J_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        MIX2D: Quantity = dataclasses.field(
+            metadata={
+                "name": "MIX2D",
+                "dims": [I_DIM, J_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        RMAXFRAC2D: Quantity = dataclasses.field(
+            metadata={
+                "name": "RMAXFRAC2D",
+                "dims": [I_DIM, J_DIM],
+                "units": "?",
                 "intent": "?",
                 "dtype": Float,
             }
@@ -478,24 +505,24 @@ class UWState(State):
                 "dtype": Float,
             }
         )
-        CNV_MFC: Quantity = dataclasses.field(
-            metadata={
-                "name": "CNV_MFC",
-                "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
-        CNV_MFD: Quantity = dataclasses.field(
-            metadata={
-                "name": "CNV_MFD",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
+        # CNV_MFC: Quantity = dataclasses.field(
+        #     metadata={
+        #         "name": "CNV_MFC",
+        #         "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
+        #         "units": "?",
+        #         "intent": "?",
+        #         "dtype": Float,
+        #     }
+        # )
+        # CNV_MFD: Quantity = dataclasses.field(
+        #     metadata={
+        #         "name": "CNV_MFD",
+        #         "dims": [I_DIM, J_DIM, K_DIM],
+        #         "units": "?",
+        #         "intent": "?",
+        #         "dtype": Float,
+        #     }
+        # )
         SHLW_PRC3: Quantity = dataclasses.field(
             metadata={
                 "name": "SHLW_PRC3",
@@ -554,6 +581,141 @@ class UWState(State):
             metadata={
                 "name": "qi0_inv",
                 "dims": [I_DIM, J_DIM, K_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        plcl_out: Quantity = dataclasses.field(
+            metadata={
+                "name": "plcl_out",
+                "dims": [I_DIM, J_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        plfc_out: Quantity = dataclasses.field(
+            metadata={
+                "name": "plfc_out",
+                "dims": [I_DIM, J_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        pinv_out: Quantity = dataclasses.field(
+            metadata={
+                "name": "pinv_out",
+                "dims": [I_DIM, J_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        prel_out: Quantity = dataclasses.field(
+            metadata={
+                "name": "prel_out",
+                "dims": [I_DIM, J_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        pbup_out: Quantity = dataclasses.field(
+            metadata={
+                "name": "pbup_out",
+                "dims": [I_DIM, J_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        cbmf_out: Quantity = dataclasses.field(
+            metadata={
+                "name": "cbmf_out",
+                "dims": [I_DIM, J_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        cldhgt_out: Quantity = dataclasses.field(
+            metadata={
+                "name": "cldhgt_out",
+                "dims": [I_DIM, J_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        LTS: Quantity = dataclasses.field(
+            metadata={
+                "name": "LTS",
+                "dims": [I_DIM, J_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        EIS: Quantity = dataclasses.field(
+            metadata={
+                "name": "EIS",
+                "dims": [I_DIM, J_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        DQVDT_FILL: Quantity | None = dataclasses.field(
+            metadata={
+                "name": "DQVDT_FILL",
+                "dims": [I_DIM, J_DIM, K_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        DQLLSDT_FILL: Quantity | None = dataclasses.field(
+            metadata={
+                "name": "DQLLSDT_FILL",
+                "dims": [I_DIM, J_DIM, K_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        DQLCNDT_FILL: Quantity | None = dataclasses.field(
+            metadata={
+                "name": "DQLCNDT_FILL",
+                "dims": [I_DIM, J_DIM, K_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        DQILSDT_FILL: Quantity | None = dataclasses.field(
+            metadata={
+                "name": "DQILSDT_FILL",
+                "dims": [I_DIM, J_DIM, K_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        DQICNDT_FILL: Quantity | None = dataclasses.field(
+            metadata={
+                "name": "DQICNDT_FILL",
+                "dims": [I_DIM, J_DIM, K_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+        SRF_TYPE: Quantity = dataclasses.field(
+            metadata={
+                "name": "SRF_TYPE",
+                "dims": [I_DIM, J_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,

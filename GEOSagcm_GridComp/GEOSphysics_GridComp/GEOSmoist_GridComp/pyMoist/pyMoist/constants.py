@@ -11,6 +11,9 @@ _f64 = np.float64
 # We keep it as is for now to match 11.5.2 GEOS
 MAPL_UNDEF = Float(1e15)
 
+# Fix negative
+FIX_NEG = False
+
 # Math Constants
 MAPL_PI_R8 = _f64(3.14159265358979323846e0)
 MAPL_PI = _f32(MAPL_PI_R8)
