@@ -102,7 +102,7 @@
     tr_pond_topo = .false.
     restart_pond_topo = .false.
     tr_pond_lvl  = .true.
-    restart_pond_lvl  = .false.
+    restart_pond_lvl  = .true.
     tr_snow      = .false.
     restart_snow = .false.
     tr_iso       = .false.
@@ -136,7 +136,7 @@
     brlx            = 300.0
     arlx            = 300.0
     advection       = 'remap'
-    kstrength       = 1
+    kstrength       = 0
     krdg_partic     = 1
     krdg_redist     = 1
     mu_rdg          = 3
