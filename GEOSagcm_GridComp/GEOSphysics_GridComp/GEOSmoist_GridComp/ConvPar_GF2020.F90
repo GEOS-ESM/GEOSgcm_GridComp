@@ -1020,14 +1020,23 @@ CONTAINS
                cum_ztexec(i) = max(0.2,   ztexec(i))
             enddo
          else
+            ! ===================================================================
+            ! LAND-OCEAN SPLIT FOR THERMODYNAMIC TRIGGER (Fixes Philippine Bias)
+            ! Reference: Gregory & Rowntree (1990); maritime boundary layers 
+            ! have much smaller perturbations than continental boundary layers.
+            ! ===================================================================
             do i = its, itf
-               if(xlandi(i) > 0.98) then
-                  cum_zqexec(i) = min(5.e-4, max(1.e-4, zqexec(i)))
-                  cum_ztexec(i) = min(0.5,   max(0.2,   ztexec(i)))
+               if (xlandi(i) > 0.5) then
+                  ! Ocean & Coastal Archipelago: Lower the barrier to allow the 
+                  ! sensitive West Pacific Warm Pool to trigger deep convection
+                  cum_zqexec(i) = max(1.e-5, zqexec(i))
+                  cum_ztexec(i) = max(0.05,  ztexec(i))
                else
-                  cum_ztexec(i) = ztexec(i); cum_zqexec(i) = zqexec(i)
+                  ! Land: Keep robust trigger barrier to prevent premature land triggering
+                  cum_zqexec(i) = max(1.e-4, zqexec(i))
+                  cum_ztexec(i) = max(0.2,   ztexec(i))
                endif
-            enddo
+            enddo 
          endif
 
          !-- Apply implicit PBL/radiation tendencies to thermodynamic profiles
@@ -1512,7 +1521,7 @@ CONTAINS
 
   ! --- Evaporation efficiency limits (edtmin / edtmax)
   do i = its, itf
-     if(xland(i) > 0.99 ) then
+     if(xland(i) > 0.5 ) then
        edtmin(i) = MIN_EDT_OCEAN;  edtmax(i) = MAX_EDT_OCEAN
      else
        edtmin(i) = MIN_EDT_LAND;   edtmax(i) = MAX_EDT_LAND
@@ -2225,7 +2234,7 @@ CONTAINS
      ! Option 1: Legacy / Default Method (Bechtold dx scaling)
      DO i = its, itf
         if(ierr(i) /= 0) cycle
-        if(xland(i) > 0.99) then
+        if(xland(i) > 0.5) then
            umean = 2.0 + sqrt(0.5 * (US(i,1)**2 + VS(i,1)**2 + US(i,kbcon(i))**2 + VS(i,kbcon(i))**2))
            tau_bl(i) = (zo_cup(i,kbcon(i)) - z1(i)) / umean
         else
@@ -2310,7 +2319,7 @@ CONTAINS
            aa3(i) = aa3(i) - (tn_cup_x(i,k) * (1. + 0.608 * qo_cup_x(i,k)) - t_cup(i,k) * (1. + 0.608 * q_cup(i,k))) * dp / dtime
         enddo
         aa1_bl(i) = aa3(i) - (63.e-6)
-        if(xland(i) > 0.90) aa1_bl(i) = 1.4 * aa1_bl(i)
+        if(xland(i) > 0.5) aa1_bl(i) = 1.4 * aa1_bl(i)
      ENDDO
      DO i = its, itf
         dtdt(i,:) = 0.0; dqdt(i,:) = 0.0
@@ -7448,7 +7457,7 @@ loop0:  do k= kbcon(i),ktop(i)
 !
 !---  over water, enfor!e small cap for some of the closures
 !
-                if(xland(i).lt.0.1)then
+                if(xland(i).lt.0.5)then
                  if(ierr2(i).gt.0.or.ierr3(i).gt.0)then
                       xff_ens3(1:16) = ens_adj(i)*xff_ens3(1:16)
                  endif
@@ -8099,7 +8108,7 @@ ENDIF
      RH_cr_LAND    = 1.
      eff_c_conv(:) = min(0.2,max(xmb(:),c_conv))
  else
-     RH_cr_OCEAN   = 0.95 !test 0.90
+     RH_cr_OCEAN   = 0.85
      RH_cr_LAND    = 0.85
      eff_c_conv(:) = c_conv
  endif

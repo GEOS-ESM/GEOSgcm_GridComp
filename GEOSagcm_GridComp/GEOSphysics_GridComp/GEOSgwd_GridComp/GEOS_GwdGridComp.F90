@@ -368,37 +368,37 @@ contains
       if (STRETCH_FACTOR > 1.0) then
          ! Stretched Grid Logic (imsize already includes CEILING(STRETCH_FACTOR))
          if (imsize >= 2160) then
-            NCAR_BKG_TAU_TOP_ZERO = 300.0
+            NCAR_BKG_TAU_TOP_ZERO = 750.0
          else if (imsize >= 1080) then
-            NCAR_BKG_TAU_TOP_ZERO = 150.0
+            NCAR_BKG_TAU_TOP_ZERO = 500.0
          else if (imsize >= 540) then
-            NCAR_BKG_TAU_TOP_ZERO = 75.0
+            NCAR_BKG_TAU_TOP_ZERO = 250.0
          else
-            NCAR_BKG_TAU_TOP_ZERO = 30.0 ! Fallback for mildly stretched low-res
+            NCAR_BKG_TAU_TOP_ZERO = 125.0 ! Fallback for mildly stretched low-res
          endif
       else
          ! Uniform Global Grid Logic
          if (imsize >= 10800) then
-            NCAR_BKG_TAU_TOP_ZERO = 300.0
+            NCAR_BKG_TAU_TOP_ZERO = 750.0
          else if (imsize >= 5760) then
-            NCAR_BKG_TAU_TOP_ZERO = 150.0
+            NCAR_BKG_TAU_TOP_ZERO = 500.0
          else if (imsize >= 2880) then
-            NCAR_BKG_TAU_TOP_ZERO = 75.0
+            NCAR_BKG_TAU_TOP_ZERO = 250.0
          else if (imsize >= 1440) then
-            NCAR_BKG_TAU_TOP_ZERO = 50.0
+            NCAR_BKG_TAU_TOP_ZERO = 125.0
          else if (imsize >= 1120) then
-            NCAR_BKG_TAU_TOP_ZERO = 40.0
+            NCAR_BKG_TAU_TOP_ZERO = 75.0
          else if (imsize >= 720) then
-            NCAR_BKG_TAU_TOP_ZERO = 30.0
+            NCAR_BKG_TAU_TOP_ZERO = 50.0
          else if (imsize >= 360) then
-            NCAR_BKG_TAU_TOP_ZERO = 20.0
+            NCAR_BKG_TAU_TOP_ZERO = 25.0
          else
             NCAR_BKG_TAU_TOP_ZERO = 10.0 ! Default for C180 and coarser
          endif
       endif
       ! Read from resource file, but use the dynamically calculated cutoff as the default
       call MAPL_GetResource( MAPL, NCAR_BKG_TAU_TOP_ZERO, Label="NCAR_BKG_TAU_TOP_ZERO:", default=NCAR_BKG_TAU_TOP_ZERO, _RC)
-      call MAPL_GetResource( MAPL, NCAR_ORO_TAU_TOP_ZERO, Label="NCAR_ORO_TAU_TOP_ZERO:", default=10.0, _RC)
+      call MAPL_GetResource( MAPL, NCAR_ORO_TAU_TOP_ZERO, Label="NCAR_ORO_TAU_TOP_ZERO:", default=50.0, _RC)
 
                                    NCAR_QBO_HDEPTH_SCALING = 1.0 - 0.75*sigma
       call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=NCAR_QBO_HDEPTH_SCALING, _RC)

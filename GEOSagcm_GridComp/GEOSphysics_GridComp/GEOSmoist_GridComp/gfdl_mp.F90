@@ -479,8 +479,8 @@ module gfdl_mp_mod
     logical :: do_ice_pres_scaling = .false.  ! optional pressure scaling to accelerate ice settling in the upper troposphere
 
     real :: vw_fac = 1.0
-    real :: vi_fac_cnv = 0.6
-    real :: vi_fac_lsc = 0.7
+    real :: vi_fac_cnv = 1.0
+    real :: vi_fac_lsc = 1.0
     real :: vs_fac = 1.0
     real :: vg_fac = 1.0
     real :: vr_fac = 1.0
