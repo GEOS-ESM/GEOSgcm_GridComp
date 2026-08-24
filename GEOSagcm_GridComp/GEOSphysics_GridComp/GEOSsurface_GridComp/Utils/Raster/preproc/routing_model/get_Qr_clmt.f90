@@ -1,0 +1,155 @@
+program main
+!Main purpose: Reads SMAP L4 NRv11.4 runoff data (1990–2023) from a NetCDF file and computes the climatological mean discharge for each catchment.
+
+  use omp_lib
+  use river_ncfile_helper
+  use routing_model_constants, only : nlat=>nlatE, nlon=>nlonE, nc, nupmax
+
+  implicit none
+
+  ! Define variables:
+  real, allocatable    :: runoff(:,:), qrunf(:), temp(:,:), qri(:), qin(:)
+  integer, allocatable :: nts(:), downid(:), upstream(:,:)
+  integer              :: i, j, nmax, did
+
+  character(len=900)   :: file_path 
+
+  if (command_argument_count() /= 1) then
+    print *, "no <file_path> found"
+    stop
+  endif
+  call get_command_argument(1, file_path)
+
+  ! Allocate arrays for runoff (grid), catchment runoff, and a temporary grid array:
+  allocate(runoff(nlon, nlat), qrunf(nc), temp(nlon, nlat))
+  
+  ! Read the "mean_runoff_flux" variable from the NetCDF file:
+  call read_ncfile_real2d(trim(file_path), "mean_runoff_flux", runoff, nlon, nlat)
+  ! Replace missing values (-9999) with 0:
+  !where(runoff == -9999.) runoff = 0.
+  
+  ! Flip the grid vertically (reverse the latitude order) and assign back to runoff:
+  temp = runoff(:, nlat:1:-1)
+  runoff = temp
+  
+  ! Map runoff from the EASE grid to catchments using the function EASE_to_cat.
+  qrunf = EASE_to_cat(runoff, nlon, nlat, nc)  ! m3/s
+
+  ! Write catchment runoff (qrunf):
+  open(88, file="temp/Pfaf_qstr.txt")
+  do i = 1, nc
+    write(88, *) qrunf(i)
+  end do
+
+  ! Allocate arrays for "steps to sink" (nts), downstream id (downid) and aggregated runoff (qri):
+  allocate(nts(nc), downid(nc), qri(nc))
+  ! Read the number of steps to sink for each catchment from file:
+  open(77, file="temp/Pfaf_tosink.txt")
+  read(77, *) nts
+  ! Read the downstream connectivity (immediate downstream catchment id) from file:
+  open(77, file="temp/downstream_1D_new_noadj.txt")  
+  read(77, *) downid
+
+  ! Get the maximum number of steps among all catchments:
+  nmax = maxval(nts)
+  ! Initialize qri with the catchment runoff values:
+  qri = qrunf
+  ! Aggregate runoff upstream: For each catchment with a given number of steps j,
+  ! add its runoff to its downstream catchment.
+  do j = nmax, 1, -1
+    do i = 1, nc  
+      if (nts(i) == j) then
+        did = downid(i)
+        qri(did) = qri(did) + qri(i)
+      endif
+    end do
+  end do
+
+  ! Write the aggregated runoff (qri) to file "Pfaf_qri.txt":
+  open(88, file="temp/Pfaf_qri.txt")
+  do i = 1, nc
+    write(88, *) qri(i)
+  end do  
+
+  ! Allocate arrays for upstream connectivity and inlet discharge (qin):
+  allocate(upstream(nupmax, nc), qin(nc))
+  ! Read upstream connectivity information from file "upstream_1D.txt":
+  open(77, file="temp/upstream_1D.txt")
+  read(77, *) upstream
+  ! Initialize qin to -9999:
+  qin = -9999.
+  ! For catchments that have upstream connectivity (upstream(1,:) /= -1),
+  ! set qin as the difference between outlet discharge (qri) and runoff (qrunf);
+  ! for catchments with no upstream (upstream(1,:) == -1), set qin to half of direct runoff.
+  where(upstream(1,:) /= -1) qin = qri - qrunf
+  where(upstream(1,:) == -1) qin = qrunf / 2.
+  
+  ! Write the inlet discharge (qin):
+  open(88, file="temp/Pfaf_qin.txt")
+  do i = 1, nc
+    write(88, *) qin(i)
+  end do   
+
+contains
+  !------------------------------------------------------------------------------
+  ! Function: EASE_to_cat
+  ! Purpose : Maps runoff data from the EASE grid resolution to catchments using
+  !           sub-area information. It aggregates runoff from sub-areas weighted by
+  !           their area fractions.
+  !
+  ! Input:
+  !   runoff - Runoff array of size (nlon, nlat) [in mm/d]
+  !   nlon   - Number of longitude grid cells.
+  !   nlat   - Number of latitude grid cells.
+  !   ncat   - Number of catchments.
+  !
+  ! Output:
+  !   Qrunf  - Runoff mapped to catchments (in kg/s, then converted to m^3/s).
+  !------------------------------------------------------------------------------
+  function EASE_to_cat(runoff, nlon, nlat, ncat) result(Qrunf)
+    integer, intent(in) :: nlon, nlat, ncat      ! Grid dimensions and number of catchments
+    real, intent(in) :: runoff(nlon, nlat)       ! Input runoff array at grid resolution
+    real :: Qrunf(ncat)                          ! Output catchment runoff array    
+
+    ! Declare allocatable arrays to hold sub-area data:
+    real, allocatable, dimension(:) :: subarea, frac  ! subarea: area of each sub-area, frac: fraction of total
+    integer, allocatable, dimension(:) :: subx, suby, csub  ! Coordinates of sub-areas in the grid
+    real, allocatable, dimension(:) :: tot, runfC, fracA    ! tot: total catchment area; runfC: aggregated runoff; fracA: fraction sum
+    integer, allocatable, dimension(:) :: nsub             ! nsub: number of sub-areas per catchment
+
+    integer :: i, j, sx, sy, k, cid, nv  ! Loop counters and sub-area grid coordinates
+
+    allocate(nsub(nc))
+    open(77, file="temp/Pfaf_nsub_EASE.txt"); read(77, *) nsub
+    nv = sum(nsub)
+
+    ! Allocate arrays for sub-area information and total area:
+    allocate(subarea(nv), subx(nv), suby(nv), csub(nv))
+
+    ! Read sub-area data from text files:
+    open(77, file="temp/Pfaf_csub_EASE.txt"); read(77, *) csub
+    open(77, file="temp/Pfaf_asub_EASE.txt"); read(77, *) subarea
+    open(77, file="temp/Pfaf_xsub_EASE.txt"); read(77, *) subx
+    open(77, file="temp/Pfaf_ysub_EASE.txt"); read(77, *) suby
+
+    ! Allocate arrays to accumulate runoff and fraction sums per catchment:
+    Qrunf = 0.  ! Initialize aggregated runoff for each catchment to zero
+
+    ! Loop over all sub-catchments:
+    do i = 1, nv
+      cid = csub(i)
+      sy = suby(i)  ! Get y-coordinate of the sub-area
+      sx = subx(i)  ! Get x-coordinate of the sub-area
+      ! Only consider valid sub-areas (non-zero fraction and valid runoff values)
+      if (runoff(sx, sy) >= 0.) then
+        Qrunf(cid) = Qrunf(cid) +  runoff(sx, sy)*subarea(i)*1.e3 ! Convert aggregated runoff to m3/s
+      endif
+    end do
+
+    ! Deallocate allocated arrays to free memory:
+    deallocate(nsub, subarea, subx, suby, csub)
+
+  end function EASE_to_cat
+  !------------------------------------------------------------------------------
+  
+end program main
