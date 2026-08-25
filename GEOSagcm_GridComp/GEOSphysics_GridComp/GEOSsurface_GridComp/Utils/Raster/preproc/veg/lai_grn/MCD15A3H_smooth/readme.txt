@@ -10,11 +10,15 @@ Date: 08/25/2026
 This package provides a high-performance, parallelized workflow to process 
 global MODIS LAI data (MCD15A3H) from 2003-01-01 to 2025-12-31. 
 The pipeline applies Quality Control (QC) filtering, temporal interpolation, 
-and Savitzky-Golay (TIMESAT-style) smoothing. 
+and Savitzky-Golay (TIMESAT-style) smoothing (Jönsson and Eklundh 2004). 
 
 It processes data into localized 2.5x2.5 degree chunks and subsequently stitches 
 them into standard 10x10 degree MODIS tiles with extreme ubyte + zlib compression 
 to optimize storage on the Discover supercomputer.
+
+Reference:
+Jönsson, P., & Eklundh, L. (2004). TIMESAT—a program for analyzing 
+time-series of satellite sensor data. Computers & geosciences, 30(8), 833-845.
 
 ## 2. File Manifest
 This package contains three primary scripts:
