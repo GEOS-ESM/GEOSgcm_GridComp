@@ -4,16 +4,17 @@ MODULE Aer_Actv_Single_Moment
 
    USE ESMF
    USE MAPL
-   USE GEOSmoist_Process_Library, only: AerPropsNew, AeroPropsNew 
+   USE aer_cloud, only: AeroPropsNew 
    !-------------------------------------------------------------------------------------------------------------------------
    IMPLICIT NONE
-   PUBLIC ::  Aer_Activation, USE_BERGERON, USE_AEROSOL_NN, R_AIR
+   PUBLIC ::  Aer_Activation
+   PUBLIC :: NN_MIN_LIQ, NN_MAX_LIQ
+   PUBLIC :: NN_MIN_ICE, NN_MAX_ICE
    PRIVATE
 
    ! Real kind for activation.
-   integer,public,parameter :: AER_PR = MAPL_R4
+   integer, parameter :: AER_PR = MAPL_R4
 
-   real        , parameter :: R_AIR     =  3.47e-3 !m3 Pa kg-1K-1
    real(AER_PR), parameter :: ai        =  0.0000594
    real(AER_PR), parameter :: bi        =  3.33
    real(AER_PR), parameter :: ci        =  0.0264
@@ -24,23 +25,23 @@ MODULE Aer_Actv_Single_Moment
    real(AER_PR), parameter :: deltai    =  2.809e+3
    real(AER_PR), parameter :: densic    =  917.0   !Ice crystal density in kgm-3
 
-   real, parameter :: NN_MIN      =  100.0e6
-   real, parameter :: NN_MAX      =  500.0e6
+   real :: NN_MIN_LIQ  =  100.0e6
+   real :: NN_MAX_LIQ  =  500.0e6
 
-   LOGICAL  :: USE_BERGERON = .FALSE.
-   LOGICAL  :: USE_AEROSOL_NN = .TRUE.
+   real :: NN_MIN_ICE  =  10.0e6
+   real :: NN_MAX_ICE  =  50.0e6
+
 CONTAINS
 
    !>----------------------------------------------------------------------------------------------------------------------
    !>----------------------------------------------------------------------------------------------------------------------
 
    SUBROUTINE Aer_Activation(MAPL, IM,JM,LM, q, t, plo, ple, tke, vvel, FRLAND, &
-        AeroPropsNew, aero_aci, NACTL, NACTI, NWFA,  &
+        aero_aci, NACTL, NACTI, NWFA,  &
         NN_LAND, NN_OCEAN, need_extra_fields, rc)
       IMPLICIT NONE
       type (MAPL_MetaComp), pointer   :: MAPL
       integer, intent(in)::IM,JM,LM
-      TYPE(AerPropsNew), dimension (:), intent(inout) :: AeroPropsNew
       type(ESMF_State)            ,intent(inout) :: aero_aci
       real, dimension (IM,JM,LM)  ,intent(in ) :: plo ! Pa
       real, dimension (IM,JM,0:LM),intent(in ) :: ple ! Pa
@@ -71,16 +72,6 @@ CONTAINS
       integer                                 :: STATUS
 
       NWFA = 0.0
-
-      if (.not. USE_AEROSOL_NN) then
-
-         do k = 1, LM
-            NACTL(:,:,k) = NN_LAND*FRLAND + NN_OCEAN*(1.0-FRLAND)
-            NACTI(:,:,k) = NN_LAND*FRLAND + NN_OCEAN*(1.0-FRLAND)
-         end do
-
-         RETURN_(ESMF_SUCCESS)
-      end if
 
       call ESMF_AttributeGet(aero_aci, name='number_of_aerosol_modes', value=n_modes, __RC__)
 
@@ -161,9 +152,19 @@ CONTAINS
 
          AeroPropsNew(n)%nmods = n_modes
 
-         where (AeroPropsNew(n)%kap > 0.4)
-            NWFA = NWFA + AeroPropsNew(n)%num
-         end where
+         ! Replace the slow 'where' construct with a threaded explicit loop
+         !$OMP parallel do default(none) &
+         !$OMP shared(IM, JM, LM, AeroPropsNew, n, NWFA) &
+         !$OMP private(i, j, k)
+         do k = 1, LM
+            do j = 1, JM
+               do i = 1, IM
+                  if (AeroPropsNew(n)%kap(i,j,k) > 0.4) then
+                     NWFA(i,j,k) = NWFA(i,j,k) + AeroPropsNew(n)%num(i,j,k)
+                  endif
+               enddo
+            enddo
+         enddo
 
       end do ACTIVATION_PROPERTIES
 
@@ -180,9 +181,11 @@ CONTAINS
       allocate(bibar(IM,JM,n_modes), source=0.0, __STAT__)
       allocate( nact(IM,JM,n_modes), source=0.0, __STAT__)
 
-      !$OMP parallel do default(none) shared(IM,JM,LM,n_modes,T,plo,vvel,tke,MAPL_RGAS, &
-      !$OMP                                  AeroPropsNew,NACTL,NACTI,NN_MIN,NN_MAX,ai,bi,ci,di) &
-      !$OMP                           private(k,n,tk,press,air_den,wupdraft,ni,rg,bibar,sig0,nact)
+      !$OMP parallel do default(none) &
+      !$OMP shared(IM, JM, LM, n_modes, T, plo, vvel, tke, AeroPropsNew, &
+      !$OMP        NACTL, NACTI, NN_MIN_LIQ, NN_MAX_LIQ, NN_MIN_ICE, NN_MAX_ICE) &
+      !$OMP private(k, n, i, j, tk, press, air_den, wupdraft, ni, rg, bibar, &
+      !$OMP         sig0, nact, numbinit)
       DO k=1,LM
 
          tk                 = T(:,:,k)                         ! K
@@ -197,6 +200,8 @@ CONTAINS
             bibar(:,:,n) =   AeroPropsNew(n)%kap(:,:,k)
             sig0 (:,:,n) =   AeroPropsNew(n)%sig(:,:,k)
          ENDDO
+         
+         ! Passed nact to ensure the private copy is populated
          call GetActFrac(IM*JM, n_modes    &
               ,      ni(1,1,1)   &
               ,      rg(1,1,1)   &
@@ -207,6 +212,7 @@ CONTAINS
               ,wupdraft(1,1)     &
               ,    nact(1,1,1)   &
               )
+              
          numbinit(:,:) = 0.
          NACTL(:,:,k) = 0.
          DO n=1,n_modes
@@ -219,12 +225,14 @@ CONTAINS
              ENDDO
            ENDDO
          ENDDO
-         numbinit = numbinit * air_den ! #/m3
+         
+         ! Fused array multiplication into the existing loop for better cache performance
          DO j = 1, JM
            DO i = 1, IM
+              numbinit(i,j) = numbinit(i,j) * air_den(i,j)
               numbinit(i,j) = max(numbinit(i,j),0.0)
               NACTL(i,j,k) = MIN(NACTL(i,j,k),0.99*numbinit(i,j))
-              NACTL(i,j,k) = MAX(MIN(NACTL(i,j,k),NN_MAX),NN_MIN)
+              NACTL(i,j,k) = MAX(MIN(NACTL(i,j,k),NN_MAX_LIQ),NN_MIN_LIQ)
            ENDDO
          ENDDO
 
@@ -240,13 +248,22 @@ CONTAINS
              ENDDO
            ENDDO
          ENDDO
-         numbinit = numbinit * air_den ! #/m3
+         
+         ! Optimized conditional calculation
          DO j = 1, JM
            DO i = 1, IM
+             numbinit(i,j) = numbinit(i,j) * air_den(i,j)
              numbinit(i,j) = max(numbinit(i,j),0.0)
-             ! Number of activated IN following deMott (2010) [#/m3]
-             NACTI(i,j,k) = (ai*(max(0.0,(MAPL_TICE-tk(i,j)))**bi)) * (numbinit(i,j)**(ci*max((MAPL_TICE-tk(i,j)),0.0)+di)) !#/m3
-             NACTI(i,j,k) = MAX(MIN(NACTI(i,j,k),NN_MAX),NN_MIN)
+             
+             ! Only compute expensive exponents if cold enough AND aerosols exist
+             if (tk(i,j) < MAPL_TICE .and. numbinit(i,j) > 0.0) then
+                ! Number of activated IN following deMott (2010) [#/m3]
+                NACTI(i,j,k) = (ai*(max(0.0,(MAPL_TICE-tk(i,j)))**bi)) * (numbinit(i,j)**(ci*max((MAPL_TICE-tk(i,j)),0.0)+di))
+             else
+                NACTI(i,j,k) = 0.0
+             endif
+             
+             NACTI(i,j,k) = MAX(MIN(NACTI(i,j,k),NN_MAX_ICE),NN_MIN_ICE)
            ENDDO
          ENDDO
 
