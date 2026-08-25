@@ -1,4 +1,4 @@
-from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
+from ndsl import NDSLRuntime, QuantityFactory, StencilFactory, ndsl_log
 
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization import GF2020CumulusParameterization, GF2020CumulusParameterizationConfig, GF2020CumulusParameterizationState
@@ -41,6 +41,12 @@ class GF2020(NDSLRuntime):
             saturation_tables (SaturationVaporPressureTable | None)
         """
         super().__init__(stencil_factory)
+
+        # WARNING - to be removed when 11.10.1 update is complete
+        ndsl_log.warning(
+            "pyMoist.GFDL_1M: This NDSL version of GFDL_1M was ported from GEOS v11.8.1, and has not yet been updated to v11.10. "
+            "Stable execution is not guarenteed, as v11.10 made siginificant changes to the source Fortran."
+        )
 
         # make saturation tables visible at runtime
         if saturation_tables is None:
