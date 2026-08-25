@@ -1,7 +1,7 @@
 import dace
 from ndsl import NDSLRuntime, OptimizationConfig, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, computation, erfc, exp, float32, float64, int32, int64, interval, isnan, log, sqrt
+from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, computation, erfc, exp, float32, int32, int64, interval, isnan, log, sqrt
 from ndsl.dsl.typing import Bool, BoolFieldIJ, FloatField, FloatFieldIJ, IntField, IntFieldIJ
 
 import pyMoist.constants as constants
@@ -26,8 +26,7 @@ from pyMoist.convection.UW.uwshcu_functions import (
 )
 from pyMoist.convection_tracers import FloatField_ConvectionTracers, FloatFieldIJ_ConvectionTracers
 from pyMoist.saturation_tables import GlobalTable_saturation_tables, SaturationFormulation, get_saturation_vapor_pressure_table, saturation_specific_humidity
-from pyMoist.shared.atmos_recipes import sigma, get_fac_eis
-from pyMoist.convection_tracers import FloatField_ConvectionTracers, FloatFieldIJ_ConvectionTracers
+from pyMoist.shared.atmos_recipes import get_fac_eis, sigma
 
 
 def setup_inputs(
@@ -79,7 +78,7 @@ def setup_inputs(
         MIX2D [FloatFieldIJ]:
         RMAXFRAC2D [FloatFieldIJ]:
     """
-    from __externals__ import JASON, k_end, rkfre, rkm, mixscale, rmaxfrac, USE_EIS, rkfre_hr, rkm_hr, rmaxfrac_hr
+    from __externals__ import JASON, USE_EIS, k_end, mixscale, rkfre, rkfre_hr, rkm, rkm_hr, rmaxfrac, rmaxfrac_hr
 
     with computation(FORWARD), interval(...):
         if K == 0:
@@ -88,13 +87,13 @@ def setup_inputs(
 
     with computation(FORWARD), interval(...):
         PKE[0, 0, 1] = (PLE[0, 0, 1] / constants.MAPL_P00) ** (constants.MAPL_KAPPA)
-        ZLE0[0,0,1] = ZLE[0,0,1] - ZLE.at(K=k_end+1)
+        ZLE0[0, 0, 1] = ZLE[0, 0, 1] - ZLE.at(K=k_end + 1)
         PL = 0.5 * (PLE + PLE[0, 0, 1])
         PK = (PL / constants.MAPL_P00) ** (constants.MAPL_KAPPA)
 
     with computation(FORWARD), interval(...):
         ZL0 = 0.5 * (ZLE0 + ZLE0[0, 0, 1])
-        DP = PLE[0,0,1] - PLE
+        DP = PLE[0, 0, 1] - PLE
         MASS = DP / constants.MAPL_GRAV
 
         # Set fac_eis to zero for the if not JASON block below
@@ -115,13 +114,13 @@ def setup_inputs(
             SIG = sigma(DX)
 
             # (If RKM=4.0, multiplier is 2.5. If RKM=8.0, multiplier is 5.0)
-            rkm_scale_fac =(rkm / 4.0) * 2.5
+            rkm_scale_fac = (rkm / 4.0) * 2.5
 
             # This ensures the dominant eddies scale with the PBL thickness and RKM
-            mix2d_phys = max(rkm_scale_fac * ZL0.at(K=int32(KPBL_SC)), 1000.0 )
+            mix2d_phys = max(rkm_scale_fac * ZL0.at(K=int32(KPBL_SC)), 1000.0)
 
             # The subgrid mixing scale cannot exceed half the grid box
-            min_temp = min(0.5*DX, mix2d_phys)
+            min_temp = min(0.5 * DX, mix2d_phys)
             MIX2D = min(min_temp, mixscale)
 
             # Base resolution-dependent parameters
@@ -136,7 +135,7 @@ def setup_inputs(
 
             # Apply EIS modifications
             RKFRE = rkfre_base * eis_rkfre_factor
-            RKM2D = rkm_base   * eis_rkm_factor
+            RKM2D = rkm_base * eis_rkm_factor
             RMAXFRAC2D = rmaxfrac_base * eis_rmaxfrac_factor
 
             # Optional: Add minimum limits
@@ -151,7 +150,6 @@ def setup_inputs(
     with computation(PARALLEL), interval(...):
         DQLDT_SC = QLTOT
         DQIDT_SC = QITOT
-    
 
 
 def compute_uwshcu_invert_before(
@@ -1229,7 +1227,7 @@ def find_pbl_averages(
             uavg = uavg / dpsum
             vavg = vavg / dpsum
             thvlavg = thvlavg / dpsum
-            qtavg = qtavg/dpsum
+            qtavg = qtavg / dpsum
 
             # Interpolate qt to specified height
             if qtsrchgt > 1.0:
@@ -1324,8 +1322,8 @@ def find_cumulus_characteristics(
                 # tpert_out and qpert_out need to be checked
                 zrho = pifc0.at(K=0) / (287.04 * (t0.at(K=0) * (1.0 + 0.608 * qv0.at(K=0))))
                 buoyflx = (-shfx / constants.MAPL_CP - 0.608 * t0.at(K=0) * evap) / zrho  # K m s-1
-                delzg = (zifc0.at(K=kinv-1) - zifc0.at(K=0)) * constants.MAPL_GRAV
-                delzg = max(delzg, 50.0*constants.MAPL_GRAV)
+                delzg = (zifc0.at(K=kinv - 1) - zifc0.at(K=0)) * constants.MAPL_GRAV
+                delzg = max(delzg, 50.0 * constants.MAPL_GRAV)
                 wstar = max(0.0, 0.001 - 0.41 * buoyflx * delzg / t0.at(K=0))  # m3 s-3
                 qpert_out = 0.0
                 tpert_out = 0.0
@@ -2654,7 +2652,7 @@ def calc_cumulus_base_mass_flux(
             else:
                 wcrit = sqrt(max(0.0, 2.0 * cinlcl_IJ * rbuoy))
 
-            sigmaw = sqrt(max(0.0,tkeavg + epsvarw))
+            sigmaw = sqrt(max(0.0, tkeavg + epsvarw))
             mu = wcrit / sigmaw / 1.4142
 
             if mu >= 3.0:
@@ -2692,20 +2690,20 @@ def calc_cumulus_base_mass_flux(
 
                 # 1. 'cbmf' constraint
                 if cbmf > 1.0e-12:
-                    rkfre_eff = min(RKFRE, min(1.0,max(0.1,(0.9*dp0.at(K=kinv-1)/constants.MAPL_GRAV/dt)/cbmf)))
+                    rkfre_eff = min(RKFRE, min(1.0, max(0.1, (0.9 * dp0.at(K=kinv - 1) / constants.MAPL_GRAV / dt) / cbmf)))
                 else:
-                    rkfre_eff = min(RKFRE,1.0)
-                
+                    rkfre_eff = min(RKFRE, 1.0)
+
                 cbmf = rkfre_eff * cbmf
                 sigmaw = 2.5066 * cbmf * exp(mu**2) / rho0inv
-              
-                mumin0 = sqrt(max(0.0,-log(max(constants.FLOAT_TINY,2.5066 * cbmf / rho0inv / sigmaw))))
+
+                mumin0 = sqrt(max(0.0, -log(max(constants.FLOAT_TINY, 2.5066 * cbmf / rho0inv / sigmaw))))
 
                 # 2. 'ufrcinv' constraint
                 mu = max(max(mu, mumin0), mumin1)
 
                 # 3. 'ufrclcl' constraint
-                mulcl = sqrt(max(0.0,2.0 * cinlcl_IJ * rbuoy)) / 1.4142 / sigmaw
+                mulcl = sqrt(max(0.0, 2.0 * cinlcl_IJ * rbuoy)) / 1.4142 / sigmaw
                 mulclstar = sqrt(
                     max(
                         0.0,
@@ -3652,8 +3650,8 @@ def buoyancy_sorting(
                                     rei = (0.5 * RKM2D) / zmid0 / constants.MAPL_GRAV / rhomid0j
 
                                 if xc > 0.5:
-                                    arg = dp0/constants.MAPL_GRAV/dt/max(umf_zint,constants.FLOAT_TINY) + 1.0
-                                    rei = min(rei,0.9*log(max(constants.FLOAT_TINY,arg))/max(dpe*(2.*xc-1.), constants.FLOAT_TINY))
+                                    arg = dp0 / constants.MAPL_GRAV / dt / max(umf_zint, constants.FLOAT_TINY) + 1.0
+                                    rei = min(rei, 0.9 * log(max(constants.FLOAT_TINY, arg)) / max(dpe * (2.0 * xc - 1.0), constants.FLOAT_TINY))
 
                                 fer = rei * ee2
                                 fdr = rei * ud2
@@ -3661,7 +3659,7 @@ def buoyancy_sorting(
 
                                 # Adaptive fer/fdr limits for vertical resolution changes from L72
                                 layer_thickness_mb = dp0
-                                reference_thickness = 2500.0  #25 hPa is GEOS L72 reference layer thickness
+                                reference_thickness = 2500.0  # 25 hPa is GEOS L72 reference layer thickness
                                 if layer_thickness_mb > 0:
                                     resolution_factor = reference_thickness / layer_thickness_mb
                                     fer_fdr_limit = 0.1 * min(6.0, max(1.0, resolution_factor))
@@ -3670,11 +3668,11 @@ def buoyancy_sorting(
 
                                 # Use capping instead of exiting to handle the transition smoothly
                                 if fer > fer_fdr_limit:
-                                    #print *,"fer(k) = rei(k) * ee2 > ",fer_fdr_limit," ! fer=",fer(k)
+                                    # print *,"fer(k) = rei(k) * ee2 > ",fer_fdr_limit," ! fer=",fer(k)
                                     fer = fer_fdr_limit * 0.95
-        
+
                                 if fdr > fer_fdr_limit:
-                                    #print *,"fdr(k) = rei(k) * ud2 > ",fer_fdr_limit," ! fdr=",fdr(k)
+                                    # print *,"fdr(k) = rei(k) * ud2 > ",fer_fdr_limit," ! fdr=",fdr(k)
                                     fdr = fer_fdr_limit * 0.95
 
                                 # Iteration Start due to 'maxufrc' constraint
@@ -3689,7 +3687,7 @@ def buoyancy_sorting(
                                 emf[0, 0, 1] = 0.0
 
                                 # Limit umf based on (2x) the CFL condition
-                                umf_zint[0, 0, 1] = min(umf_zint[0, 0, 1],2.*dp0/constants.MAPL_GRAV/dt)
+                                umf_zint[0, 0, 1] = min(umf_zint[0, 0, 1], 2.0 * dp0 / constants.MAPL_GRAV / dt)
 
                                 dcm = 0.5 * (umf_zint[0, 0, 1] + umf_zint) * rei * dpe * min(1.0, max(0.0, xsat - xc))
 
@@ -4011,7 +4009,7 @@ def buoyancy_sorting(
                         if ufrc[0, 0, 1] > rmaxfrac:
                             ufrc[0, 0, 1] = rmaxfrac
                             umf_zint[0, 0, 1] = rmaxfrac * rhoifc0j * wu[0, 0, 1]
-                            fdr = fer - log(max(constants.FLOAT_TINY,umf_zint[0, 0, 1] / umf_zint)) / dpe
+                            fdr = fer - log(max(constants.FLOAT_TINY, umf_zint[0, 0, 1] / umf_zint)) / dpe
 
                         # Update environmental properties for at the mid-point of next
                         # upper layer for use in buoyancy sorting.
@@ -6011,9 +6009,9 @@ def prevent_negative_condensate(
                 qv0_star = qv0_star - dql - dqi
 
                 s0_star = s0_star + constants.MAPL_LATENT_HEAT_VAPORIZATION * dql + constants.MAPL_LATENT_HEAT_SUBLIMATION * dqi
-                
+
                 qv0_star = qv0_star - dql - dqi
-                
+
                 dqv = max(0.0, qvmin - qv0_star)
                 qvten = qvten + dqv / dt
                 qv0_star = qv0_star + dqv
@@ -6675,9 +6673,9 @@ def adjust_implicit_CIN_inputs2(
 
             plcl_s = plcl.at(K=0)
             pinv_s = pifc0.at(K=kinv)
-            plfc_s = plfc.at(K=0)        
-            prel_s = prel.at(K=0)        
-            pbup_s = pifc0.at(K=kbup+1)
+            plfc_s = plfc.at(K=0)
+            prel_s = prel.at(K=0)
+            pbup_s = pifc0.at(K=kbup + 1)
 
 
 def recalc_environmental_variables(
@@ -7155,9 +7153,9 @@ def update_output_variables2(
             cbmf_out = cbmf.at(K=0)
             plcl_out = plcl.at(K=0)
             pinv_out = pifc0.at(K=kinv)
-            plfc_out = plfc.at(K=0)    
-            prel_out = prel.at(K=0)    
-            pbup_out = pifc0.at(K=kbup+1) 
+            plfc_out = plfc.at(K=0)
+            prel_out = prel.at(K=0)
+            pbup_out = pifc0.at(K=kbup + 1)
 
 
 def compute_uwshcu_invert_after(
@@ -7311,7 +7309,7 @@ def compute_uwshcu_invert_after(
         ndrop_inv = ndrop_out.at(K=k_inv)
         nice_inv = nice_out.at(K=k_inv)
 
-        mintracer = 0.0 
+        mintracer = 0.0
         if dotransport == 1:
             n = 0
             while n < ncnst:
@@ -7432,7 +7430,7 @@ def setup_outputs(
         DQADT_SC = MFD_SC * SCLM_SHALLOW / MASS
 
         # Tiedtke-style cloud fraction
-        CLCN = max(0.0, min(CLCN + DQADT_SC*dt, 1.0))
+        CLCN = max(0.0, min(CLCN + DQADT_SC * dt, 1.0))
 
     with computation(PARALLEL), interval(...):
         QLENT_SC = 0.0
@@ -7444,21 +7442,21 @@ def setup_outputs(
         if QIDET_SC < 0.0:
             QIENT_SC = QIDET_SC
             QIDET_SC = 0.0
-    
+
     with computation(PARALLEL), interval(...):
         QLDET_SC = QLDET_SC * MASS
         QIDET_SC = QIDET_SC * MASS
 
     with computation(PARALLEL), interval(...):
         # Add detrained shallow convective ice/liquid source
-        QLCN = max(0.0, QLCN + QLDET_SC*dt/MASS)
-        QICN = max(0.0, QICN + QIDET_SC*dt/MASS)
+        QLCN = max(0.0, QLCN + QLDET_SC * dt / MASS)
+        QICN = max(0.0, QICN + QIDET_SC * dt / MASS)
 
     with computation(PARALLEL), interval(...):
         # Apply condensate tendency from subsidence, and sink from
-        # condensate entrained into shallow updraft. 
-        QLLS = max(0.0, QLLS + (QLSUB_SC+QLENT_SC)*dt)
-        QILS = max(0.0, QILS + (QISUB_SC+QIENT_SC)*dt)
+        # condensate entrained into shallow updraft.
+        QLLS = max(0.0, QLLS + (QLSUB_SC + QLENT_SC) * dt)
+        QILS = max(0.0, QILS + (QISUB_SC + QIENT_SC) * dt)
 
     with computation(PARALLEL), interval(...):
         # Get export QL/QI tendencies
@@ -7468,6 +7466,7 @@ def setup_outputs(
     with computation(PARALLEL), interval(...):
         SHLW_PRC3 = DQRDT_SC
         SHLW_SNO3 = DQSDT_SC
+
 
 def fillq2zeros(
     Q: FloatField,
@@ -7495,7 +7494,7 @@ def fillq2zeros(
 
         tpw_after = tpw_after + Q * MASS
 
-        d_tpw = tpw_before - tpw_after # >0 means mass was removed
+        d_tpw = tpw_before - tpw_after  # >0 means mass was removed
 
         # Redistribute delta TPW to positive layers only
         if abs(d_tpw) > 1.0e-15:
@@ -7504,15 +7503,14 @@ def fillq2zeros(
 
             if positive_mass > 0.0:
                 if Q > 0.0:
-                    Q = Q + d_tpw * ( MASS / positive_mass )
+                    Q = Q + d_tpw * (MASS / positive_mass)
                     if Q < 0.0:
-                        Q = 0.0 
-                        
+                        Q = 0.0
+
     with computation(PARALLEL), interval(...):
         # Finalize DQDT tendency
         if dt > 0.0:
             DQDT = (Q - DQDT) / dt
-
 
 
 def update_total_water_tendency(
@@ -7575,7 +7573,6 @@ def update_moist_static_energy_tendency(
         SC_MSE = SC_MSE + (constants.MAPL_CP * DTDT_SC + constants.MAPL_ALHL * DQVDT_SC - constants.MAPL_ALHF * DQIDT_SC) * MASS
 
 
-
 def update_convective_scale_height(
     CUSH_SC: FloatFieldIJ,
     CUSH: FloatFieldIJ,
@@ -7621,7 +7618,21 @@ class ComputeUwshcuInv(NDSLRuntime):
         if self.config.k0 < 5:
             raise NotImplementedError(f"Coding limitation: Only {self.config.k0} k-levels are available, atleast 5 are expected")
 
-        self._setup_inputs = self.stencil_factory.from_dims_halo(func=setup_inputs, compute_dims=[I_DIM, J_DIM, K_DIM], externals={"JASON": config.JASON, "rkfre": config.rkfre,"rkm": config.rkm, "mixscale": config.mixscale, "rmaxfrac": config.rmaxfrac, "rkfre_hr": config.rkfre_hr,"USE_EIS": config.USE_EIS, "rkm_hr": config.rkm_hr, "rmaxfrac_hr": config.rmaxfrac_hr})
+        self._setup_inputs = self.stencil_factory.from_dims_halo(
+            func=setup_inputs,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={
+                "JASON": config.JASON,
+                "rkfre": config.rkfre,
+                "rkm": config.rkm,
+                "mixscale": config.mixscale,
+                "rmaxfrac": config.rmaxfrac,
+                "rkfre_hr": config.rkfre_hr,
+                "USE_EIS": config.USE_EIS,
+                "rkm_hr": config.rkm_hr,
+                "rmaxfrac_hr": config.rmaxfrac_hr,
+            },
+        )
 
         self._compute_uwshcu_invert_before = self.stencil_factory.from_dims_halo(
             func=compute_uwshcu_invert_before,
@@ -7933,7 +7944,7 @@ class ComputeUwshcuInv(NDSLRuntime):
             },
         )
 
-        self._fillq2zeros =  self.stencil_factory.from_dims_halo(
+        self._fillq2zeros = self.stencil_factory.from_dims_halo(
             func=fillq2zeros,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
@@ -8376,7 +8387,6 @@ class ComputeUwshcuInv(NDSLRuntime):
             AREA=state.input.AREA,
             KPBL_SC=state.input.kpbl_inv,
         )
-
 
         self._compute_uwshcu_invert_before(
             pmid0_inv=self.locals.pmid0_inv,
@@ -9968,7 +9978,7 @@ class ComputeUwshcuInv(NDSLRuntime):
             CNV_Tracers=state.input_output.CNV_Tracers,
             cush=state.input_output.cush,
         )
-        
+
         self._setup_outputs(
             Q=state.input_output.qv0_inv,
             T=state.input_output.t0_inv,
@@ -10028,7 +10038,6 @@ class ComputeUwshcuInv(NDSLRuntime):
                 MASS=self.locals.MASS,
             )
 
-
         if state.output.CUSH_SC is not None:
             self._update_convective_scale_height(
                 CUSH_SC=state.output.CUSH_SC,
@@ -10036,7 +10045,7 @@ class ComputeUwshcuInv(NDSLRuntime):
             )
 
         # NOTE: 'if REPORT_UW_NEGATIVES:' block has not been ported
-        
+
         if state.output.DQVDT_FILL is not None:
             self._fillq2zeros(
                 Q=state.input_output.qv0_inv,
