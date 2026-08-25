@@ -9,6 +9,7 @@
 #SBATCH --account=s1583
 
 ##Please run the script by:
+##source g5_modules.sh
 ##mkdir -p logs temporary output
 ##sbatch --array=0-347%20 submit_global_array.sh
 ##when all the jobs are done, then:

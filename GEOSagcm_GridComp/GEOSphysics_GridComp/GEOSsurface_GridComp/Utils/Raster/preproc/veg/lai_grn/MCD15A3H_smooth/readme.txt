@@ -56,7 +56,8 @@ Discover, the 648 global grid tasks must be submitted in two separate batches.
 
 Please run the workflow by executing the following commands sequentially:
 
-# Step 1: Create the required directories
+# Step 1: Source g5_module and create the required directories
+source g5_modules.sh
 mkdir -p logs temporary output
 
 # Step 2: Submit the first batch (Tasks 0 to 347)
