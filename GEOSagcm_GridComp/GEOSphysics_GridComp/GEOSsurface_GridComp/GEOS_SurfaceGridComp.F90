@@ -7669,7 +7669,7 @@ module GEOS_SurfaceGridCompMod
 
        else
           !call RouteRunoffTeleport(SURF_INTERNAL_STATE%RoutingType, RUNOFFTILE, DISCHARGETILE, RC=STATUS)
-          call RouteRunoffTeleport(SURF_INTERNAL_STATE%RoutingType, DISTER, DISCHARGETILE, RC=STATUS)
+          call RouteRunoffTeleport(SURF_INTERNAL_STATE%RoutingType, DISTERTILE, DISCHARGETILE, RC=STATUS)
           VERIFY_(STATUS)
        end if
 
