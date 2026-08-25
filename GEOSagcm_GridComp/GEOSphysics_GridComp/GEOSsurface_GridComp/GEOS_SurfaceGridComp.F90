@@ -5964,9 +5964,9 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: LWNDSRFTILE      => NULL()
     real, pointer, dimension(:) :: SWNDSRFTILE      => NULL()
     real, pointer, dimension(:) :: RUNOFFTILE       => NULL()   
-    real, pointer, dimension(:) :: RUNSURFTILE      => NULL()
-    real, pointer, dimension(:) :: DISTERTILE       => NULL()     
+    real, pointer, dimension(:) :: RUNSURFTILE      => NULL()     
     real, pointer, dimension(:) :: DISCHARGETILE    => NULL()
+    real, pointer, dimension(:) :: DISTERTILE       => NULL()    
     real, pointer, dimension(:) :: BASEFLOWTILE     => NULL()
     real, pointer, dimension(:) :: ACCUMTILE        => NULL()
     real, pointer, dimension(:) :: SMELTTILE        => NULL()
@@ -7157,8 +7157,6 @@ module GEOS_SurfaceGridCompMod
 
 ! Allocate tile versions of imports
 !----------------------------------
-    allocate(DISTERTILE(NT),stat=STATUS); VERIFY_(STATUS)
-    DISTERTILE = 0.0
 
     allocate(   PSTILE(NT), STAT=STATUS)
     VERIFY_(STATUS)
@@ -7497,6 +7495,8 @@ module GEOS_SurfaceGridCompMod
        allocate(RUNOFFTILE(NT),stat=STATUS); VERIFY_(STATUS)
        RUNOFFTILE = 0.0
     end if
+    allocate(DISTERTILE(NT),stat=STATUS); VERIFY_(STATUS)
+    DISTERTILE = 0.0    
 
     call MKTILE(RUNSURF ,RUNSURFTILE ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(BASEFLOW,BASEFLOWTILE,NT,RC=STATUS); VERIFY_(STATUS)
@@ -7668,7 +7668,8 @@ module GEOS_SurfaceGridCompMod
           DISCHARGETILE = RUNOFFTILE
 
        else
-          call RouteRunoffTeleport(SURF_INTERNAL_STATE%RoutingType, DISTERTILE, DISCHARGETILE, RC=STATUS)
+          !call RouteRunoffTeleport(SURF_INTERNAL_STATE%RoutingType, RUNOFFTILE, DISCHARGETILE, RC=STATUS)
+          call RouteRunoffTeleport(SURF_INTERNAL_STATE%RoutingType, DISTER, DISCHARGETILE, RC=STATUS)
           VERIFY_(STATUS)
        end if
 
@@ -9080,9 +9081,9 @@ module GEOS_SurfaceGridCompMod
     if(associated(HLWUPTILE   )) deallocate(HLWUPTILE   )
     if(associated(LWNDSRFTILE )) deallocate(LWNDSRFTILE )
     if(associated(SWNDSRFTILE )) deallocate(SWNDSRFTILE )
-    if(associated(RUNOFFTILE  )) deallocate(RUNOFFTILE  )
-    if(associated(DISTERTILE  )) deallocate(DISTERTILE  )    
+    if(associated(RUNOFFTILE  )) deallocate(RUNOFFTILE  )   
     if(associated(DISCHARGETILE))deallocate(DISCHARGETILE)
+    if(associated(DISTERTILE  )) deallocate(DISTERTILE  )    
     if(associated(RUNSURFTILE )) deallocate(RUNSURFTILE )
     if(associated(BASEFLOWTILE)) deallocate(BASEFLOWTILE)
     if(associated(ACCUMTILE   )) deallocate(ACCUMTILE   )
@@ -9291,8 +9292,6 @@ module GEOS_SurfaceGridCompMod
       call FILLIN_TILE(GIM(type), 'SSSV', SSSVTILE, XFORM, RC=STATUS); VERIFY_(STATUS)
       call FILLIN_TILE(GIM(type), 'SSWT', SSWTTILE, XFORM, RC=STATUS); VERIFY_(STATUS)
       call FILLIN_TILE(GIM(type), 'SSSD', SSSDTILE, XFORM, RC=STATUS); VERIFY_(STATUS)
-
-      !call FILLIN_TILE(GIM(type), 'DISTER',  DISTERTILE,  XFORM, RC=STATUS); VERIFY_(STATUS)
 
       if (associated(DISCHARGETILE)) then
          call FILLIN_TILE(GIM(type), 'DISCHARGE',  DISCHARGETILE,  XFORM, RC=STATUS); VERIFY_(STATUS)
@@ -10680,6 +10679,11 @@ module GEOS_SurfaceGridCompMod
          call FILLOUT_TILE(GEX(type), 'VPD', VPDTILE, XFORM, RC=STATUS)
          VERIFY_(STATUS)
       end if
+
+      if (associated(DISTERTILE) .and. type == ROUTE) then
+         call FILLOUT_TILE(GEX(LAND), 'DISTER', DISTERTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)        
+      endif
 
 
       call MAPL_TimerOff(MAPL,"--RUN2_"//trim(GCNames(type)))
