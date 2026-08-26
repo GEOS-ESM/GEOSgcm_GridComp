@@ -1204,7 +1204,7 @@ contains
   END SUBROUTINE AppendLakeTypeToTileNC4
   !----------------------------------------------------------------------  
   
-  SUBROUTINE supplemental_tile_attributes(nx,ny,regrid,dateline,fnameTil, Rst_id)
+  SUBROUTINE supplemental_tile_attributes(nx,ny,regrid,fnameTil, Rst_id)
     
     ! 1) get supplemental tile attributes not provided in MAPL-generated (ASCII) tile file,
     !    incl. min/max lat/lon of each tile and tile elevation
@@ -1213,8 +1213,6 @@ contains
     integer,      intent(in) :: nx, ny
 
     logical,      intent(in) :: regrid    
-
-    character(*), intent(in) :: dateline
 
     character(*), intent(in) :: fnameTil   ! file name (w/o extension) of tile file
     integer, intent(in)      :: Rst_id(:,:)   
@@ -1233,6 +1231,7 @@ contains
     character*512                      :: fname, catch_file
     character*512                      :: gtopo30
     CHARACTER*512                      :: version
+    character(len=2)                   :: dateline
 
     REAL, allocatable                  :: limits(:,:)
 
@@ -1250,6 +1249,7 @@ contains
     real(REAL64),      allocatable         :: rTable_keep(:,:)
     integer,           allocatable         :: iTable_keep(:,:)
     character(len=128)                     :: gName(2)
+    character(:),      allocatable         :: Combined_gName
     logical,           allocatable         :: IsOcean(:)
     logical,           allocatable         :: keep_tile(:)
 
@@ -1304,6 +1304,17 @@ contains
     allocate (catid(1:i_sib))
     catid=0
     fname=trim(fnameTil)//'.til'
+    n = index(fnameTil, '/', back=.true.)
+    Combined_gName= fnameTil(n+1:)
+
+    if      (Combined_gName(1:2)=='CF' .or. index(Combined_gName,'EASE')/=0) then 
+      dateline = 'DE'
+      write (*,*) 'Cube-Sphere or EASE Grid - assuming dateline-on-edge (DE)'
+    else if (Combined_gName(1:2)=='DE' .or. Combined_gName(1:2)=='DC')       then
+      dateline = Combined_gName(1:2)
+    else
+      ASSERT_(.false.)        ! unknown (atm) grid, stopping
+    endif
 
     open (10,file=fname,status='old',action='read',form='formatted')
     read (10,*)ip
@@ -1417,7 +1428,7 @@ contains
        mny=-90. + float(j-1)*180./float(j_sib)
        mxy=-90. + float(j)  *180./float(j_sib)
        
-       if (index(dateline,'DE')/=0) then
+       if ( dateline == 'DE' ) then
           do i=1,i_sib          
              if( .not. IsOcean(catid(i)- ip1))then
                 mnx =-180. + float(i-1)*360./float(i_sib)
