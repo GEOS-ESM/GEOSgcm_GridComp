@@ -3218,17 +3218,17 @@ end if
        call MAPL_GetResource (MAPL, USE_EIS,      trim(COMP_NAME)//"_USE_EIS:",      default=.false.,RC=STATUS); VERIFY_(STATUS)
      else
        call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=15.,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=1.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=0.8,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PRANDTLSFC,   trim(COMP_NAME)//"_PRANDTLSFC:",   default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PRANDTLRAD,   trim(COMP_NAME)//"_PRANDTLRAD:",   default=0.75,   RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, BETA_RAD,     trim(COMP_NAME)//"_BETA_RAD:",     default=0.30,   RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, BETA_SURF,    trim(COMP_NAME)//"_BETA_SURF:",    default=0.15,   RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, BETA_RAD,     trim(COMP_NAME)//"_BETA_RAD:",     default=0.15,   RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, BETA_SURF,    trim(COMP_NAME)//"_BETA_SURF:",    default=0.10,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.5e-3, RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, TPFAC_MIN,    trim(COMP_NAME)//"_TPFAC_MIN:",    default=0.0,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, TPFAC_MAX,    trim(COMP_NAME)//"_TPFAC_MAX:",    default=0.0,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, TPFAC_MIN,    trim(COMP_NAME)//"_TPFAC_MIN:",    default=10.0,   RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, TPFAC_MAX,    trim(COMP_NAME)//"_TPFAC_MAX:",    default=20.0,   RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.375,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LOCK_ON,      trim(COMP_NAME)//"_LOCK_ON:",      default=1,      RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, VSCALE_SURF,  trim(COMP_NAME)//"_VSCALE_SURF:",  default=2.5e-3, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, USE_EIS,      trim(COMP_NAME)//"_USE_EIS:",      default=.false.,RC=STATUS); VERIFY_(STATUS)
@@ -4576,29 +4576,47 @@ end if
             else
               temparray(1:LM+1) = KH(I,J,0:LM)
             endif
-            maxkh = maxval(temparray)
-
-            if (USE_EIS) then
-               if (EIS(I,J) >= 12.0) then       
-                  eis_stable = 1.0
-               elseif (EIS(I,J) <= 0.0) then
-                  eis_stable = 0.0
-               else
-                  eis_stable = (EIS(I,J) / 12.0)**1.5
-               endif
-               ! Adaptive threshold: 10-30% based on EIS
-               kh_thresh = 0.10 + eis_stable * 0.20
+            if ( (LM .eq. 72) .OR. (JASON_TRB) ) then
+                maxkh = maxval(temparray)
+                kh_thresh = 0.1
+                do L=LM-1,2,-1
+                  if ( (temparray(L) < kh_thresh*maxkh) .and. (temparray(L+1) >= kh_thresh*maxkh)  &
+                  .and. (KPBL_SC(I,J) == MAPL_UNDEF ) ) then
+                     KPBL_SC(I,J) = float(L)
+                  end if
+                end do
             else
-               kh_thresh = 0.1
+                ! -----------------------------------------------------------------
+                ! Find max turbulence, but ignore the lowest 50 meters 
+                ! to safely bypass grid-dependent numerical surface spikes
+                ! -----------------------------------------------------------------
+                maxkh = 0.0
+                do L = 1, LM
+                   ! Assuming Z(I,J,L) is height. 
+                   ! (If Z is altitude MSL, use: Z(I,J,L) - Z(I,J,LM) > 50.0)
+                   if ( Z(I,J,L) > 50.0 ) then  
+                      if (temparray(L) > maxkh) then
+                         maxkh = temparray(L)   
+                      endif
+                   endif                        
+                end do
+                ! Safety fallback: If maxkh is still 0.0 (e.g., highly stable arctic night),
+                ! just grab the absolute maximum of the whole column.
+                if (maxkh == 0.0) then  
+                   maxkh = maxval(temparray)
+                endif
+                ! -----------------------------------------------------------------
+                kh_thresh = 0.1*maxkh
+                ! Search TOP-DOWN to find the true PBL top
+                do L = 2, LM-1
+                  if ( (temparray(L) >= kh_thresh) .and. &
+                       (KPBL_SC(I,J) == MAPL_UNDEF ) ) then
+                     KPBL_SC(I,J) = float(L)
+                     exit ! Break the loop once we hit the top of the turbulence
+                  end if
+                end do
             endif
-            
-            do L=LM-1,2,-1
-              if ( (temparray(L) < kh_thresh*maxkh) .and. (temparray(L+1) >= kh_thresh*maxkh)  &
-              .and. (KPBL_SC(I,J) == MAPL_UNDEF ) ) then
-                 KPBL_SC(I,J) = float(L)
-              end if
-            end do
-            if (  KPBL_SC(I,J) .eq. MAPL_UNDEF .or. (maxkh.lt.1.)) then
+            if (  KPBL_SC(I,J) .eq. MAPL_UNDEF .or. (maxkh.lt.1.)) then        
               KPBL_SC(I,J) = float(LM)
             endif
           end do
