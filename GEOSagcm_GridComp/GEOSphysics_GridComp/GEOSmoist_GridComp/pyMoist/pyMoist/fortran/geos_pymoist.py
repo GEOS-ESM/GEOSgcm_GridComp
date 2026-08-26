@@ -24,7 +24,7 @@ from ndsl import (
     TilePartitioner,
 )
 from ndsl.constants import I_DIM, J_DIM, K_DIM
-from ndsl.dsl.typing import get_precision
+from ndsl.dsl import NDSL_GLOBAL_PRECISION
 from ndsl.internal.hmm import is_hmm_available
 from ndsl.logging import ndsl_log_on_rank_0
 from ndsl.optional_imports import cupy as cp
@@ -140,7 +140,7 @@ class NDSLPhysicsStack:
             "pyMoist <> GEOS wrapper initialized (Rank 0):\n"
             f"           Bridge : {self._interface_type.name}\n"
             f"          Backend : {self.backend}\n"
-            f"        Precision : {get_precision()} bit\n"
+            f"        Precision : {NDSL_GLOBAL_PRECISION} bit\n"
             f"     Optimization : -O{GT4PY_COMPILE_OPT_LEVEL}\n"
             f"    Orchestration : {self._is_orchestrated}\n"
             f"     Local domain : {sizer.nx}x{sizer.ny}x{sizer.nz}"
