@@ -14,7 +14,7 @@ module GEOS_RouteGridCompMod
 !   IMPORTS   : RUNOFF \\
 
 ! !USES: 
-
+  use, intrinsic :: iso_fortran_env, only: REAL64
   use ESMF
   use MAPL_Mod
   use MAPL_ConstantsMod
@@ -70,9 +70,14 @@ module GEOS_RouteGridCompMod
   
 ! !PUBLIC MEMBER FUNCTIONS:
 
-  public SetServices
+  public :: SetServices
 
-!EOP
+  ! used by its ensavg
+  public :: pfaf_grid
+  public :: pfaf_locstream
+
+  type (ESMF_Grid)      :: pfaf_grid
+  type (MAPL_LocStream) :: pfaf_locstream
 
 contains
 
@@ -389,12 +394,12 @@ contains
     integer        :: ROUTE_DT, route_flag
     REAL           :: HEARTBEAT 
     type(ESMF_Grid)            :: tileGrid
-    type(ESMF_Grid)            :: pfaf_tilegrid, pfaf_grid
+    type(ESMF_Grid)            :: pfaf_tilegrid
     character(len=ESMF_MAXSTR) :: SURFRC
     type(ESMF_Config)          :: SCF, CF
 
     type(MAPL_MetaComp), pointer   :: MAPL
-    type(MAPL_LocStream)           :: locstream, pfaf_LocStream
+    type(MAPL_LocStream)           :: locstream
 
     character(len=ESMF_MAXSTR)     :: RIVER_INPUT_FILE    
     
@@ -549,7 +554,7 @@ contains
       type (ESMF_Grid) :: pfaf_grid
       integer, optional, intent(out) :: rc
       integer :: status
-      real(kind=8), pointer :: centers(:,:)
+      real(kind=REAL64), pointer :: centers(:,:)
       ! create catchment grid and it is tile space
       pfaf_Grid = ESMF_GridCreate(       &
            name='CATCHMENT_GRID',         &
@@ -608,10 +613,10 @@ contains
       character(len=MAPL_TileNameLength), pointer :: GNAMES(:)
 
       ! create source for orignal tile space
-      route%field_src = ESMF_FieldCreate(grid=tilegrid,      typekind=ESMF_TYPEKIND_R4, _RC)
+      route%field_src = ESMF_FieldCreate(grid=tilegrid,      typekind=ESMF_TYPEKIND_R8, _RC)
 
       ! create destination for pfaf tile space
-      route%field     = ESMF_FieldCreate(grid=pfaf_tilegrid, typekind=ESMF_TYPEKIND_R4, _RC)
+      route%field     = ESMF_FieldCreate(grid=pfaf_tilegrid, typekind=ESMF_TYPEKIND_R8, _RC)
 
       call MAPL_LocstreamGet(LOCSTREAM, GRIDNAMES=GNAMES, pfaf_index=pfaf_index, tilearea=tilearea, local_id=local_id, local_i=local_i, local_j=local_j, _RC)
       ! ESMF use global indices increasing with mpi_rank, no mask here for tile grid 
@@ -692,7 +697,7 @@ contains
             kk=0
             do ii=1,np
                if(type_tile(ii)==100)then
-                  tile_id=map_tile(xi_tile(ii)+1,ny-yi_tile(ii))              ! note: EASE indices are 0-based
+                  tile_id=map_tile(xi_tile(ii)+1, yi_tile(ii)+1)              ! note: EASE indices are 0-based
                   if(1<=tile_id.and.tile_id<=route%nt_global)then             
                      kk=kk+1 
                      tid_patch(  kk)=tile_id                                  ! the EASE id for the patch (src)
@@ -947,7 +952,7 @@ contains
 
     integer                            :: nt_global, nt_local
 
-    real,                  pointer     :: arrayPtr(:)
+    real(kind=REAL64),     pointer     :: arrayPtr8(:)
     type (RES_STATE),      pointer     :: res 
 
     !real,                  allocatable :: WTOT_BEFORE(:)
@@ -1028,21 +1033,36 @@ contains
     if (ESMF_AlarmIsRinging(CollectWaterAlarm)) then
 
        ! finalize runoff accumulation over ROUTE_DT
-       route%runoff_acc = (route%runoff_acc + RUNOFF_SRC0)/real(ROUTE_DT/HEARTBEAT)   ! time-avg runoff over ROUTE_DT in land[ice] tile space  [kg/m2/s]
+       route%runoff_acc = (route%runoff_acc + RUNOFF_SRC0)/real(ROUTE_DT/HEARTBEAT) ! time-avg runoff over ROUTE_DT in land[ice] tile space [kg/m2/s]
 
-       ! redistribute runoff from tile space of GEOS_LandGridComp to Pfafstetter catchment space of GEOS_RouteGridComp
-       call ESMF_FieldGet(route%field_src, farrayPtr=arrayPtr, rc=status)
+       ! Redistribute time-averaged runoff from GEOS_LandGridComp tile space
+       ! to GEOS_RouteGridComp Pfafstetter catchment space.
+       ! Use R8 remap fields to avoid small run-to-run roundoff differences in
+       ! the EASE/Pfaf sparse remap before casting back to the route runoff array.        
+       
+       ! Clear destination route/Pfaf field before remapping.
+       call ESMF_FieldGet(route%field, farrayPtr=arrayPtr8, rc=status)
        VERIFY_(STATUS)
-       ArrayPtr = route%runoff_acc(:)
-       call ESMF_FieldSMM(srcField=route%field_src, dstField=route%Field, &
-            routeHandle=route%routeHandle, rc=rc)
-       call ESMF_FieldGet(route%field, farrayPtr=arrayPtr, rc=status)
+       arrayPtr8 = 0.0_REAL64
+       
+       ! Fill source field from accumulated runoff in original land tile space.
+       call ESMF_FieldGet(route%field_src, farrayPtr=arrayPtr8, rc=status)
        VERIFY_(STATUS)
-       ! convert units [kg/m2/s] --> [m3/s]
-       QRUNOFF     = arrayPtr*route%areacat/1000.                                   ! time-avg runoff over ROUTE_DT in Pfaf catch space [m3/s] 
-       !WTOT_BEFORE = WSTREAM + WRIVER + WRES
-
-
+       arrayPtr8 = real(route%runoff_acc(:), kind=REAL64)
+       
+       ! Map accumulated runoff from land tile space to route/Pfaf space.
+       call ESMF_FieldSMM(srcField=route%field_src, dstField=route%field, &
+                          routeHandle=route%routeHandle, rc=status)
+       VERIFY_(STATUS)
+       
+       ! Get mapped route/Pfaf runoff field.
+       call ESMF_FieldGet(route%field, farrayPtr=arrayPtr8, rc=status)
+       VERIFY_(STATUS)
+       
+       ! Convert units [kg m-2 s-1] --> [m3 s-1].
+       QRUNOFF = real(arrayPtr8 * real(route%areacat, kind=REAL64) / 1000.0_REAL64, &
+                      kind=kind(QRUNOFF(1)))       
+       
        ! Compute outflow from main river and (optionally) reservoirs
        !
        ! Call river_routing_model (get outflows from main river and local streams, also updates storage of main river and local streams)

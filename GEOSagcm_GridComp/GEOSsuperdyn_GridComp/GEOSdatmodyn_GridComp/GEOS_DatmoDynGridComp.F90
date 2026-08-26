@@ -541,7 +541,15 @@ contains
          UNITS     ='m s-1',                                        &
          DIMS      = MAPL_DimsHorzOnly,                             &
          VLOCATION = MAPL_VLocationNone,                            &
-                                                        __RC__  )
+                                                         __RC__  )
+
+    call MAPL_AddExportSpec(GC,                                &
+         SHORT_NAME='WSPD_STABLE300M',                              &
+         LONG_NAME ='max_wind_speed_in_stable_cold_surface_layer',  &
+         UNITS     ='m s-1',                                        &
+         DIMS      = MAPL_DimsHorzOnly,                             &
+         VLOCATION = MAPL_VLocationNone,                            &
+                                                         __RC__  )
 
 
     call MAPL_AddExportSpec(GC,                                &
@@ -1186,6 +1194,7 @@ contains
     real :: SCM_F0
     
     integer :: IM,JM,LM,L,K,NQ,ii,NOT1,COLDSTART,Ktrc,iip1,itr,ntracs
+    logical :: is_stable
 
     real, pointer, dimension(:,:,:) :: PLE,PLEOUT
     real, pointer, dimension(:,:,:) :: ZLE
@@ -1213,6 +1222,7 @@ contains
     real, pointer, dimension(:,:)   :: DZ
     real, pointer, dimension(:,:)   :: TA
     real, pointer, dimension(:,:)   :: SPEED
+    real, pointer, dimension(:,:)   :: WSPD_STABLE300M
     real, pointer, dimension(:,:)   :: QA
     real, pointer, dimension(:,:)   :: US
     real, pointer, dimension(:,:)   :: VS
@@ -2037,7 +2047,7 @@ contains
 !    Forcing based on Phase 2 of CGILS intercomparison. See Blossey et al. (2016)
       if ( CFMIP3 ) then
 
-         ZLO = 0.5*(ZLE(:,:,0:LM-1)+ZLE(:,:,1:LM))
+     ZLO = 0.5*(ZLE(:,:,0:LM-1)+ZLE(:,:,1:LM))
 
          if (CFCSE .eq. 12) then
            zrel=1200.
@@ -2131,10 +2141,44 @@ contains
          if (associated(DQVDTDYN))  DQVDTDYN = DQVDTDYN - CFMIPRLX * ( Q - QOBS )
       end if
 
+      call MAPL_GetPointer(EXPORT, WSPD_STABLE300M, 'WSPD_STABLE300M', &
+                           ALLOC=.true., __RC__)
+      if (associated(WSPD_STABLE300M)) then
+         WSPD_STABLE300M = 0.0
+         do J = 1, JM
+            do I = 1, IM
+               ! 1. Check if surface air is freezing (T at lowest model level)
+               if (T(I,J,LM) <= MAPL_TICE) then
+                  ! Assume no inversion until proven otherwise
+                  is_stable = .false.
+                  ! Start max wind tracking with the lowest model level
+                  WSPD_STABLE300M(I,J) = SQRT(U(I,J,LM)**2 + V(I,J,LM)**2)
+                  ! 2. Scan the lowest 300m AGL (ZLE(I,J,LM) is the surface height)
+                  do K = LM-1, 1, -1
+                     ! Height AGL at mid-level using ZLO (0.5*(ZLE(K-1)+ZLE(K)))
+                     if ( (ZLO(I,J,K) - ZLE(I,J,LM)) <= 300.0 ) then
+                        ! Track maximum wind speed
+                        WSPD_STABLE300M(I,J) = MAX(WSPD_STABLE300M(I,J), &
+                                                   SQRT(U(I,J,K)**2 + V(I,J,K)**2))
+                        ! 3. Check for temperature inversion anywhere in the 300m layer
+                        if (T(I,J,K) > T(I,J,LM)) then
+                           is_stable = .true.
+                        endif
+                     else
+                        exit ! Reached top of 300m layer
+                     endif
+                  end do
+                  ! 4. If no inversion found, not a katabatic zone; zero out wind speed
+                  if (.not. is_stable) then
+                     WSPD_STABLE300M(I,J) = 0.0
+                  endif
+               endif
+            end do
+         end do
+      end if
+
       call MAPL_GetPointer(EXPORT, PREF,   'PREF'    , &
                            ALLOC=.true., __RC__)
-
-
       PREF = PREF_IN
 
       VARFLT = 0.

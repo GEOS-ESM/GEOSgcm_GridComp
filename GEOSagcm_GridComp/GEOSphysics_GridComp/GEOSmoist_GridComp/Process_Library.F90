@@ -10,10 +10,8 @@ module GEOSmoist_Process_Library
   use ESMF
   use MAPL
   use GEOS_UtilsMod
-  !use Aer_Actv_Single_Moment
-  !use aer_cloud
-  USE module_mp_radar
-
+  use GEOS_RadarMod     
+  use module_mp_radar
 
   implicit none
   private
@@ -37,38 +35,90 @@ module GEOSmoist_Process_Library
   end interface ICE_FRACTION
 
   ! SRF_TYPE constants
-  integer, parameter :: SRF_TYPE_LAND  = 1
-  integer, parameter :: SRF_TYPE_SNOW  = 2
-  integer, parameter :: SRF_TYPE_ICE   = 3
-  integer, parameter :: SRF_TYPE_OCEAN = 0
+  integer, parameter :: SRF_TYPE_OCEAN   = 0
+  integer, parameter :: SRF_TYPE_LAND    = 1
+  integer, parameter :: SRF_TYPE_SNOW    = 2
+  integer, parameter :: SRF_TYPE_ICE     = 3
+  integer, parameter :: SRF_TYPE_LANDICE = 4
+
+  integer, parameter :: RAW_MODIS_POLYNOMIAL = 1
+  integer, parameter :: JASON_ICE_POLYNOMIAL = 2
+  integer, parameter :: V12_ICE_POLYNOMIAL   = 3
+  integer :: ICE_FRACTION_POLYNOMIAL = 3
 
   ! ICE_FRACTION constants
-   logical :: constrain_modis_ice = .FALSE.
-   ! In anvil/convective clouds
-   real, parameter :: aT_ICE_ALL = 252.16
-   real, parameter :: aT_ICE_MAX = 268.16
-   real, parameter :: aICEFRPWR  = 2.0
-   ! Over snow SRF_TYPE = 2 and over ice SRF_TYPE = 3
-   real, parameter :: iT_ICE_ALL = 236.16
-   real, parameter :: iT_ICE_MAX = 261.16
-   real, parameter :: iICEFRPWR  = 5.0
-   ! Over Land     SRF_TYPE = 1
-   real, parameter :: lT_ICE_ALL = 239.16
-   real, parameter :: lT_ICE_MAX = 261.16
-   real, parameter :: lICEFRPWR  = 2.0
-   ! Over Oceans   SRF_TYPE = 0
-   real, parameter :: oT_ICE_ALL = 238.16
-   real, parameter :: oT_ICE_MAX = 263.16
-   real, parameter :: oICEFRPWR  = 4.0
-   ! Jason
+   ! =========================================================================
+   ! FINAL REVISED SURFACE-DEPENDENT CLOUD PHASE CONSTANTS (Bias-Corrected)
+   ! =========================================================================
+   ! 1. Anvil / Convective Clouds (Deep updrafts, clean high-altitude cores)
+   ! Observations: High updraft velocity dynamically preserves liquid down to deep 
+   ! temperatures. Freezing drops off exponentially close to homogeneous limit.
+   real, parameter :: aT_ICE_ALL = 233.16  ! Strict homogeneous limit (-40C)
+   real, parameter :: aT_ICE_MAX = 268.16  ! Latent heat maintains liquid until -5C
+   real, parameter :: aT_ICE_PWR = 4.5     ! Asymmetric S-curve to shield liquid peak
+   ! 2. Land Ice (Antarctica / Greenland)
+   ! Bias Fix: Widens mixed-phase window and raises PWR to fix the severe polar 
+   ! downward LW deficit (-25 W/m?) and clear lower troposphere cold pools.
+   real, parameter :: liT_ICE_ALL = 234.16 ! Deep absolute freeze floor lowered to -39C
+   real, parameter :: liT_ICE_MAX = 268.15 ! Delays plateau glaciation onset to -5C
+   real, parameter :: liT_ICE_PWR = 4.2     ! Highly emissive summer liquid water shield
+   ! 3. Sea Ice (Arctic / Southern Ocean Pack Ice)
+   ! Bias Fix: Expands liquid window to restore thin supercooled liquid cloud tops. 
+   ! Eliminates the MAM positive SW surface heating and matches vertical ERA5 QL mass.
+   real, parameter :: iT_ICE_ALL = 235.16  ! Lowers homogeneous floor to -38C
+   real, parameter :: iT_ICE_MAX = 271.15  ! Maintains warm liquid threshold near -2C
+   real, parameter :: iT_ICE_PWR = 4.5     ! High exponent shifts excess QI mass back to QL
+   ! 4. Snow Surface (High-latitude winter land)
+   ! Bias Fix: Shuts down spring continental shortwave overestimation and boundary 
+   ! layer cold biases across snow-covered Siberia and northern boreal zones.
+   real, parameter :: sT_ICE_ALL = 236.16  ! Total freeze-out pushed down to -37C
+   real, parameter :: sT_ICE_MAX = 268.15  ! Delays land ice crystal production to -5C
+   real, parameter :: sT_ICE_PWR = 4.0     ! Stronger power curve guards spring liquid path
+   ! 5. Land (Ice-free, ice-nucleating aerosol rich)
+   ! Observations: Mineral and biological dust act as potent heterogeneous INPs.
+   ! Mixed-phase clouds glaciate rapidly and uniformly throughout the -10C to -25C zone.
+   real, parameter :: lT_ICE_ALL = 241.16  ! Dust forces total glaciation early at -32C
+   real, parameter :: lT_ICE_MAX = 266.16  ! Active INPs seed ice starting at -7C
+   real, parameter :: lT_ICE_PWR = 1.5     ! Near-linear transition curve clears liquid pooling
+   ! 6. Oceans (Open water, mid-to-high latitude marine boundary layers)
+   ! Bias Fix: Synchronized with Sea Ice limits to maintain high open-water marine 
+   ! cloud optical depths, mitigating mid-latitude high-altitude liquid biases.
+   real, parameter :: oT_ICE_ALL = 235.16  ! Drops to 100% ice near -38C
+   real, parameter :: oT_ICE_MAX = 271.15  ! Highly liquid-dominated near 0C to -2C
+   real, parameter :: oT_ICE_PWR = 4.5     ! High power protects high marine LWP peak
+
+   ! Jason constants
    ! In anvil/convective clouds
    real, parameter :: JaT_ICE_ALL = 245.16
    real, parameter :: JaT_ICE_MAX = 261.16
-   real, parameter :: JaICEFRPWR  = 2.0
-        ! Over snow/ice
-   real, parameter :: JiT_ICE_ALL = MAPL_TICE-40.0
-   real, parameter :: JiT_ICE_MAX = MAPL_TICE
-   real, parameter :: JiICEFRPWR  = 4.0
+   real, parameter :: JaT_ICE_PWR = 2.0
+   ! Over Land Ice SRF_TYPE == 4
+   real, parameter :: JliT_ICE_ALL = 236.16
+   real, parameter :: JliT_ICE_MAX = 261.16
+   real, parameter :: JliT_ICE_PWR = 5.0
+   ! Over Ice SRF_TYPE == 3
+   real, parameter :: JiT_ICE_ALL = 236.16
+   real, parameter :: JiT_ICE_MAX = 261.16
+   real, parameter :: JiT_ICE_PWR = 5.0
+   ! Over Snow SRF_TYPE = 2
+   real, parameter :: JsT_ICE_ALL = 236.16
+   real, parameter :: JsT_ICE_MAX = 261.16 
+   real, parameter :: JsT_ICE_PWR = 5.0
+   ! Over Land     SRF_TYPE = 1
+   real, parameter :: JlT_ICE_ALL = 239.16
+   real, parameter :: JlT_ICE_MAX = 261.16
+   real, parameter :: JlT_ICE_PWR = 2.0
+   ! Over Oceans   SRF_TYPE = 0
+   real, parameter :: JoT_ICE_ALL = 238.16
+   real, parameter :: JoT_ICE_MAX = 263.16
+   real, parameter :: JoT_ICE_PWR = 4.0
+
+   logical :: USE_BERGERON = .FALSE.
+   logical :: USE_AEROSOL_NN = .TRUE.
+   logical :: USE_NCLOUD_CLIM = .FALSE.
+
+   integer :: WSUB_OPTION = -1
+   integer :: PDFSHAPE = 1
 
  ! parameters
   real, parameter :: EPSILON =  MAPL_H2OMW/MAPL_AIRMW
@@ -77,7 +127,7 @@ module GEOSmoist_Process_Library
   real, parameter :: taufrz  =  600.0     ! timescale for freezing
   real, parameter :: taumlt  =  300.0     ! timescale for melting
   real, parameter :: CFMIN   =  1.e-5     ! minimum cloud fraction
-  real, parameter :: QCMIN   =  1.e-9     ! minimum condensate (ql & qi) values (increased from 10^-8)
+  real, parameter :: QCMIN   =  1.e-8     ! minimum condensate (ql & qi) values
   real, parameter :: QPMIN   =  1.e-15    ! minimum precipitate (qr, qs, qg) values
   real, parameter :: dQCmax  =  1.e-4
 
@@ -113,11 +163,16 @@ module GEOSmoist_Process_Library
   ! control for order of plumes
   logical :: SH_MD_DP = .FALSE.
 
-  ! Radar parameter
+  ! Radar parameters
   integer :: DBZ_VAR_INTERCP=2 ! use variable intercept parameters: 1 - on, 2 - snow boost, 3 - hail instead of graupel
   integer :: DBZ_LIQUID_SKIN=1 ! use liquid skin on snow(1) and graupel/hail(2) in warm environments
-  LOGICAL :: refl10cm_allow_wet_graupel = .false.
-  LOGICAL :: refl10cm_allow_wet_snow = .true.
+  logical :: refl10cm_allow_wet_graupel = .false.
+  logical :: refl10cm_allow_wet_snow = .true.
+  logical :: LIQUID_SKIN_SNOW = .false.
+  logical :: LIQUID_SKIN_GRAUPEL = .false.
+  logical :: LIQUID_SKIN_HAIL = .true.
+  real, PARAMETER :: W_START = 6.0
+  real, PARAMETER :: W_FULL  = 12.0
 
   ! Thompson radar constants
   LOGICAL, PARAMETER:: iiwarm = .false.
@@ -274,6 +329,9 @@ module GEOSmoist_Process_Library
 
   public :: DEBUG_TQ_ERRORS
 
+  public :: WSUB_OPTION, PDFSHAPE
+
+
   type :: AerPropsNew
       integer :: nmods  ! total number of modes (nmods<nmodmax)
       real, dimension(:,:,:), allocatable :: num !Num conc m-3
@@ -293,13 +351,16 @@ module GEOSmoist_Process_Library
   interface assignment (=)
       module procedure copy_AerProp
   end interface
+  public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, BUOYANCY2, ANVIL_EVAP_SUBL3
 
+  public :: USE_BERGERON, USE_AEROSOL_NN, USE_NCLOUD_CLIM
+  public :: RAW_MODIS_POLYNOMIAL, JASON_ICE_POLYNOMIAL, V12_ICE_POLYNOMIAL
+  public :: ICE_FRACTION_POLYNOMIAL
+  public :: SRF_TYPE_OCEAN, SRF_TYPE_LAND, SRF_TYPE_SNOW, SRF_TYPE_ICE, SRF_TYPE_LANDICE
 
   public :: AerPropsNew, copy_AerProp, init_AerProp
   public :: AeroPropsNew
   public :: CNV_Tracer_Type, CNV_Tracers, CNV_Tracers_Init
-  public :: constrain_modis_ice
-  public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, BUOYANCY2, ANVIL_EVAP_SUBL3
   public :: REDISTRIBUTE_CLOUDS_SCALAR, REDISTRIBUTE_CLOUDS, RADCOUPLE_SCALE_AWARE, RADCOUPLE, FIX_UP_CLOUDS
   public :: hystpdf, fix_up_clouds_2M, hystpdf_2M
   public :: FILLQ2ZERO
@@ -313,8 +374,7 @@ module GEOSmoist_Process_Library
   public :: pdffrac, pdfcondensate, precalc_dblgss, partition_dblgss, partition_dblgss2
   public :: SIGMA_DX, SIGMA_EXP
   public :: CNV_FRACTION_MIN, CNV_FRACTION_MAX, CNV_FRACTION_EXP
-  public :: SH_MD_DP, DBZ_VAR_INTERCP, DBZ_LIQUID_SKIN, LIQ_RADII_PARAM, ICE_RADII_PARAM
-  public :: refl10cm_allow_wet_graupel, refl10cm_allow_wet_snow
+  public :: SH_MD_DP, LIQ_RADII_PARAM, ICE_RADII_PARAM
   public :: update_cld, meltfrz_inst2M
   public :: FIX_NEGATIVE_PRECIP
   public :: FIND_KLID
@@ -323,10 +383,10 @@ module GEOSmoist_Process_Library
   public :: pdf_alpha
   public :: pfreezing
   public :: get_fac_eis
-  public :: init_refl10cm, calc_refl10cm
   public :: neg_adj_external
   public :: compute_sgs_vvel
   public :: cf_geom_correction
+
   public :: USE_CUP_2M_MOISTURE, ICE_AUTO_TSC_CNV, DCS_CNV, DEBUG_GF2M, AUT_SCALE_CNV
   public :: FDROPDUST, FDROPSOOT, FHETSOOT, FHETDUST, ACC_ENH_ICE, ACC_ENH_CNV
   public :: erfapp
@@ -342,6 +402,12 @@ module GEOSmoist_Process_Library
   public :: GF2M_MIXED_PHASE_ICE_ONSET_T
 
 
+  public :: compute_radar_diagnostics
+  public :: init_refl10cm, calc_refl10cm
+  public :: refl10cm_allow_wet_graupel, refl10cm_allow_wet_snow
+  public :: DBZ_VAR_INTERCP, DBZ_LIQUID_SKIN
+  public :: LIQUID_SKIN_SNOW, LIQUID_SKIN_GRAUPEL, LIQUID_SKIN_HAIL
+  
 
   contains
 
@@ -680,150 +746,149 @@ module GEOSmoist_Process_Library
       enddo
   end function ICE_FRACTION_1D
 
-function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
+  function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
       real, intent(in) :: TEMP,CNV_FRACTION,SRF_TYPE
       real             :: ICEFRCT
       real             :: tc, ptc
       real             :: ICEFRCT_C, ICEFRCT_M, ICEFRCT_PHYS
+      real             :: t_all_loc, t_max_loc, pwr_loc
 
-#ifdef USE_MODIS_ICE_POLY
-     ! Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384)
-      tc = MAX(-46.0,MIN(TEMP-MAPL_TICE,46.0)) ! convert to celcius and limit range from -46:46 C
-      ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
-      ICEFRCT = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
-#else
-     ! Use sigmoidal functions based on surface type from Hu et al, DOI: (10.1029/2009JD012384)
-     ! Anvil clouds
-     ! Anvil-Convective sigmoidal function like figure 6(right)
-     ! Sigmoidal functions Hu et al 2010, doi:10.1029/2009JD012384
-      if (ICE_RADII_PARAM == 1) then
-        ! Jason formula
-        ICEFRCT_C  = 0.00
-        if ( TEMP <= JaT_ICE_ALL ) then
-           ICEFRCT_C = 1.000
-        else if ( (TEMP > JaT_ICE_ALL) .AND. (TEMP <= JaT_ICE_MAX) ) then
-           ICEFRCT_C = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - JaT_ICE_ALL ) / ( JaT_ICE_MAX - JaT_ICE_ALL ) ) )
-        end if
-      else
-        ICEFRCT_C  = 0.00
-        if ( TEMP <= aT_ICE_ALL ) then
-           ICEFRCT_C = 1.000
-        else if ( (TEMP > aT_ICE_ALL) .AND. (TEMP <= aT_ICE_MAX) ) then
-           ICEFRCT_C = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - aT_ICE_ALL ) / ( aT_ICE_MAX - aT_ICE_ALL ) ) )
-        end if
-      end if
-      ICEFRCT_C = MIN(ICEFRCT_C,1.00)
-      ICEFRCT_C = MAX(ICEFRCT_C,0.00)
-      ICEFRCT_C = ICEFRCT_C**aICEFRPWR
-     ! Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
-      select case (nint(SRF_TYPE))
-      case (SRF_TYPE_SNOW, SRF_TYPE_ICE)
-        ! Over snow (SRF_TYPE == 2.0) and ice (SRF_TYPE == 3.0)
-        ICEFRCT_M  = 0.00
-        if ( TEMP <= iT_ICE_ALL ) then
-           ICEFRCT_M = 1.000
-        else if ( (TEMP > iT_ICE_ALL) .AND. (TEMP <= iT_ICE_MAX) ) then
-           ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - iT_ICE_ALL ) / ( iT_ICE_MAX - iT_ICE_ALL ) ) )
-        end if
-        ICEFRCT_M = MIN(ICEFRCT_M,1.00)
-        ICEFRCT_M = MAX(ICEFRCT_M,0.00)
-        ICEFRCT_M = ICEFRCT_M**iICEFRPWR
-      case (SRF_TYPE_LAND)
-        ! Over Land (SRF_TYPE == 1)
-        ICEFRCT_M  = 0.00
-        if ( TEMP <= lT_ICE_ALL ) then
-           ICEFRCT_M = 1.000
-        else if ( (TEMP > lT_ICE_ALL) .AND. (TEMP <= lT_ICE_MAX) ) then
-           ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - lT_ICE_ALL ) / ( lT_ICE_MAX - lT_ICE_ALL ) ) )
-        end if
-        ICEFRCT_M = MIN(ICEFRCT_M,1.00)
-        ICEFRCT_M = MAX(ICEFRCT_M,0.00)
-        ICEFRCT_M = ICEFRCT_M**lICEFRPWR
-      case (SRF_TYPE_OCEAN)
-        ! Over Oceans (SRF_TYPE == 0)
-        ICEFRCT_M  = 0.00
-        if ( TEMP <= oT_ICE_ALL ) then
-           ICEFRCT_M = 1.000
-        else if ( (TEMP > oT_ICE_ALL) .AND. (TEMP <= oT_ICE_MAX) ) then
-           ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - oT_ICE_ALL ) / ( oT_ICE_MAX - oT_ICE_ALL ) ) )
-        end if
-        ICEFRCT_M = MIN(ICEFRCT_M,1.00)
-        ICEFRCT_M = MAX(ICEFRCT_M,0.00)
-        ICEFRCT_M = ICEFRCT_M**oICEFRPWR
-      case default
-        ! You should not be here
-        print *, 'ICE_FRACTION_SC: Unknown SRF_TYPE = ',SRF_TYPE
-        error stop
-      end select
-      ! Combine the Convective and MODIS functions
-        ICEFRCT  = ICEFRCT_M*(1.0-CNV_FRACTION) + ICEFRCT_C*(CNV_FRACTION)
-#endif
+      select case (ICE_FRACTION_POLYNOMIAL)
+      case (RAW_MODIS_POLYNOMIAL)
 
-      if (constrain_modis_ice) then
+          ! Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384)
+          tc = MAX(-46.0,MIN(TEMP-MAPL_TICE,46.0)) ! convert to celcius and limit range from -46:46 C
+          ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
+          ICEFRCT = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
 
-      ! =====================================================================
-      ! NEW: Apply thermodynamic constraints
-      ! Ensures ice fraction doesn't violate physical laws while respecting
-      ! MODIS observations where physically reasonable
-      ! =====================================================================
+      case (JASON_ICE_POLYNOMIAL)
       
-      ! Compute physics-based minimum ice fraction
-      ICEFRCT_PHYS = 0.0
+         ! ------------------------------------------------------------------
+         ! 1. Convective / Anvil Cloud Ice Fraction (ICEFRCT_C)
+         ! ------------------------------------------------------------------
+         ICEFRCT_C  = 0.00
+         if ( TEMP <= JaT_ICE_ALL ) then
+            ICEFRCT_C = 1.000
+         else if ( (TEMP > JaT_ICE_ALL) .AND. (TEMP <= JaT_ICE_MAX) ) then
+            ICEFRCT_C = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - JaT_ICE_ALL ) / ( JaT_ICE_MAX - JaT_ICE_ALL ) ) )
+         end if
+         ICEFRCT_C = MIN(ICEFRCT_C,1.00)
+         ICEFRCT_C = MAX(ICEFRCT_C,0.00)
+         ICEFRCT_C = ICEFRCT_C**JaT_ICE_PWR
+
+         ! ------------------------------------------------------------------
+         ! 2. Grid-Scale / Mesh Cloud Ice Fraction (ICEFRCT_M)
+         ! ------------------------------------------------------------------
+         ! Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
+         select case (NINT(SRF_TYPE))
+         case (SRF_TYPE_SNOW, SRF_TYPE_ICE, SRF_TYPE_LANDICE)
+           ! Over snow (SRF_TYPE == 2.0) and ice (SRF_TYPE >= 3.0)
+           ICEFRCT_M  = 0.00
+           if ( TEMP <= JiT_ICE_ALL ) then
+              ICEFRCT_M = 1.000 
+           else if ( (TEMP > JiT_ICE_ALL) .AND. (TEMP <= JiT_ICE_MAX) ) then
+              ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - JiT_ICE_ALL ) / ( JiT_ICE_MAX - JiT_ICE_ALL ) ) )
+           end if
+           ICEFRCT_M = MIN(ICEFRCT_M,1.00)
+           ICEFRCT_M = MAX(ICEFRCT_M,0.00) 
+           ICEFRCT_M = ICEFRCT_M**JiT_ICE_PWR
+         case (SRF_TYPE_LAND)
+           ! Over Land (SRF_TYPE == 1)
+           ICEFRCT_M  = 0.00
+           if ( TEMP <= JlT_ICE_ALL ) then
+              ICEFRCT_M = 1.000
+           else if ( (TEMP > JlT_ICE_ALL) .AND. (TEMP <= JlT_ICE_MAX) ) then
+              ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - JlT_ICE_ALL ) / ( JlT_ICE_MAX - JlT_ICE_ALL ) ) )
+           end if
+           ICEFRCT_M = MIN(ICEFRCT_M,1.00)
+           ICEFRCT_M = MAX(ICEFRCT_M,0.00)
+           ICEFRCT_M = ICEFRCT_M**JlT_ICE_PWR
+         case (SRF_TYPE_OCEAN)
+           ! Over Oceans (SRF_TYPE == 0)
+           ICEFRCT_M  = 0.00
+           if ( TEMP <= JoT_ICE_ALL ) then
+              ICEFRCT_M = 1.000
+           else if ( (TEMP > JoT_ICE_ALL) .AND. (TEMP <= JoT_ICE_MAX) ) then
+              ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - JoT_ICE_ALL ) / ( JoT_ICE_MAX - JoT_ICE_ALL ) ) )
+           end if
+           ICEFRCT_M = MIN(ICEFRCT_M,1.00)
+           ICEFRCT_M = MAX(ICEFRCT_M,0.00)
+           ICEFRCT_M = ICEFRCT_M**JoT_ICE_PWR
+         case default
+           ! You should not be here
+           print *, 'ICE_FRACTION_SC: Unknown SRF_TYPE = ',SRF_TYPE
+           error stop
+         end select
+
+         ! Combine the Convective and Mesh functions
+         ICEFRCT  = ICEFRCT_M*(1.0-CNV_FRACTION) + ICEFRCT_C*(CNV_FRACTION)
+ 
+      case (V12_ICE_POLYNOMIAL)
       
-      if (TEMP < 235.0) then
-        ! Below -38°C: Homogeneous nucleation temperature
-        ! All supercooled liquid droplets freeze spontaneously
-        ! This is a thermodynamic law, not negotiable
-        ICEFRCT_PHYS = 1.0
-        
-      elseif (TEMP < 238.0) then
-        ! -38°C to -35°C: Transition to 100% ice
-        ! Very rapid heterogeneous nucleation, essentially all ice
-        ICEFRCT_PHYS = 0.975 + 0.025 * (238.0 - TEMP) / 3.0
-        
-      elseif (TEMP < 243.0) then
-        ! -35°C to -30°C: Should be 90-97.5% ice
-        ! Laboratory and aircraft observations show predominantly ice
-        ICEFRCT_PHYS = 0.90 + 0.075 * (243.0 - TEMP) / 5.0
-        
-      elseif (TEMP < 248.0) then
-        ! -30°C to -25°C: Should be 80-90% ice
-        ! Mixed phase possible but ice dominant
-        ICEFRCT_PHYS = 0.80 + 0.10 * (248.0 - TEMP) / 5.0
-        
-      elseif (TEMP < 253.0) then
-        ! -25°C to -20°C: Should be 65-80% ice
-        ! Active heterogeneous nucleation, ice favored
-        ICEFRCT_PHYS = 0.65 + 0.15 * (253.0 - TEMP) / 5.0
-        
-      elseif (TEMP < 258.0) then
-        ! -20°C to -15°C: Should be 45-65% ice
-        ! True mixed phase regime
-        ICEFRCT_PHYS = 0.45 + 0.20 * (258.0 - TEMP) / 5.0
-        
-      elseif (TEMP < 263.0) then
-        ! -15°C to -10°C: Should be 25-45% ice
-        ! Mixed phase, liquid becomes more common
-        ICEFRCT_PHYS = 0.25 + 0.20 * (263.0 - TEMP) / 5.0
-        
-      elseif (TEMP < 268.0) then
-        ! -10°C to -5°C: Mixed phase, 10-25% ice
-        ! Supercooled liquid droplets stable
-        ICEFRCT_PHYS = 0.10 + 0.15 * (268.0 - TEMP) / 5.0
-        
-      else
-        ! Above -5°C: MODIS parameterization is fine
-        ICEFRCT_PHYS = 0.0
-      endif
-      
-      ! Take maximum of MODIS-based and physics-based ice fraction
-      ! This preserves MODIS accuracy where valid, applies constraints where needed
-      ICEFRCT = MAX(ICEFRCT, ICEFRCT_PHYS)
-      
-      endif
-      
-      ! Final bounds check
-      ICEFRCT = MIN(1.0, MAX(0.0, ICEFRCT))
+
+         ! ------------------------------------------------------------------
+         ! 1. Convective / Anvil Cloud Ice Fraction (ICEFRCT_C)
+         ! ------------------------------------------------------------------
+         ICEFRCT_C = 0.00
+         if ( TEMP <= aT_ICE_ALL ) then
+            ICEFRCT_C = 1.000
+         else if ( TEMP <= aT_ICE_MAX ) then
+            ICEFRCT_C = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - aT_ICE_ALL ) / ( aT_ICE_MAX - aT_ICE_ALL ) ) )
+         end if
+         ICEFRCT_C = MAX(0.00, MIN(1.00, ICEFRCT_C)) ** aT_ICE_PWR
+
+         ! ------------------------------------------------------------------
+         ! 2. Grid-Scale / Mesh Cloud Ice Fraction (ICEFRCT_M)
+         ! ------------------------------------------------------------------
+         ! Select the correct constants based on surface type
+         select case (NINT(SRF_TYPE))
+         case (SRF_TYPE_LANDICE)
+              t_all_loc = liT_ICE_ALL
+              t_max_loc = liT_ICE_MAX
+              pwr_loc   = liT_ICE_PWR
+         case (SRF_TYPE_ICE)
+              t_all_loc = iT_ICE_ALL
+              t_max_loc = iT_ICE_MAX
+              pwr_loc   = iT_ICE_PWR
+         case (SRF_TYPE_SNOW)
+              t_all_loc = sT_ICE_ALL
+              t_max_loc = sT_ICE_MAX
+              pwr_loc   = sT_ICE_PWR
+         case (SRF_TYPE_LAND)
+              t_all_loc = lT_ICE_ALL
+              t_max_loc = lT_ICE_MAX
+              pwr_loc   = lT_ICE_PWR
+         case (SRF_TYPE_OCEAN)
+              t_all_loc = oT_ICE_ALL
+              t_max_loc = oT_ICE_MAX
+              pwr_loc   = oT_ICE_PWR
+         case default
+           ! You should not be here
+           print *, 'ICE_FRACTION_SC: Unknown SRF_TYPE = ',SRF_TYPE
+           error stop
+         end select
+
+         ! Calculate ICEFRCT_M
+         ! Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
+         ICEFRCT_M = 0.00
+         if ( TEMP <= t_all_loc ) then
+            ICEFRCT_M = 1.000
+         else if ( TEMP <= t_max_loc ) then
+            ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - t_all_loc ) / ( t_max_loc - t_all_loc ) ) )
+         end if
+         ICEFRCT_M = MAX(0.00, MIN(1.00, ICEFRCT_M)) ** pwr_loc
+
+         ! Combine the Convective and Mesh functions
+         ICEFRCT  = ICEFRCT_M*(1.0-CNV_FRACTION) + ICEFRCT_C*(CNV_FRACTION)
+
+     case default
+       ! You should not be here
+       print *, 'ICE_FRACTION_SC: Unknown ICE_FRACTION_POLYNOMIAL = ',ICE_FRACTION_POLYNOMIAL
+       error stop
+     end select
+
+     ! Final bounds check
+     ICEFRCT = MIN(1.0, MAX(0.0, ICEFRCT))
 
   end function ICE_FRACTION_SC
 
@@ -2519,7 +2584,7 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
     beta = (MAPL_RGAS/MAPL_RVAP) * (MAPL_ALHL/(MAPL_RGAS*tbar)) * (MAPL_ALHL/(MAPL_CP*tbar))
 
     ! If some skewness is present
-    if (a > 0.001 .and. a < 0.5 .and. &
+    if (a > 0.001 .and. a /= 0.5 .and. &
         (qt3bar > 0.0 .or. t3bar > 0.0 .or. w3bar > 0.0)) then
 
       ! Empirical adjustment to ensure realizability
@@ -2561,9 +2626,9 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
 
     end if
 
-    if (a > 0.001 .and. qt3bar > 0.0 .and. a < 0.5) then
+    if (a > 0.001 .and. qt3bar > 0.0 .and. a /= 0.5) then
 
-      qt1 = a * qt2 / (a - 1.0)
+      qt1 = a * qt2 / (1.0 - a)
 
       fac = sqrt(a / (1.0 - a))
       tmp = max(0.0, qt2bar - (1.0 - a) * qt1**2 - a * qt2**2)
@@ -2783,6 +2848,10 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
                                  
          elseif (PDFSHAPE == 6) then
             if (qt_env + q2 + 2.*sigmaqt2 > qs_env) then
+               fQi     = ice_fraction(t_env, CNVFRC, SRF_TYPE)
+               alhxbcp = (1.0-fQi)*alhlbcp + fQi*alhsbcp
+               hl_env  = t_env + gravbcp*ZL - alhxbcp*qc_env
+            
                call partition_dblgss2( exner, PDF_A, beta, rwqt, rwhl, rhlqt, t1, t2, &
                                        sigt1, sigt2, qt_env, q1, q2, sigmaqt1, sigmaqt2, &
                                        w1, w2, sigw1, sigw2, qs_env, dqs, qc_env, cf_env, WQC )
@@ -2870,6 +2939,8 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
       
       ! =======================================================================
       ! PHASE 4: Finalization & Mapping back to Absolute Grid Box
+      ! Scale the environmental values back down to grid-box absolutes, 
+      ! partition into ice/liquid, and update prognostic variables.
       ! =======================================================================
       
       CLLS   = cf_env * (1.0 - CLCN)
@@ -3083,15 +3154,6 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
       if (q_tot_mass > 0.0) f_mass_ice = q_tot_ice / q_tot_mass
       n_ice_active = (1.0 - f_mass_ice) * n_ice
 
-      ! Handle completely glaciated or completely liquid regimes immediately
-      if (t_env >= iT_ICE_MAX) then        ! Pure liquid cloud
-         f_ice = 0.0
-         return
-      elseif (t_env <= iT_ICE_ALL) then    ! Pure ice cloud
-         f_ice = 1.0
-         return
-      end if
-      
       ! =======================================================================
       ! PHASE 2: Mixed-Phase Regime & Deposition Physics
       ! Calculate how fast water vapor deposits onto existing ice crystals.
@@ -3215,24 +3277,53 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
 
    subroutine MELTFRZ_SC( DT, CNVFRC, SRFTYPE, TE, QL, QI )
       real, intent(in   ) :: DT, CNVFRC, SRFTYPE
-      real, intent(inout) :: TE,QL,QI
-      real  :: fQi,dQil
-      integer :: K
+      real, intent(inout) :: TE, QL, QI
+      
+      real :: fQi, dQil, target_ice, target_melt, max_phase_change
+      real :: L_f
+
+      ! Latent heat of fusion
+      L_f = MAPL_ALHS - MAPL_ALHL
+
       if ( TE <= MAPL_TICE ) then
-        ! freeze liquid
-         fQi  = ice_fraction( TE, CNVFRC, SRFTYPE )
-         dQil = Ql *(1.0 - EXP( -DT * fQi / max(DT,taufrz) ) )
-         dQil = max(  0., dQil )
-         Qi   = Qi + dQil
-         Ql   = Ql - dQil
-         TE   = TE + (MAPL_ALHS-MAPL_ALHL)*dQil/MAPL_CP
+         ! -------------------------------------------------------------
+         ! FREEZING REGIME (TE <= TICE)
+         ! -------------------------------------------------------------
+         
+         ! 1. Target ice deficit (new_ice_condensate)
+         fQi = ice_fraction( TE, CNVFRC, SRFTYPE )
+         target_ice = min( max(0.0, fQi*(QL + QI) - QI), QL )
+
+         ! 2. Thermodynamic limit (prevent latent heating above freezing point)
+         max_phase_change = max( 0.0, (MAPL_TICE - TE) * MAPL_CP / L_f )
+
+         ! 3. Apply relaxation timescale (fQi is no longer in the exponent)
+         dQil = ( 1.0 - EXP( -DT / max(DT,taufrz) ) ) * min( target_ice, max_phase_change )
+
+         ! 4. Update states (liquid -> ice, temp warms)
+         Qi = Qi + dQil
+         Ql = Ql - dQil
+         TE = TE + (L_f * dQil) / MAPL_CP
+
       else
-        ! melt ice above 0^C
-         dQil = -Qi *(1.0 - EXP( -DT / max(DT,taumlt) ) )
-         dQil = min(  0., dQil )
-         Qi   = Qi + dQil
-         Ql   = Ql - dQil
-         TE   = TE + (MAPL_ALHS-MAPL_ALHL)*dQil/MAPL_CP
+         ! -------------------------------------------------------------
+         ! MELTING REGIME (TE > TICE)
+         ! -------------------------------------------------------------
+         
+         ! 1. Target melt (assuming 0% ice fraction above freezing)
+         target_melt = QI
+
+         ! 2. Thermodynamic limit (prevent latent cooling below freezing point)
+         max_phase_change = max( 0.0, (TE - MAPL_TICE) * MAPL_CP / L_f )
+
+         ! 3. Apply relaxation timescale
+         dQil = ( 1.0 - EXP( -DT / max(DT,taumlt) ) ) * min( target_melt, max_phase_change )
+
+         ! 4. Update states (ice -> liquid, temp cools)
+         Qi = Qi - dQil
+         Ql = Ql + dQil
+         TE = TE - (L_f * dQil) / MAPL_CP
+
       end if
    end subroutine MELTFRZ_SC
 
@@ -3736,7 +3827,7 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
   end function FIND_KLCL
 
   function GET_LCL_AGL( T, Q, PL, Z, IM, JM, LM ) result( LCL_AGL )
-    ! !DESCRIPTION:
+    ! !DESCRIPTION: 
     ! Calculates the precise height of the Lifting Condensation Level (LCL)
     ! in meters Above Ground Level (AGL).
 
@@ -4607,40 +4698,85 @@ function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
     end subroutine FIX_NEGATIVE_PRECIP
 
     subroutine REDISTRIBUTE_CLOUDS_SCALAR(CF, QL, QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, QV, TE)
-      ! Note: Changed from dimension(:,:,:) to scalar inputs
       real, intent(inout) :: CF, QL, QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, QV, TE
+      
+      real :: QL_old, QI_old, CF_old
+      real :: f_cn
+      real, parameter :: epsilon = 1.0e-15
 
-      ! Liquid
-      QLLS = QLLS + (QL - (QLCN+QLLS))
-      if (QLLS < 0.0) then
-        QLCN = max(0.0, QLCN + QLLS)
-        QLLS = 0.0
+      ! ---------------------------------------------------------
+      ! 1. Liquid Growth vs. Decay Redistribution
+      ! ---------------------------------------------------------
+      QL_old = QLCN + QLLS
+      if (QL < QL_old) then
+        ! DECAY: Microphysics consumed liquid. Reduce proportionally.
+        if (QL_old > epsilon) then
+          f_cn = QLCN / QL_old
+          QLCN = QL * f_cn
+          QLLS = QL * (1.0 - f_cn)
+        else
+          QLCN = 0.0
+          QLLS = 0.0
+        endif
+      else
+        ! GROWTH: Microphysics created new liquid. All new mass is Large-Scale.
+        ! QLCN remains unchanged
+        QLLS = QL - QLCN
       endif
 
-      ! Ice
-      QILS = QILS + (QI - (QICN+QILS))
-      if (QILS < 0.0) then
-        QICN = max(0.0, QICN + QILS)
-        QILS = 0.0
+      ! ---------------------------------------------------------
+      ! 2. Ice Growth vs. Decay Redistribution
+      ! ---------------------------------------------------------
+      QI_old = QICN + QILS
+      if (QI < QI_old) then
+        ! DECAY: Reduce proportionally
+        if (QI_old > epsilon) then
+          f_cn = QICN / QI_old
+          QICN = QI * f_cn
+          QILS = QI * (1.0 - f_cn)
+        else
+          QICN = 0.0
+          QILS = 0.0
+        endif
+      else
+        ! GROWTH: All new ice is Large-Scale
+        ! QICN remains unchanged
+        QILS = QI - QICN
       endif
 
-      ! Cloud
-      CLLS = min(1.0, CLLS + (CF - (CLCN+CLLS)))
-      if (CLLS < 0.0) then
-        CLCN = max(0.0, min(1.0, CLCN + CLLS))
-        CLLS = 0.0
+      ! ---------------------------------------------------------
+      ! 3. Cloud Fraction Growth vs. Decay Redistribution
+      ! ---------------------------------------------------------
+      CF_old = CLCN + CLLS
+      if (CF < CF_old) then
+        ! DECAY: Cloud fraction shrank. Reduce proportionally.
+        if (CF_old > epsilon) then
+          f_cn = CLCN / CF_old
+          CLCN = min(1.0, CF * f_cn)
+          CLLS = min(1.0, CF * (1.0 - f_cn))
+        else
+          CLCN = 0.0
+          CLLS = 0.0
+        endif
+      else
+        ! GROWTH: Cloud expanded. Convective core stays its original size.
+        ! CLCN remains unchanged (bounded to CF just in case)
+        CLCN = min(CLCN, CF)
+        CLLS = min(1.0, CF - CLCN)
       endif
 
-      ! Evaporate/Sublimate liquid/ice where clouds are gone
-      if ( (CLLS == 0.0) .and. (QLLS+QILS > 0.0) ) then
+      ! ---------------------------------------------------------
+      ! 4. Clean up: Evaporate/Sublimate if clouds are completely gone
+      ! ---------------------------------------------------------
+      if ( (CLLS <= 0.0) .and. (QLLS+QILS > 0.0) ) then
         QV = QV + QLLS + QILS
         TE = TE - (alhlbcp)*QLLS - (alhsbcp)*QILS
         CLLS = 0.0
         QLLS = 0.0
         QILS = 0.0
       endif
-      
-      if ( (CLCN == 0.0) .and. (QLCN+QICN > 0.0) ) then
+
+      if ( (CLCN <= 0.0) .and. (QLCN+QICN > 0.0) ) then
         QV = QV + QLCN + QICN
         TE = TE - (alhlbcp)*QLCN - (alhsbcp)*QICN
         CLCN = 0.0
@@ -5655,8 +5791,6 @@ enddo
 end subroutine compute_sgs_vvel
 
 
-
-
 !*************************************************************
 ! Error function wrapper.
 !
@@ -5908,9 +6042,6 @@ subroutine hystpdf_2M( &
             ! Evaluate both Gaussian components without the legacy
             ! two-sigma prefilter. The original t1/t2 plume-temperature
             ! perturbations remain active inside partition_dblgss2.
-            fQi     = ice_fraction(t_env, CNVFRC, SRF_TYPE)
-            alhxbcp = (1.0-fQi)*alhlbcp + fQi*alhsbcp
-            hl_env  = t_env + gravbcp*ZL - alhxbcp*qc_env
 
             call partition_dblgss2( exner, PDF_A, beta, rwqt, rwhl, rhlqt, &
                                     t1, t2, sigt1, sigt2, qt_env, q1, q2,  &
@@ -5927,9 +6058,6 @@ subroutine hystpdf_2M( &
             !
             if (qt_env + q2 + 2.0*sigmaqt2 > qs_env) then
 
-               fQi     = ice_fraction(t_env, CNVFRC, SRF_TYPE)
-               alhxbcp = (1.0-fQi)*alhlbcp + fQi*alhsbcp
-               hl_env  = t_env + gravbcp*ZL - alhxbcp*qc_env
 
                call partition_dblgss2( exner, PDF_A, beta, rwqt, rwhl, &
                                        rhlqt, t1, t2, sigt1, sigt2,    &
@@ -6743,5 +6871,185 @@ subroutine ANVIL_EVAP_SUBL3( &
 
 end subroutine ANVIL_EVAP_SUBL3
 
+
+    subroutine compute_radar_diagnostics(EXPORT, clock, IM, JM, LM, &
+                                         Q, QRAIN, QSNOW, QGRAUPEL, T, PLmb, W, ZLE0, &
+                                         RC)
+  
+        implicit none
+  
+        ! --- Arguments ---
+        type(ESMF_State),    intent(inout) :: EXPORT
+        type(ESMF_Clock),    intent(in)    :: clock
+        integer,             intent(in)    :: IM, JM, LM
+        real,                intent(in)    :: Q(IM,JM,LM), QRAIN(IM,JM,LM), QSNOW(IM,JM,LM)
+        real,                intent(in)    :: QGRAUPEL(IM,JM,LM), T(IM,JM,LM), PLmb(IM,JM,LM)
+        real,                intent(in)    :: W(IM,JM,LM), ZLE0(IM,JM,LM)
+        integer,             intent(out)   :: RC
+
+        ! --- Local Variables ---
+        integer :: I, J, L, STATUS
+        type(ESMF_Alarm) :: alarm
+        logical :: alarm_is_ringing
+        real :: rand1, fraction_hail
+        
+        ! MAPL Export Pointers
+        real, pointer :: NACTR(:,:,:)
+        real, pointer :: PTR2D(:,:)
+        real, pointer :: DBZ(:,:,:)
+        real, pointer :: DBZ_MAX(:,:)
+        real, pointer :: DBZ_1KM(:,:)
+        real, pointer :: DBZ_TOP(:,:)
+        real, pointer :: DBZ_M10C(:,:)
+        
+        ! Temporary arrays
+        real, allocatable :: TMP3D(:,:,:)
+        real, allocatable :: TMP_NACTR(:,:,:)
+        real, allocatable :: DBZ3D(:,:,:)
+        
+        ! Automatic arrays for 1D columns (Thread-safe for OpenMP)
+        real :: qg_col(LM), qh_col(LM), prs_col(LM), dbz_col(LM)
+
+        RC = ESMF_SUCCESS
+        STATUS = ESMF_SUCCESS
+
+        ! Compute DBZ radar reflectivity
+        call ESMF_ClockGetAlarm(clock, 'DBZ_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
+        alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
+            
+        call MAPL_GetPointer(EXPORT,  NACTR,  'NACTR',        RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,  PTR2D,  'REFL10CM_MAX', RC=STATUS); VERIFY_(STATUS)
+    
+        ! 1. If the user explicitly requested NACTR export, fill it every time (or whenever needed)
+        if (associated(NACTR)) then
+            NACTR = 1.e8 * QRAIN**0.8 
+        endif
+
+        ! 2. Handle the reflectivity alarm
+        if (alarm_is_ringing) then
+           call ESMF_AlarmRingerOff(alarm, RC=STATUS); VERIFY_(STATUS)
+           
+           ! Only compute if the user actually requested the reflectivity output
+           if (associated(PTR2D)) then 
+               rand1 = 0.0
+               
+               ALLOCATE(TMP3D(IM,JM,LM))
+               TMP3D = 0.0
+               
+               if (.not. associated(NACTR)) then
+                   ALLOCATE ( TMP_NACTR(IM,JM,LM) )
+                   TMP_NACTR = 1.e8 * QRAIN**0.8
+               endif
+               
+               DO J=1,JM ; DO I=1,IM
+                 if (associated(NACTR)) then
+                     call calc_refl10cm(Q(I,J,:), QRAIN(I,J,:), NACTR(I,J,:), QSNOW(I,J,:), QGRAUPEL(I,J,:), &
+                        T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J) 
+                 else
+                     call calc_refl10cm(Q(I,J,:), QRAIN(I,J,:), TMP_NACTR(I,J,:), QSNOW(I,J,:), QGRAUPEL(I,J,:), &
+                        T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J) 
+                 endif
+               END DO ; END DO
+              
+               if (.not. associated(NACTR)) DEALLOCATE ( TMP_NACTR )
+ 
+               PTR2D = -9999.0
+               DO L=1,LM ; DO J=1,JM ; DO I=1,IM 
+                  PTR2D(I,J) = MAX(PTR2D(I,J),TMP3D(I,J,L))
+               END DO ; END DO ; END DO
+               
+               DEALLOCATE(TMP3D)
+           endif
+        endif
+
+        call MAPL_GetPointer(EXPORT, DBZ     , 'DBZ'     , RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, DBZ_MAX , 'DBZ_MAX' , RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, DBZ_1KM , 'DBZ_1KM' , RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, DBZ_TOP , 'DBZ_TOP' , RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, DBZ_M10C, 'DBZ_M10C', RC=STATUS); VERIFY_(STATUS)
+        
+        if ( (associated(DBZ) .OR. &
+              associated(DBZ_MAX) .OR. associated(DBZ_1KM) .OR. associated(DBZ_TOP) .OR. associated(DBZ_M10C)) ) then
+            
+            ALLOCATE(DBZ3D(IM,JM,LM))
+              
+            !$OMP parallel do default(none) &
+            !$OMP shared(IM, JM, LM, W, QGRAUPEL, PLmb, T, Q, QRAIN, QSNOW, DBZ3D, &
+            !$OMP        DBZ_VAR_INTERCP, LIQUID_SKIN_SNOW, LIQUID_SKIN_GRAUPEL, LIQUID_SKIN_HAIL) &
+            !$OMP private(I, J, L, fraction_hail, qg_col, qh_col, prs_col, dbz_col)
+            DO J = 1, JM
+                DO I = 1, IM
+                    ! 1. Prepare the 1D column data for this specific (I,J) location
+                    DO L = 1, LM
+                        fraction_hail = MAX(0.0, MIN(1.0, (W(I,J,L) - W_START) / (W_FULL - W_START)))
+                        qh_col(L)  = QGRAUPEL(I,J,L) * fraction_hail
+                        qg_col(L)  = QGRAUPEL(I,J,L) * (1.0 - fraction_hail)
+                        prs_col(L) = 100.0 * PLmb(I,J,L)
+                    END DO
+                    
+                    ! 2. Call the newly refactored 1D column function
+                    dbz_col = compute_radar_reflectivity( &
+                              PRS = prs_col, &
+                              TMK = T(I,J,:), &
+                              QVP = Q(I,J,:), &
+                              QRAIN = QRAIN(I,J,:), &
+                              QSNOW = QSNOW(I,J,:), &
+                              QGRAUPEL = qg_col, &
+                              QHAIL = qh_col, &
+                              disable_variable_intercept_params = (DBZ_VAR_INTERCP == 0), &
+                              liqskin_snow = LIQUID_SKIN_SNOW, &
+                              liqskin_graupel = LIQUID_SKIN_GRAUPEL, &
+                              liqskin_hail = LIQUID_SKIN_HAIL)
+                              
+                    ! 3. Store the returned column back into the 3D state
+                    DO L = 1, LM
+                        DBZ3D(I,J,L) = dbz_col(L)
+                    END DO
+                END DO
+            END DO
+            
+            if (associated(DBZ)) DBZ(:,:,:) = DBZ3D(:,:,:)
+            
+            if (associated(DBZ_MAX)) then
+               DBZ_MAX=-9999.0
+               DO L=1,LM ; DO J=1,JM ; DO I=1,IM
+                  DBZ_MAX(I,J) = MAX(DBZ_MAX(I,J),DBZ3D(I,J,L))
+               END DO ; END DO ; END DO
+            endif
+            
+            if (associated(DBZ_1KM)) then
+               call cs_interpolator(1, IM, 1, JM, LM, DBZ3D, 1000., ZLE0, DBZ_1KM, -20.)
+            endif
+            
+            if (associated(DBZ_TOP)) then
+               DBZ_TOP=MAPL_UNDEF
+               DO J=1,JM ; DO I=1,IM
+                  DO L=LM,1,-1
+                     if (ZLE0(i,j,l) >= 25000.) continue
+                     if (DBZ3D(i,j,l) >= 18.5 ) then
+                         DBZ_TOP(I,J) = ZLE0(I,J,L)
+                         exit
+                     endif
+                  END DO
+               END DO ; END DO
+            endif
+            
+            if (associated(DBZ_M10C)) then
+               DBZ_M10C=MAPL_UNDEF
+               DO J=1,JM ; DO I=1,IM
+                  DO L=LM,1,-1
+                     if (ZLE0(i,j,l) >= 25000.) continue
+                     if (T(i,j,l) <= MAPL_TICE-10.0) then
+                         DBZ_M10C(I,J) = DBZ3D(I,J,L)
+                         exit
+                     endif
+                  END DO
+               END DO ; END DO
+            endif
+            
+            DEALLOCATE(DBZ3D)
+        end if
+        
+    end subroutine compute_radar_diagnostics
 
 end module GEOSmoist_Process_Library

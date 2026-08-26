@@ -581,15 +581,15 @@ contains
             SRC_ID = AGCM,                                          &
             RC=STATUS  )
        VERIFY_(STATUS)
-    endif
 
-    call MAPL_AddConnectivity ( GC,                                 &
-         SHORT_NAME  = (/'QLTOT', 'QITOT', 'QRTOT',                 &
-         'QSTOT', 'QGTOT'/),                                        &
-         DST_ID = AIAU,                                             &
-         SRC_ID = AGCM,                                             &
-         RC=STATUS  )
-    VERIFY_(STATUS)
+       call MAPL_AddConnectivity ( GC,                                 &
+            SHORT_NAME  = (/'QLTOT', 'QITOT', 'QRTOT',                 &
+            'QSTOT', 'QGTOT'/),                                        &
+            DST_ID = AIAU,                                             &
+            SRC_ID = AGCM,                                             &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+    endif
 
     if (DO_CICE_THERMO == 2) then
        call MAPL_AddConnectivity ( GC,                              &
