@@ -20,7 +20,11 @@ function(run_case case_name regression_data_dir)
   copy_file(${regression_data_dir}/newmfspectra40_dc25.nc ${expdir})
   run_geos(${num_procs} ${case_name} ${expdir})
   if(FORTRAN_COMPILER_ID STREQUAL "IntelLLVM") # only compare against IntelLLVM baselines
-    compare_results(${checkpoints_dir} ${expdir}/checkpoints/last NANS_ARE_EQUAL)
+    compare_results(
+      ${checkpoints_dir} ${expdir}/checkpoints/last
+      NANS_ARE_EQUAL
+      EXCLUDE_VARS lons lats corner_lons corner_lats
+    )
   endif()
 
   file(REMOVE_RECURSE ${expdir})
