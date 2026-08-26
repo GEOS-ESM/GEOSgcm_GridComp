@@ -3,7 +3,6 @@ import logging
 
 from mpi4py import MPI
 from ndsl import DaceConfig, DaCeOrchestration, ndsl_log
-from ndsl.dsl.dace.build import set_distributed_caches
 
 
 from gt4py.cartesian.config import build_settings as gt_build_settings  # isort: skip
@@ -48,7 +47,7 @@ class StencilBackendCompilerOverride:
         if not self.no_op:
             original_orchestrate = config._orchestrate
             config._orchestrate = DaCeOrchestration.Build
-            set_distributed_caches(config, force_build=True)
+            self.config._set_distributed_caches(config, force_build=True)
             config._orchestrate = original_orchestrate
 
         # We remove warnings from the stencils compiling when in critical and/or
@@ -60,7 +59,7 @@ class StencilBackendCompilerOverride:
     def __enter__(self):
         if self.no_op:
             return
-        if self.config.do_compile:
+        if self.config.is_compiling():
             ndsl_log.info(f"Stencil backend compiles on {self.comm.Get_rank()}")
         else:
             ndsl_log.info(f"Stencil backend waits on {self.comm.Get_rank()}")
@@ -70,7 +69,7 @@ class StencilBackendCompilerOverride:
     def __exit__(self, type, value, traceback):
         if self.no_op:
             return
-        if not self.config.do_compile:
+        if not self.config.is_compiling():
             ndsl_log.info(f"Stencil backend read cache on {self.comm.Get_rank()}")
         else:
             ndsl_log.info(f"Stencil backend was compiled on {self.comm.Get_rank()} now waiting for other ranks")
