@@ -15,7 +15,6 @@ cap:
   root_name: AGCM
 
   mapl:
-
     setServices:
       sharedObj: libMAPL.cap
 
