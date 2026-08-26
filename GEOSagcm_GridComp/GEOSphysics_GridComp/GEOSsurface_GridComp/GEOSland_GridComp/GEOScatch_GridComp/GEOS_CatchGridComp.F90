@@ -746,6 +746,16 @@ subroutine SetServices ( GC, RC )
          RC=STATUS  ) 
     VERIFY_(STATUS)
 
+    call MAPL_AddImportSpec(GC                         ,&
+         LONG_NAME          = 'discharge_adjust_factor'            ,&
+         UNITS              = '1'                          ,&
+         SHORT_NAME         = 'DISADJ'                          ,&
+         DIMS               = MAPL_DimsTileOnly             ,&
+         VLOCATION          = MAPL_VLocationNone            ,&
+                                                  RC=STATUS  ) 
+
+    VERIFY_(STATUS)
+
 !  !INTERNAL STATE:
 
 ! if is_offline, some variables ( in the last) are not required
@@ -1614,6 +1624,15 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'runoff_total_flux_adjusted',&
+    UNITS              = 'kg m-2 s-1'                ,&
+    SHORT_NAME         = 'RUNFADJ'                ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)  
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'interception_loss_latent_heat_flux',&
@@ -4053,6 +4072,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: QHATM
         real, dimension(:),   pointer :: CTATM
         real, dimension(:),   pointer :: CQATM
+        real, dimension(:),   pointer :: DISADJ        
 
         real, dimension(:),   pointer :: drpar
         real, dimension(:),   pointer :: dfpar
@@ -4181,6 +4201,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: sublim
         real, dimension(:),   pointer :: shout
         real, dimension(:),   pointer :: runoff
+        real, dimension(:),   pointer :: runfadj        
         real, dimension(:),   pointer :: DISTER        
         real, dimension(:),   pointer :: evpint
         real, dimension(:),   pointer :: evpsoi
@@ -4617,6 +4638,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(IMPORT,DRUVR  ,'DRUVR'  ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,DFUVR  ,'DFUVR'  ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,LWDNSRF,'LWDNSRF',RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT,DISADJ ,'DISADJ' ,RC=STATUS); VERIFY_(STATUS)
 
         call MAPL_GetPointer(IMPORT,ALW    ,'ALW'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,BLW    ,'BLW'    ,RC=STATUS); VERIFY_(STATUS)
@@ -4749,6 +4771,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,SUBLIM,'SUBLIM',ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SHOUT,  'SHOUT'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RUNOFF, 'RUNOFF' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,RUNFADJ,'RUNFADJ' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)        
         call MAPL_GetPointer(EXPORT,DISTER, 'DISTER' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS) 
         DISTER = 0.       
         call MAPL_GetPointer(EXPORT,EVPINT, 'EVPINT' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
@@ -6068,6 +6091,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS)
 
         end if
+
+        if(associated(DISADJ))then
+           RUNFADJ = RUNOFF*DISADJ
+        else
+           RUNFADJ = RUNOFF
+        endif
         
         ! Change units of TP1, TP2, .., TP6 export variables from Celsius to Kelvin.
         ! This used to be done at the level the Surface GridComp.

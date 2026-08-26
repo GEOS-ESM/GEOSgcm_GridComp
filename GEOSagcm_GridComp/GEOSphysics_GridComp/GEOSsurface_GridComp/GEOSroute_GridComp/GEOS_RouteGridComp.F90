@@ -172,9 +172,9 @@ contains
 ! For Imports, "TileOnly" refers to the tile space of the GEOS_LandGridComp
 
     call MAPL_AddImportSpec(GC,                            &
-         LONG_NAME          = 'runoff_total_flux'         ,&
+         LONG_NAME          = 'runoff_total_flux_adjusted'         ,&
          UNITS              = 'kg m-2 s-1'                ,&
-         SHORT_NAME         = 'RUNOFF'                    ,&
+         SHORT_NAME         = 'RUNFADJ'                    ,&
          DIMS               = MAPL_DimsTileOnly           ,&
          VLOCATION          = MAPL_VLocationNone          ,&
          _RC ) 
@@ -1089,7 +1089,7 @@ contains
     ROUTE_DT      =  route%route_dt
 
     ! get the field from IMPORT
-    call ESMF_StateGet(IMPORT, 'RUNOFF', field=runoff_src, RC=STATUS)
+    call ESMF_StateGet(IMPORT, 'RUNFADJ', field=runoff_src, RC=STATUS)
     VERIFY_(STATUS)    
     call ESMF_FieldGet(runoff_src, farrayPtr=RUNOFF_SRC0, rc=status)   
     VERIFY_(STATUS)

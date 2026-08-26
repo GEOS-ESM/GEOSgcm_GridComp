@@ -3560,7 +3560,7 @@ module GEOS_SurfaceGridCompMod
     
     call MAPL_AddConnectivity (                                    &
        GC                                                         ,&
-       SHORT_NAME  = (/'RUNOFF  ', 'DISTER  '/)                               ,&   ! RUNOFF = total runoff = surface runoff + baseflow
+       SHORT_NAME  = (/'RUNFADJ  ', 'DISTER  '/)                               ,&   ! RUNOFF = total runoff = surface runoff + baseflow
        SRC_ID      =  LAND                                        ,&
        DST_ID      =  ROUTE                                       ,&
        RC=STATUS )
@@ -7340,6 +7340,15 @@ module GEOS_SurfaceGridCompMod
        end do
     end if
 
+
+    call MAPL_GetResource ( MAPL, DischargeAdjustFile, Label="DISCHARGE_ADJUST_FILE:", &
+          DEFAULT="null", RC=STATUS)
+    VERIFY_(STATUS)
+    if(Precip_File /= "null" .and. DischargeAdjustFile /= "null") then
+       call MAPL_GetPointer(INTERNAL, DISCHARGE_ADJUST, 'DISCHARGE_ADJUST',  RC=STATUS)
+       VERIFY_(STATUS)
+    end if
+
     ! option to interpolate effective wind vectors such that
     ! stresses computed in all children will have smooth curl/divergence
     call MAPL_GetResource(MAPL, iUseInterp, 'INTERPOLATE_ATMTAU:', &
@@ -7637,6 +7646,7 @@ module GEOS_SurfaceGridCompMod
     FRTILE  = 0.0
     OFRTILE = MAPL_UNDEF
 
+
 !  Cycle through all continental children (skip ocean),
 !   collecting RUNOFFTILE exports.
 
@@ -7713,14 +7723,14 @@ module GEOS_SurfaceGridCompMod
        end if
 
        ! Adjust the discharge going to the ocean
-       if(Precip_File /= "null" .and. DischargeAdjustFile /= "null") then
+       !if(Precip_File /= "null" .and. DischargeAdjustFile /= "null") then
 
-          call MAPL_GetPointer(INTERNAL, DISCHARGE_ADJUST, 'DISCHARGE_ADJUST',  RC=STATUS)
-          VERIFY_(STATUS)
+       !   call MAPL_GetPointer(INTERNAL, DISCHARGE_ADJUST, 'DISCHARGE_ADJUST',  RC=STATUS)
+       !   VERIFY_(STATUS)
 
-          DISCHARGETILE = DISCHARGETILE * DISCHARGE_ADJUST
+       !   DISCHARGETILE = DISCHARGETILE * DISCHARGE_ADJUST
 
-       end if
+       !end if
 
        ! Create a version of the discharge (may be adjusted) on atmospheric grid for export.
 
@@ -9295,6 +9305,10 @@ module GEOS_SurfaceGridCompMod
 
       if (associated(DISCHARGETILE)) then
          call FILLIN_TILE(GIM(type), 'DISCHARGE',  DISCHARGETILE,  XFORM, RC=STATUS); VERIFY_(STATUS)
+      end if
+
+      if (associated(DISCHARGE_ADJUST)) then
+         call FILLIN_TILE(GIM(type), 'DISADJ',  DISCHARGE_ADJUST,  XFORM, RC=STATUS); VERIFY_(STATUS)
       end if
 
       call FILLIN_TILE(GIM(type), 'ZTH',    ZTHTILE, XFORM, RC=STATUS); VERIFY_(STATUS)
