@@ -60,7 +60,7 @@ def ice_fraction(
     # Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
     srf_type_int = round(srf_type)
 
-    if srf_type_int == 2 or srf_type_int == 3:  # 2 = snow, 3 = ice
+    if srf_type_int == 2 or srf_type_int == 3 or srf_type_int == 4:  # 2 = snow, 3 = ice, 4 = landice
         if temp <= constants.iT_ICE_ALL:
             icefrct_m = 1.000
         elif temp > constants.iT_ICE_ALL and temp <= constants.iT_ICE_MAX:
