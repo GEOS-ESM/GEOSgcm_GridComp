@@ -1006,12 +1006,14 @@ contains
          SRC_NAME  = (/'U            ','V            ','TH           ','T            ',    &
                        'ZLE          ','PS           ','TA           ','QA           ',    &
                        'US           ','VS           ',                                    &
+                       'AK           ','BK           ',                                    &
                        'SPEED        ','DZ           ','PLE          ','W            ',    &
                        'PREF         ','TROPP_BLENDED','S            ','PLK          ',    &
                        'PV           ','TROPK_BLENDED','OMEGA        ','PKE          '/),  &
          DST_NAME  = (/'U     ','V     ','TH    ','T     ',                                &
                        'ZLE   ','PS    ','TA    ','QA    ',                                &
                        'UA    ','VA    ',                                                  &
+                       'AK    ','BK    ',                                                  &
                        'SPEED ','DZ    ','PLE   ','W     ',                                &
                        'PREF  ','TROPP ','S     ','PLK   ',                                &
                        'PV    ','TROPK ','OMEGA ','PKE   '/),                              &

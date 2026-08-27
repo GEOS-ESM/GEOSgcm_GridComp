@@ -1222,6 +1222,7 @@ contains
                          'Q       ',  'DQDT    ', 'DQRL    ', 'DQRC    ', &
                          'CNV_MFC ',  'CNV_MFD ', 'CNV_CVW ', 'CNV_FRC ', &
                          'LFR_GCC ',  'RH2     ', 'CN_PRCP ',             &
+                         'CLCN    ',  'QILS    ',                         &
                          'BYNCY   ',  'CAPE    ', 'INHB    ' /),          &
         DST_ID      = CHEM,                                               &
         SRC_ID      = MOIST,                                              &
