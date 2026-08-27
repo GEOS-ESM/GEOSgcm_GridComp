@@ -214,7 +214,7 @@ class GFDL_driver_tables:
         # Cancel multi-node compile for tables
         # TODO: this should come for free with the rewrite of the gt:X stencils
         #       compilation mode
-        if not stencil_factory.config.dace_config.is_compiling():
+        if not stencil_factory.config.dace_config.do_compile:
             MPI.COMM_WORLD.Barrier()
 
         compute_qs_table_1 = stencil_factory.from_origin_domain(
@@ -258,7 +258,7 @@ class GFDL_driver_tables:
             self._table4,
         )
 
-        if stencil_factory.config.dace_config.is_compiling():
+        if stencil_factory.config.dace_config.do_compile:
             MPI.COMM_WORLD.Barrier()
 
         self.table1 = self._table1.view[0, 0, :]
