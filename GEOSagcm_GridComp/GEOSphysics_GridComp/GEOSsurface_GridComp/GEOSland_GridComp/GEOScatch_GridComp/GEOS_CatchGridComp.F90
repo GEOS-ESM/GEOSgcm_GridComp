@@ -6095,8 +6095,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         call MAPL_GetResource(MAPL,PrecipFile, Label="PRECIP_FILE:",default="null", RC=STATUS)
         call MAPL_GetResource(MAPL,DischargeAdjustFile, Label="DISCHARGE_ADJUST_FILE:", default="null", RC=STATUS)
-
-        if(Precip_File /= "null" .and. DischargeAdjustFile /= "null") then
+        if(PrecipFile /= "null" .and. DischargeAdjustFile /= "null") then
            RUNFADJ = RUNOFF*DISADJ
         else
            RUNFADJ = RUNOFF
