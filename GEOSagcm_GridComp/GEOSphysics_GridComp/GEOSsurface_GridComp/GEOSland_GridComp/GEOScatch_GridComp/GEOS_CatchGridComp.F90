@@ -4427,6 +4427,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         character (len=ESMF_MAXSTR) :: VISDFtpl
         character (len=ESMF_MAXSTR) :: NIRDFFILE
         character (len=ESMF_MAXSTR) :: NIRDFtpl
+        character(len=ESMF_MAXSTR)  :: DischargeAdjustFile, PrecipFile       
         real                        :: FAC
 
         real                        :: DT
@@ -6092,7 +6093,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         end if
 
-        if(associated(DISADJ))then
+        call MAPL_GetResource(MAPL,PrecipFile, Label="PRECIP_FILE:",default="null", RC=STATUS)
+        call MAPL_GetResource(MAPL,DischargeAdjustFile, Label="DISCHARGE_ADJUST_FILE:", default="null", RC=STATUS)
+
+        if(Precip_File /= "null" .and. DischargeAdjustFile /= "null") then
            RUNFADJ = RUNOFF*DISADJ
         else
            RUNFADJ = RUNOFF
