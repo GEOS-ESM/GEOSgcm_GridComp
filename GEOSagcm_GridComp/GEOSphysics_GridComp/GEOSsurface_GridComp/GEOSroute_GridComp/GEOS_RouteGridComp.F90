@@ -1005,7 +1005,7 @@ contains
     ! ROUTE is always called from Surface, even when inactive.
     ! If inactive, exit as soon as internal "route" state is available and active/inactive is known.
     if (route%run_route==0) then
-       if(mapl_am_I_root()) print *,"routing model is not active"
+       !if(mapl_am_I_root()) print *,"routing model is not active"
        RETURN_(ESMF_SUCCESS)
     endif
 
