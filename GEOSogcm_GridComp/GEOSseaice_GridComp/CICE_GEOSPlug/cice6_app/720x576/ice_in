@@ -6,7 +6,7 @@
     day_init       = 1
     sec_init       = 0
     istep0         = 0
-    dt             = 900.0
+    dt             = 450
     npt_unit       = '1'
     npt            = 9999999
     ndtd           = 1
@@ -44,7 +44,7 @@
     lonpnt(1)      =  0.
     latpnt(2)      = -65.
     lonpnt(2)      = -45.
-    histfreq       = 'm','x','x','x','x'
+    histfreq       = 'm','d','x','x','x'
     histfreq_n     =  1 , 1 , 1 , 1 , 1
     histfreq_base  = 'zero'
     hist_avg       = .true.
@@ -187,9 +187,9 @@
     dT_mlt          = 1.5
     rsnw_mlt        = 1500.
     kalg            = 0.0
-    sw_redist       = .true.
-    sw_frac         = 0.9d0
-    sw_dtemp        = 0.02d0
+    sw_redist         = .true.
+    sw_frac           = 0.9d0
+    sw_dtemp          = 0.02d0
 /
 
 &ponds_nml
@@ -272,8 +272,8 @@
 
 &domain_nml
     nprocs = -1
-    nx_global         = 1440
-    ny_global         = 1080
+    nx_global         = 720
+    ny_global         = 576
     block_size_x      = -1
     block_size_y      = -1
     max_blocks        = 1
