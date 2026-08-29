@@ -1,5 +1,4 @@
 from f90nml import Namelist
-from gt4py.cartesian.gtscript import int32
 from ndsl import StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.typing import Int
@@ -8,7 +7,6 @@ from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
 
-import pyMoist.constants as constants
 from pyMoist.convection.UW.compute_uwshcu import calc_cumulus_condensate_at_interface
 from pyMoist.convection.UW.config import UWConfiguration
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
@@ -55,20 +53,18 @@ class TranslateCalcCumulusCondensate(TranslateFortranData2Py):
             "rcwp": self.grid.compute_dict(),
             "riwp": self.grid.compute_dict(),
             "rlwp": self.grid.compute_dict(),
-            "testvar3D_1": self.grid.compute_dict(),
-            "testvar3D_2": self.grid.compute_dict(),
-            "testvar3D_3": self.grid.compute_dict(),
         }
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("ComputeUwshcuInv-constants")
+        self.constants["JASON"] = True
 
     def compute(self, inputs):
         config = UWConfiguration(**self.constants)
 
         self.quantity_factory.add_data_dimensions(
             {
-                "ntracers": constants.NCNST,
+                "ntracers": config.NCNST,
             }
         )
 
@@ -144,7 +140,7 @@ class TranslateCalcCumulusCondensate(TranslateFortranData2Py):
         rlwp = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
         safe_assign_array(rlwp.view[:], inputs["rlwp"])
 
-        saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory.backend)
+        saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory)
         self.ese = saturation_vapor_pressure_table.ese
         self.esx = saturation_vapor_pressure_table.esx
 
@@ -185,13 +181,7 @@ class TranslateCalcCumulusCondensate(TranslateFortranData2Py):
         qsten_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         cufrc_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
 
-        testvar3D_1 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        testvar3D_2 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        testvar3D_3 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        # The iteration you want to test
-        iter_test = int32(0)
-
-        # # Call stencils
+        # Call stencils
         self._calc_cumulus_condensate_at_interfaces(
             condensation=condensation,
             krel=krel,
@@ -217,7 +207,6 @@ class TranslateCalcCumulusCondensate(TranslateFortranData2Py):
             rlwp=rlwp,
             riwp=riwp,
             cufrc=cufrc,
-            iteration=iter_test,
             cush=cush,
             umf_out=umf_out,
             dcm_out=dcm_out,
@@ -239,9 +228,6 @@ class TranslateCalcCumulusCondensate(TranslateFortranData2Py):
             vflx_out=vflx_out,
             fer_out=fer_out,
             fdr_out=fdr_out,
-            testvar3D_1=testvar3D_1,
-            testvar3D_2=testvar3D_2,
-            testvar3D_3=testvar3D_3,
         )
 
         return {
@@ -251,7 +237,4 @@ class TranslateCalcCumulusCondensate(TranslateFortranData2Py):
             "rcwp": rcwp.view[:],
             "riwp": riwp.view[:],
             "rlwp": rlwp.view[:],
-            "testvar3D_1": testvar3D_1.view[:],
-            "testvar3D_2": testvar3D_2.view[:],
-            "testvar3D_3": testvar3D_3.view[:],
         }

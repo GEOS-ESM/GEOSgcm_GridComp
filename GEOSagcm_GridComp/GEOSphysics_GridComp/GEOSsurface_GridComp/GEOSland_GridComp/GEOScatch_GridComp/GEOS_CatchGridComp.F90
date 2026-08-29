@@ -3231,7 +3231,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real,   allocatable :: UCN(:)
     real,   allocatable :: TVA(:)
     real,   allocatable :: TVS(:)
-    real,   allocatable :: URA(:)
     real,   allocatable :: UUU(:)
     real,   allocatable :: ZVG(:)
     real,   allocatable :: DZE(:)
@@ -3469,8 +3468,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     allocate(TVA(NT),STAT=STATUS)
     VERIFY_(STATUS)
     allocate(TVS(NT),STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(URA(NT),STAT=STATUS)
     VERIFY_(STATUS)
     allocate(UUU(NT),STAT=STATUS)
     VERIFY_(STATUS)
@@ -3870,7 +3867,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     deallocate(TVA)
     deallocate(TVS)
-    deallocate(URA)
     deallocate(UUU)
     deallocate(ZVG)
     deallocate(DZE)
@@ -5385,7 +5381,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Correction to RDC formulation -Randy Koster, 4/1/2011
 !        RDC = max(VGRDA(VEG)*min(VGRDB(VEG),LAI),0.001)
         RDC = max(VGRDA(VEG)*min(1., LAI/VGRDB(VEG)),0.001)
-        RHO = PS/(MAPL_RGAS*(TA*(1+MAPL_VIREPS*QA)))
+
+        RHO = PS/(MAPL_RGAS*(TA*(1+MAPL_VIREPS*QA)))             ! [kg/m3]
 
 
         !--------------------------------------------------------------------------------------------------------
@@ -5425,11 +5422,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         !
         ! For analytical derivatives, additionally use the following identities:
         !
-        !    virtual TC: TVC = TC*(1 + eps)*QC   [ eps = MAPL_VIREPS ]
-        !    virtual TA: TVA = TA*(1 + eps)*QA
+        !    virtual TC: TVC = TC*(1 + eps*QC)   [ eps = MAPL_VIREPS ]
+        !    virtual TA: TVA = TA*(1 + eps*QA)
         !
         !    delTVC_delQC =  TC*eps
-        !    delTVC_delTC = (1 + eps)
+        !    delTVC_delTC = (1 + eps*QC)
         !
         !    delCQ_delQC = delCQ_delTVC * delTVC_delQC 
         !    delCH_delTC = delCH_delTVC * delTVC_delTC
@@ -5512,6 +5509,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
               
               SHSBT (:,N) = (SH  + DSH  *(TC(:,N)-THATM))*CFT(:,N)
               EVSBT (:,N) = (EVAP+ DEVAP*(QC(:,N)-QHATM))*CFQ(:,N)
+              
               DSHSBT(:,N) =        DSH  *                 CFT(:,N)
               DEVSBT(:,N) =        DEVAP*                 CFQ(:,N)
 
@@ -5546,7 +5544,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            DQS(:,N) = GEOS_DQSAT ( TC(:,N), PS, QSAT=QSAT(:,N), PASCALS=.true., RAMP=0.0 )
            QC (:,N) = min(max(QA(:),QSAT(:,N)),QC(:,N))
            QC (:,N) = max(min(QA(:),QSAT(:,N)),QC(:,N))
-           RA (:,N) = RHO/CH(:,N)
+           RA (:,N) = RHO/CH(:,N)                              ! [ kg/(m3) / (kg/(m2*s)) ] = [ s/m ] 
         end do
 
         QC(:,FSNW) = QSAT(:,FSNW)
@@ -6194,7 +6192,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ALBNF   = ALBNF    *(1.-ASNOW) + SNONF    *ASNOW
         call MAPL_TimerOff(MAPL,"-ALBEDO")
 
-        LWNDSRF = LWDNSRF - HLWUP
+        LWNDSRF = LWDNSRF - HLWUP              ! net = absorbed minus upward  (note: "ND" = "DN" - UP)
 
         ! --------------------------------------------------------------------------
         ! update outputs

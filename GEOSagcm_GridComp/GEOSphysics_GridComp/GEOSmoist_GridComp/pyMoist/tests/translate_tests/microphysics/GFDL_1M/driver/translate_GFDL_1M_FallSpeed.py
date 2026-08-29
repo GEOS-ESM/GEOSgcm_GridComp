@@ -100,10 +100,10 @@ class TranslateGFDL_1M_FallSpeed(TranslateFortranData2Py):
         state.convection_fraction.field[:] = inputs["convection_fraction_fallspeed"][:, :, 0]
 
         code(
-            liquid=driver_locals.dry_air_mixing_ratio.liquid,
-            ice=driver_locals.dry_air_mixing_ratio.ice,
-            snow=driver_locals.dry_air_mixing_ratio.snow,
-            graupel=driver_locals.dry_air_mixing_ratio.graupel,
+            mixing_ratio_liquid=driver_locals.dry_air_mixing_ratio.liquid,
+            mixing_ratio_ice=driver_locals.dry_air_mixing_ratio.ice,
+            mixing_ratio_snow=driver_locals.dry_air_mixing_ratio.snow,
+            mixing_ratio_graupel=driver_locals.dry_air_mixing_ratio.graupel,
             t_unmodified=state.t,
             t=driver_locals.t,
             dz_unmodified=gfdl1m_locals.layer_thickness_negative,

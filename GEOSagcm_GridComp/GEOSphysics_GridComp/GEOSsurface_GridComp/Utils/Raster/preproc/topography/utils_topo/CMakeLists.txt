@@ -7,7 +7,10 @@
 ecbuild_add_executable (TARGET generate_scrip_cube_topo.x SOURCES generate_scrip_cube.F90 geompack.F90)
 target_link_libraries (generate_scrip_cube_topo.x PRIVATE MPI::MPI_Fortran esmf)
 # CMake has an OpenMP issue with NAG Fortran: https://gitlab.kitware.com/cmake/cmake/-/issues/21280
-if (NOT CMAKE_Fortran_COMPILER_ID MATCHES "NAG")
+if (CMAKE_Fortran_COMPILER_ID MATCHES "NAG")
+  # This standalone legacy source uses byte-sized kind selectors (4 and 8).
+  set_source_files_properties (geompack.F90 PROPERTIES COMPILE_OPTIONS "-kind=byte")
+else ()
   target_link_libraries(generate_scrip_cube_topo.x PRIVATE OpenMP::OpenMP_Fortran)
 endif ()
 
