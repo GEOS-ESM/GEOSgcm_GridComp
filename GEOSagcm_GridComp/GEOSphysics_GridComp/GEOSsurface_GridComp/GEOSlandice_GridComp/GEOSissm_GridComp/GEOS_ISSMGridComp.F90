@@ -640,8 +640,9 @@ subroutine SetServices ( GC, RC )
     LANDICE_DT = issm_tile_state%LANDICE_DT
 
     ! get timestep for ISSM
-    call MAPL_GetResource(MAPL, ISSM_DT, Label=trim(COMP_NAME)//"_DT:",DEFAULT=302400.0, _RC)
-
+    call MAPL_GetResource(MAPL, ISSM_DT, Label="ISSM_DT:",DEFAULT=302400.0, _RC)
+    !call MAPL_GetResource(MAPL, ISSM_DT, Label=trim(COMP_NAME)//"_DT:",DEFAULT=302400.0, _RC)
+    
     ! total landice time steps between ISSM runs
     NSTEPS_RING = nint(ISSM_DT/LANDICE_DT)
 
