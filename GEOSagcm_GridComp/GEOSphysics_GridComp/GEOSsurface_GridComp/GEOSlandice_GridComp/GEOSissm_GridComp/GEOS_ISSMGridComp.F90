@@ -48,9 +48,9 @@ subroutine InitializeISSM(expdir, num_elements, num_nodes, comm) bind(c, name="I
   integer(c_int)                  :: comm
 end subroutine InitializeISSM
 
-subroutine RunISSM(ISSM_DT, gcm_forcings, issm_outputs) bind(C,NAME="RunISSM")
+subroutine RunISSM(ISSM_DT_DP, gcm_forcings, issm_outputs) bind(C,NAME="RunISSM")
    import :: c_ptr, c_double
-   real(c_double),   value        :: ISSM_DT
+   real(c_double),   value        :: ISSM_DT_DP
    type(c_ptr),      value        :: gcm_forcings
    type(c_ptr),      value        :: issm_outputs
 end subroutine RunISSM
@@ -336,6 +336,7 @@ subroutine SetServices ( GC, RC )
     type(ESMF_Time)                        :: ringTime                ! time of first ring
     type(ESMF_TimeInterval)                :: ringInterval            ! ring time interval (ISSM_DT)
     real                                   :: ISSM_DT                 ! ISSM time step [s] (ISSM_DT set in AGCM.rc)
+    real(dp)                               :: ISSM_DT_DP              ! double precision of ISSM_DT)
     real                                   :: LANDICE_DT              ! landice time step [s]
     integer                                :: NSTEPS_INIT             ! landice timesteps since last ISSM run
     integer                                :: NSTEPS_RING             ! total landice timesteps between ISSM runs
@@ -641,6 +642,7 @@ subroutine SetServices ( GC, RC )
 
     ! get timestep for ISSM
     call MAPL_GetResource(MAPL, ISSM_DT, Label="ISSM_DT:",DEFAULT=302400.0, _RC)
+    ISSM_DT_DP = real(ISSM_DT,kind=dp) 
     !call MAPL_GetResource(MAPL, ISSM_DT, Label=trim(COMP_NAME)//"_DT:",DEFAULT=302400.0, _RC)
     
     ! total landice time steps between ISSM runs
@@ -752,7 +754,7 @@ subroutine SetServices ( GC, RC )
       ! by running with 'fake' time step with zero forcing
 
       call ESMF_VMBarrier(vm, _RC)
-      call RunISSM(real(ISSM_DT,kind=dp), c_loc(ZEROS), c_loc(GEOS_RESTARTS))
+      call RunISSM(ISSM_DT_DP, c_loc(ZEROS), c_loc(GEOS_RESTARTS))
       call ESMF_VMBarrier(vm, _RC)
 
       ! Unpack restart array
@@ -1054,7 +1056,8 @@ subroutine SetServices ( GC, RC )
 
     ! physical parameters
     real(dp), parameter                  :: rho_ice   = 917.0      ! pure ice density [kg m-3]
-    real(dp)                             :: ISSM_DT                ! time step [s] (ISSM_DT set in AGCM.rc)
+    real                                 :: ISSM_DT                ! time step [s] (ISSM_DT set in AGCM.rc)
+    real(dp)                             :: ISSM_DT_DP             ! double precision of ISSM_DT
 
   ! Get the target components name, mesh and vm
   ! -----------------------------------------------------------
@@ -1089,7 +1092,8 @@ subroutine SetServices ( GC, RC )
       ! *************************************************************************** !
 
       ! get timestep for ISSM
-      call MAPL_GetResource(MAPL, ISSM_DT, Label="ISSM_DT:",DEFAULT=302400.0_dp, _RC)
+      call MAPL_GetResource(MAPL, ISSM_DT, Label="ISSM_DT:",DEFAULT=302400.0, _RC)
+      ISSM_DT_DP = real(ISSM_DT,kind=dp) 
       !call MAPL_GetResource(MAPL, ISSM_DT, Label=trim(COMP_NAME)//"_DT:",DEFAULT=302400.0, _RC)
 
       ! get number of mesh elements
@@ -1160,7 +1164,7 @@ subroutine SetServices ( GC, RC )
 	    call MAPL_TimerOn(MAPL,"ISSMCore" )
 
       ! call run method from ISSM library
-      call RunISSM(ISSM_DT, c_loc(ICESMB_MESH), c_loc(ISSM_OUTPUTS))
+      call RunISSM(ISSM_DT_DP, c_loc(ICESMB_MESH), c_loc(ISSM_OUTPUTS))
 
       call ESMF_VMBarrier(vm, _RC)
 	    call MAPL_TimerOff(MAPL,"ISSMCore" )
