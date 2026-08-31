@@ -322,6 +322,7 @@ contains
   ! ! INITIALIZE:
   
   subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
+    
     type(ESMF_GridComp),     intent(INOUT) :: GC                      ! Gridded component
     type(ESMF_State),        intent(INOUT) :: IMPORT                  ! Import state
     type(ESMF_State),        intent(INOUT) :: EXPORT                  ! Export state
@@ -339,7 +340,7 @@ contains
     type(ESMF_Time)                        :: ringTime                ! time of first ring
     type(ESMF_TimeInterval)                :: ringInterval            ! ring time interval (ISSM_DT)
     real                                   :: ISSM_DT                 ! ISSM time step [s] (ISSM_DT set in AGCM.rc)
-    real(dp)                               :: ISSM_DT_DP              ! double precision of ISSM_DT)
+    real(dp)                               :: ISSM_DT_DP              ! double precision of ISSM_DT
     real                                   :: LANDICE_DT              ! landice time step [s]
     integer                                :: NSTEPS_INIT             ! landice timesteps since last ISSM run
     integer                                :: NSTEPS_RING             ! total landice timesteps between ISSM runs
