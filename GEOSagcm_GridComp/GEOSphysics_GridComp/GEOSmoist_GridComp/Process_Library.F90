@@ -58,7 +58,7 @@ module GEOSmoist_Process_Library
    real, parameter :: aT_ICE_PWR = 4.5     ! Asymmetric S-curve to shield liquid peak
    ! 2. Land Ice (Antarctica / Greenland)
    ! Bias Fix: Widens mixed-phase window and raises PWR to fix the severe polar 
-   ! downward LW deficit (-25 W/mÂ²) and clear lower troposphere cold pools.
+   ! downward LW deficit (-25 W/m²) and clear lower troposphere cold pools.
    real, parameter :: liT_ICE_ALL = 234.16 ! Deep absolute freeze floor lowered to -39C
    real, parameter :: liT_ICE_MAX = 268.15 ! Delays plateau glaciation onset to -5C
    real, parameter :: liT_ICE_PWR = 4.2     ! Highly emissive summer liquid water shield
@@ -271,11 +271,41 @@ module GEOSmoist_Process_Library
   ! option for cloud liq/ice radii
   integer :: LIQ_RADII_PARAM = 1
   integer :: ICE_RADII_PARAM = 1
+  integer, parameter :: nsmx_par =  15
 
   ! defined to determine CNV_FRACTION
   real    :: CNV_FRACTION_MIN =  500.0
   real    :: CNV_FRACTION_MAX = 1500.0
   real    :: CNV_FRACTION_EXP =    1.0
+   
+  real    :: THOM =  MAPL_TICE - 38.0
+  
+  real    :: ICE_AUTO_TSC_CNV, DCS_CNV,  FDROPDUST, FDROPSOOT, FHETSOOT, FHETDUST
+  real    :: ACC_ENH_ICE, ACC_ENH_CNV, AUT_SCALE_CNV, BKG_INP_SC_CNV
+  
+  logical :: DEBUG_GF2M = .FALSE.
+
+    
+  LOGICAL :: USE_CUP_2M_MOISTURE = .FALSE. ! use explicit 2M micropgysics in each plume DONIF
+ 
+  logical :: GF2M_USE_CORRECTOR = .true.
+
+  integer :: GF2M_W_OPTION        = 2
+  integer :: GF2M_PLIQ_EFF_OPTION = 1
+
+  real :: GF2M_DET_SCALE     = 1.0
+  real :: GF2M_C1D_SCALE     = 1.0
+  real :: GF2M_TOP_DET_SCALE = 1.0
+  logical :: GF2M_DET_LEVEL_AVERAGE = .TRUE.
+  
+  real    :: GF2M_HOM_NEW_ICE_DIAM = 40.0e-6
+  logical :: GF2M_ACTIVATE_ABOVE_CLOUD_BASE = .false.
+   
+  real :: GF2M_MIXED_PHASE_ICE_ONSET_T = 258.15
+ 
+  ! Storage of aerosol properties for activation
+  !type(AerPropsNew) :: AeroPropsNew(nsmx_par)
+  !type(AerProps), allocatable, dimension (:,:,:) :: AeroProps
 
   ! Tracer Bundle things for convection
   type CNV_Tracer_Type
@@ -300,14 +330,39 @@ module GEOSmoist_Process_Library
   public :: DEBUG_TQ_ERRORS
 
   public :: WSUB_OPTION, PDFSHAPE
-  public :: CNV_Tracer_Type, CNV_Tracers, CNV_Tracers_Init
+
+
+  type :: AerPropsNew
+      integer :: nmods  ! total number of modes (nmods<nmodmax)
+      real, dimension(:,:,:), allocatable :: num !Num conc m-3
+      real, dimension(:,:,:), allocatable :: dpg !dry Geometric size, m
+      real, dimension(:,:,:), allocatable :: sig  !logarithm (base e) of the dry geometric disp
+      real, dimension(:,:,:), allocatable :: den  !dry density , Kg m-3
+      real, dimension(:,:,:), allocatable :: kap !Hygroscopicity parameter
+      real, dimension(:,:,:), allocatable :: fdust! mass fraction of dust
+      real, dimension(:,:,:), allocatable :: fsoot ! mass fraction of soot
+      real, dimension(:,:,:), allocatable :: forg ! mass fraction of organics
+  end type AerPropsNew
+
+  ! Storage of aerosol properties for activation
+ type(AerPropsNew) :: AeroPropsNew(nsmx_par)
+
+
+  interface assignment (=)
+      module procedure copy_AerProp
+  end interface
+  public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, BUOYANCY2, ANVIL_EVAP_SUBL3
+
   public :: USE_BERGERON, USE_AEROSOL_NN, USE_NCLOUD_CLIM
   public :: RAW_MODIS_POLYNOMIAL, JASON_ICE_POLYNOMIAL, V12_ICE_POLYNOMIAL
   public :: ICE_FRACTION_POLYNOMIAL
   public :: SRF_TYPE_OCEAN, SRF_TYPE_LAND, SRF_TYPE_SNOW, SRF_TYPE_ICE, SRF_TYPE_LANDICE
-  public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, BUOYANCY2
+
+  public :: AerPropsNew, copy_AerProp, init_AerProp
+  public :: AeroPropsNew
+  public :: CNV_Tracer_Type, CNV_Tracers, CNV_Tracers_Init
   public :: REDISTRIBUTE_CLOUDS_SCALAR, REDISTRIBUTE_CLOUDS, RADCOUPLE_SCALE_AWARE, RADCOUPLE, FIX_UP_CLOUDS
-  public :: hystpdf, fix_up_clouds_2M
+  public :: hystpdf, fix_up_clouds_2M, hystpdf_2M
   public :: FILLQ2ZERO
   public :: MELTFRZ
   public :: DIAGNOSE_PRECIP_TYPE
@@ -326,17 +381,66 @@ module GEOSmoist_Process_Library
   public :: sigma
   public :: smooth_cloud_binary
   public :: pdf_alpha
+  public :: pfreezing
   public :: get_fac_eis
   public :: neg_adj_external
   public :: compute_sgs_vvel
   public :: cf_geom_correction
+
+  public :: USE_CUP_2M_MOISTURE, ICE_AUTO_TSC_CNV, DCS_CNV, DEBUG_GF2M, AUT_SCALE_CNV
+  public :: FDROPDUST, FDROPSOOT, FHETSOOT, FHETDUST, ACC_ENH_ICE, ACC_ENH_CNV
+  public :: erfapp
+  public :: GF2M_USE_CORRECTOR
+  public :: GF2M_W_OPTION
+  public :: GF2M_PLIQ_EFF_OPTION
+  public :: GF2M_DET_SCALE
+  public :: GF2M_C1D_SCALE
+  public :: GF2M_TOP_DET_SCALE, GF2M_DET_LEVEL_AVERAGE
+  public :: BKG_INP_SC_CNV
+  public :: GF2M_HOM_NEW_ICE_DIAM
+  public :: GF2M_ACTIVATE_ABOVE_CLOUD_BASE
+  public :: GF2M_MIXED_PHASE_ICE_ONSET_T
+
+
   public :: compute_radar_diagnostics
   public :: init_refl10cm, calc_refl10cm
   public :: refl10cm_allow_wet_graupel, refl10cm_allow_wet_snow
   public :: DBZ_VAR_INTERCP, DBZ_LIQUID_SKIN
   public :: LIQUID_SKIN_SNOW, LIQUID_SKIN_GRAUPEL, LIQUID_SKIN_HAIL
   
+
   contains
+
+  !=========Aerosol properties utilities
+   subroutine copy_AerProp(a,b)
+      type (AerPropsNew), intent(out) :: a
+      type (AerPropsNew), intent(in) :: b
+      a%num= b%num
+      a%sig = b%sig
+      a%dpg = b%dpg
+      a%kap = b%kap
+      a%den = b%den
+      a%fdust = b%fdust
+      a%fsoot = b%fsoot
+      a%forg= b%forg
+      a%nmods =  b%nmods
+   end subroutine copy_AerProp
+
+  subroutine init_AerProp(aerout)
+
+    type (AerPropsNew), intent(inout) :: aerout
+        aerout%num = 0.0
+	   aerout%dpg =  1.0e-9
+	   aerout%sig =  2.0
+	   aerout%kap =  0.2
+	   aerout%den = 2200.0
+	   aerout%fdust  =  0.0
+       aerout%fsoot  =  0.0
+	   aerout%forg   =  0.0
+	   aerout%nmods = 1
+   end subroutine init_AerProp
+	!========================
+
 
   subroutine CNV_Tracers_Init(TR, RC)
     type (ESMF_FieldBundle), intent(inout) :: TR
@@ -2708,7 +2812,7 @@ module GEOSmoist_Process_Library
 
          ! Apply sub-grid ice supersaturation scaling if requested
          if (present(SC_ICE)) then
-            scice = min(max(SC_ICE, 1.0), 1.7)
+            scice = min(max(SC_ICE, 1.0), 1.8)
             qsnx  = qs_env * scice
             if ((qc_ice_env >= 0.0) .and. (qs_env > qt_env)) qs_env = qsnx
          end if
@@ -2878,7 +2982,7 @@ module GEOSmoist_Process_Library
       real,    intent(out) :: ALPHA
       real,    intent(in)  :: FRLAND
       real,    intent(in)  :: MINRHCRIT, TURNRHCRIT, EIS, TURNRHCRIT_UPPER, MIN_EIS, DST, TMAXLL, RHC_SC
-      integer, intent(in)  :: RHC_OPTION !0-Slingo(1985), 1-QUAAS (2012)
+      integer, intent(in)  :: RHC_OPTION !0-Slingo(1985), 1-QUAAS (2012),  2-Wang et.al. (2025)
       real :: dw_land = 0.20 !< base value for subgrid deviation / variability over land
       real :: dw_ocean = 0.10 !< base value for ocean
       real :: sloperhcrit =20.
@@ -2925,13 +3029,38 @@ module GEOSmoist_Process_Library
            ALPHA =  1.-RHC*aux1
 
 
-       ELSE
+       ELSE IF (RHC_OPTION < 2) THEN
            ! based on Quass 2012 https://doi.org/10.1029/2012JD017495
              if (EIS > 5.0) then ! Stable
                 ALPHA = 1.0 - ((1.0-dw_land ) + (0.99 - (1.0-dw_land ))*exp(1.0-(P_LM/PP)**2))
              else ! Unstable
                 ALPHA = 1.0 - ((1.0-dw_ocean) + (0.99 - (1.0-dw_ocean))*exp(1.0-(P_LM/PP)**4))
              endif
+       
+       ELSE 
+       
+       !Temperature-based formula from Wang et al. (2025) https://www.sciencedirect.com/science/article/pii/S0169809525002753
+       
+       	RHC =  0.01*(-2.167446e4 + 3.430437e2*TEMP - 2.009108*TEMP*TEMP + 5.182194e-3*TEMP*TEMP*TEMP -4.969437e-6*TEMP*TEMP*TEMP*TEMP) 
+         
+        RHC =  max(RHC, 0.4)
+        RHC =  min(RHC, 0.99)
+        
+        
+        
+         
+         
+         if (TURNRHCRIT_UPPER .gt. 0.0) then
+          	 aux2 = min(max((TURNRHCRIT_UPPER - pp)/sloperhcrit, -20.0), 20.0)
+             aux2= 1.0/(1.0+exp(aux2)) !this function reverses the profile P< TURNRHCRIT_UPPER
+         else
+           aux2=1.0
+         end if
+         
+         ALPHA =  (1.-RHC)*aux2
+           
+        
+              
        END IF
 
    end subroutine pdf_alpha
@@ -3110,6 +3239,8 @@ module GEOSmoist_Process_Library
 
    end subroutine Bergeron_Partition
 
+
+!================================================
    subroutine MELTFRZ_3D ( DT, CNVFRC, SRFTYPE, TE, QL, QI )
       real, intent(in   ) :: DT, CNVFRC(:,:),SRFTYPE(:,:)
       real, intent(inout) :: TE(:,:,:), QL(:,:,:), QI(:,:,:)
@@ -4120,124 +4251,352 @@ module GEOSmoist_Process_Library
 
   end SUBROUTINE  dissipative_ke_heating
 
+    !+---+-----------------------------------------------------------------+
+    ! Diagnostic post-microphysics cloud-fraction update.
+    !
+    ! This routine does NOT invert the PDF and does NOT alter the
+    ! thermodynamic or microphysical state.  It evaluates the same assumed
+    ! PDF in forward mode using the post-microphysics QV, condensate, and T,
+    ! then updates only the resolved/environmental cloud fraction CF.
+    !
+    ! AF is the parameterized/anvil cloud fraction and is intentionally held
+    ! fixed. Only resolved condensate QCl + QCi belongs to the environmental PDF.
+    !+---+-----------------------------------------------------------------+
+    subroutine update_cld( &
+             ALPHA       , &
+             PDFFLAG     , &
+             CNVFRC      , &
+             SRFTYPE     , &
+             PL          , &
+             QV          , &
+             QCl         , &
+             QCi         , &
+             TE          , &
+             CF          , &
+             AF          , &
+             SCICE       , &
+             ZL          , &
+             WHL         , &
+             WQT         , &
+             HL2         , &
+             QT2         , &
+             HLQT        , &
+             W3          , &
+             W2bar       , &
+             QT3         , &
+             HL3         , &
+             PDF_A       )
 
+       implicit none
 
+       !-------------------------------------------------------------------
+       ! Arguments
+       !-------------------------------------------------------------------
+       real,    intent(in)    :: ALPHA
+       integer, intent(in)    :: PDFFLAG
+       real,    intent(in)    :: CNVFRC
+       real,    intent(in)    :: SRFTYPE
+       real,    intent(in)    :: PL
 
+       real, intent(in)    :: QV
+       real, intent(in)    :: QCl
+       real, intent(in)    :: QCi
+       real, intent(in)    :: TE
+       real, intent(inout) :: CF
+       real, intent(in)    :: AF
+       real, intent(in)    :: SCICE
 
-!+---+-----------------------------------------------------------------+
+       real, intent(in) :: ZL
+       real, intent(in) :: WHL
+       real, intent(in) :: WQT
+       real, intent(in) :: HL2
+       real, intent(in) :: QT2
+       real, intent(in) :: HLQT
+       real, intent(in) :: W3
+       real, intent(in) :: W2bar
+       real, intent(in) :: QT3
+       real, intent(in) :: HL3
+       real, intent(in) :: PDF_A
 
-subroutine update_cld( &
-         DT          , &
-         ALPHA       , &
-         PDFFLAG     , &
-         CNVFRC      , &
-         SRFTYPE     , &
-         PL          , &
-         QV          , &
-         QCl         , &
-         QAl         , &
-         QCi         , &
-         QAi         , &
-         TE          , &
-         CF          , &
-         AF          , &
-         SCICE       , &
-         NI          , &
-         NL          , &
-         RHcmicro)
+       !-------------------------------------------------------------------
+       ! Environmental state
+       !-------------------------------------------------------------------
+       real :: env_frac
+       real :: inv_env_frac
+       real :: cf_env
+       real :: qc_env
+       real :: qc_ice_env
+       real :: qv_env
+       real :: qt_env
 
-      real, intent(in)    :: DT,ALPHA,PL,CNVFRC,SRFTYPE
-      integer, intent(in) :: pdfflag
-      real, intent(inout) :: TE,QV,QCl,QCi,CF,QAl,QAi,AF,SCICE,NI,NL,RHCmicro
+       !-------------------------------------------------------------------
+       ! Saturation threshold and PDF widths
+       !-------------------------------------------------------------------
+       real :: alpha_use
+       real :: qs_sat
+       real :: dqs_sat
+       real :: qs_ice
+       real :: dqs_ice
+       real :: qs_thr
+       real :: dqs_thr
+       real :: scice_use
+       real :: sigmaqt1
+       real :: sigmaqt2
+       real :: sigma_ln
+       real :: mu_ln
 
-      ! internal arrays
-      real :: CFO
-      real :: QT
+       logical :: scice_enabled
+       logical :: ice_active
+       logical :: use_ice_pdf_threshold
 
-      real :: QSx,DQsx
+       !-------------------------------------------------------------------
+       ! Double-Gaussian working variables
+       !-------------------------------------------------------------------
+       real :: pdf_a_work
+       real :: qc_pdf
+       real :: wqc_dummy
+       real :: wthv_dummy
+       real :: fQi
+       real :: alhxbcp
+       real :: hl_env
+       real :: exner
+       real :: beta
+       real :: rwqt
+       real :: rwhl
+       real :: rhlqt
+       real :: t1
+       real :: t2
+       real :: sigt1
+       real :: sigt2
+       real :: q1
+       real :: q2
+       real :: w1
+       real :: w2
+       real :: sigw1
+       real :: sigw2
 
-      real :: QCx, QC, QA
+    #ifdef PDFDIAG
+       ! partition_dblgss requires these arguments when PDFDIAG is enabled.
+       ! They are intentionally local because this routine is diagnostic only.
+       real :: pdf_sigw1_dummy
+       real :: pdf_sigw2_dummy
+       real :: pdf_w1_dummy
+       real :: pdf_w2_dummy
+       real :: pdf_sighl1_dummy
+       real :: pdf_sighl2_dummy
+       real :: pdf_hl1_dummy
+       real :: pdf_hl2_dummy
+       real :: pdf_sigqt1_dummy
+       real :: pdf_sigqt2_dummy
+       real :: pdf_qt1_dummy
+       real :: pdf_qt2_dummy
+       real :: pdf_rhlqt_dummy
+       real :: pdf_rwhl_dummy
+       real :: pdf_rwqt_dummy
+    #endif
 
-      real :: QX, QSLIQ, QSICE, CFALL, DQx, FQA, DELQ
+       real, parameter :: CLD_QABS_MIN = 1.0e-12
+       real, parameter :: SQRT_TWO     = 1.4142135623730951
 
-      real :: SHOM
-      real :: maxalpha =  0.4
+     
+       !===================================================================
+       ! 1. Isolate the environmental region outside the anvil/parameterized
+       !    cloud fraction AF.
+       !===================================================================
+       env_frac = max(1.0 - AF, 0.0)
 
-
-    !  maxalpha=1.0-minrhcrit
-
-      QC = QCl + QCi
-      QA = QAl + QAi
-      QT  =  QC  + QA + QV  !Total water after microphysics
-      CFALL  = AF+CF
-      FQA = 0.0
-      if (QA+QC .gt. tiny(1.0))  FQA=QA/(QA+QC)
-
-      SHOM=2.349-(TE/259.0) !hom threeshold Si according to Ren & McKenzie, 2005
-
-      !================================================
-      ! First find the cloud fraction that would correspond to the current condensate
-      QSLIQ  = GEOS_QsatLQU( TE, PL*100.0 , DQ=DQx )
-      QSICE  = GEOS_QsatICE( TE, PL*100.0 , DQ=DQX )
-
-
-      IF (QCl + QAl .gt. 0.) then
-        QSx =  QSLIQ
-      ELSEIF (QCi + QAi.gt. 0.) then
-        QSx =  QSICE
-      ELSE
-		 DQSx  = GEOS_DQSAT( TE, PL, QSAT=QSx )
-      end if
-
-      if (TE .gt. 240.0)   SCICE = 1.0
-      QCx=QC+QA
-      QX=QT-QSx*SCICE
-      CFo=0.
-
-      !====== recalculate QX if too low and SCICE<SHOM
-        if ((QX .gt. QCx) .and. (QCx .gt. 0.0)) then
-           QX=QT-QSx*SHOM
+       if (env_frac <= CLD_QABS_MIN) then
+          ! No environmental area remains for resolved cloud.
+          CF = 0.0
+          return
        end if
 
-      !=======================
+       inv_env_frac = 1.0/env_frac
 
-     DELQ=max(min(2.0*maxalpha*QSx, 0.5*QT), 1.0e-12)
+       ! Retain the incoming environmental cloud fraction as a safe fallback
+       ! for an unsupported PDFFLAG.
+       cf_env = min(max(CF*inv_env_frac, 0.0), 1.0)
 
-      if  ((QX .le. QCx)  .and. (QCx .gt. tiny(1.0)))  then
-         CFo =  (1.0+SQRT(1.0-(QX/QCx)))
-         if (CFo .gt. 1.e-6) then
-            CFo = min(1.0/CFo, 1.0)
-            DELQ=  2.0*QCx/(CFo*CFo)
-         else
-            CFo = 0.0
-         end if
-      elseif (QCx .gt. tiny(1.0)) then
-         !   CFo = 1.0  !Outside of distribution but still with condensate
-        DELQ=max(min(2.0*maxalpha*QSx, 0.5*QT), 1.0e-12)
-        CFo = SQRT(2.0*QCx/DELQ)
-      else
-        CFo = 0.0
-      end if
+       ! Only resolved condensate belongs to the environmental PDF.
+       qc_env     = max(QCl + QCi, 0.0)*inv_env_frac
+       qc_ice_env = max(QCi,       0.0)*inv_env_frac
 
-      if  (QSx .gt. tiny(1.0)) then
-         RHCmicro = SCICE - 0.5*DELQ/Qsx
-      else
-         RHCmicro = 1.0-ALPHA
-      end if
+       ! GEOS_DQSAT expects pressure in hPa.
+       dqs_sat = GEOS_DQSAT(TE, PL, QSAT=qs_sat)
+       qs_sat  = max(qs_sat, CLD_QABS_MIN)
 
-      RHCmicro =  max(min(RHCmicro, 0.99), 0.6)
+       ! vapor assigned to AF is assumed saturated at the
+       ! grid-mean temperature, and the remainder defines environmental vapor.
+       qv_env = (QV - qs_sat*AF)*inv_env_frac
+       qt_env = qv_env + qc_env
 
-      CFALL   = max(CFo, 0.0)
-      CFALL   = min(CFo, 1.0)
+       !===================================================================
+       ! 2. Select the condensation threshold.
+       !
+       !    SCICE=1, absent ice activation, or T>=THOM:
+       !       legacy saturation threshold.
+       !
+       !    SCICE>1 and T<THOM:
+       !       no resolved ice -> SCICE*QSICE nucleation threshold
+       !       resolved ice    -> QSICE maintenance threshold
+       !===================================================================
+       qs_thr  = qs_sat
+       dqs_thr = dqs_sat
 
-      CF=CFALL*(1.0-FQA)
-      AF=CFALL*FQA
+       scice_use     = min(max(SCICE, 1.0), 1.7)
+       scice_enabled = scice_use > 1.0
+       ice_active    = qc_ice_env > QCMIN
+
+       use_ice_pdf_threshold = .false.
+
+       if (scice_enabled .and. TE < THOM) then
+          ! GEOS_QsatICE expects pressure in Pa.
+          qs_ice = GEOS_QsatICE(TE, PL*100.0, DQ=dqs_ice)
+          qs_ice = max(qs_ice, CLD_QABS_MIN)
+
+          use_ice_pdf_threshold = .true.
+
+          if (ice_active) then
+             ! Existing ice is maintained at ice saturation.
+             qs_thr  = qs_ice
+             dqs_thr = dqs_ice
+          else
+             ! New ice requires the elevated nucleation threshold.
+             qs_thr  = scice_use*qs_ice
+             dqs_thr = scice_use*dqs_ice
+          end if
+       end if
+
+       ! The PDF width is based on ordinary saturation, not SCICE*QSICE.
+       alpha_use = max(ALPHA, 0.0)
+
+       !===================================================================
+       ! 3. Forward diagnostic cloud-fraction calculation
+       !===================================================================
+       select case (PDFFLAG)
+
+       case (0, 1)
+          ! Uniform/top-hat PDF.  PDFFLAG=0 is accepted as an alias because
+          ! some calling code refers to the uniform case as shape zero.
+          sigmaqt1 = alpha_use*qs_sat
+
+          call pdffrac( 1, qt_env, sigmaqt1, sigmaqt1, qs_thr, cf_env )
+
+       case (2)
+          ! Symmetric triangular PDF.
+          sigmaqt1 = alpha_use*qs_sat
+          sigmaqt2 = sigmaqt1
+
+          call pdffrac( 2, qt_env, sigmaqt1, sigmaqt2, qs_thr, cf_env )
+
+       case (3)
+          ! Gaussian total-water PDF.  This explicit expression is supplied
+          ! because the current pdffrac helper only implements shapes 1 and 2.
+          sigmaqt1 = alpha_use*qs_sat
+
+          if (sigmaqt1 > CLD_QABS_MIN) then
+             cf_env = 0.5*erfc( &
+                  (qs_thr - qt_env)/(SQRT_TWO*sigmaqt1) )
+          else if (qt_env >= qs_thr) then
+             cf_env = 1.0
+          else
+             cf_env = 0.0
+          end if
+
+       case (4)
+          ! Lognormal total-water PDF, with QT_ENV interpreted as its
+          ! arithmetic mean and sigma_ln 
+          sigma_ln = max(alpha_use/sqrt(3.0), 0.001)
+
+          if (qs_thr <= 0.0) then
+             cf_env = 1.0
+          else if (qt_env <= CLD_QABS_MIN) then
+             cf_env = 0.0
+          else
+             mu_ln = log(qt_env) - 0.5*sigma_ln*sigma_ln
+             cf_env = 0.5*erfc( &
+                  (log(qs_thr) - mu_ln)/(SQRT_TWO*sigma_ln) )
+          end if
+
+       case (5)
+          ! Full legacy double-Gaussian forward operator.  All state-changing
+          ! outputs are directed to local work variables and discarded.
+          fQi     = ice_fraction(TE, CNVFRC, SRFTYPE)
+          alhxbcp = (1.0-fQi)*alhlbcp + fQi*alhsbcp
+          hl_env  = TE + gravbcp*ZL - alhxbcp*qc_env
+
+          qc_pdf     = qc_env
+          pdf_a_work = PDF_A
+          wthv_dummy = 0.0
+          wqc_dummy  = 0.0
+
+          call partition_dblgss( &
+               fQi, TE, qv_env, qc_pdf, qs_thr, 0.0, ZL, PL*100.0, &
+               qt_env, hl_env, WHL, WQT, HL2, QT2, HLQT, W3,      &
+               W2bar, QT3, HL3, pdf_a_work, wthv_dummy,            &
+               wqc_dummy, cf_env &
+    #ifdef PDFDIAG
+               , pdf_sigw1_dummy, pdf_sigw2_dummy,                 &
+               pdf_w1_dummy, pdf_w2_dummy,                         &
+               pdf_sighl1_dummy, pdf_sighl2_dummy,                 &
+               pdf_hl1_dummy, pdf_hl2_dummy,                       &
+               pdf_sigqt1_dummy, pdf_sigqt2_dummy,                 &
+               pdf_qt1_dummy, pdf_qt2_dummy,                       &
+               pdf_rhlqt_dummy, pdf_rwhl_dummy, pdf_rwqt_dummy     &
+    #endif
+               )
+
+       case (6)
+          ! Analytic double-Gaussian forward operator.  PDF moments are held
+          ! fixed; only the post-microphysics mean state has changed.
+          exner = (PL/1.0e3)**MAPL_KAPPA
+
+          call precalc_dblgss( &
+               PDF_A, WQT, WHL, TE, HL2, HL3, QT2, QT3, W2bar, W3, &
+               beta, rwqt, rwhl, rhlqt, t1, t2, sigt1, sigt2,     &
+               q1, q2, sigmaqt1, sigmaqt2, w1, w2, sigw1, sigw2 )
+
+          qc_pdf    = qc_env
+          wqc_dummy = 0.0
+
+          if (use_ice_pdf_threshold .or. &
+              qt_env + q2 + 2.0*sigmaqt2 > qs_thr) then
+
+             ! The ice-threshold path evaluates the complete double-Gaussian
+             ! mixture. Otherwise, retain the legacy component-2 two-sigma gate.
+             call partition_dblgss2( &
+                  exner, PDF_A, beta, rwqt, rwhl, rhlqt,           &
+                  t1, t2, sigt1, sigt2, qt_env, q1, q2,           &
+                  sigmaqt1, sigmaqt2, w1, w2, sigw1, sigw2,       &
+                  qs_thr, dqs_thr, qc_pdf, cf_env, wqc_dummy )
+
+          else
+             qc_pdf    = 0.0
+             cf_env    = 0.0
+             wqc_dummy = 0.0
+          end if
+
+       case default
+          ! Unsupported PDF: retain the incoming environmental cloud fraction.
+          ! This is safer than returning an uninitialized or arbitrary value.
+
+       end select
+
+       !===================================================================
+       ! 4. Return only resolved cloud fraction.
+       !
+       ! AF and all prognostic variables are unchanged.  Scaling by the
+       ! available environmental area guarantees CF + AF <= 1.
+       !===================================================================
+       cf_env = min(max(cf_env, 0.0), 1.0)
+       CF     = cf_env*env_frac
+
+    end subroutine update_cld
 
 
-   end subroutine update_cld
 
 
-
+!==========================================================
 
    subroutine meltfrz_inst2M  ( IM, JM, LM,    &
          TE       , &
@@ -5429,6 +5788,1088 @@ enddo
 enddo
 
 end subroutine compute_sgs_vvel
+
+
+!*************************************************************
+! Error function wrapper.
+!
+! Uses intrinsic erf when available and enabled at compile time:
+!   add -DHAVE_INTRINSIC_ERF to CPP/FPP flags.
+!
+! Otherwise uses Winitzki-style approximation.
+!*************************************************************
+real function ERFAPP(x)
+
+  implicit none
+
+  real, intent(in) :: x
+
+#ifdef HAVE_INTRINSIC_ERF
+
+  intrinsic :: erf
+
+  ERFAPP = erf(x)
+
+#else
+
+  real*8 :: xx, arg
+
+  xx = x * x
+
+  arg = xx * (1.27324d0 + 0.147d0 * xx) / &
+             (1.0d0     + 0.147d0 * xx)
+
+  ERFAPP = sqrt(max(0.0d0, 1.0d0 - exp(-arg)))
+
+  if (x < 0.0d0) ERFAPP = -ERFAPP
+
+#endif
+
+end function ERFAPP
+
+!=============================================
+
+subroutine hystpdf_2M( &
+      DT, ALPHA, PDFSHAPE, CNVFRC, SRF_TYPE, PL, ZL, QV, QLLS, QLCN, &
+      QILS, QICN, TE, CLLS, CLCN, NL, NI, WHL, WQT, HL2, QT2, HLQT, W3, &
+      W2bar, QT3, HL3, PDF_A, PDFITERS, &
+#ifdef PDFDIAG
+      PDF_SIGW1, PDF_SIGW2, PDF_W1, PDF_W2, PDF_SIGHL1, PDF_SIGHL2, &
+      PDF_HL1, PDF_HL2, PDF_SIGQT1, PDF_SIGQT2, PDF_QT1, PDF_QT2, &
+      PDF_RHLQT, PDF_RWHL, PDF_RWQT, &
+#endif
+      WTHV2, WQC, needs_preexisting, USE_BERGERON, SC_ICE )
+
+   ! --- Arguments ---
+   real,    intent(in)    :: DT, ALPHA, PL, ZL, NL, NI, CNVFRC, SRF_TYPE
+   integer, intent(in)    :: PDFSHAPE
+   real,    intent(in)    :: WHL, WQT, HL2, QT2, HLQT, W3, W2bar, QT3, HL3
+   real,    intent(inout) :: TE, QV, QLLS, QILS, CLLS, QLCN, QICN, CLCN, PDF_A
+   logical, intent(in)    :: needs_preexisting, USE_BERGERON
+   real,    optional, intent(in) :: SC_ICE
+   real,    intent(out)   :: WTHV2, WQC, PDFITERS
+#ifdef PDFDIAG
+   real,    intent(out)   :: PDF_SIGW1, PDF_SIGW2, PDF_W1, PDF_W2, &
+                             PDF_SIGHL1, PDF_SIGHL2, PDF_HL1, PDF_HL2, &
+                             PDF_SIGQT1, PDF_SIGQT2, PDF_QT1, PDF_QT2, &
+                             PDF_RHLQT, PDF_RWHL, PDF_RWQT
+#endif
+
+   ! --- Internal variables ---
+   real :: inv_env_frac, cf_env, qc_env, qv_env, t_env, qs_env
+   real :: qc_old, qv_old, t_old, cf_old, qc_old_0
+   real :: qc_ice_env, qt_env, hl_env, dqs, qsx, qsnx, scice, fQi
+   real :: qs_sat, qs_thr, dqs_sat, dqs_thr
+   real :: qs_ice, dqs_ice
+
+   real :: dq_ice, dq_liq, dq_call, qc_excess, n_fac, nl_v, ni_v
+   real :: alhxbcp, sigmaqt1, sigmaqt2
+   real :: exner, thv, bastoeps, beta, rwqt, rwhl, rhlqt
+   real :: t1, t2, sigt1, sigt2, q1, q2, w1, w2, sigw1, sigw2
+
+   logical :: scice_enabled
+   logical :: ice_active
+   logical :: use_ice_nucleation_threshold
+   logical :: use_ice_pdf_threshold
+   logical :: nucleated_this_iter
+
+   integer :: n, nmax
+   character*(10) :: Iam = 'Process_Library:hystpdf'
+
+
+   ! =======================================================================
+   ! PHASE 1: Setup and environmental isolation
+   ! =======================================================================
+   inv_env_frac = 0.0
+   if (CLCN < 1.0) inv_env_frac = 1.0 / (1.0 - CLCN)
+
+   cf_env     = CLLS          * inv_env_frac
+   qc_env     = (QLLS + QILS) * inv_env_frac
+   qc_ice_env = QILS          * inv_env_frac
+   t_env      = TE
+
+   ! GEOS_DQSAT expects pressure in hPa.
+   dqs    = GEOS_DQSAT(t_env, PL, QSAT=qsx)
+   qv_env = (QV - qsx*CLCN) * inv_env_frac
+
+   qt_env = qc_env + qv_env
+
+   ! SC_ICE=1 follows the legacy path exactly.
+   scice = 1.0
+   if (present(SC_ICE)) scice = min(max(SC_ICE, 1.0), 1.8)
+
+   scice_enabled = scice > 1.0
+
+   ! Resolved environmental ice controls the hysteresis state.
+   ! QICN is outside the environmental fraction solved here.
+   ice_active = qc_ice_env > QCMIN
+
+   ! =======================================================================
+   ! PHASE 2: Precalculate double-Gaussian PDF
+   ! =======================================================================
+   if (PDFSHAPE == 6) then
+      exner = (PL / 1.e3)**MAPL_KAPPA
+
+      call precalc_dblgss( PDF_A, WQT, WHL, t_env, HL2, HL3, QT2, QT3, &
+                           W2bar, W3, beta, rwqt, rwhl, rhlqt, t1, t2, &
+                           sigt1, sigt2, q1, q2, sigmaqt1, sigmaqt2,   &
+                           w1, w2, sigw1, sigw2 )
+
+#ifdef PDFDIAG
+      PDF_SIGW1  = sigw1
+      PDF_SIGW2  = sigw2
+      PDF_W1     = w1
+      PDF_W2     = w2
+      PDF_SIGHL1 = sigt1
+      PDF_SIGHL2 = sigt2
+      PDF_HL1    = TE + gravbcp*ZL - alhxbcp*qc_env + t1
+      PDF_HL2    = TE + gravbcp*ZL - alhxbcp*qc_env + t2
+      PDF_SIGQT1 = sigmaqt1
+      PDF_SIGQT2 = sigmaqt2
+      PDF_QT1    = qt_env + q1
+      PDF_QT2    = qt_env + q2
+      PDF_RHLQT  = rhlqt
+      PDF_RWHL   = rwhl
+      PDF_RWQT   = rwqt
+#endif
+   end if
+
+   ! =======================================================================
+   ! PHASE 3: Iteration to thermodynamic equilibrium
+   ! =======================================================================
+   nmax = 20
+
+   qc_old_0 = qc_env
+
+   do n = 1, nmax
+
+      qv_old = qv_env
+      qc_old = qc_env
+      cf_old = cf_env
+      t_old  = t_env
+
+      nucleated_this_iter          = .false.
+      use_ice_nucleation_threshold = .false.
+      use_ice_pdf_threshold        = .false.
+
+      ! Legacy saturation. This remains the default and determines PDF width.
+      ! GEOS_DQSAT expects pressure in hPa.
+      dqs_sat = GEOS_DQSAT(t_env, PL, QSAT=qs_sat)
+
+      qs_thr  = qs_sat
+      dqs_thr = dqs_sat
+
+      ! Activate the ice criterion only below homogeneous freezing and only
+      ! when SC_ICE is explicitly greater than one.
+      !
+      ! Before nucleation:
+      !
+      !     QT > SC_ICE * QS_ICE
+      !
+      ! After nucleation or with preexisting resolved ice:
+      !
+      !     QT > QS_ICE
+      !
+      if (scice_enabled .and. t_env < THOM) then
+
+         ! GEOS_QsatICE expects pressure in Pa.
+         qs_ice = GEOS_QsatICE(t_env, PL*100.0, DQ=dqs_ice)
+
+         use_ice_pdf_threshold = .true.
+
+         if (ice_active) then
+            ! Maintenance threshold.
+            qs_thr  = qs_ice
+            dqs_thr = dqs_ice
+         else
+            ! Nucleation threshold.
+            qs_thr  = scice * qs_ice
+            dqs_thr = scice * dqs_ice
+
+            use_ice_nucleation_threshold = .true.
+         end if
+      end if
+
+      qs_env = qs_thr
+      dqs    = dqs_thr
+
+      ! SC_ICE and QS_ICE do not alter the PDF width.
+      if (PDFSHAPE < 3) then
+         sigmaqt1 = ALPHA * qs_sat
+         sigmaqt2 = ALPHA * qs_sat
+
+      elseif (PDFSHAPE == 4) then
+         sigmaqt1 = max(ALPHA/sqrt(3.0), 0.001)
+      end if
+
+      ! --------------------------------------------------------------------
+      ! Diagnose environmental cloud fraction and condensate
+      ! --------------------------------------------------------------------
+      if (PDFSHAPE < 5) then
+
+         call pdffrac( PDFSHAPE, qt_env, sigmaqt1, sigmaqt2, &
+                       qs_env, cf_env )
+
+         call pdfcondensate( PDFSHAPE, qt_env, sigmaqt1, sigmaqt2, &
+                             qs_env, qc_env )
+
+      elseif (PDFSHAPE == 5) then
+
+         ! Left internally unchanged.
+         fQi     = ice_fraction(t_env, CNVFRC, SRF_TYPE)
+         alhxbcp = (1.0-fQi)*alhlbcp + fQi*alhsbcp
+         hl_env  = t_env + gravbcp*ZL - alhxbcp*qc_env
+
+         call partition_dblgss( fQi, t_env, qv_env, qc_env, qs_env, 0.0, &
+                                ZL, PL*100.0, qt_env, hl_env, WHL, WQT,  &
+                                HL2, QT2, HLQT, W3, W2bar, QT3, HL3,    &
+                                PDF_A, WTHV2, WQC, cf_env &
+#ifdef PDFDIAG
+                                , PDF_SIGW1, PDF_SIGW2, PDF_W1, PDF_W2, &
+                                PDF_SIGHL1, PDF_SIGHL2, PDF_HL1, PDF_HL2, &
+                                PDF_SIGQT1, PDF_SIGQT2, PDF_QT1, PDF_QT2, &
+                                PDF_RHLQT, PDF_RWHL, PDF_RWQT
+#endif
+                              )
+
+      elseif (PDFSHAPE == 6) then
+
+         if (use_ice_pdf_threshold) then
+
+            ! Ice-threshold path:
+            !
+            ! Evaluate both Gaussian components without the legacy
+            ! two-sigma prefilter. The original t1/t2 plume-temperature
+            ! perturbations remain active inside partition_dblgss2.
+
+            call partition_dblgss2( exner, PDF_A, beta, rwqt, rwhl, rhlqt, &
+                                    t1, t2, sigt1, sigt2, qt_env, q1, q2,  &
+                                    sigmaqt1, sigmaqt2, w1, w2, sigw1,    &
+                                    sigw2, qs_env, dqs, qc_env, cf_env, WQC )
+
+         else
+
+            ! Exact legacy PDFSHAPE=6 path. This is used when:
+            !
+            !   * SC_ICE is absent;
+            !   * SC_ICE = 1;
+            !   * T >= THOM.
+            !
+            if (qt_env + q2 + 2.0*sigmaqt2 > qs_env) then
+
+
+               call partition_dblgss2( exner, PDF_A, beta, rwqt, rwhl, &
+                                       rhlqt, t1, t2, sigt1, sigt2,    &
+                                       qt_env, q1, q2, sigmaqt1,       &
+                                       sigmaqt2, w1, w2, sigw1, sigw2, &
+                                       qs_env, dqs, qc_env, cf_env, WQC )
+            else
+               qc_env = 0.0
+               cf_env = 0.0
+               WQC    = 0.0
+            end if
+         end if
+      end if
+
+      ! --------------------------------------------------------------------
+      ! Phase partition and Bergeron processing
+      ! --------------------------------------------------------------------
+      if (USE_BERGERON) then
+
+         dq_call = qc_env - qc_old
+
+         call WBF_Partition( DT, PL, t_env, qt_env, QILS, QICN, QLLS, &
+                             QLCN, CLLS, CLCN, NL, NI, dq_call, fQi,   &
+                             CNVFRC, SRF_TYPE, needs_preexisting )
+      else
+         fQi = ice_fraction(t_env, CNVFRC, SRF_TYPE)
+      end if
+
+      ! Once the nucleation threshold is crossed, make ice active and force
+      ! another iteration using the unscaled QS_ICE maintenance threshold.
+      if (use_ice_nucleation_threshold) then
+         if (cf_env > CFMIN .and. qc_env > QCMIN) then
+            ice_active          = .true.
+            nucleated_this_iter = .true.
+         end if
+      end if
+
+      ! --------------------------------------------------------------------
+      ! Relax condensate update
+      ! --------------------------------------------------------------------
+      alhxbcp = (1.0-fQi)*alhlbcp + fQi*alhsbcp
+
+      if (PDFSHAPE == 1) then
+
+         qc_env = qc_old + (qc_env-qc_old) / &
+              (1.0 - (cf_env*(ALPHA-1.0) - qc_env/qs_env) * &
+               dqs*alhxbcp)
+
+      elseif (PDFSHAPE == 2) then
+
+         qc_env = qc_old + 0.5*(qc_env-qc_old) / &
+              (1.0 - (cf_env*(ALPHA-1.0) - qc_env/qs_env) * &
+               dqs*alhxbcp)
+
+      elseif (PDFSHAPE >= 5) then
+         qc_env = qc_old + 0.7*(qc_env-qc_old)
+      end if
+
+      ! Update environmental vapor and temperature.
+      qv_env = qv_old - (qc_env-qc_old)
+
+      t_env = t_old                                                     &
+            + (1.0-fQi)*alhlbcp*(qc_env-qc_old)*(1.0-CLCN)             &
+            +       fQi *alhsbcp*(qc_env-qc_old)*(1.0-CLCN)
+
+      PDFITERS = n
+
+      ! Force another iteration immediately after nucleation so the final
+      ! condensate does not remain equilibrated at SC_ICE*QS_ICE.
+      if (.not. nucleated_this_iter) then
+         if (abs(t_env-t_old) < 0.00001) exit
+      end if
+   end do
+
+   ! -----------------------------------------------------------------------
+   ! Double-Gaussian buoyancy flux
+   ! -----------------------------------------------------------------------
+   if (PDFSHAPE == 6) then
+      thv = (t_env/exner) * &
+            (1.0 + qv_env*MAPL_H2OMW/MAPL_AIRMW)
+
+      bastoeps = (MAPL_RVAP/MAPL_RGAS) * thv
+
+      WTHV2 = WHL                                                   &
+             + (MAPL_H2OMW/MAPL_AIRMW)*thv*WQT                     &
+             + (alhxbcp-bastoeps)*WQC
+   end if
+
+   ! =======================================================================
+   ! PHASE 4: Map environmental state back to the grid box
+   ! =======================================================================
+   CLLS   = cf_env * (1.0-CLCN)
+   qc_env = qc_env * (1.0-CLCN)
+
+   qc_excess = qc_env - (QLLS + QILS)
+
+   if (qc_excess < 0.0) then
+
+      ! Evaporate liquid first, followed by ice.
+      dq_liq = max(qc_excess, -QLLS)
+      dq_ice = max(qc_excess-dq_liq, -QILS)
+
+   else
+
+      ! Partition new condensate according to the diagnosed ice fraction.
+      dq_liq = (1.0-fQi)*qc_excess
+      dq_ice =       fQi *qc_excess
+   end if
+
+   if (CLLS < CFMIN) then
+      dq_ice = -QILS
+      dq_liq = -QLLS
+   end if
+
+   QILS = QILS + dq_ice
+   QLLS = QLLS + dq_liq
+   QV   = QV   - (dq_ice+dq_liq)
+
+   TE = TE + alhlbcp*(dq_ice+dq_liq) + alhfbcp*dq_ice
+
+end subroutine hystpdf_2M
+   
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!Parititions DQ into ice and liquid. Follows Barahona et al. GMD. 2014
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   subroutine WBF_Partition ( &
+         dt, pl, t_env, qv, q_ice_ls, q_ice_cn, q_liq_ls, q_liq_cn, &
+         cld_frac_ls, cld_frac_cn, n_liq, n_ice, dq_tot, f_ice, &
+         cnvfrc, srf_type, needs_preexisting )
+
+      ! --- Arguments ---
+      real,    intent(in)  :: dt                   ! Time step (s)
+      real,    intent(in)  :: pl                   ! Pressure (hPa/mb)
+      real,    intent(in)  :: t_env                ! Environmental temperature (K)
+      real,    intent(in)  :: qv                   ! Water vapor specific humidity
+      real,    intent(in)  :: q_ice_ls, q_ice_cn   ! Resolved (LS) & Convective (CN) Ice mass
+      real,    intent(in)  :: q_liq_ls, q_liq_cn   ! Resolved (LS) & Convective (CN) Liquid mass
+      real,    intent(in)  :: cld_frac_ls          ! Resolved cloud fraction
+      real,    intent(in)  :: cld_frac_cn          ! Convective cloud fraction
+      real,    intent(in)  :: n_liq, n_ice         ! Specific number concentrations (liquid, ice)
+      real,    intent(in)  :: dq_tot               ! Total condensate change in this PDF iteration
+      real,    intent(out) :: f_ice                ! Fraction of new condensate that is ice (0.0 to 1.0)
+      real,    intent(in)  :: cnvfrc               ! Convective fraction diagnostic (CAPE-derived)
+      real,    intent(in)  :: srf_type             ! Surface type flag
+      logical, intent(in)  :: needs_preexisting    ! Does deposition strictly require existing ice?
+
+      ! --- Internal Variables ---
+      real :: q_tot_ice, q_tot_liq, q_tot_mass, f_mass_ice, n_ice_active
+      real :: t_celsius, dq_rate
+      real :: qv_inc, qs_liq, qs_ice, dq_sat_liq, dq_sat_ice
+      real :: diff, den_air, den_ice, lh_corr
+      real :: d_crystal, t_eff_inv, aux, dep_rate
+      real :: dq_ice_rate, dq_liq_rate
+
+      ! =======================================================================
+      ! PHASE 1: Initialization & Temperature Bounds
+      ! =======================================================================
+      t_celsius = t_env - MAPL_TICE
+      dq_rate   = dq_tot / dt       ! Convert total mass change to a rate
+
+      ! Combine resolved and parameterized masses to get a bulk view of the grid box BEFORZE CONDENSATION
+      q_tot_ice  = q_ice_ls + q_ice_cn
+      q_tot_liq  = q_liq_ls + q_liq_cn
+      q_tot_mass = q_tot_ice + q_tot_liq
+
+      ! Calculate active ice crystal number concentration. SHOUD NOT BE DONE
+      ! (n_ice is total. We scale it by the liquid mass fraction to estimate 
+      !
+      !f_mass_ice = 0.0
+      !if (q_tot_mass > 0.0) f_mass_ice = q_tot_ice / q_tot_mass
+      !n_ice_active = (1.0 - f_mass_ice) * n_ice S
+
+
+
+      ! Handle completely glaciated or completely liquid regimes immediately
+      if (t_env >= iT_ICE_MAX) then        ! Pure liquid cloud
+         f_ice = 0.0
+         return
+      elseif (t_env <= iT_ICE_ALL) then    ! Pure ice cloud
+         f_ice = 1.0
+         return
+      end if
+      
+      ! =======================================================================
+      ! PHASE 2: Mixed-Phase Regime & Deposition Physics
+      ! Calculate how fast water vapor deposits onto existing ice crystals.
+      ! =======================================================================
+      f_ice = 0.0
+      
+      ! If no resolved ice exists, check if we are allowed to spontaneously nucleate
+      if (q_tot_ice <= 0.0) then
+         if (needs_preexisting) then
+            ! Explicit microphysics handles nucleation; no deposition growth allowed here
+            return
+         else
+            ! Fall back to temperature-based diagnostic fraction
+            f_ice = ice_fraction(t_env, cnvfrc, srf_type)
+            return
+         end if
+      end if
+
+      ! Calculate saturation thresholds
+      qs_liq = GEOS_QsatLQU(t_env, pl*100.0, DQ=dq_sat_liq)
+      qs_ice = GEOS_QsatICE(t_env, pl*100.0, DQ=dq_sat_ice)
+      
+      ! Limit available vapor to liquid saturation (droplets cap the vapor pressure)
+      qv_inc = min(qv, qs_liq) 
+
+      ! Diffusivity of water vapor in air (Seinfeld and Pandis 2006)
+      diff    = (0.211 * 1013.25 / (pl + 0.1)) * (((t_env + 0.1) / MAPL_TICE)**1.94) * 1e-4
+      den_air = (pl * 100.0) / (MAPL_RGAS * t_env)
+      den_ice = 1000.0 * (0.9167 - 1.75e-4*t_celsius - 5.0e-7*t_celsius*t_celsius) ! (Pruppacher & Klett 1997)
+      lh_corr = 1.0 + dq_sat_ice * (MAPL_ALHS / MAPL_CP)
+
+      ! Estimate ice crystal diameter (assumes a monodisperse size distribution) 
+      !USE ALL ICE to be more consistent with the MuPhys.  
+      if ((n_ice > 1.0) .and. (q_tot_ice > 1.0e-10)) then
+         d_crystal = max((q_tot_ice / (n_ice * den_ice * MAPL_PI))**(0.333), 20.0e-6)
+      else
+         d_crystal = 20.0e-6
+      end if
+
+      ! Deposition time scale inverse (1/Tau)
+      t_eff_inv = n_ice * den_air * 2.0 * MAPL_PI * diff * d_crystal / lh_corr
+
+      ! Calculate final deposition rate using analytical integration of the relaxation equation
+      ! Even though we calculate only LS deposition, ice can grow on any existing icce, including CN, However only use all ice for dep rate time scale.
+      dep_rate = 0.0
+      if ((t_eff_inv > 0.0) .and. (q_tot_ice > 1.0e-10)) then
+         aux      = max(min(dt * t_eff_inv, 20.0), 0.0)
+         dep_rate = (qv_inc - qs_ice) * (1.0 - exp(-aux)) / dt
+      end if
+      
+      ! Ice can sublime, but only up to the amount of existing resolved ice
+      dep_rate = max(dep_rate, -q_ice_ls / dt) 
+
+      ! =======================================================================
+      ! PHASE 3: Condensate Partitioning
+      ! Apply the Bergeron-Findeisen process based on the calculated dep_rate
+      ! =======================================================================
+      dq_ice_rate = 0.0
+      dq_liq_rate = 0.0
+
+      if (dq_rate >= 0.0) then  
+         ! --- NET CONDENSATION ---
+         if (dep_rate > 0.0) then
+            ! Ice grows by deposition. It can consume the new condensate (dq_rate) 
+            ! PLUS the evaporation of existing resolved liquid (q_liq_ls/dt).
+            dq_ice_rate = min(dep_rate, dq_rate + (q_liq_ls / dt))
+            dq_liq_rate = dq_rate - dq_ice_rate
+         else
+            ! Deposition is negative/zero; PDF allows condensation in subsaturated conditions
+            dq_liq_rate = dq_rate 
+            dq_ice_rate = 0.0
+         end if
+         
+      else
+         ! --- NET EVAPORATION ---
+         ! Liquid droplets evaporate much faster than ice crystals sublimate.
+         ! Therefore, liquid evaporates first, regardless of the deposition calculation.
+         dq_liq_rate = max(dq_rate, -q_liq_ls / dt)
+         dq_ice_rate = max(dq_rate - dq_liq_rate, -q_ice_ls / dt)
+      end if
+
+      ! Calculate the final diagnostic ice fraction for this iteration
+      if (dq_rate /= 0.0) then
+         f_ice = max(min(dq_ice_rate / dq_rate, 1.0), 0.0)
+      end if
+
+   end subroutine WBF_Partition
+
+
+subroutine Pfreezing( &
+      ALPHA, PDFSHAPE, PL, QV, QLLS, QILS, TE, CLCN, &
+      WHL, WQT, HL2, QT2, W3, W2bar, QT3, HL3, PDF_A, &
+      SICE, PFREEZE, PFREEZE_GRID )
+
+   implicit none
+
+   ! -----------------------------------------------------------------------
+   ! Inputs
+   ! -----------------------------------------------------------------------
+   real,    intent(in) :: ALPHA
+   integer, intent(in) :: PDFSHAPE
+
+   ! PL is assumed to be in hPa, consistent with hystpdf_2M.
+   real, intent(in) :: PL
+
+   real, intent(in) :: QV
+   real, intent(in) :: QLLS
+   real, intent(in) :: QILS
+   real, intent(in) :: TE
+   real, intent(in) :: CLCN
+
+   ! Double-Gaussian PDF moments.
+   real, intent(in) :: WHL
+   real, intent(in) :: WQT
+   real, intent(in) :: HL2
+   real, intent(in) :: QT2
+   real, intent(in) :: W3
+   real, intent(in) :: W2bar
+   real, intent(in) :: QT3
+   real, intent(in) :: HL3
+   real, intent(in) :: PDF_A
+
+   ! Supersaturation threshold relative to ice.
+   real, intent(in) :: SICE
+
+   ! -----------------------------------------------------------------------
+   ! Outputs
+   ! -----------------------------------------------------------------------
+
+   ! Probability conditional on being outside the parameterized cloud:
+   !
+   !     PFREEZE = P(QT > SICE*QS_ICE | environmental region)
+   !
+   real, intent(out) :: PFREEZE
+
+   ! Optional probability expressed as a full-grid-box fraction:
+   !
+   !     PFREEZE_GRID = (1 - CLCN)*PFREEZE
+   !
+   real, optional, intent(out) :: PFREEZE_GRID
+
+   ! -----------------------------------------------------------------------
+   ! Local variables
+   ! -----------------------------------------------------------------------
+   real :: env_frac
+   real :: qv_env
+   real :: qc_env
+   real :: qt_env
+
+   real :: qs_ref
+   real :: qs_ice
+   real :: qcrit
+   real :: dqs_dummy
+
+   real :: sigmaqt1
+   real :: sigmaqt2
+   real :: sigma_ln
+   real :: mu_ln
+
+   real :: a
+   real :: p1
+   real :: p2
+
+   ! Double-Gaussian parameters not directly needed by the final probability.
+   real :: beta
+   real :: rwqt
+   real :: rwhl
+   real :: rhlqt
+   real :: t1
+   real :: t2
+   real :: sigt1
+   real :: sigt2
+   real :: q1
+   real :: q2
+   real :: w1
+   real :: w2
+   real :: sigw1
+   real :: sigw2
+
+   real, parameter :: SQRT_TWO = 1.4142135623730951
+   real, parameter :: TINY_SIG = 1.0e-12
+   real, parameter :: TINY_QT  = 1.0e-20
+
+   ! -----------------------------------------------------------------------
+   ! Initialization
+   ! -----------------------------------------------------------------------
+   PFREEZE = 0.0
+
+   if (present(PFREEZE_GRID)) then
+      PFREEZE_GRID = 0.0
+   end if
+
+   ! -----------------------------------------------------------------------
+   ! Isolate the environmental region
+   ! -----------------------------------------------------------------------
+   env_frac = 1.0 - CLCN
+
+   if (env_frac <= TINY_SIG) return
+
+   ! QS_REF defines the reference saturation used for the PDF width and for
+   ! estimating the vapor contained inside the parameterized cloud.
+   dqs_dummy = GEOS_DQSAT(TE, PL, QSAT=qs_ref)
+
+   ! Saturation specific humidity strictly with respect to ice.
+   qs_ice = GEOS_QsatICE(TE, PL*100.0)
+
+   ! Resolved condensate and vapor concentrations within the environmental
+   ! portion of the grid box.
+   qc_env = (QLLS + QILS) / env_frac
+   qv_env = (QV - CLCN*qs_ref) / env_frac
+
+   ! Environmental total water.
+   qt_env = qv_env + qc_env
+
+   ! Ice-supersaturation threshold.
+   qcrit = SICE * qs_ice
+
+   ! -----------------------------------------------------------------------
+   ! Evaluate P(QT > qcrit)
+   ! -----------------------------------------------------------------------
+   select case (PDFSHAPE)
+
+   case (1)
+      ! ================================================================
+      ! Uniform/top-hat PDF
+      ! ================================================================
+      sigmaqt1 = max(ALPHA*qs_ref, 0.0)
+
+      if (sigmaqt1 <= TINY_SIG) then
+         if (qt_env > qcrit) PFREEZE = 1.0
+      else
+         PFREEZE = min(                                      &
+              max(qt_env + sigmaqt1 - qcrit, 0.0),           &
+              2.0*sigmaqt1 ) / (2.0*sigmaqt1)
+      end if
+
+   case (2)
+      ! ================================================================
+      ! Triangular PDF
+      ! ================================================================
+      sigmaqt1 = max(ALPHA*qs_ref, 0.0)
+      sigmaqt2 = sigmaqt1
+
+      if (max(sigmaqt1, sigmaqt2) <= TINY_SIG) then
+         if (qt_env > qcrit) PFREEZE = 1.0
+      else
+         call pdffrac( PDFSHAPE, qt_env, sigmaqt1, sigmaqt2, &
+                       qcrit, PFREEZE )
+      end if
+
+   case (3)
+      ! ================================================================
+      ! Gaussian PDF
+      ! ================================================================
+      sigmaqt1 = max(ALPHA*qs_ref, 0.0)
+
+      PFREEZE = normal_exceedance( &
+           qt_env, sigmaqt1, qcrit )
+
+   case (4)
+      ! ================================================================
+      ! Lognormal PDF
+      !
+      ! This assumes QT itself is lognormally distributed and QT_ENV is
+      ! its arithmetic mean. The log-space width follows hystpdf_2M.
+      ! ================================================================
+      sigma_ln = max(ALPHA/sqrt(3.0), 0.001)
+
+      if (qcrit <= 0.0) then
+         PFREEZE = 1.0
+
+      elseif (qt_env <= TINY_QT) then
+         PFREEZE = 0.0
+
+      else
+         mu_ln = log(qt_env) - 0.5*sigma_ln*sigma_ln
+
+         PFREEZE = 0.5*erfc( &
+              (log(qcrit) - mu_ln) / (SQRT_TWO*sigma_ln) )
+      end if
+
+   case (5, 6)
+      ! ================================================================
+      ! Double-Gaussian QT PDF
+      !
+      ! Only the marginal QT distribution is required. Temperature-QT
+      ! covariance and saturation adjustment are intentionally excluded
+      ! because the requested criterion is simply:
+      !
+      !                QT > SICE*QS_ICE(TE,PL)
+      ! ================================================================
+      call precalc_dblgss( &
+           PDF_A, WQT, WHL, TE, HL2, HL3, QT2, QT3, W2bar, W3, &
+           beta, rwqt, rwhl, rhlqt, t1, t2, sigt1, sigt2,       &
+           q1, q2, sigmaqt1, sigmaqt2, w1, w2, sigw1, sigw2 )
+
+      a = min(max(PDF_A, 0.0), 1.0)
+
+      p1 = normal_exceedance( &
+           qt_env + q1, sigmaqt1, qcrit )
+
+      if (a > 0.001) then
+         p2 = normal_exceedance( &
+              qt_env + q2, sigmaqt2, qcrit )
+      else
+         p2 = p1
+      end if
+
+      ! Same weighting convention used by partition_dblgss2.
+      PFREEZE = (1.0 - a)*p1 + a*p2
+
+   case default
+      ! Unsupported PDF shape.
+      PFREEZE = 0.0
+
+   end select
+
+   
+   
+   ! Protect against roundoff outside the probability interval.
+   PFREEZE = min(max(PFREEZE, 0.0), 1.0)
+
+   if (present(PFREEZE_GRID)) then
+      PFREEZE_GRID = env_frac*PFREEZE
+   end if
+
+contains
+
+   real function normal_exceedance(mean_qt, sigma_qt, threshold) result(prob)
+
+      implicit none
+
+      real, intent(in) :: mean_qt
+      real, intent(in) :: sigma_qt
+      real, intent(in) :: threshold
+
+      if (sigma_qt > TINY_SIG) then
+         prob = 0.5*erfc( &
+              (threshold - mean_qt) / (SQRT_TWO*sigma_qt) )
+      else
+         if (mean_qt > threshold) then
+            prob = 1.0
+         else
+            prob = 0.0
+         end if
+      end if
+
+   end function normal_exceedance
+
+end subroutine Pfreezing
+
+subroutine ANVIL_EVAP_SUBL3( &
+      DT       , &
+      A_EFF_L  , &
+      A_EFF_I  , &
+      F_EXP    , &
+      PL       , &
+      TE       , &
+      QV       , &
+      QL       , &
+      QI       , &
+      F        , &
+      NL       , &
+      NI         )
+
+   implicit none
+
+   !-------------------------------------------------------------------
+   ! Arguments
+   !-------------------------------------------------------------------
+   real, intent(in   ) :: DT
+   real, intent(in   ) :: A_EFF_L
+   real, intent(in   ) :: A_EFF_I
+   real, intent(in   ) :: F_EXP
+   real, intent(in   ) :: PL
+
+   real, intent(inout) :: TE
+   real, intent(inout) :: QV
+   real, intent(inout) :: QL
+   real, intent(inout) :: QI
+   real, intent(inout) :: F
+
+   real, intent(in   ) :: NL
+   real, intent(in   ) :: NI
+
+   !-------------------------------------------------------------------
+   ! Local variables
+   !-------------------------------------------------------------------
+   real :: QSLIQ, QSICE, QSMIX
+   real :: ESLIQ, ESICE
+
+   real :: RHLIQ, RHICE
+   real :: ENVF, QV_ENV
+
+   real :: QC_OLD, QC_NEW
+   real :: FLIQ
+
+   real :: QCM_L, QCM_I
+   real :: RADIUS_L, RADIUS_I
+
+   real :: K1_L, K2_L
+   real :: K1_I, K2_I
+
+   real :: EVAP_POT, SUBL_POT
+   real :: EVAP, SUBL
+
+   real :: DQ_POT
+   real :: DQ_MAX
+   real :: SCALE
+
+   real :: FRATIO
+   real :: FEXP_USE
+
+   real, parameter :: QSMALL = 1.0e-12
+   real, parameter :: FSMALL = 1.0e-8
+
+   !===================================================================
+   ! Combined evaporation/sublimation of parameterized anvil condensate
+   !
+   ! Fraction scaling:
+   !
+   !   Fnew = Fold * (QCnew/QCold)**F_EXP
+   !
+   ! Therefore:
+   !
+   !   F_EXP = 0    : F unchanged
+   !   F_EXP = 0.5  : weak fraction response
+   !   F_EXP = 1    : legacy-like proportional response
+   !   F_EXP > 1    : stronger fraction response
+   !
+   ! Liquid and ice tendencies are diagnosed from the SAME initial
+   ! environmental state. This removes the EVAP3 -> SUBL3 ordering
+   ! dependence.
+   !===================================================================
+
+   QC_OLD = max(QL + QI, 0.0)
+
+   if (QC_OLD <= QSMALL) return
+   if (F      <= FSMALL) return
+   if (DT     <= 0.0   ) return
+
+   !-------------------------------------------------------------------
+   ! Fraction of the grid box outside the parameterized anvil
+   !-------------------------------------------------------------------
+
+   ENVF = max(1.0 - F, 0.0)
+
+   ! If essentially the entire grid box is occupied by anvil, there is
+   ! no external environment into which condensate can evaporate.
+   if (ENVF <= FSMALL) return
+
+   !===================================================================
+   ! Saturation values
+   !
+   ! GEOS_QsatLQU and GEOS_QsatICE expect pressure in Pa.
+   !===================================================================
+
+   QSLIQ = GEOS_QsatLQU(TE, PL*100.0)
+   QSICE = GEOS_QsatICE(TE, PL*100.0)
+
+   QSLIQ = max(QSLIQ, QSMALL)
+   QSICE = max(QSICE, QSMALL)
+
+   !-------------------------------------------------------------------
+   ! Condensate-weighted saturation state.
+   !
+   ! This is used only to separate the mean vapor associated with the
+   ! parameterized anvil from the surrounding environment.
+   !-------------------------------------------------------------------
+
+   FLIQ = min(max(QL/QC_OLD, 0.0), 1.0)
+
+   QSMIX = FLIQ*QSLIQ + &
+           (1.0-FLIQ)*QSICE
+
+   !-------------------------------------------------------------------
+   ! Environmental vapor outside the anvil.
+   !
+   ! Assume the vapor within the parameterized anvil is approximately
+   ! saturated at QSMIX.
+   !-------------------------------------------------------------------
+
+   QV_ENV = (QV - F*QSMIX) / ENVF
+   QV_ENV = max(QV_ENV, 0.0)
+
+   RHLIQ = min(max(QV_ENV/QSLIQ, 0.0), 1.0)
+   RHICE = min(max(QV_ENV/QSICE, 0.0), 1.0)
+
+   !===================================================================
+   ! Diffusional resistance terms
+   !===================================================================
+
+   ESLIQ = 100.0*PL*QSLIQ / &
+           (EPSILON + (1.0-EPSILON)*QSLIQ)
+
+   ESICE = 100.0*PL*QSICE / &
+           (EPSILON + (1.0-EPSILON)*QSICE)
+
+   !-------------------------------------------------------------------
+   ! Liquid
+   !-------------------------------------------------------------------
+
+   K1_L = MAPL_ALHL**2 * RHO_W / &
+          (K_COND*MAPL_RVAP*TE**2)
+
+   K2_L = MAPL_RVAP*TE*RHO_W / &
+          (DIFFU*(1000.0/PL)*ESLIQ)
+
+   !-------------------------------------------------------------------
+   ! Ice
+   !-------------------------------------------------------------------
+
+   K1_I = MAPL_ALHS**2 * RHO_I / &
+          (K_COND*MAPL_RVAP*TE**2)
+
+   K2_I = MAPL_RVAP*TE*RHO_I / &
+          (DIFFU*(1000.0/PL)*ESICE)
+
+   !===================================================================
+   ! Effective particle radii
+   !
+   ! F remains fixed while both tendencies are calculated.
+   !===================================================================
+
+   if (QL > 0.0) then
+      QCM_L = QL/F
+   else
+      QCM_L = 0.0
+   end if
+
+   if (QI > 0.0) then
+      QCM_I = QI/F
+   else
+      QCM_I = 0.0
+   end if
+
+   RADIUS_L = LDRADIUS4(PL, TE, QCM_L, NL, NI, 1)
+   RADIUS_I = LDRADIUS4(PL, TE, QCM_I, NL, NI, 2)
+
+   !===================================================================
+   ! Potential liquid evaporation
+   !===================================================================
+
+   EVAP_POT = 0.0
+
+   if (QL > 0.0 .and. &
+       RADIUS_L > 0.0 .and. &
+       RHLIQ < 1.0) then
+
+      EVAP_POT = A_EFF_L * QL * DT * (1.0-RHLIQ) / &
+                 ((K1_L+K2_L)*RADIUS_L**2)
+
+      EVAP_POT = min(max(EVAP_POT, 0.0), QL)
+
+   end if
+
+   !===================================================================
+   ! Potential ice sublimation
+   !===================================================================
+
+   SUBL_POT = 0.0
+
+   if (QI > 0.0 .and. &
+       RADIUS_I > 0.0 .and. &
+       RHICE < 1.0) then
+
+      SUBL_POT = A_EFF_I * QI * DT * (1.0-RHICE) / &
+                 ((K1_I+K2_I)*RADIUS_I**2)
+
+      SUBL_POT = min(max(SUBL_POT, 0.0), QI)
+
+   end if
+
+   !===================================================================
+   ! Joint environmental vapor-capacity limit
+   !
+   ! Both liquid evaporation and ice sublimation add vapor to the same
+   ! environmental air. Do not independently use the same vapor deficit
+   ! twice.
+   !
+   ! QSMIX provides a simple mixed-phase saturation closure.
+   !===================================================================
+
+   DQ_POT = EVAP_POT + SUBL_POT
+
+   DQ_MAX = ENVF * max(QSMIX-QV_ENV, 0.0)
+
+   if (DQ_POT > QSMALL) then
+      SCALE = min(1.0, DQ_MAX/DQ_POT)
+   else
+      SCALE = 0.0
+   end if
+
+   EVAP = EVAP_POT*SCALE
+   SUBL = SUBL_POT*SCALE
+
+   !===================================================================
+   ! Apply tendencies
+   !===================================================================
+
+   QL = max(QL-EVAP, 0.0)
+   QI = max(QI-SUBL, 0.0)
+
+   QV = QV + EVAP + SUBL
+
+   TE = TE - alhlbcp*EVAP &
+           - alhsbcp*SUBL
+
+   !===================================================================
+   ! Optional anvil-fraction response
+   !
+   ! This is deliberately applied ONCE after both phase changes.
+   !===================================================================
+
+   QC_NEW = max(QL + QI, 0.0)
+
+   FEXP_USE = max(F_EXP, 0.0)
+
+   if (FEXP_USE > 0.0 .and. QC_OLD > QSMALL) then
+
+      FRATIO = QC_NEW/QC_OLD
+      FRATIO = min(max(FRATIO, 0.0), 1.0)
+
+      F = F * FRATIO**FEXP_USE
+      F = min(max(F, 0.0), 1.0)
+
+   end if
+
+end subroutine ANVIL_EVAP_SUBL3
+
 
     subroutine compute_radar_diagnostics(EXPORT, clock, IM, JM, LM, &
                                          Q, QRAIN, QSNOW, QGRAUPEL, T, PLmb, W, ZLE0, &
