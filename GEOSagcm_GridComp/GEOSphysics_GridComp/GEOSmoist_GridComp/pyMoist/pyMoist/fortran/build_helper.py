@@ -16,8 +16,9 @@ class MemorySpace(enum.Enum):
 
 class InterfaceTransferType(enum.Enum):
     CPU_COPY = enum.auto()  # Copies because of layout mismatch
-    CPU_MAP = enum.auto()  # No copy - memory map - same layout
-    CPU_TO_GPU_TO_CPU = enum.auto()
+    CPU_ZERO_COPY = enum.auto()  # No copy - reuse the memory given (case of same layout)
+    GPU_TRANSFER = enum.auto()  # Upload from central RAM to device, then download
+    GPU_MAPPING = enum.auto()  # Paged memory mapped onto GPU memory space (HMM, ATS, ...)
 
 
 class StencilBackendCompilerOverride:
@@ -47,7 +48,7 @@ class StencilBackendCompilerOverride:
         if not self.no_op:
             original_orchestrate = config._orchestrate
             config._orchestrate = DaCeOrchestration.Build
-            set_distributed_caches(config)
+            set_distributed_caches(config=self.config, force_build=True)
             config._orchestrate = original_orchestrate
 
         # We remove warnings from the stencils compiling when in critical and/or
@@ -72,9 +73,6 @@ class StencilBackendCompilerOverride:
         if not self.config.do_compile:
             ndsl_log.info(f"Stencil backend read cache on {self.comm.Get_rank()}")
         else:
-            ndsl_log.info(
-                f"Stencil backend was compiled on {self.comm.Get_rank()} \
-                    now waiting for other ranks"
-            )
+            ndsl_log.info(f"Stencil backend was compiled on {self.comm.Get_rank()} now waiting for other ranks")
             self.comm.Barrier()
         ndsl_log.info(f"Rank {self.comm.Get_rank()} ready for execution")

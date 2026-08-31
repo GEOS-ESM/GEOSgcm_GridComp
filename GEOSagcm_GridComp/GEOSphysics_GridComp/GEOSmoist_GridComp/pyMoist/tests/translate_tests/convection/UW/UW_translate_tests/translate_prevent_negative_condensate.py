@@ -1,5 +1,4 @@
 from f90nml import Namelist
-from gt4py.cartesian.gtscript import int32
 from ndsl import StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.stencils.testing.grid import Grid
@@ -7,7 +6,6 @@ from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
 
-import pyMoist.constants as constants
 from pyMoist.convection.UW.compute_uwshcu import prevent_negative_condensate
 from pyMoist.convection.UW.config import UWConfiguration
 
@@ -48,13 +46,14 @@ class TranslatePreventNegativeCondensate(TranslateFortranData2Py):
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("ComputeUwshcuInv-constants")
+        self.constants["JASON"] = True
 
     def compute(self, inputs):
         config = UWConfiguration(**self.constants)
 
         self.quantity_factory.add_data_dimensions(
             {
-                "ntracers": constants.NCNST,
+                "ntracers": config.NCNST,
             }
         )
 
@@ -102,10 +101,8 @@ class TranslatePreventNegativeCondensate(TranslateFortranData2Py):
 
         # Outputs
         qmin = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        # The iteration you want to test
-        iter_test = int32(0)
 
-        # # Call stencils
+        # Call stencils
         self._prevent_negative_condensate(
             condensation=condensation,
             qv0=qv0,
@@ -118,7 +115,6 @@ class TranslatePreventNegativeCondensate(TranslateFortranData2Py):
             dp0=dp0,
             qiten=qiten,
             qmin=qmin,
-            iteration=iter_test,
         )
 
         return {
