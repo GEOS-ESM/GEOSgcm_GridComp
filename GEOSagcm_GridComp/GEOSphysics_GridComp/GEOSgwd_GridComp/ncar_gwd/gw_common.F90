@@ -19,7 +19,7 @@ public :: gw_drag_prof
 public :: calc_taucd, momentum_flux, momentum_fixer
 public :: energy_momentum_adjust, energy_change, energy_fixer
 
-public :: tau_0_ubc_bkg, tau_0_ubc_oro
+public :: tau_0_ubc_cnv, tau_0_ubc_frt, tau_0_ubc_oro
 
 public :: west, east, north, south
 public :: pi
@@ -49,8 +49,9 @@ real(GW_PRC) :: rog = huge(1._GW_PRC)
 
 
 ! Pressure (Pa) to begin transition to an upper boundary condition of tau = 0.
-real :: tau_0_ubc_bkg = 30.0
-real :: tau_0_ubc_oro = 10.0
+real :: tau_0_ubc_cnv = 14.0
+real :: tau_0_ubc_frt = 14.0
+real :: tau_0_ubc_oro = 14.0
 
 !
 ! Private variables
@@ -133,10 +134,10 @@ end function new_GWBand
 !==========================================================================
 
 subroutine gw_common_init(   &
-     tau_0_ubc_bkg_in, tau_0_ubc_oro_in, ktop_in, gravit_in, rair_in, cpair_in, & 
+     tau_0_ubc_cnv_in, tau_0_ubc_frt_in, tau_0_ubc_oro_in, ktop_in, gravit_in, rair_in, cpair_in, & 
      errstring)
 
-  real, intent(in) :: tau_0_ubc_bkg_in, tau_0_ubc_oro_in
+  real, intent(in) :: tau_0_ubc_cnv_in, tau_0_ubc_frt_in, tau_0_ubc_oro_in
   integer,  intent(in) :: ktop_in
   real, intent(in) :: gravit_in
   real, intent(in) :: rair_in       ! Gas constant for dry air (J kg-1 K-1)
@@ -149,7 +150,8 @@ subroutine gw_common_init(   &
 
   errstring = ""
 
-  tau_0_ubc_bkg = tau_0_ubc_bkg_in
+  tau_0_ubc_cnv = tau_0_ubc_cnv_in
+  tau_0_ubc_frt = tau_0_ubc_frt_in
   tau_0_ubc_oro = tau_0_ubc_oro_in
   ktop   = ktop_in
   gravit = gravit_in
@@ -305,7 +307,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   real, intent(in) :: kvtt(ncol,pver+1)
 
   ! Top level scaling pressure for setting tau to 0.0
-  real, intent(in) :: tau_0_ubc
+  real, intent(in) :: tau_0_ubc(ncol)
 
   ! Wave Reynolds stress.
   real(GW_PRC), intent(inout) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
@@ -450,14 +452,18 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   end do
 
   ! Force tau at the top of the model to zero, if requested.
-  if (tau_0_ubc > 0.0) then
-     do k=1,pver+1 
-       do i=1,ncol
-         tau_0_scaling = TANH((pint(i,k)-pint(i,ktop))/tau_0_ubc)
-         tau(i,:,k) = tau(i,:,k)*tau_0_scaling
-       enddo
+  ! tau_0_ubc is a pressure level (Pa)
+   do k=ktop,pver+1 
+     do i=1,ncol
+       if (tau_0_ubc(i) > 0.0) then
+         ! Pressure scale: from model top to tau_0_ubc level
+         ! This creates a smooth transition over that pressure range
+         tau_0_scaling = TANH((pint(i,k) - pint(i,ktop)) / &
+                              (tau_0_ubc(i) - pint(i,ktop)))
+         tau(i,:,k) = tau(i,:,k) * tau_0_scaling
+       endif
      enddo
-  endif
+   enddo
 
   !------------------------------------------------------------------------
   ! Compute the tendencies from the stress divergence.

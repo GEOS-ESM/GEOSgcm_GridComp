@@ -6,7 +6,7 @@ module gw_convect
 !
 
   use gw_utils, only: GW_PRC, GW_R8, get_unit_vector, dot_2d, midpoint_interp
-  use gw_common, only: GWBand, gw_drag_prof, tau_0_ubc_bkg, &
+  use gw_common, only: GWBand, gw_drag_prof, tau_0_ubc_cnv, tau_0_ubc_frt, &
                        calc_taucd, momentum_flux, momentum_fixer, &
                        energy_momentum_adjust, energy_change, energy_fixer 
 
@@ -218,8 +218,8 @@ end subroutine gw_beres_init
 
 !------------------------------------
 subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
-     netdt, zm, src_level, tend_level, tau, ubm, ubi, xv, yv, &
-     c, dtdtm)
+     netdt, zm, src_level, tend_level, tau, tau_0_ubc, ubm, ubi, xv, yv, &
+     c, dtdtm, speed)
 !-----------------------------------------------------------------------
 ! Driver for multiple gravity wave drag parameterization.
 !
@@ -269,6 +269,10 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
 
   ! Frontal and Jet proxy inputs
   real, intent(in) :: dtdtm(ncol,pver)  ! Microphysics temperature tendency / latent heating (K s-1)
+  real, intent(in) :: speed(ncol)       ! Katabatic proxy: Max wind speed in lowest 300m stable layer (m s-1)
+
+  ! tau_0_ubc column dependence
+  real(GW_PRC), intent(out) :: tau_0_ubc(ncol)
 
 !---------------------------Local Storage-------------------------------
   ! Column and level indices.
@@ -386,6 +390,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
            if (pint(i,k+1) < desc%spectrum_source) desc%k(i) = k+1
         end do
 
+        tau_0_ubc(i) = tau_0_ubc_cnv
      else
         ! -------------------------------------------------------------------
         ! B. SHALLOW/FRONTAL SOURCE REGIME (Frontal Masking & Launch Level)
@@ -401,7 +406,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
         end do
 
         q0(i) = 0.0
-        k_max = pver ! Default fallback initialization to surface
+        k_max = k_ceiling ! Default fallback initialization to spectrum_source
 
         if (desc%et_bkg_dtdtm_forcing) then
            ! Scan upward from surface to  desc%k(i) to find shallow high-lat peaks
@@ -421,6 +426,8 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
         desc%k(i) = k_max
         topi(i)   = k_max
         boti(i)   = pver ! Anchor bottom array to surface
+
+        tau_0_ubc(i) = tau_0_ubc_frt
      endif
   end do
 
@@ -523,7 +530,10 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
           ! -----------------------------------------------------------------
           ! Proxy 2: The Dry Wind (Katabatic winds - evaluated locally)
            if (desc%et_bkg_speed_forcing) then
-               dry_mult = 1.0
+               ! A baseline     5 m/s wind yields a 1.0x multiplier (no extra drag).
+               ! A linear 5 to 25 m/s ramp (1 - 20)x
+               ! A howling    +25 m/s katabatic wind yields 20.0x drag.
+               dry_mult = MAX(1.0, MIN(20.0,1.0 + (speed(i) - 5.0) * (19.0 / 20.0)))
            else
                dry_mult = 1.0
            endif
@@ -559,7 +569,7 @@ subroutine gw_beres_ifc( band, &
    u, v, t, pref, pint, delp, rdelp, piln, &
    zm, zi, nm, ni, rhoi, kvtt,  &
    netdt,desc, alpha, &
-   utgw,vtgw,ttgw,flx_heat,dtdtm)
+   utgw,vtgw,ttgw,flx_heat,dtdtm,speed)
 
    type(BeresSourceDesc), intent(inout) :: desc
    type(GWBand), intent(in) :: band         ! I hate this variable  ... it just hides information from view
@@ -592,6 +602,7 @@ subroutine gw_beres_ifc( band, &
    real,         intent(inout) :: flx_heat(ncol)        ! Energy change
 
    real,         intent(in) :: dtdtm(ncol,pver)  ! Microphysics temperature tendency / latent heating (K s-1)
+   real,         intent(in) :: speed(ncol)       ! max_wind_speed_in_stable_cold_surface_layer_to_300m (m s-1)
 
    !---------------------------Local storage-------------------------------
 
@@ -628,6 +639,8 @@ subroutine gw_beres_ifc( band, &
    real :: xv(ncol)
    real :: yv(ncol)
 
+   real :: tau_0_ubc(ncol)
+
    character(len=1) :: cn
    character(len=9) :: fname(4)
 
@@ -647,14 +660,14 @@ subroutine gw_beres_ifc( band, &
      ! Determine wave sources for Beres deep scheme
      call gw_beres_src(ncol, pver, band, desc, pint, &
           u, v, netdt, zm, src_level, tend_level, tau, &
-          ubm, ubi, xv, yv, c, &
-          dtdtm=dtdtm)
+          tau_0_ubc, ubm, ubi, xv, yv, c, &
+          dtdtm=dtdtm, speed=speed)
 
      ! Solve for the drag profile with convective sources.
      call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
           src_level, tend_level, dt, t,    &
           piln, rhoi, nm, ni, ubm, ubi, xv, yv, &
-          c, kvtt, tau, tau_0_ubc_bkg, utgw, vtgw, ttgw, gwut, alpha)
+          c, kvtt, tau, tau_0_ubc, utgw, vtgw, ttgw, gwut, alpha)
 
      ! Apply efficiency and limiters
      call energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau, &

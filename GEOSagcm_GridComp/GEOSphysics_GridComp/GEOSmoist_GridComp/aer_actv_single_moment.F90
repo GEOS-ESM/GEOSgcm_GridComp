@@ -215,29 +215,18 @@ CONTAINS
               ,    nact(1,1,1)   &
               )
               
-         numbinit(:,:) = 0.
          NACTL(:,:,k) = 0.
          DO n=1,n_modes
            DO j = 1, JM
              DO i = 1, IM
                if (AeroPropsNew(n)%kap(i,j,k) > 0.4) then
-                  NWFA(i,j,k) = NWFA(i,j,k) + AeroPropsNew(n)%num(i,j,k)
-                  numbinit(i,j) = numbinit(i,j) + AeroPropsNew(n)%num(i,j,k)
+                  NWFA(i,j,k) = NWFA(i,j,k) + AeroPropsNew(n)%num(i,j,k)*air_den(i,j)  ! unit: [m-3]
                   NACTL(i,j,k)= NACTL(i,j,k) + nact(i,j,n) !#/m3
                endif
              ENDDO
            ENDDO
          ENDDO
          
-         ! Fused array multiplication into the existing loop for better cache performance
-         DO j = 1, JM
-           DO i = 1, IM
-              numbinit(i,j) = numbinit(i,j) * air_den(i,j)
-              numbinit(i,j) = max(numbinit(i,j),0.0)
-              NACTL(i,j,k) = MIN(NACTL(i,j,k),0.99*numbinit(i,j))
-           ENDDO
-         ENDDO
-
          ! Ice Clouds
          numbinit(:,:) = 0.
          DO n=1,n_modes
@@ -271,8 +260,8 @@ CONTAINS
          DO j = 1, JM
            DO i = 1, IM
              numbinit(i,j) = numbinit(i,j) * air_den(i,j)
-             NIFA(i,j,k)   = numbinit(i,j)
              numbinit(i,j) = max(numbinit(i,j),0.0)
+             NIFA(i,j,k)   = numbinit(i,j)
              if (tk(i,j) < MAPL_TICE .and. numbinit(i,j) > 0.0) then
                 ! DeMott (2010): input n_aer in cm^-3 at STP -> output NACTI in L^-1 (STP).
                 NACTI(i,j,k) = ai * (max(0.0,(MAPL_TICE-tk(i,j)))**bi) &
@@ -337,7 +326,7 @@ CONTAINS
    !!
    !!     This routine is for the multiple-aerosol type parameterization.
    !!----------------------------------------------------------------------------------------------------------------------
-   subroutine GetActFrac(im, nmodes,xnap,rg,sigmag,bibar,tkelvin,ptot,wupdraft,nact)
+   subroutine GetActFrac(im, nmodes,xnap,rg,xlogsigm,bibar,tkelvin,ptot,wupdraft,nact)
 
       IMPLICIT NONE
 
@@ -348,7 +337,7 @@ CONTAINS
       real(AER_PR) :: xnap(im,nmodes)      !< number concentration for each mode [#/m^3]
       !     real(AER_PR) :: xmap(im,nmodes)      !< mass   concentration for each mode [ug/m^3]
       real(AER_PR) :: rg(im,nmodes)        !< geometric mean radius for each mode [um]
-      real(AER_PR) :: sigmag(im,nmodes)    !< geometric standard deviation for each mode [um]
+      real(AER_PR) :: xlogsigm(im,nmodes)    !< log of the geometric standard deviation for each mode [um]
       real(AER_PR) :: bibar(im,nmodes)     !< hygroscopicity parameter for each mode [1]
       real(AER_PR) :: tkelvin(im)           !< absolute temperature [k]
       real(AER_PR) :: ptot(im)              !< ambient pressure [pa]
@@ -401,7 +390,6 @@ CONTAINS
       real(AER_PR)            :: xkaprime(im)                       ! modified thermal conductivity of air [j/m/s/k]
       real(AER_PR)            :: eta                               ! model parameter [1]
       real(AER_PR)            :: zeta(im)                           ! model parameter [1]
-      real(AER_PR)            :: xlogsigm(im,nmodes)               ! ln(sigmag) [1]
       real(AER_PR)            :: a(im)                              ! [m]
       real(AER_PR)            :: g(im)                              ! [m^2/s]
       real(AER_PR)            :: rdrp(im)                           ! [m]
@@ -451,7 +439,6 @@ CONTAINS
       !----------------------------------------------------------------------------------------------------------------------
       !     these variables must be computed for each mode.
       !----------------------------------------------------------------------------------------------------------------------
-      xlogsigm(:,:) = log(sigmag(:,:))
 
       smax(:) = 0.0
       do n=1, nmodes

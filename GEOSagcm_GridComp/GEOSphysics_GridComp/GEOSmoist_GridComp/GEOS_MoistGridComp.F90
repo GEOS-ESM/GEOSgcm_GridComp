@@ -44,8 +44,8 @@ module GEOS_MoistGridCompMod
   logical :: DEBUG_MST
   logical :: LDIAGNOSE_PRECIP_TYPE
   logical :: LUPDATE_PRECIP_TYPE
-  real    :: CCN_OCN
-  real    :: CCN_LND
+  real    :: CCN_OCN, CIN_OCN
+  real    :: CCN_LND, CIN_LND
   real    :: DETRAIN_INACTIVE_CNV
   real    :: TAU_DETRAIN_CNV
 
@@ -187,8 +187,11 @@ contains
     ! MAT These have to be defined as they are passed into Aer_Activate below and are intent(in)
     !     Note: It's possible these aren't *used* if USE_AEROSOL_NN=.TRUE. but they are still passed
     !           in so they have to be defined
-    call MAPL_GetResource( CF, CCN_OCN, 'NCCN_OCN:', DEFAULT= 100., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( CF, CCN_OCN, 'NCCN_OCN:', DEFAULT=  50., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( CF, CCN_LND, 'NCCN_LND:', DEFAULT= 300., RC=STATUS); VERIFY_(STATUS)
+
+    call MAPL_GetResource( CF, CIN_OCN, 'NCIN_OCN:', DEFAULT= 1.e-4, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( CF, CIN_LND, 'NCIN_LND:', DEFAULT= 1.e-3, RC=STATUS); VERIFY_(STATUS)
 
     ! NOTE: Binary restarts expect Q to be the first field in the moist_internal_rst. Thus,
     !       the first MAPL_AddInternalSpec call must be from the microphysics
@@ -6061,7 +6064,7 @@ contains
            else
               do L=1,LM
                  NACTL(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6 ! #/m^3
-                 NACTI(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6 ! #/m^3
+                 NACTI(:,:,L) = (CIN_LND*FRLAND + CIN_OCN*(1.0-FRLAND))*1.e6 ! #/m^3
               end do
            endif
        endif

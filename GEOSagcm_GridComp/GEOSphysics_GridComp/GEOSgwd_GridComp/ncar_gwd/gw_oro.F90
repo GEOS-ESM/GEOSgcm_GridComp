@@ -279,6 +279,8 @@ subroutine gw_oro_ifc( band, &
    real :: xv(ncol)
    real :: yv(ncol)
 
+   real :: tau_0_ubc(ncol)
+
    character(len=1) :: cn
    character(len=9) :: fname(4)
 
@@ -295,6 +297,7 @@ subroutine gw_oro_ifc( band, &
 ! Efficiency of gravity wave momentum transfer.
      effgw(:) = effgw_oro
 
+     tau_0_ubc(:) = tau_0_ubc_oro
 
 ! Determine the orographic wave source
         call gw_oro_src(ncol, pver, band, pint, pmid, delp, &
@@ -312,7 +315,7 @@ subroutine gw_oro_ifc( band, &
      call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
           src_level, tend_level,   dt, t,    &
           piln, rhoi,       nm,   ni, ubm,  ubi,  xv,    yv,   &
-          c,         kvtt,  tau, tau_0_ubc_oro,  utgw,  vtgw, &
+          c,         kvtt,  tau, tau_0_ubc,  utgw,  vtgw, &
           ttgw, gwut, alpha)
 
      ! Apply efficiency and limiters

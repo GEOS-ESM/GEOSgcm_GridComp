@@ -47,13 +47,13 @@ module GEOSmoist_Process_Library
   integer :: ICE_FRACTION_POLYNOMIAL = 3
 
   ! Shift parameters targeted for MODIS polynomial
-  real, parameter :: GLAC_SHIFT_LANDICE =  0.0
-  real, parameter :: GLAC_SHIFT_SEAICE  =  5.0
-  real, parameter :: GLAC_SHIFT_OCEAN   =  9.0
+  real, parameter :: GLAC_SHIFT_LANDICE = -8.0
+  real, parameter :: GLAC_SHIFT_SEAICE  = -4.0
+  real, parameter :: GLAC_SHIFT_OCEAN   =  0.0
   real, parameter :: GLAC_SHIFT_SNOW    =  0.0
-  real, parameter :: GLAC_SHIFT_LAND    = -8.0
+  real, parameter :: GLAC_SHIFT_LAND    =  0.0
   ! Convective shift 
-  real, parameter :: GLAC_SHIFT_CONV    =  7.5   ! Will hold tropical liquid very high
+  real, parameter :: GLAC_SHIFT_CONV    = 8.0   ! Will hold tropical liquid very high
   real, pointer, dimension(:,:) :: GLAC_SHIFT_MODIS   
 
   ! Jason ICE_FRACTION constants

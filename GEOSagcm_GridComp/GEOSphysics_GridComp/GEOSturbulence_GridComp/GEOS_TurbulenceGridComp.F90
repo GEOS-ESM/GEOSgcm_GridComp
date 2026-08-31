@@ -1713,6 +1713,15 @@ end if
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'planetary_boundary_layer_height_richardson_number',     &
+       SHORT_NAME = 'ZPBLRI',                                              &
+       UNITS      = 'm',                                                     &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'planetary_boundary_layer_height_horiz_tke',             &
        SHORT_NAME = 'ZPBLHTKE',                                              &
        UNITS      = 'm',                                                     &
@@ -1727,24 +1736,6 @@ end if
        UNITS      = 'm+2 s-2',                                               &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'planetary_boundary_layer_height_rich_0',                &
-       SHORT_NAME = 'ZPBLRI',                                                &
-       UNITS      = 'm',                                                     &
-       DIMS       = MAPL_DimsHorzOnly,                                       &
-       VLOCATION  = MAPL_VLocationNone,                                      &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'planetary_boundary_layer_height_rich_02',               &
-       SHORT_NAME = 'ZPBLRI2',                                               &
-       UNITS      = 'm',                                                     &
-       DIMS       = MAPL_DimsHorzOnly,                                       &
-       VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -2940,7 +2931,6 @@ end if
      real, dimension(:,:  ), pointer     :: ZPBLHTKE => null()
      real, dimension(:,:,:), pointer     :: TKE => null()
      real, dimension(:,:  ), pointer     :: ZPBLRI => null()
-     real, dimension(:,:  ), pointer     :: ZPBLRI2 => null()
      real, dimension(:,:  ), pointer     :: ZPBLTHV => null()
      real, dimension(:,:  ), pointer     :: ZPBLQV => null()
      real, dimension(:,:  ), pointer     :: ZPBLRFRCT => null()
@@ -2984,6 +2974,7 @@ end if
      logical                             :: ALLOC_TCZPBL, CALC_TCZPBL
      logical                             :: ALLOC_ZPBL2, CALC_ZPBL2
      logical                             :: ALLOC_ZPBL10p, CALC_ZPBL10p
+     logical                             :: ALLOC_ZPBLRI, CALC_ZPBLRI          
      logical                             :: PDFALLOC
 
      real                                :: LOUIS_B_KH, LOUIS_B_KM
@@ -3074,8 +3065,10 @@ end if
 
      integer :: locmax
      real    :: maxkh,minlval
-     real, dimension(IM,JM) :: thetavs,thetavh,uv2h,kpbltc,kpbl2,kpbl10p
+     real, dimension(IM,JM) :: thetavs,thetavh,uv2h,kpbltc,kpbl2,kpbl10p,kpblri
      real    :: maxdthvdz,dthvdz
+     real    :: thetavs_parcel, u_shear, v_shear, z_diff
+     logical :: has_solid_deck
 
      ! PBL-top diagnostic
      ! -----------------------------------------
@@ -3149,7 +3142,7 @@ end if
        call MAPL_GetResource (MAPL, JASON_BELJAARS, "JASON_BELJAARS:", default=.FALSE.,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, JASON_LOUIS   , "JASON_LOUIS:"   , default=.FALSE.,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, JASON_LOCK    , "JASON_LOCK:"    , default=.FALSE.,  RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=3,      RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=5,      RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SMTH_HGT,     trim(COMP_NAME)//"_SMTH_HGT:",     default=300.0,  RC=STATUS); VERIFY_(STATUS)
      endif
 
@@ -3302,8 +3295,6 @@ end if
      call MAPL_GetPointer(EXPORT,    TKE,  'TKE',         RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,    ZPBLRI,  'ZPBLRI',             RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,    ZPBLRI2,  'ZPBLRI2',           RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,    ZPBLTHV,  'ZPBLTHV',           RC=STATUS)
      VERIFY_(STATUS)
@@ -3529,6 +3520,14 @@ end if
                    ALLOC_TCZPBL = .TRUE.
       endif
 
+      ALLOC_ZPBLRI = .FALSE.
+      CALC_ZPBLRI = .FALSE.
+      if(associated(ZPBLRI).OR.PBLHT_OPTION==5) CALC_ZPBLRI = .TRUE.
+      if(.not.associated(ZPBLRI)) then
+                allocate(ZPBLRI(IM,JM))
+                   ALLOC_ZPBLRI = .TRUE.
+      endif
+
       do L=0,LM
          ZL0(:,:,L) = ZLE(:,:,L) - ZLE(:,:,LM) ! edge height above the surface 
       enddo
@@ -3615,8 +3614,8 @@ end if
 
    ! Calculate liquid water potential temperature (THL) and total water (QT)
     EXF=T/TH 
-    THL=TH-(MAPL_ALHL*QL+MAPL_ALHS*QI)/(MAPL_CP*EXF)
-    QT=Q+QL+QI
+    THL=TH-(MAPL_ALHL*QLTOT+MAPL_ALHS*QITOT)/(MAPL_CP*EXF)
+    QT=Q+QLTOT+QITOT
 
 ! get updraft constants
     call MAPL_GetResource (MAPL, DOMF, "EDMF_DOMF:", default=0,  RC=STATUS)
@@ -3929,8 +3928,8 @@ end if
                        OMEGA(:,:,1:LM),       &
                        T(:,:,1:LM),           &
                        Q(:,:,1:LM),           &
-                       QI(:,:,1:LM),          &
-                       QL(:,:,1:LM),          &
+                       QITOT(:,:,1:LM),       &
+                       QLTOT(:,:,1:LM),       &
                        QPI(:,:,1:LM),         &
                        QPL(:,:,1:LM),         &
                        QA(:,:,1:LM),          &
@@ -4587,45 +4586,72 @@ end if
          ZPBLHTKE = MAPL_UNDEF
       end if ! ZPBLHTKE
 
-      ! RI local diagnostic for pbl height thresh 0.
-      if (associated(ZPBLRI)) then
+      if (CALC_ZPBLRI) then
          ZPBLRI = MAPL_UNDEF
-         where (RI(:,:,LM-1)>ri_crit) ZPBLRI = Z(:,:,LM)
-
+         
+         thetavs = T(:,:,LM)*(1.0+MAPL_VIREPS*Q(:,:,LM)/(1.0-Q(:,:,LM)))*(TH(:,:,LM)/T(:,:,LM))
+         tcrib(:,:,LM) = 0.0
+         
          do I = 1, IM
             do J = 1, JM
+               
+               thetavs_parcel = thetavs(I,J) + 0.5 
+               
+               ! Track if we have encountered a solid cloud deck in this column
+               has_solid_deck = .false.
+               
                do L=LM-1,1,-1
-                  if( (RI(I,J,L-1)>ri_crit) .and. (ZPBLRI(I,J) == MAPL_UNDEF) ) then
-                     ZPBLRI(I,J) = Z(I,J,L+1)+(ri_crit-RI(I,J,L))/(RI(I,J,L-1)-RI(I,J,L))*(Z(I,J,L)-Z(I,J,L+1))
+                  
+                  thetavh(I,J) = T(I,J,L)*(1.0+MAPL_VIREPS*Q(I,J,L)/(1.0-Q(I,J,L)))*(TH(I,J,L)/T(I,J,L))
+                  
+                  u_shear = U(I,J,L) - U(I,J,LM)
+                  v_shear = V(I,J,L) - V(I,J,LM)
+                  uv2h(I,J) = max(u_shear**2 + v_shear**2, 1.0E-4)
+                  
+                  z_diff = Z(I,J,L) - Z(I,J,LM)
+                  tcrib(I,J,L) = MAPL_GRAV*(thetavh(I,J) - thetavs_parcel)*z_diff / (thetavs(I,J)*uv2h(I,J))
+                  
+                  ! --- PURELY PHYSICALLY BASED SELECTION ---
+                  
+                  ! Flag if we are currently inside or have passed through a thick cloud layer (> 40%)
+                  if (FCLD(I,J,L) > 0.40) has_solid_deck = .true.
+                  
+                  ! CONDITION 1: We hit a cloud base, and the air below is well-mixed
+                  if (FCLD(I,J,L) > 0.05 .and. tcrib(I,J,L) < tcri_crit) then
+                     
+                     if (has_solid_deck) then
+                        ! DYCOMS case: We are part of a solid deck. Do NOT exit here.
+                        ! Let the loop continue climbing to find the thermal inversion top.
+                        continue 
+                     else if (FCLD(I,J,max(L-2,1)) > 0.40) then
+                        ! Look-ahead check for entering a solid deck.
+                        continue
+                     else
+                        ! RICO case: Broken shallow cumulus. 
+                        ! Pin to the sub-cloud layer top and exit.
+                        ZPBLRI(I,J) = Z(I,J,L+1)
+                        KPBLRI(I,J) = float(L+1)
+                        exit
+                     end if
+
+                  ! CONDITION 2: Standard Thermodynamic Stability / Cloud Top Inversion Gate
+                  ! This will now catch the inversion top cleanly (where the blue T/THL curves 
+                  ! finally bend sharply near the top of the cloud layer).
+                  else if (tcrib(I,J,L) >= tcri_crit) then
+                     ZPBLRI(I,J) = Z(I,J,L+1)+(tcri_crit-tcrib(I,J,L+1))/(tcrib(I,J,L)-tcrib(I,J,L+1))*(Z(I,J,L)-Z(I,J,L+1))
+                     KPBLRI(I,J) = float(L)
+                     exit
                   end if
-               end do
-            end do 
-         end do 
-
-         where ( ZPBLRI .eq. MAPL_UNDEF ) ZPBLRI = Z(:,:,LM)
-         ZPBLRI = MIN(ZPBLRI,Z(:,:,KPBLMIN))
-         where ( ZPBLRI < 0.0 ) ZPBLRI = Z(:,:,LM)
-      end if ! ZPBLRI
-
-      ! RI local diagnostic for pbl height thresh 0.2
-      if (associated(ZPBLRI2)) then
-         ZPBLRI2 = MAPL_UNDEF
-         where (RI(:,:,LM-1) > ri_crit2) ZPBLRI2 = Z(:,:,LM)
-
-         do I = 1, IM
-            do J = 1, JM
-               do L=LM-1,1,-1
-                  if( (RI(I,J,L-1)>ri_crit2) .and. (ZPBLRI2(I,J) == MAPL_UNDEF) ) then
-                     ZPBLRI2(I,J) = Z(I,J,L+1)+(ri_crit2-RI(I,J,L))/(RI(I,J,L-1)-RI(I,J,L))*(Z(I,J,L)-Z(I,J,L+1))
-                  end if
+                  
                end do
             end do
-         end do
-
-         where ( ZPBLRI2 .eq. MAPL_UNDEF ) ZPBLRI2 = Z(:,:,LM)
-         ZPBLRI2 = MIN(ZPBLRI2,Z(:,:,KPBLMIN))
-         where ( ZPBLRI2 < 0.0 ) ZPBLRI2 = Z(:,:,LM)
-      end if ! ZPBLRI2
+         end do 
+         
+         where (ZPBLRI<0.)
+            ZPBLRI = Z(:,:,LM)
+            KPBLRI = float(LM)
+         end where
+      end if
 
       ! thetav gradient based pbl height diagnostic
       if (associated(ZPBLTHV)) then
@@ -4810,6 +4836,10 @@ end if
 
          END WHERE
 
+      CASE( 5 )
+         ZPBL = ZPBLRI
+         KPBL = KPBLRI
+
       END SELECT
 
       ZPBL = MIN(ZPBL,Z(:,:,KPBLMIN))
@@ -4820,61 +4850,41 @@ end if
         KPBL_SC = MAPL_UNDEF
         do I = 1, IM
           do J = 1, JM
-            if (DO_SHOC==0) then
-              temparray(1:LM+1) = KHSFC(I,J,0:LM)
-            else
-              temparray(1:LM+1) = KH(I,J,0:LM)
-            endif
             if ( JASON_PBL_SC ) then
+                ! ----------------------------------------------------------------
+                ! Use old 10% of HKHSFC
+                ! ----------------------------------------------------------------
+                temparray(1:LM+1) = KHSFC(I,J,0:LM)
                 maxkh = maxval(temparray)
                 kh_thresh = 0.1
-                do L=LM-1,2,-1
+                do L = LM-1, 2, -1
                   if ( (temparray(L) < kh_thresh*maxkh) .and. (temparray(L+1) >= kh_thresh*maxkh)  &
                   .and. (KPBL_SC(I,J) == MAPL_UNDEF ) ) then
                      KPBL_SC(I,J) = float(L)
                   end if
                 end do
-            else
-                ! -----------------------------------------------------------------
-                ! Find max turbulence, but ignore the lowest 50 meters 
-                ! to safely bypass grid-dependent numerical surface spikes
-                ! -----------------------------------------------------------------
-                maxkh = 0.0
-                do L = 1, LM
-                   ! Assuming Z(I,J,L) is height. 
-                   ! (If Z is altitude MSL, use: Z(I,J,L) - Z(I,J,LM) > 50.0)
-                   if ( Z(I,J,L) > 50.0 ) then  
-                      if (temparray(L) > maxkh) then
-                         maxkh = temparray(L)   
-                      endif
-                   endif                        
-                end do
-                ! Safety fallback: If maxkh is still 0.0 (e.g., highly stable arctic night),
-                ! just grab the absolute maximum of the whole column.
-                if (maxkh == 0.0) then  
-                   maxkh = maxval(temparray)
+                ! =================================================================
+                ! ROBUST FALLBACK FOR CALM / LAMINAR CONDITIONS
+                ! =================================================================
+                if ( KPBL_SC(I,J) == MAPL_UNDEF .or. maxkh < 1.0 ) then
+                  KPBL_SC(I,J) = float(LM)
                 endif
-                ! -----------------------------------------------------------------
-                kh_thresh = 0.1*maxkh
-                ! Search TOP-DOWN to find the true PBL top
-                do L = 2, LM-1
-                  if ( (temparray(L) >= kh_thresh) .and. &
-                       (KPBL_SC(I,J) == MAPL_UNDEF ) ) then
-                     KPBL_SC(I,J) = float(L)
-                     exit ! Break the loop once we hit the top of the turbulence
-                  end if
-                end do
-            endif
-            if (  KPBL_SC(I,J) .eq. MAPL_UNDEF .or. (maxkh.lt.1.)) then        
-              KPBL_SC(I,J) = float(LM)
+            else
+                ! ----------------------------------------------------------------
+                ! Use KPBL from PBLHT_OPTION
+                ! ----------------------------------------------------------------
+                KPBL_SC = KPBL
             endif
           end do
         end do
       endif
+      ! =================================================================
+      ! POST-PROCESSING LOOP (COHERENT LAYER SNAP)
+      ! =================================================================
       if (associated(KPBL_SC) .and. associated(ZPBL_SC)) then
         do I = 1, IM
           do J = 1, JM
-             ZPBL_SC(I,J) = Z(I,J,KPBL_SC(I,J))
+             ZPBL_SC(I,J) = Z(I,J, int(KPBL_SC(I,J)))
           end do
         end do
       endif

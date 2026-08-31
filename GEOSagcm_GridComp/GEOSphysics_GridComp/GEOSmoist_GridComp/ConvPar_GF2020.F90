@@ -4207,15 +4207,27 @@ CONTAINS
      real delt,tem1,cup
      ! BUG FIX: Add variables for option 4
      real :: activation, cx0_base, vvel_eff, qrc_new
-
+     real :: qrc_crit_lnd, qrc_crit_ocn
      real :: liq_frac
      real :: ice_frac
      real :: c0_effective
 
         !--- no precip for small clouds
-        if(name.eq.'shallow')  c0 = c0_shal
-        if(name.eq.'mid'    )  c0 = c0_mid
-        if(name.eq.'deep'   )  c0 = c0_deep
+        if(name.eq.'shallow') then
+           c0 = c0_shal
+           qrc_crit_lnd = qrc_crit
+           qrc_crit_ocn = qrc_crit    
+        endif
+        if(name.eq.'mid'    ) then
+           c0 = c0_mid
+           qrc_crit_lnd = qrc_crit_lnd_md
+           qrc_crit_ocn = qrc_crit_ocn_md
+        endif
+        if(name.eq.'deep'   ) then
+           c0 = c0_deep
+           qrc_crit_lnd = qrc_crit_lnd_dp
+           qrc_crit_ocn = qrc_crit_ocn_dp
+        endif
         do i=its,itf
           pwav (i)=0.
           psum (i)=0.
@@ -4564,11 +4576,24 @@ CONTAINS
         dp,rhoc,dh,qrch,c0,dz,radius,berryc0,q1,berryc
      real :: qaver,denom,aux,cx0,qrci,step,cbf,qrc_crit_BF,min_liq,qavail,delt_hc_glac
      real delt,tem1
+     real :: qrc_crit_lnd, qrc_crit_ocn
 
         !--- no precip for small clouds
-        if(name.eq.'shallow')  c0 = c0_shal
-        if(name.eq.'mid'    )  c0 = c0_mid
-        if(name.eq.'deep'   )  c0 = c0_deep
+        if(name.eq.'shallow') then
+           c0 = c0_shal
+           qrc_crit_lnd = qrc_crit
+           qrc_crit_ocn = qrc_crit
+        endif
+        if(name.eq.'mid'    ) then
+           c0 = c0_mid
+           qrc_crit_lnd = qrc_crit_lnd_md
+           qrc_crit_ocn = qrc_crit_ocn_md
+        endif
+        if(name.eq.'deep'   ) then
+           c0 = c0_deep
+           qrc_crit_lnd = qrc_crit_lnd_dp
+           qrc_crit_ocn = qrc_crit_ocn_dp
+        endif
         do i=its,itf
           pwav (i)=0.
           psum (i)=0.

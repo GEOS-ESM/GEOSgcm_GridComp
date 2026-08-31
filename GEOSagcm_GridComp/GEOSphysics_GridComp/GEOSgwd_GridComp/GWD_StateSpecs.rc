@@ -34,6 +34,7 @@ category: IMPORT
  AREA      |       | m^2         | xy   | N    | SKIP    | grid_box_area
  HT_dc     |       | K s-1       | xyz  | C    |         | T heating tendency due to deep convection
  HT_mi     |       | K s-1       | xyz  | C    |         | T heating tendency due to microphysics
+ WSPD_STABLE300M | | m s-1       | xy   | N    | SKIP    | max_wind_speed_in_stable_cold_surface_layer
  CNV_FRC   |       | 1           | xy   | N    |         | convective_fraction
 
 category: EXPORT

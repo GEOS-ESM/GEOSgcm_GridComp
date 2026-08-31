@@ -454,12 +454,12 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     ! NN_MAX_ICE : Maximum ice-crystal / ice-nucleus number concentration [# m^-3].
     ! NN_FAC_ICE : Global scale factor for the CIN
     ! -----------------------------------------------------------------------------------------
-    call MAPL_GetResource( MAPL, NN_MIN_LIQ , 'NN_MIN_LIQ:'  , DEFAULT=  50.0e6, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, NN_MAX_LIQ , 'NN_MAX_LIQ:'  , DEFAULT= 500.0e6, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, NN_MAX_LIQ , 'NN_FAC_LIQ:'  , DEFAULT=   1.0  , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, NN_MIN_ICE , 'NN_MIN_ICE:'  , DEFAULT=   1.0e0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, NN_MAX_ICE , 'NN_MAX_ICE:'  , DEFAULT=  50.0e6, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, NN_MAX_ICE , 'NN_FAC_ICE:'  , DEFAULT=   1.0  , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, NN_MIN_LIQ , 'NN_MIN_LIQ:'  , DEFAULT=   50.0e6, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, NN_MAX_LIQ , 'NN_MAX_LIQ:'  , DEFAULT= 1000.0e6, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, NN_FAC_LIQ , 'NN_FAC_LIQ:'  , DEFAULT=    1.0  , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, NN_MIN_ICE , 'NN_MIN_ICE:'  , DEFAULT=    1.0e0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, NN_MAX_ICE , 'NN_MAX_ICE:'  , DEFAULT=   50.0e6, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, NN_FAC_ICE , 'NN_FAC_ICE:'  , DEFAULT=    1.0  , RC=STATUS); VERIFY_(STATUS)
 
     ! MG_LIQ_DD_FLOOR : Liquid droplet density floor
     ! MG_LIQ_MU : Shape parameter for droplet gamma dist [range: 0 to 5]

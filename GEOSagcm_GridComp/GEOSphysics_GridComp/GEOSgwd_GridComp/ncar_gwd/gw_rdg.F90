@@ -271,6 +271,8 @@ subroutine gw_rdg_ifc( band, &
 
    real :: utfac,uhtmax
 
+   real :: tau_0_ubc(ncol)
+
    character(len=1) :: cn
    character(len=9) :: fname(4)
    !----------------------------------------------------------------------------
@@ -285,6 +287,7 @@ subroutine gw_rdg_ifc( band, &
    vtrdg = 0.
    ttrdg = 0.
    isoflag = 0
+   tau_0_ubc(:) = tau_0_ubc_oro
  
    do nn = 1, n_rdg
   
@@ -309,7 +312,7 @@ subroutine gw_rdg_ifc( band, &
      call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
           src_level, tend_level,dt, t, &
           piln, rhoi, nm, ni, ubm, ubi, xv, yv, &
-          c, kvtt, tau, tau_0_ubc_oro, utgw, vtgw, ttgw, gwut, alpha, &
+          c, kvtt, tau, tau_0_ubc, utgw, vtgw, ttgw, gwut, alpha, &
           kwvrdg=kwvrdg(:,nn))
 
      ! Apply efficiency and limiters to the totals
