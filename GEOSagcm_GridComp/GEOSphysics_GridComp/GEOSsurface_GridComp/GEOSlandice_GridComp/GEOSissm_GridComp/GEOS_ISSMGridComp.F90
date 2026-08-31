@@ -1089,7 +1089,8 @@ subroutine SetServices ( GC, RC )
       ! *************************************************************************** !
 
       ! get timestep for ISSM
-      call MAPL_GetResource(MAPL, ISSM_DT, Label=trim(COMP_NAME)//"_DT:",DEFAULT=302400.0, _RC)
+      call MAPL_GetResource(MAPL, ISSM_DT, Label="ISSM_DT:",DEFAULT=302400.0_dp, _RC)
+      !call MAPL_GetResource(MAPL, ISSM_DT, Label=trim(COMP_NAME)//"_DT:",DEFAULT=302400.0, _RC)
 
       ! get number of mesh elements
       call ESMF_MeshGet(mesh,nodeCount=num_nodes)
