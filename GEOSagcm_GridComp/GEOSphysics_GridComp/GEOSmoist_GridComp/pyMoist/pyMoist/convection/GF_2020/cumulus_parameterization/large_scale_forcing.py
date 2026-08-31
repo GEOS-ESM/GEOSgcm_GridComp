@@ -391,7 +391,11 @@ class LargeScaleForcing(NDSLRuntime):
 
         # ensure correct data dimensions exist
         quantity_factory.update_data_dimensions(
-            {"ensemble_members": cumulus_parameterization_constants.MAXENS1 * cumulus_parameterization_constants.MAXENS2 * cumulus_parameterization_constants.MAXENS3}
+            {
+                "ensemble_members": int(
+                    cumulus_parameterization_constants.MAXENS1 * cumulus_parameterization_constants.MAXENS2 * cumulus_parameterization_constants.MAXENS3
+                )
+            }
         )
 
         # initialize locals

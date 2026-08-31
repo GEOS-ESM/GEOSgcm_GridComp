@@ -330,6 +330,7 @@ from .convection.UW.UW_translate_tests.translate_setup_inputs import TranslateSe
 from .convection.UW.UW_translate_tests.translate_setup_outputs import TranslateSetupOutputs
 from .convection.UW.UW_translate_tests.translate_tracer_tendencies import TranslateTracerTendencies
 from .convection.UW.UW_translate_tests.translate_update_output_variables1 import TranslateUpdateOutputVars1
+from .convection.UW.UW_translate_tests.translate_update_output_variables2 import TranslateUpdateOutputVars2
 from .microphysics.GFDL_1M.driver.translate_GFDL_1M_Driver import TranslateGFDL_1M_Driver
 from .microphysics.GFDL_1M.driver.translate_GFDL_1M_DriverFinish import TranslateGFDL_1M_DriverFinish
 from .microphysics.GFDL_1M.driver.translate_GFDL_1M_DriverSetup import TranslateGFDL_1M_DriverSetup

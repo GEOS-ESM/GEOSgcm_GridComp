@@ -1048,6 +1048,15 @@ end if
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'Monin_Obukhov_length',                                  &
+       UNITS      = 'm',                                                     &
+       SHORT_NAME = 'LOBUKHOV',                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+    
+    call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'EDMF_mean_updraft_lateral_entrainment_rate',            &
        UNITS      = 'm-1',                                                   &
        SHORT_NAME = 'EDMF_ENTR',                                             &
@@ -1071,6 +1080,15 @@ end if
        SHORT_NAME = 'EDMF_MF',                                               &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'EDMF_detrained_mass_flux',                              &
+       UNITS      = 'kg m-2 s-1',                                            &
+       SHORT_NAME = 'EDMF_DMF',                                              &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -2961,7 +2979,7 @@ end if
                                             SHOCPRNUM,&
                                             TKEBUOY,TKESHEAR,TKEDISS,TKEDISSx, &
                                             SL2, SL3, W2, W3, WSL, SLQT !, W3CANUTO, QT2DIAG,SL2DIAG,SLQTDIAG
-     real, dimension(:,:), pointer       :: edmf_depth
+     real, dimension(:,:), pointer       :: edmf_depth, lobukhov
 
 ! EDMF variables
      real, dimension(:,:,:), pointer     :: edmf_dry_a,edmf_moist_a,edmf_frc, edmf_dry_w,edmf_moist_w, &
@@ -2970,7 +2988,7 @@ end if
                                             edmf_dry_u,edmf_moist_u,  &
                                             edmf_dry_v,edmf_moist_v,  &
                                             edmf_moist_qc,edmf_buoyf,edmf_mfx, &
-                                            edmf_w2, & !edmf_qt2, edmf_sl2, & 
+                                            edmf_dmfx, edmf_w2, &
                                             edmf_w3, edmf_wqt, edmf_slqt, & 
                                             edmf_wsl, edmf_qt3, edmf_sl3, &
                                             edmf_entx, edmf_tke,          &
@@ -3068,7 +3086,7 @@ end if
      real, dimension( IM, JM, LM )       :: QPL,QPI
      integer                             :: DO_SHOC, DOPROGQT2
      real                                :: SL2TUNE, QT2TUNE, SLQT2TUNE,          &
-                                            SKEW_TGEN, SKEW_TDIS, FREE_ATM_QT2
+                                            SKEW_TGEN, SKEW_TDIS, QT2_TDIS, FREE_ATM_SIGS
      real    :: PDFSHAPE
 
      real    :: lambdadiss
@@ -3237,15 +3255,15 @@ end if
      call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",       default=0,           RC=STATUS); VERIFY_(STATUS)
      if (DO_SHOC /= 0) then
        call MAPL_GetResource (MAPL, SHOCPARAMS%PRNUM,   trim(COMP_NAME)//"_SHC_PRNUM:",       default=-0.9, RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LAMBDA,  trim(COMP_NAME)//"_SHC_LAMBDA:",      default=0.5,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LAMBDA,  trim(COMP_NAME)//"_SHC_LAMBDA:",      default=0.25, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%TSCALE,  trim(COMP_NAME)//"_SHC_TSCALE:",      default=400., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%CKVAL,   trim(COMP_NAME)//"_SHC_CK:",          default=0.1,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%CEFAC,   trim(COMP_NAME)//"_SHC_CEFAC:",       default=1.0,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%CESFAC,  trim(COMP_NAME)//"_SHC_CESFAC:",      default=4.,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENOPT,  trim(COMP_NAME)//"_SHC_LENOPT:",      default=3,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1, trim(COMP_NAME)//"_SHC_LENFAC1:",     default=8.,   RC=STATUS); VERIFY_(STATUS)       
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1, trim(COMP_NAME)//"_SHC_LENFAC1:",     default=5.,   RC=STATUS); VERIFY_(STATUS)       
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2, trim(COMP_NAME)//"_SHC_LENFAC2:",     default=2.,   RC=STATUS); VERIFY_(STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=1.,   RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=0.5,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT, trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=2,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 6.0 , RC=STATUS); VERIFY_(STATUS)
      else
@@ -3258,7 +3276,8 @@ end if
      call MAPL_GetResource (MAPL, SLQT2TUNE,  'SLQT2TUNE:',  DEFAULT = 7.0   , RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, SKEW_TDIS,  'SKEW_TDIS:',  DEFAULT = 900.0,  RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, SKEW_TGEN,  'SKEW_TGEN:',  DEFAULT = 900.0,  RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, FREE_ATM_QT2, 'FREE_ATM_QT2:', DEFAULT = 0.05,  RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, QT2_TDIS,   'QT2_TDIS:',   DEFAULT = 900.0,  RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, FREE_ATM_SIGS, 'FREE_ATM_SIGS:', DEFAULT = 0.05, RC=STATUS); VERIFY_(STATUS)
 
 ! Get pointers from export state...
 !-----------------------------------
@@ -3409,24 +3428,14 @@ end if
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  w3,    'W3', ALLOC=PDFALLOC,   RC=STATUS)
      VERIFY_(STATUS)
-!     call MAPL_GetPointer(EXPORT,  w3canuto,'W3CANUTO', ALLOC=PDFALLOC,   RC=STATUS)
-!     VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  w2,    'W2', ALLOC=PDFALLOC,   RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  sl3,   'SL3', ALLOC=PDFALLOC,   RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  sl2,   'SL2', ALLOC=PDFALLOC,   RC=STATUS)
      VERIFY_(STATUS)
-!     call MAPL_GetPointer(EXPORT,  wqt,   'WQT', ALLOC=PDFALLOC,   RC=STATUS)
-!     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  wsl,   'WSL', ALLOC=PDFALLOC,   RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  lobukhov,  'LOBUKHOV', ALLOC=(DO_SHOC/=0), RC=STATUS)
      VERIFY_(STATUS)
-!     call MAPL_GetPointer(EXPORT,  qt2diag,   'QT2DIAG', ALLOC=PDFALLOC,   RC=STATUS)
-!     VERIFY_(STATUS)
-!     call MAPL_GetPointer(EXPORT,  sl2diag,   'SL2DIAG', ALLOC=PDFALLOC,   RC=STATUS)
-!     VERIFY_(STATUS)
-!     call MAPL_GetPointer(EXPORT,  slqtdiag,   'SLQTDIAG', ALLOC=PDFALLOC,   RC=STATUS)
-!     VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_wqt,    'EDMF_WQT', ALLOC=PDFALLOC, RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_wsl,    'EDMF_WSL', ALLOC=PDFALLOC, RC=STATUS)
@@ -3434,6 +3443,8 @@ end if
      call MAPL_GetPointer(EXPORT,  edmf_tke,    'EDMF_TKE', RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_mfx,    'EDMF_MF', ALLOC=PDFALLOC, RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_dmfx,   'EDMF_DMF', RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_dry_a,  'EDMF_DRY_A',       RC=STATUS)
      VERIFY_(STATUS)
@@ -3650,7 +3661,7 @@ end if
       call MAPL_GetResource (MAPL, MFPARAMS%MFLIMFAC,  "EDMF_MFLIMFAC:",      default=2.0,   RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%ICE_RAMP,  "EDMF_ICE_RAMP:",      default=-40.0, RC=STATUS )
       call MAPL_GetResource (MAPL, MFPARAMS%ENTRAIN,   "EDMF_ENTRAIN:",       default=0,     RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%STOCHFRAC, "EDMF_STOCHASTIC:",    default=0.5,   RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%STOCHFRAC, "EDMF_STOCHASTIC:",    default=0.4,   RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%DISCRETE,  "EDMF_DISCRETE_TYPE:", default=1,     RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%IMPLICIT,  "EDMF_IMPLICIT:",      default=1,     RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%PRCPCRIT,  "EDMF_PRCPCRIT:",      default=-1.,   RC=STATUS)
@@ -3812,6 +3823,7 @@ end if
                     edmf_mf,                  & ! needed for ADG PDF
                     edmfdrya, edmfmoista,     & ! outputs for ADG PDF
                     edmf_dqrdt, edmf_dqsdt,   & ! output for micro
+                    edmf_dmfx,                &
                     !== Diagnostics, not used elsewhere ==
                     edmf_dry_w,               &
                     edmf_moist_w,             &
@@ -3907,7 +3919,11 @@ end if
    
    call MAPL_TimerOff(MAPL,"---MASSFLUX")
 
-
+   
+   if (associated(lobukhov)) then
+      lobukhov = -ustar**3 * thv(:,:,LM) / (0.4*MAPL_GRAV*(sh+mapl_epsilon*thv(:,:,LM)*evap)/(MAPL_CP*rhoe(:,:,LM)))
+   end if
+   
 !!!=================================================================
 !!!===========================  SHOC  ==============================
 !!!=================================================================
@@ -3923,6 +3939,7 @@ end if
         call RUN_SHOC( IM, JM, LM, LM+1, DT,  &
                        !== Inputs ==
                        SH(:,:),               &
+                       LOBUKHOV(:,:),         &
                        PLO(:,:,1:LM),         &
                        ZL0(:,:,0:LM),         &
                        Z(:,:,1:LM),           &
@@ -4496,7 +4513,8 @@ end if
                           slqt2tune,      &
                           skew_tgen,      &
                           skew_tdis,      &
-                          free_atm_qt2 )
+                          qt2_tdis,      &
+                          free_atm_sigs )
 
        end if
 

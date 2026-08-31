@@ -107,6 +107,8 @@ class TranslateGF2020(TranslateFortranData2Py):
             "cape_removal_time_scale_bugworkaroundname": {},
             "lightning_density_bugworkaroundname": {},
             "convection_tracer_bugworkaroundname": {},
+            "total_cumulative_mass_flux_interface_bugworkaroundname": {},
+            "total_detraining_mass_flux_bugworkaroundname": {},
         }
 
         self.out_vars = self.in_vars["data_vars"].copy()
@@ -130,7 +132,7 @@ class TranslateGF2020(TranslateFortranData2Py):
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**self.cu_param_constants)
 
         # initialize saturation tables
-        saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
+        saturation_tables = SaturationVaporPressureTable(self.stencil_factory)
 
         # initialize convection tracers
         convection_tracers = ConvectionTracers.ones(
@@ -244,6 +246,8 @@ class TranslateGF2020(TranslateFortranData2Py):
         state.cape_removal_time_scale.field[:] = inputs["cape_removal_time_scale_bugworkaroundname"]
         state.lightning_density.field[:] = inputs["lightning_density_bugworkaroundname"]
         state.convection_tracer.field[:] = inputs["convection_tracer_bugworkaroundname"]
+        state.total_cumulative_mass_flux_interface.field[:] = inputs["total_cumulative_mass_flux_interface_bugworkaroundname"]
+        state.total_detraining_mass_flux.field[:] = inputs["total_detraining_mass_flux_bugworkaroundname"]
 
         # initialize test code
         code = GF2020(
@@ -350,6 +354,8 @@ class TranslateGF2020(TranslateFortranData2Py):
             "cape_removal_time_scale_bugworkaroundname": state.cape_removal_time_scale.field[:],
             "lightning_density_bugworkaroundname": state.lightning_density.field[:],
             "convection_tracer_bugworkaroundname": state.convection_tracer.field[:],
+            "total_cumulative_mass_flux_interface_bugworkaroundname": state.total_cumulative_mass_flux_interface.field[:],
+            "total_detraining_mass_flux_bugworkaroundname": state.total_detraining_mass_flux.field[:],
         }
 
         return outputs

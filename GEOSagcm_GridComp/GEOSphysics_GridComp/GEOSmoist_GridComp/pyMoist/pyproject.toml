@@ -10,26 +10,32 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Atmospheric Science",
   "Private :: Do Not Upload",
   "Natural Language :: English",
-  "Programming Language :: Python :: 3"
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13"
 ]
 dependencies = [
+  "build",
+  "coverage",
+  "flake8-pyproject",
   "mkdocs-material",
   "mkdocstrings[python]",
   "mkdocs-exclude",
+  "pre-commit",
   "pytest",
-  "pytest-subtests",
-  "coverage",
-  "flake8-pyproject",
-  "build"
+  "pytest-subtests"
 ]
 description = "pyMoist is the NDSL version of NASA GMAO's GEOS Moist physics. Please contact maintainer if used outside of GEOS."
 license = "Apache-2.0"
 license-files = ["LICENSE.txt"]
 name = "pyMoist"
 readme = "README.md"
-requires-python = ">=3.11,<3.13"
+requires-python = ">=3.12,<3.13"
 urls = {Repository = "https://github.com/GEOS-ESM/GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist"}
 version = "2026.dev"
+
+[project.optional-dependencies]
+ndsl = ["ndsl @ git+https://github.com/NOAA-GFDL/NDSL.git"]
 
 [tool.coverage.run]
 branch = true
