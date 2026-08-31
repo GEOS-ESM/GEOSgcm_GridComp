@@ -62,6 +62,7 @@ module GEOS_GwdGridCompMod
       real :: GEOS_EFFGWORO
       logical :: GEOS_MLT
       real :: GWD_TOP_PRESSURE
+      real, allocatable :: GWD_TOP_RAMP(:)
       integer :: GEOS_PGWV
       real :: NCAR_EFFGWBKG
       real :: NCAR_EFFGWORO
@@ -227,7 +228,9 @@ contains
       character(len=2)           :: dateline
       integer                    :: imsize,nn
       integer                    :: LM
+      integer                    :: K, BOTNDX
       real                       :: sigma,STRETCH_FACTOR
+      real                       :: PREF_MID
 
       real, pointer, dimension(:)      :: PREF
 
@@ -302,15 +305,15 @@ contains
       imsize = imsize*CEILING(STRETCH_FACTOR)
       sigma = 1.0-0.9839*exp(-0.09835*4.e7*0.9/imsize/1000.) ! Based on Arakawa 2011 sigma used in GF2020
 
-      ! GEOS-MLT gravity wave drag top pressure cutoff
-      ! ----------------------------------------------
-      ! The cutoff is active only for GEOS-MLT. Pressure is in Pa, and the
-      ! default 1.0 Pa corresponds to 0.01 hPa.
+      ! GEOS-MLT gravity wave drag upper-atmosphere taper pressure
+      ! ----------------------------------------------------------
+      ! GWD_TOP_PRESSURE is the reference pressure used to locate the start
+      ! of the upper-atmosphere GWD taper.
       call MAPL_GetResource( MAPL, self%GEOS_MLT, Label="GEOS_MLT:", default=.false., _RC)
-      self%GWD_TOP_PRESSURE = 1.0
+      self%GWD_TOP_PRESSURE = 0.006
       if (self%GEOS_MLT) then
          call MAPL_GetResource( MAPL, self%GWD_TOP_PRESSURE, &
-              Label="GWD_TOP_PRESSURE:", default=1.0, _RC)
+              Label="GWD_TOP_PRESSURE:", default=0.006, _RC)
       end if
 
       ! Background Gravity wave drag
@@ -421,6 +424,37 @@ contains
       allocate(self%alpha(LM+1), _STAT)
       call MAPL_GetPointer( IMPORT, PREF,     'PREF',    _RC )
       call gw_newtonian_set(LM, PREF, self%alpha)
+
+      ! Build the GEOS-MLT upper-atmosphere GWD taper from the
+      ! reference-pressure grid. Level 1 is the top model layer.
+      if (self%GEOS_MLT) then
+         allocate(self%GWD_TOP_RAMP(LM), _STAT)
+         self%GWD_TOP_RAMP = 1.0
+
+         if (self%GWD_TOP_PRESSURE > 0.0) then
+            BOTNDX = LM + 1
+            do K = 1, LM
+               PREF_MID = 0.5 * (PREF(K) + PREF(K+1))
+               if (PREF_MID > self%GWD_TOP_PRESSURE) then
+                  BOTNDX = K
+                  exit
+               end if
+            end do
+
+            ! Taper upward from BOTNDX while levels below BOTNDX
+            ! retain a factor of one.
+            if (BOTNDX > 1 .and. BOTNDX <= LM) then
+               do K = BOTNDX, 1, -1
+                  if (PREF(K+1) > 0.0 .and. PREF(K) >= 0.0) then
+                     self%GWD_TOP_RAMP(K) = self%GWD_TOP_RAMP(K+1) * &
+                          PREF(K) / PREF(K+1)
+                  else
+                     self%GWD_TOP_RAMP(K) = 0.0
+                  end if
+               end do
+            end if
+         end if
+      end if
 
       ! All done
       !---------
@@ -701,7 +735,6 @@ contains
                  TAUXB_TMP_NCAR, TAUYB_TMP_NCAR,  &
                  self%NCAR_EFFGWORO, &
                  self%NCAR_EFFGWBKG, self%alpha, &
-                 self%GEOS_MLT, self%GWD_TOP_PRESSURE, &
                  _RC)
          endif
          !call MAPL_TimerOff(MAPL,"-INTR_NCAR")
@@ -731,7 +764,6 @@ contains
                  self%GEOS_BGSTRESS, &
                  self%GEOS_EFFGWORO, &
                  self%GEOS_EFFGWBKG, &
-                 self%GEOS_MLT, self%GWD_TOP_PRESSURE, &
                  _RC)
          endif
          !call MAPL_TimerOff(MAPL,"-INTR_GEOS")
@@ -749,6 +781,21 @@ contains
          DTDT_ORG=DTDT_ORG_GEOS+DTDT_ORG_NCAR
          TAUXO_TMP=TAUXO_TMP_GEOS+TAUXO_TMP_NCAR
          TAUYO_TMP=TAUYO_TMP_GEOS+TAUYO_TMP_NCAR
+
+         ! Apply the GEOS-MLT upper-atmosphere taper to the final GWD
+         ! tendencies. The wave-drag schemes themselves retain their
+         ! original full-column propagation and stress calculations.
+         if (self%GEOS_MLT) then
+            do L = 1, LM
+               DUDT_GWD(:,:,L) = DUDT_GWD(:,:,L) * self%GWD_TOP_RAMP(L)
+               DVDT_GWD(:,:,L) = DVDT_GWD(:,:,L) * self%GWD_TOP_RAMP(L)
+               DTDT_GWD(:,:,L) = DTDT_GWD(:,:,L) * self%GWD_TOP_RAMP(L)
+
+               DUDT_ORG(:,:,L) = DUDT_ORG(:,:,L) * self%GWD_TOP_RAMP(L)
+               DVDT_ORG(:,:,L) = DVDT_ORG(:,:,L) * self%GWD_TOP_RAMP(L)
+               DTDT_ORG(:,:,L) = DTDT_ORG(:,:,L) * self%GWD_TOP_RAMP(L)
+            end do
+         end if
          !call MAPL_TimerOff(MAPL,"-INTR")
 
          CALL POSTINTR(IM*JM, LM, DT, H0, HH, Z1, TAU1, &

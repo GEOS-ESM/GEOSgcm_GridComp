@@ -67,7 +67,7 @@ contains
           dudt_org_dev,  dvdt_org_dev,  dtdt_org_dev,                                &
           taugwdx_dev,   taugwdy_dev,   &
           taubkgx_dev,   taubkgy_dev,   &
-          effgworo,      effgwbkg,      alpha, geos_mlt, gwd_top_pressure, rc )
+          effgworo,      effgwbkg,      alpha, rc )
 
 !-----------------------------------------------------------------------
 ! Interface for multiple gravity wave drag parameterization.
@@ -86,8 +86,6 @@ contains
     type(BeresSourceDesc), intent(inout) :: beres_dc_desc ! Table descriptor for DeepCu Beres scheme
     real,    intent(in   ) :: effgwbkg                 ! tendency efficiency for background gwd (Default = 0.125)
     real,    intent(in   ) :: effgworo                 ! tendency efficiency for orographic gwd (Default = 0.125)
-    logical, intent(in   ) :: geos_mlt                 ! apply GEOS-MLT-specific GWD top cutoff
-    real,    intent(in   ) :: gwd_top_pressure         ! GEOS-MLT top pressure cutoff for GWD tendencies (Pa)
     real,    intent(in   ) :: pint_dev(pcols,pver+1)   ! pressure at the layer edges
     real,    intent(in   ) :: t_dev(pcols,pver)        ! temperature at layers
     real,    intent(in   ) :: u_dev(pcols,pver)        ! zonal wind at layers
@@ -255,20 +253,6 @@ contains
      dvdt_gwd_dev = dvdt_gwd_dev + dvdt_org_dev
      dtdt_gwd_dev = dtdt_gwd_dev + dtdt_org_dev
      endif
-
-     ! GEOS_MLT: Suppress layer-centered GWD tendencies above the configured
-     ! cutoff. Native GEOS retains the original unmasked GWD tendencies.
-     if (geos_mlt) then
-        where (pmid_dev < gwd_top_pressure)
-           dudt_gwd_dev = 0.
-           dvdt_gwd_dev = 0.
-           dtdt_gwd_dev = 0.
-           dudt_org_dev = 0.
-           dvdt_org_dev = 0.
-           dtdt_org_dev = 0.
-        end where
-     end if
-
 
      taugwdx_dev(1:pcols)         = 0.0  !zonal      gravity wave surface    stress
      taugwdy_dev(1:pcols)         = 0.0  !meridional gravity wave surface    stress
