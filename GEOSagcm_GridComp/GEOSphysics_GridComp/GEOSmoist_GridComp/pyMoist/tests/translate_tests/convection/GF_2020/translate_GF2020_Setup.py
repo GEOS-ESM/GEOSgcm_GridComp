@@ -1,7 +1,6 @@
 import numpy as np
 from f90nml import Namelist
 from ndsl import StencilFactory
-from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
@@ -375,7 +374,7 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
         convection_tracers.use_gocart.field[:] = self.convection_tracers_input["use_gocart"]
         convection_tracers.is_wetdep.field[:] = self.convection_tracers_input["is_wetdep"]
 
-        saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
+        saturation_tables = SaturationVaporPressureTable(self.stencil_factory)
 
         code = GF2020Setup(
             stencil_factory=self.stencil_factory,
@@ -395,8 +394,8 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
 
         # collapse plume dim for chemistry_tracers_output
         # NOTE ideally this has no numpy dependency
-        chemistry_tracers_output_5d_reordered = cumulus_parameterization_state.input_output.chemistry_tracers_output.field[:, :, :, [2, 0, 1], :]
-        grid_size = self.stencil_factory.grid_indexing.get_shape([I_DIM, J_DIM, K_DIM])
+        chemistry_tracers_output_5d_reordered = cumulus_parameterization_state.input_output.chemistry_tracers_output.field[:, :, :, [2, 0, 1], :].copy()
+        grid_size = self.stencil_factory.grid_indexing.domain
         chemistry_tracers_output_4d = np.full([grid_size[0], grid_size[1], grid_size[2], NUMBER_OF_PLUMES * NUMBER_OF_TRACERS], np.nan)
         for plume in range(NUMBER_OF_PLUMES):
             chemistry_tracers_output_4d[

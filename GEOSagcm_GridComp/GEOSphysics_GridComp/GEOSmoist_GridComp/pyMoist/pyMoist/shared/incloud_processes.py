@@ -60,7 +60,7 @@ def ice_fraction(
     # Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
     srf_type_int = round(srf_type)
 
-    if srf_type_int == 2 or srf_type_int == 3:  # 2 = snow, 3 = ice
+    if srf_type_int == 2 or srf_type_int == 3 or srf_type_int == 4:  # 2 = snow, 3 = ice, 4 = landice
         if temp <= constants.iT_ICE_ALL:
             icefrct_m = 1.000
         elif temp > constants.iT_ICE_ALL and temp <= constants.iT_ICE_MAX:
@@ -163,9 +163,6 @@ def cloud_effective_radius_ice(
             bb = -2.0
         else:
             bb = -2.0 + log10(wc / 50.0) * (1.0e-3 * (constants.MAPL_TICE - temperature) ** 1.5)
-            # NOTE: there is an issue in this line which causes differences between Fortran and Python
-            # the multiplication "-2.0 * log'd result" is performed differently (~60 ULP), despite the log
-            # being correct. Needs to be looked into at some point, but not critical for overall performance.
         bb = min(max(bb, -6.0), -2.0)
         radius = 377.4 + 203.3 * bb + 37.91 * bb**2 + 2.3696 * bb**3
         radius = min(150.0e-6, max(5.0e-6, 1.0e-6 * radius))
