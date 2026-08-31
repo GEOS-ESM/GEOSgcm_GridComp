@@ -187,6 +187,8 @@ module GEOS_LandiceGridCompMod
 ! -----------------------
    !add initialize method for child (ISSM)
    call MAPL_GetResource (MAPL, DO_ISSM, label='DO_ISSM:', DEFAULT=0, __RC__ )
+   call MAPL_GetResource (MAPL, NUM_LDAS_ENSEMBLE, label='NUM_LDAS_ENSEMBLE:', DEFAULT=1, __RC__)
+   call MAPL_GetResource (MAPL, ens_id_width, label='ENS_ID_WIDTH:', DEFAULT=0, __RC__)   
 
 #ifndef HAVE_ISSM
    DO_ISSM=0
