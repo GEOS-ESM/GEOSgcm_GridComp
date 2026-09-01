@@ -57,7 +57,7 @@ module GEOS_MGB2_2M_InterfaceMod
   real    :: CCI_EVAP_EFF
 
   real    :: ANV_FEXP
-  integer :: PDFSHAPE
+  integer :: MGB2_PDFSHAPE
   real    :: MIN_RL
   real    :: MAX_RL
   real    :: FAC_RI
@@ -80,14 +80,14 @@ module GEOS_MGB2_2M_InterfaceMod
            AUT_SCALE, TS_AUTO_ICE, CCN_PARAM, IN_PARAM, &
            FDROP_DUST, FDROP_SOOT, &
            DUST_INFAC, ORG_INFAC, BC_INFAC, SS_INFAC, RRTMG_IRRAD, RRTMG_SORAD,&
-           MTIME,MINCDNC, Immersion_param, ACC_ENH, ACC_ENH_ICE, DT_MICRO, URSCALE, &
+           MTIME,MINCDNC, Immersion_param, ACC_ENH, MGB2_ACC_ENH_ICE, DT_MICRO, URSCALE, &
            CNV_GSC, CNV_BSC, MUI_CST, USE_AREA, PRECIPRAD, DROPSZCNV, ICESZCNV_SC, &
            SED_STEP_SC, MIN_EIS, MAX_EXP, MIN_EXP, TMAXLL, MIN_ST, MAX_CNVNICE, MAX_CNVNDROP, &
            DTST, RHC_STRAT_SCALE
            
 
 
-  INTEGER :: WSUB_OPTION, ST_OPTION, RHC_OPTION 
+  INTEGER :: MGB2_WSUB_OPTION, ST_OPTION, RHC_OPTION
   
   public :: MGB2_2M_Setup, MGB2_2M_Initialize, MGB2_2M_Run
   public :: MGVERSION
@@ -108,7 +108,7 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
     
     call ESMF_ConfigGetAttribute( CF, MGVERSION, Label="MGVERSION:",  default=3, __RC__)
 
-    call MAPL_GetResource( CF, WSUB_OPTION,  'WSUB_OPTION:',   DEFAULT= 1 , __RC__) !0- param 1- Use Wsub climatology 2-Wnet
+    call MAPL_GetResource( CF, MGB2_WSUB_OPTION,  'WSUB_OPTION:',   DEFAULT= 1 , __RC__) !0- param 1- Use Wsub climatology 2-Wnet
     call MAPL_GetResource( CF, USE_NCLOUD_CLIM,  'USE_NCLOUD_CLIM:',   DEFAULT= .FALSE.,    __RC__) !0- param 1- Use Wsub climatology 2-Wnet
 
     ! !INTERNAL STATE:
@@ -361,7 +361,7 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     !====================large scale condensation tuning/options======
       
 
-    call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 6    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, MGB2_PDFSHAPE   , 'PDFSHAPE:'        , DEFAULT= 6    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, FAC_RI          , 'FAC_RI:'          , DEFAULT= 1.   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, FAC_RL          , 'FAC_RL:'          , DEFAULT= 1.   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MIN_RI          , 'MIN_RI:'          , DEFAULT=  5.e-6, RC=STATUS); VERIFY_(STATUS)
@@ -435,7 +435,7 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, IN_PARAM,       'INPARAM:',        DEFAULT= 6.0,    __RC__) !IN param
     call MAPL_GetResource(MAPL, Immersion_param,'ImmersionPARAM:', DEFAULT= 6.0,    __RC__) !Immersion param
     call MAPL_GetResource(MAPL, ACC_ENH,        'ACC_ENH:',        DEFAULT= 1.0,    __RC__) !accretion rain-liquid scaling for MG2
-    call MAPL_GetResource(MAPL, ACC_ENH_ICE,    'ACC_ENH_ICE:',    DEFAULT= 1.,    __RC__) !accretion snow-ice scaling for MG2
+    call MAPL_GetResource(MAPL, MGB2_ACC_ENH_ICE, 'ACC_ENH_ICE:',   DEFAULT= 1.,    __RC__) !accretion snow-ice scaling for MG2
     
     call MAPL_GetResource(MAPL, FDROP_DUST,     'FDROP_DUST:',     DEFAULT= 0.5,    __RC__) !Fraction of dust within droplets for immersion freezing
     call MAPL_GetResource(MAPL, FDROP_SOOT,     'FDROP_SOOT:',     DEFAULT= 0.05,   __RC__) !Fraction of soot within droplets for immersion freezing        
@@ -469,7 +469,7 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, MUI_CST,  'MUI_CST:', DEFAULT= -1. ,__RC__) !value of the dispersion exponent in ice size dist.
     call MAPL_GetResource(MAPL, SED_STEP_SC,  'SED_STEP_SC:', DEFAULT= 1. ,__RC__) !scales the number of sedimentation substeps
     
-    call MAPL_GetResource(MAPL, WSUB_OPTION,  'WSUB_OPTION:',   DEFAULT= 3 , __RC__) !0- param 1- Use Wsub climatology 2-Wnet 3- Symbolic Wnet 
+    call MAPL_GetResource(MAPL, MGB2_WSUB_OPTION, 'WSUB_OPTION:',  DEFAULT= 3 , __RC__) !0- param 1- Use Wsub climatology 2-Wnet 3- Symbolic Wnet
   
     call MAPL_GetResource(MAPL, DEBUG_MAMnet, 'DEBUG_MAMnet:', DEFAULT= .FALSE. , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, DEBUG_MAMnet_I, 'DEBUG_MAMnet_I:', DEFAULT= 1 , RC=STATUS); VERIFY_(STATUS)
@@ -532,14 +532,14 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
         call ini_micro(Dcsr8, micro_mg_berg_eff_factor_in, 2.0)
     end if
    
-    if(WSUB_OPTION .eq. 0) then 
+    if(MGB2_WSUB_OPTION .eq. 0) then
       call WRITE_PARALLEL ('Using Wsub param***************') 
-    elseif(WSUB_OPTION .eq. 1)  then  
+    elseif(MGB2_WSUB_OPTION .eq. 1)  then
       call WRITE_PARALLEL ('Using Wclim***************')
-    elseif(WSUB_OPTION .eq. 2) then
+    elseif(MGB2_WSUB_OPTION .eq. 2) then
       use_wnet =  .TRUE.
       call WRITE_PARALLEL ('Using Wnet***************') 
-    elseif(WSUB_OPTION .eq. 3) then     
+    elseif(MGB2_WSUB_OPTION .eq. 3) then
    	 call WRITE_PARALLEL ('Using symbolic Wnet***************')
     else
      call WRITE_PARALLEL ('Unsupported Wnet option')
@@ -1012,16 +1012,16 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
     !call MAPL_GetPointer(IMPORT, KPBLIN, 'KPBL'     , __RC__)
        
     
-    IF (WSUB_OPTION .eq. 0)  then   
+    IF (MGB2_WSUB_OPTION .eq. 0)  then
         call MAPL_GetPointer(IMPORT, TAUOROX, 'TAUOROX'     , __RC__)
         call MAPL_GetPointer(IMPORT, TAUOROY, 'TAUOROY'     , __RC__)
         call MAPL_GetPointer(IMPORT, ALH,    'ALH'     , __RC__)
         !call MAPL_GetPointer(IMPORT, RADLW,  'RADLW'     , __RC__)
         !call MAPL_GetPointer(IMPORT, RADSW,  'RADSW'     , __RC__)
         call MAPL_GetPointer(IMPORT, TKE,    'TKE'       , __RC__)
-     ELSEIF (WSUB_OPTION .eq. 1) then 
+     ELSEIF (MGB2_WSUB_OPTION .eq. 1) then
      	call MAPL_GetPointer(IMPORT, WSUB_CLIM,  'WSUB_CLIM'     , __RC__)
-     ELSEIF (WSUB_OPTION .eq. 2) then 
+     ELSEIF (MGB2_WSUB_OPTION .eq. 2) then
         call MAPL_GetPointer(IMPORT, RI, 'RI'  ,  __RC__)
         call MAPL_GetPointer(IMPORT, KMN, 'KM' ,  __RC__)     
     END IF 
@@ -1224,7 +1224,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
      !!=============== find vertical velocity variance
 
 
-	   if (WSUB_OPTION .eq. 0) then ! use parameterization from Barahona et al. GMD. 2014 (Appendix) 
+	   if (MGB2_WSUB_OPTION .eq. 0) then ! use parameterization from Barahona et al. GMD. 2014 (Appendix)
 
               do J=1,JM
                  do I=1,IM
@@ -1240,24 +1240,24 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
               end do 
             end do  
 
-        elseif(WSUB_OPTION .eq. 1) then   !WSUB climatology 
+        elseif(MGB2_WSUB_OPTION .eq. 1) then   !WSUB climatology
 
           WSUB  =  WSUB_CLIM   
           
         
-        elseif (WSUB_OPTION .eq. 2) then !Use Wnet
+        elseif (MGB2_WSUB_OPTION .eq. 2) then !Use Wnet
         !print *, '=================================='
          	RAD_QL = QLLS + QLCN
             RAD_QI = QILS + QICN
             call Wneuralnet(WSUB, T, AIRDEN, U, V, W, KMN, RI, Q, RAD_QI, RAD_QL , IM, JM, LM)    
         
-       elseif(WSUB_OPTION .eq. 3) then !Use Wnet_sym
+       elseif(MGB2_WSUB_OPTION .eq. 3) then !Use Wnet_sym
                  
          call  Wnet_sym(WSUB, T, PLmb, ZL0, AIRDEN, U, V, Q, MASS,  KPBL_SC)   
 
        end if      
        
-        IF (WSUB_OPTION .gt. 0) then !scale it for resolutipns other than 0.5 degrees 
+        IF (MGB2_WSUB_OPTION .gt. 0) then !scale it for resolutipns other than 0.5 degrees
             DO J=1, JM
                 DO I = 1, IM 
                    xscale = log10(AREA(I, J)) 
@@ -1628,7 +1628,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
             call hystpdf_2M( &
                       DT_MOIST       , &
                       ALPHA          , &
-                      PDFSHAPE       , &
+                      MGB2_PDFSHAPE  , &
                       CNV_FRC(I,J)   , &
                       SRF_TYPE(I,J)  , &
                       PLmb(I,J,L)    , &
@@ -1772,7 +1772,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
 
                 call Pfreezing( &
                  1.0 - RHCRIT(I,J,K), &
-                 PDFSHAPE,               &
+                 MGB2_PDFSHAPE,          &
                  PLmb(I,J,K),            &
                  Q(I,J,K),               &
                  QLLS(I,J,K),            &
@@ -1950,7 +1950,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
 
     !Tuning factors
     accre_enhanr8= ACC_ENH
-    accre_enhan_icer8= ACC_ENH_ICE
+    accre_enhan_icer8= MGB2_ACC_ENH_ICE
     autscx = 1.0
     disp_liu = LIU_MU
     ui_scale = UISCALE
@@ -2346,7 +2346,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
                 
                  call update_cld( &
                      1.0-RHCRIT(I,J,K),       & ! ALPHA
-                     PDFSHAPE,                  &
+                     MGB2_PDFSHAPE,             &
                      CNV_FRC(I,J),              &
                      SRF_TYPE(I,J),             &
                      PLmb(I,J,K),               &
