@@ -4375,7 +4375,7 @@ module GEOSmoist_Process_Library
        real :: sigw1
        real :: sigw2
 
-    #ifdef PDFDIAG
+#ifdef PDFDIAG
        ! partition_dblgss requires these arguments when PDFDIAG is enabled.
        ! They are intentionally local because this routine is diagnostic only.
        real :: pdf_sigw1_dummy
@@ -4393,7 +4393,7 @@ module GEOSmoist_Process_Library
        real :: pdf_rhlqt_dummy
        real :: pdf_rwhl_dummy
        real :: pdf_rwqt_dummy
-    #endif
+#endif
 
        real, parameter :: CLD_QABS_MIN = 1.0e-12
        real, parameter :: SQRT_TWO     = 1.4142135623730951
@@ -4535,7 +4535,7 @@ module GEOSmoist_Process_Library
                qt_env, hl_env, WHL, WQT, HL2, QT2, HLQT, W3,      &
                W2bar, QT3, HL3, pdf_a_work, wthv_dummy,            &
                wqc_dummy, cf_env &
-    #ifdef PDFDIAG
+#ifdef PDFDIAG
                , pdf_sigw1_dummy, pdf_sigw2_dummy,                 &
                pdf_w1_dummy, pdf_w2_dummy,                         &
                pdf_sighl1_dummy, pdf_sighl2_dummy,                 &
@@ -4543,7 +4543,7 @@ module GEOSmoist_Process_Library
                pdf_sigqt1_dummy, pdf_sigqt2_dummy,                 &
                pdf_qt1_dummy, pdf_qt2_dummy,                       &
                pdf_rhlqt_dummy, pdf_rwhl_dummy, pdf_rwqt_dummy     &
-    #endif
+#endif
                )
 
        case (6)
