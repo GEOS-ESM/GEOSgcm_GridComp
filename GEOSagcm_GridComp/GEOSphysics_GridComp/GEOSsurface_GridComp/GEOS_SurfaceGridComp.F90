@@ -13,15 +13,15 @@ module GEOS_SurfaceGridCompMod
 !
 !   {\tt GEOS\_Surface} is a light-weight gridded component that implements the
 !      interface to the tiled surface components. The surface computational components
-!      (LAND, LAKE, OCEAN, LANDICE) are its children. All of {\tt GEOS\_Surface}'s imports and exports
+!      (LAND, LAKE, OCEAN, LANDICE, ROUTE) are its children. All of {\tt GEOS\_Surface}'s imports and exports
 !      are in the atmospheric model's grid. In {\tt GEOS\_Surface} these are transformed to the
 !      exchange grid, and the relevant portions of the exchange grid are passed to
-!      each of the children. The children's results are them replaced in
+!      each of the children. The children's results are then replaced in
 !      the full exchange grid and transformed back to the atmospheric grid.
 !
-!      {\tt GEOS\_Surface} has two run stages, as do its children. These are meant
+!      {\tt GEOS\_Surface} has two run stages, as do its children (except ROUTE). These are meant
 !      to interface with the two stages of {\tt GEOS\_Turbulence}. During the first run
-!      stage, the children all produce surface exchange coefficients, and during the
+!      stage, the children (except ROUTE) all produce surface exchange coefficients, and during the
 !      second, they update the surface state and produce final values of the fluxes.
 !
 !      {\tt GEOS\_Surface} keeps a Private Internal State called 'SURF\_state' in the
@@ -31,16 +31,19 @@ module GEOS_SurfaceGridCompMod
 !      that is used to communicate between the two run methods. These internal states
 !      do not need to be saved in restarts.
 !
-!      The four children of {\tt GEOS\_Surface} are given the names:
+!      The children of {\tt GEOS\_Surface} are given the following names:
 !      'LAKE', which treats inland freshwater bodies; 'LANDICE', which treats permanent
 !      glaciers; 'LAND', which treats all other land surface types, both bare and vegetated,
 !      as well as vegetated wetlands not considered freshwater bodies; and  'SALTWATER', which
-!      performs the surface calculations for all ocean areas. All four operate in lists
+!      performs the surface calculations for all ocean areas. These four children operate in lists
 !      of tiles that are nonoverlapping subsets of the exhange grid, and their union---the
 !      full exchange grid---tiles the entire sphere.
+!      The fifth child, 'ROUTE', treats river routing and operates in "Pfafstetter catchment" space.  
+!      'ROUTE' has no exports in grid space at the level of Surface.  Its import is tile-space runoff from LAND.
 !
 !      By default MAPL\_Generic tries to resolve Imports and Exports among
-!      the children; but the children of {\tt GEOS\_Surface} do not talk directly to each other,
+!      the children; but the children of {\tt GEOS\_Surface} do not talk directly to each other
+!      (except for runoff passing from LAND to ROUTE),
 !      and all communication between them would need to be performed by {\tt GEOS\_Surface} manipulating
 !      their Import and Export states.
 !
@@ -55,6 +58,7 @@ module GEOS_SurfaceGridCompMod
   use GEOS_LandiceGridCompMod,   only : LandiceSetServices  => SetServices
   use GEOS_LandGridCompMod,      only : LandSetServices     => SetServices
   use GEOS_SaltwaterGridCompMod, only : OceanSetServices    => SetServices
+  use GEOS_RouteGridCompMod,     only : RouteSetServices    => SetServices  
 
   use m_mpif90, only: MP_INTEGER, MP_REAL, MP_STATUS_SIZE
   use StieglitzSnow, only : NUM_DUDP, NUM_DUSV, NUM_DUWT, NUM_DUSD, &
@@ -85,17 +89,20 @@ module GEOS_SurfaceGridCompMod
   integer ::     LANDICE
   integer ::       OCEAN
   integer ::        LAND
+  integer ::       ROUTE
 
 #ifdef AQUA_PLANET
   integer, parameter :: NUM_CHILDREN = 1
 #else
-  integer, parameter :: NUM_CHILDREN = 4
+  integer, parameter :: NUM_CHILDREN = 5
 #endif
 
   INTEGER            :: catchswim,landicegoswim
 
   character(len=ESMF_MAXSTR), pointer :: GCNames(:)
-  integer                    :: CHILD_MASK(NUM_CHILDREN)
+  
+  integer :: CHILD_MASK(NUM_CHILDREN)
+
   integer :: DO_OBIO, ATM_CO2
   integer :: DO_WAVES
   integer :: CHOOSEMOSFC
@@ -104,10 +111,10 @@ module GEOS_SurfaceGridCompMod
   logical :: DO_DATA_ATM4OCN
 
 ! used only when DO_OBIO==1 or ATM_CO2 == ATM_CO2_FOUR
-  integer, parameter :: NB_CHOU_UV   = 5 ! Number of UV bands
-  integer, parameter :: NB_CHOU_NIR  = 3 ! Number of near-IR bands
-  integer, parameter :: NB_CHOU      = NB_CHOU_UV + NB_CHOU_NIR ! Total number of bands
-  integer, parameter :: NB_OBIO = 33    !total number of bands for OradBio
+  integer, parameter :: NB_CHOU_UV   = 5                          ! Number of UV bands
+  integer, parameter :: NB_CHOU_NIR  = 3                          ! Number of near-IR bands
+  integer, parameter :: NB_CHOU      = NB_CHOU_UV + NB_CHOU_NIR   ! Total number of bands
+  integer, parameter :: NB_OBIO      = 33                         ! Total number of bands for OradBio
   integer, parameter :: ATM_CO2_FOUR = 4
 !
 
@@ -3491,15 +3498,18 @@ module GEOS_SurfaceGridCompMod
      VERIFY_(STATUS)
 !EOS
 
-    OCEAN    = MAPL_AddChild(GC, NAME='SALTWATER', SS=OceanSetServices, RC=STATUS)
+    OCEAN    = MAPL_AddChild(GC, NAME='SALTWATER', SS=OceanSetServices,   RC=STATUS)
     VERIFY_(STATUS)
 #ifndef AQUA_PLANET
-    LAKE     = MAPL_AddChild(GC, NAME='LAKE', SS=LakeSetServices, RC=STATUS)
+    LAKE     = MAPL_AddChild(GC, NAME='LAKE',      SS=LakeSetServices,    RC=STATUS)
     VERIFY_(STATUS)
-    LANDICE  = MAPL_AddChild(GC, NAME='LANDICE', SS=LandiceSetServices, RC=STATUS)
+    LANDICE  = MAPL_AddChild(GC, NAME='LANDICE',   SS=LandiceSetServices, RC=STATUS)
     VERIFY_(STATUS)
-    LAND     = MAPL_AddChild(GC, NAME='LAND', SS=LandSetServices, RC=STATUS)
+    LAND     = MAPL_AddChild(GC, NAME='LAND',      SS=LandSetServices,    RC=STATUS)
     VERIFY_(STATUS)
+    ROUTE     = MAPL_AddChild(GC, NAME='ROUTE',    SS=RouteSetServices,   RC=STATUS)  ! Always add ROUTE as a Child.  Otherwise, many "if RUN_ROUTE>0" blocks would be needed.
+
+    VERIFY_(STATUS)    
 #endif
 
 ! Get my internal MAPL_Generic state
@@ -3517,10 +3527,12 @@ module GEOS_SurfaceGridCompMod
     CHILD_MASK(LAKE   ) = MAPL_LAKE
     CHILD_MASK(LANDICE) = MAPL_LANDICE
     CHILD_MASK(LAND   ) = MAPL_LAND
+    CHILD_MASK(ROUTE  ) = MAPL_LAND
 #endif
 
 ! By default MAPL_Generic tries to resolve Imports and Exports among
-! the children; but our children do not talk to each other, only to us
+! the children; but our children do not talk to each other, only to us,
+! except for ROUTE getting runoff from LAND.    
 ! --------------------------------------------------------------------
 
     ! Note; SURFSTATE is only connected between AGCM and OGCM if USE_CICE_Thermo is set
@@ -3529,11 +3541,11 @@ module GEOS_SurfaceGridCompMod
 
     call MAPL_GetResource ( MAPL, DO_CICE_THERMO, Label="USE_CICE_Thermo:" , DEFAULT=0, _RC)
     if (DO_CICE_THERMO == 2) then
-       call MAPL_TerminateImport    ( GC, SHORT_NAMES=['SURFSTATE'],    &
+       call MAPL_TerminateImport ( GC, SHORT_NAMES=['SURFSTATE'],    &
                                       CHILD_IDS=[OCEAN],  RC=STATUS  )
        VERIFY_(STATUS)
     else
-       call MAPL_TerminateImport    ( GC, CHILD = OCEAN,   RC=STATUS  )
+       call MAPL_TerminateImport ( GC, CHILD = OCEAN,   RC=STATUS  )
        VERIFY_(STATUS)
     endif
 #ifndef AQUA_PLANET
@@ -3543,33 +3555,43 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
     call MAPL_TerminateImport    ( GC, CHILD = LAND,    RC=STATUS  )
     VERIFY_(STATUS)
+    call MAPL_TerminateImport    ( GC, CHILD = ROUTE,   RC=STATUS  )
+    VERIFY_(STATUS)
+    
+    call MAPL_AddConnectivity (                                    &
+       GC                                                         ,&
+       SHORT_NAME  = (/'RUNOFF  '/)                               ,&   ! RUNOFF = total runoff = surface runoff + baseflow
+       SRC_ID      =  LAND                                        ,&
+       DST_ID      =  ROUTE                                       ,&
+       RC=STATUS )
+    VERIFY_(STATUS)      
 #endif
 
 ! Set the Profiling timers
 ! ------------------------
 
-    call MAPL_TimerAdd(GC, name="INITIALIZE"    ,RC=STATUS)
+    call MAPL_TimerAdd(GC,    name="INITIALIZE"                 ,RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC, name="InitChild"    ,RC=STATUS)
+    call MAPL_TimerAdd(GC,    name="InitChild"                  ,RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC, name="LocStreamCreate"    ,RC=STATUS)
+    call MAPL_TimerAdd(GC,    name="LocStreamCreate"            ,RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC, name="LocStreamXForm"    ,RC=STATUS)
-    VERIFY_(STATUS)
-
-    call MAPL_TimerAdd(GC,    name="-RUN1"   ,RC=STATUS)
+    call MAPL_TimerAdd(GC,    name="LocStreamXForm"             ,RC=STATUS)
     VERIFY_(STATUS)
 
+    call MAPL_TimerAdd(GC,    name="-RUN1"                      ,RC=STATUS)
+    VERIFY_(STATUS)
+    
     do I=1,NUM_CHILDREN
-       call MAPL_TimerAdd(GC,    name="--RUN1_"//trim(GCNames(I))  ,RC=STATUS)
+       call MAPL_TimerAdd(GC, name="--RUN1_"//trim(GCNames(I))  ,RC=STATUS)
        VERIFY_(STATUS)
     end do
-
-    call MAPL_TimerAdd(GC,    name="-RUN2"   ,RC=STATUS)
+    
+    call MAPL_TimerAdd(GC,    name="-RUN2"                      ,RC=STATUS)
     VERIFY_(STATUS)
-
+    
     do I=1,NUM_CHILDREN
-       call MAPL_TimerAdd(GC,    name="--RUN2_"//trim(GCNames(I))  ,RC=STATUS)
+       call MAPL_TimerAdd(GC, name="--RUN2_"//trim(GCNames(I))  ,RC=STATUS)
        VERIFY_(STATUS)
     end do
 
@@ -3581,7 +3603,7 @@ module GEOS_SurfaceGridCompMod
 
     RETURN_(ESMF_SUCCESS)
 
-    contains
+  contains
 
     subroutine OBIO_setServices(NB_CHOU, RC)
 
@@ -3659,12 +3681,12 @@ module GEOS_SurfaceGridCompMod
     type (MAPL_MetaComp    ), pointer   :: CHILD_MAPL
     type (MAPL_LocStream       )            :: LOCSTREAM
     type (MAPL_LocStream       )            :: EXCH
-    type (MAPL_LocStream       )            :: CHILD_LS
+    type (MAPL_LocStream       )            :: CHILD_LS  
     type (ESMF_Grid            )            :: GRID
     type (ESMF_GridComp        ), pointer   :: GCS(:)
     type (ESMF_State           ), pointer   :: GIM(:), GEX(:)
     character(len=ESMF_MAXSTR)              :: TILEFILE
-    character(len=ESMF_MAXSTR)              :: ROUTINGFILE
+    character(len=ESMF_MAXSTR)              :: ROUTINGFILETELEPORT
     character(len=ESMF_MAXSTR)              :: DischargeAdjustFile
 
     type (T_SURFACE_STATE), pointer         :: SURF_INTERNAL_STATE
@@ -3762,6 +3784,8 @@ module GEOS_SurfaceGridCompMod
     call MAPL_TimerOn(MAPL,"LocStreamCreate")
 
     do I = 1, NUM_CHILDREN
+       
+       if (I == ROUTE) cycle
 
        call MAPL_LocStreamCreate(CHILD_LS, LOCSTREAM,                  &
                                  NAME = GCNAMES(I) ,                   &
@@ -3773,7 +3797,15 @@ module GEOS_SurfaceGridCompMod
        call MAPL_Set (CHILD_MAPL, LOCSTREAM=CHILD_LS, RC=STATUS )
        VERIFY_(STATUS)
 
-    end do
+       ! assign LocStream from LAND to ROUTE (needed for providing runoff from LAND to ROUTE)
+       if(I == LAND)then
+          call MAPL_GetObjectFromGC ( GCS(ROUTE) ,   CHILD_MAPL,   RC=STATUS )
+          VERIFY_(STATUS)
+          call MAPL_Set (CHILD_MAPL, LOCSTREAM=CHILD_LS, RC=STATUS )
+          VERIFY_(STATUS)          
+       endif
+
+    end do  
     call MAPL_TimerOff(MAPL,"LocStreamCreate")
 
 ! Call Initialize for every Child
@@ -3799,7 +3831,7 @@ module GEOS_SurfaceGridCompMod
 !--------------------
 
     call MAPL_GetPointer(EXPORT,    FRLAND,     'FRLAND', ALLOC=.true.,  RC=STATUS)
-    VERIFY_(STATUS)
+    VERIFY_(STATUS)  
     call MAPL_GetPointer(EXPORT,    FRLAKE,     'FRLAKE', ALLOC=.true.,  RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, FRLANDICE,  'FRLANDICE', ALLOC=.true.,  RC=STATUS)
@@ -3821,7 +3853,7 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
 
     FRLANDICE = max(min(FRLANDICE,1.0),0.0)
-    FRLAND    = max(min(FRLAND   ,1.0),0.0)
+    FRLAND    = max(min(FRLAND   ,1.0),0.0) 
     FRLAKE    = max(min(FRLAKE   ,1.0),0.0)
     FROCEAN   = max(min(FROCEAN  ,1.0),0.0)
 
@@ -3831,6 +3863,9 @@ module GEOS_SurfaceGridCompMod
 
     call MAPL_TimerOn(MAPL,"LocStreamXForm")
     do I = 1, NUM_CHILDREN
+
+       if (I == ROUTE) cycle
+
        call MAPL_GetObjectFromGC ( GCS(I) ,   CHILD_MAPL,   RC=STATUS )
        VERIFY_(STATUS)
        call MAPL_Get (CHILD_MAPL, LOCSTREAM=CHILD_LS, RC=STATUS )
@@ -3848,6 +3883,23 @@ module GEOS_SurfaceGridCompMod
                                         MASK_OUT=TILETYPE == CHILD_MASK(I), &
                                         RC=STATUS )
        VERIFY_(STATUS)
+
+
+       ! assign LocStream transform from LAND to ROUTE (needed for providing runoff from LAND to ROUTE)
+       if(I == LAND)then
+         call MAPL_LocStreamCreateXform ( XFORM=SURF_INTERNAL_STATE%XFORM_IN(ROUTE), &
+                                          LocStreamOut=CHILD_LS, &
+                                          LocStreamIn=LOCSTREAM, &
+                                          NAME=GCNAMES(ROUTE), &
+                                          RC=STATUS )
+         VERIFY_(STATUS)
+         call MAPL_LocStreamCreateXform ( XFORM=SURF_INTERNAL_STATE%XFORM_OUT(ROUTE), &
+                                          LocStreamOut=LOCSTREAM, &
+                                          LocStreamIn=CHILD_LS, &
+                                          NAME=GCNAMES(ROUTE), &
+                                          MASK_OUT=SPREAD(.false., 1, size(TILETYPE)), &
+                                          RC=STATUS )       
+       endif
     end do
     call MAPL_TimerOff(MAPL,"LocStreamXForm")
 
@@ -3875,15 +3927,15 @@ module GEOS_SurfaceGridCompMod
     call SurfParams_init(LAND_PARAMS,LSM_CHOICE,RC=STATUS)
     VERIFY_(STATUS)
 
-! Handle river routing (if required)
+! Handle instantaneous routing of tile runoff to ocean outlet ("teleport") (if required)
 !-----------------------------------
-    call MAPL_GetResource ( MAPL, RoutingFile, Label="ROUTING_FILE:", &
+    call MAPL_GetResource ( MAPL, RoutingFileTeleport, Label="ROUTING_FILE:", &
          DEFAULT="", RC=STATUS)
     VERIFY_(STATUS)
 
-    if (RoutingFile /= "") then
-       call InitializeRiverRouting(SURF_INTERNAL_STATE%RoutingType, &
-            RoutingFile, LocStream, rc=STATUS)
+    if (RoutingFileTeleport /= "") then
+       call InitializeRiverRoutingTeleport(SURF_INTERNAL_STATE%RoutingType, &
+            RoutingFileTeleport, LocStream, rc=STATUS)
        VERIFY_(STATUS)
 
        call MAPL_GetResource ( MAPL, DischargeAdjustFile, Label="DISCHARGE_ADJUST_FILE:", &
@@ -3925,9 +3977,9 @@ module GEOS_SurfaceGridCompMod
           call MAPL_LocStreamTransform( LOCSTREAM, PCMETILE, PCME, RC=STATUS)
           VERIFY_(STATUS)
 
-          call RouteRunoff(SURF_INTERNAL_STATE%RoutingType, PUMETILE, PUMEDISTILE, RC=STATUS)
+          call RouteRunoffTeleport(SURF_INTERNAL_STATE%RoutingType, PUMETILE, PUMEDISTILE, RC=STATUS)
           VERIFY_(STATUS)
-          call RouteRunoff(SURF_INTERNAL_STATE%RoutingType, PCMETILE, PCMEDISTILE, RC=STATUS)
+          call RouteRunoffTeleport(SURF_INTERNAL_STATE%RoutingType, PCMETILE, PCMEDISTILE, RC=STATUS)
           VERIFY_(STATUS)
 
           call MAPL_GetPointer(INTERNAL, DISCHARGE_ADJUST, 'DISCHARGE_ADJUST',  RC=STATUS)
@@ -3949,8 +4001,6 @@ module GEOS_SurfaceGridCompMod
        end if
     end if
 
-
-
 ! All Done
 !---------
 
@@ -3959,9 +4009,40 @@ module GEOS_SurfaceGridCompMod
     RETURN_(ESMF_SUCCESS)
   end subroutine Initialize
 
-  subroutine InitializeRiverRouting(RoutingType, RoutingFile, Stream, rc)
+  ! ---------------------------------------------------------------------------------------------------------
+
+  subroutine InitializeRiverRoutingTeleport(RoutingType, RoutingFileTeleport, Stream, rc)
+
+  ! ==============================================================================
+  ! NOTE ON CO-EXISTING RIVER ROUTING SCHEMES
+  ! ==============================================================================
+  ! Currently, GEOS GCM contains two parallel river routing systems:
+  !
+  ! 1. The Legacy Simplistic Scheme (initialized in this subroutine): 
+  !    Used primarily for the coupled atmosphere-ocean model. It instantaneously 
+  !    transports land runoff directly to predefined ocean outlets, ignoring 
+  !    travel time. This scheme relies on the 'RoutingFileTeleport' resource variable 
+  !    to define the basin-to-outlet mappings.
+  !
+  ! 2. The Hydraulic-geometry-based Routing Scheme (GEOSroute_GridComp):
+  !    Recently enabled for AMIP runs. This scheme actively routes water across 
+  !    catchments with realistic travel times. However, it does not yet 
+  !    connect to the ocean outlets. This new scheme is activated via the 
+  !    'RUN_ROUTE' toggle (e.g., RUN_ROUTE > 0) in the resource file (GEOS_SurfaceGridComp.rc).
+  !
+  ! RELATIONSHIP BETWEEN RC VARIABLES:
+  ! - 'RoutingFileTeleport' specifically configures the mapping for this legacy 
+  !   simplistic routing.
+  ! - 'RUN_ROUTE' acts as the trigger for the new active river routing component.
+  !
+  ! Future developments will likely unify these systems, allowing the  
+  ! Hydraulic-geometry-based Routing Scheme to provide freshwater fluxes directly to the ocean model.
+  ! ==============================================================================
+
+    ! initialize instantaneous mapping of tile runoff to ocean outlet for coupled atm-ocean model as of July 2026
+    
     type(T_RiverRouting), pointer    :: RoutingType
-    character(len=*),        intent(IN) :: RoutingFile
+    character(len=*),     intent(IN) :: RoutingFileTeleport
     type(MAPL_LocStream), intent(IN) :: Stream
     integer, optional,    intent(OUT):: rc
 
@@ -3989,7 +4070,7 @@ module GEOS_SurfaceGridCompMod
 
 ! ErrLog Variables
 
-    character(len=ESMF_MAXSTR)              :: IAm="InitializeRiverRouting"
+    character(len=ESMF_MAXSTR)              :: IAm="InitializeRiverRoutingTeleport"
     integer                                 :: STATUS
 
     call ESMF_VMGetCurrent(VM,                                RC=STATUS)
@@ -4002,7 +4083,7 @@ module GEOS_SurfaceGridCompMod
 ! Open the trn file and read the number of "Routings"
 !  or land-ocean tile pairs that exchange runoff
 
-    UNIT = GETFILE(RoutingFile, RC=status)
+    UNIT = GETFILE(RoutingFileTeleport, RC=status)
     VERIFY_(STATUS)
 
     if ( MAPL_am_I_root(vm) ) then
@@ -4272,7 +4353,7 @@ module GEOS_SurfaceGridCompMod
       return
     end subroutine Tile2Index
 
-  end subroutine InitializeRiverRouting
+  end subroutine InitializeRiverRoutingTeleport
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -4714,6 +4795,9 @@ module GEOS_SurfaceGridCompMod
 !--------------------------------------------------------
 
     do I = 1, NUM_CHILDREN
+
+       if (I == ROUTE) cycle            ! ROUTE has no "exchange coeffs" run method
+
        call DOCDS(I, NT, RC=STATUS)
        VERIFY_(STATUS)
     end do
@@ -4988,7 +5072,7 @@ module GEOS_SurfaceGridCompMod
 
     RETURN_(ESMF_SUCCESS)
 
-    contains
+  contains
 
       subroutine DOCDS(type, NT, RC)
         integer,           intent( IN) :: type
@@ -5118,12 +5202,13 @@ module GEOS_SurfaceGridCompMod
 
 ! Call Child
 !-----------
-
+        ! Note: In the calling subroutine RUN1(), the present subroutine DOCDS() is skipped for ROUTE
+        ! (i.e., ESMF_GridCompRun() here is *not* called for ROUTE)
         call ESMF_GridCompRun(GCS(type), &
              importState=GIM(type), exportState=GEX(type), &
              clock=CLOCK, PHASE=1, userRC=STATUS )
         VERIFY_(STATUS)
-
+        
 ! Use childs exports to fill exchange grid exports.
 !--------------------------------------------------
 
@@ -5311,7 +5396,8 @@ module GEOS_SurfaceGridCompMod
     type (ESMF_Field)                   :: Field
     type (ESMF_Grid)                    :: GRID
     type (ESMF_Time)                    :: CurrentTime
-    character(len=ESMF_MAXSTR)          :: PRECIP_FILE
+    character(len=ESMF_MAXPATHLEN)      :: PRECIP_FILE
+    character(len=ESMF_MAXPATHLEN)      :: PRECIP_FILE_CLIMSCALE
 
     type (T_SURFACE_STATE), pointer     :: surf_internal_state
     type (SURF_wrap)                    :: wrap
@@ -6392,25 +6478,31 @@ module GEOS_SurfaceGridCompMod
 
     end if
 
-! Read in precip data. This is used in 'coupled' replay
-!------------------------------------------------------
+! Read in precip or precip clim scaling data. This is used in 'coupled' replay
+!-----------------------------------------------------------------------------
+! This code is used to have the surface components (land, salwater, etc.) see
+!  a "corrected" precip according to Rolf et al. This was used in MERRA-2 and
+!  would typically be done during reanalysis or replay. Also, OGCM-coupled
+!  replays require special treatment.
+! Alternatively, read climatological scaling factors that convert the model
+!  precipitation to an observed climatology.  This rescaled precip is then
+!  processed just like the "corrected" precipitation (that is, disaggregated
+!  into components and tapered with the (raw) model precipitation.  Introduced 
+!  for M21C to address IMERG-Late V07B quality issues while preserving the
+!  climatology of the corrected precip after the end of IMERG-Final on data-day 1 Oct 2025.
+!------------------------------------------------------------------------------------------
 
-    call MAPL_GetResource(MAPL,PRECIP_FILE,LABEL="PRECIP_FILE:",default="null", RC=STATUS)
+    call MAPL_GetResource(MAPL,PRECIP_FILE,          LABEL="PRECIP_FILE:",          default="null", RC=STATUS)
+    VERIFY_(STATUS)
+    
+    call MAPL_GetResource(MAPL,PRECIP_FILE_CLIMSCALE,LABEL="PRECIP_FILE_CLIMSCALE:",default="null", RC=STATUS)
     VERIFY_(STATUS)
 
-    call ESMF_ClockGet(CLOCK, currTime=CurrentTime, rc=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_TimeGet (currentTime,               &
-                       YY=YEAR, MM=MONTH, DD=DAY, &
-                       H=HR,    M=MN,     S=SE,   &
-                                        RC=STATUS )
-    VERIFY_(STATUS)
-    call ESMF_TimeSet (currentTime,               &
-                       YY=YEAR, MM=MONTH, DD=DAY, &
-                       H=HR,    M =30,    S = 0,  &
-                                        RC=STATUS )
-    VERIFY_(STATUS)
+    ! for now, do not allow the combination of precip replacement and clim rescaling
 
+    if (trim(PRECIP_FILE) /= 'null' .and. trim(PRECIP_FILE_CLIMSCALE) /= 'null') then
+       _ASSERT( .FALSE., 'only one of PRECIP_FILE *or* PRECIP_FILE_CLIMSCALE can be set' )
+    end if
 
 ! These exports are the rainfalls and total snowfall that
 !  the children of surface see. They can be the exports of
@@ -6444,25 +6536,66 @@ module GEOS_SurfaceGridCompMod
     ICE = ICEFL
     FRZR= FRZRFL
 
-! This code is used to have the surface components (land, salwater, etc.) see
-!  a "corrected" precip according to Rolf et al. This was used in MERRA-2 and
-!  would typically be done one during reanalysis or replay. Also, OGCM-coupled
-!  replays require special treatment.
-!-----------------------------------------------------------------------------
-
-    REPLACE_PRECIP: if(PRECIP_FILE /= "null") then
+    REPLACE_PRECIP: if(trim(PRECIP_FILE) /= "null" .or. trim(PRECIP_FILE_CLIMSCALE) /= "null") then
 
        bundle = ESMF_FieldBundleCreate (NAME='PRECIP', RC=STATUS)
        VERIFY_(STATUS)
        call ESMF_FieldBundleSet(bundle, GRID=GRID, RC=STATUS)
        VERIFY_(STATUS)
 
-     ! call MAPL_CFIORead( PRECIP_FILE, CurrentTime, Bundle, RC=STATUS)
-     ! VERIFY_(STATUS)
-       call MAPL_read_bundle( Bundle, PRECIP_FILE, CurrentTime, regrid_method=REGRID_METHOD_CONSERVE, RC=status)
+       allocate( PRECSUM(IM,JM), stat=STATUS )
        VERIFY_(STATUS)
-       call ESMFL_BundleGetPointerToData(Bundle,'PRECTOT',PTTe, RC=STATUS)
+
+       ! PRECSUM = uncorrected total precip
+       ! PTTe    = total precip from file
+       
+       PRECSUM = RCU+RLS+SNO+ICE  ! do *not* add FRZR, which is liquid not solid and (probably) incl. in RCU+RLS
+                                  ! see comment re. FRZR in GEOS_CatchGridComp.F90 by reichle, 6/6/2025
+
+       ! get and parse current time (needed to create file time stamp)
+       
+       call ESMF_ClockGet(CLOCK, currTime=CurrentTime, rc=STATUS)
        VERIFY_(STATUS)
+       call ESMF_TimeGet (currentTime,               &
+                          YY=YEAR, MM=MONTH, DD=DAY, &
+                          H=HR,    M=MN,     S=SE,   &
+                          RC=STATUS )
+       VERIFY_(STATUS)
+       
+       if( trim(PRECIP_FILE) /= "null") then
+          
+          ! read corrected precip (PTTe) directly from (hourly) file if file exists (crashes otherwise?)
+          
+          call ESMF_TimeSet (currentTime,               &
+                             YY=YEAR, MM=MONTH, DD=DAY, &
+                             H=HR,    M =30,    S = 0,  &
+                             RC=STATUS )
+          VERIFY_(STATUS)
+          
+          call MAPL_read_bundle( Bundle, PRECIP_FILE, CurrentTime, regrid_method=REGRID_METHOD_CONSERVE, RC=status)
+          VERIFY_(STATUS)
+          call ESMFL_BundleGetPointerToData(Bundle,'PRECTOT',PTTe, RC=STATUS)
+          VERIFY_(STATUS)
+          
+       else
+          
+          ! read clim scale factor from file and apply to uncorrected (model) precip (PRECSUM) 
+          ! to create the "corrected" precip (PTTe)
+          
+          ! climatology is daily, only need month/day information, use leap year (8888) as nominal year
+          ! (matching time stamps in files)
+          call ESMF_TimeSet (currentTime,               &
+                             YY=8888, MM=MONTH, DD=DAY, & 
+                             H=0,     M =0,     S = 0,  & 
+                             RC=STATUS ) 
+          VERIFY_(STATUS)
+                    
+          call MAPL_read_bundle( Bundle, PRECIP_FILE_CLIMSCALE, CurrentTime, regrid_method=REGRID_METHOD_CONSERVE, RC=status)
+          VERIFY_(STATUS)
+          call ESMFL_BundleGetPointerToData(Bundle,'factor_clim',PTTe, RC=STATUS)
+          PTTe = PTTe * PRECSUM
+          VERIFY_(STATUS)
+       end if
 
 
 ! Catchment required convective and large-scale rain and total snowfall,
@@ -6482,15 +6615,7 @@ module GEOS_SurfaceGridCompMod
 
        allocate( PCSCALE(IM,JM), stat=STATUS )
        VERIFY_(STATUS)
-       allocate( PRECSUM(IM,JM), stat=STATUS )
-       VERIFY_(STATUS)
 
-       ! PRECSUM = uncorrected total precip
-       ! PTTe    = total precip from file
-       
-       PRECSUM = RCU+RLS+SNO+ICE  ! do *not* add FRZR, which is liquid not solid and (probably) incl. in RCU+RLS
-                                  ! see comment re. FRZR in GEOS_CatchGridComp.F90 by reichle, 6/6/2025
-       
        where (PTTe == MAPL_UNDEF)
           RCU = PCU
           RLS = PLS
@@ -6926,7 +7051,7 @@ module GEOS_SurfaceGridCompMod
 !    FRI =  max(min(FRI,1.0),0.0)
 
 ! RiverRouting: force allocations of RUNOFF from continental components,
-!   and make sure RoutingFile was specified.
+!   and make sure RoutingFileTeleport was specified.
 !-----------------------------------------------------------------------
 
     if (associated(DISCHARGE)) then
@@ -7580,7 +7705,7 @@ module GEOS_SurfaceGridCompMod
           DISCHARGETILE = RUNOFFTILE
 
        else
-          call RouteRunoff(SURF_INTERNAL_STATE%RoutingType, RUNOFFTILE, DISCHARGETILE, RC=STATUS)
+          call RouteRunoffTeleport(SURF_INTERNAL_STATE%RoutingType, RUNOFFTILE, DISCHARGETILE, RC=STATUS)
           VERIFY_(STATUS)
        end if
 
@@ -7604,7 +7729,7 @@ module GEOS_SurfaceGridCompMod
        VERIFY_(STATUS)
 
        ! Do not correct the precip over ocean tiles
-       if(Precip_File /= "null") then
+       if( trim(Precip_File) /= "null"  .or. trim(PRECIP_FILE_CLIMSCALE) /= "null" ) then
 
           call MAPL_LocStreamTransform( LOCSTREAM, TMPTILE  , PCU,     RC=STATUS); VERIFY_(STATUS)
           where(tiletype == MAPL_OCEAN)  PCUTILE = TMPTILE
@@ -7624,7 +7749,7 @@ module GEOS_SurfaceGridCompMod
        end if
 
        ! Adjust the discharge going to the ocean
-       if(Precip_File /= "null" .and. DischargeAdjustFile /= "null") then
+       if( (trim(Precip_File) /= "null"  .or. trim(PRECIP_FILE_CLIMSCALE) /= "null") .and. DischargeAdjustFile /= "null") then
 
           call MAPL_GetPointer(INTERNAL, DISCHARGE_ADJUST, 'DISCHARGE_ADJUST',  RC=STATUS)
           VERIFY_(STATUS)
@@ -7663,7 +7788,7 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT, CN_PRCP, 'CN_PRCP', ALLOC=.true., RC=STATUS)
     VERIFY_(STATUS)
 
-    if(PRECIP_FILE /= "null") then
+    if( trim(PRECIP_FILE) /= "null" .or. trim(PRECIP_FILE_CLIMSCALE) /= "null" ) then
        TMPTILE = PCUTILE
        call MAPL_LocStreamTransform( LOCSTREAM, CN_PRCP, TMPTILE, RC=STATUS)
        VERIFY_(STATUS)
@@ -7677,7 +7802,7 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT, PRECTOT, 'PRECTOT', ALLOC=.true., RC=STATUS)
     VERIFY_(STATUS)
 
-    if(PRECIP_FILE /= "null") then
+    if( trim(PRECIP_FILE) /= "null" .or. trim(PRECIP_FILE_CLIMSCALE) /= "null" ) then
        TMPTILE = PCUTILE + PLSTILE + SNOFLTILE + ICEFLTILE  ! do *not* add FRZR, which is liquid not solid and (probably) incl. in PCUTILE+PCSTILE
        call MAPL_LocStreamTransform( LOCSTREAM, PRECTOT, TMPTILE, RC=STATUS)
        VERIFY_(STATUS)
@@ -9652,7 +9777,7 @@ module GEOS_SurfaceGridCompMod
          VERIFY_(STATUS)
          call MAPL_GetPointer(GEX(type), dum, 'DSR_DAILY',   ALLOC=associated(DSRDAILYTILE),   notFoundOK=.true., RC=STATUS)
          VERIFY_(STATUS)
-
+         
          call MAPL_GetPointer(GEX(type), dum, 'FFMC_DAILY_', ALLOC=associated(FFMCDAILYTILE_), notFoundOK=.true., RC=STATUS)
          VERIFY_(STATUS)
          call MAPL_GetPointer(GEX(type), dum, 'DMC_DAILY_',  ALLOC=associated(DMCDAILYTILE_),  notFoundOK=.true., RC=STATUS)
@@ -9673,44 +9798,58 @@ module GEOS_SurfaceGridCompMod
       end if
 
 
-! All children can produce these
+! All children except ROUTE produce the following
 
-      call MAPL_GetPointer(GEX(type), dum, 'DELTS'  , ALLOC=associated(DTSTILE)    , RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(GEX(type), dum, 'DELQS'  , ALLOC=associated(DQSTILE)    , RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(GEX(type), dum, 'HLATN'  , ALLOC=associated(HLATNTILE)  , RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(GEX(type), dum, 'EVAPOUT', ALLOC=associated(EVAPOUTILE) , RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(GEX(type), dum, 'SUBLIM' , ALLOC=associated(SUBLIMTILE) , RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(GEX(type), dum, 'SHOUT'  , ALLOC=associated(SHOUTILE)   , RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(GEX(type), dum, 'HLWUP'  , ALLOC=associated(HLWUPTILE)  , RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(GEX(type), dum, 'LWNDSRF', ALLOC=associated(LWNDSRFTILE), RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(GEX(type), dum, 'SWNDSRF', ALLOC=associated(SWNDSRFTILE), RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(GEX(type), dum, 'ALBVR'  , ALLOC=associated(ALBVRTILE)  , RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(GEX(type), dum, 'ALBVF'  , ALLOC=associated(ALBVFTILE)  , RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(GEX(type), dum, 'ALBNR'  , ALLOC=associated(ALBNRTILE)  , RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(GEX(type), dum, 'ALBNF'  , ALLOC=associated(ALBNFTILE)  , RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(GEX(type), dum, 'EMIS'   , ALLOC=associated(EMISSTILE)  , RC=STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'DELTS'  , ALLOC=associated(DTSTILE)    , notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)                                                                                   
+      call MAPL_GetPointer(GEX(type), dum, 'DELQS'  , ALLOC=associated(DQSTILE)    , notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)                                                                                   
+      call MAPL_GetPointer(GEX(type), dum, 'HLATN'  , ALLOC=associated(HLATNTILE)  , notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)                                                                                   
+      call MAPL_GetPointer(GEX(type), dum, 'EVAPOUT', ALLOC=associated(EVAPOUTILE) , notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)                                                                                   
+      call MAPL_GetPointer(GEX(type), dum, 'SUBLIM' , ALLOC=associated(SUBLIMTILE) , notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)                                                                                   
+      call MAPL_GetPointer(GEX(type), dum, 'SHOUT'  , ALLOC=associated(SHOUTILE)   , notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)                                                                                   
+      call MAPL_GetPointer(GEX(type), dum, 'HLWUP'  , ALLOC=associated(HLWUPTILE)  , notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)                                                                                   
+      call MAPL_GetPointer(GEX(type), dum, 'LWNDSRF', ALLOC=associated(LWNDSRFTILE), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)                                                                                   
+      call MAPL_GetPointer(GEX(type), dum, 'SWNDSRF', ALLOC=associated(SWNDSRFTILE), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)                                                                                   
+      call MAPL_GetPointer(GEX(type), dum, 'ALBVR'  , ALLOC=associated(ALBVRTILE)  , notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)                                                                                   
+      call MAPL_GetPointer(GEX(type), dum, 'ALBVF'  , ALLOC=associated(ALBVFTILE)  , notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)                                                                                   
+      call MAPL_GetPointer(GEX(type), dum, 'ALBNR'  , ALLOC=associated(ALBNRTILE)  , notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)                                                                                   
+      call MAPL_GetPointer(GEX(type), dum, 'ALBNF'  , ALLOC=associated(ALBNFTILE)  , notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)                                                                                   
+      call MAPL_GetPointer(GEX(type), dum, 'EMIS'   , ALLOC=associated(EMISSTILE)  , notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
 
 
 ! Run the child
 !--------------
 
-      call ESMF_GridCompRun(GCS(type), &
-           importState=GIM(type), exportState=GEX(type), &
-           clock=CLOCK, PHASE=2, userRC=STATUS )
+      if (type/=ROUTE) then
+
+         ! run phase=2 for all children except ROUTE
+         
+         call ESMF_GridCompRun(GCS(type), &
+              importState=GIM(type), exportState=GEX(type), &
+              clock=CLOCK, PHASE=2, userRC=STATUS )
+
+      else
+
+         ! run phase=1 for ROUTE
+         
+         call ESMF_GridCompRun(GCS(type), &
+              importState=GIM(type), exportState=GEX(type), &
+              clock=CLOCK, PHASE=1, userRC=STATUS ) 
+
+      endif
       VERIFY_(STATUS)
 
 ! Fill variables on Surface's location stream from the child's
@@ -10797,14 +10936,19 @@ module GEOS_SurfaceGridCompMod
     RETURN_(ESMF_SUCCESS)
 
   end subroutine FILLOUT_UNGRIDDED
+  
+  ! -------------------------------------------------------------------------
+  
+  subroutine RouteRunoffTeleport(RoutingType, Runoff, Discharge, rc)
 
-    subroutine RouteRunoff(RoutingType, Runoff, Discharge, rc)
+    ! instantaneously assigns tile runoff to ocean outlet for coupled atm-ocean model as of July 2026
+
       type(T_RiverRouting),  intent(IN ) :: RoutingType
       real,             intent(IN ) :: Runoff(:)
       real,             intent(OUT) :: Discharge(:)
       integer, optional,intent(OUT) :: rc
 
-      character(len=ESMF_MAXSTR)   :: IAm="RouteRunoff"
+      character(len=ESMF_MAXSTR)   :: IAm="RouteRunoffTeleport"
       integer                      :: STATUS
 
       type(T_Routing), pointer :: Routing(:)
@@ -10861,8 +11005,11 @@ module GEOS_SurfaceGridCompMod
       deallocate(tarray, _STAT)
 
       RETURN_(ESMF_SUCCESS)
-    end subroutine RouteRunoff
+      
+    end subroutine RouteRunoffTeleport
 
+    ! -------------------------------------------------------------------------
+    
     subroutine OBIO_fillExports(type, IMPORT, &
                                 LOCSTREAM, GIM, &
                                 XFORM, &

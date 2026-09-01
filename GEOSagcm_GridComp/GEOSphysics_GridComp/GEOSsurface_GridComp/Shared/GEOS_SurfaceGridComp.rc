@@ -204,7 +204,9 @@
 #    2 : YES, with reservoir model
 #
 # GEOSagcm=>RUN_ROUTE: 0
+# GEOSagcm=>TILING_NC_FILE: tile.nc4
 # GEOSldas=>RUN_ROUTE: 0
+
 
 # ---- Time step for river routing [s]
 #

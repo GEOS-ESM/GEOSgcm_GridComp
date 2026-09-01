@@ -52,7 +52,7 @@ def melting_profile(
         if cumulus_parameterization_constants.MELT_GLAC and plume == cumulus_parameterization_constants.DEEP and error_code[0, 0][plume] == 0:
             melting = melting_layer * (
                 total_solid_phase_precipitable_water
-                / (100 * (p_cloud_levels_forced.at(K=0, ddim=[plume]) - p_cloud_levels_forced.at(K=k_end - 1, ddim=[plume])) / constants.MAPL_GRAV)
+                / (100.0 * (p_cloud_levels_forced.at(K=0, ddim=[plume]) - p_cloud_levels_forced.at(K=k_end - 1, ddim=[plume])) / constants.MAPL_GRAV)
             )
 
     with computation(PARALLEL), interval(...):

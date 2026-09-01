@@ -51,17 +51,25 @@ module GEOS_LandiceGridCompMod
 #endif
 
   implicit none
+
   private
 
-  integer, parameter :: ICE   = 1
-  integer, parameter :: SNOW  = 2
-  integer, parameter :: NUM_SUBTILES = 2
-  integer, parameter :: NUM_SNOW_LAYERS = 15
-  integer, parameter :: NUM_ICE_LAYERS  = 15
+  integer, parameter :: ICE               = 1
+  integer, parameter :: SNOW              = 2
+  integer, parameter :: NUM_SUBTILES      = 2
+
+  integer, parameter :: NUM_SNOW_LAYERS   = 15
+  integer, parameter :: NUM_ICE_LAYERS    = 15
   integer, parameter :: NUM_SNOICE_LAYERS = NUM_SNOW_LAYERS+NUM_ICE_LAYERS
+  
+  ! make number of snow and ice layers public for the benefit of the ens avg GridComp in GEOSldas
+  ! (and avoid name conflict with NUM_SNOW_LAYERS and NUM_ICE_LAYERS of sea ice model)
+  
+  integer, parameter, public :: NUM_SNOW_LAYERS_LANDICE = NUM_SNOW_LAYERS  
+  integer, parameter, public :: NUM_ICE_LAYERS_LANDICE  = NUM_ICE_LAYERS  
+
   real,    parameter :: rad_to_deg      = 180.0 / 3.1415926
-
-
+  
   ! snowrt related constants
   ! will move these to a global module later
   real,    parameter :: ALHE     = MAPL_ALHL   ! J/kg  @15C
@@ -156,7 +164,6 @@ module GEOS_LandiceGridCompMod
 !=============================================================================
 
     type(MAPL_MetaComp), pointer            :: MAPL
-
     integer                                 :: DO_ISSM ! ISSM flag
 
 ! Begin...
@@ -1046,7 +1053,7 @@ module GEOS_LandiceGridCompMod
 
      call MAPL_AddInternalSpec(GC,                           &
         SHORT_NAME         = 'FR',                                &
-        LONG_NAME          = 'ice_fraction',                      &
+        LONG_NAME          = 'subtile_area_fractions_for_bare_and_snow-covered_ice',                      &
         UNITS              = '1',                                 &
         DIMS               = MAPL_DimsTileOnly,                   &
         UNGRIDDED_DIMS     = (/NUM_SUBTILES/),                    &
@@ -1088,6 +1095,34 @@ module GEOS_LandiceGridCompMod
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
+     ! ----------------------------------------------------
+     !
+     ! for *analytical* extra derivatives in louissurface()
+     
+     call MAPL_AddInternalSpec(GC,                          &
+          SHORT_NAME         = 'delCH_delTVA',              &
+          LONG_NAME          = 'partial_derivative_of_CH_wrt_virtual_Tair', & 
+          UNITS              = '1',                         &
+          DIMS               = MAPL_DimsTileTile,           &
+          NUM_SUBTILES       = NUM_SUBTILES                ,&
+          VLOCATION          = MAPL_VLocationNone,          &
+          RESTART            = MAPL_RestartSkip            ,&
+          RC=STATUS  )
+     VERIFY_(STATUS)
+     
+     call MAPL_AddInternalSpec(GC,                          &
+          SHORT_NAME         = 'delCQ_delTVA',              &  
+          LONG_NAME          = 'partial_derivative_of_CQ_wrt_virtual_Tair', &
+          UNITS              = '1',                         &
+          DIMS               = MAPL_DimsTileTile,           &
+          NUM_SUBTILES       = NUM_SUBTILES                ,&
+          VLOCATION          = MAPL_VLocationNone,          &
+          RESTART            = MAPL_RestartSkip            ,&
+          RC=STATUS  )
+     VERIFY_(STATUS)
+
+     ! ----------------------------------------------------
+     
      call MAPL_AddInternalSpec(GC,                           &
         SHORT_NAME         = 'WESN',                              &
         LONG_NAME          = 'snow_layer_mass',                   &
@@ -1924,7 +1959,12 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:,:)  :: CH
    real, pointer, dimension(:,:)  :: CM
    real, pointer, dimension(:,:)  :: CQ
-
+   
+   ! for analytical extra derivatives in louissurface()
+   
+   real, dimension(:,:), pointer :: delCH_delTVA
+   real, dimension(:,:), pointer :: delCQ_delTVA
+      
 ! pointers to import
 
    real, pointer, dimension(:)    :: UU
@@ -1939,8 +1979,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    integer                        :: NT
    integer                        :: niter
 
-
-   real, allocatable              :: URA(:)
    real, allocatable              :: UUU(:)
    real, allocatable              :: LAI(:)
    real, allocatable              :: CN (:)
@@ -1977,10 +2015,11 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, allocatable              :: PSMB(:)
    real, allocatable              :: PSL(:)
 
-   real, parameter :: LANDICEBAREZ0  = 0.005
-   real, parameter :: LANDICESNOWZ0  = 0.001
+   real, parameter :: LANDICEBAREZ0_HELFAND  = 0.005    ! used in Helfand; Louis has value hardwired into louissurface()
+   real, parameter :: LANDICESNOWZ0_HELFAND  = 0.001    ! used in Helfand; Louis has value hardwired into louissurface()
 
    integer                        :: CHOOSEZ0
+
 !=============================================================================
 
 ! Begin...
@@ -2012,6 +2051,9 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
                                        RC=STATUS )
     VERIFY_(STATUS)
 
+    ! "CHOOSEZ0" is a config variable for Helfand; as of July 2026, it appears hardwired to 3 
+    !   for all surface types and has an effect only for ocean (and possibly sea ice) 
+    
     call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS)
     VERIFY_(STATUS)
 
@@ -2049,6 +2091,14 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    call MAPL_GetPointer(INTERNAL,CQ   , 'CQ'     ,    RC=STATUS)
    VERIFY_(STATUS)
 
+   ! for analytical extra derivatives in louissurface()
+
+   call MAPL_GetPointer(INTERNAL,delCH_delTVA , 'delCH_delTVA' ,    RC=STATUS)
+   VERIFY_(STATUS)
+   call MAPL_GetPointer(INTERNAL,delCQ_delTVA , 'delCQ_delTVA' ,    RC=STATUS)
+   VERIFY_(STATUS)
+
+   
 ! Pointers to outputs
 !--------------------
 
@@ -2105,8 +2155,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    NT = size(TA)
 
-   allocate(URA(NT),STAT=STATUS)
-   VERIFY_(STATUS)
    allocate(UUU(NT),STAT=STATUS)
    VERIFY_(STATUS)
    allocate(LAI(NT),STAT=STATUS)
@@ -2185,7 +2233,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    CQT = 0.0
    CNT = 0.0
    RIT = 0.0
-   if(associated(GST)) GST = 0.0
+   if(associated(   GST))    GST = 0.0
    if(associated(MOU50M)) MOU50M = 0.0
    if(associated(MOV50M)) MOV50M = 0.0
    if(associated(MOT10M)) MOT10M = 0.0
@@ -2207,39 +2255,46 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    if(CHOOSEMOSFC.eq.0) then
 
-    call louissurface(4,N,UU,WW,PS,TA,TS,QA,QS,PCU,LAI,Z0,DZ,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE)
+      LAI     = 0.0
 
+      WW(:,N) = 0.
+      CM(:,N) = 0.
+      
+      call louissurface(4,N,UU,WW,PS,TA,TS,QA,QS,PCU,LAI,       &    ! istype=4 for landice
+           Z0,DZ,CM,CN,RIB,ZT,ZQ,CH,CQ,                         &    ! z0 is hardwired in louissurface()
+           UUU,UCN,RE,delCH_delTVA,delCQ_delTVA)
+      
    elseif (CHOOSEMOSFC.eq.1)then
 
       niter = 6   ! number of internal iterations in the helfand MO surface layer routine
       IWATER = 4
       ! roughness length scale set accroding to Ettema et al. (2010)
       if(N==ICE) then
-         Z0(:,N)=LANDICEBAREZ0
+         Z0(:,N)=LANDICEBAREZ0_HELFAND
       else
-         Z0(:,N)=LANDICESNOWZ0
+         Z0(:,N)=LANDICESNOWZ0_HELFAND
       endif
 
-    PSMB = PS * 0.01            ! convert to MB
-    fakelai = 1.e-4
-! Approximate pressure at top of surface layer: hydrostatic, eqn of state using avg temp and press
-    PSL = PSMB * (1. - (DZ*MAPL_GRAV)/(MAPL_RGAS*(TA+TS(:,N)) ) ) /   &
-               (1. + (DZ*MAPL_GRAV)/(MAPL_RGAS*(TA+TS(:,N)) ) )
+      PSMB = PS * 0.01            ! convert to MB
+      fakelai = 1.e-4
+      ! Approximate pressure at top of surface layer: hydrostatic, eqn of state using avg temp and press
+      PSL = PSMB * (1. - (DZ*MAPL_GRAV)/(MAPL_RGAS*(TA+TS(:,N)) ) ) /   &
+           (1. + (DZ*MAPL_GRAV)/(MAPL_RGAS*(TA+TS(:,N)) ) )
 
-    call helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TS(:,N),QA,QS(:,N),PSL,PSMB,Z0(:,N),fakelai,  &
-                      IWATER,DZ,niter,nt,RHO,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS, &
-                      t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
+      call helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TS(:,N),QA,QS(:,N),PSL,PSMB,Z0(:,N),fakelai,  &
+           IWATER,DZ,niter,nt,RHO,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS, &
+           t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
 
-    CM(:,N)  = VKM
-    CH(:,N)  = VKH
-    CQ(:,N)  = VKH
+      CM(:,N)  = VKM
+      CH(:,N)  = VKH
+      CQ(:,N)  = VKH
 
-    CN = (MAPL_KARMAN/ALOG(DZ/Z0(:,N) + 1.0)) * (MAPL_KARMAN/ALOG(DZ/Z0(:,N) + 1.0))
-    ZT = Z0(:,N)
-    ZQ = Z0(:,N)
-    RE = 0.
-    UUU = UU
-    UCN = 0.
+      CN = (MAPL_KARMAN/ALOG(DZ/Z0(:,N) + 1.0)) * (MAPL_KARMAN/ALOG(DZ/Z0(:,N) + 1.0))
+      ZT = Z0(:,N)
+      ZQ = Z0(:,N)
+      RE = 0.
+      UUU = UU
+      UCN = 0.
 
 !  Aggregate to tiles for MO only diagnostics
 !--------------------------------------------
@@ -2254,33 +2309,33 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
       if(associated(MOU2M))MOU2M = MOU2M + U2M(:)*FR(:,N)
       if(associated(MOV2M))MOV2M = MOV2M + V2M(:)*FR(:,N)
 
-    endif
+   endif    ! CHOOSEMOSFC
 
 !  Aggregate to tiles
 !--------------------
 
-      CHT     = CHT + CH(:,N)*FR(:,N)
-      CMT     = CMT + CM(:,N)*FR(:,N)
-      CQT     = CQT + CQ(:,N)*FR(:,N)
-      CNT     = CNT + CN(:  )*FR(:,N)
-      RIT     = RIT + RIB(:  )*FR(:,N)
+      CHT     = CHT + CH( :,N)        *FR(:,N)
+      CMT     = CMT + CM( :,N)        *FR(:,N)
+      CQT     = CQT + CQ( :,N)        *FR(:,N)
+      CNT     = CNT + CN( :  )        *FR(:,N)
+      RIT     = RIT + RIB(:  )        *FR(:,N)
 
-      TH      = TH  + CH(:,N)*TS(:,N)*FR(:,N)
-      QH      = QH  + CQ(:,N)*QS(:,N)*FR(:,N)
+      TH      = TH  + CH( :,N)*TS(:,N)*FR(:,N)
+      QH      = QH  + CQ( :,N)*QS(:,N)*FR(:,N)
 
-      TST     = TST + TS(:,N)*FR(:,N)
-      QST     = QST + QS(:,N)*FR(:,N)
+      TST     = TST + TS( :,N)        *FR(:,N)
+      QST     = QST + QS( :,N)        *FR(:,N)
 
    end do
 
-   TH = TH /CHT
-   QH = QH /CQT
-   if(associated(Z0EXP)) Z0EXP = Z0(:,1)
-   if(associated(Z0HEXP)) Z0HEXP = ZT
-   if(associated(VNT)) VNT = UUU
-   if(associated(LST)) LST = TST
-
-   deallocate(URA)
+   if (.true.)             TH     = TH /CHT
+   if (.true.)             QH     = QH /CQT
+   
+   if (associated(Z0EXP))  Z0EXP  = Z0(:,1)
+   if (associated(Z0HEXP)) Z0HEXP = ZT
+   if (associated(VNT))    VNT    = UUU
+   if (associated(LST))    LST    = TST
+   
    deallocate(UUU)
    deallocate(LAI)
    deallocate(RE )
@@ -2377,6 +2432,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   type (ESMF_GridComp  ), pointer     :: GCS(:)
   character(len=ESMF_MAXSTR), pointer :: gcnames(:)
+
 #ifdef HAVE_ISSM
   type(T_ISSM_TILE_STATE), pointer    :: issm_tile_state
   type(T_ISSM_TILE_WRAP)              :: issm_tile_wrap
@@ -2431,7 +2487,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        VERIFY_(STATUS)
        call ESMF_AlarmRingerOff(ALARM, RC=STATUS)
        VERIFY_(STATUS)
-       ! borrow CATCHMENT_OFFLINE
+       ! borrow CATCHMENT_OFFLINE; default is "coupled to atmospheric model"
        call MAPL_GetResource ( MAPL, LANDICE_OFFLINE, Label="CATCHMENT_OFFLINE:", DEFAULT=0, RC=STATUS)
        VERIFY_(STATUS)
        call LANDICECORE(RC=STATUS )
@@ -2540,6 +2596,11 @@ contains
    real, pointer, dimension(:,:)  :: CM
    real, pointer, dimension(:,:)  :: CQ
 
+   ! for analytical extra derivatives (louissurface)
+   
+   real, pointer, dimension(:,:)  :: delCQ_delTVA
+   real, pointer, dimension(:,:)  :: delCH_delTVA
+
    real, pointer, dimension(:,:)  :: WESN
    real, pointer, dimension(:,:)  :: HTSN
    real, pointer, dimension(:,:)  :: SNDZ
@@ -2605,6 +2666,11 @@ contains
    real,    allocatable           :: LHF(:)
    real,    allocatable           :: SHD(:)
    real,    allocatable           :: LHD(:)
+   real,    allocatable           :: DQSATDT(:)
+   real,    allocatable           :: DEDTS(:)
+   real,    allocatable           :: DEDQS(:)
+   real,    allocatable           :: DHSDTS(:)
+   real,    allocatable           :: DHSDQS(:)
    real,    allocatable           :: CFQ(:)
    real,    allocatable           :: CFT(:)
    real,    allocatable           :: MLT(:)
@@ -2710,21 +2776,32 @@ contains
 ! Pointers to inputs
 !-------------------
 
-   call MAPL_GetPointer(IMPORT,ALW    , 'ALW'    , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,BLW    , 'BLW'    , RC=STATUS); VERIFY_(STATUS)
+   if (LANDICE_OFFLINE==0) then
+      call MAPL_GetPointer(IMPORT,ALW    , 'ALW' ,    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,BLW    , 'BLW' ,    RC=STATUS); VERIFY_(STATUS)
+   end if
+   
    call MAPL_GetPointer(IMPORT,LWDNSRF, 'LWDNSRF', RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,EVAP   , 'EVAP'   , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,SH     , 'SH'     , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,DEV    , 'DEVAP'  , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,DSH    , 'DSH'    , RC=STATUS); VERIFY_(STATUS)
+   
+   if (LANDICE_OFFLINE==0) then
+      call MAPL_GetPointer(IMPORT,EVAP   , 'EVAP'   , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,SH     , 'SH'     , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,DEV    , 'DEVAP'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,DSH    , 'DSH'    , RC=STATUS); VERIFY_(STATUS)
+   end if
+   
    call MAPL_GetPointer(IMPORT,PS     , 'PS'     , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,PCU    , 'PCU'    , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,PLS    , 'PLS'    , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,SNO    , 'SNO'    , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,THATM  , 'THATM'  , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,QHATM  , 'QHATM'  , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,CTATM  , 'CTATM'  , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,CQATM  , 'CQATM'  , RC=STATUS); VERIFY_(STATUS)
+
+   if (LANDICE_OFFLINE==0) then
+      call MAPL_GetPointer(IMPORT,THATM  , 'THATM'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,QHATM  , 'QHATM'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,CTATM  , 'CTATM'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,CQATM  , 'CQATM'  , RC=STATUS); VERIFY_(STATUS)
+   end if
+         
    call MAPL_GetPointer(IMPORT,DRPAR  , 'DRPAR'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,DFPAR  , 'DFPAR'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,DRNIR  , 'DRNIR'  , RC=STATUS); VERIFY_(STATUS)
@@ -2769,6 +2846,11 @@ end if
    call MAPL_GetPointer(INTERNAL,CM   , 'CM'     , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,CQ   , 'CQ'     , RC=STATUS); VERIFY_(STATUS)
 
+   ! for analytical extra derivatives (louissurface)
+   
+   call MAPL_GetPointer(INTERNAL,delCQ_delTVA ,'delCQ_delTVA',RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(INTERNAL,delCH_delTVA ,'delCH_delTVA',RC=STATUS); VERIFY_(STATUS)
+   
    call MAPL_GetPointer(INTERNAL,WESN , 'WESN'   , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,HTSN , 'HTSN'   , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,SNDZ , 'SNDZ'   , RC=STATUS); VERIFY_(STATUS)
@@ -2881,7 +2963,7 @@ end if
                             DEFAULT=LANDICETDEEP_, RC=STATUS)
     VERIFY_(STATUS)
 
-    NT = size(ALW)
+    NT = size(LWDNSRF)
 
     ! initialize running mean ICESMB and number of steps since last ISSM solve
 #ifdef HAVE_ISSM
@@ -2926,6 +3008,18 @@ end if
     VERIFY_(STATUS)
     allocate(LHD (NT), STAT=STATUS)
     VERIFY_(STATUS)
+    allocate(DQSATDT(NT), STAT=STATUS)
+    VERIFY_(STATUS)
+    if (LANDICE_OFFLINE /= 0 .and. CHOOSEMOSFC == 0) then      ! for analytical extra derivatives (louissurface)
+       allocate(DEDTS( NT), STAT=STATUS)
+       VERIFY_(STATUS)
+       allocate(DEDQS( NT), STAT=STATUS)
+       VERIFY_(STATUS)
+       allocate(DHSDTS(NT), STAT=STATUS)
+       VERIFY_(STATUS)
+       allocate(DHSDQS(NT), STAT=STATUS)
+       VERIFY_(STATUS)
+    endif    
     allocate(CFT (NT), STAT=STATUS)
     VERIFY_(STATUS)
     allocate(CFQ (NT), STAT=STATUS)
@@ -3285,35 +3379,86 @@ end if
     ZTH = max(0.0,ZTH)
 
     do N=1,NUM_SUBTILES
-       if (LANDICE_OFFLINE == 0 ) then
+
+       ! --------------------------------------------------------------------
+       ! 
+       ! surface turbulence
+       !
+       ! - for additional documentation, see subroutine run2() of GEOS_CatchGridComp.F90
+       ! - SHD = (total) derivative of sensible heat w.r.t. surface temperature 
+       ! - LHD = (total) derivative of latent heat   w.r.t. surface temperature (note: Catch uses "evap", not "LH")
+              
+       DQSATDT = GEOS_DQSAT( TS(:,N), PS, PASCALS=.TRUE., RAMP=0.0 )
+       
+       if ( LANDICE_OFFLINE == 0 ) then
+
+          ! GCM: Landice coupled to atmosphere
+
           CFT   = (CH(:,N)/CTATM)
           CFQ   = (CQ(:,N)/CQATM)
+          
           SHF   = CFT*(SH   + DSH*(TS(:,N)-THATM))
           LHF   = CFQ*(EVAP + DEV*(QS(:,N)-QHATM))*MAPL_ALHS
+          
           SHD   = CFT*DSH
-          LHD   = CFQ*DEV*MAPL_ALHS*GEOS_DQSAT(TS(:,N), PS, PASCALS=.TRUE., RAMP=0.0)
+          LHD   = CFQ*DEV*MAPL_ALHS*DQSATDT
+          
           ALWN  = ALW
           BLWN  = BLW
+
        else
+
+          ! Landice in offline mode
+          
           CFT    = 1.0
           CFQ    = 1.0
+          
           SHF    = MAPL_CP*CH(:,N)*(TS(:,N)-TA)
-          LHF    = CQ(:,N)*(QS(:,N)-QA) * MAPL_ALHS
-          SHD    = MAPL_CP*CH(:,N)
-          LHD    = CQ(:,N)*MAPL_ALHS*GEOS_DQSAT(TS(:,N), PS, PASCALS=.TRUE., RAMP=0.0)
+          LHF    =         CQ(:,N)*(QS(:,N)-QA)*MAPL_ALHS
+          
           BLWN   = LANDICEEMISS*MAPL_STFBOL*TS(:,N)*TS(:,N)*TS(:,N)
           ALWN   = -3.0*BLWN*TS(:,N)
           BLWN   =  4.0*BLWN
-       endif
+          
+          if     (CHOOSEMOSFC == 0) then
+             
+             ! Louis (incl. extra analytical derivatives of exchange coeffs w.r.t. surface temp/humidity)
+             
+             DEDQS =            CQ(:,N) + max(0.0,         -delCQ_delTVA(:,N)*      MAPL_VIREPS*TS(:,N) *(QS(:,N)-QA) )    ! "DEVSBT" in Catch GC
+             DEDTS =                      max(0.0,         -delCQ_delTVA(:,N)*(1. + MAPL_VIREPS*QS(:,N))*(QS(:,N)-QA) )    ! "DEDTC"  in Catch GC             
+             DHSDTS = MAPL_CP*( CH(:,N) + max(0.0,         -delCH_delTVA(:,N)*(1. + MAPL_VIREPS*QS(:,N))*(TS(:,N)-TA) ) )  ! "DSHSBT" in Catch GC
+             DHSDQS =                     max(0.0, -MAPL_CP*delCH_delTVA(:,N)*      MAPL_VIREPS*TS(:,N) *(TS(:,N)-TA) )    ! "DHSDQC" in Catch GC
 
+             ! total derivatives with respect to Landice surface temperature
+
+             SHD =            DHSDTS + DHSDQS*DQSATDT
+             LHD = MAPL_ALHS*(DEDTS  + DEDQS *DQSATDT)
+
+          elseif (CHOOSEMOSFC == 1) then
+
+             ! Helfand (no derivatives of exchange coeffs)
+             
+             SHD = MAPL_CP*CH(:,N)
+             LHD =         CQ(:,N)*MAPL_ALHS*DQSATDT
+             
+          else
+             
+             _ASSERT(.false., 'unknown CHOOSEMOSFC')
+
+          endif
+          
+       endif    ! LANDICE_OFFLINE==0
+
+       ! ---------------------------------------------------------
+       
        SWN = ((DRUVR+DRPAR+DRNIR) + (DFUVR+DFPAR+DFNIR))*(1.0-LANDICEALB)
        DIF = 0.0
        ULW = ALWN + BLWN*TS(:,N)
 
-       LANDICECAP= (MAPL_RHOWTR*MAPL_CAPICE*LANDICEDEPTH)
+       LANDICECAP = (MAPL_RHOWTR*MAPL_CAPICE*LANDICEDEPTH)
 
-       EVAPI   = LHF / MAPL_ALHS
-       DEVAPDT = LHD / MAPL_ALHS
+       EVAPI   = LHF / MAPL_ALHS            ! LHF needed in solveicelayer(); EVAPI   needed in snowrt()
+       DEVAPDT = LHD / MAPL_ALHS            ! LHD needed in solveicelayer(); DEVAPDT needed in snowrt()
        RADDN   = LWDNSRF + SWN
 
        PERC  = 0.0
@@ -3483,25 +3628,27 @@ end if
        SHF = SHFO
        ULW = HLWO
 
-       if(associated(EVAPOUT)) EVAPOUT = EVAPOUT + FR(:,N)*EVAPO
-       if(associated(SUBLIM )) SUBLIM  = SUBLIM  + FR(:,N)*EVAPO
-       if(associated(SHOUT  )) SHOUT   = SHOUT   + FR(:,N)*SHF
-       if(associated(HLATN  )) HLATN   = HLATN   + FR(:,N)*LHF
-
-       if(associated(DELTS )) DELTS = DELTS + DTS*CFT*FR(:,N)
-       if(associated(DELQS )) DELQS = DELQS + DQS*CFQ*FR(:,N)
-       if(associated(EVPICE)) EVPICE = EVPICE + FR(:,N)*LHF
-
+       ! compute average over sub-tiles
+       
+       if(associated(EVAPOUT )) EVAPOUT = EVAPOUT  + FR(:,N)*EVAPO
+       if(associated(SUBLIM  )) SUBLIM  = SUBLIM   + FR(:,N)*EVAPO
+       if(associated(SHOUT   )) SHOUT   = SHOUT    + FR(:,N)*SHF
+       if(associated(HLATN   )) HLATN   = HLATN    + FR(:,N)*LHF
+       
+       if(associated(DELTS   )) DELTS   = DELTS    + DTS*CFT*FR(:,N)
+       if(associated(DELQS   )) DELQS   = DELQS    + DQS*CFQ*FR(:,N)
+       if(associated(EVPICE  )) EVPICE  = EVPICE   + FR(:,N)*LHF
+       
        !if(associated(RUNOFF))   RUNOFF   = RUNOFF + FR(:,N) * PERC
-       if(associated(IMELT ))   IMELT    = IMELT  + FR(:,N) * MELTI
+       if(associated(IMELT ))   IMELT   = IMELT    + FR(:,N) * MELTI
 
-       if(associated(SWNDSRF )) SWNDSRF = SWNDSRF + SWN * FR(:,N)
-       if(associated(LWNDSRF )) LWNDSRF = LWNDSRF + (LWDNSRF - ULW) * FR(:,N)
-       if(associated(HLWUP   )) HLWUP   = HLWUP +   ULW * FR(:,N)
-       if(associated(DNICFLX )) DNICFLX = DNICFLX + DIF * FR(:,N)
+       if(associated(SWNDSRF )) SWNDSRF = SWNDSRF  + SWN * FR(:,N)
+       if(associated(LWNDSRF )) LWNDSRF = LWNDSRF  + (LWDNSRF - ULW) * FR(:,N)
+       if(associated(HLWUP   )) HLWUP   = HLWUP    +            ULW  * FR(:,N)
+       if(associated(DNICFLX )) DNICFLX = DNICFLX  + DIF * FR(:,N)
        if(associated(GHSNOW  )) GHSNOW  = ghflxsno
-       if(associated(ACCUM   )) ACCUM   = ACCUM - FR(:,N) * EVAPO
-       if(associated(MELTWTR )) MELTWTR = MELTWTR + FR(:,N) * MELTI
+       if(associated(ACCUM   )) ACCUM   = ACCUM    - FR(:,N) * EVAPO
+       if(associated(MELTWTR )) MELTWTR = MELTWTR  + FR(:,N) * MELTI
 
        if(associated(TICE0   )) then
           do k=1,NT
@@ -3774,6 +3921,11 @@ end if
     if(allocated (WESNN    )) deallocate(WESNN    , STAT=STATUS); VERIFY_(STATUS)
     if(allocated (HTSNN    )) deallocate(HTSNN    , STAT=STATUS); VERIFY_(STATUS)
     if(allocated (SNDZN    )) deallocate(SNDZN    , STAT=STATUS); VERIFY_(STATUS)
+    if(allocated (DQSATDT  )) deallocate(DQSATDT  , STAT=STATUS); VERIFY_(STATUS)
+    if(allocated (DEDTS    )) deallocate(DEDTS    , STAT=STATUS); VERIFY_(STATUS)
+    if(allocated (DEDQS    )) deallocate(DEDQS    , STAT=STATUS); VERIFY_(STATUS)
+    if(allocated (DHSDTS   )) deallocate(DHSDTS   , STAT=STATUS); VERIFY_(STATUS)
+    if(allocated (DHSDQS   )) deallocate(DHSDQS   , STAT=STATUS); VERIFY_(STATUS)    
 
 !  All done
 !-----------
@@ -3796,15 +3948,15 @@ end if
 
      implicit none
 
-     integer, intent(in)  :: NICE
-     real,    intent(in    ) :: DTS
+     integer, intent(in    ) :: NICE
+     real,    intent(in    ) :: DTS                               ! time step
 
      real,    intent(inout ) :: TICE(NICE)
      real,    intent(in    ) :: ICEDZ(NICE)
      integer, intent(in    ) :: UPPER_BND
      real,    intent(out   ) :: MELT
      !  UPPER_BND == 0
-     real, optional, intent(out) ::  DTSS
+     real, optional, intent(out) ::  DTSS                         ! change in surface temp(?)
      real, optional, intent(out) ::  RUNOFF
      real, optional, intent(in ) ::  lhturb,hlwtc,hsturb,raddn
      real, optional, intent(in ) ::  dlhdtc,dhsdtc,dhlwtc
