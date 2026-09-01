@@ -3067,7 +3067,7 @@ end if
      real    :: maxkh,minlval
      real, dimension(IM,JM) :: thetavs,thetavh,uv2h,kpbltc,kpbl2,kpbl10p,kpblri
      real    :: maxdthvdz,dthvdz
-     real    :: thetavs_parcel, u_shear, v_shear, z_diff
+     real    :: u_shear, v_shear, z_diff
      logical :: has_solid_deck
 
      ! PBL-top diagnostic
@@ -3077,6 +3077,10 @@ end if
      real, parameter :: ri_crit = 0.00
      real, parameter :: ri_crit2 = 0.20
 
+     logical :: is_marine_stratocumulus, is_shallow_cumulus
+     integer :: cloud_base_idx, cloud_top_idx
+     real :: cloud_fraction_mean, cloud_thickness
+      
      real(kind=MAPL_R8), dimension(IM,JM,LM) :: AKX, BKX
      real, dimension(IM,JM,LM) :: DZ, DTM, TM
 
@@ -4595,55 +4599,92 @@ end if
          do I = 1, IM
             do J = 1, JM
                
-               thetavs_parcel = thetavs(I,J) + 0.5 
-               
-               ! Track if we have encountered a solid cloud deck in this column
-               has_solid_deck = .false.
-               
+               ! -----------------------------------------------------------------------
+               ! Step 1: Identify boundary layer regime
+               ! -----------------------------------------------------------------------
+               is_marine_stratocumulus = .false.
+               is_shallow_cumulus = .false.
+               cloud_base_idx = -1
+               cloud_top_idx = -1
+               cloud_fraction_mean = 0.0
+               cloud_thickness = 0.0
+
+               ! Scan for low clouds (below 3 km only - ignore mid/high clouds)
+               do L = LM-1, 1, -1
+                  if (Z(I,J,L) > 3000.0) exit  ! Stop searching above 3 km
+                  if (FCLD(I,J,L) > 0.05) then
+                     if (cloud_base_idx < 0) cloud_base_idx = L  ! First cloud level from bottom
+                     cloud_top_idx = L  ! Keep updating as we go up
+                     cloud_fraction_mean = cloud_fraction_mean + FCLD(I,J,L)
+                     cloud_thickness = cloud_thickness + 1.0
+                  else
+                     if (cloud_base_idx > 0) exit  ! Found cloud top, stop
+                  end if
+               end do
+
+               ! Classify cloud regime (only if low clouds exist)
+               if (cloud_base_idx > 0 .and. cloud_thickness > 0.0) then
+                  cloud_fraction_mean = cloud_fraction_mean / cloud_thickness
+                  cloud_thickness = Z(I,J,cloud_top_idx) - Z(I,J,cloud_base_idx)
+                  ! Marine stratocumulus: solid deck, moderate thickness
+                  if (cloud_fraction_mean > 0.6 .and. cloud_thickness > 200.0 .and. &
+                      Z(I,J,cloud_base_idx) < 2000.0) then
+                     is_marine_stratocumulus = .true.
+                  ! Shallow cumulus: broken clouds, thin
+                  else if (cloud_fraction_mean < 0.4 .and. cloud_thickness < 800.0 .and. &
+                           Z(I,J,cloud_base_idx) < 1500.0) then
+                     is_shallow_cumulus = .true.
+                  end if
+               end if
+
+               ! -----------------------------------------------------------------------
+               ! Step 2: Compute Richardson number profile
+               ! -----------------------------------------------------------------------
                do L=LM-1,1,-1
-                  
                   thetavh(I,J) = T(I,J,L)*(1.0+MAPL_VIREPS*Q(I,J,L)/(1.0-Q(I,J,L)))*(TH(I,J,L)/T(I,J,L))
-                  
-                  u_shear = U(I,J,L) - U(I,J,LM)
-                  v_shear = V(I,J,L) - V(I,J,LM)
-                  uv2h(I,J) = max(u_shear**2 + v_shear**2, 1.0E-4)
-                  
-                  z_diff = Z(I,J,L) - Z(I,J,LM)
-                  tcrib(I,J,L) = MAPL_GRAV*(thetavh(I,J) - thetavs_parcel)*z_diff / (thetavs(I,J)*uv2h(I,J))
-                  
-                  ! --- PURELY PHYSICALLY BASED SELECTION ---
-                  
-                  ! Flag if we are currently inside or have passed through a thick cloud layer (> 40%)
-                  if (FCLD(I,J,L) > 0.40) has_solid_deck = .true.
-                  
-                  ! CONDITION 1: We hit a cloud base, and the air below is well-mixed
-                  if (FCLD(I,J,L) > 0.05 .and. tcrib(I,J,L) < tcri_crit) then
-                     
-                     if (has_solid_deck) then
-                        ! DYCOMS case: We are part of a solid deck. Do NOT exit here.
-                        ! Let the loop continue climbing to find the thermal inversion top.
-                        continue 
-                     else if (FCLD(I,J,max(L-2,1)) > 0.40) then
-                        ! Look-ahead check for entering a solid deck.
-                        continue
-                     else
-                        ! RICO case: Broken shallow cumulus. 
-                        ! Pin to the sub-cloud layer top and exit.
-                        ZPBLRI(I,J) = Z(I,J,L+1)
-                        KPBLRI(I,J) = float(L+1)
+                  uv2h(I,J) = max(U(I,J,L)**2+V(I,J,L)**2, 1.0E-8)
+                  tcrib(I,J,L) = MAPL_GRAV*(thetavh(I,J)-thetavs(I,J))*Z(I,J,L)/(thetavs(I,J)*uv2h(I,J))
+               end do
+
+               ! -----------------------------------------------------------------------
+               ! Step 3: Apply regime-specific PBL height diagnostic
+               ! -----------------------------------------------------------------------
+              
+               ! REGIME 1: Marine Stratocumulus
+               ! Place PBL top at cloud top (where strong inversion exists)
+               if (is_marine_stratocumulus) then
+                  ! Find the inversion at/above cloud top
+                  do L = cloud_top_idx, 1, -1
+                     if (tcrib(I,J,L) >= tcri_crit) then
+                        ZPBLRI(I,J) = Z(I,J,L+1)+(tcri_crit-tcrib(I,J,L+1))/(tcrib(I,J,L)-tcrib(I,J,L+1))*(Z(I,J,L)-Z(I,J,L+1))
+                        KPBLRI(I,J) = float(L)
                         exit
                      end if
-
-                  ! CONDITION 2: Standard Thermodynamic Stability / Cloud Top Inversion Gate
-                  ! This will now catch the inversion top cleanly (where the blue T/THL curves 
-                  ! finally bend sharply near the top of the cloud layer).
-                  else if (tcrib(I,J,L) >= tcri_crit) then
-                     ZPBLRI(I,J) = Z(I,J,L+1)+(tcri_crit-tcrib(I,J,L+1))/(tcrib(I,J,L)-tcrib(I,J,L+1))*(Z(I,J,L)-Z(I,J,L+1))
-                     KPBLRI(I,J) = float(L)
-                     exit
+                  end do
+                  ! Fallback: if no inversion found above cloud, use cloud top
+                  if (ZPBLRI(I,J) .eq. MAPL_UNDEF) then
+                     ZPBLRI(I,J) = Z(I,J,cloud_top_idx)
+                     KPBLRI(I,J) = float(cloud_top_idx)
                   end if
-                  
-               end do
+              
+               ! REGIME 2: Shallow Cumulus
+               ! Place PBL top at cloud base (sub-cloud mixed layer)
+               else if (is_shallow_cumulus) then
+                  ZPBLRI(I,J) = Z(I,J,cloud_base_idx)
+                  KPBLRI(I,J) = float(cloud_base_idx)
+              
+               ! REGIME 3: Clear or Non-Boundary-Layer Clouds
+               ! Use standard bulk Richardson criterion
+               else
+                  do L=LM-1,1,-1
+                     if (tcrib(I,J,L) >= tcri_crit) then
+                        ZPBLRI(I,J) = Z(I,J,L+1)+(tcri_crit-tcrib(I,J,L+1))/(tcrib(I,J,L)-tcrib(I,J,L+1))*(Z(I,J,L)-Z(I,J,L+1))
+                        KPBLRI(I,J) = float(L)
+                        exit
+                     end if
+                  end do
+               end if
+
             end do
          end do 
          
