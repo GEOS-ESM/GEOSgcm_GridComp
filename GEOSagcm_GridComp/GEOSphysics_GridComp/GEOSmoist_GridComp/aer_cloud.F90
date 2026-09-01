@@ -769,9 +769,9 @@ end subroutine Wneuralnet
 !=======================================================================
 !============================Emulates the Wnet Neural Network==========
 subroutine Wnet_sym(sigmaw, T, P, Z, AIRD, U, V, QV, MASS, KPBL_SC)
-    #ifdef _OPENMP
+#ifdef _OPENMP
       use omp_lib, only: omp_in_parallel
-    #endif
+#endif
       implicit none
 
       real, intent(in)  :: T(:,:,:)
@@ -843,7 +843,7 @@ subroutine Wnet_sym(sigmaw, T, P, Z, AIRD, U, V, QV, MASS, KPBL_SC)
       ! If the true surface level is nl, change this to ksfc = nl.
       ksfc = max(1, nl - 1)
 
-    #ifdef _OPENMP
+#ifdef _OPENMP
     !$omp parallel do collapse(2) schedule(static) default(shared)              &
     !$omp private(i,j,k,kk,kpbl,p_hpa,ps_pa,fit,tmp_sigma,                     &
     !$omp         v_T,v_P,v_LOGP,v_WIND,v_U,v_V,v_QV,v_PS_raw,v_PBLH,          &
@@ -853,7 +853,7 @@ subroutine Wnet_sym(sigmaw, T, P, Z, AIRD, U, V, QV, MASS, KPBL_SC)
     !$omp         col_term_tqv,col_term_aird,col_term_pblh,                    &
     !$omp         col_abs_aird_ps,expr_outer,expr_inner,logarg1,logarg2)        &
     !$omp if (.not. omp_in_parallel())
-    #endif
+#endif
       do j = 1, jm
         do i = 1, im
 
@@ -961,9 +961,9 @@ subroutine Wnet_sym(sigmaw, T, P, Z, AIRD, U, V, QV, MASS, KPBL_SC)
           end do
         end do
       end do
-    #ifdef _OPENMP
+#ifdef _OPENMP
     !$omp end parallel do
-    #endif
+#endif
 
     contains
 
