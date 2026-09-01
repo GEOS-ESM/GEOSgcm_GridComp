@@ -15,7 +15,7 @@ def _check_type(type_A, type_B):
 def _get_constant_from_module(my_module: ModuleType) -> list[str]:
     # All public module var
     imports = ["np", "os", "Float", "Int"]
-    non_testable_const = ["MAPL_UNDEF", "NCNST", "FLOAT_TINY", "EXP_NAME", "NUMBER_OF_TRACERS", "EXPERIMENT_TRACERS"]
+    non_testable_const = ["MAPL_UNDEF", "NCNST", "FLOAT_TINY", "EXP_NAME", "NUMBER_OF_TRACERS", "EXPERIMENT_TRACERS", "N_MODES"]
     excludes = imports + non_testable_const
     return [item for item in dir(my_module) if not item.startswith("_") and item not in excludes]
 

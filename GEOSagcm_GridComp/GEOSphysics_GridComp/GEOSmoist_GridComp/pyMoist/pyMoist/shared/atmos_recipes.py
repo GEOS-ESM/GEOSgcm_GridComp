@@ -32,15 +32,15 @@ def sigma(dx) -> Float:
 
 
 @function
-def get_fac_eis(eis: Float, srf_type: Float) -> Float:
-    if eis >= 10.0:
+def compute_estimated_inversion_strength_factor(estimated_inversion_strength) -> Float:
+    if estimated_inversion_strength >= 10.0:
         # Very stable regime
-        get_fac_eis = 1.0
-    elif eis <= 0.0:
+        eis_factor = 1.0
+    elif estimated_inversion_strength <= 0.0:
         # Very unstable regime
-        get_fac_eis = 0.0
+        eis_factor = 0.0
     else:
         # Smooth function from 0 to 1
-        get_fac_eis = (eis / 10.0) ** 2
+        eis_factor = (estimated_inversion_strength / 10.0) ** 2
 
-    return get_fac_eis
+    return eis_factor

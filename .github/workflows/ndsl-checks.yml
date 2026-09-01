@@ -58,7 +58,6 @@ jobs:
           rm Constants.ProcessLibrary-In.nc
           rm GF2020_CumulusParameterization_TriggerFunctionConvection-In.nc
           rm ComputeUwshcu-In.nc
-          rm AerActivation-In.nc
           rm GF2020_CumulusParameterization_GetBuoyancy_1-In.nc
           rm GF2020_CumulusParameterization_UpdraftCIN-In.nc
           rm GF2020_CumulusParameterization_InCloudTemperature-In.nc
