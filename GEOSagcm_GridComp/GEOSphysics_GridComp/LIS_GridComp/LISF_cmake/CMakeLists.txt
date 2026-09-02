@@ -5,17 +5,10 @@
 # environment (no Fortran compiler available here) -- treat it as a
 # starting point to iterate on once it's actually compiled.
 #
-# BASEDIR must point to a Baselibs install (e.g. -DBASEDIR=$BASEDIR/Linux,
-# matching how Baselibs is found elsewhere in this build) -- it is used
-# here to locate HDF4/HDF-EOS2, which (unlike NetCDF/HDF5/ESMF) do not
-# already have CMake targets set up by @cmake/external_libraries/FindBaselibs.cmake.
-if (NOT BASEDIR)
-  if (DEFINED ENV{BASEDIR})
-    set (BASEDIR $ENV{BASEDIR})
-  else ()
-    message (FATAL_ERROR "BASEDIR is not set. Pass -DBASEDIR=<path> or set the BASEDIR environment variable.")
-  endif ()
-endif ()
+# BASEDIR is used here to locate HDF4/HDF-EOS2, which (unlike
+# NetCDF/HDF5/ESMF) do not already have CMake targets set up by
+# @cmake/external_libraries/FindBaselibs.cmake -- ESMA_cmake sets BASEDIR
+# (Baselibs) or leaves it unset (Spack) elsewhere in the build.
 
 find_package (Python3 COMPONENTS Interpreter REQUIRED)
 
