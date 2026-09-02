@@ -7,8 +7,13 @@ set (alldirs
   GEOSturbulence_GridComp
   GEOSgwd_GridComp
   GEOSradiation_GridComp
-  )
+)
 
+# GEOSlis_GridComp integrates LISF's `LIS` library from source
+# opt-in via -DBUILD_LIS=ON
+if (BUILD_LIS)
+  list (APPEND alldirs GEOSlis_GridComp)
+endif ()
 
 if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_PhysicsGridComp.F90)
 
