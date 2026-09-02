@@ -125,7 +125,7 @@ USE GEOSmoist_Process_Library, only : CNV_Tracers
      real, parameter :: kc = 2.e-3  ! s-1        !!! autoconversion parameter in GF is lower than what is used in GOCART
      real, dimension (mtp ,its:ite,kts:kte) ::  factor_temp
      ! GEOS-Chem update
-     real            :: this_w_upd
+     real            :: gcc_w_upd, aerscaveff
      real            :: fsol
      real            :: kc_scaled, ftemp, l2g
      logical         :: is_gcc
@@ -166,43 +166,52 @@ loopk:      do k=k22(i)+1,ktop(i)+1
             !-- scavenging section
             if(USE_TRACER_SCAVEN==0 .or. trim(cumulus) == 'shallow') cycle loopk
             dz=z_cup(i,k)-z_cup(i,k-1)
-
+ 
             !-- in-cloud vert velocity for scavenging formulation 2
             w_upd = max(vvel2d(i,k),w_upd_floor)
 
-            do ispc = 1,mtp
-                !--use GEOS-Chem washout parameterization?
-                is_gcc = CNV_Tracers(ispc)%use_gcc_washout
-                IF(CNV_Tracers(ispc)%fscav > 1.e-6) THEN ! aerosol scavenging
+            do ispc = 1,mtp                
+               !--use GEOS-Chem washout parameterization?
+               is_gcc = CNV_Tracers(ispc)%is_gcc_species
+
+               ! Use GEOS-Chem formulation for GEOS-Chem species
+               if ( is_gcc ) then
+                  ! if it's not a wetdep species, force kc_scaled to 0. This ensures no washout
+                  if ( .not. CNV_Tracers(ispc)%is_wetdep ) cycle
+
+                  ! Aerosol scavenging efficiency [unitlees]
+                  aerscaveff      = CNV_Tracers(ispc)%AerScavEff  
+
+                  ! Vertical velocity [m s-1]
+                  gcc_w_upd = get_w_upd_gcc( vvel2d(i,k), xland(i), CNV_Tracers(ispc)%online_vud )
+                  gcc_w_upd = max(gcc_w_upd,w_upd_floor)
+                  
+                  if (CNV_Tracers(ispc)%aerscaveff > 1.e-6) then ! aerosol scavenging                        
+                     ! Loss rate of species, temperature dependent [s-1] 
+                     call compute_ki_gcc_aerosol ( ispc, tempco(i,k), kc, kc_scaled )
+                     fsol = min(1.,max(0.,(1.-exp(- kc_scaled * (dz/gcc_w_upd))) * aerscaveff))
+                  else ! Gas-phase species
+                     call compute_ki_gcc_gas ( ispc, tempco(i,k), po_cup(i,k), qco(i,k), qrco(i,k), &
+                                                kc, kc_scaled, l2g )
+                     fsol = min(1.,max(0.,(1.-exp(- kc_scaled * (dz/gcc_w_upd)))))                     
+                  endif
+
+                  ! calculate soluble fraction and apply to tracer
+                  pw_up(ispc,i,k) = sc_up(ispc,i,k)*fsol
+               else 
+                  ! GOCART formulation
+                  if(CNV_Tracers(ispc)%fscav > 1.e-6) THEN ! aerosol scavenging
 
                     !--formulation 1 as in GOCART with RAS conv_par
                     if(USE_TRACER_SCAVEN==1) &
                     pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(- CNV_Tracers(ispc)%fscav  * (dz/1000.))))
 
                     !--formulation 2 as in GOCART
+                    !#### CAUTION ####
+                    ! ftemp is initialized but not calculated
+                    ! the default option for USE_TRACER_SCAVEN is 1, so this is ok for now
                     if(USE_TRACER_SCAVEN==2) then
-
-                       ! Use GEOS-Chem formulation for GEOS-Chem species
-                       if ( is_gcc ) then
-                           if ( CNV_Tracers(ispc)%use_gocart ) then
-                              kc_scaled  = kc
-                              this_w_upd = w_upd
-                             ftemp = 1.0
-                             if ( tempco(i,k) < CNV_Tracers(ispc)%ftemp_threshold ) ftemp = 0.0
-                              ftemp      = CNV_Tracers(ispc)%fscav  ! apply aerosol scavenging efficiency
-                              this_w_upd = get_w_upd_gcc( vvel2d(i,k), xland(i), CNV_Tracers(ispc)%online_vud )
-                          endif
-                          ! if it's not a wetdep species, force kc_scaled to 0. This ensures no washout
-                          if ( .not. CNV_Tracers(ispc)%is_wetdep ) kc_scaled = 0.0
-                          ! calculate soluble fraction and apply to tracer
-                          this_w_upd = max(this_w_upd,w_upd_floor)
-                          fsol = min(1.,max(0.,(1.-exp(- kc_scaled * (dz/this_w_upd)))*ftemp))
-                          pw_up(ispc,i,k) = sc_up(ispc,i,k)*fsol
-
-                       ! Original formulation
-                       else
-                          pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(- kc * (dz/w_upd)))*factor_temp(ispc,i,k))
-                       endif
+                        pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(- kc * (dz/w_upd)))*factor_temp(ispc,i,k))
                     endif
 
                     !--formulation 3 - orignal GF conv_par
@@ -213,57 +222,35 @@ loopk:      do k=k22(i)+1,ktop(i)+1
                        pw_up(ispc,i,k) = conc_mxr(ispc)*pwo(i,k)/(1.e-8+qrco(i,k))
                     endif
 
-                    !---(in cloud) total mixing ratio in gas and aqueous phases
-                    sc_up(ispc,i,k) = sc_up(ispc,i,k) - pw_up(ispc,i,k)
-
-                    !
-                ELSEIF(CNV_Tracers(ispc)%Vect_Hcts(1)>1.e-6) THEN ! tracer gas phase scavenging
-
+                  elseif(CNV_Tracers(ispc)%Vect_Hcts(1)>1.e-6) THEN ! tracer gas phase scavenging
                     !--- equilibrium tracer concentration - Henry's law
-                    if ( is_gcc ) then
-                       henry_coef=henry_gcc(ispc,tempco(i,k),rho(i,k))
-                    else
-                       henry_coef=henry(ispc,tempco(i,k),rho(i,k))
-                    endif
+                    henry_coef=henry(ispc,tempco(i,k),rho(i,k))
 
-                    if(USE_TRACER_SCAVEN==3) then
-                      !--- cloud liquid water tracer concentration
-                      conc_mxr(ispc) = (henry_coef*qrco(i,k) /(1.+henry_coef*qrco(i,k)) )* sc_up(ispc,i,k)
-                      !
-                      !---   aqueous-phase concentration in rain water
-                      pw_up(ispc,i,k) = conc_mxr(ispc)*pwo(i,k)/(1.e-8+qrco(i,k))
+                   if(USE_TRACER_SCAVEN==3) then
+                        !--- cloud liquid water tracer concentration
+                        conc_mxr(ispc) = (henry_coef*qrco(i,k) /(1.+henry_coef*qrco(i,k)) )* sc_up(ispc,i,k)
+                        !
+                        !---   aqueous-phase concentration in rain water
+                        pw_up(ispc,i,k) = conc_mxr(ispc)*pwo(i,k)/(1.e-8+qrco(i,k))
 
-                    else
+                   else
+                        !-- this the 'alpha' parameter in Eq 8 of Mari et al (2000 JGR) = X_aq/X_total
+                        fliq       = henry_coef*qrco(i,k) /(1.+henry_coef*qrco(i,k))
+                        !---   aqueous-phase concentration in rain water
+                        pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(-fliq*kc*dz/w_upd)))!*factor_temp(ispc,i,k))
+                   endif
 
-                       ! Use GEOS-Chem definitions if it's a GEOS-Chem tracer
-                       if ( is_gcc ) then
-                          call compute_ki_gcc_gas ( ispc, tempco(i,k), po_cup(i,k), qco(i,k), qrco(i,k), henry_coef, &
-                             kc_scaled, l2g )
-                          this_w_upd = get_w_upd_gcc( vvel2d(i,k), xland(i), CNV_Tracers(ispc)%online_vud )
-                          ! if it's not a wetdep species, force kc_scaled to 0. This ensures no washout
-                          if ( .not. CNV_Tracers(ispc)%is_wetdep ) kc_scaled = 0.0
-                          ! calculate soluble fraction and apply to tracer
-                          this_w_upd = max(this_w_upd,w_upd_floor)
-                          fsol = min(1.,max(0.,(1.-exp(-kc_scaled*dz/this_w_upd)))) !*factor_temp(ispc,i,k))
-                          pw_up(ispc,i,k) = sc_up(ispc,i,k)*fsol
+                  endif
+               endif
 
-                       !-- this the 'alpha' parameter in Eq 8 of Mari et al (2000 JGR) = X_aq/X_total
-                       else
-                          fliq       = henry_coef*qrco(i,k) /(1.+henry_coef*qrco(i,k))
-                          !---   aqueous-phase concentration in rain water
-                          pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(-fliq*kc*dz/w_upd)))!*factor_temp(ispc,i,k))
-                       endif
+               !---(in cloud) total mixing ratio in gas and aqueous phases
+               sc_up(ispc,i,k) = sc_up(ispc,i,k) - pw_up(ispc,i,k)
 
-                    endif
+               !
+               !---(in cloud)  mixing ratio in aqueous phase
+               !sc_up_aq(ispc,i,k) = conc_mxr(ispc) !if using set to zero at the begin.
 
-                    !---(in cloud) total mixing ratio in gas and aqueous phases
-                    sc_up(ispc,i,k) = sc_up(ispc,i,k) - pw_up(ispc,i,k)
-
-                    !
-                    !---(in cloud)  mixing ratio in aqueous phase
-                    !sc_up_aq(ispc,i,k) = conc_mxr(ispc) !if using set to zero at the begin.
-                endIF
-            enddo
+            enddo !ispc
             !
             !-- total aerosol/gas in the rain water
             dp=100.*(po_cup(i,k)-po_cup(i,k+1))
@@ -307,7 +294,7 @@ loopk:      do k=k22(i)+1,ktop(i)+1
   end FUNCTION henry
 
 !---------------------------------------------------------------------------------------------------
-  FUNCTION henry_gcc(ispc,temp,rhoair) RESULT(henry_coef)
+  FUNCTION henry_gcc(ispc,temp) RESULT(henry_coef)
     !=====================================================================================
     !BOP
     ! !DESCRIPTION:
@@ -316,7 +303,7 @@ loopk:      do k=k22(i)+1,ktop(i)+1
     !=====================================================================================
     implicit none
     integer, intent(in) :: ispc
-    real   , intent(in) :: temp,rhoair
+    real   , intent(in) :: temp
     real                :: henry_coef          ! effective gas/aq constant [-]
     ! parameter
     real*8, parameter :: pH   = 4.5d0
@@ -580,7 +567,7 @@ loopk:      do k=k22(i)+1,ktop(i)+1
 
   END FUNCTION gcc_e_ice
 !---------------------------------------------------------------------------------------------------
-  SUBROUTINE compute_ki_gcc_aerosol( ispc, temp, kc_scaled )
+  SUBROUTINE compute_ki_gcc_aerosol( ispc, temp, kc, kc_scaled )
     !=====================================================================================
     !BOP
     ! !DESCRIPTION:
@@ -592,7 +579,8 @@ loopk:      do k=k22(i)+1,ktop(i)+1
 
     integer, intent(in)      :: ispc
     real,    intent(in)      :: temp               ! temperature [K]
-    real,    intent(out)     :: kc_scaled          ! loss rate [s-1]
+    real,    intent(in)      :: kc                 ! loss rate unscaled [s-1]
+    real,    intent(out)     :: kc_scaled          ! loss rate scaled [s-1]
     ! local variables
     real                     :: kcscal1            ! temperature-dependent scale factor for temperature range 1
     real                     :: kcscal2            ! temperature-dependent scale factor for temperature range 2
@@ -606,7 +594,7 @@ loopk:      do k=k22(i)+1,ktop(i)+1
     kcscal2 = CNV_Tracers(ispc)%KcScal(2)
     kcscal3 = CNV_Tracers(ispc)%KcScal(3)
     ! start with default kc, then scale based on temperature and aerosol-specific scale factor
-    kc_scaled = KC_DEFAULT_GCC
+    kc_scaled = kc
     if ( temp < TEMP1 ) then
        kc_scaled = kc_scaled * kcscal1
     else if ( (temp>=TEMP1) .and. (temp<TEMP2) ) then
@@ -617,7 +605,7 @@ loopk:      do k=k22(i)+1,ktop(i)+1
 
   END SUBROUTINE compute_ki_gcc_aerosol
 !---------------------------------------------------------------------------------------------------
-   SUBROUTINE compute_ki_gcc_gas( ispc, temp, press, q, cldh2o, Heff, kc_scaled, l2g )
+   SUBROUTINE compute_ki_gcc_gas( ispc, temp, press, q, cldh2o, kc, kc_scaled, l2g )
     !=====================================================================================
     !BOP
     ! !DESCRIPTION:
@@ -632,8 +620,8 @@ loopk:      do k=k22(i)+1,ktop(i)+1
      real,    intent(in)      :: press              ! pressure [Pa]
      real,    intent(in)      :: q                  ! water vapor mixing ratio [kg/kg]
      real,    intent(in)      :: cldh2o             ! cloud total water [kg/kg]
-     real,    intent(in)      :: Heff               ! effective gas/aq Henry constant [-]
-     real,    intent(out)     :: kc_scaled          ! loss rate [s-1]
+     real,    intent(in)      :: kc                 ! loss rate unscaled [s-1]
+     real,    intent(out)     :: kc_scaled          ! loss rate scaled [s-1]
      real,    intent(out)     :: l2g                ! liquid to gas ratio
 
      ! parameter
@@ -643,7 +631,7 @@ loopk:      do k=k22(i)+1,ktop(i)+1
      real, parameter       :: TEMP4  = 268.0   ! K
 
      ! local variables
-     real            :: fract_liq_f
+     real            :: fract_liq_f, heff
      real            :: cldliq, cldice, c_h2o
      real            :: i2g
      real            :: c_tot, f_l, f_i
@@ -689,7 +677,8 @@ loopk:      do k=k22(i)+1,ktop(i)+1
      endif
 
      ! liquid to gas ratio
-     l2g = Heff * cldliq
+     heff = henry_gcc(ispc,temp)
+     l2g = heff * cldliq
 
      ! fraction of species in liquid & ice phases (Eqs. 4, 5, 6, Jacob et al, 2000)
      c_tot = 1.0 + l2g + i2g
@@ -698,12 +687,13 @@ loopk:      do k=k22(i)+1,ktop(i)+1
 
      ! compute the rate constant Ki for loss of species from
      ! convective updraft scavenging (Eq. 1, Jacob et al, 2000)
+     kc_scaled = kc ! Set kc_s to unscaled value
      if ( temp >= TEMP4 ) then
-        kc_scaled = KC_DEFAULT_GCC * ( f_l + f_l )
+        kc_scaled = kc_scaled * ( f_l + f_i )
      else if ( temp > TEMP3 .and. temp < TEMP4 ) THEN
-        kc_scaled = KC_DEFAULT_GCC * ( ( CNV_Tracers(ispc)%retfactor * f_l ) + f_i )
+        kc_scaled = kc_scaled * ( ( CNV_Tracers(ispc)%retfactor * f_l ) + f_i )
      else
-        kc_scaled = KC_DEFAULT_GCC * f_i
+        kc_scaled = kc_scaled * f_i
      endif
 
    END SUBROUTINE compute_ki_gcc_gas
