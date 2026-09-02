@@ -450,8 +450,14 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: DQLCNDT_FILL
     real, pointer, dimension(:,:,:) :: DQILSDT_FILL
     real, pointer, dimension(:,:,:) :: DQICNDT_FILL
+    
+    real, pointer, dimension(:,:,:) :: DNDCNV
+    real, pointer, dimension(:,:,:) :: DNICNV
+    
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
+    
+    character(len=256) :: DIAG_MSG
 
     type( ESMF_VM )                 :: VMG
 
@@ -678,6 +684,11 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, CNV_TOPP_DP, 'CNV_TOPP_DP' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNV_TOPP_MD, 'CNV_TOPP_MD' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNV_TOPP_SH, 'CNV_TOPP_SH' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    
+    call MAPL_GetPointer(EXPORT, DNDCNV,      'DNDCNV'      , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DNICNV,      'DNICNV'      , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)    
+
+
 
     if (STOCHASTIC_CNV) then
        ! Create bit-processor-reproducible random white noise for convection [0:1]
@@ -708,6 +719,11 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        TMP2D = AREA
     endif
 
+    DNDCNV   = 0.0
+    DNICNV   = 0.0
+    DQLDT_DC = 0.0
+    DQIDT_DC = 0.0
+        
     IF (USE_GF2020==1) THEN
          ! Convert OMEGA (Pa/s) to W (m/s)
          TMP3D = -1*OMEGA/(MAPL_GRAV*PL/(MAPL_RDRY*T*(1.0+MAPL_VIREPS*Q)))
@@ -740,7 +756,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
               CNV_MF0, CNV_PRC3, MFD_DC, CNV_DQCDT, ENTLAM, &
               UMF_DC, CNV_UPDF, CNV_CVW, CNV_QC, WQT_DC, &
               REVSU, PRFIL, ENTR_DP, ENTR_MD, ENTR_SH, &
-              MUPDP, MUPSH, MUPMD, MDNDP)
+              MUPDP, MUPSH, MUPMD, MDNDP, &
+              AeroPropsNew, DNDCNV, DNICNV, DQLDT_DC, DQIDT_DC)
     ELSE
          !- call GF/GEOS5 interface routine
          ! PLE and PL are passed in Pa
@@ -762,46 +779,84 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,DTDTDYN,DQVDTDYN                                  &
                                  ,REVSU, PRFIL)
     ENDIF
+        
+    
+    ! update DeepCu QL/QI/CF tendencies
+    
+    IF (USE_GF2020 == 1 .AND. USE_CUP_2M_MOISTURE) THEN
+    
+       call WRITE_PARALLEL ('Using CUP_2M_MOISTURE') 
+      
+       TMP3D = DQLDT_DC + DQIDT_DC
+      
+       WHERE (TMP3D > 1.0e-30)
+          fQi = DQIDT_DC / TMP3D
+       ELSEWHERE
+          fQi = ice_fraction(T + DTDT_DC*GF_DT, CNV_FRC, SRF_TYPE)
+       END WHERE
 
+       CNV_DQCDT = TMP3D * MASS   ! keep diagnostic total consistent
+       
+          ! Export
+      call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_FICE', RC=STATUS); VERIFY_(STATUS)
+      if (associated(PTR3D)) PTR3D = fQi
+      
+       DQADT_DC = MFD_DC*SCLM_DEEP/MASS
+    ! evap/subl and precip fluxes
+      do L=1,LM
+         !--- sublimation/evaporation tendencies (kg/kg/s)
+           RSU_CN (:,:,L) = REVSU(:,:,L)*     fQi(:,:,L)
+           REV_CN (:,:,L) = REVSU(:,:,L)*(1.0-fQi(:,:,L))
+         !--- preciptation fluxes (kg/kg/s)
+           PFI_CN (:,:,L) = PRFIL(:,:,L)*     fQi(:,:,L)
+           PFL_CN (:,:,L) = PRFIL(:,:,L)*(1.0-fQi(:,:,L))
+      enddo
 
-    call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_FICE', RC=STATUS); VERIFY_(STATUS)
-    ptr_is_assoc = associated(PTR3D)
+        
+    
+    ELSE !USE GF2M
+    
 
-    ! Update DeepCu QL/QI/CF tendencies, evap/subl and precip fluxes
-    !--------------------------------------------------------------
-    !$OMP PARALLEL DO DEFAULT(NONE) &
-    !$OMP SHARED(IM, JM, LM, T, DTDT_DC, GF_DT, CNV_FRC, SRF_TYPE, &
-    !$OMP        CNV_DQCDT, MASS, DQLDT_DC, DQIDT_DC, DQADT_DC, &
-    !$OMP        MFD_DC, SCLM_DEEP, RSU_CN, REVSU, REV_CN, &
-    !$OMP        PFI_CN, PRFIL, PFL_CN, ptr_is_assoc, PTR3D) &
-    !$OMP PRIVATE(I, J, L, fQi_local, tmp_local)
-    do L = 1, LM
-       do J = 1, JM
-          !DIR$ IVDEP
-          do I = 1, IM
-             ! 1. Calculate local ice fraction and tmp scalar
-             fQi_local = ice_fraction(T(I,J,L) + DTDT_DC(I,J,L) * GF_DT, CNV_FRC(I,J), SRF_TYPE(I,J))
-             tmp_local = CNV_DQCDT(I,J,L) / MASS(I,J,L)
+        call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_FICE', RC=STATUS); VERIFY_(STATUS)
+        ptr_is_assoc = associated(PTR3D)
 
-             ! Fill the exported 3D pointer if associated
-             if (ptr_is_assoc) PTR3D(I,J,L) = fQi_local
-             
-             ! 2. Update DeepCu QL/QI/CF tendencies
-             DQLDT_DC(I,J,L) = (1.0 - fQi_local) * tmp_local
-             DQIDT_DC(I,J,L) = fQi_local * tmp_local
-             DQADT_DC(I,J,L) = MFD_DC(I,J,L) * SCLM_DEEP / MASS(I,J,L)
-             
-             ! 3. Evap/subl and precip fluxes (kg/kg/s)
-             RSU_CN(I,J,L) = REVSU(I,J,L) * fQi_local
-             REV_CN(I,J,L) = REVSU(I,J,L) * (1.0 - fQi_local)
-             
-             PFI_CN(I,J,L) = PRFIL(I,J,L) * fQi_local
-             PFL_CN(I,J,L) = PRFIL(I,J,L) * (1.0 - fQi_local)
-          end do
-       end do
-    end do
-    !$OMP END PARALLEL DO
+        ! Update DeepCu QL/QI/CF tendencies, evap/subl and precip fluxes
+        !--------------------------------------------------------------
+        !$OMP PARALLEL DO DEFAULT(NONE) &
+        !$OMP SHARED(IM, JM, LM, T, DTDT_DC, GF_DT, CNV_FRC, SRF_TYPE, &
+        !$OMP        CNV_DQCDT, MASS, DQLDT_DC, DQIDT_DC, DQADT_DC, &
+        !$OMP        MFD_DC, SCLM_DEEP, RSU_CN, REVSU, REV_CN, &
+        !$OMP        PFI_CN, PRFIL, PFL_CN, ptr_is_assoc, PTR3D) &
+        !$OMP PRIVATE(I, J, L, fQi_local, tmp_local)
+        do L = 1, LM
+           do J = 1, JM
+              !DIR$ IVDEP
+              do I = 1, IM
+                 ! 1. Calculate local ice fraction and tmp scalar
+                 fQi_local = ice_fraction(T(I,J,L) + DTDT_DC(I,J,L) * GF_DT, CNV_FRC(I,J), SRF_TYPE(I,J))
+                 tmp_local = CNV_DQCDT(I,J,L) / MASS(I,J,L)
 
+                 ! Fill the exported 3D pointer if associated
+                 if (ptr_is_assoc) PTR3D(I,J,L) = fQi_local
+
+                 ! 2. Update DeepCu QL/QI/CF tendencies
+                 DQLDT_DC(I,J,L) = (1.0 - fQi_local) * tmp_local
+                 DQIDT_DC(I,J,L) = fQi_local * tmp_local
+                 DQADT_DC(I,J,L) = MFD_DC(I,J,L) * SCLM_DEEP / MASS(I,J,L)
+
+                 ! 3. Evap/subl and precip fluxes (kg/kg/s)
+                 RSU_CN(I,J,L) = REVSU(I,J,L) * fQi_local
+                 REV_CN(I,J,L) = REVSU(I,J,L) * (1.0 - fQi_local)
+
+                 PFI_CN(I,J,L) = PRFIL(I,J,L) * fQi_local
+                 PFL_CN(I,J,L) = PRFIL(I,J,L) * (1.0 - fQi_local)
+              end do
+           end do
+        end do
+        !$OMP END PARALLEL DO
+
+    END IF  !USE GF2M
+    
     ! Other Exports
     call MAPL_GetPointer(EXPORT, PTR3D, 'DQRC', RC=STATUS); VERIFY_(STATUS)
     if(associated(PTR3D)) PTR3D = CNV_PRC3 / GF_DT

@@ -13,35 +13,36 @@
 
       implicit none
       private
-     
-      integer, parameter :: nsmx_par = 20 !maximum number of modes allowed    
-      integer, parameter :: npgauss  = 10
-
-      ! Storage of aerosol properties for activation
-      type :: AerPropsNew
-         integer :: nmods  ! total number of modes (nmods<nmodmax)
-         real, dimension(:,:,:), allocatable :: num !Num conc m-3
-         real, dimension(:,:,:), allocatable :: dpg !dry Geometric size, m
-         real, dimension(:,:,:), allocatable :: sig  !logarithm (base e) of the dry geometric disp
-         real, dimension(:,:,:), allocatable :: den  !dry density , Kg m-3
-         real, dimension(:,:,:), allocatable :: kap !Hygroscopicity parameter
-         real, dimension(:,:,:), allocatable :: fdust! mass fraction of dust
-         real, dimension(:,:,:), allocatable :: fsoot ! mass fraction of soot
-         real, dimension(:,:,:), allocatable :: forg ! mass fraction of organics
-      end type AerPropsNew
-
-      type(AerPropsNew) :: AeroPropsNew(nsmx_par)
- 
+      
       public :: aerosol_activate
       public :: aer_cloud_init
       public :: vertical_vel_variance
       public :: gammp
-      public :: make_cnv_ice_drop_number
+      public :: make_cnv_detrain_number_tendencies
       !public :: nsmx_par
       public :: estimate_qcvar
       public :: Wneuralnet
+      public :: Wnet_sym
 
-      public :: AerPropsNew, AeroPropsNew
+      integer, parameter :: nsmx_par = 20 !maximum number of modes allowed    
+      integer, parameter :: npgauss  = 10
+    
+    
+      ! type :: AerProps            
+      ! sequence 
+      !real, dimension(nsmx_par)  :: num !Num conc m-3
+      !real, dimension(nsmx_par)  :: dpg !dry Geometric size, m
+      !real, dimension(nsmx_par)  :: sig  !logarithm (base e) of the dry geometric disp
+	  !real, dimension(nsmx_par)  :: den  !dry density , Kg m-3
+  	  !real, dimension(nsmx_par)  :: kap !Hygroscopicity parameter 
+ 	  !real, dimension(nsmx_par)  :: fdust! mass fraction of dust 
+	  !real, dimension(nsmx_par)  :: fsoot ! mass fraction of soot
+	  !real, dimension(nsmx_par)  :: forg ! mass fraction of organics
+	  !integer   :: nmods  ! total number of modes (nmods<nmodmax)
+      !end type AerProps     
+   
+           
+      
 
 !==================================================================
 
@@ -282,6 +283,7 @@
                 frac, norg, nbc, nhom, dorg, dbc, kappa, INimm, dINimm, aux
       LOGICAL :: mask(nmodes)
      
+      
     !=============inputs local copy================
       tparc=tparc_in      
       pparc=pparc_in      
@@ -568,7 +570,7 @@
     if (antot .gt. 1.0e2) then !only if aer is present  
 	    if (tparc .lt. To_ice)  then !only if T below freezing  
     
-        CALL prop_ice(tparc, pparc)
+        	CALL prop_ice(tparc, pparc)
   
             if (tparc .gt. Thom) then !only het freezing
 
@@ -580,7 +582,7 @@
                 fdrop_bc    =  fd_soot   !fraction of  bc incorporated into the droplets
                 fcoa_dust   =  0.0  !fraction of dust that is coated with H2SO4 (not used right now)
 
-            	if (sum(ndust_ice)+ norg_ice+ nbc_ice .gt. 1.e3) then !only if IN are present 
+            	if (sum(ndust_ice)+ norg_ice+ nbc_ice .gt. 1.e2) then !only if IN are present 
                     !Only immersion freezing considered for mixed-phase regime)		            
                     call  INimmersion(INimm, dINimm, waux_ice,  Immersion_param) 		 
 
@@ -589,7 +591,7 @@
 
 
                     call IceParam (sigwparc,  &
-                    nhet, nice, smaxice, nlim) ! don not call deposition above 235 K
+                    nhet, nice, smaxice, nlim) !Deposition INP
                 end if 
 
                 sc_ice = 1.0
@@ -600,13 +602,6 @@
                 nhet, nice, smaxice, nlim) 
 
             end if	
-
-	! the distribution of relative humidity is assumed normal centered around the RH mean%
-
-	          
-		        ! pfrz_inc_r8  =    1.0d0- 0.5d0*(1.0d0+erf(aux))    
-                ! pfrz_inc_r8  =    min(max(pfrz_inc_r8, 0.0), 0.999)	
-
 	    end if
     end if 
 
@@ -703,21 +698,6 @@ real :: aux2, zws
     w_ls  =  w_ls + zws !large scale W (m/s)
 
 
-
-
-! original ZWS code
-    !aux1=PLE(i,j,LM)/(287.04*(T(i,j,LM)*(1.+0.608*Q(i,j,LM)))) ! air_dens (kg m^-3)                          
-                         !hfs = -SH  (i,j) ! W m^-2
-                         !hfl = -EVAP(i,j) ! kg m^-2 s^-1
-                         !aux2= (hfs/MAPL_CP + 0.608*T(i,j,LM)*hfl)/aux1 ! buoyancy flux (h+le)                                                                        
-                         !aux3= ZLE(I, J, NINT(KPBLSC(I,J)))           ! pbl height (m)
-                         !-convective velocity scale W* (m/s)
-                         !ZWS(i,j) = max(0.,0.001-1.5*0.41*MAPL_GRAV*aux2*aux3/T(i,j,LM))
-                        ! ZWS(i,j) = 1.2*ZWS(i,j)**0.3333 ! m/s 
-                         
-    
-     
-
 end subroutine vertical_vel_variance
 !=======================================================================
 !=======================================================================
@@ -785,13 +765,235 @@ subroutine Wneuralnet(Wnet_out, T, DENS, U, V, W, KMN, RI, QV, QI, QL, IM, JM, K
 end subroutine Wneuralnet
 
 
+
+!=======================================================================
+!============================Emulates the Wnet Neural Network==========
+subroutine Wnet_sym(sigmaw, T, P, Z, AIRD, U, V, QV, MASS, KPBL_SC)
+#ifdef _OPENMP
+      use omp_lib, only: omp_in_parallel
+#endif
+      implicit none
+
+      real, intent(in)  :: T(:,:,:)
+      real, intent(in)  :: P(:,:,:)
+      real, intent(in)  :: Z(:,:,:)
+      real, intent(in)  :: AIRD(:,:,:)
+      real, intent(in)  :: U(:,:,:)
+      real, intent(in)  :: V(:,:,:)
+      real, intent(in)  :: QV(:,:,:)
+      real, intent(in)  :: MASS(:,:,:)
+      real, intent(in)  :: KPBL_SC(:,:)
+
+      real, intent(out) :: sigmaw(:,:,:)
+
+      integer :: i, j, k, kk
+      integer :: im, jm, nl
+      integer :: ksfc
+      integer :: kpbl
+
+      real :: p_hpa
+      real :: ps_pa
+      real :: fit
+      real :: tmp_sigma
+
+      real :: v_T
+      real :: v_P
+      real :: v_LOGP
+      real :: v_WIND
+      real :: v_U
+      real :: v_V
+      real :: v_QV
+      real :: v_PS_raw
+      real :: v_PBLH
+      real :: v_TQV
+      real :: v_AIRD_surf
+      real :: v_RHO_DIFF
+      real :: v_AIRD
+      real :: v_ABOVE_PBL
+      real :: v_H
+
+      real :: x_T
+      real :: x_P
+      real :: x_LOGP
+      real :: x_WIND
+      real :: x_QV
+      real :: x_PS
+      real :: x_PBLH
+      real :: x_TQV
+      real :: x_AIRD_surf
+      real :: x_RHO_DIFF
+      real :: x_ABOVE_PBL
+
+      real :: x_PS_sq
+      real :: col_term_tqv
+      real :: col_term_aird
+      real :: col_term_pblh
+      real :: col_abs_aird_ps
+      real :: expr_outer
+      real :: expr_inner
+      real :: logarg1
+      real :: logarg2
+
+      im = size(T, 1)
+      jm = size(T, 2)
+      nl = size(T, 3)
+
+
+      ! Preserve previous near-surface choice.
+      ! If the true surface level is nl, change this to ksfc = nl.
+      ksfc = max(1, nl - 1)
+
+#ifdef _OPENMP
+    !$omp parallel do collapse(2) schedule(static) default(shared)              &
+    !$omp private(i,j,k,kk,kpbl,p_hpa,ps_pa,fit,tmp_sigma,                     &
+    !$omp         v_T,v_P,v_LOGP,v_WIND,v_U,v_V,v_QV,v_PS_raw,v_PBLH,          &
+    !$omp         v_TQV,v_AIRD_surf,v_RHO_DIFF,v_AIRD,v_ABOVE_PBL,v_H,         &
+    !$omp         x_T,x_P,x_LOGP,x_WIND,x_QV,x_PS,x_PBLH,x_TQV,                &
+    !$omp         x_AIRD_surf,x_RHO_DIFF,x_ABOVE_PBL,x_PS_sq,                  &
+    !$omp         col_term_tqv,col_term_aird,col_term_pblh,                    &
+    !$omp         col_abs_aird_ps,expr_outer,expr_inner,logarg1,logarg2)        &
+    !$omp if (.not. omp_in_parallel())
+#endif
+      do j = 1, jm
+        do i = 1, im
+
+          kpbl = nint(KPBL_SC(i,j))
+          kpbl = max(1, min(nl, kpbl))
+
+          ! TQV = SUM(Q * MASS, 3), computed once per column.
+          v_TQV = 0.0
+          do kk = 1, nl
+            v_TQV = v_TQV + QV(i,j,kk) * MASS(i,j,kk)
+          end do
+
+          v_PS_raw    = P(i,j,ksfc)
+          v_AIRD_surf = AIRD(i,j,ksfc)
+          v_PBLH      = Z(i,j,kpbl)
+
+          ps_pa = pressure_to_pa(v_PS_raw)
+
+          x_PS = (ps_pa - 9.80545672498281201e+04) / &
+                 7.70553052716232560e+03
+
+          x_PBLH = (v_PBLH - 7.78281741614887210e+02) / &
+                   5.95139611995364589e+02
+
+          x_TQV = (v_TQV - 2.03012595146786659e+01) / &
+                  1.68473199305936454e+01
+
+          x_AIRD_surf = (v_AIRD_surf - 1.21902442134219413e+00) / &
+                        9.15193317051516964e-02
+
+          x_PS_sq = x_PS * x_PS
+
+          col_term_tqv = 0.32735726e0 * x_TQV * x_TQV
+          col_term_aird = 0.32735726e0 * sqrt(abs(0.54877356790403398e0 * x_AIRD_surf))
+          col_term_pblh = abs(x_PBLH) - 0.5929808e0
+          col_abs_aird_ps = abs(x_AIRD_surf + x_PS)
+
+          do k = 1, nl
+
+            v_T    = T(i,j,k)
+            v_P    = P(i,j,k)
+            v_H    = Z(i,j,k)
+            v_AIRD = AIRD(i,j,k)
+            v_U    = U(i,j,k)
+            v_V    = V(i,j,k)
+            v_QV   = QV(i,j,k)
+
+            p_hpa = pressure_to_hpa(v_P)
+
+            v_WIND      = sqrt(v_U*v_U + v_V*v_V)
+            v_RHO_DIFF  = v_AIRD_surf - v_AIRD
+            v_LOGP      = log(max(p_hpa, 1.0e-6))
+            v_ABOVE_PBL = v_H - v_PBLH
+
+            x_T = (v_T - 2.50971579001007086e+02) / &
+                  2.97328627478934067e+01
+
+            x_P = (p_hpa - 5.25304624999999987e+02) / &
+                  3.30695347757735135e+02
+
+            x_LOGP = (v_LOGP - 5.84522665790462526e+00) / &
+                     1.14550578132277692e+00
+
+            x_WIND = (v_WIND - 1.29212317045716834e+01) / &
+                     1.09098966237853272e+01
+
+            x_QV = (v_QV - 2.62224156753656070e-03) / &
+                   4.07880549839211622e-03
+
+            x_RHO_DIFF = (v_RHO_DIFF - 5.30213507748425017e-01) / &
+                         3.96488081788407609e-01
+
+            x_ABOVE_PBL = (v_ABOVE_PBL - 6.87774289437753669e+03) / &
+                          7.68648815647990159e+03
+
+            expr_outer = 0.9981903025485e0 - &
+                         0.4346805e0 * sqrt(abs(x_P - 0.46593115000000002e0))
+
+            logarg1 = x_QV * (x_AIRD_surf + 2.0e0*x_LOGP) + abs(x_RHO_DIFF)
+            logarg2 = 0.110092536e0 - 0.54336566014879639e0*x_AIRD_surf
+
+            expr_inner =                                                          &
+                 -0.025440715507416e0*x_ABOVE_PBL                                &
+                 -0.025440715507416e0*x_AIRD_surf                                &
+                 +0.08306832e0*x_P*(x_AIRD_surf + x_WIND)                        &
+                 +0.08306832e0*x_PS                                               &
+                 -0.08306832e0*x_T*log(abs(logarg1) + 1.0e-6)                    &
+                 +0.08306832e0*x_T                                                &
+                 +0.08306832e0*x_TQV                                              &
+                 +0.08306832e0*(x_P*col_term_tqv + col_term_aird)                 &
+                    *(-x_RHO_DIFF*x_WIND + x_PS_sq + col_term_pblh)               &
+                 -0.0695012982288482e0*log(abs(logarg2) + 1.0e-6)                 &
+                    *abs(x_RHO_DIFF)                                              &
+                 +0.08306832e0*abs(x_ABOVE_PBL)                                  &
+                 +0.08306832e0*col_abs_aird_ps                                   &
+                 +0.08306832e0*abs(x_LOGP*x_QV + x_P*x_QV + x_RHO_DIFF - x_T)     &
+                 +0.811524920937721e0
+
+            fit = expr_outer * expr_inner
+
+            ! Inverse of sqrt target transform: sigmaW = max(fit, 0)^2.
+            tmp_sigma = max(fit, 0.0)**2
+            sigmaw(i,j,k) = max(tmp_sigma, 0.0)
+
+          end do
+        end do
+      end do
+#ifdef _OPENMP
+    !$omp end parallel do
+#endif
+
+    contains
+
+      pure real function pressure_to_hpa(p_in)
+        real, intent(in) :: p_in
+
+        if (abs(p_in) > 2000.0) then
+          pressure_to_hpa = 0.01e0 * p_in
+        else
+          pressure_to_hpa = p_in
+        end if
+      end function pressure_to_hpa
+
+      pure real function pressure_to_pa(p_in)
+        real, intent(in) :: p_in
+
+        if (abs(p_in) < 2000.0) then
+          pressure_to_pa = 100.0e0 * p_in
+        else
+          pressure_to_pa = p_in
+        end if
+      end function pressure_to_pa
+
+end subroutine Wnet_sym
+
 !=======================================================================
 !=======================aerosol properties utilities====================
 !=======================================================================
 ! ==================================================================== 
- 
    
-      
       
 !!!!!!!!!!!!!!======================================     
 !!!!!!!!!   Subroutine ARG_act: finds the activated droplet number following Abdul_Razzak and Ghan 2000.
@@ -923,7 +1125,7 @@ end subroutine Wneuralnet
 !!
 !      Code Developer
 !      Donifan Barahona 
-!      donifanb@umbc.edu
+!      donifan.o.barahona@nasa.gov
 !=======================================================================
 !
       subroutine ccnspec (tparc,pparc,nmodes)
@@ -951,13 +1153,6 @@ end subroutine Wneuralnet
 	 amfi = max(1.0d0-amfs_par(k),zero_par)                              ! insoluble mass.frac.
          denp = amfs_par(k)*dens_par(k) + amfi*deni_par(k)                   ! particle density
 
-       ! if( dens_par(k).eq.0.0 .or. deni_par(k).eq.0.0 ) then
-       !     print *, '    k: ',k
-       !     print *, ' denp: ',denp
-       !     print *, ' amw : ',amw_par,    '  denw: ',denw_par
-       !     print *, ' amfs: ',amfs_par(k),'  dens: ',dens_par(k)
-       !     print *, ' amfi: ',amfi,       '  deni: ',deni_par(k)
-       ! endif
 
         if( denp.ne.0.0D0 ) then
 
@@ -998,7 +1193,7 @@ end subroutine Wneuralnet
 !
 !      Code Developer
 !      Donifan Barahona 
-!      donifanb@umbc.edu
+!      donifan.o.barahona@nasa.gov
 
 !=======================================================================
 !
@@ -1183,10 +1378,6 @@ end subroutine Wneuralnet
 !     modal formulation according to fountoukis and nenes (2004)
 !
 ! *** written by athanasios nenes
-!
-!!     Code Developer
-!      Donifan Barahona 
-!      donifanb@umbc.edu
 !=======================================================================
 !
       subroutine sintegral (spar, summa, sum, summat)
@@ -1265,11 +1456,6 @@ end subroutine Wneuralnet
 ! *** subroutine props
 ! *** this subroutine calculates the thermophysical properties for the CCN activ param
 !
-! *** written by athanasios nenes
-!      Code Developer
-!      Donifan Barahona 
-!      donifanb@umbc.edu
-
 !=======================================================================
 !
       subroutine props
@@ -1666,7 +1852,7 @@ END
       vmin_ice=0.005d0 !default values             
       vmax_ice=2.5d0 !increased 10/14/14 !DONIF
       sigmav_ice=sigma_w !standard deviation of the V distribution m/s
-      vmax_ice= max(min(miuv_ice+(4d0*sigmav_ice), vmax_ice), vmin_ice +0.01) !Upper limit for integration
+      vmax_ice= max(min(miuv_ice+(2.5d0*sigmav_ice), vmax_ice), vmin_ice +0.01) !Upper limit for integration
       
       if ((sigmav_ice .lt. 0.05) .or. (T_ice .gt. Thom))  then  ! if very narrow distribution just use an average
             use_av_v= .TRUE.
@@ -2083,18 +2269,14 @@ END
       
 
       !Weight to avoid overestimating IN effect NEW 08/01/13
-           
-if (.false.) then 
-      if (FDS .gt. 0.0) then 
-        sc_ice = (shom_ice+1.0)*FDS + sc_ice*(1.0-FDS)    
-      end if    
-  else
-   if (nice .gt. zero_par) then 
-     sc_ice = ((shom_ice+1.0)*NHOM + sc_ice*nhet)/nice
-      else
-     sc_ice = shom_ice+1.0
-    end if      
-  end if 
+       
+       if (.false.) then 
+           if (nice .gt. zero_par) then 
+             sc_ice = ((shom_ice+1.0)*NHOM + sc_ice*nhet)/nice
+              else
+             sc_ice = shom_ice+1.0
+            end if      
+       end if 
       
        sc_ice=min(shom_ice+1.0, sc_ice)
 
@@ -3047,7 +3229,8 @@ if (.false.) then
 		            END DO 		      
                 !dust
                     Nd=Naux*fdrop_dust
-                    dNd=dNaux*fdrop_dust	   
+                    dNd=dNaux*fdrop_dust
+                    ndust_imm = Nd	   
                 ! soot    
 
                     ahet=areabc_ice  
@@ -3626,76 +3809,167 @@ return
 end function 
 
 
+subroutine make_cnv_detrain_number_tendencies(                    &
+     DNDCNV, DNICNV,                                              &
+     USE_CUP_2M_MOISTURE,                                         &
+     DQLDT_DC, DQIDT_DC, MFD_SC,                                  &
+     CNVFICE,                                                     &
+     CDNC_NUC, KPBL_SC, iMASS, ZL0,                               &
+     QNcnvfac, DROPSZCNV, ICESZCNV_SC,                            &
+     min_RI, max_RI )
 
-subroutine make_cnv_ice_drop_number(Nd, Ni, Nimm, Nad, z, zcb, T, cnvfice, g_scale, b_scale)
+   implicit none
 
-	! estimate convective Nd and Ni profiles.      
-    !Written by Donifan Barahona
+   !-----------------------------------------------------------------------
+   ! Purpose:
+   !   Build convective detrained number tendencies:
+   !
+   !      DNDCNV : cloud droplet number tendency, #/kg/s
+   !      DNICNV : cloud ice number tendency,     #/kg/s
+   !
+   ! Assumed units:
+   !   DQLDT_DC, DQIDT_DC : kg/kg/s
+   !   DNDCNV, DNICNV     : #/kg/s
+   !   CDNC_NUC           : #/kg
+   !   MFD_SC             : kg/m2/s
+   !   iMASS              : m2/kg
+   !
+   ! Therefore:
+   !   MFD_SC*iMASS       : 1/s
+   !   CDNC_NUC*MFD_SC*iMASS : #/kg/s
+   !
+   !
+   ! In USE_CUP_2M_MOISTURE mode:
+   !   DNDCNV/DNICNV are assumed to already contain the deep 2M source.
+   !   This routine only clips them nonnegative and adds shallow source.
+   !
+   ! In non-2M mode:
+   !   This routine diagnoses deep source from DQLDT_DC/DQIDT_DC.
+   !-----------------------------------------------------------------------
 
-    real, intent (in) ::  T, Nimm, cnvfice 
-    real, intent (in) ::   g_scale, b_scale, Nad,  z, zcb
-    real, intent (out) :: Nd, Ni
-     
-    real :: r3ad, dZ12, alf, bet, gam_ad, LWCad 
-    real :: rei3, mui, zkm, Tx 
-    real, parameter :: max_rel3 =  22.e-6**3.
-    real, parameter :: min_rel3 =  10.e-6**3.
-    real, parameter :: max_rei3 =  300.e-6**3.
-    real, parameter :: min_rei3 =  20.e-6**3.
-    real, parameter :: ice_den = 600. 
-    real, parameter :: wat_den = 1000.
-    real, parameter ::  beta =  0.38
-    real, parameter :: gamma =  1.0e-4
+   logical, intent(in) :: USE_CUP_2M_MOISTURE
 
+   real, intent(inout) :: DNDCNV(:,:,:)
+   real, intent(inout) :: DNICNV(:,:,:)
 
-  !make it simple
+   real, pointer, optional, intent(in) :: DQLDT_DC(:,:,:)
+   real, pointer, optional, intent(in) :: DQIDT_DC(:,:,:)
+   real, pointer, optional, intent(in) :: MFD_SC(:,:,:)
   
-  Nd = b_scale*Nad*exp(-z/g_scale) 
+   real, intent(in) :: CNVFICE(:,:,:)
   
-  if (.false.) then 
-      ! print *, dqlcn
-      !========liquid droplet concentration
-      !Based on Khain et al. JAS (2019) https://doi.org/10.1175/JAS-D-18-0046.1
-         Nd =  0.
-         Ni =  0.
-         Tx =  max(273.15, T)
-         alf=2.8915E-08*(Tx*Tx) - 2.1328E-05*Tx + 4.2523E-03
-         bet=exp(3.49996E-04*Tx*Tx - 2.27938E-01*Tx + 4.20901E+01)
-         gam_ad =  alf/bet
-         LWcad = max((z-zcb), 0.0)*gam_ad !adiabatic LWC 
+   real, intent(in) :: CDNC_NUC(:,:,:)
+   real, intent(in) :: KPBL_SC(:,:)
+   real, intent(in) :: iMASS(:,:,:)
+   real, intent(in) :: ZL0(:,:,:)
 
-          !r3ad = max(min(3.63e-4*LWCad*(rl_scale**3.)/Nad, max_rel3), min_rel3)  !adiabatic droplet size^3
+   real, intent(in) :: QNcnvfac
+   real, intent(in) :: DROPSZCNV
+   real, intent(in) :: ICESZCNV_SC
+   real, intent(in) :: min_RI
+   real, intent(in) :: max_RI
 
-         dZ12  =  4.8e-12*Nad/gam_ad !      
+   integer :: I, J, K
+   integer :: IM, JM, LM
+   integer :: KSC
 
-         if (z-zcb .lt. dz12) then
-     	    Nd  = b_scale*Nad
+   real :: zkm
+   real :: rice
+   real :: ice_size3
+   real :: shallow_src
+
+   IM = size(DNDCNV, 1)
+   JM = size(DNDCNV, 2)
+   LM = size(DNDCNV, 3)
+
+   !-----------------------------------------------------------------------
+   ! 1. Deep convective contribution
+   !-----------------------------------------------------------------------
+
+   if (.not. USE_CUP_2M_MOISTURE) then
+
+      DNDCNV = 0.0
+      DNICNV = 0.0
+
+      ! Liquid number from deep convective liquid mass tendency.
+      if (present(DQLDT_DC)) then
+         if (associated(DQLDT_DC)) then
+            DNDCNV = max( DQLDT_DC * QNcnvfac /                    &
+                         (DROPSZCNV*DROPSZCNV*DROPSZCNV), 0.0 )
+         endif
+      endif
+
+      ! Ice number from deep convective ice mass tendency.
+      if (present(DQIDT_DC)) then
+         if (associated(DQIDT_DC)) then
+
+            do K = 1, LM
+               do J = 1, JM
+                  do I = 1, IM
+
+                     zkm = ZL0(I,J,K)/1000.0
+
+                     ! Estimated effective ice radius from Van Diedenhoven-like fit.
+                     rice = (0.3667*zkm*zkm - 12.014*zkm + 113.86)  &
+                            * 1.0e-6 * ICESZCNV_SC
+
+                     rice = min(max(rice, min_RI), max_RI)
+
+                     ice_size3 = max(rice*rice*rice, tiny(1.0))
+
+                     DNICNV(I,J,K) = max( DQIDT_DC(I,J,K)           &
+                                          * QNcnvfac / ice_size3,   &
+                                          0.0 )
+
+                  enddo
+               enddo
+            enddo
+
+         endif
+      endif
+
          else
-     	    Nd =  max(b_scale*Nad*(1-g_scale*((z-zcb) - dz12)), 1.0e3)
-         end if
 
-    end if 
+      ! In 2M mode, deep DNDCNV/DNICNV should already be set upstream.
+      DNDCNV = max(DNDCNV, 0.0)
+      DNICNV = max(DNICNV, 0.0)
      
-     Ni =  Nd*cnvfice
-     if (T .lt. 238.) Ni =  Nd
-     Nd =  Nd - Ni
-      !Ni =  max(Ni, Nimm)
+   endif
       
+   !-----------------------------------------------------------------------
+   ! 2. Shallow convective contribution
+   !-----------------------------------------------------------------------
       
-      !=========ice crystal concentration -- different approach
+   if (present(MFD_SC)) then
+      if (associated(MFD_SC)) then
     
-      !if (dqicn .gt. 0.) then 
-      !    zkm =  min(z/1000., 18.) !to km
-      !    rei3 =  0.3667*zkm*zkm - 12.014*zkm + 113.86 !based on van Diedenhoven et al. 2016, GRL, Fig 2
-      !    rei3 =  min(max((1.e-6*rei3*ri_scale)**3., min_rei3), max_rei3)
-      !    mui = MUI_HEMP(T)
-          !assume gamma distribution
-      !    dNi = (mui+3.)*(mui+3.)/(mui+2.)/(mui+1.)
-      !    dNi = 4.18*dNi*dqicn/ice_den/rei3
-      !end if
+         do J = 1, JM
+            do I = 1, IM
 
+               KSC = min(max(NINT(KPBL_SC(I,J)), 1), LM-1)
+
+               do K = 1, LM
+
+                  shallow_src = max(CDNC_NUC(I,J,KSC), 0.0)         &
+                              * max(MFD_SC(I,J,K), 0.0)            &
+                              * iMASS(I,J,K)
+
+                  DNDCNV(I,J,K) = max(0.0, DNDCNV(I,J,K)           &
+                                     + shallow_src                 &
+                                     * (1.0 - CNVFICE(I,J,K)))
+
+                  DNICNV(I,J,K) = max(0.0, DNICNV(I,J,K)           &
+                                     + shallow_src                 &
+                                     * CNVFICE(I,J,K))
+
+               enddo
+            enddo
+         enddo
+
+      endif
+   endif
     
-end subroutine make_cnv_ice_drop_number     
+end subroutine make_cnv_detrain_number_tendencies
     
     
 !!!!================Estimate qcvar following Xie and Zhang, JGR, 2015
