@@ -117,8 +117,6 @@ contains
               _RC)
       end do
 
-      call MAPL_GridCompSetEntryPoint(gc, MAPL_METHOD_REFRESH, Refresh, _RC)
-
       ! Set the Profiling timers
       call MAPL_TimerAdd(gc, name="INITIALIZE", _RC)
       call MAPL_TimerAdd(gc, name="RUN", _RC)
@@ -129,19 +127,6 @@ contains
 
       RETURN_(ESMF_SUCCESS)
    end subroutine SetServices
-
-   subroutine Refresh(gc, import, export, clock, rc)
-      type(ESMF_GridComp), intent(inout) :: gc
-      type(ESMF_State), intent(inout) :: import
-      type(ESMF_State), intent(inout) :: export
-      type(ESMF_Clock), intent(inout) :: clock
-      integer, optional, intent(out) :: rc
-
-      character(len=ESMF_MAXSTR) :: IAm
-
-      IAm = 'Refresh'
-      RETURN_(ESMF_SUCCESS)
-   end subroutine Refresh
 
    !BOP
    !IROUTINE: Initialize -- Initialize method for the direct-call LISF Plug
