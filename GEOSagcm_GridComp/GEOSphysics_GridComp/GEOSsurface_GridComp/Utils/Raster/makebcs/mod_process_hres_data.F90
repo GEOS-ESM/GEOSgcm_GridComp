@@ -1387,7 +1387,7 @@ contains
     !
     open (41,file='clsm/lai.GEOLAND2_10-DayClim',  &
          form='unformatted',status='old',convert='little_endian',action='read')
-    open (42,file='clsm/lai.MODIS_8-DayClim',      &
+    open (42,file='clsm/lai.MODIS_8-DayClim_new',      &
          form='unformatted',status='old',convert='little_endian',action='read')
     open (43,file='clsm/lai.dat',      &
          form='unformatted',status='unknown',convert='little_endian',action='write')
@@ -6007,7 +6007,7 @@ contains
     character*3   :: ddd
 
     call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR) 
-    fname =trim(MAKE_BCS_INPUT_DIR)//'/land/veg/lai_grn/v2/MODIS_8-DayClim/MODIS_lai_clim.H11V13.nc'
+    fname ='/discover/nobackup/yzeng3/make_bcs_inputs/land/veg/lai_grn/v2/MODIS_8-DayClim/MODIS_lai_clim.H11V13.nc'
     status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
     status = NF_INQ_DIM (ncid,3,string, n_tslices); VERIFY_(STATUS) 
     allocate (MMDD      (0: n_tslices + 1))
