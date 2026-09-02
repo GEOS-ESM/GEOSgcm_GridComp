@@ -1,14 +1,5 @@
 # Builds LISF's `LIS` library natively under CMake (replacing the previous
 # approach of shelling out to LISF's own GNU-make build via `make nuopc`).
-#
-# This is a first-pass port and has NOT been build-verified in this
-# environment (no Fortran compiler available here) -- treat it as a
-# starting point to iterate on once it's actually compiled.
-#
-# BASEDIR is used here to locate HDF4/HDF-EOS2, which (unlike
-# NetCDF/HDF5/ESMF) do not already have CMake targets set up by
-# @cmake/external_libraries/FindBaselibs.cmake -- ESMA_cmake sets BASEDIR
-# (Baselibs) or leaves it unset (Spack) elsewhere in the build.
 
 find_package (Python3 COMPONENTS Interpreter REQUIRED)
 
