@@ -2583,7 +2583,7 @@ contains
     !_________________________________________________________ 
     !
     call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR) 
-    fname =trim(MAKE_BCS_INPUT_DIR)//'/land/veg/lai_grn/v2/'//trim(lai_name)//'lai_clim.H11V13.nc'
+    fname ='/discover/nobackup/yzeng3/make_bcs_inputs/land/veg/lai_grn/v2/'//trim(lai_name)//'lai_clim.H11V13.nc'
     status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
     status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
     status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)

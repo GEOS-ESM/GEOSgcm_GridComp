@@ -59,7 +59,7 @@ PROGRAM mkCatchParam
   logical              :: file_exists, file_exists2, file_exists3, file_exists4
   logical              :: F25Tag = .false.
   logical              :: ease_grid=.false., redo_modis=.false.
-  character*200        :: lai_name 
+  character*40         :: lai_name 
   integer, parameter   :: log_file = 998
   type (regrid_map)    :: maparc30, mapgeoland2,maparc60
   character*200        :: tmpstring, tmpstring1, tmpstring2
@@ -518,7 +518,7 @@ PROGRAM mkCatchParam
      endif
 
      if (trim(LAIBCS) == 'MODGEO') then
-        lai_name = '/discover/nobackup/yzeng3/work/LAI/gmao_climatology_new/MODIS_'
+        lai_name = 'MODIS_8-DayClim_new/MODIS_'
         inquire(file='clsm/lai.MODIS_8-DayClim', exist=file_exists)
         if (.not.file_exists)call hres_lai_no_gswp (43200,21600,maparc30,lai_name, n_land, tile_lon, tile_lat, merge=1)  
         call merge_lai_data (MaskFile, n_land, tile_pfs)
