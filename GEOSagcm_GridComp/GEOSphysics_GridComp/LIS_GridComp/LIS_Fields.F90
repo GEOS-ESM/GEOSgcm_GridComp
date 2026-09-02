@@ -1,10 +1,10 @@
 #include "MAPL_Generic.h"
 
-module LIS_FieldsMod
+module LIS_Fields
 
    !DESCRIPTION:
    ! Import/Export/Internal field catalog for the LISF Plug, built directly
-   ! from LIS_FieldCatalogMod's LIS_FieldList, whose entries carry
+   ! from LIS_FieldCatalog's LIS_FieldList, whose entries carry
    ! role classification baked in at declaration (mirroring LIS_NUOPC_Gluecode's
    ! LIS_HookupInit), so this Plug (which never goes through LISF's own NUOPC
    ! coupling layer) doesn't need to link LISF's NUOPC cap or
@@ -19,7 +19,7 @@ module LIS_FieldsMod
    ! SHORT_NAME is the field's LIS_FieldList "stateName", uppercased.
 
    use MAPL_ErrorHandlingMod, only: MAPL_RTRN
-   use LIS_FieldCatalogMod, only: LIS_Field, LIS_FieldList
+   use LIS_FieldCatalog, only: LIS_Field, LIS_FieldList
 
    implicit none
    private
@@ -115,4 +115,4 @@ contains
       end do
    end function ToUpper
 
-end module LIS_FieldsMod
+end module LIS_Fields

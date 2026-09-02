@@ -1,8 +1,8 @@
-module LIS_FieldCatalogMod
+module LIS_FieldCatalog
 
    !DESCRIPTION:
    ! Self-contained copy of the stdName/stateName/units metadata and role
-   ! classification (adImport/adExport/directConn) that LIS_FieldsMod
+   ! classification (adImport/adExport/directConn) that LIS_Fields
    ! needs from LIS_NUOPC_Gluecode's LIS_FieldList/LIS_HookupInit -- kept here
    ! instead so the Plug does not have to compile/link LISF's NUOPC cap
    ! (LIS_NUOPC_Cap/LIS_NUOPC_Gluecode/LIS_NUOPC_DataCopy/LIS_ESMF_Extensions/
@@ -482,4 +482,4 @@ contains
                 units='mm') ]
    end function new_LIS_FieldList
 
-end module LIS_FieldCatalogMod
+end module LIS_FieldCatalog
