@@ -2676,7 +2676,7 @@ contains
           do ix = 1,36
              write (vv,'(i2.2)')jx
              write (hh,'(i2.2)')ix 
-             fname = trim(MAKE_BCS_INPUT_DIR)//'/land/veg/lai_grn/v2/'//trim(lai_name)//'lai_clim.H'//hh//'V'//vv//'.nc'
+             fname = '/discover/nobackup/yzeng3/make_bcs_inputs/land/veg/lai_grn/v2/'//trim(lai_name)//'lai_clim.H'//hh//'V'//vv//'.nc'
              status = NF_OPEN(trim(fname),NF_NOWRITE, ncid)
              if(status == 0) then
                 status = NF_GET_att_INT  (ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
