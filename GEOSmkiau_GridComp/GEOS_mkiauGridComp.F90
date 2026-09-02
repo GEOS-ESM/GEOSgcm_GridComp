@@ -110,6 +110,8 @@ contains
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
 
+    ! bweir: Suggest removing and just adding the TROPP_BLENDED import
+    ! Extra work for no gain?
     call MAPL_GetResource(MAPL, BLEND_QV_AT_TP,  LABEL="REPLAY_BLEND_QV_AT_TP:", default=.FALSE., RC=status)
     VERIFY_(STATUS)
 
@@ -228,6 +230,7 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    ! bweir: you're trying too hard
     if( BLEND_QV_AT_TP ) then
     call MAPL_AddImportSpec(GC,                                        &
          SHORT_NAME = 'TROPP_BLENDED',                                 &
@@ -630,7 +633,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   real                                :: FACP1, FACP0, FACM1, FACM2
   real                                :: DAMPBEG, DAMPEND
-  logical                             :: BLEND_QV_AT_TP
+  logical                             :: BLEND_QV_AT_TP, BLEND_QV_AT_300
   integer                             :: i,j,L,n
   integer                             :: nt,nvars,natts
   integer                             :: nymd, nhms
@@ -857,6 +860,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     _ASSERT(DAMPBEG.le.DAMPEND   ,'needs informative message')
 
     call MAPL_GetResource(MAPL, BLEND_QV_AT_TP,  LABEL="REPLAY_BLEND_QV_AT_TP:", default=.FALSE., RC=status)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, BLEND_QV_AT_300, LABEL="REPLAY_BLEND_QV_AT_300:",default=.FALSE., RC=status)
     VERIFY_(STATUS)
 
        CREMAP = ESMF_UtilStringUpperCase(CREMAP)
@@ -2103,7 +2108,7 @@ CONTAINS
 ! ****   with option to blend QV specially, starting at tropopause. ****
 ! **********************************************************************
 
-      if( DAMPBEG.ne.DAMPEND .or. BLEND_QV_AT_TP ) then
+      if( DAMPBEG.ne.DAMPEND .or. BLEND_QV_AT_TP .or. BLEND_QV_AT_300 ) then
 
           if(first .and. MAPL_AM_I_ROOT()) then
              if(DAMPBEG.ne.DAMPEND) then
@@ -2113,8 +2118,11 @@ CONTAINS
              endif
              if(BLEND_QV_AT_TP) then
                 print *, 'Blending ANA and BKG QV based on TROPP'
+             else if(BLEND_QV_AT_300) then
+                print *, 'Blending ANA and BKG QV from 300 hPa to 225 hPa'
              else
-                print *, 'No blending of QV based on TROPP'
+!               print *, 'No blending of QV based on TROPP'
+                print *, 'No blending of QV'
              endif
              print *
           endif
@@ -2139,7 +2147,8 @@ CONTAINS
 
           call blend ( ple_ana,u_ana,v_ana,t_ana,q_ana,o3_ana,     &
                        ple_bkg,u_bkg,v_bkg,t_bkg,q_bkg,o3_bkg,     &
-                       im,jm,LMbkg, DAMPBEG,DAMPEND, BLEND_QV_AT_TP,  &
+                       im,jm,LMbkg, DAMPBEG,DAMPEND,               &
+                       BLEND_QV_AT_TP, BLEND_QV_AT_300,            &
                        tropp=tropp )
 
           if( BLEND_QV_AT_TP ) then
@@ -2586,16 +2595,16 @@ CONTAINS
   subroutine blend ( plea,ua,va,ta,qa,oa,     &
                      pleb,ub,vb,tb,qb,ob,     &
                      im,jm,lm, pabove,pbelow, &
-                     blend_qv_at_tp, tropp    )
+                     blend_qv_at_tp, blend_qv_at_300, tropp    )
 
 ! Blends Anaylsis and Background values.
-! This routine is called if pabove /= pbelow or blend_qv_at_tp
+! This routine is called if pabove /= pbelow or blend_qv_at_tp or blend_qv_at_300
 ! ***************************************************************************
 
       implicit none
       integer, intent(IN)    :: im,jm,lm
       real,    intent(IN)    :: pabove,pbelow
-      logical, intent(IN)    :: blend_qv_at_tp
+      logical, intent(IN)    :: blend_qv_at_tp, blend_qv_at_300
 
       real,    intent(IN)    :: pleb(im,jm,lm+1)
       real,    intent(IN)    ::   ub(im,jm,lm)
@@ -2664,10 +2673,12 @@ CONTAINS
          else
              alf = 1.0
          endif
-                                   ua(i,j,L) =   ub(i,j,L) + alf*(   ua(i,j,L)-  ub(i,j,L) )
-                                   va(i,j,L) =   vb(i,j,L) + alf*(   va(i,j,L)-  vb(i,j,L) )
-                                   oa(i,j,L) =   ob(i,j,L) + alf*(   oa(i,j,L)-  ob(i,j,L) )
-         IF (.NOT. blend_qv_at_tp) qa(i,j,L) =   qb(i,j,L) + alf*(   qa(i,j,L)-  qb(i,j,L) )
+         ua(i,j,L) =   ub(i,j,L) + alf*(   ua(i,j,L)-  ub(i,j,L) )
+         va(i,j,L) =   vb(i,j,L) + alf*(   va(i,j,L)-  vb(i,j,L) )
+         oa(i,j,L) =   ob(i,j,L) + alf*(   oa(i,j,L)-  ob(i,j,L) )
+         IF (.NOT. (blend_qv_at_tp .OR. blend_qv_at_300)) THEN
+            qa(i,j,L) =   qb(i,j,L) + alf*(   qa(i,j,L)-  qb(i,j,L) )
+         ENDIF
       enddo
       enddo
       enddo
@@ -2700,18 +2711,24 @@ CONTAINS
 
 ! Blend mid-level q near the tropopause
 ! -------------------------------------
-      if ( blend_qv_at_tp ) then
+      if ( blend_qv_at_tp .or. blend_qv_at_300 ) then
            do j=1,jm
            do i=1,im
 
-           IF ( tropp(i,j) == MAPL_UNDEF ) THEN
-                tp_press = 100.0 * 100.0   ! 100 hPa
-           ELSE
-                tp_press = tropp(i,j)
-           ENDIF
+           ! How hard is it to indent code properly?
+           if ( blend_qv_at_tp ) then
+              IF ( tropp(i,j) == MAPL_UNDEF ) THEN
+                   tp_press = 100.0 * 100.0   ! 100 hPa
+              ELSE
+                   tp_press = tropp(i,j)
+              ENDIF
 
-           pabove_QV = tp_press * 0.5
-           pbelow_QV = tp_press * 1.0
+              pabove_QV = tp_press * 0.5
+              pbelow_QV = tp_press * 1.0
+           else if ( blend_qv_at_300 ) then
+              pabove_QV = 225.0 * 100.0    ! 225 hPa
+              pbelow_QV = 300.0 * 100.0    ! 300 hPa
+           endif
 
            do L=1,lm
              p = 0.5*( plea(i,j,L)+plea(i,j,L+1) )
