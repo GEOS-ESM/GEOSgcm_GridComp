@@ -1,17 +1,17 @@
 esma_set_this ()
 
-# GEOS_LisGridComp.F90 wraps LISF's core Fortran API directly
+# LIS_GridComp.F90 wraps LISF's core Fortran API directly
 # (LIS_domain_init, LIS_surfaceModel_run, ...); no NUOPC/ESMF coupling
 # layer is involved.
 
-# LisFieldCatalog.F90 holds a self-contained, static copy of
+# LIS_FieldCatalog.F90 holds a self-contained, static copy of
 # LIS_NUOPC_Gluecode's field stdName/stateName/units metadata and role
-# (adImport/adExport/directConn) classification, so LisFields.F90
+# (adImport/adExport/directConn) classification, so LIS_Fields.F90
 # doesn't need to build/link LISF's NUOPC cap (or LIS_FORC_AttributesMod)
 # just to get this static data.
-# LisFields.F90 holds the shared Import/Export/Internal field
+# LIS_Fields.F90 holds the shared Import/Export/Internal field
 # catalog derived from it.
-set (SRCS LisFieldCatalog.F90 LisFields.F90 GEOS_LisGridComp.F90)
+set (SRCS LIS_FieldCatalog.F90 LIS_Fields.F90 LIS_GridComp.F90)
 
 # LISF_cmake/ builds the `LIS` library target natively under CMake from
 # @LISF's own source tree (see LISF_cmake/CMakeLists.txt for details).

@@ -1,9 +1,9 @@
 #include "MAPL_Generic.h"
 
-module GEOS_LisGridCompMod
+module LIS_GridCompMod
 
    !BOP
-   !MODULE: GEOS_LisGridCompMod -- couples MAPL/GEOS directly to LISF.
+   !MODULE: LIS_GridCompMod -- couples MAPL/GEOS directly to LISF.
 
    !DESCRIPTION:
    ! MAPL/ESMF Gridded Component wrapping the Land Information System
@@ -37,7 +37,7 @@ module GEOS_LisGridCompMod
    use LIS_historyMod, only: LIS_tile2grid, LIS_grid2tile
    use LIS_timeMgrMod, only: LIS_timemgr_set
 
-   use LisFieldsMod, only: LIS_FieldSpec, LisFieldsInit
+   use LIS_FieldsMod, only: LIS_FieldSpec, LisFieldsInit
 
    use iso_fortran_env, only: real32
 
@@ -84,7 +84,7 @@ contains
       call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_WRITERESTART, Record, _RC)
 
       ! Set the state variable specs. The catalog is fully static (see
-      ! LisFieldCatalogMod), so it needs no live LIS state.
+      ! LIS_FieldCatalogMod), so it needs no live LIS state.
       call LisFieldsInit(import_fields, export_fields, internal_fields, _RC)
 
       do i = 1, size(import_fields)
@@ -373,4 +373,4 @@ contains
       RETURN_(ESMF_SUCCESS)
    end subroutine Record
 
-end module GEOS_LisGridCompMod
+end module LIS_GridCompMod

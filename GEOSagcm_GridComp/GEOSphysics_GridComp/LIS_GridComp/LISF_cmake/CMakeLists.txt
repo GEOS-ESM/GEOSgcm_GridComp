@@ -19,7 +19,7 @@ endif ()
 
 find_package (Python3 COMPONENTS Interpreter REQUIRED)
 
-# @LISF lives one directory up from here (GEOSlis_GridComp/@LISF), not under
+# @LISF lives one directory up from here (LIS_GridComp/@LISF), not under
 # LISF_cmake/ itself.
 esma_mepo_style (LISF mepo_LISF REL_PATH ..)
 
