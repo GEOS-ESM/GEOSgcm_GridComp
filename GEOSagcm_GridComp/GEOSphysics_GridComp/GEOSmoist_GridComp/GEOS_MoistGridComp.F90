@@ -47,7 +47,7 @@ module GEOS_MoistGridCompMod
   real    :: CCN_OCN
   real    :: CCN_LND
 
-  logical :: USE_NCLOUD_CLIM=.FALSE.
+  logical :: MOIST_USE_NCLOUD_CLIM=.FALSE.
   real    :: DETRAIN_INACTIVE_CNV
   real    :: TAU_DETRAIN_CNV
 
@@ -187,7 +187,7 @@ contains
 
     !***********Aerosol-Cloud related
 
-    call MAPL_GetResource( CF, USE_NCLOUD_CLIM, Label='USE_NCLOUD_CLIM:',   default=.FALSE.,        RC=STATUS)
+    call MAPL_GetResource( CF, MOIST_USE_NCLOUD_CLIM, Label='USE_NCLOUD_CLIM:', default=.FALSE., RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource( CF, WSUB_OPTION, Label='WSUB_OPTION:',   default= 3,        RC=STATUS) !0- param 1- Use Wsub climatology 2-USE WNET` 3-Symbolic Wnet
     VERIFY_(STATUS)
@@ -619,7 +619,7 @@ contains
             ! Do nothing
       end select
 
-     IF (USE_NCLOUD_CLIM) then
+     IF (MOIST_USE_NCLOUD_CLIM) then
         call MAPL_AddImportSpec ( GC,                                 &
             SHORT_NAME = 'NCPL_CLIM',                                 &
             LONG_NAME  = 'In-Cloud NCPL climatology',     &
@@ -6028,7 +6028,7 @@ contains
        ! Get aerosol activation properties
        call MAPL_TimerOn (MAPL,"---AERO_ACTIVATE")
 
-       if (USE_NCLOUD_CLIM) then  !Setup ND/NI climatology from GiOcean
+       if (MOIST_USE_NCLOUD_CLIM) then  !Setup ND/NI climatology from GiOcean
           call MAPL_GetPointer(IMPORT, PTR3D, 'NCPL_CLIM', RC=STATUS); VERIFY_(STATUS)
           NACTL = PTR3D
           call MAPL_GetPointer(IMPORT, PTR3D, 'NCPI_CLIM', RC=STATUS); VERIFY_(STATUS)
@@ -6737,4 +6737,3 @@ contains
   end subroutine FINALIZE
 
 end module GEOS_MoistGridCompMod
-
