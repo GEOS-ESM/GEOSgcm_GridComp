@@ -48,12 +48,13 @@ module shoc
  contains
 
  subroutine run_shoc( nx, ny, nzm, nz, dtn,                      &  ! in
-                 shf, prsl_inv, phii_inv, phil_inv,              &  ! in
+                 shf, lobukhov, prsl_inv, phii_inv, phil_inv,    &  ! in
                  u_inv, v_inv,                                   &  ! in
                  omega_inv, tabs_inv, qwv_inv,                   &  ! in
                  qi_inv, qc_inv, qpi_inv,                        &  ! in
                  qpl_inv, cld_sgs_inv, wthv_sec_inv,             &  ! in
                  wthv_mf_inv, tke_mf, dryzpbl,                   &  ! in
+!                 awu_mf, awv_mf,                                 &  ! in
                  tke_inv, tkh_inv,                               &  ! inout
                  tkm_inv, isotropy_inv,                          &  ! out
                  tkesbdiss_inv, tkesbbuoy_inv,                   &  ! out
@@ -85,6 +86,7 @@ module shoc
   type(shocparams_type), intent(in) :: shocparams
   real, intent(in   ) :: dtn          ! Physics time step, s
   real, intent(in   ) :: shf(nx,ny)           ! Surface sensible heat flux, W/m2
+  real, intent(in   ) :: lobukhov(nx,ny)      ! Monin-Obukhov length, m
   real, intent(in   ) :: prsl_inv (nx,ny,nzm) ! mean layer presure
   real, intent(in   ) :: phii_inv (nx,ny,nz ) ! interface geopotential height
   real, intent(in   ) :: phil_inv (nx,ny,nzm) ! layer geopotential height
@@ -364,7 +366,7 @@ contains
         do i=1,nx
           grd = adzl(i,j,k)             !  adzl(k) = zi(k+1)-zi(k)
 
-! TKE boyancy production term. wthv_sec (buoyancy flux) is calculated in Moist GridComp.
+! TKE buoyancy production term. wthv_sec (buoyancy flux) is calculated in Moist GridComp.
 
           wrk  = 0.5 * (tkh(i,j,ku)+tkh(i,j,kd))
 
@@ -395,6 +397,7 @@ contains
           wrk  = (dtn*Cee)/smixt(i,j,k)
           wrk1 = wtke + dtn*(a_prod_sh+a_prod_bu)
 
+          ! Inflate minimum TKE near surface, and include MF TKE component
           wrk2 = min_tke*(1.+9.*exp(-zl(i,j,k)/100.))+0.5*(tke_mf(i,j,nz-k+1)+tke_mf(i,j,nz-k))
           do itr=1,nitr                        ! iterate for implicit solution
             wtke   = min(max(wrk2, wtke), max_tke)
@@ -432,13 +435,14 @@ contains
           ! ignore stability dependence within the lower CBL, to prevent occasional 
           !wrk = 2./(1./tscale1(i,j,k)+1./tscale1(i,j,k-1))
           wrk = 0.5*(tscale1(i,j,k)+tscale1(i,j,k-1))
-          lambda_zfac = 0.5+0.5*tanh((zl(i,j,k)-0.75*dryzpbl(i,j)-100.)/100) 
+!          lambda_zfac = 0.5+0.5*tanh((zl(i,j,k)-0.75*dryzpbl(i,j)-100.)/100) 
+          lambda_zfac = 0.5+0.5*tanh((zl(i,j,k)-dryzpbl(i,j)-100.)/100) 
           if (brunt_edge(i,j,k) <= 1e-5) then ! .or. zl(i,j,k).lt.0.7*dryzpbl(i,j)) then
              isotropy(i,j,k) = max(30.,min(max_eddy_dissipation_time_scale,wrk))
           else
              isotropy(i,j,k) = max(30.,min(max_eddy_dissipation_time_scale,wrk/(1.0+lambda*lambda_zfac*brunt_edge(i,j,k)*wrk*wrk)))
           endif
-          if (tke(i,j,k).lt.2e-4) isotropy(i,j,k) = 30.
+!          if (tke(i,j,k).lt.2e-4) isotropy(i,j,k) = 30.
 
           wrk1 = ck / prnum(i,j,k)
 
@@ -745,8 +749,14 @@ contains
 
              if ( shocparams%LENOPT .lt. 4 ) then
 
-                 ! Surface length scale
-                 smixt1(i,j,k) = vonk*zl(i,j,k)*shocparams%LENFAC1
+                 ! Surface length scale, following Olson et al 2026
+                 if (lobukhov(i,j).gt.0.1) then
+                    smixt1(i,j,k) = vonk*zl(i,j,k)*shocparams%LENFAC1 / (1.+3.*zl(i,j,k)/lobukhov(i,j))
+                 else if (lobukhov(i,j).lt.-0.1) then
+                    smixt1(i,j,k) = vonk*zl(i,j,k)*shocparams%LENFAC1 * (1.-10.*zl(i,j,k)/lobukhov(i,j))**0.2
+                 else
+                    smixt1(i,j,k) = vonk*zl(i,j,k)*shocparams%LENFAC1
+                 end if
 !                 smixt1(i,j,k) = sqrt(400.*tkes*vonk*zl(i,j,k))*shocparams%LENFAC1  ! original SHOC, includes TKE
 
                  ! Turbulent length scale
@@ -757,24 +767,29 @@ contains
                  ! but retain full sensitivity in free atmosphere. This is
                  ! a 'kludge' to increase TKE in stable BLs while suppressing
                  ! it in cumulus layers.
-                 if ( zl(i,j,k).lt.0.75*dryzpbl(i,j) .or. zl(i,j,k).lt.500. ) then
-                    smixt3(i,j,k) = max(0.05,tkes)*4.*shocparams%LENFAC3/(sqrt(brunt2(i,j,k)))
-                 else
+!                 if ( zl(i,j,k).lt.0.75*dryzpbl(i,j) .or. zl(i,j,k).lt.500. ) then
+!                    smixt3(i,j,k) = max(0.05,tkes)*2.*shocparams%LENFAC3/(sqrt(brunt2(i,j,k)))
+!                 else
                     smixt3(i,j,k) = max(0.05,tkes)*shocparams%LENFAC3/(sqrt(brunt2(i,j,k)))
-                 end if
-                 
+!                 end if
+
+                 ! Limit component length scales to less than maximum
+                 smixt1(i,j,k) = min(max_eddy_length_scale,smixt1(i,j,k))
+                 smixt2(i,j,k) = min(max_eddy_length_scale,smixt2(i,j,k))
+                 smixt3(i,j,k) = min(max_eddy_length_scale,smixt3(i,j,k))
+                    
                  !=== Combine component length scales ===
                  if (shocparams%LENOPT .eq. 1) then  ! JPL blending approach (w/SHOC length scales)
                       wrk1 = SQRT(3./(1./smixt2(i,j,k)**2+1./smixt3(i,j,k)**2))
                       if (zl(i,j,k).lt.300.) then
-                         smixt(i,j,k) = wrk1 + (smixt1(i,j,k)-wrk1)*exp(-(zl(i,j,k)/60.))
+                         smixt(i,j,k) = wrk1 + (smixt1(i,j,k)-wrk1)*exp(-(zl(i,j,k)/100.))
                       else
                          smixt(i,j,k) = wrk1
                       end if
                  else if (shocparams%LENOPT .eq. 2) then  ! Harmonic mean
                     smixt(i,j,k) = 3./(1./smixt1(i,j,k)+1./smixt2(i,j,k)+1./smixt3(i,j,k))
                  else if (shocparams%LENOPT .eq. 3) then  ! SHOC classic approach
-                    smixt(i,j,k) = SQRT(3.)/SQRT(1./smixt1(i,j,k)**2+1./smixt2(i,j,k)**2+1./smixt3(i,j,k)**2)
+                    smixt(i,j,k) = SQRT(3./(1./smixt1(i,j,k)**2+1./smixt2(i,j,k)**2+1./smixt3(i,j,k)**2))
                  end if
            else if (shocparams%LENOPT .eq. 4) then  ! JPL Length scale (Suselj et al 2012)
               wrk2 = 1.0/(400.*tkes)
@@ -788,7 +803,7 @@ contains
 
            ! Enforce minimum and maximum length scales, and reduce final
            ! length scale exponentially with height above the dry CBL.
-           smixt(i,j,k) = min(max_eddy_length_scale,max(min_eddy_length_scale,smixt(i,j,k)))
+           smixt(i,j,k) = max(min_eddy_length_scale,smixt(i,j,k))
            if (zl(i,j,k).gt.dryzpbl(i,j)) smixt(i,j,k) = smixt(i,j,k)*(0.025+0.975*exp(-(zl(i,j,k)-dryzpbl(i,j))/3000.))
         end do
       end do
@@ -840,6 +855,7 @@ contains
                            hlqt2tune,  &
                            skew_tgen,  &
                            skew_tdis,  &
+                           qt2_tdis,  &
                            free_atm_qt2 )
 
 
@@ -880,6 +896,7 @@ contains
                               QT2TUNE,     &
                               SKEW_TGEN,   &
                               SKEW_TDIS,   &
+                              QT2_TDIS,   &
                               FREE_ATM_QT2
 
     integer, intent(in   ) :: DOPROGQT2   ! prognostic QT2 switch
@@ -954,7 +971,7 @@ contains
            elsewhere
               wrk2 = 0.
            end where
-           qt2(:,:,k) = (qt2(:,:,k)+(wrk1+wrk2/SKEW_TDIS)*DT) / (1. + DT/SKEW_TDIS)
+           qt2(:,:,k) = (qt2(:,:,k)+(wrk1+wrk2/QT2_TDIS)*DT) / (1. + DT/QT2_TDIS)
         else
            qt2(:,:,k) = QT2TUNE*SKEW_TGEN*wrk1
         end if
