@@ -29,3 +29,18 @@ def sigma(dx) -> Float:
     """Arakawa 2011 sigma"""
     sigma = 1.0 - 0.9839 * exp(-0.09835 * (dx / 1000.0))
     return sigma
+
+
+@function
+def compute_estimated_inversion_strength_factor(estimated_inversion_strength) -> Float:
+    if estimated_inversion_strength >= 10.0:
+        # Very stable regime
+        eis_factor = 1.0
+    elif estimated_inversion_strength <= 0.0:
+        # Very unstable regime
+        eis_factor = 0.0
+    else:
+        # Smooth function from 0 to 1
+        eis_factor = (estimated_inversion_strength / 10.0) ** 2
+
+    return eis_factor

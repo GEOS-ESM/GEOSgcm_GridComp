@@ -10,9 +10,9 @@ from ndsl.dsl.typing import Float, Int
 
 from pyMoist.fortran import get_NDSL_physics
 from pyMoist.fortran.build_helper import StencilBackendCompilerOverride
+from pyMoist.fortran.cuda_profiler import TimedCUDAProfiler
 from pyMoist.fortran.managed_state import MAPLManagedState
 from pyMoist.fortran.memory_factory import MAPLMemoryRepository
-from pyMoist.fortran.profiler import TimedCUDAProfiler
 from pyMoist.microphysics.GFDL_1M import GFDL1M, GFDL1MConfig, GFDL1MState
 
 
@@ -22,7 +22,7 @@ def _default_or_get_from_namelist(default, name_in_namelist: str, namelist: dict
 
 class GFDL1MInterface(UserCode):
     def __init__(self) -> None:
-        pass
+        self._gfdl_1m = None
 
     def init(self, mapl_state: CVoidPointer, import_state: CVoidPointer, export_state: CVoidPointer):
         maplpy = get_MAPLPy()
@@ -49,10 +49,14 @@ class GFDL1MInterface(UserCode):
             cci_evap_eff_default = Float(1e-2)
         use_aerosol_nn = maplpy.get_resource("USE_AEROSOL_NN:", mapl_state, default=True)
 
+        # v11.10 ties these two together, but preserves the existance of both as independent parameters
+        LPHYS_HYDROSTATIC = maplpy.get_resource("PHYS_HYDROSTATIC", mapl_state, default=True)
+        LHYDROSTATIC = LPHYS_HYDROSTATIC
+
         config = GFDL1MConfig(
             USE_BERGERON=maplpy.get_resource("USE_BERGERON:", mapl_state, default=use_aerosol_nn),
-            LPHYS_HYDROSTATIC=maplpy.get_resource("PHYS_HYDROSTATIC", mapl_state, default=True),
-            LHYDROSTATIC=maplpy.get_resource("HYDROSTATIC", mapl_state, default=True),
+            LPHYS_HYDROSTATIC=LPHYS_HYDROSTATIC,
+            LHYDROSTATIC=LHYDROSTATIC,
             DT_MOIST=maplpy.get_resource("DSL__GFLD1M_DT", mapl_state, default=Float(0.0)),
             LMELTFRZ=maplpy.get_resource("MELTFRZ", mapl_state, default=True),
             TURNRHCRIT_PARAM=maplpy.get_resource("TURNRHCRIT:", mapl_state, default=Float(-9999.0)),
@@ -132,7 +136,6 @@ class GFDL1MInterface(UserCode):
             FAST_SAT_ADJ=_default_or_get_from_namelist(False, "fast_sat_adj", gfdl1m_namelist),
             Z_SLOPE_LIQ=_default_or_get_from_namelist(True, "z_slope_liq", gfdl1m_namelist),
             Z_SLOPE_ICE=_default_or_get_from_namelist(False, "z_slope_ice", gfdl1m_namelist),
-            USE_CCN=_default_or_get_from_namelist(False, "use_ccn", gfdl1m_namelist),
             USE_PPM=_default_or_get_from_namelist(False, "use_ppm", gfdl1m_namelist),
             MONO_PROF=_default_or_get_from_namelist(True, "mono_prof", gfdl1m_namelist),
             MP_PRINT=_default_or_get_from_namelist(False, "mp_print", gfdl1m_namelist),
@@ -164,21 +167,24 @@ class GFDL1MInterface(UserCode):
             ndsl_stack.interface_type,
         )
 
-    def run(
-        self,
-        mapl_state: CVoidPointer,
-        import_state: CVoidPointer,
-        export_state: CVoidPointer,
-    ):
-        pass
+        self._first_run = True
 
-    def run_with_internal(
+    def _get_code(self) -> GFDL1M:
+        if not self._gfdl_1m:
+            raise RuntimeError("GFDL1M Runtime called before initialization was finished. Abort.")
+        return self._gfdl_1m  # type: ignore[unreachable]
+
+    def _first_run_init(
         self,
         mapl_state: CVoidPointer,
         import_state: CVoidPointer,
         export_state: CVoidPointer,
         internal_state: CVoidPointer,
     ):
+        if not self._first_run:
+            return
+        self._first_run = False
+
         ndsl_stack = get_NDSL_physics(mapl_state)
         import_repository = MAPLMemoryRepository(import_state, ndsl_stack.quantity_factory)
         internal_repository = MAPLMemoryRepository(internal_state, ndsl_stack.quantity_factory)
@@ -345,15 +351,39 @@ class GFDL1MInterface(UserCode):
         self._managed_state.register("mass_fraction.suspended_graupel", "QGTOT", export_repository)
         self._managed_state.register("mass_fraction.suspended_snow", "QSTOT", export_repository)
 
-        if self._gfdl_1m is None:
-            raise RuntimeError("GFDL1M Runtime called before initialization was done. Abort.")
+        do_radar_diagnostic = (
+            export_repository.associated("DBZ")
+            or export_repository.associated("DBZ_MAX")
+            or export_repository.associated("DBZ_1KM")
+            or export_repository.associated("DBZ_TOP")
+            or export_repository.associated("DBZ_M10C")
+        )
+
+        self._get_code().post_init(do_radar_diagnostic)
+
+    def run(
+        self,
+        mapl_state: CVoidPointer,
+        import_state: CVoidPointer,
+        export_state: CVoidPointer,
+    ):
+        pass
+
+    def run_with_internal(
+        self,
+        mapl_state: CVoidPointer,
+        import_state: CVoidPointer,
+        export_state: CVoidPointer,
+        internal_state: CVoidPointer,
+    ):
+        self._first_run_init(mapl_state, import_state, export_state, internal_state)
 
         with TimedCUDAProfiler("GFDL 1M", {}):
             with TimedCUDAProfiler("GFDL 1M - State copy", {}):
                 self._managed_state.fortran_to_ndsl()
 
             with TimedCUDAProfiler("GFDL 1M Numerics", {}):
-                self._gfdl_1m(self._managed_state.ndsl_state)
+                self._get_code()(self._managed_state.ndsl_state)
 
             with TimedCUDAProfiler("GFDL 1M - State copy-back", {}):
                 self._managed_state.ndsl_to_fortran()
