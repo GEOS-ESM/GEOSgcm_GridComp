@@ -180,7 +180,8 @@ contains
 
       !   Store internal state in GC
       !   --------------------------
-      call ESMF_UserCompSetInternalState ( GC, 'GEOS_GwdGridComp', wrap, _RC )
+      call ESMF_UserCompSetInternalState ( GC, 'GEOS_GwdGridComp', wrap, status)
+      _VERIFY(status)
 
       ! Set generic init and final methods
       ! ----------------------------------
@@ -291,7 +292,8 @@ contains
 
       !   Get my internal private state
       !   -----------------------------
-      call ESMF_UserCompGetInternalState(GC, 'GEOS_GwdGridComp', wrap, _RC)
+      call ESMF_UserCompGetInternalState(GC, 'GEOS_GwdGridComp', wrap, status)
+      _VERIFY(status)
       self => wrap%ptr
 
       ! Call Generic Initialize for GWD GC
@@ -529,7 +531,8 @@ contains
 
       !   Get my internal private state
       !   -----------------------------
-      call ESMF_UserCompGetInternalState(GC, 'GEOS_GwdGridComp', wrap, _RC)
+      call ESMF_UserCompGetInternalState(GC, 'GEOS_GwdGridComp', wrap, status)
+      _VERIFY(status)
       self => wrap%ptr
 
       H0 = self%H0
@@ -878,7 +881,7 @@ contains
                  print *, "            UWND =", U_EXP(I,J,L)
                  print *, "            VWND =", V_EXP(I,J,L)
                  endif
-             endif 
+             endif
            end do ! IM loop
          end do ! JM loop
        end do ! LM loop
