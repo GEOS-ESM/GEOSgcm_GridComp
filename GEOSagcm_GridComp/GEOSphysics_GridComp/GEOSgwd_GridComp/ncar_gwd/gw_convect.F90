@@ -487,7 +487,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
           ! Proxy 1: The Moist Condensate (Precipitation)
            if (desc%et_bkg_dqcdt_forcing) then
                q0(i) = 0.0
-               do k = desc%k(i), 1, -1
+               do k = int(desc%k(i)), 1, -1
                  if (dqcdt(i,k) > q0(i)) q0(i) = dqcdt(i,k)
                end do
                ! Scale moist multiplier (using the optimized * 5.e8 factor)
@@ -505,7 +505,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
                dry_mult = 1.0
            endif
            phys_mult = MAX(1.0, moist_mult+dry_mult-1.0)
-           tau(i,:,desc%k(i)+1) = desc%taubck(i,:) * phys_mult
+           tau(i,:,int(desc%k(i))+1) = desc%taubck(i,:) * phys_mult
            topi(i) = desc%k(i)
         else
           ! use latitudinal dependence
