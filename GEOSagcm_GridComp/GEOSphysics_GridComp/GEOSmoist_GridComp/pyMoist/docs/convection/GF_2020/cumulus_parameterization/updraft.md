@@ -1,3 +1,3 @@
 # updraft
 
-::: pyMoist.convection.GF_2020.updraft
+::: pyMoist.convection.GF_2020.cumulus_parameterization.updraft

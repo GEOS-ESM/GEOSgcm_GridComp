@@ -46,6 +46,8 @@ module GEOS_MoistGridCompMod
   logical :: LUPDATE_PRECIP_TYPE
   real    :: CCN_OCN
   real    :: CCN_LND
+
+  logical :: MOIST_USE_NCLOUD_CLIM=.FALSE.
   real    :: DETRAIN_INACTIVE_CNV
   real    :: TAU_DETRAIN_CNV
 
@@ -179,10 +181,16 @@ contains
                adjustl(CLDMICR_OPTION)=="MGB2_2M"
     _ASSERT( LCLDMICR, 'Unsupported Cloud Microphysics Option' )
 
-
     call MAPL_GetResource( CF, DEBUG_MST, Label="DEBUG_MST:",  default=.false., RC=STATUS) ; VERIFY_(STATUS)
 
     call MAPL_GetResource( CF, DEBUG_TQ_ERRORS, Label="DEBUG_TQ_ERRORS:",  default=.false., RC=STATUS) ; VERIFY_(STATUS)
+
+    !***********Aerosol-Cloud related
+
+    call MAPL_GetResource( CF, MOIST_USE_NCLOUD_CLIM, Label='USE_NCLOUD_CLIM:', default=.FALSE., RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource( CF, WSUB_OPTION, Label='WSUB_OPTION:',   default= 3,        RC=STATUS) !0- param 1- Use Wsub climatology 2-USE WNET` 3-Symbolic Wnet
+    VERIFY_(STATUS)
 
     ! MAT These have to be defined as they are passed into Aer_Activate below and are intent(in)
     !     Note: It's possible these aren't *used* if USE_AEROSOL_NN=.TRUE. but they are still passed
@@ -586,7 +594,7 @@ contains
              VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
             VERIFY_(STATUS)
 
-      case (2)
+    case (2)
             call MAPL_AddImportSpec ( GC,                                          &
              LONG_NAME  = 'total_momentum_diffusivity',                            &
              UNITS      = 'm+2 s-1',                                               &
@@ -611,7 +619,7 @@ contains
             ! Do nothing
       end select
 
-     IF (USE_NCLOUD_CLIM) then
+     IF (MOIST_USE_NCLOUD_CLIM) then
         call MAPL_AddImportSpec ( GC,                                 &
             SHORT_NAME = 'NCPL_CLIM',                                 &
             LONG_NAME  = 'In-Cloud NCPL climatology',     &
@@ -788,6 +796,8 @@ contains
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
     VERIFY_(STATUS)
+    
+    
     call MAPL_AddImportSpec(GC,                             &
         LONG_NAME          = 'turbulence_liquid_water_tendency',  &
         UNITS              = 'kg kg-1 s-1',                       &
@@ -1797,6 +1807,15 @@ contains
     VERIFY_(STATUS)
 
 
+      call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'EDMF_DMF',                                      &
+         LONG_NAME = 'EDMF_updraft_detrained_mass_flux', &
+         UNITS     = 'kg m-2 s-1',                                 &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,                         &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+    
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'DCM_SC',                                      &
          LONG_NAME = 'Shallow_convection_detrained_cloud_mass', &
@@ -2901,6 +2920,14 @@ contains
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='SIGMA_S',                                     &
+         LONG_NAME ='normalized_total_water_standard_deviation',   &
+         UNITS     ='1',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+    
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='RHX',                                         &
          LONG_NAME ='relative_humidity_after_PDF',               &
@@ -6008,7 +6035,7 @@ contains
        ! Get aerosol activation properties
        call MAPL_TimerOn (MAPL,"---AERO_ACTIVATE")
 
-       if (USE_NCLOUD_CLIM) then  !Setup ND/NI climatology from GiOcean
+       if (MOIST_USE_NCLOUD_CLIM) then  !Setup ND/NI climatology from GiOcean
           call MAPL_GetPointer(IMPORT, PTR3D, 'NCPL_CLIM', RC=STATUS); VERIFY_(STATUS)
           NACTL = PTR3D
           call MAPL_GetPointer(IMPORT, PTR3D, 'NCPI_CLIM', RC=STATUS); VERIFY_(STATUS)
@@ -6746,4 +6773,3 @@ contains
   end subroutine FINALIZE
 
 end module GEOS_MoistGridCompMod
-
