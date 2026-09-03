@@ -5894,6 +5894,9 @@ contains
        DZET     =     (ZLE0(:,:,0:LM-1) - ZLE0(:,:,1:LM) ) ! Layer thickness (m)
        DQST3    = GEOS_DQSAT(T, PLmb, QSAT=QST3)
 
+       call MAPL_GetPointer(EXPORT, PTR3D, 'RH1', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = MAX(MIN( Q/QST3, 1.02 ),0.0)
+
        ! Lower tropospheric stability and estimated inversion strength
        call MAPL_GetPointer(EXPORT, LTS,   'LTS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, EIS,   'EIS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -5929,6 +5932,10 @@ contains
        if (associated(PTR3D)) PTR3D = QICN+QLCN
        call MAPL_GetPointer(EXPORT, PTR3D,     'QCLSX0'    , RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = QILS+QLLS
+       call MAPL_GetPointer(EXPORT, PTR3D,     'UX0'    , RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = U
+       call MAPL_GetPointer(EXPORT, PTR3D,     'VX0'    , RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = V
 
        ! Trajectory for the moist TLM/ADJ
        !---------------------------------------------------------
@@ -6188,6 +6195,9 @@ contains
 
          ! some diagnostics to export
          QST3  = GEOS_QsatICE (T, PLmb*100.0, DQ=DQST3)
+         call MAPL_GetPointer(EXPORT, PTR3D, 'QSATI', RC=STATUS); VERIFY_(STATUS)
+         if (associated(PTR3D)) PTR3D = QST3
+       
          call MAPL_GetPointer(EXPORT, PTR3D, 'RHICE', RC=STATUS); VERIFY_(STATUS)
          if (associated(PTR3D)) then
            PTR3D = Q/QST3
@@ -6206,6 +6216,8 @@ contains
          endif
 
          QST3  = GEOS_QsatLQU (T, PLmb*100.0, DQ=DQST3)
+         call MAPL_GetPointer(EXPORT, PTR3D, 'QSATL', RC=STATUS); VERIFY_(STATUS)
+         if (associated(PTR3D)) PTR3D = QST3
          call MAPL_GetPointer(EXPORT, PTR3D, 'RHLIQ', RC=STATUS); VERIFY_(STATUS)
          if (associated(PTR3D)) PTR3D = Q/QST3
 
@@ -6559,7 +6571,7 @@ contains
 
        call MAPL_GetPointer(EXPORT, PTR3D, 'QLTOT', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = QLLS+QLCN
-
+       
        call MAPL_GetPointer(EXPORT, PTR3D, 'QITOT', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = QILS+QICN
 
@@ -6593,6 +6605,12 @@ contains
        call MAPL_GetPointer(EXPORT, PTR3D, 'CLCNX1', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = CLCN
 
+       call MAPL_GetPointer(EXPORT, PTR3D, 'LWC', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = (QLLS+QLCN)*100.*PLmb/( MAPL_RGAS*T )
+
+       call MAPL_GetPointer(EXPORT, PTR3D, 'IWC', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = (QILS+QICN)*100.*PLmb/( MAPL_RGAS*T )
+       
        ! Fill wind, temperature & RH exports needed for SYNCTQ
 
        call MAPL_GetPointer(EXPORT, PTR3D, 'UAFMOIST', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -6620,6 +6638,24 @@ contains
        call MAPL_GetPointer(EXPORT, PTR3D, 'RH2', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = MAX(MIN( Q/GEOS_QSAT (T, PLmb) , 1.02 ),0.0)
 
+       ! Cloud Base Height
+       call MAPL_GetPointer(EXPORT, PTR2D, 'CLDBASEHGT', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) then
+          PTR2D = MAPL_UNDEF
+          tmp3d = QLCN+QLLS+QICN+QILS
+          do i = 1,IM
+            do j = 1,JM
+              do l =  LM-1, 1, -1  ! search upward from 2nd level
+                 if (ZLE0(i,j,l).gt.20000.) exit
+                 if ( ( CLLS(i,j,l)+CLCN(i,j,l) .ge. 1e-2 ) .and. ( tmp3d(i,j,l) .ge. 1e-6 ) ) then
+                    PTR2D(i,j)  = ZLE0(i,j,l)
+                    exit 
+                 end if
+              end do
+           end do
+         end do
+       end if
+       
        ! Cloud Water Path
        call MAPL_GetPointer(EXPORT, PTR2D, 'CWP', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR2D)) PTR2D = SUM( ( QLCN+QLLS+QICN+QILS )*MASS , 3 )
