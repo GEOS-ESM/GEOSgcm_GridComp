@@ -54,7 +54,6 @@ module GEOSmoist_Process_Library
   real, parameter :: GLAC_SHIFT_LAND    =  0.0
   ! Convective shift 
   real, parameter :: GLAC_SHIFT_CONV    = 8.0   ! Will hold tropical liquid very high
-  real, pointer, dimension(:,:) :: GLAC_SHIFT_MODIS   
 
   ! Jason ICE_FRACTION constants
    ! In anvil/convective clouds
@@ -93,9 +92,9 @@ module GEOSmoist_Process_Library
 
    !- Morrison-Gettelman (2008) Liquid Gamma Closure
    REAL :: MG_LIQ_DD_FLOOR = 5.e7 ! Droplet density floor
-   REAL :: MG_LIQ_MU = 0.0        ! Shape parameter for droplet gamma dist
+   REAL :: MG_LIQ_MU = 3.0        ! Shape parameter for droplet gamma dist
    !- Morrison-Gettelman (2008) ice mass-dimension power law:  m = a * D^b, b = 2
-   REAL :: MG_ICE_A  = 0.0042     ! prefactor a [kg m^-2] for b=2  (VERIFY against MG08)
+   REAL :: MG_ICE_A  = 0.069      ! prefactor a [kg m^-2] for b=2  (VERIFY against MG08)
    REAL :: MG_ICE_MU = 2.0        ! gamma-distribution shape parameter (tune; MG08 ice)
 
    integer :: WSUB_OPTION = -1
@@ -107,7 +106,7 @@ module GEOSmoist_Process_Library
   real, parameter :: DIFFU   =  2.2e-5    ! m**2 s**-1
   real, parameter :: taufrz  =  600.0     ! timescale for freezing
   real, parameter :: taumlt  =  300.0     ! timescale for melting
-  real, parameter :: CFMIN   =  1.e-8     ! minimum cloud fraction
+  real, parameter :: CFMIN   =  1.e-3     ! minimum cloud fraction
   real, parameter :: QAMIN   =  1.e-8     ! minimum cloud fraction
   real, parameter :: QCMIN   =  1.e-12    ! minimum condensate (ql & qi) values
   real, parameter :: QPMIN   =  1.e-15    ! minimum precipitate (qr, qs, qg) values
@@ -290,7 +289,7 @@ module GEOSmoist_Process_Library
   public :: RAW_MODIS_POLYNOMIAL, JASON_ICE_POLYNOMIAL, V12_ICE_POLYNOMIAL
   public :: ICE_FRACTION_POLYNOMIAL
   public :: SRF_TYPE_OCEAN, SRF_TYPE_LAND, SRF_TYPE_SNOW, SRF_TYPE_ICE, SRF_TYPE_LANDICE
-  public :: GLAC_SHIFT_MODIS, GLAC_SHIFT_LANDICE, GLAC_SHIFT_SEAICE, GLAC_SHIFT_SNOW, GLAC_SHIFT_LAND, GLAC_SHIFT_OCEAN, GLAC_SHIFT_CONV
+  public :: GLAC_SHIFT_LANDICE, GLAC_SHIFT_SEAICE, GLAC_SHIFT_SNOW, GLAC_SHIFT_LAND, GLAC_SHIFT_OCEAN, GLAC_SHIFT_CONV
   public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, BUOYANCY2
   public :: REDISTRIBUTE_CLOUDS_SCALAR, REDISTRIBUTE_CLOUDS, RADCOUPLE_SCALE_AWARE, RADCOUPLE, FIX_UP_CLOUDS
   public :: hystpdf, fix_up_clouds_2M
@@ -594,9 +593,8 @@ module GEOSmoist_Process_Library
 
   end subroutine smooth_cloud_binary
 
-  function ICE_FRACTION_3D (TEMP,CNV_FRACTION,SRF_TYPE,GLAC_SHIFT) RESULT(ICEFRCT)
+  function ICE_FRACTION_3D (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
       real, intent(in) :: TEMP(:,:,:),CNV_FRACTION(:,:),SRF_TYPE(:,:)
-      real, intent(in), optional :: GLAC_SHIFT(:,:)
       real :: ICEFRCT(size(TEMP,1),size(TEMP,2),size(TEMP,3))
       real :: loc_glac
       integer :: i,j,l
@@ -604,59 +602,38 @@ module GEOSmoist_Process_Library
       do l=1,size(TEMP,3)
       do j=1,size(TEMP,2)
       do i=1,size(TEMP,1)
-        if (present(GLAC_SHIFT)) then 
-           loc_glac = GLAC_SHIFT(i,j)
-        else
-           loc_glac = -999.0
-        endif      
-        ICEFRCT(i,j,l) = ICE_FRACTION_SC(TEMP(i,j,l),CNV_FRACTION(i,j),SRF_TYPE(i,j), &
-                                         GLAC_SHIFT=loc_glac)
+        ICEFRCT(i,j,l) = ICE_FRACTION_SC(TEMP(i,j,l),CNV_FRACTION(i,j),SRF_TYPE(i,j))
       enddo
       enddo
       enddo
   end function ICE_FRACTION_3D
 
-  function ICE_FRACTION_2D (TEMP,CNV_FRACTION,SRF_TYPE,GLAC_SHIFT) RESULT(ICEFRCT)
+  function ICE_FRACTION_2D (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
       real, intent(in) :: TEMP(:,:),CNV_FRACTION(:,:),SRF_TYPE(:,:)
-      real, intent(in), optional :: GLAC_SHIFT(:,:)
       real :: ICEFRCT(size(TEMP,1),size(TEMP,2))
       real :: loc_glac
       integer :: i,j
       
       do j=1,size(TEMP,2)
       do i=1,size(TEMP,1)
-        if (present(GLAC_SHIFT)) then 
-           loc_glac = GLAC_SHIFT(i,j)
-        else
-           loc_glac = -999.0
-        endif
-        ICEFRCT(i,j) = ICE_FRACTION_SC(TEMP(i,j),CNV_FRACTION(i,j),SRF_TYPE(i,j), &
-                                       GLAC_SHIFT=loc_glac)
+        ICEFRCT(i,j) = ICE_FRACTION_SC(TEMP(i,j),CNV_FRACTION(i,j),SRF_TYPE(i,j))
       enddo
       enddo
   end function ICE_FRACTION_2D
 
-  function ICE_FRACTION_1D (TEMP,CNV_FRACTION,SRF_TYPE,GLAC_SHIFT) RESULT(ICEFRCT)
+  function ICE_FRACTION_1D (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
       real, intent(in) :: TEMP(:),CNV_FRACTION(:),SRF_TYPE(:)
-      real, intent(in), optional :: GLAC_SHIFT(:)
       real :: ICEFRCT(size(TEMP))
       real :: loc_glac
       integer :: i
            
       do i=1,size(TEMP)
-        if (present(GLAC_SHIFT)) then
-           loc_glac = GLAC_SHIFT(i)
-        else
-           loc_glac = -999.0
-        endif
-        ICEFRCT(i) = ICE_FRACTION_SC(TEMP(i),CNV_FRACTION(i),SRF_TYPE(i), &
-                                     GLAC_SHIFT=loc_glac)
+        ICEFRCT(i) = ICE_FRACTION_SC(TEMP(i),CNV_FRACTION(i),SRF_TYPE(i))
       enddo
   end function ICE_FRACTION_1D
 
-  function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE,GLAC_SHIFT) RESULT(ICEFRCT)
+  function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
       real, intent(in) :: TEMP,CNV_FRACTION,SRF_TYPE
-      real, intent(in), optional :: GLAC_SHIFT
       real             :: ICEFRCT
       real             :: t_cels, liq_frac_raw, taper, u
       real             :: tc_shifted, tc, ptc
@@ -725,35 +702,16 @@ module GEOSmoist_Process_Library
       case (V12_ICE_POLYNOMIAL)
 
          ! ---------------------------------------------------------
-         ! Handle Optional GLAC_SHIFT safely
+         ! Handle GLAC_SHIFT safely
          ! ---------------------------------------------------------
-         ! Set base shift using GLAC_SHIFT if provided (and not sentinel -999.0)
-         ! Otherwise fallback to categorical SRF_TYPE
-         if (present(GLAC_SHIFT)) then
-            if (GLAC_SHIFT > -900.0) then
-               glac_shift_local = GLAC_SHIFT
-            else 
-               ! Derivation block if array wrappers passed the -999.0 sentinel
-               select case (NINT(SRF_TYPE))
-                  case (SRF_TYPE_LANDICE); glac_shift_local =  GLAC_SHIFT_LANDICE 
-                  case (SRF_TYPE_ICE);     glac_shift_local =  GLAC_SHIFT_SEAICE
-                  case (SRF_TYPE_SNOW);    glac_shift_local =  GLAC_SHIFT_SNOW
-                  case (SRF_TYPE_OCEAN);   glac_shift_local =  GLAC_SHIFT_LAND
-                  case (SRF_TYPE_LAND);    glac_shift_local =  GLAC_SHIFT_OCEAN
-                  case default;            glac_shift_local =  GLAC_SHIFT_CONV
-               end select
-            endif
-         else
-            ! Derivation block if scalar function called directly without GLAC_SHIFT
-            select case (NINT(SRF_TYPE))
-               case (SRF_TYPE_LANDICE); glac_shift_local =  GLAC_SHIFT_LANDICE
-               case (SRF_TYPE_ICE);     glac_shift_local =  GLAC_SHIFT_SEAICE
-               case (SRF_TYPE_SNOW);    glac_shift_local =  GLAC_SHIFT_SNOW
-               case (SRF_TYPE_OCEAN);   glac_shift_local =  GLAC_SHIFT_LAND
-               case (SRF_TYPE_LAND);    glac_shift_local =  GLAC_SHIFT_OCEAN
-               case default;            glac_shift_local =  GLAC_SHIFT_CONV
-            end select
-         endif
+         select case (NINT(SRF_TYPE))
+            case (SRF_TYPE_LANDICE); glac_shift_local =  GLAC_SHIFT_LANDICE
+            case (SRF_TYPE_ICE);     glac_shift_local =  GLAC_SHIFT_SEAICE
+            case (SRF_TYPE_SNOW);    glac_shift_local =  GLAC_SHIFT_SNOW
+            case (SRF_TYPE_OCEAN);   glac_shift_local =  GLAC_SHIFT_LAND
+            case (SRF_TYPE_LAND);    glac_shift_local =  GLAC_SHIFT_OCEAN
+            case default;            glac_shift_local =  GLAC_SHIFT_CONV
+         end select
          ! include the convective fraction
          glac_shift_local = glac_shift_local + GLAC_SHIFT_CONV*CNV_FRACTION
 
@@ -802,7 +760,8 @@ module GEOSmoist_Process_Library
          F       , &
          NL      , &
          NI      , &
-         QS        )
+         QS      , &
+         CNV_FRC  )
 
       real, intent(in   ) :: DT
       real, intent(in   ) :: A_EFF
@@ -814,6 +773,7 @@ module GEOSmoist_Process_Library
       real, intent(inout) :: F
       real, intent(in   ) :: NL,NI
       real, intent(in   ) :: QS
+      real, intent(in   ) :: CNV_FRC
 
       real :: ES,RADIUS,K1,K2,QCm,EVAP,RHx,QC
 
@@ -837,7 +797,7 @@ module GEOSmoist_Process_Library
       ! 4. LIQUID RADII EVALUATION
       ! Pass grid-mean QL to perfectly balance the grid-mean drop concentration NL
       if (QL > 0.0) then
-         RADIUS = LDRADIUS4(PL,TE,QL,NL,NI,1)
+         RADIUS = LDRADIUS4(PL,TE,QL,NL,NI,1,CNV_FRC)
       else
          RADIUS = 0.0
       end if
@@ -876,7 +836,8 @@ module GEOSmoist_Process_Library
          F         , &
          NL        , &
          NI        , &
-         QS        )
+         QS        , &
+         CNV_FRC  )
 
       real, intent(in   ) :: DT
       real, intent(in   ) :: A_EFF
@@ -888,6 +849,7 @@ module GEOSmoist_Process_Library
       real, intent(inout) :: F
       real, intent(in   ) :: NL,NI
       real, intent(in   ) :: QS
+      real, intent(in   ) :: CNV_FRC
 
       real :: ES,RADIUS,K1,K2,TEFF,QCm,SUBL,RHx,QC
 
@@ -912,7 +874,7 @@ module GEOSmoist_Process_Library
       ! 4. ICE RADII EVALUATION
       ! Pass grid-mean QI to perfectly balance the grid-mean crystal concentration NI
       if (QI > 0.0) then
-         RADIUS = LDRADIUS4(PL,TE,QI,NL,NI,2)
+         RADIUS = LDRADIUS4(PL,TE,QI,NL,NI,2,CNV_FRC)
       else
          RADIUS = 0.0
       end if
@@ -939,11 +901,12 @@ module GEOSmoist_Process_Library
 
    end subroutine SUBL3
 
-   function LDRADIUS4(PL,TE,QC,NNL,NNI,ITYPE) RESULT(RADIUS)
+   function LDRADIUS4(PL,TE,QC,NNL,NNI,ITYPE,CNV_FRC) RESULT(RADIUS)
 
        REAL   , INTENT(IN) :: TE,PL,QC
        REAL   , INTENT(IN) :: NNL,NNI       ! number concentration [m-3]
        INTEGER, INTENT(IN) :: ITYPE
+       REAL   , INTENT(IN) :: CNV_FRC
        REAL  :: RADIUS
 
        INTEGER, PARAMETER :: LIQUID=1, ICE=2
@@ -960,6 +923,7 @@ module GEOSmoist_Process_Library
        REAL :: inv_lambda
        REAL :: frac
        REAL :: R_VOLUME
+       REAL :: RADIUS_SUN, RADIUS_2M, IWC_SUN, IWC_2M
 
        ! Diameter-to-radius factor used by the Sun ice formulation.
        ! 3*sqrt(3)/8 for the assumed hexagonal-column geometry.
@@ -1096,6 +1060,32 @@ module GEOSmoist_Process_Library
                 RADIUS = 5.e-6
              END IF
              ! Apply matching RRTMGP bounds limits to keep data uniform
+             RADIUS = MIN(150.e-6, MAX(5.e-6, RADIUS))
+          ELSE IF (ICE_RADII_PARAM == 4) THEN
+             !-----------------------------------------------------------------
+             ! Hybrid Scheme: Blends Option 2 (Sun) and Option 3 (Two-Moment)
+             ! Uses CNV_FRC (1.0 in deep tropics -> 0.0 in extratropics)
+             !-----------------------------------------------------------------
+             !=== CALCULATE OPTION 2 (SUN 2001) EQUIVALENT ===
+             IWC_SUN = 1.e3 * RHO * QC 
+             TC = MAX(MIN(0.0, TE - MAPL_TICE), T_HOM)
+             AA = 45.8966 * MAX(IWC_SUN, 1.e-10)**0.2214
+             BB = 0.79570 * MAX(IWC_SUN, 1.e-10)**0.2535 * TC
+             RADIUS_SUN = geom_hex * (1.2351 + 0.0105*TC) * (AA + BB)
+             RADIUS_SUN = MIN(150.e-6, MAX(5.e-6, 1.e-6*RADIUS_SUN))
+             !=== CALCULATE OPTION 3 (TWO-MOMENT) EQUIVALENT ===
+             IWC_2M = QC * RHO
+             IF (IWC_2M > 1.e-12) THEN
+                R_VOLUME = ( (3.0 * IWC_2M) / (4.0 * MAPL_PI * 917.0 * NNI) )**(1.0/3.0)
+                RADIUS_2M = ICE_RAD3_DISP * R_VOLUME
+             ELSE
+                RADIUS_2M = 5.e-6
+             END IF
+             RADIUS_2M = MIN(150.e-6, MAX(5.e-6, RADIUS_2M))
+             !=== BLEND THE RESULTS ===
+             ! 1.0 (Tropics) uses RADIUS_2M | 0.0 (Extratropics/Poles) uses RADIUS_SUN
+             RADIUS = (CNV_FRC * RADIUS_2M) + ((1.0 - CNV_FRC) * RADIUS_SUN)
+             ! Final safety clamp to keep data uniform across all schemes
              RADIUS = MIN(150.e-6, MAX(5.e-6, RADIUS))
           ELSE
              !-----------------------------------------------------------------
@@ -1456,7 +1446,7 @@ module GEOSmoist_Process_Library
          TE, PL, CF, AF, QV,         &
          QClLS, QCiLS, QClAN, QCiAN, &
          QRN_ALL, QSN_ALL, QGR_ALL,  &
-         NL, NI,                     &
+         NL, NI, CNV_FRC,            &
          RAD_QV, RAD_QL, RAD_QI,     &
          RAD_QR, RAD_QS, RAD_QG,     &
          RAD_CF, RAD_RL, RAD_RI,     &
@@ -1468,7 +1458,7 @@ module GEOSmoist_Process_Library
       real, intent(in ) :: TE, PL, AF, CF, QV
       real, intent(in ) :: QClAN, QCiAN, QClLS, QCiLS
       real, intent(in ) :: QRN_ALL, QSN_ALL, QGR_ALL
-      real, intent(in ) :: NL, NI
+      real, intent(in ) :: NL, NI, CNV_FRC
       real, intent(out) :: RAD_QV, RAD_QL, RAD_QI, RAD_QR, RAD_QS, RAD_QG
       real, intent(out) :: RAD_CF, RAD_RL, RAD_RI
       real, intent(in ) :: FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI
@@ -1516,14 +1506,14 @@ module GEOSmoist_Process_Library
           
       ! 4. LIQUID RADII (Pass GRID-MEAN mixing ratio tot_QL to maintain LDRADIUS4 assumptions)
       if (tot_QL > 0.0 .and. RAD_CF > 0.0) then 
-        RAD_RL = MAX( MIN_RL, MIN(LDRADIUS4(PL,TE,tot_QL,NL,NI,1) * FAC_RL, MAX_RL) )
+        RAD_RL = MAX( MIN_RL, MIN(LDRADIUS4(PL,TE,tot_QL,NL,NI,1,CNV_FRC) * FAC_RL, MAX_RL) )
       else
         RAD_RL = MAPL_UNDEF
       end if
     
       ! 5. ICE RADII (Pass GRID-MEAN mixing ratio tot_QI to maintain LDRADIUS4 assumptions)
       if (tot_QI > 0.0 .and. RAD_CF > 0.0) then
-        RAD_RI = MAX( MIN_RI, MIN(LDRADIUS4(PL,TE,tot_QI,NL,NI,2) * FAC_RI, MAX_RI) )
+        RAD_RI = MAX( MIN_RI, MIN(LDRADIUS4(PL,TE,tot_QI,NL,NI,2,CNV_FRC) * FAC_RI, MAX_RI) )
       else
         RAD_RI = MAPL_UNDEF
       end if
@@ -1548,6 +1538,7 @@ module GEOSmoist_Process_Library
          QGR_ALL,         &
          NL,              &
          NI,              &
+         CNV_FRC,         &
          RAD_QV,          &
          RAD_QL,          &
          RAD_QI,          &
@@ -1564,7 +1555,7 @@ module GEOSmoist_Process_Library
       real, intent(in ) :: PL
       real, intent(in ) :: AF,CF, QV, QClAN, QCiAN, QClLS, QCiLS
       real, intent(in ) :: QRN_ALL, QSN_ALL, QGR_ALL
-      real, intent(in ) :: NL,NI
+      real, intent(in ) :: NL,NI, CNV_FRC
       real, intent(out) :: RAD_QV,RAD_QL,RAD_QI,RAD_QR,RAD_QS,RAD_QG,RAD_CF,RAD_RL,RAD_RI
       real, intent(in ) :: FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI
 
@@ -1627,7 +1618,7 @@ module GEOSmoist_Process_Library
      ! LIQUID RADII
       if (RAD_QL > 0.0) then
         !-BRAMS formulation
-        RAD_RL = LDRADIUS4(PL,TE,RAD_QL,NL,NI,1)
+        RAD_RL = LDRADIUS4(PL,TE,RAD_QL,NL,NI,1,CNV_FRC)
         ! apply limits
         RAD_RL = MAX( MIN_RL, MIN(RAD_RL*FAC_RL, MAX_RL) )
       else
@@ -1637,7 +1628,7 @@ module GEOSmoist_Process_Library
     ! ICE RADII
       if (RAD_QI > 0.0) then
         !-BRAMS formulation
-        RAD_RI = LDRADIUS4(PL,TE,RAD_QI,NL,NI,2)
+        RAD_RI = LDRADIUS4(PL,TE,RAD_QI,NL,NI,2,CNV_FRC)
         ! apply limits
         RAD_RI = MAX( MIN_RI, MIN(RAD_RI*FAC_RI, MAX_RI) )
       else
@@ -3056,7 +3047,7 @@ module GEOSmoist_Process_Library
       real,    intent(out) :: ALPHA
       real,    intent(in)  :: FRLAND
       real,    intent(in)  :: MINRHCRIT, TURNRHCRIT, EIS, TURNRHCRIT_UPPER, MIN_EIS, DST, TMAXLL, RHC_SC
-      integer, intent(in)  :: RHC_OPTION !0-Slingo(1985), 1-QUAAS (2012)
+      integer, intent(in)  :: RHC_OPTION !0-Slingo(1985), 1-QUAAS (2012),  2-Wang et.al. (2025)
       real :: dw_land = 0.20 !< base value for subgrid deviation / variability over land
       real :: dw_ocean = 0.10 !< base value for ocean
       real :: sloperhcrit =20.
@@ -3103,13 +3094,38 @@ module GEOSmoist_Process_Library
            ALPHA =  1.-RHC*aux1
 
 
-       ELSE
+       ELSE IF (RHC_OPTION < 2) THEN
            ! based on Quass 2012 https://doi.org/10.1029/2012JD017495
              if (EIS > 5.0) then ! Stable
                 ALPHA = 1.0 - ((1.0-dw_land ) + (0.99 - (1.0-dw_land ))*exp(1.0-(P_LM/PP)**2))
              else ! Unstable
                 ALPHA = 1.0 - ((1.0-dw_ocean) + (0.99 - (1.0-dw_ocean))*exp(1.0-(P_LM/PP)**4))
              endif
+       
+       ELSE 
+       
+       !Temperature-based formula from Wang et al. (2025) https://www.sciencedirect.com/science/article/pii/S0169809525002753
+       
+       	RHC =  0.01*(-2.167446e4 + 3.430437e2*TEMP - 2.009108*TEMP*TEMP + 5.182194e-3*TEMP*TEMP*TEMP -4.969437e-6*TEMP*TEMP*TEMP*TEMP) 
+         
+        RHC =  max(RHC, 0.4)
+        RHC =  min(RHC, 0.99)
+        
+        
+        
+         
+         
+         if (TURNRHCRIT_UPPER .gt. 0.0) then
+          	 aux2 = min(max((TURNRHCRIT_UPPER - pp)/sloperhcrit, -20.0), 20.0)
+             aux2= 1.0/(1.0+exp(aux2)) !this function reverses the profile P< TURNRHCRIT_UPPER
+         else
+           aux2=1.0
+         end if
+         
+         ALPHA =  (1.-RHC)*aux2
+           
+        
+              
        END IF
 
    end subroutine pdf_alpha

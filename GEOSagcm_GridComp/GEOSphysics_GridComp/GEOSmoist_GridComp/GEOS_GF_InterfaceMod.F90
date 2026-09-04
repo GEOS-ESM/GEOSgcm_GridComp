@@ -246,9 +246,6 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
       !   Controls the continuous fractional mass shed by the plume into the environment during ascent.
       !   A value > 0.0 activates explicit lateral shedding. A value of 0.0 treats the plume 
       !   as laterally closed, deferring entirely to the bulk detrainment logic.
-      !   - C1_DEEP : Low detrainment; insulates the core to efficiently transport mass to the upper troposphere.
-      !   - C1_MID  : Zero detrainment; maintains a closed plume laterally, retaining mass for internal precipitation.
-      !   - C1_SHAL : Zero detrainment; restricts shallow cumulus exclusively to bulk mass detrainment profiles.
       call MAPL_GetResource(MAPL, C1_DEEP                   , 'C1_DEEP:'               ,default= 4.0e-4,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, C1_MID                    , 'C1_MID:'                ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, C1_SHAL                   , 'C1_SHAL:'               ,default= 0.0   ,RC=STATUS );VERIFY_(STATUS)

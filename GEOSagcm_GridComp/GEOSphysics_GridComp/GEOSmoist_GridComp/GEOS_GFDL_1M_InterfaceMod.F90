@@ -320,7 +320,13 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
       do_ref = .false.  ! Force to false so MAPL DBZ Calc triggers, as older driver has no DBZ3D
     endif
 
+    ! DSL entry point
     call MAPL_GetResource(MAPL, USE_PYMOIST_GFDL1M, 'USE_PYMOIST_GFDL1M:', default=.FALSE., RC=STATUS); VERIFY_(STATUS)
+    
+    if (USE_PYMOIST_GFDL1M) then
+      call MAPL_ConfigSetAttribute(CF, DT_MOIST, 'DSL__GFLD1M_DT:', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.microphysics.GFDL1M_interface", MAPL, IMPORT, EXPORT )
+    endif
 
     call MAPL_GetResource( MAPL, SH_MD_DP        , 'SH_MD_DP:'        , DEFAULT= .TRUE., RC=STATUS); VERIFY_(STATUS)
 
@@ -461,15 +467,23 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     call MAPL_GetResource( MAPL, NN_MAX_ICE , 'NN_MAX_ICE:'  , DEFAULT=   50.0e6, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, NN_FAC_ICE , 'NN_FAC_ICE:'  , DEFAULT=    1.0  , RC=STATUS); VERIFY_(STATUS)
 
-    ! MG_LIQ_DD_FLOOR : Liquid droplet density floor
-    ! MG_LIQ_MU : Shape parameter for droplet gamma dist [range: 0 to 5]
-    ! MG_ICE_MU : Shape parameter for ice crystal gamma dist [range: 0 to 2]
-    ! MG_ICE_A  : his is the empirical prefactor (a) [units: kg m^-2]
-    !             derived from standard empirical fits for non-spherical ice crystals
+
+    ! -----------------------------------------------------------------------------------------
+    ! --- Morrison-Gettelman (2008) Radiative Sizing Parameters ---
+    ! -----------------------------------------------------------------------------------------
+    ! Ice mass-dimension factor (m = A*D^2). CRITICAL FOR OLR: Raise from 0.022 to 
+    ! 0.069 (columns) or 0.110 (aggregates). Simulates fluffy crystals with higher 
+    ! surface area, shrinking effective radii to block OLR escape over the ITCZ.
+    call MAPL_GetResource( MAPL, MG_ICE_A , 'MG_ICE_A:' , DEFAULT= 0.069 , RC=STATUS); VERIFY_(STATUS)
+    ! Ice gamma distribution shape parameter. Dictates spectral width. Keep at 
+    ! 2.0; lower toward 0.0 (exponential) to add small crystals and trap more longwave.
+    call MAPL_GetResource( MAPL, MG_ICE_MU , 'MG_ICE_MU:' , DEFAULT= 2.0   , RC=STATUS); VERIFY_(STATUS)
+    ! Liquid droplet gamma shape parameter. Lowering from 5.0 to 2.0–3.0 broadens the 
+    ! droplet size spectrum, adding small drops to boost low-cloud infrared opacity.
+    call MAPL_GetResource( MAPL, MG_LIQ_MU , 'MG_LIQ_MU:' , DEFAULT= 3.0   , RC=STATUS); VERIFY_(STATUS)
+    ! Minimum liquid droplet concentration safety floor (equals 10 cm-3). Prevents 
+    ! division-by-zero errors in ultra-clean or clear-sky grid cell margins.
     call MAPL_GetResource( MAPL, MG_LIQ_DD_FLOOR , 'MG_LIQ_DD_FLOOR:', DEFAULT= 5.e7, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MG_LIQ_MU , 'MG_LIQ_MU:'  , DEFAULT=  5.0   , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MG_ICE_MU , 'MG_ICE_MU:'  , DEFAULT=  2.0   , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MG_ICE_A  , 'MG_ICE_A:'   , DEFAULT=  0.022 , RC=STATUS); VERIFY_(STATUS)
 
     if (USE_AEROSOL_NN) then
       ! NOTE: For now we hard code in .false. for use_wnet as that is only an option with MG and will be handled there
@@ -1010,7 +1024,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                    CLCN(I,J,L)  , &
                   NACTL(I,J,L)  , &
                   NACTI(I,J,L)  , &
-                  QSliq(I,J,L)  )
+                  QSliq(I,J,L)  , &
+                CNV_FRC(I,J)    )
              EVAPC(I,J,L) = ( Q(I,J,L) - EVAPC(I,J,L) ) / DT_MOIST
              endif
            ! sublimation for CN
@@ -1028,7 +1043,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                    CLCN(I,J,L)  , &
                   NACTL(I,J,L)  , &
                   NACTI(I,J,L)  , &
-                  QSice(I,J,L)  )
+                  QSice(I,J,L)  , &
+                CNV_FRC(I,J)    )
              SUBLC(I,J,L) = ( Q(I,J,L) - SUBLC(I,J,L) ) / DT_MOIST
              endif
              endif
@@ -1192,9 +1208,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                              ! Input water/cloud species and liquid+ice NACTL & NACTI (#/m^3)
                                RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, DBZ3D, NACTL, NACTI, &
                              ! Input fields
-                               T, W, U, V, DZ, DP, PL, &
+                               T, W, U, V, DZ, DP, &
                              ! Other inputs
-                               DT_MOIST, RHCRIT3D, PHIS, CNV_FRC, EIS, AREA, SRF_TYPE, GLAC_SHIFT_MODIS, &
+                               DT_MOIST, RHCRIT3D, PHIS, CNV_FRC, EIS, AREA, SRF_TYPE, &
                              ! Output precipitates
                                PRCP_WATER, PRCP_RAIN, PRCP_ICE, PRCP_SNOW, PRCP_GRAUPEL, &
                              ! constant grid/time information
@@ -1431,7 +1447,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
            call RADCOUPLE_SCALE_AWARE(T(I,J,L), PLmb(I,J,L), CLLS(I,J,L), CLCN(I,J,L), &
                  Q(I,J,L), QLLS(I,J,L), QILS(I,J,L), QLCN(I,J,L), QICN(I,J,L), &
-                 QRAIN(I,J,L), QSNOW(I,J,L), QGRAUPEL(I,J,L), NACTL(I,J,L), NACTI(I,J,L), &
+                 QRAIN(I,J,L), QSNOW(I,J,L), QGRAUPEL(I,J,L), NACTL(I,J,L), NACTI(I,J,L), CNV_FRC(I,J), &
                  RAD_QV(I,J,L), RAD_QL(I,J,L), RAD_QI(I,J,L), RAD_QR(I,J,L), RAD_QS(I,J,L), &
                  RAD_QG(I,J,L), RAD_CF(I,J,L), CLDREFFL(I,J,L), CLDREFFI(I,J,L), &
                  FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI)

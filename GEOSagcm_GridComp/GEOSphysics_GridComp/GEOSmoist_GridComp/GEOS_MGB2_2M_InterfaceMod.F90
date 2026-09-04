@@ -1604,7 +1604,8 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
                    CLCN(I,J,L)  , &
                   NCPL(I,J,L)  , &
                   NCPI(I,J,L)  , &
-                   QST3(I,J,L)  )
+                   QST3(I,J,L) , &
+                  CNV_FRC(I, J) )
              EVAPC(I,J,L) = ( Q(I,J,L) - EVAPC(I,J,L) ) / DT_MOIST
        ! sublimation for CN/LS
 
@@ -1621,7 +1622,8 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
                    CLCN(I,J,L)  , &
                   NCPL(I,J,L)  , &
                   NCPI(I,J,L)  , &
-                   QST3(I,J,L)  )
+                   QST3(I,J,L)  , & 
+                  CNV_FRC(I, J) )
              SUBLC(I,J,L) = ( Q(I,J,L) - SUBLC(I,J,L) ) / DT_MOIST
           
            end do ! IM loop

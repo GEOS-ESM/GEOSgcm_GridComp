@@ -3099,7 +3099,7 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
 
                 if (do_icepsettle) then
                   ! Include pressure sensitivity (eq 14 in https://doi.org/10.1175/JAS-D-12-0124.1)
-                  DIAM = 2.0*LDRADIUS4(pl(k)/100.0,tk(k),qi(k),zero,zero,2)*1.e6 ! microns
+                  DIAM = 2.0*LDRADIUS4(pl(k)/100.0,tk(k),qi(k),zero,zero,2,cnv_fraction)*1.e6 ! microns
                   lnP   = log(pl(k)/100.0)
                   C0    = -1.04 + 0.298*lnP
                   C1    =  0.67 - 0.097*lnP
