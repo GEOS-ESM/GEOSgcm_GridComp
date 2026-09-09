@@ -1103,8 +1103,8 @@ module GEOSmoist_Process_Library
                 R_VOLUME = ((3.0 * IWC) / &
                             (4.0 * MAPL_PI * 917.0 * NNI))**(1.0/3.0)
                 RADIUS = (ICE_RAD3_DISP + 0.9 * CNV_FRC) * R_VOLUME
-                ! Tightly bound the candidate radius before blending. This prevents an
-                ! extremely large raw NNI radius from dominating the transition.
+                ! Tightly bound the candidate radius. This prevents an
+                ! extremely large raw NNI radius from dominating tropical anvils.
                 RADIUS = MIN(65.e-6, MAX(25.e-6, RADIUS))
              ELSE
                 ! No confidence in the NNI-derived radius (extremely clean air).
