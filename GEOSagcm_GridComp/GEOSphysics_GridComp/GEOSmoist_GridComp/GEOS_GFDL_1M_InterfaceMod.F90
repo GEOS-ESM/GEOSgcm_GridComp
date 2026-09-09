@@ -362,35 +362,33 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     !   - ICE_*_VFALL_PARAM : Selects the empirical fall-speed relationship (1 = Standard).
     !   - ANV_ICEFALL       : Linear multiplier on convective anvil ice fall speed.
     !   - LS_ICEFALL        : Linear multiplier on large-scale (grid-scale) ice fall speed.
-    call MAPL_GetResource( MAPL, ICE_LSC_VFALL_PARAM, 'ICE_LSC_VFALL_PARAM:',DEFAULT= 1, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, ICE_CNV_VFALL_PARAM, 'ICE_CNV_VFALL_PARAM:',DEFAULT= 1, RC=STATUS); VERIFY_(STATUS)
     if (.not. GFDL_MP3) then ! GFDL_MP3 has internal parameters for this
+        call MAPL_GetResource( MAPL, ICE_LSC_VFALL_PARAM, 'ICE_LSC_VFALL_PARAM:',DEFAULT= 1, RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetResource( MAPL, ICE_CNV_VFALL_PARAM, 'ICE_CNV_VFALL_PARAM:',DEFAULT= 1, RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetResource( MAPL, ANV_ICEFALL    , 'ANV_ICEFALL:'        ,DEFAULT= 1.0, RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetResource( MAPL, LS_ICEFALL     , 'LS_ICEFALL:'         ,DEFAULT= 1.0, RC=STATUS); VERIFY_(STATUS)
+    else
+        ! use gfdl_mp namelist parameters
     endif
 
     ! -----------------------------------------------------------------------------------------
     ! CLOUD OPTICS & EFFECTIVE RADII [m]
     ! -----------------------------------------------------------------------------------------
-    ! Determines the coupling between prognostic cloud mass and the radiation scheme.
     ! LIQUID RADIUS OPTIONS (LIQ_RADII_PARAM):
-    !   1 = Baseline Empirical: Standard bulk power-law relationship scaling with the ratio 
-    !       of mass to number concentration.
-    !   2 = Liu & Daum (2000/2005): Advanced empirical relationship that accounts for droplet 
-    !       spectral dispersion (relative variance of the size distribution) in warm clouds.
-    !   3 = Morrison & Gettelman (2008): Analytical 2-moment closure integrating a Gamma 
-    !       distribution (shape parameter mu=5). Explicitly derives the 3rd/2nd moment ratio.
-    !       (Requires a highly trusted, prognostic droplet number concentration).
-    ! ICE RADIUS OPTIONS (ICE_RADII_PARAM):
-    !   1 = Wyser (1998): 1-moment empirical closure. Relies purely on Ice Water Content (IWC) 
-    !       and the temperature deficit below freezing. Ignores number concentration.
-    !   2 = Sun (2001): 1-moment empirical closure. Derives effective dimension assuming 
-    !       hexagonal columns, using explicit temperature and IWC. Safe for 1-moment schemes.
-    !   3 = Morrison & Gettelman (2008): 2-moment physical closure. Employs a mass-dimension 
-    !       power law (b=2 for non-spherical ice). 
-    !       (Requires a highly trusted, prognostic ice number concentration).
-    ! FAC_R* : Linear multiplier to artificially scale radii up/down for radiation tuning.
-    ! MIN/MAX_R* : Hard numerical ceilings and floors for effective radius [meters].
+    !   1 = Empirical power-law (legacy)
+    !   2 = Liu & Daum empirical with dispersion (legacy)
+    !   3 = Physical: Uses NNL from aerosol activation (RECOMMENDED)
+    !   4+ = Morrison-Gettelman gamma closure (two-moment schemes)
+    !
+    ! ICE RADIUS OPTIONS (ICE_RADII_PARAM): 
+    !   1 = Wyser temperature-dependent (legacy)
+    !   2 = Sun temperature-dependent with hexagonal geometry (legacy)
+    !   3 = Hybrid: Blends Sun (temp) + Physical (NNI) schemes (RECOMMENDED)
+    !   4+ = Morrison-Gettelman power-law (two-moment schemes)
+    !
+    ! DISPERSION FACTORS: Scale volume mean → effective radius (account for distribution width)
+    ! FAC_R*: Tuning multipliers | MIN/MAX_R*: Hard bounds [m]
+    ! -----------------------------------------------------------------------------------------
     call MAPL_GetResource( MAPL, LIQ_RADII_PARAM , 'LIQ_RADII_PARAM:' , DEFAULT= 3     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, ICE_RADII_PARAM , 'ICE_RADII_PARAM:' , DEFAULT= 3     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, FAC_RI          , 'FAC_RI:'          , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
@@ -400,11 +398,6 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     call MAPL_GetResource( MAPL, MIN_RL          , 'MIN_RL:'          , DEFAULT= 2.5e-6, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MAX_RL          , 'MAX_RL:'          , DEFAULT=60.0e-6, RC=STATUS); VERIFY_(STATUS)
 
-    ! ICE_RAD3_DISP : Size distribution dispersion scaling factor for ICE_RADII_PARAM == 3.
-    !                 Increasing this value increases effective radius, which raises OLR.
-    ! -----------------------------------------------------------------------------------------
-    call MAPL_GetResource( MAPL, ICE_RAD3_DISP , 'ICE_RAD3_DISP:', DEFAULT= 1.35 , RC=STATUS); VERIFY_(STATUS)
-    
     ! -----------------------------------------------------------------------------------------
     ! GRID-SCALE EVAPORATION / SUBLIMATION EFFICIENCIES [s^-1]
     ! -----------------------------------------------------------------------------------------
@@ -466,24 +459,6 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     call MAPL_GetResource( MAPL, NN_MIN_ICE , 'NN_MIN_ICE:'  , DEFAULT=    1.0e0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, NN_MAX_ICE , 'NN_MAX_ICE:'  , DEFAULT=   50.0e6, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, NN_FAC_ICE , 'NN_FAC_ICE:'  , DEFAULT=    1.0  , RC=STATUS); VERIFY_(STATUS)
-
-
-    ! -----------------------------------------------------------------------------------------
-    ! --- Morrison-Gettelman (2008) Radiative Sizing Parameters ---
-    ! -----------------------------------------------------------------------------------------
-    ! Ice mass-dimension factor (m = A*D^2). CRITICAL FOR OLR: Raise from 0.022 to 
-    ! 0.069 (columns) or 0.110 (aggregates). Simulates fluffy crystals with higher 
-    ! surface area, shrinking effective radii to block OLR escape over the ITCZ.
-    call MAPL_GetResource( MAPL, MG_ICE_A , 'MG_ICE_A:' , DEFAULT= 0.069 , RC=STATUS); VERIFY_(STATUS)
-    ! Ice gamma distribution shape parameter. Dictates spectral width. Keep at 
-    ! 2.0; lower toward 0.0 (exponential) to add small crystals and trap more longwave.
-    call MAPL_GetResource( MAPL, MG_ICE_MU , 'MG_ICE_MU:' , DEFAULT= 2.0   , RC=STATUS); VERIFY_(STATUS)
-    ! Liquid droplet gamma shape parameter. Lowering from 5.0 to 2.0–3.0 broadens the 
-    ! droplet size spectrum, adding small drops to boost low-cloud infrared opacity.
-    call MAPL_GetResource( MAPL, MG_LIQ_MU , 'MG_LIQ_MU:' , DEFAULT= 3.0   , RC=STATUS); VERIFY_(STATUS)
-    ! Minimum liquid droplet concentration safety floor (equals 10 cm-3). Prevents 
-    ! division-by-zero errors in ultra-clean or clear-sky grid cell margins.
-    call MAPL_GetResource( MAPL, MG_LIQ_DD_FLOOR , 'MG_LIQ_DD_FLOOR:', DEFAULT= 5.e7, RC=STATUS); VERIFY_(STATUS)
 
     if (USE_AEROSOL_NN) then
       ! NOTE: For now we hard code in .false. for use_wnet as that is only an option with MG and will be handled there
@@ -1568,6 +1543,12 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
         call MAPL_GetPointer(EXPORT, PTR2D, 'IWP', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR2D)) PTR2D = SUM( ( QICN+QILS+QSNOW+QGRAUPEL ) *MASS , 3 )
+
+        call MAPL_GetPointer(EXPORT, PTR3D, 'NCPL_VOL', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) PTR3D = NACTL
+
+        call MAPL_GetPointer(EXPORT, PTR3D, 'NCPI_VOL', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) PTR3D = NACTI
 
         call MAPL_TimerOff(MAPL,"---CLDDIAGS",RC=STATUS); VERIFY_(STATUS)
     endif ! USE_PYMOIST_GFDL1M

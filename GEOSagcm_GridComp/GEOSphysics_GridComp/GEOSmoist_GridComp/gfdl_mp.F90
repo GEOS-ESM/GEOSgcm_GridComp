@@ -175,7 +175,7 @@ module gfdl_mp_mod
     real, parameter :: qpmin = 1.e-15 ! min value for suspended rain/snow/liquid/ice precip
     real, parameter :: qvmin = 1.e-15 ! min value for water vapor (treated as zero)
     real, parameter :: qcmin = 1.e-15 ! min value for cloud condensates (kg/kg)
-    real, parameter :: cfmin = 1.e-3  ! min value for cloud fraction (unitless)
+    real, parameter :: cfmin = 1.e-5  ! min value for cloud fraction (unitless)
     real, parameter :: qfmin = 1.e-15 ! min value for sedimentation (kg/kg)
 
     real, parameter :: dz_min = 1.0e-2 ! used for correcting flipped height (m)
@@ -202,10 +202,10 @@ module gfdl_mp_mod
     integer :: nconds = 1 ! condensation sub cycles
 
     integer :: cfflag = 1 ! cloud fraction scheme
-    ! 1: GFDL cloud scheme
-    ! 2: Xu and Randall (1996)
-    ! 3: Park et al. (2016)
-    ! 4: Gultepe and Isaac (2007)
+    ! 1: GFDL cloud scheme - Subgrid moisture variance
+    ! 2: Xu and Randall (1996) - RH + condensate
+    ! 3: Park et al. (2016) - Scale-aware: grid size + condensate
+    ! 4: Gultepe and Isaac (2007) - Scale-aware: statistical distribution
 
     integer :: icloud_f = 0 ! GFDL cloud scheme
     ! 0: subgrid variability based scheme
@@ -217,20 +217,20 @@ module gfdl_mp_mod
     ! 0: subgrid variability based scheme
     ! 1: no subgrid varaibility
 
-    integer :: inflag = 2 ! ice nucleation scheme
+    integer :: inflag = 1 ! ice nucleation scheme
     ! 1: Hong et al. (2004)
     ! 2: Meyers et al. (1992)
     ! 3: Meyers et al. (1992)
     ! 4: Cooper (1986)
     ! 5: Fletcher (1962)
 
-    integer :: igflag = 4 ! ice generation scheme
+    integer :: igflag = 3 ! ice generation scheme
     ! 1: WSM6
     ! 2: WSM6 with 0 at 0 C
     ! 3: WSM6 with 0 at 0 C and fixed value at - 10 C
     ! 4: combination of 1 and 3
 
-    integer :: ifflag = 3 ! ice fall scheme
+    integer :: ifflag = 1 ! ice fall scheme
     ! 1: Deng and Mace (2008)
     ! 2: Heymsfield and Donner (1990)
     ! 3: Mishra et al (2014, JGR)
@@ -298,7 +298,8 @@ module gfdl_mp_mod
     logical :: do_sedi_melt_qs = .false. ! melt cloud ice, snow, and graupel during sedimentation
     logical :: do_sedi_melt_qg = .false. ! melt cloud ice, snow, and graupel during sedimentation
 
-    logical :: do_qa = .false. ! do inline cloud fraction
+    logical :: qa_tend = .false. ! compute qa tendency from condensate change 
+    logical :: do_cf = .false. ! do cloud fraction
     logical :: rad_snow = .true. ! include snow in cloud fraciton calculation
     logical :: rad_graupel = .true. ! include graupel in cloud fraction calculation
     logical :: rad_rain = .true. ! include rain in cloud fraction calculation
@@ -324,7 +325,7 @@ module gfdl_mp_mod
     logical :: snow_grauple_combine = .true. ! combine snow and graupel
 
     logical :: prog_ccn = .true.  ! use prognostic ccn
-    logical :: prog_cin = .true.  ! use prognostic cin
+    logical :: prog_cin = .false. ! use prognostic cin
 
     logical :: fix_negative = .true. ! fix negative water species
 
@@ -422,15 +423,15 @@ module gfdl_mp_mod
     real :: ccn_o = 90.0 ! ccn over ocean (1/cm^3)
     real :: ccn_l = 270.0 ! ccn over land (1/cm^3)
 
-    real :: rthreshu =  9.0e-6 ! unstable critical cloud drop radius (micro m)
-    real :: rthreshs = 12.0e-6 !   stable critical cloud drop radius (micro m)
+    real :: rthreshu =  7.0e-6 ! unstable critical cloud drop radius (micro m)
+    real :: rthreshs = 10.0e-6 !   stable critical cloud drop radius (micro m)
 
     logical :: in_cloud_liq = .true. ! use in-cloud liquid
     logical :: in_cloud_ice = .true. ! use in-cloud frozen
 
     real :: cld_min = 0.05 ! minimum cloud fraction
 
-    real :: qi_lim = 0.75 ! cloud ice limiter (0: no, 1: full, >1: extra) to prevent large ice build up
+    real :: qi_lim = 1.0 ! cloud ice limiter (0: no, 1: full, >1: extra) to prevent large ice build up
 
     real :: ql_mlt = 2.0e-3 ! maximum cloud water allowed from melted cloud ice (kg/kg)
     real :: qs_mlt = 1.0e-6 ! maximum cloud water allowed from melted snow (kg/kg)
@@ -451,7 +452,7 @@ module gfdl_mp_mod
     ! When .true., these coefficients act as Aerodynamic Stokes Efficiencies 
     ! applied to the raw 3D geometric integral.
     logical :: do_3d_acc_cliq = .true.  ! perform the new 3d accretion for cloud water
-    real :: c_psacw = 0.25 ! cloud water to snow (HEAVY aerodynamic reduction required)
+    real :: c_psacw = 0.05 ! cloud water to snow (HEAVY aerodynamic reduction required)
     real :: c_pgacw = 0.80 ! cloud water to graupel/hail (Punches through air)
     real :: c_pracw = 1.00 ! cloud water to rain 
     ! --- Cloud Ice (Frozen) 3D Accretion ---
@@ -576,7 +577,7 @@ module gfdl_mp_mod
 
     namelist / gfdl_mp_nml / &
         t_min, t_sub, tau_r2g, tau_smlt, tau_gmlt, do_ice_pres_scaling, vi_fac_cnv, vi_fac_lsc, vw_min, vi_min, &
-        vr_min, vs_min, vg_min, vh_min, ql_mlt, do_qa, fix_negative, vw_max, vi_max, vs_max, &
+        vr_min, vs_min, vg_min, vh_min, ql_mlt, qa_tend, do_cf, cfflag, fix_negative, vw_max, vi_max, vs_max, &
         vh_max, vg_max, vr_max, qs_mlt, ql0_max, psaut_qi_crt, pwbf_qi_crt, pgaut_qs_crt, ifflag, &
         rh_inc, rh_inr, const_vw, const_vi, const_vs, const_vg, const_vr, rthreshu, rthreshs, &
         ccn_l, ccn_o, igflag, c_paut_scheme, c_paut, tau_imlt, tau_v2l, tau_l2v, tau_i2s, &
@@ -1687,7 +1688,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         ! cloud fraction diagnostic
         ! -----------------------------------------------------------------------
 
-        if (do_qa .and. last_step) then
+        if (do_cf .and. last_step) then
             call cloud_fraction (ks, ke, pz, den, qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
                 tz, sqrt(area (i)), h_var)
         endif
@@ -1860,7 +1861,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
             zet (i, k) = zez (k)
 
             ! return QA tendencies for GEOS
-            if (.not. do_qa) then
+            if (qa_tend) then
                qa_dt (i, k) = rdt * &
                       ( qa (i, k)*SQRT( max(qiz(k)+qlz(k),qcmin) / max(qi(i,k)+ql(i,k),qcmin) ) - & ! New Cloud -
                         qa (i, k) )                                                                 ! Old Cloud
@@ -4773,12 +4774,10 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
                  - subl, 0., 0., subl, 0., 0., te8 (k), cvm (k), tz (k), &
                 lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pinst')
 
-            if (.not. do_qa) then
-               ! Force maximum cloud fraction to mimic uniform stratospheric sheets
-               qa (k) = 1.0
-               ! Bypassing the cfmin cloud-clearing filter completely so the 
-               ! ultra-dry stratospheric air doesn't numerically delete the ice.
-            endif
+            ! Force maximum cloud fraction to mimic uniform stratospheric sheets
+            qa (k) = 1.0
+            ! Bypassing the cfmin cloud-clearing filter completely so the 
+            ! ultra-dry stratospheric air doesn't numerically delete the ice.
 
         elseif (tz (k) .lt. t_min) then
         ! -----------------------------------------------------------------------
@@ -4792,16 +4791,14 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
                  - subl, 0., 0., subl, 0., 0., te8 (k), cvm (k), tz (k), &
                 lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pinst')
 
-            if (.not. do_qa) then
-               qa (k) = max(0.0,min(1.0,1.0 - qcmin/max(qi (k), qcmin)))
-               if ( qa (k) .lt. cfmin) then
-                  qa (k) = 0.0
-                  subl = qi (k)
-                  mppd1 = mppd1 - subl * dp (k) * convt
-                  call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
-                       subl, 0., 0., - subl, 0., 0., te8 (k), cvm (k), tz (k), &
-                      lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pinst')
-               endif
+            qa (k) = max(0.0,min(1.0,1.0 - qcmin/max(qi (k), qcmin)))
+            if ( qa (k) .lt. cfmin) then
+               qa (k) = 0.0
+               subl = qi (k)
+               mppd1 = mppd1 - subl * dp (k) * convt
+               call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
+                    subl, 0., 0., - subl, 0., 0., te8 (k), cvm (k), tz (k), &
+                   lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pinst')
             endif
 
         endif
@@ -5119,7 +5116,7 @@ subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den,
             ! All remaining liquid water must freeze instantly.
             ! -----------------------------------------------------------------
             sink = ql_in
-            tmp = 0.0  ! All frozen liquid instantly becomes snow
+            tmp  = sink  ! All frozen liquid here does to cloud ice
 
         elseif (tc .gt. 0.) then
             ! -----------------------------------------------------------------
@@ -7735,10 +7732,11 @@ subroutine update_qq (qa, qv, ql, qr, qi, qs, qg, dqv, dql, dqr, dqi, dqs, dqg, 
 
     character (len = *), intent (in) :: descr
 
-    real :: qc0
+    real :: qc, qc0, qa0, qa_max
 
-    ! save previous total condensate
-    if (.not. do_qa) qc0 = max(ql+qi,qcmin)
+    ! save previous total cloud and condensate
+    qa0 = qa
+    qc0 = max(ql+qi,qcmin)
 
     qv = qv + dqv
     ql = ql + dql
@@ -7747,8 +7745,11 @@ subroutine update_qq (qa, qv, ql, qr, qi, qs, qg, dqv, dql, dqr, dqi, dqs, dqg, 
     qs = qs + dqs
     qg = qg + dqg
 
-    ! total new condensate / old condensate 
-     if (.not. do_qa) qa = max(0.0, min(1.0, qa*(ql+qi)/qc0))
+    ! New total condensate
+    qc = max(ql+qi,qcmin)
+    ! Existing response to condensate changes
+    qa = qa0 * SQRT(qc / qc0)
+    qa = max(0.0, min(1.0, qa))
 
     if (qv .ne. qv) stop 'qv is NAN in update_qq ' // trim(descr)
     if (ql .ne. ql) stop 'ql is NAN in update_qq ' // trim(descr)
@@ -7785,11 +7786,12 @@ subroutine update_qt (qa, qv, ql, qr, qi, qs, qg, dqv, dql, dqr, dqi, dqs, dqg, 
 
     character (len = *), intent (in) :: descr
 
-    real :: qc0
+    real :: qc, qc0, qa0, qa_max
 
-    ! save previous total condensate
-    if (.not. do_qa) qc0 = max(ql+qi,qcmin)
-
+    ! save previous total cloud and condensate
+    qa0 = qa
+    qc0 = max(ql+qi,qcmin)
+    
     qv = qv + dqv
     ql = ql + dql
     qr = qr + dqr
@@ -7797,8 +7799,11 @@ subroutine update_qt (qa, qv, ql, qr, qi, qs, qg, dqv, dql, dqr, dqi, dqs, dqg, 
     qs = qs + dqs
     qg = qg + dqg
 
-    ! total new condensate / old condensate 
-    if (.not. do_qa) qa = max(0.0, min(1.0, qa*(ql+qi)/qc0))
+    ! New total condensate
+    qc = max(ql + qi, qcmin)
+    ! Existing response to condensate changes
+    qa = qa0 * SQRT(qc / qc0)
+    qa = max(0.0, min(1.0, qa))
 
     if (qv .ne. qv) stop 'qv is NAN in update_qt ' // trim(descr)
     if (ql .ne. ql) stop 'ql is NAN in update_qt ' // trim(descr)
@@ -7806,10 +7811,7 @@ subroutine update_qt (qa, qv, ql, qr, qi, qs, qg, dqv, dql, dqr, dqi, dqs, dqg, 
     if (qi .ne. qi) stop 'qi is NAN in update_qt ' // trim(descr)
     if (qs .ne. qs) stop 'qs is NAN in update_qt ' // trim(descr)
     if (qg .ne. qg) stop 'qg is NAN in update_qt ' // trim(descr)
-    if (.not. do_qa) then
-       if (qc0 .ne. qc0) stop 'qc0 is NAN in update_qt ' // trim(descr)
-       if (qa  .ne. qa ) stop 'qa  is NAN in update_qt ' // trim(descr)
-    endif
+    if (qa .ne. qa) stop 'qa is NAN in update_qt ' // trim(descr)
 
     cvm = mhc (qv, ql, qr, qi, qs, qg)
     tk = (te8 - lv00 * qv + li00 * (qi + qs + qg)) / cvm
