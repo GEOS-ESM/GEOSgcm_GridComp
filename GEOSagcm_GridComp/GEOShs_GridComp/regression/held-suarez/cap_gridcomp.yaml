@@ -1,0 +1,15 @@
+run_extdata: false
+run_history: true
+history_name: History
+root_name: AGCM
+
+mapl:
+  setServices:
+    sharedObj: libMAPL.cap
+  children:
+    History:
+      dso: libMAPL.history
+      config_file: history.yaml
+    AGCM:
+      dso: libGEOSagcm_GridComp.so
+      config_file: agcm-simple.yaml
