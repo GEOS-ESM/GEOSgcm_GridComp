@@ -441,6 +441,8 @@ module gfdl_mp_mod
     real :: psaut_qi_crt = 1.0e-4 ! cloud ice to snow autoconversion threshold (kg/m^3)
     real :: pwbf_qi_crt  = 0.8e-4 ! WBF liquid to ice freezing threshold (kg/m^3)
     real :: pgaut_qs_crt = 0.6e-3 ! snow to graupel autoconversion threshold (0.6e-3 in Purdue Lin scheme) (kg/m^3)
+ 
+    real :: sg_pen = 0.5 ! sub-grid ice phase penalty
 
     integer :: c_paut_scheme = 1   ! choose autoconversion scheme
     real    :: c_paut        = 0.5 ! cloud water to rain autoconversion efficiency
@@ -578,7 +580,7 @@ module gfdl_mp_mod
     namelist / gfdl_mp_nml / &
         t_min, t_sub, tau_r2g, tau_smlt, tau_gmlt, do_ice_pres_scaling, vi_fac_cnv, vi_fac_lsc, vw_min, vi_min, &
         vr_min, vs_min, vg_min, vh_min, ql_mlt, qa_tend, do_cf, cfflag, fix_negative, vw_max, vi_max, vs_max, &
-        vh_max, vg_max, vr_max, qs_mlt, ql0_max, psaut_qi_crt, pwbf_qi_crt, pgaut_qs_crt, ifflag, &
+        vh_max, vg_max, vr_max, qs_mlt, ql0_max, psaut_qi_crt, pwbf_qi_crt, pgaut_qs_crt, ifflag, sg_pen, &
         rh_inc, rh_inr, const_vw, const_vi, const_vs, const_vg, const_vr, rthreshu, rthreshs, &
         ccn_l, ccn_o, igflag, c_paut_scheme, c_paut, tau_imlt, tau_v2l, tau_l2v, tau_i2s, &
         tau_l2r, qi_lim, do_hail, inflag, c_psacw, c_psaci, c_pracs, &
@@ -3411,7 +3413,7 @@ subroutine praut (ks, ke, dts, dp, tz, qak, qvk, qlk, qrk, qik, qsk, qgk, den, c
                     c_praut (k) = cpaut * ((ccn (k) * rhow) ** ccn_exponent)
                     ! Calculate autoconversion sink
                     sink = min(dq, dts * c_praut (k) * den (k) * (ql (k) ** ql_exponent))
-                    sink = min(ql0_max / qadum(k), ql (k), sink) * qadum (k)
+                    sink = min(ql0_max, ql (k), sink) * qadum (k)
 
                     mppar = mppar + sink * dp (k) * convt
 
@@ -3447,7 +3449,7 @@ subroutine praut (ks, ke, dts, dp, tz, qak, qvk, qlk, qrk, qik, qsk, qgk, den, c
                     c_praut (k) = cpaut * ((ccn (k) * rhow) ** ccn_exponent)
                     ! Calculate autoconversion sink
                     sink = min(dq, dts * c_praut (k) * den (k) * (ql (k) ** ql_exponent))
-                    sink = min(ql0_max / qadum(k), ql (k), sink) * qadum (k)
+                    sink = min(ql0_max, ql (k), sink) * qadum (k)
 
                     mppar = mppar + sink * dp (k) * convt
 
@@ -3626,7 +3628,7 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
     ! Applies a resolution-dependent penalty to the critical ice threshold,
     ! partitioning the grid box into unresolved and resolved fractions.
     !   
-    ! - Unresolved scales (1.0 - onemsig): Applies a strict 10x penalty (1.e-1)
+    ! - Unresolved scales (1.0 - onemsig): Applies a strict penalty (sg_pen)
     !   to sub-grid parameterizations. This forces sub-grid ice to precipitate
     !   as snow earlier, preventing global QI from skyrocketing and negatively 
     !   impacting the radiation budget.
@@ -3634,8 +3636,7 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
     !   Grid-scale clouds get the full ice bucket, allowing resolved large-scale 
     !   ascent to loft and suspend ice normally.
     ! -------------------------------------------------------------------------
-    ! Apply the 10% bucket to the unresolved fraction, and 100% to the resolved
-    critical_qi_factor = psaut_qi_crt * (1.e-1 * (1.0 - onemsig) + 1.0 * onemsig)
+    critical_qi_factor = psaut_qi_crt * (sg_pen * (1.0 - onemsig) + 1.0 * onemsig)
 
     fac_imlt = 1. - exp (- dts / tau_imlt)
     fac_frez = 1. - exp (- dts / tau_frez)
@@ -3655,8 +3656,9 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newliq = new_liq_condensate(tmp, ql, qi)
-
+            newliq = new_liq_condensate(tmp, qlk (k), qik (k))
+            newliq = newliq/qadum
+ 
             ! Cloud ice melts instantly if it gets too far past freezing (e.g., +2 C)
             if (tmp > tmlt_fast) then
                 fac_imlt_loc = 1.0 ! Instant melt
@@ -3664,8 +3666,8 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
                 fac_imlt_loc = fac_imlt
             endif
 
-            sink = fac_imlt_loc * min (qi, newliq, (tz (k) - tice) / icpk (k) / qadum)
-            tmp = min (sink, dim (ql_mlt/qadum, ql))
+            sink = fac_imlt_loc * min (qi, newliq, (tz (k) - tice) / icpk (k))
+            tmp = min (sink, dim (ql_mlt, ql))
 
             tmp = tmp * qadum
             sink = sink * qadum
@@ -3688,7 +3690,8 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newice = new_ice_condensate(tmp, ql, qi)
+            newice = new_ice_condensate(tmp, qlk (k), qik (k))
+            newice = newice/qadum
 
             ! --- NEW: Homogeneous Freezing Hard Stop ---
             if (tmp < tfrz_inst) then
@@ -3698,9 +3701,9 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
                 fac_frez_loc = fac_frez ! Normal 10-minute timescale
             endif
 
-            sink = fac_frez_loc * min(ql, newice, (tice - tz (k)) / icpk (k) / qadum)
+            sink = fac_frez_loc * min(ql, newice, (tice - tz (k)) / icpk (k))
             qim = critical_qi_factor / den (k)
-            tmp = min (sink, dim (qim/qadum, qi))
+            tmp = min (sink, dim (qim, qi))
 
             tmp = tmp*qadum
             sink = sink*qadum
@@ -3770,9 +3773,11 @@ subroutine pimlt (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, t
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newliq = new_liq_condensate(tmp, ql, qi)
-            sink = fac_imlt * min (qi, newliq, (tz (k) - tice) / icpk (k) / qadum)
-            tmp = min (sink, dim (ql_mlt/qadum, ql))
+            newliq = new_liq_condensate(tmp, qlk (k), qik (k))
+            newliq = newliq/qadum
+
+            sink = fac_imlt * min (qi, newliq, (tz (k) - tice) / icpk (k))
+            tmp = min (sink, dim (ql_mlt, ql))
 
             tmp = tmp * qadum
             sink = sink * qadum
@@ -3832,7 +3837,7 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
     ! Applies a resolution-dependent penalty to the critical ice threshold,
     ! partitioning the grid box into unresolved and resolved fractions.
     !   
-    ! - Unresolved scales (1.0 - onemsig): Applies a strict 10x penalty (1.e-1)
+    ! - Unresolved scales (1.0 - onemsig): Applies a strict penalty (sg_pen)
     !   to sub-grid parameterizations. This forces sub-grid ice to precipitate
     !   as snow earlier, preventing global QI from skyrocketing and negatively 
     !   impacting the radiation budget.
@@ -3840,8 +3845,7 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
     !   Grid-scale clouds get the full ice bucket, allowing resolved large-scale 
     !   ascent to loft and suspend ice normally.
     ! -------------------------------------------------------------------------
-    ! Apply the 10% bucket to the unresolved fraction, and 100% to the resolved
-    critical_qi_factor = psaut_qi_crt * (1.e-1 * (1.0 - onemsig) + 1.0 * onemsig)
+    critical_qi_factor = psaut_qi_crt * (sg_pen * (1.0 - onemsig) + 1.0 * onemsig)
 
     fac_frez = 1. - exp (- dts / tau_frez)
 
@@ -3860,10 +3864,12 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newice = new_ice_condensate(tmp, ql, qi)
-            sink = fac_frez * min(ql, newice, (tice - tz (k)) / icpk (k) / qadum)
+            newice = new_ice_condensate(tmp, qlk (k), qik (k))
+            newice = newice/qadum
+
+            sink = fac_frez * min(ql, newice, (tice - tz (k)) / icpk (k))
             qim = critical_qi_factor / den (k)
-            tmp = min (sink, dim (qim/qadum, qi))
+            tmp = min (sink, dim (qim, qi))
 
             tmp = tmp*qadum
             sink = sink*qadum
@@ -4165,7 +4171,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
     ! Applies a resolution-dependent penalty to the critical ice threshold,
     ! partitioning the grid box into unresolved and resolved fractions.
     !   
-    ! - Unresolved scales (1.0 - onemsig): Applies a strict 10x penalty (1.e-1)
+    ! - Unresolved scales (1.0 - onemsig): Applies a strict penalty (sg_pen)
     !   to sub-grid parameterizations. This forces sub-grid ice to precipitate
     !   as snow earlier, preventing global QI from skyrocketing and negatively 
     !   impacting the radiation budget.
@@ -4173,8 +4179,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
     !   Grid-scale clouds get the full ice bucket, allowing resolved large-scale 
     !   ascent to loft and suspend ice normally.
     ! -------------------------------------------------------------------------
-    ! Apply the 10% bucket to the unresolved fraction, and 100% to the resolved
-    critical_qi_factor = psaut_qi_crt * (1.e-1 * (1.0 - onemsig) + 1.0 * onemsig)
+    critical_qi_factor = psaut_qi_crt * (sg_pen * (1.0 - onemsig) + 1.0 * onemsig)
 
     fac_i2s = 1. - exp (- dts / tau_i2s)
 
@@ -4197,14 +4202,14 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
             sink = 0.
             di  = max (di, qcmin)
             q_plus = qi + di
-            qim = critical_qi_factor / den (k) / qadum
+            qim = critical_qi_factor / den (k)
             if (q_plus .gt. (qim + qcmin)) then
                 if (qim .gt. (qi - di)) then
                     dq = (0.25 * (q_plus - qim) ** 2) / di
                 else
                     dq = qi - qim
                 endif
-                sink = fac_i2s * exp (0.025 * tc) * dq
+                sink = fac_i2s * exp (0.01 * tc) * dq
             endif
             sink = min (qi, sink) * qadum
             mppas = mppas + sink * dp (k) * convt
@@ -5063,7 +5068,7 @@ subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den,
     real :: q_ice_bulk
     real :: liquid_fraction, ice_fraction_bulk, eta_mixing
 
-    real, parameter :: wbf_coarse_mult = 4.0  ! How much slower WBF is at 50km vs 2km
+    real, parameter :: wbf_coarse_mult = 1.0  ! How much slower WBF is at 50km vs 2km
     real, parameter :: qcmin_wbf = 1.0e-6  ! Minimum for WBF to operate (kg/kg)
 
     if (.not. do_wbf) return
