@@ -133,7 +133,7 @@ module GEOS_HSGridCompMod
    use MAPL, only: MAPL_VERTICAL_STAGGER_EDGE
    use MAPL, only: MAPL_VERTICAL_STAGGER_NONE
    use MAPL, only: MAPL_GridGet, MAPL_GridGetCoordinates
-   use MAPL, only: MAPL_StateGetPointer, MAPL_FieldBundleGetPointer
+   use MAPL, only: MAPL_StateGetPointer
    use MAPL, only: MAPL_RESTART_SKIP, MAPL_STATEITEM_VECTOR
    use MAPL, only: MAPL_Verify, MAPL_Return, MAPL_Assert
    use MAPL_Constants, only: MAPL_PI, MAPL_GRAV, MAPL_P00, MAPL_KAPPA, MAPL_RGAS, MAPL_CP
@@ -207,7 +207,7 @@ contains
       real, allocatable :: lats(:, :), lons(:, :)
       real :: dx, dy, x0, y0, afac, phi0, qmax
       ! Pointers to internals
-#include "HS_DeclarePointer___.h"
+#include "HS_DeclarePointer_Internal___.h"
       integer :: status
 
       ! Get coordinate information
@@ -218,12 +218,7 @@ contains
       call MAPL_GridCompGetInternalState(gc, internal, _RC)
 
       ! Get pointers to internal variables
-      ! TODO: pchakrab - till ACG bug is fixed
-! #include "HS_GetPointer___.h"
-      call MAPL_StateGetPointer(internal, SPHI2,  'SPHI2' , _RC)
-      call MAPL_StateGetPointer(internal, CPHI2,  'CPHI2' , _RC)
-      call MAPL_StateGetPointer(internal, HFCN,  'HFCN' , _RC)
-      call MAPL_StateGetPointer(internal, P_I,  'P_I' , _RC)
+#include "HS_GetPointer_Internal___.h"
 
       ! Initialize geometric factors
       SPHI2 = sin(lats)**2
@@ -292,7 +287,6 @@ contains
       type(ESMF_State) :: internal
       type(ESMF_Grid) :: grid
       type(ESMF_Logical) :: friendly
-      type(ESMF_FieldBundle) :: tmp_bundle
 
       ! Pointers to imports/internals/exports
 #include "HS_DeclarePointer___.h"
@@ -302,7 +296,7 @@ contains
       ! Scratch arrays and working pointers
       real, allocatable, dimension(:, :) :: pii, dp, pl, uu, vv, vr, te, f1, rr, ds, dm, pk
       real, pointer, dimension(:, :) :: ps, pt
-      integer :: field_count, level, im, jm, lm, fricq
+      integer :: level, im, jm, lm, fricq
       integer :: i1, in, j1, jn, status
       logical :: friendly_temp, friendly_wind
       real :: dt, ka, ks, kf
@@ -322,32 +316,11 @@ contains
       call MAPL_GridCompGet(gc, grid=grid, num_levels=lm, _RC)
       call MAPL_GridGet(grid, im=im, jm=jm, _RC)
 
-      ! Pointers to internals
+      ! Pointers to imports/exports/internals
       call MAPL_GridCompGetInternalState(gc, internal, _RC)
-      ! TODO: pchakrab - till ACG bug is fixed
-! #include "HS_GetPointer___.h"
-      call MAPL_StateGetPointer(export, DTDT,  'DTDT' , _RC)
-      ! DUDT/DVDT
-      call ESMF_StateGet(export, "D_UV_DT", tmp_bundle, _RC) ! DUDT/DVDT
-      call ESMF_FieldBundleGet(tmp_bundle, fieldCount=field_count, _RC)
-      if (field_count == 2) then ! export bundle is connected
-         call MAPL_FieldBundleGetPointer(tmp_bundle, 1, dudt, _RC) ! DUDT
-         call MAPL_FieldBundleGetPointer(tmp_bundle, 2, dvdt, _RC) ! DVDT
-      end if
-      call MAPL_StateGetPointer(export, T_EQ,  'T_EQ' , _RC)
-      call MAPL_StateGetPointer(export, THEQ,  'THEQ' , _RC)
-      call MAPL_StateGetPointer(export, TAUX,  'TAUX' , _RC)
-      call MAPL_StateGetPointer(export, TAUY,  'TAUY' , _RC)
-      call MAPL_StateGetPointer(export, DISS,  'DISS' , _RC)
-      call ESMF_StateGet(import, "UV", tmp_bundle, _RC) ! U/V
-      call MAPL_FieldBundleGetPointer(tmp_bundle, 1, u, _RC) ! U
-      call MAPL_FieldBundleGetPointer(tmp_bundle, 2, v, _RC) ! V
-      call MAPL_StateGetPointer(import, TEMP,  'TEMP' , _RC)
-      call MAPL_StateGetPointer(import, PLE,  'PLE' , _RC)
-      call MAPL_StateGetPointer(internal, SPHI2,  'SPHI2' , _RC)
-      call MAPL_StateGetPointer(internal, CPHI2,  'CPHI2' , _RC)
-      call MAPL_StateGetPointer(internal, HFCN,  'HFCN' , _RC)
-      call MAPL_StateGetPointer(internal, P_I,  'P_I' , _RC)
+#include "HS_GetPointer___.h"
+      call MAPL_StateGetPointer(export, "D_UV_DT", farrayPtr_1=dudt, farrayPtr_2=dvdt, _RC)
+      call MAPL_StateGetPointer(import, "UV", farrayPtr_1=u, farrayPtr_2=v, _RC)
 
       ! Get parameters from the configuration
 
@@ -450,6 +423,7 @@ contains
          uu = -U(:, :, level) * (f1 * kf)
          vv = -V(:, :, level) * (f1 * kf)
 
+         ! DUDT/DVDT
          if (associated(DUDT)) DUDT(:, :, level) = uu
          if (associated(DVDT)) DVDT(:, :, level) = vv
 
