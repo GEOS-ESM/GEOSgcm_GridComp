@@ -383,7 +383,7 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     ! ICE RADIUS OPTIONS (ICE_RADII_PARAM): 
     !   1 = Wyser temperature-dependent (legacy)
     !   2 = Sun temperature-dependent with hexagonal geometry (legacy)
-    !   3 = Hybrid: Blends Sun (temp) + Physical (NNI) schemes (RECOMMENDED)
+    !   3 = Physical: Uses NNI from aerosol activation with tight bounds (RECOMMENDED)
     !   4+ = Morrison-Gettelman power-law (two-moment schemes)
     !
     ! DISPERSION FACTORS: Scale volume mean → effective radius (account for distribution width)

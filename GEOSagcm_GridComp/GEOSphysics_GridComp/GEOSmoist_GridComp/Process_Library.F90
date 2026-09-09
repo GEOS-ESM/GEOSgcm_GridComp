@@ -1086,27 +1086,17 @@ module GEOSmoist_Process_Library
              RADIUS = MIN(150.e-6, MAX(5.e-6, 1.e-6*RADIUS)) ! Preserve legacy micron scaling
           ELSE IF (ICE_RADII_PARAM == 3) THEN
              !====================================================================
-             ! HYBRID ICE EFFECTIVE RADIUS
+             ! ICE EFFECTIVE RADIUS
              ! 
              ! Problem: DeMott activation severely underpredicts NNI in deep tropics
              ! (0.01-0.1 L^-1 vs observed 50-100 L^-1 from homogeneous freezing).
              ! This produces unrealistically large ice crystals (r_eff > 150 μm)
              ! that make tropical anvils too transparent to radiation.
              !
-             ! HYBRID Temperature-Based Solution (RECOMMENDED)
-             !   Blends Sun (2001) temperature-based and physical NNI-based schemes.
-             !   Addresses DeMott underprediction in homogeneous freezing regime (T < -38°C).
-             !   
-             !   Regime selection:
-             !     - T < -38°C: Pure Sun scheme (homogeneous freezing regime)
-             !     - -38°C to -28°C: Smooth blend (transition zone)
-             !     - T > -28°C: NNI-based if NNI > 1 L⁻¹, otherwise Sun
-             !   
-             !   Prevents unrealistically large ice crystals (r_eff > 150 μm) in tropical
-             !   anvils while preserving aerosol-cloud interactions in heterogeneous regime.
+             ! Tighter limits on the radius here prevents unrealistically large ice crystals
+             ! while preserving aerosol-cloud interactions in heterogeneous regimes.
              !====================================================================
              IWC = QC * RHO
-             ! --- Blending based on confidence in NNI ---
              IF (IWC > 1.e-12 .AND. NNI > NNI_SAFE) THEN
                 ! Calculate the physical NNI-based radius. The condition above
                 ! protects the calculation from division by very small NNI.
