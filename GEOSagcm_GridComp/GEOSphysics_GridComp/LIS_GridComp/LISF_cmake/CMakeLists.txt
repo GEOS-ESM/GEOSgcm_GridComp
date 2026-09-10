@@ -20,6 +20,10 @@ set (LISF_MAKE ${LISF_LIS}/make)
 # DA OBS pildas is disabled -- read_pildassmobs.F90 fails to compile with
 # ifort (name conflicts/reuse in specification expressions, a vendored
 # bug), unrelated to our Plug, which doesn't use this DA obs plugin.
+# RUC.3.7 is disabled -- LIS_lsm_pluginMod.F90 declares `external ruc37_reset`
+# and expects a RUC37_reset.F90, but no such file exists anywhere in LISF's
+# ruc.3.7 plugin (a vendored gap upstream), leaving ruc37_reset_ undefined at
+# link time.
 # Everything else in LISF's default.cfg is left at its default (mostly On).
 #-----------------------------------------------------------------------
 file (WRITE ${LISF_MAKE}/user.cfg
@@ -29,6 +33,7 @@ VIC.4.1.2: Off
 CABLE: Off
 Noah.3.9: Off
 DA OBS pildas: Off
+RUC.3.7: Off
 ")
 
 #-----------------------------------------------------------------------
@@ -121,6 +126,10 @@ endforeach ()
 if (NOT LIS_SOURCES)
   message (FATAL_ERROR "No LISF sources found under any Filepath directory -- did plugins.py run correctly?")
 endif ()
+
+# COUPLED (defined below) strips LISF's own wrf_message/wrf_error_fatal
+# stubs, but NoahMP.3.6/4.0.1 call them unconditionally; supply our own.
+list (APPEND LIS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_wrf_stubs.F90)
 
 #-----------------------------------------------------------------------
 # HDF4 / HDF-EOS2 -- Baselibs ships these, but (unlike NetCDF/HDF5/ESMF)
