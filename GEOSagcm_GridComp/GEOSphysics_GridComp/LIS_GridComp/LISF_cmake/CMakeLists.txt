@@ -127,9 +127,9 @@ if (NOT LIS_SOURCES)
   message (FATAL_ERROR "No LISF sources found under any Filepath directory -- did plugins.py run correctly?")
 endif ()
 
-# COUPLED (defined below) strips LISF's own wrf_message/wrf_error_fatal
-# stubs, but NoahMP.3.6/4.0.1 call them unconditionally; supply our own.
-list (APPEND LIS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_wrf_stubs.F90)
+# Supply link-time stubs for symbols LISF sources reference but our
+# LIS_misc.h settings mean are never actually called (see file for details).
+list (APPEND LIS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_LIS_link_stubs.F90)
 
 #-----------------------------------------------------------------------
 # HDF4 / HDF-EOS2 -- Baselibs ships these, but (unlike NetCDF/HDF5/ESMF)
