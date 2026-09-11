@@ -217,18 +217,18 @@ module gfdl_mp_mod
     ! 0: subgrid variability based scheme
     ! 1: no subgrid varaibility
 
-    integer :: inflag = 1 ! ice nucleation scheme
-    ! 1: Hong et al. (2004)
-    ! 2: Meyers et al. (1992)
-    ! 3: Meyers et al. (1992)
-    ! 4: Cooper (1986)
-    ! 5: Fletcher (1962)
-
-    integer :: igflag = 3 ! ice generation scheme
-    ! 1: WSM6
-    ! 2: WSM6 with 0 at 0 C
-    ! 3: WSM6 with 0 at 0 C and fixed value at - 10 C
-    ! 4: combination of 1 and 3
+    integer :: inflag = 1 ! Ice Crystal Concentration (cin) empirical relationship
+    ! 1: Hong et al. (2004) [WSM6 Ice Mass power-law relationship]
+    ! 2: Fletcher (1962) [Standard Temperature-dependence curve]
+    ! 3: Vapor Ice Supersaturation-dependent curve
+    ! 4: Steep Temperature-dependent curve variant
+    ! 5: Meyers et al. (1992) [Very steep exponential Temp-dependence]
+        
+    integer :: igflag = 3 ! Ice Deposition/Sublimation critical mass threshold (qi_crt)
+    ! 1: Absolute threshold based on exponential qi_gen (No Temp-ramp)
+    ! 2: Threshold based on exponential qi_gen multiplied by linear Temp-ramp
+    ! 3: Bypasses qi_gen; relies strictly on linear Temp-ramp (Computationally cheapest)
+    ! 4: Combined threshold bounded by a minimum value multiplied by linear Temp-ramp
 
     integer :: ifflag = 1 ! ice fall scheme
     ! 1: Deng and Mace (2008)
@@ -442,8 +442,6 @@ module gfdl_mp_mod
     real :: pwbf_qi_crt  = 0.8e-4 ! WBF liquid to ice freezing threshold (kg/m^3)
     real :: pgaut_qs_crt = 0.6e-3 ! snow to graupel autoconversion threshold (0.6e-3 in Purdue Lin scheme) (kg/m^3)
  
-    real :: sg_pen = 0.5 ! sub-grid ice phase penalty
-
     integer :: c_paut_scheme = 1   ! choose autoconversion scheme
     real    :: c_paut        = 0.5 ! cloud water to rain autoconversion efficiency
 
@@ -484,7 +482,7 @@ module gfdl_mp_mod
 
     real :: vw_fac = 1.0
     real :: vi_fac_cnv = 1.0
-    real :: vi_fac_lsc = 0.8
+    real :: vi_fac_lsc = 1.0
     real :: vs_fac = 1.0
     real :: vg_fac = 1.0
     real :: vr_fac = 1.0
@@ -580,7 +578,7 @@ module gfdl_mp_mod
     namelist / gfdl_mp_nml / &
         t_min, t_sub, tau_r2g, tau_smlt, tau_gmlt, do_ice_pres_scaling, vi_fac_cnv, vi_fac_lsc, vw_min, vi_min, &
         vr_min, vs_min, vg_min, vh_min, ql_mlt, qa_tend, do_cf, cfflag, fix_negative, vw_max, vi_max, vs_max, &
-        vh_max, vg_max, vr_max, qs_mlt, ql0_max, psaut_qi_crt, pwbf_qi_crt, pgaut_qs_crt, ifflag, sg_pen, &
+        vh_max, vg_max, vr_max, qs_mlt, ql0_max, psaut_qi_crt, pwbf_qi_crt, pgaut_qs_crt, ifflag, &
         rh_inc, rh_inr, const_vw, const_vi, const_vs, const_vg, const_vr, rthreshu, rthreshs, &
         ccn_l, ccn_o, igflag, c_paut_scheme, c_paut, tau_imlt, tau_v2l, tau_l2v, tau_i2s, &
         tau_l2r, qi_lim, do_hail, inflag, c_psacw, c_psaci, c_pracs, &
@@ -3628,7 +3626,7 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
     ! Applies a resolution-dependent penalty to the critical ice threshold,
     ! partitioning the grid box into unresolved and resolved fractions.
     !   
-    ! - Unresolved scales (1.0 - onemsig): Applies a strict penalty (sg_pen)
+    ! - Unresolved scales (1.0 - onemsig): Applies a strict penalty (0.1)
     !   to sub-grid parameterizations. This forces sub-grid ice to precipitate
     !   as snow earlier, preventing global QI from skyrocketing and negatively 
     !   impacting the radiation budget.
@@ -3636,7 +3634,7 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
     !   Grid-scale clouds get the full ice bucket, allowing resolved large-scale 
     !   ascent to loft and suspend ice normally.
     ! -------------------------------------------------------------------------
-    critical_qi_factor = psaut_qi_crt * (sg_pen * (1.0 - onemsig) + 1.0 * onemsig)
+    critical_qi_factor = psaut_qi_crt * (0.1 * (1.0 - onemsig) + 1.0 * onemsig)
 
     fac_imlt = 1. - exp (- dts / tau_imlt)
     fac_frez = 1. - exp (- dts / tau_frez)
@@ -3656,8 +3654,7 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newliq = new_liq_condensate(tmp, qlk (k), qik (k))
-            newliq = newliq/qadum
+            newliq = new_liq_condensate(tmp, ql, qi)
  
             ! Cloud ice melts instantly if it gets too far past freezing (e.g., +2 C)
             if (tmp > tmlt_fast) then
@@ -3690,8 +3687,7 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newice = new_ice_condensate(tmp, qlk (k), qik (k))
-            newice = newice/qadum
+            newice = new_ice_condensate(tmp, ql, qi)
 
             ! --- NEW: Homogeneous Freezing Hard Stop ---
             if (tmp < tfrz_inst) then
@@ -3773,8 +3769,7 @@ subroutine pimlt (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, t
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newliq = new_liq_condensate(tmp, qlk (k), qik (k))
-            newliq = newliq/qadum
+            newliq = new_liq_condensate(tmp, ql, qi)
 
             sink = fac_imlt * min (qi, newliq, (tz (k) - tice) / icpk (k))
             tmp = min (sink, dim (ql_mlt, ql))
@@ -3829,7 +3824,7 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
 
     real :: ql, qi, qadum, newice 
     real :: tmp, sink, qim, fac_frez
-    real :: critical_qi_factor 
+    real :: critical_qi_factor
 
     ! -------------------------------------------------------------------------
     ! Scale-Aware Cloud Ice Threshold (critical_qi_factor)
@@ -3837,7 +3832,7 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
     ! Applies a resolution-dependent penalty to the critical ice threshold,
     ! partitioning the grid box into unresolved and resolved fractions.
     !   
-    ! - Unresolved scales (1.0 - onemsig): Applies a strict penalty (sg_pen)
+    ! - Unresolved scales (1.0 - onemsig): Applies a strict penalty (0.1)
     !   to sub-grid parameterizations. This forces sub-grid ice to precipitate
     !   as snow earlier, preventing global QI from skyrocketing and negatively 
     !   impacting the radiation budget.
@@ -3845,7 +3840,7 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
     !   Grid-scale clouds get the full ice bucket, allowing resolved large-scale 
     !   ascent to loft and suspend ice normally.
     ! -------------------------------------------------------------------------
-    critical_qi_factor = psaut_qi_crt * (sg_pen * (1.0 - onemsig) + 1.0 * onemsig)
+    critical_qi_factor = psaut_qi_crt * (0.1 * (1.0 - onemsig) + 1.0 * onemsig)
 
     fac_frez = 1. - exp (- dts / tau_frez)
 
@@ -3864,8 +3859,7 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
             qi = qik (k)/qadum
 
             tmp = tz (k)
-            newice = new_ice_condensate(tmp, qlk (k), qik (k))
-            newice = newice/qadum
+            newice = new_ice_condensate(tmp, ql, qi)
 
             sink = fac_frez * min(ql, newice, (tice - tz (k)) / icpk (k))
             qim = critical_qi_factor / den (k)
@@ -4171,7 +4165,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
     ! Applies a resolution-dependent penalty to the critical ice threshold,
     ! partitioning the grid box into unresolved and resolved fractions.
     !   
-    ! - Unresolved scales (1.0 - onemsig): Applies a strict penalty (sg_pen)
+    ! - Unresolved scales (1.0 - onemsig): Applies a strict penalty (0.1)
     !   to sub-grid parameterizations. This forces sub-grid ice to precipitate
     !   as snow earlier, preventing global QI from skyrocketing and negatively 
     !   impacting the radiation budget.
@@ -4179,7 +4173,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
     !   Grid-scale clouds get the full ice bucket, allowing resolved large-scale 
     !   ascent to loft and suspend ice normally.
     ! -------------------------------------------------------------------------
-    critical_qi_factor = psaut_qi_crt * (sg_pen * (1.0 - onemsig) + 1.0 * onemsig)
+    critical_qi_factor = psaut_qi_crt * (0.1 * (1.0 - onemsig) + 1.0 * onemsig)
 
     fac_i2s = 1. - exp (- dts / tau_i2s)
 
@@ -4917,6 +4911,7 @@ subroutine pcond_pevap (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
     integer :: k
 
     real :: sink, tin, qpz, dqdt, qsw, rh_tem, dq, factor, fac_l2v, fac_v2l
+    real :: tk, lfrac
 
     fac_l2v = 1. - exp (- dts / tau_l2v)
     fac_v2l = 1. - exp (- dts / tau_v2l)
@@ -4939,6 +4934,19 @@ subroutine pcond_pevap (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
             if (use_rhc_cevap .and. rh_tem .ge. rhc_cevap) then
                 sink = 0.
             endif
+            ! -------------------------------------------------------------------------
+            ! Resolution-Dependent Evaporation and Sublimation Shutoff
+            ! -------------------------------------------------------------------------
+            ! At coarse resolutions (onemsig=0), this explicitly zeroes out grid-scale
+            ! evaporation and sublimation inside the GFDL microphysics. 
+            ! Why? Coarse grid-scale microphysics assumes precipitation is uniform across 
+            ! the 50km grid box, which would over-expose it to dry air and artificially 
+            ! evaporate almost all falling rain before it hits the ground.
+            ! Instead, evaporation of sub-grid precipitation shafts is handled upstream 
+            ! by the macro-physics scheme (cldmacro using CCW_EVAP_EFF/CCI_EVAP_EFF).
+            ! This onemsig switch safely prevents double-evaporation.
+            ! -------------------------------------------------------------------------
+            sink = sink*onemsig ! resolution dependent evap 0:1 coarse:fine
             mppew = mppew + sink * dp (k) * convt
         else
             if (do_cond_timescale) then
@@ -4949,19 +4957,6 @@ subroutine pcond_pevap (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
             sink = - min (qv (k), factor * (- dq) / (1. + tcp3 (k) * dqdt))
             mppcw = mppcw - sink * dp (k) * convt
         endif
-        ! -------------------------------------------------------------------------
-        ! Resolution-Dependent Evaporation and Sublimation Shutoff
-        ! -------------------------------------------------------------------------
-        ! At coarse resolutions (onemsig=0), this explicitly zeroes out grid-scale
-        ! evaporation and sublimation inside the GFDL microphysics. 
-        ! Why? Coarse grid-scale microphysics assumes precipitation is uniform across 
-        ! the 50km grid box, which would over-expose it to dry air and artificially 
-        ! evaporate almost all falling rain before it hits the ground.
-        ! Instead, evaporation of sub-grid precipitation shafts is handled upstream 
-        ! by the macro-physics scheme (cldmacro using CCW_EVAP_EFF/CCI_EVAP_EFF).
-        ! This onemsig switch safely prevents double-evaporation.
-        ! -------------------------------------------------------------------------
-        sink = sink*onemsig ! resolution dependent evap 0:1 coarse:fine
 
         call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
             sink, - sink, 0., 0., 0., 0., te8 (k), cvm (k), tz (k), &
@@ -5299,6 +5294,7 @@ subroutine pidep_pisub (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
     integer :: k
 
     real :: sink, tin, dqdt, qsi, dq, pidep, tmp, tc, qi_gen, qi_crt, ramp_factor
+    real :: tk, ifrac
 
     do k = ks, ke
 
@@ -5355,7 +5351,9 @@ subroutine pidep_pisub (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
                 ! Ice Vapor Deposition (Growth Phase)
                 tc = tice - tz (k)
                 ! Calculate the temperature ramp factor used in most flags
-                ramp_factor = min(qi_lim, 0.1 * tc) / den(k)
+                tk = tz(k)
+                ifrac = ice_fraction(tk, cnv_fraction, srf_type)
+                ramp_factor = min(qi_lim, ifrac) / den(k)
                 select case (igflag)
                     case (1)
                         ! Requires qi_gen, no temperature ramp
