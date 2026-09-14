@@ -135,7 +135,7 @@ MODULE ConvPar_GF2020
 
   !--- Internal Process Controls
   LOGICAL, PARAMETER :: COUPL_MPHYSICS = .TRUE.  ! MUST be true: Couple w/ microphysics
-  LOGICAL, PARAMETER :: MELT_GLAC      = .TRUE.  ! Turn ON/OFF ice phase/melting
+  LOGICAL, PARAMETER :: MELT_GLAC      = .FALSE. ! Turn ON/OFF ice phase/melting
   LOGICAL, PARAMETER :: FEED_3DMODEL   = .TRUE.  ! Send tendencies back to host model
   LOGICAL            :: FIRST_GUESS_W  = .FALSE. ! 1st guess updraft vert velocity
 
@@ -1455,13 +1455,13 @@ CONTAINS
 
     CASE('mid')
        z_cloud_top_min = 2000.  ! Mid-level cloud
-       z_cloud_top_max = 6500.  ! Capped below upper troposphere
+       z_cloud_top_max = 6000.  ! Allow congestus to reach ~500 hPa to build missing mid-level liquid (ql)
        depth_min       = 1000.  ! Noticeable mid-layer depth
-       zkbmax          = 5000.  ! Elevated origin (above cold pools/PBL)
-       zcutdown        = 4000.  ! Lower mid-levels
+       zkbmax          = 4500.  ! MUST be <= (z_cloud_top_max - depth_min)
+       zcutdown        = 4000.  ! Shifted upward to fit the new, deeper congestus profile
        z_detr          = 1000.  ! Evaporates in deep sub-cloud layer
 
-       cap_max_inc  = MERGE(90.0, 10.0, MOIST_TRIGGER /= 0)
+       cap_max_inc  = MERGE(90.0, 20.0, MOIST_TRIGGER /= 0)
        lambau_dp(:) = lambau_mid
        lambau_dn(:) = lambau_shdn
 
@@ -1578,7 +1578,7 @@ CONTAINS
 
   ! --- Evaporation efficiency limits (edtmin / edtmax)
   do i = its, itf
-     if(xland(i) > 0.99 ) then
+     if(xland(i) > 0.5 ) then
        edtmin(i) = MIN_EDT_OCEAN;  edtmax(i) = MAX_EDT_OCEAN
      else
        edtmin(i) = MIN_EDT_LAND;   edtmax(i) = MAX_EDT_LAND
@@ -2377,7 +2377,7 @@ CONTAINS
      ! Option 1: Legacy / Default Method (Bechtold dx scaling)
      DO i = its, itf
         if(ierr(i) /= 0) cycle
-        if(xland(i) > 0.99) then
+        if(xland(i) > 0.5) then
            umean = 2.0 + sqrt(0.5 * (US(i,1)**2 + VS(i,1)**2 + US(i,kbcon(i))**2 + VS(i,kbcon(i))**2))
            tau_bl(i) = (zo_cup(i,kbcon(i)) - z1(i)) / umean
         else
@@ -2462,7 +2462,7 @@ CONTAINS
            aa3(i) = aa3(i) - (tn_cup_x(i,k) * (1. + 0.608 * qo_cup_x(i,k)) - t_cup(i,k) * (1. + 0.608 * q_cup(i,k))) * dp / dtime
         enddo
         aa1_bl(i) = aa3(i) - (63.e-6)
-        if(xland(i) > 0.90) aa1_bl(i) = 1.4 * aa1_bl(i)
+        if(xland(i) > 0.5) aa1_bl(i) = 1.4 * aa1_bl(i)
      ENDDO
      DO i = its, itf
         dtdt(i,:) = 0.0; dqdt(i,:) = 0.0
@@ -4550,16 +4550,16 @@ CONTAINS
                 liq_frac = fract_liq_f(tempc(i,k), cnvfrc(i), srftype(i))
                 ice_frac = 1.0 - liq_frac
                 ! 2. Calculate effective autoconversion rate
-                !    Liquid uses 100% of c0. Ice uses a reduced efficiency (C0_ICE_EFF).
-                c0_effective = c0 * (liq_frac) + (C0_ICE_EFF * ice_frac)
+                !    FIX: Re-introduce c0 into the ice term to scale down to a true 0.1 efficiency.
+                c0_effective = c0 * ( liq_frac + (C0_ICE_EFF * ice_frac) )
                 ! 3. Calculate spatial conversion multiplier
                 cx0 = c0_effective * DZ
                 ! 4. Apply a phase-weighted critical mass threshold.
-                !    Liquid uses the standard warm thresholds (0.0002 - 0.0003).
-                !    Pure ice uses a much smaller critical threshold (e.g., 1.0e-5 or 0.0) 
-                !    to ensure that thin upper-level ice can actually autoconvert and fall out.
+                !    Liquid uses your preferred lower warm threshold (2.0e-4).
+                !    FIX: Raise min_ice back to a protective baseline (e.g., 3.0e-4) to match 
+                !    your legacy high-ice configuration and prevent early updraft rainout aloft.
                 min_liq = ( xland(i)*qrc_crit_ocn + (1. - xland(i))*qrc_crit_lnd )
-                min_ice = 1.0e-5  ! Healthy physical threshold for ice crystal aggregation
+                min_ice = 3.0e-4  
                 min_cnd = (min_liq * liq_frac) + (min_ice * ice_frac)
                 ! 5. Calculate remaining suspended condensate and precipitating mass
                 qrc(i,k) = clw_all(i,k) / (1. + cx0)
@@ -7869,7 +7869,7 @@ loop0:  do k= kbcon(i),ktop(i)
 !
 !---  over water, enfor!e small cap for some of the closures
 !
-                if(xland(i).lt.0.1)then
+                if(xland(i).lt.0.5)then
                  if(ierr2(i).gt.0.or.ierr3(i).gt.0)then
                       xff_ens3(1:16) = ens_adj(i)*xff_ens3(1:16)
                  endif
@@ -8520,7 +8520,7 @@ ENDIF
      RH_cr_LAND    = 1.
      eff_c_conv(:) = min(0.2,max(xmb(:),c_conv))
  else
-     RH_cr_OCEAN   = 0.95 !test 0.90
+     RH_cr_OCEAN   = 0.85
      RH_cr_LAND    = 0.85
      eff_c_conv(:) = c_conv
  endif

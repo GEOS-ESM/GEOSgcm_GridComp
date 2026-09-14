@@ -47,13 +47,13 @@ module GEOSmoist_Process_Library
   integer :: ICE_FRACTION_POLYNOMIAL = 3
 
   ! Shift parameters targeted for MODIS polynomial
-  real, parameter :: GLAC_SHIFT_LANDICE =  3.0
-  real, parameter :: GLAC_SHIFT_SEAICE  =  2.0
-  real, parameter :: GLAC_SHIFT_OCEAN   =  1.5
-  real, parameter :: GLAC_SHIFT_SNOW    =  1.0
+  real, parameter :: GLAC_SHIFT_LANDICE =  6.0
+  real, parameter :: GLAC_SHIFT_SEAICE  =  5.5
+  real, parameter :: GLAC_SHIFT_SNOW    =  5.0
+  real, parameter :: GLAC_SHIFT_OCEAN   =  1.0
   real, parameter :: GLAC_SHIFT_LAND    =  0.0
   ! Convective shift 
-  real, parameter :: GLAC_SHIFT_CONV    = 6.0   ! Will hold tropical liquid very high
+  real, parameter :: GLAC_SHIFT_CONV    = 9.0   ! Will hold tropical liquid very high
 
   ! Jason ICE_FRACTION constants
    ! In anvil/convective clouds
@@ -966,11 +966,6 @@ module GEOSmoist_Process_Library
        ! NNI is supplied in m^-3:
        REAL, PARAMETER :: NNI_SAFE  = 1.e0
 
-       ! Additional local variables:
-       !   NNI_X      : normalized logarithmic position in transition
-       !   NNI_WEIGHT : smoothly varying NNI-confidence weight
-       REAL :: NNI_X, NNI_WEIGHT
-
        !-----------------------------------------------------------------------
        ! Air density
        !
@@ -1020,12 +1015,12 @@ module GEOSmoist_Process_Library
                  R_VOLUME = ( (3.0 * LWC) / (4.0 * MAPL_PI * 1000.0 * NNL) )**(1.0/3.0)
                  ! Effective Radius with convective enhancement
                  !   - Broader size distributions in strong updrafts
-                 RADIUS = (LIQ_RAD3_DISP + 0.05 * CNV_FRC) * R_VOLUME
+                 RADIUS = (LIQ_RAD3_DISP + 0.1 * SQRT(CNV_FRC)) * R_VOLUME
               ELSE
                  ! Default background liquid droplet radius (4 microns)
                  RADIUS = 4.e-6
               END IF
-              ! RRTMGP liquid cloud lookup bounds limits (typically 4 to 32 microns)
+              ! RRTMGP liquid cloud lookup bounds limits
               RADIUS = MIN(60.e-6, MAX(2.5e-6, RADIUS))
           ELSE
              !-----------------------------------------------------------------
@@ -1102,16 +1097,14 @@ module GEOSmoist_Process_Library
                 ! protects the calculation from division by very small NNI.
                 R_VOLUME = ((3.0 * IWC) / &
                             (4.0 * MAPL_PI * 917.0 * NNI))**(1.0/3.0)
-                RADIUS = (ICE_RAD3_DISP + 0.9 * CNV_FRC) * R_VOLUME
+                RADIUS = (ICE_RAD3_DISP + 0.65 * SQRT(CNV_FRC)) * R_VOLUME
                 ! Tightly bound the candidate radius. This prevents an
                 ! extremely large raw NNI radius from dominating tropical anvils.
-                RADIUS = MIN(65.e-6, MAX(25.e-6, RADIUS))
+                RADIUS = MIN(85.e-6, MAX(35.e-6, RADIUS))
              ELSE
-                ! No confidence in the NNI-derived radius (extremely clean air).
-                NNI_WEIGHT = 0.0
                 ! Fall back to a physically realistic baseline radius for pristine, 
                 ! non-convective upper-trop cirrus instead of using the anvil scheme.
-                RADIUS = 25.e-6 
+                RADIUS = 35.e-6 
              END IF
           ELSE
              !-----------------------------------------------------------------
@@ -2839,6 +2832,7 @@ module GEOSmoist_Process_Library
       real :: exner, thv, bastoeps, beta, rwqt, rwhl, rhlqt, t1, t2, sigt1, sigt2, q1, q2, w1, w2, sigw1, sigw2  
       integer :: n, nmax, itermethod_val
       character*(10) :: Iam = 'Process_Library:hystpdf'
+      real, parameter :: stratiform_cnv_frc = 0.0
 
       ! --- Secant Method Variables ---
       real :: f_t_env, t_env_old_p, t_env_old, denom
@@ -2922,7 +2916,7 @@ module GEOSmoist_Process_Library
             call pdfcondensate(PDFSHAPE, qt_env, sigmaqt1, sigmaqt2, qs_env, qc_env)
             
          elseif (PDFSHAPE == 5) then
-            fQi     = ice_fraction(t_env, CNVFRC, SRF_TYPE)
+            fQi     = ice_fraction(t_env, stratiform_cnv_frc, SRF_TYPE)
             alhxbcp = (1.0-fQi)*alhlbcp + fQi*alhsbcp
             hl_env  = t_env + gravbcp*ZL - alhxbcp*qc_env
 
@@ -2938,7 +2932,7 @@ module GEOSmoist_Process_Library
                                  
          elseif (PDFSHAPE == 6) then
             if (qt_env + q2 + 2.*sigmaqt2 > qs_env) then
-               fQi     = ice_fraction(t_env, CNVFRC, SRF_TYPE)
+               fQi     = ice_fraction(t_env, stratiform_cnv_frc, SRF_TYPE)
                alhxbcp = (1.0-fQi)*alhlbcp + fQi*alhsbcp
                hl_env  = t_env + gravbcp*ZL - alhxbcp*qc_env
             
@@ -2964,7 +2958,7 @@ module GEOSmoist_Process_Library
                                      CLLS, CLCN, nl_v, ni_v, dq_call, fQi, CNVFRC, &
                                      SRF_TYPE, needs_preexisting )
          else
-            fQi = ice_fraction(t_env, CNVFRC, SRF_TYPE)
+            fQi = ice_fraction(t_env, stratiform_cnv_frc, SRF_TYPE)
          endif
 
          ! Relax the condensate update to prevent oscillation during iteration
@@ -3371,8 +3365,8 @@ module GEOSmoist_Process_Library
       real :: L_f, fac_phase
       
       ! Define the physical hard-stop temperatures based on TICE
-      real, parameter :: TFRZ_INST = MAPL_TICE - 40.0 ! Homogeneous freezing limit
-      real, parameter :: TMLT_FAST = MAPL_TICE + 2.0  ! Fast melt limit for surviving cloud ice
+      real, parameter :: TFRZ_INST = MAPL_TICE + T_HOM ! Homogeneous freezing limit
+      real, parameter :: TMLT_FAST = MAPL_TICE + 2.0   ! Fast melt limit for surviving cloud ice
 
       ! Latent heat of fusion
       L_f = MAPL_ALHS - MAPL_ALHL

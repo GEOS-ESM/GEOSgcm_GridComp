@@ -931,7 +931,41 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
               !DIR$ IVDEP
               do I = 1, IM
                  ! 1. Calculate local ice fraction and tmp scalar
-                 fQi_local = ice_fraction(T(I,J,L) + DTDT_DC(I,J,L) * GF_DT, CNV_FRC(I,J), SRF_TYPE(I,J))
+                 ! ===================================================================
+                 ! GRID-SCALE DETRAINMENT PHASE PARTITIONING (COMPROMISE STRATEGY)
+                 ! ===================================================================
+                 ! For computing large-scale tendencies (DQLDT_DC / DQIDT_DC), we force 
+                 ! the ice_fraction function to use the standard Hu et al. curve 
+                 ! (passing CNV_FRC = 0.0) evaluated at the ambient environmental 
+                 ! temperature T(I,J,L) BEFORE the convective heating step.
+                 !
+                 ! MELT_GLAC should also be disabled inside of GF to allow cldmacro/micro
+                 !           to handle all phase changes
+                 !
+                 ! PHYSICAL/STRUCTURAL REASONING:
+                 ! 1. Curve Selection: The delayed-glaciation convective curve (high 
+                 !    supercooled liquid) is physically valid INSIDE high-velocity 
+                 !    convective updrafts. However, once condensate detrains into the 
+                 !    quiescent large-scale grid box, vertical velocity drops, and it 
+                 !    behaves as a stratiform anvil. Partitioning detrained mass via 
+                 !    the convective curve injects excess supercooled liquid water aloft.
+                 !
+                 ! 2. Temperature Baseline: We deliberately exclude the convective 
+                 !    heating tendency (DTDT_DC * GF_DT) from this evaluation. Because 
+                 !    deep convection releases massive amounts of latent heat, the 
+                 !    post-heating temperature is artificially warm. Including it 
+                 !    biases the polynomial toward an even higher liquid fraction.
+                 ! 
+                 ! 3. Large-Scale Impact: Combined, using the post-heating convective 
+                 !    state creates a severe structural "shock" to the large-scale 
+                 !    microphysics. The explicit WBF process (`pwbf`) encounters a massive 
+                 !    injection of stagnant supercooled liquid water and aggressively 
+                 !    glaciates it via vapor diffusion. This drives a double-counting 
+                 !    loop that triggers an unphysical mid-level cloud ice (QI) 
+                 !    overproduction bulge and a severe cold OLR bias. Evaluating at 
+                 !    ambient environmental conditions on the standard curve breaks this loop.
+                 ! ===================================================================
+                 fQi_local = ice_fraction(T(I,J,L), 0.0, SRF_TYPE(I,J))
                  tmp_local = CNV_DQCDT(I,J,L) / MASS(I,J,L)
 
                  ! Fill the exported 3D pointer if associated

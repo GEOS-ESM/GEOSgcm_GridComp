@@ -325,7 +325,7 @@ module gfdl_mp_mod
     logical :: snow_grauple_combine = .true. ! combine snow and graupel
 
     logical :: prog_ccn = .true.  ! use prognostic ccn
-    logical :: prog_cin = .false. ! use prognostic cin
+    logical :: prog_cin = .false.  ! use prognostic cin
 
     logical :: fix_negative = .true. ! fix negative water species
 
@@ -338,7 +338,7 @@ module gfdl_mp_mod
 
     logical :: do_warm_rain_mp = .false. ! do warm rain cloud microphysics only
 
-    logical :: do_wbf = .true. ! do Wegener Bergeron Findeisen process
+    logical :: do_wbf = .false. ! do Wegener Bergeron Findeisen process
 
     logical :: do_bigg = .false. ! do Bigg process
 
@@ -442,7 +442,7 @@ module gfdl_mp_mod
     real :: pwbf_qi_crt  = 0.8e-4 ! WBF liquid to ice freezing threshold (kg/m^3)
     real :: pgaut_qs_crt = 0.6e-3 ! snow to graupel autoconversion threshold (0.6e-3 in Purdue Lin scheme) (kg/m^3)
  
-    integer :: c_paut_scheme = 1   ! choose autoconversion scheme
+    integer :: c_paut_scheme = 2   ! choose autoconversion scheme
     real    :: c_paut        = 0.5 ! cloud water to rain autoconversion efficiency
 
     ! -----------------------------------------------------------------------
@@ -452,7 +452,7 @@ module gfdl_mp_mod
     ! When .true., these coefficients act as Aerodynamic Stokes Efficiencies 
     ! applied to the raw 3D geometric integral.
     logical :: do_3d_acc_cliq = .true.  ! perform the new 3d accretion for cloud water
-    real :: c_psacw = 0.05 ! cloud water to snow (HEAVY aerodynamic reduction required)
+    real :: c_psacw = 0.25 ! cloud water to snow (HEAVY aerodynamic reduction required)
     real :: c_pgacw = 0.80 ! cloud water to graupel/hail (Punches through air)
     real :: c_pracw = 1.00 ! cloud water to rain 
     ! --- Cloud Ice (Frozen) 3D Accretion ---
@@ -1480,14 +1480,12 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         ! -----------------------------------------------------------------------
         ! Adjust autoconversion rates and thresholds using decoupled regimes 
         ! -----------------------------------------------------------------------
-        ! 1. Rate scaling based on Boundary Layer Stability (EIS)
-        ! High inversion (fac_eis=1.0) -> reduced to 0.5 * cpaut0
-        ! Low inversion (fac_eis=0.0)  -> stays at 1.0 * cpaut0
+        ! Autoconversion rate is controlled by EIS:
+        !   high EIS reduces the conversion efficiency.
         cpaut = cpaut0 * (0.5 * fac_eis + 1.0 * (1.0 - fac_eis))
-        ! 2. Threshold scaling based on Deep Instability (CAPE / cnv_fraction)
-        ! convective (cnv_fraction=1) -> rthreshu
-        ! stratiform (cnv_fraction=0) -> rthreshs
-        ! NOTE: Consider raising rthreshu from 7.0e-6 to 8.0e-6 or 8.5e-6 to help suppress ITCZ over-precipitation
+        ! Critical radius is controlled by CAPE-derived convective fraction:
+        !   high convective fraction approaches rthreshu;
+        !   low convective fraction approaches rthreshs.
         fac_rc = rc * (rthreshu * cnv_fraction + rthreshs * (1.0 - cnv_fraction)) ** 3
 
         ! -----------------------------------------------------------------------
@@ -3374,7 +3372,7 @@ subroutine praut (ks, ke, dts, dp, tz, qak, qvk, qlk, qrk, qik, qsk, qgk, den, c
 
     integer :: k
 
-    real :: sink, dq, qc
+    real :: ccn_base, sink, dq, qc
 
     real, dimension (ks:ke) :: ql, dl, qadum, c_praut
 
@@ -3407,8 +3405,26 @@ subroutine praut (ks, ke, dts, dp, tz, qak, qvk, qlk, qrk, qik, qsk, qgk, den, c
 
                 if (dq .gt. 0.) then
 
+                    ! ===================================================================
+                    ! UNIFIED INTERCHANGEABLE AEROSOL BASE RESOLUTION (Mixing Ratio Fix)
+                    ! ===================================================================
+                    ! ccn(k) is in units of #/kg_air.
+                    ! Scheme 1 historically scales using liquid water density (rhow).
+                    ! Scheme 2 requires volumetric concentration in #/cm3 of air.
+                    ! ===================================================================
+                    if (c_paut_scheme == 1) then
+                        ! Retain legacy Scheme 1 scaling profile exactly
+                        ccn_base = ccn(k) * rhow
+                    else
+                        ! 1. Multiply by air density den(k) to convert #/kg_air back to #/m3_air.
+                        !    (Note: ccn(k) * den(k) is exactly equal to your raw qnl input).
+                        ! 2. Divide by 1.0e6 to convert #/m3_air down to #/cm3_air.
+                        ! 3. Enforce a physical marine aerosol floor of 25.0 cm-3.
+                        ccn_base = max((ccn(k) * den(k)), 25.0e6) / 1.0e6
+                    endif
+
                     ! Computational optimization: Replace exp(log()) with standard power operator
-                    c_praut (k) = cpaut * ((ccn (k) * rhow) ** ccn_exponent)
+                    c_praut (k) = cpaut * (ccn_base ** ccn_exponent)
                     ! Calculate autoconversion sink
                     sink = min(dq, dts * c_praut (k) * den (k) * (ql (k) ** ql_exponent))
                     sink = min(ql0_max, ql (k), sink) * qadum (k)
@@ -4158,6 +4174,15 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
 
     real :: tc, sink, fac_i2s, q_plus, qim, dq, tmp
     real :: di, qi, critical_qi_factor, qadum
+    real :: pl, p_norm, p_factor, critical_qi_factor_local
+
+    ! -----------------------------------------------------------------------
+    ! Tunable parameters for pressure-dependent critical threshold
+    ! -----------------------------------------------------------------------
+    real, parameter :: PSAUT_FACTOR_HIGH = 4.5    ! Multiplier at upper levels (p < 300 hPa)
+    real, parameter :: PSAUT_FACTOR_LOW  = 1.0    ! Multiplier at lower levels (p > 800 hPa)
+    real, parameter :: PSAUT_P_MID       = 450.0  ! Transition center (hPa)
+    real, parameter :: PSAUT_P_WIDTH     = 100.0  ! Transition width (hPa)
 
     ! -------------------------------------------------------------------------
     ! Scale-Aware Cloud Ice Threshold (critical_qi_factor)
@@ -4183,6 +4208,37 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
 
             tc = tz (k) - tice
 
+            ! ===================================================================
+            ! CALCULATE DRY AIR PRESSURE
+            ! ===================================================================
+            pl = den(k) * rdgas * tz(k)  ! Pressure in Pa
+            pl = pl * 0.01               ! Convert to hPa (mb)
+
+            ! ===================================================================
+            ! SMOOTH PRESSURE-DEPENDENT THRESHOLD MULTIPLIER
+            ! Uses sigmoid (tanh) for smooth transition.
+            ! Baseline critical threshold: critical_qi_factor
+            ! 
+            ! Physical interpretation:
+            !   - Upper troposphere (p <= 450 hPa): Multiplier approaches ~10x.
+            !     Ice must accumulate sgnificantly before converting to snow. 
+            !     This allows ice to stay suspended in strong updrafts and 
+            !     detrainment regions.
+            !   
+            !   - Mid troposphere (p = 700 hPa): Transition midpoint with 5.5x 
+            !     multiplier, yielding a moderate threshold
+            !   
+            !   - Lower troposphere (p >= 850 hPa): Multiplier drops toward 1x baseline. 
+            !     Effective threshold stays low, meaning ice 
+            !     converts to snow readily as it approaches the surface.
+            ! ===================================================================
+            p_norm = (pl - PSAUT_P_MID) / PSAUT_P_WIDTH
+            p_factor = PSAUT_FACTOR_LOW + 0.5 * (PSAUT_FACTOR_HIGH - PSAUT_FACTOR_LOW) * &
+                       (1.0 - tanh(p_norm))
+            
+            ! Apply pressure-dependent multiplier to critical threshold
+            critical_qi_factor_local = min(critical_qi_factor * p_factor, psaut_qi_crt) 
+
             ! Use In-Cloud condensates with scale-aware blending
             if (in_cloud_ice) then
               ! Enforce minimum bound to prevent vanishing values
@@ -4196,7 +4252,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
             sink = 0.
             di  = max (di, qcmin)
             q_plus = qi + di
-            qim = critical_qi_factor / den (k)
+            qim = critical_qi_factor_local / den (k)
             if (q_plus .gt. (qim + qcmin)) then
                 if (qim .gt. (qi - di)) then
                     dq = (0.25 * (q_plus - qim) ** 2) / di
@@ -5023,7 +5079,8 @@ subroutine pcomp (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, lcp
 end subroutine pcomp
 
 ! =======================================================================
-! Wegener Bergeron Findeisen process, Storelvmo and Tan (2015)
+! Wegener-Bergeron-Findeisen (WBF) Process
+! Based on Storelvmo and Tan (2015) and Korolev (2007) physical framework
 ! =======================================================================
 
 subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den, lcpk, &
@@ -5033,151 +5090,110 @@ subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den,
     ! -----------------------------------------------------------------------
     ! input / output arguments
     ! -----------------------------------------------------------------------
-
     integer, intent (in) :: ks, ke
-
     real, intent (in) :: dts, convt
-
     real, intent (in), dimension (ks:ke) :: den, dp
-
     real (kind = r8), intent (in), dimension (ks:ke) :: te8
     real, intent (inout), dimension (ks:ke) :: qa, qv, ql, qr, qi, qs, qg, ccn, cin
     real, intent (inout), dimension (ks:ke) :: lcpk, icpk, tcpk, tcp3
-
     real (kind = r8), intent (inout), dimension (ks:ke) :: cvm, tz
-
     real, intent (inout) :: mppfw
 
     ! -----------------------------------------------------------------------
     ! local variables
     ! -----------------------------------------------------------------------
-
     integer :: k
+    real    :: qadum, ql_in, qi_in, qs_in, qg_in, q_ice_bulk
+    real    :: tc, tin, sink, dqdt, qsw, qsi
+    real    :: psi, f_k, f_d, explicit_wbf_rate
+    real    :: latent_v, latent_s
 
-    real :: tau_wbf_eff, fac_wbf
-    real :: qadum, qi_in, ql_in
-    real :: tc, tin, sink, dqdt, qsw, qsi, qim, tmp
-    real :: snow_boost_mult
-    real :: ifrac, lfrac, q_total, q_liq_eq, q_liq_deficit
-
-    real :: q_ice_bulk
-    real :: liquid_fraction, ice_fraction_bulk, eta_mixing
-
-    real, parameter :: wbf_coarse_mult = 1.0  ! How much slower WBF is at 50km vs 2km
-    real, parameter :: qcmin_wbf = 1.0e-6  ! Minimum for WBF to operate (kg/kg)
+    ! Tunable Constants
+    real, parameter :: qcmin_wbf = 1.0e-6  ! Minimum threshold mass (kg/kg)
+    real, parameter :: c_wbf     = 1.5e-3  ! Mass-weighted capacitance factor (s-1)
 
     if (.not. do_wbf) return
 
-    ! -------------------------------------------------------------------------
-    ! Scale tau_wbf (Wegener-Bergeron-Findeisen Timescale)
-    ! -------------------------------------------------------------------------
-    ! At coarse resolutions (e.g., 50km, onemsig=0), WBF is slowed down by a 
-    ! factor of the multiplier. This physically compensates for sub-grid cloud patchiness.
-    ! In reality, mixed-phase clouds have separated pockets of liquid and ice. 
-    ! Using a coarse grid-mean assumes perfect mixing, which would cause the scheme
-    ! to over-aggressively glaciate the cloud. Slowing the timescale artificially 
-    ! protects supercooled liquid water from being consumed too fast.
-    ! -------------------------------------------------------------------
-    ! Scale tau_wbf: 
-    ! If onemsig = 1.0 (2km),   tau_wbf_eff = tau_wbf
-    ! If onemsig = 0.0 (50km),  tau_wbf_eff = tau_wbf * wbf_coarse_mult
-    ! -------------------------------------------------------------------
-    tau_wbf_eff = tau_wbf * (wbf_coarse_mult * (1.0 - onemsig) + onemsig)
-
-    ! Calculate the time-step fraction using the effective timescale
-    fac_wbf = 1. - exp (- dts / tau_wbf_eff)
-
     do k = ks, ke
 
-        tc = tice - tz (k)
-
-        tin = tz (k)
+        tc  = tice - tz (k) ! Temp in Celsius relative to freezing point
+        tin = tz (k)        ! Absolute temperature in Kelvin
 
         sink = 0.0
-        tmp = 0.0
 
-        ! =====================================================================
         ! 1. Convert Grid-Mean Condensates to In-Cloud Values
-        ! =====================================================================
         if (in_cloud_ice) then
-            ! Enforce minimum bound to prevent division by zero or vanishing values
             qadum = MAX(qa(k), cfmin)
         else
             qadum = 1.0
         endif
 
-        ! Local in-cloud mixing ratios (scaled up)
-        ql_in = ql(k) / qadum
-        qi_in = qi(k) / qadum
+        ql_in      = ql(k) / qadum
+        qi_in      = qi(k) / qadum
+        qs_in      = qs(k) / qadum
+        qg_in      = qg(k) / qadum
+        q_ice_bulk = qi_in + qs_in + qg_in
 
         if (tc .ge. 40.0) then
             ! -----------------------------------------------------------------
             ! PATHWAY A: Spontaneous Homogeneous Freezing (T <= -40 C)
-            ! All remaining liquid water must freeze instantly.
+            ! Instantaneous thermodynamic phase change
             ! -----------------------------------------------------------------
             sink = ql_in
-            tmp  = sink  ! All frozen liquid here does to cloud ice
 
-        elseif (tc .gt. 0.) then
+        elseif (tc .gt. 0.0) then
             ! -----------------------------------------------------------------
             ! PATHWAY B: Mixed-Phase Regime (0 C > T > -40 C)
-            ! Calculate saturation vapor pressures only when physically needed.
+            ! Explicit physical mass growth equation via vapor diffusion
             ! -----------------------------------------------------------------
             qsw = wqs (tin, den (k), dqdt)
             qsi = iqs (tin, den (k), dqdt)
-            ! Check physical activation conditions for WBF
-            if (ql_in .gt. qcmin_wbf .and. qi_in .gt. qcmin_wbf .and. &
-                qv (k) .gt. qsi .and. qv (k) .lt. qsw) then
 
-                ! Calculate the total incloud bulk ice phase to correctly gauge storm presence
-                q_ice_bulk = (qi(k) + qs(k) + qg(k)) / qadum
+            ! WBF triggers when liquid and ice coexist in an environment
+            ! supersaturated w.r.t ice but subsaturated w.r.t liquid water
+            if (ql_in .gt. qcmin_wbf .and. q_ice_bulk .gt. qcmin_wbf .and. &
+                qv (k) .gt. qsi) then
+
+                ! --- Dynamic Local Latent Heat Equations ---
+                latent_v = lv0 + dc_vap * tz(k)
+                latent_s = li2 + (dc_vap + dc_ice) * tz(k)
                 
-                ! Retrieve equilibrium phase split from the Hu et al. polynomial
-                ifrac = ice_fraction(tin, cnv_fraction, srf_type)
-                lfrac = 1.0 - ifrac
-                
-                q_total = ql_in + qi_in
-                q_liq_eq = lfrac * q_total
-                
-                ! Check if we have excess liquid to relax toward equilibrium
-                if (ql_in .gt. max(q_liq_eq, qcmin_wbf) .and. q_ice_bulk .gt. qcmin_wbf) then
-                    
-                    ! Heterogeneous mixing inefficiency factor (eta)
-                    liquid_fraction   = ql_in / (ql_in + q_ice_bulk)
-                    ice_fraction_bulk = q_ice_bulk / (ql_in + q_ice_bulk)
-                    
-                    eta_mixing = 4.0 * liquid_fraction * ice_fraction_bulk
-                    eta_mixing = max(0.05, min(eta_mixing, 1.0))
-                    
-                    q_liq_deficit = ql_in - q_liq_eq
-                    
-                    ! Apply the rate sink (with heterogeneity multiplier and thermodynamic limit)
-                    sink = min(fac_wbf * q_liq_deficit * eta_mixing, ql_in, tc / icpk(k))
-                    
-                    ! Temperature-dependent snow boost mass distribution split
-                    snow_boost_mult = max(0.0, 1.0 - (tc / 40.0))
-                    qim = (pwbf_qi_crt * snow_boost_mult) / den(k)
-                    tmp = min(sink, dim(qim, qi_in))
-                endif
+                ! Saturation vapor pressure over ice (Pa)
+                psi = qsi * den(k) * rvgas * tin 
+
+                ! Conduction term (F_k) and Diffusion term (F_d)
+                f_k = (latent_s / (tcond * tin)) * ((latent_s / (rvgas * tin)) - 1.0)
+                f_d = (rvgas * tin) / (vdifu * psi)
+
+                ! Kinetic mass growth rate of bulk ice field under water-saturated conditions
+                ! dqi/dt = [4 * pi * C * N_i * S_i] / [rho * (F_k + F_d)]
+                explicit_wbf_rate = (qsw - qsi) / (qsi * den(k) * (f_k + f_d))
+                explicit_wbf_rate = explicit_wbf_rate * c_wbf * q_ice_bulk
+
+                ! Sub-grid scale grid-patchiness scaling profile
+                explicit_wbf_rate = explicit_wbf_rate * (onemsig + 0.15 * (1.0 - onemsig))
+
+                ! Calculate mass sink over the duration of the time step
+                sink = explicit_wbf_rate * dts
+
+                ! Keep sink bounded by available cloud liquid and grid constraints
+                sink = min(sink, ql_in, tc / icpk(k))
             endif
         endif
 
         ! =====================================================================
-        ! Convert In-Cloud Sinks Back to Grid-Mean Tendencies & Update State
-        ! =====================================================================
-        ! Only execute state updates if a physical phase change actually occurred.
-        ! This saves significant CPU overhead on warm or completely dry levels.
+        ! 2. Convert In-Cloud Sinks Back to Grid-Mean Tendencies & Update State
         ! =====================================================================
         if (sink .gt. 0.0) then
             sink = sink * qadum
-            tmp  = tmp * qadum
 
             ! Accumulate vertical column integrated mass flux
             mppfw = mppfw + sink * dp (k) * convt
 
             ! Apply physical state updates
+            ! Liquid sink directly deposits to cloud ice (qi)
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
-                0., - sink, 0., tmp, sink - tmp, 0., te8 (k), cvm (k), tz (k), &
+                0., - sink, 0., sink, 0., 0., te8 (k), cvm (k), tz (k), &
                 lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pwbf')
         endif
 
