@@ -518,7 +518,7 @@ PROGRAM mkCatchParam
      endif
 
      if (trim(LAIBCS) == 'MODGEO') then
-        lai_name = 'MODIS_8-DayClim/MODIS_'
+        lai_name = 'MODIS_8-DayClim_new/MODIS_'
         inquire(file='clsm/lai.MODIS_8-DayClim', exist=file_exists)
         if (.not.file_exists)call hres_lai_no_gswp (43200,21600,maparc30,lai_name, n_land, tile_lon, tile_lat, merge=1)  
         call merge_lai_data (MaskFile, n_land, tile_pfs)

@@ -1387,7 +1387,7 @@ contains
     !
     open (41,file='clsm/lai.GEOLAND2_10-DayClim',  &
          form='unformatted',status='old',convert='little_endian',action='read')
-    open (42,file='clsm/lai.MODIS_8-DayClim',      &
+    open (42,file='clsm/lai.MODIS_8-DayClim_new',      &
          form='unformatted',status='old',convert='little_endian',action='read')
     open (43,file='clsm/lai.dat',      &
          form='unformatted',status='unknown',convert='little_endian',action='write')
@@ -1461,11 +1461,11 @@ contains
 
        ! replace South America with GEOLAND2
 
-       DO n =1,ntiles             
-          if((pfaf(n) >= i1).and.(pfaf(n) <= i2)) lai(n) = geol2_lai(n)
-          if((pfaf(n) >= i3).and.(pfaf(n) <= i4)) lai(n) = geol2_lai(n)
-          if((pfaf(n) >= i5).and.(pfaf(n) <= i6)) lai(n) = geol2_lai(n)
-       end do
+       !DO n =1,ntiles             
+       !   if((pfaf(n) >= i1).and.(pfaf(n) <= i2)) lai(n) = geol2_lai(n)
+       !   if((pfaf(n) >= i3).and.(pfaf(n) <= i4)) lai(n) = geol2_lai(n)
+       !   if((pfaf(n) >= i5).and.(pfaf(n) <= i6)) lai(n) = geol2_lai(n)
+       !end do
        write (43) lai(:)
     end do
 
@@ -2583,7 +2583,7 @@ contains
     !_________________________________________________________ 
     !
     call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR) 
-    fname =trim(MAKE_BCS_INPUT_DIR)//'/land/veg/lai_grn/v2/'//trim(lai_name)//'lai_clim.H11V13.nc'
+    fname ='/discover/nobackup/yzeng3/make_bcs_inputs/land/veg/lai_grn/v2/'//trim(lai_name)//'lai_clim.H11V13.nc'
     status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
     status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
     status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
@@ -2676,7 +2676,7 @@ contains
           do ix = 1,36
              write (vv,'(i2.2)')jx
              write (hh,'(i2.2)')ix 
-             fname = trim(MAKE_BCS_INPUT_DIR)//'/land/veg/lai_grn/v2/'//trim(lai_name)//'lai_clim.H'//hh//'V'//vv//'.nc'
+             fname = '/discover/nobackup/yzeng3/make_bcs_inputs/land/veg/lai_grn/v2/'//trim(lai_name)//'lai_clim.H'//hh//'V'//vv//'.nc'
              status = NF_OPEN(trim(fname),NF_NOWRITE, ncid)
              if(status == 0) then
                 status = NF_GET_att_INT  (ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
@@ -6007,7 +6007,7 @@ contains
     character*3   :: ddd
 
     call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR) 
-    fname =trim(MAKE_BCS_INPUT_DIR)//'/land/veg/lai_grn/v2/MODIS_8-DayClim/MODIS_lai_clim.H11V13.nc'
+    fname ='/discover/nobackup/yzeng3/make_bcs_inputs/land/veg/lai_grn/v2/MODIS_8-DayClim/MODIS_lai_clim.H11V13.nc'
     status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
     status = NF_INQ_DIM (ncid,3,string, n_tslices); VERIFY_(STATUS) 
     allocate (MMDD      (0: n_tslices + 1))
