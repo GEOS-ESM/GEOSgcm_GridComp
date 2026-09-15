@@ -1387,7 +1387,7 @@ contains
     !
     open (41,file='clsm/lai.GEOLAND2_10-DayClim',  &
          form='unformatted',status='old',convert='little_endian',action='read')
-    open (42,file='clsm/lai.MODIS_8-DayClim_new',      &
+    open (42,file='clsm/lai.MODIS_8-DayClim',      &
          form='unformatted',status='old',convert='little_endian',action='read')
     open (43,file='clsm/lai.dat',      &
          form='unformatted',status='unknown',convert='little_endian',action='write')
@@ -1461,11 +1461,11 @@ contains
 
        ! replace South America with GEOLAND2
 
-       !DO n =1,ntiles             
-       !   if((pfaf(n) >= i1).and.(pfaf(n) <= i2)) lai(n) = geol2_lai(n)
-       !   if((pfaf(n) >= i3).and.(pfaf(n) <= i4)) lai(n) = geol2_lai(n)
-       !   if((pfaf(n) >= i5).and.(pfaf(n) <= i6)) lai(n) = geol2_lai(n)
-       !end do
+       DO n =1,ntiles             
+          if((pfaf(n) >= i1).and.(pfaf(n) <= i2)) lai(n) = geol2_lai(n)
+          if((pfaf(n) >= i3).and.(pfaf(n) <= i4)) lai(n) = geol2_lai(n)
+          if((pfaf(n) >= i5).and.(pfaf(n) <= i6)) lai(n) = geol2_lai(n)
+       end do
        write (43) lai(:)
     end do
 
@@ -2546,7 +2546,7 @@ contains
   !
   ! ---------------------------------------------------------------------------------------
   ! 
-  SUBROUTINE hres_lai_no_gswp (nc_data,nr_data,rmap,lai_name, n_land, tile_lon, tile_lat, merge)
+  SUBROUTINE hres_lai_no_gswp (nc_data,nr_data,rmap,lai_name, n_land, tile_lon, tile_lat, merge, year)
     !
     ! Processing GEOLAND2/MODIS LAI and creating 10-day climatological data 
     !
@@ -2556,7 +2556,8 @@ contains
     character(*),       intent(in) :: lai_name
     integer,            intent(in) :: n_land
     real,               intent(in) :: tile_lon(:), tile_lat(:)
-    integer, intent(in), optional :: merge 
+    integer,  intent(in), optional :: merge
+    character(*), intent(in), optional :: year 
 
     real, parameter :: dxy = 1.
     integer :: QSize
@@ -2619,6 +2620,9 @@ contains
     if(present(merge)) then
        open (31,file='clsm/lai.'//lai_name(1:index(lai_name,'/')-1),  &
             form='unformatted',status='unknown',convert='little_endian')
+    else if(present(year)) then
+       open (31,file='clsm/lai.MODIS_8-Day_'//trim(year),  &
+            form='unformatted',status='unknown',convert='little_endian')      
     else
        open (31,file='clsm/lai.dat',  &
             form='unformatted',status='unknown',convert='little_endian')
