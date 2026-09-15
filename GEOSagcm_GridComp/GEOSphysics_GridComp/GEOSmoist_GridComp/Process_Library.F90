@@ -47,13 +47,13 @@ module GEOSmoist_Process_Library
   integer :: ICE_FRACTION_POLYNOMIAL = 3
 
   ! Shift parameters targeted for MODIS polynomial
-  real, parameter :: GLAC_SHIFT_LANDICE =  6.0
-  real, parameter :: GLAC_SHIFT_SEAICE  =  5.5
-  real, parameter :: GLAC_SHIFT_SNOW    =  5.0
-  real, parameter :: GLAC_SHIFT_OCEAN   =  1.0
-  real, parameter :: GLAC_SHIFT_LAND    =  0.0
+  real, parameter :: GLAC_SHIFT_LANDICE =  3.0
+  real, parameter :: GLAC_SHIFT_SEAICE  =  2.0
+  real, parameter :: GLAC_SHIFT_SNOW    =  1.0
+  real, parameter :: GLAC_SHIFT_OCEAN   =  4.0
+  real, parameter :: GLAC_SHIFT_LAND    = -1.0
   ! Convective shift 
-  real, parameter :: GLAC_SHIFT_CONV    = 9.0   ! Will hold tropical liquid very high
+  real, parameter :: GLAC_SHIFT_CONV    = 7.5   ! Will hold tropical liquid very high
 
   ! Jason ICE_FRACTION constants
    ! In anvil/convective clouds
@@ -88,7 +88,7 @@ module GEOSmoist_Process_Library
    ! Size distribution dispersion scaling factors for [ICE|LIQ]_RADII_PARAM == 3.
    ! Increasing this value increases effective radius
    ! -----------------------------------------------------------------------------------------
-   REAL :: LIQ_RAD3_DISP = 1.10
+   REAL :: LIQ_RAD3_DISP = 1.30
    REAL :: ICE_RAD3_DISP = 0.50
 
    !- Morrison-Gettelman (2008) Liquid Gamma Closure
@@ -993,14 +993,14 @@ module GEOSmoist_Process_Library
              ! Jason version
              !-----------------------------------------------------------------
              LWC = 1.e3 * RHO * QC
-             RADIUS = MIN(60.e-6, MAX(2.5e-6, &
+             RADIUS = MIN(60.e-6, MAX(5.0e-6, &
                        1.e-6 * bx * (LWC/NNX)**r13bbeta * abeta * 6.92))
           ELSE IF (LIQ_RADII_PARAM == 2) THEN
              !-----------------------------------------------------------------
              ! Liu and Daum (2000, 2005); Liu et al. (2008)
              !-----------------------------------------------------------------
              LWC = 1.e3 * RHO * QC
-             RADIUS = MIN(60.e-6, MAX(2.5e-6, &
+             RADIUS = MIN(60.e-6, MAX(5.0e-6, &
                        1.e-6 * Lbx * (LWC/NNX)**Lbe))
           ELSE IF (LIQ_RADII_PARAM == 3) THEN
               !====================================================================
@@ -1015,13 +1015,15 @@ module GEOSmoist_Process_Library
                  R_VOLUME = ( (3.0 * LWC) / (4.0 * MAPL_PI * 1000.0 * NNL) )**(1.0/3.0)
                  ! Effective Radius with convective enhancement
                  !   - Broader size distributions in strong updrafts
-                 RADIUS = (LIQ_RAD3_DISP + 0.1 * SQRT(CNV_FRC)) * R_VOLUME
+                 RADIUS = (LIQ_RAD3_DISP + 1.05 * SQRT(CNV_FRC)) * R_VOLUME
+                 ! ================================================================
+                 ! Increase RLIQ in deep CNV_FRC regions and anvils
+                 ! ================================================================
+                 RADIUS = MIN(60.e-6, MAX(5.0e-6 + 7.5e-6 * SQRT(CNV_FRC), RADIUS))
               ELSE
                  ! Default background liquid droplet radius (4 microns)
                  RADIUS = 4.e-6
               END IF
-              ! RRTMGP liquid cloud lookup bounds limits
-              RADIUS = MIN(60.e-6, MAX(2.5e-6, RADIUS))
           ELSE
              !-----------------------------------------------------------------
              ! Morrison-Gettelman gamma closure.
@@ -1043,9 +1045,9 @@ module GEOSmoist_Process_Library
                       (4.0 * MAPL_PI * RHO_W * (MG_LIQ_MU + 3.0)**2))**(1.0/3.0)
                 RADIUS = AA * (LWC / DROP_DENS)**(1.0/3.0)
              ELSE
-                RADIUS = 2.5e-6
+                RADIUS = 5.0e-6
              END IF
-             RADIUS = MIN(60.e-6, MAX(2.5e-6, RADIUS))
+             RADIUS = MIN(60.e-6, MAX(5.0e-6, RADIUS))
           END IF
 
        ELSE IF (ITYPE == ICE) THEN
@@ -1097,10 +1099,11 @@ module GEOSmoist_Process_Library
                 ! protects the calculation from division by very small NNI.
                 R_VOLUME = ((3.0 * IWC) / &
                             (4.0 * MAPL_PI * 917.0 * NNI))**(1.0/3.0)
-                RADIUS = (ICE_RAD3_DISP + 0.65 * SQRT(CNV_FRC)) * R_VOLUME
-                ! Tightly bound the candidate radius. This prevents an
-                ! extremely large raw NNI radius from dominating tropical anvils.
-                RADIUS = MIN(85.e-6, MAX(35.e-6, RADIUS))
+                RADIUS = (ICE_RAD3_DISP + 1.10 * SQRT(CNV_FRC)) * R_VOLUME
+                ! ================================================================
+                ! Decrease RICE maximum outside of deep CNV_FRC regions and anvils
+                ! ================================================================
+                RADIUS = MIN(150.e-6 - 75.e-6 * (1.0 - SQRT(CNV_FRC)), MAX(35.e-6, RADIUS))
              ELSE
                 ! Fall back to a physically realistic baseline radius for pristine, 
                 ! non-convective upper-trop cirrus instead of using the anvil scheme.

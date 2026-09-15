@@ -224,7 +224,7 @@ module gfdl_mp_mod
     ! 4: Steep Temperature-dependent curve variant
     ! 5: Meyers et al. (1992) [Very steep exponential Temp-dependence]
         
-    integer :: igflag = 3 ! Ice Deposition/Sublimation critical mass threshold (qi_crt)
+    integer :: igflag = 4 ! Ice Deposition/Sublimation critical mass threshold (qi_crt)
     ! 1: Absolute threshold based on exponential qi_gen (No Temp-ramp)
     ! 2: Threshold based on exponential qi_gen multiplied by linear Temp-ramp
     ! 3: Bypasses qi_gen; relies strictly on linear Temp-ramp (Computationally cheapest)
@@ -423,8 +423,8 @@ module gfdl_mp_mod
     real :: ccn_o = 90.0 ! ccn over ocean (1/cm^3)
     real :: ccn_l = 270.0 ! ccn over land (1/cm^3)
 
-    real :: rthreshu =  7.0e-6 ! unstable critical cloud drop radius (micro m)
-    real :: rthreshs = 10.0e-6 !   stable critical cloud drop radius (micro m)
+    real :: rthreshu =  8.5e-6 ! unstable critical cloud drop radius (micro m)
+    real :: rthreshs = 12.0e-6 !   stable critical cloud drop radius (micro m)
 
     logical :: in_cloud_liq = .true. ! use in-cloud liquid
     logical :: in_cloud_ice = .true. ! use in-cloud frozen
@@ -442,7 +442,7 @@ module gfdl_mp_mod
     real :: pwbf_qi_crt  = 0.8e-4 ! WBF liquid to ice freezing threshold (kg/m^3)
     real :: pgaut_qs_crt = 0.6e-3 ! snow to graupel autoconversion threshold (0.6e-3 in Purdue Lin scheme) (kg/m^3)
  
-    integer :: c_paut_scheme = 2   ! choose autoconversion scheme
+    integer :: c_paut_scheme = 1   ! choose autoconversion scheme
     real    :: c_paut        = 0.5 ! cloud water to rain autoconversion efficiency
 
     ! -----------------------------------------------------------------------
@@ -4179,8 +4179,8 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
     ! -----------------------------------------------------------------------
     ! Tunable parameters for pressure-dependent critical threshold
     ! -----------------------------------------------------------------------
-    real, parameter :: PSAUT_FACTOR_HIGH = 4.5    ! Multiplier at upper levels (p < 300 hPa)
-    real, parameter :: PSAUT_FACTOR_LOW  = 1.0    ! Multiplier at lower levels (p > 800 hPa)
+    real, parameter :: PSAUT_FACTOR_HIGH = 5.0    ! Multiplier at upper levels
+    real, parameter :: PSAUT_FACTOR_LOW  = 1.0    ! Multiplier at lower levels
     real, parameter :: PSAUT_P_MID       = 450.0  ! Transition center (hPa)
     real, parameter :: PSAUT_P_WIDTH     = 100.0  ! Transition width (hPa)
 
@@ -4190,7 +4190,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
     ! Applies a resolution-dependent penalty to the critical ice threshold,
     ! partitioning the grid box into unresolved and resolved fractions.
     !   
-    ! - Unresolved scales (1.0 - onemsig): Applies a strict penalty (0.1)
+    ! - Unresolved scales (1.0 - onemsig): Applies a penalty
     !   to sub-grid parameterizations. This forces sub-grid ice to precipitate
     !   as snow earlier, preventing global QI from skyrocketing and negatively 
     !   impacting the radiation budget.
@@ -4259,7 +4259,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
                 else
                     dq = qi - qim
                 endif
-                sink = fac_i2s * exp (0.01 * tc) * dq
+                sink = fac_i2s * exp (0.025 * tc) * dq
             endif
             sink = min (qi, sink) * qadum
             mppas = mppas + sink * dp (k) * convt
@@ -5310,7 +5310,6 @@ subroutine pidep_pisub (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
     integer :: k
 
     real :: sink, tin, dqdt, qsi, dq, pidep, tmp, tc, qi_gen, qi_crt, ramp_factor
-    real :: tk, ifrac
 
     do k = ks, ke
 
@@ -5367,9 +5366,8 @@ subroutine pidep_pisub (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
                 ! Ice Vapor Deposition (Growth Phase)
                 tc = tice - tz (k)
                 ! Calculate the temperature ramp factor used in most flags
-                tk = tz(k)
-                ifrac = ice_fraction(tk, cnv_fraction, srf_type)
-                ramp_factor = min(qi_lim, ifrac) / den(k)
+                ! (This saves recalculating it on every case line)
+                ramp_factor = min(qi_lim, 0.1 * tc) / den(k)
                 select case (igflag)
                     case (1)
                         ! Requires qi_gen, no temperature ramp

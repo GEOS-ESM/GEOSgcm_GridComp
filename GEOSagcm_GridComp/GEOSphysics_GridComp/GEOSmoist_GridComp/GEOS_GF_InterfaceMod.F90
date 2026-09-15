@@ -203,7 +203,7 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
       !   - ENTR_SH : High rate; ensures shallow boundary-layer clouds dilute and mix out rapidly.
       if (INT(ZERO_DIFF_ENTR) == 0) then
         call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 0.1e-4,RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 0.5e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 0.6e-4,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)        , 'ENTR_MD:'               ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)       , 'ENTR_SH:'               ,default= 6.0e-4,RC=STATUS );VERIFY_(STATUS)
       else
@@ -226,8 +226,8 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
       !   suspended cloud condensate (liquid/ice) into falling precipitation (rain/snow).
       !   Increasing C0 wrings out the plume internally, resulting in thinner, drier anvils aloft.
       !   Decreasing C0 allows the plume to transport more mass to the upper troposphere.
-      call MAPL_GetResource(MAPL, C0_DEEP                   , 'C0_DEEP:'               ,default= 3.0e-3,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, C0_MID                    , 'C0_MID:'                ,default= 0.5e-3,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, C0_DEEP                   , 'C0_DEEP:'               ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, C0_MID                    , 'C0_MID:'                ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, C0_SHAL                   , 'C0_SHAL:'               ,default= 0.0   ,RC=STATUS );VERIFY_(STATUS)
 
       ! C0_ICE_EFF: Ice Precipitation Efficiency Multiplier [fraction].
@@ -239,10 +239,10 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
       ! QRC_CRIT_*: Critical Cloud Liquid Water Threshold [kg/kg].
       !   The updraft must hold this much liquid before Kessler autoconversion is allowed to begin.
       !   Separated by convection type to allow independent tuning of deep vs. mid-level moisture transport.
-      call MAPL_GetResource(MAPL, QRC_CRIT_OCN_DP           , 'QRC_CRIT_OCN_DP:'       ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, QRC_CRIT_OCN_MD           , 'QRC_CRIT_OCN_MD:'       ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, QRC_CRIT_LND_DP           , 'QRC_CRIT_LND_DP:'       ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, QRC_CRIT_LND_MD           , 'QRC_CRIT_LND_MD:'       ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, QRC_CRIT_OCN_DP           , 'QRC_CRIT_OCN_DP:'       ,default= 3.0e-4,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, QRC_CRIT_OCN_MD           , 'QRC_CRIT_OCN_MD:'       ,default= 3.0e-4,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, QRC_CRIT_LND_DP           , 'QRC_CRIT_LND_DP:'       ,default= 3.0e-4,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, QRC_CRIT_LND_MD           , 'QRC_CRIT_LND_MD:'       ,default= 3.0e-4,RC=STATUS );VERIFY_(STATUS)
 
       ! C1_*: Lateral Detrainment / Plume Shape Parameter [m^-1].
       !   Macro-physics knob. Completely decoupled from C0 internal microphysics.
@@ -250,7 +250,7 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
       !   A value > 0.0 activates explicit lateral shedding. A value of 0.0 treats the plume 
       !   as laterally closed, deferring entirely to the bulk detrainment logic.
       call MAPL_GetResource(MAPL, C1_DEEP                   , 'C1_DEEP:'               ,default= 3.0e-4,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, C1_MID                    , 'C1_MID:'                ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, C1_MID                    , 'C1_MID:'                ,default= 1.5e-4,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, C1_SHAL                   , 'C1_SHAL:'               ,default= 0.0   ,RC=STATUS );VERIFY_(STATUS)
 
       if (INT(ZERO_DIFF_TAU) == 0) then
@@ -384,9 +384,9 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
         call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(DEEP)   , 'HEI_UPDF_LAND_DP:'      ,default= 0.40,  RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(SHAL)   , 'HEI_UPDF_LAND_SH:'      ,default= 0.20,  RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(MID)    , 'HEI_UPDF_LAND_MD:'      ,default= 0.40,  RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(DEEP)  , 'HEI_UPDF_OCEAN_DP:'     ,default= 0.55,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(DEEP)  , 'HEI_UPDF_OCEAN_DP:'     ,default= 0.40,  RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(SHAL)  , 'HEI_UPDF_OCEAN_SH:'     ,default= 0.20,  RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(MID)   , 'HEI_UPDF_OCEAN_MD:'     ,default= 0.55,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(MID)   , 'HEI_UPDF_OCEAN_MD:'     ,default= 0.40,  RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_MIN_EDT_LAND(DEEP)    , 'MIN_EDT_LAND_DP:'       ,default= 0.10,  RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_MIN_EDT_LAND(SHAL)    , 'MIN_EDT_LAND_SH:'       ,default= 0.00,  RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_MIN_EDT_LAND(MID)     , 'MIN_EDT_LAND_MD:'       ,default= 0.10,  RC=STATUS );VERIFY_(STATUS)
@@ -931,55 +931,21 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
               !DIR$ IVDEP
               do I = 1, IM
                  ! 1. Calculate local ice fraction and tmp scalar
-                 ! ===================================================================
-                 ! GRID-SCALE DETRAINMENT PHASE PARTITIONING (COMPROMISE STRATEGY)
-                 ! ===================================================================
-                 ! For computing large-scale tendencies (DQLDT_DC / DQIDT_DC), we force 
-                 ! the ice_fraction function to use the standard Hu et al. curve 
-                 ! (passing CNV_FRC = 0.0) evaluated at the ambient environmental 
-                 ! temperature T(I,J,L) BEFORE the convective heating step.
-                 !
-                 ! MELT_GLAC should also be disabled inside of GF to allow cldmacro/micro
-                 !           to handle all phase changes
-                 !
-                 ! PHYSICAL/STRUCTURAL REASONING:
-                 ! 1. Curve Selection: The delayed-glaciation convective curve (high 
-                 !    supercooled liquid) is physically valid INSIDE high-velocity 
-                 !    convective updrafts. However, once condensate detrains into the 
-                 !    quiescent large-scale grid box, vertical velocity drops, and it 
-                 !    behaves as a stratiform anvil. Partitioning detrained mass via 
-                 !    the convective curve injects excess supercooled liquid water aloft.
-                 !
-                 ! 2. Temperature Baseline: We deliberately exclude the convective 
-                 !    heating tendency (DTDT_DC * GF_DT) from this evaluation. Because 
-                 !    deep convection releases massive amounts of latent heat, the 
-                 !    post-heating temperature is artificially warm. Including it 
-                 !    biases the polynomial toward an even higher liquid fraction.
-                 ! 
-                 ! 3. Large-Scale Impact: Combined, using the post-heating convective 
-                 !    state creates a severe structural "shock" to the large-scale 
-                 !    microphysics. The explicit WBF process (`pwbf`) encounters a massive 
-                 !    injection of stagnant supercooled liquid water and aggressively 
-                 !    glaciates it via vapor diffusion. This drives a double-counting 
-                 !    loop that triggers an unphysical mid-level cloud ice (QI) 
-                 !    overproduction bulge and a severe cold OLR bias. Evaluating at 
-                 !    ambient environmental conditions on the standard curve breaks this loop.
-                 ! ===================================================================
-                 fQi_local = ice_fraction(T(I,J,L), 0.0, SRF_TYPE(I,J))
+                 fQi_local = ice_fraction(T(I,J,L) + DTDT_DC(I,J,L) * GF_DT, CNV_FRC(I,J), SRF_TYPE(I,J))
                  tmp_local = CNV_DQCDT(I,J,L) / MASS(I,J,L)
 
                  ! Fill the exported 3D pointer if associated
                  if (ptr_is_assoc) PTR3D(I,J,L) = fQi_local
-
+                 
                  ! 2. Update DeepCu QL/QI/CF tendencies
                  DQLDT_DC(I,J,L) = (1.0 - fQi_local) * tmp_local
                  DQIDT_DC(I,J,L) = fQi_local * tmp_local
                  DQADT_DC(I,J,L) = MFD_DC(I,J,L) * SCLM_DEEP / MASS(I,J,L)
-
+                 
                  ! 3. Evap/subl and precip fluxes (kg/kg/s)
                  RSU_CN(I,J,L) = REVSU(I,J,L) * fQi_local
                  REV_CN(I,J,L) = REVSU(I,J,L) * (1.0 - fQi_local)
-
+                 
                  PFI_CN(I,J,L) = PRFIL(I,J,L) * fQi_local
                  PFL_CN(I,J,L) = PRFIL(I,J,L) * (1.0 - fQi_local)
               end do
