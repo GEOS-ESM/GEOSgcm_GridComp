@@ -165,6 +165,8 @@ module GEOS_LandiceGridCompMod
 
     type(MAPL_MetaComp), pointer            :: MAPL
     integer                                 :: DO_ISSM ! ISSM flag
+    integer                                 :: NUM_LDAS_ENSEMBLE, ens_id_width
+    character(len=ESMF_MAXSTR)              :: tmp_id
 
 ! Begin...
 
@@ -185,10 +187,18 @@ module GEOS_LandiceGridCompMod
 ! -----------------------
    !add initialize method for child (ISSM)
    call MAPL_GetResource (MAPL, DO_ISSM, label='DO_ISSM:', DEFAULT=0, __RC__ )
+   call MAPL_GetResource (MAPL, NUM_LDAS_ENSEMBLE, label='NUM_LDAS_ENSEMBLE:', DEFAULT=1, __RC__)
+   call MAPL_GetResource (MAPL, ens_id_width, label='ENS_ID_WIDTH:', DEFAULT=0, __RC__)   
 
 #ifndef HAVE_ISSM
    DO_ISSM=0
 #endif
+
+    tmp_id = ''
+    if (NUM_LDAS_ENSEMBLE >1) then
+        ! landice_exxxx
+        tmp_id(1:ens_id_width)=COMP_NAME(8:8+ens_id_width-1)
+    endif
 
    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS )
    VERIFY_(STATUS)
@@ -1730,7 +1740,7 @@ module GEOS_LandiceGridCompMod
 #ifdef HAVE_ISSM
     if (DO_ISSM==1) then
       ! Add ISSM child gridcomp
-      ISSM  = MAPL_AddChild(GC, NAME='ISSM', SS=IssmSetServices, RC=STATUS)
+      ISSM  = MAPL_AddChild(GC, NAME='ISSM'//trim(tmp_id), SS=IssmSetServices, RC=STATUS)
       VERIFY_(STATUS)
 
       call MAPL_TerminateImport(GC, CHILD = ISSM,   RC=STATUS)

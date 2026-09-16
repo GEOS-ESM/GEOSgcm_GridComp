@@ -14,7 +14,15 @@ MODULE ConvPar_GF2020
   USE module_gate
   USE MAPL
   USE ConvPar_GF_SharedParams
-  USE GEOSmoist_Process_Library, ONLY: sigma, SH_MD_DP, ICE_FRACTION, make_DropletNumber, make_IceNumber
+  
+  USE GEOSmoist_Process_Library, ONLY: sigma, SH_MD_DP, ICE_FRACTION, make_DropletNumber, &
+       make_IceNumber, USE_CUP_2M_MOISTURE, AerPropsNew, GF2M_W_OPTION, &
+       GF2M_PLIQ_EFF_OPTION, GF2M_DET_SCALE, GF2M_C1D_SCALE, &
+       GF2M_TOP_DET_SCALE, GF2M_DET_LEVEL_AVERAGE
+
+  USE GF2020_2M_MicrophysicsMod, ONLY: cup_up_moisture_2M
+                                   
+       
 
   IMPLICIT NONE
   PRIVATE
@@ -192,7 +200,8 @@ CONTAINS
        CNV_MF0, CNV_PRC3, CNV_MFD, CNV_DQCDT, ENTLAM, &
        CNV_MFC, CNV_UPDF, CNV_CVW, CNV_QC, WQT_DC, &
        REVSU, PRFIL, entr_dp, entr_md, entr_sh, &
-       MUPDP, MUPSH, MUPMD, MDNDP)
+       MUPDP, MUPSH, MUPMD, MDNDP, &
+       AerP, DNLDT_GF, DNIDT_GF, DQLDT_GF, DQIDT_GF)
 
     IMPLICIT NONE
 
@@ -212,6 +221,9 @@ CONTAINS
     REAL, DIMENSION(mxp,myp,0:mzp), INTENT(IN) :: PLE, ZLE
     REAL, DIMENSION(mxp,myp,mzp),   INTENT(IN) :: PLO, ZLO, PK, MASS, KH, T1, TH1, Q1, U1, V1, W1, OM1, BYNCY
     REAL, DIMENSION(mxp,myp,mzp),   INTENT(IN) :: QLIQ, QICE, QCLD, NACTL
+    
+    type(AerPropsNew), dimension(:), intent(in) :: AerP
+    REAL, DIMENSION(mxp,myp,mzp), INTENT(OUT), OPTIONAL :: DNLDT_GF, DNIDT_GF, DQLDT_GF, DQIDT_GF
 
     !--- 3D Forcings (INTENT IN)
     REAL, DIMENSION(mxp,myp,0:mzp), INTENT(IN) :: PLE_DYN_IN
@@ -253,8 +265,9 @@ CONTAINS
 
     !--- 3D Physics Arrays (mzp, mxp, myp)
     REAL, DIMENSION(mzp, mxp, myp) :: up, vp, wp, rvap, temp, press, zm3d, zt3d, dm3d, curr_rvap, buoy_exc, khloc, ccn_in
+    
     REAL, DIMENSION(mzp, mxp, myp) :: gsf_t, gsf_q, advf_t, sgsf_t, sgsf_q
-    REAL, DIMENSION(mzp, mxp, myp) :: SRC_T, SRC_Q, SRC_CI, SRC_U, SRC_V, SRC_NI, SRC_NL, SRC_BUOY, REVSU_GF, PRFIL_GF
+    REAL, DIMENSION(mzp, mxp, myp) :: SRC_T, SRC_Q, SRC_CI, SRC_U, SRC_V, SRC_NI, SRC_NL, SRC_QI, SRC_QL,  SRC_BUOY, REVSU_GF, PRFIL_GF
 
     !--- Microphysics Arrays
     REAL, DIMENSION(nmp, mzp, mxp, myp) :: mp_ice, mp_liq, mp_cf, SUB_MPQI, SUB_MPQL, SUB_MPCF
@@ -281,6 +294,8 @@ CONTAINS
     ERRDP = 0.0; ERRSH = 0.0; ERRMD = 0.0
     AA0 = 0.0; AA1 = 0.0; AA2 = 0.0; AA3 = 0.0; AA1_BL = 0.0; AA1_CIN = 0.0
     TAU_BL = 0.0; TAU_DP = 0.0; TAU_MD = 0.0
+    
+    DNLDT_GF = 0.0; DNIDT_GF = 0.0; DQIDT_GF = 0.0; DQLDT_GF = 0.0
 
     !- Zero out internal tracking arrays
     do_this_column = 0; ierr4d = 0; jmin4d = 0; klcl4d = 0; k224d = 0; kbcon4d = 0; ktop4d = 0; kstabi4d = 0; kstabm4d = 0
@@ -488,7 +503,8 @@ CONTAINS
          up_massentr5d, up_massdetr5d, dd_massentr5d, dd_massdetr5d, zup5d, zdn5d, &
          prup5d, prdn5d, clwup5d, tup5d, conv_cld_fr5d, sgs_vvel_5d, &
          !--- Diagnostics
-         AA0, AA1, AA2, AA3, AA1_BL, AA1_CIN, TAU_BL, TAU_DP, TAU_MD)
+         AA0, AA1, AA2, AA3, AA1_BL, AA1_CIN, TAU_BL, TAU_DP, TAU_MD, &
+         AerP, SRC_NL, SRC_NI, SRC_QL, SRC_QI)
 
     !===========================================================================
     ! 6. FEEDBACK TENDENCIES TO GEOS HOST MODEL
@@ -679,7 +695,13 @@ CONTAINS
              DQDT_GF(i,j,1:mzp) = SRC_Q(flip(1):flip(mzp):-1,i,j)
              DUDT_GF(i,j,1:mzp) = SRC_U(flip(1):flip(mzp):-1,i,j)
              DVDT_GF(i,j,1:mzp) = SRC_V(flip(1):flip(mzp):-1,i,j)
-
+             
+       		 IF (PRESENT(DNLDT_GF)) DNLDT_GF(i,j,1:mzp) = SRC_NL(flip(1):flip(mzp):-1,i,j)
+             IF (PRESENT(DNIDT_GF)) DNIDT_GF(i,j,1:mzp) = SRC_NI(flip(1):flip(mzp):-1,i,j)             
+             IF (PRESENT(DQLDT_GF)) DQLDT_GF(i,j,1:mzp) = SRC_QL(flip(1):flip(mzp):-1,i,j)
+		     IF (PRESENT(DQIDT_GF)) DQIDT_GF(i,j,1:mzp) = SRC_QI(flip(1):flip(mzp):-1,i,j)
+             
+             
              !- Extract final error codes
              ERRDP(i,j) = float(ierr4d(i,j,DEEP))
              ERRSH(i,j) = float(ierr4d(i,j,SHAL))
@@ -717,7 +739,8 @@ CONTAINS
        up_massentr5d, up_massdetr5d, dd_massentr5d, dd_massdetr5d, zup5d, zdn5d, &
        prup5d, prdn5d, clwup5d, tup5d, conv_cld_fr5d, sgs_vvel_5d, &
        !--- Diagnostics
-       AA0, AA1, AA2, AA3, AA1_BL, AA1_CIN, TAU_BL, TAU_DP, TAU_MD)
+       AA0, AA1, AA2, AA3, AA1_BL, AA1_CIN, TAU_BL, TAU_DP, TAU_MD, &
+       AerP, rnlcuten, rnicuten, rqlcuten, rqicuten)
 
    IMPLICIT NONE
 
@@ -740,6 +763,9 @@ CONTAINS
         zm, zt, dm, press, temp, rvap, curr_rvap, u, v, om, ccn_in, buoy_exc, &
         rthften, rqvften, rth_advten, rthblten, rqvblten
 
+   type(AerPropsNew), dimension(:), intent(in) :: AerP
+   REAL, DIMENSION(kts:kte,its:ite,jts:jte), INTENT(OUT) :: rnlcuten, rnicuten, rqlcuten, rqicuten !DONIF
+   
    !--- 3D Microphysics
    REAL, DIMENSION(nmp,kts:kte,its:ite,jts:jte), INTENT(IN)  :: mp_ice, mp_liq, mp_cf
 
@@ -768,7 +794,8 @@ CONTAINS
                                                temp_new, qv_new, Tpert_2d, temp_new_adv, qv_new_adv, &
                                                temp_new_BL, qv_new_BL
 
-   REAL, DIMENSION(its:ite,kts:kte,maxiens) :: outt, outq, outqc, outu, outv, outbuoy, outnliq, outnice
+   REAL, DIMENSION(its:ite,kts:kte,maxiens) :: outt, outq, outqc, outu, outv, outbuoy, &
+                                               outnliq, outnice, outqliq, outqice
 
    REAL, DIMENSION(mtp,its:ite,kts:kte)         :: se_chem
    REAL, DIMENSION(mtp,its:ite,kts:kte,maxiens) :: out_chem
@@ -793,8 +820,13 @@ CONTAINS
    jtf = jte
    int_time = int_time + dt
    WHOAMI_ALL = mynum
-
-   IF(abs(C1) > 0.0) USE_C1D = .TRUE.
+   rnlcuten = 0.0
+   rnicuten = 0.0   
+   rqlcuten = 0.0
+   rqicuten = 0.0
+   
+   
+   IF ((abs(C1) > 0.0) .and. (.not. USE_CUP_2M_MOISTURE)) USE_C1D = .TRUE.
 
    !--- For the moisture advection trigger (Ma and Tan, AR 2009)
    IF(ADV_TRIGGER == 2) THEN
@@ -831,7 +863,7 @@ CONTAINS
    !$OMP        sgs_vvel_5d, AA0, AA1, AA2, AA3, AA1_BL, AA1_CIN, TAU_BL, &
    !$OMP        TAU_DP, TAU_MD, RTHCUTEN, RVCUTEN, RUCUTEN, RQVCUTEN, RQCCUTEN, &
    !$OMP        REVSU_GF, PRFIL_GF, SUB_MPQL, SUB_MPQI, SUB_MPCF, RCHEMCUTEN, &
-   !$OMP        RBUOYCUTEN) &
+   !$OMP        RBUOYCUTEN, AerP, rnlcuten, rnicuten, rqlcuten, rqicuten) &
    !$OMP PRIVATE(j, i, k, kr, n, ii_plume, plume, ispc, zmax, &
    !$OMP         pten, pqen, paph, zrho, pahfs, pqhfl, zkhvfl, pgeoh, &
    !$OMP         ztexec, zqexec, last_ierr, fixout_qv, revsu_gf_2d, &
@@ -843,7 +875,7 @@ CONTAINS
    !$OMP         qv_new_ADV, mpqi, mpql, mpcf, se_chem, pbl, h_sfc_flux, &
    !$OMP         le_sfc_flux, zws, TAU_, temp_new, qv_new, dhdt, &
    !$OMP         temp_new_BL, qv_new_BL, min_dist, distance, fixouts, cum_ztexec, &
-   !$OMP         cum_zqexec)
+   !$OMP         cum_zqexec, outqice, outqliq)
    DO j = jts, jtf
       JCOL = j
 
@@ -869,6 +901,8 @@ CONTAINS
          outqc(i,:,:)   = 0.0
          outnice(i,:,:) = 0.0
          outnliq(i,:,:) = 0.0
+         outqice(i,:,:) = 0.0
+         outqliq(i,:,:) = 0.0
          outbuoy(i,:,:) = 0.0
          omeg(i,:,:)    = 0.0
       ENDDO
@@ -1062,7 +1096,7 @@ CONTAINS
               !- Microphysics, Tracers, and Buoyancy
               dm2d, se_chem, zws, dhdt, buoy_exc2d, mpqi, mpql, mpcf, last_ierr(:), &
               !- 3D Output tendencies (Thermodynamics and Momentum)
-              outt(:,:,plume), outq(:,:,plume), outqc(:,:,plume), outu(:,:,plume), outv(:,:,plume), outnliq(:,:,plume), outnice(:,:,plume), outbuoy(:,:,plume), &
+              outt(:,:,plume), outq(:,:,plume), outqc(:,:,plume), outu(:,:,plume), outv(:,:,plume), outnliq(:,:,plume), outnice(:,:,plume), outqliq(:,:,plume), outqice(:,:,plume), outbuoy(:,:,plume), &
               !- Output Microphysics and Chemistry tendencies
               outmpqi(:,:,:,plume), outmpql(:,:,:,plume), outmpcf(:,:,:,plume), out_chem(:,:,:,plume), &
               !- GF Plume bounds tracking
@@ -1076,7 +1110,8 @@ CONTAINS
               !- Diagnostics and Closure tracking
               sgs_vvel_5d(:,:,j,plume), AA0(:,j), AA1(:,j), AA2(:,j), AA3(:,j), AA1_BL(:,j), AA1_CIN(:,j), TAU_BL(:,j), TAU_, &
               !- Output fluxes and lightning flashes
-              lightn_dens(:,j), revsu_gf_2d, prfil_gf_2d, Tpert_2d)
+              lightn_dens(:,j), revsu_gf_2d, prfil_gf_2d, Tpert_2d, &
+              AerP, j, flip) !DONIF
 
          if(trim(cumulus_type(plume)) == 'deep') TAU_DP(:,j) = TAU_
          if(trim(cumulus_type(plume)) == 'mid')  TAU_MD(:,j) = TAU_
@@ -1146,7 +1181,16 @@ CONTAINS
             RTHCUTEN(kr,i,j) = (outt(i,k,shal) + outt(i,k,deep) + outt(i,k,mid)) * fixout_qv(i)
             RQVCUTEN(kr,i,j) = (outq(i,k,shal) + outq(i,k,deep) + outq(i,k,mid)) * fixout_qv(i)
             RQCCUTEN(kr,i,j) = (outqc(i,k,shal) + outqc(i,k,deep) + outqc(i,k,mid)) * fixout_qv(i)
-
+            
+            RNLCUTEN(kr,i,j) = (outnliq(i,k,shal) + outnliq(i,k,deep) + outnliq(i,k,mid)) * fixout_qv(i) !DONIF
+            RNICUTEN(kr,i,j) = (outnice(i,k,shal) + outnice(i,k,deep) + outnice(i,k,mid)) * fixout_qv(i)
+            
+            RQLCUTEN(kr,i,j) = (outqliq(i,k,shal) + outqliq(i,k,deep) + outqliq(i,k,mid)) * fixout_qv(i)
+			RQICUTEN(kr,i,j) = (outqice(i,k,shal) + outqice(i,k,deep) + outqice(i,k,mid)) * fixout_qv(i)
+            
+            ! In 2M mode, RQLCUTEN/RQICUTEN are diagnostic phase partitions.
+            ! RQCCUTEN remains authoritative from outqc and is not overwritten.
+            
             REVSU_GF(kr,i,j) = revsu_gf_2d(i,k) * fixout_qv(i)
             PRFIL_GF(kr,i,j) = prfil_gf_2d(i,k) * fixout_qv(i)
          ENDDO
@@ -1239,7 +1283,7 @@ CONTAINS
      !- Microphysics, Tracers, and Buoyancy
      dm2d, se_chem, zws, dhdt, buoy_exc, mpqi, mpql, mpcf, last_ierr, &
      !- 3D Output tendencies (Thermodynamics and Momentum)
-     outt, outq, outqc, outu, outv, outnliq, outnice, outbuoy, &
+     outt, outq, outqc, outu, outv, outnliq, outnice,  outqliq, outqice, outbuoy, &
      !- Output Microphysics and Chemistry tendencies
      outmpqi, outmpql, outmpcf, out_chem, &
      !- GF Plume bounds tracking
@@ -1253,7 +1297,8 @@ CONTAINS
      !- Diagnostics and Closure tracking
      vvel2d, AA0_, AA1_, AA2_, AA3_, AA1_BL_, AA1_CIN_, TAU_BL_, TAU_EC_, &
      !- Output fluxes and lightning flashes
-     lightn_dens, revsu_gf, prfil_gf, Tpert)
+     lightn_dens, revsu_gf, prfil_gf, Tpert, &
+     AerP, jcol_in, flip)
 
   !=============================================================================
   ! 0. VARIABLE DECLARATIONS
@@ -1287,7 +1332,7 @@ CONTAINS
   REAL, DIMENSION(mtp,its:ite,kts:kte), INTENT(INOUT) :: se_chem, out_chem
 
   !- Output Tendencies & Diagnostics
-  REAL, DIMENSION(its:ite,kts:kte), INTENT(INOUT) :: outu, outv, outt, outq, outqc, outbuoy, revsu_gf, prfil_gf, outnliq, outnice
+  REAL, DIMENSION(its:ite,kts:kte), INTENT(INOUT) :: outu, outv, outt, outq, outqc, outbuoy, revsu_gf, prfil_gf, outnliq, outnice,  outqliq, outqice
   REAL, DIMENSION(its:ite,kts:kte), INTENT(INOUT) :: vvel2d
   REAL, DIMENSION(its:ite),         INTENT(OUT)   :: pre, sig, lightn_dens
   REAL, DIMENSION(its:ite),         INTENT(INOUT) :: aa0_, aa1_, aa2_, aa3_, aa1_bl_, aa1_cin_, tau_bl_, tau_ec_
@@ -1301,6 +1346,7 @@ CONTAINS
   !- Local Variables (Work Arrays & Scalars)
   LOGICAL :: keep_going
   CHARACTER*128 :: ierrc(its:ite)
+  CHARACTER*128 :: ierrc_2m_save(its:ite)
   CHARACTER(LEN=2) :: cty
 
   !- Reals (1D Arrays)
@@ -1324,7 +1370,7 @@ CONTAINS
   REAL, DIMENSION(its:ite,kts:kte) :: tn_x, qo_x, qeso_x, heo_x, heso_x, zo_cup_x, qeso_cup_x, qo_cup_x, heo_cup_x, heso_cup_x
   REAL, DIMENSION(its:ite,kts:kte) :: po_cup_x, gammao_cup_x, tn_cup_x, hco_x, DBYo_x, u_cup_x, v_cup_x
   REAL, DIMENSION(its:ite,kts:kte) :: xhe_x, xhes_x, xt_x, xq_x, xqes_x, xqes_cup_x, xq_cup_x, xhe_cup_x, xhes_cup_x, gamma_cup_x, xt_cup_x
-  REAL, DIMENSION(its:ite,kts:kte) :: dtempdz, tempco, tempcdo, p_liq_ice, melting_layer, melting, c1d
+  REAL, DIMENSION(its:ite,kts:kte) :: dtempdz, tempco, tempcdo, p_liq_ice, p_liq_eff, pice_cloud_eff, melting_layer, melting, c1d
   REAL, DIMENSION(its:ite,kts:kte) :: up_massentru, up_massdetru, dd_massentru, dd_massdetru, prec_flx, evap_flx, qrr
   REAL, DIMENSION(its:ite,kts:kte) :: massflx, zenv, rho_hydr, alpha_H, alpha_Q
   REAL, DIMENSION(its:ite,kts:kte) :: dtdt, dqdt
@@ -1338,7 +1384,7 @@ CONTAINS
   REAL, DIMENSION(8)                 :: tend1d
 
   !- Local Integers
-  INTEGER, DIMENSION(its:ite) :: kzdown, kdet, kb, ierr2, ierr3, kbmax, start_level
+  INTEGER, DIMENSION(its:ite) :: kzdown, kdet, kb, ierr2, ierr3, kbmax, start_level, ierr_2m_save
   INTEGER, DIMENSION(its:ite,kts:kte) :: k_inv_layers
   INTEGER :: iloop, nall, iedt, nens, nens3, ki, I, K, KK, iresult, nvar, nvarbegin
   INTEGER :: jprnt, k1, k2, kbegzu, kdefi, kfinalzu, kstart, jmini, imid, k_free_trop
@@ -1363,6 +1409,23 @@ CONTAINS
   REAL                                 :: evap_(mtp), wetdep_(mtp), trash_(mtp), trash2_(mtp), residu_(mtp)
   REAL, DIMENSION(nmp,its:ite,kts:kte) :: dellampqi, dellampql, dellampcf
   REAL                                 :: massi, massf, dtime_max, evap, wetdep
+  
+    
+    !2M variables
+    ! The 2M module returns plume profiles.  The parent converts these profiles
+    ! to tendencies with the same operator used for legacy dellaqc.
+    real, dimension(its:ite,kts:kte) :: pice_2m
+    real, dimension(its:ite,kts:kte) :: qliq_up_2m, qice_up_2m
+    real, dimension(its:ite,kts:kte) :: nliq_up_2m, nice_up_2m
+    real, dimension(its:ite,kts:kte) :: dellanliq_2m, dellaqliq_2m
+    real, dimension(its:ite,kts:kte) :: dellanice_2m, dellaqice_2m
+    real, dimension(its:ite,kts:kte) :: nact_up_m3_2m
+    
+    !Explicit activation
+    type(AerPropsNew), dimension(:), intent(in) :: AerP
+    integer, intent(in) :: jcol_in
+    integer, dimension(:), intent(in) :: flip
+
 
   !=============================================================================
   ! 1. SCHEME PARAMETERS & INITIALIZATION
@@ -1943,27 +2006,115 @@ CONTAINS
      enddo
   ENDIF
 
-  IF(FIRST_GUESS_W .or. AUTOCONV == 4) THEN
-     call cup_up_moisture_light(cumulus, start_level, klcl, ierr, ierrc, zo_cup, qco, qrco, pwo, pwavo, hco, tempco, xland, &
-                                cnvfrc, srftype, po, p_cup, kbcon, ktop, cd, dbyo, clw_all, t_cup, qo, GAMMAo_cup, zuo,   &
-                                qeso_cup, k22, qo_cup, ZQEXEC, use_excess, rho, up_massentr, up_massdetr,                 &
-                                psum, psumh, c1d, x_add_buoy, 1, itf, ktf, ipr, jpr, its, ite, kts, kte)
 
-     call cup_up_vvel(vvel2d, vvel1d, zws, entr_rate, cd, zo, zo_cup, zuo, dbyo, GAMMAo_CUP, tn_cup, &
-                      tempco, qco, qrco, qo, klcl, kbcon, ktop, ierr, itf, ktf, its, ite, kts, kte)
-  ENDIF
 
-  call cup_up_moisture(cumulus, start_level, klcl, ierr, ierrc, zo_cup, qco, qrco, pwo, pwavo, hco, tempco, xland,   &
+   if (USE_CUP_2M_MOISTURE) then 
+                         
+        pice_2m       = 0.0
+        qliq_up_2m    = 0.0
+        qice_up_2m    = 0.0
+        nliq_up_2m    = 0.0
+        nice_up_2m    = 0.0
+        dellanliq_2m  = 0.0
+        dellanice_2m  = 0.0
+        dellaqliq_2m  = 0.0
+        dellaqice_2m  = 0.0
+        nact_up_m3_2m = 0.0
+
+        ! Optional parent/legacy updraft velocity source for 2M sensitivity tests.
+        ! GF2M_W_OPTION = 1: full 2M uses its internal velocity estimate.
+        ! GF2M_W_OPTION = 2: full 2M uses this parent legacy cup_up_vvel profile.
+        ! GF2M_W_OPTION = 3: full 2M uses max(internal, parent legacy).
+        if(GF2M_W_OPTION == 2 .or. GF2M_W_OPTION == 3) then
+           ierr_2m_save(:)  = ierr(:)
+           ierrc_2m_save(:) = ierrc(:)
+
+           call cup_up_moisture_light(cumulus, start_level, klcl, ierr, ierrc, zo_cup, qco, qrco, pwo, pwavo, hco, tempco, xland, &
+                                      cnvfrc, srftype, po, p_cup, kbcon, ktop, cd, dbyo, clw_all, t_cup, qo, GAMMAo_cup, zuo,   &
+                                      qeso_cup, k22, qo_cup, ZQEXEC, use_excess, rho, up_massentr, up_massdetr,                 &
+                                      psum, psumh, c1d, x_add_buoy, 1, itf, ktf, ipr, jpr, its, ite, kts, kte)
+
+           call cup_up_vvel(vvel2d, vvel1d, zws, entr_rate, cd, zo, zo_cup, zuo, dbyo, GAMMAo_CUP, tn_cup, &
+                            tempco, qco, qrco, qo, klcl, kbcon, ktop, ierr, itf, ktf, its, ite, kts, kte)
+
+           ! This light/vvel call is only a diagnostic W source for full 2M.
+           ! It must not alter triggering/cloud-state decisions before the real
+           ! 2M microphysics call.
+           ierr(:)  = ierr_2m_save(:)
+           ierrc(:) = ierrc_2m_save(:)
+        endif
+       
+       
+     	call cup_up_moisture_2M(cumulus, start_level, &
+         ierr, ierrc, zo_cup, qco, qrco, pwo, pwavo, hco, tempco, xland, &
+         AerP, jcol_in, flip, po, ktop, cd, dbyo, clw_all, t_cup, qo, GAMMAo_cup, zuo, qeso_cup, &
+         k22, qo_cup, ZQEXEC, rho, up_massentr, up_massdetr, psum, &
+         psumh, x_add_buoy, zws, entr_rate, vvel2d, vvel1d, &
+         pice_2m, nliq_up_2m, nice_up_2m, qliq_up_2m, qice_up_2m, &
+         nact_up_m3_2m, &
+         itf, ktf, its, ite, kts, kte, use_linear_subcl_mf)
+         
+         
+ 
+   	else 
+         
+         
+          IF(FIRST_GUESS_W .or. AUTOCONV == 4) THEN
+             call cup_up_moisture_light(cumulus, start_level, klcl, ierr, ierrc, zo_cup, qco, qrco, pwo, pwavo, hco, tempco, xland, &
+                                        cnvfrc, srftype, po, p_cup, kbcon, ktop, cd, dbyo, clw_all, t_cup, qo, GAMMAo_cup, zuo,   &
+                                        qeso_cup, k22, qo_cup, ZQEXEC, use_excess, rho, up_massentr, up_massdetr,                 &
+                                        psum, psumh, c1d, x_add_buoy, 1, itf, ktf, ipr, jpr, its, ite, kts, kte)
+
+             call cup_up_vvel(vvel2d, vvel1d, zws, entr_rate, cd, zo, zo_cup, zuo, dbyo, GAMMAo_CUP, tn_cup, &
+                              tempco, qco, qrco, qo, klcl, kbcon, ktop, ierr, itf, ktf, its, ite, kts, kte)
+          ENDIF
+
+          call cup_up_moisture(cumulus, start_level, klcl, ierr, ierrc, zo_cup, qco, qrco, pwo, pwavo, hco, tempco, xland,   &
                        ccn_in, cnvfrc, srftype, po, p_cup, kbcon, ktop, cd, dbyo, clw_all, t_cup, qo, GAMMAo_cup, zuo, qeso_cup, &
                        k22, qo_cup, ZQEXEC, use_excess, rho, up_massentr, up_massdetr, psum,                         &
                        psumh, c1d, x_add_buoy, vvel2d, vvel1d, zws, entr_rate,                                       &
                        1, itf, ktf, ipr, jpr, its, ite, kts, kte)
+
+
+	end if                      
+
+  !---------------------------------------------------------------------------
+  ! Effective cloud-ice fraction used by the parent plume thermodynamics.
+  !
+  ! For the legacy moisture path, retained cloud phase is the original
+  ! temperature-based GF partition: ice fraction = 1 - p_liq_ice.
+  !
+  ! Retained-cloud thermodynamic phase is controlled separately from
+  ! mass authority by GF2M_PLIQ_EFF_OPTION below.
+  !
+  ! Do not use pice_cloud_eff directly for get_melting_profile: melting needs
+  ! the falling precipitation phase, whereas pice_2m is the retained cloud
+  ! condensate phase.  Until 2M exports a rain/snow precipitation fraction,
+  ! keep melting on the original temperature-based precip partition.
+  !---------------------------------------------------------------------------
+  ! Effective liquid/ice phase used by parent retained-cloud thermodynamics.
+  ! This is intentionally independent of the split/number detrainment pathway.
+  !   GF2M_PLIQ_EFF_OPTION = 0 : legacy temperature-based liquid fraction
+  !   GF2M_PLIQ_EFF_OPTION = 1 : full-2M phase, p_liq_eff = 1 - pice_2m
+  p_liq_eff(:,:) = max(0.0, min(1.0, p_liq_ice(:,:)))
+
+  if (USE_CUP_2M_MOISTURE .and. GF2M_PLIQ_EFF_OPTION == 1) then
+     do i = its, itf
+        if(ierr(i) /= 0) cycle
+        do k = kts, kte
+           p_liq_eff(i,k) = max(0.0, min(1.0, 1.0 - pice_2m(i,k)))
+        enddo
+     enddo
+  endif
+
+  pice_cloud_eff(:,:) = max(0.0, min(1.0, 1.0 - p_liq_eff(:,:)))
 
   DO i = its, itf
      if(ierr(i) /= 0) cycle
      cupclw(i, kts:ktop(i)+1) = qrco(i, kts:ktop(i)+1)
   ENDDO
 
+  !ASk about this
   call get_melting_profile(ierr, tn_cup, po_cup, p_liq_ice, melting_layer, qrco, pwo, melting, itf, ktf, its, ite, kts, kte, cumulus)
 
   !-----------------------------------------------------------------------------
@@ -2005,8 +2156,8 @@ CONTAINS
            vc(i,k)  = vc(i,k-1)
         endif
 
-        hc(i,k)  = hc(i,k)  + (1.0 - p_liq_ice(i,k)) * qrco(i,k) * xlf
-        hco(i,k) = hco(i,k) + (1.0 - p_liq_ice(i,k)) * qrco(i,k) * xlf
+        hc(i,k)  = hc(i,k)  + pice_cloud_eff(i,k) * qrco(i,k) * xlf
+        hco(i,k) = hco(i,k) + pice_cloud_eff(i,k) * qrco(i,k) * xlf
      enddo
 
      do k = ktop(i) + 2, ktf
@@ -2349,7 +2500,7 @@ CONTAINS
               else
                  hco_x(i,k) = hco_x(i,k-1)
               endif
-              hco_x(i,k) = hco_x(i,k) + (1.0 - p_liq_ice(i,k)) * qrco(i,k) * xlf
+              hco_x(i,k) = hco_x(i,k) + pice_cloud_eff(i,k) * qrco(i,k) * xlf
            enddo
            do k = ktop(i) + 2, ktf
               hco_x(i,k) = heso_cup_x(i,k)
@@ -2842,6 +2993,50 @@ CONTAINS
      enddo
   ENDDO
 
+  !--------------------------------------------------------------------------
+  ! 7.2 2M split and number tendencies.
+  !
+  ! Single retained architecture after removing the mass-authority switch:
+  !   * parent total condensate tendency, dellaqc, remains authoritative;
+  !   * qliq/qice/nliq/nice tendencies use the parent detrainment operator
+  !     with Process_Library scaling factors;
+  !   * qliq/qice mass tendencies are rescaled to the parent total.
+  !
+  ! Process_Library controls:
+  !   GF2M_DET_SCALE          explicit detrainment below cloud top
+  !   GF2M_C1D_SCALE          c1d exchange/detrainment branch, inactive when C1=0
+  !   GF2M_TOP_DET_SCALE      explicit cloud-top detrainment
+  !   GF2M_DET_LEVEL_AVERAGE  .true.  : use 0.5*(phi(k)+phi(k+1)) 
+  !                            .false. : use the local GF2M value phi(k)
+  !--------------------------------------------------------------------------
+  IF (USE_CUP_2M_MOISTURE) THEN
+
+     ! Parent total dellaqc is left untouched: it was computed above from qrc
+     ! using the parent GF scalar detrainment operator.  Only the split/number
+     ! tendencies are computed here.
+     CALL apply_cup_up_detrain_operator(cumulus, ierr, ktop, po_cup, zo_cup, &
+                                        up_massdetro, zuo, c1d, qliq_up_2m, dellaqliq_2m, &
+                                        itf, ktf, its, ite, kts, kte, &
+                                        GF2M_DET_SCALE, GF2M_C1D_SCALE, GF2M_TOP_DET_SCALE)
+     CALL apply_cup_up_detrain_operator(cumulus, ierr, ktop, po_cup, zo_cup, &
+                                        up_massdetro, zuo, c1d, qice_up_2m, dellaqice_2m, &
+                                        itf, ktf, its, ite, kts, kte, &
+                                        GF2M_DET_SCALE, GF2M_C1D_SCALE, GF2M_TOP_DET_SCALE)
+     CALL apply_cup_up_detrain_operator(cumulus, ierr, ktop, po_cup, zo_cup, &
+                                        up_massdetro, zuo, c1d, nliq_up_2m, dellanliq_2m, &
+                                        itf, ktf, its, ite, kts, kte, &
+                                        GF2M_DET_SCALE, GF2M_C1D_SCALE, GF2M_TOP_DET_SCALE)
+     CALL apply_cup_up_detrain_operator(cumulus, ierr, ktop, po_cup, zo_cup, &
+                                        up_massdetro, zuo, c1d, nice_up_2m, dellanice_2m, &
+                                        itf, ktf, its, ite, kts, kte, &
+                                        GF2M_DET_SCALE, GF2M_C1D_SCALE, GF2M_TOP_DET_SCALE)
+
+     CALL enforce_2m_split_tendency_conservation(ierr, ktop, dellaqc, &
+                                                  dellaqliq_2m, dellaqice_2m, &
+                                                  itf, ktf, its, ite, kts, kte)
+
+  ENDIF
+
   !=============================================================================
   ! 8. GRID-SCALE FEEDBACKS & CHEMISTRY TRANSPORT
   !=============================================================================
@@ -2909,8 +3104,37 @@ CONTAINS
      enddo
   ENDIF
 
-  IF(LIQ_ICE_NUMBER_CONC == 1) THEN
-     call get_liq_ice_number_conc(itf, ktf, its, ite, kts, kte, ierr, ktop, cnvfrc, srftype, dtime, rho, outqc, tempco, outnliq, outnice)
+  
+  !---------------------------------------------------------------------------
+  ! 2M diagnostic split tendencies.
+  !
+  ! The 2M module returns plume profiles.  The parent total outqc remains
+  ! authoritative from cup_output_ens_3d(dellaqc).  The phase-resolved mass
+  ! tendencies and number tendencies were computed above with the scaled
+  ! parent detrainment operator.  qliq/qice mass tendencies have already been
+  ! rescaled so outqliq+outqice is consistent with outqc.
+  !---------------------------------------------------------------------------
+  IF (USE_CUP_2M_MOISTURE) THEN
+     outnliq(:,:) = 0.0
+     outnice(:,:) = 0.0
+     outqliq(:,:) = 0.0
+     outqice(:,:) = 0.0
+
+     DO i = its, itf
+        IF (ierr(i) /= 0) CYCLE
+        DO k = kts, ktop(i)
+           outnliq(i,k) = dellanliq_2m(i,k) * xmb(i)
+           outnice(i,k) = dellanice_2m(i,k) * xmb(i)
+           outqliq(i,k) = dellaqliq_2m(i,k) * xmb(i)
+           outqice(i,k) = dellaqice_2m(i,k) * xmb(i)
+
+        ENDDO
+     ENDDO
+
+  ELSEIF (LIQ_ICE_NUMBER_CONC == 1) THEN
+     call get_liq_ice_number_conc(itf, ktf, its, ite, kts, kte, ierr, ktop, &
+                                  cnvfrc, srftype, dtime, rho, outqc, tempco, &
+                                  outnliq, outnice)
   ENDIF
 
   !-----------------------------------------------------------------------------
@@ -6963,6 +7187,172 @@ loop0:  do k= kbcon(i),ktop(i)
      enddo
 
    end subroutine cup_up_vvel
+
+!------------------------------------------------------------------------------------
+   SUBROUTINE enforce_2m_split_tendency_conservation(ierr, ktop, phi_total, phi_liq, phi_ice, &
+                                                     itf, ktf, its, ite, kts, kte)
+
+     ! Enforce exact conservation of the phase-resolved 2M diagnostic split
+     ! after the parent detrainment operator has been applied to qrc, qliq,
+     ! and qice with the same branch/stencil.  This should normally correct
+     ! only roundoff or small clipping residuals.  It rescales the split to
+     ! the parent total without changing the parent total tendency.
+
+     IMPLICIT NONE
+
+     INTEGER, INTENT(IN) :: itf, ktf, its, ite, kts, kte
+     INTEGER, DIMENSION(its:ite), INTENT(IN) :: ierr, ktop
+     REAL, DIMENSION(its:ite,kts:kte), INTENT(IN)    :: phi_total
+     REAL, DIMENSION(its:ite,kts:kte), INTENT(INOUT) :: phi_liq, phi_ice
+
+     INTEGER :: i, k
+     REAL :: qtot, qsplit, scale
+
+     DO i = its, itf
+        IF(ierr(i) /= 0) CYCLE
+        DO k = kts, ktop(i)
+           qtot = max(0.0, phi_total(i,k))
+           phi_liq(i,k) = max(0.0, phi_liq(i,k))
+           phi_ice(i,k) = max(0.0, phi_ice(i,k))
+           qsplit = phi_liq(i,k) + phi_ice(i,k)
+
+           IF(qtot <= 0.0) THEN
+              phi_liq(i,k) = 0.0
+              phi_ice(i,k) = 0.0
+           ELSEIF(qsplit > 0.0) THEN
+              scale = qtot / qsplit
+              phi_liq(i,k) = phi_liq(i,k) * scale
+              phi_ice(i,k) = max(0.0, qtot - phi_liq(i,k))
+           ELSE
+              ! This should not occur if qrc = qliq + qice on exit from 2M.
+              ! Fall back to liquid rather than creating negative or undefined mass.
+              phi_liq(i,k) = qtot
+              phi_ice(i,k) = 0.0
+           ENDIF
+        ENDDO
+     ENDDO
+
+   END SUBROUTINE enforce_2m_split_tendency_conservation
+
+!------------------------------------------------------------------------------------
+   SUBROUTINE apply_cup_up_detrain_operator(cumulus, ierr, ktop, po_cup, zo_cup, up_massdetro, zuo, c1d, phi_up, phi_tend, &
+                                            itf, ktf, its, ite, kts, kte, det_scale_in, c1d_scale_in, top_det_scale_in)
+
+     ! Apply the parent updraft detrainment operator to an arbitrary GF2M
+     ! updraft scalar profile.  Explicit detrainment can use either the legacy
+     ! half-level scalar average or the local GF2M level value, controlled by
+     ! GF2M_DET_LEVEL_AVERAGE.  The C1D term remains local by construction.
+     ! This is used only for 2M diagnostics: qliq, qice, nliq, nice.
+
+     IMPLICIT NONE
+
+     CHARACTER*(*), INTENT(IN) :: cumulus
+     INTEGER, INTENT(IN) :: itf, ktf, its, ite, kts, kte
+     INTEGER, DIMENSION(its:ite), INTENT(IN) :: ierr, ktop
+     REAL, DIMENSION(its:ite,kts:kte), INTENT(IN) :: po_cup, zo_cup, up_massdetro, zuo, c1d, phi_up
+     REAL, DIMENSION(its:ite,kts:kte), INTENT(OUT) :: phi_tend
+
+     REAL, INTENT(IN), OPTIONAL :: det_scale_in, c1d_scale_in, top_det_scale_in
+
+     INTEGER :: i, k
+     REAL :: dp, dz, detup, phi_det
+     REAL :: det_scale, c1d_scale, top_det_scale, det_term, c1d_term
+
+     det_scale = 1.0
+     c1d_scale = 1.0
+     top_det_scale = 1.0
+     IF(PRESENT(det_scale_in)) det_scale = det_scale_in
+     IF(PRESENT(c1d_scale_in)) c1d_scale = c1d_scale_in
+     IF(PRESENT(top_det_scale_in)) top_det_scale = top_det_scale_in
+
+     det_scale = max(0.0, det_scale)
+     c1d_scale = max(0.0, c1d_scale)
+     top_det_scale = max(0.0, top_det_scale)
+
+     phi_tend(:,:) = 0.0
+
+     IF(VERT_DISCR == 0) THEN
+        DO i = its, itf
+           IF(ierr(i) /= 0) CYCLE
+           DO k = kts, ktop(i)
+              dp = 100.0 * (po_cup(i,k) - po_cup(i,k+1))
+              IF(dp <= 0.0) CYCLE
+
+              detup = up_massdetro(i,k)
+              IF(GF2M_DET_LEVEL_AVERAGE) THEN
+                 phi_det = 0.5 * (phi_up(i,k+1) + phi_up(i,k))
+              ELSE
+                 phi_det = phi_up(i,k)
+              ENDIF
+              det_term = detup * phi_det * g / dp
+              IF(.NOT. USE_C1D .OR. trim(cumulus) == 'mid' .OR. trim(cumulus) == 'shallow') THEN
+                 IF(k == ktop(i)) THEN
+                    phi_tend(i,k) = top_det_scale * det_term
+                 ELSE
+                    phi_tend(i,k) = det_scale * det_term
+                 ENDIF
+              ELSE
+                 IF(k == ktop(i)) THEN
+                    phi_tend(i,k) = top_det_scale * det_term
+                 ELSE
+                    dz = zo_cup(i,k+1) - zo_cup(i,k)
+                    c1d_term = zuo(i,k) * c1d(i,k) * phi_up(i,k) * dz / dp * g
+                    phi_tend(i,k) = c1d_scale * c1d_term
+                 ENDIF
+              ENDIF
+           ENDDO
+        ENDDO
+
+     ELSEIF(VERT_DISCR == 1) THEN
+        DO i = its, itf
+           IF(ierr(i) /= 0) CYCLE
+           DO k = kts, ktop(i)
+              dp = 100.0 * (po_cup(i,k) - po_cup(i,k+1))
+              IF(dp <= 0.0) CYCLE
+
+              detup = up_massdetro(i,k)
+              IF(GF2M_DET_LEVEL_AVERAGE) THEN
+                 phi_det = 0.5 * (phi_up(i,k+1) + phi_up(i,k))
+              ELSE
+                 phi_det = phi_up(i,k)
+              ENDIF
+              det_term = detup * phi_det * g / dp
+              IF(trim(cumulus) == 'mid' .OR. trim(cumulus) == 'shallow') THEN
+                 IF(k == ktop(i)) THEN
+                    phi_tend(i,k) = top_det_scale * det_term
+                 ELSE
+                    phi_tend(i,k) = det_scale * det_term
+                 ENDIF
+              ELSEIF(trim(cumulus) == 'deep') THEN
+                 IF(.NOT. USE_C1D) THEN
+                    IF(k == ktop(i)) THEN
+                       phi_tend(i,k) = top_det_scale * det_term
+                    ELSE
+                       phi_tend(i,k) = det_scale * det_term
+                    ENDIF
+                 ELSEIF(c1 > 0.0) THEN
+                    IF(k == ktop(i)) THEN
+                       phi_tend(i,k) = top_det_scale * det_term
+                    ELSE
+                       dz = zo_cup(i,k+1) - zo_cup(i,k)
+                       c1d_term = zuo(i,k) * c1d(i,k) * phi_up(i,k) * dz / dp * g
+                       phi_tend(i,k) = c1d_scale * c1d_term
+                    ENDIF
+                 ELSE
+                    IF(k == ktop(i)) THEN
+                       phi_tend(i,k) = top_det_scale * det_term
+                    ELSE
+                       dz = zo_cup(i,k+1) - zo_cup(i,k)
+                       c1d_term = zuo(i,k) * c1d(i,k) * phi_up(i,k) * dz / dp * g
+                       phi_tend(i,k) = (c1d_scale * c1d_term + det_scale * det_term) * 0.5
+                    ENDIF
+                 ENDIF
+              ENDIF
+           ENDDO
+        ENDDO
+     ENDIF
+
+   END SUBROUTINE apply_cup_up_detrain_operator
 
 !------------------------------------------------------------------------------------
    SUBROUTINE cup_output_ens_3d(name,xff_shal,xff_mid,xf_ens,ierr,dellat,dellaq,dellaqc,  &
