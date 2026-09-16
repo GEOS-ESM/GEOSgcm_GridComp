@@ -38,6 +38,7 @@ module shoc
     real    :: LENFAC1
     real    :: LENFAC2
     real    :: LENFAC3
+    real    :: BRUNT_CBLH_FAC
  endtype SHOCPARAMS_TYPE
  type (SHOCPARAMS_TYPE) :: shocparams
 
@@ -62,6 +63,7 @@ module shoc
                  smixt_inv, smixt1_inv,                          &  ! out
                  smixt2_inv,smixt3_inv,                          &  ! out
                  bruntmst_inv, ri_inv, prnum_inv,                &  ! out
+                 lpar_inv,                                       &  ! out
                  shocparams )
 
 
@@ -111,6 +113,7 @@ module shoc
   real, intent(  out) :: isotropy_inv(nx,ny,nzm) ! return to isotropy timescale
   real, intent(inout) :: tkesbdiss_inv(nx,ny,nzm)  ! dissipation
 
+  real, dimension(:,:,:), pointer :: lpar_inv
   real, dimension(:,:,:), pointer :: tkesbbuoy_inv  ! buoyancy production
   real, dimension(:,:,:), pointer :: tkesbshear_inv ! shear production
 
@@ -310,7 +313,8 @@ module shoc
   if (associated(bruntmst_inv)) bruntmst_inv(:,:,1:nzm) = brunt(:,:,nzm:1:-1)
   if (associated(prnum_inv))    prnum_inv(:,:,0:nz-1)     = prnum(:,:,nz:1:-1)
   if (associated(ri_inv))       ri_inv(:,:,0:nz-1)        = ri(:,:,nz:1:-1)
-
+  if (associated(lpar_inv))     lpar_inv(:,:,1:nzm)      = l_par(:,:,nzm:1:-1)
+  
 !========================================!
 
 
@@ -690,7 +694,7 @@ contains
 ! Reduction of mixing length in the stable regions (where B.-V. freq. > 0) is required.
 ! Here we find regions of Brunt-Vaisalla freq. > 0 for later use.
 
-            if (brunt(i,j,k) < 1e-5 .or. zl(i,j,k).lt.0.75*dryzpbl(i,j)) then
+            if (brunt(i,j,k) < 1e-5 .or. zl(i,j,k).lt.SHOCPARAMS%BRUNT_CBLH_FAC*dryzpbl(i,j)) then
               brunt2(i,j,k) = bruntmin
             else
               brunt2(i,j,k) = brunt(i,j,K)

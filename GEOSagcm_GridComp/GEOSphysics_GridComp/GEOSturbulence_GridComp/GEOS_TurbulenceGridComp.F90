@@ -1704,6 +1704,15 @@ end if
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'dry_convective_boundary_layer_height',                  &
+       SHORT_NAME = 'DRYCBLH',                                               &
+       UNITS      = 'm',                                                     &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+    
+    call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'transcom_planetary_boundary_layer_height',              &
        SHORT_NAME = 'TCZPBL',                                                &
        UNITS      = 'm',                                                     &
@@ -1883,6 +1892,14 @@ end if
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                                  &
+       SHORT_NAME = 'LPARCEL',                                 &
+       LONG_NAME  = 'Parcel_length_scale_from_SHOC',                  &
+       UNITS      = 'm',                                         &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
+    
     call MAPL_AddExportSpec(GC,                                  &
        SHORT_NAME = 'SHOCPRNUM',                                 &
        LONG_NAME  = 'Prandtl_number_from_SHOC',                  &
@@ -2952,6 +2969,7 @@ end if
      real, dimension(:,:,:), pointer     :: EKH, EKM, KHLS, KMLS, KHRAD, KHSFC
      real, dimension(:,:  ), pointer     :: Z0, Z0H, EIS
      real, dimension(:,:  ), pointer     :: BSTAR, USTAR, PPBL, WERAD, WESFC,VSCRAD,KERAD,DBUOY,ZSML,ZCLD,ZRADML,FRLAND,TRINVBS,TRINVFRQ,TRINVDELT
+     real, dimension(:,:  ), pointer     :: DRYCBLHx => null()
      real, dimension(:,:  ), pointer     :: TCZPBL => null()
      real, dimension(:,:  ), pointer     :: ZPBL2 => null()
      real, dimension(:,:  ), pointer     :: ZPBL10P => null()
@@ -2975,7 +2993,7 @@ end if
 
      real, dimension(:,:,:), pointer     :: LSHOC,BRUNTSHOC,ISOTROPY, &
                                             LSHOC1,LSHOC2,LSHOC3, & 
-                                            SHOCPRNUM,&
+                                            SHOCPRNUM,LPARSHOC,&
                                             TKEBUOY,TKESHEAR,TKEDISS,TKEDISSx, &
                                             SL2, SL3, W2, W3, WSL, SLQT !, W3CANUTO, QT2DIAG,SL2DIAG,SLQTDIAG
      real, dimension(:,:), pointer       :: edmf_depth, lobukhov
@@ -3260,10 +3278,15 @@ end if
        call MAPL_GetResource (MAPL, SHOCPARAMS%CEFAC,   trim(COMP_NAME)//"_SHC_CEFAC:",       default=1.0,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%CESFAC,  trim(COMP_NAME)//"_SHC_CESFAC:",      default=4.,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENOPT,  trim(COMP_NAME)//"_SHC_LENOPT:",      default=3,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1, trim(COMP_NAME)//"_SHC_LENFAC1:",     default=5.,   RC=STATUS); VERIFY_(STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2, trim(COMP_NAME)//"_SHC_LENFAC2:",     default=2.,   RC=STATUS); VERIFY_(STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=0.5,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1, trim(COMP_NAME)//"_SHC_LENFAC1:",     default=1.,   RC=STATUS); VERIFY_(STATUS)       
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2, trim(COMP_NAME)//"_SHC_LENFAC2:",     default=1.,   RC=STATUS); VERIFY_(STATUS)       
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=1.,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT, trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=2,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%BRUNT_CBLH_FAC, trim(COMP_NAME)//"_SHC_BRUNT_CBLH_FAC:", default=1.,    RC=STATUS); VERIFY_(STATUS)
+       SHOCPARAMS%LENFAC1 = 5. * SHOCPARAMS%LENFAC1
+       SHOCPARAMS%LENFAC2 = 2. * SHOCPARAMS%LENFAC2
+       SHOCPARAMS%LENFAC3 = 0.5 * SHOCPARAMS%LENFAC3
+       SHOCPARAMS%BRUNT_CBLH_FAC = 0.75 * SHOCPARAMS%BRUNT_CBLH_FAC
        call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 6.0 , RC=STATUS); VERIFY_(STATUS)
      else
        call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 1.0 , RC=STATUS); VERIFY_(STATUS)
@@ -3312,6 +3335,8 @@ end if
      call MAPL_GetPointer(EXPORT,    ZPBL_SC, 'ZPBL_SC',            RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,    TCZPBL,  'TCZPBL',             RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,    DRYCBLHx,  'DRYCBLH',           RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,    ZPBL2,  'ZPBL2',               RC=STATUS)
      VERIFY_(STATUS)
@@ -3499,6 +3524,8 @@ end if
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, SHOCPRNUM,'SHOCPRNUM', RC=STATUS)
      VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, LPARSHOC,'LPARCEL', RC=STATUS)
+     VERIFY_(STATUS)
 
      call MAPL_GetPointer(INTERNAL, TKEDISS, 'TKEDISS' , RC=STATUS); VERIFY_(STATUS)
 ! Initialize some arrays
@@ -3652,7 +3679,8 @@ end if
       ! Entrainment rate options
       call MAPL_GetResource (MAPL, MFPARAMS%ET,        "EDMF_ET:",            default=2,     RC=STATUS)
       ! constant entrainment rate   
-      call MAPL_GetResource (MAPL, MFPARAMS%ENT0,      "EDMF_ENT0:",          default=0.35,  RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%ENT0,      "EDMF_ENT0:",          default=1.,  RC=STATUS)
+      MFPARAMS%ENT0 = 0.35 * MFPARAMS%ENT0
       ! L0 if ET==1
       call MAPL_GetResource (MAPL, MFPARAMS%L0,        "EDMF_L0:",            default=100.,  RC=STATUS)
       ! L0fac if ET==2
@@ -3869,6 +3897,7 @@ end if
             drycblh(i,j) = ZL0(i,j,k)
          end do
       end do
+      if (associated(DRYCBLHx)) DRYCBLHx = drycblh
 
     ELSE            ! if there is no mass-flux
       ae3   = 1.0
@@ -3973,6 +4002,7 @@ end if
                        BRUNTSHOC,             &
                        RI,                    &
                        SHOCPRNUM,             &
+                       LPARSHOC,              &
                        !== Tuning params ==
                        SHOCPARAMS )
 
