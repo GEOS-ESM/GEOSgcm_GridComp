@@ -8,7 +8,7 @@ module gw_convect
   use gw_utils, only: GW_PRC, GW_R8, get_unit_vector, dot_2d, midpoint_interp
   use gw_common, only: GWBand, qbo_hdepth_scaling, gw_drag_prof, hr_cf, &
                        calc_taucd, momentum_flux, momentum_fixer, &
-                       energy_momentum_adjust, energy_change, energy_fixer 
+                       energy_momentum_adjust, energy_change, energy_fixer
 
   use MAPL_Constants, only: MAPL_RGAS, MAPL_CP, MAPL_GRAV
 
@@ -84,7 +84,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
 
   ! Vars needed by NetCDF operators
   integer  :: ncid, dimid, varid, status
-  
+
   status = nf_open(file_name , 0, ncid)
 
   status = NF_INQ_DIMID(ncid, 'PS', dimid)
@@ -101,7 +101,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
 
   allocate( mfcc(hd_mfcc , mw_mfcc, ps_mfcc) )
   allocate( hdcc(hd_mfcc) )
-   
+
   status = NF_INQ_VARID(ncid, 'HD', varid)
   IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
   status = NF_GET_VAR_DOUBLE(ncid, varid, hdcc )
@@ -132,7 +132,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
 
   ! midpoint of spectrum in netcdf file is ps_mfcc (odd number) divided by 2, plus 1
   ! E.g., ps_mfcc = 81. So, ps_mfcc_mid = 41
-  !       1   11  21  31 32 33 34 35 36 37 38 39 40 41 42 43 ... 
+  !       1   11  21  31 32 33 34 35 36 37 38 39 40 41 42 43 ...
   !      -40 -30 -20 -10 -9 -8 -7 -6 -5 -4 -3 -2 -1  0 +1 +2 ...
   ps_mfcc_mid= INT(ngwv_file/2) + 1
 
@@ -143,9 +143,9 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
 
     allocate(desc%mfcc(desc%maxh,-desc%maxuh:desc%maxuh,-band%ngwv:band%ngwv), stat=status )
 
-    desc%mfcc( : , -desc%maxuh:desc%maxuh , -band%ngwv            :band%ngwv             ) & 
+    desc%mfcc( : , -desc%maxuh:desc%maxuh , -band%ngwv            :band%ngwv             ) &
        = mfcc( :,             :           , -band%ngwv+ps_mfcc_mid:band%ngwv+ps_mfcc_mid )
-  
+
     ! While not currently documented in the file, it uses kilometers. Convert
     ! to meters.
     desc%hd = hdcc * 1000.0
@@ -177,7 +177,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
        cw(kc) =  10.0*(4.0/real(band%ngwv))*kc
        cw(kc) =  exp(-(cw(kc)/30.)**2)
     enddo
-    cw = cw*(sum(cw4)/sum(cw)) 
+    cw = cw*(sum(cw4)/sum(cw))
     desc%et_bkg_dqcdt_forcing = et_use_dqcdt
     desc%et_bkg_speed_forcing = et_use_speed
     do i=1,ncol
@@ -205,7 +205,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
     enddo
     deallocate( cw, cw4 )
   end if
-    
+
 end subroutine gw_beres_init
 
 !------------------------------------
@@ -383,15 +383,15 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
 
   ! Source wind speed and direction.
   do i=1,ncol
-   uconv(i) = u(i,desc%k(i))
-   vconv(i) = v(i,desc%k(i))
+   uconv(i) = u(i,int(desc%k(i)))
+   vconv(i) = v(i,int(desc%k(i)))
   enddo
 
   ! Get the unit vector components and magnitude at the source level.
   ubi1d = 0.0
   call get_unit_vector(uconv, vconv, xv, yv, ubi1d)
   do i=1,ncol
-   ubi(i,desc%k(i)+1) = ubi1d(i)
+   ubi(i,int(desc%k(i))+1) = ubi1d(i)
   enddo
 
   ! Project the local wind at midpoints onto the source wind.
@@ -414,12 +414,12 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
           uh(i) = uh(i)/(boti(i)-topi(i)+1)
          ! Find the cell speed where the storm speed is > 10 m/s.
          ! Storm speed is taken to be the source wind speed.
-          CS(i) = sign(max(abs(ubm(i,desc%k(i)))-10.0, 0.0), ubm(i,desc%k(i)))
+          CS(i) = sign(max(abs(ubm(i,int(desc%k(i))))-10.0, 0.0), ubm(i,int(desc%k(i))))
           uh(i) = uh(i) - CS(i)
      else
          ! For shallow convection, wind is relative to ground, and "heating
          ! region" wind is just the source level wind.
-          uh(i) = ubm(i,desc%k(i))
+          uh(i) = ubm(i,int(desc%k(i)))
      endif
   enddo
 
@@ -472,7 +472,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
 
         ! Adjust for critical level filtering.
         tau0(Umini(i):Umaxi(i)) = 0.0
- 
+
         tau(i,:,topi(i)+1) = tau0
 
      else
@@ -487,7 +487,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
           ! Proxy 1: The Moist Condensate (Precipitation)
            if (desc%et_bkg_dqcdt_forcing) then
                q0(i) = 0.0
-               do k = desc%k(i), 1, -1
+               do k = int(desc%k(i)), 1, -1
                  if (dqcdt(i,k) > q0(i)) q0(i) = dqcdt(i,k)
                end do
                ! Scale moist multiplier (using the optimized * 5.e8 factor)
@@ -505,15 +505,15 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
                dry_mult = 1.0
            endif
            phys_mult = MAX(1.0, moist_mult+dry_mult-1.0)
-           tau(i,:,desc%k(i)+1) = desc%taubck(i,:) * phys_mult
+           tau(i,:,int(desc%k(i))+1) = desc%taubck(i,:) * phys_mult
            topi(i) = desc%k(i)
         else
           ! use latitudinal dependence
           ! include forced background stress in extra tropical large-scale systems
           ! Set the phase speeds and wave numbers in the direction of the source wind.
-          ! Set the source stress magnitude (positive only, note that the sign of the 
+          ! Set the source stress magnitude (positive only, note that the sign of the
           ! stress is the same as (c-u).
-           tau(i,:,desc%k(i)+1) = desc%taubck(i,:)
+           tau(i,:,int(desc%k(i))+1) = desc%taubck(i,:)
            topi(i) = desc%k(i)
         endif
  
@@ -639,7 +639,7 @@ subroutine gw_beres_ifc( band, &
           dqcdt=dqcdt, speed=speed)
 
      ! Solve for the drag profile with convective sources.
-     call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
+     call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
           src_level, tend_level, dt, t,    &
           piln, rhoi, nm, ni, ubm, ubi, xv, yv, &
           c, kvtt, tau, utgw, vtgw, ttgw, gwut, alpha)
@@ -663,18 +663,18 @@ end subroutine gw_beres_ifc
 !--------------------------------------------------------------------------
 
 subroutine handle_err(status)
-  
+
   implicit         none
-  
+
 #include <netcdf.inc>
-  
+
   integer          status
-  
+
   if (status .ne. nf_noerr) then
     print *, nf_strerror(status)
     stop 'Stopped'
   endif
-  
+
 end subroutine handle_err
 
 
