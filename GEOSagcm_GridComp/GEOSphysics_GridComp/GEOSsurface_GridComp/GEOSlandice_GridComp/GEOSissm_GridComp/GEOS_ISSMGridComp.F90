@@ -679,6 +679,7 @@ contains
     allocate(IMLS_HALO(num_nodes))
     allocate(OMLS_HALO(num_nodes))
     allocate(ZEROS(num_nodes))
+    ZEROS(:) = 0.0_dp
 
     ! get pointers to restarts
     call MAPL_GetPointer(INTERNAL, ICESURF_IN, 'ICESURF', _RC)
