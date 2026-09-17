@@ -22,6 +22,10 @@ elseif (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_AgcmGridComp.F90)
 
   target_compile_definitions (${this} PRIVATE $<$<BOOL:${BUILD_WITH_GIGATRAJ}>:HAS_GIGATRAJ>)
 
+  if (BUILD_PYTHONBRIDGE)
+    target_compile_definitions(${this} PRIVATE PYTHONBRIDGE_INTEGRATION)
+  endif()
+
 else ()
 
   esma_add_subdirectories (${alldirs})
