@@ -526,8 +526,8 @@ PROGRAM mkCatchParam
         do yr=2003,2025
            write(year, '(I4)') yr
            lai_name = 'MODIS_8-DayTimeSeries/'//trim(year)//'/MODIS_'
-           call hres_lai_no_gswp (43200,21600,maparc30,lai_name, n_land, tile_lon, tile_lat, year=year)  
-        enddo         
+           call hres_lai_no_gswp (43200,21600,maparc30,lai_name, n_land, tile_lon, tile_lat, year=yr)  
+        enddo 
      endif
 
      if (trim(LAIBCS) == 'MODISV6') then

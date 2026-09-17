@@ -2557,7 +2557,7 @@ contains
     integer,            intent(in) :: n_land
     real,               intent(in) :: tile_lon(:), tile_lat(:)
     integer,  intent(in), optional :: merge
-    character(*), intent(in), optional :: year 
+    integer,  intent(in), optional :: year 
 
     real, parameter :: dxy = 1.
     integer :: QSize
@@ -2580,7 +2580,8 @@ contains
     logical :: first_entry = .true.
     type (date_time_type) :: date_time_new,bf_lai_time,   &
          af_lai_time
-
+    character*4           :: year_pre_str, year_str, year_next_str
+    character*40          :: lai_name_pre, lai_name_next, lai_name_cur
     !_________________________________________________________ 
     !
     call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR) 
@@ -2621,8 +2622,15 @@ contains
        open (31,file='clsm/lai.'//lai_name(1:index(lai_name,'/')-1),  &
             form='unformatted',status='unknown',convert='little_endian')
     else if(present(year)) then
-       open (31,file='clsm/lai.MODIS_8-Day_'//trim(year),  &
-            form='unformatted',status='unknown',convert='little_endian')      
+       write(year_str, '(I4)') year
+       open (31,file='clsm/lai.MODIS_8-Day_'//trim(year_str),  &
+            form='unformatted',status='unknown',convert='little_endian')
+       write(year_pre_str, '(I4)') year-1
+       lai_name_pre = 'MODIS_8-DayTimeSeries/'//trim(year_pre_str)//'/MODIS_'
+       write(year_next_str, '(I4)') year+1 
+       lai_name_next = 'MODIS_8-DayTimeSeries/'//trim(year_next_str)//'/MODIS_'  
+       if(year==2003) lai_name_pre  = 'MODIS_8-DayTimeSeries/2003/MODIS_'
+       if(year==2025) lai_name_next = 'MODIS_8-DayTimeSeries/2025/MODIS_'                     
     else
        open (31,file='clsm/lai.dat',  &
             form='unformatted',status='unknown',convert='little_endian')
@@ -2654,9 +2662,12 @@ contains
        time_slice = t
        yr = 1
        yr1= 1
+       lai_name_cur = lai_name
+
        if(t == 0) then
           time_slice =  n_tslices
           yr         =  1 - 1
+          if(present(year)) lai_name_cur = lai_name_pre
        endif
 
        if(t >= n_tslices) then 
@@ -2664,6 +2675,7 @@ contains
           if(t ==n_tslices + 1) then
              time_slice =  1
              yr = 1 + 1
+             if(present(year)) lai_name_cur = lai_name_next
           endif
        endif
 
@@ -2680,7 +2692,7 @@ contains
           do ix = 1,36
              write (vv,'(i2.2)')jx
              write (hh,'(i2.2)')ix 
-             fname = '/discover/nobackup/yzeng3/make_bcs_inputs/land/veg/lai_grn/v2/'//trim(lai_name)//'lai_clim.H'//hh//'V'//vv//'.nc'
+             fname = '/discover/nobackup/yzeng3/make_bcs_inputs/land/veg/lai_grn/v2/'//trim(lai_name_cur)//'lai_clim.H'//hh//'V'//vv//'.nc'
              status = NF_OPEN(trim(fname),NF_NOWRITE, ncid)
              if(status == 0) then
                 status = NF_GET_att_INT  (ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
