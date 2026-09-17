@@ -305,13 +305,15 @@ contains
 
 ! Others
 
-    character(len=ESMF_MAXSTR)         :: LAIFile
+    character(len=ESMF_MAXSTR)         :: LAIFile, LAI_TS_FILE_BASE, LAI_TS_FILE
     character(len=ESMF_MAXSTR)         :: GRNFile
     character(len=ESMF_MAXSTR)         :: NDVIFile
     character(len=ESMF_MAXSTR)         :: LAItpl
     character(len=ESMF_MAXSTR)         :: GRNtpl
     character(len=ESMF_MAXSTR)         :: NDVItpl
     integer                            :: NUM_LDAS_ENSEMBLE, ens_id_width, ldas_ens_id, ldas_first_ens_id
+    integer                            :: YEAR
+    character(len=4)                   :: YEAR_STR        
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -395,7 +397,21 @@ contains
     call ESMF_ClockGet  ( CLOCK, currTime=CURRENT_TIME, RC=STATUS )
     VERIFY_(STATUS)
 
-    call MAPL_ReadForcing(MAPL,'LAI',LAIFILE,CURRENT_TIME,LAI,ON_TILES=.true.,RC=STATUS)
+    call ESMF_TimeGet(CURRENT_TIME, YY=YEAR, RC=STATUS )
+    VERIFY_(STATUS)
+    write(YEAR_STR, '(I4)') YEAR
+
+    call MAPL_GetResource(MAPL, LAI_TS_FILE_BASE, label = 'LAI_TS_FILE:', &
+        default = '../input/lai.MODIS_8-Day', RC=STATUS )
+    VERIFY_(STATUS)
+    LAI_TS_FILE=trim(LAI_TS_FILE_BASE)//"_"//trim(YEAR_STR)
+
+    if(2003<=YEAR.and.YEAR<=2025)then
+       call MAPL_ReadForcing(MAPL,'LAI',LAI_TS_FILE,CURRENT_TIME,LAI,ON_TILES=.true.,RC=STATUS)
+    else
+       call MAPL_ReadForcing(MAPL,'LAI',LAIFILE,CURRENT_TIME,LAI,ON_TILES=.true.,RC=STATUS)
+    endif
+
     VERIFY_(STATUS)
     call MAPL_ReadForcing(MAPL,'GRN',GRNFILE,CURRENT_TIME,GRN,ON_TILES=.true.,RC=STATUS)
     VERIFY_(STATUS)
