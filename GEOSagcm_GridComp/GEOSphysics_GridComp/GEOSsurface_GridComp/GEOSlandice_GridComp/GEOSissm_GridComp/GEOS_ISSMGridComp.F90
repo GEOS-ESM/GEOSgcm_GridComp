@@ -577,11 +577,12 @@ contains
     ! create routehandle for mesh-to-grid regridding (set srcMaskValues to 1 if needed... )
     call ESMF_FieldRegridStore(srcField=meshField, dstField=gridField,routehandle=routehandle_m2g,&
          unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,extrapmethod=ESMF_EXTRAPMETHOD_CREEP,&
-         extrapNumLevels=1,_RC)
+         extrapNumLevels=1,srcTermProcessing=0,_RC)
 
     ! create routehandle for grid-to-mesh regridding (set dstMaskValues to 1 if needed... )
     call ESMF_FieldRegridStore(srcField=gridField, dstField=meshField,routehandle=routehandle_g2m,&
-         unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,extrapmethod=ESMF_EXTRAPMETHOD_NEAREST_D,_RC)
+         unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,extrapmethod=ESMF_EXTRAPMETHOD_NEAREST_D,&
+         srcTermProcessing=0,_RC)
 
     ! create component's private internal state
     ! stores everything needed for regrid and halo operations during run method
@@ -1387,7 +1388,7 @@ contains
     dstField = ESMF_FieldCreate(grid=internal_state%grid,typekind=ESMF_TYPEKIND_R4,_RC)
 
     ! regrid field from mesh to grid
-    call ESMF_FieldRegrid(srcField, dstField, internal_state%routehandle_m2g, _RC)
+    call ESMF_FieldRegrid(srcField, dstField, internal_state%routehandle_m2g, termorderflag=ESMF_TERMORDER_SRCSEQ, _RC)
 
     ! get pointer to field on grid
     call ESMF_FieldGet(dstField,farrayPtr=VAR_GRID,_RC)
@@ -1450,7 +1451,7 @@ contains
     dstField=ESMF_FieldCreate(internal_state%mesh, array=meshArray, meshLoc=ESMF_MESHLOC_NODE, _RC)
 
     ! regrid from grid to mesh
-    call ESMF_FieldRegrid(srcField, dstField, internal_state%routehandle_g2m, _RC)
+    call ESMF_FieldRegrid(srcField, dstField, internal_state%routehandle_g2m, termorderflag=ESMF_TERMORDER_SRCSEQ, _RC)
 
     ! append halo values to end of "owned" array
     call ESMF_FieldHalo(dstField, routehandle=internal_state%halohandle, _RC)
