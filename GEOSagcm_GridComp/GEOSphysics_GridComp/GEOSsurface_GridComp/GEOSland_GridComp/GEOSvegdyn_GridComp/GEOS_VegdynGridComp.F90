@@ -312,7 +312,7 @@ contains
     character(len=ESMF_MAXSTR)         :: GRNtpl
     character(len=ESMF_MAXSTR)         :: NDVItpl
     integer                            :: NUM_LDAS_ENSEMBLE, ens_id_width, ldas_ens_id, ldas_first_ens_id
-    integer                            :: YEAR
+    integer                            :: YEAR, USE_LAI_TS
     character(len=4)                   :: YEAR_STR        
 
 ! Get the target components name and set-up traceback handle.
@@ -406,13 +406,17 @@ contains
     VERIFY_(STATUS)
     LAI_TS_FILE=trim(LAI_TS_FILE_BASE)//"_"//trim(YEAR_STR)
 
-    if(2003<=YEAR.and.YEAR<=2025)then
+    call MAPL_GetResource(MAPL, USE_LAI_TS, label = 'USE_LAI_TS:', &
+        default = 0, RC=STATUS )
+    VERIFY_(STATUS)
+
+    if(USE_LAI_TS==1.and.2003<=YEAR.and.YEAR<=2025)then
        call MAPL_ReadForcing(MAPL,'LAI',LAI_TS_FILE,CURRENT_TIME,LAI,ON_TILES=.true.,RC=STATUS)
     else
        call MAPL_ReadForcing(MAPL,'LAI',LAIFILE,CURRENT_TIME,LAI,ON_TILES=.true.,RC=STATUS)
     endif
-
     VERIFY_(STATUS)
+
     call MAPL_ReadForcing(MAPL,'GRN',GRNFILE,CURRENT_TIME,GRN,ON_TILES=.true.,RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_ReadForcing(MAPL,'NDVI',NDVIFILE,CURRENT_TIME,NDVI,ON_TILES=.true.,RC=STATUS)
