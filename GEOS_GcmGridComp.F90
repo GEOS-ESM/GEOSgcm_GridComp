@@ -2870,7 +2870,7 @@ contains
      integer, optional,intent(out)   :: RC
 
      character(len=ESMF_MAXSTR), parameter :: Iam = 'A2W'
-      integer :: status, srcTermProcessing
+     integer :: status, srcTermProcessing
 
      type(ESMF_RouteHandle), pointer :: rh
      type(ESMF_Field) :: srcField, dstField
@@ -2884,7 +2884,7 @@ contains
         !ALT: this should be done only once per regridder
         allocate(rh, stat=status)
         VERIFY_(STATUS)
-         srcTermProcessing = 0
+        srcTermProcessing = 0
         call ESMF_FieldRegridStore(srcField, dstField, &
                                    regridmethod=ESMF_REGRIDMETHOD_BILINEAR, &
                                    lineType=ESMF_LINETYPE_GREAT_CIRCLE, &
@@ -2929,7 +2929,7 @@ contains
         !ALT: this should be done only once per regridder
         allocate(rh, stat=status)
         VERIFY_(STATUS)
-         srcTermProcessing = 0
+        srcTermProcessing = 0
         call ESMF_FieldRegridStore(srcField, dstField, &
                                    regridmethod=ESMF_REGRIDMETHOD_BILINEAR, &
                                    lineType=ESMF_LINETYPE_GREAT_CIRCLE, &
@@ -2974,7 +2974,7 @@ contains
         !ALT: this should be done only once per regridder
         allocate(rh, stat=status)
         VERIFY_(STATUS)
-         srcTermProcessing = 0
+        srcTermProcessing = 0
         call ESMF_FieldRegridStore(srcField, dstField, &
                                    regridmethod=ESMF_REGRIDMETHOD_BILINEAR, &
                                    lineType=ESMF_LINETYPE_GREAT_CIRCLE, &
@@ -3019,7 +3019,7 @@ contains
         !ALT: this should be done only once per regridder
         allocate(rh, stat=status)
         VERIFY_(STATUS)
-         srcTermProcessing = 0
+        srcTermProcessing = 0
         call ESMF_FieldRegridStore(srcField, dstField, &
                                    regridMethod=ESMF_REGRIDMETHOD_BILINEAR, &
                                    lineType=ESMF_LINETYPE_GREAT_CIRCLE, &
