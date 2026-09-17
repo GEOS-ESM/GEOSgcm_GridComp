@@ -349,6 +349,7 @@ contains
     ! ErrLog Variables
     character(len=ESMF_MAXSTR)             :: IAm
     integer                                :: STATUS
+    integer                                :: srcTermProcessing
     character(len=ESMF_MAXSTR)             :: COMP_NAME
 
     ! virtual machine / mpi comm
@@ -575,14 +576,16 @@ contains
     gridField = ESMF_FieldCreate(grid=grid,typekind=ESMF_TYPEKIND_R4,_RC)
 
     ! create routehandle for mesh-to-grid regridding (set srcMaskValues to 1 if needed... )
+    srcTermProcessing = 0
     call ESMF_FieldRegridStore(srcField=meshField, dstField=gridField,routehandle=routehandle_m2g,&
          unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,extrapmethod=ESMF_EXTRAPMETHOD_CREEP,&
-         extrapNumLevels=1,srcTermProcessing=0,_RC)
+         extrapNumLevels=1,srcTermProcessing=srcTermProcessing,_RC)
 
     ! create routehandle for grid-to-mesh regridding (set dstMaskValues to 1 if needed... )
+    srcTermProcessing = 0
     call ESMF_FieldRegridStore(srcField=gridField, dstField=meshField,routehandle=routehandle_g2m,&
          unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,extrapmethod=ESMF_EXTRAPMETHOD_NEAREST_D,&
-         srcTermProcessing=0,_RC)
+         srcTermProcessing=srcTermProcessing,_RC)
 
     ! create component's private internal state
     ! stores everything needed for regrid and halo operations during run method
