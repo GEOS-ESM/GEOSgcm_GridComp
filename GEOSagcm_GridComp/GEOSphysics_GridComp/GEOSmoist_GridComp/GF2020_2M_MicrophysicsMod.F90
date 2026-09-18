@@ -18,7 +18,7 @@ module GF2020_2M_MicrophysicsMod
   use module_gate
   use aer_cloud
   use ConvPar_GF_SharedParams
-  use GEOSmoist_Process_Library, only: erfapp
+  use GEOSmoist_Process_Library, only: AerPropsNew, erfapp
 
   use micro_mg_utils, only: r8, MGHydrometeorProps, size_dist_param_liq, &
        size_dist_param_ice, liu2006_liq_autoconversion, ice_autoconversion, &

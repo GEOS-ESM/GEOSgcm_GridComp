@@ -16,7 +16,6 @@ module GEOS_GF_InterfaceMod
   use GEOSmoist_Process_Library
   use GF2020_2M_MicrophysicsMod
   use Aer_Actv_Single_Moment
-  use aer_cloud, only: AeroPropsNew
   use ConvPar_GF_SharedParams
   use ConvPar_GF_GEOS5
   use ConvPar_GF2020

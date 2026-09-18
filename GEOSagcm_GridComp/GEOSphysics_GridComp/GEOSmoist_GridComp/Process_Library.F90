@@ -254,7 +254,7 @@ module GEOSmoist_Process_Library
   ! option for cloud liq/ice radii
   integer :: LIQ_RADII_PARAM = 1
   integer :: ICE_RADII_PARAM = 1
-  integer, parameter :: nsmx_par =  15
+  integer, parameter :: nsmx_par =  20
 
   ! defined to determine CNV_FRACTION
   real    :: CNV_FRACTION_MIN =  500.0
@@ -310,9 +310,10 @@ module GEOSmoist_Process_Library
   end type CNV_Tracer_Type
   type(CNV_Tracer_Type), allocatable :: CNV_Tracers(:)
 
-  public :: DEBUG_TQ_ERRORS
+   public :: DEBUG_TQ_ERRORS
+   public :: AerPropsNew, AeroPropsNew
 
-  type :: AerPropsNew
+   type :: AerPropsNew
       integer :: nmods  ! total number of modes (nmods<nmodmax)
       real, dimension(:,:,:), allocatable :: num !Num conc m-3
       real, dimension(:,:,:), allocatable :: dpg !dry Geometric size, m

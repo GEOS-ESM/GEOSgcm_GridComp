@@ -15,7 +15,7 @@ MODULE ConvPar_GF2020
   USE MAPL
   use aer_cloud
   USE ConvPar_GF_SharedParams
-  USE GEOSmoist_Process_Library, ONLY: sigma, SH_MD_DP, ICE_FRACTION, make_DropletNumber, make_IceNumber
+  USE GEOSmoist_Process_Library, ONLY: sigma, SH_MD_DP, ICE_FRACTION, make_DropletNumber, make_IceNumber, AerPropsNew
   USE GF2020_2M_MicrophysicsMod
 
   IMPLICIT NONE
