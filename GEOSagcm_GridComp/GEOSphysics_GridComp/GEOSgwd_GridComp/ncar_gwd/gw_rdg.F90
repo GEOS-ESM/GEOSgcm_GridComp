@@ -5,7 +5,7 @@ module gw_rdg
 ! extracted from gw_drag in May 2013.
 !
 !use shr_const_mod, only: pi => shr_const_pi
-use gw_common, only: gw_drag_prof, GWBand, pi,cpair,rair, &
+use gw_common, only: gw_drag_prof, tau_0_ubc_oro, GWBand, pi,cpair,rair, &
                      calc_taucd, momentum_flux, momentum_fixer, &
                      energy_momentum_adjust, energy_change, energy_fixer
 use gw_utils, only:  GW_PRC, dot_2d, midpoint_interp
@@ -271,6 +271,8 @@ subroutine gw_rdg_ifc( band, &
 
    real :: utfac,uhtmax
 
+   real :: tau_0_ubc(ncol)
+
    character(len=1) :: cn
    character(len=9) :: fname(4)
    !----------------------------------------------------------------------------
@@ -285,6 +287,7 @@ subroutine gw_rdg_ifc( band, &
    vtrdg = 0.
    ttrdg = 0.
    isoflag = 0
+   tau_0_ubc(:) = tau_0_ubc_oro
  
    do nn = 1, n_rdg
   
@@ -309,7 +312,7 @@ subroutine gw_rdg_ifc( band, &
      call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
           src_level, tend_level,dt, t, &
           piln, rhoi, nm, ni, ubm, ubi, xv, yv, &
-          c, kvtt, tau, utgw, vtgw, ttgw, gwut, alpha, &
+          c, kvtt, tau, tau_0_ubc, utgw, vtgw, ttgw, gwut, alpha, &
           kwvrdg=kwvrdg(:,nn))
 
      ! Apply efficiency and limiters to the totals

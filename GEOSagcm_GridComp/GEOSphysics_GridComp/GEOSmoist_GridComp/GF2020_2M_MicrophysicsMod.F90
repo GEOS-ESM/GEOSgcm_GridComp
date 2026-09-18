@@ -16,13 +16,9 @@ module GF2020_2M_MicrophysicsMod
 
 
   use module_gate
+  use aer_cloud
   use ConvPar_GF_SharedParams
-  use GEOSmoist_Process_Library, only: AerPropsNew, ERFAPP, ICE_AUTO_TSC_CNV, DCS_CNV, &
-       DEBUG_GF2M, ACC_ENH_CNV, ACC_ENH_ICE, FDROPDUST, FDROPSOOT, GF2M_USE_CORRECTOR, &
-       FHETSOOT, FHETDUST, AUT_SCALE_CNV, GF2M_W_OPTION, BKG_INP_SC_CNV, &
-       GF2M_HOM_NEW_ICE_DIAM, GF2M_ACTIVATE_ABOVE_CLOUD_BASE, &
-       GF2M_MIXED_PHASE_ICE_ONSET_T
-
+  use GEOSmoist_Process_Library, only: erfapp
 
   use micro_mg_utils, only: r8, MGHydrometeorProps, size_dist_param_liq, &
        size_dist_param_ice, liu2006_liq_autoconversion, ice_autoconversion, &
@@ -31,14 +27,40 @@ module GF2020_2M_MicrophysicsMod
        accrete_rain_snow, accrete_cloud_ice_snow,                       &
        secondary_ice_production, self_collection_rain, snow_self_aggregation
   
-  
   !use ConvPar_GF_SharedParams, only: cp, g, xlv, xlf
                                    
-  
   implicit none
   private
 
+  real    :: ICE_AUTO_TSC_CNV, DCS_CNV,  FDROPDUST, FDROPSOOT, FHETSOOT, FHETDUST
+  real    :: ACC_ENH_ICE, ACC_ENH_CNV, AUT_SCALE_CNV, BKG_INP_SC_CNV
+
+  logical :: DEBUG_GF2M = .FALSE.
+  LOGICAL :: USE_CUP_2M_MOISTURE = .FALSE. ! use explicit 2M micropgysics in each plume DONIF
+  logical :: GF2M_USE_CORRECTOR = .true.
+  integer :: GF2M_W_OPTION = 2
+  integer :: GF2M_PLIQ_EFF_OPTION = 1
+  real    :: GF2M_DET_SCALE = 1.0
+  real    :: GF2M_C1D_SCALE = 1.0
+  real    :: GF2M_TOP_DET_SCALE = 1.0
+  logical :: GF2M_DET_LEVEL_AVERAGE = .TRUE.
+  real    :: GF2M_HOM_NEW_ICE_DIAM = 40.0e-6
+  logical :: GF2M_ACTIVATE_ABOVE_CLOUD_BASE = .false.
+  real    :: GF2M_MIXED_PHASE_ICE_ONSET_T = 258.15
+
   public :: cup_up_moisture_2M
+  public :: USE_CUP_2M_MOISTURE, ICE_AUTO_TSC_CNV, DCS_CNV, DEBUG_GF2M, AUT_SCALE_CNV
+  public :: FDROPDUST, FDROPSOOT, FHETSOOT, FHETDUST, ACC_ENH_ICE, ACC_ENH_CNV
+  public :: GF2M_USE_CORRECTOR
+  public :: GF2M_W_OPTION
+  public :: GF2M_PLIQ_EFF_OPTION
+  public :: GF2M_DET_SCALE
+  public :: GF2M_C1D_SCALE
+  public :: GF2M_TOP_DET_SCALE, GF2M_DET_LEVEL_AVERAGE
+  public :: BKG_INP_SC_CNV
+  public :: GF2M_HOM_NEW_ICE_DIAM 
+  public :: GF2M_ACTIVATE_ABOVE_CLOUD_BASE
+  public :: GF2M_MIXED_PHASE_ICE_ONSET_T
 
   !---------------------------------------------------------------------------
   ! Diagnostic updraft-velocity option for full 2M microphysics.

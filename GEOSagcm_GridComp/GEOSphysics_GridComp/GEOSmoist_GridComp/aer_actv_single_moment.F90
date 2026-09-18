@@ -8,8 +8,8 @@ MODULE Aer_Actv_Single_Moment
    !-------------------------------------------------------------------------------------------------------------------------
    IMPLICIT NONE
    PUBLIC ::  Aer_Activation
-   PUBLIC :: NN_MIN_LIQ, NN_MAX_LIQ
-   PUBLIC :: NN_MIN_ICE, NN_MAX_ICE
+   PUBLIC :: NN_MIN_LIQ, NN_MAX_LIQ, NN_FAC_LIQ
+   PUBLIC :: NN_MIN_ICE, NN_MAX_ICE, NN_FAC_ICE
    PRIVATE
 
    ! Real kind for activation.
@@ -27,9 +27,11 @@ MODULE Aer_Actv_Single_Moment
 
    real :: NN_MIN_LIQ  =  100.0e6
    real :: NN_MAX_LIQ  =  500.0e6
+   real :: NN_FAC_LIQ  =  1.0
 
-   real :: NN_MIN_ICE  =  10.0e6
+   real :: NN_MIN_ICE  =  10.0e3
    real :: NN_MAX_ICE  =  50.0e6
+   real :: NN_FAC_ICE  =  1.0
 
 CONTAINS
 
@@ -37,7 +39,7 @@ CONTAINS
    !>----------------------------------------------------------------------------------------------------------------------
 
    SUBROUTINE Aer_Activation(MAPL, IM,JM,LM, q, t, plo, ple, tke, vvel, FRLAND, &
-        aero_aci, NACTL, NACTI, NWFA,  &
+        aero_aci, NACTL, NACTI, NWFA, NIFA,  &
         NN_LAND, NN_OCEAN, need_extra_fields, rc)
       IMPLICIT NONE
       type (MAPL_MetaComp), pointer   :: MAPL
@@ -51,7 +53,7 @@ CONTAINS
       logical                     ,intent(in ) :: need_extra_fields
       integer, optional           ,intent(out) :: rc
 
-      real, dimension (IM,JM,LM),intent(OUT) :: NACTL, NACTI, NWFA
+      real, dimension (IM,JM,LM),intent(OUT) :: NACTL, NACTI, NWFA, NIFA
 
       real(AER_PR), allocatable, dimension (:,:,:) :: sig0,rg,ni,bibar,nact
       real(AER_PR), dimension(IM,JM)               :: wupdraft,tk,press,air_den
@@ -65,13 +67,27 @@ CONTAINS
 
       integer :: n_modes
       REAL :: numbinit(IM,JM)
+      REAL :: frac_large, z
       integer :: i,j,k,n
       integer :: nn
+
+      !--------------------------------------------------------------------
+      ! STP conversion constants.
+      !--------------------------------------------------------------------
+      real(AER_PR), parameter :: P0_STP = 101325.0
+      real(AER_PR), parameter :: T0_STP = 273.15
+      real(AER_PR), parameter :: RHO_STP = &
+           P0_STP / (MAPL_RGAS * T0_STP)
+      ! m^-3 -> cm^-3
+      real(AER_PR), parameter :: M3_TO_CM3 = 1.0e-6
+      ! L^-1 -> m^-3 
+      real(AER_PR), parameter :: L_TO_M3 = 1.0e3
 
       character(len=ESMF_MAXSTR)              :: IAm="Aer_Activation"
       integer                                 :: STATUS
 
       NWFA = 0.0
+      NIFA = 0.0
 
       call ESMF_AttributeGet(aero_aci, name='number_of_aerosol_modes', value=n_modes, __RC__)
 
@@ -152,20 +168,6 @@ CONTAINS
 
          AeroPropsNew(n)%nmods = n_modes
 
-         ! Replace the slow 'where' construct with a threaded explicit loop
-         !$OMP parallel do default(none) &
-         !$OMP shared(IM, JM, LM, AeroPropsNew, n, NWFA) &
-         !$OMP private(i, j, k)
-         do k = 1, LM
-            do j = 1, JM
-               do i = 1, IM
-                  if (AeroPropsNew(n)%kap(i,j,k) > 0.4) then
-                     NWFA(i,j,k) = NWFA(i,j,k) + AeroPropsNew(n)%num(i,j,k)
-                  endif
-               enddo
-            enddo
-         enddo
-
       end do ACTIVATION_PROPERTIES
 
       deallocate(aero_aci_modes, __STAT__)
@@ -183,9 +185,9 @@ CONTAINS
 
       !$OMP parallel do default(none) &
       !$OMP shared(IM, JM, LM, n_modes, T, plo, vvel, tke, AeroPropsNew, &
-      !$OMP        NACTL, NACTI, NN_MIN_LIQ, NN_MAX_LIQ, NN_MIN_ICE, NN_MAX_ICE) &
+      !$OMP        NACTL, NACTI, NWFA, NIFA) &
       !$OMP private(k, n, i, j, tk, press, air_den, wupdraft, ni, rg, bibar, &
-      !$OMP         sig0, nact, numbinit)
+      !$OMP         sig0, nact, frac_large, z, numbinit)
       DO k=1,LM
 
          tk                 = T(:,:,k)                         ! K
@@ -213,57 +215,68 @@ CONTAINS
               ,    nact(1,1,1)   &
               )
               
-         numbinit(:,:) = 0.
          NACTL(:,:,k) = 0.
          DO n=1,n_modes
            DO j = 1, JM
              DO i = 1, IM
                if (AeroPropsNew(n)%kap(i,j,k) > 0.4) then
-                  numbinit(i,j) = numbinit(i,j) + AeroPropsNew(n)%num(i,j,k)
+                  NWFA(i,j,k) = NWFA(i,j,k) + AeroPropsNew(n)%num(i,j,k)*air_den(i,j)  ! unit: [m-3]
                   NACTL(i,j,k)= NACTL(i,j,k) + nact(i,j,n) !#/m3
                endif
              ENDDO
            ENDDO
          ENDDO
          
-         ! Fused array multiplication into the existing loop for better cache performance
-         DO j = 1, JM
-           DO i = 1, IM
-              numbinit(i,j) = numbinit(i,j) * air_den(i,j)
-              numbinit(i,j) = max(numbinit(i,j),0.0)
-              NACTL(i,j,k) = MIN(NACTL(i,j,k),0.99*numbinit(i,j))
-              NACTL(i,j,k) = MAX(MIN(NACTL(i,j,k),NN_MAX_LIQ),NN_MIN_LIQ)
-           ENDDO
-         ENDDO
-
          ! Ice Clouds
          numbinit(:,:) = 0.
          DO n=1,n_modes
            DO j = 1, JM
              DO i = 1, IM
-               if ( (AeroPropsNew(n)%kap(i,j,k) > 0.4) .and. &
-                    (AeroPropsNew(n)%dpg(i,j,k) .ge. 0.5e-6) ) then
-                  numbinit(i,j) = numbinit(i,j) + AeroPropsNew(n)%num(i,j,k)
-               endif 
+                ! Select modes containing significant dust or soot
+                ! Potential INP: dust/soot-containing aerosol with Dp > 0.5 micron
+                if ( (AeroPropsNew(n)%fdust(i,j,k) > 0.1) .or. &
+                     (AeroPropsNew(n)%fsoot(i,j,k) > 0.1) ) then
+                   ! Fraction of the number-lognormal distribution with Dp > 0.5 um
+                   if ( (AeroPropsNew(n)%dpg(i,j,k) > 0.0) .and. &
+                        (AeroPropsNew(n)%sig(i,j,k) > 1.0e-10) ) then
+                      z = log(0.5e-6 / AeroPropsNew(n)%dpg(i,j,k)) / &
+                          (sqrt(2.0) * AeroPropsNew(n)%sig(i,j,k))
+                      frac_large = 0.5 * erfc(z)
+                   else
+                      ! Limit for an effectively monodisperse mode
+                      if (AeroPropsNew(n)%dpg(i,j,k) >= 0.5e-6) then
+                         frac_large = 1.0
+                      else 
+                         frac_large = 0.0  
+                      endif
+                   endif
+                   numbinit(i,j) = numbinit(i,j) + AeroPropsNew(n)%num(i,j,k) * frac_large
+                endif  
              ENDDO
            ENDDO
          ENDDO
-         
+
          ! Optimized conditional calculation
          DO j = 1, JM
            DO i = 1, IM
              numbinit(i,j) = numbinit(i,j) * air_den(i,j)
              numbinit(i,j) = max(numbinit(i,j),0.0)
-             
-             ! Only compute expensive exponents if cold enough AND aerosols exist
+             NIFA(i,j,k)   = numbinit(i,j)
              if (tk(i,j) < MAPL_TICE .and. numbinit(i,j) > 0.0) then
-                ! Number of activated IN following deMott (2010) [#/m3]
-                NACTI(i,j,k) = (ai*(max(0.0,(MAPL_TICE-tk(i,j)))**bi)) * (numbinit(i,j)**(ci*max((MAPL_TICE-tk(i,j)),0.0)+di))
+                ! DeMott (2010): input n_aer in cm^-3 at STP -> output NACTI in L^-1 (STP).
+                NACTI(i,j,k) = ai * (max(0.0,(MAPL_TICE-tk(i,j)))**bi) &
+                     * ( ( numbinit(i,j) * M3_TO_CM3 * (RHO_STP/air_den(i,j)) ) &
+                         ** (ci*max((MAPL_TICE-tk(i,j)),0.0)+di) )
+                ! Convert DeMott output: L^-1 (STP) -> m^-3 (ambient)
+                NACTI(i,j,k) = NACTI(i,j,k) * L_TO_M3 * (air_den(i,j)/RHO_STP)
+                !------------------------------------------------
+                ! Physical upper bound:
+                ! INPs cannot exceed candidate aerosol.
+                !------------------------------------------------
+                NACTI(i,j,k) = min(NACTI(i,j,k), numbinit(i,j))
              else
                 NACTI(i,j,k) = 0.0
              endif
-             
-             NACTI(i,j,k) = MAX(MIN(NACTI(i,j,k),NN_MAX_ICE),NN_MIN_ICE)
            ENDDO
          ENDDO
 
@@ -313,7 +326,7 @@ CONTAINS
    !!
    !!     This routine is for the multiple-aerosol type parameterization.
    !!----------------------------------------------------------------------------------------------------------------------
-   subroutine GetActFrac(im, nmodes,xnap,rg,sigmag,bibar,tkelvin,ptot,wupdraft,nact)
+   subroutine GetActFrac(im, nmodes,xnap,rg,xlogsigm,bibar,tkelvin,ptot,wupdraft,nact)
 
       IMPLICIT NONE
 
@@ -324,7 +337,7 @@ CONTAINS
       real(AER_PR) :: xnap(im,nmodes)      !< number concentration for each mode [#/m^3]
       !     real(AER_PR) :: xmap(im,nmodes)      !< mass   concentration for each mode [ug/m^3]
       real(AER_PR) :: rg(im,nmodes)        !< geometric mean radius for each mode [um]
-      real(AER_PR) :: sigmag(im,nmodes)    !< geometric standard deviation for each mode [um]
+      real(AER_PR) :: xlogsigm(im,nmodes)    !< log of the geometric standard deviation for each mode [um]
       real(AER_PR) :: bibar(im,nmodes)     !< hygroscopicity parameter for each mode [1]
       real(AER_PR) :: tkelvin(im)           !< absolute temperature [k]
       real(AER_PR) :: ptot(im)              !< ambient pressure [pa]
@@ -377,7 +390,6 @@ CONTAINS
       real(AER_PR)            :: xkaprime(im)                       ! modified thermal conductivity of air [j/m/s/k]
       real(AER_PR)            :: eta                               ! model parameter [1]
       real(AER_PR)            :: zeta(im)                           ! model parameter [1]
-      real(AER_PR)            :: xlogsigm(im,nmodes)               ! ln(sigmag) [1]
       real(AER_PR)            :: a(im)                              ! [m]
       real(AER_PR)            :: g(im)                              ! [m^2/s]
       real(AER_PR)            :: rdrp(im)                           ! [m]
@@ -427,7 +439,6 @@ CONTAINS
       !----------------------------------------------------------------------------------------------------------------------
       !     these variables must be computed for each mode.
       !----------------------------------------------------------------------------------------------------------------------
-      xlogsigm(:,:) = log(sigmag(:,:))
 
       smax(:) = 0.0
       do n=1, nmodes

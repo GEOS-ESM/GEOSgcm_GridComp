@@ -18,6 +18,7 @@ module GEOS_MGB2_2M_InterfaceMod
   use cldwat2m_micro
   use aer_cloud
   use micro_mg3_0
+  use GF2020_2M_MicrophysicsMod
 
   implicit none
 
@@ -378,14 +379,7 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, TURNRHCRIT, 'TURNRHCRIT:', DEFAULT = 791., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, TURNRHCRIT_UP, 'TURNRHCRIT_UP:', DEFAULT =100., RC=STATUS); VERIFY_(STATUS) !pressure to turn the profile back at upper trop -1 dsiables it
    
-    call MAPL_GetResource( MAPL, WBF_partition    , 'USE_BERGERON:'    , DEFAULT=.TRUE.  , RC=STATUS); VERIFY_(STATUS) !WBF partitioning in hystpdf
-
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    1.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, DBZ_LIQUID_SKIN , 'DBZ_LIQUID_SKIN:' , DEFAULT= 0     , RC=STATUS); VERIFY_(STATUS)
-    
-    
+    call MAPL_GetResource( MAPL, WBF_partition    , 'USE_BERGERON:'    , DEFAULT=.TRUE.  , RC=STATUS); VERIFY_(STATUS) !WBF partitioning in hystpdf    
     
     !====================general options======
     
@@ -568,6 +562,8 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    1.0, RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, ICE_FRACTION_POLYNOMIAL, Label="ICE_FRACTION_POLYNOMIAL:",  default=V12_ICE_POLYNOMIAL, RC=STATUS) ; VERIFY_(STATUS)
+
+    call MAPL_GetResource( MAPL, DBZ_LIQUID_SKIN , 'DBZ_LIQUID_SKIN:' , DEFAULT= 0     , RC=STATUS); VERIFY_(STATUS)
 
 end subroutine MGB2_2M_Initialize
 
@@ -1715,7 +1711,8 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
                      QICN(I,J,L),        &
                      CLCN(I,J,L),        &
                      NCPL(I,J,L),        &
-                     NCPI(I,J,L) )
+                     NCPI(I,J,L),        &
+                     CNV_FRC(I,J) )
    
           
            end do ! IM loop

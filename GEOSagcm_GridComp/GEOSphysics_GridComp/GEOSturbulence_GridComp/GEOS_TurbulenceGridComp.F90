@@ -1758,15 +1758,6 @@ end if
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'planetary_boundary_layer_height_rich_02',               &
-       SHORT_NAME = 'ZPBLRI2',                                               &
-       UNITS      = 'm',                                                     &
-       DIMS       = MAPL_DimsHorzOnly,                                       &
-       VLOCATION  = MAPL_VLocationNone,                                      &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'planetary_boundary_layer_height_thetav',                &
        SHORT_NAME = 'ZPBLTHV',                                               &
        UNITS      = 'm',                                                     &
@@ -2958,7 +2949,6 @@ end if
      real, dimension(:,:  ), pointer     :: ZPBLHTKE => null()
      real, dimension(:,:,:), pointer     :: TKE => null()
      real, dimension(:,:  ), pointer     :: ZPBLRI => null()
-     real, dimension(:,:  ), pointer     :: ZPBLRI2 => null()
      real, dimension(:,:  ), pointer     :: ZPBLTHV => null()
      real, dimension(:,:  ), pointer     :: ZPBLQV => null()
      real, dimension(:,:  ), pointer     :: ZPBLRFRCT => null()
@@ -3002,6 +2992,7 @@ end if
      logical                             :: ALLOC_TCZPBL, CALC_TCZPBL
      logical                             :: ALLOC_ZPBL2, CALC_ZPBL2
      logical                             :: ALLOC_ZPBL10p, CALC_ZPBL10p
+     logical                             :: ALLOC_ZPBLRI, CALC_ZPBLRI          
      logical                             :: PDFALLOC
 
      real                                :: LOUIS_B_KH, LOUIS_B_KM
@@ -3016,7 +3007,7 @@ end if
      real                                :: AKHMMAX
      real                                :: C_B, LAMBDA_B
      logical                             :: USE_EIS
-     real                                :: PRANDTLSFC,PRANDTLRAD,BETA_RAD,BETA_SURF,KHRADFAC,TPFAC_MIN,TPFAC_MAX,ENTRATE_SURF
+     real                                :: PRANDTLSFC,PRANDTLRAD,BETA_RAD,BETA_SURF,KHRADFAC,TPFAC,ENTRATE_SURF
      real                                :: PCEFF_SURF, VSCALE_SURF, KHSFCFAC_LND, KHSFCFAC_OCN
 
      real                                :: SMTH_HGT
@@ -3092,20 +3083,25 @@ end if
 
      integer :: locmax
      real    :: maxkh,minlval
-     real, dimension(IM,JM) :: thetavs,thetavh,uv2h,kpbltc,kpbl2,kpbl10p
+     real, dimension(IM,JM) :: thetavs,thetavh,uv2h,kpbltc,kpbl2,kpbl10p,kpblri
      real    :: maxdthvdz,dthvdz
+     real    :: u_shear, v_shear, z_diff
+     logical :: has_solid_deck
 
      ! PBL-top diagnostic
      ! -----------------------------------------
 
      real, parameter :: tcri_crit = 0.25
-     real, parameter :: ri_crit = 0.00
-     real, parameter :: ri_crit2 = 0.20
+
+     logical :: is_marine_stratocumulus, is_shallow_cumulus
+     integer :: cloud_base_idx, cloud_top_idx
+     real :: cloud_fraction_mean, cloud_thickness
+      
 
      real(kind=MAPL_R8), dimension(IM,JM,LM) :: AKX, BKX
      real, dimension(IM,JM,LM) :: DZ, DTM, TM
 
-     logical :: JASON_TRB, JASON_BELJAARS, JASON_LOUIS, JASON_LOCK
+     logical :: JASON_BELJAARS, JASON_LOUIS, JASON_LOCK, JASON_PBL_SC
      real(kind=MAPL_R8), dimension(IM,JM,LM) :: AERTOT
      real, dimension(:,:,:), pointer     :: S
      integer :: NTR, K, LTOP, LMAX
@@ -3155,18 +3151,19 @@ end if
 
 ! Get turbulence parameters from configuration
 !---------------------------------------------
-     call MAPL_GetResource (MAPL, JASON_TRB, "JASON_TRB:", default=.FALSE.,  RC=STATUS); VERIFY_(STATUS)
-     if ( (LM .eq. 72) .OR. (JASON_TRB) ) then
+     if (LM .eq. 72) then
+       call MAPL_GetResource (MAPL, JASON_PBL_SC  , "JASON_PBL_SC:"  , default=.TRUE.,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, JASON_BELJAARS, "JASON_BELJAARS:", default=.TRUE.,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, JASON_LOUIS   , "JASON_LOUIS:"   , default=.TRUE.,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, JASON_LOCK    , "JASON_LOCK:"    , default=.TRUE.,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PBLHT_OPTION  , trim(COMP_NAME)//"_PBLHT_OPTION:", default=4,      RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SMTH_HGT      , trim(COMP_NAME)//"_SMTH_HGT:",     default=0.0,    RC=STATUS); VERIFY_(STATUS)
      else
+       call MAPL_GetResource (MAPL, JASON_PBL_SC  , "JASON_PBL_SC:"  , default=.FALSE.,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, JASON_BELJAARS, "JASON_BELJAARS:", default=.FALSE.,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, JASON_LOUIS   , "JASON_LOUIS:"   , default=.FALSE.,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, JASON_LOCK    , "JASON_LOCK:"    , default=.FALSE.,  RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=3,      RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=5,      RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SMTH_HGT,     trim(COMP_NAME)//"_SMTH_HGT:",     default=300.0,  RC=STATUS); VERIFY_(STATUS)
      endif
 
@@ -3227,8 +3224,7 @@ end if
        call MAPL_GetResource (MAPL, BETA_RAD,     trim(COMP_NAME)//"_BETA_RAD:",     default=0.20,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, BETA_SURF,    trim(COMP_NAME)//"_BETA_SURF:",    default=0.25,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.5e-3, RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, TPFAC_MIN,    trim(COMP_NAME)//"_TPFAC_MIN:",    default=20.0,   RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, TPFAC_MAX,    trim(COMP_NAME)//"_TPFAC_MAX:",    default=20.0,   RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, TPFAC,        trim(COMP_NAME)//"_TPFAC:",        default=20.0,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.5,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LOCK_ON,      trim(COMP_NAME)//"_LOCK_ON:",      default=1,      RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, VSCALE_SURF,  trim(COMP_NAME)//"_VSCALE_SURF:",  default=2.5e-3, RC=STATUS); VERIFY_(STATUS)
@@ -3243,8 +3239,7 @@ end if
        call MAPL_GetResource (MAPL, BETA_RAD,     trim(COMP_NAME)//"_BETA_RAD:",     default=0.15,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, BETA_SURF,    trim(COMP_NAME)//"_BETA_SURF:",    default=0.10,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.5e-3, RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, TPFAC_MIN,    trim(COMP_NAME)//"_TPFAC_MIN:",    default=10.0,   RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, TPFAC_MAX,    trim(COMP_NAME)//"_TPFAC_MAX:",    default=20.0,   RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, TPFAC,        trim(COMP_NAME)//"_TPFAC:",        default=0.0,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.375,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LOCK_ON,      trim(COMP_NAME)//"_LOCK_ON:",      default=1,      RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, VSCALE_SURF,  trim(COMP_NAME)//"_VSCALE_SURF:",  default=2.5e-3, RC=STATUS); VERIFY_(STATUS)
@@ -3322,8 +3317,6 @@ end if
      call MAPL_GetPointer(EXPORT,    TKE,  'TKE',         RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,    ZPBLRI,  'ZPBLRI',             RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,    ZPBLRI2,  'ZPBLRI2',           RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,    ZPBLTHV,  'ZPBLTHV',           RC=STATUS)
      VERIFY_(STATUS)
@@ -3541,6 +3534,14 @@ end if
                    ALLOC_TCZPBL = .TRUE.
       endif
 
+      ALLOC_ZPBLRI = .FALSE.
+      CALC_ZPBLRI = .FALSE.
+      if(associated(ZPBLRI).OR.PBLHT_OPTION==5) CALC_ZPBLRI = .TRUE.
+      if(.not.associated(ZPBLRI)) then
+                allocate(ZPBLRI(IM,JM))
+                   ALLOC_ZPBLRI = .TRUE.
+      endif
+
       do L=0,LM
          ZL0(:,:,L) = ZLE(:,:,L) - ZLE(:,:,LM) ! edge height above the surface 
       enddo
@@ -3627,8 +3628,8 @@ end if
 
    ! Calculate liquid water potential temperature (THL) and total water (QT)
     EXF=T/TH 
-    THL=TH-(MAPL_ALHL*QL+MAPL_ALHS*QI)/(MAPL_CP*EXF)
-    QT=Q+QL+QI
+    THL=TH-(MAPL_ALHL*QLTOT+MAPL_ALHS*QITOT)/(MAPL_CP*EXF)
+    QT=Q+QLTOT+QITOT
 
 ! get updraft constants
     call MAPL_GetResource (MAPL, DOMF, "EDMF_DOMF:", default=0,  RC=STATUS)
@@ -3947,8 +3948,8 @@ end if
                        OMEGA(:,:,1:LM),       &
                        T(:,:,1:LM),           &
                        Q(:,:,1:LM),           &
-                       QI(:,:,1:LM),          &
-                       QL(:,:,1:LM),          &
+                       QITOT(:,:,1:LM),       &
+                       QLTOT(:,:,1:LM),       &
                        QPI(:,:,1:LM),         &
                        QPL(:,:,1:LM),         &
                        QA(:,:,1:LM),          &
@@ -4217,7 +4218,7 @@ end if
                                       USE_EIS, &
                                       PRANDTLSFC, PRANDTLRAD,   &
                                       BETA_SURF, BETA_RAD,      &
-                                      TPFAC_MIN, TPFAC_MAX, ENTRATE_SURF, &
+                                      TPFAC, ENTRATE_SURF, &
                                       PCEFF_SURF, VSCALE_SURF, KHRADFAC, KHSFCFAC_LND, KHSFCFAC_OCN )
 
 
@@ -4423,7 +4424,7 @@ end if
                       USE_EIS,                  &
                       PRANDTLSFC, PRANDTLRAD,   &
                       BETA_SURF, BETA_RAD,      &
-                      TPFAC_MIN, TPFAC_MAX, ENTRATE_SURF, &
+                      TPFAC, ENTRATE_SURF, &
                       PCEFF_SURF, VSCALE_SURF, KHRADFAC, KHSFCFAC_LND, KHSFCFAC_OCN )
 
 #endif
@@ -4606,45 +4607,109 @@ end if
          ZPBLHTKE = MAPL_UNDEF
       end if ! ZPBLHTKE
 
-      ! RI local diagnostic for pbl height thresh 0.
-      if (associated(ZPBLRI)) then
+      if (CALC_ZPBLRI) then
          ZPBLRI = MAPL_UNDEF
-         where (RI(:,:,LM-1)>ri_crit) ZPBLRI = Z(:,:,LM)
-
+         
+         thetavs = T(:,:,LM)*(1.0+MAPL_VIREPS*Q(:,:,LM)/(1.0-Q(:,:,LM)))*(TH(:,:,LM)/T(:,:,LM))
+         tcrib(:,:,LM) = 0.0
+         
          do I = 1, IM
             do J = 1, JM
-               do L=LM-1,1,-1
-                  if( (RI(I,J,L-1)>ri_crit) .and. (ZPBLRI(I,J) == MAPL_UNDEF) ) then
-                     ZPBLRI(I,J) = Z(I,J,L+1)+(ri_crit-RI(I,J,L))/(RI(I,J,L-1)-RI(I,J,L))*(Z(I,J,L)-Z(I,J,L+1))
+               
+               ! -----------------------------------------------------------------------
+               ! Step 1: Identify boundary layer regime
+               ! -----------------------------------------------------------------------
+               is_marine_stratocumulus = .false.
+               is_shallow_cumulus = .false.
+               cloud_base_idx = -1
+               cloud_top_idx = -1
+               cloud_fraction_mean = 0.0
+               cloud_thickness = 0.0
+
+               ! Scan for low clouds (below 3 km only - ignore mid/high clouds)
+               do L = LM-1, 1, -1
+                  if (Z(I,J,L) > 3000.0) exit  ! Stop searching above 3 km
+                  if (FCLD(I,J,L) > 0.05) then
+                     if (cloud_base_idx < 0) cloud_base_idx = L  ! First cloud level from bottom
+                     cloud_top_idx = L  ! Keep updating as we go up
+                     cloud_fraction_mean = cloud_fraction_mean + FCLD(I,J,L)
+                     cloud_thickness = cloud_thickness + 1.0
+                  else
+                     if (cloud_base_idx > 0) exit  ! Found cloud top, stop
                   end if
                end do
-            end do 
-         end do 
 
-         where ( ZPBLRI .eq. MAPL_UNDEF ) ZPBLRI = Z(:,:,LM)
-         ZPBLRI = MIN(ZPBLRI,Z(:,:,KPBLMIN))
-         where ( ZPBLRI < 0.0 ) ZPBLRI = Z(:,:,LM)
-      end if ! ZPBLRI
-
-      ! RI local diagnostic for pbl height thresh 0.2
-      if (associated(ZPBLRI2)) then
-         ZPBLRI2 = MAPL_UNDEF
-         where (RI(:,:,LM-1) > ri_crit2) ZPBLRI2 = Z(:,:,LM)
-
-         do I = 1, IM
-            do J = 1, JM
-               do L=LM-1,1,-1
-                  if( (RI(I,J,L-1)>ri_crit2) .and. (ZPBLRI2(I,J) == MAPL_UNDEF) ) then
-                     ZPBLRI2(I,J) = Z(I,J,L+1)+(ri_crit2-RI(I,J,L))/(RI(I,J,L-1)-RI(I,J,L))*(Z(I,J,L)-Z(I,J,L+1))
+               ! Classify cloud regime (only if low clouds exist)
+               if (cloud_base_idx > 0 .and. cloud_thickness > 0.0) then
+                  cloud_fraction_mean = cloud_fraction_mean / cloud_thickness
+                  cloud_thickness = Z(I,J,cloud_top_idx) - Z(I,J,cloud_base_idx)
+                  ! Marine stratocumulus: solid deck, moderate thickness
+                  if (cloud_fraction_mean > 0.6 .and. cloud_thickness > 200.0 .and. &
+                      Z(I,J,cloud_base_idx) < 2000.0) then
+                     is_marine_stratocumulus = .true.
+                  ! Shallow cumulus: broken clouds, thin
+                  else if (cloud_fraction_mean < 0.4 .and. cloud_thickness < 800.0 .and. &
+                           Z(I,J,cloud_base_idx) < 1500.0) then
+                     is_shallow_cumulus = .true.
                   end if
+               end if
+
+               ! -----------------------------------------------------------------------
+               ! Step 2: Compute Richardson number profile
+               ! -----------------------------------------------------------------------
+               do L=LM-1,1,-1
+                  thetavh(I,J) = T(I,J,L)*(1.0+MAPL_VIREPS*Q(I,J,L)/(1.0-Q(I,J,L)))*(TH(I,J,L)/T(I,J,L))
+                  uv2h(I,J) = max(U(I,J,L)**2+V(I,J,L)**2, 1.0E-8)
+                  tcrib(I,J,L) = MAPL_GRAV*(thetavh(I,J)-thetavs(I,J))*Z(I,J,L)/(thetavs(I,J)*uv2h(I,J))
                end do
+
+               ! -----------------------------------------------------------------------
+               ! Step 3: Apply regime-specific PBL height diagnostic
+               ! -----------------------------------------------------------------------
+              
+               ! REGIME 1: Marine Stratocumulus
+               ! Place PBL top at cloud top (where strong inversion exists)
+               if (is_marine_stratocumulus) then
+                  ! Find the inversion at/above cloud top
+                  do L = cloud_top_idx, 1, -1
+                     if (tcrib(I,J,L) >= tcri_crit) then
+                        ZPBLRI(I,J) = Z(I,J,L+1)+(tcri_crit-tcrib(I,J,L+1))/(tcrib(I,J,L)-tcrib(I,J,L+1))*(Z(I,J,L)-Z(I,J,L+1))
+                        KPBLRI(I,J) = float(L)
+                        exit
+                     end if
+                  end do
+                  ! Fallback: if no inversion found above cloud, use cloud top
+                  if (ZPBLRI(I,J) .eq. MAPL_UNDEF) then
+                     ZPBLRI(I,J) = Z(I,J,cloud_top_idx)
+                     KPBLRI(I,J) = float(cloud_top_idx)
+                  end if
+              
+               ! REGIME 2: Shallow Cumulus
+               ! Place PBL top at cloud base (sub-cloud mixed layer)
+               else if (is_shallow_cumulus) then
+                  ZPBLRI(I,J) = Z(I,J,cloud_base_idx)
+                  KPBLRI(I,J) = float(cloud_base_idx)
+              
+               ! REGIME 3: Clear or Non-Boundary-Layer Clouds
+               ! Use standard bulk Richardson criterion
+               else
+                  do L=LM-1,1,-1
+                     if (tcrib(I,J,L) >= tcri_crit) then
+                        ZPBLRI(I,J) = Z(I,J,L+1)+(tcri_crit-tcrib(I,J,L+1))/(tcrib(I,J,L)-tcrib(I,J,L+1))*(Z(I,J,L)-Z(I,J,L+1))
+                        KPBLRI(I,J) = float(L)
+                        exit
+                     end if
+                  end do
+               end if
+
             end do
-         end do
-
-         where ( ZPBLRI2 .eq. MAPL_UNDEF ) ZPBLRI2 = Z(:,:,LM)
-         ZPBLRI2 = MIN(ZPBLRI2,Z(:,:,KPBLMIN))
-         where ( ZPBLRI2 < 0.0 ) ZPBLRI2 = Z(:,:,LM)
-      end if ! ZPBLRI2
+         end do 
+         
+         where (ZPBLRI<0.)
+            ZPBLRI = Z(:,:,LM)
+            KPBLRI = float(LM)
+         end where
+      end if
 
       ! thetav gradient based pbl height diagnostic
       if (associated(ZPBLTHV)) then
@@ -4829,6 +4894,10 @@ end if
 
          END WHERE
 
+      CASE( 5 )
+         ZPBL = ZPBLRI
+         KPBL = KPBLRI
+
       END SELECT
 
       ZPBL = MIN(ZPBL,Z(:,:,KPBLMIN))
@@ -4839,61 +4908,41 @@ end if
         KPBL_SC = MAPL_UNDEF
         do I = 1, IM
           do J = 1, JM
-            if (DO_SHOC==0) then
-              temparray(1:LM+1) = KHSFC(I,J,0:LM)
-            else
-              temparray(1:LM+1) = KH(I,J,0:LM)
-            endif
-            if ( (LM .eq. 72) .OR. (JASON_TRB) ) then
+            if ( JASON_PBL_SC ) then
+                ! ----------------------------------------------------------------
+                ! Use old 10% of HKHSFC
+                ! ----------------------------------------------------------------
+                temparray(1:LM+1) = KHSFC(I,J,0:LM)
                 maxkh = maxval(temparray)
                 kh_thresh = 0.1
-                do L=LM-1,2,-1
+                do L = LM-1, 2, -1
                   if ( (temparray(L) < kh_thresh*maxkh) .and. (temparray(L+1) >= kh_thresh*maxkh)  &
                   .and. (KPBL_SC(I,J) == MAPL_UNDEF ) ) then
                      KPBL_SC(I,J) = float(L)
                   end if
                 end do
-            else
-                ! -----------------------------------------------------------------
-                ! Find max turbulence, but ignore the lowest 50 meters 
-                ! to safely bypass grid-dependent numerical surface spikes
-                ! -----------------------------------------------------------------
-                maxkh = 0.0
-                do L = 1, LM
-                   ! Assuming Z(I,J,L) is height. 
-                   ! (If Z is altitude MSL, use: Z(I,J,L) - Z(I,J,LM) > 50.0)
-                   if ( Z(I,J,L) > 50.0 ) then  
-                      if (temparray(L) > maxkh) then
-                         maxkh = temparray(L)   
-                      endif
-                   endif                        
-                end do
-                ! Safety fallback: If maxkh is still 0.0 (e.g., highly stable arctic night),
-                ! just grab the absolute maximum of the whole column.
-                if (maxkh == 0.0) then  
-                   maxkh = maxval(temparray)
+                ! =================================================================
+                ! ROBUST FALLBACK FOR CALM / LAMINAR CONDITIONS
+                ! =================================================================
+                if ( KPBL_SC(I,J) == MAPL_UNDEF .or. maxkh < 1.0 ) then
+                  KPBL_SC(I,J) = float(LM)
                 endif
-                ! -----------------------------------------------------------------
-                kh_thresh = 0.1*maxkh
-                ! Search TOP-DOWN to find the true PBL top
-                do L = 2, LM-1
-                  if ( (temparray(L) >= kh_thresh) .and. &
-                       (KPBL_SC(I,J) == MAPL_UNDEF ) ) then
-                     KPBL_SC(I,J) = float(L)
-                     exit ! Break the loop once we hit the top of the turbulence
-                  end if
-                end do
-            endif
-            if (  KPBL_SC(I,J) .eq. MAPL_UNDEF .or. (maxkh.lt.1.)) then        
-              KPBL_SC(I,J) = float(LM)
+            else
+                ! ----------------------------------------------------------------
+                ! Use KPBL from PBLHT_OPTION
+                ! ----------------------------------------------------------------
+                KPBL_SC = KPBL
             endif
           end do
         end do
       endif
+      ! =================================================================
+      ! POST-PROCESSING LOOP (COHERENT LAYER SNAP)
+      ! =================================================================
       if (associated(KPBL_SC) .and. associated(ZPBL_SC)) then
         do I = 1, IM
           do J = 1, JM
-             ZPBL_SC(I,J) = Z(I,J,KPBL_SC(I,J))
+             ZPBL_SC(I,J) = Z(I,J, int(KPBL_SC(I,J)))
           end do
         end do
       endif

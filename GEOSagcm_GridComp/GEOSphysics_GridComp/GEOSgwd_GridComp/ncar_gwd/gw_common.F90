@@ -16,10 +16,10 @@ public :: gw_common_init
 public :: gw_newtonian_set
 public :: gw_prof
 public :: gw_drag_prof
-public :: qbo_hdepth_scaling
 public :: calc_taucd, momentum_flux, momentum_fixer
 public :: energy_momentum_adjust, energy_change, energy_fixer
-public :: hr_cf
+
+public :: tau_0_ubc_cnv, tau_0_ubc_frt, tau_0_ubc_oro
 
 public :: west, east, north, south
 public :: pi
@@ -48,16 +48,10 @@ real(GW_PRC), protected :: cpair = huge(1._GW_PRC)
 real(GW_PRC) :: rog = huge(1._GW_PRC)
 
 
-! Scaling factor for generating QBO
-real(GW_PRC), protected :: qbo_hdepth_scaling
 ! Pressure (Pa) to begin transition to an upper boundary condition of tau = 0.
-!  default(0.0) is not active
-real :: tau_0_ubc = 0.0
-! Inverse Prandtl number.
-real(GW_PRC) :: prndl
-! Heating rate conversion factor
-real(GW_PRC), protected :: hr_cf
-
+real :: tau_0_ubc_cnv = 14.0
+real :: tau_0_ubc_frt = 14.0
+real :: tau_0_ubc_oro = 14.0
 
 !
 ! Private variables
@@ -140,17 +134,14 @@ end function new_GWBand
 !==========================================================================
 
 subroutine gw_common_init(   &
-     tau_0_ubc_in, ktop_in, gravit_in, rair_in, cpair_in, & 
-     prndl_in, qbo_hdepth_scaling_in, hr_cf_in, errstring)
+     tau_0_ubc_cnv_in, tau_0_ubc_frt_in, tau_0_ubc_oro_in, ktop_in, gravit_in, rair_in, cpair_in, & 
+     errstring)
 
-  real, intent(in) :: tau_0_ubc_in
+  real, intent(in) :: tau_0_ubc_cnv_in, tau_0_ubc_frt_in, tau_0_ubc_oro_in
   integer,  intent(in) :: ktop_in
   real, intent(in) :: gravit_in
   real, intent(in) :: rair_in       ! Gas constant for dry air (J kg-1 K-1)
   real, intent(in) :: cpair_in      ! Heat cap. for dry air (J kg-1 K-1)
-  real, intent(in) :: prndl_in
-  real, intent(in) :: qbo_hdepth_scaling_in
-  real, intent(in) :: hr_cf_in
   ! Report any errors from this routine.
   character(len=*), intent(out) :: errstring
 
@@ -159,14 +150,13 @@ subroutine gw_common_init(   &
 
   errstring = ""
 
-  tau_0_ubc = tau_0_ubc_in
+  tau_0_ubc_cnv = tau_0_ubc_cnv_in
+  tau_0_ubc_frt = tau_0_ubc_frt_in
+  tau_0_ubc_oro = tau_0_ubc_oro_in
   ktop   = ktop_in
   gravit = gravit_in
   rair   = rair_in
   cpair  = cpair_in
-  prndl  = prndl_in
-  qbo_hdepth_scaling = qbo_hdepth_scaling_in
-  hr_cf = hr_cf_in
 
   rog = rair/gravit
 
@@ -259,7 +249,7 @@ end subroutine gw_prof
 subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
      src_level, tend_level, dt, t,    &
      piln, rhoi,    nm,   ni, ubm,  ubi,  xv,    yv,   &
-     c, kvtt, tau,  utgw,  vtgw, &
+     c, kvtt, tau, tau_0_ubc,  utgw,  vtgw, &
      ttgw,  gwut, alpha, ro_adjust, kwvrdg)
 
   !-----------------------------------------------------------------------
@@ -316,13 +306,8 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   ! Molecular thermal diffusivity.
   real, intent(in) :: kvtt(ncol,pver+1)
 
-!++jtb 
-! remove q and dse for now (3/26/20)
-  ! Constituent array.
-  !real(GW_PRC), intent(in) :: q(:,:,:)
-  ! Dry static energy.
-  !real(GW_PRC), intent(in) :: dse(ncol,pver)
-!--jtb
+  ! Top level scaling pressure for setting tau to 0.0
+  real, intent(in) :: tau_0_ubc(ncol)
 
   ! Wave Reynolds stress.
   real(GW_PRC), intent(inout) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
@@ -467,14 +452,18 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   end do
 
   ! Force tau at the top of the model to zero, if requested.
-  if (tau_0_ubc > 0.0) then
-     do k=1,pver+1 
-       do i=1,ncol
-         tau_0_scaling = TANH((pint(i,k)-pint(i,ktop))/tau_0_ubc)
-         tau(i,:,k) = tau(i,:,k)*tau_0_scaling
-       enddo
+  ! tau_0_ubc is a pressure level (Pa)
+   do k=ktop,pver+1 
+     do i=1,ncol
+       if (tau_0_ubc(i) > 0.0) then
+         ! Pressure scale: from model top to tau_0_ubc level
+         ! This creates a smooth transition over that pressure range
+         tau_0_scaling = TANH((pint(i,k) - pint(i,ktop)) / &
+                              (tau_0_ubc(i) - pint(i,ktop)))
+         tau(i,:,k) = tau(i,:,k) * tau_0_scaling
+       endif
      enddo
-  endif
+   enddo
 
   !------------------------------------------------------------------------
   ! Compute the tendencies from the stress divergence.

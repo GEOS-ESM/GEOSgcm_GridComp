@@ -566,6 +566,7 @@ contains
 ! Local variables
     real    wrk, wrk1, wrk2, wrk3
     integer i, j, k, kk, kl, ku, kb, kc
+    real :: z_target, z_transition_width, kludge_weight, kludge_factor
 
     do k=1,nzm
       kb = k-1
@@ -763,15 +764,19 @@ contains
                  smixt2(i,j,k) = sqrt(l_par(i,j,k)*400.*tkes)*shocparams%LENFAC2
 
                  ! Stability length scale
-                 ! Reduce sensitivity to stability within dry CBL or SBL,
-                 ! but retain full sensitivity in free atmosphere. This is
-                 ! a 'kludge' to increase TKE in stable BLs while suppressing
-                 ! it in cumulus layers.
-!                 if ( zl(i,j,k).lt.0.75*dryzpbl(i,j) .or. zl(i,j,k).lt.500. ) then
-!                    smixt3(i,j,k) = max(0.05,tkes)*2.*shocparams%LENFAC3/(sqrt(brunt2(i,j,k)))
-!                 else
-                    smixt3(i,j,k) = max(0.05,tkes)*shocparams%LENFAC3/(sqrt(brunt2(i,j,k)))
-!                 end if
+                 ! Smoothly reduce sensitivity to stability within dry CBL or SBL,
+                 ! but retain full sensitivity in free atmosphere. This replaces
+                 ! the original step-function 'kludge' with a continuous tanh 
+                 ! transition to prevent numerical shock at the boundary layer top.
+                 ! Determine the dynamically blended threshold height
+                 z_target = max(500.0, 0.75 * dryzpbl(i,j))
+                 ! Set the vertical window width over which the transition occurs (e.g., 100 meters)
+                 z_transition_width = 100.0 
+                 ! Calculate a smooth weight: 1.0 well below z_target, 0.0 well above
+                 kludge_weight = 0.5 * (1.0 - tanh((zl(i,j,k) - z_target) / z_transition_width))
+                 ! Scale the multiplier smoothly from 4.0 down to 1.0
+                 kludge_factor = 1.0 + 3.0 * kludge_weight
+                 smixt3(i,j,k) = max(0.05,tkes) * kludge_factor * shocparams%LENFAC3 / (sqrt(brunt2(i,j,k)))
 
                  ! Limit component length scales to less than maximum
                  smixt1(i,j,k) = min(max_eddy_length_scale,smixt1(i,j,k))

@@ -127,6 +127,9 @@ module gfdl_mp_mod
 
     real, parameter :: tice = 273.15 ! freezing temperature (K): ref: GFDL, GFS
 
+    real, parameter :: tfrz_inst = 273.15 - 40.0 ! homogeneous freezing temperature (K)
+    real, parameter :: tmlt_fast = 273.15 + 2.0  ! fast melting temperature (K)
+
     integer, parameter :: es_table_length = 2621
     real   , parameter :: es_table_tmin = tice - 160.
     real (kind = r8), parameter :: delt = 0.1
@@ -199,10 +202,10 @@ module gfdl_mp_mod
     integer :: nconds = 1 ! condensation sub cycles
 
     integer :: cfflag = 1 ! cloud fraction scheme
-    ! 1: GFDL cloud scheme
-    ! 2: Xu and Randall (1996)
-    ! 3: Park et al. (2016)
-    ! 4: Gultepe and Isaac (2007)
+    ! 1: GFDL cloud scheme - Subgrid moisture variance
+    ! 2: Xu and Randall (1996) - RH + condensate
+    ! 3: Park et al. (2016) - Scale-aware: grid size + condensate
+    ! 4: Gultepe and Isaac (2007) - Scale-aware: statistical distribution
 
     integer :: icloud_f = 0 ! GFDL cloud scheme
     ! 0: subgrid variability based scheme
@@ -214,23 +217,24 @@ module gfdl_mp_mod
     ! 0: subgrid variability based scheme
     ! 1: no subgrid varaibility
 
-    integer :: inflag = 1 ! ice nucleation scheme
-    ! 1: Hong et al. (2004)
-    ! 2: Meyers et al. (1992)
-    ! 3: Meyers et al. (1992)
-    ! 4: Cooper (1986)
-    ! 5: Fletcher (1962)
-
-    integer :: igflag = 3 ! ice generation scheme
-    ! 1: WSM6
-    ! 2: WSM6 with 0 at 0 C
-    ! 3: WSM6 with 0 at 0 C and fixed value at - 10 C
-    ! 4: combination of 1 and 3
+    integer :: inflag = 1 ! Ice Crystal Concentration (cin) empirical relationship
+    ! 1: Hong et al. (2004) [WSM6 Ice Mass power-law relationship]
+    ! 2: Fletcher (1962) [Standard Temperature-dependence curve]
+    ! 3: Vapor Ice Supersaturation-dependent curve
+    ! 4: Steep Temperature-dependent curve variant
+    ! 5: Meyers et al. (1992) [Very steep exponential Temp-dependence]
+        
+    integer :: igflag = 4 ! Ice Deposition/Sublimation critical mass threshold (qi_crt)
+    ! 1: Absolute threshold based on exponential qi_gen (No Temp-ramp)
+    ! 2: Threshold based on exponential qi_gen multiplied by linear Temp-ramp
+    ! 3: Bypasses qi_gen; relies strictly on linear Temp-ramp (Computationally cheapest)
+    ! 4: Combined threshold bounded by a minimum value multiplied by linear Temp-ramp
 
     integer :: ifflag = 1 ! ice fall scheme
     ! 1: Deng and Mace (2008)
     ! 2: Heymsfield and Donner (1990)
-    ! 3: Combination of Deng and Mace (2008) and Mishra et al (2014, JGR)
+    ! 3: Mishra et al (2014, JGR)
+    ! 4: Combination of Deng and Mace (2008) and Mishra et al (2014, JGR)
 
     integer :: rewflag = 1 ! cloud water effective radius scheme
     ! 1: Martin et al. (1994)
@@ -294,7 +298,8 @@ module gfdl_mp_mod
     logical :: do_sedi_melt_qs = .false. ! melt cloud ice, snow, and graupel during sedimentation
     logical :: do_sedi_melt_qg = .false. ! melt cloud ice, snow, and graupel during sedimentation
 
-    logical :: do_qa = .false. ! do inline cloud fraction
+    logical :: qa_tend = .false. ! compute qa tendency from condensate change 
+    logical :: do_cf = .false. ! do cloud fraction
     logical :: rad_snow = .true. ! include snow in cloud fraciton calculation
     logical :: rad_graupel = .true. ! include graupel in cloud fraction calculation
     logical :: rad_rain = .true. ! include rain in cloud fraction calculation
@@ -319,8 +324,8 @@ module gfdl_mp_mod
     logical :: liq_ice_combine = .false. ! combine all liquid water, combine all solid water
     logical :: snow_grauple_combine = .true. ! combine snow and graupel
 
-    logical :: prog_ccn = .true. ! do prognostic ccn (Yi Ming's method)
-    logical :: prog_cin = .false. ! do prognostic cin
+    logical :: prog_ccn = .true.  ! use prognostic ccn
+    logical :: prog_cin = .false.  ! use prognostic cin
 
     logical :: fix_negative = .true. ! fix negative water species
 
@@ -333,7 +338,7 @@ module gfdl_mp_mod
 
     logical :: do_warm_rain_mp = .false. ! do warm rain cloud microphysics only
 
-    logical :: do_wbf = .true. ! do Wegener Bergeron Findeisen process
+    logical :: do_wbf = .false. ! do Wegener Bergeron Findeisen process
 
     logical :: do_bigg = .false. ! do Bigg process
 
@@ -395,6 +400,7 @@ module gfdl_mp_mod
 
     real :: t_min = 178.0 ! minimum temperature to freeze - dry all water vapor (K)
     real :: t_sub = 184.0 ! minimum temperature for sublimation of cloud ice (K)
+    real :: t_psc = 188.15 ! Realistic Type II PSC frost point (~ -85 C)
 
     real :: rh_inc = 0.30 ! rh increment for complete evaporation of cloud water and cloud ice
     real :: rh_inr = 0.30 ! rh increment for minimum evaporation of rain
@@ -412,13 +418,13 @@ module gfdl_mp_mod
     real :: tau_smlt =  900.0 ! snow melting time scale (s)
     real :: tau_gmlt = 1200.0 ! graupel melting time scale (s)
     ! subgridz timescales
-    real :: tau_wbf  = 1200.0 ! Wegener Bergeron Findeisen time scale (s)
+    real :: tau_wbf  = 900.0 ! Wegener Bergeron Findeisen time scale (s)
 
     real :: ccn_o = 90.0 ! ccn over ocean (1/cm^3)
     real :: ccn_l = 270.0 ! ccn over land (1/cm^3)
 
-    real :: rthreshu =  7.0e-6 ! unstable critical cloud drop radius (micro m)
-    real :: rthreshs = 10.0e-6 !   stable critical cloud drop radius (micro m)
+    real :: rthreshu =  8.5e-6 ! unstable critical cloud drop radius (micro m)
+    real :: rthreshs = 12.0e-6 !   stable critical cloud drop radius (micro m)
 
     logical :: in_cloud_liq = .true. ! use in-cloud liquid
     logical :: in_cloud_ice = .true. ! use in-cloud frozen
@@ -435,8 +441,9 @@ module gfdl_mp_mod
     real :: psaut_qi_crt = 1.0e-4 ! cloud ice to snow autoconversion threshold (kg/m^3)
     real :: pwbf_qi_crt  = 0.8e-4 ! WBF liquid to ice freezing threshold (kg/m^3)
     real :: pgaut_qs_crt = 0.6e-3 ! snow to graupel autoconversion threshold (0.6e-3 in Purdue Lin scheme) (kg/m^3)
-
-    real :: c_paut  = 0.5 ! cloud water to rain autoconversion efficiency
+ 
+    integer :: c_paut_scheme = 1   ! choose autoconversion scheme
+    real    :: c_paut        = 0.5 ! cloud water to rain autoconversion efficiency
 
     ! -----------------------------------------------------------------------
     ! collection efficiencies for accretion
@@ -445,7 +452,7 @@ module gfdl_mp_mod
     ! When .true., these coefficients act as Aerodynamic Stokes Efficiencies 
     ! applied to the raw 3D geometric integral.
     logical :: do_3d_acc_cliq = .true.  ! perform the new 3d accretion for cloud water
-    real :: c_psacw = 0.05 ! cloud water to snow (HEAVY aerodynamic reduction required)
+    real :: c_psacw = 0.25 ! cloud water to snow (HEAVY aerodynamic reduction required)
     real :: c_pgacw = 0.80 ! cloud water to graupel/hail (Punches through air)
     real :: c_pracw = 1.00 ! cloud water to rain 
     ! --- Cloud Ice (Frozen) 3D Accretion ---
@@ -471,10 +478,11 @@ module gfdl_mp_mod
 
     real :: sed_fac = 1.0 ! coefficient for sedimentation fall, scale from 1.0 (implicit) to 0.0 (lagrangian)
 
-    logical :: do_ice_pres_scaling = .true.  ! optional pressure scaling to accelerate ice settling in the upper troposphere
+    logical :: do_ice_pres_scaling = .false.  ! optional pressure scaling to accelerate ice settling in the upper troposphere
 
     real :: vw_fac = 1.0
-    real :: vi_fac = 1.0
+    real :: vi_fac_cnv = 1.0
+    real :: vi_fac_lsc = 1.0
     real :: vs_fac = 1.0
     real :: vg_fac = 1.0
     real :: vr_fac = 1.0
@@ -545,7 +553,7 @@ module gfdl_mp_mod
     real :: cnv_fraction, fac_eis, cpaut, fac_rc, onemsig, srf_type
     !$OMP THREADPRIVATE(cnv_fraction, fac_eis, cpaut, fac_rc, onemsig, srf_type)
 
-    real (kind = r8) :: lv00, li00, li20, cpaut0
+    real (kind = r8) :: lv00, li00, li20, cpaut0, ql_exponent, ccn_exponent 
     real (kind = r8) :: d1_vap, d1_ice, c1_vap, c1_liq, c1_ice
     real (kind = r8) :: normw, normr, normi, norms, normg, normh
     real (kind = r8) :: expow, expor, expoi, expos, expog, expoh
@@ -568,11 +576,11 @@ module gfdl_mp_mod
     ! -----------------------------------------------------------------------
 
     namelist / gfdl_mp_nml / &
-        t_min, t_sub, tau_r2g, tau_smlt, tau_gmlt, do_ice_pres_scaling, vw_min, vi_min, &
-        vr_min, vs_min, vg_min, vh_min, ql_mlt, do_qa, fix_negative, vw_max, vi_max, vs_max, &
+        t_min, t_sub, tau_r2g, tau_smlt, tau_gmlt, do_ice_pres_scaling, vi_fac_cnv, vi_fac_lsc, vw_min, vi_min, &
+        vr_min, vs_min, vg_min, vh_min, ql_mlt, qa_tend, do_cf, cfflag, fix_negative, vw_max, vi_max, vs_max, &
         vh_max, vg_max, vr_max, qs_mlt, ql0_max, psaut_qi_crt, pwbf_qi_crt, pgaut_qs_crt, ifflag, &
         rh_inc, rh_inr, const_vw, const_vi, const_vs, const_vg, const_vr, rthreshu, rthreshs, &
-        ccn_l, ccn_o, igflag, c_paut, tau_imlt, tau_v2l, tau_l2v, tau_i2s, &
+        ccn_l, ccn_o, igflag, c_paut_scheme, c_paut, tau_imlt, tau_v2l, tau_l2v, tau_i2s, &
         tau_l2r, qi_lim, do_hail, inflag, c_psacw, c_psaci, c_pracs, &
         c_psacr, c_pgacr, c_pgacs, c_pgacw, c_pgaci, z_slope_liq, z_slope_ice, &
         prog_ccn, c_pracw, c_praci, rad_snow, rad_graupel, rad_rain, cld_min, &
@@ -869,11 +877,28 @@ subroutine setup_mp
     endif
 
     ! -----------------------------------------------------------------------
-    ! cloud water autoconversion, Hong et al. (2004)
+    ! cloud water autoconversion
     ! -----------------------------------------------------------------------
-
-    aone = 2. / 9. * (3. / 4.) ** (4. / 3.) / pi ** (1. / 3.)
-    cpaut0 = c_paut * aone * grav / visd
+    select case (c_paut_scheme)
+    case (1)
+        ! Hong et al. (2004) Formulation
+        ! DOI: 10.1175/1520-0493(2004)132<0103:ARATIM>2.0.CO;2
+        ql_exponent  = 7.0 / 3.0
+        ccn_exponent = -1.0 / 3.0
+        aone   = (2.0 / 9.0) * ((3.0 / 4.0) ** (4.0 / 3.0)) / (pi ** (1.0 / 3.0))
+        cpaut0 = c_paut * aone * grav / visd
+    case (2)
+        ! Khairoutdinov and Kogan (2000) Formulation
+        ! DOI: 10.1175/1520-0493(2000)128<0229:ANCPPI>2.0.CO;2
+        ql_exponent  = 2.47
+        ccn_exponent = -1.79
+        ! Empirical KK2000 pre-factor in SI units. 
+        ! NOTE: If your ccn input is in #/cm3, multiply this constant by 1.0e6**(-1.79) 
+        ! inside your localized c_praut evaluation if necessary.
+        cpaut0 = c_paut * 1350.0
+    case default
+        stop 'c_paut_scheme invalid'
+    end select
 
     ! -----------------------------------------------------------------------
     ! terminal velocities parameters, Lin et al. (1983)
@@ -1375,7 +1400,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
 
     integer :: i, k
 
-    real :: ccn0, cin0
+    real :: ccn0
     real :: convt, rdt, dts, q_cond, tmp, nl, ni
 
     real, dimension (ks:ke) :: h_var
@@ -1424,7 +1449,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
     ! Begin Parallel Loop
     ! -----------------------------------------------------------------------
     !$OMP PARALLEL DO DEFAULT(SHARED) &
-    !$OMP PRIVATE(i, k, ccn0, cin0, q_cond, tmp, nl, ni, mass_fac, con_r8, c8, cp8, &
+    !$OMP PRIVATE(i, k, ccn0, q_cond, tmp, nl, ni, mass_fac, con_r8, c8, cp8, &
     !$OMP         h_var, q_liq, q_sol, dp, dz, dp0, qvz, qlz, qrz, qiz, qsz, &
     !$OMP         qgz, qaz, zez, den, pz, denfac, ccn, cin, u, v, w, &
     !$OMP         pcw, edw, oew, rrw, tvw, pci, edi, oei, rri, tvi, &
@@ -1455,14 +1480,12 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         ! -----------------------------------------------------------------------
         ! Adjust autoconversion rates and thresholds using decoupled regimes 
         ! -----------------------------------------------------------------------
-        ! 1. Rate scaling based on Boundary Layer Stability (EIS)
-        ! High inversion (fac_eis=1.0) -> reduced to 0.5 * cpaut0
-        ! Low inversion (fac_eis=0.0)  -> stays at 1.0 * cpaut0
+        ! Autoconversion rate is controlled by EIS:
+        !   high EIS reduces the conversion efficiency.
         cpaut = cpaut0 * (0.5 * fac_eis + 1.0 * (1.0 - fac_eis))
-        ! 2. Threshold scaling based on Deep Instability (CAPE / cnv_fraction)
-        ! convective (cnv_fraction=1) -> rthreshu
-        ! stratiform (cnv_fraction=0) -> rthreshs
-        ! NOTE: Consider raising rthreshu from 7.0e-6 to 8.0e-6 or 8.5e-6 to help suppress ITCZ over-precipitation
+        ! Critical radius is controlled by CAPE-derived convective fraction:
+        !   high convective fraction approaches rthreshu;
+        !   low convective fraction approaches rthreshs.
         fac_rc = rc * (rthreshu * cnv_fraction + rthreshs * (1.0 - cnv_fraction)) ** 3
 
         ! -----------------------------------------------------------------------
@@ -1590,13 +1613,6 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
 
         if (prog_ccn) then
             do k = ks, ke
-              ! ! boucher and lohmann (1995)
-              ! nl =       min (1., abs (hs (i)) / (10. * grav)) * &
-              !      (10. ** 2.24 * (qnl (i, k) * den (k) * 1.e9) ** 0.257) + &
-              !      (1. - min (1., abs (hs (i)) / (10. * grav))) * &
-              !      (10. ** 2.06 * (qnl (i, k) * den (k) * 1.e9) ** 0.48)
-              ! ccn (k) = max (10.0, nl) * 1.e6
-              ! ccn (k) = ccn (k) / den (k)
               ! qnl import from GEOS has units # / m^3
                 ccn (k) = qnl (i, k) / den (k)
             enddo
@@ -1610,17 +1626,11 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
 
         if (prog_cin) then
             do k = ks, ke
-              ! ni = qni (i, k)
-              ! cin (k) = max (10.0, ni) * 1.e6
-              ! cin (k) = cin (k) / den (k)
-              ! qni import fro GEOS has units # / m^3
+              ! qni import from GEOS has units # / m^3
                 cin (k) = qni (i, k) / den (k)
             enddo
         else
-            cin0 = 0.
-            do k = ks, ke
-                cin (k) = cin0 / den (k)
-            enddo
+            cin (k) = 0.
         endif
 
         ! -----------------------------------------------------------------------
@@ -1676,7 +1686,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         ! cloud fraction diagnostic
         ! -----------------------------------------------------------------------
 
-        if (do_qa .and. last_step) then
+        if (do_cf .and. last_step) then
             call cloud_fraction (ks, ke, pz, den, qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
                 tz, sqrt(area (i)), h_var)
         endif
@@ -1849,7 +1859,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
             zet (i, k) = zez (k)
 
             ! return QA tendencies for GEOS
-            if (.not. do_qa) then
+            if (qa_tend) then
                qa_dt (i, k) = rdt * &
                       ( qa (i, k)*SQRT( max(qiz(k)+qlz(k),qcmin) / max(qi(i,k)+ql(i,k),qcmin) ) - & ! New Cloud -
                         qa (i, k) )                                                                 ! Old Cloud
@@ -2324,7 +2334,7 @@ subroutine mp_fast (ks, ke, tz, qa, qv, ql, qr, qi, qs, qg, dtm, dp, den, ccn, &
         ! -----------------------------------------------------------------------
 
         call pwbf (ks, ke, dtm, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den, &
-            lcpk, icpk, tcpk, tcp3, mppfw, convt)
+            lcpk, icpk, tcpk, tcp3, ccn, cin, mppfw, convt)
 
         ! -----------------------------------------------------------------------
         ! Bigg freezing mechanism
@@ -2460,9 +2470,9 @@ subroutine sedimentation (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, &
     ! -----------------------------------------------------------------------
 
     if (do_psd_ice_fall) then
-        call term_rsg (ks, ke, qi, den, denfac, vi_fac, blini, mui, tvai, tvbi, vi_min, vi_max, const_vi, vti)
+        call term_rsg (ks, ke, qi, den, denfac, 0.5*(vi_fac_cnv+vi_fac_lsc), blini, mui, tvai, tvbi, vi_min, vi_max, const_vi, vti)
     else
-        call term_ice (ks, ke, tz, qi, den, vi_fac, vi_min, vi_max, const_vi, vti)
+        call term_ice (ks, ke, tz, qi, den, vi_fac_cnv, vi_fac_lsc, vi_min, vi_max, const_vi, vti)
     endif
 
     if (do_sedi_melt_qi) then
@@ -2543,7 +2553,7 @@ end subroutine sedimentation
 ! terminal velocity for cloud ice
 ! =======================================================================
 
-subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
+subroutine term_ice (ks, ke, tz, q, den, v_fac_cnv, v_fac_lsc, v_min, v_max, const_v, vt)
 
     implicit none
 
@@ -2553,7 +2563,7 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
 
     integer, intent (in) :: ks, ke
     logical, intent (in) :: const_v
-    real, intent (in) :: v_fac, v_min, v_max
+    real, intent (in) :: v_fac_cnv, v_fac_lsc, v_min, v_max
     real, intent (in), dimension (ks:ke) :: q, den
     real (kind = r8), intent (in), dimension (ks:ke) :: tz
     real, intent (out), dimension (ks:ke) :: vt
@@ -2605,7 +2615,7 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
                         qden = q (k) * den (k) * 1.e3
                         viLSC = 10.0**(log10(qden) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
                         viCNV = 10.0**(log10(qden) * (tc (k) * (aaC * tc (k) + bbC) + ccC) + ddC * tc (k) + eeC)
-                        vt (k) = 0.01 * (viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction))
+                        vt (k) = 0.01 * (v_fac_lsc*viLSC*(1.0-cnv_fraction) + v_fac_cnv*viCNV*(cnv_fraction))
             
                     case (2)
                         ! Pure Heymsfield and Donner (1990)
@@ -2619,15 +2629,15 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
                         viLSC = MAX(10.0, (1.411*tc (k) + 11.71*log10(qden*1.e3) + 82.35))
                         ! Anvil Vm: a=1.119, b=14.21, c=68.85
                         viCNV = MAX(10.0, (1.119*tc (k) + 14.21*log10(qden*1.e3) + 68.85))
-                        vt (k) = 0.01 * (viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction))
-            
+                        vt (k) = 0.01 * (v_fac_lsc*viLSC*(1.0-cnv_fraction) + v_fac_cnv*viCNV*(cnv_fraction))
+ 
                     case (4)
                         ! Combination: Deng & Mace (2008) LSC + Mishra et al (2014) Anvil CNV
                         qden = q (k) * den (k) * 1.e3
                         viLSC = 10.0**(log10(qden) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
                         ! Anvil Vm: a=1.119, b=14.21, c=68.85
                         viCNV = MAX(10.0, (1.119*tc (k) + 14.21*log10(qden*1.e3) + 68.85))
-                        vt (k) = 0.01 * (viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction))
+                        vt (k) = 0.01 * (v_fac_lsc*viLSC*(1.0-cnv_fraction) + v_fac_cnv*viCNV*(cnv_fraction))
                         
                     case default
                         ! Fail execution if an invalid flag is provided
@@ -2644,7 +2654,7 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
                     pl = den (k) * rdgas * tz (k) ! dry air pressure
                     tmp = tz (k)
                     ! Note: Ensure LDRADIUS4 is accessible in this scope
-                    DIAM = 2.0*LDRADIUS4(pl/100.0,tmp,q(k),zero,zero,2)*1.e6 ! microns
+                    DIAM = 2.0*LDRADIUS4(pl/100.0,tmp,q(k),zero,zero,2,cnv_fraction)*1.e6 ! microns
                     lnP = log(pl/100.0)                                    
                     C0 = -1.04 + 0.298*lnP
                     C1 =  0.67 - 0.097*lnP
@@ -2653,9 +2663,8 @@ subroutine term_ice (ks, ke, tz, q, den, v_fac, v_min, v_max, const_v, vt)
                 endif
 
                 ! -----------------------------------------------------------
-                ! 3. Apply user multiplier and safety caps
+                ! 3. Apply safety caps
                 ! -----------------------------------------------------------
-                vt (k) = v_fac * vt (k)
                 vt (k) = min (v_max, max (v_min, vt (k)))
 
             endif
@@ -3164,6 +3173,7 @@ subroutine prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
 
     real :: dqv, qsat, dqdt, tmp, t2, qden, q_plus, q_minus, sink
     real :: qpz, dq, dqh, tin, fac_revp, rh_tem, rh_rain
+    real :: max_evap_limit
 
     real, dimension (ks:ke) :: q_liq, q_sol, lcpk, icpk, tcpk, tcp3
 
@@ -3210,6 +3220,9 @@ subroutine prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
 
         if (dqv .gt. 0.0 .and. qsat .gt. q_minus) then
 
+            ! Absolute physics thermodynamic boundary limit
+            max_evap_limit = dqv / (1.0 + lcpk (k) * dqdt)
+
             if (qsat .gt. q_plus) then
                 dq = qsat - qpz
             else
@@ -3218,7 +3231,7 @@ subroutine prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
             qden = qr (k) * den (k)
             t2 = tin * tin
             sink = psub (t2, dq, qden, qsat, crevp, den (k), denfac (k), blinr, mur, lcpk (k), cvm (k))
-            sink = min (qr (k), dts * fac_revp * sink, dqv / (1. + lcpk (k) * dqdt))
+            sink = min (qr (k), dts * fac_revp * sink, max_evap_limit)
 
             ! -----------------------------------------------------------------------
             ! Enhanced scale-aware rain evaporation in dry environmental air.
@@ -3236,6 +3249,8 @@ subroutine prevp (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
                 tmp = fac_revp * tmp 
                 ! Bound by the actual rain available (Units: kg/kg)
                 tmp = min (qr (k), tmp)
+                ! Safety Bound: Protect the enhanced value from over-saturating the cell
+                tmp  = min (tmp, max_evap_limit)
                 ! Update the final sink amount (Units: kg/kg)
                 sink = max (sink, tmp)
             endif
@@ -3313,6 +3328,8 @@ subroutine pracw (ks, ke, dts, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, 
                 sink = dts * acr2d (qden, cracw, denfac (k), blinr, mur)
                 sink = sink / (1. + sink) * ql (k)
             endif
+            sink = min(ql(k), sink)
+
             mppxr = mppxr + sink * dp (k) * convt
 
             call update_qq (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
@@ -3353,12 +3370,9 @@ subroutine praut (ks, ke, dts, dp, tz, qak, qvk, qlk, qrk, qik, qsk, qgk, den, c
     ! local variables
     ! -----------------------------------------------------------------------
 
-    real, parameter :: so3 = 7.0 / 3.0
-    real, parameter :: so1 = - 1.0 / 3.0
-
     integer :: k
 
-    real :: sink, dq, qc
+    real :: ccn_base, sink, dq, qc
 
     real, dimension (ks:ke) :: ql, dl, qadum, c_praut
 
@@ -3391,10 +3405,30 @@ subroutine praut (ks, ke, dts, dp, tz, qak, qvk, qlk, qrk, qik, qsk, qgk, den, c
 
                 if (dq .gt. 0.) then
 
-                    c_praut (k) = cpaut * exp (so1 * log (ccn (k) * rhow))
-                    sink = min (1., dq / dl (k)) * dts * c_praut (k) * den (k) * &
-                        exp (so3 * log (ql (k)))
-                    sink = min (ql0_max/qadum(k), ql (k), sink) * qadum (k)
+                    ! ===================================================================
+                    ! UNIFIED INTERCHANGEABLE AEROSOL BASE RESOLUTION (Mixing Ratio Fix)
+                    ! ===================================================================
+                    ! ccn(k) is in units of #/kg_air.
+                    ! Scheme 1 historically scales using liquid water density (rhow).
+                    ! Scheme 2 requires volumetric concentration in #/cm3 of air.
+                    ! ===================================================================
+                    if (c_paut_scheme == 1) then
+                        ! Retain legacy Scheme 1 scaling profile exactly
+                        ccn_base = ccn(k) * rhow
+                    else
+                        ! 1. Multiply by air density den(k) to convert #/kg_air back to #/m3_air.
+                        !    (Note: ccn(k) * den(k) is exactly equal to your raw qnl input).
+                        ! 2. Divide by 1.0e6 to convert #/m3_air down to #/cm3_air.
+                        ! 3. Enforce a physical marine aerosol floor of 25.0 cm-3.
+                        ccn_base = max((ccn(k) * den(k)), 25.0e6) / 1.0e6
+                    endif
+
+                    ! Computational optimization: Replace exp(log()) with standard power operator
+                    c_praut (k) = cpaut * (ccn_base ** ccn_exponent)
+                    ! Calculate autoconversion sink
+                    sink = min(dq, dts * c_praut (k) * den (k) * (ql (k) ** ql_exponent))
+                    sink = min(ql0_max, ql (k), sink) * qadum (k)
+
                     mppar = mppar + sink * dp (k) * convt
 
                     call update_qq (qak (k), qvk (k), qlk (k), qrk (k), qik (k), qsk (k), qgk (k), &
@@ -3425,9 +3459,12 @@ subroutine praut (ks, ke, dts, dp, tz, qak, qvk, qlk, qrk, qik, qsk, qgk, den, c
 
                 if (dq .gt. 0.) then
 
-                    c_praut (k) = cpaut * exp (so1 * log (ccn (k) * rhow))
-                    sink = min (dq, dts * c_praut (k) * den (k) * exp (so3 * log (ql (k))))
-                    sink = min (ql0_max/qadum(k), ql (k), sink) * qadum (k)
+                    ! Computational optimization: Replace exp(log()) with standard power operator
+                    c_praut (k) = cpaut * ((ccn (k) * rhow) ** ccn_exponent)
+                    ! Calculate autoconversion sink
+                    sink = min(dq, dts * c_praut (k) * den (k) * (ql (k) ** ql_exponent))
+                    sink = min(ql0_max, ql (k), sink) * qadum (k)
+
                     mppar = mppar + sink * dp (k) * convt
 
                     call update_qq (qak (k), qvk (k), qlk (k), qrk (k), qik (k), qsk (k), qgk (k), &
@@ -3596,12 +3633,24 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
     integer :: k
 
     real :: ql, qi, qim, qadum, newliq, newice
-    real :: tmp, sink, fac_imlt, fac_frez
+    real :: tmp, sink, fac_imlt, fac_imlt_loc, fac_frez, fac_frez_loc
     real :: critical_qi_factor
 
-    ! psaut_qi_crt (ice to snow conversion) has strong resolution dependence
-    !    account for this using onemsig to convert more ice to snow at coarser resolutions
-    critical_qi_factor = psaut_qi_crt*(1.e-1*(1.0-onemsig) + onemsig)
+    ! -------------------------------------------------------------------------
+    ! Scale-Aware Cloud Ice Threshold (critical_qi_factor)
+    ! -------------------------------------------------------------------------
+    ! Applies a resolution-dependent penalty to the critical ice threshold,
+    ! partitioning the grid box into unresolved and resolved fractions.
+    !   
+    ! - Unresolved scales (1.0 - onemsig): Applies a strict penalty (0.1)
+    !   to sub-grid parameterizations. This forces sub-grid ice to precipitate
+    !   as snow earlier, preventing global QI from skyrocketing and negatively 
+    !   impacting the radiation budget.
+    ! - Resolved scales (onemsig): The penalty vanishes (1.0 multiplier).
+    !   Grid-scale clouds get the full ice bucket, allowing resolved large-scale 
+    !   ascent to loft and suspend ice normally.
+    ! -------------------------------------------------------------------------
+    critical_qi_factor = psaut_qi_crt * (0.1 * (1.0 - onemsig) + 1.0 * onemsig)
 
     fac_imlt = 1. - exp (- dts / tau_imlt)
     fac_frez = 1. - exp (- dts / tau_frez)
@@ -3622,8 +3671,16 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
             tmp = tz (k)
             newliq = new_liq_condensate(tmp, ql, qi)
-            sink = fac_imlt * min (qi, newliq, (tz (k) - tice) / icpk (k) / qadum)
-            tmp = min (sink, dim (ql_mlt/qadum, ql))
+ 
+            ! Cloud ice melts instantly if it gets too far past freezing (e.g., +2 C)
+            if (tmp > tmlt_fast) then
+                fac_imlt_loc = 1.0 ! Instant melt
+            else
+                fac_imlt_loc = fac_imlt
+            endif
+
+            sink = fac_imlt_loc * min (qi, newliq, (tz (k) - tice) / icpk (k))
+            tmp = min (sink, dim (ql_mlt, ql))
 
             tmp = tmp * qadum
             sink = sink * qadum
@@ -3647,9 +3704,18 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
             tmp = tz (k)
             newice = new_ice_condensate(tmp, ql, qi)
-            sink = fac_frez * min(ql, newice, (tice - tz (k)) / icpk (k) / qadum)
+
+            ! --- NEW: Homogeneous Freezing Hard Stop ---
+            if (tmp < tfrz_inst) then
+                newice = ql        ! All liquid must become ice
+                fac_frez_loc = 1.0 ! Instantaneous timescale
+            else
+                fac_frez_loc = fac_frez ! Normal 10-minute timescale
+            endif
+
+            sink = fac_frez_loc * min(ql, newice, (tice - tz (k)) / icpk (k))
             qim = critical_qi_factor / den (k)
-            tmp = min (sink, dim (qim/qadum, qi))
+            tmp = min (sink, dim (qim, qi))
 
             tmp = tmp*qadum
             sink = sink*qadum
@@ -3720,8 +3786,9 @@ subroutine pimlt (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, t
 
             tmp = tz (k)
             newliq = new_liq_condensate(tmp, ql, qi)
-            sink = fac_imlt * min (qi, newliq, (tz (k) - tice) / icpk (k) / qadum)
-            tmp = min (sink, dim (ql_mlt/qadum, ql))
+
+            sink = fac_imlt * min (qi, newliq, (tz (k) - tice) / icpk (k))
+            tmp = min (sink, dim (ql_mlt, ql))
 
             tmp = tmp * qadum
             sink = sink * qadum
@@ -3773,11 +3840,23 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
 
     real :: ql, qi, qadum, newice 
     real :: tmp, sink, qim, fac_frez
-    real :: critical_qi_factor 
+    real :: critical_qi_factor
 
-    ! psaut_qi_crt (ice to snow conversion) has strong resolution dependence
-    !    account for this using onemsig to convert more ice to snow at coarser resolutions
-    critical_qi_factor = psaut_qi_crt*(1.e-1*(1.0-onemsig) + onemsig)
+    ! -------------------------------------------------------------------------
+    ! Scale-Aware Cloud Ice Threshold (critical_qi_factor)
+    ! -------------------------------------------------------------------------
+    ! Applies a resolution-dependent penalty to the critical ice threshold,
+    ! partitioning the grid box into unresolved and resolved fractions.
+    !   
+    ! - Unresolved scales (1.0 - onemsig): Applies a strict penalty (0.1)
+    !   to sub-grid parameterizations. This forces sub-grid ice to precipitate
+    !   as snow earlier, preventing global QI from skyrocketing and negatively 
+    !   impacting the radiation budget.
+    ! - Resolved scales (onemsig): The penalty vanishes (1.0 multiplier).
+    !   Grid-scale clouds get the full ice bucket, allowing resolved large-scale 
+    !   ascent to loft and suspend ice normally.
+    ! -------------------------------------------------------------------------
+    critical_qi_factor = psaut_qi_crt * (0.1 * (1.0 - onemsig) + 1.0 * onemsig)
 
     fac_frez = 1. - exp (- dts / tau_frez)
 
@@ -3797,9 +3876,10 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
 
             tmp = tz (k)
             newice = new_ice_condensate(tmp, ql, qi)
-            sink = fac_frez * min(ql, newice, (tice - tz (k)) / icpk (k) / qadum)
+
+            sink = fac_frez * min(ql, newice, (tice - tz (k)) / icpk (k))
             qim = critical_qi_factor / den (k)
-            tmp = min (sink, dim (qim/qadum, qi))
+            tmp = min (sink, dim (qim, qi))
 
             tmp = tmp*qadum
             sink = sink*qadum
@@ -3939,6 +4019,14 @@ subroutine pgmlt (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den
     real :: pgacw, pgacr
     real :: oms_cgacw
 
+    ! -----------------------------------------------------------------------
+    ! Graupel Accretion of Cloud Water (cgacw) Resolution Penalty
+    ! -----------------------------------------------------------------------
+    ! Applies a massive 100x penalty (1.e-2) at coarse resolutions (onemsig=0).
+    ! This is physically required because true graupel is a convective phenomenon.
+    ! At 50km, large-scale graupel accretion is aggressively paralyzed to prevent 
+    ! it from artificially sweeping out all large-scale cloud liquid water (QL).
+    ! -----------------------------------------------------------------------
     oms_cgacw = cgacw * (1.e-2*(1.0-onemsig) + onemsig)
 
     do k = ks, ke
@@ -4086,10 +4174,31 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
 
     real :: tc, sink, fac_i2s, q_plus, qim, dq, tmp
     real :: di, qi, critical_qi_factor, qadum
+    real :: pl, p_norm, p_factor, critical_qi_factor_local
 
-    ! psaut_qi_crt (ice to snow conversion) has strong resolution dependence
-    !    account for this using onemsig to convert more ice to snow at coarser resolutions
-    critical_qi_factor = psaut_qi_crt*(1.e-1*(1.0-onemsig) + onemsig)
+    ! -----------------------------------------------------------------------
+    ! Tunable parameters for pressure-dependent critical threshold
+    ! -----------------------------------------------------------------------
+    real, parameter :: PSAUT_FACTOR_HIGH = 5.0    ! Multiplier at upper levels
+    real, parameter :: PSAUT_FACTOR_LOW  = 1.0    ! Multiplier at lower levels
+    real, parameter :: PSAUT_P_MID       = 450.0  ! Transition center (hPa)
+    real, parameter :: PSAUT_P_WIDTH     = 100.0  ! Transition width (hPa)
+
+    ! -------------------------------------------------------------------------
+    ! Scale-Aware Cloud Ice Threshold (critical_qi_factor)
+    ! -------------------------------------------------------------------------
+    ! Applies a resolution-dependent penalty to the critical ice threshold,
+    ! partitioning the grid box into unresolved and resolved fractions.
+    !   
+    ! - Unresolved scales (1.0 - onemsig): Applies a penalty
+    !   to sub-grid parameterizations. This forces sub-grid ice to precipitate
+    !   as snow earlier, preventing global QI from skyrocketing and negatively 
+    !   impacting the radiation budget.
+    ! - Resolved scales (onemsig): The penalty vanishes (1.0 multiplier).
+    !   Grid-scale clouds get the full ice bucket, allowing resolved large-scale 
+    !   ascent to loft and suspend ice normally.
+    ! -------------------------------------------------------------------------
+    critical_qi_factor = psaut_qi_crt * (0.1 * (1.0 - onemsig) + 1.0 * onemsig)
 
     fac_i2s = 1. - exp (- dts / tau_i2s)
 
@@ -4098,6 +4207,37 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
         if (tz (k) .lt. tice .and. qik (k) .gt. qcmin) then
 
             tc = tz (k) - tice
+
+            ! ===================================================================
+            ! CALCULATE DRY AIR PRESSURE
+            ! ===================================================================
+            pl = den(k) * rdgas * tz(k)  ! Pressure in Pa
+            pl = pl * 0.01               ! Convert to hPa (mb)
+
+            ! ===================================================================
+            ! SMOOTH PRESSURE-DEPENDENT THRESHOLD MULTIPLIER
+            ! Uses sigmoid (tanh) for smooth transition.
+            ! Baseline critical threshold: critical_qi_factor
+            ! 
+            ! Physical interpretation:
+            !   - Upper troposphere (p <= 450 hPa): Multiplier approaches ~10x.
+            !     Ice must accumulate sgnificantly before converting to snow. 
+            !     This allows ice to stay suspended in strong updrafts and 
+            !     detrainment regions.
+            !   
+            !   - Mid troposphere (p = 700 hPa): Transition midpoint with 5.5x 
+            !     multiplier, yielding a moderate threshold
+            !   
+            !   - Lower troposphere (p >= 850 hPa): Multiplier drops toward 1x baseline. 
+            !     Effective threshold stays low, meaning ice 
+            !     converts to snow readily as it approaches the surface.
+            ! ===================================================================
+            p_norm = (pl - PSAUT_P_MID) / PSAUT_P_WIDTH
+            p_factor = PSAUT_FACTOR_LOW + 0.5 * (PSAUT_FACTOR_HIGH - PSAUT_FACTOR_LOW) * &
+                       (1.0 - tanh(p_norm))
+            
+            ! Apply pressure-dependent multiplier to critical threshold
+            critical_qi_factor_local = min(critical_qi_factor * p_factor, psaut_qi_crt) 
 
             ! Use In-Cloud condensates with scale-aware blending
             if (in_cloud_ice) then
@@ -4112,7 +4252,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
             sink = 0.
             di  = max (di, qcmin)
             q_plus = qi + di
-            qim = critical_qi_factor / den (k) / qadum
+            qim = critical_qi_factor_local / den (k)
             if (q_plus .gt. (qim + qcmin)) then
                 if (qim .gt. (qi - di)) then
                     dq = (0.25 * (q_plus - qim) ** 2) / di
@@ -4431,6 +4571,14 @@ subroutine pgacw_pgacr (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te
 
     real :: oms_cgacw
 
+    ! -----------------------------------------------------------------------
+    ! Graupel Accretion of Cloud Water (cgacw) Resolution Penalty
+    ! -----------------------------------------------------------------------
+    ! Applies a massive 100x penalty (1.e-2) at coarse resolutions (onemsig=0).
+    ! This is physically required because true graupel is a convective phenomenon.
+    ! At 50km, large-scale graupel accretion is aggressively paralyzed to prevent 
+    ! it from artificially sweeping out all large-scale cloud liquid water (QL).
+    ! -----------------------------------------------------------------------
     oms_cgacw = cgacw * (1.e-2*(1.0-onemsig) + onemsig)
 
     do k = ks, ke 
@@ -4592,7 +4740,7 @@ subroutine subgrid_z_proc (ks, ke, den, denfac, dts, h_var, tz, qa, qv, ql, qr, 
         ! -----------------------------------------------------------------------
 
         call pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den, lcpk, &
-            icpk, tcpk, tcp3, mppfw, convt)
+            icpk, tcpk, tcp3, ccn, cin, mppfw, convt)
 
         ! -----------------------------------------------------------------------
         ! Bigg freezing mechanism
@@ -4668,10 +4816,28 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
     do k = ks, ke
 
         ! -----------------------------------------------------------------------
-        ! instant deposit all water vapor to cloud ice when temperature is super low
+        ! Polar Stratospheric Ice Cloud (PSC Type II) Proxy
+        ! Triggers in the ultra-cold winter polar stratosphere before reaching t_min
         ! -----------------------------------------------------------------------
+        if (tz(k) .lt. t_psc .and. tz(k) .ge. t_min) then
+            
+            ! Deposit water vapor down to your microphysical minimum
+            subl = dim (qv (k), qcmin)
+            mppd1 = mppd1 + subl * dp (k) * convt
 
-        if (tz (k) .lt. t_min) then
+            call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
+                 - subl, 0., 0., subl, 0., 0., te8 (k), cvm (k), tz (k), &
+                lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pinst')
+
+            ! Force maximum cloud fraction to mimic uniform stratospheric sheets
+            qa (k) = 1.0
+            ! Bypassing the cfmin cloud-clearing filter completely so the 
+            ! ultra-dry stratospheric air doesn't numerically delete the ice.
+
+        elseif (tz (k) .lt. t_min) then
+        ! -----------------------------------------------------------------------
+        ! Your original extreme freeze-dry sink (left untouched)
+        ! -----------------------------------------------------------------------
 
             subl = dim (qv (k), qcmin)
             mppd1 = mppd1 + subl * dp (k) * convt
@@ -4680,18 +4846,14 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
                  - subl, 0., 0., subl, 0., 0., te8 (k), cvm (k), tz (k), &
                 lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pinst')
 
-            ! [WMP] avoid high cloud fractions for high troposhere cirrus clouds
-            if (.not. do_qa) then
-               qa (k) = max(0.0,min(1.0,1.0 - qcmin/max(qi (k), qcmin)))
-               if ( qa (k) .lt. cfmin) then
-                  ! remove clouds and qi if qa is too small
-                  qa (k) = 0.0
-                  subl = qi (k)
-                  mppd1 = mppd1 - subl * dp (k) * convt
-                  call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
-                       subl, 0., 0., - subl, 0., 0., te8 (k), cvm (k), tz (k), &
-                      lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pinst')
-               endif
+            qa (k) = max(0.0,min(1.0,1.0 - qcmin/max(qi (k), qcmin)))
+            if ( qa (k) .lt. cfmin) then
+               qa (k) = 0.0
+               subl = qi (k)
+               mppd1 = mppd1 - subl * dp (k) * convt
+               call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
+                    subl, 0., 0., - subl, 0., 0., te8 (k), cvm (k), tz (k), &
+                   lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pinst')
             endif
 
         endif
@@ -4704,7 +4866,8 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
         tin = (te8 (k) - lv00 * qpz + li00 * (qs (k) + qg (k))) / &
             mhc (qpz, qr (k), qs (k) + qg (k))
 
-        if (tin .gt. t_sub + 6.) then
+        ! Only allow standard tropospheric clearing if we are well outside the PSC zone
+        if (tin .gt. t_sub + 6. .and. tz(k) .ge. t_psc) then
 
             ! initialize to 0s
             evap = 0.0
@@ -4741,6 +4904,18 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
                 subl = 0.0
              endif
 
+            ! -------------------------------------------------------------------------
+            ! Resolution-Dependent Evaporation and Sublimation Shutoff
+            ! -------------------------------------------------------------------------
+            ! At coarse resolutions (onemsig=0), this explicitly zeroes out grid-scale
+            ! evaporation and sublimation inside the GFDL microphysics. 
+            ! Why? Coarse grid-scale microphysics assumes precipitation is uniform across 
+            ! the 50km grid box, which would over-expose it to dry air and artificially 
+            ! evaporate almost all falling rain before it hits the ground.
+            ! Instead, evaporation of sub-grid precipitation shafts is handled upstream 
+            ! by the macro-physics scheme (cldmacro using CCW_EVAP_EFF/CCI_EVAP_EFF).
+            ! This onemsig switch safely prevents double-evaporation.
+            ! -------------------------------------------------------------------------
              evap = evap*onemsig ! resolution dependent evap 0:1 coarse:fine
              subl = subl*onemsig ! resolution dependent subl 0:1 coarse:fine
 
@@ -4792,6 +4967,7 @@ subroutine pcond_pevap (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
     integer :: k
 
     real :: sink, tin, qpz, dqdt, qsw, rh_tem, dq, factor, fac_l2v, fac_v2l
+    real :: tk, lfrac
 
     fac_l2v = 1. - exp (- dts / tau_l2v)
     fac_v2l = 1. - exp (- dts / tau_v2l)
@@ -4814,6 +4990,19 @@ subroutine pcond_pevap (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
             if (use_rhc_cevap .and. rh_tem .ge. rhc_cevap) then
                 sink = 0.
             endif
+            ! -------------------------------------------------------------------------
+            ! Resolution-Dependent Evaporation and Sublimation Shutoff
+            ! -------------------------------------------------------------------------
+            ! At coarse resolutions (onemsig=0), this explicitly zeroes out grid-scale
+            ! evaporation and sublimation inside the GFDL microphysics. 
+            ! Why? Coarse grid-scale microphysics assumes precipitation is uniform across 
+            ! the 50km grid box, which would over-expose it to dry air and artificially 
+            ! evaporate almost all falling rain before it hits the ground.
+            ! Instead, evaporation of sub-grid precipitation shafts is handled upstream 
+            ! by the macro-physics scheme (cldmacro using CCW_EVAP_EFF/CCI_EVAP_EFF).
+            ! This onemsig switch safely prevents double-evaporation.
+            ! -------------------------------------------------------------------------
+            sink = sink*onemsig ! resolution dependent evap 0:1 coarse:fine
             mppew = mppew + sink * dp (k) * convt
         else
             if (do_cond_timescale) then
@@ -4824,7 +5013,6 @@ subroutine pcond_pevap (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
             sink = - min (qv (k), factor * (- dq) / (1. + tcp3 (k) * dqdt))
             mppcw = mppcw - sink * dp (k) * convt
         endif
-        sink = sink*onemsig ! resolution dependent evap 0:1 coarse:fine
 
         call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
             sink, - sink, 0., 0., 0., 0., te8 (k), cvm (k), tz (k), &
@@ -4891,97 +5079,122 @@ subroutine pcomp (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, lcp
 end subroutine pcomp
 
 ! =======================================================================
-! Wegener Bergeron Findeisen process, Storelvmo and Tan (2015)
+! Wegener-Bergeron-Findeisen (WBF) Process
+! Based on Storelvmo and Tan (2015) and Korolev (2007) physical framework
 ! =======================================================================
 
 subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den, lcpk, &
-        icpk, tcpk, tcp3, mppfw, convt)
-
+                 icpk, tcpk, tcp3, ccn, cin, mppfw, convt)
     implicit none
 
     ! -----------------------------------------------------------------------
     ! input / output arguments
     ! -----------------------------------------------------------------------
-
     integer, intent (in) :: ks, ke
-
     real, intent (in) :: dts, convt
-
     real, intent (in), dimension (ks:ke) :: den, dp
-
     real (kind = r8), intent (in), dimension (ks:ke) :: te8
-
-    real, intent (inout), dimension (ks:ke) :: qa, qv, ql, qr, qi, qs, qg
+    real, intent (inout), dimension (ks:ke) :: qa, qv, ql, qr, qi, qs, qg, ccn, cin
     real, intent (inout), dimension (ks:ke) :: lcpk, icpk, tcpk, tcp3
-
     real (kind = r8), intent (inout), dimension (ks:ke) :: cvm, tz
-
     real, intent (inout) :: mppfw
 
     ! -----------------------------------------------------------------------
     ! local variables
     ! -----------------------------------------------------------------------
-
     integer :: k
+    real    :: qadum, ql_in, qi_in, qs_in, qg_in, q_ice_bulk
+    real    :: tc, tin, sink, dqdt, qsw, qsi
+    real    :: psi, f_k, f_d, explicit_wbf_rate
+    real    :: latent_v, latent_s
 
-    real :: tc, tin, sink, dqdt, qsw, qsi, qim, tmp, fac_wbf
-
-    real :: snow_boost_mult
-    real :: tau_wbf_eff
-    real, parameter :: wbf_coarse_mult = 10.0 ! How much slower WBF is at 50km vs 2km
+    ! Tunable Constants
+    real, parameter :: qcmin_wbf = 1.0e-6  ! Minimum threshold mass (kg/kg)
+    real, parameter :: c_wbf     = 1.5e-3  ! Mass-weighted capacitance factor (s-1)
 
     if (.not. do_wbf) return
 
-    ! -------------------------------------------------------------------
-    ! Scale tau_wbf: 
-    ! If onemsig = 1.0 (2km),   tau_wbf_eff = tau_wbf
-    ! If onemsig = 0.0 (50km),  tau_wbf_eff = tau_wbf * wbf_coarse_mult
-    ! -------------------------------------------------------------------
-    tau_wbf_eff = tau_wbf * (wbf_coarse_mult * (1.0 - onemsig) + onemsig)
-
-    ! Calculate the time-step fraction using the effective timescale
-    fac_wbf = 1. - exp (- dts / tau_wbf_eff)
-
     do k = ks, ke
 
-        tc = tice - tz (k)
+        tc  = tice - tz (k) ! Temp in Celsius relative to freezing point
+        tin = tz (k)        ! Absolute temperature in Kelvin
 
-        tin = tz (k)
-        qsw = wqs (tin, den (k), dqdt)
-        qsi = iqs (tin, den (k), dqdt)
+        sink = 0.0
 
-        ! heterogeneity and allow WBF to operate in large-scale updrafts
-        ! when the environment is supersaturated with respect to ice (qv > qsi)
-        ! and there is both liquid and ice present 
-        ! Bypassed qi > qcmin constraint for colder temperatures to ensure initiation
-        if (tc .gt. 0. .and. ql (k) .gt. qcmin .and. &
-           (qi (k) .gt. qcmin .or. tc .gt. 15.0) .and. &
-            qv (k) .gt. qsi) then
+        ! 1. Convert Grid-Mean Condensates to In-Cloud Values
+        if (in_cloud_ice) then
+            qadum = MAX(qa(k), cfmin)
+        else
+            qadum = 1.0
+        endif
 
-            ! 1. Homogeneous Freezing Limit (-40 C)
-            if (tc .ge. 40.0) then
-                sink = ql(k)
-                tmp = 0.0  ! All frozen liquid instantly becomes snow
-            else
-                ! Normal WBF probabilistic freezing
-                sink = min (fac_wbf * ql (k), tc / icpk (k))
+        ql_in      = ql(k) / qadum
+        qi_in      = qi(k) / qadum
+        qs_in      = qs(k) / qadum
+        qg_in      = qg(k) / qadum
+        q_ice_bulk = qi_in + qs_in + qg_in
+
+        if (tc .ge. 40.0) then
+            ! -----------------------------------------------------------------
+            ! PATHWAY A: Spontaneous Homogeneous Freezing (T <= -40 C)
+            ! Instantaneous thermodynamic phase change
+            ! -----------------------------------------------------------------
+            sink = ql_in
+
+        elseif (tc .gt. 0.0) then
+            ! -----------------------------------------------------------------
+            ! PATHWAY B: Mixed-Phase Regime (0 C > T > -40 C)
+            ! Explicit physical mass growth equation via vapor diffusion
+            ! -----------------------------------------------------------------
+            qsw = wqs (tin, den (k), dqdt)
+            qsi = iqs (tin, den (k), dqdt)
+
+            ! WBF triggers when liquid and ice coexist in an environment
+            ! supersaturated w.r.t ice but subsaturated w.r.t liquid water
+            if (ql_in .gt. qcmin_wbf .and. q_ice_bulk .gt. qcmin_wbf .and. &
+                qv (k) .gt. qsi) then
+
+                ! --- Dynamic Local Latent Heat Equations ---
+                latent_v = lv0 + dc_vap * tz(k)
+                latent_s = li2 + (dc_vap + dc_ice) * tz(k)
                 
-                ! 2. Temperature-Dependent Snow Boost
-                ! Scales from 1.0 (at 0 C) down to 0.0 (at -40 C)
-                ! As tc gets larger (colder), the multiplier shrinks,
-                ! reducing qim and forcing more mass to spill over into qs.
-                snow_boost_mult = max(0.0, 1.0 - (tc / 40.0))
-                
-                qim = (pwbf_qi_crt * snow_boost_mult) / den (k)
-                tmp = min (sink, dim (qim, qi (k)))
+                ! Saturation vapor pressure over ice (Pa)
+                psi = qsi * den(k) * rvgas * tin 
+
+                ! Conduction term (F_k) and Diffusion term (F_d)
+                f_k = (latent_s / (tcond * tin)) * ((latent_s / (rvgas * tin)) - 1.0)
+                f_d = (rvgas * tin) / (vdifu * psi)
+
+                ! Kinetic mass growth rate of bulk ice field under water-saturated conditions
+                ! dqi/dt = [4 * pi * C * N_i * S_i] / [rho * (F_k + F_d)]
+                explicit_wbf_rate = (qsw - qsi) / (qsi * den(k) * (f_k + f_d))
+                explicit_wbf_rate = explicit_wbf_rate * c_wbf * q_ice_bulk
+
+                ! Sub-grid scale grid-patchiness scaling profile
+                explicit_wbf_rate = explicit_wbf_rate * (onemsig + 0.15 * (1.0 - onemsig))
+
+                ! Calculate mass sink over the duration of the time step
+                sink = explicit_wbf_rate * dts
+
+                ! Keep sink bounded by available cloud liquid and grid constraints
+                sink = min(sink, ql_in, tc / icpk(k))
             endif
+        endif
 
+        ! =====================================================================
+        ! 2. Convert In-Cloud Sinks Back to Grid-Mean Tendencies & Update State
+        ! =====================================================================
+        if (sink .gt. 0.0) then
+            sink = sink * qadum
+
+            ! Accumulate vertical column integrated mass flux
             mppfw = mppfw + sink * dp (k) * convt
 
+            ! Apply physical state updates
+            ! Liquid sink directly deposits to cloud ice (qi)
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
-                0., - sink, 0., tmp, sink - tmp, 0., te8 (k), cvm (k), tz (k), &
+                0., - sink, 0., sink, 0., 0., te8 (k), cvm (k), tz (k), &
                 lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pwbf')
-
         endif
 
     enddo
@@ -5088,7 +5301,7 @@ subroutine pidep_pisub (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
 
     real, intent (inout), dimension (ks:ke) :: rsubl
 
-    real, intent (out) :: mppdi, mppsi
+    real, intent (inout) :: mppdi, mppsi
 
     ! -----------------------------------------------------------------------
     ! local variables
@@ -5096,7 +5309,7 @@ subroutine pidep_pisub (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
 
     integer :: k
 
-    real :: sink, tin, dqdt, qsi, dq, pidep, tmp, tc, qi_gen, qi_crt
+    real :: sink, tin, dqdt, qsi, dq, pidep, tmp, tc, qi_gen, qi_crt, ramp_factor
 
     do k = ks, ke
 
@@ -5106,46 +5319,93 @@ subroutine pidep_pisub (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
             tin = tz (k)
             qsi = iqs (tin, den (k), dqdt)
             dq = qv (k) - qsi
-            tmp = min( qi (k), dq / (1. + tcpk (k) * dqdt) )
+            ! Potential deposition/sublimation mass limit
+            tmp = min(qi (k), dq / (1.0 + tcpk (k) * dqdt))
 
+            ! -----------------------------------------------------------------
+            ! 1. Ice Crystal Concentration (cin) Evaluation
+            ! -----------------------------------------------------------------
             if (qi (k) .gt. qcmin) then
                 if (do_psd_ice_num) then
                     call cal_pc_ed_oe_rr_tv (qi (k), den (k), blini, mui, &
                         pca = pcai, pcb = pcbi, pc = cin (k))
                     cin (k) = cin (k) / den (k)
                 elseif (.not. prog_cin) then
-                    if (inflag .eq. 1) &
-                        cin (k) = 5.38e7 * exp (0.75 * log (qi (k) * den (k)))
-                    if (inflag .eq. 2) &
-                        cin (k) = exp (- 2.80 + 0.262 * (tice - tz (k))) * 1000.0
-                    if (inflag .eq. 3) & 
-                        cin (k) = exp (- 0.639 + 12.96 * (qv (k) / qsi - 1.0)) * 1000.0
-                    if (inflag .eq. 4) & 
-                        cin (k) = 5.e-3 * exp (0.304 * (tice - tz (k))) * 1000.0
-                    if (inflag .eq. 5) &
-                        cin (k) = 1.e-5 * exp (0.5 * (tice - tz (k))) * 1000.0
+                    select case (inflag)
+                        case (1)
+                            ! Uses ice mass relationship
+                            ! Simplified from: exp(0.75 * log(x)) -> x**0.75
+                            cin (k) = 5.38e7 * (qi (k) * den (k))**0.75
+                        case (2)
+                            ! Uses temperature dependence (Fletcher-type curve)
+                            ! Simplified from: exp(-2.80) * 1000.0 -> 60.8101
+                            cin (k) = 60.8101 * exp (0.262 * (tice - tz (k)))
+                        case (3)
+                            ! Uses ice supersaturation dependence
+                            ! Simplified from: exp(-0.639) * 1000.0 -> 527.819
+                            cin (k) = 527.819 * exp (12.96 * (qv (k) / qsi - 1.0))
+                        case (4)
+                            ! Steeper temperature dependence
+                            ! Simplified from: 5.e-3 * 1000.0 -> 5.0
+                            cin (k) = 5.0 * exp (0.304 * (tice - tz (k)))
+                        case (5)
+                            ! Very steep temperature dependence (Meyers-type approximation)
+                            ! Simplified from: 1.e-5 * 1000.0 -> 0.01
+                            cin (k) = 0.01 * exp (0.5 * (tice - tz (k)))
+                    end select
                 endif
-                pidep = dts * dq * 4.0 * 11.9 * exp (0.5 * log (qi (k) * den (k) * cin (k))) / &
+                pidep = dts * dq * 4.0 * 11.9 * sqrt(qi (k) * den (k) * cin (k)) / &
                        (qsi * den (k) * (tcpk (k) * cvm (k)) ** 2 / (tcond * rvgas * tz (k) ** 2) + &
                       1. / vdifu)
             endif
 
+            ! -----------------------------------------------------------------
+            ! 2. Deposition vs Sublimation Branching
+            ! -----------------------------------------------------------------
             if (dq .gt. 0.) then
+                ! Ice Vapor Deposition (Growth Phase)
                 tc = tice - tz (k)
-                qi_gen = 4.92e-11 * exp (1.33 * log (1.e3 * exp (0.1 * tc)))
-                if (igflag .eq. 1) &
-                    qi_crt = qi_gen / den (k)
-                if (igflag .eq. 2) &
-                    qi_crt = qi_gen * min (qi_lim, 0.1 * tc) / den (k)
-                if (igflag .eq. 3) &
-                    qi_crt = 1.82e-6 * min (qi_lim, 0.1 * tc) / den (k)
-                if (igflag .eq. 4) &
-                    qi_crt = max (qi_gen, 1.82e-6) * min (qi_lim, 0.1 * tc) / den (k)
+                ! Calculate the temperature ramp factor used in most flags
+                ! (This saves recalculating it on every case line)
+                ramp_factor = min(qi_lim, 0.1 * tc) / den(k)
+                select case (igflag)
+                    case (1)
+                        ! Requires qi_gen, no temperature ramp
+                        qi_gen = 4.808e-7 * exp(0.133 * tc)
+                        qi_crt = qi_gen / den(k)
+                    case (2)
+                        ! Requires qi_gen, uses temperature ramp
+                        qi_gen = 4.808e-7 * exp(0.133 * tc)
+                        qi_crt = qi_gen * ramp_factor
+                    case (3)
+                        ! Bypasses qi_gen entirely (computationally cheapest)
+                        qi_crt = 1.82e-6 * ramp_factor
+                    case (4)
+                        ! Requires qi_gen, bounded by a minimum, uses temperature ramp
+                        qi_gen = 4.808e-7 * exp(0.133 * tc)
+                        qi_crt = max(qi_gen, 1.82e-6) * ramp_factor
+                    case default
+                        ! Safe fallback just in case an invalid flag is passed
+                        qi_crt = 1.82e-6 * ramp_factor
+                end select
                 sink = min (tmp, max (qi_crt - qi (k), pidep), tc / tcpk (k))
                 mppdi = mppdi + sink * dp (k) * convt
             else
+                ! Ice Sublimation (Evaporation Phase)
                 pidep = pidep * min (1., dim (tz (k), t_sub) * is_fac)
                 sink = max (pidep, tmp, - qi (k))
+                ! -------------------------------------------------------------------------
+                ! Resolution-Dependent Evaporation and Sublimation Shutoff
+                ! -------------------------------------------------------------------------
+                ! At coarse resolutions (onemsig=0), this explicitly zeroes out grid-scale
+                ! evaporation and sublimation inside the GFDL microphysics. 
+                ! Why? Coarse grid-scale microphysics assumes precipitation is uniform across 
+                ! the 50km grid box, which would over-expose it to dry air and artificially 
+                ! evaporate almost all falling rain before it hits the ground.
+                ! Instead, evaporation of sub-grid precipitation shafts is handled upstream 
+                ! by the macro-physics scheme (cldmacro using CCW_EVAP_EFF/CCI_EVAP_EFF).
+                ! This onemsig switch safely prevents double-evaporation.
+                ! -------------------------------------------------------------------------
                 sink = sink*onemsig ! resolution dependent subl 0:1 coarse:fine
                 mppsi = mppsi - sink * dp (k) * convt
                 ! 3D ice sublimation export
@@ -7489,10 +7749,11 @@ subroutine update_qq (qa, qv, ql, qr, qi, qs, qg, dqv, dql, dqr, dqi, dqs, dqg, 
 
     character (len = *), intent (in) :: descr
 
-    real :: qc0
+    real :: qc, qc0, qa0, qa_max
 
-    ! save previous total condensate
-    if (.not. do_qa) qc0 = max(ql+qi,qcmin)
+    ! save previous total cloud and condensate
+    qa0 = qa
+    qc0 = max(ql+qi,qcmin)
 
     qv = qv + dqv
     ql = ql + dql
@@ -7501,8 +7762,11 @@ subroutine update_qq (qa, qv, ql, qr, qi, qs, qg, dqv, dql, dqr, dqi, dqs, dqg, 
     qs = qs + dqs
     qg = qg + dqg
 
-    ! total new condensate / old condensate 
-     if (.not. do_qa) qa = max(0.0, min(1.0, qa*(ql+qi)/qc0))
+    ! New total condensate
+    qc = max(ql+qi,qcmin)
+    ! Existing response to condensate changes
+    qa = qa0 * SQRT(qc / qc0)
+    qa = max(0.0, min(1.0, qa))
 
     if (qv .ne. qv) stop 'qv is NAN in update_qq ' // trim(descr)
     if (ql .ne. ql) stop 'ql is NAN in update_qq ' // trim(descr)
@@ -7539,11 +7803,12 @@ subroutine update_qt (qa, qv, ql, qr, qi, qs, qg, dqv, dql, dqr, dqi, dqs, dqg, 
 
     character (len = *), intent (in) :: descr
 
-    real :: qc0
+    real :: qc, qc0, qa0, qa_max
 
-    ! save previous total condensate
-    if (.not. do_qa) qc0 = max(ql+qi,qcmin)
-
+    ! save previous total cloud and condensate
+    qa0 = qa
+    qc0 = max(ql+qi,qcmin)
+    
     qv = qv + dqv
     ql = ql + dql
     qr = qr + dqr
@@ -7551,8 +7816,11 @@ subroutine update_qt (qa, qv, ql, qr, qi, qs, qg, dqv, dql, dqr, dqi, dqs, dqg, 
     qs = qs + dqs
     qg = qg + dqg
 
-    ! total new condensate / old condensate 
-    if (.not. do_qa) qa = max(0.0, min(1.0, qa*(ql+qi)/qc0))
+    ! New total condensate
+    qc = max(ql + qi, qcmin)
+    ! Existing response to condensate changes
+    qa = qa0 * SQRT(qc / qc0)
+    qa = max(0.0, min(1.0, qa))
 
     if (qv .ne. qv) stop 'qv is NAN in update_qt ' // trim(descr)
     if (ql .ne. ql) stop 'ql is NAN in update_qt ' // trim(descr)
@@ -7560,10 +7828,7 @@ subroutine update_qt (qa, qv, ql, qr, qi, qs, qg, dqv, dql, dqr, dqi, dqs, dqg, 
     if (qi .ne. qi) stop 'qi is NAN in update_qt ' // trim(descr)
     if (qs .ne. qs) stop 'qs is NAN in update_qt ' // trim(descr)
     if (qg .ne. qg) stop 'qg is NAN in update_qt ' // trim(descr)
-    if (.not. do_qa) then
-       if (qc0 .ne. qc0) stop 'qc0 is NAN in update_qt ' // trim(descr)
-       if (qa  .ne. qa ) stop 'qa  is NAN in update_qt ' // trim(descr)
-    endif
+    if (qa .ne. qa) stop 'qa is NAN in update_qt ' // trim(descr)
 
     cvm = mhc (qv, ql, qr, qi, qs, qg)
     tk = (te8 - lv00 * qv + li00 * (qi + qs + qg)) / cvm
@@ -7692,7 +7957,7 @@ subroutine qs_table_core (n, n_blend, do_smith_table, table)
 
     real             :: ifrac
     real (kind = r8) :: tmin, tem, esh
-    real (kind = r8) :: wice, wh2o, fac0, fac1, fac2
+    real (kind = r8) :: tc, ptc, wice, wh2o, fac0, fac1, fac2
     real (kind = r8) :: esbasw, tbasw, esbasi, a, b, c, d, e
     real (kind = r8) :: esupc (n_blend)
 
@@ -7784,10 +8049,12 @@ subroutine qs_table_core (n, n_blend, do_smith_table, table)
 
     do i = 1, n_blend
         tem = tice + delt * (real (i - 1) - n_blend)
-       ! WMP impose CALIPSO ice polynomial for mixed phase
-        ifrac = ice_fraction(real(tem),0.0,0.0)
-        wice = ifrac
-        wh2o = 1.0 - wice
+        ! WMP impose CALIPSO ice polynomial for mixed phase (INLINED)
+        tc = max(-46.0_r8, min(tem - tice, 46.0_r8))
+        ptc = 7.6725_r8 + 1.0118_r8*tc + 0.1422_r8*(tc**2) + 0.0106_r8*(tc**3) + &
+              0.000339_r8*(tc**4) + 0.00000395_r8*(tc**5)
+        wice = 1.0_r8 - (1.0_r8 / (1.0_r8 + exp(-ptc)))
+        wh2o = 1.0_r8 - wice
         table (i + n_min - n_blend) = wice * table (i + n_min - n_blend) + wh2o * esupc (i)
     enddo
 
