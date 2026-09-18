@@ -1221,7 +1221,6 @@ contains
     real, pointer, dimension(:,:,:) :: DQLLSDTDYN,DQILSDTDYN,DQLCNDTDYN,DQICNDTDYN,DCLLSDTDYN,DCLCNDTDYN
     real, pointer, dimension(:,:,:) :: HDQDTDYN,HDTDTDYN,VDQDTDYN,VDTDTDYN
     real, pointer, dimension(:,:,:) :: HDTHDTDYN,VDTHDTDYN
-    real, pointer, dimension(:,:)   :: WSPD_STABLE300M
 
     real, pointer, dimension(:,:)   :: PSFCOBS
     real, pointer, dimension(:,:)   :: PCPOBS
@@ -1273,7 +1272,6 @@ contains
             real,allocatable, dimension(:) :: WF, XXX
 
     real :: t_max_300
-    logical :: is_stable
 
 !=======================================================================
 

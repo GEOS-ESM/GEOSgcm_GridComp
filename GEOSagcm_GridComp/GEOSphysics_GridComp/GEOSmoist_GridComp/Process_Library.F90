@@ -354,39 +354,7 @@ module GEOSmoist_Process_Library
   public :: DBZ_VAR_INTERCP, DBZ_LIQUID_SKIN
   public :: LIQUID_SKIN_SNOW, LIQUID_SKIN_GRAUPEL, LIQUID_SKIN_HAIL
   
-
   contains
-
-  !=========Aerosol properties utilities
-   subroutine copy_AerProp(a,b)
-      type (AerPropsNew), intent(out) :: a
-      type (AerPropsNew), intent(in) :: b
-      a%num= b%num
-      a%sig = b%sig
-      a%dpg = b%dpg
-      a%kap = b%kap
-      a%den = b%den
-      a%fdust = b%fdust
-      a%fsoot = b%fsoot
-      a%forg= b%forg
-      a%nmods =  b%nmods
-   end subroutine copy_AerProp
-
-  subroutine init_AerProp(aerout)
-
-    type (AerPropsNew), intent(inout) :: aerout
-        aerout%num = 0.0
-	   aerout%dpg =  1.0e-9
-	   aerout%sig =  2.0
-	   aerout%kap =  0.2
-	   aerout%den = 2200.0
-	   aerout%fdust  =  0.0
-       aerout%fsoot  =  0.0
-	   aerout%forg   =  0.0
-	   aerout%nmods = 1
-   end subroutine init_AerProp
-	!========================
-
 
   subroutine CNV_Tracers_Init(TR, RC)
     type (ESMF_FieldBundle), intent(inout) :: TR
@@ -3359,8 +3327,6 @@ module GEOSmoist_Process_Library
 
    end subroutine Bergeron_Partition
 
-
-!================================================
    subroutine MELTFRZ_3D ( DT, CNVFRC, SRFTYPE, TE, QL, QI )
       real, intent(in   ) :: DT, CNVFRC(:,:),SRFTYPE(:,:)
       real, intent(inout) :: TE(:,:,:), QL(:,:,:), QI(:,:,:)
