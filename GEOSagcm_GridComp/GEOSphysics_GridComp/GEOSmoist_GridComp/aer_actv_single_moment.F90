@@ -4,7 +4,7 @@ MODULE Aer_Actv_Single_Moment
 
    USE ESMF
    USE MAPL
-   USE GEOSmoist_Process_Library, only: AeroPropsNew
+   USE aer_cloud, only: AeroPropsNew
    !-------------------------------------------------------------------------------------------------------------------------
    IMPLICIT NONE
    PUBLIC ::  Aer_Activation
