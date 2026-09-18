@@ -312,6 +312,21 @@ module GEOSmoist_Process_Library
 
   public :: DEBUG_TQ_ERRORS
 
+  type :: AerPropsNew
+      integer :: nmods  ! total number of modes (nmods<nmodmax)
+      real, dimension(:,:,:), allocatable :: num !Num conc m-3
+      real, dimension(:,:,:), allocatable :: dpg !dry Geometric size, m
+      real, dimension(:,:,:), allocatable :: sig  !logarithm (base e) of the dry geometric disp
+      real, dimension(:,:,:), allocatable :: den  !dry density , Kg m-3
+      real, dimension(:,:,:), allocatable :: kap !Hygroscopicity parameter
+      real, dimension(:,:,:), allocatable :: fdust! mass fraction of dust
+      real, dimension(:,:,:), allocatable :: fsoot ! mass fraction of soot
+      real, dimension(:,:,:), allocatable :: forg ! mass fraction of organics
+  end type AerPropsNew
+
+  ! Storage of aerosol properties for activation
+  type(AerPropsNew) :: AeroPropsNew(nsmx_par)
+
   public :: WSUB_OPTION, PDFSHAPE, ANVIL_EVAP_SUBL3
   public :: CNV_Tracer_Type, CNV_Tracers, CNV_Tracers_Init
   public :: USE_BERGERON, USE_AEROSOL_NN, USE_NCLOUD_CLIM
