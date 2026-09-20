@@ -1,14 +1,13 @@
 from f90nml import Namelist
-from gt4py.cartesian.gtscript import int32
 from ndsl import StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
+from ndsl.dsl.gt4py import int32
 from ndsl.dsl.typing import Int
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
 
-import pyMoist.constants as constants
 from pyMoist.convection.UW.compute_uwshcu import buoyancy_sorting
 from pyMoist.convection.UW.config import UWConfiguration
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
@@ -69,27 +68,18 @@ class TranslateBuoyancySorting(TranslateFortranData2Py):
             "testvar3D_3": self.grid.compute_dict(),
             "testvar3D_4": self.grid.compute_dict(),
             "testvar3D_5": self.grid.compute_dict(),
-            # "testvar3D_6": self.grid.compute_dict(),
-            # "testvar3D_7": self.grid.compute_dict(),
-            # "testvar3D_8": self.grid.compute_dict(),
-            # "testvar3D_9": self.grid.compute_dict(),
-            # "testvar3D_10": self.grid.compute_dict(),
-            # "testvar3D_11": self.grid.compute_dict(),
-            # "testvar3D_12": self.grid.compute_dict(),
-            # "testvar3D_13": self.grid.compute_dict(),
-            # "testvar3D_14": self.grid.compute_dict(),
-            # "testvar3D_15": self.grid.compute_dict(),
         }
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("ComputeUwshcuInv-constants")
+        self.constants["JASON"] = True
 
     def compute(self, inputs):
         config = UWConfiguration(**self.constants)
 
         self.quantity_factory.add_data_dimensions(
             {
-                "ntracers": constants.NCNST,
+                "ntracers": config.NCNST,
             }
         )
 
@@ -224,7 +214,7 @@ class TranslateBuoyancySorting(TranslateFortranData2Py):
         xco = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         stop_buoyancy_sort = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a", dtype=bool)
 
-        saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory.backend)
+        saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory)
         self.ese = saturation_vapor_pressure_table.ese
         self.esx = saturation_vapor_pressure_table.esx
 
@@ -255,21 +245,11 @@ class TranslateBuoyancySorting(TranslateFortranData2Py):
         testvar3D_3 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         testvar3D_4 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         testvar3D_5 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        testvar3D_6 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        testvar3D_7 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        testvar3D_8 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        testvar3D_9 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        testvar3D_10 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        testvar3D_11 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        testvar3D_12 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        testvar3D_13 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        testvar3D_14 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        testvar3D_15 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
 
         # The iteration you want to test
         iter_test = int32(0)
 
-        # # Call stencils
+        # Call stencils
         self._buoyancy_sorting(
             condensation=condensation,
             tscaleh=tscaleh,
@@ -358,11 +338,6 @@ class TranslateBuoyancySorting(TranslateFortranData2Py):
             vflx_out=vflx_out,
             fer_out=fer_out,
             fdr_out=fdr_out,
-            testvar3D_1=testvar3D_1,
-            testvar3D_2=testvar3D_2,
-            testvar3D_3=testvar3D_3,
-            testvar3D_4=testvar3D_4,
-            testvar3D_5=testvar3D_5,
         )
 
         return {
@@ -371,14 +346,4 @@ class TranslateBuoyancySorting(TranslateFortranData2Py):
             "testvar3D_3": testvar3D_3.view[:],
             "testvar3D_4": testvar3D_4.view[:],
             "testvar3D_5": testvar3D_5.view[:],
-            # "testvar3D_6": testvar3D_6.view[:],
-            # "testvar3D_7": testvar3D_7.view[:],
-            # "testvar3D_8": testvar3D_8.view[:],
-            # "testvar3D_9": testvar3D_9.view[:],
-            # "testvar3D_10": testvar3D_10.view[:],
-            # "testvar3D_11": testvar3D_11.view[:],
-            # "testvar3D_12": testvar3D_12.view[:],
-            # "testvar3D_13": testvar3D_13.view[:],
-            # "testvar3D_14": testvar3D_14.view[:],
-            # "testvar3D_15": testvar3D_15.view[:],
         }

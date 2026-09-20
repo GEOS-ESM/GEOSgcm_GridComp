@@ -1,5 +1,4 @@
 from f90nml import Namelist
-from gt4py.cartesian.gtscript import int32
 from ndsl import StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.typing import Int
@@ -8,7 +7,6 @@ from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
 
-import pyMoist.constants as constants
 from pyMoist.convection.UW.compute_uwshcu import recalc_condensate
 from pyMoist.convection.UW.config import UWConfiguration
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
@@ -65,22 +63,18 @@ class TranslateRecalcCondensate(TranslateFortranData2Py):
             "ufrc": self.grid.compute_dict(),
             "umf": self.grid.compute_dict(),
             "xco": self.grid.compute_dict(),
-            "testvar3D_1": self.grid.compute_dict(),
-            "testvar3D_2": self.grid.compute_dict(),
-            "testvar3D_3": self.grid.compute_dict(),
-            "testvar3D_4": self.grid.compute_dict(),
-            "testvar3D_5": self.grid.compute_dict(),
         }
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("ComputeUwshcuInv-constants")
+        self.constants["JASON"] = True
 
     def compute(self, inputs):
         config = UWConfiguration(**self.constants)
 
         self.quantity_factory.add_data_dimensions(
             {
-                "ntracers": constants.NCNST,
+                "ntracers": config.NCNST,
             }
         )
 
@@ -158,7 +152,7 @@ class TranslateRecalcCondensate(TranslateFortranData2Py):
         umf_temp = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         cush = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
 
-        saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory.backend)
+        saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory)
         self.ese = saturation_vapor_pressure_table.ese
         self.esx = saturation_vapor_pressure_table.esx
 
@@ -184,16 +178,7 @@ class TranslateRecalcCondensate(TranslateFortranData2Py):
         qsten_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         cufrc_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
 
-        testvar3D_1 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        testvar3D_2 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        testvar3D_3 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        testvar3D_4 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        testvar3D_5 = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-
-        # The iteration you want to test
-        iter_test = int32(0)
-
-        # # Call stencils
+        # Call stencils
         self._recalc_condensate(
             condensation=condensation,
             fer=fer,
@@ -228,7 +213,6 @@ class TranslateRecalcCondensate(TranslateFortranData2Py):
             umf_temp=umf_temp,
             fdr=fdr,
             xco=xco,
-            iteration=iter_test,
             cush=cush,
             umf_out=umf_out,
             dcm_out=dcm_out,
@@ -250,11 +234,6 @@ class TranslateRecalcCondensate(TranslateFortranData2Py):
             vflx_out=vflx_out,
             fer_out=fer_out,
             fdr_out=fdr_out,
-            testvar3D_1=testvar3D_1,
-            testvar3D_2=testvar3D_2,
-            testvar3D_3=testvar3D_3,
-            testvar3D_4=testvar3D_4,
-            testvar3D_5=testvar3D_5,
         )
 
         return {
@@ -269,9 +248,4 @@ class TranslateRecalcCondensate(TranslateFortranData2Py):
             "umf": umf.view[:],
             "xco": xco.view[:],
             "fer": fer.view[:],
-            "testvar3D_1": testvar3D_1.view[:],
-            "testvar3D_2": testvar3D_2.view[:],
-            "testvar3D_3": testvar3D_3.view[:],
-            "testvar3D_4": testvar3D_4.view[:],
-            "testvar3D_5": testvar3D_5.view[:],
         }

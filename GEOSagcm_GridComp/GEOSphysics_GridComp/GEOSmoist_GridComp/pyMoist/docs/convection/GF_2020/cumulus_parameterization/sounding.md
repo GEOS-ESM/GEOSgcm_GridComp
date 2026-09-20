@@ -1,3 +1,3 @@
 # sounding
 
-::: pyMoist.convection.GF_2020.sounding
+::: pyMoist.convection.GF_2020.cumulus_parameterization.sounding

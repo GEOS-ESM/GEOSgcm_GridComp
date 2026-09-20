@@ -59,7 +59,7 @@ contains
   real(r8)              :: alocs(2)
   real(r8)              :: target_lon,target_lat
 
-  logical doShiftWest
+  logical :: doShiftWest
   logical :: do_schmidt	
 
  isg = 1
@@ -91,10 +91,10 @@ contains
   call mirror_grid(grid_global, 0, npts, npts, 2, 6)
 ! Cell Vertices
   doShiftWest = .false.
+  do_schmidt  = .false.
   if (present(shift_west)) doShiftWest = shift_west
-    if (present(stg)) then
-     do_schmidt = .true.
-  end if
+  if (present(stg))   do_schmidt = .true.
+
    !------------------------
    ! Schmidt transformation:
    !------------------------

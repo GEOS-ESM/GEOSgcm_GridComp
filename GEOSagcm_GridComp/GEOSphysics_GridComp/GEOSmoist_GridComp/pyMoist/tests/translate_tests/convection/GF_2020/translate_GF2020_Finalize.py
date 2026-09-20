@@ -540,7 +540,7 @@ class TranslateGF2020_Finalize(TranslateFortranData2Py):
         convection_tracers.use_gocart.field[:] = self.convection_tracers_input["use_gocart"]
         convection_tracers.is_wetdep.field[:] = self.convection_tracers_input["is_wetdep"]
 
-        saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
+        saturation_tables = SaturationVaporPressureTable(self.stencil_factory)
 
         code = GF2020Finalize(
             stencil_factory=self.stencil_factory,

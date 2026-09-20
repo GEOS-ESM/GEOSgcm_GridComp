@@ -1,6 +1,4 @@
-from typing import Dict, Optional
-
-from ndsl.boilerplate import get_factories_single_tile
+from ndsl import QuantityFactory, StencilFactory, SubtileGridSizer
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import PARALLEL, K, computation, interval
 from ndsl.dsl.typing import Float, FloatField, Int
@@ -127,18 +125,20 @@ class SaturationVaporPressureTable:
 
     def __init__(
         self,
-        backend,
+        stencil_factory: StencilFactory,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
     ) -> None:
         table_compute_domain = (1, 1, TABLESIZE)
 
-        stencil_factory, quantity_factory = get_factories_single_tile(
-            table_compute_domain[0],
-            table_compute_domain[1],
-            table_compute_domain[2],
-            0,
-            backend,
+        sizer = SubtileGridSizer(
+            nx=table_compute_domain[0],
+            ny=table_compute_domain[1],
+            nz=table_compute_domain[2],
+            n_halo=0,
+            data_dimensions={},
+            backend=stencil_factory.backend,
         )
+        quantity_factory = QuantityFactory(sizer, backend=stencil_factory.backend)
 
         if formulation == SaturationFormulation.Staars:
             formulation_int = Int(1)
@@ -162,6 +162,8 @@ class SaturationVaporPressureTable:
             compute_tables = stencil_factory.from_dims_halo(
                 func=_compute_tables,
                 compute_dims=[I_DIM, J_DIM, K_DIM],
+                origin=(0, 0, 0),
+                domain=table_compute_domain,
             )
             compute_tables(
                 self._estimated_ese,
@@ -213,7 +215,7 @@ class SaturationVaporPressureTable:
 
 
 # Table needs to be calculated only once
-_cached_estimated_saturation: Dict[SaturationFormulation, Optional[SaturationVaporPressureTable]] = {
+_cached_estimated_saturation: dict[SaturationFormulation, SaturationVaporPressureTable | None] = {
     SaturationFormulation.MurphyAndKoop: None,
     SaturationFormulation.CAM: None,
     SaturationFormulation.Staars: None,
@@ -221,9 +223,9 @@ _cached_estimated_saturation: Dict[SaturationFormulation, Optional[SaturationVap
 
 
 def get_saturation_vapor_pressure_table(
-    backend,
+    stencil_factory: StencilFactory,
     formulation: SaturationFormulation = SaturationFormulation.Staars,
 ) -> SaturationVaporPressureTable:
     if _cached_estimated_saturation[formulation] is None:
-        _cached_estimated_saturation[formulation] = SaturationVaporPressureTable(backend, formulation)
+        _cached_estimated_saturation[formulation] = SaturationVaporPressureTable(stencil_factory, formulation)
     return _cached_estimated_saturation[formulation]

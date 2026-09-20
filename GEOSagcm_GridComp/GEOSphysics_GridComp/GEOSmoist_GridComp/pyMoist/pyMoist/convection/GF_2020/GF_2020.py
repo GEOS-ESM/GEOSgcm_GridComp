@@ -1,12 +1,7 @@
-from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
+from ndsl import NDSLRuntime, QuantityFactory, StencilFactory, ndsl_log
 
 from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization import (
-    GF2020CumulusParameterization,
-    GF2020CumulusParameterizationConfig,
-    GF2020CumulusParameterizationConstants,
-    GF2020CumulusParameterizationState,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization import GF2020CumulusParameterization, GF2020CumulusParameterizationConfig, GF2020CumulusParameterizationState
 from pyMoist.convection.GF_2020.finalize import GF2020Finalize
 from pyMoist.convection.GF_2020.locals import GF2020Locals
 from pyMoist.convection.GF_2020.setup import GF2020Setup
@@ -47,28 +42,28 @@ class GF2020(NDSLRuntime):
         """
         super().__init__(stencil_factory)
 
+        # WARNING - to be removed when 11.10.1 update is complete
+        ndsl_log.warning(
+            "pyMoist.GFDL_1M: This NDSL version of GFDL_1M was ported from GEOS v11.8.1, and has not yet been updated to v11.10. "
+            "Stable execution is not guarenteed, as v11.10 made siginificant changes to the source Fortran."
+        )
+
         # make saturation tables visible at runtime
         if saturation_tables is None:
-            saturation_tables = SaturationVaporPressureTable(stencil_factory.backend)
+            saturation_tables = SaturationVaporPressureTable(stencil_factory)
         else:
             self.saturation_tables = saturation_tables
 
         # initialize GF2020 locals
         self.locals = GF2020Locals.zeros(
             quantity_factory,
-            data_dimensions={
-                "plumes": 3,
-                "convection_tracers": config.NUMBER_OF_TRACERS,
-            },
+            data_dimensions=quantity_factory.sizer.data_dimensions,
         )
 
         # initialize GF2020 CumulusParameterization state
         self.cumulus_parameterization_state = GF2020CumulusParameterizationState.zeros(
             quantity_factory,
-            data_dimensions={
-                "plumes": GF2020CumulusParameterizationConstants.NUMBER_OF_PLUMES,
-                "convection_tracers": config.NUMBER_OF_TRACERS,
-            },
+            data_dimensions=quantity_factory.sizer.data_dimensions,
         )
 
         # initialize submodules

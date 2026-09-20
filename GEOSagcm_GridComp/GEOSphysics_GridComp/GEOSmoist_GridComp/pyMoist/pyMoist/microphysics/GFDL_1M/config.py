@@ -42,7 +42,6 @@ class GFDL1MConfig:
     CONST_VS: bool
     CONST_VG: bool
     CONST_VR: bool
-    USE_CCN: bool
     RTHRESHU: Float
     RTHRESHS: Float
     CCN_L: Float

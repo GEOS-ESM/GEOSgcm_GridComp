@@ -146,7 +146,7 @@ use micro_mg_utils, only: &
      rhog,rhoh, &
      mi0, &
      rising_factorial, &
-     mui_of_l
+     mui_of_l, get_wbf_factor
  use aer_cloud, only:  gammp
 
 implicit none
@@ -255,6 +255,7 @@ real(r8) :: xxls_squared
  character(len=16)  :: micro_mg_precip_frac_method  ! type of precipitation fraction method
 real(r8)           :: micro_mg_berg_eff_factor     ! berg efficiency factor
 
+integer           :: micro_mg_berg_eff_factor_mode = 0
 logical  :: allow_sed_supersat ! Allow supersaturated conditions after sedimentation loop
 logical  :: do_sb_physics ! do SB 2001 autoconversion or accretion physics
 
@@ -344,7 +345,20 @@ subroutine micro_mg_init(micro_mg_dcs, micro_mg_do_graupel_in,  micro_mg_berg_ef
   tmelt = tmelt_in
   rhmini = rhmini_in
   micro_mg_precip_frac_method = 'max_overlap' !'max_overlap' !'in_cloud'
-  micro_mg_berg_eff_factor    = micro_mg_berg_eff_factor_in
+  
+  
+  micro_mg_berg_eff_factor    = 1.0
+  micro_mg_berg_eff_factor_mode    = 0
+  
+  if (micro_mg_berg_eff_factor_in > 0) then
+    micro_mg_berg_eff_factor    = micro_mg_berg_eff_factor_in
+    micro_mg_berg_eff_factor_mode    = 0  
+  else   
+    micro_mg_berg_eff_factor    = abs(micro_mg_berg_eff_factor_in)
+    micro_mg_berg_eff_factor_mode    = 1  
+  end if
+     
+  
   allow_sed_supersat          = .true.
   do_sb_physics               = .false.
 
@@ -2151,7 +2165,6 @@ subroutine micro_mg_tend ( &
   !-------------------------------------------------------
 
 
-  if (.true.) then
      where (naai > 0._r8 .and. t < icenuct .and. &
           relhum*esl/esi > 1.05_r8)
 
@@ -2163,7 +2176,7 @@ subroutine micro_mg_tend ( &
         !nimax = naai*icldm
 
         !since GEOS produces condensate in the same way as liquid we need to apply the nucleation tendency here DONIF
-        ni = max(ni + naai*deltat, 0._r8)
+        !ni = max(ni + naai*deltat, 0._r8)
         nimax = naai*deltat/icldm ! DONIF
 
         !Calc mass of new particles using new crystal mass...
@@ -2177,26 +2190,7 @@ subroutine micro_mg_tend ( &
         mnuccd = 0._r8
      end where
 
-  end if
 
-
-   !DONIF since our approach to ice condensate is similar to liquid, we just need to add the new particles here.
-
-  !--------------------------------------------------
-
-  if (.false.) then
-      where (qi >= qsmall)
-      	 nnuccd = naai
-         !ni = max(ni + naai*deltat, 0._r8)
-         nimax = naai*deltat/icldm ! DONIF
-         mnuccd = nnuccd * mi0
-      elsewhere
-        nnuccd = 0._r8
-        nimax = 0._r8
-        mnuccd = 0._r8
-     end where
-
-  end if
 
   !=============================================================================
   do k=1,nlev
@@ -2707,7 +2701,7 @@ subroutine micro_mg_tend ( &
           qvl(:,k), qvi(:,k), asn(:,k), qcic(1:mgncol,k), qsic(:,k), lams(:,k), n0s(:,k), &
           bergs(:,k), mgncol)
 
-     bergs(:,k)=bergs(:,k)*micro_mg_berg_eff_factor
+     bergs(:,k)=bergs(:,k)*get_wbf_factor(t(:,k), micro_mg_berg_eff_factor_mode, micro_mg_berg_eff_factor)
 
      if (do_cldice) then
 
@@ -2715,7 +2709,7 @@ subroutine micro_mg_tend ( &
              icldm(:,k), rho(:,k), dv(:,k), qvl(:,k), qvi(:,k), &
              berg(:,k), vap_dep(:,k), ice_sublim(:,k), mgncol)
 
-        berg(:,k)=berg(:,k)*micro_mg_berg_eff_factor
+        berg(:,k)=berg(:,k)*get_wbf_factor(t(:,k), micro_mg_berg_eff_factor_mode, micro_mg_berg_eff_factor)
 
         where (ice_sublim(:,k) < 0._r8 .and. qi(:,k) > qsmall .and. icldm(:,k) > mincld)
            nsubi(:,k) = sublim_factor*ice_sublim(:,k) / qi(:,k) * ni(:,k) / icldm(:,k)

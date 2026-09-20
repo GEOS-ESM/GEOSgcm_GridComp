@@ -1,4 +1,4 @@
-from gt4py.cartesian.gtscript import FORWARD, PARALLEL, K, computation, interval
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, interval
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 from ndsl.stencils.column_operations import column_max_ddim
 

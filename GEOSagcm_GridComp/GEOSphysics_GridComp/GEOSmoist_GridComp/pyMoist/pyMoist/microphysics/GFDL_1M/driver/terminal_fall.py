@@ -4,7 +4,6 @@ from ndsl import Local, LocalState, NDSLRuntime, Quantity, QuantityFactory, Sten
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, exp, function, interval
 from ndsl.dsl.typing import Bool, BoolFieldIJ, Float, FloatField, FloatFieldIJ
-from ndsl.stencils import set_IJ_mask_value, set_value, set_value_2D
 
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentConstants
@@ -387,6 +386,21 @@ def update_outputs(
         ice = ice + internal_ice
 
 
+def _reset(field: FloatField):
+    with computation(PARALLEL), interval(...):
+        field = 0
+
+
+def _reset_IJ(field: FloatFieldIJ):
+    with computation(FORWARD), interval(0, 1):
+        field = 0
+
+
+def _reset_mask(field: BoolFieldIJ):
+    with computation(FORWARD), interval(0, 1):
+        field = False
+
+
 @dataclasses.dataclass
 class Locals(LocalState):
     lhi: Local = dataclasses.field(
@@ -584,20 +598,20 @@ class GFDL1MTerminalFall(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
-        self._set_value_IJ = stencil_factory.from_dims_halo(
-            func=set_value_2D,
+        self._reset_IJ = stencil_factory.from_dims_halo(
+            func=_reset_IJ,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
-        self._set_value = stencil_factory.from_dims_halo(
-            func=set_value,
+        self._reset_3D = stencil_factory.from_dims_halo(
+            func=_reset,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
-        self._set_value_K_interface = stencil_factory.from_dims_halo(
-            func=set_value,
+        self._reset_K_interface = stencil_factory.from_dims_halo(
+            func=_reset,
             compute_dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
         )
-        self._set_IJ_mask = stencil_factory.from_dims_halo(
-            func=set_IJ_mask_value,
+        self._reset_mask = stencil_factory.from_dims_halo(
+            func=_reset_mask,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
@@ -647,18 +661,18 @@ class GFDL1MTerminalFall(NDSLRuntime):
         """
 
         # Reset locals
-        self._set_value(self._locals.lhi, Float(0))
-        self._set_value(self._locals.icpk, Float(0))
-        self._set_value(self._locals.cvm, Float(0))
-        self._set_value(self._locals.mass, Float(0))
-        self._set_value(self._locals.dmass, Float(0))
-        self._set_value_K_interface(self._locals.z_interface, Float(0))
-        self._set_value_K_interface(self._locals.z_interface_modified, Float(0))
-        self._set_value_IJ(self._locals.rain, Float(0))
-        self._set_value_IJ(self._locals.graupel, Float(0))
-        self._set_value_IJ(self._locals.snow, Float(0))
-        self._set_value_IJ(self._locals.ice, Float(0))
-        self._set_IJ_mask(self._locals.precip_fall, False)
+        self._reset_3D(self._locals.lhi)
+        self._reset_3D(self._locals.icpk)
+        self._reset_3D(self._locals.cvm)
+        self._reset_3D(self._locals.mass)
+        self._reset_3D(self._locals.dmass)
+        self._reset_K_interface(self._locals.z_interface)
+        self._reset_K_interface(self._locals.z_interface_modified)
+        self._reset_IJ(self._locals.rain)
+        self._reset_IJ(self._locals.graupel)
+        self._reset_IJ(self._locals.snow)
+        self._reset_IJ(self._locals.ice)
+        self._reset_mask(self._locals.precip_fall)
 
         self._setup(
             t=t,

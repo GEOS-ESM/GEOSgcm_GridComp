@@ -99,6 +99,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
                     moist_a3,                      & ! Cloudy updraft area fraction
                     dqrdt,                         & ! Liquid precipitation tendency
                     dqsdt,                         & ! Frozen precipitation tendency
+                    edmf_dmf,                      & ! Detrained mass flux (kg m-2 s-1)
                                                      !==== Diagnostic outputs - updraft properties ==================
                     dry_w3,                        & ! Dry updraft mean vertical velocity (m s-1)
                     moist_w3,                      & ! Cloudy updraft mean vertical velocity (m s-1)
@@ -171,7 +172,8 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
                                         dry_thl3, moist_thl3, &
                                         dry_u3,   moist_u3,   &
                                         dry_v3,   moist_v3,   &
-                                        moist_qc3, entx
+                                        moist_qc3, entx,      &
+                                        edmf_dmf
 
    REAL, DIMENSION(:,:,:,:), POINTER :: EDMF_PLUMES_W,   &
                                         EDMF_PLUMES_THL, &
@@ -926,6 +928,17 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
   YQI = dmi * YQI
   YU  = dmi * YU
   YV  = dmi * YV
+
+  ! Detrained mass flux calculation
+  ! Includes contributions from the dynamic detrainment and from turbulent mixing
+  if (associated(edmf_dmf)) then
+     edmf_dmf = max(0.,edmfmf(:,:,kts-1:kte-1)-edmfmf(:,:,kts:kte))
+     edmf_dmf = edmf_dmf + edmfmf(:,:,kts:kte)*( 1. - exp( -entx(:,:,kts:kte)*(zw3(:,:,kts-1:kte-1)-zw3(:,:,kts:kte)) ) )
+     where( moist_a3(:,:,kts:kte).le.0. )
+        edmf_dmf = 0.
+     end where
+  end if
+
   
 END SUBROUTINE run_edmf
 

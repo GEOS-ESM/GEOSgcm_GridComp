@@ -1,5 +1,5 @@
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
-from ndsl.constants import I_DIM, J_DIM, K_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, abs, computation, interval, max, min
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 from ndsl.stencils.column_operations import column_min
@@ -8,17 +8,11 @@ import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
-    FloatField_ConvectionTracers,
-    FloatField_ConvectionTracers_Plume,
-    FloatField_Plume,
-    FloatFieldIJ_Plume,
-    IntFieldIJ_Plume,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, FloatFieldIJ_Plume, IntFieldIJ_Plume
 from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 from pyMoist.convection.GF_2020.locals import GF2020Locals
 from pyMoist.convection.GF_2020.state import GF2020State
-from pyMoist.convection_tracers import ConvectionTracers
+from pyMoist.convection_tracers import ConvectionTracers, FloatField_ConvectionTracers, FloatField_ConvectionTracers_Plume
 from pyMoist.saturation_tables import GlobalTable_saturation_tables, saturation_specific_humidity, saturation_specific_humidity_liquid_surface
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.shared.incloud_processes import ice_fraction
@@ -397,7 +391,7 @@ def feed_3d_model(
         dconvection_tracersdt (FloatField_ConvectionTracers)
         convection_tracers (FloatField_ConvectionTracers)
     """
-    from __externals__ import DT_MOIST, USE_TRACER_TRANSPORT, k_end
+    from __externals__ import DT_MOIST, NUMBER_OF_TRACERS, USE_TRACER_TRANSPORT, k_end
 
     with computation(FORWARD), interval(0, 1):
         if cumulus_parameterization_constants.FEED_3D_MODEL and do_this_column != 0:
@@ -417,7 +411,7 @@ def feed_3d_model(
             if USE_TRACER_TRANSPORT == 1:
                 # update tracer mass mixing ratios
                 tracer = 0
-                while tracer < constants.NUMBER_OF_TRACERS:
+                while tracer < NUMBER_OF_TRACERS:
                     convection_tracers[0, 0, 0][tracer] = convection_tracers[0, 0, 0][tracer] + DT_MOIST * dconvection_tracersdt.at(K=k_end - K, ddim=[tracer])
 
                     # final check for negative tracer mass mixing ratio
@@ -796,7 +790,6 @@ def update_state_with_tendencies(
     convective_cloud_fraction: FloatField,
     convective_rainwater_source: FloatField,
     convective_precipitation_RAS: FloatField,
-    ese: GlobalTable_saturation_tables,
     esx: GlobalTable_saturation_tables,
     fraction_ice: FloatField,
 ):
@@ -845,7 +838,7 @@ def update_state_with_tendencies(
     """
     from __externals__ import DT_MOIST, FIX_CONVECTIVE_CLOUD, SCLM_DEEP
 
-    with computation(PARALLEL), interval(...):
+    with computation(PARALLEL), interval(0, -1):
         u = u + dudt_deep_convection * DT_MOIST
         v = v + dvdt_deep_convection * DT_MOIST
         vapor = vapor + dvapordt_deep_convection * DT_MOIST
@@ -862,12 +855,12 @@ def update_state_with_tendencies(
         sublimation_of_convective_precipitation = evaporation_sublimation_tendency * fraction_ice
         evaporation_of_convective_precipitation = evaporation_sublimation_tendency * (1.0 - fraction_ice)
 
-    with computation(FORWARD), interval(...):
+    with computation(FORWARD), interval(0, -1):
         # preciptation fluxes (kg/kg/s)
         ice_precip_flux_interface[0, 0, 1] = convective_precip_flux * fraction_ice
         liquid_precip_flux_interface[0, 0, 1] = convective_precip_flux * (1.0 - fraction_ice)
 
-    with computation(PARALLEL), interval(...):
+    with computation(PARALLEL), interval(0, -1):
         # add liquid/ice/cloud fraction tendencies
         convective_liquid = convective_liquid + dliquiddt_deep_convection * DT_MOIST
         convective_ice = convective_ice + dicedt_deep_convection * DT_MOIST
@@ -875,7 +868,7 @@ def update_state_with_tendencies(
 
         # fix convective cloud fraction
         if FIX_CONVECTIVE_CLOUD:
-            saturation_humidity, _ = saturation_specific_humidity(t, p, ese, esx)
+            saturation_humidity, _ = saturation_specific_humidity(t, p, esx)
 
             if convective_cloud_fraction < 1.0:
                 modification = (vapor - saturation_humidity * convective_cloud_fraction) / (1.0 - convective_cloud_fraction)
@@ -895,8 +888,10 @@ def update_state_with_tendencies(
                 convective_liquid = 0.0
                 convective_ice = 0.0
 
-        total_cumulative_mass_flux_interface = total_cumulative_mass_flux_interface + mass_flux_deep_updraft_interface
         total_detraining_mass_flux = total_detraining_mass_flux + mass_flux_deep_updraft_detrained
+
+    with computation(PARALLEL), interval(...):
+        total_cumulative_mass_flux_interface = total_cumulative_mass_flux_interface + mass_flux_deep_updraft_interface
 
 
 def update_ice_fraction_in_convective_tower(
@@ -953,6 +948,9 @@ class GF2020Finalize(NDSLRuntime):
     ):
         super().__init__(stencil_factory)
 
+        # make number of tracers visible at runtime
+        self._NUMBER_OF_TRACERS = config.NUMBER_OF_TRACERS
+
         # make status of plumes visible at runtime
         self._plume_status = [
             cumulus_parameterization_config.ENABLE_SHALLOW,
@@ -964,7 +962,6 @@ class GF2020Finalize(NDSLRuntime):
         # NOTE: this is an orchestration workaround. Direct call to
         #   `self.tables.X` fails closure capture for
         #   argument reconstruction at call time
-        self._ese = saturation_tables.ese
         self._esw = saturation_tables.esw
         self._esx = saturation_tables.esx
         self._estfrz = saturation_tables.frz
@@ -1030,6 +1027,7 @@ class GF2020Finalize(NDSLRuntime):
             externals={
                 "USE_TRACER_TRANSPORT": config.USE_TRACER_TRANSPORT,
                 "DT_MOIST": config.DT_MOIST,
+                "NUMBER_OF_TRACERS": config.NUMBER_OF_TRACERS,
             },
         )
 
@@ -1070,7 +1068,7 @@ class GF2020Finalize(NDSLRuntime):
 
         self._update_state_with_tendencies = stencil_factory.from_dims_halo(
             func=update_state_with_tendencies,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
             externals={
                 "SCLM_DEEP": config.SCLM_DEEP,
                 "DT_MOIST": config.DT_MOIST,
@@ -1167,7 +1165,7 @@ class GF2020Finalize(NDSLRuntime):
             do_this_column=locals.do_this_column,
         )
 
-        for tracer in range(constants.NUMBER_OF_TRACERS):
+        for tracer in range(self._NUMBER_OF_TRACERS):
             self._feedback_tracers(
                 tracer=Int(tracer),
                 fix_out_vapor=locals.fix_out_vapor,
@@ -1329,7 +1327,6 @@ class GF2020Finalize(NDSLRuntime):
             convective_cloud_fraction=state.convective_cloud_fraction,
             convective_rainwater_source=state.convective_rainwater_source,
             convective_precipitation_RAS=state.convective_precipitation_RAS,
-            ese=self._ese,
             esx=self._esx,
             fraction_ice=self.fraction_ice,
         )
