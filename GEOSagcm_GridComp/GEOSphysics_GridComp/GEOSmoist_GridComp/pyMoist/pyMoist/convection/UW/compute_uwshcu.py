@@ -26,7 +26,7 @@ from pyMoist.convection.UW.uwshcu_functions import (
 )
 from pyMoist.convection_tracers import FloatField_ConvectionTracers, FloatFieldIJ_ConvectionTracers
 from pyMoist.saturation_tables import GlobalTable_saturation_tables, SaturationFormulation, get_saturation_vapor_pressure_table, saturation_specific_humidity
-from pyMoist.shared.atmos_recipes import get_fac_eis, sigma
+from pyMoist.shared.atmos_recipes import compute_estimated_inversion_strength_factor, sigma
 
 
 def setup_inputs(
@@ -109,7 +109,7 @@ def setup_inputs(
     with computation(FORWARD), interval(...):
         if not JASON:
             if USE_EIS:
-                fac_eis = get_fac_eis(EIS, SRF_TYPE)
+                fac_eis = compute_estimated_inversion_strength_factor(EIS)
             DX = sqrt(AREA)
             SIG = sigma(DX)
 

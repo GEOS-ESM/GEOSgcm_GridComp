@@ -2,9 +2,7 @@ esma_set_this ()
 
 set (alldirs
   FVdycoreCubed_GridComp
-  FVdycore_GridComp
   GEOSdatmodyn_GridComp
-  ARIESg3_GridComp
   )
 
 if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOSdatmodyn_GridComp)

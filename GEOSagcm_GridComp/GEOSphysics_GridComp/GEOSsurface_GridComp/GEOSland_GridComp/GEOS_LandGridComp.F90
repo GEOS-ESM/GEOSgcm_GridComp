@@ -83,11 +83,11 @@ contains
     
     character(len=ESMF_MAXSTR)              :: GCName
     type(ESMF_Config)                       :: CF, SCF
-    integer                                 :: NUM_CATCH_ENS
+    integer                                 :: NUM_CATCH_ENS                      ! for running an ensemble of Catch realizations within the GCM
     integer                                 :: I
     character(len=ESMF_MAXSTR)              :: TMP
     type(MAPL_MetaComp),pointer             :: MAPL=>null()
-    integer                                 :: NUM_LDAS_ENSEMBLE, ens_id_width
+    integer                                 :: NUM_LDAS_ENSEMBLE, ens_id_width    ! for running GEOSldas ensemble simulations
     character(len=ESMF_MAXSTR)              :: SURFRC
 
 !=============================================================================
@@ -109,6 +109,8 @@ contains
 ! Get my MAPL_Generic state
 !--------------------------
 
+    ! get information about GEOSldas ensemble configuration (if any)
+    
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, NUM_LDAS_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
@@ -133,6 +135,11 @@ contains
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN, Run2, RC=STATUS )
     VERIFY_(STATUS)
 
+
+    ! Note:
+    ! NUM_CATCH_ENS is *NOT* related to the offline GEOSldas run mode, which is governed by NUM_LDAS_ENSEMBLE.
+    ! NUM_CATCH_ENS is used to run an ensemble of Catchment realizations within the GCM.  May be obsolete.
+    ! - reichle+wjiang, 31 Aug 2026
     call ESMF_ConfigGetAttribute ( CF, NUM_CATCH_ENS, Label="NUM_CATCH_ENSEMBLES:", default=1, RC=STATUS)
     VERIFY_(STATUS)
 
@@ -163,6 +170,7 @@ contains
        allocate (CATCH(NUM_CATCH_ENS), stat=status)
        VERIFY_(STATUS)
        if (NUM_CATCH_ENS == 1) then
+          ! this case includes GEOSldas ensemble simulations!
           CATCH(1) = MAPL_AddChild(GC, NAME='CATCH'//trim(tmp), SS=CatchSetServices, RC=STATUS)
           VERIFY_(STATUS)
        else
@@ -179,6 +187,7 @@ contains
        allocate (CATCHCN(NUM_CATCH_ENS), stat=status)
        VERIFY_(STATUS)
        if (NUM_CATCH_ENS == 1) then
+          ! this case includes GEOSldas ensemble simulations!
           CATCHCN(1) = MAPL_AddChild(GC, NAME='CATCHCN'//trim(tmp), SS=CatchCNSetServices, RC=STATUS)
           VERIFY_(STATUS)
        else
@@ -1403,6 +1412,8 @@ contains
 
     DO I = 1, NUM_CATCH_ENS
 
+       ! Note: NUM_CATCH_ENS=1 for GEOSldas ensemble simulations!
+       
        SELECT CASE (LSM_CHOICE)
 
        CASE (1) 

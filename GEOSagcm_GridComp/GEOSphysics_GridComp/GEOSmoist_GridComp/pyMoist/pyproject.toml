@@ -35,7 +35,7 @@ urls = {Repository = "https://github.com/GEOS-ESM/GEOSgcm_GridComp/GEOSagcm_Grid
 version = "2026.dev"
 
 [project.optional-dependencies]
-ndsl = ["ndsl @ git+https://github.com/NOAA-GFDL/NDSL.git"]
+ndsl = ["ndsl @ git+https://github.com/NOAA-GFDL/NDSL.git@2026.08.00"]
 
 [tool.coverage.run]
 branch = true
