@@ -63,6 +63,7 @@ contains
           anixy_dev,     gbxar_dev,     kwvrdg_dev,   effrdg_dev, pref_dev,          & 
           pmid_dev,      pdel_dev,      rpdel_dev,    lnpint_dev, zm_dev,  rlat_dev, &
           phis_dev,                                                                  &
+          bkg_tau, bkg_tau_cnv, bkg_tau_dry, bkg_tau_mst, &
           dudt_gwd_dev,  dvdt_gwd_dev,  dtdt_gwd_dev,                                &
           dudt_org_dev,  dvdt_org_dev,  dtdt_org_dev,                                &
           taugwdx_dev,   taugwdy_dev,   &
@@ -112,6 +113,12 @@ contains
     real,    intent(in   ) :: zm_dev(pcols,pver)       ! height above surface at layers
     real,    intent(in   ) :: rlat_dev(pcols)          ! latitude in radian
     real,    intent(in   ) :: phis_dev(pcols)          ! surface geopotential
+
+    ! background wave stress forcings
+    real, intent(out) :: bkg_tau(pcols)
+    real, intent(out) :: bkg_tau_cnv(pcols)
+    real, intent(out) :: bkg_tau_dry(pcols)
+    real, intent(out) :: bkg_tau_mst(pcols)
  
     real,    intent(  out) :: dudt_gwd_dev(pcols,pver) ! zonal wind tendency at layer 
     real,    intent(  out) :: dvdt_gwd_dev(pcols,pver) ! meridional wind tendency at layer 
@@ -213,6 +220,7 @@ contains
        zm_dev, zi, &
        nm, ni, rhoi, kvtt,  &
        ht_dc_dev,beres_dc_desc, alpha, &
+       bkg_tau, bkg_tau_cnv, bkg_tau_dry, bkg_tau_mst, &
        utgw, vtgw, ttgw, flx_heat, dtdtm_dev, speed_dev)
        dudt_gwd_dev = dudt_gwd_dev + utgw
        dvdt_gwd_dev = dvdt_gwd_dev + vtgw
