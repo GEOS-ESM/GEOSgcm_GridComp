@@ -844,7 +844,7 @@ CONTAINS
    !$OMP        icumulus_gf, cum_hei_down_land, cum_hei_down_ocean, &
    !$OMP        cum_hei_updf_land, cum_hei_updf_ocean, cum_min_edt_land, &
    !$OMP        cum_min_edt_ocean, cum_max_edt_land, cum_max_edt_ocean, &
-   !$OMP        cum_fadj_massflx, cum_use_excess, closure_choice, &
+   !$OMP        cum_fadj_massflx, cum_use_excess, cumulus_type, closure_choice, &
    !$OMP        cum_entr_rate, cum_cap_maxs, FIX_NEGATIVES, USE_MOMENTUM_TRANSP, &
    !$OMP        CONVECTION_TRACER, do_this_column, &
    !$OMP        ierr4d, jmin4d, klcl4d, k224d, kbcon4d, ktop4d, kstabi4d, kstabm4d, &
@@ -2145,7 +2145,6 @@ CONTAINS
      cupclw(i, kts:ktop(i)+1) = qrco(i, kts:ktop(i)+1)
   ENDDO
 
-  !ASk about this
   call get_melting_profile(ierr, tn_cup, po_cup, p_liq_ice, melting_layer, qrco, pwo, melting, itf, ktf, its, ite, kts, kte, cumulus)
 
   !-----------------------------------------------------------------------------

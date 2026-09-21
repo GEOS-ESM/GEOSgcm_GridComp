@@ -14,17 +14,6 @@
       implicit none
       private
       
-      public :: aerosol_activate
-      public :: aer_cloud_init
-      public :: vertical_vel_variance
-      public :: gammp
-      public :: make_cnv_detrain_number_tendencies
-      !public :: nsmx_par
-      public :: estimate_qcvar
-      public :: Wneuralnet
-      public :: Wnet_sym
-      public :: AerPropsNew, AeroPropsNew
-
       integer, parameter :: nsmx_par = 20 !maximum number of modes allowed
       integer, parameter :: npgauss  = 10
 
@@ -42,6 +31,18 @@
       end type AerPropsNew
 
       type(AerPropsNew) :: AeroPropsNew(nsmx_par)
+
+      public :: aerosol_activate
+      public :: aer_cloud_init
+      public :: vertical_vel_variance
+      public :: gammp
+      public :: make_cnv_detrain_number_tendencies
+      !public :: nsmx_par
+      public :: estimate_qcvar
+      public :: Wneuralnet
+      public :: Wnet_sym
+
+      public :: AerPropsNew, AeroPropsNew
 
 !==================================================================
 

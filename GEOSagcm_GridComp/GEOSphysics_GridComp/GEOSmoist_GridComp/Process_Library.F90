@@ -254,6 +254,7 @@ module GEOSmoist_Process_Library
   ! option for cloud liq/ice radii
   integer :: LIQ_RADII_PARAM = 1
   integer :: ICE_RADII_PARAM = 1
+
   ! defined to determine CNV_FRACTION
   real    :: CNV_FRACTION_MIN =  500.0
   real    :: CNV_FRACTION_MAX = 1500.0
@@ -284,6 +285,10 @@ module GEOSmoist_Process_Library
    
   real :: GF2M_MIXED_PHASE_ICE_ONSET_T = 258.15
  
+  ! Storage of aerosol properties for activation
+  !type(AerPropsNew) :: AeroPropsNew(nsmx_par)
+  !type(AerProps), allocatable, dimension (:,:,:) :: AeroProps
+
   ! Tracer Bundle things for convection
   type CNV_Tracer_Type
       real, pointer              :: Q(:,:,:) => null()
