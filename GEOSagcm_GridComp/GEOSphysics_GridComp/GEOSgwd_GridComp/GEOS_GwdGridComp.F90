@@ -618,6 +618,15 @@ contains
       real,              dimension(IM,JM     ) :: TAUXB_TMP_NCAR, TAUYB_TMP_NCAR
       real,              dimension(IM,JM     ) :: TAUXO_TMP_NCAR, TAUYO_TMP_NCAR
 
+      real, dimension(IM,JM)       :: BKG_TAU_TOT_TMP, BKG_TAU_CNV_TMP
+      real, dimension(IM,JM)       :: BKG_TAU_DRY_TMP, BKG_TAU_MST_TMP
+      real, dimension(IM,JM, LM)   :: TAUGWX_TOT_TMP, TAUGWY_TOT_TMP
+      real, dimension(IM,JM, LM)   :: FEGW_TOT_TMP, FEPGW_TOT_TMP
+      real, dimension(IM,JM, LM)   :: TAUGWX_EAST_TMP, TAUGWY_EAST_TMP
+      real, dimension(IM,JM, LM)   :: FEGW_EAST_TMP, FEPGW_EAST_TMP
+      real, dimension(IM,JM, LM)   :: TAUGWX_WEST_TMP, TAUGWY_WEST_TMP
+      real, dimension(IM,JM, LM)   :: FEGW_WEST_TMP, FEPGW_WEST_TMP
+
       REAL, ALLOCATABLE, TARGET, DIMENSION(:,:,:) :: scratch_ridge
 
       integer                                  :: J, K, L, nrdg, ikpbl
@@ -698,6 +707,7 @@ contains
          TAUYO_TMP_NCAR = 0.0
          !call MAPL_TimerOn(MAPL,"-INTR_NCAR")
          if ( (self%NCAR_EFFGWORO /= 0.0) .OR. (self%NCAR_EFFGWBKG /= 0.0) ) then
+
             DO L=1, LM
                ! Isolate purely large-scale/frontal latent heating by removing convective overlap.
                ! Since CNV_FRC is a CAPE-derived proxy for convective activity, raising the 
@@ -716,14 +726,45 @@ contains
                  ANIXY,     GBXAR_TMP,  KWVRDG,     EFFRDG, PREF,        &
                  PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
                  PHIS,                                                   &
-                 BKG_TAU_TOT, BKG_TAU_CNV, BKG_TAU_DRY, BKG_TAU_MST,     &
+                 BKG_TAU_TOT_TMP, BKG_TAU_CNV_TMP, BKG_TAU_DRY_TMP, BKG_TAU_MST_TMP, &
                  DUDT_GWD_NCAR,  DVDT_GWD_NCAR,   DTDT_GWD_NCAR,         &
                  DUDT_ORG_NCAR,  DVDT_ORG_NCAR,   DTDT_ORG_NCAR,         &
                  TAUXO_TMP_NCAR, TAUYO_TMP_NCAR,  &
                  TAUXB_TMP_NCAR, TAUYB_TMP_NCAR,  &
+                 TAUGWX_TOT_TMP,  TAUGWY_TOT_TMP,  FEGW_TOT_TMP,  FEPGW_TOT_TMP,    &
+                 TAUGWX_EAST_TMP, TAUGWY_EAST_TMP, FEGW_EAST_TMP, FEPGW_EAST_TMP, &
+                 TAUGWX_WEST_TMP, TAUGWY_WEST_TMP, FEGW_WEST_TMP, FEPGW_WEST_TMP, &
                  self%NCAR_EFFGWORO, &
                  self%NCAR_EFFGWBKG, self%alpha, &
                  _RC)
+
+            !-----------------------------------------------------------------------
+            ! Fill export arrays from temporary arrays
+            !-----------------------------------------------------------------------
+            ! Background stress diagnostics
+            if(associated(BKG_TAU_TOT)) BKG_TAU_TOT = BKG_TAU_TOT_TMP
+            if(associated(BKG_TAU_CNV)) BKG_TAU_CNV = BKG_TAU_CNV_TMP
+            if(associated(BKG_TAU_DRY)) BKG_TAU_DRY = BKG_TAU_DRY_TMP
+            if(associated(BKG_TAU_MST)) BKG_TAU_MST = BKG_TAU_MST_TMP
+
+            ! Total momentum and energy flux diagnostics
+            if(associated(TAUGWX_TOT)) TAUGWX_TOT = TAUGWX_TOT_TMP
+            if(associated(TAUGWY_TOT)) TAUGWY_TOT = TAUGWY_TOT_TMP
+            if(associated(FEGW_TOT)) FEGW_TOT = FEGW_TOT_TMP
+            if(associated(FEPGW_TOT)) FEPGW_TOT = FEPGW_TOT_TMP
+
+            ! Eastward-propagating wave diagnostics
+            if(associated(TAUGWX_EAST)) TAUGWX_EAST = TAUGWX_EAST_TMP
+            if(associated(TAUGWY_EAST)) TAUGWY_EAST = TAUGWY_EAST_TMP
+            if(associated(FEGW_EAST)) FEGW_EAST = FEGW_EAST_TMP
+            if(associated(FEPGW_EAST)) FEPGW_EAST = FEPGW_EAST_TMP
+
+            ! Westward-propagating wave diagnostics
+            if(associated(TAUGWX_WEST)) TAUGWX_WEST = TAUGWX_WEST_TMP
+            if(associated(TAUGWY_WEST)) TAUGWY_WEST = TAUGWY_WEST_TMP
+            if(associated(FEGW_WEST)) FEGW_WEST = FEGW_WEST_TMP
+            if(associated(FEPGW_WEST)) FEPGW_WEST = FEPGW_WEST_TMP
+
          endif
          !call MAPL_TimerOff(MAPL,"-INTR_NCAR")
 
