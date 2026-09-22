@@ -544,6 +544,34 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   end do
   ttgw = ttgw / cpair
 
+#ifdef EXPORTS
+  !-----------------------------------------------------------------------
+  ! Calculates energy and momentum flux profile exports
+  !-----------------------------------------------------------------------
+   taugwx = 0.0
+   taugwy = 0.0
+   fegw = 0.0
+   fepgw = 0.0
+   do l = -ngwv, ngwv
+      do k = ktop, pver
+         if ( k <= kbot ) then
+            do i=1,ncol
+                cmu  = c(i,l)-ubi(i,k)
+                fpmx =      sign(1.0,cmu)*tau(i,l,k)*xv(i)
+                fpmy =      sign(1.0,cmu)*tau(i,l,k)*yv(i)
+                fe   =  cmu*sign(1.0,cmu)*tau(i,l,k)
+                fpe  = c(l)*sign(1.0,cmu)*tau(i,l,k)
+                ! Record outputs for GW fluxes
+                taugwx(i,k) = taugwx(i,k) + fpmx
+                taugwy(i,k) = taugwy(i,k) + fpmy
+                fegw  (i,k) = fegw  (i,k) + fe
+                fepgw (i,k) = fepgw (i,k) + fpe
+            end do
+         end if
+      end do
+  end do
+#endif
+
 end subroutine gw_drag_prof
 
 

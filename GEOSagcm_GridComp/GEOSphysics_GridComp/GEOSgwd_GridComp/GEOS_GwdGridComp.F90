@@ -259,11 +259,11 @@ contains
     real    :: NCAR_ORO_TNDMAX
     real    :: NCAR_BKG_TNDMAX
     real    :: NCAR_HR_CF      ! Grid cell convective conversion factor
+    real    :: NCAR_BKG_TAU    ! Tau for background frontal forcing
     real    :: NCAR_TR_EFF     ! Convective region efficiency factor
     real    :: NCAR_ET_EFF     ! Frontal region efficiency factor
-    real    :: NCAR_ET_TAUBGND ! Extratropical background frontal forcing
-    logical :: NCAR_ET_USE_DTDTM ! Use DTDT from cldmicro for frontal forcing
-    logical :: NCAR_ET_USE_WS300 ! Use 300m stable wind speeds to provide katabatic wind forcing in extra-tropics
+    real    :: NCAR_ET_FAC_DTDTM ! Scale factor for DTDT from cldmicro for frontal forcing
+    real    :: NCAR_ET_FAC_WS300 ! Sacle factor for stable wind speeds to provide katabatic wind forcing in extra-tropics
     logical :: NCAR_DC_BERES 
     integer :: GEOS_PGWV
     real :: NCAR_EFFGWBKG
@@ -364,8 +364,8 @@ contains
 ! NCAR GWD settings
 ! -----------------
       call MAPL_GetResource( MAPL, NCAR_CNV_TAU_TOP_ZERO, Label="NCAR_CNV_TAU_TOP_ZERO:", default=  30.0 , _RC)
-      call MAPL_GetResource( MAPL, NCAR_FRT_TAU_TOP_ZERO, Label="NCAR_FRT_TAU_TOP_ZERO:", default=  50.0 , _RC)
-      call MAPL_GetResource( MAPL, NCAR_ORO_TAU_TOP_ZERO, Label="NCAR_ORO_TAU_TOP_ZERO:", default=  10.0 , _RC)
+      call MAPL_GetResource( MAPL, NCAR_FRT_TAU_TOP_ZERO, Label="NCAR_FRT_TAU_TOP_ZERO:", default=   5.0 , _RC)
+      call MAPL_GetResource( MAPL, NCAR_ORO_TAU_TOP_ZERO, Label="NCAR_ORO_TAU_TOP_ZERO:", default=   5.0 , _RC)
 
                                    NCAR_QBO_HDEPTH_SCALING = 1.0 - 0.75*sigma
       call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=NCAR_QBO_HDEPTH_SCALING, _RC)
@@ -388,14 +388,14 @@ contains
       call MAPL_GetResource( MAPL, NCAR_BKG_WAVELENGTH, Label="NCAR_BKG_WAVELENGTH:", default=1.e5,   _RC)
       call MAPL_GetResource( MAPL, NCAR_TR_EFF,         Label="NCAR_TR_EFF:",         default=1.0,    _RC)
       call MAPL_GetResource( MAPL, NCAR_ET_EFF,         Label="NCAR_ET_EFF:",         default=1.0,    _RC)
-      call MAPL_GetResource( MAPL, NCAR_ET_USE_DTDTM,   Label="NCAR_ET_USE_DTDTM:",   default=.TRUE., _RC)
-      call MAPL_GetResource( MAPL, NCAR_ET_USE_WS300,   Label="NCAR_ET_USE_WS300:",   default=.TRUE., _RC)
 
       ! 1. Default to classic rigid latitude tuning
-      NCAR_ET_TAUBGND = 6.4 
+      NCAR_BKG_TAU = 6.4 
       ! 2. Set baselines for independent runs
-      if (NCAR_ET_USE_DTDTM .or. NCAR_ET_USE_WS300) NCAR_ET_TAUBGND = 3.0*sigma
-      call MAPL_GetResource( MAPL, NCAR_ET_TAUBGND,     Label="NCAR_ET_TAUBGND:",     default=NCAR_ET_TAUBGND, _RC)
+      call MAPL_GetResource( MAPL, NCAR_ET_FAC_DTDTM,   Label="NCAR_ET_FAC_DTDTM:",   default=0.75,   _RC)
+      call MAPL_GetResource( MAPL, NCAR_ET_FAC_WS300,   Label="NCAR_ET_FAC_WS300:",   default=1.25,   _RC)
+      if (NCAR_ET_FAC_DTDTM /= 0.0 .or. NCAR_ET_FAC_WS300 /= 0.0) NCAR_BKG_TAU = 3.0*sigma
+      call MAPL_GetResource( MAPL, NCAR_BKG_TAU,     Label="NCAR_BKG_TAU:",     default=NCAR_BKG_TAU, _RC)
 
       call MAPL_GetResource( MAPL, NCAR_BKG_TNDMAX,     Label="NCAR_BKG_TNDMAX:",     default=250.0,  _RC)
       NCAR_BKG_TNDMAX = NCAR_BKG_TNDMAX/86400.0
@@ -411,7 +411,7 @@ contains
                                     self%workspaces(thread)%beres_dc_desc, &
                                     NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, &
                                     NCAR_BKG_WAVELENGTH, NCAR_DC_BERES_SRC_LEVEL, NCAR_HR_CF, NCAR_QBO_HDEPTH_SCALING, &
-                                    1000.0, .TRUE., NCAR_TR_EFF, NCAR_ET_EFF, NCAR_ET_TAUBGND, NCAR_ET_USE_DTDTM, NCAR_ET_USE_WS300, &
+                                    1000.0, .TRUE., NCAR_TR_EFF, NCAR_ET_EFF, NCAR_BKG_TAU, NCAR_ET_FAC_DTDTM, NCAR_ET_FAC_WS300, &
                                     NCAR_BKG_TNDMAX, NCAR_DC_BERES, &
                                     IM*JM_thread, LATS(:,bounds(thread+1)%min:bounds(thread+1)%max))
           end do
@@ -421,7 +421,7 @@ contains
                               self%workspaces(0)%beres_dc_desc, &
                               NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, &
                               NCAR_BKG_WAVELENGTH, NCAR_DC_BERES_SRC_LEVEL, NCAR_HR_CF, NCAR_QBO_HDEPTH_SCALING, &
-                              1000.0, .TRUE., NCAR_TR_EFF, NCAR_ET_EFF, NCAR_ET_TAUBGND, NCAR_ET_USE_DTDTM, NCAR_ET_USE_WS300, &
+                              1000.0, .TRUE., NCAR_TR_EFF, NCAR_ET_EFF, NCAR_BKG_TAU, NCAR_ET_FAC_DTDTM, NCAR_ET_FAC_WS300, &
                               NCAR_BKG_TNDMAX, NCAR_DC_BERES, &
                               IM*JM, LATS )
       endif
@@ -716,6 +716,7 @@ contains
                  ANIXY,     GBXAR_TMP,  KWVRDG,     EFFRDG, PREF,        &
                  PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
                  PHIS,                                                   &
+                 BKG_TAU_TOT, BKG_TAU_CNV, BKG_TAU_DRY, BKG_TAU_MST,     &
                  DUDT_GWD_NCAR,  DVDT_GWD_NCAR,   DTDT_GWD_NCAR,         &
                  DUDT_ORG_NCAR,  DVDT_ORG_NCAR,   DTDT_ORG_NCAR,         &
                  TAUXO_TMP_NCAR, TAUYO_TMP_NCAR,  &
