@@ -12,6 +12,65 @@ set (srcs
   IRI/irirtam.for
   IRI/cira.for
   IRI/igrf.for
+  IRI/rocdrift.for
+  )
+
+set (resource_files
+  IonDrag_GridComp.rc
+  )
+
+install( FILES ${resource_files}
+  DESTINATION etc
+  )
+
+# IRI reads its coefficient data files (ccir*.asc, ursi*.asc, dgrf*.dat,
+# igrf*.dat, mcsat*.dat) from a relative path at runtime -- install them
+# alongside the resource files so they're available in the run directory.
+set (iri_data_files
+  IRI/ccir11.asc IRI/ccir12.asc IRI/ccir13.asc IRI/ccir14.asc IRI/ccir15.asc
+  IRI/ccir16.asc IRI/ccir17.asc IRI/ccir18.asc IRI/ccir19.asc IRI/ccir20.asc
+  IRI/ccir21.asc IRI/ccir22.asc
+  IRI/ursi11.asc IRI/ursi12.asc IRI/ursi13.asc IRI/ursi14.asc IRI/ursi15.asc
+  IRI/ursi16.asc IRI/ursi17.asc IRI/ursi18.asc IRI/ursi19.asc IRI/ursi20.asc
+  IRI/ursi21.asc IRI/ursi22.asc
+  IRI/dgrf1945.dat IRI/dgrf1950.dat IRI/dgrf1955.dat IRI/dgrf1960.dat
+  IRI/dgrf1965.dat IRI/dgrf1970.dat IRI/dgrf1975.dat IRI/dgrf1980.dat
+  IRI/dgrf1985.dat IRI/dgrf1990.dat IRI/dgrf1995.dat IRI/dgrf2000.dat
+  IRI/dgrf2005.dat IRI/dgrf2010.dat IRI/dgrf2015.dat
+  IRI/igrf2025.dat IRI/igrf2025s.dat
+  IRI/mcsat11.dat IRI/mcsat12.dat IRI/mcsat13.dat IRI/mcsat14.dat
+  IRI/mcsat15.dat IRI/mcsat16.dat IRI/mcsat17.dat IRI/mcsat18.dat
+  IRI/mcsat19.dat IRI/mcsat20.dat IRI/mcsat21.dat IRI/mcsat22.dat
+  )
+
+install( FILES ${iri_data_files}
+  DESTINATION etc/IRI
+  )
+
+esma_add_library (
+  ${this}
+  SRCS ${srcs}
+  DEPENDENCIES GEOS_Shared MAPL ESMF::ESMF NetCDF::NetCDF_Fortran fvdycore TYPE SHARED
+  )
+
+mapl_acg (
+  ${this} IonDrag_StateSpecs.rc
+  IMPORT_SPECS EXPORT_SPECS INTERNAL_SPECS GET_POINTERS DECLARE_POINTERS
+  )
+esma_set_this ()
+
+set (srcs
+  ion_drag_module.F90
+  IRI_input_module.F90
+  GEOS_IonDragGridComp.F90
+  IRI/irisub.for
+  IRI/irifun.for
+  IRI/iritec.for
+  IRI/iridreg.for
+  IRI/iriflip.for
+  IRI/irirtam.for
+  IRI/cira.for
+  IRI/igrf.for
   )
 
 set (resource_files
