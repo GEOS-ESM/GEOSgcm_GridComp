@@ -128,226 +128,175 @@ end subroutine gw_rdg_init
 !------------------------------------
 !> \section arg_table_gw_rdg_ifc  Argument Table
 !! \htmlinclude gw_rdg_ifc.html
-subroutine gw_rdg_ifc( band, &
+subroutine gw_rdg_ifc(band, &
    ncol, pver, pverp, pcnst, n_rdg, dt, &
    u, v, t, pint, pmid, delp, rdelp, &
    piln, zm, zi, z, &
    ni, nm, rhoi, &
-   kvtt,         &
+   kvtt, &
    kwvrdg, effrdg, &
    hwdth, clngt, gbxar, &
    mxdis, angll, anixy, &
    rdg_cd_llb, trpd_leewv, alpha, &
    utrdg, vtrdg, ttrdg, &
-   flx_heat )
+   flx_heat, &
+   taugwx_sfc, taugwy_sfc)
 
-   !!character(len=5), intent(in) :: type         ! BETA or GAMMA
-   type(GWBand), intent(in)   :: band         ! I hate this variable  ... it just hides information from view
-   integer,          intent(in) :: ncol         ! number of atmospheric columns
-   integer,          intent(in) :: pverp        ! Layer Vertical dimension
-   integer,          intent(in) :: pver         ! Intfc Vertical dimension
-   integer,          intent(in) :: pcnst        ! constituent dimension
-   integer,          intent(in) :: n_rdg
-   real,         intent(in) :: dt           ! Time step.
+  type(GWBand), intent(in) :: band
+  integer, intent(in) :: ncol, pver, pverp, pcnst, n_rdg
+  real, intent(in) :: dt
 
-   real,         intent(in) :: u(ncol,pver)    ! Midpoint zonal winds. ( m s-1)
-   real,         intent(in) :: v(ncol,pver)    ! Midpoint meridional winds. ( m s-1)
-   real,         intent(in) :: t(ncol,pver)    ! Midpoint temperatures. (K)
-   real,         intent(in) :: delp(ncol,pver) ! Delta(interface pressures).
-   real,         intent(in) :: rdelp(ncol,pver) ! inverse Delta.
-   real,         intent(in) :: pmid(ncol,pver)   ! midpoint pressures.
-   real,         intent(in) :: pint(ncol,pverp)  ! interface pressures.
-   real,         intent(in) :: piln(ncol,pverp)  ! Log of interface pressures.
-   real,         intent(in) :: zm(ncol,pver)   ! Midpoint altitudes above ground (m).
-   real,         intent(in) :: zi(ncol,pverp) ! Interface altitudes above ground (m).
-   real,         intent(in) :: z(ncol)          ! Surface elevation (m).
-   real, intent(in) :: kvtt(ncol,pverp) ! Molecular thermal diffusivity.
-   !!real,         intent(in) :: q(ncol,pver,pcnst) ! Constituent array.
-   !!real,         intent(in) :: dse(ncol,pver)  ! Dry static energy.
+  real, intent(in) :: u(ncol,pver), v(ncol,pver), t(ncol,pver)
+  real, intent(in) :: delp(ncol,pver), rdelp(ncol,pver)
+  real, intent(in) :: pmid(ncol,pver), pint(ncol,pverp)
+  real, intent(in) :: piln(ncol,pverp)
+  real, intent(in) :: zm(ncol,pver), zi(ncol,pverp), z(ncol)
+  real, intent(in) :: ni(ncol,pverp), nm(ncol,pver), rhoi(ncol,pverp)
+  real, intent(in) :: kvtt(ncol,pverp)
 
-   real, intent(in) :: nm(ncol,pver)   ! Midpoint altitudes above ground (m).
-   real, intent(in) :: ni(ncol,pverp) ! Interface altitudes above ground (m).
-   real, intent(in) :: rhoi(ncol,pverp) ! Interface altitudes above ground (m).
+  real, intent(in) :: kwvrdg(ncol,n_rdg), effrdg(ncol,n_rdg)
+  real, intent(in) :: hwdth(ncol,n_rdg), clngt(ncol,n_rdg), gbxar(ncol)
+  real, intent(in) :: mxdis(ncol,n_rdg), angll(ncol,n_rdg), anixy(ncol,n_rdg)
+  real, intent(in) :: rdg_cd_llb
+  logical, intent(in) :: trpd_leewv
+  real, intent(in) :: alpha(pver+1)
 
-   real,         intent(in) :: kwvrdg(ncol,n_rdg) ! horiz wavenumber.
-   real,         intent(in) :: effrdg(ncol,n_rdg) ! efficiency factor of ridge scheme.
-   real,         intent(in) :: hwdth(ncol,n_rdg) ! width of ridges.
-   real,         intent(in) :: clngt(ncol,n_rdg) ! length of ridges.
-   real,         intent(in) :: gbxar(ncol)      ! gridbox area
+  real, intent(out) :: utrdg(ncol,pver), vtrdg(ncol,pver), ttrdg(ncol,pver)
+  real, intent(inout) :: flx_heat(ncol)
 
-   real,         intent(in) :: mxdis(ncol,n_rdg) ! Height estimate for ridge (m).
-   real,         intent(in) :: angll(ncol,n_rdg) ! orientation of ridges.
-   real,         intent(in) :: anixy(ncol,n_rdg) ! Anisotropy parameter.
+  real, intent(out) :: taugwx_sfc(ncol)          ! Zonal surface stress (Pa)
+  real, intent(out) :: taugwy_sfc(ncol)          ! Meridional surface stress (Pa)
 
-   real,         intent(in) :: rdg_cd_llb      ! Drag coefficient for low-level flow
-   logical,      intent(in) :: trpd_leewv
-   real,         intent(in) :: alpha(pver+1)
+  !---------------------------Local Storage-------------------------------
+  real(GW_PRC), allocatable :: tau(:,:,:)
+  real(GW_PRC), allocatable :: gwut(:,:,:)
+  real(GW_PRC), allocatable :: c(:,:)
 
+  integer :: isoflag(ncol)
+  integer :: src_level(ncol), tend_level(ncol), bwv_level(ncol), tlb_level(ncol)
 
-   ! OUTPUTS
-   real, intent(out) :: utrdg(ncol,pver)       ! Cum. zonal wind tendency
-   real, intent(out) :: vtrdg(ncol,pver)       ! Cum. meridional wind tendency
-   real, intent(out) :: ttrdg(ncol,pver)       ! Cum. temperature tendency
-   !!real,       intent(out) :: qtrdg(ncol,pver,pcnst) ! Cum. consituent tendencies
-   real, intent(inout) :: flx_heat(ncol)       ! Energy change
+  real :: ubm(ncol,pver), ubi(ncol,pverp)
+  real :: xv(ncol), yv(ncol)
+  real :: ubmsrc(ncol), usrc(ncol), vsrc(ncol), nsrc(ncol), rsrc(ncol)
+  real :: m2src(ncol), tlb(ncol), bwv(ncol)
+  real :: Fr1(ncol), Fr2(ncol), Frx(ncol)
+  real :: tauoro(ncol), taudsw(ncol)
+  real :: hdspwv(ncol), hdspdw(ncol), wbr(ncol)
 
-   !---------------------------Local storage-------------------------------
+  real :: utgw(ncol,pver), vtgw(ncol,pver), ttgw(ncol,pver)
+  real :: tau_0_ubc(ncol)
 
-   integer :: i, k, m, nn, icnst
+  real :: uhtmax, utfac
+  integer :: i, k, l, nn
 
-   real(GW_PRC), allocatable :: tau(:,:,:)  ! wave Reynolds stress
-   ! gravity wave wind tendency for each wave
-   real(GW_PRC), allocatable :: gwut(:,:,:)
-   ! Wave phase speeds for each column
-   real(GW_PRC), allocatable :: c(:,:)
+  !-----------------------------------------------------------------------
+  ! Allocate working arrays
+  !-----------------------------------------------------------------------
+  allocate(tau(ncol, -band%ngwv:band%ngwv, pverp))
+  allocate(gwut(ncol, pver, -band%ngwv:band%ngwv))
+  allocate(c(ncol, -band%ngwv:band%ngwv))
 
-   ! Isotropic source flag [anisotropic orography].
-   integer  :: isoflag(ncol)
+  ! Initialize accumulated tendencies
+  utrdg = 0.0
+  vtrdg = 0.0
+  ttrdg = 0.0
+  isoflag = 0
+  tau_0_ubc(:) = tau_0_ubc_oro
 
-   ! Indices of top gravity wave source level and lowest level where wind
-   ! tendencies are allowed.
-   integer :: src_level(ncol)
-   integer :: tend_level(ncol)
-   integer :: bwv_level(ncol)
-   integer :: tlb_level(ncol)
+  !-----------------------------------------------------------------------
+  ! Loop over all ridges
+  !-----------------------------------------------------------------------
+  do nn = 1, n_rdg
 
-   ! Projection of wind at midpoints and interfaces.
-   real :: ubm(ncol,pver)
-   real :: ubi(ncol,pverp)
+     ! Compute source for this ridge
+     call gw_rdg_src(band, ncol, pver, pint, pmid, delp, &
+          u, v, t, mxdis(:,nn), angll(:,nn), anixy(:,nn), kwvrdg(:,nn), &
+          isoflag, zi, nm, &
+          src_level, tend_level, bwv_level, tlb_level, tau, ubm, ubi, xv, yv, &
+          ubmsrc, usrc, vsrc, nsrc, rsrc, m2src, tlb, bwv, Fr1, Fr2, Frx, c)
 
-   ! Unit vectors of source wind (zonal and meridional components).
-   real :: xv(ncol)
-   real :: yv(ncol)
+     ! Compute stress below peak
+     call gw_rdg_belowpeak(band, ncol, pver, rdg_cd_llb, &
+          t, mxdis(:,nn), anixy(:,nn), kwvrdg(:,nn), &
+          zi, nm, ni, rhoi, &
+          src_level, tau, &
+          ubmsrc, nsrc, rsrc, m2src, tlb, bwv, Fr1, Fr2, Frx, &
+          tauoro, taudsw, hdspwv, hdspdw)
 
-   ! Averages over source region.
-   real :: ubmsrc(ncol) ! On-ridge wind.
-   real :: usrc(ncol)   ! Zonal wind.
-   real :: vsrc(ncol)   ! Meridional wind.
-   real :: nsrc(ncol)   ! B-V frequency.
-   real :: rsrc(ncol)   ! Density.
+     ! Apply wave breaking and trapping
+     call gw_rdg_break_trap(band, ncol, pver, &
+          zi, nm, ni, ubm, ubi, rhoi, kwvrdg(:,nn), bwv, tlb, wbr, &
+          src_level, tlb_level, hdspwv, hdspdw, mxdis(:,nn), &
+          tauoro, taudsw, tau, &
+          ldo_trapped_waves=trpd_leewv)
 
-   ! normalized wavenumber
-   real :: m2src(ncol)
-
-   ! Top of low-level flow layer.
-   real :: tlb(ncol)
-
-   ! Bottom of linear wave region.
-   real :: bwv(ncol)
-
-   ! Froude numbers for flow/drag regimes
-   real :: Fr1(ncol)
-   real :: Fr2(ncol)
-   real :: Frx(ncol)
-
-   ! Wave Reynolds stresses at source level
-   real :: tauoro(ncol)
-   real :: taudsw(ncol)
-
-   ! Surface streamline displacement height for linear waves.
-   real :: hdspwv(ncol)
-
-   ! Surface streamline displacement height for downslope wind regime.
-   real :: hdspdw(ncol)
-
-   ! Wave breaking level
-   real :: wbr(ncol)
-
-   ! Momentum fluxes used by fixer.
-   real :: um_flux(ncol), vm_flux(ncol)
-
-   ! Energy change used by fixer.
-   real :: de(ncol)
-
-   ! Reynolds stress for waves propagating in each cardinal direction.
-   real :: taucd(ncol,pver+1,4)
-
-   real :: utgw(ncol,pver)       ! zonal wind tendency
-   real :: vtgw(ncol,pver)       ! meridional wind tendency
-   real :: ttgw(ncol,pver)       ! temperature tendency
-#ifdef CAM
-   real :: qtgw(ncol,pver,pcnst) ! constituents tendencies
-#endif
-
-   real :: utfac,uhtmax
-
-   real :: tau_0_ubc(ncol)
-
-   character(len=1) :: cn
-   character(len=9) :: fname(4)
-   !----------------------------------------------------------------------------
-
-   ! Allocate wavenumber fields.
-   allocate(tau(ncol,  -band%ngwv:band%ngwv  , pverp))
-   allocate(gwut(ncol,pver,-band%ngwv:band%ngwv  ))
-   allocate(c(ncol,-band%ngwv:band%ngwv))
-
-   ! initialize accumulated momentum fluxes and tendencies
-   utrdg = 0.
-   vtrdg = 0.
-   ttrdg = 0.
-   isoflag = 0
-   tau_0_ubc(:) = tau_0_ubc_oro
- 
-   do nn = 1, n_rdg
-  
-    call gw_rdg_src(band, ncol, pver, pint, pmid, delp, &
-         u, v, t, mxdis(:,nn), angll(:,nn), anixy(:,nn), kwvrdg(:,nn), isoflag, zi, nm, &
-         src_level, tend_level, bwv_level, tlb_level, tau, ubm, ubi, xv, yv,  & 
-         ubmsrc, usrc, vsrc, nsrc, rsrc, m2src, tlb, bwv, Fr1, Fr2, Frx, c)
-
-    call gw_rdg_belowpeak(band, ncol, pver, rdg_cd_llb, &
-         t, mxdis(:,nn), anixy(:,nn), kwvrdg(:,nn), & 
-         zi, nm, ni, rhoi, &
-         src_level, tau, & 
-         ubmsrc, nsrc, rsrc, m2src, tlb, bwv, Fr1, Fr2, Frx, & 
-         tauoro, taudsw, hdspwv, hdspdw)
-
-    call gw_rdg_break_trap(band, ncol, pver, &
-         zi, nm, ni, ubm, ubi, rhoi, kwvrdg(:,nn) , bwv, tlb, wbr, & 
-         src_level, tlb_level, hdspwv, hdspdw,  mxdis(:,nn), & 
-         tauoro, taudsw, tau, & 
-         ldo_trapped_waves=trpd_leewv)
-
-     call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
-          src_level, tend_level,dt, t, &
+     ! Propagate waves and compute drag profile
+     call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
+          src_level, tend_level, dt, t, &
           piln, rhoi, nm, ni, ubm, ubi, xv, yv, &
           c, kvtt, tau, tau_0_ubc, utgw, vtgw, ttgw, gwut, alpha, &
           kwvrdg=kwvrdg(:,nn))
 
-     ! Apply efficiency and limiters to the totals
-     call energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau, &
-                        effrdg(:,nn), t, ubm, ubi, xv, yv, utgw, vtgw, ttgw, &
-                        tend_level, tndmax_in=orotndmax)
-
-      do i=1,ncol
-      !-------------------------------------------------------------------
-      ! Apply tendency limiter to prevent unrealistically strong forcing
-      ! Accumulate ridge totals
-      !-------------------------------------------------------------------
-       uhtmax = 0.0
-       utfac  = 1.0
-       do k = 1, pver
-         ! Add the tendencies from each ridge to the totals.
-          utrdg(i,k) = utrdg(i,k) + utgw(i,k)
-          vtrdg(i,k) = vtrdg(i,k) + vtgw(i,k)
-          ttrdg(i,k) = ttrdg(i,k) + ttgw(i,k)
-          uhtmax = max(sqrt(utrdg(i,k)**2 + vtrdg(i,k)**2), uhtmax)
-       end do
-       if (uhtmax > orotndmax) utfac = orotndmax/uhtmax
-       do k = 1, pver
-          utrdg(i,k) = utrdg(i,k)*utfac
-          vtrdg(i,k) = vtrdg(i,k)*utfac
-          ttrdg(i,k) = ttrdg(i,k)*utfac
+     ! Apply efficiency factor only (no limiter yet)
+     do i = 1, ncol
+        do k = 1, pver
+           utgw(i,k) = utgw(i,k) * effrdg(i,nn)
+           vtgw(i,k) = vtgw(i,k) * effrdg(i,nn)
+           ttgw(i,k) = ttgw(i,k) * effrdg(i,nn)
         end do
-      end do  ! i=1,ncol
+     end do
 
-   end do ! end of loop over multiple ridges
+     ! Accumulate into totals
+     do i = 1, ncol
+        do k = 1, pver
+           utrdg(i,k) = utrdg(i,k) + utgw(i,k)
+           vtrdg(i,k) = vtrdg(i,k) + vtgw(i,k)
+           ttrdg(i,k) = ttrdg(i,k) + ttgw(i,k)
+        end do
+     end do
 
-   deallocate(tau, gwut, c)
+  end do  ! end loop over ridges
 
- end subroutine gw_rdg_ifc
+  !-----------------------------------------------------------------------
+  ! Apply single limiter to total ridge tendencies
+  !-----------------------------------------------------------------------
+  do i = 1, ncol
+     uhtmax = 0.0
+     do k = 1, pver
+        uhtmax = max(sqrt(utrdg(i,k)**2 + vtrdg(i,k)**2), uhtmax)
+     end do
 
+     utfac = 1.0
+     if (uhtmax > orotndmax) then
+        utfac = orotndmax / uhtmax
+     endif
+
+     do k = 1, pver
+        utrdg(i,k) = utrdg(i,k) * utfac
+        vtrdg(i,k) = vtrdg(i,k) * utfac
+        ttrdg(i,k) = ttrdg(i,k) * utfac
+     end do
+  end do
+
+  !-----------------------------------------------------------------------
+  ! Compute surface stress (at bottom interface, k=pver+1)
+  !-----------------------------------------------------------------------
+  taugwx_sfc = 0.0
+  taugwy_sfc = 0.0
+  do i = 1, ncol
+     do l = -band%ngwv, band%ngwv
+        ! Surface stress from this wave (accumulated over all ridges)
+        taugwx_sfc(i) = taugwx_sfc(i) + real(tau(i,l,pver+1)) * xv(i)
+        taugwy_sfc(i) = taugwy_sfc(i) + real(tau(i,l,pver+1)) * yv(i)
+     enddo
+  enddo
+
+  !-----------------------------------------------------------------------
+  ! Clean up
+  !-----------------------------------------------------------------------
+  deallocate(tau, gwut, c)
+
+end subroutine gw_rdg_ifc
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !  Non - interface subroutines

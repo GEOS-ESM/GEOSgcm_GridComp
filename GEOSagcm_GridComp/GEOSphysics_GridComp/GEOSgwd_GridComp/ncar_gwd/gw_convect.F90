@@ -7,9 +7,7 @@ module gw_convect
 
   use gw_utils, only: GW_PRC, GW_R8, get_unit_vector, dot_2d, midpoint_interp
   use gw_common, only: GWBand, gw_drag_prof, tau_0_ubc_cnv, tau_0_ubc_frt, &
-                       calc_taucd, momentum_flux, momentum_fixer, &
-                       energy_momentum_adjust, energy_change, energy_fixer 
-
+                       energy_momentum_adjust, gw_flux_diagnostics
   use MAPL_Constants, only: MAPL_RGAS, MAPL_CP, MAPL_GRAV
 
 implicit none
@@ -595,128 +593,195 @@ end subroutine gw_beres_src
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!  Main Interface
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine gw_beres_ifc( band, &
-   ncol, pver, dt, effgw_dp,  &
-   u, v, t, pref, pint, delp, rdelp, piln, &
-   zm, zi, nm, ni, rhoi, kvtt,  &
-   netdt,desc, alpha, &
-   bkg_tau, bkg_tau_cnv, bkg_tau_dry, bkg_tau_mst, &
-   utgw,vtgw,ttgw,flx_heat,dtdtm,speed)
 
-   type(BeresSourceDesc), intent(inout) :: desc
-   type(GWBand), intent(in) :: band         ! I hate this variable  ... it just hides information from view
-   integer,      intent(in) :: ncol         ! number of atmospheric columns
-   integer,      intent(in) :: pver         ! number of vertical layers
-   real,         intent(in) :: dt           ! Time step.
-   real,         intent(in) :: effgw_dp
+subroutine gw_beres_ifc(band, ncol, pver, dt, effgw_dp, &
+     u, v, t, pref, pint, delp, rdelp, piln, &
+     zm, zi, nm, ni, rhoi, kvtt, &
+     netdt, desc, alpha, &
+     bkg_tau, bkg_tau_cnv, bkg_tau_dry, bkg_tau_mst, &
+     utgw, vtgw, ttgw, flx_heat, dtdtm, speed, &
+     taugwx, taugwy, fegw, fepgw, &
+     taugwx_east, taugwx_west, taugwy_east, taugwy_west, &
+     fegw_east, fegw_west, fepgw_east, fepgw_west, &
+     taugwx_sfc, taugwy_sfc)
 
-   real,         intent(in) :: u(ncol,pver)      ! Midpoint zonal winds. ( m s-1)
-   real,         intent(in) :: v(ncol,pver)      ! Midpoint meridional winds. ( m s-1)
-   real,         intent(in) :: t(ncol,pver)      ! Midpoint temperatures. (K)
-   real,         intent(in) :: netdt(ncol,pver)  ! Convective heating rate (K s-1)
-   real,         intent(in) :: pref(pver+1)      ! Reference pressure at interfaces (Pa !!! )
-   real,         intent(in) :: piln(ncol,pver+1) ! Log of interface pressures.
-   real,         intent(in) :: pint(ncol,pver+1) ! Interface pressures. (Pa)
-   real,         intent(in) :: delp(ncol,pver)   ! Layer pressures thickness. (Pa)
-   real,         intent(in) :: rdelp(ncol,pver)  ! Inverse pressure thickness. (Pa-1)
-   real,         intent(in) :: zm(ncol,pver)     ! Midpoint altitudes above ground (m).
-   real,         intent(in) :: zi(ncol,pver+1)   ! Interface altitudes above ground (m).
-   real,         intent(in) :: nm(ncol,pver)     ! Midpoint Brunt-Vaisalla frequencies (s-1).
-   real,         intent(in) :: ni(ncol,pver+1)   ! Interface Brunt-Vaisalla frequencies (s-1).
-   real,         intent(in) :: rhoi(ncol,pver+1) ! Interface density (kg m-3).
-   real,         intent(in) :: kvtt(ncol,pver+1) ! Molecular thermal diffusivity.
+  !-----------------------------------------------------------------------
+  ! Interface routine for Beres gravity wave drag parameterization
+  !
+  ! This routine orchestrates the complete GWD calculation:
+  ! 1. Determine wave sources from convection (gw_beres_src)
+  ! 2. Propagate waves and compute drag profiles (gw_drag_prof)
+  ! 3. Apply efficiency and stability constraints (energy_momentum_adjust)
+  ! 4. Compute diagnostic fluxes (gw_flux_diagnostics)
+  !
+  ! References:
+  ! Beres et al. (2004): "A method of specifying the gravity wave spectrum
+  ! above convection based on latent heating properties and background wind"
+  ! J. Atmos. Sci., Vol 61, No. 3, pp. 324-337.
+  !-----------------------------------------------------------------------
 
-   real,         intent(in) :: alpha(:)
+  !------------------------------Arguments--------------------------------
+  ! Configuration and dimensions
+  type(GWBand), intent(in) :: band
+  type(BeresSourceDesc), intent(inout) :: desc
+  integer, intent(in) :: ncol                ! Number of atmospheric columns
+  integer, intent(in) :: pver                ! Number of vertical layers
+  real, intent(in) :: dt                     ! Time step (s)
+  real, intent(in) :: effgw_dp               ! Deep convection GW efficiency
 
-   ! background wave stress forcings
-   real, intent(out) :: bkg_tau(ncol)
-   real, intent(out) :: bkg_tau_cnv(ncol)
-   real, intent(out) :: bkg_tau_dry(ncol)
-   real, intent(out) :: bkg_tau_mst(ncol)
+  ! Wind fields
+  real, intent(in) :: u(ncol,pver)           ! Zonal wind (m/s)
+  real, intent(in) :: v(ncol,pver)           ! Meridional wind (m/s)
 
-   real,         intent(out) :: utgw(ncol,pver)       ! zonal wind tendency
-   real,         intent(out) :: vtgw(ncol,pver)       ! meridional wind tendency
-   real,         intent(out) :: ttgw(ncol,pver)       ! temperature tendency
-   real,         intent(inout) :: flx_heat(ncol)        ! Energy change
+  ! Thermodynamic fields
+  real, intent(in) :: t(ncol,pver)           ! Temperature (K)
+  real, intent(in) :: netdt(ncol,pver)       ! Convective heating rate (K/s)
+  real, intent(in) :: dtdtm(ncol,pver)       ! Microphysics heating rate (K/s)
 
-   real,         intent(in) :: dtdtm(ncol,pver)  ! Microphysics temperature tendency / latent heating (K s-1)
-   real,         intent(in) :: speed(ncol)       ! max_wind_speed_in_stable_cold_surface_layer_to_300m (m s-1)
+  ! Pressure coordinates
+  real, intent(in) :: pref(pver+1)           ! Reference pressure at interfaces (Pa)
+  real, intent(in) :: pint(ncol,pver+1)      ! Interface pressures (Pa)
+  real, intent(in) :: piln(ncol,pver+1)      ! Log of interface pressures
+  real, intent(in) :: delp(ncol,pver)        ! Layer pressure thickness (Pa)
+  real, intent(in) :: rdelp(ncol,pver)       ! Inverse pressure thickness (Pa^-1)
 
-   !---------------------------Local storage-------------------------------
+  ! Altitude coordinates
+  real, intent(in) :: zm(ncol,pver)          ! Midpoint altitudes (m)
+  real, intent(in) :: zi(ncol,pver+1)        ! Interface altitudes (m)
 
-   integer :: k, m, nn
+  ! Stability parameters
+  real, intent(in) :: nm(ncol,pver)          ! Brunt-Vaisala frequency at midpoints (s^-1)
+  real, intent(in) :: ni(ncol,pver+1)        ! Brunt-Vaisala frequency at interfaces (s^-1)
 
-   real(GW_PRC), allocatable :: tau(:,:,:)  ! wave Reynolds stress
-   ! gravity wave wind tendency for each wave
-   real(GW_PRC), allocatable :: gwut(:,:,:)
-   ! Wave phase speeds for each column
-   real(GW_PRC), allocatable :: c(:,:)
+  ! Density and diffusivity
+  real, intent(in) :: rhoi(ncol,pver+1)      ! Interface density (kg/m^3)
+  real, intent(in) :: kvtt(ncol,pver+1)      ! Molecular thermal diffusivity (m^2/s)
 
-   ! Efficiency for a gravity wave source.
-   real :: effgw(ncol)
+  ! Vertical structure
+  real, intent(in) :: alpha(:)                ! Vertical damping profile
 
-   ! Momentum fluxes used by fixer.
-   real :: um_flux(ncol), vm_flux(ncol)
+  ! Surface forcing proxy
+  real, intent(in) :: speed(ncol)             ! Max wind in stable surface layer (m/s)
 
-   ! Energy change used by fixer.
-   real :: de(ncol)
+  !------ Output: Wind and temperature tendencies ------
+  real, intent(out) :: utgw(ncol,pver)       ! Zonal wind tendency (m/s^2)
+  real, intent(out) :: vtgw(ncol,pver)       ! Meridional wind tendency (m/s^2)
+  real, intent(out) :: ttgw(ncol,pver)       ! Temperature tendency (K/s)
 
-   ! Reynolds stress for waves propagating in each cardinal direction.
-   real :: taucd(ncol,pver+1,4)
+  !------ Output: Background stress diagnostics ------
+  real, intent(out) :: bkg_tau(ncol)         ! Total background stress (Pa)
+  real, intent(out) :: bkg_tau_cnv(ncol)     ! Convective source stress (Pa)
+  real, intent(out) :: bkg_tau_dry(ncol)     ! Dry/katabatic source stress (Pa)
+  real, intent(out) :: bkg_tau_mst(ncol)     ! Moist source stress (Pa)
 
-   ! Indices of top gravity wave source level and lowest level where wind
-   ! tendencies are allowed.
-   integer :: src_level(ncol)
-   integer :: tend_level(ncol)
+  !------ Output: Energy diagnostics ------
+  real, intent(inout) :: flx_heat(ncol)      ! Energy change (J/m^2)
 
-   ! Projection of wind at midpoints and interfaces.
-   real :: ubm(ncol,pver)
-   real :: ubi(ncol,pver+1)
+  !------ Output: Momentum and energy flux diagnostics ------
+  ! Total fluxes
+  real, intent(out) :: taugwx(ncol,pver)     ! Zonal momentum flux (Pa)
+  real, intent(out) :: taugwy(ncol,pver)     ! Meridional momentum flux (Pa)
+  real, intent(out) :: fegw(ncol,pver)       ! Kinetic energy flux (W/m^2)
+  real, intent(out) :: fepgw(ncol,pver)      ! Phase-speed weighted energy flux (W/m^2)
 
-   ! Unit vectors of source wind (zonal and meridional components).
-   real :: xv(ncol)
-   real :: yv(ncol)
+  ! Eastward-propagating waves (c > 0)
+  real, intent(out) :: taugwx_east(ncol,pver)  ! Zonal momentum flux (Pa)
+  real, intent(out) :: taugwy_east(ncol,pver)  ! Meridional momentum flux (Pa)
+  real, intent(out) :: fegw_east(ncol,pver)    ! Kinetic energy flux (W/m^2)
+  real, intent(out) :: fepgw_east(ncol,pver)   ! Phase-speed weighted energy flux (W/m^2)
 
-   real :: tau_0_ubc(ncol)
+  ! Westward-propagating waves (c < 0)
+  real, intent(out) :: taugwx_west(ncol,pver)  ! Zonal momentum flux (Pa)
+  real, intent(out) :: taugwy_west(ncol,pver)  ! Meridional momentum flux (Pa)
+  real, intent(out) :: fegw_west(ncol,pver)    ! Kinetic energy flux (W/m^2)
+  real, intent(out) :: fepgw_west(ncol,pver)   ! Phase-speed weighted energy flux (W/m^2)
 
-   character(len=1) :: cn
-   character(len=9) :: fname(4)
+  !------ Output: Surface stress ------
+  real, intent(out) :: taugwx_sfc(ncol)          ! Zonal surface stress (Pa)
+  real, intent(out) :: taugwy_sfc(ncol)          ! Meridional surface stress (Pa)
 
-   integer :: i,j,l
+  !---------------------------Local Storage-------------------------------
+  ! Wave stress and phase speeds
+  real(GW_PRC), allocatable :: tau(:,:,:)    ! Wave Reynolds stress (Pa)
+  real(GW_PRC), allocatable :: c(:,:)        ! Phase speeds (m/s)
+  real(GW_PRC), allocatable :: gwut(:,:,:)   ! Wind tendency per wave band
 
-   !----------------------------------------------------------------------------
+  ! Wind projections
+  real :: ubm(ncol,pver)                     ! Wind projection at midpoints
+  real :: ubi(ncol,pver+1)                   ! Wind projection at interfaces
+  real :: xv(ncol), yv(ncol)                 ! Unit vectors of source wind
 
+  ! Source and tendency levels
+  integer :: src_level(ncol)                 ! Top gravity wave source level
+  integer :: tend_level(ncol)                ! Lowest level for wind tendencies
 
-   ! Allocate wavenumber fields.
-   allocate(tau(ncol,-band%ngwv:band%ngwv,pver+1))
-   allocate(gwut(ncol,pver,-band%ngwv:band%ngwv))
-   allocate(c(ncol,-band%ngwv:band%ngwv))
+  ! Efficiency and stress
+  real :: effgw(ncol)                        ! GW momentum transfer efficiency
+  real :: tau_0_ubc(ncol)                    ! Upper boundary condition for stress
 
-     ! Efficiency of gravity wave momentum transfer.
-     effgw = effgw_dp*desc%effbck
+  integer :: i, l
 
-     ! Determine wave sources for Beres deep scheme
-     call gw_beres_src(ncol, pver, band, desc, pint, &
-          u, v, netdt, zm, src_level, tend_level, tau, &
-          tau_0_ubc, ubm, ubi, xv, yv, &
-          bkg_tau, bkg_tau_cnv, bkg_tau_dry, bkg_tau_mst, &
-          c, dtdtm=dtdtm, speed=speed)
+  !-----------------------------------------------------------------------
+  ! Allocate working arrays
+  !-----------------------------------------------------------------------
+  allocate(tau(ncol,-band%ngwv:band%ngwv,pver+1))
+  allocate(c(ncol,-band%ngwv:band%ngwv))
+  allocate(gwut(ncol,pver,-band%ngwv:band%ngwv))
 
-     ! Solve for the drag profile with convective sources.
-     call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
-          src_level, tend_level, dt, t,    &
-          piln, rhoi, nm, ni, ubm, ubi, xv, yv, &
-          c, kvtt, tau, tau_0_ubc, utgw, vtgw, ttgw, gwut, alpha)
+  !-----------------------------------------------------------------------
+  ! Step 1: Determine wave sources from convection
+  !-----------------------------------------------------------------------
+  call gw_beres_src(ncol, pver, band, desc, pint, &
+       u, v, netdt, zm, src_level, tend_level, tau, &
+       tau_0_ubc, ubm, ubi, xv, yv, &
+       bkg_tau, bkg_tau_cnv, bkg_tau_dry, bkg_tau_mst, &
+       c, dtdtm=dtdtm, speed=speed)
 
-     ! Apply efficiency and limiters
-     call energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau, &
-                                 effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw, &
-                                 tend_level, tndmax_in=desc%tndmax)
+  !-----------------------------------------------------------------------
+  ! Step 2: Propagate waves and compute drag profiles
+  !-----------------------------------------------------------------------
+  call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
+       src_level, tend_level, dt, t, &
+       piln, rhoi, nm, ni, ubm, ubi, xv, yv, &
+       c, kvtt, tau, tau_0_ubc, utgw, vtgw, ttgw, gwut, alpha)
 
-   deallocate(tau, gwut, c)
+  !-----------------------------------------------------------------------
+  ! Step 3: Apply efficiency scaling and stability constraints
+  !-----------------------------------------------------------------------
+  effgw = effgw_dp * desc%effbck
+
+  call energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau, &
+       effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw, &
+       tend_level, tndmax_in=desc%tndmax)
+
+  !-----------------------------------------------------------------------
+  ! Step 4: Compute diagnostic fluxes (after efficiency applied)
+  !-----------------------------------------------------------------------
+  call gw_flux_diagnostics(ncol, pver, band, c, ubi, tau, xv, yv, &
+       src_level, tend_level, pint, &
+       taugwx, taugwy, fegw, fepgw, &
+       taugwx_east, taugwx_west, taugwy_east, taugwy_west, &
+       fegw_east, fegw_west, fepgw_east, fepgw_west)
+
+  !-----------------------------------------------------------------------
+  ! Compute surface stress (at bottom interface, k=pver+1)
+  !-----------------------------------------------------------------------
+  taugwx_sfc = 0.0
+  taugwy_sfc = 0.0
+  do i = 1, ncol
+     do l = -band%ngwv, band%ngwv
+        ! Surface stress from this wave
+        taugwx_sfc(i) = taugwx_sfc(i) + real(tau(i,l,pver+1)) * xv(i)
+        taugwy_sfc(i) = taugwy_sfc(i) + real(tau(i,l,pver+1)) * yv(i)
+     enddo
+  enddo
+
+  !-----------------------------------------------------------------------
+  ! Clean up
+  !-----------------------------------------------------------------------
+  deallocate(tau, c, gwut)
 
 end subroutine gw_beres_ifc
-
 
 !************************************************************************
 !!handle_err

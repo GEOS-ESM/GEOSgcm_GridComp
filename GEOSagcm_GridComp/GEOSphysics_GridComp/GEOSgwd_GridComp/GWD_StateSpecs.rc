@@ -56,7 +56,6 @@ category: EXPORT
  RDG1_GBXAR |          | km^2     | xy   | N    | ridge1_gridbox_area
  SGH        | SGH_EXP  | m        | xy   | N    | standard_deviation_of_topography
  PREF       | PREF_EXP | Pa       |   z  | E    | reference_air_pressure
- DQCDT_LS   |          | kg kg-1 s-1 | xyz  | C    | total_condensate_tendency_for_frontal_GWD_forcing
  DTDT       |          | Pa K s-1 | xyz  | C    | mass_weighted_air_temperature_tendency_due_to_GWD
  TTMGW      |          | K s-1    | xyz  | C    | air_temperature_tendency_due_to_GWD
  DUDT       |          | m s-2    | xyz  | C    | tendency_of_eastward_wind_due_to_GWD
@@ -80,8 +79,18 @@ category: EXPORT
  TAUOROY    |          | N m-2    | xy   | N    | surface_northward_orographic_gravity_wave_stress
  TAUBKGX    |          | N m-2    | xy   | N    | surface_eastward_background_gravity_wave_stress
  TAUBKGY    |          | N m-2    | xy   | N    | surface_northward_background_gravity_wave_stress
- TAUMSTX    |          | N m-2    | xy   | N    | surface_eastward_gravity_wave_stress_due_to_Moist_Processes
- TAUMSTY    |          | N m-2    | xy   | N    | surface_northward_gravity_wave_stress_due_to_Moist_Processes
+ TAUGWX_TOT |          | N m-2    | xyz  | C    | total_zonal_gravity_wave_momentum_flux
+ TAUGWY_TOT |          | N m-2    | xyz  | C    | total_meridional_gravity_wave_momentum_flux
+ TAUGWX_EAST|          | N m-2    | xyz  | C    | zonal_gravity_wave_momentum_flux_eastward_waves
+ TAUGWY_EAST|          | N m-2    | xyz  | C    | meridional_gravity_wave_momentum_flux_eastward_waves
+ TAUGWX_WEST|          | N m-2    | xyz  | C    | zonal_gravity_wave_momentum_flux_westward_waves
+ TAUGWY_WEST|          | N m-2    | xyz  | C    | meridional_gravity_wave_momentum_flux_westward_waves
+ FEGW_TOT   |          | W m-2    | xyz  | C    | total_gravity_wave_kinetic_energy_flux_profile
+ FEPGW_TOT  |          | W m-2    | xyz  | C    | total_gravity_wave_phase_speed_weighted_energy_flux_profile
+ FEGW_EAST  |          | W m-2    | xyz  | C    | eastward_gravity_wave_kinetic_energy_flux_profile
+ FEPGW_EAST |          | W m-2    | xyz  | C    | eastward_gravity_wave_phase_speed_weighted_energy_flux_profile
+ FEGW_WEST  |          | W m-2    | xyz  | C    | westward_gravity_wave_kinetic_energy_flux_profile
+ FEPGW_WEST |          | W m-2    | xyz  | C    | westward_gravity_wave_phase_speed_weighted_energy_flux_profile
  CLDSTD     |          | m        | xy   | N    | gravity_wave_drag_standard_deviation_due_to_clouds
  UBASE      |          | m s-1    | xy   | N    | eastward_component_of_base_level_wind
  VBASE      |          | m s-1    | xy   | N    | northward_component_of_base_level_wind
