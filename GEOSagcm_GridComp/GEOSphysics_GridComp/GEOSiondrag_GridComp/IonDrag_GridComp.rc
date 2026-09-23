@@ -1,0 +1,20 @@
+# IonDrag_GridComp.rc
+#
+# Runtime configuration for the GEOS-MLT Ion Drag component.
+# These override the hardcoded defaults in GEOS_IonDragGridComp.F90's
+# Initialize routine if present; omit any line to fall back to the default.
+
+IONDRAG_ON:      1
+NLEV_IONDRAG:    10
+MEAN_MASS:       16.0
+
+IRI_HBEG:        100.0
+IRI_HEND:        700.0
+IRI_HSTEP:       10.0
+
+F107_DAILY:      150.0
+F107_81DAY:      150.0
+
+TEST_UI_MS:      50.0
+TEST_VI_MS:      0.0
+~                      
