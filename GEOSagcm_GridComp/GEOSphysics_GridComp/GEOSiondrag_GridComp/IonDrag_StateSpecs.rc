@@ -1,31 +1,19 @@
-schema_version: 2.0.0
-component: IonDrag
+ IonDrag_GridComp.rc
+#
+# Runtime configuration for the GEOS-MLT Ion Drag component.
+# These override the hardcoded defaults in GEOS_IonDragGridComp.F90's
+# Initialize routine if present; omit any line to fall back to the default.
 
-category: INTERNAL
-#--------------------------------------------------------------------------------------------------------------------
-#  VARIABLE       | DIMENSION   |          Additional Metadata
-#--------------------------------------------------------------------------------------------------------------------
- NAME             | UNITS   | DIMS | VLOC | UNGRIDDED  | LONG NAME
-#--------------------------------------------------------------------------------------------------------------------
+IONDRAG_ON:      1
+NLEV_IONDRAG:    10
+MEAN_MASS:       16.0
 
- category: IMPORT
-  NAME     | ALIAS | UNITS   | DIMS | VLOC | RESTART | LONG NAME
- PLE      |       | Pa      | xyz  | E    | SKIP    | air_pressure
-  T        |       | K       | xyz  | C    | SKIP    | air_temperature
-  U        |       | m s-1   | xyz  | C    | SKIP    | eastward_wind
-  V        |       | m s-1   | xyz  | C    | SKIP    | northward_wind
-  GZ       |       | m+2 s-2 | xyz  | E    | SKIP    | geopotential_height_at_edges
-  CP_MLT   |       | J kg-1 K-1 | xyz | C | SKIP    | mixture_specific_heat_from_MSIS_composition
-  AREA     |       | m^2     | xy   | N    | SKIP    | grid_box_area
+IRI_HBEG:        100.0
+IRI_HEND:        700.0
+IRI_HSTEP:       10.0
 
-category: EXPORT
-#-------------------------------------------------------------------------------------------------------
-#  VARIABLE       | DIMENSIONS  |          Additional Metadata
-#-------------------------------------------------------------------------------------------------------
- NAME             | ALIAS | UNITS    | DIMS | VLOC | LONG NAME
-#-------------------------------------------------------------------------------------------------------
- DUDT_IONDRAG     |       | m s-2    | xyz  | C    | tendency_of_eastward_wind_due_to_ion_drag
- DVDT_IONDRAG     |       | m s-2    | xyz  | C    | tendency_of_northward_wind_due_to_ion_drag
- DTDT_IONDRAG     |       | K s-1    | xyz  | C    | tendency_of_air_temperature_due_to_ion_drag_frictional_heating
- NE_IONDRAG       |       | m-3      | xyz  | C    | electron_number_density_from_IRI
- RHO_MSIS_IONDRAG |       | kg m-3   | xyz  | C    | neutral_mass_density_from_MSIS
+F107_DAILY:      150.0
+F107_81DAY:      150.0
+
+TEST_UI_MS:      50.0
+TEST_VI_MS:      0.0
