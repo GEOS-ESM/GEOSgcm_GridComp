@@ -800,12 +800,6 @@ contains
     !-----------------------------------
 
     ! Regrid from mesh to tile
-    call MAPL_LocStreamGet(internal_state%locstream, NT_LOCAL=NT, _RC)
-
-    ! allocate variables on landice tile space
-    allocate(ICESURF_TILE(NT))
-    allocate(ICETHICK_TILE(NT))
-    allocate(ICEVEL_TILE(NT))
 
     ! calculate ice flow speed
     ICEVEL_HALO = sqrt(ICEVX_HALO**2 + ICEVY_HALO**2)
