@@ -9,7 +9,7 @@ module GEOS_IonDragGridCompMod
 
    ! !DESCRIPTION:
    !
-   !   {\tt IonDrag} is a light-weight gridded component that computes the
+   ! This Ion drag implementation is a light-weight gridded component that computes the
    ! momentum drag and frictional heating tendencies on the neutral wind and
    ! temperature fields due to collisions with ions, over the top
    ! NLEV_IONDRAG model levels. Ion densities and species fractions are
@@ -285,7 +285,6 @@ contains
          DT_PHYSICS = DT_R8
 
          ! Current model time -> year, day-of-year, UT hour.
-         ! ESMF_TimeGet's DayOfYear argument does this natively -- no custom
          ! calendar helper needed (matches GEOS_SolarGridComp.F90's pattern).
          call ESMF_ClockGet(CLOCK, CurrTime=CURRENT_TIME, _RC)
          call ESMF_TimeGet(CURRENT_TIME, YY=IYEAR, DayOfYear=DOY, H=HH, M=MN, S=SS, _RC)
@@ -318,7 +317,7 @@ contains
          end do
 
          ! Step 1: Ion winds -- placeholder constants for testing.
-         ! TODO: replace with ML model output once available.
+         ! TODO: replace with Andrew's ML model.
          ui = self%TEST_UI_MS
          vi = self%TEST_VI_MS
 
