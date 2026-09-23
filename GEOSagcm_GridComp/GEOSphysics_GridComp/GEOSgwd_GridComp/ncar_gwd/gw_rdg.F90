@@ -90,18 +90,18 @@ contains
 !------------------------------------
 !> \section arg_table_gw_rdg_init  Argument Table
 !! \htmlinclude gw_rdg_init.html
-subroutine gw_rdg_init (band, gw_dc, fcrit2, wavelength, tndmax, pgwv)
+subroutine gw_rdg_init (band, gw_dc, ew_crit_thresh, ww_crit_thresh, fcrit2, wavelength, tndmax, pgwv)
 #include <netcdf.inc>
 
   type(GWBand), intent(inout)   :: band         ! I hate this variable  ... it just hides information from view
-  real, intent(in) :: gw_dc,fcrit2,wavelength,tndmax
+  real, intent(in) :: gw_dc,ew_crit_thresh,ww_crit_thresh,fcrit2,wavelength,tndmax
   integer, intent(in)  :: pgwv
 
   !==============================================
   !  Create "Band" structure
   !----------------------------------------------
 
-  band  = GWBand(pgwv, gw_dc, fcrit2, wavelength )
+  band  = GWBand(pgwv, gw_dc, ew_crit_thresh, ww_crit_thresh, fcrit2, wavelength )
  
   ! Set the local variables
   do_divstream        = .TRUE.

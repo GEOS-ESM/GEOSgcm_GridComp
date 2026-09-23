@@ -85,6 +85,9 @@ type :: GWBand
    real :: dc
    ! Reference speeds [m/s].
    real, allocatable :: cref(:)
+   ! NEW: Critical level filtering thresholds
+   real :: eastward_critical_threshold       ! For c > 0 waves (m/s)
+   real :: westward_critical_threshold       ! For c < 0 waves (m/s)
    ! Critical Froude number, squared (usually 1, but CAM3 used 0.5).
    real :: fcrit2
    ! Horizontal wave number [1/m].
@@ -102,10 +105,11 @@ contains
 !==========================================================================
 
 ! Constructor for a GWBand that calculates derived components.
-function new_GWBand(ngwv, dc, fcrit2, wavelength) result(band)
+function new_GWBand(ngwv, dc, ew_crit_thresh, ww_crit_thresh, fcrit2, wavelength) result(band)
   ! Used directly to set the type's components.
   integer, intent(in) :: ngwv
   real, intent(in) :: dc
+  real, intent(in) :: ew_crit_thresh, ww_crit_thresh
   real, intent(in) :: fcrit2
   ! Wavelength in meters.
   real, intent(in) :: wavelength
@@ -124,6 +128,9 @@ function new_GWBand(ngwv, dc, fcrit2, wavelength) result(band)
   ! Uniform phase speed reference grid.
   allocate(band%cref(-ngwv:ngwv))
   band%cref = [( dc * l, l = -ngwv, ngwv )]
+
+  band%eastward_critical_threshold = ew_crit_thresh
+  band%westward_critical_threshold = ww_crit_thresh
 
   ! Wavenumber and effective wavenumber come from the wavelength.
   band%kwv = 2._GW_PRC*pi / wavelength
@@ -355,7 +362,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   real(GW_PRC) :: wrk(ncol)
   ! Temporary effkwv
   real(GW_PRC) :: effkwv(ncol)
-
+  real(GW_PRC) :: crit_threshold
   real(GW_PRC) :: near_zero = tiny(1.0_GW_PRC)
 
   ! LU decomposition.
@@ -397,7 +404,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 !$OMP parallel do default(none) &
 !$OMP shared(kbot_src,ktop,kvtt,band,ubi,c,effkwv,rhoi,ni, &
 !$OMP        near_zero,ro_adjust,ncol,alpha,piln,t,rog,src_level,tau) &
-!$OMP private(k,d,l,i,tausat,taudmp,ubmc,ubmc2,wrk,mi)
+!$OMP private(k,d,l,i,tausat,taudmp,ubmc,ubmc2,wrk,mi,crit_threshold)
   do k = kbot_src, ktop, -1
      
      ! Determine the diffusivity for each column.
@@ -418,12 +425,23 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
         ! interfaces.
           ubmc(i) = ubi(i,k) - c(i,l)
 
-              ! Test to see if u-c has the same sign here as the level below.
-          if (ubmc(i) > near_zero .eqv. ubi(i,k+1) > c(i,l)) then
-             if ( (abs(effkwv(i)) > near_zero) .AND. (abs(ni(i,k)) > near_zero) ) & 
-                 tausat(i) = abs( effkwv(i) * rhoi(i,k) * ubmc(i)**3 / ni(i,k) )
+        ! MODIFIED: Use band-specific critical level thresholds
+        ! This allows tuning of eastward vs westward wave penetration
+          if (c(i,l) > 0.0) then
+             ! Eastward waves: use eastward threshold
+             crit_threshold = band%eastward_critical_threshold
+          else
+             ! Westward waves: use westward threshold
+             crit_threshold = band%westward_critical_threshold
+          endif
+        ! Test to see if u-c has the same sign here as the level below,
+        ! using direction-dependent threshold
+          if (abs(ubmc(i)) > crit_threshold .eqv. &
+             abs(ubi(i,k+1) - c(i,l)) > crit_threshold) then
+             if ( (abs(effkwv(i)) > near_zero) .AND. (abs(ni(i,k)) > near_zero) ) &
+                tausat(i) = abs( effkwv(i) * rhoi(i,k) * ubmc(i)**3 / ni(i,k) )
              if (present(ro_adjust)) &
-                 tausat(i) = tausat(i) * sqrt(ro_adjust(i,l,k))
+                tausat(i) = tausat(i) * sqrt(ro_adjust(i,l,k))
           endif
 
         ! Compute stress for each wave. The stress at this level is the
