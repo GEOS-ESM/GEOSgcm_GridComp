@@ -9,7 +9,7 @@ module GEOS_IonDragGridCompMod
 
    ! !DESCRIPTION:
    !
-   ! This Ion drag implementation is a light-weight gridded component that computes the
+   ! IonDrag is a light-weight gridded component that computes the
    ! momentum drag and frictional heating tendencies on the neutral wind and
    ! temperature fields due to collisions with ions, over the top
    ! NLEV_IONDRAG model levels. Ion densities and species fractions are
@@ -32,8 +32,9 @@ module GEOS_IonDragGridCompMod
 
    use iri_input_module, only: get_iri_densities, N_ION_SPECIES
    use ion_drag_module,  only: compute_drag_fields
-   use msis_wrapper,     only: msis_wrapper_init, msis_prepare_time, msis_point
-
+   use msis_wrapper,     only: msis_wrapper_init, msis_prepare_time, msis_point, msis_get_current_f107
+   use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
+   
    implicit none
    private
 
@@ -48,7 +49,6 @@ module GEOS_IonDragGridCompMod
       integer :: NLEV_IONDRAG
       real    :: MEAN_MASS
       real    :: HBEG, HEND, HSTEP       ! IRI altitude profile range/step (km)
-      real    :: F107_DAILY, F107_81DAY  ! climatological placeholders for v1
       real    :: TEST_UI_MS, TEST_VI_MS  ! placeholder constant ion winds
    end type GEOS_IonDragGridComp
 
@@ -171,8 +171,6 @@ contains
       call MAPL_GetResource( MAPL, self%HBEG,          Label="IRI_HBEG:",      default=100.0,   _RC)
       call MAPL_GetResource( MAPL, self%HEND,          Label="IRI_HEND:",      default=700.0,   _RC)
       call MAPL_GetResource( MAPL, self%HSTEP,         Label="IRI_HSTEP:",     default=10.0,    _RC)
-      call MAPL_GetResource( MAPL, self%F107_DAILY,    Label="F107_DAILY:",    default=150.0,   _RC)
-      call MAPL_GetResource( MAPL, self%F107_81DAY,    Label="F107_81DAY:",    default=150.0,   _RC)
       call MAPL_GetResource( MAPL, self%TEST_UI_MS,    Label="TEST_UI_MS:",    default=50.0,    _RC)
       call MAPL_GetResource( MAPL, self%TEST_VI_MS,    Label="TEST_VI_MS:",    default=0.0,     _RC)
 
@@ -260,8 +258,10 @@ contains
 
          integer :: IYEAR, DOY, HH, MN, SS
          real    :: UT_HOUR
+         real    :: F107_DAILY_NOW, F107_81DAY_NOW
 
          real, parameter :: GRAV0 = 9.80665
+         real, parameter :: FALLBACK_ALT_KM = 220.0
 
          real, allocatable :: alt_km(:,:,:)   ! (IM, JM, NLEV_IONDRAG) -- per column
          real, allocatable :: ui(:,:,:), vi(:,:,:)
@@ -285,6 +285,7 @@ contains
          DT_PHYSICS = DT_R8
 
          ! Current model time -> year, day-of-year, UT hour.
+         ! ESMF_TimeGet's DayOfYear argument does this natively -- no custom
          ! calendar helper needed (matches GEOS_SolarGridComp.F90's pattern).
          call ESMF_ClockGet(CLOCK, CurrTime=CURRENT_TIME, _RC)
          call ESMF_TimeGet(CURRENT_TIME, YY=IYEAR, DayOfYear=DOY, H=HH, M=MN, S=SS, _RC)
@@ -308,34 +309,44 @@ contains
          ! the same approach as mol_mom_diff_mod on the dynamics side. GZ
          ! interfaces (k, k+1) unambiguously bound layer k regardless of
          ! top-down/bottom-up orientation, since we take the midpoint.
+         ! Known dynamics-side artifact: GZ can be NaN at the model top for
+         ! specific columns (same condition guarded against in
+         ! cond_driver_mod.F90's sanitize_msis_alt). Fall back to a fixed
+         ! altitude rather than propagating NaN into IRI/MSIS/drag physics.
          do k = 1, self%NLEV_IONDRAG
             do j = 1, JM
                do i = 1, IM
-                  alt_km(i,j,k) = 0.5 * ( GZ(i,j,k) + GZ(i,j,k+1) ) / GRAV0 / 1000.0
+                  if (ieee_is_finite(GZ(i,j,k)) .and. ieee_is_finite(GZ(i,j,k+1))) then
+                     alt_km(i,j,k) = 0.5 * ( GZ(i,j,k) + GZ(i,j,k+1) ) / GRAV0 / 1000.0
+                  else
+                     alt_km(i,j,k) = FALLBACK_ALT_KM
+                  end if
                end do
             end do
          end do
 
-         ! Step 1: Ion winds -- placeholder constants for testing.
-         ! TODO: replace with Andrew's ML model.
+         ! Step 1: Ion winds: replace with Andrew's ML model output.
          ui = self%TEST_UI_MS
          vi = self%TEST_VI_MS
+         ! MSIS space-weather indices must be prepared once per timestep,
+         ! before any msis_point calls and before the IRI call,
+         ! since IRI reuses these same real F10.7/F10.7A values rather than
+         ! static .rc placeholders.
+         call msis_prepare_time(IYEAR, DOY, nint(UT_HOUR*3600.0))
+         call msis_get_current_f107(F107_DAILY_NOW, F107_81DAY_NOW)
 
          ! Step 2: IRI ion densities / species fractions (real per-column
          ! altitude via alt_km).
          call MAPL_TimerOn(MAPL, "-IRI")
          call get_iri_densities(LATS_DEG, LONS_DEG, IYEAR, DOY, UT_HOUR, &
-                                 self%F107_DAILY, self%F107_81DAY, &
+                                 F107_DAILY_NOW, F107_81DAY_NOW, &
                                  alt_km, self%HBEG, self%HEND, self%HSTEP, &
                                  ne_m3, species_fraction)
          call MAPL_TimerOff(MAPL, "-IRI")
 
          ! Step 3: MSIS neutral mass density (top NLEV_IONDRAG levels),
          ! also evaluated at real per-column altitude via alt_km.
-         ! msis_prepare_time must be called once per timestep before any
-         ! msis_point calls (msis_point errors out otherwise).
          call MAPL_TimerOn(MAPL, "-MSIS")
-         call msis_prepare_time(IYEAR, DOY, nint(UT_HOUR*3600.0))
          call compute_msis_density(IM, JM, self%NLEV_IONDRAG, IYEAR, DOY, UT_HOUR, LATS_2D, LONS_2D, alt_km, rho_msis, _RC)
          call MAPL_TimerOff(MAPL, "-MSIS")
 
