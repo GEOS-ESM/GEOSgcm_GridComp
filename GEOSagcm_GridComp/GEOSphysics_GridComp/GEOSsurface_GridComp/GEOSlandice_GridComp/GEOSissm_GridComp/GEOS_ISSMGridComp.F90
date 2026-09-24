@@ -1379,7 +1379,7 @@ contains
 
     ! create destination field: field on grid
     dstField = ESMF_FieldCreate(grid=internal_state%grid,typekind=ESMF_TYPEKIND_R4,_RC)
-
+    call ESMF_FieldFill(dstField, value=MAPL_UNDEF, _RC)
     ! regrid field from mesh to grid
     call ESMF_FieldRegrid(srcField, dstField, internal_state%routehandle_m2g, _RC)
 
