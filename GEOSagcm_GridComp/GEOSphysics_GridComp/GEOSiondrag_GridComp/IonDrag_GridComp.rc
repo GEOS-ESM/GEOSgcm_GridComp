@@ -12,9 +12,6 @@ IRI_HBEG:        100.0
 IRI_HEND:        700.0
 IRI_HSTEP:       10.0
 
-F107_DAILY:      150.0
-F107_81DAY:      150.0
-
 TEST_UI_MS:      50.0
 TEST_VI_MS:      0.0
 ~                      
