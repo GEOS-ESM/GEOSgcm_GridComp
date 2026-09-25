@@ -26,7 +26,7 @@ program mk_LakeLandiceSaltRestarts
   real, allocatable :: dummy(:)
 
   integer           :: zoom
-#ifndef __GFORTRAN__
+#if !defined(__GFORTRAN__) && !defined(__flang__)
   integer              :: ftell
   external             :: ftell
 #endif
@@ -125,10 +125,10 @@ program mk_LakeLandiceSaltRestarts
                  call MAPL_VarWrite(OutFmt,vname,varOut)
               endif
            else if (ndims == 2) then
-           
+
               dname => myVariable%get_ith_dimension(2)
               dim1=InCfg%get_dimension(dname)
-        
+
               do j=1,dim1
                  if (dataType == pFIO_REAL64) then
                     call MAPL_VarRead(InFmt,vname,varIn8,offset1=j, __RC__)
@@ -145,7 +145,7 @@ program mk_LakeLandiceSaltRestarts
                  endif
               enddo
            else if (ndims == 3) then
-              
+
               dname => myVariable%get_ith_dimension(2)
               dim1=InCfg%get_dimension(dname)
               dname => myVariable%get_ith_dimension(3)
@@ -168,12 +168,12 @@ program mk_LakeLandiceSaltRestarts
                     endif
                  enddo
               enddo
-           
+
            end if
 
         end if
-       
-        call var_iter%next() 
+
+        call var_iter%next()
      enddo
 
      call OutFmt%close()

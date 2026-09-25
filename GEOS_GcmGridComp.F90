@@ -1574,7 +1574,8 @@ contains
      allocate(lswrap%ptr, stat = status)
      _VERIFY(STATUS)
      call ESMF_UserCompSetInternalState(hist_gcs(hist), 'MAPL_LocStreamList', &
-          lswrap, _RC)
+          lswrap, status)
+     _VERIFY(status)
      call MAPL_GetAllExchangeGrids(gcm_gcs(agcm), LSADDR, _RC)
      lswrap%ptr%LSADDR_PTR => LSADDR
 

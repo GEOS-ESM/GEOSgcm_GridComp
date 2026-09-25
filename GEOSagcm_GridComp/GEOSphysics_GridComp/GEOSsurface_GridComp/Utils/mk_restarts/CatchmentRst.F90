@@ -2,7 +2,7 @@
 
 module CatchmentRstMod
   use mk_restarts_getidsMod, ONLY:      &
-       GetIds,                          &                              
+       GetIds,                          &
        ReadTileFile_RealLatLon
   use MAPL
   use MAPL_Base,         ONLY: MAPL_UNDEF
@@ -19,7 +19,7 @@ module CatchmentRstMod
 
 
   implicit none
-#ifndef __GFORTRAN__
+#if !defined(__GFORTRAN__) && !defined(__flang__)
   integer           :: ftell
   external          :: ftell
 #endif
@@ -104,11 +104,11 @@ module CatchmentRstMod
      real, allocatable, dimension(:) :: lonc,latc,lonn,latt, latg
      integer, allocatable, dimension(:) :: id_glb
   contains
-     procedure :: read_GEOSldas_rst_bin      
-     procedure :: write_nc4      
-     procedure :: read_shared_nc4      
+     procedure :: read_GEOSldas_rst_bin
+     procedure :: write_nc4
+     procedure :: read_shared_nc4
      procedure :: write_shared_nc4
-     procedure :: add_bcs_to_rst      
+     procedure :: add_bcs_to_rst
      procedure :: allocate_catch
      procedure :: re_tile
      procedure :: re_scale
@@ -160,7 +160,7 @@ contains
        read(unit)
        epos = ftell(unit)          ! ending position of file pointer
        close(unit)
-       ntiles = (epos-bpos)/4-2    ! record size (in 4 byte words; 
+       ntiles = (epos-bpos)/4-2    ! record size (in 4 byte words;
        catch%ntiles = ntiles
        catch%meta = create_meta(ntiles, time)
        if (myid ==0) then
@@ -175,7 +175,7 @@ contains
      type(CatchmentRst) :: catch
      character(*), intent(in) :: time
      type(FileMetadata), intent(in) :: meta
-     
+
      integer, optional, intent(out) :: rc
      integer :: status, myid, mpierr
      character(len=256) :: Iam = "CatchmentRst_create"
@@ -184,7 +184,7 @@ contains
      call MPI_COMM_RANK( MPI_COMM_WORLD, myid, mpierr )
        ! nc4 format
      catch%ntiles = meta%get_dimension('tile', __RC__)
-     catch%meta = meta 
+     catch%meta = meta
      catch%time = time
      if (myid ==0) then
         call catch%allocate_catch()
@@ -264,14 +264,14 @@ contains
      type(Netcdf4_fileformatter),intent(inout) :: formatter
      integer, optional, intent(out):: rc
      integer :: status
-     
+
      ! these four (time-invariant) variables are used for rescaling of prognostic variables
      call MAPL_VarRead(formatter,"VGWMAX",this%vgwmax, __RC__)
      call MAPL_VarRead(formatter,"CDCR1",this%cdcr1, __RC__)
      call MAPL_VarRead(formatter,"CDCR2",this%cdcr2, __RC__)
      call MAPL_VarRead(formatter,"POROS",this%poros, __RC__)
 
-     ! Catchment model prognostic variables (and some diagnostics needed in Catch restart for GCM) 
+     ! Catchment model prognostic variables (and some diagnostics needed in Catch restart for GCM)
      call MAPL_VarRead(formatter,"TC",this%tc, __RC__)
      call MAPL_VarRead(formatter,"QC",this%qc, __RC__)
      call MAPL_VarRead(formatter,"CAPAC",this%capac, __RC__)
@@ -436,7 +436,7 @@ contains
      allocate( this%    ghtcnt4(ntiles) )
      allocate( this%    ghtcnt5(ntiles) )
      allocate( this%    ghtcnt6(ntiles) )
-     
+
      if (this%meta%has_variable('TSURF')) then
        allocate( this%    tsurf(ntiles) )
      endif
@@ -500,31 +500,31 @@ contains
       inquire(file = trim(DataDir)//"/clsm/CLM_veg_typs_fracs",exist=NewLand )
 
       this%ity   = DP2BR
-      this%ARA1  = DP2BR      
-      this%ARA2  = DP2BR      
-      this%ARA3  = DP2BR      
-      this%ARA4  = DP2BR      
-      this%ARS1  = DP2BR      
-      this%ARS2  = DP2BR      
-      this%ARS3  = DP2BR      
-      this%ARW1  = DP2BR      
-      this%ARW2  = DP2BR      
-      this%ARW3  = DP2BR      
-      this%ARW4  = DP2BR      
-      this%ATAU  = DP2BR      
-      this%BTAU  = DP2BR      
-      this%PSIS  = DP2BR      
-      this%BEE   = DP2BR      
-      this%BF1   = DP2BR      
-      this%BF2   = DP2BR      
-      this%BF3   = DP2BR      
-      this%TSA1  = DP2BR      
-      this%TSA2  = DP2BR      
-      this%TSB1  = DP2BR      
-      this%TSB2  = DP2BR      
-      this%GNU   = DP2BR      
-      this%COND  = DP2BR      
-      this%WPWET = DP2BR      
+      this%ARA1  = DP2BR
+      this%ARA2  = DP2BR
+      this%ARA3  = DP2BR
+      this%ARA4  = DP2BR
+      this%ARS1  = DP2BR
+      this%ARS2  = DP2BR
+      this%ARS3  = DP2BR
+      this%ARW1  = DP2BR
+      this%ARW2  = DP2BR
+      this%ARW3  = DP2BR
+      this%ARW4  = DP2BR
+      this%ATAU  = DP2BR
+      this%BTAU  = DP2BR
+      this%PSIS  = DP2BR
+      this%BEE   = DP2BR
+      this%BF1   = DP2BR
+      this%BF2   = DP2BR
+      this%BF3   = DP2BR
+      this%TSA1  = DP2BR
+      this%TSA2  = DP2BR
+      this%TSB1  = DP2BR
+      this%TSB2  = DP2BR
+      this%GNU   = DP2BR
+      this%COND  = DP2BR
+      this%WPWET = DP2BR
       this%POROS = DP2BR
       this%VGWMAX = DP2BR
       this%cdcr1 = DP2BR
@@ -594,7 +594,7 @@ contains
         open(unit=26, file=trim(DataDir)//'/clsm/tau_param.dat'        ,form='formatted')
 
         do n=1,ntiles
-           ! W.J notes: CanopH is not used. If CLM_veg_typs_fracs exists, the read some dummy ???? Ask Sarith  
+           ! W.J notes: CanopH is not used. If CLM_veg_typs_fracs exists, the read some dummy ???? Ask Sarith
            if (NewLand) then
               read(21,*) I, j, ITY(N),idum, rdum, rdum, CanopH
            else
@@ -658,7 +658,7 @@ contains
      integer :: n, status
      character(:), allocatable :: s
      type(Variable) :: var
- 
+
      fields(1,:)  = [character(len=64)::"ARA1"     ,  "shape_param_1"                             ,     "m+2 kg-1"]
      fields(2,:)  = [character(len=64)::"ARA2"     ,  "shape_param_2"                             ,     "1"]
      fields(3,:)  = [character(len=64)::"ARA3"     ,  "shape_param_3"                             ,     "m+2 kg-1"]
@@ -776,11 +776,11 @@ contains
        print *,'ntiles in restarts        : ',in_ntiles
      endif
 
-     
+
      ! Domain decomposition
      ! --------------------
 
-     
+
      allocate(low_ind (   numprocs))
      allocate(upp_ind (   numprocs))
      allocate(nt_local(   numprocs))
@@ -846,7 +846,7 @@ contains
 
     ! --------------------------------------------------------------------------------
     ! Here we create transfer index array to map offline restarts to output tile space
-    ! --------------------------------------------------------------------------------   
+    ! --------------------------------------------------------------------------------
 
     ! id_glb for hydrologic variable
      this%lonc = lonc
@@ -962,10 +962,10 @@ contains
 
        var_out       = this%SNDZN3(id_glb(:))
        this%SNDZN3   = var_out
-    
+
        !set tsurf to zero
        if (this%meta%has_variable('TSURF')) then
-          var_out = this%tsurf(id_glb(:)) 
+          var_out = this%tsurf(id_glb(:))
           this%tsurf = var_out
        endif
 
@@ -1015,7 +1015,7 @@ contains
      if(associated(lonc)) deallocate(lonc)
      if(associated(latc)) deallocate(latc)
 
-     _RETURN(_SUCCESS) 
+     _RETURN(_SUCCESS)
    end subroutine re_tile
 
    subroutine re_scale(this, surflay, wemin_in, wemin_out,  rc)
@@ -1178,6 +1178,6 @@ contains
      this%old_ghtcnt4 = this%ghtcnt4
      this%old_ghtcnt5 = this%ghtcnt5
      this%old_ghtcnt6 = this%ghtcnt6
-   end subroutine set_scale_var 
+   end subroutine set_scale_var
 
 end module CatchmentRstMod
