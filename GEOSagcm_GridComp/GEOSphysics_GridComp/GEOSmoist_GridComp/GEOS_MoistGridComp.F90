@@ -5726,7 +5726,7 @@ contains
     real, allocatable, dimension(:,:,:) :: PLEmb, PKE, ZLE0, PK, MASS
     real, allocatable, dimension(:,:,:) :: PLmb,  ZL0, DZET
     real, allocatable, dimension(:,:,:) :: QST3, DQST3, MWFA
-    real, allocatable, dimension(:,:,:) :: TMP3D
+    real, allocatable, dimension(:,:,:) :: TMP3D, TMP3Dp1
     real, allocatable, dimension(:,:)   :: TMP2D
     integer, allocatable,dimension(:,:) :: KLCL
     ! Internals
@@ -6114,19 +6114,21 @@ contains
        call MAPL_TimerOn(MAPL,"---MOIST_EPILOGUE")
 
        ! Mass fluxes
-       ! accumuated over deep and shalow convection
-       call MAPL_GetPointer(EXPORT, PTR3D,   'CNV_MFC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       ALLOCATE ( TMP3Dp1(IM,JM,LM+1) )
+       ! Edge updraft mass flux over deep and shalow convection
+       call MAPL_GetPointer(EXPORT, PTR3D,   'CNV_MFC',               RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, PTRDC,   'UMF_DC' ,               RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, PTRSC,   'UMF_SC' ,               RC=STATUS); VERIFY_(STATUS)
-                              PTR3D = 0.0
-       if (associated(PTRDC)) PTR3D = PTR3D + PTRDC
-       if (associated(PTRSC)) PTR3D = PTR3D + PTRSC
+                              TMP3Dp1 = 0.0
+       if (associated(PTRDC)) TMP3Dp1 = TMP3Dp1 + PTRDC
+       if (associated(PTRSC)) TMP3Dp1 = TMP3Dp1 + PTRSC
+       if (associated(PTR3D)) PTR3D   = TMP3Dp1
        if (DETRAIN_INACTIVE_CNV > 0.0) then
          do L = 1, LM
            do J = 1, JM
              do I = 1, IM
                ! Calculate local mass flux
-               MFC = 0.5 * (PTR3D(I,J,L) + PTR3D(I,J,L+1))
+               MFC = 0.5 * (TMP3Dp1(I,J,L) + TMP3Dp1(I,J,L+1))
                if (MFC < DETRAIN_INACTIVE_CNV) then
                  ! 1. Calculate a smooth inactivity factor (0.0 at threshold, 1.0 when MFC is 0)
                  ! 2. Scale it by the timestep vs relaxation time (DT_MOIST / TAU)
@@ -6152,13 +6154,15 @@ contains
           enddo
          enddo
        endif
+       DEALLOCATE ( TMP3Dp1 )
 
-       call MAPL_GetPointer(EXPORT, PTR3D,   'CNV_MFD', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, PTR3D,   'CNV_MFD',               RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, PTRDC,   'MFD_DC' ,               RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, PTRSC,   'MFD_SC' ,               RC=STATUS); VERIFY_(STATUS)
-                              PTR3D = 0.0
-       if (associated(PTRDC)) PTR3D = PTR3D + PTRDC
-       if (associated(PTRSC)) PTR3D = PTR3D + PTRSC
+                              TMP3D = 0.0
+       if (associated(PTRDC)) TMP3D = TMP3D + PTRDC
+       if (associated(PTRSC)) TMP3D = TMP3D + PTRSC
+       if (associated(PTR3D)) PTR3D = TMP3D
 
        call MAPL_TimerOff(MAPL,"---MOIST_EPILOGUE")
 
