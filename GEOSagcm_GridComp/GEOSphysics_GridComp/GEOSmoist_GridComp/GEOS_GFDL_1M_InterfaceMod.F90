@@ -853,10 +853,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         allocate(facEIS_2d(IM,JM), minrhcrit_2d(IM,JM), turnrhcrit_2d(IM,JM))
         allocate(min_rh_free_2d(IM,JM))
 
-        ! Call RANDOM_NUMBER OUTSIDE the OpenMP loop to ensure thread safety!
-        ! This fills the array with random numbers between 0.0 and 1.0
-        call RANDOM_NUMBER(min_rh_free_2d)
-
         !$OMP parallel do default(none) &
         !$OMP shared(IM, JM, EIS, SRF_TYPE, MIN_RH_UNSTABLE, MIN_RH_STABLE, &
         !$OMP        TURNRHCRIT_SFC, ZL0, KPBLSC, facEIS_2d, minrhcrit_2d, &
@@ -868,8 +864,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              facEIS_2d(I,J) = get_fac_eis(EIS(I,J),SRF_TYPE(I,J))
              minrhcrit_2d(I,J) = MIN_RH_UNSTABLE*(1.0-facEIS_2d(I,J)) + MIN_RH_STABLE*facEIS_2d(I,J)
 
-             ! Add the 0.1*[0.0 to 1.0] random number to your MIN_RH_CRIT
-             min_rh_free_2d(I,J) = MIN(minrhcrit_2d(I,J), MIN_RH_CRIT + (min_rh_free_2d(I,J) * 0.1))
+             min_rh_free_2d(I,J) = MIN(minrhcrit_2d(I,J), MIN_RH_CRIT + 0.05)
              
              minrhcrit_2d(I,J) = max(0.7, minrhcrit_2d(I,J))
     

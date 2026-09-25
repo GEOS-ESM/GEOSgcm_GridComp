@@ -253,6 +253,8 @@ contains
     real    :: NCAR_QBO_HDEPTH_SCALING
     integer :: NCAR_ORO_PGWV, NCAR_BKG_PGWV
     real    :: NCAR_ORO_GW_DC, NCAR_BKG_GW_DC
+    real    :: NCAR_ORO_EW_CRIT_THRESH, NCAR_BKG_EW_CRIT_THRESH
+    real    :: NCAR_ORO_WW_CRIT_THRESH, NCAR_BKG_WW_CRIT_THRESH
     real    :: NCAR_ORO_FCRIT2, NCAR_BKG_FCRIT2
     real    :: NCAR_ORO_WAVELENGTH, NCAR_BKG_WAVELENGTH
     real    :: NCAR_ORO_SOUTH_FAC
@@ -402,6 +404,8 @@ contains
       ! Beres DeepCu
       call MAPL_GetResource( MAPL, NCAR_DC_BERES_SRC_LEVEL, "NCAR_DC_BERES_SRC_LEVEL:", DEFAULT=70000.0, _RC)
       call MAPL_GetResource( MAPL, NCAR_DC_BERES, "NCAR_DC_BERES:", DEFAULT=.TRUE., _RC)
+      call MAPL_GetResource( MAPL, NCAR_BKG_EW_CRIT_THRESH, "NCAR_BKG_EW_CRIT_THRESH:", DEFAULT=1.0e-3, _RC)
+      call MAPL_GetResource( MAPL, NCAR_BKG_WW_CRIT_THRESH, "NCAR_BKG_WW_CRIT_THRESH:", DEFAULT=1.0e-10, _RC)
       if (use_threads) then
           bounds = MAPL_find_bounds(JM, num_threads)
           do thread = 0, num_threads-1
@@ -409,7 +413,7 @@ contains
                 call gw_beres_init( BERES_FILE_NAME ,  &
                                     self%workspaces(thread)%beres_band, &
                                     self%workspaces(thread)%beres_dc_desc, &
-                                    NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, &
+                                    NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_EW_CRIT_THRESH, NCAR_BKG_WW_CRIT_THRESH, NCAR_BKG_FCRIT2, &
                                     NCAR_BKG_WAVELENGTH, NCAR_DC_BERES_SRC_LEVEL, NCAR_HR_CF, NCAR_QBO_HDEPTH_SCALING, &
                                     1000.0, .TRUE., NCAR_TR_EFF, NCAR_ET_EFF, NCAR_BKG_TAU, NCAR_ET_FAC_DTDTM, NCAR_ET_FAC_WS300, &
                                     NCAR_BKG_TNDMAX, NCAR_DC_BERES, &
@@ -419,7 +423,7 @@ contains
           call gw_beres_init( BERES_FILE_NAME ,  &
                               self%workspaces(0)%beres_band, &
                               self%workspaces(0)%beres_dc_desc, &
-                              NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, &
+                              NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_EW_CRIT_THRESH, NCAR_BKG_WW_CRIT_THRESH, NCAR_BKG_FCRIT2, &
                               NCAR_BKG_WAVELENGTH, NCAR_DC_BERES_SRC_LEVEL, NCAR_HR_CF, NCAR_QBO_HDEPTH_SCALING, &
                               1000.0, .TRUE., NCAR_TR_EFF, NCAR_ET_EFF, NCAR_BKG_TAU, NCAR_ET_FAC_DTDTM, NCAR_ET_FAC_WS300, &
                               NCAR_BKG_TNDMAX, NCAR_DC_BERES, &
@@ -430,13 +434,16 @@ contains
       call MAPL_GetResource( MAPL, NCAR_ORO_PGWV,       Label="NCAR_ORO_PGWV:",       default=0,    _RC)
       call MAPL_GetResource( MAPL, NCAR_ORO_GW_DC,      Label="NCAR_ORO_GW_DC:",      default=2.5,  _RC)
       call MAPL_GetResource( MAPL, NCAR_ORO_WAVELENGTH, Label="NCAR_ORO_WAVELENGTH:", default=1.e5, _RC)
+      call MAPL_GetResource( MAPL, NCAR_ORO_EW_CRIT_THRESH, "NCAR_ORO_EW_CRIT_THRESH:", DEFAULT=1.0e-2, _RC)
+      call MAPL_GetResource( MAPL, NCAR_ORO_WW_CRIT_THRESH, "NCAR_ORO_WW_CRIT_THRESH:", DEFAULT=1.0e-2, _RC)
       if (self%NCAR_NRDG > 0) then
           call MAPL_GetResource( MAPL, NCAR_ORO_FCRIT2, Label="NCAR_ORO_FCRIT2:",     default=1.0,  _RC)
           call MAPL_GetResource( MAPL, NCAR_ORO_TNDMAX, Label="NCAR_ORO_TNDMAX:",     default=400.0,_RC)
           NCAR_ORO_TNDMAX = NCAR_ORO_TNDMAX/86400.0
         ! Ridge Scheme
           do thread = 0, num_threads-1
-             call gw_rdg_init ( self%workspaces(thread)%rdg_band, NCAR_ORO_GW_DC, NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_TNDMAX, NCAR_ORO_PGWV )
+             call gw_rdg_init (self%workspaces(thread)%rdg_band, NCAR_ORO_GW_DC, NCAR_ORO_EW_CRIT_THRESH, NCAR_ORO_WW_CRIT_THRESH, &
+                               NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_TNDMAX, NCAR_ORO_PGWV)
           end do
       else
         ! Old Scheme
@@ -445,9 +452,9 @@ contains
           call MAPL_GetResource( MAPL, NCAR_ORO_TNDMAX,     Label="NCAR_ORO_TNDMAX:",     default=400.0, _RC)
           NCAR_ORO_TNDMAX = NCAR_ORO_TNDMAX/86400.0
           do thread = 0, num_threads-1
-             call gw_oro_init ( self%workspaces(thread)%oro_band, NCAR_ORO_GW_DC, &
-                                NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_PGWV, &
-                                NCAR_ORO_SOUTH_FAC, NCAR_ORO_TNDMAX )
+             call gw_oro_init (self%workspaces(thread)%oro_band, NCAR_ORO_GW_DC, NCAR_ORO_EW_CRIT_THRESH, NCAR_ORO_WW_CRIT_THRESH, &
+                               NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_PGWV, &
+                               NCAR_ORO_SOUTH_FAC, NCAR_ORO_TNDMAX )
           end do
       endif
 

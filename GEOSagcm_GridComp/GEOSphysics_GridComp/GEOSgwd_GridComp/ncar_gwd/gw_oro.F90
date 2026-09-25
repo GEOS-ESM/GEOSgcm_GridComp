@@ -25,16 +25,18 @@ contains
 !==========================================================================
 
 !------------------------------------
-subroutine gw_oro_init (band, gw_dc, fcrit2, wavelength, pgwv, oro_south_fac, oro_tndmax)
+subroutine gw_oro_init (band, gw_dc, ew_crit_thresh, ww_crit_thresh, fcrit2, wavelength, pgwv, oro_south_fac, oro_tndmax)
 #include <netcdf.inc>
 
   type(GWBand), intent(inout) :: band
-  real, intent(in) :: gw_dc,fcrit2,wavelength,oro_south_fac,oro_tndmax
+  real, intent(in) :: gw_dc,ew_crit_thresh,ww_crit_thresh,fcrit2,wavelength,oro_south_fac,oro_tndmax
   integer, intent(in)  :: pgwv
 
-! Need to call GWBand for oro waves
+  !==============================================
+  !  Create "Band" structure
+  !----------------------------------------------
 
-  band  = GWBand(pgwv, gw_dc, fcrit2, wavelength )
+  band  = GWBand(pgwv, gw_dc, ew_crit_thresh, ww_crit_thresh, fcrit2, wavelength )
 
   gw_oro_south_fac = oro_south_fac
   gw_oro_tndmax = oro_tndmax

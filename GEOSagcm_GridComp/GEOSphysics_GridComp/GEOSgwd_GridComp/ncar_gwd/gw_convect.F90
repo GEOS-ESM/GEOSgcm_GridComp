@@ -58,7 +58,7 @@ contains
 !==========================================================================
 
 !------------------------------------
-subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength, &
+subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, ew_crit_thresh, ww_crit_thresh, fcrit2, wavelength, &
                           spectrum_source, hr_cf, qbo_hdepth_scaling, min_hdepth, storm_shift, eff_tr, eff_et, &
                           tau_bkg, et_fac_dtdtm, et_fac_speed, tndmax, &
                           active, ncol, lats)
@@ -70,7 +70,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
   type(BeresSourceDesc), intent(inout) :: desc
 
   integer, intent(in) :: pgwv, ncol
-  real, intent(in) :: gw_dc, fcrit2, wavelength
+  real, intent(in) :: gw_dc, ew_crit_thresh, ww_crit_thresh, fcrit2, wavelength
   real, intent(in) :: spectrum_source, hr_cf, qbo_hdepth_scaling, min_hdepth, eff_tr, eff_et, tau_bkg, tndmax
   logical, intent(in) :: storm_shift, active
   real, intent(in) :: et_fac_dtdtm, et_fac_speed, lats(ncol)
@@ -116,7 +116,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
 
   status = nf_close (ncid)
 
-  band  = GWBand(pgwv, gw_dc, fcrit2, wavelength )
+  band  = GWBand(pgwv, gw_dc, ew_crit_thresh, ww_crit_thresh, fcrit2, wavelength )
 
   ! These dimensions; {HD,MW,PS}_MFCC, came from Beres forcing file.
 
@@ -175,7 +175,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
     cw  = 0.0
     ! Create Gaussian weights using actual band%cref values
     do kc = -band%ngwv,band%ngwv
-       cw(kc) =  exp(-(band%cref(kc)/30.)**2)
+       cw(kc) =  exp(-(band%cref(kc)/25.)**2)
     enddo
     desc%et_bkg_dtdtm_forcing = et_fac_dtdtm
     desc%et_bkg_speed_forcing = et_fac_speed
