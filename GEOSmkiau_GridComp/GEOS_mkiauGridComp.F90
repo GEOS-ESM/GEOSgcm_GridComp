@@ -971,6 +971,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         if(MAPL_AM_I_ROOT() ) then
            print *, 'Current nymd: ',nymd,'  nhms: ',nhms,'  FAC:  1.00000'
+           print *, 'REPLAY_FILEP0', trim(REPLAY_FILEP0)
         endif
 
     else
@@ -1098,6 +1099,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        write(imstr,*) IMana_World
        write(jmstr,*) JMana_World
        gridAnaName='PC'//trim(adjustl(imstr))//'x'//trim(adjustl(jmstr))//'-DC'
+       
+       if(MAPL_AM_I_ROOT() ) print*, 'gc nail1: gridAnaName = ', trim(gridAnaName)
+       if(MAPL_AM_I_ROOT() ) print*, 'gc nail1: IMana_World, JMana_World', IMana_World, JMana_World
 
        ! Get grid_dimensions from file.
        if ( JMana_world == 6*IMana_World ) then
@@ -1111,13 +1115,19 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
          block
            class(AbstractGridFactory), allocatable :: factory
+           if(MAPL_AM_I_ROOT() ) print*, 'gc nail2: bf  grid_manager%make_factory'
+           if(MAPL_AM_I_ROOT() ) print*, 'gc nail2: bf  grid_manager%make_factory: trim(REPLAY_FILEP0),', trim(REPLAY_FILEP0)           
            allocate(factory, source = grid_manager%make_factory(trim(REPLAY_FILEP0),force_file_coordinates = .false.)) 
+       if(MAPL_AM_I_ROOT() ) print*, 'gc nail2: af  grid_manager%make_factory'
+
+
            GRIDrep = grid_manager%make_grid(factory)
            GRIDana = grid_manager%make_grid(factory)
          end block
 
        endif
 
+       
        mkiau_internal_state%im      =   IMana_World
        mkiau_internal_state%jm      =   JMana_World
        mkiau_internal_state%lm      =   LMana
@@ -1131,6 +1141,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        call MAPL_GetResource(MAPL, K, Label="ANA2BKGCNSRV:", default=0, RC=STATUS)
        VERIFY_(STATUS)
        ANA2BKGConsrv = (K /= 0)
+
+       if(MAPL_AM_I_ROOT() ) print*, 'BKG2ANAConsrv, ANA2BKGConsrv =', BKG2ANAConsrv, ANA2BKGConsrv
 
        if (ana2bkgconsrv) then
           mkiau_internal_state%ana2bkg_regridder => new_regridder_manager%make_regridder(GRIDana, GRIDbkg, REGRID_METHOD_CONSERVE, rc=status)
@@ -1192,11 +1204,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
         LM   = LMbkg
         LMP1 = LMbkg+1
 
+    if(MAPL_AM_I_ROOT() ) print*, 'nail gc: bf handleANA_'
     if ( IHAVEAINC/=0 ) then
        call handleINC_
     else
        call handleANA_
     endif
+    if(MAPL_AM_I_ROOT() ) print*, 'nail gc: af handleANA_'
 
     call MAPL_TimerOff(MAPL,"-RUN")
     call MAPL_TimerOff(MAPL,"TOTAL")
@@ -1523,17 +1537,23 @@ CONTAINS
 ! ****   READ Internal STATE (ie. ANA.ETA) from REPLAY File into BUNDLE    ****
 ! *****************************************************************************
 
+    if(MAPL_AM_I_ROOT() ) print*, 'nail 7: NEED_BUNDLEP0 = ', NEED_BUNDLEP0
+    if(MAPL_AM_I_ROOT() ) print*, 'nail 7: trim(GRIDINC)=', trim(GRIDINC)
+       
     if( NEED_BUNDLEP0 ) then
         RBUNDLEP0 = ESMF_FieldBundleCreate( RC=STATUS)
         VERIFY_(STATUS)
         if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEP0, grid=GRIDrep, rc=status)
         if ( trim(GRIDINC)=="BKG" ) call ESMF_FieldBundleSet(RBUNDLEP0, grid=GRIDbkg, rc=status)
         VERIFY_(STATUS)
+        if(MAPL_AM_I_ROOT() ) print*, 'nail 7: bf MAPL_read_bundle, REPLAY_FILEP0,', trim(REPLAY_FILEP0)
         call MAPL_read_bundle( RBUNDLEP0, REPLAY_FILEP0, REPLAY_TIMEP0, RC=status)
         VERIFY_(STATUS)
              FILEP0 = REPLAY_FILEP0
         FILE_TIMEP0 = REPLAY_TIMEP0
         NEED_BUNDLEP0 = .FALSE.
+        if(MAPL_AM_I_ROOT() ) print*, 'nail 7: af MAPL_read_bundle'        
+        
     else if( (FILE_TIMEP0 .ne. REPLAY_TIMEP0) .or. (FILEP0 .ne. REPLAY_FILEP0) ) then
         call MAPL_read_bundle( RBUNDLEP0, REPLAY_FILEP0, REPLAY_TIMEP0, RC=status)
         VERIFY_(STATUS)
@@ -1541,7 +1561,11 @@ CONTAINS
         FILE_TIMEP0 = REPLAY_TIMEP0
     endif
 
+
+
     if( currTime /= REPLAY_TIMEP0 ) then
+       if(MAPL_AM_I_ROOT() ) print*, 'nail 8: inside currTime /= REPLAY_TIMEP0:'
+       
         if( NEED_BUNDLEM1 ) then
             RBUNDLEM1 = ESMF_FieldBundleCreate( RC=STATUS)
             VERIFY_(STATUS)
@@ -1601,7 +1625,9 @@ CONTAINS
 
     call ESMF_FieldBundleGet ( RBUNDLEP0, fieldCount=NQ, RC=STATUS )
     VERIFY_(STATUS)
+    if(MAPL_AM_I_ROOT() ) print*, 'nail 9'
 
+    
     if( .not.allocated( rnames ) ) then
          allocate( RNAMES(NQ),STAT=STATUS )
          VERIFY_(STATUS)
