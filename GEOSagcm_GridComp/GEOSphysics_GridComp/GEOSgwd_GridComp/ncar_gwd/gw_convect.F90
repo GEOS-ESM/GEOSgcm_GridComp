@@ -175,7 +175,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, ew_crit_thresh, ww
     cw  = 0.0
     ! Create Gaussian weights using actual band%cref values
     do kc = -band%ngwv,band%ngwv
-       cw(kc) =  exp(-(band%cref(kc)/30.)**2)
+       cw(kc) =  exp(-(band%cref(kc)/25.)**2)
     enddo
     desc%et_bkg_dtdtm_forcing = et_fac_dtdtm
     desc%et_bkg_speed_forcing = et_fac_speed
