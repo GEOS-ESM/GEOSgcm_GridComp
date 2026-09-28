@@ -423,7 +423,7 @@ module gfdl_mp_mod
     real :: ccn_o = 90.0 ! ccn over ocean (1/cm^3)
     real :: ccn_l = 270.0 ! ccn over land (1/cm^3)
 
-    real :: rthreshu =  8.5e-6 ! unstable critical cloud drop radius (micro m)
+    real :: rthreshu =  7.0e-6 ! unstable critical cloud drop radius (micro m)
     real :: rthreshs = 12.0e-6 !   stable critical cloud drop radius (micro m)
 
     logical :: in_cloud_liq = .true. ! use in-cloud liquid
@@ -481,7 +481,7 @@ module gfdl_mp_mod
     logical :: do_ice_pres_scaling = .false.  ! optional pressure scaling to accelerate ice settling in the upper troposphere
 
     real :: vw_fac = 1.0
-    real :: vi_fac_cnv = 1.0
+    real :: vi_fac_cnv = 1.15
     real :: vi_fac_lsc = 1.0
     real :: vs_fac = 1.0
     real :: vg_fac = 1.0
