@@ -14,7 +14,7 @@ module GEOS_RouteGridCompMod
 !   IMPORTS   : RUNOFF \\
 
 ! !USES: 
-
+  use, intrinsic :: iso_fortran_env, only: REAL64
   use ESMF
   use MAPL_Mod
   use MAPL_ConstantsMod
@@ -43,6 +43,7 @@ module GEOS_RouteGridCompMod
      integer :: minCatch
      integer :: maxCatch
      integer :: route_dt
+     integer :: run_route
 
      real,    allocatable :: areacat(:)      ! m2
      integer, allocatable :: downid(:) 
@@ -70,9 +71,14 @@ module GEOS_RouteGridCompMod
   
 ! !PUBLIC MEMBER FUNCTIONS:
 
-  public SetServices
+  public :: SetServices
 
-!EOP
+  ! used by its ensavg
+  public :: pfaf_grid
+  public :: pfaf_locstream
+
+  type (ESMF_Grid)      :: pfaf_grid
+  type (MAPL_LocStream) :: pfaf_locstream
 
 contains
 
@@ -315,6 +321,7 @@ contains
          DIMS               = MAPL_DimsTileOnly          ,&
          VLOCATION          = MAPL_VLocationNone         ,&
          _RC )    
+
 !EOS
 
     call MAPL_TimerAdd(GC,    name="-RRM" ,RC=STATUS)
@@ -386,15 +393,15 @@ contains
     integer        :: myPE
     integer        :: beforeMe, minCatch, maxCatch, i
     integer        :: n_pfaf_local, nt_global
-    integer        :: ROUTE_DT, route_flag
+    integer        :: ROUTE_DT, run_route
     REAL           :: HEARTBEAT 
     type(ESMF_Grid)            :: tileGrid
-    type(ESMF_Grid)            :: pfaf_tilegrid, pfaf_grid
+    type(ESMF_Grid)            :: pfaf_tilegrid
     character(len=ESMF_MAXSTR) :: SURFRC
     type(ESMF_Config)          :: SCF, CF
 
     type(MAPL_MetaComp), pointer   :: MAPL
-    type(MAPL_LocStream)           :: locstream, pfaf_LocStream
+    type(MAPL_LocStream)           :: locstream
 
     character(len=ESMF_MAXSTR)     :: RIVER_INPUT_FILE    
     
@@ -413,14 +420,14 @@ contains
     type (RROUTE_wrap)             :: wrap
     real, allocatable              :: tmp_real(:)
     integer, allocatable           :: tmp_int(:)
-
+    character(len=ESMF_MAXSTR)     :: route_restart_file
 
     type(ESMF_Time)  :: CurrentTime
     type(ESMF_Alarm) :: CollectWaterAlarm
     type(ESMF_TimeInterval) :: CollectWater_DT, ModelTimeStep
     character(len=3) :: resname
     type(Netcdf4_Fileformatter)  :: formatter 
-    integer          :: j,nt_local, mpierr, i1, i2, j1, j2 
+    integer          :: j,nt_local, mpierr, i1, i2, j1, j2
 
     ! ------------------
     ! begin
@@ -430,12 +437,13 @@ contains
     ! get LocStream
     call MAPL_Get(MAPL, LocStream = locstream, RC=status)
     VERIFY_(STATUS) 
-    
+
     call ESMF_UserCompGetInternalState ( GC, 'RiverRoute_state',wrap,status )
     VERIFY_(STATUS)
 
     route => wrap%ptr
-    ! get vm
+
+   ! get vm
     ! extract comm
     call ESMF_VMGetCurrent(VM,                                RC=STATUS)
     VERIFY_(STATUS)
@@ -443,7 +451,6 @@ contains
     VERIFY_(STATUS)
     call ESMF_VMGet       (VM, localpet=MYPE, petcount=nDEs,  RC=STATUS)
     VERIFY_(STATUS)
-
 
     route%comm = comm
     route%ndes = ndes
@@ -478,9 +485,15 @@ contains
     call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-    call MAPL_GetResource (SCF, route_flag, label='RUN_ROUTE:', DEFAULT=1, RC=STATUS )
-    call MAPL_GetResource (SCF, ROUTE_DT, label='RRM_DT:', DEFAULT=3600, RC=STATUS )    
+    call MAPL_GetResource (SCF, run_route, label='RUN_ROUTE:', DEFAULT=0, RC=STATUS )
+    route%run_route=run_route
+    call MAPL_GetResource (SCF, ROUTE_DT, label='RRM_DT:', DEFAULT=3600, RC=STATUS )
     route%route_dt = ROUTE_DT
+
+    call MAPL_GetResource (MAPL, route_restart_file, label = 'ROUTE_INTERNAL_RESTART_FILE:', RC=STATUS)
+    if (run_route>0) then
+       _ASSERT( STATUS == ESMF_SUCCESS, "RUN_ROUTE > 0 requires ROUTE_INTERNAL_RESTART_FILE")
+    endif      
 
     allocate(route%runoff_acc(nt_local), source = 0.)
 
@@ -511,6 +524,12 @@ contains
     call MAPL_GenericInitialize ( GC, import, export, clock, rc=status )
     VERIFY_(STATUS)
 
+    ! ROUTE is always called from Surface, even when inactive.  If inactive, exit after GenericInitialize():
+    if (route%run_route==0) then
+      if(mapl_am_I_root()) print *,"routing model is not active"
+      RETURN_(ESMF_SUCCESS)
+    endif
+
     call ESMF_UserCompGetInternalState ( GC, 'RiverRoute_state',wrap,status )
     VERIFY_(STATUS)
     call ESMF_GridCompGet(GC, name=COMP_NAME, CONFIG=CF, RC=STATUS )
@@ -527,13 +546,13 @@ contains
     allocate(route%alpha_str(n_pfaf_local),           source =    RRM_ALPHA_STR_RS)     
 
     !Initial reservoir module
-    if(route_flag==2)then
+    if(route%run_route==2)then
         route%reservoir = Reservoir(GC, _RC)
         route%reservoir%use_res=.True.        
+        if(mapl_am_I_root()) print *,"reservoir init success"
     else
         route%reservoir%use_res=.False.
     endif
-    if(mapl_am_I_root()) print *,"reservoir init success"     
 
     call create_mapping_handler(tilegrid, pfaf_tilegrid, _RC)
     call setup_exchange_water(pfaf_tilegrid, _RC)
@@ -549,7 +568,7 @@ contains
       type (ESMF_Grid) :: pfaf_grid
       integer, optional, intent(out) :: rc
       integer :: status
-      real(kind=8), pointer :: centers(:,:)
+      real(kind=REAL64), pointer :: centers(:,:)
       ! create catchment grid and it is tile space
       pfaf_Grid = ESMF_GridCreate(       &
            name='CATCHMENT_GRID',         &
@@ -597,29 +616,29 @@ contains
       logical, allocatable :: mask(:)
       integer, allocatable :: srcIndices(:), positions(:), factorIndexList(:,:),map_tile(:,:)
       real,    allocatable :: weights(:), global_frac(:), global_area(:)
-      integer, allocatable :: local_src(:), local_dst(:), global_src(:), global_dst(:)
+      integer, allocatable :: local_src(:), local_dst(:), global_src(:), global_dst(:),global_pfaf_index(:)
       real,    allocatable :: areacat_glob(:),area_tile(:)
       integer, pointer     :: pfaf_index(:), local_id(:), local_i(:), local_j(:)
       real   , pointer     :: tilearea(:),frac_tot(:),fscale(:),area_patch(:)
       integer, pointer     :: pfaf_patch(:),tid_patch(:)     
       type(Netcdf4_Fileformatter)    :: formatter
       type(Filemetadata)             :: meta
-      character(len=ESMF_MAXSTR)     :: EASE_pfaf_tile_file, tile_file
+      character(len=ESMF_MAXSTR)     :: EASE_pfaf_tile_file, tiling_file, tiling_nc_file
       character(len=MAPL_TileNameLength), pointer :: GNAMES(:)
 
       ! create source for orignal tile space
-      route%field_src = ESMF_FieldCreate(grid=tilegrid,      typekind=ESMF_TYPEKIND_R4, _RC)
+      route%field_src = ESMF_FieldCreate(grid=tilegrid,      typekind=ESMF_TYPEKIND_R8, _RC)
 
       ! create destination for pfaf tile space
-      route%field     = ESMF_FieldCreate(grid=pfaf_tilegrid, typekind=ESMF_TYPEKIND_R4, _RC)
+      route%field     = ESMF_FieldCreate(grid=pfaf_tilegrid, typekind=ESMF_TYPEKIND_R8, _RC)    
 
       call MAPL_LocstreamGet(LOCSTREAM, GRIDNAMES=GNAMES, pfaf_index=pfaf_index, tilearea=tilearea, local_id=local_id, local_i=local_i, local_j=local_j, _RC)
-      ! ESMF use global indices increasing with mpi_rank, no mask here for tile grid 
+
+     ! ESMF use global indices increasing with mpi_rank, no mask here for tile grid 
       allocate(global_id(route%nt_global))
       call ESMFL_Fcollect(tilegrid, global_id, local_id, _RC)
 
       ! get weights for aggregation of runoff from tile space to Pfafstetter catchments
-      
       if (index(GNAMES(1), 'EASEv') /=0) then
 
          ! For the EASE tile space, there is at most one land tile per EASE grid cell; Pfafstetter catchment outlines are
@@ -640,7 +659,7 @@ contains
          call ESMFL_Fcollect(tilegrid, global_jj, local_jj, _RC)
 
          call MAPL_ease_extent(GNAMES(1), nx, ny)                    ! nx=cols;ny=rows
-
+          
          if (MAPL_AM_I_ROOT()) then
             
             allocate(map_tile(nx,ny),source=fillvalue)
@@ -734,6 +753,29 @@ contains
          call ESMFL_Fcollect(tilegrid, global_dst,  pfaf_index, _RC)
          call ESMFL_Fcollect(tilegrid, global_area, tilearea,   _RC)
          global_area = global_area*MAPL_RADIUS**2
+
+         ! For GCM, the tile.bin is used as tile file, but it does not include the pfaf_index.
+         ! So we get the pfaf_index from nc4 tile file.
+
+         call MAPL_GetResource (MAPL, tiling_file, label = 'TILING_FILE:', RC=STATUS); VERIFY_(STATUS)
+         ! Check if "tile.bin" is a substring of tiling_file
+         if (index(trim(tiling_file), "tile.bin") > 0 ) then
+            allocate(global_pfaf_index(nWeights))
+            call MAPL_GetResource (SCF, tiling_nc_file, label = 'TILING_NC_FILE:', RC=STATUS)
+            _ASSERT( STATUS == ESMF_SUCCESS, "routing in GCM requires nc4 version of tile file being set by TILING_NC_FILE in GEOS_SurfaceGridComp.rc")            
+            ! read info about Pfafstetter indexes from TILING_NC_FILE 
+            ret=nf90_open(trim(tiling_nc_file),NF90_NOWRITE,ncid)
+            _ASSERT( ret == NF90_NOERR, trim(tiling_nc_file)//" read error: "//trim(nf90_strerror(ret)))
+            ret=nf90_inq_varid(ncid,"pfaf_index",varid)
+            _ASSERT( ret == NF90_NOERR, "Var 'pfaf_index' not found in "//trim(tiling_nc_file)//": "//trim(nf90_strerror(ret)))
+            ret=nf90_get_var(ncid,varid,global_pfaf_index)
+            _ASSERT( ret == NF90_NOERR, "Failed to read 'pfaf_index': "//trim(nf90_strerror(ret)))
+            !update global_dst with global_pfaf_index
+            do ii=1,route%nt_global
+               global_dst(ii)=global_pfaf_index(global_id(ii))
+            enddo
+            deallocate(global_pfaf_index)
+         endif
       endif
 
       allocate(areacat_glob(N_pfaf_g),source=0.)
@@ -923,7 +965,7 @@ contains
     real, dimension(:), pointer :: QOUTFLOW
     real, dimension(:), pointer :: QRES
     real, dimension(:), pointer :: QCAT
-  
+
 ! Time attributes and placeholders
 
 !    type(ESMF_Time) :: CURRENT_TIME
@@ -947,7 +989,7 @@ contains
 
     integer                            :: nt_global, nt_local
 
-    real,                  pointer     :: arrayPtr(:)
+    real(kind=REAL64),     pointer     :: arrayPtr8(:)
     type (RES_STATE),      pointer     :: res 
 
     !real,                  allocatable :: WTOT_BEFORE(:)
@@ -959,6 +1001,13 @@ contains
     call ESMF_UserCompGetInternalState ( GC, 'RiverRoute_state',wrap,status )
     VERIFY_(STATUS)
     route => wrap%ptr
+
+    ! ROUTE is always called from Surface, even when inactive.
+    ! If inactive, exit as soon as internal "route" state is available and active/inactive is known.
+    if (route%run_route==0) then
+       !if(mapl_am_I_root()) print *,"routing model is not active"
+       RETURN_(ESMF_SUCCESS)
+    endif
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -1000,7 +1049,7 @@ contains
 
     !   call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS)
     !   VERIFY_(STATUS)
-    
+
 ! get pointers to inputs variables
 ! ----------------------------------
 
@@ -1028,21 +1077,36 @@ contains
     if (ESMF_AlarmIsRinging(CollectWaterAlarm)) then
 
        ! finalize runoff accumulation over ROUTE_DT
-       route%runoff_acc = (route%runoff_acc + RUNOFF_SRC0)/real(ROUTE_DT/HEARTBEAT)   ! time-avg runoff over ROUTE_DT in land[ice] tile space  [kg/m2/s]
+       route%runoff_acc = (route%runoff_acc + RUNOFF_SRC0)/real(ROUTE_DT/HEARTBEAT) ! time-avg runoff over ROUTE_DT in land[ice] tile space [kg/m2/s]
 
-       ! redistribute runoff from tile space of GEOS_LandGridComp to Pfafstetter catchment space of GEOS_RouteGridComp
-       call ESMF_FieldGet(route%field_src, farrayPtr=arrayPtr, rc=status)
+       ! Redistribute time-averaged runoff from GEOS_LandGridComp tile space
+       ! to GEOS_RouteGridComp Pfafstetter catchment space.
+       ! Use R8 remap fields to avoid small run-to-run roundoff differences in
+       ! the EASE/Pfaf sparse remap before casting back to the route runoff array.        
+       
+       ! Clear destination route/Pfaf field before remapping.
+       call ESMF_FieldGet(route%field, farrayPtr=arrayPtr8, rc=status)
        VERIFY_(STATUS)
-       ArrayPtr = route%runoff_acc(:)
-       call ESMF_FieldSMM(srcField=route%field_src, dstField=route%Field, &
-            routeHandle=route%routeHandle, rc=rc)
-       call ESMF_FieldGet(route%field, farrayPtr=arrayPtr, rc=status)
+       arrayPtr8 = 0.0_REAL64
+       
+       ! Fill source field from accumulated runoff in original land tile space.
+       call ESMF_FieldGet(route%field_src, farrayPtr=arrayPtr8, rc=status)
        VERIFY_(STATUS)
-       ! convert units [kg/m2/s] --> [m3/s]
-       QRUNOFF     = arrayPtr*route%areacat/1000.                                   ! time-avg runoff over ROUTE_DT in Pfaf catch space [m3/s] 
-       !WTOT_BEFORE = WSTREAM + WRIVER + WRES
-
-
+       arrayPtr8 = real(route%runoff_acc(:), kind=REAL64)
+       
+       ! Map accumulated runoff from land tile space to route/Pfaf space.
+       call ESMF_FieldSMM(srcField=route%field_src, dstField=route%field, &
+                          routeHandle=route%routeHandle, rc=status)
+       VERIFY_(STATUS)
+       
+       ! Get mapped route/Pfaf runoff field.
+       call ESMF_FieldGet(route%field, farrayPtr=arrayPtr8, rc=status)
+       VERIFY_(STATUS)
+       
+       ! Convert units [kg m-2 s-1] --> [m3 s-1].
+       QRUNOFF = real(arrayPtr8 * real(route%areacat, kind=REAL64) / 1000.0_REAL64, &
+                      kind=kind(QRUNOFF(1)))       
+       
        ! Compute outflow from main river and (optionally) reservoirs
        !
        ! Call river_routing_model (get outflows from main river and local streams, also updates storage of main river and local streams)
@@ -1168,8 +1232,9 @@ contains
     call ESMF_UserCompGetInternalState ( GC, 'RiverRoute_state',wrap, _RC)
     route => wrap%ptr    
 
-    CALL ESMF_FieldSMMRelease(routeHandle=route%routeHandle, _RC)
-
+    if (route%run_route >0) then
+       CALL ESMF_FieldSMMRelease(routeHandle=route%routeHandle, _RC)
+    endif
     ! Call Finalize for every child
     call MAPL_GenericFinalize(gc, import, export, clock, _RC)
     ! End

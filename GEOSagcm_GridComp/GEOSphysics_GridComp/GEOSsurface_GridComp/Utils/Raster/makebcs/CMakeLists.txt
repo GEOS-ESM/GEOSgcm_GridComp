@@ -11,17 +11,9 @@ zip.c
 util.c
 )
 
-if(NOT FORTRAN_COMPILER_SUPPORTS_FINDLOC)
-   list(APPEND srcs findloc.F90)
-endif ()
-
 set_source_files_properties(mkMITAquaRaster.F90 PROPERTIES COMPILE_FLAGS "${BYTERECLEN}")
 
 esma_add_library(${this} SRCS ${srcs} DEPENDENCIES MAPL GEOS_SurfaceShared GEOS_LandShared ESMF::ESMF NetCDF::NetCDF_Fortran OpenMP::OpenMP_Fortran)
-
-if(NOT FORTRAN_COMPILER_SUPPORTS_FINDLOC)
-   target_compile_definitions(${this} PRIVATE USE_EXTERNAL_FINDLOC)
-endif ()
 
 # MAT NOTE This should use find_package(ZLIB) but Baselibs currently
 #     confuses find_package(). This is a hack until Baselibs is
@@ -51,7 +43,7 @@ ecbuild_add_executable (TARGET mk_runofftbl.x SOURCES mk_runofftbl.F90 LIBS MAPL
 ecbuild_add_executable (TARGET mkEASETilesParam.x SOURCES mkEASETilesParam.F90 LIBS MAPL ${this})
 ecbuild_add_executable (TARGET TileFile_ASCII_to_nc4.x SOURCES TileFile_ASCII_to_nc4.F90 LIBS MAPL ${this})
 
-install(PROGRAMS clsm_plots.pro create_README.csh  DESTINATION bin)
+install(PROGRAMS clsm_plots.py create_README.csh DESTINATION bin)
 file(GLOB MAKE_BCS_PYTHON CONFIGURE_DEPENDS "./make_bcs*.py")
 list(FILTER MAKE_BCS_PYTHON EXCLUDE REGEX "make_bcs_shared.py")
 install(PROGRAMS ${MAKE_BCS_PYTHON} DESTINATION bin)

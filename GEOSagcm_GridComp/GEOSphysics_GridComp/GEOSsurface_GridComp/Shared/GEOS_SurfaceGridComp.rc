@@ -204,7 +204,9 @@
 #    2 : YES, with reservoir model
 #
 # GEOSagcm=>RUN_ROUTE: 0
+# GEOSagcm=>TILING_NC_FILE: tile.nc4
 # GEOSldas=>RUN_ROUTE: 0
+
 
 # ---- Time step for river routing [s]
 #
@@ -257,3 +259,15 @@
 
 # =============== EOF =====================================================================================
 
+#--------------------------------------------------------#
+#      Ice-Sheet and Sea-Level System Model (ISSM)       #
+#                                                        #
+#   * DO_ISSM is the run flag, turned off (0) by default #
+#     set DO_ISSM: 1 to run ISSM                         #
+#   * ISSM_DT is ISSM's time step, semiweekly by default #   
+#--------------------------------------------------------#
+# GEOSagcm=>DO_ISSM: 0 
+# GEOSagcm=>ISSM_DT: 302400 
+#
+# GEOSldas=>DO_ISSM: 0 
+# GEOSldas=>ISSM_DT: 302400 
