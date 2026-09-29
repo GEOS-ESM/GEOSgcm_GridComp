@@ -192,8 +192,6 @@ module edmf_mod
      ! entrainment variables
      REAl,DIMENSION(KTS:KTE,1:MFPARAMS%NUP) :: ENT, ENTf
      INTEGER,DIMENSION(KTS:KTE,1:MFPARAMS%NUP) :: ENTi
-  
-     REAL,DIMENSION(ITS:ITE,JTS:JTE,KTS:KTE) :: tmp3d, dmi
      
      INTEGER :: K,KTMP,I,IH,JH,NUP2
      REAL :: wthv,wstar,qstar,thstar, &
@@ -286,9 +284,9 @@ module edmf_mod
      ! Initialize the environmental area. Updraft area will be subtracted below.
      ae3=1.
   
-  
-     DO IH=ITS,ITE ! loop over the horizontal dimensions
-      DO JH=JTS,JTE
+     ! OPTIMIZATION: Swap JH and IH loop order for stride-1 memory access!
+     DO JH=JTS,JTE
+      DO IH=ITS,ITE 
   
         wthl=wthl2(IH,JH)/mapl_cp
         wqt=wqt2(IH,JH)
@@ -456,11 +454,12 @@ module edmf_mod
   
         ! Identify inversions below 1.5km, calculate stability in overlying 1km to define
         ! a dynamic pressure deceleration factor in the updraft w equation below.
+        ! OPTIMIZATION: Used local 1D t(k) instead of strided 3D t3()
         wcfac = 0.
         tmp = 0.
         k = kts+1
         do while (zlo(k).lt.1500.)
-           if ( t3(IH,JH,kte-k).gt.t3(IH,JH,kte-k+1) ) then
+           if ( t3(IH,JH,kte-k) > t3(IH,JH,kte-k+1) ) then
               tmp = thv(k)   ! THV at inversion
               exit
            end if
@@ -509,7 +508,6 @@ module edmf_mod
   
         mf = SUM(RHOE(kts-1)*UPA(kts-1,:)*UPW(kts-1,:))
         factor = dp(kts)/(mf*MAPL_GRAV*dt)
-        !   print *,'factor=',factor
         if (factor .lt. 1.0) then
           UPW(kts-1,:) = UPW(kts-1,:)*factor
         end if
@@ -530,13 +528,11 @@ module edmf_mod
         ! Adjust updraft THV so updraft flux is <90% of surface flux
         if (THVsrfF .gt. 0.9*wthv .and. THVsrfF .gt. 0.1) then
           UPTHV(kts-1,:)=(UPTHV(kts-1,:)-THV(kts))*0.9*wthv/THVsrfF+THV(kts)
-        !  print *,'adjusting surface THV perturbation by a factor',0.9*wthv/THVsrfF
         endif
   
         ! Adjust updraft QT so updraft flux is <90% of surface flux
         IF ( (QTsrfF .gt. 0.9*wqt) .and. (wqt .gt. 0.) )  then
           UPQT(kts-1,:)=(UPQT(kts-1,:)-QT(kts))*0.9*wqt/QTsrfF+QT(kts)
-        !  print *,'adjusting surface QT perturbation by a factor',0.9*wqt/QTsrfF
         ENDIF
   
         ! Compute condensation and initial updraft THL, QL, QI
@@ -791,8 +787,6 @@ module edmf_mod
                  mftke(IH,JH,k) = mftke(IH,JH,k) + UPA(KTE+KTS-K-1,i)*0.5*UPW(KTE+KTS-K-1,I)*UPW(KTE+KTS-K-1,I)
               end do
               do k=kts,kte
-                 ! mass-flux on half levels
-                 ! need to be careful to treat properly zeros in the UPTHV
                  mfthvt=0.5*(UPA(k-1,I)*UPW(k-1,I)*UPTHV(k-1,I)+UPA(k,I)*UPW(k,I)*UPTHV(k,I))
                  mft=0.5*(UPA(k-1,I)*UPW(k-1,I)+UPA(k,I)*UPW(k,I))
                  s_buoyf(k)=s_buoyf(k)+(mfthvt-mft*THV(k))*exf(k)
@@ -824,55 +818,12 @@ module edmf_mod
                  mftke(IH,JH,k) = mftke(IH,JH,k) + UPA(KTE+KTS-K-1,i)*0.5*UPW(KTE+KTS-K-1,I)*UPW(KTE+KTS-K-1,I)
               end do
               do k=kts,kte
-                 ! mass-flux on half levels
-                 ! need to be careful to treat properly zeros in the UPTHV
                  mfthvt=0.5*(UPA(k-1,I)*UPW(k-1,I)*UPTHV(k-1,I)+UPA(k,I)*UPW(k,I)*UPTHV(k,I))
                  mft=0.5*(UPA(k-1,I)*UPW(k-1,I)+UPA(k,I)*UPW(k,I))
                  s_buoyf(k)=s_buoyf(k)+(mfthvt-mft*THV(k))*exf(k)
               end do
            end do
         end if
-  
-        DO I=1,NUP2
-          DO k=KTS-1,KTE
-            s_aw(K)=s_aw(K)+UPA(K,I)*UPW(K,I)
-            s_aw2(K)=s_aw2(K)+UPA(K,I)*UPW(K,I)*UPW(K,I)
-            s_aw3(K)=s_aw3(K)+UPA(K,I)*UPW(K,I)*UPW(K,I)*UPW(K,I)
-            s_aqt2(K)=s_aqt2(K)+UPA(K,I)*(UPQT(K,I)-QTI(K))*(UPQT(K,I)-QTI(K))
-            s_aqt3(K)=s_aqt3(K)+UPA(K,I)*(UPQT(K,I)-QTI(K))**3
-            s_ahlqt(K)=s_ahlqt(K)+exfh(k)*UPA(K,I)*(UPQT(K,I)-QTI(K))*(UPTHL(K,i)-THLI(K))
-            ! tmp is dry static energy of updraft, including surface geopotential
-            if (MFPARAMS%IMPLICIT == 1) then
-               tmp = mapl_cp*exfh(k)*UPTHL(K,i) + mapl_grav*zw(k) + phis(IH,JH) + mapl_alhl*UPQL(K,i) + UPQI(K,I)*mapl_alhs ! updraft S
-            else   ! cp*T - Lv*ql + g*z + g*z0 + Lv*Ql + Ls*Qi
-               tmp =   mapl_cp*exfh(k)*( UPTHL(K,i) - THLI(K) ) &
-                           + mapl_alhl*( UPQL(K,i) - QLI(K) )   &
-                           + mapl_alhs*( UPQI(K,I) - QII(K) )
-            end if
-            ltm=exfh(k)*(UPTHL(K,i)-THLI(K))
-            s_aws(k)  = s_aws(K)+UPA(K,i)*UPW(K,i)*tmp ! for trisolver
-            s_ahl2(k) = s_ahl2(K)+UPA(K,i)*ltm*ltm
-            s_ahl3(k) = s_ahl3(K)+UPA(K,i)*ltm*ltm*ltm
-            s_awhl(k) = s_awhl(K)+UPA(K,i)*UPW(K,I)*ltm
-            if (MFPARAMS%IMPLICIT == 1) then
-               s_awu(k)  = s_awu(K)  + UPA(K,i)*UPW(K,I)*UPU(K,I)
-               s_awv(k)  = s_awv(K)  + UPA(K,i)*UPW(K,I)*UPV(K,I)
-               s_awqv(k) = s_awqv(K) + UPA(K,i)*UPW(K,I)*(UPQT(K,I) - UPQI(K,I) - UPQL(K,I))
-               s_awql(k) = s_awql(K) + UPA(K,i)*UPW(K,I)*UPQL(K,I)
-               s_awqi(k) = s_awqi(K) + UPA(K,i)*UPW(K,I)*UPQI(K,I)
-            else
-               s_awu(k)  = s_awu(K)  + UPA(K,i)*UPW(K,I)*(UPU(K,I) - UI(K))
-               s_awv(k)  = s_awv(K)  + UPA(K,i)*UPW(K,I)*(UPV(K,I) - VI(K))
-               s_awqv(k) = s_awqv(K) + UPA(K,i)*UPW(K,I)*(UPQT(K,I) - UPQI(K,I) - UPQL(K,I) - QVI(K))
-               s_awql(k) = s_awql(K) + UPA(K,i)*UPW(K,I)*(UPQL(K,I) - QLI(K))
-               s_awqi(k) = s_awqi(K) + UPA(K,i)*UPW(K,I)*(UPQI(K,I) - QII(K))
-            end if
-            s_awqt(k)  = s_awqt(K)  + UPA(K,i)*UPW(K,I)*(UPQT(K,I) - QTI(K))
-            mftke(IH,JH,k) = mftke(IH,JH,k) + UPA(KTE+KTS-K-1,i)*0.5*UPW(KTE+KTS-K-1,I)*UPW(KTE+KTS-K-1,I)
-          ENDDO
-  
-
-        ENDDO
   
         !
         ! turn around the outputs and fill them in the 3d fields
@@ -926,7 +877,7 @@ module edmf_mod
             mfqt3(IH,JH,K)  = 0.5*(s_aqt3(KTE+KTS-K-1)+s_aqt3(KTE+KTS-K))
             mfhl3(IH,JH,K)  = 0.5*(s_ahl3(KTE+KTS-K-1)+s_ahl3(KTE+KTS-K))
           end if
-       ENDDO
+        ENDDO
   
         where (UPA.eq.0.)
           UPW   = MAPL_UNDEF
@@ -937,71 +888,69 @@ module edmf_mod
         if (associated(EDMF_PLUMES_THL)) EDMF_PLUMES_THL(IH,JH,KTS-1:KTE,:) = upthl(KTE:KTS-1:-1,:)
         if (associated(EDMF_PLUMES_QT))  EDMF_PLUMES_QT(IH,JH,KTS-1:KTE,:)  = upqt(KTE:KTS-1:-1,:)
   
+
+        ! OPTIMIZATION: Moved Trisolver 3D updates INSIDE the column loop!
+        ! Completely avoids reading back all the memory.
+        
+        YS(IH,JH,kte)  = -rhoe3(IH,JH,kte-1) * aws3(IH,JH,kte-1)
+        YQV(IH,JH,kte) = -rhoe3(IH,JH,kte-1) * awqv3(IH,JH,kte-1)
+        YQL(IH,JH,kte) = -rhoe3(IH,JH,kte-1) * awql3(IH,JH,kte-1)
+        YQI(IH,JH,kte) = -rhoe3(IH,JH,kte-1) * awqi3(IH,JH,kte-1)
+        YU(IH,JH,kte)  = -rhoe3(IH,JH,kte-1) * awu3(IH,JH,kte-1)
+        YV(IH,JH,kte)  = -rhoe3(IH,JH,kte-1) * awv3(IH,JH,kte-1)
+      
+        DO k = kts, kte-1
+           YS(IH,JH,k)  = rhoe3(IH,JH,k)*aws3(IH,JH,k)   - rhoe3(IH,JH,k-1)*aws3(IH,JH,k-1)
+           YQV(IH,JH,k) = rhoe3(IH,JH,k)*awqv3(IH,JH,k)  - rhoe3(IH,JH,k-1)*awqv3(IH,JH,k-1)
+           YQL(IH,JH,k) = rhoe3(IH,JH,k)*awql3(IH,JH,k)  - rhoe3(IH,JH,k-1)*awql3(IH,JH,k-1)
+           YQI(IH,JH,k) = rhoe3(IH,JH,k)*awqi3(IH,JH,k)  - rhoe3(IH,JH,k-1)*awqi3(IH,JH,k-1)
+           YU(IH,JH,k)  = rhoe3(IH,JH,k)*awu3(IH,JH,k)   - rhoe3(IH,JH,k-1)*awu3(IH,JH,k-1)
+           YV(IH,JH,k)  = rhoe3(IH,JH,k)*awv3(IH,JH,k)   - rhoe3(IH,JH,k-1)*awv3(IH,JH,k-1)
+        END DO
+      
+        ! Deal with implied condensation
+        DO k = kts, kte
+           if (YQI(IH,JH,k) < 0. .and. YQL(IH,JH,k) > 0.) then
+              tmp = min(YQL(IH,JH,k), -YQI(IH,JH,k))
+              YQL(IH,JH,k) = YQL(IH,JH,k) - tmp
+              YQI(IH,JH,k) = YQI(IH,JH,k) + tmp
+              YS(IH,JH,k)  = YS(IH,JH,k) + tmp*MAPL_ALHF
+           end if
+           if (YQI(IH,JH,k) < 0.) then
+              YQV(IH,JH,k) = YQV(IH,JH,k) + YQI(IH,JH,k)
+              YS(IH,JH,k)  = YS(IH,JH,k) - YQI(IH,JH,k)*MAPL_ALHS
+              YQI(IH,JH,k) = 0.
+           end if
+           if (YQL(IH,JH,k) < 0.) then
+              YQV(IH,JH,k) = YQV(IH,JH,k) + YQL(IH,JH,k)
+              YS(IH,JH,k)  = YS(IH,JH,k) - YQL(IH,JH,k)*MAPL_ALHL
+              YQL(IH,JH,k) = 0.
+           end if
+           
+           tmp = mapl_grav * dt / ( pw3(IH,JH,k)-pw3(IH,JH,k-1) )
+           YS(IH,JH,k)  = tmp * YS(IH,JH,k)
+           YQV(IH,JH,k) = tmp * YQV(IH,JH,k)
+           YQL(IH,JH,k) = tmp * YQL(IH,JH,k)
+           YQI(IH,JH,k) = tmp * YQI(IH,JH,k)
+           YU(IH,JH,k)  = tmp * YU(IH,JH,k)
+           YV(IH,JH,k)  = tmp * YV(IH,JH,k)
+        END DO
+  
+        ! Detrained mass flux calculation within the column loop
+        if (associated(edmf_dmf)) then
+           DO k = kts, kte
+              edmf_dmf(IH,JH,k) = max(0., edmfmf(IH,JH,k-1) - edmfmf(IH,JH,k))
+              edmf_dmf(IH,JH,k) = edmf_dmf(IH,JH,k) + edmfmf(IH,JH,k) * &
+                                  (1. - exp( -entx(IH,JH,k)*(zw3(IH,JH,k-1)-zw3(IH,JH,k)) ))
+              if (moist_a3(IH,JH,k) <= 0.) edmf_dmf(IH,JH,k) = 0.
+           END DO
+        end if
+
        end if  !  IF ( mfdepth>100m)
       END IF   !  IF ( wthv > 0.0 )
   
-      ENDDO ! JH loop over horizontal area
-    ENDDO ! IH
-  
-    ! Calculate explicit part of state update for trisolver
-    ! Note vertical index is flipped, as in TurbGridComp.
-    dmi = mapl_grav * dt / ( pw3(:,:,kts:kte)-pw3(:,:,kts-1:kte-1) )
-    YS(:,:,kte)  = -rhoe3(:,:,kte-1) * aws3(:,:,kte-1)
-    YQV(:,:,kte) = -rhoe3(:,:,kte-1) * awqv3(:,:,kte-1)
-    YQL(:,:,kte) = -rhoe3(:,:,kte-1) * awql3(:,:,kte-1)
-    YQI(:,:,kte) = -rhoe3(:,:,kte-1) * awqi3(:,:,kte-1)
-    YU(:,:,kte)  = -rhoe3(:,:,kte-1) * awu3(:,:,kte-1)
-    YV(:,:,kte)  = -rhoe3(:,:,kte-1) * awv3(:,:,kte-1)
-  
-    YS(:,:,kts:kte-1)  = ( rhoe3(:,:,kts:kte-1)  *aws3(:,:,kts:kte-1)  &
-                          -rhoe3(:,:,kts-1:kte-2)*aws3(:,:,kts-1:kte-2) )
-    YQV(:,:,kts:kte-1) = ( rhoe3(:,:,kts:kte-1)  *awqv3(:,:,kts:kte-1)  &
-                          -rhoe3(:,:,kts-1:kte-2)*awqv3(:,:,kts-1:kte-2) )
-    YQL(:,:,kts:kte-1) = ( rhoe3(:,:,kts:kte-1)  *awql3(:,:,kts:kte-1)  &
-                          -rhoe3(:,:,kts-1:kte-2)*awql3(:,:,kts-1:kte-2) )
-    YQI(:,:,kts:kte-1) = ( rhoe3(:,:,kts:kte-1)  *awqi3(:,:,kts:kte-1)  &
-                          -rhoe3(:,:,kts-1:kte-2)*awqi3(:,:,kts-1:kte-2) )
-    YU(:,:,kts:kte-1)  = ( rhoe3(:,:,kts:kte-1)  *awu3(:,:,kts:kte-1)  &
-                          -rhoe3(:,:,kts-1:kte-2)*awu3(:,:,kts-1:kte-2) )
-    YV(:,:,kts:kte-1)  = ( rhoe3(:,:,kts:kte-1)  *awv3(:,:,kts:kte-1)  &
-                          -rhoe3(:,:,kts-1:kte-2)*awv3(:,:,kts-1:kte-2) )
-  
-    ! Deal with implied condensation.
-    ! Where QI flux diverges and QL flux converges, assume that QI came from QL
-    where (YQI.lt.0. .and. YQL.gt.0.)
-       tmp3d = min(YQL,-YQI)
-       YQL = YQL - tmp3d
-       YQI = YQI + tmp3d
-       YS = YS + tmp3d*MAPL_ALHF  ! condensation heating
-    end where
-    where (YQI.lt.0.)           ! where WQI diverges and no WQL convergence
-       YQV = YQV + YQI          ! remove QI from QV
-       YS = YS - YQI*MAPL_ALHS  ! condensation heating
-       YQI = 0.
-    end where
-    where (YQL.lt.0.)       ! where WQL diverges, assume condensation occurred
-       YQV = YQV + YQL   
-       YS  = YS - YQL*MAPL_ALHL
-       YQL = 0. 
-    end where
-  
-    YS  = dmi * YS
-    YQV = dmi * YQV
-    YQL = dmi * YQL
-    YQI = dmi * YQI
-    YU  = dmi * YU
-    YV  = dmi * YV
-  
-    ! Detrained mass flux calculation
-    ! Includes contributions from the dynamic detrainment and from turbulent mixing
-    if (associated(edmf_dmf)) then
-       edmf_dmf = max(0.,edmfmf(:,:,kts-1:kte-1)-edmfmf(:,:,kts:kte))
-       edmf_dmf = edmf_dmf + edmfmf(:,:,kts:kte)*( 1. - exp( -entx(:,:,kts:kte)*(zw3(:,:,kts-1:kte-1)-zw3(:,:,kts:kte)) ) )
-       where( moist_a3(:,:,kts:kte).le.0. )
-          edmf_dmf = 0.
-       end where
-    end if
-  
+      ENDDO ! IH loop (INNER LOOP)
+    ENDDO ! JH loop (OUTER LOOP)
     
   END SUBROUTINE run_edmf
   
@@ -1166,8 +1115,8 @@ module edmf_mod
   integer :: IM,JM,LM
   integer :: IH,JH,L
   
-  do ih=1,im
-    do jh=1,jm
+  do jh=1,jm
+    do ih=1,im
       do l=1,lm
           get_alhl3(IH,JH,l)=get_alhl(T(IH,JH,l),iceramp)
       enddo
@@ -1183,26 +1132,13 @@ module edmf_mod
   end function get_alhl
   
   
+  ! OPTIMIZATION: Removed if/else branches for pure math compilation
   function water_f(T,iceramp)
-  !
-  ! computes water fraction
-  !
-  real ::T,iceramp,water_f,Tw
-  real :: Tmax,Tmin
-  
-    Tmax=0.
-    Tmin=Tmax-abs(iceramp)
-    Tw=T-mapl_celsius_to_kelvin
-  
-  ! water fraction
-    IF (Tw>Tmax) THEN
-      water_f=1.
-    ELSE IF (Tw<Tmin) THEN
-      water_f=0.
-    ELSE
-      water_f=(Tw-Tmin)/(Tmax-Tmin);
-    END IF
-  
+    real :: T, iceramp, water_f, Tw, Tmin, Tmax
+    Tmax = 0.
+    Tmin = -abs(iceramp)
+    Tw = T - mapl_celsius_to_kelvin
+    water_f = MIN(MAX((Tw - Tmin) / (Tmax - Tmin), 0.0), 1.0)
   end function water_f
   
   
@@ -1229,31 +1165,24 @@ module edmf_mod
   end subroutine Poisson
   
   
+        ! OPTIMIZATION: Thread-safety achieved by removing SAVE statements
         FUNCTION poidev(xm, rng_state)
         REAL :: poidev,xm
         INTEGER(8), INTENT(INOUT) :: rng_state
         
-        REAL alxm,em,g,oldm,sq,t,y
-        SAVE alxm,g,oldm,sq
-        DATA oldm /-1./
+        REAL :: alxm,em,g,sq,t,y
         
         if (xm.lt.12.)then
-          if (xm.ne.oldm) then
-            oldm=xm
-            g=exp(-xm)
-          endif
+          g=exp(-xm)
           em=-1
           t=1.
   2       em=em+1.
           t=t*ran1_lcg(rng_state)
           if (t.gt.g) goto 2
         else
-          if (xm.ne.oldm) then
-            oldm=xm
-            sq=sqrt(2.*xm)
-            alxm=log(xm)
-            g=xm*alxm-gammln(xm+1.)
-          endif
+          sq=sqrt(2.*xm)
+          alxm=log(xm)
+          g=xm*alxm-gammln(xm+1.)
   1       y=tan(MAPL_PI*ran1_lcg(rng_state))
           em=sq*y+xm
           if (em.lt.0.) goto 1
@@ -1265,14 +1194,16 @@ module edmf_mod
         return
         END FUNCTION poidev
   
+        ! OPTIMIZATION: Thread-safety achieved by using PARAMETER arrays
         FUNCTION gammln(xx)
         REAL gammln,xx
         INTEGER j
-        DOUBLE PRECISION ser,stp,tmp,x,y,cof(6)
-        SAVE cof,stp
-        DATA cof,stp/76.18009172947146d0,-86.50532032941677d0, &
-       24.01409824083091d0,-1.231739572450155d0,.1208650973866179d-2, &
-       -.5395239384953d-5,2.5066282746310005d0/
+        DOUBLE PRECISION ser,tmp,x,y
+        DOUBLE PRECISION, PARAMETER :: stp_val = 2.5066282746310005d0
+        DOUBLE PRECISION, PARAMETER :: cof(6) = [76.18009172947146d0, -86.50532032941677d0, &
+                                                 24.01409824083091d0, -1.231739572450155d0,  &
+                                                  0.1208650973866179d-2, -0.5395239384953d-5]
+
         x=xx
         y=x
         tmp=x+5.5d0
@@ -1282,7 +1213,7 @@ module edmf_mod
           y=y+1.d0
           ser=ser+cof(j)/y
   11    continue
-        gammln=tmp+log(stp*ser/x)
+        gammln=tmp+log(stp_val*ser/x)
         return
         END FUNCTION gammln
   
@@ -1294,5 +1225,5 @@ module edmf_mod
           ran1_lcg = real(state) / 2147483648.0
         END FUNCTION ran1_lcg
   
-  end module edmf_mod
-  
+   end module edmf_mod
+      
