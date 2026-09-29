@@ -3060,7 +3060,7 @@ end if
                                     edmfmoistqc
      real, dimension(im,jm,lm)   :: zlo, pk, rho
      real, dimension(im,jm)      :: edmfZCLD
-     real, dimension(im,jm,0:lm) :: RHOE, RHOAW3, edmf_mf, mfwsl, mfwqt, mftke
+     real, dimension(im,jm,0:lm) :: RHOE, RHOAW3, edmf_mf, mfwsl, mfwqt, mftke, EXFH
      real, dimension(im,jm,lm)   :: buoyf, mfw2, mfw3, mfqt3,     &
                                     mfsl3, mfqt2, mfsl2,   &
                                     mfslqt, edmf_ent
@@ -3627,7 +3627,8 @@ end if
       call MAPL_TimerOff(MAPL,"---PRELIMS")
 
    ! Calculate liquid water potential temperature (THL) and total water (QT)
-    EXF=T/TH 
+    EXF=T/TH
+    EXFH = (PLE/MAPL_P00)**(MAPL_RGAS/MAPL_CP)
     THL=TH-(MAPL_ALHL*QLTOT+MAPL_ALHS*QITOT)/(MAPL_CP*EXF)
     QT=Q+QLTOT+QITOT
 
@@ -3789,7 +3790,9 @@ end if
                     THV,                      & 
                     Q,                        & 
                     QLTOT,                    & 
-                    QITOT,                    & 
+                    QITOT,                    &
+                    EXF,                      &
+                    EXFH,                     &
                     SH,                       & 
                     EVAP,                     & 
                     FRLAND,                   &
