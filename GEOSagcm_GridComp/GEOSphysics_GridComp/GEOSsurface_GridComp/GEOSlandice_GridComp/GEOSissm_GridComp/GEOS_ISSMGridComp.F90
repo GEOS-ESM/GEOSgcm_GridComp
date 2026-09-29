@@ -800,12 +800,6 @@ contains
     !-----------------------------------
 
     ! Regrid from mesh to tile
-    call MAPL_LocStreamGet(internal_state%locstream, NT_LOCAL=NT, _RC)
-
-    ! allocate variables on landice tile space
-    allocate(ICESURF_TILE(NT))
-    allocate(ICETHICK_TILE(NT))
-    allocate(ICEVEL_TILE(NT))
 
     ! calculate ice flow speed
     ICEVEL_HALO = sqrt(ICEVX_HALO**2 + ICEVY_HALO**2)
@@ -1385,9 +1379,11 @@ contains
 
     ! create destination field: field on grid
     dstField = ESMF_FieldCreate(grid=internal_state%grid,typekind=ESMF_TYPEKIND_R4,_RC)
-
+    call ESMF_FieldGet(dstField,farrayPtr=VAR_GRID,_RC)
+    VAR_GRID(:,:) = MAPL_UNDEF
     ! regrid field from mesh to grid
-    call ESMF_FieldRegrid(srcField, dstField, internal_state%routehandle_m2g, _RC)
+    call ESMF_FieldRegrid(srcField, dstField, internal_state%routehandle_m2g, &
+                      zeroregion=ESMF_REGION_SELECT, _RC)
 
     ! get pointer to field on grid
     call ESMF_FieldGet(dstField,farrayPtr=VAR_GRID,_RC)
