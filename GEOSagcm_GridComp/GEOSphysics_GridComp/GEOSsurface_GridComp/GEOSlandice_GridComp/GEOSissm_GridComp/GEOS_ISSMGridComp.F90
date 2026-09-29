@@ -1386,7 +1386,7 @@ contains
     call ESMF_FieldGet(dstField,farrayPtr=VAR_GRID,_RC)
     VAR_GRID(:,:) = MAPL_UNDEF
     ! regrid field from mesh to grid
-    call ESMF_FieldRegrid(srcField, dstField, internal_state%routehandle_m2g, 
+    call ESMF_FieldRegrid(srcField, dstField, internal_state%routehandle_m2g, &
           termorderflag=ESMF_TERMORDER_SRCSEQ, zeroregion=ESMF_REGION_SELECT, _RC)
 
     ! get pointer to field on grid
