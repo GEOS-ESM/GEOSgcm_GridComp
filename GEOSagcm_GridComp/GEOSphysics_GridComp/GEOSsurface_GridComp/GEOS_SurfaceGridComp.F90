@@ -7545,7 +7545,7 @@ module GEOS_SurfaceGridCompMod
        RUNOFFTILE = 0.0
     end if
     allocate(DISTERTILE(NT),stat=STATUS); VERIFY_(STATUS)
-    DISTERTILE = 0.0    
+    DISTERTILE = -9999.   
 
     call MKTILE(RUNSURF ,RUNSURFTILE ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(BASEFLOW,BASEFLOWTILE,NT,RC=STATUS); VERIFY_(STATUS)
@@ -10736,6 +10736,13 @@ module GEOS_SurfaceGridCompMod
 
       if (associated(DISTERTILE) .and. type == ROUTE) then
          call FILLOUT_TILE(GEX(LAND), 'DISTER', DISTERTILE, XFORM, RC=STATUS)
+         if(mapl_am_I_root())then
+           print *,"filling DISTERTILE from GEX(LAND)"
+           print *,"DISTERTILE=",DISTERTILE
+         endif
+         do K=1,NT 
+           if(DISTERTILE(K)/=-9999.) print *,"validated DISTERTILE found! DISTERTILE(K)=",DISTERTILE(K) 
+         enddo
          VERIFY_(STATUS)        
       endif
 
