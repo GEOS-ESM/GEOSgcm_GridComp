@@ -14,7 +14,7 @@ module GEOS_IonDragGridCompMod
    ! temperature fields due to collisions with ions, over the top
    ! NLEV_IONDRAG model levels. Ion densities and species fractions are
    ! obtained from IRI (evaluated at real per-column geometric altitude,
-   ! derived from the GEOS geopotential height field ZLE); neutral number
+   ! derived from the GEOS geopotential-height field ZLE); neutral number
    ! density, mass density, and mixture heat capacity come from MSIS
    ! (via the same msis_wrapper module used on the dynamics
    ! side); ion winds are currently a constant placeholder (to be replaced
@@ -456,7 +456,8 @@ contains
                alt_r4   = real(alt_km_in(i,j,k), kind=4)
                glat_r4  = real(LATS_2D(i,j) * (180.0/MAPL_PI), kind=4)
                glong_r4 = real(LONS_2D(i,j) * (180.0/MAPL_PI), kind=4)
-               stl_r4   = real(UT_HOUR + glong_r4/15.0, kind=4)
+               stl_r4 = modulo( &
+                    real(UT_HOUR, kind=4) + glong_r4/15.0_4, 24.0_4)
 
                call msis_point(IYEAR, DOY, nint(UT_HOUR*3600.0), &
                     alt_r4, glat_r4, glong_r4, stl_r4, &

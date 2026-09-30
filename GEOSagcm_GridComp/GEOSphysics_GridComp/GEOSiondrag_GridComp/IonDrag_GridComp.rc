@@ -4,7 +4,7 @@
 # These settings override defaults in GEOS_IonDragGridComp.F90.
 
 # Enable or disable ion drag within a GEOS-MLT run.
-IONDRAG_ON:      1
+IONDRAG_ON:      .TRUE.
 
 # Number of model-top levels where ion drag is evaluated.
 NLEV_IONDRAG:    10
