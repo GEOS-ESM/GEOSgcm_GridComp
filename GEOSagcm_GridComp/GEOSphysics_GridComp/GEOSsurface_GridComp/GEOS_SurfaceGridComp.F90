@@ -10735,6 +10735,7 @@ module GEOS_SurfaceGridCompMod
       end if
 
       if (associated(DISTERTILE) .and. type == ROUTE) then
+         XFORM = SURF_INTERNAL_STATE%XFORM_OUT(LAND)
          call FILLOUT_TILE(GEX(LAND), 'DISTER', DISTERTILE, XFORM, RC=STATUS)
          if(mapl_am_I_root())then
            print *,"filling DISTERTILE from GEX(LAND)"
