@@ -41,8 +41,8 @@ contains
     ! latitudes_deg and longitudes_deg are paired two-dimensional cubed-sphere
     ! coordinates, not independent latitude and longitude axes. alt_km contains
     ! the geometric altitude of each requested GEOS model level. IRI itself is
-    ! evaluated on its regular hbeg:hend:hstep profile, and the nearest profile
-    ! level is selected for each GEOS model altitude.
+    ! evaluated on its regular hbeg:hend:hstep profile. Electron density and
+    ! ion composition are linearly interpolated to each GEOS model altitude.
     !
     ! IRI OUTF units used here:
     !   OUTF(1,*)    electron density [m-3]
@@ -65,7 +65,7 @@ contains
 
     integer :: i, j, lev, species
     integer :: im, jm, nlev
-    integer :: alt_idx, n_iri_levels
+    integer :: n_iri_levels
 
     im = size(alt_km, 1)
     jm = size(alt_km, 2)
@@ -143,21 +143,25 @@ contains
           ! sanitizes ZLE before reaching this routine, so this is a final guard.
           if (.not. ieee_is_finite(alt_km(i,j,lev))) cycle
 
-          ! Select the nearest valid level from the IRI altitude profile.
-          alt_idx = nint((alt_km(i,j,lev) - hbeg) / hstep) + 1
-          alt_idx = max(1, min(alt_idx, n_iri_levels))
+          ! Interpolate IRI vertically to the actual GEOS model altitude.
+          ! This avoids artificial 10-km steps from nearest-level sampling.
+          value = interpolate_iri_profile( &
+               outf(1,1:n_iri_levels), n_iri_levels, &
+               hbeg, hstep, alt_km(i,j,lev))
 
           ! IRI documents OUTF(1,*) directly in m-3. Do not apply a cm-3
           ! conversion here.
-          value = outf(1, alt_idx)
           if (ieee_is_finite(value) .and. value > 0.0) then
             ne_m3(i,j,lev) = value
           end if
 
           ! With JF(22)=.true., OUTF(5:11,*) contains percent abundance.
-          ! Convert percent to a dimensionless fraction for ion_drag_module.
+          ! Interpolate each species and convert percent to a dimensionless
+          ! fraction for ion_drag_module.
           do species = 1, N_ION_SPECIES
-            value = outf(4 + species, alt_idx)
+            value = interpolate_iri_profile( &
+                 outf(4 + species,1:n_iri_levels), n_iri_levels, &
+                 hbeg, hstep, alt_km(i,j,lev))
             if (ieee_is_finite(value) .and. value > 0.0) then
               species_fraction(species,i,j,lev) = value / 100.0
             end if
@@ -167,6 +171,58 @@ contains
     end do
 
   end subroutine get_iri_densities
+
+
+  real function interpolate_iri_profile(profile, n_levels, hbeg, hstep, altitude)
+    ! Linearly interpolate a one-dimensional IRI profile to a GEOS altitude.
+    ! Values outside the requested IRI profile are clamped to the nearest
+    ! profile endpoint.
+    real, intent(in) :: profile(:)
+    integer, intent(in) :: n_levels
+    real, intent(in) :: hbeg, hstep, altitude
+
+    integer :: lower_idx, upper_idx
+    real :: position, weight
+    real :: lower_value, upper_value
+
+    interpolate_iri_profile = 0.0
+
+    if (n_levels < 1) return
+    if (.not. ieee_is_finite(altitude)) return
+
+    if (altitude <= hbeg) then
+      if (ieee_is_finite(profile(1))) then
+        interpolate_iri_profile = profile(1)
+      end if
+      return
+    end if
+
+    position = (altitude - hbeg) / hstep
+
+    if (position >= real(n_levels - 1)) then
+      if (ieee_is_finite(profile(n_levels))) then
+        interpolate_iri_profile = profile(n_levels)
+      end if
+      return
+    end if
+
+    lower_idx = floor(position) + 1
+    upper_idx = lower_idx + 1
+    weight = position - real(lower_idx - 1)
+
+    lower_value = profile(lower_idx)
+    upper_value = profile(upper_idx)
+
+    if (ieee_is_finite(lower_value) .and. ieee_is_finite(upper_value)) then
+      interpolate_iri_profile = &
+           (1.0 - weight) * lower_value + weight * upper_value
+    else if (ieee_is_finite(lower_value)) then
+      interpolate_iri_profile = lower_value
+    else if (ieee_is_finite(upper_value)) then
+      interpolate_iri_profile = upper_value
+    end if
+
+  end function interpolate_iri_profile
 
 
   subroutine initialize_iri_indices()

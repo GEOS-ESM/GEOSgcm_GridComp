@@ -11,8 +11,8 @@ module GEOS_IonDragGridCompMod
    !
    ! IonDrag is a light-weight gridded component that computes the
    ! momentum drag and frictional heating tendencies on the neutral wind and
-   ! temperature fields due to collisions with ions, over the top
-   ! NLEV_IONDRAG model levels. Ion densities and species fractions are
+   ! temperature fields due to collisions with ions above a configurable
+   ! reference-pressure cutoff. Ion densities and species fractions are
    ! obtained from IRI (evaluated at real per-column geometric altitude,
    ! derived from the GEOS geopotential-height field ZLE); neutral number
    ! density, mass density, and mixture heat capacity come from MSIS
@@ -48,7 +48,7 @@ module GEOS_IonDragGridCompMod
 
    type :: GEOS_IonDragGridComp
       logical :: IONDRAG_ON
-      integer :: NLEV_IONDRAG
+      real    :: BOTTOM_PRESSURE_PA      ! Maximum midpoint pressure for ion drag [Pa]
       real    :: HBEG, HEND, HSTEP       ! IRI altitude profile range/step (km)
       real    :: TEST_UI_MS, TEST_VI_MS  ! placeholder constant ion winds
    end type GEOS_IonDragGridComp
@@ -166,17 +166,18 @@ contains
 
       ! Resource config
       ! ---------------
-      call MAPL_GetResource( MAPL, self%IONDRAG_ON,    Label="IONDRAG_ON:",    default=.true.,  _RC)
-      call MAPL_GetResource( MAPL, self%NLEV_IONDRAG,  Label="NLEV_IONDRAG:",  default=10,      _RC)
-      call MAPL_GetResource( MAPL, self%HBEG,          Label="IRI_HBEG:",      default=100.0,   _RC)
-      call MAPL_GetResource( MAPL, self%HEND,          Label="IRI_HEND:",      default=700.0,   _RC)
+      call MAPL_GetResource( MAPL, self%IONDRAG_ON, Label="IONDRAG_ON:", default=.true., _RC)
+      call MAPL_GetResource( MAPL, self%BOTTOM_PRESSURE_PA, &
+           Label="IONDRAG_BOTTOM_PRESSURE_PA:", default=1.0, _RC)
+      call MAPL_GetResource( MAPL, self%HBEG, Label="IRI_HBEG:", default=70.0, _RC)
+      call MAPL_GetResource( MAPL, self%HEND,          Label="IRI_HEND:",      default=250.0,   _RC)
       call MAPL_GetResource( MAPL, self%HSTEP,         Label="IRI_HSTEP:",     default=10.0,    _RC)
       call MAPL_GetResource( MAPL, self%TEST_UI_MS,    Label="TEST_UI_MS:",    default=50.0,    _RC)
       call MAPL_GetResource( MAPL, self%TEST_VI_MS,    Label="TEST_VI_MS:",    default=0.0,     _RC)
 
-      ! Validate the vertical and IRI configuration before Run.
-      if (self%NLEV_IONDRAG < 1) then
-         error stop 'IONDRAG: NLEV_IONDRAG must be at least 1'
+      ! Validate the pressure and IRI configuration before Run.
+      if (self%BOTTOM_PRESSURE_PA <= 0.0) then
+         error stop 'IONDRAG: IONDRAG_BOTTOM_PRESSURE_PA must be positive'
       end if
       if (self%HSTEP <= 0.0) then
          error stop 'IONDRAG: IRI_HSTEP must be positive'
@@ -280,6 +281,8 @@ contains
          real, allocatable :: frictional_heating(:,:,:)
 
          integer :: i, j, k
+         integer :: nlev_active
+         real    :: pref_mid_pa
 
          IAm = "IonDrag_Driver"
 
@@ -293,12 +296,25 @@ contains
          call ESMF_TimeGet(CURRENT_TIME, YY=IYEAR, DayOfYear=DOY, H=HH, M=MN, S=SS, _RC)
          UT_HOUR = real(HH) + real(MN)/60.0 + real(SS)/3600.0
 
-         if (self%NLEV_IONDRAG > LM) then
-            if (MAPL_am_I_root()) then
-               print *, 'IONDRAG_ERROR: NLEV_IONDRAG exceeds LM:', &
-                        self%NLEV_IONDRAG, LM
+         ! Determine the active ion-drag domain from the reference-pressure
+         ! grid. Level 1 is the model-top layer and pressure increases downward.
+         ! Using PREF makes the cutoff independent of the number of model levels.
+         nlev_active = 0
+         do k = 1, LM
+            pref_mid_pa = 0.5 * (PREF(k) + PREF(k+1))
+            if (pref_mid_pa <= self%BOTTOM_PRESSURE_PA) then
+               nlev_active = k
+            else
+               exit
             end if
-            error stop 'IONDRAG: invalid NLEV_IONDRAG'
+         end do
+
+         if (nlev_active < 1) then
+            if (MAPL_am_I_root()) then
+               print *, 'IONDRAG_ERROR: pressure cutoff selects no model levels:', &
+                        self%BOTTOM_PRESSURE_PA
+            end if
+            error stop 'IONDRAG: pressure cutoff selects no model levels'
          end if
 
          ! Cubed-sphere latitude/longitude are two-dimensional fields and are
@@ -307,21 +323,21 @@ contains
          LATS_DEG = LATS_2D * (180.0/MAPL_PI)
          LONS_DEG = LONS_2D * (180.0/MAPL_PI)
 
-         allocate(alt_km(IM, JM, self%NLEV_IONDRAG))
-         allocate(ui(IM, JM, self%NLEV_IONDRAG), vi(IM, JM, self%NLEV_IONDRAG))
-         allocate(ne_m3(IM, JM, self%NLEV_IONDRAG))
-         allocate(species_fraction(N_ION_SPECIES, IM, JM, self%NLEV_IONDRAG))
-         allocate(n_msis(IM, JM, self%NLEV_IONDRAG))
-         allocate(rho_msis(IM, JM, self%NLEV_IONDRAG))
-         allocate(cp_msis(IM, JM, self%NLEV_IONDRAG))
-         allocate(drag_u(IM, JM, self%NLEV_IONDRAG), &
-                  drag_v(IM, JM, self%NLEV_IONDRAG))
-         allocate(frictional_heating(IM, JM, self%NLEV_IONDRAG))
+         allocate(alt_km(IM, JM, nlev_active))
+         allocate(ui(IM, JM, nlev_active), vi(IM, JM, nlev_active))
+         allocate(ne_m3(IM, JM, nlev_active))
+         allocate(species_fraction(N_ION_SPECIES, IM, JM, nlev_active))
+         allocate(n_msis(IM, JM, nlev_active))
+         allocate(rho_msis(IM, JM, nlev_active))
+         allocate(cp_msis(IM, JM, nlev_active))
+         allocate(drag_u(IM, JM, nlev_active), &
+                  drag_v(IM, JM, nlev_active))
+         allocate(frictional_heating(IM, JM, nlev_active))
 
          ! ZLE is geopotential height at model interfaces in meters. Use the
          ! layer midpoint as the altitude supplied to IRI and MSIS. Guard
          ! invalid top-edge values before calling either empirical model.
-         do k = 1, self%NLEV_IONDRAG
+         do k = 1, nlev_active
             do j = 1, JM
                do i = 1, IM
                   if (ieee_is_finite(ZLE(i,j,k-1)) .and. &
@@ -361,17 +377,17 @@ contains
          ! the same MSIS O/N2/O2 composition used by GEOS-MLT thermodynamics.
          call MAPL_TimerOn(MAPL, "-MSIS")
          call compute_msis_state( &
-              IM, JM, self%NLEV_IONDRAG, IYEAR, DOY, UT_HOUR, &
+              IM, JM, nlev_active, IYEAR, DOY, UT_HOUR, &
               LATS_2D, LONS_2D, alt_km, n_msis, rho_msis, cp_msis, _RC)
          call MAPL_TimerOff(MAPL, "-MSIS")
 
          ! Step 4: Ion drag physics -- returns tendencies only.
          call MAPL_TimerOn(MAPL, "-DRAG")
          call compute_drag_fields(ui, vi, ne_m3, species_fraction, &
-                                   U(:,:,1:self%NLEV_IONDRAG), &
-                                   V(:,:,1:self%NLEV_IONDRAG), &
+                                   U(:,:,1:nlev_active), &
+                                   V(:,:,1:nlev_active), &
                                    n_msis, rho_msis, &
-                                   T(:,:,1:self%NLEV_IONDRAG), &
+                                   T(:,:,1:nlev_active), &
                                    drag_u, drag_v, frictional_heating)
          call MAPL_TimerOff(MAPL, "-DRAG")
 
@@ -381,28 +397,28 @@ contains
          ! GEOSgwd_GridComp's DUDT/DVDT/DTDT and GEOS_SolarGridComp's MLRADJH).
          if (associated(DUDT_IONDRAG)) then
             DUDT_IONDRAG = 0.0
-            DUDT_IONDRAG(:,:,1:self%NLEV_IONDRAG) = drag_u
+            DUDT_IONDRAG(:,:,1:nlev_active) = drag_u
          end if
          if (associated(DVDT_IONDRAG)) then
             DVDT_IONDRAG = 0.0
-            DVDT_IONDRAG(:,:,1:self%NLEV_IONDRAG) = drag_v
+            DVDT_IONDRAG(:,:,1:nlev_active) = drag_v
          end if
          if (associated(DTDT_IONDRAG)) then
             DTDT_IONDRAG = 0.0
             where (rho_msis > 0.0 .and. cp_msis > 0.0)
-               DTDT_IONDRAG(:,:,1:self%NLEV_IONDRAG) = &
+               DTDT_IONDRAG(:,:,1:nlev_active) = &
                     frictional_heating / (rho_msis * cp_msis)
             elsewhere
-               DTDT_IONDRAG(:,:,1:self%NLEV_IONDRAG) = 0.0
+               DTDT_IONDRAG(:,:,1:nlev_active) = 0.0
             end where
          end if
          if (associated(NE_IONDRAG)) then
             NE_IONDRAG = 0.0
-            NE_IONDRAG(:,:,1:self%NLEV_IONDRAG) = ne_m3
+            NE_IONDRAG(:,:,1:nlev_active) = ne_m3
          end if
          if (associated(RHO_MSIS_IONDRAG)) then
             RHO_MSIS_IONDRAG = 0.0
-            RHO_MSIS_IONDRAG(:,:,1:self%NLEV_IONDRAG) = rho_msis
+            RHO_MSIS_IONDRAG(:,:,1:nlev_active) = rho_msis
          end if
 
          deallocate(LATS_DEG, LONS_DEG, alt_km, ui, vi, ne_m3, &
@@ -417,7 +433,7 @@ contains
 
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-   subroutine compute_msis_state(IM, JM, NLEV_IONDRAG, IYEAR, DOY, &
+   subroutine compute_msis_state(IM, JM, NLEV_ACTIVE, IYEAR, DOY, &
                                  UT_HOUR, LATS_2D, LONS_2D, alt_km_in, &
                                  n_out, rho_out, cp_out, RC)
       ! Diagnose the neutral state required by ion drag from MSIS.
@@ -425,7 +441,7 @@ contains
       ! n_out   : total O + N2 + O2 number density [m-3]
       ! rho_out : O + N2 + O2 mass density [kg m-3]
       ! cp_out  : mixture specific heat at constant pressure [J kg-1 K-1]
-      integer, intent(in) :: IM, JM, NLEV_IONDRAG
+      integer, intent(in) :: IM, JM, NLEV_ACTIVE
       integer, intent(in) :: IYEAR, DOY
       real,    intent(in) :: UT_HOUR
       real, pointer, dimension(:,:), intent(in) :: LATS_2D, LONS_2D
@@ -450,7 +466,7 @@ contains
 
       IAm = "compute_msis_state"
 
-      do k = 1, NLEV_IONDRAG
+      do k = 1, NLEV_ACTIVE
          do j = 1, JM
             do i = 1, IM
                alt_r4   = real(alt_km_in(i,j,k), kind=4)

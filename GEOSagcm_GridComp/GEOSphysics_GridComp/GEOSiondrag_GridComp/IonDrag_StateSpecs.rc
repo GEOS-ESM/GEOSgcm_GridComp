@@ -14,6 +14,7 @@ category: IMPORT
  U    |       | m s-1 | xyz  | C    | SKIP    | eastward_wind
  V    |       | m s-1 | xyz  | C    | SKIP    | northward_wind
  ZLE  |       | m     | xyz  | E    | SKIP    | geopotential_height
+ PREF |       | Pa    | z    | E    | SKIP    | reference_air_pressure
 
 category: EXPORT
 #-------------------------------------------------------------------------------------------------------

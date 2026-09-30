@@ -6,12 +6,14 @@
 # Enable or disable ion drag within a GEOS-MLT run.
 IONDRAG_ON:      .TRUE.
 
-# Number of model-top levels where ion drag is evaluated.
-NLEV_IONDRAG:    10
+# Maximum reference midpoint pressure where ion drag is evaluated [Pa].
+# 1 Pa = 0.01 hPa. This approximately preserves the current L111
+# ion-drag lower boundary while making it independent of vertical grid count.
+IONDRAG_BOTTOM_PRESSURE_PA:  1
 
 # IRI altitude profile used internally before interpolation to GEOS levels [km].
-IRI_HBEG:        100.0
-IRI_HEND:        700.0
+IRI_HBEG:        70.0
+IRI_HEND:        300.0
 IRI_HSTEP:       10.0
 
 # Temporary constant ion winds [m s-1].
