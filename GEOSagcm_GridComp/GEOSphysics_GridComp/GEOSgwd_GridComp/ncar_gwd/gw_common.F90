@@ -903,8 +903,12 @@ subroutine momentum_fixer(ncol, pver, tend_level, p, um_flux, vm_flux, utgw, vtg
   real :: rdm(ncol)
   
   ! Total mass from ground to source level: rho*dz = dp/gravit
+  ! Surface sources have no layers below them to receive a correction.
+  rdm = 0.0
   do i = 1, ncol
-     rdm(i) = gravit/(p(i,pver+1)-p(i,tend_level(i)+1))
+     if (tend_level(i) < pver) then
+        rdm(i) = gravit/(p(i,pver+1)-p(i,tend_level(i)+1))
+     end if
   end do
 
   do k = minval(tend_level)+1, pver
@@ -969,8 +973,12 @@ subroutine energy_fixer(ncol, pver, tend_level, pint, de, ttgw)
   ! Energy change to apply divided by all the mass it is spread across.
   real :: de_dm(ncol)
 
+  ! Surface sources have no layers below them to receive a correction.
+  de_dm = 0.0
   do i = 1, ncol
-     de_dm(i) = -de(i)*gravit/(pint(i,pver+1)-pint(i,tend_level(i)+1))
+     if (tend_level(i) < pver) then
+        de_dm(i) = -de(i)*gravit/(pint(i,pver+1)-pint(i,tend_level(i)+1))
+     end if
   end do
 
   ! Subtract net gain/loss of total energy below tend_level.
