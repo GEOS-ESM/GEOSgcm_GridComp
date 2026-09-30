@@ -1177,18 +1177,18 @@ module edmf_mod
           em=-1
           t=1.
   2       em=em+1.
-          t=t*ran1_lcg(rng_state)
+          t=t*ran_splitmix64(rng_state)
           if (t.gt.g) goto 2
         else
           sq=sqrt(2.*xm)
           alxm=log(xm)
           g=xm*alxm-gammln(xm+1.)
-  1       y=tan(MAPL_PI*ran1_lcg(rng_state))
+  1       y=tan(MAPL_PI*ran_splitmix64(rng_state))
           em=sq*y+xm
           if (em.lt.0.) goto 1
           em=int(em)
           t=0.9*(1.+y**2)*exp(em*alxm-gammln(em+1.)-g)
-          if (ran1_lcg(rng_state).gt.t) goto 1
+          if (ran_splitmix64(rng_state).gt.t) goto 1
         endif
         poidev=em
         return
@@ -1224,6 +1224,24 @@ module edmf_mod
           state = mod(state * 1103515245_8 + 12345_8, 2147483648_8)
           ran1_lcg = real(state) / 2147483648.0
         END FUNCTION ran1_lcg
-  
+
+        FUNCTION ran_splitmix64(state)
+          INTEGER(8), INTENT(INOUT) :: state
+          INTEGER(8) :: z
+          REAL :: ran_splitmix64
+          
+          ! 11400714819323198485_8 overflows signed 64-bit.
+          ! The two's complement negative equivalent is -7046029254386353131_8
+          state = state - 7046029254386353131_8
+          
+          z = state
+          z = ieor(z, ishft(z, -30)) * (-5435081209227447693_8)
+          z = ieor(z, ishft(z, -27)) * (-3125367156150938639_8)
+          z = ieor(z, ishft(z, -31))
+          
+          ! Extract exactly 24 bits for a standard 32-bit floating point [0.0, 1.0)
+          ran_splitmix64 = real(iand(z, 16777215_8)) / 16777216.0
+        END FUNCTION ran_splitmix64
+        
    end module edmf_mod
       
