@@ -23,10 +23,14 @@ install( FILES ${resource_files}
   DESTINATION etc
   )
 
-# IRI reads its coefficient data files (ccir*.asc, ursi*.asc, dgrf*.dat,
-# igrf*.dat, mcsat*.dat) from a relative path at runtime -- install them
-# alongside the resource files so they're available in the run directory.
+# IRI opens its coefficient files by bare filename at runtime.
+# GEOSgcm_App copies ${GEOSDIR}/etc/* into the experiment RC directory and
+# later copies ${EXPDIR}/RC/* into the run directory without recursion.
+# Install IRI runtime data directly into etc so each file reaches the run
+# directory as a regular file rather than remaining under an IRI subdirectory.
 set (iri_data_files
+  IRI/ig_rz.dat
+  IRI/apf107.dat
   IRI/ccir11.asc IRI/ccir12.asc IRI/ccir13.asc IRI/ccir14.asc IRI/ccir15.asc
   IRI/ccir16.asc IRI/ccir17.asc IRI/ccir18.asc IRI/ccir19.asc IRI/ccir20.asc
   IRI/ccir21.asc IRI/ccir22.asc
@@ -44,7 +48,7 @@ set (iri_data_files
   )
 
 install( FILES ${iri_data_files}
-  DESTINATION etc/IRI
+  DESTINATION etc
   )
 
 esma_add_library (

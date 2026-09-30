@@ -25,6 +25,7 @@ module GEOS_PhysicsGridCompMod
   use GEOS_RadiationGridCompMod,  only : RadiationSetServices => SetServices
   use GEOS_ChemGridCompMod,       only : AChemSetServices     => SetServices
   use GEOS_GwdGridCompMod,        only : GwdSetServices       => SetServices
+  use GEOS_IonDragGridCompMod,    only : IonDragSetServices   => SetServices
 
   use GEOS_UtilsMod, only: GEOS_Qsat
   use Bundle_IncrementMod
@@ -67,6 +68,7 @@ module GEOS_PhysicsGridCompMod
 !EOP
 
   integer ::        GWD
+  integer ::        IONDRAG
   integer ::        SURF
   integer ::        CHEM
   integer ::        MOIST
@@ -113,6 +115,7 @@ contains
 
     integer                                 :: DO_OBIO, DO_CO2CNNEE, ATM_CO2, nCols, NQ
     integer                                 :: DO_WAVES, DO_SEA_SPRAY
+    logical                                 :: GEOS_MLT
 
     real                                    :: SYNCTQ
     character(len=ESMF_MAXSTR), allocatable :: NAMES(:)
@@ -144,6 +147,18 @@ contains
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run,        RC=STATUS )
     VERIFY_(STATUS)
 
+! Get the MAPL object and GEOS-MLT configuration.
+! -----------------------------------------------
+! Ion drag is only part of the GEOS-MLT configuration,
+! following the same runtime GEOS_MLT resource used by ML radiation.
+
+    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+    VERIFY_(STATUS)
+
+    call MAPL_GetResource ( MAPL, GEOS_MLT, Label="GEOS_MLT:", &
+                            DEFAULT=.false., RC=STATUS )
+    VERIFY_(STATUS)
+
 ! Create children`s gridded components and invoke their SetServices
 ! -----------------------------------------------------------------
 
@@ -153,6 +168,12 @@ contains
 ! not be properly restarted
     GWD = MAPL_AddChild(GC, NAME='GWD', SS=GwdSetServices, RC=STATUS)
     VERIFY_(STATUS)
+
+    if (GEOS_MLT) then
+       IONDRAG = MAPL_AddChild(GC, NAME='IONDRAG', SS=IonDragSetServices, RC=STATUS)
+       VERIFY_(STATUS)
+    end if
+
     MOIST = MAPL_AddChild(GC, NAME='MOIST', SS=MoistSetServices, RC=STATUS)
     VERIFY_(STATUS)
     TURBL = MAPL_AddChild(GC, NAME='TURBULENCE', SS=TurblSetServices, RC=STATUS)
@@ -166,9 +187,6 @@ contains
 
 ! Set the state variable specs.
 ! -----------------------------
-
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, DO_OBIO, Label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
@@ -2140,6 +2158,7 @@ contains
    real, pointer, dimension(:,:,:)     :: UIM, VIM, WIM
    real, pointer, dimension(:,:,:)     :: UIT, VIT, SIT
    real, pointer, dimension(:,:,:)     :: UIG, VIG, TIG, TICU
+   real, pointer, dimension(:,:,:)     :: UIDRAG, VIDRAG, TIDRAG_RAW
    real, pointer, dimension(:,:,:)     :: FTU, FTV
    real, pointer, dimension(:,:,:)     :: INTDIS, TOPDIS
    real, pointer, dimension(:,:  )     :: SRFDIS
@@ -2170,9 +2189,10 @@ contains
    real, allocatable, dimension(:,:,:) :: HGT
    real, allocatable, dimension(:,:,:) :: TDPOLD, TDPNEW
    real, allocatable, dimension(:,:,:) :: TFORQS
+   real, allocatable, dimension(:,:,:) :: TIDRAG
    real, allocatable, dimension(:,:)   :: qs,pmean
 
-   logical :: isPresent, SCM_NO_RAD
+   logical :: isPresent, SCM_NO_RAD, GEOS_MLT
    real, allocatable, target :: zero(:,:,:)
 
    real(kind=MAPL_R8), allocatable, dimension(:,:) :: sumdq
@@ -2220,6 +2240,8 @@ contains
 
     call MAPL_GetResource(STATE, SCM_NO_RAD, Label="SCM_NO_RAD:", default=.FALSE., RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetResource(STATE, GEOS_MLT, Label="GEOS_MLT:", default=.FALSE., RC=STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_GetResource(STATE, DUMMY, Label="DPEDT_PHYS:", default='YES', RC=STATUS)
     VERIFY_(STATUS)
@@ -2253,6 +2275,16 @@ contains
     allocate(zero(IM,JM,LM),stat=status)
     VERIFY_(status)
     zero = 0.0
+
+    ! Use zero tendencies outside GEOS-MLT or when a combined tendency
+    ! is not requested by the parent component.
+    UIDRAG    => zero
+    VIDRAG    => zero
+    TIDRAG_RAW => zero
+
+    allocate(TIDRAG(IM,JM,LM),stat=STATUS)
+    VERIFY_(STATUS)
+    TIDRAG = 0.0
 
     call ESMFL_BundleGetPointertoData( BUNDLE,'Q'   ,QV  , RC=STATUS)
     VERIFY_(STATUS)
@@ -2383,6 +2415,12 @@ contains
        VERIFY_(STATUS)
        call MAPL_GetPointer(GEX(GWD)   ,   UIG,    'DUDT', alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
+       if (GEOS_MLT) then
+          call MAPL_GetPointer(GEX(IONDRAG), UIDRAG, 'DUDT_IONDRAG', &
+                               alloc=.true., RC=STATUS)
+          VERIFY_(STATUS)
+          UIDRAG = 0.0
+       end if
     end if
 
     if(associated(DVDT)) then
@@ -2392,6 +2430,12 @@ contains
        VERIFY_(STATUS)
        call MAPL_GetPointer(GEX(GWD)   ,   VIG,    'DVDT', alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
+       if (GEOS_MLT) then
+          call MAPL_GetPointer(GEX(IONDRAG), VIDRAG, 'DVDT_IONDRAG', &
+                               alloc=.true., RC=STATUS)
+          VERIFY_(STATUS)
+          VIDRAG = 0.0
+       end if
     end if
 
     if(associated(DWDT)) then
@@ -2423,6 +2467,12 @@ contains
        VERIFY_(STATUS)
        call MAPL_GetPointer(GEX(GWD ) ,    TIG,    'DTDT', alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
+       if (GEOS_MLT) then
+          call MAPL_GetPointer(GEX(IONDRAG), TIDRAG_RAW, 'DTDT_IONDRAG', &
+                               alloc=.true., RC=STATUS)
+          VERIFY_(STATUS)
+          TIDRAG_RAW = 0.0
+       end if
        call MAPL_GetPointer(GEX(MOIST),   TICU,'DTDTFRIC', alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
     end if
@@ -2517,6 +2567,23 @@ contains
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, userRC=STATUS ); VERIFY_(STATUS)
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
+
+! Ion Drag
+!---------
+! Ion drag is only active in GEOS-MLT. 
+
+    if (GEOS_MLT) then
+       I=IONDRAG
+
+       call MAPL_TimerOn (STATE,GCNames(I))
+        call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, userRC=STATUS ); VERIFY_(STATUS)
+        call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
+       call MAPL_TimerOff(STATE,GCNames(I))
+
+       if (associated(DTDT)) then
+          TIDRAG = TIDRAG_RAW * (PLE(:,:,1:LM) - PLE(:,:,0:LM-1))
+       end if
+    end if
 
 ! Moist Processes
 !----------------
@@ -2785,8 +2852,8 @@ contains
        STN = SIT*(1./MAPL_CP)
     end if
 
-    if(associated(DUDT   )) DUDT    = UIM + UIT + UIG
-    if(associated(DVDT   )) DVDT    = VIM + VIT + VIG
+    if(associated(DUDT   )) DUDT    = UIM + UIT + UIG + UIDRAG
+    if(associated(DVDT   )) DVDT    = VIM + VIT + VIG + VIDRAG
     if(associated(DWDT   )) DWDT    = WIM
 
 !-stochastic-physics
@@ -2853,6 +2920,7 @@ contains
               + TTN   &  ! Mass-Weighted Temperature Tendency due to Moist Processes
               + FRI   &  ! Mass-Weighted Temperature Tendency due to Friction (Turbulence)
               + TIG   &  ! Mass-Weighted Temperature Tendency due to GWD
+              + TIDRAG & ! Mass-Weighted Temperature Tendency due to Ion Drag
               + TICU     ! Mass-Weighted Temperature Tendency due to Cumulus Friction
        else
           TOT = TIR   &  ! Mass-Weighted Temperature Tendency due to Radiation
@@ -2860,6 +2928,7 @@ contains
               + TTN   &  ! Mass-Weighted Temperature Tendency due to Moist Processes
               + FRI   &  ! Mass-Weighted Temperature Tendency due to Friction (Turbulence)
               + TIG   &  ! Mass-Weighted Temperature Tendency due to GWD
+              + TIDRAG & ! Mass-Weighted Temperature Tendency due to Ion Drag
               + TICU     ! Mass-Weighted Temperature Tendency due to Cumulus Friction
        end if
 
@@ -3264,6 +3333,7 @@ contains
     if(associated(DPI)) deallocate(DPI)
     if(associated(FRI)) deallocate(FRI)
     if(associated(STN)) deallocate(STN)
+    deallocate(TIDRAG)
 
 !-stochastic-physics
     if(DO_SPPT) deallocate(TMP,RNDPERT)

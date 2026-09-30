@@ -8,15 +8,12 @@ category: INTERNAL
  NAME             | UNITS   | DIMS | VLOC | UNGRIDDED  | LONG NAME
 #--------------------------------------------------------------------------------------------------------------------
 
- category: IMPORT
-  NAME     | ALIAS | UNITS   | DIMS | VLOC | RESTART | LONG NAME
- PLE      |       | Pa      | xyz  | E    | SKIP    | air_pressure
-  T        |       | K       | xyz  | C    | SKIP    | air_temperature
-  U        |       | m s-1   | xyz  | C    | SKIP    | eastward_wind
-  V        |       | m s-1   | xyz  | C    | SKIP    | northward_wind
-  GZ       |       | m+2 s-2 | xyz  | E    | SKIP    | geopotential_height_at_edges
-  CP_MLT   |       | J kg-1 K-1 | xyz | C | SKIP    | mixture_specific_heat_from_MSIS_composition
-  AREA     |       | m^2     | xy   | N    | SKIP    | grid_box_area
+category: IMPORT
+ NAME | ALIAS | UNITS | DIMS | VLOC | RESTART | LONG NAME
+ T    |       | K     | xyz  | C    | SKIP    | air_temperature
+ U    |       | m s-1 | xyz  | C    | SKIP    | eastward_wind
+ V    |       | m s-1 | xyz  | C    | SKIP    | northward_wind
+ ZLE  |       | m     | xyz  | E    | SKIP    | geopotential_height
 
 category: EXPORT
 #-------------------------------------------------------------------------------------------------------

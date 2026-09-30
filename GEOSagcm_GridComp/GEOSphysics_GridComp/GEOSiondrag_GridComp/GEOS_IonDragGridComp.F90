@@ -14,9 +14,9 @@ module GEOS_IonDragGridCompMod
    ! temperature fields due to collisions with ions, over the top
    ! NLEV_IONDRAG model levels. Ion densities and species fractions are
    ! obtained from IRI (evaluated at real per-column geometric altitude,
-   ! derived from geopotential height GZ the same way mol_mom_diff_mod
-   ! derives altitude on the dynamics side); neutral mass density comes
-   ! from MSIS (via the same msis_wrapper module used on the dynamics
+   ! derived from the GEOS geopotential height field ZLE); neutral number
+   ! density, mass density, and mixture heat capacity come from MSIS
+   ! (via the same msis_wrapper module used on the dynamics
    ! side); ion winds are currently a constant placeholder (to be replaced
    ! by an ML model output after initial commits). Like GEOSgwd_GridComp,
    ! this component only exports tendencies (DUDT_IONDRAG, DVDT_IONDRAG,
@@ -32,7 +32,9 @@ module GEOS_IonDragGridCompMod
 
    use iri_input_module, only: get_iri_densities, N_ION_SPECIES
    use ion_drag_module,  only: compute_drag_fields
-   use msis_wrapper,     only: msis_wrapper_init, msis_prepare_time, msis_point, msis_get_current_f107
+   use msis_wrapper,     only: msis_wrapper_init, msis_prepare_time, msis_point, &
+                               msis_get_current_f107
+   use calc_gas_specific_heat_mlt_mod, only: mlt_mixture_thermo_from_number_density
    use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
    
    implicit none
@@ -47,7 +49,6 @@ module GEOS_IonDragGridCompMod
    type :: GEOS_IonDragGridComp
       logical :: IONDRAG_ON
       integer :: NLEV_IONDRAG
-      real    :: MEAN_MASS
       real    :: HBEG, HEND, HSTEP       ! IRI altitude profile range/step (km)
       real    :: TEST_UI_MS, TEST_VI_MS  ! placeholder constant ion winds
    end type GEOS_IonDragGridComp
@@ -167,16 +168,27 @@ contains
       ! ---------------
       call MAPL_GetResource( MAPL, self%IONDRAG_ON,    Label="IONDRAG_ON:",    default=.true.,  _RC)
       call MAPL_GetResource( MAPL, self%NLEV_IONDRAG,  Label="NLEV_IONDRAG:",  default=10,      _RC)
-      call MAPL_GetResource( MAPL, self%MEAN_MASS,     Label="MEAN_MASS:",     default=16.0,    _RC)
       call MAPL_GetResource( MAPL, self%HBEG,          Label="IRI_HBEG:",      default=100.0,   _RC)
       call MAPL_GetResource( MAPL, self%HEND,          Label="IRI_HEND:",      default=700.0,   _RC)
       call MAPL_GetResource( MAPL, self%HSTEP,         Label="IRI_HSTEP:",     default=10.0,    _RC)
       call MAPL_GetResource( MAPL, self%TEST_UI_MS,    Label="TEST_UI_MS:",    default=50.0,    _RC)
       call MAPL_GetResource( MAPL, self%TEST_VI_MS,    Label="TEST_VI_MS:",    default=0.0,     _RC)
 
-      ! Initialize MSIS (loads msis21.parm and F107_ap_appended.txt).
-      ! Must happen once, here, not in Run.
-      call msis_wrapper_init()
+      ! Validate the vertical and IRI configuration before Run.
+      if (self%NLEV_IONDRAG < 1) then
+         error stop 'IONDRAG: NLEV_IONDRAG must be at least 1'
+      end if
+      if (self%HSTEP <= 0.0) then
+         error stop 'IONDRAG: IRI_HSTEP must be positive'
+      end if
+      if (self%HEND < self%HBEG) then
+         error stop 'IONDRAG: IRI_HEND must be >= IRI_HBEG'
+      end if
+
+      ! Initialize MSIS only when ion drag is enabled.
+      if (self%IONDRAG_ON) then
+         call msis_wrapper_init()
+      end if
 
       RETURN_(ESMF_SUCCESS)
    end subroutine Initialize
@@ -249,25 +261,21 @@ contains
 
          type (ESMF_State) :: INTERNAL
          type (ESMF_Time)  :: CURRENT_TIME
-         type (ESMF_TimeInterval) :: TINT
-         real(ESMF_KIND_R8) :: DT_R8
-         real :: DT_PHYSICS
 
          real, pointer, dimension(:,:) :: LATS_2D, LONS_2D
-         real, allocatable :: LATS_DEG(:), LONS_DEG(:)
+         real, allocatable :: LATS_DEG(:,:), LONS_DEG(:,:)
 
          integer :: IYEAR, DOY, HH, MN, SS
          real    :: UT_HOUR
          real    :: F107_DAILY_NOW, F107_81DAY_NOW
 
-         real, parameter :: GRAV0 = 9.80665
          real, parameter :: FALLBACK_ALT_KM = 220.0
 
-         real, allocatable :: alt_km(:,:,:)   ! (IM, JM, NLEV_IONDRAG) -- per column
+         real, allocatable :: alt_km(:,:,:)
          real, allocatable :: ui(:,:,:), vi(:,:,:)
          real, allocatable :: ne_m3(:,:,:)
          real, allocatable :: species_fraction(:,:,:,:)
-         real, allocatable :: rho_msis(:,:,:)
+         real, allocatable :: n_msis(:,:,:), rho_msis(:,:,:), cp_msis(:,:,:)
          real, allocatable :: drag_u(:,:,:), drag_v(:,:,:)
          real, allocatable :: frictional_heating(:,:,:)
 
@@ -278,12 +286,6 @@ contains
          call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, LATS=LATS_2D, LONS=LONS_2D, _RC)
 #include "IonDrag_GetPointer___.h"
 
-         ! Time step
-         ! ---------
-         call ESMF_AlarmGet( ALARM, ringInterval=TINT, _RC)
-         call ESMF_TimeIntervalGet(TINT, S_R8=DT_R8, _RC)
-         DT_PHYSICS = DT_R8
-
          ! Current model time -> year, day-of-year, UT hour.
          ! ESMF_TimeGet's DayOfYear argument does this natively -- no custom
          ! calendar helper needed (matches GEOS_SolarGridComp.F90's pattern).
@@ -291,33 +293,41 @@ contains
          call ESMF_TimeGet(CURRENT_TIME, YY=IYEAR, DayOfYear=DOY, H=HH, M=MN, S=SS, _RC)
          UT_HOUR = real(HH) + real(MN)/60.0 + real(SS)/3600.0
 
-         ! Flatten lat/lon (radians -> degrees) for the per-column IRI call.
-         allocate(LATS_DEG(IM*JM), LONS_DEG(IM*JM))
-         LATS_DEG = reshape(LATS_2D, (/IM*JM/)) * (180.0/MAPL_PI)
-         LONS_DEG = reshape(LONS_2D, (/IM*JM/)) * (180.0/MAPL_PI)
+         if (self%NLEV_IONDRAG > LM) then
+            if (MAPL_am_I_root()) then
+               print *, 'IONDRAG_ERROR: NLEV_IONDRAG exceeds LM:', &
+                        self%NLEV_IONDRAG, LM
+            end if
+            error stop 'IONDRAG: invalid NLEV_IONDRAG'
+         end if
+
+         ! Cubed-sphere latitude/longitude are two-dimensional fields and are
+         ! not separable latitude and longitude axes. Keep each (i,j) pair.
+         allocate(LATS_DEG(IM,JM), LONS_DEG(IM,JM))
+         LATS_DEG = LATS_2D * (180.0/MAPL_PI)
+         LONS_DEG = LONS_2D * (180.0/MAPL_PI)
 
          allocate(alt_km(IM, JM, self%NLEV_IONDRAG))
          allocate(ui(IM, JM, self%NLEV_IONDRAG), vi(IM, JM, self%NLEV_IONDRAG))
          allocate(ne_m3(IM, JM, self%NLEV_IONDRAG))
          allocate(species_fraction(N_ION_SPECIES, IM, JM, self%NLEV_IONDRAG))
+         allocate(n_msis(IM, JM, self%NLEV_IONDRAG))
          allocate(rho_msis(IM, JM, self%NLEV_IONDRAG))
-         allocate(drag_u(IM, JM, self%NLEV_IONDRAG), drag_v(IM, JM, self%NLEV_IONDRAG))
+         allocate(cp_msis(IM, JM, self%NLEV_IONDRAG))
+         allocate(drag_u(IM, JM, self%NLEV_IONDRAG), &
+                  drag_v(IM, JM, self%NLEV_IONDRAG))
          allocate(frictional_heating(IM, JM, self%NLEV_IONDRAG))
 
-         ! Real per-column altitude (km) for the top NLEV_IONDRAG levels,
-         ! derived from geopotential height at interfaces (GZ), following
-         ! the same approach as mol_mom_diff_mod on the dynamics side. GZ
-         ! interfaces (k, k+1) unambiguously bound layer k regardless of
-         ! top-down/bottom-up orientation, since we take the midpoint.
-         ! Known dynamics-side artifact: GZ can be NaN at the model top for
-         ! specific columns (same condition guarded against in
-         ! cond_driver_mod.F90's sanitize_msis_alt). Fall back to a fixed
-         ! altitude rather than propagating NaN into IRI/MSIS/drag physics.
+         ! ZLE is geopotential height at model interfaces in meters. Use the
+         ! layer midpoint as the altitude supplied to IRI and MSIS. Guard
+         ! invalid top-edge values before calling either empirical model.
          do k = 1, self%NLEV_IONDRAG
             do j = 1, JM
                do i = 1, IM
-                  if (ieee_is_finite(GZ(i,j,k)) .and. ieee_is_finite(GZ(i,j,k+1))) then
-                     alt_km(i,j,k) = 0.5 * ( GZ(i,j,k) + GZ(i,j,k+1) ) / GRAV0 / 1000.0
+                  if (ieee_is_finite(ZLE(i,j,k-1)) .and. &
+                      ieee_is_finite(ZLE(i,j,k))) then
+                     alt_km(i,j,k) = 0.5 * &
+                          (ZLE(i,j,k-1) + ZLE(i,j,k)) / 1000.0
                   else
                      alt_km(i,j,k) = FALLBACK_ALT_KM
                   end if
@@ -335,49 +345,69 @@ contains
          call msis_prepare_time(IYEAR, DOY, nint(UT_HOUR*3600.0))
          call msis_get_current_f107(F107_DAILY_NOW, F107_81DAY_NOW)
 
-         ! Step 2: IRI ion densities / species fractions (real per-column
-         ! altitude via alt_km).
+         ! Step 2: IRI ion densities / species fractions. Latitude and
+         ! longitude are paired two-dimensional cubed-sphere coordinates, and
+         ! alt_km contains the requested GEOS model-level altitude at each
+         ! horizontal grid point.
          call MAPL_TimerOn(MAPL, "-IRI")
-         call get_iri_densities(LATS_DEG, LONS_DEG, IYEAR, DOY, UT_HOUR, &
-                                 F107_DAILY_NOW, F107_81DAY_NOW, &
-                                 alt_km, self%HBEG, self%HEND, self%HSTEP, &
-                                 ne_m3, species_fraction)
+         call get_iri_densities( &
+              LATS_DEG, LONS_DEG, IYEAR, DOY, UT_HOUR, &
+              F107_DAILY_NOW, F107_81DAY_NOW, &
+              alt_km, self%HBEG, self%HEND, self%HSTEP, &
+              ne_m3, species_fraction)
          call MAPL_TimerOff(MAPL, "-IRI")
 
-         ! Step 3: MSIS neutral mass density (top NLEV_IONDRAG levels),
-         ! also evaluated at real per-column altitude via alt_km.
+         ! Step 3: Diagnose neutral number density, mass density, and Cp from
+         ! the same MSIS O/N2/O2 composition used by GEOS-MLT thermodynamics.
          call MAPL_TimerOn(MAPL, "-MSIS")
-         call compute_msis_density(IM, JM, self%NLEV_IONDRAG, IYEAR, DOY, UT_HOUR, LATS_2D, LONS_2D, alt_km, rho_msis, _RC)
+         call compute_msis_state( &
+              IM, JM, self%NLEV_IONDRAG, IYEAR, DOY, UT_HOUR, &
+              LATS_2D, LONS_2D, alt_km, n_msis, rho_msis, cp_msis, _RC)
          call MAPL_TimerOff(MAPL, "-MSIS")
 
          ! Step 4: Ion drag physics -- returns tendencies only.
          call MAPL_TimerOn(MAPL, "-DRAG")
-         call compute_drag_fields(ui, vi, LATS_DEG, ne_m3, species_fraction, &
+         call compute_drag_fields(ui, vi, ne_m3, species_fraction, &
                                    U(:,:,1:self%NLEV_IONDRAG), &
                                    V(:,:,1:self%NLEV_IONDRAG), &
-                                   rho_msis, &
+                                   n_msis, rho_msis, &
                                    T(:,:,1:self%NLEV_IONDRAG), &
-                                   self%MEAN_MASS, drag_u, drag_v, frictional_heating)
+                                   drag_u, drag_v, frictional_heating)
          call MAPL_TimerOff(MAPL, "-DRAG")
 
          ! Step 5: Populate exports ONLY -- U/V/T are read-only imports here.
          ! Tendencies are collected by GEOS_PhysicsGridComp into the combined
          ! physics DUDT/DVDT/DTDT applied by the dynamics (same pattern as
          ! GEOSgwd_GridComp's DUDT/DVDT/DTDT and GEOS_SolarGridComp's MLRADJH).
-         if (associated(DUDT_IONDRAG)) DUDT_IONDRAG = drag_u
-         if (associated(DVDT_IONDRAG)) DVDT_IONDRAG = drag_v
+         if (associated(DUDT_IONDRAG)) then
+            DUDT_IONDRAG = 0.0
+            DUDT_IONDRAG(:,:,1:self%NLEV_IONDRAG) = drag_u
+         end if
+         if (associated(DVDT_IONDRAG)) then
+            DVDT_IONDRAG = 0.0
+            DVDT_IONDRAG(:,:,1:self%NLEV_IONDRAG) = drag_v
+         end if
          if (associated(DTDT_IONDRAG)) then
-            where (rho_msis > 0.0 .and. CP_MLT(:,:,1:self%NLEV_IONDRAG) > 0.0)
-               DTDT_IONDRAG = frictional_heating / (rho_msis * CP_MLT(:,:,1:self%NLEV_IONDRAG))
+            DTDT_IONDRAG = 0.0
+            where (rho_msis > 0.0 .and. cp_msis > 0.0)
+               DTDT_IONDRAG(:,:,1:self%NLEV_IONDRAG) = &
+                    frictional_heating / (rho_msis * cp_msis)
             elsewhere
-               DTDT_IONDRAG = 0.0
+               DTDT_IONDRAG(:,:,1:self%NLEV_IONDRAG) = 0.0
             end where
          end if
-         if (associated(NE_IONDRAG))       NE_IONDRAG       = ne_m3
-         if (associated(RHO_MSIS_IONDRAG)) RHO_MSIS_IONDRAG = rho_msis
+         if (associated(NE_IONDRAG)) then
+            NE_IONDRAG = 0.0
+            NE_IONDRAG(:,:,1:self%NLEV_IONDRAG) = ne_m3
+         end if
+         if (associated(RHO_MSIS_IONDRAG)) then
+            RHO_MSIS_IONDRAG = 0.0
+            RHO_MSIS_IONDRAG(:,:,1:self%NLEV_IONDRAG) = rho_msis
+         end if
 
-         deallocate(LATS_DEG, LONS_DEG, alt_km, ui, vi, ne_m3, species_fraction, &
-                    rho_msis, drag_u, drag_v, frictional_heating)
+         deallocate(LATS_DEG, LONS_DEG, alt_km, ui, vi, ne_m3, &
+                    species_fraction, n_msis, rho_msis, cp_msis, &
+                    drag_u, drag_v, frictional_heating)
 
          RETURN_(ESMF_SUCCESS)
 
@@ -387,59 +417,76 @@ contains
 
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-   subroutine compute_msis_density(IM, JM, NLEV_IONDRAG, IYEAR, DOY, UT_HOUR, &
-                                    LATS_2D, LONS_2D, alt_km_in, rho_out, RC)
-      ! Computes neutral mass density (kg/m^3) over the top NLEV_IONDRAG
-      ! levels from MSIS number densities (O, N2, O2), following the same
-      ! molecular-mass-weighted approach as calc_gas_specific_heat_MLT.
-      ! Units of O_out/N2_out/O2_out from msis_point have been confirmed
-      ! (cm^-3), so the CM3_TO_M3 conversion below is correct as written.
+   subroutine compute_msis_state(IM, JM, NLEV_IONDRAG, IYEAR, DOY, &
+                                 UT_HOUR, LATS_2D, LONS_2D, alt_km_in, &
+                                 n_out, rho_out, cp_out, RC)
+      ! Diagnose the neutral state required by ion drag from MSIS.
+      !
+      ! n_out   : total O + N2 + O2 number density [m-3]
+      ! rho_out : O + N2 + O2 mass density [kg m-3]
+      ! cp_out  : mixture specific heat at constant pressure [J kg-1 K-1]
       integer, intent(in) :: IM, JM, NLEV_IONDRAG
       integer, intent(in) :: IYEAR, DOY
       real,    intent(in) :: UT_HOUR
       real, pointer, dimension(:,:), intent(in) :: LATS_2D, LONS_2D
-      real, intent(in)  :: alt_km_in(:,:,:)   ! (IM, JM, NLEV_IONDRAG), per column
-      real, intent(out) :: rho_out(:,:,:)
+      real, intent(in)  :: alt_km_in(:,:,:)
+      real, intent(out) :: n_out(:,:,:), rho_out(:,:,:), cp_out(:,:,:)
       integer, optional, intent(OUT) :: RC
 
       character(len=ESMF_MAXSTR) :: IAm
       integer :: STATUS
 
       real, parameter :: AMU_KG = 1.66053906660e-27
-      real, parameter :: CM3_TO_M3 = 1.0e6   ! cm^-3 -> m^-3
+      real, parameter :: CM3_TO_M3 = 1.0e6
       real, parameter :: MASS_O  = 16.0
       real, parameter :: MASS_N2 = 28.0
       real, parameter :: MASS_O2 = 32.0
 
       real(4) :: O_out, N2_out, O2_out, T_msis_out
       real(4) :: alt_r4, glat_r4, glong_r4, stl_r4
+      real :: r_mix, cp_mix, cv_mix, kappa_mix
+      real :: phi_o, phi_n2, phi_o2
       integer :: i, j, k
 
-      IAm = "compute_msis_density"
+      IAm = "compute_msis_state"
 
       do k = 1, NLEV_IONDRAG
          do j = 1, JM
             do i = 1, IM
-               alt_r4  = real(alt_km_in(i,j,k), kind=4)
-               glat_r4 = real(LATS_2D(i,j) * (180.0/MAPL_PI), kind=4)
+               alt_r4   = real(alt_km_in(i,j,k), kind=4)
+               glat_r4  = real(LATS_2D(i,j) * (180.0/MAPL_PI), kind=4)
                glong_r4 = real(LONS_2D(i,j) * (180.0/MAPL_PI), kind=4)
-               ! Solar local time (hours) = UT hour + longitude/15
-               stl_r4  = real(UT_HOUR + glong_r4/15.0, kind=4)
+               stl_r4   = real(UT_HOUR + glong_r4/15.0, kind=4)
 
                call msis_point(IYEAR, DOY, nint(UT_HOUR*3600.0), &
                     alt_r4, glat_r4, glong_r4, stl_r4, &
                     O_out, N2_out, O2_out, T_msis_out)
 
-               ! Number density (cm^-3) -> mass density (kg/m^3)
-               rho_out(i,j,k) = ( real(O_out,kind=8)*MASS_O   + &
-                                   real(N2_out,kind=8)*MASS_N2 + &
-                                   real(O2_out,kind=8)*MASS_O2 ) &
-                                 * AMU_KG * CM3_TO_M3
+               if (.not. ieee_is_finite(O_out) .or. &
+                   .not. ieee_is_finite(N2_out) .or. &
+                   .not. ieee_is_finite(O2_out)) then
+                  O_out  = 0.0_4
+                  N2_out = 0.0_4
+                  O2_out = 0.0_4
+               end if
+
+               n_out(i,j,k) = &
+                    (real(O_out) + real(N2_out) + real(O2_out)) * CM3_TO_M3
+
+               rho_out(i,j,k) = &
+                    (real(O_out)*MASS_O + real(N2_out)*MASS_N2 + &
+                     real(O2_out)*MASS_O2) * AMU_KG * CM3_TO_M3
+
+               call mlt_mixture_thermo_from_number_density( &
+                    real(O_out), real(N2_out), real(O2_out), &
+                    r_mix, cp_mix, cv_mix, kappa_mix, &
+                    phi_o, phi_n2, phi_o2)
+               cp_out(i,j,k) = cp_mix
             end do
          end do
       end do
 
       RETURN_(ESMF_SUCCESS)
-   end subroutine compute_msis_density
+   end subroutine compute_msis_state
 
 end module GEOS_IonDragGridCompMod
