@@ -4033,15 +4033,6 @@ contains
          VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME='LFR_GCC',                                        &
-         LONG_NAME ='lightning_flash_rate_for_GEOSCHEMchem',          &
-         UNITS     ='km-2 s-1',                                       &
-         DIMS      = MAPL_DimsHorzOnly,                               &
-         VLOCATION = MAPL_VLocationNone,                              &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
     call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME='UAFMOIST',                                     &
          LONG_NAME ='zonal_wind_after_all_of_moist',   &
@@ -6614,10 +6605,6 @@ contains
        ! Total Precipitable Water
        call MAPL_GetPointer(EXPORT, PTR2D, 'TPW', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR2D)) PTR2D = SUM( ( Q         ) *MASS , 3 )
-
-       ! Lightning Exports
-       call MAPL_GetPointer(EXPORT, PTR2D, 'LFR_GCC', NotFoundOk=.TRUE., RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR2D)) PTR2D = 0.0
 
     else
 
