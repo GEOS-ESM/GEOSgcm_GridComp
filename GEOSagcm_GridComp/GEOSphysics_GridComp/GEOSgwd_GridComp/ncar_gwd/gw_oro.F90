@@ -6,7 +6,7 @@ module gw_oro
 !
 
   use gw_utils, only: GW_PRC, get_unit_vector, dot_2d, midpoint_interp
-  use gw_common, only: GWBand, rair, gw_drag_prof, energy_momentum_adjust
+  use gw_common, only: GWBand, rair, gw_drag_prof, tau_0_ubc_oro, energy_momentum_adjust
 
 implicit none
 private
@@ -25,16 +25,18 @@ contains
 !==========================================================================
 
 !------------------------------------
-subroutine gw_oro_init (band, gw_dc, fcrit2, wavelength, pgwv, oro_south_fac, oro_tndmax)
+subroutine gw_oro_init (band, gw_dc, ew_crit_thresh, ww_crit_thresh, fcrit2, wavelength, pgwv, oro_south_fac, oro_tndmax)
 #include <netcdf.inc>
 
   type(GWBand), intent(inout) :: band
-  real, intent(in) :: gw_dc,fcrit2,wavelength,oro_south_fac,oro_tndmax
+  real, intent(in) :: gw_dc,ew_crit_thresh,ww_crit_thresh,fcrit2,wavelength,oro_south_fac,oro_tndmax
   integer, intent(in)  :: pgwv
 
-! Need to call GWBand for oro waves
+  !==============================================
+  !  Create "Band" structure
+  !----------------------------------------------
 
-  band  = GWBand(pgwv, gw_dc, fcrit2, wavelength )
+  band  = GWBand(pgwv, gw_dc, ew_crit_thresh, ww_crit_thresh, fcrit2, wavelength )
 
   gw_oro_south_fac = oro_south_fac
   gw_oro_tndmax = oro_tndmax
@@ -279,6 +281,8 @@ subroutine gw_oro_ifc( band, &
    real :: xv(ncol)
    real :: yv(ncol)
 
+   real :: tau_0_ubc(ncol)
+
    character(len=1) :: cn
    character(len=9) :: fname(4)
 
@@ -295,6 +299,7 @@ subroutine gw_oro_ifc( band, &
 ! Efficiency of gravity wave momentum transfer.
      effgw(:) = effgw_oro
 
+     tau_0_ubc(:) = tau_0_ubc_oro
 
 ! Determine the orographic wave source
         call gw_oro_src(ncol, pver, band, pint, pmid, delp, &
@@ -312,7 +317,7 @@ subroutine gw_oro_ifc( band, &
      call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
           src_level, tend_level,   dt, t,    &
           piln, rhoi,       nm,   ni, ubm,  ubi,  xv,    yv,   &
-          c,         kvtt,  tau,  utgw,  vtgw, &
+          c,         kvtt,  tau, tau_0_ubc,  utgw,  vtgw, &
           ttgw, gwut, alpha)
 
      ! Apply efficiency and limiters
