@@ -2920,7 +2920,7 @@ contains
               + TTN   &  ! Mass-Weighted Temperature Tendency due to Moist Processes
               + FRI   &  ! Mass-Weighted Temperature Tendency due to Friction (Turbulence)
               + TIG   &  ! Mass-Weighted Temperature Tendency due to GWD
-              + TIDRAG & ! Mass-Weighted Temperature Tendency due to Ion Drag
+              !+ TIDRAG & ! T_IonDrag Disabled: would double count MLRADJH already included in TIR 
               + TICU     ! Mass-Weighted Temperature Tendency due to Cumulus Friction
        else
           TOT = TIR   &  ! Mass-Weighted Temperature Tendency due to Radiation
@@ -2928,7 +2928,7 @@ contains
               + TTN   &  ! Mass-Weighted Temperature Tendency due to Moist Processes
               + FRI   &  ! Mass-Weighted Temperature Tendency due to Friction (Turbulence)
               + TIG   &  ! Mass-Weighted Temperature Tendency due to GWD
-              + TIDRAG & ! Mass-Weighted Temperature Tendency due to Ion Drag
+              !+ TIDRAG & ! T_IonDrag Disabled: would double count MLRADJH already included in TIR 
               + TICU     ! Mass-Weighted Temperature Tendency due to Cumulus Friction
        end if
 
