@@ -51,6 +51,43 @@ install( FILES ${iri_data_files}
   DESTINATION etc
   )
 
+# Install the GEOS-MLT ML ion-velocity runtime files.
+#
+# Expected source-tree layout:
+#
+#   @GEOSmlionvel_GridComp/
+#     geos_mlionvel_driver.py
+#     mlionvel_uivi_colfilm_2020-2022.pth
+#     NormStats_IonVel_UIVI_2020-2022_train.npz
+#
+# The Python driver is installed into lib/Python so MAPL_PythonBridge can
+# import it by module name. Model and normalization files are installed
+# under share/GEOSmlionvel, matching geos_mlionvel_driver.py.
+set (MLIONVEL_RUNTIME_DIR
+  ${CMAKE_CURRENT_SOURCE_DIR}/@GEOSmlionvel_GridComp
+  )
+
+install(
+  FILES
+    ${MLIONVEL_RUNTIME_DIR}/geos_mlionvel_driver.py
+  DESTINATION
+    lib/Python
+  )
+
+install(
+  FILES
+    ${MLIONVEL_RUNTIME_DIR}/mlionvel_uivi_colfilm_2020-2022.pth
+  DESTINATION
+    share/GEOSmlionvel/models
+  )
+
+install(
+  FILES
+    ${MLIONVEL_RUNTIME_DIR}/NormStats_IonVel_UIVI_2020-2022_train.npz
+  DESTINATION
+    share/GEOSmlionvel/norms
+  )
+
 esma_add_library (
   ${this}
   SRCS ${srcs}

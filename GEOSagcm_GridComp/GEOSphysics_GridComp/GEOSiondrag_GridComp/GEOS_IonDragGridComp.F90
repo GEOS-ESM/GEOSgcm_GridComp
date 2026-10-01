@@ -17,8 +17,9 @@ module GEOS_IonDragGridCompMod
    ! derived from the GEOS geopotential-height field ZLE); neutral number
    ! density, mass density, and mixture heat capacity come from MSIS
    ! (via the same msis_wrapper module used on the dynamics
-   ! side); ion winds are currently a constant placeholder (to be replaced
-   ! by an ML model output after initial commits). Like GEOSgwd_GridComp,
+   ! side); ion winds are predicted by a column-based ML UI/VI model through
+   ! MAPL_PythonBridge and remapped from the training pressure grid to the
+   ! current GEOS vertical grid. Like GEOSgwd_GridComp,
    ! this component only exports tendencies (DUDT_IONDRAG, DVDT_IONDRAG,
    ! DTDT_IONDRAG) -- it does not mutate U/V/T directly. Those tendencies
    ! are collected by the parent GEOS_PhysicsGridComp into the combined
@@ -29,6 +30,8 @@ module GEOS_IonDragGridCompMod
 
    use ESMF
    use MAPL
+   use MAPL_PythonBridge, only: MAPL_pybridge_gcinit, &
+                                MAPL_pybridge_gcrun_with_internal
 
    use iri_input_module, only: get_iri_densities, N_ION_SPECIES
    use ion_drag_module,  only: compute_drag_fields
@@ -48,9 +51,12 @@ module GEOS_IonDragGridCompMod
 
    type :: GEOS_IonDragGridComp
       logical :: IONDRAG_ON
+      logical :: MLION_PYBRIDGE_INITIALIZED = .false.
+      integer :: MLION_LAST_YEAR = -1
+      integer :: MLION_LAST_DOY = -1
+      integer :: MLION_LAST_HOUR = -1
       real    :: BOTTOM_PRESSURE_PA      ! Maximum midpoint pressure for ion drag [Pa]
       real    :: HBEG, HEND, HSTEP       ! IRI altitude profile range/step (km)
-      real    :: TEST_UI_MS, TEST_VI_MS  ! placeholder constant ion winds
    end type GEOS_IonDragGridComp
 
    type wrap_
@@ -108,6 +114,7 @@ contains
       ! ------------------------
 
       call MAPL_TimerAdd(GC,    name="DRIVER"     ,_RC)
+      call MAPL_TimerAdd(GC,    name="-MLION"     ,_RC)
       call MAPL_TimerAdd(GC,    name="-IRI"       ,_RC)
       call MAPL_TimerAdd(GC,    name="-MSIS"      ,_RC)
       call MAPL_TimerAdd(GC,    name="-DRAG"      ,_RC)
@@ -169,11 +176,15 @@ contains
       call MAPL_GetResource( MAPL, self%IONDRAG_ON, Label="IONDRAG_ON:", default=.true., _RC)
       call MAPL_GetResource( MAPL, self%BOTTOM_PRESSURE_PA, &
            Label="IONDRAG_BOTTOM_PRESSURE_PA:", default=1.0, _RC)
-      call MAPL_GetResource( MAPL, self%HBEG, Label="IRI_HBEG:", default=70.0, _RC)
-      call MAPL_GetResource( MAPL, self%HEND,          Label="IRI_HEND:",      default=250.0,   _RC)
-      call MAPL_GetResource( MAPL, self%HSTEP,         Label="IRI_HSTEP:",     default=10.0,    _RC)
-      call MAPL_GetResource( MAPL, self%TEST_UI_MS,    Label="TEST_UI_MS:",    default=50.0,    _RC)
-      call MAPL_GetResource( MAPL, self%TEST_VI_MS,    Label="TEST_VI_MS:",    default=0.0,     _RC)
+      call MAPL_GetResource( MAPL, self%HBEG, Label="IRI_HBEG:", default=80.0, _RC)
+      call MAPL_GetResource( MAPL, self%HEND, Label="IRI_HEND:", default=250.0, _RC)
+      call MAPL_GetResource( MAPL, self%HSTEP, Label="IRI_HSTEP:", default=10.0, _RC)
+
+      ! Force a fresh ML ion-wind inference after initialization/restart.
+      self%MLION_PYBRIDGE_INITIALIZED = .false.
+      self%MLION_LAST_YEAR = -1
+      self%MLION_LAST_DOY = -1
+      self%MLION_LAST_HOUR = -1
 
       ! Validate the pressure and IRI configuration before Run.
       if (self%BOTTOM_PRESSURE_PA <= 0.0) then
@@ -264,11 +275,16 @@ contains
          type (ESMF_Time)  :: CURRENT_TIME
 
          real, pointer, dimension(:,:) :: LATS_2D, LONS_2D
+         real, pointer, dimension(:,:) :: MLION_LATS_2D, MLION_LONS_2D
+         real, pointer, dimension(:,:) :: MLION_YY_2D, MLION_DOY_2D
+         real, pointer, dimension(:,:) :: MLION_HH_2D
          real, allocatable :: LATS_DEG(:,:), LONS_DEG(:,:)
 
          integer :: IYEAR, DOY, HH, MN, SS
+         integer :: MLION_HOUR
          real    :: UT_HOUR
          real    :: F107_DAILY_NOW, F107_81DAY_NOW
+         logical :: UPDATE_MLION
 
          real, parameter :: FALLBACK_ALT_KM = 220.0
 
@@ -288,6 +304,12 @@ contains
 
          call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, LATS=LATS_2D, LONS=LONS_2D, _RC)
 #include "IonDrag_GetPointer___.h"
+
+         ! UI/VI must exist even when they are not explicitly requested by
+         ! HISTORY because the Python bridge writes into these exports and the
+         ! ion-drag physics consumes the same arrays immediately afterward.
+         call MAPL_GetPointer(EXPORT, UI_IONDRAG, 'UI_IONDRAG', alloc=.true., _RC)
+         call MAPL_GetPointer(EXPORT, VI_IONDRAG, 'VI_IONDRAG', alloc=.true., _RC)
 
          ! Current model time -> year, day-of-year, UT hour.
          ! ESMF_TimeGet's DayOfYear argument does this natively -- no custom
@@ -351,9 +373,60 @@ contains
             end do
          end do
 
-         ! Step 1: Ion winds: replace with Andrew's ML model output.
-         ui = self%TEST_UI_MS
-         vi = self%TEST_VI_MS
+         ! Step 1: Predict ion winds with the trained ML UI/VI model.
+         !
+         ! The training data are hourly, so inference is updated at most once
+         ! per UTC hour and the most recent UI/VI fields are reused between
+         ! hourly updates. A restart always triggers a fresh inference.
+         MLION_HOUR = max(0, min(23, int(UT_HOUR)))
+
+         UPDATE_MLION = &
+              self%MLION_LAST_YEAR /= IYEAR .or. &
+              self%MLION_LAST_DOY  /= DOY   .or. &
+              self%MLION_LAST_HOUR /= MLION_HOUR
+
+         if (UPDATE_MLION) then
+            call MAPL_TimerOn(MAPL, "-MLION")
+
+            call MAPL_GetPointer(INTERNAL, MLION_LATS_2D, 'MLION_LATS', _RC)
+            call MAPL_GetPointer(INTERNAL, MLION_LONS_2D, 'MLION_LONS', _RC)
+            call MAPL_GetPointer(INTERNAL, MLION_YY_2D,   'MLION_YY',   _RC)
+            call MAPL_GetPointer(INTERNAL, MLION_DOY_2D,  'MLION_DOY',  _RC)
+            call MAPL_GetPointer(INTERNAL, MLION_HH_2D,   'MLION_HH',   _RC)
+
+            MLION_LATS_2D(:,:) = LATS_2D(:,:)
+            MLION_LONS_2D(:,:) = LONS_2D(:,:)
+            MLION_YY_2D(:,:)   = real(IYEAR)
+            MLION_DOY_2D(:,:)  = real(DOY)
+            MLION_HH_2D(:,:)   = real(MLION_HOUR)
+
+            if (.not. self%MLION_PYBRIDGE_INITIALIZED) then
+               call MAPL_pybridge_gcinit( &
+                    "geos_mlionvel_driver", MAPL, IMPORT, EXPORT)
+               self%MLION_PYBRIDGE_INITIALIZED = .true.
+            end if
+
+            call MAPL_pybridge_gcrun_with_internal( &
+                 "geos_mlionvel_driver", MAPL, IMPORT, EXPORT, INTERNAL)
+
+            self%MLION_LAST_YEAR = IYEAR
+            self%MLION_LAST_DOY  = DOY
+            self%MLION_LAST_HOUR = MLION_HOUR
+
+            call MAPL_TimerOff(MAPL, "-MLION")
+         end if
+
+         ! Only the pressure-selected ion-drag domain is consumed by the drag
+         ! calculation. Zero the diagnostic winds below that domain so HISTORY
+         ! clearly shows where ion drag is active.
+         if (nlev_active < LM) then
+            UI_IONDRAG(:,:,nlev_active+1:LM) = 0.0
+            VI_IONDRAG(:,:,nlev_active+1:LM) = 0.0
+         end if
+
+         ui = UI_IONDRAG(:,:,1:nlev_active)
+         vi = VI_IONDRAG(:,:,1:nlev_active)
+
          ! MSIS space-weather indices must be prepared once per timestep,
          ! before any msis_point calls and before the IRI call,
          ! since IRI reuses these same real F10.7/F10.7A values rather than
