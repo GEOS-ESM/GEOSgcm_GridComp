@@ -283,7 +283,6 @@
                 frac, norg, nbc, nhom, dorg, dbc, kappa, INimm, dINimm, aux
       LOGICAL :: mask(nmodes)
      
-      
     !=============inputs local copy================
       tparc=tparc_in      
       pparc=pparc_in      

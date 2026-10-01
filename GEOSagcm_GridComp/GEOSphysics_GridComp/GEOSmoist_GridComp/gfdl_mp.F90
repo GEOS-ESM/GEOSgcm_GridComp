@@ -338,7 +338,7 @@ module gfdl_mp_mod
 
     logical :: do_warm_rain_mp = .false. ! do warm rain cloud microphysics only
 
-    logical :: do_wbf = .false. ! do Wegener Bergeron Findeisen process
+    logical :: do_wbf = .true. ! do Wegener Bergeron Findeisen process
 
     logical :: do_bigg = .false. ! do Bigg process
 
@@ -418,7 +418,7 @@ module gfdl_mp_mod
     real :: tau_smlt =  900.0 ! snow melting time scale (s)
     real :: tau_gmlt = 1200.0 ! graupel melting time scale (s)
     ! subgridz timescales
-    real :: tau_wbf  = 900.0 ! Wegener Bergeron Findeisen time scale (s)
+    real :: tau_wbf  = 600.0 ! Wegener Bergeron Findeisen time scale (s)
 
     real :: ccn_o = 90.0 ! ccn over ocean (1/cm^3)
     real :: ccn_l = 270.0 ! ccn over land (1/cm^3)
@@ -452,7 +452,7 @@ module gfdl_mp_mod
     ! When .true., these coefficients act as Aerodynamic Stokes Efficiencies 
     ! applied to the raw 3D geometric integral.
     logical :: do_3d_acc_cliq = .true.  ! perform the new 3d accretion for cloud water
-    real :: c_psacw = 0.25 ! cloud water to snow (HEAVY aerodynamic reduction required)
+    real :: c_psacw = 0.05 ! cloud water to snow (HEAVY aerodynamic reduction required)
     real :: c_pgacw = 0.80 ! cloud water to graupel/hail (Punches through air)
     real :: c_pracw = 1.00 ! cloud water to rain 
     ! --- Cloud Ice (Frozen) 3D Accretion ---
@@ -3639,18 +3639,19 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
     ! -------------------------------------------------------------------------
     ! Scale-Aware Cloud Ice Threshold (critical_qi_factor)
     ! -------------------------------------------------------------------------
-    ! Applies a resolution-dependent penalty to the critical ice threshold,
+    ! Applies a resolution-dependent adjustment to the critical ice threshold,
     ! partitioning the grid box into unresolved and resolved fractions.
     !   
-    ! - Unresolved scales (1.0 - onemsig): Applies a strict penalty (0.1)
+    ! - Unresolved scales (onemsig = 0): Applies a strict penalty (0.1×)
     !   to sub-grid parameterizations. This forces sub-grid ice to precipitate
     !   as snow earlier, preventing global QI from skyrocketing and negatively 
-    !   impacting the radiation budget.
-    ! - Resolved scales (onemsig): The penalty vanishes (1.0 multiplier).
-    !   Grid-scale clouds get the full ice bucket, allowing resolved large-scale 
-    !   ascent to loft and suspend ice normally.
+    !   impacting the radiation budget. Threshold = 1.0e-5 kg/m³
+    ! - Resolved scales (onemsig = 1): Increases the threshold (2.0×) to
+    !   2.0e-4 kg/m³. Grid-scale clouds get a larger ice bucket, allowing 
+    !   resolved large-scale ascent to loft and suspend ice normally before
+    !   autoconversion to snow occurs.
     ! -------------------------------------------------------------------------
-    critical_qi_factor = psaut_qi_crt * (0.1 * (1.0 - onemsig) + 1.0 * onemsig)
+    critical_qi_factor = psaut_qi_crt * (0.1 + 1.9 * onemsig)
 
     fac_imlt = 1. - exp (- dts / tau_imlt)
     fac_frez = 1. - exp (- dts / tau_frez)
@@ -3845,18 +3846,19 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
     ! -------------------------------------------------------------------------
     ! Scale-Aware Cloud Ice Threshold (critical_qi_factor)
     ! -------------------------------------------------------------------------
-    ! Applies a resolution-dependent penalty to the critical ice threshold,
+    ! Applies a resolution-dependent adjustment to the critical ice threshold,
     ! partitioning the grid box into unresolved and resolved fractions.
     !   
-    ! - Unresolved scales (1.0 - onemsig): Applies a strict penalty (0.1)
+    ! - Unresolved scales (onemsig = 0): Applies a strict penalty (0.1×)
     !   to sub-grid parameterizations. This forces sub-grid ice to precipitate
     !   as snow earlier, preventing global QI from skyrocketing and negatively 
-    !   impacting the radiation budget.
-    ! - Resolved scales (onemsig): The penalty vanishes (1.0 multiplier).
-    !   Grid-scale clouds get the full ice bucket, allowing resolved large-scale 
-    !   ascent to loft and suspend ice normally.
+    !   impacting the radiation budget. Threshold = 1.0e-5 kg/m³
+    ! - Resolved scales (onemsig = 1): Increases the threshold (2.0×) to
+    !   2.0e-4 kg/m³. Grid-scale clouds get a larger ice bucket, allowing 
+    !   resolved large-scale ascent to loft and suspend ice normally before
+    !   autoconversion to snow occurs.
     ! -------------------------------------------------------------------------
-    critical_qi_factor = psaut_qi_crt * (0.1 * (1.0 - onemsig) + 1.0 * onemsig)
+    critical_qi_factor = psaut_qi_crt * (0.1 + 1.9 * onemsig)
 
     fac_frez = 1. - exp (- dts / tau_frez)
 
@@ -4187,18 +4189,19 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
     ! -------------------------------------------------------------------------
     ! Scale-Aware Cloud Ice Threshold (critical_qi_factor)
     ! -------------------------------------------------------------------------
-    ! Applies a resolution-dependent penalty to the critical ice threshold,
+    ! Applies a resolution-dependent adjustment to the critical ice threshold,
     ! partitioning the grid box into unresolved and resolved fractions.
     !   
-    ! - Unresolved scales (1.0 - onemsig): Applies a penalty
+    ! - Unresolved scales (onemsig = 0): Applies a strict penalty (0.1×)
     !   to sub-grid parameterizations. This forces sub-grid ice to precipitate
     !   as snow earlier, preventing global QI from skyrocketing and negatively 
-    !   impacting the radiation budget.
-    ! - Resolved scales (onemsig): The penalty vanishes (1.0 multiplier).
-    !   Grid-scale clouds get the full ice bucket, allowing resolved large-scale 
-    !   ascent to loft and suspend ice normally.
+    !   impacting the radiation budget. Threshold = 1.0e-5 kg/m³
+    ! - Resolved scales (onemsig = 1): Increases the threshold (2.0×) to
+    !   2.0e-4 kg/m³. Grid-scale clouds get a larger ice bucket, allowing 
+    !   resolved large-scale ascent to loft and suspend ice normally before
+    !   autoconversion to snow occurs.
     ! -------------------------------------------------------------------------
-    critical_qi_factor = psaut_qi_crt * (0.1 * (1.0 - onemsig) + 1.0 * onemsig)
+    critical_qi_factor = psaut_qi_crt * (0.1 + 1.9 * onemsig)
 
     fac_i2s = 1. - exp (- dts / tau_i2s)
 
@@ -5170,8 +5173,10 @@ subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den,
                 explicit_wbf_rate = (qsw - qsi) / (qsi * den(k) * (f_k + f_d))
                 explicit_wbf_rate = explicit_wbf_rate * c_wbf * q_ice_bulk
 
-                ! Sub-grid scale grid-patchiness scaling profile
-                explicit_wbf_rate = explicit_wbf_rate * (onemsig + 0.15 * (1.0 - onemsig))
+                ! Resolution-dependent scaling using timescale damping
+                ! As onemsig → 0 (coarse resolution): damping factor → 0 (WBF disabled)
+                ! As onemsig → 1 (fine resolution): damping factor → 1 (WBF fully active)
+                explicit_wbf_rate = explicit_wbf_rate * (onemsig * dts / (tau_wbf + onemsig * dts))
 
                 ! Calculate mass sink over the duration of the time step
                 sink = explicit_wbf_rate * dts

@@ -48,8 +48,8 @@ module GEOSmoist_Process_Library
 
   ! Shift parameters targeted for MODIS polynomial
   real, parameter :: GLAC_SHIFT_LANDICE =  3.0
-  real, parameter :: GLAC_SHIFT_SEAICE  =  0.0
-  real, parameter :: GLAC_SHIFT_SNOW    =  0.0
+  real, parameter :: GLAC_SHIFT_SEAICE  =  2.0
+  real, parameter :: GLAC_SHIFT_SNOW    =  1.0
   real, parameter :: GLAC_SHIFT_OCEAN   =  4.0
   real, parameter :: GLAC_SHIFT_LAND    = -1.0
   ! Convective shift 
@@ -309,7 +309,7 @@ module GEOSmoist_Process_Library
   end type CNV_Tracer_Type
   type(CNV_Tracer_Type), allocatable :: CNV_Tracers(:)
 
-   public :: DEBUG_TQ_ERRORS
+  public :: DEBUG_TQ_ERRORS
   public :: WSUB_OPTION, PDFSHAPE, ANVIL_EVAP_SUBL3
   public :: CNV_Tracer_Type, CNV_Tracers, CNV_Tracers_Init
   public :: USE_BERGERON, USE_AEROSOL_NN, USE_NCLOUD_CLIM
@@ -964,10 +964,6 @@ module GEOSmoist_Process_Library
        ! NNI is supplied in m^-3:
        REAL, PARAMETER :: NNI_SAFE  = 1.e0
 
-       ! Relax the non-convective cap to allow larger crystals (e.g., up to 125-150 um)
-       REAL, PARAMETER :: MAX_RADIUS_ANVIL = 125.e-6
-       REAL, PARAMETER :: MIN_RADIUS_BASELINE = 45.e-6
-
        !-----------------------------------------------------------------------
        ! Air density
        !
@@ -1105,8 +1101,8 @@ module GEOSmoist_Process_Library
                 ! ================================================================
                 ! Decrease RICE maximum outside of deep CNV_FRC regions and anvils
                 ! ================================================================
-                RADIUS = MIN( 150.e-6 - (150.e-6 - MAX_RADIUS_ANVIL) * (1.0 - SQRT(CNV_FRC)), &
-                              MAX(MIN_RADIUS_BASELINE, RADIUS) )
+                RADIUS = MIN( 150.e-6 - (75.e-6 * (1.0 - SQRT(CNV_FRC))), &
+                              MAX(25.e-6, RADIUS) )
              ELSE
                 ! Fall back to a physically realistic baseline radius for pristine, 
                 ! non-convective upper-trop cirrus instead of using the anvil scheme.
