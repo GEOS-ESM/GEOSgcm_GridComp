@@ -46,7 +46,7 @@ module GEOS_GFDL_1M_InterfaceMod
 
   ! Local resource variables
   real    :: TURNRHCRIT_TOP, TURNRHCRIT_SFC
-  real    :: MIN_RH_CRIT, MAX_RH_CRIT, MIN_RH_UNSTABLE, MIN_RH_STABLE
+  real    :: MIN_RH_FREE, MAX_RH_CRIT, MIN_RH_UNSTABLE, MIN_RH_STABLE
   real    :: TAU_EVAP, CCW_EVAP_EFF
   real    :: TAU_SUBL, CCI_EVAP_EFF
   real    :: ANV_ICEFALL
@@ -344,15 +344,15 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     !   - MAX_RH_CRIT     : Absolute ceiling [fraction] applied near the surface (well-mixed BL).
     !   - MIN_RH_UNSTABLE : Target RHCRIT at PBL top for unstable regimes (e.g., Trade Cumulus).
     !   - MIN_RH_STABLE   : Target RHCRIT at PBL top for highly stable regimes (e.g., Stratocumulus).
-    !   - MIN_RH_CRIT     : Absolute floor [fraction] reached in the heterogeneous free troposphere.
-    !   - TURNRHCRIT_TOP  : Height [m] at which the profile fully relaxes to the MIN_RH_CRIT floor.
+    !   - MIN_RH_FREE     : Absolute floor [fraction] reached in the heterogeneous free troposphere.
+    !   - TURNRHCRIT_TOP  : Height [m] at which the profile fully relaxes to the MIN_RH_FREE floor.
     call MAPL_GetResource( MAPL, TURNRHCRIT_SFC  , 'TURNRHCRIT_SFC:'  , DEFAULT= -1.   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MAX_RH_CRIT     , 'MAX_RH_CRIT:'     , DEFAULT= 0.9900, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MIN_RH_UNSTABLE , 'MIN_RH_UNSTABLE:' , DEFAULT= 0.9750, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MIN_RH_STABLE   , 'MIN_RH_STABLE:'   , DEFAULT= 0.8750, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MIN_RH_CRIT     , 'MIN_RH_CRIT:'     , DEFAULT= 0.7250, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, MIN_RH_FREE     , 'MIN_RH_FREE:'     , DEFAULT= 0.7250, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, TURNRHCRIT_TOP  , 'TURNRHCRIT_TOP:'  , DEFAULT= 3250. , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 1     , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 6     , RC=STATUS); VERIFY_(STATUS)
 
     ! -----------------------------------------------------------------------------------------
     ! ICE SETTLING & FALL SPEED MULTIPLIERS
@@ -856,7 +856,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         !$OMP parallel do default(none) &
         !$OMP shared(IM, JM, EIS, SRF_TYPE, MIN_RH_UNSTABLE, MIN_RH_STABLE, &
         !$OMP        TURNRHCRIT_SFC, ZL0, KPBLSC, facEIS_2d, minrhcrit_2d, &
-        !$OMP        turnrhcrit_2d, min_rh_free_2d, MIN_RH_CRIT) &
+        !$OMP        turnrhcrit_2d, min_rh_free_2d, MIN_RH_FREE) &
         !$OMP private(I, J)
         do J=1,JM
           do I=1,IM
@@ -864,7 +864,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              facEIS_2d(I,J) = get_fac_eis(EIS(I,J),SRF_TYPE(I,J))
              minrhcrit_2d(I,J) = MIN_RH_UNSTABLE*(1.0-facEIS_2d(I,J)) + MIN_RH_STABLE*facEIS_2d(I,J)
 
-             min_rh_free_2d(I,J) = MIN(minrhcrit_2d(I,J), MIN_RH_CRIT + 0.05)
+             min_rh_free_2d(I,J) = MIN(minrhcrit_2d(I,J), MIN_RH_FREE)
              
              minrhcrit_2d(I,J) = max(0.7, minrhcrit_2d(I,J))
     
