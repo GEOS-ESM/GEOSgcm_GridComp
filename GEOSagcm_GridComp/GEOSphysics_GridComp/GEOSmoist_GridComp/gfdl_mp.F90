@@ -366,14 +366,14 @@ module gfdl_mp_mod
     real :: n0r_sig = 8.0 ! intercept parameter (significant) of rain (Lin et al. 1983) (1/m^4) (Marshall and Palmer 1948)
     real :: n0s_sig = 3.0 ! intercept parameter (significant) of snow (Lin et al. 1983) (1/m^4) (Gunn and Marshall 1958)
     real :: n0g_sig = 4.0 ! intercept parameter (significant) of graupel (Rutledge and Hobbs 1984) (1/m^4) (Houze et al. 1979)
-    real :: n0h_sig = 4.0 ! intercept parameter (significant) of hail (Lin et al. 1983) (1/m^4) (Federer and Waldvogel 1975)
+    real :: n0h_sig = 5.0 ! intercept parameter (significant) of hail (Lin et al. 1983) (1/m^4) (Federer and Waldvogel 1975)
 
     real :: n0w_exp = 66 ! intercept parameter (exponent) of cloud water (Lin et al. 1983) (1/m^4) (Martin et al. 1994)
     real :: n0i_exp = 10 ! intercept parameter (exponent) of cloud ice (Lin et al. 1983) (1/m^4) (McFarquhar et al. 2015)
     real :: n0r_exp = 6 ! intercept parameter (exponent) of rain (Lin et al. 1983) (1/m^4) (Marshall and Palmer 1948)
     real :: n0s_exp = 6 ! intercept parameter (exponent) of snow (Lin et al. 1983) (1/m^4) (Gunn and Marshall 1958)
     real :: n0g_exp = 6 ! intercept parameter (exponent) of graupel (Rutledge and Hobbs 1984) (1/m^4) (Houze et al. 1979)
-    real :: n0h_exp = 4 ! intercept parameter (exponent) of hail (Lin et al. 1983) (1/m^4) (Federer and Waldvogel 1975)
+    real :: n0h_exp = 5 ! intercept parameter (exponent) of hail (Lin et al. 1983) (1/m^4) (Federer and Waldvogel 1975)
 
     real :: muw = 11.0 ! shape parameter of cloud water in Gamma distribution (Martin et al. 1994)
     real :: mui = 1.0 ! shape parameter of cloud ice in Gamma distribution (McFarquhar et al. 2015)
@@ -387,14 +387,14 @@ module gfdl_mp_mod
     real :: alinr = 842.0 ! "a" in Lin et al. (1983) for rain (Liu and Orville 1969)
     real :: alins = 4.8 ! "a" in Lin et al. (1983) for snow (straka 2009)
     real :: aling = 1.0 ! "a" in Lin et al. (1983), similar to a, but for graupel (Pruppacher and Klett 2010)
-    real :: alinh = 1.0 ! "a" in Lin et al. (1983), similar to a, but for hail (Pruppacher and Klett 2010)
+    real :: alinh = 0.75 ! "a" in Lin et al. (1983), similar to a, but for hail (Pruppacher and Klett 2010)
 
     real :: blinw = 2.0 ! "b" in Lin et al. (1983) for cloud water (Ikawa and Saito 1990)
     real :: blini = 0.41 ! "b" in Lin et al. (1983) for cloud ice (Ikawa and Saita 1990)
     real :: blinr = 0.8 ! "b" in Lin et al. (1983) for rain (Liu and Orville 1969)
     real :: blins = 0.25 ! "b" in Lin et al. (1983) for snow (straka 2009)
     real :: bling = 0.5 ! "b" in Lin et al. (1983), similar to b, but for graupel (Pruppacher and Klett 2010)
-    real :: blinh = 0.5 ! "b" in Lin et al. (1983), similar to b, but for hail (Pruppacher and Klett 2010)
+    real :: blinh = 0.75 ! "b" in Lin et al. (1983), similar to b, but for hail (Pruppacher and Klett 2010)
 
     real :: tice_mlt = 273.16 ! can set ice melting temperature to 268 based on observation (Kay et al. 2016) (K)
 
@@ -423,7 +423,7 @@ module gfdl_mp_mod
     real :: ccn_o = 90.0 ! ccn over ocean (1/cm^3)
     real :: ccn_l = 270.0 ! ccn over land (1/cm^3)
 
-    real :: rthreshu =  7.0e-6 ! unstable critical cloud drop radius (micro m)
+    real :: rthreshu = 10.0e-6 ! unstable critical cloud drop radius (micro m)
     real :: rthreshs = 12.0e-6 !   stable critical cloud drop radius (micro m)
 
     logical :: in_cloud_liq = .true. ! use in-cloud liquid
@@ -453,14 +453,16 @@ module gfdl_mp_mod
     ! applied to the raw 3D geometric integral.
     logical :: do_3d_acc_cliq = .true.  ! perform the new 3d accretion for cloud water
     real :: c_psacw = 0.05 ! cloud water to snow (HEAVY aerodynamic reduction required)
-    real :: c_pgacw = 0.80 ! cloud water to graupel/hail (Punches through air)
+    real :: c_pgacw = 0.80 ! cloud water to graupel (Punches through air)
+    real :: c_phacw = 0.40 ! cloud water to hail (Punches through air)
     real :: c_pracw = 1.00 ! cloud water to rain 
     ! --- Cloud Ice (Frozen) 3D Accretion ---
     ! When .true., these coefficients account for both Aerodynamics AND "Bounce" 
     ! (Sticking Efficiency) applied to the raw 3D geometric integral.
     logical :: do_3d_acc_cice = .false. ! perform the new 3d accretion for cloud ice
-    real :: c_psaci = 0.05 ! cloud ice to snow accretion (Aerodynamics + Low sticking)
+    real :: c_psaci = 0.02 ! cloud ice to snow accretion (Aerodynamics + Low sticking)
     real :: c_pgaci = 0.01 ! cloud ice to graupel accretion (Aerodynamics + Very low sticking)
+    real :: c_phaci = 0.01 ! cloud ice to hail accretion (Aerodynamics + Very low sticking)
     real :: c_praci = 1.00 ! cloud ice to rain accretion (High sticking to liquid)
     ! --- Standard Macro-Particle Accretion ---
     ! Interactions between precipitation species (Unaffected by 3D cice/cliq flags)
@@ -582,7 +584,7 @@ module gfdl_mp_mod
         rh_inc, rh_inr, const_vw, const_vi, const_vs, const_vg, const_vr, rthreshu, rthreshs, &
         ccn_l, ccn_o, igflag, c_paut_scheme, c_paut, tau_imlt, tau_v2l, tau_l2v, tau_i2s, &
         tau_l2r, qi_lim, do_hail, inflag, c_psacw, c_psaci, c_pracs, &
-        c_psacr, c_pgacr, c_pgacs, c_pgacw, c_pgaci, z_slope_liq, z_slope_ice, &
+        c_psacr, c_pgacr, c_pgacs, c_pgacw, c_pgaci, c_phacw, c_phaci, z_slope_liq, z_slope_ice, &
         prog_ccn, c_pracw, c_praci, rad_snow, rad_graupel, rad_rain, cld_min, &
         prog_cin, sedflag, sed_fac, do_sedi_uv, do_sedi_w, do_sedi_heat, icloud_f, &
         irain_f, xr_a, xr_b, xr_c, ntimes, tau_revp, tice_mlt, do_cond_timescale, &
@@ -1087,8 +1089,13 @@ subroutine setup_mp
     craci = craci * c_praci
     csacw = csacw * c_psacw
     csaci = csaci * c_psaci
-    cgacw = cgacw * c_pgacw
-    cgaci = cgaci * c_pgaci
+    if (do_hail) then
+        cgacw = cgacw * c_phacw
+        cgaci = cgaci * c_phaci
+    else
+        cgacw = cgacw * c_pgacw
+        cgaci = cgaci * c_pgaci
+    endif
 
     ! -----------------------------------------------------------------------
     ! accretion between cloud water, cloud ice, rain, snow, and graupel or hail, Lin et al. (1983)
@@ -4519,7 +4526,7 @@ subroutine pgaut (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, den, mppag, c
             sink = 0
             qsm = pgaut_qs_crt / den (k)
             if (qs (k) .gt. qsm) then
-                factor = dts * 1.e-3 * exp (0.09 * tc)
+                factor = dts * 1.e-3 * exp (0.14 * tc)
                 sink = factor / (1. + factor) * (qs (k) - qsm)
             endif
 
