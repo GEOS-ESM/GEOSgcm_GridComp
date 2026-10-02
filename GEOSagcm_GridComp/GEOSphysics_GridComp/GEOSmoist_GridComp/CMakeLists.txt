@@ -6,7 +6,8 @@ set (srcs
   GEOS_BACM_1M_InterfaceMod.F90 cloudnew.F90
   GEOS_MGB2_2M_InterfaceMod.F90 micro_mg3_0.F90 micro_mg_utils.F90
   cldwat2m_micro.F90 wv_saturation.F90 aer_cloud.F90
-  wv_sat_methods.F90
+  wv_sat_methods.F90 
+  GF2020_2M_MicrophysicsMod.F90  
   GEOS_GFDL_1M_InterfaceMod.F90 gfdl_cloud_microphys.F90 gfdl_mp.F90
   GEOS_THOM_1M_InterfaceMod.F90 module_mp_thompson.F90 module_mp_radar.F90 machine.F
   GEOS_NSSL_2M_InterfaceMod.F90 module_mp_nssl_2mom.F90
@@ -67,7 +68,7 @@ endif ()
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES GEOS_Shared GMAO_mpeu MAPL Chem_Shared Chem_Base ESMF::ESMF BLAS::BLAS LAPACK::LAPACK TYPE SHARED)
+  DEPENDENCIES GEOS_Shared GMAO_mpeu MAPL Chem_Shared Chem_Base ESMF::ESMF BLAS::BLAS LAPACK::LAPACK OpenMP::OpenMP_Fortran TYPE SHARED)
 
 file (GLOB_RECURSE rc_files CONFIGURE_DEPENDS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.rc *.yaml)
 foreach ( file ${rc_files} )

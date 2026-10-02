@@ -21,11 +21,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        #compiler: [ifort, gfortran-14, gfortran-15]
+        #compiler: [ifort, gfortran-15, ifx]
         # We remove ifort because for some reason, MAPL3 + ifort + Github CI
         # is running out of space on the device. For now, CircleCI will
         # continue to test ifort.
-        compiler: [gfortran-14, gfortran-15]
+        compiler: [gfortran-15, ifx]
         build-type: [Debug]
         fixture-repo: [GEOS-ESM/GEOSgcm, GEOS-ESM/GEOSldas]
         include:

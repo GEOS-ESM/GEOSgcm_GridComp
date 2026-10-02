@@ -15,11 +15,11 @@ public :: GWBand
 public :: gw_common_init
 public :: gw_newtonian_set
 public :: gw_prof
-public :: gw_drag_prof
-public :: qbo_hdepth_scaling
+public :: gw_drag_prof, gw_flux_diagnostics
 public :: calc_taucd, momentum_flux, momentum_fixer
 public :: energy_momentum_adjust, energy_change, energy_fixer
-public :: hr_cf
+
+public :: tau_0_ubc_cnv, tau_0_ubc_frt, tau_0_ubc_oro
 
 public :: west, east, north, south
 public :: pi
@@ -48,16 +48,10 @@ real(GW_PRC), protected :: cpair = huge(1._GW_PRC)
 real(GW_PRC) :: rog = huge(1._GW_PRC)
 
 
-! Scaling factor for generating QBO
-real(GW_PRC), protected :: qbo_hdepth_scaling
 ! Pressure (Pa) to begin transition to an upper boundary condition of tau = 0.
-!  default(0.0) is not active
-real :: tau_0_ubc = 0.0
-! Inverse Prandtl number.
-real(GW_PRC) :: prndl
-! Heating rate conversion factor
-real(GW_PRC), protected :: hr_cf
-
+real :: tau_0_ubc_cnv = 14.0
+real :: tau_0_ubc_frt = 14.0
+real :: tau_0_ubc_oro = 14.0
 
 !
 ! Private variables
@@ -91,6 +85,9 @@ type :: GWBand
    real :: dc
    ! Reference speeds [m/s].
    real, allocatable :: cref(:)
+   ! NEW: Critical level filtering thresholds
+   real :: eastward_critical_threshold       ! For c > 0 waves (m/s)
+   real :: westward_critical_threshold       ! For c < 0 waves (m/s)
    ! Critical Froude number, squared (usually 1, but CAM3 used 0.5).
    real :: fcrit2
    ! Horizontal wave number [1/m].
@@ -108,10 +105,11 @@ contains
 !==========================================================================
 
 ! Constructor for a GWBand that calculates derived components.
-function new_GWBand(ngwv, dc, fcrit2, wavelength) result(band)
+function new_GWBand(ngwv, dc, ew_crit_thresh, ww_crit_thresh, fcrit2, wavelength) result(band)
   ! Used directly to set the type's components.
   integer, intent(in) :: ngwv
   real, intent(in) :: dc
+  real, intent(in) :: ew_crit_thresh, ww_crit_thresh
   real, intent(in) :: fcrit2
   ! Wavelength in meters.
   real, intent(in) :: wavelength
@@ -131,6 +129,9 @@ function new_GWBand(ngwv, dc, fcrit2, wavelength) result(band)
   allocate(band%cref(-ngwv:ngwv))
   band%cref = [( dc * l, l = -ngwv, ngwv )]
 
+  band%eastward_critical_threshold = ew_crit_thresh
+  band%westward_critical_threshold = ww_crit_thresh
+
   ! Wavenumber and effective wavenumber come from the wavelength.
   band%kwv = 2._GW_PRC*pi / wavelength
   band%effkwv = band%fcrit2 * band%kwv
@@ -140,17 +141,14 @@ end function new_GWBand
 !==========================================================================
 
 subroutine gw_common_init(   &
-     tau_0_ubc_in, ktop_in, gravit_in, rair_in, cpair_in, & 
-     prndl_in, qbo_hdepth_scaling_in, hr_cf_in, errstring)
+     tau_0_ubc_cnv_in, tau_0_ubc_frt_in, tau_0_ubc_oro_in, ktop_in, gravit_in, rair_in, cpair_in, & 
+     errstring)
 
-  real, intent(in) :: tau_0_ubc_in
+  real, intent(in) :: tau_0_ubc_cnv_in, tau_0_ubc_frt_in, tau_0_ubc_oro_in
   integer,  intent(in) :: ktop_in
   real, intent(in) :: gravit_in
   real, intent(in) :: rair_in       ! Gas constant for dry air (J kg-1 K-1)
   real, intent(in) :: cpair_in      ! Heat cap. for dry air (J kg-1 K-1)
-  real, intent(in) :: prndl_in
-  real, intent(in) :: qbo_hdepth_scaling_in
-  real, intent(in) :: hr_cf_in
   ! Report any errors from this routine.
   character(len=*), intent(out) :: errstring
 
@@ -159,14 +157,13 @@ subroutine gw_common_init(   &
 
   errstring = ""
 
-  tau_0_ubc = tau_0_ubc_in
+  tau_0_ubc_cnv = tau_0_ubc_cnv_in
+  tau_0_ubc_frt = tau_0_ubc_frt_in
+  tau_0_ubc_oro = tau_0_ubc_oro_in
   ktop   = ktop_in
   gravit = gravit_in
   rair   = rair_in
   cpair  = cpair_in
-  prndl  = prndl_in
-  qbo_hdepth_scaling = qbo_hdepth_scaling_in
-  hr_cf = hr_cf_in
 
   rog = rair/gravit
 
@@ -259,7 +256,7 @@ end subroutine gw_prof
 subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
      src_level, tend_level, dt, t,    &
      piln, rhoi,    nm,   ni, ubm,  ubi,  xv,    yv,   &
-     c, kvtt, tau,  utgw,  vtgw, &
+     c, kvtt, tau, tau_0_ubc,  utgw,  vtgw, &
      ttgw,  gwut, alpha, ro_adjust, kwvrdg)
 
   !-----------------------------------------------------------------------
@@ -316,13 +313,8 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   ! Molecular thermal diffusivity.
   real, intent(in) :: kvtt(ncol,pver+1)
 
-!++jtb 
-! remove q and dse for now (3/26/20)
-  ! Constituent array.
-  !real(GW_PRC), intent(in) :: q(:,:,:)
-  ! Dry static energy.
-  !real(GW_PRC), intent(in) :: dse(ncol,pver)
-!--jtb
+  ! Top level scaling pressure for setting tau to 0.0
+  real, intent(in) :: tau_0_ubc(ncol)
 
   ! Wave Reynolds stress.
   real(GW_PRC), intent(inout) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
@@ -370,7 +362,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   real(GW_PRC) :: wrk(ncol)
   ! Temporary effkwv
   real(GW_PRC) :: effkwv(ncol)
-
+  real(GW_PRC) :: crit_threshold
   real(GW_PRC) :: near_zero = tiny(1.0_GW_PRC)
 
   ! LU decomposition.
@@ -412,7 +404,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 !$OMP parallel do default(none) &
 !$OMP shared(kbot_src,ktop,kvtt,band,ubi,c,effkwv,rhoi,ni, &
 !$OMP        near_zero,ro_adjust,ncol,alpha,piln,t,rog,src_level,tau) &
-!$OMP private(k,d,l,i,tausat,taudmp,ubmc,ubmc2,wrk,mi)
+!$OMP private(k,d,l,i,tausat,taudmp,ubmc,ubmc2,wrk,mi,crit_threshold)
   do k = kbot_src, ktop, -1
      
      ! Determine the diffusivity for each column.
@@ -433,12 +425,23 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
         ! interfaces.
           ubmc(i) = ubi(i,k) - c(i,l)
 
-              ! Test to see if u-c has the same sign here as the level below.
-          if (ubmc(i) > near_zero .eqv. ubi(i,k+1) > c(i,l)) then
-             if ( (abs(effkwv(i)) > near_zero) .AND. (abs(ni(i,k)) > near_zero) ) & 
-                 tausat(i) = abs( effkwv(i) * rhoi(i,k) * ubmc(i)**3 / ni(i,k) )
+        ! MODIFIED: Use band-specific critical level thresholds
+        ! This allows tuning of eastward vs westward wave penetration
+          if (c(i,l) > 0.0) then
+             ! Eastward waves: use eastward threshold
+             crit_threshold = band%eastward_critical_threshold
+          else
+             ! Westward waves: use westward threshold
+             crit_threshold = band%westward_critical_threshold
+          endif
+        ! Test to see if u-c has the same sign here as the level below,
+        ! using direction-dependent threshold
+          if (abs(ubmc(i)) > crit_threshold .eqv. &
+             abs(ubi(i,k+1) - c(i,l)) > crit_threshold) then
+             if ( (abs(effkwv(i)) > near_zero) .AND. (abs(ni(i,k)) > near_zero) ) &
+                tausat(i) = abs( effkwv(i) * rhoi(i,k) * ubmc(i)**3 / ni(i,k) )
              if (present(ro_adjust)) &
-                 tausat(i) = tausat(i) * sqrt(ro_adjust(i,l,k))
+                tausat(i) = tausat(i) * sqrt(ro_adjust(i,l,k))
           endif
 
         ! Compute stress for each wave. The stress at this level is the
@@ -467,14 +470,18 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   end do
 
   ! Force tau at the top of the model to zero, if requested.
-  if (tau_0_ubc > 0.0) then
-     do k=1,pver+1 
-       do i=1,ncol
-         tau_0_scaling = TANH((pint(i,k)-pint(i,ktop))/tau_0_ubc)
-         tau(i,:,k) = tau(i,:,k)*tau_0_scaling
-       enddo
+  ! tau_0_ubc is a pressure level (Pa)
+   do k=ktop,pver+1 
+     do i=1,ncol
+       if (tau_0_ubc(i) > 0.0) then
+         ! Pressure scale: from model top to tau_0_ubc level
+         ! This creates a smooth transition over that pressure range
+         tau_0_scaling = TANH((pint(i,k) - pint(i,ktop)) / &
+                              (tau_0_ubc(i) - pint(i,ktop)))
+         tau(i,:,k) = tau(i,:,k) * tau_0_scaling
+       endif
      enddo
-  endif
+   enddo
 
   !------------------------------------------------------------------------
   ! Compute the tendencies from the stress divergence.
@@ -557,6 +564,138 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
 end subroutine gw_drag_prof
 
+subroutine gw_flux_diagnostics(ncol, pver, band, c, ubi, tau, xv, yv, &
+     src_level, tend_level, pint, &
+     taugwx, taugwy, fegw, fepgw, &
+     taugwx_east, taugwx_west, taugwy_east, taugwy_west, &
+     fegw_east, fegw_west, fepgw_east, fepgw_west)
+
+  !-----------------------------------------------------------------------
+  ! Compute gravity wave energy and momentum flux diagnostics
+  ! Separates contributions from eastward vs westward propagating waves
+  !
+  ! Called after gw_drag_prof to compute flux profiles for output
+  !-----------------------------------------------------------------------
+
+  !------------------------------Arguments--------------------------------
+  ! Column and vertical dimensions
+  integer, intent(in) :: ncol, pver
+  
+  ! Wavelengths/phase speeds
+  type(GWBand), intent(in) :: band
+  
+  ! Phase speeds for each column and wavenumber
+  real(GW_PRC), intent(in) :: c(ncol,-band%ngwv:band%ngwv)
+  
+  ! Interface wind projections and unit vectors
+  real, intent(in) :: ubi(ncol,pver+1)
+  real, intent(in) :: xv(ncol), yv(ncol)
+  
+  ! Wave Reynolds stress (computed in gw_drag_prof)
+  real(GW_PRC), intent(in) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
+  
+  ! Source and tendency levels
+  integer, intent(in) :: src_level(ncol), tend_level(ncol)
+  
+  ! Pressure coordinates (for level bounds checking)
+  real, intent(in) :: pint(ncol,pver+1)
+  
+  !------ Output: Total fluxes ------
+  ! Zonal and meridional momentum flux
+  real, intent(out) :: taugwx(ncol,pver), taugwy(ncol,pver)
+  ! Kinetic energy flux and phase-speed weighted energy flux
+  real, intent(out) :: fegw(ncol,pver), fepgw(ncol,pver)
+  
+  !------ Output: Separated by wave direction ------
+  ! Eastward waves (c > 0)
+  real, intent(out) :: taugwx_east(ncol,pver), taugwy_east(ncol,pver)
+  real, intent(out) :: fegw_east(ncol,pver), fepgw_east(ncol,pver)
+  
+  ! Westward waves (c < 0)
+  real, intent(out) :: taugwx_west(ncol,pver), taugwy_west(ncol,pver)
+  real, intent(out) :: fegw_west(ncol,pver), fepgw_west(ncol,pver)
+
+  !---------------------------Local Storage-------------------------------
+  integer :: l, k, i
+  integer :: kbot
+  real :: cmu, fpmx, fpmy, fe, fpe
+  
+  ! Determine the lowest level to process
+  kbot = maxval(tend_level)
+
+  ! Initialize all output arrays to zero
+  taugwx = 0.0
+  taugwy = 0.0
+  fegw = 0.0
+  fepgw = 0.0
+  
+  taugwx_east = 0.0
+  taugwx_west = 0.0
+  taugwy_east = 0.0
+  taugwy_west = 0.0
+  fegw_east = 0.0
+  fegw_west = 0.0
+  fepgw_east = 0.0
+  fepgw_west = 0.0
+
+  !-----------------------------------------------------------------------
+  ! Main computation loop: accumulate fluxes over all phase speed bands
+  ! Parallelized with OpenMP reduction for efficiency
+  !-----------------------------------------------------------------------
+
+!$OMP parallel do default(none) &
+!$OMP shared(band,pver,kbot,c,ubi,tau,xv,yv,ncol) &
+!$OMP private(l,k,i,cmu,fpmx,fpmy,fe,fpe) &
+!$OMP reduction(+:taugwx,taugwy,fegw,fepgw, &
+!$OMP            taugwx_east,taugwx_west,taugwy_east,taugwy_west, &
+!$OMP            fegw_east,fegw_west,fepgw_east,fepgw_west)
+  do l = -band%ngwv, band%ngwv
+     do k = 1, pver
+        if (k <= kbot) then
+           do i = 1, ncol
+              
+              ! Compute relative phase speed (c - u)
+              cmu = real(c(i,l)) - ubi(i,k)
+              
+              ! Compute flux components
+              ! Momentum flux: sign(c-u) * tau * unit_vector
+              fpmx = sign(1.0, cmu) * real(tau(i,l,k)) * xv(i)
+              fpmy = sign(1.0, cmu) * real(tau(i,l,k)) * yv(i)
+              
+              ! Kinetic energy flux: (c-u) * sign(c-u) * tau = |c-u| * tau
+              fe = cmu * sign(1.0, cmu) * real(tau(i,l,k))
+              
+              ! Phase-speed weighted energy flux: c * sign(c-u) * tau
+              fpe = real(c(i,l)) * sign(1.0, cmu) * real(tau(i,l,k))
+              
+              ! Accumulate total fluxes
+              taugwx(i,k) = taugwx(i,k) + fpmx
+              taugwy(i,k) = taugwy(i,k) + fpmy
+              fegw(i,k) = fegw(i,k) + fe
+              fepgw(i,k) = fepgw(i,k) + fpe
+              
+              ! Separate by wave propagation direction
+              if (c(i,l) > 0.0_GW_PRC) then
+                 ! Eastward-propagating waves (c > 0)
+                 taugwx_east(i,k) = taugwx_east(i,k) + fpmx
+                 taugwy_east(i,k) = taugwy_east(i,k) + fpmy
+                 fegw_east(i,k) = fegw_east(i,k) + fe
+                 fepgw_east(i,k) = fepgw_east(i,k) + fpe
+              else
+                 ! Westward-propagating waves (c < 0)
+                 taugwx_west(i,k) = taugwx_west(i,k) + fpmx
+                 taugwy_west(i,k) = taugwy_west(i,k) + fpmy
+                 fegw_west(i,k) = fegw_west(i,k) + fe
+                 fepgw_west(i,k) = fepgw_west(i,k) + fpe
+              endif
+              
+           end do
+        end if
+     end do
+  end do
+!$OMP end parallel do
+
+end subroutine gw_flux_diagnostics
 
 !==========================================================================
 
@@ -764,17 +903,21 @@ subroutine momentum_fixer(ncol, pver, tend_level, p, um_flux, vm_flux, utgw, vtg
   real :: rdm(ncol)
   
   ! Total mass from ground to source level: rho*dz = dp/gravit
+  ! Surface sources have no layers below them to receive a correction.
+  rdm = 0.0
   do i = 1, ncol
-     rdm(i) = gravit/(p(i,pver+1)-p(i,tend_level(i)+1))
+     if (tend_level(i) < pver) then
+        rdm(i) = gravit/(p(i,pver+1)-p(i,tend_level(i)+1))
+     end if
   end do
 
   do k = minval(tend_level)+1, pver
-     where (k > tend_level)
+     where (k > tend_level)  ! k > tend_level means BELOW source level
         utgw(:,k) = utgw(:,k) + -um_flux*rdm
         vtgw(:,k) = vtgw(:,k) + -vm_flux*rdm
      end where
   end do
-  
+
 end subroutine momentum_fixer
 
 !==========================================================================
@@ -830,8 +973,12 @@ subroutine energy_fixer(ncol, pver, tend_level, pint, de, ttgw)
   ! Energy change to apply divided by all the mass it is spread across.
   real :: de_dm(ncol)
 
+  ! Surface sources have no layers below them to receive a correction.
+  de_dm = 0.0
   do i = 1, ncol
-     de_dm(i) = -de(i)*gravit/(pint(i,pver+1)-pint(i,tend_level(i)+1))
+     if (tend_level(i) < pver) then
+        de_dm(i) = -de(i)*gravit/(pint(i,pver+1)-pint(i,tend_level(i)+1))
+     end if
   end do
 
   ! Subtract net gain/loss of total energy below tend_level.
@@ -850,95 +997,84 @@ subroutine energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau
                                tend_level, tndmax_in)
 
   integer, intent(in) :: ncol, pver
-  ! Wavelengths.
   type(GWBand), intent(in) :: band
-  ! Pressure interfaces.
   real, intent(in) :: pint(ncol,pver+1)
-  ! Pressure thickness.
   real, intent(in) :: delp(ncol,pver)
-  ! Winds
-  real, intent(in) :: u(ncol,pver)      ! Midpoint zonal winds. ( m s-1)
-  real, intent(in) :: v(ncol,pver)      ! Midpoint meridional winds. ( m s-1)
-  ! timestep
+  real, intent(in) :: u(ncol,pver), v(ncol,pver)
   real, intent(in) :: dt
-  ! Wave phase speeds for each column.
   real(GW_PRC), intent(in) :: c(ncol,-band%ngwv:band%ngwv)
-  ! Wave Reynolds stress.
   real(GW_PRC), intent(in) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
-  ! Efficiency
   real, intent(in) :: effgw(ncol)
-  ! Temperature and winds
-  real, intent(in) :: t(ncol,pver), ubm(ncol,pver), ubi(ncol,pver)
-  ! projected winds.
+  real, intent(in) :: t(ncol,pver), ubm(ncol,pver), ubi(ncol,pver+1)
   real, intent(in) :: xv(ncol), yv(ncol)
-  ! tendency level index index
   integer, intent(in) :: tend_level(ncol)
-! Optional
-  ! Tendency limiter
   real, intent(in), optional :: tndmax_in
-! Output
-  ! Tendencies.
-  real, intent(inout) :: utgw(ncol,pver)
-  real, intent(inout) :: vtgw(ncol,pver)
-  real, intent(inout) :: ttgw(ncol,pver)
 
+  real, intent(inout) :: utgw(ncol,pver), vtgw(ncol,pver), ttgw(ncol,pver)
+
+  !---------------------------Local Storage-------------------------------
   real :: taucd(ncol,pver+1,4)
   real :: um_flux(ncol), vm_flux(ncol)
   real :: de(ncol)
 
-  real :: zlb,pm,rhom,cmu,fpmx,fpmy,fe,fpe,fpml,fpel,fpmt,fpet,dusrcl,dvsrcl,dtsrcl
-  real :: tndmax,utfac,uhtmax
-  integer :: ktop
-  integer :: kbot(ncol)
+  real :: tndmax, utfac, uhtmax
+  integer :: ktop, i, k
 
-  ! Level index.
-  integer :: i,k,l
-
-! Maximum wind tendency from stress divergence (before efficiency applied).
+  ! Maximum wind tendency from stress divergence (before efficiency applied)
   if (present(tndmax_in)) then
      tndmax = tndmax_in
   else
      tndmax = 400._GW_PRC / 86400._GW_PRC
   endif
 
-  ktop=1
-  do i=1,ncol
-   !---------------------------------------------------------------------------------------
-   ! Apply efficiency factor and tendency limiter to prevent unrealistically strong forcing
-   !---------------------------------------------------------------------------------------
-   ! efficiency factor and optional pressure adjustment
-    do k = ktop, pver
-       utgw(i,k) = utgw(i,k)*effgw(i)
-       vtgw(i,k) = vtgw(i,k)*effgw(i)
-       ttgw(i,k) = ttgw(i,k)*effgw(i)
-    end do
-    ! tendency limiter
-    uhtmax = 0.0
-    do k = ktop, pver
-       uhtmax = max(sqrt(utgw(i,k)**2 + vtgw(i,k)**2), uhtmax)
-    end do
-                         utfac  = 1.0
-    if (uhtmax > tndmax) utfac = tndmax/uhtmax
-    do k = ktop, pver
-       utgw(i,k) = utgw(i,k)*utfac
-       vtgw(i,k) = vtgw(i,k)*utfac
-       ttgw(i,k) = ttgw(i,k)*utfac
-    end do
-  end do  ! i=1,ncol
+  ktop = 1
 
-#ifdef ENERGY_ADJUST
-  if (band%ngwv /= 0) then
-   ! compute momentum and energy flux changes
-    taucd = calc_taucd(ncol, pver, band%ngwv, tend_level, tau, c, xv, yv, ubi)
-    call momentum_flux(tend_level, taucd, um_flux, vm_flux)
-    call energy_change(ncol,pver, dt, delp, u, v, utgw, vtgw, ttgw, de)
-   ! add sub-source fixers to tendencies
-    call momentum_fixer(ncol, pver, tend_level, pint, um_flux, vm_flux, utgw, vtgw)
-    call energy_fixer(ncol, pver, tend_level, pint, de, ttgw)
+  do i = 1, ncol
+     !---------------------------------------------------------------------------------------
+     ! Apply efficiency factor and tendency limiter to prevent unrealistically strong forcing
+     !---------------------------------------------------------------------------------------
+     ! Apply efficiency factor
+     do k = ktop, pver
+        utgw(i,k) = utgw(i,k) * effgw(i)
+        vtgw(i,k) = vtgw(i,k) * effgw(i)
+        ttgw(i,k) = ttgw(i,k) * effgw(i)
+     end do
+
+     ! Compute maximum wind tendency magnitude
+     uhtmax = 0.0
+     do k = ktop, pver
+        uhtmax = max(sqrt(utgw(i,k)**2 + vtgw(i,k)**2), uhtmax)
+     end do
+
+     ! Apply tendency limiter
+     utfac = 1.0
+     if (uhtmax > tndmax) then
+        utfac = tndmax / uhtmax
+     endif
+
+     do k = ktop, pver
+        utgw(i,k) = utgw(i,k) * utfac
+        vtgw(i,k) = vtgw(i,k) * utfac
+        ttgw(i,k) = ttgw(i,k) * utfac
+     end do
+  end do
+
+  !-----------------------------------------------------------------------
+  ! Apply momentum and energy conservation fixers
+  !-----------------------------------------------------------------------
+  ! Only apply if we have non-zero stress
+  if (any(tau /= 0.0_GW_PRC)) then
+     ! Compute momentum and energy flux changes
+     taucd = calc_taucd(ncol, pver, band%ngwv, tend_level, tau, c, xv, yv, ubi)
+     call momentum_flux(tend_level, taucd, um_flux, vm_flux)
+     call energy_change(ncol, pver, dt, delp, u, v, utgw, vtgw, ttgw, de)
+
+     ! Add sub-source fixers to tendencies
+     call momentum_fixer(ncol, pver, tend_level, pint, um_flux, vm_flux, utgw, vtgw)
+     call energy_fixer(ncol, pver, tend_level, pint, de, ttgw)
   endif
-#endif
 
-end subroutine energy_momentum_adjust 
+end subroutine energy_momentum_adjust
 
 !==========================================================================
 end module gw_common

@@ -70,6 +70,7 @@ class TranslateSetupOutputs(TranslateFortranData2Py):
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("ComputeUwshcuInv-constants")
+        self.constants["JASON"] = True
 
     def compute(self, inputs):
         config = UWConfiguration(**self.constants)
@@ -80,6 +81,7 @@ class TranslateSetupOutputs(TranslateFortranData2Py):
             externals={
                 "dt": config.dt,
                 "SCLM_SHALLOW": config.SCLM_SHALLOW,
+                "JASON": config.JASON,
             },
         )
 
@@ -157,6 +159,7 @@ class TranslateSetupOutputs(TranslateFortranData2Py):
             MFD_SC=MFD_SC,
             DETR_SC=DETR_SC,
             UMF_SC=UMF_SC,
+            DCM_SC=DCM_SC,
             DP=DP,
             DQADT_SC=DQADT_SC,
             MASS=MASS,

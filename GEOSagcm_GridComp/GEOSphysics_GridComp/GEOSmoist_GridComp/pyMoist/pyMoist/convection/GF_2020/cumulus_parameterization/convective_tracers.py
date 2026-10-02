@@ -7,19 +7,20 @@ import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
-    FloatField_ConvectionTracers,
-    FloatField_ConvectionTracers_Plume,
-    FloatField_Plume,
-    FloatFieldIJ_ConvectionTracers,
-    FloatFieldIJ_Plume,
-    IntFieldIJ_Plume,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, FloatFieldIJ_Plume, IntFieldIJ_Plume
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import get_cloud_boundary_conditions
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import tridiag
-from pyMoist.convection_tracers import ConvectionTracers
-from pyMoist.field_types import ConvectionTracerMetaDataTable_Bool, ConvectionTracerMetaDataTable_Float, ConvectionTracerMetaDataTable_x4
+from pyMoist.convection_tracers import (
+    CONVECTION_TRACER_DIM,
+    ConvectionTracerMetaDataTable_Bool,
+    ConvectionTracerMetaDataTable_Float,
+    ConvectionTracerMetaDataTable_x4,
+    ConvectionTracers,
+    FloatField_ConvectionTracers,
+    FloatField_ConvectionTracers_Plume,
+    FloatFieldIJ_ConvectionTracers,
+)
 
 
 def environment_cloud_levels_chemistry(
@@ -643,15 +644,15 @@ class AtmosphericComposition(NDSLRuntime):
         self.cumulus_parameterization_config = cumulus_parameterization_config
 
         # ensure that the correct data dimension exists
-        quantity_factory.update_data_dimensions({"convection_tracers": config.NUMBER_OF_TRACERS})
+        quantity_factory.update_data_dimensions({CONVECTION_TRACER_DIM: config.NUMBER_OF_TRACERS})
 
         # initialize locals
         self._aa: Local = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
         self._bb: Local = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
         self._cc: Local = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
-        self._dd_tracers: Local = quantity_factory.zeros([I_DIM, J_DIM, K_DIM, "convection_tracers"], "n/a")
-        self._tracer_cloud_boundary: Local = quantity_factory.zeros([I_DIM, J_DIM, "convection_tracers"], "n/a")
-        self._residual: Local = quantity_factory.zeros([I_DIM, J_DIM, "convection_tracers"], "n/a")
+        self._dd_tracers: Local = quantity_factory.zeros([I_DIM, J_DIM, K_DIM, CONVECTION_TRACER_DIM], "n/a")
+        self._tracer_cloud_boundary: Local = quantity_factory.zeros([I_DIM, J_DIM, CONVECTION_TRACER_DIM], "n/a")
+        self._residual: Local = quantity_factory.zeros([I_DIM, J_DIM, CONVECTION_TRACER_DIM], "n/a")
 
         # construct stencils and functions
         self._environment_cloud_levels_chemistry = stencil_factory.from_dims_halo(
