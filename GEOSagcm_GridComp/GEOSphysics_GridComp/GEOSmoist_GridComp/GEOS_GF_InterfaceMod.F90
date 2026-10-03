@@ -289,7 +289,7 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
 
       if (INT(ZERO_DIFF_OTHER) == 0) then
         call MAPL_GetResource(MAPL, USE_INV_LAYERS            , 'USE_INV_LAYERS:'        ,default= .FALSE., RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, USE_SMOOTH_TEND           , 'USE_SMOOTH_TEND:'       ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_SMOOTH_TEND           , 'USE_SMOOTH_TEND:'       ,default= 0,     RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, SATUR_CALC                , 'SATUR_CALC:'            ,default= 1,     RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, BC_METH                   , 'BC_METH:'               ,default= 1,     RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, USE_REBCB                 , 'USE_REBCB:'             ,default= 1,     RC=STATUS );VERIFY_(STATUS)
@@ -936,16 +936,16 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
                  ! Fill the exported 3D pointer if associated
                  if (ptr_is_assoc) PTR3D(I,J,L) = fQi_local
-                 
+
                  ! 2. Update DeepCu QL/QI/CF tendencies
                  DQLDT_DC(I,J,L) = (1.0 - fQi_local) * tmp_local
                  DQIDT_DC(I,J,L) = fQi_local * tmp_local
                  DQADT_DC(I,J,L) = MFD_DC(I,J,L) * SCLM_DEEP / MASS(I,J,L)
-                 
+
                  ! 3. Evap/subl and precip fluxes (kg/kg/s)
                  RSU_CN(I,J,L) = REVSU(I,J,L) * fQi_local
                  REV_CN(I,J,L) = REVSU(I,J,L) * (1.0 - fQi_local)
-                 
+
                  PFI_CN(I,J,L) = PRFIL(I,J,L) * fQi_local
                  PFL_CN(I,J,L) = PRFIL(I,J,L) * (1.0 - fQi_local)
               end do

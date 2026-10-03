@@ -355,9 +355,8 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       call CNV_Tracers_To_AOS()
     else
       ! Internals
-      call MAPL_GetPointer(INTERNAL, CUSH,   'CUSH'    , RC=STATUS); VERIFY_(STATUS)
-    endif ! USE_PYMOIST_UW
-
+    call MAPL_GetPointer(INTERNAL, CUSH,   'CUSH'    , RC=STATUS); VERIFY_(STATUS)
+   
     ! Imports
     call MAPL_GetPointer(IMPORT, FRLAND    ,'FRLAND'    ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, ZLE       ,'ZLE'       ,RC=STATUS); VERIFY_(STATUS)
@@ -671,7 +670,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
   call MAPL_GetPointer(EXPORT, QLENT_SC, 'QLENT_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
   call MAPL_GetPointer(EXPORT, QISUB_SC, 'QISUB_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
   call MAPL_GetPointer(EXPORT, QIENT_SC, 'QIENT_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-
+  
   ! 2. Apply tendencies in a single fused loop with OpenMP
   !--------------------------------------------------------------
   !$OMP PARALLEL DO DEFAULT(NONE) &
@@ -694,13 +693,13 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            CLCN(i,j,k) = MAX(0.0, MIN(CLCN(i,j,k) + DQADT_SC(i,j,k)*MOIST_DT, 1.0))
            
            ! Add detrained shallow convective ice/liquid source
-           QLCN(i,j,k) = MAX(0.0, QLCN(i,j,k) + QLDET_SC(i,j,k)*MOIST_DT/MASS(i,j,k))
-           QICN(i,j,k) = MAX(0.0, QICN(i,j,k) + QIDET_SC(i,j,k)*MOIST_DT/MASS(i,j,k))
+           QLCN(i,j,k) = QLCN(i,j,k) + QLDET_SC(i,j,k)*MOIST_DT/MASS(i,j,k)
+           QICN(i,j,k) = QICN(i,j,k) + QIDET_SC(i,j,k)*MOIST_DT/MASS(i,j,k)
            
            ! Apply condensate tendency from subsidence, and sink from
            ! condensate entrained into shallow updraft. 
-           QLLS(i,j,k) = MAX(0.0, QLLS(i,j,k) + (QLSUB_SC(i,j,k)+QLENT_SC(i,j,k))*MOIST_DT)
-           QILS(i,j,k) = MAX(0.0, QILS(i,j,k) + (QISUB_SC(i,j,k)+QIENT_SC(i,j,k))*MOIST_DT)
+           QLLS(i,j,k) = QLLS(i,j,k) + (QLSUB_SC(i,j,k)+QLENT_SC(i,j,k))*MOIST_DT
+           QILS(i,j,k) = QILS(i,j,k) + (QISUB_SC(i,j,k)+QIENT_SC(i,j,k))*MOIST_DT
 
            ! Get export QL/QI tendencies
            DQLDT_SC(i,j,k) = (QLLS(i,j,k) + QLCN(i,j,k) - DQLDT_SC(i,j,k)) / MOIST_DT
@@ -731,6 +730,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call FILLQ2ZERO( QICN    , MASS, DT=MOIST_DT, DQDT=DQICNDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
   endif
 
+
   if (DEBUG_TQ_ERRORS) then
         do L=1,LM                
           do J=1,JM              
@@ -750,7 +750,10 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        end do ! LM loop          
   endif
 
+  endif ! endif USE_PYMOIST_UW
+
   call MAPL_TimerOff (MAPL,"--UW")
+
 
 end subroutine UW_Run
 

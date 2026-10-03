@@ -380,8 +380,6 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, TURNRHCRIT_UP, 'TURNRHCRIT_UP:', DEFAULT =100., RC=STATUS); VERIFY_(STATUS) !pressure to turn the profile back at upper trop -1 dsiables it
    
     call MAPL_GetResource( MAPL, WBF_partition    , 'USE_BERGERON:'    , DEFAULT=.TRUE.  , RC=STATUS); VERIFY_(STATUS) !WBF partitioning in hystpdf
-
-    
     
     !====================general options======
     

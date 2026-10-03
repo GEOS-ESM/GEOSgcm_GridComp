@@ -13,8 +13,8 @@
 
       implicit none
       private
-     
-      integer, parameter :: nsmx_par = 20 !maximum number of modes allowed    
+      
+      integer, parameter :: nsmx_par = 20 !maximum number of modes allowed
       integer, parameter :: npgauss  = 10
 
       ! Storage of aerosol properties for activation
@@ -31,7 +31,7 @@
       end type AerPropsNew
 
       type(AerPropsNew) :: AeroPropsNew(nsmx_par)
- 
+
       public :: aerosol_activate
       public :: aer_cloud_init
       public :: vertical_vel_variance
@@ -4138,9 +4138,6 @@ end subroutine estimate_qcvar
 
 
  END MODULE aer_cloud
-
-
-
 
 
 

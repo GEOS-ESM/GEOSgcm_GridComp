@@ -21,10 +21,10 @@ def vertical_interpolation_interface(
     """
 
     with computation(FORWARD), interval(-1, None):
-        pb: FloatFieldIJ = log(p_interface_mb * 100)
+        pb: FloatFieldIJ = log(p_interface_mb * 100.0)
 
     with computation(BACKWARD), interval(0, -1):
-        pt: FloatFieldIJ = log(p_interface_mb * 100)
+        pt: FloatFieldIJ = log(p_interface_mb * 100.0)
         if log(target_pressure) > pt and log(target_pressure) <= pb:
             al = (pb - log(target_pressure)) / (pb - pt)
             interpolated_field = field * al + field[0, 0, 1] * (1.0 - al)
@@ -53,13 +53,13 @@ def vertical_interpolation(
         track_points: BoolFieldIJ = False
 
     # with computation(PARALLEL), interval(...):
-    #     p = log(p_interface_mb * 100)
+    #     p = log(p_interface_mb * 100.0)
 
     with computation(FORWARD), interval(-1, None):
-        pb: FloatFieldIJ = 0.5 * (log(p_interface_mb * 100) + log(p_interface_mb[0, 0, 1] * 100))
+        pb: FloatFieldIJ = 0.5 * (log(p_interface_mb * 100.0) + log(p_interface_mb[0, 0, 1] * 100.0))
 
     with computation(BACKWARD), interval(1, None):
-        pt: FloatFieldIJ = 0.5 * (log(p_interface_mb[0, 0, -1] * 100) + log(p_interface_mb * 100))
+        pt: FloatFieldIJ = 0.5 * (log(p_interface_mb[0, 0, -1] * 100.0) + log(p_interface_mb * 100.0))
         if log(target_pressure) > pt and log(target_pressure) <= pb and not track_points:
             al = (pb - log(target_pressure)) / (pb - pt)
             interpolated_field = field[0, 0, -1] * al + field * (1.0 - al)
@@ -67,8 +67,8 @@ def vertical_interpolation(
         pb = pt
 
     with computation(FORWARD), interval(-1, None):
-        pb2: FloatFieldIJ = 0.5 * (log(p_interface_mb * 100) + log(p_interface_mb[0, 0, 1] * 100))
-        if log(target_pressure) > pb2 and log(target_pressure) <= log(p_interface_mb[0, 0, 1] * 100) and not track_points:
+        pb2: FloatFieldIJ = 0.5 * (log(p_interface_mb * 100.0) + log(p_interface_mb[0, 0, 1] * 100.0))
+        if log(target_pressure) > pb2 and log(target_pressure) <= log(p_interface_mb[0, 0, 1] * 100.0) and not track_points:
             interpolated_field = field
             track_points = True
 

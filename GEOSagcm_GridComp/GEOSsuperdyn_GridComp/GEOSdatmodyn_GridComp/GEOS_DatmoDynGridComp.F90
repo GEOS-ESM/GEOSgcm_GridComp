@@ -541,7 +541,17 @@ contains
          UNITS     ='m s-1',                                        &
          DIMS      = MAPL_DimsHorzOnly,                             &
          VLOCATION = MAPL_VLocationNone,                            &
-                                                        __RC__  )
+                                                         __RC__  )
+
+!! Needed for GWD
+
+    call MAPL_AddExportSpec(GC,                                &
+         SHORT_NAME='WSPD_STABLE300M',                              &
+         LONG_NAME ='max_wind_speed_in_stable_cold_surface_layer',  &
+         UNITS     ='m s-1',                                        &
+         DIMS      = MAPL_DimsHorzOnly,                             &
+         VLOCATION = MAPL_VLocationNone,                            &
+                                                         __RC__  )
 
 
     call MAPL_AddExportSpec(GC,                                &
@@ -743,17 +753,6 @@ contains
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationEdge,             RC=STATUS  )
     VERIFY_(STATUS)
-
-!! Needed for GWD
-
-    call MAPL_AddExportSpec ( gc,                                  & 
-       SHORT_NAME         = 'WSPD_STABLE300M',                     &
-       LONG_NAME          = 'max_wind_speed_in_stable_cold_surface_layer', &
-       UNITS              = 'm s-1',                               & 
-       DIMS               = MAPL_DimsHorzOnly,                     & 
-       VLOCATION          = MAPL_VLocationNone,          RC=STATUS ) 
-    VERIFY_(STATUS)        
-
 
 !! Exports added for consistency with Superdyn
 
@@ -1194,6 +1193,7 @@ contains
                         ! else: use interactive winds
 
     integer :: IM,JM,LM,L,K,NQ,ii,NOT1,COLDSTART,Ktrc,iip1,itr,ntracs
+    logical :: is_stable
 
     real, pointer, dimension(:,:,:) :: PLE,PLEOUT
     real, pointer, dimension(:,:,:) :: ZLE
@@ -1212,7 +1212,6 @@ contains
     real, pointer, dimension(:,:,:) :: DQLLSDTDYN,DQILSDTDYN,DQLCNDTDYN,DQICNDTDYN,DCLLSDTDYN,DCLCNDTDYN
     real, pointer, dimension(:,:,:) :: HDQDTDYN,HDTDTDYN,VDQDTDYN,VDTDTDYN
     real, pointer, dimension(:,:,:) :: HDTHDTDYN,VDTHDTDYN
-    real, pointer, dimension(:,:)   :: WSPD_STABLE300M
 
     real, pointer, dimension(:,:)   :: PSFCOBS
     real, pointer, dimension(:,:)   :: PCPOBS
@@ -1222,6 +1221,7 @@ contains
     real, pointer, dimension(:,:)   :: DZ
     real, pointer, dimension(:,:)   :: TA
     real, pointer, dimension(:,:)   :: SPEED
+    real, pointer, dimension(:,:)   :: WSPD_STABLE300M
     real, pointer, dimension(:,:)   :: QA
     real, pointer, dimension(:,:)   :: US
     real, pointer, dimension(:,:)   :: VS
@@ -1263,7 +1263,6 @@ contains
             real,allocatable, dimension(:) :: WF, XXX
 
     real :: t_max_300
-    logical :: is_stable
 
 !=======================================================================
 
@@ -1404,8 +1403,8 @@ contains
     call ESMF_ConfigGetAttribute( cf, SCMAREA, label ='SCM_AREA:', &
                                     DEFAULT=1e10, rc = status )
 
-   
-    
+
+
     if ( CFMIP .and. CFMIP2) then
             print *, " Error - SCM_CFMIP and SCM_CFMIP2 cannot be set at the same time  "  ! This should never happen
             RETURN_(ESMF_FAILURE)
@@ -1751,9 +1750,6 @@ contains
                            ALLOC=.true., __RC__)
       call MAPL_GetPointer(EXPORT, PHISOU,  'PHIS' , &
                            ALLOC=.true., __RC__)
-      call MAPL_GetPointer(EXPORT, WSPD_STABLE300M, 'WSPD_STABLE300M' , &                
-                           ALLOC=.true., __RC__)                     
-
       ALLOCATE( VdTdy(IM,JM,1:LM), __STAT__ )
       ALLOCATE( VdQdy(IM,JM,1:LM), __STAT__ )
       ALLOCATE( UdTdx(IM,JM,1:LM), __STAT__ )
@@ -1935,47 +1931,6 @@ contains
       SPEED(:,:) = SQRT( U(:,:,LM)**2  + V(:,:,LM)**2 )
       US(:,:)    = U(:,:,LM)
       VS(:,:)    = V(:,:,LM)
-
-
-    if(associated(WSPD_STABLE300M)) then
-       WSPD_STABLE300M = 0.0       
-       do j = 1, JM
-          do i = 1, IM
-             ! 1. Check if surface air is freezing                 
-             if (T(i,j,LM) <= MAPL_TICE) then                 
-                is_stable = .false.
-                ! Start tracking max wind AND max temperature      
-                WSPD_STABLE300M(i,j) = SQRT(U(i,j,LM)**2 + V(i,j,LM)**2)
-                t_max_300 = T(i,j,LM)
-                ! 2. Scan the lowest 300m                          
-                do l = LM-1, 1, -1                                 
-                   ! Height AGL
-                   if ( (0.5 * (zle(i,j,l) + zle(i,j,l+1)) - zle(i,j,LM+1)) <= 300.0 ) then
-                      ! Track maximum wind speed                   
-                      WSPD_STABLE300M(i,j) = MAX(WSPD_STABLE300M(i,j), SQRT(U(i,j,l)**2 + V(i,j,l)**2))
-                      ! Track maximum temperature in the layer to measure inversion strength
-                      t_max_300 = MAX(t_max_300, T(i,j,l))
-                   else
-                      exit ! Reached top of 300m layer             
-                   endif  
-                end do
-                ! 3. Check for Inversion and apply Thermodynamic Boost
-                if (t_max_300 > T(i,j,LM)) then
-                   is_stable = .true.
-                   ! Calculate the inversion strength (Delta T)
-                   ! Add 50% of it to the physical wind speed. 
-                   ! (e.g., A 10 K inversion acts like +5 m/s of effective wave-generating speed)
-                   WSPD_STABLE300M(i,j) = WSPD_STABLE300M(i,j) + 0.5 * (t_max_300 - T(i,j,LM))
-                endif
-                ! 4. If no inversion was found, zero it out.
-                if (.not. is_stable) then
-                   WSPD_STABLE300M(i,j) = 0.0
-                endif
-             endif
-          end do
-       end do
-    end if
-
       if (associated(QVDYN))  QVDYN = Q
       if (associated(TDYN))   TDYN = T
       if (associated(UDYN))   UDYN = U
@@ -2086,7 +2041,7 @@ contains
 !    Forcing based on Phase 2 of CGILS intercomparison. See Blossey et al. (2016)
       if ( CFMIP3 ) then
 
-         ZLO = 0.5*(ZLE(:,:,0:LM-1)+ZLE(:,:,1:LM))
+     ZLO = 0.5*(ZLE(:,:,0:LM-1)+ZLE(:,:,1:LM))
 
          if (CFCSE .eq. 12) then
            zrel=1200.
@@ -2180,10 +2135,50 @@ contains
          if (associated(DQVDTDYN))  DQVDTDYN = DQVDTDYN - CFMIPRLX * ( Q - QOBS )
       end if
 
+      call MAPL_GetPointer(EXPORT, WSPD_STABLE300M, 'WSPD_STABLE300M', &
+                           ALLOC=.true., __RC__)
+      if (associated(WSPD_STABLE300M)) then
+         WSPD_STABLE300M = 0.0
+         do J = 1, JM
+            do I = 1, IM
+               ! 1. Check if surface air is freezing (T at lowest model level)
+               if (T(I,J,LM) <= MAPL_TICE) then
+                  ! Assume no inversion until proven otherwise
+                  is_stable = .false.
+                  ! Start tracking max wind AND max temperature
+                  WSPD_STABLE300M(I,J) = SQRT(U(I,J,LM)**2 + V(I,J,LM)**2)
+                  t_max_300 = T(I,J,LM)
+                  ! 2. Scan the lowest 300m AGL (ZLE(I,J,LM) is the surface height)
+                  do K = LM-1, 1, -1
+                     ! Height AGL at mid-level using ZLO (0.5*(ZLE(K-1)+ZLE(K)))
+                     if ( (ZLO(I,J,K) - ZLE(I,J,LM)) <= 300.0 ) then
+                        ! Track maximum wind speed
+                        WSPD_STABLE300M(I,J) = MAX(WSPD_STABLE300M(I,J), &
+                                                   SQRT(U(I,J,K)**2 + V(I,J,K)**2))
+                        ! Track maximum temperature in the layer to measure inversion strength
+                        t_max_300 = MAX(t_max_300, T(I,J,K))
+                     else
+                        exit ! Reached top of 300m layer
+                     endif
+                  end do
+                  ! 3. Check for inversion and apply the thermodynamic boost
+                  if (t_max_300 > T(I,J,LM)) then
+                     is_stable = .true.
+                     ! Add 50% of inversion strength to the max physical wind speed
+                     WSPD_STABLE300M(I,J) = WSPD_STABLE300M(I,J) + &
+                                            0.5 * (t_max_300 - T(I,J,LM))
+                  endif
+                  ! 4. If no inversion found, not a katabatic zone; zero out wind speed
+                  if (.not. is_stable) then
+                     WSPD_STABLE300M(I,J) = 0.0
+                  endif
+               endif
+            end do
+         end do
+      end if
+
       call MAPL_GetPointer(EXPORT, PREF,   'PREF'    , &
                            ALLOC=.true., __RC__)
-
-
       PREF = PREF_IN
 
       VARFLT = 0.
@@ -2645,4 +2640,3 @@ end function SecOfYear
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 end module GEOS_DatmoDynGridCompMod
-

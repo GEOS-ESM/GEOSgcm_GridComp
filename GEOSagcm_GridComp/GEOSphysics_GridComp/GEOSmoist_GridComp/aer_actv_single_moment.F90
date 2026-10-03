@@ -4,7 +4,7 @@ MODULE Aer_Actv_Single_Moment
 
    USE ESMF
    USE MAPL
-   USE aer_cloud, only: AeroPropsNew 
+   USE aer_cloud, only: AeroPropsNew
    !-------------------------------------------------------------------------------------------------------------------------
    IMPLICIT NONE
    PUBLIC ::  Aer_Activation
@@ -612,4 +612,3 @@ CONTAINS
 
 
 END MODULE Aer_Actv_Single_Moment
-

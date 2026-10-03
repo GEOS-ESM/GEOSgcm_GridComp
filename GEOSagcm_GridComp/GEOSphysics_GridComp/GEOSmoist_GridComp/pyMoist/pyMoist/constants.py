@@ -1,30 +1,18 @@
 """File containing constants used in multiple components of pyMoist"""
 
-import os
-
 import numpy as np
 from ndsl.dsl.typing import Float, Int
 
 
 _f32 = np.float32
 _f64 = np.float64
-_i32 = np.int32
-
-# Define number of tracers in UW
-EXPERIMENT_TRACERS = {"arm_97jul": 18, "arm_97jun": 18, "armtwp_ice": 18, "bomex": 18, "gcm-fp": 23}
-EXP_NAME = os.getenv("EXP_NAME", "")
-if EXP_NAME == "":
-    raise ValueError(f"EXP_NAME env var is not set - experiment unknown. Options are {list(EXPERIMENT_TRACERS.keys())}")
-if EXP_NAME not in EXPERIMENT_TRACERS:
-    raise ValueError(f"Experiment {EXP_NAME} unknown - tracers can't be initialized.")
-NCNST = _i32(EXPERIMENT_TRACERS[EXP_NAME])
-NUMBER_OF_TRACERS = NCNST
-
-NUMBER_OF_TRACERS = NCNST
 
 # MAPL_UNDEF is set to 1E15 in the Fortran
 # We keep it as is for now to match 11.5.2 GEOS
 MAPL_UNDEF = Float(1e15)
+
+# Fix negative
+FIX_NEG = False
 
 # Math Constants
 MAPL_PI_R8 = _f64(3.14159265358979323846e0)
@@ -145,3 +133,6 @@ R_AIR = Float(3.47e-3)  # m3 Pa kg-1K-1, also used in GFDL_1M, but defined in ae
 
 # Python equivalent of Fortran's tiny(X)
 FLOAT_TINY = np.finfo(Float).tiny
+
+# Define number of modes for Aerosol Activation
+N_MODES = 14

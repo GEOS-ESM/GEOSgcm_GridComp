@@ -596,7 +596,7 @@ contains
              VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
             VERIFY_(STATUS)
 
-      case (2)
+    case (2)
             call MAPL_AddImportSpec ( GC,                                          &
              LONG_NAME  = 'total_momentum_diffusivity',                            &
              UNITS      = 'm+2 s-1',                                               &
@@ -6750,4 +6750,3 @@ contains
   end subroutine FINALIZE
 
 end module GEOS_MoistGridCompMod
-
