@@ -245,23 +245,28 @@ contains
       character(len=ESMF_MAXSTR)     :: ERRstring
 
     logical :: JASON_BKG, JASON_ORO
-    real    :: NCAR_TAU_TOP_ZERO
+    real    :: NCAR_CNV_TAU_TOP_ZERO
+    real    :: NCAR_FRT_TAU_TOP_ZERO
+    real    :: NCAR_ORO_TAU_TOP_ZERO
+    real    :: NCAR_SIGMA
     real    :: NCAR_PRNDL
     real    :: NCAR_QBO_HDEPTH_SCALING
     integer :: NCAR_ORO_PGWV, NCAR_BKG_PGWV
     real    :: NCAR_ORO_GW_DC, NCAR_BKG_GW_DC
+    real    :: NCAR_ORO_EW_CRIT_THRESH, NCAR_BKG_EW_CRIT_THRESH
+    real    :: NCAR_ORO_WW_CRIT_THRESH, NCAR_BKG_WW_CRIT_THRESH
     real    :: NCAR_ORO_FCRIT2, NCAR_BKG_FCRIT2
     real    :: NCAR_ORO_WAVELENGTH, NCAR_BKG_WAVELENGTH
     real    :: NCAR_ORO_SOUTH_FAC
     real    :: NCAR_ORO_TNDMAX
     real    :: NCAR_BKG_TNDMAX
     real    :: NCAR_HR_CF      ! Grid cell convective conversion factor
+    real    :: NCAR_BKG_TAU    ! Tau for background frontal forcing
     real    :: NCAR_TR_EFF     ! Convective region efficiency factor
     real    :: NCAR_ET_EFF     ! Frontal region efficiency factor
-    real    :: NCAR_ET_TAUBGND ! Extratropical background frontal forcing
-    logical :: NCAR_ET_USE_DQCDT
-    logical :: NCAR_ET_USE_SPEED
-    logical :: NCAR_DC_BERES
+    real    :: NCAR_ET_FAC_DTDTM ! Scale factor for DTDT from cldmicro for frontal forcing
+    real    :: NCAR_ET_FAC_WS300 ! Sacle factor for stable wind speeds to provide katabatic wind forcing in extra-tropics
+    logical :: NCAR_DC_BERES 
     integer :: GEOS_PGWV
     real :: NCAR_EFFGWBKG
     real :: NCAR_DC_BERES_SRC_LEVEL
@@ -311,7 +316,7 @@ contains
       if(dateline.eq.'CF') imsize = imsize*4
       call MAPL_GetResource(MAPL,STRETCH_FACTOR,'AGCM.STRETCH_FACTOR:', default=1.0, _RC)
       imsize = imsize*CEILING(STRETCH_FACTOR)
-      sigma = 1.0-0.9839*exp(-0.09835*4.e7*0.9/imsize/1000.) ! Based on Arakawa 2011 sigma used in GF2020
+      sigma = 1.0-0.9839*exp(-0.09835*4.e7*0.9/imsize/3000.) ! Based on Arakawa 2011 sigma used in GF2020
 
       ! Background Gravity wave drag
       ! ----------------------------
@@ -360,18 +365,21 @@ contains
 
 ! NCAR GWD settings
 ! -----------------
-      call MAPL_GetResource( MAPL, NCAR_TAU_TOP_ZERO, Label="NCAR_TAU_TOP_ZERO:", default=50.0, _RC) ! 0.5 hPa
-      call MAPL_GetResource( MAPL, NCAR_PRNDL, Label="NCAR_PRNDL:", default=0.50, _RC)
+      call MAPL_GetResource( MAPL, NCAR_CNV_TAU_TOP_ZERO, Label="NCAR_CNV_TAU_TOP_ZERO:", default=  30.0 , _RC)
+      call MAPL_GetResource( MAPL, NCAR_FRT_TAU_TOP_ZERO, Label="NCAR_FRT_TAU_TOP_ZERO:", default=   5.0 , _RC)
+      call MAPL_GetResource( MAPL, NCAR_ORO_TAU_TOP_ZERO, Label="NCAR_ORO_TAU_TOP_ZERO:", default=   5.0 , _RC)
+
                                    NCAR_QBO_HDEPTH_SCALING = 1.0 - 0.75*sigma
       call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=NCAR_QBO_HDEPTH_SCALING, _RC)
+
                                    NCAR_HR_CF = CEILING(20.0*sigma)
       call MAPL_GetResource( MAPL, NCAR_HR_CF, Label="NCAR_HR_CF:", default=NCAR_HR_CF, _RC)
 
-      call gw_common_init( NCAR_TAU_TOP_ZERO , 1 , &
+      call gw_common_init( NCAR_CNV_TAU_TOP_ZERO, NCAR_FRT_TAU_TOP_ZERO , NCAR_ORO_TAU_TOP_ZERO , 1 , &
            MAPL_GRAV , &
            MAPL_RGAS , &
            MAPL_CP , &
-           NCAR_PRNDL, NCAR_QBO_HDEPTH_SCALING, NCAR_HR_CF, ERRstring )
+           ERRstring )
 
       ! Beres Scheme File
       call MAPL_GetResource( MAPL, BERES_FILE_NAME, Label="BERES_FILE_NAME:", &
@@ -383,20 +391,21 @@ contains
       call MAPL_GetResource( MAPL, NCAR_TR_EFF,         Label="NCAR_TR_EFF:",         default=1.0,    _RC)
       call MAPL_GetResource( MAPL, NCAR_ET_EFF,         Label="NCAR_ET_EFF:",         default=1.0,    _RC)
 
-      call MAPL_GetResource( MAPL, NCAR_ET_USE_DQCDT,   Label="NCAR_ET_USE_DQCDT:",   default=.TRUE., _RC)
-      call MAPL_GetResource( MAPL, NCAR_ET_USE_SPEED,   Label="NCAR_ET_USE_SPEED:",   default=.FALSE.,_RC)
-
       ! 1. Default to classic rigid latitude tuning
-      NCAR_ET_TAUBGND = 6.4 
+      NCAR_BKG_TAU = 6.4 
       ! 2. Set baselines for independent runs
-      if (NCAR_ET_USE_DQCDT .or. NCAR_ET_USE_SPEED) NCAR_ET_TAUBGND = 10.0
-      call MAPL_GetResource( MAPL, NCAR_ET_TAUBGND,     Label="NCAR_ET_TAUBGND:",     default=NCAR_ET_TAUBGND, _RC)
+      call MAPL_GetResource( MAPL, NCAR_ET_FAC_DTDTM,   Label="NCAR_ET_FAC_DTDTM:",   default=0.75,   _RC)
+      call MAPL_GetResource( MAPL, NCAR_ET_FAC_WS300,   Label="NCAR_ET_FAC_WS300:",   default=1.25,   _RC)
+      if (NCAR_ET_FAC_DTDTM /= 0.0 .or. NCAR_ET_FAC_WS300 /= 0.0) NCAR_BKG_TAU = 3.0*sigma
+      call MAPL_GetResource( MAPL, NCAR_BKG_TAU,     Label="NCAR_BKG_TAU:",     default=NCAR_BKG_TAU, _RC)
 
       call MAPL_GetResource( MAPL, NCAR_BKG_TNDMAX,     Label="NCAR_BKG_TNDMAX:",     default=250.0,  _RC)
       NCAR_BKG_TNDMAX = NCAR_BKG_TNDMAX/86400.0
       ! Beres DeepCu
       call MAPL_GetResource( MAPL, NCAR_DC_BERES_SRC_LEVEL, "NCAR_DC_BERES_SRC_LEVEL:", DEFAULT=70000.0, _RC)
       call MAPL_GetResource( MAPL, NCAR_DC_BERES, "NCAR_DC_BERES:", DEFAULT=.TRUE., _RC)
+      call MAPL_GetResource( MAPL, NCAR_BKG_EW_CRIT_THRESH, "NCAR_BKG_EW_CRIT_THRESH:", DEFAULT=1.0e-3, _RC)
+      call MAPL_GetResource( MAPL, NCAR_BKG_WW_CRIT_THRESH, "NCAR_BKG_WW_CRIT_THRESH:", DEFAULT=1.0e-10, _RC)
       if (use_threads) then
           bounds = MAPL_find_bounds(JM, num_threads)
           do thread = 0, num_threads-1
@@ -404,9 +413,9 @@ contains
                 call gw_beres_init( BERES_FILE_NAME ,  &
                                     self%workspaces(thread)%beres_band, &
                                     self%workspaces(thread)%beres_dc_desc, &
-                                    NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, &
-                                    NCAR_BKG_WAVELENGTH, NCAR_DC_BERES_SRC_LEVEL, &
-                                    1000.0, .TRUE., NCAR_TR_EFF, NCAR_ET_EFF, NCAR_ET_TAUBGND, NCAR_ET_USE_DQCDT, NCAR_ET_USE_SPEED, &
+                                    NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_EW_CRIT_THRESH, NCAR_BKG_WW_CRIT_THRESH, NCAR_BKG_FCRIT2, &
+                                    NCAR_BKG_WAVELENGTH, NCAR_DC_BERES_SRC_LEVEL, NCAR_HR_CF, NCAR_QBO_HDEPTH_SCALING, &
+                                    1000.0, .TRUE., NCAR_TR_EFF, NCAR_ET_EFF, NCAR_BKG_TAU, NCAR_ET_FAC_DTDTM, NCAR_ET_FAC_WS300, &
                                     NCAR_BKG_TNDMAX, NCAR_DC_BERES, &
                                     IM*JM_thread, LATS(:,bounds(thread+1)%min:bounds(thread+1)%max))
           end do
@@ -414,9 +423,9 @@ contains
           call gw_beres_init( BERES_FILE_NAME ,  &
                               self%workspaces(0)%beres_band, &
                               self%workspaces(0)%beres_dc_desc, &
-                              NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, &
-                              NCAR_BKG_WAVELENGTH, NCAR_DC_BERES_SRC_LEVEL, &
-                              1000.0, .TRUE., NCAR_TR_EFF, NCAR_ET_EFF, NCAR_ET_TAUBGND, NCAR_ET_USE_DQCDT, NCAR_ET_USE_SPEED, &
+                              NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_EW_CRIT_THRESH, NCAR_BKG_WW_CRIT_THRESH, NCAR_BKG_FCRIT2, &
+                              NCAR_BKG_WAVELENGTH, NCAR_DC_BERES_SRC_LEVEL, NCAR_HR_CF, NCAR_QBO_HDEPTH_SCALING, &
+                              1000.0, .TRUE., NCAR_TR_EFF, NCAR_ET_EFF, NCAR_BKG_TAU, NCAR_ET_FAC_DTDTM, NCAR_ET_FAC_WS300, &
                               NCAR_BKG_TNDMAX, NCAR_DC_BERES, &
                               IM*JM, LATS )
       endif
@@ -425,13 +434,16 @@ contains
       call MAPL_GetResource( MAPL, NCAR_ORO_PGWV,       Label="NCAR_ORO_PGWV:",       default=0,    _RC)
       call MAPL_GetResource( MAPL, NCAR_ORO_GW_DC,      Label="NCAR_ORO_GW_DC:",      default=2.5,  _RC)
       call MAPL_GetResource( MAPL, NCAR_ORO_WAVELENGTH, Label="NCAR_ORO_WAVELENGTH:", default=1.e5, _RC)
+      call MAPL_GetResource( MAPL, NCAR_ORO_EW_CRIT_THRESH, "NCAR_ORO_EW_CRIT_THRESH:", DEFAULT=1.0e-2, _RC)
+      call MAPL_GetResource( MAPL, NCAR_ORO_WW_CRIT_THRESH, "NCAR_ORO_WW_CRIT_THRESH:", DEFAULT=1.0e-2, _RC)
       if (self%NCAR_NRDG > 0) then
           call MAPL_GetResource( MAPL, NCAR_ORO_FCRIT2, Label="NCAR_ORO_FCRIT2:",     default=1.0,  _RC)
           call MAPL_GetResource( MAPL, NCAR_ORO_TNDMAX, Label="NCAR_ORO_TNDMAX:",     default=400.0,_RC)
           NCAR_ORO_TNDMAX = NCAR_ORO_TNDMAX/86400.0
         ! Ridge Scheme
           do thread = 0, num_threads-1
-             call gw_rdg_init ( self%workspaces(thread)%rdg_band, NCAR_ORO_GW_DC, NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_TNDMAX, NCAR_ORO_PGWV )
+             call gw_rdg_init (self%workspaces(thread)%rdg_band, NCAR_ORO_GW_DC, NCAR_ORO_EW_CRIT_THRESH, NCAR_ORO_WW_CRIT_THRESH, &
+                               NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_TNDMAX, NCAR_ORO_PGWV)
           end do
       else
         ! Old Scheme
@@ -440,9 +452,9 @@ contains
           call MAPL_GetResource( MAPL, NCAR_ORO_TNDMAX,     Label="NCAR_ORO_TNDMAX:",     default=400.0, _RC)
           NCAR_ORO_TNDMAX = NCAR_ORO_TNDMAX/86400.0
           do thread = 0, num_threads-1
-             call gw_oro_init ( self%workspaces(thread)%oro_band, NCAR_ORO_GW_DC, &
-                                NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_PGWV, &
-                                NCAR_ORO_SOUTH_FAC, NCAR_ORO_TNDMAX )
+             call gw_oro_init (self%workspaces(thread)%oro_band, NCAR_ORO_GW_DC, NCAR_ORO_EW_CRIT_THRESH, NCAR_ORO_WW_CRIT_THRESH, &
+                               NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_PGWV, &
+                               NCAR_ORO_SOUTH_FAC, NCAR_ORO_TNDMAX )
           end do
       endif
 
@@ -613,6 +625,15 @@ contains
       real,              dimension(IM,JM     ) :: TAUXB_TMP_NCAR, TAUYB_TMP_NCAR
       real,              dimension(IM,JM     ) :: TAUXO_TMP_NCAR, TAUYO_TMP_NCAR
 
+      real, dimension(IM,JM)       :: BKG_TAU_TOT_TMP, BKG_TAU_CNV_TMP
+      real, dimension(IM,JM)       :: BKG_TAU_DRY_TMP, BKG_TAU_MST_TMP
+      real, dimension(IM,JM, LM)   :: TAUGWX_TOT_TMP, TAUGWY_TOT_TMP
+      real, dimension(IM,JM, LM)   :: FEGW_TOT_TMP, FEPGW_TOT_TMP
+      real, dimension(IM,JM, LM)   :: TAUGWX_EAST_TMP, TAUGWY_EAST_TMP
+      real, dimension(IM,JM, LM)   :: FEGW_EAST_TMP, FEPGW_EAST_TMP
+      real, dimension(IM,JM, LM)   :: TAUGWX_WEST_TMP, TAUGWY_WEST_TMP
+      real, dimension(IM,JM, LM)   :: FEGW_WEST_TMP, FEPGW_WEST_TMP
+
       REAL, ALLOCATABLE, TARGET, DIMENSION(:,:,:) :: scratch_ridge
 
       integer                                  :: J, K, L, nrdg, ikpbl
@@ -693,12 +714,14 @@ contains
          TAUYO_TMP_NCAR = 0.0
          !call MAPL_TimerOn(MAPL,"-INTR_NCAR")
          if ( (self%NCAR_EFFGWORO /= 0.0) .OR. (self%NCAR_EFFGWBKG /= 0.0) ) then
+
             DO L=1, LM
-               ! Raising the mask to the 4th power aggressively suppresses 
-               ! tendencies in regions with even modest CNV_FRC values
-               TMP3D(:,:,L) = ((1.0-CNV_FRC)**4) * (DQLDT(:,:,L)+DQIDT(:,:,L))
+               ! Isolate purely large-scale/frontal latent heating by removing convective overlap.
+               ! Since CNV_FRC is a CAPE-derived proxy for convective activity, raising the 
+               ! (1.0 - CNV_FRC) mask to the 4th power aggressively filters out the microphysics 
+               ! heating (HT_mi) in regions with even modest convective instability.
+               TMP3D(:,:,L) = ((1.0-CNV_FRC)**4) * HT_mi(:,:,L)
             END DO
-            if(associated(DQCDT_LS)) DQCDT_LS = TMP3D
             thread = MAPL_get_current_thread()
             workspace => self%workspaces(thread)
             call gw_intr_ncar(IM*JM,    LM,         DT,     self%NCAR_NRDG,   &
@@ -710,13 +733,45 @@ contains
                  ANIXY,     GBXAR_TMP,  KWVRDG,     EFFRDG, PREF,        &
                  PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
                  PHIS,                                                   &
+                 BKG_TAU_TOT_TMP, BKG_TAU_CNV_TMP, BKG_TAU_DRY_TMP, BKG_TAU_MST_TMP, &
                  DUDT_GWD_NCAR,  DVDT_GWD_NCAR,   DTDT_GWD_NCAR,         &
                  DUDT_ORG_NCAR,  DVDT_ORG_NCAR,   DTDT_ORG_NCAR,         &
                  TAUXO_TMP_NCAR, TAUYO_TMP_NCAR,  &
                  TAUXB_TMP_NCAR, TAUYB_TMP_NCAR,  &
+                 TAUGWX_TOT_TMP,  TAUGWY_TOT_TMP,  FEGW_TOT_TMP,  FEPGW_TOT_TMP,    &
+                 TAUGWX_EAST_TMP, TAUGWY_EAST_TMP, FEGW_EAST_TMP, FEPGW_EAST_TMP, &
+                 TAUGWX_WEST_TMP, TAUGWY_WEST_TMP, FEGW_WEST_TMP, FEPGW_WEST_TMP, &
                  self%NCAR_EFFGWORO, &
                  self%NCAR_EFFGWBKG, self%alpha, &
                  _RC)
+
+            !-----------------------------------------------------------------------
+            ! Fill export arrays from temporary arrays
+            !-----------------------------------------------------------------------
+            ! Background stress diagnostics
+            if(associated(BKG_TAU_TOT)) BKG_TAU_TOT = BKG_TAU_TOT_TMP
+            if(associated(BKG_TAU_CNV)) BKG_TAU_CNV = BKG_TAU_CNV_TMP
+            if(associated(BKG_TAU_DRY)) BKG_TAU_DRY = BKG_TAU_DRY_TMP
+            if(associated(BKG_TAU_MST)) BKG_TAU_MST = BKG_TAU_MST_TMP
+
+            ! Total momentum and energy flux diagnostics
+            if(associated(TAUGWX_TOT)) TAUGWX_TOT = TAUGWX_TOT_TMP
+            if(associated(TAUGWY_TOT)) TAUGWY_TOT = TAUGWY_TOT_TMP
+            if(associated(FEGW_TOT)) FEGW_TOT = FEGW_TOT_TMP
+            if(associated(FEPGW_TOT)) FEPGW_TOT = FEPGW_TOT_TMP
+
+            ! Eastward-propagating wave diagnostics
+            if(associated(TAUGWX_EAST)) TAUGWX_EAST = TAUGWX_EAST_TMP
+            if(associated(TAUGWY_EAST)) TAUGWY_EAST = TAUGWY_EAST_TMP
+            if(associated(FEGW_EAST)) FEGW_EAST = FEGW_EAST_TMP
+            if(associated(FEPGW_EAST)) FEPGW_EAST = FEPGW_EAST_TMP
+
+            ! Westward-propagating wave diagnostics
+            if(associated(TAUGWX_WEST)) TAUGWX_WEST = TAUGWX_WEST_TMP
+            if(associated(TAUGWY_WEST)) TAUGWY_WEST = TAUGWY_WEST_TMP
+            if(associated(FEGW_WEST)) FEGW_WEST = FEGW_WEST_TMP
+            if(associated(FEPGW_WEST)) FEPGW_WEST = FEPGW_WEST_TMP
+
          endif
          !call MAPL_TimerOff(MAPL,"-INTR_NCAR")
 
