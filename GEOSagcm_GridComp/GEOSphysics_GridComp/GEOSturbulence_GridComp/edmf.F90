@@ -25,6 +25,9 @@ type EDMFPARAMS_TYPE
     integer :: NUP
     integer :: ET
     integer :: UPABUOYDEP
+    real    :: ZMAX
+    real    :: ZINV
+    real    :: ZMIN
     real    :: L0
     real    :: L0fac
     real    :: STOCHFRAC
@@ -325,11 +328,11 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
       QS = 0.
 
       ! Estimate scale height for entrainment calculation
+      pmid = 0.5*(pw3(IH,JH,kts-1:kte-1)+pw3(IH,JH,kts:kte))
+      call calc_mf_depth(kts,kte,t3(IH,JH,:),zlo3(IH,JH,:)-zw3(IH,JH,kte),qv3(IH,JH,:),pmid,ztop,wthv,wqt)
+      if (associated(mfdepth)) mfdepth(IH,JH) = ztop
       if (mfparams%ET == 2 ) then
-         pmid = 0.5*(pw3(IH,JH,kts-1:kte-1)+pw3(IH,JH,kts:kte))
-         call calc_mf_depth(kts,kte,t3(IH,JH,:),zlo3(IH,JH,:)-zw3(IH,JH,kte),qv3(IH,JH,:),pmid,ztop,wthv,wqt)
-         L0 = max(min(ztop,2500.),500.) / mfparams%L0fac
-         if (associated(mfdepth)) mfdepth(IH,JH) = ztop
+         L0 = max(min(ztop,mfparams%zmax),mfparams%zmin) / mfparams%L0fac
       else ! if mfparams%ET not 2
          L0 = mfparams%L0
       end if
@@ -414,8 +417,8 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
             do k=kts,kte
                ENT(k,i) = (1.-MFPARAMS%STOCHFRAC) * MFPARAMS%Ent0/L0 &
                         + MFPARAMS%STOCHFRAC * real(ENTi(k,i))*MFPARAMS%Ent0/(ZW(k)-ZW(k-1))
-               ! Increase ent above 2500m to limit deepest plumes
-               if (ZW(k).gt.2500.) ENT(k,i) = ENT(k,i)*(1.+(ZW(k)-2500.)/500.)
+               ! Increase ent above mfparams%zmax to limit deepest plumes
+               if (ZW(k).gt.mfparams%zmax) ENT(k,i) = ENT(k,i)*(1.+(ZW(k)-mfparams%zmax)/mfparams%zmin)
             enddo
           enddo
         else if (MFPARAMS%ENTRAIN==1 ) then
@@ -450,12 +453,12 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
       wmin=sigmaW*MFPARAMS%pwmin
       wmax=sigmaW*MFPARAMS%pwmax
 
-      ! Identify inversions below 1.5km, calculate stability in overlying 1km to define
+      ! Identify inversions below mfparams%zinv, calculate stability in overlying 1km to define
       ! a dynamic pressure deceleration factor in the updraft w equation below.
       wcfac = 0.
       tmp = 0.
       k = kts+1
-      do while (zlo(k).lt.1500.)
+      do while (zlo(k).lt.mfparams%zinv)
          if ( t3(IH,JH,kte-k).gt.t3(IH,JH,kte-k+1) ) then
             tmp = thv(k)   ! THV at inversion
             exit

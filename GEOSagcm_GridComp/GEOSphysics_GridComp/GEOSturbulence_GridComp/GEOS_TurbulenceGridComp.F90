@@ -3658,6 +3658,9 @@ end if
       call MAPL_GetResource (MAPL, MFPARAMS%L0,        "EDMF_L0:",            default=100.,  RC=STATUS)
       ! L0fac if ET==2
       call MAPL_GetResource (MAPL, MFPARAMS%L0fac,     "EDMF_L0FAC:",         default=10.,   RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%ZMAX,      "EDMF_ZMAX:",          default=2500., RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%ZINV,      "EDMF_ZINV:",          default=1500., RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%ZMIN,      "EDMF_ZMIN:",          default= 500., RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%MFLIMFAC,  "EDMF_MFLIMFAC:",      default=2.0,   RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%ICE_RAMP,  "EDMF_ICE_RAMP:",      default=-40.0, RC=STATUS )
       call MAPL_GetResource (MAPL, MFPARAMS%ENTRAIN,   "EDMF_ENTRAIN:",       default=0,     RC=STATUS)
