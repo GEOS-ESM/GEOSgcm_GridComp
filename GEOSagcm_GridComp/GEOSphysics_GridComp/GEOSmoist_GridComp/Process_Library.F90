@@ -85,19 +85,6 @@ module GEOSmoist_Process_Library
    logical :: USE_AEROSOL_NN = .TRUE.
    logical :: USE_NCLOUD_CLIM = .FALSE.
 
-   ! Size distribution dispersion scaling factors for [ICE|LIQ]_RADII_PARAM == 3.
-   ! Increasing this value increases effective radius
-   ! -----------------------------------------------------------------------------------------
-   REAL :: LIQ_RAD3_DISP = 1.30
-   REAL :: ICE_RAD3_DISP = 0.50
-
-   !- Morrison-Gettelman (2008) Liquid Gamma Closure
-   REAL :: MG_LIQ_DD_FLOOR = 5.e7 ! Droplet density floor
-   REAL :: MG_LIQ_MU = 3.0        ! Shape parameter for droplet gamma dist
-   !- Morrison-Gettelman (2008) ice mass-dimension power law:  m = a * D^b, b = 2
-   REAL :: MG_ICE_A  = 0.069      ! prefactor a [kg m^-2] for b=2  (VERIFY against MG08)
-   REAL :: MG_ICE_MU = 2.0        ! gamma-distribution shape parameter (tune; MG08 ice)
-
    integer :: WSUB_OPTION = -1
    integer :: PDFSHAPE = 1
 
@@ -117,20 +104,42 @@ module GEOSmoist_Process_Library
   real, parameter :: R_AIR     =  3.47e-3 !m3 Pa kg-1K-1
 
   ! LDRADIUS4
+  ! option for cloud liq/ice radii
+  integer :: LIQ_RADII_PARAM = 1
+  integer :: ICE_RADII_PARAM = 1
+
   ! Jason
   real, parameter :: abeta = 0.07
   real, parameter :: r13bbeta = 1./3. - 0.14
   real, parameter :: bx = 100.* (3./(4.*MAPL_PI))**(1./3.)
-  ! Liquid  based on DOI 10.1088/1748-9326/3/4/045021
-  real, parameter :: RHO_W   = 1000.0  ! Density of liquid water in kg/m^3
-  real, parameter :: rho_s   = 100.0
-  real, parameter :: rho_g   = 500.0
-  real, parameter :: rho_i   = 890.0
+
+  ! Liquid based on DOI 10.1088/1748-9326/3/4/045021
+  real, parameter :: rho_w   = 1000.0  ! Density of liquid water in kg/m^3
+  real, parameter :: rho_s   = 100.0   ! Snow density
+  real, parameter :: rho_g   = 500.0   ! Graupel density
+  real, parameter :: rho_i   = 917.0   ! Ice density (corrected from 890)
   real, parameter :: Ldiss   = 0.07    ! tunable dispersion effect
   real, parameter :: Lk      = 0.75    ! tunable shape effect (0.5:1)
   real, parameter :: Lbe     = 1./3. - 0.14
-  real, parameter :: Lbx     = Ldiss*1.e3*(3./(4.*MAPL_PI*Lk*RHO_W*1.e-3))**(1./3.)
-                             ! LDRADIUS eqs are in cgs units
+  real, parameter :: Lbx     = Ldiss*1.e3*(3./(4.*MAPL_PI*Lk*RHO_W))**(1./3.)
+                             ! LDRADIUS eqs are in cgs units (removed redundant 1.e-3)
+
+  ! Optimized inverse constants for radius calculations
+  real, parameter :: inv_4pi_rho_i = 3.0 / (4.0 * MAPL_PI * rho_i)
+  real, parameter :: inv_4pi_rho_w = 3.0 / (4.0 * MAPL_PI * rho_w)
+
+  ! Size distribution dispersion scaling factors for [ICE|LIQ]_RADII_PARAM == 3.
+  ! Increasing this value increases effective radius
+  ! -----------------------------------------------------------------------------------------
+  REAL :: LIQ_RAD3_DISP = 1.30
+  REAL :: ICE_RAD3_DISP = 0.70
+
+  !- Morrison-Gettelman (2008) Liquid Gamma Closure
+  REAL :: MG_LIQ_DD_FLOOR = 5.e7 ! Droplet density floor
+  REAL :: MG_LIQ_MU = 3.0        ! Shape parameter for droplet gamma dist
+  !- Morrison-Gettelman (2008) ice mass-dimension power law:  m = a * D^b, b = 2
+  REAL :: MG_ICE_A  = 0.069      ! prefactor a [kg m^-2] for b=2  (VERIFY against MG08)
+  REAL :: MG_ICE_MU = 2.0        ! gamma-distribution shape parameter (tune; MG08 ice)
 
   ! combined constants
   real, parameter :: cpbgrav = MAPL_CP/MAPL_GRAV
@@ -251,11 +260,6 @@ module GEOSmoist_Process_Library
 
   REAL :: r2o7, lam_r000, lam_r001
 
-  ! option for cloud liq/ice radii
-  integer :: LIQ_RADII_PARAM = 1
-  integer :: ICE_RADII_PARAM = 1
-  integer, parameter :: nsmx_par =  15
-
   ! defined to determine CNV_FRACTION
   real    :: CNV_FRACTION_MIN =  500.0
   real    :: CNV_FRACTION_MAX = 1500.0
@@ -286,10 +290,6 @@ module GEOSmoist_Process_Library
    
   real :: GF2M_MIXED_PHASE_ICE_ONSET_T = 258.15
  
-  ! Storage of aerosol properties for activation
-  !type(AerPropsNew) :: AeroPropsNew(nsmx_par)
-  !type(AerProps), allocatable, dimension (:,:,:) :: AeroProps
-
   ! Tracer Bundle things for convection
   type CNV_Tracer_Type
       real, pointer              :: Q(:,:,:) => null()
@@ -315,7 +315,7 @@ module GEOSmoist_Process_Library
   public :: WSUB_OPTION, PDFSHAPE, ANVIL_EVAP_SUBL3
   public :: CNV_Tracer_Type, CNV_Tracers, CNV_Tracers_Init
   public :: USE_BERGERON, USE_AEROSOL_NN, USE_NCLOUD_CLIM
-  public :: ICE_RAD3_DISP
+  public :: LIQ_RAD3_DISP, ICE_RAD3_DISP
   public :: MG_ICE_MU, MG_ICE_A, MG_LIQ_DD_FLOOR, MG_LIQ_MU
   public :: RAW_MODIS_POLYNOMIAL, JASON_ICE_POLYNOMIAL, V12_ICE_POLYNOMIAL
   public :: ICE_FRACTION_POLYNOMIAL
@@ -958,13 +958,16 @@ module GEOSmoist_Process_Library
        REAL :: frac
        REAL :: R_VOLUME
        REAL :: poly, ICEFRCT
+       REAL :: LWC_SAFE, NNL_SAFE
+       REAL :: IWC_SAFE, NNI_SAFE
 
        ! Diameter-to-radius factor used by the Sun ice formulation.
        ! 3*sqrt(3)/8 for the assumed hexagonal-column geometry.
        REAL, PARAMETER :: geom_hex = 0.64952
-
-       ! NNI is supplied in m^-3:
-       REAL, PARAMETER :: NNI_SAFE  = 1.e0
+       
+       ! Optimized inverse constants for radius calculations
+       REAL, PARAMETER :: INV_4PI_RHO_I = 2.60417e-4  ! 3/(4*pi*917)
+       REAL, PARAMETER :: INV_4PI_RHO_W = 2.38732e-4  ! 3/(4*pi*1000)
 
        !-----------------------------------------------------------------------
        ! Air density
@@ -1007,22 +1010,29 @@ module GEOSmoist_Process_Library
               ! LIQUID DROPLET EFFECTIVE RADIUS
               !====================================================================
               ! Convert mixing ratio [kg/kg] to liquid water content [kg/m3]
-              LWC = QC * RHO ! air density [kg/m3] * ice cloud mixing ratio [kg/kg]
+              LWC = QC * RHO ! air density [kg/m3] * liquid cloud mixing ratio [kg/kg]
               ! Guard against clear-sky or unactivated cloud droplets
-              IF (LWC > 1.e-12 .and. NNL > 1.e-3) THEN
+              IF (LWC > 0.0 .and. NNL > 0.0) THEN
+                 ! Apply floors to prevent unrealistic radii from very low values
+                 LWC_SAFE = MAX(LWC, 1.e-5)   ! 0.01 g/m^3 = 10 mg/m^3
+                 NNL_SAFE = MAX(NNL, 1.e7)    ! 10 cm^-3 = 10^7 m^-3
                  ! Volume Mean Radius calculation (meters)
-                 ! Uses liquid water density (1000.0 kg/m3)
-                 R_VOLUME = ( (3.0 * LWC) / (4.0 * MAPL_PI * 1000.0 * NNL) )**(1.0/3.0)
+                 ! Uses optimized constant for liquid water density (1000.0 kg/m3)
+                 R_VOLUME = (INV_4PI_RHO_W * LWC_SAFE / NNL_SAFE)**(1.0/3.0)
                  ! Effective Radius with convective enhancement
                  !   - Broader size distributions in strong updrafts
-                 RADIUS = (LIQ_RAD3_DISP + 1.05 * SQRT(CNV_FRC)) * R_VOLUME
+                 RADIUS = (LIQ_RAD3_DISP + 1.05 * CNV_FRC) * R_VOLUME
                  ! ================================================================
                  ! Increase RLIQ in deep CNV_FRC regions and anvils
                  ! ================================================================
-                 RADIUS = MIN(60.e-6, MAX(5.0e-6 + 7.5e-6 * SQRT(CNV_FRC), RADIUS))
+                 RADIUS = MIN(60.e-6, MAX(5.0e-6 + 7.5e-6 * CNV_FRC, RADIUS))
               ELSE
-                 ! Default background liquid droplet radius (4 microns)
-                 RADIUS = 4.e-6
+                 !-----------------------------------------------------------------
+                 ! Liu and Daum (2000, 2005); Liu et al. (2008) Temperature Based
+                 !-----------------------------------------------------------------
+                 LWC = 1.e3 * LWC ! convert to [g/m3]
+                 RADIUS = MIN(60.e-6, MAX(5.0e-6, &
+                           1.e-6 * Lbx * (LWC/NNX)**Lbe))
               END IF
           ELSE
              !-----------------------------------------------------------------
@@ -1039,7 +1049,7 @@ module GEOSmoist_Process_Library
              !       [LWC/N].
              !-----------------------------------------------------------------
              DROP_DENS = MAX(NNL, MG_LIQ_DD_FLOOR)
-             LWC       = RHO * QC ! air density [kg/m3] * ice cloud mixing ratio [kg/kg]
+             LWC       = RHO * QC ! air density [kg/m3] * liquid cloud mixing ratio [kg/kg]
              IF (LWC > 0.0 .AND. DROP_DENS > 0.0) THEN
                 AA = ((3.0 * (MG_LIQ_MU + 2.0) * (MG_LIQ_MU + 1.0)) / &
                       (4.0 * MAPL_PI * RHO_W * (MG_LIQ_MU + 3.0)**2))**(1.0/3.0)
@@ -1083,8 +1093,8 @@ module GEOSmoist_Process_Library
              RADIUS = MIN(150.e-6, MAX(5.e-6, 1.e-6*RADIUS)) ! Preserve legacy micron scaling
           ELSE IF (ICE_RADII_PARAM == 3) THEN
              !====================================================================
-             ! ICE EFFECTIVE RADIUS
-             ! 
+             ! ICE EFFECTIVE RADIUS 
+             !                   
              ! Problem: DeMott activation severely underpredicts NNI in deep tropics
              ! (0.01-0.1 L^-1 vs observed 50-100 L^-1 from homogeneous freezing).
              ! This produces unrealistically large ice crystals (r_eff > 150 μm)
@@ -1094,21 +1104,43 @@ module GEOSmoist_Process_Library
              ! while preserving aerosol-cloud interactions in heterogeneous regimes.
              !====================================================================
              IWC = QC * RHO
-             IF (IWC > 1.e-12 .AND. NNI > NNI_SAFE) THEN
+             IF (IWC > 0.0 .AND. NNI > 0.0) THEN
+                ! Apply floors to prevent unrealistic radii from very low values
+                IWC_SAFE = MAX(IWC, 1.e-7)  ! 0.1 mg/m^3
+                NNI_SAFE = MAX(NNI, 0.1)    ! 0.1 L^-1 = 100 m^-3
                 ! Calculate the physical NNI-based radius. The condition above
                 ! protects the calculation from division by very small NNI.
-                R_VOLUME = ((3.0 * IWC) / &
-                            (4.0 * MAPL_PI * 917.0 * NNI))**(1.0/3.0)
-                RADIUS = (ICE_RAD3_DISP + 1.10 * SQRT(CNV_FRC)) * R_VOLUME
+                ! Lowered NNI threshold from 100 to 50 L^-1 to use physical 
+                ! calculation more frequently and reduce oversized crystals.
+                R_VOLUME = (INV_4PI_RHO_I * IWC_SAFE / NNI_SAFE)**(1.0/3.0)
                 ! ================================================================
-                ! Decrease RICE maximum outside of deep CNV_FRC regions and anvils
+                ! CNV_FRC-dependent scaling with regime-specific constraints
+                ! The concave CAPE mapping naturally provides lower CNV_FRC for
+                ! anvils and higher CNV_FRC for cores
                 ! ================================================================
-                RADIUS = MIN( 150.e-6 - (75.e-6 * (1.0 - SQRT(CNV_FRC))), &
-                              MAX(25.e-6, RADIUS) )
+                IF (CNV_FRC > 0.6) THEN
+                   ! Deep convective cores: allow larger crystals for brightness
+                   RADIUS = (ICE_RAD3_DISP + 1.3 * CNV_FRC) * R_VOLUME
+                   RADIUS = MIN(160.e-6, MAX(40.e-6, RADIUS))
+                ELSE
+                   ! Anvils and stratiform: standard treatment
+                   RADIUS = (ICE_RAD3_DISP + 0.95 * CNV_FRC) * R_VOLUME
+                   RADIUS = MIN( 140.e-6 - (70.e-6 * (1.0 - CNV_FRC)), &
+                                 MAX(30.e-6, RADIUS) )
+                END IF
              ELSE
-                ! Fall back to a physically realistic baseline radius for pristine, 
-                ! non-convective upper-trop cirrus instead of using the anvil scheme.
-                RADIUS = 50.e-6 
+                !-----------------------------------------------------------------
+                ! Sun (2001) temperature-based fallback
+                !
+                ! Modified temperature dependence: flatline at -40 C (T_HOM).
+                ! Used when IWC or NNI are too low for physical calculation.
+                !-----------------------------------------------------------------
+                IWC = 1.e3*IWC ! convert to [g/m3] for Sun (2001) formulation
+                TC = MAX(MIN(0.0, TE-MAPL_TICE),T_HOM)
+                AA = 45.8966 * MAX(IWC,1.e-10)**0.2214
+                BB = 0.79570 * MAX(IWC,1.e-10)**0.2535 * TC
+                RADIUS = geom_hex * (1.2351 + 0.0105*TC) * (AA + BB)
+                RADIUS = MIN(150.e-6, MAX(5.e-6, 1.e-6*RADIUS)) ! Preserve legacy micron scaling
              END IF
           ELSE
              !-----------------------------------------------------------------

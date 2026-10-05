@@ -397,6 +397,18 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     call MAPL_GetResource( MAPL, FAC_RL          , 'FAC_RL:'          , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MIN_RL          , 'MIN_RL:'          , DEFAULT= 5.0e-6, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MAX_RL          , 'MAX_RL:'          , DEFAULT=60.0e-6, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, LIQ_RAD3_DISP   , 'LIQ_RAD3_DISP:'   , DEFAULT= 1.3   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, ICE_RAD3_DISP   , 'ICE_RAD3_DISP:'   , DEFAULT= 0.5   , RC=STATUS); VERIFY_(STATUS)
+
+    ! -----------------------------------------------------------------------------------------
+    ! SIMULATED REFLECTIVITY SETTINGS
+    ! -----------------------------------------------------------------------------------------
+    call MAPL_GetResource( MAPL, refl10cm_allow_wet_graupel , 'refl10cm_allow_wet_graupel:' , DEFAULT= .FALSE. , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, refl10cm_allow_wet_snow    , 'refl10cm_allow_wet_snow:'    , DEFAULT= .FALSE. , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, DBZ_VAR_INTERCP     , 'DBZ_VAR_INTERCP:'     , DEFAULT= DBZ_VAR_INTERCP, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, LIQUID_SKIN_SNOW    , 'LIQUID_SKIN_SNOW:'    , DEFAULT= .TRUE. , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, LIQUID_SKIN_GRAUPEL , 'LIQUID_SKIN_GRAUPEL:' , DEFAULT= .FALSE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, LIQUID_SKIN_HAIL    , 'LIQUID_SKIN_HAIL:'    , DEFAULT= .TRUE. , RC=STATUS); VERIFY_(STATUS)
 
     ! -----------------------------------------------------------------------------------------
     ! GRID-SCALE EVAPORATION / SUBLIMATION EFFICIENCIES [s^-1]
@@ -415,8 +427,9 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     ! -----------------------------------------------------------------------------------------
     ! Diagnoses macrophysical convective area fraction derived from Convective Available Potential 
     ! Energy (CAPE). Scales linearly from 0.0 at MIN to 1.0 at MAX.
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  300.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 2500.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    0.7, RC=STATUS); VERIFY_(STATUS)
 
     ! -----------------------------------------------------------------------------------------
     ! MACROPHYSICS & PHASE SWITCHES

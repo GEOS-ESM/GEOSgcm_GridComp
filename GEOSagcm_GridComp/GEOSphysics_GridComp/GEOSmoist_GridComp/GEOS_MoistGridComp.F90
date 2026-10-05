@@ -5658,12 +5658,6 @@ contains
                                    RingInterval = ringInterval,   &
                                    Sticky       = .false.  , RC=STATUS); VERIFY_(STATUS)
     call init_refl10cm()
-    call MAPL_GetResource( MAPL, refl10cm_allow_wet_graupel , 'refl10cm_allow_wet_graupel:' , DEFAULT= .FALSE. , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, refl10cm_allow_wet_snow    , 'refl10cm_allow_wet_snow:'    , DEFAULT= .FALSE. , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, DBZ_VAR_INTERCP , 'DBZ_VAR_INTERCP:' , DEFAULT= DBZ_VAR_INTERCP, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, LIQUID_SKIN_SNOW    , 'LIQUID_SKIN_SNOW:'    , DEFAULT= .FALSE. , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, LIQUID_SKIN_GRAUPEL , 'LIQUID_SKIN_GRAUPEL:' , DEFAULT= .FALSE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, LIQUID_SKIN_HAIL    , 'LIQUID_SKIN_HAIL:'    , DEFAULT= .TRUE. , RC=STATUS); VERIFY_(STATUS)
 
     ! All done
     !---------
@@ -6003,7 +5997,19 @@ contains
        ! initialize diagnosed convective fraction
        CNV_FRC = 0.0
        if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
-         if (CNV_FRACTION_EXP /= 1.0) then
+         if (CNV_FRACTION_EXP < 0.0) then
+            !-----------------------------------------------------------------
+            ! Inverse power law: enhances high CAPE values
+            ! Good for making convective cores brighter while keeping
+            ! cirrus blowoff dim
+            !-----------------------------------------------------------------
+            WHERE (CAPE .ne. MAPL_UNDEF)
+               CNV_FRC = MAX(1.e-6,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN)))
+            END WHERE
+            ! Apply inverse power: x^(1/|EXP|) makes curve concave
+            CNV_FRC = CNV_FRC**(1.0/ABS(CNV_FRACTION_EXP))
+            
+         else if (CNV_FRACTION_EXP /= 1.0) then
             WHERE (CAPE .ne. MAPL_UNDEF)
                CNV_FRC =(MAX(1.e-6,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN))))
             END WHERE
