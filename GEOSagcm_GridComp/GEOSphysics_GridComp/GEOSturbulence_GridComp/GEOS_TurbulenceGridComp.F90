@@ -3629,7 +3629,7 @@ end if
 
    ! Calculate liquid water potential temperature (THL) and total water (QT)
     EXF=T/TH
-    EXFH = (PLE/MAPL_P00)**(MAPL_RGAS/MAPL_CP)
+    EXFH = (PLE/MAPL_P00)**MAPL_KAPPA
     THL=TH-(MAPL_ALHL*QLTOT+MAPL_ALHS*QITOT)/(MAPL_CP*EXF)
     QT=Q+QLTOT+QITOT
 
