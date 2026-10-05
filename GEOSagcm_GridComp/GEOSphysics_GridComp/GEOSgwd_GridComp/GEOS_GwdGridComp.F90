@@ -739,8 +739,8 @@ contains
                  TAUXO_TMP_NCAR, TAUYO_TMP_NCAR,  &
                  TAUXB_TMP_NCAR, TAUYB_TMP_NCAR,  &
                  TAUGWX_TOT_TMP,  TAUGWY_TOT_TMP,  FEGW_TOT_TMP,  FEPGW_TOT_TMP,    &
-                 TAUGWX_EAST_TMP, TAUGWY_EAST_TMP, FEGW_EAST_TMP, FEPGW_EAST_TMP, &
-                 TAUGWX_WEST_TMP, TAUGWY_WEST_TMP, FEGW_WEST_TMP, FEPGW_WEST_TMP, &
+                 TAUGWX_EAST_TMP, TAUGWX_WEST_TMP, TAUGWY_EAST_TMP, TAUGWY_WEST_TMP, &
+                 FEGW_EAST_TMP,   FEGW_WEST_TMP,   FEPGW_EAST_TMP,  FEPGW_WEST_TMP,  &
                  self%NCAR_EFFGWORO, &
                  self%NCAR_EFFGWBKG, self%alpha, &
                  _RC)
