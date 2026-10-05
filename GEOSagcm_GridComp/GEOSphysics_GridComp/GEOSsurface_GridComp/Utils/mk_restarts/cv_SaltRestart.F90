@@ -25,24 +25,24 @@ program cv_SaltRestart
   real*4, allocatable, dimension(:  ) :: rainp, rainn, snowp, snown, rrp, rrn
   real*4, allocatable, dimension(:  ) :: swradp, swradn, lwradp, lwradn, t10p, t10n
   real*4, allocatable, dimension(:,:) :: tauage
-  real*4, allocatable, dimension(:)   :: slmask 
+  real*4, allocatable, dimension(:)   :: slmask
   real*4, allocatable, dimension(:,:) :: QS,CH,CM,CQ,Z0,WW
-  real*4, allocatable, dimension(:  ) :: TWMTS, DTWARM 
-  real*4, allocatable, dimension(:)   :: sst, lons, lats 
+  real*4, allocatable, dimension(:  ) :: TWMTS, DTWARM
+  real*4, allocatable, dimension(:)   :: sst, lons, lats
   real*4, allocatable, dimension(:,:) :: Tsc, Ts
   real*4, allocatable, dimension(:)   :: frice
   real*4, allocatable, dimension(:    ) :: X1D4
 
   real*8, allocatable, dimension(:    ) :: X1D8
-  real*8, allocatable, dimension(:,  :) :: & 
+  real*8, allocatable, dimension(:,  :) :: &
          aicen , & ! concentration of ice
          vicen , & ! volume per unit area of ice          (m)
          vsnon , & ! volume per unit area of snow         (m)
          trcrn , & ! ice tracers
                    ! 1: surface temperature of ice/snow (C)
          volpondn, &
-         apondn, & 
-         hpondn, & 
+         apondn, &
+         hpondn, &
          eicen , & ! energy of melting for each ice layer  (J/m^2)
          esnon     ! energy of melting for each ice layer  (J/m^2)
   real*4                                 :: lono, lato
@@ -64,6 +64,7 @@ program cv_SaltRestart
 
 
   logical               :: source_is_coupled
+  integer :: iargc
 
 
   source_is_coupled = .false.
@@ -110,7 +111,7 @@ program cv_SaltRestart
              nxt = nxt + 1
              call getarg(nxt,arg)
              InFile2 = arg
-          endif  
+          endif
        case ('t')
           TileFile = arg
        case default
@@ -166,7 +167,7 @@ program cv_SaltRestart
   ntiles = GetNumTiles(tilefile)
 
 
-  print *, "Processing restarts with ", ntiles, "tiles" 
+  print *, "Processing restarts with ", ntiles, "tiles"
 
   allocate(HW(ntiles),TW(ntiles),SW(ntiles),HI(ntiles),TI(ntiles),SI(ntiles), &
            QS(ntiles,nsub),CH(ntiles,nsub),CM(ntiles,nsub), &
@@ -174,7 +175,7 @@ program cv_SaltRestart
 
   allocate(sst(ntiles), lons(ntiles), lats(ntiles),  frice(ntiles))
   allocate(TWMTS(ntiles), DTWARM(ntiles))
-  
+
 
   allocate(X1D8(ntiles))
   allocate(X1D4(ntiles))
@@ -185,9 +186,9 @@ program cv_SaltRestart
   allocate(Ts(ntiles,nsub))
   allocate(tauage(ntiles,ncat), slmask(ntiles))
 
-  call GetTileLonLats(tilefile, ntiles, lons, lats) 
+  call GetTileLonLats(tilefile, ntiles, lons, lats)
 
-  print*, "InFile1: ",InFile1 
+  print*, "InFile1: ",InFile1
   print*, "TileFile: ",tilefile
 
   i = index(InFile1,'/',back=.true.)
@@ -367,7 +368,7 @@ program cv_SaltRestart
 
   print*, 'Finished reading old saltwater internal restart file'
 
-  print*, 'Start writing new CICEThermo internal restart file ...' 
+  print*, 'Start writing new CICEThermo internal restart file ...'
 
   write(20) hw
   write(20) tw
@@ -429,70 +430,70 @@ program cv_SaltRestart
   X1D4 = 0.0
   write(20) X1D4
   nrec = nrec + 1
- 
+
 
 ! FR
   do i=1,nsub
-     write(20) aicen(:,i) 
+     write(20) aicen(:,i)
      nrec = nrec + 1
   enddo
 
 ! VOLICE
   do i=1,ncat
-     write(20) vicen(:,i) 
+     write(20) vicen(:,i)
      nrec = nrec + 1
   enddo
 
 ! VOLSNO
   do i=1,ncat
-     write(20) vsnon(:,i) 
+     write(20) vsnon(:,i)
      nrec = nrec + 1
   enddo
 
 ! VOLPOND
   do i=1,ncat
-     write(20) volpondn(:,i) 
+     write(20) volpondn(:,i)
      nrec = nrec + 1
   enddo
 
 ! APOND
   do i=1,ncat
-     write(20) apondn(:,i) 
+     write(20) apondn(:,i)
      nrec = nrec + 1
   enddo
 
 ! HPOND
   do i=1,ncat
-     write(20) hpondn(:,i) 
+     write(20) hpondn(:,i)
      nrec = nrec + 1
   enddo
 
 !ERGICE
   do k=1,nilyr
        do i=1,ncat
-         X1D8 = eicen(:,ilyr1(i)+k-1) 
-         write(20) X1D8 
+         X1D8 = eicen(:,ilyr1(i)+k-1)
+         write(20) X1D8
          nrec = nrec + 1
-       enddo 
+       enddo
   enddo
 
 !ERGSNO
   do k=1,nslyr
      do i=1,ncat
        X1D8 = esnon(:,slyr1(i)+k-1)
-       write(20) X1D8 
+       write(20) X1D8
        nrec = nrec + 1
      enddo
   enddo
 
 !TAUAGE
   do i=1,ncat
-     write(20) tauage(:,i) 
+     write(20) tauage(:,i)
      nrec = nrec + 1
   enddo
 
 !SLMASK
-  write(20) slmask 
+  write(20) slmask
   nrec = nrec + 1
 
   close(10)
@@ -512,7 +513,7 @@ program cv_SaltRestart
          print*,frice(k),   tw(k),   ti(k)
          do i=1,ncat
             print*,(eicen(k,ilyr1(i)+n-1),n=1,nilyr)
-         enddo 
+         enddo
       endif
   enddo
   !deallocate(rainp, rainn, snowp, snown, rrp, rrn,       &
@@ -524,7 +525,7 @@ program cv_SaltRestart
            eicen, esnon)
   deallocate(Tsc)
 
-  endif 
+  endif
 
 !#endif
 
@@ -540,8 +541,8 @@ integer function GetNumTiles(tilefile)
   integer                  :: mark
   integer                  :: dum, n, nt
   character*128            :: dumstr
-  
-  
+
+
   open(10, file=tilefile, form="formatted",status='old')
 
   read(10, fmt=*) nt
@@ -558,8 +559,8 @@ integer function GetNumTiles(tilefile)
     if(mark .eq. 0) ntiles = ntiles + 1
   enddo
   close(10)
- 
-  GetNumTiles = ntiles 
+
+  GetNumTiles = ntiles
 
 end function GetNumTiles
 
@@ -573,8 +574,8 @@ subroutine GetTileLonLats(tilefile, ntiles, Lons, Lats)
   integer                  :: dum, n, nt
   character*128            :: dumstr
   real                     :: rdum1, rdum2
-  
-  
+
+
   open(10, file=tilefile, form="formatted",status='old')
 
   read(10, fmt=*) nt
@@ -598,7 +599,7 @@ subroutine GetTileLonLats(tilefile, ntiles, Lons, Lats)
         Lats(n) = rdum2
     endif
   enddo
-  !do n=1,10 
+  !do n=1,10
   !  print*,  Lons(n), Lats(n)
   !enddo
 
@@ -620,7 +621,7 @@ end subroutine GetTileLonLats
                                 ice_con,  tsc,      &
                                 aicen,    trcrn,    &
                                 vicen,    vsnon,    &
-                                eicen,    esnon) 
+                                eicen,    esnon)
 !
 ! !DESCRIPTION:
 !
@@ -629,15 +630,15 @@ end subroutine GetTileLonLats
 !
       integer (kind=int_kind), intent(in) :: &
          nx_block, ny_block , & ! block dimensions
-         icells     
+         icells
 
       integer (kind=int_kind), dimension (nx_block*ny_block), &
          intent(in) :: &
          indxi, indxj     ! compressed indices for cells with ice
 
       real (kind=real_kind), dimension (nx_block,ny_block), intent(in) :: &
-         tile_lat, tile_lon, & 
-         ice_con, tsc    
+         tile_lat, tile_lon, &
+         ice_con, tsc
 
 
       real (kind=dbl_kind), dimension (nx_block,ny_block,ncat), &
@@ -678,7 +679,7 @@ end subroutine GetTileLonLats
          ice_cov
 
       real (kind=dbl_kind), dimension(nilyr+1) :: &
-         salin       , & ! salinity (ppt)   
+         salin       , & ! salinity (ppt)
          Tmlt            ! melting temp, -depressT * salinity
                          ! nilyr + 1 index is for bottom surface
 
@@ -744,10 +745,10 @@ end subroutine GetTileLonLats
 
 
       real (kind=dbl_kind), parameter :: &
-         tnh = 1.0_dbl_kind,           & 
+         tnh = 1.0_dbl_kind,           &
          tsh = 0.75_dbl_kind,          &
          hsno_init = 0.20_dbl_kind   , & ! initial snow thickness (m)
-         edge_init_nh =  70._dbl_kind, & ! initial ice edge, N.Hem. (deg) 
+         edge_init_nh =  70._dbl_kind, & ! initial ice edge, N.Hem. (deg)
          edge_init_sh = -60._dbl_kind    ! initial ice edge, S.Hem. (deg)
 
       real (kind=dbl_kind), parameter :: &
@@ -854,11 +855,11 @@ end subroutine GetTileLonLats
               if(hin_max(nc-1) < hi .and. hi < hin_max(nc)) then
 
                   aicen(i,j,nc) = ice_cov(i,j)
-                  vicen(i,j,nc) = hi*aicen(i,j,nc) 
+                  vicen(i,j,nc) = hi*aicen(i,j,nc)
                   trcrn(i,j,nt_Tsfc,nc) = min(Tsmelt, tsc(i,j) - Tffresh) !deg C
                   if(abs(tile_lon(i,j)-lono)<1.e-4 .and. abs(tile_lat(i,j)-lato)<1.e-4) then
                        print*,  tsc(i,j), trcrn(i,j,nt_Tsfc,nc)
-                  endif 
+                  endif
 
                   do k = 1, nilyr
 
@@ -875,9 +876,9 @@ end subroutine GetTileLonLats
                      if(abs(tile_lon(i,j)-lono)<1.e-4 .and. &
                         abs(tile_lat(i,j)-lato)<1.e-4) then
                        print*, k, Ti
-                     endif 
+                     endif
                   enddo               ! nilyr
-              endif  
+              endif
             enddo !ncat
 
          end if ! ice_cov(i,j) >= eps04
