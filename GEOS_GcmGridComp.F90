@@ -2870,7 +2870,7 @@ contains
      integer, optional,intent(out)   :: RC
 
      character(len=ESMF_MAXSTR), parameter :: Iam = 'A2W'
-     integer :: status
+     integer :: status, srcTermProcessing
 
      type(ESMF_RouteHandle), pointer :: rh
      type(ESMF_Field) :: srcField, dstField
@@ -2884,9 +2884,11 @@ contains
         !ALT: this should be done only once per regridder
         allocate(rh, stat=status)
         VERIFY_(STATUS)
+        srcTermProcessing = 0
         call ESMF_FieldRegridStore(srcField, dstField, &
                                    regridmethod=ESMF_REGRIDMETHOD_BILINEAR, &
                                    lineType=ESMF_LINETYPE_GREAT_CIRCLE, &
+                                   srcTermProcessing=srcTermProcessing, &
                                    routeHandle=rh, rc=status)
         VERIFY_(STATUS)
 
@@ -2900,7 +2902,7 @@ contains
      end if
 
      call ESMF_FieldRegrid(srcField=srcField, dstField=dstField, &
-          routeHandle=rh, rc=status)
+          routeHandle=rh, termorderflag=ESMF_TERMORDER_SRCSEQ, rc=status)
      VERIFY_(STATUS)
 
      RETURN_(ESMF_SUCCESS)
@@ -2913,7 +2915,7 @@ contains
      integer, optional,intent(out)   :: RC
 
      character(len=ESMF_MAXSTR), parameter :: Iam = 'W2A'
-     integer :: status
+     integer :: status, srcTermProcessing
 
      type(ESMF_RouteHandle), pointer :: rh
      type(ESMF_Field) :: srcField, dstField
@@ -2927,9 +2929,11 @@ contains
         !ALT: this should be done only once per regridder
         allocate(rh, stat=status)
         VERIFY_(STATUS)
+        srcTermProcessing = 0
         call ESMF_FieldRegridStore(srcField, dstField, &
                                    regridmethod=ESMF_REGRIDMETHOD_BILINEAR, &
                                    lineType=ESMF_LINETYPE_GREAT_CIRCLE, &
+                                   srcTermProcessing=srcTermProcessing, &
                                    routeHandle=rh, rc=status)
         VERIFY_(STATUS)
 
@@ -2943,7 +2947,7 @@ contains
      end if
 
      call ESMF_FieldRegrid(srcField=srcField, dstField=dstField, &
-          routeHandle=rh, rc=status)
+          routeHandle=rh, termorderflag=ESMF_TERMORDER_SRCSEQ, rc=status)
      VERIFY_(STATUS)
 
      RETURN_(ESMF_SUCCESS)
@@ -2956,7 +2960,7 @@ contains
      integer, optional,intent(out)   :: RC
 
      character(len=ESMF_MAXSTR), parameter :: Iam = 'O2W'
-     integer :: status
+     integer :: status, srcTermProcessing
 
      type(ESMF_RouteHandle), pointer :: rh
      type(ESMF_Field) :: srcField, dstField
@@ -2970,9 +2974,11 @@ contains
         !ALT: this should be done only once per regridder
         allocate(rh, stat=status)
         VERIFY_(STATUS)
+        srcTermProcessing = 0
         call ESMF_FieldRegridStore(srcField, dstField, &
                                    regridmethod=ESMF_REGRIDMETHOD_BILINEAR, &
                                    lineType=ESMF_LINETYPE_GREAT_CIRCLE, &
+                                   srcTermProcessing=srcTermProcessing, &
                                    routeHandle=rh, rc=status)
         VERIFY_(STATUS)
 
@@ -2986,7 +2992,7 @@ contains
      end if
 
      call ESMF_FieldRegrid(srcField=srcField, dstField=dstField, &
-          routeHandle=rh, rc=status)
+          routeHandle=rh, termorderflag=ESMF_TERMORDER_SRCSEQ, rc=status)
      VERIFY_(STATUS)
 
      RETURN_(ESMF_SUCCESS)
@@ -2999,7 +3005,7 @@ contains
      integer, optional,intent(out)   :: RC
 
      character(len=ESMF_MAXSTR), parameter :: Iam = 'W2O'
-     integer :: status
+     integer :: status, srcTermProcessing
 
      type(ESMF_RouteHandle), pointer :: rh
      type(ESMF_Field) :: srcField, dstField
@@ -3013,10 +3019,12 @@ contains
         !ALT: this should be done only once per regridder
         allocate(rh, stat=status)
         VERIFY_(STATUS)
+        srcTermProcessing = 0
         call ESMF_FieldRegridStore(srcField, dstField, &
                                    regridMethod=ESMF_REGRIDMETHOD_BILINEAR, &
                                    lineType=ESMF_LINETYPE_GREAT_CIRCLE, &
                                    routeHandle=rh, &
+                                   srcTermProcessing=srcTermProcessing, &
                                    unmappedAction=ESMF_UNMAPPEDACTION_IGNORE, rc=status)
         VERIFY_(STATUS)
 
@@ -3031,7 +3039,7 @@ contains
      end if
 
      call ESMF_FieldRegrid(srcField=srcField, dstField=dstField, &
-          routeHandle=rh, rc=status)
+          routeHandle=rh, termorderflag=ESMF_TERMORDER_SRCSEQ, rc=status)
      VERIFY_(STATUS)
 
      RETURN_(ESMF_SUCCESS)
@@ -3043,4 +3051,3 @@ contains
 ! for example call ESMF_FieldRegridRelease(routeHandle, rc=status)
 
 end module GEOS_GcmGridCompMod
-
