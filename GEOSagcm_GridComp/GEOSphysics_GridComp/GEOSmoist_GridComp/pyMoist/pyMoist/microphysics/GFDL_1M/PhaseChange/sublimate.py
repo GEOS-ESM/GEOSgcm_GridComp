@@ -35,7 +35,7 @@ def sublimate(
 
     with computation(PARALLEL), interval(...):
         sublimation = mixing_ratio_vapor
-        rh_crit = 1
+        rh_crit = 1.0
         # Sublimation of cloud water. DelGenio et al formulation
         # (Eq.s 15-17, 1996, J. Clim., 9, 270-303)
         es = (

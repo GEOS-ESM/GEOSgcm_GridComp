@@ -1,3 +1,3 @@
 # locals
 
-::: pyMoist.convection.GF_2020.locals
+::: pyMoist.convection.GF_2020.cumulus_parameterization.locals

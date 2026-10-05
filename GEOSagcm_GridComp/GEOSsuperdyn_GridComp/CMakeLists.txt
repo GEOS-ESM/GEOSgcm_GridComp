@@ -2,9 +2,7 @@ esma_set_this ()
 
 set (alldirs
   FVdycoreCubed_GridComp
-  # FVdycore_GridComp       # not yet ported to MAPL3 - restore when ported
   # GEOSdatmodyn_GridComp   # not yet ported to MAPL3 - restore when ported
-  # ARIESg3_GridComp        # not yet ported to MAPL3 - restore when ported
   )
 
 # if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOSdatmodyn_GridComp)

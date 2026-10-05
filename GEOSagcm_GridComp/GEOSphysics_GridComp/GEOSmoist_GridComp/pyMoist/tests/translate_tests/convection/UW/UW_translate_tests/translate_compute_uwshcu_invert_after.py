@@ -1,5 +1,4 @@
 from f90nml import Namelist
-from gt4py.cartesian.gtscript import int32
 from ndsl import StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.stencils.testing.grid import Grid
@@ -7,7 +6,6 @@ from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
 
-import pyMoist.constants as constants
 from pyMoist.convection.UW.compute_uwshcu import compute_uwshcu_invert_after
 from pyMoist.convection.UW.config import UWConfiguration
 
@@ -62,7 +60,6 @@ class TranslateComputeUwshcuInvertAfter(TranslateFortranData2Py):
             "cufrc_inv": self.grid.compute_dict(),
             "cush": self.grid.compute_dict(),
             "dcm_inv": self.grid.compute_dict(),
-            "dotransport": self.grid.compute_dict(),
             "fdr_inv": self.grid.compute_dict(),
             "fer_inv": self.grid.compute_dict(),
             "qidet_inv": self.grid.compute_dict(),
@@ -88,6 +85,7 @@ class TranslateComputeUwshcuInvertAfter(TranslateFortranData2Py):
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("ComputeUwshcuInv-constants")
+        self.constants["JASON"] = True
 
     def compute(self, inputs):
         config = UWConfiguration(**self.constants)
@@ -104,7 +102,7 @@ class TranslateComputeUwshcuInvertAfter(TranslateFortranData2Py):
 
         self.quantity_factory.add_data_dimensions(
             {
-                "ntracers": constants.NCNST,
+                "ntracers": config.NCNST,
             }
         )
 
@@ -187,37 +185,36 @@ class TranslateComputeUwshcuInvertAfter(TranslateFortranData2Py):
         cufrc_inv = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         cnvtr = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_DIM, "ntracers"], units="n/a")
         cush = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
-        # The iteration you want to test
-        iter_test = int32(0)
 
-        # # Call stencils
+        # Call stencils
         self._compute_uwshcu_invert_after(
-            # umf_outvar=umf_out,
-            # qtflx_outvar=qtflx_out,
-            # slflx_outvar=slflx_out,
-            # uflx_outvar=uflx_out,
-            # vflx_outvar=vflx_out,
+            dcm_out=dcm_out,
+            umf_out=umf_out,
+            qtflx_out=qtflx_out,
+            slflx_out=slflx_out,
+            uflx_out=uflx_out,
+            vflx_out=vflx_out,
             # dcm_outvar=dcm_out,
-            # qvten_outvar=qvten_out,
-            # qlten_outvar=qlten_out,
-            # qiten_outvar=qiten_out,
-            # sten_outvar=sten_out,
-            # uten_outvar=uten_out,
-            # vten_outvar=vten_out,
-            # qrten_outvar=qrten_out,
-            # qsten_outvar=qsten_out,
-            # cufrc_outvar=cufrc_out,
-            # qldet_outvar=qldet_out,
-            # qidet_outvar=qidet_out,
-            # qlsub_outvar=qlsub_out,
-            # qisub_outvar=qisub_out,
-            # fer_outvar=fer_out,
-            # fdr_outvar=fdr_out,
+            qvten_out=qvten_out,
+            qlten_out=qlten_out,
+            qiten_out=qiten_out,
+            sten_out=sten_out,
+            uten_out=uten_out,
+            vten_out=vten_out,
+            qrten_out=qrten_out,
+            qsten_out=qsten_out,
+            cufrc_out=cufrc_out,
+            qldet_out=qldet_out,
+            qidet_out=qidet_out,
+            qlsub_out=qlsub_out,
+            qisub_out=qisub_out,
+            fer_out=fer_out,
+            fdr_out=fdr_out,
             ndrop_out=ndrop_out,
             nice_out=nice_out,
             tr0=tr0,
-            # tr0_inoutvar=tr0_inout,
-            # cush_inoutvar=cush_inout,
+            tr0_inout=tr0_inout,
+            cush_inout=cush_inout,
             # Outputs
             umf_inv=umf_inv,
             dcm_inv=dcm_inv,

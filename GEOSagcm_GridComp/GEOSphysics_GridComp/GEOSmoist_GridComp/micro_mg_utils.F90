@@ -77,7 +77,7 @@ public :: &
      graupel_rain_riming_snow, &
      graupel_rime_splintering, &
      evaporate_sublimate_precip_graupel, &
-     mui_of_l
+     mui_of_l, get_wbf_factor
 
 ! 8 byte real and integer
 integer, parameter, public :: r8 = selected_real_kind(12)
@@ -907,6 +907,35 @@ subroutine ice_deposition_sublimation(t, qv, qi, ni, &
   enddo
 end subroutine ice_deposition_sublimation
 
+
+pure elemental real(r8) function get_wbf_factor(t, mode, wbf_const) result(fwbf)
+
+  real(r8), intent(in) :: t
+  integer,  intent(in) :: mode
+  real(r8), intent(in) :: wbf_const
+
+  real(r8) :: ftan
+
+  ftan = 4.9e-12_r8 * exp(0.089_r8*t)
+  ftan = min(max(ftan, 0._r8), 1._r8)
+
+  select case (mode)
+  
+  case (0)
+     ! Constant scaling
+     fwbf = min(max(wbf_const, 0._r8), 1._r8)
+
+  case (1)
+     ! Warm-only Tan correction:
+     ! retain the constant reduction at cold temperatures
+     fwbf = max(min(max(wbf_const, 0._r8), 1._r8), ftan)
+     
+  case default
+     fwbf = 1._r8
+
+  end select
+
+end function get_wbf_factor
 
 !========================================================================
 ! autoconversion of cloud liquid water to rain

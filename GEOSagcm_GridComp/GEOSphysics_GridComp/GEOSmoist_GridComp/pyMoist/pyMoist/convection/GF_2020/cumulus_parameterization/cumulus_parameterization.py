@@ -75,7 +75,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.updraft import (
     updraft_temperature,
 )
 from pyMoist.convection.GF_2020.cumulus_parameterization.vertical_discretization import VerticalDiscretization
-from pyMoist.convection_tracers import ConvectionTracers
+from pyMoist.convection_tracers import CONVECTION_TRACER_DIM, ConvectionTracers
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 
 
@@ -134,7 +134,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
                 "ensemble_2": MAXENS2,
                 "ensemble_3": MAXENS3,
                 "ensemble_members": MAXENS1 * MAXENS2 * MAXENS3,
-                "convection_tracers": config.NUMBER_OF_TRACERS,
+                CONVECTION_TRACER_DIM: config.NUMBER_OF_TRACERS,
             },
         )
 

@@ -15,6 +15,8 @@ module GEOS_BACM_1M_InterfaceMod
   use GEOS_UtilsMod
   use GEOSmoist_Process_Library
   use CLOUDNEW, only: CLDPARAMS, PROGNO_CLOUD
+  use aer_cloud
+  use Aer_Actv_Single_Moment
 
   implicit none
 
@@ -268,6 +270,20 @@ subroutine BACM_1M_Initialize (MAPL, RC)
 
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
+
+    call MAPL_GetResource( MAPL, ICE_FRACTION_POLYNOMIAL, Label="ICE_FRACTION_POLYNOMIAL:",  default=JASON_ICE_POLYNOMIAL, RC=STATUS) ; VERIFY_(STATUS)
+
+    call MAPL_GetResource( MAPL, USE_AEROSOL_NN , 'USE_AEROSOL_NN:'  , DEFAULT=USE_AEROSOL_NN, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, USE_BERGERON   , 'USE_BERGERON:'    , DEFAULT=USE_BERGERON  , RC=STATUS); VERIFY_(STATUS)
+
+    call MAPL_GetResource( MAPL, NN_MIN_ICE, 'NN_MIN_ICE:', DEFAULT= 100.0e6, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, NN_MAX_ICE, 'NN_MAX_ICE:', DEFAULT= 500.0e6, RC=STATUS); VERIFY_(STATUS)
+
+    if (USE_AEROSOL_NN) then
+      ! NOTE: For now we hard code in .false. for use_wnet as that is only an option with MG and will be handled there
+      call aer_cloud_init(use_wnet = .false.)
+      call WRITE_PARALLEL ("INITIALIZED aer_cloud_init")
+    endif
 
 end subroutine BACM_1M_Initialize
 

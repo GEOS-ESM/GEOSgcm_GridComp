@@ -93,8 +93,6 @@ class GFDL1MDriverConfigDependentConstants:
 
         if GFDL_1M_config.LHYDROSTATIC:
             DO_SEDI_W = False
-        else:
-            DO_SEDI_W = True
 
         # -----------------------------------------------------------------------
         # define latent heat coefficient used in wet bulb and bigg mechanism

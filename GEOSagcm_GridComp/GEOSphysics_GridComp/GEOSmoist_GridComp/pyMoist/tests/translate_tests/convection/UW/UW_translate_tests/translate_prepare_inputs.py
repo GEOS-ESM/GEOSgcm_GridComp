@@ -7,7 +7,6 @@ from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
 
-import pyMoist.constants as constants
 from pyMoist.convection.UW.compute_uwshcu import _reset_mask, compute_thermodynamic_variables, compute_thv0_thvl0, compute_uwshcu_invert_before
 from pyMoist.convection.UW.config import UWConfiguration
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
@@ -101,6 +100,7 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("ComputeUwshcuInv-constants")
+        self.constants["JASON"] = True
 
     def compute(self, inputs):
         self.config = UWConfiguration(**self.constants)
@@ -129,7 +129,7 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
 
         self.quantity_factory.add_data_dimensions(
             {
-                "ntracers": constants.NCNST,
+                "ntracers": self.config.NCNST,
             }
         )
 
@@ -222,7 +222,7 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
         kpbl_in = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], dtype=Int, units="n/a")
         cnvtrmax = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
 
-        # # Call stencils
+        # Call stencils
         self._compute_uwshcu_invert_before(
             # Inputs
             pmid0_inv=pmid0_inv,
@@ -342,7 +342,7 @@ class TranslatePrepareInputs(TranslateFortranData2Py):
             cufrc_out=cufrc_out,
         )
 
-        saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory.backend)
+        saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory)
         self.ese = saturation_vapor_pressure_table.ese
         self.esx = saturation_vapor_pressure_table.esx
 

@@ -13,9 +13,7 @@ module GEOS_SuperdynGridCompMod
    use MAPL, only: MAPL_VERTICAL_STAGGER_CENTER
    use MAPL, only: MAPL_Verify, MAPL_Return, MAPL_Assert
 
-   ! use FVdycore_GridCompMod, only : FV_SetServices => SetServices
    use FVdycoreCubed_GridComp, only : FV3_SetServices => SetServices
-   ! use ARIESg3_GridCompMod, only : ARIES_SetServices => SetServices
    ! use GEOS_DatmoDynGridCompMod, only : DATMO_SetServices => SetServices
    ! use AdvCore_GridCompMod, only : ADV_SetServices => SetServices
 
@@ -98,15 +96,11 @@ contains
       call MAPL_GridCompGetResource(gc, "SCM_SL", scm_sl, default=0, _RC)
 
       select case (trim(dycore))
-      ! case ("FV")
-      !    call MAPL_GridCompAddChild(gc, "DYN", FV_SetServices, "dyn.yaml", _RC)
       case ("FV3")
          call MAPL_GridCompAddChild(gc, "DYN", FV3_SetServices, "dyn.yaml", _RC)
       ! case ("FV3+ADV")
       !    call MAPL_GridCompAddChild(gc, "DYN", FV3_SetServices, "dyn.yaml", _RC)
       !    call MAPL_GridCompAddChild(gc, "ADV", ADV_SetServices, "dyn.yaml", _RC)
-      ! case ("ARIES")
-      !    call MAPL_GridCompAddChild(gc, "DYN", ARIES_SetServices, "dyn.yaml", _RC)
       ! case ("DATMO")
       !    call MAPL_GridCompAddChild(gc, "DYN", DATMO_SetServices, "dyn.yaml", _RC)
       case default
@@ -144,6 +138,7 @@ contains
       call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="QA", _RC)
       call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="SPEED", _RC)
       call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="DZ", _RC)
+      call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="WSPD_STABLE300M", _RC)
       call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="TROPP_BLENDED", _RC)
       call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="TROPK_BLENDED", _RC)
       call MAPL_GridCompReexport(gc, src_comp="DYN", src_name="PV", _RC)
