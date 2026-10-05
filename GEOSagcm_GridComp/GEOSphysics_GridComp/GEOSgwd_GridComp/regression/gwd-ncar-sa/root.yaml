@@ -94,19 +94,19 @@ mapl:
     - src_name: DTDT_DC
       src_intent: internal
       src_comp: DataGwdImports
-      dst_name: DTDT_DC
+      dst_name: HT_dc
       dst_comp: GWD
 
-    - src_name: DQLDT
-      src_intent: internal
+    - src_name: HT_mi
+      src_intent: export
       src_comp: DataGwdImports
-      dst_name: DQLDT
+      dst_name: HT_mi
       dst_comp: GWD
 
-    - src_name: DQIDT
-      src_intent: internal
+    - src_name: WSPD_STABLE300M
+      src_intent: export
       src_comp: DataGwdImports
-      dst_name: DQIDT
+      dst_name: WSPD_STABLE300M
       dst_comp: GWD
 
     - src_name: CNV_FRC
