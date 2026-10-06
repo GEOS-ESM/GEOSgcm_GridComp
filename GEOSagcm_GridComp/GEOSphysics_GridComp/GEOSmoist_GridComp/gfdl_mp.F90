@@ -338,6 +338,16 @@ module gfdl_mp_mod
 
     logical :: do_warm_rain_mp = .false. ! do warm rain cloud microphysics only
 
+    logical :: do_pinst = .true.
+
+    logical :: do_pcomp = .true.
+
+    logical :: do_pidep_pisub = .true.
+
+    logical :: do_psdep_pssub = .true.
+
+    logical :: do_pgdep_pgsub = .true.
+
     logical :: do_wbf = .true. ! do Wegener Bergeron Findeisen process
 
     logical :: do_bigg = .false. ! do Bigg process
@@ -400,7 +410,6 @@ module gfdl_mp_mod
 
     real :: t_min = 178.0 ! minimum temperature to freeze - dry all water vapor (K)
     real :: t_sub = 184.0 ! minimum temperature for sublimation of cloud ice (K)
-    real :: t_psc = 188.15 ! Realistic Type II PSC frost point (~ -85 C)
 
     real :: rh_inc = 0.30 ! rh increment for complete evaporation of cloud water and cloud ice
     real :: rh_inr = 0.30 ! rh increment for minimum evaporation of rain
@@ -483,7 +492,7 @@ module gfdl_mp_mod
     logical :: do_ice_pres_scaling = .false.  ! optional pressure scaling to accelerate ice settling in the upper troposphere
 
     real :: vw_fac = 1.0
-    real :: vi_fac_cnv = 1.15
+    real :: vi_fac_cnv = 1.0
     real :: vi_fac_lsc = 1.0
     real :: vs_fac = 1.0
     real :: vg_fac = 1.0
@@ -593,7 +602,8 @@ module gfdl_mp_mod
         rhc_revap, beta, liq_ice_combine, rewflag, reiflag, rerflag, resflag, &
         regflag, rewmin, rewmax, reimin, reimax, rermin, rermax, resmin, &
         resmax, regmin, regmax, fs2g_fac, fi2s_fac, fi2g_fac, do_sedi_melt_qi, do_sedi_melt_qs, do_sedi_melt_qg, &
-        radr_flag, rads_flag, radg_flag, do_wbf, do_psd_water_fall, do_psd_ice_fall, &
+        radr_flag, rads_flag, radg_flag, do_pinst, do_pcomp, do_pidep_pisub, do_psdep_pssub, do_pgdep_pgsub, do_wbf, &
+        do_psd_water_fall, do_psd_ice_fall, &
         n0w_sig, n0i_sig, n0r_sig, n0s_sig, n0g_sig, n0h_sig, n0w_exp, n0i_exp, &
         n0r_exp, n0s_exp, n0g_exp, n0h_exp, muw, mui, mur, mus, mug, muh, &
         alinw, alini, alinr, alins, aling, alinh, blinw, blini, blinr, blins, bling, blinh, &
@@ -4712,31 +4722,27 @@ subroutine subgrid_z_proc (ks, ke, den, denfac, dts, h_var, tz, qa, qv, ql, qr, 
         call pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den, &
             lcpk, icpk, tcpk, tcp3, h_var, mppe1, mppd1, mpps1, convt)
 
-    endif
-
 #ifdef SKIP
-    ! WMP - something here causes large warm temperature spikes 
-    ! WMP - partial evap is moved into pinst call above
-    ! WMP - ignoring condensation for now
-    ! -----------------------------------------------------------------------
-    ! cloud water condensation and evaporation
-    ! -----------------------------------------------------------------------
+        ! WMP - something here causes large warm temperature spikes 
+        ! WMP - partial evap is moved into pinst call above
+        ! WMP - ignoring condensation for now
+        ! -----------------------------------------------------------------------
+        ! cloud water condensation and evaporation
+        ! -----------------------------------------------------------------------
 
-    if (delay_cond_evap) then
-        cond_evap = last_step
-    else
-        cond_evap = .true.
-    endif
+        if (delay_cond_evap) then
+            cond_evap = last_step
+        else
+            cond_evap = .true.
+        endif
 
-    if (cond_evap) then
-        do n = 1, nconds
-            call pcond_pevap (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, &
-                te8, den, lcpk, icpk, tcpk, tcp3, mppcw, mppew, convt)
-        enddo
-    endif
+        if (cond_evap) then
+            do n = 1, nconds
+                call pcond_pevap (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, &
+                    te8, den, lcpk, icpk, tcpk, tcp3, mppcw, mppew, convt)
+            enddo
+        endif
 #endif
-
-    if (.not. do_warm_rain_mp) then
 
         ! -----------------------------------------------------------------------
         ! enforce complete freezing below t_wfr
@@ -4816,10 +4822,15 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
     ! local variables
     ! -----------------------------------------------------------------------
 
+    real :: t_psc = 188.15 ! Realistic Type II PSC frost point (~ -85 C)
+    real, parameter :: qi_scale_psc = 2.0e-6   ! Characteristic PSC ice mixing ratio (kg/kg)
+
     integer :: k
 
     real :: evap, subl, tin, qpz, rh, dqdt, qsw, qsi, rh_adj
-    real :: dq, factor, fac_l2v, rh_tem
+    real :: dq, factor, fac_l2v, rh_tem, non_cnv_fac
+
+    if (.not. do_pinst) return
 
     fac_l2v = 1. - exp (- dts / tau_l2v)
 
@@ -4830,19 +4841,27 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
         ! Triggers in the ultra-cold winter polar stratosphere before reaching t_min
         ! -----------------------------------------------------------------------
         if (tz(k) .lt. t_psc .and. tz(k) .ge. t_min) then
-            
+           
+            ! Non-convective partition factor (bound between 0.0 and 1.0)
+            non_cnv_fac = 1.0 - cnv_fraction
+ 
             ! Deposit water vapor down to your microphysical minimum
-            subl = dim (qv (k), qcmin)
+            ! Exclude deep convective regions to isolate PSC formation
+            subl = dim (qv (k), qcmin) * non_cnv_fac
             mppd1 = mppd1 + subl * dp (k) * convt
 
             call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                  - subl, 0., 0., subl, 0., 0., te8 (k), cvm (k), tz (k), &
                 lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pinst')
 
-            ! Force maximum cloud fraction to mimic uniform stratospheric sheets
-            qa (k) = 1.0
-            ! Bypassing the cfmin cloud-clearing filter completely so the 
-            ! ultra-dry stratospheric air doesn't numerically delete the ice.
+            ! -------------------------------------------------------------------
+            ! Apply physical lower bound based on Option 1 (Ice Water Content Scaling)
+            ! Gated by non_cnv_fac to avoid overriding convective anvil cloud fractions
+            ! -------------------------------------------------------------------
+            if (non_cnv_fac > 0.01) then
+                qa(k) = max(qa(k), min(1.0, (qi(k) / qi_scale_psc) * non_cnv_fac))
+                qa(k) = max(0.0, min(1.0, qa(k)))
+            end if
 
         elseif (tz (k) .lt. t_min) then
         ! -----------------------------------------------------------------------
@@ -5067,6 +5086,8 @@ subroutine pcomp (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, lcp
     integer :: k
 
     real :: sink, tc
+
+    if (.not. do_pcomp) return
                 
     do k = ks, ke
 
@@ -5321,7 +5342,9 @@ subroutine pidep_pisub (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
 
     integer :: k
 
-    real :: sink, tin, dqdt, qsi, dq, pidep, tmp, tc, qi_gen, qi_crt, ramp_factor
+    real :: sink, tin, ifrac, dqdt, qsi, dq, pidep, tmp, tc, qi_gen, qi_crt, ramp_factor
+
+    if (.not. do_pidep_pisub) return
 
     do k = ks, ke
 
@@ -5377,30 +5400,37 @@ subroutine pidep_pisub (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
             if (dq .gt. 0.) then
                 ! Ice Vapor Deposition (Growth Phase)
                 tc = tice - tz (k)
-                ! Calculate the temperature ramp factor used in most flags
-                ! (This saves recalculating it on every case line)
-                ramp_factor = min(qi_lim, 0.1 * tc) / den(k)
+                ! Use observational ice fraction for temperature ramp
+                ifrac = ice_fraction(tin, cnv_fraction, srf_type)
+                ramp_factor = min(qi_lim, ifrac) / max(den(k), 0.4)
+                if (tc > 40.0) ramp_factor = min(ramp_factor, 8.0)
                 select case (igflag)
                     case (1)
                         ! Requires qi_gen, no temperature ramp
-                        qi_gen = 4.808e-7 * exp(0.133 * tc)
+                        qi_gen = 2.466e-7 * exp(0.133 * tc)
                         qi_crt = qi_gen / den(k)
                     case (2)
                         ! Requires qi_gen, uses temperature ramp
-                        qi_gen = 4.808e-7 * exp(0.133 * tc)
+                        qi_gen = 2.466e-7 * exp(0.133 * tc)
                         qi_crt = qi_gen * ramp_factor
                     case (3)
                         ! Bypasses qi_gen entirely (computationally cheapest)
                         qi_crt = 1.82e-6 * ramp_factor
                     case (4)
                         ! Requires qi_gen, bounded by a minimum, uses temperature ramp
-                        qi_gen = 4.808e-7 * exp(0.133 * tc)
+                        qi_gen = 2.466e-7 * exp(0.133 * tc)
                         qi_crt = max(qi_gen, 1.82e-6) * ramp_factor
                     case default
                         ! Safe fallback just in case an invalid flag is passed
                         qi_crt = 1.82e-6 * ramp_factor
                 end select
-                sink = min (tmp, max (qi_crt - qi (k), pidep), tc / tcpk (k))
+                ! Add a density correction:
+                if (den(k) < 0.5) then  ! Upper troposphere
+                    qi_crt = qi_crt * (den(k) / 0.5)**2  ! Reduces threshold at low density
+                endif
+                qi_crt = min(qi_crt, 2.0e-5)  ! Prevent runaway growth at cold temps
+                ! Only deposit if below threshold
+                sink = min(tmp, pidep, max(0.0, qi_crt - qi(k)), tc / tcpk(k))
                 mppdi = mppdi + sink * dp (k) * convt
             else
                 ! Ice Sublimation (Evaporation Phase)
@@ -5470,6 +5500,8 @@ subroutine psdep_pssub (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
 
     real :: sink, tin, dqdt, qsi, qden, t2, dq, pssub
 
+    if (.not. do_psdep_pssub) return
+
     do k = ks, ke
 
         if (qs (k) .gt. qpmin) then
@@ -5538,6 +5570,8 @@ subroutine pgdep_pgsub (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
     integer :: k
 
     real :: sink, tin, dqdt, qsi, qden, t2, dq, pgsub
+
+    if (.not. do_pgdep_pgsub) return
 
     do k = ks, ke
 

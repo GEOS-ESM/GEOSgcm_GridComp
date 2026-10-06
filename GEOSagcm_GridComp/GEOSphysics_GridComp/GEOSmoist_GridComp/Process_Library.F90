@@ -113,11 +113,12 @@ module GEOSmoist_Process_Library
   real, parameter :: r13bbeta = 1./3. - 0.14
   real, parameter :: bx = 100.* (3./(4.*MAPL_PI))**(1./3.)
 
-  ! Liquid based on DOI 10.1088/1748-9326/3/4/045021
-  real, parameter :: rho_w   = 1000.0  ! Density of liquid water in kg/m^3
-  real, parameter :: rho_s   = 100.0   ! Snow density
-  real, parameter :: rho_g   = 500.0   ! Graupel density
-  real, parameter :: rho_i   = 917.0   ! Ice density (corrected from 890)
+  ! Description: Standard hydrometeor bulk densities used across cloud microphysics schemes
+  real, parameter :: rho_w   = 1000.0  ! Pure liquid water density (kg/m3)
+  real, parameter :: rho_s   = 100.0   ! Low-density snow aggregate density (kg/m3)
+  real, parameter :: rho_g   = 400.0   ! Medium-density graupel density (kg/m3)
+  real, parameter :: rho_i   = 917.0   ! Solid bulk ice density (kg/m3)
+  real, parameter :: rho_h   = 900.0   ! High-density hail density (kg/m3)
   real, parameter :: Ldiss   = 0.07    ! tunable dispersion effect
   real, parameter :: Lk      = 0.75    ! tunable shape effect (0.5:1)
   real, parameter :: Lbe     = 1./3. - 0.14
@@ -1118,16 +1119,9 @@ module GEOSmoist_Process_Library
                 ! The concave CAPE mapping naturally provides lower CNV_FRC for
                 ! anvils and higher CNV_FRC for cores
                 ! ================================================================
-                IF (CNV_FRC > 0.6) THEN
-                   ! Deep convective cores: allow larger crystals for brightness
-                   RADIUS = (ICE_RAD3_DISP + 1.3 * CNV_FRC) * R_VOLUME
-                   RADIUS = MIN(160.e-6, MAX(40.e-6, RADIUS))
-                ELSE
-                   ! Anvils and stratiform: standard treatment
-                   RADIUS = (ICE_RAD3_DISP + 0.95 * CNV_FRC) * R_VOLUME
-                   RADIUS = MIN( 140.e-6 - (70.e-6 * (1.0 - CNV_FRC)), &
-                                 MAX(30.e-6, RADIUS) )
-                END IF
+                RADIUS = (ICE_RAD3_DISP + 1.3 * CNV_FRC) * R_VOLUME
+                RADIUS = MIN( 140.e-6 - (70.e-6 * (1.0 - CNV_FRC)), &
+                              MAX(30.e-6, RADIUS) )
              ELSE
                 !-----------------------------------------------------------------
                 ! Sun (2001) temperature-based fallback
@@ -5886,7 +5880,7 @@ real function get_fac_eis (eis, SRF_TYPE)
        get_fac_eis = 0.0
     else
        ! Smooth function from 0 to 1
-       get_fac_eis = (eis / 10.0)**2
+       get_fac_eis = SQRT(eis / 10.0)
     endif
 end function get_fac_eis
 
