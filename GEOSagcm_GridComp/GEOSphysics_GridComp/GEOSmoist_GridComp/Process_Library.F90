@@ -2713,7 +2713,7 @@ module GEOSmoist_Process_Library
 
     if (a > 0.001 .and. qt3bar > 0.0 .and. a /= 0.5) then
 
-      qt1 = a * qt2 / (1.0 - a)
+      qt1 = a * qt2 / (a - 1.0)
 
       fac = sqrt(a / (1.0 - a))
       tmp = max(0.0, qt2bar - (1.0 - a) * qt1**2 - a * qt2**2)
