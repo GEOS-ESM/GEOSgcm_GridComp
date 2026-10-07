@@ -53,6 +53,13 @@ module GEOS_SimpleSeaiceGridCompMod
       type(ssi_state), pointer :: ptr
   end type 
 
+  real :: SEAICEALBVRS
+  real :: SEAICEALBVFS
+  real :: SEAICEALBNRS
+  real :: SEAICEALBNFS
+
+  integer :: IVWATER
+
   contains
 
 !BOP
@@ -1139,6 +1146,13 @@ module GEOS_SimpleSeaiceGridCompMod
     wrap%ptr => mystate
     call ESMF_UserCompSetInternalState(gc, 'ssi_private', wrap,_RC)
 
+    call MAPL_GetResource (MAPL, SEAICEALBVRS, Label="SEAICEALBVRS:",  DEFAULT=0.6, _RC)
+    call MAPL_GetResource (MAPL, SEAICEALBVFS, Label="SEAICEALBVFS:",  DEFAULT=0.6, _RC)
+    call MAPL_GetResource (MAPL, SEAICEALBNRS, Label="SEAICEALBNRS:",  DEFAULT=0.6, _RC)
+    call MAPL_GetResource (MAPL, SEAICEALBNFS, Label="SEAICEALBNFS:",  DEFAULT=0.6, _RC)
+
+    call MAPL_GetResource (MAPL, IVWATER, label='SEAICE_IVWATER:', DEFAULT=5, __RC__)
+
 ! Set the Profiling timers
 ! ------------------------
 
@@ -1494,7 +1508,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
       elseif (CHOOSEMOSFC.eq.1) then
 
          niter = 6   ! number of internal iterations in the helfand MO surface layer routine
-         IWATER= 5
+         IWATER= IVWATER
          Z0(:,N)=OCEANICEZ0
 
          PSMB = PS * 0.01            ! convert to MB
@@ -2327,11 +2341,6 @@ contains
       real                  :: SEAICEALBNRN
       real                  :: SEAICEALBNFN
 
-      real                  :: SEAICEALBVRS
-      real                  :: SEAICEALBVFS
-      real                  :: SEAICEALBNRS
-      real                  :: SEAICEALBNFS
-
       real, dimension(0:13) :: shebavis
       real, dimension(0:13) :: shebanir
       real, dimension(0:13) :: nday
@@ -2393,10 +2402,6 @@ contains
       SEAICEALBNRN=abasei+aslopei*afraci
       SEAICEALBNFN=abasei+aslopei*afraci
 
-      SEAICEALBVRS=0.6
-      SEAICEALBVFS=0.6
-      SEAICEALBNRS=0.6
-      SEAICEALBNFS=0.6
 
       where(LATS.ge.0.)
 ! Beam albedos

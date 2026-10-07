@@ -68,6 +68,11 @@ module GEOS_LandiceGridCompMod
   integer, parameter, public :: NUM_SNOW_LAYERS_LANDICE = NUM_SNOW_LAYERS  
   integer, parameter, public :: NUM_ICE_LAYERS_LANDICE  = NUM_ICE_LAYERS  
 
+  real :: LANDICEBAREZ0_HELFAND  ! used in Helfand; Louis has value hardwired into louissurface()
+  real :: LANDICESNOWZ0_HELFAND  ! used in Helfand; Louis has value hardwired into louissurface()
+
+  integer :: IVWATER
+
   real,    parameter :: rad_to_deg      = 180.0 / 3.1415926
   
   ! snowrt related constants
@@ -86,9 +91,9 @@ module GEOS_LandiceGridCompMod
                                                ! heat diffusion of ice layers to take effect
   real,    parameter :: LWCTOP     = 1.        ! top thickness to compute LWC. 1m taken from
                                                ! Fettweis et al 2011
-  real,    parameter :: VISMAX    = 0.96       ! parameter for snow_albedo
-  real,    parameter :: NIRMAX    = 0.68       ! parameter for snow_albedo
-  real,    parameter :: SLOPE     = 1.0        ! parameter for snow_albedo
+  real               :: VISMAX                 ! argument for snow_albedo
+  real               :: NIRMAX                 ! argument for snow_albedo
+  real               :: SLOPE                  ! argument for snow_albedo
 
   ! taken from CICE
    real,   parameter :: &                       ! currently used only
@@ -189,6 +194,14 @@ module GEOS_LandiceGridCompMod
    call MAPL_GetResource (MAPL, DO_ISSM, label='DO_ISSM:', DEFAULT=0, __RC__ )
    call MAPL_GetResource (MAPL, NUM_LDAS_ENSEMBLE, label='NUM_LDAS_ENSEMBLE:', DEFAULT=1, __RC__)
    call MAPL_GetResource (MAPL, ens_id_width, label='ENS_ID_WIDTH:', DEFAULT=0, __RC__)   
+
+   call MAPL_GetResource (MAPL, LANDICEBAREZ0_HELFAND, label='LANDICEBAREZ0_HELFAND:', DEFAULT=0.005, __RC__)
+   call MAPL_GetResource (MAPL, LANDICESNOWZ0_HELFAND, label='LANDICESNOWZ0_HELFAND:', DEFAULT=0.001, __RC__)
+   call MAPL_GetResource (MAPL, IVWATER, label='LANDICE_IVWATER:', DEFAULT=4, __RC__)
+
+   call MAPL_GetResource (MAPL, VISMAX, label='LANDICE_VISMAX:', DEFAULT=0.96, __RC__)
+   call MAPL_GetResource (MAPL, NIRMAX, label='LANDICE_NIRMAX:', DEFAULT=0.68, __RC__)
+   call MAPL_GetResource (MAPL, SLOPE , label='LANDICE_SLOPE:' , DEFAULT=1.0 , __RC__)
 
 #ifndef HAVE_ISSM
    DO_ISSM=0
@@ -2025,9 +2038,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, allocatable              :: PSMB(:)
    real, allocatable              :: PSL(:)
 
-   real, parameter :: LANDICEBAREZ0_HELFAND  = 0.005    ! used in Helfand; Louis has value hardwired into louissurface()
-   real, parameter :: LANDICESNOWZ0_HELFAND  = 0.001    ! used in Helfand; Louis has value hardwired into louissurface()
-
    integer                        :: CHOOSEZ0
 
 !=============================================================================
@@ -2277,7 +2287,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    elseif (CHOOSEMOSFC.eq.1)then
 
       niter = 6   ! number of internal iterations in the helfand MO surface layer routine
-      IWATER = 4
+      IWATER = IVWATER
       ! roughness length scale set accroding to Ettema et al. (2010)
       if(N==ICE) then
          Z0(:,N)=LANDICEBAREZ0_HELFAND
