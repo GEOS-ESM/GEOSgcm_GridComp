@@ -40,7 +40,7 @@ class TranslateGFDL_1M_MeltFreeze(TranslateFortranData2Py):
         state = GFDL1MState.zeros(self.quantity_factory)
 
         # Initialize saturation tables
-        self.saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
+        self.saturation_tables = SaturationVaporPressureTable(self.stencil_factory)
 
         state.t.field[:] = inputs["t"]
         state.mixing_ratio.convective_liquid.field[:] = inputs["mixing_ratio_convective_liquid"]
@@ -56,19 +56,20 @@ class TranslateGFDL_1M_MeltFreeze(TranslateFortranData2Py):
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"DT_MOIST": config.DT_MOIST},
         )
+
         code(
             convection_fraction=state.convection_fraction,
             surface_type=state.surface_type,
             t=state.t,
-            liquid=state.mixing_ratio.convective_liquid,
-            ice=state.mixing_ratio.convective_ice,
+            mixing_ratio_liquid=state.mixing_ratio.convective_liquid,
+            mixing_ratio_ice=state.mixing_ratio.convective_ice,
         )
         code(
             convection_fraction=state.convection_fraction,
             surface_type=state.surface_type,
             t=state.t,
-            liquid=state.mixing_ratio.large_scale_liquid,
-            ice=state.mixing_ratio.large_scale_ice,
+            mixing_ratio_liquid=state.mixing_ratio.large_scale_liquid,
+            mixing_ratio_ice=state.mixing_ratio.large_scale_ice,
         )
 
         return {

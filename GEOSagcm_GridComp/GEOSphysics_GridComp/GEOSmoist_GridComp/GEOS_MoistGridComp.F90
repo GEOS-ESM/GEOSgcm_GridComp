@@ -44,8 +44,9 @@ module GEOS_MoistGridCompMod
   logical :: DEBUG_MST
   logical :: LDIAGNOSE_PRECIP_TYPE
   logical :: LUPDATE_PRECIP_TYPE
-  real    :: CCN_OCN
-  real    :: CCN_LND
+  real    :: CCN_OCN, CIN_OCN
+  real    :: CCN_LND, CIN_LND
+  logical :: MOIST_USE_NCLOUD_CLIM=.FALSE.
   real    :: DETRAIN_INACTIVE_CNV
   real    :: TAU_DETRAIN_CNV
 
@@ -179,16 +180,25 @@ contains
                adjustl(CLDMICR_OPTION)=="MGB2_2M"
     _ASSERT( LCLDMICR, 'Unsupported Cloud Microphysics Option' )
 
-
     call MAPL_GetResource( CF, DEBUG_MST, Label="DEBUG_MST:",  default=.false., RC=STATUS) ; VERIFY_(STATUS)
 
     call MAPL_GetResource( CF, DEBUG_TQ_ERRORS, Label="DEBUG_TQ_ERRORS:",  default=.false., RC=STATUS) ; VERIFY_(STATUS)
 
+    !***********Aerosol-Cloud related
+
+    call MAPL_GetResource( CF, MOIST_USE_NCLOUD_CLIM, Label='USE_NCLOUD_CLIM:', default=.FALSE., RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource( CF, WSUB_OPTION, Label='WSUB_OPTION:',   default= 3,        RC=STATUS) !0- param 1- Use Wsub climatology 2-USE WNET` 3-Symbolic Wnet
+    VERIFY_(STATUS)
+
     ! MAT These have to be defined as they are passed into Aer_Activate below and are intent(in)
     !     Note: It's possible these aren't *used* if USE_AEROSOL_NN=.TRUE. but they are still passed
     !           in so they have to be defined
-    call MAPL_GetResource( CF, CCN_OCN, 'NCCN_OCN:', DEFAULT= 100., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( CF, CCN_OCN, 'NCCN_OCN:', DEFAULT=  50., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( CF, CCN_LND, 'NCCN_LND:', DEFAULT= 300., RC=STATUS); VERIFY_(STATUS)
+
+    call MAPL_GetResource( CF, CIN_OCN, 'NCIN_OCN:', DEFAULT= 0.005, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( CF, CIN_LND, 'NCIN_LND:', DEFAULT= 0.05 , RC=STATUS); VERIFY_(STATUS)
 
     ! NOTE: Binary restarts expect Q to be the first field in the moist_internal_rst. Thus,
     !       the first MAPL_AddInternalSpec call must be from the microphysics
@@ -586,7 +596,7 @@ contains
              VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
             VERIFY_(STATUS)
 
-      case (2)
+    case (2)
             call MAPL_AddImportSpec ( GC,                                          &
              LONG_NAME  = 'total_momentum_diffusivity',                            &
              UNITS      = 'm+2 s-1',                                               &
@@ -611,7 +621,7 @@ contains
             ! Do nothing
       end select
 
-     IF (USE_NCLOUD_CLIM) then
+     IF (MOIST_USE_NCLOUD_CLIM) then
         call MAPL_AddImportSpec ( GC,                                 &
             SHORT_NAME = 'NCPL_CLIM',                                 &
             LONG_NAME  = 'In-Cloud NCPL climatology',     &
@@ -788,6 +798,8 @@ contains
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
     VERIFY_(STATUS)
+    
+    
     call MAPL_AddImportSpec(GC,                             &
         LONG_NAME          = 'turbulence_liquid_water_tendency',  &
         UNITS              = 'kg kg-1 s-1',                       &
@@ -1797,6 +1809,15 @@ contains
     VERIFY_(STATUS)
 
 
+      call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'EDMF_DMF',                                      &
+         LONG_NAME = 'EDMF_updraft_detrained_mass_flux', &
+         UNITS     = 'kg m-2 s-1',                                 &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,                         &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+    
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'DCM_SC',                                      &
          LONG_NAME = 'Shallow_convection_detrained_cloud_mass', &
@@ -1953,7 +1974,7 @@ contains
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME ='NCCN_LIQ',                                     &
          LONG_NAME ='number_concentration_of_cloud_liquid_particles',     &
-         UNITS     ='cm-3',                                         &
+         UNITS     ='m-3',                                         &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
@@ -1961,14 +1982,6 @@ contains
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME ='NCCN_ICE',                                     &
          LONG_NAME ='number_concentration_of_ice_cloud_particles',     &
-         UNITS     ='cm-3',                                         &
-         DIMS      = MAPL_DimsHorzVert,                            &
-         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME ='CLDNCCN',                                     &
-         LONG_NAME ='number_concentration_of_cloud_particles',     &
          UNITS     ='m-3',                                         &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
@@ -2901,6 +2914,14 @@ contains
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='SIGMA_S',                                     &
+         LONG_NAME ='normalized_total_water_standard_deviation',   &
+         UNITS     ='1',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+    
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='RHX',                                         &
          LONG_NAME ='relative_humidity_after_PDF',               &
@@ -4747,15 +4768,21 @@ contains
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
 
-
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='NWFA',                                      &
          LONG_NAME ='Number concentration of water-friendly aerosol',               &
-         UNITS     ='Kg-1'  ,                                         &
+         UNITS     ='m-3'  ,                                         &
          DIMS      = MAPL_DimsHorzVert,                                  &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='NIFA',                                      &
+         LONG_NAME ='Number concentration of ice-friendly aerosol',               &
+         UNITS     ='m-3'  ,                                         &
+         DIMS      = MAPL_DimsHorzVert,                                  &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                          &
          SHORT_NAME='CNV_NICE',                                          &
@@ -5601,8 +5628,10 @@ contains
     call MAPL_GetResource( MAPL, LDIAGNOSE_PRECIP_TYPE, Label="DIAGNOSE_PRECIP_TYPE:",  default=.FALSE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LUPDATE_PRECIP_TYPE,   Label="UPDATE_PRECIP_TYPE:",    default=.FALSE., RC=STATUS); VERIFY_(STATUS)
 
-    call MAPL_GetResource( MAPL, DETRAIN_INACTIVE_CNV, Label="DETRAIN_INACTIVE_CNV:",  default=0.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, TAU_DETRAIN_CNV, Label="TAU_DETRAIN_CNV:",  default=1800.0, RC=STATUS); VERIFY_(STATUS)
+                                            DETRAIN_INACTIVE_CNV = 0.0
+    if (adjustl(CLDMICR_OPTION)=="GFDL_1M") DETRAIN_INACTIVE_CNV = 5.0e-4
+    call MAPL_GetResource( MAPL, DETRAIN_INACTIVE_CNV, Label="DETRAIN_INACTIVE_CNV:",  default=DETRAIN_INACTIVE_CNV, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, TAU_DETRAIN_CNV, Label="TAU_DETRAIN_CNV:",  default=3600.0, RC=STATUS); VERIFY_(STATUS)
 
     if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Initialize(MAPL, CF, CLOCK, IMPORT, EXPORT, RC=STATUS) ; VERIFY_(STATUS)
@@ -5697,7 +5726,7 @@ contains
     real, allocatable, dimension(:,:,:) :: PLEmb, PKE, ZLE0, PK, MASS
     real, allocatable, dimension(:,:,:) :: PLmb,  ZL0, DZET
     real, allocatable, dimension(:,:,:) :: QST3, DQST3, MWFA
-    real, allocatable, dimension(:,:,:) :: TMP3D
+    real, allocatable, dimension(:,:,:) :: TMP3D, TMP3Dp1
     real, allocatable, dimension(:,:)   :: TMP2D
     integer, allocatable,dimension(:,:) :: KLCL
     ! Internals
@@ -5722,7 +5751,7 @@ contains
     real, pointer, dimension(:,:  ) :: CAPE, INHB, MLCAPE, SBCAPE, MLCIN, MUCAPE, MUCIN, SBCIN, LFC, LNB, LCL_AGL
     real, pointer, dimension(:,:  ) :: CNV_FRC, SRF_TYPE
     real, pointer, dimension(:,:,:) :: CFICE, CFLIQ
-    real, pointer, dimension(:,:,:) :: NWFA
+    real, pointer, dimension(:,:,:) :: NWFA, NIFA
     real, pointer, dimension(:,:)   :: EIS, LTS
     real, pointer, dimension(:,:,:) :: PTRDC, PTRSC
     real, pointer, dimension(:,:,:) :: PTR3D
@@ -5949,6 +5978,7 @@ contains
 
        ! These may be used by children
        call MAPL_GetPointer(EXPORT, NWFA,    'NWFA'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, NIFA,    'NIFA'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, CNV_FRC, 'CNV_FRC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, BYNCY,   'BYNCY'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, CAPE,    'CAPE'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -6001,7 +6031,7 @@ contains
        ! Get aerosol activation properties
        call MAPL_TimerOn (MAPL,"---AERO_ACTIVATE")
 
-       if (USE_NCLOUD_CLIM) then  !Setup ND/NI climatology from GiOcean
+       if (MOIST_USE_NCLOUD_CLIM) then  !Setup ND/NI climatology from GiOcean
           call MAPL_GetPointer(IMPORT, PTR3D, 'NCPL_CLIM', RC=STATUS); VERIFY_(STATUS)
           NACTL = PTR3D
           call MAPL_GetPointer(IMPORT, PTR3D, 'NCPI_CLIM', RC=STATUS); VERIFY_(STATUS)
@@ -6014,22 +6044,28 @@ contains
              else
                TMP3D = W
              endif
-             ! Pressures in Pa
+             ! Call aerosol activation (pressures in Pa)
              call Aer_Activation(MAPL, IM,JM,LM, Q, T, PLmb*100.0, PLE, TKE, TMP3D, FRLAND, &
-                                 AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6, &
-                                 (adjustl(CLDMICR_OPTION)=="MGB2_2M"), __RC__)
+                                 AERO, NACTL, NACTI, NWFA, NIFA, CCN_LND*1.e6, CCN_OCN*1.e6, &
+                                 .true., __RC__)
+             ! Apply scaling factors
+             NACTL = NACTL*NN_FAC_LIQ
+             NACTI = NACTI*NN_FAC_ICE
+             ! Apply min/max limits
+             NACTL = max(NN_MIN_LIQ, min(NACTL, NN_MAX_LIQ))
+             NACTI = max(NN_MIN_ICE, min(NACTI, NN_MAX_ICE))
            else
               do L=1,LM
                  NACTL(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6 ! #/m^3
-                 NACTI(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6 ! #/m^3
+                 NACTI(:,:,L) = (CIN_LND*FRLAND + CIN_OCN*(1.0-FRLAND))*1.e6 ! #/m^3
               end do
            endif
        endif
 
        call MAPL_GetPointer(EXPORT, PTR3D, 'NCCN_LIQ', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR3D)) PTR3D = NACTL*1.e-6
+       if (associated(PTR3D)) PTR3D = NACTL
        call MAPL_GetPointer(EXPORT, PTR3D, 'NCCN_ICE', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR3D)) PTR3D = NACTI*1.e-6
+       if (associated(PTR3D)) PTR3D = NACTI
 
        call MAPL_TimerOff(MAPL,"---AERO_ACTIVATE")
 
@@ -6078,19 +6114,21 @@ contains
        call MAPL_TimerOn(MAPL,"---MOIST_EPILOGUE")
 
        ! Mass fluxes
-       ! accumuated over deep and shalow convection
-       call MAPL_GetPointer(EXPORT, PTR3D,   'CNV_MFC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       ALLOCATE ( TMP3Dp1(IM,JM,LM+1) )
+       ! Edge updraft mass flux over deep and shalow convection
+       call MAPL_GetPointer(EXPORT, PTR3D,   'CNV_MFC',               RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, PTRDC,   'UMF_DC' ,               RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, PTRSC,   'UMF_SC' ,               RC=STATUS); VERIFY_(STATUS)
-                              PTR3D = 0.0
-       if (associated(PTRDC)) PTR3D = PTR3D + PTRDC
-       if (associated(PTRSC)) PTR3D = PTR3D + PTRSC
+                              TMP3Dp1 = 0.0
+       if (associated(PTRDC)) TMP3Dp1 = TMP3Dp1 + PTRDC
+       if (associated(PTRSC)) TMP3Dp1 = TMP3Dp1 + PTRSC
+       if (associated(PTR3D)) PTR3D   = TMP3Dp1
        if (DETRAIN_INACTIVE_CNV > 0.0) then
          do L = 1, LM
            do J = 1, JM
              do I = 1, IM
                ! Calculate local mass flux
-               MFC = 0.5 * (PTR3D(I,J,L) + PTR3D(I,J,L+1))
+               MFC = 0.5 * (TMP3Dp1(I,J,L) + TMP3Dp1(I,J,L+1))
                if (MFC < DETRAIN_INACTIVE_CNV) then
                  ! 1. Calculate a smooth inactivity factor (0.0 at threshold, 1.0 when MFC is 0)
                  ! 2. Scale it by the timestep vs relaxation time (DT_MOIST / TAU)
@@ -6116,13 +6154,15 @@ contains
           enddo
          enddo
        endif
+       DEALLOCATE ( TMP3Dp1 )
 
-       call MAPL_GetPointer(EXPORT, PTR3D,   'CNV_MFD', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, PTR3D,   'CNV_MFD',               RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, PTRDC,   'MFD_DC' ,               RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, PTRSC,   'MFD_SC' ,               RC=STATUS); VERIFY_(STATUS)
-                              PTR3D = 0.0
-       if (associated(PTRDC)) PTR3D = PTR3D + PTRDC
-       if (associated(PTRSC)) PTR3D = PTR3D + PTRSC
+                              TMP3D = 0.0
+       if (associated(PTRDC)) TMP3D = TMP3D + PTRDC
+       if (associated(PTRSC)) TMP3D = TMP3D + PTRSC
+       if (associated(PTR3D)) PTR3D = TMP3D
 
        call MAPL_TimerOff(MAPL,"---MOIST_EPILOGUE")
 
@@ -6710,4 +6750,3 @@ contains
   end subroutine FINALIZE
 
 end module GEOS_MoistGridCompMod
-

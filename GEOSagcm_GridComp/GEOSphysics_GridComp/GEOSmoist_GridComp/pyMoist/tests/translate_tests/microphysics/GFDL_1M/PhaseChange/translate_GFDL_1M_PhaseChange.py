@@ -60,7 +60,7 @@ class TranslateGFDL_1M_PhaseChange(TranslateFortranData2Py):
         locals_ = GFDL1MLocals.make_as_state(self.quantity_factory)
 
         # Initialize saturation tables
-        saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
+        saturation_tables = SaturationVaporPressureTable(self.stencil_factory)
 
         state.estimated_inversion_strength.field[:] = inputs["estimated_inversion_strength"]
         state.convection_fraction.field[:] = inputs["convection_fraction"]

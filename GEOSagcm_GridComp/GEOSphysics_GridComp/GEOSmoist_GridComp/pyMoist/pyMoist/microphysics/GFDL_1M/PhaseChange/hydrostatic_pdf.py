@@ -67,7 +67,7 @@ def pdfcondensate(
     """
     qtmean_64: float64 = qtmean
     sigmaqt1_64: float64 = sigmaqt1
-    sigmaqt2_64: float64 = sigmaqt2
+    sigmaqt2_64: float64 = sigmaqt2  # unused?!
     qstar_64: float64 = qstar
 
     condensate: float64 = 0.0
@@ -264,9 +264,9 @@ def hydrostatic_pdf(
             qa_x = 0.0
         cf_n = large_scale_cloud_fraction * inv_clcn
         qc_n = (mixing_ratio_large_scale_liquid + mixing_ratio_large_scale_ice) * inv_clcn
-        qc_i = mixing_ratio_large_scale_ice * inv_clcn
+        qc_i = mixing_ratio_large_scale_ice * inv_clcn  # never used?!
         t_n = t
-        qs_x, _ = saturation_specific_humidity(t=t, p=p_mb * 100, ese=ese, esx=esx)
+        qs_x, _ = saturation_specific_humidity(t=t, p=p_mb * 100.0, esx=esx)
         qv_n = (mixing_ratio_vapor - qs_x * convective_cloud_fraction) * inv_clcn
 
         qt = qc_n + qv_n  # Total LS water after microphysics
@@ -275,11 +275,11 @@ def hydrostatic_pdf(
         while count <= 20:
             qv_p = qv_n
             qc_p = qc_n
-            cf_p = cf_n
+            cf_p = cf_n  # unused?!
             t_p = t_n
-            qs_n, dqs = saturation_specific_humidity(t=t_n, p=p_mb * 100, ese=ese, esx=esx)
+            qs_n, dqs = saturation_specific_humidity(t=t_n, p=p_mb * 100.0, esx=esx)
 
-            if PDF_SHAPE < 3:  # 1 = top-hat 2 = triangulat
+            if PDF_SHAPE < 3:  # 1 = top-hat 2 = triangular
                 sigmaqt1 = alpha * qs_n
                 sigmaqt2 = alpha * qs_n
             elif PDF_SHAPE == 4:  # lognormal (sigma is dimensionless)
@@ -417,5 +417,5 @@ def hydrostatic_pdf(
             mixing_ratio_convective_liquid = 0.0
             convective_cloud_fraction = 0.0
 
-        denom, _ = saturation_specific_humidity(t=t, p=p_mb * 100.0, ese=ese, esx=esx)
+        denom, _ = saturation_specific_humidity(t=t, p=p_mb * 100.0, esx=esx)
         relative_humidity = mixing_ratio_vapor / denom

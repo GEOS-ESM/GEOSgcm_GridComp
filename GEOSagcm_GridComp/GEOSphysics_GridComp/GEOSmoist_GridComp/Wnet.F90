@@ -54,13 +54,13 @@ subroutine load_wnet_weights()
     character(len=10) :: header
     logical :: file_exists
 
-    inquire(file='Wnet_weights.txt', exist=file_exists)
+    inquire(file='Wnet_weights.rc', exist=file_exists)
     if (.not. file_exists) then
-        print *, "Error: File 'Wnet_weights.txt' not found!"
+        print *, "Error: File 'Wnet_weights.rc' not found!"
         stop
     end if
 
-    open(10, file='Wnet_weights.txt', status='old')
+    open(10, file='Wnet_weights.rc', status='old')
 
     if (.not. allocated(W_input)) allocate(W_input(NF, NODES))
     if (.not. allocated(b_input)) allocate(b_input(NODES))
