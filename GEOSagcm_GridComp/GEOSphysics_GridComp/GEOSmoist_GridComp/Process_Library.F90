@@ -46,14 +46,25 @@ module GEOSmoist_Process_Library
   integer, parameter :: V12_ICE_POLYNOMIAL   = 3
   integer :: ICE_FRACTION_POLYNOMIAL = 3
 
-  ! Shift parameters targeted for MODIS polynomial
-  real, parameter :: GLAC_SHIFT_LANDICE =  3.0
-  real, parameter :: GLAC_SHIFT_SEAICE  =  2.0
-  real, parameter :: GLAC_SHIFT_SNOW    =  1.0
-  real, parameter :: GLAC_SHIFT_OCEAN   =  4.0
-  real, parameter :: GLAC_SHIFT_LAND    = -1.0
-  ! Convective shift 
-  real, parameter :: GLAC_SHIFT_CONV    = 7.5   ! Will hold tropical liquid very high
+  ! Lugh ICE_FRACTION constants
+   ! Shift and slope parameters targeted for MODIS polynomial
+   real, parameter :: GLAC_SHIFT_LANDICE =  9.0
+   real, parameter :: GLAC_SLOPE_LANDICE =  0.8
+
+   real, parameter :: GLAC_SHIFT_SEAICE  =  7.5
+   real, parameter :: GLAC_SLOPE_SEAICE  =  0.8
+
+   real, parameter :: GLAC_SHIFT_SNOW    =  6.0
+   real, parameter :: GLAC_SLOPE_SNOW    =  0.8
+
+   real, parameter :: GLAC_SHIFT_OCEAN   =  0.0
+   real, parameter :: GLAC_SLOPE_OCEAN   =  1.0
+
+   real, parameter :: GLAC_SHIFT_LAND    = -2.0
+   real, parameter :: GLAC_SLOPE_LAND    =  1.1
+
+   real, parameter :: GLAC_SHIFT_CONV    = 10.0
+   real, parameter :: GLAC_SLOPE_CONV    =  0.8
 
   ! Jason ICE_FRACTION constants
    ! In anvil/convective clouds
@@ -100,7 +111,7 @@ module GEOSmoist_Process_Library
   real, parameter :: QPMIN   =  1.e-15    ! minimum precipitate (qr, qs, qg) values
   real, parameter :: dQCmax  =  1.e-4
   real, parameter :: T_HOM   = -38.0      ! Homogeneous freezing at -38 C
-  real, parameter :: T_WIDTH =  10.0      ! Homogeneous freezing with -38 : -28 C
+  real, parameter :: T_WIDTH =   8.0      ! Homogeneous freezing with -38 : -30 C
   real, parameter :: R_AIR     =  3.47e-3 !m3 Pa kg-1K-1
 
   ! LDRADIUS4
@@ -321,7 +332,6 @@ module GEOSmoist_Process_Library
   public :: RAW_MODIS_POLYNOMIAL, JASON_ICE_POLYNOMIAL, V12_ICE_POLYNOMIAL
   public :: ICE_FRACTION_POLYNOMIAL
   public :: SRF_TYPE_OCEAN, SRF_TYPE_LAND, SRF_TYPE_SNOW, SRF_TYPE_ICE, SRF_TYPE_LANDICE
-  public :: GLAC_SHIFT_LANDICE, GLAC_SHIFT_SEAICE, GLAC_SHIFT_SNOW, GLAC_SHIFT_LAND, GLAC_SHIFT_OCEAN, GLAC_SHIFT_CONV
   public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, BUOYANCY2
   public :: REDISTRIBUTE_CLOUDS_SCALAR, REDISTRIBUTE_CLOUDS, RADCOUPLE_SCALE_AWARE, RADCOUPLE, FIX_UP_CLOUDS
   public :: hystpdf, fix_up_clouds_2M, hystpdf_2M
@@ -672,6 +682,7 @@ module GEOSmoist_Process_Library
       real             :: t_cels, liq_frac_raw, taper, u
       real             :: tc_shifted, tc, ptc
       real             :: glac_shift_local
+      real             :: glac_slope_local
       real             :: ICEFRCT_C, ICEFRCT_M
 
       ! Use module-level active polynomial setting
@@ -735,43 +746,55 @@ module GEOSmoist_Process_Library
  
       case (V12_ICE_POLYNOMIAL)
 
-         ! ---------------------------------------------------------
-         ! Handle GLAC_SHIFT safely
-         ! ---------------------------------------------------------
-         select case (NINT(SRF_TYPE))
-            case (SRF_TYPE_LANDICE); glac_shift_local =  GLAC_SHIFT_LANDICE
-            case (SRF_TYPE_ICE);     glac_shift_local =  GLAC_SHIFT_SEAICE
-            case (SRF_TYPE_SNOW);    glac_shift_local =  GLAC_SHIFT_SNOW
-            case (SRF_TYPE_OCEAN);   glac_shift_local =  GLAC_SHIFT_LAND
-            case (SRF_TYPE_LAND);    glac_shift_local =  GLAC_SHIFT_OCEAN
-            case default;            glac_shift_local =  GLAC_SHIFT_CONV
-         end select
-         ! include the convective fraction
-         glac_shift_local = glac_shift_local + GLAC_SHIFT_CONV*CNV_FRACTION
+        ! ---------------------------------------------------------
+        ! Handle GLAC_SHIFT and GLAC_SLOPE safely
+        ! ---------------------------------------------------------
+        select case (NINT(SRF_TYPE))
+           case (SRF_TYPE_LANDICE)
+              glac_shift_local = GLAC_SHIFT_LANDICE
+              glac_slope_local = GLAC_SLOPE_LANDICE
+           case (SRF_TYPE_ICE)
+              glac_shift_local = GLAC_SHIFT_SEAICE
+              glac_slope_local = GLAC_SLOPE_SEAICE
+           case (SRF_TYPE_SNOW)
+              glac_shift_local = GLAC_SHIFT_SNOW
+              glac_slope_local = GLAC_SLOPE_SNOW
+           case (SRF_TYPE_OCEAN)
+              glac_shift_local = GLAC_SHIFT_OCEAN
+              glac_slope_local = GLAC_SLOPE_OCEAN
+           case (SRF_TYPE_LAND)
+              glac_shift_local = GLAC_SHIFT_LAND
+              glac_slope_local = GLAC_SLOPE_LAND
+           case default
+              glac_shift_local = GLAC_SHIFT_CONV
+              glac_slope_local = GLAC_SLOPE_CONV
+        end select
 
-         ! Calculate the actual unclipped Celsius temperature
-         t_cels = TEMP - MAPL_TICE
+        ! Include convective fraction blending for both shift and slope
+        glac_shift_local = glac_shift_local + (GLAC_SHIFT_CONV - glac_shift_local) * CNV_FRACTION
+        glac_slope_local = glac_slope_local + (GLAC_SLOPE_CONV - glac_slope_local) * CNV_FRACTION
 
-         tc = MAX(-46.0,MIN(t_cels,46.0)) 
-         tc_shifted = tc + glac_shift_local
+        ! Calculate the actual unclipped Celsius temperature
+        t_cels = TEMP - MAPL_TICE
 
-         ! Calculate new polynomial
-         ptc = 7.6725 + 1.0118*(tc_shifted) + 0.1422*(tc_shifted)**2 + 0.0106*(tc_shifted)**3 + 0.000339*(tc_shifted)**4 + 0.00000395*(tc_shifted)**5
-         liq_frac_raw = 1.0/(1.0 + exp(-1.0*ptc))
+        tc = MAX(-46.0, MIN(t_cels, 46.0))
+        tc_shifted = tc + glac_shift_local
 
-         ! Calculate the smooth taper to force liquid to 0.0 at and below T_HOM
-         ! u scales from 0.0 (at T_HOM = -40 C) to 1.0 (at T_HOM + T_WIDTH = -30 C)
-         u = (t_cels - T_HOM) / T_WIDTH
-         u = MAX(0.0, MIN(u, 1.0))
+        ! Calculate base Hu et al. polynomial
+        ptc = 7.6725 + 1.0118*(tc_shifted) + 0.1422*(tc_shifted)**2 + 0.0106*(tc_shifted)**3 + 0.000339*(tc_shifted)**4 + 0.00000395*(tc_shifted)**5
+        
+        ! Apply slope scaling inside the exponential
+        liq_frac_raw = 1.0 / (1.0 + exp(-1.0 * ptc * glac_slope_local))
 
-         ! C2-continuous Smootherstep: 6u^5 - 15u^4 + 10u^3
-         ! Evaluated using Horner's method to avoid slow power (**) operators
-         taper = (u**3) * (10.0 + u * (-15.0 + u * 6.0))
+        ! Calculate the smooth taper to force liquid to 0.0 at and below T_HOM
+        u = (t_cels - T_HOM) / T_WIDTH
+        u = MAX(0.0, MIN(u, 1.0))
 
-         ! 4. Apply the taper to the liquid fraction and compute the final ice fraction
-         ! At and below -40 C: taper = 0.0 -> ICEFRCT = 1.0 (100% Ice)
-         ! At and above -30 C: taper = 1.0 -> ICEFRCT = 1.0 - liq_frac_raw (Original Hu)
-         ICEFRCT = 1.0 - (liq_frac_raw * taper)
+        ! C2-continuous Smootherstep evaluated using Horner's method
+        taper = (u**3) * (10.0 + u * (-15.0 + u * 6.0))
+
+        ! Apply the taper to the liquid fraction and compute the final ice fraction
+        ICEFRCT = 1.0 - (liq_frac_raw * taper)
 
      case default
        print *, 'ICE_FRACTION_SC: Unknown ICE_FRACTION_POLYNOMIAL = ', ICE_FRACTION_POLYNOMIAL
