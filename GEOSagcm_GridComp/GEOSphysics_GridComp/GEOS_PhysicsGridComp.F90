@@ -2192,7 +2192,7 @@ contains
    real, allocatable, dimension(:,:,:) :: TIDRAG
    real, allocatable, dimension(:,:)   :: qs,pmean
 
-   logical :: isPresent, SCM_NO_RAD, GEOS_MLT
+   logical :: isPresent, SCM_NO_RAD, GEOS_MLT, IONDRAG_HEATING_ON
    real, allocatable, target :: zero(:,:,:)
 
    real(kind=MAPL_R8), allocatable, dimension(:,:) :: sumdq
@@ -2260,6 +2260,11 @@ contains
     VERIFY_(STATUS)
 
     call ESMF_ConfigGetAttribute(CF, DT, Label="RUN_DT:" , RC=STATUS)
+    VERIFY_(STATUS)
+
+    ! Off by default: existing ML Joule heating is already included in TIR.
+    call ESMF_ConfigGetAttribute(CF, IONDRAG_HEATING_ON, &
+         Label="IONDRAG_HEATING_ON:", default=.false., RC=STATUS)
     VERIFY_(STATUS)
 
     call ESMF_ConfigGetAttribute(CF, ISPPT, Label="SPPT:", DEFAULT = 0 , RC=STATUS)
@@ -2920,7 +2925,6 @@ contains
               + TTN   &  ! Mass-Weighted Temperature Tendency due to Moist Processes
               + FRI   &  ! Mass-Weighted Temperature Tendency due to Friction (Turbulence)
               + TIG   &  ! Mass-Weighted Temperature Tendency due to GWD
-              !+ TIDRAG & ! T_IonDrag Disabled: would double count MLRADJH already included in TIR 
               + TICU     ! Mass-Weighted Temperature Tendency due to Cumulus Friction
        else
           TOT = TIR   &  ! Mass-Weighted Temperature Tendency due to Radiation
@@ -2928,9 +2932,11 @@ contains
               + TTN   &  ! Mass-Weighted Temperature Tendency due to Moist Processes
               + FRI   &  ! Mass-Weighted Temperature Tendency due to Friction (Turbulence)
               + TIG   &  ! Mass-Weighted Temperature Tendency due to GWD
-              !+ TIDRAG & ! T_IonDrag Disabled: would double count MLRADJH already included in TIR 
               + TICU     ! Mass-Weighted Temperature Tendency due to Cumulus Friction
        end if
+
+       ! Opt in only when the experiment omits the ML Joule contribution.
+       if (GEOS_MLT .and. IONDRAG_HEATING_ON) TOT = TOT + TIDRAG
 
        IF(DO_SPPT) THEN
           allocate(TFORQS(IM,JM,LM))

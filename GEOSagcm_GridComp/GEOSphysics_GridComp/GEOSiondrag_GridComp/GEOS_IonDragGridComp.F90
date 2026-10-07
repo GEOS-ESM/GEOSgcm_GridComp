@@ -3,60 +3,66 @@
 module GEOS_IonDragGridCompMod
 
    !BOP
-
-   ! !MODULE: GEOS_IonDrag -- A Module to compute ion drag forcing on the
-   ! neutral atmosphere in the thermosphere (GEOS-MLT)
-
+   ! !MODULE: GEOS_IonDrag -- Ion drag forcing for GEOS-MLT
+   !
    ! !DESCRIPTION:
    !
-   ! IonDrag is a light-weight gridded component that computes the
-   ! momentum drag and frictional heating tendencies on the neutral wind and
-   ! temperature fields due to collisions with ions above a configurable
-   ! reference-pressure cutoff. Ion densities and species fractions are
-   ! obtained from IRI (evaluated at real per-column geometric altitude,
-   ! derived from the GEOS geopotential-height field ZLE); neutral number
-   ! density, mass density, and mixture heat capacity come from MSIS
-   ! (via the same msis_wrapper module used on the dynamics
-   ! side); ion winds are predicted by a column-based ML UI/VI model through
-   ! MAPL_PythonBridge and remapped from the training pressure grid to the
-   ! current GEOS vertical grid. Like GEOSgwd_GridComp,
-   ! this component only exports tendencies (DUDT_IONDRAG, DVDT_IONDRAG,
-   ! DTDT_IONDRAG) -- it does not mutate U/V/T directly. Those tendencies
-   ! are collected by the parent GEOS_PhysicsGridComp into the combined
-   ! physics DUDT/DVDT/DTDT applied by the dynamics.
+   ! The component computes horizontal neutral-wind tendencies from
+   ! magnetized ion-neutral coupling using the WACCM-X/TIE-GCM conductivity
+   ! formulation. IRI supplies major-ion densities and plasma temperatures,
+   ! IGRF supplies the local magnetic field, MSIS supplies absolute neutral
+   ! O/O2/N2 densities and neutral mass density, and the ML ion-velocity model
+   ! supplies geographic eastward/northward ion drift velocities.
    !
-
-   ! !USES:
+   ! Momentum tendencies are returned to GEOS_PhysicsGridComp. The associated
+   ! ion-neutral friction/Joule heating is exported only as a diagnostic
+   ! temperature tendency because GEOS-MLT already applies MLRADJH.
+   !
 
    use ESMF
    use MAPL
    use MAPL_PythonBridge, only: MAPL_pybridge_gcinit, &
                                 MAPL_pybridge_gcrun_with_internal
 
-   use iri_input_module, only: get_iri_densities, N_ION_SPECIES
-   use ion_drag_module,  only: compute_drag_fields
-   use msis_wrapper,     only: msis_wrapper_init, msis_prepare_time, msis_point, &
-                               msis_get_current_f107
+   use iri_input_module, only: get_iri_state
+   use igrf_input_module, only: get_igrf_field
+   use ion_drag_module, only: compute_drag_fields, N_MAJOR_ION_SPECIES, &
+                              ION_OP, ION_O2P, ION_NOP
+   use msis_wrapper, only: msis_wrapper_init, msis_prepare_time, msis_point, &
+                           msis_get_current_f107
    use calc_gas_specific_heat_mlt_mod, only: mlt_mixture_thermo_from_number_density
    use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
-   
+
    implicit none
    private
 
-   ! !PUBLIC MEMBER FUNCTIONS:
-
    public SetServices
 
-   !EOP
+   ! Ion drag is a fixed part of the GEOS-MLT configuration. The lower
+   ! boundary is 1 Pa = 0.01 hPa; ion drag is negligible below this region.
+   real, parameter :: IONDRAG_BOTTOM_PRESSURE_PA = 1.0
+   real, parameter :: FALLBACK_ALT_KM = 220.0
 
    type :: GEOS_IonDragGridComp
-      logical :: IONDRAG_ON
       logical :: MLION_PYBRIDGE_INITIALIZED = .false.
+
       integer :: MLION_LAST_YEAR = -1
       integer :: MLION_LAST_DOY = -1
       integer :: MLION_LAST_HOUR = -1
-      real    :: BOTTOM_PRESSURE_PA      ! Maximum midpoint pressure for ion drag [Pa]
-      real    :: HBEG, HEND, HSTEP       ! IRI altitude profile range/step (km)
+
+      integer :: PLASMA_LAST_YEAR = -1
+      integer :: PLASMA_LAST_DOY = -1
+      integer :: PLASMA_LAST_HOUR = -1
+
+
+      real, allocatable :: NE_CACHE(:,:,:)
+      real, allocatable :: ION_DENSITY_CACHE(:,:,:,:)
+      real, allocatable :: TI_CACHE(:,:,:)
+      real, allocatable :: TE_CACHE(:,:,:)
+      real, allocatable :: BNORTH_CACHE(:,:,:)
+      real, allocatable :: BEAST_CACHE(:,:,:)
+      real, allocatable :: BDOWN_CACHE(:,:,:)
+      real, allocatable :: BMAG_CACHE(:,:,:)
    end type GEOS_IonDragGridComp
 
    type wrap_
@@ -65,68 +71,42 @@ module GEOS_IonDragGridCompMod
 
 contains
 
-   !BOP
-   ! !IROUTINE: SetServices -- Sets ESMF services for this component
-
-   ! !INTERFACE:
    subroutine SetServices ( GC, RC )
 
-      ! !ARGUMENTS:
-      type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
-      integer, optional                  :: RC  ! return code
+      type(ESMF_GridComp), intent(INOUT) :: GC
+      integer, optional                  :: RC
 
-      !EOP
-
-      character(len=ESMF_MAXSTR)              :: IAm
-      integer                                 :: STATUS
-      character(len=ESMF_MAXSTR)              :: COMP_NAME
-      type (MAPL_MetaComp),     pointer       :: MAPL
-
-      type (wrap_)                                :: wrap
-      type (GEOS_IonDragGridComp), pointer         :: self
-
-      ! Begin...
+      character(len=ESMF_MAXSTR)          :: IAm
+      integer                             :: STATUS
+      character(len=ESMF_MAXSTR)          :: COMP_NAME
+      type (MAPL_MetaComp), pointer       :: MAPL
+      type (wrap_)                        :: wrap
+      type (GEOS_IonDragGridComp), pointer :: self
 
       Iam = 'SetServices'
       call ESMF_GridCompGet( GC, NAME=COMP_NAME, _RC )
       Iam = trim(COMP_NAME) // Iam
 
-      !   Wrap internal state for storing in GC
-      !   -------------------------------------
       allocate (self, _STAT)
       wrap%ptr => self
 
-      ! Set the Run entry point
-      ! -----------------------
-
-      call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_INITIALIZE,  Initialize,  _RC)
-      call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_RUN,  Run,  _RC)
+      call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_INITIALIZE, Initialize, _RC)
+      call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_RUN, Run, _RC)
 
       call MAPL_GetObjectFromGC ( GC, MAPL, _RC )
 
-      ! Set the state variable specs (generated from IonDrag_StateSpecs.rc).
-      ! ---------------------------------------------------------------------
-#include "IonDrag_Import___.h"
-#include "IonDrag_Export___.h"
-#include "IonDrag_Internal___.h"
+      call register_state_specs(GC, _RC)
 
-      ! Set the Profiling timers
-      ! ------------------------
+      call MAPL_TimerAdd(GC, name="DRIVER", _RC)
+      call MAPL_TimerAdd(GC, name="-MLION", _RC)
+      call MAPL_TimerAdd(GC, name="-IRI", _RC)
+      call MAPL_TimerAdd(GC, name="-IGRF", _RC)
+      call MAPL_TimerAdd(GC, name="-MSIS", _RC)
+      call MAPL_TimerAdd(GC, name="-DRAG", _RC)
 
-      call MAPL_TimerAdd(GC,    name="DRIVER"     ,_RC)
-      call MAPL_TimerAdd(GC,    name="-MLION"     ,_RC)
-      call MAPL_TimerAdd(GC,    name="-IRI"       ,_RC)
-      call MAPL_TimerAdd(GC,    name="-MSIS"      ,_RC)
-      call MAPL_TimerAdd(GC,    name="-DRAG"      ,_RC)
-
-      !   Store internal state in GC
-      !   --------------------------
       call ESMF_UserCompSetInternalState ( GC, 'GEOS_IonDragGridComp', wrap, _RC )
 
-      ! Set generic init and final methods
-      ! ----------------------------------
-
-      call MAPL_GenericSetServices    ( gc, _RC)
+      call MAPL_GenericSetServices ( gc, _RC)
 
       RETURN_(ESMF_SUCCESS)
 
@@ -134,120 +114,193 @@ contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-   !BOP
-   ! !IROUTINE: Initialize -- Initialize method for the IonDrag Gridded Component
+   subroutine register_state_specs(GC, RC)
+      ! Register MAPL imports, exports, and internal fields explicitly.
+      ! This replaces IonDrag_StateSpecs.rc and the mapl_acg-generated files.
 
-   ! !INTERFACE:
+      type(ESMF_GridComp), intent(inout) :: GC
+      integer, optional, intent(out) :: RC
+
+      character(len=ESMF_MAXSTR) :: IAm
+      integer :: STATUS
+
+      IAm = 'register_state_specs'
+
+      ! ==================
+      ! Internal State
+      ! ==================
+      call MAPL_AddInternalSpec(GC, SHORT_NAME='MLION_LATS', &
+           LONG_NAME='ml_ion_velocity_helper_latitude', UNITS='radians', &
+           DIMS=MAPL_DimsHorzOnly, VLOCATION=MAPL_VLocationNone, _RC)
+      call MAPL_AddInternalSpec(GC, SHORT_NAME='MLION_LONS', &
+           LONG_NAME='ml_ion_velocity_helper_longitude', UNITS='radians', &
+           DIMS=MAPL_DimsHorzOnly, VLOCATION=MAPL_VLocationNone, _RC)
+      call MAPL_AddInternalSpec(GC, SHORT_NAME='MLION_YY', &
+           LONG_NAME='ml_ion_velocity_helper_year', UNITS='1', &
+           DIMS=MAPL_DimsHorzOnly, VLOCATION=MAPL_VLocationNone, _RC)
+      call MAPL_AddInternalSpec(GC, SHORT_NAME='MLION_DOY', &
+           LONG_NAME='ml_ion_velocity_helper_day_of_year', UNITS='1', &
+           DIMS=MAPL_DimsHorzOnly, VLOCATION=MAPL_VLocationNone, _RC)
+      call MAPL_AddInternalSpec(GC, SHORT_NAME='MLION_HH', &
+           LONG_NAME='ml_ion_velocity_helper_hour_utc', UNITS='hour', &
+           DIMS=MAPL_DimsHorzOnly, VLOCATION=MAPL_VLocationNone, _RC)
+
+      ! ==================
+      ! Import State
+      ! ==================
+      call MAPL_AddImportSpec(GC, SHORT_NAME='T', LONG_NAME='air_temperature', &
+           UNITS='K', DIMS=MAPL_DimsHorzVert, &
+           VLOCATION=MAPL_VLocationCenter, RESTART=MAPL_RestartSkip, _RC)
+      call MAPL_AddImportSpec(GC, SHORT_NAME='U', LONG_NAME='eastward_wind', &
+           UNITS='m s-1', DIMS=MAPL_DimsHorzVert, &
+           VLOCATION=MAPL_VLocationCenter, RESTART=MAPL_RestartSkip, _RC)
+      call MAPL_AddImportSpec(GC, SHORT_NAME='V', LONG_NAME='northward_wind', &
+           UNITS='m s-1', DIMS=MAPL_DimsHorzVert, &
+           VLOCATION=MAPL_VLocationCenter, RESTART=MAPL_RestartSkip, _RC)
+      call MAPL_AddImportSpec(GC, SHORT_NAME='PLE', LONG_NAME='air_pressure', &
+           UNITS='Pa', DIMS=MAPL_DimsHorzVert, &
+           VLOCATION=MAPL_VLocationEdge, RESTART=MAPL_RestartSkip, _RC)
+      call MAPL_AddImportSpec(GC, SHORT_NAME='ZLE', &
+           LONG_NAME='geopotential_height', UNITS='m', &
+           DIMS=MAPL_DimsHorzVert, VLOCATION=MAPL_VLocationEdge, &
+           RESTART=MAPL_RestartSkip, _RC)
+      call MAPL_AddImportSpec(GC, SHORT_NAME='PREF', &
+           LONG_NAME='reference_air_pressure', UNITS='Pa', &
+           DIMS=MAPL_DimsVertOnly, VLOCATION=MAPL_VLocationEdge, &
+           RESTART=MAPL_RestartSkip, _RC)
+
+      ! ==================
+      ! Export State
+      ! ==================
+      call MAPL_AddExportSpec(GC, SHORT_NAME='UI_IONDRAG', &
+           LONG_NAME='eastward_ion_velocity_from_ML', UNITS='m s-1', &
+           DIMS=MAPL_DimsHorzVert, VLOCATION=MAPL_VLocationCenter, _RC)
+      call MAPL_AddExportSpec(GC, SHORT_NAME='VI_IONDRAG', &
+           LONG_NAME='northward_ion_velocity_from_ML', UNITS='m s-1', &
+           DIMS=MAPL_DimsHorzVert, VLOCATION=MAPL_VLocationCenter, _RC)
+      call MAPL_AddExportSpec(GC, SHORT_NAME='DUDT_IONDRAG', &
+           LONG_NAME='eastward_wind_tendency_due_to_ion_drag', UNITS='m s-2', &
+           DIMS=MAPL_DimsHorzVert, VLOCATION=MAPL_VLocationCenter, _RC)
+      call MAPL_AddExportSpec(GC, SHORT_NAME='DVDT_IONDRAG', &
+           LONG_NAME='northward_wind_tendency_due_to_ion_drag', UNITS='m s-2', &
+           DIMS=MAPL_DimsHorzVert, VLOCATION=MAPL_VLocationCenter, _RC)
+      call MAPL_AddExportSpec(GC, SHORT_NAME='DTDT_IONDRAG', &
+           LONG_NAME='diagnostic_joule_heating_temperature_tendency', &
+           UNITS='K s-1', DIMS=MAPL_DimsHorzVert, &
+           VLOCATION=MAPL_VLocationCenter, _RC)
+      call MAPL_AddExportSpec(GC, SHORT_NAME='NE_IONDRAG', &
+           LONG_NAME='electron_number_density_from_IRI', UNITS='m-3', &
+           DIMS=MAPL_DimsHorzVert, VLOCATION=MAPL_VLocationCenter, _RC)
+      call MAPL_AddExportSpec(GC, SHORT_NAME='OP_IONDRAG', &
+           LONG_NAME='Oplus_number_density_from_IRI', UNITS='m-3', &
+           DIMS=MAPL_DimsHorzVert, VLOCATION=MAPL_VLocationCenter, _RC)
+      call MAPL_AddExportSpec(GC, SHORT_NAME='O2P_IONDRAG', &
+           LONG_NAME='O2plus_number_density_from_IRI', UNITS='m-3', &
+           DIMS=MAPL_DimsHorzVert, VLOCATION=MAPL_VLocationCenter, _RC)
+      call MAPL_AddExportSpec(GC, SHORT_NAME='NOP_IONDRAG', &
+           LONG_NAME='NOplus_number_density_from_IRI', UNITS='m-3', &
+           DIMS=MAPL_DimsHorzVert, VLOCATION=MAPL_VLocationCenter, _RC)
+      call MAPL_AddExportSpec(GC, SHORT_NAME='TI_IONDRAG', &
+           LONG_NAME='ion_temperature_from_IRI', UNITS='K', &
+           DIMS=MAPL_DimsHorzVert, VLOCATION=MAPL_VLocationCenter, _RC)
+      call MAPL_AddExportSpec(GC, SHORT_NAME='TE_IONDRAG', &
+           LONG_NAME='electron_temperature_from_IRI', UNITS='K', &
+           DIMS=MAPL_DimsHorzVert, VLOCATION=MAPL_VLocationCenter, _RC)
+      call MAPL_AddExportSpec(GC, SHORT_NAME='RHO_MSIS_IONDRAG', &
+           LONG_NAME='neutral_mass_density_from_MSIS', UNITS='kg m-3', &
+           DIMS=MAPL_DimsHorzVert, VLOCATION=MAPL_VLocationCenter, _RC)
+      call MAPL_AddExportSpec(GC, SHORT_NAME='BMAG_IONDRAG', &
+           LONG_NAME='IGRF_magnetic_field_magnitude', UNITS='T', &
+           DIMS=MAPL_DimsHorzVert, VLOCATION=MAPL_VLocationCenter, _RC)
+      call MAPL_AddExportSpec(GC, SHORT_NAME='SIGMAPED_IONDRAG', &
+           LONG_NAME='Pedersen_conductivity', UNITS='S m-1', &
+           DIMS=MAPL_DimsHorzVert, VLOCATION=MAPL_VLocationCenter, _RC)
+      call MAPL_AddExportSpec(GC, SHORT_NAME='SIGMAHALL_IONDRAG', &
+           LONG_NAME='Hall_conductivity', UNITS='S m-1', &
+           DIMS=MAPL_DimsHorzVert, VLOCATION=MAPL_VLocationCenter, _RC)
+      call MAPL_AddExportSpec(GC, SHORT_NAME='LXX_IONDRAG', &
+           LONG_NAME='ion_drag_tensor_xx', UNITS='s-1', &
+           DIMS=MAPL_DimsHorzVert, VLOCATION=MAPL_VLocationCenter, _RC)
+      call MAPL_AddExportSpec(GC, SHORT_NAME='LYY_IONDRAG', &
+           LONG_NAME='ion_drag_tensor_yy', UNITS='s-1', &
+           DIMS=MAPL_DimsHorzVert, VLOCATION=MAPL_VLocationCenter, _RC)
+      call MAPL_AddExportSpec(GC, SHORT_NAME='LXY_IONDRAG', &
+           LONG_NAME='ion_drag_tensor_xy', UNITS='s-1', &
+           DIMS=MAPL_DimsHorzVert, VLOCATION=MAPL_VLocationCenter, _RC)
+      call MAPL_AddExportSpec(GC, SHORT_NAME='LYX_IONDRAG', &
+           LONG_NAME='ion_drag_tensor_yx', UNITS='s-1', &
+           DIMS=MAPL_DimsHorzVert, VLOCATION=MAPL_VLocationCenter, _RC)
+
+      RETURN_(ESMF_SUCCESS)
+   end subroutine register_state_specs
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
    subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
 
-      ! !ARGUMENTS:
-      type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
-      type(ESMF_State),    intent(inout) :: IMPORT ! Import state
-      type(ESMF_State),    intent(inout) :: EXPORT ! Export state
-      type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
-      integer, optional,   intent(  out) :: RC     ! Error code
+      type(ESMF_GridComp), intent(inout) :: GC
+      type(ESMF_State),    intent(inout) :: IMPORT
+      type(ESMF_State),    intent(inout) :: EXPORT
+      type(ESMF_Clock),    intent(inout) :: CLOCK
+      integer, optional,   intent(out)   :: RC
 
-      !EOP
-
-      character(len=ESMF_MAXSTR)              :: IAm
-      integer                                 :: STATUS
-      character(len=ESMF_MAXSTR)              :: COMP_NAME
-
-      type (MAPL_MetaComp),      pointer  :: MAPL
-
-      type (wrap_) :: wrap
+      character(len=ESMF_MAXSTR)          :: IAm
+      integer                             :: STATUS
+      character(len=ESMF_MAXSTR)          :: COMP_NAME
+      type (MAPL_MetaComp), pointer       :: MAPL
+      type (wrap_)                        :: wrap
       type (GEOS_IonDragGridComp), pointer :: self
-
-      ! Begin...
 
       Iam = 'Initialize'
       call ESMF_GridCompGet( GC, NAME=COMP_NAME, _RC )
       Iam = trim(COMP_NAME) // Iam
 
       call MAPL_GetObjectFromGC ( GC, MAPL, _RC )
-
       call ESMF_UserCompGetInternalState(GC, 'GEOS_IonDragGridComp', wrap, _RC)
       self => wrap%ptr
 
       call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK, _RC )
 
-      ! Resource config
-      ! ---------------
-      call MAPL_GetResource( MAPL, self%IONDRAG_ON, Label="IONDRAG_ON:", default=.true., _RC)
-      call MAPL_GetResource( MAPL, self%BOTTOM_PRESSURE_PA, &
-           Label="IONDRAG_BOTTOM_PRESSURE_PA:", default=1.0, _RC)
-      call MAPL_GetResource( MAPL, self%HBEG, Label="IRI_HBEG:", default=80.0, _RC)
-      call MAPL_GetResource( MAPL, self%HEND, Label="IRI_HEND:", default=250.0, _RC)
-      call MAPL_GetResource( MAPL, self%HSTEP, Label="IRI_HSTEP:", default=10.0, _RC)
-
-      ! Force a fresh ML ion-wind inference after initialization/restart.
       self%MLION_PYBRIDGE_INITIALIZED = .false.
       self%MLION_LAST_YEAR = -1
       self%MLION_LAST_DOY = -1
       self%MLION_LAST_HOUR = -1
+      self%PLASMA_LAST_YEAR = -1
+      self%PLASMA_LAST_DOY = -1
+      self%PLASMA_LAST_HOUR = -1
 
-      ! Validate the pressure and IRI configuration before Run.
-      if (self%BOTTOM_PRESSURE_PA <= 0.0) then
-         error stop 'IONDRAG: IONDRAG_BOTTOM_PRESSURE_PA must be positive'
-      end if
-      if (self%HSTEP <= 0.0) then
-         error stop 'IONDRAG: IRI_HSTEP must be positive'
-      end if
-      if (self%HEND < self%HBEG) then
-         error stop 'IONDRAG: IRI_HEND must be >= IRI_HBEG'
-      end if
-
-      ! Initialize MSIS only when ion drag is enabled.
-      if (self%IONDRAG_ON) then
-         call msis_wrapper_init()
-      end if
+      call msis_wrapper_init()
 
       RETURN_(ESMF_SUCCESS)
    end subroutine Initialize
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-   !BOP
-   ! !IROUTINE: RUN -- Run method for the IonDrag component
-
-   ! !INTERFACE:
    subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
-      ! !ARGUMENTS:
-      type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
-      type(ESMF_State),    intent(inout) :: IMPORT ! Import state
-      type(ESMF_State),    intent(inout) :: EXPORT ! Export state
-      type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
-      integer, optional,   intent(  out) :: RC     ! Error code
-
-      !EOP
+      type(ESMF_GridComp), intent(inout) :: GC
+      type(ESMF_State),    intent(inout) :: IMPORT
+      type(ESMF_State),    intent(inout) :: EXPORT
+      type(ESMF_Clock),    intent(inout) :: CLOCK
+      integer, optional,   intent(out)   :: RC
 
       character(len=ESMF_MAXSTR)          :: IAm
       integer                             :: STATUS
       character(len=ESMF_MAXSTR)          :: COMP_NAME
-
-      type (MAPL_MetaComp),     pointer   :: MAPL
-      type (ESMF_Alarm       )            :: ALARM
-
+      type (MAPL_MetaComp), pointer       :: MAPL
+      type (ESMF_Alarm)                   :: ALARM
       integer                             :: IM, JM, LM
-
-      type (wrap_) :: wrap
+      type (wrap_)                        :: wrap
       type (GEOS_IonDragGridComp), pointer :: self
-
-      ! Begin...
 
       Iam = "Run"
       call ESMF_GridCompGet( GC, name=COMP_NAME, _RC )
       Iam = trim(COMP_NAME) // Iam
 
       call MAPL_GetObjectFromGC ( GC, MAPL, _RC)
-
       call ESMF_UserCompGetInternalState(GC, 'GEOS_IonDragGridComp', wrap, _RC)
       self => wrap%ptr
 
-      if (.not. self%IONDRAG_ON) then
-         RETURN_(ESMF_SUCCESS)
-      end if
 
       call MAPL_Get(MAPL, IM=IM, JM=JM, LM=LM, RUNALARM=ALARM, _RC )
 
@@ -269,10 +322,26 @@ contains
          character(len=ESMF_MAXSTR)      :: IAm
          integer                         :: STATUS
 
-#include "IonDrag_DeclarePointer___.h"
+         ! Import pointers used directly by the Fortran driver. PLE remains
+         ! registered as an import because PythonBridge reads it directly.
+         real, pointer :: T(:,:,:), U(:,:,:), V(:,:,:)
+         real, pointer :: ZLE(:,:,:), PREF(:)
 
-         type (ESMF_State) :: INTERNAL
-         type (ESMF_Time)  :: CURRENT_TIME
+         ! Export pointers.
+         real, pointer :: UI_IONDRAG(:,:,:), VI_IONDRAG(:,:,:)
+         real, pointer :: DUDT_IONDRAG(:,:,:), DVDT_IONDRAG(:,:,:)
+         real, pointer :: DTDT_IONDRAG(:,:,:), NE_IONDRAG(:,:,:)
+         real, pointer :: OP_IONDRAG(:,:,:), O2P_IONDRAG(:,:,:)
+         real, pointer :: NOP_IONDRAG(:,:,:), TI_IONDRAG(:,:,:)
+         real, pointer :: TE_IONDRAG(:,:,:), RHO_MSIS_IONDRAG(:,:,:)
+         real, pointer :: BMAG_IONDRAG(:,:,:), SIGMAPED_IONDRAG(:,:,:)
+         real, pointer :: SIGMAHALL_IONDRAG(:,:,:)
+         real, pointer :: LXX_IONDRAG(:,:,:), LYY_IONDRAG(:,:,:)
+         real, pointer :: LXY_IONDRAG(:,:,:), LYX_IONDRAG(:,:,:)
+
+         type (ESMF_State)        :: INTERNAL
+         type (ESMF_Time)         :: CURRENT_TIME
+         type (ESMF_TimeInterval) :: MODEL_TIMESTEP
 
          real, pointer, dimension(:,:) :: LATS_2D, LONS_2D
          real, pointer, dimension(:,:) :: MLION_LATS_2D, MLION_LONS_2D
@@ -282,49 +351,81 @@ contains
 
          integer :: IYEAR, DOY, HH, MN, SS
          integer :: MLION_HOUR
-         real    :: UT_HOUR
-         real    :: F107_DAILY_NOW, F107_81DAY_NOW
-         logical :: UPDATE_MLION
-
-         real, parameter :: FALLBACK_ALT_KM = 220.0
+         real :: UT_HOUR
+         real :: F107_DAILY_NOW, F107_81DAY_NOW
+         real(kind=8) :: TIMESTEP_SECONDS_R8
+         real :: TIMESTEP_SECONDS
+         logical :: UPDATE_MLION, UPDATE_PLASMA
+         logical :: RESET_PLASMA_CACHE
 
          real, allocatable :: alt_km(:,:,:)
          real, allocatable :: ui(:,:,:), vi(:,:,:)
-         real, allocatable :: ne_m3(:,:,:)
-         real, allocatable :: species_fraction(:,:,:,:)
-         real, allocatable :: n_msis(:,:,:), rho_msis(:,:,:), cp_msis(:,:,:)
+         real, allocatable :: n_o_msis(:,:,:), n_o2_msis(:,:,:), n_n2_msis(:,:,:)
+         real, allocatable :: rho_msis(:,:,:), cp_msis(:,:,:)
          real, allocatable :: drag_u(:,:,:), drag_v(:,:,:)
-         real, allocatable :: frictional_heating(:,:,:)
+         real, allocatable :: joule_heating_wkg(:,:,:)
+         real, allocatable :: sigma_pedersen(:,:,:), sigma_hall(:,:,:)
+         real, allocatable :: lxx(:,:,:), lyy(:,:,:), lxy(:,:,:), lyx(:,:,:)
 
          integer :: i, j, k
          integer :: nlev_active
-         real    :: pref_mid_pa
+         real :: pref_mid_pa
 
          IAm = "IonDrag_Driver"
 
-         call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, LATS=LATS_2D, LONS=LONS_2D, _RC)
-#include "IonDrag_GetPointer___.h"
+         call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, &
+                       LATS=LATS_2D, LONS=LONS_2D, _RC)
+         ! Explicit state pointers replace the ACG-generated GetPointer file.
+         call MAPL_GetPointer(IMPORT, T,    'T',    _RC)
+         call MAPL_GetPointer(IMPORT, U,    'U',    _RC)
+         call MAPL_GetPointer(IMPORT, V,    'V',    _RC)
+         call MAPL_GetPointer(IMPORT, ZLE,  'ZLE',  _RC)
+         call MAPL_GetPointer(IMPORT, PREF, 'PREF', _RC)
 
-         ! UI/VI must exist even when they are not explicitly requested by
-         ! HISTORY because the Python bridge writes into these exports and the
-         ! ion-drag physics consumes the same arrays immediately afterward.
-         call MAPL_GetPointer(EXPORT, UI_IONDRAG, 'UI_IONDRAG', alloc=.true., _RC)
-         call MAPL_GetPointer(EXPORT, VI_IONDRAG, 'VI_IONDRAG', alloc=.true., _RC)
+         call MAPL_GetPointer(EXPORT, UI_IONDRAG, 'UI_IONDRAG', &
+                              alloc=.true., _RC)
+         call MAPL_GetPointer(EXPORT, VI_IONDRAG, 'VI_IONDRAG', &
+                              alloc=.true., _RC)
+         call MAPL_GetPointer(EXPORT, DUDT_IONDRAG, 'DUDT_IONDRAG', _RC)
+         call MAPL_GetPointer(EXPORT, DVDT_IONDRAG, 'DVDT_IONDRAG', _RC)
+         call MAPL_GetPointer(EXPORT, DTDT_IONDRAG, 'DTDT_IONDRAG', _RC)
+         call MAPL_GetPointer(EXPORT, NE_IONDRAG, 'NE_IONDRAG', _RC)
+         call MAPL_GetPointer(EXPORT, OP_IONDRAG, 'OP_IONDRAG', _RC)
+         call MAPL_GetPointer(EXPORT, O2P_IONDRAG, 'O2P_IONDRAG', _RC)
+         call MAPL_GetPointer(EXPORT, NOP_IONDRAG, 'NOP_IONDRAG', _RC)
+         call MAPL_GetPointer(EXPORT, TI_IONDRAG, 'TI_IONDRAG', _RC)
+         call MAPL_GetPointer(EXPORT, TE_IONDRAG, 'TE_IONDRAG', _RC)
+         call MAPL_GetPointer(EXPORT, RHO_MSIS_IONDRAG, &
+                              'RHO_MSIS_IONDRAG', _RC)
+         call MAPL_GetPointer(EXPORT, BMAG_IONDRAG, 'BMAG_IONDRAG', _RC)
+         call MAPL_GetPointer(EXPORT, SIGMAPED_IONDRAG, &
+                              'SIGMAPED_IONDRAG', _RC)
+         call MAPL_GetPointer(EXPORT, SIGMAHALL_IONDRAG, &
+                              'SIGMAHALL_IONDRAG', _RC)
+         call MAPL_GetPointer(EXPORT, LXX_IONDRAG, 'LXX_IONDRAG', _RC)
+         call MAPL_GetPointer(EXPORT, LYY_IONDRAG, 'LYY_IONDRAG', _RC)
+         call MAPL_GetPointer(EXPORT, LXY_IONDRAG, 'LXY_IONDRAG', _RC)
+         call MAPL_GetPointer(EXPORT, LYX_IONDRAG, 'LYX_IONDRAG', _RC)
 
-         ! Current model time -> year, day-of-year, UT hour.
-         ! ESMF_TimeGet's DayOfYear argument does this natively -- no custom
-         ! calendar helper needed (matches GEOS_SolarGridComp.F90's pattern).
-         call ESMF_ClockGet(CLOCK, CurrTime=CURRENT_TIME, _RC)
-         call ESMF_TimeGet(CURRENT_TIME, YY=IYEAR, DayOfYear=DOY, H=HH, M=MN, S=SS, _RC)
+
+         call ESMF_ClockGet(CLOCK, CurrTime=CURRENT_TIME, &
+                            TimeStep=MODEL_TIMESTEP, _RC)
+         call ESMF_TimeGet(CURRENT_TIME, YY=IYEAR, DayOfYear=DOY, &
+                           H=HH, M=MN, S=SS, _RC)
+         call ESMF_TimeIntervalGet(MODEL_TIMESTEP, &
+                                   S_R8=TIMESTEP_SECONDS_R8, _RC)
+
          UT_HOUR = real(HH) + real(MN)/60.0 + real(SS)/3600.0
+         TIMESTEP_SECONDS = real(TIMESTEP_SECONDS_R8)
 
-         ! Determine the active ion-drag domain from the reference-pressure
-         ! grid. Level 1 is the model-top layer and pressure increases downward.
-         ! Using PREF makes the cutoff independent of the number of model levels.
+         if (TIMESTEP_SECONDS <= 0.0) then
+            error stop 'IONDRAG: model timestep must be positive'
+         end if
+
          nlev_active = 0
          do k = 1, LM
             pref_mid_pa = 0.5 * (PREF(k) + PREF(k+1))
-            if (pref_mid_pa <= self%BOTTOM_PRESSURE_PA) then
+            if (pref_mid_pa <= IONDRAG_BOTTOM_PRESSURE_PA) then
                nlev_active = k
             else
                exit
@@ -334,31 +435,29 @@ contains
          if (nlev_active < 1) then
             if (MAPL_am_I_root()) then
                print *, 'IONDRAG_ERROR: pressure cutoff selects no model levels:', &
-                        self%BOTTOM_PRESSURE_PA
+                        IONDRAG_BOTTOM_PRESSURE_PA
             end if
             error stop 'IONDRAG: pressure cutoff selects no model levels'
          end if
 
-         ! Cubed-sphere latitude/longitude are two-dimensional fields and are
-         ! not separable latitude and longitude axes. Keep each (i,j) pair.
          allocate(LATS_DEG(IM,JM), LONS_DEG(IM,JM))
          LATS_DEG = LATS_2D * (180.0/MAPL_PI)
          LONS_DEG = LONS_2D * (180.0/MAPL_PI)
 
          allocate(alt_km(IM, JM, nlev_active))
          allocate(ui(IM, JM, nlev_active), vi(IM, JM, nlev_active))
-         allocate(ne_m3(IM, JM, nlev_active))
-         allocate(species_fraction(N_ION_SPECIES, IM, JM, nlev_active))
-         allocate(n_msis(IM, JM, nlev_active))
+         allocate(n_o_msis(IM, JM, nlev_active))
+         allocate(n_o2_msis(IM, JM, nlev_active))
+         allocate(n_n2_msis(IM, JM, nlev_active))
          allocate(rho_msis(IM, JM, nlev_active))
          allocate(cp_msis(IM, JM, nlev_active))
-         allocate(drag_u(IM, JM, nlev_active), &
-                  drag_v(IM, JM, nlev_active))
-         allocate(frictional_heating(IM, JM, nlev_active))
+         allocate(drag_u(IM, JM, nlev_active), drag_v(IM, JM, nlev_active))
+         allocate(joule_heating_wkg(IM, JM, nlev_active))
+         allocate(sigma_pedersen(IM, JM, nlev_active))
+         allocate(sigma_hall(IM, JM, nlev_active))
+         allocate(lxx(IM, JM, nlev_active), lyy(IM, JM, nlev_active))
+         allocate(lxy(IM, JM, nlev_active), lyx(IM, JM, nlev_active))
 
-         ! ZLE is geopotential height at model interfaces in meters. Use the
-         ! layer midpoint as the altitude supplied to IRI and MSIS. Guard
-         ! invalid top-edge values before calling either empirical model.
          do k = 1, nlev_active
             do j = 1, JM
                do i = 1, IM
@@ -373,11 +472,6 @@ contains
             end do
          end do
 
-         ! Step 1: Predict ion winds with the trained ML UI/VI model.
-         !
-         ! The training data are hourly, so inference is updated at most once
-         ! per UTC hour and the most recent UI/VI fields are reused between
-         ! hourly updates. A restart always triggers a fresh inference.
          MLION_HOUR = max(0, min(23, int(UT_HOUR)))
 
          UPDATE_MLION = &
@@ -416,9 +510,6 @@ contains
             call MAPL_TimerOff(MAPL, "-MLION")
          end if
 
-         ! Only the pressure-selected ion-drag domain is consumed by the drag
-         ! calculation. Zero the diagnostic winds below that domain so HISTORY
-         ! clearly shows where ion drag is active.
          if (nlev_active < LM) then
             UI_IONDRAG(:,:,nlev_active+1:LM) = 0.0
             VI_IONDRAG(:,:,nlev_active+1:LM) = 0.0
@@ -427,47 +518,90 @@ contains
          ui = UI_IONDRAG(:,:,1:nlev_active)
          vi = VI_IONDRAG(:,:,1:nlev_active)
 
-         ! MSIS space-weather indices must be prepared once per timestep,
-         ! before any msis_point calls and before the IRI call,
-         ! since IRI reuses these same real F10.7/F10.7A values rather than
-         ! static .rc placeholders.
+         ! Prepare the same hourly space-weather forcing used by MSIS and IRI.
          call msis_prepare_time(IYEAR, DOY, nint(UT_HOUR*3600.0))
          call msis_get_current_f107(F107_DAILY_NOW, F107_81DAY_NOW)
 
-         ! Step 2: IRI ion densities / species fractions. Latitude and
-         ! longitude are paired two-dimensional cubed-sphere coordinates, and
-         ! alt_km contains the requested GEOS model-level altitude at each
-         ! horizontal grid point.
-         call MAPL_TimerOn(MAPL, "-IRI")
-         call get_iri_densities( &
-              LATS_DEG, LONS_DEG, IYEAR, DOY, UT_HOUR, &
-              F107_DAILY_NOW, F107_81DAY_NOW, &
-              alt_km, self%HBEG, self%HEND, self%HSTEP, &
-              ne_m3, species_fraction)
-         call MAPL_TimerOff(MAPL, "-IRI")
+         ! Allocate persistent hourly IRI/IGRF caches on the local GEOS tile.
+         RESET_PLASMA_CACHE = .false.
+         if (.not. allocated(self%NE_CACHE)) then
+            RESET_PLASMA_CACHE = .true.
+         else if (size(self%NE_CACHE,1) /= IM .or. &
+                  size(self%NE_CACHE,2) /= JM .or. &
+                  size(self%NE_CACHE,3) /= nlev_active) then
+            RESET_PLASMA_CACHE = .true.
+         end if
 
-         ! Step 3: Diagnose neutral number density, mass density, and Cp from
-         ! the same MSIS O/N2/O2 composition used by GEOS-MLT thermodynamics.
+         if (RESET_PLASMA_CACHE) then
+            if (allocated(self%NE_CACHE)) then
+               deallocate(self%NE_CACHE, self%ION_DENSITY_CACHE, &
+                          self%TI_CACHE, self%TE_CACHE, &
+                          self%BNORTH_CACHE, self%BEAST_CACHE, &
+                          self%BDOWN_CACHE, self%BMAG_CACHE)
+            end if
+
+            allocate(self%NE_CACHE(IM,JM,nlev_active))
+            allocate(self%ION_DENSITY_CACHE(N_MAJOR_ION_SPECIES,IM,JM,nlev_active))
+            allocate(self%TI_CACHE(IM,JM,nlev_active))
+            allocate(self%TE_CACHE(IM,JM,nlev_active))
+            allocate(self%BNORTH_CACHE(IM,JM,nlev_active))
+            allocate(self%BEAST_CACHE(IM,JM,nlev_active))
+            allocate(self%BDOWN_CACHE(IM,JM,nlev_active))
+            allocate(self%BMAG_CACHE(IM,JM,nlev_active))
+
+            self%PLASMA_LAST_YEAR = -1
+            self%PLASMA_LAST_DOY = -1
+            self%PLASMA_LAST_HOUR = -1
+         end if
+
+         UPDATE_PLASMA = &
+              self%PLASMA_LAST_YEAR /= IYEAR .or. &
+              self%PLASMA_LAST_DOY  /= DOY   .or. &
+              self%PLASMA_LAST_HOUR /= MLION_HOUR
+
+         if (UPDATE_PLASMA) then
+            call MAPL_TimerOn(MAPL, "-IRI")
+            call get_iri_state( &
+                 LATS_DEG, LONS_DEG, IYEAR, DOY, UT_HOUR, &
+                 F107_DAILY_NOW, F107_81DAY_NOW, alt_km, &
+                 self%NE_CACHE, self%ION_DENSITY_CACHE, &
+                 self%TI_CACHE, self%TE_CACHE)
+            call MAPL_TimerOff(MAPL, "-IRI")
+
+            call MAPL_TimerOn(MAPL, "-IGRF")
+            call get_igrf_field( &
+                 LATS_DEG, LONS_DEG, IYEAR, DOY, alt_km, &
+                 self%BNORTH_CACHE, self%BEAST_CACHE, &
+                 self%BDOWN_CACHE, self%BMAG_CACHE)
+            call MAPL_TimerOff(MAPL, "-IGRF")
+
+            self%PLASMA_LAST_YEAR = IYEAR
+            self%PLASMA_LAST_DOY = DOY
+            self%PLASMA_LAST_HOUR = MLION_HOUR
+         end if
+
+         ! MSIS is evaluated every physics call. Its absolute O/O2/N2 number
+         ! densities and resulting neutral mass density are used directly by
+         ! the collision/conductivity calculation.
          call MAPL_TimerOn(MAPL, "-MSIS")
          call compute_msis_state( &
               IM, JM, nlev_active, IYEAR, DOY, UT_HOUR, &
-              LATS_2D, LONS_2D, alt_km, n_msis, rho_msis, cp_msis, _RC)
+              LATS_2D, LONS_2D, alt_km, &
+              n_o_msis, n_o2_msis, n_n2_msis, &
+              rho_msis, cp_msis, _RC)
          call MAPL_TimerOff(MAPL, "-MSIS")
 
-         ! Step 4: Ion drag physics -- returns tendencies only.
          call MAPL_TimerOn(MAPL, "-DRAG")
-         call compute_drag_fields(ui, vi, ne_m3, species_fraction, &
-                                   U(:,:,1:nlev_active), &
-                                   V(:,:,1:nlev_active), &
-                                   n_msis, rho_msis, &
-                                   T(:,:,1:nlev_active), &
-                                   drag_u, drag_v, frictional_heating)
+         call compute_drag_fields( &
+              ui, vi, U(:,:,1:nlev_active), V(:,:,1:nlev_active), &
+              T(:,:,1:nlev_active), self%TI_CACHE, self%TE_CACHE, &
+              self%ION_DENSITY_CACHE, &
+              n_o_msis, n_o2_msis, n_n2_msis, rho_msis, &
+              self%BNORTH_CACHE, self%BEAST_CACHE, self%BDOWN_CACHE, &
+              TIMESTEP_SECONDS, drag_u, drag_v, joule_heating_wkg, &
+              sigma_pedersen, sigma_hall, lxx, lyy, lxy, lyx)
          call MAPL_TimerOff(MAPL, "-DRAG")
 
-         ! Step 5: Populate exports ONLY -- U/V/T are read-only imports here.
-         ! Tendencies are collected by GEOS_PhysicsGridComp into the combined
-         ! physics DUDT/DVDT/DTDT applied by the dynamics (same pattern as
-         ! GEOSgwd_GridComp's DUDT/DVDT/DTDT and GEOS_SolarGridComp's MLRADJH).
          if (associated(DUDT_IONDRAG)) then
             DUDT_IONDRAG = 0.0
             DUDT_IONDRAG(:,:,1:nlev_active) = drag_u
@@ -476,27 +610,80 @@ contains
             DVDT_IONDRAG = 0.0
             DVDT_IONDRAG(:,:,1:nlev_active) = drag_v
          end if
+
+         ! Diagnostic only. GEOS_PhysicsGridComp must continue to exclude this
+         ! field from total heating while MLRADJH is active.
          if (associated(DTDT_IONDRAG)) then
             DTDT_IONDRAG = 0.0
-            where (rho_msis > 0.0 .and. cp_msis > 0.0)
-               DTDT_IONDRAG(:,:,1:nlev_active) = &
-                    frictional_heating / (rho_msis * cp_msis)
+            where (cp_msis > 0.0)
+               DTDT_IONDRAG(:,:,1:nlev_active) = joule_heating_wkg / cp_msis
             elsewhere
                DTDT_IONDRAG(:,:,1:nlev_active) = 0.0
             end where
          end if
+
          if (associated(NE_IONDRAG)) then
             NE_IONDRAG = 0.0
-            NE_IONDRAG(:,:,1:nlev_active) = ne_m3
+            NE_IONDRAG(:,:,1:nlev_active) = self%NE_CACHE
+         end if
+         if (associated(OP_IONDRAG)) then
+            OP_IONDRAG = 0.0
+            OP_IONDRAG(:,:,1:nlev_active) = self%ION_DENSITY_CACHE(ION_OP,:,:,:)
+         end if
+         if (associated(O2P_IONDRAG)) then
+            O2P_IONDRAG = 0.0
+            O2P_IONDRAG(:,:,1:nlev_active) = self%ION_DENSITY_CACHE(ION_O2P,:,:,:)
+         end if
+         if (associated(NOP_IONDRAG)) then
+            NOP_IONDRAG = 0.0
+            NOP_IONDRAG(:,:,1:nlev_active) = self%ION_DENSITY_CACHE(ION_NOP,:,:,:)
+         end if
+         if (associated(TI_IONDRAG)) then
+            TI_IONDRAG = 0.0
+            TI_IONDRAG(:,:,1:nlev_active) = self%TI_CACHE
+         end if
+         if (associated(TE_IONDRAG)) then
+            TE_IONDRAG = 0.0
+            TE_IONDRAG(:,:,1:nlev_active) = self%TE_CACHE
          end if
          if (associated(RHO_MSIS_IONDRAG)) then
             RHO_MSIS_IONDRAG = 0.0
             RHO_MSIS_IONDRAG(:,:,1:nlev_active) = rho_msis
          end if
+         if (associated(BMAG_IONDRAG)) then
+            BMAG_IONDRAG = 0.0
+            BMAG_IONDRAG(:,:,1:nlev_active) = self%BMAG_CACHE
+         end if
+         if (associated(SIGMAPED_IONDRAG)) then
+            SIGMAPED_IONDRAG = 0.0
+            SIGMAPED_IONDRAG(:,:,1:nlev_active) = sigma_pedersen
+         end if
+         if (associated(SIGMAHALL_IONDRAG)) then
+            SIGMAHALL_IONDRAG = 0.0
+            SIGMAHALL_IONDRAG(:,:,1:nlev_active) = sigma_hall
+         end if
+         if (associated(LXX_IONDRAG)) then
+            LXX_IONDRAG = 0.0
+            LXX_IONDRAG(:,:,1:nlev_active) = lxx
+         end if
+         if (associated(LYY_IONDRAG)) then
+            LYY_IONDRAG = 0.0
+            LYY_IONDRAG(:,:,1:nlev_active) = lyy
+         end if
+         if (associated(LXY_IONDRAG)) then
+            LXY_IONDRAG = 0.0
+            LXY_IONDRAG(:,:,1:nlev_active) = lxy
+         end if
+         if (associated(LYX_IONDRAG)) then
+            LYX_IONDRAG = 0.0
+            LYX_IONDRAG(:,:,1:nlev_active) = lyx
+         end if
 
-         deallocate(LATS_DEG, LONS_DEG, alt_km, ui, vi, ne_m3, &
-                    species_fraction, n_msis, rho_msis, cp_msis, &
-                    drag_u, drag_v, frictional_heating)
+         deallocate(LATS_DEG, LONS_DEG, alt_km, ui, vi, &
+                    n_o_msis, n_o2_msis, n_n2_msis, &
+                    rho_msis, cp_msis, drag_u, drag_v, &
+                    joule_heating_wkg, sigma_pedersen, sigma_hall, &
+                    lxx, lyy, lxy, lyx)
 
          RETURN_(ESMF_SUCCESS)
 
@@ -504,22 +691,25 @@ contains
 
    end subroutine RUN
 
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
    subroutine compute_msis_state(IM, JM, NLEV_ACTIVE, IYEAR, DOY, &
                                  UT_HOUR, LATS_2D, LONS_2D, alt_km_in, &
-                                 n_out, rho_out, cp_out, RC)
+                                 n_o_out, n_o2_out, n_n2_out, &
+                                 rho_out, cp_out, RC)
       ! Diagnose the neutral state required by ion drag from MSIS.
       !
-      ! n_out   : total O + N2 + O2 number density [m-3]
-      ! rho_out : O + N2 + O2 mass density [kg m-3]
-      ! cp_out  : mixture specific heat at constant pressure [J kg-1 K-1]
+      ! n_o_out/n_o2_out/n_n2_out : absolute species number densities [m-3]
+      ! rho_out                   : O + O2 + N2 mass density [kg m-3]
+      ! cp_out                    : mixture specific heat [J kg-1 K-1]
+
       integer, intent(in) :: IM, JM, NLEV_ACTIVE
       integer, intent(in) :: IYEAR, DOY
-      real,    intent(in) :: UT_HOUR
+      real, intent(in) :: UT_HOUR
       real, pointer, dimension(:,:), intent(in) :: LATS_2D, LONS_2D
-      real, intent(in)  :: alt_km_in(:,:,:)
-      real, intent(out) :: n_out(:,:,:), rho_out(:,:,:), cp_out(:,:,:)
+      real, intent(in) :: alt_km_in(:,:,:)
+      real, intent(out) :: n_o_out(:,:,:), n_o2_out(:,:,:), n_n2_out(:,:,:)
+      real, intent(out) :: rho_out(:,:,:), cp_out(:,:,:)
       integer, optional, intent(OUT) :: RC
 
       character(len=ESMF_MAXSTR) :: IAm
@@ -539,14 +729,19 @@ contains
 
       IAm = "compute_msis_state"
 
+      n_o_out = 0.0
+      n_o2_out = 0.0
+      n_n2_out = 0.0
+      rho_out = 0.0
+      cp_out = 0.0
+
       do k = 1, NLEV_ACTIVE
          do j = 1, JM
             do i = 1, IM
-               alt_r4   = real(alt_km_in(i,j,k), kind=4)
-               glat_r4  = real(LATS_2D(i,j) * (180.0/MAPL_PI), kind=4)
+               alt_r4 = real(alt_km_in(i,j,k), kind=4)
+               glat_r4 = real(LATS_2D(i,j) * (180.0/MAPL_PI), kind=4)
                glong_r4 = real(LONS_2D(i,j) * (180.0/MAPL_PI), kind=4)
-               stl_r4 = modulo( &
-                    real(UT_HOUR, kind=4) + glong_r4/15.0_4, 24.0_4)
+               stl_r4 = modulo(real(UT_HOUR, kind=4) + glong_r4/15.0_4, 24.0_4)
 
                call msis_point(IYEAR, DOY, nint(UT_HOUR*3600.0), &
                     alt_r4, glat_r4, glong_r4, stl_r4, &
@@ -555,22 +750,24 @@ contains
                if (.not. ieee_is_finite(O_out) .or. &
                    .not. ieee_is_finite(N2_out) .or. &
                    .not. ieee_is_finite(O2_out)) then
-                  O_out  = 0.0_4
+                  O_out = 0.0_4
                   N2_out = 0.0_4
                   O2_out = 0.0_4
                end if
 
-               n_out(i,j,k) = &
-                    (real(O_out) + real(N2_out) + real(O2_out)) * CM3_TO_M3
+               n_o_out(i,j,k) = max(real(O_out), 0.0) * CM3_TO_M3
+               n_o2_out(i,j,k) = max(real(O2_out), 0.0) * CM3_TO_M3
+               n_n2_out(i,j,k) = max(real(N2_out), 0.0) * CM3_TO_M3
 
                rho_out(i,j,k) = &
-                    (real(O_out)*MASS_O + real(N2_out)*MASS_N2 + &
-                     real(O2_out)*MASS_O2) * AMU_KG * CM3_TO_M3
+                    (max(real(O_out),0.0)*MASS_O + &
+                     max(real(N2_out),0.0)*MASS_N2 + &
+                     max(real(O2_out),0.0)*MASS_O2) * AMU_KG * CM3_TO_M3
 
                call mlt_mixture_thermo_from_number_density( &
-                    real(O_out), real(N2_out), real(O2_out), &
-                    r_mix, cp_mix, cv_mix, kappa_mix, &
-                    phi_o, phi_n2, phi_o2)
+                    max(real(O_out),0.0), max(real(N2_out),0.0), &
+                    max(real(O2_out),0.0), r_mix, cp_mix, cv_mix, &
+                    kappa_mix, phi_o, phi_n2, phi_o2)
                cp_out(i,j,k) = cp_mix
             end do
          end do
