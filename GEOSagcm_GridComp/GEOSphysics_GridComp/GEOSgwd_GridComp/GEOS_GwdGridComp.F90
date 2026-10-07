@@ -26,21 +26,22 @@ module GEOS_GwdGridCompMod
 
    !USES:
 
-   use esmf
-   use MAPL, only: MAPL_Verify, MAPL_Assert, MAPL_Return
-   use MAPL, only: MAPL_get_current_thread, MAPL_get_num_threads
-   use MAPL, only: MAPL_find_bounds, MAPL_Interval
-   use MAPL, only: MAPL_AM_I_ROOT, MAPL_ArrayGather
-   use MAPL_Constants, only: MAPL_RADIUS, MAPL_RGAS, MAPL_GRAV, MAPL_VIREPS, MAPL_PI, MAPL_P00, MAPL_CP
-   use MAPL, only: MAPL_GridGet, MAPL_GridGetCoordinates, mapl_GridGetGlobalCellCountPerDim
-   use MAPL, only: MAPL_GridCompSetEntryPoint
-   use MAPL, only: MAPL_GridCompGet, MAPL_GridCompGetResource
-   use MAPL, only: MAPL_GridCompGetInternalState
-   use MAPL, only: MAPL_GridCompAddSpec, MAPL_GridCompTimerStart, MAPL_GridCompTimerStop
-   use MAPL, only: MAPL_StateGetPointer, MAPL_ClockGet
-   use MAPL, only: MAPL_RESTART_SKIP
-   use MAPL, only: MAPL_VERTICAL_STAGGER_NONE, MAPL_VERTICAL_STAGGER_CENTER, MAPL_VERTICAL_STAGGER_EDGE
-   use MAPL, only: MAPL_UngriddedDims, MAPL_UngriddedDim
+    use esmf
+    use MAPL, only: MAPL_Verify, MAPL_Assert, MAPL_Return
+    use MAPL, only: MAPL_get_current_thread, MAPL_get_num_threads
+    use MAPL, only: MAPL_find_bounds, MAPL_Interval
+    use MAPL, only: MAPL_AM_I_ROOT, MAPL_ArrayGather
+    use MAPL_Constants, only: MAPL_RADIUS, MAPL_RGAS, MAPL_GRAV, MAPL_VIREPS, MAPL_PI, MAPL_P00, MAPL_CP
+    use MAPL, only: MAPL_GridGet, MAPL_GridGetCoordinates, mapl_GridGetGlobalCellCountPerDim
+    use MAPL, only: MAPL_GridCompSetEntryPoint
+    use MAPL, only: MAPL_GridCompGet, MAPL_GridCompGetResource
+    use MAPL, only: MAPL_GridCompGetInternalState
+    use MAPL, only: MAPL_GridCompAddSpec, MAPL_GridCompTimerStart, MAPL_GridCompTimerStop
+    use MAPL, only: MAPL_StateGetPointer, MAPL_ClockGet
+    use MAPL, only: MAPL_RESTART_SKIP
+    use MAPL, only: MAPL_VERTICAL_STAGGER_NONE, MAPL_VERTICAL_STAGGER_CENTER, MAPL_VERTICAL_STAGGER_EDGE
+    use MAPL, only: MAPL_UngriddedDims, MAPL_UngriddedDim
+    use mapl_OwningGridComp_mod, only: mapl_get_owning_gridcomp
 
    use gw_rdg, only : gw_rdg_init
    use gw_oro, only : gw_oro_init
