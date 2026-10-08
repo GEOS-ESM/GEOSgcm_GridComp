@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Recover Fortran module dependencies that CMake's scanner drops.
+
+"""
+Recover Fortran module dependencies that CMake's scanner drops.
 
 cmFortranParser permanently loses sync on a line-continuation ``&`` that is
 immediately followed by a preprocessor directive.  Every MODULE defined after
@@ -23,8 +25,10 @@ import sys
 CONTINUATION = re.compile(r"&\s*(!.*)?$")
 DIRECTIVE = re.compile(r"^\s*#")
 MODULE_DEF = re.compile(r"^\s*module\s+([A-Za-z_]\w*)\s*(!.*)?$", re.IGNORECASE)
+# The trailing (?:::\s*|\s+) is what keeps `usemonalb = .true.` from parsing
+# as a USE of module MONALB.
 USE_STMT = re.compile(
-    r"^\s*use\s*(?:,\s*intrinsic\s*)?(?:::)?\s*([A-Za-z_]\w*)", re.IGNORECASE
+    r"^\s*use\s*(?:,\s*intrinsic\s*)?(?:::\s*|\s+)([A-Za-z_]\w*)", re.IGNORECASE
 )
 FORTRAN_EXT = (".F90", ".f90", ".F", ".f")
 

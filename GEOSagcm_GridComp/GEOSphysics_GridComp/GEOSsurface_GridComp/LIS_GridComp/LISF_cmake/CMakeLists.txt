@@ -10,20 +10,30 @@ find_package (Python3 COMPONENTS Interpreter REQUIRED)
 esma_mepo_style (LISF mepo_LISF REL_PATH ..)
 
 set (LISF_LIS  ${CMAKE_CURRENT_SOURCE_DIR}/${mepo_LISF}/lis)
-set (LISF_MAKE ${LISF_LIS}/make)
+# Collapsed so this matches the spelling Filepath's "." entry resolves to,
+# and the two do not show up as separate -I flags.
+get_filename_component (LISF_MAKE ${LISF_LIS}/make ABSOLUTE)
+
+# Everything we generate goes here rather than into ${LISF_MAKE}, so the
+# vendored @LISF clone is never written to and stays clean in `mepo status`.
+set (LISF_GEN ${CMAKE_CURRENT_BINARY_DIR}/lisf_generated)
+file (MAKE_DIRECTORY ${LISF_GEN})
+
+# plugins.py reads default.cfg/user.cfg and writes Filepath/LIS_plugins.h all
+# relative to its cwd, so default.cfg has to be alongside the rest.
+configure_file (${LISF_MAKE}/default.cfg ${LISF_GEN}/default.cfg COPYONLY)
 
 #-----------------------------------------------------------------------
 # user.cfg: plugin selection. Everything else in LISF's default.cfg is
 # left at its default (mostly On). See README.md for why each of these is
 # off; none are used by the Plug, which only drives Noah/NoahMP LSMs.
 #-----------------------------------------------------------------------
-file (WRITE ${LISF_MAKE}/user.cfg
+file (WRITE ${LISF_GEN}/user.cfg
 "
 VIC.4.1.1: Off
 VIC.4.1.2: Off
 CABLE: Off
 Noah.3.9: Off
-DA OBS pildas: Off
 RUC.3.7: Off
 ")
 
@@ -32,7 +42,7 @@ RUC.3.7: Off
 # Fortran sources. COUPLED differs from the stock make-based build; see
 # README.md.
 #-----------------------------------------------------------------------
-file (WRITE ${LISF_MAKE}/LIS_misc.h
+file (WRITE ${LISF_GEN}/LIS_misc.h
 "
 #define USE_NETCDF4
 #undef USE_GRIBAPI
@@ -48,7 +58,7 @@ file (WRITE ${LISF_MAKE}/LIS_misc.h
 #undef USAF_LIS75_SMDA
 ")
 
-file (WRITE ${LISF_MAKE}/LIS_NetCDF_inc.h
+file (WRITE ${LISF_GEN}/LIS_NetCDF_inc.h
 "
 #define NETCDF_shuffle  1
 #define NETCDF_deflate  1
@@ -63,8 +73,8 @@ file (WRITE ${LISF_MAKE}/LIS_NetCDF_inc.h
 # Re-run on every configure so editing user.cfg above always takes effect.
 #-----------------------------------------------------------------------
 execute_process (
-  COMMAND ${Python3_EXECUTABLE} plugins.py
-  WORKING_DIRECTORY ${LISF_MAKE}
+  COMMAND ${Python3_EXECUTABLE} ${LISF_MAKE}/plugins.py
+  WORKING_DIRECTORY ${LISF_GEN}
   RESULT_VARIABLE _plugins_result
 )
 if (NOT _plugins_result EQUAL 0)
@@ -76,7 +86,8 @@ endif ()
 # lists, mirroring the GNU Makefile's own non-recursive per-directory
 # file(GLOB) (lis/make/Makefile's FIND_FILES/FIND_HEADERS).
 #-----------------------------------------------------------------------
-file (STRINGS ${LISF_MAKE}/Filepath _filepath_lines)
+# Filepath's entries are relative to lis/make, not to wherever it was written.
+file (STRINGS ${LISF_GEN}/Filepath _filepath_lines)
 set (_lis_dirs)
 foreach (_line ${_filepath_lines})
   if (_line MATCHES "^dirs[ \t]*:=(.*)$")
@@ -90,7 +101,9 @@ endforeach ()
 list (REMOVE_DUPLICATES _lis_dirs)
 
 set (LIS_SOURCES)
-set (LIS_HEADER_DIRS ${LISF_MAKE})
+# LISF_GEN first so our generated headers win over any stale copies left in
+# ${LISF_MAKE} by an older build or by LISF's own `configure`.
+set (LIS_HEADER_DIRS ${LISF_GEN} ${LISF_MAKE})
 # Some same-named files appear in more than one Filepath directory (e.g.
 # get_cdf_params.F90 under both metforcing/mogreps_g and metforcing/galwem_ge).
 # The GNU Makefile's VPATH silently shadows later duplicates, only building
@@ -111,6 +124,7 @@ foreach (_dir ${_lis_dirs})
     list (APPEND LIS_HEADER_DIRS ${_dir})
   endif ()
 endforeach ()
+list (REMOVE_DUPLICATES LIS_HEADER_DIRS)
 
 if (NOT LIS_SOURCES)
   message (FATAL_ERROR "No LISF sources found under any Filepath directory -- did plugins.py run correctly?")
@@ -150,14 +164,16 @@ set_target_properties (hdfeos::hdfeos PROPERTIES
 #-----------------------------------------------------------------------
 esma_set_this (OVERRIDE LIS)
 
-# hdf4::hdf4/hdfeos::hdfeos are only needed for the default-enabled DA OBS
-# plugins that call HDF4/HDF-EOS directly (#include "hdf.f90" + gdopen/
-# gdattach/gdrdfld/gddetach/gdclose): AMSRE_SWE, ANSA_SNWD,
-# GCOMW_AMSR2L3SND, GLASS_Albedo, GLASS_LAI, MODISsca, NASA_AMSREsm,
-# PMW_snow, SSMI_SNWD. Drop these two libs if all 9 are ever disabled.
+# hdf4::hdf4/hdfeos::hdfeos are only needed by the DA OBS plugins that call
+# HDF4/HDF-EOS directly (#include "hdf.f90" + gdopen/gdattach/gdrdfld/
+# gddetach/gdclose). Six of them reach Filepath: ANSA_SNWD,
+# GCOMW_AMSR2L3SND, GLASS_Albedo, GLASS_LAI, PMW_snow, SSMI_SNWD.
+# (AMSRE_SWE, MODISsca and NASA_AMSREsm also use HDF4 but have no
+# default.cfg entry, so plugins.py never lists them.) Drop these two libs
+# if all six are ever disabled.
 esma_add_library (${this}
   SOURCES ${LIS_SOURCES}
-  PUBLIC_LIBS esmf NetCDF::NetCDF_Fortran hdf5::hdf5 hdf5::hdf5_hl hdfeos::hdfeos hdf4::hdf4
+  PUBLIC_LIBS esmf NetCDF::NetCDF_Fortran hdf5::hdf5 hdfeos::hdfeos hdf4::hdf4
   TYPE SHARED
 )
 

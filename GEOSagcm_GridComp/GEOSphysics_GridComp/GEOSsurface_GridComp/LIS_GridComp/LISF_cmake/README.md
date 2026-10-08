@@ -24,7 +24,7 @@ including:
 ## Build
 
 ```sh
-source @env/g5_modules.sh
+source @env/g5_modules.sh # works with ifort stack, not ifx
 cmake -B build -S . -DCMAKE_INSTALL_PREFIX=install -DBUILD_LIS=On
 cmake --build build -j8
 cmake --install build
@@ -36,7 +36,7 @@ build at all, and GEOS builds exactly as it did before.
 The two libraries can also be built on their own:
 
 ```sh
-make LIS            # libLIS.so  (~1900 sources, one target)
+make LIS            # libLIS.so  (~2000 sources, one target)
 make LIS_GridComp   # libLIS_GridComp.so, the GEOS-side wrapper
 ```
 
@@ -52,13 +52,20 @@ only the `ifort` Baselibs ships HDF4's Fortran interface. Building against the
 We defer to LISF's own plugin selector rather than re-deriving its directory
 list by hand:
 
-1. `user.cfg` and `LIS_misc.h` are written into `@LISF/lis/make/`.
+1. `user.cfg`, `LIS_misc.h` and `LIS_NetCDF_inc.h` are written into
+   `lisf_generated/` in the build tree, alongside a copy of LISF's
+   `default.cfg`.
 2. LISF's `plugins.py` runs there on every configure, reading
    `default.cfg` + `user.cfg` and emitting `Filepath` and `LIS_plugins.h`.
    (Re-running every time means edits to `user.cfg` always take effect.)
 3. `Filepath`'s `dirs := . ../core ../plugins ...` line is parsed and each
    directory non-recursively globbed, mirroring `lis/make/Makefile`'s
-   `FIND_FILES`/`FIND_HEADERS`.
+   `FIND_FILES`/`FIND_HEADERS`. The entries are relative to `lis/make`,
+   not to where `Filepath` was written.
+
+Nothing is written into the `@LISF` clone, so it stays clean in
+`mepo status`. LISF's own `configure` would instead drop these files
+directly into `lis/make/`.
 
 Some file names appear in more than one `Filepath` directory (e.g.
 `get_cdf_params.F90` under both `metforcing/mogreps_g` and
@@ -75,7 +82,6 @@ Everything else in LISF's `default.cfg` is left at its default (mostly On).
 | `VIC.4.1.1`, `VIC.4.1.2` | Restricted / unsupported. |
 | `CABLE` | `cable_canopy.f90` fails to compile with array shape-mismatch errors (`rbw`/`poolcoef1*`). |
 | `Noah.3.9` | `noah39_main.F90` calls `SFCDIF_OFF` with more actual than dummy arguments (vendored bug). We use Noah.3.3 / NoahMP.3.6 / NoahMP.4.0.1. |
-| `DA OBS pildas` | `read_pildassmobs.F90` fails to compile with `ifort` (name conflicts/reuse in specification expressions, vendored bug). |
 | `RUC.3.7` | `LIS_lsm_pluginMod.F90` declares `external ruc37_reset` but no `RUC37_reset.F90` exists anywhere in LISF's `ruc.3.7` plugin (vendored gap), leaving `ruc37_reset_` undefined at link time. |
 
 None of these are used by the Plug, which only drives Noah/NoahMP LSMs.
@@ -180,7 +186,7 @@ bumping `@LISF`. To inspect what it found:
 cut -d'|' -f2 <build>/.../LISF_cmake/lis_scanner_fixup.txt | tr ',' '\n' | sort -u
 ```
 
-In the current plugin set this is 10 providers across 608 consumer records.
+In the current plugin set this is 10 providers across 611 consumer records.
 
 ## Other build-system notes
 
