@@ -7,8 +7,7 @@ set (alldirs
   GEOSturbulence_GridComp
   GEOSgwd_GridComp
   GEOSradiation_GridComp
-  )
-
+)
 
 if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_PhysicsGridComp.F90)
 
