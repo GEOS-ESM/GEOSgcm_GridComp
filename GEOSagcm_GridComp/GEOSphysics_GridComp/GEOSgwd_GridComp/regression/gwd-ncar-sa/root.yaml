@@ -8,16 +8,13 @@ mapl:
   geometry:
     esmf_geom:
       class: CubedSphere
-      im_world: 48
+      im_world: 12
       nx_face: 1
       ny_face: 1
     vertical_grid:
-      class: model
-      standard_name: air_pressure
-      units: hPa
-      num_levels: 72
-      field_edge: PLE
-      field_center: PE
+      grid_type: model
+      fields: {pressure: PLE}
+      num_levels: 181
 
   children:
     GWD:
@@ -91,20 +88,20 @@ mapl:
       dst_name: AREA
       dst_comp: GWD
 
-    - src_name: DTDT_DC
+    - src_name: HT_dc
       src_intent: internal
       src_comp: DataGwdImports
       dst_name: HT_dc
       dst_comp: GWD
 
     - src_name: HT_mi
-      src_intent: export
+      src_intent: internal
       src_comp: DataGwdImports
       dst_name: HT_mi
       dst_comp: GWD
 
     - src_name: WSPD_STABLE300M
-      src_intent: export
+      src_intent: internal
       src_comp: DataGwdImports
       dst_name: WSPD_STABLE300M
       dst_comp: GWD
