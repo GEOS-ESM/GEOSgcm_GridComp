@@ -1,5 +1,7 @@
 # Builds LISF's `LIS` library natively under CMake (replacing the previous
 # approach of shelling out to LISF's own GNU-make build via `make nuopc`).
+# See README.md for the rationale behind the plugin/feature-switch choices
+# and the workarounds below.
 
 find_package (Python3 COMPONENTS Interpreter REQUIRED)
 
@@ -11,20 +13,9 @@ set (LISF_LIS  ${CMAKE_CURRENT_SOURCE_DIR}/${mepo_LISF}/lis)
 set (LISF_MAKE ${LISF_LIS}/make)
 
 #-----------------------------------------------------------------------
-# user.cfg: plugin selection. VIC is disabled (restricted/unsupported).
-# CABLE is disabled too -- cable_canopy.f90 fails to compile here with
-# array shape-mismatch errors (rbw/poolcoef1*) unrelated to our Plug,
-# which only drives Noah/NoahMP LSMs anyway. Noah.3.9 is disabled -- its
-# noah39_main.F90 calls SFCDIF_OFF with more actual than dummy arguments
-# (a vendored bug); we use Noah.3.3/NoahMP.3.6/NoahMP.4.0.1, not Noah.3.9.
-# DA OBS pildas is disabled -- read_pildassmobs.F90 fails to compile with
-# ifort (name conflicts/reuse in specification expressions, a vendored
-# bug), unrelated to our Plug, which doesn't use this DA obs plugin.
-# RUC.3.7 is disabled -- LIS_lsm_pluginMod.F90 declares `external ruc37_reset`
-# and expects a RUC37_reset.F90, but no such file exists anywhere in LISF's
-# ruc.3.7 plugin (a vendored gap upstream), leaving ruc37_reset_ undefined at
-# link time.
-# Everything else in LISF's default.cfg is left at its default (mostly On).
+# user.cfg: plugin selection. Everything else in LISF's default.cfg is
+# left at its default (mostly On). See README.md for why each of these is
+# off; none are used by the Plug, which only drives Noah/NoahMP LSMs.
 #-----------------------------------------------------------------------
 file (WRITE ${LISF_MAKE}/user.cfg
 "
@@ -38,10 +29,8 @@ RUC.3.7: Off
 
 #-----------------------------------------------------------------------
 # LIS_misc.h: build-time feature switches read by plugins.py and by LISF's
-# Fortran sources. COUPLED must be #define'd here (unlike the original
-# make-based build's setting) so plugins.py excludes lis/offline -- that
-# directory's lisdrv.F90 is a `program` main entry point that would
-# collide with GEOS.x's own main when linked into GEOS.
+# Fortran sources. COUPLED differs from the stock make-based build; see
+# README.md.
 #-----------------------------------------------------------------------
 file (WRITE ${LISF_MAKE}/LIS_misc.h
 "
@@ -158,12 +147,6 @@ set_target_properties (hdfeos::hdfeos PROPERTIES
 
 #-----------------------------------------------------------------------
 # libLIS
-# NOTE: on a from-scratch build, do the first build of this target with
-# -j1 (or plain `make`/`cmake --build .` without --parallel). With ~thousands
-# of sources in one target, a fully-parallel first pass can start compiling
-# a file before the .F90 that `USE`s it has finished/been scanned, causing
-# spurious "Error in opening the compiled module file" failures. Once built
-# once, .mod files + depend.make are complete and later -jN rebuilds are fine.
 #-----------------------------------------------------------------------
 esma_set_this (OVERRIDE LIS)
 
@@ -179,6 +162,50 @@ esma_add_library (${this}
 )
 
 target_include_directories (${this} PRIVATE ${LIS_HEADER_DIRS})
+
+#-----------------------------------------------------------------------
+# CMake's Fortran scanner silently drops the MODULEs defined by some LISF
+# sources, so no ordering edge reaches their consumers and parallel make
+# compiles the consumers first. lis_scanner_fixup.py re-derives the lost
+# edges from the sources; restore them here with OBJECT_DEPENDS.
+# See README.md for the trigger and for how to audit the result.
+#-----------------------------------------------------------------------
+set (_fixup_in  ${CMAKE_CURRENT_BINARY_DIR}/lis_scanner_sources.txt)
+set (_fixup_out ${CMAKE_CURRENT_BINARY_DIR}/lis_scanner_fixup.txt)
+
+string (REPLACE ";" "\n" _fixup_src_list "${LIS_SOURCES}")
+file (WRITE ${_fixup_in} "${_fixup_src_list}\n")
+
+execute_process (
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/lis_scanner_fixup.py
+          ${_fixup_in} ${_fixup_out}
+  RESULT_VARIABLE _fixup_rc
+  OUTPUT_VARIABLE _fixup_out_msg
+  ERROR_VARIABLE  _fixup_err_msg
+)
+if (NOT _fixup_rc EQUAL 0)
+  message (FATAL_ERROR "lis_scanner_fixup.py failed (${_fixup_rc}):\n${_fixup_out_msg}${_fixup_err_msg}")
+endif ()
+
+file (STRINGS ${_fixup_out} _fixup_records)
+foreach (_record ${_fixup_records})
+  string (REPLACE "|" ";" _record "${_record}")
+  list (GET _record 0 _consumer)
+  list (GET _record 1 _providers)
+  string (REPLACE "," ";" _providers "${_providers}")
+
+  set (_provider_objs)
+  foreach (_provider ${_providers})
+    # Object path for a source outside this directory: CMake maps each leading
+    # ".." of the relative source path to "__".
+    file (RELATIVE_PATH _obj_rel ${CMAKE_CURRENT_SOURCE_DIR} ${_provider})
+    string (REPLACE "../" "__/" _obj_rel ${_obj_rel})
+    list (APPEND _provider_objs
+      ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${this}.dir/${_obj_rel}.o)
+  endforeach ()
+
+  set_source_files_properties (${_consumer} PROPERTIES OBJECT_DEPENDS "${_provider_objs}")
+endforeach ()
 
 # CMake would otherwise pick CXX (icpx) as the linker driver here since the
 # sources include some .c/.cc files; but ESMF's esmf.mk link flags/libs
