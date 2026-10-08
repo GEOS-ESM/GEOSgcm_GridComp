@@ -57,10 +57,7 @@ class TranslateGFDL_1M_IceCloud(TranslateFortranData2Py):
         config_dependent_constants = GFDL1MDriverConfigDependentConstants.make(config)
 
         # initialize saturation tables
-        saturation_tables = get_tables(
-            backend=self.stencil_factory.backend,
-            dace_config=self.stencil_factory.config.dace_config,
-        )
+        saturation_tables = get_tables(self.stencil_factory)
 
         # get the shape of the field
         nx, ny, nz = inputs["driver_local_t_icecloud"].shape
@@ -105,12 +102,12 @@ class TranslateGFDL_1M_IceCloud(TranslateFortranData2Py):
             t=driver_locals.t,
             p_dry=driver_locals.p_dry,
             dp=driver_locals.dp,
-            vapor=driver_locals.dry_air_mixing_ratio.vapor,
-            liquid=driver_locals.dry_air_mixing_ratio.liquid,
-            rain=driver_locals.dry_air_mixing_ratio.rain,
-            ice=driver_locals.dry_air_mixing_ratio.ice,
-            snow=driver_locals.dry_air_mixing_ratio.snow,
-            graupel=driver_locals.dry_air_mixing_ratio.graupel,
+            mixing_ratio_vapor=driver_locals.dry_air_mixing_ratio.vapor,
+            mixing_ratio_liquid=driver_locals.dry_air_mixing_ratio.liquid,
+            mixing_ratio_rain=driver_locals.dry_air_mixing_ratio.rain,
+            mixing_ratio_ice=driver_locals.dry_air_mixing_ratio.ice,
+            mixing_ratio_snow=driver_locals.dry_air_mixing_ratio.snow,
+            mixing_ratio_graupel=driver_locals.dry_air_mixing_ratio.graupel,
             cloud_fraction=driver_locals.cloud_fraction,
             density=driver_locals.density,
             density_factor=driver_locals.density_factor,

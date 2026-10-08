@@ -1,5 +1,4 @@
 from f90nml import Namelist
-from gt4py.cartesian.gtscript import int32
 from ndsl import StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.typing import Int
@@ -8,7 +7,6 @@ from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
 
-import pyMoist.constants as constants
 from pyMoist.convection.UW.compute_uwshcu import find_cumulus_characteristics, find_klcl
 from pyMoist.convection.UW.config import UWConfiguration
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
@@ -65,13 +63,14 @@ class TranslateFindKlcl(TranslateFortranData2Py):
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("ComputeUwshcuInv-constants")
+        self.constants["JASON"] = True
 
     def compute(self, inputs):
         config = UWConfiguration(**self.constants)
 
         self.quantity_factory.add_data_dimensions(
             {
-                "ntracers": constants.NCNST,
+                "ntracers": config.NCNST,
             }
         )
 
@@ -156,10 +155,8 @@ class TranslateFindKlcl(TranslateFortranData2Py):
         qpert_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
         shfx = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
         evap = self.quantity_factory.zeros(dims=[I_DIM, J_DIM], units="n/a")
-        # The iteration you want to test
-        iter_test = int32(0)
 
-        # # Call stencils
+        # Call stencils
         self._find_cumulus_characteristics(
             condensation=condensation,
             pifc0=pifc0,
@@ -187,11 +184,9 @@ class TranslateFindKlcl(TranslateFortranData2Py):
             vsrc=vsrc,
             tpert_out=tpert_out,
             qpert_out=qpert_out,
-            iteration=iter_test,
         )
 
-        saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory.backend)
-        self.ese = saturation_vapor_pressure_table.ese
+        saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory)
         self.esx = saturation_vapor_pressure_table.esx
 
         umf_out = self.quantity_factory.zeros(dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
@@ -218,11 +213,9 @@ class TranslateFindKlcl(TranslateFortranData2Py):
 
         self._find_klcl(
             condensation=condensation,
-            iteration=iter_test,
             pifc0=pifc0,
             qtsrc=qtsrc,
             thlsrc=thlsrc,
-            ese=self.ese,
             esx=self.esx,
             thl0=thl0,
             ssthl0=ssthl0,
@@ -257,6 +250,15 @@ class TranslateFindKlcl(TranslateFortranData2Py):
             fdr_out=fdr_out,
         )
 
+        # Adjust klcl level to match Fortran starting to count at 1 and python starting at 0.
+        # However, only add +1 if klcl is ever written. Both, Fortran and python, initialize
+        # their fields to 0, which means they are both 0 if klcl is never written (e.g. in the
+        # cases of where condensation is True).
+        for i in range(0, 24):
+            for j in range(0, 24):
+                if not condensation.view[i, j]:
+                    klcl.view[i, j, :] += 1
+
         return {
             "qtsrc": qtsrc.view[:],
             "thlsrc": thlsrc.view[:],
@@ -264,7 +266,7 @@ class TranslateFindKlcl(TranslateFortranData2Py):
             "usrc": usrc.view[:],
             "vsrc": vsrc.view[:],
             "trsrc": trsrc.view[:],
-            "klcl": klcl.view[:],  # klcl should fail by 1
+            "klcl": klcl.view[:],
             "plcl": plcl.view[:],
             "qt0lcl": qt0lcl.view[:],
             "thl0lcl": thl0lcl.view[:],

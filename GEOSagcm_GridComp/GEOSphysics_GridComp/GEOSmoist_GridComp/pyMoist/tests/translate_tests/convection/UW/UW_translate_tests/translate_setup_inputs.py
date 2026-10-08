@@ -47,6 +47,7 @@ class TranslateSetupInputs(TranslateFortranData2Py):
         _setup_inputs = self.stencil_factory.from_dims_halo(
             func=setup_inputs,
             compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"JASON": True},
         )
 
         # Inputs
@@ -64,6 +65,9 @@ class TranslateSetupInputs(TranslateFortranData2Py):
         safe_assign_array(QLLS.view[:, :, :], inputs["QLLS"])
         ZLE = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
         safe_assign_array(ZLE.view[:, :, :], inputs["ZLE"])
+
+        # AREA is only used in case of JASON=False (which we never have here)
+        AREA = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM], units="n/a")
 
         # Outputs
         PKE = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
@@ -94,6 +98,7 @@ class TranslateSetupInputs(TranslateFortranData2Py):
             RKFRE=RKFRE,
             QLTOT=QLTOT,
             QITOT=QITOT,
+            AREA=AREA,
         )
 
         return {

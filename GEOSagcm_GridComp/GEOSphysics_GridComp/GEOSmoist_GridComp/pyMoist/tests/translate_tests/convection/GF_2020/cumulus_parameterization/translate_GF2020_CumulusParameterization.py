@@ -167,7 +167,7 @@ class TranslateGF2020_CumulusParameterization(TranslateFortranData2Py):
         convection_tracers.is_wetdep.field[:] = self.convection_tracers_input["is_wetdep"]
 
         # initialize pyMoist saturation tables
-        saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
+        saturation_tables = SaturationVaporPressureTable(self.stencil_factory)
 
         # initialize state
         state = GF2020CumulusParameterizationState.zeros(
