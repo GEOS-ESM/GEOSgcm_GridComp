@@ -17,13 +17,17 @@ workflows:
             - docker-hub-creds
           matrix:
             parameters:
-              compiler: [gfortran, ifort]
+              compiler: [gfortran, ifx]
           #baselibs_version: *baselibs_version
           repo: GEOSgcm
           checkout_fixture: true
           mepodevelop: false
           fixture_branch: release/MAPL-v3
+          run_regression_tests: true
+          ctest_options: "-L REGRESSION"
           persist_workspace: false # Needs to be true to run fv3/gcm experiment, costs extra
+          # The regression tests need a larger machine to run in a reasonable time
+          resource_class: xlarge
 
       ######################################################
       # # Run AMIP GCM (1 hour, no ExtData)                #
