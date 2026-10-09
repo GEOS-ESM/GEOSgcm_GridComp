@@ -401,10 +401,9 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   !------------------------------------------------------------------------
 
   ! Loop from bottom to top to get stress profiles.
-!$OMP parallel do default(none) &
-!$OMP shared(kbot_src,ktop,kvtt,band,ubi,c,effkwv,rhoi,ni, &
-!$OMP        near_zero,ro_adjust,ncol,alpha,piln,t,rog,src_level,tau) &
-!$OMP private(k,d,l,i,tausat,taudmp,ubmc,ubmc2,wrk,mi,crit_threshold)
+  ! NOTE: This loop must NOT be parallelized over k: level k uses tau at
+  ! level k+1 computed in the previous iteration (loop-carried dependence).
+  ! Threading is done at the component level instead (see GEOS_GwdGridComp).
   do k = kbot_src, ktop, -1
      
      ! Determine the diffusivity for each column.
@@ -488,10 +487,9 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   !------------------------------------------------------------------------
 
   ! Loop over levels from top to bottom
-!$OMP parallel do default(none) &
-!$OMP shared(kbot_tend,ktop,band,ncol,tau,delp,rdelp,c,ubm,dt,gravit,utgw,vtgw, &
-!$OMP        gwut,ubt,xv,yv,tend_level,near_zero) &
-!$OMP private(k,l,i,ubtl)
+  ! NOTE: This loop must NOT be parallelized over k: level k updates tau at
+  ! level k+1, which the next iteration reads (loop-carried dependence).
+  ! Threading is done at the component level instead (see GEOS_GwdGridComp).
   do k = ktop, kbot_tend
 
      ! Accumulate the mean wind tendency over wavenumber.
@@ -640,19 +638,20 @@ subroutine gw_flux_diagnostics(ncol, pver, band, c, ubi, tau, xv, yv, &
 
   !-----------------------------------------------------------------------
   ! Main computation loop: accumulate fluxes over all phase speed bands
-  ! Parallelized with OpenMP reduction for efficiency
+  ! NOTE: This is deliberately not an OpenMP reduction over l: that makes the
+  ! summation order (and so the answer) depend on the number of threads.
+  ! Threading is done at the component level instead (see GEOS_GwdGridComp).
   !-----------------------------------------------------------------------
 
-!$OMP parallel do default(none) &
-!$OMP shared(band,pver,kbot,c,ubi,tau,xv,yv,ncol) &
-!$OMP private(l,k,i,cmu,fpmx,fpmy,fe,fpe) &
-!$OMP reduction(+:taugwx,taugwy,fegw,fepgw, &
-!$OMP            taugwx_east,taugwx_west,taugwy_east,taugwy_west, &
-!$OMP            fegw_east,fegw_west,fepgw_east,fepgw_west)
   do l = -band%ngwv, band%ngwv
      do k = 1, pver
         if (k <= kbot) then
            do i = 1, ncol
+              ! kbot is only a loop bound over this set of columns; use each
+              ! column's own tend_level so that the result does not depend on
+              ! which other columns are processed together (MPI layout or
+              ! component-level OpenMP threading).
+              if (k > tend_level(i)) cycle
               
               ! Compute relative phase speed (c - u)
               cmu = real(c(i,l)) - ubi(i,k)
@@ -693,7 +692,6 @@ subroutine gw_flux_diagnostics(ncol, pver, band, c, ubi, tau, xv, yv, &
         end if
      end do
   end do
-!$OMP end parallel do
 
 end subroutine gw_flux_diagnostics
 

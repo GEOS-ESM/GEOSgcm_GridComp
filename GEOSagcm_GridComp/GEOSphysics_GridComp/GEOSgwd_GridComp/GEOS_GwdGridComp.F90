@@ -28,7 +28,7 @@ module GEOS_GwdGridCompMod
 
     use esmf
     use MAPL, only: MAPL_Verify, MAPL_Assert, MAPL_Return
-    use MAPL, only: MAPL_get_current_thread, MAPL_get_num_threads
+    use MAPL, only: MAPL_get_current_thread
     use MAPL, only: MAPL_find_bounds, MAPL_Interval
     use MAPL, only: MAPL_AM_I_ROOT, MAPL_ArrayGather
     use MAPL_Constants, only: MAPL_RADIUS, MAPL_RGAS, MAPL_GRAV, MAPL_VIREPS, MAPL_PI, MAPL_P00, MAPL_CP
@@ -57,7 +57,12 @@ module GEOS_GwdGridCompMod
    public SetServices
 
    !EOP
-   ! config params
+   ! Per-thread mutable state.  Everything that is written during a run
+   ! must live here (indexed by thread) rather than in GEOS_GwdGridComp,
+   ! which is shared by all threads of a threaded component.
+   ! NOTE: beres_dc_desc holds per-column data (and per-column run-time
+   ! scratch, desc%k) sized for, and computed from, this thread's j-slice
+   ! of the local grid.
    type :: ThreadWorkspace
       type(GWBand) :: beres_band
       type(BeresSourceDesc) :: beres_dc_desc
@@ -65,10 +70,12 @@ module GEOS_GwdGridCompMod
       type(GWBand) :: rdg_band
    end type ThreadWorkspace
 
-   logical :: use_threads
-   integer :: num_threads
-
+   ! config params
    type :: GEOS_GwdGridComp
+      ! OpenMP threading of this component, set in the "mapl: misc:" section
+      ! of its config (use_threads / num_threads)
+      logical :: use_threads = .false.
+      integer :: num_threads = 1
       real :: GEOS_BGSTRESS
       real :: GEOS_EFFGWBKG
       real :: GEOS_EFFGWORO
@@ -81,13 +88,12 @@ module GEOS_GwdGridCompMod
       real :: H0
       real :: HH
       real, allocatable :: alpha(:)
+      logical :: DEBUG_TQ_ERRORS = .false.
+      logical :: DEBUG_GWD = .false.
       type(ThreadWorkspace), allocatable :: workspaces(:)
    end type GEOS_GwdGridComp
 
    character(*), parameter :: PRIVATE_STATE = "GWD_PRIVATE_STATE"
-
-   logical :: DEBUG_TQ_ERRORS
-   logical :: DEBUG_GWD
 
 contains
 
@@ -111,18 +117,25 @@ contains
       type(MAPL_UngriddedDim) :: ungrd_16
       integer :: status
 
+      ! Wrap gridcomp's private state and store it in gridcomp
       _SET_NAMED_PRIVATE_STATE(gc, GEOS_GwdGridComp, PRIVATE_STATE)
+
+      ! Retrieve the private state
       _GET_NAMED_PRIVATE_STATE(gc, GEOS_GwdGridComp, PRIVATE_STATE, self)
+
+      ! OpenMP threading is a property of this gridcomp (set in the "mapl:
+      ! misc:" section of its config via use_threads / num_threads), and not
+      ! of the process as a whole.  When use_threads is true, MAPL replicates
+      ! the Run phase into num_threads "mini" components, each running on a
+      ! j-slice of the local grid (see MAPL_find_bounds).
+      call MAPL_GridCompGet(gc, num_threads=self%num_threads, &
+           use_threads=self%use_threads, _RC)
 
       call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_INITIALIZE, Initialize, _RC)
       call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_RUN, Run, phase_name="run", _RC)
 
-      call MAPL_GridCompGetResource(gc, "use_threads", use_threads, default=.false., _RC)
-      num_threads = 1
-      if (use_threads) then
-         num_threads = MAPL_get_num_threads()
-      end if
-      allocate(self%workspaces(0:num_threads - 1), _STAT)
+      ! One workspace per thread that this component will be run on.
+      allocate(self%workspaces(0:self%num_threads - 1), _STAT)
 
       ! We need to get NCAR_NRDG because this is used in the auto-generated
       ! code GWD_Internal___.h via ACG
@@ -194,7 +207,7 @@ contains
       logical :: NCAR_DC_BERES
 
       type(GEOS_GwdGridComp), pointer :: self
-      integer :: thread
+      integer :: thread, num_slices
       type(MAPL_Interval), allocatable :: bounds(:)
       integer :: status
 
@@ -304,29 +317,26 @@ contains
       call MAPL_GridCompGetResource(gc, "NCAR_DC_BERES", NCAR_DC_BERES, default=.true., _RC)
       call MAPL_GridCompGetResource(gc, "NCAR_BKG_EW_CRIT_THRESH", NCAR_BKG_EW_CRIT_THRESH, default=1.0e-3, _RC)
       call MAPL_GridCompGetResource(gc, "NCAR_BKG_WW_CRIT_THRESH", NCAR_BKG_WW_CRIT_THRESH, default=1.0e-10, _RC)
-      if (use_threads) then
-         bounds = MAPL_find_bounds(jm, num_threads)
-         do thread = 0, num_threads - 1
-            jm_thread = bounds(thread + 1)%max - bounds(thread + 1)%min + 1
-            call gw_beres_init(BERES_FILE_NAME, &
-                 self%workspaces(thread)%beres_band, &
-                 self%workspaces(thread)%beres_dc_desc, &
-                 NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_EW_CRIT_THRESH, NCAR_BKG_WW_CRIT_THRESH, NCAR_BKG_FCRIT2, &
-                 NCAR_BKG_WAVELENGTH, NCAR_DC_BERES_SRC_LEVEL, NCAR_HR_CF, NCAR_QBO_HDEPTH_SCALING, &
-                 1000.0, .true., NCAR_TR_EFF, NCAR_ET_EFF, NCAR_BKG_TAU, NCAR_ET_FAC_DTDTM, NCAR_ET_FAC_WS300, &
-                 NCAR_BKG_TNDMAX, NCAR_DC_BERES, &
-                 im * jm_thread, lats(:, bounds(thread + 1)%min:bounds(thread + 1)%max))
-         end do
-      else
+      ! The Beres source descriptor holds per-column data, so each thread's
+      ! workspace must be built for exactly the j-slice of the local grid that
+      ! the thread is handed in Run.  MAPL splits the local grid among the
+      ! threads of a threaded component with MAPL_find_bounds(jm, num_threads),
+      ! so use the same decomposition here.  Without threading, the (single)
+      ! Run phase sees the whole local grid.
+      num_slices = 1
+      if (self%use_threads) num_slices = self%num_threads
+      bounds = MAPL_find_bounds(jm, num_slices)
+      do thread = 0, num_slices - 1
+         jm_thread = bounds(thread + 1)%max - bounds(thread + 1)%min + 1
          call gw_beres_init(BERES_FILE_NAME, &
-              self%workspaces(0)%beres_band, &
-              self%workspaces(0)%beres_dc_desc, &
+              self%workspaces(thread)%beres_band, &
+              self%workspaces(thread)%beres_dc_desc, &
               NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_EW_CRIT_THRESH, NCAR_BKG_WW_CRIT_THRESH, NCAR_BKG_FCRIT2, &
               NCAR_BKG_WAVELENGTH, NCAR_DC_BERES_SRC_LEVEL, NCAR_HR_CF, NCAR_QBO_HDEPTH_SCALING, &
               1000.0, .true., NCAR_TR_EFF, NCAR_ET_EFF, NCAR_BKG_TAU, NCAR_ET_FAC_DTDTM, NCAR_ET_FAC_WS300, &
               NCAR_BKG_TNDMAX, NCAR_DC_BERES, &
-              im * jm, lats)
-      end if
+              im * jm_thread, lats(:, bounds(thread + 1)%min:bounds(thread + 1)%max))
+      end do
 
       ! Orographic Scheme
       call MAPL_GridCompGetResource(gc, "NCAR_ORO_PGWV", NCAR_ORO_PGWV, default=0, _RC)
@@ -340,7 +350,7 @@ contains
          call MAPL_GridCompGetResource(gc, "NCAR_ORO_TNDMAX", NCAR_ORO_TNDMAX, default=400.0, _RC)
          NCAR_ORO_TNDMAX = NCAR_ORO_TNDMAX / 86400.0
          ! Ridge Scheme
-         do thread = 0, num_threads - 1
+         do thread = lbound(self%workspaces, 1), ubound(self%workspaces, 1)
             call gw_rdg_init(self%workspaces(thread)%rdg_band, NCAR_ORO_GW_DC, &
                  NCAR_ORO_EW_CRIT_THRESH, NCAR_ORO_WW_CRIT_THRESH, &
                  NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_TNDMAX, NCAR_ORO_PGWV)
@@ -351,7 +361,7 @@ contains
          call MAPL_GridCompGetResource(gc, "NCAR_ORO_SOUTH_FAC", NCAR_ORO_SOUTH_FAC, default=1.0, _RC)
          call MAPL_GridCompGetResource(gc, "NCAR_ORO_TNDMAX", NCAR_ORO_TNDMAX, default=400.0, _RC)
          NCAR_ORO_TNDMAX = NCAR_ORO_TNDMAX / 86400.0
-         do thread = 0, num_threads - 1
+         do thread = lbound(self%workspaces, 1), ubound(self%workspaces, 1)
             call gw_oro_init(self%workspaces(thread)%oro_band, NCAR_ORO_GW_DC, &
                  NCAR_ORO_EW_CRIT_THRESH, NCAR_ORO_WW_CRIT_THRESH, &
                  NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_PGWV, &
@@ -359,8 +369,8 @@ contains
          end do
       end if
 
-      call MAPL_GridCompGetResource(gc, "DEBUG_GWD", DEBUG_GWD, default=.false., _RC)
-      call MAPL_GridCompGetResource(gc, "DEBUG_TQ_ERRORS", DEBUG_TQ_ERRORS, default=.false., _RC)
+      call MAPL_GridCompGetResource(gc, "DEBUG_GWD", self%DEBUG_GWD, default=.false., _RC)
+      call MAPL_GridCompGetResource(gc, "DEBUG_TQ_ERRORS", self%DEBUG_TQ_ERRORS, default=.false., _RC)
 
       allocate(self%alpha(LM + 1), _STAT)
       call MAPL_StateGetPointer(import, PREF, 'PREF', _RC)
@@ -395,8 +405,18 @@ contains
       type(GEOS_GwdGridComp), pointer :: self
       type(ThreadWorkspace), pointer :: workspace
       integer :: thread, status
+      logical :: do_timers
 
       _GET_NAMED_PRIVATE_STATE(gc, GEOS_GwdGridComp, PRIVATE_STATE, self)
+
+      ! Per-thread mutable state
+      thread = MAPL_get_current_thread()
+      _ASSERT(thread <= ubound(self%workspaces, 1), "thread id exceeds the number of GWD workspaces")
+      workspace => self%workspaces(thread)
+
+      ! The component's profiler is shared by all threads and is not thread
+      ! safe, so only the primary thread records timings.
+      do_timers = (thread == 0)
 
       H0 = self%H0
       HH = self%HH
@@ -404,7 +424,7 @@ contains
       TAU1 = self%TAU1
 
       ! Local aliases to the state, grid, and configuration
-      ! Grid info
+      ! Grid info (when threaded, this is this thread's j-slice of the local grid)
       call MAPL_GridCompGet(gc, grid=grid, num_levels=LM, _RC)
       call MAPL_GridGetCoordinates(grid, longitudes=lons, latitudes=lats, _RC)
       call MAPL_GridGet(grid, im=im, jm=jm, _RC)
@@ -412,9 +432,9 @@ contains
       ! If its time, recalculate the GWD tendency
       ! if ( ESMF_AlarmIsRinging( ALARM ) ) then
       ! call ESMF_AlarmRingerOff(ALARM, _RC)
-      call MAPL_GridCompTimerStart(gc, "gwd_driver", _RC)
+      if (do_timers) call MAPL_GridCompTimerStart(gc, "gwd_driver", _RC)
       call Gwd_Driver(_RC)
-      call MAPL_GridCompTimerStop(gc, "gwd_driver", _RC)
+      if (do_timers) call MAPL_GridCompTimerStop(gc, "gwd_driver", _RC)
       ! endif
 
       _RETURN(_SUCCESS)
@@ -430,40 +450,40 @@ contains
 #include "GWD_DeclarePointer___.h"
          real, pointer, dimension(:, :, :) :: PTR3D
          real, pointer, dimension(:, :) :: PTR2D
-         real, dimension(im, jm, LM) :: TMP3D
-         real, dimension(im, jm, LM) :: ZM, PMID, PDEL, RPDEL, PMLN
+         real, allocatable, dimension(:, :, :) :: TMP3D
+         real, allocatable, dimension(:, :, :) :: ZM, PMID, PDEL, RPDEL, PMLN
          real, dimension(im, jm) :: a2, Hefold
-         real, dimension(im, jm, LM) :: DUDT_ORG, DVDT_ORG, DTDT_ORG
-         real, dimension(im, jm, LM) :: DUDT_GWD, DVDT_GWD, DTDT_GWD
-         real, dimension(im, jm, LM) :: DUDT_RAH, DVDT_RAH, DTDT_RAH
-         real, dimension(im, jm, LM) :: DUDT_TOT, DVDT_TOT, DTDT_TOT
-         real, dimension(im, jm, LM + 1) :: PILN, ZI
+         real, allocatable, dimension(:, :, :) :: DUDT_ORG, DVDT_ORG, DTDT_ORG
+         real, allocatable, dimension(:, :, :) :: DUDT_GWD, DVDT_GWD, DTDT_GWD
+         real, allocatable, dimension(:, :, :) :: DUDT_RAH, DVDT_RAH, DTDT_RAH
+         real, allocatable, dimension(:, :, :) :: DUDT_TOT, DVDT_TOT, DTDT_TOT
+         real, allocatable, dimension(:, :, :) :: PILN, ZI
          real, dimension(LM) :: ZREF, KRAY
-         real, dimension(im, jm) :: GBXAR_TMP
-         real, dimension(im, jm) :: TAUXO_TMP, TAUYO_TMP
-         real, dimension(im, jm) :: TAUXB_TMP, TAUYB_TMP
-         real, dimension(im, jm, LM + 1) :: TAUXO_3D, TAUYO_3D, FEO_3D, FEPO_3D
-         real, dimension(im, jm, LM + 1) :: TAUXB_3D, TAUYB_3D, FEB_3D, FEPB_3D
-         real, dimension(im, jm, LM) :: DUBKGSRC, DVBKGSRC, DTBKGSRC
-         real, dimension(im, jm) :: KEGWD_X, KEORO_X, KERAY_X, KEBKG_X, KERES_X
-         real, dimension(im, jm) :: PEGWD_X, PEORO_X, PERAY_X, PEBKG_X, BKGERR_X
-         real, dimension(im, jm, LM) :: DUDT_GWD_GEOS, DVDT_GWD_GEOS, DTDT_GWD_GEOS
-         real, dimension(im, jm, LM) :: DUDT_ORG_GEOS, DVDT_ORG_GEOS, DTDT_ORG_GEOS
-         real, dimension(im, jm) :: TAUXB_TMP_GEOS, TAUYB_TMP_GEOS
-         real, dimension(im, jm) :: TAUXO_TMP_GEOS, TAUYO_TMP_GEOS
-         real, dimension(im, jm, LM) :: DUDT_GWD_NCAR, DVDT_GWD_NCAR, DTDT_GWD_NCAR
-         real, dimension(im, jm, LM) :: DUDT_ORG_NCAR, DVDT_ORG_NCAR, DTDT_ORG_NCAR
-         real, dimension(im, jm) :: TAUXB_TMP_NCAR, TAUYB_TMP_NCAR
-         real, dimension(im, jm) :: TAUXO_TMP_NCAR, TAUYO_TMP_NCAR
+         real, allocatable, dimension(:, :) :: GBXAR_TMP
+         real, allocatable, dimension(:, :) :: TAUXO_TMP, TAUYO_TMP
+         real, allocatable, dimension(:, :) :: TAUXB_TMP, TAUYB_TMP
+         real, allocatable, dimension(:, :, :) :: TAUXO_3D, TAUYO_3D, FEO_3D, FEPO_3D
+         real, allocatable, dimension(:, :, :) :: TAUXB_3D, TAUYB_3D, FEB_3D, FEPB_3D
+         real, allocatable, dimension(:, :, :) :: DUBKGSRC, DVBKGSRC, DTBKGSRC
+         real, allocatable, dimension(:, :) :: KEGWD_X, KEORO_X, KERAY_X, KEBKG_X, KERES_X
+         real, allocatable, dimension(:, :) :: PEGWD_X, PEORO_X, PERAY_X, PEBKG_X, BKGERR_X
+         real, allocatable, dimension(:, :, :) :: DUDT_GWD_GEOS, DVDT_GWD_GEOS, DTDT_GWD_GEOS
+         real, allocatable, dimension(:, :, :) :: DUDT_ORG_GEOS, DVDT_ORG_GEOS, DTDT_ORG_GEOS
+         real, allocatable, dimension(:, :) :: TAUXB_TMP_GEOS, TAUYB_TMP_GEOS
+         real, allocatable, dimension(:, :) :: TAUXO_TMP_GEOS, TAUYO_TMP_GEOS
+         real, allocatable, dimension(:, :, :) :: DUDT_GWD_NCAR, DVDT_GWD_NCAR, DTDT_GWD_NCAR
+         real, allocatable, dimension(:, :, :) :: DUDT_ORG_NCAR, DVDT_ORG_NCAR, DTDT_ORG_NCAR
+         real, allocatable, dimension(:, :) :: TAUXB_TMP_NCAR, TAUYB_TMP_NCAR
+         real, allocatable, dimension(:, :) :: TAUXO_TMP_NCAR, TAUYO_TMP_NCAR
 
-         real, dimension(im, jm) :: BKG_TAU_TOT_TMP, BKG_TAU_CNV_TMP
-         real, dimension(im, jm) :: BKG_TAU_DRY_TMP, BKG_TAU_MST_TMP
-         real, dimension(im, jm, LM) :: TAUGWX_TOT_TMP, TAUGWY_TOT_TMP
-         real, dimension(im, jm, LM) :: FEGW_TOT_TMP, FEPGW_TOT_TMP
-         real, dimension(im, jm, LM) :: TAUGWX_EAST_TMP, TAUGWY_EAST_TMP
-         real, dimension(im, jm, LM) :: FEGW_EAST_TMP, FEPGW_EAST_TMP
-         real, dimension(im, jm, LM) :: TAUGWX_WEST_TMP, TAUGWY_WEST_TMP
-         real, dimension(im, jm, LM) :: FEGW_WEST_TMP, FEPGW_WEST_TMP
+         real, allocatable, dimension(:, :) :: BKG_TAU_TOT_TMP, BKG_TAU_CNV_TMP
+         real, allocatable, dimension(:, :) :: BKG_TAU_DRY_TMP, BKG_TAU_MST_TMP
+         real, allocatable, dimension(:, :, :) :: TAUGWX_TOT_TMP, TAUGWY_TOT_TMP
+         real, allocatable, dimension(:, :, :) :: FEGW_TOT_TMP, FEPGW_TOT_TMP
+         real, allocatable, dimension(:, :, :) :: TAUGWX_EAST_TMP, TAUGWY_EAST_TMP
+         real, allocatable, dimension(:, :, :) :: FEGW_EAST_TMP, FEPGW_EAST_TMP
+         real, allocatable, dimension(:, :, :) :: TAUGWX_WEST_TMP, TAUGWY_WEST_TMP
+         real, allocatable, dimension(:, :, :) :: FEGW_WEST_TMP, FEPGW_WEST_TMP
          real, allocatable, target, dimension(:, :, :) :: scratch_ridge
 
          integer :: j, K, L, nrdg, ikpbl
@@ -473,6 +493,50 @@ contains
          type(ESMF_State) :: internal
 
          call MAPL_ClockGet(clock, dt=DT, _RC)
+
+         ! Work arrays are allocated on the heap rather than declared as automatic
+         ! arrays: when this component is threaded, Run executes on OpenMP worker
+         ! threads whose stacks (OMP_STACKSIZE) are typically small.
+         allocate(TMP3D(im, jm, LM), _STAT)
+         allocate(ZM(im, jm, LM), PMID(im, jm, LM), PDEL(im, jm, LM), &
+              RPDEL(im, jm, LM), PMLN(im, jm, LM), _STAT)
+         allocate(DUDT_ORG(im, jm, LM), DVDT_ORG(im, jm, LM), DTDT_ORG(im, jm, LM), _STAT)
+         allocate(DUDT_GWD(im, jm, LM), DVDT_GWD(im, jm, LM), DTDT_GWD(im, jm, LM), _STAT)
+         allocate(DUDT_RAH(im, jm, LM), DVDT_RAH(im, jm, LM), DTDT_RAH(im, jm, LM), _STAT)
+         allocate(DUDT_TOT(im, jm, LM), DVDT_TOT(im, jm, LM), DTDT_TOT(im, jm, LM), _STAT)
+         allocate(PILN(im, jm, LM + 1), ZI(im, jm, LM + 1), _STAT)
+         allocate(GBXAR_TMP(im, jm), _STAT)
+         allocate(TAUXO_TMP(im, jm), TAUYO_TMP(im, jm), _STAT)
+         allocate(TAUXB_TMP(im, jm), TAUYB_TMP(im, jm), _STAT)
+         allocate(TAUXO_3D(im, jm, LM + 1), TAUYO_3D(im, jm, LM + 1), &
+              FEO_3D(im, jm, LM + 1), FEPO_3D(im, jm, LM + 1), _STAT)
+         allocate(TAUXB_3D(im, jm, LM + 1), TAUYB_3D(im, jm, LM + 1), &
+              FEB_3D(im, jm, LM + 1), FEPB_3D(im, jm, LM + 1), _STAT)
+         allocate(DUBKGSRC(im, jm, LM), DVBKGSRC(im, jm, LM), DTBKGSRC(im, jm, LM), _STAT)
+         allocate(KEGWD_X(im, jm), KEORO_X(im, jm), KERAY_X(im, jm), &
+              KEBKG_X(im, jm), KERES_X(im, jm), _STAT)
+         allocate(PEGWD_X(im, jm), PEORO_X(im, jm), PERAY_X(im, jm), &
+              PEBKG_X(im, jm), BKGERR_X(im, jm), _STAT)
+         allocate(DUDT_GWD_GEOS(im, jm, LM), DVDT_GWD_GEOS(im, jm, LM), &
+              DTDT_GWD_GEOS(im, jm, LM), _STAT)
+         allocate(DUDT_ORG_GEOS(im, jm, LM), DVDT_ORG_GEOS(im, jm, LM), &
+              DTDT_ORG_GEOS(im, jm, LM), _STAT)
+         allocate(TAUXB_TMP_GEOS(im, jm), TAUYB_TMP_GEOS(im, jm), _STAT)
+         allocate(TAUXO_TMP_GEOS(im, jm), TAUYO_TMP_GEOS(im, jm), _STAT)
+         allocate(DUDT_GWD_NCAR(im, jm, LM), DVDT_GWD_NCAR(im, jm, LM), &
+              DTDT_GWD_NCAR(im, jm, LM), _STAT)
+         allocate(DUDT_ORG_NCAR(im, jm, LM), DVDT_ORG_NCAR(im, jm, LM), &
+              DTDT_ORG_NCAR(im, jm, LM), _STAT)
+         allocate(TAUXB_TMP_NCAR(im, jm), TAUYB_TMP_NCAR(im, jm), _STAT)
+         allocate(TAUXO_TMP_NCAR(im, jm), TAUYO_TMP_NCAR(im, jm), _STAT)
+         allocate(BKG_TAU_TOT_TMP(im, jm), BKG_TAU_CNV_TMP(im, jm), _STAT)
+         allocate(BKG_TAU_DRY_TMP(im, jm), BKG_TAU_MST_TMP(im, jm), _STAT)
+         allocate(TAUGWX_TOT_TMP(im, jm, LM), TAUGWY_TOT_TMP(im, jm, LM), _STAT)
+         allocate(FEGW_TOT_TMP(im, jm, LM), FEPGW_TOT_TMP(im, jm, LM), _STAT)
+         allocate(TAUGWX_EAST_TMP(im, jm, LM), TAUGWY_EAST_TMP(im, jm, LM), _STAT)
+         allocate(FEGW_EAST_TMP(im, jm, LM), FEPGW_EAST_TMP(im, jm, LM), _STAT)
+         allocate(TAUGWX_WEST_TMP(im, jm, LM), TAUGWY_WEST_TMP(im, jm, LM), _STAT)
+         allocate(FEGW_WEST_TMP(im, jm, LM), FEPGW_WEST_TMP(im, jm, LM), _STAT)
 
          ! Pointers to import, export and internal variables
          call MAPL_GridCompGetInternalState(gc, internal)
@@ -517,7 +581,7 @@ contains
          DTDT_ORG_NCAR = 0.0
          TAUXO_TMP_NCAR = 0.0
          TAUYO_TMP_NCAR = 0.0
-         call MAPL_GridCompTimerStart(gc, "gw_intr_ncar", _RC)
+         if (do_timers) call MAPL_GridCompTimerStart(gc, "gw_intr_ncar", _RC)
          if ((self%NCAR_EFFGWORO /= 0.0) .or. (self%NCAR_EFFGWBKG /= 0.0)) then
             do L = 1, LM
                ! Isolate purely large-scale/frontal latent heating by removing convective overlap.
@@ -526,8 +590,10 @@ contains
                ! heating (HT_mi) in regions with even modest convective instability.
                TMP3D(:, :, L) = ((1.0 - CNV_FRC)**4) * HT_mi(:, :, L)
             end do
-            thread = MAPL_get_current_thread()
-            workspace => self%workspaces(thread)
+            ! This thread's Beres descriptor was built in Initialize for this
+            ! thread's j-slice, and is indexed by column, so it must match.
+            _ASSERT(allocated(workspace%beres_dc_desc%k), "GWD workspace not initialized for this thread")
+            _ASSERT(size(workspace%beres_dc_desc%k) == im * jm, "GWD workspace does not match this thread's grid")
             call gw_intr_ncar(im * jm, LM, DT, self%NCAR_NRDG, &
                  workspace%beres_dc_desc, &
                  workspace%beres_band, workspace%oro_band, workspace%rdg_band, &
@@ -573,7 +639,7 @@ contains
             if (associated(FEGW_WEST)) FEGW_WEST = FEGW_WEST_TMP
             if (associated(FEPGW_WEST)) FEPGW_WEST = FEPGW_WEST_TMP
          end if
-         call MAPL_GridCompTimerStop(gc, "gw_intr_ncar", _RC)
+         if (do_timers) call MAPL_GridCompTimerStop(gc, "gw_intr_ncar", _RC)
 
          ! Use GEOS GWD only for Extratropical background sources...
          DUDT_GWD_GEOS = 0.0
@@ -694,11 +760,15 @@ contains
          if (associated(U_EXP)) U_EXP = U + DUDT_TOT * DT
          if (associated(V_EXP)) V_EXP = V + DVDT_TOT * DT
          if (associated(T_EXP)) T_EXP = T + DTDT_TOT * DT
-         if (associated(PREF_EXP)) PREF_EXP = PREF
+         ! PREF is not horizontally decomposed, so when threaded PREF_EXP is the
+         ! same array in every thread; only let one thread write it.
+         if (thread == 0) then
+            if (associated(PREF_EXP)) PREF_EXP = PREF
+         end if
          if (associated(SGH_EXP)) SGH_EXP = SGH
          if (associated(PLE_EXP)) PLE_EXP = PLE
 
-         if (DEBUG_GWD) then
+         if (self%DEBUG_GWD) then
             ! [TODO] Purnendu: The MAPL_MaxMin calls are now different in MAPL3
             !if(associated( T_EXP )) call MAPL_MaxMin('GWD: T_AF_GWD ', T_EXP)
             !if(associated( U_EXP )) call MAPL_MaxMin('GWD: U_AF_GWD ', U_EXP)
@@ -707,7 +777,7 @@ contains
 
          if (allocated(scratch_ridge)) deallocate(scratch_ridge)
 
-         if (associated(T_EXP) .and. DEBUG_TQ_ERRORS) then
+         if (associated(T_EXP) .and. self%DEBUG_TQ_ERRORS) then
             do L = 1, LM
                do j = 1, jm
                   do i = 1, im
