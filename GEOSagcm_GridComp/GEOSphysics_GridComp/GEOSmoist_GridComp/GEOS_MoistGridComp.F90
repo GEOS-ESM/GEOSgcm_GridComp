@@ -831,6 +831,15 @@ contains
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'Low_cloud_top_pressure',                                    &
+       UNITS      = 'Pa',                                                     &
+       SHORT_NAME = 'LOWCLDTOP',                                              &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                    &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+    
 #ifdef PDFDIAG
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'SHOC_PDF_vertical_velocity_standard_deviation_first_plume', &
@@ -6630,6 +6639,28 @@ contains
           enddo
        endif
 
+       call MAPL_GetPointer(EXPORT, PTR2D, 'LOWCLDTOP', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) then
+          PTR2D(:,:) = MAPL_UNDEF
+          do I=1,IM
+             do J=1,JM
+                L = LM
+                do while (PLmb(I,J,L).gt.600.)
+                  L = L-1
+		end do
+                if (MAXVAL(CLCN(I,J,1:L)+CLLS(I,J,1:L)).lt.0.01) then
+                   do while (CLCN(I,J,L)+CLLS(I,J,L).lt.0.001)
+                      L=L+1
+                   end do
+                   if (L.lt.LM) then               ! L is highest level with CLD above threshold.
+                      PTR2D(I,J) = PLE(I,J,L-1)    ! Use upper edge as cloud top pressure.
+                   end if
+                end if
+             end do
+          end do
+       end if
+       
+       
        call MAPL_GetPointer(EXPORT, PTR3D, 'RH2', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = MAX(MIN( Q/GEOS_QSAT (T, PLmb) , 1.02 ),0.0)
 
