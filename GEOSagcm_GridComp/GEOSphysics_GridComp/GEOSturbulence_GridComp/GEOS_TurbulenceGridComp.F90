@@ -2969,6 +2969,7 @@ end if
                                             TKEBUOY,TKESHEAR,TKEDISS,TKEDISSx, &
                                             SL2, SL3, W2, W3, WSL, SLQT !, W3CANUTO, QT2DIAG,SL2DIAG,SLQTDIAG
      real, dimension(:,:), pointer       :: edmf_depth, lobukhov
+     real                               :: obukhov_denom
 
 ! EDMF variables
      real, dimension(:,:,:), pointer     :: edmf_dry_a,edmf_moist_a,edmf_frc, edmf_dry_w,edmf_moist_w, &
@@ -3924,7 +3925,18 @@ end if
 
    
    if (associated(lobukhov)) then
-      lobukhov = -ustar**3 * thv(:,:,LM) / (0.4*MAPL_GRAV*(sh+mapl_epsilon*thv(:,:,LM)*evap)/(MAPL_CP*rhoe(:,:,LM)))
+      do j = 1, JM
+         do i = 1, IM
+            obukhov_denom = 0.4*MAPL_GRAV*(sh(i,j)+mapl_epsilon*thv(i,j,LM)*evap(i,j)) / &
+                            (MAPL_CP*rhoe(i,j,LM))
+            if (obukhov_denom /= 0.0) then
+               lobukhov(i,j) = -ustar(i,j)**3 * thv(i,j,LM) / obukhov_denom
+            else
+               ! SHOC uses zero Obukhov length as the neutral sentinel.
+               lobukhov(i,j) = 0.0
+            end if
+         end do
+      end do
    end if
    
 !!!=================================================================

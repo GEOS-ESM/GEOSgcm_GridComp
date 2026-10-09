@@ -272,6 +272,10 @@ module GEOSmoist_Process_Library
 
   REAL :: r2o7, lam_r000, lam_r001
 
+  ! option for cloud liq/ice radii
+  integer :: LIQ_RADII_PARAM = 1
+  integer :: ICE_RADII_PARAM = 1
+
   ! defined to determine CNV_FRACTION
   real    :: CNV_FRACTION_MIN =  500.0
   real    :: CNV_FRACTION_MAX = 1500.0
@@ -323,7 +327,6 @@ module GEOSmoist_Process_Library
   type(CNV_Tracer_Type), allocatable :: CNV_Tracers(:)
 
   public :: DEBUG_TQ_ERRORS
-
   public :: WSUB_OPTION, PDFSHAPE, ANVIL_EVAP_SUBL3
   public :: CNV_Tracer_Type, CNV_Tracers, CNV_Tracers_Init
   public :: USE_BERGERON, USE_AEROSOL_NN, USE_NCLOUD_CLIM
@@ -332,6 +335,7 @@ module GEOSmoist_Process_Library
   public :: RAW_MODIS_POLYNOMIAL, JASON_ICE_POLYNOMIAL, V12_ICE_POLYNOMIAL
   public :: ICE_FRACTION_POLYNOMIAL
   public :: SRF_TYPE_OCEAN, SRF_TYPE_LAND, SRF_TYPE_SNOW, SRF_TYPE_ICE, SRF_TYPE_LANDICE
+  public :: GLAC_SHIFT_LANDICE, GLAC_SHIFT_SEAICE, GLAC_SHIFT_SNOW, GLAC_SHIFT_LAND, GLAC_SHIFT_OCEAN, GLAC_SHIFT_CONV
   public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, BUOYANCY2
   public :: REDISTRIBUTE_CLOUDS_SCALAR, REDISTRIBUTE_CLOUDS, RADCOUPLE_SCALE_AWARE, RADCOUPLE, FIX_UP_CLOUDS
   public :: hystpdf, fix_up_clouds_2M, hystpdf_2M
@@ -988,7 +992,10 @@ module GEOSmoist_Process_Library
        ! Diameter-to-radius factor used by the Sun ice formulation.
        ! 3*sqrt(3)/8 for the assumed hexagonal-column geometry.
        REAL, PARAMETER :: geom_hex = 0.64952
-       
+
+       ! NNI is supplied in m^-3:
+       REAL, PARAMETER :: NNI_SAFE  = 1.e0
+
        ! Optimized inverse constants for radius calculations
        REAL, PARAMETER :: INV_4PI_RHO_I = 2.60417e-4  ! 3/(4*pi*917)
        REAL, PARAMETER :: INV_4PI_RHO_W = 2.38732e-4  ! 3/(4*pi*1000)

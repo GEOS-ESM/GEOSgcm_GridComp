@@ -459,7 +459,7 @@ contains
   subroutine calc_numbers(RI, PRNUM)
     ! Defines Richardson number and Prandtl number on edges
     real, intent(out), dimension(nx,ny,nz) :: RI
-    real, intent(out), dimension(nx,ny,nzm) :: PRNUM
+    real, intent(out), dimension(nx,ny,nz) :: PRNUM
     
     real, dimension(nx,ny,nzm-1) :: DU
 

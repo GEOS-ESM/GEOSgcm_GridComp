@@ -1647,7 +1647,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
                 cin (k) = qni (i, k) / den (k)
             enddo
         else
-            cin (k) = 0.
+            cin = 0.
         endif
 
         ! -----------------------------------------------------------------------

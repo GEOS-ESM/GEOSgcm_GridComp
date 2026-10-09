@@ -818,8 +818,6 @@ CONTAINS
    rnicuten = 0.0   
    rqlcuten = 0.0
    rqicuten = 0.0
-   
-   
 
    !--- For the moisture advection trigger (Ma and Tan, AR 2009)
    IF(ADV_TRIGGER == 2) THEN
@@ -846,7 +844,7 @@ CONTAINS
    !$OMP        icumulus_gf, cum_hei_down_land, cum_hei_down_ocean, &
    !$OMP        cum_hei_updf_land, cum_hei_updf_ocean, cum_min_edt_land, &
    !$OMP        cum_min_edt_ocean, cum_max_edt_land, cum_max_edt_ocean, &
-   !$OMP        cum_fadj_massflx, cum_use_excess, cumulus_type, closure_choice, &
+   !$OMP        cum_fadj_massflx, cum_use_excess, closure_choice, &
    !$OMP        cum_entr_rate, cum_cap_maxs, FIX_NEGATIVES, USE_MOMENTUM_TRANSP, &
    !$OMP        CONVECTION_TRACER, do_this_column, &
    !$OMP        ierr4d, jmin4d, klcl4d, k224d, kbcon4d, ktop4d, kstabi4d, kstabm4d, &
@@ -2040,7 +2038,6 @@ CONTAINS
         enddo
      endif
   enddo
-
 
    if (USE_CUP_2M_MOISTURE) then 
                          
@@ -8551,7 +8548,8 @@ ENDIF
                       ( sqrt(po_cup(i,k)/psur(i))/alpha2 * prec_flx(i,k+1)/eff_c_conv(i) )**alpha3
 
          !--units here: kg[water]/kg[air}/sec * kg[air]/m3 * m = kg[water]/m2/sec
-         evap_bcb(i,k)= evap_bcb(i,k)*dp/g
+         !--Limit to ensure precip is non-negative
+         evap_bcb(i,k)= min(evap_bcb(i,k)*dp/g,0.9999*(xmb(i)*(pwo(i,k) + edto(i)*pwdo(i,k))+prec_flx(i,k+1)))
 
         else
 

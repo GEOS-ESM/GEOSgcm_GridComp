@@ -4141,6 +4141,3 @@ end subroutine estimate_qcvar
 
 
 
-
-
-
