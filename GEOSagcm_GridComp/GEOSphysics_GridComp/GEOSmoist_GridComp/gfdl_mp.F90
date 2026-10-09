@@ -230,7 +230,7 @@ module gfdl_mp_mod
     ! 3: Bypasses qi_gen; relies strictly on linear Temp-ramp (Computationally cheapest)
     ! 4: Combined threshold bounded by a minimum value multiplied by linear Temp-ramp
 
-    integer :: ifflag = 1 ! ice fall scheme
+    integer :: ifflag = 3 ! ice fall scheme
     ! 1: Deng and Mace (2008)
     ! 2: Heymsfield and Donner (1990)
     ! 3: Mishra et al (2014, JGR)
