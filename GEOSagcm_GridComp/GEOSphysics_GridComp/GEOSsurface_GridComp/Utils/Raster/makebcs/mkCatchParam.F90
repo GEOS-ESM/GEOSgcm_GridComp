@@ -463,7 +463,7 @@ PROGRAM mkCatchParam
      endif
   endif
 
-  if ((LAIBCS == 'MODGEO').or.(LAIBCS == 'MODIS').or.(MODALB == 'MODIS2')) then
+  if ((LAIBCS == 'MODGEO').or.(LAIBCS == 'MODIS').or.(MODALB == 'MODIS2').or.(LAIBCS == 'MODIS_TS')) then
      ! allocate (maparc30    (1:43200,1:21600))
      call system_clock(clock1)
      call create_mapping (nc,nr,43200,21600,maparc30, n_land,  tile_id)
@@ -518,16 +518,21 @@ PROGRAM mkCatchParam
         call hres_lai_no_gswp (43200,21600,maparc30,lai_name, n_land, tile_lon, tile_lon) 
      endif
 
+     if (trim(LAIBCS) == 'MODIS_TS') then
+        lai_name = 'MODIS_8-DayClim/MODIS_'
+        call hres_lai_no_gswp (43200,21600,maparc30,lai_name, n_land, tile_lon, tile_lon, version="v5") 
+        do yr=2003,2025
+           write(year, '(I4)') yr
+           lai_name = 'MODIS_8-DayTimeSeries/'//trim(year)//'/MODIS_'
+           call hres_lai_no_gswp (43200,21600,maparc30,lai_name, n_land, tile_lon, tile_lat, version="v5", year=yr)  
+        enddo 
+    endif
+
      if (trim(LAIBCS) == 'MODGEO') then
         lai_name = 'MODIS_8-DayClim/MODIS_'
         inquire(file='clsm/lai.MODIS_8-DayClim', exist=file_exists)
         if (.not.file_exists)call hres_lai_no_gswp (43200,21600,maparc30,lai_name, n_land, tile_lon, tile_lat, merge=1)  
         call merge_lai_data (MaskFile, n_land, tile_pfs)
-        do yr=2003,2025
-           write(year, '(I4)') yr
-           lai_name = 'MODIS_8-DayTimeSeries/'//trim(year)//'/MODIS_'
-           call hres_lai_no_gswp (43200,21600,maparc30,lai_name, n_land, tile_lon, tile_lat, year=yr)  
-        enddo 
      endif
 
      if (trim(LAIBCS) == 'MODISV6') then

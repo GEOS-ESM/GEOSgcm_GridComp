@@ -2546,18 +2546,19 @@ contains
   !
   ! ---------------------------------------------------------------------------------------
   ! 
-  SUBROUTINE hres_lai_no_gswp (nc_data,nr_data,rmap,lai_name, n_land, tile_lon, tile_lat, merge, year)
+  SUBROUTINE hres_lai_no_gswp (nc_data,nr_data,rmap,lai_name, n_land, tile_lon, tile_lat, merge, version, year)
     !
     ! Processing GEOLAND2/MODIS LAI and creating 10-day climatological data 
     !
     implicit none 
-    integer,            intent(in) :: nc_data,nr_data
-    type (regrid_map),  intent(in) :: rmap
-    character(*),       intent(in) :: lai_name
-    integer,            intent(in) :: n_land
-    real,               intent(in) :: tile_lon(:), tile_lat(:)
-    integer,  intent(in), optional :: merge
-    integer,  intent(in), optional :: year 
+    integer,            intent(in)   :: nc_data,nr_data
+    type (regrid_map),  intent(in)   :: rmap
+    character(*),       intent(in)   :: lai_name
+    integer,            intent(in)   :: n_land
+    real,               intent(in)   :: tile_lon(:), tile_lat(:)
+    integer,     intent(in),optional :: merge
+    character(*),intent(in),optional :: version 
+    integer,     intent(in),optional :: year 
 
     real, parameter :: dxy = 1.
     integer :: QSize
@@ -2582,10 +2583,16 @@ contains
          af_lai_time
     character*4           :: year_pre_str, year_str, year_next_str
     character*40          :: lai_name_pre, lai_name_next, lai_name_cur
+    character*2           :: ver
     !_________________________________________________________ 
     !
     call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR) 
-    fname = trim(MAKE_BCS_INPUT_DIR)//'/land/veg/lai_grn/v2/'//trim(lai_name)//'lai_clim.H11V13.nc'
+    if (present(version)) then
+      ver=trim(versiopn)
+    else
+      ver="v2"
+    endif
+    fname = trim(MAKE_BCS_INPUT_DIR)//'/land/veg/lai_grn/'//trim(ver)//'/'//trim(lai_name)//'lai_clim.H11V13.nc'
     status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
     status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
     status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
@@ -2692,7 +2699,7 @@ contains
           do ix = 1,36
              write (vv,'(i2.2)')jx
              write (hh,'(i2.2)')ix 
-             fname = trim(MAKE_BCS_INPUT_DIR)//'/land/veg/lai_grn/v2/'//trim(lai_name_cur)//'lai_clim.H'//hh//'V'//vv//'.nc'
+             fname = trim(MAKE_BCS_INPUT_DIR)//'/land/veg/lai_grn/'//trim(ver)//'/'//trim(lai_name_cur)//'lai_clim.H'//hh//'V'//vv//'.nc'
              status = NF_OPEN(trim(fname),NF_NOWRITE, ncid)
              if(status == 0) then
                 status = NF_GET_att_INT  (ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
