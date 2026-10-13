@@ -1193,6 +1193,7 @@ contains
                         ! else: use interactive winds
 
     integer :: IM,JM,LM,L,K,NQ,ii,NOT1,COLDSTART,Ktrc,iip1,itr,ntracs
+    logical :: is_stable
 
     real, pointer, dimension(:,:,:) :: PLE,PLEOUT
     real, pointer, dimension(:,:,:) :: ZLE
@@ -1220,6 +1221,7 @@ contains
     real, pointer, dimension(:,:)   :: DZ
     real, pointer, dimension(:,:)   :: TA
     real, pointer, dimension(:,:)   :: SPEED
+    real, pointer, dimension(:,:)   :: WSPD_STABLE300M
     real, pointer, dimension(:,:)   :: QA
     real, pointer, dimension(:,:)   :: US
     real, pointer, dimension(:,:)   :: VS

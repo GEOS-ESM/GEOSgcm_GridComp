@@ -272,10 +272,6 @@ module GEOSmoist_Process_Library
 
   REAL :: r2o7, lam_r000, lam_r001
 
-  ! option for cloud liq/ice radii
-  integer :: LIQ_RADII_PARAM = 1
-  integer :: ICE_RADII_PARAM = 1
-
   ! defined to determine CNV_FRACTION
   real    :: CNV_FRACTION_MIN =  500.0
   real    :: CNV_FRACTION_MAX = 1500.0
@@ -992,9 +988,6 @@ module GEOSmoist_Process_Library
        ! Diameter-to-radius factor used by the Sun ice formulation.
        ! 3*sqrt(3)/8 for the assumed hexagonal-column geometry.
        REAL, PARAMETER :: geom_hex = 0.64952
-
-       ! NNI is supplied in m^-3:
-       REAL, PARAMETER :: NNI_SAFE  = 1.e0
 
        ! Optimized inverse constants for radius calculations
        REAL, PARAMETER :: INV_4PI_RHO_I = 2.60417e-4  ! 3/(4*pi*917)
