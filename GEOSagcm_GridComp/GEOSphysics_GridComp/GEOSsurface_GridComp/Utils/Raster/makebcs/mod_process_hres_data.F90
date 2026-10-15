@@ -2588,7 +2588,7 @@ contains
     !
     call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR) 
     if (present(version)) then
-      ver=trim(versiopn)
+      ver=trim(version)
     else
       ver="v2"
     endif
