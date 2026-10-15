@@ -406,7 +406,7 @@ contains
     VERIFY_(STATUS)
     LAI_TS_FILE=trim(LAI_TS_FILE_BASE)//"_"//trim(YEAR_STR)
 
-    call MAPL_GetResource(MAPL, USE_LAI_TS, label = 'USE_LAI_TS:', &
+    call MAPL_GetResource(MAPL, USE_LAI_TS, label = 'MODIS_DVG:', &
         default = 0, RC=STATUS )
     VERIFY_(STATUS)
 
