@@ -979,6 +979,13 @@ contains
     endif 
 
 
+    ! TODO: get deltas (final flux - before thermo2)
+    ! final values are now FHOCN, FRESH, FSALT
+    ! before thermo2 values are FHOCN_E, FRESH_E, FSALT_E from the last thermo_coupling step
+    !
+
+
+
     call MAPL_TimerOff(MAPL,"RUN"   )
     call MAPL_TimerOff(MAPL,"TOTAL" )
 
@@ -1222,11 +1229,33 @@ contains
      ! unpack fields and send them to cice
      call ice_import_thermo1(state, rc=STATUS)
      
+
+     ! TODO: save cice module dt to another dt variable say, dt_save
+     !  change  cice module dt to heart_beat/AGCM_Dt
+
+
      ! let cice update surface temperature and fluxes 
      call ice_fast_physics     
 
      ! export the relevant fields from cice
      call ice_export_thermo1(state, rc=STATUS)
+
+
+     ! TODO:  restore cice module dt from dt_save
+
+     ! TODO: get FHOCN, FRESH and FSALT from cice
+     ! can be done with  ice_export_field routine as following, but we need 3 tmp arrays
+     !  call ice_export_field('FHOCN', FHOCN_E, _RC)
+     !  call ice_export_field('FRESH', FRESH_E, _RC)
+     !  call ice_export_field('FSALT', FSALT_E, _RC)
+
+     ! TODO: accumulate fluxes from fast_physics
+     !  FHOCN_A = FHOCN_A + FHOCN_E
+     !  FRESH_A = FRESH_A + FRESH_E
+     !  FSALT_A = FSALT_A + FSALT_E
+
+     ! QUESTION from Bin: I don't know how to make these pointers/arrays here other than from state
+     ! these pointers need to persist over tehrmal_coupling calls
 
      ! pack them back into state 
 
