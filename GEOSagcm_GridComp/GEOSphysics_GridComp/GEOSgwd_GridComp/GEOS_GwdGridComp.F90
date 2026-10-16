@@ -35,13 +35,12 @@ module GEOS_GwdGridCompMod
     use MAPL, only: MAPL_GridGet, MAPL_GridGetCoordinates, mapl_GridGetGlobalCellCountPerDim
     use MAPL, only: MAPL_GridCompSetEntryPoint
     use MAPL, only: MAPL_GridCompGet, MAPL_GridCompGetResource
-    use MAPL, only: MAPL_GridCompGetInternalState
+    use MAPL, only: MAPL_GridCompGetInternalState, MAPL_InternalStateGet
     use MAPL, only: MAPL_GridCompAddSpec, MAPL_GridCompTimerStart, MAPL_GridCompTimerStop
     use MAPL, only: MAPL_StateGetPointer, MAPL_ClockGet
     use MAPL, only: MAPL_RESTART_SKIP
     use MAPL, only: MAPL_VERTICAL_STAGGER_NONE, MAPL_VERTICAL_STAGGER_CENTER, MAPL_VERTICAL_STAGGER_EDGE
     use MAPL, only: MAPL_UngriddedDims, MAPL_UngriddedDim
-    use mapl_OwningGridComp_mod, only: mapl_get_owning_gridcomp
 
    use gw_rdg, only : gw_rdg_init
    use gw_oro, only : gw_oro_init
@@ -74,8 +73,6 @@ module GEOS_GwdGridCompMod
    type :: GEOS_GwdGridComp
       ! OpenMP threading of this component, set in the "mapl: misc:" section
       ! of its config (use_threads / num_threads)
-      logical :: use_threads = .false.
-      integer :: num_threads = 1
       real :: GEOS_BGSTRESS
       real :: GEOS_EFFGWBKG
       real :: GEOS_EFFGWORO
@@ -116,6 +113,8 @@ contains
       type(GEOS_GwdGridComp), pointer :: self
       type(MAPL_UngriddedDim) :: ungrd_16
       integer :: status
+      logical :: use_threads
+      integer :: num_threads
 
       ! Wrap gridcomp's private state and store it in gridcomp
       _SET_NAMED_PRIVATE_STATE(gc, GEOS_GwdGridComp, PRIVATE_STATE)
@@ -128,14 +127,15 @@ contains
       ! of the process as a whole.  When use_threads is true, MAPL replicates
       ! the Run phase into num_threads "mini" components, each running on a
       ! j-slice of the local grid (see MAPL_find_bounds).
-      call MAPL_GridCompGet(gc, num_threads=self%num_threads, &
-           use_threads=self%use_threads, _RC)
+      call MAPL_GridCompGet(gc, num_threads=num_threads, &
+           use_threads=use_threads, _RC)
+      print *, 'GWD SS ..... ', use_threads, num_threads
 
       call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_INITIALIZE, Initialize, _RC)
       call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_RUN, Run, phase_name="run", _RC)
 
       ! One workspace per thread that this component will be run on.
-      allocate(self%workspaces(0:self%num_threads - 1), _STAT)
+      allocate(self%workspaces(0:num_threads - 1), _STAT)
 
       ! We need to get NCAR_NRDG because this is used in the auto-generated
       ! code GWD_Internal___.h via ACG
@@ -207,14 +207,19 @@ contains
       logical :: NCAR_DC_BERES
 
       type(GEOS_GwdGridComp), pointer :: self
-      integer :: thread, num_slices
+      integer :: thread
       type(MAPL_Interval), allocatable :: bounds(:)
       integer :: status
+      integer :: num_threads
+      logical :: use_threads
 
       _GET_NAMED_PRIVATE_STATE(gc, GEOS_GwdGridComp, PRIVATE_STATE, self)
 
       ! Grid info
       call MAPL_GridCompGet(gc, grid=grid, num_levels=LM, _RC)
+      call MAPL_GridCompGet(gc, num_threads=num_threads, &
+           use_threads=use_threads,  _RC)
+      print *, 'GWD RUN ..... ', use_threads, num_threads
       call MAPL_GridGet(grid, im=im, jm=jm, _RC)
       call MAPL_GridGetCoordinates(grid, longitudes=lons, latitudes=lats, _RC)
 
@@ -323,10 +328,9 @@ contains
       ! threads of a threaded component with MAPL_find_bounds(jm, num_threads),
       ! so use the same decomposition here.  Without threading, the (single)
       ! Run phase sees the whole local grid.
-      num_slices = 1
-      if (self%use_threads) num_slices = self%num_threads
-      bounds = MAPL_find_bounds(jm, num_slices)
-      do thread = 0, num_slices - 1
+      bounds = MAPL_find_bounds(jm, num_threads)
+      do thread = 0, num_threads - 1
+         print *, 'GWD thread ..... ', num_threads
          jm_thread = bounds(thread + 1)%max - bounds(thread + 1)%min + 1
          call gw_beres_init(BERES_FILE_NAME, &
               self%workspaces(thread)%beres_band, &

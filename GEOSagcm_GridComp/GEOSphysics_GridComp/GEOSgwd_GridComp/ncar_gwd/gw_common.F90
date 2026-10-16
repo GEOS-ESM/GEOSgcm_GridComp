@@ -615,11 +615,7 @@ subroutine gw_flux_diagnostics(ncol, pver, band, c, ubi, tau, xv, yv, &
 
   !---------------------------Local Storage-------------------------------
   integer :: l, k, i
-  integer :: kbot
   real :: cmu, fpmx, fpmy, fe, fpe
-  
-  ! Determine the lowest level to process
-  kbot = maxval(tend_level)
 
   ! Initialize all output arrays to zero
   taugwx = 0.0
@@ -638,58 +634,70 @@ subroutine gw_flux_diagnostics(ncol, pver, band, c, ubi, tau, xv, yv, &
 
   !-----------------------------------------------------------------------
   ! Main computation loop: accumulate fluxes over all phase speed bands
+  !
   ! NOTE: This is deliberately not an OpenMP reduction over l: that makes the
   ! summation order (and so the answer) depend on the number of threads.
   ! Threading is done at the component level instead (see GEOS_GwdGridComp).
+  !
+  ! NOTE: The k loop deliberately runs the full 1..pver column rather than
+  ! being capped at some shared bound such as maxval(tend_level). Such a
+  ! bound would be recomputed from whichever subset of columns ("ncol") is
+  ! handed to this call, and that subset changes with how the local PE's
+  ! grid is chunked (e.g. per-thread j-slices when this component runs with
+  ! use_threads/num_threads > 1 vs. the whole local grid in one call when
+  ! unthreaded). A shared, batch-dependent bound would therefore make a
+  ! column's diagnostics depend on which other columns happened to be
+  ! processed alongside it, so results could differ between threaded and
+  ! unthreaded runs (and between different num_threads settings).
+  !
+  ! Looping the full column instead costs a little extra arithmetic but
+  ! changes no answer: tau(i,l,k) is zero-initialized in gw_beres_src and is
+  ! only ever written for k <= tend_level(i)+1, so contributions from deeper
+  ! levels are exactly zero. This makes every column's result depend only on
+  ! that column's own tau profile, giving identical diagnostics regardless
+  ! of threading or chunking.
   !-----------------------------------------------------------------------
 
   do l = -band%ngwv, band%ngwv
      do k = 1, pver
-        if (k <= kbot) then
-           do i = 1, ncol
-              ! kbot is only a loop bound over this set of columns; use each
-              ! column's own tend_level so that the result does not depend on
-              ! which other columns are processed together (MPI layout or
-              ! component-level OpenMP threading).
-              if (k > tend_level(i)) cycle
-              
-              ! Compute relative phase speed (c - u)
-              cmu = real(c(i,l)) - ubi(i,k)
-              
-              ! Compute flux components
-              ! Momentum flux: sign(c-u) * tau * unit_vector
-              fpmx = sign(1.0, cmu) * real(tau(i,l,k)) * xv(i)
-              fpmy = sign(1.0, cmu) * real(tau(i,l,k)) * yv(i)
-              
-              ! Kinetic energy flux: (c-u) * sign(c-u) * tau = |c-u| * tau
-              fe = cmu * sign(1.0, cmu) * real(tau(i,l,k))
-              
-              ! Phase-speed weighted energy flux: c * sign(c-u) * tau
-              fpe = real(c(i,l)) * sign(1.0, cmu) * real(tau(i,l,k))
-              
-              ! Accumulate total fluxes
-              taugwx(i,k) = taugwx(i,k) + fpmx
-              taugwy(i,k) = taugwy(i,k) + fpmy
-              fegw(i,k) = fegw(i,k) + fe
-              fepgw(i,k) = fepgw(i,k) + fpe
-              
-              ! Separate by wave propagation direction
-              if (c(i,l) > 0.0_GW_PRC) then
-                 ! Eastward-propagating waves (c > 0)
-                 taugwx_east(i,k) = taugwx_east(i,k) + fpmx
-                 taugwy_east(i,k) = taugwy_east(i,k) + fpmy
-                 fegw_east(i,k) = fegw_east(i,k) + fe
-                 fepgw_east(i,k) = fepgw_east(i,k) + fpe
-              else
-                 ! Westward-propagating waves (c < 0)
-                 taugwx_west(i,k) = taugwx_west(i,k) + fpmx
-                 taugwy_west(i,k) = taugwy_west(i,k) + fpmy
-                 fegw_west(i,k) = fegw_west(i,k) + fe
-                 fepgw_west(i,k) = fepgw_west(i,k) + fpe
-              endif
-              
-           end do
-        end if
+        do i = 1, ncol
+
+           ! Compute relative phase speed (c - u)
+           cmu = real(c(i,l)) - ubi(i,k)
+
+           ! Compute flux components
+           ! Momentum flux: sign(c-u) * tau * unit_vector
+           fpmx = sign(1.0, cmu) * real(tau(i,l,k)) * xv(i)
+           fpmy = sign(1.0, cmu) * real(tau(i,l,k)) * yv(i)
+
+           ! Kinetic energy flux: (c-u) * sign(c-u) * tau = |c-u| * tau
+           fe = cmu * sign(1.0, cmu) * real(tau(i,l,k))
+
+           ! Phase-speed weighted energy flux: c * sign(c-u) * tau
+           fpe = real(c(i,l)) * sign(1.0, cmu) * real(tau(i,l,k))
+
+           ! Accumulate total fluxes
+           taugwx(i,k) = taugwx(i,k) + fpmx
+           taugwy(i,k) = taugwy(i,k) + fpmy
+           fegw(i,k) = fegw(i,k) + fe
+           fepgw(i,k) = fepgw(i,k) + fpe
+
+           ! Separate by wave propagation direction
+           if (c(i,l) > 0.0_GW_PRC) then
+              ! Eastward-propagating waves (c > 0)
+              taugwx_east(i,k) = taugwx_east(i,k) + fpmx
+              taugwy_east(i,k) = taugwy_east(i,k) + fpmy
+              fegw_east(i,k) = fegw_east(i,k) + fe
+              fepgw_east(i,k) = fepgw_east(i,k) + fpe
+           else
+              ! Westward-propagating waves (c < 0)
+              taugwx_west(i,k) = taugwx_west(i,k) + fpmx
+              taugwy_west(i,k) = taugwy_west(i,k) + fpmy
+              fegw_west(i,k) = fegw_west(i,k) + fe
+              fepgw_west(i,k) = fepgw_west(i,k) + fpe
+           endif
+
+        end do
      end do
   end do
 
