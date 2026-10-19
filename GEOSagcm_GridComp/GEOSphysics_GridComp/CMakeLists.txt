@@ -6,6 +6,7 @@ set (alldirs
   GEOSsurface_GridComp
   GEOSturbulence_GridComp
   GEOSgwd_GridComp
+  GEOSiondrag_GridComp
   GEOSradiation_GridComp
   )
 
@@ -22,4 +23,3 @@ else ()
   esma_add_subdirectories (${alldirs})
 
 endif()
-

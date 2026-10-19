@@ -63,7 +63,7 @@ contains
           taugwdx_dev,  taugwdy_dev,  tauox_dev,    tauoy_dev,  feo_dev,           &
           taubkgx_dev,  taubkgy_dev,  taubx_dev,    tauby_dev,  feb_dev,           &
           fepo_dev,     fepb_dev,     utbsrc_dev,   vtbsrc_dev, ttbsrc_dev,        &
-          bgstressmax,  effgworo,     effgwbkg,     rc            )
+          bgstressmax,  effgworo,     effgwbkg,     rc )
 
 !-----------------------------------------------------------------------
 ! Interface for multiple gravity wave drag parameterization.
@@ -153,6 +153,7 @@ contains
     real    :: cw (-pgwv:pgwv)      ! wave phase speeds
     real    :: cw4(-pgwv:pgwv)      ! wave phase speeds
 
+    
 !-----------------------------------------------------------------------------
 
 ! Assign wave phase speeds
@@ -292,8 +293,8 @@ contains
 
 ! Add the orographic tendencies to the spectrum tendencies
 ! Compute the temperature tendency from energy conservation (includes spectrum).
-
-          do k = 1, pver
+          
+          do k = 1, pver              
              dudt_org_dev(i,k) =                     utgw(k)
              dvdt_org_dev(i,k) =                     vtgw(k)
              dtdt_org_dev(i,k) =                     ttgw(k)
@@ -308,7 +309,8 @@ contains
        end if
 
     end do I_LOOP
-    rc = 0
+    
+    rc = 0    
 
     return
   end subroutine gw_intr
@@ -489,12 +491,14 @@ contains
     end if
 
 ! Project the local wind at midpoints onto the source wind.
+    
     do k = 1, pver
        ubm(k) = u(i,k) * xv + v(i,k) * yv
     end do
 
 ! Compute the interface wind projection by averaging the midpoint winds.
 ! Use the top level wind at the top interface.
+    
     ubi(0) = ubm(1)
     do k = 1, pver
        ubi(k) = ubm(k)
@@ -651,7 +655,7 @@ contains
        ubm(k) = u(i,k) * xv + v(i,k) * yv
     end do
 
-! Compute the bottom interface wind projection using the midpoint winds.
+    ! Compute the bottom interface wind projection using the midpoint winds.
     ubi(0) = ubm(1)
     do k = 1, pver
        ubi(k) = ubm(k)
@@ -862,7 +866,7 @@ contains
 
 ! Loop from bottom to top to get stress profiles
     do l = -ngwv, ngwv
-       do k = pver-1, ktop, -1
+       do k = pver-1, ktop, -1   
           if (k <= kbot-1) then
              d = dback(k)
              ubmc = ubi(k) - c(l)
@@ -1074,6 +1078,7 @@ contains
 !-----------------------------------------------------------------------
     tau0x = tau(0,kbot) * xv * effgw*utfac
     tau0y = tau(0,kbot) * yv * effgw*utfac
+
 
     return
   end subroutine gw_drag_prof
