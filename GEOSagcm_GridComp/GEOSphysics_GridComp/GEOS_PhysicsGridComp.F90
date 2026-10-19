@@ -1894,15 +1894,146 @@ contains
 
 !EOP
 
-! Disable connectivities of Surface imports that are filled manually from
-!  turbulence bundles.
+! Disable connectivities of Surface imports that are not supplied by
+!  turbulence.
 !------------------------------------------------------------------------
 
      call MAPL_TerminateImport    ( GC,   &
-          SHORT_NAME = (/'SH   ','TAUX ','TAUY ','EVAP ','DEWL ','FRSL ',     &
-                         'DSH  ','DFU  ','DFV  ','DEVAP','DDEWL','DFRSL'/),   &
+          SHORT_NAME = (/'DEWL ','FRSL ','DDEWL','DFRSL'/),   &
           CHILD      = SURF,           &
           RC=STATUS  )
+     VERIFY_(STATUS)
+
+! Surface values and their changes: SURF -> TURBL
+!------------------------------------------------
+     call MAPL_AddConnectivity ( GC,                               &
+         SRC_NAME    = 'SHAT',                                    &
+         DST_NAME    = 'SHAT',                                    &
+         SRC_ID      = SURF,                                      &
+         DST_ID      = TURBL,                                      &
+                                                        RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddConnectivity ( GC,                               &
+         SRC_NAME    = 'UHAT',                                    &
+         DST_NAME    = 'UHAT',                                    &
+         SRC_ID      = SURF,                                      &
+         DST_ID      = TURBL,                                      &
+                                                        RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddConnectivity ( GC,                               &
+         SRC_NAME    = 'VHAT',                                    &
+         DST_NAME    = 'VHAT',                                    &
+         SRC_ID      = SURF,                                      &
+         DST_ID      = TURBL,                                      &
+                                                        RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddConnectivity ( GC,                               &
+         SRC_NAME    = 'QHAT',                                    &
+         DST_NAME    = 'QHAT',                                    &
+         SRC_ID      = SURF,                                      &
+         DST_ID      = TURBL,                                      &
+                                                        RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddConnectivity ( GC,                               &
+         SRC_NAME    = 'DELSS',                                   &
+         DST_NAME    = 'SDEL',                                    &
+         SRC_ID      = SURF,                                      &
+         DST_ID      = TURBL,                                      &
+                                                        RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddConnectivity ( GC,                               &
+         SRC_NAME    = 'DELUS',                                   &
+         DST_NAME    = 'UDEL',                                    &
+         SRC_ID      = SURF,                                      &
+         DST_ID      = TURBL,                                      &
+                                                        RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddConnectivity ( GC,                               &
+         SRC_NAME    = 'DELVS',                                   &
+         DST_NAME    = 'VDEL',                                    &
+         SRC_ID      = SURF,                                      &
+         DST_ID      = TURBL,                                      &
+                                                        RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddConnectivity ( GC,                               &
+         SRC_NAME    = 'DELQS',                                   &
+         DST_NAME    = 'QDEL',                                    &
+         SRC_ID      = SURF,                                      &
+         DST_ID      = TURBL,                                      &
+                                                        RC=STATUS  )
+     VERIFY_(STATUS)
+
+! Surface fluxes and their derivatives: TURBL -> SURF
+!------------------------------------------------
+     call MAPL_AddConnectivity ( GC,                               &
+         SRC_NAME    = 'SFLX',                                    &
+         DST_NAME    = 'SH',                                      &
+         SRC_ID      = TURBL,                                      &
+         DST_ID      = SURF,                                      &
+                                                        RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddConnectivity ( GC,                               &
+         SRC_NAME    = 'UFLX',                                    &
+         DST_NAME    = 'TAUX',                                    &
+         SRC_ID      = TURBL,                                      &
+         DST_ID      = SURF,                                      &
+                                                        RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddConnectivity ( GC,                               &
+         SRC_NAME    = 'VFLX',                                    &
+         DST_NAME    = 'TAUY',                                    &
+         SRC_ID      = TURBL,                                      &
+         DST_ID      = SURF,                                      &
+                                                        RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddConnectivity ( GC,                               &
+         SRC_NAME    = 'QFLX',                                    &
+         DST_NAME    = 'EVAP',                                    &
+         SRC_ID      = TURBL,                                      &
+         DST_ID      = SURF,                                      &
+                                                        RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddConnectivity ( GC,                               &
+         SRC_NAME    = 'SDFL',                                    &
+         DST_NAME    = 'DSH',                                     &
+         SRC_ID      = TURBL,                                      &
+         DST_ID      = SURF,                                      &
+                                                        RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddConnectivity ( GC,                               &
+         SRC_NAME    = 'UDFL',                                    &
+         DST_NAME    = 'DFU',                                     &
+         SRC_ID      = TURBL,                                      &
+         DST_ID      = SURF,                                      &
+                                                        RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddConnectivity ( GC,                               &
+         SRC_NAME    = 'VDFL',                                    &
+         DST_NAME    = 'DFV',                                     &
+         SRC_ID      = TURBL,                                      &
+         DST_ID      = SURF,                                      &
+                                                        RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddConnectivity ( GC,                               &
+         SRC_NAME    = 'QDFL',                                    &
+         DST_NAME    = 'DEVAP',                                   &
+         SRC_ID      = TURBL,                                      &
+         DST_ID      = SURF,                                      &
+                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
 ! terminate imports to SURF for SYNCUV
@@ -1939,7 +2070,7 @@ contains
      endif
 
      call MAPL_TerminateImport    ( GC,        &
-          SHORT_NAME = (/'TR ','TRG','DTG' /), &
+          SHORT_NAME = (/'TR ' /),             &
           CHILD      = TURBL,                  &
           RC=STATUS  )
      VERIFY_(STATUS)
@@ -2307,113 +2438,6 @@ contains
 
 #ifdef PRINT_STATES
     call WRITE_PARALLEL ( trim(Iam)//": Turbulence Increment Bundle" )
-    if ( MAPL_am_I_root() ) call ESMF_FieldBundlePrint ( BUNDLE, rc=STATUS )
-#endif
-
-! Fill the turbulence bundle of surface skin values
-!--------------------------------------------------
-
-    call ESMF_StateGet ( GIM(TURBL), 'TRG', BUNDLE, RC=STATUS )
-    VERIFY_(STATUS)
-
-    do I=1,NUM_TRACERS
-       iNAME = trim(NAMES(I)) // 'HAT'
-       call ESMFL_StateGetField  (GEX(SURF), (/iNAME/), BUNDLE, RC=STATUS )
-       VERIFY_(STATUS)
-    end do
-
-#ifdef PRINT_STATES
-    call WRITE_PARALLEL ( trim(Iam)//": Turbulence Surface Bundle" )
-    if ( MAPL_am_I_root() ) call ESMF_FieldBundlePrint ( BUNDLE, rc=STATUS )
-#endif
-
-! Fill the turbulence bundle of changes of surface skin values
-!-------------------------------------------------------------
-
-    call ESMF_StateGet ( GIM(TURBL), 'DTG', BUNDLE, RC=STATUS )
-    VERIFY_(STATUS)
-
-    do I=1,NUM_TRACERS
-       select case (trim(NAMES(I)))
-       case('S')
-          iNAME = 'DELSS'
-       case('U')
-          iNAME = 'DELUS'
-       case('V')
-          iNAME = 'DELVS'
-       case('Q')
-          iNAME = 'DELQS'
-       case default
-          iNAME = NAMES(I)
-       end select
-
-       call ESMFL_StateGetField  (GEX(SURF), (/iNAME/), &
-            BUNDLE, (/trim(NAMES(I))//'DEL'/), RC=STATUS )
-       VERIFY_(STATUS)
-    end do
-
-#ifdef PRINT_STATES
-    call WRITE_PARALLEL ( trim(Iam)//": Turbulence DTG Bundle" )
-    if ( MAPL_am_I_root() ) call ESMF_FieldBundlePrint ( BUNDLE, rc=STATUS )
-#endif
-
-! Fill the turbulence FSTAR bundle (surface fluxes)
-!-----------------------------------
-
-    call ESMF_StateGet ( GEX(TURBL), 'FSTAR', BUNDLE, RC=STATUS )
-    VERIFY_(STATUS)
-
-    do I=1,NUM_TRACERS
-       select case (trim(NAMES(I)))
-       case('S')
-          iNAME = 'SH'
-       case('U')
-          iNAME = 'TAUX'
-       case('V')
-          iNAME = 'TAUY'
-       case('Q')
-          iNAME = 'EVAP'
-       case default
-          iNAME = NAMES(I)
-       end select
-
-       call ESMFL_StateGetField  (GIM(SURF), (/iNAME/), &
-            BUNDLE, (/trim(NAMES(I))//'FLX'/), RC=STATUS )
-       VERIFY_(STATUS)
-    end do
-
-#ifdef PRINT_STATES
-    call WRITE_PARALLEL ( trim(Iam)//": Surface Flux Bundle" )
-    if ( MAPL_am_I_root() ) call ESMF_FieldBundlePrint ( BUNDLE, rc=STATUS )
-#endif
-
-! Fill the turbulence DFSTAR bundle d(surface fluxes)/d(TG)
-!----------------------------------------------------------
-
-    call ESMF_StateGet ( GEX(TURBL), 'DFSTAR', BUNDLE, RC=STATUS )
-    VERIFY_(STATUS)
-
-    do I=1,NUM_TRACERS
-       select case (trim(NAMES(I)))
-       case('S')
-          iNAME = 'DSH'
-       case('U')
-          iNAME = 'DFU'
-       case('V')
-          iNAME = 'DFV'
-       case('Q')
-          iNAME = 'DEVAP'
-       case default
-          iNAME = NAMES(I)
-       end select
-
-       call ESMFL_StateGetField  (GIM(SURF), (/iNAME/), &
-            BUNDLE, (/trim(NAMES(I))//'DFL'/), RC=STATUS )
-       VERIFY_(STATUS)
-    end do
-
-#ifdef PRINT_STATES
-    call WRITE_PARALLEL ( trim(Iam)//": Surface Flux Derivative Bundle" )
     if ( MAPL_am_I_root() ) call ESMF_FieldBundlePrint ( BUNDLE, rc=STATUS )
 #endif
 

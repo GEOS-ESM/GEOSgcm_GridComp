@@ -97,37 +97,12 @@ module GEOS_TurbulenceGridCompMod
 !   same order in all bundles. Some of these fields, however, 
 !   may be ``empty'' in the sense that the data pointer has not been allocated.
 !   
-!   {\tt GEOS\_TurbulenceGridComp} works with six bundles; three in the import
-!   state and three in the export state. The import bundles are:
-! \begin{itemize}
-!   \item[]
-!   \makebox[1in][l]{\bf TR} 
-!   \parbox[t]{4in}{The quantity being diffused.}
-!   \item[]
-!   \makebox[1in][l]{\bf TRG} 
-!   \parbox[t]{4in}{The surface (ground) value of the quantity being diffused.
-!                   (Used only by Run2)}
-!   \item[]
-!   \makebox[1in][l]{\bf DTG} 
-!   \parbox[t]{4in}{The change of TRG during the time step. (Used only by Run2)}
-! \end{itemize}
-!
-!   The export bundles are:
-! \begin{itemize}
-!   \item[]
-!   \makebox[1in][l]{\bf TRI} 
-!   \parbox[t]{4in}{The tendency of the quantity being diffused.
-!                   (Produced by Run1, updated by Run2.)  }
-!   \item[]
-!   \makebox[1in][l]{\bf FSTAR} 
-!   \parbox[t]{4in}{After Run1, the ``preliminary'' (i.e., at the original surface
-!    value) surface flux of the diffused quantity; after Run2, its final value.
-!    (Produced by Run1, updated by Run2)}
-!   \item[]
-!   \makebox[1in][l]{\bf DFSTAR} 
-!   \parbox[t]{4in}{The change of preliminary FSTAR per unit change in the 
-!                   surface value. (Produced by Run1)}
-! \end{itemize}
+!   {\tt GEOS\_TurbulenceGridComp} works with two bundles; TR in the import
+!   state and TRI in the export state. The surface values (SHAT, UHAT, VHAT, QHAT)
+!   and their changes (SDEL, UDEL, VDEL, QDEL) are explicit imports, and the
+!   surface fluxes (SFLX, UFLX, VFLX, QFLX) and their sensitivities to the surface
+!   value (SDFL, UDFL, VDFL, QDFL) are explicit exports. Quantities other than
+!   S, U, V and Q have zero surface flux.
 !
 !   All fields in the export bundles are checked for associated pointers before being
 !   updated.
@@ -572,24 +547,82 @@ contains
      VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                                  &
-        SHORT_NAME         = 'TRG',                               &
-        LONG_NAME          = 'surface_values_of_diffused_quantity',&
-        UNITS              = 'X',                                 &
+        SHORT_NAME         = 'SHAT',                              &
+        LONG_NAME          = 'surface_value_of_dry_static_energy',&
+        UNITS              = 'm+2 s-2',&
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-        DATATYPE           = MAPL_BundleItem,                     &
-        RESTART    = MAPL_RestartSkip,                            &
+        RESTART            = MAPL_RestartSkip,                    &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                                  &
-        SHORT_NAME         = 'DTG',                               &
-        LONG_NAME          = 'change_of_surface_values_of_diffused_quantity',&
-        UNITS              = 'X',                                 &
+        SHORT_NAME         = 'UHAT',                              &
+        LONG_NAME          = 'surface_value_of_eastward_wind',&
+        UNITS              = 'm s-1',&
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-        DATATYPE           = MAPL_BundleItem,                     &
-        RESTART    = MAPL_RestartSkip,                            &
+        RESTART            = MAPL_RestartSkip,                    &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC,                                  &
+        SHORT_NAME         = 'VHAT',                              &
+        LONG_NAME          = 'surface_value_of_northward_wind',&
+        UNITS              = 'm s-1',&
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC,                                  &
+        SHORT_NAME         = 'QHAT',                              &
+        LONG_NAME          = 'surface_value_of_specific_humidity',&
+        UNITS              = 'kg kg-1',&
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC,                                  &
+        SHORT_NAME         = 'SDEL',                              &
+        LONG_NAME          = 'change_of_surface_value_of_dry_static_energy',&
+        UNITS              = 'm+2 s-2',&
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC,                                  &
+        SHORT_NAME         = 'UDEL',                              &
+        LONG_NAME          = 'change_of_surface_value_of_eastward_wind',&
+        UNITS              = 'm s-1',&
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC,                                  &
+        SHORT_NAME         = 'VDEL',                              &
+        LONG_NAME          = 'change_of_surface_value_of_northward_wind',&
+        UNITS              = 'm s-1',&
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC,                                  &
+        SHORT_NAME         = 'QDEL',                              &
+        LONG_NAME          = 'change_of_surface_value_of_specific_humidity',&
+        UNITS              = 'kg kg-1',&
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -1138,22 +1171,74 @@ end if
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                                  &
-        SHORT_NAME = 'FSTAR',                                     &
-        LONG_NAME  = 'surface_fluxes',                            &
-        UNITS      = 'X kg m-2 s-1',                              &
+        SHORT_NAME = 'SFLX',                                  &
+        LONG_NAME  = 'surface_sensible_heat_flux_from_turbulence',&
+        UNITS      = 'W m-2',&
         DIMS       = MAPL_DimsHorzOnly,                           &
         VLOCATION  = MAPL_VLocationNone,                          &
-        DATATYPE   = MAPL_BundleItem,                             &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                                  &
-        SHORT_NAME = 'DFSTAR',                                    &
-        LONG_NAME  = 'change_of_surface_fluxes_for_unit_change_of_surface_value',&
-        UNITS      = 'kg m-2 s-1',                                &
+        SHORT_NAME = 'UFLX',                                  &
+        LONG_NAME  = 'surface_eastward_surface_stress_from_turbulence',&
+        UNITS      = 'N m-2',&
         DIMS       = MAPL_DimsHorzOnly,                           &
         VLOCATION  = MAPL_VLocationNone,                          &
-        DATATYPE   = MAPL_BundleItem,                             &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                                  &
+        SHORT_NAME = 'VFLX',                                  &
+        LONG_NAME  = 'surface_northward_surface_stress_from_turbulence',&
+        UNITS      = 'N m-2',&
+        DIMS       = MAPL_DimsHorzOnly,                           &
+        VLOCATION  = MAPL_VLocationNone,                          &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                                  &
+        SHORT_NAME = 'QFLX',                                  &
+        LONG_NAME  = 'surface_evaporation_from_turbulence',&
+        UNITS      = 'kg m-2 s-1',&
+        DIMS       = MAPL_DimsHorzOnly,                           &
+        VLOCATION  = MAPL_VLocationNone,                          &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                                  &
+        SHORT_NAME = 'SDFL',                                  &
+        LONG_NAME  = 'change_of_surface_flux_of_dry_static_energy_for_unit_change_of_surface_value',&
+        UNITS      = 'm s-1',&
+        DIMS       = MAPL_DimsHorzOnly,                           &
+        VLOCATION  = MAPL_VLocationNone,                          &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                                  &
+        SHORT_NAME = 'UDFL',                                  &
+        LONG_NAME  = 'change_of_surface_flux_of_eastward_wind_for_unit_change_of_surface_value',&
+        UNITS      = 'N s m-3',&
+        DIMS       = MAPL_DimsHorzOnly,                           &
+        VLOCATION  = MAPL_VLocationNone,                          &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                                  &
+        SHORT_NAME = 'VDFL',                                  &
+        LONG_NAME  = 'change_of_surface_flux_of_northward_wind_for_unit_change_of_surface_value',&
+        UNITS      = 'N s m-3',&
+        DIMS       = MAPL_DimsHorzOnly,                           &
+        VLOCATION  = MAPL_VLocationNone,                          &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                                  &
+        SHORT_NAME = 'QDFL',                                  &
+        LONG_NAME  = 'change_of_surface_flux_of_specific_humidity_for_unit_change_of_surface_value',&
+        UNITS      = 'kg m-2 s-1',&
+        DIMS       = MAPL_DimsHorzOnly,                           &
+        VLOCATION  = MAPL_VLocationNone,                          &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -5243,9 +5328,6 @@ end if
     type (ESMF_Array)                   :: ARRAY
     type (ESMF_FieldBundle)             :: TR
     type (ESMF_FieldBundle)             :: TRI
-    type (ESMF_FieldBundle)             :: TRG
-    type (ESMF_FieldBundle)             :: FSTAR
-    type (ESMF_FieldBundle)             :: DFSTAR
     real, dimension(:,:,:), pointer     :: S, SOI, SOD
     real, dimension(:,:),   pointer     :: SG, SF, SDF, CX, SRG
     real, dimension(:,:,:), pointer     :: DX
@@ -5321,7 +5403,6 @@ end if
 !----------------------------------------------------------
 
     call ESMF_StateGet(IMPORT, 'TR' ,    TR,     RC=STATUS); VERIFY_(STATUS)
-    call ESMF_StateGet(IMPORT, 'TRG',    TRG,    RC=STATUS); VERIFY_(STATUS)
 
     if (DO_WAVES/=0 .and. DO_SEA_SPRAY/=0) then
        call MAPL_GetPointer(IMPORT, SH_SPRAY_, 'SHFX_SPRAY',   RC=STATUS)
@@ -5341,8 +5422,6 @@ end if
     end if
 
     call ESMF_StateGet(EXPORT, 'TRI',    TRI,    RC=STATUS); VERIFY_(STATUS)
-    call ESMF_StateGet(EXPORT, 'FSTAR',  FSTAR,  RC=STATUS); VERIFY_(STATUS)
-    call ESMF_StateGet(EXPORT, 'DFSTAR', DFSTAR, RC=STATUS); VERIFY_(STATUS)
 
 ! Get pointers to exports of U,V and S that diffuse sees
 !  Required for SYNCTQ (ALLOC=.TRUE.)
@@ -5366,15 +5445,6 @@ end if
 !-------------------------------------------------
 
     call ESMF_FieldBundleGet(TRI,    FieldCount=K , RC=STATUS)
-    VERIFY_(STATUS)
-    _ASSERT(KM==K,'needs informative message')
-    call ESMF_FieldBundleGet(TRG,    FieldCount=K , RC=STATUS)
-    VERIFY_(STATUS)
-    _ASSERT(KM==K,'needs informative message')
-    call ESMF_FieldBundleGet(FSTAR,  FieldCount=K , RC=STATUS)
-    VERIFY_(STATUS)
-    _ASSERT(KM==K,'needs informative message')
-    call ESMF_FieldBundleGet(DFSTAR, FieldCount=K , RC=STATUS)
     VERIFY_(STATUS)
     _ASSERT(KM==K,'needs informative message')
 
@@ -5427,12 +5497,20 @@ end if
        VERIFY_(STATUS)
        call ESMFL_BundleGetPointerToData(TRI   , trim(NAME)//'IT' , SOI, RC=STATUS)
        VERIFY_(STATUS)
-       call ESMFL_BundleGetPointerToData(TRG   , trim(NAME)//'HAT', SRG, RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMFL_BundleGetPointerToData(FSTAR , trim(NAME)//'FLX', SF , RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMFL_BundleGetPointerToData(DFSTAR, trim(NAME)//'DFL', SDF, RC=STATUS)
-       VERIFY_(STATUS)
+
+! Surface values, fluxes and sensitivities exist only for S, U, V and Q;
+!  all other quantities are left unassociated (zero flux).
+!------------------------------------------------------------------
+       nullify(SRG, SF, SDF)
+       select case (trim(NAME))
+       case ('S','U','V','Q')
+          call MAPL_GetPointer(IMPORT, SRG, trim(NAME)//'HAT', RC=STATUS)
+          VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, SF , trim(NAME)//'FLX', RC=STATUS)
+          VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, SDF, trim(NAME)//'DFL', RC=STATUS)
+          VERIFY_(STATUS)
+       end select
 
 ! The quantity must exist; others are optional.
 !----------------------------------------------
@@ -5797,9 +5875,6 @@ end subroutine RUN1
       type (ESMF_Field)                   :: FIELD
       type (ESMF_FieldBundle)             :: TR
       type (ESMF_FieldBundle)             :: TRI
-      type (ESMF_FieldBundle)             :: DTG
-      type (ESMF_FieldBundle)             :: FSTAR
-      type (ESMF_FieldBundle)             :: DFSTAR
       real, dimension(:,:,:), pointer     :: PLE
       real, dimension(:,:,:), pointer     :: ZLE
       real, dimension(:,:,:), pointer     :: S, SOI, SINC, INTDIS, TOPDIS
@@ -5967,11 +6042,8 @@ end subroutine RUN1
 !----------------------------------------------------------
 
       call ESMF_StateGet(IMPORT, 'TR' ,    TR,     RC=STATUS); VERIFY_(STATUS)
-      call ESMF_StateGet(IMPORT, 'DTG',    DTG,    RC=STATUS); VERIFY_(STATUS)
 
       call ESMF_StateGet(EXPORT, 'TRI',    TRI,    RC=STATUS); VERIFY_(STATUS)
-      call ESMF_StateGet(EXPORT, 'FSTAR' , FSTAR,  RC=STATUS); VERIFY_(STATUS)
-      call ESMF_StateGet(EXPORT, 'DFSTAR', DFSTAR, RC=STATUS); VERIFY_(STATUS)
 
 ! Count them...
 !--------------
@@ -5982,10 +6054,6 @@ end subroutine RUN1
 ! and make sure the other bundles are the same.
 !----------------------------------------------
 
-      call ESMF_FieldBundleGet(DTG, FieldCount=K , RC=STATUS)
-      VERIFY_(STATUS)
-
-      _ASSERT(KM==K,'needs informative message')
 
 ! KK gives the order in which quantities will be process.
 !--------------------------------------------------------
@@ -6195,12 +6263,16 @@ end subroutine RUN1
          VERIFY_(STATUS)
          call ESMFL_BundleGetPointerToData(TRI   , trim(NAME)//'IT' , SOI, RC=STATUS)
          VERIFY_(STATUS)
-         call ESMFL_BundleGetPointerToData(DTG   , trim(NAME)//'DEL', DSG, RC=STATUS)
-         VERIFY_(STATUS)
-         call ESMFL_BundleGetPointerToData(FSTAR , trim(NAME)//'FLX', SF , RC=STATUS)
-         VERIFY_(STATUS)
-         call ESMFL_BundleGetPointerToData(DFSTAR, trim(NAME)//'DFL', SDF, RC=STATUS)
-         VERIFY_(STATUS)
+         nullify(DSG, SF, SDF)
+         select case (trim(NAME))
+         case ('S','U','V','Q')
+            call MAPL_GetPointer(IMPORT, DSG, trim(NAME)//'DEL', RC=STATUS)
+            VERIFY_(STATUS)
+            call MAPL_GetPointer(EXPORT, SF , trim(NAME)//'FLX', RC=STATUS)
+            VERIFY_(STATUS)
+            call MAPL_GetPointer(EXPORT, SDF, trim(NAME)//'DFL', RC=STATUS)
+            VERIFY_(STATUS)
+         end select
 
 !  Point to the appropriate sensitivity
 !--------------------------------------
@@ -6500,6 +6572,7 @@ end subroutine RUN1
          VFLXTRB(:,:,1:LM-1) = -1.*TKH(:,:,1:LM-1)*VFLXTRB(:,:,1:LM-1)
          VFLXTRB(:,:,LM) = VFLXTRB(:,:,LM-1)
          VFLXTRB(:,:,0) = 0.0
+         VFLXTRB = 0.d0!bmaa
       end if
 
       if(associated(INTDIS)) then
