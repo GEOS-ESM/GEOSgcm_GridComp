@@ -1,0 +1,14 @@
+cap_gridcomp_config: cap_gridcomp.yaml
+name: CAP
+restart: cap_restart.yaml
+
+clock:
+  dt: PT1800S
+  start: 1891-03-01T00:00:00
+  stop: 2999-03-11T00:00:00
+  segment_duration: PT1H  # P1DT
+
+checkpointing:
+  enabled: true
+  final: true
+  path: checkpoints

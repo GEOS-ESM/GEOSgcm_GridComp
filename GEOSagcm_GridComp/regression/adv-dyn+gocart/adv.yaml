@@ -1,0 +1,16 @@
+---
+# DEBUG_ADV: true
+DYCORE: FV3+ADV
+EXCLUDE_ADVECTION_TRACERS_LIST: []
+ADV_CORE_REPORT_TRACER_MASS: true
+RUN_DT: 1800
+
+mapl:
+  setServices:
+    sharedObj: libFVdycoreCubed_GridComp
+    userRoutine: advcore_setservices_
+
+  misc:
+    activate_all_exports: true
+    checkpoint:
+      export: true

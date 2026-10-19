@@ -32,4 +32,7 @@ else ()
 
   esma_add_subdirectories (${alldirs})
 
+  # Regression cases that couple components across the children above
+  add_subdirectory(regression)
+
 endif()

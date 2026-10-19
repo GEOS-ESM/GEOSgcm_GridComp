@@ -1,0 +1,24 @@
+active_collections:
+  - test
+
+time_specs:
+  three_hour: &one_hour
+    frequency: PT1H
+
+collections:
+  test:
+    template: "%c.nc4"
+    time_spec: *one_hour
+    var_list:
+      TEST_TRACER00000: {source: ADV.TEST_TRACER00000}
+      TEST_TRACER00001: {source: ADV.TEST_TRACER00001}
+      "[U,V]": {source: DYN.UV}
+      "[DUDTANA,DVDTANA]": {source: DYN.D_UV_DTANA}
+      "[UKE,VKE]": {source: DYN.UV_KE}
+      "[UPHI,VPHI]": {source: DYN.UV_PHI}
+      "[UQV,VQV]": {source: DYN.UV_QV}
+
+mapl:
+
+  setServices:
+    sharedObj: libMAPL.history

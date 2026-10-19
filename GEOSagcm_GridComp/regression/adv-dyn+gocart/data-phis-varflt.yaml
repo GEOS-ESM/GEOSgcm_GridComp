@@ -1,0 +1,17 @@
+mapl:
+
+  setServices:
+    sharedObj: libconfigurable_gridcomp
+
+  states:
+    internal:
+      PHIS:
+        standard_name: "surface_geopotential_height"
+        units: "m+2 s-2"
+        vertical_dim_spec: "n"
+        fill_value: 0.0
+      VARFLT:
+        standard_name: "variance_of_filtered_topography"
+        units: "m+2"
+        vertical_dim_spec: "n"
+        fill_value: 0.0

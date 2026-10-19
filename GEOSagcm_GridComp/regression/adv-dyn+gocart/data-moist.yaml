@@ -1,0 +1,16 @@
+mapl:
+  setServices:
+    sharedObj: libconfigurable_gridcomp
+
+  states:
+    internal:
+      Q:
+        standard_name: "specific_humidity"
+        units: "kg kg-1"
+        vertical_dim_spec: "c"
+        fill_value: 1.0e-6
+
+    import:
+      TRADV:
+        class: service
+        items: [Q]
