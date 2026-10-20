@@ -7737,14 +7737,16 @@ module GEOS_SurfaceGridCompMod
        call ESMFL_Fcollect(tilegrid_sfc, DISTER_glob, DISTERTILE,   _RC)
        call ESMFL_Fcollect(tilegrid_sfc, DISCHARGE_glob, DISCHARGETILE,   _RC) 
        if (MAPL_AM_I_ROOT().and.sum(DISTER_glob)>0.) then
-          open(999,file="DISTER_glob.txt")
+          open(999,file="/discover/nobackup/yzeng3/GEOSldas/exp/C12_O72_V11p10p1_test/DISTER_glob.txt")
           do i=1,nt_global_sfc
             write(999,*)DISTER_glob(i)
           enddo
-          open(999,file="DISCHARGE_glob.txt")
+          open(999,file="/discover/nobackup/yzeng3/GEOSldas/exp/C12_O72_V11p10p1_test/DISCHARGE_glob.txt")
           do i=1,nt_global_sfc
             write(999,*)DISCHARGE_glob(i)
           enddo    
+          print *,sum(DISTER_glob)
+          print *,sum(DISCHARGE_glob)
           stop      
        endif      
        deallocate(DISTER_glob,DISCHARGE_glob)
