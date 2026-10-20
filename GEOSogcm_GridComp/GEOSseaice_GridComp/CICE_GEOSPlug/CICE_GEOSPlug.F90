@@ -979,10 +979,38 @@ contains
     endif 
 
 
-    ! TODO: get deltas (final flux - before thermo2)
+    ! TODO: retrieve the final fluxes after the full CICE step is done
+    !if(associated(FHOCN)) then
+    !  call ice_export_field('FHOCN_AI', FHOCN, _RC)
+    !endif 
+
+    !if(associated(FRESH)) the
+    !  call ice_export_field('FRESH_AI', FRESH, _RC)
+    !endif 
+
+    !if(associated(FSALT)) then
+    !  call ice_export_field('FSALT_AI', FSALT, _RC)
+    !endif 
+
     ! final values are now FHOCN, FRESH, FSALT
     ! before thermo2 values are FHOCN_E, FRESH_E, FSALT_E from the last thermo_coupling step
-    !
+
+    ! First, average the fluxes from fast_physics loop
+    ! FHOCN_A = FHOCN_A / number of heart_beats 
+    ! FRESH_A = FRESH_A / number of heart_beats 
+    ! FSALT_A = FSALT_A / number of heart_beats 
+
+    ! Second, add the contribution (deltas: final flux - before thermo2) from thermo2
+    ! if(associated(FHOCN)) then
+    !   FHOCN = FHOCN_A + FHOCN - FHOCN_E 
+    ! endif 
+    ! if(associated(FRESH)) then
+    !   FRESH = FRESH_A + FRESH - FRESH_E 
+    ! endif 
+    ! if(associated(FSALT)) then
+    !   FSALT = FSALT_A + FSALT - FSALT_E 
+    ! endif 
+
 
 
 
