@@ -6163,6 +6163,11 @@ module GEOS_SurfaceGridCompMod
     logical :: PersistSolar
     logical :: allocateRunoff
 
+    type(MAPL_LocStream)           :: locstream_sfc
+    type(ESMF_Grid)                :: tilegrid_sfc
+    integer :: nt_local_sfc, nt_global_sfc
+    real,allocatable :: DISTER_glob(:), DISCHARGE_glob(:)
+
 !=============================================================================
 
 ! Begin...
@@ -7722,6 +7727,27 @@ module GEOS_SurfaceGridCompMod
           call RouteRunoffTeleport(SURF_INTERNAL_STATE%RoutingType, DISTERTILE, DISCHARGETILE, RC=STATUS)
           VERIFY_(STATUS)
        end if
+
+       call MAPL_LocStreamGet(locstream_sfc, &
+           tileGrid=tilegrid_sfc, nt_local=nt_local_sfc, nt_global=nt_global_sfc, &
+           RC=STATUS)
+       VERIFY_(STATUS)
+       allocate(DISTER_glob(nt_global_sfc),DISCHARGE_glob(nt_global_sfc))
+       DISTER_glob=0.;DISCHARGE_glob=0.
+       call ESMFL_Fcollect(tilegrid, DISTER_glob, DISTERTILE,   _RC)
+       call ESMFL_Fcollect(tilegrid, DISCHARGE_glob, DISCHARGETILE,   _RC) 
+       if (MAPL_AM_I_ROOT().and.sum(DISTER_glob)>0.) then
+          open(999,file="DISTER_glob.txt")
+          do i=1,nt_global_sfc
+            write(999,*)DISTER_glob(i)
+          enddo
+          open(999,file="DISCHARGETILE_glob.txt")
+          do i=1,nt_global_sfc
+            write(999,*)DISCHARGETILE_glob(i)
+          enddo    
+          stop      
+       endif      
+       deallocate(DISTER_glob,DISCHARGE_glob)
 
        !-------------------------------------------------------------------------------------
        !  Special treatment for doing ocean-coupled atmospheric replays to an analysis
