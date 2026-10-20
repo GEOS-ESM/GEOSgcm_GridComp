@@ -550,9 +550,6 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
   ! Evaluate second temperature tendency term: Conversion of kinetic
   ! energy into thermal.
-!$OMP parallel do default(none) &
-!$OMP shared(kbot_tend,ktop,band,ttgw,ubm,c,gwut) &
-!$OMP private(k,l)
   do k = ktop, kbot_tend
      do l = -band%ngwv, band%ngwv
         ttgw(:,k) = ttgw(:,k) - (ubm(:,k) - c(:,l)) * gwut(:,k,l)
