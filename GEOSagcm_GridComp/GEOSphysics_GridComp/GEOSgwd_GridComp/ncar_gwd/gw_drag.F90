@@ -348,6 +348,8 @@ subroutine gw_intr_ncar(pcols,      pver,         dt,         nrdg,             
   ! End of gravity wave drag calculation
   !-----------------------------------------------------------------------
 
+  if (present(rc)) rc = 0
+
 end subroutine gw_intr_ncar
 
 end module gw_drag_ncar
