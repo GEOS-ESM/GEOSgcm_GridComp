@@ -7,7 +7,7 @@ program SaltIntSplitter
   use MAPL
   use mk_restarts_getidsMod, only: ReadTileFile_RealLatLon
   use gFTL_StringVector
-  use gFTL_StringIntegerMap 
+  use gFTL_StringIntegerMap
 
   implicit none
 
@@ -23,7 +23,7 @@ program SaltIntSplitter
   real, allocatable :: dummy(:)
 
   integer, parameter   :: zoom=1
-#ifndef __GFORTRAN__
+#if !defined(__GFORTRAN__) && !defined(__flang__)
   integer              :: ftell
   external             :: ftell
 #endif
@@ -90,7 +90,7 @@ program SaltIntSplitter
      else
         ungridSize = 0
      end if
-     
+
      dimensions => InCfg%get_dimensions()
      global     => Incfg%get_global_var()
      IceCfg   = FileMetaData(dimensions= dimensions, global=global)
@@ -118,7 +118,7 @@ program SaltIntSplitter
      if((subtileSize==0) .and. (ungridSize/=0)) then
         call IceCfg%modify_dimension('unknown_dim4', ungridSize-1)
      endif
-     
+
      if ((subtileSize/=0) .and. (ungridSize/=0)) then
         call IceCfg%modify_dimension('unknown_dim4', ungridSize-1)
         call WaterCfg%modify_dimension('subtile', 1)
@@ -130,7 +130,7 @@ program SaltIntSplitter
      variables => InCfg%get_variables()
      var_iter = variables%begin()
      do while (var_iter /= variables%end())
- 
+
         var_name => var_iter%key()
         myVariable => var_iter%value()
         var_dimensions => myVariable%get_dimensions()
@@ -148,16 +148,16 @@ program SaltIntSplitter
               dname => myVariable%get_ith_dimension(2)
               dimSizes(2)=InCfg%get_dimension(dname)
               call iceCfg%add_variable(var_name, myVariable)
-              if (dataType /= pFIO_REAL64) then ! R8 vars only from coupled 
+              if (dataType /= pFIO_REAL64) then ! R8 vars only from coupled
                  if (dimSizes(2) == 2) then ! AMIP
                    call waterCfg%add_variable(var_name, myVariable)
                  else
-                   if (var_name /= 'TSKINI' .and. var_name /= 'TAUAGE') then 
+                   if (var_name /= 'TSKINI' .and. var_name /= 'TAUAGE') then
                      call waterCfg%add_variable(var_name, myVariable)
-                   endif 
+                   endif
                 endif
               endif
-              ! for coupled rst, water=1, ice=2,num_subtiles 
+              ! for coupled rst, water=1, ice=2,num_subtiles
            else if (ndims == 3) then
               call iceCfg%add_variable(var_name, myVariable)
            end if
@@ -167,7 +167,7 @@ program SaltIntSplitter
            call iceCfg%add_variable(var_name, myVariable)
            call waterCfg%add_variable(var_name, myVariable)
         endif
-        call var_iter%next()   
+        call var_iter%next()
      enddo
 
 !####################
@@ -183,7 +183,7 @@ program SaltIntSplitter
      variables => InCfg%get_variables()
      var_iter = variables%begin()
      do while (var_iter /= variables%end())
- 
+
         var_name => var_iter%key()
         myVariable => var_iter%value()
         var_dimensions => myVariable%get_dimensions()
@@ -192,7 +192,7 @@ program SaltIntSplitter
         if (.not.InCfg%is_coordinate_variable(var_name)) then
 
            write(*,*)"Writing ",trim(var_name),ndims
-           
+
            if (ndims == 1) then
               call MAPL_VarRead(InFmt,var_name,varIn, __RC__)
               varOut(:) = varIn(:)
@@ -207,23 +207,23 @@ program SaltIntSplitter
            else if (ndims == 2) then
               dname => myVariable%get_ith_dimension(2)
               dimSizes(2)=InCfg%get_dimension(dname)
-              ! for AMIP rst, ice=1, water=2 
+              ! for AMIP rst, ice=1, water=2
               !if (dimSizes(2) /= 2) then
               !   write(*,*) "not an AMIP rst"
               !   stop
-              !endif   
+              !endif
               !print*,trim(var_name), dimSizes(1), dimSizes(2)
-              if (dataType == pFIO_REAL64) then ! R8 vars only from coupled 
+              if (dataType == pFIO_REAL64) then ! R8 vars only from coupled
                  if (var_name(1:2) == 'FR') then ! FR dim changes from 6 to 5
                     do j=2,dimSizes(2)
                       call MAPL_VarRead(InFmt,var_name,varInR8,offset1=j, __RC__)
                       call MAPL_VarWrite(IceFmt,var_name,varInR8,offset1=j-1)
-                    enddo 
+                    enddo
                  else
                     do j=1,dimSizes(2)
                       call MAPL_VarRead(InFmt,var_name,varInR8,offset1=j, __RC__)
                       call MAPL_VarWrite(IceFmt,var_name,varInR8,offset1=j)
-                    enddo 
+                    enddo
                  endif
               else if (dimSizes(2) == 2) then ! AMIP
                  call MAPL_VarRead(InFmt,var_name,varIn,offset1=1, __RC__)
@@ -231,21 +231,21 @@ program SaltIntSplitter
                  call MAPL_VarRead(InFmt,var_name,varIn,offset1=2, __RC__)
                  call MAPL_VarWrite(WaterFmt,var_name,varIn,offset1=1)
               else
-                 if (var_name == 'TSKINI' .or. var_name == 'TAUAGE') then 
+                 if (var_name == 'TSKINI' .or. var_name == 'TAUAGE') then
                     do j=1,dimSizes(2)
                       call MAPL_VarRead(InFmt,var_name,varIn,offset1=j, __RC__)
                       call MAPL_VarWrite(IceFmt,var_name,varIn,offset1=j)
-                    enddo 
+                    enddo
                  else
                     call MAPL_VarRead(InFmt,var_name,varIn,offset1=1, __RC__)
                     call MAPL_VarWrite(WaterFmt,var_name,varIn,offset1=1)
                     do j=2,dimSizes(2)
                       call MAPL_VarRead(InFmt,var_name,varIn,offset1=j, __RC__)
                       call MAPL_VarWrite(IceFmt,var_name,varIn,offset1=j-1)
-                    enddo 
-                 endif 
+                    enddo
+                 endif
               endif
-              ! for coupled rst, water=1, ice=2,num_subtiles 
+              ! for coupled rst, water=1, ice=2,num_subtiles
            else if (ndims == 3) then
               ! only coupled model internals conatin ndims=3 vars
               dname => myVariable%get_ith_dimension(2)
@@ -254,7 +254,7 @@ program SaltIntSplitter
               dimSizes(3)=InCfg%get_dimension(dname)
               do k=1,dimSizes(3)
                  do j=1,dimSizes(2)
-                    if (dataType == pFIO_REAL64) then 
+                    if (dataType == pFIO_REAL64) then
                        call MAPL_VarRead(InFmt,var_name,varInR8,offset1=j,offset2=k, __RC__)
                        call MAPL_VarWrite(IceFmt,var_name,varInR8,offset1=j,offset2=k)
                     else
@@ -270,8 +270,8 @@ program SaltIntSplitter
           call MAPL_VarWrite(IceFmt, 'time',[0.0d0])
           call MAPL_VarWrite(waterFmt,'time',[0.0d0])
         endif
-     
-        call var_iter%next()   
+
+        call var_iter%next()
      enddo
 
 
@@ -347,7 +347,7 @@ program SaltIntSplitter
      enddo
 
 
-     !print*, 'Splitter only supports NETCDF rst for now!!' 
+     !print*, 'Splitter only supports NETCDF rst for now!!'
      !stop 1
 
   end if
