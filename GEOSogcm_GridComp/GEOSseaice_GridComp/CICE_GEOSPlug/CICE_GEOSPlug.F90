@@ -1011,6 +1011,11 @@ contains
     !   FSALT = FSALT_A + FSALT - FSALT_E 
     ! endif 
 
+    ! finally, zero out accumlation buffer
+    !  FSALT_A = 0
+    !  FHOCN_A = 0
+    !  FHOCN_A = 0
+
 
 
 
