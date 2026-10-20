@@ -7728,7 +7728,7 @@ module GEOS_SurfaceGridCompMod
           VERIFY_(STATUS)
        end if
 
-       call MAPL_LocStreamGet(locstream_sfc, &
+       call MAPL_LocStreamGet(LOCSTREAM, &
            tileGrid=tilegrid_sfc, nt_local=nt_local_sfc, nt_global=nt_global_sfc, &
            RC=STATUS)
        VERIFY_(STATUS)
