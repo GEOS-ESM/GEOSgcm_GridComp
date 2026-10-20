@@ -6572,7 +6572,6 @@ end subroutine RUN1
          VFLXTRB(:,:,1:LM-1) = -1.*TKH(:,:,1:LM-1)*VFLXTRB(:,:,1:LM-1)
          VFLXTRB(:,:,LM) = VFLXTRB(:,:,LM-1)
          VFLXTRB(:,:,0) = 0.0
-         VFLXTRB = 0.d0!bmaa
       end if
 
       if(associated(INTDIS)) then
