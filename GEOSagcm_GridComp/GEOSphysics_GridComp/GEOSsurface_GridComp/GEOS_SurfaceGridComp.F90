@@ -7736,7 +7736,7 @@ module GEOS_SurfaceGridCompMod
        VERIFY_(STATUS)
        allocate(DISTER_glob(nt_global_sfc),DISCHARGE_glob(nt_global_sfc),DISTER_glob_ori(nt_global_sfc),DISCHARGE_glob_ori(nt_global_sfc),global_id_sfc(nt_global_sfc))
        DISTER_glob=0.;DISCHARGE_glob=0.;DISTER_glob_ori=0.;DISCHARGE_glob_ori=0.
-       call ESMFL_Fcollect(tilegrid, global_id_sfc, local_id_sfc, _RC)
+       call ESMFL_Fcollect(tilegrid_sfc, global_id_sfc, local_id_sfc, _RC)
        call ESMFL_Fcollect(tilegrid_sfc, DISTER_glob_ori, DISTERTILE,   _RC)
        call ESMFL_Fcollect(tilegrid_sfc, DISCHARGE_glob_ori, DISCHARGETILE,   _RC) 
        do i=1,nt_global_sfc
@@ -7758,7 +7758,7 @@ module GEOS_SurfaceGridCompMod
           print *,sum(DISCHARGE_glob)
           stop      
        endif      
-       deallocate(DISTER_glob,DISCHARGE_glob,DISTER_glob_ori,DISCHARGE_glob_ori,global_id_sfc_ori,global_id_sfc)
+       deallocate(DISTER_glob,DISCHARGE_glob,DISTER_glob_ori,DISCHARGE_glob_ori,,global_id_sfc)
 
        !-------------------------------------------------------------------------------------
        !  Special treatment for doing ocean-coupled atmospheric replays to an analysis
