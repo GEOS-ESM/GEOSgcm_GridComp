@@ -7758,7 +7758,7 @@ module GEOS_SurfaceGridCompMod
           print *,sum(DISCHARGE_glob)
           stop      
        endif      
-       deallocate(DISTER_glob,DISCHARGE_glob,DISTER_glob_ori,DISCHARGE_glob_ori,,global_id_sfc)
+       deallocate(DISTER_glob,DISCHARGE_glob,DISTER_glob_ori,DISCHARGE_glob_ori,global_id_sfc)
 
        !-------------------------------------------------------------------------------------
        !  Special treatment for doing ocean-coupled atmospheric replays to an analysis
