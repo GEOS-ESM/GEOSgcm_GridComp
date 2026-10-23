@@ -197,9 +197,18 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                     &
+         LONG_NAME          = 'runoff_total_flux'         ,&
+         UNITS              = 'kg m-2 s-1'                ,&
+         SHORT_NAME         = 'RUNOFF'                    ,&           
+         DIMS               = MAPL_DimsTileOnly           ,&
+         VLOCATION          = MAPL_VLocationNone          ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                     &
          LONG_NAME          = 'net_water_flux_into_lake'  ,&
          UNITS              = 'kg m-2 s-1'                ,&
-         SHORT_NAME         = 'WNETFLUXLAKE'              ,&            ! formerly known as "RUNOFF"
+         SHORT_NAME         = 'WNETFLUXLAKE'              ,&            ! a.k.a. "RUNOFF" (but meant for lake tiles only)
          DIMS               = MAPL_DimsTileOnly           ,&
          VLOCATION          = MAPL_VLocationNone          ,&
          RC=STATUS  )
@@ -1574,6 +1583,7 @@ contains
       real, pointer, dimension(:  )  :: TST
       real, pointer, dimension(:  )  :: QST
       real, pointer, dimension(:  )  :: EVAPOUT
+      real, pointer, dimension(:  )  :: RUNOFF
       real, pointer, dimension(:  )  :: WNETFLUXLAKE
       real, pointer, dimension(:  )  :: PRLAKE
       real, pointer, dimension(:  )  :: SNOLAKE
@@ -1750,8 +1760,8 @@ contains
       call MAPL_GetPointer(   EXPORT, TST    ,       'TST'         ,    RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(   EXPORT, DELTS  ,       'DELTS'       ,    RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(   EXPORT, DELQS  ,       'DELQS'       ,    RC=STATUS); VERIFY_(STATUS)
-
       call MAPL_GetPointer(   EXPORT, EVAPOUT,       'EVAPOUT'     ,    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(   EXPORT, RUNOFF,        'RUNOFF'      ,    RC=STATUS); VERIFY_(STATUS)      
       call MAPL_GetPointer(   EXPORT, WNETFLUXLAKE , 'WNETFLUXLAKE',    RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(   EXPORT, PRLAKE ,       'PRLAKE'      ,    RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(   EXPORT, SNOLAKE,       'SNOLAKE'     ,    RC=STATUS); VERIFY_(STATUS)
@@ -1762,7 +1772,7 @@ contains
       call MAPL_GetPointer(   EXPORT, SWNDSRF,       'SWNDSRF'     ,    RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(   EXPORT, SUBLIM ,       'SUBLIM'      ,    RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(   EXPORT, DHLAKE ,       'DHLAKE'      ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(   EXPORT, FRLAKEICE,     'FRLAKEICE'   ,  RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(   EXPORT, FRLAKEICE,     'FRLAKEICE'   ,    RC=STATUS); VERIFY_(STATUS)
 
       call MAPL_GetPointer(   EXPORT, EMISS  , 'EMIS' , alloc=.true., RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(   EXPORT, ALBVF  , 'ALBVF', alloc=.true., RC=STATUS); VERIFY_(STATUS)
@@ -1863,7 +1873,8 @@ contains
       ! initialize exports for sub-tile averaging
       
       if(associated( EVAPOUT      )) EVAPOUT      = 0.0
-      if(associated( WNETFLUXLAKE )) WNETFLUXLAKE = 0.0
+      if(associated( RUNOFF       )) RUNOFF       = 0.0
+      if(associated( WNETFLUXLAKE )) WNETFLUXLAKE = 0.0      
       if(associated( SHOUT        )) SHOUT        = 0.0
       if(associated( HLATN        )) HLATN        = 0.0
       if(associated( DELTS        )) DELTS        = 0.0
@@ -2097,6 +2108,7 @@ contains
          ! compute average over sub-tiles
          
          if(associated(EVAPOUT     )) EVAPOUT       = EVAPOUT       + EVP    *FR(:,N)
+         if(associated(RUNOFF      )) RUNOFF        = RUNOFF        + RNF    *FR(:,N)
          if(associated(WNETFLUXLAKE)) WNETFLUXLAKE  = WNETFLUXLAKE  + RNF    *FR(:,N)
          if(associated(SHOUT       )) SHOUT         = SHOUT         + SHF    *FR(:,N)
          if(associated(HLATN       )) HLATN         = HLATN         + LHF    *FR(:,N)
