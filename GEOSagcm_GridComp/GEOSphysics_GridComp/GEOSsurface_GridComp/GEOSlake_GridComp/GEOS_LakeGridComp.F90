@@ -202,7 +202,25 @@ contains
          SHORT_NAME         = 'RUNOFF'                    ,&
          DIMS               = MAPL_DimsTileOnly           ,&
          VLOCATION          = MAPL_VLocationNone          ,&
-         RC=STATUS  ) 
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                     &
+         LONG_NAME          = 'rainfall_flux'             ,&
+         UNITS              = 'kg m-2 s-1'                ,&
+         SHORT_NAME         = 'RAINF'                     ,&
+         DIMS               = MAPL_DimsTileOnly           ,&
+         VLOCATION          = MAPL_VLocationNone          ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                     &
+         LONG_NAME          = 'snowfall_flux'             ,&
+         UNITS              = 'kg m-2 s-1'                ,&
+         SHORT_NAME         = 'SNOWF'                     ,&
+         DIMS               = MAPL_DimsTileOnly           ,&
+         VLOCATION          = MAPL_VLocationNone          ,&
+         RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                     &
@@ -247,7 +265,25 @@ contains
          SHORT_NAME         = 'HLATN'                     ,&
          DIMS               = MAPL_DimsTileOnly           ,&
          VLOCATION          = MAPL_VLocationNone          ,&
-         RC=STATUS  ) 
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                     &
+         LONG_NAME          = 'rate_of_change_of_total_lake_energy',&
+         UNITS              = 'W m-2'                     ,&
+         SHORT_NAME         = 'DHLAKE'                    ,&
+         DIMS               = MAPL_DimsTileOnly           ,&
+         VLOCATION          = MAPL_VLocationNone          ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                     &
+         LONG_NAME          = 'ice_fraction_of_lake_tile'  ,&
+         UNITS              = '1'                         ,&
+         SHORT_NAME         = 'FRLAKEICE'                 ,&
+         DIMS               = MAPL_DimsTileOnly           ,&
+         VLOCATION          = MAPL_VLocationNone          ,&
+         RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                    &
@@ -1539,12 +1575,16 @@ contains
       real, pointer, dimension(:  )  :: QST
       real, pointer, dimension(:  )  :: EVAPOUT
       real, pointer, dimension(:  )  :: RUNOFF
+      real, pointer, dimension(:  )  :: RAINF
+      real, pointer, dimension(:  )  :: SNOWF
       real, pointer, dimension(:  )  :: SUBLIM
       real, pointer, dimension(:  )  :: SHOUT
       real, pointer, dimension(:  )  :: HLATN
       real, pointer, dimension(:  )  :: HLWUP
       real, pointer, dimension(:  )  :: SWNDSRF
       real, pointer, dimension(:  )  :: LWNDSRF
+      real, pointer, dimension(:  )  :: DHLAKE
+      real, pointer, dimension(:  )  :: FRLAKEICE
 
       ! pointers to internal
 
@@ -1618,6 +1658,7 @@ contains
       real,          dimension(NT)   :: VSUVF
       real,          dimension(NT)   :: ALWN     ! needed for offline
       real,          dimension(NT)   :: BLWN     ! needed for offline
+      real,          dimension(NT)   :: ENTOT0   ! lake heat content at start of timestep
 
       real                           :: DT
       integer                        :: N, I
@@ -1692,6 +1733,11 @@ contains
       call MAPL_GetPointer( INTERNAL, CM     , 'CM'   ,    RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer( INTERNAL, CQ     , 'CQ'   ,    RC=STATUS); VERIFY_(STATUS)
 
+      ! lake heat content at the start of the timestep, for the DHLAKE export
+      ! (must be captured here, before TS/FR are modified below)
+
+      ENTOT0 = FR(:,WATER)*LAKECAP*(TS(:,WATER)-MAPL_TICE) + FR(:,ICE)*LAKEICECAP*(TS(:,ICE)-MAPL_TICE)
+
       ! for analytical extra derivatives (louissurface)
       
       call MAPL_GetPointer(INTERNAL, delCQ_delTVA, 'delCQ_delTVA', RC=STATUS); VERIFY_(STATUS)
@@ -1707,12 +1753,16 @@ contains
 
       call MAPL_GetPointer(   EXPORT, EVAPOUT, 'EVAPOUT' ,    RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(   EXPORT, RUNOFF , 'RUNOFF'  ,    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(   EXPORT, RAINF  , 'RAINF'   ,    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(   EXPORT, SNOWF  , 'SNOWF'   ,    RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(   EXPORT, SHOUT  , 'SHOUT'   ,    RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(   EXPORT, HLATN  , 'HLATN'   ,    RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(   EXPORT, HLWUP  , 'HLWUP'   ,    RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(   EXPORT, LWNDSRF, 'LWNDSRF' ,    RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(   EXPORT, SWNDSRF, 'SWNDSRF' ,    RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(   EXPORT, SUBLIM , 'SUBLIM'  ,    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(   EXPORT, DHLAKE , 'DHLAKE'  ,    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(   EXPORT, FRLAKEICE,'FRLAKEICE',  RC=STATUS); VERIFY_(STATUS)
 
       call MAPL_GetPointer(   EXPORT, EMISS  , 'EMIS' , alloc=.true., RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(   EXPORT, ALBVF  , 'ALBVF', alloc=.true., RC=STATUS); VERIFY_(STATUS)
@@ -1816,6 +1866,9 @@ contains
       if(associated(   SWNDSRF)) SWNDSRF = 0.0
       if(associated(   TST    )) TST     = 0.0
       if(associated(   QST    )) QST     = 0.0
+
+      if(associated(   RAINF  )) RAINF   = PCU + PLS
+      if(associated(   SNOWF  )) SNOWF   = SNO
 
       if (LAKE_OFFLINE == 0) then
          
@@ -2050,7 +2103,7 @@ contains
          if(associated(SWNDSRF   )) SWNDSRF = SWNDSRF + SWN    *FR(:,N)
          if(associated(TST       )) TST     = TST     + TS(:,N)*FR(:,N)
          if(associated(QST       )) QST     = QST     + QS(:,N)*FR(:,N)
-         
+
          if (LAKE_OFFLINE == 0) then
 
             if(associated(LWNDSRF)) LWNDSRF = LWNDSRF - TS(:,N)*FR(:,N)*BLW             ! net LW was initialized to absorbed LW minus ALW
@@ -2086,6 +2139,17 @@ contains
             TS(I,ICE  ) = MAPL_TICE
          end if
       end do
+
+      ! rate of change of total lake heat content over this timestep,
+      ! including the sub-tile flux-driven update and the freeze/melt
+      ! fraction swap above
+
+      if(associated(DHLAKE)) &
+           DHLAKE = ( FR(:,WATER)*LAKECAP*(TS(:,WATER)-MAPL_TICE) &
+                    + FR(:,ICE)  *LAKEICECAP*(TS(:,ICE)  -MAPL_TICE) &
+                    - ENTOT0 ) / DT
+
+      if(associated(FRLAKEICE)) FRLAKEICE = FR(:,ICE)
 
       ! Update lake and ice albedos to anticipate
       !   next radiation calculation
