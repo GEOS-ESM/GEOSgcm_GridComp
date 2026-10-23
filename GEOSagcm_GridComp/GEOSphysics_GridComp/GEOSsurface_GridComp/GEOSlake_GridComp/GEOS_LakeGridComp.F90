@@ -197,27 +197,27 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                     &
-         LONG_NAME          = 'runoff_total_flux'         ,&
+         LONG_NAME          = 'net_water_flux_into_lake'  ,&
          UNITS              = 'kg m-2 s-1'                ,&
-         SHORT_NAME         = 'RUNOFF'                    ,&
+         SHORT_NAME         = 'WNETFLUXLAKE'              ,&            ! formerly known as "RUNOFF"
          DIMS               = MAPL_DimsTileOnly           ,&
          VLOCATION          = MAPL_VLocationNone          ,&
          RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                     &
-         LONG_NAME          = 'rainfall_flux'             ,&
+         LONG_NAME          = 'Total_precipitation_lake'  ,&
          UNITS              = 'kg m-2 s-1'                ,&
-         SHORT_NAME         = 'RAINF'                     ,&
+         SHORT_NAME         = 'PRLAKE'                    ,&
          DIMS               = MAPL_DimsTileOnly           ,&
          VLOCATION          = MAPL_VLocationNone          ,&
          RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                     &
-         LONG_NAME          = 'snowfall_flux'             ,&
+         LONG_NAME          = 'snowfall_lake'             ,&
          UNITS              = 'kg m-2 s-1'                ,&
-         SHORT_NAME         = 'SNOWF'                     ,&
+         SHORT_NAME         = 'SNOLAKE'                   ,&
          DIMS               = MAPL_DimsTileOnly           ,&
          VLOCATION          = MAPL_VLocationNone          ,&
          RC=STATUS  )
@@ -278,7 +278,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                     &
-         LONG_NAME          = 'ice_fraction_of_lake_tile'  ,&
+         LONG_NAME          = 'fractional_area_of_lakeice',&
          UNITS              = '1'                         ,&
          SHORT_NAME         = 'FRLAKEICE'                 ,&
          DIMS               = MAPL_DimsTileOnly           ,&
@@ -1574,9 +1574,9 @@ contains
       real, pointer, dimension(:  )  :: TST
       real, pointer, dimension(:  )  :: QST
       real, pointer, dimension(:  )  :: EVAPOUT
-      real, pointer, dimension(:  )  :: RUNOFF
-      real, pointer, dimension(:  )  :: RAINF
-      real, pointer, dimension(:  )  :: SNOWF
+      real, pointer, dimension(:  )  :: WNETFLUXLAKE
+      real, pointer, dimension(:  )  :: PRLAKE
+      real, pointer, dimension(:  )  :: SNOLAKE
       real, pointer, dimension(:  )  :: SUBLIM
       real, pointer, dimension(:  )  :: SHOUT
       real, pointer, dimension(:  )  :: HLATN
@@ -1746,23 +1746,23 @@ contains
       ! Pointers to outputs
       !--------------------
 
-      call MAPL_GetPointer(   EXPORT, QST    , 'QST'     ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(   EXPORT, TST    , 'TST'     ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(   EXPORT, DELTS  , 'DELTS'   ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(   EXPORT, DELQS  , 'DELQS'   ,    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(   EXPORT, QST    ,       'QST'         ,    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(   EXPORT, TST    ,       'TST'         ,    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(   EXPORT, DELTS  ,       'DELTS'       ,    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(   EXPORT, DELQS  ,       'DELQS'       ,    RC=STATUS); VERIFY_(STATUS)
 
-      call MAPL_GetPointer(   EXPORT, EVAPOUT, 'EVAPOUT' ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(   EXPORT, RUNOFF , 'RUNOFF'  ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(   EXPORT, RAINF  , 'RAINF'   ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(   EXPORT, SNOWF  , 'SNOWF'   ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(   EXPORT, SHOUT  , 'SHOUT'   ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(   EXPORT, HLATN  , 'HLATN'   ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(   EXPORT, HLWUP  , 'HLWUP'   ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(   EXPORT, LWNDSRF, 'LWNDSRF' ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(   EXPORT, SWNDSRF, 'SWNDSRF' ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(   EXPORT, SUBLIM , 'SUBLIM'  ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(   EXPORT, DHLAKE , 'DHLAKE'  ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(   EXPORT, FRLAKEICE,'FRLAKEICE',  RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(   EXPORT, EVAPOUT,       'EVAPOUT'     ,    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(   EXPORT, WNETFLUXLAKE , 'WNETFLUXLAKE',    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(   EXPORT, PRLAKE ,       'PRLAKE'      ,    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(   EXPORT, SNOLAKE,       'SNOLAKE'     ,    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(   EXPORT, SHOUT  ,       'SHOUT'       ,    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(   EXPORT, HLATN  ,       'HLATN'       ,    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(   EXPORT, HLWUP  ,       'HLWUP'       ,    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(   EXPORT, LWNDSRF,       'LWNDSRF'     ,    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(   EXPORT, SWNDSRF,       'SWNDSRF'     ,    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(   EXPORT, SUBLIM ,       'SUBLIM'      ,    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(   EXPORT, DHLAKE ,       'DHLAKE'      ,    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(   EXPORT, FRLAKEICE,     'FRLAKEICE'   ,  RC=STATUS); VERIFY_(STATUS)
 
       call MAPL_GetPointer(   EXPORT, EMISS  , 'EMIS' , alloc=.true., RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(   EXPORT, ALBVF  , 'ALBVF', alloc=.true., RC=STATUS); VERIFY_(STATUS)
@@ -1855,20 +1855,22 @@ contains
       VSUVR = DRPAR + DRUVR
       VSUVF = DFPAR + DFUVR
 
-      ! initialize outputs for sub-tile averaging
+      ! fill some exports
       
-      if(associated(   EVAPOUT)) EVAPOUT = 0.0
-      if(associated(   RUNOFF )) RUNOFF  = 0.0
-      if(associated(   SHOUT  )) SHOUT   = 0.0
-      if(associated(   HLATN  )) HLATN   = 0.0
-      if(associated(   DELTS  )) DELTS   = 0.0
-      if(associated(   DELQS  )) DELQS   = 0.0
-      if(associated(   SWNDSRF)) SWNDSRF = 0.0
-      if(associated(   TST    )) TST     = 0.0
-      if(associated(   QST    )) QST     = 0.0
-
-      if(associated(   RAINF  )) RAINF   = PCU + PLS
-      if(associated(   SNOWF  )) SNOWF   = SNO
+      if(associated( PRLAKE )) PRLAKE  = SNO + PCU + PLS
+      if(associated( SNOLAKE)) SNOLAKE = SNO
+      
+      ! initialize exports for sub-tile averaging
+      
+      if(associated( EVAPOUT      )) EVAPOUT      = 0.0
+      if(associated( WNETFLUXLAKE )) WNETFLUXLAKE = 0.0
+      if(associated( SHOUT        )) SHOUT        = 0.0
+      if(associated( HLATN        )) HLATN        = 0.0
+      if(associated( DELTS        )) DELTS        = 0.0
+      if(associated( DELQS        )) DELQS        = 0.0
+      if(associated( SWNDSRF      )) SWNDSRF      = 0.0
+      if(associated( TST          )) TST          = 0.0
+      if(associated( QST          )) QST          = 0.0
 
       if (LAKE_OFFLINE == 0) then
          
@@ -2094,15 +2096,15 @@ contains
 
          ! compute average over sub-tiles
          
-         if(associated(EVAPOUT   )) EVAPOUT = EVAPOUT + EVP    *FR(:,N)
-         if(associated(RUNOFF    )) RUNOFF  = RUNOFF  + RNF    *FR(:,N)
-         if(associated(SHOUT     )) SHOUT   = SHOUT   + SHF    *FR(:,N)
-         if(associated(HLATN     )) HLATN   = HLATN   + LHF    *FR(:,N)
-         if(associated(DELTS     )) DELTS   = DELTS   + DTS*CFT*FR(:,N)
-         if(associated(DELQS     )) DELQS   = DELQS   + DQS*CFQ*FR(:,N)
-         if(associated(SWNDSRF   )) SWNDSRF = SWNDSRF + SWN    *FR(:,N)
-         if(associated(TST       )) TST     = TST     + TS(:,N)*FR(:,N)
-         if(associated(QST       )) QST     = QST     + QS(:,N)*FR(:,N)
+         if(associated(EVAPOUT     )) EVAPOUT       = EVAPOUT       + EVP    *FR(:,N)
+         if(associated(WNETFLUXLAKE)) WNETFLUXLAKE  = WNETFLUXLAKE  + RNF    *FR(:,N)
+         if(associated(SHOUT       )) SHOUT         = SHOUT         + SHF    *FR(:,N)
+         if(associated(HLATN       )) HLATN         = HLATN         + LHF    *FR(:,N)
+         if(associated(DELTS       )) DELTS         = DELTS         + DTS*CFT*FR(:,N)
+         if(associated(DELQS       )) DELQS         = DELQS         + DQS*CFQ*FR(:,N)
+         if(associated(SWNDSRF     )) SWNDSRF       = SWNDSRF       + SWN    *FR(:,N)
+         if(associated(TST         )) TST           = TST           + TS(:,N)*FR(:,N)
+         if(associated(QST         )) QST           = QST           + QS(:,N)*FR(:,N)
 
          if (LAKE_OFFLINE == 0) then
 
@@ -2145,7 +2147,7 @@ contains
       ! fraction swap above
 
       if(associated(DHLAKE)) &
-           DHLAKE = ( FR(:,WATER)*LAKECAP*(TS(:,WATER)-MAPL_TICE) &
+           DHLAKE = ( FR(:,WATER)*LAKECAP*(   TS(:,WATER)-MAPL_TICE) &
                     + FR(:,ICE)  *LAKEICECAP*(TS(:,ICE)  -MAPL_TICE) &
                     - ENTOT0 ) / DT
 
