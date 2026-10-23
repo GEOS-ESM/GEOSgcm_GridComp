@@ -24,7 +24,7 @@ module CICE_GEOSPlugMod
   use CICE_RunMod                 
   use ice_import_export
   use ice_record_mod
-
+  use ice_calendar, only : dt
 
   implicit none
   private
@@ -34,6 +34,16 @@ module CICE_GEOSPlugMod
 
   integer            :: NUM_ICE_CATEGORIES
   logical, private   :: running_regular_replay 
+
+  integer            :: ntsddyn !number of thermo steps during dt_dyn
+  REAL_              :: dt_therm
+  REAL_, allocatable :: fhocn_a(:,:)
+  REAL_, allocatable :: fresh_a(:,:)
+  REAL_, allocatable :: fsalt_a(:,:)
+
+  REAL_, allocatable :: fhocn_e(:,:)
+  REAL_, allocatable :: fresh_e(:,:)
+  REAL_, allocatable :: fsalt_e(:,:)
 
 contains
 
@@ -451,6 +461,7 @@ contains
     type(ESMF_State)                       :: SURFST
 
     integer                                :: DT_SEAICE
+    integer                                :: dt_thermo
 
 ! Begin...
 
@@ -495,9 +506,16 @@ contains
     call ESMF_VMGetCurrent(VM, rc=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource(MAPL,DT_SEAICE,  Label="RUN_DT:",    _RC)             ! Get AGCM Heartbeat
+    call MAPL_GetResource(MAPL,DT_SEAICE,  Label="RUN_DT:",    _RC)
+    ! save heartbeat
+    dt_thermo = dt_seaice
+    dt_therm = dt_thermo
+    
+    ! Get AGCM Heartbeat
     call MAPL_GetResource(MAPL,DT_SEAICE,  Label="OCEAN_DT:",  DEFAULT=DT_SEAICE, _RC) ! set Default OCEAN_DT to AGCM Heartbeat
     call MAPL_GetResource(MAPL, ReplayMode, 'REPLAY_MODE:', default="NoReplay", _RC)
+    ntsddyn = dt_seaice/dt_thermo
+    _ASSERT(dt_seaice == ntsddyn*dt_thermo, 'Inconsistent seaice thermo and dyn DT')
 
 ! Set the time for CICE
 !---------------------
@@ -537,7 +555,7 @@ contains
 
     call MAPL_GridGet(GRID, localCellCountPerDim=counts, RC=status)
     VERIFY_(STATUS)
-
+ 
 
 ! Init CICE 
 !---------------
@@ -550,10 +568,43 @@ contains
     ! block sizes from MAPL are contained in counts
     ! there should be a call to CICE which returns the block size for current PE
     ! the two should match
-    !ASSERT_(counts(1) == BLK_NX)  
-    !ASSERT_(counts(2) == BLK_NY)  
+    _ASSERT(counts(1) == BLK_NX, "Mistmatch between MAPL/CICE6 sizes")
+    _ASSERT(counts(2) == BLK_NY, "Mistmatch between MAPL/CICE6 sizes")
      
-    !call cice_init2(YEAR, MONTH, DAY, HR, MN, SC) ! init cice calendar here
+     if (.not. allocated(fhocn_a)) then
+        allocate(fhocn_a(counts(1),counts(2)))
+        fhocn_a = 0.0
+     end if
+     if (.not. allocated(fsalt_a)) then
+        allocate(fsalt_a(counts(1),counts(2)))
+        fsalt_a = 0.0
+     end if
+     if (.not. allocated(fresh_a)) then
+        allocate(fresh_a(counts(1),counts(2)))
+        fresh_a = 0.0
+     end if
+     if (.not. allocated(fsalt_a)) then
+        allocate(fsalt_a(counts(1),counts(2)))
+        fsalt_a = 0.0
+     end if
+
+     if (.not. allocated(fhocn_e)) then
+        allocate(fhocn_e(counts(1),counts(2)))
+        fhocn_e = 0.0
+     end if
+     if (.not. allocated(fsalt_e)) then
+        allocate(fsalt_e(counts(1),counts(2)))
+        fsalt_e = 0.0
+     end if
+     if (.not. allocated(fresh_e)) then
+        allocate(fresh_e(counts(1),counts(2)))
+        fresh_e = 0.0
+     end if
+     if (.not. allocated(fsalt_e)) then
+        allocate(fsalt_e(counts(1),counts(2)))
+        fsalt_e = 0.0
+     end if
+     !call cice_init2(YEAR, MONTH, DAY, HR, MN, SC) ! init cice calendar here
     call cice_cal_init(YEAR, MONTH, DAY, HR, MN, SC) ! init cice calendar here
 
     !*CALLBACK*
@@ -980,44 +1031,42 @@ contains
 
 
     ! TODO: retrieve the final fluxes after the full CICE step is done
-    !if(associated(FHOCN)) then
-    !  call ice_export_field('FHOCN_AI', FHOCN, _RC)
-    !endif 
+    if(associated(FHOCN)) then
+       call ice_export_field('FHOCN_AI', FHOCN, _RC)
+    endif
 
-    !if(associated(FRESH)) the
-    !  call ice_export_field('FRESH_AI', FRESH, _RC)
-    !endif 
+    if(associated(FRESH)) then
+       call ice_export_field('FRESH_AI', FRESH, _RC)
+    endif
 
-    !if(associated(FSALT)) then
-    !  call ice_export_field('FSALT_AI', FSALT, _RC)
-    !endif 
+    if(associated(FSALT)) then
+       call ice_export_field('FSALT_AI', FSALT, _RC)
+    endif
 
     ! final values are now FHOCN, FRESH, FSALT
     ! before thermo2 values are FHOCN_E, FRESH_E, FSALT_E from the last thermo_coupling step
 
-    ! First, average the fluxes from fast_physics loop
-    ! FHOCN_A = FHOCN_A / number of heart_beats 
-    ! FRESH_A = FRESH_A / number of heart_beats 
-    ! FSALT_A = FSALT_A / number of heart_beats 
+    ! First, normalize the accumulated fluxes from fast_physics loop to form
+    ! a proper average
+    FHOCN_A = FHOCN_A / ntsddyn !number of thermo steps during dt_dyn
+    FRESH_A = FRESH_A / ntsddyn
+    FSALT_A = FSALT_A / ntsddyn
 
     ! Second, add the contribution (deltas: final flux - before thermo2) from thermo2
-    ! if(associated(FHOCN)) then
-    !   FHOCN = FHOCN_A + FHOCN - FHOCN_E 
-    ! endif 
-    ! if(associated(FRESH)) then
-    !   FRESH = FRESH_A + FRESH - FRESH_E 
-    ! endif 
-    ! if(associated(FSALT)) then
-    !   FSALT = FSALT_A + FSALT - FSALT_E 
-    ! endif 
+    if(associated(FHOCN)) then
+       FHOCN = FHOCN_A + FHOCN - FHOCN_E 
+    endif
+    if(associated(FRESH)) then
+       FRESH = FRESH_A + FRESH - FRESH_E 
+    endif
+    if(associated(FSALT)) then
+       FSALT = FSALT_A + FSALT - FSALT_E 
+    endif
 
     ! finally, zero out accumlation buffer
-    !  FSALT_A = 0
-    !  FHOCN_A = 0
-    !  FHOCN_A = 0
-
-
-
+    FSALT_A = 0.0
+    FHOCN_A = 0.0
+    FHOCN_A = 0.0
 
     call MAPL_TimerOff(MAPL,"RUN"   )
     call MAPL_TimerOff(MAPL,"TOTAL" )
@@ -1254,7 +1303,8 @@ contains
 !EOP
 
      integer                               :: status
-
+     REAL_                                 :: dt_save
+     
 ! ErrLog Variables
 
      character(len=ESMF_MAXSTR), parameter   :: IAm=' thermo_coupling'
@@ -1266,6 +1316,8 @@ contains
      ! TODO: save cice module dt to another dt variable say, dt_save
      !  change  cice module dt to heart_beat/AGCM_Dt
 
+     dt_save = dt
+     dt = dt_therm
 
      ! let cice update surface temperature and fluxes 
      call ice_fast_physics     
@@ -1275,20 +1327,22 @@ contains
 
 
      ! TODO:  restore cice module dt from dt_save
+     dt = dt_save
 
      ! TODO: get FHOCN, FRESH and FSALT from cice
      ! can be done with  ice_export_field routine as following, but we need 3 tmp arrays
-     !  call ice_export_field('FHOCN', FHOCN_E, _RC)
-     !  call ice_export_field('FRESH', FRESH_E, _RC)
-     !  call ice_export_field('FSALT', FSALT_E, _RC)
+     call ice_export_field('FHOCN', FHOCN_E, _RC)
+     call ice_export_field('FRESH', FRESH_E, _RC)
+     call ice_export_field('FSALT', FSALT_E, _RC)
 
      ! TODO: accumulate fluxes from fast_physics
-     !  FHOCN_A = FHOCN_A + FHOCN_E
-     !  FRESH_A = FRESH_A + FRESH_E
-     !  FSALT_A = FSALT_A + FSALT_E
+
+     FHOCN_A = FHOCN_A + FHOCN_E
+     FRESH_A = FRESH_A + FRESH_E
+     FSALT_A = FSALT_A + FSALT_E
 
      ! QUESTION from Bin: I don't know how to make these pointers/arrays here other than from state
-     ! these pointers need to persist over tehrmal_coupling calls
+     ! these pointers need to persist over thermal_coupling calls
 
      ! pack them back into state 
 
