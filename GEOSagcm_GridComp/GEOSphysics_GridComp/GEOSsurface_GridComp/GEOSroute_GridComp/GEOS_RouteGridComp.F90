@@ -1022,7 +1022,11 @@ contains
     !real,                  allocatable :: WTOT_BEFORE(:)
    
     type(ESMF_Alarm)                   :: CollectWaterAlarm 
-    
+
+       real, allocatable :: Q_total_glob(:),QRUNOFF_glob(:)
+       integer, allocatable :: n2end(:)
+       integer :: nnn, curr_id, down_id, steps, n2end_max
+   
     ! ------------------
     ! begin    
     call ESMF_UserCompGetInternalState ( GC, 'RiverRoute_state',wrap,status )
@@ -1142,27 +1146,66 @@ contains
        !
        ! Call river_routing_model (get outflows from main river and local streams, also updates storage of main river and local streams)
        !
-       CALL RIVER_ROUTING_HYD( n_pfaf_local, ROUTE_DT,    &      ! intent(in)
-            QRUNOFF, route%alpha_riv, route%alpha_str,    &      ! intent(in)
-            WSTREAM, WRIVER,                              &      ! intent(inout)
-            QSFLOW, QOUTFLOW)                                    ! intent(out)
-
-       QCAT = QOUTFLOW                                           ! for now, outflow from Pfaf catchment is outflow from main river          
+       !CALL RIVER_ROUTING_HYD( n_pfaf_local, ROUTE_DT,    &      ! intent(in)
+       !     QRUNOFF, route%alpha_riv, route%alpha_str,    &      ! intent(in)
+       !     WSTREAM, WRIVER,                              &      ! intent(inout)
+       !     QSFLOW, QOUTFLOW)                                    ! intent(out)        
        
+       !---------TRAVEL_TIME=0-------------------------------------------------------------
+
+       allocate(QRUNOFF_glob(N_pfaf_g),downid_global(N_pfaf_g),Q_total_glob(N_pfaf_g),n2end(N_pfaf_g))
+       call ESMFL_FCollect(route%pfaf_tilegrid, QRUNOFF_glob,   QRUNOFF,          _RC)
+       call ESMFL_FCollect(route%pfaf_tilegrid, downid_global, route%downid,  _RC)
+
+       n2end_max = 0
+       do i = 1, N_pfaf_g
+           steps = 0
+           curr_id = i
+           do while (downid_global(curr_id) > 0 .and. downid_global(curr_id) <= N_pfaf_g)
+               steps = steps + 1
+               curr_id = downid_global(curr_id)
+           end do
+           n2end(i) = steps
+           
+           if (steps > n2end_max) then
+               n2end_max = steps
+           end if
+       end do
+
+       Q_total_glob = QRUNOFF_glob
+
+       do nnn = n2end_max, 1, -1 !n
+           do i = 1, N_pfaf_g
+               if (n2end(i) == nnn) then
+                   down_id = downid_global(i)
+                   if (down_id > 0 .and. down_id <= N_pfaf_g) then
+                       Q_total_glob(down_id) = Q_total_glob(down_id) + Q_total_glob(i)
+                   end if
+               end if
+           end do
+       end do
+
+       QOUTFLOW=Q_total_glob(route%minCatch:route%maxCatch)
+
+       deallocate(QRUNOFF_glob,downid_global,Q_total_glob,n2end)       
+       !----------------------------------------------------------------------
+
+       QCAT = QOUTFLOW                                           ! for now, outflow from Pfaf catchment is outflow from main river  
+
        ! Call reservoir module if requested (get reservoir outflow, also updates reservoir storage)
        !
-       if (res%use_res .eqv. .True.) then
+       !if (res%use_res .eqv. .True.) then
 
-          call res%calc(                                  &
-               QOUTFLOW,                                  &      ! intent(in)
-               QRES,                                      &      ! intent(out)
-               WRES,                                      &      ! intent(inout)
-               real(route_dt),                            &      ! intent(in)
-               _RC)
+          !call res%calc(                                  &
+          !     QOUTFLOW,                                  &      ! intent(in)
+          !     QRES,                                      &      ! intent(out)
+          !     WRES,                                      &      ! intent(inout)
+          !     real(route_dt),                            &      ! intent(in)
+          !     _RC)
 
-          where(res%active_res==1) QCAT=QRES   ! for active reservoirs, overwrite outflow from Pfaf catchment with reservoir outflow
+          !where(res%active_res==1) QCAT=QRES   ! for active reservoirs, overwrite outflow from Pfaf catchment with reservoir outflow
 
-       end if
+       !end if
           
        ! map upstream outflows to local inflow
        call exchange_water(QCAT, QINFLOW, _RC)

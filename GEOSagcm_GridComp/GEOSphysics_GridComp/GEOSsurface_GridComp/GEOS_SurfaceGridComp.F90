@@ -7730,35 +7730,35 @@ module GEOS_SurfaceGridCompMod
           VERIFY_(STATUS)
        end if
 
-       call MAPL_LocStreamGet(LOCSTREAM, &
-           tileGrid=tilegrid_sfc, nt_local=nt_local_sfc, nt_global=nt_global_sfc, local_id=local_id_sfc,&
-           RC=STATUS)
-       VERIFY_(STATUS)
-       allocate(DISTER_glob(nt_global_sfc),DISCHARGE_glob(nt_global_sfc),DISTER_glob_ori(nt_global_sfc),DISCHARGE_glob_ori(nt_global_sfc),global_id_sfc(nt_global_sfc))
-       DISTER_glob=0.;DISCHARGE_glob=0.;DISTER_glob_ori=0.;DISCHARGE_glob_ori=0.
-       call ESMFL_Fcollect(tilegrid_sfc, global_id_sfc, local_id_sfc, _RC)
-       call ESMFL_Fcollect(tilegrid_sfc, DISTER_glob_ori, DISTERTILE,   _RC)
-       call ESMFL_Fcollect(tilegrid_sfc, DISCHARGE_glob_ori, DISCHARGETILE,   _RC) 
-       do i=1,nt_global_sfc
-         tid=global_id_sfc(i)
-         DISTER_glob(tid) = DISTER_glob_ori(i)
-         DISCHARGE_glob(tid)=DISCHARGE_glob_ori(i)
-       enddo
-       if (MAPL_AM_I_ROOT().and.sum(DISTER_glob)>0.) then
-          open(999,file="/discover/nobackup/yzeng3/GEOSldas/exp/C12_O72_V11p10p1_test/DISTER_glob.txt")
-          do i=1,nt_global_sfc
-            tid=global_id_sfc(i)
-            write(999,*)DISTER_glob(i)
-          enddo
-          open(999,file="/discover/nobackup/yzeng3/GEOSldas/exp/C12_O72_V11p10p1_test/DISCHARGE_glob.txt")
-          do i=1,nt_global_sfc
-            write(999,*)DISCHARGE_glob(i)
-          enddo    
-          print *,sum(DISTER_glob)
-          print *,sum(DISCHARGE_glob)
-          stop      
-       endif      
-       deallocate(DISTER_glob,DISCHARGE_glob,DISTER_glob_ori,DISCHARGE_glob_ori,global_id_sfc)
+       !call MAPL_LocStreamGet(LOCSTREAM, &
+       !    tileGrid=tilegrid_sfc, nt_local=nt_local_sfc, nt_global=nt_global_sfc, local_id=local_id_sfc,&
+       !    RC=STATUS)
+       !VERIFY_(STATUS)
+       !allocate(DISTER_glob(nt_global_sfc),DISCHARGE_glob(nt_global_sfc),DISTER_glob_ori(nt_global_sfc),DISCHARGE_glob_ori(nt_global_sfc),global_id_sfc(nt_global_sfc))
+       !DISTER_glob=0.;DISCHARGE_glob=0.;DISTER_glob_ori=0.;DISCHARGE_glob_ori=0.
+       !call ESMFL_Fcollect(tilegrid_sfc, global_id_sfc, local_id_sfc, _RC)
+       !call ESMFL_Fcollect(tilegrid_sfc, DISTER_glob_ori, DISTERTILE,   _RC)
+       !call ESMFL_Fcollect(tilegrid_sfc, DISCHARGE_glob_ori, DISCHARGETILE,   _RC) 
+       !do i=1,nt_global_sfc
+       !  tid=global_id_sfc(i)
+       !  DISTER_glob(tid) = DISTER_glob_ori(i)
+       !  DISCHARGE_glob(tid)=DISCHARGE_glob_ori(i)
+       !enddo
+       !if (MAPL_AM_I_ROOT().and.sum(DISTER_glob)>0.) then
+       !   open(999,file="/discover/nobackup/yzeng3/GEOSldas/exp/C12_O72_V11p10p1_test/DISTER_glob.txt")
+       !   do i=1,nt_global_sfc
+       !     tid=global_id_sfc(i)
+       !     write(999,*)DISTER_glob(i)
+       !   enddo
+       !   open(999,file="/discover/nobackup/yzeng3/GEOSldas/exp/C12_O72_V11p10p1_test/DISCHARGE_glob.txt")
+       !   do i=1,nt_global_sfc
+       !     write(999,*)DISCHARGE_glob(i)
+       !   enddo    
+       !   print *,sum(DISTER_glob)
+       !   print *,sum(DISCHARGE_glob)
+       !   stop      
+       !endif      
+       !deallocate(DISTER_glob,DISCHARGE_glob,DISTER_glob_ori,DISCHARGE_glob_ori,global_id_sfc)
 
        !-------------------------------------------------------------------------------------
        !  Special treatment for doing ocean-coupled atmospheric replays to an analysis
