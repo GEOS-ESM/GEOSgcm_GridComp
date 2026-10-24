@@ -406,7 +406,7 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     call MAPL_GetResource( MAPL, refl10cm_allow_wet_graupel , 'refl10cm_allow_wet_graupel:' , DEFAULT= .FALSE. , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, refl10cm_allow_wet_snow    , 'refl10cm_allow_wet_snow:'    , DEFAULT= .FALSE. , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, DBZ_VAR_INTERCP     , 'DBZ_VAR_INTERCP:'     , DEFAULT= DBZ_VAR_INTERCP, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, LIQUID_SKIN_SNOW    , 'LIQUID_SKIN_SNOW:'    , DEFAULT= .TRUE. , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, LIQUID_SKIN_SNOW    , 'LIQUID_SKIN_SNOW:'    , DEFAULT= .FALSE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LIQUID_SKIN_GRAUPEL , 'LIQUID_SKIN_GRAUPEL:' , DEFAULT= .FALSE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LIQUID_SKIN_HAIL    , 'LIQUID_SKIN_HAIL:'    , DEFAULT= .TRUE. , RC=STATUS); VERIFY_(STATUS)
 
@@ -439,7 +439,7 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     ! USE_BERGERON            : Activates macrophysical Wegener-Bergeron-Findeisen logic 
     !                           (e.g., modifying mixed-phase cloud fraction and phase overlap). 
     !                           Note: Microphysical WBF mass transfer is controlled separately.
-    call MAPL_GetResource( MAPL, ICE_FRACTION_POLYNOMIAL, Label="ICE_FRACTION_POLYNOMIAL:",  default=V12_ICE_POLYNOMIAL, RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, ICE_FRACTION_POLYNOMIAL, Label="ICE_FRACTION_POLYNOMIAL:",  default=RAW_MODIS_POLYNOMIAL, RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, USE_AEROSOL_NN , 'USE_AEROSOL_NN:'  , DEFAULT=USE_AEROSOL_NN, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, USE_BERGERON   , 'USE_BERGERON:'    , DEFAULT=.FALSE., RC=STATUS); VERIFY_(STATUS)
 

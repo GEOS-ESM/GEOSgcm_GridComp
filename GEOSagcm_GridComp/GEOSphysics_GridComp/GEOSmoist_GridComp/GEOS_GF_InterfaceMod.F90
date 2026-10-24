@@ -227,7 +227,7 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
       !   Increasing C0 wrings out the plume internally, resulting in thinner, drier anvils aloft.
       !   Decreasing C0 allows the plume to transport more mass to the upper troposphere.
       call MAPL_GetResource(MAPL, C0_DEEP                   , 'C0_DEEP:'               ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, C0_MID                    , 'C0_MID:'                ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, C0_MID                    , 'C0_MID:'                ,default= 0.5e-3,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, C0_SHAL                   , 'C0_SHAL:'               ,default= 0.0   ,RC=STATUS );VERIFY_(STATUS)
 
       ! C0_ICE_EFF: Ice Precipitation Efficiency Multiplier [fraction].
@@ -250,7 +250,7 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
       !   A value > 0.0 activates explicit lateral shedding. A value of 0.0 treats the plume 
       !   as laterally closed, deferring entirely to the bulk detrainment logic.
       call MAPL_GetResource(MAPL, C1_DEEP                   , 'C1_DEEP:'               ,default= 3.0e-4,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, C1_MID                    , 'C1_MID:'                ,default= 1.5e-4,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, C1_MID                    , 'C1_MID:'                ,default= 3.0e-4,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, C1_SHAL                   , 'C1_SHAL:'               ,default= 0.0   ,RC=STATUS );VERIFY_(STATUS)
 
       if (INT(ZERO_DIFF_TAU) == 0) then
@@ -383,10 +383,10 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
         call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(MID)   , 'HEI_DOWN_OCEAN_MD:'     ,default= 0.60,  RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(DEEP)   , 'HEI_UPDF_LAND_DP:'      ,default= 0.40,  RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(SHAL)   , 'HEI_UPDF_LAND_SH:'      ,default= 0.20,  RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(MID)    , 'HEI_UPDF_LAND_MD:'      ,default= 0.40,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(MID)    , 'HEI_UPDF_LAND_MD:'      ,default= 0.55,  RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(DEEP)  , 'HEI_UPDF_OCEAN_DP:'     ,default= 0.40,  RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(SHAL)  , 'HEI_UPDF_OCEAN_SH:'     ,default= 0.20,  RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(MID)   , 'HEI_UPDF_OCEAN_MD:'     ,default= 0.40,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(MID)   , 'HEI_UPDF_OCEAN_MD:'     ,default= 0.60,  RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_MIN_EDT_LAND(DEEP)    , 'MIN_EDT_LAND_DP:'       ,default= 0.10,  RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_MIN_EDT_LAND(SHAL)    , 'MIN_EDT_LAND_SH:'       ,default= 0.00,  RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_MIN_EDT_LAND(MID)     , 'MIN_EDT_LAND_MD:'       ,default= 0.10,  RC=STATUS );VERIFY_(STATUS)

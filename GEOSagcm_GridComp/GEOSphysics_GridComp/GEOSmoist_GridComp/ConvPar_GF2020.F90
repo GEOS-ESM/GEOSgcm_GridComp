@@ -1455,7 +1455,7 @@ CONTAINS
 
     CASE('mid')
        z_cloud_top_min = 2000.  ! Mid-level cloud
-       z_cloud_top_max = 6000.  ! Allow congestus to reach ~500 hPa to build missing mid-level liquid (ql)
+       z_cloud_top_max = 5000.  ! Allow congestus to reach ~500 hPa to build missing mid-level liquid (ql)
        depth_min       = 1000.  ! Noticeable mid-layer depth
        zkbmax          = 4500.  ! MUST be <= (z_cloud_top_max - depth_min)
        zcutdown        = 4000.  ! Shifted upward to fit the new, deeper congestus profile

@@ -1011,7 +1011,7 @@ contains
 
     logical :: use_cumpenent
     logical :: scverbose
-    logical :: windsrcavg
+    integer :: windsrcavg
     real    :: rpen     ! penetrative entrainment efficiency
 
 
@@ -1541,7 +1541,7 @@ contains
        ! as the values just below the PBL top interface.                    !
        ! ------------------------------------------------------------------ !
 
-         if (windsrcavg) then
+         if (windsrcavg /= 0) then
             zrho = pifc0(0)/(287.04*(t0(1)*(1.+0.608*qv0(1))))
             buoyflx = (-shfx/cp-0.608*t0(1)*evap)/zrho ! K m s-1
             ! Use actual PBL depth for convective velocity scale
@@ -1611,7 +1611,7 @@ contains
            go to 333
         end if
 
-         plcl = qsinvert(qtsrc,thlsrc,pifc0(0))
+         plcl = qsinvert(qtsrc,thlsrc,pifc0(0),windsrcavg)
          do k = 0, k0
             if( pifc0(k) .lt. plcl ) then
                 klcl = k
@@ -4703,8 +4703,7 @@ contains
       return
    end function slope
 
-
-  function qsinvert(qt,thl,ps_in)
+  function qsinvert(qt,thl,ps_in,windsrcavg_in)
   ! ----------------------------------------------------------------- !
   ! Function calculating saturation pressure ps (or pLCL) from qt and !
   ! thl ( liquid potential temperature,  NOT liquid virtual potential ! 
@@ -4715,7 +4714,8 @@ contains
      implicit none
 
      real          :: ps_in
-     real          :: qsinvert    
+     integer, intent(in) :: windsrcavg_in
+     real            :: qsinvert    
      real,intent(in) :: qt, thl
      real*8          :: Pis, err, dlnqsdT, dTdPis, dqsdT
      real*8          :: dPisdps, dlnqsdps, derrdps, dps 
@@ -4740,18 +4740,50 @@ contains
      qs       = dble( GEOS_QSAT(Tgeos,Pgeos/100.) )
      es       = ps_in * qs  / ( ep2 + (1._r8-ep2)*qs )
      rhi      = qt/qs
-     if( rhi .le. 0.01_r8 ) then
-!        if (scverbose) then
-          call write_parallel('Source air is too dry and pLCL is set to psmin in uwshcu.F90')
-!        end if
-        qsinvert = psmin
-        return
-     end if
 
-!     print *,'Ti,Rhi,thl=',Ti,rhi,thl       ! WMP log(rhi) protected from NaN above
-     TLCL     =  55._r8 + 1._r8/(1._r8/(Ti-55._r8)-log(rhi)/2840._r8) ! Bolton's formula. MWR.1980.Eq.(22)
-     PiLCL    =  TLCL/thl
-     ps       =  p00*(PiLCL)**(1._r8/rovcp)
+     if ( windsrcavg_in /= 0 ) then
+        ! ----------------------------------------------------------------- !
+        ! ADAPTIVE LOGIC FOR MIXED-LAYER VALUES                             !
+        ! ----------------------------------------------------------------- !
+        if( rhi .le. 0.01_r8 ) then
+           ! Re-evaluate reference baseline 100 hPa higher up to clear dry anomalies
+           Pgeos = ps_in - 10000._r8 
+           Ti    = thl*(Pgeos/p00)**rovcp
+           Tgeos = Ti
+           qs    = dble( GEOS_QSAT(Tgeos,Pgeos/100.) )
+           rhi   = max(0.001_r8, qt/max(qs, 1.e-10_r8))
+           
+           ! Dynamic boundary safety floor instead of the hard 100mb trap
+           psmin = max(20000._r8, ps_in - 5000.0_r8)
+           
+           TLCL     =  55._r8 + 1._r8/(1._r8/(Ti-55._r8)-log(rhi)/2840._r8)
+           PiLCL    =  TLCL/thl
+           ps       =  p00*(PiLCL)**(1._r8/rovcp)
+           ps       =  max(20000._r8, min(ps_in, ps))
+        else
+!          print *,'Ti,Rhi,thl=',Ti,rhi,thl       ! WMP log(rhi) protected from NaN above
+           TLCL     =  55._r8 + 1._r8/(1._r8/(Ti-55._r8)-log(rhi)/2840._r8) ! Bolton's formula. MWR.1980.Eq.(22)
+           PiLCL    =  TLCL/thl
+           ps       =  p00*(PiLCL)**(1._r8/rovcp)
+        end if
+     else
+        ! ----------------------------------------------------------------- !
+        ! ORIGINAL PATHWAY (windsrcavg = .false.)                           !
+        ! Strict bit-for-bit identity match for surface-layer source arrays !
+        ! ----------------------------------------------------------------- !
+        if( rhi .le. 0.01_r8 ) then
+!           if (scverbose) then
+              call write_parallel('Source air is too dry and pLCL is set to psmin in uwshcu.F90')
+!           end if
+           qsinvert = psmin
+           return
+        end if
+
+!        print *,'Ti,Rhi,thl=',Ti,rhi,thl       ! WMP log(rhi) protected from NaN above
+        TLCL     =  55._r8 + 1._r8/(1._r8/(Ti-55._r8)-log(rhi)/2840._r8) ! Bolton's formula. MWR.1980.Eq.(22)
+        PiLCL    =  TLCL/thl
+        ps       =  p00*(PiLCL)**(1._r8/rovcp)
+     end if
 
      do i = 1, 10
        Pis      =  (ps/p00)**rovcp   ! Exner function
@@ -4793,8 +4825,7 @@ contains
 !     end if
      qsinvert = psmin
      return
-   end function qsinvert
-
+  end function qsinvert
 
    real function compute_alpha(del_CIN,ke)
    ! ------------------------------------------------ !

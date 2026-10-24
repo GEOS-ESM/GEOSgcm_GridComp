@@ -48,22 +48,22 @@ module GEOSmoist_Process_Library
 
   ! Lugh ICE_FRACTION constants
    ! Shift and slope parameters targeted for MODIS polynomial
-   real, parameter :: GLAC_SHIFT_LANDICE =  9.0
-   real, parameter :: GLAC_SLOPE_LANDICE =  0.8
+   real, parameter :: GLAC_SHIFT_LANDICE =  0.0
+   real, parameter :: GLAC_SLOPE_LANDICE =  1.0
 
-   real, parameter :: GLAC_SHIFT_SEAICE  =  7.5
-   real, parameter :: GLAC_SLOPE_SEAICE  =  0.8
+   real, parameter :: GLAC_SHIFT_SEAICE  =  0.0
+   real, parameter :: GLAC_SLOPE_SEAICE  =  1.0
 
-   real, parameter :: GLAC_SHIFT_SNOW    =  6.0
-   real, parameter :: GLAC_SLOPE_SNOW    =  0.8
+   real, parameter :: GLAC_SHIFT_SNOW    =  0.0
+   real, parameter :: GLAC_SLOPE_SNOW    =  1.0
 
    real, parameter :: GLAC_SHIFT_OCEAN   =  0.0
    real, parameter :: GLAC_SLOPE_OCEAN   =  1.0
 
-   real, parameter :: GLAC_SHIFT_LAND    = -2.0
-   real, parameter :: GLAC_SLOPE_LAND    =  1.1
+   real, parameter :: GLAC_SHIFT_LAND    =  0.0
+   real, parameter :: GLAC_SLOPE_LAND    =  1.0
 
-   real, parameter :: GLAC_SHIFT_CONV    = 10.0
+   real, parameter :: GLAC_SHIFT_CONV    =  5.0
    real, parameter :: GLAC_SLOPE_CONV    =  0.8
 
   ! Jason ICE_FRACTION constants

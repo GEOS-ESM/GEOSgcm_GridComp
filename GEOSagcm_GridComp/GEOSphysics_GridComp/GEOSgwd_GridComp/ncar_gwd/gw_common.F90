@@ -401,10 +401,6 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   !------------------------------------------------------------------------
 
   ! Loop from bottom to top to get stress profiles.
-!$OMP parallel do default(none) &
-!$OMP shared(kbot_src,ktop,kvtt,band,ubi,c,effkwv,rhoi,ni, &
-!$OMP        near_zero,ro_adjust,ncol,alpha,piln,t,rog,src_level,tau) &
-!$OMP private(k,d,l,i,tausat,taudmp,ubmc,ubmc2,wrk,mi,crit_threshold)
   do k = kbot_src, ktop, -1
      
      ! Determine the diffusivity for each column.
@@ -488,10 +484,6 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   !------------------------------------------------------------------------
 
   ! Loop over levels from top to bottom
-!$OMP parallel do default(none) &
-!$OMP shared(kbot_tend,ktop,band,ncol,tau,delp,rdelp,c,ubm,dt,gravit,utgw,vtgw, &
-!$OMP        gwut,ubt,xv,yv,tend_level,near_zero) &
-!$OMP private(k,l,i,ubtl)
   do k = ktop, kbot_tend
 
      ! Accumulate the mean wind tendency over wavenumber.
@@ -552,9 +544,6 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
   ! Evaluate second temperature tendency term: Conversion of kinetic
   ! energy into thermal.
-!$OMP parallel do default(none) &
-!$OMP shared(kbot_tend,ktop,band,ttgw,ubm,c,gwut) &
-!$OMP private(k,l)
   do k = ktop, kbot_tend
      do l = -band%ngwv, band%ngwv
         ttgw(:,k) = ttgw(:,k) - (ubm(:,k) - c(:,l)) * gwut(:,k,l)
@@ -643,12 +632,6 @@ subroutine gw_flux_diagnostics(ncol, pver, band, c, ubi, tau, xv, yv, &
   ! Parallelized with OpenMP reduction for efficiency
   !-----------------------------------------------------------------------
 
-!$OMP parallel do default(none) &
-!$OMP shared(band,pver,kbot,c,ubi,tau,xv,yv,ncol) &
-!$OMP private(l,k,i,cmu,fpmx,fpmy,fe,fpe) &
-!$OMP reduction(+:taugwx,taugwy,fegw,fepgw, &
-!$OMP            taugwx_east,taugwx_west,taugwy_east,taugwy_west, &
-!$OMP            fegw_east,fegw_west,fepgw_east,fepgw_west)
   do l = -band%ngwv, band%ngwv
      do k = 1, pver
         if (k <= kbot) then
@@ -693,7 +676,6 @@ subroutine gw_flux_diagnostics(ncol, pver, band, c, ubi, tau, xv, yv, &
         end if
      end do
   end do
-!$OMP end parallel do
 
 end subroutine gw_flux_diagnostics
 

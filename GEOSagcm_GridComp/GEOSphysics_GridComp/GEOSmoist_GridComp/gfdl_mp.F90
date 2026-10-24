@@ -416,12 +416,12 @@ module gfdl_mp_mod
 
     ! simple process timescales
     real :: tau_r2g  =  900.0 ! rain freezing to graupel time scale (s)
-    real :: tau_i2s  =  300.0 ! cloud ice to snow autoconversion time scale (s)
+    real :: tau_i2s  =  150.0 ! cloud ice to snow autoconversion time scale (s)
     real :: tau_l2r  =  450.0 ! cloud water to rain autoconversion time scale (s)
     ! other timescales
     real :: tau_v2l  =   75.0 ! water vapor to cloud water condensation time scale (s)
     real :: tau_l2v  =  150.0 ! cloud water to water vapor evaporation time scale (s)
-    real :: tau_revp =  600.0 ! rain evaporation time scale (s)
+    real :: tau_revp =  300.0 ! rain evaporation time scale (s)
     real :: tau_frez =  600.0 ! cloud liquid freezing time scale (s)
     real :: tau_imlt =  600.0 ! cloud ice melting time scale (s)
     real :: tau_smlt =  900.0 ! snow melting time scale (s)
@@ -447,7 +447,7 @@ module gfdl_mp_mod
 
     real :: ql0_max = 2.0e-3 ! maximum cloud water value (autoconverted to rain) (kg/kg)
 
-    real :: psaut_qi_crt = 1.0e-4 ! cloud ice to snow autoconversion threshold (kg/m^3)
+    real :: psaut_qi_crt = 0.5e-4 ! cloud ice to snow autoconversion threshold (kg/m^3)
     real :: pwbf_qi_crt  = 0.8e-4 ! WBF liquid to ice freezing threshold (kg/m^3)
     real :: pgaut_qs_crt = 0.6e-3 ! snow to graupel autoconversion threshold (0.6e-3 in Purdue Lin scheme) (kg/m^3)
  
@@ -494,13 +494,13 @@ module gfdl_mp_mod
     real :: vw_fac = 1.0
     real :: vi_fac_cnv = 1.0
     real :: vi_fac_lsc = 1.0
-    real :: vs_fac = 1.0
+    real :: vs_fac = 1.2
     real :: vg_fac = 1.0
-    real :: vr_fac = 1.0
+    real :: vr_fac = 1.2
     real :: vh_fac = 1.0
 
     real :: vw_min = 0.0  !< minimum fall speed for cloud water (m/s)
-    real :: vi_min = 0.01 !< minimum fall speed or constant fall speed
+    real :: vi_min = 0.02 !< minimum fall speed or constant fall speed
     real :: vs_min = 0.25 !< minimum fall speed or constant fall speed
     real :: vg_min = 3.   !< minimum fall speed or constant fall speed
     real :: vr_min = 4.   !< minimum fall speed or constant fall speed
@@ -3652,23 +3652,15 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
     real :: ql, qi, qim, qadum, newliq, newice
     real :: tmp, sink, fac_imlt, fac_imlt_loc, fac_frez, fac_frez_loc
     real :: critical_qi_factor
+    real :: pl, p_norm, p_factor
 
-    ! -------------------------------------------------------------------------
-    ! Scale-Aware Cloud Ice Threshold (critical_qi_factor)
-    ! -------------------------------------------------------------------------
-    ! Applies a resolution-dependent adjustment to the critical ice threshold,
-    ! partitioning the grid box into unresolved and resolved fractions.
-    !   
-    ! - Unresolved scales (onemsig = 0): Applies a strict penalty (0.1×)
-    !   to sub-grid parameterizations. This forces sub-grid ice to precipitate
-    !   as snow earlier, preventing global QI from skyrocketing and negatively 
-    !   impacting the radiation budget. Threshold = 1.0e-5 kg/m³
-    ! - Resolved scales (onemsig = 1): Increases the threshold (2.0×) to
-    !   2.0e-4 kg/m³. Grid-scale clouds get a larger ice bucket, allowing 
-    !   resolved large-scale ascent to loft and suspend ice normally before
-    !   autoconversion to snow occurs.
-    ! -------------------------------------------------------------------------
-    critical_qi_factor = psaut_qi_crt * (0.1 + 1.9 * onemsig)
+    ! -----------------------------------------------------------------------
+    ! Tunable parameters for pressure-dependent critical threshold (Aligned with psaut)
+    ! -----------------------------------------------------------------------
+    real, parameter :: PSAUT_FACTOR_HIGH = 2.5    ! Multiplier at upper levels (p < 300 hPa)
+    real, parameter :: PSAUT_FACTOR_LOW  = 0.8    ! Multiplier at lower levels (p > 800 hPa)
+    real, parameter :: PSAUT_P_MID       = 450.0  ! Transition center (hPa)
+    real, parameter :: PSAUT_P_WIDTH     = 100.0  ! Transition width (hPa)
 
     fac_imlt = 1. - exp (- dts / tau_imlt)
     fac_frez = 1. - exp (- dts / tau_frez)
@@ -3679,7 +3671,6 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
             ! Use In-Cloud condensates with scale-aware blending
             if (in_cloud_ice) then
-              ! Enforce minimum bound to prevent vanishing values
               qadum = max(qak(k), cfmin)
             else
               qadum = 1.0 
@@ -3690,7 +3681,6 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
             tmp = tz (k)
             newliq = new_liq_condensate(tmp, ql, qi)
  
-            ! Cloud ice melts instantly if it gets too far past freezing (e.g., +2 C)
             if (tmp > tmlt_fast) then
                 fac_imlt_loc = 1.0 ! Instant melt
             else
@@ -3710,9 +3700,24 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
         elseif (tz (k) <= tice .and. qlk (k) > qcmin) then
 
+            ! ===================================================================
+            ! CALCULATE DRY AIR PRESSURE (Consistent with psaut)
+            ! ===================================================================
+            pl = den(k) * rdgas * tz(k)  ! Pressure in Pa
+            pl = pl * 0.01               ! Convert to hPa (mb)
+
+            ! ===================================================================
+            ! SMOOTH PRESSURE-DEPENDENT THRESHOLD MULTIPLIER (Consistent with psaut)
+            ! ===================================================================
+            p_norm = (pl - PSAUT_P_MID) / PSAUT_P_WIDTH
+            p_factor = PSAUT_FACTOR_LOW + 0.5 * (PSAUT_FACTOR_HIGH - PSAUT_FACTOR_LOW) * &
+                       (1.0 - tanh(p_norm))
+            
+            ! Apply pressure-dependent multiplier to critical threshold
+            critical_qi_factor = min(psaut_qi_crt * p_factor, psaut_qi_crt)
+
             ! Use In-Cloud condensates with scale-aware blending
             if (in_cloud_ice) then
-              ! Enforce minimum bound to prevent vanishing values
               qadum = max(qak(k), cfmin)            
             else
               qadum = 1.0
@@ -3723,15 +3728,16 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
             tmp = tz (k)
             newice = new_ice_condensate(tmp, ql, qi)
 
-            ! --- NEW: Homogeneous Freezing Hard Stop ---
             if (tmp < tfrz_inst) then
-                newice = ql        ! All liquid must become ice
-                fac_frez_loc = 1.0 ! Instantaneous timescale
+                newice = ql        
+                fac_frez_loc = 1.0 
             else
-                fac_frez_loc = fac_frez ! Normal 10-minute timescale
+                fac_frez_loc = fac_frez 
             endif
 
             sink = fac_frez_loc * min(ql, newice, (tice - tz (k)) / icpk (k))
+            
+            ! FIXED: Replaced baseline critical_qi_factor with critical_qi_factor
             qim = critical_qi_factor / den (k)
             tmp = min (sink, dim (qim, qi))
 
@@ -3858,24 +3864,6 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
 
     real :: ql, qi, qadum, newice 
     real :: tmp, sink, qim, fac_frez
-    real :: critical_qi_factor
-
-    ! -------------------------------------------------------------------------
-    ! Scale-Aware Cloud Ice Threshold (critical_qi_factor)
-    ! -------------------------------------------------------------------------
-    ! Applies a resolution-dependent adjustment to the critical ice threshold,
-    ! partitioning the grid box into unresolved and resolved fractions.
-    !   
-    ! - Unresolved scales (onemsig = 0): Applies a strict penalty (0.1×)
-    !   to sub-grid parameterizations. This forces sub-grid ice to precipitate
-    !   as snow earlier, preventing global QI from skyrocketing and negatively 
-    !   impacting the radiation budget. Threshold = 1.0e-5 kg/m³
-    ! - Resolved scales (onemsig = 1): Increases the threshold (2.0×) to
-    !   2.0e-4 kg/m³. Grid-scale clouds get a larger ice bucket, allowing 
-    !   resolved large-scale ascent to loft and suspend ice normally before
-    !   autoconversion to snow occurs.
-    ! -------------------------------------------------------------------------
-    critical_qi_factor = psaut_qi_crt * (0.1 + 1.9 * onemsig)
 
     fac_frez = 1. - exp (- dts / tau_frez)
 
@@ -3897,7 +3885,7 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
             newice = new_ice_condensate(tmp, ql, qi)
 
             sink = fac_frez * min(ql, newice, (tice - tz (k)) / icpk (k))
-            qim = critical_qi_factor / den (k)
+            qim = psaut_qi_crt / den (k)
             tmp = min (sink, dim (qim, qi))
 
             tmp = tmp*qadum
@@ -4036,17 +4024,6 @@ subroutine pgmlt (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den
 
     real :: tc, factor, sink, qden, dqdt, tin, dq, qsi
     real :: pgacw, pgacr
-    real :: oms_cgacw
-
-    ! -----------------------------------------------------------------------
-    ! Graupel Accretion of Cloud Water (cgacw) Resolution Penalty
-    ! -----------------------------------------------------------------------
-    ! Applies a massive 100x penalty (1.e-2) at coarse resolutions (onemsig=0).
-    ! This is physically required because true graupel is a convective phenomenon.
-    ! At 50km, large-scale graupel accretion is aggressively paralyzed to prevent 
-    ! it from artificially sweeping out all large-scale cloud liquid water (QL).
-    ! -----------------------------------------------------------------------
-    oms_cgacw = cgacw * (1.e-2*(1.0-onemsig) + onemsig)
 
     do k = ks, ke
 
@@ -4058,13 +4035,13 @@ subroutine pgmlt (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den
             qden = qg (k) * den (k)
             if (ql (k) .gt. qcmin) then
                 if (do_3d_acc_cliq) then
-                    pgacw = acr3d (vtg (k), vtw (k), ql (k), qg (k), oms_cgacw, acco (:, 9), &
+                    pgacw = acr3d (vtg (k), vtw (k), ql (k), qg (k), cgacw, acco (:, 9), &
                         acc (17), acc (18), den (k))
                 else
                     if (do_hail) then
-                        factor = acr2d (qden, oms_cgacw, denfac (k), blinh, muh)
+                        factor = acr2d (qden, cgacw, denfac (k), blinh, muh)
                     else
-                        factor = acr2d (qden, oms_cgacw, denfac (k), bling, mug)
+                        factor = acr2d (qden, cgacw, denfac (k), bling, mug)
                     endif
                     pgacw = factor / (1. + dts * factor) * ql (k)
                 endif
@@ -4193,32 +4170,15 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
 
     real :: tc, sink, fac_i2s, q_plus, qim, dq, tmp
     real :: di, qi, critical_qi_factor, qadum
-    real :: pl, p_norm, p_factor, critical_qi_factor_local
+    real :: pl, p_norm, p_factor
 
     ! -----------------------------------------------------------------------
     ! Tunable parameters for pressure-dependent critical threshold
     ! -----------------------------------------------------------------------
-    real, parameter :: PSAUT_FACTOR_HIGH = 5.0    ! Multiplier at upper levels
-    real, parameter :: PSAUT_FACTOR_LOW  = 1.0    ! Multiplier at lower levels
+    real, parameter :: PSAUT_FACTOR_HIGH = 2.5    ! Multiplier at upper levels (p < 300 hPa)
+    real, parameter :: PSAUT_FACTOR_LOW  = 0.8    ! Multiplier at lower levels (p > 800 hPa)
     real, parameter :: PSAUT_P_MID       = 450.0  ! Transition center (hPa)
     real, parameter :: PSAUT_P_WIDTH     = 100.0  ! Transition width (hPa)
-
-    ! -------------------------------------------------------------------------
-    ! Scale-Aware Cloud Ice Threshold (critical_qi_factor)
-    ! -------------------------------------------------------------------------
-    ! Applies a resolution-dependent adjustment to the critical ice threshold,
-    ! partitioning the grid box into unresolved and resolved fractions.
-    !   
-    ! - Unresolved scales (onemsig = 0): Applies a strict penalty (0.1×)
-    !   to sub-grid parameterizations. This forces sub-grid ice to precipitate
-    !   as snow earlier, preventing global QI from skyrocketing and negatively 
-    !   impacting the radiation budget. Threshold = 1.0e-5 kg/m³
-    ! - Resolved scales (onemsig = 1): Increases the threshold (2.0×) to
-    !   2.0e-4 kg/m³. Grid-scale clouds get a larger ice bucket, allowing 
-    !   resolved large-scale ascent to loft and suspend ice normally before
-    !   autoconversion to snow occurs.
-    ! -------------------------------------------------------------------------
-    critical_qi_factor = psaut_qi_crt * (0.1 + 1.9 * onemsig)
 
     fac_i2s = 1. - exp (- dts / tau_i2s)
 
@@ -4240,15 +4200,15 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
             ! Baseline critical threshold: critical_qi_factor
             ! 
             ! Physical interpretation:
-            !   - Upper troposphere (p <= 450 hPa): Multiplier approaches ~10x.
-            !     Ice must accumulate sgnificantly before converting to snow. 
+            !   - Upper troposphere (p <= 300 hPa): Multiplier approaches ~10x.
+            !     Ice must accumulate significantly before converting to snow. 
             !     This allows ice to stay suspended in strong updrafts and 
             !     detrainment regions.
             !   
-            !   - Mid troposphere (p = 700 hPa): Transition midpoint with 5.5x 
-            !     multiplier, yielding a moderate threshold
+            !   - Mid troposphere (p = 700 hPa): Transition midpoint with ~5.5x 
+            !     multiplier, yielding a moderate threshold.
             !   
-            !   - Lower troposphere (p >= 850 hPa): Multiplier drops toward 1x baseline. 
+            !   - Lower troposphere (p >= 800 hPa): Multiplier drops toward 1x baseline. 
             !     Effective threshold stays low, meaning ice 
             !     converts to snow readily as it approaches the surface.
             ! ===================================================================
@@ -4257,7 +4217,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
                        (1.0 - tanh(p_norm))
             
             ! Apply pressure-dependent multiplier to critical threshold
-            critical_qi_factor_local = min(critical_qi_factor * p_factor, psaut_qi_crt) 
+            critical_qi_factor = min(psaut_qi_crt * p_factor, psaut_qi_crt) 
 
             ! Use In-Cloud condensates with scale-aware blending
             if (in_cloud_ice) then
@@ -4272,14 +4232,16 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
             sink = 0.
             di  = max (di, qcmin)
             q_plus = qi + di
-            qim = critical_qi_factor_local / den (k)
+            qim = critical_qi_factor / den (k)
             if (q_plus .gt. (qim + qcmin)) then
                 if (qim .gt. (qi - di)) then
                     dq = (0.25 * (q_plus - qim) ** 2) / di
                 else
                     dq = qi - qim
                 endif
-                sink = fac_i2s * exp (0.025 * tc) * dq
+                ! Integration: Softened the cold-temperature penalty parameter from 0.025 to 0.01 
+                ! to clear the low-level cloud ice overproduction bias.
+                sink = fac_i2s * exp (0.01 * tc) * dq
             endif
             sink = min (qi, sink) * qadum
             mppas = mppas + sink * dp (k) * convt
@@ -4589,18 +4551,6 @@ subroutine pgacw_pgacr (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te
     real :: tc, factor, sink, qden
     real :: pgacw, pgacr
 
-    real :: oms_cgacw
-
-    ! -----------------------------------------------------------------------
-    ! Graupel Accretion of Cloud Water (cgacw) Resolution Penalty
-    ! -----------------------------------------------------------------------
-    ! Applies a massive 100x penalty (1.e-2) at coarse resolutions (onemsig=0).
-    ! This is physically required because true graupel is a convective phenomenon.
-    ! At 50km, large-scale graupel accretion is aggressively paralyzed to prevent 
-    ! it from artificially sweeping out all large-scale cloud liquid water (QL).
-    ! -----------------------------------------------------------------------
-    oms_cgacw = cgacw * (1.e-2*(1.0-onemsig) + onemsig)
-
     do k = ks, ke 
             
         if (tz (k) .lt. tice .and. qg (k) .gt. qpmin) then
@@ -4610,14 +4560,14 @@ subroutine pgacw_pgacr (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te
             pgacw = 0.
             if (ql (k) .gt. qcmin) then
                 if (do_3d_acc_cliq) then
-                    pgacw = dts * acr3d (vtg (k), vtw (k), ql (k), qg (k), oms_cgacw, acco (:, 9), &
+                    pgacw = dts * acr3d (vtg (k), vtw (k), ql (k), qg (k), cgacw, acco (:, 9), &
                         acc (17), acc (18), den (k))
                 else
                     qden = qg (k) * den (k)
                     if (do_hail) then
-                        factor = dts * acr2d (qden, oms_cgacw, denfac (k), blinh, muh)
+                        factor = dts * acr2d (qden, cgacw, denfac (k), blinh, muh)
                     else
-                        factor = dts * acr2d (qden, oms_cgacw, denfac (k), bling, mug)
+                        factor = dts * acr2d (qden, cgacw, denfac (k), bling, mug)
                     endif
                     pgacw = factor / (1. + factor) * ql (k)
                 endif
@@ -4933,21 +4883,6 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
                 subl = 0.0
              endif
 
-            ! -------------------------------------------------------------------------
-            ! Resolution-Dependent Evaporation and Sublimation Shutoff
-            ! -------------------------------------------------------------------------
-            ! At coarse resolutions (onemsig=0), this explicitly zeroes out grid-scale
-            ! evaporation and sublimation inside the GFDL microphysics. 
-            ! Why? Coarse grid-scale microphysics assumes precipitation is uniform across 
-            ! the 50km grid box, which would over-expose it to dry air and artificially 
-            ! evaporate almost all falling rain before it hits the ground.
-            ! Instead, evaporation of sub-grid precipitation shafts is handled upstream 
-            ! by the macro-physics scheme (cldmacro using CCW_EVAP_EFF/CCI_EVAP_EFF).
-            ! This onemsig switch safely prevents double-evaporation.
-            ! -------------------------------------------------------------------------
-             evap = evap*onemsig ! resolution dependent evap 0:1 coarse:fine
-             subl = subl*onemsig ! resolution dependent subl 0:1 coarse:fine
-
              mppe1 = mppe1 + evap * dp (k) * convt
              mpps1 = mpps1 + subl * dp (k) * convt
 
@@ -5019,19 +4954,6 @@ subroutine pcond_pevap (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
             if (use_rhc_cevap .and. rh_tem .ge. rhc_cevap) then
                 sink = 0.
             endif
-            ! -------------------------------------------------------------------------
-            ! Resolution-Dependent Evaporation and Sublimation Shutoff
-            ! -------------------------------------------------------------------------
-            ! At coarse resolutions (onemsig=0), this explicitly zeroes out grid-scale
-            ! evaporation and sublimation inside the GFDL microphysics. 
-            ! Why? Coarse grid-scale microphysics assumes precipitation is uniform across 
-            ! the 50km grid box, which would over-expose it to dry air and artificially 
-            ! evaporate almost all falling rain before it hits the ground.
-            ! Instead, evaporation of sub-grid precipitation shafts is handled upstream 
-            ! by the macro-physics scheme (cldmacro using CCW_EVAP_EFF/CCI_EVAP_EFF).
-            ! This onemsig switch safely prevents double-evaporation.
-            ! -------------------------------------------------------------------------
-            sink = sink*onemsig ! resolution dependent evap 0:1 coarse:fine
             mppew = mppew + sink * dp (k) * convt
         else
             if (do_cond_timescale) then
@@ -5201,10 +5123,9 @@ subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den,
                 explicit_wbf_rate = (qsw - qsi) / (qsi * den(k) * (f_k + f_d))
                 explicit_wbf_rate = explicit_wbf_rate * c_wbf * q_ice_bulk
 
-                ! Resolution-dependent scaling using timescale damping
-                ! As onemsig → 0 (coarse resolution): damping factor → 0 (WBF disabled)
-                ! As onemsig → 1 (fine resolution): damping factor → 1 (WBF fully active)
-                explicit_wbf_rate = explicit_wbf_rate * (onemsig * dts / (tau_wbf + onemsig * dts))
+                ! Standard physical timescale damping
+                ! This protects against explicit time step overshoot when tau_wbf is small.
+                explicit_wbf_rate = explicit_wbf_rate * (dts / (tau_wbf + dts))
 
                 ! Calculate mass sink over the duration of the time step
                 sink = explicit_wbf_rate * dts
@@ -5436,19 +5357,6 @@ subroutine pidep_pisub (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te
                 ! Ice Sublimation (Evaporation Phase)
                 pidep = pidep * min (1., dim (tz (k), t_sub) * is_fac)
                 sink = max (pidep, tmp, - qi (k))
-                ! -------------------------------------------------------------------------
-                ! Resolution-Dependent Evaporation and Sublimation Shutoff
-                ! -------------------------------------------------------------------------
-                ! At coarse resolutions (onemsig=0), this explicitly zeroes out grid-scale
-                ! evaporation and sublimation inside the GFDL microphysics. 
-                ! Why? Coarse grid-scale microphysics assumes precipitation is uniform across 
-                ! the 50km grid box, which would over-expose it to dry air and artificially 
-                ! evaporate almost all falling rain before it hits the ground.
-                ! Instead, evaporation of sub-grid precipitation shafts is handled upstream 
-                ! by the macro-physics scheme (cldmacro using CCW_EVAP_EFF/CCI_EVAP_EFF).
-                ! This onemsig switch safely prevents double-evaporation.
-                ! -------------------------------------------------------------------------
-                sink = sink*onemsig ! resolution dependent subl 0:1 coarse:fine
                 mppsi = mppsi - sink * dp (k) * convt
                 ! 3D ice sublimation export
                 rsubl (k) = rsubl (k) - sink * dp (k) * convt
