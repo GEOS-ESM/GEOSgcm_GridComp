@@ -1017,18 +1017,6 @@ contains
       call ice_export_field('FRACICE', AICE, _RC)
     endif 
 
-    if(associated(FHOCN)) then
-      call ice_export_field('FHOCN', FHOCN, _RC)
-    endif 
-
-    if(associated(FRESH)) then
-      call ice_export_field('FRESH', FRESH, _RC)
-    endif 
-
-    if(associated(FSALT)) then
-      call ice_export_field('FSALT', FSALT, _RC)
-    endif 
-
 
     ! TODO: retrieve the final fluxes after the full CICE step is done
     if(associated(FHOCN)) then
@@ -1066,7 +1054,7 @@ contains
     ! finally, zero out accumlation buffer
     FSALT_A = 0.0
     FHOCN_A = 0.0
-    FHOCN_A = 0.0
+    FRESH_A = 0.0
 
     call MAPL_TimerOff(MAPL,"RUN"   )
     call MAPL_TimerOff(MAPL,"TOTAL" )
