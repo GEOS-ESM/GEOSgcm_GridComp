@@ -115,6 +115,10 @@ contains
     jf(26) = .false.
     jf(35) = .false.
 
+    ! Disable the F1 layer to test the terminate discontinuity.
+    jf(19) = .false.
+    jf(20) = .false.
+
     jmag = 0
 
     n_iri_levels = int((IRI_PROFILE_TOP_KM - IRI_PROFILE_BOTTOM_KM) / &
