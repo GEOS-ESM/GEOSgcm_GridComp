@@ -65,6 +65,7 @@ class GFDL1MInterface(UserCode):
             LS_ICEFALL=maplpy.get_resource("LS_ICEFALL:", mapl_state, default=Float(1.0)),
             LIQ_RADII_PARAM=maplpy.get_resource("LIQ_RADII_PARAM:", mapl_state, default=Int(2)),
             ICE_RADII_PARAM=maplpy.get_resource("ICE_RADII_PARAM:", mapl_state, default=Int(1)),
+            GFDL_MP3=maplpy.get_resource("GFDL_MP3:", mapl_state, default=True),
             FAC_RI=maplpy.get_resource("FAC_RI:", mapl_state, default=Float(1.0)),
             MIN_RI=maplpy.get_resource("MIN_RI:", mapl_state, default=Float(5e-6)),
             MAX_RI=maplpy.get_resource("MAX_RI:", mapl_state, default=Float(100.0e-6)),

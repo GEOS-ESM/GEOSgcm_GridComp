@@ -103,3 +103,4 @@ class GFDL1MConfig:
     MAX_RL: Float
     CCW_EVAP_EFF: Float
     CCI_EVAP_EFF: Float
+    GFDL_MP3: bool = False

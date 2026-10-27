@@ -340,6 +340,7 @@ class GFDL1MDriver(NDSLRuntime):
                 terminal_speed_rain=self._locals.terminal_speed.rain,
                 rh_limited=self._locals.rh_limited,
                 estimated_inversion_strength=estimated_inversion_strength,
+                convection_fraction=convection_fraction,
                 one_minus_sigma=self._locals.one_minus_sigma,
                 mass=self._locals.mass,
                 rain=surface_precip_rain,

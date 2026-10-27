@@ -14,6 +14,19 @@ from pyMoist.microphysics.GFDL_1M.driver.stencils import implicit_fall, wqs2
 
 
 @function
+def get_v3_autoconversion_adjustments(
+    estimated_inversion_strength: Float,
+    convection_fraction: Float,
+    rthreshs: Float,
+    rthreshu: Float,
+):
+    fac_eis = min(1.0, max(0.0, estimated_inversion_strength / 10.0)) ** 2
+    cpaut_factor = 1.0 - 0.5 * fac_eis
+    fac_rc = constants.RC * (rthreshu * convection_fraction + rthreshs * (1.0 - convection_fraction)) ** 3
+    return cpaut_factor, fac_rc
+
+
+@function
 def revap_racc(
     t: Float,
     mixing_ratio_vapor: Float,
@@ -192,6 +205,7 @@ def warm_rain_step_1(
     driver_liquid_precip_flux: FloatField,
     rh_limited: FloatField,
     estimated_inversion_strength: FloatFieldIJ,
+    convection_fraction: FloatFieldIJ,
     one_minus_sigma: FloatFieldIJ,
     z_interface: FloatField,
     dmass: FloatField,
@@ -265,6 +279,7 @@ def warm_rain_step_1(
         vr_fac,
         vr_max,
         z_slope_liq,
+        gfdl_mp3,
     )
 
     with computation(PARALLEL), interval(...):
@@ -299,11 +314,17 @@ def warm_rain_step_1(
         mixing_ratio_liquid = mixing_ratio_liquid / cloud_fraction_limited
         mixing_ratio_ice = mixing_ratio_ice / cloud_fraction_limited
 
-        fac_rc = min(1.0, estimated_inversion_strength / 15.0) ** 2  # Estimated inversion strength determine stable regime
-        fac_rc = constants.RC * (rthreshs * fac_rc + rthreshu * (1.0 - fac_rc)) ** 3
-        # NOTE: the multiplication "constants.RC * (result of parenthetical)" produces different results
-        # in Fortran and Python, despite constants.RC and (result of parenthetical) being identical.
-        # This creates errors later throughout warm_rain and the larger driver.
+        if gfdl_mp3:
+            cpaut_factor, fac_rc = get_v3_autoconversion_adjustments(
+                estimated_inversion_strength,
+                convection_fraction,
+                rthreshs,
+                rthreshu,
+            )
+        else:
+            cpaut_factor = 1.0
+            eis_factor = min(1.0, estimated_inversion_strength / 15.0) ** 2
+            fac_rc = constants.RC * (rthreshs * eis_factor + rthreshu * (1.0 - eis_factor)) ** 3
 
     with computation(PARALLEL), interval(...):
         if irain_f != 0:
@@ -317,7 +338,7 @@ def warm_rain_step_1(
                     if dq > 0.0:
                         sink = min(
                             dq,
-                            dts * c_praut * density * exp(constants.SO3 * log(mixing_ratio_liquid)),
+                            dts * c_praut * cpaut_factor * density * exp(constants.SO3 * log(mixing_ratio_liquid)),
                         )
                         sink = min(ql0_max, min(mixing_ratio_liquid, max(0.0, sink)))
                         mixing_ratio_liquid = mixing_ratio_liquid - sink
@@ -393,7 +414,14 @@ def warm_rain_step_1(
                         # revised continuous form: linearly decays
                         # (with subgrid dl) to zero at qc == ql + dl
                         # --------------------------------------------------------------------
-                        sink = min(1.0, dq / dl) * dts * c_praut * density * exp(constants.SO3 * log(mixing_ratio_liquid))
+                        sink = (
+                            min(1.0, dq / dl)
+                            * dts
+                            * c_praut
+                            * cpaut_factor
+                            * density
+                            * exp(constants.SO3 * log(mixing_ratio_liquid))
+                        )
                         sink = min(ql0_max, min(mixing_ratio_liquid, max(0.0, sink)))
                         mixing_ratio_liquid = mixing_ratio_liquid - sink
                         mixing_ratio_rain = mixing_ratio_rain + sink * cloud_fraction_limited
@@ -718,6 +746,7 @@ class GFDL1MWarmRain(NDSLRuntime):
                 "do_qa": config.DO_QA,
                 "rthreshs": config.RTHRESHS,
                 "rthreshu": config.RTHRESHU,
+                "gfdl_mp3": config.GFDL_MP3,
                 "irain_f": config.IRAIN_F,
                 "ql0_max": config.QL0_MAX,
                 "z_slope_liq": config.Z_SLOPE_LIQ,
@@ -832,6 +861,7 @@ class GFDL1MWarmRain(NDSLRuntime):
         terminal_speed_rain: FloatField,
         rh_limited: FloatField,
         estimated_inversion_strength: FloatFieldIJ,
+        convection_fraction: FloatFieldIJ,
         one_minus_sigma: FloatFieldIJ,
         mass: FloatField,
         rain: FloatFieldIJ,
@@ -906,6 +936,7 @@ class GFDL1MWarmRain(NDSLRuntime):
             driver_liquid_precip_flux=driver_liquid_precip_flux,
             rh_limited=rh_limited,
             estimated_inversion_strength=estimated_inversion_strength,
+            convection_fraction=convection_fraction,
             one_minus_sigma=one_minus_sigma,
             z_interface=self._locals.z_interface,
             dmass=self._locals.dmass,

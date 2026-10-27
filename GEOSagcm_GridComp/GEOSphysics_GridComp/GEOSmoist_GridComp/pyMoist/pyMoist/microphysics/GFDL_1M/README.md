@@ -4,6 +4,11 @@ This is DSL port of the GFDL_1M scheme called from `GEOS_GFDL_1M_InterfaceMod.F9
 
 Last version ported: v11.5.2
 
+The pyMoist implementation is not yet a full port of the GFDL MP v3 source
+in `../gfdl_mp.F90`. The `GFDL_MP3` path currently includes the v3
+EIS/convective-fraction controls for warm-rain autoconversion; other v3
+algorithm and constant differences remain to be ported and validated.
+
 Numerical regression tests can be found in `./tests/translate_tests/GFDL_1M` with a script to run them in `./tests/scripts/run_tests`.
 
 ## Porting status

@@ -211,6 +211,7 @@ class TranslateGFDL_1M_WarmRain(TranslateFortranData2Py):
             terminal_speed_rain=driver_locals.terminal_speed.rain,
             rh_limited=driver_locals.rh_limited,
             estimated_inversion_strength=state.estimated_inversion_strength,
+            convection_fraction=state.convection_fraction,
             one_minus_sigma=driver_locals.one_minus_sigma,
             mass=driver_locals.mass,
             rain=state.precipitation_at_surface.rain,
