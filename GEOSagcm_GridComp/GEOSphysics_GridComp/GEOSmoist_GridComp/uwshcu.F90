@@ -1011,7 +1011,7 @@ contains
 
     logical :: use_cumpenent
     logical :: scverbose
-    integer :: windsrcavg
+    logical :: windsrcavg
     real    :: rpen     ! penetrative entrainment efficiency
 
 
@@ -1541,7 +1541,7 @@ contains
        ! as the values just below the PBL top interface.                    !
        ! ------------------------------------------------------------------ !
 
-         if (windsrcavg /= 0) then
+         if (windsrcavg) then
             zrho = pifc0(0)/(287.04*(t0(1)*(1.+0.608*qv0(1))))
             buoyflx = (-shfx/cp-0.608*t0(1)*evap)/zrho ! K m s-1
             ! Use actual PBL depth for convective velocity scale
@@ -1599,19 +1599,24 @@ contains
            id_exit = .true.
            go to 333
          end if
-         if (qtsrc.gt.0.1.or.qtsrc.lt.1e-8 ) then
-           print *,"qtsrc outside valid range! qtsrc=",qtsrc
-           id_exit = .true.
-           go to 333
-         end if
-         if (thlsrc.gt.400..or.thlsrc.lt.100. ) then
-           print *,"thlsrc outside valid range! thlsrc=",thlsrc
-           print *,"pifc0(0)=",pifc0(0)
-           id_exit = .true.
-           go to 333
-        end if
 
-         plcl = qsinvert(qtsrc,thlsrc,pifc0(0),windsrcavg)
+         ! Cap qtsrc within valid physical bounds instead of exiting
+         if (qtsrc .gt. 0.1 .or. qtsrc .lt. 1e-8) then
+            if (scverbose) then
+              print *, "Capping qtsrc from: ", qtsrc
+            end if
+            qtsrc = max(1.0e-8, min(0.1, qtsrc))
+         end if
+
+         ! Cap thlsrc within valid physical bounds instead of exiting
+         if (thlsrc .gt. 400. .or. thlsrc .lt. 100.) then
+            if (scverbose) then
+              print *, "Capping thlsrc from: ", thlsrc, " pifc0(0)=", pifc0(0)
+            end if
+            thlsrc = max(100.0, min(400.0, thlsrc))
+         end if
+
+         plcl = qsinvert(qtsrc,thlsrc,pifc0(0))
          do k = 0, k0
             if( pifc0(k) .lt. plcl ) then
                 klcl = k
@@ -2731,15 +2736,9 @@ contains
             ee2    = xc**2
             ud2    = 1. - 2.*xc + xc**2  ! (1-xc)**2
             if (min(scaleh,mix2d) .gt. tiny) then
-              if (detrhgt <= 0.0) then
-                 ! dynamic detrainment height
-                 rei(k) = ( (rkm2d+max(0.,(zmid0(k)-zifc0(kinv-1)) / 500.0)) / min(scaleh,mix2d) / g / rhomid0j ) ! dynamic
-              else
-                 ! fixed detrainment height
-                 rei(k) = ( (rkm2d+max(0.,(zmid0(k)-detrhgt)/200.) ) / min(scaleh,mix2d) / g / rhomid0j )   ! alternative
+              rei(k) = ( (rkm2d+max(0.,(zmid0(k)-detrhgt)/200.) ) / min(scaleh,mix2d) / g / rhomid0j )   ! alternative
 ! regression bug due to cnvtr
-! WMP            rei(k) = ( (rkm2d+max(0.,(zmid0(k)-detrhgt)/200.)-max(0.,min(2.,(cnvtr)/2.5e-6))) / min(scaleh,mix2d) / g / rhomid0j )   ! alternative
-              endif
+! WMP         rei(k) = ( (rkm2d+max(0.,(zmid0(k)-detrhgt)/200.)-max(0.,min(2.,(cnvtr)/2.5e-6))) / min(scaleh,mix2d) / g / rhomid0j )   ! alternative
             else
               rei(k) = ( 0.5 * rkm2d / zmid0(k) / g /rhomid0j ) ! Jason-2_0 version
             end if
@@ -4703,7 +4702,8 @@ contains
       return
    end function slope
 
-  function qsinvert(qt,thl,ps_in,windsrcavg_in)
+
+  function qsinvert(qt,thl,ps_in)
   ! ----------------------------------------------------------------- !
   ! Function calculating saturation pressure ps (or pLCL) from qt and !
   ! thl ( liquid potential temperature,  NOT liquid virtual potential ! 
@@ -4714,8 +4714,7 @@ contains
      implicit none
 
      real          :: ps_in
-     integer, intent(in) :: windsrcavg_in
-     real            :: qsinvert    
+     real          :: qsinvert    
      real,intent(in) :: qt, thl
      real*8          :: Pis, err, dlnqsdT, dTdPis, dqsdT
      real*8          :: dPisdps, dlnqsdps, derrdps, dps 
@@ -4740,50 +4739,18 @@ contains
      qs       = dble( GEOS_QSAT(Tgeos,Pgeos/100.) )
      es       = ps_in * qs  / ( ep2 + (1._r8-ep2)*qs )
      rhi      = qt/qs
-
-     if ( windsrcavg_in /= 0 ) then
-        ! ----------------------------------------------------------------- !
-        ! ADAPTIVE LOGIC FOR MIXED-LAYER VALUES                             !
-        ! ----------------------------------------------------------------- !
-        if( rhi .le. 0.01_r8 ) then
-           ! Re-evaluate reference baseline 100 hPa higher up to clear dry anomalies
-           Pgeos = ps_in - 10000._r8 
-           Ti    = thl*(Pgeos/p00)**rovcp
-           Tgeos = Ti
-           qs    = dble( GEOS_QSAT(Tgeos,Pgeos/100.) )
-           rhi   = max(0.001_r8, qt/max(qs, 1.e-10_r8))
-           
-           ! Dynamic boundary safety floor instead of the hard 100mb trap
-           psmin = max(20000._r8, ps_in - 5000.0_r8)
-           
-           TLCL     =  55._r8 + 1._r8/(1._r8/(Ti-55._r8)-log(rhi)/2840._r8)
-           PiLCL    =  TLCL/thl
-           ps       =  p00*(PiLCL)**(1._r8/rovcp)
-           ps       =  max(20000._r8, min(ps_in, ps))
-        else
-!          print *,'Ti,Rhi,thl=',Ti,rhi,thl       ! WMP log(rhi) protected from NaN above
-           TLCL     =  55._r8 + 1._r8/(1._r8/(Ti-55._r8)-log(rhi)/2840._r8) ! Bolton's formula. MWR.1980.Eq.(22)
-           PiLCL    =  TLCL/thl
-           ps       =  p00*(PiLCL)**(1._r8/rovcp)
+     if( rhi .le. 0.01_r8 ) then
+        if (shlwparams%scverbose) then
+          call write_parallel('Source air is too dry and pLCL is set to psmin in uwshcu.F90')
         end if
-     else
-        ! ----------------------------------------------------------------- !
-        ! ORIGINAL PATHWAY (windsrcavg = .false.)                           !
-        ! Strict bit-for-bit identity match for surface-layer source arrays !
-        ! ----------------------------------------------------------------- !
-        if( rhi .le. 0.01_r8 ) then
-!           if (scverbose) then
-              call write_parallel('Source air is too dry and pLCL is set to psmin in uwshcu.F90')
-!           end if
-           qsinvert = psmin
-           return
-        end if
-
-!        print *,'Ti,Rhi,thl=',Ti,rhi,thl       ! WMP log(rhi) protected from NaN above
-        TLCL     =  55._r8 + 1._r8/(1._r8/(Ti-55._r8)-log(rhi)/2840._r8) ! Bolton's formula. MWR.1980.Eq.(22)
-        PiLCL    =  TLCL/thl
-        ps       =  p00*(PiLCL)**(1._r8/rovcp)
+        qsinvert = psmin
+        return
      end if
+
+!     print *,'Ti,Rhi,thl=',Ti,rhi,thl       ! WMP log(rhi) protected from NaN above
+     TLCL     =  55._r8 + 1._r8/(1._r8/(Ti-55._r8)-log(rhi)/2840._r8) ! Bolton's formula. MWR.1980.Eq.(22)
+     PiLCL    =  TLCL/thl
+     ps       =  p00*(PiLCL)**(1._r8/rovcp)
 
      do i = 1, 10
        Pis      =  (ps/p00)**rovcp   ! Exner function
@@ -4809,9 +4776,9 @@ contains
        dps      = -err/derrdps
        ps       =  ps + dps
        if( ps .lt. 0._r8 ) then
-!           if (scverbose) then
-!             call write_parallel('------- UW ShCu: pLCL iteration is negative and set to psmin')
-!           end if
+           if (shlwparams%scverbose) then
+             call write_parallel('------- UW ShCu: pLCL iteration is negative and set to psmin')
+           end if
            qsinvert = psmin
            return    
        end if
@@ -4820,12 +4787,13 @@ contains
            return
        end if
      end do
-!     if (scverbose) then
-!       call write_parallel('------- UW ShCu: pLCL does not converge and is set to psmin')
-!     end if
+     if (shlwparams%scverbose) then
+       call write_parallel('------- UW ShCu: pLCL does not converge and is set to psmin')
+     end if
      qsinvert = psmin
      return
-  end function qsinvert
+   end function qsinvert
+
 
    real function compute_alpha(del_CIN,ke)
    ! ------------------------------------------------ !
@@ -5065,9 +5033,9 @@ contains
                endif
             enddo 
         else 
-!           if (scverbose) then
-!             call write_parallel( 'Full positive_moisture is impossible in uwshcu')
-!           end if
+           if (shlwparams%scverbose) then
+             call write_parallel( 'Full positive_moisture is impossible in uwshcu')
+           end if
         endif
     endif 
 

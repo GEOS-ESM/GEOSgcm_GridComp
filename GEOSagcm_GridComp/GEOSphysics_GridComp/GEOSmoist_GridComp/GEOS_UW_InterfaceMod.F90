@@ -145,7 +145,7 @@ subroutine UW_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
       call MAPL_GetResource(MAPL, SHLWPARAMS%THLSRC_FAC,       'THLSRC_FAC:'      ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRC_FAC,        'QTSRC_FAC:'       ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRCHGT,         'QTSRCHGT:'        ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE,            'RKFRE:'           ,DEFAULT= 1.5,   RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE,            'RKFRE:'           ,DEFAULT= 0.5,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE_HR,         'RKFRE_HR:'        ,DEFAULT= 0.75,  RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 8.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RKM_HR,           'RKM_HR:'          ,DEFAULT= 12.0,  RC=STATUS) ; VERIFY_(STATUS)
@@ -474,10 +474,10 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     !--------------------------------------------------------------
     !$OMP PARALLEL DO DEFAULT(NONE) &
     !$OMP SHARED(IM, JM, SHLWPARAMS, RKFRE, RKM2D, MIX2D, RMAXFRAC2D, &
-    !$OMP        USE_SIG, USE_EIS, EIS, srf_type, PTR2D) &
+    !$OMP        USE_SIG, USE_EIS, EIS, srf_type, PTR2D, ZL0, KPBL_SC) &
     !$OMP PRIVATE(i, j, fac_eis, DX, SIG, rkfre_base, rkm_base, mix2d_base, &
     !$OMP        rmaxfrac_base, eis_rkfre_factor, eis_rkm_factor, eis_mix2d_factor, &
-    !$OMP        eis_rmaxfrac_factor)
+    !$OMP        eis_rmaxfrac_factor, rkm_scale_fac, mix2d_phys)
     do j = 1, JM
        !DIR$ IVDEP
        do i = 1, IM
@@ -488,34 +488,44 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          else
             SIG = 1.0 
          endif
+         
          ! Optional EIS dependence
          if (USE_EIS) then
             fac_eis = get_fac_eis(EIS(i,j), srf_type(i,j))
          else
             fac_eis = 0.0
          endif
+
          ! Base resolution-dependent parameters
-         ! Support for varying UW parameters by resolution  ! Coarse*SIG -> Fine*(1.0-SIG)
          rkfre_base    = SHLWPARAMS%RKFRE   *SIG  + SHLWPARAMS%RKFRE_HR   *(1.0-SIG)
          rkm_base      = SHLWPARAMS%RKM     *SIG  + SHLWPARAMS%RKM_HR     *(1.0-SIG) 
-         mix2d_base    = SHLWPARAMS%MIXSCALE
          rmaxfrac_base = SHLWPARAMS%RMAXFRAC*SIG  + SHLWPARAMS%RMAXFRAC_HR*(1.0-SIG)
-         ! EIS-based regime modifications for marine stratocumulus enhancement
-         ! Reduce shallow convection activity in high EIS (stable inversion) regions
-         eis_rkfre_factor    = 1.0 - 0.8*fac_eis           ! Reduce RKFRE by up to 80% in stable regimes
-         eis_rkm_factor      = 1.0 + 0.2*fac_eis           ! Increase RKM by up to 40% in stable regimes
-         eis_mix2d_factor    = 1.0 - 0.3*fac_eis           ! Reduce mixing scale by up to 30% in stable regimes
-         eis_rmaxfrac_factor = 1.0 + 0.1*fac_eis           ! INCREASE rmaxfrac in stable (high EIS) regimes
+
+         ! EIS-based regime modifications
+         eis_rkfre_factor    = 1.0 - 0.8*fac_eis           
+         eis_rkm_factor      = 1.0 + 0.4*fac_eis
+         eis_mix2d_factor    = 1.0 - 0.3*fac_eis           
+         eis_rmaxfrac_factor = 1.0 + 0.1*fac_eis           
+
          ! Apply EIS modifications
          RKFRE(i,j) = rkfre_base * eis_rkfre_factor
          RKM2D(i,j) = rkm_base   * eis_rkm_factor
-         MIX2D(i,j) = mix2d_base * eis_mix2d_factor
          RMAXFRAC2D(i,j) = rmaxfrac_base * eis_rmaxfrac_factor
-         ! Optional: Add minimum limits to prevent unrealistic values
-         RKFRE(i,j) = max(RKFRE(i,j), 0.1)                 ! Minimum RKFRE threshold
-         RKM2D(i,j) = min(RKM2D(i,j), 20.0)                ! Maximum RKM threshold
-         MIX2D(i,j) = max(MIX2D(i,j), 0.0)                 ! Minimum mixing scale threshold
-         RMAXFRAC2D(i,j) = max(min(RMAXFRAC2D(i,j), 0.9), 0.05) ! Bounds: 5% to 90%
+
+         ! --- INTEGRATED DYNAMIC MIXING LENGTH ---
+         ! Scales subgrid mixing with local PBL depth (ZL0 at KPBL_SC) and RKM
+         rkm_scale_fac = (rkm_base / 4.0) * 2.5
+         mix2d_phys    = MAX(rkm_scale_fac * ZL0(i,j,KPBL_SC(i,j)), 1000.0)
+         mix2d_base    = SHLWPARAMS%MIXSCALE
+         
+         ! Subgrid mixing cannot exceed half the grid box (crucial safety for fine meshes / L137)
+         MIX2D(i,j)    = MIN(0.5 * DX, mix2d_phys, mix2d_base) * eis_mix2d_factor
+
+         ! --- SAFEGUARD LIMITS ---
+         RKFRE(i,j)      = max(RKFRE(i,j), 0.1)
+         RKM2D(i,j)      = min(RKM2D(i,j), 14.0)
+         MIX2D(i,j)      = max(MIX2D(i,j), 0.0)
+         RMAXFRAC2D(i,j) = max(min(RMAXFRAC2D(i,j), 0.8), 0.05)
        end do
     end do
     !$OMP END PARALLEL DO
