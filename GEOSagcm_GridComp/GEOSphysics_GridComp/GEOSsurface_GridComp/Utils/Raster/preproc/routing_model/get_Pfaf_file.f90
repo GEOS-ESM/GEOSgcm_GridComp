@@ -141,6 +141,45 @@ program main
      write(88, *) downid(i)
   end do
 
+
+  ! Keep “moving downstream” until you find the catchment with no downstream catchment:  
+  do i=1,nc
+     cur=i  
+     down=downid(i)
+     do while(down/=-1)
+        cur=down
+        down=downid(cur)
+     enddo
+     finalid(i)=cur
+  enddo
+  
+  open(88,file="temp/Pfaf_finalID.txt")
+  do i=1,nc
+     write(88,*)finalid(i)
+  enddo
+  
+  
+  ! Set masks: 1 = has downstream catchment; 2 = drains to ocean; 3 = drains to inland lake  
+  do i=1,nc
+     if(downid(i)/=-1)then
+        pfaf_msk(i)=1
+     else
+     allocate(code(1:pfaf_last(i)))
+        code=pfaf_digit(i,1:pfaf_last(i))
+        if(any(code==0))then
+           pfaf_msk(i)=3
+        else
+           pfaf_msk(i)=2
+        endif
+        deallocate(code)
+     end if
+  enddo
+  
+  open(88,file="temp/Pfaf_msk.txt")
+  do i=1,nc
+     write(88,*)pfaf_msk(i)
+  enddo
+
   ! Write catchment areas to an output file:
   !open(88, file="temp/Pfaf_area.txt")
   !do i = 1, nc
