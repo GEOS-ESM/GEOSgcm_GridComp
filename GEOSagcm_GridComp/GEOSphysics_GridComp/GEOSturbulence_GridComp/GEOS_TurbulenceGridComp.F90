@@ -3108,6 +3108,8 @@ end if
      real :: maxaero
      real :: eis_stable, kh_thresh
 
+     real, dimension(IM,JM) :: onemsig
+
 #ifdef _CUDA
      type(dim3) :: Grid, Block
      integer :: blocksize_x, blocksize_y
@@ -3148,6 +3150,9 @@ end if
      call MAPL_GetPointer(IMPORT,   Z0H,     'Z0H', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,   EIS,     'EIS', RC=STATUS); VERIFY_(STATUS)
 
+!    onemsig for scale awareness
+!-------------------------------
+     onemsig = 0.9839*exp(-0.09835*SQRT(AREA)/3000.) ! Based on Arakawa 2011 sigma 
 
 ! Get turbulence parameters from configuration
 !---------------------------------------------
@@ -4057,6 +4062,7 @@ end if
          ALLOCATE(TDTLW_IN_dev(IM,JM,LM), __STAT__)
          ALLOCATE(U_STAR_dev(IM,JM), __STAT__)
          ALLOCATE(B_STAR_dev(IM,JM), __STAT__)
+         ALLOCATE(ONEMSIG_dev(IM,JM), __STAT__)
          ALLOCATE(FRLAND_dev(IM,JM), __STAT__)
          ALLOCATE(T_dev(IM,JM,LM), __STAT__)
          ALLOCATE(QV_dev(IM,JM,LM), __STAT__)
@@ -4145,6 +4151,7 @@ end if
                   TDTLW_IN_dev = RADLW
                   U_STAR_dev   = USTAR
                   B_STAR_dev   = BSTAR
+                  ONEMSIG_dev  = ONEMSIG
                   FRLAND_dev   = FRLAND
                   EVAP_dev     = EVAP
                   SH_dev       = SH
@@ -4175,6 +4182,7 @@ end if
                                       TDTLW_IN_dev,   &
                                       U_STAR_dev,     &
                                       B_STAR_dev,     &
+                                      ONEMSIG_dev,    &
                                       FRLAND_dev,     &
                                       EVAP_dev,       &
                                       SH_dev,         &
@@ -4295,6 +4303,7 @@ end if
          DEALLOCATE(TDTLW_IN_dev)
          DEALLOCATE(U_STAR_dev)
          DEALLOCATE(B_STAR_dev)
+         DEALLOCATE(ONEMSIG_dev)               
          DEALLOCATE(FRLAND_dev)
          DEALLOCATE(EVAP_dev)
          DEALLOCATE(SH_dev)
@@ -4381,6 +4390,7 @@ end if
                       RADLW,                    &
                       USTAR,                    &
                       BSTAR,                    &
+                      ONEMSIG,                  &
                       FRLAND,                   &
                       EVAP,                     &
                       SH,                       &

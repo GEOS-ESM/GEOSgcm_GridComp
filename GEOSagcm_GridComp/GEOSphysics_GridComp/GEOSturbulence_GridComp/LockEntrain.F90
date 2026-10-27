@@ -111,6 +111,7 @@ module LockEntrain
    REAL, ALLOCATABLE, DIMENSION(:,:,:), DEVICE :: TDTLW_IN_dev
    REAL, ALLOCATABLE, DIMENSION(:,:  ), DEVICE :: U_STAR_dev
    REAL, ALLOCATABLE, DIMENSION(:,:  ), DEVICE :: B_STAR_dev
+   REAL, ALLOCATABLE, DIMENSION(:,:  ), DEVICE :: ONEMSIG_dev
    REAL, ALLOCATABLE, DIMENSION(:,:  ), DEVICE :: FRLAND_dev
    REAL, ALLOCATABLE, DIMENSION(:,:  ), DEVICE :: EVAP_dev
    REAL, ALLOCATABLE, DIMENSION(:,:  ), DEVICE :: SH_dev
@@ -297,6 +298,7 @@ contains
          tdtlw_in,       &
          u_star,         &
          b_star,         &
+         onemsig,        &
          frland,         &
          evap,           &
          sh,             &
@@ -473,7 +475,7 @@ contains
       real,    value,  intent(in) :: pceff_sfc,khsfcfac_lnd,khsfcfac_ocn
 
       real,    device, intent(in),    dimension(icol,jcol,nlev)      :: tdtlw_in       
-      real,    device, intent(in),    dimension(icol,jcol)           :: u_star,b_star,frland,evap,sh,eis
+      real,    device, intent(in),    dimension(icol,jcol)           :: u_star,b_star,onemsig,frland,evap,sh,eis
       real,    device, intent(in),    dimension(icol,jcol,nlev)      :: t,qv,qlls,qils
       real,    device, intent(in),    dimension(icol,jcol,nlev)      :: u,v,zfull,pfull
       real,    device, intent(in),    dimension(icol,jcol,1:nlev+1)  :: zhalf, phalf
@@ -491,7 +493,7 @@ contains
       integer, intent(in)                                    :: icol,jcol,nlev
 
       real,    intent(in),    dimension(icol,jcol,nlev)      :: tdtlw_in       
-      real,    intent(in),    dimension(icol,jcol)           :: u_star,b_star,frland,evap,sh,eis
+      real,    intent(in),    dimension(icol,jcol)           :: u_star,b_star,onemsig,frland,evap,sh,eis
       real,    intent(in),    dimension(icol,jcol,nlev)      :: t,qv,qlls,qils
       real,    intent(in),    dimension(icol,jcol,nlev)      :: u,v,zfull,pfull
       real,    intent(in),    dimension(icol,jcol,1:nlev+1)  :: zhalf, phalf
@@ -728,6 +730,7 @@ contains
                   v,                &
                   zfull,            &
                   pfull,            &
+                  onemsig,          &
                   frland,           &
                   b_star,           &
                   u_star,           &
@@ -1239,7 +1242,7 @@ contains
    attributes(device) &
 #endif
    subroutine mpbl_depth(i,j,icol,jcol,nlev, tpfac, entrate, pceff, vscale, &
-                         t, q, u, v, z, p, frland, b_star, u_star, evap, sh, ipbl, ztop, use_eis)
+                         t, q, u, v, z, p, onemsig, frland, b_star, u_star, evap, sh, ipbl, ztop, use_eis)
 
 !
 !  -----
@@ -1267,7 +1270,7 @@ contains
 
       integer, intent(in   )                            :: i, j, nlev, icol, jcol
       real,    intent(in   ), dimension(icol,jcol,nlev) :: t, z, q, p, u, v
-      real,    intent(in   ), dimension(icol,jcol)      :: frland, b_star, u_star, evap, sh
+      real,    intent(in   ), dimension(icol,jcol)      :: onemsig, frland, b_star, u_star, evap, sh
       real,    intent(in   )                            :: tpfac, entrate, pceff, vscale
       integer, intent(  out)                            :: ipbl
       real,    intent(  out),dimension(icol,jcol)       :: ztop
@@ -1277,6 +1280,7 @@ contains
       real     :: lts_min,lts_max,lts_fac
       real     :: tep,z1,z2,t1,t2,qp,pp,qsp,dqp,dqsp,u1,v1,u2,v2,du
       real     :: entfr,entrate_x,lts,zrho,buoyflx,delzg,wstar
+      real     :: tpfac_loc,bstar_scale
       integer  :: k
 
 !--------------------------------------------
@@ -1318,19 +1322,22 @@ contains
 
 !calculate surface parcel properties
 
-      if (tpfac == 0) then
+      if (tpfac == 0.0) then
         zrho = p(i,j,nlev)/(MAPL_RDRY*(t(i,j,nlev)*(1.+MAPL_VIREPS*q(i,j,nlev))))
         buoyflx = (sh(i,j)/MAPL_CP+MAPL_VIREPS*t(i,j,nlev)*evap(i,j))/zrho ! K m s-1
         delzg = 50.0*MAPL_GRAV   ! assume 50m surface scale
-        wstar = max(0.,0.001+0.41*buoyflx*delzg/t(i,j,nlev)) ! m3 s-3
-        if (wstar > 0.0) then
-          wstar = wstar**r13
-          tep  = t(i,j,nlev) + 0.4 + 2.*  sh(i,j)/(zrho*wstar*MAPL_CP)
-          qp   = q(i,j,nlev) +       2.*evap(i,j)/(zrho*wstar)
-        else
-          tep  = (t(i,j,nlev) + 0.4) * (1.+ min(0.01, b_star(i,j)/MAPL_GRAV))
-          qp   = q(i,j,nlev)
-        end if
+        ! Calculate buoyant flux scale continuously
+        wstar = max(0.001, 0.41 * buoyflx * delzg / t(i,j,nlev))
+        if (wstar > 0.0) wstar = wstar**r13
+        ! Resolution-aware tpfac: 
+        ! e.g., 15.0 at coarse resolution (onemsig = 0.0), tapering smoothly to 0.0 at c2160 (onemsig = 1.0)
+        tpfac_loc = 15.0 * (1.0 - onemsig(i,j))
+        ! Smooth scaling for thermal plume enhancement factor using tpfac_loc
+        bstar_scale = min(0.01, tpfac_loc * b_star(i,j) / MAPL_GRAV)
+        ! Unified parcel properties without discrete qp drops or dead-end branches
+        tep = (t(i,j,nlev) + 0.4 + 2.0 * sh(i,j) / (zrho * wstar * MAPL_CP)) * (1.0 + bstar_scale)
+        ! Scale moisture flux contribution smoothly so it doesn't abruptly vanish at high resolution
+        qp  = q(i,j,nlev) + (2.0 * evap(i,j) / (zrho * wstar)) * (1.0 - 0.5 * onemsig(i,j))
       else
         ! tpfac scales up bstar by inv. ratio of
         ! heat-bubble area to stagnant area
