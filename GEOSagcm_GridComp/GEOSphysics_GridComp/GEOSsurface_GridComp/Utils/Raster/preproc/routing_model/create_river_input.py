@@ -36,6 +36,8 @@ Qri_catchment = read_ascii("temp/Pfaf_qri.txt", nc_len)
 Qstr_catchment = read_ascii("temp/Pfaf_qstr.txt", nc_len)
 tosink_catchment = read_ascii("temp/Pfaf_tosink.txt", nc_len, dtype=int)
 dnid_catchment = read_ascii("temp/downstream_1D_new_noadj.txt", nc_len, dtype=int)
+finalid_catchment= read_ascii("temp/Pfaf_finalID.txt", nc_len, dtype=int)
+outtype_catchment= read_ascii("temp/Pfaf_outtype.txt", nc_len, dtype=int)
 area_catchment = area_catchment * 1.e6
 lriv_catchment = lriv_catchment * 1.e3
 lstr_catchment = lstr_catchment * 1.e3
@@ -290,25 +292,27 @@ def create_var(name, data, dims, units, long_name):
     return var
 
 # Catchment variables
-create_var("KSTR",          np.float32(Kstr_catchment), ("tile",), "1",       "K_parameter_for_local_streams")
-create_var("K",             np.float32(Kv_catchment),   ("tile",), "1",       "K_parameter_for_main_river")
-create_var("LENGSC",        np.float32(lriv_catchment), ("tile",), "m",       "main_river_length_scale")
-create_var("LSTR",          np.float32(lstr_catchment), ("tile",), "m",       "local_streams_length_scale")
-create_var("QIN_CLMT",      np.float32(Qin_catchment),  ("tile",), "m+3 s-1", "climatology_of_catchment_inflow")
-create_var("QRI_CLMT",      np.float32(Qri_catchment),  ("tile",), "m+3 s-1", "climatology_of_catchment_outflow")
-create_var("QSTR_CLMT",     np.float32(Qstr_catchment), ("tile",), "m+3 s-1", "climatology_of_catchment_stream_flow")
-create_var("DOWNID",        np.float32(dnid_catchment), ("tile",), "1",       "downstream_catchment_id")
-create_var("AREA_CATCH",    np.float32(area_catchment), ("tile",), "m+2",     "Pfafstetter_catchment_area")
-create_var("RRM_ALPHA_RIV", np.float32(alp_r),          ("tile",), "1",       "Alpha_parameter_for_main_river")
-create_var("RRM_ALPHA_STR", np.float32(alp_s),          ("tile",), "1",       "Alpha_parameter_for_local_streams")
+create_var("KSTR",          np.float32(Kstr_catchment),    ("tile",), "1",       "K_parameter_for_local_streams")
+create_var("K",             np.float32(Kv_catchment),      ("tile",), "1",       "K_parameter_for_main_river")
+create_var("LENGSC",        np.float32(lriv_catchment),    ("tile",), "m",       "main_river_length_scale")
+create_var("LSTR",          np.float32(lstr_catchment),    ("tile",), "m",       "local_streams_length_scale")
+create_var("QIN_CLMT",      np.float32(Qin_catchment),     ("tile",), "m+3 s-1", "climatology_of_catchment_inflow")
+create_var("QRI_CLMT",      np.float32(Qri_catchment),     ("tile",), "m+3 s-1", "climatology_of_catchment_outflow")
+create_var("QSTR_CLMT",     np.float32(Qstr_catchment),    ("tile",), "m+3 s-1", "climatology_of_catchment_stream_flow")
+create_var("DOWNID",        np.float32(dnid_catchment),    ("tile",), "1",       "downstream_catchment_id")
+create_var("FINALID",       np.float32(finalid_catchment), ("tile",), "1",       "ID_of_the_terminal_catchment")
+create_var("OUTTYPE",       np.float32(outtype_catchment), ("tile",), "1",       "1=intermediate, 2=ocean_outlet, 3=inland_sink")
+create_var("AREA_CATCH",    np.float32(area_catchment),    ("tile",), "m+2",     "Pfafstetter_catchment_area")
+create_var("RRM_ALPHA_RIV", np.float32(alp_r),             ("tile",), "1",       "Alpha_parameter_for_main_river")
+create_var("RRM_ALPHA_STR", np.float32(alp_s),             ("tile",), "1",       "Alpha_parameter_for_local_streams")
 
 # Reservoir variables
-create_var("ACTIVE_RES",    np.float32(active_res),     ("tile",), "1",       "active_reservoir_flag")
-create_var("CAP_RES",       np.float32(cap_res),        ("tile",), "m+3",     "max_capacity_of_reservoirs")
-create_var("FLD_RES",       np.float32(fld_res),        ("tile",), "1",       "flood_control_flag_of_reservoirs")
-create_var("TYPE_RES",      np.float32(type_res),       ("tile",), "1",       "type_of_reservoirs")
-create_var("WID_RES",       np.float32(wid_res),        ("tile",), "m",       "length_scale_of_reservoirs")
-create_var("RRM_ALPHA_RES", np.float32(alp_res),        ("tile",), "1",       "Alpha_parameter_for_reservoirs")
+create_var("ACTIVE_RES",    np.float32(active_res),        ("tile",), "1",       "active_reservoir_flag")
+create_var("CAP_RES",       np.float32(cap_res),           ("tile",), "m+3",     "max_capacity_of_reservoirs")
+create_var("FLD_RES",       np.float32(fld_res),           ("tile",), "1",       "flood_control_flag_of_reservoirs")
+create_var("TYPE_RES",      np.float32(type_res),          ("tile",), "1",       "type_of_reservoirs")
+create_var("WID_RES",       np.float32(wid_res),           ("tile",), "m",       "length_scale_of_reservoirs")
+create_var("RRM_ALPHA_RES", np.float32(alp_res),           ("tile",), "1",       "Alpha_parameter_for_reservoirs")
 
 # Close file
 fout.close()

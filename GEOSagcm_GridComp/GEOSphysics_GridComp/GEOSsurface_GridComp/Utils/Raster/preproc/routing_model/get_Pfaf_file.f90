@@ -175,7 +175,7 @@ program main
      end if
   enddo
   
-  open(88,file="temp/Pfaf_msk.txt")
+  open(88,file="temp/Pfaf_outtype.txt")
   do i=1,nc
      write(88,*)pfaf_msk(i)
   enddo
