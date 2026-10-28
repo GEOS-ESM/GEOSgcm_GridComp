@@ -97,37 +97,12 @@ module GEOS_TurbulenceGridCompMod
 !   same order in all bundles. Some of these fields, however, 
 !   may be ``empty'' in the sense that the data pointer has not been allocated.
 !   
-!   {\tt GEOS\_TurbulenceGridComp} works with six bundles; three in the import
-!   state and three in the export state. The import bundles are:
-! \begin{itemize}
-!   \item[]
-!   \makebox[1in][l]{\bf TR} 
-!   \parbox[t]{4in}{The quantity being diffused.}
-!   \item[]
-!   \makebox[1in][l]{\bf TRG} 
-!   \parbox[t]{4in}{The surface (ground) value of the quantity being diffused.
-!                   (Used only by Run2)}
-!   \item[]
-!   \makebox[1in][l]{\bf DTG} 
-!   \parbox[t]{4in}{The change of TRG during the time step. (Used only by Run2)}
-! \end{itemize}
-!
-!   The export bundles are:
-! \begin{itemize}
-!   \item[]
-!   \makebox[1in][l]{\bf TRI} 
-!   \parbox[t]{4in}{The tendency of the quantity being diffused.
-!                   (Produced by Run1, updated by Run2.)  }
-!   \item[]
-!   \makebox[1in][l]{\bf FSTAR} 
-!   \parbox[t]{4in}{After Run1, the ``preliminary'' (i.e., at the original surface
-!    value) surface flux of the diffused quantity; after Run2, its final value.
-!    (Produced by Run1, updated by Run2)}
-!   \item[]
-!   \makebox[1in][l]{\bf DFSTAR} 
-!   \parbox[t]{4in}{The change of preliminary FSTAR per unit change in the 
-!                   surface value. (Produced by Run1)}
-! \end{itemize}
+!   {\tt GEOS\_TurbulenceGridComp} works with two bundles; TR in the import
+!   state and TRI in the export state. The surface values (SHAT, UHAT, VHAT, QHAT)
+!   and their changes (SDEL, UDEL, VDEL, QDEL) are explicit imports, and the
+!   surface fluxes (SFLX, UFLX, VFLX, QFLX) and their sensitivities to the surface
+!   value (SDFL, UDFL, VDFL, QDFL) are explicit exports. Quantities other than
+!   S, U, V and Q have zero surface flux.
 !
 !   All fields in the export bundles are checked for associated pointers before being
 !   updated.
@@ -201,7 +176,6 @@ module GEOS_TurbulenceGridCompMod
    end interface TURB_MaxMin
 
    interface TURB_BundleGetPointerToData
-      module procedure TURB_BundleGetPointerToData2
       module procedure TURB_BundleGetPointerToData3
    end interface TURB_BundleGetPointerToData
 
@@ -329,30 +303,6 @@ contains
                                                               RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_GridCompAddSpec(GC,                                          &
-         state_intent      = ESMF_STATEINTENT_IMPORT,                      &
-         short_name        = 'TRG',                                        &
-         standard_name     = 'surface_values_of_diffused_quantity',        &
-         units             = 'X',                                          &
-         dims              = 'xy',                                         &
-         vertical_stagger  = MAPL_VERTICAL_STAGGER_NONE,                    &
-         itemtype          = MAPL_STATEITEM_FIELDBUNDLE,                   &
-         restart_mode      = MAPL_RESTART_SKIP,                            &
-                                                              RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_GridCompAddSpec(GC,                                          &
-         state_intent      = ESMF_STATEINTENT_IMPORT,                      &
-         short_name        = 'DTG',                                        &
-         standard_name     = 'change_of_surface_values_of_diffused_quantity', &
-         units             = 'X',                                          &
-         dims              = 'xy',                                         &
-         vertical_stagger  = MAPL_VERTICAL_STAGGER_NONE,                    &
-         itemtype          = MAPL_STATEITEM_FIELDBUNDLE,                   &
-         restart_mode      = MAPL_RESTART_SKIP,                            &
-                                                              RC=STATUS  )
-    VERIFY_(STATUS)
-
 #include "Turbulence_Export___.h"
 
 ! EDMF_PLUMES_W/_THL/_QT: the ACG `UNGRIDDED`/`ungridded_dim_array`
@@ -407,28 +357,6 @@ contains
          units             = 'X kg m-2 s-1',                               &
          dims              = 'xyz',                                        &
          vertical_stagger  = MAPL_VERTICAL_STAGGER_CENTER,                  &
-         itemtype          = MAPL_STATEITEM_FIELDBUNDLE,                   &
-                                                              RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_GridCompAddSpec(GC,                                          &
-         state_intent      = ESMF_STATEINTENT_EXPORT,                      &
-         short_name        = 'FSTAR',                                      &
-         standard_name     = 'surface_fluxes',                             &
-         units             = 'X kg m-2 s-1',                               &
-         dims              = 'xy',                                         &
-         vertical_stagger  = MAPL_VERTICAL_STAGGER_NONE,                    &
-         itemtype          = MAPL_STATEITEM_FIELDBUNDLE,                   &
-                                                              RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_GridCompAddSpec(GC,                                          &
-         state_intent      = ESMF_STATEINTENT_EXPORT,                      &
-         short_name        = 'DFSTAR',                                     &
-         standard_name     = 'change_of_surface_fluxes_for_unit_change_of_surface_value', &
-         units             = 'kg m-2 s-1',                                 &
-         dims              = 'xy',                                         &
-         vertical_stagger  = MAPL_VERTICAL_STAGGER_NONE,                    &
          itemtype          = MAPL_STATEITEM_FIELDBUNDLE,                   &
                                                               RC=STATUS  )
     VERIFY_(STATUS)
@@ -964,7 +892,6 @@ contains
      real, dimension(:,:  ), pointer     :: ZPBLHTKE => null()
      real, dimension(:,:,:), pointer     :: TKE => null()
      real, dimension(:,:  ), pointer     :: ZPBLRI => null()
-     real, dimension(:,:  ), pointer     :: ZPBLRI2 => null()
      real, dimension(:,:  ), pointer     :: ZPBLTHV => null()
      real, dimension(:,:  ), pointer     :: ZPBLQV => null()
      real, dimension(:,:  ), pointer     :: ZPBLRFRCT => null()
@@ -984,7 +911,8 @@ contains
                                             SHOCPRNUM,&
                                             TKEBUOY,TKESHEAR,TKEDISS,TKEDISSx, &
                                             SL2, SL3, W2, W3, WSL, SLQT !, W3CANUTO, QT2DIAG,SL2DIAG,SLQTDIAG
-     real, dimension(:,:), pointer       :: edmf_depth
+     real, dimension(:,:), pointer       :: edmf_depth, lobukhov
+     real                               :: obukhov_denom
 
 ! EDMF variables
      real, dimension(:,:,:), pointer     :: edmf_dry_a,edmf_moist_a,edmf_frc, edmf_dry_w,edmf_moist_w, &
@@ -993,7 +921,7 @@ contains
                                             edmf_dry_u,edmf_moist_u,  &
                                             edmf_dry_v,edmf_moist_v,  &
                                             edmf_moist_qc,edmf_buoyf,edmf_mfx, &
-                                            edmf_w2, & !edmf_qt2, edmf_sl2, & 
+                                            edmf_dmfx, edmf_w2, &
                                             edmf_w3, edmf_wqt, edmf_slqt, & 
                                             edmf_wsl, edmf_qt3, edmf_sl3, &
                                             edmf_entx, edmf_tke,          &
@@ -1008,6 +936,7 @@ contains
      logical                             :: ALLOC_TCZPBL, CALC_TCZPBL
      logical                             :: ALLOC_ZPBL2, CALC_ZPBL2
      logical                             :: ALLOC_ZPBL10p, CALC_ZPBL10p
+     logical                             :: ALLOC_ZPBLRI, CALC_ZPBLRI
      logical                             :: PDFALLOC
 
      real                                :: LOUIS_B_KH, LOUIS_B_KM
@@ -1022,7 +951,7 @@ contains
      real                                :: AKHMMAX
      real                                :: C_B, LAMBDA_B
      logical                             :: USE_EIS
-     real                                :: PRANDTLSFC,PRANDTLRAD,BETA_RAD,BETA_SURF,KHRADFAC,TPFAC_MIN,TPFAC_MAX,ENTRATE_SURF
+     real                                :: PRANDTLSFC,PRANDTLRAD,BETA_RAD,BETA_SURF,KHRADFAC,TPFAC,ENTRATE_SURF
      real                                :: PCEFF_SURF, VSCALE_SURF, KHSFCFAC_LND, KHSFCFAC_OCN
 
      real                                :: SMTH_HGT
@@ -1091,27 +1020,31 @@ contains
      real, dimension( IM, JM, LM )       :: QPL,QPI
      integer                             :: DO_SHOC, DOPROGQT2
      real                                :: SL2TUNE, QT2TUNE, SLQT2TUNE,          &
-                                            SKEW_TGEN, SKEW_TDIS, FREE_ATM_QT2
+                                            SKEW_TGEN, SKEW_TDIS, QT2_TDIS, FREE_ATM_SIGS
      real    :: PDFSHAPE
 
      real    :: lambdadiss
 
      integer :: locmax
      real    :: maxkh,minlval
-     real, dimension(IM,JM) :: thetavs,thetavh,uv2h,kpbltc,kpbl2,kpbl10p
+     real, dimension(IM,JM) :: thetavs,thetavh,uv2h,kpbltc,kpbl2,kpbl10p,kpblri
      real    :: maxdthvdz,dthvdz
+     real    :: u_shear, v_shear, z_diff
+     logical :: has_solid_deck
 
      ! PBL-top diagnostic
      ! -----------------------------------------
 
      real, parameter :: tcri_crit = 0.25
-     real, parameter :: ri_crit = 0.00
-     real, parameter :: ri_crit2 = 0.20
+
+     logical :: is_marine_stratocumulus, is_shallow_cumulus
+     integer :: cloud_base_idx, cloud_top_idx
+     real :: cloud_fraction_mean, cloud_thickness
 
      real(kind=MAPL_R8), dimension(IM,JM,LM) :: AKX, BKX
      real, dimension(IM,JM,LM) :: DZ, DTM, TM
 
-     logical :: JASON_TRB, JASON_BELJAARS, JASON_LOUIS, JASON_LOCK
+     logical :: JASON_BELJAARS, JASON_LOUIS, JASON_LOCK, JASON_PBL_SC
      real(kind=MAPL_R8), dimension(IM,JM,LM) :: AERTOT
      real, dimension(:,:,:), pointer     :: S
      integer :: NTR, K, LTOP, LMAX
@@ -1161,18 +1094,19 @@ contains
 
 ! Get turbulence parameters from configuration
 !---------------------------------------------
-     call MAPL_GridCompGetResource(GC, "JASON_TRB", JASON_TRB, default=.FALSE., RC=STATUS); VERIFY_(STATUS)
-     if ( (LM .eq. 72) .OR. (JASON_TRB) ) then
+     if (LM .eq. 72) then
+       call MAPL_GridCompGetResource(GC, "JASON_PBL_SC", JASON_PBL_SC, default=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, "JASON_BELJAARS", JASON_BELJAARS, default=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, "JASON_LOUIS", JASON_LOUIS, default=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, "JASON_LOCK", JASON_LOCK, default=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_PBLHT_OPTION", PBLHT_OPTION, default=4, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_SMTH_HGT", SMTH_HGT, default=0.0, RC=STATUS); VERIFY_(STATUS)
      else
+       call MAPL_GridCompGetResource(GC, "JASON_PBL_SC", JASON_PBL_SC, default=.FALSE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, "JASON_BELJAARS", JASON_BELJAARS, default=.FALSE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, "JASON_LOUIS", JASON_LOUIS, default=.FALSE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, "JASON_LOCK", JASON_LOCK, default=.FALSE., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_PBLHT_OPTION", PBLHT_OPTION, default=3, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_PBLHT_OPTION", PBLHT_OPTION, default=5, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_SMTH_HGT", SMTH_HGT, default=300.0, RC=STATUS); VERIFY_(STATUS)
      endif
 
@@ -1233,25 +1167,23 @@ contains
        call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_BETA_RAD", BETA_RAD, default=0.20, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_BETA_SURF", BETA_SURF, default=0.25, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_ENTRATE_SURF", ENTRATE_SURF, default=1.5e-3, RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_TPFAC_MIN", TPFAC_MIN, default=20.0, RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_TPFAC_MAX", TPFAC_MAX, default=20.0, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_TPFAC", TPFAC, default=20.0, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_PCEFF_SURF", PCEFF_SURF, default=0.5, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_LOCK_ON", LOCK_ON, default=1, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_VSCALE_SURF", VSCALE_SURF, default=2.5e-3, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_USE_EIS", USE_EIS, default=.false., RC=STATUS); VERIFY_(STATUS)
      else
        call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_LAMBDADISS", LAMBDADISS, default=15., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_KHRADFAC", KHRADFAC, default=1.0, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_KHRADFAC", KHRADFAC, default=0.8, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_KHSFCFAC_LND", KHSFCFAC_LND, default=1.0, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_KHSFCFAC_OCN", KHSFCFAC_OCN, default=1.0, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_PRANDTLSFC", PRANDTLSFC, default=1.0, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_PRANDTLRAD", PRANDTLRAD, default=0.75, RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_BETA_RAD", BETA_RAD, default=0.30, RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_BETA_SURF", BETA_SURF, default=0.15, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_BETA_RAD", BETA_RAD, default=0.15, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_BETA_SURF", BETA_SURF, default=0.10, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_ENTRATE_SURF", ENTRATE_SURF, default=1.5e-3, RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_TPFAC_MIN", TPFAC_MIN, default=0.0, RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_TPFAC_MAX", TPFAC_MAX, default=0.0, RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_PCEFF_SURF", PCEFF_SURF, default=0.0, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_TPFAC", TPFAC, default=0.0, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_PCEFF_SURF", PCEFF_SURF, default=0.375, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_LOCK_ON", LOCK_ON, default=1, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_VSCALE_SURF", VSCALE_SURF, default=2.5e-3, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_USE_EIS", USE_EIS, default=.false., RC=STATUS); VERIFY_(STATUS)
@@ -1260,15 +1192,15 @@ contains
      call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_DO_SHOC", DO_SHOC, default=0, RC=STATUS); VERIFY_(STATUS)
      if (DO_SHOC /= 0) then
        call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_SHC_PRNUM", SHOCPARAMS%PRNUM, default=-0.9, RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_SHC_LAMBDA", SHOCPARAMS%LAMBDA, default=0.5, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_SHC_LAMBDA", SHOCPARAMS%LAMBDA, default=0.25, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_SHC_TSCALE", SHOCPARAMS%TSCALE, default=400., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_SHC_CK", SHOCPARAMS%CKVAL, default=0.1, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_SHC_CEFAC", SHOCPARAMS%CEFAC, default=1.0, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_SHC_CESFAC", SHOCPARAMS%CESFAC, default=4., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_SHC_LENOPT", SHOCPARAMS%LENOPT, default=3, RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_SHC_LENFAC1", SHOCPARAMS%LENFAC1, default=8., RC=STATUS); VERIFY_(STATUS)       
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_SHC_LENFAC1", SHOCPARAMS%LENFAC1, default=5., RC=STATUS); VERIFY_(STATUS)       
        call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_SHC_LENFAC2", SHOCPARAMS%LENFAC2, default=2., RC=STATUS); VERIFY_(STATUS)       
-       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_SHC_LENFAC3", SHOCPARAMS%LENFAC3, default=1., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_SHC_LENFAC3", SHOCPARAMS%LENFAC3, default=0.5, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//"_SHC_BUOY_OPTION", SHOCPARAMS%BUOYOPT, default=2, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GridCompGetResource(GC, 'PDFSHAPE', PDFSHAPE, DEFAULT = 6.0, RC=STATUS); VERIFY_(STATUS)
      else
@@ -1281,7 +1213,8 @@ contains
      call MAPL_GridCompGetResource(GC, 'SLQT2TUNE', SLQT2TUNE, DEFAULT = 7.0, RC=STATUS); VERIFY_(STATUS)
      call MAPL_GridCompGetResource(GC, 'SKEW_TDIS', SKEW_TDIS, DEFAULT = 900.0, RC=STATUS); VERIFY_(STATUS)
      call MAPL_GridCompGetResource(GC, 'SKEW_TGEN', SKEW_TGEN, DEFAULT = 900.0, RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GridCompGetResource(GC, 'FREE_ATM_QT2', FREE_ATM_QT2, DEFAULT = 0.05, RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GridCompGetResource(GC, 'QT2_TDIS', QT2_TDIS, DEFAULT = 900.0, RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GridCompGetResource(GC, 'FREE_ATM_SIGS', FREE_ATM_SIGS, DEFAULT = 0.05, RC=STATUS); VERIFY_(STATUS)
 
 ! Get pointers from export state...
 !-----------------------------------
@@ -1327,8 +1260,6 @@ contains
      call MAPL_StateGetPointer(EXPORT,    TKE,  'TKE',         RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_StateGetPointer(EXPORT,    ZPBLRI,  'ZPBLRI',             RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_StateGetPointer(EXPORT,    ZPBLRI2,  'ZPBLRI2',           RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_StateGetPointer(EXPORT,    ZPBLTHV,  'ZPBLTHV',           RC=STATUS)
      VERIFY_(STATUS)
@@ -1432,24 +1363,14 @@ contains
      VERIFY_(STATUS)
      call MAPL_StateGetPointer(EXPORT,  w3,    'W3',   RC=STATUS)
      VERIFY_(STATUS)
-!     call MAPL_StateGetPointer(EXPORT,  w3canuto,'W3CANUTO',   RC=STATUS)
-!     VERIFY_(STATUS)
      call MAPL_StateGetPointer(EXPORT,  w2,    'W2',   RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_StateGetPointer(EXPORT,  sl3,   'SL3',   RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_StateGetPointer(EXPORT,  sl2,   'SL2',   RC=STATUS)
      VERIFY_(STATUS)
-!     call MAPL_StateGetPointer(EXPORT,  wqt,   'WQT',   RC=STATUS)
-!     VERIFY_(STATUS)
-     call MAPL_StateGetPointer(EXPORT,  wsl,   'WSL',   RC=STATUS)
+     call MAPL_StateGetPointer(EXPORT,  lobukhov,  'LOBUKHOV', RC=STATUS)
      VERIFY_(STATUS)
-!     call MAPL_StateGetPointer(EXPORT,  qt2diag,   'QT2DIAG',   RC=STATUS)
-!     VERIFY_(STATUS)
-!     call MAPL_StateGetPointer(EXPORT,  sl2diag,   'SL2DIAG',   RC=STATUS)
-!     VERIFY_(STATUS)
-!     call MAPL_StateGetPointer(EXPORT,  slqtdiag,   'SLQTDIAG',   RC=STATUS)
-!     VERIFY_(STATUS)
      call MAPL_StateGetPointer(EXPORT,  edmf_wqt,    'EDMF_WQT', RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_StateGetPointer(EXPORT,  edmf_wsl,    'EDMF_WSL', RC=STATUS)
@@ -1457,6 +1378,8 @@ contains
      call MAPL_StateGetPointer(EXPORT,  edmf_tke,    'EDMF_TKE', RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_StateGetPointer(EXPORT,  edmf_mfx,    'EDMF_MF', RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_StateGetPointer(EXPORT,  edmf_dmfx,   'EDMF_DMF', RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_StateGetPointer(EXPORT,  edmf_dry_a,  'EDMF_DRY_A',       RC=STATUS)
      VERIFY_(STATUS)
@@ -1536,6 +1459,14 @@ contains
       if(.not.associated(ZPBL2 )) then
          allocate(ZPBL2(IM,JM))
          ALLOC_ZPBL2 = .TRUE.
+      endif
+
+      ALLOC_ZPBLRI = .FALSE.
+      CALC_ZPBLRI = .FALSE.
+      if(associated(ZPBLRI).OR.PBLHT_OPTION==5) CALC_ZPBLRI = .TRUE.
+      if(.not.associated(ZPBLRI)) then
+         allocate(ZPBLRI(IM,JM))
+         ALLOC_ZPBLRI = .TRUE.
       endif
 
       ALLOC_ZPBL10p = .FALSE.
@@ -1640,8 +1571,8 @@ contains
 
    ! Calculate liquid water potential temperature (THL) and total water (QT)
     EXF=T/TH 
-    THL=TH-(MAPL_ALHL*QL+MAPL_ALHS*QI)/(MAPL_CP*EXF)
-    QT=Q+QL+QI
+    THL=TH-(MAPL_ALHL*QLTOT+MAPL_ALHS*QITOT)/(MAPL_CP*EXF)
+    QT=Q+QLTOT+QITOT
 
 ! get updraft constants
     call MAPL_GridCompGetResource(GC, "EDMF_DOMF", DOMF, default=0, RC=STATUS)
@@ -1673,7 +1604,7 @@ contains
       call MAPL_GridCompGetResource(GC, "EDMF_MFLIMFAC", MFPARAMS%MFLIMFAC, default=2.0, RC=STATUS)
       call MAPL_GridCompGetResource(GC, "EDMF_ICE_RAMP", MFPARAMS%ICE_RAMP, default=-40.0, RC=STATUS)
       call MAPL_GridCompGetResource(GC, "EDMF_ENTRAIN", MFPARAMS%ENTRAIN, default=0, RC=STATUS)
-      call MAPL_GridCompGetResource(GC, "EDMF_STOCHASTIC", MFPARAMS%STOCHFRAC, default=0.5, RC=STATUS)
+      call MAPL_GridCompGetResource(GC, "EDMF_STOCHASTIC", MFPARAMS%STOCHFRAC, default=0.4, RC=STATUS)
       call MAPL_GridCompGetResource(GC, "EDMF_DISCRETE_TYPE", MFPARAMS%DISCRETE, default=1, RC=STATUS)
       call MAPL_GridCompGetResource(GC, "EDMF_IMPLICIT", MFPARAMS%IMPLICIT, default=1, RC=STATUS)
       call MAPL_GridCompGetResource(GC, "EDMF_PRCPCRIT", MFPARAMS%PRCPCRIT, default=-1., RC=STATUS)
@@ -1835,6 +1766,7 @@ end if
                     edmf_mf,                  & ! needed for ADG PDF
                     edmfdrya, edmfmoista,     & ! outputs for ADG PDF
                     edmf_dqrdt, edmf_dqsdt,   & ! output for micro
+                    edmf_dmfx,                &
                     !== Diagnostics, not used elsewhere ==
                     edmf_dry_w,               &
                     edmf_moist_w,             &
@@ -1930,6 +1862,20 @@ end if
    
    call MAPL_GridCompTimerStop(GC, "---MASSFLUX")
 
+   if (associated(lobukhov)) then
+      do j = 1, JM
+         do i = 1, IM
+            obukhov_denom = 0.4*MAPL_GRAV*(sh(i,j)+mapl_epsilon*thv(i,j,LM)*evap(i,j)) / &
+                            (MAPL_CP*rhoe(i,j,LM))
+            if (obukhov_denom /= 0.0) then
+               lobukhov(i,j) = -ustar(i,j)**3 * thv(i,j,LM) / obukhov_denom
+            else
+               ! SHOC uses zero Obukhov length as the neutral sentinel.
+               lobukhov(i,j) = 0.0
+            end if
+         end do
+      end do
+   end if
 
 !!!=================================================================
 !!!===========================  SHOC  ==============================
@@ -1946,6 +1892,7 @@ end if
         call RUN_SHOC( IM, JM, LM, LM+1, DT,  &
                        !== Inputs ==
                        SH(:,:),               &
+                       LOBUKHOV(:,:),         &
                        PLO(:,:,1:LM),         &
                        ZL0(:,:,0:LM),         &
                        Z(:,:,1:LM),           &
@@ -1954,8 +1901,8 @@ end if
                        OMEGA(:,:,1:LM),       &
                        T(:,:,1:LM),           &
                        Q(:,:,1:LM),           &
-                       QI(:,:,1:LM),          &
-                       QL(:,:,1:LM),          &
+                       QITOT(:,:,1:LM),       &
+                       QLTOT(:,:,1:LM),       &
                        QPI(:,:,1:LM),         &
                        QPL(:,:,1:LM),         &
                        QA(:,:,1:LM),          &
@@ -2224,7 +2171,7 @@ end if
                                       USE_EIS, &
                                       PRANDTLSFC, PRANDTLRAD,   &
                                       BETA_SURF, BETA_RAD,      &
-                                      TPFAC_MIN, TPFAC_MAX, ENTRATE_SURF, &
+                                      TPFAC, ENTRATE_SURF, &
                                       PCEFF_SURF, VSCALE_SURF, KHRADFAC, KHSFCFAC_LND, KHSFCFAC_OCN )
 
 
@@ -2430,7 +2377,7 @@ end if
                       USE_EIS,                  &
                       PRANDTLSFC, PRANDTLRAD,   &
                       BETA_SURF, BETA_RAD,      &
-                      TPFAC_MIN, TPFAC_MAX, ENTRATE_SURF, &
+                      TPFAC, ENTRATE_SURF, &
                       PCEFF_SURF, VSCALE_SURF, KHRADFAC, KHSFCFAC_LND, KHSFCFAC_OCN )
 
 #endif
@@ -2519,7 +2466,8 @@ end if
                           slqt2tune,      &
                           skew_tgen,      &
                           skew_tdis,      &
-                          free_atm_qt2 )
+                          qt2_tdis,       &
+                          free_atm_sigs )
 
        end if
 
@@ -2612,45 +2560,109 @@ end if
          ZPBLHTKE = MAPL_UNDEF
       end if ! ZPBLHTKE
 
-      ! RI local diagnostic for pbl height thresh 0.
-      if (associated(ZPBLRI)) then
+      if (CALC_ZPBLRI) then
          ZPBLRI = MAPL_UNDEF
-         where (RI(:,:,LM-1)>ri_crit) ZPBLRI = Z(:,:,LM)
-
+         
+         thetavs = T(:,:,LM)*(1.0+MAPL_VIREPS*Q(:,:,LM)/(1.0-Q(:,:,LM)))*(TH(:,:,LM)/T(:,:,LM))
+         tcrib(:,:,LM) = 0.0
+         
          do I = 1, IM
             do J = 1, JM
-               do L=LM-1,1,-1
-                  if( (RI(I,J,L-1)>ri_crit) .and. (ZPBLRI(I,J) == MAPL_UNDEF) ) then
-                     ZPBLRI(I,J) = Z(I,J,L+1)+(ri_crit-RI(I,J,L))/(RI(I,J,L-1)-RI(I,J,L))*(Z(I,J,L)-Z(I,J,L+1))
+               
+               ! -----------------------------------------------------------------------
+               ! Step 1: Identify boundary layer regime
+               ! -----------------------------------------------------------------------
+               is_marine_stratocumulus = .false.
+               is_shallow_cumulus = .false.
+               cloud_base_idx = -1
+               cloud_top_idx = -1
+               cloud_fraction_mean = 0.0
+               cloud_thickness = 0.0
+
+               ! Scan for low clouds (below 3 km only - ignore mid/high clouds)
+               do L = LM-1, 1, -1
+                  if (Z(I,J,L) > 3000.0) exit  ! Stop searching above 3 km
+                  if (FCLD(I,J,L) > 0.05) then
+                     if (cloud_base_idx < 0) cloud_base_idx = L  ! First cloud level from bottom
+                     cloud_top_idx = L  ! Keep updating as we go up
+                     cloud_fraction_mean = cloud_fraction_mean + FCLD(I,J,L)
+                     cloud_thickness = cloud_thickness + 1.0
+                  else
+                     if (cloud_base_idx > 0) exit  ! Found cloud top, stop
                   end if
                end do
-            end do 
-         end do 
 
-         where ( ZPBLRI .eq. MAPL_UNDEF ) ZPBLRI = Z(:,:,LM)
-         ZPBLRI = MIN(ZPBLRI,Z(:,:,KPBLMIN))
-         where ( ZPBLRI < 0.0 ) ZPBLRI = Z(:,:,LM)
-      end if ! ZPBLRI
-
-      ! RI local diagnostic for pbl height thresh 0.2
-      if (associated(ZPBLRI2)) then
-         ZPBLRI2 = MAPL_UNDEF
-         where (RI(:,:,LM-1) > ri_crit2) ZPBLRI2 = Z(:,:,LM)
-
-         do I = 1, IM
-            do J = 1, JM
-               do L=LM-1,1,-1
-                  if( (RI(I,J,L-1)>ri_crit2) .and. (ZPBLRI2(I,J) == MAPL_UNDEF) ) then
-                     ZPBLRI2(I,J) = Z(I,J,L+1)+(ri_crit2-RI(I,J,L))/(RI(I,J,L-1)-RI(I,J,L))*(Z(I,J,L)-Z(I,J,L+1))
+               ! Classify cloud regime (only if low clouds exist)
+               if (cloud_base_idx > 0 .and. cloud_thickness > 0.0) then
+                  cloud_fraction_mean = cloud_fraction_mean / cloud_thickness
+                  cloud_thickness = Z(I,J,cloud_top_idx) - Z(I,J,cloud_base_idx)
+                  ! Marine stratocumulus: solid deck, moderate thickness
+                  if (cloud_fraction_mean > 0.6 .and. cloud_thickness > 200.0 .and. &
+                      Z(I,J,cloud_base_idx) < 2000.0) then
+                     is_marine_stratocumulus = .true.
+                  ! Shallow cumulus: broken clouds, thin
+                  else if (cloud_fraction_mean < 0.4 .and. cloud_thickness < 800.0 .and. &
+                           Z(I,J,cloud_base_idx) < 1500.0) then
+                     is_shallow_cumulus = .true.
                   end if
+               end if
+
+               ! -----------------------------------------------------------------------
+               ! Step 2: Compute Richardson number profile
+               ! -----------------------------------------------------------------------
+               do L=LM-1,1,-1
+                  thetavh(I,J) = T(I,J,L)*(1.0+MAPL_VIREPS*Q(I,J,L)/(1.0-Q(I,J,L)))*(TH(I,J,L)/T(I,J,L))
+                  uv2h(I,J) = max(U(I,J,L)**2+V(I,J,L)**2, 1.0E-8)
+                  tcrib(I,J,L) = MAPL_GRAV*(thetavh(I,J)-thetavs(I,J))*Z(I,J,L)/(thetavs(I,J)*uv2h(I,J))
                end do
+
+               ! -----------------------------------------------------------------------
+               ! Step 3: Apply regime-specific PBL height diagnostic
+               ! -----------------------------------------------------------------------
+              
+               ! REGIME 1: Marine Stratocumulus
+               ! Place PBL top at cloud top (where strong inversion exists)
+               if (is_marine_stratocumulus) then
+                  ! Find the inversion at/above cloud top
+                  do L = cloud_top_idx, 1, -1
+                     if (tcrib(I,J,L) >= tcri_crit) then
+                        ZPBLRI(I,J) = Z(I,J,L+1)+(tcri_crit-tcrib(I,J,L+1))/(tcrib(I,J,L)-tcrib(I,J,L+1))*(Z(I,J,L)-Z(I,J,L+1))
+                        KPBLRI(I,J) = float(L)
+                        exit
+                     end if
+                  end do
+                  ! Fallback: if no inversion found above cloud, use cloud top
+                  if (ZPBLRI(I,J) .eq. MAPL_UNDEF) then
+                     ZPBLRI(I,J) = Z(I,J,cloud_top_idx)
+                     KPBLRI(I,J) = float(cloud_top_idx)
+                  end if
+              
+               ! REGIME 2: Shallow Cumulus
+               ! Place PBL top at cloud base (sub-cloud mixed layer)
+               else if (is_shallow_cumulus) then
+                  ZPBLRI(I,J) = Z(I,J,cloud_base_idx)
+                  KPBLRI(I,J) = float(cloud_base_idx)
+              
+               ! REGIME 3: Clear or Non-Boundary-Layer Clouds
+               ! Use standard bulk Richardson criterion
+               else
+                  do L=LM-1,1,-1
+                     if (tcrib(I,J,L) >= tcri_crit) then
+                        ZPBLRI(I,J) = Z(I,J,L+1)+(tcri_crit-tcrib(I,J,L+1))/(tcrib(I,J,L)-tcrib(I,J,L+1))*(Z(I,J,L)-Z(I,J,L+1))
+                        KPBLRI(I,J) = float(L)
+                        exit
+                     end if
+                  end do
+               end if
+
             end do
-         end do
-
-         where ( ZPBLRI2 .eq. MAPL_UNDEF ) ZPBLRI2 = Z(:,:,LM)
-         ZPBLRI2 = MIN(ZPBLRI2,Z(:,:,KPBLMIN))
-         where ( ZPBLRI2 < 0.0 ) ZPBLRI2 = Z(:,:,LM)
-      end if ! ZPBLRI2
+         end do 
+         
+         where (ZPBLRI<0.)
+            ZPBLRI = Z(:,:,LM)
+            KPBLRI = float(LM)
+         end where
+      end if
 
       ! thetav gradient based pbl height diagnostic
       if (associated(ZPBLTHV)) then
@@ -2835,6 +2847,10 @@ end if
 
          END WHERE
 
+      CASE( 5 )
+         ZPBL = ZPBLRI
+         KPBL = KPBLRI
+
       END SELECT
 
       ZPBL = MIN(ZPBL,Z(:,:,KPBLMIN))
@@ -2845,43 +2861,41 @@ end if
         KPBL_SC = MAPL_UNDEF
         do I = 1, IM
           do J = 1, JM
-            if (DO_SHOC==0) then
-              temparray(1:LM+1) = KHSFC(I,J,0:LM)
+            if ( JASON_PBL_SC ) then
+                ! ----------------------------------------------------------------
+                ! Use old 10% of HKHSFC
+                ! ----------------------------------------------------------------
+                temparray(1:LM+1) = KHSFC(I,J,0:LM)
+                maxkh = maxval(temparray)
+                kh_thresh = 0.1
+                do L = LM-1, 2, -1
+                  if ( (temparray(L) < kh_thresh*maxkh) .and. (temparray(L+1) >= kh_thresh*maxkh)  &
+                  .and. (KPBL_SC(I,J) == MAPL_UNDEF ) ) then
+                     KPBL_SC(I,J) = float(L)
+                  end if
+                end do
+                ! =================================================================
+                ! ROBUST FALLBACK FOR CALM / LAMINAR CONDITIONS
+                ! =================================================================
+                if ( KPBL_SC(I,J) == MAPL_UNDEF .or. maxkh < 1.0 ) then
+                  KPBL_SC(I,J) = float(LM)
+                endif
             else
-              temparray(1:LM+1) = KH(I,J,0:LM)
-            endif
-            maxkh = maxval(temparray)
-
-            if (USE_EIS) then
-               if (EIS(I,J) >= 12.0) then       
-                  eis_stable = 1.0
-               elseif (EIS(I,J) <= 0.0) then
-                  eis_stable = 0.0
-               else
-                  eis_stable = (EIS(I,J) / 12.0)**1.5
-               endif
-               ! Adaptive threshold: 10-30% based on EIS
-               kh_thresh = 0.10 + eis_stable * 0.20
-            else
-               kh_thresh = 0.1
-            endif
-            
-            do L=LM-1,2,-1
-              if ( (temparray(L) < kh_thresh*maxkh) .and. (temparray(L+1) >= kh_thresh*maxkh)  &
-              .and. (KPBL_SC(I,J) == MAPL_UNDEF ) ) then
-                 KPBL_SC(I,J) = float(L)
-              end if
-            end do
-            if (  KPBL_SC(I,J) .eq. MAPL_UNDEF .or. (maxkh.lt.1.)) then
-              KPBL_SC(I,J) = float(LM)
+                ! ----------------------------------------------------------------
+                ! Use KPBL from PBLHT_OPTION
+                ! ----------------------------------------------------------------
+                KPBL_SC = KPBL
             endif
           end do
         end do
       endif
+      ! =================================================================
+      ! POST-PROCESSING LOOP (COHERENT LAYER SNAP)
+      ! =================================================================
       if (associated(KPBL_SC) .and. associated(ZPBL_SC)) then
         do I = 1, IM
           do J = 1, JM
-             ZPBL_SC(I,J) = Z(I,J,KPBL_SC(I,J))
+             ZPBL_SC(I,J) = Z(I,J, int(KPBL_SC(I,J)))
           end do
         end do
       endif
@@ -3129,6 +3143,7 @@ end if
       if(ALLOC_TCZPBL) deallocate(TCZPBL)
       if(ALLOC_ZPBL2) deallocate(ZPBL2)
       if(ALLOC_ZPBL10p) deallocate(ZPBL10p)
+      if(ALLOC_ZPBLRI) deallocate(ZPBLRI)
 
       RETURN_(ESMF_SUCCESS)
      end subroutine REFRESH
@@ -3170,9 +3185,6 @@ end if
     type (ESMF_Array)                   :: ARRAY
     type (ESMF_FieldBundle)             :: TR
     type (ESMF_FieldBundle)             :: TRI
-    type (ESMF_FieldBundle)             :: TRG
-    type (ESMF_FieldBundle)             :: FSTAR
-    type (ESMF_FieldBundle)             :: DFSTAR
     real, dimension(:,:,:), pointer     :: S, SOI, SOD
     real, dimension(:,:),   pointer     :: SG, SF, SDF, CX, SRG
     real, dimension(:,:,:), pointer     :: DX
@@ -3249,7 +3261,6 @@ end if
 !----------------------------------------------------------
 
     call ESMF_StateGet(IMPORT, 'TR' ,    TR,     RC=STATUS); VERIFY_(STATUS)
-    call ESMF_StateGet(IMPORT, 'TRG',    TRG,    RC=STATUS); VERIFY_(STATUS)
 
     if (DO_WAVES/=0 .and. DO_SEA_SPRAY/=0) then
        call MAPL_StateGetPointer(IMPORT, SH_SPRAY_, 'SHFX_SPRAY',   RC=STATUS)
@@ -3269,8 +3280,6 @@ end if
     end if
 
     call ESMF_StateGet(EXPORT, 'TRI',    TRI,    RC=STATUS); VERIFY_(STATUS)
-    call ESMF_StateGet(EXPORT, 'FSTAR',  FSTAR,  RC=STATUS); VERIFY_(STATUS)
-    call ESMF_StateGet(EXPORT, 'DFSTAR', DFSTAR, RC=STATUS); VERIFY_(STATUS)
 
 ! Get pointers to exports of U,V and S that diffuse sees
 !  Required for SYNCTQ (ALLOC=.TRUE.)
@@ -3294,15 +3303,6 @@ end if
 !-------------------------------------------------
 
     call ESMF_FieldBundleGet(TRI,    FieldCount=K , RC=STATUS)
-    VERIFY_(STATUS)
-    _ASSERT(KM==K,'needs informative message')
-    call ESMF_FieldBundleGet(TRG,    FieldCount=K , RC=STATUS)
-    VERIFY_(STATUS)
-    _ASSERT(KM==K,'needs informative message')
-    call ESMF_FieldBundleGet(FSTAR,  FieldCount=K , RC=STATUS)
-    VERIFY_(STATUS)
-    _ASSERT(KM==K,'needs informative message')
-    call ESMF_FieldBundleGet(DFSTAR, FieldCount=K , RC=STATUS)
     VERIFY_(STATUS)
     _ASSERT(KM==K,'needs informative message')
 
@@ -3355,12 +3355,20 @@ end if
        VERIFY_(STATUS)
        call TURB_BundleGetPointerToData(TRI   , trim(NAME)//'IT' , SOI, RC=STATUS)
        VERIFY_(STATUS)
-       call TURB_BundleGetPointerToData(TRG   , trim(NAME)//'HAT', SRG, RC=STATUS)
-       VERIFY_(STATUS)
-       call TURB_BundleGetPointerToData(FSTAR , trim(NAME)//'FLX', SF , RC=STATUS)
-       VERIFY_(STATUS)
-       call TURB_BundleGetPointerToData(DFSTAR, trim(NAME)//'DFL', SDF, RC=STATUS)
-       VERIFY_(STATUS)
+
+! Surface values, fluxes and sensitivities exist only for S, U, V and Q;
+!  all other quantities are left unassociated (zero flux).
+!------------------------------------------------------------------
+       nullify(SRG, SF, SDF)
+       select case (trim(NAME))
+       case ('S','U','V','Q')
+          call MAPL_StateGetPointer(IMPORT, SRG, trim(NAME)//'HAT', RC=STATUS)
+          VERIFY_(STATUS)
+          call MAPL_StateGetPointer(EXPORT, SF , trim(NAME)//'FLX', RC=STATUS)
+          VERIFY_(STATUS)
+          call MAPL_StateGetPointer(EXPORT, SDF, trim(NAME)//'DFL', RC=STATUS)
+          VERIFY_(STATUS)
+       end select
 
 ! The quantity must exist; others are optional.
 !----------------------------------------------
@@ -3715,9 +3723,6 @@ end subroutine RUN1
       type (ESMF_Field)                   :: FIELD
       type (ESMF_FieldBundle)             :: TR
       type (ESMF_FieldBundle)             :: TRI
-      type (ESMF_FieldBundle)             :: DTG
-      type (ESMF_FieldBundle)             :: FSTAR
-      type (ESMF_FieldBundle)             :: DFSTAR
       real, dimension(:,:,:), pointer     :: PLE
       real, dimension(:,:,:), pointer     :: ZLE
       real, dimension(:,:,:), pointer     :: S, SOI, SINC, INTDIS, TOPDIS
@@ -3880,11 +3885,8 @@ end subroutine RUN1
 !----------------------------------------------------------
 
       call ESMF_StateGet(IMPORT, 'TR' ,    TR,     RC=STATUS); VERIFY_(STATUS)
-      call ESMF_StateGet(IMPORT, 'DTG',    DTG,    RC=STATUS); VERIFY_(STATUS)
 
       call ESMF_StateGet(EXPORT, 'TRI',    TRI,    RC=STATUS); VERIFY_(STATUS)
-      call ESMF_StateGet(EXPORT, 'FSTAR' , FSTAR,  RC=STATUS); VERIFY_(STATUS)
-      call ESMF_StateGet(EXPORT, 'DFSTAR', DFSTAR, RC=STATUS); VERIFY_(STATUS)
 
 ! Count them...
 !--------------
@@ -3895,10 +3897,6 @@ end subroutine RUN1
 ! and make sure the other bundles are the same.
 !----------------------------------------------
 
-      call ESMF_FieldBundleGet(DTG, FieldCount=K , RC=STATUS)
-      VERIFY_(STATUS)
-
-      _ASSERT(KM==K,'needs informative message')
 
 ! KK gives the order in which quantities will be process.
 !--------------------------------------------------------
@@ -4108,12 +4106,16 @@ end subroutine RUN1
          VERIFY_(STATUS)
          call TURB_BundleGetPointerToData(TRI   , trim(NAME)//'IT' , SOI, RC=STATUS)
          VERIFY_(STATUS)
-         call TURB_BundleGetPointerToData(DTG   , trim(NAME)//'DEL', DSG, RC=STATUS)
-         VERIFY_(STATUS)
-         call TURB_BundleGetPointerToData(FSTAR , trim(NAME)//'FLX', SF , RC=STATUS)
-         VERIFY_(STATUS)
-         call TURB_BundleGetPointerToData(DFSTAR, trim(NAME)//'DFL', SDF, RC=STATUS)
-         VERIFY_(STATUS)
+         nullify(DSG, SF, SDF)
+         select case (trim(NAME))
+         case ('S','U','V','Q')
+            call MAPL_StateGetPointer(IMPORT, DSG, trim(NAME)//'DEL', RC=STATUS)
+            VERIFY_(STATUS)
+            call MAPL_StateGetPointer(EXPORT, SF , trim(NAME)//'FLX', RC=STATUS)
+            VERIFY_(STATUS)
+            call MAPL_StateGetPointer(EXPORT, SDF, trim(NAME)//'DFL', RC=STATUS)
+            VERIFY_(STATUS)
+         end select
 
 !  Point to the appropriate sensitivity
 !--------------------------------------
@@ -4493,33 +4495,10 @@ end subroutine RUN1
 ! MAPL-specific logic): fetch the named field out of the bundle, then
 ! its data pointer if-and-only-if the field is actually allocated
 ! (ESMF_FIELDSTATUS_COMPLETE), else leave the pointer null. Reproduced
-! here verbatim (see mapl3-porting-notes.md), as a small local generic
-! covering both the rank-2 (surface-only bundle members: TRG/DTG/FSTAR/
-! DFSTAR) and rank-3 (TR/TRI) cases used by DIFFUSE/UPDATE.
-
-   subroutine TURB_BundleGetPointerToData2(BUNDLE, NAME, PTR, RC)
-     type(ESMF_FieldBundle), intent(inout) :: BUNDLE
-     character(len=*),       intent(in)    :: NAME
-     real, dimension(:,:),   pointer       :: PTR
-     integer, optional,      intent(out)   :: RC
-
-     type(ESMF_Field)            :: FIELD
-     type(ESMF_FieldStatus_Flag) :: fieldStatus
-     integer                     :: STATUS
-
-     call ESMF_FieldBundleGet(BUNDLE, NAME, FIELD=FIELD, RC=STATUS)
-     VERIFY_(STATUS)
-     call ESMF_FieldGet(FIELD, status=fieldStatus, RC=STATUS)
-     VERIFY_(STATUS)
-     if (fieldStatus == ESMF_FIELDSTATUS_COMPLETE) then
-        call ESMF_FieldGet(FIELD, 0, PTR, RC=STATUS)
-        VERIFY_(STATUS)
-     else
-        nullify(PTR)
-     end if
-
-     RETURN_(ESMF_SUCCESS)
-   end subroutine TURB_BundleGetPointerToData2
+! here verbatim (see mapl3-porting-notes.md), for the rank-3 TR/TRI
+! bundle members used by DIFFUSE/UPDATE. (The surface-only quantities that
+! used to live in the TRG/DTG/FSTAR/DFSTAR bundles are now plain
+! imports/exports.)
 
    subroutine TURB_BundleGetPointerToData3(BUNDLE, NAME, PTR, RC)
      type(ESMF_FieldBundle), intent(inout) :: BUNDLE

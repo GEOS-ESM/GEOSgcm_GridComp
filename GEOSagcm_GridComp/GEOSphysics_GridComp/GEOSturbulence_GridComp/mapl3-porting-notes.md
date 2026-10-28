@@ -701,3 +701,43 @@ it clearly flagged is better than guessing.
   `CMakeLists.txt`, then the mechanical `RUN1`/`RUN2`/`REFRESH`/
   `DIFFUSE`/`UPDATE` conversions, then attempt the first real build.
 </content>
+
+## Session 2: sync with develop (changes since the release/MAPL-v3 base)
+
+Base of the original port was `release/MAPL-v3` (4f76b103), which carried its
+own copy of the v12 work, so `git merge-base` with `develop` (ea0f41d9)
+overstates what is new. The real delta is the net diff `5de4e751~1..develop`
+restricted to this directory (4 files). Hunks that merely undid release-branch
+MAPL3 edits (e.g. develop's `ESMF_AttributeGet("FriendlyToTURBULENCE")` versus
+the release branch's `ESMF_InfoGet`) were NOT taken; the MAPL3 forms stay.
+
+Applied (uncommitted, builds clean with `make GEOSturbulence_GridComp`):
+- `LockEntrain.F90`, `edmf.F90`, `shoc.F90`: clean 3-way merge
+  (`git merge-file` with base/ours/develop); the port's own `use` fixes
+  survived.
+- **Four bundles removed.** TRG/DTG (imports) and FSTAR/DFSTAR (exports) are
+  gone; replaced by explicit fields:
+  imports `SHAT,UHAT,VHAT,QHAT,SDEL,UDEL,VDEL,QDEL`, exports
+  `SFLX,UFLX,VFLX,QFLX,SDFL,UDFL,VDFL,QDFL` (all `xy`, no vertical location).
+  They are now rows in `Turbulence_StateSpecs.rc`. Only `TR` (import) and
+  `TRI` (export) remain as manually added bundle specs, so there are now 2
+  manual bundle specs, not 6. In `RUN1`/`RUN2`, S/U/V/Q fetch
+  `<NAME>HAT|DEL`, `<NAME>FLX`, `<NAME>DFL` with `MAPL_StateGetPointer`;
+  all other tracers get nullified pointers (zero flux). The rank-2
+  `TURB_BundleGetPointerToData` variant was deleted (unused).
+- New exports `LOBUKHOV`, `EDMF_DMF`; removed `ZPBLRI2`.
+- Resources: `JASON_TRB` -> `JASON_PBL_SC`; `TPFAC_MIN/MAX` -> `TPFAC`;
+  `FREE_ATM_QT2` -> `FREE_ATM_SIGS`; new `QT2_TDIS`; new defaults for
+  `PBLHT_OPTION`(5, non-L72), `KHRADFAC`, `BETA_RAD/SURF`, `PCEFF_SURF`,
+  SHOC `LAMBDA/LENFAC1/LENFAC3`, `EDMF_STOCHASTIC`.
+- Science: regime-based `ZPBLRI`/`KPBLRI` (`PBLHT_OPTION==5`), new `KPBL_SC`
+  logic, `THL/QT` from `QLTOT/QITOT`, Obukhov length passed to SHOC,
+  `edmf_dmfx` passed to `RUN_EDMF`.
+
+Not done / still open:
+- Edge (VLOC=E) 0-based indexing audit (see section above). The newly copied
+  `KPBL_SC` block still reads `KHSFC(I,J,0:LM)` / `KH(I,J,0:LM)`.
+- `GEOS_PhysicsGridComp.F90` (still bypassed) in develop now connects the new
+  explicit fields; the MAPL3 copy still references the old TRG/DTG/FSTAR
+  bundles and must be updated when the parent is ported.
+- Moist/Surface (not ported) must provide/consume the new fields.

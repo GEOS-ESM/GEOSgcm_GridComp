@@ -2,9 +2,9 @@ schema_version: 2.0.0
 component: TURBULENCE
 
 category: IMPORT
-# NOTE: TR/TRG/DTG (dynamically-sized ESMF_FieldBundle imports carrying
-# arbitrary diffused-quantity tracers) are NOT declared here - the ACG
-# ITEMTYPE column has no bundle option (only 'F'/'V'). They are added
+# NOTE: TR (dynamically-sized ESMF_FieldBundle import carrying
+# arbitrary diffused-quantity tracers) is NOT declared here - the ACG
+# ITEMTYPE column has no bundle option (only 'F'/'V'). It is added
 # manually in SetServices via
 # MAPL_GridCompAddSpec(itemtype=MAPL_STATEITEM_FIELDBUNDLE), matching the
 # real MAPL3 precedent in GOCART2G_GridCompMod.F90 (AERO_DP bundle specs).
@@ -48,12 +48,20 @@ category: IMPORT
  WQT_DC     | kg kg-1 m s-1 | xyz  | E    |         |                                       | Total_water_flux_from_deep_convection     
  SHOBS      | W m-2         | xy   | N    |         |                                       | observed_surface_sensible_heat_flux       
  LHOBS      | W m-2         | xy   | N    |         |                                       | observed_surface_latent_heat_flux         
+ SHAT       | m+2 s-2       | xy   | N    | SKIP    |                                       | surface_value_of_dry_static_energy
+ UHAT       | m s-1         | xy   | N    | SKIP    |                                       | surface_value_of_eastward_wind
+ VHAT       | m s-1         | xy   | N    | SKIP    |                                       | surface_value_of_northward_wind
+ QHAT       | kg kg-1       | xy   | N    | SKIP    |                                       | surface_value_of_specific_humidity
+ SDEL       | m+2 s-2       | xy   | N    | SKIP    |                                       | change_of_surface_value_of_dry_static_energy
+ UDEL       | m s-1         | xy   | N    | SKIP    |                                       | change_of_surface_value_of_eastward_wind
+ VDEL       | m s-1         | xy   | N    | SKIP    |                                       | change_of_surface_value_of_northward_wind
+ QDEL       | kg kg-1       | xy   | N    | SKIP    |                                       | change_of_surface_value_of_specific_humidity
 
 category: EXPORT
-# NOTE: TRI/FSTAR/DFSTAR (dynamically-sized ESMF_FieldBundle exports, one
-# entry per diffused tracer in the matching TR import bundle) are NOT
-# declared here - same bundle-itemtype limitation as the IMPORT TR/TRG/DTG
-# bundles above. Added manually in SetServices.
+# NOTE: TRI (dynamically-sized ESMF_FieldBundle export, one entry per
+# diffused tracer in the matching TR import bundle) is NOT declared here -
+# same bundle-itemtype limitation as the IMPORT TR bundle above. Added
+# manually in SetServices.
 #----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  NAME           | UNITS           | DIMS | VLOC | COND                                  | UNGRIDDED | LONG NAME                                                                    
 #----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -89,13 +97,23 @@ category: EXPORT
  W2             | m2 s-2          | xyz  | C    |                                       |           | Vertical_velocity_variance                                                   
  WQT            | kg kg-1 m s-1   | xyz  | C    |                                       |           | Total_water_flux                                                             
  WSL            | K m s-1         | xyz  | C    |                                       |           | Liquid_water_static_energy_flux                                              
+ LOBUKHOV       | m               | xy   | N    |                                       |           | Monin_Obukhov_length
  EDMF_ENTR      | m-1             | xyz  | C    |                                       |           | EDMF_mean_updraft_lateral_entrainment_rate                                   
  EDMF_DEPTH     | m               | xy   | N    |                                       |           | EDMF_plume_depth_for_entrainment                                             
  EDMF_MF        | kg m s-1        | xyz  | E    |                                       |           | EDMF_mass_flux                                                               
+ EDMF_DMF       | kg m-2 s-1      | xyz  | C    |                                       |           | EDMF_detrained_mass_flux
  SSRCMF         | J kg-1 s-1      | xyz  | C    |                                       |           | EDMF_dry_static_energy_source_term                                           
  QVSRCMF        | kg kg-1 s-1     | xyz  | C    |                                       |           | EDMF_specific_humidity_source_term                                           
  QLSRCMF        | kg kg-1 s-1     | xyz  | C    |                                       |           | EDMF_liquid_water_source_term                                                
  QISRCMF        | kg kg-1 s-1     | xyz  | C    |                                       |           | EDMF_ice_water_source_term                                                   
+ SFLX           | W m-2           | xy   | N    |                                       |           | surface_sensible_heat_flux_from_turbulence
+ UFLX           | N m-2           | xy   | N    |                                       |           | surface_eastward_surface_stress_from_turbulence
+ VFLX           | N m-2           | xy   | N    |                                       |           | surface_northward_surface_stress_from_turbulence
+ QFLX           | kg m-2 s-1      | xy   | N    |                                       |           | surface_evaporation_from_turbulence
+ SDFL           | m s-1           | xy   | N    |                                       |           | change_of_surface_flux_of_dry_static_energy_for_unit_change_of_surface_value
+ UDFL           | N s m-3         | xy   | N    |                                       |           | change_of_surface_flux_of_eastward_wind_for_unit_change_of_surface_value
+ VDFL           | N s m-3         | xy   | N    |                                       |           | change_of_surface_flux_of_northward_wind_for_unit_change_of_surface_value
+ QDFL           | kg m-2 s-1      | xy   | N    |                                       |           | change_of_surface_flux_of_specific_humidity_for_unit_change_of_surface_value
  KM             | m+2 s-1         | xyz  | E    |                                       |           | total_momentum_diffusivity                                                   
  KH             | m+2 s-1         | xyz  | E    |                                       |           | total_scalar_diffusivity                                                     
  RI             | 1               | xyz  | E    |                                       |           | Richardson_number                                                            
@@ -160,7 +178,6 @@ category: EXPORT
  ZPBLHTKE       | m               | xy   | N    |                                       |           | planetary_boundary_layer_height_horiz_tke                                    
  TKE            | m+2 s-2         | xyz  | E    |                                       |           | turbulent_kinetic_energy                                                     
  ZPBLRI         | m               | xy   | N    |                                       |           | planetary_boundary_layer_height_rich_0                                       
- ZPBLRI2        | m               | xy   | N    |                                       |           | planetary_boundary_layer_height_rich_02                                      
  ZPBLTHV        | m               | xy   | N    |                                       |           | planetary_boundary_layer_height_thetav                                       
  ZPBLQV         | m               | xy   | N    |                                       |           | planetary_boundary_layer_height_qv                                           
  ZPBLRFRCT      | m               | xy   | N    |                                       |           | boundary_layer_height_from_refractivity_gradient                             
