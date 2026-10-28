@@ -11,7 +11,7 @@ use MAPL_Constants, only: mapl_epsilon, mapl_grav, mapl_cp,  &
                              mapl_alhs, mapl_alhf, mapl_kappa,  &
                              mapl_pi, mapl_celsius_to_kelvin
 
-use MAPL_Mod,          only: mapl_undef
+use MAPL_Constants,    only: mapl_undef
 
 use GEOS_Mod
 
