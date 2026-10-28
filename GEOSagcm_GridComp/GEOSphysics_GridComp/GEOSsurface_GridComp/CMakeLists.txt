@@ -8,6 +8,12 @@ set (alldirs
    GEOSsaltwater_GridComp
    )
 
+# LIS_GridComp integrates LISF's `LIS` library from source
+# opt-in via -DBUILD_LIS=ON
+if (BUILD_LIS)
+  list (APPEND alldirs LIS_GridComp)
+endif ()
+
 if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_SurfaceGridComp.F90)
 
   esma_add_library (${this}
