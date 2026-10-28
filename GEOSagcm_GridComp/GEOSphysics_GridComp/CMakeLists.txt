@@ -4,7 +4,7 @@ set (alldirs
   GEOSchem_GridComp         # restricted to GOCART only - see GEOSchem_GridComp/CMakeLists.txt
   # GEOSmoist_GridComp      # not yet ported to MAPL3 - restore when ported
   # GEOSsurface_GridComp    # not yet ported to MAPL3 - restore when ported
-  # GEOSturbulence_GridComp # not yet ported to MAPL3 - restore when ported
+  GEOSturbulence_GridComp
   GEOSgwd_GridComp
   GEOSradiation_GridComp    # restricted to IRRAD only - see GEOSradiation_GridComp/CMakeLists.txt
   )
