@@ -14,6 +14,8 @@ set (alldirs
 # are ported to MAPL3.
 esma_add_subdirectories (${alldirs})
 
+add_subdirectory(regression)
+
 # if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_PhysicsGridComp.F90)
 #
 #   esma_add_library (${this}

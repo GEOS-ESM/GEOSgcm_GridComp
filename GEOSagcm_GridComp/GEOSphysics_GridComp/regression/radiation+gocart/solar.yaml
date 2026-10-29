@@ -1,0 +1,41 @@
+# Resources mirror AGCM.rc for an RRTMGP SW + RRTMGP LW configuration
+# (the setup used for the MAPL2 SOLAR state capture this case is based on).
+DYCORE: FV3
+
+# radiation options
+SOLAR_DT: 1200
+EOT: true
+ORBIT_ANAL2B: true
+
+# radiation parameterizations
+USE_RRTMGP_IRRAD: 1.0
+USE_RRTMGP_SORAD: 1.0
+RRTMGP_GAS_SW: ExtData/g5gcm/radiation/RRTMGP/v1.8/rrtmgp-gas-sw-g112.nc
+RRTMGP_CLOUD_OPTICS_SW: ExtData/g5gcm/radiation/RRTMGP/v1.8/rrtmgp-clouds-sw.nc
+SOLAR_LB_MAX_PASSES: 10
+
+ISOLVAR: 2
+USE_NRLSSI2: true
+SOLAR_CYCLE_FILE_NAME: ExtData/g5gcm/solar/NRLSSI2.txt
+
+NUM_BANDS: 30
+
+SOLAR_CONSTANT: -1
+CO2: -1
+
+# set by the RADIATION parent in the full model; see Solar Initialize
+RAD_CONDENSATE_INHOMOGENEITY: 1
+
+mapl:
+  setServices:
+    sharedObj: libGEOSradiation_GridComp
+    userRoutine: solar_setservices_
+
+  misc:
+    activate_all_exports: true
+    restart:
+      internal: true
+    checkpoint:
+      export: true
+      import: true
+      internal: true

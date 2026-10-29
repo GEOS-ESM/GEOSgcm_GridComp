@@ -1,0 +1,106 @@
+mapl:
+
+  setServices:
+    sharedObj: libconfigurable_gridcomp
+    userRoutine: setservices_
+
+  misc:
+    restart:
+      internal: true
+
+  states:
+    internal:
+      PLE:
+        units: Pa
+        vertical_dim_spec: "e"
+        standard_name: "air_pressure"
+      T:
+        units: K
+        vertical_dim_spec: "c"
+        standard_name: "air_temperature"
+      QV:
+        units: kg kg-1
+        vertical_dim_spec: "c"
+        standard_name: "specific_humidity"
+      QL:
+        units: kg kg-1
+        vertical_dim_spec: "c"
+        standard_name: "mass_fraction_of_cloud_liquid_water_in_air"
+      QI:
+        units: kg kg-1
+        vertical_dim_spec: "c"
+        standard_name: "mass_fraction_of_cloud_ice_in_air"
+      QR:
+        units: kg kg-1
+        vertical_dim_spec: "c"
+        standard_name: "mass_fraction_of_rain_water_in_air"
+      QS:
+        units: kg kg-1
+        vertical_dim_spec: "c"
+        standard_name: "mass_fraction_of_snow_in_air"
+      QG:
+        units: kg kg-1
+        vertical_dim_spec: "c"
+        standard_name: "mass_fraction_of_graupel_in_air"
+      RL:
+        units: m
+        vertical_dim_spec: "c"
+        standard_name: "effective_radius_of_cloud_liquid_water_particles"
+      RI:
+        units: m
+        vertical_dim_spec: "c"
+        standard_name: "effective_radius_of_cloud_ice_particles"
+      RR:
+        units: m
+        vertical_dim_spec: "c"
+        standard_name: "effective_radius_of_rain_particles"
+      RS:
+        units: m
+        vertical_dim_spec: "c"
+        standard_name: "effective_radius_of_snow_particles"
+      RG:
+        units: m
+        vertical_dim_spec: "c"
+        standard_name: "effective_radius_of_graupel_particles"
+      O3:
+        units: kg kg-1
+        vertical_dim_spec: "c"
+        standard_name: "ozone_mass_mixing_ratio"
+      CH4:
+        units: pppv
+        vertical_dim_spec: "c"
+        standard_name: "methane_concentration"
+      N2O:
+        units: pppv
+        vertical_dim_spec: "c"
+        standard_name: "nitrous_oxide_concentration"
+      FCLD:
+        units: 1
+        vertical_dim_spec: "c"
+        standard_name: "cloud_area_fraction"
+      TS:
+        units: K
+        vertical_dim_spec: "n"
+        standard_name: "surface_skin_temperature"
+      ALBVR:
+        units: 1
+        vertical_dim_spec: "n"
+        standard_name: "surface_albedo_for_visible_beam"
+      ALBVF:
+        units: 1
+        vertical_dim_spec: "n"
+        standard_name: "surface_albedo_for_visible_diffuse"
+      ALBNR:
+        units: 1
+        vertical_dim_spec: "n"
+        standard_name: "surface_albedo_for_near_infrared_beam"
+      ALBNF:
+        units: 1
+        vertical_dim_spec: "n"
+        standard_name: "surface_albedo_for_near_infrared_diffuse"
+      PREF:
+        units: Pa
+        dims: z
+        vertical_dim_spec: "e"
+        standard_name: "reference_air_pressure"
+      # AERO comes from FakeGOCART (see root.yaml connections)

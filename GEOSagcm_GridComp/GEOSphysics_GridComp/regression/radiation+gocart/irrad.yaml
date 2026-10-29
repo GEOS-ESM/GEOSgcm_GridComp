@@ -1,0 +1,22 @@
+RATS_DIAGNOSTICS: []
+CO2: -1.0
+RRTMGP_GAS_LW: ExtData/g5gcm/radiation/RRTMGP/v1.8/rrtmgp-gas-lw-g128.nc
+RRTMGP_CLOUD_OPTICS_LW: ExtData/g5gcm/radiation/RRTMGP/v1.8/rrtmgp-clouds-lw.nc
+USE_RRTMGP_IRRAD: 1.0
+USE_RRTMGP_SORAD: 1.0
+NUM_BANDS: 30
+IRRAD_DT: 1200
+
+mapl:
+  setServices:
+    sharedObj: libGEOSradiation_GridComp
+    userRoutine: irrad_setservices_
+
+  misc:
+    activate_all_exports: true
+    restart:
+      internal: true
+    checkpoint:
+      export: true
+      import: true
+      internal: true
