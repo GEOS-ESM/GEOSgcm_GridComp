@@ -1,0 +1,251 @@
+schema_version: 2.0.0
+component: TURBULENCE
+
+category: INTERNAL
+#--------------------------------------------------------------------------------------------------------------------------------------------
+# NOTE: ZPBL_SC, PDF_A, TKESHOC, QT2 and QT3 are not declared here. ZPBL_SC is retrieved
+# from the EXPORT state in the code, and the FRIENDLYTO of the other four depends on
+# the runtime setting of DO_SHOC. They are added manually in SetServices.
+ NAME      | UNITS         | DIMS | VLOC | RESTART | COND        | DEFAULT | FRIENDLYTO | LONG NAME
+#--------------------------------------------------------------------------------------------------------------------------------------------
+ AKSS      | 1             | xyz  | C    | SKIP    |             |         |            | matrix_diagonal_ahat_for_s
+ BKSS      | 1             | xyz  | C    | SKIP    |             |         |            | matrix_diagonal_bhat_for_s
+ CKSS      | 1             | xyz  | C    | SKIP    |             |         |            | matrix_diagonal_c_for_s
+ YS        | 1             | xyz  | C    | SKIP    |             |         |            | rhs_for_s
+ AKQQ      | 1             | xyz  | C    | SKIP    |             |         |            | matrix_diagonal_ahat_for_qq
+ BKQQ      | 1             | xyz  | C    | SKIP    |             |         |            | matrix_diagonal_bhat_for_qq
+ CKQQ      | 1             | xyz  | C    | SKIP    |             |         |            | matrix_diagonal_c_for_qq
+ YQV       | 1             | xyz  | C    | SKIP    |             |         |            | rhs_for_qv
+ YQL       | 1             | xyz  | C    | SKIP    |             |         |            | rhs_for_ql
+ YQI       | 1             | xyz  | C    | SKIP    |             |         |            | rhs_for_qi
+ AKUU      | 1             | xyz  | C    | SKIP    |             |         |            | matrix_diagonal_ahat_for_uu
+ BKUU      | 1             | xyz  | C    | SKIP    |             |         |            | matrix_diagonal_bhat_for_uu
+ CKUU      | 1             | xyz  | C    | SKIP    |             |         |            | matrix_diagonal_c_for_uu
+ YU        | 1             | xyz  | C    | SKIP    |             |         |            | rhs_for_u
+ YV        | 1             | xyz  | C    | SKIP    |             |         |            | rhs_for_v
+ TKEDISS   | J kg-1 s-1    | xyz  | C    | SKIP    |             |         |            | SHOC_TKE_dissipation_rate
+ cu_scm    | ms-1          | xy   | N    |         | SCM_SL /= 0 | 0.      | TURBULENCE | scm_surface_momentum_exchange_coefficient
+ ct_scm    | ms-1          | xy   | N    |         | SCM_SL /= 0 | 0.      | TURBULENCE | scm_surface_heat_exchange_coefficient
+ ssurf_scm | K             | xy   | N    |         | SCM_SL /= 0 | 0.      | TURBULENCE | scm_surface_temperature
+ qsurf_scm | kgkg-1        | xy   | N    |         | SCM_SL /= 0 | 0.      | TURBULENCE | scm_surface_specific_humidity
+ AKS       | 1             | xyz  | C    | SKIP    |             |         |            | matrix_diagonal_ahat_for_scalars
+ BKS       | 1             | xyz  | C    | SKIP    |             |         |            | matrix_diagonal_bhat_for_scalars
+ CKS       | 1             | xyz  | C    | SKIP    |             |         |            | matrix_diagonal_c_for_scalars
+ DKS       | s-1           | xyz  | C    | SKIP    |             |         |            | sensitivity_of_tendency_to_surface_value_for_scalars
+ AKQ       | 1             | xyz  | C    | SKIP    |             |         |            | matrix_diagonal_ahat_for_moisture
+ BKQ       | 1             | xyz  | C    | SKIP    |             |         |            | matrix_diagonal_bhat_for_moisture
+ CKQ       | 1             | xyz  | C    | SKIP    |             |         |            | matrix_diagonal_c_for_moisture
+ DKQ       | s-1           | xyz  | C    | SKIP    |             |         |            | sensitivity_of_tendency_to_surface_value_for_moisture
+ AKV       | 1             | xyz  | C    | SKIP    |             |         |            | matrix_diagonal_ahat_for_winds
+ BKV       | 1             | xyz  | C    | SKIP    |             |         |            | matrix_diagonal_bhat_for_winds
+ CKV       | 1             | xyz  | C    | SKIP    |             |         |            | matrix_diagonal_c_for_winds
+ DKV       | s-1           | xyz  | C    | SKIP    |             |         |            | sensitivity_of_tendency_to_surface_value_for_winds
+ EKV       | Pa s-1        | xyz  | C    | SKIP    |             |         |            | momentum_mixing_factor
+ FKV       | Pa s-1        | xyz  | C    | SKIP    |             |         |            | topographic_roughness_factor
+ SINC      | m+2 s-3       | xyz  | C    | SKIP    |             |         |            | turbulence_tendency_for_dry_static_energy
+ ZPBL      | m             | xy   | N    |         |             |         | TURBULENCE | planetary_boundary_layer_height
+ TKH       | m+2 s-1       | xyz  | E    |         |             | 0.0     | TURBULENCE | turbulent_diffusivity_from_SHOC
+ MFAW      | m s-1         | xyz  | E    |         |             | 0.0     |            | updraft_normalized_mass_flux
+ SLFLXMF   | K m s-1       | xyz  | E    |         |             | 0.0     |            | liquid_water_static_energy_flux_by_updrafts
+ QTFLXMF   | kg kg-1 m s-1 | xyz  | E    |         |             | 0.0     |            | total_water_flux_by_updrafts
+
+category: IMPORT
+#--------------------------------------------------------------------------------------------------------------------------------------------
+# NOTE: The bundle import TR is not declared here - the ACG does not handle bundles;
+# it is added manually in SetServices.
+ NAME       | ALIAS  | UNITS         | DIMS | VLOC | RESTART | COND                              | DEFAULT | LONG NAME
+#--------------------------------------------------------------------------------------------------------------------------------------------
+ PHIS       |        | m+2 s-2       | xy   | N    |         |                                   |         | surface geopotential
+ AREA       |        | m^2           | xy   | N    | SKIP    |                                   |         | grid_box_area
+ PLE        |        | Pa            | xyz  | E    | SKIP    |                                   |         | air_pressure
+ ZLE        |        | m             | xyz  | E    | SKIP    |                                   |         | geopotential_height
+ T          |        | K             | xyz  | C    | SKIP    |                                   |         | air_temperature
+ TH         |        | K             | xyz  | C    | SKIP    |                                   |         | potential_temperature
+ QV         | Q      | kg kg-1       | xyz  | C    | SKIP    |                                   |         | specific_humidity
+ QLTOT      |        | kg kg-1       | xyz  | C    | SKIP    |                                   |         | liquid_condensate_mixing_ratio
+ QITOT      |        | kg kg-1       | xyz  | C    | SKIP    |                                   |         | frozen_condensate_mixing_ratio
+ QRTOT      |        | kg kg-1       | xyz  | C    | SKIP    |                                   |         | suspended_rain_mixing_ratio
+ QSTOT      |        | kg kg-1       | xyz  | C    | SKIP    |                                   |         | suspended_snow_mixing_ratio
+ QGTOT      |        | kg kg-1       | xyz  | C    | SKIP    |                                   |         | suspended_graupel_mixing_ratio
+ FCLD       |        | 1             | xyz  | C    | SKIP    |                                   |         | cloud_fraction
+ U          |        | m s-1         | xyz  | C    | SKIP    |                                   |         | eastward_wind
+ V          |        | m s-1         | xyz  | C    | SKIP    |                                   |         | northward_wind
+ CT         |        | kg m-2 s-1    | xy   | N    | SKIP    |                                   |         | surface_heat_exchange_coefficient
+ CQ         |        | kg m-2 s-1    | xy   | N    | SKIP    |                                   |         | surface_moisture_exchange_coefficient
+ CM         | CU     | kg m-2 s-1    | xy   | N    | SKIP    |                                   |         | surface_momentum_exchange_coefficient
+ BSTAR      |        | m s-2         | xy   | N    | SKIP    |                                   |         | surface_bouyancy_scale
+ USTAR      |        | m s-1         | xy   | N    | SKIP    |                                   |         | surface_velocity_scale
+ Z0         |        | m             | xy   | N    | SKIP    |                                   |         | surface_roughness
+ Z0H        |        | m             | xy   | N    | SKIP    |                                   |         | surface_roughness_for_heat
+ EIS        |        | K             | xy   | N    | SKIP    |                                   |         | estimated_inversion_strength
+ FRLAND     |        | 1             | xy   | N    | SKIP    |                                   |         | land_fraction
+ RADLW      |        | K s-1         | xyz  | C    |         |                                   |         | air_temperature_tendency_due_to_longwave
+ RADLWC     |        | K s-1         | xyz  | C    |         |                                   |         | clearsky_air_temperature_tendency_lw
+ PREF       |        | Pa            | z    | E    | SKIP    |                                   |         | reference_air_pressure
+ VARFLT     |        | m+2           | xy   | N    | SKIP    |                                   |         | variance_of_filtered_topography
+ SHAT       |        | m+2 s-2       | xy   | N    | SKIP    |                                   |         | surface_value_of_dry_static_energy
+ UHAT       |        | m s-1         | xy   | N    | SKIP    |                                   |         | surface_value_of_eastward_wind
+ VHAT       |        | m s-1         | xy   | N    | SKIP    |                                   |         | surface_value_of_northward_wind
+ QHAT       |        | kg kg-1       | xy   | N    | SKIP    |                                   |         | surface_value_of_specific_humidity
+ SDEL       |        | m+2 s-2       | xy   | N    | SKIP    |                                   |         | change_of_surface_value_of_dry_static_energy
+ UDEL       |        | m s-1         | xy   | N    | SKIP    |                                   |         | change_of_surface_value_of_eastward_wind
+ VDEL       |        | m s-1         | xy   | N    | SKIP    |                                   |         | change_of_surface_value_of_northward_wind
+ QDEL       |        | kg kg-1       | xy   | N    | SKIP    |                                   |         | change_of_surface_value_of_specific_humidity
+ OMEGA      |        | Pa s-1        | xyz  | C    |         |                                   |         | vertical_pressure_velocity
+ EVAP       |        | kg m-2 s-1    | xy   | N    | SKIP    |                                   |         | surface_evaporation
+ SH         |        | W m-2         | xy   | N    |         |                                   |         | surface_sensible_heat_flux
+ SHFX_SPRAY | SH_SPR | 1             | xy   | N    | OPT     | DO_WAVES/=0 .and. DO_SEA_SPRAY/=0 | 0.0     | sensible_heat_contribution_from_sea_spray
+ LHFX_SPRAY | LH_SPR | 1             | xy   | N    | OPT     | DO_WAVES/=0 .and. DO_SEA_SPRAY/=0 | 0.0     | latent_heat_contribution_from_sea_spray
+ WTHV2      |        | 1             | xyz  | C    |         |                                   | 0.0     | Buoyancy_flux_for_SHOC_TKE
+ WQT_DC     |        | kg kg-1 m s-1 | xyz  | E    |         |                                   | 0.0     | Total_water_flux_from_deep_convection
+ SHOBS      |        | W m-2         | xy   | N    |         | SCM_SL /= 0                       |         | observed_surface_sensible_heat_flux
+ LHOBS      |        | W m-2         | xy   | N    |         | SCM_SL /= 0                       |         | observed_surface_latent_heat_flux
+
+category: EXPORT
+#--------------------------------------------------------------------------------------------------------------------------------------------
+# NOTE: The bundle export TRI is not declared here - the ACG does not handle bundles;
+# it is added manually in SetServices.
+ NAME            | ALIAS     | UNITS           | DIMS | VLOC | ALLOC | COND                              | DEFAULT | UNGRIDDED | LONG NAME
+#--------------------------------------------------------------------------------------------------------------------------------------------
+ EDMF_DQRDT      |           | kg kg-1 s-1     | xyz  | C    | T     |                                   |         |           | EDMF_rain_tendency
+ EDMF_DQSDT      |           | kg kg-1 s-1     | xyz  | C    | T     |                                   |         |           | EDMF_snow_tendency
+ EDMF_PLUMES_W   |           | m s-1           | xyz  | E    |       |                                   |         | NUMUP     | Vertical_velocity_of_individual_EDMF_plumes
+ EDMF_PLUMES_THL |           | K               | xyz  | E    |       |                                   |         | NUMUP     | Liquid_water_potential_temperature_of_EDMF_plumes
+ EDMF_PLUMES_QT  |           | kg kg-1         | xyz  | E    |       |                                   |         | NUMUP     | Total_water_of_individual_EDMF_plumes
+ EDMF_DRY_A      |           | 1               | xyz  | E    |       |                                   |         |           | EDMF_dry_updraft_fractional_area
+ EDMF_FRC        |           | 1               | xyz  | C    |       |                                   |         |           | EDMF_total_updraft_fractional_area
+ EDMF_MOIST_A    |           | 1               | xyz  | E    |       |                                   |         |           | EDMF_moist_updraft_fractional_area
+ EDMF_DRY_W      |           | m s-1           | xyz  | E    |       |                                   |         |           | EDMF_mean_vertical_velocity_of_dry_updrafts
+ EDMF_MOIST_W    |           | m s-1           | xyz  | E    |       |                                   |         |           | EDMF_mean_vertical_velocity_of_moist_updrafts
+ EDMF_DRY_QT     |           | kg kg-1         | xyz  | E    |       |                                   |         |           | EDMF_mean_total_water_of_dry_updrafts
+ EDMF_MOIST_QT   |           | kg kg-1         | xyz  | E    |       |                                   |         |           | EDMF_mean_total_water_of_moist_updrafts
+ EDMF_MOIST_QC   |           | kg kg-1         | xyz  | E    |       |                                   |         |           | EDMF_mean_condensate_of_moist_updrafts
+ EDMF_DRY_THL    |           | K               | xyz  | E    |       |                                   |         |           | Liquid_water_potential_temperature_of_dry_updrafts
+ EDMF_MOIST_THL  |           | K               | xyz  | E    |       |                                   |         |           | Liquid_water_potential_temperature_of_moist_updrafts
+ EDMF_DRY_U      |           | m s-1           | xyz  | E    |       |                                   |         |           | EDMF_mean_zonal_wind_of_dry_updrafts
+ EDMF_MOIST_U    |           | m s-1           | xyz  | E    |       |                                   |         |           | EDMF_mean_zonal_wind_of_moist_updrafts
+ EDMF_DRY_V      |           | m s-1           | xyz  | E    |       |                                   |         |           | EDMF_mean_meridional_wind_of_dry_updrafts
+ EDMF_MOIST_V    |           | m s-1           | xyz  | E    |       |                                   |         |           | EDMF_mean_meridional_wind_of_moist_updrafts
+ EDMF_BUOYF      |           | K m s-1         | xyz  | C    |       |                                   |         |           | EDMF_updraft_buoyancy_flux
+ EDMF_WQT        |           | kg m-2 s-1      | xyz  | E    |       |                                   |         |           | EDMF_mean_updraft_total_water_flux
+ EDMF_WSL        |           | K s-1           | xyz  | E    |       |                                   |         |           | Liquid_static_energy_flux_from_updrafts
+ EDMF_TKE        |           | m2 s-2          | xyz  | E    |       |                                   |         |           | Updraft_turbulent_kinetic_energy
+ EDMF_SLQT       |           | kg K kg-1       | xyz  | C    |       |                                   |         |           | Static_energy_total_water_covariance_from_updrafts
+ EDMF_W2         |           | m2 s-2          | xyz  | C    |       |                                   |         |           | Vertical_velocity_variance_from_updrafts
+ EDMF_W3         |           | m3 s-3          | xyz  | C    |       |                                   |         |           | Vertical_velocity_third_moment_from_updrafts
+ EDMF_QT3        |           | kg3 kg-3        | xyz  | C    |       |                                   |         |           | Total_water_third_moment_from_updrafts
+ EDMF_SL3        |           | K3              | xyz  | C    |       |                                   |         |           | Liquid_static_energy_third_moment_from_updrafts
+ SLQT            |           | K               | xyz  | C    |       |                                   | 0.0     |           | Covariance_of_liquid_static_energy_and_total_water
+ SL2             |           | K2              | xyz  | C    |       |                                   |         |           | Liquid_water_static_energy_variance
+ SL3             |           | K3              | xyz  | C    |       |                                   |         |           | Third_moment_of_liquid_water_static_energy
+ W3              |           | m3 s-3          | xyz  | C    |       |                                   |         |           | Third_moment_of_vertical_velocity
+ W2              |           | m2 s-2          | xyz  | C    |       |                                   |         |           | Vertical_velocity_variance
+ WQT             |           | kg kg-1 m s-1   | xyz  | C    | T     |                                   |         |           | Total_water_flux
+ WSL             |           | K m s-1         | xyz  | C    | T     |                                   |         |           | Liquid_water_static_energy_flux
+ LOBUKHOV        |           | m               | xy   | N    |       |                                   |         |           | Monin_Obukhov_length
+ EDMF_ENTR       | edmf_entx | m-1             | xyz  | C    | T     |                                   |         |           | EDMF_mean_updraft_lateral_entrainment_rate
+ EDMF_DEPTH      |           | m               | xy   | N    |       |                                   |         |           | EDMF_plume_depth_for_entrainment
+ EDMF_MF         | edmf_mfx  | kg m s-1        | xyz  | E    |       |                                   |         |           | EDMF_mass_flux
+ EDMF_DMF        | edmf_dmfx | kg m-2 s-1      | xyz  | C    |       |                                   |         |           | EDMF_detrained_mass_flux
+ SSRCMF          |           | J kg-1 s-1      | xyz  | C    |       |                                   |         |           | EDMF_dry_static_energy_source_term
+ QVSRCMF         |           | kg kg-1 s-1     | xyz  | C    |       |                                   |         |           | EDMF_specific_humidity_source_term
+ QLSRCMF         |           | kg kg-1 s-1     | xyz  | C    |       |                                   |         |           | EDMF_liquid_water_source_term
+ QISRCMF         |           | kg kg-1 s-1     | xyz  | C    |       |                                   |         |           | EDMF_ice_water_source_term
+ SFLX            |           | W m-2           | xy   | N    |       |                                   |         |           | surface_sensible_heat_flux_from_turbulence
+ UFLX            |           | N m-2           | xy   | N    |       |                                   |         |           | surface_eastward_surface_stress_from_turbulence
+ VFLX            |           | N m-2           | xy   | N    |       |                                   |         |           | surface_northward_surface_stress_from_turbulence
+ QFLX            |           | kg m-2 s-1      | xy   | N    |       |                                   |         |           | surface_evaporation_from_turbulence
+ SDFL            |           | m s-1           | xy   | N    |       |                                   |         |           | change_of_surface_flux_of_dry_static_energy_for_unit_change_of_surface_value
+ UDFL            |           | N s m-3         | xy   | N    |       |                                   |         |           | change_of_surface_flux_of_eastward_wind_for_unit_change_of_surface_value
+ VDFL            |           | N s m-3         | xy   | N    |       |                                   |         |           | change_of_surface_flux_of_northward_wind_for_unit_change_of_surface_value
+ QDFL            |           | kg m-2 s-1      | xy   | N    |       |                                   |         |           | change_of_surface_flux_of_specific_humidity_for_unit_change_of_surface_value
+ KM              |           | m+2 s-1         | xyz  | E    | T     |                                   |         |           | total_momentum_diffusivity
+ KH              |           | m+2 s-1         | xyz  | E    | T     |                                   |         |           | total_scalar_diffusivity
+ RI              |           | 1               | xyz  | E    | T     |                                   |         |           | Richardson_number
+ DU              |           | s-1             | xyz  | E    |       |                                   |         |           | bulk_shear_from_Louis
+ KHLS            |           | m+2 s-1         | xyz  | E    | T     |                                   |         |           | scalar_diffusivity_from_Louis
+ KMLS            |           | m+2 s-1         | xyz  | E    |       |                                   |         |           | momentum_diffusivity_from_Louis
+ KHSFC           |           | m+2 s-1         | xyz  | E    | T     |                                   |         |           | surface_driven_scalar_diffusivity_from_Lock_scheme
+ KHRAD           |           | m+2 s-1         | xyz  | E    | T     |                                   |         |           | radiation_driven_scalar_diffusivity_from_Lock_scheme
+ LWCRT           |           | K s-1           | xyz  | C    | T     |                                   |         |           | cloudy_LW_radiation_tendency_used_by_Lock_scheme
+ EKH             |           | m+2 s-1         | xyz  | E    | T     |                                   |         |           | entrainment_heat_diffusivity_from_Lock
+ EKM             |           | m+2 s-1         | xyz  | E    | T     |                                   |         |           | entrainment_momentum_diffusivity_from_Lock
+ ALH             |           | m               | xyz  | E    |       |                                   |         |           | Blackadar_length_scale_for_scalars
+ ALM             |           | m               | xyz  | E    |       |                                   |         |           | Blackadar_length_scale_for_momentum
+ INTDIS          |           | K s-1 Pa        | xyz  | C    |       |                                   |         |           | p-weighted_frictional_heating_rate_from_diffusion
+ TOPDIS          |           | K s-1 Pa        | xyz  | C    |       |                                   |         |           | p-weighted_frictional_heating_rate_from_orographic_drag
+ DPDTTRB         |           | Pa s-1          | xyz  | C    |       |                                   |         |           | layer_pressure_thickness_tendency_from_turbulence
+ SRFDIS          |           | K s-1 Pa        | xy   | N    |       |                                   |         |           | p-weighted_frictional_heating_rate_from_surface_drag
+ HGTLM5          |           | m               | xy   | N    |       |                                   |         |           | height_at_LM5
+ LM50M           |           | 1               | xy   | N    |       |                                   |         |           | LM_at_50_meters
+ QT              | QTX       | kg kg-1         | xyz  | C    | T     |                                   |         |           | total_water_after_turbulence
+ SL              | SLX       | J               | xyz  | C    | T     |                                   |         |           | liquid_water_static_energy_after_turbulence
+ QTFLXTRB        |           | kg kg-1 m-1 s-1 | xyz  | E    |       |                                   |         |           | total_water_flux_from_turbulence
+ SLFLXTRB        |           | J m-1 s-1       | xyz  | E    |       |                                   |         |           | liquid_water_static_energy_flux_from_turbulence
+ UFLXTRB         |           | m2 s-2          | xyz  | E    |       |                                   |         |           | turbulent_flux_of_zonal_wind_component
+ VFLXTRB         |           | m2 s-2          | xyz  | E    |       |                                   |         |           | turbulent_flux_of_meridional_wind_component
+ KETRB           |           | W m-2           | xy   | N    |       |                                   |         |           | vertically_integrated_kinetic_energy_tendency_across_turbulence
+ KESRF           |           | W m-2           | xy   | N    |       |                                   |         |           | vertically_integrated_kinetic_energy_dissipation_due_to_surface_friction
+ KEINT           |           | W m-2           | xy   | N    |       |                                   |         |           | vertically_integrated_kinetic_energy_dissipation_due_to_diffusion
+ KETOP           |           | W m-2           | xy   | N    |       |                                   |         |           | vertically_integrated_kinetic_energy_dissipation_due_to_topographic_friction
+ WESFC           |           | m s-1           | xy   | N    |       |                                   |         |           | entrainment_velocity_from_surface_plume
+ WERAD           |           | m s-1           | xy   | N    |       |                                   |         |           | entrainment_velocity_from_radiation
+ WEBRV           |           | m s-1           | xy   | N    |       |                                   |         |           | entrainment_velocity_from_buoy_rev
+ TRINVBS         |           | Pa              | xy   | N    |       |                                   |         |           | trade_inversion_base_pressure
+ TRINVDELT       |           | K               | xy   | N    |       |                                   |         |           | trade_inversion_temperature_jump
+ TRINVFRQ        |           | 1               | xy   | N    |       |                                   |         |           | trade_inversion_frequency
+ DBUOY           |           | m s-2           | xy   | N    |       |                                   |         |           | Buoyancy_jump_across_inversion
+ VSCSFC          |           | m s-1           | xy   | N    |       |                                   |         |           | turbulent_velocity_scale_for_sfc
+ VSCRAD          |           | m s-1           | xy   | N    |       |                                   |         |           | turbulent_velocity_scale_for_cooling
+ VSCBRV          |           | m s-1           | xy   | N    |       |                                   |         |           | turbulent_velocity_scale_for_buoy_rev
+ KERAD           |           | m+2 s-1         | xy   | N    |       |                                   |         |           | turbulent_entrainment_diff_from_cooling
+ CLDRF           |           | W m-2           | xy   | N    |       |                                   |         |           | cloud_top_radiative_forcing
+ PPBL            |           | Pa              | xy   | N    |       |                                   |         |           | pbltop_pressure
+ ZSML            |           | m               | xy   | N    | T     |                                   |         |           | pbltop_height_for_sfc_plume_LOCK
+ ZRADML          |           | m               | xy   | N    | T     |                                   |         |           | depth_for_rad/brv_plume_LOCK
+ ZRADBS          |           | m               | xy   | N    | T     |                                   |         |           | hght_of_base_for_rad/brv_plume_LOCK
+ ZCLD            |           | m               | xy   | N    | T     |                                   |         |           | pbltop_cloud_depth_LOCK
+ ZCLDTOP         |           | m               | xy   | N    |       |                                   |         |           | pbltop_cloud_top_height_LOCK
+ CHIS            |           | 1               | xy   | N    |       |                                   |         |           | optimal_mixture_fraction_for_BRV
+ SMIXT           |           | J kg-1          | xy   | N    |       |                                   |         |           | s_of_optimal_mixture_for_BRV
+ DELSINV         |           | K               | xy   | N    |       |                                   |         |           | Scaled_Del_s_at_Cloud_top
+ DSIEMS          |           | 1               | xy   | N    |       |                                   |         |           | Siems_buoy_rev_parameter
+ RADRCODE        |           | 1               | xy   | N    |       |                                   |         |           | Return_codes_for_Lock_top_driven_plume
+ AKSODT          |           | 1               | xyz  | C    |       |                                   |         |           | matrix_diagonal_ak_for_scalars_over_dt
+ CKSODT          |           | 1               | xyz  | C    |       |                                   |         |           | matrix_diagonal_ck_for_scalars_over_dt
+ AKQODT          |           | 1               | xyz  | C    |       |                                   |         |           | matrix_diagonal_ak_for_moisture_over_dt
+ CKQODT          |           | 1               | xyz  | C    |       |                                   |         |           | matrix_diagonal_ck_for_moisture_over_dt
+ AKVODT          |           | 1               | xyz  | C    |       |                                   |         |           | matrix_diagonal_ak_for_winds_over_dt
+ CKVODT          |           | 1               | xyz  | C    |       |                                   |         |           | matrix_diagonal_ck_for_winds_over_dt
+ TCZPBL          |           | m               | xy   | N    |       |                                   |         |           | transcom_planetary_boundary_layer_height
+ ZPBL2           |           | m               | xy   | N    |       |                                   |         |           | planetary_boundary_layer_height_threshold_2
+ ZPBL10p         |           | m               | xy   | N    |       |                                   |         |           | planetary_boundary_layer_height_threshold_10p
+ ZPBLHTKE        |           | m               | xy   | N    |       |                                   |         |           | planetary_boundary_layer_height_horiz_tke
+ TKE             |           | m+2 s-2         | xyz  | E    |       |                                   |         |           | turbulent_kinetic_energy
+ ZPBLRI          |           | m               | xy   | N    |       |                                   |         |           | planetary_boundary_layer_height_rich_0
+ ZPBLTHV         |           | m               | xy   | N    |       |                                   |         |           | planetary_boundary_layer_height_thetav
+ ZPBLQV          |           | m               | xy   | N    |       |                                   |         |           | planetary_boundary_layer_height_qv
+ ZPBLRFRCT       |           | m               | xy   | N    |       |                                   |         |           | boundary_layer_height_from_refractivity_gradient
+ SBIFRQ          |           | 1               | xy   | N    |       |                                   |         |           | surface_based_inversion_frequency
+ SBITOP          |           | m               | xy   | N    |       |                                   |         |           | surface_based_inversion_top_height
+ KPBL            |           | 1               | xy   | N    |       |                                   |         |           | pbltop_level
+ KPBL_SC         |           | 1               | xy   | N    | T     |                                   |         |           | pbltop_level_for_shallow
+ UAFDIFFUSE      |           | m s-1           | xyz  | C    | T     |                                   |         |           | zonal_wind_after_diffuse
+ VAFDIFFUSE      |           | m s-1           | xyz  | C    | T     |                                   |         |           | merdional_wind_after_diffuse
+ SAFDIFFUSE      |           | K               | xyz  | C    | T     |                                   |         |           | dry_static_energy_after_diffuse
+ QAFDIFFUSE      |           | kg kg-1         | xyz  | C    | T     |                                   |         |           | specific_humidity_after_diffuse
+ SAFUPDATE       |           | K               | xyz  | C    | T     |                                   |         |           | dry_static_energy_after_update
+ SHOCPRNUM       |           | 1               | xyz  | E    |       |                                   |         |           | Prandtl_number_from_SHOC
+ TKEDISS         | TKEDISSx  | m+2 s-3         | xyz  | C    |       |                                   |         |           | tke_dissipation_from_SHOC
+ TKEBUOY         |           | m+2 s-3         | xyz  | C    |       |                                   |         |           | tke_buoyancy_tendency_from_SHOC
+ TKESHEAR        |           | m+2 s-3         | xyz  | C    |       |                                   |         |           | tke_shear_production_from_SHOC
+ ISOTROPY        |           | s               | xyz  | E    | T     |                                   |         |           | return_to_isotropy_timescale
+ LSHOC           |           | m               | xyz  | C    |       |                                   |         |           | eddy_dissipation_length_from_SHOC
+ LSHOC1          |           | m               | xyz  | C    |       |                                   |         |           | dissipation_length_term1_from_SHOC
+ LSHOC2          |           | m               | xyz  | C    |       |                                   |         |           | dissipation_length_term2_from_SHOC
+ LSHOC3          |           | m               | xyz  | C    |       |                                   |         |           | dissipation_length_term3_from_SHOC
+ BRUNTSHOC       |           | s-1             | xyz  | C    |       |                                   |         |           | Brunt_Vaisala_frequency_from_SHOC
+ ZLES            |           | m               | xyz  | E    |       |                                   |         |           | edge_height_above_surface
+ ZLS             |           | m               | xyz  | C    |       |                                   |         |           | center_height_above_surface
+ SHFX_SPRAY      | SH_SPRX   | W m-2           | xy   | N    |       | DO_WAVES/=0 .and. DO_SEA_SPRAY/=0 |         |           | sensible_heat_contribution_from_sea_spray
+ LHFX_SPRAY      | LH_SPRX   | W m-2           | xy   | N    |       | DO_WAVES/=0 .and. DO_SEA_SPRAY/=0 |         |           | latent_heat_contribution_from_sea_spray

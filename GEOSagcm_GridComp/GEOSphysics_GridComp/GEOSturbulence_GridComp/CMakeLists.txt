@@ -11,3 +11,8 @@ set (srcs
 esma_add_library (${this}
   SRCS ${srcs}
   DEPENDENCIES GEOS_Shared MAPL ESMF::ESMF NetCDF::NetCDF_Fortran)
+
+mapl_acg (
+  ${this} Turbulence_StateSpecs.rc
+  IMPORT_SPECS EXPORT_SPECS INTERNAL_SPECS GET_POINTERS DECLARE_POINTERS
+)

@@ -2213,6 +2213,7 @@ contains
    character(len=ESMF_MAXSTR)          :: myNAME
    character(len=ESMF_MAXSTR)          ::  iNAME
    character(len=ESMF_MAXSTR)          :: fieldname
+   type (ESMF_StateItem_Flag)          :: itemType
 
 ! Variables needed for GPU initialization
 
@@ -2417,8 +2418,8 @@ contains
     VERIFY_(STATUS)
 
 ! Fill the increments bundle that turbulence will export.
-!  These fields come from the physics EXPORT, ones not there
-!  will have an empty field.
+!  These fields come from the physics EXPORT; tracers without
+!  a matching export are left out of the bundle.
 !------------------------------------------------------------
 
     call ESMF_StateGet ( GEX(TURBL), 'TRI', BUNDLE, RC=STATUS )
@@ -2431,6 +2432,9 @@ contains
        case default
           iNAME = trim(NAMES(I)) // 'IT'
        end select
+       call ESMF_StateGet ( EXPORT, iNAME, itemType=itemType, RC=STATUS )
+       VERIFY_(STATUS)
+       if (itemType /= ESMF_STATEITEM_FIELD) cycle
        call ESMFL_StateGetField  (EXPORT, (/iNAME/), &
             BUNDLE, (/trim(NAMES(I))//'IT'/), RC=STATUS )
        VERIFY_(STATUS)
