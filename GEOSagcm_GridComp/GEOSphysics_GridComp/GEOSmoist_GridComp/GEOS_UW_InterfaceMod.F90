@@ -40,14 +40,15 @@ subroutine UW_Setup (GC, CF, RC)
     type(ESMF_Config),   intent(inout) :: CF
     integer, optional                  :: RC  ! return code
 
-    call MAPL_AddInternalSpec(GC,                                    &
-         SHORT_NAME ='CUSH',                                         &
-         LONG_NAME  = 'Cumulus_scale_height_from_UW_shlw_convection',&
-         UNITS      ='m',                                            &
-         DIMS       = MAPL_DimsHorzOnly,                             &
-         VLOCATION  = MAPL_VLocationNone,                            &
-         DEFAULT= 1000.0,                                            &
-         _RC  )
+    call MAPL_GridCompAddSpec(GC,                                          &
+         STATE_INTENT     = ESMF_STATEINTENT_INTERNAL,                     &
+         SHORT_NAME       = 'CUSH',                                        &
+         STANDARD_NAME    = 'Cumulus_scale_height_from_UW_shlw_convection', &
+         UNITS            = 'm',                                           &
+         DIMS             = 'xy',                                          &
+         VERTICAL_STAGGER = MAPL_VERTICAL_STAGGER_NONE,                    &
+         FILL_VALUE       = 1000.0,                                        &
+         _RC)
 
     call MAPL_TimerAdd(GC, name="--UW", _RC)
 
@@ -87,7 +88,7 @@ subroutine UW_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     call ESMF_TimeIntervalSet(ringInterval, S=nint(UW_DT), calendar=calendar, _RC)
 
     UW_RunAlarm = ESMF_AlarmCreate(Clock        = CLOCK,        &
-                                   Name         = 'UW_RunAlarm',&
+                                   Name         = 'UW_RunAlarm', &
                                    RingInterval = ringInterval, &
                                    RingTime     = currentTime,  &
                                    Enabled      = .true.   ,    &

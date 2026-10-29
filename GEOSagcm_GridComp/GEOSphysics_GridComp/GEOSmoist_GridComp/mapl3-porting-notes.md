@@ -1,8 +1,9 @@
 # GEOS_MoistGridComp MAPL3 porting plan
 
-Status (2026-10-29): steps 1 and 2 done (not built; Moist is still
-commented out of the MAPL3 build, `../CMakeLists.txt:5`). Step 0
-(MAPL2 baseline) not done yet.
+Status (2026-10-29): steps 1-3 done on branch
+`feature/pchakrab/port-moist-to-mapl3` (off `release/MAPL-v3`; steps 1-2
+in commit `83eb97c5`). Not built: Moist is still commented out of the MAPL3
+build (`../CMakeLists.txt:5`). Step 0 (MAPL2 baseline) not done yet.
 
 Derived from the Radiation notes
 (`../@GEOSradiation_GridComp/mapl3-porting-notes.md`,
@@ -57,7 +58,7 @@ them in order, and adds up their results. Each scheme lives in a
   `Q` first (`:203`).
 - `:214-822`: 58 imports covering the dynamics state, turbulence, surface
   fields, the `MTR` tracer bundle (`:490`) and the `AERO` state (`:526`).
-- `:823-5516`: 559 exports, mostly diagnostics.
+- `:823-5516`: 553 exports (plus 6 commented out), mostly diagnostics.
 - `:5522-5537`: adds timers (`---CLDMACRO` twice, `:5526`/`:5528`) and
   calls `MAPL_GenericSetServices`.
 
@@ -211,6 +212,16 @@ their `if` branches but `_FAIL` until ported (decision 2); NSSL_2M is
 not selectable today and stays out of the build list or is removed
 (decision 5).
 
+**Done (2026-10-29).** The BACM_1M, MGB2_2M, THOM_1M and RAS `*_Setup`
+branches in SetServices (`GEOS_MoistGridComp.F90:184-205`) `_FAIL`
+before their call. SetServices runs first, so this one gate also covers
+their Initialize/Run/Finalize branches, which are unchanged.
+- `CLDMICR_OPTION` still defaults to `"BACM_1M"` (`:166`), so a config
+  without it now fails; MAPL3 configs must set `GFDL_1M`. Not changed
+  (would be a logic change).
+- NSSL_2M and pyMoist are still in `CMakeLists.txt` (`:13`, `:21`)
+  pending decision 5.
+
 ### 2. Macro pass (no logic change)
 Decided 2026-10-28: **no re-indentation, no lowercasing, no `codee
 format`** for Moist (unlike Solar step 1 and SU2G steps 1-1c). Existing
@@ -224,49 +235,65 @@ Driver and the three in-scope interface modules: macros
 macro spellings changed (normalize both versions and diff). Remove the
 duplicated `---CLDMACRO` timer only in the functional step.
 
+**Done (2026-10-29).** Done with a script: `RC=STATUS )` followed by
+`VERIFY_(STATUS)` on the same line (after `;`), the next line, or after
+blank lines was merged into `_RC)` (~1730 sites); remaining `VERIFY_` ->
+`_VERIFY`.
+- Left as `_VERIFY(STATUS)`: 6 `!!$`-commented sites in the driver, the
+  duplicate verify after `MAPL_TimerAdd(GC, name="--GFDL_1M")`, and the
+  `compute_radar_diagnostics` call in GFDL_1M (passes `STATUS`
+  positionally).
+- `Iam`/`COMP_NAME` dropped everywhere; `ESMF_GridCompGet` calls that
+  also get `CONFIG`/`VM` (driver Initialize, Run) keep those. GF keeps
+  `COMP_NAME` in `GF_Setup` because `FRIENDLIES%CNV_TR` uses it
+  (`GEOS_GF_InterfaceMod.F90:58-66`); it goes with the services rework
+  (step 4).
+- Check: macros expanded, comments/whitespace/`&`/`;` stripped, token
+  streams of old and new diffed. Only the `Iam`/`COMP_NAME` removals
+  differ.
+
 ### 3. State specs
-- `Moist_StateSpecs.rc` for the driver's 58 imports and 559 exports;
-  `mapl_acg(... IMPORT_SPECS EXPORT_SPECS GET_POINTERS DECLARE_POINTERS)`.
-- Scheme specs (decision 3, option B): the same `Moist_StateSpecs.rc`
-  also holds the specs each `X_Setup` registers today. Scheme-specific
-  rows get a `COND` on a scheme logical (`COND: use_gf`). ACG wraps both
-  the AddSpec call and the GetPointer call of a `COND` row in
-  `if (cond) then`, the GetPointer one with `else nullify(...)`
-  (`@MAPL/apps/MAPL_GridCompSpecs_ACG.py:352-356,:411-420,:797-814`).
-  Precedent: GWD (`GWD_StateSpecs.rc:10-14`), Ocean, DataSea, MOM6.
-  - Rows every microphysics scheme declares (`Q`, `QLLS`, `QLCN`,
-    `QILS`, `QICN`, `CLLS`, `CLCN`, `NACTL`, `NACTI`) are written once,
-    unconditional. Unverified: that their attributes match across
-    microphysics schemes. Check when the second one is ported; a field
-    that differs needs one row per scheme with exclusive `COND`s.
-  - `Q` stays the first internal by being the first internal row.
-  - Scheme selection in one place. Today the option strings are module
-    variables (`GEOS_MoistGridComp.F90:38-40`) compared 41 times
-    (`adjustl(CONVPAR_OPTION)=="GF"`) in SetServices (`:206-212`),
-    Initialize (`:5636-5637`), Run (`:6082-6095`) and Finalize
-    (`:6742`). Set module-level logicals once, right after the options
-    are read and checked (`:154-182`): `use_gfdl_1m`, `use_gf`, `use_uw`
-    (one per scheme). Use them in the `COND` column and replace every
-    string compare with them. They must be visible in both SetServices
-    (AddSpec includes) and Run (GetPointer includes), as GWD's
-    `self%NCAR_NRDG` is (`GEOS_GwdGridComp.F90:131-133,:478`). Residual
-    risk: a scheme row missing its `COND` is registered (and restarted)
-    unconditionally; catch it in review of the spec file.
-  - Shared fields outside the driver: GF (`GEOS_GF_InterfaceMod.F90:582-589`)
-    and UW (`GEOS_UW_InterfaceMod.F90:282-288`) read the microphysics
-    internals and must work with any microphysics scheme. They keep
-    hand-written `MAPL_StateGetPointer` calls, as GFDL_1M may
-    (`GEOS_GFDL_1M_InterfaceMod.F90:596-607`). Don't include the driver's
-    pointer headers there: pointer variables are named after `ALIAS` or
-    `SHORT_NAME` (`MAPL_GridCompSpecs_ACG.py:570-574`), so they would
-    redeclare `Q` and every other internal.
-  - The driver's Run (`:5803-5811`, `:6660`) can use the generated
-    pointer headers for these fields.
-  - Option A (one spec file per scheme, one `mapl_acg` call each, which
-    MAPL allows: `@MAPL/cmake/mapl_acg.cmake:124-139`,
-    `@FVdycoreCubed_GridComp/CMakeLists.txt:121-122`) was considered and
-    not chosen: shared microphysics rows would be copied into every
-    microphysics file.
+- `Moist_StateSpecs.rc` for the driver's 58 imports and 553 exports;
+  `mapl_acg(... IMPORT_SPECS EXPORT_SPECS INTERNAL_SPECS GET_POINTERS DECLARE_POINTERS)`.
+- Layout (decision 3): the driver's specs in `Moist_StateSpecs.rc`;
+  each scheme's fields as hand-written MAPL3 `MAPL_GridCompAddSpec`
+  calls in its `X_Setup`, where MAPL2 registers them.
+  - `Moist_StateSpecs.rc`: the driver's imports and exports. The driver
+    has no internals, as in MAPL2.
+  - Scheme fields, as each `X_Setup` registers them in MAPL2: GFDL_1M 12
+    internals, including the 9 every microphysics scheme declares (`Q`,
+    `QLLS`, `QLCN`, `CLLS`, `CLCN`, `QILS`, `QICN`, `NACTL`, `NACTI`;
+    identical in GFDL_1M, BACM_1M, THOM_1M, MGB2_2M), and 5 exports; GF
+    3 internals; UW 1 internal. Too few for ACG to save anything, and no
+    `COND` needed: `X_Setup` only runs for the selected scheme.
+  - `Q` stays the first internal as in MAPL2: it is the first call in
+    `GFDL_1M_Setup`, and the microphysics `Setup` runs before the
+    convection ones (whether order still matters is issue 7).
+  - Later microphysics schemes repeat the 9 shared internals and
+    `QRAIN`/`QSNOW`/`QGRAUPEL`, as MAPL2 does. `NCPL`/`NCPI` differ
+    between THOM_1M and MGB2_2M (`DEFAULT` 50e6/1e3 vs 0).
+  - Pointers in the scheme modules: hand-written `MAPL_StateGetPointer`,
+    as in MAPL2 (step 5). Don't include the driver's generated pointer
+    headers there (they declare every driver field).
+  - Scheme selection: replacing the 41 option-string compares
+    (`adjustl(CONVPAR_OPTION)=="GF"`; SetServices `:206-212`, Initialize
+    `:5636-5637`, Run `:6082-6095`, Finalize `:6742`) with module-level
+    logicals `use_gfdl_1m`, `use_gf`, `use_uw`, ... set once after the
+    options are checked (`:154-182`) is optional cleanup (step 4).
+  - Considered and dropped (2026-10-28/29), each step closer to MAPL2:
+    - Option B, one `Moist_StateSpecs.rc` with `COND` rows per scheme:
+      pointer headers are split only per state, not per scheme
+      (`mapl_acg.cmake:57-69`); scheme rows away from scheme code; a
+      missing `COND` registers (and restarts) a field silently; same-name
+      rows need distinct `ALIAS`es (`MAPL_GridCompSpecs_ACG.py:375-403,
+      :569-574`).
+    - The 9 shared internals in `Moist_StateSpecs.rc`, included before
+      the scheme `Setup` calls: moved them away from where MAPL2
+      registers them.
+    - One spec file and `mapl_acg` call per scheme
+      (`GFDL_1M_StateSpecs.rc`, ...; allowed, `mapl_acg.cmake:124-139`,
+      precedent `@FVdycoreCubed_GridComp/CMakeLists.txt:121-122`): only
+      1-17 fields each, so inline calls are simpler and match MAPL2.
 - Column mapping (Solar step 3, SU2G step 2): `FRIENDLYTO` dropped
   (services, step 4; `ADD2EXPORT` where it meant "export myself"),
   `DEFAULT` -> `FILL`, internals `FILL=0.0` (MAPL2 zero-filled),
@@ -275,6 +302,60 @@ duplicated `---CLDMACRO` timer only in the functional step.
 - `AERO` (`MAPL_STATEITEM_STATE`) and the `MTR`/service items stay
   hand-written `MAPL_GridCompAddSpec` calls (ACG `ITEMTYPE` only does
   F/V).
+
+**Done (2026-10-29).** `Moist_StateSpecs.rc` generated by script from
+the MAPL2 calls (56 imports, 553 exports) and included in SetServices
+(`Moist_Import___.h`, `Moist_Export___.h`) where those calls were; one
+`mapl_acg` call in `CMakeLists.txt`. The 21 scheme calls rewritten as
+MAPL3 `MAPL_GridCompAddSpec` calls in place: `GFDL_1M_Setup` 12
+internals (`Q` first, MAPL2 order) and 5 exports, `GF_Setup` 3
+internals, `UW_Setup` 1 internal. 630 = the 630 converted calls.
+- `mapl_acg` passes `INTERNAL_SPECS` although the driver has no
+  internals (empty `Moist_Internal___.h`, not included): `mapl_acg`
+  declares the per-state pointer outputs for all three states
+  (`mapl_acg.cmake:94-98`), and ACG only writes those for the states it
+  is given (`MAPL_GridCompSpecs_ACG.py:654,:680-683`).
+- Still hand-written MAPL2 calls: `MTR` (bundle) and `AERO` (state)
+  imports (step 4).
+- `COND`: `WSUB_OPTION == 0` (`ALH`, `TAUOROX`, `TAUOROY`), `== 1`
+  (`WSUB_CLIM`), `== 2` (`KM`, `RI`), `MOIST_USE_NCLOUD_CLIM`
+  (`NCPL_CLIM`, `NCPI_CLIM`), replacing the `select case`/`if` around
+  those calls. Both are module variables (Process_Library, driver), so
+  the same expressions work in Run's GetPointer include.
+- `COND: PDF_DIAG` on the 15 `PDF_*` exports, which MAPL2 registered
+  under `#ifdef PDFDIAG`. ACG can't emit preprocessor conditions, so the
+  driver module has `logical, parameter :: PDF_DIAG`, `.true.` only when
+  `PDFDIAG` is defined. `PDFDIAG` is never defined (commented-out
+  `#define` in the driver `:5`, `cloudnew.F90:4`,
+  `GEOS_MGB2_2M_InterfaceMod.F90:4`; none in CMake), and only MGB2_2M
+  fills these exports (`GEOS_MGB2_2M_InterfaceMod.F90:1554-1656`).
+- Changes from MAPL2 beyond the column mapping:
+  - `RI` is both an import (Richardson number) and an export (ice
+    effective radius); the export row has `ALIAS: CLDREFFI` (the name all
+    microphysics schemes use) so the generated pointers don't clash.
+  - `CU2DRAINMOVE`, `CU2DSNOWMOVE`: `xy` with `VLocationCenter` in
+    MAPL2; ACG rejects that (`validate_vstagger`), so `VLOC: N`.
+  - Long names lose trailing spaces; short names lose MAPL2's padding
+    (`'DQDT  '`).
+  - 9 exports have empty MAPL2 units (`SRF_TYPE`, `CNV_FRC`, `STOCH_CNV`,
+    `SIGMA_DEEP`, `SIGMA_MID`, `RAS_*`); ACG omits `units`, which MAPL3
+    treats as unchecked (matches any units,
+    `@MAPL/superstructure/generic/specs/UnitsAspect.F90:64-67,:98-102`).
+  - `RADSW` and `NLIM_NUC` had `RC=STATUS` with no verify; the generated
+    calls check `_RC`.
+  - The 6 commented-out (`!!$`) export calls were dropped; the section
+    comments among the export calls are `#` rows in the export table.
+- Checked: ACG (Python 3.10+; system `python3` is 3.6) generates the
+  headers; a script compared every generated and inlined
+  `MAPL_GridCompAddSpec` with its MAPL2 call (name, units, dims,
+  stagger, restart, fill, long name, condition). Only the differences
+  above.
+- Left for later: `RFRSHINT`/`AVRGNINT`/`DT` reads in SetServices are now
+  unused (step 4 resources); `FRIENDLIES` assignments in
+  `GFDL_1M_Setup`/`GF_Setup` (step 4 services); pointer headers not
+  used yet (steps 5, 8). Before
+  including the driver's pointer headers in Run, check generated names
+  against Run's local variables.
 
 ### 4. SetServices
 - `MAPL_GridCompSetEntryPoint` with `phase_name='run'`; keep Initialize's
@@ -322,7 +403,7 @@ needed once MAPL3 schedules Moist with its own `timestep`.
 
 ### 9. Build
 - Uncomment `GEOSmoist_GridComp` in `../CMakeLists.txt:5`; `TYPE SHARED`;
-  `mapl_acg`; external `Moist_SetServices` wrapper with a unique name
+  one `mapl_acg` per spec file (step 3); external `Moist_SetServices` wrapper with a unique name
   (SU2G step 8).
 - Entry points must match `I_Run`: no `intent` on `gc/import/export/clock`,
   `rc` `intent(out)` non-optional (Radiation notes; SU2G step 4).
@@ -373,11 +454,13 @@ convective-transport service to GOCART's SU/DU/SS.
    `RESTART: SKIP` unless they must survive a restart.
 2. **DECIDED (2026-10-28) - Scheme scope**: GFDL_1M + GF + UW first;
    BACM_1M, THOM_1M, MGB2_2M and RAS `_FAIL` until ported (step 1).
-3. **DECIDED (2026-10-28) - Spec files: option B.** A single
-   `Moist_StateSpecs.rc` holding the driver's and every scheme's specs,
-   scheme-specific rows gated with `COND` on module-level `use_*`
-   logicals that also replace the 41 option-string compares, so scheme
-   selection lives in one place (step 3).
+3. **DECIDED (2026-10-29) - Spec layout, as in MAPL2.** (Replaces
+   option B, 2026-10-28, and a per-scheme spec file version.)
+   `Moist_StateSpecs.rc` for the driver's imports and exports; each
+   scheme's fields, including the internals all microphysics schemes
+   declare, as hand-written `MAPL_GridCompAddSpec` calls in its
+   `X_Setup`, where MAPL2 registers them. No `COND` rows for schemes
+   (step 3).
 4. **DECIDED (2026-10-28) - Convective-transport service name: `MTR`.** The
    advection service kept its MAPL2 bundle name: MAPL2 Physics exports the
    friendlies-to-DYNAMICS bundle as `TRADV` (`GEOS_PhysicsGridComp.F90:2425`)

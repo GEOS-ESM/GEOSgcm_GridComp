@@ -90,141 +90,173 @@ subroutine GFDL_1M_Setup (GC, CF, RC)
 
     !BOS
 
-    call MAPL_AddInternalSpec(GC,                                  &
-         SHORT_NAME = 'Q',                                         &
-         LONG_NAME  = 'specific_humidity',                         &
-         UNITS      = 'kg kg-1',                                   &
-         FRIENDLYTO = trim(FRIENDLIES%QV),                         &
-         default    = 1.0e-6,                                      &
-         RESTART    = MAPL_RestartRequired,                        &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             _RC  )
+    call MAPL_GridCompAddSpec(GC,                                          &
+         STATE_INTENT     = ESMF_STATEINTENT_INTERNAL,                     &
+         SHORT_NAME       = 'Q',                                           &
+         STANDARD_NAME    = 'specific_humidity',                           &
+         UNITS            = 'kg kg-1',                                     &
+         DIMS             = 'xyz',                                         &
+         VERTICAL_STAGGER = MAPL_VERTICAL_STAGGER_CENTER,                  &
+         RESTART_MODE     = MAPL_RESTART_REQUIRED,                         &
+         FILL_VALUE       = 1.0e-6,                                        &
+         _RC)
 
-    call MAPL_AddInternalSpec(GC,                                        &
-         SHORT_NAME = 'QLLS',                                            &
-         LONG_NAME  = 'mass_fraction_of_large_scale_cloud_liquid_water', &
-         UNITS      = 'kg kg-1',                                         &
-         FRIENDLYTO = trim(FRIENDLIES%QLLS),                             &
-         DIMS       = MAPL_DimsHorzVert,                                 &
-         VLOCATION  = MAPL_VLocationCenter,                   _RC  )
+    call MAPL_GridCompAddSpec(GC,                                          &
+         STATE_INTENT     = ESMF_STATEINTENT_INTERNAL,                     &
+         SHORT_NAME       = 'QLLS',                                        &
+         STANDARD_NAME    = 'mass_fraction_of_large_scale_cloud_liquid_water', &
+         UNITS            = 'kg kg-1',                                     &
+         DIMS             = 'xyz',                                         &
+         VERTICAL_STAGGER = MAPL_VERTICAL_STAGGER_CENTER,                  &
+         FILL_VALUE       = 0.0,                                           &
+         _RC)
 
-    call MAPL_AddInternalSpec(GC,                                       &
-         SHORT_NAME = 'QLCN',                                           &
-         LONG_NAME  = 'mass_fraction_of_convective_cloud_liquid_water', &
-         UNITS      = 'kg kg-1',                                        &
-         FRIENDLYTO = trim(FRIENDLIES%QLCN),                            &
-         DIMS       = MAPL_DimsHorzVert,                                &
-         VLOCATION  = MAPL_VLocationCenter,                  _RC  )
+    call MAPL_GridCompAddSpec(GC,                                          &
+         STATE_INTENT     = ESMF_STATEINTENT_INTERNAL,                     &
+         SHORT_NAME       = 'QLCN',                                        &
+         STANDARD_NAME    = 'mass_fraction_of_convective_cloud_liquid_water', &
+         UNITS            = 'kg kg-1',                                     &
+         DIMS             = 'xyz',                                         &
+         VERTICAL_STAGGER = MAPL_VERTICAL_STAGGER_CENTER,                  &
+         FILL_VALUE       = 0.0,                                           &
+         _RC)
 
-    call MAPL_AddInternalSpec(GC,                                  &
-         SHORT_NAME = 'CLLS',                                      &
-         LONG_NAME  = 'large_scale_cloud_area_fraction',           &
-         UNITS      = '1',                                         &
-         FRIENDLYTO = trim(FRIENDLIES%CLLS),                       &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             _RC  )
+    call MAPL_GridCompAddSpec(GC,                                          &
+         STATE_INTENT     = ESMF_STATEINTENT_INTERNAL,                     &
+         SHORT_NAME       = 'CLLS',                                        &
+         STANDARD_NAME    = 'large_scale_cloud_area_fraction',             &
+         UNITS            = '1',                                           &
+         DIMS             = 'xyz',                                         &
+         VERTICAL_STAGGER = MAPL_VERTICAL_STAGGER_CENTER,                  &
+         FILL_VALUE       = 0.0,                                           &
+         _RC)
 
-    call MAPL_AddInternalSpec(GC,                                  &
-         SHORT_NAME = 'CLCN',                                      &
-         LONG_NAME  = 'convective_cloud_area_fraction',            &
-         UNITS      = '1',                                         &
-         FRIENDLYTO = trim(FRIENDLIES%CLCN),                       &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             _RC  )
+    call MAPL_GridCompAddSpec(GC,                                          &
+         STATE_INTENT     = ESMF_STATEINTENT_INTERNAL,                     &
+         SHORT_NAME       = 'CLCN',                                        &
+         STANDARD_NAME    = 'convective_cloud_area_fraction',              &
+         UNITS            = '1',                                           &
+         DIMS             = 'xyz',                                         &
+         VERTICAL_STAGGER = MAPL_VERTICAL_STAGGER_CENTER,                  &
+         FILL_VALUE       = 0.0,                                           &
+         _RC)
 
-    call MAPL_AddInternalSpec(GC,                                     &
-         SHORT_NAME = 'QILS',                                         &
-         LONG_NAME  = 'mass_fraction_of_large_scale_cloud_ice_water', &
-         UNITS      = 'kg kg-1',                                      &
-         FRIENDLYTO = trim(FRIENDLIES%QILS),                          &
-         DIMS       = MAPL_DimsHorzVert,                              &
-         VLOCATION  = MAPL_VLocationCenter,                _RC  )
+    call MAPL_GridCompAddSpec(GC,                                          &
+         STATE_INTENT     = ESMF_STATEINTENT_INTERNAL,                     &
+         SHORT_NAME       = 'QILS',                                        &
+         STANDARD_NAME    = 'mass_fraction_of_large_scale_cloud_ice_water', &
+         UNITS            = 'kg kg-1',                                     &
+         DIMS             = 'xyz',                                         &
+         VERTICAL_STAGGER = MAPL_VERTICAL_STAGGER_CENTER,                  &
+         FILL_VALUE       = 0.0,                                           &
+         _RC)
 
-    call MAPL_AddInternalSpec(GC,                                    &
-         SHORT_NAME = 'QICN',                                        &
-         LONG_NAME  = 'mass_fraction_of_convective_cloud_ice_water', &
-         UNITS      = 'kg kg-1',                                     &
-         FRIENDLYTO = trim(FRIENDLIES%QICN),                         &
-         DIMS       = MAPL_DimsHorzVert,                             &
-         VLOCATION  = MAPL_VLocationCenter,               _RC  )
+    call MAPL_GridCompAddSpec(GC,                                          &
+         STATE_INTENT     = ESMF_STATEINTENT_INTERNAL,                     &
+         SHORT_NAME       = 'QICN',                                        &
+         STANDARD_NAME    = 'mass_fraction_of_convective_cloud_ice_water', &
+         UNITS            = 'kg kg-1',                                     &
+         DIMS             = 'xyz',                                         &
+         VERTICAL_STAGGER = MAPL_VERTICAL_STAGGER_CENTER,                  &
+         FILL_VALUE       = 0.0,                                           &
+         _RC)
 
-    call MAPL_AddInternalSpec(GC,                                  &
-         SHORT_NAME = 'QRAIN',                                     &
-         LONG_NAME  = 'mass_fraction_of_rain',                     &
-         UNITS      = 'kg kg-1',                                   &
-         FRIENDLYTO = trim(FRIENDLIES%QRAIN),                      &
-         default    = 0.0,                                         &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             _RC  )
+    call MAPL_GridCompAddSpec(GC,                                          &
+         STATE_INTENT     = ESMF_STATEINTENT_INTERNAL,                     &
+         SHORT_NAME       = 'QRAIN',                                       &
+         STANDARD_NAME    = 'mass_fraction_of_rain',                       &
+         UNITS            = 'kg kg-1',                                     &
+         DIMS             = 'xyz',                                         &
+         VERTICAL_STAGGER = MAPL_VERTICAL_STAGGER_CENTER,                  &
+         FILL_VALUE       = 0.0,                                           &
+         _RC)
 
-    call MAPL_AddInternalSpec(GC,                                  &
-         SHORT_NAME = 'QSNOW',                                     &
-         LONG_NAME  = 'mass_fraction_of_snow',                     &
-         UNITS      = 'kg kg-1',                                   &
-         FRIENDLYTO = trim(FRIENDLIES%QSNOW),                      &
-         default    = 0.0,                                         &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             _RC  )
+    call MAPL_GridCompAddSpec(GC,                                          &
+         STATE_INTENT     = ESMF_STATEINTENT_INTERNAL,                     &
+         SHORT_NAME       = 'QSNOW',                                       &
+         STANDARD_NAME    = 'mass_fraction_of_snow',                       &
+         UNITS            = 'kg kg-1',                                     &
+         DIMS             = 'xyz',                                         &
+         VERTICAL_STAGGER = MAPL_VERTICAL_STAGGER_CENTER,                  &
+         FILL_VALUE       = 0.0,                                           &
+         _RC)
 
-    call MAPL_AddInternalSpec(GC,                                  &
-         SHORT_NAME = 'QGRAUPEL',                                  &
-         LONG_NAME  = 'mass_fraction_of_graupel',                  &
-         UNITS      = 'kg kg-1',                                   &
-         FRIENDLYTO = trim(FRIENDLIES%QGRAUPEL),                   &
-         default    = 0.0,                                         &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             _RC  )
+    call MAPL_GridCompAddSpec(GC,                                          &
+         STATE_INTENT     = ESMF_STATEINTENT_INTERNAL,                     &
+         SHORT_NAME       = 'QGRAUPEL',                                    &
+         STANDARD_NAME    = 'mass_fraction_of_graupel',                    &
+         UNITS            = 'kg kg-1',                                     &
+         DIMS             = 'xyz',                                         &
+         VERTICAL_STAGGER = MAPL_VERTICAL_STAGGER_CENTER,                  &
+         FILL_VALUE       = 0.0,                                           &
+         _RC)
 
-    call MAPL_AddInternalSpec(GC,                               &
-         SHORT_NAME = 'NACTL',                                  &
-         LONG_NAME  = 'activ aero # conc liq phase for 1-mom',  &
-         UNITS      = 'm-3',                                    &
-         RESTART    = MAPL_RestartSkip,                         &
-         DIMS       = MAPL_DimsHorzVert,                        &
-         VLOCATION  = MAPL_VLocationCenter,     _RC  )
+    call MAPL_GridCompAddSpec(GC,                                          &
+         STATE_INTENT     = ESMF_STATEINTENT_INTERNAL,                     &
+         SHORT_NAME       = 'NACTL',                                       &
+         STANDARD_NAME    = 'activ aero # conc liq phase for 1-mom',       &
+         UNITS            = 'm-3',                                         &
+         DIMS             = 'xyz',                                         &
+         VERTICAL_STAGGER = MAPL_VERTICAL_STAGGER_CENTER,                  &
+         RESTART_MODE     = MAPL_RESTART_SKIP,                             &
+         FILL_VALUE       = 0.0,                                           &
+         _RC)
 
-    call MAPL_AddInternalSpec(GC,                               &
-         SHORT_NAME = 'NACTI',                                  &
-         LONG_NAME  = 'activ aero # conc ice phase for 1-mom',  &
-         UNITS      = 'm-3',                                    &
-         RESTART    = MAPL_RestartSkip,                         &
-         DIMS       = MAPL_DimsHorzVert,                        &
-         VLOCATION  = MAPL_VLocationCenter,     _RC  )
+    call MAPL_GridCompAddSpec(GC,                                          &
+         STATE_INTENT     = ESMF_STATEINTENT_INTERNAL,                     &
+         SHORT_NAME       = 'NACTI',                                       &
+         STANDARD_NAME    = 'activ aero # conc ice phase for 1-mom',       &
+         UNITS            = 'm-3',                                         &
+         DIMS             = 'xyz',                                         &
+         VERTICAL_STAGGER = MAPL_VERTICAL_STAGGER_CENTER,                  &
+         RESTART_MODE     = MAPL_RESTART_SKIP,                             &
+         FILL_VALUE       = 0.0,                                           &
+         _RC)
 
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'REF_DBZ',                                          &
-         LONG_NAME = 'Simulated_gfdl_radar_reflectivity',                  &
-         UNITS     = 'dBZ',                                     &  
-         DIMS      = MAPL_DimsHorzVert,                            &
-         VLOCATION = MAPL_VLocationCenter,              _RC  )
-    
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'REF_DBZ_MAX',                                          &
-         LONG_NAME = 'Maximum_composite_gfdl_radar_reflectivity',                  &
-         UNITS     = 'dBZ',                                     &    
-         DIMS      = MAPL_DimsHorzOnly,                            &
-         VLOCATION = MAPL_VLocationNone,              _RC  )
-         
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'REF_DBZ_1KM',                                          &
-         LONG_NAME = 'Base_1KM_AGL_gfdl_radar_reflectivity',                  &
-         UNITS     = 'dBZ',                                     &
-         DIMS      = MAPL_DimsHorzOnly,                            &
-         VLOCATION = MAPL_VLocationNone,              _RC  )
+    call MAPL_GridCompAddSpec(GC,                                          &
+         STATE_INTENT     = ESMF_STATEINTENT_EXPORT,                       &
+         SHORT_NAME       = 'REF_DBZ',                                     &
+         STANDARD_NAME    = 'Simulated_gfdl_radar_reflectivity',           &
+         UNITS            = 'dBZ',                                         &
+         DIMS             = 'xyz',                                         &
+         VERTICAL_STAGGER = MAPL_VERTICAL_STAGGER_CENTER,                  &
+         _RC)
 
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'REF_DBZ_TOP',                                          &
-         LONG_NAME = 'Echo_top_gfdl_radar_reflectivity',                  &
-         UNITS     = 'm',                                     &
-         DIMS      = MAPL_DimsHorzOnly,                            &
-         VLOCATION = MAPL_VLocationNone,              _RC  )
+    call MAPL_GridCompAddSpec(GC,                                          &
+         STATE_INTENT     = ESMF_STATEINTENT_EXPORT,                       &
+         SHORT_NAME       = 'REF_DBZ_MAX',                                 &
+         STANDARD_NAME    = 'Maximum_composite_gfdl_radar_reflectivity',   &
+         UNITS            = 'dBZ',                                         &
+         DIMS             = 'xy',                                          &
+         VERTICAL_STAGGER = MAPL_VERTICAL_STAGGER_NONE,                    &
+         _RC)
 
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'REF_DBZ_M10C',                                          &
-         LONG_NAME = 'Minus_10C_gfdl_radar_reflectivity',                  &
-         UNITS     = 'dBZ',                                     &
-         DIMS      = MAPL_DimsHorzOnly,                            &
-         VLOCATION = MAPL_VLocationNone,              _RC  )
+    call MAPL_GridCompAddSpec(GC,                                          &
+         STATE_INTENT     = ESMF_STATEINTENT_EXPORT,                       &
+         SHORT_NAME       = 'REF_DBZ_1KM',                                 &
+         STANDARD_NAME    = 'Base_1KM_AGL_gfdl_radar_reflectivity',        &
+         UNITS            = 'dBZ',                                         &
+         DIMS             = 'xy',                                          &
+         VERTICAL_STAGGER = MAPL_VERTICAL_STAGGER_NONE,                    &
+         _RC)
+
+    call MAPL_GridCompAddSpec(GC,                                          &
+         STATE_INTENT     = ESMF_STATEINTENT_EXPORT,                       &
+         SHORT_NAME       = 'REF_DBZ_TOP',                                 &
+         STANDARD_NAME    = 'Echo_top_gfdl_radar_reflectivity',            &
+         UNITS            = 'm',                                           &
+         DIMS             = 'xy',                                          &
+         VERTICAL_STAGGER = MAPL_VERTICAL_STAGGER_NONE,                    &
+         _RC)
+
+    call MAPL_GridCompAddSpec(GC,                                          &
+         STATE_INTENT     = ESMF_STATEINTENT_EXPORT,                       &
+         SHORT_NAME       = 'REF_DBZ_M10C',                                &
+         STANDARD_NAME    = 'Minus_10C_gfdl_radar_reflectivity',           &
+         UNITS            = 'dBZ',                                         &
+         DIMS             = 'xy',                                          &
+         VERTICAL_STAGGER = MAPL_VERTICAL_STAGGER_NONE,                    &
+         _RC)
 
     call MAPL_TimerAdd(GC, name="--GFDL_1M",_RC)
     _VERIFY(STATUS)

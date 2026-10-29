@@ -1,0 +1,645 @@
+schema_version: 2.0.0
+component: MOIST
+
+# Driver imports and exports. The driver has no internals: each scheme
+# registers its own internals and exports in its X_Setup, as in MAPL2.
+#
+# Not here: the MTR (bundle) and AERO (state) imports, hand-written
+# MAPL_GridCompAddSpec calls in SetServices (ACG ITEMTYPE only does F/V).
+#
+# The PDF_* exports have COND: PDF_DIAG, a module constant that is
+# .true. only when PDFDIAG is defined (MAPL2 registered them under
+# #ifdef PDFDIAG; ACG cannot emit preprocessor conditions).
+#
+# From MAPL2: DEFAULT -> FILL; internals without DEFAULT get FILL 0.0 (MAPL2
+# zero-filled internals, MAPL3 does not); MAPL_RestartSkip -> SKIP;
+# AVERAGING_INTERVAL/REFRESH_INTERVAL and FRIENDLYTO dropped.
+
+category: IMPORT
+#---------------------------------------------------------------------------------------------
+ NAME       | UNITS         | DIMS | VLOC | RESTART | FILL | COND                  | LONG NAME
+#---------------------------------------------------------------------------------------------
+ PLE        | Pa            | xyz  | E    | SKIP    |      |                       | air_pressure
+ PREF       | Pa            | z    | E    | SKIP    |      |                       | reference_air_pressure
+ ZLE        | m             | xyz  | E    | SKIP    |      |                       | geopotential_height
+ KH         | m+2 s-1       | xyz  | E    |         |      |                       | scalar_diffusivity
+ TKE        | m+2 s-2       | xyz  | E    |         |      |                       | turbulent_kinetic_energy
+ WQT        | kg kg-1 m s-1 | xyz  | C    |         |      |                       | Total_water_flux
+ WSL        | K m s-1       | xyz  | C    |         |      |                       | Liquid_water_static_energy_flux
+ W2         | m2 s-2        | xyz  | C    |         |      |                       | variance_of_vertical_velocity
+ W3         | m3 s-3        | xyz  | C    |         |      |                       | third_moment_of_vertical_velocity
+ SL3        | K+3           | xyz  | C    |         |      |                       | third_moment_of_liquid_water_static_energy
+ SL2        | K+2           | xyz  | C    |         |      |                       | variance_of_liquid_water_static_energy
+ PDF_A      | 1             | xyz  | C    |         |      |                       | ADG_PDF_first_plume_fractional_area
+ QT2        | 1             | xyz  | C    |         |      |                       | variance_of_total_water_specific_humidity
+ QT3        | 1             | xyz  | C    |         |      |                       | third_moment_of_total_water_specific_humidity
+ SLQT       | K             | xyz  | C    |         |      |                       | covariance_of_liquid_water_static_energy_and_total_water_specific_humidity
+ T          | K             | xyz  | C    | SKIP    |      |                       | temperature
+ U          | m s-1         | xyz  | C    | SKIP    |      |                       | eastward_wind
+ V          | m s-1         | xyz  | C    | SKIP    |      |                       | northward_wind
+ W          | m s-1         | xyz  | C    | SKIP    |      |                       | vertical_velocity
+ TS         | K             | xy   | N    |         |      |                       | surface temperature
+ SNOMAS     | kg/m2         | xy   | N    |         |      |                       | snow_mass
+ FRLANDICE  | 1             | xy   | N    |         |      |                       | areal_landice_fraction
+ FRLAND     | 1             | xy   | N    |         |      |                       | areal_land_fraction
+ FRACI      | 1             | xy   | N    |         |      |                       | ice_covered_fraction_of_tile
+ KPBL       | 1             | xy   | N    |         |      |                       | planetary_boundary_layer_level
+ KPBL_SC    | 1             | xy   | N    |         | 72.0 |                       | boundary_layer_level_for_UW_shlw
+ OMEGA      | Pa s-1        | xyz  | C    | SKIP    |      |                       | vertical_pressure_velocity
+ AREA       | m+2           | xy   | N    | SKIP    |      |                       | agrid_cell_area
+ ALH        | m             | xyz  | E    |         |      | WSUB_OPTION == 0      | Blackadar_length_scale_for_scalars
+ TAUOROX    | N m-2         | xy   | N    | SKIP    |      | WSUB_OPTION == 0      | surface_eastward_orographic_gravity_wave_stress
+ TAUOROY    | N m-2         | xy   | N    | SKIP    |      | WSUB_OPTION == 0      | surface_northward_orographic_gravity_wave_stress
+ WSUB_CLIM  | m s-1         | xyz  | C    | SKIP    |      | WSUB_OPTION == 1      | stdev in vertical velocity
+ KM         | m+2 s-1       | xyz  | E    | SKIP    |      | WSUB_OPTION == 2      | total_momentum_diffusivity
+ RI         | 1             | xyz  | E    | SKIP    |      | WSUB_OPTION == 2      | Richardson_number_from_Louis
+ NCPL_CLIM  | m-3           | xyz  | C    | SKIP    |      | MOIST_USE_NCLOUD_CLIM | In-Cloud NCPL climatology
+ NCPI_CLIM  | m-3           | xyz  | C    | SKIP    |      | MOIST_USE_NCLOUD_CLIM | In-Cloud NCPI climatology
+ DTDTDYN    | K s-1         | xyz  | C    | SKIP    |      |                       | tendency_of_air_temperature_due_to_dynamics
+ DQVDTDYN   | kg/kg/s       | xyz  | C    | SKIP    |      |                       | tendency_of_specific_humidity_due_to_dynamics
+ QV_DYN_IN  | kg kg-1       | xyz  | C    | SKIP    |      |                       | spec_humidity_at_begin_of_time_step
+ T_DYN_IN   | K             | xyz  | C    | SKIP    |      |                       | temperature_at_begin_of_time_step
+ U_DYN_IN   | m s-1         | xyz  | C    | SKIP    |      |                       | u_wind_at_begin_of_time_step
+ V_DYN_IN   | m s-1         | xyz  | C    | SKIP    |      |                       | v_wind_at_begin_of_time_step
+ PLE_DYN_IN | Pa            | xyz  | E    | SKIP    |      |                       | edge_pressure_at_begin_of_time_step
+ DTDT_BL    | K s-1         | xyz  | C    |         |      |                       | tendency_of_air_temperature_due_to_bound_layer
+ DQDT_BL    | kg kg-1 s-1   | xyz  | C    |         |      |                       | tendency_of_spec_humidity_due_to_bound_layer
+ RADLW      | K s-1         | xyz  | C    |         |      |                       | air_temperature_tendency_due_to_longwave
+ RADSW      | K s-1         | xyz  | C    |         |      |                       | air_temperature_tendency_due_to_longwave
+ T2M        | K             | xy   | N    |         |      |                       | 2-meter_air_temperature
+ Q2M        | kg kg-1       | xy   | N    |         |      |                       | 2-meter_specific_humidity
+ TA         | K             | xy   | N    |         |      |                       | surface_air_temperature
+ QA         | kg kg-1       | xy   | N    |         |      |                       | surface_air_specific_humidity
+ SH         | W m-2         | xy   | N    |         |      |                       | sensible_heat_flux
+ EVAP       | kg m-2 s-1    | xy   | N    |         |      |                       | evaporation
+ PHIS       | m+2 s-2       | xy   | N    | SKIP    |      |                       | surface geopotential height
+ DQLDTTRB   | kg kg-1 s-1   | xyz  | C    | SKIP    |      |                       | turbulence_liquid_water_tendency
+ DQIDTTRB   | kg kg-1 s-1   | xyz  | C    | SKIP    |      |                       | turbulence_ice_water_tendency
+
+category: EXPORT
+# RI is also an import (WSUB_OPTION == 2); the export pointer is CLDREFFI,
+# the name every microphysics scheme uses for it.
+#-------------------------------------------------------------------------------------
+ NAME                  | ALIAS    | UNITS         | DIMS | VLOC | COND     | LONG NAME
+#-------------------------------------------------------------------------------------
+ PDFITERS              |          | 1             | xyz  | C    |          | HYSTPDF_iterations
+ PDF_SIGW1             |          | 1             | xyz  | C    | PDF_DIAG | SHOC_PDF_vertical_velocity_standard_deviation_first_plume
+ PDF_SIGW2             |          | 1             | xyz  | C    | PDF_DIAG | SHOC_PDF_vertical_velocity_standard_deviation_second_plume
+ PDF_W1                |          | m s-1         | xyz  | C    | PDF_DIAG | SHOC_PDF_avg_vertical_velocity_of_first_plume
+ PDF_W2                |          | m s-1         | xyz  | C    | PDF_DIAG | SHOC_PDF_avg_vertical_velocity_of_second_plume
+ PDF_SIGTH1            |          | K             | xyz  | C    | PDF_DIAG | SHOC_PDF_stddev_liq_wat_pot_temp_of_first_plume
+ PDF_SIGTH2            |          | K             | xyz  | C    | PDF_DIAG | SHOC_PDF_stddev_liq_wat_pot_temp_of_second_plume
+ PDF_TH1               |          | K             | xyz  | C    | PDF_DIAG | SHOC_PDF_avg_liq_wat_pot_temp_of_first_plume
+ PDF_TH2               |          | K             | xyz  | C    | PDF_DIAG | SHOC_PDF_avg_liq_wat_pot_temp_of_second_plume
+ PDF_SIGQT1            |          | kg kg-1       | xyz  | C    | PDF_DIAG | SHOC_PDF_stddev_total_water_of_first_plume
+ PDF_SIGQT2            |          | kg kg-1       | xyz  | C    | PDF_DIAG | SHOC_PDF_stddev_total_water_of_second_plume
+ PDF_QT1               |          | kg kg-1       | xyz  | C    | PDF_DIAG | SHOC_PDF_avg_total_water_of_first_plume
+ PDF_QT2               |          | kg kg-1       | xyz  | C    | PDF_DIAG | SHOC_PDF_avg_total_water_of_second_plume
+ PDF_RQTTH             |          | 1             | xyz  | C    | PDF_DIAG | SHOC_PDF_corr_total_water_liq_wat_pot_temp
+ PDF_RWTH              |          | 1             | xyz  | C    | PDF_DIAG | SHOC_PDF_corr_vertical_velocity_liq_wat_pot_temp
+ PDF_RWQT              |          | 1             | xyz  | C    | PDF_DIAG | SHOC_PDF_corr_vertical_velocity_total_water
+ WQT_DC                |          | kg kg-1 m s-1 | xyz  | E    |          | Total_water_flux_from_deep_convection
+ WTHV2                 |          | 1             | xyz  | C    |          | Buoyancy_flux_for_SHOC
+ WQL                   |          | kg kg-1 m s-1 | xyz  | C    |          | Liquid_water_flux
+ QCTOT                 |          | kg kg-1       | xyz  | C    |          | mass_fraction_of_total_condensate
+ QLTOT                 |          | kg kg-1       | xyz  | C    |          | grid_box_mass_fraction_of_cloud_liquid_water
+ QITOT                 |          | kg kg-1       | xyz  | C    |          | grid_box_mass_fraction_of_cloud_ice_water
+ QRTOT                 |          | kg kg-1       | xyz  | C    |          | grid_box_mass_fraction_of_suspended_rain
+ QSTOT                 |          | kg kg-1       | xyz  | C    |          | grid_box_mass_fraction_of_suspended_snow
+ QGTOT                 |          | kg kg-1       | xyz  | C    |          | grid_box_mass_fraction_of_suspended_graupel
+ QPTOTLS               |          | kg kg-1       | xyz  | C    |          | mass_fraction_of_large_scale_falling_precip
+ DTDT                  |          | Pa K s-1      | xyz  | C    |          | pressure_weighted_temperature_tendency_due_to_moist
+ DTDTFRIC              |          | Pa K s-1      | xyz  | C    |          | pressure_weighted_temperature_tendency_due_to_moist_friction
+ DQDT                  |          | kg kg-1 s-1   | xyz  | C    |          | specific_humidity_tendency_due_to_moist
+ DUDT                  |          | m s-2         | xyz  | C    |          | zonal_wind_tendency_due_to_moist
+ DVDT                  |          | m s-2         | xyz  | C    |          | meridional_wind_tendency_due_to_moist
+ DWDT                  |          | m s-2         | xyz  | C    |          | vertical_velocity_tendency_due_to_moist
+ DQADT                 |          | kg kg-1 s-1   | xyz  | C    |          | total_cloud_tendency_due_to_moist
+ DQLDT                 |          | kg kg-1 s-1   | xyz  | C    |          | total_liq_water_tendency_due_to_moist
+ DQIDT                 |          | kg kg-1 s-1   | xyz  | C    |          | total_ice_water_tendency_due_to_moist
+ DQRDT                 |          | kg kg-1 s-1   | xyz  | C    |          | QRAIN tendency due to moist
+ DQSDT                 |          | kg kg-1 s-1   | xyz  | C    |          | QSNOW tendency due to moist
+ DQGDT                 |          | kg kg-1 s-1   | xyz  | C    |          | QGRAUPEL tendency due to moist
+ SHL_DQCDT             |          | kg m-2 s-1    | xyz  | C    |          | shallow_cu_condensate_source
+ CNV_DQCDT             |          | kg m-2 s-1    | xyz  | C    |          | convective_condensate_source
+ CNV_PRC3              |          | kg m-2 s-1    | xyz  | C    |          | convective_precipitation_from_RAS
+ DQRL                  |          | kg kg-1 s-1   | xyz  | C    |          | large_scale_rainwater_source
+ DQRC                  |          | kg kg-1 s-1   | xyz  | C    |          | convective_rainwater_source
+ CNV_MF0               |          | kg m-2 s-1    | xyz  | C    |          | cloud_base_mass_flux
+ CNV_MFD               |          | kg m-2 s-1    | xyz  | C    |          | total_detraining_mass_flux
+ CNV_MFC               |          | kg m-2 s-1    | xyz  | E    |          | total_cumulative_mass_flux
+ UMF_DC                |          | kg m-2 s-1    | xyz  | E    |          | Deep_updraft_mass_flux_at_interfaces
+ MFD_DC                |          | kg m-2 s-1    | xyz  | C    |          | Deep_updraft_detrained_mass_flux
+ CNV_FREQ              |          | fraction      | xy   | N    |          | convective_frequency
+ CNV_BASEP             |          | Pa            | xy   | N    |          | pressure_at_convective_cloud_base
+ CNV_TOPP              |          | Pa            | xy   | N    |          | pressure_at_convective_cloud_top
+ CNV_TOPP_DP           |          | Pa            | xy   | N    |          | pressure_at_deep_convective_cloud_top
+ CNV_TOPP_MD           |          | Pa            | xy   | N    |          | pressure_at_congestus_convective_cloud_top
+ CNV_TOPP_SH           |          | Pa            | xy   | N    |          | pressure_at_shallow_convective_cloud_top
+ ENTR                  |          | km-1          | xyz  | C    |          | Lateral_entrainment_rate_input_to_gf
+ ENTR_DP               |          | m-1           | xyz  | C    |          | Lateral_entrainment_rate_in_gf_deep_convection_updraft
+ ENTR_MD               |          | m-1           | xyz  | C    |          | Lateral_entrainment_rate_in_gf_mid_convection_updraft
+ ENTR_SH               |          | m-1           | xyz  | C    |          | Lateral_entrainment_rate_in_gf_shallow_convection_updraft
+ SGS_VVEL_DP           |          | m s-1         | xyz  | C    |          | subgridscale_vert_vel_in_gf_deep_convection_updraft
+ SGS_VVEL_MD           |          | m s-1         | xyz  | C    |          | subgridscale_vert_vel_in_gf_mid_convection_updraft
+ SGS_VVEL_SH           |          | m s-1         | xyz  | C    |          | subgridscale_vert_vel_in_gf_shallow_convection_updraft
+ CNV_UPDF              |          | 1             | xyz  | C    |          | updraft_areal_fraction
+ CNV_CVW               |          | hPa s-1       | xyz  | C    |          | updraft_vertical_velocity
+ CNV_QC                |          | kg kg-1       | xyz  | C    |          | grid_mean_convective_condensate
+ CLDBASEHGT            |          | m             | xy   | N    |          | Height_of_cloud_base
+ SHLW_PRC3             |          | kg kg-1 s-1   | xyz  | C    |          | shallow_convective_rain
+ SHLW_SNO3             |          | kg kg-1 s-1   | xyz  | C    |          | shallow_convective_snow
+ QTFLX_SC              |          | kg kg-1 m s-1 | xyz  | E    |          | shallow_cumulus_total_water_flux
+ SLFLX_SC              |          | K m s-1       | xyz  | E    |          | shallow_cumulus_liquid_static_energy_flux
+ UFLX_SC               |          | 1             | xyz  | E    |          | shallow_cumulus_u_wind_flux
+ VFLX_SC               |          | 1             | xyz  | E    |          | shallow_cumulus_v_wind_flux
+ CUFRC_SC              |          | fraction      | xyz  | C    |          | shallow_cumulus_cloud_fraction
+ DQRDT_SC              |          | kg kg-1 s-1   | xyz  | C    |          | shallow_cumulus_precipitating_condensate
+ DQADT_SC              |          | kg kg-1 s-1   | xyz  | C    |          | shallow_cumulus_condensate_tendency
+ DQSDT_SC              |          | kg kg-1 s-1   | xyz  | C    |          | shallow_cumulus_precipitating_frozen_condensate
+ DTDT_SC               |          | K s-1         | xyz  | C    |          | Temperature_tendency_from_shallow_convection
+ DQIDT_SC              |          | kg kg-1 s-1   | xyz  | C    |          | Ice_tendency_from_shallow_convection
+ DQLDT_SC              |          | kg kg-1 s-1   | xyz  | C    |          | Liquid_water_tendency_from_shallow_convection
+ DQVDT_SC              |          | kg kg-1 s-1   | xyz  | C    |          | Specific_humidity_tendency_from_shallow_convection
+ DUDT_SC               |          | m s-2         | xyz  | C    |          | Zonal_wind_tendency_from_shallow_convection
+ DVDT_SC               |          | m s-2         | xyz  | C    |          | Meridional_wind_tendency_from_shallow_convection
+ WLCL_SC               |          | m s-1         | xy   | N    |          | Vertical_velocity_at_LCL_for_shallow_convection
+ QTSRC_SC              |          | kg kg-1       | xy   | N    |          | Total_water_in_source_air_for_shallow_convection
+ THLSRC_SC             |          | K             | xy   | N    |          | Liquid_potential_temperature_of_source_air_for_shallow_convection
+ THVLSRC_SC            |          | K             | xy   | N    |          | Liquid_virtual_potential_temperature_source_air_shallow_convection
+ TKEAVG_SC             |          | m2 s-2        | xy   | N    |          | Average_boundary_layer_TKE_used_for_shallow_convection
+ CLDTOP_SC             |          | Pa            | xy   | N    |          | Cloud_top_pressure_from_shallow_convection
+ WUP_SC                |          | m s-1         | xyz  | E    |          | Vertical_velocity_in_shallow_convection_updraft
+ QTUP_SC               |          | kg kg-1       | xyz  | E    |          | Total_water_in_shallow_convection_updraft
+ THLUP_SC              |          | K             | xyz  | E    |          | Liquid_potential_temperature_in_shallow_convection_updraft
+ THVUP_SC              |          | K             | xyz  | E    |          | Virtual_potential_temperature_in_shallow_convection_updraft
+ UUP_SC                |          | m s-1         | xyz  | E    |          | Zonal_wind_in_shallow_convection_updraft
+ VUP_SC                |          | m s-1         | xyz  | E    |          | Meridional_wind_in_shallow_convection_updraft
+ ENTR_SC               |          | Pa-1          | xyz  | C    |          | Lateral_entrainment_rate_in_shallow_convection_updraft
+ DETR_SC               |          | Pa-1          | xyz  | C    |          | Lateral_detrainment_rate_in_shallow_convection_updraft
+ XC_SC                 |          | Pa-1          | xyz  | C    |          | Critical_mixing_fraction_in_shallow_updraft
+ QLDET_SC              |          | kg kg-1 s-1   | xyz  | C    |          | Detrained_liquid_water_from_shallow_convection
+ QIDET_SC              |          | kg kg-1 s-1   | xyz  | C    |          | Detrained_ice_water_from_shallow_convection
+ QLENT_SC              |          | kg kg-1 s-1   | xyz  | C    |          | Sink_from_entrained_liquid_water_by_shallow_convection
+ QIENT_SC              |          | kg kg-1 s-1   | xyz  | C    |          | Sink_from_entrained_ice_water_by_shallow_convection
+ QLSUB_SC              |          | kg kg-1 s-1   | xyz  | C    |          | Shallow_convective_subsidence_liquid_water_tendency
+ QISUB_SC              |          | kg kg-1 s-1   | xyz  | C    |          | Shallow_convective_subsidence_ice_water_tendency
+ CNT_SC                |          | index         | xy   | N    |          | Shallow_cloud_top_interface
+ CNB_SC                |          | index         | xy   | N    |          | Shallow_cloud_bottom_interface
+ QCU_SC                |          | kg kg-1       | xyz  | C    |          | Shallow_updraft_condensate
+ QLU_SC                |          | kg kg-1       | xyz  | C    |          | Shallow_updraft_liquid_condensate
+ QIU_SC                |          | kg kg-1       | xyz  | C    |          | Shallow_updraft_frozen_condensate
+ UMF_SC                |          | kg m-2 s-1    | xyz  | E    |          | Shallow_updraft_mass_flux_at_interfaces
+ MFD_SC                |          | kg m-2 s-1    | xyz  | C    |          | Shallow_updraft_detrained_mass_flux
+ EDMF_DMF              |          | kg m-2 s-1    | xyz  | C    |          | EDMF_updraft_detrained_mass_flux
+ DCM_SC                |          | kg m-2 s-1    | xyz  | C    |          | Shallow_convection_detrained_cloud_mass
+ CIN_SC                |          | J kg-1        | xy   | N    |          | Convective_inhibition_for_shallow_convection
+ PLCL_SC               |          | Pa            | xy   | N    |          | Pressure_at_lift_condensation_level
+ PLFC_SC               |          | Pa            | xy   | N    |          | Pressure_at_level_of_free_convection
+ PINV_SC               |          | Pa            | xy   | N    |          | Pressure_at_inversion_level
+ PREL_SC               |          | Pa            | xy   | N    |          | Pressure_at_release_level
+ PBUP_SC               |          | Pa            | xy   | N    |          | Pressure_at_level_neutral_buoyancy
+ CBMF_SC               |          | kg s-1 m-2    | xy   | N    |          | cloud_base_mass_flux_due_to_shallow_convection
+ CUSH_SC               |          | m             | xy   | N    |          | cumulus_scale_height_for_shallow_convection
+ RL                    |          | m             | xyz  | C    |          | liquid_cloud_particle_effective_radius
+ RI                    | CLDREFFI | m             | xyz  | C    |          | ice_phase_cloud_particle_effective_radius
+ RR                    |          | m             | xyz  | C    |          | falling_rain_particle_effective_radius
+ RS                    |          | m             | xyz  | C    |          | falling_snow_particle_effective_radius
+ RG                    |          | m             | xyz  | C    |          | falling_graupel_particle_effective_radius
+ VFALL_ICE             |          | m s-1         | xyz  | C    |          | terminal_velocity_of_falling_ice
+ VFALL_SNOW            |          | m s-1         | xyz  | C    |          | terminal_velocity_of_falling_snow
+ VFALL_GRAUPEL         |          | m s-1         | xyz  | C    |          | terminal_velocity_of_falling_graupel
+ VFALL_RAIN            |          | m s-1         | xyz  | C    |          | terminal_velocity_of_falling_rain
+ NCCN_LIQ              |          | m-3           | xyz  | C    |          | number_concentration_of_cloud_liquid_particles
+ NCCN_ICE              |          | m-3           | xyz  | C    |          | number_concentration_of_ice_cloud_particles
+ QSATI                 |          | kg kg-1       | xyz  | C    |          | saturation_spec_hum_over_ice
+ QSATL                 |          | kg kg-1       | xyz  | C    |          | saturation_spec_hum_over_liquid
+ ALPHT                 |          | 1             | xyz  | C    |          | pdf_spread_for_condensation_over_qsat_total
+ ALPH1                 |          | 1             | xyz  | C    |          | pdf_spread_for_condensation_over_qsat_term1
+ ALPH2                 |          | 1             | xyz  | C    |          | pdf_spread_for_condensation_over_qsat_term2
+ CFPDFX                |          | 1             | xyz  | C    |          | cloud_fraction_internal_in_PDF_scheme
+ RHCLR                 |          | 1             | xyz  | C    |          | RH_clear_sky
+ CFPDF                 |          | 1             | xyz  | C    |          | cloud_fraction_after_PDF
+ FCLD                  |          | 1             | xyz  | C    |          | cloud_fraction_for_radiation
+ QV                    |          | kg kg-1       | xyz  | C    |          | water_vapor_for_radiation
+ QL                    |          | kg kg-1       | xyz  | C    |          | in_cloud_cloud_liquid_for_radiation
+ QI                    |          | kg kg-1       | xyz  | C    |          | in_cloud_cloud_ice_for_radiation
+ QR                    |          | kg kg-1       | xyz  | C    |          | in_cloud_falling_rain_for_radiation
+ QS                    |          | kg kg-1       | xyz  | C    |          | in_cloud_falling_snow_for_radiation
+ QG                    |          | kg kg-1       | xyz  | C    |          | in_cloud_falling_graupel_for_radiation
+ NACTR                 |          | # m-3         | xyz  | C    |          | rain_number_concentration
+ REFL10CM_MAX          |          | dBZ           | xy   | N    |          | Maximum_composite_10cm_radar_reflectivity
+ DBZ                   |          | dBZ           | xyz  | C    |          | Simulated_radar_reflectivity
+ DBZ_MAX               |          | dBZ           | xy   | N    |          | Maximum_composite_radar_reflectivity
+ DBZ_1KM               |          | dBZ           | xy   | N    |          | Base_1KM_AGL_radar_reflectivity
+ DBZ_TOP               |          | m             | xy   | N    |          | Echo_top_radar_reflectivity
+ DBZ_M10C              |          | dBZ           | xy   | N    |          | Minus_10C_radar_reflectivity
+ PRCP_WATER            |          | kg m-2 s-1    | xy   | N    |          | falling_water_at_surface
+ PRCP_RAIN             |          | kg m-2 s-1    | xy   | N    |          | falling_rain_precipitation_at_surface
+ PRCP_SNOW             |          | kg m-2 s-1    | xy   | N    |          | falling_snow_precipitation_at_surface
+ PRCP_ICE              |          | kg m-2 s-1    | xy   | N    |          | falling_ice_precipitation_at_surface
+ PRCP_GRAUPEL          |          | kg m-2 s-1    | xy   | N    |          | falling_graupel_precipitation_at_surface
+ SNOW_RATIO            |          | 1             | xy   | N    |          | ratio_of_snow_to_total_precip
+ LS_PRCP               |          | kg m-2 s-1    | xy   | N    |          | nonanvil_large_scale_precipitation
+ AN_PRCP               |          | kg m-2 s-1    | xy   | N    |          | anvil_precipitation
+ CN_PRCP               |          | kg m-2 s-1    | xy   | N    |          | deep_convective_precipitation
+ SC_PRCP               |          | kg m-2 s-1    | xy   | N    |          | shallow_convective_precipitation
+ CNPCPRATE             |          | kg m-2 s-1    | xy   | N    |          | convective_precipitation_from_GF
+ LS_SNR                |          | kg m-2 s-1    | xy   | N    |          | large_scale_snow
+ AN_SNR                |          | kg m-2 s-1    | xy   | N    |          | anvil_snow
+ CN_SNR                |          | kg m-2 s-1    | xy   | N    |          | deep_convective_snow
+ SC_SNR                |          | kg m-2 s-1    | xy   | N    |          | shallow_convective_snow
+ ER_PRCP               |          | kg m-2 s-1    | xy   | N    |          | spurious_rain_from_RH_cleanup
+ DTDT_ER               |          | K s-1         | xyz  | C    |          | temperature_tendency_from_RH_cleanup
+ DQVDT_ER              |          | kg m-2 s-1    | xyz  | C    |          | specific_humidty_tendency_from_RH_cleanup
+ SC_MSE                |          | W m-2         | xy   | N    |          | shallow_convective_column_MSE_tendency
+ SC_QT                 |          | kg m-2 s-1    | xy   | N    |          | shallow_convective_column_QT_tendency
+ PGENTOT               |          | kg m-2 s-1    | xy   | N    |          | Total_column_production_of_precipitation
+ PREVTOT               |          | kg m-2 s-1    | xy   | N    |          | Total_column_re-evap/subl_of_precipitation
+ LS_ARF                |          | 1             | xy   | N    |          | areal_fraction_of_nonanvil_large_scale_showers
+ AN_ARF                |          | 1             | xy   | N    |          | areal_fraction_of_anvil_showers
+ CN_ARF                |          | 1             | xy   | N    |          | areal_fraction_of_convective_showers
+ SC_ARF                |          | 1             | xy   | N    |          | areal_fraction_of_shallow_showers
+ PTYPE                 |          | 1             | xy   | N    |          | surface_precipitation_type
+ PREC_STRAT            |          | kg m-2 s-1    | xy   | N    |          | all_stratiform_precipitation
+ PREC_CONV             |          | kg m-2 s-1    | xy   | N    |          | all_convective_precipitation
+ RAIN                  |          | kg m-2 s-1    | xy   | N    |          | rainfall
+ FRZR                  |          | kg m-2 s-1    | xy   | N    |          | freezing_rain_fall
+ ICE                   |          | kg m-2 s-1    | xy   | N    |          | icefall
+ SNO                   |          | kg m-2 s-1    | xy   | N    |          | snowfall
+ SNOWTOTAL             |          | mm            | xy   | N    |          | snowfall_total
+ PRECTOTAL             |          | mm            | xy   | N    |          | precipitation_total
+ KUCHERA_RATIO         |          | unitless      | xy   | N    |          | kuchera_snow_to_liquid_ratio
+ PCU                   |          | kg m-2 s-1    | xy   | N    |          | liquid_convective_precipitation
+ PLS                   |          | kg m-2 s-1    | xy   | N    |          | liquid_large_scale_precipitation
+ TPREC                 |          | kg m-2 s-1    | xy   | N    |          | total_precipitation
+ HOURNORAIN            |          | s             | xy   | N    |          | time-during_an_hour_with_no_precipitation
+ TPW                   |          | kg m-2        | xy   | N    |          | total_precipitable_water
+ CCWP                  |          | kg m-2        | xy   | N    |          | grid_mean_conv_cond_water_path_diagnostic
+ CWP                   |          | kg m-2        | xy   | N    |          | condensed_water_path
+ CLWP                  |          | kg m-2        | xy   | N    |          | cloud_liquid_water_path
+ LWP                   |          | kg m-2        | xy   | N    |          | liquid_water_path
+ CIWP                  |          | kg m-2        | xy   | N    |          | cloud_ice_water_path
+ IWP                   |          | kg m-2        | xy   | N    |          | ice_water_path
+ BYNCY                 |          | m s-2         | xyz  | C    |          | buoyancy_of surface_parcel
+ CAPE                  |          | J kg-1        | xy   | N    |          | cape_for_surface_parcel
+ INHB                  |          | J kg-1        | xy   | N    |          | inhibition_for_surface_parcel
+ MLCAPE                |          | J kg-1        | xy   | N    |          | cape_for_mixed_layer_parcel
+ MLCIN                 |          | J kg-1        | xy   | N    |          | inhibition_for_mixed_layer_parcel
+ MUCAPE                |          | J kg-1        | xy   | N    |          | cape_for_most_unstable_parcel
+ SBCAPE                |          | J kg-1        | xy   | N    |          | cape_for_surface_parcel
+ MUCIN                 |          | J kg-1        | xy   | N    |          | inhibition_for_most_unstable_parcel
+ SBCIN                 |          | J kg-1        | xy   | N    |          | inhibition_for_surface_parcel
+ TVQ0                  |          | kg m-2        | xy   | N    |          | Total_Water_Substance_Before
+ TVQ1                  |          | kg m-2        | xy   | N    |          | Total_Water_Substance_After
+ DCPTE                 |          | J m-2         | xy   | N    |          | Total_VI_DcpT
+ TVE0                  |          | J m-2         | xy   | N    |          | Total_VI_MSE_Before
+ TVE1                  |          | J m-2         | xy   | N    |          | Total_VI_MSE_After
+ TVEX                  |          | J m-2         | xy   | N    |          | Total_VI_MSE_Somewhere
+ ZPBLCN                |          | m             | xy   | N    |          | boundary_layer_depth
+ ZLCL                  |          | m             | xy   | N    |          | lifting_condensation_level
+ ZLFC                  |          | m             | xy   | N    |          | level_of_free_convection
+ ZLNB                  |          | m             | xy   | N    |          | level_of_neutral_buoyancy
+ LCL_AGL               |          | m             | xy   | N    |          | lifted_condensation_level_above_ground_level
+ ZCBL                  |          | m             | xy   | N    |          | height_of_cloud_base_layer
+ MXDIAM                |          | m             | xy   | N    |          | diameter_of_largest_RAS_plume
+ QCBL                  |          | kg/kg         | xy   | N    |          | q_at_cloud_base_level
+ SRF_TYPE              |          |               | xy   | N    |          | surface type for ice_fraction
+ CNV_FRC               |          |               | xy   | N    |          | convective_fraction
+ STOCH_CNV             |          |               | xy   | N    |          | stochastic_factor_for_convection
+ SIGMA_DEEP            |          |               | xy   | N    |          | sigma_for_deep_in_convection
+ SIGMA_MID             |          |               | xy   | N    |          | sigma_for_mid_in_convection
+ RAS_TIME              |          | s             | xy   | N    |          | timescale_for_RAS_plumes
+ RAS_TRG               |          |               | xy   | N    |          | rh_trigger_for_RAS_plumes
+ RAS_TOKI              |          |               | xy   | N    |          | tokioka_factor_for_RAS_plumes
+ RAS_PBL               |          |               | xy   | N    |          | pbl_fraction_for_RAS_plumes
+ RAS_WFN               |          |               | xy   | N    |          | RAS_work_function_before_scaling
+ ENTLAM                |          | m-1           | xyz  | C    |          | entrainment parameter
+ RH1                   |          | 1             | xyz  | C    |          | relative_humidity_before_moist
+ RH2                   |          | 1             | xyz  | C    |          | relative_humidity_after_moist
+# Outputs to give model trajectory in the moist TLM/ADJ
+ TH_moist              |          | K             | xyz  | C    |          | potential_temp_before_moist
+ Q_moist               |          | kg kg-1       | xyz  | C    |          | specific_humidity_before_moist
+ KCBL_moist            |          | 1             | xy   | N    |          | KCBL_before_moist
+ ctop_moist            |          | 1             | xy   | N    |          | ctop_after_ras
+ TS_moist              |          | K             | xy   | N    |          | surface_temp_before_moist
+ KHu_moist             |          | 1             | xy   | N    |          | upper_index_where_Kh_greater_than_2
+ KHl_moist             |          | 1             | xy   | N    |          | lower_index_where_Kh_greater_than_2
+# End outputs for trajectory of moist TLM/ADJ
+ KHX                   |          | m+2 s-1       | xyz  | C    |          | scalar_diffusivity_for_pbl_clouds
+ DTSX                  |          | 1             | xy   | N    |          | dts_for_pbl_clouds
+ RHCRIT                |          | 1             | xyz  | C    |          | critical_relative_humidity_for_PDF
+ SIGMA_S               |          | 1             | xyz  | C    |          | normalized_total_water_standard_deviation
+ RHX                   |          | 1             | xyz  | C    |          | relative_humidity_after_PDF
+ REVSU_CN              |          | kg kg-1 s-1   | xyz  | C    |          | evap_subl_of_convective_precipitation
+ REVSU_LSAN            |          | kg kg-1 s-1   | xyz  | C    |          | evap_subl_of_non_convective_precipitation
+ REV_CN                |          | kg kg-1 s-1   | xyz  | C    |          | evaporation_of_convective_precipitation
+ REV_SC                |          | kg kg-1 s-1   | xyz  | C    |          | evaporation_of_shallow_precipitation
+ REV_AN                |          | kg kg-1 s-1   | xyz  | C    |          | evaporation_of_anvil_precipitation
+ REV_LS                |          | kg kg-1 s-1   | xyz  | C    |          | evaporation_of_nonanvil_large_scale_precipitation
+ RSU_CN                |          | kg kg-1 s-1   | xyz  | C    |          | sublimation_of_convective_precipitation
+ RSU_SC                |          | kg kg-1 s-1   | xyz  | C    |          | sublimation_of_shallow_precipitation
+ RSU_AN                |          | kg kg-1 s-1   | xyz  | C    |          | sublimation_of_anvil_precipitation
+ RSU_LS                |          | kg kg-1 s-1   | xyz  | C    |          | sublimation_of_nonanvil_large_scale_precipitation
+ ACR_TOT               |          | kg kg-1 s-1   | xyz  | C    |          | total_accretion_of__precipitation
+ ACRLL_CN              |          | kg kg-1 s-1   | xyz  | C    |          | liq_liq_accretion_of_convective_precipitation
+ ACRLL_SC              |          | kg kg-1 s-1   | xyz  | C    |          | liq_liq_accretion_of_shallow_precipitation
+ ACRLL_AN              |          | kg kg-1 s-1   | xyz  | C    |          | liq_liq_accretion_of_anvil_precipitation
+ ACRLL_LS              |          | kg kg-1 s-1   | xyz  | C    |          | liq_liq_accretion_of_nonanvil_large_scale_precipitation
+ ACRIL_CN              |          | kg kg-1 s-1   | xyz  | C    |          | ice_liq_accretion_of_convective_precipitation
+ ACRIL_SC              |          | kg kg-1 s-1   | xyz  | C    |          | ice_liq_accretion_of_shallow_convective_precipitation
+ ACRIL_AN              |          | kg kg-1 s-1   | xyz  | C    |          | ice_liq_accretion_of_anvil_precipitation
+ ACRIL_LS              |          | kg kg-1 s-1   | xyz  | C    |          | ice_liq_accretion_of_nonanvil_large_scale_precipitation
+ PFI_CN                |          | kg m-2 s-1    | xyz  | E    |          | 3D_flux_of_ice_convective_precipitation
+ PFI_SC                |          | kg m-2 s-1    | xyz  | E    |          | 3D_flux_of_ice_shallow_convective_precipitation
+ PFI_AN                |          | kg m-2 s-1    | xyz  | E    |          | 3D_flux_of_ice_anvil_precipitation
+ PFI_LS                |          | kg m-2 s-1    | xyz  | E    |          | 3D_flux_of_ice_nonanvil_large_scale_precipitation
+ PFI_LSAN              |          | kg m-2 s-1    | xyz  | E    |          | 3D_flux_of_ice_nonconvective_precipitation
+ PFL_CN                |          | kg m-2 s-1    | xyz  | E    |          | 3D_flux_of_liquid_convective_precipitation
+ PFL_SC                |          | kg m-2 s-1    | xyz  | E    |          | 3D_flux_of_liquid_shallow_convective_precipitation
+ PFL_AN                |          | kg m-2 s-1    | xyz  | E    |          | 3D_flux_of_liquid_anvil_precipitation
+ PFL_LS                |          | kg m-2 s-1    | xyz  | E    |          | 3D_flux_of_liquid_nonanvil_large_scale_precipitation
+ PFL_LSAN              |          | kg m-2 s-1    | xyz  | E    |          | 3D_flux_of_liquid_nonconvective_precipitation
+ PFR_LS                |          | kg m-2 s-1    | xyz  | E    |          | 3D_flux_of_rain_nonanvil_large_scale_precipitation
+ PFS_LS                |          | kg m-2 s-1    | xyz  | E    |          | 3D_flux_of_snow_nonanvil_large_scale_precipitation
+ PFG_LS                |          | kg m-2 s-1    | xyz  | E    |          | 3D_flux_of_graupel_nonanvil_large_scale_precipitation
+ DPDTMST               |          | Pa s-1        | xyz  | C    |          | layer_pressure_thickness_tendency_from_moist
+ DCNVL                 |          | kg kg-1 s-1   | xyz  | C    |          | convective_source_of_cloud_liq
+ DCNVI                 |          | kg kg-1 s-1   | xyz  | C    |          | convective_source_of_cloud_ice
+ DLPDF                 |          | kg kg-1 s-1   | xyz  | C    |          | pdf_source_sink_of_cloud_liq
+ DIPDF                 |          | kg kg-1 s-1   | xyz  | C    |          | pdf_source_sink_of_cloud_ice
+ DLFIX                 |          | kg kg-1 s-1   | xyz  | C    |          | fix_source_sink_of_cloud_liq
+ DIFIX                 |          | kg kg-1 s-1   | xyz  | C    |          | fix_source_sink_of_cloud_ice
+ AUT                   |          | kg kg-1 s-1   | xyz  | C    |          | autoconv_sink_of_cloud_liq
+ EVAPC                 |          | kg kg-1 s-1   | xyz  | C    |          | evaporation_of_cloud_liq
+ SDM                   |          | kg kg-1 s-1   | xyz  | C    |          | sedimentation_sink_of_cloud_ice
+ VFALLICE_AN           |          | m s-1         | xyz  | C    |          | autoconversion_fall_velocity_of_anvil_snow
+ VFALLICE_LS           |          | m s-1         | xyz  | C    |          | autoconversion_fall_velocity_of_largescale_snow
+ VFALLWAT_AN           |          | m s-1         | xyz  | C    |          | autoconversion_fall_velocity_of_anvil_rain
+ VFALLWAT_LS           |          | m s-1         | xyz  | C    |          | autoconversion_fall_velocity_of_largescale_rain
+ VFALLRN_AN            |          | m s-1         | xyz  | C    |          | reevaporation_fall_velocity_of_anvil_rain
+ VFALLRN_LS            |          | m s-1         | xyz  | C    |          | reevaporation_fall_velocity_of_largescale_rain
+ VFALLRN_CN            |          | m s-1         | xyz  | C    |          | reevaporation_fall_velocity_of_convective_rain
+ VFALLRN_SC            |          | m s-1         | xyz  | C    |          | reevaporation_fall_velocity_of_shallow_rain
+ VFALLSN_AN            |          | m s-1         | xyz  | C    |          | reevaporation_fall_velocity_of_anvil_snow
+ VFALLSN_LS            |          | m s-1         | xyz  | C    |          | reevaporation_fall_velocity_of_largescale_snow
+ VFALLSN_CN            |          | m s-1         | xyz  | C    |          | reevaporation_fall_velocity_of_convective_snow
+ VFALLSN_SC            |          | m s-1         | xyz  | C    |          | reevaporation_fall_velocity_of_shallow_snow
+ SUBLC                 |          | kg kg-1 s-1   | xyz  | C    |          | sublimation_of_cloud_ice
+ FRZ_TT                |          | kg kg-1 s-1   | xyz  | C    |          | freezing_of_cloud_condensate
+ FRZ_PP                |          | kg kg-1 s-1   | xyz  | C    |          | freezing_of_precip_condensate
+ PFRZ                  |          | 1             | xyz  | C    |          | Probability_of_freezing_of_aerosol_part
+ PFLCNMOVE             |          | kg kg-1 s-1   | xyz  | C    |          | moved_source_of_cnv_rain
+ PFICNMOVE             |          | kg kg-1 s-1   | xyz  | C    |          | moved_source_of_cnv_snow
+ CU2DRAINMOVE          |          | kg kg-1 s-1   | xy   | N    |          | moved_2d_source_of_cnv_rain
+ CU2DSNOWMOVE          |          | kg kg-1 s-1   | xy   | N    |          | moved_2d_source_of_cnv_snow
+# Vertically integrated water substance conversions
+ PDFLZ                 |          | kg m-2 s-1    | xy   | N    |          | statistical_source_of_cloud_water
+ PDFIZ                 |          | kg m-2 s-1    | xy   | N    |          | statistical_source_of_cloud_ice
+ CNVRNZ                |          | kg m-2 s-1    | xy   | N    |          | convective_production_of_rain_water
+ CNVLZ                 |          | kg m-2 s-1    | xy   | N    |          | convective_source_of_cloud_water
+ CNVIZ                 |          | kg m-2 s-1    | xy   | N    |          | convective_source_of_cloud_ice
+ EVPCZ                 |          | kg m-2 s-1    | xy   | N    |          | evaporation_loss_of_cloud_water
+ SUBCZ                 |          | kg m-2 s-1    | xy   | N    |          | sublimation_loss_of_cloud_ice
+ EVPPZ                 |          | kg m-2 s-1    | xy   | N    |          | evaporation_loss_of_precip_water
+ SUBPZ                 |          | kg m-2 s-1    | xy   | N    |          | sublimation_loss_of_precip_ice
+ AUTZ                  |          | kg m-2 s-1    | xy   | N    |          | autoconversion_loss_of_cloud_water
+ SDMZ                  |          | kg m-2 s-1    | xy   | N    |          | sedimentation_loss_of_cloud_ice
+ COLLLZ                |          | kg m-2 s-1    | xy   | N    |          | accretion_loss_of_cloud_water_to_rain
+ COLLIZ                |          | kg m-2 s-1    | xy   | N    |          | accretion_loss_of_cloud_water_to_snow
+ FRZCZ                 |          | kg m-2 s-1    | xy   | N    |          | net_freezing_of_cloud_condensate
+ FRZPZ                 |          | kg m-2 s-1    | xy   | N    |          | net_freezing_of_precip_condensate
+ RCCODE                |          | codes         | xyz  | C    |          | Convection_return_codes
+ TRIEDLV               |          | 0 or 1        | xyz  | C    |          | Tested_for_convection_at_this_level
+# MATMAT Exports for after-RAS inoutputs
+ QVRAS                 |          | kg kg-1       | xyz  | C    |          | water_vapor_after_ras
+ THRAS                 |          | K             | xyz  | C    |          | potential_temperature_after_ras
+ URAS                  |          | m s-1         | xyz  | C    |          | eastward_wind_after_ras
+ VRAS                  |          | m s-1         | xyz  | C    |          | northward_wind_after_ras
+# MATMAT Exports for before-RAS inputs for RAStest
+ THOI                  |          | K             | xyz  | C    |          | potential_temperature_before_ras
+ QHOI                  |          | kg kg-1       | xyz  | C    |          | specific_humidity_before_ras
+ QSSI                  |          | kg kg-1       | xyz  | C    |          | saturation_specific_humidity_before_ras
+ DQSI                  |          | kg kg-1 K-1   | xyz  | C    |          | deriv_sat_specific_humidity_wrt_t_before_ras
+ PLEI                  |          | Pa            | xyz  | E    |          | air_pressure_before_ras
+ TPERTI                |          | K             | xy   | N    |          | temperature_perturbation_before_ras
+ KCBLI                 |          | 1             | xy   | N    |          | cloud_base_layer_before_ras
+# RECORD IMPORTS AND INTERNALS AT TOP OF MOIST:
+ QX0                   |          | kg kg-1       | xyz  | C    |          | specific_humidity
+ QLLSX0                |          | kg kg-1       | xyz  | C    |          | initial_mass_fraction_of_large_scale_cloud_liquid_water
+ QLLSX1                |          | kg kg-1       | xyz  | C    |          | final_mass_fraction_of_large_scale_cloud_liquid_water
+ QLCNX0                |          | kg kg-1       | xyz  | C    |          | initial_mass_fraction_of_convective_cloud_liquid_water
+ QLCNX1                |          | kg kg-1       | xyz  | C    |          | final_mass_fraction_of_convective_cloud_liquid_water
+ CLLSX0                |          | 1             | xyz  | C    |          | large_scale_cloud_area_fraction
+ CLLSX1                |          | 1             | xyz  | C    |          | final_large_scale_cloud_area_fraction
+ CLCNX0                |          | 1             | xyz  | C    |          | convective_cloud_area_fraction
+ CLCNX1                |          | 1             | xyz  | C    |          | final_convective_cloud_area_fraction
+ QILSX0                |          | kg kg-1       | xyz  | C    |          | initial_mass_fraction_of_large_scale_cloud_ice_water
+ QILSX1                |          | kg kg-1       | xyz  | C    |          | final_mass_fraction_of_large_scale_cloud_ice_water
+ QICNX0                |          | kg kg-1       | xyz  | C    |          | initial_mass_fraction_of_convective_cloud_ice_water
+ QICNX1                |          | kg kg-1       | xyz  | C    |          | final_mass_fraction_of_convective_cloud_ice_water
+ QCCNX0                |          | kg kg-1       | xyz  | C    |          | initial_mass_fraction_of_convective_cloud_condensate
+ QCLSX0                |          | kg kg-1       | xyz  | C    |          | initial_mass_fraction_of_large_scale_cloud_condensate
+ KHX0                  |          | m+2 s-1       | xyz  | E    |          | scalar_diffusivity
+ THX0                  |          | K             | xyz  | C    |          | potential_temperature
+ UX0                   |          | m s-1         | xyz  | C    |          | eastward_wind
+ VX0                   |          | m s-1         | xyz  | C    |          | northward_wind
+ TSX0                  |          | K             | xy   | N    |          | surface temperature
+ FRLANDX0              |          | 1             | xy   | N    |          | areal_land_fraction
+# downdraft diags
+ DDF_MFC               |          | kg m-2 s-1    | xyz  | E    |          | Downdraft_mass_flux
+ DDF_RH1               |          | 1             | xyz  | C    |          | Downdraft_in_cloud_RH_before
+ DDF_RH2               |          | 1             | xyz  | C    |          | Downdraft_in_cloud_RH_after
+ DDF_TC                |          | K             | xyz  | C    |          | Temperature_excess_in_DDF
+ DDF_QVC               |          | kg kg-1       | xyz  | C    |          | Spec_hum_excess_in_DDF
+ DDF_BYNC              |          | m s-2         | xyz  | C    |          | Buoyancy_of_DDF
+ DDF_MUPH              |          | kg kg-1 s-1   | xyz  | C    |          | Downdraft_moistening_from_evap_subl
+ DDF_DQDT              |          | kg kg-1 s-1   | xyz  | C    |          | Total_Downdraft_moistening
+ DDF_DTDT              |          | K s-1         | xyz  | C    |          | Total_Downdraft_heating
+ DDF_ZSCALE            |          | m             | xy   | N    |          | vertical_scale_for_downdraft
+ UMST0                 |          | m s-1         | xyz  | C    |          | zonal_wind_before_moist_processes
+ VMST0                 |          | m s-1         | xyz  | C    |          | meridonal_wind_before_moist_processes
+ KEDISS                |          | W m-2         | xyz  | C    |          | kinetic_energy_diss_in_RAS
+ KEMST                 |          | W m-2         | xy   | N    |          | vertically_integrated_kinetic_energy_tendency_across_moist
+ KEMST2                |          | W m-2         | xy   | N    |          | vertically_integrated_KE_dissipation_in_RAS
+ LFR_GCC               |          | km-2 s-1      | xy   | N    |          | lightning_flash_rate_for_GEOSCHEMchem
+ UAFMOIST              |          | m s-1         | xyz  | C    |          | zonal_wind_after_all_of_moist
+ VAFMOIST              |          | m s-1         | xyz  | C    |          | meridional_wind_after_all_of_moist
+ THAFMOIST             |          | K             | xyz  | C    |          | potential_temperature_after_all_of_moist
+ TAFMOIST              |          | K             | xyz  | C    |          | temperature_after_all_of_moist
+ QAFMOIST              |          | kg kg-1       | xyz  | C    |          | specific_humidity_after_all_of_moist
+ SAFMOIST              |          | m+2 s-2       | xyz  | C    |          | dry_static_energy_after_all_of_moist
+# Aerosol Cloud Interactions Diagnostics
+ SMAX_LIQ              |          | %             | xyz  | C    |          | Maximum incloud supersaturation for liquid
+ WSUB                  |          | m s-1         | xyz  | C    |          | Subgrid Scale in-cloud vertical velocity
+ CCN01                 |          | m-3           | xyz  | C    |          | CCN conc at 0.1 % supersaturation (grid_avg)
+ CCN02                 |          | m-3           | xyz  | C    |          | CCN conc at 0.2 % supersaturation (grid_avg)
+ CCN1                  |          | m-3           | xyz  | C    |          | CCN conc at 1.0 % supersaturation (grid_avg)
+ SMAX_ICE              |          | %             | xyz  | C    |          | Maximum incloud supersaturation for ice
+ CDNC_NUC              |          | m-3           | xyz  | C    |          | Nucleated cloud droplet concentration (grid_avg)
+ INC_NUC               |          | m-3           | xyz  | C    |          | Nucleated ice crystal concentration (grid_avg)
+ NCPL_VOL              |          | m-3           | xyz  | C    |          | particle_number_for_liquid_cloud
+ NCPI_VOL              |          | m-3           | xyz  | C    |          | particle_number_for_ice_cloud
+ SO4                   |          | m-3           | xyz  | C    |          | Sulfate number conc.
+ ORG                   |          | m-3           | xyz  | C    |          | Organic number conc. (hydrophilic)
+ BCARBON               |          | m-3           | xyz  | C    |          | Black carbon number conc. (hydrophilic)
+ DUST                  |          | m-3           | xyz  | C    |          | Total dust number conc
+ SEASALT               |          | m-3           | xyz  | C    |          | Total sea number conc
+ NHET_NUC              |          | m-3           | xyz  | C    |          | Nucleated ice crystal concentration by het freezing (grid_avg)
+ NLIM_NUC              |          | m-3           | xyz  | C    |          | Limiting IN concentration allowing hom freezing
+ SAT_RAT               |          | 1             | xyz  | C    |          | saturation_ratio_after_moist
+ DQVDT_FILL_SC         |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_water_vapor_due_to_negative_fill_after_shallow_cu
+ DQLLSDT_FILL_SC       |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_liquid_ls_due_to_negative_fill_after_shallow_cu
+ DQLCNDT_FILL_SC       |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_liquid_cn_due_to_negative_fill_after_shallow_cu
+ DQILSDT_FILL_SC       |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_ice_ls_due_to_negative_fill_after_shallow_cu
+ DQICNDT_FILL_SC       |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_ice_cn_due_to_negative_fill_after_shallow_cu
+ DQRDT_FILL_SC         |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_rain_due_to_negative_fill_after_shallow_cu
+ DQSDT_FILL_SC         |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_snow_due_to_negative_fill_after_shallow_cu
+ DQGDT_FILL_SC         |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_graupel_due_to_negative_fill_after_shallow_cu
+ DQVDT_FILL_DC         |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_water_vapor_due_to_negative_fill_after_deep_cu
+ DQLLSDT_FILL_DC       |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_liquid_ls_due_to_negative_fill_after_deep_cu
+ DQLCNDT_FILL_DC       |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_liquid_cn_due_to_negative_fill_after_deep_cu
+ DQILSDT_FILL_DC       |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_ice_ls_due_to_negative_fill_after_deep_cu
+ DQICNDT_FILL_DC       |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_ice_cn_due_to_negative_fill_after_deep_cu
+ DQRDT_FILL_DC         |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_rain_due_to_negative_fill_after_deep_cu
+ DQSDT_FILL_DC         |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_snow_due_to_negative_fill_after_deep_cu
+ DQGDT_FILL_DC         |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_graupel_due_to_negative_fill_after_deep_cu
+ DQVDT_FILL_CLDMACRO   |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_water_vapor_due_to_negative_fill_after_cldmacro
+ DQLLSDT_FILL_CLDMACRO |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_liquid_ls_due_to_negative_fill_after_cldmacro
+ DQLCNDT_FILL_CLDMACRO |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_liquid_cn_due_to_negative_fill_after_cldmacro
+ DQILSDT_FILL_CLDMACRO |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_ice_ls_due_to_negative_fill_after_cldmacro
+ DQICNDT_FILL_CLDMACRO |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_ice_cn_due_to_negative_fill_after_cldmacro
+ DQRDT_FILL_CLDMACRO   |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_rain_due_to_negative_fill_after_cldmacro
+ DQSDT_FILL_CLDMACRO   |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_snow_due_to_negative_fill_after_cldmacro
+ DQGDT_FILL_CLDMACRO   |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_graupel_due_to_negative_fill_after_cldmacro
+ DQVDT_FILL_CLDMICRO   |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_water_vapor_due_to_negative_fill_after_cldmicro
+ DQLLSDT_FILL_CLDMICRO |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_liquid_ls_due_to_negative_fill_after_cldmicro
+ DQLCNDT_FILL_CLDMICRO |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_liquid_cn_due_to_negative_fill_after_cldmicro
+ DQILSDT_FILL_CLDMICRO |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_ice_ls_due_to_negative_fill_after_cldmicro
+ DQICNDT_FILL_CLDMICRO |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_ice_cn_due_to_negative_fill_after_cldmicro
+ DQRDT_FILL_CLDMICRO   |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_rain_due_to_negative_fill_after_cldmicro
+ DQSDT_FILL_CLDMICRO   |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_snow_due_to_negative_fill_after_cldmicro
+ DQGDT_FILL_CLDMICRO   |          | kg m-2 s-1    | xyz  | C    |          | tendency_of_graupel_due_to_negative_fill_after_cldmicro
+ DQVDT_micro           |          | kg kg-1 s-1   | xyz  | C    |          | Q tendency due to microphysics
+ DQLDT_micro           |          | kg kg-1 s-1   | xyz  | C    |          | QL tendency due to microphysics
+ DQIDT_micro           |          | kg kg-1 s-1   | xyz  | C    |          | QI tendency due to microphysics
+ DQRDT_micro           |          | kg kg-1 s-1   | xyz  | C    |          | QR tendency due to microphysics
+ DQSDT_micro           |          | kg kg-1 s-1   | xyz  | C    |          | QS tendency due to microphysics
+ DQGDT_micro           |          | kg kg-1 s-1   | xyz  | C    |          | QG tendency due to microphysics
+ DQADT_micro           |          | kg kg-1 s-1   | xyz  | C    |          | QA tendency due to microphysics
+ DTDT_micro            |          | K s-1         | xyz  | C    |          | T tendency due to microphysics
+ DUDT_micro            |          | m s-2         | xyz  | C    |          | U tendency due to microphysics
+ DVDT_micro            |          | m s-2         | xyz  | C    |          | V tendency due to microphysics
+ TVQX1                 |          | kg m-2        | xy   | N    |          | Total_Water_Substance_bef_macro
+ TVQX2                 |          | kg m-2        | xy   | N    |          | Total_Water_Substance_bef_micro
+ RL_MASK               |          | m             | xyz  | C    |          | volumetric_liquid_cloud_particle_volume_radius
+ RI_MASK               |          | m             | xyz  | C    |          | volumetric_ice_cloud_particle_volume_radius
+ KAPPA                 |          | 1             | xyz  | C    |          | kappa parameter for activation
+ CFLIQ                 |          | 1             | xyz  | C    |          | liquid_cloud_area_fraction (LS)
+ CFICE                 |          | 1             | xyz  | C    |          | ice_cloud_area_fraction (LS)
+ RHICE                 |          | 1             | xyz  | C    |          | Relative humidity wrt ice
+ RHLIQ                 |          | 1             | xyz  | C    |          | Relative humidity wrt liquid
+ SC_ICE                |          | 1             | xyz  | C    |          | Effective Freezing RHi
+ NHET_IMM              |          | m-3           | xyz  | C    |          | Immersion_IN
+ NHET_DEP              |          | m-3           | xyz  | C    |          | Deposition_IN
+ DUST_IMM              |          | m-3           | xyz  | C    |          | Immersion IN from dust
+ DUST_DEP              |          | m-3           | xyz  | C    |          | deposition IN from dust
+ SCF                   |          | 1             | xyz  | C    |          | Supercooled cloud fraction
+ SCF_ALL               |          | 1             | xyz  | C    |          | Supercooled cloud fraction including snow and rain
+ SIGW_GW               |          | m2 s-2        | xyz  | C    |          | Subgrid Scale vertical velocity variance from GW
+ SIGW_CNV              |          | m2 s-2        | xyz  | C    |          | Subgrid Scale vertical velocity variance from convection
+ SIGW_TURB             |          | m2 s-2        | xyz  | C    |          | Subgrid Scale vertical velocity variance from turbulence
+ SIGW_RC               |          | m s-1         | xyz  | C    |          | Mean subgrid Scale vertical velocity from rad cooling
+ CNV_FICE              |          | 1             | xyz  | C    |          | Ice fraction in convective tower
+ CNV_NDROP             |          | m-3           | xyz  | C    |          | Droplet number conc. in conv. detrainment
+ NWFA                  |          | m-3           | xyz  | C    |          | Number concentration of water-friendly aerosol
+ NIFA                  |          | m-3           | xyz  | C    |          | Number concentration of ice-friendly aerosol
+ CNV_NICE              |          | m-3           | xyz  | C    |          | Ice crystal number conc. in conv. detrainment
+ SC_NDROP              |          | m-3           | xyz  | C    |          | Droplet number conc. in shallow detrainment
+ SC_NICE               |          | m-3           | xyz  | C    |          | Ice crystal number conc. in shallow detrainment
+ TPERT_SC              |          | K             | xy   | N    |          | Shallow_convection_source_air_temperature_perturbation
+ QPERT_SC              |          | kg kg-1       | xy   | N    |          | Shallow_convection_source_air_humidity_perturbation
+ RHCmicro              |          | 1             | xyz  | C    |          | Corrected RHc after micro
+ CCNCOLUMN             |          | m-2           | xy   | N    |          | Vertically integrated CCN at 1% ssat
+ NDCOLUMN              |          | m-2           | xy   | N    |          | Vertically integrated NCPL
+ NCCOLUMN              |          | m-2           | xy   | N    |          | Vertically integrated NCPI
+ BERG                  |          | Kg Kg-1 s-1   | xyz  | C    |          | ice mixing ration tendency due to Bergeron process
+ BERGS                 |          | Kg Kg-1 s-1   | xyz  | C    |          | Snow mixing ration tendency due to Bergeron process
+ MELT                  |          | Kg Kg-1 s-1   | xyz  | C    |          | Melting of cloud ice
+ QCRES                 |          | Kg Kg-1 s-1   | xyz  | C    |          | Residual cloud tendency in micro
+ QIRES                 |          | Kg Kg-1 s-1   | xyz  | C    |          | Residual ice cloud tendency in micro
+ AUTICE                |          | kg kg-1 s-1   | xyz  | C    |          | autoconv_sink_of_cloud_ice
+ DT_RASP               |          | K s-1         | xyz  | C    |          | T tendency from ras precip
+ DNHET_IMM             |          | Kg-1 s-1      | xyz  | C    |          | Ice number tendency due to immersion freezing
+ DNHET_CT              |          | Kg-1 s-1      | xyz  | C    |          | Ice number tendency due to contact freezing
+ DUDT_macro            |          | m s-2         | xyz  | C    |          | U tendency due to macrophysics
+ DVDT_macro            |          | m s-2         | xyz  | C    |          | V tendency due to macrophysics
+ DTDT_macro            |          | K s-1         | xyz  | C    |          | T tendency due to macrophysics
+ DQVDT_macro           |          | kg kg-1 s-1   | xyz  | C    |          | QV tendency due to macrophysics
+ DQLDT_macro           |          | kg kg-1 s-1   | xyz  | C    |          | QL tendency due to macrophysics
+ DQIDT_macro           |          | kg kg-1 s-1   | xyz  | C    |          | QI tendency due to macrophysics
+ DQADT_macro           |          | kg kg-1 s-1   | xyz  | C    |          | QA tendency due to macrophysics
+ DQRDT_macro           |          | kg kg-1 s-1   | xyz  | C    |          | QRAIN tendency due to macrophysics
+ DQSDT_macro           |          | kg kg-1 s-1   | xyz  | C    |          | QSNOW tendency due to macrophysics
+ DQGDT_macro           |          | kg kg-1 s-1   | xyz  | C    |          | QGRAUPEL tendency due to macrophysics
+ DUDT_DC               |          | m s-2         | xyz  | C    |          | U-wind tendency due to deep convection
+ DVDT_DC               |          | K s-2         | xyz  | C    |          | V-wind tendency due to deep convection
+ DTDT_DC               |          | K s-1         | xyz  | C    |          | T tendency due to deep convection
+ DQVDT_DC              |          | kg kg-1 s-1   | xyz  | C    |          | QV tendency due to deep convection
+ DQLDT_DC              |          | kg kg-1 s-1   | xyz  | C    |          | QL tendency due to deep convection
+ DQIDT_DC              |          | kg kg-1 s-1   | xyz  | C    |          | QI tendency due to deep convection
+ DQADT_DC              |          | kg kg-1 s-1   | xyz  | C    |          | QA tendency due to deep convection
+ FRZPP_LS              |          | K s-1         | xyz  | C    |          | Tendency in T from micro precip freezing
+ SNOWMELT_LS           |          | K s-1         | xyz  | C    |          | Tendency in T from micro snow melting
+ DNCNUC                |          | m-3 s-1       | xyz  | C    |          | Ice number tendency due to nucleation on aerosol
+ DNCHMSPLIT            |          | m-3 s-1       | xyz  | C    |          | Ice number tendency due to H-M splittering
+ DNCSUBL               |          | m-3 s-1       | xyz  | C    |          | Ice number tendency due to sublimation
+ DNCAUTICE             |          | m-3 s-1       | xyz  | C    |          | Ice number tendency due to autoconversion to snow
+ DNCACRIS              |          | m-3 s-1       | xyz  | C    |          | Ice number tendency due to accretion by snow
+ DNICNV                |          | m-3 s-1       | xyz  | C    |          | Ice crystal number tendency from convective detrainment
+ DNDCCN                |          | m-3 s-1       | xyz  | C    |          | Cloud droplet number tendency due to activation
+ DNDACRLS              |          | m-3 s-1       | xyz  | C    |          | Cloud droplet number tendency due to accretion by snow
+ DNDEVAPC              |          | m-3 s-1       | xyz  | C    |          | Cloud droplet number tendency due to evaporation
+ DNDACRLR              |          | m-3 s-1       | xyz  | C    |          | Cloud droplet number tendency due to accretion by rain
+ DNDAUTLIQ             |          | m-3 s-1       | xyz  | C    |          | Cloud droplet number tendency due to autoconversion
+ DNDCNV                |          | m-3 s-1       | xyz  | C    |          | Cloud droplet number tendency from convective detrainment
+ CLDREFFL_TOP          |          | m             | xy   | N    |          | Droplet effective radius at cloud top
+ CLDREFFI_TOP          |          | m             | xy   | N    |          | ice crystal effective radius at cloud top
+ NCPL_TOP              |          | m-3           | xy   | N    |          | Grid-averaged NCPL at cloud top
+ NCPI_TOP              |          | m-3           | xy   | N    |          | Grid-averaged NCPI at cloud top
+ NCPL_CLDBASE          |          | m-3           | xy   | N    |          | IN-CLOUD NCPL at cloud base
+ LWC                   |          | kg m-3        | xyz  | C    |          | liquid water content
+ IWC                   |          | kg m-3        | xyz  | C    |          | ice water content
+ QCVAR                 |          | 1             | xy   | N    |          | inverse relative variance of cloud water
+ LTS                   |          | K             | xy   | N    |          | Lower tropospheric stability
+ EIS                   |          | K             | xy   | N    |          | Estimated Inversion Strength
+ RAS_ALPHA             |          | 1             | xyz  | C    |          | RAS relaxation parameter
+ RAS_TAU               |          | 1             | xyz  | C    |          | RAS total relaxation timescale
+ DNDDT                 |          | m-3 s-1       | xyz  | C    |          | total_liq_droplet_number_tendency_due_to_moist
+ DNCDT                 |          | m-3 s-1       | xyz  | C    |          | total_ice_crystal_number_tendency_due_to_moist
+ DQDT_GF               |          | kg kg-1 s-1   | xyz  | C    |          | tendency_of_spec_humidity_due_GF
+ DTDT_GF               |          | K s-1         | xyz  | C    |          | tendency_of_temp_due_GF
+ DUDT_GF               |          | kg kg-1 s-1   | xyz  | C    |          | tendency_of_zonal_wind_due_GF
+ DVDT_GF               |          | K s-1         | xyz  | C    |          | tendency_of_meridional_wind_due_GF
+ MUPDP                 |          | kg m-2 s-1    | xyz  | C    |          | Mass_flux_deep_GF_updraft
+ MDNDP                 |          | kg m-2 s-1    | xyz  | C    |          | Mass_flux_deep_GF_downdraft
+ MUPSH                 |          | kg m-2 s-1    | xyz  | C    |          | Mass_flux_shallow_GF
+ MUPMD                 |          | kg m-2 s-1    | xyz  | C    |          | Mass_flux_congestus_GF
+ MFDP                  |          | kg m-2 s-1    | xy   | N    |          | mass_flux_cloud_base_deep_GF
+ MFSH                  |          | kg m-2 s-1    | xy   | N    |          | mass_flux_cloud_base_shal_GF
+ MFMD                  |          | kg m-2 s-1    | xy   | N    |          | mass_flux_cloud_base_mid_GF
+ ERRDP                 |          | 1             | xy   | N    |          | convection_code_deep_GF
+ ERRSH                 |          | 1             | xy   | N    |          | convection_code_shallow_GF
+ ERRMD                 |          | 1             | xy   | N    |          | convection_code_mid_GF
+ AA0                   |          | J kg-1        | xy   | N    |          | cloud work function 0
+ AA1                   |          | J kg-1        | xy   | N    |          | cloud work function 1
+ AA2                   |          | J kg-1        | xy   | N    |          | cloud work function 2
+ AA3                   |          | J kg-1        | xy   | N    |          | cloud work function 3
+ AA1_CIN               |          | J kg-1        | xy   | N    |          | cloud work function CIN
+ AA1_BL                |          | J kg-1 s-1    | xy   | N    |          | Bound layer AA1
+ TAU_BL                |          | s             | xy   | N    |          | Bound layer time scale
+ TAU_DP                |          | s             | xy   | N    |          | deep cu cape removal time scale
+ TAU_MD                |          | s             | xy   | N    |          | congestus cape removal time scale
+ TPWI                  |          | kg m-2        | xy   | N    |          | initial_total_precipitable_water
+ TPWI_star             |          | kg m-2        | xy   | N    |          | saturation_initial_total_precipitable_water
+ LFR_GF                |          | km-2 day-1    | xy   | N    |          | lightning_flash_density

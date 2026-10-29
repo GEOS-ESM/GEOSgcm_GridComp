@@ -70,6 +70,13 @@ esma_add_library (${this}
   SRCS ${srcs}
   DEPENDENCIES GEOS_Shared GMAO_mpeu MAPL Chem_Shared Chem_Base ESMF::ESMF BLAS::BLAS LAPACK::LAPACK OpenMP::OpenMP_Fortran TYPE SHARED)
 
+# Driver imports and exports. The schemes register their own fields in
+# their X_Setup. INTERNAL_SPECS although the driver has no internals:
+# mapl_acg declares the per-state pointer files for all three states, and
+# ACG only writes them for the states it is given.
+mapl_acg (${this} Moist_StateSpecs.rc
+  IMPORT_SPECS EXPORT_SPECS INTERNAL_SPECS GET_POINTERS DECLARE_POINTERS)
+
 file (GLOB_RECURSE rc_files CONFIGURE_DEPENDS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.rc *.yaml)
 foreach ( file ${rc_files} )
    get_filename_component( dir ${file} DIRECTORY )

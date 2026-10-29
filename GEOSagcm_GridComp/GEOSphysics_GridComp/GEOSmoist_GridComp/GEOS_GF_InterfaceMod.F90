@@ -65,31 +65,39 @@ subroutine GF_Setup (GC, CF, RC)
     else
        FRIENDLIES%CNV_TR   = trim(COMP_NAME)
     endif
-    call MAPL_AddInternalSpec(GC,                                  &
-         SHORT_NAME ='CNV_TR',                                     &
-         LONG_NAME  ='convection_tracer',                          &
-         UNITS      ='1',                                          &
-         FRIENDLYTO = trim(FRIENDLIES%CNV_TR),                     &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,                        &
-         RESTART    = MAPL_RestartSkip,                            &
-         DEFAULT    = 0.0,   _RC  )
 
-   call MAPL_AddInternalSpec(GC,                                &
-         SHORT_NAME = 'DSL__GF2020_LONS',                       &
-         LONG_NAME  = 'DSL_longitude',                          &
-         UNITS      = 'radians',                                &
-         DIMS       = MAPL_DimsHorzOnly,                        &
-         VLOCATION  = MAPL_VLocationNone,                       &
-         RESTART    = MAPL_RestartSkip,              _RC  )
+    call MAPL_GridCompAddSpec(GC,                                          &
+         STATE_INTENT     = ESMF_STATEINTENT_INTERNAL,                     &
+         SHORT_NAME       = 'CNV_TR',                                      &
+         STANDARD_NAME    = 'convection_tracer',                           &
+         UNITS            = '1',                                           &
+         DIMS             = 'xyz',                                         &
+         VERTICAL_STAGGER = MAPL_VERTICAL_STAGGER_CENTER,                  &
+         RESTART_MODE     = MAPL_RESTART_SKIP,                             &
+         FILL_VALUE       = 0.0,                                           &
+         _RC)
 
-   call MAPL_AddInternalSpec(GC,                                &
-         SHORT_NAME = 'DSL__GF2020_LATS',                       &
-         LONG_NAME  = 'DSL_longitude',                          &
-         UNITS      = 'radians',                                &
-         DIMS       = MAPL_DimsHorzOnly,                        &
-         VLOCATION  = MAPL_VLocationNone,                       &
-         RESTART    = MAPL_RestartSkip,              _RC  )
+    call MAPL_GridCompAddSpec(GC,                                          &
+         STATE_INTENT     = ESMF_STATEINTENT_INTERNAL,                     &
+         SHORT_NAME       = 'DSL__GF2020_LONS',                            &
+         STANDARD_NAME    = 'DSL_longitude',                               &
+         UNITS            = 'radians',                                     &
+         DIMS             = 'xy',                                          &
+         VERTICAL_STAGGER = MAPL_VERTICAL_STAGGER_NONE,                    &
+         RESTART_MODE     = MAPL_RESTART_SKIP,                             &
+         FILL_VALUE       = 0.0,                                           &
+         _RC)
+
+    call MAPL_GridCompAddSpec(GC,                                          &
+         STATE_INTENT     = ESMF_STATEINTENT_INTERNAL,                     &
+         SHORT_NAME       = 'DSL__GF2020_LATS',                            &
+         STANDARD_NAME    = 'DSL_longitude',                               &
+         UNITS            = 'radians',                                     &
+         DIMS             = 'xy',                                          &
+         VERTICAL_STAGGER = MAPL_VERTICAL_STAGGER_NONE,                    &
+         RESTART_MODE     = MAPL_RESTART_SKIP,                             &
+         FILL_VALUE       = 0.0,                                           &
+         _RC)
 
     call MAPL_TimerAdd(GC, name="--GF", _RC)
 
@@ -128,7 +136,7 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     call ESMF_TimeIntervalSet(ringInterval, S=nint(GF_DT), calendar=calendar, _RC)
 
     GF_RunAlarm = ESMF_AlarmCreate(Clock        = CLOCK,        &
-                                   Name         = 'GF_RunAlarm',&
+                                   Name         = 'GF_RunAlarm', &
                                    RingInterval = ringInterval, &
                                    RingTime     = currentTime,  &
                                    Enabled      = .true.   ,    &
