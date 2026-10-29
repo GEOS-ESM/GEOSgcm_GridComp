@@ -235,7 +235,11 @@ in its own commit `f9b25d72` (after step 4), so it can be reverted
 f9b25d72`). Later edits to the driver follow codee's style; the scheme
 interface modules keep theirs. A second comment-only commit `ca784434`
 removed the 25 decorative separator lines (`!====`, `!----`, `!!!!`);
-revert or blame-ignore it the same way. Verified layout/case only: comments and
+revert or blame-ignore it the same way. A third commit ("Moist: comment cleanup in
+GEOS_MoistGridComp.F90", also holding this note) is comments and blank
+lines only: the 19 `! !` prefixes (`! !INTERFACE:`, ...) -> `!`, ProTeX
+blocks tightened and their text re-wrapped, `ErrLog Variables` and the
+file-header macro comment dropped, a stray `!EOP` removed. Verified layout/case only: comments and
 cpp lines identical; code tokens identical after normalizing codee's
 equivalent spellings (`endif`/`enddo` -> `end if`/`end do`, `.ne.` etc.
 -> `/=` etc., `real(ESMF_KIND_R8)` -> `real(kind=ESMF_KIND_R8)`).

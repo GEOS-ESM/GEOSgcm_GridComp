@@ -1,5 +1,3 @@
-! _VERIFY and _RETURN macros for error handling.
-
 !#define UWDIAG 1
 !#define PDFDIAG 1
 
@@ -7,14 +5,15 @@
 
 !BOP
 
-! !MODULE: GEOS_Moist -- A Module to compute moist processes, including convection,
-!   large-scale condensation and precipitation and cloud parameters.
+!MODULE:
+! GEOS_Moist -- A Module to compute moist processes, including convection,
+! large-scale condensation and precipitation and cloud parameters.
 
-! !INTERFACE:
+!INTERFACE:
 
 module GEOS_MoistGridCompMod
 
-   ! !USES:
+   !USES:
 
    use ESMF
    use MAPL
@@ -56,46 +55,37 @@ module GEOS_MoistGridCompMod
    logical, parameter :: PDF_DIAG = .false.
 #endif
 
-   ! !PUBLIC MEMBER FUNCTIONS:
+   !PUBLIC MEMBER FUNCTIONS:
 
    public SetServices
 
-   ! !DESCRIPTION:
-   !
-   !   {\tt GEOS\_MoistGridCompMod} implements moist processes in GEOS-5. These
-   !   include all processes that involve phase changes in the atmosphere, such
-   !   as large-scale condensation, convective clouds, and all rain and cloud
-   !   formation. Its state consists of water vapor, various types of condensate,
-   !   and fractions of various cloud types.
-   !   two moment cloud microphysics (Barahona et al., GMD, 2014.) can be run by setting CLDMACRO==MGB2_2M.
-   !   When using 2-moment microphysics the number concentration of ice crystals and cloud droplets
-   !   are part of the state.
-   !
+   !DESCRIPTION:
+   ! {\tt GEOS\_MoistGridCompMod} implements moist processes in GEOS-5. These
+   ! include all processes that involve phase changes in the atmosphere, such
+   ! as large-scale condensation, convective clouds, and all rain and cloud
+   ! formation. Its state consists of water vapor, various types of condensate,
+   ! and fractions of various cloud types.
+   ! Two moment cloud microphysics (Barahona et al., GMD, 2014.) can be run by
+   ! setting CLDMACRO==MGB2_2M. When using 2-moment microphysics the number
+   ! concentration of ice crystals and cloud droplets are part of the state.
 
    !EOP
 
 contains
 
    !BOP
-
-   ! !IROUTINE: SetServices -- Sets ESMF services for this component
-
-   ! !INTERFACE:
-
+   !IROUTINE: SetServices -- Sets ESMF services for this component
+   !INTERFACE:
    subroutine SetServices(GC, RC)
-
-      ! !ARGUMENTS:
-
+      !ARGUMENTS:
       type(ESMF_GridComp) :: GC ! gridded component
       integer, intent(out) :: RC ! return code
 
-      ! !DESCRIPTION:  {\tt GEOS\_MoistGridCompMod} uses the default Initialize and Finalize
-      !                services, but registers its own Run method.
+      !DESCRIPTION:
+      ! {\tt GEOS\_MoistGridCompMod} uses the default Initialize and Finalize
+      ! services, but registers its own Run method.
 
       !EOP
-
-      !
-      ! ErrLog Variables
 
       integer :: STATUS
 
@@ -153,8 +143,8 @@ contains
       call MAPL_GridCompGetResource(GC, 'WSUB_OPTION', WSUB_OPTION, default=3, _RC)!0- param 1- Use Wsub climatology 2-USE WNET` 3-Symbolic Wnet
 
       ! MAT These have to be defined as they are passed into Aer_Activate below and are intent(in)
-      !     Note: It's possible these aren't *used* if USE_AEROSOL_NN=.TRUE. but they are still passed
-      !           in so they have to be defined
+      ! Note: It's possible these aren't *used* if USE_AEROSOL_NN=.TRUE. but they are still passed
+      ! in so they have to be defined
       call MAPL_GridCompGetResource(GC, 'NCCN_OCN', CCN_OCN, default=50., _RC)
       call MAPL_GridCompGetResource(GC, 'NCCN_LND', CCN_LND, default=300., _RC)
 
@@ -162,10 +152,10 @@ contains
       call MAPL_GridCompGetResource(GC, 'NCIN_LND', CIN_LND, default=0.05, _RC)
 
       ! NOTE: Binary restarts expect Q to be the first field in the moist_internal_rst. Thus,
-      !       the first MAPL_AddInternalSpec call must be from the microphysics
+      ! the first MAPL_AddInternalSpec call must be from the microphysics
 
       ! MAPL3: only GFDL_1M, GF and UW are ported so far. The other schemes
-      !        fail here, before any of their code runs.
+      ! fail here, before any of their code runs.
 
       if (adjustl(CLDMICR_OPTION) == "BACM_1M") then
          _FAIL('CLDMICR_OPTION BACM_1M is not yet ported to MAPL3')
@@ -198,8 +188,7 @@ contains
               service_items=ADVECTED, _RC)
       end if
 
-      ! !IMPORT STATE:
-
+      !IMPORT STATE:
 #include "Moist_Import___.h"
 
       call MAPL_GridCompAddSpec(GC, &
@@ -208,8 +197,7 @@ contains
            standard_name='aerosols', &
            itemtype=MAPL_STATEITEM_STATE, _RC)
 
-      ! !EXPORT STATE:
-
+      !EXPORT STATE:
 #include "Moist_Export___.h"
 
       ! Convective transport service (replaces MAPL2's MTR import, which Physics filled
@@ -224,37 +212,27 @@ contains
       !EOS
 
       _RETURN(_SUCCESS)
-
    end subroutine SetServices
 
-   !EOP
-
    !BOP
-
-   ! !IROUTINE: Initialize -- Initialize method for the composite Moist Gridded Component
-
-   ! !INTERFACE:
-
+   !IROUTINE: Initialize -- Initialize method for the composite Moist Gridded Component
+   !INTERFACE:
    subroutine Initialize(GC, IMPORT, EXPORT, CLOCK, RC)
-
-      ! !ARGUMENTS:
-
+      !ARGUMENTS:
       type(ESMF_GridComp), intent(inout) :: GC ! Gridded component
       type(ESMF_State), intent(inout) :: IMPORT ! Import state
       type(ESMF_State), intent(inout) :: EXPORT ! Export state
       type(ESMF_Clock), intent(inout) :: CLOCK ! The clock
       integer, optional, intent(out) :: RC ! Error code
 
-      ! !DESCRIPTION: The Initialize method of the Moist Physics Gridded Component first
-      !   calls the Initialize method of the child Dynamics.  The Dynamics Initialize method will
-      !   create the ESMF GRID, which will then be used to set the GRID associated with the
-      !   SuperDyn Composite Component itself.  It should be noted that the
-      !   SuperDyn Initialize method also invokes the GEOS Topo Utility which creates all
-      !   topography related quantities.
+      !DESCRIPTION: The Initialize method of the Moist Physics Gridded Component first
+      ! calls the Initialize method of the child Dynamics.  The Dynamics Initialize method will
+      ! create the ESMF GRID, which will then be used to set the GRID associated with the
+      ! SuperDyn Composite Component itself.  It should be noted that the
+      ! SuperDyn Initialize method also invokes the GEOS Topo Utility which creates all
+      ! topography related quantities.
 
       !EOP
-
-      ! ErrLog Variables
 
       integer :: STATUS
 
@@ -339,27 +317,20 @@ contains
    end subroutine Initialize
 
    !BOP
-
-   ! !IROUTINE: RUN -- Run method for the CONVECT component
-
-   ! !INTERFACE:
-
+   !IROUTINE: RUN -- Run method for the CONVECT component
+   !INTERFACE:
    subroutine Run(GC, IMPORT, EXPORT, CLOCK, RC)
-
-      ! !ARGUMENTS:
-
+      !ARGUMENTS:
       type(ESMF_GridComp), intent(inout) :: GC ! Gridded component
       type(ESMF_State), intent(inout) :: IMPORT ! Import state
       type(ESMF_State), intent(inout) :: EXPORT ! Export state
       type(ESMF_Clock), intent(inout) :: CLOCK ! The clock
       integer, optional, intent(out) :: RC ! Error code:
 
-      ! !DESCRIPTION: This version uses the MAPL\_GenericSetServices. This function sets
-      !                the Initialize and Finalize services, as well as allocating
+      !DESCRIPTION: This version uses the MAPL\_GenericSetServices. This function sets
+      ! the Initialize and Finalize services, as well as allocating
 
       !EOP
-
-      ! ErrLog Variables
 
       integer :: STATUS
 
@@ -1367,7 +1338,6 @@ contains
       call MAPL_TimerOff(MAPL, "TOTAL")
 
       _RETURN(_SUCCESS)
-
    end subroutine Run
 
    subroutine Finalize(GC, IMPORT, EXPORT, CLOCK, RC)
