@@ -1,6 +1,6 @@
 ! $Id$
 
-#include "MAPL_Generic.h"
+#include "MAPL.h"
 
 !#define UWDIAG 1
 
@@ -29,7 +29,6 @@ module GEOS_UW_InterfaceMod
 
   private
 
-  character(len=ESMF_MAXSTR)              :: IAm
   integer                                 :: STATUS
 
   public :: UW_Setup, UW_Initialize, UW_Run, UW_Finalize
@@ -40,12 +39,6 @@ subroutine UW_Setup (GC, CF, RC)
     type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
     type(ESMF_Config),   intent(inout) :: CF
     integer, optional                  :: RC  ! return code
-    character(len=ESMF_MAXSTR)         :: COMP_NAME
-
-    IAm = "GEOS_UW_InterfaceMod"
-    call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
-    VERIFY_(STATUS)
-    Iam = trim(COMP_NAME) // Iam
 
     call MAPL_AddInternalSpec(GC,                                    &
          SHORT_NAME ='CUSH',                                         &
@@ -54,11 +47,9 @@ subroutine UW_Setup (GC, CF, RC)
          DIMS       = MAPL_DimsHorzOnly,                             &
          VLOCATION  = MAPL_VLocationNone,                            &
          DEFAULT= 1000.0,                                            &
-         RC=STATUS  )
-    VERIFY_(STATUS)
+         _RC  )
 
-    call MAPL_TimerAdd(GC, name="--UW", RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC, name="--UW", _RC)
 
 end subroutine UW_Setup
 
@@ -84,96 +75,95 @@ subroutine UW_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     type(ESMF_TimeInterval) :: ringInterval
     integer                 :: year, month, day, hh, mm, ss
 
-    call MAPL_Get(MAPL, RUNALARM=ALARM, LM=LM, RC=STATUS );VERIFY_(STATUS)
-    call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
-    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_Get(MAPL, RUNALARM=ALARM, LM=LM, _RC )
+    call ESMF_AlarmGet(ALARM, RingInterval=TINT, _RC)
+    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,_RC)
     MOIST_DT = DT_R8
-    call MAPL_GetResource(MAPL, UW_DT, 'UW_DT:', default=MOIST_DT, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, UW_DT, 'UW_DT:', default=MOIST_DT, _RC)
 
-    call ESMF_ClockGet(CLOCK, calendar=calendar, currTime=currentTime, RC=STATUS); VERIFY_(STATUS)
-    call ESMF_TimeGet(currentTime, YY=year, MM=month, DD=day, H=hh, M=mm, S=ss, RC=STATUS); VERIFY_(STATUS)
-    call ESMF_TimeSet(ringTime, YY=year, MM=month, DD=day, H=0, M=0, S=0, RC=STATUS); VERIFY_(STATUS)
-    call ESMF_TimeIntervalSet(ringInterval, S=nint(UW_DT), calendar=calendar, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_ClockGet(CLOCK, calendar=calendar, currTime=currentTime, _RC)
+    call ESMF_TimeGet(currentTime, YY=year, MM=month, DD=day, H=hh, M=mm, S=ss, _RC)
+    call ESMF_TimeSet(ringTime, YY=year, MM=month, DD=day, H=0, M=0, S=0, _RC)
+    call ESMF_TimeIntervalSet(ringInterval, S=nint(UW_DT), calendar=calendar, _RC)
 
     UW_RunAlarm = ESMF_AlarmCreate(Clock        = CLOCK,        &
                                    Name         = 'UW_RunAlarm',&
                                    RingInterval = ringInterval, &
                                    RingTime     = currentTime,  &
                                    Enabled      = .true.   ,    &
-                                   Sticky       = .false.  , RC=STATUS); VERIFY_(STATUS)
+                                   Sticky       = .false.  , _RC)
 
-    call MAPL_Get ( MAPL, LM=LM, RC=STATUS )
-    VERIFY_(STATUS)
+    call MAPL_Get ( MAPL, LM=LM, _RC )
 
                 JASON_UW = .FALSE.
     if (LM==72) JASON_UW = .TRUE.
-    call MAPL_GetResource(MAPL, JASON_UW, 'JASON_UW:', default=JASON_UW, RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, JASON_UW, 'JASON_UW:', default=JASON_UW, _RC)
 
                 JASON_MFD_SC = .FALSE.
     if (LM==72) JASON_MFD_SC = .TRUE.
-    call MAPL_GetResource(MAPL, JASON_MFD_SC, 'JASON_MFD_SC:', default=JASON_MFD_SC, RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, JASON_MFD_SC, 'JASON_MFD_SC:', default=JASON_MFD_SC, _RC)
 
-    call MAPL_GetResource(MAPL, REPORT_UW_NEGATIVES, 'REPORT_UW_NEGATIVES:', default=.FALSE., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, REPORT_UW_NEGATIVES, 'REPORT_UW_NEGATIVES:', default=.FALSE., _RC)
 
-    call MAPL_GetResource(MAPL, USE_PYMOIST_UW, 'USE_PYMOIST_UW:', default=.FALSE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, USE_PYMOIST_UW, 'USE_PYMOIST_UW:', default=.FALSE., _RC)
 
     if (USE_PYMOIST_UW) then
-      call MAPL_ConfigSetAttribute(CF, UW_DT, 'DSL__UW_DT:', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_ConfigSetAttribute(CF, UW_DT, 'DSL__UW_DT:', _RC)
       call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.convection.UW_interface", MAPL, IMPORT, EXPORT )
     else
-    call MAPL_GetResource(MAPL, USE_TRACER_TRANSP_UW,        'USE_TRACER_TRANSP_UW:',default= 1      , RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, USE_TRACER_TRANSP_UW,        'USE_TRACER_TRANSP_UW:',default= 1      , _RC)
     if (JASON_UW) then
-      call MAPL_GetResource(MAPL, SHLWPARAMS%WINDSRCAVG,       'WINDSRCAVG:'      ,DEFAULT=0,      RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%MIXSCALE,         'MIXSCALE:'        ,DEFAULT=0.0,    RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%CRIQC,            'CRIQC:'           ,DEFAULT=1.0e-3, RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%THLSRC_FAC,       'THLSRC_FAC:'      ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRC_FAC,        'QTSRC_FAC:'       ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRCHGT,         'QTSRCHGT:'        ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE,            'RKFRE:'           ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 12.0,  RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RMAXFRAC,         'RMAXFRAC:'        ,DEFAULT= 0.1,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%FRC_RASN,         'FRC_RASN:'        ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RPEN,             'RPEN:'            ,DEFAULT= 3.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SCLM_SHALLOW,                'SCLM_SHALLOW:'    ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%NITER_XC,         'NITER_XC:'        ,DEFAULT=2,      RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, USE_EIS,                     'UW_USE_EIS:'      ,DEFAULT=.FALSE.,RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, USE_SIG,                     'UW_USE_SIG:'      ,DEFAULT=.FALSE.,RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%WINDSRCAVG,       'WINDSRCAVG:'      ,DEFAULT=0,      _RC)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%MIXSCALE,         'MIXSCALE:'        ,DEFAULT=0.0,    _RC)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%CRIQC,            'CRIQC:'           ,DEFAULT=1.0e-3, _RC)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%THLSRC_FAC,       'THLSRC_FAC:'      ,DEFAULT= 0.0,   _RC)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRC_FAC,        'QTSRC_FAC:'       ,DEFAULT= 0.0,   _RC)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRCHGT,         'QTSRCHGT:'        ,DEFAULT= 0.0,   _RC)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE,            'RKFRE:'           ,DEFAULT= 1.0,   _RC)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 12.0,  _RC)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RMAXFRAC,         'RMAXFRAC:'        ,DEFAULT= 0.1,   _RC)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%FRC_RASN,         'FRC_RASN:'        ,DEFAULT= 0.0,   _RC)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RPEN,             'RPEN:'            ,DEFAULT= 3.0,   _RC)
+      call MAPL_GetResource(MAPL, SCLM_SHALLOW,                'SCLM_SHALLOW:'    ,DEFAULT= 1.0,   _RC)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%NITER_XC,         'NITER_XC:'        ,DEFAULT=2,      _RC)
+      call MAPL_GetResource(MAPL, USE_EIS,                     'UW_USE_EIS:'      ,DEFAULT=.FALSE.,_RC)
+      call MAPL_GetResource(MAPL, USE_SIG,                     'UW_USE_SIG:'      ,DEFAULT=.FALSE.,_RC)
     else
-      call MAPL_GetResource(MAPL, SHLWPARAMS%WINDSRCAVG,       'WINDSRCAVG:'      ,DEFAULT=0,      RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%MIXSCALE,         'MIXSCALE:'        ,DEFAULT=0.0,    RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%CRIQC,            'CRIQC:'           ,DEFAULT=1.0e-3, RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%THLSRC_FAC,       'THLSRC_FAC:'      ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRC_FAC,        'QTSRC_FAC:'       ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRCHGT,         'QTSRCHGT:'        ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE,            'RKFRE:'           ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE_HR,         'RKFRE_HR:'        ,DEFAULT= 0.75,  RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 12.0,  RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RKM_HR,           'RKM_HR:'          ,DEFAULT= 12.0,  RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RMAXFRAC,         'RMAXFRAC:'        ,DEFAULT= 0.1,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RMAXFRAC_HR,      'RMAXFRAC_HR:'     ,DEFAULT= 0.1,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%FRC_RASN,         'FRC_RASN:'        ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RPEN,             'RPEN:'            ,DEFAULT= 3.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SCLM_SHALLOW,                'SCLM_SHALLOW:'    ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%NITER_XC,         'NITER_XC:'        ,DEFAULT=2,      RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, USE_EIS,                     'UW_USE_EIS:'      ,DEFAULT=.FALSE.,RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, USE_SIG,                     'UW_USE_SIG:'      ,DEFAULT=.FALSE.,RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%WINDSRCAVG,       'WINDSRCAVG:'      ,DEFAULT=0,      _RC)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%MIXSCALE,         'MIXSCALE:'        ,DEFAULT=0.0,    _RC)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%CRIQC,            'CRIQC:'           ,DEFAULT=1.0e-3, _RC)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%THLSRC_FAC,       'THLSRC_FAC:'      ,DEFAULT= 0.0,   _RC)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRC_FAC,        'QTSRC_FAC:'       ,DEFAULT= 0.0,   _RC)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRCHGT,         'QTSRCHGT:'        ,DEFAULT= 0.0,   _RC)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE,            'RKFRE:'           ,DEFAULT= 1.0,   _RC)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE_HR,         'RKFRE_HR:'        ,DEFAULT= 0.75,  _RC)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 12.0,  _RC)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RKM_HR,           'RKM_HR:'          ,DEFAULT= 12.0,  _RC)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RMAXFRAC,         'RMAXFRAC:'        ,DEFAULT= 0.1,   _RC)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RMAXFRAC_HR,      'RMAXFRAC_HR:'     ,DEFAULT= 0.1,   _RC)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%FRC_RASN,         'FRC_RASN:'        ,DEFAULT= 0.0,   _RC)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RPEN,             'RPEN:'            ,DEFAULT= 3.0,   _RC)
+      call MAPL_GetResource(MAPL, SCLM_SHALLOW,                'SCLM_SHALLOW:'    ,DEFAULT= 1.0,   _RC)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%NITER_XC,         'NITER_XC:'        ,DEFAULT=2,      _RC)
+      call MAPL_GetResource(MAPL, USE_EIS,                     'UW_USE_EIS:'      ,DEFAULT=.FALSE.,_RC)
+      call MAPL_GetResource(MAPL, USE_SIG,                     'UW_USE_SIG:'      ,DEFAULT=.FALSE.,_RC)
     endif
-    call MAPL_GetResource(MAPL, SHLWPARAMS%ITER_CIN,         'ITER_CIN:'        ,DEFAULT=2,      RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%USE_CINCIN,       'USE_CINCIN:'      ,DEFAULT=1,      RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%CRIDIST_OPT,      'CRIDIST_OPT:'     ,DEFAULT=0,      RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%USE_SELF_DETRAIN, 'USE_SELF_DETRAIN:',DEFAULT=0,      RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%USE_MOMENFLX,     'USE_MOMENFLX:'    ,DEFAULT=1,      RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%USE_CUMPENENT,    'USE_CUMPENENT:'   ,DEFAULT=1,      RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%SCVERBOSE,        'SCVERBOSE:'       ,DEFAULT=0,      RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%RLE,              'RLE:'             ,DEFAULT=0.1,    RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%MUMIN1,           'MUMIN1:'          ,DEFAULT=0.906,  RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%RBUOY,            'RBUOY:'           ,DEFAULT=1.0,    RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%RDRAG,            'RDRAG:'           ,DEFAULT=1.0,    RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%EPSVARW,          'EPSVARW:'         ,DEFAULT=5.e-4,  RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%PGFC,             'PGFC:'            ,DEFAULT=0.7,    RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%KEVP,             'KEVP:'            ,DEFAULT=2.e-6,  RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%RDROP,            'SHLW_RDROP:'      ,DEFAULT=8.e-6,  RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%DETRHGT,          'DETRHGT:'         ,DEFAULT=1800.0, RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, SHLWPARAMS%ITER_CIN,         'ITER_CIN:'        ,DEFAULT=2,      _RC)
+    call MAPL_GetResource(MAPL, SHLWPARAMS%USE_CINCIN,       'USE_CINCIN:'      ,DEFAULT=1,      _RC)
+    call MAPL_GetResource(MAPL, SHLWPARAMS%CRIDIST_OPT,      'CRIDIST_OPT:'     ,DEFAULT=0,      _RC)
+    call MAPL_GetResource(MAPL, SHLWPARAMS%USE_SELF_DETRAIN, 'USE_SELF_DETRAIN:',DEFAULT=0,      _RC)
+    call MAPL_GetResource(MAPL, SHLWPARAMS%USE_MOMENFLX,     'USE_MOMENFLX:'    ,DEFAULT=1,      _RC)
+    call MAPL_GetResource(MAPL, SHLWPARAMS%USE_CUMPENENT,    'USE_CUMPENENT:'   ,DEFAULT=1,      _RC)
+    call MAPL_GetResource(MAPL, SHLWPARAMS%SCVERBOSE,        'SCVERBOSE:'       ,DEFAULT=0,      _RC)
+    call MAPL_GetResource(MAPL, SHLWPARAMS%RLE,              'RLE:'             ,DEFAULT=0.1,    _RC)
+    call MAPL_GetResource(MAPL, SHLWPARAMS%MUMIN1,           'MUMIN1:'          ,DEFAULT=0.906,  _RC)
+    call MAPL_GetResource(MAPL, SHLWPARAMS%RBUOY,            'RBUOY:'           ,DEFAULT=1.0,    _RC)
+    call MAPL_GetResource(MAPL, SHLWPARAMS%RDRAG,            'RDRAG:'           ,DEFAULT=1.0,    _RC)
+    call MAPL_GetResource(MAPL, SHLWPARAMS%EPSVARW,          'EPSVARW:'         ,DEFAULT=5.e-4,  _RC)
+    call MAPL_GetResource(MAPL, SHLWPARAMS%PGFC,             'PGFC:'            ,DEFAULT=0.7,    _RC)
+    call MAPL_GetResource(MAPL, SHLWPARAMS%KEVP,             'KEVP:'            ,DEFAULT=2.e-6,  _RC)
+    call MAPL_GetResource(MAPL, SHLWPARAMS%RDROP,            'SHLW_RDROP:'      ,DEFAULT=8.e-6,  _RC)
+    call MAPL_GetResource(MAPL, SHLWPARAMS%DETRHGT,          'DETRHGT:'         ,DEFAULT=1800.0, _RC)
 
     endif ! USE_PYMOIST_UW
 
@@ -264,80 +254,77 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     integer                         :: I, J, L, K
     integer                         :: IM,JM,LM
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetObjectFromGC ( GC, MAPL, _RC)
     call MAPL_Get( MAPL, RUNALARM=ALARM, &
          INTERNAL_ESMF_STATE=INTERNAL, IM=IM, JM=JM, LM=LM, &
          LONS     = LONS,              &
          LATS     = LATS,              &
-         RC=STATUS )
-    VERIFY_(STATUS)
-    call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
-    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
+         _RC )
+    call ESMF_AlarmGet(ALARM, RingInterval=TINT, _RC)
+    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,_RC)
     MOIST_DT = DT_R8
 
-    call ESMF_GridCompGet ( GC, VM=VMG, RC=STATUS )
-    VERIFY_(STATUS)
+    call ESMF_GridCompGet ( GC, VM=VMG, _RC )
 
     ! Internals
-    call MAPL_GetPointer(INTERNAL, Q,      'Q'       , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, QLLS,   'QLLS'    , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, QLCN,   'QLCN'    , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, CLCN,   'CLCN'    , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, CLLS,   'CLLS'    , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, QILS,   'QILS'    , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, QICN,   'QICN'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, Q,      'Q'       , _RC)
+    call MAPL_GetPointer(INTERNAL, QLLS,   'QLLS'    , _RC)
+    call MAPL_GetPointer(INTERNAL, QLCN,   'QLCN'    , _RC)
+    call MAPL_GetPointer(INTERNAL, CLCN,   'CLCN'    , _RC)
+    call MAPL_GetPointer(INTERNAL, CLLS,   'CLLS'    , _RC)
+    call MAPL_GetPointer(INTERNAL, QILS,   'QILS'    , _RC)
+    call MAPL_GetPointer(INTERNAL, QICN,   'QICN'    , _RC)
     ! Imports
-    call MAPL_GetPointer(IMPORT, T         ,'T'         ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, U         ,'U'         ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, V         ,'V'         ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, T         ,'T'         ,_RC)
+    call MAPL_GetPointer(IMPORT, U         ,'U'         ,_RC)
+    call MAPL_GetPointer(IMPORT, V         ,'V'         ,_RC)
     ! Tendency Export
-    call MAPL_GetPointer(EXPORT, DUDT_SC,    'DUDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DVDT_SC,    'DVDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DTDT_SC,    'DTDT_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DQVDT_SC,   'DQVDT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DQIDT_SC,   'DQIDT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DQLDT_SC,   'DQLDT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DQRDT_SC,   'DQRDT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DQSDT_SC,   'DQSDT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DQADT_SC,   'DQADT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DUDT_SC,    'DUDT_SC'   , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, DVDT_SC,    'DVDT_SC'   , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, DTDT_SC,    'DTDT_SC'   , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, DQVDT_SC,   'DQVDT_SC'  , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, DQIDT_SC,   'DQIDT_SC'  , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, DQLDT_SC,   'DQLDT_SC'  , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, DQRDT_SC,   'DQRDT_SC'  , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, DQSDT_SC,   'DQSDT_SC'  , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, DQADT_SC,   'DQADT_SC'  , ALLOC=.TRUE., _RC)
     ! Lower tropospheric stability and estimated inversion strength from MoistGC
-    call MAPL_GetPointer(EXPORT, LTS,   'LTS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, EIS,   'EIS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, LTS,   'LTS'  , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, EIS,   'EIS'  , ALLOC=.TRUE., _RC)
 
-    call MAPL_GetPointer(EXPORT, PLCL_SC,   'PLCL_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, PLFC_SC,   'PLFC_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, PINV_SC,   'PINV_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, PREL_SC,   'PREL_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, PBUP_SC,   'PBUP_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, CBMF_SC,   'CBMF_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, CLDTOP_SC, 'CLDTOP_SC' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PLCL_SC,   'PLCL_SC'   , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, PLFC_SC,   'PLFC_SC'   , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, PINV_SC,   'PINV_SC'   , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, PREL_SC,   'PREL_SC'   , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, PBUP_SC,   'PBUP_SC'   , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, CBMF_SC,   'CBMF_SC'   , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, CLDTOP_SC, 'CLDTOP_SC' , ALLOC=.TRUE., _RC)
 
 #ifdef UWDIAG
-      call MAPL_GetPointer(EXPORT, SHL_DQCDT, 'SHL_DQCDT' , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, CNT_SC,    'CNT_SC'    , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, CNB_SC,    'CNB_SC'    , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, WLCL_SC,   'WLCL_SC'   , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, QTSRC_SC,  'QTSRC_SC'  , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, THLSRC_SC, 'THLSRC_SC' , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, THVLSRC_SC,'THVLSRC_SC', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, TKEAVG_SC, 'TKEAVG_SC' , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, WUP_SC,    'WUP_SC'    , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, QTUP_SC,   'QTUP_SC'   , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, THLUP_SC,  'THLUP_SC'  , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, THVUP_SC,  'THVUP_SC'  , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, UUP_SC,    'UUP_SC'    , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, VUP_SC,    'VUP_SC'    , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, XC_SC,     'XC_SC'     , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, QCU_SC,    'QCU_SC'    , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, QLU_SC,    'QLU_SC'    , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, QIU_SC,    'QIU_SC'    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, SHL_DQCDT, 'SHL_DQCDT' , _RC)
+      call MAPL_GetPointer(EXPORT, CNT_SC,    'CNT_SC'    , _RC)
+      call MAPL_GetPointer(EXPORT, CNB_SC,    'CNB_SC'    , _RC)
+      call MAPL_GetPointer(EXPORT, WLCL_SC,   'WLCL_SC'   , _RC)
+      call MAPL_GetPointer(EXPORT, QTSRC_SC,  'QTSRC_SC'  , _RC)
+      call MAPL_GetPointer(EXPORT, THLSRC_SC, 'THLSRC_SC' , _RC)
+      call MAPL_GetPointer(EXPORT, THVLSRC_SC,'THVLSRC_SC', _RC)
+      call MAPL_GetPointer(EXPORT, TKEAVG_SC, 'TKEAVG_SC' , _RC)
+      call MAPL_GetPointer(EXPORT, WUP_SC,    'WUP_SC'    , _RC)
+      call MAPL_GetPointer(EXPORT, QTUP_SC,   'QTUP_SC'   , _RC)
+      call MAPL_GetPointer(EXPORT, THLUP_SC,  'THLUP_SC'  , _RC)
+      call MAPL_GetPointer(EXPORT, THVUP_SC,  'THVUP_SC'  , _RC)
+      call MAPL_GetPointer(EXPORT, UUP_SC,    'UUP_SC'    , _RC)
+      call MAPL_GetPointer(EXPORT, VUP_SC,    'VUP_SC'    , _RC)
+      call MAPL_GetPointer(EXPORT, XC_SC,     'XC_SC'     , _RC)
+      call MAPL_GetPointer(EXPORT, QCU_SC,    'QCU_SC'    , _RC)
+      call MAPL_GetPointer(EXPORT, QLU_SC,    'QLU_SC'    , _RC)
+      call MAPL_GetPointer(EXPORT, QIU_SC,    'QIU_SC'    , _RC)
 #endif
     
     ! Get my internal MAPL_Generic state
     !-----------------------------------
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetObjectFromGC ( GC, MAPL, _RC)
 
     call MAPL_TimerOn (MAPL,"--UW")
 
@@ -346,8 +333,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     call MAPL_Get( MAPL, IM=IM, JM=JM, LM=LM,   &
          INTERNAL_ESMF_STATE=INTERNAL, &
-         RC=STATUS )
-    VERIFY_(STATUS)
+         _RC )
     
     if (USE_PYMOIST_UW) then
       call CNV_Tracers_To_SOA()
@@ -355,16 +341,16 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       call CNV_Tracers_To_AOS()
     else
       ! Internals
-    call MAPL_GetPointer(INTERNAL, CUSH,   'CUSH'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, CUSH,   'CUSH'    , _RC)
    
     ! Imports
-    call MAPL_GetPointer(IMPORT, FRLAND    ,'FRLAND'    ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, ZLE       ,'ZLE'       ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, PLE       ,'PLE'       ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, SH        ,'SH'        ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, EVAP      ,'EVAP'      ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, KPBL_SC   ,'KPBL_SC'   ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, TKE       ,'TKE'       ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, FRLAND    ,'FRLAND'    ,_RC)
+    call MAPL_GetPointer(IMPORT, ZLE       ,'ZLE'       ,_RC)
+    call MAPL_GetPointer(IMPORT, PLE       ,'PLE'       ,_RC)
+    call MAPL_GetPointer(IMPORT, SH        ,'SH'        ,_RC)
+    call MAPL_GetPointer(IMPORT, EVAP      ,'EVAP'      ,_RC)
+    call MAPL_GetPointer(IMPORT, KPBL_SC   ,'KPBL_SC'   ,_RC)
+    call MAPL_GetPointer(IMPORT, TKE       ,'TKE'       ,_RC)
 
     ! Allocatables
      ! Edge variables 
@@ -429,46 +415,46 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     end do
     !$OMP END PARALLEL DO
 
-    call ESMF_ClockGetAlarm(clock, 'UW_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
-    alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_ClockGetAlarm(clock, 'UW_RunAlarm', alarm, _RC)
+    alarm_is_ringing = ESMF_AlarmIsRinging(alarm, _RC)
 
     if (alarm_is_ringing) then
 
 !!! call WRITE_PARALLEL('UW is Running')
-    call ESMF_AlarmRingerOff(alarm, RC=STATUS); VERIFY_(STATUS)
-    call ESMF_AlarmGet(alarm, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
-    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
+    call ESMF_AlarmRingerOff(alarm, _RC)
+    call ESMF_AlarmGet(alarm, RingInterval=TINT, _RC)
+    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,_RC)
     UW_DT = DT_R8
 
     ! Required Exports (connectivities to moist siblings)
-    call MAPL_GetPointer(EXPORT, MFD_SC,     'MFD_SC'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, QLDET_SC,   'QLDET_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, QIDET_SC,   'QIDET_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, CUFRC_SC,   'CUFRC_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, CNPCPRATE,  'CNPCPRATE' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, CNV_FRC ,   'CNV_FRC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, SRF_TYPE,   'SRF_TYPE'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, MFD_SC,     'MFD_SC'    , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, QLDET_SC,   'QLDET_SC'  , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, QIDET_SC,   'QIDET_SC'  , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, CUFRC_SC,   'CUFRC_SC'  , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, CNPCPRATE,  'CNPCPRATE' , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, CNV_FRC ,   'CNV_FRC'   , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, SRF_TYPE,   'SRF_TYPE'  , ALLOC=.TRUE., _RC)
     ! Exports
-    call MAPL_GetPointer(EXPORT, UMF_SC,     'UMF_SC'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DCM_SC,     'DCM_SC'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, ENTR_SC,    'ENTR_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DETR_SC,    'DETR_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, QLSUB_SC,   'QLSUB_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, QISUB_SC,   'QISUB_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, SC_NDROP,   'SC_NDROP'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, SC_NICE,    'SC_NICE'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, TPERT_SC,   'TPERT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, QPERT_SC,   'QPERT_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, QTFLX_SC,   'QTFLX_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, SLFLX_SC,   'SLFLX_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, UFLX_SC,    'UFLX_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, VFLX_SC,    'VFLX_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, UMF_SC,     'UMF_SC'    , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, DCM_SC,     'DCM_SC'    , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, ENTR_SC,    'ENTR_SC'   , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, DETR_SC,    'DETR_SC'   , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, QLSUB_SC,   'QLSUB_SC'  , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, QISUB_SC,   'QISUB_SC'  , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, SC_NDROP,   'SC_NDROP'  , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, SC_NICE,    'SC_NICE'   , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, TPERT_SC,   'TPERT_SC'  , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, QPERT_SC,   'QPERT_SC'  , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, QTFLX_SC,   'QTFLX_SC'  , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, SLFLX_SC,   'SLFLX_SC'  , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, UFLX_SC,    'UFLX_SC'   , ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, VFLX_SC,    'VFLX_SC'   , ALLOC=.TRUE., _RC)
 
     ! 1. Fetch all pointers first
     !--------------------------------------------------------------
-    call MAPL_GetPointer(IMPORT, PTR2D, 'AREA', RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, QLTOT, 'QLTOT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, QITOT, 'QITOT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, PTR2D, 'AREA', _RC)
+    call MAPL_GetPointer(EXPORT, QLTOT, 'QLTOT', ALLOC=.TRUE., _RC)
+    call MAPL_GetPointer(EXPORT, QITOT, 'QITOT', ALLOC=.TRUE., _RC)
 
     ! 2. 2D parameters for UW
     !--------------------------------------------------------------
@@ -567,10 +553,10 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
       ! 1. Fetch ALL pointers at the top
       !--------------------------------------------------------------
-      call MAPL_GetPointer(EXPORT, QLENT_SC, 'QLENT_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, QIENT_SC, 'QIENT_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, SC_QT,   'SC_QT',     RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, SC_MSE,  'SC_MSE',    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, QLENT_SC, 'QLENT_SC', ALLOC=.TRUE., _RC)
+      call MAPL_GetPointer(EXPORT, QIENT_SC, 'QIENT_SC', ALLOC=.TRUE., _RC)
+      call MAPL_GetPointer(EXPORT, SC_QT,   'SC_QT',     _RC)
+      call MAPL_GetPointer(EXPORT, SC_MSE,  'SC_MSE',    _RC)
 
       ! 2. Fused 3D Loop for Detrainment and Conversions
       !--------------------------------------------------------------
@@ -619,11 +605,11 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
       ! 3. Whole-array copies for direct 3D variables
       !--------------------------------------------------------------
-      call MAPL_GetPointer(EXPORT, PTR3D, 'SHLW_PRC3', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, PTR3D, 'SHLW_PRC3', ALLOC=.TRUE., _RC)
       if (associated(PTR3D)) PTR3D = DQRDT_SC    ! [kg/kg/s]
-      call MAPL_GetPointer(EXPORT, PTR3D, 'SHLW_SNO3', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, PTR3D, 'SHLW_SNO3', ALLOC=.TRUE., _RC)
       if (associated(PTR3D)) PTR3D = DQSDT_SC    ! [kg/kg/s]
-      call MAPL_GetPointer(EXPORT, PTR2D,  'CUSH_SC', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, PTR2D,  'CUSH_SC', _RC)
       if (associated(PTR2D)) PTR2D = CUSH
 
       ! 4. Fused 2D Loop for Column Integrals
@@ -664,12 +650,12 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
   ! 1. Fetch all pointers FIRST before doing any math
   !--------------------------------------------------------------
-  call MAPL_GetPointer(EXPORT, QLDET_SC, 'QLDET_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-  call MAPL_GetPointer(EXPORT, QIDET_SC, 'QIDET_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-  call MAPL_GetPointer(EXPORT, QLSUB_SC, 'QLSUB_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-  call MAPL_GetPointer(EXPORT, QLENT_SC, 'QLENT_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-  call MAPL_GetPointer(EXPORT, QISUB_SC, 'QISUB_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-  call MAPL_GetPointer(EXPORT, QIENT_SC, 'QIENT_SC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+  call MAPL_GetPointer(EXPORT, QLDET_SC, 'QLDET_SC', ALLOC=.TRUE., _RC)
+  call MAPL_GetPointer(EXPORT, QIDET_SC, 'QIDET_SC', ALLOC=.TRUE., _RC)
+  call MAPL_GetPointer(EXPORT, QLSUB_SC, 'QLSUB_SC', ALLOC=.TRUE., _RC)
+  call MAPL_GetPointer(EXPORT, QLENT_SC, 'QLENT_SC', ALLOC=.TRUE., _RC)
+  call MAPL_GetPointer(EXPORT, QISUB_SC, 'QISUB_SC', ALLOC=.TRUE., _RC)
+  call MAPL_GetPointer(EXPORT, QIENT_SC, 'QIENT_SC', ALLOC=.TRUE., _RC)
   
   ! 2. Apply tendencies in a single fused loop with OpenMP
   !--------------------------------------------------------------
@@ -711,23 +697,23 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
 ! Cleanup negative water species
 ! ------------------------------
-  call MAPL_GetPointer(EXPORT,   DQVDT_FILL,   'DQVDT_FILL_SC', RC=STATUS); VERIFY_(STATUS)
-  call MAPL_GetPointer(EXPORT, DQLLSDT_FILL, 'DQLLSDT_FILL_SC', RC=STATUS); VERIFY_(STATUS)
-  call MAPL_GetPointer(EXPORT, DQLCNDT_FILL, 'DQLCNDT_FILL_SC', RC=STATUS); VERIFY_(STATUS)
-  call MAPL_GetPointer(EXPORT, DQILSDT_FILL, 'DQILSDT_FILL_SC', RC=STATUS); VERIFY_(STATUS)
-  call MAPL_GetPointer(EXPORT, DQICNDT_FILL, 'DQICNDT_FILL_SC', RC=STATUS); VERIFY_(STATUS)
+  call MAPL_GetPointer(EXPORT,   DQVDT_FILL,   'DQVDT_FILL_SC', _RC)
+  call MAPL_GetPointer(EXPORT, DQLLSDT_FILL, 'DQLLSDT_FILL_SC', _RC)
+  call MAPL_GetPointer(EXPORT, DQLCNDT_FILL, 'DQLCNDT_FILL_SC', _RC)
+  call MAPL_GetPointer(EXPORT, DQILSDT_FILL, 'DQILSDT_FILL_SC', _RC)
+  call MAPL_GetPointer(EXPORT, DQICNDT_FILL, 'DQICNDT_FILL_SC', _RC)
   if (REPORT_UW_NEGATIVES) then
-    call FILLQ2ZERO( Q       , MASS, DT=MOIST_DT, DQDT=  DQVDT_FILL, WARNING_LABEL="QV   After UW ShallowCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-    call FILLQ2ZERO( QLLS    , MASS, DT=MOIST_DT, DQDT=DQLLSDT_FILL, WARNING_LABEL="QLLS After UW ShallowCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-    call FILLQ2ZERO( QLCN    , MASS, DT=MOIST_DT, DQDT=DQLCNDT_FILL, WARNING_LABEL="QLCN After UW ShallowCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-    call FILLQ2ZERO( QILS    , MASS, DT=MOIST_DT, DQDT=DQILSDT_FILL, WARNING_LABEL="QILS After UW ShallowCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
-    call FILLQ2ZERO( QICN    , MASS, DT=MOIST_DT, DQDT=DQICNDT_FILL, WARNING_LABEL="QICN After UW ShallowCu", VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( Q       , MASS, DT=MOIST_DT, DQDT=  DQVDT_FILL, WARNING_LABEL="QV   After UW ShallowCu", VM=VMG, _RC)
+    call FILLQ2ZERO( QLLS    , MASS, DT=MOIST_DT, DQDT=DQLLSDT_FILL, WARNING_LABEL="QLLS After UW ShallowCu", VM=VMG, _RC)
+    call FILLQ2ZERO( QLCN    , MASS, DT=MOIST_DT, DQDT=DQLCNDT_FILL, WARNING_LABEL="QLCN After UW ShallowCu", VM=VMG, _RC)
+    call FILLQ2ZERO( QILS    , MASS, DT=MOIST_DT, DQDT=DQILSDT_FILL, WARNING_LABEL="QILS After UW ShallowCu", VM=VMG, _RC)
+    call FILLQ2ZERO( QICN    , MASS, DT=MOIST_DT, DQDT=DQICNDT_FILL, WARNING_LABEL="QICN After UW ShallowCu", VM=VMG, _RC)
   else
-    call FILLQ2ZERO( Q       , MASS, DT=MOIST_DT, DQDT=  DQVDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
-    call FILLQ2ZERO( QLLS    , MASS, DT=MOIST_DT, DQDT=DQLLSDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
-    call FILLQ2ZERO( QLCN    , MASS, DT=MOIST_DT, DQDT=DQLCNDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
-    call FILLQ2ZERO( QILS    , MASS, DT=MOIST_DT, DQDT=DQILSDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
-    call FILLQ2ZERO( QICN    , MASS, DT=MOIST_DT, DQDT=DQICNDT_FILL, VM=VMG, RC=STATUS); VERIFY_(STATUS)
+    call FILLQ2ZERO( Q       , MASS, DT=MOIST_DT, DQDT=  DQVDT_FILL, VM=VMG, _RC)
+    call FILLQ2ZERO( QLLS    , MASS, DT=MOIST_DT, DQDT=DQLLSDT_FILL, VM=VMG, _RC)
+    call FILLQ2ZERO( QLCN    , MASS, DT=MOIST_DT, DQDT=DQLCNDT_FILL, VM=VMG, _RC)
+    call FILLQ2ZERO( QILS    , MASS, DT=MOIST_DT, DQDT=DQILSDT_FILL, VM=VMG, _RC)
+    call FILLQ2ZERO( QICN    , MASS, DT=MOIST_DT, DQDT=DQICNDT_FILL, VM=VMG, _RC)
   endif
 
 
@@ -768,8 +754,7 @@ subroutine UW_Finalize(gc, import, export, rc)
   
   ! Get my internal MAPL_Generic state
   !-----------------------------------
-  call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-  VERIFY_(STATUS)
+  call MAPL_GetObjectFromGC ( GC, MAPL, _RC)
 
 
   if (USE_PYMOIST_UW) then
