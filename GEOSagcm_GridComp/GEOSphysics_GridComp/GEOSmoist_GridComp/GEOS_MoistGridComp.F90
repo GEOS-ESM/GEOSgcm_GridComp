@@ -20,6 +20,7 @@ module GEOS_MoistGridCompMod
 
   use ESMF
   use MAPL
+  use gFTL2_StringVector, only: StringVector
   use GEOS_BACM_1M_InterfaceMod
   use GEOS_GFDL_1M_InterfaceMod
   use GEOS_THOM_1M_InterfaceMod
@@ -35,9 +36,9 @@ module GEOS_MoistGridCompMod
 
   implicit none
 
-  character(LEN=ESMF_MAXSTR):: CONVPAR_OPTION  ! GF, RAS, NONE
-  character(LEN=ESMF_MAXSTR):: SHALLOW_OPTION  ! UW, NONE
-  character(LEN=ESMF_MAXSTR):: CLDMICR_OPTION  ! BACM_1M, GFDL_1M, THOM_1M, MGB2_2M
+  character(len=:), allocatable :: CONVPAR_OPTION  ! GF, RAS, NONE
+  character(len=:), allocatable :: SHALLOW_OPTION  ! UW, NONE
+  character(len=:), allocatable :: CLDMICR_OPTION  ! BACM_1M, GFDL_1M, THOM_1M, MGB2_2M
 
   private
 
@@ -87,8 +88,8 @@ contains
 
     ! !ARGUMENTS:
 
-    type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
-    integer, optional                  :: RC  ! return code
+    type(ESMF_GridComp)                :: GC  ! gridded component
+    integer, intent(out)               :: RC  ! return code
 
     ! !DESCRIPTION:  {\tt GEOS\_MoistGridCompMod} uses the default Initialize and Finalize
     !                services, but registers its own Run method.
@@ -103,12 +104,8 @@ contains
 
     ! Local derived type aliases
 
-    type (MAPL_MetaComp    ), pointer   :: STATE
-    type (ESMF_Config      )            :: CF
-
-    integer      :: RFRSHINT
-    integer      :: AVRGNINT
-    real         :: DT
+    type (ESMF_Config      )            :: CF  ! only passed to the unported schemes' *_Setup
+    type (StringVector     )            :: ADVECTED
 
     logical :: LCONVPAR
     logical :: LSHALLOW
@@ -124,66 +121,57 @@ contains
 
     ! Set the Run entry point
     ! -----------------------
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run, _RC )
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run, phase_name='run', _RC )
 
     ! Set the Finalize entry point
     ! -----------------------
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE, Finalize, _RC )
 
-    ! Get the configuration from the component
-    !-----------------------------------------
-    call ESMF_GridCompGet( GC, CONFIG = CF, _RC )
-
-    ! Set the state variable specs.
-    ! -----------------------------
-    call MAPL_GetResource( CF, DT,       Label="RUN_DT:",                              _RC)
-    call MAPL_GetResource( CF, RFRSHINT, Label="REFRESH_INTERVAL:",  default=nint(DT), _RC)
-    call MAPL_GetResource( CF, AVRGNINT, Label='AVERAGING_INTERVAL:',default=RFRSHINT, _RC)
-
     ! Inititialize deep convective parameterizations (Options: RAS, GF or NONE)
     !----------------------------------------------------------------------
-    call MAPL_GetResource( CF, CONVPAR_OPTION, Label='CONVPAR_OPTION:', default="GF", _RC)
+    call MAPL_GridCompGetResource( GC, 'CONVPAR_OPTION', CONVPAR_OPTION, default="GF", _RC)
     LCONVPAR = adjustl(CONVPAR_OPTION)=="RAS" .or. &
                adjustl(CONVPAR_OPTION)=="GF" .or. &
                adjustl(CONVPAR_OPTION)=="NONE"
     _ASSERT( LCONVPAR, 'Unsupported Deep Convection Option' )
-    call MAPL_GetResource( CF, SIGMA_DX , Label='SIGMA_DX:' , default=SIGMA_DX , RC=STATUS)
-    call MAPL_GetResource( CF, SIGMA_EXP, Label='SIGMA_EXP:', default=SIGMA_EXP, RC=STATUS)
+    ! default=(X): a copy of the Process_Library default (value and default must not alias)
+    call MAPL_GridCompGetResource( GC, 'SIGMA_DX' , SIGMA_DX , default=(SIGMA_DX) , _RC)
+    call MAPL_GridCompGetResource( GC, 'SIGMA_EXP', SIGMA_EXP, default=(SIGMA_EXP), _RC)
 
 
     ! Inititialize shallow convective parameterizations (Options: UW or NONE)
     !----------------------------------------------------------------------
-    call MAPL_GetResource( CF, SHALLOW_OPTION, Label="SHALLOW_OPTION:",  default="UW", _RC)
+    call MAPL_GridCompGetResource( GC, 'SHALLOW_OPTION', SHALLOW_OPTION, default="UW", _RC)
     LSHALLOW = adjustl(SHALLOW_OPTION)=="UW" .or. &
                adjustl(SHALLOW_OPTION)=="NONE"
     _ASSERT( LSHALLOW, 'Unsupported Shallow Convection Option' )
 
     ! Inititialize cloud microphysics (Options: BACM_1M, GFDL_1M, THOM_1M or MGB2_2M)
     !--------------------------------------------------------------
-    call MAPL_GetResource( CF, CLDMICR_OPTION, Label="CLDMICR_OPTION:",  default="BACM_1M", _RC)
+    call MAPL_GridCompGetResource( GC, 'CLDMICR_OPTION', CLDMICR_OPTION, default="BACM_1M", _RC)
     LCLDMICR = adjustl(CLDMICR_OPTION)=="BACM_1M" .or. &
                adjustl(CLDMICR_OPTION)=="GFDL_1M" .or. &
                adjustl(CLDMICR_OPTION)=="THOM_1M" .or. &
                adjustl(CLDMICR_OPTION)=="MGB2_2M"
     _ASSERT( LCLDMICR, 'Unsupported Cloud Microphysics Option' )
 
-    call MAPL_GetResource( CF, DEBUG_MST, Label="DEBUG_MST:",  default=.false., _RC)
+    call MAPL_GridCompGetResource( GC, 'DEBUG_MST', DEBUG_MST, default=.false., _RC)
 
-    call MAPL_GetResource( CF, DEBUG_TQ_ERRORS, Label="DEBUG_TQ_ERRORS:",  default=.false., _RC)
+    call MAPL_GridCompGetResource( GC, 'DEBUG_TQ_ERRORS', DEBUG_TQ_ERRORS, default=.false., _RC)
 
     !***********Aerosol-Cloud related
 
-    call MAPL_GetResource( CF, MOIST_USE_NCLOUD_CLIM, Label='USE_NCLOUD_CLIM:', default=.FALSE., _RC)
-    call MAPL_GetResource( CF, WSUB_OPTION, Label='WSUB_OPTION:',   default= 3,        _RC)!0- param 1- Use Wsub climatology 2-USE WNET` 3-Symbolic Wnet
+    call MAPL_GridCompGetResource( GC, 'USE_NCLOUD_CLIM', MOIST_USE_NCLOUD_CLIM, default=.FALSE., _RC)
+    call MAPL_GridCompGetResource( GC, 'WSUB_OPTION', WSUB_OPTION, default= 3, _RC)!0- param 1- Use Wsub climatology 2-USE WNET` 3-Symbolic Wnet
 
     ! MAT These have to be defined as they are passed into Aer_Activate below and are intent(in)
     !     Note: It's possible these aren't *used* if USE_AEROSOL_NN=.TRUE. but they are still passed
     !           in so they have to be defined
-    call MAPL_GetResource( CF, CCN_OCN, 'NCCN_OCN:', DEFAULT=  50., _RC)
-    call MAPL_GetResource( CF, CCN_LND, 'NCCN_LND:', DEFAULT= 300., _RC)
+    call MAPL_GridCompGetResource( GC, 'NCCN_OCN', CCN_OCN, DEFAULT=  50., _RC)
+    call MAPL_GridCompGetResource( GC, 'NCCN_LND', CCN_LND, DEFAULT= 300., _RC)
 
-    call MAPL_GetResource( CF, CIN_OCN, 'NCIN_OCN:', DEFAULT= 0.005, _RC)
-    call MAPL_GetResource( CF, CIN_LND, 'NCIN_LND:', DEFAULT= 0.05 , _RC)
+    call MAPL_GridCompGetResource( GC, 'NCIN_OCN', CIN_OCN, DEFAULT= 0.005, _RC)
+    call MAPL_GridCompGetResource( GC, 'NCIN_LND', CIN_LND, DEFAULT= 0.05 , _RC)
 
     ! NOTE: Binary restarts expect Q to be the first field in the moist_internal_rst. Thus,
     !       the first MAPL_AddInternalSpec call must be from the microphysics
@@ -199,7 +187,7 @@ contains
        _FAIL('CLDMICR_OPTION MGB2_2M is not yet ported to MAPL3')
        call MGB2_2M_Setup(GC, CF, _RC)
     end if
-    if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Setup(GC, CF, _RC)
+    if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Setup(GC, ADVECTED, _RC)
     if (adjustl(CLDMICR_OPTION)=="THOM_1M") then
        _FAIL('CLDMICR_OPTION THOM_1M is not yet ported to MAPL3')
        call THOM_1M_Setup(GC, CF, _RC)
@@ -208,54 +196,44 @@ contains
        _FAIL('CONVPAR_OPTION RAS is not yet ported to MAPL3')
        call     RAS_Setup(GC, CF, _RC)
     end if
-    if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Setup(GC, CF, _RC)
-    if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Setup(GC, CF, _RC)
+    if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Setup(GC, ADVECTED, _RC)
+    if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Setup(GC, _RC)
+
+    ! Advection (replaces MAPL2's FRIENDLYTO=DYNAMICS): one subscription to the TRADV
+    ! service for the internals the schemes listed in ADVECTED (items must be internals)
+    if (ADVECTED%size() > 0) then
+       call MAPL_GridCompAddSpec(GC, &
+            state_intent=ESMF_STATEINTENT_IMPORT, &
+            short_name='TRADV', &
+            standard_name='advected_quantities', &
+            itemtype=MAPL_STATEITEM_SERVICE, &
+            service_items=ADVECTED, _RC)
+    end if
 
     ! !IMPORT STATE:
 
 #include "Moist_Import___.h"
 
-    ! These bundles should be changed when we merge w/ the head.
-
-    call MAPL_AddImportSpec(GC,                             &
-         SHORT_NAME = 'MTR',                                        &
-         LONG_NAME  = 'tracers_for_moist',                          &
-         UNITS      = 'X',                                          &
-         DATATYPE   = MAPL_BundleItem,                             &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,                        &
-         RESTART    = MAPL_RestartSkip,                            &
-         _RC )
-
-    call MAPL_AddImportSpec(GC,                                     &
-         LONG_NAME  = 'aerosols',                                   &
-         UNITS      = '1',                                          &
-         SHORT_NAME = 'AERO',                                   &
-         DIMS       = MAPL_DimsHorzVert,                            &
-         VLOCATION  = MAPL_VLocationCenter,                         &
-         DATATYPE   = MAPL_StateItem,                               &
-         _RC  )
+    call MAPL_GridCompAddSpec(GC, &
+         state_intent=ESMF_STATEINTENT_IMPORT, &
+         short_name='AERO', &
+         standard_name='aerosols', &
+         itemtype=MAPL_STATEITEM_STATE, _RC)
 
     ! !EXPORT STATE:
 
 #include "Moist_Export___.h"
 
+    ! Convective transport service (replaces MAPL2's MTR import, which Physics filled
+    ! with the fields FRIENDLYTO=MOIST). Subscribers list their internals as service
+    ! items; MAPL adds the bundle to both the import and the export state.
+    call MAPL_GridCompAddSpec(GC, &
+         state_intent=ESMF_STATEINTENT_EXPORT, &
+         short_name='MTR', &
+         standard_name='tracers_for_moist', &
+         itemtype=MAPL_STATEITEM_SERVICE, _RC)
+
     !EOS
-
-    ! Set the Profiling timers
-    ! ------------------------
-
-    call MAPL_TimerAdd(GC,name="---CONV_TRACERS"    ,_RC)
-    call MAPL_TimerAdd(GC,name="---AERO_ACTIVATE"   ,_RC)
-    call MAPL_TimerAdd(GC,name="---CLDMACRO"    ,_RC)
-    call MAPL_TimerAdd(GC,name="---CLDMACRO"    ,_RC)
-    call MAPL_TimerAdd(GC,name="--FLASH"    ,_RC)
-
-
-    ! Set generic init and final methods
-    ! ----------------------------------
-
-    call MAPL_GenericSetServices    ( GC, _RC)
 
     _RETURN(_SUCCESS)
 

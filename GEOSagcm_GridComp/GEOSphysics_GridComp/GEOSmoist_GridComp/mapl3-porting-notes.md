@@ -1,8 +1,8 @@
 # GEOS_MoistGridComp MAPL3 porting plan
 
-Status (2026-10-29): steps 1-3 done on branch
+Status (2026-10-29): steps 1-4 done on branch
 `feature/pchakrab/port-moist-to-mapl3` (off `release/MAPL-v3`; steps 1-2
-in commit `83eb97c5`). Not built: Moist is still commented out of the MAPL3
+in `83eb97c5`, step 3 in `befaa640`). Not built: Moist is still commented out of the MAPL3
 build (`../CMakeLists.txt:5`). Step 0 (MAPL2 baseline) not done yet.
 
 Derived from the Radiation notes
@@ -370,6 +370,82 @@ internals, `UW_Setup` 1 internal. 630 = the 630 converted calls.
   `FriendlyToMOIST` Info.
 - `MAPL_GenericSetServices` removed.
 
+**Done (2026-10-29).**
+- Signature `SetServices(GC, RC)`: no intent on `GC`, `RC` `intent(out)`
+  non-optional (`@MAPL/infrastructure/esmf/ESMF_Interfaces.F90:32-37`).
+- Entry points: Run with `phase_name='run'`; Initialize and Finalize keep
+  the default names (`GENERIC::INIT_USER`, `GENERIC::FINALIZE_USER`,
+  `@MAPL/superstructure/generic/MethodPhasesMap.F90:151-157`;
+  `OuterMetaComponent/finalize.F90:27-34` runs the user Finalize by that
+  name).
+- Resources: `MAPL_GridCompGetResource(GC, 'LABEL', var, ...)`, no colon;
+  `CONVPAR_OPTION`/`SHALLOW_OPTION`/`CLDMICR_OPTION` are now
+  `character(len=:), allocatable` module variables. `SIGMA_DX`/`SIGMA_EXP`
+  pass `default=(X)` (a copy: `value` is `intent(inout)` and must not
+  alias `default`); they had `RC=STATUS` with no verify, now `_RC`. A
+  missing key without a default is an error
+  (`hconfig_get_value_template.h:13-15`). `RUN_DT`, `REFRESH_INTERVAL`
+  and `AVERAGING_INTERVAL` reads dropped (only used by the old spec
+  arguments).
+- Timers: `MAPL_TimerAdd` dropped from SetServices and the `X_Setup`s
+  (MAPL3 profiler timers are created on first start,
+  `OuterMetaComponent/start_timer.F90`; GWD has no TimerAdd). The
+  duplicated `---CLDMACRO` timer went with them. Starts/stops: step 5.
+- `AERO` import: `MAPL_GridCompAddSpec(..., itemtype=MAPL_STATEITEM_STATE)`
+  as Solar.
+- `MTR`: the MAPL2 bundle import is now an export with
+  `itemtype=MAPL_STATEITEM_SERVICE` (as DynCore's `TRADV`). MAPL puts the
+  service bundle in both the import and the export state
+  (`@MAPL/superstructure/generic/specs/ServiceClassAspect.F90:166-204`),
+  so Run's `ESMF_StateGet(IMPORT,'MTR',TR)` is unchanged (DynCore reads
+  its `TRADV` the same way, `DynCore_GridCompMod.F90:811-817`).
+  Subscribers' fields keep their own short names (no `COMP::` prefix,
+  `FieldClassAspect.F90:518-528`); `CNV_Tracers(:)%CNAME/QNAME` are set
+  but unused.
+- `CNV_Tracers_Init` (`Process_Library.F90`): no `FriendlyToMOIST` check;
+  every field of the service bundle is a subscriber's, so all are
+  friendly. Per-field metadata (`ScavengingFractionPerKm`,
+  `SetofHenryLawCts`) is set with `ESMF_InfoSet` by the MAPL3 SU2G/SS2G
+  ports, so it is still there; `ESMF_AttributeGet` -> `ESMF_Info*` is
+  step 8.
+- Advection: one `TRADV` import with `itemtype=MAPL_STATEITEM_SERVICE`,
+  `service_items` = a `StringVector` the scheme `Setup`s fill (one
+  subscription per component; items must be the component's internals,
+  SU2G notes step 4). `GFDL_1M_Setup(GC, ADVECTED, RC)` adds the 10
+  internals MAPL2 made `FRIENDLYTO=DYNAMICS` (`Q`, `CLLS`, `CLCN`,
+  `QLLS`, `QLCN`, `QILS`, `QICN`, `QRAIN`, `QSNOW`, `QGRAUPEL`);
+  `GF_Setup(GC, ADVECTED, RC)` adds `CNV_TR` when `CONVECTION_TRACER == 1`.
+  `UW_Setup(GC, RC)`. Unconnected `TRADV` imports are accepted
+  standalone (SU2G notes step 4). TURBULENCE/CHEMISTRY/ANALYSIS
+  friendliness (Q and the condensates): no MAPL3 service yet.
+- `FRIENDLIES` types/variables removed from GFDL_1M and GF; `GF_Setup`
+  no longer gets `COMP_NAME`. The unported schemes' `*_Setup(GC, CF, RC)`
+  are unchanged (unreachable after their `_FAIL`); SetServices declares
+  `CF` only for those calls.
+- `CNV_TR` (decided 2026-10-29):
+  - MAPL2: `FRIENDLYTO="MOIST"` when `CONVECTION_TRACER == 0` (default),
+    `"MOISTDYNAMICS"` when `== 1`. MAPL2 splits `FRIENDLYTO` on `:` into
+    `FriendlyTo<token>` (`main` checkout,
+    `@MAPL/generic/MAPL_Generic.F90:6890-6916`), so `== 1` made it
+    friendly to no component: neither advected nor convectively
+    transported.
+  - MAPL3, `== 1`: as intended (MOIST:DYNAMICS): subscribed to `TRADV`
+    and convectively transported. Differs from MAPL2 only in this
+    non-default setting.
+  - Convective transport by Moist itself: a provider's bundle only gets
+    subscribers' items (`ServiceClassAspect.F90:268-304`), and Moist
+    can't subscribe to its own service, so Run adds the `CNV_TR` field
+    to the `MTR` bundle before `CNV_Tracers_Init` (step 8).
+  - ConvPar only touches `CNV_TR` when `CONVECTION_TRACER == 1`
+    (`ConvPar_GF2020.F90:95,461,613,1253,1679`); with `== 0` it stays at
+    its fill value 0, so transporting it is probably a numerical no-op
+    (not checked). Step 8 may add it only when `== 1`.
+- Not done (optional): the `use_*` logicals replacing the 41
+  option-string compares.
+- Open: several subscribers with the same item name (e.g. two
+  instances) in one service bundle; `CNV_Tracers_Init` looks fields up
+  by name (`ESMF_FieldBundleGet(fieldName=)`).
+
 ### 5. Interface modules
 For GFDL_1M, GF, UW: `X_Initialize(MAPL, ...)` -> take `gc`;
 `MAPL_GetResource(MAPL, ...)` -> `MAPL_GridCompGetResource`;
@@ -393,6 +469,20 @@ Decide whether Run's `ESMF_AlarmIsRinging` branch (`:5796`) is still
 needed once MAPL3 schedules Moist with its own `timestep`.
 
 ### 8. Run and Finalize
+- `MTR` service bundle, as DynCore handles its `TRADV`
+  (`@FVdycoreCubed_GridComp/DynCore_GridCompMod.F90:809-817`): get it from
+  the EXPORT state (Moist is the provider; today's
+  `ESMF_StateGet(IMPORT,'MTR',TR)` only works because MAPL adds the
+  bundle to both states) and `_ASSERT(MAPL_FieldBundleSameData(...))`
+  against the IMPORT copy. No copying: the fields are the subscribers'
+  internals, and `CNV_Tracers_Init` takes data pointers into them
+  (`ESMFL_BundleGetPointerToData`), so GF's transport updates them in
+  place, as FV3 does through `PULL_Q` (`:2525-2600`). The `COMP::NAME`
+  parsing in `CNV_Tracers_Init` is dead (fields keep their short names).
+  No exclusion list (DynCore's `xTRADV`, `:2628-2674`) unless a scheme
+  needs one.
+- Add Moist's own `CNV_TR` internal to the `MTR` bundle before
+  `CNV_Tracers_Init` (step 4, `CNV_TR`).
 - Edge-field remaps per issue 5; `p3d => X; X(1:IM,1:JM,0:LM) => p3d`
   through a `contiguous` scratch pointer (IRRAD notes).
 - `MAPL_UNDEF` comparisons per issue 6.

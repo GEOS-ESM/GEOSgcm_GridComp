@@ -12,6 +12,7 @@ module GEOS_GF_InterfaceMod
 
   use ESMF
   use MAPL
+  use gFTL2_StringVector, only: StringVector
   use GEOS_UtilsMod
   use GEOSmoist_Process_Library
   use GF2020_2M_MicrophysicsMod
@@ -27,12 +28,6 @@ module GEOS_GF_InterfaceMod
   private
 
   integer                                 :: STATUS
-
-  ! specify how to handle friendlies with DYN:TRB:CHM:ANA
-  type FRIENDLIES_TYPE
-         character(len=ESMF_MAXSTR) :: CNV_TR
-  end type FRIENDLIES_TYPE
-  type (FRIENDLIES_TYPE) FRIENDLIES
 
   integer :: USE_GF2020
   logical :: STOCHASTIC_CNV
@@ -51,20 +46,16 @@ module GEOS_GF_InterfaceMod
 
 contains
 
-subroutine GF_Setup (GC, CF, RC)
-    type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
-    type(ESMF_Config),   intent(inout) :: CF
-    integer, optional                  :: RC  ! return code
-    character(len=ESMF_MAXSTR)         :: COMP_NAME
+subroutine GF_Setup (GC, ADVECTED, RC)
+    type(ESMF_GridComp), intent(INOUT) :: GC        ! gridded component
+    type(StringVector),  intent(inout) :: ADVECTED  ! internals to subscribe to advection (TRADV)
+    integer, optional                  :: RC        ! return code
 
-    call ESMF_GridCompGet( GC, NAME=COMP_NAME, _RC )
-
-    call MAPL_GetResource( CF ,CONVECTION_TRACER, Label='CONVECTION_TRACER:', default= 0, _RC )
-    if (CONVECTION_TRACER == 1) then
-       FRIENDLIES%CNV_TR   = trim(COMP_NAME)//"DYNAMICS"
-    else
-       FRIENDLIES%CNV_TR   = trim(COMP_NAME)
-    endif
+    call MAPL_GridCompGetResource( GC, 'CONVECTION_TRACER', CONVECTION_TRACER, default= 0, _RC )
+    ! MAPL2 meant CNV_TR to be FRIENDLYTO=MOIST:DYNAMICS when CONVECTION_TRACER == 1, but
+    ! wrote "MOISTDYNAMICS" (friendly to no component). MAPL3 advects it as intended.
+    ! Convective transport by Moist itself (MAPL2 FRIENDLYTO=MOIST) is done in Run.
+    if (CONVECTION_TRACER == 1) call ADVECTED%push_back('CNV_TR')
 
     call MAPL_GridCompAddSpec(GC,                                          &
          STATE_INTENT     = ESMF_STATEINTENT_INTERNAL,                     &
@@ -98,8 +89,6 @@ subroutine GF_Setup (GC, CF, RC)
          RESTART_MODE     = MAPL_RESTART_SKIP,                             &
          FILL_VALUE       = 0.0,                                           &
          _RC)
-
-    call MAPL_TimerAdd(GC, name="--GF", _RC)
 
 end subroutine GF_Setup
 

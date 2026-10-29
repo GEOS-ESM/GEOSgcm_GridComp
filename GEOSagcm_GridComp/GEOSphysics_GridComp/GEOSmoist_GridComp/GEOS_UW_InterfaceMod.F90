@@ -35,9 +35,8 @@ module GEOS_UW_InterfaceMod
    
 contains
 
-subroutine UW_Setup (GC, CF, RC)
+subroutine UW_Setup (GC, RC)
     type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
-    type(ESMF_Config),   intent(inout) :: CF
     integer, optional                  :: RC  ! return code
 
     call MAPL_GridCompAddSpec(GC,                                          &
@@ -49,8 +48,6 @@ subroutine UW_Setup (GC, CF, RC)
          VERTICAL_STAGGER = MAPL_VERTICAL_STAGGER_NONE,                    &
          FILL_VALUE       = 1000.0,                                        &
          _RC)
-
-    call MAPL_TimerAdd(GC, name="--UW", _RC)
 
 end subroutine UW_Setup
 

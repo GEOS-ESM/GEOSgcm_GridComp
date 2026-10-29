@@ -12,6 +12,7 @@ module GEOS_GFDL_1M_InterfaceMod
 
   use ESMF
   use MAPL
+  use gFTL2_StringVector, only: StringVector
   use GEOS_UtilsMod
   use GEOS_RadarMod
   use GEOSmoist_Process_Library
@@ -25,21 +26,6 @@ module GEOS_GFDL_1M_InterfaceMod
   private
 
   integer                                 :: STATUS
-
-  ! specify how to handle friendlies with DYN:TRB:CHM:ANA
-  type FRIENDLIES_TYPE
-         character(len=ESMF_MAXSTR) :: QV
-         character(len=ESMF_MAXSTR) :: CLLS
-         character(len=ESMF_MAXSTR) :: CLCN
-         character(len=ESMF_MAXSTR) :: QLLS
-         character(len=ESMF_MAXSTR) :: QLCN
-         character(len=ESMF_MAXSTR) :: QILS
-         character(len=ESMF_MAXSTR) :: QICN
-         character(len=ESMF_MAXSTR) :: QRAIN
-         character(len=ESMF_MAXSTR) :: QSNOW
-         character(len=ESMF_MAXSTR) :: QGRAUPEL
-  end type FRIENDLIES_TYPE
-  type (FRIENDLIES_TYPE) FRIENDLIES
 
 
   ! Local resource variables
@@ -70,23 +56,26 @@ module GEOS_GFDL_1M_InterfaceMod
 
 contains
 
-subroutine GFDL_1M_Setup (GC, CF, RC)
-    type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
-    type(ESMF_Config),   intent(inout) :: CF
-    integer, optional                  :: RC  ! return code
+subroutine GFDL_1M_Setup (GC, ADVECTED, RC)
+    type(ESMF_GridComp), intent(INOUT) :: GC        ! gridded component
+    type(StringVector),  intent(inout) :: ADVECTED  ! internals to subscribe to advection (TRADV)
+    integer, optional                  :: RC        ! return code
 
     ! !INTERNAL STATE:
 
-      FRIENDLIES%QV       = "DYNAMICS:TURBULENCE:CHEMISTRY:ANALYSIS"
-      FRIENDLIES%CLLS     = "DYNAMICS"
-      FRIENDLIES%CLCN     = "DYNAMICS"
-      FRIENDLIES%QLLS     = "DYNAMICS:TURBULENCE"
-      FRIENDLIES%QLCN     = "DYNAMICS:TURBULENCE"
-      FRIENDLIES%QILS     = "DYNAMICS:TURBULENCE"
-      FRIENDLIES%QICN     = "DYNAMICS:TURBULENCE"
-      FRIENDLIES%QRAIN    = "DYNAMICS:TURBULENCE"
-      FRIENDLIES%QSNOW    = "DYNAMICS:TURBULENCE"
-      FRIENDLIES%QGRAUPEL = "DYNAMICS:TURBULENCE"
+      ! Advected by dynamics (MAPL2 FRIENDLYTO=DYNAMICS). MAPL2 also had
+      ! Q, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL friendly to TURBULENCE
+      ! and Q to CHEMISTRY:ANALYSIS; no MAPL3 service for those yet.
+      call ADVECTED%push_back('Q')
+      call ADVECTED%push_back('CLLS')
+      call ADVECTED%push_back('CLCN')
+      call ADVECTED%push_back('QLLS')
+      call ADVECTED%push_back('QLCN')
+      call ADVECTED%push_back('QILS')
+      call ADVECTED%push_back('QICN')
+      call ADVECTED%push_back('QRAIN')
+      call ADVECTED%push_back('QSNOW')
+      call ADVECTED%push_back('QGRAUPEL')
 
     !BOS
 
@@ -257,9 +246,6 @@ subroutine GFDL_1M_Setup (GC, CF, RC)
          DIMS             = 'xy',                                          &
          VERTICAL_STAGGER = MAPL_VERTICAL_STAGGER_NONE,                    &
          _RC)
-
-    call MAPL_TimerAdd(GC, name="--GFDL_1M",_RC)
-    _VERIFY(STATUS)
 
 end subroutine GFDL_1M_Setup
 
