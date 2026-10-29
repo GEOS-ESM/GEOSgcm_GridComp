@@ -233,7 +233,9 @@ formatted with `codee format --verbose --config ~/config/codee-format`
 in its own commit `f9b25d72` (after step 4), so it can be reverted
 (`git revert f9b25d72`) or skipped in blame (`git blame --ignore-rev
 f9b25d72`). Later edits to the driver follow codee's style; the scheme
-interface modules keep theirs. Verified layout/case only: comments and
+interface modules keep theirs. A second comment-only commit `ca784434`
+removed the 25 decorative separator lines (`!====`, `!----`, `!!!!`);
+revert or blame-ignore it the same way. Verified layout/case only: comments and
 cpp lines identical; code tokens identical after normalizing codee's
 equivalent spellings (`endif`/`enddo` -> `end if`/`end do`, `.ne.` etc.
 -> `/=` etc., `real(ESMF_KIND_R8)` -> `real(kind=ESMF_KIND_R8)`).
