@@ -45,6 +45,11 @@ module GEOS_AgcmGridCompMod
   use Chem_GroupMod
   use Bundle_IncrementMod
 
+#ifdef PYTHONBRIDGE_INTEGRATION
+  use MAPL_Mod,          only: MAPL_Get
+  use MAPL_PythonBridge, only: initialize_python_bridge
+#endif
+
   implicit none
   private
 
@@ -1203,6 +1208,10 @@ contains
    character(len=ESMF_MAXSTR)          :: STRING
    character(len=ESMF_MAXSTR)          :: rplMode
 
+#ifdef PYTHONBRIDGE_INTEGRATION
+   integer :: IM, JM, LM
+#endif
+
 ! =============================================================================
 
 ! Begin...
@@ -1222,6 +1231,14 @@ contains
 
 
     call MAPL_TimerOn(STATE,"INITIALIZE")
+
+#ifdef PYTHONBRIDGE_INTEGRATION
+    ! Initialize the MAPL Python bridge with the atmospheric grid dimensions.
+    call MAPL_Get(STATE, IM=IM, JM=JM, LM=LM, RC=STATUS)
+    VERIFY_(STATUS)
+    call initialize_python_bridge(IM, JM, LM)
+#endif
+
 
 ! Call Initialize for every Child
 

@@ -67,7 +67,7 @@ contains
           dudt_org_dev,  dvdt_org_dev,  dtdt_org_dev,                                &
           taugwdx_dev,   taugwdy_dev,   &
           taubkgx_dev,   taubkgy_dev,   &
-          effgworo,      effgwbkg,      alpha, rc            )
+          effgworo,      effgwbkg,      alpha, rc )
 
 !-----------------------------------------------------------------------
 ! Interface for multiple gravity wave drag parameterization.
@@ -258,6 +258,9 @@ contains
      taugwdy_dev(1:pcols)         = 0.0  !meridional gravity wave surface    stress
      taubkgx_dev(1:pcols)         = 0.0  !zonal      gravity wave background stress
      taubkgy_dev(1:pcols)         = 0.0  !meridional gravity wave background stress
+
+
+
 
     return
   end subroutine gw_intr_ncar
