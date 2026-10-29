@@ -5,7 +5,6 @@
 
 #include "MAPL.h"
 
-!=============================================================================
 !BOP
 
 ! !MODULE: GEOS_Moist -- A Module to compute moist processes, including convection,
@@ -95,7 +94,6 @@ contains
 
       !EOP
 
-      !=============================================================================
       !
       ! ErrLog Variables
 
@@ -110,24 +108,18 @@ contains
       logical :: LSHALLOW
       logical :: LCLDMICR
 
-      !=============================================================================
-
       ! Begin...
 
       ! Set the Init entry point
-      !-----------------------------------------
       call MAPL_GridCompSetEntryPoint(GC, ESMF_METHOD_INITIALIZE, Initialize, _RC)
 
       ! Set the Run entry point
-      ! -----------------------
       call MAPL_GridCompSetEntryPoint(GC, ESMF_METHOD_RUN, Run, phase_name='run', _RC)
 
       ! Set the Finalize entry point
-      ! -----------------------
       call MAPL_GridCompSetEntryPoint(GC, ESMF_METHOD_FINALIZE, Finalize, _RC)
 
       ! Inititialize deep convective parameterizations (Options: RAS, GF or NONE)
-      !----------------------------------------------------------------------
       call MAPL_GridCompGetResource(GC, 'CONVPAR_OPTION', CONVPAR_OPTION, default="GF", _RC)
       LCONVPAR = adjustl(CONVPAR_OPTION) == "RAS" .or. &
            adjustl(CONVPAR_OPTION) == "GF" .or. &
@@ -138,14 +130,12 @@ contains
       call MAPL_GridCompGetResource(GC, 'SIGMA_EXP', SIGMA_EXP, default=(SIGMA_EXP), _RC)
 
       ! Inititialize shallow convective parameterizations (Options: UW or NONE)
-      !----------------------------------------------------------------------
       call MAPL_GridCompGetResource(GC, 'SHALLOW_OPTION', SHALLOW_OPTION, default="UW", _RC)
       LSHALLOW = adjustl(SHALLOW_OPTION) == "UW" .or. &
            adjustl(SHALLOW_OPTION) == "NONE"
       _ASSERT(LSHALLOW, 'Unsupported Shallow Convection Option')
 
       ! Inititialize cloud microphysics (Options: BACM_1M, GFDL_1M, THOM_1M or MGB2_2M)
-      !--------------------------------------------------------------
       call MAPL_GridCompGetResource(GC, 'CLDMICR_OPTION', CLDMICR_OPTION, default="BACM_1M", _RC)
       LCLDMICR = adjustl(CLDMICR_OPTION) == "BACM_1M" .or. &
            adjustl(CLDMICR_OPTION) == "GFDL_1M" .or. &
@@ -237,12 +227,7 @@ contains
 
    end subroutine SetServices
 
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   !!!!!!!!!!-!-!-!!!!!!!!!!!!!!!
-
    !EOP
-
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
    !BOP
 
@@ -293,26 +278,20 @@ contains
       type(ESMF_Alarm) :: DBZ_RunAlarm
       type(ESMF_TimeInterval) :: ringInterval
 
-      !=============================================================================
-
       ! Begin...
 
       ! Get the configuration
-      ! ---------------------
       call ESMF_GridCompGet(GC, config=CF, _RC)
 
       ! Get my internal MAPL_Generic state
-      !-----------------------------------
 
       call MAPL_GetObjectFromGC(GC, MAPL, _RC)
 
       ! Call Generic Initialize for MOIST GC
-      !----------------------------------------
 
       call MAPL_GenericInitialize(GC, IMPORT, EXPORT, CLOCK, _RC)
 
       ! Get parameters from generic state.
-      !-----------------------------------
       call MAPL_GetResource(MAPL, LDIAGNOSE_PRECIP_TYPE, Label="DIAGNOSE_PRECIP_TYPE:", default=.false., _RC)
       call MAPL_GetResource(MAPL, LUPDATE_PRECIP_TYPE, Label="UPDATE_PRECIP_TYPE:", default=.false., _RC)
 
@@ -355,12 +334,9 @@ contains
       call MAPL_GetResource(MAPL, LIQUID_SKIN_HAIL, 'LIQUID_SKIN_HAIL:', default=.true., _RC)
 
       ! All done
-      !---------
 
       _RETURN(_SUCCESS)
    end subroutine Initialize
-
-   !===================================================================================
 
    !BOP
 
@@ -446,24 +422,19 @@ contains
       integer :: IM, JM, LM
       integer :: I, J, L, n
 
-      !=============================================================================
-
       ! Begin...
 
       ! Get my configuration and VM
-      ! ---------------------------
 
       call ESMF_GridCompGet(GC, config=CF, VM=VMG, _RC)
 
       ! Get my internal MAPL_Generic state
-      !-----------------------------------
 
       call MAPL_GetObjectFromGC(GC, MAPL, _RC)
 
       call MAPL_TimerOn(MAPL, "TOTAL")
 
       ! If its time, call run methods
-      ! --------------------------------------------
 
       call MAPL_Get(MAPL, IM=IM, JM=JM, LM=LM, &
            RUNALARM=ALARM, &
@@ -593,7 +564,6 @@ contains
          call FIND_EIS(T / TMP3D, QST3, T, ZL0, PLEmb, KLCL, IM, JM, LM, LTS, EIS)
 
          ! Recording of import/internal vars into export if desired
-         !---------------------------------------------------------
          call MAPL_GetPointer(EXPORT, PTR3D, 'QX0', _RC)
          if (associated(PTR3D)) PTR3D = Q
          call MAPL_GetPointer(EXPORT, PTR3D, 'QLLSX0', _RC)
@@ -614,7 +584,6 @@ contains
          if (associated(PTR3D)) PTR3D = QILS + QLLS
 
          ! Trajectory for the moist TLM/ADJ
-         !---------------------------------------------------------
          call MAPL_GetPointer(EXPORT, PTR3D, 'TH_moist', _RC)
          if (associated(PTR3D)) PTR3D = T / PK
          call MAPL_GetPointer(EXPORT, PTR3D, 'Q_moist', _RC)
