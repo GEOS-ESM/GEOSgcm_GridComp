@@ -2169,11 +2169,14 @@ C------------ CALCULATION OF ION TEMPERATURE PARAMETERS--------
 C
 
 c Starting height is 200km. Below 200km Ti=Tn
-      	HS=200.
-      	XSM(1)=HS
-      	CALL GTD7(IYD,SEC,HS,LATI,LONGI,HOUR,F10781OBS,F107YOBS,
+        HS=200.
+        XSM(1)=HS
+        CALL GTD7(IYD,SEC,HS,LATI,LONGI,HOUR,F10781OBS,F107YOBS,
      &        IAPO,0,D_MSIS,T_MSIS)
-      	TNHS=T_MSIS(2)
+        TNHS=T_MSIS(2)
+
+c Default to the upper boundary if no Ti-Te crossing is found.
+        XTETI=HTE
 
       if(jf(48)) then
 

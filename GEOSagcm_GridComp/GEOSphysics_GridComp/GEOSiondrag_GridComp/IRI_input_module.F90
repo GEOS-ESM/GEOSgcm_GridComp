@@ -97,6 +97,7 @@ contains
     jf = .true.
     jf(4:6) = .false.
     jf(23) = .false.
+    jf(28) = .false.
     jf(30) = .false.
     jf(33) = .false.
     jf(34) = .false.
