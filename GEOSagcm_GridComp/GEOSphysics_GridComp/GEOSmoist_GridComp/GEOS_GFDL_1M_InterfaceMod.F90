@@ -249,19 +249,15 @@ subroutine GFDL_1M_Setup (GC, ADVECTED, RC)
 
 end subroutine GFDL_1M_Setup
 
-subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
-    type (MAPL_MetaComp), intent(inout) :: MAPL
+subroutine GFDL_1M_Initialize (GC, CLOCK, IMPORT, EXPORT, RC)
+    type (ESMF_GridComp), intent(inout) :: GC     ! gridded component
     type (ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
     integer, optional                   :: RC  ! return code
 
-    type (ESMF_Grid )                   :: GRID
     type (ESMF_State)                   :: INTERNAL
     type (ESMF_State),    intent(inout) :: IMPORT
     type (ESMF_State),    intent(inout) :: EXPORT
-    type (ESMF_Config),   intent(inout) :: CF
 
-    type (ESMF_Alarm   )                :: ALARM
-    type (ESMF_TimeInterval)            :: TINT
     real(ESMF_KIND_R8)                  :: DT_R8
     real                                :: DT_MOIST
 
@@ -269,30 +265,29 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
 
     CHARACTER(len=ESMF_MAXSTR) :: errmsg
 
-    call MAPL_Get(MAPL, RUNALARM=ALARM, _RC )
-    call ESMF_AlarmGet(ALARM, RingInterval=TINT, _RC)
-    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,_RC)
-    DT_MOIST = DT_R8
+    ! Moist's timestep (MAPL2: the RUNALARM ring interval)
+    call MAPL_ClockGet(CLOCK, dt=DT_MOIST, _RC)
+    DT_R8 = DT_MOIST
 
-    call MAPL_GetResource( MAPL, LPHYS_HYDROSTATIC, Label="PHYS_HYDROSTATIC:",  default=.TRUE., _RC)
+    call MAPL_GridCompGetResource( GC, 'PHYS_HYDROSTATIC', LPHYS_HYDROSTATIC,  default=.TRUE., _RC)
     LHYDROSTATIC = LPHYS_HYDROSTATIC
-    call MAPL_GetResource( MAPL, LMELTFRZ_CLDMACRO, Label="MELTFRZ_CLDMACRO:",  default=.TRUE., _RC)
-    call MAPL_GetResource( MAPL, LMELTFRZ_CLDMICRO, Label="MELTFRZ_CLDMICRO:",  default=.FALSE., _RC)
+    call MAPL_GridCompGetResource( GC, 'MELTFRZ_CLDMACRO', LMELTFRZ_CLDMACRO,  default=.TRUE., _RC)
+    call MAPL_GridCompGetResource( GC, 'MELTFRZ_CLDMICRO', LMELTFRZ_CLDMICRO,  default=.FALSE., _RC)
 
-    call MAPL_Get ( MAPL, INTERNAL_ESMF_STATE=INTERNAL, _RC )
+    call MAPL_GridCompGetInternalState(GC, INTERNAL, _RC)
 
-    call MAPL_GetPointer(INTERNAL, Q,        'Q'       , _RC)
-    call MAPL_GetPointer(INTERNAL, QRAIN,    'QRAIN'   , _RC)
-    call MAPL_GetPointer(INTERNAL, QSNOW,    'QSNOW'   , _RC)
-    call MAPL_GetPointer(INTERNAL, QGRAUPEL, 'QGRAUPEL', _RC)
-    call MAPL_GetPointer(INTERNAL, QLLS,     'QLLS'    , _RC)
-    call MAPL_GetPointer(INTERNAL, QLCN,     'QLCN'    , _RC)
-    call MAPL_GetPointer(INTERNAL, QILS,     'QILS'    , _RC)
-    call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , _RC)
+    call MAPL_StateGetPointer(INTERNAL, Q,        'Q'       , _RC)
+    call MAPL_StateGetPointer(INTERNAL, QRAIN,    'QRAIN'   , _RC)
+    call MAPL_StateGetPointer(INTERNAL, QSNOW,    'QSNOW'   , _RC)
+    call MAPL_StateGetPointer(INTERNAL, QGRAUPEL, 'QGRAUPEL', _RC)
+    call MAPL_StateGetPointer(INTERNAL, QLLS,     'QLLS'    , _RC)
+    call MAPL_StateGetPointer(INTERNAL, QLCN,     'QLCN'    , _RC)
+    call MAPL_StateGetPointer(INTERNAL, QILS,     'QILS'    , _RC)
+    call MAPL_StateGetPointer(INTERNAL, QICN,     'QICN'    , _RC)
 
-    call MAPL_GetResource(MAPL, REPORT_GFDL_1M_NEGATIVES, 'REPORT_GFDL_1M_NEGATIVES:', default=.FALSE., _RC)
+    call MAPL_GridCompGetResource( GC, 'REPORT_GFDL_1M_NEGATIVES', REPORT_GFDL_1M_NEGATIVES, default=.FALSE., _RC)
 
-    call MAPL_GetResource( MAPL, GFDL_MP3, Label="GFDL_MP3:",  default=.TRUE., _RC)
+    call MAPL_GridCompGetResource( GC, 'GFDL_MP3', GFDL_MP3,  default=.TRUE., _RC)
     if (DT_R8 <= 150.0) do_hail = .true. 
     if (DT_R8 <= 150.0) do_sedi_heat = .true.
     if (DT_R8 <= 150.0) do_sedi_melt_qi = .true.
@@ -302,7 +297,7 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     if (GFDL_MP3) then
       call gfdl_mp_init(LHYDROSTATIC,DT_MOIST)
       call WRITE_PARALLEL ("INITIALIZED GFDL_1M gfdl_mp v3 in non-generic GC INIT")
-      call MAPL_GetResource( MAPL, do_ref, Label="DO_GFDL_REFLECTIVITY:",  default=.TRUE., _RC)
+      call MAPL_GridCompGetResource( GC, 'DO_GFDL_REFLECTIVITY', do_ref,  default=.TRUE., _RC)
     else  
       call gfdl_cloud_microphys_init()
       call WRITE_PARALLEL ("INITIALIZED GFDL_1M gfdl_cloud_microphys in non-generic GC INIT")
@@ -310,14 +305,14 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     endif
 
     ! DSL entry point
-    call MAPL_GetResource(MAPL, USE_PYMOIST_GFDL1M, 'USE_PYMOIST_GFDL1M:', default=.FALSE., _RC)
+    call MAPL_GridCompGetResource( GC, 'USE_PYMOIST_GFDL1M', USE_PYMOIST_GFDL1M, default=.FALSE., _RC)
     
     if (USE_PYMOIST_GFDL1M) then
       call MAPL_ConfigSetAttribute(CF, DT_MOIST, 'DSL__GFLD1M_DT:', _RC)
       call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.microphysics.GFDL1M_interface", MAPL, IMPORT, EXPORT )
     endif
 
-    call MAPL_GetResource( MAPL, SH_MD_DP        , 'SH_MD_DP:'        , DEFAULT= .TRUE., _RC)
+    call MAPL_GridCompGetResource( GC, 'SH_MD_DP', SH_MD_DP                , DEFAULT= .TRUE., _RC)
 
     ! -----------------------------------------------------------------------------------------
     ! MACROPHYSICS: CRITICAL RELATIVE HUMIDITY (RHCRIT) PROFILES
@@ -335,13 +330,13 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     !   - MIN_RH_STABLE   : Target RHCRIT at PBL top for highly stable regimes (e.g., Stratocumulus).
     !   - MIN_RH_CRIT     : Absolute floor [fraction] reached in the heterogeneous free troposphere.
     !   - TURNRHCRIT_TOP  : Height [m] at which the profile fully relaxes to the MIN_RH_CRIT floor.
-    call MAPL_GetResource( MAPL, TURNRHCRIT_SFC  , 'TURNRHCRIT_SFC:'  , DEFAULT= -1.   , _RC)
-    call MAPL_GetResource( MAPL, MAX_RH_CRIT     , 'MAX_RH_CRIT:'     , DEFAULT= 0.9900, _RC)
-    call MAPL_GetResource( MAPL, MIN_RH_UNSTABLE , 'MIN_RH_UNSTABLE:' , DEFAULT= 0.9750, _RC)
-    call MAPL_GetResource( MAPL, MIN_RH_STABLE   , 'MIN_RH_STABLE:'   , DEFAULT= 0.8750, _RC)
-    call MAPL_GetResource( MAPL, MIN_RH_CRIT     , 'MIN_RH_CRIT:'     , DEFAULT= 0.7250, _RC)
-    call MAPL_GetResource( MAPL, TURNRHCRIT_TOP  , 'TURNRHCRIT_TOP:'  , DEFAULT= 3250. , _RC)
-    call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 1     , _RC)
+    call MAPL_GridCompGetResource( GC, 'TURNRHCRIT_SFC', TURNRHCRIT_SFC    , DEFAULT= -1.   , _RC)
+    call MAPL_GridCompGetResource( GC, 'MAX_RH_CRIT', MAX_RH_CRIT          , DEFAULT= 0.9900, _RC)
+    call MAPL_GridCompGetResource( GC, 'MIN_RH_UNSTABLE', MIN_RH_UNSTABLE  , DEFAULT= 0.9750, _RC)
+    call MAPL_GridCompGetResource( GC, 'MIN_RH_STABLE', MIN_RH_STABLE      , DEFAULT= 0.8750, _RC)
+    call MAPL_GridCompGetResource( GC, 'MIN_RH_CRIT', MIN_RH_CRIT          , DEFAULT= 0.7250, _RC)
+    call MAPL_GridCompGetResource( GC, 'TURNRHCRIT_TOP', TURNRHCRIT_TOP    , DEFAULT= 3250. , _RC)
+    call MAPL_GridCompGetResource( GC, 'PDFSHAPE', PDFSHAPE                , DEFAULT= 1     , _RC)
 
     ! -----------------------------------------------------------------------------------------
     ! ICE SETTLING & FALL SPEED MULTIPLIERS
@@ -352,10 +347,10 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     !   - ANV_ICEFALL       : Linear multiplier on convective anvil ice fall speed.
     !   - LS_ICEFALL        : Linear multiplier on large-scale (grid-scale) ice fall speed.
     if (.not. GFDL_MP3) then ! GFDL_MP3 has internal parameters for this
-        call MAPL_GetResource( MAPL, ICE_LSC_VFALL_PARAM, 'ICE_LSC_VFALL_PARAM:',DEFAULT= 1, _RC)
-        call MAPL_GetResource( MAPL, ICE_CNV_VFALL_PARAM, 'ICE_CNV_VFALL_PARAM:',DEFAULT= 1, _RC)
-        call MAPL_GetResource( MAPL, ANV_ICEFALL    , 'ANV_ICEFALL:'        ,DEFAULT= 1.0, _RC)
-        call MAPL_GetResource( MAPL, LS_ICEFALL     , 'LS_ICEFALL:'         ,DEFAULT= 1.0, _RC)
+        call MAPL_GridCompGetResource( GC, 'ICE_LSC_VFALL_PARAM', ICE_LSC_VFALL_PARAM,DEFAULT= 1, _RC)
+        call MAPL_GridCompGetResource( GC, 'ICE_CNV_VFALL_PARAM', ICE_CNV_VFALL_PARAM,DEFAULT= 1, _RC)
+        call MAPL_GridCompGetResource( GC, 'ANV_ICEFALL', ANV_ICEFALL            ,DEFAULT= 1.0, _RC)
+        call MAPL_GridCompGetResource( GC, 'LS_ICEFALL', LS_ICEFALL              ,DEFAULT= 1.0, _RC)
     else
         ! use gfdl_mp namelist parameters
     endif
@@ -378,14 +373,14 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     ! DISPERSION FACTORS: Scale volume mean → effective radius (account for distribution width)
     ! FAC_R*: Tuning multipliers | MIN/MAX_R*: Hard bounds [m]
     ! -----------------------------------------------------------------------------------------
-    call MAPL_GetResource( MAPL, LIQ_RADII_PARAM , 'LIQ_RADII_PARAM:' , DEFAULT= 3     , _RC)
-    call MAPL_GetResource( MAPL, ICE_RADII_PARAM , 'ICE_RADII_PARAM:' , DEFAULT= 3     , _RC)
-    call MAPL_GetResource( MAPL, FAC_RI          , 'FAC_RI:'          , DEFAULT= 1.0   , _RC)
-    call MAPL_GetResource( MAPL, MIN_RI          , 'MIN_RI:'          , DEFAULT=  5.e-6, _RC)
-    call MAPL_GetResource( MAPL, MAX_RI          , 'MAX_RI:'          , DEFAULT=150.e-6, _RC)
-    call MAPL_GetResource( MAPL, FAC_RL          , 'FAC_RL:'          , DEFAULT= 1.0   , _RC)
-    call MAPL_GetResource( MAPL, MIN_RL          , 'MIN_RL:'          , DEFAULT= 5.0e-6, _RC)
-    call MAPL_GetResource( MAPL, MAX_RL          , 'MAX_RL:'          , DEFAULT=60.0e-6, _RC)
+    call MAPL_GridCompGetResource( GC, 'LIQ_RADII_PARAM', LIQ_RADII_PARAM  , DEFAULT= 3     , _RC)
+    call MAPL_GridCompGetResource( GC, 'ICE_RADII_PARAM', ICE_RADII_PARAM  , DEFAULT= 3     , _RC)
+    call MAPL_GridCompGetResource( GC, 'FAC_RI', FAC_RI                    , DEFAULT= 1.0   , _RC)
+    call MAPL_GridCompGetResource( GC, 'MIN_RI', MIN_RI                    , DEFAULT=  5.e-6, _RC)
+    call MAPL_GridCompGetResource( GC, 'MAX_RI', MAX_RI                    , DEFAULT=150.e-6, _RC)
+    call MAPL_GridCompGetResource( GC, 'FAC_RL', FAC_RL                    , DEFAULT= 1.0   , _RC)
+    call MAPL_GridCompGetResource( GC, 'MIN_RL', MIN_RL                    , DEFAULT= 5.0e-6, _RC)
+    call MAPL_GridCompGetResource( GC, 'MAX_RL', MAX_RL                    , DEFAULT=60.0e-6, _RC)
 
     ! -----------------------------------------------------------------------------------------
     ! GRID-SCALE EVAPORATION / SUBLIMATION EFFICIENCIES [s^-1]
@@ -395,17 +390,17 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     !   - CCW_EVAP_EFF : Efficiency for Cloud Liquid Water.
     !   - CCI_EVAP_EFF : Efficiency for Cloud Ice.
                                  CCW_EVAP_EFF = 4.e-3
-    call MAPL_GetResource( MAPL, CCW_EVAP_EFF, 'CCW_EVAP_EFF:', DEFAULT= CCW_EVAP_EFF, _RC)
+    call MAPL_GridCompGetResource( GC, 'CCW_EVAP_EFF', CCW_EVAP_EFF, DEFAULT= (CCW_EVAP_EFF), _RC)
                                  CCI_EVAP_EFF = 4.e-3
-    call MAPL_GetResource( MAPL, CCI_EVAP_EFF, 'CCI_EVAP_EFF:', DEFAULT= CCI_EVAP_EFF, _RC)
+    call MAPL_GridCompGetResource( GC, 'CCI_EVAP_EFF', CCI_EVAP_EFF, DEFAULT= (CCI_EVAP_EFF), _RC)
 
     ! -----------------------------------------------------------------------------------------
     ! CONVECTIVE CLOUD FRACTION (CAPE THRESHOLDS) [J/kg]
     ! -----------------------------------------------------------------------------------------
     ! Diagnoses macrophysical convective area fraction derived from Convective Available Potential 
     ! Energy (CAPE). Scales linearly from 0.0 at MIN to 1.0 at MAX.
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, _RC)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, _RC)
+    call MAPL_GridCompGetResource( GC, 'CNV_FRACTION_MIN', CNV_FRACTION_MIN, DEFAULT=  500.0, _RC)
+    call MAPL_GridCompGetResource( GC, 'CNV_FRACTION_MAX', CNV_FRACTION_MAX, DEFAULT= 1500.0, _RC)
 
     ! -----------------------------------------------------------------------------------------
     ! MACROPHYSICS & PHASE SWITCHES
@@ -415,9 +410,9 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     ! USE_BERGERON            : Activates macrophysical Wegener-Bergeron-Findeisen logic 
     !                           (e.g., modifying mixed-phase cloud fraction and phase overlap). 
     !                           Note: Microphysical WBF mass transfer is controlled separately.
-    call MAPL_GetResource( MAPL, ICE_FRACTION_POLYNOMIAL, Label="ICE_FRACTION_POLYNOMIAL:",  default=V12_ICE_POLYNOMIAL, _RC)
-    call MAPL_GetResource( MAPL, USE_AEROSOL_NN , 'USE_AEROSOL_NN:'  , DEFAULT=USE_AEROSOL_NN, _RC)
-    call MAPL_GetResource( MAPL, USE_BERGERON   , 'USE_BERGERON:'    , DEFAULT=.FALSE., _RC)
+    call MAPL_GridCompGetResource( GC, 'ICE_FRACTION_POLYNOMIAL', ICE_FRACTION_POLYNOMIAL,  default=V12_ICE_POLYNOMIAL, _RC)
+    call MAPL_GridCompGetResource( GC, 'USE_AEROSOL_NN', USE_AEROSOL_NN   , DEFAULT=(USE_AEROSOL_NN), _RC)
+    call MAPL_GridCompGetResource( GC, 'USE_BERGERON', USE_BERGERON       , DEFAULT=.FALSE., _RC)
 
     ! -----------------------------------------------------------------------------------------
     ! AEROSOL-ACTIVATED NUMBER CONCENTRATION BOUNDS
@@ -442,12 +437,12 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     ! NN_MAX_ICE : Maximum ice-crystal / ice-nucleus number concentration [# m^-3].
     ! NN_FAC_ICE : Global scale factor for the CIN
     ! -----------------------------------------------------------------------------------------
-    call MAPL_GetResource( MAPL, NN_MIN_LIQ , 'NN_MIN_LIQ:'  , DEFAULT=   50.0e6, _RC)
-    call MAPL_GetResource( MAPL, NN_MAX_LIQ , 'NN_MAX_LIQ:'  , DEFAULT= 1000.0e6, _RC)
-    call MAPL_GetResource( MAPL, NN_FAC_LIQ , 'NN_FAC_LIQ:'  , DEFAULT=    1.0  , _RC)
-    call MAPL_GetResource( MAPL, NN_MIN_ICE , 'NN_MIN_ICE:'  , DEFAULT=    1.0e0, _RC)
-    call MAPL_GetResource( MAPL, NN_MAX_ICE , 'NN_MAX_ICE:'  , DEFAULT=   50.0e6, _RC)
-    call MAPL_GetResource( MAPL, NN_FAC_ICE , 'NN_FAC_ICE:'  , DEFAULT=    1.0  , _RC)
+    call MAPL_GridCompGetResource( GC, 'NN_MIN_LIQ', NN_MIN_LIQ   , DEFAULT=   50.0e6, _RC)
+    call MAPL_GridCompGetResource( GC, 'NN_MAX_LIQ', NN_MAX_LIQ   , DEFAULT= 1000.0e6, _RC)
+    call MAPL_GridCompGetResource( GC, 'NN_FAC_LIQ', NN_FAC_LIQ   , DEFAULT=    1.0  , _RC)
+    call MAPL_GridCompGetResource( GC, 'NN_MIN_ICE', NN_MIN_ICE   , DEFAULT=    1.0e0, _RC)
+    call MAPL_GridCompGetResource( GC, 'NN_MAX_ICE', NN_MAX_ICE   , DEFAULT=   50.0e6, _RC)
+    call MAPL_GridCompGetResource( GC, 'NN_FAC_ICE', NN_FAC_ICE   , DEFAULT=    1.0  , _RC)
 
     if (USE_AEROSOL_NN) then
       ! NOTE: For now we hard code in .false. for use_wnet as that is only an option with MG and will be handled there
@@ -455,7 +450,7 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
       call WRITE_PARALLEL ("INITIALIZED aer_cloud_init")
     endif
 
-    call MAPL_GetResource( MAPL, GFDL_MP_KLID    , 'GFDL_MP_KLID:'    , DEFAULT= -999.0, _RC)
+    call MAPL_GridCompGetResource( GC, 'GFDL_MP_KLID', GFDL_MP_KLID        , DEFAULT= -999.0, _RC)
 
 end subroutine GFDL_1M_Initialize
 
@@ -468,11 +463,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Local derived type aliases
 
-    type (MAPL_MetaComp), pointer   :: MAPL
-    type (ESMF_Config  )            :: CF
+    type (ESMF_Grid    )            :: GRID
     type (ESMF_State   )            :: INTERNAL
-    type (ESMF_Alarm   )            :: ALARM
-    type (ESMF_TimeInterval)        :: TINT
     real(ESMF_KIND_R8)              :: DT_R8
     real                            :: DT_MOIST
     logical                         :: alarm_is_ringing
@@ -482,6 +474,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: NACTL, NACTI
     ! Imports
     real, pointer, dimension(:,:,:) :: ZLE, PLE, T, U, V, W, KH
+    real, pointer, contiguous, dimension(:,:,:) :: p3d ! scratch for the edge-field bounds remap
     real, pointer, dimension(:,:)   :: AREA, PHIS, FRLAND, TS, DTSX, SH, EVAP, KPBLSC
     real, pointer, dimension(:,:,:) :: SL2, SL3, QT2, QT3, W2, W3, SLQT, WQT, WQL, WSL, PDF_A
     real, pointer, dimension(:,:,:) :: WTHV2
@@ -504,7 +497,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, allocatable, dimension(:,:)   :: TMP2D
     real, allocatable, dimension(:)     :: TMP1D
     ! Exports
-    real, pointer, dimension(:,:  ) :: LONS, LATS
+    real, allocatable, dimension(:,:) :: LONS, LATS
     real, pointer, dimension(:,:,:) :: NACTR
     real, pointer, dimension(:,:  ) :: PRCP_WATER, PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL
     real, pointer, dimension(:,:  ) :: LS_PRCP, LS_SNR, ICE, FRZR, CNV_FRC, SRF_TYPE
@@ -551,73 +544,69 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     integer :: I, J, L
     type( ESMF_VM ) :: VMG
 
-    call ESMF_GridCompGet( GC, VM=VMG, CONFIG=CF, _RC )
+    call ESMF_GridCompGet( GC, VM=VMG, _RC )
 
-    ! Get my internal MAPL_Generic state
+    call MAPL_GridCompTimerStart(GC, "--GFDL_1M", _RC)
+
+    ! Get parameters from the component
     !-----------------------------------
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, _RC)
+    call MAPL_GridCompGet(GC, num_levels=LM, grid=GRID, _RC)
+    call MAPL_GridGet(GRID, IM=IM, JM=JM, _RC)
+    call MAPL_GridGetCoordinates(GRID, longitudes=LONS, latitudes=LATS, _RC) ! radians
+    call MAPL_GridCompGetInternalState(GC, INTERNAL, _RC)
 
-    call MAPL_TimerOn (MAPL,"--GFDL_1M",_RC)
-
-    ! Get parameters from generic state.
-    !-----------------------------------
-
-    call MAPL_Get( MAPL, IM=IM, JM=JM, LM=LM,   &
-         LATS     = LATS,              & ! These are in radians
-         LONS     = LONS,              & ! These are in radians
-         RUNALARM = ALARM,             &
-         CF       = CF,                &
-         INTERNAL_ESMF_STATE=INTERNAL, &
-         _RC )
-
-    call ESMF_AlarmGet(ALARM, RingInterval=TINT, _RC)
-    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,_RC)
-    DT_MOIST = DT_R8
+    ! Moist's timestep (MAPL2: the RUNALARM ring interval)
+    call MAPL_ClockGet(CLOCK, dt=DT_MOIST, _RC)
+    DT_R8 = DT_MOIST
 
     if (USE_PYMOIST_GFDL1M) then
       call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.microphysics.GFDL1M_interface", MAPL, IMPORT, EXPORT, INTERNAL )
     else
 
-    call MAPL_GetPointer(INTERNAL, Q,        'Q'       , _RC)
-    call MAPL_GetPointer(INTERNAL, QRAIN,    'QRAIN'   , _RC)
-    call MAPL_GetPointer(INTERNAL, QSNOW,    'QSNOW'   , _RC)
-    call MAPL_GetPointer(INTERNAL, QGRAUPEL, 'QGRAUPEL', _RC)
-    call MAPL_GetPointer(INTERNAL, QLLS,     'QLLS'    , _RC)
-    call MAPL_GetPointer(INTERNAL, QLCN,     'QLCN'    , _RC)
-    call MAPL_GetPointer(INTERNAL, CLCN,     'CLCN'    , _RC)
-    call MAPL_GetPointer(INTERNAL, CLLS,     'CLLS'    , _RC)
-    call MAPL_GetPointer(INTERNAL, QILS,     'QILS'    , _RC)
-    call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , _RC)
-    call MAPL_GetPointer(INTERNAL, NACTL,    'NACTL'   , _RC)
-    call MAPL_GetPointer(INTERNAL, NACTI,    'NACTI'   , _RC)
+    call MAPL_StateGetPointer(INTERNAL, Q,        'Q'       , _RC)
+    call MAPL_StateGetPointer(INTERNAL, QRAIN,    'QRAIN'   , _RC)
+    call MAPL_StateGetPointer(INTERNAL, QSNOW,    'QSNOW'   , _RC)
+    call MAPL_StateGetPointer(INTERNAL, QGRAUPEL, 'QGRAUPEL', _RC)
+    call MAPL_StateGetPointer(INTERNAL, QLLS,     'QLLS'    , _RC)
+    call MAPL_StateGetPointer(INTERNAL, QLCN,     'QLCN'    , _RC)
+    call MAPL_StateGetPointer(INTERNAL, CLCN,     'CLCN'    , _RC)
+    call MAPL_StateGetPointer(INTERNAL, CLLS,     'CLLS'    , _RC)
+    call MAPL_StateGetPointer(INTERNAL, QILS,     'QILS'    , _RC)
+    call MAPL_StateGetPointer(INTERNAL, QICN,     'QICN'    , _RC)
+    call MAPL_StateGetPointer(INTERNAL, NACTL,    'NACTL'   , _RC)
+    call MAPL_StateGetPointer(INTERNAL, NACTI,    'NACTI'   , _RC)
 
     ! Import State
-    call MAPL_GetPointer(IMPORT, AREA,    'AREA'    , _RC)
-    call MAPL_GetPointer(IMPORT, ZLE,     'ZLE'     , _RC)
-    call MAPL_GetPointer(IMPORT, PLE,     'PLE'     , _RC)
-    call MAPL_GetPointer(IMPORT, T,       'T'       , _RC)
-    call MAPL_GetPointer(IMPORT, U,       'U'       , _RC)
-    call MAPL_GetPointer(IMPORT, V,       'V'       , _RC)
-    call MAPL_GetPointer(IMPORT, W,       'W'       , _RC)
-    call MAPL_GetPointer(IMPORT, FRLAND,  'FRLAND'  , _RC)
-    call MAPL_GetPointer(IMPORT, KH,      'KH'      , _RC)
-    call MAPL_GetPointer(IMPORT, PDF_A,   'PDF_A'   , _RC)
-    call MAPL_GetPointer(IMPORT, W2,      'W2'      , _RC)
-    call MAPL_GetPointer(IMPORT, W3,      'W3'      , _RC)
-    call MAPL_GetPointer(IMPORT, WQT,     'WQT'     , _RC)
-    call MAPL_GetPointer(IMPORT, WSL,     'WSL'     , _RC)
-    call MAPL_GetPointer(IMPORT, SL2,     'SL2'     , _RC)
-    call MAPL_GetPointer(IMPORT, SL3,     'SL3'     , _RC)
-    call MAPL_GetPointer(IMPORT, QT2,     'QT2'     , _RC)
-    call MAPL_GetPointer(IMPORT, QT3,     'QT3'     , _RC)
-    call MAPL_GetPointer(IMPORT, SLQT,    'SLQT'    , _RC)
-    call MAPL_GetPointer(IMPORT, TS,      'TS'      , _RC)
-    call MAPL_GetPointer(IMPORT, KPBLSC,  'KPBL_SC' , _RC)
-    call MAPL_GetPointer(IMPORT, SH,      'SH'      , _RC)
-    call MAPL_GetPointer(IMPORT, EVAP,    'EVAP'    , _RC)
-    call MAPL_GetPointer(IMPORT, OMEGA,   'OMEGA'   , _RC)
-    call MAPL_GetPointer(IMPORT, PHIS,    'PHIS'    , _RC)
+    call MAPL_StateGetPointer(IMPORT, AREA,    'AREA'    , _RC)
+    call MAPL_StateGetPointer(IMPORT, ZLE,     'ZLE'     , _RC)
+    call MAPL_StateGetPointer(IMPORT, PLE,     'PLE'     , _RC)
+    call MAPL_StateGetPointer(IMPORT, T,       'T'       , _RC)
+    call MAPL_StateGetPointer(IMPORT, U,       'U'       , _RC)
+    call MAPL_StateGetPointer(IMPORT, V,       'V'       , _RC)
+    call MAPL_StateGetPointer(IMPORT, W,       'W'       , _RC)
+    call MAPL_StateGetPointer(IMPORT, FRLAND,  'FRLAND'  , _RC)
+    call MAPL_StateGetPointer(IMPORT, KH,      'KH'      , _RC)
+    ! Edge fields: MAPL3 pointers are 1:LM+1; MAPL2's were 0:LM, which this code assumes
+    p3d => ZLE; ZLE(1:IM,1:JM,0:LM) => p3d
+    p3d => PLE; PLE(1:IM,1:JM,0:LM) => p3d
+    p3d => KH;  KH(1:IM,1:JM,0:LM)  => p3d
+    call MAPL_StateGetPointer(IMPORT, PDF_A,   'PDF_A'   , _RC)
+    call MAPL_StateGetPointer(IMPORT, W2,      'W2'      , _RC)
+    call MAPL_StateGetPointer(IMPORT, W3,      'W3'      , _RC)
+    call MAPL_StateGetPointer(IMPORT, WQT,     'WQT'     , _RC)
+    call MAPL_StateGetPointer(IMPORT, WSL,     'WSL'     , _RC)
+    call MAPL_StateGetPointer(IMPORT, SL2,     'SL2'     , _RC)
+    call MAPL_StateGetPointer(IMPORT, SL3,     'SL3'     , _RC)
+    call MAPL_StateGetPointer(IMPORT, QT2,     'QT2'     , _RC)
+    call MAPL_StateGetPointer(IMPORT, QT3,     'QT3'     , _RC)
+    call MAPL_StateGetPointer(IMPORT, SLQT,    'SLQT'    , _RC)
+    call MAPL_StateGetPointer(IMPORT, TS,      'TS'      , _RC)
+    call MAPL_StateGetPointer(IMPORT, KPBLSC,  'KPBL_SC' , _RC)
+    call MAPL_StateGetPointer(IMPORT, SH,      'SH'      , _RC)
+    call MAPL_StateGetPointer(IMPORT, EVAP,    'EVAP'    , _RC)
+    call MAPL_StateGetPointer(IMPORT, OMEGA,   'OMEGA'   , _RC)
+    call MAPL_StateGetPointer(IMPORT, PHIS,    'PHIS'    , _RC)
 
     ! Allocatables
      ! Edge variables
@@ -764,7 +753,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       end do
     endif
 
-    call MAPL_TimerOn(MAPL,"---CLDMACRO",_RC)
+    call MAPL_GridCompTimerStart(GC, "---CLDMACRO", _RC)
       call MAPL_GetPointer(EXPORT, DQVDT_macro, 'DQVDT_macro' , ALLOC=.TRUE., _RC)
       call MAPL_GetPointer(EXPORT, DQIDT_macro, 'DQIDT_macro' , ALLOC=.TRUE., _RC)
       call MAPL_GetPointer(EXPORT, DQLDT_macro, 'DQLDT_macro' , ALLOC=.TRUE., _RC)
@@ -1017,14 +1006,14 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
 ! Get fill negative export pointers if requested
 ! ----------------------------------------------                      
-    call MAPL_GetPointer(EXPORT,   DQVDT_FILL,   'DQVDT_FILL_CLDMACRO', _RC)
-    call MAPL_GetPointer(EXPORT, DQLLSDT_FILL, 'DQLLSDT_FILL_CLDMACRO', _RC)
-    call MAPL_GetPointer(EXPORT, DQLCNDT_FILL, 'DQLCNDT_FILL_CLDMACRO', _RC)
-    call MAPL_GetPointer(EXPORT, DQILSDT_FILL, 'DQILSDT_FILL_CLDMACRO', _RC)
-    call MAPL_GetPointer(EXPORT, DQICNDT_FILL, 'DQICNDT_FILL_CLDMACRO', _RC)
-    call MAPL_GetPointer(EXPORT,   DQRDT_FILL,   'DQRDT_FILL_CLDMACRO', _RC)
-    call MAPL_GetPointer(EXPORT,   DQSDT_FILL,   'DQSDT_FILL_CLDMACRO', _RC)
-    call MAPL_GetPointer(EXPORT,   DQGDT_FILL,   'DQGDT_FILL_CLDMACRO', _RC)
+    call MAPL_StateGetPointer(EXPORT,   DQVDT_FILL,   'DQVDT_FILL_CLDMACRO', _RC)
+    call MAPL_StateGetPointer(EXPORT, DQLLSDT_FILL, 'DQLLSDT_FILL_CLDMACRO', _RC)
+    call MAPL_StateGetPointer(EXPORT, DQLCNDT_FILL, 'DQLCNDT_FILL_CLDMACRO', _RC)
+    call MAPL_StateGetPointer(EXPORT, DQILSDT_FILL, 'DQILSDT_FILL_CLDMACRO', _RC)
+    call MAPL_StateGetPointer(EXPORT, DQICNDT_FILL, 'DQICNDT_FILL_CLDMACRO', _RC)
+    call MAPL_StateGetPointer(EXPORT,   DQRDT_FILL,   'DQRDT_FILL_CLDMACRO', _RC)
+    call MAPL_StateGetPointer(EXPORT,   DQSDT_FILL,   'DQSDT_FILL_CLDMACRO', _RC)
+    call MAPL_StateGetPointer(EXPORT,   DQGDT_FILL,   'DQGDT_FILL_CLDMACRO', _RC)
 ! Cleanup negative water species
 ! ------------------------------
     call FILLQ2ZERO( Q       , MASS, DT=DT_MOIST, DQDT=  DQVDT_FILL, VM=VMG, _RC)
@@ -1059,7 +1048,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           enddo
        enddo
     enddo
-    call MAPL_TimerOff(MAPL,"---CLDMACRO",_RC)
+    call MAPL_GridCompTimerStop(GC, "---CLDMACRO", _RC)
 
     if (DEBUG_TQ_ERRORS) then
          do L = 1, LM
@@ -1089,7 +1078,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          enddo
     endif
 
-    call MAPL_TimerOn(MAPL,"---CLDMICRO",_RC)
+    call MAPL_GridCompTimerStart(GC, "---CLDMICRO", _RC)
     ! Zero-out microphysics tendencies
     call MAPL_GetPointer(EXPORT, DQVDT_micro, 'DQVDT_micro' , ALLOC=.TRUE., _RC)
     call MAPL_GetPointer(EXPORT, DQIDT_micro, 'DQIDT_micro' , ALLOC=.TRUE., _RC)
@@ -1195,12 +1184,12 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
               enddo
            enddo
            if (do_ref) then
-               call MAPL_TimerOn(MAPL,"---CLD_REF_DBZ",_RC)
-               call MAPL_GetPointer(EXPORT, DBZ     , 'REF_DBZ'     , _RC)
-               call MAPL_GetPointer(EXPORT, DBZ_MAX , 'REF_DBZ_MAX' , _RC)
-               call MAPL_GetPointer(EXPORT, DBZ_1KM , 'REF_DBZ_1KM' , _RC)
-               call MAPL_GetPointer(EXPORT, DBZ_TOP , 'REF_DBZ_TOP' , _RC)
-               call MAPL_GetPointer(EXPORT, DBZ_M10C, 'REF_DBZ_M10C', _RC)
+               call MAPL_GridCompTimerStart(GC, "---CLD_REF_DBZ", _RC)
+               call MAPL_StateGetPointer(EXPORT, DBZ, 'REF_DBZ'     , _RC)
+               call MAPL_StateGetPointer(EXPORT, DBZ_MAX, 'REF_DBZ_MAX' , _RC)
+               call MAPL_StateGetPointer(EXPORT, DBZ_1KM, 'REF_DBZ_1KM' , _RC)
+               call MAPL_StateGetPointer(EXPORT, DBZ_TOP, 'REF_DBZ_TOP' , _RC)
+               call MAPL_StateGetPointer(EXPORT, DBZ_M10C, 'REF_DBZ_M10C', _RC)
                if (associated(DBZ)) DBZ = DBZ3D
                if (associated(DBZ_MAX)) then
                    DBZ_MAX=-9999.0
@@ -1235,7 +1224,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                       END DO
                    END DO ; END DO
                endif
-               call MAPL_TimerOff(MAPL,"---CLD_REF_DBZ",_RC)
+               call MAPL_GridCompTimerStop(GC, "---CLD_REF_DBZ", _RC)
            endif
          else
          call gfdl_cloud_microphys_driver( &
@@ -1318,14 +1307,14 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
      ! Get fill negative export pointers if requested
      ! ----------------------------------------------                      
-         call MAPL_GetPointer(EXPORT,   DQVDT_FILL,   'DQVDT_FILL_CLDMICRO', _RC)
-         call MAPL_GetPointer(EXPORT, DQLLSDT_FILL, 'DQLLSDT_FILL_CLDMICRO', _RC)
-         call MAPL_GetPointer(EXPORT, DQLCNDT_FILL, 'DQLCNDT_FILL_CLDMICRO', _RC)
-         call MAPL_GetPointer(EXPORT, DQILSDT_FILL, 'DQILSDT_FILL_CLDMICRO', _RC)
-         call MAPL_GetPointer(EXPORT, DQICNDT_FILL, 'DQICNDT_FILL_CLDMICRO', _RC)
-         call MAPL_GetPointer(EXPORT,   DQRDT_FILL,   'DQRDT_FILL_CLDMICRO', _RC)
-         call MAPL_GetPointer(EXPORT,   DQSDT_FILL,   'DQSDT_FILL_CLDMICRO', _RC)
-         call MAPL_GetPointer(EXPORT,   DQGDT_FILL,   'DQGDT_FILL_CLDMICRO', _RC)
+         call MAPL_StateGetPointer(EXPORT,   DQVDT_FILL,   'DQVDT_FILL_CLDMICRO', _RC)
+         call MAPL_StateGetPointer(EXPORT, DQLLSDT_FILL, 'DQLLSDT_FILL_CLDMICRO', _RC)
+         call MAPL_StateGetPointer(EXPORT, DQLCNDT_FILL, 'DQLCNDT_FILL_CLDMICRO', _RC)
+         call MAPL_StateGetPointer(EXPORT, DQILSDT_FILL, 'DQILSDT_FILL_CLDMICRO', _RC)
+         call MAPL_StateGetPointer(EXPORT, DQICNDT_FILL, 'DQICNDT_FILL_CLDMICRO', _RC)
+         call MAPL_StateGetPointer(EXPORT,   DQRDT_FILL,   'DQRDT_FILL_CLDMICRO', _RC)
+         call MAPL_StateGetPointer(EXPORT,   DQSDT_FILL,   'DQSDT_FILL_CLDMICRO', _RC)
+         call MAPL_StateGetPointer(EXPORT,   DQGDT_FILL,   'DQGDT_FILL_CLDMICRO', _RC)
      ! Cleanup negative water species
      ! ------------------------------
          if (REPORT_GFDL_1M_NEGATIVES) then
@@ -1459,7 +1448,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            enddo
         enddo
      enddo
-        call MAPL_TimerOff(MAPL,"---CLDMICRO",_RC)
+        call MAPL_GridCompTimerStop(GC, "---CLDMICRO", _RC)
 
     if (DEBUG_TQ_ERRORS) then
          do L = 1, LM
@@ -1490,13 +1479,13 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          enddo
     endif
 
-        call MAPL_TimerOn(MAPL,"---CLDDIAGS",_RC)
+        call MAPL_GridCompTimerStart(GC, "---CLDDIAGS", _RC)
 
-        call MAPL_GetPointer(EXPORT, PTR3D, 'DQRL', _RC)
+        call MAPL_StateGetPointer(EXPORT, PTR3D, 'DQRL', _RC)
         if(associated(PTR3D)) PTR3D = DQRDT_macro + DQRDT_micro
 
         ! dissipative heating tendency from KE across the macro/micro physics
-        call MAPL_GetPointer(EXPORT, PTR3D, 'DTDTFRIC', _RC)
+        call MAPL_StateGetPointer(EXPORT, PTR3D, 'DTDTFRIC', _RC)
         if(associated(PTR3D)) then
           call dissipative_ke_heating(IM,JM,LM, MASS,U0,V0, &
                                       DUDT_macro+DUDT_micro,&
@@ -1504,37 +1493,37 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         endif
 
         ! Call the shared radar diagnostics routine
-        call MAPL_TimerOn(MAPL,"---RADAR_DIAGS",_RC)
+        call MAPL_GridCompTimerStart(GC, "---RADAR_DIAGS", _RC)
         call compute_radar_diagnostics(EXPORT, CLOCK, IM, JM, LM, &
                                        Q, QRAIN, QSNOW, QGRAUPEL, T, PLmb, W, ZLE0, &
                                        STATUS); _VERIFY(STATUS)
-        call MAPL_TimerOff(MAPL,"---RADAR_DIAGS",_RC)
+        call MAPL_GridCompTimerStop(GC, "---RADAR_DIAGS", _RC)
 
-        call MAPL_GetPointer(EXPORT, PTR3D, 'QRTOT', _RC)
+        call MAPL_StateGetPointer(EXPORT, PTR3D, 'QRTOT', _RC)
         if (associated(PTR3D)) PTR3D = QRAIN
 
-        call MAPL_GetPointer(EXPORT, PTR3D, 'QSTOT', _RC)
+        call MAPL_StateGetPointer(EXPORT, PTR3D, 'QSTOT', _RC)
         if (associated(PTR3D)) PTR3D = QSNOW
 
-        call MAPL_GetPointer(EXPORT, PTR3D, 'QGTOT', _RC)
+        call MAPL_StateGetPointer(EXPORT, PTR3D, 'QGTOT', _RC)
         if (associated(PTR3D)) PTR3D = QGRAUPEL
 
-        call MAPL_GetPointer(EXPORT, PTR2D, 'LWP', _RC)
+        call MAPL_StateGetPointer(EXPORT, PTR2D, 'LWP', _RC)
         if (associated(PTR2D)) PTR2D = SUM( ( QLCN+QLLS+QRAIN ) *MASS , 3 )
 
-        call MAPL_GetPointer(EXPORT, PTR2D, 'IWP', _RC)
+        call MAPL_StateGetPointer(EXPORT, PTR2D, 'IWP', _RC)
         if (associated(PTR2D)) PTR2D = SUM( ( QICN+QILS+QSNOW+QGRAUPEL ) *MASS , 3 )
 
-        call MAPL_GetPointer(EXPORT, PTR3D, 'NCPL_VOL', _RC)
+        call MAPL_StateGetPointer(EXPORT, PTR3D, 'NCPL_VOL', _RC)
         if (associated(PTR3D)) PTR3D = NACTL
 
-        call MAPL_GetPointer(EXPORT, PTR3D, 'NCPI_VOL', _RC)
+        call MAPL_StateGetPointer(EXPORT, PTR3D, 'NCPI_VOL', _RC)
         if (associated(PTR3D)) PTR3D = NACTI
 
-        call MAPL_TimerOff(MAPL,"---CLDDIAGS",_RC)
+        call MAPL_GridCompTimerStop(GC, "---CLDDIAGS", _RC)
     endif ! USE_PYMOIST_GFDL1M
 
-     call MAPL_TimerOff(MAPL,"--GFDL_1M",_RC)
+     call MAPL_GridCompTimerStop(GC, "--GFDL_1M", _RC)
 
 end subroutine GFDL_1M_Run
 

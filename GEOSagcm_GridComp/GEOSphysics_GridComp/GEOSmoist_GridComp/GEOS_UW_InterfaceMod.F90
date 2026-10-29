@@ -51,18 +51,14 @@ subroutine UW_Setup (GC, RC)
 
 end subroutine UW_Setup
 
-subroutine UW_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
-    type (MAPL_MetaComp), intent(inout) :: MAPL
+subroutine UW_Initialize (GC, CLOCK, IMPORT, EXPORT, RC)
+    type (ESMF_GridComp), intent(inout) :: GC     ! gridded component
     type (ESMF_State),    intent(inout) :: IMPORT
     type (ESMF_State),    intent(inout) :: EXPORT
-    type (ESMF_Config),   intent(inout) :: CF
     type (ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
     integer, optional                   :: RC  ! return code
     integer :: LM
 
-    type (ESMF_Alarm   )            :: ALARM
-    type (ESMF_TimeInterval)        :: TINT
-    real(ESMF_KIND_R8)              :: DT_R8
     real                            :: MOIST_DT
     real                            :: UW_DT
 
@@ -73,11 +69,10 @@ subroutine UW_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     type(ESMF_TimeInterval) :: ringInterval
     integer                 :: year, month, day, hh, mm, ss
 
-    call MAPL_Get(MAPL, RUNALARM=ALARM, LM=LM, _RC )
-    call ESMF_AlarmGet(ALARM, RingInterval=TINT, _RC)
-    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,_RC)
-    MOIST_DT = DT_R8
-    call MAPL_GetResource(MAPL, UW_DT, 'UW_DT:', default=MOIST_DT, _RC)
+    call MAPL_GridCompGet(GC, num_levels=LM, _RC)
+    ! Moist's timestep (MAPL2: the RUNALARM ring interval)
+    call MAPL_ClockGet(CLOCK, dt=MOIST_DT, _RC)
+    call MAPL_GridCompGetResource( GC, 'UW_DT', UW_DT, default=MOIST_DT, _RC)
 
     call ESMF_ClockGet(CLOCK, calendar=calendar, currTime=currentTime, _RC)
     call ESMF_TimeGet(currentTime, YY=year, MM=month, DD=day, H=hh, M=mm, S=ss, _RC)
@@ -91,77 +86,75 @@ subroutine UW_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
                                    Enabled      = .true.   ,    &
                                    Sticky       = .false.  , _RC)
 
-    call MAPL_Get ( MAPL, LM=LM, _RC )
-
                 JASON_UW = .FALSE.
     if (LM==72) JASON_UW = .TRUE.
-    call MAPL_GetResource(MAPL, JASON_UW, 'JASON_UW:', default=JASON_UW, _RC)
+    call MAPL_GridCompGetResource( GC, 'JASON_UW', JASON_UW, default=(JASON_UW), _RC)
 
                 JASON_MFD_SC = .FALSE.
     if (LM==72) JASON_MFD_SC = .TRUE.
-    call MAPL_GetResource(MAPL, JASON_MFD_SC, 'JASON_MFD_SC:', default=JASON_MFD_SC, _RC)
+    call MAPL_GridCompGetResource( GC, 'JASON_MFD_SC', JASON_MFD_SC, default=(JASON_MFD_SC), _RC)
 
-    call MAPL_GetResource(MAPL, REPORT_UW_NEGATIVES, 'REPORT_UW_NEGATIVES:', default=.FALSE., _RC)
+    call MAPL_GridCompGetResource( GC, 'REPORT_UW_NEGATIVES', REPORT_UW_NEGATIVES, default=.FALSE., _RC)
 
-    call MAPL_GetResource(MAPL, USE_PYMOIST_UW, 'USE_PYMOIST_UW:', default=.FALSE., _RC)
+    call MAPL_GridCompGetResource( GC, 'USE_PYMOIST_UW', USE_PYMOIST_UW, default=.FALSE., _RC)
 
     if (USE_PYMOIST_UW) then
       call MAPL_ConfigSetAttribute(CF, UW_DT, 'DSL__UW_DT:', _RC)
       call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.convection.UW_interface", MAPL, IMPORT, EXPORT )
     else
-    call MAPL_GetResource(MAPL, USE_TRACER_TRANSP_UW,        'USE_TRACER_TRANSP_UW:',default= 1      , _RC)
+    call MAPL_GridCompGetResource( GC, 'USE_TRACER_TRANSP_UW', USE_TRACER_TRANSP_UW,default= 1      , _RC)
     if (JASON_UW) then
-      call MAPL_GetResource(MAPL, SHLWPARAMS%WINDSRCAVG,       'WINDSRCAVG:'      ,DEFAULT=0,      _RC)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%MIXSCALE,         'MIXSCALE:'        ,DEFAULT=0.0,    _RC)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%CRIQC,            'CRIQC:'           ,DEFAULT=1.0e-3, _RC)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%THLSRC_FAC,       'THLSRC_FAC:'      ,DEFAULT= 0.0,   _RC)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRC_FAC,        'QTSRC_FAC:'       ,DEFAULT= 0.0,   _RC)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRCHGT,         'QTSRCHGT:'        ,DEFAULT= 0.0,   _RC)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE,            'RKFRE:'           ,DEFAULT= 1.0,   _RC)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 12.0,  _RC)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RMAXFRAC,         'RMAXFRAC:'        ,DEFAULT= 0.1,   _RC)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%FRC_RASN,         'FRC_RASN:'        ,DEFAULT= 0.0,   _RC)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RPEN,             'RPEN:'            ,DEFAULT= 3.0,   _RC)
-      call MAPL_GetResource(MAPL, SCLM_SHALLOW,                'SCLM_SHALLOW:'    ,DEFAULT= 1.0,   _RC)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%NITER_XC,         'NITER_XC:'        ,DEFAULT=2,      _RC)
-      call MAPL_GetResource(MAPL, USE_EIS,                     'UW_USE_EIS:'      ,DEFAULT=.FALSE.,_RC)
-      call MAPL_GetResource(MAPL, USE_SIG,                     'UW_USE_SIG:'      ,DEFAULT=.FALSE.,_RC)
+      call MAPL_GridCompGetResource( GC, 'WINDSRCAVG', SHLWPARAMS%WINDSRCAVG      ,DEFAULT=0,      _RC)
+      call MAPL_GridCompGetResource( GC, 'MIXSCALE', SHLWPARAMS%MIXSCALE        ,DEFAULT=0.0,    _RC)
+      call MAPL_GridCompGetResource( GC, 'CRIQC', SHLWPARAMS%CRIQC           ,DEFAULT=1.0e-3, _RC)
+      call MAPL_GridCompGetResource( GC, 'THLSRC_FAC', SHLWPARAMS%THLSRC_FAC      ,DEFAULT= 0.0,   _RC)
+      call MAPL_GridCompGetResource( GC, 'QTSRC_FAC', SHLWPARAMS%QTSRC_FAC       ,DEFAULT= 0.0,   _RC)
+      call MAPL_GridCompGetResource( GC, 'QTSRCHGT', SHLWPARAMS%QTSRCHGT        ,DEFAULT= 0.0,   _RC)
+      call MAPL_GridCompGetResource( GC, 'RKFRE', SHLWPARAMS%RKFRE           ,DEFAULT= 1.0,   _RC)
+      call MAPL_GridCompGetResource( GC, 'RKM', SHLWPARAMS%RKM             ,DEFAULT= 12.0,  _RC)
+      call MAPL_GridCompGetResource( GC, 'RMAXFRAC', SHLWPARAMS%RMAXFRAC        ,DEFAULT= 0.1,   _RC)
+      call MAPL_GridCompGetResource( GC, 'FRC_RASN', SHLWPARAMS%FRC_RASN        ,DEFAULT= 0.0,   _RC)
+      call MAPL_GridCompGetResource( GC, 'RPEN', SHLWPARAMS%RPEN            ,DEFAULT= 3.0,   _RC)
+      call MAPL_GridCompGetResource( GC, 'SCLM_SHALLOW', SCLM_SHALLOW    ,DEFAULT= 1.0,   _RC)
+      call MAPL_GridCompGetResource( GC, 'NITER_XC', SHLWPARAMS%NITER_XC        ,DEFAULT=2,      _RC)
+      call MAPL_GridCompGetResource( GC, 'UW_USE_EIS', USE_EIS      ,DEFAULT=.FALSE.,_RC)
+      call MAPL_GridCompGetResource( GC, 'UW_USE_SIG', USE_SIG      ,DEFAULT=.FALSE.,_RC)
     else
-      call MAPL_GetResource(MAPL, SHLWPARAMS%WINDSRCAVG,       'WINDSRCAVG:'      ,DEFAULT=0,      _RC)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%MIXSCALE,         'MIXSCALE:'        ,DEFAULT=0.0,    _RC)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%CRIQC,            'CRIQC:'           ,DEFAULT=1.0e-3, _RC)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%THLSRC_FAC,       'THLSRC_FAC:'      ,DEFAULT= 0.0,   _RC)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRC_FAC,        'QTSRC_FAC:'       ,DEFAULT= 0.0,   _RC)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRCHGT,         'QTSRCHGT:'        ,DEFAULT= 0.0,   _RC)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE,            'RKFRE:'           ,DEFAULT= 1.0,   _RC)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE_HR,         'RKFRE_HR:'        ,DEFAULT= 0.75,  _RC)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 12.0,  _RC)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RKM_HR,           'RKM_HR:'          ,DEFAULT= 12.0,  _RC)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RMAXFRAC,         'RMAXFRAC:'        ,DEFAULT= 0.1,   _RC)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RMAXFRAC_HR,      'RMAXFRAC_HR:'     ,DEFAULT= 0.1,   _RC)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%FRC_RASN,         'FRC_RASN:'        ,DEFAULT= 0.0,   _RC)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RPEN,             'RPEN:'            ,DEFAULT= 3.0,   _RC)
-      call MAPL_GetResource(MAPL, SCLM_SHALLOW,                'SCLM_SHALLOW:'    ,DEFAULT= 1.0,   _RC)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%NITER_XC,         'NITER_XC:'        ,DEFAULT=2,      _RC)
-      call MAPL_GetResource(MAPL, USE_EIS,                     'UW_USE_EIS:'      ,DEFAULT=.FALSE.,_RC)
-      call MAPL_GetResource(MAPL, USE_SIG,                     'UW_USE_SIG:'      ,DEFAULT=.FALSE.,_RC)
+      call MAPL_GridCompGetResource( GC, 'WINDSRCAVG', SHLWPARAMS%WINDSRCAVG      ,DEFAULT=0,      _RC)
+      call MAPL_GridCompGetResource( GC, 'MIXSCALE', SHLWPARAMS%MIXSCALE        ,DEFAULT=0.0,    _RC)
+      call MAPL_GridCompGetResource( GC, 'CRIQC', SHLWPARAMS%CRIQC           ,DEFAULT=1.0e-3, _RC)
+      call MAPL_GridCompGetResource( GC, 'THLSRC_FAC', SHLWPARAMS%THLSRC_FAC      ,DEFAULT= 0.0,   _RC)
+      call MAPL_GridCompGetResource( GC, 'QTSRC_FAC', SHLWPARAMS%QTSRC_FAC       ,DEFAULT= 0.0,   _RC)
+      call MAPL_GridCompGetResource( GC, 'QTSRCHGT', SHLWPARAMS%QTSRCHGT        ,DEFAULT= 0.0,   _RC)
+      call MAPL_GridCompGetResource( GC, 'RKFRE', SHLWPARAMS%RKFRE           ,DEFAULT= 1.0,   _RC)
+      call MAPL_GridCompGetResource( GC, 'RKFRE_HR', SHLWPARAMS%RKFRE_HR        ,DEFAULT= 0.75,  _RC)
+      call MAPL_GridCompGetResource( GC, 'RKM', SHLWPARAMS%RKM             ,DEFAULT= 12.0,  _RC)
+      call MAPL_GridCompGetResource( GC, 'RKM_HR', SHLWPARAMS%RKM_HR          ,DEFAULT= 12.0,  _RC)
+      call MAPL_GridCompGetResource( GC, 'RMAXFRAC', SHLWPARAMS%RMAXFRAC        ,DEFAULT= 0.1,   _RC)
+      call MAPL_GridCompGetResource( GC, 'RMAXFRAC_HR', SHLWPARAMS%RMAXFRAC_HR     ,DEFAULT= 0.1,   _RC)
+      call MAPL_GridCompGetResource( GC, 'FRC_RASN', SHLWPARAMS%FRC_RASN        ,DEFAULT= 0.0,   _RC)
+      call MAPL_GridCompGetResource( GC, 'RPEN', SHLWPARAMS%RPEN            ,DEFAULT= 3.0,   _RC)
+      call MAPL_GridCompGetResource( GC, 'SCLM_SHALLOW', SCLM_SHALLOW    ,DEFAULT= 1.0,   _RC)
+      call MAPL_GridCompGetResource( GC, 'NITER_XC', SHLWPARAMS%NITER_XC        ,DEFAULT=2,      _RC)
+      call MAPL_GridCompGetResource( GC, 'UW_USE_EIS', USE_EIS      ,DEFAULT=.FALSE.,_RC)
+      call MAPL_GridCompGetResource( GC, 'UW_USE_SIG', USE_SIG      ,DEFAULT=.FALSE.,_RC)
     endif
-    call MAPL_GetResource(MAPL, SHLWPARAMS%ITER_CIN,         'ITER_CIN:'        ,DEFAULT=2,      _RC)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%USE_CINCIN,       'USE_CINCIN:'      ,DEFAULT=1,      _RC)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%CRIDIST_OPT,      'CRIDIST_OPT:'     ,DEFAULT=0,      _RC)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%USE_SELF_DETRAIN, 'USE_SELF_DETRAIN:',DEFAULT=0,      _RC)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%USE_MOMENFLX,     'USE_MOMENFLX:'    ,DEFAULT=1,      _RC)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%USE_CUMPENENT,    'USE_CUMPENENT:'   ,DEFAULT=1,      _RC)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%SCVERBOSE,        'SCVERBOSE:'       ,DEFAULT=0,      _RC)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%RLE,              'RLE:'             ,DEFAULT=0.1,    _RC)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%MUMIN1,           'MUMIN1:'          ,DEFAULT=0.906,  _RC)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%RBUOY,            'RBUOY:'           ,DEFAULT=1.0,    _RC)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%RDRAG,            'RDRAG:'           ,DEFAULT=1.0,    _RC)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%EPSVARW,          'EPSVARW:'         ,DEFAULT=5.e-4,  _RC)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%PGFC,             'PGFC:'            ,DEFAULT=0.7,    _RC)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%KEVP,             'KEVP:'            ,DEFAULT=2.e-6,  _RC)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%RDROP,            'SHLW_RDROP:'      ,DEFAULT=8.e-6,  _RC)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%DETRHGT,          'DETRHGT:'         ,DEFAULT=1800.0, _RC)
+    call MAPL_GridCompGetResource( GC, 'ITER_CIN', SHLWPARAMS%ITER_CIN        ,DEFAULT=2,      _RC)
+    call MAPL_GridCompGetResource( GC, 'USE_CINCIN', SHLWPARAMS%USE_CINCIN      ,DEFAULT=1,      _RC)
+    call MAPL_GridCompGetResource( GC, 'CRIDIST_OPT', SHLWPARAMS%CRIDIST_OPT     ,DEFAULT=0,      _RC)
+    call MAPL_GridCompGetResource( GC, 'USE_SELF_DETRAIN', SHLWPARAMS%USE_SELF_DETRAIN,DEFAULT=0,      _RC)
+    call MAPL_GridCompGetResource( GC, 'USE_MOMENFLX', SHLWPARAMS%USE_MOMENFLX    ,DEFAULT=1,      _RC)
+    call MAPL_GridCompGetResource( GC, 'USE_CUMPENENT', SHLWPARAMS%USE_CUMPENENT   ,DEFAULT=1,      _RC)
+    call MAPL_GridCompGetResource( GC, 'SCVERBOSE', SHLWPARAMS%SCVERBOSE       ,DEFAULT=0,      _RC)
+    call MAPL_GridCompGetResource( GC, 'RLE', SHLWPARAMS%RLE             ,DEFAULT=0.1,    _RC)
+    call MAPL_GridCompGetResource( GC, 'MUMIN1', SHLWPARAMS%MUMIN1          ,DEFAULT=0.906,  _RC)
+    call MAPL_GridCompGetResource( GC, 'RBUOY', SHLWPARAMS%RBUOY           ,DEFAULT=1.0,    _RC)
+    call MAPL_GridCompGetResource( GC, 'RDRAG', SHLWPARAMS%RDRAG           ,DEFAULT=1.0,    _RC)
+    call MAPL_GridCompGetResource( GC, 'EPSVARW', SHLWPARAMS%EPSVARW         ,DEFAULT=5.e-4,  _RC)
+    call MAPL_GridCompGetResource( GC, 'PGFC', SHLWPARAMS%PGFC            ,DEFAULT=0.7,    _RC)
+    call MAPL_GridCompGetResource( GC, 'KEVP', SHLWPARAMS%KEVP            ,DEFAULT=2.e-6,  _RC)
+    call MAPL_GridCompGetResource( GC, 'SHLW_RDROP', SHLWPARAMS%RDROP      ,DEFAULT=8.e-6,  _RC)
+    call MAPL_GridCompGetResource( GC, 'DETRHGT', SHLWPARAMS%DETRHGT         ,DEFAULT=1800.0, _RC)
 
     endif ! USE_PYMOIST_UW
 
@@ -181,6 +174,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! Imports
     real, pointer, dimension(:,:)   :: FRLAND, SH, EVAP, KPBL_SC
     real, pointer, dimension(:,:,:) :: ZLE, PLE, T, U, V, TKE
+    real, pointer, contiguous, dimension(:,:,:) :: p3d ! scratch for the edge-field bounds remap
 
     ! allocatable derived quantities
     real,    allocatable, dimension(:,:,:) :: ZLE0, ZL0
@@ -224,9 +218,9 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:)   :: PTR2D
 
-    real, pointer, dimension(:,:)   :: LONS, LATS
+    real, allocatable, dimension(:,:) :: LONS, LATS
 
-    type (MAPL_MetaComp), pointer   :: MAPL
+    type (ESMF_Grid    )            :: GRID
     type (ESMF_State   )            :: INTERNAL
     type (ESMF_TimeInterval)        :: TINT
     real(ESMF_KIND_R8)              :: DT_R8
@@ -252,30 +246,27 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     integer                         :: I, J, L, K
     integer                         :: IM,JM,LM
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, _RC)
-    call MAPL_Get( MAPL, RUNALARM=ALARM, &
-         INTERNAL_ESMF_STATE=INTERNAL, IM=IM, JM=JM, LM=LM, &
-         LONS     = LONS,              &
-         LATS     = LATS,              &
-         _RC )
-    call ESMF_AlarmGet(ALARM, RingInterval=TINT, _RC)
-    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,_RC)
-    MOIST_DT = DT_R8
+    call MAPL_GridCompGet(GC, num_levels=LM, grid=GRID, _RC)
+    call MAPL_GridGet(GRID, IM=IM, JM=JM, _RC)
+    call MAPL_GridGetCoordinates(GRID, longitudes=LONS, latitudes=LATS, _RC)
+    call MAPL_GridCompGetInternalState(GC, INTERNAL, _RC)
+    ! Moist's timestep (MAPL2: the RUNALARM ring interval)
+    call MAPL_ClockGet(CLOCK, dt=MOIST_DT, _RC)
 
     call ESMF_GridCompGet ( GC, VM=VMG, _RC )
 
     ! Internals
-    call MAPL_GetPointer(INTERNAL, Q,      'Q'       , _RC)
-    call MAPL_GetPointer(INTERNAL, QLLS,   'QLLS'    , _RC)
-    call MAPL_GetPointer(INTERNAL, QLCN,   'QLCN'    , _RC)
-    call MAPL_GetPointer(INTERNAL, CLCN,   'CLCN'    , _RC)
-    call MAPL_GetPointer(INTERNAL, CLLS,   'CLLS'    , _RC)
-    call MAPL_GetPointer(INTERNAL, QILS,   'QILS'    , _RC)
-    call MAPL_GetPointer(INTERNAL, QICN,   'QICN'    , _RC)
+    call MAPL_StateGetPointer(INTERNAL, Q,      'Q'       , _RC)
+    call MAPL_StateGetPointer(INTERNAL, QLLS,   'QLLS'    , _RC)
+    call MAPL_StateGetPointer(INTERNAL, QLCN,   'QLCN'    , _RC)
+    call MAPL_StateGetPointer(INTERNAL, CLCN,   'CLCN'    , _RC)
+    call MAPL_StateGetPointer(INTERNAL, CLLS,   'CLLS'    , _RC)
+    call MAPL_StateGetPointer(INTERNAL, QILS,   'QILS'    , _RC)
+    call MAPL_StateGetPointer(INTERNAL, QICN,   'QICN'    , _RC)
     ! Imports
-    call MAPL_GetPointer(IMPORT, T         ,'T'         ,_RC)
-    call MAPL_GetPointer(IMPORT, U         ,'U'         ,_RC)
-    call MAPL_GetPointer(IMPORT, V         ,'V'         ,_RC)
+    call MAPL_StateGetPointer(IMPORT, T,'T'         , _RC)
+    call MAPL_StateGetPointer(IMPORT, U,'U'         , _RC)
+    call MAPL_StateGetPointer(IMPORT, V,'V'         , _RC)
     ! Tendency Export
     call MAPL_GetPointer(EXPORT, DUDT_SC,    'DUDT_SC'   , ALLOC=.TRUE., _RC)
     call MAPL_GetPointer(EXPORT, DVDT_SC,    'DVDT_SC'   , ALLOC=.TRUE., _RC)
@@ -299,39 +290,34 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, CLDTOP_SC, 'CLDTOP_SC' , ALLOC=.TRUE., _RC)
 
 #ifdef UWDIAG
-      call MAPL_GetPointer(EXPORT, SHL_DQCDT, 'SHL_DQCDT' , _RC)
-      call MAPL_GetPointer(EXPORT, CNT_SC,    'CNT_SC'    , _RC)
-      call MAPL_GetPointer(EXPORT, CNB_SC,    'CNB_SC'    , _RC)
-      call MAPL_GetPointer(EXPORT, WLCL_SC,   'WLCL_SC'   , _RC)
-      call MAPL_GetPointer(EXPORT, QTSRC_SC,  'QTSRC_SC'  , _RC)
-      call MAPL_GetPointer(EXPORT, THLSRC_SC, 'THLSRC_SC' , _RC)
-      call MAPL_GetPointer(EXPORT, THVLSRC_SC,'THVLSRC_SC', _RC)
-      call MAPL_GetPointer(EXPORT, TKEAVG_SC, 'TKEAVG_SC' , _RC)
-      call MAPL_GetPointer(EXPORT, WUP_SC,    'WUP_SC'    , _RC)
-      call MAPL_GetPointer(EXPORT, QTUP_SC,   'QTUP_SC'   , _RC)
-      call MAPL_GetPointer(EXPORT, THLUP_SC,  'THLUP_SC'  , _RC)
-      call MAPL_GetPointer(EXPORT, THVUP_SC,  'THVUP_SC'  , _RC)
-      call MAPL_GetPointer(EXPORT, UUP_SC,    'UUP_SC'    , _RC)
-      call MAPL_GetPointer(EXPORT, VUP_SC,    'VUP_SC'    , _RC)
-      call MAPL_GetPointer(EXPORT, XC_SC,     'XC_SC'     , _RC)
-      call MAPL_GetPointer(EXPORT, QCU_SC,    'QCU_SC'    , _RC)
-      call MAPL_GetPointer(EXPORT, QLU_SC,    'QLU_SC'    , _RC)
-      call MAPL_GetPointer(EXPORT, QIU_SC,    'QIU_SC'    , _RC)
+      call MAPL_StateGetPointer(EXPORT, SHL_DQCDT, 'SHL_DQCDT' , _RC)
+      call MAPL_StateGetPointer(EXPORT, CNT_SC,    'CNT_SC'    , _RC)
+      call MAPL_StateGetPointer(EXPORT, CNB_SC,    'CNB_SC'    , _RC)
+      call MAPL_StateGetPointer(EXPORT, WLCL_SC,   'WLCL_SC'   , _RC)
+      call MAPL_StateGetPointer(EXPORT, QTSRC_SC,  'QTSRC_SC'  , _RC)
+      call MAPL_StateGetPointer(EXPORT, THLSRC_SC, 'THLSRC_SC' , _RC)
+      call MAPL_StateGetPointer(EXPORT, THVLSRC_SC,'THVLSRC_SC', _RC)
+      call MAPL_StateGetPointer(EXPORT, TKEAVG_SC, 'TKEAVG_SC' , _RC)
+      call MAPL_StateGetPointer(EXPORT, WUP_SC,    'WUP_SC'    , _RC)
+      call MAPL_StateGetPointer(EXPORT, QTUP_SC,   'QTUP_SC'   , _RC)
+      call MAPL_StateGetPointer(EXPORT, THLUP_SC,  'THLUP_SC'  , _RC)
+      call MAPL_StateGetPointer(EXPORT, THVUP_SC,  'THVUP_SC'  , _RC)
+      call MAPL_StateGetPointer(EXPORT, UUP_SC,    'UUP_SC'    , _RC)
+      call MAPL_StateGetPointer(EXPORT, VUP_SC,    'VUP_SC'    , _RC)
+      call MAPL_StateGetPointer(EXPORT, XC_SC,     'XC_SC'     , _RC)
+      call MAPL_StateGetPointer(EXPORT, QCU_SC,    'QCU_SC'    , _RC)
+      call MAPL_StateGetPointer(EXPORT, QLU_SC,    'QLU_SC'    , _RC)
+      call MAPL_StateGetPointer(EXPORT, QIU_SC,    'QIU_SC'    , _RC)
+      ! Edge fields: MAPL3 pointers are 1:LM+1; MAPL2's were 0:LM (null unless requested)
+      if (associated(WUP_SC))   then; p3d => WUP_SC;   WUP_SC(1:IM,1:JM,0:LM)   => p3d; end if
+      if (associated(QTUP_SC))  then; p3d => QTUP_SC;  QTUP_SC(1:IM,1:JM,0:LM)  => p3d; end if
+      if (associated(THLUP_SC)) then; p3d => THLUP_SC; THLUP_SC(1:IM,1:JM,0:LM) => p3d; end if
+      if (associated(THVUP_SC)) then; p3d => THVUP_SC; THVUP_SC(1:IM,1:JM,0:LM) => p3d; end if
+      if (associated(UUP_SC))   then; p3d => UUP_SC;   UUP_SC(1:IM,1:JM,0:LM)   => p3d; end if
+      if (associated(VUP_SC))   then; p3d => VUP_SC;   VUP_SC(1:IM,1:JM,0:LM)   => p3d; end if
 #endif
     
-    ! Get my internal MAPL_Generic state
-    !-----------------------------------
-
-    call MAPL_GetObjectFromGC ( GC, MAPL, _RC)
-
-    call MAPL_TimerOn (MAPL,"--UW")
-
-    ! Get parameters from generic state.
-    !-----------------------------------
-
-    call MAPL_Get( MAPL, IM=IM, JM=JM, LM=LM,   &
-         INTERNAL_ESMF_STATE=INTERNAL, &
-         _RC )
+    call MAPL_GridCompTimerStart(GC, "--UW", _RC)
     
     if (USE_PYMOIST_UW) then
       call CNV_Tracers_To_SOA()
@@ -339,16 +325,20 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       call CNV_Tracers_To_AOS()
     else
       ! Internals
-    call MAPL_GetPointer(INTERNAL, CUSH,   'CUSH'    , _RC)
+    call MAPL_StateGetPointer(INTERNAL, CUSH,   'CUSH'    , _RC)
    
     ! Imports
-    call MAPL_GetPointer(IMPORT, FRLAND    ,'FRLAND'    ,_RC)
-    call MAPL_GetPointer(IMPORT, ZLE       ,'ZLE'       ,_RC)
-    call MAPL_GetPointer(IMPORT, PLE       ,'PLE'       ,_RC)
-    call MAPL_GetPointer(IMPORT, SH        ,'SH'        ,_RC)
-    call MAPL_GetPointer(IMPORT, EVAP      ,'EVAP'      ,_RC)
-    call MAPL_GetPointer(IMPORT, KPBL_SC   ,'KPBL_SC'   ,_RC)
-    call MAPL_GetPointer(IMPORT, TKE       ,'TKE'       ,_RC)
+    call MAPL_StateGetPointer(IMPORT, FRLAND,'FRLAND'    , _RC)
+    call MAPL_StateGetPointer(IMPORT, ZLE,'ZLE'       , _RC)
+    call MAPL_StateGetPointer(IMPORT, PLE,'PLE'       , _RC)
+    call MAPL_StateGetPointer(IMPORT, SH,'SH'        , _RC)
+    call MAPL_StateGetPointer(IMPORT, EVAP,'EVAP'      , _RC)
+    call MAPL_StateGetPointer(IMPORT, KPBL_SC,'KPBL_SC'   , _RC)
+    call MAPL_StateGetPointer(IMPORT, TKE,'TKE'       , _RC)
+    ! Edge fields: MAPL3 pointers are 1:LM+1; MAPL2's were 0:LM, which this code assumes
+    p3d => ZLE; ZLE(1:IM,1:JM,0:LM) => p3d
+    p3d => PLE; PLE(1:IM,1:JM,0:LM) => p3d
+    p3d => TKE; TKE(1:IM,1:JM,0:LM) => p3d
 
     ! Allocatables
      ! Edge variables 
@@ -450,7 +440,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! 1. Fetch all pointers first
     !--------------------------------------------------------------
-    call MAPL_GetPointer(IMPORT, PTR2D, 'AREA', _RC)
+    call MAPL_StateGetPointer(IMPORT, PTR2D, 'AREA', _RC)
     call MAPL_GetPointer(EXPORT, QLTOT, 'QLTOT', ALLOC=.TRUE., _RC)
     call MAPL_GetPointer(EXPORT, QITOT, 'QITOT', ALLOC=.TRUE., _RC)
 
@@ -553,8 +543,8 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       !--------------------------------------------------------------
       call MAPL_GetPointer(EXPORT, QLENT_SC, 'QLENT_SC', ALLOC=.TRUE., _RC)
       call MAPL_GetPointer(EXPORT, QIENT_SC, 'QIENT_SC', ALLOC=.TRUE., _RC)
-      call MAPL_GetPointer(EXPORT, SC_QT,   'SC_QT',     _RC)
-      call MAPL_GetPointer(EXPORT, SC_MSE,  'SC_MSE',    _RC)
+      call MAPL_StateGetPointer(EXPORT, SC_QT,   'SC_QT', _RC)
+      call MAPL_StateGetPointer(EXPORT, SC_MSE,  'SC_MSE', _RC)
 
       ! 2. Fused 3D Loop for Detrainment and Conversions
       !--------------------------------------------------------------
@@ -607,7 +597,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       if (associated(PTR3D)) PTR3D = DQRDT_SC    ! [kg/kg/s]
       call MAPL_GetPointer(EXPORT, PTR3D, 'SHLW_SNO3', ALLOC=.TRUE., _RC)
       if (associated(PTR3D)) PTR3D = DQSDT_SC    ! [kg/kg/s]
-      call MAPL_GetPointer(EXPORT, PTR2D,  'CUSH_SC', _RC)
+      call MAPL_StateGetPointer(EXPORT, PTR2D,  'CUSH_SC', _RC)
       if (associated(PTR2D)) PTR2D = CUSH
 
       ! 4. Fused 2D Loop for Column Integrals
@@ -695,11 +685,11 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
 ! Cleanup negative water species
 ! ------------------------------
-  call MAPL_GetPointer(EXPORT,   DQVDT_FILL,   'DQVDT_FILL_SC', _RC)
-  call MAPL_GetPointer(EXPORT, DQLLSDT_FILL, 'DQLLSDT_FILL_SC', _RC)
-  call MAPL_GetPointer(EXPORT, DQLCNDT_FILL, 'DQLCNDT_FILL_SC', _RC)
-  call MAPL_GetPointer(EXPORT, DQILSDT_FILL, 'DQILSDT_FILL_SC', _RC)
-  call MAPL_GetPointer(EXPORT, DQICNDT_FILL, 'DQICNDT_FILL_SC', _RC)
+  call MAPL_StateGetPointer(EXPORT,   DQVDT_FILL,   'DQVDT_FILL_SC', _RC)
+  call MAPL_StateGetPointer(EXPORT, DQLLSDT_FILL, 'DQLLSDT_FILL_SC', _RC)
+  call MAPL_StateGetPointer(EXPORT, DQLCNDT_FILL, 'DQLCNDT_FILL_SC', _RC)
+  call MAPL_StateGetPointer(EXPORT, DQILSDT_FILL, 'DQILSDT_FILL_SC', _RC)
+  call MAPL_StateGetPointer(EXPORT, DQICNDT_FILL, 'DQICNDT_FILL_SC', _RC)
   if (REPORT_UW_NEGATIVES) then
     call FILLQ2ZERO( Q       , MASS, DT=MOIST_DT, DQDT=  DQVDT_FILL, WARNING_LABEL="QV   After UW ShallowCu", VM=VMG, _RC)
     call FILLQ2ZERO( QLLS    , MASS, DT=MOIST_DT, DQDT=DQLLSDT_FILL, WARNING_LABEL="QLLS After UW ShallowCu", VM=VMG, _RC)
@@ -736,7 +726,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
   endif ! endif USE_PYMOIST_UW
 
-  call MAPL_TimerOff (MAPL,"--UW")
+  call MAPL_GridCompTimerStop(GC, "--UW", _RC)
 
 
 end subroutine UW_Run

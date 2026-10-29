@@ -92,17 +92,13 @@ subroutine GF_Setup (GC, ADVECTED, RC)
 
 end subroutine GF_Setup
 
-subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
-    type (MAPL_MetaComp), intent(inout) :: MAPL
-    type (ESMF_Config),   intent(inout) :: CF
+subroutine GF_Initialize (GC, CLOCK, IMPORT, EXPORT, RC)
+    type (ESMF_GridComp), intent(inout) :: GC     ! gridded component
     type (ESMF_State),    intent(inout) :: IMPORT
     type (ESMF_State),    intent(inout) :: EXPORT
     type (ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
     integer, optional                   :: RC  ! return code
     integer :: LM
-    type (ESMF_Alarm   )            :: ALARM
-    type (ESMF_TimeInterval)        :: TINT
-    real(ESMF_KIND_R8)              :: DT_R8
     real                            :: MOIST_DT
     real                            :: GF_DT
 
@@ -112,12 +108,12 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     type(ESMF_Time)         :: ringTime
     type(ESMF_TimeInterval) :: ringInterval
     integer                 :: year, month, day, hh, mm, ss
+    character(len=:), allocatable :: env_setting  ! GF_ENV_SETTING is a fixed-length ConvPar variable
 
-    call MAPL_Get(MAPL, RUNALARM=ALARM, LM=LM, _RC )
-    call ESMF_AlarmGet(ALARM, RingInterval=TINT, _RC)
-    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,_RC)
-    MOIST_DT = DT_R8
-    call MAPL_GetResource(MAPL, GF_DT, 'GF_DT:', default=MOIST_DT, _RC)
+    call MAPL_GridCompGet(GC, num_levels=LM, _RC)
+    ! Moist's timestep (MAPL2: the RUNALARM ring interval)
+    call MAPL_ClockGet(CLOCK, dt=MOIST_DT, _RC)
+    call MAPL_GridCompGetResource( GC, 'GF_DT', GF_DT, default=MOIST_DT, _RC)
 
     call ESMF_ClockGet(CLOCK, calendar=calendar, currTime=currentTime, _RC)
     call ESMF_TimeGet(currentTime, YY=year, MM=month, DD=day, H=hh, M=mm, S=ss, _RC)
@@ -131,11 +127,12 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
                                    Enabled      = .true.   ,    &
                                    Sticky       = .false.  , _RC)
 
-    call MAPL_GetResource(MAPL, USE_PYMOIST_GF2020, 'USE_PYMOIST_GF2020:', default=.FALSE., _RC)
+    call MAPL_GridCompGetResource( GC, 'USE_PYMOIST_GF2020', USE_PYMOIST_GF2020, default=.FALSE., _RC)
 
     if (USE_PYMOIST_GF2020) then
       call MAPL_ConfigSetAttribute(CF, MOIST_DT, 'DSL__GF2020_DT', _RC)
-      call MAPL_GetResource(MAPL, GF_ENV_SETTING            , 'GF_ENV_SETTING:'        ,default= 'DYNAMICS', _RC)
+      call MAPL_GridCompGetResource( GC, 'GF_ENV_SETTING', env_setting                    ,default= 'DYNAMICS', _RC)
+      GF_ENV_SETTING = env_setting
       if (trim(GF_ENV_SETTING)=='CURRENT') then
          call MAPL_ConfigSetAttribute(CF, 0, 'DSL__GF_ENV_SETTING:', _RC)
       elseif (trim(GF_ENV_SETTING)=='DYNAMICS') then
@@ -144,37 +141,37 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
       call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.convection.GF2020_interface", MAPL, IMPORT, EXPORT )
     else
     if (LM .eq. 72) then
-      call MAPL_GetResource(MAPL, USE_GF2020                , 'USE_GF2020:'            ,default= 0,    _RC )
-      call MAPL_GetResource(MAPL, ZERO_DIFF_LAND            , 'ZERO_DIFF_LAND:'        ,default= 1,    _RC )
-      call MAPL_GetResource(MAPL, ZERO_DIFF_VVEL            , 'ZERO_DIFF_VVEL:'        ,default= 1,    _RC )
-      call MAPL_GetResource(MAPL, ZERO_DIFF_ENTR            , 'ZERO_DIFF_ENTR:'        ,default= 1,    _RC )
-      call MAPL_GetResource(MAPL, ZERO_DIFF_TAU             , 'ZERO_DIFF_TAU:'         ,default= 1,    _RC )
-      call MAPL_GetResource(MAPL, ZERO_DIFF_VGRID           , 'ZERO_DIFF_VGRID:'       ,default= 1,    _RC )
-      call MAPL_GetResource(MAPL, ZERO_DIFF_HEI_EDT         , 'ZERO_DIFF_HEI_EDT:'     ,default= 1,    _RC )
-      call MAPL_GetResource(MAPL, ZERO_DIFF_OTHER           , 'ZERO_DIFF_OTHER:'       ,default= 1,    _RC )
+      call MAPL_GridCompGetResource( GC, 'USE_GF2020', USE_GF2020                            ,default= 0,    _RC )
+      call MAPL_GridCompGetResource( GC, 'ZERO_DIFF_LAND', ZERO_DIFF_LAND                    ,default= 1,    _RC )
+      call MAPL_GridCompGetResource( GC, 'ZERO_DIFF_VVEL', ZERO_DIFF_VVEL                    ,default= 1,    _RC )
+      call MAPL_GridCompGetResource( GC, 'ZERO_DIFF_ENTR', ZERO_DIFF_ENTR                    ,default= 1,    _RC )
+      call MAPL_GridCompGetResource( GC, 'ZERO_DIFF_TAU', ZERO_DIFF_TAU                      ,default= 1,    _RC )
+      call MAPL_GridCompGetResource( GC, 'ZERO_DIFF_VGRID', ZERO_DIFF_VGRID                  ,default= 1,    _RC )
+      call MAPL_GridCompGetResource( GC, 'ZERO_DIFF_HEI_EDT', ZERO_DIFF_HEI_EDT              ,default= 1,    _RC )
+      call MAPL_GridCompGetResource( GC, 'ZERO_DIFF_OTHER', ZERO_DIFF_OTHER                  ,default= 1,    _RC )
     else
-      call MAPL_GetResource(MAPL, USE_GF2020                , 'USE_GF2020:'            ,default= 1,    _RC )
-      call MAPL_GetResource(MAPL, ZERO_DIFF_LAND            , 'ZERO_DIFF_LAND:'        ,default= 0,    _RC )
-      call MAPL_GetResource(MAPL, ZERO_DIFF_VVEL            , 'ZERO_DIFF_VVEL:'        ,default= 0,    _RC )
-      call MAPL_GetResource(MAPL, ZERO_DIFF_ENTR            , 'ZERO_DIFF_ENTR:'        ,default= 0,    _RC )
-      call MAPL_GetResource(MAPL, ZERO_DIFF_TAU             , 'ZERO_DIFF_TAU:'         ,default= 0,    _RC )
-      call MAPL_GetResource(MAPL, ZERO_DIFF_VGRID           , 'ZERO_DIFF_VGRID:'       ,default= 0,    _RC )
-      call MAPL_GetResource(MAPL, ZERO_DIFF_HEI_EDT         , 'ZERO_DIFF_HEI_EDT:'     ,default= 0,    _RC )
-      call MAPL_GetResource(MAPL, ZERO_DIFF_OTHER           , 'ZERO_DIFF_OTHER:'       ,default= 0,    _RC )
+      call MAPL_GridCompGetResource( GC, 'USE_GF2020', USE_GF2020                            ,default= 1,    _RC )
+      call MAPL_GridCompGetResource( GC, 'ZERO_DIFF_LAND', ZERO_DIFF_LAND                    ,default= 0,    _RC )
+      call MAPL_GridCompGetResource( GC, 'ZERO_DIFF_VVEL', ZERO_DIFF_VVEL                    ,default= 0,    _RC )
+      call MAPL_GridCompGetResource( GC, 'ZERO_DIFF_ENTR', ZERO_DIFF_ENTR                    ,default= 0,    _RC )
+      call MAPL_GridCompGetResource( GC, 'ZERO_DIFF_TAU', ZERO_DIFF_TAU                      ,default= 0,    _RC )
+      call MAPL_GridCompGetResource( GC, 'ZERO_DIFF_VGRID', ZERO_DIFF_VGRID                  ,default= 0,    _RC )
+      call MAPL_GridCompGetResource( GC, 'ZERO_DIFF_HEI_EDT', ZERO_DIFF_HEI_EDT              ,default= 0,    _RC )
+      call MAPL_GridCompGetResource( GC, 'ZERO_DIFF_OTHER', ZERO_DIFF_OTHER                  ,default= 0,    _RC )
     endif
-    call MAPL_GetResource(MAPL, REPORT_GF_NEGATIVES, 'REPORT_GF_NEGATIVES:', default=.FALSE., _RC)
+    call MAPL_GridCompGetResource( GC, 'REPORT_GF_NEGATIVES', REPORT_GF_NEGATIVES, default=.FALSE., _RC)
     IF (USE_GF2020==1) THEN
-      call MAPL_GetResource(MAPL, ICUMULUS_GF(DEEP)         , 'DEEP:'                  ,default= 1,    _RC )
-      call MAPL_GetResource(MAPL, ICUMULUS_GF(SHAL)         , 'SHALLOW:'               ,default= 0,    _RC )
-      call MAPL_GetResource(MAPL, ICUMULUS_GF(MID)          , 'CONGESTUS:'             ,default= 1,    _RC )
-      call MAPL_GetResource(MAPL, CLOSURE_CHOICE(DEEP)      , 'CLOSURE_DEEP:'          ,default= 0,    _RC )
-      call MAPL_GetResource(MAPL, CLOSURE_CHOICE(SHAL)      , 'CLOSURE_SHALLOW:'       ,default= 7,    _RC )
-      call MAPL_GetResource(MAPL, CLOSURE_CHOICE(MID)       , 'CLOSURE_CONGESTUS:'     ,default= 3,    _RC )
-      call MAPL_GetResource(MAPL, USE_TRACER_TRANSP         , 'USE_TRACER_TRANSP:'     ,default= 1,    _RC )
-      call MAPL_GetResource(MAPL, USE_TRACER_SCAVEN         , 'USE_TRACER_SCAVEN:'     ,default= 1,    _RC )
-      call MAPL_GetResource(MAPL, USE_SCALE_DEP             , 'USE_SCALE_DEP:'         ,default= 1,    _RC )
-      call MAPL_GetResource(MAPL, USE_MOMENTUM_TRANSP       , 'USE_MOMENTUM_TRANSP:'   ,default= 1,    _RC )
-      call MAPL_GetResource(MAPL, DICYCLE                   , 'DICYCLE:'               ,default= 1,    _RC )
+      call MAPL_GridCompGetResource( GC, 'DEEP', ICUMULUS_GF(DEEP)                           ,default= 1,    _RC )
+      call MAPL_GridCompGetResource( GC, 'SHALLOW', ICUMULUS_GF(SHAL)                        ,default= 0,    _RC )
+      call MAPL_GridCompGetResource( GC, 'CONGESTUS', ICUMULUS_GF(MID)                       ,default= 1,    _RC )
+      call MAPL_GridCompGetResource( GC, 'CLOSURE_DEEP', CLOSURE_CHOICE(DEEP)                ,default= 0,    _RC )
+      call MAPL_GridCompGetResource( GC, 'CLOSURE_SHALLOW', CLOSURE_CHOICE(SHAL)             ,default= 7,    _RC )
+      call MAPL_GridCompGetResource( GC, 'CLOSURE_CONGESTUS', CLOSURE_CHOICE(MID)            ,default= 3,    _RC )
+      call MAPL_GridCompGetResource( GC, 'USE_TRACER_TRANSP', USE_TRACER_TRANSP              ,default= 1,    _RC )
+      call MAPL_GridCompGetResource( GC, 'USE_TRACER_SCAVEN', USE_TRACER_SCAVEN              ,default= 1,    _RC )
+      call MAPL_GridCompGetResource( GC, 'USE_SCALE_DEP', USE_SCALE_DEP                      ,default= 1,    _RC )
+      call MAPL_GridCompGetResource( GC, 'USE_MOMENTUM_TRANSP', USE_MOMENTUM_TRANSP          ,default= 1,    _RC )
+      call MAPL_GridCompGetResource( GC, 'DICYCLE', DICYCLE                                  ,default= 1,    _RC )
 
       ! -----------------------------------------------------------------------------------------
       ! GRELL-FREITAS ENTRAINMENT, MICROPHYSICS & DETRAINMENT CONTROLS
@@ -191,16 +188,16 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
       !   - ENTR_MD : Moderate rate; forces congestus clouds to terminate in the mid-troposphere.
       !   - ENTR_SH : High rate; ensures shallow boundary-layer clouds dilute and mix out rapidly.
       if (INT(ZERO_DIFF_ENTR) == 0) then
-        call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 0.1e-4,_RC )
-        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 0.6e-4,_RC )
-        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)        , 'ENTR_MD:'               ,default= 2.0e-4,_RC )
-        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)       , 'ENTR_SH:'               ,default= 6.0e-4,_RC )
+        call MAPL_GridCompGetResource( GC, 'MIN_ENTR_RATE', MIN_ENTR_RATE                      ,default= 0.1e-4,_RC )
+        call MAPL_GridCompGetResource( GC, 'ENTR_DP', CUM_ENTR_RATE(DEEP)                      ,default= 0.6e-4,_RC )
+        call MAPL_GridCompGetResource( GC, 'ENTR_MD', CUM_ENTR_RATE(MID)                       ,default= 2.0e-4,_RC )
+        call MAPL_GridCompGetResource( GC, 'ENTR_SH', CUM_ENTR_RATE(SHAL)                      ,default= 6.0e-4,_RC )
       else
         ! Legacy GF settings
-        call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 0.1e-4,_RC )
-        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 1.0e-4,_RC )
-        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)        , 'ENTR_MD:'               ,default= 9.0e-4,_RC )
-        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)       , 'ENTR_SH:'               ,default= 1.4e-3,_RC )
+        call MAPL_GridCompGetResource( GC, 'MIN_ENTR_RATE', MIN_ENTR_RATE                      ,default= 0.1e-4,_RC )
+        call MAPL_GridCompGetResource( GC, 'ENTR_DP', CUM_ENTR_RATE(DEEP)                      ,default= 1.0e-4,_RC )
+        call MAPL_GridCompGetResource( GC, 'ENTR_MD', CUM_ENTR_RATE(MID)                       ,default= 9.0e-4,_RC )
+        call MAPL_GridCompGetResource( GC, 'ENTR_SH', CUM_ENTR_RATE(SHAL)                      ,default= 1.4e-3,_RC )
       endif
 
       ! AUTOCONV: Toggles the convective autoconversion scheme.
@@ -208,130 +205,131 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
       !       to all total condensate regardless of temperature or phase).
       !   2 = Kessler scheme with temperature dependence (uses Hu et al. phase partitioning
       !       to scale efficiency and protect ice in glaciated sub-freezing updrafts).
-      call MAPL_GetResource(MAPL, AUTOCONV                  , 'AUTOCONV:'              ,default= 2,     _RC )
+      call MAPL_GridCompGetResource( GC, 'AUTOCONV', AUTOCONV                                ,default= 2,     _RC )
 
       ! C0_*: Internal Core Precipitation Efficiency [m^-1].
       !   Pure microphysics knob. Controls how aggressively the updraft core converts its 
       !   suspended cloud condensate (liquid/ice) into falling precipitation (rain/snow).
       !   Increasing C0 wrings out the plume internally, resulting in thinner, drier anvils aloft.
       !   Decreasing C0 allows the plume to transport more mass to the upper troposphere.
-      call MAPL_GetResource(MAPL, C0_DEEP                   , 'C0_DEEP:'               ,default= 2.0e-3,_RC )
-      call MAPL_GetResource(MAPL, C0_MID                    , 'C0_MID:'                ,default= 1.0e-3,_RC )
-      call MAPL_GetResource(MAPL, C0_SHAL                   , 'C0_SHAL:'               ,default= 0.0   ,_RC )
+      call MAPL_GridCompGetResource( GC, 'C0_DEEP', C0_DEEP                                  ,default= 2.0e-3,_RC )
+      call MAPL_GridCompGetResource( GC, 'C0_MID', C0_MID                                    ,default= 1.0e-3,_RC )
+      call MAPL_GridCompGetResource( GC, 'C0_SHAL', C0_SHAL                                  ,default= 0.0   ,_RC )
 
       ! C0_ICE_EFF: Ice Precipitation Efficiency Multiplier [fraction].
       !   Scales the base C0 autoconversion rate for the ice phase in AUTOCONV=2. 
       !   Decreasing this value protects upper-level ice from precipitating internally, 
       !   forcing it to detrain into the grid and build thicker cirrus anvils (increases TQI).
-      call MAPL_GetResource(MAPL, C0_ICE_EFF                , 'C0_ICE_EFF:'            ,default= 0.10  ,_RC )
+      call MAPL_GridCompGetResource( GC, 'C0_ICE_EFF', C0_ICE_EFF                            ,default= 0.10  ,_RC )
 
       ! QRC_CRIT_*: Critical Cloud Liquid Water Threshold [kg/kg].
       !   The updraft must hold this much liquid before Kessler autoconversion is allowed to begin.
       !   Separated by convection type to allow independent tuning of deep vs. mid-level moisture transport.
-      call MAPL_GetResource(MAPL, QRC_CRIT_OCN_DP           , 'QRC_CRIT_OCN_DP:'       ,default= 3.0e-4,_RC )
-      call MAPL_GetResource(MAPL, QRC_CRIT_OCN_MD           , 'QRC_CRIT_OCN_MD:'       ,default= 3.0e-4,_RC )
-      call MAPL_GetResource(MAPL, QRC_CRIT_LND_DP           , 'QRC_CRIT_LND_DP:'       ,default= 3.0e-4,_RC )
-      call MAPL_GetResource(MAPL, QRC_CRIT_LND_MD           , 'QRC_CRIT_LND_MD:'       ,default= 3.0e-4,_RC )
+      call MAPL_GridCompGetResource( GC, 'QRC_CRIT_OCN_DP', QRC_CRIT_OCN_DP                  ,default= 3.0e-4,_RC )
+      call MAPL_GridCompGetResource( GC, 'QRC_CRIT_OCN_MD', QRC_CRIT_OCN_MD                  ,default= 3.0e-4,_RC )
+      call MAPL_GridCompGetResource( GC, 'QRC_CRIT_LND_DP', QRC_CRIT_LND_DP                  ,default= 3.0e-4,_RC )
+      call MAPL_GridCompGetResource( GC, 'QRC_CRIT_LND_MD', QRC_CRIT_LND_MD                  ,default= 3.0e-4,_RC )
 
       ! C1_*: Lateral Detrainment / Plume Shape Parameter [m^-1].
       !   Macro-physics knob. Completely decoupled from C0 internal microphysics.
       !   Controls the continuous fractional mass shed by the plume into the environment during ascent.
       !   A value > 0.0 activates explicit lateral shedding. A value of 0.0 treats the plume 
       !   as laterally closed, deferring entirely to the bulk detrainment logic.
-      call MAPL_GetResource(MAPL, C1_DEEP                   , 'C1_DEEP:'               ,default= 3.0e-4,_RC )
-      call MAPL_GetResource(MAPL, C1_MID                    , 'C1_MID:'                ,default= 1.5e-4,_RC )
-      call MAPL_GetResource(MAPL, C1_SHAL                   , 'C1_SHAL:'               ,default= 0.0   ,_RC )
+      call MAPL_GridCompGetResource( GC, 'C1_DEEP', C1_DEEP                                  ,default= 3.0e-4,_RC )
+      call MAPL_GridCompGetResource( GC, 'C1_MID', C1_MID                                    ,default= 1.5e-4,_RC )
+      call MAPL_GridCompGetResource( GC, 'C1_SHAL', C1_SHAL                                  ,default= 0.0   ,_RC )
 
       if (INT(ZERO_DIFF_TAU) == 0) then
-         call MAPL_GetResource(MAPL, GF_MIN_AREA               , 'GF_MIN_AREA:'           ,default= 0.0,   _RC )
+         call MAPL_GridCompGetResource( GC, 'GF_MIN_AREA', GF_MIN_AREA                          ,default= 0.0,   _RC )
                                      SGS_W_TIMESCALE = 1.0 ! factor for adjusting GF2020 timescales
-         call MAPL_GetResource(MAPL, SGS_W_TIMESCALE           , 'SGS_W_TIMESCALE:'       ,default= SGS_W_TIMESCALE, _RC )
+         call MAPL_GridCompGetResource( GC, 'SGS_W_TIMESCALE', SGS_W_TIMESCALE                  ,default= (SGS_W_TIMESCALE), _RC )
          ! These are UPPER bounds for new GF timescales
-         call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 3600., _RC )
-         call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default= 5400., _RC )
+         call MAPL_GridCompGetResource( GC, 'TAU_MID', TAU_MID                                  ,default= 3600., _RC )
+         call MAPL_GridCompGetResource( GC, 'TAU_DEEP', TAU_DEEP                                ,default= 5400., _RC )
         ! FADJ_MASSFLX is a fractional mass flux tuning factor (1.0 is no reduction) in low CAPE environments
-        call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(DEEP)    , 'FADJ_MASSFLX_DP:'       ,default= 1.0,   _RC )
-        call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(SHAL)    , 'FADJ_MASSFLX_SH:'       ,default= 0.5,   _RC )
-        call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(MID)     , 'FADJ_MASSFLX_MD:'       ,default= 1.0,   _RC )
+        call MAPL_GridCompGetResource( GC, 'FADJ_MASSFLX_DP', CUM_FADJ_MASSFLX(DEEP)           ,default= 1.0,   _RC )
+        call MAPL_GridCompGetResource( GC, 'FADJ_MASSFLX_SH', CUM_FADJ_MASSFLX(SHAL)           ,default= 0.5,   _RC )
+        call MAPL_GridCompGetResource( GC, 'FADJ_MASSFLX_MD', CUM_FADJ_MASSFLX(MID)            ,default= 1.0,   _RC )
       else
         ! Legacy GF settings
-        call MAPL_GetResource(MAPL, GF_MIN_AREA               , 'GF_MIN_AREA:'           ,default= 1.e6,  _RC )
+        call MAPL_GridCompGetResource( GC, 'GF_MIN_AREA', GF_MIN_AREA                          ,default= 1.e6,  _RC )
                                     SGS_W_TIMESCALE = 0.0 ! do not use new scheme for timescales
-        call MAPL_GetResource(MAPL, SGS_W_TIMESCALE           , 'SGS_W_TIMESCALE:'       ,default= SGS_W_TIMESCALE,_RC )
+        call MAPL_GridCompGetResource( GC, 'SGS_W_TIMESCALE', SGS_W_TIMESCALE                  ,default= (SGS_W_TIMESCALE),_RC )
         ! These are LOWER bounds for classic GF timescales
-        call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 3600., _RC )
-        call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default= 5400., _RC )
+        call MAPL_GridCompGetResource( GC, 'TAU_MID', TAU_MID                                  ,default= 3600., _RC )
+        call MAPL_GridCompGetResource( GC, 'TAU_DEEP', TAU_DEEP                                ,default= 5400., _RC )
         ! FADJ_MASSFLX is a fractional mass flux tuning factor (1.0 is no reduction) in low CAPE environments
-        call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(DEEP)    , 'FADJ_MASSFLX_DP:'       ,default= 1.0,   _RC )
-        call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(SHAL)    , 'FADJ_MASSFLX_SH:'       ,default= 1.0,   _RC )
-        call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(MID)     , 'FADJ_MASSFLX_MD:'       ,default= 1.0,   _RC )
+        call MAPL_GridCompGetResource( GC, 'FADJ_MASSFLX_DP', CUM_FADJ_MASSFLX(DEEP)           ,default= 1.0,   _RC )
+        call MAPL_GridCompGetResource( GC, 'FADJ_MASSFLX_SH', CUM_FADJ_MASSFLX(SHAL)           ,default= 1.0,   _RC )
+        call MAPL_GridCompGetResource( GC, 'FADJ_MASSFLX_MD', CUM_FADJ_MASSFLX(MID)            ,default= 1.0,   _RC )
       endif
 
       if (INT(ZERO_DIFF_VGRID) == 0) then
-        call MAPL_GetResource(MAPL, CLEV_GRID                 , 'CLEV_GRID:'             ,default= 1,     _RC )
-        call MAPL_GetResource(MAPL, VERT_DISCR                , 'VERT_DISCR:'            ,default= 1,     _RC )
+        call MAPL_GridCompGetResource( GC, 'CLEV_GRID', CLEV_GRID                              ,default= 1,     _RC )
+        call MAPL_GridCompGetResource( GC, 'VERT_DISCR', VERT_DISCR                            ,default= 1,     _RC )
       else
         ! Legacy GF settings
-        call MAPL_GetResource(MAPL, CLEV_GRID                 , 'CLEV_GRID:'             ,default= 0,     _RC )
-        call MAPL_GetResource(MAPL, VERT_DISCR                , 'VERT_DISCR:'            ,default= 0,     _RC )
+        call MAPL_GridCompGetResource( GC, 'CLEV_GRID', CLEV_GRID                              ,default= 0,     _RC )
+        call MAPL_GridCompGetResource( GC, 'VERT_DISCR', VERT_DISCR                            ,default= 0,     _RC )
       endif
 
       if (INT(ZERO_DIFF_OTHER) == 0) then
-        call MAPL_GetResource(MAPL, USE_INV_LAYERS            , 'USE_INV_LAYERS:'        ,default= .FALSE., _RC )
-        call MAPL_GetResource(MAPL, USE_SMOOTH_TEND           , 'USE_SMOOTH_TEND:'       ,default= 0,     _RC )
-        call MAPL_GetResource(MAPL, SATUR_CALC                , 'SATUR_CALC:'            ,default= 1,     _RC )
-        call MAPL_GetResource(MAPL, BC_METH                   , 'BC_METH:'               ,default= 1,     _RC )
-        call MAPL_GetResource(MAPL, USE_REBCB                 , 'USE_REBCB:'             ,default= 1,     _RC )
-        call MAPL_GetResource(MAPL, LAMBAU_DEEP               , 'LAMBAU_DEEP:'           ,default= 0.0,   _RC )
-        call MAPL_GetResource(MAPL, LAMBAU_MID                , 'LAMBAU_MID:'            ,default= 0.0,   _RC )
-        call MAPL_GetResource(MAPL, MOIST_TRIGGER             , 'MOIST_TRIGGER:'         ,default= 1,     _RC )
-        call MAPL_GetResource(MAPL ,FRAC_MODIS                , 'FRAC_MODIS:'            ,default= 1,     _RC )
-        call MAPL_GetResource(MAPL ,EVAP_FIX                  , 'EVAP_FIX:'              ,default= 1,     _RC )
-        call MAPL_GetResource(MAPL, CUM_AVE_LAYER(DEEP)       , 'AVE_LAYER_DP:'          ,default= 80.,   _RC )
-        call MAPL_GetResource(MAPL, CUM_AVE_LAYER(SHAL)       , 'AVE_LAYER_SH:'          ,default= 20.,   _RC )
-        call MAPL_GetResource(MAPL, CUM_AVE_LAYER(MID)        , 'AVE_LAYER_MD:'          ,default= 50.,   _RC )
+        call MAPL_GridCompGetResource( GC, 'USE_INV_LAYERS', USE_INV_LAYERS                    ,default= .FALSE., _RC )
+        call MAPL_GridCompGetResource( GC, 'USE_SMOOTH_TEND', USE_SMOOTH_TEND                  ,default= 0,     _RC )
+        call MAPL_GridCompGetResource( GC, 'SATUR_CALC', SATUR_CALC                            ,default= 1,     _RC )
+        call MAPL_GridCompGetResource( GC, 'BC_METH', BC_METH                                  ,default= 1,     _RC )
+        call MAPL_GridCompGetResource( GC, 'USE_REBCB', USE_REBCB                              ,default= 1,     _RC )
+        call MAPL_GridCompGetResource( GC, 'LAMBAU_DEEP', LAMBAU_DEEP                          ,default= 0.0,   _RC )
+        call MAPL_GridCompGetResource( GC, 'LAMBAU_MID', LAMBAU_MID                            ,default= 0.0,   _RC )
+        call MAPL_GridCompGetResource( GC, 'MOIST_TRIGGER', MOIST_TRIGGER                      ,default= 1,     _RC )
+        call MAPL_GridCompGetResource( GC, 'FRAC_MODIS', FRAC_MODIS                            ,default= 1,     _RC )
+        call MAPL_GridCompGetResource( GC, 'EVAP_FIX', EVAP_FIX                                ,default= 1,     _RC )
+        call MAPL_GridCompGetResource( GC, 'AVE_LAYER_DP', CUM_AVE_LAYER(DEEP)                 ,default= 80.,   _RC )
+        call MAPL_GridCompGetResource( GC, 'AVE_LAYER_SH', CUM_AVE_LAYER(SHAL)                 ,default= 20.,   _RC )
+        call MAPL_GridCompGetResource( GC, 'AVE_LAYER_MD', CUM_AVE_LAYER(MID)                  ,default= 50.,   _RC )
       else
         ! Legacy GF settings
-        call MAPL_GetResource(MAPL, USE_INV_LAYERS            , 'USE_INV_LAYERS:'        ,default= .TRUE., _RC )
-        call MAPL_GetResource(MAPL, USE_SMOOTH_TEND           , 'USE_SMOOTH_TEND:'       ,default= 0,     _RC )
-        call MAPL_GetResource(MAPL, SATUR_CALC                , 'SATUR_CALC:'            ,default= 0,     _RC )
-        call MAPL_GetResource(MAPL, BC_METH                   , 'BC_METH:'               ,default= 0,     _RC )
-        call MAPL_GetResource(MAPL, USE_REBCB                 , 'USE_REBCB:'             ,default= 0,     _RC )
-        call MAPL_GetResource(MAPL, LAMBAU_DEEP               , 'LAMBAU_DEEP:'           ,default= 2.0,   _RC )
-        call MAPL_GetResource(MAPL, LAMBAU_MID                , 'LAMBAU_MID:'            ,default= 2.0,   _RC )
-        call MAPL_GetResource(MAPL, MOIST_TRIGGER             , 'MOIST_TRIGGER:'         ,default= 0,     _RC )
-        call MAPL_GetResource(MAPL ,FRAC_MODIS                , 'FRAC_MODIS:'            ,default= 0,     _RC )
-        call MAPL_GetResource(MAPL ,EVAP_FIX                  , 'EVAP_FIX:'              ,default= 0,     _RC )
-        call MAPL_GetResource(MAPL, CUM_AVE_LAYER(DEEP)       , 'AVE_LAYER_DP:'          ,default= 50.,   _RC )
-        call MAPL_GetResource(MAPL, CUM_AVE_LAYER(SHAL)       , 'AVE_LAYER_SH:'          ,default= 30.,   _RC )
-        call MAPL_GetResource(MAPL, CUM_AVE_LAYER(MID)        , 'AVE_LAYER_MD:'          ,default= 50.,   _RC )
+        call MAPL_GridCompGetResource( GC, 'USE_INV_LAYERS', USE_INV_LAYERS                    ,default= .TRUE., _RC )
+        call MAPL_GridCompGetResource( GC, 'USE_SMOOTH_TEND', USE_SMOOTH_TEND                  ,default= 0,     _RC )
+        call MAPL_GridCompGetResource( GC, 'SATUR_CALC', SATUR_CALC                            ,default= 0,     _RC )
+        call MAPL_GridCompGetResource( GC, 'BC_METH', BC_METH                                  ,default= 0,     _RC )
+        call MAPL_GridCompGetResource( GC, 'USE_REBCB', USE_REBCB                              ,default= 0,     _RC )
+        call MAPL_GridCompGetResource( GC, 'LAMBAU_DEEP', LAMBAU_DEEP                          ,default= 2.0,   _RC )
+        call MAPL_GridCompGetResource( GC, 'LAMBAU_MID', LAMBAU_MID                            ,default= 2.0,   _RC )
+        call MAPL_GridCompGetResource( GC, 'MOIST_TRIGGER', MOIST_TRIGGER                      ,default= 0,     _RC )
+        call MAPL_GridCompGetResource( GC, 'FRAC_MODIS', FRAC_MODIS                            ,default= 0,     _RC )
+        call MAPL_GridCompGetResource( GC, 'EVAP_FIX', EVAP_FIX                                ,default= 0,     _RC )
+        call MAPL_GridCompGetResource( GC, 'AVE_LAYER_DP', CUM_AVE_LAYER(DEEP)                 ,default= 50.,   _RC )
+        call MAPL_GridCompGetResource( GC, 'AVE_LAYER_SH', CUM_AVE_LAYER(SHAL)                 ,default= 30.,   _RC )
+        call MAPL_GridCompGetResource( GC, 'AVE_LAYER_MD', CUM_AVE_LAYER(MID)                  ,default= 50.,   _RC )
       endif
 
-      call MAPL_GetResource(MAPL, OUTPUT_SOUND              , 'OUTPUT_SOUND:'          ,default= 0,    _RC )
-      call MAPL_GetResource(MAPL, USE_MEMORY                , 'USE_MEMORY:'            ,default=-1,    _RC )
-      call MAPL_GetResource(MAPL, TAU_OCEA_CP               , 'TAU_OCEA_CP:'           ,default= 21600., _RC )
-      call MAPL_GetResource(MAPL, TAU_LAND_CP               , 'TAU_LAND_CP:'           ,default= 21600., _RC )
-      call MAPL_GetResource(MAPL, DOWNDRAFT                 , 'DOWNDRAFT:'             ,default= .TRUE., _RC )
-      call MAPL_GetResource(MAPL, USE_FLUX_FORM             , 'USE_FLUX_FORM:'         ,default= 1,    _RC )
-      call MAPL_GetResource(MAPL, USE_TRACER_EVAP           , 'USE_TRACER_EVAP:'       ,default= 1,    _RC )
-      call MAPL_GetResource(MAPL, APPLY_SUB_MP              , 'APPLY_SUB_MP:'          ,default= 0,    _RC )
-      call MAPL_GetResource(MAPL, ALP1                      , 'ALP1:'                  ,default= 1.,   _RC )
-      call MAPL_GetResource(MAPL, LIGHTNING_DIAG            , 'LIGHTNING_DIAG:'        ,default= 0,    _RC )
-      call MAPL_GetResource(MAPL, OVERSHOOT                 , 'OVERSHOOT:'             ,default= 0.,   _RC )
-      call MAPL_GetResource(MAPL, USE_WETBULB               , 'USE_WETBULB:'           ,default= 0,    _RC )
-      call MAPL_GetResource(MAPL, LAMBAU_SHDN               , 'LAMBAU_SHDN:'           ,default= 2.,   _RC )
-      call MAPL_GetResource(MAPL, MAX_TQ_TEND               , 'MAX_TQ_TEND:'           ,default= 100., _RC )
-      call MAPL_GetResource(MAPL, BETA_SH                   , 'BETA_SH:'               ,default= 2.2,  _RC )
-      call MAPL_GetResource(MAPL, USE_LINEAR_SUBCL_MF       , 'USE_LINEAR_SUBCL_MF:'   ,default= 0,    _RC )
-      call MAPL_GetResource(MAPL, CUM_CAP_MAXS(DEEP)        , 'CAP_MAXS_DP:'           ,default= 150.0, _RC )
-      call MAPL_GetResource(MAPL, CUM_CAP_MAXS(SHAL)        , 'CAP_MAXS_SH:'           ,default=  50.0, _RC )
-      call MAPL_GetResource(MAPL, CUM_CAP_MAXS(MID)         , 'CAP_MAXS_MD:'           ,default= 150.0, _RC )
-      call MAPL_GetResource(MAPL, GF_ENV_SETTING            , 'GF_ENV_SETTING:'        ,default= 'DYNAMICS', _RC)
-      call MAPL_GetResource(MAPL, STOCH_TOP                 , 'STOCH_TOP:'             ,default= 2.50,  _RC)
-      call MAPL_GetResource(MAPL, STOCH_BOT                 , 'STOCH_BOT:'             ,default= 0.75,  _RC)
-      call MAPL_GetResource(MAPL, STOCHASTIC_CNV            , 'STOCHASTIC_CNV:'        ,default= .FALSE.,_RC)
-      call MAPL_GetResource(MAPL, USE_FCT                   , 'USE_FCT:'               ,default= 0,     _RC )
-      call MAPL_GetResource(MAPL, ADV_TRIGGER               , 'ADV_TRIGGER:'           ,default= 0,     _RC )
+      call MAPL_GridCompGetResource( GC, 'OUTPUT_SOUND', OUTPUT_SOUND                        ,default= 0,    _RC )
+      call MAPL_GridCompGetResource( GC, 'USE_MEMORY', USE_MEMORY                            ,default=-1,    _RC )
+      call MAPL_GridCompGetResource( GC, 'TAU_OCEA_CP', TAU_OCEA_CP                          ,default= 21600., _RC )
+      call MAPL_GridCompGetResource( GC, 'TAU_LAND_CP', TAU_LAND_CP                          ,default= 21600., _RC )
+      call MAPL_GridCompGetResource( GC, 'DOWNDRAFT', DOWNDRAFT                              ,default= .TRUE., _RC )
+      call MAPL_GridCompGetResource( GC, 'USE_FLUX_FORM', USE_FLUX_FORM                      ,default= 1,    _RC )
+      call MAPL_GridCompGetResource( GC, 'USE_TRACER_EVAP', USE_TRACER_EVAP                  ,default= 1,    _RC )
+      call MAPL_GridCompGetResource( GC, 'APPLY_SUB_MP', APPLY_SUB_MP                        ,default= 0,    _RC )
+      call MAPL_GridCompGetResource( GC, 'ALP1', ALP1                                        ,default= 1.,   _RC )
+      call MAPL_GridCompGetResource( GC, 'LIGHTNING_DIAG', LIGHTNING_DIAG                    ,default= 0,    _RC )
+      call MAPL_GridCompGetResource( GC, 'OVERSHOOT', OVERSHOOT                              ,default= 0.,   _RC )
+      call MAPL_GridCompGetResource( GC, 'USE_WETBULB', USE_WETBULB                          ,default= 0,    _RC )
+      call MAPL_GridCompGetResource( GC, 'LAMBAU_SHDN', LAMBAU_SHDN                          ,default= 2.,   _RC )
+      call MAPL_GridCompGetResource( GC, 'MAX_TQ_TEND', MAX_TQ_TEND                          ,default= 100., _RC )
+      call MAPL_GridCompGetResource( GC, 'BETA_SH', BETA_SH                                  ,default= 2.2,  _RC )
+      call MAPL_GridCompGetResource( GC, 'USE_LINEAR_SUBCL_MF', USE_LINEAR_SUBCL_MF          ,default= 0,    _RC )
+      call MAPL_GridCompGetResource( GC, 'CAP_MAXS_DP', CUM_CAP_MAXS(DEEP)                   ,default= 150.0, _RC )
+      call MAPL_GridCompGetResource( GC, 'CAP_MAXS_SH', CUM_CAP_MAXS(SHAL)                   ,default=  50.0, _RC )
+      call MAPL_GridCompGetResource( GC, 'CAP_MAXS_MD', CUM_CAP_MAXS(MID)                    ,default= 150.0, _RC )
+      call MAPL_GridCompGetResource( GC, 'GF_ENV_SETTING', env_setting                    ,default= 'DYNAMICS', _RC)
+      GF_ENV_SETTING = env_setting
+      call MAPL_GridCompGetResource( GC, 'STOCH_TOP', STOCH_TOP                              ,default= 2.50,  _RC)
+      call MAPL_GridCompGetResource( GC, 'STOCH_BOT', STOCH_BOT                              ,default= 0.75,  _RC)
+      call MAPL_GridCompGetResource( GC, 'STOCHASTIC_CNV', STOCHASTIC_CNV                    ,default= .FALSE.,_RC)
+      call MAPL_GridCompGetResource( GC, 'USE_FCT', USE_FCT                                  ,default= 0,     _RC )
+      call MAPL_GridCompGetResource( GC, 'ADV_TRIGGER', ADV_TRIGGER                          ,default= 0,     _RC )
       if (INT(ZERO_DIFF_HEI_EDT) == 0) then
         ! ============================================================================
         ! Grell-Freitas Convection Scheme Tuning Parameters
@@ -361,97 +359,98 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
         !   - Mid-level: Higher values than deep (drier mid-levels, more evaporation)
         !
         ! ============================================================================
-        call MAPL_GetResource(MAPL, CUM_USE_EXCESS(DEEP)      , 'USE_EXCESS_DP:'         ,default= 3,     _RC )
-        call MAPL_GetResource(MAPL, CUM_USE_EXCESS(SHAL)      , 'USE_EXCESS_SH:'         ,default= 3,     _RC )
-        call MAPL_GetResource(MAPL, CUM_USE_EXCESS(MID)       , 'USE_EXCESS_MD:'         ,default= 3,     _RC )
-        call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(DEEP)   , 'HEI_DOWN_LAND_DP:'      ,default= 0.30,  _RC )
-        call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(SHAL)   , 'HEI_DOWN_LAND_SH:'      ,default= 0.00,  _RC )
-        call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(MID)    , 'HEI_DOWN_LAND_MD:'      ,default= 0.30,  _RC )
-        call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(DEEP)  , 'HEI_DOWN_OCEAN_DP:'     ,default= 0.60,  _RC )
-        call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(SHAL)  , 'HEI_DOWN_OCEAN_SH:'     ,default= 0.00,  _RC )
-        call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(MID)   , 'HEI_DOWN_OCEAN_MD:'     ,default= 0.60,  _RC )
-        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(DEEP)   , 'HEI_UPDF_LAND_DP:'      ,default= 0.40,  _RC )
-        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(SHAL)   , 'HEI_UPDF_LAND_SH:'      ,default= 0.20,  _RC )
-        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(MID)    , 'HEI_UPDF_LAND_MD:'      ,default= 0.40,  _RC )
-        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(DEEP)  , 'HEI_UPDF_OCEAN_DP:'     ,default= 0.40,  _RC )
-        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(SHAL)  , 'HEI_UPDF_OCEAN_SH:'     ,default= 0.20,  _RC )
-        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(MID)   , 'HEI_UPDF_OCEAN_MD:'     ,default= 0.40,  _RC )
-        call MAPL_GetResource(MAPL, CUM_MIN_EDT_LAND(DEEP)    , 'MIN_EDT_LAND_DP:'       ,default= 0.10,  _RC )
-        call MAPL_GetResource(MAPL, CUM_MIN_EDT_LAND(SHAL)    , 'MIN_EDT_LAND_SH:'       ,default= 0.00,  _RC )
-        call MAPL_GetResource(MAPL, CUM_MIN_EDT_LAND(MID)     , 'MIN_EDT_LAND_MD:'       ,default= 0.10,  _RC )
-        call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(DEEP)   , 'MIN_EDT_OCEAN_DP:'      ,default= 0.10,  _RC )
-        call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(SHAL)   , 'MIN_EDT_OCEAN_SH:'      ,default= 0.00,  _RC )
-        call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(MID)    , 'MIN_EDT_OCEAN_MD:'      ,default= 0.10,  _RC )
-        call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(DEEP)    , 'MAX_EDT_LAND_DP:'       ,default= 0.90,  _RC )
-        call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(SHAL)    , 'MAX_EDT_LAND_SH:'       ,default= 0.00,  _RC )
-        call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(MID)     , 'MAX_EDT_LAND_MD:'       ,default= 0.90,  _RC )
-        call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(DEEP)   , 'MAX_EDT_OCEAN_DP:'      ,default= 0.90,  _RC )
-        call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(SHAL)   , 'MAX_EDT_OCEAN_SH:'      ,default= 0.00,  _RC )
-        call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(MID)    , 'MAX_EDT_OCEAN_MD:'      ,default= 0.90,  _RC )
+        call MAPL_GridCompGetResource( GC, 'USE_EXCESS_DP', CUM_USE_EXCESS(DEEP)               ,default= 3,     _RC )
+        call MAPL_GridCompGetResource( GC, 'USE_EXCESS_SH', CUM_USE_EXCESS(SHAL)               ,default= 3,     _RC )
+        call MAPL_GridCompGetResource( GC, 'USE_EXCESS_MD', CUM_USE_EXCESS(MID)                ,default= 3,     _RC )
+        call MAPL_GridCompGetResource( GC, 'HEI_DOWN_LAND_DP', CUM_HEI_DOWN_LAND(DEEP)         ,default= 0.30,  _RC )
+        call MAPL_GridCompGetResource( GC, 'HEI_DOWN_LAND_SH', CUM_HEI_DOWN_LAND(SHAL)         ,default= 0.00,  _RC )
+        call MAPL_GridCompGetResource( GC, 'HEI_DOWN_LAND_MD', CUM_HEI_DOWN_LAND(MID)          ,default= 0.30,  _RC )
+        call MAPL_GridCompGetResource( GC, 'HEI_DOWN_OCEAN_DP', CUM_HEI_DOWN_OCEAN(DEEP)       ,default= 0.60,  _RC )
+        call MAPL_GridCompGetResource( GC, 'HEI_DOWN_OCEAN_SH', CUM_HEI_DOWN_OCEAN(SHAL)       ,default= 0.00,  _RC )
+        call MAPL_GridCompGetResource( GC, 'HEI_DOWN_OCEAN_MD', CUM_HEI_DOWN_OCEAN(MID)        ,default= 0.60,  _RC )
+        call MAPL_GridCompGetResource( GC, 'HEI_UPDF_LAND_DP', CUM_HEI_UPDF_LAND(DEEP)         ,default= 0.40,  _RC )
+        call MAPL_GridCompGetResource( GC, 'HEI_UPDF_LAND_SH', CUM_HEI_UPDF_LAND(SHAL)         ,default= 0.20,  _RC )
+        call MAPL_GridCompGetResource( GC, 'HEI_UPDF_LAND_MD', CUM_HEI_UPDF_LAND(MID)          ,default= 0.40,  _RC )
+        call MAPL_GridCompGetResource( GC, 'HEI_UPDF_OCEAN_DP', CUM_HEI_UPDF_OCEAN(DEEP)       ,default= 0.40,  _RC )
+        call MAPL_GridCompGetResource( GC, 'HEI_UPDF_OCEAN_SH', CUM_HEI_UPDF_OCEAN(SHAL)       ,default= 0.20,  _RC )
+        call MAPL_GridCompGetResource( GC, 'HEI_UPDF_OCEAN_MD', CUM_HEI_UPDF_OCEAN(MID)        ,default= 0.40,  _RC )
+        call MAPL_GridCompGetResource( GC, 'MIN_EDT_LAND_DP', CUM_MIN_EDT_LAND(DEEP)           ,default= 0.10,  _RC )
+        call MAPL_GridCompGetResource( GC, 'MIN_EDT_LAND_SH', CUM_MIN_EDT_LAND(SHAL)           ,default= 0.00,  _RC )
+        call MAPL_GridCompGetResource( GC, 'MIN_EDT_LAND_MD', CUM_MIN_EDT_LAND(MID)            ,default= 0.10,  _RC )
+        call MAPL_GridCompGetResource( GC, 'MIN_EDT_OCEAN_DP', CUM_MIN_EDT_OCEAN(DEEP)         ,default= 0.10,  _RC )
+        call MAPL_GridCompGetResource( GC, 'MIN_EDT_OCEAN_SH', CUM_MIN_EDT_OCEAN(SHAL)         ,default= 0.00,  _RC )
+        call MAPL_GridCompGetResource( GC, 'MIN_EDT_OCEAN_MD', CUM_MIN_EDT_OCEAN(MID)          ,default= 0.10,  _RC )
+        call MAPL_GridCompGetResource( GC, 'MAX_EDT_LAND_DP', CUM_MAX_EDT_LAND(DEEP)           ,default= 0.90,  _RC )
+        call MAPL_GridCompGetResource( GC, 'MAX_EDT_LAND_SH', CUM_MAX_EDT_LAND(SHAL)           ,default= 0.00,  _RC )
+        call MAPL_GridCompGetResource( GC, 'MAX_EDT_LAND_MD', CUM_MAX_EDT_LAND(MID)            ,default= 0.90,  _RC )
+        call MAPL_GridCompGetResource( GC, 'MAX_EDT_OCEAN_DP', CUM_MAX_EDT_OCEAN(DEEP)         ,default= 0.90,  _RC )
+        call MAPL_GridCompGetResource( GC, 'MAX_EDT_OCEAN_SH', CUM_MAX_EDT_OCEAN(SHAL)         ,default= 0.00,  _RC )
+        call MAPL_GridCompGetResource( GC, 'MAX_EDT_OCEAN_MD', CUM_MAX_EDT_OCEAN(MID)          ,default= 0.90,  _RC )
       else
         ! support for legacy GF settings
-        call MAPL_GetResource(MAPL, CUM_USE_EXCESS(DEEP)      , 'USE_EXCESS_DP:'         ,default= 2,     _RC )
-        call MAPL_GetResource(MAPL, CUM_USE_EXCESS(SHAL)      , 'USE_EXCESS_SH:'         ,default= 3,     _RC )
-        call MAPL_GetResource(MAPL, CUM_USE_EXCESS(MID)       , 'USE_EXCESS_MD:'         ,default= 2,     _RC )
-        call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(DEEP)   , 'HEI_DOWN_LAND_DP:'      ,default= 0.3,   _RC )
-        call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(SHAL)   , 'HEI_DOWN_LAND_SH:'      ,default= 0.0,   _RC )    
-        call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(MID)    , 'HEI_DOWN_LAND_MD:'      ,default= 0.3,   _RC )
-        call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(DEEP)  , 'HEI_DOWN_OCEAN_DP:'     ,default= 0.4,   _RC )
-        call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(SHAL)  , 'HEI_DOWN_OCEAN_SH:'     ,default= 0.0,   _RC )
-        call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(MID)   , 'HEI_DOWN_OCEAN_MD:'     ,default= 0.4,   _RC )
-        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(DEEP)   , 'HEI_UPDF_LAND_DP:'      ,default= 0.4,   _RC )
-        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(SHAL)   , 'HEI_UPDF_LAND_SH:'      ,default= 0.2,   _RC )
-        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(MID)    , 'HEI_UPDF_LAND_MD:'      ,default= 0.4,   _RC )
-        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(DEEP)  , 'HEI_UPDF_OCEAN_DP:'     ,default= 0.4,   _RC )
-        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(SHAL)  , 'HEI_UPDF_OCEAN_SH:'     ,default= 0.2,   _RC )
-        call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(MID)   , 'HEI_UPDF_OCEAN_MD:'     ,default= 0.6,   _RC )
-        call MAPL_GetResource(MAPL, CUM_MIN_EDT_LAND(DEEP)    , 'MIN_EDT_LAND_DP:'       ,default= 0.1,   _RC )
-        call MAPL_GetResource(MAPL, CUM_MIN_EDT_LAND(SHAL)    , 'MIN_EDT_LAND_SH:'       ,default= 0.0,   _RC )
-        call MAPL_GetResource(MAPL, CUM_MIN_EDT_LAND(MID)     , 'MIN_EDT_LAND_MD:'       ,default= 0.1,   _RC )
-        call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(DEEP)   , 'MIN_EDT_OCEAN_DP:'      ,default= 0.1,   _RC )
-        call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(SHAL)   , 'MIN_EDT_OCEAN_SH:'      ,default= 0.0,   _RC )
-        call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(MID)    , 'MIN_EDT_OCEAN_MD:'      ,default= 0.1,   _RC )
-        call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(DEEP)    , 'MAX_EDT_LAND_DP:'       ,default= 0.9,   _RC )
-        call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(SHAL)    , 'MAX_EDT_LAND_SH:'       ,default= 0.0,   _RC )
-        call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(MID)     , 'MAX_EDT_LAND_MD:'       ,default= 0.9,   _RC )
-        call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(DEEP)   , 'MAX_EDT_OCEAN_DP:'      ,default= 0.9,   _RC )
-        call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(SHAL)   , 'MAX_EDT_OCEAN_SH:'      ,default= 0.0,   _RC )
-        call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(MID)    , 'MAX_EDT_OCEAN_MD:'      ,default= 0.9,   _RC )
+        call MAPL_GridCompGetResource( GC, 'USE_EXCESS_DP', CUM_USE_EXCESS(DEEP)               ,default= 2,     _RC )
+        call MAPL_GridCompGetResource( GC, 'USE_EXCESS_SH', CUM_USE_EXCESS(SHAL)               ,default= 3,     _RC )
+        call MAPL_GridCompGetResource( GC, 'USE_EXCESS_MD', CUM_USE_EXCESS(MID)                ,default= 2,     _RC )
+        call MAPL_GridCompGetResource( GC, 'HEI_DOWN_LAND_DP', CUM_HEI_DOWN_LAND(DEEP)         ,default= 0.3,   _RC )
+        call MAPL_GridCompGetResource( GC, 'HEI_DOWN_LAND_SH', CUM_HEI_DOWN_LAND(SHAL)         ,default= 0.0,   _RC )    
+        call MAPL_GridCompGetResource( GC, 'HEI_DOWN_LAND_MD', CUM_HEI_DOWN_LAND(MID)          ,default= 0.3,   _RC )
+        call MAPL_GridCompGetResource( GC, 'HEI_DOWN_OCEAN_DP', CUM_HEI_DOWN_OCEAN(DEEP)       ,default= 0.4,   _RC )
+        call MAPL_GridCompGetResource( GC, 'HEI_DOWN_OCEAN_SH', CUM_HEI_DOWN_OCEAN(SHAL)       ,default= 0.0,   _RC )
+        call MAPL_GridCompGetResource( GC, 'HEI_DOWN_OCEAN_MD', CUM_HEI_DOWN_OCEAN(MID)        ,default= 0.4,   _RC )
+        call MAPL_GridCompGetResource( GC, 'HEI_UPDF_LAND_DP', CUM_HEI_UPDF_LAND(DEEP)         ,default= 0.4,   _RC )
+        call MAPL_GridCompGetResource( GC, 'HEI_UPDF_LAND_SH', CUM_HEI_UPDF_LAND(SHAL)         ,default= 0.2,   _RC )
+        call MAPL_GridCompGetResource( GC, 'HEI_UPDF_LAND_MD', CUM_HEI_UPDF_LAND(MID)          ,default= 0.4,   _RC )
+        call MAPL_GridCompGetResource( GC, 'HEI_UPDF_OCEAN_DP', CUM_HEI_UPDF_OCEAN(DEEP)       ,default= 0.4,   _RC )
+        call MAPL_GridCompGetResource( GC, 'HEI_UPDF_OCEAN_SH', CUM_HEI_UPDF_OCEAN(SHAL)       ,default= 0.2,   _RC )
+        call MAPL_GridCompGetResource( GC, 'HEI_UPDF_OCEAN_MD', CUM_HEI_UPDF_OCEAN(MID)        ,default= 0.6,   _RC )
+        call MAPL_GridCompGetResource( GC, 'MIN_EDT_LAND_DP', CUM_MIN_EDT_LAND(DEEP)           ,default= 0.1,   _RC )
+        call MAPL_GridCompGetResource( GC, 'MIN_EDT_LAND_SH', CUM_MIN_EDT_LAND(SHAL)           ,default= 0.0,   _RC )
+        call MAPL_GridCompGetResource( GC, 'MIN_EDT_LAND_MD', CUM_MIN_EDT_LAND(MID)            ,default= 0.1,   _RC )
+        call MAPL_GridCompGetResource( GC, 'MIN_EDT_OCEAN_DP', CUM_MIN_EDT_OCEAN(DEEP)         ,default= 0.1,   _RC )
+        call MAPL_GridCompGetResource( GC, 'MIN_EDT_OCEAN_SH', CUM_MIN_EDT_OCEAN(SHAL)         ,default= 0.0,   _RC )
+        call MAPL_GridCompGetResource( GC, 'MIN_EDT_OCEAN_MD', CUM_MIN_EDT_OCEAN(MID)          ,default= 0.1,   _RC )
+        call MAPL_GridCompGetResource( GC, 'MAX_EDT_LAND_DP', CUM_MAX_EDT_LAND(DEEP)           ,default= 0.9,   _RC )
+        call MAPL_GridCompGetResource( GC, 'MAX_EDT_LAND_SH', CUM_MAX_EDT_LAND(SHAL)           ,default= 0.0,   _RC )
+        call MAPL_GridCompGetResource( GC, 'MAX_EDT_LAND_MD', CUM_MAX_EDT_LAND(MID)            ,default= 0.9,   _RC )
+        call MAPL_GridCompGetResource( GC, 'MAX_EDT_OCEAN_DP', CUM_MAX_EDT_OCEAN(DEEP)         ,default= 0.9,   _RC )
+        call MAPL_GridCompGetResource( GC, 'MAX_EDT_OCEAN_SH', CUM_MAX_EDT_OCEAN(SHAL)         ,default= 0.0,   _RC )
+        call MAPL_GridCompGetResource( GC, 'MAX_EDT_OCEAN_MD', CUM_MAX_EDT_OCEAN(MID)          ,default= 0.9,   _RC )
       endif
-      call MAPL_GetResource(MAPL, SCLM_DEEP                 , 'SCLM_DEEP:'             ,default= 1.0,   _RC)
-      call MAPL_GetResource(MAPL, FIX_CNV_CLOUD             , 'FIX_CNV_CLOUD:'         ,default= .FALSE., _RC)
+      call MAPL_GridCompGetResource( GC, 'SCLM_DEEP', SCLM_DEEP                              ,default= 1.0,   _RC)
+      call MAPL_GridCompGetResource( GC, 'FIX_CNV_CLOUD', FIX_CNV_CLOUD                      ,default= .FALSE., _RC)
     ELSE
       ! Inititialize parameters of convection scheme GF (circa 2019)
-      call MAPL_GetResource(MAPL, icumulus_gf(deep)   ,'DEEP:'             ,default= 1 , _RC )
-      call MAPL_GetResource(MAPL, icumulus_gf(shal)   ,'SHALLOW:'          ,default= 0 , _RC )
-      call MAPL_GetResource(MAPL, icumulus_gf(mid)    ,'CONGESTUS:'        ,default= 1 , _RC )
-      call MAPL_GetResource(MAPL, closure_choice(deep),'CLOSURE_DEEP:'     ,default= 0 , _RC )
-      call MAPL_GetResource(MAPL, closure_choice(shal),'CLOSURE_SHALLOW:'  ,default= 7 , _RC )
-      call MAPL_GetResource(MAPL, closure_choice(mid) ,'CLOSURE_CONGESTUS:',default= 3 , _RC )
-      call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP) ,'ENTR_DP:'          ,default= 1.0e-4,_RC )
-      call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL) ,'ENTR_SH:'          ,default= 1.4e-3,_RC )
-      call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)  ,'ENTR_MD:'          ,default= 9.0e-4,_RC )
-      call MAPL_GetResource(MAPL, C1                  ,'C1:'               ,default= 1.0e-3,_RC )
-      call MAPL_GetResource(MAPL, USE_TRACER_TRANSP   ,'USE_TRACER_TRANSP:',default= 1 , _RC )
-      call MAPL_GetResource(MAPL, USE_TRACER_SCAVEN   ,'USE_TRACER_SCAVEN:',default= 1 , _RC )
-      call MAPL_GetResource(MAPL, USE_SCALE_DEP       ,'USE_SCALE_DEP:'    ,default= 1 , _RC )
-      call MAPL_GetResource(MAPL, DICYCLE             ,'DICYCLE:'          ,default= 1 , _RC )
-      call MAPL_GetResource(MAPL, STOCHASTIC_CNV      ,'STOCHASTIC_CNV:'   ,default= .FALSE., _RC)
-      call MAPL_GetResource(MAPL, GF_MIN_AREA         ,'GF_MIN_AREA:'      ,default= 1.e6,  _RC )
-      call MAPL_GetResource(MAPL, TAU_DEEP            ,'TAU_DEEP:'         ,default= 5400.0, _RC )
-      call MAPL_GetResource(MAPL, TAU_MID             ,'TAU_MID:'          ,default= 3600.0, _RC )
-      call MAPL_GetResource(MAPL, USE_FLUX_FORM       ,'USE_FLUX_FORM:'    ,default= 1 , _RC )
-      call MAPL_GetResource(MAPL, USE_FCT             ,'USE_FCT:'          ,default= 0 , _RC )
-      call MAPL_GetResource(MAPL, USE_TRACER_EVAP     ,'USE_TRACER_EVAP:'  ,default= 1 , _RC )
-      call MAPL_GetResource(MAPL, ALP1                ,'ALP1:'             ,default= 1., _RC )
-      call MAPL_GetResource(MAPL, BC_METH             ,'BC_METH:'          ,default= 0 , _RC )
-      call MAPL_GetResource(MAPL, C0_DEEP             ,'C0_DEEP:'          ,default= 2.0e-3,_RC )
-      call MAPL_GetResource(MAPL, C0_MID              ,'C0_MID:'           ,default= 2.0e-3,_RC )
-      call MAPL_GetResource(MAPL, C0_SHAL             ,'C0_SHAL:'          ,default= 1.0e-3,_RC )
-      call MAPL_GetResource(MAPL, QRC_CRIT            ,'QRC_CRIT:'         ,default= 2.0e-4,_RC )
-      call MAPL_GetResource(MAPL, GF_ENV_SETTING      ,'GF_ENV_SETTING:'   ,default= 'DYNAMICS', _RC)
-      call MAPL_GetResource(MAPL, SCLM_DEEP           ,'SCLM_DEEP:'        ,default= 1.0    , _RC)
-      call MAPL_GetResource(MAPL, FIX_CNV_CLOUD       ,'FIX_CNV_CLOUD:'    ,default= .FALSE., _RC)
+      call MAPL_GridCompGetResource( GC, 'DEEP', icumulus_gf(deep)                ,default= 1 , _RC )
+      call MAPL_GridCompGetResource( GC, 'SHALLOW', icumulus_gf(shal)             ,default= 0 , _RC )
+      call MAPL_GridCompGetResource( GC, 'CONGESTUS', icumulus_gf(mid)            ,default= 1 , _RC )
+      call MAPL_GridCompGetResource( GC, 'CLOSURE_DEEP', closure_choice(deep)     ,default= 0 , _RC )
+      call MAPL_GridCompGetResource( GC, 'CLOSURE_SHALLOW', closure_choice(shal)  ,default= 7 , _RC )
+      call MAPL_GridCompGetResource( GC, 'CLOSURE_CONGESTUS', closure_choice(mid) ,default= 3 , _RC )
+      call MAPL_GridCompGetResource( GC, 'ENTR_DP', CUM_ENTR_RATE(DEEP)           ,default= 1.0e-4,_RC )
+      call MAPL_GridCompGetResource( GC, 'ENTR_SH', CUM_ENTR_RATE(SHAL)           ,default= 1.4e-3,_RC )
+      call MAPL_GridCompGetResource( GC, 'ENTR_MD', CUM_ENTR_RATE(MID)            ,default= 9.0e-4,_RC )
+      call MAPL_GridCompGetResource( GC, 'C1', C1                                 ,default= 1.0e-3,_RC )
+      call MAPL_GridCompGetResource( GC, 'USE_TRACER_TRANSP', USE_TRACER_TRANSP   ,default= 1 , _RC )
+      call MAPL_GridCompGetResource( GC, 'USE_TRACER_SCAVEN', USE_TRACER_SCAVEN   ,default= 1 , _RC )
+      call MAPL_GridCompGetResource( GC, 'USE_SCALE_DEP', USE_SCALE_DEP           ,default= 1 , _RC )
+      call MAPL_GridCompGetResource( GC, 'DICYCLE', DICYCLE                       ,default= 1 , _RC )
+      call MAPL_GridCompGetResource( GC, 'STOCHASTIC_CNV', STOCHASTIC_CNV         ,default= .FALSE., _RC)
+      call MAPL_GridCompGetResource( GC, 'GF_MIN_AREA', GF_MIN_AREA               ,default= 1.e6,  _RC )
+      call MAPL_GridCompGetResource( GC, 'TAU_DEEP', TAU_DEEP                     ,default= 5400.0, _RC )
+      call MAPL_GridCompGetResource( GC, 'TAU_MID', TAU_MID                       ,default= 3600.0, _RC )
+      call MAPL_GridCompGetResource( GC, 'USE_FLUX_FORM', USE_FLUX_FORM           ,default= 1 , _RC )
+      call MAPL_GridCompGetResource( GC, 'USE_FCT', USE_FCT                       ,default= 0 , _RC )
+      call MAPL_GridCompGetResource( GC, 'USE_TRACER_EVAP', USE_TRACER_EVAP       ,default= 1 , _RC )
+      call MAPL_GridCompGetResource( GC, 'ALP1', ALP1                             ,default= 1., _RC )
+      call MAPL_GridCompGetResource( GC, 'BC_METH', BC_METH                       ,default= 0 , _RC )
+      call MAPL_GridCompGetResource( GC, 'C0_DEEP', C0_DEEP                       ,default= 2.0e-3,_RC )
+      call MAPL_GridCompGetResource( GC, 'C0_MID', C0_MID                         ,default= 2.0e-3,_RC )
+      call MAPL_GridCompGetResource( GC, 'C0_SHAL', C0_SHAL                       ,default= 1.0e-3,_RC )
+      call MAPL_GridCompGetResource( GC, 'QRC_CRIT', QRC_CRIT                     ,default= 2.0e-4,_RC )
+      call MAPL_GridCompGetResource( GC, 'GF_ENV_SETTING', env_setting         ,default= 'DYNAMICS', _RC)
+      GF_ENV_SETTING = env_setting
+      call MAPL_GridCompGetResource( GC, 'SCLM_DEEP', SCLM_DEEP                   ,default= 1.0    , _RC)
+      call MAPL_GridCompGetResource( GC, 'FIX_CNV_CLOUD', FIX_CNV_CLOUD           ,default= .FALSE., _RC)
     ENDIF
 
     endif ! USE_PYMOIST_GF2020
@@ -468,8 +467,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Local derived type aliases
 
-    type (MAPL_MetaComp), pointer   :: MAPL
-    type (ESMF_Config  )            :: CF
+    type (ESMF_Grid    )            :: GRID
     type (ESMF_State   )            :: INTERNAL
     type (ESMF_TimeInterval)        :: TINT
     real(ESMF_KIND_R8)              :: DT_R8
@@ -480,8 +478,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! Local variables
     integer                         :: I, J, L
     integer                         :: IM,JM,LM
-    real, pointer, dimension(:,:)   :: LONS
-    real, pointer, dimension(:,:)   :: LATS
+    real, allocatable, dimension(:,:) :: LONS
+    real, allocatable, dimension(:,:) :: LATS
     real                            :: minrhx, fqi_local, tmp_local
     logical                         :: ptr_is_assoc
 
@@ -492,6 +490,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Imports
     real, pointer, dimension(:,:,:) :: ZLE, PLE, T, U, V, W, KH, OMEGA
+    real, pointer, contiguous, dimension(:,:,:) :: p3d ! scratch for the edge-field bounds remap
     real, pointer, dimension(:,:  ) :: FRLAND, AREA
     real, pointer, dimension(:,:,:) :: DQVDTDYN
     real, pointer, dimension(:,:,:) :: DTDTDYN
@@ -551,35 +550,32 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! DSL fields
     real, pointer, dimension(:,:) :: DSL__GF2020_LONS, DSL__GF2020_LATS
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, _RC)
-    call MAPL_Get( MAPL, IM=IM, JM=JM, LM=LM,   &
-         CF       = CF,                &
-         LONS     = LONS,              &
-         LATS     = LATS,              &
-         INTERNAL_ESMF_STATE=INTERNAL, &
-         RUNALARM = ALARM,             &
-         _RC )
-    call ESMF_AlarmGet(ALARM, RingInterval=TINT, _RC)
-    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,_RC)
-    MOIST_DT = DT_R8
+    call MAPL_GridCompGet(GC, num_levels=LM, grid=GRID, _RC)
+    call MAPL_GridGet(GRID, IM=IM, JM=JM, _RC)
+    call MAPL_GridGetCoordinates(GRID, longitudes=LONS, latitudes=LATS, _RC)
+    call MAPL_GridCompGetInternalState(GC, INTERNAL, _RC)
+    ! Moist's timestep (MAPL2: the RUNALARM ring interval)
+    call MAPL_ClockGet(CLOCK, dt=MOIST_DT, _RC)
 
     call ESMF_GridCompGet ( GC, VM=VMG, _RC )
 
     ! Internals
-    call MAPL_GetPointer(INTERNAL, Q,      'Q'       , _RC)
-    call MAPL_GetPointer(INTERNAL, QLLS,   'QLLS'    , _RC)  
-    call MAPL_GetPointer(INTERNAL, QLCN,   'QLCN'    , _RC)
-    call MAPL_GetPointer(INTERNAL, CLCN,   'CLCN'    , _RC)  
-    call MAPL_GetPointer(INTERNAL, CLLS,   'CLLS'    , _RC)  
-    call MAPL_GetPointer(INTERNAL, QILS,   'QILS'    , _RC)  
-    call MAPL_GetPointer(INTERNAL, QICN,   'QICN'    , _RC)  
-    call MAPL_GetPointer(INTERNAL, NACTL,  'NACTL'   , _RC)
-    call MAPL_GetPointer(INTERNAL, CNV_TR, 'CNV_TR'  , _RC)
+    call MAPL_StateGetPointer(INTERNAL, Q,      'Q'       , _RC)
+    call MAPL_StateGetPointer(INTERNAL, QLLS,   'QLLS'    , _RC)  
+    call MAPL_StateGetPointer(INTERNAL, QLCN,   'QLCN'    , _RC)
+    call MAPL_StateGetPointer(INTERNAL, CLCN,   'CLCN'    , _RC)  
+    call MAPL_StateGetPointer(INTERNAL, CLLS,   'CLLS'    , _RC)  
+    call MAPL_StateGetPointer(INTERNAL, QILS,   'QILS'    , _RC)  
+    call MAPL_StateGetPointer(INTERNAL, QICN,   'QICN'    , _RC)  
+    call MAPL_StateGetPointer(INTERNAL, NACTL,  'NACTL'   , _RC)
+    call MAPL_StateGetPointer(INTERNAL, CNV_TR, 'CNV_TR'  , _RC)
     ! Imports
-    call MAPL_GetPointer(IMPORT, T         ,'T'         ,_RC)
-    call MAPL_GetPointer(IMPORT, U         ,'U'         ,_RC)
-    call MAPL_GetPointer(IMPORT, V         ,'V'         ,_RC)
-    call MAPL_GetPointer(IMPORT, PLE       ,'PLE'       ,_RC)
+    call MAPL_StateGetPointer(IMPORT, T,'T'         , _RC)
+    call MAPL_StateGetPointer(IMPORT, U,'U'         , _RC)
+    call MAPL_StateGetPointer(IMPORT, V,'V'         , _RC)
+    call MAPL_StateGetPointer(IMPORT, PLE,'PLE'       , _RC)
+    ! Edge field: MAPL3 pointers are 1:LM+1; MAPL2's were 0:LM, which this code assumes
+    p3d => PLE; PLE(1:IM,1:JM,0:LM) => p3d
     ! Initialize tendencies
     call MAPL_GetPointer(EXPORT,  DUDT_DC,    'DUDT_DC'  ,  ALLOC = .TRUE., _RC)
     call MAPL_GetPointer(EXPORT,  DVDT_DC,    'DVDT_DC'  ,  ALLOC = .TRUE., _RC)
@@ -589,19 +585,17 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, DQIDT_DC,   'DQIDT_DC'  ,  ALLOC = .TRUE., _RC)
     call MAPL_GetPointer(EXPORT, DQADT_DC,   'DQADT_DC'  ,  ALLOC = .TRUE., _RC)
 
-    call ESMF_GridCompGet( GC, CONFIG=CF, _RC )
-
     ! Get my internal MAPL_Generic state
     !-----------------------------------
 
-    call MAPL_TimerOn (MAPL,"--GF")
+    call MAPL_GridCompTimerStart(GC, "--GF", _RC)
 
     ! Get parameters from generic state.
     !-----------------------------------
 
     if (USE_PYMOIST_GF2020) then
-      call MAPL_GetPointer(INTERNAL, DSL__GF2020_LONS, 'DSL__GF2020_LONS', _RC)
-      call MAPL_GetPointer(INTERNAL, DSL__GF2020_LATS, 'DSL__GF2020_LATS', _RC)
+      call MAPL_StateGetPointer(INTERNAL, DSL__GF2020_LONS, 'DSL__GF2020_LONS', _RC)
+      call MAPL_StateGetPointer(INTERNAL, DSL__GF2020_LATS, 'DSL__GF2020_LATS', _RC)
       DSL__GF2020_LONS = LONS
       DSL__GF2020_LATS = LATS
       call CNV_Tracers_To_SOA()
@@ -610,34 +604,38 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     else
 
     ! Imports
-    call MAPL_GetPointer(IMPORT, FRLAND    ,'FRLAND'    ,_RC)
-    call MAPL_GetPointer(IMPORT, AREA      ,'AREA'      ,_RC)
-    call MAPL_GetPointer(IMPORT, ZLE       ,'ZLE'       ,_RC)
-    call MAPL_GetPointer(IMPORT, T         ,'T'         ,_RC)
-    call MAPL_GetPointer(IMPORT, U         ,'U'         ,_RC)
-    call MAPL_GetPointer(IMPORT, V         ,'V'         ,_RC)
-    call MAPL_GetPointer(IMPORT, W         ,'W'         ,_RC)
-    call MAPL_GetPointer(IMPORT, OMEGA     ,'OMEGA'     ,_RC)
-    call MAPL_GetPointer(IMPORT, KH        ,'KH'        ,_RC)
-    call MAPL_GetPointer(IMPORT, SH        ,'SH'        ,_RC)
-    call MAPL_GetPointer(IMPORT, EVAP      ,'EVAP'      ,_RC)
-    call MAPL_GetPointer(IMPORT, T2M       ,'T2M'       ,_RC)
-    call MAPL_GetPointer(IMPORT, Q2M       ,'Q2M'       ,_RC)
-    call MAPL_GetPointer(IMPORT, TA        ,'TA'        ,_RC)
-    call MAPL_GetPointer(IMPORT, QA        ,'QA'        ,_RC)
-    call MAPL_GetPointer(IMPORT, PHIS      ,'PHIS'      ,_RC)
-    call MAPL_GetPointer(IMPORT, DQVDTDYN  ,'DQVDTDYN'  ,_RC)
-    call MAPL_GetPointer(IMPORT, DTDTDYN   ,'DTDTDYN'   ,_RC)
-    call MAPL_GetPointer(IMPORT, QV_DYN_IN ,'QV_DYN_IN' ,_RC)
-    call MAPL_GetPointer(IMPORT, U_DYN_IN  ,'U_DYN_IN'  ,_RC)
-    call MAPL_GetPointer(IMPORT, V_DYN_IN  ,'V_DYN_IN'  ,_RC)
-    call MAPL_GetPointer(IMPORT, T_DYN_IN  ,'T_DYN_IN'  ,_RC)
-    call MAPL_GetPointer(IMPORT, PLE_DYN_IN,'PLE_DYN_IN',_RC)
-    call MAPL_GetPointer(IMPORT, DTDT_BL   ,'DTDT_BL'   ,_RC)
-    call MAPL_GetPointer(IMPORT, DQDT_BL   ,'DQDT_BL'   ,_RC)
-    call MAPL_GetPointer(IMPORT, RADSW     ,'RADSW'     ,_RC)
-    call MAPL_GetPointer(IMPORT, RADLW     ,'RADLW'     ,_RC)
-    call MAPL_GetPointer(IMPORT, KPBL      ,'KPBL_SC'   ,_RC)
+    call MAPL_StateGetPointer(IMPORT, FRLAND,'FRLAND'    , _RC)
+    call MAPL_StateGetPointer(IMPORT, AREA,'AREA'      , _RC)
+    call MAPL_StateGetPointer(IMPORT, ZLE,'ZLE'       , _RC)
+    call MAPL_StateGetPointer(IMPORT, T,'T'         , _RC)
+    call MAPL_StateGetPointer(IMPORT, U,'U'         , _RC)
+    call MAPL_StateGetPointer(IMPORT, V,'V'         , _RC)
+    call MAPL_StateGetPointer(IMPORT, W,'W'         , _RC)
+    call MAPL_StateGetPointer(IMPORT, OMEGA,'OMEGA'     , _RC)
+    call MAPL_StateGetPointer(IMPORT, KH,'KH'        , _RC)
+    call MAPL_StateGetPointer(IMPORT, SH,'SH'        , _RC)
+    call MAPL_StateGetPointer(IMPORT, EVAP,'EVAP'      , _RC)
+    call MAPL_StateGetPointer(IMPORT, T2M,'T2M'       , _RC)
+    call MAPL_StateGetPointer(IMPORT, Q2M,'Q2M'       , _RC)
+    call MAPL_StateGetPointer(IMPORT, TA,'TA'        , _RC)
+    call MAPL_StateGetPointer(IMPORT, QA,'QA'        , _RC)
+    call MAPL_StateGetPointer(IMPORT, PHIS,'PHIS'      , _RC)
+    call MAPL_StateGetPointer(IMPORT, DQVDTDYN,'DQVDTDYN'  , _RC)
+    call MAPL_StateGetPointer(IMPORT, DTDTDYN,'DTDTDYN'   , _RC)
+    call MAPL_StateGetPointer(IMPORT, QV_DYN_IN,'QV_DYN_IN' , _RC)
+    call MAPL_StateGetPointer(IMPORT, U_DYN_IN,'U_DYN_IN'  , _RC)
+    call MAPL_StateGetPointer(IMPORT, V_DYN_IN,'V_DYN_IN'  , _RC)
+    call MAPL_StateGetPointer(IMPORT, T_DYN_IN,'T_DYN_IN'  , _RC)
+    call MAPL_StateGetPointer(IMPORT, PLE_DYN_IN,'PLE_DYN_IN', _RC)
+    ! Edge fields: MAPL3 pointers are 1:LM+1; MAPL2's were 0:LM, which this code assumes
+    p3d => ZLE;        ZLE(1:IM,1:JM,0:LM)        => p3d
+    p3d => KH;         KH(1:IM,1:JM,0:LM)         => p3d
+    p3d => PLE_DYN_IN; PLE_DYN_IN(1:IM,1:JM,0:LM) => p3d
+    call MAPL_StateGetPointer(IMPORT, DTDT_BL,'DTDT_BL'   , _RC)
+    call MAPL_StateGetPointer(IMPORT, DQDT_BL,'DQDT_BL'   , _RC)
+    call MAPL_StateGetPointer(IMPORT, RADSW,'RADSW'     , _RC)
+    call MAPL_StateGetPointer(IMPORT, RADLW,'RADLW'     , _RC)
+    call MAPL_StateGetPointer(IMPORT, KPBL,'KPBL_SC'   , _RC)
 
     ! Allocatables
      ! Edge variables
@@ -784,7 +782,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     else
        SEEDCNV = 1.0
     endif
-    CALL MAPL_GetPointer(EXPORT, PTR2D,  'STOCH_CNV', _RC)
+    call MAPL_StateGetPointer(EXPORT, PTR2D,  'STOCH_CNV', _RC)
     if(associated(PTR2D)) PTR2D = SEEDCNV
 
     ! Modify AREA (m^2) here so GF scale dependence has a CNV_FRC dependence
@@ -883,7 +881,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        CNV_DQCDT = TMP3D * MASS   ! keep diagnostic total consistent
        
           ! Export
-      call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_FICE', _RC)
+      call MAPL_StateGetPointer(EXPORT, PTR3D, 'CNV_FICE', _RC)
       if (associated(PTR3D)) PTR3D = fQi
       
        DQADT_DC = MFD_DC*SCLM_DEEP/MASS
@@ -902,7 +900,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ELSE !USE GF2M
     
 
-        call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_FICE', _RC)
+        call MAPL_StateGetPointer(EXPORT, PTR3D, 'CNV_FICE', _RC)
         ptr_is_assoc = associated(PTR3D)
 
         ! Update DeepCu QL/QI/CF tendencies, evap/subl and precip fluxes
@@ -943,9 +941,9 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     END IF  !USE GF2M
     
     ! Other Exports
-    call MAPL_GetPointer(EXPORT, PTR3D, 'DQRC', _RC)
+    call MAPL_StateGetPointer(EXPORT, PTR3D, 'DQRC', _RC)
     if(associated(PTR3D)) PTR3D = CNV_PRC3 / GF_DT
-    call MAPL_GetPointer(EXPORT, PTR2D, 'CCWP', _RC)
+    call MAPL_StateGetPointer(EXPORT, PTR2D, 'CCWP', _RC)
     if (associated(PTR2D)) PTR2D = SUM( CNV_QC*MASS , 3 )
 
     endif ! Alarm ringing
@@ -978,11 +976,11 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
 ! Cleanup negative water species
 ! ------------------------------
-    call MAPL_GetPointer(EXPORT,   DQVDT_FILL,   'DQVDT_FILL_DC', _RC)
-    call MAPL_GetPointer(EXPORT, DQLLSDT_FILL, 'DQLLSDT_FILL_DC', _RC)
-    call MAPL_GetPointer(EXPORT, DQLCNDT_FILL, 'DQLCNDT_FILL_DC', _RC)
-    call MAPL_GetPointer(EXPORT, DQILSDT_FILL, 'DQILSDT_FILL_DC', _RC)
-    call MAPL_GetPointer(EXPORT, DQICNDT_FILL, 'DQICNDT_FILL_DC', _RC)
+    call MAPL_StateGetPointer(EXPORT,   DQVDT_FILL,   'DQVDT_FILL_DC', _RC)
+    call MAPL_StateGetPointer(EXPORT, DQLLSDT_FILL, 'DQLLSDT_FILL_DC', _RC)
+    call MAPL_StateGetPointer(EXPORT, DQLCNDT_FILL, 'DQLCNDT_FILL_DC', _RC)
+    call MAPL_StateGetPointer(EXPORT, DQILSDT_FILL, 'DQILSDT_FILL_DC', _RC)
+    call MAPL_StateGetPointer(EXPORT, DQICNDT_FILL, 'DQICNDT_FILL_DC', _RC)
     if (REPORT_GF_NEGATIVES) then
       call FILLQ2ZERO( Q       , MASS, DT=MOIST_DT, DQDT=  DQVDT_FILL, WARNING_LABEL="QV   After GF DeepCu", VM=VMG, _RC)
       call FILLQ2ZERO( QLLS    , MASS, DT=MOIST_DT, DQDT=DQLLSDT_FILL, WARNING_LABEL="QLLS After GF DeepCu", VM=VMG, _RC)
@@ -1016,7 +1014,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        end do ! LM loop
     endif
 
-    call MAPL_TimerOff (MAPL,"--GF")
+    call MAPL_GridCompTimerStop(GC, "--GF", _RC)
 
 end subroutine GF_Run
 

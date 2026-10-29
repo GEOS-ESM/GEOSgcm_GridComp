@@ -1,6 +1,6 @@
 # GEOS_MoistGridComp MAPL3 porting plan
 
-Status (2026-10-29): steps 1-4 done on branch
+Status (2026-10-29): steps 1-5 done on branch
 `feature/pchakrab/port-moist-to-mapl3` (off `release/MAPL-v3`; steps 1-2
 in `83eb97c5`, step 3 in `befaa640`). Not built: Moist is still commented out of the MAPL3
 build (`../CMakeLists.txt:5`). Step 0 (MAPL2 baseline) not done yet.
@@ -472,6 +472,59 @@ For GFDL_1M, GF, UW: `X_Initialize(MAPL, ...)` -> take `gc`;
 grid=)` (never `ESMF_GridCompGet(grid=)`, Solar step 18);
 `MAPL_GetPointer` -> generated pointers or `MAPL_StateGetPointer`;
 timers -> `MAPL_GridCompTimerStart/Stop`; `ALLOC=` per step 6.
+
+**Done (2026-10-29).** pyMoist not ported (see below).
+- `X_Initialize(GC, CLOCK, IMPORT, EXPORT, RC)` (was `(MAPL, CF, ...)`);
+  the driver's three calls updated. `X_Run`/`X_Finalize` already took
+  `GC`.
+- As Solar (`GEOS_SolarGridComp.F90:880-883`): `MAPL_GridCompGet(GC,
+  num_levels=LM, grid=GRID)`, `MAPL_GridGet(GRID, IM=, JM=)`,
+  `MAPL_GridGetCoordinates(GRID, longitudes=, latitudes=)`,
+  `MAPL_GridCompGetInternalState(GC, INTERNAL)`. `LATS`/`LONS` are now
+  `allocatable` (the R4 getter returns allocatables,
+  `@MAPL/infrastructure/geom/GridGet.F90:128-131`). UW_Run's second,
+  redundant `MAPL_Get` dropped.
+- Timestep: `MAPL_ClockGet(CLOCK, dt=)` (Solar `:656`, SU2G step 5;
+  `MAPL_Generic.F90:1296-1309`: the clock's timestep in R4 seconds)
+  replaces the `RUNALARM` ring interval; same value when Moist's MAPL3
+  `timestep` equals its MAPL2 `RUN_DT`.
+- 302 `MAPL_GetResource(MAPL, v, 'L:', ...)` ->
+  `MAPL_GridCompGetResource(GC, 'L', v, ...)` (GFDL_1M 41, GF 206, UW 55),
+  by script; checked in order against the old calls (variable, label,
+  default). Seven self-defaults (`CCW_EVAP_EFF`, `CCI_EVAP_EFF`,
+  `USE_AEROSOL_NN`, `SGS_W_TIMESCALE` x2, `JASON_UW`, `JASON_MFD_SC`) pass
+  `default=(X)` (copy; `value` is `intent(inout)`). `GF_ENV_SETTING` is
+  a `len=10` ConvPar variable (`ConvPar_GF_Shared.F90:97`): read into a
+  local allocatable string and assigned (3 sites).
+- 173 `MAPL_GetPointer(S, V, 'N', _RC)` without `ALLOC` ->
+  `MAPL_StateGetPointer` (GFDL_1M 75, GF 53, UW 45), checked the same
+  way. The 181 `ALLOC=.TRUE.` calls are unchanged (step 6).
+- Edge fields remapped to `0:LM` right after their fetch, through a
+  `contiguous` scratch `p3d` as IRRAD (`GEOS_IrradGridComp.F90:515-522,
+  :648-667`). MAPL2 allocated every edge field 0-based, so remapping
+  every one reproduces MAPL2 whatever the indexing (issue 5): GFDL_1M
+  `ZLE`, `PLE`, `KH`; GF `PLE`, `ZLE`, `KH`, `PLE_DYN_IN`; UW `ZLE`,
+  `PLE`, `TKE`, and (under `#ifdef UWDIAG`, `associated()`-guarded since
+  exports may be null) `WUP_SC`, `QTUP_SC`, `THLUP_SC`, `THVUP_SC`,
+  `UUP_SC`, `VUP_SC`.
+- Timers: `MAPL_TimerOn/Off(MAPL, ...)` ->
+  `MAPL_GridCompTimerStart/Stop(GC, ..., _RC)` (16; GF/UW had no `_RC`).
+- `ESMF_GridCompGet(CONFIG=CF)` dropped where `CF` was unused (GFDL_1M,
+  GF Run).
+- Not ported (decided 2026-10-29: don't port pyMoist now): the
+  `USE_PYMOIST_*` branches still call `MAPL_pybridge_*` with `MAPL` and
+  `MAPL_ConfigSetAttribute(CF, ...)`, and `GFDL_1M_Finalize`,
+  `GF_Finalize`, `UW_Finalize` (pyMoist only) still use
+  `MAPL_GetObjectFromGC`. `MAPL`/`CF` are no longer declared in the
+  converted routines, so these lines won't compile against MAPL3;
+  decide at step 9 (e.g. `_FAIL` when `USE_PYMOIST_*`).
+- For later steps: GF and UW create their own run alarms
+  (`GF_RunAlarm`/`UW_RunAlarm`, period `GF_DT`/`UW_DT`, default Moist's
+  timestep) on the clock in `X_Initialize` and look them up by name in
+  `X_Run` (step 7). The edge exports fetched with `ALLOC` need the same
+  remap (step 6): GFDL_1M `PFL_AN`, `PFL_LS`, `PFI_AN`, `PFI_LS`,
+  `PFR_LS`, `PFS_LS`, `PFG_LS`; GF `UMF_DC`, `PFI_CN`, `PFL_CN`,
+  `WQT_DC`; UW `UMF_SC`, `QTFLX_SC`, `SLFLX_SC`, `UFLX_SC`, `VFLX_SC`.
 
 ### 6. `ALLOC=.TRUE.` replacement
 Per decision 1: local work arrays copied to the export if associated;

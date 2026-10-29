@@ -280,10 +280,10 @@ contains
       call MAPL_GetResource(MAPL, TAU_DETRAIN_CNV, Label="TAU_DETRAIN_CNV:", default=3600.0, _RC)
 
       if (adjustl(CONVPAR_OPTION) == "RAS") call RAS_Initialize(MAPL, _RC)
-      if (adjustl(CONVPAR_OPTION) == "GF") call GF_Initialize(MAPL, CF, CLOCK, IMPORT, EXPORT, _RC)
-      if (adjustl(SHALLOW_OPTION) == "UW") call UW_Initialize(MAPL, CF, CLOCK, IMPORT, EXPORT, _RC)
+      if (adjustl(CONVPAR_OPTION) == "GF") call GF_Initialize(GC, CLOCK, IMPORT, EXPORT, _RC)
+      if (adjustl(SHALLOW_OPTION) == "UW") call UW_Initialize(GC, CLOCK, IMPORT, EXPORT, _RC)
       if (adjustl(CLDMICR_OPTION) == "BACM_1M") call BACM_1M_Initialize(MAPL, _RC)
-      if (adjustl(CLDMICR_OPTION) == "GFDL_1M") call GFDL_1M_Initialize(MAPL, CF, CLOCK, IMPORT, EXPORT, _RC)
+      if (adjustl(CLDMICR_OPTION) == "GFDL_1M") call GFDL_1M_Initialize(GC, CLOCK, IMPORT, EXPORT, _RC)
       if (adjustl(CLDMICR_OPTION) == "THOM_1M") call THOM_1M_Initialize(MAPL, _RC)
       if (adjustl(CLDMICR_OPTION) == "MGB2_2M") call MGB2_2M_Initialize(MAPL, _RC)
 
