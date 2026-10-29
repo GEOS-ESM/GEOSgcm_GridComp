@@ -228,6 +228,19 @@ format`** for Moist (unlike Solar step 1 and SU2G steps 1-1c). Existing
 indentation and keyword case stay as they are; new or rewritten code
 follows the surrounding style.
 
+Changed 2026-10-29 for the driver only: `GEOS_MoistGridComp.F90` was
+formatted with `codee format --verbose --config ~/config/codee-format`
+in its own commit `f9b25d72` (after step 4), so it can be reverted
+(`git revert f9b25d72`) or skipped in blame (`git blame --ignore-rev
+f9b25d72`). Later edits to the driver follow codee's style; the scheme
+interface modules keep theirs. Verified layout/case only: comments and
+cpp lines identical; code tokens identical after normalizing codee's
+equivalent spellings (`endif`/`enddo` -> `end if`/`end do`, `.ne.` etc.
+-> `/=` etc., `real(ESMF_KIND_R8)` -> `real(kind=ESMF_KIND_R8)`).
+Without `--config`, codee uses the first `.codee-format` up the tree
+(here `~/.codee-format`, which differs from `~/config/codee-format` in
+`IgnoredPreprocessorDirectives`; same output for this file).
+
 Driver and the three in-scope interface modules: macros
 `VERIFY_`/`RETURN_`/`__RC__` -> `_RC`/`_RETURN`/`_VERIFY`,
 `RETURN_(ESMF_SUCCESS)` -> `_RETURN(_SUCCESS)`,
