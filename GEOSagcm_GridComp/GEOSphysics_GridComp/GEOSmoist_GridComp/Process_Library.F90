@@ -850,12 +850,14 @@ module GEOSmoist_Process_Library
 
       ! 3. Thermodynamic and Psychrometric microphysical diffusion factors
       K1 = (MAPL_ALHL**2) * RHO_W / ( K_COND*MAPL_RVAP*(TE**2))
+      ! DIFFU is given for 1000 mb so 1000./PR accounts for increased diffusivity at lower pressure
       K2 = MAPL_RVAP * TE * RHO_W / ( DIFFU * (1000.0/PL) * ES )
 
       ! 4. LIQUID RADII EVALUATION
-      ! Pass grid-mean QL to perfectly balance the grid-mean drop concentration NL
-      if (QL > 0.0) then
-         RADIUS = LDRADIUS4(PL,TE,QL,NL,NI,1,CNV_FRC)
+      if ( ( F > 0.) .and. ( QL > 0. ) ) then
+         ! Convective (F=CLCN) In-Cloud QL
+         QCm=QL/F
+         RADIUS = LDRADIUS4(PL,TE,QCm,NL,NI,1,CNV_FRC)
       else
          RADIUS = 0.0
       end if
@@ -923,16 +925,17 @@ module GEOSmoist_Process_Library
       
       ! 2. Relative Humidity ceiling
       RHx = MIN( QV/QS , 1.00 )
-      
+
       ! 3. Thermodynamic and Psychrometric microphysical diffusion factors
-      ! Standardized to use your explicit project parameter: rho_i (890.0 kg/m^3)
-      K1 = (MAPL_ALHS**2) * rho_i / ( K_COND*MAPL_RVAP*(TE**2))
-      K2 = MAPL_RVAP * TE * rho_i / ( DIFFU * (1000.0/PL) * ES )
-      
+      K1 = (MAPL_ALHL**2) * RHO_I / ( K_COND*MAPL_RVAP*(TE**2))
+      ! DIFFU is given for 1000 mb so 1000./PR accounts for increased diffusivity at lower pressure
+      K2 = MAPL_RVAP * TE * RHO_I / ( DIFFU * (1000./PL) * ES )
+
       ! 4. ICE RADII EVALUATION
-      ! Pass grid-mean QI to perfectly balance the grid-mean crystal concentration NI
-      if (QI > 0.0) then
-         RADIUS = LDRADIUS4(PL,TE,QI,NL,NI,2,CNV_FRC)
+      if ( ( F > 0.) .and. ( QI > 0. ) ) then
+         ! Convective (F=CLCN) In-Cloud QI
+         QCm=QI/F
+         RADIUS = LDRADIUS4(PL,TE,QCm,NL,NI,2,CNV_FRC)
       else
          RADIUS = 0.0
       end if
