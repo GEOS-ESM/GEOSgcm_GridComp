@@ -359,6 +359,7 @@ contains
       integer, optional, intent(inout) :: RC
       ! Local
       type(ESMF_Field) :: FIELD
+      type(ESMF_Info) :: INFO
       integer :: TotalTracers, FriendlyTracers
       logical :: isPresent
       integer :: ind, N, F
@@ -390,16 +391,19 @@ contains
             QNAME = trim(QNAMES(N))
             call ESMF_FieldBundleGet(TR, fieldName=trim(QNAME), FIELD=FIELD, RC=STATUS)
             VERIFY_(STATUS)
+            ! MAPL3 providers set the tracer metadata as ESMF_Info keys (e.g. SU2G, DU2G, SS2G)
+            call ESMF_InfoGetFromHost(FIELD, INFO, RC=STATUS)
+            VERIFY_(STATUS)
             ! Iterate the friendly index
             !-------------------------------
             F = F + 1
             ! Get items scavenging fraction
             !-------------------------------
             CNV_Tracers(F)%fscav = 0.0
-            call ESMF_AttributeGet(FIELD, "ScavengingFractionPerKm", isPresent=isPresent, RC=STATUS)
+            isPresent = ESMF_InfoIsPresent(INFO, key="ScavengingFractionPerKm", RC=STATUS)
             VERIFY_(STATUS)
             if (isPresent) then
-               call ESMF_AttributeGet(FIELD, "ScavengingFractionPerKm", CNV_Tracers(F)%fscav, RC=STATUS)
+               call ESMF_InfoGet(INFO, key="ScavengingFractionPerKm", value=CNV_Tracers(F)%fscav, RC=STATUS)
                VERIFY_(STATUS)
             end if
             ! Get component and tracer names
@@ -412,10 +416,10 @@ contains
             ! Get items for the wet removal parameterization for gases based on the Henry's Law
             !-------------------------------------------------------------------------------------
             CNV_Tracers(F)%Vect_Hcts(:) = -99.
-            call ESMF_AttributeGet(FIELD, "SetofHenryLawCts", isPresent=isPresent, RC=STATUS)
+            isPresent = ESMF_InfoIsPresent(INFO, key="SetofHenryLawCts", RC=STATUS)
             VERIFY_(STATUS)
             if (isPresent) then
-               call ESMF_AttributeGet(FIELD, "SetofHenryLawCts", CNV_Tracers(F)%Vect_Hcts, RC=STATUS)
+               call ESMF_InfoGet(INFO, key="SetofHenryLawCts", values=CNV_Tracers(F)%Vect_Hcts, RC=STATUS)
                VERIFY_(STATUS)
             end if
             ! Additional items, needed for GEOS-Chem washout parameterization
@@ -433,74 +437,74 @@ contains
             CNV_Tracers(F)%ftemp_threshold = -999.0
             ! Check if GEOS-Chem washout should be used. Assume this is the case if Kc scale factors are
             ! present
-            call ESMF_AttributeGet(FIELD, "SetofKcScalFactors", isPresent=isPresent, RC=STATUS)
+            isPresent = ESMF_InfoIsPresent(INFO, key="SetofKcScalFactors", RC=STATUS)
             VERIFY_(STATUS)
             CNV_Tracers(F)%use_gcc_washout = isPresent
             ! If using GEOS-Chem parameterization, retrieve all necessary parameter
             if (CNV_Tracers(F)%use_gcc_washout) then
                ! KC scale factors
-               call ESMF_AttributeGet(FIELD, "SetofKcScalFactors", isPresent=isPresent, RC=STATUS)
+               isPresent = ESMF_InfoIsPresent(INFO, key="SetofKcScalFactors", RC=STATUS)
                VERIFY_(STATUS)
                if (isPresent) then
-                  call ESMF_AttributeGet(FIELD, "SetofKcScalFactors", CNV_Tracers(F)%KcScal, RC=STATUS)
+                  call ESMF_InfoGet(INFO, key="SetofKcScalFactors", values=CNV_Tracers(F)%KcScal, RC=STATUS)
                   VERIFY_(STATUS)
                end if
                ! is this a wetdep species?
-               call ESMF_AttributeGet(FIELD, "IsWetDep", isPresent=isPresent, RC=STATUS)
+               isPresent = ESMF_InfoIsPresent(INFO, key="IsWetDep", RC=STATUS)
                VERIFY_(STATUS)
                if (isPresent) then
-                  call ESMF_AttributeGet(FIELD, "IsWetDep", rtmp, RC=STATUS)
+                  call ESMF_InfoGet(INFO, key="IsWetDep", value=rtmp, RC=STATUS)
                   VERIFY_(STATUS)
                   CNV_Tracers(F)%is_wetdep = (rtmp == 1.0)
                end if
                ! Gas-phase washout parameter for GEOS-Chem
-               call ESMF_AttributeGet(FIELD, "RetentionFactor", isPresent=isPresent, RC=STATUS)
+               isPresent = ESMF_InfoIsPresent(INFO, key="RetentionFactor", RC=STATUS)
                VERIFY_(STATUS)
                if (isPresent) then
-                  call ESMF_AttributeGet(FIELD, "RetentionFactor", CNV_Tracers(F)%retfactor, RC=STATUS)
+                  call ESMF_InfoGet(INFO, key="RetentionFactor", value=CNV_Tracers(F)%retfactor, RC=STATUS)
                   VERIFY_(STATUS)
                end if
-               call ESMF_AttributeGet(FIELD, "LiqAndGas", isPresent=isPresent, RC=STATUS)
+               isPresent = ESMF_InfoIsPresent(INFO, key="LiqAndGas", RC=STATUS)
                VERIFY_(STATUS)
                if (isPresent) then
-                  call ESMF_AttributeGet(FIELD, "LiqAndGas", CNV_Tracers(F)%liq_and_gas, RC=STATUS)
+                  call ESMF_InfoGet(INFO, key="LiqAndGas", value=CNV_Tracers(F)%liq_and_gas, RC=STATUS)
                   VERIFY_(STATUS)
                end if
-               call ESMF_AttributeGet(FIELD, "ConvFacI2G", isPresent=isPresent, RC=STATUS)
+               isPresent = ESMF_InfoIsPresent(INFO, key="ConvFacI2G", RC=STATUS)
                VERIFY_(STATUS)
                if (isPresent) then
-                  call ESMF_AttributeGet(FIELD, "ConvFacI2G", CNV_Tracers(F)%convfaci2g, RC=STATUS)
+                  call ESMF_InfoGet(INFO, key="ConvFacI2G", value=CNV_Tracers(F)%convfaci2g, RC=STATUS)
                   VERIFY_(STATUS)
                end if
-               call ESMF_AttributeGet(FIELD, "OnlineCLDLIQ", isPresent=isPresent, RC=STATUS)
+               isPresent = ESMF_InfoIsPresent(INFO, key="OnlineCLDLIQ", RC=STATUS)
                VERIFY_(STATUS)
                if (isPresent) then
-                  call ESMF_AttributeGet(FIELD, "OnlineCLDLIQ", CNV_Tracers(F)%online_cldliq, RC=STATUS)
+                  call ESMF_InfoGet(INFO, key="OnlineCLDLIQ", value=CNV_Tracers(F)%online_cldliq, RC=STATUS)
                   VERIFY_(STATUS)
                end if
-               call ESMF_AttributeGet(FIELD, "OnlineVUD", isPresent=isPresent, RC=STATUS)
+               isPresent = ESMF_InfoIsPresent(INFO, key="OnlineVUD", RC=STATUS)
                VERIFY_(STATUS)
                if (isPresent) then
-                  call ESMF_AttributeGet(FIELD, "OnlineVUD", CNV_Tracers(F)%online_vud, RC=STATUS)
+                  call ESMF_InfoGet(INFO, key="OnlineVUD", value=CNV_Tracers(F)%online_vud, RC=STATUS)
                   VERIFY_(STATUS)
                end if
-               call ESMF_AttributeGet(FIELD, "UseGOCART", isPresent=isPresent, RC=STATUS)
+               isPresent = ESMF_InfoIsPresent(INFO, key="UseGOCART", RC=STATUS)
                VERIFY_(STATUS)
                if (isPresent) then
-                  call ESMF_AttributeGet(FIELD, "UseGOCART", rtmp, RC=STATUS)
+                  call ESMF_InfoGet(INFO, key="UseGOCART", value=rtmp, RC=STATUS)
                   VERIFY_(STATUS)
                   CNV_Tracers(F)%use_gocart = (rtmp == 1.0)
                end if
-               call ESMF_AttributeGet(FIELD, "GOCARTfTempThreshold", isPresent=isPresent, RC=STATUS)
+               isPresent = ESMF_InfoIsPresent(INFO, key="GOCARTfTempThreshold", RC=STATUS)
                VERIFY_(STATUS)
                if (isPresent) then
-                  call ESMF_AttributeGet(FIELD, "GOCARTfTempThreshold", CNV_Tracers(F)%ftemp_threshold, RC=STATUS)
+                  call ESMF_InfoGet(INFO, key="GOCARTfTempThreshold", value=CNV_Tracers(F)%ftemp_threshold, RC=STATUS)
                   VERIFY_(STATUS)
                end if
             end if ! use_gcc_washout
             ! Get pointer to friendly tracers
             !-----------------------------------------
-            call ESMFL_BundleGetPointerToData(TR, trim(QNAME), CNV_Tracers(F)%Q, RC=STATUS)
+            call ESMF_FieldGet(FIELD, localDe=0, farrayPtr=CNV_Tracers(F)%Q, RC=STATUS)
             VERIFY_(STATUS)
             ! Report tracer status
             !-----------------------------------------
@@ -7032,9 +7036,9 @@ contains
       alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS)
       VERIFY_(STATUS)
 
-      call MAPL_GetPointer(EXPORT, NACTR, 'NACTR', RC=STATUS)
+      call MAPL_StateGetPointer(EXPORT, NACTR, 'NACTR', RC=STATUS)
       VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, PTR2D, 'REFL10CM_MAX', RC=STATUS)
+      call MAPL_StateGetPointer(EXPORT, PTR2D, 'REFL10CM_MAX', RC=STATUS)
       VERIFY_(STATUS)
 
       ! 1. If the user explicitly requested NACTR export, fill it every time (or whenever needed)
@@ -7087,15 +7091,15 @@ contains
          end if
       end if
 
-      call MAPL_GetPointer(EXPORT, dBZ, 'DBZ', RC=STATUS)
+      call MAPL_StateGetPointer(EXPORT, dBZ, 'DBZ', RC=STATUS)
       VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, DBZ_MAX, 'DBZ_MAX', RC=STATUS)
+      call MAPL_StateGetPointer(EXPORT, DBZ_MAX, 'DBZ_MAX', RC=STATUS)
       VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, DBZ_1KM, 'DBZ_1KM', RC=STATUS)
+      call MAPL_StateGetPointer(EXPORT, DBZ_1KM, 'DBZ_1KM', RC=STATUS)
       VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, DBZ_TOP, 'DBZ_TOP', RC=STATUS)
+      call MAPL_StateGetPointer(EXPORT, DBZ_TOP, 'DBZ_TOP', RC=STATUS)
       VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, DBZ_M10C, 'DBZ_M10C', RC=STATUS)
+      call MAPL_StateGetPointer(EXPORT, DBZ_M10C, 'DBZ_M10C', RC=STATUS)
       VERIFY_(STATUS)
 
       if ((associated(dBZ) .or. &

@@ -1,6 +1,6 @@
 # GEOS_MoistGridComp MAPL3 porting plan
 
-Status (2026-10-30): steps 1-6 done on branch `feature/pchakrab/port-moist-to-mapl3` (off `release/MAPL-v3`; steps 1-2 in `83eb97c5`, step 3 in `befaa640`). Not built: Moist is still commented out of the MAPL3 build (`../CMakeLists.txt:5`). Step 0 (MAPL2 baseline) not done yet.
+Status (2026-10-30): steps 1-8 done on branch `feature/pchakrab/port-moist-to-mapl3` (off `release/MAPL-v3`; steps 1-2 in `83eb97c5`, step 3 in `befaa640`). Not built: Moist is still commented out of the MAPL3 build (`../CMakeLists.txt:5`). Step 0 (MAPL2 baseline) not done yet.
 
 Derived from the Radiation notes (`../@GEOSradiation_GridComp/mapl3-porting-notes.md`, `GEOSirrad_GridComp/`, `GEOSsolar_GridComp/`, `GEOSsatsim_GridComp/`) and GOCART's (`../@GEOSchem_GridComp/@GOCART/ESMF/GOCART2G_GridComp/SU2G_GridComp/mapl3-porting-notes.md`). The MAPL3 API gotchas found there are listed under "Lessons carried over" and are not repeated in the steps.
 
@@ -211,6 +211,13 @@ Per decision 1: local work arrays copied to the export if associated; internals 
 ### 7. Initialize
 Drop `MAPL_GenericInitialize`. Timestep from `MAPL_ClockGet(clock, dt=)` instead of `RUNALARM` (SU2G step 5). Recreate `DBZ_RunAlarm` the way Solar recreated its run alarm (Solar step 18), and check it rings on the first step (IRRAD "`irrad_lw_alarm` never rang on the first step"). Decide whether Run's `ESMF_AlarmIsRinging` branch (`:5796`) is still needed once MAPL3 schedules Moist with its own `timestep`.
 
+**Done (2026-10-30).** Not built (step 9).
+- No `MAPL_GetObjectFromGC`/`MAPL_GenericInitialize`. Resources via `MAPL_GridCompGetResource` (no colon); self-defaults (`DETRAIN_INACTIVE_CNV`, `DBZ_DT`, `DBZ_VAR_INTERCP`) pass `default=(X)`.
+- Timestep from Moist's clock (`ESMF_ClockGet(timeStep=)`, `MAPL_ClockGet(dt=)`). MAPL3 gives each component its own clock with its own `timestep` (`@MAPL/superstructure/generic/OuterMetaComponent/initialize_set_clock.F90:32-45`), set before `GENERIC::INIT_USER` (`@MAPL/enums/GenericPhases.F90:37-39, 85`), and advances it only on steps the component runs (`run_clock_advance.F90:31-44`). So alarms created on it ring as they did on MAPL2's heartbeat clock when Moist's `timestep` equals the heartbeat (MAPL2's `RUN_DT`).
+- `DBZ_RunAlarm`: kept exactly as MAPL2 creates it (`RingTime=currTime - TINT`, `sticky=.false.`), with `TINT` now the clock's timestep. Unlike Solar/IRRAD, this was already a component-created ESMF alarm in MAPL2 (their bug was replacing MAPL2's generic main alarm), so the same call reproduces MAPL2's first-step behaviour whatever it is. Not run-tested. `GF_RunAlarm`/`UW_RunAlarm` (step 5) are likewise unchanged from MAPL2 (`ringTime=currentTime`).
+- Run's `ESMF_AlarmIsRinging` branch: not needed. MAPL3 calls the user Run only when the component's run alarm rings (`OuterMetaComponent/run_user.F90:35-40`), so step 8 removes it.
+- The RAS, BACM_1M, THOM_1M and MGB2_2M `*_Initialize(MAPL, ...)` calls became `_FAIL` (the old call kept in a comment): they take MAPL2's MetaComp, and SetServices already fails for those schemes (step 1).
+
 ### 8. Run and Finalize
 - `MTR` service bundle, as DynCore handles its `TRADV` (`@FVdycoreCubed_GridComp/DynCore_GridCompMod.F90:809-817`): get it from the EXPORT state (Moist is the provider; today's `ESMF_StateGet(IMPORT,'MTR',TR)` only works because MAPL adds the bundle to both states) and `_ASSERT(MAPL_FieldBundleSameData(...))` against the IMPORT copy. No copying: the fields are the subscribers' internals, and `CNV_Tracers_Init` takes data pointers into them (`ESMFL_BundleGetPointerToData`), so GF's transport updates them in place, as FV3 does through `PULL_Q` (`:2525-2600`). The `COMP::NAME` parsing in `CNV_Tracers_Init` is dead (fields keep their short names). No exclusion list (DynCore's `xTRADV`, `:2628-2674`) unless a scheme needs one.
 - Add Moist's own `CNV_TR` internal to the `MTR` bundle before `CNV_Tracers_Init` (step 4, `CNV_TR`).
@@ -219,6 +226,21 @@ Drop `MAPL_GenericInitialize`. Timestep from `MAPL_ClockGet(clock, dt=)` instead
 - `Aer_Activation`: `ESMF_Attribute*` -> `ESMF_Info*` (issue 4).
 - `MAPL_MaxMin` debug prints: now a function returning `[max, min]` (SU2G step 9).
 - Finalize: drop `MAPL_GenericFinalize`.
+
+**Done (2026-10-30).** Not built (step 9).
+- Driver Run: `MAPL_GridCompGet(num_levels=, grid=, logger=)`, `MAPL_GridGet(IM=, JM=)`, `MAPL_GridCompGetInternalState`, `MAPL_ClockGet(dt=)`; every `MAPL_GetPointer` -> `MAPL_StateGetPointer` (`LFR_GCC`'s `NotFoundOk` dropped: it is registered); timers -> `MAPL_GridCompTimerStart/Stop`; `PMIN_CBL` via `MAPL_GridCompGetResource`.
+- Alarm: the `RUNALARM` check and its not-ringing branch are gone (step 7); the ringing branch is dedented. Behaviour change only when Moist's `timestep` is longer than its parent's: MAPL2 then refilled `*AFMOIST` and `RH2` from the current state on the off steps, MAPL3 leaves them at Moist's last values. The AGCM runs Moist every heartbeat.
+- Edge remaps to `0:LM`: imports `PLE`, `ZLE`, `KH`, `TKE` after their fetch; `PFI_SC`/`PFL_SC` inside their `associated()` guard in the `DPDTMST` sum (step 6 did the internals). `PREF` (1D) and the whole-array uses (`CNV_MFC`, `PFL_LSAN`, `PFI_LSAN`, `UMF_*`) need none.
+- `MTR`: the export bundle, `_ASSERT(MAPL_FieldBundleSameData(...))` against the import copy, as DynCore's `TRADV`. GF's `CNV_TR` internal is added to a local bundle (`MTR`'s fields plus `CNV_TR`, created and destroyed around `CNV_Tracers_Init` each step; `ESMF_FieldBundleDestroy` leaves the fields) rather than to MAPL's `MTR` bundle. Added whenever GF is selected, as MAPL2's default `FRIENDLYTO="MOIST"` made it a convective tracer.
+- `CNV_Tracers_Init` (`Process_Library.F90`): the 12 `ESMF_AttributeGet` presence checks and 11 reads -> `ESMF_InfoIsPresent`/`ESMF_InfoGet` on the field's Info (root keys, as SU2G/DU2G/SS2G set them, e.g. `SU2G_GridCompMod.F90:393-396`); `Vect_Hcts`/`KcScal` read with `values=`. `ESMFL_BundleGetPointerToData` (not in MAPL3) -> `ESMF_FieldGet(FIELD, localDe=0, farrayPtr=)`.
+- `Aer_Activation` (`aer_actv_single_moment.F90`, issue 4): takes `GC` instead of the MetaComp (timers `MAPL_GridCompTimerStart/Stop`); `AERO` keys via `ESMF_InfoGetFromHost` + `ESMF_InfoGet`/`ESMF_InfoGetCharAlloc` (field names, as GOCART2G reads them, `GOCART2G_GridCompMod.F90:1427-1441`)/`ESMF_InfoGetAlloc` (`aerosol_modes`, a string list; ESMF `ESMF_Info.F90:97-104`); `aerosol_mode` set with `ESMF_InfoSet`; `MAPL_StateGetPointer`; `MAPL.h` macros. Keys match the MAPL3 provider (`@GOCART/ESMF/Shared/GOCART2G_AerosolActivationMod.F90:52-73, 183-228`).
+- `compute_radar_diagnostics` (`Process_Library.F90`): its 7 `MAPL_GetPointer` -> `MAPL_StateGetPointer`.
+- `PLS`/`PCU`: now local arrays copied to their exports (as group C), always computed: `DIAGNOSE_PRECIP_TYPE` takes them unguarded and `inout`, and in MAPL2 Surface always connected them. The copy is after `DIAGNOSE_PRECIP_TYPE`, which updates them.
+- `MAPL_MaxMin` debug prints (`DEBUG_MST`): a module helper `report_maxmin` calls the MAPL3 function with the VM's communicator and logs through the component logger (`use pflogger`, as SU2G).
+- `MAPL_UNDEF` (issue 6, decided 2026-10-30): `SNOMAS /= MAPL_UNDEF` -> `SNOMAS /= MAPL2_UNDEF`, a module parameter `1.0e15` as in SU2G/DU2G (`SU2G_GridCompMod.F90:36-37`), since SNOMAS's undefined points come from Surface or from MAPL2-converted inputs. The other `MAPL_UNDEF` uses stay: Moist fills and compares within itself with the same constant (`CAPE` from `BUOYANCY`, `Process_Library.F90:1492`; `DETR_SC` from `uwshcu.F90:1109-1110`; `v2`, `Process_Library.F90:3819, 3849`), and the export-only fills keep MAPL3's `-huge` (`@MAPL/utils/Constants/InternalConstants.F90:18-19`), which MAPL3 History treats as missing. So a MAPL2 baseline comparison (step 10) will differ at undefined points of those exports (`1e15` vs `-huge`). Check in `moist-sa` that the SNOMAS provider fills with `1e15`.
+- Finalize: `MAPL_GenericFinalize` dropped.
+- Left for step 9: the pyMoist branches and `GFDL_1M_Finalize`/`GF_Finalize`/`UW_Finalize` (pyMoist only) still use the MetaComp (step 5); the unported schemes' modules are MAPL2 and still in `CMakeLists.txt`.
+- Not checked: whether `pflogger` needs adding to the Moist library's dependencies (SU2G uses it through MAPL); that MAPL3 tolerates `ESMF_FieldBundleCreate`/`Destroy` on fields it owns, each step.
 
 ### 9. Build
 - Uncomment `GEOSmoist_GridComp` in `../CMakeLists.txt:5`; `TYPE SHARED`; one `mapl_acg` per spec file (step 3); external `Moist_SetServices` wrapper with a unique name (SU2G step 8).

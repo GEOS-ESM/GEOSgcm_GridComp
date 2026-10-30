@@ -1,6 +1,6 @@
 MODULE Aer_Actv_Single_Moment
    !
-#include "MAPL_Generic.h"
+#include "MAPL.h"
 
    USE ESMF
    USE MAPL
@@ -38,11 +38,11 @@ CONTAINS
    !>----------------------------------------------------------------------------------------------------------------------
    !>----------------------------------------------------------------------------------------------------------------------
 
-   SUBROUTINE Aer_Activation(MAPL, IM,JM,LM, q, t, plo, ple, tke, vvel, FRLAND, &
+   SUBROUTINE Aer_Activation(GC, IM,JM,LM, q, t, plo, ple, tke, vvel, FRLAND, &
         aero_aci, NACTL, NACTI, NWFA, NIFA,  &
         NN_LAND, NN_OCEAN, need_extra_fields, rc)
       IMPLICIT NONE
-      type (MAPL_MetaComp), pointer   :: MAPL
+      type(ESMF_GridComp), intent(inout) :: GC ! Moist, for its timers
       integer, intent(in)::IM,JM,LM
       type(ESMF_State)            ,intent(inout) :: aero_aci
       real, dimension (IM,JM,LM)  ,intent(in ) :: plo ! Pa
@@ -58,11 +58,11 @@ CONTAINS
       real(AER_PR), allocatable, dimension (:,:,:) :: sig0,rg,ni,bibar,nact
       real(AER_PR), dimension(IM,JM)               :: wupdraft,tk,press,air_den
 
-      integer, parameter :: ALT_MAXSTR=64
-      character(len=ALT_MAXSTR)      :: aci_field_name
+      type(ESMF_Info)                 :: aero_info
+      character(len=:), allocatable   :: aci_field_name
       real, pointer, dimension(:,:)   :: aci_ptr_2d
       real, pointer, dimension(:,:,:) :: aci_ptr_3d
-      character(len=ALT_MAXSTR), allocatable, dimension(:) :: aero_aci_modes
+      character(len=ESMF_MAXSTR), allocatable, dimension(:) :: aero_aci_modes
       integer                         :: ACI_STATUS
 
       integer :: n_modes
@@ -83,85 +83,87 @@ CONTAINS
       ! L^-1 -> m^-3 
       real(AER_PR), parameter :: L_TO_M3 = 1.0e3
 
-      character(len=ESMF_MAXSTR)              :: IAm="Aer_Activation"
       integer                                 :: STATUS
 
       NWFA = 0.0
       NIFA = 0.0
 
-      call ESMF_AttributeGet(aero_aci, name='number_of_aerosol_modes', value=n_modes, __RC__)
+      ! MAPL3: the AERO provider sets these as ESMF_Info keys on the state (GOCART2G's
+      ! setup_aerosol_activation); ESMF_AttributeGet does not see them
+      call ESMF_InfoGetFromHost(aero_aci, aero_info, _RC)
+      call ESMF_InfoGet(aero_info, key='number_of_aerosol_modes', value=n_modes, _RC)
 
       if (n_modes == 0) then
-         RETURN_(ESMF_SUCCESS)
+         _RETURN(_SUCCESS)
       end if
 
-      call MAPL_TimerOn (MAPL,"----AERO_ACTIVATE_1",__RC__)
+      call MAPL_GridCompTimerStart(GC, "----AERO_ACTIVATE_1", _RC)
 
-      allocate(aero_aci_modes(n_modes), __STAT__)
-      call ESMF_AttributeGet(aero_aci, name='aerosol_modes', itemcount=n_modes, valuelist=aero_aci_modes, __RC__)
+      call ESMF_InfoGetAlloc(aero_info, key='aerosol_modes', values=aero_aci_modes, _RC)
+      _ASSERT(size(aero_aci_modes) == n_modes, 'aerosol_modes and number_of_aerosol_modes disagree')
 
-      call ESMF_AttributeGet(aero_aci, name='air_pressure_for_aerosol_optics', value=aci_field_name, __RC__)
+      call ESMF_InfoGetCharAlloc(aero_info, key='air_pressure_for_aerosol_optics', value=aci_field_name, _RC)
       if (aci_field_name /= '') then
-         call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+         call MAPL_StateGetPointer(aero_aci, aci_ptr_3d, aci_field_name, _RC)
          aci_ptr_3d = PLE
       end if
 
-      call ESMF_AttributeGet(aero_aci, name='air_temperature', value=aci_field_name, __RC__)
+      call ESMF_InfoGetCharAlloc(aero_info, key='air_temperature', value=aci_field_name, _RC)
       if (aci_field_name /= '') then
-         call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+         call MAPL_StateGetPointer(aero_aci, aci_ptr_3d, aci_field_name, _RC)
          aci_ptr_3d = T
       end if
 
-      call ESMF_AttributeGet(aero_aci, name='fraction_of_land_type', value=aci_field_name, __RC__)
+      call ESMF_InfoGetCharAlloc(aero_info, key='fraction_of_land_type', value=aci_field_name, _RC)
       if (aci_field_name /= '') then
-         call MAPL_GetPointer(aero_aci, aci_ptr_2d, trim(aci_field_name), __RC__)
+         call MAPL_StateGetPointer(aero_aci, aci_ptr_2d, aci_field_name, _RC)
          aci_ptr_2d = FRLAND
       end if
 
       ACTIVATION_PROPERTIES: do n = 1, n_modes
-         call ESMF_AttributeSet(aero_aci, name='aerosol_mode', value=trim(aero_aci_modes(n)), __RC__)
+         call ESMF_InfoSet(aero_info, key='aerosol_mode', value=trim(aero_aci_modes(n)), _RC)
          ! call WRITE_PARALLEL (trim(aero_aci_modes(n)))
 
          ! execute the aerosol activation properties method
          call ESMF_MethodExecute(aero_aci, label='aerosol_activation_properties', userRC=ACI_STATUS, RC=STATUS)
-         VERIFY_(ACI_STATUS)
-         VERIFY_(STATUS)
+         _VERIFY(ACI_STATUS)
+         _VERIFY(STATUS)
 
          ! copy out aerosol activation properties
-         call ESMF_AttributeGet(aero_aci, name='aerosol_number_concentration', value=aci_field_name, __RC__)
-         call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+         call ESMF_InfoGetCharAlloc(aero_info, key='aerosol_number_concentration', value=aci_field_name, _RC)
+         call MAPL_StateGetPointer(aero_aci, aci_ptr_3d, aci_field_name, _RC)
          AeroPropsNew(n)%num = aci_ptr_3d
 
-         call ESMF_AttributeGet(aero_aci, name='aerosol_dry_size', value=aci_field_name, __RC__)
-         call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+         call ESMF_InfoGetCharAlloc(aero_info, key='aerosol_dry_size', value=aci_field_name, _RC)
+         call MAPL_StateGetPointer(aero_aci, aci_ptr_3d, aci_field_name, _RC)
          AeroPropsNew(n)%dpg = aci_ptr_3d
          ! if (MAPL_am_I_root()) print *, AeroPropsNew(n)%dpg(1,1,1)
 
-         call ESMF_AttributeGet(aero_aci, name='width_of_aerosol_mode', value=aci_field_name, __RC__)
-         call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+         call ESMF_InfoGetCharAlloc(aero_info, key='width_of_aerosol_mode', value=aci_field_name, _RC)
+         call MAPL_StateGetPointer(aero_aci, aci_ptr_3d, aci_field_name, _RC)
          AeroPropsNew(n)%sig = aci_ptr_3d
 
-         call ESMF_AttributeGet(aero_aci, name='aerosol_hygroscopicity', value=aci_field_name, __RC__)
-         call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+         call ESMF_InfoGetCharAlloc(aero_info, key='aerosol_hygroscopicity', value=aci_field_name, _RC)
+         call MAPL_StateGetPointer(aero_aci, aci_ptr_3d, aci_field_name, _RC)
          AeroPropsNew(n)%kap = aci_ptr_3d
          ! if (MAPL_am_I_root()) print *, AeroPropsNew(n)%kap(1,1,1)
 
          if (need_extra_fields) then
 
-            call ESMF_AttributeGet(aero_aci, name='aerosol_density', value=aci_field_name, __RC__)
-            call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+            call ESMF_InfoGetCharAlloc(aero_info, key='aerosol_density', value=aci_field_name, _RC)
+            call MAPL_StateGetPointer(aero_aci, aci_ptr_3d, aci_field_name, _RC)
             AeroPropsNew(n)%den = aci_ptr_3d
 
-            call ESMF_AttributeGet(aero_aci, name='fraction_of_dust_aerosol', value=aci_field_name, __RC__)
-            call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+            call ESMF_InfoGetCharAlloc(aero_info, key='fraction_of_dust_aerosol', value=aci_field_name, _RC)
+            call MAPL_StateGetPointer(aero_aci, aci_ptr_3d, aci_field_name, _RC)
             AeroPropsNew(n)%fdust = aci_ptr_3d
 
-            call ESMF_AttributeGet(aero_aci, name='fraction_of_soot_aerosol', value=aci_field_name, __RC__)
-            call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+            call ESMF_InfoGetCharAlloc(aero_info, key='fraction_of_soot_aerosol', value=aci_field_name, _RC)
+            call MAPL_StateGetPointer(aero_aci, aci_ptr_3d, aci_field_name, _RC)
             AeroPropsNew(n)%fsoot = aci_ptr_3d
 
-            call ESMF_AttributeGet(aero_aci, name='fraction_of_organic_aerosol', value=aci_field_name, __RC__)
-            call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__)
+            call ESMF_InfoGetCharAlloc(aero_info, key='fraction_of_organic_aerosol', value=aci_field_name, _RC)
+            call MAPL_StateGetPointer(aero_aci, aci_ptr_3d, aci_field_name, _RC)
             AeroPropsNew(n)%forg = aci_ptr_3d
 
          endif
@@ -170,18 +172,18 @@ CONTAINS
 
       end do ACTIVATION_PROPERTIES
 
-      deallocate(aero_aci_modes, __STAT__)
+      deallocate(aero_aci_modes, _STAT)
 
-      call MAPL_Timeroff(MAPL,"----AERO_ACTIVATE_1",__RC__)
+      call MAPL_GridCompTimerStop(GC, "----AERO_ACTIVATE_1", _RC)
 
-      call MAPL_TimerOn (MAPL,"----AERO_ACTIVATE_2",__RC__)
+      call MAPL_GridCompTimerStart(GC, "----AERO_ACTIVATE_2", _RC)
       !--- activated aerosol # concentration for liq/ice phases (units: m^-3)
 
-      allocate( sig0(IM,JM,n_modes), source=0.0, __STAT__)
-      allocate(   rg(IM,JM,n_modes), source=0.0, __STAT__)
-      allocate(   ni(IM,JM,n_modes), source=0.0, __STAT__)
-      allocate(bibar(IM,JM,n_modes), source=0.0, __STAT__)
-      allocate( nact(IM,JM,n_modes), source=0.0, __STAT__)
+      allocate( sig0(IM,JM,n_modes), source=0.0, _STAT)
+      allocate(   rg(IM,JM,n_modes), source=0.0, _STAT)
+      allocate(   ni(IM,JM,n_modes), source=0.0, _STAT)
+      allocate(bibar(IM,JM,n_modes), source=0.0, _STAT)
+      allocate( nact(IM,JM,n_modes), source=0.0, _STAT)
 
       !$OMP parallel do default(none) &
       !$OMP shared(IM, JM, LM, n_modes, T, plo, vvel, tke, AeroPropsNew, &
@@ -282,15 +284,15 @@ CONTAINS
 
       ENDDO
 
-      deallocate( sig0, __STAT__)
-      deallocate(   rg, __STAT__)
-      deallocate(   ni, __STAT__)
-      deallocate(bibar, __STAT__)
-      deallocate( nact, __STAT__)
+      deallocate( sig0, _STAT)
+      deallocate(   rg, _STAT)
+      deallocate(   ni, _STAT)
+      deallocate(bibar, _STAT)
+      deallocate( nact, _STAT)
 
-      call MAPL_TimerOff(MAPL,"----AERO_ACTIVATE_2",__RC__)
+      call MAPL_GridCompTimerStop(GC, "----AERO_ACTIVATE_2", _RC)
 
-      RETURN_(ESMF_SUCCESS)
+      _RETURN(_SUCCESS)
    END SUBROUTINE Aer_Activation
 
    !>----------------------------------------------------------------------------------------------------------------------
