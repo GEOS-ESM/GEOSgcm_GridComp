@@ -68,29 +68,30 @@ contains
            FILL_VALUE=0.0, &
            _RC)
 
-      ! MAPL3: pyMoist is not ported (decision 5), so its two GF2020 DSL internals are not registered
-!     call MAPL_GridCompAddSpec(GC, &
-!          STATE_INTENT=ESMF_STATEINTENT_INTERNAL, &
-!          SHORT_NAME='DSL__GF2020_LONS', &
-!          STANDARD_NAME='DSL_longitude', &
-!          UNITS='radians', &
-!          DIMS='xy', &
-!          VERTICAL_STAGGER=MAPL_VERTICAL_STAGGER_NONE, &
-!          RESTART_MODE=MAPL_RESTART_SKIP, &
-!          FILL_VALUE=0.0, &
-!          _RC)
+      ! ! MAPL3: pyMoist is not ported (decision 5), so its two GF2020 DSL internals are not registered
+      ! call MAPL_GridCompAddSpec(GC, &
+      !    STATE_INTENT=ESMF_STATEINTENT_INTERNAL, &
+      !    SHORT_NAME='DSL__GF2020_LONS', &
+      !    STANDARD_NAME='DSL_longitude', &
+      !    UNITS='radians', &
+      !    DIMS='xy', &
+      !    VERTICAL_STAGGER=MAPL_VERTICAL_STAGGER_NONE, &
+      !    RESTART_MODE=MAPL_RESTART_SKIP, &
+      !    FILL_VALUE=0.0, &
+      !    _RC)
 
-!     call MAPL_GridCompAddSpec(GC, &
-!          STATE_INTENT=ESMF_STATEINTENT_INTERNAL, &
-!          SHORT_NAME='DSL__GF2020_LATS', &
-!          STANDARD_NAME='DSL_longitude', &
-!          UNITS='radians', &
-!          DIMS='xy', &
-!          VERTICAL_STAGGER=MAPL_VERTICAL_STAGGER_NONE, &
-!          RESTART_MODE=MAPL_RESTART_SKIP, &
-!          FILL_VALUE=0.0, &
-!          _RC)
+      ! call MAPL_GridCompAddSpec(GC, &
+      !    STATE_INTENT=ESMF_STATEINTENT_INTERNAL, &
+      !    SHORT_NAME='DSL__GF2020_LATS', &
+      !    STANDARD_NAME='DSL_longitude', &
+      !    UNITS='radians', &
+      !    DIMS='xy', &
+      !    VERTICAL_STAGGER=MAPL_VERTICAL_STAGGER_NONE, &
+      !    RESTART_MODE=MAPL_RESTART_SKIP, &
+      !    FILL_VALUE=0.0, &
+      !    _RC)
 
+      _RETURN(_SUCCESS)
    end subroutine GF_Setup
 
    subroutine GF_Initialize(GC, CLOCK, IMPORT, EXPORT, RC)
@@ -449,10 +450,11 @@ contains
 
       end if ! USE_PYMOIST_GF2020
 
+      _RETURN(_SUCCESS)
    end subroutine GF_Initialize
 
-      subroutine GF_Run(GC, IMPORT, EXPORT, CLOCK, RC)
-    type(ESMF_GridComp), intent(inout) :: GC ! Gridded component
+   subroutine GF_Run(GC, IMPORT, EXPORT, CLOCK, RC)
+      type(ESMF_GridComp), intent(inout) :: GC ! Gridded component
       type(ESMF_State), intent(inout) :: IMPORT ! Import state
       type(ESMF_State), intent(inout) :: EXPORT ! Export state
       type(ESMF_Clock), intent(inout) :: CLOCK ! The clock
@@ -1084,6 +1086,7 @@ contains
 
       call MAPL_GridCompTimerStop(GC, "--GF", _RC)
 
+      _RETURN(_SUCCESS)
    end subroutine GF_Run
 
    subroutine GF_Finalize(GC, IMPORT, EXPORT, RC)

@@ -49,6 +49,7 @@ contains
            FILL_VALUE=1000.0, &
            _RC)
 
+      _RETURN(_SUCCESS)
    end subroutine UW_Setup
 
    subroutine UW_Initialize(GC, CLOCK, IMPORT, EXPORT, RC)
@@ -158,6 +159,7 @@ contains
 
       end if ! USE_PYMOIST_UW
 
+      _RETURN(_SUCCESS)
    end subroutine UW_Initialize
 
    subroutine UW_Run(GC, IMPORT, EXPORT, CLOCK, RC)
@@ -792,6 +794,7 @@ contains
 
       call MAPL_GridCompTimerStop(GC, "--UW", _RC)
 
+      _RETURN(_SUCCESS)
    end subroutine UW_Run
 
    subroutine UW_Finalize(GC, IMPORT, EXPORT, RC)

@@ -257,6 +257,7 @@ contains
            VERTICAL_STAGGER=MAPL_VERTICAL_STAGGER_NONE, &
            _RC)
 
+      _RETURN(_SUCCESS)
    end subroutine GFDL_1M_Setup
 
    subroutine GFDL_1M_Initialize(GC, CLOCK, IMPORT, EXPORT, RC)
@@ -464,6 +465,7 @@ contains
 
       call MAPL_GridCompGetResource(GC, 'GFDL_MP_KLID', GFDL_MP_KLID, default=-999.0, _RC)
 
+      _RETURN(_SUCCESS)
    end subroutine GFDL_1M_Initialize
 
    subroutine GFDL_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC)
@@ -1629,6 +1631,7 @@ contains
 
       call MAPL_GridCompTimerStop(GC, "--GFDL_1M", _RC)
 
+      _RETURN(_SUCCESS)
    end subroutine GFDL_1M_Run
 
    subroutine GFDL_1M_Finalize(GC, IMPORT, EXPORT, RC)
