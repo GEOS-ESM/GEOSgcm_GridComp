@@ -200,6 +200,10 @@ contains
       !EXPORT STATE:
 #include "Moist_Export___.h"
 
+      ! INTERNAL STATE: the ALLOC'd exports that need storage beyond one routine call,
+      ! re-exported (ADD2EXPORT). After the scheme Setups, so Q stays the first internal.
+#include "Moist_Internal___.h"
+
       ! Convective transport service (replaces MAPL2's MTR import, which Physics filled
       ! with the fields FRIENDLYTO=MOIST). Subscribers list their internals as service
       ! items; MAPL adds the bundle to both the import and the export state.
@@ -372,20 +376,34 @@ contains
       integer :: n_modes
       type(ESMF_State) :: AERO
       type(ESMF_FieldBundle) :: TR
+      ! Re-exported internals (were ALLOC'd exports shared with the schemes)
+      real, pointer, dimension(:, :) :: CN_PRCP, LS_PRCP, AN_PRCP, SC_PRCP, ICE, FRZR
+      real, pointer, dimension(:, :, :) :: BYNCY
+      real, pointer, dimension(:, :) :: CNV_FRC, SRF_TYPE
+      real, pointer, dimension(:, :) :: EIS, LTS
+      ! Exports computed in local arrays (were ALLOC'd), copied to the export if it is connected
+      real, allocatable, dimension(:, :, :) :: DTDT_ER, DQVDT_ER
+      real, allocatable, dimension(:, :) :: PTYPE, TPREC, RAIN, SNOW, ER_PRCP
+      real, allocatable, dimension(:, :) :: CAPE, INHB, SBCAPE, SBCIN, LFC, LNB, LCL_AGL
+      ! Pointers, not allocatables: BUOYANCY2 takes them as pointer dummies (Process_Library.F90)
+      real, pointer, dimension(:, :) :: MLCAPE, MLCIN, MUCAPE, MUCIN
+      real, allocatable, dimension(:, :, :) :: CFICE
+      real, allocatable, dimension(:, :, :) :: NWFA, NIFA
+      ! Their export pointers
+      real, pointer, dimension(:, :, :) :: DTDT_ER_ptr, DQVDT_ER_ptr
+      real, pointer, dimension(:, :) :: PTYPE_ptr, TPREC_ptr, RAIN_ptr, SNOW_ptr, ER_PRCP_ptr
+      real, pointer, dimension(:, :) :: CAPE_ptr, INHB_ptr, SBCAPE_ptr, SBCIN_ptr, LFC_ptr, LNB_ptr, LCL_AGL_ptr
+      real, pointer, dimension(:, :) :: MLCAPE_ptr, MLCIN_ptr, MUCAPE_ptr, MUCIN_ptr
+      real, pointer, dimension(:, :, :) :: CFICE_ptr
+      real, pointer, dimension(:, :, :) :: NWFA_ptr, NIFA_ptr
       ! Exports
       real, pointer, dimension(:, :, :) :: DQDT, DQADT, DQIDT, DQLDT, DQRDT, DQSDT, DQGDT
       real, pointer, dimension(:, :, :) :: DTDT, DUDT, DVDT, DWDT
       real, pointer, dimension(:, :, :) :: DPDTMST, PFL_LSAN, PFI_LSAN
-      real, pointer, dimension(:, :, :) :: DTDT_ER, DQVDT_ER
-      real, pointer, dimension(:, :) :: PTYPE, TPREC, CN_PRCP, LS_PRCP, AN_PRCP, SC_PRCP, PLS, PCU
-      real, pointer, dimension(:, :) :: RAIN, SNOW, ICE, FRZR, PREC_STRAT, PREC_CONV
-      real, pointer, dimension(:, :, :) :: BYNCY
-      real, pointer, dimension(:, :) :: CAPE, INHB, MLCAPE, SBCAPE, MLCIN, MUCAPE, MUCIN, SBCIN, LFC, LNB, LCL_AGL
-      real, pointer, dimension(:, :) :: CNV_FRC, SRF_TYPE
-      real, pointer, dimension(:, :, :) :: CFICE, CFLIQ
-      real, pointer, dimension(:, :, :) :: NWFA, NIFA
-      real, pointer, dimension(:, :) :: EIS, LTS
+      real, pointer, dimension(:, :) :: PLS, PCU, PREC_STRAT, PREC_CONV
+      real, pointer, dimension(:, :, :) :: CFLIQ
       real, pointer, dimension(:, :, :) :: PTRDC, PTRSC
+      real, pointer, contiguous, dimension(:, :, :) :: p3d ! scratch for the edge-field bounds remap
       real, pointer, dimension(:, :, :) :: PTR3D
       real, pointer, dimension(:, :) :: PTR2D
       real, pointer, dimension(:) :: PTR1D
@@ -455,7 +473,7 @@ contains
          call MAPL_GetPointer(IMPORT, FRLANDICE, 'FRLANDICE', _RC)
          call MAPL_GetPointer(IMPORT, FRACI, 'FRACI', _RC)
          call MAPL_GetPointer(IMPORT, SNOMAS, 'SNOMAS', _RC)
-         call MAPL_GetPointer(EXPORT, SRF_TYPE, 'SRF_TYPE', ALLOC=.true., _RC)
+         call MAPL_StateGetPointer(INTERNAL, SRF_TYPE, 'SRF_TYPE', _RC)
 
          where (FRLANDICE > 0.5)
             SRF_TYPE = SRF_TYPE_LANDICE
@@ -489,15 +507,15 @@ contains
          allocate(KLCL(IM, JM))
 
          ! Save input winds
-         call MAPL_GetPointer(EXPORT, PTR3D, 'UMST0', ALLOC=.true., _RC)
-         PTR3D = U
-         call MAPL_GetPointer(EXPORT, PTR3D, 'VMST0', ALLOC=.true., _RC)
-         PTR3D = V
+         call MAPL_StateGetPointer(EXPORT, PTR3D, 'UMST0', _RC)
+         if (associated(PTR3D)) PTR3D = U
+         call MAPL_StateGetPointer(EXPORT, PTR3D, 'VMST0', _RC)
+         if (associated(PTR3D)) PTR3D = V
 
          ! pre-fill default condensate radii
-         call MAPL_GetPointer(EXPORT, PTR3D, 'RL', _RC)
+         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'RL', _RC)
          if (associated(PTR3D)) PTR3D = MAPL_UNDEF
-         call MAPL_GetPointer(EXPORT, PTR3D, 'RI', _RC)
+         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'RI', _RC)
          if (associated(PTR3D)) PTR3D = MAPL_UNDEF
          call MAPL_GetPointer(EXPORT, PTR3D, 'RR', _RC)
          if (associated(PTR3D)) PTR3D = 50.e-6
@@ -520,8 +538,8 @@ contains
          DQST3 = GEOS_DQSAT(T, PLmb, QSAT=QST3)
 
          ! Lower tropospheric stability and estimated inversion strength
-         call MAPL_GetPointer(EXPORT, LTS, 'LTS', ALLOC=.true., _RC)
-         call MAPL_GetPointer(EXPORT, EIS, 'EIS', ALLOC=.true., _RC)
+         call MAPL_StateGetPointer(INTERNAL, LTS, 'LTS', _RC)
+         call MAPL_StateGetPointer(INTERNAL, EIS, 'EIS', _RC)
          KLCL = FIND_KLCL(T, Q, PLmb, IM, JM, LM)
          call MAPL_GetPointer(EXPORT, PTR2D, 'ZLCL', _RC)
          if (associated(PTR2D)) then
@@ -597,22 +615,15 @@ contains
             end do
          end if
 
-         ! These may be used by children
-         call MAPL_GetPointer(EXPORT, NWFA, 'NWFA', ALLOC=.true., _RC)
-         call MAPL_GetPointer(EXPORT, NIFA, 'NIFA', ALLOC=.true., _RC)
-         call MAPL_GetPointer(EXPORT, CNV_FRC, 'CNV_FRC', ALLOC=.true., _RC)
-         call MAPL_GetPointer(EXPORT, BYNCY, 'BYNCY', ALLOC=.true., _RC)
-         call MAPL_GetPointer(EXPORT, CAPE, 'CAPE', ALLOC=.true., _RC)
-         call MAPL_GetPointer(EXPORT, INHB, 'INHB', ALLOC=.true., _RC)
-         call MAPL_GetPointer(EXPORT, SBCAPE, 'SBCAPE', ALLOC=.true., _RC)
-         call MAPL_GetPointer(EXPORT, SBCIN, 'SBCIN', ALLOC=.true., _RC)
-         call MAPL_GetPointer(EXPORT, MLCAPE, 'MLCAPE', ALLOC=.true., _RC)
-         call MAPL_GetPointer(EXPORT, MLCIN, 'MLCIN', ALLOC=.true., _RC)
-         call MAPL_GetPointer(EXPORT, MUCAPE, 'MUCAPE', ALLOC=.true., _RC)
-         call MAPL_GetPointer(EXPORT, MUCIN, 'MUCIN', ALLOC=.true., _RC)
-         call MAPL_GetPointer(EXPORT, LFC, 'ZLFC', ALLOC=.true., _RC)
-         call MAPL_GetPointer(EXPORT, LNB, 'ZLNB', ALLOC=.true., _RC)
-         call MAPL_GetPointer(EXPORT, LCL_AGL, 'LCL_AGL', ALLOC=.true., _RC)
+         ! These may be used by children: re-exported internals
+         call MAPL_StateGetPointer(INTERNAL, CNV_FRC, 'CNV_FRC', _RC)
+         call MAPL_StateGetPointer(INTERNAL, BYNCY, 'BYNCY', _RC)
+         ! Computed locally, zero-filled as MAPL2's ALLOC did (NWFA, NIFA and LCL_AGL are not
+         ! always written)
+         allocate(NWFA(IM, JM, LM), NIFA(IM, JM, LM), source=0.0)
+         allocate(CAPE(IM, JM), INHB(IM, JM), SBCAPE(IM, JM), SBCIN(IM, JM), source=0.0)
+         allocate(MLCAPE(IM, JM), MLCIN(IM, JM), MUCAPE(IM, JM), MUCIN(IM, JM), source=0.0)
+         allocate(LFC(IM, JM), LNB(IM, JM), LCL_AGL(IM, JM), source=0.0)
 
          call MAPL_TimerOn(MAPL, "-----BUOYANCY2")
          call BUOYANCY2(IM, JM, LM, T, Q, QST3, DQST3, DZET, ZL0, PLmb, PLEmb(:, :, LM), &
@@ -739,8 +750,8 @@ contains
          allocate(TMP3Dp1(IM, JM, LM + 1))
          ! Edge updraft mass flux over deep and shalow convection
          call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_MFC', _RC)
-         call MAPL_GetPointer(EXPORT, PTRDC, 'UMF_DC', _RC)
-         call MAPL_GetPointer(EXPORT, PTRSC, 'UMF_SC', _RC)
+         call MAPL_StateGetPointer(INTERNAL, PTRDC, 'UMF_DC', _RC)
+         call MAPL_StateGetPointer(INTERNAL, PTRSC, 'UMF_SC', _RC)
          TMP3Dp1 = 0.0
          if (associated(PTRDC)) TMP3Dp1 = TMP3Dp1 + PTRDC
          if (associated(PTRSC)) TMP3Dp1 = TMP3Dp1 + PTRSC
@@ -779,8 +790,8 @@ contains
          deallocate(TMP3Dp1)
 
          call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_MFD', _RC)
-         call MAPL_GetPointer(EXPORT, PTRDC, 'MFD_DC', _RC)
-         call MAPL_GetPointer(EXPORT, PTRSC, 'MFD_SC', _RC)
+         call MAPL_StateGetPointer(INTERNAL, PTRDC, 'MFD_DC', _RC)
+         call MAPL_StateGetPointer(INTERNAL, PTRSC, 'MFD_SC', _RC)
          TMP3D = 0.0
          if (associated(PTRDC)) TMP3D = TMP3D + PTRDC
          if (associated(PTRSC)) TMP3D = TMP3D + PTRSC
@@ -804,14 +815,11 @@ contains
 
          ! Exports
          ! Cloud fraction exports
-         call MAPL_GetPointer(EXPORT, CFICE, 'CFICE', ALLOC=.true., _RC)
-         if (associated(CFICE)) then
-            CFICE = 0.0
-            where (QILS + QICN > 1.0e-12)
-               CFICE = (CLLS + CLCN) * (QILS + QICN) / (QLLS + QLCN + QILS + QICN)
-            end where
-            CFICE = max(min(CFICE, 1.0), 0.0)
-         end if
+         allocate(CFICE(IM, JM, LM), source=0.0)
+         where (QILS + QICN > 1.0e-12)
+            CFICE = (CLLS + CLCN) * (QILS + QICN) / (QLLS + QLCN + QILS + QICN)
+         end where
+         CFICE = max(min(CFICE, 1.0), 0.0)
          call MAPL_GetPointer(EXPORT, CFLIQ, 'CFLIQ', _RC)
          if (associated(CFLIQ)) then
             CFLIQ = 0.0
@@ -845,14 +853,13 @@ contains
          if (associated(PTR3D)) PTR3D = Q / QST3
 
          ! Clean up supersaturation only with respect to liquid water
-         call MAPL_GetPointer(EXPORT, DTDT_ER, 'DTDT_ER', ALLOC=.true., _RC)
-         call MAPL_GetPointer(EXPORT, DQVDT_ER, 'DQVDT_ER', ALLOC=.true., _RC)
+         allocate(DTDT_ER(IM, JM, LM), DQVDT_ER(IM, JM, LM), source=0.0)
          DTDT_ER = T
          DQVDT_ER = Q
 
          ! Rain-out of Relative Humidity where RH > 110%
-         call MAPL_GetPointer(EXPORT, LS_PRCP, 'LS_PRCP', ALLOC=.true., _RC)
-         call MAPL_GetPointer(EXPORT, PTR2D, 'ER_PRCP', ALLOC=.true., _RC)
+         call MAPL_StateGetPointer(INTERNAL, LS_PRCP, 'LS_PRCP', _RC)
+         allocate(ER_PRCP(IM, JM), source=0.0)
          where (Q > 1.1 * QST3)
             TMP3D = (Q - 1.1 * QST3) / (1.0 + 1.1 * DQST3 * MAPL_ALHL / MAPL_CP)
             elsewhere
@@ -862,8 +869,8 @@ contains
          where (TMP3D > Q)
             TMP3D = Q
          end where
-         PTR2D = SUM(TMP3D * MASS, 3) / DT_MOIST
-         LS_PRCP = LS_PRCP + PTR2D
+         ER_PRCP = SUM(TMP3D * MASS, 3) / DT_MOIST
+         LS_PRCP = LS_PRCP + ER_PRCP
          Q = Q - TMP3D
          T = T + (MAPL_ALHL / MAPL_CP) * TMP3D
 
@@ -875,148 +882,152 @@ contains
          call MAPL_GetPointer(EXPORT, DUDT, 'DUDT', _RC)
          if (associated(DUDT)) then
             DUDT = 0.0
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DUDT_DC', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DUDT_DC', _RC)
             if (associated(PTR3D)) DUDT = DUDT + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DUDT_SC', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DUDT_SC', _RC)
             if (associated(PTR3D)) DUDT = DUDT + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DUDT_macro', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DUDT_macro', _RC)
             if (associated(PTR3D)) DUDT = DUDT + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DUDT_micro', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DUDT_micro', _RC)
             if (associated(PTR3D)) DUDT = DUDT + PTR3D
          end if
 
          call MAPL_GetPointer(EXPORT, DVDT, 'DVDT', _RC)
          if (associated(DVDT)) then
             DVDT = 0.0
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DVDT_DC', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DVDT_DC', _RC)
             if (associated(PTR3D)) DVDT = DVDT + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DVDT_SC', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DVDT_SC', _RC)
             if (associated(PTR3D)) DVDT = DVDT + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DVDT_macro', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DVDT_macro', _RC)
             if (associated(PTR3D)) DVDT = DVDT + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DVDT_micro', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DVDT_micro', _RC)
             if (associated(PTR3D)) DVDT = DVDT + PTR3D
          end if
 
          call MAPL_GetPointer(EXPORT, DTDT, 'DTDT', _RC)
          if (associated(DTDT)) then
             DTDT = 0.0
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DTDT_DC', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DTDT_DC', _RC)
             if (associated(PTR3D)) DTDT = DTDT + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DTDT_SC', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DTDT_SC', _RC)
             if (associated(PTR3D)) DTDT = DTDT + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DTDT_macro', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DTDT_macro', _RC)
             if (associated(PTR3D)) DTDT = DTDT + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DTDT_micro', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DTDT_micro', _RC)
             if (associated(PTR3D)) DTDT = DTDT + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DTDT_ER', _RC)
-            if (associated(PTR3D)) DTDT = DTDT + PTR3D
+            DTDT = DTDT + DTDT_ER
             DTDT = DTDT * (PLE(:, :, 1:LM) - PLE(:, :, 0:LM - 1)) ! Pressure weighted tendency
          end if
 
          call MAPL_GetPointer(EXPORT, DQDT, 'DQDT', _RC)
          if (associated(DQDT)) then
             DQDT = 0.0
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DQVDT_DC', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQVDT_DC', _RC)
             if (associated(PTR3D)) DQDT = DQDT + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DQVDT_SC', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQVDT_SC', _RC)
             if (associated(PTR3D)) DQDT = DQDT + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DQVDT_macro', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQVDT_macro', _RC)
             if (associated(PTR3D)) DQDT = DQDT + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DQVDT_micro', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQVDT_micro', _RC)
             if (associated(PTR3D)) DQDT = DQDT + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DQVDT_ER', _RC)
-            if (associated(PTR3D)) DQDT = DQDT + PTR3D
+            DQDT = DQDT + DQVDT_ER
          end if
 
          call MAPL_GetPointer(EXPORT, DQLDT, 'DQLDT', _RC)
          if (associated(DQLDT)) then
             DQLDT = 0.0
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DQLDT_DC', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQLDT_DC', _RC)
             if (associated(PTR3D)) DQLDT = DQLDT + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DQLDT_SC', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQLDT_SC', _RC)
             if (associated(PTR3D)) DQLDT = DQLDT + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DQLDT_macro', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQLDT_macro', _RC)
             if (associated(PTR3D)) DQLDT = DQLDT + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DQLDT_micro', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQLDT_micro', _RC)
             if (associated(PTR3D)) DQLDT = DQLDT + PTR3D
          end if
 
          call MAPL_GetPointer(EXPORT, DQIDT, 'DQIDT', _RC)
          if (associated(DQIDT)) then
             DQIDT = 0.0
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DQIDT_DC', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQIDT_DC', _RC)
             if (associated(PTR3D)) DQIDT = DQIDT + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DQIDT_SC', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQIDT_SC', _RC)
             if (associated(PTR3D)) DQIDT = DQIDT + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DQIDT_macro', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQIDT_macro', _RC)
             if (associated(PTR3D)) DQIDT = DQIDT + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DQIDT_micro', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQIDT_micro', _RC)
             if (associated(PTR3D)) DQIDT = DQIDT + PTR3D
          end if
 
          call MAPL_GetPointer(EXPORT, DQRDT, 'DQRDT', _RC)
          if (associated(DQRDT)) then
             DQRDT = 0.0
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DQRDT_SC', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQRDT_SC', _RC)
             if (associated(PTR3D)) DQRDT = DQRDT + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DQRDT_macro', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQRDT_macro', _RC)
             if (associated(PTR3D)) DQRDT = DQRDT + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DQRDT_micro', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQRDT_micro', _RC)
             if (associated(PTR3D)) DQRDT = DQRDT + PTR3D
          end if
 
          call MAPL_GetPointer(EXPORT, DQSDT, 'DQSDT', _RC)
          if (associated(DQSDT)) then
             DQSDT = 0.0
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DQSDT_SC', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQSDT_SC', _RC)
             if (associated(PTR3D)) DQSDT = DQSDT + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DQSDT_macro', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQSDT_macro', _RC)
             if (associated(PTR3D)) DQSDT = DQSDT + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DQSDT_micro', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQSDT_micro', _RC)
             if (associated(PTR3D)) DQSDT = DQSDT + PTR3D
          end if
 
          call MAPL_GetPointer(EXPORT, DQGDT, 'DQGDT', _RC)
          if (associated(DQGDT)) then
             DQGDT = 0.0
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DQGDT_macro', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQGDT_macro', _RC)
             if (associated(PTR3D)) DQGDT = DQGDT + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DQGDT_micro', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQGDT_micro', _RC)
             if (associated(PTR3D)) DQGDT = DQGDT + PTR3D
          end if
 
          call MAPL_GetPointer(EXPORT, DQADT, 'DQADT', _RC)
          if (associated(DQADT)) then
             DQADT = 0.0
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DQADT_DC', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQADT_DC', _RC)
             if (associated(PTR3D)) DQADT = DQADT + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DQADT_SC', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQADT_SC', _RC)
             if (associated(PTR3D)) DQADT = DQADT + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DQADT_macro', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQADT_macro', _RC)
             if (associated(PTR3D)) DQADT = DQADT + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'DQADT_micro', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQADT_micro', _RC)
             if (associated(PTR3D)) DQADT = DQADT + PTR3D
          end if
 
          call MAPL_GetPointer(EXPORT, DPDTMST, 'DPDTMST', _RC)
          if (associated(DPDTMST)) then
             DPDTMST = 0.0
-            call MAPL_GetPointer(EXPORT, PTR3D, 'PFI_CN', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'PFI_CN', _RC)
+            p3d => PTR3D; PTR3D(1:IM, 1:JM, 0:LM) => p3d ! edge: MAPL2's 0:LM bounds
             if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:, :, 0:LM - 1) - PTR3D(:, :, 1:LM)
             call MAPL_GetPointer(EXPORT, PTR3D, 'PFI_SC', _RC)
             if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:, :, 0:LM - 1) - PTR3D(:, :, 1:LM)
-            call MAPL_GetPointer(EXPORT, PTR3D, 'PFI_AN', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'PFI_AN', _RC)
+            p3d => PTR3D; PTR3D(1:IM, 1:JM, 0:LM) => p3d ! edge: MAPL2's 0:LM bounds
             if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:, :, 0:LM - 1) - PTR3D(:, :, 1:LM)
-            call MAPL_GetPointer(EXPORT, PTR3D, 'PFI_LS', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'PFI_LS', _RC)
+            p3d => PTR3D; PTR3D(1:IM, 1:JM, 0:LM) => p3d ! edge: MAPL2's 0:LM bounds
             if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:, :, 0:LM - 1) - PTR3D(:, :, 1:LM)
-            call MAPL_GetPointer(EXPORT, PTR3D, 'PFL_CN', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'PFL_CN', _RC)
+            p3d => PTR3D; PTR3D(1:IM, 1:JM, 0:LM) => p3d ! edge: MAPL2's 0:LM bounds
             if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:, :, 0:LM - 1) - PTR3D(:, :, 1:LM)
             call MAPL_GetPointer(EXPORT, PTR3D, 'PFL_SC', _RC)
             if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:, :, 0:LM - 1) - PTR3D(:, :, 1:LM)
-            call MAPL_GetPointer(EXPORT, PTR3D, 'PFL_AN', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'PFL_AN', _RC)
+            p3d => PTR3D; PTR3D(1:IM, 1:JM, 0:LM) => p3d ! edge: MAPL2's 0:LM bounds
             if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:, :, 0:LM - 1) - PTR3D(:, :, 1:LM)
-            call MAPL_GetPointer(EXPORT, PTR3D, 'PFL_LS', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'PFL_LS', _RC)
+            p3d => PTR3D; PTR3D(1:IM, 1:JM, 0:LM) => p3d ! edge: MAPL2's 0:LM bounds
             if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:, :, 0:LM - 1) - PTR3D(:, :, 1:LM)
             DPDTMST = MAPL_GRAV * DPDTMST
          end if
@@ -1024,18 +1035,18 @@ contains
          call MAPL_GetPointer(EXPORT, PFL_LSAN, 'PFL_LSAN', _RC)
          if (associated(PFL_LSAN)) then
             PFL_LSAN = 0.0
-            call MAPL_GetPointer(EXPORT, PTR3D, 'PFL_AN', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'PFL_AN', _RC)
             if (associated(PTR3D)) PFL_LSAN = PFL_LSAN + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'PFL_LS', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'PFL_LS', _RC)
             if (associated(PTR3D)) PFL_LSAN = PFL_LSAN + PTR3D
          end if
 
          call MAPL_GetPointer(EXPORT, PFI_LSAN, 'PFI_LSAN', _RC)
          if (associated(PFI_LSAN)) then
             PFI_LSAN = 0.0
-            call MAPL_GetPointer(EXPORT, PTR3D, 'PFI_AN', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'PFI_AN', _RC)
             if (associated(PTR3D)) PFI_LSAN = PFI_LSAN + PTR3D
-            call MAPL_GetPointer(EXPORT, PTR3D, 'PFI_LS', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR3D, 'PFI_LS', _RC)
             if (associated(PTR3D)) PFI_LSAN = PFI_LSAN + PTR3D
          end if
 
@@ -1045,11 +1056,11 @@ contains
          call MAPL_GetPointer(EXPORT, PCU, 'PCU', _RC)
          if (associated(PCU)) then
             PCU = 0.0
-            call MAPL_GetPointer(EXPORT, PTR2D, 'CN_PRCP', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR2D, 'CN_PRCP', _RC)
             if (associated(PTR2D)) PCU = PCU + PTR2D
-            call MAPL_GetPointer(EXPORT, PTR2D, 'SC_PRCP', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR2D, 'SC_PRCP', _RC)
             if (associated(PTR2D)) PCU = PCU + PTR2D
-            call MAPL_GetPointer(EXPORT, PTR2D, 'CNPCPRATE', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR2D, 'CNPCPRATE', _RC)
             if (associated(PTR2D)) PCU = PCU + PTR2D
             PCU = max(PCU, 0.0)
          end if
@@ -1058,112 +1069,105 @@ contains
          call MAPL_GetPointer(EXPORT, PLS, 'PLS', _RC)
          if (associated(PLS)) then
             PLS = 0.0
-            call MAPL_GetPointer(EXPORT, PTR2D, 'LS_PRCP', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR2D, 'LS_PRCP', _RC)
             if (associated(PTR2D)) PLS = PLS + PTR2D
-            call MAPL_GetPointer(EXPORT, PTR2D, 'AN_PRCP', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR2D, 'AN_PRCP', _RC)
             if (associated(PTR2D)) PLS = PLS + PTR2D
             PLS = max(PLS, 0.0)
          end if
 
          ! all liquid precip
-         call MAPL_GetPointer(EXPORT, RAIN, 'RAIN', ALLOC=.true., _RC)
-         if (associated(RAIN)) then
-            RAIN = 0.0
-            call MAPL_GetPointer(EXPORT, PTR2D, 'LS_PRCP', _RC)
-            if (associated(PTR2D)) RAIN = RAIN + PTR2D
-            call MAPL_GetPointer(EXPORT, PTR2D, 'AN_PRCP', _RC)
-            if (associated(PTR2D)) RAIN = RAIN + PTR2D
-            call MAPL_GetPointer(EXPORT, PTR2D, 'CN_PRCP', _RC)
-            if (associated(PTR2D)) RAIN = RAIN + PTR2D
-            call MAPL_GetPointer(EXPORT, PTR2D, 'SC_PRCP', _RC)
-            if (associated(PTR2D)) RAIN = RAIN + PTR2D
-            call MAPL_GetPointer(EXPORT, PTR2D, 'CNPCPRATE', _RC)
-            if (associated(PTR2D)) RAIN = RAIN + PTR2D
-            RAIN = max(RAIN, 0.0)
-         end if
+         allocate(RAIN(IM, JM), source=0.0)
+         call MAPL_StateGetPointer(INTERNAL, PTR2D, 'LS_PRCP', _RC)
+         if (associated(PTR2D)) RAIN = RAIN + PTR2D
+         call MAPL_StateGetPointer(INTERNAL, PTR2D, 'AN_PRCP', _RC)
+         if (associated(PTR2D)) RAIN = RAIN + PTR2D
+         call MAPL_StateGetPointer(INTERNAL, PTR2D, 'CN_PRCP', _RC)
+         if (associated(PTR2D)) RAIN = RAIN + PTR2D
+         call MAPL_StateGetPointer(INTERNAL, PTR2D, 'SC_PRCP', _RC)
+         if (associated(PTR2D)) RAIN = RAIN + PTR2D
+         call MAPL_StateGetPointer(INTERNAL, PTR2D, 'CNPCPRATE', _RC)
+         if (associated(PTR2D)) RAIN = RAIN + PTR2D
+         RAIN = max(RAIN, 0.0)
 
          ! all frozen precip (snow at this point)
-         call MAPL_GetPointer(EXPORT, SNOW, 'SNO', ALLOC=.true., _RC)
-         if (associated(SNOW)) then
-            SNOW = 0.0
-            call MAPL_GetPointer(EXPORT, PTR2D, 'LS_SNR', _RC)
-            if (associated(PTR2D)) SNOW = SNOW + PTR2D
-            call MAPL_GetPointer(EXPORT, PTR2D, 'AN_SNR', _RC)
-            if (associated(PTR2D)) SNOW = SNOW + PTR2D
-            call MAPL_GetPointer(EXPORT, PTR2D, 'CN_SNR', _RC)
-            if (associated(PTR2D)) SNOW = SNOW + PTR2D
-            call MAPL_GetPointer(EXPORT, PTR2D, 'SC_SNR', _RC)
-            if (associated(PTR2D)) SNOW = SNOW + PTR2D
-            SNOW = max(SNOW, 0.0)
-         end if
+         allocate(SNOW(IM, JM), source=0.0)
+         call MAPL_StateGetPointer(INTERNAL, PTR2D, 'LS_SNR', _RC)
+         if (associated(PTR2D)) SNOW = SNOW + PTR2D
+         call MAPL_StateGetPointer(INTERNAL, PTR2D, 'AN_SNR', _RC)
+         if (associated(PTR2D)) SNOW = SNOW + PTR2D
+         call MAPL_StateGetPointer(INTERNAL, PTR2D, 'CN_SNR', _RC)
+         if (associated(PTR2D)) SNOW = SNOW + PTR2D
+         call MAPL_StateGetPointer(INTERNAL, PTR2D, 'SC_SNR', _RC)
+         if (associated(PTR2D)) SNOW = SNOW + PTR2D
+         SNOW = max(SNOW, 0.0)
 
          ! all deep convective precip (rain+snow)
-         call MAPL_GetPointer(EXPORT, CN_PRCP, 'CN_PRCP', _RC)
+         call MAPL_StateGetPointer(INTERNAL, CN_PRCP, 'CN_PRCP', _RC)
          if (associated(CN_PRCP)) then
-            call MAPL_GetPointer(EXPORT, PTR2D, 'CNPCPRATE', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR2D, 'CNPCPRATE', _RC)
             if (associated(PTR2D)) CN_PRCP = CN_PRCP + PTR2D
-            call MAPL_GetPointer(EXPORT, PTR2D, 'CN_SNR', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR2D, 'CN_SNR', _RC)
             if (associated(PTR2D)) CN_PRCP = CN_PRCP + PTR2D
             CN_PRCP = max(CN_PRCP, 0.0)
          end if
 
          ! all large-scale precip (rain+snow)
-         call MAPL_GetPointer(EXPORT, LS_PRCP, 'LS_PRCP', _RC)
+         call MAPL_StateGetPointer(INTERNAL, LS_PRCP, 'LS_PRCP', _RC)
          if (associated(LS_PRCP)) then
-            call MAPL_GetPointer(EXPORT, PTR2D, 'LS_SNR', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR2D, 'LS_SNR', _RC)
             if (associated(PTR2D)) LS_PRCP = LS_PRCP + PTR2D
-            call MAPL_GetPointer(EXPORT, PTR2D, 'ICE', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR2D, 'ICE', _RC)
             if (associated(PTR2D)) LS_PRCP = LS_PRCP + PTR2D
-            call MAPL_GetPointer(EXPORT, PTR2D, 'FRZR', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR2D, 'FRZR', _RC)
             if (associated(PTR2D)) LS_PRCP = LS_PRCP + PTR2D
             LS_PRCP = max(LS_PRCP, 0.0)
          end if
 
          ! all anvil precip (rain+snow)
-         call MAPL_GetPointer(EXPORT, AN_PRCP, 'AN_PRCP', _RC)
+         call MAPL_StateGetPointer(INTERNAL, AN_PRCP, 'AN_PRCP', _RC)
          if (associated(AN_PRCP)) then
-            call MAPL_GetPointer(EXPORT, PTR2D, 'AN_SNR', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR2D, 'AN_SNR', _RC)
             if (associated(PTR2D)) AN_PRCP = AN_PRCP + PTR2D
          end if
 
          ! all shallow precip (rain+snow)
-         call MAPL_GetPointer(EXPORT, SC_PRCP, 'SC_PRCP', _RC)
+         call MAPL_StateGetPointer(INTERNAL, SC_PRCP, 'SC_PRCP', _RC)
          if (associated(SC_PRCP)) then
-            call MAPL_GetPointer(EXPORT, PTR2D, 'SC_SNR', _RC)
+            call MAPL_StateGetPointer(INTERNAL, PTR2D, 'SC_SNR', _RC)
             if (associated(PTR2D)) SC_PRCP = SC_PRCP + PTR2D
             SC_PRCP = max(SC_PRCP, 0.0)
          end if
 
          ! Total - all precip (rain+snow)
-         call MAPL_GetPointer(EXPORT, TPREC, 'TPREC', ALLOC=.true., _RC)
-         if (associated(TPREC)) then
-            TPREC = 0.0
-            call MAPL_GetPointer(EXPORT, PTR2D, 'LS_PRCP', _RC)
-            if (associated(PTR2D)) TPREC = TPREC + PTR2D
-            call MAPL_GetPointer(EXPORT, PTR2D, 'AN_PRCP', _RC)
-            if (associated(PTR2D)) TPREC = TPREC + PTR2D
-            call MAPL_GetPointer(EXPORT, PTR2D, 'CN_PRCP', _RC)
-            if (associated(PTR2D)) TPREC = TPREC + PTR2D
-            call MAPL_GetPointer(EXPORT, PTR2D, 'SC_PRCP', _RC)
-            if (associated(PTR2D)) TPREC = TPREC + PTR2D
-            TPREC = max(TPREC, 0.0)
-         end if
+         allocate(TPREC(IM, JM), source=0.0)
+         call MAPL_StateGetPointer(INTERNAL, PTR2D, 'LS_PRCP', _RC)
+         if (associated(PTR2D)) TPREC = TPREC + PTR2D
+         call MAPL_StateGetPointer(INTERNAL, PTR2D, 'AN_PRCP', _RC)
+         if (associated(PTR2D)) TPREC = TPREC + PTR2D
+         call MAPL_StateGetPointer(INTERNAL, PTR2D, 'CN_PRCP', _RC)
+         if (associated(PTR2D)) TPREC = TPREC + PTR2D
+         call MAPL_StateGetPointer(INTERNAL, PTR2D, 'SC_PRCP', _RC)
+         if (associated(PTR2D)) TPREC = TPREC + PTR2D
+         TPREC = max(TPREC, 0.0)
 
          ! diagnosed stratiform precip (rain+snow)
-         call MAPL_GetPointer(EXPORT, PREC_STRAT, 'PREC_STRAT', ALLOC=.true., _RC)
+         call MAPL_StateGetPointer(EXPORT, PREC_STRAT, 'PREC_STRAT', _RC)
          if (associated(PREC_STRAT)) PREC_STRAT = max((1.0 - CNV_FRC) * TPREC, 0.0)
 
          ! diagnosed convective precip (rain+snow)
-         call MAPL_GetPointer(EXPORT, PREC_CONV, 'PREC_CONV', ALLOC=.true., _RC)
+         call MAPL_StateGetPointer(EXPORT, PREC_CONV, 'PREC_CONV', _RC)
          if (associated(PREC_CONV)) PREC_CONV = max(CNV_FRC * TPREC, 0.0)
 
          ! Diagnostic precip types:
-         call MAPL_GetPointer(EXPORT, ICE, 'ICE', ALLOC=.true., _RC)
-         call MAPL_GetPointer(EXPORT, FRZR, 'FRZR', ALLOC=.true., _RC)
+         call MAPL_StateGetPointer(INTERNAL, ICE, 'ICE', _RC)
+         call MAPL_StateGetPointer(INTERNAL, FRZR, 'FRZR', _RC)
          if (LUPDATE_PRECIP_TYPE .or. LDIAGNOSE_PRECIP_TYPE) then
-            call MAPL_GetPointer(EXPORT, PTYPE, 'PTYPE', ALLOC=.true., _RC)
+            allocate(PTYPE(IM, JM), source=0.0)
             call DIAGNOSE_PRECIP_TYPE(IM, JM, LM, TPREC, PLS, PCU, RAIN, SNOW, ICE, FRZR, &
                  PTYPE, PLE, T / PK, PK, PKE, ZL0, LUPDATE_PRECIP_TYPE)
+            call MAPL_StateGetPointer(EXPORT, PTYPE_ptr, 'PTYPE', _RC)
+            if (associated(PTYPE_ptr)) PTYPE_ptr = PTYPE
          end if
          ICE = max(ICE, 0.0)
          FRZR = max(FRZR, 0.0)
@@ -1192,10 +1196,10 @@ contains
          call MAPL_GetPointer(EXPORT, PTR2D, 'PRECTOTAL', _RC)
          if (associated(PTR2D)) PTR2D = DT_MOIST * TPREC
 
-         call MAPL_GetPointer(EXPORT, PTR3D, 'QLTOT', _RC)
+         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'QLTOT', _RC)
          if (associated(PTR3D)) PTR3D = QLLS + QLCN
 
-         call MAPL_GetPointer(EXPORT, PTR3D, 'QITOT', _RC)
+         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'QITOT', _RC)
          if (associated(PTR3D)) PTR3D = QILS + QICN
 
          call MAPL_GetPointer(EXPORT, PTR3D, 'QCTOT', _RC)
@@ -1230,22 +1234,22 @@ contains
 
          ! Fill wind, temperature & RH exports needed for SYNCTQ
 
-         call MAPL_GetPointer(EXPORT, PTR3D, 'UAFMOIST', ALLOC=.true., _RC)
+         call MAPL_StateGetPointer(EXPORT, PTR3D, 'UAFMOIST', _RC)
          if (associated(PTR3D)) PTR3D = U
 
-         call MAPL_GetPointer(EXPORT, PTR3D, 'VAFMOIST', ALLOC=.true., _RC)
+         call MAPL_StateGetPointer(EXPORT, PTR3D, 'VAFMOIST', _RC)
          if (associated(PTR3D)) PTR3D = V
 
-         call MAPL_GetPointer(EXPORT, PTR3D, 'TAFMOIST', ALLOC=.true., _RC)
+         call MAPL_StateGetPointer(EXPORT, PTR3D, 'TAFMOIST', _RC)
          if (associated(PTR3D)) PTR3D = T
 
-         call MAPL_GetPointer(EXPORT, PTR3D, 'QAFMOIST', ALLOC=.true., _RC)
+         call MAPL_StateGetPointer(EXPORT, PTR3D, 'QAFMOIST', _RC)
          if (associated(PTR3D)) PTR3D = Q
 
-         call MAPL_GetPointer(EXPORT, PTR3D, 'THAFMOIST', ALLOC=.true., _RC)
+         call MAPL_StateGetPointer(EXPORT, PTR3D, 'THAFMOIST', _RC)
          if (associated(PTR3D)) PTR3D = T / PK
 
-         call MAPL_GetPointer(EXPORT, PTR3D, 'SAFMOIST', ALLOC=.true., _RC)
+         call MAPL_StateGetPointer(EXPORT, PTR3D, 'SAFMOIST', _RC)
          if (associated(PTR3D)) then
             do L = 1, LM
                PTR3D(:, :, L) = MAPL_CP * T(:, :, L) + MAPL_GRAV * (ZL0(:, :, L) + ZLE(:, :, LM))
@@ -1273,6 +1277,50 @@ contains
          ! Lightning Exports
          call MAPL_GetPointer(EXPORT, PTR2D, 'LFR_GCC', NotFoundOk=.true., _RC)
          if (associated(PTR2D)) PTR2D = 0.0
+
+         ! Copy the local arrays to their exports, if connected (PTYPE is copied above)
+         call MAPL_StateGetPointer(EXPORT, NWFA_ptr, 'NWFA', _RC)
+         call MAPL_StateGetPointer(EXPORT, NIFA_ptr, 'NIFA', _RC)
+         call MAPL_StateGetPointer(EXPORT, CAPE_ptr, 'CAPE', _RC)
+         call MAPL_StateGetPointer(EXPORT, INHB_ptr, 'INHB', _RC)
+         call MAPL_StateGetPointer(EXPORT, SBCAPE_ptr, 'SBCAPE', _RC)
+         call MAPL_StateGetPointer(EXPORT, SBCIN_ptr, 'SBCIN', _RC)
+         call MAPL_StateGetPointer(EXPORT, MLCAPE_ptr, 'MLCAPE', _RC)
+         call MAPL_StateGetPointer(EXPORT, MLCIN_ptr, 'MLCIN', _RC)
+         call MAPL_StateGetPointer(EXPORT, MUCAPE_ptr, 'MUCAPE', _RC)
+         call MAPL_StateGetPointer(EXPORT, MUCIN_ptr, 'MUCIN', _RC)
+         call MAPL_StateGetPointer(EXPORT, LFC_ptr, 'ZLFC', _RC)
+         call MAPL_StateGetPointer(EXPORT, LNB_ptr, 'ZLNB', _RC)
+         call MAPL_StateGetPointer(EXPORT, LCL_AGL_ptr, 'LCL_AGL', _RC)
+         call MAPL_StateGetPointer(EXPORT, CFICE_ptr, 'CFICE', _RC)
+         call MAPL_StateGetPointer(EXPORT, DTDT_ER_ptr, 'DTDT_ER', _RC)
+         call MAPL_StateGetPointer(EXPORT, DQVDT_ER_ptr, 'DQVDT_ER', _RC)
+         call MAPL_StateGetPointer(EXPORT, ER_PRCP_ptr, 'ER_PRCP', _RC)
+         call MAPL_StateGetPointer(EXPORT, RAIN_ptr, 'RAIN', _RC)
+         call MAPL_StateGetPointer(EXPORT, SNOW_ptr, 'SNO', _RC)
+         call MAPL_StateGetPointer(EXPORT, TPREC_ptr, 'TPREC', _RC)
+         if (associated(NWFA_ptr)) NWFA_ptr = NWFA
+         if (associated(NIFA_ptr)) NIFA_ptr = NIFA
+         if (associated(CAPE_ptr)) CAPE_ptr = CAPE
+         if (associated(INHB_ptr)) INHB_ptr = INHB
+         if (associated(SBCAPE_ptr)) SBCAPE_ptr = SBCAPE
+         if (associated(SBCIN_ptr)) SBCIN_ptr = SBCIN
+         if (associated(MLCAPE_ptr)) MLCAPE_ptr = MLCAPE
+         if (associated(MLCIN_ptr)) MLCIN_ptr = MLCIN
+         if (associated(MUCAPE_ptr)) MUCAPE_ptr = MUCAPE
+         if (associated(MUCIN_ptr)) MUCIN_ptr = MUCIN
+         if (associated(LFC_ptr)) LFC_ptr = LFC
+         if (associated(LNB_ptr)) LNB_ptr = LNB
+         if (associated(LCL_AGL_ptr)) LCL_AGL_ptr = LCL_AGL
+         if (associated(CFICE_ptr)) CFICE_ptr = CFICE
+         if (associated(DTDT_ER_ptr)) DTDT_ER_ptr = DTDT_ER
+         if (associated(DQVDT_ER_ptr)) DQVDT_ER_ptr = DQVDT_ER
+         if (associated(ER_PRCP_ptr)) ER_PRCP_ptr = ER_PRCP
+         if (associated(RAIN_ptr)) RAIN_ptr = RAIN
+         if (associated(SNOW_ptr)) SNOW_ptr = SNOW
+         if (associated(TPREC_ptr)) TPREC_ptr = TPREC
+         ! Allocated as pointers (see their declaration), so not freed on return
+         deallocate(MLCAPE, MLCIN, MUCAPE, MUCIN)
 
          call MAPL_TimerOff(MAPL, "---MOIST_EPILOGUE")
 
@@ -1308,22 +1356,22 @@ contains
 
          ! Fill Wind, Temperature & RH exports needed for SYNCTQ
 
-         call MAPL_GetPointer(EXPORT, PTR3D, 'UAFMOIST', ALLOC=.true., _RC)
+         call MAPL_StateGetPointer(EXPORT, PTR3D, 'UAFMOIST', _RC)
          if (associated(PTR3D)) PTR3D = U
 
-         call MAPL_GetPointer(EXPORT, PTR3D, 'VAFMOIST', ALLOC=.true., _RC)
+         call MAPL_StateGetPointer(EXPORT, PTR3D, 'VAFMOIST', _RC)
          if (associated(PTR3D)) PTR3D = V
 
-         call MAPL_GetPointer(EXPORT, PTR3D, 'TAFMOIST', ALLOC=.true., _RC)
+         call MAPL_StateGetPointer(EXPORT, PTR3D, 'TAFMOIST', _RC)
          if (associated(PTR3D)) PTR3D = T
 
-         call MAPL_GetPointer(EXPORT, PTR3D, 'QAFMOIST', ALLOC=.true., _RC)
+         call MAPL_StateGetPointer(EXPORT, PTR3D, 'QAFMOIST', _RC)
          if (associated(PTR3D)) PTR3D = Q
 
-         call MAPL_GetPointer(EXPORT, PTR3D, 'THAFMOIST', ALLOC=.true., _RC)
+         call MAPL_StateGetPointer(EXPORT, PTR3D, 'THAFMOIST', _RC)
          if (associated(PTR3D)) PTR3D = T / PK
 
-         call MAPL_GetPointer(EXPORT, PTR3D, 'SAFMOIST', ALLOC=.true., _RC)
+         call MAPL_StateGetPointer(EXPORT, PTR3D, 'SAFMOIST', _RC)
          if (associated(PTR3D)) then
             do L = 1, LM
                PTR3D(:, :, L) = MAPL_CP * T(:, :, L) + MAPL_GRAV * (ZL0(:, :, L) + ZLE(:, :, LM))

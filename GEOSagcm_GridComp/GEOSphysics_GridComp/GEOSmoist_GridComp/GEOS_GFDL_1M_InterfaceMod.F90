@@ -476,8 +476,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: ZLE, PLE, T, U, V, W, KH
     real, pointer, contiguous, dimension(:,:,:) :: p3d ! scratch for the edge-field bounds remap
     real, pointer, dimension(:,:)   :: AREA, PHIS, FRLAND, TS, DTSX, SH, EVAP, KPBLSC
-    real, pointer, dimension(:,:,:) :: SL2, SL3, QT2, QT3, W2, W3, SLQT, WQT, WQL, WSL, PDF_A
-    real, pointer, dimension(:,:,:) :: WTHV2
+    real, pointer, dimension(:,:,:) :: SL2, SL3, QT2, QT3, W2, W3, SLQT, WQT, WSL, PDF_A
     real, pointer, dimension(:,:,:) :: OMEGA
     ! Local
     real, allocatable, dimension(:,:,:) :: U0, V0
@@ -499,24 +498,36 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! Exports
     real, allocatable, dimension(:,:) :: LONS, LATS
     real, pointer, dimension(:,:,:) :: NACTR
-    real, pointer, dimension(:,:  ) :: PRCP_WATER, PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL
+    ! Re-exported internals (were ALLOC'd exports shared with the driver and the other schemes)
     real, pointer, dimension(:,:  ) :: LS_PRCP, LS_SNR, ICE, FRZR, CNV_FRC, SRF_TYPE
     real, pointer, dimension(:,:,:) :: DQVDT_macro, DQIDT_macro, DQLDT_macro, DQADT_macro, DQRDT_macro, DQSDT_macro, DQGDT_macro
     real, pointer, dimension(:,:,:) ::  DUDT_macro,  DVDT_macro,  DTDT_macro
     real, pointer, dimension(:,:,:) :: DQVDT_micro, DQIDT_micro, DQLDT_micro, DQADT_micro, DQRDT_micro, DQSDT_micro, DQGDT_micro
     real, pointer, dimension(:,:,:) ::  DUDT_micro,  DVDT_micro,  DTDT_micro
-    real, pointer, dimension(:,:,:) :: RAD_CF, RAD_QV, RAD_QL, RAD_QI, RAD_QR, RAD_QS, RAD_QG
     real, pointer, dimension(:,:,:) :: CLDREFFL, CLDREFFI
-    real, pointer, dimension(:,:,:) :: EVAPC, SUBLC
-    real, pointer, dimension(:,:,:) :: RHX, REV_LS, RSU_LS
-    real, pointer, dimension(:,:,:) :: VFALL_ICE, VFALL_SNOW, VFALL_GRAUPEL, VFALL_RAIN
     real, pointer, dimension(:,:,:) :: PFL_LS, PFL_AN
     real, pointer, dimension(:,:,:) :: PFI_LS, PFI_AN
-    real, pointer, dimension(:,:,:) :: PFR_LS, PFS_LS, PFG_LS
-    real, pointer, dimension(:,:,:) :: PDFITERS
-    real, pointer, dimension(:,:,:) :: RHCRIT3D
-    real, pointer, dimension(:,:,:) :: CNV_PRC3 
     real, pointer, dimension(:,:)   :: EIS, LTS
+    ! Exports computed in local arrays (were ALLOC'd), copied to the export if it is connected
+    real, allocatable, dimension(:,:  ) :: PRCP_WATER, PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL
+    real, allocatable, dimension(:,:,:) :: RAD_CF, RAD_QV, RAD_QL, RAD_QI, RAD_QR, RAD_QS, RAD_QG
+    real, allocatable, dimension(:,:,:) :: EVAPC, SUBLC
+    real, allocatable, dimension(:,:,:) :: RHX, REV_LS, RSU_LS
+    real, allocatable, dimension(:,:,:) :: VFALL_ICE, VFALL_SNOW, VFALL_GRAUPEL, VFALL_RAIN
+    real, allocatable, dimension(:,:,:) :: PFR_LS, PFS_LS, PFG_LS
+    real, allocatable, dimension(:,:,:) :: WTHV2, WQL, PDFITERS
+    real, allocatable, dimension(:,:,:) :: RHCRIT3D
+    ! Their export pointers
+    real, pointer, dimension(:,:  ) :: PRCP_WATER_ptr, PRCP_RAIN_ptr, PRCP_SNOW_ptr, PRCP_ICE_ptr, PRCP_GRAUPEL_ptr
+    real, pointer, dimension(:,:,:) :: RAD_CF_ptr, RAD_QV_ptr, RAD_QL_ptr, RAD_QI_ptr, RAD_QR_ptr, RAD_QS_ptr, RAD_QG_ptr
+    real, pointer, dimension(:,:,:) :: EVAPC_ptr, SUBLC_ptr
+    real, pointer, dimension(:,:,:) :: RHX_ptr, REV_LS_ptr, RSU_LS_ptr
+    real, pointer, dimension(:,:,:) :: VFALL_ICE_ptr, VFALL_SNOW_ptr, VFALL_GRAUPEL_ptr, VFALL_RAIN_ptr
+    real, pointer, dimension(:,:,:) :: PFR_LS_ptr, PFS_LS_ptr, PFG_LS_ptr
+    real, pointer, dimension(:,:,:) :: WTHV2_ptr, WQL_ptr, PDFITERS_ptr
+    real, pointer, dimension(:,:,:) :: RHCRIT3D_ptr
+    ! Exports
+    real, pointer, dimension(:,:,:) :: CNV_PRC3 
     real, pointer, dimension(:,:)   :: DBZ_MAX, DBZ_1KM, DBZ_TOP, DBZ_M10C
     real, pointer, dimension(:,:,:) :: DBZ
     real, pointer, dimension(:,:,:) ::   DQVDT_FILL
@@ -670,59 +681,47 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         KLID = 1
     endif
 
-    ! Export and/or scratch Variable
-    call MAPL_GetPointer(EXPORT, RAD_CF,   'FCLD', ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, RAD_QV,   'QV'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, RAD_QL,   'QL'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, RAD_QI,   'QI'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, RAD_QR,   'QR'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, RAD_QS,   'QS'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, RAD_QG,   'QG'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, CLDREFFL, 'RL'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, CLDREFFI, 'RI'  , ALLOC=.TRUE., _RC)
+    ! Export and/or scratch Variable: computed locally, zero-filled as MAPL2's ALLOC did
+    allocate(RAD_CF(IM,JM,LM), RAD_QV(IM,JM,LM), RAD_QL(IM,JM,LM), RAD_QI(IM,JM,LM), source=0.0)
+    allocate(RAD_QR(IM,JM,LM), RAD_QS(IM,JM,LM), RAD_QG(IM,JM,LM), source=0.0)
+    ! Re-exported internals
+    call MAPL_StateGetPointer(INTERNAL, CLDREFFL, 'RL'  , _RC)
+    call MAPL_StateGetPointer(INTERNAL, CLDREFFI, 'RI'  , _RC)
     ! This export MUST have been filled in the GridComp
-    call MAPL_GetPointer(EXPORT, CNV_FRC,      'CNV_FRC'      , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, SRF_TYPE,     'SRF_TYPE'     , ALLOC=.TRUE., _RC)
-    ! Exports  required below
-    call MAPL_GetPointer(EXPORT, EVAPC,        'EVAPC'        , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, SUBLC,        'SUBLC'        , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, PRCP_WATER,   'PRCP_WATER'   , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, PRCP_RAIN,    'PRCP_RAIN'    , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, PRCP_SNOW,    'PRCP_SNOW'    , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, PRCP_ICE,     'PRCP_ICE'     , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, PRCP_GRAUPEL, 'PRCP_GRAUPEL' , ALLOC=.TRUE., _RC)
-    ! Exports to be filled
-    call MAPL_GetPointer(EXPORT, LS_PRCP,  'LS_PRCP' , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, LS_SNR,   'LS_SNR'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, ICE,      'ICE'     , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, FRZR,     'FRZR'    , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, RHX   ,   'RHX'     , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, REV_LS,   'REV_LS'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, RSU_LS,   'RSU_LS'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, PFL_AN,   'PFL_AN'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, PFL_LS,   'PFL_LS'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, PFI_AN,   'PFI_AN'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, PFI_LS,   'PFI_LS'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, PFR_LS,   'PFR_LS'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, PFS_LS,   'PFS_LS'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, PFG_LS,   'PFG_LS'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, WTHV2,    'WTHV2'   , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, WQL,      'WQL'     , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, PDFITERS, 'PDFITERS', ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, VFALL_ICE,     'VFALL_ICE'    , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, VFALL_SNOW,    'VFALL_SNOW'   , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, VFALL_GRAUPEL, 'VFALL_GRAUPEL', ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, VFALL_RAIN,    'VFALL_RAIN'   , ALLOC=.TRUE., _RC)
+    call MAPL_StateGetPointer(INTERNAL, CNV_FRC,      'CNV_FRC'      , _RC)
+    call MAPL_StateGetPointer(INTERNAL, SRF_TYPE,     'SRF_TYPE'     , _RC)
+    ! Exports  required below: computed locally
+    allocate(EVAPC(IM,JM,LM), SUBLC(IM,JM,LM), source=0.0)
+    allocate(PRCP_WATER(IM,JM), PRCP_RAIN(IM,JM), PRCP_SNOW(IM,JM), PRCP_ICE(IM,JM), PRCP_GRAUPEL(IM,JM), source=0.0)
+    ! Exports to be filled: re-exported internals
+    call MAPL_StateGetPointer(INTERNAL, LS_PRCP,  'LS_PRCP' , _RC)
+    call MAPL_StateGetPointer(INTERNAL, LS_SNR,   'LS_SNR'  , _RC)
+    call MAPL_StateGetPointer(INTERNAL, ICE,      'ICE'     , _RC)
+    call MAPL_StateGetPointer(INTERNAL, FRZR,     'FRZR'    , _RC)
+    call MAPL_StateGetPointer(INTERNAL, PFL_AN,   'PFL_AN'  , _RC)
+    call MAPL_StateGetPointer(INTERNAL, PFL_LS,   'PFL_LS'  , _RC)
+    call MAPL_StateGetPointer(INTERNAL, PFI_AN,   'PFI_AN'  , _RC)
+    call MAPL_StateGetPointer(INTERNAL, PFI_LS,   'PFI_LS'  , _RC)
+    ! Edge fields: MAPL3 pointers are 1:LM+1; MAPL2's were 0:LM, which this code assumes
+    p3d => PFL_AN; PFL_AN(1:IM,1:JM,0:LM) => p3d
+    p3d => PFL_LS; PFL_LS(1:IM,1:JM,0:LM) => p3d
+    p3d => PFI_AN; PFI_AN(1:IM,1:JM,0:LM) => p3d
+    p3d => PFI_LS; PFI_LS(1:IM,1:JM,0:LM) => p3d
+    ! Exports to be filled: computed locally
+    allocate(RHX(IM,JM,LM), REV_LS(IM,JM,LM), RSU_LS(IM,JM,LM), source=0.0)
+    allocate(PFR_LS(IM,JM,0:LM), PFS_LS(IM,JM,0:LM), PFG_LS(IM,JM,0:LM), source=0.0) ! edge
+    allocate(WTHV2(IM,JM,LM), WQL(IM,JM,LM), PDFITERS(IM,JM,LM), source=0.0)
+    allocate(VFALL_ICE(IM,JM,LM), VFALL_SNOW(IM,JM,LM), VFALL_GRAUPEL(IM,JM,LM), VFALL_RAIN(IM,JM,LM), source=0.0)
     ! Unused Exports (forced to 0.0)
-    call MAPL_GetPointer(EXPORT, PTR2D,  'CN_PRCP'   , ALLOC=.TRUE., _RC); PTR2D=0.0
-    call MAPL_GetPointer(EXPORT, PTR2D,  'AN_PRCP'   , ALLOC=.TRUE., _RC); PTR2D=0.0
-    call MAPL_GetPointer(EXPORT, PTR2D,  'SC_PRCP'   , ALLOC=.TRUE., _RC); PTR2D=0.0
-    call MAPL_GetPointer(EXPORT, PTR2D,  'CN_SNR'    , ALLOC=.TRUE., _RC); PTR2D=0.0
-    call MAPL_GetPointer(EXPORT, PTR2D,  'AN_SNR'    , ALLOC=.TRUE., _RC); PTR2D=0.0
-    call MAPL_GetPointer(EXPORT, PTR2D,  'SC_SNR'    , ALLOC=.TRUE., _RC); PTR2D=0.0
+    call MAPL_StateGetPointer(INTERNAL, PTR2D,  'CN_PRCP'   , _RC); PTR2D=0.0
+    call MAPL_StateGetPointer(INTERNAL, PTR2D,  'AN_PRCP'   , _RC); PTR2D=0.0
+    call MAPL_StateGetPointer(INTERNAL, PTR2D,  'SC_PRCP'   , _RC); PTR2D=0.0
+    call MAPL_StateGetPointer(INTERNAL, PTR2D,  'CN_SNR'    , _RC); PTR2D=0.0
+    call MAPL_StateGetPointer(INTERNAL, PTR2D,  'AN_SNR'    , _RC); PTR2D=0.0
+    call MAPL_StateGetPointer(INTERNAL, PTR2D,  'SC_SNR'    , _RC); PTR2D=0.0
     ! Lower tropospheric stability and estimated inversion strength from MoistGC
-    call MAPL_GetPointer(EXPORT, LTS,   'LTS'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, EIS,   'EIS'  , ALLOC=.TRUE., _RC)
+    call MAPL_StateGetPointer(INTERNAL, LTS,   'LTS'  , _RC)
+    call MAPL_StateGetPointer(INTERNAL, EIS,   'EIS'  , _RC)
 
 
     if (DEBUG_TQ_ERRORS) then
@@ -754,16 +753,16 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     endif
 
     call MAPL_GridCompTimerStart(GC, "---CLDMACRO", _RC)
-      call MAPL_GetPointer(EXPORT, DQVDT_macro, 'DQVDT_macro' , ALLOC=.TRUE., _RC)
-      call MAPL_GetPointer(EXPORT, DQIDT_macro, 'DQIDT_macro' , ALLOC=.TRUE., _RC)
-      call MAPL_GetPointer(EXPORT, DQLDT_macro, 'DQLDT_macro' , ALLOC=.TRUE., _RC)
-      call MAPL_GetPointer(EXPORT, DQADT_macro, 'DQADT_macro' , ALLOC=.TRUE., _RC)
-      call MAPL_GetPointer(EXPORT, DQRDT_macro, 'DQRDT_macro' , ALLOC=.TRUE., _RC)
-      call MAPL_GetPointer(EXPORT, DQSDT_macro, 'DQSDT_macro' , ALLOC=.TRUE., _RC)
-      call MAPL_GetPointer(EXPORT, DQGDT_macro, 'DQGDT_macro' , ALLOC=.TRUE., _RC)
-      call MAPL_GetPointer(EXPORT,  DUDT_macro,  'DUDT_macro' , ALLOC=.TRUE., _RC)
-      call MAPL_GetPointer(EXPORT,  DVDT_macro,  'DVDT_macro' , ALLOC=.TRUE., _RC)
-      call MAPL_GetPointer(EXPORT,  DTDT_macro,  'DTDT_macro' , ALLOC=.TRUE., _RC)
+      call MAPL_StateGetPointer(INTERNAL, DQVDT_macro, 'DQVDT_macro', _RC)
+      call MAPL_StateGetPointer(INTERNAL, DQIDT_macro, 'DQIDT_macro', _RC)
+      call MAPL_StateGetPointer(INTERNAL, DQLDT_macro, 'DQLDT_macro', _RC)
+      call MAPL_StateGetPointer(INTERNAL, DQADT_macro, 'DQADT_macro', _RC)
+      call MAPL_StateGetPointer(INTERNAL, DQRDT_macro, 'DQRDT_macro', _RC)
+      call MAPL_StateGetPointer(INTERNAL, DQSDT_macro, 'DQSDT_macro', _RC)
+      call MAPL_StateGetPointer(INTERNAL, DQGDT_macro, 'DQGDT_macro', _RC)
+      call MAPL_StateGetPointer(INTERNAL,  DUDT_macro,  'DUDT_macro', _RC)
+      call MAPL_StateGetPointer(INTERNAL,  DVDT_macro,  'DVDT_macro', _RC)
+      call MAPL_StateGetPointer(INTERNAL,  DTDT_macro,  'DTDT_macro', _RC)
 
       !$OMP parallel do default(none) &
       !$OMP shared(LM, JM, IM, DUDT_macro, DVDT_macro, DTDT_macro, DQVDT_macro, &
@@ -794,7 +793,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       enddo
 
       ! Include shallow precip condensates if present
-        call MAPL_GetPointer(EXPORT, PTR3D,  'SHLW_PRC3', ALLOC=.TRUE., _RC)
+        call MAPL_StateGetPointer(INTERNAL, PTR3D,  'SHLW_PRC3', _RC)
         if (associated(PTR3D)) then
           !$OMP parallel do default(none) &
           !$OMP shared(LM, JM, IM, QRAIN, PTR3D, DT_MOIST) &
@@ -808,7 +807,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           enddo
         endif
         
-        call MAPL_GetPointer(EXPORT, PTR3D,  'SHLW_SNO3', ALLOC=.TRUE., _RC)
+        call MAPL_StateGetPointer(INTERNAL, PTR3D,  'SHLW_SNO3', _RC)
         if (associated(PTR3D)) then 
           !$OMP parallel do default(none) &
           !$OMP shared(LM, JM, IM, QSNOW, PTR3D, DT_MOIST) &
@@ -852,7 +851,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         enddo
     
        ! evap/subl/pdf
-        call MAPL_GetPointer(EXPORT, RHCRIT3D,  'RHCRIT', ALLOC=.TRUE., _RC)
+        allocate(RHCRIT3D(IM,JM,LM), source=0.0) ! local, copied to the RHCRIT export below
          
         !$OMP parallel do default(none) &
         !$OMP shared(LM, JM, IM, Q, T, QLLS, QILS, CLLS, QLCN, QICN, CLCN, KLID, &
@@ -907,7 +906,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            ! ===============================================================
              ALPHA = max(0.0, min(0.3, (1.0-RHCRIT)))
            ! fill RHCRIT export
-             if (associated(RHCRIT3D)) RHCRIT3D(I,J,L) = 1.0-ALPHA
+             RHCRIT3D(I,J,L) = 1.0-ALPHA
            ! Do CLOUD MACRO below the pressure lid
              if (L >= KLID) then
            ! Put condensates in touch with the PDF
@@ -1080,16 +1079,16 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     call MAPL_GridCompTimerStart(GC, "---CLDMICRO", _RC)
     ! Zero-out microphysics tendencies
-    call MAPL_GetPointer(EXPORT, DQVDT_micro, 'DQVDT_micro' , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, DQIDT_micro, 'DQIDT_micro' , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, DQLDT_micro, 'DQLDT_micro' , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, DQADT_micro, 'DQADT_micro' , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, DQRDT_micro, 'DQRDT_micro' , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, DQSDT_micro, 'DQSDT_micro' , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, DQGDT_micro, 'DQGDT_micro' , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT,  DUDT_micro,  'DUDT_micro' , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT,  DVDT_micro,  'DVDT_micro' , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT,  DTDT_micro,  'DTDT_micro' , ALLOC=.TRUE., _RC)
+    call MAPL_StateGetPointer(INTERNAL, DQVDT_micro, 'DQVDT_micro', _RC)
+    call MAPL_StateGetPointer(INTERNAL, DQIDT_micro, 'DQIDT_micro', _RC)
+    call MAPL_StateGetPointer(INTERNAL, DQLDT_micro, 'DQLDT_micro', _RC)
+    call MAPL_StateGetPointer(INTERNAL, DQADT_micro, 'DQADT_micro', _RC)
+    call MAPL_StateGetPointer(INTERNAL, DQRDT_micro, 'DQRDT_micro', _RC)
+    call MAPL_StateGetPointer(INTERNAL, DQSDT_micro, 'DQSDT_micro', _RC)
+    call MAPL_StateGetPointer(INTERNAL, DQGDT_micro, 'DQGDT_micro', _RC)
+    call MAPL_StateGetPointer(INTERNAL,  DUDT_micro,  'DUDT_micro', _RC)
+    call MAPL_StateGetPointer(INTERNAL,  DVDT_micro,  'DVDT_micro', _RC)
+    call MAPL_StateGetPointer(INTERNAL,  DTDT_micro,  'DTDT_micro', _RC)
 
     !$OMP parallel do default(none) &
     !$OMP shared(LM, JM, IM, Q, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL, &
@@ -1519,6 +1518,64 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
         call MAPL_StateGetPointer(EXPORT, PTR3D, 'NCPI_VOL', _RC)
         if (associated(PTR3D)) PTR3D = NACTI
+
+        ! Copy the local arrays to their exports, if connected
+        call MAPL_StateGetPointer(EXPORT, RAD_CF_ptr,        'FCLD'         , _RC)
+        call MAPL_StateGetPointer(EXPORT, RAD_QV_ptr,        'QV'           , _RC)
+        call MAPL_StateGetPointer(EXPORT, RAD_QL_ptr,        'QL'           , _RC)
+        call MAPL_StateGetPointer(EXPORT, RAD_QI_ptr,        'QI'           , _RC)
+        call MAPL_StateGetPointer(EXPORT, RAD_QR_ptr,        'QR'           , _RC)
+        call MAPL_StateGetPointer(EXPORT, RAD_QS_ptr,        'QS'           , _RC)
+        call MAPL_StateGetPointer(EXPORT, RAD_QG_ptr,        'QG'           , _RC)
+        call MAPL_StateGetPointer(EXPORT, EVAPC_ptr,         'EVAPC'        , _RC)
+        call MAPL_StateGetPointer(EXPORT, SUBLC_ptr,         'SUBLC'        , _RC)
+        call MAPL_StateGetPointer(EXPORT, PRCP_WATER_ptr,    'PRCP_WATER'   , _RC)
+        call MAPL_StateGetPointer(EXPORT, PRCP_RAIN_ptr,     'PRCP_RAIN'    , _RC)
+        call MAPL_StateGetPointer(EXPORT, PRCP_SNOW_ptr,     'PRCP_SNOW'    , _RC)
+        call MAPL_StateGetPointer(EXPORT, PRCP_ICE_ptr,      'PRCP_ICE'     , _RC)
+        call MAPL_StateGetPointer(EXPORT, PRCP_GRAUPEL_ptr,  'PRCP_GRAUPEL' , _RC)
+        call MAPL_StateGetPointer(EXPORT, RHX_ptr,           'RHX'          , _RC)
+        call MAPL_StateGetPointer(EXPORT, REV_LS_ptr,        'REV_LS'       , _RC)
+        call MAPL_StateGetPointer(EXPORT, RSU_LS_ptr,        'RSU_LS'       , _RC)
+        call MAPL_StateGetPointer(EXPORT, PFR_LS_ptr,        'PFR_LS'       , _RC)
+        call MAPL_StateGetPointer(EXPORT, PFS_LS_ptr,        'PFS_LS'       , _RC)
+        call MAPL_StateGetPointer(EXPORT, PFG_LS_ptr,        'PFG_LS'       , _RC)
+        call MAPL_StateGetPointer(EXPORT, WTHV2_ptr,         'WTHV2'        , _RC)
+        call MAPL_StateGetPointer(EXPORT, WQL_ptr,           'WQL'          , _RC)
+        call MAPL_StateGetPointer(EXPORT, PDFITERS_ptr,      'PDFITERS'     , _RC)
+        call MAPL_StateGetPointer(EXPORT, VFALL_ICE_ptr,     'VFALL_ICE'    , _RC)
+        call MAPL_StateGetPointer(EXPORT, VFALL_SNOW_ptr,    'VFALL_SNOW'   , _RC)
+        call MAPL_StateGetPointer(EXPORT, VFALL_GRAUPEL_ptr, 'VFALL_GRAUPEL', _RC)
+        call MAPL_StateGetPointer(EXPORT, VFALL_RAIN_ptr,    'VFALL_RAIN'   , _RC)
+        call MAPL_StateGetPointer(EXPORT, RHCRIT3D_ptr,      'RHCRIT'       , _RC)
+        if (associated(RAD_CF_ptr))        RAD_CF_ptr        = RAD_CF
+        if (associated(RAD_QV_ptr))        RAD_QV_ptr        = RAD_QV
+        if (associated(RAD_QL_ptr))        RAD_QL_ptr        = RAD_QL
+        if (associated(RAD_QI_ptr))        RAD_QI_ptr        = RAD_QI
+        if (associated(RAD_QR_ptr))        RAD_QR_ptr        = RAD_QR
+        if (associated(RAD_QS_ptr))        RAD_QS_ptr        = RAD_QS
+        if (associated(RAD_QG_ptr))        RAD_QG_ptr        = RAD_QG
+        if (associated(EVAPC_ptr))         EVAPC_ptr         = EVAPC
+        if (associated(SUBLC_ptr))         SUBLC_ptr         = SUBLC
+        if (associated(PRCP_WATER_ptr))    PRCP_WATER_ptr    = PRCP_WATER
+        if (associated(PRCP_RAIN_ptr))     PRCP_RAIN_ptr     = PRCP_RAIN
+        if (associated(PRCP_SNOW_ptr))     PRCP_SNOW_ptr     = PRCP_SNOW
+        if (associated(PRCP_ICE_ptr))      PRCP_ICE_ptr      = PRCP_ICE
+        if (associated(PRCP_GRAUPEL_ptr))  PRCP_GRAUPEL_ptr  = PRCP_GRAUPEL
+        if (associated(RHX_ptr))           RHX_ptr           = RHX
+        if (associated(REV_LS_ptr))        REV_LS_ptr        = REV_LS
+        if (associated(RSU_LS_ptr))        RSU_LS_ptr        = RSU_LS
+        if (associated(PFR_LS_ptr))        PFR_LS_ptr        = PFR_LS
+        if (associated(PFS_LS_ptr))        PFS_LS_ptr        = PFS_LS
+        if (associated(PFG_LS_ptr))        PFG_LS_ptr        = PFG_LS
+        if (associated(WTHV2_ptr))         WTHV2_ptr         = WTHV2
+        if (associated(WQL_ptr))           WQL_ptr           = WQL
+        if (associated(PDFITERS_ptr))      PDFITERS_ptr      = PDFITERS
+        if (associated(VFALL_ICE_ptr))     VFALL_ICE_ptr     = VFALL_ICE
+        if (associated(VFALL_SNOW_ptr))    VFALL_SNOW_ptr    = VFALL_SNOW
+        if (associated(VFALL_GRAUPEL_ptr)) VFALL_GRAUPEL_ptr = VFALL_GRAUPEL
+        if (associated(VFALL_RAIN_ptr))    VFALL_RAIN_ptr    = VFALL_RAIN
+        if (associated(RHCRIT3D_ptr))      RHCRIT3D_ptr      = RHCRIT3D
 
         call MAPL_GridCompTimerStop(GC, "---CLDDIAGS", _RC)
     endif ! USE_PYMOIST_GFDL1M

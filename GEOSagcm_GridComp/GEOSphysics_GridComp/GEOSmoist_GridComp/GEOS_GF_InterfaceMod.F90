@@ -515,31 +515,46 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real,    allocatable, dimension(:,:,:) :: TMP3D
     real,    allocatable, dimension(:,:)   :: TMP2D
 
-    ! Required Exports (connectivities to moist siblings)
-    real, pointer, dimension(:,:,:) :: MFD_DC, UMF_DC, CNV_CVW, CNV_QC, CNV_DQCDT, CNV_PRC3, CNV_UPDF
+    ! Re-exported internals (were ALLOC'd exports shared with the driver and the other schemes)
+    real, pointer, dimension(:,:,:) :: MFD_DC, UMF_DC, BYNCY, PFL_CN, PFI_CN
     real, pointer, dimension(:,:,:) :: DUDT_DC, DVDT_DC, DTDT_DC, DQVDT_DC, DQIDT_DC, DQLDT_DC, DQADT_DC
-    real, pointer, dimension(:,:  ) :: CNV_FRC, SRF_TYPE
-    ! Exports
-    real, pointer, dimension(:,:,:) :: BYNCY, CNV_MF0, ENTLAM
-    real, pointer, dimension(:,:,:) :: MUPDP,MDNDP,MUPSH,MUPMD,WQT_DC
+    real, pointer, dimension(:,:  ) :: CNV_FRC, SRF_TYPE, CNPCPRATE
+    ! Imports
     real, pointer, dimension(:,:  ) :: T2M,Q2M,TA,QA,SH,EVAP,PHIS
-    real, pointer, dimension(:,:  ) :: MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD
-    real, pointer, dimension(:,:  ) :: AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_DP,TAU_MD
-    real, pointer, dimension(:,:  ) :: TPWI,TPWI_star,LFR_GF,CNPCPRATE
-    real, pointer, dimension(:,:,:) :: RSU_CN,REV_CN,PFL_CN,PFI_CN
-    real, pointer, dimension(:,:  ) :: SIGMA_DEEP, SIGMA_MID
-    real, pointer, dimension(:,:,:) :: ENTR, ENTR_DP, ENTR_MD, ENTR_SH
-    real, pointer, dimension(:,:,:) :: SGS_VVEL_DP, SGS_VVEL_MD, SGS_VVEL_SH     
-    real, pointer, dimension(:,:  ) :: CNV_TOPP_DP, CNV_TOPP_MD, CNV_TOPP_SH
+    ! Exports computed in local arrays (were ALLOC'd), copied to the export if it is connected
+    real, allocatable, dimension(:,:,:) :: CNV_CVW, CNV_QC, CNV_DQCDT, CNV_PRC3, CNV_UPDF
+    real, allocatable, dimension(:,:,:) :: CNV_MF0, ENTLAM
+    real, allocatable, dimension(:,:,:) :: MUPDP,MDNDP,MUPSH,MUPMD,WQT_DC
+    real, allocatable, dimension(:,:  ) :: MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD
+    real, allocatable, dimension(:,:  ) :: AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_DP,TAU_MD
+    real, allocatable, dimension(:,:  ) :: TPWI,TPWI_star,LFR_GF
+    real, allocatable, dimension(:,:,:) :: RSU_CN,REV_CN
+    real, allocatable, dimension(:,:  ) :: SIGMA_DEEP, SIGMA_MID
+    real, allocatable, dimension(:,:,:) :: ENTR_DP, ENTR_MD, ENTR_SH
+    real, allocatable, dimension(:,:,:) :: SGS_VVEL_DP, SGS_VVEL_MD, SGS_VVEL_SH
+    real, allocatable, dimension(:,:  ) :: CNV_TOPP_DP, CNV_TOPP_MD, CNV_TOPP_SH
+    real, allocatable, dimension(:,:,:) :: DNDCNV, DNICNV
+    ! Their export pointers
+    real, pointer, dimension(:,:,:) :: CNV_CVW_ptr, CNV_QC_ptr, CNV_DQCDT_ptr, CNV_PRC3_ptr, CNV_UPDF_ptr
+    real, pointer, dimension(:,:,:) :: CNV_MF0_ptr, ENTLAM_ptr
+    real, pointer, dimension(:,:,:) :: MUPDP_ptr,MDNDP_ptr,MUPSH_ptr,MUPMD_ptr,WQT_DC_ptr
+    real, pointer, dimension(:,:  ) :: MFDP_ptr,MFSH_ptr,MFMD_ptr,ERRDP_ptr,ERRSH_ptr,ERRMD_ptr
+    real, pointer, dimension(:,:  ) :: AA0_ptr,AA1_ptr,AA2_ptr,AA3_ptr,AA1_BL_ptr,AA1_CIN_ptr,TAU_BL_ptr,TAU_DP_ptr,TAU_MD_ptr
+    real, pointer, dimension(:,:  ) :: TPWI_ptr,TPWI_star_ptr,LFR_GF_ptr
+    real, pointer, dimension(:,:,:) :: RSU_CN_ptr,REV_CN_ptr
+    real, pointer, dimension(:,:  ) :: SIGMA_DEEP_ptr, SIGMA_MID_ptr
+    real, pointer, dimension(:,:,:) :: ENTR_DP_ptr, ENTR_MD_ptr, ENTR_SH_ptr
+    real, pointer, dimension(:,:,:) :: SGS_VVEL_DP_ptr, SGS_VVEL_MD_ptr, SGS_VVEL_SH_ptr
+    real, pointer, dimension(:,:  ) :: CNV_TOPP_DP_ptr, CNV_TOPP_MD_ptr, CNV_TOPP_SH_ptr
+    real, pointer, dimension(:,:,:) :: DNDCNV_ptr, DNICNV_ptr
+    ! Exports
+    real, pointer, dimension(:,:,:) :: ENTR
     real, pointer, dimension(:,:,:) ::   DQVDT_FILL
     real, pointer, dimension(:,:,:) :: DQLLSDT_FILL
     real, pointer, dimension(:,:,:) :: DQLCNDT_FILL
     real, pointer, dimension(:,:,:) :: DQILSDT_FILL
     real, pointer, dimension(:,:,:) :: DQICNDT_FILL
-    
-    real, pointer, dimension(:,:,:) :: DNDCNV
-    real, pointer, dimension(:,:,:) :: DNICNV
-    
+
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
     
@@ -576,14 +591,14 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_StateGetPointer(IMPORT, PLE,'PLE'       , _RC)
     ! Edge field: MAPL3 pointers are 1:LM+1; MAPL2's were 0:LM, which this code assumes
     p3d => PLE; PLE(1:IM,1:JM,0:LM) => p3d
-    ! Initialize tendencies
-    call MAPL_GetPointer(EXPORT,  DUDT_DC,    'DUDT_DC'  ,  ALLOC = .TRUE., _RC)
-    call MAPL_GetPointer(EXPORT,  DVDT_DC,    'DVDT_DC'  ,  ALLOC = .TRUE., _RC)
-    call MAPL_GetPointer(EXPORT,  DTDT_DC,    'DTDT_DC'  ,  ALLOC = .TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, DQVDT_DC,   'DQVDT_DC'  ,  ALLOC = .TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, DQLDT_DC,   'DQLDT_DC'  ,  ALLOC = .TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, DQIDT_DC,   'DQIDT_DC'  ,  ALLOC = .TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, DQADT_DC,   'DQADT_DC'  ,  ALLOC = .TRUE., _RC)
+    ! Initialize tendencies (internals: they keep their values between GF_RunAlarm rings)
+    call MAPL_StateGetPointer(INTERNAL,  DUDT_DC,    'DUDT_DC'  , _RC)
+    call MAPL_StateGetPointer(INTERNAL,  DVDT_DC,    'DVDT_DC'  , _RC)
+    call MAPL_StateGetPointer(INTERNAL,  DTDT_DC,    'DTDT_DC'  , _RC)
+    call MAPL_StateGetPointer(INTERNAL, DQVDT_DC,   'DQVDT_DC'  , _RC)
+    call MAPL_StateGetPointer(INTERNAL, DQLDT_DC,   'DQLDT_DC'  , _RC)
+    call MAPL_StateGetPointer(INTERNAL, DQIDT_DC,   'DQIDT_DC'  , _RC)
+    call MAPL_StateGetPointer(INTERNAL, DQADT_DC,   'DQADT_DC'  , _RC)
 
     ! Get my internal MAPL_Generic state
     !-----------------------------------
@@ -710,66 +725,35 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,_RC)
     GF_DT = DT_R8
 
-    ! Required Exports (connectivities to moist siblings)
-    call MAPL_GetPointer(EXPORT, MFD_DC,     'MFD_DC'    ,  ALLOC = .TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, UMF_DC,     'UMF_DC'    ,  ALLOC = .TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, CNV_CVW,    'CNV_CVW'   ,  ALLOC = .TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, CNV_QC,     'CNV_QC'    ,  ALLOC = .TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, CNV_DQCDT,  'CNV_DQCDT' ,  ALLOC = .TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, CNV_PRC3,   'CNV_PRC3'  ,  ALLOC = .TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, CNV_UPDF,   'CNV_UPDF'  ,  ALLOC = .TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, CNV_FRC,    'CNV_FRC'   ,  ALLOC = .TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, SRF_TYPE,   'SRF_TYPE'  ,  ALLOC = .TRUE., _RC)
-    ! Exports used below
-    call MAPL_GetPointer(EXPORT, BYNCY,      'BYNCY'     ,  ALLOC = .TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, CNV_MF0,    'CNV_MF0'   ,  ALLOC = .TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, CNPCPRATE,  'CNPCPRATE' ,  ALLOC = .TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, ENTLAM,     'ENTLAM'    ,  ALLOC = .TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, SIGMA_DEEP, 'SIGMA_DEEP',  ALLOC = .TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, SIGMA_MID,  'SIGMA_MID' ,  ALLOC = .TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, TPWI,       'TPWI'      ,  ALLOC = .TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, TPWI_star,  'TPWI_star' ,  ALLOC = .TRUE., _RC)
+    ! Required Exports (connectivities to moist siblings): re-exported internals
+    call MAPL_StateGetPointer(INTERNAL, MFD_DC,     'MFD_DC'    , _RC)
+    call MAPL_StateGetPointer(INTERNAL, UMF_DC,     'UMF_DC'    , _RC)
+    call MAPL_StateGetPointer(INTERNAL, CNV_FRC,    'CNV_FRC'   , _RC)
+    call MAPL_StateGetPointer(INTERNAL, SRF_TYPE,   'SRF_TYPE'  , _RC)
+    call MAPL_StateGetPointer(INTERNAL, BYNCY,      'BYNCY'     , _RC)
+    call MAPL_StateGetPointer(INTERNAL, CNPCPRATE,  'CNPCPRATE' , _RC)
+    call MAPL_StateGetPointer(INTERNAL, PFI_CN   ,'PFI_CN'    , _RC)
+    call MAPL_StateGetPointer(INTERNAL, PFL_CN   ,'PFL_CN'    , _RC)
+    ! Edge fields: MAPL3 pointers are 1:LM+1; MAPL2's were 0:LM, which this code assumes
+    p3d => UMF_DC; UMF_DC(1:IM,1:JM,0:LM) => p3d
+    p3d => PFI_CN; PFI_CN(1:IM,1:JM,0:LM) => p3d
+    p3d => PFL_CN; PFL_CN(1:IM,1:JM,0:LM) => p3d
+    ! Exports computed locally, zero-filled as MAPL2's ALLOC did (some are not written on every path)
+    allocate(CNV_CVW(IM,JM,LM), CNV_QC(IM,JM,LM), CNV_DQCDT(IM,JM,LM), CNV_PRC3(IM,JM,LM), CNV_UPDF(IM,JM,LM), source=0.0)
+    allocate(CNV_MF0(IM,JM,LM), ENTLAM(IM,JM,LM), source=0.0)
+    allocate(SIGMA_DEEP(IM,JM), SIGMA_MID(IM,JM), TPWI(IM,JM), TPWI_star(IM,JM), LFR_GF(IM,JM), source=0.0)
     TPWI       = SUM( Q*MASS, 3 )
     TPWI_star  = SUM( GEOS_QSAT(T,PL,PASCALS=.true.)*MASS, 3 )
-    call MAPL_GetPointer(EXPORT, LFR_GF   ,'LFR_GF'    ,ALLOC = .TRUE. ,_RC)
-    call MAPL_GetPointer(EXPORT, MUPDP    ,'MUPDP'     ,ALLOC = .TRUE. ,_RC)
-    call MAPL_GetPointer(EXPORT, MDNDP    ,'MDNDP'     ,ALLOC = .TRUE. ,_RC)
-    call MAPL_GetPointer(EXPORT, MUPSH    ,'MUPSH'     ,ALLOC = .TRUE. ,_RC)
-    call MAPL_GetPointer(EXPORT, MUPMD    ,'MUPMD'     ,ALLOC = .TRUE. ,_RC)
-    call MAPL_GetPointer(EXPORT, MFDP     ,'MFDP'      ,ALLOC = .TRUE. ,_RC)
-    call MAPL_GetPointer(EXPORT, MFSH     ,'MFSH'      ,ALLOC = .TRUE. ,_RC)
-    call MAPL_GetPointer(EXPORT, MFMD     ,'MFMD'      ,ALLOC = .TRUE. ,_RC)
-    call MAPL_GetPointer(EXPORT, ERRDP    ,'ERRDP'     ,ALLOC = .TRUE. ,_RC)
-    call MAPL_GetPointer(EXPORT, ERRSH    ,'ERRSH'     ,ALLOC = .TRUE. ,_RC)
-    call MAPL_GetPointer(EXPORT, ERRMD    ,'ERRMD'     ,ALLOC = .TRUE. ,_RC)
-    call MAPL_GetPointer(EXPORT, RSU_CN   ,'RSU_CN'    ,ALLOC = .TRUE. ,_RC)
-    call MAPL_GetPointer(EXPORT, REV_CN   ,'REV_CN'    ,ALLOC = .TRUE. ,_RC)
-    call MAPL_GetPointer(EXPORT, PFI_CN   ,'PFI_CN'    ,ALLOC = .TRUE. ,_RC)
-    call MAPL_GetPointer(EXPORT, PFL_CN   ,'PFL_CN'    ,ALLOC = .TRUE. ,_RC)
-    call MAPL_GetPointer(EXPORT, AA0      ,'AA0'       ,ALLOC = .TRUE. ,_RC)
-    call MAPL_GetPointer(EXPORT, AA1      ,'AA1'       ,ALLOC = .TRUE. ,_RC)
-    call MAPL_GetPointer(EXPORT, AA2      ,'AA2'       ,ALLOC = .TRUE. ,_RC)
-    call MAPL_GetPointer(EXPORT, AA3      ,'AA3'       ,ALLOC = .TRUE. ,_RC)
-    call MAPL_GetPointer(EXPORT, AA1_BL   ,'AA1_BL'    ,ALLOC = .TRUE. ,_RC)
-    call MAPL_GetPointer(EXPORT, AA1_CIN  ,'AA1_CIN'   ,ALLOC = .TRUE. ,_RC)
-    call MAPL_GetPointer(EXPORT, TAU_BL   ,'TAU_BL'    ,ALLOC = .TRUE. ,_RC)
-    call MAPL_GetPointer(EXPORT, TAU_DP   ,'TAU_DP'    ,ALLOC = .TRUE. ,_RC)
-    call MAPL_GetPointer(EXPORT, TAU_MD   ,'TAU_MD'    ,ALLOC = .TRUE. ,_RC)
-    call MAPL_GetPointer(EXPORT, WQT_DC   ,'WQT_DC'    ,ALLOC = .TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, ENTR_DP  ,'ENTR_DP'   ,ALLOC = .TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, ENTR_MD  ,'ENTR_MD'   ,ALLOC = .TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, ENTR_SH  ,'ENTR_SH'   ,ALLOC = .TRUE., _RC)
-
-    call MAPL_GetPointer(EXPORT, SGS_VVEL_DP, 'SGS_VVEL_DP' ,ALLOC = .TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, SGS_VVEL_MD, 'SGS_VVEL_MD' ,ALLOC = .TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, SGS_VVEL_SH, 'SGS_VVEL_SH' ,ALLOC = .TRUE., _RC)
-
-    call MAPL_GetPointer(EXPORT, CNV_TOPP_DP, 'CNV_TOPP_DP' ,ALLOC = .TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, CNV_TOPP_MD, 'CNV_TOPP_MD' ,ALLOC = .TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, CNV_TOPP_SH, 'CNV_TOPP_SH' ,ALLOC = .TRUE., _RC)
-    
-    call MAPL_GetPointer(EXPORT, DNDCNV,      'DNDCNV'      , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, DNICNV,      'DNICNV'      , ALLOC=.TRUE., _RC)    
+    allocate(MUPDP(IM,JM,LM), MDNDP(IM,JM,LM), MUPSH(IM,JM,LM), MUPMD(IM,JM,LM), source=0.0)
+    allocate(MFDP(IM,JM), MFSH(IM,JM), MFMD(IM,JM), ERRDP(IM,JM), ERRSH(IM,JM), ERRMD(IM,JM), source=0.0)
+    allocate(RSU_CN(IM,JM,LM), REV_CN(IM,JM,LM), source=0.0)
+    allocate(AA0(IM,JM), AA1(IM,JM), AA2(IM,JM), AA3(IM,JM), AA1_BL(IM,JM), AA1_CIN(IM,JM), source=0.0)
+    allocate(TAU_BL(IM,JM), TAU_DP(IM,JM), TAU_MD(IM,JM), source=0.0)
+    allocate(WQT_DC(IM,JM,0:LM), source=0.0) ! edge
+    allocate(ENTR_DP(IM,JM,LM), ENTR_MD(IM,JM,LM), ENTR_SH(IM,JM,LM), source=0.0)
+    allocate(SGS_VVEL_DP(IM,JM,LM), SGS_VVEL_MD(IM,JM,LM), SGS_VVEL_SH(IM,JM,LM), source=0.0)
+    allocate(CNV_TOPP_DP(IM,JM), CNV_TOPP_MD(IM,JM), CNV_TOPP_SH(IM,JM), source=0.0)
+    allocate(DNDCNV(IM,JM,LM), DNICNV(IM,JM,LM), source=0.0)
 
 
 
@@ -945,6 +929,98 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     if(associated(PTR3D)) PTR3D = CNV_PRC3 / GF_DT
     call MAPL_StateGetPointer(EXPORT, PTR2D, 'CCWP', _RC)
     if (associated(PTR2D)) PTR2D = SUM( CNV_QC*MASS , 3 )
+
+    ! Copy the local arrays to their exports, if connected
+    call MAPL_StateGetPointer(EXPORT, CNV_CVW_ptr,     'CNV_CVW'    , _RC)
+    call MAPL_StateGetPointer(EXPORT, CNV_QC_ptr,      'CNV_QC'     , _RC)
+    call MAPL_StateGetPointer(EXPORT, CNV_DQCDT_ptr,   'CNV_DQCDT'  , _RC)
+    call MAPL_StateGetPointer(EXPORT, CNV_PRC3_ptr,    'CNV_PRC3'   , _RC)
+    call MAPL_StateGetPointer(EXPORT, CNV_UPDF_ptr,    'CNV_UPDF'   , _RC)
+    call MAPL_StateGetPointer(EXPORT, CNV_MF0_ptr,     'CNV_MF0'    , _RC)
+    call MAPL_StateGetPointer(EXPORT, ENTLAM_ptr,      'ENTLAM'     , _RC)
+    call MAPL_StateGetPointer(EXPORT, SIGMA_DEEP_ptr,  'SIGMA_DEEP' , _RC)
+    call MAPL_StateGetPointer(EXPORT, SIGMA_MID_ptr,   'SIGMA_MID'  , _RC)
+    call MAPL_StateGetPointer(EXPORT, TPWI_ptr,        'TPWI'       , _RC)
+    call MAPL_StateGetPointer(EXPORT, TPWI_star_ptr,   'TPWI_star'  , _RC)
+    call MAPL_StateGetPointer(EXPORT, LFR_GF_ptr,      'LFR_GF'     , _RC)
+    call MAPL_StateGetPointer(EXPORT, MUPDP_ptr,       'MUPDP'      , _RC)
+    call MAPL_StateGetPointer(EXPORT, MDNDP_ptr,       'MDNDP'      , _RC)
+    call MAPL_StateGetPointer(EXPORT, MUPSH_ptr,       'MUPSH'      , _RC)
+    call MAPL_StateGetPointer(EXPORT, MUPMD_ptr,       'MUPMD'      , _RC)
+    call MAPL_StateGetPointer(EXPORT, MFDP_ptr,        'MFDP'       , _RC)
+    call MAPL_StateGetPointer(EXPORT, MFSH_ptr,        'MFSH'       , _RC)
+    call MAPL_StateGetPointer(EXPORT, MFMD_ptr,        'MFMD'       , _RC)
+    call MAPL_StateGetPointer(EXPORT, ERRDP_ptr,       'ERRDP'      , _RC)
+    call MAPL_StateGetPointer(EXPORT, ERRSH_ptr,       'ERRSH'      , _RC)
+    call MAPL_StateGetPointer(EXPORT, ERRMD_ptr,       'ERRMD'      , _RC)
+    call MAPL_StateGetPointer(EXPORT, RSU_CN_ptr,      'RSU_CN'     , _RC)
+    call MAPL_StateGetPointer(EXPORT, REV_CN_ptr,      'REV_CN'     , _RC)
+    call MAPL_StateGetPointer(EXPORT, AA0_ptr,         'AA0'        , _RC)
+    call MAPL_StateGetPointer(EXPORT, AA1_ptr,         'AA1'        , _RC)
+    call MAPL_StateGetPointer(EXPORT, AA2_ptr,         'AA2'        , _RC)
+    call MAPL_StateGetPointer(EXPORT, AA3_ptr,         'AA3'        , _RC)
+    call MAPL_StateGetPointer(EXPORT, AA1_BL_ptr,      'AA1_BL'     , _RC)
+    call MAPL_StateGetPointer(EXPORT, AA1_CIN_ptr,     'AA1_CIN'    , _RC)
+    call MAPL_StateGetPointer(EXPORT, TAU_BL_ptr,      'TAU_BL'     , _RC)
+    call MAPL_StateGetPointer(EXPORT, TAU_DP_ptr,      'TAU_DP'     , _RC)
+    call MAPL_StateGetPointer(EXPORT, TAU_MD_ptr,      'TAU_MD'     , _RC)
+    call MAPL_StateGetPointer(EXPORT, WQT_DC_ptr,      'WQT_DC'     , _RC)
+    call MAPL_StateGetPointer(EXPORT, ENTR_DP_ptr,     'ENTR_DP'    , _RC)
+    call MAPL_StateGetPointer(EXPORT, ENTR_MD_ptr,     'ENTR_MD'    , _RC)
+    call MAPL_StateGetPointer(EXPORT, ENTR_SH_ptr,     'ENTR_SH'    , _RC)
+    call MAPL_StateGetPointer(EXPORT, SGS_VVEL_DP_ptr, 'SGS_VVEL_DP', _RC)
+    call MAPL_StateGetPointer(EXPORT, SGS_VVEL_MD_ptr, 'SGS_VVEL_MD', _RC)
+    call MAPL_StateGetPointer(EXPORT, SGS_VVEL_SH_ptr, 'SGS_VVEL_SH', _RC)
+    call MAPL_StateGetPointer(EXPORT, CNV_TOPP_DP_ptr, 'CNV_TOPP_DP', _RC)
+    call MAPL_StateGetPointer(EXPORT, CNV_TOPP_MD_ptr, 'CNV_TOPP_MD', _RC)
+    call MAPL_StateGetPointer(EXPORT, CNV_TOPP_SH_ptr, 'CNV_TOPP_SH', _RC)
+    call MAPL_StateGetPointer(EXPORT, DNDCNV_ptr,      'DNDCNV'     , _RC)
+    call MAPL_StateGetPointer(EXPORT, DNICNV_ptr,      'DNICNV'     , _RC)
+    if (associated(CNV_CVW_ptr))     CNV_CVW_ptr     = CNV_CVW
+    if (associated(CNV_QC_ptr))      CNV_QC_ptr      = CNV_QC
+    if (associated(CNV_DQCDT_ptr))   CNV_DQCDT_ptr   = CNV_DQCDT
+    if (associated(CNV_PRC3_ptr))    CNV_PRC3_ptr    = CNV_PRC3
+    if (associated(CNV_UPDF_ptr))    CNV_UPDF_ptr    = CNV_UPDF
+    if (associated(CNV_MF0_ptr))     CNV_MF0_ptr     = CNV_MF0
+    if (associated(ENTLAM_ptr))      ENTLAM_ptr      = ENTLAM
+    if (associated(SIGMA_DEEP_ptr))  SIGMA_DEEP_ptr  = SIGMA_DEEP
+    if (associated(SIGMA_MID_ptr))   SIGMA_MID_ptr   = SIGMA_MID
+    if (associated(TPWI_ptr))        TPWI_ptr        = TPWI
+    if (associated(TPWI_star_ptr))   TPWI_star_ptr   = TPWI_star
+    if (associated(LFR_GF_ptr))      LFR_GF_ptr      = LFR_GF
+    if (associated(MUPDP_ptr))       MUPDP_ptr       = MUPDP
+    if (associated(MDNDP_ptr))       MDNDP_ptr       = MDNDP
+    if (associated(MUPSH_ptr))       MUPSH_ptr       = MUPSH
+    if (associated(MUPMD_ptr))       MUPMD_ptr       = MUPMD
+    if (associated(MFDP_ptr))        MFDP_ptr        = MFDP
+    if (associated(MFSH_ptr))        MFSH_ptr        = MFSH
+    if (associated(MFMD_ptr))        MFMD_ptr        = MFMD
+    if (associated(ERRDP_ptr))       ERRDP_ptr       = ERRDP
+    if (associated(ERRSH_ptr))       ERRSH_ptr       = ERRSH
+    if (associated(ERRMD_ptr))       ERRMD_ptr       = ERRMD
+    if (associated(RSU_CN_ptr))      RSU_CN_ptr      = RSU_CN
+    if (associated(REV_CN_ptr))      REV_CN_ptr      = REV_CN
+    if (associated(AA0_ptr))         AA0_ptr         = AA0
+    if (associated(AA1_ptr))         AA1_ptr         = AA1
+    if (associated(AA2_ptr))         AA2_ptr         = AA2
+    if (associated(AA3_ptr))         AA3_ptr         = AA3
+    if (associated(AA1_BL_ptr))      AA1_BL_ptr      = AA1_BL
+    if (associated(AA1_CIN_ptr))     AA1_CIN_ptr     = AA1_CIN
+    if (associated(TAU_BL_ptr))      TAU_BL_ptr      = TAU_BL
+    if (associated(TAU_DP_ptr))      TAU_DP_ptr      = TAU_DP
+    if (associated(TAU_MD_ptr))      TAU_MD_ptr      = TAU_MD
+    if (associated(WQT_DC_ptr))      WQT_DC_ptr      = WQT_DC
+    if (associated(ENTR_DP_ptr))     ENTR_DP_ptr     = ENTR_DP
+    if (associated(ENTR_MD_ptr))     ENTR_MD_ptr     = ENTR_MD
+    if (associated(ENTR_SH_ptr))     ENTR_SH_ptr     = ENTR_SH
+    if (associated(SGS_VVEL_DP_ptr)) SGS_VVEL_DP_ptr = SGS_VVEL_DP
+    if (associated(SGS_VVEL_MD_ptr)) SGS_VVEL_MD_ptr = SGS_VVEL_MD
+    if (associated(SGS_VVEL_SH_ptr)) SGS_VVEL_SH_ptr = SGS_VVEL_SH
+    if (associated(CNV_TOPP_DP_ptr)) CNV_TOPP_DP_ptr = CNV_TOPP_DP
+    if (associated(CNV_TOPP_MD_ptr)) CNV_TOPP_MD_ptr = CNV_TOPP_MD
+    if (associated(CNV_TOPP_SH_ptr)) CNV_TOPP_SH_ptr = CNV_TOPP_SH
+    if (associated(DNDCNV_ptr))      DNDCNV_ptr      = DNDCNV
+    if (associated(DNICNV_ptr))      DNICNV_ptr      = DNICNV
 
     endif ! Alarm ringing
 

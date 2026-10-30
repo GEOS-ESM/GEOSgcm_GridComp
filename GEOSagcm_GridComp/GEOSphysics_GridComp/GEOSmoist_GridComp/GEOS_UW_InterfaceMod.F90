@@ -184,22 +184,34 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real,    allocatable, dimension(:,:)   :: RKM2D, RKFRE, MIX2D, RMAXFRAC2D
     real,    allocatable, dimension(:,:,:) :: TMP3D
 
-    ! Required Exports (connectivities to moist siblings)
+    ! Re-exported internals (were ALLOC'd exports shared with the driver and the other schemes)
     real, pointer, dimension(:,:)   :: CNPCPRATE
     real, pointer, dimension(:,:)   :: CNV_FRC, SRF_TYPE
-    ! Exports
-    real, pointer, dimension(:,:,:) :: CUFRC_SC
-    real, pointer, dimension(:,:,:) :: UMF_SC, MFD_SC, DCM_SC
-    real, pointer, dimension(:,:,:) :: QTFLX_SC, SLFLX_SC, UFLX_SC, VFLX_SC
+    real, pointer, dimension(:,:,:) :: UMF_SC, MFD_SC
     real, pointer, dimension(:,:,:) :: DTDT_SC, DQVDT_SC, DQRDT_SC, DQSDT_SC, &
                                        DUDT_SC,  DVDT_SC, DQIDT_SC, DQLDT_SC, DQADT_SC
-    real, pointer, dimension(:,:,:) :: ENTR_SC, DETR_SC, QLDET_SC, &
-                                       QIDET_SC, QLENT_SC, QIENT_SC, &
-                                       QLSUB_SC, QISUB_SC, SC_NDROP, SC_NICE
-    real, pointer, dimension(:,:)   :: TPERT_SC, QPERT_SC, LTS, EIS
-    real, pointer, dimension(:,:)   :: CBMF_SC, PLCL_SC, PLFC_SC,     &
-                                       PINV_SC, PREL_SC, PBUP_SC,    &
-                                       CLDTOP_SC, SC_QT, SC_MSE
+    real, pointer, dimension(:,:,:) :: QLDET_SC, QIDET_SC, QLENT_SC, QIENT_SC, &
+                                       QLSUB_SC, QISUB_SC
+    real, pointer, dimension(:,:)   :: LTS, EIS
+    real, pointer, dimension(:,:,:) :: QLTOT, QITOT
+    ! Exports computed in local arrays (were ALLOC'd), copied to the export if it is connected
+    real, allocatable, dimension(:,:,:) :: CUFRC_SC, DCM_SC
+    real, allocatable, dimension(:,:,:) :: QTFLX_SC, SLFLX_SC, UFLX_SC, VFLX_SC
+    real, allocatable, dimension(:,:,:) :: ENTR_SC, DETR_SC, SC_NDROP, SC_NICE
+    real, allocatable, dimension(:,:)   :: TPERT_SC, QPERT_SC
+    real, allocatable, dimension(:,:)   :: CBMF_SC, PLCL_SC, PLFC_SC,     &
+                                           PINV_SC, PREL_SC, PBUP_SC,    &
+                                           CLDTOP_SC
+    ! Their export pointers
+    real, pointer, dimension(:,:,:) :: CUFRC_SC_ptr, DCM_SC_ptr
+    real, pointer, dimension(:,:,:) :: QTFLX_SC_ptr, SLFLX_SC_ptr, UFLX_SC_ptr, VFLX_SC_ptr
+    real, pointer, dimension(:,:,:) :: ENTR_SC_ptr, DETR_SC_ptr, SC_NDROP_ptr, SC_NICE_ptr
+    real, pointer, dimension(:,:)   :: TPERT_SC_ptr, QPERT_SC_ptr
+    real, pointer, dimension(:,:)   :: CBMF_SC_ptr, PLCL_SC_ptr, PLFC_SC_ptr,     &
+                                       PINV_SC_ptr, PREL_SC_ptr, PBUP_SC_ptr,    &
+                                       CLDTOP_SC_ptr
+    ! Exports
+    real, pointer, dimension(:,:)   :: SC_QT, SC_MSE
 #ifdef UWDIAG
     real, pointer, dimension(:,:)   :: CIN_SC, CNT_SC, CNB_SC,      &
                                        WLCL_SC, QTSRC_SC, THLSRC_SC, &
@@ -209,7 +221,6 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                        VUP_SC, XC_SC, QCU_SC,        &
                                        QLU_SC, QIU_SC
 #endif
-    real, pointer, dimension(:,:,:) :: QLTOT, QITOT
     real, pointer, dimension(:,:,:) ::   DQVDT_FILL
     real, pointer, dimension(:,:,:) :: DQLLSDT_FILL
     real, pointer, dimension(:,:,:) :: DQLCNDT_FILL
@@ -267,27 +278,19 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_StateGetPointer(IMPORT, T,'T'         , _RC)
     call MAPL_StateGetPointer(IMPORT, U,'U'         , _RC)
     call MAPL_StateGetPointer(IMPORT, V,'V'         , _RC)
-    ! Tendency Export
-    call MAPL_GetPointer(EXPORT, DUDT_SC,    'DUDT_SC'   , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, DVDT_SC,    'DVDT_SC'   , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, DTDT_SC,    'DTDT_SC'   , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, DQVDT_SC,   'DQVDT_SC'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, DQIDT_SC,   'DQIDT_SC'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, DQLDT_SC,   'DQLDT_SC'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, DQRDT_SC,   'DQRDT_SC'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, DQSDT_SC,   'DQSDT_SC'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, DQADT_SC,   'DQADT_SC'  , ALLOC=.TRUE., _RC)
+    ! Tendency Export (internals: they keep their values between UW_RunAlarm rings)
+    call MAPL_StateGetPointer(INTERNAL, DUDT_SC,    'DUDT_SC'   , _RC)
+    call MAPL_StateGetPointer(INTERNAL, DVDT_SC,    'DVDT_SC'   , _RC)
+    call MAPL_StateGetPointer(INTERNAL, DTDT_SC,    'DTDT_SC'   , _RC)
+    call MAPL_StateGetPointer(INTERNAL, DQVDT_SC,   'DQVDT_SC'  , _RC)
+    call MAPL_StateGetPointer(INTERNAL, DQIDT_SC,   'DQIDT_SC'  , _RC)
+    call MAPL_StateGetPointer(INTERNAL, DQLDT_SC,   'DQLDT_SC'  , _RC)
+    call MAPL_StateGetPointer(INTERNAL, DQRDT_SC,   'DQRDT_SC'  , _RC)
+    call MAPL_StateGetPointer(INTERNAL, DQSDT_SC,   'DQSDT_SC'  , _RC)
+    call MAPL_StateGetPointer(INTERNAL, DQADT_SC,   'DQADT_SC'  , _RC)
     ! Lower tropospheric stability and estimated inversion strength from MoistGC
-    call MAPL_GetPointer(EXPORT, LTS,   'LTS'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, EIS,   'EIS'  , ALLOC=.TRUE., _RC)
-
-    call MAPL_GetPointer(EXPORT, PLCL_SC,   'PLCL_SC'   , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, PLFC_SC,   'PLFC_SC'   , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, PINV_SC,   'PINV_SC'   , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, PREL_SC,   'PREL_SC'   , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, PBUP_SC,   'PBUP_SC'   , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, CBMF_SC,   'CBMF_SC'   , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, CLDTOP_SC, 'CLDTOP_SC' , ALLOC=.TRUE., _RC)
+    call MAPL_StateGetPointer(INTERNAL, LTS,   'LTS'  , _RC)
+    call MAPL_StateGetPointer(INTERNAL, EIS,   'EIS'  , _RC)
 
 #ifdef UWDIAG
       call MAPL_StateGetPointer(EXPORT, SHL_DQCDT, 'SHL_DQCDT' , _RC)
@@ -414,35 +417,30 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,_RC)
     UW_DT = DT_R8
 
-    ! Required Exports (connectivities to moist siblings)
-    call MAPL_GetPointer(EXPORT, MFD_SC,     'MFD_SC'    , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, QLDET_SC,   'QLDET_SC'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, QIDET_SC,   'QIDET_SC'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, CUFRC_SC,   'CUFRC_SC'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, CNPCPRATE,  'CNPCPRATE' , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, CNV_FRC ,   'CNV_FRC'   , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, SRF_TYPE,   'SRF_TYPE'  , ALLOC=.TRUE., _RC)
-    ! Exports
-    call MAPL_GetPointer(EXPORT, UMF_SC,     'UMF_SC'    , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, DCM_SC,     'DCM_SC'    , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, ENTR_SC,    'ENTR_SC'   , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, DETR_SC,    'DETR_SC'   , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, QLSUB_SC,   'QLSUB_SC'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, QISUB_SC,   'QISUB_SC'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, SC_NDROP,   'SC_NDROP'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, SC_NICE,    'SC_NICE'   , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, TPERT_SC,   'TPERT_SC'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, QPERT_SC,   'QPERT_SC'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, QTFLX_SC,   'QTFLX_SC'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, SLFLX_SC,   'SLFLX_SC'  , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, UFLX_SC,    'UFLX_SC'   , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, VFLX_SC,    'VFLX_SC'   , ALLOC=.TRUE., _RC)
+    ! Required Exports (connectivities to moist siblings): re-exported internals
+    call MAPL_StateGetPointer(INTERNAL, MFD_SC,     'MFD_SC'    , _RC)
+    call MAPL_StateGetPointer(INTERNAL, QLDET_SC,   'QLDET_SC'  , _RC)
+    call MAPL_StateGetPointer(INTERNAL, QIDET_SC,   'QIDET_SC'  , _RC)
+    call MAPL_StateGetPointer(INTERNAL, CNPCPRATE,  'CNPCPRATE' , _RC)
+    call MAPL_StateGetPointer(INTERNAL, CNV_FRC ,   'CNV_FRC'   , _RC)
+    call MAPL_StateGetPointer(INTERNAL, SRF_TYPE,   'SRF_TYPE'  , _RC)
+    call MAPL_StateGetPointer(INTERNAL, UMF_SC,     'UMF_SC'    , _RC)
+    call MAPL_StateGetPointer(INTERNAL, QLSUB_SC,   'QLSUB_SC'  , _RC)
+    call MAPL_StateGetPointer(INTERNAL, QISUB_SC,   'QISUB_SC'  , _RC)
+    ! Edge field: MAPL3 pointers are 1:LM+1; MAPL2's were 0:LM, which this code assumes
+    p3d => UMF_SC; UMF_SC(1:IM,1:JM,0:LM) => p3d
+    ! Exports computed locally, zero-filled as MAPL2's ALLOC did
+    allocate(PLCL_SC(IM,JM), PLFC_SC(IM,JM), PINV_SC(IM,JM), PREL_SC(IM,JM), PBUP_SC(IM,JM), source=0.0)
+    allocate(CBMF_SC(IM,JM), CLDTOP_SC(IM,JM), TPERT_SC(IM,JM), QPERT_SC(IM,JM), source=0.0)
+    allocate(CUFRC_SC(IM,JM,LM), DCM_SC(IM,JM,LM), ENTR_SC(IM,JM,LM), DETR_SC(IM,JM,LM), source=0.0)
+    allocate(SC_NDROP(IM,JM,LM), SC_NICE(IM,JM,LM), source=0.0)
+    allocate(QTFLX_SC(IM,JM,0:LM), SLFLX_SC(IM,JM,0:LM), UFLX_SC(IM,JM,0:LM), VFLX_SC(IM,JM,0:LM), source=0.0) ! edge
 
     ! 1. Fetch all pointers first
     !--------------------------------------------------------------
     call MAPL_StateGetPointer(IMPORT, PTR2D, 'AREA', _RC)
-    call MAPL_GetPointer(EXPORT, QLTOT, 'QLTOT', ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, QITOT, 'QITOT', ALLOC=.TRUE., _RC)
+    call MAPL_StateGetPointer(INTERNAL, QLTOT, 'QLTOT', _RC)
+    call MAPL_StateGetPointer(INTERNAL, QITOT, 'QITOT', _RC)
 
     ! 2. 2D parameters for UW
     !--------------------------------------------------------------
@@ -541,8 +539,8 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
       ! 1. Fetch ALL pointers at the top
       !--------------------------------------------------------------
-      call MAPL_GetPointer(EXPORT, QLENT_SC, 'QLENT_SC', ALLOC=.TRUE., _RC)
-      call MAPL_GetPointer(EXPORT, QIENT_SC, 'QIENT_SC', ALLOC=.TRUE., _RC)
+      call MAPL_StateGetPointer(INTERNAL, QLENT_SC, 'QLENT_SC', _RC)
+      call MAPL_StateGetPointer(INTERNAL, QIENT_SC, 'QIENT_SC', _RC)
       call MAPL_StateGetPointer(EXPORT, SC_QT,   'SC_QT', _RC)
       call MAPL_StateGetPointer(EXPORT, SC_MSE,  'SC_MSE', _RC)
 
@@ -593,9 +591,9 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
       ! 3. Whole-array copies for direct 3D variables
       !--------------------------------------------------------------
-      call MAPL_GetPointer(EXPORT, PTR3D, 'SHLW_PRC3', ALLOC=.TRUE., _RC)
+      call MAPL_StateGetPointer(INTERNAL, PTR3D, 'SHLW_PRC3', _RC)
       if (associated(PTR3D)) PTR3D = DQRDT_SC    ! [kg/kg/s]
-      call MAPL_GetPointer(EXPORT, PTR3D, 'SHLW_SNO3', ALLOC=.TRUE., _RC)
+      call MAPL_StateGetPointer(INTERNAL, PTR3D, 'SHLW_SNO3', _RC)
       if (associated(PTR3D)) PTR3D = DQSDT_SC    ! [kg/kg/s]
       call MAPL_StateGetPointer(EXPORT, PTR2D,  'CUSH_SC', _RC)
       if (associated(PTR2D)) PTR2D = CUSH
@@ -633,17 +631,58 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       end do
       !$OMP END PARALLEL DO
 
+      ! 5. Copy the local arrays to their exports, if connected
+      !--------------------------------------------------------------
+      call MAPL_StateGetPointer(EXPORT, PLCL_SC_ptr,   'PLCL_SC'  , _RC)
+      call MAPL_StateGetPointer(EXPORT, PLFC_SC_ptr,   'PLFC_SC'  , _RC)
+      call MAPL_StateGetPointer(EXPORT, PINV_SC_ptr,   'PINV_SC'  , _RC)
+      call MAPL_StateGetPointer(EXPORT, PREL_SC_ptr,   'PREL_SC'  , _RC)
+      call MAPL_StateGetPointer(EXPORT, PBUP_SC_ptr,   'PBUP_SC'  , _RC)
+      call MAPL_StateGetPointer(EXPORT, CBMF_SC_ptr,   'CBMF_SC'  , _RC)
+      call MAPL_StateGetPointer(EXPORT, CLDTOP_SC_ptr, 'CLDTOP_SC', _RC)
+      call MAPL_StateGetPointer(EXPORT, CUFRC_SC_ptr,  'CUFRC_SC' , _RC)
+      call MAPL_StateGetPointer(EXPORT, DCM_SC_ptr,    'DCM_SC'   , _RC)
+      call MAPL_StateGetPointer(EXPORT, ENTR_SC_ptr,   'ENTR_SC'  , _RC)
+      call MAPL_StateGetPointer(EXPORT, DETR_SC_ptr,   'DETR_SC'  , _RC)
+      call MAPL_StateGetPointer(EXPORT, SC_NDROP_ptr,  'SC_NDROP' , _RC)
+      call MAPL_StateGetPointer(EXPORT, SC_NICE_ptr,   'SC_NICE'  , _RC)
+      call MAPL_StateGetPointer(EXPORT, TPERT_SC_ptr,  'TPERT_SC' , _RC)
+      call MAPL_StateGetPointer(EXPORT, QPERT_SC_ptr,  'QPERT_SC' , _RC)
+      call MAPL_StateGetPointer(EXPORT, QTFLX_SC_ptr,  'QTFLX_SC' , _RC)
+      call MAPL_StateGetPointer(EXPORT, SLFLX_SC_ptr,  'SLFLX_SC' , _RC)
+      call MAPL_StateGetPointer(EXPORT, UFLX_SC_ptr,   'UFLX_SC'  , _RC)
+      call MAPL_StateGetPointer(EXPORT, VFLX_SC_ptr,   'VFLX_SC'  , _RC)
+      if (associated(PLCL_SC_ptr))   PLCL_SC_ptr   = PLCL_SC
+      if (associated(PLFC_SC_ptr))   PLFC_SC_ptr   = PLFC_SC
+      if (associated(PINV_SC_ptr))   PINV_SC_ptr   = PINV_SC
+      if (associated(PREL_SC_ptr))   PREL_SC_ptr   = PREL_SC
+      if (associated(PBUP_SC_ptr))   PBUP_SC_ptr   = PBUP_SC
+      if (associated(CBMF_SC_ptr))   CBMF_SC_ptr   = CBMF_SC
+      if (associated(CLDTOP_SC_ptr)) CLDTOP_SC_ptr = CLDTOP_SC
+      if (associated(CUFRC_SC_ptr))  CUFRC_SC_ptr  = CUFRC_SC
+      if (associated(DCM_SC_ptr))    DCM_SC_ptr    = DCM_SC
+      if (associated(ENTR_SC_ptr))   ENTR_SC_ptr   = ENTR_SC
+      if (associated(DETR_SC_ptr))   DETR_SC_ptr   = DETR_SC
+      if (associated(SC_NDROP_ptr))  SC_NDROP_ptr  = SC_NDROP
+      if (associated(SC_NICE_ptr))   SC_NICE_ptr   = SC_NICE
+      if (associated(TPERT_SC_ptr))  TPERT_SC_ptr  = TPERT_SC
+      if (associated(QPERT_SC_ptr))  QPERT_SC_ptr  = QPERT_SC
+      if (associated(QTFLX_SC_ptr))  QTFLX_SC_ptr  = QTFLX_SC
+      if (associated(SLFLX_SC_ptr))  SLFLX_SC_ptr  = SLFLX_SC
+      if (associated(UFLX_SC_ptr))   UFLX_SC_ptr   = UFLX_SC
+      if (associated(VFLX_SC_ptr))   VFLX_SC_ptr   = VFLX_SC
+
   endif
 
 
   ! 1. Fetch all pointers FIRST before doing any math
   !--------------------------------------------------------------
-  call MAPL_GetPointer(EXPORT, QLDET_SC, 'QLDET_SC', ALLOC=.TRUE., _RC)
-  call MAPL_GetPointer(EXPORT, QIDET_SC, 'QIDET_SC', ALLOC=.TRUE., _RC)
-  call MAPL_GetPointer(EXPORT, QLSUB_SC, 'QLSUB_SC', ALLOC=.TRUE., _RC)
-  call MAPL_GetPointer(EXPORT, QLENT_SC, 'QLENT_SC', ALLOC=.TRUE., _RC)
-  call MAPL_GetPointer(EXPORT, QISUB_SC, 'QISUB_SC', ALLOC=.TRUE., _RC)
-  call MAPL_GetPointer(EXPORT, QIENT_SC, 'QIENT_SC', ALLOC=.TRUE., _RC)
+  call MAPL_StateGetPointer(INTERNAL, QLDET_SC, 'QLDET_SC', _RC)
+  call MAPL_StateGetPointer(INTERNAL, QIDET_SC, 'QIDET_SC', _RC)
+  call MAPL_StateGetPointer(INTERNAL, QLSUB_SC, 'QLSUB_SC', _RC)
+  call MAPL_StateGetPointer(INTERNAL, QLENT_SC, 'QLENT_SC', _RC)
+  call MAPL_StateGetPointer(INTERNAL, QISUB_SC, 'QISUB_SC', _RC)
+  call MAPL_StateGetPointer(INTERNAL, QIENT_SC, 'QIENT_SC', _RC)
   
   ! 2. Apply tendencies in a single fused loop with OpenMP
   !--------------------------------------------------------------
