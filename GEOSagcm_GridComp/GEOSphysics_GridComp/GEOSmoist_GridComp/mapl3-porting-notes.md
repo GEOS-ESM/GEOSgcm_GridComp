@@ -1,6 +1,6 @@
 # GEOS_MoistGridComp MAPL3 porting plan
 
-Status (2026-10-30): steps 1-8 done on branch `feature/pchakrab/port-moist-to-mapl3` (off `release/MAPL-v3`; steps 1-2 in `83eb97c5`, step 3 in `befaa640`). Not built: Moist is still commented out of the MAPL3 build (`../CMakeLists.txt:5`). Step 0 (MAPL2 baseline) not done yet.
+Status (2026-10-30): steps 1-9 done on branch `feature/pchakrab/port-moist-to-mapl3` (off `release/MAPL-v3`; steps 1-2 in `83eb97c5`, step 3 in `befaa640`). Builds with ifx (step 9); not run yet. Step 0 (MAPL2 baseline) not done yet.
 
 Derived from the Radiation notes (`../@GEOSradiation_GridComp/mapl3-porting-notes.md`, `GEOSirrad_GridComp/`, `GEOSsolar_GridComp/`, `GEOSsatsim_GridComp/`) and GOCART's (`../@GEOSchem_GridComp/@GOCART/ESMF/GOCART2G_GridComp/SU2G_GridComp/mapl3-porting-notes.md`). The MAPL3 API gotchas found there are listed under "Lessons carried over" and are not repeated in the steps.
 
@@ -245,6 +245,17 @@ Drop `MAPL_GenericInitialize`. Timestep from `MAPL_ClockGet(clock, dt=)` instead
 ### 9. Build
 - Uncomment `GEOSmoist_GridComp` in `../CMakeLists.txt:5`; `TYPE SHARED`; one `mapl_acg` per spec file (step 3); external `Moist_SetServices` wrapper with a unique name (SU2G step 8).
 - Entry points must match `I_Run`: no `intent` on `gc/import/export/clock`, `rc` `intent(out)` non-optional (Radiation notes; SU2G step 4).
+
+**Done (2026-10-30).** `make -j8 install` succeeds (ifx, Debug); `libGEOSmoist_GridComp.so` is installed. Not run.
+- `../CMakeLists.txt`: `GEOSmoist_GridComp` uncommented.
+- Driver: `Initialize`/`Run`/`Finalize` match `I_Run` (no `intent` on the ESMF arguments, `rc` `intent(out)` non-optional, `@MAPL/infrastructure/esmf/ESMF_Interfaces.F90:39-49`); external `Moist_SetServices` wrapper, as `GWD_SetServices`.
+- Unported schemes (decided 2026-10-30): the RAS, BACM_1M, MGB2_2M, THOM_1M and NSSL_2M interface modules are commented out of `CMakeLists.txt`, and so are the driver's `use` of them and their `Setup`/`Run` calls (the `_FAIL` branches remain); their kernels are still built, except `cloudnew.F90` (BACM_1M only, uses MAPL2's `MAPL_BaseMod`). Restore at step 11.
+- Build fixes:
+  - `MAPL_EQsat`: MAPL3 has it in `mapl_SatVapor_mod` (`@MAPL/mp_utils/SatVapor.F90:34, 54-69`, same arguments as MAPL2) and `use MAPL` no longer re-exports it: `Process_Library.F90` (was `use MAPL_SatVaporMod`) and `ConvPar_GF2020.F90` now `use mapl_SatVapor_mod, only: MAPL_EQsat`.
+  - `compute_radar_diagnostics` passed its `intent(in)` `Q`/`QRAIN`/`QSNOW` to `compute_radar_reflectivity`, whose dummies are `INTENT(INOUT)` and clipped in place (`@GMAO_Shared/GEOS_Shared/compute_radar_reflectivity.F90:19-21, 139-141`). Now passes column copies, as it already did for graupel/hail. Pre-existing on `release/MAPL-v3`.
+  - `uwshcu.F90`: `qlten_inv`/`qiten_inv` were locals on this branch but dummies on `origin/develop`, while `GEOS_UW_InterfaceMod.F90` passes `DQLDT_SC_`/`DQIDT_SC_` (since `034dda72`). Restored `origin/develop`'s file (3 lines); it is now identical to develop. Pre-existing on `release/MAPL-v3`.
+  - Driver: `use Lightning_mod, only: HEMCO_FlashRate` commented out (unused; `Lightning_mod` is in `@GEOSchem_GridComp/Shared/Chem_Shared`, not in the MAPL3 build; issue 7). `Chem_Shared` and `Chem_Base` dropped from the library's `DEPENDENCIES` (link failed; nothing built uses them).
+- Not checked: compiler warnings and remarks (e.g. unused driver variables `CNV_CAPE_NORM`, `MWFA`, `n_modes`, `DWDT`, `n`); gfortran.
 
 ### 10. Standalone regression `moist-sa`
 After `gwd-ncar-sa`: a configurable `DataForMoist` provider restarted from the step-0 MAPL2 import state, `activate_all_exports: true` for Moist, a stub `AERO` (FakeGOCART) and an empty convective-transport subscriber. Compare with `cmpchk.py`; target bit-for-bit. Then the aerosol-activation baseline with FakeGOCART or GOCART2G.

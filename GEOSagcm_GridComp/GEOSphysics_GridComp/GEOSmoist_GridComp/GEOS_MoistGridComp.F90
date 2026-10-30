@@ -19,16 +19,16 @@ module GEOS_MoistGridCompMod
    use MAPL
    use pflogger, only: logger_t => logger
    use gFTL2_StringVector, only: StringVector
-   use GEOS_BACM_1M_InterfaceMod
+   ! use GEOS_BACM_1M_InterfaceMod ! not ported to MAPL3 (step 11)
    use GEOS_GFDL_1M_InterfaceMod
-   use GEOS_THOM_1M_InterfaceMod
-   use GEOS_MGB2_2M_InterfaceMod
-   use GEOS_RAS_InterfaceMod
+   ! use GEOS_THOM_1M_InterfaceMod ! not ported to MAPL3 (step 11)
+   ! use GEOS_MGB2_2M_InterfaceMod ! not ported to MAPL3 (step 11)
+   ! use GEOS_RAS_InterfaceMod ! not ported to MAPL3 (step 11)
    use GEOS_GF_InterfaceMod
    use GEOS_UW_InterfaceMod
 
    use Aer_Actv_Single_Moment
-   use Lightning_mod, only: HEMCO_FlashRate
+   ! use Lightning_mod, only: HEMCO_FlashRate ! unused; Chem_Shared is not in the MAPL3 build
    use GEOSmoist_Process_Library
    use GEOS_UtilsMod
 
@@ -96,7 +96,6 @@ contains
 
       ! Local derived type aliases
 
-      type(ESMF_Config) :: CF ! only passed to the unported schemes' *_Setup
       type(StringVector) :: ADVECTED
 
       logical :: LCONVPAR
@@ -160,24 +159,24 @@ contains
       ! the first MAPL_AddInternalSpec call must be from the microphysics
 
       ! MAPL3: only GFDL_1M, GF and UW are ported so far. The other schemes
-      ! fail here, before any of their code runs.
+      ! fail here, before any of their code runs; their modules are not built (step 11).
 
       if (adjustl(CLDMICR_OPTION) == "BACM_1M") then
          _FAIL('CLDMICR_OPTION BACM_1M is not yet ported to MAPL3')
-         call BACM_1M_Setup(GC, CF, _RC)
+         ! call BACM_1M_Setup(GC, CF, _RC)
       end if
       if (adjustl(CLDMICR_OPTION) == "MGB2_2M") then
          _FAIL('CLDMICR_OPTION MGB2_2M is not yet ported to MAPL3')
-         call MGB2_2M_Setup(GC, CF, _RC)
+         ! call MGB2_2M_Setup(GC, CF, _RC)
       end if
       if (adjustl(CLDMICR_OPTION) == "GFDL_1M") call GFDL_1M_Setup(GC, ADVECTED, _RC)
       if (adjustl(CLDMICR_OPTION) == "THOM_1M") then
          _FAIL('CLDMICR_OPTION THOM_1M is not yet ported to MAPL3')
-         call THOM_1M_Setup(GC, CF, _RC)
+         ! call THOM_1M_Setup(GC, CF, _RC)
       end if
       if (adjustl(CONVPAR_OPTION) == "RAS") then
          _FAIL('CONVPAR_OPTION RAS is not yet ported to MAPL3')
-         call RAS_Setup(GC, CF, _RC)
+         ! call RAS_Setup(GC, CF, _RC)
       end if
       if (adjustl(CONVPAR_OPTION) == "GF") call GF_Setup(GC, ADVECTED, _RC)
       if (adjustl(SHALLOW_OPTION) == "UW") call UW_Setup(GC, _RC)
@@ -228,11 +227,11 @@ contains
    !INTERFACE:
    subroutine Initialize(GC, IMPORT, EXPORT, CLOCK, RC)
       !ARGUMENTS:
-      type(ESMF_GridComp), intent(inout) :: GC ! Gridded component
-      type(ESMF_State), intent(inout) :: IMPORT ! Import state
-      type(ESMF_State), intent(inout) :: EXPORT ! Export state
-      type(ESMF_Clock), intent(inout) :: CLOCK ! The clock
-      integer, optional, intent(out) :: RC ! Error code
+      type(ESMF_GridComp) :: GC ! Gridded component
+      type(ESMF_State) :: IMPORT ! Import state
+      type(ESMF_State) :: EXPORT ! Export state
+      type(ESMF_Clock) :: CLOCK ! The clock
+      integer, intent(out) :: RC ! Error code
 
       !DESCRIPTION: The Initialize method of the Moist Physics Gridded Component first
       ! calls the Initialize method of the child Dynamics.  The Dynamics Initialize method will
@@ -320,11 +319,11 @@ contains
    !INTERFACE:
    subroutine Run(GC, IMPORT, EXPORT, CLOCK, RC)
       !ARGUMENTS:
-      type(ESMF_GridComp), intent(inout) :: GC ! Gridded component
-      type(ESMF_State), intent(inout) :: IMPORT ! Import state
-      type(ESMF_State), intent(inout) :: EXPORT ! Export state
-      type(ESMF_Clock), intent(inout) :: CLOCK ! The clock
-      integer, optional, intent(out) :: RC ! Error code:
+      type(ESMF_GridComp) :: GC ! Gridded component
+      type(ESMF_State) :: IMPORT ! Import state
+      type(ESMF_State) :: EXPORT ! Export state
+      type(ESMF_Clock) :: CLOCK ! The clock
+      integer, intent(out) :: RC ! Error code:
 
       !DESCRIPTION: This version uses the MAPL\_GenericSetServices. This function sets
       ! the Initialize and Finalize services, as well as allocating
@@ -727,7 +726,7 @@ contains
                call report_maxmin(logger, VMG, 'MST: V_AF_UW  ', V, _RC)
             end if
          end if
-         if (adjustl(CONVPAR_OPTION) == "RAS") call RAS_Run(GC, IMPORT, EXPORT, CLOCK, _RC)
+         ! if (adjustl(CONVPAR_OPTION) == "RAS") call RAS_Run(GC, IMPORT, EXPORT, CLOCK, _RC) ! step 11
          if (adjustl(CONVPAR_OPTION) == "GF") call GF_Run(GC, IMPORT, EXPORT, CLOCK, _RC)
          if (adjustl(CONVPAR_OPTION) == "GF") then
             if (DEBUG_MST) then
@@ -738,7 +737,7 @@ contains
             end if
          end if
       else
-         if (adjustl(CONVPAR_OPTION) == "RAS") call RAS_Run(GC, IMPORT, EXPORT, CLOCK, _RC)
+         ! if (adjustl(CONVPAR_OPTION) == "RAS") call RAS_Run(GC, IMPORT, EXPORT, CLOCK, _RC) ! step 11
          if (adjustl(CONVPAR_OPTION) == "GF") call GF_Run(GC, IMPORT, EXPORT, CLOCK, _RC)
          if (adjustl(CONVPAR_OPTION) == "GF") then
             if (DEBUG_MST) then
@@ -814,10 +813,10 @@ contains
 
       call MAPL_GridCompTimerStop(GC, "---MOIST_EPILOGUE", _RC)
 
-      if (adjustl(CLDMICR_OPTION) == "BACM_1M") call BACM_1M_Run(GC, IMPORT, EXPORT, CLOCK, _RC)
+      ! if (adjustl(CLDMICR_OPTION) == "BACM_1M") call BACM_1M_Run(GC, IMPORT, EXPORT, CLOCK, _RC) ! step 11
       if (adjustl(CLDMICR_OPTION) == "GFDL_1M") call GFDL_1M_Run(GC, IMPORT, EXPORT, CLOCK, _RC)
-      if (adjustl(CLDMICR_OPTION) == "THOM_1M") call THOM_1M_Run(GC, IMPORT, EXPORT, CLOCK, _RC)
-      if (adjustl(CLDMICR_OPTION) == "MGB2_2M") call MGB2_2M_Run(GC, IMPORT, EXPORT, CLOCK, _RC)
+      ! if (adjustl(CLDMICR_OPTION) == "THOM_1M") call THOM_1M_Run(GC, IMPORT, EXPORT, CLOCK, _RC) ! step 11
+      ! if (adjustl(CLDMICR_OPTION) == "MGB2_2M") call MGB2_2M_Run(GC, IMPORT, EXPORT, CLOCK, _RC) ! step 11
 
       call MAPL_GridCompTimerStart(GC, "---MOIST_EPILOGUE", _RC)
 
@@ -1359,11 +1358,11 @@ contains
    end subroutine Run
 
    subroutine Finalize(GC, IMPORT, EXPORT, CLOCK, RC)
-      type(ESMF_GridComp), intent(inout) :: GC ! Gridded component
-      type(ESMF_State), intent(inout) :: IMPORT ! Import state
-      type(ESMF_State), intent(inout) :: EXPORT ! Export state
-      type(ESMF_Clock), intent(inout) :: CLOCK ! The clock
-      integer, optional, intent(out) :: RC ! Error code
+      type(ESMF_GridComp) :: GC ! Gridded component
+      type(ESMF_State) :: IMPORT ! Import state
+      type(ESMF_State) :: EXPORT ! Export state
+      type(ESMF_Clock) :: CLOCK ! The clock
+      integer, intent(out) :: RC ! Error code
 
       ! ErrLog variables
       integer :: STATUS
@@ -1397,3 +1396,12 @@ contains
    end subroutine report_maxmin
 
 end module GEOS_MoistGridCompMod
+
+! External entry point with a unique name, for MAPL3's dynamic loading (as GWD_SetServices)
+subroutine Moist_SetServices(gc, rc)
+   use esmf
+   use GEOS_MoistGridCompMod, only: mySetservices => SetServices
+   type(ESMF_GridComp) :: gc
+   integer, intent(out) :: rc
+   call mySetservices(gc, rc=rc)
+end subroutine Moist_SetServices

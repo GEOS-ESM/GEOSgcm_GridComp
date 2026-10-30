@@ -2108,7 +2108,7 @@ contains
            lfus => MAPL_ALHS, &
            pi => MAPL_PI, &
            MAPL_H2OMW, MAPL_AIRMW
-      use MAPL_SatVaporMod, only: MAPL_EQsat
+      use mapl_SatVapor_mod, only: MAPL_EQsat ! MAPL3 name of MAPL2's MAPL_SatVaporMod
 
       real, intent(in) :: fQi ! ice fraction
       !   real, intent(in   )  :: DT          ! timestep [s]
@@ -7026,6 +7026,7 @@ contains
 
       ! Automatic arrays for 1D columns (Thread-safe for OpenMP)
       real :: qg_col(LM), qh_col(LM), prs_col(LM), dbz_col(LM)
+      real :: qv_col(LM), qr_col(LM), qs_col(LM) ! copies: compute_radar_reflectivity clips them in place
 
       RC = ESMF_SUCCESS
       STATUS = ESMF_SUCCESS
@@ -7110,7 +7111,7 @@ contains
          !$OMP parallel do default(none) &
          !$OMP shared(IM, JM, LM, W, QGRAUPEL, PLmb, T, Q, QRAIN, QSNOW, DBZ3D, &
          !$OMP        DBZ_VAR_INTERCP, LIQUID_SKIN_SNOW, LIQUID_SKIN_GRAUPEL, LIQUID_SKIN_HAIL) &
-         !$OMP private(I, J, L, fraction_hail, qg_col, qh_col, prs_col, dbz_col)
+         !$OMP private(I, J, L, fraction_hail, qg_col, qh_col, prs_col, dbz_col, qv_col, qr_col, qs_col)
          do j = 1, JM
             do i = 1, IM
                ! 1. Prepare the 1D column data for this specific (I,J) location
@@ -7119,15 +7120,18 @@ contains
                   qh_col(l) = QGRAUPEL(i, j, l) * fraction_hail
                   qg_col(l) = QGRAUPEL(i, j, l) * (1.0 - fraction_hail)
                   prs_col(l) = 100.0 * PLmb(i, j, l)
+                  qv_col(l) = Q(i, j, l)
+                  qr_col(l) = QRAIN(i, j, l)
+                  qs_col(l) = QSNOW(i, j, l)
                end do
 
                ! 2. Call the newly refactored 1D column function
                dbz_col = compute_radar_reflectivity( &
                     PRS=prs_col, &
                     TMK=T(i, j, :), &
-                    QVP=Q(i, j, :), &
-                    QRAIN=QRAIN(i, j, :), &
-                    QSNOW=QSNOW(i, j, :), &
+                    QVP=qv_col, &
+                    QRAIN=qr_col, &
+                    QSNOW=qs_col, &
                     QGRAUPEL=qg_col, &
                     QHAIL=qh_col, &
                     disable_variable_intercept_params=(DBZ_VAR_INTERCP == 0), &

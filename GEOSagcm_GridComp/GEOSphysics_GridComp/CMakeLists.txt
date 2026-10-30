@@ -2,7 +2,7 @@ esma_set_this ()
 
 set (alldirs
   GEOSchem_GridComp         # restricted to GOCART only - see GEOSchem_GridComp/CMakeLists.txt
-  # GEOSmoist_GridComp      # not yet ported to MAPL3 - restore when ported
+  GEOSmoist_GridComp
   # GEOSsurface_GridComp    # not yet ported to MAPL3 - restore when ported
   # GEOSturbulence_GridComp # not yet ported to MAPL3 - restore when ported
   GEOSgwd_GridComp
