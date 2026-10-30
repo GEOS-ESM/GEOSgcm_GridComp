@@ -1008,26 +1008,32 @@ contains
          if (associated(DPDTMST)) then
             DPDTMST = 0.0
             call MAPL_StateGetPointer(INTERNAL, PTR3D, 'PFI_CN', _RC)
-            p3d => PTR3D; PTR3D(1:IM, 1:JM, 0:LM) => p3d ! edge: MAPL2's 0:LM bounds
+            p3d => PTR3D
+            PTR3D(1:IM, 1:JM, 0:LM) => p3d ! edge: MAPL2's 0:LM bounds
             if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:, :, 0:LM - 1) - PTR3D(:, :, 1:LM)
             call MAPL_GetPointer(EXPORT, PTR3D, 'PFI_SC', _RC)
             if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:, :, 0:LM - 1) - PTR3D(:, :, 1:LM)
             call MAPL_StateGetPointer(INTERNAL, PTR3D, 'PFI_AN', _RC)
-            p3d => PTR3D; PTR3D(1:IM, 1:JM, 0:LM) => p3d ! edge: MAPL2's 0:LM bounds
+            p3d => PTR3D
+            PTR3D(1:IM, 1:JM, 0:LM) => p3d ! edge: MAPL2's 0:LM bounds
             if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:, :, 0:LM - 1) - PTR3D(:, :, 1:LM)
             call MAPL_StateGetPointer(INTERNAL, PTR3D, 'PFI_LS', _RC)
-            p3d => PTR3D; PTR3D(1:IM, 1:JM, 0:LM) => p3d ! edge: MAPL2's 0:LM bounds
+            p3d => PTR3D
+            PTR3D(1:IM, 1:JM, 0:LM) => p3d ! edge: MAPL2's 0:LM bounds
             if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:, :, 0:LM - 1) - PTR3D(:, :, 1:LM)
             call MAPL_StateGetPointer(INTERNAL, PTR3D, 'PFL_CN', _RC)
-            p3d => PTR3D; PTR3D(1:IM, 1:JM, 0:LM) => p3d ! edge: MAPL2's 0:LM bounds
+            p3d => PTR3D
+            PTR3D(1:IM, 1:JM, 0:LM) => p3d ! edge: MAPL2's 0:LM bounds
             if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:, :, 0:LM - 1) - PTR3D(:, :, 1:LM)
             call MAPL_GetPointer(EXPORT, PTR3D, 'PFL_SC', _RC)
             if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:, :, 0:LM - 1) - PTR3D(:, :, 1:LM)
             call MAPL_StateGetPointer(INTERNAL, PTR3D, 'PFL_AN', _RC)
-            p3d => PTR3D; PTR3D(1:IM, 1:JM, 0:LM) => p3d ! edge: MAPL2's 0:LM bounds
+            p3d => PTR3D
+            PTR3D(1:IM, 1:JM, 0:LM) => p3d ! edge: MAPL2's 0:LM bounds
             if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:, :, 0:LM - 1) - PTR3D(:, :, 1:LM)
             call MAPL_StateGetPointer(INTERNAL, PTR3D, 'PFL_LS', _RC)
-            p3d => PTR3D; PTR3D(1:IM, 1:JM, 0:LM) => p3d ! edge: MAPL2's 0:LM bounds
+            p3d => PTR3D
+            PTR3D(1:IM, 1:JM, 0:LM) => p3d ! edge: MAPL2's 0:LM bounds
             if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:, :, 0:LM - 1) - PTR3D(:, :, 1:LM)
             DPDTMST = MAPL_GRAV * DPDTMST
          end if
