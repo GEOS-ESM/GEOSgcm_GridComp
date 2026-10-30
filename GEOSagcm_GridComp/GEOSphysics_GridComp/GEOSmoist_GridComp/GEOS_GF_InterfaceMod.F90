@@ -21,7 +21,7 @@ module GEOS_GF_InterfaceMod
    use ConvPar_GF_SharedParams
    use ConvPar_GF_GEOS5
    use ConvPar_GF2020
-   use moist_dsl_workarounds
+   ! use moist_dsl_workarounds ! pyMoist only (CNV_Tracers_To_SOA/AOS); not ported to MAPL3 (decision 5)
 
    implicit none
 
@@ -68,27 +68,28 @@ contains
            FILL_VALUE=0.0, &
            _RC)
 
-      call MAPL_GridCompAddSpec(GC, &
-           STATE_INTENT=ESMF_STATEINTENT_INTERNAL, &
-           SHORT_NAME='DSL__GF2020_LONS', &
-           STANDARD_NAME='DSL_longitude', &
-           UNITS='radians', &
-           DIMS='xy', &
-           VERTICAL_STAGGER=MAPL_VERTICAL_STAGGER_NONE, &
-           RESTART_MODE=MAPL_RESTART_SKIP, &
-           FILL_VALUE=0.0, &
-           _RC)
+      ! MAPL3: pyMoist is not ported (decision 5), so its two GF2020 DSL internals are not registered
+!     call MAPL_GridCompAddSpec(GC, &
+!          STATE_INTENT=ESMF_STATEINTENT_INTERNAL, &
+!          SHORT_NAME='DSL__GF2020_LONS', &
+!          STANDARD_NAME='DSL_longitude', &
+!          UNITS='radians', &
+!          DIMS='xy', &
+!          VERTICAL_STAGGER=MAPL_VERTICAL_STAGGER_NONE, &
+!          RESTART_MODE=MAPL_RESTART_SKIP, &
+!          FILL_VALUE=0.0, &
+!          _RC)
 
-      call MAPL_GridCompAddSpec(GC, &
-           STATE_INTENT=ESMF_STATEINTENT_INTERNAL, &
-           SHORT_NAME='DSL__GF2020_LATS', &
-           STANDARD_NAME='DSL_longitude', &
-           UNITS='radians', &
-           DIMS='xy', &
-           VERTICAL_STAGGER=MAPL_VERTICAL_STAGGER_NONE, &
-           RESTART_MODE=MAPL_RESTART_SKIP, &
-           FILL_VALUE=0.0, &
-           _RC)
+!     call MAPL_GridCompAddSpec(GC, &
+!          STATE_INTENT=ESMF_STATEINTENT_INTERNAL, &
+!          SHORT_NAME='DSL__GF2020_LATS', &
+!          STANDARD_NAME='DSL_longitude', &
+!          UNITS='radians', &
+!          DIMS='xy', &
+!          VERTICAL_STAGGER=MAPL_VERTICAL_STAGGER_NONE, &
+!          RESTART_MODE=MAPL_RESTART_SKIP, &
+!          FILL_VALUE=0.0, &
+!          _RC)
 
    end subroutine GF_Setup
 
@@ -129,16 +130,10 @@ contains
 
       call MAPL_GridCompGetResource(GC, 'USE_PYMOIST_GF2020', USE_PYMOIST_GF2020, default=.false., _RC)
 
+      ! MAPL3: pyMoist is not ported (was GF_ENV_SETTING, MAPL_ConfigSetAttribute and
+      ! MAPL_pybridge_gcinit)
       if (USE_PYMOIST_GF2020) then
-         call MAPL_ConfigSetAttribute(CF, MOIST_DT, 'DSL__GF2020_DT', _RC)
-         call MAPL_GridCompGetResource(GC, 'GF_ENV_SETTING', env_setting, default='DYNAMICS', _RC)
-         GF_ENV_SETTING = env_setting
-         if (trim(GF_ENV_SETTING) == 'CURRENT') then
-            call MAPL_ConfigSetAttribute(CF, 0, 'DSL__GF_ENV_SETTING:', _RC)
-         elseif (trim(GF_ENV_SETTING) == 'DYNAMICS') then
-            call MAPL_ConfigSetAttribute(CF, 1, 'DSL__GF_ENV_SETTING:', _RC)
-         end if
-         call MAPL_pybridge_gcinit("pyMoist.fortran.param_interfaces.convection.GF2020_interface", MAPL, IMPORT, EXPORT)
+         _FAIL('pyMoist (USE_PYMOIST_GF2020) is not supported in the MAPL3 port')
       else
          if (LM == 72) then
             call MAPL_GridCompGetResource(GC, 'USE_GF2020', USE_GF2020, default=0, _RC)
@@ -562,7 +557,8 @@ contains
       type(ESMF_VM) :: VMG
 
       ! DSL fields
-      real, pointer, dimension(:, :) :: DSL__GF2020_LONS, DSL__GF2020_LATS
+      ! MAPL3: pyMoist is not ported (decision 5)
+!     real, pointer, dimension(:, :) :: DSL__GF2020_LONS, DSL__GF2020_LATS
 
       call MAPL_GridCompGet(GC, num_levels=LM, GRID=GRID, _RC)
       call MAPL_GridGet(GRID, IM=IM, JM=JM, _RC)
@@ -609,14 +605,7 @@ contains
       !-----------------------------------
 
       if (USE_PYMOIST_GF2020) then
-         call MAPL_StateGetPointer(INTERNAL, DSL__GF2020_LONS, 'DSL__GF2020_LONS', _RC)
-         call MAPL_StateGetPointer(INTERNAL, DSL__GF2020_LATS, 'DSL__GF2020_LATS', _RC)
-         DSL__GF2020_LONS = LONS
-         DSL__GF2020_LATS = LATS
-         call CNV_Tracers_To_SOA()
-         call MAPL_pybridge_gcrun_with_internal("pyMoist.fortran.param_interfaces.convection.GF2020_interface", MAPL, &
-              IMPORT, EXPORT, INTERNAL)
-         call CNV_Tracers_To_AOS()
+         _FAIL('pyMoist (USE_PYMOIST_GF2020) is not supported in the MAPL3 port') ! was MAPL_pybridge_gcrun_with_internal
       else
 
          ! Imports
@@ -1104,17 +1093,15 @@ contains
       type(ESMF_State), intent(inout) :: EXPORT ! Export state
       integer, optional, intent(out) :: RC ! Error code
 
-      type(MAPL_MetaComp), pointer :: MAPL
-
-      ! Get my internal MAPL_Generic state
-      !-----------------------------------
-      call MAPL_GetObjectFromGC(GC, MAPL, _RC)
-
+      ! MAPL3: pyMoist is not ported; with it off this routine does nothing
       if (USE_PYMOIST_GF2020) then
-         call MAPL_pybridge_gcfinalize("pyMoist.fortran.param_interfaces.convection.GF2020_interface", MAPL, IMPORT, &
-              EXPORT)
+         _FAIL('pyMoist (USE_PYMOIST_GF2020) is not supported in the MAPL3 port') ! was MAPL_pybridge_gcfinalize
       end if
 
+      _RETURN(_SUCCESS)
+      _UNUSED_DUMMY(GC)
+      _UNUSED_DUMMY(IMPORT)
+      _UNUSED_DUMMY(EXPORT)
    end subroutine GF_Finalize
 
 end module GEOS_GF_InterfaceMod

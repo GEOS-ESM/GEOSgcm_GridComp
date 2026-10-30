@@ -16,7 +16,7 @@ module GEOS_UW_InterfaceMod
    use MAPL
    use UWSHCU ! using module that contains uwshcu code
    use GEOSmoist_Process_Library
-   use moist_dsl_workarounds
+   ! use moist_dsl_workarounds ! pyMoist only (CNV_Tracers_To_SOA/AOS); not ported to MAPL3 (decision 5)
 
    implicit none
 
@@ -98,9 +98,9 @@ contains
 
       call MAPL_GridCompGetResource(GC, 'USE_PYMOIST_UW', USE_PYMOIST_UW, default=.false., _RC)
 
+      ! MAPL3: pyMoist is not ported (was MAPL_ConfigSetAttribute and MAPL_pybridge_gcinit)
       if (USE_PYMOIST_UW) then
-         call MAPL_ConfigSetAttribute(CF, UW_DT, 'DSL__UW_DT:', _RC)
-         call MAPL_pybridge_gcinit("pyMoist.fortran.param_interfaces.convection.UW_interface", MAPL, IMPORT, EXPORT)
+         _FAIL('pyMoist (USE_PYMOIST_UW) is not supported in the MAPL3 port')
       else
          call MAPL_GridCompGetResource(GC, 'USE_TRACER_TRANSP_UW', USE_TRACER_TRANSP_UW, default=1, _RC)
          if (JASON_UW) then
@@ -341,10 +341,7 @@ contains
       call MAPL_GridCompTimerStart(GC, "--UW", _RC)
 
       if (USE_PYMOIST_UW) then
-         call CNV_Tracers_To_SOA()
-         call MAPL_pybridge_gcrun_with_internal("pyMoist.fortran.param_interfaces.convection.UW_interface", MAPL, &
-              IMPORT, EXPORT, INTERNAL)
-         call CNV_Tracers_To_AOS()
+         _FAIL('pyMoist (USE_PYMOIST_UW) is not supported in the MAPL3 port') ! was MAPL_pybridge_gcrun_with_internal
       else
          ! Internals
          call MAPL_StateGetPointer(INTERNAL, CUSH, 'CUSH', _RC)
@@ -804,16 +801,15 @@ contains
       type(ESMF_State), intent(inout) :: EXPORT ! Export state
       integer, optional, intent(out) :: RC ! Error code
 
-      type(MAPL_MetaComp), pointer :: MAPL
-
-      ! Get my internal MAPL_Generic state
-      !-----------------------------------
-      call MAPL_GetObjectFromGC(GC, MAPL, _RC)
-
+      ! MAPL3: pyMoist is not ported; with it off this routine does nothing
       if (USE_PYMOIST_UW) then
-         call MAPL_pybridge_gcfinalize("pyMoist.fortran.param_interfaces.convection.UW_interface", MAPL, IMPORT, EXPORT)
+         _FAIL('pyMoist (USE_PYMOIST_UW) is not supported in the MAPL3 port') ! was MAPL_pybridge_gcfinalize
       end if
 
+      _RETURN(_SUCCESS)
+      _UNUSED_DUMMY(GC)
+      _UNUSED_DUMMY(IMPORT)
+      _UNUSED_DUMMY(EXPORT)
    end subroutine UW_Finalize
 
 end module GEOS_UW_InterfaceMod

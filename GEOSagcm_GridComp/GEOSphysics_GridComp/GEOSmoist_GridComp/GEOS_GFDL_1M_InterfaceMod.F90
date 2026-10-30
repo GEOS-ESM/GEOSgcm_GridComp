@@ -317,10 +317,9 @@ contains
       ! DSL entry point
       call MAPL_GridCompGetResource(GC, 'USE_PYMOIST_GFDL1M', USE_PYMOIST_GFDL1M, default=.false., _RC)
 
+      ! MAPL3: pyMoist is not ported (was MAPL_ConfigSetAttribute and MAPL_pybridge_gcinit)
       if (USE_PYMOIST_GFDL1M) then
-         call MAPL_ConfigSetAttribute(CF, DT_MOIST, 'DSL__GFLD1M_DT:', _RC)
-         call MAPL_pybridge_gcinit("pyMoist.fortran.param_interfaces.microphysics.GFDL1M_interface", MAPL, IMPORT, &
-              EXPORT)
+         _FAIL('pyMoist (USE_PYMOIST_GFDL1M) is not supported in the MAPL3 port')
       end if
 
       call MAPL_GridCompGetResource(GC, 'SH_MD_DP', SH_MD_DP, default=.true., _RC)
@@ -588,8 +587,7 @@ contains
       DT_R8 = DT_MOIST
 
       if (USE_PYMOIST_GFDL1M) then
-         call MAPL_pybridge_gcrun_with_internal("pyMoist.fortran.param_interfaces.microphysics.GFDL1M_interface", MAPL,&
-              & IMPORT, EXPORT, INTERNAL)
+         _FAIL('pyMoist (USE_PYMOIST_GFDL1M) is not supported in the MAPL3 port') ! was MAPL_pybridge_gcrun_with_internal
       else
 
          call MAPL_StateGetPointer(INTERNAL, Q, 'Q', _RC)
@@ -1640,17 +1638,15 @@ contains
       type(ESMF_State), intent(inout) :: EXPORT ! Export state
       integer, optional, intent(out) :: RC ! Error code
 
-      type(MAPL_MetaComp), pointer :: MAPL
-
-      ! Get my internal MAPL_Generic state
-      !-----------------------------------
-      call MAPL_GetObjectFromGC(GC, MAPL, _RC)
-
+      ! MAPL3: pyMoist is not ported; with it off this routine does nothing
       if (USE_PYMOIST_GFDL1M) then
-         call MAPL_pybridge_gcfinalize("pyMoist.fortran.param_interfaces.microphysics.GFDL1M_interface", MAPL, IMPORT, &
-              EXPORT)
+         _FAIL('pyMoist (USE_PYMOIST_GFDL1M) is not supported in the MAPL3 port') ! was MAPL_pybridge_gcfinalize
       end if
 
+      _RETURN(_SUCCESS)
+      _UNUSED_DUMMY(GC)
+      _UNUSED_DUMMY(IMPORT)
+      _UNUSED_DUMMY(EXPORT)
    end subroutine GFDL_1M_Finalize
 
 end module GEOS_GFDL_1M_InterfaceMod

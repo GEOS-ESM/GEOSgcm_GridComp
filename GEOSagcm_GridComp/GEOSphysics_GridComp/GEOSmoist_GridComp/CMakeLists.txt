@@ -18,7 +18,8 @@ set (srcs
   # files that are sometimes present?
   # ras00.F90 cloud.F90
   # Python interface files that doesn't fit the MAPL_PythonBridge pattern
-  ./pyMoist/pyMoist/fortran/moist_workarounds.F90
+  # MAPL3: not built, pyMoist is not ported (decision 5 in mapl3-porting-notes.md)
+  # ./pyMoist/pyMoist/fortran/moist_workarounds.F90
   )
 
 if (CMAKE_Fortran_COMPILER_ID MATCHES Intel AND CMAKE_BUILD_TYPE MATCHES Aggressive)
