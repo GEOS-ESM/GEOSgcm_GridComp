@@ -26,11 +26,8 @@ program mk_LakeLandiceSaltRestarts
   real, allocatable :: dummy(:)
 
   integer           :: zoom
-#ifndef __GFORTRAN__
-  integer              :: ftell
-  external             :: ftell
-#endif
   integer              :: bpos, epos, ntot
+  integer              :: reclen
   integer, allocatable :: nrecs(:), mrecs(:)
   type(Netcdf4_Fileformatter) :: InFmt, OutFmt
   type(FileMetadata) :: InCfg, OutCfg
@@ -189,6 +186,8 @@ program mk_LakeLandiceSaltRestarts
 
      open(unit=50,FILE=InRestart,form='unformatted',&
           status='old',convert='little_endian')
+     open(unit=51,FILE=InRestart,form='unformatted',access='stream',&
+           status='old',convert='little_endian')
 
 ! Determine NWORDS for Each Input Record
 ! --------------------------------------
@@ -200,7 +199,8 @@ program mk_LakeLandiceSaltRestarts
        read (50,iostat=rc)
        if( rc.eq.0 ) then
            ntot = ntot + 1
-           epos = ftell(50)          ! ending position of file pointer
+           read (51,pos=bpos+1) reclen  ! leading record-length marker
+           epos = bpos + reclen + 8      ! ending position of file pointer
          nwords = (epos-bpos)/4-2    ! record size (in 4 byte words;
          write(6,100) ntot, nwords
          if( ntot.eq.1 ) then
@@ -222,6 +222,7 @@ program mk_LakeLandiceSaltRestarts
 
  100 format(1x,'Record #: ',i3,' Total  Tiles: ',i10)
      print *
+     close(51)
      rewind(50)
 
    ! Read and Write Tile or TileTile Data until EOF

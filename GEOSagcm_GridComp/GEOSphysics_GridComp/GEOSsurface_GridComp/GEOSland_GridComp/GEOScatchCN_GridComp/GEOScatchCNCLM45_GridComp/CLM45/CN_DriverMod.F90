@@ -974,6 +974,7 @@ contains
 
   use clm_varpar,        only: nlevdecomp
   use clm_varcon,        only: dzsoi_decomp
+  use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
 
   integer*8, intent(in) :: istep
   integer, intent(in) :: nch ! number of tiles
@@ -1452,7 +1453,7 @@ contains
           
 	   ! Make it a cold start if there is no information from the restart file (derived from CLM4 restart)
 	   ! fzeng, 1 Aug 2017
-	   if (isnan(pcs%leafc_xfer(np))) pcs%leafc_xfer(np) = 0.                                                     
+	   if (ieee_is_nan(pcs%leafc_xfer(np))) pcs%leafc_xfer(np) = 0.                                                     
           
           endif
 

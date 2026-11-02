@@ -19,10 +19,6 @@ module CatchmentRstMod
 
 
   implicit none
-#ifndef __GFORTRAN__
-  integer           :: ftell
-  external          :: ftell
-#endif
 
   type :: CatchmentRst
      integer :: ntiles
@@ -132,7 +128,7 @@ contains
      type(Netcdf4_fileformatter) :: formatter
      integer :: filetype, ntiles, unit
      type(FileMetadata) :: meta
-     integer :: bpos, epos, n, myid, mpierr
+     integer :: bpos, epos, n, myid, mpierr, reclen
 
      call MPI_COMM_RANK( MPI_COMM_WORLD, myid, mpierr )
      catch%time = time
@@ -155,10 +151,10 @@ contains
        !  _ASSERT(.false., 'Please provide time for binary catch, format yyyymmddhhmm')
        !endif
        !GEOSldas binary
-       open(newunit=unit, file=filename,  form='unformatted', action = 'read')
+       open(newunit=unit, file=filename,  form='unformatted', access='stream', action = 'read')
        bpos=0
-       read(unit)
-       epos = ftell(unit)          ! ending position of file pointer
+       read(unit) reclen           ! leading record-length marker of first record
+       epos = bpos + reclen + 8    ! ending position of file pointer
        close(unit)
        ntiles = (epos-bpos)/4-2    ! record size (in 4 byte words; 
        catch%ntiles = ntiles

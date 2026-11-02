@@ -23,11 +23,8 @@ program SaltImpConverter
   real*8, allocatable :: varInR8(:),varOutR8(:)
 
   integer, parameter   :: zoom=1
-#ifndef __GFORTRAN__
-  integer              :: ftell
-  external             :: ftell
-#endif
   integer              :: bpos, epos, ntot
+  integer              :: reclen
   integer              :: foutID, status, TimID, TileID 
   integer, allocatable :: nrecs(:), mrecs(:)
   type(Netcdf4_Fileformatter) :: InImpFmt,OutFmt,InIntFmt
@@ -221,6 +218,8 @@ program SaltImpConverter
 
       open(unit=50,FILE=InImpRestart,form='unformatted',&
             status='old',convert='little_endian')
+      open(unit=51,FILE=InImpRestart,form='unformatted',access='stream',&
+            status='old',convert='little_endian')
 
       open(unit=51,FILE=InIntRestart,form='unformatted',&
             status='old',convert='little_endian')
@@ -243,7 +242,8 @@ program SaltImpConverter
        read (50,iostat=rc)
        if( rc.eq.0 ) then
            ntot = ntot + 1
-           epos = ftell(50)          ! ending position of file pointer
+           read (51,pos=bpos+1) reclen  ! leading record-length marker
+           epos = bpos + reclen + 8      ! ending position of file pointer
          nwords = (epos-bpos)/4-2    ! record size (in 4 byte words;
          write(6,100) ntot, nwords
          if( ntot.eq.1 ) then
@@ -265,6 +265,7 @@ program SaltImpConverter
 
  100 format(1x,'Record #: ',i3,' Total  Tiles: ',i10)
      print *
+     close(51)
      rewind(50)
 
      if(ntot /= size(impNames)) then

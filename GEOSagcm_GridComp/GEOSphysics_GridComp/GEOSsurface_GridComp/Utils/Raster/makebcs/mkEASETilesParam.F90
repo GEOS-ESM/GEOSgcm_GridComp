@@ -29,7 +29,7 @@ PROGRAM mkEASETilesParam
   ! - removed repetition of identical operations
   ! - added comments
   ! - white-space changes for improved readability
-  use, intrinsic :: iso_fortran_env, only: REAL64
+  use, intrinsic :: iso_fortran_env, only: REAL64, INT64
   use rmTinyCatchParaMod,    only : i_raster, j_raster 
   use rmTinyCatchParaMod,    only : RegridRasterReal     
   use rmTinyCatchParaMod,    only : Target_mean_land_elev
@@ -242,10 +242,10 @@ PROGRAM mkEASETilesParam
      !         END DO
      !         CLOSE (10, STATUS='KEEP')
      
-     dx  = 360._8/nc               ! raster grid spacing (dlon)
-     dy  = 180._8/nr               ! raster grid spacing (dlat)
+     dx  = 360._REAL64/nc               ! raster grid spacing (dlon)
+     dy  = 180._REAL64/nr               ! raster grid spacing (dlat)
      
-     d2r = MAPL_PI_R8/180._8       ! degree-to-radians conversion factor -- d2r declared as REAL ?!?!?!
+     d2r = MAPL_PI_R8/180._REAL64       ! degree-to-radians conversion factor -- d2r declared as REAL ?!?!?!
      
      tileid_index = 0        
      catid_index  = 0
@@ -284,7 +284,7 @@ PROGRAM mkEASETilesParam
         stop
      endif
      
-     SRTM_catid = int8(SRTM_catid_r8)                         ! convert data to integer*8    -- contains 12-digit Pfaf code
+     SRTM_catid = int(SRTM_catid_r8,INT64)                         ! convert data to integer*8    -- contains 12-digit Pfaf code
      SRTM_catid (SRTM_maxcat + 1) = 190000000                 ! append ID for Lake type
      SRTM_catid (SRTM_maxcat + 2) = 200000000                 ! append ID for Landice type
      
@@ -655,7 +655,7 @@ PROGRAM mkEASETilesParam
      
      do j =nr ,1 ,-1
         
-        lats = -90._8 + (j - 0.5_8)*dy                  ! center lat of raster grid cell (*,j) -- lats declared REAL ?!?!?!  same as clat ?!?!?!
+        lats = -90._REAL64 + (j - 0.5_REAL64)*dy                  ! center lat of raster grid cell (*,j) -- lats declared REAL ?!?!?!  same as clat ?!?!?!
         clat = -90. + float(j-1)*dy + dy/2.             ! center lat of raster grid cell (*,j)
         
         ! get 1-based ind_col and ind_row indices of EASE grid cell that contains raster grid cell (i,j)

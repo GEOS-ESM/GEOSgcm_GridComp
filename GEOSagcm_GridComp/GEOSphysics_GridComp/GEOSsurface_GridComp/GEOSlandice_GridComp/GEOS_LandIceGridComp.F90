@@ -3693,7 +3693,9 @@ end if
         ISSM_NSTEPS = ISSM_NSTEPS + 1 ! accumulated timesteps since last ISSM run
 
 		! update internal state
+#ifdef HAVE_ISSM
 		ICESMB_IN(:) = ICESMB_ISSM(:)
+#endif
     end if
 ! Update snow and landice albedos to anticipate
 !   next radiation calculation

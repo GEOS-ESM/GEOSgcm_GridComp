@@ -14,7 +14,7 @@ program cv_SaltRestart
                         r16_kind  = selected_real_kind(26)
 
 
-  integer :: i, n, k, nxt, argc, ntiles, nrec
+  integer :: i, n, k, nxt, argc, ntiles, nrec, iargc
   character*128 :: Outfile, InFile1, InFile2, length
   character*128 :: tilefile
   character*1            :: Opt

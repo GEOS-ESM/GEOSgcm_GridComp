@@ -18,10 +18,10 @@ use MAPL_Constants
   public stretch
 
 #ifdef EIGHT_BYTE
- integer, parameter:: f_p = 8!selected_real_kind(15)   ! same as 12 on Altix
+ integer, parameter:: f_p = REAL64 !selected_real_kind(15)   ! same as 12 on Altix
 #else
 ! Higher precisions for grid geometrical factors:
- integer, parameter:: f_p = 8!selected_real_kind(20)
+ integer, parameter:: f_p = REAL64 !selected_real_kind(20)
 #endif
 
 contains
@@ -100,8 +100,8 @@ contains
    !------------------------
     if ( do_schmidt ) then
        doShiftWest = .false.
-       target_lon = stg%target_lon*PI/180._8
-       target_lat = stg%target_lat*PI/180._8
+       target_lon = stg%target_lon*PI/180._REAL64
+       target_lat = stg%target_lat*PI/180._REAL64
        do n=1,ntiles
           call direct_transform(stg%stretch_factor, 1, npts, 1, npts, &
                target_lon, target_lat, &

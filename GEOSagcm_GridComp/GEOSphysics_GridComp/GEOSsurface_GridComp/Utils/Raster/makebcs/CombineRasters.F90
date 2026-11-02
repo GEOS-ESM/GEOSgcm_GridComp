@@ -231,14 +231,14 @@ program mkOverlaySimple
 
 ! The rasters cover the sphere in lat-lon 
 
-    dx  = 360._8/nx
-    dy  = 180._8/ny
-    d2r = PI/180._8
+    dx  = 360._REAL64/nx
+    dy  = 180._REAL64/ny
+    d2r = PI/180._REAL64
 
 ! sine and cosine of raster longitudes
 
     do i=1,nx
-       lons  = d2r*(-180._8 + (i-0.5_8)*dx)
+       lons  = d2r*(-180._REAL64 + (i-0.5_REAL64)*dx)
        cc(i) = cos(lons)
        ss(i) = sin(lons)
     enddo
@@ -289,7 +289,7 @@ program mkOverlaySimple
     if(Verb) write (6, '(A)', advance='NO') ' Started Overlay'
 
     LATITUDES: do j=1,ny
-       lats = -90._8 + (j - 0.5_8)*dy
+       lats = -90._REAL64 + (j - 0.5_REAL64)*dy
        da   = (sin(d2r*(lats+0.5*dy)) - &
                sin(d2r*(lats-0.5*dy))   )*(dx*d2r)
 

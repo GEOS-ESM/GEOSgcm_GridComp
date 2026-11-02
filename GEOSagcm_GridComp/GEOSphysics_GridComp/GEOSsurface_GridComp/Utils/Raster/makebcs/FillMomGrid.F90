@@ -259,14 +259,14 @@ INCLUDE "netcdf.inc"
        endif
     enddo
 
-    xmin = -180.0_8
-    xmax =  180.0_8
-    ymin =  -90.0_8
-    ymax =   90.0_8
+    xmin = -180.0_REAL64
+    xmax =  180.0_REAL64
+    ymin =  -90.0_REAL64
+    ymax =   90.0_REAL64
 
     dx    = (xmax-xmin)/nx
     dy    = (ymax-ymin)/ny
-    d2r   = (2._8*PI)/360.0_8
+    d2r   = (2._REAL64*PI)/360.0_REAL64
 
     if(Verb) then
        call system_clock(count1)
@@ -279,7 +279,7 @@ INCLUDE "netcdf.inc"
 
     LATITUDES: do j=1,ny
 
-       lats = -90._8 + (j - 0.5_8)*dy
+       lats = -90._REAL64 + (j - 0.5_REAL64)*dy
        da   = (sin(d2r*(lats+0.5*dy)) - &
                sin(d2r*(lats-0.5*dy))   )*(dx*d2r)
 

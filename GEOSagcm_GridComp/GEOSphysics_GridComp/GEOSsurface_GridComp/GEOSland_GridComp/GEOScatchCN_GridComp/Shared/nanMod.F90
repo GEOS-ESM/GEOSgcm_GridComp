@@ -20,13 +20,12 @@ module nanMod
   save
   private
   public :: inf, nan, bigint
-! signaling nan
-  real*8, parameter :: inf8 = O'0777600000000000000000'
-  real*8, parameter :: nan8 = O'0777610000000000000000'
-  real*4, parameter :: inf4 = O'17740000000'
-  real*4, parameter :: nan4 = O'17760000000'
-  real,   parameter :: inf = inf4
-  real,   parameter :: nan = nan4
+! Bit patterns are set through EQUIVALENCE rather than as PARAMETERs because
+! some compilers (e.g. NAG) reject NaN/Inf values in constant expressions.
+  integer :: inf_bits = int(O'17740000000')
+  integer :: nan_bits = int(O'17760000000')
+  real    :: inf, nan
+  equivalence (inf_bits, inf), (nan_bits, nan)
   integer,  parameter :: bigint = O'17777777777'
 !
 ! !REVISION HISTORY:
