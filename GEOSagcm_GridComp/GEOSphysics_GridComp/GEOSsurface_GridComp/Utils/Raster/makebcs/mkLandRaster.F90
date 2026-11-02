@@ -5,6 +5,7 @@ Program MakeLandRaster
   
   use MAPL_ExceptionHandling
   use LogRectRasterizeMod,     ONLY: WriteRaster, WriteTiling, SortTiling, SRTM_maxcat
+  use LISRasterInputMod,       ONLY: read_lis_raster
   use MAPL_HashMod
   use process_hres_data
   use MAPL_SortMod
@@ -18,12 +19,14 @@ Program MakeLandRaster
   ! ocean points set to 0. Output is an unformatted integer*4 raster
   ! with the ocean points set to negative numbers.
   !
-  ! Usage = "mkLandRaster -x nx -y ny -v -h -z -t maxtiles -g GridName" 
+  ! Usage = "mkLandRaster -x nx -y ny -v -h -z -t maxtiles -g GridName [-l -r reference_mask]"
   !
   !     -x nx       : # raster grid cells in longitude direction
   !     -y ny       : # raster grid cells in latitude  direction 
   !     -v          : verbose
   !     -t maxtiles : max # tiles expected
+  !     -l          : LIS geometry input (read LISIndex; no Catchment parameters)
+  !     -r mask     : reference GEOS mask for LIS working-surface preservation
   !
   !   [The following command line arguments are not used by makebcs as of Jun 2023.]
   !
@@ -67,6 +70,9 @@ Program MakeLandRaster
   integer                :: Pix, IceID, LakeID
   integer                :: CreateHash, IncrementHash, Hash
   
+  logical                :: lis_mode = .false.
+  integer                :: n_land_units
+  character*512          :: reference_mask = "GEOS5_10arcsec_mask.nc", reference_path
   logical                :: DoZip
   logical                :: Verb
   logical                :: regrid=.false., reynolds_sst=.false.
@@ -91,16 +97,16 @@ Program MakeLandRaster
   integer*8, allocatable, dimension(:) ::  SRTM_catid
   
   character*1            :: Opt
-  character*128          :: arg
+  character*512          :: arg
   character*128          :: TilFile, RstFile
   character*128          :: Tildir,  Rstdir
   character*128          :: GridName
   character*512          :: InputFile
-  character*128          :: MaskFile
+  character*512          :: MaskFile
   character*400          :: MAKE_BCS_INPUT_DIR
   
   character*128          :: &
-       Usage = "mkLandRaster -x nx -y ny -v -h -z -t maxtiles -g GridName"
+       Usage = "mkLandRaster -x nx -y ny -v -h -z -t maxtiles -g GridName [-l -r reference_mask]"
   character*128          :: Iam = "MakeLandRaster"
   
   ! ------------------------------------------------------------------------
@@ -126,7 +132,7 @@ Program MakeLandRaster
   
   I = command_argument_count()
   
-  if(I > 13) then
+  if(I > 19) then
      print *, "Wrong Number of arguments: ", i
      print *, trim(Usage)
      call exit(1)
@@ -142,7 +148,7 @@ Program MakeLandRaster
      end if
      opt=arg(2:2)
      if(len(trim(arg))==2) then
-        if(scan(opt,'zvh')==0) then
+        if(scan(opt,'zvhl')==0) then
            nxt = nxt + 1
            call get_command_argument(nxt,arg)
         end if
@@ -150,6 +156,10 @@ Program MakeLandRaster
         arg = arg(3:)
      end if
      select case (opt)
+     case ('l')
+        lis_mode = .true.
+     case ('r')
+        reference_mask = arg
      case ('x')
         read(arg,'(i6)') nx
      case ('y')
@@ -184,8 +194,18 @@ Program MakeLandRaster
   call system_clock(count0,count_rate)
   
   InputFile = trim(MAKE_BCS_INPUT_DIR)//'/shared/mask/'//trim(MaskFile)
-  
-  if (index(trim(MaskFile),'GEOS5_10arcsec_mask')/=0) then
+  n_land_units = SRTM_maxcat
+
+  if (lis_mode) then
+     if (MaskFile(1:1) == '/') InputFile = trim(MaskFile)
+     reference_path = trim(MAKE_BCS_INPUT_DIR)//'/shared/mask/'//trim(reference_mask)
+     if (reference_mask(1:1) == '/') reference_path = trim(reference_mask)
+     if (trim(GridName) == 'Pfafstetter') GridName = 'LIS'
+     LakeID = 190000000
+     IceID = 200000000
+     call read_lis_raster(trim(InputFile), trim(reference_path), nx, ny, raster, &
+                          n_land_units, SRTM_maxcat, Verb)
+  else if (index(trim(MaskFile),'GEOS5_10arcsec_mask')/=0) then
      
      ! 10 arcsec new mask (nc_esa-by-nr_esa)
      
@@ -446,6 +466,12 @@ Program MakeLandRaster
               call exit(1)
            end if
            
+           if (lis_mode) then
+              type = 100
+              if (Pix == 0) type = 0
+              if (Pix == 190000000) type = 19
+              if (Pix == 200000000) type = 20
+           else
            select case (Pix)
            case (0)
               type = 0                  ! ocean
@@ -456,6 +482,7 @@ Program MakeLandRaster
            case default
               type = 100                ! land
            end select
+           end if
 
            iTable(0 ,ip) = type
            iTable(1 ,ip) = 1
@@ -527,7 +554,7 @@ Program MakeLandRaster
 
   if(Verb) print *, 'Writing til file...'
   call WriteTiling(TilFile, (/Gridname/), (/ip/), (/1/), (/ip/),      &
-       nx, ny, iTable(:,:ip), rTable(:4,:ip), Dozip, Verb )
+       nx, ny, iTable(:,:ip), rTable(:4,:ip), Dozip, Verb, N_LandUnits=n_land_units )
   
   if(Verb) print *, 'Writing raster file...'
   call WriteRaster( RstFile, Raster, DoZip)
