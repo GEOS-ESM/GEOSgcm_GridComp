@@ -436,13 +436,10 @@ contains
          VLOCATION  = MAPL_VLocationCenter,                        &
          _RC)
 
-    call MAPL_AddExportSpec(GC,                                    &
+    call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'SIT',                                       &
-         LONG_NAME  = 'pressure_weighted_tendency_of_dry_static_energy_due_to_turbulence',&
-         UNITS      = 'Pa m+2 s-3',                                &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,                        &
-         _RC)
+         CHILD_ID   = TURBL,                                       &
+                                                        _RC)
 
     call MAPL_AddExportSpec(GC,                                        &
          SHORT_NAME = 'TIT',                                           &
@@ -452,21 +449,15 @@ contains
          VLOCATION  = MAPL_VLocationCenter,                            &
          _RC)
 
-    call MAPL_AddExportSpec(GC,                                      &
-         SHORT_NAME = 'UIT',                                         &
-         LONG_NAME  = 'tendency_of_eastward_wind_due_to_turbulence', &
-         UNITS      = 'm s-2',                                       &
-         DIMS       = MAPL_DimsHorzVert,                             &
-         VLOCATION  = MAPL_VLocationCenter,                          &
-         _RC)
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'UIT',                                       &
+         CHILD_ID   = TURBL,                                       &
+                                                        _RC)
 
-    call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'VIT',                                          &
-         LONG_NAME  = 'tendency_of_northward_wind_due_to_turbulence', &
-         UNITS      = 'm s-2',                                        &
-         DIMS       = MAPL_DimsHorzVert,                              &
-         VLOCATION  = MAPL_VLocationCenter,                           &
-         _RC)
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'VIT',                                       &
+         CHILD_ID   = TURBL,                                       &
+                                                        _RC)
 
     call MAPL_AddExportSpec(GC,                                          &
          SHORT_NAME = 'QVIT',                                            &
@@ -492,13 +483,10 @@ contains
          VLOCATION  = MAPL_VLocationCenter,                              &
          _RC)
 
-    call MAPL_AddExportSpec(GC,                                          &
-         SHORT_NAME = 'TKESHOCIT',                                       &
-         LONG_NAME  = 'tendency_of_TKE_due_to_turbulence_transport',     &
-         UNITS      = 'm2 s-3',                                          &
-         DIMS       = MAPL_DimsHorzVert,                                 &
-         VLOCATION  = MAPL_VLocationCenter,                              &
-         _RC)
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'TKESHOCIT',                                 &
+         CHILD_ID   = TURBL,                                       &
+                                                        _RC)
 
     call MAPL_AddExportSpec(GC,                                      &
          SHORT_NAME = 'TIF',                                         &
@@ -1844,13 +1832,15 @@ contains
           CHILD      = TURBL,                  &
           _RC)
 
-! terminate imports to turb for SYNCUV
-     if ( SYNCUV.ge.1.) then
-       call MAPL_TerminateImport    ( GC,  &
-          SHORT_NAME = (/'U ','V ' /),     &
-          CHILD      = TURBL,              &
+! Moist's after-Moist winds go to Turbulence for computing the mixing
+! coefficients under SYNCUV. Turbulence's U/V imports are not terminated;
+! they connect to Physics' own U/V imports and are the winds diffused.
+     call MAPL_AddConnectivity ( GC,                               &
+          SHORT_NAME  = (/'UAFMOIST','VAFMOIST'/),                 &
+          DST_ID      = TURBL,                                     &
+          SRC_ID      = MOIST,                                     &
           _RC)
-     endif
+
 ! terminate imports to turb for SYNCTQ
      if ( SYNCTQ.ge.1.) then
        call MAPL_TerminateImport    ( GC,  &
@@ -1961,7 +1951,7 @@ contains
    type (ESMF_State),          pointer :: GIM(:)
    type (ESMF_State),          pointer :: GEX(:)
    type (ESMF_FieldBundle)             :: BUNDLE, iBUNDLE
-   type (ESMF_Field)                   :: FIELD, TempField
+   type (ESMF_Field)                   :: TempField
    type (ESMF_Grid)                    :: GRID
 
    integer                             :: NUM_TRACERS
@@ -2085,35 +2075,8 @@ contains
 
     call ESMF_StateGet   (GIM(TURBL),  'TR' , BUNDLE,                     _RC)
 
-! Add Non-Friendlies from Dynamics
-
-    call ESMF_StateGet    (IMPORT,     'S'   , FIELD,                      _RC)
-    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="S",       _RC)
-    call ESMF_AttributeSet(FIELD, NAME="WeightedTendency",VALUE=.TRUE., _RC)
-    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                                _RC)
-
-    call ESMF_StateGet    (IMPORT,     'U'   , FIELD,                      _RC)
-    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="U",       _RC)
-    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                                _RC)
-
-    call ESMF_StateGet    (IMPORT,     'V'   , FIELD,                      _RC)
-    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="U",       _RC)
-    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                                _RC)
-
-    call ESMF_StateGet    (GEX(TURBL),  'TKESHOC'   , FIELD,    _RC)
-    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       _RC)
-    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       _RC)
-
-    call ESMF_StateGet    (GEX(TURBL),  'QT2'   , FIELD,    _RC)
-    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       _RC)
-    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       _RC)
-
-!    call ESMF_StateGet    (GEX(TURBL),  'QT3'   , FIELD,    RC=STATUS )
-!    VERIFY_(STATUS)
-!    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
-!    VERIFY_(STATUS)
-!    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
-!    VERIFY_(STATUS)
+! S, U, V, TKESHOC and QT2 are not in the bundle; Turbulence diffuses them
+! directly from its imports and internal state.
 
 ! Add Friendlies from Physics
     call MAPL_GridCompGetFriendlies(GC, "TURBULENCE", BUNDLE, _RC)
@@ -2391,7 +2354,7 @@ contains
    real, pointer, dimension(:,:,:)     :: UAFMOIST, VAFMOIST,  SAFMOIST, TAFMOIST, QAFMOIST, THAFMOIST
    real, pointer, dimension(:,:)       ::  UFORSURF, VFORSURF, TFORSURF, QFORSURF, SPD4SURF
    real, pointer, dimension(:,:,:)     ::  UFORCHEM, VFORCHEM, TFORCHEM, THFORCHEM
-   real, pointer, dimension(:,:,:)     ::  UFORTURB, VFORTURB, TFORTURB, THFORTURB, SFORTURB
+   real, pointer, dimension(:,:,:)     ::                      TFORTURB, THFORTURB, SFORTURB
    real, pointer, dimension(:,:,:)     ::                      TFORRAD
    real, pointer, dimension(:,:,:)     :: UAFDIFFUSE, VAFDIFFUSE
    real, pointer, dimension(:,:,:)     :: SAFDIFFUSE, SAFUPDATE
@@ -2792,11 +2755,7 @@ contains
        VFORSURF = VAFMOIST(:,:,LM)
      endif
      SPD4SURF = SQRT( UFORSURF*UFORSURF + VFORSURF*VFORSURF )
-    ! For TURBL
-     call MAPL_GetPointer ( GIM(TURBL), UFORTURB,   'U', _RC)
-     call MAPL_GetPointer ( GIM(TURBL), VFORTURB,   'V', _RC)
-     UFORTURB =  UAFMOIST
-     VFORTURB =  VAFMOIST
+    ! TURBL gets UAFMOIST/VAFMOIST directly from MOIST (see SetServices)
     endif
 
 !  SYNCTQ - Stage 1 SYNC of T/Q and U/V
@@ -2834,8 +2793,8 @@ contains
      call MAPL_GetPointer ( GIM(TURBL), THFORTURB, 'TH', _RC)
       TFORTURB =  TAFMOIST
      THFORTURB = THAFMOIST
-     call ESMF_StateGet(GIM(TURBL), 'TR', BUNDLE, _RC)
-     call ESMFL_BundleGetPointerToData(BUNDLE,'S',SFORTURB, _RC)
+     ! Physics' own S import; MAPL connects Turbulence's S import to it
+     SFORTURB => S
      call MAPL_GetPointer ( GEX(MOIST),  SAFMOIST,  'SAFMOIST', _RC)
       SFORTURB = SAFMOIST
     endif
@@ -2936,11 +2895,6 @@ contains
     ! From TURBL Run 1
      call MAPL_GetPointer ( GEX(TURBL), UAFDIFFUSE, 'UAFDIFFUSE', _RC)
      call MAPL_GetPointer ( GEX(TURBL), VAFDIFFUSE, 'VAFDIFFUSE', _RC)
-    ! For TURBL
-     call MAPL_GetPointer ( GIM(TURBL), UFORTURB,   'U', _RC)
-     call MAPL_GetPointer ( GIM(TURBL), VFORTURB,   'V', _RC)
-      UFORTURB = UAFDIFFUSE
-      VFORTURB = VAFDIFFUSE
     ! For SURF
      call MAPL_GetPointer ( GIM(SURF),  UFORSURF,  'UA',    _RC)
      call MAPL_GetPointer ( GIM(SURF),  VFORSURF,  'VA',    _RC)
@@ -2965,8 +2919,7 @@ contains
      ! For Stage 2 - Changes in S from TURBL assumed to be all in T
      TFORTURB = (SAFDIFFUSE - MAPL_GRAV*0.5*(ZLE(:,:,1:LM)+ZLE(:,:,0:LM-1)))/MAPL_CP
      THFORTURB = TFORTURB/PK
-     call ESMF_StateGet(GIM(TURBL), 'TR', BUNDLE, _RC)
-     call ESMFL_BundleGetPointerToData(BUNDLE,'S',SFORTURB, _RC)
+     SFORTURB => S
      if (DEBUG_SYNCTQ) then
        call MAPL_MaxMin('DEBUG S: S_FRM_TURB', SFORTURB)
        call MAPL_MaxMin('DEBUG S: SAFDIFFUSE', SAFDIFFUSE)
@@ -3069,7 +3022,7 @@ contains
      ! For Stage 2 - Changes in S from TURBL assumed to be all in T
      call MAPL_GetPointer ( GEX(TURBL), SAFUPDATE, 'SAFUPDATE', _RC)
      TFORRAD = (SAFUPDATE - MAPL_GRAV*0.5*(ZLE(:,:,1:LM)+ZLE(:,:,0:LM-1)))/MAPL_CP
-     call ESMFL_BundleGetPointerToData(BUNDLE,'S',SFORTURB, _RC)
+     SFORTURB => S
      if (DEBUG_SYNCTQ) then
        call MAPL_MaxMin('DEBUG S: S_FRM_TURB', SFORTURB)
        call MAPL_MaxMin('DEBUG S: SAFUPDATE', SAFUPDATE)

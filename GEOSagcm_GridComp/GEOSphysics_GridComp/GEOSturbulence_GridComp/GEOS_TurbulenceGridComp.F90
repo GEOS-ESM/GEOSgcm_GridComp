@@ -98,7 +98,13 @@ module GEOS_TurbulenceGridCompMod
 !   may be ``empty'' in the sense that the data pointer has not been allocated.
 !   
 !   {\tt GEOS\_TurbulenceGridComp} works with two bundles; TR in the import
-!   state and TRI in the export state. The surface values (SHAT, UHAT, VHAT, QHAT)
+!   state and TRI in the export state. Dry static energy, the winds, and
+!   Turbulence's own TKESHOC and QT2 are not in these bundles: they are
+!   diffused directly (see DIRECT_NAME) from imports (S, U, V) or the
+!   internal state (TKESHOC, QT2), with explicit tendency exports (SIT, UIT,
+!   VIT, TKESHOCIT), and are always diffused first, in that order. Under
+!   SYNCUV the mixing coefficients are computed from the winds after Moist
+!   (UAFMOIST, VAFMOIST). The surface values (SHAT, UHAT, VHAT, QHAT)
 !   and their changes (SDEL, UDEL, VDEL, QDEL) are explicit imports, and the
 !   surface fluxes (SFLX, UFLX, VFLX, QFLX) and their sensitivities to the surface
 !   value (SDFL, UDFL, VDFL, QDFL) are explicit exports. Quantities other than
@@ -160,6 +166,25 @@ module GEOS_TurbulenceGridCompMod
 
     logical                             :: dflt_false = .false.
     character(len=ESMF_MAXSTR)          :: dflt_q     = 'Q'
+
+    ! Quantities diffused directly rather than via the TR bundle, in the order
+    ! they are processed (S must be first for SHVC). For each: its name in the
+    ! import or internal state, diffusion type, whether its tendency is
+    ! pressure-weighted, whether the quantity itself is updated, and the
+    ! export holding its tendency (blank if none).
+    integer, parameter :: NDIRECT = 5
+    character(len=*), parameter :: DIRECT_NAME(NDIRECT) = &
+         [character(len=7) :: 'S', 'U', 'V', 'TKESHOC', 'QT2']
+    character(len=*), parameter :: DIRECT_TYPE(NDIRECT) = &
+         [character(len=1) :: 'S', 'U', 'U', 'Q', 'Q']
+    logical,          parameter :: DIRECT_WEIGHTED(NDIRECT) = &
+         [.true., .false., .false., .false., .false.]
+    logical,          parameter :: DIRECT_FRIENDLY(NDIRECT) = &
+         [.false., .false., .false., .true., .true.]
+    logical,          parameter :: DIRECT_INTERNAL(NDIRECT) = &
+         [.false., .false., .false., .true., .true.]
+    character(len=*), parameter :: DIRECT_TEND(NDIRECT) = &
+         [character(len=9) :: 'SIT', 'UIT', 'VIT', 'TKESHOCIT', ' ']
 
     logical :: DEBUG_TRB
 
@@ -508,6 +533,33 @@ contains
         DATATYPE           = MAPL_BundleItem,                     &
         RESTART    = MAPL_RestartSkip,                            &
 
+                                                       _RC)
+
+     call MAPL_AddImportSpec(GC,                                  &
+        SHORT_NAME = 'S',                                         &
+        LONG_NAME  = 'dry_static_energy',                         &
+        UNITS      = 'm+2 s-2',                                   &
+        DIMS       = MAPL_DimsHorzVert,                           &
+        VLOCATION  = MAPL_VLocationCenter,                        &
+        RESTART    = MAPL_RestartSkip,                            &
+                                                       _RC)
+
+     call MAPL_AddImportSpec(GC,                                  &
+        SHORT_NAME = 'UAFMOIST',                                  &
+        LONG_NAME  = 'eastward_wind_after_moist',                 &
+        UNITS      = 'm s-1',                                     &
+        DIMS       = MAPL_DimsHorzVert,                           &
+        VLOCATION  = MAPL_VLocationCenter,                        &
+        RESTART    = MAPL_RestartSkip,                            &
+                                                       _RC)
+
+     call MAPL_AddImportSpec(GC,                                  &
+        SHORT_NAME = 'VAFMOIST',                                  &
+        LONG_NAME  = 'northward_wind_after_moist',                &
+        UNITS      = 'm s-1',                                     &
+        DIMS       = MAPL_DimsHorzVert,                           &
+        VLOCATION  = MAPL_VLocationCenter,                        &
+        RESTART    = MAPL_RestartSkip,                            &
                                                        _RC)
 
      call MAPL_AddImportSpec(GC,                                  &
@@ -1070,6 +1122,38 @@ end if
         DIMS       = MAPL_DimsHorzVert,                           &
         VLOCATION  = MAPL_VLocationCenter,                        &
         DATATYPE   = MAPL_BundleItem,                             &
+                                                       _RC)
+
+    call MAPL_AddExportSpec(GC,                                   &
+        SHORT_NAME = 'SIT',                                       &
+        LONG_NAME  = 'pressure_weighted_tendency_of_dry_static_energy_due_to_turbulence',&
+        UNITS      = 'Pa m+2 s-3',                                &
+        DIMS       = MAPL_DimsHorzVert,                           &
+        VLOCATION  = MAPL_VLocationCenter,                        &
+                                                       _RC)
+
+    call MAPL_AddExportSpec(GC,                                   &
+        SHORT_NAME = 'UIT',                                       &
+        LONG_NAME  = 'tendency_of_eastward_wind_due_to_turbulence', &
+        UNITS      = 'm s-2',                                     &
+        DIMS       = MAPL_DimsHorzVert,                           &
+        VLOCATION  = MAPL_VLocationCenter,                        &
+                                                       _RC)
+
+    call MAPL_AddExportSpec(GC,                                   &
+        SHORT_NAME = 'VIT',                                       &
+        LONG_NAME  = 'tendency_of_northward_wind_due_to_turbulence', &
+        UNITS      = 'm s-2',                                     &
+        DIMS       = MAPL_DimsHorzVert,                           &
+        VLOCATION  = MAPL_VLocationCenter,                        &
+                                                       _RC)
+
+    call MAPL_AddExportSpec(GC,                                   &
+        SHORT_NAME = 'TKESHOCIT',                                 &
+        LONG_NAME  = 'tendency_of_TKE_due_to_turbulence_transport', &
+        UNITS      = 'm2 s-3',                                    &
+        DIMS       = MAPL_DimsHorzVert,                           &
+        VLOCATION  = MAPL_VLocationCenter,                        &
                                                        _RC)
 
      call MAPL_AddExportSpec(GC,                                  &
@@ -2835,6 +2919,7 @@ end if
 ! variables associated with SHOC
      real, dimension( IM, JM, LM )       :: QPL,QPI
      integer                             :: DO_SHOC, DOPROGQT2
+     real                                :: SYNCUV
      real                                :: SL2TUNE, QT2TUNE, SLQT2TUNE,          &
                                             SKEW_TGEN, SKEW_TDIS, QT2_TDIS, FREE_ATM_SIGS
      real    :: PDFSHAPE
@@ -2886,8 +2971,16 @@ end if
      call MAPL_GetPointer(IMPORT,     T,       'T', _RC)
      call MAPL_GetPointer(IMPORT,     Q,      'QV', _RC)
      call MAPL_GetPointer(IMPORT,    TH,      'TH', _RC)
-     call MAPL_GetPointer(IMPORT,     U,       'U', _RC)
-     call MAPL_GetPointer(IMPORT,     V,       'V', _RC)
+! Under SYNCUV the coefficients use the winds after Moist; the winds
+!  that are diffused are always the U and V imports (see DIFFUSE).
+     call MAPL_GetResource(MAPL, SYNCUV, 'SYNCUV:', DEFAULT=1.0, _RC)
+     if ( SYNCUV.ge.1. ) then
+        call MAPL_GetPointer(IMPORT,  U, 'UAFMOIST', _RC)
+        call MAPL_GetPointer(IMPORT,  V, 'VAFMOIST', _RC)
+     else
+        call MAPL_GetPointer(IMPORT,  U,        'U', _RC)
+        call MAPL_GetPointer(IMPORT,  V,        'V', _RC)
+     end if
      call MAPL_GetPointer(IMPORT, OMEGA,   'OMEGA', _RC)
      call MAPL_GetPointer(IMPORT,  AREA,   'AREA',  _RC)
      call MAPL_GetPointer(IMPORT,VARFLT,  'VARFLT', _RC)
@@ -5003,42 +5096,62 @@ end if
     DP = PLE(:,:,1:LM)-PLE(:,:,0:LM-1)
     DZ = ZLE(:,:,0:LM-1)-ZLE(:,:,1:LM)
 
-! Loop over all quantities to be diffused.
-!----------------------------------------
+! Loop over all quantities to be diffused: first those diffused directly
+!  (see DIRECT_NAME), then the fields in the TR bundle.
+!----------------------------------------------------------------------
 
-    do K=1,KM
+    do K=1,KM+NDIRECT
+
+       if (K <= NDIRECT) then
+
+          NAME     = DIRECT_NAME(K)
+          TYPE     = DIRECT_TYPE(K)
+          WEIGHTED = DIRECT_WEIGHTED(K)
+          FRIENDLY = DIRECT_FRIENDLY(K)
+          if (DIRECT_INTERNAL(K)) then
+             call MAPL_GetPointer(INTERNAL, S, trim(NAME), _RC)
+          else
+             call MAPL_GetPointer(IMPORT,   S, trim(NAME), _RC)
+          end if
+          nullify(SOI)
+          if (DIRECT_TEND(K) /= ' ') then
+             call MAPL_GetPointer(EXPORT, SOI, trim(DIRECT_TEND(K)), _RC)
+          end if
+
+       else
 
 ! Get the Kth Field and its name from tracer bundle
 !--------------------------------------------------
 
-       call ESMF_FieldBundleGet(TR, K, FIELD, _RC)
+          call ESMF_FieldBundleGet(TR, K-NDIRECT, FIELD, _RC)
 
-       call ESMF_FieldGet(FIELD, name=NAME, _RC)
+          call ESMF_FieldGet(FIELD, name=NAME, _RC)
 
 ! Get item's diffusion type (U, S or Q; default is Q)
 !----------------------------------------------------
 
-       call ESMF_AttributeGet(FIELD, NAME="DiffuseLike",         &
-            VALUE=TYPE, DEFAULTVALUE=dflt_q,    _RC)
+          call ESMF_AttributeGet(FIELD, NAME="DiffuseLike",         &
+               VALUE=TYPE, DEFAULTVALUE=dflt_q,    _RC)
 
 ! Get item's friendly status (default is not friendly)
 !-----------------------------------------------------
 
-       call ESMF_AttributeGet(FIELD, NAME="FriendlyToTURBULENCE", &
-            VALUE=FRIENDLY, DEFAULTVALUE=dflt_false,    _RC)
+          call ESMF_AttributeGet(FIELD, NAME="FriendlyToTURBULENCE", &
+               VALUE=FRIENDLY, DEFAULTVALUE=dflt_false,    _RC)
 
 ! Get item's weighting (default is unweighted tendencies)
 !--------------------------------------------------------
 
-       call ESMF_AttributeGet(FIELD, NAME="WeightedTendency",   &
-            VALUE=WEIGHTED, DEFAULTVALUE=dflt_false,    _RC)
+          call ESMF_AttributeGet(FIELD, NAME="WeightedTendency",   &
+               VALUE=WEIGHTED, DEFAULTVALUE=dflt_false,    _RC)
 
-! Get pointer to the quantity, its tendency, its surface value,
-!   the surface flux, and the sensitivity of the surface flux.
-! -------------------------------------------------------------
+! Get pointer to the quantity and its tendency
+! --------------------------------------------
 
-       call ESMFL_BundleGetPointerToData(TR    ,      NAME,         S  , _RC)
-       call ESMFL_BundleGetPointerToData(TRI   , trim(NAME)//'IT' , SOI, _RC)
+          call ESMFL_BundleGetPointerToData(TR    ,      NAME,         S  , _RC)
+          call ESMFL_BundleGetPointerToData(TRI   , trim(NAME)//'IT' , SOI, _RC)
+
+       end if
 
 ! Surface values, fluxes and sensitivities exist only for S, U, V and Q;
 !  all other quantities are left unassociated (zero flux).
@@ -5427,7 +5540,6 @@ end subroutine RUN1
       real, dimension(IM,JM,LM)           :: QT,SL,U,V,ZLO
       real, dimension(IM,JM,0:LM)         :: ZL0
       real, allocatable                   :: tmp3d(:,:,:)
-      integer, allocatable                :: KK(:)
       !  pointers to export of S after update
       real, dimension(:,:,:), pointer     :: SAFUPDATE
 
@@ -5446,7 +5558,7 @@ end subroutine RUN1
       real                                :: SHVC_ALPHA, SHVC_EFFECT, SHVC_SCALING 
       logical                             :: DO_SHVC
       logical                             :: ALLOC_TMP
-      integer                             :: KS, DO_SHOC
+      integer                             :: DO_SHOC
       real                                :: HGT_SURFACE, WGTSUM, CAP_INTDIS, CAP_TOPDIS
 
       ! For idealized SCM surface layer
@@ -5570,16 +5682,6 @@ end subroutine RUN1
 !----------------------------------------------
 
 
-! KK gives the order in which quantities will be process.
-!--------------------------------------------------------
-
-      allocate(KK(KM), stat=STATUS)
-      VERIFY_(STATUS)
-
-      do K = 1,KM
-         KK(K) = K
-      end do
-
 ! Clear the accumulators for the dissipation.
 !--------------------------------------------
 
@@ -5657,22 +5759,9 @@ end subroutine RUN1
 
       SHVC_INIT: if(DO_SHVC) then
 
-! Ensure that S is processed first. This only matters for SHVC
-!-------------------------------------------------------------
-
-         KS = 0
-
-         do K = 1,KM
-            call ESMF_FieldBundleGet(TR, K, FIELD, _RC)
-
-            call ESMF_FieldGet(FIELD, name=NAME, _RC)
-
-            if    (NAME == 'S') then
-               KS=KK(1); KK(1)=K; KK(K)=KS
-            end if
-         end do
-
-         _ASSERT(KS /= 0 ,'needs informative message')
+! SHVC requires S to be processed before Q; S is always the first quantity
+!  diffused (see the TRACERS loop below).
+!-------------------------------------------------------------------------
 
 ! SHVC super-layers
 !------------------
@@ -5726,49 +5815,71 @@ end subroutine RUN1
 !----------------------------------------------------
     call MAPL_GetPointer(EXPORT, SAFUPDATE ,  'SAFUPDATE' , ALLOC=.TRUE., _RC)
 
-! Loop over all quantities to be diffused.
-!-----------------------------------------
-
        if (associated(INTDIS) .and. DO_SHOC /= 0) then
           INTDIS(:,:,1:LM) = -1.*TKEDISS(:,:,1:LM)*DP(:,:,1:LM)/MAPL_CP
        endif
 
-       TRACERS: do KS=1,KM
+! Loop over all quantities to be diffused: first those diffused directly
+!  (see DIRECT_NAME; S is first, as SHVC requires), then the fields in the
+!  TR bundle.
+!----------------------------------------------------------------------
 
-         K = KK(KS)
+       TRACERS: do K=1,KM+NDIRECT
+
+         if (K <= NDIRECT) then
+
+            NAME     = DIRECT_NAME(K)
+            TYPE     = DIRECT_TYPE(K)
+            WEIGHTED = DIRECT_WEIGHTED(K)
+            FRIENDLY = DIRECT_FRIENDLY(K)
+            if (DIRECT_INTERNAL(K)) then
+               call MAPL_GetPointer(INTERNAL, S, trim(NAME), _RC)
+            else
+               call MAPL_GetPointer(IMPORT,   S, trim(NAME), _RC)
+            end if
+            nullify(SOI)
+            if (DIRECT_TEND(K) /= ' ') then
+               call MAPL_GetPointer(EXPORT, SOI, trim(DIRECT_TEND(K)), _RC)
+            end if
+
+         else
 
 ! Get Kth field from bundle
 !--------------------------
           
-         call ESMF_FieldBundleGet(TR, K, FIELD, _RC)
+            call ESMF_FieldBundleGet(TR, K-NDIRECT, FIELD, _RC)
 
-         call ESMF_FieldGet(FIELD, name=NAME, _RC)
+            call ESMF_FieldGet(FIELD, name=NAME, _RC)
 
 ! Get item's diffusion type (U, S or Q; default is Q)
 !----------------------------------------------------
 
-         call ESMF_AttributeGet(FIELD, NAME="DiffuseLike",         &
-              VALUE=TYPE, DEFAULTVALUE=dflt_Q,    _RC)
+            call ESMF_AttributeGet(FIELD, NAME="DiffuseLike",         &
+                 VALUE=TYPE, DEFAULTVALUE=dflt_Q,    _RC)
 
 ! Get item's friendly status (default is not friendly)
 !-----------------------------------------------------
 
-         call ESMF_AttributeGet(FIELD, NAME="FriendlyToTURBULENCE", &
-              VALUE=Friendly, DEFAULTVALUE=dflt_false,    _RC)
+            call ESMF_AttributeGet(FIELD, NAME="FriendlyToTURBULENCE", &
+                 VALUE=Friendly, DEFAULTVALUE=dflt_false,    _RC)
 
 ! Get item's weighting (default is unweighted tendencies)
 !--------------------------------------------------------
 
-         call ESMF_AttributeGet(FIELD, NAME="WeightedTendency",    &
-              VALUE=WEIGHTED, DEFAULTVALUE=dflt_false,    _RC)
+            call ESMF_AttributeGet(FIELD, NAME="WeightedTendency",    &
+                 VALUE=WEIGHTED, DEFAULTVALUE=dflt_false,    _RC)
 
-! Get pointers to the quantity, its tendency, its surface increment,
-!   the preliminary surface flux, and the sensitivity of the surface
-!   flux to the surface value.
+! Get pointers to the quantity and its tendency
+! ---------------------------------------------
+
+            call ESMFL_BundleGetPointerToData(TR    ,      NAME,         S  , _RC)
+            call ESMFL_BundleGetPointerToData(TRI   , trim(NAME)//'IT' , SOI, _RC)
+
+         end if
+
+! Get pointers to the surface increment, the preliminary surface flux,
+!   and the sensitivity of the surface flux to the surface value.
 ! ------------------------------------------------------------------
-
-         call ESMFL_BundleGetPointerToData(TR    ,      NAME,         S  , _RC)
-         call ESMFL_BundleGetPointerToData(TRI   , trim(NAME)//'IT' , SOI, _RC)
          nullify(DSG, SF, SDF)
          select case (trim(NAME))
          case ('S','U','V','Q')
@@ -6025,8 +6136,6 @@ end subroutine RUN1
 
 ! End loop over all quantities to be diffused
 !--------------------------------------------
-
-      deallocate(KK)
 
       if (ALLOC_TMP) allocate(tmp3d(IM,JM,0:LM))
 
