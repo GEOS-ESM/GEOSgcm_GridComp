@@ -352,7 +352,7 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     call MAPL_GetResource( MAPL, MIN_RH_STABLE   , 'MIN_RH_STABLE:'   , DEFAULT= 0.8250, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MIN_RH_FREE     , 'MIN_RH_FREE:'     , DEFAULT= 0.7250, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, TURNRHCRIT_TOP  , 'TURNRHCRIT_TOP:'  , DEFAULT= 3250. , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 6     , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 1     , RC=STATUS); VERIFY_(STATUS)
 
     ! -----------------------------------------------------------------------------------------
     ! ICE SETTLING & FALL SPEED MULTIPLIERS

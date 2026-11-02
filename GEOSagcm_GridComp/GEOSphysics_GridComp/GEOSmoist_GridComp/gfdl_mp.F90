@@ -416,7 +416,7 @@ module gfdl_mp_mod
 
     ! simple process timescales
     real :: tau_r2g  =  900.0 ! rain freezing to graupel time scale (s)
-    real :: tau_i2s  =  150.0 ! cloud ice to snow autoconversion time scale (s)
+    real :: tau_i2s  =  300.0 ! cloud ice to snow autoconversion time scale (s)
     real :: tau_l2r  =  450.0 ! cloud water to rain autoconversion time scale (s)
     ! other timescales
     real :: tau_v2l  =   75.0 ! water vapor to cloud water condensation time scale (s)
@@ -447,7 +447,18 @@ module gfdl_mp_mod
 
     real :: ql0_max = 2.0e-3 ! maximum cloud water value (autoconverted to rain) (kg/kg)
 
-    real :: psaut_qi_crt = 0.5e-4 ! cloud ice to snow autoconversion threshold (kg/m^3)
+    ! -----------------------------------------------------------------------
+    ! Tunable parameters for pressure-dependent critical QI threshold
+    ! -----------------------------------------------------------------------
+    real, parameter :: PSAUT_FACTOR_HIGH = 2.5    ! Multiplier at upper levels (p < 300 hPa)
+    real, parameter :: PSAUT_FACTOR_LOW  = 0.8    ! Multiplier at lower levels (p > 800 hPa)
+    real, parameter :: PSAUT_P_MID       = 450.0  ! Transition center (hPa)
+    real, parameter :: PSAUT_P_WIDTH     = 100.0  ! Transition width (hPa)
+
+    real :: psaut_qi_crt = 0.5e-4      ! Baseline autoconversion threshold (kg/m³)
+    real :: psaut_qi_crt_max = 2.0e-4  ! Maximum threshold cap (kg/m³)
+                                       ! Prevents excessive ice at upper levels
+
     real :: pwbf_qi_crt  = 0.8e-4 ! WBF liquid to ice freezing threshold (kg/m^3)
     real :: pgaut_qs_crt = 0.6e-3 ! snow to graupel autoconversion threshold (0.6e-3 in Purdue Lin scheme) (kg/m^3)
  
@@ -494,13 +505,13 @@ module gfdl_mp_mod
     real :: vw_fac = 1.0
     real :: vi_fac_cnv = 1.0
     real :: vi_fac_lsc = 1.0
-    real :: vs_fac = 1.2
+    real :: vs_fac = 1.0
     real :: vg_fac = 1.0
-    real :: vr_fac = 1.2
+    real :: vr_fac = 1.0
     real :: vh_fac = 1.0
 
     real :: vw_min = 0.0  !< minimum fall speed for cloud water (m/s)
-    real :: vi_min = 0.02 !< minimum fall speed or constant fall speed
+    real :: vi_min = 0.01 !< minimum fall speed or constant fall speed
     real :: vs_min = 0.25 !< minimum fall speed or constant fall speed
     real :: vg_min = 3.   !< minimum fall speed or constant fall speed
     real :: vr_min = 4.   !< minimum fall speed or constant fall speed
@@ -589,7 +600,7 @@ module gfdl_mp_mod
     namelist / gfdl_mp_nml / &
         t_min, t_sub, tau_r2g, tau_smlt, tau_gmlt, do_ice_pres_scaling, vi_fac_cnv, vi_fac_lsc, vw_min, vi_min, &
         vr_min, vs_min, vg_min, vh_min, ql_mlt, qa_tend, do_cf, cfflag, fix_negative, vw_max, vi_max, vs_max, &
-        vh_max, vg_max, vr_max, qs_mlt, ql0_max, psaut_qi_crt, pwbf_qi_crt, pgaut_qs_crt, ifflag, &
+        vh_max, vg_max, vr_max, qs_mlt, ql0_max, psaut_qi_crt_max, psaut_qi_crt, pwbf_qi_crt, pgaut_qs_crt, ifflag, &
         rh_inc, rh_inr, const_vw, const_vi, const_vs, const_vg, const_vr, rthreshu, rthreshs, &
         ccn_l, ccn_o, igflag, c_paut_scheme, c_paut, tau_imlt, tau_v2l, tau_l2v, tau_i2s, &
         tau_l2r, qi_lim, do_hail, inflag, c_psacw, c_psaci, c_pracs, &
@@ -3652,15 +3663,7 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
     real :: ql, qi, qim, qadum, newliq, newice
     real :: tmp, sink, fac_imlt, fac_imlt_loc, fac_frez, fac_frez_loc
     real :: critical_qi_factor
-    real :: pl, p_norm, p_factor
-
-    ! -----------------------------------------------------------------------
-    ! Tunable parameters for pressure-dependent critical threshold (Aligned with psaut)
-    ! -----------------------------------------------------------------------
-    real, parameter :: PSAUT_FACTOR_HIGH = 2.5    ! Multiplier at upper levels (p < 300 hPa)
-    real, parameter :: PSAUT_FACTOR_LOW  = 0.8    ! Multiplier at lower levels (p > 800 hPa)
-    real, parameter :: PSAUT_P_MID       = 450.0  ! Transition center (hPa)
-    real, parameter :: PSAUT_P_WIDTH     = 100.0  ! Transition width (hPa)
+    real :: pl, p_norm, qi_crt_factor
 
     fac_imlt = 1. - exp (- dts / tau_imlt)
     fac_frez = 1. - exp (- dts / tau_frez)
@@ -3707,14 +3710,19 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
             pl = pl * 0.01               ! Convert to hPa (mb)
 
             ! ===================================================================
-            ! SMOOTH PRESSURE-DEPENDENT THRESHOLD MULTIPLIER (Consistent with psaut)
+            ! PRESSURE & RESOLUTION-DEPENDENT THRESHOLD
+            ! Combines pressure-dependent physics with resolution scaling, capped
+            ! at psaut_qi_crt_max to prevent unphysical upper-level ice buildup.
             ! ===================================================================
             p_norm = (pl - PSAUT_P_MID) / PSAUT_P_WIDTH
-            p_factor = PSAUT_FACTOR_LOW + 0.5 * (PSAUT_FACTOR_HIGH - PSAUT_FACTOR_LOW) * &
-                       (1.0 - tanh(p_norm))
-            
-            ! Apply pressure-dependent multiplier to critical threshold
-            critical_qi_factor = min(psaut_qi_crt * p_factor, psaut_qi_crt)
+            qi_crt_factor = PSAUT_FACTOR_LOW + 0.5 * (PSAUT_FACTOR_HIGH - PSAUT_FACTOR_LOW) * &
+                           (1.0 - tanh(p_norm))
+
+            ! Combine pressure-dependent multiplier with resolution dependence
+            qi_crt_factor = qi_crt_factor * (onemsig + 1.0)
+
+            ! Apply multiplier and cap at maximum physically reasonable threshold
+            critical_qi_factor = min(psaut_qi_crt_max, psaut_qi_crt * qi_crt_factor)
 
             ! Use In-Cloud condensates with scale-aware blending
             if (in_cloud_ice) then
@@ -3737,7 +3745,6 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
 
             sink = fac_frez_loc * min(ql, newice, (tice - tz (k)) / icpk (k))
             
-            ! FIXED: Replaced baseline critical_qi_factor with critical_qi_factor
             qim = critical_qi_factor / den (k)
             tmp = min (sink, dim (qim, qi))
 
@@ -4170,15 +4177,7 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
 
     real :: tc, sink, fac_i2s, q_plus, qim, dq, tmp
     real :: di, qi, critical_qi_factor, qadum
-    real :: pl, p_norm, p_factor
-
-    ! -----------------------------------------------------------------------
-    ! Tunable parameters for pressure-dependent critical threshold
-    ! -----------------------------------------------------------------------
-    real, parameter :: PSAUT_FACTOR_HIGH = 2.5    ! Multiplier at upper levels (p < 300 hPa)
-    real, parameter :: PSAUT_FACTOR_LOW  = 0.8    ! Multiplier at lower levels (p > 800 hPa)
-    real, parameter :: PSAUT_P_MID       = 450.0  ! Transition center (hPa)
-    real, parameter :: PSAUT_P_WIDTH     = 100.0  ! Transition width (hPa)
+    real :: pl, p_norm, qi_crt_factor
 
     fac_i2s = 1. - exp (- dts / tau_i2s)
 
@@ -4195,29 +4194,19 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
             pl = pl * 0.01               ! Convert to hPa (mb)
 
             ! ===================================================================
-            ! SMOOTH PRESSURE-DEPENDENT THRESHOLD MULTIPLIER
-            ! Uses sigmoid (tanh) for smooth transition.
-            ! Baseline critical threshold: critical_qi_factor
-            ! 
-            ! Physical interpretation:
-            !   - Upper troposphere (p <= 300 hPa): Multiplier approaches ~10x.
-            !     Ice must accumulate significantly before converting to snow. 
-            !     This allows ice to stay suspended in strong updrafts and 
-            !     detrainment regions.
-            !   
-            !   - Mid troposphere (p = 700 hPa): Transition midpoint with ~5.5x 
-            !     multiplier, yielding a moderate threshold.
-            !   
-            !   - Lower troposphere (p >= 800 hPa): Multiplier drops toward 1x baseline. 
-            !     Effective threshold stays low, meaning ice 
-            !     converts to snow readily as it approaches the surface.
+            ! PRESSURE & RESOLUTION-DEPENDENT THRESHOLD
+            ! Combines pressure-dependent physics with resolution scaling, capped
+            ! at psaut_qi_crt_max to prevent unphysical upper-level ice buildup.
             ! ===================================================================
             p_norm = (pl - PSAUT_P_MID) / PSAUT_P_WIDTH
-            p_factor = PSAUT_FACTOR_LOW + 0.5 * (PSAUT_FACTOR_HIGH - PSAUT_FACTOR_LOW) * &
-                       (1.0 - tanh(p_norm))
-            
-            ! Apply pressure-dependent multiplier to critical threshold
-            critical_qi_factor = min(psaut_qi_crt * p_factor, psaut_qi_crt) 
+            qi_crt_factor = PSAUT_FACTOR_LOW + 0.5 * (PSAUT_FACTOR_HIGH - PSAUT_FACTOR_LOW) * &
+                           (1.0 - tanh(p_norm))
+
+            ! Combine pressure-dependent multiplier with resolution dependence
+            qi_crt_factor = qi_crt_factor * (onemsig + 1.0)
+
+            ! Apply multiplier and cap at maximum physically reasonable threshold
+            critical_qi_factor = min(psaut_qi_crt_max, psaut_qi_crt * qi_crt_factor)
 
             ! Use In-Cloud condensates with scale-aware blending
             if (in_cloud_ice) then

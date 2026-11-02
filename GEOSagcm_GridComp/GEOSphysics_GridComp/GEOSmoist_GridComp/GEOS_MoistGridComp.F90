@@ -6534,12 +6534,12 @@ contains
        endif
 
        ! diagnosed stratiform precip (rain+snow)
-       call MAPL_GetPointer(EXPORT, PREC_STRAT, 'PREC_STRAT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-       if (associated(PREC_STRAT)) PREC_STRAT = MAX((1.0-CNV_FRC)*TPREC, 0.0)
+       call MAPL_GetPointer(EXPORT, PTR2D, 'PREC_STRAT', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) PTR2D = MAX((1.0-CNV_FRC)*TPREC, 0.0)
 
        ! diagnosed convective precip (rain+snow)
-       call MAPL_GetPointer(EXPORT, PREC_CONV, 'PREC_CONV', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-       if (associated(PREC_CONV)) PREC_CONV = MAX(CNV_FRC*TPREC, 0.0)
+       call MAPL_GetPointer(EXPORT, PTR2D, 'PREC_CONV', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) PTR2D = MAX(CNV_FRC*TPREC, 0.0)
 
      ! Diagnostic precip types:
        call MAPL_GetPointer(EXPORT, ICE,   'ICE',   ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
