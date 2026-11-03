@@ -673,6 +673,24 @@ module GEOS_LandiceGridCompMod
                                            RC=STATUS  )
   VERIFY_(STATUS)
 
+call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'snowfall_on_glaciated_surface'             ,&
+    UNITS              = 'kg m-2 s-1'                ,&
+    SHORT_NAME         = 'SNO_GL'                     ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS) 
+
+call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'precipitation_on_glaciated_surface'             ,&
+    UNITS              = 'kg m-2 s-1'                ,&
+    SHORT_NAME         = 'PRECIP_GL'                     ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS) 
+
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'snow_broadband_reflectivity',   &
     UNITS              = '1'                ,&
@@ -2550,6 +2568,8 @@ contains
    real, pointer, dimension(:  )  :: ACCUM
    real, pointer, dimension(:  )  :: SMELT
    real, pointer, dimension(:  )  :: IMELT
+   real, pointer, dimension(:  )  :: SNOEXP !snowfall export 
+   real, pointer, dimension(:  )  :: PRECIPEXP !precipitation export
    real, pointer, dimension(:  )  :: RAINRFZ
    real, pointer, dimension(:  )  :: SNOWALB
    real, pointer, dimension(:  )  :: SNICEALB
@@ -2900,6 +2920,8 @@ end if
    call MAPL_GetPointer(EXPORT,ACCUM  , 'ACCUM'  , alloc=.true. , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SMELT  , 'SMELT'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,IMELT  , 'IMELT'  , RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,SNOEXP  , 'SNO_GL'  , RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,PRECIPEXP  , 'PRECIP_GL'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,RAINRFZ, 'RAINRFZ', RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SNOWALB, 'SNOWALB', RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SNICEALB,'SNICEALB',RC=STATUS); VERIFY_(STATUS)
@@ -3674,15 +3696,15 @@ end if
     if(associated(ACCUM )) ACCUM      = ACCUM + PRECIP
     if(associated(EMISS )) EMISS      = LANDICEEMISS
 
-    if(associated(SNOWMASS)) SNOWMASS = sum(WESN,dim=2)
-    if(associated(SNOMAS))   SNOMAS   = sum(WESN,dim=2)
-    if(associated(SNOWDP))   SNOWDP   = sum(SNDZ,dim=2)
-    if(associated(ASNOW))    ASNOW    = FR(:,SNOW)
-    if(associated(SMELT ))   SMELT    = PERC
-    if(associated(RAINRFZ )) RAINRFZ  = FR(:,ICE)  * RAINRF
-
-    if(associated(MELTWTR )) MELTWTR  = MELTWTR + MLT
-
+    if(associated(SNOWMASS)) SNOWMASS   = sum(WESN,dim=2)
+    if(associated(SNOMAS))   SNOMAS     = sum(WESN,dim=2)
+    if(associated(SNOWDP))   SNOWDP     = sum(SNDZ,dim=2)
+    if(associated(ASNOW))    ASNOW      = FR(:,SNOW)
+    if(associated(SMELT ))   SMELT      = PERC
+    if(associated(RAINRFZ )) RAINRFZ    = FR(:,ICE)  * RAINRF
+    if(associated(MELTWTR )) MELTWTR    = MELTWTR + MLT
+    if(associated(SNOEXP))   SNOEXP     = SNO
+    if(associated(PRECIPEXP)) PRECIPEXP = PRECIP
 
     ! Calculate surface mass balance (SMB) for ISSM
     if(associated(ICESMB)) ICESMB    = ACCUM - RUNOFF
