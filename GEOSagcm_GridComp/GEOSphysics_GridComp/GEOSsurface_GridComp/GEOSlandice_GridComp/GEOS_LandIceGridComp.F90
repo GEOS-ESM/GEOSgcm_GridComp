@@ -689,7 +689,8 @@ call MAPL_AddExportSpec(GC,                    &
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS) 
+
+  VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'snow_broadband_reflectivity',   &
@@ -947,6 +948,15 @@ call MAPL_AddExportSpec(GC,                    &
         LONG_NAME          = 'glacier_ice_heating_flux'  ,&
         UNITS              = 'W m-2'                     ,&
         SHORT_NAME         = 'GHTSKIN'                   ,&
+        DIMS               = MAPL_DimsTileOnly           ,&
+        VLOCATION          = MAPL_VLocationNone          ,&
+                                               RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                     &
+        LONG_NAME          = 'change_in_surface_energy'  ,&
+        UNITS              = 'W m-2'                     ,&
+        SHORT_NAME         = 'DHGLC'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
                                                RC=STATUS  )
@@ -1842,7 +1852,7 @@ call MAPL_AddExportSpec(GC,                    &
        VERIFY_(STATUS)
        Iam = trim(COMP_NAME) // "Initialize"
 
-   ! Get my internal MAPL_Generic state
+   ! Get my internal MAPL_Generic etate
    !-----------------------------------
 
        call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
@@ -2607,6 +2617,7 @@ contains
    real, pointer, dimension(:  )  :: DNICFLX
    real, pointer, dimension(:  )  :: GHSNOW
    real, pointer, dimension(:  )  :: GHTSKIN
+   real, pointer, dimension(:  )  :: DHGLC    !surface energy change over glacier  
    real, pointer, dimension(:)   :: RMELTDU001
    real, pointer, dimension(:)   :: RMELTDU002
    real, pointer, dimension(:)   :: RMELTDU003
@@ -2616,7 +2627,7 @@ contains
    real, pointer, dimension(:)   :: RMELTBC002
    real, pointer, dimension(:)   :: RMELTOC001
    real, pointer, dimension(:)   :: RMELTOC002
-
+  
 ! pointers to internal
    real, pointer, dimension(:)    :: ICESMB_IN
    real, pointer, dimension(:,:)  :: TS
@@ -2658,6 +2669,7 @@ contains
    real, pointer, dimension(:)    :: PS
    real, pointer, dimension(:)    :: PCU
    real, pointer, dimension(:)    :: PLS
+   real, pointer, dimension(:)    :: ENTOP0  !energy at the start of the timestep 
    real, pointer, dimension(:)    :: THATM
    real, pointer, dimension(:)    :: QHATM
    real, pointer, dimension(:)    :: CTATM
@@ -2876,6 +2888,8 @@ end if
    call MAPL_GetPointer(INTERNAL,CM   , 'CM'     , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,CQ   , 'CQ'     , RC=STATUS); VERIFY_(STATUS)
 
+! should the heat content be calculated here?
+
    ! for analytical extra derivatives (louissurface)
    
    call MAPL_GetPointer(INTERNAL,delCQ_delTVA ,'delCQ_delTVA',RC=STATUS); VERIFY_(STATUS)
@@ -2922,6 +2936,7 @@ end if
    call MAPL_GetPointer(EXPORT,IMELT  , 'IMELT'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SNOEXP  , 'SNO_GL'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,PRECIPEXP  , 'PRECIP_GL'  , RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,DHGLC,   'DHGLC', , RC=STATUS); VERIFY_(STATUS)  !export surface energy change
    call MAPL_GetPointer(EXPORT,RAINRFZ, 'RAINRFZ', RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SNOWALB, 'SNOWALB', RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SNICEALB,'SNICEALB',RC=STATUS); VERIFY_(STATUS)
@@ -2996,6 +3011,7 @@ end if
     VERIFY_(STATUS)
 
     NT = size(LWDNSRF)
+
 
     ! initialize running mean ICESMB and number of steps since last ISSM solve
 #ifdef HAVE_ISSM
@@ -3487,7 +3503,15 @@ end if
        DIF = 0.0
        ULW = ALWN + BLWN*TS(:,N)
 
-       LANDICECAP = (MAPL_RHOWTR*MAPL_CAPICE*LANDICEDEPTH)
+       LANDICECAP = (MAPL_RHOWTR*MAPL_CAPICE*LANDICEDEPTH) !I dont think this is currently used for anything and I am  not sure that it is correct because it uses water density, not ice density.
+
+    ! calculate the heat content of the top layer at the start of the timestep to calculate DHGLC and mass to calculate DMGLC
+     ENTOP0 = FR(:,SNOW) * HTSN(1,:) + RHOICE * MAPL_CAPICE *LANDICEDEPTH_  * (TICE(:,:,1) - MAPL_TICE) !There are two possible issues here: does ice need to be multiplied by FR(:,ICE) and should TICE be TICE(:,ICE,1)     
+
+     ! This will need to loop through the vertical layers to calculate the mean heat content of the snow and the mean temperature of the ice layers   
+     !ENTOT0 = FR(:,SNOW) * HTSN(1,:) + RHOICE * MAPL_CAPICE *LANDICEDEPTH  * (TICE(:,ICE,1) - MAPL_TICE)      
+
+
 
        EVAPI   = LHF / MAPL_ALHS            ! LHF needed in solveicelayer(); EVAPI   needed in snowrt()
        DEVAPDT = LHD / MAPL_ALHS            ! LHD needed in solveicelayer(); DEVAPDT needed in snowrt()
@@ -3691,7 +3715,8 @@ end if
     enddo ! NUM_SUBTILES
 
     FR(:,ICE) = max(1.0-FR(:,SNOW), 0.0)
-
+    if(associated(DHGLC)) &
+    DHGLC = (( FR(:,SNOW) * HTSN(1,:) + RHOICE * MAPL_CAPICE *LANDICEDEPTH_  * (TICE(:,:,1) - MAPL_TICE)) - ENTOP0)/ DT !Calculate the change in surface energy
     if(associated(GHTSKIN )) GHTSKIN = ghflxsno*FR(:,SNOW) + ghflxice*FR(:,ICE)
     if(associated(ACCUM )) ACCUM      = ACCUM + PRECIP
     if(associated(EMISS )) EMISS      = LANDICEEMISS
