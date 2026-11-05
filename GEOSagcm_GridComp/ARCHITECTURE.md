@@ -37,7 +37,8 @@ and splits a dynamics step into two run phases around physics.
   `@FVdycoreCubed_GridComp`; `FV3+ADV` adds `DYN` and `ADV` (`AdvCore_GridCompMod`);
   `DATMO` adds `DYN` from `GEOS_DatmoDynGridCompMod`. `ADV` is -1 when absent.
 - Nested repository below Superdyn: `@FVdycoreCubed_GridComp` (fixture path
-  `src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSsuperdyn_GridComp/@FVdycoreCubed_GridComp`).
+  `src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSsuperdyn_GridComp/@FVdycoreCubed_GridComp`); architecture:
+  [`GEOSsuperdyn_GridComp/@FVdycoreCubed_GridComp/docs/ARCHITECTURE.md`](GEOSsuperdyn_GridComp/@FVdycoreCubed_GridComp/docs/ARCHITECTURE.md).
   `GEOSdatmodyn_GridComp/` (this repository) is a driver for a single-column
   model with profile data (its module header).
 
@@ -140,9 +141,20 @@ and splits a dynamics step into two run phases around physics.
   ("will be connected explicitly in the run method"); `MAPL_GenericSetServices`.
 - `Initialize`: `MAPL_GenericInitialize`; allocates the `Q` export of `DYN` (needed to compute
   virtual-temperature tendencies from physics).
-- `Run` (phase 1): adds the Superdyn imports `DUDT, DVDT, DTDT, DWDT` to the `DYN` imports,
-  runs `DYN` phase 1, then `ADV` if present.
-- `RunAddIncs` (phase 2): runs `DYN` phase 2 (adds the physics increments).
+- `Run` (phase 1): copies (plain assignment, not an addition; the source comment says "Add") the
+  Superdyn imports `DUDT, DVDT, DTDT, DWDT` into the `DYN` imports, runs `DYN` phase 1, then
+  `ADV` if present. Before this phase the Agcm has filled these imports through `DO_UPDATE_ANA3D`
+  (analysis or bias increments; zero in `FREERUN`, 3.4), and `DYN` phase 1 applies them with
+  `ADD_INCS` (`DynCore_GridCompMod.F90`, `Run`).
+- `RunAddIncs` (phase 2): copies the same four imports into the `DYN` imports again and runs `DYN`
+  phase 2; by then the Agcm has overwritten them with the physics tendencies (`DO_UPDATE_PHY`,
+  `DUDT, DVDT, DWDT, DPEDT, DTDT`), which phase 2 adds to the dynamics state
+  (`DynCore_GridCompMod.F90`, `RunAddIncs`; `ADD_INCS`).
+- `DPEDT` is not an import spec of Superdyn and is not copied by `Run` or `RunAddIncs`; it reaches
+  `DYN` as an import promoted from `DYN`. *Inferred:* MAPL promotes child imports that no connection or termination removes. The Agcm fills it in place (`DO_UPDATE_ANA3D('DPEDT',
+  SDYN, ...)`, `DO_UPDATE_PHY('DPEDT')` through `GIM(SDYN)`). The `MAPL_TerminateImport` comment says
+  "the first 3 will be connected explicitly" while four names are terminated.
+- The dynamical core's own architecture: [`FVdycoreCubed_GridComp`](GEOSsuperdyn_GridComp/@FVdycoreCubed_GridComp/docs/ARCHITECTURE.md).
 - Citations: `GEOSagcm_GridComp/GEOSsuperdyn_GridComp/GEOS_SuperdynGridComp.F90`.
 - Phase numbering: the n-th `MAPL_GridCompSetEntryPoint(..., ESMF_METHOD_RUN, ...)` call gives
   phase n (`src/Shared/@MAPL/generic/MAPL_Generic.F90`, `MAPL_GridCompSetEntryPoint`:
