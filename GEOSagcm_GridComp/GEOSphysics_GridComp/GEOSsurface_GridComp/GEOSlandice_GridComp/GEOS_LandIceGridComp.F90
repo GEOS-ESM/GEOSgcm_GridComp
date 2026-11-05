@@ -430,12 +430,22 @@ module GEOS_LandiceGridCompMod
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'snow_ice_evaporation_energy_flux_over_glaciated_surface',&
-    UNITS              = 'W m-2'                     ,&
-    SHORT_NAME         = 'EVPICE_GL'                    ,&
+    UNITS              = 'kg m-2 s-1'                ,&
+    SHORT_NAME         = 'EVPICEGLC'                 ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
   VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    & 
+    LONG_NAME          = 'runoff_flux_over_glaciated_surface',&
+    UNITS              = 'kg m-2 s-1'                ,&
+    SHORT_NAME         = 'RUNOFFGLC'                 ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
 
      call MAPL_AddExportSpec(GC,                     &
         LONG_NAME          = 'sublimation'               ,&
@@ -676,16 +686,16 @@ module GEOS_LandiceGridCompMod
 call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'snowfall_on_glaciated_surface'             ,&
     UNITS              = 'kg m-2 s-1'                ,&
-    SHORT_NAME         = 'SNO_GL'                     ,&
+    SHORT_NAME         = 'SNOGLC'                     ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
   VERIFY_(STATUS) 
 
 call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'precipitation_on_glaciated_surface'             ,&
+    LONG_NAME          = 'total_precipitation_on_glaciated_surface'             ,&
     UNITS              = 'kg m-2 s-1'                ,&
-    SHORT_NAME         = 'PRECIP_GL'                     ,&
+    SHORT_NAME         = 'PRECIPGLC'                     ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
@@ -954,7 +964,7 @@ call MAPL_AddExportSpec(GC,                    &
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
-        LONG_NAME          = 'change_in_surface_energy'  ,&
+        LONG_NAME          = 'change_in_surface_energy_over_glaciated_surface'  ,&
         UNITS              = 'W m-2'                     ,&
         SHORT_NAME         = 'DHGLC'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
@@ -2929,14 +2939,16 @@ end if
    call MAPL_GetPointer(EXPORT,ALBNR  , 'ALBNR'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,DELTS  , 'DELTS'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,DELQS  , 'DELQS'  , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,EVPICE , 'EVPICE_GL' , RC=STATUS); VERIFY_(STATUS)
+   !call MAPL_GetPointer(EXPORT,EVPICE , 'EVPICEGLC' , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SUBLIM , 'SUBLIM' , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,ACCUM  , 'ACCUM'  , alloc=.true. , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SMELT  , 'SMELT'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,IMELT  , 'IMELT'  , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,SNOEXP  , 'SNO_GL'  , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,PRECIPEXP  , 'PRECIP_GL'  , RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,SNOEXP  , 'SNOGLC'  , RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,PRECIPEXP  , 'PRECIPGLC'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,DHGLC,   'DHGLC' , RC=STATUS); VERIFY_(STATUS)  !export surface energy change
+   call MAPL_GetPointer(EXPORT,EVAPOUT,'EVPICEGLC', RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,RUNOFF, 'RUNOFFGLC',  RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,RAINRFZ, 'RAINRFZ', RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SNOWALB, 'SNOWALB', RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SNICEALB,'SNICEALB',RC=STATUS); VERIFY_(STATUS)
