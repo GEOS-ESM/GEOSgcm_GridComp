@@ -66,16 +66,33 @@ module GEOS_GFDL_1M_InterfaceMod
 
 contains
 
-   subroutine GFDL_1M_Setup(GC, ADVECTED, RC)
+   subroutine GFDL_1M_Setup(GC, ADVECTED, DIFFUSED, CHEM_UPDATED, ANALYZED, RC)
       type(ESMF_GridComp), intent(inout) :: GC ! gridded component
       type(StringVector), intent(inout) :: ADVECTED ! internals to subscribe to advection (TRADV)
+      type(StringVector), intent(inout) :: DIFFUSED ! internals to subscribe to turbulent diffusion (TRDIFF)
+      type(StringVector), intent(inout) :: CHEM_UPDATED ! internals to subscribe to chemistry (TRCHEM)
+      type(StringVector), intent(inout) :: ANALYZED ! internals to subscribe to analysis (TRANA)
       integer, optional :: RC ! return code
 
       ! !INTERNAL STATE:
 
-      ! Advected by dynamics (MAPL2 FRIENDLYTO=DYNAMICS). MAPL2 also had
-      ! Q, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL friendly to TURBULENCE
-      ! and Q to CHEMISTRY:ANALYSIS; no MAPL3 service for those yet.
+      ! Updated by chemistry, i.e. PChem's water production/loss (MAPL2 FRIENDLYTO=CHEMISTRY)
+      call CHEM_UPDATED%push_back('Q')
+
+      ! Updated by the AGCM's analysis increments (MAPL2 FRIENDLYTO=ANALYSIS)
+      call ANALYZED%push_back('Q')
+
+      ! Diffused by turbulence (MAPL2 FRIENDLYTO=TURBULENCE)
+      call DIFFUSED%push_back('Q')
+      call DIFFUSED%push_back('QLLS')
+      call DIFFUSED%push_back('QLCN')
+      call DIFFUSED%push_back('QILS')
+      call DIFFUSED%push_back('QICN')
+      call DIFFUSED%push_back('QRAIN')
+      call DIFFUSED%push_back('QSNOW')
+      call DIFFUSED%push_back('QGRAUPEL')
+
+      ! Advected by dynamics (MAPL2 FRIENDLYTO=DYNAMICS)
       call ADVECTED%push_back('Q')
       call ADVECTED%push_back('CLLS')
       call ADVECTED%push_back('CLCN')

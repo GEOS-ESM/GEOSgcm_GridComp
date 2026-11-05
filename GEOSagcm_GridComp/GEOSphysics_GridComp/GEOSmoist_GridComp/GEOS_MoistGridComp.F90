@@ -97,6 +97,9 @@ contains
       ! Local derived type aliases
 
       type(StringVector) :: ADVECTED
+      type(StringVector) :: DIFFUSED
+      type(StringVector) :: CHEM_UPDATED
+      type(StringVector) :: ANALYZED
 
       logical :: LCONVPAR
       logical :: LSHALLOW
@@ -169,7 +172,7 @@ contains
          _FAIL('CLDMICR_OPTION MGB2_2M is not yet ported to MAPL3')
          ! call MGB2_2M_Setup(GC, CF, _RC)
       end if
-      if (adjustl(CLDMICR_OPTION) == "GFDL_1M") call GFDL_1M_Setup(GC, ADVECTED, _RC)
+      if (adjustl(CLDMICR_OPTION) == "GFDL_1M") call GFDL_1M_Setup(GC, ADVECTED, DIFFUSED, CHEM_UPDATED, ANALYZED, _RC)
       if (adjustl(CLDMICR_OPTION) == "THOM_1M") then
          _FAIL('CLDMICR_OPTION THOM_1M is not yet ported to MAPL3')
          ! call THOM_1M_Setup(GC, CF, _RC)
@@ -190,6 +193,40 @@ contains
               standard_name='advected_quantities', &
               itemtype=MAPL_STATEITEM_SERVICE, &
               service_items=ADVECTED, _RC)
+      end if
+
+      ! Turbulent diffusion (replaces MAPL2's FRIENDLYTO=TURBULENCE): one subscription to
+      ! the service Turbulence is to provide (MAPL2's TR bundle). Turbulence is not ported
+      ! yet; the parent YAML can map the name when it is.
+      if (DIFFUSED%size() > 0) then
+         call MAPL_GridCompAddSpec(GC, &
+              state_intent=ESMF_STATEINTENT_IMPORT, &
+              short_name='TRDIFF', &
+              standard_name='turbulently_diffused_quantities', &
+              itemtype=MAPL_STATEITEM_SERVICE, &
+              service_items=DIFFUSED, _RC)
+      end if
+
+      ! Chemistry (replaces MAPL2's FRIENDLYTO=CHEMISTRY, which let PChem update Q in place):
+      ! one subscription to the service PChem is to provide. PChem is not ported yet.
+      if (CHEM_UPDATED%size() > 0) then
+         call MAPL_GridCompAddSpec(GC, &
+              state_intent=ESMF_STATEINTENT_IMPORT, &
+              short_name='TRCHEM', &
+              standard_name='chemically_updated_quantities', &
+              itemtype=MAPL_STATEITEM_SERVICE, &
+              service_items=CHEM_UPDATED, _RC)
+      end if
+
+      ! Analysis (replaces MAPL2's FRIENDLYTO=ANALYSIS, Physics' TRANA bundle): one
+      ! subscription to the service the AGCM is to provide. The AGCM is not ported yet.
+      if (ANALYZED%size() > 0) then
+         call MAPL_GridCompAddSpec(GC, &
+              state_intent=ESMF_STATEINTENT_IMPORT, &
+              short_name='TRANA', &
+              standard_name='analyzed_quantities', &
+              itemtype=MAPL_STATEITEM_SERVICE, &
+              service_items=ANALYZED, _RC)
       end if
 
       !IMPORT STATE:
