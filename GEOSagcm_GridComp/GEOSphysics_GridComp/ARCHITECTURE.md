@@ -2,12 +2,12 @@
 
 **Audience:** coding agents and developers working on the Physics parent gridded component (the driver that runs gravity wave drag, moist processes, turbulence, surface, chemistry and radiation).
 **Describes:** the MAPL2 line, branch `develop`.
-**Verified against:** `GEOSgcm_GridComp` @ `45e1f86f` (2026-11-04).
+**Verified against:** `GEOSgcm_GridComp` @ `c7d81d7c` (2026-11-05; source files identical to `45e1f86f`, the earlier base, which only differs by the added documents).
 **Placement:** as in the GEOSgcm fixture (`components.yaml` @ `0f2e0fb`; repository `GEOSgcm_GridComp`, mounted at `src/Components/@GEOSgcm_GridComp`): `src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp`.
 Other fixtures (for example GEOSadas, GEOSldas) may place this repository elsewhere; paths inside this repository do not change.
 
 Paths below are relative to `GEOSagcm_GridComp/GEOSphysics_GridComp/` unless they start with `GEOSagcm_GridComp/`.
-Children: [GWD](GEOSgwd_GridComp/ARCHITECTURE.md), [Moist](GEOSmoist_GridComp/ARCHITECTURE.md), [Turbulence](GEOSturbulence_GridComp/ARCHITECTURE.md), [Surface](GEOSsurface_GridComp/ARCHITECTURE.md). Chemistry and Radiation are separate repositories (section 2). Repository overview: [../../docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md). Conventions for agents: [../../AGENTS.md](../../AGENTS.md). Decision log: [../../docs/decisions.md](../../docs/decisions.md).
+Children: [GWD](GEOSgwd_GridComp/ARCHITECTURE.md), [Moist](GEOSmoist_GridComp/ARCHITECTURE.md), [Turbulence](GEOSturbulence_GridComp/ARCHITECTURE.md), [Surface](GEOSsurface_GridComp/ARCHITECTURE.md). Chemistry ([architecture](@GEOSchem_GridComp/docs/ARCHITECTURE.md)) and Radiation ([architecture](@GEOSradiation_GridComp/docs/ARCHITECTURE.md)) are separate repositories (section 2). Repository overview: [../../docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md). Conventions for agents: [../../AGENTS.md](../../AGENTS.md). Decision log: [../../docs/decisions.md](../../docs/decisions.md).
 
 ## 1. Purpose
 Physics is the parent of every column-physics process in the atmospheric model. It owns no physical scheme itself. It does five things (`GEOS_PhysicsGridComp.F90`, header comment, SetServices, Run):
@@ -26,15 +26,15 @@ Physics is the parent of every column-physics process in the atmospheric model. 
 | `GWD` | gravity wave drag | `'GWD'` | `GwdSetServices` | `GEOSgwd_GridComp/` (this repository) |
 | `MOIST` | moist processes | `'MOIST'` | `MoistSetServices` | `GEOSmoist_GridComp/` (this repository) |
 | `TURBL` | turbulence | `'TURBULENCE'` | `TurblSetServices` | `GEOSturbulence_GridComp/` (this repository) |
-| `CHEM` | chemistry, aerosols | `'CHEMISTRY'` | `AChemSetServices` | `@GEOSchem_GridComp/`, nested repository `GEOSchem_GridComp` (fixture HEAD `d6ad829`) |
+| `CHEM` | chemistry, aerosols | `'CHEMISTRY'` | `AChemSetServices` | `@GEOSchem_GridComp/`, nested repository `GEOSchem_GridComp` (fixture HEAD `d6ad829`; [architecture](@GEOSchem_GridComp/docs/ARCHITECTURE.md)) |
 | `SURF` | surface | `'SURFACE'` | `SurfSetServices` | `GEOSsurface_GridComp/` (this repository) |
-| `RAD` | radiation | `'RADIATION'` | `RadiationSetServices` | `@GEOSradiation_GridComp/`, nested repository `GEOSradiation_GridComp` (fixture HEAD `0b402f6`) |
+| `RAD` | radiation | `'RADIATION'` | `RadiationSetServices` | `@GEOSradiation_GridComp/`, nested repository `GEOSradiation_GridComp` (fixture HEAD `0b402f6`; [architecture](@GEOSradiation_GridComp/docs/ARCHITECTURE.md)) |
 
 The first column is the module variable holding the child's index (`GEOS_PhysicsGridComp.F90`, SetServices); for `TURBL`, `CHEM`, `SURF` and `RAD` this differs from the string passed as `NAME=` (third column), unlike `GWD` and `MOIST` where the two match (`GEOS_PhysicsGridComp.F90`, SetServices, `MAPL_AddChild` calls).
 
 - Chemistry is added before Surface on purpose, so that Chemistry can fill the `AERO_DP` bundle before Surface reads its import restart (`GEOS_PhysicsGridComp.F90`, SetServices, comment at `MAPL_AddChild(... 'CHEM' ...)`).
 - The child order in `AddChild` does **not** set the run order. `Run` calls the children in an order written in the code (section 3.2).
-- Chemistry and Radiation are nested repositories that this repository's `.gitignore` excludes (`.gitignore`). This document only describes them as children. Their own structure is documented in those repositories, at `@GEOSchem_GridComp/` and `@GEOSradiation_GridComp/` in the fixture.
+- Chemistry and Radiation are nested repositories that this repository's `.gitignore` excludes (`.gitignore`). This document only describes them as children. Their own structure is documented in those repositories: [Chemistry](@GEOSchem_GridComp/docs/ARCHITECTURE.md) (`@GEOSchem_GridComp/`; aerosols: [GOCART](@GEOSchem_GridComp/@GOCART/docs/ARCHITECTURE.md)) and [Radiation](@GEOSradiation_GridComp/docs/ARCHITECTURE.md) (`@GEOSradiation_GridComp/`), in the fixture.
 - `CMakeLists.txt` builds `GEOS_PhysicsGridComp.F90` and `MBundle_IncrementMod.F90`, with `alldirs` listing the child directories. It links `MAPL`, `GMAO_mpeu`, `GMAO_stoch` and ESMF (`CMakeLists.txt`).
 
 ## 3. Entry points
@@ -92,7 +92,7 @@ Fields carry attributes `FriendlyTo<NAME>`, set from the `FRIENDLYTO` string (co
 
 | Bundle | Where | Content |
 |---|---|---|
-| `TR` | Turbulence import | Dynamics `S` (`DiffuseLike='S'`, `WeightedTendency`), `U`, `V`; `TKESHOC`, `QT2` from Turbulence's exports; friendlies `TURBULENCE` from Physics (`QW`), Moist and Chemistry |
+| `TR` | Turbulence import | Dynamics `S` (`DiffuseLike='S'`, `WeightedTendency`), `U`, `V`; `TKESHOC`, `QT2` from Turbulence's exports; friendlies `TURBULENCE` from Physics (`QW`), Moist and Chemistry (Chemistry's share comes through its internal bundle `CHEM_TRACERS`: [Chemistry document](@GEOSchem_GridComp/docs/ARCHITECTURE.md), section 3.6) |
 | `TRI` | Turbulence export | increments `<NAME>IT` from Physics exports, `QVIT` aliased as `QIT`; missing fields become empty |
 | `TRADV` | Physics export | friendlies `DYNAMICS` from Physics and all children; linked to Dynamics by Agcm |
 | `TRANA` | Physics export | friendlies `ANALYSIS` |
@@ -157,7 +157,8 @@ Child scheme choices (Moist, Turbulence SHOC and EDMF, GWD) are in the child doc
 3. **`DWDT` is declared in Moist but not computed there.** Physics reads it through `alloc=.true.`, so `DWDT` from Physics is zero (`GEOS_PhysicsGridComp.F90`, Run, `WIM`). *Inferred:* intended.
 4. **`NEED_TOT` is hard-coded `.TRUE.`**, so the "not needed" branches are dead code.
 5. **The stage-3 radiation temperature check only prints** a message for `T > 333` or out-of-range `QV` (`GEOS_PhysicsGridComp.F90`, Run, "SYNTQ for Radiation error").
-6. **The Turbulence `TKESHOC` and `QT2` fields are added to `TR` directly** from Turbulence's exports, rather than through friendly attributes (4.3). *Unverified:* the reason.
+6. **`OX` is connected to Radiation, but Radiation has no `OX` import.** Physics connects `OX, O3, CH4, N2O, CFC11, CFC12, HCFC22` from `CHEM` to `RAD` (`GEOS_PhysicsGridComp.F90`, SetServices, `MAPL_AddConnectivity` with `DST_ID=RAD, SRC_ID=CHEM`); no Radiation child imports `OX` (see the [Radiation document](@GEOSradiation_GridComp/docs/ARCHITECTURE.md), Observations, which searched `RADIATION`, `SOLAR`, `IRRAD`, `SATSIM`). *Inferred:* the connection therefore has no effect; Radiation imports `O3`. Question for maintainers: is the `OX` connection to Radiation used?
+7. **The Turbulence `TKESHOC` and `QT2` fields are added to `TR` directly** from Turbulence's exports, rather than through friendly attributes (4.3). *Unverified:* the reason.
 
 ### Open questions for maintainers
 - **Conservation in `FILLQ2ZERO`.** The fill adds a mass-weighted amount to each mixing ratio, so column water changes slightly at each of the five call sites (section 9, item 2). Question for maintainers: is this non-conservation intended as a deliberate smoothing?

@@ -2,7 +2,7 @@
 
 **Audience:** coding agents and developers working on the Moist gridded component (convection, cloud microphysics, aerosol activation).
 **Describes:** the MAPL2 line, branch `develop`.
-**Verified against:** `GEOSgcm_GridComp` @ `45e1f86f` (2026-11-04).
+**Verified against:** `GEOSgcm_GridComp` @ `c7d81d7c` (2026-11-05; source files identical to `45e1f86f`, the earlier base, which only differs by the added documents).
 **Placement:** as in the GEOSgcm fixture (`components.yaml` @ `0f2e0fb`; repository `GEOSgcm_GridComp`, mounted at `src/Components/@GEOSgcm_GridComp`): `src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp`.
 Other fixtures (for example GEOSadas, GEOSldas) may place this repository elsewhere; paths inside this repository do not change.
 
@@ -135,7 +135,7 @@ If `DETRAIN_INACTIVE_CNV > 0`, wherever the layer mass flux `0.5*(CNV_MFC(L)+CNV
   1. `USE_NCLOUD_CLIM`: copy imports `NCPL_CLIM`, `NCPI_CLIM` (ExtData; `WSUB_ExtData.yaml`).
   2. `USE_AEROSOL_NN` (module default true): call `Aer_Activation` (`aer_actv_single_moment.F90`), scale by `NN_FAC_LIQ/ICE`, clip to `[NN_MIN, NN_MAX]`. Vertical velocity is `W`, or derived from `OMEGA` when `W` is identically zero.
   3. Otherwise constants from `NCCN_LND/OCN`, `NCIN_LND/OCN` weighted by `FRLAND`.
-- `Aer_Activation` reads attributes of the `AERO` state (`number_of_aerosol_modes`, `aerosol_modes`, field names for pressure, temperature, land fraction, which it **writes**: `PLE`, `T`, `FRLAND`). For each mode it sets `aerosol_mode`, runs the state's ESMF method `aerosol_activation_properties`, and copies number, dry size, width, hygroscopicity (and optionally density, dust/soot/organic fractions) into the module array `AeroPropsNew(n)` (`aer_cloud.F90`). The method is registered by the chemistry components (grep `aerosol_activation_properties` under `GEOSchem_GridComp`).
+- `Aer_Activation` reads attributes of the `AERO` state (`number_of_aerosol_modes`, `aerosol_modes`, field names for pressure, temperature, land fraction, which it **writes**: `PLE`, `T`, `FRLAND`). For each mode it sets `aerosol_mode`, runs the state's ESMF method `aerosol_activation_properties`, and copies number, dry size, width, hygroscopicity (and optionally density, dust/soot/organic fractions) into the module array `AeroPropsNew(n)` (`aer_cloud.F90`). The method is registered by the chemistry components (grep `aerosol_activation_properties` under `GEOSchem_GridComp`). With the default provider `GOCART2G` it is attached by `setup_aerosol_activation` in `GOCART2G_AerosolActivationMod.F90` (`@GEOSchem_GridComp/@GOCART/ESMF/Shared/`), which the GOCART2G parent calls in `Initialize`; the `CARMA` child also registers one (`@GEOSchem_GridComp/@CARMA/CARMAchem_GridCompMod.F90`, `ESMF_MethodAdd`). Details: [GOCART2G document](../@GEOSchem_GridComp/@GOCART/ESMF/GOCART2G_GridComp/ARCHITECTURE.md), section 5; [GOCART document](../@GEOSchem_GridComp/@GOCART/docs/ARCHITECTURE.md), section 5.1.
 - Activated number per mode uses updraft `w + sqrt(TKE)`; modes with hygroscopicity above 0.4 sum into `NACTL`, dust/soot modes into `NACTI`; diagnostics `NWFA`, `NIFA` (`aer_actv_single_moment.F90`, `Aer_Activation`, `GetActFrac`).
 - `AeroPropsNew` is also consumed by GF (`GF_Run` passes it) and MGB2_2M (`MGB2_2M_Run`), so activation must run before convection and microphysics, as it does.
 - Traps:
