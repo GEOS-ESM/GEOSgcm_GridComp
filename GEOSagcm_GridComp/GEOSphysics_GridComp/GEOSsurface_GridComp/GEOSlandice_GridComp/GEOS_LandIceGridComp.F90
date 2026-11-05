@@ -3504,10 +3504,8 @@ end if
        ULW = ALWN + BLWN*TS(:,N)
 
        LANDICECAP = (MAPL_RHOWTR*MAPL_CAPICE*LANDICEDEPTH) !I dont think this is currently used for anything and I am  not sure that it is correct because it uses water density, not ice density.
-
-    ! calculate the heat content of the top layer at the start of the timestep to calculate DHGLC and mass to calculate DMGLC
-     ENTOP0 = FR(:,SNOW) * HTSN(:,1) + RHOICE * MAPL_CAPICE *LANDICEDEPTH_  * (TICE(:,ICE, 1) * FR(:,ICE) - MAPL_TICE) !There are two possible issues here: does ice need to be multiplied by FR(:,ICE) and should TICE be TICE(:,ICE,1)     
-
+    ! calculate the heat content of the top layer at the start of the timestep to calculate DHGLC
+      ENTOP0 = HTSN(:,1) + FR(:,ICE) * MAPL_CAPICE*RHOICE*DZMAXI(1) * (TICE(:,ICE,1) - MAPL_TICE)
      ! This will need to loop through the vertical layers to calculate the mean heat content of the snow and the mean temperature of the ice layers   
      !ENTOT0 = FR(:,SNOW) * HTSN(1,:) + RHOICE * MAPL_CAPICE *LANDICEDEPTH  * (TICE(:,ICE,1) - MAPL_TICE)      
 
@@ -3716,7 +3714,8 @@ end if
 
     FR(:,ICE) = max(1.0-FR(:,SNOW), 0.0)
     if(associated(DHGLC)) &
-    DHGLC = (( FR(:,SNOW) * HTSN(:,1) + RHOICE * MAPL_CAPICE *LANDICEDEPTH_  (TICE(:,ICE, 1) * FR(:,ICE)  - MAPL_TICE)) - ENTOP0)/ DT !Calculate the change in surface energy
+
+    DHGLC = (( HTSN(:,1) + FR(:,ICE) * MAPL_CAPICE*RHOICE*DZMAXI(1) * (TICE(:,ICE,1) - MAPL_TICE)) - ENTOP0)/ DT !Calculate the change in surface energy
     if(associated(GHTSKIN )) GHTSKIN = ghflxsno*FR(:,SNOW) + ghflxice*FR(:,ICE)
     if(associated(ACCUM )) ACCUM      = ACCUM + PRECIP
     if(associated(EMISS )) EMISS      = LANDICEEMISS
