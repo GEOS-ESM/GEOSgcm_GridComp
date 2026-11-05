@@ -2,12 +2,11 @@ esma_set_this()
 
 set (srcs
   Process_Library.F90
-  # MAPL3: the RAS, BACM_1M, MGB2_2M, THOM_1M and NSSL_2M interface modules are
+  # MAPL3: the RAS, MGB2_2M, THOM_1M and NSSL_2M interface modules are
   # MAPL2 code and not built until ported (step 11); their kernels still are
   # GEOS_RAS_InterfaceMod.F90
   RASPARAMS.F90 ras.F90 ddf.F90 rascnvv2_v.F90
-  # GEOS_BACM_1M_InterfaceMod.F90
-  # cloudnew.F90 # BACM_1M only; uses MAPL2's MAPL_BaseMod
+  GEOS_BACM_1M_InterfaceMod.F90 cloudnew.F90
   # GEOS_MGB2_2M_InterfaceMod.F90
   micro_mg3_0.F90 micro_mg_utils.F90
   cldwat2m_micro.F90 wv_saturation.F90 aer_cloud.F90

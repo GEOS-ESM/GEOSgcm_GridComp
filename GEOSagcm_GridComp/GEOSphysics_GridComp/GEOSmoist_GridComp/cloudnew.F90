@@ -19,9 +19,8 @@ module cloudnew
                                 MAPL_RGAS , MAPL_H2OMW, &
                                 MAPL_AIRMW, MAPL_RVAP , &
                                 MAPL_PI   , MAPL_R8   , &
-                                MAPL_R4   , MAPL_AVOGAD
-
-   use MAPL_BaseMod,      only: MAPL_UNDEF
+                                MAPL_R4   , MAPL_AVOGAD, &
+                                MAPL_UNDEF ! MAPL3: was from MAPL_BaseMod; only assigned as a fill (-huge in MAPL3)
    use GEOSmoist_Process_Library
 
    implicit none

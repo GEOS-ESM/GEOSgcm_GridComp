@@ -276,6 +276,7 @@ So the C groups can use local arrays, and the 74 in A and B need storage that ou
 
 - This is static analysis: nothing was built or run, and the regex scan can miss unusual syntax. One such case was found and handled by hand.
 - The out-of-scope schemes also fetch several of these names with ALLOC, for example `CN_PRCP` in BACM_1M, THOM_1M, MGB2_2M and NSSL_2M. Revisit them when those schemes are ported (step 11).
+  - Revisited for BACM_1M (2026-11-05): `UMST0`, `VMST0`, `CNV_DQCDT`, `CNV_PRC3`, `CNV_UPDF`, `CUFRC_SC`, plus `CNV_MFD`, `REV_CN`, `RSU_CN` (not ALLOC'd in their writers, or C4 here) are read or updated by BACM_1M after their writers in the same step, so they are group A now (porting notes, step 11).
 - That MAPL3 does not allocate unconnected exports and always allocates internals is taken from the porting notes (issue 2), not re-read for this report. The fill-value, `add_to_export` and restart behaviour were checked in the MAPL source.
 - "Moist's timestep" is assumed to equal the model `DT`. Moist's own `RUN_DT` setting was not checked.
 - Line numbers refer to `8bde1bc9` in `@GEOSgcm_GridComp`. `@GEOSgcm_App` line numbers refer to its current checkout.

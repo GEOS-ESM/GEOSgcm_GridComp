@@ -517,32 +517,32 @@ contains
       ! Imports
       real, pointer, dimension(:, :) :: T2M, Q2M, TA, QA, SH, EVAP, PHIS
       ! Exports computed in local arrays (were ALLOC'd), copied to the export if it is connected
-      real, allocatable, dimension(:, :, :) :: CNV_CVW, CNV_QC, CNV_DQCDT, CNV_PRC3, CNV_UPDF
+      real, allocatable, dimension(:, :, :) :: CNV_CVW, CNV_QC
       real, allocatable, dimension(:, :, :) :: CNV_MF0, ENTLAM
       real, allocatable, dimension(:, :, :) :: MUPDP, MDNDP, MUPSH, MUPMD, WQT_DC
       real, allocatable, dimension(:, :) :: MFDP, MFSH, MFMD, ERRDP, ERRSH, ERRMD
       real, allocatable, dimension(:, :) :: AA0, AA1, AA2, AA3, AA1_BL, AA1_CIN, TAU_BL, TAU_DP, TAU_MD
       real, allocatable, dimension(:, :) :: TPWI, TPWI_star, LFR_GF
-      real, allocatable, dimension(:, :, :) :: RSU_CN, REV_CN
       real, allocatable, dimension(:, :) :: SIGMA_DEEP, SIGMA_MID
       real, allocatable, dimension(:, :, :) :: ENTR_DP, ENTR_MD, ENTR_SH
       real, allocatable, dimension(:, :, :) :: SGS_VVEL_DP, SGS_VVEL_MD, SGS_VVEL_SH
       real, allocatable, dimension(:, :) :: CNV_TOPP_DP, CNV_TOPP_MD, CNV_TOPP_SH
       real, allocatable, dimension(:, :, :) :: DNDCNV, DNICNV
       ! Their export pointers
-      real, pointer, dimension(:, :, :) :: CNV_CVW_ptr, CNV_QC_ptr, CNV_DQCDT_ptr, CNV_PRC3_ptr, CNV_UPDF_ptr
+      real, pointer, dimension(:, :, :) :: CNV_CVW_ptr, CNV_QC_ptr
       real, pointer, dimension(:, :, :) :: CNV_MF0_ptr, ENTLAM_ptr
       real, pointer, dimension(:, :, :) :: MUPDP_ptr, MDNDP_ptr, MUPSH_ptr, MUPMD_ptr, WQT_DC_ptr
       real, pointer, dimension(:, :) :: MFDP_ptr, MFSH_ptr, MFMD_ptr, ERRDP_ptr, ERRSH_ptr, ERRMD_ptr
       real, pointer, dimension(:, :) :: AA0_ptr, AA1_ptr, AA2_ptr, AA3_ptr, AA1_BL_ptr, AA1_CIN_ptr, TAU_BL_ptr, &
            TAU_DP_ptr, TAU_MD_ptr
       real, pointer, dimension(:, :) :: TPWI_ptr, TPWI_star_ptr, LFR_GF_ptr
-      real, pointer, dimension(:, :, :) :: RSU_CN_ptr, REV_CN_ptr
       real, pointer, dimension(:, :) :: SIGMA_DEEP_ptr, SIGMA_MID_ptr
       real, pointer, dimension(:, :, :) :: ENTR_DP_ptr, ENTR_MD_ptr, ENTR_SH_ptr
       real, pointer, dimension(:, :, :) :: SGS_VVEL_DP_ptr, SGS_VVEL_MD_ptr, SGS_VVEL_SH_ptr
       real, pointer, dimension(:, :) :: CNV_TOPP_DP_ptr, CNV_TOPP_MD_ptr, CNV_TOPP_SH_ptr
       real, pointer, dimension(:, :, :) :: DNDCNV_ptr, DNICNV_ptr
+      ! Internals re-exported (were ALLOC'd exports): BACM_1M reads or updates them after GF in the same step
+      real, pointer, dimension(:, :, :) :: CNV_DQCDT, CNV_PRC3, CNV_UPDF, RSU_CN, REV_CN
       ! Exports
       real, pointer, dimension(:, :, :) :: ENTR
       real, pointer, dimension(:, :, :) :: DQVDT_FILL
@@ -737,15 +737,24 @@ contains
             p3d => PFL_CN
             PFL_CN(1:IM, 1:JM, 0:LM) => p3d
             ! Exports computed locally, zero-filled as MAPL2's ALLOC did (some are not written on every path)
-            allocate(CNV_CVW(IM, JM, LM), CNV_QC(IM, JM, LM), CNV_DQCDT(IM, JM, LM), CNV_PRC3(IM, JM, LM), CNV_UPDF(IM&
-                 &, JM, LM), source=0.0)
+            allocate(CNV_CVW(IM, JM, LM), CNV_QC(IM, JM, LM), source=0.0)
+            ! Shared with BACM_1M through internals, zeroed here as the locals they replace
+            call MAPL_StateGetPointer(INTERNAL, CNV_DQCDT, 'CNV_DQCDT', _RC)
+            call MAPL_StateGetPointer(INTERNAL, CNV_PRC3, 'CNV_PRC3', _RC)
+            call MAPL_StateGetPointer(INTERNAL, CNV_UPDF, 'CNV_UPDF', _RC)
+            CNV_DQCDT = 0.0
+            CNV_PRC3 = 0.0
+            CNV_UPDF = 0.0
             allocate(CNV_MF0(IM, JM, LM), ENTLAM(IM, JM, LM), source=0.0)
             allocate(SIGMA_DEEP(IM, JM), SIGMA_MID(IM, JM), TPWI(IM, JM), TPWI_star(IM, JM), LFR_GF(IM, JM), source=0.0)
             TPWI = SUM(Q * MASS, 3)
             TPWI_star = SUM(GEOS_QSAT(T, PL, PASCALS=.true.) * MASS, 3)
             allocate(MUPDP(IM, JM, LM), MDNDP(IM, JM, LM), MUPSH(IM, JM, LM), MUPMD(IM, JM, LM), source=0.0)
             allocate(MFDP(IM, JM), MFSH(IM, JM), MFMD(IM, JM), ERRDP(IM, JM), ERRSH(IM, JM), ERRMD(IM, JM), source=0.0)
-            allocate(RSU_CN(IM, JM, LM), REV_CN(IM, JM, LM), source=0.0)
+            call MAPL_StateGetPointer(INTERNAL, RSU_CN, 'RSU_CN', _RC)
+            call MAPL_StateGetPointer(INTERNAL, REV_CN, 'REV_CN', _RC)
+            RSU_CN = 0.0
+            REV_CN = 0.0
             allocate(AA0(IM, JM), AA1(IM, JM), AA2(IM, JM), AA3(IM, JM), AA1_BL(IM, JM), AA1_CIN(IM, JM), source=0.0)
             allocate(TAU_BL(IM, JM), TAU_DP(IM, JM), TAU_MD(IM, JM), source=0.0)
             allocate(WQT_DC(IM, JM, 0:LM), source=0.0) ! edge
@@ -926,9 +935,6 @@ contains
             ! Copy the local arrays to their exports, if connected
             call MAPL_StateGetPointer(EXPORT, CNV_CVW_ptr, 'CNV_CVW', _RC)
             call MAPL_StateGetPointer(EXPORT, CNV_QC_ptr, 'CNV_QC', _RC)
-            call MAPL_StateGetPointer(EXPORT, CNV_DQCDT_ptr, 'CNV_DQCDT', _RC)
-            call MAPL_StateGetPointer(EXPORT, CNV_PRC3_ptr, 'CNV_PRC3', _RC)
-            call MAPL_StateGetPointer(EXPORT, CNV_UPDF_ptr, 'CNV_UPDF', _RC)
             call MAPL_StateGetPointer(EXPORT, CNV_MF0_ptr, 'CNV_MF0', _RC)
             call MAPL_StateGetPointer(EXPORT, ENTLAM_ptr, 'ENTLAM', _RC)
             call MAPL_StateGetPointer(EXPORT, SIGMA_DEEP_ptr, 'SIGMA_DEEP', _RC)
@@ -946,8 +952,6 @@ contains
             call MAPL_StateGetPointer(EXPORT, ERRDP_ptr, 'ERRDP', _RC)
             call MAPL_StateGetPointer(EXPORT, ERRSH_ptr, 'ERRSH', _RC)
             call MAPL_StateGetPointer(EXPORT, ERRMD_ptr, 'ERRMD', _RC)
-            call MAPL_StateGetPointer(EXPORT, RSU_CN_ptr, 'RSU_CN', _RC)
-            call MAPL_StateGetPointer(EXPORT, REV_CN_ptr, 'REV_CN', _RC)
             call MAPL_StateGetPointer(EXPORT, AA0_ptr, 'AA0', _RC)
             call MAPL_StateGetPointer(EXPORT, AA1_ptr, 'AA1', _RC)
             call MAPL_StateGetPointer(EXPORT, AA2_ptr, 'AA2', _RC)
@@ -971,9 +975,6 @@ contains
             call MAPL_StateGetPointer(EXPORT, DNICNV_ptr, 'DNICNV', _RC)
             if (associated(CNV_CVW_ptr)) CNV_CVW_ptr = CNV_CVW
             if (associated(CNV_QC_ptr)) CNV_QC_ptr = CNV_QC
-            if (associated(CNV_DQCDT_ptr)) CNV_DQCDT_ptr = CNV_DQCDT
-            if (associated(CNV_PRC3_ptr)) CNV_PRC3_ptr = CNV_PRC3
-            if (associated(CNV_UPDF_ptr)) CNV_UPDF_ptr = CNV_UPDF
             if (associated(CNV_MF0_ptr)) CNV_MF0_ptr = CNV_MF0
             if (associated(ENTLAM_ptr)) ENTLAM_ptr = ENTLAM
             if (associated(SIGMA_DEEP_ptr)) SIGMA_DEEP_ptr = SIGMA_DEEP
@@ -991,8 +992,6 @@ contains
             if (associated(ERRDP_ptr)) ERRDP_ptr = ERRDP
             if (associated(ERRSH_ptr)) ERRSH_ptr = ERRSH
             if (associated(ERRMD_ptr)) ERRMD_ptr = ERRMD
-            if (associated(RSU_CN_ptr)) RSU_CN_ptr = RSU_CN
-            if (associated(REV_CN_ptr)) REV_CN_ptr = REV_CN
             if (associated(AA0_ptr)) AA0_ptr = AA0
             if (associated(AA1_ptr)) AA1_ptr = AA1
             if (associated(AA2_ptr)) AA2_ptr = AA2

@@ -19,7 +19,7 @@ module GEOS_MoistGridCompMod
    use MAPL
    use pflogger, only: logger_t => logger
    use gFTL2_StringVector, only: StringVector
-   ! use GEOS_BACM_1M_InterfaceMod ! not ported to MAPL3 (step 11)
+   use GEOS_BACM_1M_InterfaceMod
    use GEOS_GFDL_1M_InterfaceMod
    ! use GEOS_THOM_1M_InterfaceMod ! not ported to MAPL3 (step 11)
    ! use GEOS_MGB2_2M_InterfaceMod ! not ported to MAPL3 (step 11)
@@ -161,13 +161,10 @@ contains
       ! NOTE: Binary restarts expect Q to be the first field in the moist_internal_rst. Thus,
       ! the first MAPL_AddInternalSpec call must be from the microphysics
 
-      ! MAPL3: only GFDL_1M, GF and UW are ported so far. The other schemes
+      ! MAPL3: only BACM_1M, GFDL_1M, GF and UW are ported so far. The other schemes
       ! fail here, before any of their code runs; their modules are not built (step 11).
 
-      if (adjustl(CLDMICR_OPTION) == "BACM_1M") then
-         _FAIL('CLDMICR_OPTION BACM_1M is not yet ported to MAPL3')
-         ! call BACM_1M_Setup(GC, CF, _RC)
-      end if
+      if (adjustl(CLDMICR_OPTION) == "BACM_1M") call BACM_1M_Setup(GC, ADVECTED, DIFFUSED, CHEM_UPDATED, ANALYZED, _RC)
       if (adjustl(CLDMICR_OPTION) == "MGB2_2M") then
          _FAIL('CLDMICR_OPTION MGB2_2M is not yet ported to MAPL3')
          ! call MGB2_2M_Setup(GC, CF, _RC)
@@ -311,9 +308,7 @@ contains
       end if
       if (adjustl(CONVPAR_OPTION) == "GF") call GF_Initialize(GC, CLOCK, IMPORT, EXPORT, _RC)
       if (adjustl(SHALLOW_OPTION) == "UW") call UW_Initialize(GC, CLOCK, IMPORT, EXPORT, _RC)
-      if (adjustl(CLDMICR_OPTION) == "BACM_1M") then
-         _FAIL('CLDMICR_OPTION BACM_1M is not yet ported to MAPL3') ! was BACM_1M_Initialize(MAPL, _RC)
-      end if
+      if (adjustl(CLDMICR_OPTION) == "BACM_1M") call BACM_1M_Initialize(GC, CLOCK, IMPORT, EXPORT, _RC)
       if (adjustl(CLDMICR_OPTION) == "GFDL_1M") call GFDL_1M_Initialize(GC, CLOCK, IMPORT, EXPORT, _RC)
       if (adjustl(CLDMICR_OPTION) == "THOM_1M") then
          _FAIL('CLDMICR_OPTION THOM_1M is not yet ported to MAPL3') ! was THOM_1M_Initialize(MAPL, _RC)
@@ -544,10 +539,10 @@ contains
       allocate(TMP2D(IM, JM))
       allocate(KLCL(IM, JM))
 
-      ! Save input winds
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'UMST0', _RC)
+      ! Save input winds (internals: BACM_1M reads them for its cumulus friction)
+      call MAPL_StateGetPointer(INTERNAL, PTR3D, 'UMST0', _RC)
       if (associated(PTR3D)) PTR3D = U
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'VMST0', _RC)
+      call MAPL_StateGetPointer(INTERNAL, PTR3D, 'VMST0', _RC)
       if (associated(PTR3D)) PTR3D = V
 
       ! pre-fill default condensate radii
@@ -840,7 +835,7 @@ contains
       end if
       deallocate(TMP3Dp1)
 
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'CNV_MFD', _RC)
+      call MAPL_StateGetPointer(INTERNAL, PTR3D, 'CNV_MFD', _RC) ! internal: BACM_1M reads it
       call MAPL_StateGetPointer(INTERNAL, PTRDC, 'MFD_DC', _RC)
       call MAPL_StateGetPointer(INTERNAL, PTRSC, 'MFD_SC', _RC)
       TMP3D = 0.0
@@ -850,7 +845,7 @@ contains
 
       call MAPL_GridCompTimerStop(GC, "---MOIST_EPILOGUE", _RC)
 
-      ! if (adjustl(CLDMICR_OPTION) == "BACM_1M") call BACM_1M_Run(GC, IMPORT, EXPORT, CLOCK, _RC) ! step 11
+      if (adjustl(CLDMICR_OPTION) == "BACM_1M") call BACM_1M_Run(GC, IMPORT, EXPORT, CLOCK, _RC)
       if (adjustl(CLDMICR_OPTION) == "GFDL_1M") call GFDL_1M_Run(GC, IMPORT, EXPORT, CLOCK, _RC)
       ! if (adjustl(CLDMICR_OPTION) == "THOM_1M") call THOM_1M_Run(GC, IMPORT, EXPORT, CLOCK, _RC) ! step 11
       ! if (adjustl(CLDMICR_OPTION) == "MGB2_2M") call MGB2_2M_Run(GC, IMPORT, EXPORT, CLOCK, _RC) ! step 11
@@ -1405,9 +1400,18 @@ contains
       integer :: STATUS
       ! Begin...
 
-      if (adjustl(CLDMICR_OPTION) == "GFDL_1M") call GFDL_1M_FINALIZE(GC, IMPORT, EXPORT, _RC)
-      if (adjustl(SHALLOW_OPTION) == "UW") call UW_Finalize(GC, IMPORT, EXPORT, _RC)
-      if (adjustl(CONVPAR_OPTION) == "GF") call GF_Finalize(GC, IMPORT, EXPORT, _RC)
+      ! Block ifs: on a one-line if, the status check that the RC macro appends after the call
+      ! runs even when the call is skipped, and STATUS is not set before here (MAPL2 has the
+      ! same one-line ifs)
+      if (adjustl(CLDMICR_OPTION) == "GFDL_1M") then
+         call GFDL_1M_FINALIZE(GC, IMPORT, EXPORT, _RC)
+      end if
+      if (adjustl(SHALLOW_OPTION) == "UW") then
+         call UW_Finalize(GC, IMPORT, EXPORT, _RC)
+      end if
+      if (adjustl(CONVPAR_OPTION) == "GF") then
+         call GF_Finalize(GC, IMPORT, EXPORT, _RC)
+      end if
 
       _RETURN(_SUCCESS)
       _UNUSED_DUMMY(CLOCK)

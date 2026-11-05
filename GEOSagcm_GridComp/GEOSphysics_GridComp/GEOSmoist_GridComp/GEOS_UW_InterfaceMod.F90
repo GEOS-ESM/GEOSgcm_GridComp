@@ -196,8 +196,10 @@ contains
            QLSUB_SC, QISUB_SC
       real, pointer, dimension(:, :) :: LTS, EIS
       real, pointer, dimension(:, :, :) :: QLTOT, QITOT
+      ! Internal re-exported (was an ALLOC'd export): BACM_1M reads it after UW in the same step
+      real, pointer, dimension(:, :, :) :: CUFRC_SC
       ! Exports computed in local arrays (were ALLOC'd), copied to the export if it is connected
-      real, allocatable, dimension(:, :, :) :: CUFRC_SC, DCM_SC
+      real, allocatable, dimension(:, :, :) :: DCM_SC
       real, allocatable, dimension(:, :, :) :: QTFLX_SC, SLFLX_SC, UFLX_SC, VFLX_SC
       real, allocatable, dimension(:, :, :) :: ENTR_SC, DETR_SC, SC_NDROP, SC_NICE
       real, allocatable, dimension(:, :) :: TPERT_SC, QPERT_SC
@@ -205,7 +207,7 @@ contains
            PINV_SC, PREL_SC, PBUP_SC, &
            CLDTOP_SC
       ! Their export pointers
-      real, pointer, dimension(:, :, :) :: CUFRC_SC_ptr, DCM_SC_ptr
+      real, pointer, dimension(:, :, :) :: DCM_SC_ptr
       real, pointer, dimension(:, :, :) :: QTFLX_SC_ptr, SLFLX_SC_ptr, UFLX_SC_ptr, VFLX_SC_ptr
       real, pointer, dimension(:, :, :) :: ENTR_SC_ptr, DETR_SC_ptr, SC_NDROP_ptr, SC_NICE_ptr
       real, pointer, dimension(:, :) :: TPERT_SC_ptr, QPERT_SC_ptr
@@ -454,7 +456,10 @@ contains
             ! Exports computed locally, zero-filled as MAPL2's ALLOC did
             allocate(PLCL_SC(IM, JM), PLFC_SC(IM, JM), PINV_SC(IM, JM), PREL_SC(IM, JM), PBUP_SC(IM, JM), source=0.0)
             allocate(CBMF_SC(IM, JM), CLDTOP_SC(IM, JM), TPERT_SC(IM, JM), QPERT_SC(IM, JM), source=0.0)
-            allocate(CUFRC_SC(IM, JM, LM), DCM_SC(IM, JM, LM), ENTR_SC(IM, JM, LM), DETR_SC(IM, JM, LM), source=0.0)
+            allocate(DCM_SC(IM, JM, LM), ENTR_SC(IM, JM, LM), DETR_SC(IM, JM, LM), source=0.0)
+            ! Shared with BACM_1M through an internal, zeroed here as the local it replaces
+            call MAPL_StateGetPointer(INTERNAL, CUFRC_SC, 'CUFRC_SC', _RC)
+            CUFRC_SC = 0.0
             allocate(SC_NDROP(IM, JM, LM), SC_NICE(IM, JM, LM), source=0.0)
             allocate(QTFLX_SC(IM, JM, 0:LM), SLFLX_SC(IM, JM, 0:LM), UFLX_SC(IM, JM, 0:LM), VFLX_SC(IM, JM, 0:LM), &
                  source=0.0) ! edge
@@ -664,7 +669,6 @@ contains
             call MAPL_StateGetPointer(EXPORT, PBUP_SC_ptr, 'PBUP_SC', _RC)
             call MAPL_StateGetPointer(EXPORT, CBMF_SC_ptr, 'CBMF_SC', _RC)
             call MAPL_StateGetPointer(EXPORT, CLDTOP_SC_ptr, 'CLDTOP_SC', _RC)
-            call MAPL_StateGetPointer(EXPORT, CUFRC_SC_ptr, 'CUFRC_SC', _RC)
             call MAPL_StateGetPointer(EXPORT, DCM_SC_ptr, 'DCM_SC', _RC)
             call MAPL_StateGetPointer(EXPORT, ENTR_SC_ptr, 'ENTR_SC', _RC)
             call MAPL_StateGetPointer(EXPORT, DETR_SC_ptr, 'DETR_SC', _RC)
@@ -683,7 +687,6 @@ contains
             if (associated(PBUP_SC_ptr)) PBUP_SC_ptr = PBUP_SC
             if (associated(CBMF_SC_ptr)) CBMF_SC_ptr = CBMF_SC
             if (associated(CLDTOP_SC_ptr)) CLDTOP_SC_ptr = CLDTOP_SC
-            if (associated(CUFRC_SC_ptr)) CUFRC_SC_ptr = CUFRC_SC
             if (associated(DCM_SC_ptr)) DCM_SC_ptr = DCM_SC
             if (associated(ENTR_SC_ptr)) ENTR_SC_ptr = ENTR_SC
             if (associated(DETR_SC_ptr)) DETR_SC_ptr = DETR_SC

@@ -118,12 +118,9 @@ category: EXPORT
  DQSDT                 |          | kg kg-1 s-1   | xyz  | C    |          | QSNOW tendency due to moist
  DQGDT                 |          | kg kg-1 s-1   | xyz  | C    |          | QGRAUPEL tendency due to moist
  SHL_DQCDT             |          | kg m-2 s-1    | xyz  | C    |          | shallow_cu_condensate_source
- CNV_DQCDT             |          | kg m-2 s-1    | xyz  | C    |          | convective_condensate_source
- CNV_PRC3              |          | kg m-2 s-1    | xyz  | C    |          | convective_precipitation_from_RAS
  DQRL                  |          | kg kg-1 s-1   | xyz  | C    |          | large_scale_rainwater_source
  DQRC                  |          | kg kg-1 s-1   | xyz  | C    |          | convective_rainwater_source
  CNV_MF0               |          | kg m-2 s-1    | xyz  | C    |          | cloud_base_mass_flux
- CNV_MFD               |          | kg m-2 s-1    | xyz  | C    |          | total_detraining_mass_flux
  CNV_MFC               |          | kg m-2 s-1    | xyz  | E    |          | total_cumulative_mass_flux
  CNV_FREQ              |          | fraction      | xy   | N    |          | convective_frequency
  CNV_BASEP             |          | Pa            | xy   | N    |          | pressure_at_convective_cloud_base
@@ -138,7 +135,6 @@ category: EXPORT
  SGS_VVEL_DP           |          | m s-1         | xyz  | C    |          | subgridscale_vert_vel_in_gf_deep_convection_updraft
  SGS_VVEL_MD           |          | m s-1         | xyz  | C    |          | subgridscale_vert_vel_in_gf_mid_convection_updraft
  SGS_VVEL_SH           |          | m s-1         | xyz  | C    |          | subgridscale_vert_vel_in_gf_shallow_convection_updraft
- CNV_UPDF              |          | 1             | xyz  | C    |          | updraft_areal_fraction
  CNV_CVW               |          | hPa s-1       | xyz  | C    |          | updraft_vertical_velocity
  CNV_QC                |          | kg kg-1       | xyz  | C    |          | grid_mean_convective_condensate
  CLDBASEHGT            |          | m             | xy   | N    |          | Height_of_cloud_base
@@ -146,7 +142,6 @@ category: EXPORT
  SLFLX_SC              |          | K m s-1       | xyz  | E    |          | shallow_cumulus_liquid_static_energy_flux
  UFLX_SC               |          | 1             | xyz  | E    |          | shallow_cumulus_u_wind_flux
  VFLX_SC               |          | 1             | xyz  | E    |          | shallow_cumulus_v_wind_flux
- CUFRC_SC              |          | fraction      | xyz  | C    |          | shallow_cumulus_cloud_fraction
  WLCL_SC               |          | m s-1         | xy   | N    |          | Vertical_velocity_at_LCL_for_shallow_convection
  QTSRC_SC              |          | kg kg-1       | xy   | N    |          | Total_water_in_source_air_for_shallow_convection
  THLSRC_SC             |          | K             | xy   | N    |          | Liquid_potential_temperature_of_source_air_for_shallow_convection
@@ -293,11 +288,9 @@ category: EXPORT
  RHX                   |          | 1             | xyz  | C    |          | relative_humidity_after_PDF
  REVSU_CN              |          | kg kg-1 s-1   | xyz  | C    |          | evap_subl_of_convective_precipitation
  REVSU_LSAN            |          | kg kg-1 s-1   | xyz  | C    |          | evap_subl_of_non_convective_precipitation
- REV_CN                |          | kg kg-1 s-1   | xyz  | C    |          | evaporation_of_convective_precipitation
  REV_SC                |          | kg kg-1 s-1   | xyz  | C    |          | evaporation_of_shallow_precipitation
  REV_AN                |          | kg kg-1 s-1   | xyz  | C    |          | evaporation_of_anvil_precipitation
  REV_LS                |          | kg kg-1 s-1   | xyz  | C    |          | evaporation_of_nonanvil_large_scale_precipitation
- RSU_CN                |          | kg kg-1 s-1   | xyz  | C    |          | sublimation_of_convective_precipitation
  RSU_SC                |          | kg kg-1 s-1   | xyz  | C    |          | sublimation_of_shallow_precipitation
  RSU_AN                |          | kg kg-1 s-1   | xyz  | C    |          | sublimation_of_anvil_precipitation
  RSU_LS                |          | kg kg-1 s-1   | xyz  | C    |          | sublimation_of_nonanvil_large_scale_precipitation
@@ -411,8 +404,6 @@ category: EXPORT
  DDF_DQDT              |          | kg kg-1 s-1   | xyz  | C    |          | Total_Downdraft_moistening
  DDF_DTDT              |          | K s-1         | xyz  | C    |          | Total_Downdraft_heating
  DDF_ZSCALE            |          | m             | xy   | N    |          | vertical_scale_for_downdraft
- UMST0                 |          | m s-1         | xyz  | C    |          | zonal_wind_before_moist_processes
- VMST0                 |          | m s-1         | xyz  | C    |          | meridonal_wind_before_moist_processes
  KEDISS                |          | W m-2         | xyz  | C    |          | kinetic_energy_diss_in_RAS
  KEMST                 |          | W m-2         | xy   | N    |          | vertically_integrated_kinetic_energy_tendency_across_moist
  KEMST2                |          | W m-2         | xy   | N    |          | vertically_integrated_KE_dissipation_in_RAS
@@ -652,3 +643,16 @@ category: INTERNAL
  DQADT_DC              |          | kg kg-1 s-1   | xyz  | C    | SKIP    | 0.0  | T          | QA tendency due to deep convection
  LTS                   |          | K             | xy   | N    | SKIP    | 0.0  | T          | Lower tropospheric stability
  EIS                   |          | K             | xy   | N    | SKIP    | 0.0  | T          | Estimated Inversion Strength
+# Shared within a step with BACM_1M (group A, added with the BACM_1M port): written by
+# the driver (UMST0, VMST0, CNV_MFD), GF (CNV_DQCDT, CNV_PRC3, CNV_UPDF, REV_CN, RSU_CN) or
+# UW (CUFRC_SC), then read or updated in place by BACM_1M's PROGNO_CLOUD, as MAPL2 shared
+# them through ALLOC=.TRUE. exports. Fully written every step (C4), so the GFDL_1M path is unchanged.
+ CNV_MFD               |          | kg m-2 s-1    | xyz  | C    | SKIP    | 0.0  | T          | total_detraining_mass_flux
+ CNV_DQCDT             |          | kg m-2 s-1    | xyz  | C    | SKIP    | 0.0  | T          | convective_condensate_source
+ CNV_PRC3              |          | kg m-2 s-1    | xyz  | C    | SKIP    | 0.0  | T          | convective_precipitation_from_RAS
+ CNV_UPDF              |          | 1             | xyz  | C    | SKIP    | 0.0  | T          | updraft_areal_fraction
+ CUFRC_SC              |          | fraction      | xyz  | C    | SKIP    | 0.0  | T          | shallow_cumulus_cloud_fraction
+ REV_CN                |          | kg kg-1 s-1   | xyz  | C    | SKIP    | 0.0  | T          | evaporation_of_convective_precipitation
+ RSU_CN                |          | kg kg-1 s-1   | xyz  | C    | SKIP    | 0.0  | T          | sublimation_of_convective_precipitation
+ UMST0                 |          | m s-1         | xyz  | C    | SKIP    | 0.0  | T          | zonal_wind_before_moist_processes
+ VMST0                 |          | m s-1         | xyz  | C    | SKIP    | 0.0  | T          | meridonal_wind_before_moist_processes
