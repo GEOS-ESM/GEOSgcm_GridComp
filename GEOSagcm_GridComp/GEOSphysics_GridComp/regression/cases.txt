@@ -1,1 +1,2 @@
 moist-gfdl1m-gf-uw-sa
+moist-gfdl1m-gf-shoc-sa

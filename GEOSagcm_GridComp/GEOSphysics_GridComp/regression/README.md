@@ -5,6 +5,7 @@ Standalone MAPL3 regression cases for the Physics components that have no regres
 | Case       | Component run | States compared by ctest       | Status |
 |------------|---------------|--------------------------------|--------|
 | `moist-gfdl1m-gf-uw-sa` | MOIST         | MOIST import, internal, export | matches the MAPL2 capture (cmpchk.py; REFL10CM_MAX left out); regression data in ~/regression-data only (2026-11-04), not on /ford1 |
+| `moist-gfdl1m-gf-shoc-sa` | MOIST       | MOIST import, internal, export | matches the MAPL2 capture (cmpchk.py, 2026-11-05); regression data in ~/regression-data only (2026-11-05), not on /ford1; reproducibility not checked with a second run |
 
 The cases are listed in `cases.txt` and registered by `CMakeLists.txt` through `esma_add_regression_tests` (`NAME moist`; ctest label `REGRESSION`, test name = case name). `CMakeLists.txt` is added by `add_subdirectory (regression)` in `../CMakeLists.txt`.
 
@@ -21,7 +22,7 @@ The cases are listed in `cases.txt` and registered by `CMakeLists.txt` through `
 
 ### `moist-gfdl1m-gf-uw-sa`
 
-MOIST alone, with GFDL_1M microphysics, GF deep convection and UW shallow convection (the production default). The other schemes `_FAIL` in the MAPL3 port.
+MOIST alone, with GFDL_1M microphysics, GF deep convection and UW shallow convection (the L72 default; for 91 levels and up, gcm_setup uses SHOC-MF instead, see `moist-gfdl1m-gf-shoc-sa`). The other schemes `_FAIL` in the MAPL3 port.
 
 Gridcomp hierarchy and connections (`cap_gridcomp.yaml`, `root.yaml`):
 
@@ -65,11 +66,21 @@ Services:
 
 Untested until the first run: four unconnected service subscriptions from one component, the `MTR` connection (MOIST is the provider) and an empty `AERO` with `USE_AEROSOL_NN: false`. See `../GEOSmoist_GridComp/mapl3-porting-notes.md`, step 10.
 
+### `moist-gfdl1m-gf-shoc-sa`
+
+MOIST alone, with GFDL_1M microphysics, GF deep convection and no UW: the stock v12 L181 setup. For `LM /= 72`, gcm_setup enables the SHOC-MF block of `AGCM.rc.tmpl` and comments out UW (`gcm_setup:341-348`). Of that block Moist reads `SHALLOW_OPTION: NONE` and `PDFSHAPE: 6` (`GEOS_GFDL_1M_InterfaceMod.F90:367`); the other keys belong to Turbulence and reach Moist only through the captured imports. So `UW_Setup` and `UW_Run` are not called (`GEOS_MoistGridComp.F90:185, 757, 787`), and the `CUSH` internal is not registered.
+
+Everything else is copied from `moist-gfdl1m-gf-uw-sa`:
+- `moist.yaml` differs only in `SHALLOW_OPTION`, `PDFSHAPE` and `UW_DT` (removed).
+- `root.yaml` is unchanged, since UW adds no imports (`KPBL_SC` is a driver import).
+- `history.yaml` is the UW case's list minus the 22 exports only `UW_Run` writes; it has not yet been checked with a sentinel run.
+- `cmpchk.py` points at `~/input/moist/gfdl1m-gf-shoc/C12L181`.
+
 ## Baselines
 
 There are two kinds of baseline: a MAPL2 reference capture, and the MAPL3 checkpoints that ctest compares against.
 
-### MAPL2 reference capture (`moist-gfdl1m-gf-uw-sa`: made 2026-11-04, `~/input/moist/C12L181`)
+### MAPL2 reference captures (`~/input/moist/<case without moist- and -sa>/C12L181`: `gfdl1m-gf-uw` made 2026-11-04, `gfdl1m-gf-shoc` 2026-11-05)
 
 - **Plan** (`../GEOSmoist_GridComp/mapl3-porting-notes.md`, step 0): C12L181, `COMPONENT_TO_RECORD: MOIST`, MOIST's import, internal and export states before and after its Run at `2000-04-14T21:20:00`, converted to the new cubed-sphere file layout with `GEOS_Restart_Utilities/convertOldCStoNewCS.py`.
 - **Run configuration** must match `moist.yaml`: the same scheme options and settings, a 1200 s step and MOIST's run step equal to it, `USE_AEROSOL_NN: false`, and a `HISTORY.rc` requesting every MOIST export (MAPL2 allocates exports only when they are requested).
@@ -97,19 +108,23 @@ GEOSmoist_GridComp/
       MOIST_import.nc             # ctest baseline
       MOIST_internal.nc
       MOIST_export.nc
+  moist-gfdl1m-gf-shoc-sa/checkpoints/
+    2000-04-14T21:20:00/
+    last/
 ```
 
-If a case's data directory is missing, `run_case.cmake` prints "Regression data not found ... skipping" and the test **passes without running**. This is the state of `moist-gfdl1m-gf-uw-sa` today.
+If a case's data directory is missing, `run_case.cmake` prints "Regression data not found ... skipping" and the test **passes without running**. If it has restarts but no `checkpoints/last/`, the case runs and `compare_results` finds no baseline files, so the test passes if the run does (`@cmake/esma_support/esma_regression_run_helpers.cmake`, `compare_results`).
 
 ## Running
 
 ```
 ctest -L REGRESSION    # all regression tests in the build
 ctest -R moist-gfdl1m-gf-uw-sa
+ctest -R moist-gfdl1m-gf-shoc-sa
 ```
 
 ### Comparing against MAPL2 with `cmpchk.py`
 
-After a run, `moist-gfdl1m-gf-uw-sa/cmpchk.py` from the run directory compares `checkpoints/last/MOIST_<state>.nc` with the MAPL2 "after" capture (`MOIST_<state>_after_runPhase1.nc`). It prints, per variable, the min/max/L2 norm of the absolute difference, and reports separately any cells that are undefined on one side only. A cell counts as undefined if it is NaN, `|huge|`, MAPL2's `MAPL_UNDEF` (`1.0e15`) or either file's `_FillValue`; MAPL3's `MAPL_UNDEF` is `-huge`. So MOIST's undefined points (e.g. `CAPE`, `DETR_SC`), which MAPL2 fills with `1.0e15` and MAPL3 with `-huge`, are not reported as differences (porting notes, step 8, `MAPL_UNDEF`). Grid and dimension variables are skipped, as are variables missing from either file.
+After a run, each case's `cmpchk.py`, run from the run directory, compares `checkpoints/last/MOIST_<state>.nc` with the MAPL2 "after" capture (`MOIST_<state>_after_runPhase1.nc`). It prints, per variable, the min, max and L2 norm of the difference. Undefined points are left out: MAPL2's (`1.0e15`) are the capture's `_FillValue` and masked on read, MAPL3's (`-huge`) are masked explicitly. So MOIST's undefined points (e.g. `CAPE`, `DETR_SC`) are not reported as differences (porting notes, step 8, `MAPL_UNDEF`). Dimension variables are skipped, as are variables missing from the run's file.
 
-`baseline_dir` is a placeholder (`/home/pchakrab/input/moist/C12L181/after`) until the capture exists; edit it to point at your copy. The script needs `numpy` and `netCDF4` (e.g. after `module load ifx-stack`).
+`baseline_dir` points at the converted "after" capture under `/home/pchakrab/input/moist/`; edit it to point at your copy. The script needs `numpy` and `netCDF4` (e.g. after `module load ifx-stack`).

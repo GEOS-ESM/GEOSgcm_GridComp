@@ -3,7 +3,7 @@
 import numpy as np
 import netCDF4 as nc4
 
-baseline_dir = "/home/pchakrab/input/moist/C12L181/after/new-style"
+baseline_dir = "/home/pchakrab/input/moist/gfdl1m-gf-uw/C12L181/after/new-style"
 # Undefined points are left out: MAPL2's (1e15) is the baseline's _FillValue, masked on read
 MAPL3_UNDEF = -np.finfo(np.float32).max
 
