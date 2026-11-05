@@ -488,6 +488,11 @@ contains
          CHILD_ID   = TURBL,                                       &
                                                         _RC)
 
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'TRI',                                       &
+         CHILD_ID   = TURBL,                                       &
+                                                        _RC)
+
     call MAPL_AddExportSpec(GC,                                      &
          SHORT_NAME = 'TIF',                                         &
          LONG_NAME  = 'tendency_of_air_temperature_due_to_friction', &
@@ -1949,7 +1954,6 @@ contains
    type (MAPL_MetaComp),       pointer :: STATE
    type (ESMF_GridComp),       pointer :: GCS(:)
    type (ESMF_State),          pointer :: GIM(:)
-   type (ESMF_State),          pointer :: GEX(:)
    type (ESMF_FieldBundle)             :: BUNDLE, iBUNDLE
    type (ESMF_Field)                   :: TempField
    type (ESMF_Grid)                    :: GRID
@@ -2056,7 +2060,7 @@ contains
 ! Get children and their im/ex states from my generic state.
 !----------------------------------------------------------
 
-    call MAPL_Get ( STATE, GCS=GCS, GIM=GIM, GEX=GEX, _RC)
+    call MAPL_Get ( STATE, GCS=GCS, GIM=GIM, _RC)
 
 
 !   Fill the turbulence tracer bundle: S, U, and V come from
@@ -2112,7 +2116,7 @@ contains
 !  will have an empty field.
 !------------------------------------------------------------
 
-    call ESMF_StateGet ( GEX(TURBL), 'TRI', BUNDLE, _RC)
+    call ESMF_StateGet ( EXPORT, 'TRI', BUNDLE, _RC)
 
     do I=1,NUM_TRACERS
        select case (trim(NAMES(I)))
