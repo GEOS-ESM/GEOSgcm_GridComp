@@ -1,0 +1,5 @@
+mapl:
+
+  setServices:
+    sharedObj: libFakeGOCART_GridComp
+    userRoutine: fakegocart_setservices_

@@ -1,0 +1,340 @@
+# Activates (requests) the MOIST exports this case writes: BACM_1M + GF + UW with
+# moist.yaml's settings. A collection that never writes (start after the cap stop)
+# still connects its fields, so only these exports are allocated. Without
+# activate_all_exports, the exports this configuration never writes are not
+# allocated: MAPL3 leaves an allocated export without a fill value uninitialized,
+# where MAPL2 zeroed it. List: moist-gfdl1m-gf-uw-sa's sentinel-run list minus the 24
+# exports only GFDL_1M writes (its radar, precipitation-type and fall-speed
+# diagnostics, and NACTR, DBZ_1KM, DBZ_TOP, DBZ_M10C, which only compute_radar_diagnostics
+# writes, called from GFDL_1M_Run; MAPL2 BACM_1M leaves them at zero, the first
+# cmpchk run had them NaN),
+# plus the 47 BACM_1M writes that the GFDL_1M case does not (including
+# PFL_SC/PFI_SC, which BACM_1M fills). Derived from the code (export fetches in the
+# scheme modules, the driver, Process_Library and aer_actv_single_moment), not yet
+# confirmed with a sentinel run. At L72 GF runs ConvPar_GF_GEOS5, which leaves the
+# GF2020-only outputs (ENTR_*, SGS_VVEL_*, CNV_TOPP_*, WQT_DC, LFR_GF, DNDCNV, DNICNV, MDNDP)
+# at the zeros their locals start with (GEOS_GF_InterfaceMod.F90:740-757), so they are
+# still written. REFL10CM_MAX is left out as in the GFDL_1M cases
+# (mapl3-porting-notes.md, first cmpchk.py result). No geom/vertical_grid: native grid.
+mapl:
+  setServices:
+    sharedObj: libMAPL.history
+
+active_collections:
+  - moist
+
+time_specs:
+  never: &never
+    # frequency is the collection timestep and must be a multiple of the 450 s model step (HistoryGridComp.F90:78-83, initialize_set_clock.F90:38-39)
+    frequency: PT7M30S
+    start: "3000-01-01T00:00:00"
+
+collections:
+  moist:
+    template: "%c.%y4%m2%d2_%h2%n2z.nc4"
+    time_spec: *never
+    var_list:
+      PDFITERS:      {source: MOIST.PDFITERS}
+      WQT_DC:        {source: MOIST.WQT_DC}
+      WTHV2:         {source: MOIST.WTHV2}
+      WQL:           {source: MOIST.WQL}
+      QCTOT:         {source: MOIST.QCTOT}
+      QRTOT:         {source: MOIST.QRTOT}
+      QSTOT:         {source: MOIST.QSTOT}
+      QGTOT:         {source: MOIST.QGTOT}
+      DTDT:          {source: MOIST.DTDT}
+      DTDTFRIC:      {source: MOIST.DTDTFRIC}
+      DQDT:          {source: MOIST.DQDT}
+      DUDT:          {source: MOIST.DUDT}
+      DVDT:          {source: MOIST.DVDT}
+      DQADT:         {source: MOIST.DQADT}
+      DQLDT:         {source: MOIST.DQLDT}
+      DQIDT:         {source: MOIST.DQIDT}
+      DQRDT:         {source: MOIST.DQRDT}
+      DQSDT:         {source: MOIST.DQSDT}
+      DQGDT:         {source: MOIST.DQGDT}
+      CNV_DQCDT:     {source: MOIST.CNV_DQCDT}
+      CNV_PRC3:      {source: MOIST.CNV_PRC3}
+      DQRL:          {source: MOIST.DQRL}
+      DQRC:          {source: MOIST.DQRC}
+      CNV_MF0:       {source: MOIST.CNV_MF0}
+      CNV_MFD:       {source: MOIST.CNV_MFD}
+      CNV_MFC:       {source: MOIST.CNV_MFC}
+      CNV_TOPP_DP:   {source: MOIST.CNV_TOPP_DP}
+      CNV_TOPP_MD:   {source: MOIST.CNV_TOPP_MD}
+      CNV_TOPP_SH:   {source: MOIST.CNV_TOPP_SH}
+      ENTR_DP:       {source: MOIST.ENTR_DP}
+      ENTR_MD:       {source: MOIST.ENTR_MD}
+      ENTR_SH:       {source: MOIST.ENTR_SH}
+      SGS_VVEL_DP:   {source: MOIST.SGS_VVEL_DP}
+      SGS_VVEL_MD:   {source: MOIST.SGS_VVEL_MD}
+      SGS_VVEL_SH:   {source: MOIST.SGS_VVEL_SH}
+      CNV_UPDF:      {source: MOIST.CNV_UPDF}
+      CNV_CVW:       {source: MOIST.CNV_CVW}
+      CNV_QC:        {source: MOIST.CNV_QC}
+      QTFLX_SC:      {source: MOIST.QTFLX_SC}
+      SLFLX_SC:      {source: MOIST.SLFLX_SC}
+      UFLX_SC:       {source: MOIST.UFLX_SC}
+      VFLX_SC:       {source: MOIST.VFLX_SC}
+      CUFRC_SC:      {source: MOIST.CUFRC_SC}
+      CLDTOP_SC:     {source: MOIST.CLDTOP_SC}
+      ENTR_SC:       {source: MOIST.ENTR_SC}
+      DETR_SC:       {source: MOIST.DETR_SC}
+      DCM_SC:        {source: MOIST.DCM_SC}
+      PLCL_SC:       {source: MOIST.PLCL_SC}
+      PLFC_SC:       {source: MOIST.PLFC_SC}
+      PINV_SC:       {source: MOIST.PINV_SC}
+      PREL_SC:       {source: MOIST.PREL_SC}
+      PBUP_SC:       {source: MOIST.PBUP_SC}
+      CBMF_SC:       {source: MOIST.CBMF_SC}
+      CUSH_SC:       {source: MOIST.CUSH_SC}
+      RR:            {source: MOIST.RR}
+      RS:            {source: MOIST.RS}
+      RG:            {source: MOIST.RG}
+      NCCN_LIQ:      {source: MOIST.NCCN_LIQ}
+      NCCN_ICE:      {source: MOIST.NCCN_ICE}
+      FCLD:          {source: MOIST.FCLD}
+      QV:            {source: MOIST.QV}
+      QL:            {source: MOIST.QL}
+      QI:            {source: MOIST.QI}
+      QR:            {source: MOIST.QR}
+      QS:            {source: MOIST.QS}
+      QG:            {source: MOIST.QG}
+      DBZ:           {source: MOIST.DBZ}
+      DBZ_MAX:       {source: MOIST.DBZ_MAX}
+      ER_PRCP:       {source: MOIST.ER_PRCP}
+      DTDT_ER:       {source: MOIST.DTDT_ER}
+      DQVDT_ER:      {source: MOIST.DQVDT_ER}
+      SC_MSE:        {source: MOIST.SC_MSE}
+      SC_QT:         {source: MOIST.SC_QT}
+      PREC_STRAT:    {source: MOIST.PREC_STRAT}
+      PREC_CONV:     {source: MOIST.PREC_CONV}
+      RAIN:          {source: MOIST.RAIN}
+      SNO:           {source: MOIST.SNO}
+      SNOWTOTAL:     {source: MOIST.SNOWTOTAL}
+      PRECTOTAL:     {source: MOIST.PRECTOTAL}
+      KUCHERA_RATIO: {source: MOIST.KUCHERA_RATIO}
+      PCU:           {source: MOIST.PCU}
+      PLS:           {source: MOIST.PLS}
+      TPREC:         {source: MOIST.TPREC}
+      TPW:           {source: MOIST.TPW}
+      CCWP:          {source: MOIST.CCWP}
+      CWP:           {source: MOIST.CWP}
+      CLWP:          {source: MOIST.CLWP}
+      LWP:           {source: MOIST.LWP}
+      CIWP:          {source: MOIST.CIWP}
+      IWP:           {source: MOIST.IWP}
+      CAPE:          {source: MOIST.CAPE}
+      INHB:          {source: MOIST.INHB}
+      MLCAPE:        {source: MOIST.MLCAPE}
+      MLCIN:         {source: MOIST.MLCIN}
+      MUCAPE:        {source: MOIST.MUCAPE}
+      SBCAPE:        {source: MOIST.SBCAPE}
+      MUCIN:         {source: MOIST.MUCIN}
+      SBCIN:         {source: MOIST.SBCIN}
+      ZLCL:          {source: MOIST.ZLCL}
+      ZLFC:          {source: MOIST.ZLFC}
+      ZLNB:          {source: MOIST.ZLNB}
+      LCL_AGL:       {source: MOIST.LCL_AGL}
+      STOCH_CNV:     {source: MOIST.STOCH_CNV}
+      SIGMA_DEEP:    {source: MOIST.SIGMA_DEEP}
+      SIGMA_MID:     {source: MOIST.SIGMA_MID}
+      ENTLAM:        {source: MOIST.ENTLAM}
+      RH2:           {source: MOIST.RH2}
+      TH_moist:      {source: MOIST.TH_moist}
+      Q_moist:       {source: MOIST.Q_moist}
+      KCBL_moist:    {source: MOIST.KCBL_moist}
+      TS_moist:      {source: MOIST.TS_moist}
+      KHu_moist:     {source: MOIST.KHu_moist}
+      KHl_moist:     {source: MOIST.KHl_moist}
+      RHX:           {source: MOIST.RHX}
+      REV_CN:        {source: MOIST.REV_CN}
+      REV_LS:        {source: MOIST.REV_LS}
+      RSU_CN:        {source: MOIST.RSU_CN}
+      RSU_LS:        {source: MOIST.RSU_LS}
+      PFI_LSAN:      {source: MOIST.PFI_LSAN}
+      PFL_LSAN:      {source: MOIST.PFL_LSAN}
+      DPDTMST:       {source: MOIST.DPDTMST}
+      EVAPC:         {source: MOIST.EVAPC}
+      SUBLC:         {source: MOIST.SUBLC}
+      QX0:           {source: MOIST.QX0}
+      QLLSX0:        {source: MOIST.QLLSX0}
+      QLLSX1:        {source: MOIST.QLLSX1}
+      QLCNX0:        {source: MOIST.QLCNX0}
+      QLCNX1:        {source: MOIST.QLCNX1}
+      CLLSX0:        {source: MOIST.CLLSX0}
+      CLLSX1:        {source: MOIST.CLLSX1}
+      CLCNX0:        {source: MOIST.CLCNX0}
+      CLCNX1:        {source: MOIST.CLCNX1}
+      QILSX0:        {source: MOIST.QILSX0}
+      QILSX1:        {source: MOIST.QILSX1}
+      QICNX0:        {source: MOIST.QICNX0}
+      QICNX1:        {source: MOIST.QICNX1}
+      QCCNX0:        {source: MOIST.QCCNX0}
+      QCLSX0:        {source: MOIST.QCLSX0}
+      UMST0:         {source: MOIST.UMST0}
+      VMST0:         {source: MOIST.VMST0}
+      LFR_GCC:       {source: MOIST.LFR_GCC}
+      UAFMOIST:      {source: MOIST.UAFMOIST}
+      VAFMOIST:      {source: MOIST.VAFMOIST}
+      THAFMOIST:     {source: MOIST.THAFMOIST}
+      TAFMOIST:      {source: MOIST.TAFMOIST}
+      QAFMOIST:      {source: MOIST.QAFMOIST}
+      SAFMOIST:      {source: MOIST.SAFMOIST}
+      SAT_RAT:       {source: MOIST.SAT_RAT}
+      CFLIQ:         {source: MOIST.CFLIQ}
+      CFICE:         {source: MOIST.CFICE}
+      RHICE:         {source: MOIST.RHICE}
+      RHLIQ:         {source: MOIST.RHLIQ}
+      CNV_FICE:      {source: MOIST.CNV_FICE}
+      NWFA:          {source: MOIST.NWFA}
+      NIFA:          {source: MOIST.NIFA}
+      SC_NDROP:      {source: MOIST.SC_NDROP}
+      SC_NICE:       {source: MOIST.SC_NICE}
+      TPERT_SC:      {source: MOIST.TPERT_SC}
+      QPERT_SC:      {source: MOIST.QPERT_SC}
+      DNICNV:        {source: MOIST.DNICNV}
+      DNDCNV:        {source: MOIST.DNDCNV}
+      MUPDP:         {source: MOIST.MUPDP}
+      MDNDP:         {source: MOIST.MDNDP}
+      MUPSH:         {source: MOIST.MUPSH}
+      MUPMD:         {source: MOIST.MUPMD}
+      MFDP:          {source: MOIST.MFDP}
+      MFSH:          {source: MOIST.MFSH}
+      MFMD:          {source: MOIST.MFMD}
+      ERRDP:         {source: MOIST.ERRDP}
+      ERRSH:         {source: MOIST.ERRSH}
+      ERRMD:         {source: MOIST.ERRMD}
+      AA0:           {source: MOIST.AA0}
+      AA1:           {source: MOIST.AA1}
+      AA2:           {source: MOIST.AA2}
+      AA3:           {source: MOIST.AA3}
+      AA1_CIN:       {source: MOIST.AA1_CIN}
+      AA1_BL:        {source: MOIST.AA1_BL}
+      TAU_BL:        {source: MOIST.TAU_BL}
+      TAU_DP:        {source: MOIST.TAU_DP}
+      TAU_MD:        {source: MOIST.TAU_MD}
+      TPWI:          {source: MOIST.TPWI}
+      TPWI_star:     {source: MOIST.TPWI_star}
+      LFR_GF:        {source: MOIST.LFR_GF}
+      AN_PRCP:       {source: MOIST.AN_PRCP}
+      AN_SNR:        {source: MOIST.AN_SNR}
+      BYNCY:         {source: MOIST.BYNCY}
+      CNPCPRATE:     {source: MOIST.CNPCPRATE}
+      CNV_FRC:       {source: MOIST.CNV_FRC}
+      CN_PRCP:       {source: MOIST.CN_PRCP}
+      CN_SNR:        {source: MOIST.CN_SNR}
+      DQADT_DC:      {source: MOIST.DQADT_DC}
+      DQADT_SC:      {source: MOIST.DQADT_SC}
+      DQADT_macro:   {source: MOIST.DQADT_macro}
+      DQADT_micro:   {source: MOIST.DQADT_micro}
+      DQGDT_macro:   {source: MOIST.DQGDT_macro}
+      DQGDT_micro:   {source: MOIST.DQGDT_micro}
+      DQIDT_DC:      {source: MOIST.DQIDT_DC}
+      DQIDT_SC:      {source: MOIST.DQIDT_SC}
+      DQIDT_macro:   {source: MOIST.DQIDT_macro}
+      DQIDT_micro:   {source: MOIST.DQIDT_micro}
+      DQLDT_DC:      {source: MOIST.DQLDT_DC}
+      DQLDT_SC:      {source: MOIST.DQLDT_SC}
+      DQLDT_macro:   {source: MOIST.DQLDT_macro}
+      DQLDT_micro:   {source: MOIST.DQLDT_micro}
+      DQRDT_SC:      {source: MOIST.DQRDT_SC}
+      DQRDT_macro:   {source: MOIST.DQRDT_macro}
+      DQRDT_micro:   {source: MOIST.DQRDT_micro}
+      DQSDT_SC:      {source: MOIST.DQSDT_SC}
+      DQSDT_macro:   {source: MOIST.DQSDT_macro}
+      DQSDT_micro:   {source: MOIST.DQSDT_micro}
+      DQVDT_DC:      {source: MOIST.DQVDT_DC}
+      DQVDT_SC:      {source: MOIST.DQVDT_SC}
+      DQVDT_macro:   {source: MOIST.DQVDT_macro}
+      DQVDT_micro:   {source: MOIST.DQVDT_micro}
+      DTDT_DC:       {source: MOIST.DTDT_DC}
+      DTDT_SC:       {source: MOIST.DTDT_SC}
+      DTDT_macro:    {source: MOIST.DTDT_macro}
+      DTDT_micro:    {source: MOIST.DTDT_micro}
+      DUDT_DC:       {source: MOIST.DUDT_DC}
+      DUDT_SC:       {source: MOIST.DUDT_SC}
+      DUDT_macro:    {source: MOIST.DUDT_macro}
+      DUDT_micro:    {source: MOIST.DUDT_micro}
+      DVDT_DC:       {source: MOIST.DVDT_DC}
+      DVDT_SC:       {source: MOIST.DVDT_SC}
+      DVDT_macro:    {source: MOIST.DVDT_macro}
+      DVDT_micro:    {source: MOIST.DVDT_micro}
+      EIS:           {source: MOIST.EIS}
+      FRZR:          {source: MOIST.FRZR}
+      ICE:           {source: MOIST.ICE}
+      LS_PRCP:       {source: MOIST.LS_PRCP}
+      LS_SNR:        {source: MOIST.LS_SNR}
+      LTS:           {source: MOIST.LTS}
+      MFD_DC:        {source: MOIST.MFD_DC}
+      MFD_SC:        {source: MOIST.MFD_SC}
+      PFI_AN:        {source: MOIST.PFI_AN}
+      PFI_CN:        {source: MOIST.PFI_CN}
+      PFI_LS:        {source: MOIST.PFI_LS}
+      PFL_AN:        {source: MOIST.PFL_AN}
+      PFL_CN:        {source: MOIST.PFL_CN}
+      PFL_LS:        {source: MOIST.PFL_LS}
+      QIDET_SC:      {source: MOIST.QIDET_SC}
+      QIENT_SC:      {source: MOIST.QIENT_SC}
+      QISUB_SC:      {source: MOIST.QISUB_SC}
+      QITOT:         {source: MOIST.QITOT}
+      QLDET_SC:      {source: MOIST.QLDET_SC}
+      QLENT_SC:      {source: MOIST.QLENT_SC}
+      QLSUB_SC:      {source: MOIST.QLSUB_SC}
+      QLTOT:         {source: MOIST.QLTOT}
+      RI:            {source: MOIST.RI}
+      RL:            {source: MOIST.RL}
+      SC_PRCP:       {source: MOIST.SC_PRCP}
+      SC_SNR:        {source: MOIST.SC_SNR}
+      SHLW_PRC3:     {source: MOIST.SHLW_PRC3}
+      SHLW_SNO3:     {source: MOIST.SHLW_SNO3}
+      SRF_TYPE:      {source: MOIST.SRF_TYPE}
+      UMF_DC:        {source: MOIST.UMF_DC}
+      UMF_SC:        {source: MOIST.UMF_SC}
+      ACRIL_AN:      {source: MOIST.ACRIL_AN}
+      ACRIL_CN:      {source: MOIST.ACRIL_CN}
+      ACRIL_LS:      {source: MOIST.ACRIL_LS}
+      ACRIL_SC:      {source: MOIST.ACRIL_SC}
+      ACRLL_AN:      {source: MOIST.ACRLL_AN}
+      ACRLL_CN:      {source: MOIST.ACRLL_CN}
+      ACRLL_LS:      {source: MOIST.ACRLL_LS}
+      ACRLL_SC:      {source: MOIST.ACRLL_SC}
+      ALPH1:         {source: MOIST.ALPH1}
+      ALPH2:         {source: MOIST.ALPH2}
+      ALPHT:         {source: MOIST.ALPHT}
+      AN_ARF:        {source: MOIST.AN_ARF}
+      AUT:           {source: MOIST.AUT}
+      CFPDF:         {source: MOIST.CFPDF}
+      CN_ARF:        {source: MOIST.CN_ARF}
+      DCNVI:         {source: MOIST.DCNVI}
+      DCNVL:         {source: MOIST.DCNVL}
+      DIFIX:         {source: MOIST.DIFIX}
+      DIPDF:         {source: MOIST.DIPDF}
+      DLFIX:         {source: MOIST.DLFIX}
+      DLPDF:         {source: MOIST.DLPDF}
+      DTSX:          {source: MOIST.DTSX}
+      FRZ_PP:        {source: MOIST.FRZ_PP}
+      FRZ_TT:        {source: MOIST.FRZ_TT}
+      KEDISS:        {source: MOIST.KEDISS}
+      LS_ARF:        {source: MOIST.LS_ARF}
+      PFI_SC:        {source: MOIST.PFI_SC}
+      PFL_SC:        {source: MOIST.PFL_SC}
+      REV_AN:        {source: MOIST.REV_AN}
+      REV_SC:        {source: MOIST.REV_SC}
+      RHCLR:         {source: MOIST.RHCLR}
+      RSU_AN:        {source: MOIST.RSU_AN}
+      RSU_SC:        {source: MOIST.RSU_SC}
+      SC_ARF:        {source: MOIST.SC_ARF}
+      SDM:           {source: MOIST.SDM}
+      VFALLICE_AN:   {source: MOIST.VFALLICE_AN}
+      VFALLICE_LS:   {source: MOIST.VFALLICE_LS}
+      VFALLRN_AN:    {source: MOIST.VFALLRN_AN}
+      VFALLRN_CN:    {source: MOIST.VFALLRN_CN}
+      VFALLRN_LS:    {source: MOIST.VFALLRN_LS}
+      VFALLRN_SC:    {source: MOIST.VFALLRN_SC}
+      VFALLSN_AN:    {source: MOIST.VFALLSN_AN}
+      VFALLSN_CN:    {source: MOIST.VFALLSN_CN}
+      VFALLSN_LS:    {source: MOIST.VFALLSN_LS}
+      VFALLSN_SC:    {source: MOIST.VFALLSN_SC}
+      VFALLWAT_AN:   {source: MOIST.VFALLWAT_AN}
+      VFALLWAT_LS:   {source: MOIST.VFALLWAT_LS}
