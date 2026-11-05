@@ -1,0 +1,20 @@
+# One-tracer subscriber to MOIST's convective-transport service MTR
+# (mapl3-porting-notes.md, step 10). TR1 has no ESMF_Info metadata, so
+# CNV_Tracers_Init uses its defaults (no scavenging).
+mapl:
+
+  setServices:
+    sharedObj: libconfigurable_gridcomp
+
+  states:
+    internal:
+      TR1:
+        standard_name: "TR1"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+        fill_value: 1.0e-6
+
+    import:
+      MTR:
+        class: service
+        items: [TR1]
