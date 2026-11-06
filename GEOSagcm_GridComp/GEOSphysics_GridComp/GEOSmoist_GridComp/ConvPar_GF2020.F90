@@ -13,6 +13,7 @@ MODULE ConvPar_GF2020
 
   USE module_gate
   USE MAPL
+  USE mapl_SatVapor_mod, ONLY: MAPL_EQsat ! MAPL3: not re-exported by MAPL
   use aer_cloud
   USE ConvPar_GF_SharedParams
   USE GEOSmoist_Process_Library, ONLY: sigma, SH_MD_DP, ICE_FRACTION, make_DropletNumber, make_IceNumber

@@ -1,0 +1,48 @@
+# Moist settings of the MAPL2 baseline run: C12L72, BACM_1M + GF + UW, the stock
+# L72 setup (gcm_setup: BACM_1M default for LM == 72, :356-359; UW on, SHOC off,
+# :342-348), from AGCM.rc.tmpl, gcm_setup and set_resolution_params.csh.
+# For BACM_1M, set_resolution_params.csh:453-457 sets DT = CONV_DT = CHEM_DT = 450
+# at every resolution, so the heartbeat (cap_driver.yaml) and GF_DT/UW_DT are 450 s.
+# gcm_setup writes GFDL_MP_KLID only for GFDL_1M (gcm_setup:1115-1123).
+# At LM == 72 the code defaults USE_GF2020 to 0 (GF runs ConvPar_GF_GEOS5) and the
+# ZERO_DIFF_* switches to 1 (GEOS_GF_InterfaceMod.F90:139-147), and UW's JASON_UW and
+# JASON_MFD_SC to true (GEOS_UW_InterfaceMod.F90:91, 95); none is set here, as in
+# AGCM.rc.tmpl.
+# Keep in sync with the AGCM.rc of the run that produced the baseline.
+CLDMICR_OPTION: BACM_1M
+CONVPAR_OPTION: GF
+SHALLOW_OPTION: UW
+GF_DT: 450
+UW_DT: 450
+
+# BACM_1M_Initialize derives its default MINRHCRIT from the grid name (as GWD); the
+# MAPL2 AGCM.rc value
+AGCM.GRIDNAME: PE12x72-CF
+
+# GF plumes and closures (AGCM.rc.tmpl). GF_Initialize reads them on both GF paths
+# (GF2020 and GF_GEOS5, GEOS_GF_InterfaceMod.F90:160-165, 418-423).
+DEEP: 1
+SHALLOW: 0
+CONGESTUS: 1
+CLOSURE_DEEP: 0
+CLOSURE_SHALLOW: 7
+CLOSURE_CONGESTUS: 3
+
+# Aerosol activation from the fixed CCN/IN numbers, so no GOCART is needed
+# (FakeGOCART provides an empty AERO state)
+USE_AEROSOL_NN: false
+
+mapl:
+  setServices:
+    sharedObj: libGEOSmoist_GridComp
+    userRoutine: moist_setservices_
+
+  # Exports are activated by HIST (history.yaml), not activate_all_exports:
+  # an export this configuration never writes would be allocated uninitialized.
+  misc:
+    restart:
+      internal: true
+    checkpoint:
+      export: true
+      import: true
+      internal: true
