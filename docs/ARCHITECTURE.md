@@ -1,9 +1,9 @@
 # GEOSgcm_GridComp Architecture
 
 **Audience:** coding agents and developers working in the `GEOSgcm_GridComp` repository.
-**Describes:** the MAPL2 line, branch `develop`.
-**Verified against:** `GEOSgcm_GridComp` @ `c7d81d7c` (2026-11-05; source files identical to `45e1f86f`, the earlier base, which only differs by the added documents).
-**Placement:** as in the GEOSgcm fixture (`components.yaml` @ `0f2e0fb`).
+**Describes:** the MAPL3 line, branch `release/MAPL-v3`.
+**Verified against:** `GEOSgcm_GridComp` @ `84f0aae3` (2026-11-06).
+**Placement:** as in the GEOSgcm fixture (`components.yaml` @ `f50622d`).
 Other fixtures (for example GEOSadas, GEOSldas) may place this repository
 elsewhere; paths inside this repository do not change.
 
@@ -12,6 +12,17 @@ Paths are relative to this repository's root unless they start with `src/` or
 `(path, routine-or-key)` citation. *Inferred:* and *Unverified:* mark the
 weaker cases. Fixture-level documents (build, mepo, application) are owned by
 the fixture; this file does not repeat them.
+
+> **Build status on this line:** partly built; the full model is not built.
+> `CMakeLists.txt` (repository root) sets `alldirs` to `GEOSagcm_GridComp`
+> only; `GEOSdataatm_GridComp`, `GEOSmkiau_GridComp`, `GEOSogcm_GridComp` and
+> `GEOSwgcm_GridComp` appear only in commented lines ("not yet ported to
+> MAPL3 - restore when ported"), and the comment "Temporarily bypass
+> GEOSgcm_GridComp top-level library: GEOS_GcmGridComp.F90 USE-s non-ported
+> components" disables the `esma_add_library` block of the root composite.
+> The code in those directories and in the Gcm, Agcm and Physics files is
+> MAPL2-style code, kept for a later port; sections 3 to 5 describe those files
+> as they are. What is built is in section 2.1.
 
 ## 1. Placement
 
@@ -22,11 +33,12 @@ the fixture; this file does not repeat them.
   (`GEOSagcm_GridComp/GEOS_AgcmSimpleGridComp.F90`, `GEOSagcm_GridComp/GEOShs_GridComp`)
   (`config/GEOSgcm_GridComp.sparse` in the fixture); those files are tracked here
   but absent from a fixture checkout.
-- Parent: the fixture `GEOSgcm`, whose `src/CMakeLists.txt` and
+- Parent: the fixture `GEOSgcm` (on this line the parent's documents are not
+  written yet; the MAPL2-line versions are on its `develop` branch), whose `src/CMakeLists.txt` and
   `src/Components/CMakeLists.txt` reach this repository
   (`esma_add_subdirectory (GEOSgcm_GridComp)`). Fixture documentation:
   `../../../../docs/ARCHITECTURE.md` when this repository sits in the fixture.
-- `GEOSgcm.x` uses this repository's root component as the MAPL root:
+- On the MAPL2 line `GEOSgcm.x` uses this repository's root component as the MAPL root (the root library is not compiled on this line, section 2.1):
   `MAPL_Cap('GCM', ROOT_SetServices, ...)` with `use GEOS_GcmGridCompMod`
   (`src/Applications/@GEOSgcm_App/GEOSgcm.F90`); `ROOT_NAME: GCM`, `ROOT_CF: AGCM.rc`
   (`src/Applications/@GEOSgcm_App/CAP.rc.tmpl`). Application, setup scripts and templates: GEOSgcm_App architecture (`../../../Applications/@GEOSgcm_App/docs/ARCHITECTURE.md` in the fixture) (in the fixture, after `mepo clone`).
@@ -49,13 +61,53 @@ the fixture; this file does not repeat them.
 
 Module names come from the `use ..., only: ...SetServices` lines of the parent
 (`GEOS_GcmGridComp.F90`, module header; `GEOSagcm_GridComp/GEOS_AgcmGridComp.F90`,
-module header). Held-Suarez: `GEOSagcm_GridComp/CMakeLists.txt` builds
-`GEOS_AgcmSimpleGridComp.F90` with `GEOShs_GridComp` when that file exists,
-otherwise `GEOS_AgcmGridComp.F90`.
+module header).
 
-## 3. `GEOS_GcmGridComp` (root composite)
+### 2.1 What is built and run on this line
+
+| Level | Built (`CMakeLists.txt`) | Not built |
+|---|---|---|
+| Root | `esma_add_subdirectories (${alldirs})` with `GEOSagcm_GridComp` (`BUILD_WITH_GIGATRAJ` adds `GEOSgigatraj_GridComp`) | root library `GEOS_GcmGridComp.F90` (commented block); `GEOSdataatm_GridComp`, `GEOSmkiau_GridComp`, `GEOSogcm_GridComp`, `GEOSwgcm_GridComp` (commented in `alldirs`) |
+| `GEOSagcm_GridComp` | if `GEOS_AgcmSimpleGridComp.F90` exists (not in the fixture): library with `SRCS GEOS_AgcmSimpleGridComp.F90`, `SUBCOMPONENTS GEOSsuperdyn_GridComp GEOShs_GridComp`, `TYPE SHARED`; otherwise (fixture) `esma_add_subdirectories` of `GEOSsuperdyn_GridComp`, `GEOSphysics_GridComp`, no Agcm library | `GEOS_AgcmGridComp.F90` (commented `elseif` block, "USE-s non-ported components (e.g. GEOS_superdynGridCompMod)") |
+| `GEOSsuperdyn_GridComp` | library `GEOS_SuperdynGridComp.F90` with `FVdycoreCubed_GridComp` | `GEOSdatmodyn_GridComp` (commented, "not yet ported") |
+| `GEOSphysics_GridComp` | `esma_add_subdirectories`: `GEOSchem_GridComp` (comment: "restricted to GOCART only"), `GEOSgwd_GridComp`, `GEOSradiation_GridComp` (comment "restricted to IRRAD only"; its own `CMakeLists.txt` builds `GEOS_RadiationShared`, Solar, IRRAD, SatSim) | `GEOS_PhysicsGridComp.F90` and `MBundle_IncrementMod.F90` (commented block); `GEOSmoist_GridComp`, `GEOSsurface_GridComp`, `GEOSturbulence_GridComp` (commented, "not yet ported") |
+
+The sparse file excludes the Held-Suarez files from a GEOSgcm fixture checkout (section 1), so there the
+Held-Suarez branch of `GEOSagcm_GridComp/CMakeLists.txt` is not taken: Held-Suarez is not built and the `hs`
+regression does not exist. Built in the fixture: Superdyn (with FVdycoreCubed), GWD, Chemistry (GOCART only),
+Radiation (see its own `CMakeLists.txt`). *Unverified:* how the CI job (`.circleci/config.yml`,
+`run_regression_tests: true`) obtains the Held-Suarez files.
+
+**Held-Suarez configuration** (MAPL3 style; built only by a checkout that includes the files; in `GEOSagcm_GridComp/`):
+- `GEOS_AgcmSimpleGridComp.F90` (module `GEOS_AgcmSimpleGridCompMod`) adds the
+  children `SDYN` (`GEOS_superdynGridCompMod`, config `superdyn.yaml`) and `PHYS`
+  (`GEOS_hsGridCompMod`, config `held-suarez.yaml`) with `MAPL_GridCompAddChild`;
+  its `Run` calls `MAPL_GridCompRunChild` for `SDYN` phase `run`, `PHYS` phase
+  `run`, `SDYN` phase `run_add_incs` (`SetServices`, `Run`). Connections: `PHYS` to `SDYN` `D_UV_DT, DTDT`;
+  `SDYN` to `PHYS` `UV, T, PLE4` as `UV, TEMP, PLE`; the composite's own `PHIS`, `VARFLT` (internal specs,
+  "FAKE" specs for FV3) to `SDYN`. The `TRADV` service bundle spec and connection are commented out.
+- `GEOShs_GridComp/GEOS_HsGridComp.F90` is the Held-Suarez physics (one run phase
+  `run`); its state is declared in `HS_StateSpecs.rc` through `mapl_acg`
+  (`GEOShs_GridComp/CMakeLists.txt`).
+- Regression `hs`: `GEOShs_GridComp/regression/` (`cases.txt`: `held-suarez`; `esma_add_regression_tests`;
+  `run_case.cmake` runs 6 processes, compares checkpoints with a baseline when it exists, IntelLLVM only).
+  Configs in `regression/held-suarez/`: `cap_driver.yaml` (30-minute step), `cap_gridcomp.yaml` (root `AGCM`,
+  `libGEOSagcm_GridComp.so`, `agcm-simple.yaml`, History on, ExtData off), `agcm-simple.yaml` (data children
+  `DataMoist`, `DataAna`; `TRADV` to `DataMoist`, `DQ*ANA` to `SDYN`), `dyn.yaml` (C12, 91 levels,
+  `libFVdycoreCubed_GridComp`), `history.yaml`.
+
+**GWD standalone regression `gwd`:** `GEOSphysics_GridComp/GEOSgwd_GridComp/regression/` (`cases.txt`:
+`gwd-ncar-sa`); `cap_gridcomp.yaml` makes a `Root` composite (`root.yaml`) with children `GWD`
+(`libGEOSgwd_GridComp.so`) and a data component for the imports (`data-gwd-imports.yaml`). Details: GWD document.
+
+## 3. `GEOS_GcmGridComp` (root composite; not compiled on this line)
 
 Source: `GEOS_GcmGridComp.F90` (about 3000 lines). No separate component file.
+The file differs from the MAPL2 `develop` version in one respect: the replay
+History support is commented out with `!#` (the `use MAPL_HistoryGridCompMod` lines and the `history_parent`
+member are removed; the ExtData internal-state wrapper, `history_setservice`, `initialize_history` and the
+`run_history` call in `Run` are commented out; the `run_history` flag remains). Statements below about that
+support describe the MAPL2 code.
 
 ### 3.1 Children and how they are added
 `SetServices` adds children with `MAPL_AddChild` (`GEOS_GcmGridComp.F90`, `SetServices`):
@@ -70,8 +122,9 @@ Source: `GEOS_GcmGridComp.F90` (about 3000 lines). No separate component file.
 | `OGCM` | `GEOS_OgcmGridCompMod` | always |
 | `WGCM` | `GEOS_WgcmGridCompMod` | `USE_WAVES:` /= 0 |
 
-When `REPLAY_MODE: Regular` and `REPLAY_HISTORY_RC:` is present, a `History_GCM` child is added
-to a private parent component, not to this one (`GEOS_GcmGridComp.F90`, internal `history_setservice`).
+On the MAPL2 line, when `REPLAY_MODE: Regular` and `REPLAY_HISTORY_RC:` is present, a `History_GCM`
+child is added to a private parent component, not to this one. On this line the internal
+`history_setservice` and its call are commented out (`!#`) (`GEOS_GcmGridComp.F90`, `SetServices`).
 
 ### 3.2 Entry points
 - `SetServices`: registers `Initialize` and `Run` with `MAPL_GridCompSetEntryPoint`; reads
@@ -90,7 +143,7 @@ to a private parent component, not to this one (`GEOS_GcmGridComp.F90`, internal
   `ESMF_GridCompRun` (`GEOS_GcmGridComp.F90`, `Run`).
 - Finalize: the Gcm registers none itself. `MAPL_GenericSetServices` registers
   `MAPL_GenericFinalize` for any component that has not set a finalize method
-  (`src/Shared/@MAPL/generic/MAPL_Generic.F90`, `register_generic_entry_points`).
+  (MAPL2 (MAPL `release/v2`, `generic/MAPL_Generic.F90`), `register_generic_entry_points`).
 
 ### 3.3 Connections
 - Agcm to AIAU: `PHIS, AK, BK, U, V, TV, PS, DELP, O3PPMV, TS, AREA`; renamed pairs `Q->QV`,
@@ -105,7 +158,7 @@ to a private parent component, not to this one (`GEOS_GcmGridComp.F90`, internal
   Agcm's `SALTWATER` skin export state (`Initialize`: `skinname`, `expSKIN`, `impSKIN`); the
   reverse direction is `DO_O2A*`. `RUN_OCEAN` acts only when the OGCM alarm rings (`alarmOcn`,
   named `<OGCM name>_Alarm`); `BYPASS_OGCM:` skips it.
-- The Ogcm's own `MAPL_TerminateImport` calls (`GEOSogcm_GridComp/GEOS_OgcmGridComp.F90`, `SetServices`: name lists such as `["DATA_SST  ",...]` with child indices `[ocean,seaice,orad]`) use the "all but" form, `MAPL_TerminateImportAllBut`: every child import that is not connected is terminated except those whose name is in the name list and whose child is in the child-index list. The two lists are tested independently (any name against any child index), not paired by position, so the lists name the imports kept. (`src/Shared/@MAPL/generic/MAPL_Generic.F90`, generic `MAPL_TerminateImport`, `MAPL_TerminateImportAllBut`.) The Gcm's calls on `OGCM` above use the other form, which removes the named imports (`MAPL_DoNotConnectMany`).
+- The Ogcm's own `MAPL_TerminateImport` calls (`GEOSogcm_GridComp/GEOS_OgcmGridComp.F90`, `SetServices`: name lists such as `["DATA_SST  ",...]` with child indices `[ocean,seaice,orad]`) use the "all but" form, `MAPL_TerminateImportAllBut`: every child import that is not connected is terminated except those whose name is in the name list and whose child is in the child-index list. The two lists are tested independently (any name against any child index), not paired by position, so the lists name the imports kept. (MAPL2 (MAPL `release/v2`, `generic/MAPL_Generic.F90`), generic `MAPL_TerminateImport`, `MAPL_TerminateImportAllBut`.) The Gcm's calls on `OGCM` above use the other form, which removes the named imports (`MAPL_DoNotConnectMany`).
 - Waves: `RUN_WAVES` copies surface fields (`U10M ... RH2M`) and ocean fields (`UW, VW, TW`) into the
   WGCM import (`DO_A2W`, `DO_O2W`), runs `WGCM`, and copies `CHARNOCK` (and `SHFX_SPRAY`, `LHFX_SPRAY`
   when `USE_SEA_SPRAY:` /= 0) back (`DO_W2A`). WGCM imports not sent to ExtData (the MAPL external
@@ -117,7 +170,7 @@ to a private parent component, not to this one (`GEOS_GcmGridComp.F90`, internal
   `REPLAY_FILE_REFERENCE_TIME:` (a source comment calls the defaults "MERRA-2"); the Agcm reads them
   ([`GEOSagcm_GridComp/ARCHITECTURE.md`](../GEOSagcm_GridComp/ARCHITECTURE.md) section 3.4).
   It also defaults `CONVPAR_OPTION:` to `RAS` (relaxed Arakawa-Schubert) and `AERO_PROVIDER:` to
-  `GOCART.data` for use by several children (see the GOCART document (`../GEOSagcm_GridComp/GEOSphysics_GridComp/@GEOSchem_GridComp/@GOCART/docs/ARCHITECTURE.md` in the fixture), section 5.2). Other defaults for the
+  `GOCART.data` for use by several children (see the GOCART document (`../GEOSagcm_GridComp/GEOSphysics_GridComp/@GEOSchem_GridComp/@GOCART/docs/ARCHITECTURE.md` in the fixture)). Other defaults for the
   same key: `GOCART2G` in `GEOS_ChemGridComp.F90` (`ESMF_ConfigGetAttribute` `Default=`, `GetProvider_`) when the key is
   absent from the configuration it reads, and `GOCART2G` set by `gcm_setup` (`src/Applications/@GEOSgcm_App/gcm_setup`). *Unverified:* whether the Gcm's `MAPL_ConfigSetAttribute` write-back reaches the configuration Chemistry reads.
 - `REPLAY_MODE:` is `NoReplay` (default), `Exact` or `Regular`. `DUAL_OCEAN:` asserts `Regular`.
@@ -140,9 +193,9 @@ to a private parent component, not to this one (`GEOS_GcmGridComp.F90`, internal
      `MAPL_GenericRefresh` on AGCM, OGCM, WGCM (if waves), run ExtData again, then take the ordinary step.
   When `ReplayShutOff` rings, `AIAU` phase 2 is run and recording is disabled (`MAPL_DisableRecord`).
 - The replay block is entered only for `Regular`; for `Exact` the Agcm reads the increment files itself.
-- ExtData is not a child of the Gcm. MAPL's Cap stores its component and export state in the Gcm's
-  `ExtData_state` internal state (`src/Shared/@MAPL/gridcomps/Cap/MAPL_CapGridComp.F90`,
-  `initialize_gc`); the Gcm creates the empty wrapper in `SetServices`.
+- ExtData is not a child of the Gcm. On the MAPL2 line MAPL's Cap stores its component and export state in the Gcm's
+  `ExtData_state` internal state and the Gcm creates the empty wrapper in `SetServices`; on this line the wrapper
+  creation in the Gcm is commented out (`!#`, `GEOS_GcmGridComp.F90`, `SetServices`, `rplRegular` block).
 - With `Regular` replay and `PREDICTOR_DURATION` 0 (or MKIAU at the start), the file
   `AIAU_IMPORT_RESTART_FILE:` must exist (`Initialize`).
 
@@ -162,13 +215,19 @@ CHILD_ID = AGCM` calls).
 ## 4. Agcm and Superdyn
 
 Summary; detail in [`GEOSagcm_GridComp/ARCHITECTURE.md`](../GEOSagcm_GridComp/ARCHITECTURE.md).
-`GEOS_AgcmGridComp` adds `SUPERDYNAMICS`, `PHYSICS` and `ORBIT` children (`SetServices`). Its `Run` applies
+`GEOS_AgcmGridComp` (not compiled, section 2.1) adds `SUPERDYNAMICS`, `PHYSICS` and `ORBIT` children (`SetServices`). Its `Run` applies
 analysis increments or bias tendencies (run type free-run, predictor, corrector, forecast), runs
 dynamics phase 1, physics, copies the physics tendencies into the dynamics imports, then runs dynamics
-phase 2. `GEOS_SuperdynGridComp` selects the dynamical core with `DYCORE:` (default `FV3`) and registers
-two run phases (`Run`, `RunAddIncs`).
+phase 2. `GEOS_SuperdynGridComp` is built and ported on this line: it selects the dynamical core with `DYCORE:`
+(default `FV3`; only `FV3` is active, the `FV3+ADV` and `DATMO` cases are commented out) and registers
+two run phases (`run`, `run_add_incs`) that run `DYN` (`GEOS_SuperdynGridComp.F90`, `SetServices`, `run`,
+`run_add_incs`). The Agcm file still describes the MAPL2 Superdyn (see the Agcm document).
 
 ## 5. Physics subtree (map level)
+
+The Physics composite library is not compiled: `GEOSphysics_GridComp/CMakeLists.txt` bypasses
+`GEOS_PhysicsGridComp.F90`; its children Chemistry (GOCART only), GWD and Radiation (built as its own `@GEOSradiation_GridComp/CMakeLists.txt` defines it: library with `GEOS_RadiationShared`, Solar, IRRAD, SatSim) are built;
+Moist, Surface and Turbulence are not (section 2.1). The map describes the MAPL2 composite file as it is.
 
 Composite: `GEOSagcm_GridComp/GEOSphysics_GridComp/GEOS_PhysicsGridComp.F90` (about 4000 lines);
 component file [`GEOSphysics_GridComp/ARCHITECTURE.md`](../GEOSagcm_GridComp/GEOSphysics_GridComp/ARCHITECTURE.md).
@@ -223,6 +282,10 @@ subdirectories; the CMake team owns every `CMakeLists.txt`.
 
 ## 7. Common MAPL2 patterns (one example each)
 
+These are MAPL2 patterns, in files not compiled on this line. The built components use the MAPL3 forms
+(`use MAPL, only:`, `MAPL_GridComp*` calls, children added with a YAML config file, phases by `phase_name`):
+`GEOSagcm_GridComp/GEOSsuperdyn_GridComp/GEOS_SuperdynGridComp.F90`, `GEOSphysics_GridComp/GEOSgwd_GridComp/GEOS_GwdGridComp.F90`.
+
 1. **SetServices skeleton.** Register entry points (`MAPL_GridCompSetEntryPoint`, once per run
    phase), add children and specs, make connections, call `MAPL_GenericSetServices`, add timers
    (`GEOSagcm_GridComp/GEOS_AgcmGridComp.F90`, `SetServices`; leaf:
@@ -237,7 +300,7 @@ subdirectories; the CMake team owns every `CMakeLists.txt`.
 4. **Borrowed exports.** `MAPL_AddExportSpec(GC, SHORT_NAME=..., CHILD_ID=...)` exposes a child's export as the
    parent's own (`GEOS_GcmGridComp.F90`, `SetServices`, `'AK'`).
 5. **Friendly tracers.** `FRIENDLYTO = 'A:B:...'` on an internal or export spec tags the field as a tracer
-   for the named components and also adds it to the exports (`src/Shared/@MAPL/generic/MAPL_Generic.F90`,
+   for the named components and also adds it to the exports (MAPL2 (MAPL `release/v2`, `generic/MAPL_Generic.F90`),
    `MAPL_StateAddInternalSpec`). Example tag list: `FRIENDLIES%QV = "DYNAMICS:TURBULENCE:CHEMISTRY:ANALYSIS"`
    (`GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_BACM_1M_InterfaceMod.F90`). A parent collects
    them with `MAPL_GridCompGetFriendlies(GC, "DYNAMICS", BUNDLE)` (`GEOS_PhysicsGridComp.F90`, `Initialize`);
@@ -253,8 +316,9 @@ subdirectories; the CMake team owns every `CMakeLists.txt`.
    `<Name>_Import___.h`, `_Export___.h`, `_Internal___.h`, `_GetPointer___.h`, `_DeclarePointer___.h` into the
    build directory; the Fortran source `#include`s them
    (`GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSgwd_GridComp/GWD_StateSpecs.rc`, its `CMakeLists.txt`,
-   `GEOS_GwdGridComp.F90`; generator `src/Shared/@MAPL/cmake/mapl_acg.cmake`). Among the components of this
-   repository present in a fixture checkout, GWD is the only one using it; the rest call `MAPL_AddImportSpec` /
+   `GEOS_GwdGridComp.F90`; generator `src/Shared/@MAPL/cmake/mapl_acg.cmake`). On this line the built components of
+   this repository using it are GWD and, when present in the checkout, Held-Suarez (`GEOShs_GridComp/HS_StateSpecs.rc`,
+   `GEOShs_GridComp/CMakeLists.txt`); the uncompiled composites call `MAPL_AddImportSpec` /
    `MAPL_AddExportSpec` / `MAPL_AddInternalSpec` directly. Nested repositories use it (for example
    `GEOS_OceanGridComp`, `CARMA`, `GOCART2G`). Edit the `.rc`, not the generated headers.
 8. **Private state.** `ESMF_UserCompSetInternalState` with a wrapper type holding a pointer (`GEOS_GcmGridComp.F90`:
@@ -264,25 +328,30 @@ subdirectories; the CMake team owns every `CMakeLists.txt`.
 
 Fixture-level build (mepo, presets, `parallel_build.csh`, MAPL, `esma_add_library`) is described in the
 fixture documents. What is specific here:
-- Each composite directory's `CMakeLists.txt` has `esma_set_this()`, a list `alldirs` of children, and two
-  branches: if the composite's own source file exists, `esma_add_library(${this} SRCS <composite>.F90
-  SUBCOMPONENTS ${alldirs} DEPENDENCIES ...)`; otherwise `esma_add_subdirectories(${alldirs})` (root
-  `CMakeLists.txt`; `GEOSagcm_GridComp/CMakeLists.txt`; `GEOSagcm_GridComp/GEOSphysics_GridComp/CMakeLists.txt`).
+- Each composite directory's `CMakeLists.txt` has `esma_set_this()` and a list `alldirs` of children. On the MAPL2
+  line there are two branches: if the composite's own source file exists, `esma_add_library(${this} SRCS
+  <composite>.F90 SUBCOMPONENTS ${alldirs} DEPENDENCIES ...)`; otherwise `esma_add_subdirectories(${alldirs})`. On
+  this line the root and Physics `CMakeLists.txt` keep only `esma_add_subdirectories` and comment the library block out; the Agcm
+  directory builds the Held-Suarez library if its source exists, else the subdirectories; Superdyn keeps both branches
+  (section 2.1) (`CMakeLists.txt`; `GEOSagcm_GridComp/CMakeLists.txt`; `GEOSagcm_GridComp/GEOSsuperdyn_GridComp/CMakeLists.txt`;
+  `GEOSagcm_GridComp/GEOSphysics_GridComp/CMakeLists.txt`).
   The target name is the directory name without `@` (`esma_set_this`); `OVERRIDE` renames it (sea ice:
   `GEOS_Seaice_GridComp`, `GEOSogcm_GridComp/GEOSseaice_GridComp/CMakeLists.txt`).
 - A missing child directory becomes a generated stub component (`esma_add_library` in the fixture's
   `@cmake/esma_support`); `rename_<dir>` variables map a directory to a different module name
-  (`GEOSagcm_GridComp/GEOSsuperdyn_GridComp/CMakeLists.txt`).
-- Options, default OFF: `BUILD_WITH_GIGATRAJ` (adds `GEOSgigatraj_GridComp`, defines `HAS_GIGATRAJ` in the
-  root, Agcm and Superdyn), `BUILD_WITH_PYMLINC` (defines `HAS_PYMLINC`; `GEOSmkiau_GridComp/pyMLINC.cmake`),
+  (`GEOSagcm_GridComp/GEOSsuperdyn_GridComp/CMakeLists.txt`; on this line that `rename_GEOSdatmodyn_GridComp` block is commented out).
+- Options, default OFF: `BUILD_WITH_GIGATRAJ` (adds `GEOSgigatraj_GridComp` to the root `alldirs`; defines `HAS_GIGATRAJ` only in
+  Superdyn, the root and Agcm `target_compile_definitions` are inside commented-out blocks), `BUILD_WITH_PYMLINC` (defines `HAS_PYMLINC`; `GEOSmkiau_GridComp/pyMLINC.cmake`),
   `BUILD_MIT_OCEAN` (ocean and sea-ice composites) (`CMakeLists.txt`, `GEOSogcm_GridComp/CMakeLists.txt`).
 - `mapl_acg` follows the `esma_add_library` of the same target.
+- Regression tests `hs`, `gwd`: section 2.1 (`add_subdirectory(regression)` in the two component `CMakeLists.txt`).
 - Tests and CI: no unit-test target for the composite components was found (`grep add_test`). The `pyMoist`
   DSL code has tests under `GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist/tests/`
   (`numerical`, `scripts`, `translate_tests`). GitHub workflows (`.github/workflows/`): `workflow.yml` (fixture
   build tests; its matrix lists GEOSldas but passes `fixture-repo: GEOS-ESM/GEOSgcm`), `ndsl-checks.yml`,
-  `enforce-labels.yml` (PR labels), `push-to-develop.yml`. CircleCI (`.circleci/config.yml`) builds the fixture
-  and runs short AMIP and coupled GCM runs (job comments).
+  `enforce-labels.yml` (PR labels), `push-to-develop.yml`. CircleCI (`.circleci/config.yml`) builds the fixture on
+  branch `release/MAPL-v3` with gfortran and ifx and runs `ctest -L REGRESSION` (`run_regression_tests: true`); the
+  AMIP and coupled GCM run jobs are commented out.
 
 ## 9. Known traps
 

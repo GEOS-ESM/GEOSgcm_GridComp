@@ -1,13 +1,30 @@
 # GEOSphysics_GridComp (Physics): architecture
 
 **Audience:** coding agents and developers working on the Physics parent gridded component (the driver that runs gravity wave drag, moist processes, turbulence, surface, chemistry and radiation).
-**Describes:** the MAPL2 line, branch `develop`.
-**Verified against:** `GEOSgcm_GridComp` @ `c7d81d7c` (2026-11-05; source files identical to `45e1f86f`, the earlier base, which only differs by the added documents).
-**Placement:** as in the GEOSgcm fixture (`components.yaml` @ `0f2e0fb`; repository `GEOSgcm_GridComp`, mounted at `src/Components/@GEOSgcm_GridComp`): `src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp`.
+**Describes:** the MAPL3 line, branch `release/MAPL-v3`.
+**Verified against:** `GEOSgcm_GridComp` @ `84f0aae3` (2026-11-06).
+**Placement:** as in the GEOSgcm fixture (`components.yaml` @ `f50622d`; repository `GEOSgcm_GridComp`, mounted at `src/Components/@GEOSgcm_GridComp`): `src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp`.
 Other fixtures (for example GEOSadas, GEOSldas) may place this repository elsewhere; paths inside this repository do not change.
 
 Paths below are relative to `GEOSagcm_GridComp/GEOSphysics_GridComp/` unless they start with `GEOSagcm_GridComp/`.
 Children: [GWD](GEOSgwd_GridComp/ARCHITECTURE.md), [Moist](GEOSmoist_GridComp/ARCHITECTURE.md), [Turbulence](GEOSturbulence_GridComp/ARCHITECTURE.md), [Surface](GEOSsurface_GridComp/ARCHITECTURE.md). Chemistry (architecture (`@GEOSchem_GridComp/docs/ARCHITECTURE.md` in the fixture)) and Radiation (architecture (`@GEOSradiation_GridComp/docs/ARCHITECTURE.md` in the fixture)) are separate repositories (section 2). Repository overview: [../../docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md). Conventions for agents: [../../AGENTS.md](../../AGENTS.md). Decision log: [../../docs/decisions.md](../../docs/decisions.md).
+
+> **Build status on this line:** the top-level library is not compiled, not
+> ported. On `release/MAPL-v3`, `GEOSphysics_GridComp/CMakeLists.txt` calls
+> `esma_add_subdirectories` on `GEOSchem_GridComp` ("restricted to GOCART only"),
+> `GEOSgwd_GridComp` and `GEOSradiation_GridComp` ("restricted to IRRAD only"; the nested `@GEOSradiation_GridComp/CMakeLists.txt` builds a library with `GEOS_RadiationShared`, Solar, IRRAD and SatSim);
+> `GEOSmoist_GridComp`, `GEOSsurface_GridComp` and `GEOSturbulence_GridComp` appear
+> only in commented lines ("not yet ported to MAPL3 - restore when ported"), and
+> the block that builds `GEOS_PhysicsGridComp.F90` and `MBundle_IncrementMod.F90` is
+> commented out ("USE-s non-ported components"). `GEOS_PhysicsGridComp.F90` is identical to
+> the MAPL2 line; `MBundle_IncrementMod.F90` differs only in its attribute calls
+> (`ESMF_InfoSet` / `ESMF_InfoGet` instead of `ESMF_AttributeSet` / `ESMF_AttributeGet`
+> for `DIMS`, `VLOCATION`, `UNITS`, `LONG_NAME`). This document
+> describes the MAPL2-style composite, kept for a later port; there is no MAPL3 Physics
+> composite on this line. Built children: GWD (ported; standalone regression
+> `GEOSgwd_GridComp/regression`, see the GWD document), Chemistry and Radiation (nested
+> repositories, restricted as stated). Statements below about the other children
+> (Moist, Turbulence, Surface) describe code that is not built.
 
 ## 1. Purpose
 Physics is the parent of every column-physics process in the atmospheric model. It owns no physical scheme itself. It does five things (`GEOS_PhysicsGridComp.F90`, header comment, SetServices, Run):
@@ -18,7 +35,7 @@ Physics is the parent of every column-physics process in the atmospheric model. 
 5. Builds the lists of "friendly" tracers (fields that declare which components may transform them) that Turbulence, Moist and Dynamics use (section 4.3).
 
 ## 2. Place in the hierarchy
-- Parent is the Agcm (atmospheric general circulation model) component, which adds Physics as `PHYS` (`GEOSagcm_GridComp/GEOS_AgcmGridComp.F90`, SetServices). Agcm calls Physics with `PHASE=1` and then applies the five tendencies to Dynamics (`GEOSagcm_GridComp/GEOS_AgcmGridComp.F90`, Run, `DO_UPDATE_PHY`).
+- Parent is the Agcm (atmospheric general circulation model) component, which adds Physics as `PHYS` (`GEOSagcm_GridComp/GEOS_AgcmGridComp.F90`, SetServices); that Agcm file is itself not compiled on this line ([Agcm document](../ARCHITECTURE.md)). In a checkout that includes the Held-Suarez files (the fixture's sparse file excludes them), the `PHYS` child of the Held-Suarez composite is the Held-Suarez physics, not this composite (`GEOSagcm_GridComp/GEOS_AgcmSimpleGridComp.F90`, `SetServices`). Agcm calls Physics with `PHASE=1` and then applies the five tendencies to Dynamics (`GEOSagcm_GridComp/GEOS_AgcmGridComp.F90`, Run, `DO_UPDATE_PHY`).
 - Children, added in this order with `MAPL_AddChild` (`GEOS_PhysicsGridComp.F90`, SetServices):
 
 | Module variable | Name | `NAME=` (`MAPL_AddChild`) | Set-services | Where |
@@ -35,7 +52,7 @@ The first column is the module variable holding the child's index (`GEOS_Physics
 - Chemistry is added before Surface on purpose, so that Chemistry can fill the `AERO_DP` bundle before Surface reads its import restart (`GEOS_PhysicsGridComp.F90`, SetServices, comment at `MAPL_AddChild(... 'CHEM' ...)`).
 - The child order in `AddChild` does **not** set the run order. `Run` calls the children in an order written in the code (section 3.2).
 - Chemistry and Radiation are nested repositories that this repository's `.gitignore` excludes (`.gitignore`). This document only describes them as children. Their own structure is documented in those repositories: Chemistry (`@GEOSchem_GridComp/docs/ARCHITECTURE.md` in the fixture) (`@GEOSchem_GridComp/`; aerosols: GOCART (`@GEOSchem_GridComp/@GOCART/docs/ARCHITECTURE.md` in the fixture)) and Radiation (`@GEOSradiation_GridComp/docs/ARCHITECTURE.md` in the fixture) (`@GEOSradiation_GridComp/`), in the fixture.
-- `CMakeLists.txt` builds `GEOS_PhysicsGridComp.F90` and `MBundle_IncrementMod.F90`, with `alldirs` listing the child directories. It links `MAPL`, `GMAO_mpeu`, `GMAO_stoch` and ESMF (`CMakeLists.txt`).
+- On the MAPL2 line `CMakeLists.txt` builds `GEOS_PhysicsGridComp.F90` and `MBundle_IncrementMod.F90`, with `alldirs` listing the child directories, linking `MAPL`, `GMAO_mpeu`, `GMAO_stoch` and ESMF. On this line that `esma_add_library` block is commented out and only `esma_add_subdirectories (${alldirs})` runs, with `alldirs` as in the build status above (`CMakeLists.txt`).
 
 ## 3. Entry points
 Registered with `MAPL_GridCompSetEntryPoint` (`GEOS_PhysicsGridComp.F90`, SetServices): `INITIALIZE` = `Initialize`, and one `RUN` = `Run`. There is **one run phase** and **no Finalize** entry point (MAPL generic default).
@@ -88,11 +105,11 @@ Calls `MAPL_GenericInitialize` first (children are initialized), then builds the
 - Increment exports `<name>IT` are created from the table `TRI_increments::` in `AGCM.rc` (`ESMF_ConfigGetDim`), one per diffused tracer (`GEOS_PhysicsGridComp.F90`, SetServices). `AOADAYS` gets the unit `days s-1` there.
 
 ### 4.3 Tracer bundles (built in Initialize)
-Fields carry attributes `FriendlyTo<NAME>`, set from the `FRIENDLYTO` string (colon-separated) on the spec. `MAPL_GridCompGetFriendlies` collects the fields that carry a given name (`GEOS_PhysicsGridComp.F90`, Initialize; `src/Shared/@MAPL/generic/MAPL_Generic.F90` in the fixture).
+Fields carry attributes `FriendlyTo<NAME>`, set from the `FRIENDLYTO` string (colon-separated) on the spec. `MAPL_GridCompGetFriendlies` collects the fields that carry a given name (`GEOS_PhysicsGridComp.F90`, Initialize; MAPL2 (MAPL `release/v2`, `generic/MAPL_Generic.F90`; not present in this fixture)).
 
 | Bundle | Where | Content |
 |---|---|---|
-| `TR` | Turbulence import | Dynamics `S` (`DiffuseLike='S'`, `WeightedTendency`), `U`, `V`; `TKESHOC`, `QT2` from Turbulence's exports; friendlies `TURBULENCE` from Physics (`QW`), Moist and Chemistry (Chemistry's share comes through its internal bundle `CHEM_TRACERS`: Chemistry document (`@GEOSchem_GridComp/docs/ARCHITECTURE.md` in the fixture), section 3.6) |
+| `TR` | Turbulence import | Dynamics `S` (`DiffuseLike='S'`, `WeightedTendency`), `U`, `V`; `TKESHOC`, `QT2` from Turbulence's exports; friendlies `TURBULENCE` from Physics (`QW`), Moist and Chemistry (Chemistry's share comes through its internal bundle `CHEM_TRACERS`: Chemistry document (`@GEOSchem_GridComp/docs/ARCHITECTURE.md` in the fixture)) |
 | `TRI` | Turbulence export | increments `<NAME>IT` from Physics exports, `QVIT` aliased as `QIT`; missing fields become empty |
 | `TRADV` | Physics export | friendlies `DYNAMICS` from Physics and all children; linked to Dynamics by Agcm |
 | `TRANA` | Physics export | friendlies `ANALYSIS` |
@@ -119,7 +136,7 @@ Child scheme choices (Moist, Turbulence SHOC and EDMF, GWD) are in the child doc
 ## 6. Dependencies
 - Libraries: MAPL, `GMAO_mpeu`, `GMAO_stoch`, ESMF (`CMakeLists.txt`).
 - Modules: `GEOS_UtilsMod` (`GEOS_Qsat`), `stoch_module` (`sppt_pattern`, `skeb_pattern`), `Bundle_IncrementMod` (Chemistry repository), `MBundle_IncrementMod`.
-- Needs the six children's `SetServices` by name. Chemistry and Radiation come from nested repositories, so a checkout without them does not build Physics.
+- Needs the six children's `SetServices` by name; on this line three of the child directories are not built (build status above), which is why the library is bypassed. Chemistry and Radiation come from nested repositories, so a checkout without them does not build Physics.
 - Agcm expects from Physics: the five tendencies, `TRADV`, and the exports promoted in 4.2.
 
 ## 7. Known traps

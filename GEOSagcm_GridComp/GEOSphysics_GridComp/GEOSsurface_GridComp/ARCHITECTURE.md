@@ -1,9 +1,9 @@
 # Surface gridded component (parent only)
 
 **Audience:** coding agents and developers working on the Surface gridded component and its coupling to Turbulence.
-**Describes:** the MAPL2 line, branch `develop`.
-**Verified against:** `GEOSgcm_GridComp` @ `c7d81d7c` (checked 2026-11-05; source files identical to `45e1f86f`, the earlier base, which only differs by the added documents).
-**Placement:** as in the GEOSgcm fixture (`components.yaml` @ `0f2e0fb`): this directory is
+**Describes:** the MAPL3 line, branch `release/MAPL-v3`.
+**Verified against:** `GEOSgcm_GridComp` @ `84f0aae3` (checked 2026-11-06).
+**Placement:** as in the GEOSgcm fixture (`components.yaml` @ `f50622d`): this directory is
 `src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/`.
 Other fixtures (for example GEOSadas, GEOSldas) may place this repository
 elsewhere; paths inside this repository do not change.
@@ -13,6 +13,8 @@ Paths below are relative to the `GEOSgcm_GridComp` root. `SURF/` abbreviates
 Related documents: [Physics](../ARCHITECTURE.md),
 [Turbulence](../GEOSturbulence_GridComp/ARCHITECTURE.md),
 [repository architecture](../../../docs/ARCHITECTURE.md), [repository AGENTS.md](../../../AGENTS.md).
+
+> **Build status on this line:** not built, not ported. On `release/MAPL-v3`, `GEOSagcm_GridComp/GEOSphysics_GridComp/CMakeLists.txt` builds `GEOSchem_GridComp`, `GEOSgwd_GridComp` and `GEOSradiation_GridComp`; `GEOSsurface_GridComp` appears only in a commented-out list ("not yet ported to MAPL3 - restore when ported"). The Physics top-level library (`GEOS_PhysicsGridComp.F90`, which adds this component) is present but not compiled ("Temporarily bypass GEOSphysics top-level library"). `GEOSsurface_GridComp/CMakeLists.txt` itself is unchanged in structure: it builds `GEOS_SurfaceGridComp.F90` with the five child directories as subcomponents and `Shared`, and adds `Utils`; nothing in it is reached from the built tree. Of the files this document cites, `GEOSland_GridComp/GEOScatch_GridComp/GEOS_CatchGridComp.F90` (gFTL iterator calls `ftn_begin`, `ftn_end`, `first`) and the `Utils/mk_restarts` sources and `CMakeLists.txt` (gFTL v2: `gFTL2_StringVector`, `gftl-shared-v2`) differ from the MAPL2 line. All other claims are the MAPL2 claims; the code is MAPL2 code, kept for a later port.
 
 ## 1. Purpose
 Surface (`GEOS_SurfaceGridCompMod`, instance name `SURFACE`) is a light-weight parent that
@@ -27,7 +29,7 @@ Two parents add Surface as child `SURFACE`:
 - `PHYSICS`, in the atmosphere (`GEOSagcm_GridComp/GEOSphysics_GridComp/GEOS_PhysicsGridComp.F90`, `SetServices`, `MAPL_AddChild`).
 - `DATAATM`, the data atmosphere used when `USE_DATA_ATM4OCN` is true (`GEOSdataatm_GridComp/GEOS_DataAtmGridComp.F90`, `SetServices`, `MAPL_AddChild(NAME='SURFACE')`). Its only child is `SURFACE`; there is no Turbulence. In `Initialize` it replaces Surface's exchange grid by an ocean-only stream (`MAPL_LocStreamCreate(..., MASK=(/MAPL_OCEAN/))`, `MAPL_ExchangeGridSet`), and in `Run` it calls Surface phase 1 and phase 2 itself (`ESMF_GridCompRun(..., PHASE=1)`, `PHASE=2`). *Inferred:* LAKE, LANDICE and LAND then get empty tile lists, because their streams are subsets of that ocean-only stream.
 
-Surface adds its children in this order (`SURF/GEOS_SurfaceGridComp.F90`, `SetServices`, `MAPL_AddChild`); `MAPL_AddChild` numbers a child `get_num_children() + 1`, so the indexes are OCEAN=1, LAKE=2, LANDICE=3, LAND=4, ROUTE=5 (`src/Shared/@MAPL/generic/MAPL_Generic.F90`, `AddChildFromMeta`; fixture path):
+Surface adds its children in this order (`SURF/GEOS_SurfaceGridComp.F90`, `SetServices`, `MAPL_AddChild`); the MAPL2 `MAPL_AddChild` numbers a child `get_num_children() + 1`, so the indexes are OCEAN=1, LAKE=2, LANDICE=3, LAND=4, ROUTE=5 (MAPL2 behavior, `MAPL_Generic.F90`, `AddChildFromMeta`; not re-verified on this line):
 
 | Child name | Directory (under `SURF/`) | One line |
 |---|---|---|
@@ -143,7 +145,7 @@ Consequences for an agent:
 **State.** Imports, exports and internal specs are declared in `SetServices` of `SURF/GEOS_SurfaceGridComp.F90` (no ACG file here).
 Internal spec items `QS TS CT CQ CM CN THAT QHAT UHAT VHAT RHOS D0` (grid) and `DISCHARGE_ADJUST` (tile) pass data from `Run1` to `Run2` and, being `FriendlyTO` the component, are also exported (`SetServices`).
 `SURF_state` holds `XFORM_IN/OUT` and the teleport routing table (`T_SURFACE_STATE`).
-**Restarts.** Surface's internal state is not checkpointed: the module header says it need not be saved, and `src/Applications/@GEOSgcm_App/AGCM.rc.tmpl` has no `SURFACE_INTERNAL_RESTART_FILE` or `SURFACE_INTERNAL_CHECKPOINT_FILE` key, which MAPL needs before it reads or writes an internal state (`src/Shared/@MAPL/generic/MAPL_Generic.F90`, `INTERNAL_RESTART_FILE:`). The parent's real restart is its import file, `SURFACE_IMPORT_RESTART_FILE` (`surf_import_rst`, `AGCM.rc.tmpl`); imports not marked `MAPL_RestartSkip` are written to it (`SetServices`).
+**Restarts.** Surface's internal state is not checkpointed: the module header says it need not be saved, and `src/Applications/@GEOSgcm_App/AGCM.rc.tmpl` has no `SURFACE_INTERNAL_RESTART_FILE` or `SURFACE_INTERNAL_CHECKPOINT_FILE` key, which MAPL needs before it reads or writes an internal state (MAPL2 (MAPL `release/v2`, `generic/MAPL_Generic.F90`), `INTERNAL_RESTART_FILE:`). The parent's real restart is its import file, `SURFACE_IMPORT_RESTART_FILE` (`surf_import_rst`, `AGCM.rc.tmpl`); imports not marked `MAPL_RestartSkip` are written to it (`SetServices`).
 Restart state of the children (keys `*_INTERNAL_RESTART_FILE` in `AGCM.rc.tmpl`): `lake_internal_rst`, `landice_internal_rst`, `catch_internal_rst`, `catchcn_internal_rst`, `route_internal_rst`, `vegdyn.data` (`VEGDYN_INTERNAL_RESTART_FILE`), `openwater_internal_rst`, `seaicethermo_internal_rst`.
 
 **Configuration that changes structure** (read in `SetServices` / `Initialize`):

@@ -1,9 +1,9 @@
 # GEOSagcm_GridComp: atmosphere composite and superdynamics
 
 **Audience:** coding agents and developers working on `GEOS_AgcmGridComp` and `GEOS_SuperdynGridComp`.
-**Describes:** the MAPL2 line, branch `develop`.
-**Verified against:** `GEOSgcm_GridComp` @ `45e1f86f` (2026-11-04).
-**Placement:** as in the GEOSgcm fixture (`components.yaml` @ `0f2e0fb`).
+**Describes:** the MAPL3 line, branch `release/MAPL-v3`.
+**Verified against:** `GEOSgcm_GridComp` @ `84f0aae3` (2026-11-06).
+**Placement:** as in the GEOSgcm fixture (`components.yaml` @ `f50622d`).
 Other fixtures (for example GEOSadas, GEOSldas) may place this repository
 elsewhere; paths inside this repository do not change.
 
@@ -11,31 +11,54 @@ Paths are relative to the `GEOSgcm_GridComp` repository root. Repository
 overview: [`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md). Physics child:
 [`GEOSphysics_GridComp/ARCHITECTURE.md`](GEOSphysics_GridComp/ARCHITECTURE.md).
 
+> **Build status on this line:** `GEOS_AgcmGridComp.F90` is not compiled, not
+> ported. On `release/MAPL-v3`, the `elseif` block of
+> `GEOSagcm_GridComp/CMakeLists.txt` that builds it is commented out ("USE-s
+> non-ported components (e.g. GEOS_superdynGridCompMod)"). In the GEOSgcm fixture
+> the sparse file excludes the Held-Suarez files, so the `else` branch runs
+> `esma_add_subdirectories` for Superdyn and Physics: no Agcm library. A checkout
+> that includes the Held-Suarez files (the fixture's sparse file excludes them)
+> instead builds the library `GEOS_AgcmSimpleGridComp.F90` (`SUBCOMPONENTS
+> GEOSsuperdyn_GridComp GEOShs_GridComp`). Its children
+> `GEOSsuperdyn_GridComp` (ported, built) and `GEOSphysics_GridComp` (library
+> not compiled; only its children Chemistry (GOCART only), GWD and Radiation
+> (as its own `@GEOSradiation_GridComp/CMakeLists.txt` defines it) are built) are described in section 2.1 of the repository overview. The Agcm file is the MAPL2
+> code, kept for a later port. Sections 1 to 7 describe it as it is, except
+> where they say otherwise. `GEOS_SuperdynGridComp.F90` was rewritten for
+> MAPL3 on this line: section 3.2 gives what the file does now; the Agcm file
+> still uses the MAPL2 Superdyn interface (two-phase `PHASE=` calls, imports
+> `DUDT ... DTDT` copied by Superdyn), which the ported Superdyn no longer has.
+> The Held-Suarez composite is described in section 2.1 of the repository overview.
+> (On this line the parent GEOSgcm fixture's documents are not written yet; the
+> MAPL2-line versions are on its `develop` branch.)
+
 ## 1. Purpose
 
 `GEOS_AgcmGridComp` (about 4900 lines, `GEOS_AgcmGridComp.F90`) combines
 superdynamics (dynamics), physics and an orbit component into the atmosphere
 model. It also applies analysis increments and bias tendencies to the
 dynamics and physics tendencies (incremental analysis update, IAU) and reads
-replay files. `GEOS_SuperdynGridComp` (about 850 lines,
+replay files. `GEOS_SuperdynGridComp` (273 lines on this line,
 `GEOSsuperdyn_GridComp/GEOS_SuperdynGridComp.F90`) wraps the dynamical core
 and splits a dynamics step into two run phases around physics.
 
 ## 2. Place in the hierarchy
 
 - Parent: `AGCM` child of the root Gcm (`GEOS_GcmGridComp.F90`, `SetServices`;
-  [`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md) section 3).
+  [`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md) section 3); the root library is not compiled on this line. A checkout
+  that includes the Held-Suarez files (the fixture's sparse file excludes them) has `GEOS_AgcmSimpleGridComp.F90` as the `AGCM` root (section 2.1 of the overview).
 - Children of the Agcm, added with `MAPL_AddChild` in `SetServices`
   (`GEOS_AgcmGridComp.F90`): `SUPERDYNAMICS` (module variable `SDYN`),
   `PHYSICS` (`PHYS`), `ORBIT` (`ORB`, `MAPL_OrbGridCompMod` from MAPL). Under
   `#ifdef SCM` the dynamics child is named `SCMDYNAMICS` and the module
   `GEOS_singcolGridCompMod` is used. With `-DHS` the physics module is
   `GEOS_hsGridCompMod` (`#define` at the top of the file); the Held-Suarez
-  sources are not in a fixture checkout (see [`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md) section 1).
-- Children of Superdyn (`GEOS_SuperdynGridComp.F90`, `SetServices`): `DYN` and
-  optionally `ADV`, chosen by `DYCORE:` (default `FV3`): `FV3` adds `DYN` from
-  `@FVdycoreCubed_GridComp`; `FV3+ADV` adds `DYN` and `ADV` (`AdvCore_GridCompMod`);
-  `DATMO` adds `DYN` from `GEOS_DatmoDynGridCompMod`. `ADV` is -1 when absent.
+  sources are not in a fixture checkout (see [`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md) section 1);
+  on this line they hold the ported Held-Suarez physics (`GEOShs_GridComp/GEOS_HsGridComp.F90`).
+- Children of Superdyn (`GEOS_SuperdynGridComp.F90`, `SetServices`; MAPL3-line file): `DYN`
+  from `@FVdycoreCubed_GridComp` (config file `dyn.yaml`) when `DYCORE:` (default `FV3`) is `FV3`; any
+  other value fails (`_FAIL "Invalid DYCORE specified for SuperDyn"`). The `FV3+ADV` (`AdvCore_GridCompMod`)
+  and `DATMO` (`GEOS_DatmoDynGridCompMod`) cases and their `use` lines are commented out; `ADV` stays -1.
 - Nested repository below Superdyn: `@FVdycoreCubed_GridComp` (fixture path
   `src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSsuperdyn_GridComp/@FVdycoreCubed_GridComp`); architecture:
   `GEOSsuperdyn_GridComp/@FVdycoreCubed_GridComp/docs/ARCHITECTURE.md`.
@@ -75,13 +98,13 @@ and splits a dynamics step into two run phases around physics.
      energy diagnostics, tropopause diagnostics.
   The only `MAPL_GenericRunCouplers` call in the Agcm is the one for `SDYN` (`Run`); no call was
   found for `ORB` or `PHYS`. `MAPL_GenericRunCouplers(STATE, CHILD, ...)` runs every coupler whose
-  source is `CHILD` (loop over `STATE%CCcreated(CHILD,J)`, `src/Shared/@MAPL/generic/MAPL_Generic.F90`),
+  source is `CHILD` (loop over `STATE%CCcreated(CHILD,J)`, MAPL2 (MAPL `release/v2`, `generic/MAPL_Generic.F90`)),
   but most of the connections an agent would look at here never create a coupler in the first
   place: when `MAPL_AddConnectivity` wires a child's import to a sibling's export, the two specs
   are compared field by field (short name, `DIMS`, `VLOCATION`, `HALOWIDTH`, `PRECISION`, and, when
   both sides set them, the accumulation and coupling intervals;
-  `src/Shared/@MAPL/generic/MAPL_Generic.F90`, `MAPL_WireComponent`;
-  `src/Shared/@MAPL/generic/VarSpec.F90`, `MAPL_VarSpecEQ`). An exact match is wired as a direct
+  MAPL2 (MAPL `release/v2`, `generic/MAPL_Generic.F90`), `MAPL_WireComponent`;
+  MAPL2 (MAPL `release/v2`, `generic/VarSpec.F90`), `MAPL_VarSpecEQ`). An exact match is wired as a direct
   connection (`MAPL_Reconnect`, comment "this a direct connection ... no additional averaging is
   needed" in `MAPL_WireComponent`): the import becomes the same field as the export, so `PHYS`
   reads what `SDYN` wrote earlier in the same step with no run-time step of its own. Only a pair
@@ -122,43 +145,40 @@ and splits a dynamics step into two run phases around physics.
   `T_avg24` (or `PLE_avg24`, `ZLE_avg24`, `TROPP_avg24`) import up from any child, so this
   explicit `MAPL_AddConnectivity` entry is caught by the relaxation pass that runs once per
   composite right after wiring: `setup_children` calls `connect%checkReq` immediately after
-  `MAPL_WireComponent` (`src/Shared/@MAPL/generic/MAPL_Generic.F90`, `setup_children`, comment
+  `MAPL_WireComponent` (MAPL2 (MAPL `release/v2`, `generic/MAPL_Generic.F90`), `setup_children`, comment
   "Relax connectivity for non-existing imports"); `checkReq` looks up the destination name in the
   destination child's import specs (`MAPL_VarSpecGetIndex`), and when it is absent there but the
   source name is present in the source child's export specs, it sets `conn%notRequired = .true.`
-  (`src/Shared/@MAPL/generic/VarConn.F90`, `checkReq`). `checkUnused` then skips `notRequired`
+  (MAPL2 (MAPL `release/v2`, `generic/VarConn.F90`), `checkReq`). `checkUnused` then skips `notRequired`
   connections instead of logging them as unsatisfied (same file, `checkUnused`). Net effect: the
   four `*_avg24` connections are silently dropped in this checkout — no coupler is created, no
   field is wired, and no error or log line is produced for them.
 - No Finalize of its own.
 
-### 3.2 `GEOS_SuperdynGridComp`
-- `SetServices`: registers `Initialize`, `Run`, and `RunAddIncs` (second run phase); reads
-  `DYCORE:` and `SCM_SL:`; adds children (section 2); import specs for the summed tendencies
-  `DUDT, DVDT, DWDT, DTDT`; about 50 borrowed exports from `DYN` (`MAPL_AddExportSpec`
-  with `CHILD_ID = DYN`); for `FV3+ADV` the connectivity `MFX, MFY, CX, CY, PLE0, PLE1` from
-  `DYN` to `ADV`; `MAPL_TerminateImport` of `DYN` imports `DUDT, DVDT, DTDT, DWDT`
-  ("will be connected explicitly in the run method"); `MAPL_GenericSetServices`.
-- `Initialize`: `MAPL_GenericInitialize`; allocates the `Q` export of `DYN` (needed to compute
-  virtual-temperature tendencies from physics).
-- `Run` (phase 1): copies (plain assignment, not an addition; the source comment says "Add") the
-  Superdyn imports `DUDT, DVDT, DTDT, DWDT` into the `DYN` imports, runs `DYN` phase 1, then
-  `ADV` if present. Before this phase the Agcm has filled these imports through `DO_UPDATE_ANA3D`
-  (analysis or bias increments; zero in `FREERUN`, 3.4), and `DYN` phase 1 applies them with
-  `ADD_INCS` (`DynCore_GridCompMod.F90`, `Run`).
-- `RunAddIncs` (phase 2): copies the same four imports into the `DYN` imports again and runs `DYN`
-  phase 2; by then the Agcm has overwritten them with the physics tendencies (`DO_UPDATE_PHY`,
-  `DUDT, DVDT, DWDT, DPEDT, DTDT`), which phase 2 adds to the dynamics state
-  (`DynCore_GridCompMod.F90`, `RunAddIncs`; `ADD_INCS`).
-- `DPEDT` is not an import spec of Superdyn and is not copied by `Run` or `RunAddIncs`; it reaches
-  `DYN` as an import promoted from `DYN`. *Inferred:* MAPL promotes child imports that no connection or termination removes. The Agcm fills it in place (`DO_UPDATE_ANA3D('DPEDT',
-  SDYN, ...)`, `DO_UPDATE_PHY('DPEDT')` through `GIM(SDYN)`). The `MAPL_TerminateImport` comment says
-  "the first 3 will be connected explicitly" while four names are terminated.
+### 3.2 `GEOS_SuperdynGridComp` (MAPL3-line file, built)
+All statements cite `GEOSagcm_GridComp/GEOSsuperdyn_GridComp/GEOS_SuperdynGridComp.F90`.
+- `SetServices`: registers `Initialize`, and two run phases by name, `run` and `run_add_incs`
+  (`MAPL_GridCompSetEntryPoint(..., phase_name=...)`); reads `DYCORE` (default `FV3`) and `SCM_SL` (default 0)
+  with `MAPL_GridCompGetResource`; adds the child `DYN` (section 2); 53 `DYN` re-export calls (50 unconditional; `SCM_SL` and `HAS_GIGATRAJ` conditionals) with
+  `MAPL_GridCompReexport` (`UV`, `W`, `T`, `S`, `PLE`, `AK`, `BK`, `PS`, `DELP`, `TRADV`, `DXC`, ...; `LHOBS`, `SHOBS` only when
+  `SCM_SL` /= 0; `ZL` under `#ifdef HAS_GIGATRAJ`); for `FV3+ADV` (commented-out case, but the code remains)
+  a connection of `MFX, MFY, CX, CY, PLE0, PLE1` from `DYN` to `ADV`.
+- It declares no import specs and no `MAPL_TerminateImport`. The MAPL2 version declared the summed
+  tendency imports `DUDT, DVDT, DWDT, DTDT`, copied them into `DYN` in `Run` and `RunAddIncs`, and terminated the
+  `DYN` imports. On this line the file's description text still speaks of GWD and of imports ("The run method first
+  calls the Gravity Wave Drag parameterization"), but the code has no GWD child.
+- `Initialize`: does nothing beyond returning success (the MAPL2 version allocated the `Q` export of `DYN`).
+- `run` (phase 1): `MAPL_GridCompRunChild(gc, "DYN", phase_name="run")`, then `ADV` if present.
+- `run_add_incs` (phase 2): `MAPL_GridCompRunChild(gc, "DYN", phase_name="run_add_incs")`.
 - The dynamical core's own architecture: `FVdycoreCubed_GridComp` (`GEOSsuperdyn_GridComp/@FVdycoreCubed_GridComp/docs/ARCHITECTURE.md` in the fixture).
-- Citations: `GEOSagcm_GridComp/GEOSsuperdyn_GridComp/GEOS_SuperdynGridComp.F90`.
-- Phase numbering: the n-th `MAPL_GridCompSetEntryPoint(..., ESMF_METHOD_RUN, ...)` call gives
-  phase n (`src/Shared/@MAPL/generic/MAPL_Generic.F90`, `MAPL_GridCompSetEntryPoint`:
-  `MAPL_AddMethod(META%phase_run)`).
+- Use in a checkout that includes the Held-Suarez files (the fixture's sparse file excludes them): the Held-Suarez composite `GEOS_AgcmSimpleGridComp.F90` adds Superdyn as `SDYN` with
+  config `superdyn.yaml` and runs `run`, then the Held-Suarez physics, then `run_add_incs`
+  (`GEOS_AgcmSimpleGridComp.F90`, `Run`); `superdyn.yaml` takes the geometry from `DYN`.
+- Contrast with the MAPL2 Agcm text below (3.1, 3.3, 3.4, section 4): it says the Superdyn imports
+  `DUDT, DVDT, DWDT, DTDT` are filled by the Agcm and copied by Superdyn; the ported Superdyn has no such
+  copy, so the Agcm file and this Superdyn do not match. In the Held-Suarez composite the Held-Suarez physics
+  exports `D_UV_DT` and `DTDT` are connected to `SDYN` (`GEOS_AgcmSimpleGridComp.F90`, `SetServices`,
+  `MAPL_GridCompAddConnection`; *Unverified:* the child-level import names these reach in `DYN`).
 
 ### 3.3 Connections (Agcm `SetServices`)
 - `SDYN` to `PHYS`, with renames (`TROPP_BLENDED -> TROPP`, `PLE -> PLEINST`, `US -> UA`): `U, V,
@@ -209,9 +229,9 @@ and splits a dynamics step into two run phases around physics.
   weights). Module types `CONNECT_ANAnBKG`/`ANAnBKG` hold analysis-grid regridders for the 4D IAU.
 - Restarts: `DTSDT` is `MAPL_RestartRequired` only when `ANALYZE_TS:` /= 0, else `MAPL_RestartSkip`
   (`SetServices`, `RST`). The other internal specs pass no `RESTART`, and `MAPL_StateAddInternalSpec`
-  defaults to `MAPL_RestartOptional` (`src/Shared/@MAPL/generic/MAPL_Generic.F90`,
+  defaults to `MAPL_RestartOptional` (MAPL2 (MAPL `release/v2`, `generic/MAPL_Generic.F90`),
   `MAPL_StateAddInternalSpec`: `usable_RS = MAPL_RestartOptional`; enumerator in
-  `src/Shared/@MAPL/shared/Constants/InternalConstants.F90`). *Inferred:* optional means the field
+  `src/Shared/@MAPL/utils/Constants/InternalConstants.F90`). *Inferred:* optional means the field
   is read when present and a bootstrap start is tolerated when absent (the reader treats
   `MAPL_RestartOptional` as bootstrappable, `src/Shared/@MAPL/base/NCIO.F90`).
 - The Agcm declares its state by hand (`MAPL_Add*Spec`), not with an ACG `*_StateSpecs.rc`.
@@ -229,8 +249,9 @@ DAS mode), `ANALYZE_TS:` (default 0; with `REPLAY_MODE:` other than `Exact`/`Reg
 
 `MAPL`, `ESMF`; `GEOS_Shared` (`GEOS_TopoGetMod`, `GEOS_RemapMod`, `GEOS_UtilsMod`) and `Chem_Shared`
 (`Chem_GroupMod`, `Bundle_IncrementMod`, in the nested `GEOSchem_GridComp`)
-(`GEOSagcm_GridComp/CMakeLists.txt`: `DEPENDENCIES MAPL GEOS_Shared Chem_Shared ESMF::ESMF`;
-`use` lines in `GEOS_AgcmGridComp.F90`). Superdyn depends on `MAPL GEOS_Shared`. `HAS_GIGATRAJ`
+(`GEOSagcm_GridComp/CMakeLists.txt`, commented-out `GEOS_AgcmGridComp.F90` block:
+`DEPENDENCIES MAPL GEOS_Shared Chem_Shared ESMF::ESMF`; `use` lines in `GEOS_AgcmGridComp.F90`; the Held-Suarez
+library, built only when its files are present, lists `DEPENDENCIES MAPL ESMF::ESMF`). Superdyn depends on `MAPL GEOS_Shared`. `HAS_GIGATRAJ`
 (from `BUILD_WITH_GIGATRAJ`) adds the exports `PL, OMEGA, TH, DTDTDYN, ZL` to Agcm and `ZL` to Superdyn.
 
 ## 7. Known traps

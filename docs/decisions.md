@@ -1,14 +1,16 @@
 # GEOSgcm_GridComp: previous architectural decisions
 
 **Audience:** coding agents and developers working in the `GEOSgcm_GridComp` repository.
-**Describes:** the MAPL2 line, branch `develop`.
-**Verified against:** `GEOSgcm_GridComp` @ `45e1f86f` (2026-11-04).
-**Placement:** as in the GEOSgcm fixture (`components.yaml` @ `0f2e0fb`).
+**Describes:** the MAPL3 line, branch `release/MAPL-v3`.
+**Verified against:** `GEOSgcm_GridComp` @ `84f0aae3` (2026-11-06).
+**Placement:** as in the GEOSgcm fixture (`components.yaml` @ `f50622d`).
 Other fixtures (for example GEOSadas, GEOSldas) may place this repository
 elsewhere; paths inside this repository do not change.
 
 Only what is easy to see in the code now. Entries grow over time. Context:
-[`ARCHITECTURE.md`](ARCHITECTURE.md).
+[`ARCHITECTURE.md`](ARCHITECTURE.md). The entries below describe the MAPL2-style
+composites (Gcm, Agcm, Physics), which are not compiled on this line; the last
+entry is specific to this line.
 
 ### Parents run their children explicitly
 - Pattern: the Gcm, Agcm, Physics and Superdyn composites call `ESMF_GridCompRun` on each
@@ -65,6 +67,8 @@ Only what is easy to see in the code now. Entries grow over time. Context:
   (`CMakeLists.txt`; `GEOSagcm_GridComp/CMakeLists.txt`;
   `GEOSagcm_GridComp/GEOSphysics_GridComp/CMakeLists.txt`). Missing child directories become
   generated stub components (`esma_add_library`, fixture `@cmake/esma_support`).  [Verified]
+- On this line the root and Physics `CMakeLists.txt` no longer have the library branch (commented out), and the
+  Agcm directory has a Held-Suarez library branch, taken only when its files are present (see the last entry).
 - Likely reason: the same tree builds in sparse checkouts and in fixtures that omit parts.
   The CI workflow's matrix names GEOSldas as well as GEOSgcm, but passes
   `fixture-repo: GEOS-ESM/GEOSgcm` (`.github/workflows/workflow.yml`), so this is not
@@ -72,8 +76,9 @@ Only what is easy to see in the code now. Entries grow over time. Context:
 
 ### State specs are moving to the ACG
 - Pattern: GWD declares its state in `GWD_StateSpecs.rc` and generates the Fortran include
-  files with `mapl_acg`; the other components of this repository present in a fixture checkout
-  (Agcm, Superdyn, Physics, Moist, Turbulence, Surface, Gcm, ...) call `MAPL_AddImportSpec` /
+  files with `mapl_acg`; on this line Held-Suarez does the same (`GEOShs_GridComp/HS_StateSpecs.rc`,
+  `GEOShs_GridComp/CMakeLists.txt`), while Superdyn declares no specs of its own and
+  the other components of this repository (Agcm, Physics, Moist, Turbulence, Surface, Gcm, ...) call `MAPL_AddImportSpec` /
   `MAPL_AddExportSpec` / `MAPL_AddInternalSpec` by hand
   (`GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSgwd_GridComp/CMakeLists.txt`, `mapl_acg`). Nested
   repositories already use `mapl_acg`: `GEOS_OceanGridComp` (`GEOS_Ocean_StateSpecs.rc`),
@@ -82,3 +87,16 @@ Only what is easy to see in the code now. Entries grow over time. Context:
   reference implementation (`.github/ISSUE_TEMPLATE/type1_acg_migration.md`).  [Verified]
 - Likely reason: a machine-readable state description keeps declarations, pointer fetches and
   documentation in one file, which is why the migration is under way.  [Inferred]
+
+### Port in steps: bypass composites that use non-ported components (MAPL3 line)
+- Pattern: composites whose children are not ported are not compiled; their library blocks are commented out
+  with the comment "Temporarily bypass ... top-level library: ... USE-s non-ported components. Restore the block
+  below when all SUBCOMPONENTS are ported to MAPL3", the unported child directories are commented out of `alldirs`
+  ("not yet ported to MAPL3 - restore when ported"), and a checkout that includes the Held-Suarez files
+  (the fixture's sparse file excludes them) builds a Held-Suarez composite
+  (`GEOS_AgcmSimpleGridComp.F90`) in place of the Agcm; children are configured by per-component YAML files
+  (`superdyn.yaml`, `held-suarez.yaml`, `dyn.yaml`) (`CMakeLists.txt`; `GEOSagcm_GridComp/CMakeLists.txt`;
+  `GEOSagcm_GridComp/GEOSphysics_GridComp/CMakeLists.txt`; `GEOSagcm_GridComp/GEOSsuperdyn_GridComp/CMakeLists.txt`;
+  `GEOSagcm_GridComp/GEOS_AgcmSimpleGridComp.F90`, `SetServices`).  [Verified]
+- Likely reason: let ported components (dynamics, GWD, and Held-Suarez where its files are present) be built
+  and tested by regression tests while the rest is ported.  [Inferred]

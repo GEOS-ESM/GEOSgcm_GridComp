@@ -1,13 +1,15 @@
 # GEOSturbulence_GridComp (Turbulence): architecture
 
 **Audience:** coding agents and developers working on the Turbulence gridded component (vertical diffusion, boundary-layer mixing, shallow-convection mass flux, orographic form drag).
-**Describes:** the MAPL2 line, branch `develop`.
-**Verified against:** `GEOSgcm_GridComp` @ `45e1f86f` (2026-11-04).
-**Placement:** as in the GEOSgcm fixture (`components.yaml` @ `0f2e0fb`; repository `GEOSgcm_GridComp`, mounted at `src/Components/@GEOSgcm_GridComp`): `src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSturbulence_GridComp`.
+**Describes:** the MAPL3 line, branch `release/MAPL-v3`.
+**Verified against:** `GEOSgcm_GridComp` @ `84f0aae3` (2026-11-06).
+**Placement:** as in the GEOSgcm fixture (`components.yaml` @ `f50622d`; repository `GEOSgcm_GridComp`, mounted at `src/Components/@GEOSgcm_GridComp`): `src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSturbulence_GridComp`.
 Other fixtures (for example GEOSadas, GEOSldas) may place this repository elsewhere; paths inside this repository do not change.
 
 Paths below are relative to `GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSturbulence_GridComp/` unless they start with `GEOSagcm_GridComp/`.
 Parent: [Physics](../ARCHITECTURE.md). Siblings: [Moist](../GEOSmoist_GridComp/ARCHITECTURE.md), [GWD](../GEOSgwd_GridComp/ARCHITECTURE.md), [Surface](../GEOSsurface_GridComp/ARCHITECTURE.md). Repository overview: [../../../docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md).
+
+> **Build status on this line:** not built, not ported. On `release/MAPL-v3`, `GEOSagcm_GridComp/GEOSphysics_GridComp/CMakeLists.txt` builds `GEOSchem_GridComp`, `GEOSgwd_GridComp` and `GEOSradiation_GridComp`; this component appears only in a commented-out list ("not yet ported to MAPL3 - restore when ported"). The Physics top-level library (`GEOS_PhysicsGridComp.F90`, which adds this component) is present but not compiled: its `esma_add_library` block is commented out ("Temporarily bypass GEOSphysics top-level library"). Only `GEOS_TurbulenceGridComp.F90` differs from the MAPL2 line, in the `FriendlyToTURBULENCE` reads (ESMF Info instead of `ESMF_AttributeGet`). All other claims are the MAPL2 claims; the code is MAPL2 code, kept for a later port.
 
 ## 1. Purpose
 Turbulence mixes heat, moisture, momentum and every friendly tracer in the vertical. It computes diffusivities (a Louis-type scheme, optionally the Lock entrainment scheme, or the Simplified Higher-Order Closure, SHOC), optionally adds a shallow-convection mass flux (EDMF, eddy-diffusivity mass-flux), adds orographic form drag (the Beljaars scheme), and solves a tridiagonal implicit system for each field (`GEOS_TurbulenceGridComp.F90`, header comment, REFRESH, DIFFUSE).
@@ -15,7 +17,7 @@ It is the vertical-diffusion half of the surface-to-atmosphere exchange. Surface
 The implementation is one large file, `GEOS_TurbulenceGridComp.F90` (about 7000 lines), plus `edmf.F90`, `shoc.F90`, `LockEntrain.F90` and `scm_surface.F90`.
 
 ## 2. Place in the hierarchy
-- Parent is Physics, which adds Turbulence as a leaf child `TURBL` (`GEOSagcm_GridComp/GEOSphysics_GridComp/GEOS_PhysicsGridComp.F90`, SetServices).
+- Parent is Physics, whose (uncompiled on this line) `GEOS_PhysicsGridComp.F90` adds Turbulence as a leaf child `TURBL` (SetServices).
 - No children. SHOC, EDMF and Lock are Fortran modules called directly (`GEOS_TurbulenceGridComp.F90`, `use shoc`, `use edmf_mod`, `use LockEntrain`).
 - `CMakeLists.txt` builds one library with all four extra sources.
 
@@ -46,12 +48,12 @@ Physics calls the phases around Surface (`GEOSagcm_GridComp/GEOSphysics_GridComp
 7. LU factorization of the tridiagonal systems (`VTRILU`) for `S`, `Q`, `V` and the EDMF variants; `VTRISOLVESURF` gives `DKS`, `DKQ`, `DKV` (the response to a unit change of the surface value).
 
 `DIFFUSE` loops over the fields of the import bundle `TR` and, for each, solves the implicit system with the surface value from Surface held fixed:
-- Per field it reads the attributes `DiffuseLike` (`'U'`, `'S'` or `'Q'`, default `'Q'`), `FriendlyToTURBULENCE` (default false) and `WeightedTendency` (default false). The coefficient set is chosen from `DiffuseLike`; the exchange coefficient is `CM` (momentum), `CT` (heat) or `CQ` (moisture).
+- Per field it reads the attributes (on this line `FriendlyToTURBULENCE` through ESMF Info, `ESMF_InfoGetFromHost` and `ESMF_InfoGet(infoh, key='FriendlyToTURBULENCE', ..., default=dflt_false)`, replacing `ESMF_AttributeGet`) `DiffuseLike` (`'U'`, `'S'` or `'Q'`, default `'Q'`), `FriendlyToTURBULENCE` (default false) and `WeightedTendency` (default false). The coefficient set is chosen from `DiffuseLike`; the exchange coefficient is `CM` (momentum), `CT` (heat) or `CQ` (moisture).
 - Only fields named `S`, `U`, `V`, `Q` have a surface value (`<N>HAT` import), a flux (`<N>FLX` export) and a sensitivity (`<N>DFL` export). All other tracers get zero surface flux.
 - The names `S`, `Q`, `QLLS`, `QILS`, `U`, `V` use the EDMF/SHOC matrices (`AKSS`/`YS`, `AKQQ`/`YQV`/`YQL`/`YQI`, `AKUU`/`YU`/`YV`). Other tracers get optional EDMF tracer transport (`MFPARAMS%DOTRACERS`) and then `VTRISOLVE`. `QLLS` and `QILS` skip the mass-flux part when SHOC is on.
 - The flux is `SF = CX*(SG - SX(LM))`. The tendency is `(SX - S)/DT`, multiplied by layer thickness `DP` when `WeightedTendency` is true, and is written into the field `<NAME>IT` of the export bundle `TRI`.
 - If the field is friendly to Turbulence, `S = SX` is written in place, so later stages see the diffused value.
-- Exports `UAFDIFFUSE`, `VAFDIFFUSE`, `SAFDIFFUSE`, `QAFDIFFUSE` hold the state after diffusion. Physics uses them for stage-2 synchronization (Physics document, 3.2).
+- Exports `UAFDIFFUSE`, `VAFDIFFUSE`, `SAFDIFFUSE`, `QAFDIFFUSE` hold the state after diffusion. Physics uses them for stage-2 synchronization (Physics document).
 
 **Run2** (`UPDATE`)
 1. Takes the surface increments from Surface's second phase (imports `SDEL`, `UDEL`, `VDEL`, `QDEL`) and updates `SX = S + DKX*DSG`, where `DKX` is the sensitivity stored in Run1.
@@ -68,7 +70,7 @@ Declared in `GEOS_TurbulenceGridComp.F90`, SetServices. Restart column: *skip* m
 
 | Group | Names | Source (via Physics) |
 |---|---|---|
-| Tracer bundle (skip) | `TR` | filled by Physics Initialize (Physics document, 4.3) |
+| Tracer bundle (skip) | `TR` | filled by Physics Initialize (Physics document) |
 | State (skip) | `PLE`, `ZLE`, `T`, `TH`, `U`, `V`, `AREA`, `PREF`, `VARFLT` | Dynamics; `T`, `TH`, `U`, `V` overwritten by Physics when `SYNCTQ`/`SYNCUV` are on |
 | Moist (skip) | `QV`, `QLTOT`, `QITOT`, `QRTOT`, `QSTOT`, `QGTOT`, `FCLD`, `EIS` | Moist |
 | Moist (restarted) | `WTHV2`, `WQT_DC` | Moist |
@@ -91,7 +93,7 @@ Declared in `GEOS_TurbulenceGridComp.F90`, SetServices. Restart column: *skip* m
 - Restart file names are set in `AGCM.rc`: `MODELATMTURBULENCE_INTERNAL_RESTART_FILE: turb_internal_rst` and `MODELATMTURBULENCE_IMPORT_RESTART_FILE: turb_import_rst` (`src/Applications/@GEOSgcm_App/AGCM.rc.tmpl` in the fixture).
 
 ## 5. Configuration that changes structure
-Resources are read with the component prefix `TURBULENCE_` as well as bare, in that order of preference (`src/Shared/@MAPL/base/MAPL_Resource.F90` in the fixture, label lookup with prefix). Many defaults depend on the number of levels: `LM==72` selects an older tuning (`JASON_*` switches, `PBLHT_OPTION`, `SMTH_HGT`, `C_B`, `CAP_*`) (`GEOS_TurbulenceGridComp.F90`, REFRESH).
+Resources are read with the component prefix `TURBULENCE_` as well as bare, in that order of preference (MAPL2 (MAPL `release/v2`, `base/MAPL_Resource.F90`; not present in this fixture), label lookup with prefix). Many defaults depend on the number of levels: `LM==72` selects an older tuning (`JASON_*` switches, `PBLHT_OPTION`, `SMTH_HGT`, `C_B`, `CAP_*`) (`GEOS_TurbulenceGridComp.F90`, REFRESH).
 
 | Key | Effect |
 |---|---|
@@ -110,14 +112,14 @@ The `TURBULENCE_*` and `EDMF_*`, `SHC_*` values are set in `AGCM.rc.tmpl` in the
 - Modules: `LockEntrain`, `shoc`, `edmf_mod` (`run_edmf`, `mfparams`), `scm_surface`, `GEOS_Mod`.
 - `_CUDA` preprocessor sections exist in the file. *Unverified:* whether any build still uses them.
 - `SOURCE.txt` records a stale origin path (`GEOS-LM_v12-rc3`).
-- Physics supplies everything through connectivity; see the Physics document, 3.2 and 4.3.
+- Physics supplies everything through connectivity; see the Physics document.
 
 ## 7. Known traps
-1. **The `TR` and `TRI` bundles must have the same fields in the same order.** `DIFFUSE` and `UPDATE` index them in parallel and assert equal counts. Physics builds both (Physics document, 4.3). A tracer added to `TR` needs an `<NAME>IT` export in Physics; if the export is missing, the field is empty and the tendency is skipped.
+1. **The `TR` and `TRI` bundles must have the same fields in the same order.** `DIFFUSE` and `UPDATE` index them in parallel and assert equal counts. Physics builds both (Physics document). A tracer added to `TR` needs an `<NAME>IT` export in Physics; if the export is missing, the field is empty and the tendency is skipped.
 2. **`Q` is called `Q` in `TR` but `QV` in the Moist state.** The tendency name is `QIT` in the bundle and `QVIT` in the Physics export; the special case is in Physics Initialize (`GEOS_PhysicsGridComp.F90`, Initialize, `case ('Q')`). `UPDATE` compares the name with `'QV'` as well, which seems redundant (`GEOS_TurbulenceGridComp.F90`, UPDATE). *Inferred:* a leftover from an earlier naming.
 3. **Surface values exist for four names only.** A new tracer that needs a surface flux must be added in `DIFFUSE` and `UPDATE` (the `select case ('S','U','V','Q')`) and in Physics.
 4. **Run2 must follow Surface phase 2.** The `*DEL` imports are valid only after Surface has run its second phase; Physics couples them with `MAPL_AddConnectivity` (`GEOS_PhysicsGridComp.F90`, SetServices).
-5. **Imports `T`, `TH`, `U`, `V` are overwritten by Physics.** Physics terminates their connectivity and fills them with the state after Moist (stage 1) and after diffusion (stage 2) (Physics document, 3.2). Turbulence reads them unchanged during a step.
+5. **Imports `T`, `TH`, `U`, `V` are overwritten by Physics.** Physics terminates their connectivity and fills them with the state after Moist (stage 1) and after diffusion (stage 2) (Physics document). Turbulence reads them unchanged during a step.
 6. **Frictional heating is not applied here.** `INTDIS`, `TOPDIS` are exports; if Turbulence runs outside Physics, heating is lost.
 7. **Diffusivity coefficients are cached across steps** and recomputed only when the alarm rings. Changing a resource at run time has no effect until then. The surface sensitivities (`DKS`, `DKQ`, `DKV`) are recomputed at the same time.
 8. **Run2 uses `RUN_DT:`, and the alarm uses `DT:`** (default `RUN_DT`). If `DT:` is set to a multiple of `RUN_DT`, only `REFRESH` is supercycled (`GEOS_TurbulenceGridComp.F90`, RUN2, `ESMF_ConfigGetAttribute ... RUN_DT`).
@@ -144,7 +146,7 @@ The `TURBULENCE_*` and `EDMF_*`, `SHC_*` values are set in `AGCM.rc.tmpl` in the
 ## 9. Observations (noted, not fixed) and open questions
 1. **Stale header comment.** The header describes `MY_STEP` and `ACCUMINT`, but no code uses them (`GEOS_TurbulenceGridComp.F90`, header comment). *Inferred:* the refresh control is now the generic `RUNALARM`.
 2. **Descriptions say Initialize and Finalize are inherited from the generic component**, which is still true. The header's Run1 and Run2 descriptions predate the SHOC and EDMF additions.
-3. **`QT3` is commented out of the `TR` additions** while `TKESHOC` and `QT2` are included (Physics document, 4.3). *Unverified:* intent.
+3. **`QT3` is commented out of the `TR` additions** while `TKESHOC` and `QT2` are included (Physics document). *Unverified:* intent.
 4. **Redundant `'QV'` test in `UPDATE`** (trap 2).
 5. **`SOURCE.txt` refers to an old path.**
 6. **Different defaults for `LM==72`.** The tuning for 72 levels is chosen from `LM`, not from a named configuration, so a 72-level run with a different intended tuning needs explicit keys.
