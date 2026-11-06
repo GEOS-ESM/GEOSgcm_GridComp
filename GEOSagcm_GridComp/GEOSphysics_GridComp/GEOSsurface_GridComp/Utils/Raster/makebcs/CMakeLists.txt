@@ -15,6 +15,12 @@ set_source_files_properties(mkMITAquaRaster.F90 PROPERTIES COMPILE_FLAGS "${BYTE
 
 esma_add_library(${this} SRCS ${srcs} DEPENDENCIES MAPL GEOS_SurfaceShared GEOS_LandShared ESMF::ESMF NetCDF::NetCDF_Fortran OpenMP::OpenMP_Fortran)
 
+# NAG: the NetCDF F77 API is called with scalars and arrays of varying shape.
+# PUBLIC because NAG also checks these calls when compiling users of the modules.
+if (CMAKE_Fortran_COMPILER_ID MATCHES "NAG")
+  target_compile_options(${this} PUBLIC $<$<COMPILE_LANGUAGE:Fortran>:-wmismatch=NF_GET_VARA_DOUBLE,NF_GET_VARA_REAL,NF_GET_VARA_INT,NF_PUT_VARA_DOUBLE,NF_PUT_VARA_REAL,NF_PUT_VARA_INT,NF_GET_ATT_INT,NF_GET_ATT_REAL,NF_GET_ATT_DOUBLE,NF_DEF_VAR>)
+endif()
+
 # MAT NOTE This should use find_package(ZLIB) but Baselibs currently
 #     confuses find_package(). This is a hack until Baselibs is
 #     reorganized.

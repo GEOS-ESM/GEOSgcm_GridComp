@@ -7,6 +7,9 @@ program SaltImpConverter
   use netcdf
   use MAPL
   use mk_restarts_getidsMod, only: ReadTileFile_RealLatLon
+#ifdef __NAG_COMPILER_RELEASE
+  use mk_restarts_getidsMod, only: RecordEndPos
+#endif
   use gFTL_StringVector
   implicit none
 
@@ -17,13 +20,13 @@ program SaltImpConverter
   character*256 :: InIntRestart
   character*256 :: arg
 
-  integer :: i, rc, jc, iostat, iargc, n, mask,j,k,otiles,nsubtiles,l,itiles,nwords
+  integer :: i, rc, jc, iostat, n, mask,j,k,otiles,nsubtiles,l,itiles,nwords
   real, allocatable :: varIn(:),varOut(:)
   real, allocatable :: TW(:),SW(:)
   real*8, allocatable :: varInR8(:),varOutR8(:)
 
   integer, parameter   :: zoom=1
-#ifndef __GFORTRAN__
+#if !defined(__GFORTRAN__) && !defined(__NAG_COMPILER_RELEASE)
   integer              :: ftell
   external             :: ftell
 #endif
@@ -94,17 +97,17 @@ program SaltImpConverter
     'TS_FOUND'       &
       /
 
-  I = iargc()
+  I = command_argument_count()
 
   if(I /= 3) then
      print *, "Wrong Number of arguments: ", i
      print *, trim(Usage)
-     call exit(1)
+     error stop 1
   end if
 
-  call getarg(1,InTileFile)
-  call getarg(2,InImpRestart)
-  call getarg(3,InIntRestart)
+  call get_command_argument(1,InTileFile)
+  call get_command_argument(2,InImpRestart)
+  call get_command_argument(3,InIntRestart)
 
   InRestart = trim(InImpRestart)
 
@@ -243,7 +246,11 @@ program SaltImpConverter
        read (50,iostat=rc)
        if( rc.eq.0 ) then
            ntot = ntot + 1
+#ifdef __NAG_COMPILER_RELEASE
+           epos = RecordEndPos(50, bpos)          ! ending position of file pointer
+#else
            epos = ftell(50)          ! ending position of file pointer
+#endif
          nwords = (epos-bpos)/4-2    ! record size (in 4 byte words;
          write(6,100) ntot, nwords
          if( ntot.eq.1 ) then

@@ -15,7 +15,7 @@ program mk_CiceRestart
   character*128 :: InRestart
   character*128 :: arg
 
-  integer :: i, iargc, n,j, otiles,k, itiles
+  integer :: i, n,j, otiles,k, itiles
   integer, pointer  :: Lono(:), Lato(:), Id(:)
   integer, pointer  :: Loni(:), Lati(:)
   real*4, allocatable :: var4(:)
@@ -25,17 +25,17 @@ program mk_CiceRestart
 
 !---------------------------------------------------------------------------
 
-  I = iargc()
+  I = command_argument_count()
 
   if(I /= 3) then
      print *, "Wrong Number of arguments: ", i
      print *, trim(Usage)
-     call exit(1)
+     error stop 1
   end if
 
-  call getarg(1,OutTileFile)
-  call getarg(2,InTileFile)
-  call getarg(3,InRestart)
+  call get_command_argument(1,OutTileFile)
+  call get_command_argument(2,InTileFile)
+  call get_command_argument(3,InRestart)
 
 ! Read Output Tile File .til file
 ! to get the index into the pfafsttater table

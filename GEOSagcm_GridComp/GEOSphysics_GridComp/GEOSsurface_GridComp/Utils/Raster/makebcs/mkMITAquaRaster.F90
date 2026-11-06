@@ -9,7 +9,6 @@
       implicit none
 
       integer, parameter      :: IUNIT  = 11,   OUNIT = 12
-      integer                 :: iargc
 
       INTEGER                 :: NC
       INTEGER                 :: NX, NY
@@ -110,7 +109,7 @@
    if(I < 2 .or. i > 7) then
       print *, "Wrong Number of arguments: ", i
       print *, trim(Usage)
-      call exit(1)
+      error stop 1
    end if
 
    nxt = 1
@@ -137,7 +136,7 @@
          Verb  = .true.
       case default
          print *, trim(Usage)
-         call exit(1)
+         error stop 1
       end select
       nxt = nxt + 1
       call get_command_argument(nxt,arg)
@@ -155,7 +154,7 @@
       inquire(file=trim(GridDir)//'/tile003.mitgrid', size=filesize, iostat=ios)
       if (ios /= 0) then
          print *, 'Error opening file: ', trim(GridDir)//'/tile003.mitgrid'
-         call exit(1)
+         error stop 1
       end if
 
 !      print *,'file size=',filesize
@@ -168,7 +167,7 @@
 
       if(k==21) then
          print *, 'Bad GMIT grid file', trim(GridDir)//'/tile003.mitgrid'
-         call exit(1)
+         error stop 1
       end if
 
       nc  = nint(sqrt(length/real(k,kind=REAL64)))
@@ -183,7 +182,7 @@
       inquire(file=trim(GridDir)//'/tile001.mitgrid', size=filesize, iostat=ios)
       if (ios /= 0) then
          print *, 'Error opening file: ', trim(GridDir)//'/tile001.mitgrid'
-         call exit(1)
+         error stop 1
       end if
 
 !      print *,'file size=',filesize
@@ -196,7 +195,7 @@
          isLLC = .true.
       else
          print *, 'ERROR: Unknown grid type'
-         call exit(1)
+         error stop 1
       end if
 
       if(Verb) then
@@ -368,6 +367,6 @@
    call LRRasterize(RASTERFILE,XV,YV,nc=ncol,nr=nrow,&
                     SurfaceType=0,Verb=Verb)
 
-   call exit(0)
+   stop
 
  end program MAIN

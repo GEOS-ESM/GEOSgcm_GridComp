@@ -976,8 +976,8 @@ contains
     
     integer,         parameter :: LAKETYPE_UNDEF = -9999
 
-    integer(kind=4), parameter :: nc_10          =  1200
-    integer(kind=4), parameter :: nr_10          =  1200
+    integer,         parameter :: nc_10          =  1200
+    integer,         parameter :: nr_10          =  1200
 
     ! -------------------------------------------------------
     
@@ -1275,9 +1275,9 @@ contains
     i_sib = nx
     j_sib = ny
     
-    dx  = 360._8/i_sib
-    dy  = 180._8/j_sib
-    d2r = PI/180._8
+    dx  = 360._REAL64/i_sib
+    dy  = 180._REAL64/j_sib
+    d2r = PI/180._REAL64
 
     open (10,file=trim(gtopo30),form='unformatted',status='old')
     read (10) q0
@@ -1403,7 +1403,7 @@ contains
        
        ! latitude and area of raster grid cells associated with lat index j
        
-       lats     = -90._8 + (j - 0.5_8)*dy
+       lats     = -90._REAL64 + (j - 0.5_REAL64)*dy
         
        ! preserve zero-diff
        !area_rst = (sin(d2r*(lats+0.5*dy)) -sin(d2r*(lats-0.5*dy)))*(dx*d2r)
@@ -6292,10 +6292,10 @@ contains
        sum=0. 
        if(ipj.eq.0) sum=1. 
        do k=1,nr 
-          sum=sum+dfloat(k)**ipj 
+          sum=sum+dble(k)**ipj 
        end do
        do k=1,nl 
-          sum=sum+dfloat(-k)**ipj 
+          sum=sum+dble(-k)**ipj 
        end do
        mm=min(ipj,2*m-ipj) 
        do imj=-mm,mm,2 
@@ -6341,8 +6341,9 @@ contains
   Subroutine LUDCMP(A,N,NP,INDX,D,CODE)
     INTEGER, PARAMETER :: NMAX=100
     REAL, PARAMETER :: TINY=1E-12
+    INTEGER NP,N
     real  AMAX,DUM, SUM, A(NP,NP),VV(NMAX)
-    INTEGER CODE, D, INDX(N),NP,N,I,J,K,IMAX
+    INTEGER CODE, D, INDX(N),I,J,K,IMAX
 
     D=1; CODE=0
 

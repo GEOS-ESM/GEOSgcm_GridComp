@@ -3692,8 +3692,10 @@ end if
         if(associated(ICESMB_ISSM)) ICESMB_ISSM = ICESMB_ISSM + (ICESMB-ICESMB_ISSM)/(ISSM_NSTEPS+1)
         ISSM_NSTEPS = ISSM_NSTEPS + 1 ! accumulated timesteps since last ISSM run
 
+#ifdef HAVE_ISSM
 		! update internal state
 		ICESMB_IN(:) = ICESMB_ISSM(:)
+#endif
     end if
 ! Update snow and landice albedos to anticipate
 !   next radiation calculation

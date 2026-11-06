@@ -25,6 +25,10 @@ foreach (src ${exe_srcs})
     TARGET ${exe}
     SOURCES ${src}
     LIBS MAPL GFTL_SHARED::gftl-shared GEOS_SurfaceShared GEOSroute_GridComp GEOS_LandShared GEOS_CatchCNShared ${this})
+  # NAG: the NetCDF F77 API is called with scalars and arrays of varying shape
+  if (CMAKE_Fortran_COMPILER_ID MATCHES "NAG")
+    target_compile_options(${exe} PRIVATE $<$<COMPILE_LANGUAGE:Fortran>:-wmismatch=NF_DEF_VAR>)
+  endif ()
 endforeach ()
 
 foreach (src ${exe_srcs})
