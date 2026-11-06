@@ -441,15 +441,16 @@ program mkOverlaySimple
        count0 = count1
     end if
 
-! Write .til and .rst files
+! Write .til and .rst files. Preserve the native land-ID bound
+! carried by the second input raster.
 
     if(Verb) print *, 'Writing til file...'
     if(.not.Merge) then
        call WriteTiling(TilFile,(/Grid1,Grid2/), (/nx1,nx2/),(/ny1,ny2/),(/ip1,ip2/), &
-                     nx, ny,    iTable(:,:ip),rTable(:5,:ip),Dozip, Verb)
+                     nx, ny,    iTable(:,:ip),rTable(:5,:ip),Dozip, Verb, N_LandUnits=nf2)
     else
        call WriteTiling(TilFile,(/Overlay/),(/nx1/), (/ny1/), (/ip1/),    &
-                     nx, ny,    iTable(:,:ip),rTable(:4,:ip),Dozip, Verb)
+                     nx, ny,    iTable(:,:ip),rTable(:4,:ip),Dozip, Verb, N_LandUnits=nf2)
     end if
 
     if(Verb) then

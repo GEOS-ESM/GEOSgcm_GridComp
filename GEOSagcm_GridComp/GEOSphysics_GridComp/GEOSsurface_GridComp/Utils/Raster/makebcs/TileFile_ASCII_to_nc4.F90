@@ -2,12 +2,14 @@
 ! Utility program that converts ASCII-formatted *.til file and catchment.def file into a single nc4 file
 !
 ! Usage TileFile_ASCII-to-nc4.x tile_file catchmentdef_file
+!  LIS: TileFile_ASCII_to_nc4.x tile_file --lis native_im native_jm bounds_file
 !
 ! wjiang, rreichle, 29 Nov 2024
 
 program TileFile_ASCII_to_nc4
   use, intrinsic :: iso_fortran_env, only: REAL64 
   use MAPL,                          only: MAPL_WriteTilingNC4, MAPL_ease_extent 
+  use netcdf
   use LogRectRasterizeMod,           only: MAPL_UNDEF_R8
   
   implicit none
@@ -29,7 +31,10 @@ program TileFile_ASCII_to_nc4
   
   integer                        :: n_tile, n_grid, n_lon1, n_lat1, n_cat, tmp_in1, tmp_in2
   integer                        :: n_lon2, n_lat2, nx, ny, num, ll, maxcat 
-  logical                        :: file_exists
+  logical                        :: file_exists, lis_mode
+  integer                        :: lis_im, lis_jm
+  character(512)                 :: bounds_file
+
 
   ! ----------------------------------------------------------------------
   !
@@ -39,7 +44,11 @@ program TileFile_ASCII_to_nc4
   tile_file  = trim(arg)
   CALL get_command_argument(2, arg)
   catchmentdef_file = trim(arg)
+  lis_mode = trim(arg) == '--lis'
   
+  if (lis_mode) then
+     call read_lis_arguments(lis_im, lis_jm, bounds_file)
+  end if  
   ! ----------------------------------------------------------------------
   !
   ! open and read *.til ASCII file
@@ -93,7 +102,26 @@ program TileFile_ASCII_to_nc4
 
   endif
 
+  if (.not. lis_mode .and. N_grid == 2) then
+     if (index(gName2, 'LIS') /= 0) then
+        error stop 'LIS geometry requires explicit --lis conversion'
+     end if
+  end if
+  
+  if (lis_mode) then
+  
+     if (N_grid /= 2 .or. index(gName2, 'LIS') == 0) then
+        error stop 'Expected two-grid LIS geometry'
+     end if
+  
+     if (maxcat /= lis_im * lis_jm) then
+        error stop 'ASCII native land-ID bound does not match LIS dimensions'
+     end if
+  
+  end if  
+
   allocate(iTable(N_tile,0:7))
+  if (lis_mode) iTable = 0
   allocate(rTable(N_tile,10))
   
   rTable = MAPL_UNDEF_r8  
@@ -149,7 +177,8 @@ program TileFile_ASCII_to_nc4
   !
   ! open and read catchment.def ASCII file
 
-  inquire( file= trim(catchmentdef_file), exist=file_exists)
+  file_exists = .false.
+  if (.not. lis_mode) inquire(file=trim(catchmentdef_file),exist=file_exists)
 
   if (file_exists) then
 
@@ -171,6 +200,9 @@ program TileFile_ASCII_to_nc4
      close(unit)
 
   endif
+  if (lis_mode) then
+     call read_lis_bounds(bounds_file, rTable, iTable, maxcat)
+  end if
 
   ! assemble name of nc4 file
 
@@ -184,8 +216,136 @@ program TileFile_ASCII_to_nc4
   else
      call MAPL_WriteTilingNC4(filenameNc4, [gName1, gName2], [n_lon1, n_lon2], [n_lat1, n_lat2], nx, ny, iTable, rTable, N_PfafCat=maxcat) 
   endif
-  
+  if (lis_mode) call label_lis_geometry(filenameNC4,iTable(:,0),iTable(:,4),lis_im,lis_jm)
+
 contains
+
+  subroutine nc_check(status, context)
+  
+    integer, intent(in)        :: status
+    character(*), intent(in)   :: context
+  
+    if (status /= nf90_noerr) then
+       write(*, '(A)') trim(context)//': '//trim(nf90_strerror(status))
+       error stop 'Cannot finish LIS geometry NetCDF'
+    end if
+  
+  end subroutine nc_check  
+
+  subroutine label_lis_geometry(filename, typ, source_id, im, jm)
+
+    character(*), intent(in) :: filename
+    integer, intent(in) :: typ(:), source_id(:), im, jm
+
+    integer :: ncid, legacy_var, ndims, tile_count
+    integer :: dimids(nf90_max_var_dims)
+    integer :: lis_index_var, lis_i_var, lis_j_var
+    integer, allocatable :: lis_index(:), lis_i(:), lis_j(:)
+
+    ! Keep MAPL's existing geometry schema for compatibility and add
+    ! explicit LIS indices. Legacy pfaf_index and N_PfafCat are
+    ! compatibility slots only, not Pfafstetter hydrological identifiers.
+
+    call nc_check( &
+         nf90_open(trim(filename), nf90_write, ncid), 'open converted geometry')
+
+    call nc_check( &
+         nf90_inq_varid(ncid, 'pfaf_index', legacy_var), 'MAPL geometry pfaf_index slot')
+
+    call nc_check( &
+         nf90_inquire_variable(ncid, legacy_var, ndims=ndims, dimids=dimids), 'tile dimension')
+
+    if (ndims /= 1) error stop 'Unexpected MAPL geometry index rank'
+
+    call nc_check( &
+         nf90_inquire_dimension(ncid, dimids(1), len=tile_count), 'tile count')
+
+    if (tile_count /= size(typ)) error stop 'MAPL geometry tile count mismatch'
+
+    call nc_check(nf90_redef(ncid), 'metadata definition')
+
+    call nc_check( &
+         nf90_put_att(ncid, nf90_global, 'land_discretization', 'LIS'), 'land_discretization')
+
+    call nc_check( &
+         nf90_put_att(ncid, nf90_global, 'geometry_only', 1), 'geometry_only')
+
+    call nc_check( &
+         nf90_put_att(ncid, nf90_global, 'N_LIS_IDs', im * jm), 'N_LIS_IDs')
+
+    call nc_check( &
+         nf90_put_att(ncid, nf90_global, 'LIS_im', im), 'LIS_im')
+
+    call nc_check( &
+         nf90_put_att(ncid, nf90_global, 'LIS_jm', jm), 'LIS_jm')
+
+    call nc_check( &
+         nf90_put_att(ncid, nf90_global, 'land_id_convention', &
+         'LIS_ID=(row-1)*LIS_im+col; one-based; rows south-to-north, columns west-to-east'), &
+         'ID convention')
+
+    call nc_check( &
+         nf90_put_att(ncid, nf90_global, 'routing_warning', &
+         'Not Pfafstetter geometry. Do not use with GEOS Catchment/ROUTE without a separate mapping.'), &
+         'routing warning')
+
+    call nc_check( &
+         nf90_put_att(ncid, nf90_global, 'legacy_Pfaf_metadata', &
+         'For land only, pfaf_index and N_PfafCat are compatibility slots for LIS IDs/count; use lis_index.'), &
+         'legacy note')
+
+    call nc_check( &
+         nf90_put_att(ncid, nf90_global, 'elevation_note', &
+         'Tile elevation is undefined; LIS supplies land parameters independently.'), &
+         'elevation note')
+
+    call nc_check( &
+         nf90_put_att(ncid, legacy_var, 'long_name', &
+         'Legacy source-index slot: native LIS cell ID on land; NOT a Pfafstetter index'), &
+         'legacy variable label')
+
+    call nc_check( &
+         nf90_def_var(ncid, 'lis_index', nf90_int, dimids(1:1), lis_index_var), 'lis_index')
+
+    call nc_check( &
+         nf90_def_var(ncid, 'lis_i', nf90_int, dimids(1:1), lis_i_var), 'lis_i')
+
+    call nc_check( &
+         nf90_def_var(ncid, 'lis_j', nf90_int, dimids(1:1), lis_j_var), 'lis_j')
+
+    call nc_check( &
+         nf90_put_att(ncid, lis_index_var, 'long_name', &
+         'Native LIS cell ID; zero for nonland tiles'), 'lis_index name')
+
+    call nc_check( &
+         nf90_put_att(ncid, lis_i_var, 'long_name', &
+         'One-based LIS longitude column; zero for nonland'), 'lis_i name')
+
+    call nc_check( &
+         nf90_put_att(ncid, lis_j_var, 'long_name', &
+         'One-based LIS latitude row; zero for nonland'), 'lis_j name')
+
+    call nc_check(nf90_enddef(ncid), 'end definitions')
+
+    allocate(lis_index(size(typ)), lis_i(size(typ)), lis_j(size(typ)))
+
+    lis_index = 0
+    lis_i = 0
+    lis_j = 0
+
+    where (typ == 100)
+       lis_index = source_id
+       lis_i = modulo(source_id - 1, im) + 1
+       lis_j = (source_id - 1) / im + 1
+    end where
+
+    call nc_check(nf90_put_var(ncid, lis_index_var, lis_index), 'write lis_index')
+    call nc_check(nf90_put_var(ncid, lis_i_var, lis_i), 'write lis_i')
+    call nc_check(nf90_put_var(ncid, lis_j_var, lis_j), 'write lis_j')
+
+    call nc_check(nf90_close(ncid), 'close LIS geometry')
+
+  end subroutine label_lis_geometry
   
   subroutine split(input_line,array,delimiters,order,nulls)
      
@@ -298,7 +458,78 @@ contains
        endif
     enddo
   end subroutine split
+
+  subroutine read_lis_arguments(im, jm, bounds_file)
   
+    integer, intent(out)          :: im
+    integer, intent(out)          :: jm
+    character(*), intent(out)     :: bounds_file
+  
+    integer                       :: status
+    character(512)                :: argument
+  
+    if (command_argument_count() /= 5) then
+       error stop 'LIS conversion requires native_im native_jm bounds_file'
+    end if
+  
+    call get_command_argument(3, argument)
+    read(argument, *, iostat=status) im
+  
+    if (status /= 0) then
+       error stop 'Invalid LIS longitude count'
+    end if
+  
+    call get_command_argument(4, argument)
+    read(argument, *, iostat=status) jm
+  
+    if (status /= 0) then
+       error stop 'Invalid LIS latitude count'
+    end if
+  
+    if (im <= 0 .or. jm <= 0) then
+       error stop 'Invalid LIS dimensions'
+    end if
+  
+    call get_command_argument(5, bounds_file)
+  
+  end subroutine read_lis_arguments  
+
+  subroutine read_lis_bounds(filename, rTable, iTable, max_land_id)
+  
+    character(*), intent(in)       :: filename
+    real(REAL64), intent(inout)    :: rTable(:,:)
+    integer, intent(in)            :: iTable(:,0:)
+    integer, intent(in)            :: max_land_id
+  
+    integer                        :: unit
+    integer                        :: n_tile_bounds
+    integer                        :: i
+  
+    open(newunit=unit, file=trim(filename), status='old', action='read')
+  
+    read(unit, *) n_tile_bounds
+  
+    if (n_tile_bounds /= size(iTable, 1)) then
+       error stop 'Tile bounds count mismatch'
+    end if
+  
+    do i = 1, size(iTable, 1)
+       read(unit, *) rTable(i,6:9)
+    end do
+  
+    close(unit)
+  
+    do i = 1, size(iTable, 1)
+  
+       if (iTable(i,0) == 100) then
+          if (iTable(i,4) < 1 .or. iTable(i,4) > max_land_id) then
+             error stop 'Invalid LIS ID in ASCII tiling'
+          end if
+       end if
+  
+    end do
+  
+  end subroutine read_lis_bounds  
 end program
 
 ! ======================= EOF ====================================================
