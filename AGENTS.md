@@ -32,11 +32,11 @@ Read `docs/ARCHITECTURE.md` first, then the file for the directory you touch.
 
 Not yet documented: Ogcm composite, Wgcm, DataAtm, mkiau, Gigatraj (see `docs/ARCHITECTURE.md` section 3).
 Nested repositories (after `mepo clone`; paths in section 6 of `docs/ARCHITECTURE.md`):
-[Chemistry](GEOSagcm_GridComp/GEOSphysics_GridComp/@GEOSchem_GridComp/AGENTS.md),
-[GOCART](GEOSagcm_GridComp/GEOSphysics_GridComp/@GEOSchem_GridComp/@GOCART/docs/ARCHITECTURE.md),
-[Radiation](GEOSagcm_GridComp/GEOSphysics_GridComp/@GEOSradiation_GridComp/AGENTS.md),
-[FVdycoreCubed](GEOSagcm_GridComp/GEOSsuperdyn_GridComp/@FVdycoreCubed_GridComp/AGENTS.md),
-[Ocean](GEOSogcm_GridComp/@GEOS_OceanGridComp/AGENTS.md).
+Chemistry (`GEOSagcm_GridComp/GEOSphysics_GridComp/@GEOSchem_GridComp/AGENTS.md` in the fixture),
+GOCART (`GEOSagcm_GridComp/GEOSphysics_GridComp/@GEOSchem_GridComp/@GOCART/docs/ARCHITECTURE.md` in the fixture),
+Radiation (`GEOSagcm_GridComp/GEOSphysics_GridComp/@GEOSradiation_GridComp/AGENTS.md` in the fixture),
+FVdycoreCubed (`GEOSagcm_GridComp/GEOSsuperdyn_GridComp/@FVdycoreCubed_GridComp/AGENTS.md` in the fixture),
+Ocean (`GEOSogcm_GridComp/@GEOS_OceanGridComp/AGENTS.md` in the fixture).
 
 ## Rules
 
