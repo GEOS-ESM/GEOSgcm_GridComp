@@ -357,6 +357,50 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
+         SHORT_NAME = 'QIBKG',                                     &
+         LONG_NAME  = 'specific_humidity_background',      &
+         UNITS      = 'kg kg-1',                                   &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( gc,                                  &
+         SHORT_NAME = 'QIANA',                                     &
+         LONG_NAME  = 'specific_humidity_after_analysis',      &
+         UNITS      = 'kg kg-1',                                   &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( gc,                                  &
+         SHORT_NAME = 'QICON',                                     &
+         LONG_NAME  = 'specific_humidity_after_constraint',      &
+         UNITS      = 'kg kg-1',                                   &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                                  &
+         SHORT_NAME = 'QLBKG',                                     &
+         LONG_NAME  = 'specific_humidity_background',      &
+         UNITS      = 'kg kg-1',                                   &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( gc,                                  &
+         SHORT_NAME = 'QLANA',                                     &
+         LONG_NAME  = 'specific_humidity_after_analysis',      &
+         UNITS      = 'kg kg-1',                                   &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( gc,                                  &
+         SHORT_NAME = 'QLCON',                                     &
+         LONG_NAME  = 'specific_humidity_after_constraint',      &
+         UNITS      = 'kg kg-1',                                   &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'DPBKG',                                     &
          LONG_NAME  = 'delta_pressure_background',      &
          UNITS      = 'Pa',                                   &
@@ -2263,6 +2307,12 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                 call MAPL_GetPointer ( EXPORT, ptr3d, 'QVBKG', rc=STATUS )
                 VERIFY_(STATUS)
                 if(associated(ptr3d)) ptr3d = Q
+                call MAPL_GetPointer ( EXPORT, ptr3d, 'QIBKG', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(ptr3d)) ptr3d = QILS + QICN
+                call MAPL_GetPointer ( EXPORT, ptr3d, 'QLBKG', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(ptr3d)) ptr3d = QLLS + QLCN
                 call MAPL_GetPointer ( EXPORT, ptr3d, 'DPBKG', rc=STATUS )
                 VERIFY_(STATUS)
                 if(associated(ptr3d)) ptr3d = DP
@@ -2318,6 +2368,12 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                 call MAPL_GetPointer ( EXPORT, ptr3d, 'QVANA', rc=STATUS )
                 VERIFY_(STATUS)
                 if(associated(ptr3d)) ptr3d = Q
+                call MAPL_GetPointer ( EXPORT, ptr3d, 'QIANA', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(ptr3d)) ptr3d = QILS + QICN
+                call MAPL_GetPointer ( EXPORT, ptr3d, 'QLANA', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(ptr3d)) ptr3d = QLLS + QLCN
                 call MAPL_GetPointer ( EXPORT, ptr3d, 'DPANA', rc=STATUS )
                 VERIFY_(STATUS)
                 if(associated(ptr3d)) ptr3d = DP_ANA
@@ -2488,6 +2544,14 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                 call MAPL_GetPointer ( EXPORT, ptr3d, 'QVCON', rc=STATUS )
                 VERIFY_(STATUS)
                 if(associated(ptr3d)) ptr3d = Q
+
+                call MAPL_GetPointer ( EXPORT, ptr3d, 'QICON', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(ptr3d)) ptr3d = QILS + QICN
+
+                call MAPL_GetPointer ( EXPORT, ptr3d, 'QLCON', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(ptr3d)) ptr3d = QLLS + QLCN
 
                 DQVCON = Q           - DQVCON
                 DQVANA = Q           - DQVANA
