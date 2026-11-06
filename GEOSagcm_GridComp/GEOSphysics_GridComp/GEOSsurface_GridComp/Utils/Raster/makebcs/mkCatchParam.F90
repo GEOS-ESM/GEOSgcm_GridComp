@@ -47,6 +47,7 @@ PROGRAM mkCatchParam
   character*1          :: opt
   character*128        :: PEATSOURCE   = ''
   character*3          :: VEGZSOURCE   = 'D&S'
+  character*4          :: year = '' 
   integer              :: II, JJ, Type
   integer              :: I, J, command_argument_count, nxt
   real*8               :: dx, dy, lon0
@@ -73,7 +74,7 @@ PROGRAM mkCatchParam
   integer, pointer     :: tile_id(:,:)
   real, allocatable    :: tile_lat(:), tile_lon(:), min_lon(:), max_lon(:), min_lat(:), max_lat(:)
   real                 :: minlon, minlat, maxlon, maxlat, elev
-  integer              :: tindex1, pfaf1, n, status
+  integer              :: tindex1, pfaf1, n, status, yr
 
   ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
   !
@@ -462,7 +463,7 @@ PROGRAM mkCatchParam
      endif
   endif
 
-  if ((LAIBCS == 'MODGEO').or.(LAIBCS == 'MODIS').or.(MODALB == 'MODIS2')) then
+  if ((LAIBCS == 'MODGEO').or.(LAIBCS == 'MODIS').or.(MODALB == 'MODIS2').or.(LAIBCS == 'MODIS_TS')) then
      ! allocate (maparc30    (1:43200,1:21600))
      call system_clock(clock1)
      call create_mapping (nc,nr,43200,21600,maparc30, n_land,  tile_id)
@@ -516,6 +517,16 @@ PROGRAM mkCatchParam
         lai_name = 'MODIS_8-DayClim/MODIS_'
         call hres_lai_no_gswp (43200,21600,maparc30,lai_name, n_land, tile_lon, tile_lon) 
      endif
+
+     if (trim(LAIBCS) == 'MODIS_TS') then
+        lai_name = 'MODIS_8-DayClim/MODIS_'
+        call hres_lai_no_gswp (43200,21600,maparc30,lai_name, n_land, tile_lon, tile_lon, version="v5") 
+        do yr=2003,2025
+           write(year, '(I4)') yr
+           lai_name = 'MODIS_8-DayTimeSeries/'//trim(year)//'/MODIS_'
+           call hres_lai_no_gswp (43200,21600,maparc30,lai_name, n_land, tile_lon, tile_lat, version="v5", year=yr)  
+        enddo 
+    endif
 
      if (trim(LAIBCS) == 'MODGEO') then
         lai_name = 'MODIS_8-DayClim/MODIS_'
