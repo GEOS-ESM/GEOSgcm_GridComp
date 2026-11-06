@@ -189,6 +189,13 @@ loopk:      do k=k22(i)+1,ktop(i)+1
                     if(USE_TRACER_SCAVEN==2) then
 
                        ! Use GEOS-Chem formulation for GEOS-Chem species
+                       ! TODO (bug, same in MAPL2; GEOSgcm_GridComp#1565): when use_gocart is .false., kc_scaled, ftemp and
+                       ! this_w_upd are not set before fsol uses them (uninitialised, or stale from an
+                       ! earlier tracer/level); the missing else presumably should call
+                       ! compute_ki_gcc_aerosol, which is never called. Also ftemp_threshold has no
+                       ! effect: ftemp is overwritten with fscav right after the threshold check. Unreachable in
+                       ! MAPL3 (use_gcc_washout is always .false., see CNV_Tracer_Type in
+                       ! Process_Library.F90)
                        if ( is_gcc ) then
                            if ( CNV_Tracers(ispc)%use_gocart ) then
                               kc_scaled  = kc
