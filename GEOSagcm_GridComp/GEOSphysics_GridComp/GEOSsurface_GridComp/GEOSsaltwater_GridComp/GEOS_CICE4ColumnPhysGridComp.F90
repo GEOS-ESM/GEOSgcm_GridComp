@@ -1767,7 +1767,8 @@ module GEOS_CICE4ColumnPhysGridComp
     call MAPL_GetResource (SCF, mystate%CHOOSEMOSFC, label='CHOOSEMOSFC:', DEFAULT=1, _RC )
     call ESMF_ConfigDestroy      (SCF, _RC)
     wrap%ptr => mystate
-    call ESMF_UserCompSetInternalState(gc, 'cice_private', wrap,_RC)
+    call ESMF_UserCompSetInternalState(gc, 'cice_private', wrap, status)
+    _VERIFY(status)
 
 ! Set the Profiling timers
 ! ------------------------
@@ -2189,7 +2190,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Get parameters (0:Louis, 1:Monin-Obukhov)
 ! -----------------------------------------
-    call ESMF_UserCompGetInternalState(gc,'cice_private',wrap,_RC)
+    call ESMF_UserCompGetInternalState(gc,'cice_private',wrap,status)
+    _VERIFY(status)
     mystate => wrap%ptr
     CHOOSEMOSFC = mystate%CHOOSEMOSFC
 
