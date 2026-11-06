@@ -1183,7 +1183,8 @@ contains
                   ANVFRC_dev(I,K), &
                   NL , &
                   NI , &
-                  QST3_dev(I,K)  )  
+                  QST3_dev(I,K)  , &
+                  CNVFRC_dev(I)  )  
 
             RHCRIT = 1.0 - ALPHA
             call subl3(            &
@@ -1198,7 +1199,8 @@ contains
                   ANVFRC_dev(I,K), &
                   NL , &
                   NI , &
-                  QST3_dev(I,K)  ) 
+                  QST3_dev(I,K)  , &
+                  CNVFRC_dev(I)  ) 
 
             EVAPC_dev(I,K) = ( EVAPC_dev(I,K) - (QLW_LS_dev(I,K)+QLW_AN_dev(I,K)) ) / DT
             SUBLC_dev(I,K) = ( SUBLC_dev(I,K) - (QIW_LS_dev(I,K)+QIW_AN_dev(I,K)) ) / DT
@@ -1659,7 +1661,7 @@ contains
             ELSE
                call RADCOUPLE ( TEMP, PP_dev(I,K), CLDFRC_dev(I,K), ANVFRC_dev(I,K), &
                      Q_dev(I,K), QLW_LS_dev(I,K), QIW_LS_dev(I,K), QLW_AN_dev(I,K), QIW_AN_dev(I,K), QRN_ALL, QSN_ALL, QGR_ALL, NACTL_dev(I,K), NACTI_dev(I,K), & 
-                     RAD_QV_dev(I,K), RAD_QL_dev(I,K), RAD_QI_dev(I,K), RAD_QR_dev(I,K), RAD_QS_dev(I,K), RAD_QG_dev(I,K), RAD_CLDFRC_dev(I,K), & 
+                     CNVFRC_dev(I), RAD_QV_dev(I,K), RAD_QL_dev(I,K), RAD_QI_dev(I,K), RAD_QR_dev(I,K), RAD_QS_dev(I,K), RAD_QG_dev(I,K), RAD_CLDFRC_dev(I,K), & 
                      CLDREFFL_dev(I,K), CLDREFFI_dev(I,K), &
                      FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI )
             END IF

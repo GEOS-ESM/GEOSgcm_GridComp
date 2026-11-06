@@ -790,7 +790,8 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                    CLCN(I,J,L)  , &
                   NACTL(I,J,L)  , &
                   NACTI(I,J,L)  , &
-                   QST3(I,J,L)  )
+                   QST3(I,J,L)  , &
+                CNV_FRC(I,J)    )
              EVAPC(I,J,L) = ( Q(I,J,L) - EVAPC(I,J,L) ) / DT_MOIST
              endif
            ! sublimation for CN
@@ -809,7 +810,8 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                    CLCN(I,J,L)  , &
                   NACTL(I,J,L)  , &
                   NACTI(I,J,L)  , &
-                   QST3(I,J,L)  )
+                   QST3(I,J,L)  , &
+                CNV_FRC(I,J)    )
              SUBLC(I,J,L) = ( Q(I,J,L) - SUBLC(I,J,L) ) / DT_MOIST
              endif
            ! cleanup clouds
@@ -999,7 +1001,7 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
               ! get radiative properties
                call RADCOUPLE ( T(I,J,L), PLmb(I,J,L), CLLS(I,J,L), CLCN(I,J,L), &
                      Q(I,J,L), QLLS(I,J,L), QILS(I,J,L), QLCN(I,J,L), QICN(I,J,L), QRAIN(I,J,L), QSNOW(I,J,L), QGRAUPEL(I,J,L), NACTL(I,J,L), NACTI(I,J,L), &
-                     RAD_QV(I,J,L), RAD_QL(I,J,L), RAD_QI(I,J,L), RAD_QR(I,J,L), RAD_QS(I,J,L), RAD_QG(I,J,L), RAD_CF(I,J,L), &
+                     CNV_FRC(I,J), RAD_QV(I,J,L), RAD_QL(I,J,L), RAD_QI(I,J,L), RAD_QR(I,J,L), RAD_QS(I,J,L), RAD_QG(I,J,L), RAD_CF(I,J,L), &
                      CLDREFFL(I,J,L), CLDREFFI(I,J,L), &
                      FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI)
             enddo
