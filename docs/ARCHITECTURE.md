@@ -25,11 +25,11 @@ the fixture; this file does not repeat them.
 - Parent: the fixture `GEOSgcm`, whose `src/CMakeLists.txt` and
   `src/Components/CMakeLists.txt` reach this repository
   (`esma_add_subdirectory (GEOSgcm_GridComp)`). Fixture documentation:
-  [`../../../../docs/ARCHITECTURE.md`](../../../../docs/ARCHITECTURE.md) when this repository sits in the fixture.
+  `../../../../docs/ARCHITECTURE.md` when this repository sits in the fixture.
 - `GEOSgcm.x` uses this repository's root component as the MAPL root:
   `MAPL_Cap('GCM', ROOT_SetServices, ...)` with `use GEOS_GcmGridCompMod`
   (`src/Applications/@GEOSgcm_App/GEOSgcm.F90`); `ROOT_NAME: GCM`, `ROOT_CF: AGCM.rc`
-  (`src/Applications/@GEOSgcm_App/CAP.rc.tmpl`). Application, setup scripts and templates: [GEOSgcm_App architecture](../../../Applications/@GEOSgcm_App/docs/ARCHITECTURE.md) (in the fixture, after `mepo clone`).
+  (`src/Applications/@GEOSgcm_App/CAP.rc.tmpl`). Application, setup scripts and templates: GEOSgcm_App architecture (`../../../Applications/@GEOSgcm_App/docs/ARCHITECTURE.md` in the fixture) (in the fixture, after `mepo clone`).
 - Children (links down): the nested repositories of section 6.
 
 ## 2. Directory map
@@ -39,7 +39,7 @@ the fixture; this file does not repeat them.
 | `GEOS_GcmGridComp.F90` | Root composite "GCM": atmosphere, ocean, waves, IAU/replay, digital filter, trajectories | `GEOS_GcmGridCompMod` | section 3 here |
 | `GEOSagcm_GridComp/` | Atmosphere composite (Agcm) with `GEOSsuperdyn_GridComp/` (dynamics; `GEOSdatmodyn_GridComp/` is a single-column driver per its module header; nested `@FVdycoreCubed_GridComp`) | `GEOS_AgcmGridCompMod`, `GEOS_SuperdynGridCompMod` | [`GEOSagcm_GridComp/ARCHITECTURE.md`](../GEOSagcm_GridComp/ARCHITECTURE.md) |
 | `GEOSagcm_GridComp/GEOSphysics_GridComp/` | Physics composite: GWD, moist, turbulence, surface (here); chemistry, radiation (nested) | `GEOS_PhysicsGridCompMod` | section 5 and [`GEOSphysics_GridComp/ARCHITECTURE.md`](../GEOSagcm_GridComp/GEOSphysics_GridComp/ARCHITECTURE.md) |
-| `GEOSogcm_GridComp/` | Ocean composite: ocean, sea ice, ocean radiation, ocean biogeochemistry; nested `@GEOS_OceanGridComp` | `GEOS_OgcmGridCompMod` | composite: not yet documented; ocean part: [`@GEOS_OceanGridComp/docs/ARCHITECTURE.md`](../GEOSogcm_GridComp/@GEOS_OceanGridComp/docs/ARCHITECTURE.md) |
+| `GEOSogcm_GridComp/` | Ocean composite: ocean, sea ice, ocean radiation, ocean biogeochemistry; nested `@GEOS_OceanGridComp` | `GEOS_OgcmGridCompMod` | composite: not yet documented; ocean part: `@GEOS_OceanGridComp/docs/ARCHITECTURE.md` (`../GEOSogcm_GridComp/@GEOS_OceanGridComp/docs/ARCHITECTURE.md` in the fixture) |
 | `GEOSwgcm_GridComp/` | Wave-model composite; model chosen by `wave_model:` in `WGCM.rc`; `GEOSumwm_GridComp/`, `GEOSwavewatch_GridComp/` | `GEOS_WgcmGridCompMod` | not yet documented |
 | `GEOSdataatm_GridComp/` | Data atmosphere (forcing from files) used in place of the Agcm when `USE_DATA_ATM4OCN:` is true; runs a `SURFACE` child | `GEOS_DataAtmGridCompMod` | not yet documented |
 | `GEOSmkiau_GridComp/` | "make IAU" (incremental analysis update) component `AIAU`; digital filter initialization `ADFI`; optional pyMLINC interface | `GEOS_mkiauGridCompMod`, `DFI_GridCompMod` | not yet documented |
@@ -117,7 +117,7 @@ to a private parent component, not to this one (`GEOS_GcmGridComp.F90`, internal
   `REPLAY_FILE_REFERENCE_TIME:` (a source comment calls the defaults "MERRA-2"); the Agcm reads them
   ([`GEOSagcm_GridComp/ARCHITECTURE.md`](../GEOSagcm_GridComp/ARCHITECTURE.md) section 3.4).
   It also defaults `CONVPAR_OPTION:` to `RAS` (relaxed Arakawa-Schubert) and `AERO_PROVIDER:` to
-  `GOCART.data` for use by several children (see the [GOCART document](../GEOSagcm_GridComp/GEOSphysics_GridComp/@GEOSchem_GridComp/@GOCART/docs/ARCHITECTURE.md), section 5.2). Other defaults for the
+  `GOCART.data` for use by several children (see the GOCART document (`../GEOSagcm_GridComp/GEOSphysics_GridComp/@GEOSchem_GridComp/@GOCART/docs/ARCHITECTURE.md` in the fixture), section 5.2). Other defaults for the
   same key: `GOCART2G` in `GEOS_ChemGridComp.F90` (`ESMF_ConfigGetAttribute` `Default=`, `GetProvider_`) when the key is
   absent from the configuration it reads, and `GOCART2G` set by `gcm_setup` (`src/Applications/@GEOSgcm_App/gcm_setup`). *Unverified:* whether the Gcm's `MAPL_ConfigSetAttribute` write-back reaches the configuration Chemistry reads.
 - `REPLAY_MODE:` is `NoReplay` (default), `Exact` or `Regular`. `DUAL_OCEAN:` asserts `Regular`.
@@ -180,9 +180,9 @@ fill the `AERO_DP` bundle before the surface reads its restart (`GEOS_PhysicsGri
 | `GWD` | `GEOSgwd_GridComp/` | this repository | [`ARCHITECTURE.md`](../GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSgwd_GridComp/ARCHITECTURE.md) |
 | `MOIST` | `GEOSmoist_GridComp/` (with `pyMoist/`) | this repository | [`ARCHITECTURE.md`](../GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/ARCHITECTURE.md) |
 | `TURBULENCE` | `GEOSturbulence_GridComp/` | this repository | [`ARCHITECTURE.md`](../GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSturbulence_GridComp/ARCHITECTURE.md) |
-| `CHEMISTRY` | `@GEOSchem_GridComp/` | nested repository | [`docs/ARCHITECTURE.md`](../GEOSagcm_GridComp/GEOSphysics_GridComp/@GEOSchem_GridComp/docs/ARCHITECTURE.md) (aerosols: [GOCART](../GEOSagcm_GridComp/GEOSphysics_GridComp/@GEOSchem_GridComp/@GOCART/docs/ARCHITECTURE.md)) |
+| `CHEMISTRY` | `@GEOSchem_GridComp/` | nested repository | `docs/ARCHITECTURE.md` (`../GEOSagcm_GridComp/GEOSphysics_GridComp/@GEOSchem_GridComp/docs/ARCHITECTURE.md` in the fixture) (aerosols: GOCART (`../GEOSagcm_GridComp/GEOSphysics_GridComp/@GEOSchem_GridComp/@GOCART/docs/ARCHITECTURE.md` in the fixture)) |
 | `SURFACE` | `GEOSsurface_GridComp/` (land, lake, landice, route, saltwater, `Shared/`, `Utils/`) | this repository | [`ARCHITECTURE.md`](../GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/ARCHITECTURE.md) |
-| `RADIATION` | `@GEOSradiation_GridComp/` | nested repository | [`docs/ARCHITECTURE.md`](../GEOSagcm_GridComp/GEOSphysics_GridComp/@GEOSradiation_GridComp/docs/ARCHITECTURE.md) |
+| `RADIATION` | `@GEOSradiation_GridComp/` | nested repository | `docs/ARCHITECTURE.md` (`../GEOSagcm_GridComp/GEOSphysics_GridComp/@GEOSradiation_GridComp/docs/ARCHITECTURE.md` in the fixture) |
 
 Run order (`GEOS_PhysicsGridComp.F90`, `Run`; children are skipped when `DOPHYSICS:` /= 1): `GWD`;
 `MOIST`; stage-1 wind and temperature/humidity synchronization (`SYNCUV:`, `SYNCTQ:`) and negative-water
@@ -200,10 +200,10 @@ listed in `.gitignore` files here (for example `GEOSogcm_GridComp/.gitignore`).
 
 | Path inside this repository | Repository (`components.yaml` key) |
 |---|---|
-| `GEOSagcm_GridComp/GEOSphysics_GridComp/@GEOSchem_GridComp` | `GEOSchem_GridComp` (and its own nested repositories): [architecture](../GEOSagcm_GridComp/GEOSphysics_GridComp/@GEOSchem_GridComp/docs/ARCHITECTURE.md); `GOCART` inside it: [architecture](../GEOSagcm_GridComp/GEOSphysics_GridComp/@GEOSchem_GridComp/@GOCART/docs/ARCHITECTURE.md) |
-| `GEOSagcm_GridComp/GEOSphysics_GridComp/@GEOSradiation_GridComp` | `GEOSradiation_GridComp` (nested `RRTMGP`): [architecture](../GEOSagcm_GridComp/GEOSphysics_GridComp/@GEOSradiation_GridComp/docs/ARCHITECTURE.md) |
-| `GEOSagcm_GridComp/GEOSsuperdyn_GridComp/@FVdycoreCubed_GridComp` | `FVdycoreCubed_GridComp` (nested `fvdycore`): [architecture](../GEOSagcm_GridComp/GEOSsuperdyn_GridComp/@FVdycoreCubed_GridComp/docs/ARCHITECTURE.md) |
-| `GEOSogcm_GridComp/@GEOS_OceanGridComp` | `GEOS_OceanGridComp` (nested `mom`, `mom6`, `stochastic_physics`, `mit`): [architecture](../GEOSogcm_GridComp/@GEOS_OceanGridComp/docs/ARCHITECTURE.md) |
+| `GEOSagcm_GridComp/GEOSphysics_GridComp/@GEOSchem_GridComp` | `GEOSchem_GridComp` (and its own nested repositories): architecture (`../GEOSagcm_GridComp/GEOSphysics_GridComp/@GEOSchem_GridComp/docs/ARCHITECTURE.md` in the fixture); `GOCART` inside it: architecture (`../GEOSagcm_GridComp/GEOSphysics_GridComp/@GEOSchem_GridComp/@GOCART/docs/ARCHITECTURE.md` in the fixture) |
+| `GEOSagcm_GridComp/GEOSphysics_GridComp/@GEOSradiation_GridComp` | `GEOSradiation_GridComp` (nested `RRTMGP`): architecture (`../GEOSagcm_GridComp/GEOSphysics_GridComp/@GEOSradiation_GridComp/docs/ARCHITECTURE.md` in the fixture) |
+| `GEOSagcm_GridComp/GEOSsuperdyn_GridComp/@FVdycoreCubed_GridComp` | `FVdycoreCubed_GridComp` (nested `fvdycore`): architecture (`../GEOSagcm_GridComp/GEOSsuperdyn_GridComp/@FVdycoreCubed_GridComp/docs/ARCHITECTURE.md` in the fixture) |
+| `GEOSogcm_GridComp/@GEOS_OceanGridComp` | `GEOS_OceanGridComp` (nested `mom`, `mom6`, `stochastic_physics`, `mit`): architecture (`../GEOSogcm_GridComp/@GEOS_OceanGridComp/docs/ARCHITECTURE.md` in the fixture) |
 | `GEOSogcm_GridComp/GEOSseaice_GridComp/CICE_GEOSPlug/@cice6`, `@sis2` | `cice6` (nested `icepack`), `sis2` |
 | `GEOSwgcm_GridComp/GEOSwavewatch_GridComp/@ww3`, `GEOSwgcm_GridComp/GEOSumwm_GridComp/@umwm` | `ww3`, `umwm` |
 | `GEOSgigatraj_GridComp/@GigaTraj` | `GigaTraj` |

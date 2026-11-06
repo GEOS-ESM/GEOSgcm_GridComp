@@ -38,7 +38,7 @@ and splits a dynamics step into two run phases around physics.
   `DATMO` adds `DYN` from `GEOS_DatmoDynGridCompMod`. `ADV` is -1 when absent.
 - Nested repository below Superdyn: `@FVdycoreCubed_GridComp` (fixture path
   `src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSsuperdyn_GridComp/@FVdycoreCubed_GridComp`); architecture:
-  [`GEOSsuperdyn_GridComp/@FVdycoreCubed_GridComp/docs/ARCHITECTURE.md`](GEOSsuperdyn_GridComp/@FVdycoreCubed_GridComp/docs/ARCHITECTURE.md).
+  `GEOSsuperdyn_GridComp/@FVdycoreCubed_GridComp/docs/ARCHITECTURE.md`.
   `GEOSdatmodyn_GridComp/` (this repository) is a driver for a single-column
   model with profile data (its module header).
 
@@ -154,7 +154,7 @@ and splits a dynamics step into two run phases around physics.
   `DYN` as an import promoted from `DYN`. *Inferred:* MAPL promotes child imports that no connection or termination removes. The Agcm fills it in place (`DO_UPDATE_ANA3D('DPEDT',
   SDYN, ...)`, `DO_UPDATE_PHY('DPEDT')` through `GIM(SDYN)`). The `MAPL_TerminateImport` comment says
   "the first 3 will be connected explicitly" while four names are terminated.
-- The dynamical core's own architecture: [`FVdycoreCubed_GridComp`](GEOSsuperdyn_GridComp/@FVdycoreCubed_GridComp/docs/ARCHITECTURE.md).
+- The dynamical core's own architecture: `FVdycoreCubed_GridComp` (`GEOSsuperdyn_GridComp/@FVdycoreCubed_GridComp/docs/ARCHITECTURE.md` in the fixture).
 - Citations: `GEOSagcm_GridComp/GEOSsuperdyn_GridComp/GEOS_SuperdynGridComp.F90`.
 - Phase numbering: the n-th `MAPL_GridCompSetEntryPoint(..., ESMF_METHOD_RUN, ...)` call gives
   phase n (`src/Shared/@MAPL/generic/MAPL_Generic.F90`, `MAPL_GridCompSetEntryPoint`:
