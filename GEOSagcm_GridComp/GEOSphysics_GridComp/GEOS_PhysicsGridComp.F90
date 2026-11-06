@@ -108,16 +108,13 @@ contains
 
     type (MAPL_MetaComp),  pointer          :: MAPL
     CHARACTER(LEN=ESMF_MAXSTR)              :: RATsProviderName
-    integer                                 :: I
     type (ESMF_Config)                      :: CF
 
-    integer                                 :: DO_OBIO, DO_CO2CNNEE, ATM_CO2, nCols, NQ
+    integer                                 :: DO_OBIO, DO_CO2CNNEE, ATM_CO2
     integer                                 :: DO_WAVES, DO_SEA_SPRAY
 
     real                                    :: SYNCUV
     real                                    :: SYNCTQ
-    character(len=ESMF_MAXSTR), allocatable :: NAMES(:)
-    character(len=ESMF_MAXSTR)              :: TendUnits
     character(len=ESMF_MAXSTR)              :: SURFRC
     type(ESMF_Config)                       :: SCF
 
@@ -319,34 +316,6 @@ contains
 
 ! !EXPORT STATE:
 
-!   Add export states for turbulence increments
-!-------------------------------------------------
-    call ESMF_ConfigGetDim (cf, NQ, nCols, label=('TRI_increments::'), rc=STATUS)
-    if (NQ > 0) then
-      call ESMF_ConfigFindLabel (cf, ('TRI_increments::'), _RC)
-      allocate (NAMES(NQ), stat=STATUS)
-      VERIFY_(STATUS)
-      do i = 1, NQ
-        call ESMF_ConfigNextLine(cf, _RC)
-        call ESMF_ConfigGetAttribute(cf, NAMES(i), _RC)
-      enddo
-      do i = 1, NQ
-        if (NAMES(i) == 'AOADAYS') then
-          TendUnits = 'days s-1'
-        else
-          TendUnits = 'UNITS'
-        end if
-        call MAPL_AddExportSpec(GC,                                           &
-          SHORT_NAME =  trim(NAMES(i))//'IT',                                 &
-          LONG_NAME  = 'tendency_of_'//trim(NAMES(i))//'_due_to_turbulence',  &
-          UNITS      =  TendUnits,                                            &
-          DIMS       =  MAPL_DimsHorzVert,                                    &
-          VLOCATION  =  MAPL_VLocationCenter,                                 &
-          _RC)
-      end do
-      deallocate(NAMES)
-    end if !NQ > 0
-
 !-----------------------------------------------------------
     call MAPL_AddExportSpec(GC,                                                       &
          SHORT_NAME = 'DTDT',                                                         &
@@ -459,37 +428,23 @@ contains
          CHILD_ID   = TURBL,                                       &
                                                         _RC)
 
-    call MAPL_AddExportSpec(GC,                                          &
-         SHORT_NAME = 'QVIT',                                            &
-         LONG_NAME  = 'tendency_of_specific_humidity_due_to_turbulence', &
-         UNITS      = 'kg kg-1 s-1',                                     &
-         DIMS       = MAPL_DimsHorzVert,                                 &
-         VLOCATION  = MAPL_VLocationCenter,                              &
-         _RC)
-
-    call MAPL_AddExportSpec(GC,                                          &
-         SHORT_NAME = 'QLLSIT',                                          &
-         LONG_NAME  = 'tendency_of_liquid_condensate_due_to_turbulence', &
-         UNITS      = 'kg kg-1 s-1',                                     &
-         DIMS       = MAPL_DimsHorzVert,                                 &
-         VLOCATION  = MAPL_VLocationCenter,                              &
-         _RC)
-
-    call MAPL_AddExportSpec(GC,                                          &
-         SHORT_NAME = 'QILSIT',                                          &
-         LONG_NAME  = 'tendency_of_frozen_condensate_due_to_turbulence', &
-         UNITS      = 'kg kg-1 s-1',                                     &
-         DIMS       = MAPL_DimsHorzVert,                                 &
-         VLOCATION  = MAPL_VLocationCenter,                              &
-         _RC)
-
     call MAPL_AddExportSpec ( GC   ,                               &
-         SHORT_NAME = 'TKESHOCIT',                                 &
+         SHORT_NAME = 'QVIT',                                      &
          CHILD_ID   = TURBL,                                       &
                                                         _RC)
 
     call MAPL_AddExportSpec ( GC   ,                               &
-         SHORT_NAME = 'TRI',                                       &
+         SHORT_NAME = 'QLLSIT',                                    &
+         CHILD_ID   = TURBL,                                       &
+                                                        _RC)
+
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'QILSIT',                                    &
+         CHILD_ID   = TURBL,                                       &
+                                                        _RC)
+
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'TKESHOCIT',                                 &
          CHILD_ID   = TURBL,                                       &
                                                         _RC)
 
@@ -1938,8 +1893,11 @@ contains
 !   during the initialization sequence of the entire tree below Physics, which
 !   is the first thing done here.
 
-!   The increment tracer bundles for Moist and Turbulence are created with empty fields
+!   The increment tracer bundle for Moist is created with empty fields
 !   except for those tracers which have explicit tendency Exports.
+!   Turbulence's built-in tendencies (SIT, UIT, VIT, QVIT, ...) are Turbulence
+!   exports passed up by Physics. Tracer tendencies (TRI_increments::) are
+!   only available from Turbulence.
 !
 !EOP
 
@@ -1963,7 +1921,6 @@ contains
    integer                             :: NA
    character(len=ESMF_MAXSTR), pointer :: NAMES(:)
    character(len=ESMF_MAXSTR)          :: myNAME
-   character(len=ESMF_MAXSTR)          ::  iNAME
    character(len=ESMF_MAXSTR)          :: fieldname
 
 ! Variables needed for GPU initialization
@@ -2097,44 +2054,6 @@ contains
        call WRITE_PARALLEL ( trim(NAMES(I))//": in the TURBULENCE Bundle" )
     end do
     deallocate ( NAMES )
-
-! Count tracers
-!--------------
-
-    call ESMF_FieldBundleGet(BUNDLE,FieldCount=NUM_TRACERS, _RC)
-
-! Get the names of all tracers to fill other turbulence bundles.
-!---------------------------------------------------------------
-
-    allocate(NAMES(NUM_TRACERS),STAT=STATUS)
-    VERIFY_(STATUS)
-
-    call ESMF_FieldBundleGet(BUNDLE, fieldNameList=NAMES,  _RC)
-
-! Fill the increments bundle that turbulence will export.
-!  These fields come from the physics EXPORT, ones not there
-!  will have an empty field.
-!------------------------------------------------------------
-
-    call ESMF_StateGet ( EXPORT, 'TRI', BUNDLE, _RC)
-
-    do I=1,NUM_TRACERS
-       select case (trim(NAMES(I)))
-       case ('Q')
-          iNAME = 'QVIT'
-       case default
-          iNAME = trim(NAMES(I)) // 'IT'
-       end select
-       call ESMFL_StateGetField  (EXPORT, (/iNAME/), &
-            BUNDLE, (/trim(NAMES(I))//'IT'/), _RC)
-    end do
-
-#ifdef PRINT_STATES
-    call WRITE_PARALLEL ( trim(Iam)//": Turbulence Increment Bundle" )
-    if ( MAPL_am_I_root() ) call ESMF_FieldBundlePrint ( BUNDLE, rc=STATUS )
-#endif
-
-    deallocate(NAMES)
 
 ! Fill export bundle of child quantities to be advected
 !------------------------------------------------------

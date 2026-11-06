@@ -57,9 +57,11 @@ module GEOS_TurbulenceGridCompMod
 !\noindent
 !{\bf Methods}
 !
-!   {\tt GEOS\_TurbulenceGridComp} uses the default Initialize and Finalize methods
-!   of GEOS\_Generic. It has a 2-stage Run method that can be used in conjunction with
-!   two-stage surface calculations to implement semi-implicit time differencing.
+!   {\tt GEOS\_TurbulenceGridComp} uses the default Finalize method of GEOS\_Generic.
+!   Its Initialize method does the generic initialization and then fills the TRI
+!   export bundle (see below). It has a 2-stage Run method that can be used in
+!   conjunction with two-stage surface calculations to implement semi-implicit
+!   time differencing.
 !
 !\vspace{12 pt}
 !\noindent
@@ -90,19 +92,28 @@ module GEOS_TurbulenceGridCompMod
 !
 !   Quantities to be diffused can be marked as "Friendly-for-diffusion". In that case,
 !   {\tt GEOS\_TurbulenceGridComp} directly updates the quantity; otherwise it 
-!   merely computes its tendency, placing it in the appropriate bundle and treating
+!   merely computes its tendency, placing it in the appropriate export and treating
 !   the quantity itself as read-only.
 !
-!   In working with bundled quantities, corresponding fields must appear in the 
-!   same order in all bundles. Some of these fields, however, 
-!   may be ``empty'' in the sense that the data pointer has not been allocated.
+!   Tendencies are explicit exports named NAMEIT (QVIT for Q), looked up by
+!   name for every diffused quantity. A tendency is computed only if its
+!   export exists and has been allocated. QVIT, QLLSIT and QILSIT always
+!   exist; tracer tendencies are created for the names listed under
+!   TRI_increments:: in the resource file (names whose tendency is already
+!   one of the built-in exports, such as S or Q, are skipped).
+!
+!   For History, the tendency exports are also collected in the TRI export
+!   bundle, filled by Turbulence's Initialize: SIT, UIT, VIT, TKESHOCIT,
+!   QLLSIT, QILSIT, QVIT (as QIT), and the TRI_increments:: tracer
+!   tendencies. These are the same fields as the exports, and are allocated
+!   so they are always computed.
 !   
-!   {\tt GEOS\_TurbulenceGridComp} works with two bundles; TR in the import
-!   state and TRI in the export state. Dry static energy, the winds, and
-!   Turbulence's own TKESHOC and QT2 are not in these bundles: they are
+!   {\tt GEOS\_TurbulenceGridComp} works with one bundle, TR, in the import
+!   state. Dry static energy, the winds, and
+!   Turbulence's own TKESHOC and QT2 are not in this bundle: they are
 !   diffused directly (see DIRECT_NAME) from imports (S, U, V) or the
-!   internal state (TKESHOC, QT2), with explicit tendency exports (SIT, UIT,
-!   VIT, TKESHOCIT), and are always diffused first, in that order. Under
+!   internal state (TKESHOC, QT2), and are always diffused first, in that
+!   order. Their tendencies are SIT, UIT, VIT and TKESHOCIT. Under
 !   SYNCUV the mixing coefficients are computed from the winds after Moist
 !   (UAFMOIST, VAFMOIST). The surface values (SHAT, UHAT, VHAT, QHAT)
 !   and their changes (SDEL, UDEL, VDEL, QDEL) are explicit imports, and the
@@ -110,13 +121,13 @@ module GEOS_TurbulenceGridCompMod
 !   value (SDFL, UDFL, VDFL, QDFL) are explicit exports. Quantities other than
 !   S, U, V and Q have zero surface flux.
 !
-!   All fields in the export bundles are checked for associated pointers before being
+!   All tendency exports are checked for associated pointers before being
 !   updated.
 !
 !   Fields in the TR bundle can have four attributes:
 ! \begin{itemize}
 ! \item FriendlyTo[{\it Component Name}]: default=false --- If true, TR field is updated.
-! \item WeightedTendency: default=true --- If true, tendencies (TRI) are pressure-weighted
+! \item WeightedTendency: default=true --- If true, tendencies are pressure-weighted
 ! \item DiffuseLike: ('S','Q','M') default='S' --- Use mixing coefficients for either
 !          heat, moisture or momentum.
 ! \end{itemize}
@@ -170,8 +181,8 @@ module GEOS_TurbulenceGridCompMod
     ! Quantities diffused directly rather than via the TR bundle, in the order
     ! they are processed (S must be first for SHVC). For each: its name in the
     ! import or internal state, diffusion type, whether its tendency is
-    ! pressure-weighted, whether the quantity itself is updated, and the
-    ! export holding its tendency (blank if none).
+    ! pressure-weighted, whether the quantity itself is updated, and whether
+    ! it is read from the internal state.
     integer, parameter :: NDIRECT = 5
     character(len=*), parameter :: DIRECT_NAME(NDIRECT) = &
          [character(len=7) :: 'S', 'U', 'V', 'TKESHOC', 'QT2']
@@ -183,8 +194,6 @@ module GEOS_TurbulenceGridCompMod
          [.false., .false., .false., .true., .true.]
     logical,          parameter :: DIRECT_INTERNAL(NDIRECT) = &
          [.false., .false., .false., .true., .true.]
-    character(len=*), parameter :: DIRECT_TEND(NDIRECT) = &
-         [character(len=9) :: 'SIT', 'UIT', 'VIT', 'TKESHOCIT', ' ']
 
     logical :: DEBUG_TRB
 
@@ -200,10 +209,10 @@ contains
 ! !IROUTINE: SetServices -- Sets ESMF services for this component
 
 ! !DESCRIPTION: This version uses the {\tt GEOS\_GenericSetServices}, which sets
-!               the Initialize and Finalize services to generic versions. It also
+!               the Finalize service to the generic version. It also
 !   allocates our instance of a generic state and puts it in the 
-!   gridded component (GC). Here we only set the two-stage run method and
-!   declare the data services.
+!   gridded component (GC). Here we set the Initialize and two-stage run
+!   methods and declare the data services.
 ! \newline
 ! !REVISION HISTORY: 
 !   ??Jul2006 E.Novak./Todling - Added output defining TLM/ADM trajectory
@@ -234,6 +243,10 @@ contains
     integer :: DO_WAVES
     integer :: DO_SEA_SPRAY
 
+    integer                                 :: I
+    character(len=ESMF_MAXSTR), allocatable :: NAMES(:)
+    character(len=ESMF_MAXSTR)              :: TendUnits
+
 !=============================================================================
 
 ! Begin...
@@ -255,9 +268,10 @@ contains
 
     call MAPL_GetResource ( MAPL, DO_SEA_SPRAY, Label="USE_SEA_SPRAY:", DEFAULT=0, _RC)
 
-! Set the Run entry points
-! ------------------------
+! Set the Initialize and Run entry points
+! ---------------------------------------
 
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, _RC)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run1, _RC)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run2, _RC)
 
@@ -1115,7 +1129,7 @@ end if
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   _RC)
 
-    call MAPL_AddExportSpec(GC,                                  &
+    call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'TRI',                                       &
         LONG_NAME  = 'diffusion_tendencies',                      &
         UNITS      = 'X kg m-2 s-1',                              &
@@ -1155,6 +1169,49 @@ end if
         DIMS       = MAPL_DimsHorzVert,                           &
         VLOCATION  = MAPL_VLocationCenter,                        &
                                                        _RC)
+
+    call MAPL_AddExportSpec(GC,                                          &
+         SHORT_NAME = 'QVIT',                                            &
+         LONG_NAME  = 'tendency_of_specific_humidity_due_to_turbulence', &
+         UNITS      = 'kg kg-1 s-1',                                     &
+         DIMS       = MAPL_DimsHorzVert,                                 &
+         VLOCATION  = MAPL_VLocationCenter,                              &
+                                                                  _RC)
+
+    call MAPL_AddExportSpec(GC,                                          &
+         SHORT_NAME = 'QLLSIT',                                          &
+         LONG_NAME  = 'tendency_of_liquid_condensate_due_to_turbulence', &
+         UNITS      = 'kg kg-1 s-1',                                     &
+         DIMS       = MAPL_DimsHorzVert,                                 &
+         VLOCATION  = MAPL_VLocationCenter,                              &
+                                                                  _RC)
+
+    call MAPL_AddExportSpec(GC,                                          &
+         SHORT_NAME = 'QILSIT',                                          &
+         LONG_NAME  = 'tendency_of_frozen_condensate_due_to_turbulence', &
+         UNITS      = 'kg kg-1 s-1',                                     &
+         DIMS       = MAPL_DimsHorzVert,                                 &
+         VLOCATION  = MAPL_VLocationCenter,                              &
+                                                                  _RC)
+
+! Tracer tendencies requested in TRI_increments::
+!------------------------------------------------
+    call GetTriIncrements(CF, NAMES, _RC)
+    do i = 1, size(NAMES)
+      if (NAMES(i) == 'AOADAYS') then
+        TendUnits = 'days s-1'
+      else
+        TendUnits = 'UNITS'
+      end if
+      call MAPL_AddExportSpec(GC,                                           &
+        SHORT_NAME =  trim(NAMES(i))//'IT',                                 &
+        LONG_NAME  = 'tendency_of_'//trim(NAMES(i))//'_due_to_turbulence',  &
+        UNITS      =  TendUnits,                                            &
+        DIMS       =  MAPL_DimsHorzVert,                                    &
+        VLOCATION  =  MAPL_VLocationCenter,                                 &
+        _RC)
+    end do
+    deallocate(NAMES)
 
      call MAPL_AddExportSpec(GC,                                  &
         SHORT_NAME = 'SFLX',                                  &
@@ -2414,6 +2471,89 @@ end if
     RETURN_(ESMF_SUCCESS)
   
   end subroutine SetServices
+
+
+!=============================================================================
+!=============================================================================
+
+!BOP
+
+! !IROUTINE: Initialize -- Initialize method for the {\tt GEOS\_TurbulenceGridComp}
+
+! !INTERFACE:
+
+  subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
+
+! !ARGUMENTS:
+
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
+    type(ESMF_State),    intent(inout) :: IMPORT ! Import state
+    type(ESMF_State),    intent(inout) :: EXPORT ! Export state
+    type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
+    integer, optional,   intent(  out) :: RC     ! Error code
+
+! !DESCRIPTION: Does the generic initialization, then fills the TRI export
+!   bundle with the turbulence tendency exports, so they can be requested in
+!   History as TRI%NAME. Q's tendency, QVIT, is in the bundle as QIT. Bundle
+!   fields are allocated here because History does not allocate them.
+
+!EOP
+
+    character(len=ESMF_MAXSTR)              :: IAm
+    integer                                 :: STATUS
+    character(len=ESMF_MAXSTR)              :: COMP_NAME
+    type (ESMF_Config)                      :: CF
+    type (ESMF_FieldBundle)                 :: TRI
+    type (ESMF_Field)                       :: FIELD
+    real, dimension(:,:,:), pointer         :: PTR
+    character(len=ESMF_MAXSTR), allocatable :: NAMES(:)
+    integer                                 :: I
+
+    character(len=*), parameter :: TRI_FIXED(6) = &
+         [character(len=9) :: 'SIT', 'UIT', 'VIT', 'TKESHOCIT', 'QLLSIT', 'QILSIT']
+
+    Iam = 'Initialize'
+    call ESMF_GridCompGet( GC, CONFIG=CF, NAME=COMP_NAME, _RC)
+    Iam = trim(COMP_NAME) // Iam
+
+    call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK, _RC)
+
+    call ESMF_StateGet(EXPORT, 'TRI', TRI, _RC)
+
+    do I = 1, size(TRI_FIXED)
+       call AddToTRI(trim(TRI_FIXED(I)), trim(TRI_FIXED(I)), _RC)
+    end do
+
+    call AddToTRI('QVIT', 'QIT', _RC)
+
+    call GetTriIncrements(CF, NAMES, _RC)
+    do I = 1, size(NAMES)
+       call AddToTRI(trim(NAMES(I))//'IT', trim(NAMES(I))//'IT', _RC)
+    end do
+    deallocate(NAMES)
+
+    RETURN_(ESMF_SUCCESS)
+
+  contains
+
+    subroutine AddToTRI(EXPORT_NAME, BUNDLE_NAME, RC)
+      character(len=*),  intent(in ) :: EXPORT_NAME
+      character(len=*),  intent(in ) :: BUNDLE_NAME
+      integer, optional, intent(out) :: RC
+
+      integer :: STATUS
+
+      call MAPL_GetPointer(EXPORT, PTR, EXPORT_NAME, alloc=.true., _RC)
+      call ESMF_StateGet(EXPORT, EXPORT_NAME, FIELD, _RC)
+      if (BUNDLE_NAME /= EXPORT_NAME) then
+         FIELD = ESMF_NamedAlias(FIELD, name=BUNDLE_NAME, _RC)
+      end if
+      call MAPL_FieldBundleAdd(TRI, FIELD, _RC)
+
+      RETURN_(ESMF_SUCCESS)
+    end subroutine AddToTRI
+
+  end subroutine Initialize
 
 
 !=============================================================================
@@ -4965,9 +5105,9 @@ end if
 !  {\tt DIFFUSE} for that field. {\tt DiffuseLike} can be either 'U', 'Q', or 'S'; the default is 'Q'.
 !  {\tt FriendlyToTURBULENCE}, and {\tt WeightedTendency} are ESMF logicals.
 !  If {\tt FriendlyToTURBULENCE} is true, the field in TR is updated directly; otherwise
-!  it is left untouched. In either case, If the corresponding pointer TRI bundle is associated, the
-!  tendencies are returned there. If {\tt WeightedTendency} is true, the tendency in TRI, if any,
-!  is pressure weighted.
+!  it is left untouched. In either case, if the corresponding tendency export
+!  (NAMEIT, or QVIT for Q) is allocated, the tendencies are returned there. If
+!  {\tt WeightedTendency} is true, the tendency, if any, is pressure weighted.
 
 !EOP
 
@@ -4979,7 +5119,6 @@ end if
     type (ESMF_Field)                   :: FIELD
     type (ESMF_Array)                   :: ARRAY
     type (ESMF_FieldBundle)             :: TR
-    type (ESMF_FieldBundle)             :: TRI
     real, dimension(:,:,:), pointer     :: S, SOI, SOD
     real, dimension(:,:),   pointer     :: SG, SF, SDF, CX, SRG
     real, dimension(:,:,:), pointer     :: DX
@@ -5042,11 +5181,8 @@ end if
 
 
 
-! Get the bundles containing the quantities to be diffused, 
-!     their tendencies, their surface values, their surface
-!     fluxes, and the derivatives of their surface fluxes
-!     wrt the surface values. 
-!----------------------------------------------------------
+! Get the bundle containing the quantities to be diffused.
+!---------------------------------------------------------
 
     call ESMF_StateGet(IMPORT, 'TR' ,    TR,     _RC)
 
@@ -5065,8 +5201,6 @@ end if
        where (LH_SPRAY > LH_SPRAY_MAX)  LH_SPRAY = LH_SPRAY_MAX
     end if
 
-    call ESMF_StateGet(EXPORT, 'TRI',    TRI,    _RC)
-
 ! Get pointers to exports of U,V and S that diffuse sees
 !  Required for SYNCTQ (ALLOC=.TRUE.)
     call MAPL_GetPointer(EXPORT, UAFDIFFUSE ,  'UAFDIFFUSE' , ALLOC=.TRUE., _RC)
@@ -5079,16 +5213,10 @@ end if
     call MAPL_GetPointer(EXPORT,  edmf_entx,  'EDMF_ENTR', _RC)
 
     
-! Count the firlds in TR...
-!--------------------------
+! Count the fields in TR
+!-----------------------
 
     call ESMF_FieldBundleGet(TR, fieldCOUNT=KM, _RC)
-
-! ...and make sure the other bundles are the same.
-!-------------------------------------------------
-
-    call ESMF_FieldBundleGet(TRI,    FieldCount=K , _RC)
-    _ASSERT(KM==K,'needs informative message')
 
 ! Pressure thickness of layers
 !-----------------------------
@@ -5112,10 +5240,6 @@ end if
              call MAPL_GetPointer(INTERNAL, S, trim(NAME), _RC)
           else
              call MAPL_GetPointer(IMPORT,   S, trim(NAME), _RC)
-          end if
-          nullify(SOI)
-          if (DIRECT_TEND(K) /= ' ') then
-             call MAPL_GetPointer(EXPORT, SOI, trim(DIRECT_TEND(K)), _RC)
           end if
 
        else
@@ -5145,13 +5269,17 @@ end if
           call ESMF_AttributeGet(FIELD, NAME="WeightedTendency",   &
                VALUE=WEIGHTED, DEFAULTVALUE=dflt_false,    _RC)
 
-! Get pointer to the quantity and its tendency
-! --------------------------------------------
+! Get pointer to the quantity
+! ---------------------------
 
           call ESMFL_BundleGetPointerToData(TR    ,      NAME,         S  , _RC)
-          call ESMFL_BundleGetPointerToData(TRI   , trim(NAME)//'IT' , SOI, _RC)
 
        end if
+
+! Get pointer to its tendency, if requested
+! -----------------------------------------
+
+       call GetTendency(EXPORT, NAME, SOI, _RC)
 
 ! Surface values, fluxes and sensitivities exist only for S, U, V and Q;
 !  all other quantities are left unassociated (zero flux).
@@ -5519,7 +5647,6 @@ end subroutine RUN1
       character(len=ESMF_MAXSTR)          :: NAME
       type (ESMF_Field)                   :: FIELD
       type (ESMF_FieldBundle)             :: TR
-      type (ESMF_FieldBundle)             :: TRI
       real, dimension(:,:,:), pointer     :: PLE
       real, dimension(:,:,:), pointer     :: ZLE
       real, dimension(:,:,:), pointer     :: S, SOI, SINC, INTDIS, TOPDIS
@@ -5663,24 +5790,15 @@ end subroutine RUN1
       call MAPL_GetPointer(INTERNAL, FKV,   'FKV',   _RC)
       call MAPL_GetPointer(INTERNAL, SINC,  'SINC',    _RC)
 
-! Get the bundles containing the quantities to be diffused, 
-!     their tendencies, their surface values, their surface
-!     fluxes, and the derivatives of their surface fluxes
-!     wrt the surface values. 
-!----------------------------------------------------------
+! Get the bundle containing the quantities to be diffused.
+!---------------------------------------------------------
 
       call ESMF_StateGet(IMPORT, 'TR' ,    TR,     _RC)
 
-      call ESMF_StateGet(EXPORT, 'TRI',    TRI,    _RC)
-
-! Count them...
-!--------------
+! Count them
+!-----------
 
       call ESMF_FieldBundleGet(TR , FieldCount=KM, _RC)
-
-! and make sure the other bundles are the same.
-!----------------------------------------------
-
 
 ! Clear the accumulators for the dissipation.
 !--------------------------------------------
@@ -5837,10 +5955,6 @@ end subroutine RUN1
             else
                call MAPL_GetPointer(IMPORT,   S, trim(NAME), _RC)
             end if
-            nullify(SOI)
-            if (DIRECT_TEND(K) /= ' ') then
-               call MAPL_GetPointer(EXPORT, SOI, trim(DIRECT_TEND(K)), _RC)
-            end if
 
          else
 
@@ -5869,13 +5983,17 @@ end subroutine RUN1
             call ESMF_AttributeGet(FIELD, NAME="WeightedTendency",    &
                  VALUE=WEIGHTED, DEFAULTVALUE=dflt_false,    _RC)
 
-! Get pointers to the quantity and its tendency
-! ---------------------------------------------
+! Get pointer to the quantity
+! ---------------------------
 
             call ESMFL_BundleGetPointerToData(TR    ,      NAME,         S  , _RC)
-            call ESMFL_BundleGetPointerToData(TRI   , trim(NAME)//'IT' , SOI, _RC)
 
          end if
+
+! Get pointer to its tendency, if requested
+! -----------------------------------------
+
+         call GetTendency(EXPORT, NAME, SOI, _RC)
 
 ! Get pointers to the surface increment, the preliminary surface flux,
 !   and the sensitivity of the surface flux to the surface value.
@@ -7075,6 +7193,84 @@ end subroutine ComputeMOScalingInterlevel
 
     return
   end subroutine VTRISOLVE
+
+!=============================================================================
+
+! Points PTR at the turbulence tendency export for the diffused quantity
+!  NAME (QVIT for Q, otherwise NAMEIT). PTR is left unassociated if there
+!  is no such export or it has not been allocated.
+
+  subroutine GetTendency(EXPORT, NAME, PTR, RC)
+    type(ESMF_State),                intent(inout) :: EXPORT
+    character(len=*),                intent(in   ) :: NAME
+    real, dimension(:,:,:), pointer                :: PTR
+    integer, optional,               intent(  out) :: RC
+
+    character(len=ESMF_MAXSTR), parameter :: IAm='GetTendency'
+    integer                               :: STATUS
+    character(len=ESMF_MAXSTR)            :: TNAME
+    type(ESMF_StateItem_Flag)             :: itemType
+
+    if (trim(NAME) == 'Q') then
+       TNAME = 'QVIT'
+    else
+       TNAME = trim(NAME)//'IT'
+    end if
+
+    nullify(PTR)
+    call ESMF_StateGet(EXPORT, TNAME, itemType=itemType, _RC)
+    if (itemType == ESMF_STATEITEM_FIELD) then
+       call MAPL_GetPointer(EXPORT, PTR, TNAME, _RC)
+    end if
+
+    RETURN_(ESMF_SUCCESS)
+  end subroutine GetTendency
+
+!=============================================================================
+
+! Returns the names listed under TRI_increments:: in CF (empty if none).
+!  bundleParser.py adds a name for every TRI%NAMEIT requested in History, so
+!  names whose tendency is already a built-in export (S, U, V, TKESHOC, Q,
+!  QLLS, QILS) are skipped, as are repeated names.
+
+  subroutine GetTriIncrements(CF, NAMES, RC)
+    type(ESMF_Config),                       intent(inout) :: CF
+    character(len=ESMF_MAXSTR), allocatable, intent(  out) :: NAMES(:)
+    integer, optional,                       intent(  out) :: RC
+
+    character(len=ESMF_MAXSTR), parameter :: IAm='GetTriIncrements'
+    integer                               :: STATUS
+    integer                               :: I, N, NQ, nCols
+    character(len=ESMF_MAXSTR)            :: NAME
+    character(len=ESMF_MAXSTR), allocatable :: ALL_NAMES(:)
+
+    character(len=*), parameter :: BUILTIN(7) = &
+         [character(len=7) :: 'S', 'U', 'V', 'TKESHOC', 'Q', 'QLLS', 'QILS']
+
+    NQ = 0
+    call ESMF_ConfigGetDim (CF, NQ, nCols, label=('TRI_increments::'), rc=STATUS)
+    if (STATUS /= ESMF_SUCCESS) NQ = 0
+
+    allocate (ALL_NAMES(NQ), __STAT__)
+    N = 0
+    if (NQ > 0) then
+       call ESMF_ConfigFindLabel (CF, ('TRI_increments::'), _RC)
+       do I = 1, NQ
+          call ESMF_ConfigNextLine(CF, _RC)
+          call ESMF_ConfigGetAttribute(CF, NAME, _RC)
+          if (any(BUILTIN == NAME)) cycle
+          if (any(ALL_NAMES(1:N) == NAME)) cycle
+          N = N + 1
+          ALL_NAMES(N) = NAME
+       end do
+    end if
+
+    allocate (NAMES(N), __STAT__)
+    NAMES = ALL_NAMES(1:N)
+    deallocate (ALL_NAMES)
+
+    RETURN_(ESMF_SUCCESS)
+  end subroutine GetTriIncrements
 
 
 end module GEOS_TurbulenceGridCompMod
