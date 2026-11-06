@@ -10,8 +10,9 @@
 # cmpchk run had them NaN),
 # plus the 47 BACM_1M writes that the GFDL_1M case does not (including
 # PFL_SC/PFI_SC, which BACM_1M fills). Derived from the code (export fetches in the
-# scheme modules, the driver, Process_Library and aer_actv_single_moment), not yet
-# confirmed with a sentinel run. At L72 GF runs ConvPar_GF_GEOS5, which leaves the
+# scheme modules, the driver, Process_Library and aer_actv_single_moment), confirmed
+# by a sentinel run (2026-11-05: every listed export is written, every written one is
+# listed except the MTR bundle). At L72 GF runs ConvPar_GF_GEOS5, which leaves the
 # GF2020-only outputs (ENTR_*, SGS_VVEL_*, CNV_TOPP_*, WQT_DC, LFR_GF, DNDCNV, DNICNV, MDNDP)
 # at the zeros their locals start with (GEOS_GF_InterfaceMod.F90:740-757), so they are
 # still written. REFL10CM_MAX is left out as in the GFDL_1M cases

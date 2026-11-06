@@ -4,9 +4,10 @@
 # activate_all_exports, the exports this configuration never writes are not
 # allocated: MAPL3 leaves an allocated export without a fill value uninitialized,
 # where MAPL2 zeroed it. List: moist-gfdl1m-gf-uw-sa's sentinel-run list minus the
-# 22 exports that only UW_Run writes (GEOS_UW_InterfaceMod.F90). Not yet confirmed
-# with a sentinel run for this configuration (PDFSHAPE 6 may write exports PDFSHAPE
-# 1 does not; those are only missing coverage, not uninitialized output).
+# 22 exports that only UW_Run writes (GEOS_UW_InterfaceMod.F90). Confirmed by a
+# sentinel run for this configuration (2026-11-05): every listed export is written,
+# every written export is listed except REFL10CM_MAX, CUFRC_SC (an always-active
+# ADD2EXPORT internal) and the MTR bundle.
 # REFL10CM_MAX is left out: it is computed only when DBZ_RunAlarm rings, and the
 # MAPL2 capture holds a value from an earlier step (mapl3-porting-notes.md, first
 # cmpchk.py result). No geom/vertical_grid: native grid.
