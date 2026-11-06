@@ -29,8 +29,6 @@ overview: [`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md). Physics child:
 > still uses the MAPL2 Superdyn interface (two-phase `PHASE=` calls, imports
 > `DUDT ... DTDT` copied by Superdyn), which the ported Superdyn no longer has.
 > The Held-Suarez composite is described in section 2.1 of the repository overview.
-> (On this line the parent GEOSgcm fixture's documents are not written yet; the
-> MAPL2-line versions are on its `develop` branch.)
 
 ## 1. Purpose
 

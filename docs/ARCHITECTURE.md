@@ -33,8 +33,7 @@ the fixture; this file does not repeat them.
   (`GEOSagcm_GridComp/GEOS_AgcmSimpleGridComp.F90`, `GEOSagcm_GridComp/GEOShs_GridComp`)
   (`config/GEOSgcm_GridComp.sparse` in the fixture); those files are tracked here
   but absent from a fixture checkout.
-- Parent: the fixture `GEOSgcm` (on this line the parent's documents are not
-  written yet; the MAPL2-line versions are on its `develop` branch), whose `src/CMakeLists.txt` and
+- Parent: the fixture `GEOSgcm`, whose `src/CMakeLists.txt` and
   `src/Components/CMakeLists.txt` reach this repository
   (`esma_add_subdirectory (GEOSgcm_GridComp)`). Fixture documentation:
   `../../../../docs/ARCHITECTURE.md` when this repository sits in the fixture.

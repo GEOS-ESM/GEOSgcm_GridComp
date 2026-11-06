@@ -33,8 +33,6 @@ their own repository.
 ## Documents
 
 Read `docs/ARCHITECTURE.md` first, then the file for the directory you touch.
-On this line the parent's documents (GEOSgcm fixture) are not written yet; the
-MAPL2-line versions are on its `develop` branch.
 
 | Document | Content |
 |---|---|
