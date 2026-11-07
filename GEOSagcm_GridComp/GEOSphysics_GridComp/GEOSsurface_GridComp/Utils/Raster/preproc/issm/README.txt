@@ -14,7 +14,7 @@ That directory is organized into AIS (Antarctica) and GRIS (Greenland) subdirect
 Output is currently archived here:
 /discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/landice/issm/v1/
 
-There is only one resolution for v1 ISSM BCs, ISSM_ME23083_N34534_AIS_GRIS.
+There is only one resolution for v2 ISSM BCs, ISSM_ME22565_N35646_AIS_GRIS.
 The domain naming convention (ISSM_ME*_N*...) is described below.
 
 The script finds all subdirectories containing files of the form:
