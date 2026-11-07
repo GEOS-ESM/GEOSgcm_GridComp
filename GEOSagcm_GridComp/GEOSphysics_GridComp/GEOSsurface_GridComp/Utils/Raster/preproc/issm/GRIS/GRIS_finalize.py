@@ -24,7 +24,7 @@ md.stressbalance.restol=1.0e-12
 md.stressbalance.reltol=1.0e-12
 
 # Transient options
-md.transient.ismovingfront = 0
+md.transient.ismovingfront = 1
 md.transient.isthermal = 0
 md.transient.isstressbalance = 1
 md.transient.ismasstransport = 1

@@ -1,144 +1,176 @@
 import numpy as np
-from paterson import paterson
-from netCDF4 import Dataset
-from xy2ll import xy2ll
-from InterpFromGridToMesh import InterpFromGridToMesh
-from SetMarineIceSheetBC import SetMarineIceSheetBC
-from m1qn3inversion import m1qn3inversion 
 from setflowequation import setflowequation
 from loadmodel import loadmodel
+from interpMIPkitAntarctica import interpMIPkitAntarctica
 from clusters.discover_geos import export_discover
+from killberg import killberg_fast
+from removeponds import removeponds
+from reinitializelevelset import reinitializelevelset
+import sethydrostaticmask
+from effectivepressure import effectivepressure
+from drivingstress import drivingstress
+from averaging import averaging
+from friction import friction
+from scipy.interpolate import LinearNDInterpolator, NearestNDInterpolator
+from cuffey import cuffey
+
+md = loadmodel('./netcdfs/AIS_mesh.nc')
 
 #Name and Coordinate system
 md.miscellaneous.name="AIS"
 md.mesh.epsg=3031
 
-nsidc_vel = Dataset('/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/landice/issm/v1/AIS/Antarctica_ice_velocity.nc')
-xmin = nsidc_vel.xmin
-xmin = float(xmin.lstrip()[0:10])
-ymax = nsidc_vel.ymax
-ymax = float(ymax.lstrip()[0:10])
-spacing = nsidc_vel.spacing
-spacing = float((spacing.lstrip())[0:4])
-nx = nsidc_vel.nx
-ny = nsidc_vel.ny
-velx = nsidc_vel['vx'][:].data
-vely = nsidc_vel['vy'][:].data
-# Build coordinates
-x2 = xmin + np.arange(nx + 1) * spacing
-y2 = (ymax - ny * spacing) + np.arange(ny + 1) * spacing
+mipkit_path = '/discover/nobackup/agstubbl/ISSM/data/AIS/AntarcticaObsISMIP7-v1.2.nc'
 
-# print('   Set observed velocities')
-md.initialization.vx = InterpFromGridToMesh(x2, y2, np.flipud(velx), md.mesh.x, md.mesh.y, 0)
-md.initialization.vy = InterpFromGridToMesh(x2, y2, np.flipud(vely), md.mesh.x, md.mesh.y, 0)
-md.initialization.vz = np.zeros(md.mesh.numberofvertices)
-md.initialization.vel = np.sqrt(md.initialization.vx**2 + md.initialization.vy**2)
-del velx, vely
+# setting mask:
+mask = interpMIPkitAntarctica(md.mesh.x,md.mesh.y,'mask_bedmachine',ncfile=mipkit_path,default_value=0)
+md.mask.ice_levelset= -1*np.ones(md.mesh.numberofvertices)
+pos = np.where(mask<1)[0]
+md.mask.ice_levelset[pos]=1
 
-# Parameters to change/Try
-friction_coefficient = 10  # default [10]
-Temp_change = 0           # default [0 K]
+#Tricky part here: we want to offset the mask by one element so that we don't end up with a cliff at the transition
+elements = md.mesh.elements.astype(int) - 1                  # 0-based, int
+levelset = np.asarray(md.mask.ice_levelset, dtype=float).ravel().copy()
 
-# NetCDF Loading
-print('   Loading SeaRISE data from NetCDF')
-ncdata = Dataset('/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/landice/issm/v1/AIS/Antarctica_5km_withshelves_v0.75.nc')
-x1 = ncdata['x1'][:].data
-y1 = ncdata['y1'][:].data
-usrf = ncdata['usrf'][:].data[0]
-topg = ncdata['topg'][:].data[0]
-temp = ncdata['presartm'][:].data[0]
-smb = ncdata['presprcp'][:].data[0]
-gflux = ncdata['bheatflx_fox'][:].data[0]
+# offset the mask by one element so we don't end up with a cliff at the transition
+pos = np.flatnonzero(levelset[elements].max(axis=1) > 0)
+levelset[elements[pos, :]] = 1
+md.mask.ice_levelset = levelset.reshape(np.shape(md.mask.ice_levelset))
 
-# Geometry
-print('   Interpolating surface and ice base')
-md.geometry.base = InterpFromGridToMesh(x1, y1, topg, md.mesh.x, md.mesh.y, 0)
-md.geometry.surface = InterpFromGridToMesh(x1, y1, usrf, md.mesh.x, md.mesh.y, 0)
-del usrf, topg
+# reading geometry
+md.geometry.surface = interpMIPkitAntarctica(md.mesh.x,md.mesh.y,'surface_bedmachine',ncfile=mipkit_path,default_value=0)
+md.geometry.bed     = interpMIPkitAntarctica(md.mesh.x,md.mesh.y,'bed_bedmachine',ncfile=mipkit_path,default_value=0)
 
-thkmask=ncdata['thkmask'][:].data[0]
+# determining thickness based on floatation
+min_thickness = 1
 
-##interpolate onto our mesh vertices
-groundedice=   InterpFromGridToMesh(x1,y1,thkmask,md.mesh.x,md.mesh.y,0)
-groundedice[groundedice<=0]=-1
-del thkmask
+md.geometry.base = md.geometry.bed.copy()  
 
-#fill in the md.mask structure
-md.mask.ocean_levelset = groundedice  #ice is grounded for mask equal one
-md.mask.ice_levelset = -1*np.ones(np.shape(md.mesh.x))  #ice is present when negatvie
+# using the corrected surface
+floatation_base = (md.geometry.surface * md.materials.rho_ice
+                   / (md.materials.rho_ice - md.materials.rho_water))
 
-print('   Constructing thickness')
+# grounded ice
+pos = floatation_base <= md.geometry.bed
+md.geometry.base[pos] = md.geometry.bed[pos]
+
+# floating ice
+pos = floatation_base > md.geometry.bed
+md.geometry.base[pos] = floatation_base[pos]
+
 md.geometry.thickness = md.geometry.surface - md.geometry.base
 
-# Ensure hydrostatic equilibrium on ice shelf
+# dealing with rocks or ocean part
+pos = md.geometry.thickness < min_thickness
+md.geometry.thickness[pos] = min_thickness
+md.geometry.surface[pos] = md.geometry.thickness[pos] + md.geometry.base[pos]
+
+# Apply some corrections for "outliers"
+# Ice-free nodes: minimum thickness, in hydrostatic equilibrium if over ocean
+# (do NOT reuse the old flotation base, it would give a surface far below sea level)
 di = md.materials.rho_ice / md.materials.rho_water
 
-# Get the node numbers of floating nodes
-pos = np.where(md.mask.ocean_levelset < 0)
+levelset = np.asarray(md.mask.ice_levelset).flatten()
+bed      = np.asarray(md.geometry.bed).flatten()
+base     = np.asarray(md.geometry.base).flatten().astype(float)
+surface  = np.asarray(md.geometry.surface).flatten().astype(float)
 
-# Apply flotation criterion
-md.geometry.thickness[pos] = 1 / (1 - di) * md.geometry.surface[pos]
-md.geometry.base[pos] = md.geometry.surface[pos] - md.geometry.thickness[pos]
-md.geometry.hydrostatic_ratio = np.ones(md.mesh.numberofvertices)  
+icefree = levelset > 0
+flo = icefree & (bed < -min_thickness * di)   # ocean: floating sliver
+gnd = icefree & ~flo                          # rock: sits on bed
 
-# Set min thickness to 1 meter
-pos0 = np.where(md.geometry.thickness <= 1)
-md.geometry.thickness[pos0] = 1
-md.geometry.surface = md.geometry.thickness + md.geometry.base
-md.geometry.bed = md.geometry.base.copy()
-md.geometry.bed[pos] = md.geometry.base[pos] - 1000
+base[flo]    = -di * min_thickness
+surface[flo] = (1 - di) * min_thickness
+base[gnd]    = bed[gnd]
+surface[gnd] = bed[gnd] + min_thickness
 
+thickness = surface - base
+pos = thickness <= min_thickness
+surface[pos] = base[pos] + min_thickness
+thickness = surface - base
 
-# Initialization parameters
-print('   Interpolating temperatures')
-md.initialization.temperature = InterpFromGridToMesh(
-    x1, y1, temp, md.mesh.x, md.mesh.y, 0
-) + 273.15 + Temp_change
+md.geometry.base = base
+md.geometry.surface = surface
+md.geometry.thickness = thickness
+md.masstransport.min_thickness = min_thickness
 
-[md.mesh.lat, md.mesh.long] = xy2ll(md.mesh.x, md.mesh.y, -1)
+# set initial ocean levelset
+md = sethydrostaticmask.setmask(md)
 
+# remove icebergs
+md.mask.ice_levelset = killberg_fast(md)
+md.mask.ice_levelset=reinitializelevelset(md,md.mask.ice_levelset)
 
-print('   Set Pressure')
-md.initialization.pressure = md.materials.rho_ice * md.constants.g * md.geometry.thickness
+# remove little ocean 'ponds' on interior of ice
+md = removeponds(md, min_area=1e3,min_vertices=10,raise_bed=1)
 
-print('   Construct ice rheological properties')
-md.materials.rheology_n = 3 * np.ones(md.mesh.numberofelements)
-md.materials.rheology_B = paterson(md.initialization.temperature)
+# reading velocities
+md.inversion.vx_obs =  interpMIPkitAntarctica(md.mesh.x, md.mesh.y, 'vx_mosaic',mipkit_path,default_value=0)
+md.inversion.vy_obs =  interpMIPkitAntarctica(md.mesh.x, md.mesh.y, 'vy_mosaic',mipkit_path,default_value=0)
+pos = np.isnan(md.inversion.vx_obs) | np.isnan(md.inversion.vy_obs)
+md.inversion.vx_obs[pos] = 0
+md.inversion.vy_obs[pos] = 0
+md.inversion.vel_obs = np.sqrt(md.inversion.vx_obs**2 + md.inversion.vy_obs**2)
+md.initialization.vx  = md.inversion.vx_obs.copy()
+md.initialization.vy  = md.inversion.vy_obs.copy()
+md.initialization.vz  = np.zeros(md.mesh.numberofvertices)
+md.initialization.vel = md.inversion.vel_obs.copy()
 
-# Forcings
-print('   Interpolating surface mass balance')
-mass_balance = InterpFromGridToMesh(x1, y1, smb, md.mesh.x, md.mesh.y, 0)
-md.smb.mass_balance = mass_balance * md.materials.rho_water / md.materials.rho_ice
+# initialize friction
+Neff = np.fmax(0, np.asarray(effectivepressure(md)).flatten())
+_, _, taub = drivingstress(md)
+taub = np.asarray(averaging(md, taub, 3)).flatten()
 
-print('   Set geothermal heat flux')
-md.basalforcings.geothermalflux = InterpFromGridToMesh(x1, y1, gflux, md.mesh.x, md.mesh.y, 0)
+vb = md.initialization.vel / md.constants.yts
 
-# Friction and inversion set up
-print('   Construct basal friction parameters')
-md.friction.coefficient = friction_coefficient * np.ones(md.mesh.numberofvertices)
+with np.errstate(divide='ignore', invalid='ignore'):
+    C = np.fmin(400, np.sqrt(taub / (Neff * vb)))
+
+# extrapolate Cs where undefined
+flags = (vb == 0) | (Neff < 1e5) | np.isnan(C)
+good = ~flags
+
+x = np.asarray(md.mesh.x).flatten()
+y = np.asarray(md.mesh.y).flatten()
+
+pts = np.column_stack((x[good], y[good]))
+F = LinearNDInterpolator(pts, C[good])
+C_new = F(x[flags], y[flags])
+
+# linear interpolation returns NaN outside the convex hull, so fall back to nearest
+bad = np.isnan(C_new)
+if bad.any():
+    C_new[bad] = NearestNDInterpolator(pts, C[good])(x[flags][bad], y[flags][bad])
+C[flags] = C_new
+
+print(f"      → Interpolated {flags.sum()} friction coefficients")
+
+# Set Budd's friction law
+md.friction = friction()
+md.friction.coefficient = C # try constant for test: 50*np.ones(md.mesh.numberofvertices) 
+# md.friction.coefficient[md.mask.ocean_levelset<0] = 0
 md.friction.p = np.ones(md.mesh.numberofelements)
 md.friction.q = np.ones(md.mesh.numberofelements)
 
-# No friction applied on floating ice
-pos = np.where(md.mask.ocean_levelset < 0)[0]
-md.friction.coefficient[pos] = 0
-md.groundingline.migration = 'SubelementMigration'
+# Flow law (assume ice is at -25 C for now)
+md=setflowequation(md,'SSA','all')
+md.materials.rheology_n = 3*np.ones(md.mesh.numberofelements)
+md.materials.rheology_B = cuffey(273.15 - 25)*np.ones(md.mesh.numberofvertices) 
 
-md.inversion = m1qn3inversion()
-md.inversion.vx_obs = md.initialization.vx
-md.inversion.vy_obs = md.initialization.vy
-md.inversion.vel_obs = md.initialization.vel
+# Set boundary conditions
+md.stressbalance.spcvx=np.nan*np.ones(md.mesh.numberofvertices)
+md.stressbalance.spcvy=np.nan*np.ones(md.mesh.numberofvertices)
+md.stressbalance.spcvz=np.nan*np.ones(md.mesh.numberofvertices)
+md.stressbalance.referential=np.nan*np.ones((md.mesh.numberofvertices,6))
+md.stressbalance.loadingforce=np.zeros((md.mesh.numberofvertices,3))
+pos=np.where((md.mask.ice_levelset<0) & (md.mesh.vertexonboundary))[0]
+md.stressbalance.spcvx[pos]=md.initialization.vx[pos]
+md.stressbalance.spcvy[pos]=md.initialization.vy[pos]
+md.stressbalance.spcvz[pos]=0
 
-print('   Set flow equations')
-md = setflowequation(md,'SSA','all')
-
-print('   Set boundary conditions')
-md = SetMarineIceSheetBC(md)
-md.basalforcings.floatingice_melting_rate = np.zeros(md.mesh.numberofvertices)
+# basal forcings
 md.basalforcings.groundedice_melting_rate = np.zeros(md.mesh.numberofvertices)
-md.thermal.spctemperature = md.initialization.temperature
-md.masstransport.spcthickness = np.full(md.mesh.numberofvertices, np.nan)
+md.basalforcings.floatingice_melting_rate = np.zeros(md.mesh.numberofvertices)
 
-
-
-
+# export parameterization
+export_discover(md, './netcdfs/AIS_parameterization.nc')

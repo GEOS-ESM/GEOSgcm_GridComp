@@ -50,7 +50,7 @@ md.inversion.dxmin=1e-5
 #Additional parameters
 md.stressbalance.abstol=np.nan
 
-# Solve
+# marshall binary for solve via command line 
 md.private.solution = 'Stressbalance'
 md.settings.waitonlock = 0
 md.toolkits.ToolkitsFile('ISSM_'+md.miscellaneous.name + '.toolkits')

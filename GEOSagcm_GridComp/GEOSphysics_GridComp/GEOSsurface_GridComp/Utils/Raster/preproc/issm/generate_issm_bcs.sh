@@ -28,13 +28,16 @@ for dir do
     rm -rf netcdfs
     (export LD_LIBRARY_PATH=$PYTHON_LIB:$LD_LIBRARY_PATH; python ${name}_meshgen.py "$h_max" "$h_min")
     (export LD_LIBRARY_PATH=$PYTHON_LIB:$LD_LIBRARY_PATH; python ${name}_parameterize.py)
-    (export LD_LIBRARY_PATH=$PYTHON_LIB:$LD_LIBRARY_PATH; python ${name}_control.py)
     
-    if [ -n "$SLURM_JOB_ID" ]; then
-        mpirun -np $SLURM_NTASKS ${ISSM_DIR}/bin/issm.exe StressbalanceSolution $(pwd) ISSM_${name} 2>> ISSM_${name}.errlog
-    else
-        ${ISSM_DIR}/bin/issm.exe StressbalanceSolution $(pwd) ISSM_${name} 2>> ISSM_${name}.errlog
-    fi
+    for f in ${name}_control*.py; do
+        (export LD_LIBRARY_PATH=$PYTHON_LIB:$LD_LIBRARY_PATH; python "$f")
+        
+        if [ -n "$SLURM_JOB_ID" ]; then
+            mpirun -np $SLURM_NTASKS ${ISSM_DIR}/bin/issm.exe StressbalanceSolution $(pwd) ISSM_${name} 2>> ISSM_${name}.errlog
+        else
+            ${ISSM_DIR}/bin/issm.exe StressbalanceSolution $(pwd) ISSM_${name} 2>> ISSM_${name}.errlog
+        fi
+    done
     
     (export LD_LIBRARY_PATH=$PYTHON_LIB:$LD_LIBRARY_PATH; python ${name}_finalize.py)
 )
