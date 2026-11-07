@@ -37,5 +37,8 @@ v = np.sqrt(vx**2 + vy**2)
 # # # # Refine mesh according to flow speed
 md = bamg(md, 'hmax', h_max, 'hmin', h_min, 'gradation', 1.4, 'field', v, 'err', 8)
 
+# update lat, long
+[md.mesh.lat, md.mesh.long] = xy2ll(md.mesh.x, md.mesh.y, + 1, 45, 70)
+
 # export mesh
 export_discover(md, './netcdfs/GRIS_mesh.nc')
