@@ -23,6 +23,12 @@ pos = np.where(md.inversion.vel_obs==0)[0]
 md.mask.ice_levelset[pos] = +1 # set these areas to be ice-free
 md.mask.ice_levelset=reinitializelevelset(md,md.mask.ice_levelset)
 
+#Control general
+md.inversion=m1qn3inversion(md.inversion)
+md.inversion.iscontrol=1
+md.verbose=verbose('solution',True,'control',True)
+md.transient.amr_frequency = 0
+
 #Cost functions
 md.inversion.cost_functions= [101, 103, 501]
 md.inversion.cost_functions_coefficients=np.zeros((md.mesh.numberofvertices,len(md.inversion.cost_functions)))
