@@ -29,7 +29,7 @@ for dir do
     (export LD_LIBRARY_PATH=$PYTHON_LIB:$LD_LIBRARY_PATH; python ${name}_meshgen.py "$h_max" "$h_min")
     (export LD_LIBRARY_PATH=$PYTHON_LIB:$LD_LIBRARY_PATH; python ${name}_parameterize.py)
     
-    for f in ${name}_control*.py; do
+    for f in "${name}_control*.py"; do
         (export LD_LIBRARY_PATH=$PYTHON_LIB:$LD_LIBRARY_PATH; python "$f")
         
         if [ -n "$SLURM_JOB_ID" ]; then
