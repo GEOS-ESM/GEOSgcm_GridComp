@@ -430,12 +430,22 @@ module GEOS_LandiceGridCompMod
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'snow_ice_evaporation_energy_flux_over_glaciated_surface',&
-    UNITS              = 'W m-2'                     ,&
-    SHORT_NAME         = 'EVPICE_GL'                    ,&
+    UNITS              = 'kg m-2 s-1'                ,&
+    SHORT_NAME         = 'EVPICEGLC'                 ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
   VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    & 
+    LONG_NAME          = 'runoff_flux_over_glaciated_surface',&
+    UNITS              = 'kg m-2 s-1'                ,&
+    SHORT_NAME         = 'RUNOFFGLC'                 ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
 
      call MAPL_AddExportSpec(GC,                     &
         LONG_NAME          = 'sublimation'               ,&
@@ -671,6 +681,25 @@ module GEOS_LandiceGridCompMod
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
+  VERIFY_(STATUS)
+
+call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'snowfall_on_glaciated_surface'             ,&
+    UNITS              = 'kg m-2 s-1'                ,&
+    SHORT_NAME         = 'SNOGLC'                     ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS) 
+
+call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'total_precipitation_on_glaciated_surface'             ,&
+    UNITS              = 'kg m-2 s-1'                ,&
+    SHORT_NAME         = 'PRECIPGLC'                     ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
@@ -929,6 +958,15 @@ module GEOS_LandiceGridCompMod
         LONG_NAME          = 'glacier_ice_heating_flux'  ,&
         UNITS              = 'W m-2'                     ,&
         SHORT_NAME         = 'GHTSKIN'                   ,&
+        DIMS               = MAPL_DimsTileOnly           ,&
+        VLOCATION          = MAPL_VLocationNone          ,&
+                                               RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                     &
+        LONG_NAME          = 'change_in_surface_energy_over_glaciated_surface'  ,&
+        UNITS              = 'W m-2'                     ,&
+        SHORT_NAME         = 'DHGLC'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
                                                RC=STATUS  )
@@ -1824,7 +1862,7 @@ module GEOS_LandiceGridCompMod
        VERIFY_(STATUS)
        Iam = trim(COMP_NAME) // "Initialize"
 
-   ! Get my internal MAPL_Generic state
+   ! Get my internal MAPL_Generic etate
    !-----------------------------------
 
        call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
@@ -2550,6 +2588,8 @@ contains
    real, pointer, dimension(:  )  :: ACCUM
    real, pointer, dimension(:  )  :: SMELT
    real, pointer, dimension(:  )  :: IMELT
+   real, pointer, dimension(:  )  :: SNOEXP !snowfall export 
+   real, pointer, dimension(:  )  :: PRECIPEXP !precipitation export
    real, pointer, dimension(:  )  :: RAINRFZ
    real, pointer, dimension(:  )  :: SNOWALB
    real, pointer, dimension(:  )  :: SNICEALB
@@ -2587,6 +2627,7 @@ contains
    real, pointer, dimension(:  )  :: DNICFLX
    real, pointer, dimension(:  )  :: GHSNOW
    real, pointer, dimension(:  )  :: GHTSKIN
+   real, pointer, dimension(:  )  :: DHGLC    !surface energy change over glacier  
    real, pointer, dimension(:)   :: RMELTDU001
    real, pointer, dimension(:)   :: RMELTDU002
    real, pointer, dimension(:)   :: RMELTDU003
@@ -2596,7 +2637,7 @@ contains
    real, pointer, dimension(:)   :: RMELTBC002
    real, pointer, dimension(:)   :: RMELTOC001
    real, pointer, dimension(:)   :: RMELTOC002
-
+  
 ! pointers to internal
    real, pointer, dimension(:)    :: ICESMB_IN
    real, pointer, dimension(:,:)  :: TS
@@ -2638,6 +2679,7 @@ contains
    real, pointer, dimension(:)    :: PS
    real, pointer, dimension(:)    :: PCU
    real, pointer, dimension(:)    :: PLS
+   real, pointer, dimension(:)    :: ENTOP0  !energy at the start of the timestep 
    real, pointer, dimension(:)    :: THATM
    real, pointer, dimension(:)    :: QHATM
    real, pointer, dimension(:)    :: CTATM
@@ -2856,6 +2898,8 @@ end if
    call MAPL_GetPointer(INTERNAL,CM   , 'CM'     , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,CQ   , 'CQ'     , RC=STATUS); VERIFY_(STATUS)
 
+! should the heat content be calculated here?
+
    ! for analytical extra derivatives (louissurface)
    
    call MAPL_GetPointer(INTERNAL,delCQ_delTVA ,'delCQ_delTVA',RC=STATUS); VERIFY_(STATUS)
@@ -2895,11 +2939,16 @@ end if
    call MAPL_GetPointer(EXPORT,ALBNR  , 'ALBNR'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,DELTS  , 'DELTS'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,DELQS  , 'DELQS'  , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,EVPICE , 'EVPICE_GL' , RC=STATUS); VERIFY_(STATUS)
+   !call MAPL_GetPointer(EXPORT,EVPICE , 'EVPICEGLC' , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SUBLIM , 'SUBLIM' , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,ACCUM  , 'ACCUM'  , alloc=.true. , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SMELT  , 'SMELT'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,IMELT  , 'IMELT'  , RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,SNOEXP  , 'SNOGLC'  , RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,PRECIPEXP  , 'PRECIPGLC'  , RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,DHGLC,   'DHGLC' , RC=STATUS); VERIFY_(STATUS)  !export surface energy change
+   call MAPL_GetPointer(EXPORT,EVAPOUT,'EVPICEGLC', RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,RUNOFF, 'RUNOFFGLC',  RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,RAINRFZ, 'RAINRFZ', RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SNOWALB, 'SNOWALB', RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SNICEALB,'SNICEALB',RC=STATUS); VERIFY_(STATUS)
@@ -2974,6 +3023,7 @@ end if
     VERIFY_(STATUS)
 
     NT = size(LWDNSRF)
+
 
     ! initialize running mean ICESMB and number of steps since last ISSM solve
 #ifdef HAVE_ISSM
@@ -3465,7 +3515,13 @@ end if
        DIF = 0.0
        ULW = ALWN + BLWN*TS(:,N)
 
-       LANDICECAP = (MAPL_RHOWTR*MAPL_CAPICE*LANDICEDEPTH)
+       LANDICECAP = (MAPL_RHOWTR*MAPL_CAPICE*LANDICEDEPTH) !I dont think this is currently used for anything and I am  not sure that it is correct because it uses water density, not ice density.
+    ! calculate the heat content of the top layer at the start of the timestep to calculate DHGLC
+      ENTOP0 = HTSN(:,1) + FR(:,ICE) * MAPL_CAPICE*RHOICE*DZMAXI(1) * (TICE(:,ICE,1) - MAPL_TICE)
+     ! This will need to loop through the vertical layers to calculate the mean heat content of the snow and the mean temperature of the ice layers   
+     !ENTOT0 = FR(:,SNOW) * HTSN(1,:) + RHOICE * MAPL_CAPICE *LANDICEDEPTH  * (TICE(:,ICE,1) - MAPL_TICE)      
+
+
 
        EVAPI   = LHF / MAPL_ALHS            ! LHF needed in solveicelayer(); EVAPI   needed in snowrt()
        DEVAPDT = LHD / MAPL_ALHS            ! LHD needed in solveicelayer(); DEVAPDT needed in snowrt()
@@ -3669,20 +3725,22 @@ end if
     enddo ! NUM_SUBTILES
 
     FR(:,ICE) = max(1.0-FR(:,SNOW), 0.0)
+    if(associated(DHGLC)) &
 
+    DHGLC = (( HTSN(:,1) + FR(:,ICE) * MAPL_CAPICE*RHOICE*DZMAXI(1) * (TICE(:,ICE,1) - MAPL_TICE)) - ENTOP0)/ DT !Calculate the change in surface energy
     if(associated(GHTSKIN )) GHTSKIN = ghflxsno*FR(:,SNOW) + ghflxice*FR(:,ICE)
     if(associated(ACCUM )) ACCUM      = ACCUM + PRECIP
     if(associated(EMISS )) EMISS      = LANDICEEMISS
 
-    if(associated(SNOWMASS)) SNOWMASS = sum(WESN,dim=2)
-    if(associated(SNOMAS))   SNOMAS   = sum(WESN,dim=2)
-    if(associated(SNOWDP))   SNOWDP   = sum(SNDZ,dim=2)
-    if(associated(ASNOW))    ASNOW    = FR(:,SNOW)
-    if(associated(SMELT ))   SMELT    = PERC
-    if(associated(RAINRFZ )) RAINRFZ  = FR(:,ICE)  * RAINRF
-
-    if(associated(MELTWTR )) MELTWTR  = MELTWTR + MLT
-
+    if(associated(SNOWMASS)) SNOWMASS   = sum(WESN,dim=2)
+    if(associated(SNOMAS))   SNOMAS     = sum(WESN,dim=2)
+    if(associated(SNOWDP))   SNOWDP     = sum(SNDZ,dim=2)
+    if(associated(ASNOW))    ASNOW      = FR(:,SNOW)
+    if(associated(SMELT ))   SMELT      = PERC
+    if(associated(RAINRFZ )) RAINRFZ    = FR(:,ICE)  * RAINRF
+    if(associated(MELTWTR )) MELTWTR    = MELTWTR + MLT
+    if(associated(SNOEXP))   SNOEXP     = SNO
+    if(associated(PRECIPEXP)) PRECIPEXP = PRECIP
 
     ! Calculate surface mass balance (SMB) for ISSM
     if(associated(ICESMB)) ICESMB    = ACCUM - RUNOFF
