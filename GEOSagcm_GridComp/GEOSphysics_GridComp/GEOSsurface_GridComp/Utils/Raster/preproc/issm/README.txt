@@ -20,10 +20,12 @@ The domain naming convention (ISSM_ME*_N*...) is described below.
 The script finds all subdirectories containing files of the form:
 glaciername/glaciername_meshgen.py
 glaciername/glaciername_parameterize.py
-glaciername/glaciername_control.py
+glaciername/glaciername_control*.py
 glaciername/glaciername_finalize.py
 
-where "glaciername" (e.g., AIS, GRIS, etc...) is the name of the subdirectory. 
+where "glaciername" (e.g., AIS, GRIS, etc...) is the name of the subdirectory. Note this allows multiple
+control steps that should be numbered according to the execution sequence. For example, in the default
+Antarctica setup we run AIS_control1_rheology.py and then AIS_control2_friction.py.  
 
 The subdirectories can be nested or organized in any way (i.e., directories without the required 
 python files are passed over), so future development could add a structure like:
@@ -47,10 +49,10 @@ ISSM_ME{ mean edge length }_N{ total nodes }_{ top-level glacier names separated
 
 *The mean edge length (in meters) is rounded to the nearest meter.
 
-*Top-level glacier names are those that exist at the issm directory level. In the iceland example
+*Top-level glacier names are those that exist at the issm directory level. In the iceland hypothetical
  above, iceland would appear in domain_name while vatnajokull and snaefellsjokull would not. 
 
-Currently, the generated domain name is: ISSM_ME23083_N34534_AIS_GRIS
+Currently, the generated domain name is: ISSM_ME22565_N35646_AIS_GRIS
 
 Finally, the script creates a directory with this domain name and copies all ISSM*.bin and 
 ISSM*toolkits files there.
