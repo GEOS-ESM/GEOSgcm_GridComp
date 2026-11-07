@@ -8,7 +8,7 @@ from loadmodel import loadmodel
 from setmask import setmask
 from parameterize import parameterize
 from marshall import marshall
-from write_netCDF import write_netCDF
+from clusters.discover_geos import export_discover
 
 # Step 2: parameterize model
 md = loadmodel('./netcdfs/AIS_mesh.nc')
@@ -18,7 +18,7 @@ md = parameterize(md, './AIS_parameterize.py')
 
 
 # export parameterization
-write_netCDF(md, "./netcdfs/AIS_parameterization.nc")
+export_discover(md, "./netcdfs/AIS_parameterization.nc")
 
 # Step 3: basal friction inversion 
 	# Control general
@@ -60,4 +60,4 @@ md.toolkits.ToolkitsFile('ISSM_'+md.miscellaneous.name + '.toolkits')
 marshall(md,'ISSM_'+md.miscellaneous.name+'.bin')
 
 # export configuration for loading solution in next step
-write_netCDF(md,'./netcdfs/AIS_inversion.nc')
+export_discover(md,'./netcdfs/AIS_inversion.nc',delete_rundir=True)

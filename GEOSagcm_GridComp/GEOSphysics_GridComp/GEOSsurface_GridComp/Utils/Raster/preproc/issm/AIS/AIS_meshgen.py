@@ -3,10 +3,9 @@ import sys,os
 import numpy as np
 from triangle import triangle
 from model import *
-from netCDF4 import Dataset
-from InterpFromGridToMesh import InterpFromGridToMesh
+from interpMIPkitAntarctica import interpMIPkitAntarctica
 from bamg import bamg
-from write_netCDF import write_netCDF
+from clusters.discover_geos import export_discover
 
 h_max = sys.argv[1] if len(sys.argv) > 1 else 24000
 h_min = sys.argv[2] if len(sys.argv) > 2 else 2000
@@ -20,32 +19,16 @@ if not os.path.exists('./netcdfs'):
     os.mkdir('./netcdfs')
 
 # Step 1: Mesh generation
-# Generate initial uniform mesh (resolution = 60000 m)
+# Generate initial ~uniform mesh (resolution = 20000 m)
 # project mesh onto new coordinate system
-md = triangle(model(), '/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/landice/issm/v1/AIS/AntarcticaOutline.exp', 60000)
+md = triangle(model(), '/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/landice/issm/v1/AIS/AntarcticaOutline.exp', 20000)
 
-print('   Loading velocities data from NetCDF')
-nsidc_vel = Dataset('/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/landice/issm/v1/AIS/Antarctica_ice_velocity.nc')
-xmin = nsidc_vel.xmin
-xmin = float(xmin.lstrip()[0:10])
-ymax = nsidc_vel.ymax
-ymax = float(ymax.lstrip()[0:10])
-spacing = nsidc_vel.spacing
-spacing = float((spacing.lstrip())[0:4])
-nx = nsidc_vel.nx
-ny = nsidc_vel.ny
-vx = nsidc_vel['vx'][:].data
-vy = nsidc_vel['vy'][:].data
-# Build coordinates
-x2 = xmin + np.arange(nx + 1) * spacing
-y2 = (ymax - ny * spacing) + np.arange(ny + 1) * spacing
+vx = interpMIPkitAntarctica(md.mesh.x, md.mesh.y, 'vx_mosaic',ncfile=mipkit_path,default_value=0)
+vy = interpMIPkitAntarctica(md.mesh.x, md.mesh.y, 'vy_mosaic',ncfile=mipkit_path,default_value=0)
+v = np.sqrt(vx**2 + vy**2)
 
-vx_ = InterpFromGridToMesh(x2, y2, np.flipud(vx), md.mesh.x, md.mesh.y, 0)
-vy_ = InterpFromGridToMesh(x2, y2, np.flipud(vy), md.mesh.x, md.mesh.y, 0)
-speed = np.sqrt(vx_**2 + vy_**2)
-del vx, vy, vx_, vy_
-
-md = bamg(md, 'hmax', h_max, 'hmin', h_min, 'gradation', 1.4, 'field', speed, 'err', 8)
+# # # # Refine mesh according to flow speed
+md = bamg(md, 'hmax', 24000, 'hmin', 2000, 'gradation', 1.4, 'field', v, 'err', 8)
 
 # export mesh
 export_discover(md, './netcdfs/AIS_mesh.nc')

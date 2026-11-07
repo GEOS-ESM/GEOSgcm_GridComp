@@ -6,6 +6,8 @@ from InterpFromGridToMesh import InterpFromGridToMesh
 from SetMarineIceSheetBC import SetMarineIceSheetBC
 from m1qn3inversion import m1qn3inversion 
 from setflowequation import setflowequation
+from loadmodel import loadmodel
+from clusters.discover_geos import export_discover
 
 #Name and Coordinate system
 md.miscellaneous.name="AIS"

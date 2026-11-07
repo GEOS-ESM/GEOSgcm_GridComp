@@ -7,7 +7,7 @@ from loadmodel import loadmodel
 from loadresultsfromdisk import loadresultsfromdisk
 from marshall import marshall
 from verbose import verbose 
-from write_netCDF import write_netCDF
+from clusters.discover_geos import export_discover
 
 md = loadmodel('./netcdfs/AIS_inversion.nc')
 md = loadresultsfromdisk(md,'ISSM_AIS.outbin')
@@ -27,5 +27,5 @@ md.verbose = verbose('000000000')
 md.toolkits = toolkits()
 marshall(md,'ISSM_'+md.miscellaneous.name+'.bin') # create .bin file
 md.toolkits.ToolkitsFile('ISSM_'+md.miscellaneous.name + '.toolkits')
-write_netCDF(md,'./netcdfs/AIS_initialization.nc')
+export_discover(md,'./netcdfs/AIS_initialization.nc',delete_rundir=True)
 

@@ -6,6 +6,7 @@ import sethydrostaticmask
 from effectivepressure import effectivepressure
 from averaging import averaging
 from drivingstress import drivingstress
+from removeponds import removeponds
 from scipy.interpolate import LinearNDInterpolator, NearestNDInterpolator
 from friction import friction
 from setflowequation import setflowequation
@@ -84,6 +85,9 @@ md.masstransport.min_thickness = min_thickness
 
 # Set ocean levelset now that geometry is set
 md = sethydrostaticmask.setmask(md)
+
+# remove any little isolated 'ocean' ponds
+md = removeponds(md, min_area=1e3,min_vertices=10,raise_bed=1)
 
 # Reading velocities:
 md.inversion.vx_obs =  interpMIPkitGreenland(md.mesh.x, md.mesh.y, 'vx_mosaic',mipkit_path,default_value=0)

@@ -21,9 +21,9 @@ print(f'h_max: {h_max}')
 print(f'h_min: {h_min}')
 
 # Step 1: Mesh generation
-#Generate initial uniform mesh (resolution = 20000 m)
+#Generate initial uniform mesh (resolution = h_max)
 # project mesh onto new coordinate system
-md = triangle(model(), '/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/landice/issm/v1/GRIS/GreenlandOutline.exp', 20000)
+md = triangle(model(), '/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/landice/issm/v1/GRIS/GreenlandOutline.exp', h_max)
 [md.mesh.lat, md.mesh.long] = xy2ll(md.mesh.x, md.mesh.y, + 1, 39, 71)
 [xi, yi] = ll2xy(md.mesh.lat, md.mesh.long, + 1, 45, 70)
 md.mesh.x = xi
