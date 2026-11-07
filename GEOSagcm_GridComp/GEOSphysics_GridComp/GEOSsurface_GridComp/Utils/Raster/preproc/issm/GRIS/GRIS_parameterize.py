@@ -19,6 +19,7 @@ md = loadmodel('./netcdfs/GRIS_mesh.nc')
 md.miscellaneous.name = "GRIS"
 md.mesh.epsg = 3413
 
+# path to ISMIP7 data 
 mipkit_path = '/discover/nobackup/agstubbl/ISSM/data/GRIS/GreenlandObsISMIP7-v1.3.nc'
 
 # Setting mask:

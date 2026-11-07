@@ -9,7 +9,6 @@ from verbose import verbose
 from clusters.discover_geos import export_discover
 from loadmodel import loadmodel
 import numpy as np
-from toolkits import toolkits
 
 md = loadmodel('./netcdfs/GRIS_inversion.nc')
 md = loadresultsfromdisk(md,'ISSM_GRIS.outbin')
@@ -52,7 +51,6 @@ md.frontalforcings.meltingrate = np.zeros((nv, 1))
 
 md.private.solution = 'Transient'
 md.verbose = verbose('000000000')
-md.toolkits = toolkits()
 marshall(md,'ISSM_'+md.miscellaneous.name+'.bin') # create .bin file
 md.toolkits.ToolkitsFile('ISSM_'+md.miscellaneous.name + '.toolkits')
 export_discover(md,'./netcdfs/GRIS_initialization.nc',delete_rundir=True)
