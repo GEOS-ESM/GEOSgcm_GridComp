@@ -1,6 +1,7 @@
 program main
 
   use outlets_constants,only : nc
+  use, intrinsic :: iso_fortran_env, only: int64
   implicit none
   
   integer,allocatable,dimension(:)   :: downid,finalid
@@ -43,11 +44,11 @@ program main
   enddo
   
 ! Separate Pfafstetter number into individual digits  
-  res=int8(pfaf)
-  pfaf_digit(:,1)=res/(int8(10)**int8(11))
+  res=int(pfaf,int64)
+  pfaf_digit(:,1)=res/(int(10,int64)**int(11,int64))
   do i=2,12
-     res=res-int8(10)**int8(13-i)*int8(pfaf_digit(:,i-1))
-     pfaf_digit(:,i)=res/(int8(10)**int8(12-i))
+     res=res-int(10,int64)**int(13-i,int64)*int(pfaf_digit(:,i-1),int64)
+     pfaf_digit(:,i)=res/(int(10,int64)**int(12-i,int64))
   enddo
 
 ! Determine positions of last nonzero digit (pfaf_last) and the last digit that’s neither 0 nor 1 (at the end)  

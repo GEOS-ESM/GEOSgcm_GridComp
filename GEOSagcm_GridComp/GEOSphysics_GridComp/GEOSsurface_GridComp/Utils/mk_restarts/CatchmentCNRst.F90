@@ -11,6 +11,7 @@ module CatchmentCNRstMod
                                  VAR_COL_40, VAR_PFT_40, VAR_COL_45, VAR_PFT_45, &
                                  npft => numpft_CN
   use nanMod         , only : nan
+  use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
   
   implicit none
 
@@ -875,7 +876,7 @@ contains
            end do
         end do
 
-        where(isnan(var_off_pft))  var_off_pft = 0.
+        where(ieee_is_nan(var_off_pft))  var_off_pft = 0.
         where(var_off_pft /= var_off_pft)  var_off_pft = 0.
 
         print *, 'calculating regridded carbn'
@@ -958,7 +959,7 @@ contains
                  iv = nv                                     ! same type fraction (primary of secondary)                          
               else if(ityp_new == ityp_offl (offl_cell,nx) .and. fveg_offl (offl_cell,nx)> fmin) then
                  iv = nx                                     ! not same fraction
-              else if(iclass(ityp_new)==iclass(ityp_offl(offl_cell,nv)) .and. fveg_offl (offl_cell,nv)> fmin) then
+              else if(iclass(ityp_new)==iclass(int(ityp_offl(offl_cell,nv))) .and. fveg_offl (offl_cell,nv)> fmin) then
                  iv = nv                                     ! primary, other type (same class)
               else if(fveg_offl (offl_cell,nx)> fmin) then
                  iv = nx                                     ! secondary, other type (same class)
@@ -975,11 +976,11 @@ contains
               ! Check whether var_pft_out is realistic
               do nz = 1, nzone
                  do j = 1, VAR_PFT
-                    if (isnan(var_pft_out (n, nz,nv,j))) print *,j,nv,nz,n,var_pft_out (n, nz,nv,j),fveg_new
-                    !if(isnan(var_pft_out (n, nz,nv,69))) var_pft_out (n, nz,nv,69) = 1.e-6
-                    !if(isnan(var_pft_out (n, nz,nv,70))) var_pft_out (n, nz,nv,70) = 1.e-6   
-                    !if(isnan(var_pft_out (n, nz,nv,73))) var_pft_out (n, nz,nv,73) = 1.e-6
-                    !if(isnan(var_pft_out (n, nz,nv,74))) var_pft_out (n, nz,nv,74) = 1.e-6                 
+                    if (ieee_is_nan(var_pft_out (n, nz,nv,j))) print *,j,nv,nz,n,var_pft_out (n, nz,nv,j),fveg_new
+                    !if(ieee_is_nan(var_pft_out (n, nz,nv,69))) var_pft_out (n, nz,nv,69) = 1.e-6
+                    !if(ieee_is_nan(var_pft_out (n, nz,nv,70))) var_pft_out (n, nz,nv,70) = 1.e-6   
+                    !if(ieee_is_nan(var_pft_out (n, nz,nv,73))) var_pft_out (n, nz,nv,73) = 1.e-6
+                    !if(ieee_is_nan(var_pft_out (n, nz,nv,74))) var_pft_out (n, nz,nv,74) = 1.e-6                 
                  end do
               end do
            endif
