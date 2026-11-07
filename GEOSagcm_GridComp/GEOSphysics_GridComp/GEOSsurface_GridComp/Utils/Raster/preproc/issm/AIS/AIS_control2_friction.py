@@ -9,6 +9,8 @@ from marshall import marshall
 from clusters.discover_geos import export_discover
 from reinitializelevelset import reinitializelevelset
 from loadresultsfromdisk import loadresultsfromdisk
+from verbose import verbose
+from m1qn3inversion import m1qn3inversion
 
 md = loadmodel("./netcdfs/AIS_parameterization.nc")
 mds = loadmodel('./netcdfs/AIS_inversion_rheology.nc')
