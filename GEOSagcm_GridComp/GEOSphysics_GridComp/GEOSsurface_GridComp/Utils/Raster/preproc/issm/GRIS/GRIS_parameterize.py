@@ -10,10 +10,10 @@ from scipy.interpolate import LinearNDInterpolator, NearestNDInterpolator
 from friction import friction
 from setflowequation import setflowequation
 from cuffey import cuffey
-from read_netCDF import read_netCDF
-from write_netCDF import write_netCDF
+from loadmodel import loadmodel
+from clusters.discover_geos import export_discover
 
-md = read_netCDF('./netcdfs/GRIS_mesh.nc')
+md = loadmodel('./netcdfs/GRIS_mesh.nc')
 
 #Name and Coordinate system
 md.miscellaneous.name = "GRIS"
@@ -150,3 +150,6 @@ md.stressbalance.spcvz[pos]=0
 # basal forcings
 md.basalforcings.groundedice_melting_rate = np.zeros(md.mesh.numberofvertices)
 md.basalforcings.floatingice_melting_rate = np.zeros(md.mesh.numberofvertices)
+
+# export parameterization
+export_discover(md, './netcdfs/GRIS_parameterization.nc')

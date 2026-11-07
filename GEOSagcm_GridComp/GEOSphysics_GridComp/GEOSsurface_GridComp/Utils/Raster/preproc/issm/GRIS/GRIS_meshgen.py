@@ -6,8 +6,8 @@ from model import *
 from bamg import bamg
 from xy2ll import xy2ll
 from ll2xy import ll2xy
-from write_netCDF import write_netCDF
 from interpMIPkitGreenland import interpMIPkitGreenland
+from clusters.discover_geos import export_discover
 
 if not os.path.exists('./netcdfs'):
     os.mkdir('./netcdfs')
@@ -38,4 +38,4 @@ v = np.sqrt(vx**2 + vy**2)
 md = bamg(md, 'hmax', h_max, 'hmin', h_min, 'gradation', 1.4, 'field', v, 'err', 8)
 
 # export mesh
-write_netCDF(md, './netcdfs/GRIS_mesh.nc')
+export_discover(md, './netcdfs/GRIS_mesh.nc')

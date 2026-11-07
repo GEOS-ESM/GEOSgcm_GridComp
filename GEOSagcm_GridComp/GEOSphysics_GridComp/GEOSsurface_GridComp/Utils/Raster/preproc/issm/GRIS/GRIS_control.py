@@ -6,13 +6,13 @@ import numpy as np
 from model import *
 from marshall import marshall
 from m1qn3inversion import m1qn3inversion
-from write_netCDF import write_netCDF
-from read_netCDF import read_netCDF
+from clusters.discover_geos import export_discover
+from loadmodel import loadmodel
 from reinitializelevelset import reinitializelevelset
 from verbose import verbose
 
 # Load model parameterization
-md = read_netCDF("./netcdfs/GRIS_parameterization.nc")
+md = loadmodel("./netcdfs/GRIS_parameterization.nc")
 
 # Control for basal friction
 # We need to make some adjustments to the mask to make sure it is compatible with the observations
@@ -57,4 +57,4 @@ md.toolkits.ToolkitsFile('ISSM_'+md.miscellaneous.name + '.toolkits')
 marshall(md,'ISSM_'+md.miscellaneous.name+'.bin')
 
 # export configuration for loading solution in next step
-write_netCDF(md,'./netcdfs/GRIS_inversion.nc')
+export_discover(md,'./netcdfs/GRIS_inversion.nc',delete_rundir=True)
