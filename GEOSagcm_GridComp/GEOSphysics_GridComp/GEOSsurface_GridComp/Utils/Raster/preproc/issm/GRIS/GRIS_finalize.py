@@ -6,7 +6,7 @@ from model import *
 from loadresultsfromdisk import loadresultsfromdisk
 from marshall import marshall
 from verbose import verbose 
-from cluster.discover_geos import export_discover
+from clusters.discover_geos import export_discover
 from loadmodel import loadmodel
 import numpy as np
 from toolkits import toolkits
