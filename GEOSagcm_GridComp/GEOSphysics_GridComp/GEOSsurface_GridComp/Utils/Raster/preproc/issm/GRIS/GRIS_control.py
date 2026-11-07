@@ -4,58 +4,50 @@ ISSM_DIR = os.getenv('ISSM_DIR') # for binaries
 
 import numpy as np
 from model import *
-from loadmodel import loadmodel
-from setmask import setmask
-from parameterize import parameterize
-from setflowequation import setflowequation
-from clusters.discover_geos import export_discover
 from marshall import marshall
 from m1qn3inversion import m1qn3inversion
+from write_netCDF import write_netCDF
+from read_netCDF import read_netCDF
+from reinitializelevelset import reinitializelevelset
+from verbose import verbose
 
-# Step 2: parameterize model
-md = loadmodel('./netcdfs/GRIS_mesh.nc')
-md = setmask(md, '', '')
-md = parameterize(md, './GRIS_parameterize.py')
-md = setflowequation(md, 'SSA', 'all')
+# Load model parameterization
+md = read_netCDF("./netcdfs/GRIS_parameterization.nc")
 
-# export parameterization
-export_discover(md, "./netcdfs/GRIS_parameterization.nc",delete_rundir=True)
+# Control for basal friction
+# We need to make some adjustments to the mask to make sure it is compatible with the observations
+pos = np.where(md.inversion.vel_obs==0)[0]
+levelset_initial = md.mask.ice_levelset.copy()
+md.mask.ice_levelset[pos] = +1 # set these areas to be ice-free
+md.mask.ice_levelset=reinitializelevelset(md,md.mask.ice_levelset)
 
-# Control general
-md.inversion = m1qn3inversion()
-md.inversion.vx_obs = md.initialization.vx
-md.inversion.vy_obs = md.initialization.vy
-md.inversion.vel_obs = md.initialization.vel
-
-md.inversion.nsteps = 100
+#Control general
+md.inversion=m1qn3inversion(md.inversion)
 md.inversion.iscontrol=1
-md.inversion.maxsteps=100
-md.inversion.maxiter=100
-md.inversion.dxmin=0.01
-md.inversion.gttol=1.0e-8
-
-md.inversion.step_threshold = 0.99 * np.ones((md.inversion.nsteps))
-md.inversion.maxiter_per_step = 40 * np.ones((md.inversion.nsteps))
-
-md.inversion.gradient_scaling = 50 * np.ones((md.inversion.nsteps, 1))
-md.inversion.min_parameters = 1 * np.ones((md.mesh.numberofvertices, 1))
-md.inversion.max_parameters = 200 * np.ones((md.mesh.numberofvertices, 1))
+md.verbose=verbose('solution',True,'control',True)
+md.transient.amr_frequency = 0
 
 #Cost functions
-md.inversion.cost_functions = [101, 103, 501]
-md.inversion.cost_functions_coefficients = np.ones((md.mesh.numberofvertices, 3))
-md.inversion.cost_functions_coefficients[:, 0] = 1
-md.inversion.cost_functions_coefficients[:, 1] = 1
-md.inversion.cost_functions_coefficients[:, 2] = 2e-10
+md.inversion.cost_functions= [101, 103, 501]
+md.inversion.cost_functions_coefficients=np.zeros((md.mesh.numberofvertices,len(md.inversion.cost_functions)))
+md.inversion.cost_functions_coefficients[:,0]=5000
+md.inversion.cost_functions_coefficients[:,1]=100
+md.inversion.cost_functions_coefficients[:,2]=1e-7
+pos=np.where( (md.mask.ice_levelset>0) | (md.inversion.vel_obs==0))[0]
+md.inversion.cost_functions_coefficients[:,0][pos]=0
+md.inversion.cost_functions_coefficients[:,1][pos]=0
 
-# Controls
-md.inversion.control_parameters = ['FrictionCoefficient']
-md.inversion.min_parameters=1*np.ones(np.shape(md.mesh.x))
-md.inversion.max_parameters=200*np.ones(np.shape(md.mesh.x))
+#Controls
+md.inversion.control_parameters=['FrictionCoefficient']
+md.inversion.maxsteps=100
+md.inversion.maxiter =200
+md.inversion.min_parameters=0.05*np.ones(md.mesh.numberofvertices)
+md.inversion.max_parameters=400*np.ones(md.mesh.numberofvertices)
+md.inversion.control_scaling_factors=1
+md.inversion.dfmin_frac = .4
+md.inversion.dxmin=1e-5
 
-# Additional parameters
-md.stressbalance.restol=1.0e-12
-md.stressbalance.reltol=1.0e-12
+#Additional parameters
 md.stressbalance.abstol=np.nan
 
 # Solve
@@ -65,4 +57,4 @@ md.toolkits.ToolkitsFile('ISSM_'+md.miscellaneous.name + '.toolkits')
 marshall(md,'ISSM_'+md.miscellaneous.name+'.bin')
 
 # export configuration for loading solution in next step
-export_discover(md,'./netcdfs/GRIS_inversion.nc',delete_rundir=True)
+write_netCDF(md,'./netcdfs/GRIS_inversion.nc')

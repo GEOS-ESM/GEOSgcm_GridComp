@@ -6,7 +6,7 @@ from model import *
 from netCDF4 import Dataset
 from InterpFromGridToMesh import InterpFromGridToMesh
 from bamg import bamg
-from clusters.discover_geos import export_discover
+from write_netCDF import write_netCDF
 
 h_max = sys.argv[1] if len(sys.argv) > 1 else 24000
 h_min = sys.argv[2] if len(sys.argv) > 2 else 2000

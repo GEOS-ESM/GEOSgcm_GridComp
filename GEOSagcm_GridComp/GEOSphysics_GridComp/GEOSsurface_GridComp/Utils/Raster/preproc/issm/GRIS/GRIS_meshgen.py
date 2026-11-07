@@ -3,12 +3,11 @@ import sys,os
 import numpy as np
 from triangle import triangle
 from model import *
-from netCDF4 import Dataset
-from InterpFromGridToMesh import InterpFromGridToMesh
 from bamg import bamg
 from xy2ll import xy2ll
 from ll2xy import ll2xy
-from clusters.discover_geos import export_discover
+from write_netCDF import write_netCDF
+from interpMIPkitGreenland import interpMIPkitGreenland
 
 if not os.path.exists('./netcdfs'):
     os.mkdir('./netcdfs')
@@ -30,26 +29,13 @@ md = triangle(model(), '/discover/nobackup/projects/gmao/bcs_shared/preprocessin
 md.mesh.x = xi
 md.mesh.y = yi
 
-ncdata_vx = Dataset('/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/landice/issm/v1/GRIS/greenland_vel_mosaic200_2017_2018_vx_v02.1.nc', mode='r')
-ncdata_vy = Dataset('/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/landice/issm/v1/GRIS/greenland_vel_mosaic200_2017_2018_vy_v02.1.nc', mode='r')
+mipkit_path = '/discover/nobackup/agstubbl/ISSM/data/GRIS/GreenlandObsISMIP7-v1.3.nc'
+vx = interpMIPkitGreenland(md.mesh.x, md.mesh.y, 'vx_mosaic',ncfile=mipkit_path,default_value=0)
+vy = interpMIPkitGreenland(md.mesh.x, md.mesh.y, 'vy_mosaic',ncfile=mipkit_path,default_value=0)
+v = np.sqrt(vx**2 + vy**2)
 
-# Get velocities (Note: You can use ncprint('file') to see an ncdump)
-x1 = np.squeeze(ncdata_vx.variables['x'][:].data)
-y1 = np.squeeze(ncdata_vx.variables['y'][:].data)
-velx = np.squeeze(ncdata_vx.variables['Band1'][:].data)
-vely = np.squeeze(ncdata_vy.variables['Band1'][:].data)
-ncdata_vx.close()
-ncdata_vy.close()
-
-velx[np.abs(velx)>1e9] = 0
-vely[np.abs(vely)>1e9] = 0
-
-vx = InterpFromGridToMesh(x1, y1, velx, md.mesh.x, md.mesh.y, 0)
-vy = InterpFromGridToMesh(x1, y1, vely, md.mesh.x, md.mesh.y, 0)
-speed = np.sqrt(vx**2 + vy**2)
-
-# Mesh Greenland (refine according to flow speed)
-md = bamg(md, 'hmax', h_max, 'hmin', h_min, 'gradation', 1.4, 'field', speed, 'err', 8)
+# # # # Refine mesh according to flow speed
+md = bamg(md, 'hmax', h_max, 'hmin', h_min, 'gradation', 1.4, 'field', v, 'err', 8)
 
 # export mesh
-export_discover(md, './netcdfs/GRIS_mesh.nc')
+write_netCDF(md, './netcdfs/GRIS_mesh.nc')

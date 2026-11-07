@@ -27,6 +27,7 @@ for dir do
     rm -f ISSM_${name}.bin ISSM_${name}.outbin ISSM_${name}.errlog 
     rm -rf netcdfs
     (export LD_LIBRARY_PATH=$PYTHON_LIB:$LD_LIBRARY_PATH; python ${name}_meshgen.py "$h_max" "$h_min")
+    (export LD_LIBRARY_PATH=$PYTHON_LIB:$LD_LIBRARY_PATH; python ${name}_parameterize.py)
     (export LD_LIBRARY_PATH=$PYTHON_LIB:$LD_LIBRARY_PATH; python ${name}_control.py)
     
     if [ -n "$SLURM_JOB_ID" ]; then

@@ -6,7 +6,6 @@ from InterpFromGridToMesh import InterpFromGridToMesh
 from SetMarineIceSheetBC import SetMarineIceSheetBC
 from m1qn3inversion import m1qn3inversion 
 from setflowequation import setflowequation
-from pathlib import Path
 
 #Name and Coordinate system
 md.miscellaneous.name="AIS"
