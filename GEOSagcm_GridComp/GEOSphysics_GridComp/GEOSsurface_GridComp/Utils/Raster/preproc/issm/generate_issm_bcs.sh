@@ -19,7 +19,7 @@ for dir do
     cd "$dir" || exit
     name=$(basename "$dir")
     
-    for f in "${name}_meshgen.py" "${name}_parameterize.py" "${name}_control.py" "${name}_finalize.py"; do
+    for f in "${name}_meshgen.py" "${name}_parameterize.py" "${name}"_control*.py "${name}_finalize.py"; do
         [[ -f "$f" ]] || exit
     done
 
