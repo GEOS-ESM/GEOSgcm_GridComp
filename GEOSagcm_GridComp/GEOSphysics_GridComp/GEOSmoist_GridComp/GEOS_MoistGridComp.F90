@@ -81,10 +81,10 @@ contains
    !BOP
    !IROUTINE: SetServices -- Sets ESMF services for this component
    !INTERFACE:
-   subroutine SetServices(GC, RC)
+   subroutine SetServices(gc, rc)
       !ARGUMENTS:
-      type(ESMF_GridComp) :: GC ! gridded component
-      integer, intent(out) :: RC ! return code
+      type(ESMF_GridComp) :: gc
+      integer, intent(out) :: rc
 
       !DESCRIPTION:
       ! {\tt GEOS\_MoistGridCompMod} uses the default Initialize and Finalize
@@ -92,10 +92,9 @@ contains
 
       !EOP
 
-      integer :: STATUS
+      integer :: status
 
       ! Local derived type aliases
-
       type(StringVector) :: ADVECTED
       type(StringVector) :: DIFFUSED
       type(StringVector) :: CHEM_UPDATED
@@ -105,58 +104,55 @@ contains
       logical :: LSHALLOW
       logical :: LCLDMICR
 
-      ! Begin...
-
-      ! Set the Init entry point
-      call MAPL_GridCompSetEntryPoint(GC, ESMF_METHOD_INITIALIZE, Initialize, _RC)
-
-      ! Set the Run entry point
-      call MAPL_GridCompSetEntryPoint(GC, ESMF_METHOD_RUN, Run, phase_name='run', _RC)
-
-      ! Set the Finalize entry point
-      call MAPL_GridCompSetEntryPoint(GC, ESMF_METHOD_FINALIZE, Finalize, _RC)
+      ! Set the Initialize/Run/Finalize entry points
+      call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_INITIALIZE, Initialize, _RC)
+      call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_RUN, Run, phase_name='run', _RC)
+      call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_FINALIZE, Finalize, _RC)
 
       ! Inititialize deep convective parameterizations (Options: RAS, GF or NONE)
-      call MAPL_GridCompGetResource(GC, 'CONVPAR_OPTION', CONVPAR_OPTION, default="GF", _RC)
-      LCONVPAR = adjustl(CONVPAR_OPTION) == "RAS" .or. &
+      call MAPL_GridCompGetResource(gc, 'CONVPAR_OPTION', CONVPAR_OPTION, default="GF", _RC)
+      LCONVPAR = &
+           adjustl(CONVPAR_OPTION) == "RAS" .or. &
            adjustl(CONVPAR_OPTION) == "GF" .or. &
            adjustl(CONVPAR_OPTION) == "NONE"
       _ASSERT(LCONVPAR, 'Unsupported Deep Convection Option')
       ! default=(X): a copy of the Process_Library default (value and default must not alias)
-      call MAPL_GridCompGetResource(GC, 'SIGMA_DX', SIGMA_DX, default=(SIGMA_DX), _RC)
-      call MAPL_GridCompGetResource(GC, 'SIGMA_EXP', SIGMA_EXP, default=(SIGMA_EXP), _RC)
+      call MAPL_GridCompGetResource(gc, 'SIGMA_DX', SIGMA_DX, default=(SIGMA_DX), _RC)
+      call MAPL_GridCompGetResource(gc, 'SIGMA_EXP', SIGMA_EXP, default=(SIGMA_EXP), _RC)
 
       ! Inititialize shallow convective parameterizations (Options: UW or NONE)
-      call MAPL_GridCompGetResource(GC, 'SHALLOW_OPTION', SHALLOW_OPTION, default="UW", _RC)
+      call MAPL_GridCompGetResource(gc, 'SHALLOW_OPTION', SHALLOW_OPTION, default="UW", _RC)
       LSHALLOW = adjustl(SHALLOW_OPTION) == "UW" .or. &
            adjustl(SHALLOW_OPTION) == "NONE"
       _ASSERT(LSHALLOW, 'Unsupported Shallow Convection Option')
 
       ! Inititialize cloud microphysics (Options: BACM_1M, GFDL_1M, THOM_1M or MGB2_2M)
-      call MAPL_GridCompGetResource(GC, 'CLDMICR_OPTION', CLDMICR_OPTION, default="BACM_1M", _RC)
-      LCLDMICR = adjustl(CLDMICR_OPTION) == "BACM_1M" .or. &
+      call MAPL_GridCompGetResource(gc, 'CLDMICR_OPTION', CLDMICR_OPTION, default="BACM_1M", _RC)
+      LCLDMICR = &
+           adjustl(CLDMICR_OPTION) == "BACM_1M" .or. &
            adjustl(CLDMICR_OPTION) == "GFDL_1M" .or. &
            adjustl(CLDMICR_OPTION) == "THOM_1M" .or. &
            adjustl(CLDMICR_OPTION) == "MGB2_2M"
       _ASSERT(LCLDMICR, 'Unsupported Cloud Microphysics Option')
 
-      call MAPL_GridCompGetResource(GC, 'DEBUG_MST', DEBUG_MST, default=.false., _RC)
+      call MAPL_GridCompGetResource(gc, 'DEBUG_MST', DEBUG_MST, default=.false., _RC)
 
-      call MAPL_GridCompGetResource(GC, 'DEBUG_TQ_ERRORS', DEBUG_TQ_ERRORS, default=.false., _RC)
+      call MAPL_GridCompGetResource(gc, 'DEBUG_TQ_ERRORS', DEBUG_TQ_ERRORS, default=.false., _RC)
 
       !***********Aerosol-Cloud related
 
-      call MAPL_GridCompGetResource(GC, 'USE_NCLOUD_CLIM', MOIST_USE_NCLOUD_CLIM, default=.false., _RC)
-      call MAPL_GridCompGetResource(GC, 'WSUB_OPTION', WSUB_OPTION, default=3, _RC)!0- param 1- Use Wsub climatology 2-USE WNET` 3-Symbolic Wnet
+      call MAPL_GridCompGetResource(gc, 'USE_NCLOUD_CLIM', MOIST_USE_NCLOUD_CLIM, default=.false., _RC)
+      ! 0 - param, 1 - Use Wsub climatology, 2 - USE WNET, 3 - Symbolic Wnet
+      call MAPL_GridCompGetResource(gc, 'WSUB_OPTION', WSUB_OPTION, default=3, _RC)
 
       ! MAT These have to be defined as they are passed into Aer_Activate below and are intent(in)
       ! Note: It's possible these aren't *used* if USE_AEROSOL_NN=.TRUE. but they are still passed
       ! in so they have to be defined
-      call MAPL_GridCompGetResource(GC, 'NCCN_OCN', CCN_OCN, default=50., _RC)
-      call MAPL_GridCompGetResource(GC, 'NCCN_LND', CCN_LND, default=300., _RC)
+      call MAPL_GridCompGetResource(gc, 'NCCN_OCN', CCN_OCN, default=50., _RC)
+      call MAPL_GridCompGetResource(gc, 'NCCN_LND', CCN_LND, default=300., _RC)
 
-      call MAPL_GridCompGetResource(GC, 'NCIN_OCN', CIN_OCN, default=0.005, _RC)
-      call MAPL_GridCompGetResource(GC, 'NCIN_LND', CIN_LND, default=0.05, _RC)
+      call MAPL_GridCompGetResource(gc, 'NCIN_OCN', CIN_OCN, default=0.005, _RC)
+      call MAPL_GridCompGetResource(gc, 'NCIN_LND', CIN_LND, default=0.05, _RC)
 
       ! NOTE: Binary restarts expect Q to be the first field in the moist_internal_rst. Thus,
       ! the first MAPL_AddInternalSpec call must be from the microphysics
@@ -164,12 +160,16 @@ contains
       ! MAPL3: only BACM_1M, GFDL_1M, GF and UW are ported so far. The other schemes
       ! fail here, before any of their code runs; their modules are not built (step 11).
 
-      if (adjustl(CLDMICR_OPTION) == "BACM_1M") call BACM_1M_Setup(GC, ADVECTED, DIFFUSED, CHEM_UPDATED, ANALYZED, _RC)
+      if (adjustl(CLDMICR_OPTION) == "BACM_1M") then
+         call BACM_1M_Setup(gc, ADVECTED, DIFFUSED, CHEM_UPDATED, ANALYZED, _RC)
+      end if
       if (adjustl(CLDMICR_OPTION) == "MGB2_2M") then
          _FAIL('CLDMICR_OPTION MGB2_2M is not yet ported to MAPL3')
          ! call MGB2_2M_Setup(GC, CF, _RC)
       end if
-      if (adjustl(CLDMICR_OPTION) == "GFDL_1M") call GFDL_1M_Setup(GC, ADVECTED, DIFFUSED, CHEM_UPDATED, ANALYZED, _RC)
+      if (adjustl(CLDMICR_OPTION) == "GFDL_1M") then
+         call GFDL_1M_Setup(gc, ADVECTED, DIFFUSED, CHEM_UPDATED, ANALYZED, _RC)
+      end if
       if (adjustl(CLDMICR_OPTION) == "THOM_1M") then
          _FAIL('CLDMICR_OPTION THOM_1M is not yet ported to MAPL3')
          ! call THOM_1M_Setup(GC, CF, _RC)
@@ -178,13 +178,13 @@ contains
          _FAIL('CONVPAR_OPTION RAS is not yet ported to MAPL3')
          ! call RAS_Setup(GC, CF, _RC)
       end if
-      if (adjustl(CONVPAR_OPTION) == "GF") call GF_Setup(GC, ADVECTED, _RC)
-      if (adjustl(SHALLOW_OPTION) == "UW") call UW_Setup(GC, _RC)
+      if (adjustl(CONVPAR_OPTION) == "GF") call GF_Setup(gc, _RC)
+      if (adjustl(SHALLOW_OPTION) == "UW") call UW_Setup(gc, _RC)
 
       ! Advection (replaces MAPL2's FRIENDLYTO=DYNAMICS): one subscription to the TRADV
       ! service for the internals the schemes listed in ADVECTED (items must be internals)
       if (ADVECTED%size() > 0) then
-         call MAPL_GridCompAddSpec(GC, &
+         call MAPL_GridCompAddSpec(gc, &
               state_intent=ESMF_STATEINTENT_IMPORT, &
               short_name='TRADV', &
               standard_name='advected_quantities', &
@@ -196,7 +196,7 @@ contains
       ! the service Turbulence is to provide (MAPL2's TR bundle). Turbulence is not ported
       ! yet; the parent YAML can map the name when it is.
       if (DIFFUSED%size() > 0) then
-         call MAPL_GridCompAddSpec(GC, &
+         call MAPL_GridCompAddSpec(gc, &
               state_intent=ESMF_STATEINTENT_IMPORT, &
               short_name='TRDIFF', &
               standard_name='turbulently_diffused_quantities', &
@@ -207,7 +207,7 @@ contains
       ! Chemistry (replaces MAPL2's FRIENDLYTO=CHEMISTRY, which let PChem update Q in place):
       ! one subscription to the service PChem is to provide. PChem is not ported yet.
       if (CHEM_UPDATED%size() > 0) then
-         call MAPL_GridCompAddSpec(GC, &
+         call MAPL_GridCompAddSpec(gc, &
               state_intent=ESMF_STATEINTENT_IMPORT, &
               short_name='TRCHEM', &
               standard_name='chemically_updated_quantities', &
@@ -218,7 +218,7 @@ contains
       ! Analysis (replaces MAPL2's FRIENDLYTO=ANALYSIS, Physics' TRANA bundle): one
       ! subscription to the service the AGCM is to provide. The AGCM is not ported yet.
       if (ANALYZED%size() > 0) then
-         call MAPL_GridCompAddSpec(GC, &
+         call MAPL_GridCompAddSpec(gc, &
               state_intent=ESMF_STATEINTENT_IMPORT, &
               short_name='TRANA', &
               standard_name='analyzed_quantities', &
@@ -229,7 +229,7 @@ contains
       !IMPORT STATE:
 #include "Moist_Import___.h"
 
-      call MAPL_GridCompAddSpec(GC, &
+      call MAPL_GridCompAddSpec(gc, &
            state_intent=ESMF_STATEINTENT_IMPORT, &
            short_name='AERO', &
            standard_name='aerosols', &
@@ -245,7 +245,7 @@ contains
       ! Convective transport service (replaces MAPL2's MTR import, which Physics filled
       ! with the fields FRIENDLYTO=MOIST). Subscribers list their internals as service
       ! items; MAPL adds the bundle to both the import and the export state.
-      call MAPL_GridCompAddSpec(GC, &
+      call MAPL_GridCompAddSpec(gc, &
            state_intent=ESMF_STATEINTENT_EXPORT, &
            short_name='MTR', &
            standard_name='tracers_for_moist', &
@@ -259,13 +259,13 @@ contains
    !BOP
    !IROUTINE: Initialize -- Initialize method for the composite Moist Gridded Component
    !INTERFACE:
-   subroutine Initialize(GC, IMPORT, EXPORT, CLOCK, RC)
+   subroutine Initialize(gc, import, export, clock, rc)
       !ARGUMENTS:
-      type(ESMF_GridComp) :: GC ! Gridded component
-      type(ESMF_State) :: IMPORT ! Import state
-      type(ESMF_State) :: EXPORT ! Export state
-      type(ESMF_Clock) :: CLOCK ! The clock
-      integer, intent(out) :: RC ! Error code
+      type(ESMF_GridComp) :: gc ! Gridded component
+      type(ESMF_State) :: import ! Import state
+      type(ESMF_State) :: export ! Export state
+      type(ESMF_Clock) :: clock ! The clock
+      integer, intent(out) :: rc ! Error code
 
       !DESCRIPTION: The Initialize method of the Moist Physics Gridded Component first
       ! calls the Initialize method of the child Dynamics.  The Dynamics Initialize method will
@@ -276,10 +276,9 @@ contains
 
       !EOP
 
-      integer :: STATUS
+      integer :: status
 
       ! Local derived type aliases
-
       type(ESMF_TimeInterval) :: TINT
       real :: DT_MOIST
       real :: DBZ_DT
@@ -288,28 +287,30 @@ contains
       type(ESMF_Alarm) :: DBZ_RunAlarm
       type(ESMF_TimeInterval) :: ringInterval
 
-      ! Begin...
-
       ! Get parameters from the component
-      call MAPL_GridCompGetResource(GC, 'DIAGNOSE_PRECIP_TYPE', LDIAGNOSE_PRECIP_TYPE, default=.false., _RC)
-      call MAPL_GridCompGetResource(GC, 'UPDATE_PRECIP_TYPE', LUPDATE_PRECIP_TYPE, default=.false., _RC)
+      call MAPL_GridCompGetResource(gc, 'DIAGNOSE_PRECIP_TYPE', LDIAGNOSE_PRECIP_TYPE, default=.false., _RC)
+      call MAPL_GridCompGetResource(gc, 'UPDATE_PRECIP_TYPE', LUPDATE_PRECIP_TYPE, default=.false., _RC)
 
       ! default=(X): a copy (value is intent(inout) and must not alias default)
       DETRAIN_INACTIVE_CNV = 0.0
       if (adjustl(CLDMICR_OPTION) == "GFDL_1M") DETRAIN_INACTIVE_CNV = 5.0e-4
-      call MAPL_GridCompGetResource(GC, 'DETRAIN_INACTIVE_CNV', DETRAIN_INACTIVE_CNV, &
+      call MAPL_GridCompGetResource(gc, 'DETRAIN_INACTIVE_CNV', DETRAIN_INACTIVE_CNV, &
            default=(DETRAIN_INACTIVE_CNV), _RC)
-      call MAPL_GridCompGetResource(GC, 'TAU_DETRAIN_CNV', TAU_DETRAIN_CNV, default=3600.0, _RC)
+      call MAPL_GridCompGetResource(gc, 'TAU_DETRAIN_CNV', TAU_DETRAIN_CNV, default=3600.0, _RC)
 
       ! MAPL3: the unported schemes still take MAPL2's MetaComp; SetServices already
       ! fails for them, so these branches are unreachable until they are ported (step 11)
       if (adjustl(CONVPAR_OPTION) == "RAS") then
          _FAIL('CONVPAR_OPTION RAS is not yet ported to MAPL3') ! was RAS_Initialize(MAPL, _RC)
       end if
-      if (adjustl(CONVPAR_OPTION) == "GF") call GF_Initialize(GC, CLOCK, IMPORT, EXPORT, _RC)
-      if (adjustl(SHALLOW_OPTION) == "UW") call UW_Initialize(GC, CLOCK, IMPORT, EXPORT, _RC)
-      if (adjustl(CLDMICR_OPTION) == "BACM_1M") call BACM_1M_Initialize(GC, CLOCK, IMPORT, EXPORT, _RC)
-      if (adjustl(CLDMICR_OPTION) == "GFDL_1M") call GFDL_1M_Initialize(GC, CLOCK, IMPORT, EXPORT, _RC)
+      if (adjustl(CONVPAR_OPTION) == "GF") call GF_Initialize(gc, clock, import, export, _RC)
+      if (adjustl(SHALLOW_OPTION) == "UW") call UW_Initialize(gc, clock, import, export, _RC)
+      if (adjustl(CLDMICR_OPTION) == "BACM_1M") then
+         call BACM_1M_Initialize(gc, clock, import, export, _RC)
+      end if
+      if (adjustl(CLDMICR_OPTION) == "GFDL_1M") then
+         call GFDL_1M_Initialize(gc, clock, import, export, _RC)
+      end if
       if (adjustl(CLDMICR_OPTION) == "THOM_1M") then
          _FAIL('CLDMICR_OPTION THOM_1M is not yet ported to MAPL3') ! was THOM_1M_Initialize(MAPL, _RC)
       end if
@@ -319,27 +320,36 @@ contains
 
       ! Moist's timestep (MAPL2: the RUNALARM ring interval). MAPL3 gives Moist its own
       ! clock, advanced by its own timestep.
-      call ESMF_ClockGet(CLOCK, timeStep=TINT, _RC)
-      call MAPL_ClockGet(CLOCK, dt=DT_MOIST, _RC)
+      call ESMF_ClockGet(clock, timeStep=TINT, _RC)
+      call MAPL_ClockGet(clock, dt=DT_MOIST, _RC)
 
       DBZ_DT = max(DT_MOIST, 900.0)
-      call MAPL_GridCompGetResource(GC, 'DBZ_DT', DBZ_DT, default=(DBZ_DT), _RC)
+      call MAPL_GridCompGetResource(gc, 'DBZ_DT', DBZ_DT, default=(DBZ_DT), _RC)
       ! Get the current time in addition to the calendar
-      call ESMF_ClockGet(CLOCK, currTime=currTime, calendar=calendar, _RC)
+      call ESMF_ClockGet(clock, currTime=currTime, calendar=calendar, _RC)
       call ESMF_TimeIntervalSet(ringInterval, S=nint(DBZ_DT), calendar=calendar, _RC)
       ! Add RingTime = currTime to anchor the alarm
-      DBZ_RunAlarm = ESMF_AlarmCreate(CLOCK=CLOCK, &
+      DBZ_RunAlarm = ESMF_AlarmCreate(clock=clock, &
            Name='DBZ_RunAlarm', &
            RingTime=currTime - TINT, &
            ringInterval=ringInterval, &
            Sticky=.false., _RC)
       call init_refl10cm()
-      call MAPL_GridCompGetResource(GC, 'refl10cm_allow_wet_graupel', refl10cm_allow_wet_graupel, default=.false., _RC)
-      call MAPL_GridCompGetResource(GC, 'refl10cm_allow_wet_snow', refl10cm_allow_wet_snow, default=.false., _RC)
-      call MAPL_GridCompGetResource(GC, 'DBZ_VAR_INTERCP', DBZ_VAR_INTERCP, default=(DBZ_VAR_INTERCP), _RC)
-      call MAPL_GridCompGetResource(GC, 'LIQUID_SKIN_SNOW', LIQUID_SKIN_SNOW, default=.false., _RC)
-      call MAPL_GridCompGetResource(GC, 'LIQUID_SKIN_GRAUPEL', LIQUID_SKIN_GRAUPEL, default=.false., _RC)
-      call MAPL_GridCompGetResource(GC, 'LIQUID_SKIN_HAIL', LIQUID_SKIN_HAIL, default=.true., _RC)
+      call MAPL_GridCompGetResource(gc, &
+           'refl10cm_allow_wet_graupel', &
+           refl10cm_allow_wet_graupel, &
+           default=.false., _RC)
+      call MAPL_GridCompGetResource(gc, &
+           'refl10cm_allow_wet_snow', &
+           refl10cm_allow_wet_snow, &
+           default=.false., _RC)
+      call MAPL_GridCompGetResource(gc, &
+           'DBZ_VAR_INTERCP', &
+           DBZ_VAR_INTERCP, &
+           default=(DBZ_VAR_INTERCP), _RC)
+      call MAPL_GridCompGetResource(gc, 'LIQUID_SKIN_SNOW', LIQUID_SKIN_SNOW, default=.false., _RC)
+      call MAPL_GridCompGetResource(gc, 'LIQUID_SKIN_GRAUPEL', LIQUID_SKIN_GRAUPEL, default=.false., _RC)
+      call MAPL_GridCompGetResource(gc, 'LIQUID_SKIN_HAIL', LIQUID_SKIN_HAIL, default=.true., _RC)
 
       ! All done
 
@@ -349,27 +359,27 @@ contains
    !BOP
    !IROUTINE: RUN -- Run method for the CONVECT component
    !INTERFACE:
-   subroutine Run(GC, IMPORT, EXPORT, CLOCK, RC)
+   subroutine Run(gc, import, export, clock, rc)
       !ARGUMENTS:
-      type(ESMF_GridComp) :: GC ! Gridded component
-      type(ESMF_State) :: IMPORT ! Import state
-      type(ESMF_State) :: EXPORT ! Export state
-      type(ESMF_Clock) :: CLOCK ! The clock
-      integer, intent(out) :: RC ! Error code:
+      type(ESMF_GridComp) :: gc ! Gridded component
+      type(ESMF_State) :: import ! Import state
+      type(ESMF_State) :: export ! Export state
+      type(ESMF_Clock) :: clock ! The clock
+      integer, intent(out) :: rc ! Error code:
 
       !DESCRIPTION: This version uses the MAPL\_GenericSetServices. This function sets
       ! the Initialize and Finalize services, as well as allocating
 
       !EOP
 
-      integer :: STATUS
+      integer :: status
 
       type(ESMF_VM) :: VMG
 
       ! Local derived type aliases
 
       type(ESMF_Grid) :: GRID
-      type(ESMF_State) :: INTERNAL
+      type(ESMF_State) :: internal
       class(logger_t), pointer :: logger
       real :: DT_MOIST
 
@@ -439,86 +449,79 @@ contains
       integer :: IM, JM, LM
       integer :: I, J, L, n
 
-      ! Begin...
-
       ! Get my VM
+      call ESMF_GridCompGet(gc, VM=VMG, _RC)
 
-      call ESMF_GridCompGet(GC, VM=VMG, _RC)
+      call MAPL_GridCompTimerStart(gc, "TOTAL", _RC)
 
-      call MAPL_GridCompTimerStart(GC, "TOTAL", _RC)
-
-      call MAPL_GridCompGet(GC, num_levels=LM, grid=GRID, logger=logger, _RC)
+      call MAPL_GridCompGet(gc, num_levels=LM, GRID=GRID, logger=logger, _RC)
       call MAPL_GridGet(GRID, IM=IM, JM=JM, _RC)
-      call MAPL_GridCompGetInternalState(GC, INTERNAL, _RC)
+      call MAPL_GridCompGetInternalState(gc, internal, _RC)
 
       ! Moist's timestep (MAPL2: the RUNALARM ring interval). MAPL3 calls Run only when
       ! Moist's own run alarm rings (MAPL2 called it every heartbeat and Run checked
       ! RUNALARM; its not-ringing branch only refilled the *AFMOIST and RH2 exports).
-      call MAPL_ClockGet(CLOCK, dt=DT_MOIST, _RC)
+      call MAPL_ClockGet(clock, dt=DT_MOIST, _RC)
 
-      call MAPL_GridCompTimerStart(GC, "---MOIST_PROLOGUE", _RC)
+      call MAPL_GridCompTimerStart(gc, "---MOIST_PROLOGUE", _RC)
 
       ! Internal State
-      call MAPL_StateGetPointer(INTERNAL, Q, 'Q', _RC)
-      call MAPL_StateGetPointer(INTERNAL, QLLS, 'QLLS', _RC)
-      call MAPL_StateGetPointer(INTERNAL, QLCN, 'QLCN', _RC)
-      call MAPL_StateGetPointer(INTERNAL, CLCN, 'CLCN', _RC)
-      call MAPL_StateGetPointer(INTERNAL, CLLS, 'CLLS', _RC)
-      call MAPL_StateGetPointer(INTERNAL, QILS, 'QILS', _RC)
-      call MAPL_StateGetPointer(INTERNAL, QICN, 'QICN', _RC)
-      call MAPL_StateGetPointer(INTERNAL, NACTL, 'NACTL', _RC)
-      call MAPL_StateGetPointer(INTERNAL, NACTI, 'NACTI', _RC)
+      call MAPL_StateGetPointer(internal, Q, 'Q', _RC)
+      call MAPL_StateGetPointer(internal, QLLS, 'QLLS', _RC)
+      call MAPL_StateGetPointer(internal, QLCN, 'QLCN', _RC)
+      call MAPL_StateGetPointer(internal, CLCN, 'CLCN', _RC)
+      call MAPL_StateGetPointer(internal, CLLS, 'CLLS', _RC)
+      call MAPL_StateGetPointer(internal, QILS, 'QILS', _RC)
+      call MAPL_StateGetPointer(internal, QICN, 'QICN', _RC)
+      call MAPL_StateGetPointer(internal, NACTL, 'NACTL', _RC)
+      call MAPL_StateGetPointer(internal, NACTI, 'NACTI', _RC)
 
       ! Import State
-      call MAPL_StateGetPointer(IMPORT, PLE, 'PLE', _RC)
-      call MAPL_StateGetPointer(IMPORT, ZLE, 'ZLE', _RC)
-      call MAPL_StateGetPointer(IMPORT, TS, 'TS', _RC)
-      call MAPL_StateGetPointer(IMPORT, T, 'T', _RC)
-      call MAPL_StateGetPointer(IMPORT, U, 'U', _RC)
-      call MAPL_StateGetPointer(IMPORT, V, 'V', _RC)
-      call MAPL_StateGetPointer(IMPORT, W, 'W', _RC)
-      call MAPL_StateGetPointer(IMPORT, KPBL, 'KPBL', _RC)
-      call MAPL_StateGetPointer(IMPORT, KH, 'KH', _RC)
-      call MAPL_StateGetPointer(IMPORT, SH, 'SH', _RC)
-      call MAPL_StateGetPointer(IMPORT, EVAP, 'EVAP', _RC)
-      call MAPL_StateGetPointer(IMPORT, OMEGA, 'OMEGA', _RC)
-      call MAPL_StateGetPointer(IMPORT, TKE, 'TKE', _RC)
+      call MAPL_StateGetPointer(import, PLE, 'PLE', _RC)
+      call MAPL_StateGetPointer(import, ZLE, 'ZLE', _RC)
+      call MAPL_StateGetPointer(import, TS, 'TS', _RC)
+      call MAPL_StateGetPointer(import, T, 'T', _RC)
+      call MAPL_StateGetPointer(import, U, 'U', _RC)
+      call MAPL_StateGetPointer(import, V, 'V', _RC)
+      call MAPL_StateGetPointer(import, W, 'W', _RC)
+      call MAPL_StateGetPointer(import, KPBL, 'KPBL', _RC)
+      call MAPL_StateGetPointer(import, KH, 'KH', _RC)
+      call MAPL_StateGetPointer(import, SH, 'SH', _RC)
+      call MAPL_StateGetPointer(import, EVAP, 'EVAP', _RC)
+      call MAPL_StateGetPointer(import, OMEGA, 'OMEGA', _RC)
+      call MAPL_StateGetPointer(import, TKE, 'TKE', _RC)
       ! Edge fields: MAPL3 pointers are 1:LM+1; MAPL2's were 0:LM, which this code assumes
-      p3d => PLE
-      PLE(1:IM, 1:JM, 0:LM) => p3d
-      p3d => ZLE
-      ZLE(1:IM, 1:JM, 0:LM) => p3d
-      p3d => KH
-      KH(1:IM, 1:JM, 0:LM) => p3d
-      p3d => TKE
-      TKE(1:IM, 1:JM, 0:LM) => p3d
-      call ESMF_StateGet(IMPORT, 'AERO', AERO, _RC)
+      p3d => PLE; PLE(1:IM, 1:JM, 0:LM) => p3d
+      p3d => ZLE; ZLE(1:IM, 1:JM, 0:LM) => p3d
+      p3d => KH;  KH(1:IM, 1:JM, 0:LM) => p3d
+      p3d => TKE; TKE(1:IM, 1:JM, 0:LM) => p3d
+      call ESMF_StateGet(import, 'AERO', AERO, _RC)
       ! MTR: Moist provides this service; MAPL puts the bundle in both states. The fields
       ! are the subscribers' internals, so check the two bundles share the data (as DynCore
       ! does for TRADV) and work on the export one.
-      call ESMF_StateGet(EXPORT, 'MTR', TR, _RC)
-      call ESMF_StateGet(IMPORT, 'MTR', TR_IMPORT, _RC)
+      call ESMF_StateGet(export, 'MTR', TR, _RC)
+      call ESMF_StateGet(import, 'MTR', TR_IMPORT, _RC)
       same_mtr_data = MAPL_FieldBundleSameData(TR_IMPORT, TR, _RC)
       _ASSERT(same_mtr_data, "MTR bundles in import and export do not point to the same data")
 
       ! Update SRF_TYPE for ice_fraction
-      call MAPL_StateGetPointer(IMPORT, FRLAND, 'FRLAND', _RC)
-      call MAPL_StateGetPointer(IMPORT, FRLANDICE, 'FRLANDICE', _RC)
-      call MAPL_StateGetPointer(IMPORT, FRACI, 'FRACI', _RC)
-      call MAPL_StateGetPointer(IMPORT, SNOMAS, 'SNOMAS', _RC)
-      call MAPL_StateGetPointer(INTERNAL, SRF_TYPE, 'SRF_TYPE', _RC)
+      call MAPL_StateGetPointer(import, FRLAND, 'FRLAND', _RC)
+      call MAPL_StateGetPointer(import, FRLANDICE, 'FRLANDICE', _RC)
+      call MAPL_StateGetPointer(import, FRACI, 'FRACI', _RC)
+      call MAPL_StateGetPointer(import, SNOMAS, 'SNOMAS', _RC)
+      call MAPL_StateGetPointer(internal, SRF_TYPE, 'SRF_TYPE', _RC)
 
       where (FRLANDICE > 0.5)
          SRF_TYPE = SRF_TYPE_LANDICE
-         elsewhere (FRACI > 0.5)
+      else where (FRACI > 0.5)
          SRF_TYPE = SRF_TYPE_ICE
-         elsewhere (SNOMAS > 0.1 .and. SNOMAS /= MAPL2_UNDEF)
+      else where (SNOMAS > 0.1 .and. SNOMAS /= MAPL2_UNDEF)
          ! NOTE: SNOMAS has UNDEFs so we need to make sure we don't
          !       allow that to infect this comparison
          SRF_TYPE = SRF_TYPE_SNOW
-         elsewhere (FRLAND > 0.1)
+      else where (FRLAND > 0.1)
          SRF_TYPE = SRF_TYPE_LAND
-         elsewhere
+      else where
          SRF_TYPE = SRF_TYPE_OCEAN
       end where
 
@@ -540,21 +543,21 @@ contains
       allocate(KLCL(IM, JM))
 
       ! Save input winds (internals: BACM_1M reads them for its cumulus friction)
-      call MAPL_StateGetPointer(INTERNAL, PTR3D, 'UMST0', _RC)
+      call MAPL_StateGetPointer(internal, PTR3D, 'UMST0', _RC)
       if (associated(PTR3D)) PTR3D = U
-      call MAPL_StateGetPointer(INTERNAL, PTR3D, 'VMST0', _RC)
+      call MAPL_StateGetPointer(internal, PTR3D, 'VMST0', _RC)
       if (associated(PTR3D)) PTR3D = V
 
       ! pre-fill default condensate radii
-      call MAPL_StateGetPointer(INTERNAL, PTR3D, 'RL', _RC)
+      call MAPL_StateGetPointer(internal, PTR3D, 'RL', _RC)
       if (associated(PTR3D)) PTR3D = MAPL_UNDEF
-      call MAPL_StateGetPointer(INTERNAL, PTR3D, 'RI', _RC)
+      call MAPL_StateGetPointer(internal, PTR3D, 'RI', _RC)
       if (associated(PTR3D)) PTR3D = MAPL_UNDEF
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'RR', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'RR', _RC)
       if (associated(PTR3D)) PTR3D = 50.e-6
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'RS', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'RS', _RC)
       if (associated(PTR3D)) PTR3D = 50.e-6
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'RG', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'RG', _RC)
       if (associated(PTR3D)) PTR3D = 50.e-6
 
       ! Derived States
@@ -571,10 +574,10 @@ contains
       DQST3 = GEOS_DQSAT(T, PLmb, QSAT=QST3)
 
       ! Lower tropospheric stability and estimated inversion strength
-      call MAPL_StateGetPointer(INTERNAL, LTS, 'LTS', _RC)
-      call MAPL_StateGetPointer(INTERNAL, EIS, 'EIS', _RC)
+      call MAPL_StateGetPointer(internal, LTS, 'LTS', _RC)
+      call MAPL_StateGetPointer(internal, EIS, 'EIS', _RC)
       KLCL = FIND_KLCL(T, Q, PLmb, IM, JM, LM)
-      call MAPL_StateGetPointer(EXPORT, PTR2D, 'ZLCL', _RC)
+      call MAPL_StateGetPointer(export, PTR2D, 'ZLCL', _RC)
       if (associated(PTR2D)) then
          do J = 1, JM
             do I = 1, IM
@@ -586,33 +589,33 @@ contains
       call FIND_EIS(T / TMP3D, QST3, T, ZL0, PLEmb, KLCL, IM, JM, LM, LTS, EIS)
 
       ! Recording of import/internal vars into export if desired
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'QX0', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'QX0', _RC)
       if (associated(PTR3D)) PTR3D = Q
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'QLLSX0', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'QLLSX0', _RC)
       if (associated(PTR3D)) PTR3D = QLLS
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'QLCNX0', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'QLCNX0', _RC)
       if (associated(PTR3D)) PTR3D = QLCN
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'CLCNX0', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'CLCNX0', _RC)
       if (associated(PTR3D)) PTR3D = CLCN
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'CLLSX0', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'CLLSX0', _RC)
       if (associated(PTR3D)) PTR3D = CLLS
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'QILSX0', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'QILSX0', _RC)
       if (associated(PTR3D)) PTR3D = QILS
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'QICNX0', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'QICNX0', _RC)
       if (associated(PTR3D)) PTR3D = QICN
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'QCCNX0', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'QCCNX0', _RC)
       if (associated(PTR3D)) PTR3D = QICN + QLCN
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'QCLSX0', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'QCLSX0', _RC)
       if (associated(PTR3D)) PTR3D = QILS + QLLS
 
       ! Trajectory for the moist TLM/ADJ
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'TH_moist', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'TH_moist', _RC)
       if (associated(PTR3D)) PTR3D = T / PK
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'Q_moist', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'Q_moist', _RC)
       if (associated(PTR3D)) PTR3D = Q
-      call MAPL_StateGetPointer(EXPORT, PTR2D, 'TS_moist', _RC)
+      call MAPL_StateGetPointer(export, PTR2D, 'TS_moist', _RC)
       if (associated(PTR2D)) PTR2D = TS
-      call MAPL_StateGetPointer(EXPORT, PTR2D, 'KHu_moist', _RC)
+      call MAPL_StateGetPointer(export, PTR2D, 'KHu_moist', _RC)
       if (associated(PTR2D)) then
          PTR2D = -1
          do L = 0, LM
@@ -621,7 +624,7 @@ contains
             end where
          end do
       end if
-      call MAPL_StateGetPointer(EXPORT, PTR2D, 'KHl_moist', _RC)
+      call MAPL_StateGetPointer(export, PTR2D, 'KHl_moist', _RC)
       if (associated(PTR2D)) then
          PTR2D = -1
          do L = LM, 0, -1
@@ -631,10 +634,10 @@ contains
          end do
       end if
 
-      call MAPL_StateGetPointer(EXPORT, PTR2D, 'KCBL_moist', _RC)
+      call MAPL_StateGetPointer(export, PTR2D, 'KCBL_moist', _RC)
       if (associated(PTR2D)) then
-         call MAPL_GridCompGetResource(GC, 'PMIN_CBL', PMIN_CBL, default=50000.0, _RC)
-         call MAPL_StateGetPointer(IMPORT, PTR1D, 'PREF', _RC)
+         call MAPL_GridCompGetResource(gc, 'PMIN_CBL', PMIN_CBL, default=50000.0, _RC)
+         call MAPL_StateGetPointer(import, PTR1D, 'PREF', _RC)
          KCBLMIN = count(PTR1D < PMIN_CBL)
          do J = 1, JM
             do I = 1, IM
@@ -649,8 +652,8 @@ contains
       end if
 
       ! These may be used by children: re-exported internals
-      call MAPL_StateGetPointer(INTERNAL, CNV_FRC, 'CNV_FRC', _RC)
-      call MAPL_StateGetPointer(INTERNAL, BYNCY, 'BYNCY', _RC)
+      call MAPL_StateGetPointer(internal, CNV_FRC, 'CNV_FRC', _RC)
+      call MAPL_StateGetPointer(internal, BYNCY, 'BYNCY', _RC)
       ! Computed locally, zero-filled as MAPL2's ALLOC did (NWFA, NIFA and LCL_AGL are not
       ! always written)
       allocate(NWFA(IM, JM, LM), NIFA(IM, JM, LM), source=0.0)
@@ -658,10 +661,10 @@ contains
       allocate(MLCAPE(IM, JM), MLCIN(IM, JM), MUCAPE(IM, JM), MUCIN(IM, JM), source=0.0)
       allocate(LFC(IM, JM), LNB(IM, JM), LCL_AGL(IM, JM), source=0.0)
 
-      call MAPL_GridCompTimerStart(GC, "-----BUOYANCY2", _RC)
+      call MAPL_GridCompTimerStart(gc, "-----BUOYANCY2", _RC)
       call BUOYANCY2(IM, JM, LM, T, Q, QST3, DQST3, DZET, ZL0, PLmb, PLEmb(:, :, LM), &
            SBCAPE, MLCAPE, MUCAPE, SBCIN, MLCIN, MUCIN, BYNCY, LFC, LNB, LCL_AGL)
-      call MAPL_GridCompTimerStop(GC, "-----BUOYANCY2", _RC)
+      call MAPL_GridCompTimerStop(gc, "-----BUOYANCY2", _RC)
 
       call BUOYANCY(T, Q, QST3, DQST3, DZET, ZL0, BYNCY, CAPE, INHB)
 
@@ -687,10 +690,10 @@ contains
          end if
       end if
 
-      call MAPL_GridCompTimerStop(GC, "---MOIST_PROLOGUE", _RC)
+      call MAPL_GridCompTimerStop(gc, "---MOIST_PROLOGUE", _RC)
 
       ! Extract convective tracers from the TR bundle
-      call MAPL_GridCompTimerStart(GC, "---CONV_TRACERS", _RC)
+      call MAPL_GridCompTimerStart(gc, "---CONV_TRACERS", _RC)
       ! Moist cannot subscribe to its own service, so GF's CNV_TR internal (MAPL2:
       ! FRIENDLYTO MOIST) is added here, to a local bundle: MAPL's MTR bundle is left as is.
       call ESMF_FieldBundleGet(TR, fieldCount=TR_COUNT, _RC)
@@ -699,21 +702,21 @@ contains
          call ESMF_FieldBundleGet(TR, fieldList=TR_FIELDS, itemorderflag=ESMF_ITEMORDER_ADDORDER, _RC)
       end if
       if (adjustl(CONVPAR_OPTION) == "GF") then
-         call ESMF_StateGet(INTERNAL, 'CNV_TR', CNV_TR_FIELD, _RC)
+         call ESMF_StateGet(internal, 'CNV_TR', CNV_TR_FIELD, _RC)
          TR_FIELDS = [TR_FIELDS, CNV_TR_FIELD]
       end if
-      TR_CNV = ESMF_FieldBundleCreate(fieldList=TR_FIELDS, name='MTR_CNV', _RC)
-      call CNV_Tracers_Init(TR_CNV, RC)
+      TR_CNV = ESMF_FieldBundleCreate(fieldList=TR_FIELDS, Name='MTR_CNV', _RC)
+      call CNV_Tracers_Init(TR_CNV, rc)
       call ESMF_FieldBundleDestroy(TR_CNV, _RC) ! the fields are not destroyed
-      call MAPL_GridCompTimerStop(GC, "---CONV_TRACERS", _RC)
+      call MAPL_GridCompTimerStop(gc, "---CONV_TRACERS", _RC)
 
       ! Get aerosol activation properties
-      call MAPL_GridCompTimerStart(GC, "---AERO_ACTIVATE", _RC)
+      call MAPL_GridCompTimerStart(gc, "---AERO_ACTIVATE", _RC)
 
       if (MOIST_USE_NCLOUD_CLIM) then !Setup ND/NI climatology from GiOcean
-         call MAPL_StateGetPointer(IMPORT, PTR3D, 'NCPL_CLIM', _RC)
+         call MAPL_StateGetPointer(import, PTR3D, 'NCPL_CLIM', _RC)
          NACTL = PTR3D
-         call MAPL_StateGetPointer(IMPORT, PTR3D, 'NCPI_CLIM', _RC)
+         call MAPL_StateGetPointer(import, PTR3D, 'NCPI_CLIM', _RC)
          NACTI = PTR3D
       else
          if (USE_AEROSOL_NN) then
@@ -724,7 +727,7 @@ contains
                TMP3D = W
             end if
             ! Call aerosol activation (pressures in Pa)
-            call Aer_Activation(GC, IM, JM, LM, Q, T, PLmb * 100.0, PLE, TKE, TMP3D, FRLAND, &
+            call Aer_Activation(gc, IM, JM, LM, Q, T, PLmb * 100.0, PLE, TKE, TMP3D, FRLAND, &
                  AERO, NACTL, NACTI, NWFA, NIFA, CCN_LND * 1.e6, CCN_OCN * 1.e6, &
                  .true., _RC)
             ! Apply scaling factors
@@ -741,15 +744,15 @@ contains
          end if
       end if
 
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'NCCN_LIQ', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'NCCN_LIQ', _RC)
       if (associated(PTR3D)) PTR3D = NACTL
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'NCCN_ICE', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'NCCN_ICE', _RC)
       if (associated(PTR3D)) PTR3D = NACTI
 
-      call MAPL_GridCompTimerStop(GC, "---AERO_ACTIVATE", _RC)
+      call MAPL_GridCompTimerStop(gc, "---AERO_ACTIVATE", _RC)
 
       if (SH_MD_DP) then
-         if (adjustl(SHALLOW_OPTION) == "UW") call UW_Run(GC, IMPORT, EXPORT, CLOCK, _RC)
+         if (adjustl(SHALLOW_OPTION) == "UW") call UW_Run(gc, import, export, clock, _RC)
          if (adjustl(SHALLOW_OPTION) == "UW") then
             if (DEBUG_MST) then
                call report_maxmin(logger, VMG, 'MST: Q_AF_UW  ', Q, _RC)
@@ -759,7 +762,7 @@ contains
             end if
          end if
          ! if (adjustl(CONVPAR_OPTION) == "RAS") call RAS_Run(GC, IMPORT, EXPORT, CLOCK, _RC) ! step 11
-         if (adjustl(CONVPAR_OPTION) == "GF") call GF_Run(GC, IMPORT, EXPORT, CLOCK, _RC)
+         if (adjustl(CONVPAR_OPTION) == "GF") call GF_Run(gc, import, export, clock, _RC)
          if (adjustl(CONVPAR_OPTION) == "GF") then
             if (DEBUG_MST) then
                call report_maxmin(logger, VMG, 'MST: Q_AF_GF  ', Q, _RC)
@@ -770,7 +773,7 @@ contains
          end if
       else
          ! if (adjustl(CONVPAR_OPTION) == "RAS") call RAS_Run(GC, IMPORT, EXPORT, CLOCK, _RC) ! step 11
-         if (adjustl(CONVPAR_OPTION) == "GF") call GF_Run(GC, IMPORT, EXPORT, CLOCK, _RC)
+         if (adjustl(CONVPAR_OPTION) == "GF") call GF_Run(gc, import, export, clock, _RC)
          if (adjustl(CONVPAR_OPTION) == "GF") then
             if (DEBUG_MST) then
                call report_maxmin(logger, VMG, 'MST: Q_AF_GF  ', Q, _RC)
@@ -779,7 +782,7 @@ contains
                call report_maxmin(logger, VMG, 'MST: V_AF_GF  ', V, _RC)
             end if
          end if
-         if (adjustl(SHALLOW_OPTION) == "UW") call UW_Run(GC, IMPORT, EXPORT, CLOCK, _RC)
+         if (adjustl(SHALLOW_OPTION) == "UW") call UW_Run(gc, import, export, clock, _RC)
          if (adjustl(SHALLOW_OPTION) == "UW") then
             if (DEBUG_MST) then
                call report_maxmin(logger, VMG, 'MST: Q_AF_UW  ', Q, _RC)
@@ -790,14 +793,14 @@ contains
          end if
       end if
 
-      call MAPL_GridCompTimerStart(GC, "---MOIST_EPILOGUE", _RC)
+      call MAPL_GridCompTimerStart(gc, "---MOIST_EPILOGUE", _RC)
 
       ! Mass fluxes
       allocate(TMP3Dp1(IM, JM, LM + 1))
       ! Edge updraft mass flux over deep and shalow convection
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'CNV_MFC', _RC)
-      call MAPL_StateGetPointer(INTERNAL, PTRDC, 'UMF_DC', _RC)
-      call MAPL_StateGetPointer(INTERNAL, PTRSC, 'UMF_SC', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'CNV_MFC', _RC)
+      call MAPL_StateGetPointer(internal, PTRDC, 'UMF_DC', _RC)
+      call MAPL_StateGetPointer(internal, PTRSC, 'UMF_SC', _RC)
       TMP3Dp1 = 0.0
       if (associated(PTRDC)) TMP3Dp1 = TMP3Dp1 + PTRDC
       if (associated(PTRSC)) TMP3Dp1 = TMP3Dp1 + PTRSC
@@ -835,22 +838,22 @@ contains
       end if
       deallocate(TMP3Dp1)
 
-      call MAPL_StateGetPointer(INTERNAL, PTR3D, 'CNV_MFD', _RC) ! internal: BACM_1M reads it
-      call MAPL_StateGetPointer(INTERNAL, PTRDC, 'MFD_DC', _RC)
-      call MAPL_StateGetPointer(INTERNAL, PTRSC, 'MFD_SC', _RC)
+      call MAPL_StateGetPointer(internal, PTR3D, 'CNV_MFD', _RC) ! internal: BACM_1M reads it
+      call MAPL_StateGetPointer(internal, PTRDC, 'MFD_DC', _RC)
+      call MAPL_StateGetPointer(internal, PTRSC, 'MFD_SC', _RC)
       TMP3D = 0.0
       if (associated(PTRDC)) TMP3D = TMP3D + PTRDC
       if (associated(PTRSC)) TMP3D = TMP3D + PTRSC
       if (associated(PTR3D)) PTR3D = TMP3D
 
-      call MAPL_GridCompTimerStop(GC, "---MOIST_EPILOGUE", _RC)
+      call MAPL_GridCompTimerStop(gc, "---MOIST_EPILOGUE", _RC)
 
-      if (adjustl(CLDMICR_OPTION) == "BACM_1M") call BACM_1M_Run(GC, IMPORT, EXPORT, CLOCK, _RC)
-      if (adjustl(CLDMICR_OPTION) == "GFDL_1M") call GFDL_1M_Run(GC, IMPORT, EXPORT, CLOCK, _RC)
+      if (adjustl(CLDMICR_OPTION) == "BACM_1M") call BACM_1M_Run(gc, import, export, clock, _RC)
+      if (adjustl(CLDMICR_OPTION) == "GFDL_1M") call GFDL_1M_Run(gc, import, export, clock, _RC)
       ! if (adjustl(CLDMICR_OPTION) == "THOM_1M") call THOM_1M_Run(GC, IMPORT, EXPORT, CLOCK, _RC) ! step 11
       ! if (adjustl(CLDMICR_OPTION) == "MGB2_2M") call MGB2_2M_Run(GC, IMPORT, EXPORT, CLOCK, _RC) ! step 11
 
-      call MAPL_GridCompTimerStart(GC, "---MOIST_EPILOGUE", _RC)
+      call MAPL_GridCompTimerStart(gc, "---MOIST_EPILOGUE", _RC)
 
       if (DEBUG_MST) then
          call report_maxmin(logger, VMG, 'MST: Q_AF_MP  ', Q, _RC)
@@ -866,7 +869,7 @@ contains
          CFICE = (CLLS + CLCN) * (QILS + QICN) / (QLLS + QLCN + QILS + QICN)
       end where
       CFICE = max(min(CFICE, 1.0), 0.0)
-      call MAPL_StateGetPointer(EXPORT, CFLIQ, 'CFLIQ', _RC)
+      call MAPL_StateGetPointer(export, CFLIQ, 'CFLIQ', _RC)
       if (associated(CFLIQ)) then
          CFLIQ = 0.0
          where (QLLS + QLCN > 1.0e-12)
@@ -877,25 +880,25 @@ contains
 
       ! some diagnostics to export
       QST3 = GEOS_QsatICE(T, PLmb * 100.0, DQ=DQST3)
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'RHICE', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'RHICE', _RC)
       if (associated(PTR3D)) then
          PTR3D = Q / QST3
          where (T > MAPL_TICE)
             PTR3D = 0.0
          end where
       end if
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'SAT_RAT', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'SAT_RAT', _RC)
       if (associated(PTR3D)) then
          where (CFICE < 0.99 .and. QST3 > 1.0e-20)
             TMP3D = max((Q - QST3 * CFICE), 0.0) / (1.0 - CFICE)
             PTR3D = min(TMP3D / QST3, 2.0)
-            elsewhere
+         else where
             PTR3D = 1.0
          end where
       end if
 
       QST3 = GEOS_QsatLQU(T, PLmb * 100.0, DQ=DQST3)
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'RHLIQ', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'RHLIQ', _RC)
       if (associated(PTR3D)) PTR3D = Q / QST3
 
       ! Clean up supersaturation only with respect to liquid water
@@ -904,11 +907,11 @@ contains
       DQVDT_ER = Q
 
       ! Rain-out of Relative Humidity where RH > 110%
-      call MAPL_StateGetPointer(INTERNAL, LS_PRCP, 'LS_PRCP', _RC)
+      call MAPL_StateGetPointer(internal, LS_PRCP, 'LS_PRCP', _RC)
       allocate(ER_PRCP(IM, JM), source=0.0)
       where (Q > 1.1 * QST3)
          TMP3D = (Q - 1.1 * QST3) / (1.0 + 1.1 * DQST3 * MAPL_ALHL / MAPL_CP)
-         elsewhere
+      else where
          TMP3D = 0.0
       end where
       ! protect against producing negatice QV
@@ -925,188 +928,188 @@ contains
 
       ! Export Total Moist Tendencies
 
-      call MAPL_StateGetPointer(EXPORT, DUDT, 'DUDT', _RC)
+      call MAPL_StateGetPointer(export, DUDT, 'DUDT', _RC)
       if (associated(DUDT)) then
          DUDT = 0.0
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DUDT_DC', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DUDT_DC', _RC)
          if (associated(PTR3D)) DUDT = DUDT + PTR3D
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DUDT_SC', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DUDT_SC', _RC)
          if (associated(PTR3D)) DUDT = DUDT + PTR3D
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DUDT_macro', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DUDT_macro', _RC)
          if (associated(PTR3D)) DUDT = DUDT + PTR3D
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DUDT_micro', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DUDT_micro', _RC)
          if (associated(PTR3D)) DUDT = DUDT + PTR3D
       end if
 
-      call MAPL_StateGetPointer(EXPORT, DVDT, 'DVDT', _RC)
+      call MAPL_StateGetPointer(export, DVDT, 'DVDT', _RC)
       if (associated(DVDT)) then
          DVDT = 0.0
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DVDT_DC', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DVDT_DC', _RC)
          if (associated(PTR3D)) DVDT = DVDT + PTR3D
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DVDT_SC', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DVDT_SC', _RC)
          if (associated(PTR3D)) DVDT = DVDT + PTR3D
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DVDT_macro', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DVDT_macro', _RC)
          if (associated(PTR3D)) DVDT = DVDT + PTR3D
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DVDT_micro', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DVDT_micro', _RC)
          if (associated(PTR3D)) DVDT = DVDT + PTR3D
       end if
 
-      call MAPL_StateGetPointer(EXPORT, DTDT, 'DTDT', _RC)
+      call MAPL_StateGetPointer(export, DTDT, 'DTDT', _RC)
       if (associated(DTDT)) then
          DTDT = 0.0
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DTDT_DC', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DTDT_DC', _RC)
          if (associated(PTR3D)) DTDT = DTDT + PTR3D
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DTDT_SC', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DTDT_SC', _RC)
          if (associated(PTR3D)) DTDT = DTDT + PTR3D
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DTDT_macro', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DTDT_macro', _RC)
          if (associated(PTR3D)) DTDT = DTDT + PTR3D
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DTDT_micro', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DTDT_micro', _RC)
          if (associated(PTR3D)) DTDT = DTDT + PTR3D
          DTDT = DTDT + DTDT_ER
          DTDT = DTDT * (PLE(:, :, 1:LM) - PLE(:, :, 0:LM - 1)) ! Pressure weighted tendency
       end if
 
-      call MAPL_StateGetPointer(EXPORT, DQDT, 'DQDT', _RC)
+      call MAPL_StateGetPointer(export, DQDT, 'DQDT', _RC)
       if (associated(DQDT)) then
          DQDT = 0.0
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQVDT_DC', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DQVDT_DC', _RC)
          if (associated(PTR3D)) DQDT = DQDT + PTR3D
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQVDT_SC', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DQVDT_SC', _RC)
          if (associated(PTR3D)) DQDT = DQDT + PTR3D
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQVDT_macro', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DQVDT_macro', _RC)
          if (associated(PTR3D)) DQDT = DQDT + PTR3D
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQVDT_micro', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DQVDT_micro', _RC)
          if (associated(PTR3D)) DQDT = DQDT + PTR3D
          DQDT = DQDT + DQVDT_ER
       end if
 
-      call MAPL_StateGetPointer(EXPORT, DQLDT, 'DQLDT', _RC)
+      call MAPL_StateGetPointer(export, DQLDT, 'DQLDT', _RC)
       if (associated(DQLDT)) then
          DQLDT = 0.0
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQLDT_DC', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DQLDT_DC', _RC)
          if (associated(PTR3D)) DQLDT = DQLDT + PTR3D
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQLDT_SC', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DQLDT_SC', _RC)
          if (associated(PTR3D)) DQLDT = DQLDT + PTR3D
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQLDT_macro', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DQLDT_macro', _RC)
          if (associated(PTR3D)) DQLDT = DQLDT + PTR3D
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQLDT_micro', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DQLDT_micro', _RC)
          if (associated(PTR3D)) DQLDT = DQLDT + PTR3D
       end if
 
-      call MAPL_StateGetPointer(EXPORT, DQIDT, 'DQIDT', _RC)
+      call MAPL_StateGetPointer(export, DQIDT, 'DQIDT', _RC)
       if (associated(DQIDT)) then
          DQIDT = 0.0
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQIDT_DC', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DQIDT_DC', _RC)
          if (associated(PTR3D)) DQIDT = DQIDT + PTR3D
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQIDT_SC', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DQIDT_SC', _RC)
          if (associated(PTR3D)) DQIDT = DQIDT + PTR3D
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQIDT_macro', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DQIDT_macro', _RC)
          if (associated(PTR3D)) DQIDT = DQIDT + PTR3D
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQIDT_micro', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DQIDT_micro', _RC)
          if (associated(PTR3D)) DQIDT = DQIDT + PTR3D
       end if
 
-      call MAPL_StateGetPointer(EXPORT, DQRDT, 'DQRDT', _RC)
+      call MAPL_StateGetPointer(export, DQRDT, 'DQRDT', _RC)
       if (associated(DQRDT)) then
          DQRDT = 0.0
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQRDT_SC', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DQRDT_SC', _RC)
          if (associated(PTR3D)) DQRDT = DQRDT + PTR3D
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQRDT_macro', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DQRDT_macro', _RC)
          if (associated(PTR3D)) DQRDT = DQRDT + PTR3D
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQRDT_micro', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DQRDT_micro', _RC)
          if (associated(PTR3D)) DQRDT = DQRDT + PTR3D
       end if
 
-      call MAPL_StateGetPointer(EXPORT, DQSDT, 'DQSDT', _RC)
+      call MAPL_StateGetPointer(export, DQSDT, 'DQSDT', _RC)
       if (associated(DQSDT)) then
          DQSDT = 0.0
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQSDT_SC', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DQSDT_SC', _RC)
          if (associated(PTR3D)) DQSDT = DQSDT + PTR3D
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQSDT_macro', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DQSDT_macro', _RC)
          if (associated(PTR3D)) DQSDT = DQSDT + PTR3D
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQSDT_micro', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DQSDT_micro', _RC)
          if (associated(PTR3D)) DQSDT = DQSDT + PTR3D
       end if
 
-      call MAPL_StateGetPointer(EXPORT, DQGDT, 'DQGDT', _RC)
+      call MAPL_StateGetPointer(export, DQGDT, 'DQGDT', _RC)
       if (associated(DQGDT)) then
          DQGDT = 0.0
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQGDT_macro', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DQGDT_macro', _RC)
          if (associated(PTR3D)) DQGDT = DQGDT + PTR3D
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQGDT_micro', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DQGDT_micro', _RC)
          if (associated(PTR3D)) DQGDT = DQGDT + PTR3D
       end if
 
-      call MAPL_StateGetPointer(EXPORT, DQADT, 'DQADT', _RC)
+      call MAPL_StateGetPointer(export, DQADT, 'DQADT', _RC)
       if (associated(DQADT)) then
          DQADT = 0.0
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQADT_DC', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DQADT_DC', _RC)
          if (associated(PTR3D)) DQADT = DQADT + PTR3D
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQADT_SC', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DQADT_SC', _RC)
          if (associated(PTR3D)) DQADT = DQADT + PTR3D
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQADT_macro', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DQADT_macro', _RC)
          if (associated(PTR3D)) DQADT = DQADT + PTR3D
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'DQADT_micro', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'DQADT_micro', _RC)
          if (associated(PTR3D)) DQADT = DQADT + PTR3D
       end if
 
-      call MAPL_StateGetPointer(EXPORT, DPDTMST, 'DPDTMST', _RC)
+      call MAPL_StateGetPointer(export, DPDTMST, 'DPDTMST', _RC)
       if (associated(DPDTMST)) then
          DPDTMST = 0.0
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'PFI_CN', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'PFI_CN', _RC)
          p3d => PTR3D
          PTR3D(1:IM, 1:JM, 0:LM) => p3d ! edge: MAPL2's 0:LM bounds
          if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:, :, 0:LM - 1) - PTR3D(:, :, 1:LM)
-         call MAPL_StateGetPointer(EXPORT, PTR3D, 'PFI_SC', _RC)
+         call MAPL_StateGetPointer(export, PTR3D, 'PFI_SC', _RC)
          if (associated(PTR3D)) then
             p3d => PTR3D
             PTR3D(1:IM, 1:JM, 0:LM) => p3d ! edge: MAPL2's 0:LM bounds
             DPDTMST = DPDTMST + PTR3D(:, :, 0:LM - 1) - PTR3D(:, :, 1:LM)
          end if
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'PFI_AN', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'PFI_AN', _RC)
          p3d => PTR3D
          PTR3D(1:IM, 1:JM, 0:LM) => p3d ! edge: MAPL2's 0:LM bounds
          if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:, :, 0:LM - 1) - PTR3D(:, :, 1:LM)
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'PFI_LS', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'PFI_LS', _RC)
          p3d => PTR3D
          PTR3D(1:IM, 1:JM, 0:LM) => p3d ! edge: MAPL2's 0:LM bounds
          if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:, :, 0:LM - 1) - PTR3D(:, :, 1:LM)
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'PFL_CN', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'PFL_CN', _RC)
          p3d => PTR3D
          PTR3D(1:IM, 1:JM, 0:LM) => p3d ! edge: MAPL2's 0:LM bounds
          if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:, :, 0:LM - 1) - PTR3D(:, :, 1:LM)
-         call MAPL_StateGetPointer(EXPORT, PTR3D, 'PFL_SC', _RC)
+         call MAPL_StateGetPointer(export, PTR3D, 'PFL_SC', _RC)
          if (associated(PTR3D)) then
             p3d => PTR3D
             PTR3D(1:IM, 1:JM, 0:LM) => p3d ! edge: MAPL2's 0:LM bounds
             DPDTMST = DPDTMST + PTR3D(:, :, 0:LM - 1) - PTR3D(:, :, 1:LM)
          end if
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'PFL_AN', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'PFL_AN', _RC)
          p3d => PTR3D
          PTR3D(1:IM, 1:JM, 0:LM) => p3d ! edge: MAPL2's 0:LM bounds
          if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:, :, 0:LM - 1) - PTR3D(:, :, 1:LM)
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'PFL_LS', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'PFL_LS', _RC)
          p3d => PTR3D
          PTR3D(1:IM, 1:JM, 0:LM) => p3d ! edge: MAPL2's 0:LM bounds
          if (associated(PTR3D)) DPDTMST = DPDTMST + PTR3D(:, :, 0:LM - 1) - PTR3D(:, :, 1:LM)
          DPDTMST = MAPL_GRAV * DPDTMST
       end if
 
-      call MAPL_StateGetPointer(EXPORT, PFL_LSAN, 'PFL_LSAN', _RC)
+      call MAPL_StateGetPointer(export, PFL_LSAN, 'PFL_LSAN', _RC)
       if (associated(PFL_LSAN)) then
          PFL_LSAN = 0.0
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'PFL_AN', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'PFL_AN', _RC)
          if (associated(PTR3D)) PFL_LSAN = PFL_LSAN + PTR3D
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'PFL_LS', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'PFL_LS', _RC)
          if (associated(PTR3D)) PFL_LSAN = PFL_LSAN + PTR3D
       end if
 
-      call MAPL_StateGetPointer(EXPORT, PFI_LSAN, 'PFI_LSAN', _RC)
+      call MAPL_StateGetPointer(export, PFI_LSAN, 'PFI_LSAN', _RC)
       if (associated(PFI_LSAN)) then
          PFI_LSAN = 0.0
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'PFI_AN', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'PFI_AN', _RC)
          if (associated(PTR3D)) PFI_LSAN = PFI_LSAN + PTR3D
-         call MAPL_StateGetPointer(INTERNAL, PTR3D, 'PFI_LS', _RC)
+         call MAPL_StateGetPointer(internal, PTR3D, 'PFI_LS', _RC)
          if (associated(PTR3D)) PFI_LSAN = PFI_LSAN + PTR3D
       end if
 
@@ -1116,113 +1119,113 @@ contains
       ! PCU and PLS are local arrays: DIAGNOSE_PRECIP_TYPE takes them unguarded (in MAPL2
       ! Surface always connected them)
       allocate(PCU(IM, JM), source=0.0)
-      call MAPL_StateGetPointer(INTERNAL, PTR2D, 'CN_PRCP', _RC)
+      call MAPL_StateGetPointer(internal, PTR2D, 'CN_PRCP', _RC)
       if (associated(PTR2D)) PCU = PCU + PTR2D
-      call MAPL_StateGetPointer(INTERNAL, PTR2D, 'SC_PRCP', _RC)
+      call MAPL_StateGetPointer(internal, PTR2D, 'SC_PRCP', _RC)
       if (associated(PTR2D)) PCU = PCU + PTR2D
-      call MAPL_StateGetPointer(INTERNAL, PTR2D, 'CNPCPRATE', _RC)
+      call MAPL_StateGetPointer(internal, PTR2D, 'CNPCPRATE', _RC)
       if (associated(PTR2D)) PCU = PCU + PTR2D
       PCU = max(PCU, 0.0)
 
       ! liquid large-scale precip
       allocate(PLS(IM, JM), source=0.0)
-      call MAPL_StateGetPointer(INTERNAL, PTR2D, 'LS_PRCP', _RC)
+      call MAPL_StateGetPointer(internal, PTR2D, 'LS_PRCP', _RC)
       if (associated(PTR2D)) PLS = PLS + PTR2D
-      call MAPL_StateGetPointer(INTERNAL, PTR2D, 'AN_PRCP', _RC)
+      call MAPL_StateGetPointer(internal, PTR2D, 'AN_PRCP', _RC)
       if (associated(PTR2D)) PLS = PLS + PTR2D
       PLS = max(PLS, 0.0)
 
       ! all liquid precip
       allocate(RAIN(IM, JM), source=0.0)
-      call MAPL_StateGetPointer(INTERNAL, PTR2D, 'LS_PRCP', _RC)
+      call MAPL_StateGetPointer(internal, PTR2D, 'LS_PRCP', _RC)
       if (associated(PTR2D)) RAIN = RAIN + PTR2D
-      call MAPL_StateGetPointer(INTERNAL, PTR2D, 'AN_PRCP', _RC)
+      call MAPL_StateGetPointer(internal, PTR2D, 'AN_PRCP', _RC)
       if (associated(PTR2D)) RAIN = RAIN + PTR2D
-      call MAPL_StateGetPointer(INTERNAL, PTR2D, 'CN_PRCP', _RC)
+      call MAPL_StateGetPointer(internal, PTR2D, 'CN_PRCP', _RC)
       if (associated(PTR2D)) RAIN = RAIN + PTR2D
-      call MAPL_StateGetPointer(INTERNAL, PTR2D, 'SC_PRCP', _RC)
+      call MAPL_StateGetPointer(internal, PTR2D, 'SC_PRCP', _RC)
       if (associated(PTR2D)) RAIN = RAIN + PTR2D
-      call MAPL_StateGetPointer(INTERNAL, PTR2D, 'CNPCPRATE', _RC)
+      call MAPL_StateGetPointer(internal, PTR2D, 'CNPCPRATE', _RC)
       if (associated(PTR2D)) RAIN = RAIN + PTR2D
       RAIN = max(RAIN, 0.0)
 
       ! all frozen precip (snow at this point)
       allocate(SNOW(IM, JM), source=0.0)
-      call MAPL_StateGetPointer(INTERNAL, PTR2D, 'LS_SNR', _RC)
+      call MAPL_StateGetPointer(internal, PTR2D, 'LS_SNR', _RC)
       if (associated(PTR2D)) SNOW = SNOW + PTR2D
-      call MAPL_StateGetPointer(INTERNAL, PTR2D, 'AN_SNR', _RC)
+      call MAPL_StateGetPointer(internal, PTR2D, 'AN_SNR', _RC)
       if (associated(PTR2D)) SNOW = SNOW + PTR2D
-      call MAPL_StateGetPointer(INTERNAL, PTR2D, 'CN_SNR', _RC)
+      call MAPL_StateGetPointer(internal, PTR2D, 'CN_SNR', _RC)
       if (associated(PTR2D)) SNOW = SNOW + PTR2D
-      call MAPL_StateGetPointer(INTERNAL, PTR2D, 'SC_SNR', _RC)
+      call MAPL_StateGetPointer(internal, PTR2D, 'SC_SNR', _RC)
       if (associated(PTR2D)) SNOW = SNOW + PTR2D
       SNOW = max(SNOW, 0.0)
 
       ! all deep convective precip (rain+snow)
-      call MAPL_StateGetPointer(INTERNAL, CN_PRCP, 'CN_PRCP', _RC)
+      call MAPL_StateGetPointer(internal, CN_PRCP, 'CN_PRCP', _RC)
       if (associated(CN_PRCP)) then
-         call MAPL_StateGetPointer(INTERNAL, PTR2D, 'CNPCPRATE', _RC)
+         call MAPL_StateGetPointer(internal, PTR2D, 'CNPCPRATE', _RC)
          if (associated(PTR2D)) CN_PRCP = CN_PRCP + PTR2D
-         call MAPL_StateGetPointer(INTERNAL, PTR2D, 'CN_SNR', _RC)
+         call MAPL_StateGetPointer(internal, PTR2D, 'CN_SNR', _RC)
          if (associated(PTR2D)) CN_PRCP = CN_PRCP + PTR2D
          CN_PRCP = max(CN_PRCP, 0.0)
       end if
 
       ! all large-scale precip (rain+snow)
-      call MAPL_StateGetPointer(INTERNAL, LS_PRCP, 'LS_PRCP', _RC)
+      call MAPL_StateGetPointer(internal, LS_PRCP, 'LS_PRCP', _RC)
       if (associated(LS_PRCP)) then
-         call MAPL_StateGetPointer(INTERNAL, PTR2D, 'LS_SNR', _RC)
+         call MAPL_StateGetPointer(internal, PTR2D, 'LS_SNR', _RC)
          if (associated(PTR2D)) LS_PRCP = LS_PRCP + PTR2D
-         call MAPL_StateGetPointer(INTERNAL, PTR2D, 'ICE', _RC)
+         call MAPL_StateGetPointer(internal, PTR2D, 'ICE', _RC)
          if (associated(PTR2D)) LS_PRCP = LS_PRCP + PTR2D
-         call MAPL_StateGetPointer(INTERNAL, PTR2D, 'FRZR', _RC)
+         call MAPL_StateGetPointer(internal, PTR2D, 'FRZR', _RC)
          if (associated(PTR2D)) LS_PRCP = LS_PRCP + PTR2D
          LS_PRCP = max(LS_PRCP, 0.0)
       end if
 
       ! all anvil precip (rain+snow)
-      call MAPL_StateGetPointer(INTERNAL, AN_PRCP, 'AN_PRCP', _RC)
+      call MAPL_StateGetPointer(internal, AN_PRCP, 'AN_PRCP', _RC)
       if (associated(AN_PRCP)) then
-         call MAPL_StateGetPointer(INTERNAL, PTR2D, 'AN_SNR', _RC)
+         call MAPL_StateGetPointer(internal, PTR2D, 'AN_SNR', _RC)
          if (associated(PTR2D)) AN_PRCP = AN_PRCP + PTR2D
       end if
 
       ! all shallow precip (rain+snow)
-      call MAPL_StateGetPointer(INTERNAL, SC_PRCP, 'SC_PRCP', _RC)
+      call MAPL_StateGetPointer(internal, SC_PRCP, 'SC_PRCP', _RC)
       if (associated(SC_PRCP)) then
-         call MAPL_StateGetPointer(INTERNAL, PTR2D, 'SC_SNR', _RC)
+         call MAPL_StateGetPointer(internal, PTR2D, 'SC_SNR', _RC)
          if (associated(PTR2D)) SC_PRCP = SC_PRCP + PTR2D
          SC_PRCP = max(SC_PRCP, 0.0)
       end if
 
       ! Total - all precip (rain+snow)
       allocate(TPREC(IM, JM), source=0.0)
-      call MAPL_StateGetPointer(INTERNAL, PTR2D, 'LS_PRCP', _RC)
+      call MAPL_StateGetPointer(internal, PTR2D, 'LS_PRCP', _RC)
       if (associated(PTR2D)) TPREC = TPREC + PTR2D
-      call MAPL_StateGetPointer(INTERNAL, PTR2D, 'AN_PRCP', _RC)
+      call MAPL_StateGetPointer(internal, PTR2D, 'AN_PRCP', _RC)
       if (associated(PTR2D)) TPREC = TPREC + PTR2D
-      call MAPL_StateGetPointer(INTERNAL, PTR2D, 'CN_PRCP', _RC)
+      call MAPL_StateGetPointer(internal, PTR2D, 'CN_PRCP', _RC)
       if (associated(PTR2D)) TPREC = TPREC + PTR2D
-      call MAPL_StateGetPointer(INTERNAL, PTR2D, 'SC_PRCP', _RC)
+      call MAPL_StateGetPointer(internal, PTR2D, 'SC_PRCP', _RC)
       if (associated(PTR2D)) TPREC = TPREC + PTR2D
       TPREC = max(TPREC, 0.0)
 
       ! diagnosed stratiform precip (rain+snow)
-      call MAPL_StateGetPointer(EXPORT, PREC_STRAT, 'PREC_STRAT', _RC)
+      call MAPL_StateGetPointer(export, PREC_STRAT, 'PREC_STRAT', _RC)
       if (associated(PREC_STRAT)) PREC_STRAT = max((1.0 - CNV_FRC) * TPREC, 0.0)
 
       ! diagnosed convective precip (rain+snow)
-      call MAPL_StateGetPointer(EXPORT, PREC_CONV, 'PREC_CONV', _RC)
+      call MAPL_StateGetPointer(export, PREC_CONV, 'PREC_CONV', _RC)
       if (associated(PREC_CONV)) PREC_CONV = max(CNV_FRC * TPREC, 0.0)
 
       ! Diagnostic precip types:
-      call MAPL_StateGetPointer(INTERNAL, ICE, 'ICE', _RC)
-      call MAPL_StateGetPointer(INTERNAL, FRZR, 'FRZR', _RC)
+      call MAPL_StateGetPointer(internal, ICE, 'ICE', _RC)
+      call MAPL_StateGetPointer(internal, FRZR, 'FRZR', _RC)
       if (LUPDATE_PRECIP_TYPE .or. LDIAGNOSE_PRECIP_TYPE) then
          allocate(PTYPE(IM, JM), source=0.0)
          call DIAGNOSE_PRECIP_TYPE(IM, JM, LM, TPREC, PLS, PCU, RAIN, SNOW, ICE, FRZR, &
               PTYPE, PLE, T / PK, PK, PKE, ZL0, LUPDATE_PRECIP_TYPE)
-         call MAPL_StateGetPointer(EXPORT, PTYPE_ptr, 'PTYPE', _RC)
+         call MAPL_StateGetPointer(export, PTYPE_ptr, 'PTYPE', _RC)
          if (associated(PTYPE_ptr)) PTYPE_ptr = PTYPE
       end if
       ICE = max(ICE, 0.0)
@@ -1244,119 +1247,119 @@ contains
             TMP2D(I, J) = max(0.0, TMP2D(I, J))
          end do
       end do
-      call MAPL_StateGetPointer(EXPORT, PTR2D, 'KUCHERA_RATIO', _RC)
+      call MAPL_StateGetPointer(export, PTR2D, 'KUCHERA_RATIO', _RC)
       if (associated(PTR2D)) PTR2D = TMP2D
       ! Accumulated precip totals (mm), apply KUCHERA_RATIO for SNOW
-      call MAPL_StateGetPointer(EXPORT, PTR2D, 'SNOWTOTAL', _RC)
+      call MAPL_StateGetPointer(export, PTR2D, 'SNOWTOTAL', _RC)
       if (associated(PTR2D)) PTR2D = TMP2D * DT_MOIST * (SNOW + ICE)
-      call MAPL_StateGetPointer(EXPORT, PTR2D, 'PRECTOTAL', _RC)
+      call MAPL_StateGetPointer(export, PTR2D, 'PRECTOTAL', _RC)
       if (associated(PTR2D)) PTR2D = DT_MOIST * TPREC
 
-      call MAPL_StateGetPointer(INTERNAL, PTR3D, 'QLTOT', _RC)
+      call MAPL_StateGetPointer(internal, PTR3D, 'QLTOT', _RC)
       if (associated(PTR3D)) PTR3D = QLLS + QLCN
 
-      call MAPL_StateGetPointer(INTERNAL, PTR3D, 'QITOT', _RC)
+      call MAPL_StateGetPointer(internal, PTR3D, 'QITOT', _RC)
       if (associated(PTR3D)) PTR3D = QILS + QICN
 
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'QCTOT', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'QCTOT', _RC)
       if (associated(PTR3D)) then
          PTR3D = QLLS + QLCN + QILS + QICN
-         call MAPL_StateGetPointer(EXPORT, QRTOT, 'QRTOT', _RC)
+         call MAPL_StateGetPointer(export, QRTOT, 'QRTOT', _RC)
          if (associated(QRTOT)) PTR3D = PTR3D + QRTOT
-         call MAPL_StateGetPointer(EXPORT, QSTOT, 'QSTOT', _RC)
+         call MAPL_StateGetPointer(export, QSTOT, 'QSTOT', _RC)
          if (associated(QSTOT)) PTR3D = PTR3D + QSTOT
-         call MAPL_StateGetPointer(EXPORT, QGTOT, 'QGTOT', _RC)
+         call MAPL_StateGetPointer(export, QGTOT, 'QGTOT', _RC)
          if (associated(QGTOT)) PTR3D = PTR3D + QGTOT
       end if
 
       ! Cloud condensate exports
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'QLLSX1', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'QLLSX1', _RC)
       if (associated(PTR3D)) PTR3D = QLLS
 
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'QILSX1', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'QILSX1', _RC)
       if (associated(PTR3D)) PTR3D = QILS
 
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'QLCNX1', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'QLCNX1', _RC)
       if (associated(PTR3D)) PTR3D = QLCN
 
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'QICNX1', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'QICNX1', _RC)
       if (associated(PTR3D)) PTR3D = QICN
 
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'CLLSX1', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'CLLSX1', _RC)
       if (associated(PTR3D)) PTR3D = CLLS
 
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'CLCNX1', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'CLCNX1', _RC)
       if (associated(PTR3D)) PTR3D = CLCN
 
       ! Fill wind, temperature & RH exports needed for SYNCTQ
 
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'UAFMOIST', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'UAFMOIST', _RC)
       if (associated(PTR3D)) PTR3D = U
 
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'VAFMOIST', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'VAFMOIST', _RC)
       if (associated(PTR3D)) PTR3D = V
 
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'TAFMOIST', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'TAFMOIST', _RC)
       if (associated(PTR3D)) PTR3D = T
 
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'QAFMOIST', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'QAFMOIST', _RC)
       if (associated(PTR3D)) PTR3D = Q
 
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'THAFMOIST', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'THAFMOIST', _RC)
       if (associated(PTR3D)) PTR3D = T / PK
 
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'SAFMOIST', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'SAFMOIST', _RC)
       if (associated(PTR3D)) then
          do L = 1, LM
             PTR3D(:, :, L) = MAPL_CP * T(:, :, L) + MAPL_GRAV * (ZL0(:, :, L) + ZLE(:, :, LM))
          end do
       end if
 
-      call MAPL_StateGetPointer(EXPORT, PTR3D, 'RH2', _RC)
+      call MAPL_StateGetPointer(export, PTR3D, 'RH2', _RC)
       if (associated(PTR3D)) PTR3D = max(min(Q / GEOS_QSAT(T, PLmb), 1.02), 0.0)
 
       ! Cloud Water Path
-      call MAPL_StateGetPointer(EXPORT, PTR2D, 'CWP', _RC)
+      call MAPL_StateGetPointer(export, PTR2D, 'CWP', _RC)
       if (associated(PTR2D)) PTR2D = SUM((QLCN + QLLS + QICN + QILS) * MASS, 3)
       ! Cloud Liquid Water Path
-      call MAPL_StateGetPointer(EXPORT, PTR2D, 'CLWP', _RC)
+      call MAPL_StateGetPointer(export, PTR2D, 'CLWP', _RC)
       if (associated(PTR2D)) PTR2D = SUM((QLCN + QLLS) * MASS, 3)
       ! Cloud Ice Water Path
-      call MAPL_StateGetPointer(EXPORT, PTR2D, 'CIWP', _RC)
+      call MAPL_StateGetPointer(export, PTR2D, 'CIWP', _RC)
       if (associated(PTR2D)) PTR2D = SUM((QICN + QILS) * MASS, 3)
       ! Total LWP and IWP need to be defined inside the microphysics depends on number was water species
 
       ! Total Precipitable Water
-      call MAPL_StateGetPointer(EXPORT, PTR2D, 'TPW', _RC)
+      call MAPL_StateGetPointer(export, PTR2D, 'TPW', _RC)
       if (associated(PTR2D)) PTR2D = SUM((Q) * MASS, 3)
 
       ! Lightning Exports
-      call MAPL_StateGetPointer(EXPORT, PTR2D, 'LFR_GCC', _RC)
+      call MAPL_StateGetPointer(export, PTR2D, 'LFR_GCC', _RC)
       if (associated(PTR2D)) PTR2D = 0.0
 
       ! Copy the local arrays to their exports, if connected (PTYPE is copied above)
-      call MAPL_StateGetPointer(EXPORT, NWFA_ptr, 'NWFA', _RC)
-      call MAPL_StateGetPointer(EXPORT, NIFA_ptr, 'NIFA', _RC)
-      call MAPL_StateGetPointer(EXPORT, CAPE_ptr, 'CAPE', _RC)
-      call MAPL_StateGetPointer(EXPORT, INHB_ptr, 'INHB', _RC)
-      call MAPL_StateGetPointer(EXPORT, SBCAPE_ptr, 'SBCAPE', _RC)
-      call MAPL_StateGetPointer(EXPORT, SBCIN_ptr, 'SBCIN', _RC)
-      call MAPL_StateGetPointer(EXPORT, MLCAPE_ptr, 'MLCAPE', _RC)
-      call MAPL_StateGetPointer(EXPORT, MLCIN_ptr, 'MLCIN', _RC)
-      call MAPL_StateGetPointer(EXPORT, MUCAPE_ptr, 'MUCAPE', _RC)
-      call MAPL_StateGetPointer(EXPORT, MUCIN_ptr, 'MUCIN', _RC)
-      call MAPL_StateGetPointer(EXPORT, LFC_ptr, 'ZLFC', _RC)
-      call MAPL_StateGetPointer(EXPORT, LNB_ptr, 'ZLNB', _RC)
-      call MAPL_StateGetPointer(EXPORT, LCL_AGL_ptr, 'LCL_AGL', _RC)
-      call MAPL_StateGetPointer(EXPORT, CFICE_ptr, 'CFICE', _RC)
-      call MAPL_StateGetPointer(EXPORT, DTDT_ER_ptr, 'DTDT_ER', _RC)
-      call MAPL_StateGetPointer(EXPORT, DQVDT_ER_ptr, 'DQVDT_ER', _RC)
-      call MAPL_StateGetPointer(EXPORT, ER_PRCP_ptr, 'ER_PRCP', _RC)
-      call MAPL_StateGetPointer(EXPORT, RAIN_ptr, 'RAIN', _RC)
-      call MAPL_StateGetPointer(EXPORT, SNOW_ptr, 'SNO', _RC)
-      call MAPL_StateGetPointer(EXPORT, TPREC_ptr, 'TPREC', _RC)
-      call MAPL_StateGetPointer(EXPORT, PCU_ptr, 'PCU', _RC)
-      call MAPL_StateGetPointer(EXPORT, PLS_ptr, 'PLS', _RC)
+      call MAPL_StateGetPointer(export, NWFA_ptr, 'NWFA', _RC)
+      call MAPL_StateGetPointer(export, NIFA_ptr, 'NIFA', _RC)
+      call MAPL_StateGetPointer(export, CAPE_ptr, 'CAPE', _RC)
+      call MAPL_StateGetPointer(export, INHB_ptr, 'INHB', _RC)
+      call MAPL_StateGetPointer(export, SBCAPE_ptr, 'SBCAPE', _RC)
+      call MAPL_StateGetPointer(export, SBCIN_ptr, 'SBCIN', _RC)
+      call MAPL_StateGetPointer(export, MLCAPE_ptr, 'MLCAPE', _RC)
+      call MAPL_StateGetPointer(export, MLCIN_ptr, 'MLCIN', _RC)
+      call MAPL_StateGetPointer(export, MUCAPE_ptr, 'MUCAPE', _RC)
+      call MAPL_StateGetPointer(export, MUCIN_ptr, 'MUCIN', _RC)
+      call MAPL_StateGetPointer(export, LFC_ptr, 'ZLFC', _RC)
+      call MAPL_StateGetPointer(export, LNB_ptr, 'ZLNB', _RC)
+      call MAPL_StateGetPointer(export, LCL_AGL_ptr, 'LCL_AGL', _RC)
+      call MAPL_StateGetPointer(export, CFICE_ptr, 'CFICE', _RC)
+      call MAPL_StateGetPointer(export, DTDT_ER_ptr, 'DTDT_ER', _RC)
+      call MAPL_StateGetPointer(export, DQVDT_ER_ptr, 'DQVDT_ER', _RC)
+      call MAPL_StateGetPointer(export, ER_PRCP_ptr, 'ER_PRCP', _RC)
+      call MAPL_StateGetPointer(export, RAIN_ptr, 'RAIN', _RC)
+      call MAPL_StateGetPointer(export, SNOW_ptr, 'SNO', _RC)
+      call MAPL_StateGetPointer(export, TPREC_ptr, 'TPREC', _RC)
+      call MAPL_StateGetPointer(export, PCU_ptr, 'PCU', _RC)
+      call MAPL_StateGetPointer(export, PLS_ptr, 'PLS', _RC)
       if (associated(NWFA_ptr)) NWFA_ptr = NWFA
       if (associated(NIFA_ptr)) NIFA_ptr = NIFA
       if (associated(CAPE_ptr)) CAPE_ptr = CAPE
@@ -1382,39 +1385,38 @@ contains
       ! Allocated as pointers (see their declaration), so not freed on return
       deallocate(MLCAPE, MLCIN, MUCAPE, MUCIN)
 
-      call MAPL_GridCompTimerStop(GC, "---MOIST_EPILOGUE", _RC)
+      call MAPL_GridCompTimerStop(gc, "---MOIST_EPILOGUE", _RC)
 
-      call MAPL_GridCompTimerStop(GC, "TOTAL", _RC)
+      call MAPL_GridCompTimerStop(gc, "TOTAL", _RC)
 
       _RETURN(_SUCCESS)
    end subroutine Run
 
-   subroutine Finalize(GC, IMPORT, EXPORT, CLOCK, RC)
-      type(ESMF_GridComp) :: GC ! Gridded component
-      type(ESMF_State) :: IMPORT ! Import state
-      type(ESMF_State) :: EXPORT ! Export state
-      type(ESMF_Clock) :: CLOCK ! The clock
-      integer, intent(out) :: RC ! Error code
+   subroutine Finalize(gc, import, export, clock, rc)
+      type(ESMF_GridComp) :: gc ! Gridded component
+      type(ESMF_State) :: import ! Import state
+      type(ESMF_State) :: export ! Export state
+      type(ESMF_Clock) :: clock ! The clock
+      integer, intent(out) :: rc ! Error code
 
       ! ErrLog variables
-      integer :: STATUS
-      ! Begin...
+      integer :: status
 
       ! Block ifs: on a one-line if, the status check that the RC macro appends after the call
       ! runs even when the call is skipped, and STATUS is not set before here (MAPL2 has the
       ! same one-line ifs)
       if (adjustl(CLDMICR_OPTION) == "GFDL_1M") then
-         call GFDL_1M_FINALIZE(GC, IMPORT, EXPORT, _RC)
+         call GFDL_1M_FINALIZE(gc, import, export, _RC)
       end if
       if (adjustl(SHALLOW_OPTION) == "UW") then
-         call UW_Finalize(GC, IMPORT, EXPORT, _RC)
+         call UW_Finalize(gc, import, export, _RC)
       end if
       if (adjustl(CONVPAR_OPTION) == "GF") then
-         call GF_Finalize(GC, IMPORT, EXPORT, _RC)
+         call GF_Finalize(gc, import, export, _RC)
       end if
 
       _RETURN(_SUCCESS)
-      _UNUSED_DUMMY(CLOCK)
+      _UNUSED_DUMMY(clock)
    end subroutine Finalize
 
    ! DEBUG_MST print of the global max and min of a field (MAPL2's MAPL_MaxMin printed them;
@@ -1440,7 +1442,7 @@ end module GEOS_MoistGridCompMod
 
 ! External entry point with a unique name, for MAPL3's dynamic loading (as GWD_SetServices)
 subroutine Moist_SetServices(gc, rc)
-   use esmf
+   use ESMF
    use GEOS_MoistGridCompMod, only: mySetservices => SetServices
    type(ESMF_GridComp) :: gc
    integer, intent(out) :: rc

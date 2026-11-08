@@ -12,7 +12,6 @@ module GEOS_GF_InterfaceMod
 
    use ESMF
    use MAPL
-   use gFTL2_StringVector, only: StringVector
    use GEOS_UtilsMod
    use GEOSmoist_Process_Library
    use GF2020_2M_MicrophysicsMod
@@ -46,16 +45,18 @@ module GEOS_GF_InterfaceMod
 
 contains
 
-   subroutine GF_Setup(GC, ADVECTED, RC)
+   subroutine GF_Setup(GC, RC)
       type(ESMF_GridComp), intent(inout) :: GC ! gridded component
-      type(StringVector), intent(inout) :: ADVECTED ! internals to subscribe to advection (TRADV)
       integer, optional :: RC ! return code
 
+      character(len=ESMF_MAXSTR) :: errmsg
+
       call MAPL_GridCompGetResource(GC, 'CONVECTION_TRACER', CONVECTION_TRACER, default=0, _RC)
-      ! MAPL2 meant CNV_TR to be FRIENDLYTO=MOIST:DYNAMICS when CONVECTION_TRACER == 1, but
-      ! wrote "MOISTDYNAMICS" (friendly to no component). MAPL3 advects it as intended.
-      ! Convective transport by Moist itself (MAPL2 FRIENDLYTO=MOIST) is done in Run.
-      if (CONVECTION_TRACER == 1) call ADVECTED%push_back('CNV_TR')
+      ! CONVECTION_TRACER == 1 (MAPL2: CNV_TR also advected, FRIENDLYTO=MOIST:DYNAMICS) is
+      ! not used (Bill, 2026-11-06), so it is not supported. Convective transport by Moist
+      ! itself (MAPL2 FRIENDLYTO=MOIST) is done in Run.
+      errmsg = "CONVECTION_TRACER /= 0 is not supported"
+      _ASSERT(CONVECTION_TRACER == 0, trim(errmsg))
 
       call MAPL_GridCompAddSpec(GC, &
            STATE_INTENT=ESMF_STATEINTENT_INTERNAL, &
