@@ -2,7 +2,7 @@
 
 **Audience:** coding agents and developers working on the Surface gridded component and its coupling to Turbulence.
 **Describes:** the MAPL2 line, branch `develop`.
-**Verified against:** `GEOSgcm_GridComp` @ `45e1f86f` (commit dated 2026-11-02; checked 2026-11-04).
+**Verified against:** `GEOSgcm_GridComp` @ `c7d81d7c` (checked 2026-11-05; source files identical to `45e1f86f`, the earlier base, which only differs by the added documents).
 **Placement:** as in the GEOSgcm fixture (`components.yaml` @ `0f2e0fb`): this directory is
 `src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/`.
 Other fixtures (for example GEOSadas, GEOSldas) may place this repository
@@ -182,6 +182,7 @@ One: `Topo` (NCAR topography tool), at `Utils/Raster/preproc/topography/@ncar_to
 - The Run1 to Run2 hand-off is through Surface's internal state; between the two phases Chemistry and Turbulence run, and Physics may rewrite `TA`, `QA`, `UA`, `VA`, `SPEED` (section 5).
 - Surface has an import and an export with the same short name: `SH`, `EVAP`, `TAUX`, `TAUY`. The import is Turbulence's preliminary flux (`SFLX->SH`, `UFLX->TAUX`, ...); the export is the final flux, and `TAUX`/`TAUY` exports have the sign flipped (`TAUXO = -TAUX`, `Run2`). Physics connects Surface's exports `SH`, `EVAP` to Turbulence and Moist (`GEOS_PhysicsGridComp.F90`, `SetServices`).
 - Turbulence looks up the surface fields by built name, `trim(NAME)//'HAT'`, `'FLX'`, `'DFL'`, `'DEL'` for `NAME` in S, U, V, Q (`GEOS_TurbulenceGridComp.F90`, `DIFFUSE`, `UPDATE`); grepping for `SDEL` or `SFLX` finds only the spec.
+- `AERO_DP` bin counts are fixed in Surface. `Run2` counts the `AERO_DP` fields it finds by name and stops (`STOP 'NUM_DUDP mismatch with AERO_DP'` and the like) if a count differs from the `NUM_*` parameters in `Shared/StieglitzSnow.F90` (DU 5, BC 2, OC 2, SU 1, SS 5 for each of the four suffixes `DP`, `SV`, `WT`, `SD`). A change of the number of aerosol bins in Chemistry therefore needs a change here; see GOCART document (`../@GEOSchem_GridComp/@GOCART/docs/ARCHITECTURE.md` in the fixture), section 5.6.
 - ROUTE is always created and runs every step, returning immediately if `RUN_ROUTE`=0.
 - `DELUS`/`DELVS` are zero by construction (no implicit momentum feedback).
 
