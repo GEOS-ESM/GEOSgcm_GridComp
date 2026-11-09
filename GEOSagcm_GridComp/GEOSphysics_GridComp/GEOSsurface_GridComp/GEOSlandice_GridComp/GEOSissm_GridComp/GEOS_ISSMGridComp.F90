@@ -779,6 +779,9 @@ contains
           call apply_redist(ICEVY_IN,_RC)
           call apply_redist(IMLS_IN,_RC)
           call apply_redist(OMLS_IN,_RC)
+          call apply_redist(DIVQ_IN,_RC)
+          call apply_redist(DHDT_IN,_RC)
+          call apply_redist(ICESMB_IN,_RC)
 
           call ESMF_VMBarrier(vm, _RC)
 
@@ -846,16 +849,16 @@ contains
     !-----------------------------------
 
     call MAPL_GetPointer(EXPORT, ICESURF_EX, 'ICESURF',alloc=.true., _RC)
-    if(associated(ICESURF_EX)) ICESURF_EX = ICESURF_IN
+    if(associated(ICESURF_EX)) ICESURF_EX = ICESURF_HALO(owned_idx)
 
     call MAPL_GetPointer(EXPORT, ICETHICK_EX, 'ICETHICK',alloc=.true., _RC)
-    if(associated(ICETHICK_EX)) ICETHICK_EX = ICETHICK_IN
+    if(associated(ICETHICK_EX)) ICETHICK_EX = ICETHICK_HALO(owned_idx)
 
     call MAPL_GetPointer(EXPORT, ICEVX_EX, 'ICEVX',alloc=.true.,_RC)
-    if(associated(ICEVX_EX)) ICEVX_EX = ICEVX_IN
+    if(associated(ICEVX_EX)) ICEVX_EX = ICEVX_HALO(owned_idx)
 
     call MAPL_GetPointer(EXPORT, ICEVY_EX, 'ICEVY',alloc=.true.,_RC)
-    if(associated(ICEVY_EX)) ICEVY_EX = ICEVY_IN
+    if(associated(ICEVY_EX)) ICEVY_EX = ICEVY_HALO(owned_idx)
 
     call MAPL_GetPointer(EXPORT, DIVQ_EX, 'DIVQ',alloc=.true.,_RC)
     if(associated(DIVQ_EX)) DIVQ_EX = DIVQ_IN
@@ -1316,19 +1319,19 @@ contains
 
        ! set pointers to tile-mesh internals
        call MAPL_GetPointer(INTERNAL, ICESURF_IN, 'ICESURF', _RC)
-       if(associated(ICESURF_IN)) ICESURF_IN = ICESURF_EX
+       if(associated(ICESURF_IN)) ICESURF_IN = ICESURF_MESH(internal_state%owned_idx)
 
        call MAPL_GetPointer(INTERNAL, ICETHICK_IN, 'ICETHICK', _RC)
-       if(associated(ICETHICK_IN)) ICETHICK_IN = ICETHICK_EX
+       if(associated(ICETHICK_IN)) ICETHICK_IN = ICETHICK_MESH(internal_state%owned_idx)
 
        call MAPL_GetPointer(INTERNAL, ICEVX_IN, 'ICEVX', _RC)
-       if(associated(ICEVX_IN)) ICEVX_IN = ICEVX_EX
+       if(associated(ICEVX_IN)) ICEVX_IN = ICEVX_MESH(internal_state%owned_idx)
 
        call MAPL_GetPointer(INTERNAL, ICEVY_IN, 'ICEVY', _RC)
-       if(associated(ICEVY_IN)) ICEVY_IN = ICEVY_EX
+       if(associated(ICEVY_IN)) ICEVY_IN = ICEVY_MESH(internal_state%owned_idx)
 
        call MAPL_GetPointer(INTERNAL, DIVQ_IN, 'DIVQ', _RC)
-       if(associated(DIVQ_IN)) DIVQ_IN = DIVQ_EX
+       if(associated(DIVQ_IN)) DIVQ_IN = DIVQ_MESH(internal_state%owned_idx)
 
        call MAPL_GetPointer(INTERNAL, DHDT_IN, 'DHDT', _RC)
        if(associated(DIVQ_IN)) DHDT_IN = DHDT_EX
@@ -1375,6 +1378,8 @@ contains
     if(associated(IMLS_MESH))     deallocate(IMLS_MESH)
     if(associated(OMLS_MESH))     deallocate(OMLS_MESH)
     if(associated(ICESMB_MESH))   deallocate(ICESMB_MESH)
+    if(associated(DIVQ_MESH))     deallocate(DIVQ_MESH)
+    if(associated(ICETHICK_OLD))  deallocate(ICETHICK_OLD)
     if(associated(ISSM_OUTPUTS))  deallocate(ISSM_OUTPUTS)
     if(associated(ICESMB_TILE))   deallocate(ICESMB_TILE)
     if(associated(ICESURF_TILE))  deallocate(ICESURF_TILE)
