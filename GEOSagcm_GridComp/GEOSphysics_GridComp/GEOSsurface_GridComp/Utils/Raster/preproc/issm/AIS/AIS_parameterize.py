@@ -174,5 +174,12 @@ md.stressbalance.spcvz[pos]=0
 md.basalforcings.groundedice_melting_rate = np.zeros(md.mesh.numberofvertices)
 md.basalforcings.floatingice_melting_rate = np.zeros(md.mesh.numberofvertices)
 
+# transient options
+# zero frontal melt rate and calving rate, placeholder zero smb
+md.frontalforcings.meltingrate = np.zeros(md.mesh.numberofvertices)
+md.calving.calvingrate = np.zeros(md.mesh.numberofvertices)
+md.smb.mass_balance = np.zeros(md.mesh.numberofvertices) 
+md.masstransport.spcthickness = np.nan * np.ones(md.mesh.numberofvertices)
+
 # export parameterization
 export_discover(md, './netcdfs/AIS_parameterization.nc')
