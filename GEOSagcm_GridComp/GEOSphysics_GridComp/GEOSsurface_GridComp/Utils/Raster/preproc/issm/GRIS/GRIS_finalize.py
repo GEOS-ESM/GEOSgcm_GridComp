@@ -18,6 +18,11 @@ md.initialization.vx=md.results.StressbalanceSolution.Vx
 md.initialization.vy=md.results.StressbalanceSolution.Vy
 md.initialization.vel=np.sqrt(md.initialization.vx**2 + md.initialization.vy**2)
 
+# zero frontal melt rate and calving rate, placeholder zero smb
+md.frontalforcings.meltingrate = np.zeros(md.mesh.numberofvertices)
+md.calving.calvingrate = np.zeros(md.mesh.numberofvertices)
+md.smb.mass_balance = np.zeros(md.mesh.numberofvertices) 
+
 # Write the binary input file
 # Additional options
 md.inversion.iscontrol = 0
