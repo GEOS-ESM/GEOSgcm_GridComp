@@ -1,0 +1,205 @@
+mapl:
+
+  setServices:
+    sharedObj: libconfigurable_gridcomp
+    userRoutine: setservices_
+
+  misc:
+    restart:
+      internal: true
+
+  states:
+    internal:
+      PLE:
+        standard_name: "air_pressure"
+        units: "Pa"
+        vertical_dim_spec: "edge"
+      PREF:
+        standard_name: "reference_air_pressure"
+        units: "Pa"
+        dims: "z"
+        vertical_dim_spec: "edge"
+      ZLE:
+        standard_name: "geopotential_height"
+        units: "m"
+        vertical_dim_spec: "edge"
+      KH:
+        standard_name: "scalar_diffusivity"
+        units: "m+2 s-1"
+        vertical_dim_spec: "edge"
+      TKE:
+        standard_name: "turbulent_kinetic_energy"
+        units: "m+2 s-2"
+        vertical_dim_spec: "edge"
+      WQT:
+        standard_name: "Total_water_flux"
+        units: "kg kg-1 m s-1"
+        vertical_dim_spec: "center"
+      WSL:
+        standard_name: "Liquid_water_static_energy_flux"
+        units: "K m s-1"
+        vertical_dim_spec: "center"
+      W2:
+        standard_name: "variance_of_vertical_velocity"
+        units: "m2 s-2"
+        vertical_dim_spec: "center"
+      W3:
+        standard_name: "third_moment_of_vertical_velocity"
+        units: "m3 s-3"
+        vertical_dim_spec: "center"
+      SL3:
+        standard_name: "third_moment_of_liquid_water_static_energy"
+        units: "K+3"
+        vertical_dim_spec: "center"
+      SL2:
+        standard_name: "variance_of_liquid_water_static_energy"
+        units: "K+2"
+        vertical_dim_spec: "center"
+      PDF_A:
+        standard_name: "ADG_PDF_first_plume_fractional_area"
+        units: "1"
+        vertical_dim_spec: "center"
+      QT2:
+        standard_name: "variance_of_total_water_specific_humidity"
+        units: "1"
+        vertical_dim_spec: "center"
+      QT3:
+        standard_name: "third_moment_of_total_water_specific_humidity"
+        units: "1"
+        vertical_dim_spec: "center"
+      SLQT:
+        standard_name: "covariance_of_liquid_water_static_energy_and_total_water_specific_humidity"
+        units: "K"
+        vertical_dim_spec: "center"
+      T:
+        standard_name: "temperature"
+        units: "K"
+        vertical_dim_spec: "center"
+      U:
+        standard_name: "eastward_wind"
+        units: "m s-1"
+        vertical_dim_spec: "center"
+      V:
+        standard_name: "northward_wind"
+        units: "m s-1"
+        vertical_dim_spec: "center"
+      W:
+        standard_name: "vertical_velocity"
+        units: "m s-1"
+        vertical_dim_spec: "center"
+      TS:
+        standard_name: "surface temperature"
+        units: "K"
+        vertical_dim_spec: "none"
+      SNOMAS:
+        standard_name: "snow_mass"
+        units: "kg/m2"
+        vertical_dim_spec: "none"
+      FRLANDICE:
+        standard_name: "areal_landice_fraction"
+        units: "1"
+        vertical_dim_spec: "none"
+      FRLAND:
+        standard_name: "areal_land_fraction"
+        units: "1"
+        vertical_dim_spec: "none"
+      FRACI:
+        standard_name: "ice_covered_fraction_of_tile"
+        units: "1"
+        vertical_dim_spec: "none"
+      KPBL:
+        standard_name: "planetary_boundary_layer_level"
+        units: "1"
+        vertical_dim_spec: "none"
+      KPBL_SC:
+        standard_name: "boundary_layer_level_for_UW_shlw"
+        units: "1"
+        vertical_dim_spec: "none"
+      OMEGA:
+        standard_name: "vertical_pressure_velocity"
+        units: "Pa s-1"
+        vertical_dim_spec: "center"
+      AREA:
+        standard_name: "agrid_cell_area"
+        units: "m+2"
+        vertical_dim_spec: "none"
+      DTDTDYN:
+        standard_name: "tendency_of_air_temperature_due_to_dynamics"
+        units: "K s-1"
+        vertical_dim_spec: "center"
+      DQVDTDYN:
+        standard_name: "tendency_of_specific_humidity_due_to_dynamics"
+        units: "kg/kg/s"
+        vertical_dim_spec: "center"
+      QV_DYN_IN:
+        standard_name: "spec_humidity_at_begin_of_time_step"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      T_DYN_IN:
+        standard_name: "temperature_at_begin_of_time_step"
+        units: "K"
+        vertical_dim_spec: "center"
+      U_DYN_IN:
+        standard_name: "u_wind_at_begin_of_time_step"
+        units: "m s-1"
+        vertical_dim_spec: "center"
+      V_DYN_IN:
+        standard_name: "v_wind_at_begin_of_time_step"
+        units: "m s-1"
+        vertical_dim_spec: "center"
+      PLE_DYN_IN:
+        standard_name: "edge_pressure_at_begin_of_time_step"
+        units: "Pa"
+        vertical_dim_spec: "edge"
+      DTDT_BL:
+        standard_name: "tendency_of_air_temperature_due_to_bound_layer"
+        units: "K s-1"
+        vertical_dim_spec: "center"
+      DQDT_BL:
+        standard_name: "tendency_of_spec_humidity_due_to_bound_layer"
+        units: "kg kg-1 s-1"
+        vertical_dim_spec: "center"
+      RADLW:
+        standard_name: "air_temperature_tendency_due_to_longwave"
+        units: "K s-1"
+        vertical_dim_spec: "center"
+      RADSW:
+        standard_name: "air_temperature_tendency_due_to_longwave"
+        units: "K s-1"
+        vertical_dim_spec: "center"
+      T2M:
+        standard_name: "2-meter_air_temperature"
+        units: "K"
+        vertical_dim_spec: "none"
+      Q2M:
+        standard_name: "2-meter_specific_humidity"
+        units: "kg kg-1"
+        vertical_dim_spec: "none"
+      TA:
+        standard_name: "surface_air_temperature"
+        units: "K"
+        vertical_dim_spec: "none"
+      QA:
+        standard_name: "surface_air_specific_humidity"
+        units: "kg kg-1"
+        vertical_dim_spec: "none"
+      SH:
+        standard_name: "sensible_heat_flux"
+        units: "W m-2"
+        vertical_dim_spec: "none"
+      EVAP:
+        standard_name: "evaporation"
+        units: "kg m-2 s-1"
+        vertical_dim_spec: "none"
+      PHIS:
+        standard_name: "surface geopotential height"
+        units: "m+2 s-2"
+        vertical_dim_spec: "none"
+      DQLDTTRB:
+        standard_name: "turbulence_liquid_water_tendency"
+        units: "kg kg-1 s-1"
+        vertical_dim_spec: "center"
+      DQIDTTRB:
+        standard_name: "turbulence_ice_water_tendency"
+        units: "kg kg-1 s-1"
+        vertical_dim_spec: "center"

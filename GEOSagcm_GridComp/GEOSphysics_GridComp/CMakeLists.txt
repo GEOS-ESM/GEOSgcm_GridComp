@@ -2,7 +2,7 @@ esma_set_this ()
 
 set (alldirs
   GEOSchem_GridComp         # restricted to GOCART only - see GEOSchem_GridComp/CMakeLists.txt
-  # GEOSmoist_GridComp      # not yet ported to MAPL3 - restore when ported
+  GEOSmoist_GridComp
   # GEOSsurface_GridComp    # not yet ported to MAPL3 - restore when ported
   # GEOSturbulence_GridComp # not yet ported to MAPL3 - restore when ported
   GEOSgwd_GridComp
@@ -13,6 +13,8 @@ set (alldirs
 # USE-s non-ported components. Restore the block below when all SUBCOMPONENTS
 # are ported to MAPL3.
 esma_add_subdirectories (${alldirs})
+
+add_subdirectory (regression)
 
 # if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_PhysicsGridComp.F90)
 #

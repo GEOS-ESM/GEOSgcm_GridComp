@@ -1,0 +1,39 @@
+# Moist settings of the MAPL2 baseline run: C12L181, GFDL_1M + GF, no UW. This is
+# the stock v12 L181 setup: gcm_setup turns on SHOC-MF for LM /= 72, which sets
+# SHALLOW_OPTION NONE and PDFSHAPE 6 (AGCM.rc.tmpl SHOC-MF block). The other SHOC
+# keys are Turbulence's; Moist sees SHOC only through the captured imports.
+# From AGCM.rc.tmpl and set_resolution_params.csh (c12: DT = CONV_DT = 1200).
+# Keep in sync with the AGCM.rc of the run that produced the baseline.
+CLDMICR_OPTION: GFDL_1M
+CONVPAR_OPTION: GF
+SHALLOW_OPTION: NONE
+PDFSHAPE: 6          # SHOC-MF block; GFDL_1M_InterfaceMod reads it (default 1)
+GFDL_MP_KLID: 19.0   # gcm_setup: KLID for LM >= 181
+GF_DT: 1200
+
+# GF plumes and closures (AGCM.rc.tmpl)
+DEEP: 1
+SHALLOW: 0
+CONGESTUS: 1
+CLOSURE_DEEP: 0
+CLOSURE_SHALLOW: 7
+CLOSURE_CONGESTUS: 3
+
+# Aerosol activation from the fixed CCN/IN numbers, so no GOCART is needed
+# (FakeGOCART provides an empty AERO state)
+USE_AEROSOL_NN: false
+
+mapl:
+  setServices:
+    sharedObj: libGEOSmoist_GridComp
+    userRoutine: moist_setservices_
+
+  # Exports are activated by HIST (history.yaml), not activate_all_exports:
+  # an export this configuration never writes would be allocated uninitialized.
+  misc:
+    restart:
+      internal: true
+    checkpoint:
+      export: true
+      import: true
+      internal: true
