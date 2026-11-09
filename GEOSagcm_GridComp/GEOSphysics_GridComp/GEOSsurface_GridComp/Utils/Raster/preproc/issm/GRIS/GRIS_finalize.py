@@ -46,8 +46,10 @@ md.levelset.spclevelset = spclevelset
 md.levelset.reinit_frequency = 20  # Should be more than 10
 md.levelset.stabilization = 5      # SUPG
 
-# No frontal melt by default
+# No frontal melt or calving
 md.frontalforcings.meltingrate = np.zeros((nv, 1))
+md.calving.calvingrate = np.zeros(md.mesh.numberofvertices)
+md.smb.mass_balance = np.zeros(md.mesh.numberofvertices) # zero SMB, overwritten by GEOS
 
 md.private.solution = 'Transient'
 md.verbose = verbose('000000000')
