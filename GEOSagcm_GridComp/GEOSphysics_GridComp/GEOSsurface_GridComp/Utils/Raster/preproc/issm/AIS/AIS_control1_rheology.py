@@ -34,7 +34,7 @@ md.inversion.cost_functions_coefficients[:,0]=5000
 md.inversion.cost_functions_coefficients[:,1]=100
 md.inversion.cost_functions_coefficients[:,2]=1e-18
 
-# where there's no ice, no ocean, or now flow, don't invert:
+# where there's no ice or now flow, don't invert:
 pos=np.where( (md.mask.ice_levelset>0) | (md.inversion.vel_obs==0))[0]
 md.inversion.cost_functions_coefficients[:,0][pos]=0
 md.inversion.cost_functions_coefficients[:,1][pos]=0
@@ -53,7 +53,7 @@ md.inversion.dxmin = 1e-5
 #Additional parameters
 md.stressbalance.abstol=np.nan
 
-#Go solve
+#Extract model over ice shelves
 mds= md.extract((md.mask.ocean_levelset<0))
 
 # marshall binary for solve via command line 
