@@ -39,7 +39,7 @@ md.inversion.cost_functions_coefficients[:,1][pos]=0
 
 #Controls
 md.inversion.control_parameters=['FrictionCoefficient']
-md.inversion.maxsteps=100
+md.inversion.maxsteps=200
 md.inversion.maxiter =200
 md.inversion.min_parameters=0.05*np.ones(md.mesh.numberofvertices)
 md.inversion.max_parameters=400*np.ones(md.mesh.numberofvertices)

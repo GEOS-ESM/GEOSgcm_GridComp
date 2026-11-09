@@ -136,10 +136,10 @@ md.friction.coefficient = C # try constant for test: 50*np.ones(md.mesh.numberof
 md.friction.p = np.ones(md.mesh.numberofelements)
 md.friction.q = np.ones(md.mesh.numberofelements)
 
-# Flow law (assume ice is at -5°C for now)
+# Flow law (assume ice is at -10°C for now)
 md=setflowequation(md,'SSA','all')
 md.materials.rheology_n = 3*np.ones(md.mesh.numberofelements)
-md.materials.rheology_B = cuffey(273.15 - 5)*np.ones(md.mesh.numberofvertices)
+md.materials.rheology_B = cuffey(273.15 - 10)*np.ones(md.mesh.numberofvertices)
 
 # Set boundary conditions
 md.stressbalance.spcvx=np.nan*np.ones(md.mesh.numberofvertices)
