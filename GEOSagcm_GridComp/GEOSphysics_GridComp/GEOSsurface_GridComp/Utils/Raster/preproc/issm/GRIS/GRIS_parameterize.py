@@ -165,14 +165,14 @@ onboundary = np.asarray(md.mesh.vertexonboundary).flatten().astype(bool)
 spcthickness = np.full((md.mesh.numberofvertices, 1), np.nan)
 spcthickness[onboundary, 0] = np.asarray(md.geometry.thickness).flatten()[onboundary]
 md.masstransport.spcthickness = spcthickness
-md.masstransport.stabilization = 1
+md.masstransport.stabilization = 5
 
 # Levelset options (https://gmd.copernicus.org/articles/17/6227/2024/)
 spclevelset = np.full((md.mesh.numberofvertices, 1), np.nan)
 spclevelset[onboundary, 0] = np.asarray(md.mask.ice_levelset).flatten()[onboundary]
 md.levelset.spclevelset = spclevelset
 md.levelset.reinit_frequency = 20  # Should be more than 10
-md.levelset.stabilization = 1
+md.levelset.stabilization = 5
 
 # basal forcings
 md.basalforcings.groundedice_melting_rate = np.zeros(md.mesh.numberofvertices)
