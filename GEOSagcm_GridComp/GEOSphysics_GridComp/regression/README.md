@@ -14,6 +14,7 @@ The cases are listed in `cases.txt` and registered by `CMakeLists.txt` through `
 
 - **Geometry**: C12 cubed sphere, 181 levels (C12L181), model vertical grid defined by the `PLE` field (`root.yaml`); `moist-bacm1m-gf-uw-sa` uses 72 levels (C12L72).
 - **Layout**: 6 MPI tasks (`mapl.yaml`, `run_case.cmake`), `OMP_NUM_THREADS=1`.
+- **Logging**: `mapl.yaml` loads `logging.yaml` (`pflogger:`), which sets the `MAPL` logger to ERROR and logs to the console only. The run has no field dictionary, so MAPL warns once per variable spec per rank (about 5,700 warnings), and its default logging writes each one to `warnings_and_errors.log` under an MPI lock; that serialized the ranks and took about 6 s of each 17 s test (perf, 2026-11-09). With `logging.yaml` the tests take 8.5-13 s.
 - **Clock**: one 20-minute step (`PT20M`) from `2000-04-14T21:20:00` (`cap_restart.yaml`); the final checkpoint is written at 21:40 (`checkpoints/last`). `moist-bacm1m-gf-uw-sa` instead takes one 450 s step (`PT7M30S`) from `2000-04-14T21:15:00` (see its section). The `start`/`stop` in `cap_driver.yaml` only bound the clock.
 - **No ExtData**: `run_extdata: false`. **History only activates exports**: `run_history: true` with a `HIST` collection (`history.yaml`) whose start is after the cap stop, so it never writes a file.
 - **Inputs**: the case's `DataFor*` gridcomp (`libconfigurable_gridcomp`) holds every import as an internal field, restarted from `checkpoints/2000-04-14T21:20:00/DataFor*_internal.nc`, and is connected field-by-field to the component in `root.yaml`.
@@ -65,7 +66,7 @@ Services:
 - MOIST's four subscriptions, `TRADV` (advection), `TRDIFF` (turbulent diffusion), `TRCHEM` (chemistry) and `TRANA` (analysis), are left unconnected. Their providers change MOIST's internals between MOIST's runs, not during them, so their effect is already in the restarted internal state.
 - Only MOIST's own states are compared, not the transported tracer `TR1`.
 
-Untested until the first run: four unconnected service subscriptions from one component, the `MTR` connection (MOIST is the provider) and an empty `AERO` with `USE_AEROSOL_NN: false`. See `../GEOSmoist_GridComp/mapl3-porting-notes.md`, step 10.
+Exercised since the first run (2026-11-04), which matches the MAPL2 capture: four unconnected service subscriptions from one component, the `MTR` connection (MOIST is the provider) and an empty `AERO` with `USE_AEROSOL_NN: false`. See `../GEOSmoist_GridComp/mapl3-porting-notes.md`, step 10.
 
 ### `moist-gfdl1m-gf-shoc-sa`
 
@@ -135,6 +136,19 @@ GEOSmoist_GridComp/
 ```
 
 If a case's data directory is missing, `run_case.cmake` prints "Regression data not found ... skipping" and the test **passes without running**. If it has restarts but no `checkpoints/last/`, the case runs and `compare_results` finds no baseline files, so the test passes if the run does (`@cmake/esma_support/esma_regression_run_helpers.cmake`, `compare_results`).
+
+## Run time
+
+Measured 2026-11-09 with `ctest -L REGRESSION` (ifx Debug, 6 PEs, `logging.yaml` in place, MAPL `develop` plus GEOS-ESM/MAPL#5500, which skips the regex in `VirtualConnectionPt%matches` for literal names, not yet merged): `moist-gfdl1m-gf-uw-sa` 7.9 s, `moist-gfdl1m-gf-shoc-sa` 7.2 s, `moist-bacm1m-gf-uw-sa` 6.5 s.
+
+Almost all of it is MAPL, not Moist. In a perf profile of `moist-bacm1m-gf-uw-sa` (rank 3):
+
+- MAPL's `CAP` timer is 4.7 s: Initialize 4.5 s, run 0.2 s. Moist's own `Run` is about 0.03 s.
+- The other ~2 s of the test is `mpiexec`, MPI and ESMF startup, copying the restarts and the `nccmp` comparison (estimated from the difference between test time and `GEOS.x` time, not profiled).
+- Of the initialize CPU time, about 33% is ESMF Info (JSON field metadata), mostly from `field_info_set_internal` / `field_info_get_internal` (and their `restart_mode` variants) in MAPL `infrastructure/field/FieldInfo.F90`. About 20% of all CPU time (~1 s) is C++ exceptions: ESMF's `has_key_json` and `update_json_pointer` (`ESMCI_Info.C`, ESMF in Baselibs 8.33.0) find a missing key by catching `json::out_of_range`, and MAPL checks for or sets missing keys on every field.
+- About 15% is in `ESMF_ArrayGet` / `ESMF_DistGridGet` (callers not resolved; the profile's stacks stop in ESMF), about 10% in `StateRegistry` (extend, add_to_states, set_geometry, connections) and 6% in `StateRegistry%filter`.
+
+History of the reductions (same cases): 17 s before `logging.yaml` (field-dictionary warnings, see Common setup), then 8.7-9.5 s with it, then the times above with the literal-name match. Further gains would have to come from ESMF (look keys up without exceptions) or MAPL (avoid probing missing keys in `FieldInfo.F90`); together these are worth at most ~1-1.5 s per test.
 
 ## Running
 
