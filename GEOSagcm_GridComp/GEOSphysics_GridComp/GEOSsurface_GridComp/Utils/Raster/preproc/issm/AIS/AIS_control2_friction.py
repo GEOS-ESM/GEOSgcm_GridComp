@@ -22,6 +22,7 @@ md.materials.rheology_B[mds.mesh.extractedvertices-1]=mds.results.StressbalanceS
 #---------------
 # We need to make some adjustments to the mask to make sure it is compatible with the observations
 pos = np.where(md.inversion.vel_obs==0)[0]
+levelset_initial = md.mask.ice_levelset.copy()
 md.mask.ice_levelset[pos] = +1 # set these areas to be ice-free
 md.mask.ice_levelset=reinitializelevelset(md,md.mask.ice_levelset)
 
@@ -59,6 +60,9 @@ md.private.solution = 'Stressbalance'
 md.settings.waitonlock = 0
 md.toolkits.ToolkitsFile('ISSM_'+md.miscellaneous.name + '.toolkits')
 marshall(md,'ISSM_'+md.miscellaneous.name+'.bin')
+
+# reset levelset for transient runs
+md.mask.ice_levelset=reinitializelevelset(md,levelset_initial)
 
 # export configuration for loading solution in next step
 export_discover(md,'./netcdfs/AIS_inversion.nc',delete_rundir=True)

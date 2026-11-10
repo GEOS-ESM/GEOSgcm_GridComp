@@ -55,5 +55,8 @@ md.settings.waitonlock = 0
 md.toolkits.ToolkitsFile('ISSM_'+md.miscellaneous.name + '.toolkits')
 marshall(md,'ISSM_'+md.miscellaneous.name+'.bin')
 
+# reset levelset for transient runs
+md.mask.ice_levelset=reinitializelevelset(md,levelset_initial)
+
 # export configuration for loading solution in next step
 export_discover(md,'./netcdfs/GRIS_inversion.nc',delete_rundir=True)
