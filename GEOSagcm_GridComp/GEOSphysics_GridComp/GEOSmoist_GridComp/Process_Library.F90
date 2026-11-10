@@ -3517,6 +3517,11 @@ contains
 
    subroutine FILLQ2ZERO(Q, MASS, DT, DQDT, WARNING_LABEL, VM, RC)
 
+      ! TODO (bug, same in MAPL2; GEOSgcm_GridComp#1570): DQDT is a pointer with intent(out),
+      ! so its association status is undefined on entry and the associated(DQDT) checks below
+      ! are not reliable; with ifx they are .false., so the *_FILL_* tendency exports (GFDL_1M,
+      ! GF, UW) are never written, even when requested. Fix: intent(inout) (or no intent), here
+      ! and in FILLQ2ZERO_OLD. Kept as is for bit-for-bit agreement with MAPL2 during the port.
       real, dimension(:, :, :), intent(inout) :: Q
       real, dimension(:, :, :), intent(in) :: MASS
       real, optional, intent(in) :: DT

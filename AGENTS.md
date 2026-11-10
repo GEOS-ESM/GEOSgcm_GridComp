@@ -57,6 +57,7 @@ Nested repositories (after `mepo clone`; paths in section 6 of `docs/ARCHITECTUR
 - Do not edit generated files (`*_Import___.h`, `*_Export___.h`, ...); edit the
   `*_StateSpecs.rc` file.
 - Code owners are in `.github/CODEOWNERS`; `CMakeLists.txt` files belong to the CMake team.
+- Error handling in code you write or touch uses the MAPL3 macros (`@MAPL/include/MAPL_ErrLog.h`): `_RC` on calls, `_STAT` on `allocate`, `_ASSERT(cond, msg)` with a message, and `_RETURN(_SUCCESS)` at every successful exit. Convert `RC=STATUS`/`VERIFY_`/`ASSERT_`/`RETURN_` in any routine you change. `_RC` expands to two statements (`rc=status);_VERIFY(status`), so it cannot end a one-line `if`; use a block `if`. Do not add decorative `!----` separator lines.
 
 ## Build and test
 
