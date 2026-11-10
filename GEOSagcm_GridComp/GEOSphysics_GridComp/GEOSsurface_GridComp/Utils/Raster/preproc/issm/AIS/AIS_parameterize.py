@@ -170,11 +170,11 @@ md.stressbalance.spcvx[pos]=md.initialization.vx[pos]
 md.stressbalance.spcvy[pos]=md.initialization.vy[pos]
 md.stressbalance.spcvz[pos]=0
 
+# transient options
 # basal forcings
 md.basalforcings.groundedice_melting_rate = np.zeros(md.mesh.numberofvertices)
 md.basalforcings.floatingice_melting_rate = np.zeros(md.mesh.numberofvertices)
 
-# transient options
 # zero frontal melt rate and calving rate, placeholder zero smb
 md.frontalforcings.meltingrate = np.zeros(md.mesh.numberofvertices)
 md.calving.calvingrate = np.zeros(md.mesh.numberofvertices)
