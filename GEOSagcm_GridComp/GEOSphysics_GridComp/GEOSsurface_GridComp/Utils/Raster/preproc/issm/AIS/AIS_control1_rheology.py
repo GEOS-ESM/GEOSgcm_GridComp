@@ -25,7 +25,6 @@ md.mask.ice_levelset=reinitializelevelset(md,md.mask.ice_levelset)
 md.inversion=m1qn3inversion(md.inversion)
 md.inversion.iscontrol=1
 md.verbose=verbose('solution',True,'control',True)
-md.transient.amr_frequency = 0
 
 #Cost functions
 md.inversion.cost_functions= [101, 103, 502]
