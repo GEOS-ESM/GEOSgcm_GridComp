@@ -661,6 +661,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real                                :: FACP1, FACP0, FACM1, FACM2
   real                                :: DAMPBEG, DAMPEND
   logical                             :: BLEND_AT_PBL
+  logical                             :: ZERO_DT_ABOVE_DAMPBEG
+  real                                :: p_top, p_mid
   integer                             :: i,j,L,n
   integer                             :: nt,nvars,natts
   integer                             :: nymd, nhms
@@ -887,6 +889,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     _ASSERT(DAMPBEG.le.DAMPEND   ,'needs informative message')
 
     call MAPL_GetResource(MAPL, BLEND_AT_PBL,  LABEL="REPLAY_BLEND_AT_PBL:", default=.FALSE., RC=status)
+    VERIFY_(STATUS)
+
+    call MAPL_GetResource(MAPL, ZERO_DT_ABOVE_DAMPBEG, LABEL="ZERO_DT_ABOVE_DAMPBEG:", default=.FALSE., RC=STATUS)
     VERIFY_(STATUS)
 
        CREMAP = ESMF_UtilStringUpperCase(CREMAP)
@@ -2313,6 +2318,22 @@ CONTAINS
        VERIFY_(status)
     else
        dt=ptr3d
+    endif
+
+    if (ZERO_DT_ABOVE_DAMPBEG) then
+       call MAPL_GetPointer(import, temp3d, 'DELP', RC=STATUS)
+       VERIFY_(STATUS)
+
+       do j=1,size(dt,2)
+          do i=1,size(dt,1)
+             p_top = ak(0)
+             do L=1,size(dt,3)
+                p_mid = p_top + 0.5*temp3d(i,j,L)
+                if (p_mid <= DAMPBEG) dt(i,j,L) = 0.0
+                p_top = p_top + temp3d(i,j,L)
+             enddo
+          enddo
+       enddo
     endif
 
 ! Moisture
