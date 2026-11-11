@@ -1338,11 +1338,13 @@ contains
 
        ! calculate rate of thickness change
        call MAPL_GetPointer(EXPORT, DHDT_EX, 'DHDT', _RC)
-       if(associated(DHDT_EX)) DHDT_EX = (ICETHICK_EX-ICETHICK_OLD)/ISSM_DT
-       where (IMLS_IN > 0.0) DHDT_EX = 0.0
+       if(associated(DHDT_EX)) then
+          DHDT_EX = (ICETHICK_EX-ICETHICK_OLD)/ISSM_DT
+          where (IMLS_IN > 0.0) DHDT_EX = 0.0
+       end if 
 
        call MAPL_GetPointer(INTERNAL, DHDT_IN, 'DHDT', _RC)
-       if(associated(DIVQ_IN)) DHDT_IN = DHDT_EX
+       if(associated(DHDT_IN)) DHDT_IN = DHDT_EX
 
        ! *************************************************************************** !
        ! REGRID MESH FIELDS ONTO LANDICE TILES AND EXPORT VIA PRIVATE INTERNAL STATE
