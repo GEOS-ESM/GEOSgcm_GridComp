@@ -59,11 +59,11 @@ Link to MAPL3 migration guide: <!-- URL when available -->
 - [ ] Build succeeds against MAPL3
 - [ ] Unit/regression tests pass
 - [ ] Parent component (if any) is notified that this child is ready
-- [ ] No MAPL2 API calls remain: `grep -c 'MAPL2_\|mapl2_' <file>` == 0
+- [ ] No MAPL2 API calls remain: `grep 'MAPL2_\|mapl2_' <file>` finds nothing but a local `MAPL2_UNDEF` constant (kept on purpose for MAPL2 inputs)
 
 ### PR
 - [ ] PR title: `[MAPL3] ComponentName: migrate to MAPL3 APIs`
-- [ ] PR targets the MAPL3 migration branch (not `main`)
+- [ ] PR targets `release/MAPL-v3` (not `main` or `develop`)
 - [ ] PR description lists all API changes made
 - [ ] PR description links to this issue and all pre-condition issues
 

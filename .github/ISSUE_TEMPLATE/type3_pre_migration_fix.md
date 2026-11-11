@@ -36,8 +36,11 @@ the issue can start without needing to re-read the audit. Examples:
 
 For _rc-cleanup:
   "Replace all VERIFY_(STATUS) calls with _RC. There are 316 occurrences.
-   Use: sed -i 's/VERIFY_(STATUS)/_RC/g' ... as a starting point, then
-   verify by inspection that no STATUS variable remains."
+   Convert each `call X(..., rc=status); VERIFY_(STATUS)` to
+   `call X(..., _RC)`: _RC replaces the rc argument inside the call, so a
+   plain sed of VERIFY_(STATUS) to _RC produces invalid code. _RC expands
+   to two statements and cannot end a one-line `if`. Verify by inspection
+   that no STATUS variable remains."
 
 For refactor:
   "Lines 450-510 and 620-680 are near-identical restart read blocks.
@@ -56,7 +59,7 @@ For bug:
 
 - [ ] <!-- specific, testable criterion 1 -->
 - [ ] <!-- specific, testable criterion 2 -->
-- [ ] CI passes on `main`
+- [ ] CI passes on `release/MAPL-v3`
 - [ ] No new `VERIFY_(` calls introduced (for `_rc-cleanup` issues)
 
 ## Notes
