@@ -12,9 +12,9 @@ module GEOS_IssmGridCompMod
   !
   !   {\tt GEOS\_ISSM} runs ISSM (Ice-sheet and Sea-level System Model)
   !   Imports: ICESMB (defined on landice tiles)  [via private internal state]
-  !   Exports: ICESURF, ICETHICK, ICESMB_ISSM, ICEVX, ICEVY (defined on mesh) [true export state]
+  !   Exports: ICESURF, ICETHICK, ICEVX, ICEVY, DHDT, DIVQ, ICESMB_ISSM (defined on mesh) [true export state]
   !   Exports: ICESURF, ICETHICK, ICEVEL (defined on landice tiles) [via private internal state]
-  !   Internals: ICESURF, ICETHICK, IMLS, OMLS, ISSM_NSTEPS (defined on mesh) [true internal state]
+  !   Internals: ICESURF, ICETHICK, ICEVX, ICEVY, IMLS, OMLS, ISSM_NSTEPS, DHDT, DIVQ, ICESMB_ISSM (defined on mesh) [true internal state]
   ! *** NOTES:
   !            (*) currently we run over all input files (*.bin) that are found in ISSM_EXPDIR (scratch directory)
   !                (e.g., Greenland + Antarctica + any other glaciers that have been configured)
