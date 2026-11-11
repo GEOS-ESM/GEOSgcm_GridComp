@@ -1,6 +1,6 @@
 # Moist MAPL3 port: the 197 `ALLOC=.TRUE.` exports
 
-This is the survey for step 6 of `mapl3-porting-notes.md` (2026-10-29). It covers the driver and the in-scope schemes (GFDL_1M, GF, UW) on branch `feature/pchakrab/port-moist-to-mapl3` at `8bde1bc9`. The out-of-scope schemes (BACM_1M, THOM_1M, MGB2_2M, NSSL_2M, RAS) and pyMoist are not covered.
+This is the survey for step 6 of `mapl3-porting-notes.md` (2026-10-29). It covers the driver and the in-scope schemes (GFDL_1M, GF, UW) on branch `feature/pchakrab/port-moist-to-mapl3` at `8bde1bc9` (merged later in GEOSgcm_GridComp#1566; BACM_1M, ported afterwards, is not covered). The out-of-scope schemes (BACM_1M, THOM_1M, MGB2_2M, NSSL_2M, RAS) and pyMoist are not covered.
 
 File abbreviations used throughout:
 

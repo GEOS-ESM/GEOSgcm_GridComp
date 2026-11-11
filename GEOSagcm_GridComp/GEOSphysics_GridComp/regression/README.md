@@ -4,9 +4,9 @@ Standalone MAPL3 regression cases for the Physics components that have no regres
 
 | Case       | Component run | States compared by ctest       | Status |
 |------------|---------------|--------------------------------|--------|
-| `moist-gfdl1m-gf-uw-sa` | MOIST         | MOIST import, internal, export | matches the MAPL2 capture (cmpchk.py; REFL10CM_MAX left out); regression data in ~/regression-data only (2026-11-04), not on /ford1 |
-| `moist-bacm1m-gf-uw-sa` | MOIST         | MOIST import, internal, export | matches the C12L72 MAPL2 capture (cmpchk.py, 2026-11-05); regression data in ~/regression-data only (2026-11-05), not on /ford1; reproducibility not checked with a second run |
-| `moist-gfdl1m-gf-shoc-sa` | MOIST       | MOIST import, internal, export | matches the MAPL2 capture (cmpchk.py, 2026-11-05); regression data in ~/regression-data only (2026-11-05), not on /ford1; reproducibility not checked with a second run |
+| `moist-gfdl1m-gf-uw-sa` | MOIST         | MOIST import, internal, export | matches the MAPL2 capture (cmpchk.py; REFL10CM_MAX left out); regression data on /ford1 and in the CircleCI regression image (since 2026-11-09) |
+| `moist-bacm1m-gf-uw-sa` | MOIST         | MOIST import, internal, export | matches the C12L72 MAPL2 capture (cmpchk.py, 2026-11-05); regression data on /ford1 and in the CircleCI regression image (since 2026-11-09); reproducibility not checked with a second run |
+| `moist-gfdl1m-gf-shoc-sa` | MOIST       | MOIST import, internal, export | matches the MAPL2 capture (cmpchk.py, 2026-11-05); regression data on /ford1 and in the CircleCI regression image (since 2026-11-09); reproducibility not checked with a second run |
 
 The cases are listed in `cases.txt` and registered by `CMakeLists.txt` through `esma_add_regression_tests` (`NAME moist`; ctest label `REGRESSION`, test name = case name). `CMakeLists.txt` is added by `add_subdirectory (regression)` in `../CMakeLists.txt`.
 
@@ -14,7 +14,7 @@ The cases are listed in `cases.txt` and registered by `CMakeLists.txt` through `
 
 - **Geometry**: C12 cubed sphere, 181 levels (C12L181), model vertical grid defined by the `PLE` field (`root.yaml`); `moist-bacm1m-gf-uw-sa` uses 72 levels (C12L72).
 - **Layout**: 6 MPI tasks (`mapl.yaml`, `run_case.cmake`), `OMP_NUM_THREADS=1`.
-- **Logging**: `mapl.yaml` loads `logging.yaml` (`pflogger:`), which sets the `MAPL` logger to ERROR and logs to the console only. The run has no field dictionary, so MAPL warns once per variable spec per rank (about 5,700 warnings), and its default logging writes each one to `warnings_and_errors.log` under an MPI lock; that serialized the ranks and took about 6 s of each 17 s test (perf, 2026-11-09). With `logging.yaml` the tests take 8.5-13 s.
+- **Logging**: `mapl.yaml` loads `logging.yaml` (`pflogger:`), which sets the `MAPL` logger to ERROR and logs to the console only. The run has no field dictionary, so MAPL warns once per variable spec per rank (about 5,700 warnings), and its default logging writes each one to `warnings_and_errors.log` under an MPI lock; that serialized the ranks and took about 6 s of each 17 s test (perf, 2026-11-09). With `logging.yaml` the tests take about 9 s.
 - **Clock**: one 20-minute step (`PT20M`) from `2000-04-14T21:20:00` (`cap_restart.yaml`); the final checkpoint is written at 21:40 (`checkpoints/last`). `moist-bacm1m-gf-uw-sa` instead takes one 450 s step (`PT7M30S`) from `2000-04-14T21:15:00` (see its section). The `start`/`stop` in `cap_driver.yaml` only bound the clock.
 - **No ExtData**: `run_extdata: false`. **History only activates exports**: `run_history: true` with a `HIST` collection (`history.yaml`) whose start is after the cap stop, so it never writes a file.
 - **Inputs**: the case's `DataFor*` gridcomp (`libconfigurable_gridcomp`) holds every import as an internal field, restarted from `checkpoints/2000-04-14T21:20:00/DataFor*_internal.nc`, and is connected field-by-field to the component in `root.yaml`.
@@ -99,7 +99,7 @@ The MAPL2 capture needs a C12L72 MAPL2 experiment made with `gcm_setup` (72 leve
 
 There are two kinds of baseline: a MAPL2 reference capture, and the MAPL3 checkpoints that ctest compares against.
 
-### MAPL2 reference captures (`~/input/moist/<case without moist- and -sa>/C12L181`: `gfdl1m-gf-uw` made 2026-11-04, `gfdl1m-gf-shoc` 2026-11-05)
+### MAPL2 reference captures (`~/input/moist/<case without moist- and -sa>/C12L<levels>`: `gfdl1m-gf-uw` (L181) made 2026-11-04, `gfdl1m-gf-shoc` (L181) and `bacm1m-gf-uw` (L72) 2026-11-05)
 
 - **Plan** (`../GEOSmoist_GridComp/mapl3-porting-notes.md`, step 0): C12L181, `COMPONENT_TO_RECORD: MOIST`, MOIST's import, internal and export states before and after its Run at `2000-04-14T21:20:00`, converted to the new cubed-sphere file layout with `GEOS_Restart_Utilities/convertOldCStoNewCS.py`.
 - **Run configuration** must match `moist.yaml`: the same scheme options and settings, a 1200 s step and MOIST's run step equal to it, `USE_AEROSOL_NN: false`, and a `HISTORY.rc` requesting every MOIST export (MAPL2 allocates exports only when they are requested).
@@ -139,7 +139,7 @@ If a case's data directory is missing, `run_case.cmake` prints "Regression data 
 
 ## Run time
 
-Measured 2026-11-09 with `ctest -L REGRESSION` (ifx Debug, 6 PEs, `logging.yaml` in place, MAPL `develop` plus GEOS-ESM/MAPL#5500, which skips the regex in `VirtualConnectionPt%matches` for literal names, not yet merged): `moist-gfdl1m-gf-uw-sa` 7.9 s, `moist-gfdl1m-gf-shoc-sa` 7.2 s, `moist-bacm1m-gf-uw-sa` 6.5 s.
+Measured 2026-11-09 with `ctest -L REGRESSION` (ifx Debug, 6 PEs, `logging.yaml` in place, MAPL `develop` plus GEOS-ESM/MAPL#5500, which skips the regex in `VirtualConnectionPt%matches` for literal names, merged 2026-11-10): `moist-gfdl1m-gf-uw-sa` 7.9 s, `moist-gfdl1m-gf-shoc-sa` 7.2 s, `moist-bacm1m-gf-uw-sa` 6.5 s.
 
 Almost all of it is MAPL, not Moist. In a perf profile of `moist-bacm1m-gf-uw-sa` (rank 3):
 
