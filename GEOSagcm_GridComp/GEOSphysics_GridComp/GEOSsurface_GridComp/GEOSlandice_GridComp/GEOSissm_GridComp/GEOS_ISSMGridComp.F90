@@ -1188,7 +1188,6 @@ contains
        ! get timestep for ISSM
        call MAPL_GetResource(MAPL, ISSM_DT, Label="ISSM_DT:",DEFAULT=302400.0, _RC)
        ISSM_DT_DP = real(ISSM_DT,kind=dp) 
-       !call MAPL_GetResource(MAPL, ISSM_DT, Label=trim(COMP_NAME)//"_DT:",DEFAULT=302400.0, _RC)
 
        ! get number of mesh elements
        call ESMF_MeshGet(mesh,nodeCount=num_nodes,numOwnedNodes=num_owned_nodes)
