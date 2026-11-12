@@ -5126,7 +5126,6 @@ end if
     real, dimension(:,:),   pointer     :: SG, SF, SDF, CX, SRG
     real, dimension(:,:,:), pointer     :: DX
     real, dimension(:,:,:), pointer     :: AK, BK, CK
-    type(ESMF_Info) :: infoh
 
     integer                             :: KM, K,L
     logical                             :: FRIENDLY
@@ -5264,9 +5263,8 @@ end if
 ! Get item's friendly status (default is not friendly)
 !-----------------------------------------------------
 
-       call ESMF_InfoGetFromHost(FIELD,infoh,RC=STATUS)
-       call ESMF_InfoGet(infoh,key='FriendlyToTURBULENCE',value=FRIENDLY,default=dflt_false,RC=STATUS)
-       VERIFY_(STATUS)
+          call ESMF_AttributeGet(FIELD, NAME="FriendlyToTURBULENCE", &
+               VALUE=FRIENDLY, DEFAULTVALUE=dflt_false,    _RC)
 
 ! Get item's weighting (default is unweighted tendencies)
 !--------------------------------------------------------
@@ -5692,7 +5690,6 @@ end subroutine RUN1
       logical                             :: ALLOC_TMP
       integer                             :: DO_SHOC
       real                                :: HGT_SURFACE, WGTSUM, CAP_INTDIS, CAP_TOPDIS
-      type(ESMF_Info) :: infoh
 
       ! For idealized SCM surface layer
       integer :: SCM_SL
@@ -5980,9 +5977,8 @@ end subroutine RUN1
 ! Get item's friendly status (default is not friendly)
 !-----------------------------------------------------
 
-         call ESMF_InfoGetFromHost(FIELD,infoh,RC=STATUS)
-         call ESMF_InfoGet(infoh,key='FriendlyToTURBULENCE',value=Friendly,default=dflt_false,RC=STATUS)
-         VERIFY_(STATUS)
+            call ESMF_AttributeGet(FIELD, NAME="FriendlyToTURBULENCE", &
+                 VALUE=Friendly, DEFAULTVALUE=dflt_false,    _RC)
 
 ! Get item's weighting (default is unweighted tendencies)
 !--------------------------------------------------------
