@@ -35,3 +35,46 @@ mapl:
         units: "kg kg-1"
         vertical_dim_spec: "c"
         fill_value: 0.0
+
+  connections:
+    - src_comp: <self>
+      src_name: DQVANA
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: DQVANA
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: DQLANA
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: DQLANA
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: DQIANA
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: DQIANA
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: DQRANA
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: DQRANA
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: DQSANA
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: DQSANA
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: DQGANA
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: DQGANA
+      dst_intent: export

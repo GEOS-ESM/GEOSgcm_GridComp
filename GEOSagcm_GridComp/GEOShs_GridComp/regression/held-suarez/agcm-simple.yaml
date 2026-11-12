@@ -26,37 +26,31 @@ mapl:
       dst_comp: DataMoist
 
     - src_name: DQVANA
-      src_intent: internal
       src_comp: DataAna
       dst_name: DQVANA
       dst_comp: SDYN
 
     - src_name: DQLANA
-      src_intent: internal
       src_comp: DataAna
       dst_name: DQLANA
       dst_comp: SDYN
 
     - src_name: DQIANA
-      src_intent: internal
       src_comp: DataAna
       dst_name: DQIANA
       dst_comp: SDYN
 
     - src_name: DQRANA
-      src_intent: internal
       src_comp: DataAna
       dst_name: DQRANA
       dst_comp: SDYN
 
     - src_name: DQSANA
-      src_intent: internal
       src_comp: DataAna
       dst_name: DQSANA
       dst_comp: SDYN
 
     - src_name: DQGANA
-      src_intent: internal
       src_comp: DataAna
       dst_name: DQGANA
       dst_comp: SDYN
