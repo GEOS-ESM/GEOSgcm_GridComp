@@ -141,7 +141,7 @@ PROGRAM mkCatchParam
      do j = 1,size(usage)
         print "(sp,a100)", Usage(j)
      end do
-     call exit(1)
+     error stop 1
   end if
 
   nxt = 1
@@ -173,7 +173,7 @@ PROGRAM mkCatchParam
         do j = 1,size(usage)
            print "(sp,a100)", Usage(j)
         end do
-        call exit(1)
+        error stop 1
      end select
      nxt = nxt + 1
      call get_command_argument(nxt,arg)
@@ -254,7 +254,7 @@ PROGRAM mkCatchParam
   open (newunit=unit,file=fname_tmp,status='old',action='read',form='unformatted',convert='little_endian', IOSTAT=status)
   if (status /=0) then
      write (log_file,'(a)')'         '//trim(fname_tmp) // 'cannot be opened, exit '
-     call exit(1)
+     error stop 1
   endif
   do j = 1, nr
      read(unit)tile_id(:,j)
@@ -287,7 +287,7 @@ PROGRAM mkCatchParam
   if (trim(withbcs) == 'no') then
      write (log_file,'(a)')'Skipping MOM BCs. BCs will be extracted from the corresponding BCs. '
      close (log_file,status='keep')
-     call exit(0)
+     stop
   endif
 
   call MAPL_ReadTilingNC4( trim(fnameTil)//".nc4", iTable = iTable) 
@@ -300,13 +300,13 @@ PROGRAM mkCatchParam
   open (newunit=unit,file='clsm/catchment.def',status='old',action='read',form='formatted', IOSTAT=status)
   if (status /=0) then
      write (log_file,'(a)')'         clsm/cathment.def cannot be opened, exit '
-     call exit(1)
+     error stop 1
   endif
   read(unit,*) N
   if (n /= n_land) then
      write (log_file,'(a)')'n_land not consistent between tile file and catchment.def file, exit '
      write (log_file,*) n_land, n
-     call exit(1) 
+     error stop 1 
   endif
 
   allocate(min_lon(n_land), max_lon(n_land), min_lat(n_land), max_lat(n_land))

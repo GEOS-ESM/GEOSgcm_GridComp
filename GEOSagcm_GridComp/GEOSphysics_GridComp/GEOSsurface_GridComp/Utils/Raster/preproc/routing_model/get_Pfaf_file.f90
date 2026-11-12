@@ -2,6 +2,7 @@ program main
 !main purpose: Reads the Pfafstetter code dataset and generates files for the connectivity of catchments in the routing network.
 
   use routing_model_constants, only: nc, nupmax
+  use, intrinsic :: iso_fortran_env, only: int64
 
   implicit none
 
@@ -44,11 +45,11 @@ program main
   
   !---------------------------------------------------------------------------
   ! Separate the Pfafstetter number into its 12 individual digits.
-  res = int8(pfaf)  ! Convert Pfafstetter numbers to 64-bit integers
-  pfaf_digit(:,1) = res / (int8(10) ** int8(11))
+  res = int(pfaf,int64)  ! Convert Pfafstetter numbers to 64-bit integers
+  pfaf_digit(:,1) = res / (int(10,int64) ** int(11,int64))
   do i = 2, 12
-     res = res - int8(10) ** int8(13-i) * int8(pfaf_digit(:, i-1))
-     pfaf_digit(:, i) = res / (int8(10) ** int8(12-i))
+     res = res - int(10,int64) ** int(13-i,int64) * int(pfaf_digit(:, i-1),int64)
+     pfaf_digit(:, i) = res / (int(10,int64) ** int(12-i,int64))
   end do
 
   !---------------------------------------------------------------------------

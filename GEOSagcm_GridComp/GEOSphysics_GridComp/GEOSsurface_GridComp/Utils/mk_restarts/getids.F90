@@ -9,6 +9,9 @@ module mk_restarts_getidsMod
   public :: ReadTileFile_RealLatLon   ! returns real lat/lon for slow but accurate processing
   public :: to_radian                 ! should really be replaced with "MAPL_DEGREES_TO_RADIANS" 
   public :: haversine
+#ifdef __NAG_COMPILER_RELEASE
+  public :: RecordEndPos              ! replacement for the non-standard ftell(), which NAG lacks
+#endif
 
   interface GetIds
      module procedure GetIds_fast_1p
@@ -584,5 +587,23 @@ contains
         endif !isNC4
  
       end subroutine ReadTileFile_RealLatLon
+
+#ifdef __NAG_COMPILER_RELEASE
+      ! Returns the byte offset of the end of the sequential unformatted record that
+      ! starts at byte offset bpos of the file connected to unit, i.e. what ftell(unit)
+      ! returns after reading that record. Assumes 4-byte record markers.
+      integer function RecordEndPos(unit, bpos) result(epos)
+        integer, intent(in) :: unit, bpos
+        character(len=1024) :: fname
+        integer :: su, reclen
+
+        inquire(unit=unit, name=fname)
+        open(newunit=su, file=trim(fname), access='stream', form='unformatted', &
+             status='old', action='read')
+        read(su, pos=bpos+1) reclen
+        close(su)
+        epos = bpos + reclen + 8
+      end function RecordEndPos
+#endif
 
 end module mk_restarts_getidsMod

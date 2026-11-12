@@ -4,6 +4,9 @@ module CatchmentRstMod
   use mk_restarts_getidsMod, ONLY:      &
        GetIds,                          &                              
        ReadTileFile_RealLatLon
+#ifdef __NAG_COMPILER_RELEASE
+  use mk_restarts_getidsMod, ONLY: RecordEndPos
+#endif
   use MAPL
   use MAPL_Base,         ONLY: MAPL_UNDEF
   use mpi
@@ -19,7 +22,7 @@ module CatchmentRstMod
 
 
   implicit none
-#ifndef __GFORTRAN__
+#if !defined(__GFORTRAN__) && !defined(__NAG_COMPILER_RELEASE)
   integer           :: ftell
   external          :: ftell
 #endif
@@ -158,7 +161,11 @@ contains
        open(newunit=unit, file=filename,  form='unformatted', action = 'read')
        bpos=0
        read(unit)
+#ifdef __NAG_COMPILER_RELEASE
+       epos = RecordEndPos(unit, bpos)          ! ending position of file pointer
+#else
        epos = ftell(unit)          ! ending position of file pointer
+#endif
        close(unit)
        ntiles = (epos-bpos)/4-2    ! record size (in 4 byte words; 
        catch%ntiles = ntiles

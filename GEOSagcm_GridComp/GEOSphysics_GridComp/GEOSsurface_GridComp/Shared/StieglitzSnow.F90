@@ -25,6 +25,8 @@ module StieglitzSnow
   USE MAPL_BaseMod,      ONLY: MAPL_LANDICE
  
   USE SurfParams,        ONLY: WEMIN, AICEV, AICEN
+
+  USE, INTRINSIC :: iso_fortran_env, ONLY: REAL32
   
   implicit none
 
@@ -1039,7 +1041,7 @@ contains
        
        topthick = dzmax(1)
        do i=2,N_snow
-          thickdist(i-1) = 1.0/real(N_snow-1,kind=4)
+          thickdist(i-1) = 1.0/real(N_snow-1,kind=REAL32)
        enddo
        
     else
