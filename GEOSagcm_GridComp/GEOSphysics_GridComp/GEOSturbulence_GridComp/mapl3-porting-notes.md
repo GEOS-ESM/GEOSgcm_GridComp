@@ -2,6 +2,8 @@
 
 Status (2026-11-12): steps 0, 2 and 3 done on branch `feature/bmauer/port-turbulence-to-mapl3` (off `release/MAPL-v3`). Step 1 (MAPL2 baseline) to do; steps 4-10 not started.
 
+Resume here (2026-11-12): next is step 4 (SetServices): entry-point signatures (`I_SetServices`/`I_Run`) and `phase_name` for Run1/Run2; `MAPL_GridCompGetResource` for `DEBUG_TRB`, `USE_WAVES`, `USE_SEA_SPRAY`, `EDMF_NUMUP`, `SCM_SL`, `TURBULENCE_DO_SHOC` (label prefix, issue 8) and `TRI_increments` (YAML list, replacing `GetTriIncrements`); `TR` -> provided service `TRDIFF` (issue 1); `TRI` as a `MAPL_STATEITEM_FIELDBUNDLE` export (decision 2); the `TRI_increments` `<NAME>IT` exports as `MAPL_GridCompAddSpec`; `TRADV` subscription of `PDF_A`, `TKESHOC`, `QT2`, `QT3` when `DO_SHOC /= 0` (issue 3); drop `MAPL_TimerAdd`, `MAPL_GetObjectFromGC`, `MAPL_GenericSetServices`. In parallel (user): the step-1 MAPL2 capture.
+
 Follows the Moist port (`../GEOSmoist_GridComp/mapl3-porting-notes.md`, with `mapl3-alloc-exports.md` and `mapl3-friendlies-to-services.md`) and the rules in the `GEOSgcm_GridComp` and `GEOSagcm_GridComp` `AGENTS.md`. The MAPL3 API lessons listed there ("Lessons carried over") are not repeated here.
 
 An earlier attempt, `origin/feature/bmauer/turbulence_mapl3_port` (2026-10-28, off `release/MAPL-v3` @ `4f76b103`), is not continued: it predates the `develop` restructure of the `TR` bundle (step 0), sets `activate_all_exports`, drops the `FILL` column (it works: Moist uses `FILL: 0.0`), keeps the `FriendlyToTURBULENCE` reads instead of a service, and has no edge-field audit. Its notes are still useful for counts and for the `ESMFL_BundleGetPointerToData` replacement.
