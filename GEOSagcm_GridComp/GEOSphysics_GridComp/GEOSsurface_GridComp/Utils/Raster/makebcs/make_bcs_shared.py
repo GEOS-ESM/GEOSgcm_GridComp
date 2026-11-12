@@ -74,7 +74,7 @@ def get_script_head() :
 #SBATCH --nodes=1
 #SBATCH --job-name={GRIDNAME}.j
 """
-  constraint = '#SBATCH --constraint="[mil|cas]"'
+  constraint = '#SBATCH --constraint="mil"'
 
   head = head + constraint + """
 echo "-----------------------------"
@@ -170,7 +170,7 @@ cd land/{GRIDNAME}
 ln -s vegdyn_{RC}.dat vegdyn_{RC}.nc4
 cd ../../
 
-/bin/mv clsm/ar.new land/{GRIDNAME}/clsm/ 
+/bin/mv clsm/ar.new land/{GRIDNAME}/clsm/
 /bin/mv clsm/bf.dat land/{GRIDNAME}/clsm/
 /bin/mv clsm/ts.dat land/{GRIDNAME}/clsm/
 /bin/mv clsm/catchment.def land/{GRIDNAME}/clsm/
