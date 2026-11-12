@@ -19,7 +19,7 @@ for dir do
     cd "$dir" || exit
     name=$(basename "$dir")
     
-    for f in "${name}_meshgen.py" "${name}_parameterize.py" "${name}_control.py" "${name}_finalize.py"; do
+    for f in "${name}_meshgen.py" "${name}_parameterize.py" "${name}"_control*.py "${name}_finalize.py"; do
         [[ -f "$f" ]] || exit
     done
 
@@ -27,13 +27,17 @@ for dir do
     rm -f ISSM_${name}.bin ISSM_${name}.outbin ISSM_${name}.errlog 
     rm -rf netcdfs
     (export LD_LIBRARY_PATH=$PYTHON_LIB:$LD_LIBRARY_PATH; python ${name}_meshgen.py "$h_max" "$h_min")
-    (export LD_LIBRARY_PATH=$PYTHON_LIB:$LD_LIBRARY_PATH; python ${name}_control.py)
+    (export LD_LIBRARY_PATH=$PYTHON_LIB:$LD_LIBRARY_PATH; python ${name}_parameterize.py)
     
-    if [ -n "$SLURM_JOB_ID" ]; then
-        mpirun -np $SLURM_NTASKS ${ISSM_DIR}/bin/issm.exe StressbalanceSolution $(pwd) ISSM_${name} 2>> ISSM_${name}.errlog
-    else
-        ${ISSM_DIR}/bin/issm.exe StressbalanceSolution $(pwd) ISSM_${name} 2>> ISSM_${name}.errlog
-    fi
+    for f in "${name}"_control*.py; do
+        (export LD_LIBRARY_PATH=$PYTHON_LIB:$LD_LIBRARY_PATH; python "$f")
+        
+        if [ -n "$SLURM_JOB_ID" ]; then
+            mpirun -np $SLURM_NTASKS ${ISSM_DIR}/bin/issm.exe StressbalanceSolution $(pwd) ISSM_${name} 2>> ISSM_${name}.errlog
+        else
+            ${ISSM_DIR}/bin/issm.exe StressbalanceSolution $(pwd) ISSM_${name} 2>> ISSM_${name}.errlog
+        fi
+    done
     
     (export LD_LIBRARY_PATH=$PYTHON_LIB:$LD_LIBRARY_PATH; python ${name}_finalize.py)
 )
