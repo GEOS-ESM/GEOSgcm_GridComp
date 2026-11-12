@@ -9,7 +9,7 @@ module GEOS_SimpleSeaiceGridCompMod
 ! !MODULE: GEOS_SimpleSeaiceGridCompMod -- Implements slab saltwater tiles.
 
 ! !DESCRIPTION:
-! 
+!
 !   {\tt GEOS\_SimpleSeaice} is a light-weight gridded component that updates
 !      the skin sub-tiles at saltwater points, be they ocean, estuary, or salt
 !      lake. Currently each tile can have only two subtiles, open-water and ice.
@@ -41,8 +41,8 @@ module GEOS_SimpleSeaiceGridCompMod
 
 !EOP
 
-  integer, parameter    :: ICE = 1  
-  integer, parameter    :: NUM_SUBTILES = 1      
+  integer, parameter    :: ICE = 1
+  integer, parameter    :: NUM_SUBTILES = 1
   logical               :: seaIceT_extData
 
   type ssi_state
@@ -51,7 +51,7 @@ module GEOS_SimpleSeaiceGridCompMod
 
   type ssi_state_wrap
       type(ssi_state), pointer :: ptr
-  end type 
+  end type
 
   contains
 
@@ -70,7 +70,7 @@ module GEOS_SimpleSeaiceGridCompMod
 
 ! !DESCRIPTION: This version uses the MAPL\_GenericSetServices, which sets
 !                the Initialize and Finalize services, as well as allocating
-!   our instance of a generic state and putting it in the 
+!   our instance of a generic state and putting it in the
 !   gridded component (GC). Here we only need to set the run method and
 !   add the state variable specifications (also generic) to our instance
 !   of the generic state. This is the way our true state variables get into
@@ -174,7 +174,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'kg m-2 s-1'                ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               _RC  ) 
+                                               _RC  )
 
      call MAPL_AddExportSpec(GC,                     &
         SHORT_NAME         = 'SUBLIM'                    ,&
@@ -182,7 +182,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'kg m-2 s-1'                ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               _RC  ) 
+                                               _RC  )
 
      call MAPL_AddExportSpec(GC,                     &
         SHORT_NAME         = 'SHOUT'                     ,&
@@ -190,7 +190,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'W m-2'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               _RC  ) 
+                                               _RC  )
 
      call MAPL_AddExportSpec(GC,                     &
         SHORT_NAME         = 'SHICE'                     ,&
@@ -198,7 +198,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'W m-2'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               _RC  ) 
+                                               _RC  )
 
      call MAPL_AddExportSpec(GC,                     &
         SHORT_NAME         = 'HLWUP'                     ,&
@@ -206,7 +206,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'W m-2'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               _RC  ) 
+                                               _RC  )
 
      call MAPL_AddExportSpec(GC                     ,&
         SHORT_NAME         = 'LWNDICE'                   ,&
@@ -214,7 +214,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'W m-2'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               _RC  ) 
+                                               _RC  )
 
      call MAPL_AddExportSpec(GC                     ,&
         SHORT_NAME         = 'LWNDSRF'                   ,&
@@ -222,7 +222,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'W m-2'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               _RC  ) 
+                                               _RC  )
 
      call MAPL_AddExportSpec(GC                     ,&
         SHORT_NAME         = 'SWNDICE'                   ,&
@@ -230,7 +230,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'W m-2'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               _RC  ) 
+                                               _RC  )
 
      call MAPL_AddExportSpec(GC                     ,&
         SHORT_NAME         = 'SWNDSRF'                   ,&
@@ -238,7 +238,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'W m-2'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               _RC  ) 
+                                               _RC  )
 
      call MAPL_AddExportSpec(GC,                     &
         SHORT_NAME         = 'HLATN'                     ,&
@@ -246,7 +246,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'W m-2'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               _RC  ) 
+                                               _RC  )
 
      call MAPL_AddExportSpec(GC,                     &
         SHORT_NAME         = 'HLATICE'                   ,&
@@ -254,7 +254,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'W m-2'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               _RC  ) 
+                                               _RC  )
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'TST',                               &
@@ -406,7 +406,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'm'                         ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               _RC  ) 
+                                               _RC  )
 
      call MAPL_AddExportSpec(GC,                    &
         SHORT_NAME         = 'Z0H'                       ,&
@@ -414,7 +414,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'm'                         ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               _RC  ) 
+                                               _RC  )
 
      call MAPL_AddExportSpec(GC,                    &
         SHORT_NAME         = 'MOT2M',                     &
@@ -502,7 +502,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'N m-2'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               _RC  ) 
+                                               _RC  )
 
      call MAPL_AddExportSpec(GC,                    &
         SHORT_NAME         = 'TAUYI'                     ,&
@@ -510,7 +510,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'N m-2'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               _RC  ) 
+                                               _RC  )
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'PENUVR',                             &
@@ -566,7 +566,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'W m-2'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               _RC  ) 
+                                               _RC  )
 
      call MAPL_AddExportSpec(GC,                         &
         SHORT_NAME         = 'TSKINICE',                    &
@@ -727,7 +727,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'W m-2'                             ,&
         DIMS               = MAPL_DimsTileOnly                   ,&
         VLOCATION          = MAPL_VLocationNone                  ,&
-                                                       _RC  ) 
+                                                       _RC  )
 
     call MAPL_AddImportSpec(GC                         ,&
          SHORT_NAME         = 'DFPAR'                       ,&
@@ -735,7 +735,7 @@ module GEOS_SimpleSeaiceGridCompMod
          UNITS              = 'W m-2'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  _RC  ) 
+                                                  _RC  )
 
     call MAPL_AddImportSpec(GC                         ,&
          SHORT_NAME         = 'DRNIR'                       ,&
@@ -743,7 +743,7 @@ module GEOS_SimpleSeaiceGridCompMod
          UNITS              = 'W m-2'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  _RC  ) 
+                                                  _RC  )
 
     call MAPL_AddImportSpec(GC                         ,&
          SHORT_NAME         = 'DFNIR'                       ,&
@@ -751,7 +751,7 @@ module GEOS_SimpleSeaiceGridCompMod
          UNITS              = 'W m-2'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  _RC  ) 
+                                                  _RC  )
 
     call MAPL_AddImportSpec(GC                         ,&
          SHORT_NAME         = 'DRUVR'                       ,&
@@ -759,7 +759,7 @@ module GEOS_SimpleSeaiceGridCompMod
          UNITS              = 'W m-2'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  _RC  ) 
+                                                  _RC  )
 
     call MAPL_AddImportSpec(GC                         ,&
          SHORT_NAME         = 'DFUVR'                       ,&
@@ -767,7 +767,7 @@ module GEOS_SimpleSeaiceGridCompMod
          UNITS              = 'W m-2'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  _RC  ) 
+                                                  _RC  )
 
     call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'EVAP ',                             &
@@ -907,7 +907,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'kg m-2 s-1'                        ,&
         DIMS               = MAPL_DimsTileOnly                   ,&
         VLOCATION          = MAPL_VLocationNone                  ,&
-                                                       _RC  ) 
+                                                       _RC  )
 
      call MAPL_AddImportSpec(GC                            ,&
         SHORT_NAME         = 'PLS'                              ,&
@@ -915,7 +915,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'kg m-2 s-1'                       ,&
         DIMS               = MAPL_DimsTileOnly                  ,&
         VLOCATION          = MAPL_VLocationNone                 ,&
-                                                      _RC  ) 
+                                                      _RC  )
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'THATM',                             &
@@ -1092,7 +1092,7 @@ module GEOS_SimpleSeaiceGridCompMod
         DEFAULT            = MAPL_TICE-1.8,                     &
         _RC)
 
-    
+
 !-------------------Exports---------------------------------------------------------------
 
 
@@ -1102,7 +1102,7 @@ module GEOS_SimpleSeaiceGridCompMod
     UNITS              = 'kg m-2 s-1'                ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           _RC  ) 
+                                           _RC  )
 
   call MAPL_AddExportSpec(GC                    ,&
     SHORT_NAME         = 'FSALT',                     &
@@ -1110,7 +1110,7 @@ module GEOS_SimpleSeaiceGridCompMod
     UNITS              = 'kg m-2 s-1'                ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           _RC  ) 
+                                           _RC  )
 
   call MAPL_AddExportSpec(GC                    ,&
     SHORT_NAME         = 'FHOCN',                     &
@@ -1118,7 +1118,7 @@ module GEOS_SimpleSeaiceGridCompMod
     UNITS              = 'W m-2'                     ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           _RC  ) 
+                                           _RC  )
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'GHTSKIN',                   &
@@ -1137,26 +1137,27 @@ module GEOS_SimpleSeaiceGridCompMod
     call MAPL_GetResource (SCF, mystate%CHOOSEMOSFC, label='CHOOSEMOSFC:', DEFAULT=1, __RC__ )
     call ESMF_ConfigDestroy      (SCF, __RC__)
     wrap%ptr => mystate
-    call ESMF_UserCompSetInternalState(gc, 'ssi_private', wrap,_RC)
+    call ESMF_UserCompSetInternalState(gc, 'ssi_private', wrap, status)
+    _VERIFY(status)
 
 ! Set the Profiling timers
 ! ------------------------
 
     call MAPL_TimerAdd(GC,    name="RUN1"   ,               _RC)
     call MAPL_TimerAdd(GC,    name="RUN2"  ,                _RC)
-  
+
     call MAPL_TimerAdd(GC,    name="-Albedo"     ,          _RC)
 
 ! Set generic init and final methods
 ! ----------------------------------
 
     call MAPL_GenericSetServices    ( GC,  _RC)
- 
+
 ! Set the Run entry point
 ! -----------------------
 
     RETURN_(ESMF_SUCCESS)
-  
+
   end subroutine SetServices
 
 !BOP
@@ -1166,7 +1167,7 @@ module GEOS_SimpleSeaiceGridCompMod
 subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! !ARGUMENTS:
-  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
   type(ESMF_State),    intent(inout) :: IMPORT ! Import state
   type(ESMF_State),    intent(inout) :: EXPORT ! Export state
   type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
@@ -1238,9 +1239,9 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:)    :: VWINDLMTILE => null()
    real, pointer, dimension(:)    :: UI  => null()
    real, pointer, dimension(:)    :: VI  => null()
-   real, pointer, dimension(:)    :: DZ  => null()     
+   real, pointer, dimension(:)    :: DZ  => null()
    real, pointer, dimension(:)    :: TA  => null()
-   real, pointer, dimension(:)    :: QA  => null()     
+   real, pointer, dimension(:)    :: QA  => null()
    real, pointer, dimension(:)    :: PS  => null()
    real, pointer, dimension(:)    :: PCU => null()
    real, pointer, dimension(:)    :: FI  => null()
@@ -1301,7 +1302,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 !=============================================================================
 
-! Begin... 
+! Begin...
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -1330,7 +1331,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Get parameters (0:Louis, 1:Monin-Obukhov)
 ! -----------------------------------------
-    call ESMF_UserCompGetInternalState(gc,'ssi_private',wrap,_RC)
+    call ESMF_UserCompGetInternalState(gc,'ssi_private',wrap,status)
+    _VERIFY(status)
     mystate => wrap%ptr
     CHOOSEMOSFC = mystate%CHOOSEMOSFC
 
@@ -1338,7 +1340,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Get roughness parameters with and without CICE Thermodynamics
 ! -------------------------------------------------------------
-    call MAPL_GetResource ( MAPL, OCEANICEZ0,  Label="OCEANICEZ0:" , DEFAULT=1.0e-3, _RC) 
+    call MAPL_GetResource ( MAPL, OCEANICEZ0,  Label="OCEANICEZ0:" , DEFAULT=1.0e-3, _RC)
 
 ! Pointers to inputs
 !-------------------
@@ -1501,7 +1503,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
          fakelai  = 1.e-4
          ! Approximate pressure at top of surface layer: hydrostatic, eqn of state using avg temp and press
          PSL = PSMB * (1. - (DZ*MAPL_GRAV)/(MAPL_RGAS*(TA+TS(:,N)) ) ) /   &
-                      (1. + (DZ*MAPL_GRAV)/(MAPL_RGAS*(TA+TS(:,N)) ) ) 
+                      (1. + (DZ*MAPL_GRAV)/(MAPL_RGAS*(TA+TS(:,N)) ) )
 
          call helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TS(:,N),QA,QS(:,N),PSL,PSMB,Z0(:,N),        &
                            fakelai,IWATER,DZ,niter,nt,RHO,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,  &
@@ -1631,7 +1633,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! !ARGUMENTS:
 
-  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
   type(ESMF_State),    intent(inout) :: IMPORT ! Import state
   type(ESMF_State),    intent(inout) :: EXPORT ! Export state
   type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
@@ -1662,7 +1664,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 !=============================================================================
 
-! Begin... 
+! Begin...
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -1714,7 +1716,7 @@ contains
    subroutine SEAICECORE(NT,RC)
    integer,           intent(IN ) :: NT
    integer, optional, intent(OUT) :: RC
-     
+
 !  Locals
 
    character(len=ESMF_MAXSTR)     :: IAm
@@ -1723,10 +1725,10 @@ contains
 ! pointers to export
 
    real, pointer, dimension(:  )  :: EMISS   => null()
-   real, pointer, dimension(:  )  :: ALBVF   => null() 
-   real, pointer, dimension(:  )  :: ALBVR   => null() 
-   real, pointer, dimension(:  )  :: ALBNF   => null() 
-   real, pointer, dimension(:  )  :: ALBNR   => null() 
+   real, pointer, dimension(:  )  :: ALBVF   => null()
+   real, pointer, dimension(:  )  :: ALBVR   => null()
+   real, pointer, dimension(:  )  :: ALBNF   => null()
+   real, pointer, dimension(:  )  :: ALBNR   => null()
    real, pointer, dimension(:  )  :: EVAPOUT => null()
    real, pointer, dimension(:  )  :: SUBLIM  => null()
    real, pointer, dimension(:  )  :: SHICE   => null()
@@ -1813,7 +1815,7 @@ contains
    real, pointer, dimension(:)    :: TAUXBOT   => null()                  ! CICE related
    real, pointer, dimension(:)    :: TAUYBOT   => null()
 
-   real, allocatable                   :: TS (:,:)   ! Following 4 Variables: TS to FR need to be 
+   real, allocatable                   :: TS (:,:)   ! Following 4 Variables: TS to FR need to be
    real, allocatable                   :: HH (:,:)   ! allocatable because NUM_SUBTILES is NOT a parameter
    real, allocatable                   :: SS (:,:)
    real, allocatable                   :: FR (:,:)
@@ -2032,7 +2034,7 @@ contains
     call ESMF_VMGetCurrent ( VM, _RC )
 
         ! --------------------------------------------------------------------------
-        ! Get the current time. 
+        ! Get the current time.
         ! --------------------------------------------------------------------------
 
     call ESMF_ClockGet( CLOCK, currTime=CURRENT_TIME, startTime=MODELSTART, TIMESTEP=DELT,  _RC )
@@ -2105,7 +2107,7 @@ contains
     if(associated(DELTS  )) DELTS   = 0.0
     if(associated(DELQS  )) DELQS   = 0.0
 
-    ! exports to openwater 
+    ! exports to openwater
     if(associated(FRESH    )) FRESH       = 0.0
     if(associated(FSALT    )) FSALT       = 0.0
     if(associated(FHOCN    )) FHOCN       = 0.0
@@ -2116,15 +2118,15 @@ contains
     if(associated(DFPARTHRU)) DFPARTHRU   = 0.0
 
 
-! Without LANL CICE, i.e., with GEOS CICE, open water and sea-ice tiles were handled together. 
+! Without LANL CICE, i.e., with GEOS CICE, open water and sea-ice tiles were handled together.
 ! But to keep the functionality of both (GEOS and LANL) sea-ice, accessible, they are now split.
-! Generally speaking, following accounts for change in fluxes and state variables due to 
-! fluxes at the top of interface (with LANL CICE, they are in "Thermo1", below). Changes due to 
-! bottom of interface layer fluxes is handled later, in an implicit fashion 
-! (open-water: SKIN_SST; sea-ice: with LANL CICE: "Thermo2"). 
+! Generally speaking, following accounts for change in fluxes and state variables due to
+! fluxes at the top of interface (with LANL CICE, they are in "Thermo1", below). Changes due to
+! bottom of interface layer fluxes is handled later, in an implicit fashion
+! (open-water: SKIN_SST; sea-ice: with LANL CICE: "Thermo2").
 ! Note: 1. with GEOS CICE, there is no account of bottom flux (Max, please verify)
-!       2. The sequence of computations: first over ice tiles and then over water is important to be 
-!          able to reproduce Heracles-4_0 results (zero diff). 
+!       2. The sequence of computations: first over ice tiles and then over water is important to be
+!          able to reproduce Heracles-4_0 results (zero diff).
 ! ---------------------------------------------------------------------------------------------------
 
 ! If using GEOS CICE Thermodynamics.
@@ -2218,14 +2220,14 @@ contains
 
     if(associated(TST    )) TST     = 0.0
     if(associated(QST    )) QST     = 0.0
-    if(associated(HLWUP  )) HLWUP   = ALW 
+    if(associated(HLWUP  )) HLWUP   = ALW
     if(associated(LWNDSRF)) LWNDSRF = LWDNSRF - ALW
 
     if(associated(TSKINICE)) TSKINICE = TI
 
-    if(associated(LWNDICE)) then 
-          where( FI>0.0 ) 
-             LWNDICE = LWDNSRF - ALW - BLW*TS(:,  ICE) 
+    if(associated(LWNDICE)) then
+          where( FI>0.0 )
+             LWNDICE = LWDNSRF - ALW - BLW*TS(:,  ICE)
           elsewhere
              LWNDICE = MAPL_UNDEF
           end where
@@ -2243,8 +2245,8 @@ contains
     ALBNR = ALBNRI*FR(:,ICE)
     ALBNF = ALBNFI*FR(:,ICE)
 
-    if(associated(SWNDICE)) then 
-          where( FI>0.0 ) 
+    if(associated(SWNDICE)) then
+          where( FI>0.0 )
              SWNDICE = (1.-ALBVRI)*VSUVR + (1.-ALBVFI)*VSUVF + &
                        (1.-ALBNRI)*DRNIR + (1.-ALBNFI)*DFNIR
           elsewhere
@@ -2252,7 +2254,7 @@ contains
           end where
     end if
 
-    if(associated(SWNDSRF)) then 
+    if(associated(SWNDSRF)) then
        SWNDSRF = &
            (1.-ALBVR)*VSUVR + (1.-ALBVF)*VSUVF + &
            (1.-ALBNR)*DRNIR + (1.-ALBNF)*DFNIR
@@ -2269,7 +2271,7 @@ contains
             _RC )
 
        ZTH = max(0.0,ZTH)
-          
+
        call ALBSEAICE (ALBVRI,ALBVFI,ALBNRI,ALBNFI,ZTH,LATS,CURRENT_TIME)   ! GEOS CICE
 
        ALBVR = ALBVRI*FR(:,ICE)
@@ -2292,7 +2294,7 @@ contains
 !-----------
 
     RETURN_(ESMF_SUCCESS)
-             
+
   end subroutine SEAICECORE
 
 
@@ -2358,7 +2360,7 @@ contains
 
       nday = (/31.,31.,29.,31.,30.,31.,30.,31.,31.,30.,31.,30.,31.,31./)
 
-      call ESMF_TimeGet  ( currTime, TimeString=string  ,_RC ) 
+      call ESMF_TimeGet  ( currTime, TimeString=string  ,_RC )
       read(string( 1: 4),'(i4.4)') YEAR
       read(string( 6: 7),'(i2.2)') MONTH
       read(string( 9:10),'(i2.2)') DAY
@@ -2387,7 +2389,7 @@ contains
         abasei=shebanir(MONTH-1)
       endif
 
-  
+
       SEAICEALBVRN=abasev+aslopev*afracv
       SEAICEALBVFN=abasev+aslopev*afracv
       SEAICEALBNRN=abasei+aslopei*afraci

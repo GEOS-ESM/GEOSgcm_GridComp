@@ -86,7 +86,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, ew_crit_thresh, ww
 
   ! Vars needed by NetCDF operators
   integer  :: ncid, dimid, varid, status
-  
+
   status = nf_open(file_name , 0, ncid)
 
   status = NF_INQ_DIMID(ncid, 'PS', dimid)
@@ -103,7 +103,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, ew_crit_thresh, ww
 
   allocate( mfcc(hd_mfcc , mw_mfcc, ps_mfcc) )
   allocate( hdcc(hd_mfcc) )
-   
+
   status = NF_INQ_VARID(ncid, 'HD', varid)
   IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
   status = NF_GET_VAR_DOUBLE(ncid, varid, hdcc )
@@ -134,7 +134,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, ew_crit_thresh, ww
 
   ! midpoint of spectrum in netcdf file is ps_mfcc (odd number) divided by 2, plus 1
   ! E.g., ps_mfcc = 81. So, ps_mfcc_mid = 41
-  !       1   11  21  31 32 33 34 35 36 37 38 39 40 41 42 43 ... 
+  !       1   11  21  31 32 33 34 35 36 37 38 39 40 41 42 43 ...
   !      -40 -30 -20 -10 -9 -8 -7 -6 -5 -4 -3 -2 -1  0 +1 +2 ...
   ps_mfcc_mid= INT(ngwv_file/2) + 1
 
@@ -145,9 +145,9 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, ew_crit_thresh, ww
 
     allocate(desc%mfcc(desc%maxh,-desc%maxuh:desc%maxuh,-band%ngwv:band%ngwv), stat=status )
 
-    desc%mfcc( : , -desc%maxuh:desc%maxuh , -band%ngwv            :band%ngwv             ) & 
+    desc%mfcc( : , -desc%maxuh:desc%maxuh , -band%ngwv            :band%ngwv             ) &
        = mfcc( :,             :           , -band%ngwv+ps_mfcc_mid:band%ngwv+ps_mfcc_mid )
-  
+
     ! While not currently documented in the file, it uses kilometers. Convert
     ! to meters.
     desc%hd = hdcc * 1000.0
@@ -204,7 +204,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, ew_crit_thresh, ww
     enddo
     deallocate( cw )
   end if
-    
+
 end subroutine gw_beres_init
 
 !------------------------------------
@@ -534,7 +534,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
 
         ! Adjust for critical level filtering.
         tau0(Umini(i):Umaxi(i)) = 0.0
- 
+
         tau(i,:,topi(i)+1) = tau0
 
         ! export background tau
@@ -792,18 +792,18 @@ end subroutine gw_beres_ifc
 !--------------------------------------------------------------------------
 
 subroutine handle_err(status)
-  
+
   implicit         none
-  
+
 #include <netcdf.inc>
-  
+
   integer          status
-  
+
   if (status .ne. nf_noerr) then
     print *, nf_strerror(status)
     stop 'Stopped'
   endif
-  
+
 end subroutine handle_err
 
 
