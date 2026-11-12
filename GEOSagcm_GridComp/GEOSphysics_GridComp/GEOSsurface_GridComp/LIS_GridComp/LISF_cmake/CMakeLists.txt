@@ -1,0 +1,244 @@
+# Builds LISF's `LIS` library natively under CMake (replacing the previous
+# approach of shelling out to LISF's own GNU-make build via `make nuopc`).
+# See README.md for the rationale behind the plugin/feature-switch choices
+# and the workarounds below.
+
+find_package (Python3 COMPONENTS Interpreter REQUIRED)
+
+# @LISF lives one directory up from here (LIS_GridComp/@LISF), not under
+# LISF_cmake/ itself.
+esma_mepo_style (LISF mepo_LISF REL_PATH ..)
+
+set (LISF_LIS  ${CMAKE_CURRENT_SOURCE_DIR}/${mepo_LISF}/lis)
+# Collapsed so this matches the spelling Filepath's "." entry resolves to,
+# and the two do not show up as separate -I flags.
+get_filename_component (LISF_MAKE ${LISF_LIS}/make ABSOLUTE)
+
+# Everything we generate goes here rather than into ${LISF_MAKE}, so the
+# vendored @LISF clone is never written to and stays clean in `mepo status`.
+set (LISF_GEN ${CMAKE_CURRENT_BINARY_DIR}/lisf_generated)
+file (MAKE_DIRECTORY ${LISF_GEN})
+
+# plugins.py reads default.cfg/user.cfg and writes Filepath/LIS_plugins.h all
+# relative to its cwd, so default.cfg has to be alongside the rest.
+configure_file (${LISF_MAKE}/default.cfg ${LISF_GEN}/default.cfg COPYONLY)
+
+#-----------------------------------------------------------------------
+# user.cfg: plugin selection. Everything else in LISF's default.cfg is
+# left at its default (mostly On). See README.md for why each of these is
+# off; none are used by the Plug, which only drives Noah/NoahMP LSMs.
+#-----------------------------------------------------------------------
+file (WRITE ${LISF_GEN}/user.cfg
+"
+VIC.4.1.1: Off
+VIC.4.1.2: Off
+CABLE: Off
+Noah.3.9: Off
+RUC.3.7: Off
+")
+
+#-----------------------------------------------------------------------
+# LIS_misc.h: build-time feature switches read by plugins.py and by LISF's
+# Fortran sources. COUPLED differs from the stock make-based build; see
+# README.md.
+#-----------------------------------------------------------------------
+file (WRITE ${LISF_GEN}/LIS_misc.h
+"
+#define USE_NETCDF4
+#undef USE_GRIBAPI
+#undef AFWA_GRIB_CONFIGS
+#define USE_HDF4
+#define USE_HDFEOS2
+#define USE_HDF5
+#undef USE_MINPACK
+#undef RTMS
+#undef PETSc
+#undef INC_WATER_PTS
+#define COUPLED
+#undef USAF_LIS75_SMDA
+")
+
+file (WRITE ${LISF_GEN}/LIS_NetCDF_inc.h
+"
+#define NETCDF_shuffle  1
+#define NETCDF_deflate  1
+#define NETCDF_deflate_level  1
+")
+
+#-----------------------------------------------------------------------
+# Generate Filepath + LIS_plugins.h via LISF's own plugin selector
+# (plugins.py reads default.cfg/user.cfg and picks ~180 of LISF's ~200
+# plugin directories by default) -- this is LISF-owned logic, so we defer
+# to it here rather than re-deriving the same directory list by hand.
+# Re-run on every configure so editing user.cfg above always takes effect.
+#-----------------------------------------------------------------------
+execute_process (
+  COMMAND ${Python3_EXECUTABLE} ${LISF_MAKE}/plugins.py
+  WORKING_DIRECTORY ${LISF_GEN}
+  RESULT_VARIABLE _plugins_result
+)
+if (NOT _plugins_result EQUAL 0)
+  message (FATAL_ERROR "LISF's plugins.py failed (exit code ${_plugins_result})")
+endif ()
+
+#-----------------------------------------------------------------------
+# Parse Filepath ("dirs := . ../core ../plugins ...") into real source
+# lists, mirroring the GNU Makefile's own non-recursive per-directory
+# file(GLOB) (lis/make/Makefile's FIND_FILES/FIND_HEADERS).
+#-----------------------------------------------------------------------
+# Filepath's entries are relative to lis/make, not to wherever it was written.
+file (STRINGS ${LISF_GEN}/Filepath _filepath_lines)
+set (_lis_dirs)
+foreach (_line ${_filepath_lines})
+  if (_line MATCHES "^dirs[ \t]*:=(.*)$")
+    separate_arguments (_tokens UNIX_COMMAND "${CMAKE_MATCH_1}")
+    foreach (_tok ${_tokens})
+      get_filename_component (_abs_dir "${LISF_MAKE}/${_tok}" ABSOLUTE)
+      list (APPEND _lis_dirs ${_abs_dir})
+    endforeach ()
+  endif ()
+endforeach ()
+list (REMOVE_DUPLICATES _lis_dirs)
+
+set (LIS_SOURCES)
+# LISF_GEN first so our generated headers win over any stale copies left in
+# ${LISF_MAKE} by an older build or by LISF's own `configure`.
+set (LIS_HEADER_DIRS ${LISF_GEN} ${LISF_MAKE})
+# Some same-named files appear in more than one Filepath directory (e.g.
+# get_cdf_params.F90 under both metforcing/mogreps_g and metforcing/galwem_ge).
+# The GNU Makefile's VPATH silently shadows later duplicates, only building
+# the first match; replicate that here to avoid "multiple definition" link
+# errors from compiling and linking both copies.
+set (_lis_source_names)
+foreach (_dir ${_lis_dirs})
+  file (GLOB _srcs ${_dir}/*.F90 ${_dir}/*.f90 ${_dir}/*.F ${_dir}/*.f ${_dir}/*.c ${_dir}/*.cc)
+  foreach (_src ${_srcs})
+    get_filename_component (_src_name ${_src} NAME)
+    if (NOT _src_name IN_LIST _lis_source_names)
+      list (APPEND _lis_source_names ${_src_name})
+      list (APPEND LIS_SOURCES ${_src})
+    endif ()
+  endforeach ()
+  file (GLOB _hdrs ${_dir}/*.h)
+  if (_hdrs)
+    list (APPEND LIS_HEADER_DIRS ${_dir})
+  endif ()
+endforeach ()
+list (REMOVE_DUPLICATES LIS_HEADER_DIRS)
+
+if (NOT LIS_SOURCES)
+  message (FATAL_ERROR "No LISF sources found under any Filepath directory -- did plugins.py run correctly?")
+endif ()
+
+# Supply link-time stubs for symbols LISF sources reference but our
+# LIS_misc.h settings mean are never actually called (see file for details).
+list (APPEND LIS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_LIS_link_stubs.F90)
+
+#-----------------------------------------------------------------------
+# HDF4 / HDF-EOS2 -- Baselibs ships these, but (unlike NetCDF/HDF5/ESMF)
+# @cmake/external_libraries/FindBaselibs.cmake does not create targets for
+# them since MAPL itself does not need them.
+#-----------------------------------------------------------------------
+find_library (HDF4_MFHDF_LIBRARY NAMES mfhdf PATHS ${BASEDIR}/lib REQUIRED)
+find_library (HDF4_DF_LIBRARY NAMES df PATHS ${BASEDIR}/lib REQUIRED)
+find_library (HDFEOS_LIBRARY NAMES hdfeos PATHS ${BASEDIR}/lib REQUIRED)
+find_library (GCTP_LIBRARY NAMES Gctp PATHS ${BASEDIR}/lib REQUIRED)
+find_library (JPEG_LIBRARY NAMES jpeg PATHS ${BASEDIR}/lib REQUIRED)
+
+add_library (hdf4::hdf4 STATIC IMPORTED)
+set_target_properties (hdf4::hdf4 PROPERTIES
+  IMPORTED_LOCATION ${HDF4_MFHDF_LIBRARY}
+  INTERFACE_INCLUDE_DIRECTORIES ${BASEDIR}/include/hdf
+  INTERFACE_LINK_LIBRARIES "${HDF4_DF_LIBRARY};${JPEG_LIBRARY}"
+)
+
+add_library (hdfeos::hdfeos STATIC IMPORTED)
+set_target_properties (hdfeos::hdfeos PROPERTIES
+  IMPORTED_LOCATION ${HDFEOS_LIBRARY}
+  INTERFACE_INCLUDE_DIRECTORIES ${BASEDIR}/include/hdfeos
+  INTERFACE_LINK_LIBRARIES ${GCTP_LIBRARY}
+)
+
+#-----------------------------------------------------------------------
+# libLIS
+#-----------------------------------------------------------------------
+esma_set_this (OVERRIDE LIS)
+
+# hdf4::hdf4/hdfeos::hdfeos are only needed by the DA OBS plugins that call
+# HDF4/HDF-EOS directly (#include "hdf.f90" + gdopen/gdattach/gdrdfld/
+# gddetach/gdclose). Six of them reach Filepath: ANSA_SNWD,
+# GCOMW_AMSR2L3SND, GLASS_Albedo, GLASS_LAI, PMW_snow, SSMI_SNWD.
+# (AMSRE_SWE, MODISsca and NASA_AMSREsm also use HDF4 but have no
+# default.cfg entry, so plugins.py never lists them.) Drop these two libs
+# if all six are ever disabled.
+esma_add_library (${this}
+  SOURCES ${LIS_SOURCES}
+  PUBLIC_LIBS esmf NetCDF::NetCDF_Fortran hdf5::hdf5 hdfeos::hdfeos hdf4::hdf4
+  TYPE SHARED
+)
+
+target_include_directories (${this} PRIVATE ${LIS_HEADER_DIRS})
+
+#-----------------------------------------------------------------------
+# CMake's Fortran scanner silently drops the MODULEs defined by some LISF
+# sources, so no ordering edge reaches their consumers and parallel make
+# compiles the consumers first. lis_scanner_fixup.py re-derives the lost
+# edges from the sources; restore them here with OBJECT_DEPENDS.
+# See README.md for the trigger and for how to audit the result.
+#-----------------------------------------------------------------------
+set (_fixup_in  ${CMAKE_CURRENT_BINARY_DIR}/lis_scanner_sources.txt)
+set (_fixup_out ${CMAKE_CURRENT_BINARY_DIR}/lis_scanner_fixup.txt)
+
+string (REPLACE ";" "\n" _fixup_src_list "${LIS_SOURCES}")
+file (WRITE ${_fixup_in} "${_fixup_src_list}\n")
+
+execute_process (
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/lis_scanner_fixup.py
+          ${_fixup_in} ${_fixup_out}
+  RESULT_VARIABLE _fixup_rc
+  OUTPUT_VARIABLE _fixup_out_msg
+  ERROR_VARIABLE  _fixup_err_msg
+)
+if (NOT _fixup_rc EQUAL 0)
+  message (FATAL_ERROR "lis_scanner_fixup.py failed (${_fixup_rc}):\n${_fixup_out_msg}${_fixup_err_msg}")
+endif ()
+
+file (STRINGS ${_fixup_out} _fixup_records)
+foreach (_record ${_fixup_records})
+  string (REPLACE "|" ";" _record "${_record}")
+  list (GET _record 0 _consumer)
+  list (GET _record 1 _providers)
+  string (REPLACE "," ";" _providers "${_providers}")
+
+  set (_provider_objs)
+  foreach (_provider ${_providers})
+    # Object path for a source outside this directory: CMake maps each leading
+    # ".." of the relative source path to "__".
+    file (RELATIVE_PATH _obj_rel ${CMAKE_CURRENT_SOURCE_DIR} ${_provider})
+    string (REPLACE "../" "__/" _obj_rel ${_obj_rel})
+    list (APPEND _provider_objs
+      ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${this}.dir/${_obj_rel}.o)
+  endforeach ()
+
+  set_source_files_properties (${_consumer} PROPERTIES OBJECT_DEPENDS "${_provider_objs}")
+endforeach ()
+
+# CMake would otherwise pick CXX (icpx) as the linker driver here since the
+# sources include some .c/.cc files; but ESMF's esmf.mk link flags/libs
+# (e.g. -threads -cxxlib, -lifport -lifcoremt) are classic ifort/icpc-only
+# and icpx rejects them. Force the Fortran (ifort) driver, which understands them.
+set_target_properties (${this} PROPERTIES LINKER_LANGUAGE Fortran)
+
+if (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel" OR CMAKE_Fortran_COMPILER_ID STREQUAL "IntelLLVM")
+  target_compile_options (${this} PRIVATE -fp-model precise -traceback)
+  # -names/-convert/-assume/-nomixed-str-len-arg are ifort/ifx-only flags;
+  # icx (the C compiler in this toolchain) rejects them, so restrict them
+  # to Fortran sources.
+  target_compile_options (${this} PRIVATE
+    $<$<COMPILE_LANGUAGE:Fortran>:-nomixed-str-len-arg -names lowercase -convert big_endian -assume byterecl>
+  )
+endif ()
+
+target_compile_definitions (${this} PRIVATE
+  SPMD HIDE_SHR_MSG NO_SHR_VMATH IFC LINUX USE_INCLUDE_MPI LIS_JULES
+)
