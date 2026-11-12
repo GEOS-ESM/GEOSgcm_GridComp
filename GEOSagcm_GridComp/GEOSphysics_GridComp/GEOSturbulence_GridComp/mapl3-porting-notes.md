@@ -1,6 +1,6 @@
 # GEOS_TurbulenceGridComp MAPL3 porting plan
 
-Status (2026-11-12): step 0 done on branch `feature/bmauer/port-turbulence-to-mapl3` (off `release/MAPL-v3`). Step 1 (MAPL2 baseline) to do; steps 2-10 not started.
+Status (2026-11-12): steps 0 and 2 done on branch `feature/bmauer/port-turbulence-to-mapl3` (off `release/MAPL-v3`). Step 1 (MAPL2 baseline) to do; steps 3-10 not started.
 
 Follows the Moist port (`../GEOSmoist_GridComp/mapl3-porting-notes.md`, with `mapl3-alloc-exports.md` and `mapl3-friendlies-to-services.md`) and the rules in the `GEOSgcm_GridComp` and `GEOSagcm_GridComp` `AGENTS.md`. The MAPL3 API lessons listed there ("Lessons carried over") are not repeated here.
 
@@ -62,7 +62,7 @@ Edge fields:
    - Subscribed fields carry MAPL-generated names (Moist notes, "Self-subscription"). `DIFFUSE`/`UPDATE` select by name (`Q`, `QLLS`, `QILS`, the `S`/`U`/`V`/`Q` surface terms) and `GetTendency` looks up `<NAME>IT` by name, so names must be recovered through `standard_name`, as `get_short_name` does. How tracers without a known standard name (GOCART, `TRI_increments`) are named is open.
    - `DiffuseLike`/`WeightedTendency` (`ESMF_AttributeGet`): nobody sets them for `TR` fields on `develop` (Physics only set them on `S`, `U`, `V`, now diffused directly), so the defaults always apply. Read them with `ESMF_InfoGet` (defaults kept), so a subscriber can still set them.
    - No self-subscription problem: Turbulence's own internals are not in `TR` on `develop`.
-2. **`TRI` export bundle** of the tendency exports, filled in Initialize, for History only. MAPL3 History can request the `*IT` exports directly. Open decision 2.
+2. **`TRI` export bundle** of the tendency exports, filled in Initialize, for History only. Kept (decision 2): a `MAPL_STATEITEM_FIELDBUNDLE` export; MAPL3 does not allocate unrequested exports, so the members must be allocated (or be internals) for the tendencies to be computed, as MAPL2's `alloc=.true.` did.
 3. **`FRIENDLYTO`:** to self (`COMP_NAME`, `'TURBULENCE'`) becomes `ADD2EXPORT`; `'DYNAMICS:TURBULENCE'` (SHOC on) becomes `ADD2EXPORT` plus a `TRADV` subscription of `PDF_A`, `TKESHOC`, `QT2`, `QT3`.
 4. **Two run phases and the refresh alarm.** Run1 and Run2 register with `phase_name`. MAPL2 runs `REFRESH` on the generic `RUNALARM` (period `DT:`) while both phases run every `RUN_DT:`. MAPL3 calls the user Run only when the component's own alarm rings, so the refresh needs its own alarm created in Initialize, with MAPL2's first-step behaviour (IRRAD, Solar). `RUN_DT` becomes the component's clock step (`MAPL_ClockGet(dt=)`).
 5. **`ALLOC=.TRUE.` (45 sites).** As Moist decision 1: locals copied to exports when connected; internals with `ADD2EXPORT` for fields shared within or across steps or always connected (`KH`, `KM`, `RI`, `KPBL_SC`, `EDMF_MF`, `*AFDIFFUSE`, `SAFUPDATE`, `INTDIS`, `TOPDIS`, `SRFDIS`, `DPDTTRB`, the tendencies). Survey needed (as `mapl3-alloc-exports.md`).
@@ -83,8 +83,14 @@ Edge fields:
 - `DT:` equal to `RUN_DT:` (refresh every step) for the first comparison.
 - Record every Turbulence setting used, and the `TR` contents (Physics prints them at Initialize).
 
-### 2. Formatting and macro pass (no logic change)
-Open decision 1. Macros: `MAPL_Generic.h` -> `MAPL.h`, `VERIFY_`/`RETURN_`/`__STAT__` -> `_VERIFY`/`_RETURN(_SUCCESS)`/`_STAT`, drop `Iam`/`COMP_NAME` where unused. Check by token comparison that only macro spellings changed.
+### 2. Macro pass (no logic change; done 2026-11-12)
+No codee formatting (decision 1). `develop` had already converted most calls to `_RC` (#1557); this pass did the rest of `GEOS_TurbulenceGridComp.F90` by script (the other sources have no MAPL macros):
+- `MAPL_Generic.h` -> `MAPL.h`; `RETURN_(ESMF_SUCCESS)` -> `_RETURN(_SUCCESS)` (10); `__STAT__` -> `_STAT` (42); `__RC__` -> `_RC` (14); `allocate(SG(0,0), stat=STATUS)` + `VERIFY_` -> `_STAT`; the two `RETURN_(ESMF_FAILURE)` for an unknown `DiffuseLike` (DIFFUSE, UPDATE) -> `_FAIL` with a message.
+- 31 calls ending `RC=STATUS)` with no check (`EDMF_NUMUP`, `SCM_SL`, `TURBULENCE_DO_SHOC`, 26 `EDMF_*` reads, `SHVC_SCALING`) -> `_RC`: an error is now caught; all have defaults, so results are unchanged.
+- `Iam` declarations and assignments removed (9 + 6), including the shadowing `IAm='Refresh'`/`'Diffuse'`/`'Update'` locals. `COMP_NAME` kept (labels and `FRIENDLYTO`; step 4).
+- Left: `ESMF_AlarmIsRinging(ALARM, rc=status)` + `_VERIFY` (a function call inside `if`; the alarm is reworked in step 5); `ESMF_ConfigGetDim(..., rc=STATUS)` in `GetTriIncrements` (status tested: a missing table means no names; step 4); the commented-out `VERIFY_` lines.
+- Seen, not changed: in the `#ifdef _CUDA` branch of REFRESH (not compiled), one-line `IF (ASSOCIATED(X)) ALLOCATE(..., _STAT)`: the status check runs whether or not the `IF` holds (same with MAPL2's `__STAT__`).
+- Checked: both versions normalized for the macro spellings and diffed; only the lines above differ.
 
 ### 3. State specs
 `Turbulence_StateSpecs.rc` with `mapl_acg`; column mapping as Moist step 3 (`DEFAULT` -> `FILL`, internals `FILL: 0.0` where MAPL2 zero-filled, `MAPL_RestartSkip` -> `SKIP`, `MAPL_RestartOptional` -> blank, `FRIENDLYTO` per issue 3, `COND` for sea spray and `SCM_SL`). Hand-written `MAPL_GridCompAddSpec`: `TR`/`TRI`, the `NUMUP` plume exports if ACG cannot express them, the `TRI_increments` tendencies.
@@ -109,7 +115,7 @@ Uncomment `GEOSturbulence_GridComp` in `../CMakeLists.txt`; `TYPE SHARED`; `Turb
 ### 10. Wiring (blocked on the Physics/Agcm ports)
 Connections with Moist and Surface (`SHAT`... `SDEL`..., `SFLX`... `SDFL`...), `TRDIFF` subscriptions from GOCART, Physics' use of `INTDIS`/`TOPDIS`, `*AFDIFFUSE`, `SAFUPDATE`.
 
-## Open decisions
-1. **codee format pass:** as Moist (formatting commit, revertible and blame-ignorable) or not (keeps later `develop` syncs mergeable; Turbulence is still changed on `develop`).
-2. **`TRI` bundle:** keep (export bundle filled in Initialize, closest to MAPL2) or drop (History requests `*IT` directly).
-3. **Regression phases:** one case running Run1 then Run2 (inputs `SDEL`... supplied as data), or one case per phase as GOCART2G.
+## Decisions
+1. **DECIDED (2026-11-12) - no codee format pass.** Unlike Moist: Turbulence is still changed on `develop` (EDMF, SHOC), and keeping its layout keeps later syncs mergeable. Macros only (step 2); new code follows the surrounding style.
+2. **DECIDED (2026-11-12) - keep `TRI`.** An export bundle filled in Initialize with the `*IT` tendency exports, as MAPL2; closest to MAPL2, and History configurations using `TRI%NAME` keep working.
+3. **Open - regression phases:** one case running Run1 then Run2 (inputs `SDEL`... supplied as data), or one case per phase as GOCART2G. Decide once the step-1 capture exists.

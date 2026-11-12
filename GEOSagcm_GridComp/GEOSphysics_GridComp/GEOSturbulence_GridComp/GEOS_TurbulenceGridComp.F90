@@ -1,6 +1,6 @@
 !   $Id$
 
-#include "MAPL_Generic.h"
+#include "MAPL.h"
 
 !=============================================================================
 
@@ -231,7 +231,6 @@ contains
 !
 ! ErrLog Variables
 
-    character(len=ESMF_MAXSTR)              :: IAm
     integer                                 :: STATUS
     character(len=ESMF_MAXSTR)              :: COMP_NAME
     type (ESMF_Config)                      :: CF
@@ -254,9 +253,7 @@ contains
 ! Get my name and set-up traceback handle
 ! ---------------------------------------
 
-    Iam = 'SetServices'
     call ESMF_GridCompGet( GC, CONFIG=CF, NAME=COMP_NAME, _RC)
-    Iam = trim(COMP_NAME) // Iam
 
 ! Get my MAPL_Generic state
 !--------------------------
@@ -277,10 +274,10 @@ contains
 
 ! Get number of EDMF updrafts
 ! ----------------------------
-    call ESMF_ConfigGetAttribute( CF, NUMUP, Label="EDMF_NUMUP:", default=10, RC=STATUS)
+    call ESMF_ConfigGetAttribute( CF, NUMUP, Label="EDMF_NUMUP:", default=10, _RC)
 
 
-    call ESMF_ConfigGetAttribute( CF, SCM_SL, Label="SCM_SL:", default=0, RC=STATUS)
+    call ESMF_ConfigGetAttribute( CF, SCM_SL, Label="SCM_SL:", default=0, _RC)
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -2009,14 +2006,14 @@ end if
            LONG_NAME       = 'sensible_heat_contribution_from_sea_spray', &
            UNITS           = 'W m-2',                                &
            DIMS            = MAPL_DimsHorzOnly,                      &
-           VLOCATION       = MAPL_VLocationNone,     __RC__)
+           VLOCATION       = MAPL_VLocationNone,     _RC)
 
         call MAPL_AddExportSpec(GC,                                  &
            SHORT_NAME      = 'LHFX_SPRAY',                           &
            LONG_NAME       = 'latent_heat_contribution_from_sea_spray',   &
            UNITS           = 'W m-2',                                &
            DIMS            = MAPL_DimsHorzOnly,                      &
-           VLOCATION       = MAPL_VLocationNone,     __RC__)
+           VLOCATION       = MAPL_VLocationNone,     _RC)
     end if
 
 ! !INTERNAL STATE:
@@ -2468,7 +2465,7 @@ end if
 
     call MAPL_GenericSetServices    ( GC, _RC)
 
-    RETURN_(ESMF_SUCCESS)
+    _RETURN(_SUCCESS)
   
   end subroutine SetServices
 
@@ -2499,7 +2496,6 @@ end if
 
 !EOP
 
-    character(len=ESMF_MAXSTR)              :: IAm
     integer                                 :: STATUS
     character(len=ESMF_MAXSTR)              :: COMP_NAME
     type (ESMF_Config)                      :: CF
@@ -2512,9 +2508,7 @@ end if
     character(len=*), parameter :: TRI_FIXED(6) = &
          [character(len=9) :: 'SIT', 'UIT', 'VIT', 'TKESHOCIT', 'QLLSIT', 'QILSIT']
 
-    Iam = 'Initialize'
     call ESMF_GridCompGet( GC, CONFIG=CF, NAME=COMP_NAME, _RC)
-    Iam = trim(COMP_NAME) // Iam
 
     call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK, _RC)
 
@@ -2532,7 +2526,7 @@ end if
     end do
     deallocate(NAMES)
 
-    RETURN_(ESMF_SUCCESS)
+    _RETURN(_SUCCESS)
 
   contains
 
@@ -2550,7 +2544,7 @@ end if
       end if
       call MAPL_FieldBundleAdd(TRI, FIELD, _RC)
 
-      RETURN_(ESMF_SUCCESS)
+      _RETURN(_SUCCESS)
     end subroutine AddToTRI
 
   end subroutine Initialize
@@ -2608,7 +2602,6 @@ end if
 
 ! ErrLog Variables
 
-    character(len=ESMF_MAXSTR)          :: IAm
     integer                             :: STATUS
     character(len=ESMF_MAXSTR)          :: COMP_NAME
 
@@ -2666,7 +2659,6 @@ end if
 ! ---------------------------------------
 
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, _RC)
-    Iam = trim(COMP_NAME) // 'Run1'
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
@@ -2730,7 +2722,7 @@ end if
     call MAPL_GetPointer(IMPORT, PHIS,   'PHIS',    _RC)
 
 !----- Variables for idealized SCM surface layer ------
-    call MAPL_GetResource (MAPL, SCM_SL, "SCM_SL:", default=0, RC=STATUS)
+    call MAPL_GetResource (MAPL, SCM_SL, "SCM_SL:", default=0, _RC)
     if (SCM_SL /= 0) then
       call MAPL_GetPointer(INTERNAL, cu_scm,    'cu_scm', _RC)
       call MAPL_GetPointer(INTERNAL, ct_scm,    'ct_scm', _RC)
@@ -2759,7 +2751,7 @@ end if
 
 !----- SHOC-related variables -----
     call MAPL_GetResource (MAPL, DO_SHOC, trim(COMP_NAME)//"_DO_SHOC:", &
-                           default=0, RC=STATUS)
+                           default=0, _RC)
     call MAPL_GetPointer(INTERNAL, TKESHOC,'TKESHOC', _RC)
     call MAPL_GetPointer(INTERNAL, TKH,    'TKH',     _RC)
     call MAPL_GetPointer(INTERNAL, QT3,    'QT3',     _RC)
@@ -2801,7 +2793,7 @@ end if
 ! ---------------------------
 
     if ( ESMF_AlarmIsRinging(ALARM, rc=status) ) then
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
        call ESMF_AlarmRingerOff(ALARM, _RC)
 
        call MAPL_TimerOn (MAPL,"--REFRESHKS")
@@ -2821,7 +2813,7 @@ end if
 
     call MAPL_TimerOff(MAPL,"-RUN1")
     call MAPL_TimerOff(MAPL,"TOTAL")
-    RETURN_(ESMF_SUCCESS)
+    _RETURN(_SUCCESS)
 
   contains
 
@@ -2901,7 +2893,6 @@ end if
 
 !EOP
  
-     character(len=ESMF_MAXSTR)          :: IAm='Refresh'
      integer                             :: STATUS
 
      character(len=ESMF_MAXSTR)          :: TYPE
@@ -3519,41 +3510,41 @@ end if
     QT=Q+QLTOT+QITOT
 
 ! get updraft constants
-    call MAPL_GetResource (MAPL, DOMF, "EDMF_DOMF:", default=0,  RC=STATUS)
+    call MAPL_GetResource (MAPL, DOMF, "EDMF_DOMF:", default=0,  _RC)
     
     if ( DOMF /= 0 ) then
       ! number of updrafts
-      call MAPL_GetResource (MAPL, MFPARAMS%NUP,       "EDMF_NUMUP:",         default=10,    RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%DOTRACERS, "EDMF_DOTRACERS:",     default=.true., RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%NUP,       "EDMF_NUMUP:",         default=10,    _RC)
+      call MAPL_GetResource (MAPL, MFPARAMS%DOTRACERS, "EDMF_DOTRACERS:",     default=.true., _RC)
       ! boundaries for the updraft area (min/max sigma of w pdf)
-      call MAPL_GetResource (MAPL, MFPARAMS%PWMIN,     "EDMF_PWMIN:",         default=1.2,   RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%PWMAX,     "EDMF_PWMAX:",         default=3.,    RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%ENTUFAC,   "EDMF_ENTUFAC:",       default=2.0,   RC=STATUS)  
-      call MAPL_GetResource (MAPL, MFPARAMS%WA,        "EDMF_WA:",            default=1.0,   RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%WB,        "EDMF_WB:",            default=1.5,   RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%WC,        "EDMF_WC:",            default=0.05,  RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%WCTHRESH,  "EDMF_WCTHRESH:",      default=11.,   RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%PWMIN,     "EDMF_PWMIN:",         default=1.2,   _RC)
+      call MAPL_GetResource (MAPL, MFPARAMS%PWMAX,     "EDMF_PWMAX:",         default=3.,    _RC)
+      call MAPL_GetResource (MAPL, MFPARAMS%ENTUFAC,   "EDMF_ENTUFAC:",       default=2.0,   _RC)
+      call MAPL_GetResource (MAPL, MFPARAMS%WA,        "EDMF_WA:",            default=1.0,   _RC)
+      call MAPL_GetResource (MAPL, MFPARAMS%WB,        "EDMF_WB:",            default=1.5,   _RC)
+      call MAPL_GetResource (MAPL, MFPARAMS%WC,        "EDMF_WC:",            default=0.05,  _RC)
+      call MAPL_GetResource (MAPL, MFPARAMS%WCTHRESH,  "EDMF_WCTHRESH:",      default=11.,   _RC)
       ! coefficients for surface forcing, appropriate for L137
-      call MAPL_GetResource (MAPL, MFPARAMS%AlphaW,    "EDMF_ALPHAW:",        default=0.05,  RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%AlphaQT,   "EDMF_ALPHAQT:",       default=1.0,   RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%AlphaTH,   "EDMF_ALPHATH:",       default=1.0,   RC=STATUS) 
+      call MAPL_GetResource (MAPL, MFPARAMS%AlphaW,    "EDMF_ALPHAW:",        default=0.05,  _RC)
+      call MAPL_GetResource (MAPL, MFPARAMS%AlphaQT,   "EDMF_ALPHAQT:",       default=1.0,   _RC)
+      call MAPL_GetResource (MAPL, MFPARAMS%AlphaTH,   "EDMF_ALPHATH:",       default=1.0,   _RC)
       ! Entrainment rate options
-      call MAPL_GetResource (MAPL, MFPARAMS%ET,        "EDMF_ET:",            default=2,     RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%ET,        "EDMF_ET:",            default=2,     _RC)
       ! constant entrainment rate   
-      call MAPL_GetResource (MAPL, MFPARAMS%ENT0,      "EDMF_ENT0:",          default=0.35,  RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%ENT0,      "EDMF_ENT0:",          default=0.35,  _RC)
       ! L0 if ET==1
-      call MAPL_GetResource (MAPL, MFPARAMS%L0,        "EDMF_L0:",            default=100.,  RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%L0,        "EDMF_L0:",            default=100.,  _RC)
       ! L0fac if ET==2
-      call MAPL_GetResource (MAPL, MFPARAMS%L0fac,     "EDMF_L0FAC:",         default=10.,   RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%MFLIMFAC,  "EDMF_MFLIMFAC:",      default=2.0,   RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%ICE_RAMP,  "EDMF_ICE_RAMP:",      default=-40.0, RC=STATUS )
-      call MAPL_GetResource (MAPL, MFPARAMS%ENTRAIN,   "EDMF_ENTRAIN:",       default=0,     RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%STOCHFRAC, "EDMF_STOCHASTIC:",    default=0.4,   RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%DISCRETE,  "EDMF_DISCRETE_TYPE:", default=1,     RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%IMPLICIT,  "EDMF_IMPLICIT:",      default=1,     RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%PRCPCRIT,  "EDMF_PRCPCRIT:",      default=-1.,   RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%UPABUOYDEP,"EDMF_UPABUOYDEP:",    default=1,     RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%TREFF,     "EDMF_TREFF:",         default=1.,    RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%L0fac,     "EDMF_L0FAC:",         default=10.,   _RC)
+      call MAPL_GetResource (MAPL, MFPARAMS%MFLIMFAC,  "EDMF_MFLIMFAC:",      default=2.0,   _RC)
+      call MAPL_GetResource (MAPL, MFPARAMS%ICE_RAMP,  "EDMF_ICE_RAMP:",      default=-40.0, _RC)
+      call MAPL_GetResource (MAPL, MFPARAMS%ENTRAIN,   "EDMF_ENTRAIN:",       default=0,     _RC)
+      call MAPL_GetResource (MAPL, MFPARAMS%STOCHFRAC, "EDMF_STOCHASTIC:",    default=0.4,   _RC)
+      call MAPL_GetResource (MAPL, MFPARAMS%DISCRETE,  "EDMF_DISCRETE_TYPE:", default=1,     _RC)
+      call MAPL_GetResource (MAPL, MFPARAMS%IMPLICIT,  "EDMF_IMPLICIT:",      default=1,     _RC)
+      call MAPL_GetResource (MAPL, MFPARAMS%PRCPCRIT,  "EDMF_PRCPCRIT:",      default=-1.,   _RC)
+      call MAPL_GetResource (MAPL, MFPARAMS%UPABUOYDEP,"EDMF_UPABUOYDEP:",    default=1,     _RC)
+      call MAPL_GetResource (MAPL, MFPARAMS%TREFF,     "EDMF_TREFF:",         default=1.,    _RC)
     else
        MFPARAMS%TREFF = 0.
        MFPARAMS%DOTRACERS = .false.
@@ -3929,13 +3920,13 @@ end if
          _ASSERT(LM <= GPU_MAXLEVS,'needs informative message') !If this is tripped, GNUmakefile
                                     !must be changed
 
-         call MAPL_GetResource(MAPL,BLOCKSIZE_X,'BLOCKSIZE_X:',DEFAULT=16,__RC__)
-         call MAPL_GetResource(MAPL,BLOCKSIZE_Y,'BLOCKSIZE_Y:',DEFAULT=8,__RC__)
+         call MAPL_GetResource(MAPL,BLOCKSIZE_X,'BLOCKSIZE_X:',DEFAULT=16,_RC)
+         call MAPL_GetResource(MAPL,BLOCKSIZE_Y,'BLOCKSIZE_Y:',DEFAULT=8,_RC)
 
          Block = dim3(blocksize_x,blocksize_y,1)
          Grid = dim3(ceiling(real(IM)/real(blocksize_x)),ceiling(real(JM)/real(blocksize_y)),1)
 
-         call MAPL_TimerOn (MAPL,name="----LOCK_ALLOC" ,__RC__)
+         call MAPL_TimerOn (MAPL,name="----LOCK_ALLOC" ,_RC)
 
          ! ----------------------
          ! Allocate device arrays
@@ -3944,39 +3935,39 @@ end if
          ! Inputs - Lock
          ! -------------
       
-         ALLOCATE(TDTLW_IN_dev(IM,JM,LM), __STAT__)
-         ALLOCATE(U_STAR_dev(IM,JM), __STAT__)
-         ALLOCATE(B_STAR_dev(IM,JM), __STAT__)
-         ALLOCATE(FRLAND_dev(IM,JM), __STAT__)
-         ALLOCATE(T_dev(IM,JM,LM), __STAT__)
-         ALLOCATE(QV_dev(IM,JM,LM), __STAT__)
-         ALLOCATE(QL_dev(IM,JM,LM), __STAT__)
-         ALLOCATE(QI_dev(IM,JM,LM), __STAT__)
-         ALLOCATE(U_dev(IM,JM,LM), __STAT__)
-         ALLOCATE(V_dev(IM,JM,LM), __STAT__)
-         ALLOCATE(ZFULL_dev(IM,JM,LM), __STAT__)
-         ALLOCATE(PFULL_dev(IM,JM,LM), __STAT__)
-         ALLOCATE(ZHALF_dev(IM,JM,LM+1), __STAT__)
-         ALLOCATE(PHALF_dev(IM,JM,LM+1), __STAT__)
-         ALLOCATE(EIS_dev(IM,JM), __STAT__)                     
+         ALLOCATE(TDTLW_IN_dev(IM,JM,LM), _STAT)
+         ALLOCATE(U_STAR_dev(IM,JM), _STAT)
+         ALLOCATE(B_STAR_dev(IM,JM), _STAT)
+         ALLOCATE(FRLAND_dev(IM,JM), _STAT)
+         ALLOCATE(T_dev(IM,JM,LM), _STAT)
+         ALLOCATE(QV_dev(IM,JM,LM), _STAT)
+         ALLOCATE(QL_dev(IM,JM,LM), _STAT)
+         ALLOCATE(QI_dev(IM,JM,LM), _STAT)
+         ALLOCATE(U_dev(IM,JM,LM), _STAT)
+         ALLOCATE(V_dev(IM,JM,LM), _STAT)
+         ALLOCATE(ZFULL_dev(IM,JM,LM), _STAT)
+         ALLOCATE(PFULL_dev(IM,JM,LM), _STAT)
+         ALLOCATE(ZHALF_dev(IM,JM,LM+1), _STAT)
+         ALLOCATE(PHALF_dev(IM,JM,LM+1), _STAT)
+         ALLOCATE(EIS_dev(IM,JM), _STAT)                     
 
          ! Inoutputs - Lock
          ! ----------------
       
-         ALLOCATE(DIFF_M_dev(IM,JM,LM+1), __STAT__)
-         ALLOCATE(DIFF_T_dev(IM,JM,LM+1), __STAT__)
+         ALLOCATE(DIFF_M_dev(IM,JM,LM+1), _STAT)
+         ALLOCATE(DIFF_T_dev(IM,JM,LM+1), _STAT)
 
          ! Outputs - Lock
          ! --------------
 
-         ALLOCATE(K_M_ENTR_dev(IM,JM,LM+1), __STAT__)
-         ALLOCATE(K_T_ENTR_dev(IM,JM,LM+1), __STAT__)
-         ALLOCATE(K_SFC_dev(IM,JM,LM+1), __STAT__)
-         ALLOCATE(K_RAD_dev(IM,JM,LM+1), __STAT__)
-         ALLOCATE(ZCLOUD_dev(IM,JM), __STAT__)
-         ALLOCATE(ZRADML_dev(IM,JM), __STAT__)
-         ALLOCATE(ZRADBASE_dev(IM,JM), __STAT__)
-         ALLOCATE(ZSML_dev(IM,JM), __STAT__)
+         ALLOCATE(K_M_ENTR_dev(IM,JM,LM+1), _STAT)
+         ALLOCATE(K_T_ENTR_dev(IM,JM,LM+1), _STAT)
+         ALLOCATE(K_SFC_dev(IM,JM,LM+1), _STAT)
+         ALLOCATE(K_RAD_dev(IM,JM,LM+1), _STAT)
+         ALLOCATE(ZCLOUD_dev(IM,JM), _STAT)
+         ALLOCATE(ZRADML_dev(IM,JM), _STAT)
+         ALLOCATE(ZRADBASE_dev(IM,JM), _STAT)
+         ALLOCATE(ZSML_dev(IM,JM), _STAT)
 
          ! Diagnostics - Lock
          ! ------------------
@@ -3985,21 +3976,21 @@ end if
          ! only allocate the actual working arrays on the device if the 
          ! EXPORT pointer is associated.
 
-         IF (ASSOCIATED(ZCLDTOP))  ALLOCATE(ZCLDTOP_DIAG_dev(IM,JM), __STAT__)
-         IF (ASSOCIATED(WESFC))    ALLOCATE(WENTR_SFC_DIAG_dev(IM,JM), __STAT__)
-         IF (ASSOCIATED(WERAD))    ALLOCATE(WENTR_RAD_DIAG_dev(IM,JM), __STAT__)
-         IF (ASSOCIATED(DBUOY))    ALLOCATE(DEL_BUOY_DIAG_dev(IM,JM), __STAT__)
-         IF (ASSOCIATED(VSCSFC))   ALLOCATE(VSFC_DIAG_dev(IM,JM), __STAT__)
-         IF (ASSOCIATED(VSCRAD))   ALLOCATE(VRAD_DIAG_dev(IM,JM), __STAT__)
-         IF (ASSOCIATED(KERAD))    ALLOCATE(KENTRAD_DIAG_dev(IM,JM), __STAT__)
-         IF (ASSOCIATED(VSCBRV))   ALLOCATE(VBRV_DIAG_dev(IM,JM), __STAT__)
-         IF (ASSOCIATED(WEBRV))    ALLOCATE(WENTR_BRV_DIAG_dev(IM,JM), __STAT__)
-         IF (ASSOCIATED(DSIEMS))   ALLOCATE(DSIEMS_DIAG_dev(IM,JM), __STAT__)
-         IF (ASSOCIATED(CHIS))     ALLOCATE(CHIS_DIAG_dev(IM,JM), __STAT__)
-         IF (ASSOCIATED(DELSINV))  ALLOCATE(DELSINV_DIAG_dev(IM,JM), __STAT__)
-         IF (ASSOCIATED(SMIXT))    ALLOCATE(SLMIXTURE_DIAG_dev(IM,JM), __STAT__)
-         IF (ASSOCIATED(CLDRF))    ALLOCATE(CLDRADF_DIAG_dev(IM,JM), __STAT__)
-         IF (ASSOCIATED(RADRCODE)) ALLOCATE(RADRCODE_DIAG_dev(IM,JM), __STAT__)
+         IF (ASSOCIATED(ZCLDTOP))  ALLOCATE(ZCLDTOP_DIAG_dev(IM,JM), _STAT)
+         IF (ASSOCIATED(WESFC))    ALLOCATE(WENTR_SFC_DIAG_dev(IM,JM), _STAT)
+         IF (ASSOCIATED(WERAD))    ALLOCATE(WENTR_RAD_DIAG_dev(IM,JM), _STAT)
+         IF (ASSOCIATED(DBUOY))    ALLOCATE(DEL_BUOY_DIAG_dev(IM,JM), _STAT)
+         IF (ASSOCIATED(VSCSFC))   ALLOCATE(VSFC_DIAG_dev(IM,JM), _STAT)
+         IF (ASSOCIATED(VSCRAD))   ALLOCATE(VRAD_DIAG_dev(IM,JM), _STAT)
+         IF (ASSOCIATED(KERAD))    ALLOCATE(KENTRAD_DIAG_dev(IM,JM), _STAT)
+         IF (ASSOCIATED(VSCBRV))   ALLOCATE(VBRV_DIAG_dev(IM,JM), _STAT)
+         IF (ASSOCIATED(WEBRV))    ALLOCATE(WENTR_BRV_DIAG_dev(IM,JM), _STAT)
+         IF (ASSOCIATED(DSIEMS))   ALLOCATE(DSIEMS_DIAG_dev(IM,JM), _STAT)
+         IF (ASSOCIATED(CHIS))     ALLOCATE(CHIS_DIAG_dev(IM,JM), _STAT)
+         IF (ASSOCIATED(DELSINV))  ALLOCATE(DELSINV_DIAG_dev(IM,JM), _STAT)
+         IF (ASSOCIATED(SMIXT))    ALLOCATE(SLMIXTURE_DIAG_dev(IM,JM), _STAT)
+         IF (ASSOCIATED(CLDRF))    ALLOCATE(CLDRADF_DIAG_dev(IM,JM), _STAT)
+         IF (ASSOCIATED(RADRCODE)) ALLOCATE(RADRCODE_DIAG_dev(IM,JM), _STAT)
 
          ! Then we associate the CUDA device pointer to the associated device
          ! array. That way CUDA knows what memory that pointer belongs to.
@@ -4021,9 +4012,9 @@ end if
          IF (ASSOCIATED(CLDRF))    CLDRADF_DIAG_dev_ptr   => CLDRADF_DIAG_dev
          IF (ASSOCIATED(RADRCODE)) RADRCODE_DIAG_dev_ptr  => RADRCODE_DIAG_dev
 
-         call MAPL_TimerOff(MAPL,name="----LOCK_ALLOC" ,__RC__)
+         call MAPL_TimerOff(MAPL,name="----LOCK_ALLOC" ,_RC)
 
-         call MAPL_TimerOn (MAPL,name="----LOCK_DATA" ,__RC__)
+         call MAPL_TimerOn (MAPL,name="----LOCK_DATA" ,_RC)
 
          ! ---------------------
          ! Copy inputs to device
@@ -4056,9 +4047,9 @@ end if
          DIFF_M_dev(:,:,1:LM+1) = KM(:,:,0:LM)
          DIFF_T_dev(:,:,1:LM+1) = KH(:,:,0:LM)
 
-         call MAPL_TimerOff(MAPL,name="----LOCK_DATA" ,__RC__)
+         call MAPL_TimerOff(MAPL,name="----LOCK_DATA" ,_RC)
 
-         call MAPL_TimerOn (MAPL,name="----LOCK_RUN" ,__RC__)
+         call MAPL_TimerOn (MAPL,name="----LOCK_RUN" ,_RC)
 
          call ENTRAIN<<<Grid,Block>>>(IM, JM, LM,   &
                                       ! Inputs
@@ -4126,9 +4117,9 @@ end if
          ! Kernel is done
          ! --------------
 
-         call MAPL_TimerOff(MAPL,name="----LOCK_RUN" ,__RC__)
+         call MAPL_TimerOff(MAPL,name="----LOCK_RUN" ,_RC)
 
-         call MAPL_TimerOn (MAPL,name="----LOCK_DATA" ,__RC__)
+         call MAPL_TimerOn (MAPL,name="----LOCK_DATA" ,_RC)
 
          ! ------------------------
          ! Copy outputs to the host
@@ -4171,9 +4162,9 @@ end if
          IF (ASSOCIATED(CLDRF))    CLDRF    = CLDRADF_DIAG_dev
          IF (ASSOCIATED(RADRCODE)) RADRCODE = RADRCODE_DIAG_dev
 
-         call MAPL_TimerOff(MAPL,name="----LOCK_DATA" ,__RC__)
+         call MAPL_TimerOff(MAPL,name="----LOCK_DATA" ,_RC)
 
-         call MAPL_TimerOn (MAPL,name="----LOCK_DEALLOC" ,__RC__)
+         call MAPL_TimerOn (MAPL,name="----LOCK_DEALLOC" ,_RC)
 
          ! ------------------------
          ! Deallocate device arrays
@@ -4259,7 +4250,7 @@ end if
          IF (ASSOCIATED(CLDRF))    NULLIFY(CLDRADF_DIAG_dev_ptr)
          IF (ASSOCIATED(RADRCODE)) NULLIFY(RADRCODE_DIAG_dev_ptr)
 
-         call MAPL_TimerOff(MAPL,name="----LOCK_DEALLOC" ,__RC__)
+         call MAPL_TimerOff(MAPL,name="----LOCK_DEALLOC" ,_RC)
 
 #else
 
@@ -5083,7 +5074,7 @@ end if
       if(ALLOC_ZPBL2) deallocate(ZPBL2)
       if(ALLOC_ZPBL10p) deallocate(ZPBL10p)
 
-      RETURN_(ESMF_SUCCESS)
+      _RETURN(_SUCCESS)
      end subroutine REFRESH
 
 !=============================================================================
@@ -5114,7 +5105,6 @@ end if
 
 !EOP
 
-    character(len=ESMF_MAXSTR)          :: IAm='Diffuse'
     integer                             :: STATUS
 
     character(len=ESMF_MAXSTR)          :: TYPE
@@ -5306,8 +5296,7 @@ end if
        if(associated(SRG)) then
           SG => SRG
        else
-          allocate (SG(0,0), stat=STATUS)
-          VERIFY_(STATUS)
+          allocate (SG(0,0), _STAT)
        end if
 
        ! Add presribed fluxes
@@ -5345,7 +5334,7 @@ if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
           DX => DKS
           AK => AKS; BK => BKS; CK => CKS
        else
-          RETURN_(ESMF_FAILURE)
+          _FAIL('DiffuseLike must be U, Q or S')
        endif
 
 ! Copy diffused quantity to temp buffer
@@ -5515,7 +5504,7 @@ if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
     enddo ! End loop over all quantities to be diffused
 ! -----------------------------------------------------
 
-    RETURN_(ESMF_SUCCESS)
+    _RETURN(_SUCCESS)
   end subroutine DIFFUSE
 
 end subroutine RUN1
@@ -5552,7 +5541,6 @@ end subroutine RUN1
 
 ! ErrLog Variables
 
-    character(len=ESMF_MAXSTR)          :: IAm
     integer                             :: STATUS
     character(len=ESMF_MAXSTR)          :: COMP_NAME
 
@@ -5577,7 +5565,6 @@ end subroutine RUN1
 ! ---------------------------------------
 
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, _RC)
-    Iam = trim(COMP_NAME) // 'Run2'
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
@@ -5620,7 +5607,7 @@ end subroutine RUN1
 
     call MAPL_TimerOff(MAPL,"-RUN2")
     call MAPL_TimerOff(MAPL,"TOTAL")
-    RETURN_(ESMF_SUCCESS)
+    _RETURN(_SUCCESS)
 
   contains
 
@@ -5643,7 +5630,6 @@ end subroutine RUN1
 !EOP
   
  
-      character(len=ESMF_MAXSTR)          :: IAm='Update'
       integer                             :: STATUS
 
       character(len=ESMF_MAXSTR)          :: TYPE
@@ -5768,7 +5754,7 @@ end subroutine RUN1
          call MAPL_GetResource( MAPL, SHVC_ALPHA,  'SHVC_ALPHA:' , default=1.   , _RC)
          call MAPL_GetResource( MAPL, SHVC_1500,   'SHVC_1500:'  , default=2100., _RC)
          call MAPL_GetResource( MAPL, SHVC_ZDEPTH, 'SHVC_ZDEPTH:', default=3500., _RC)
-         call MAPL_GetResource( MAPL, SHVC_SCALING,'SHVC_SCALING:',default=1.0  , RC=STATUS )
+         call MAPL_GetResource( MAPL, SHVC_SCALING,'SHVC_SCALING:',default=1.0  , _RC)
       end if
 
 ! Determine whether running idealized SCM surface layer
@@ -6019,7 +6005,7 @@ end subroutine RUN1
          else if ( TYPE=='S' ) then
             DKX => DKS
          else
-            RETURN_(ESMF_FAILURE)
+            _FAIL('DiffuseLike must be U, Q or S')
          end if
          if( trim(NAME)=='QV' ) then
             DKX => DKQ
@@ -6337,7 +6323,7 @@ end subroutine RUN1
          if(associated(KESRF)) KESRF = KESRF - SRFDIS* (MAPL_CP/MAPL_GRAV)
       endif
 
-      RETURN_(ESMF_SUCCESS)
+      _RETURN(_SUCCESS)
     end subroutine UPDATE
 
   end subroutine RUN2
@@ -7209,7 +7195,6 @@ end subroutine ComputeMOScalingInterlevel
     real, dimension(:,:,:), pointer                :: PTR
     integer, optional,               intent(  out) :: RC
 
-    character(len=ESMF_MAXSTR), parameter :: IAm='GetTendency'
     integer                               :: STATUS
     character(len=ESMF_MAXSTR)            :: TNAME
     type(ESMF_StateItem_Flag)             :: itemType
@@ -7226,7 +7211,7 @@ end subroutine ComputeMOScalingInterlevel
        call MAPL_GetPointer(EXPORT, PTR, TNAME, _RC)
     end if
 
-    RETURN_(ESMF_SUCCESS)
+    _RETURN(_SUCCESS)
   end subroutine GetTendency
 
 !=============================================================================
@@ -7241,7 +7226,6 @@ end subroutine ComputeMOScalingInterlevel
     character(len=ESMF_MAXSTR), allocatable, intent(  out) :: NAMES(:)
     integer, optional,                       intent(  out) :: RC
 
-    character(len=ESMF_MAXSTR), parameter :: IAm='GetTriIncrements'
     integer                               :: STATUS
     integer                               :: I, N, NQ, nCols
     character(len=ESMF_MAXSTR)            :: NAME
@@ -7254,7 +7238,7 @@ end subroutine ComputeMOScalingInterlevel
     call ESMF_ConfigGetDim (CF, NQ, nCols, label=('TRI_increments::'), rc=STATUS)
     if (STATUS /= ESMF_SUCCESS) NQ = 0
 
-    allocate (ALL_NAMES(NQ), __STAT__)
+    allocate (ALL_NAMES(NQ), _STAT)
     N = 0
     if (NQ > 0) then
        call ESMF_ConfigFindLabel (CF, ('TRI_increments::'), _RC)
@@ -7268,11 +7252,11 @@ end subroutine ComputeMOScalingInterlevel
        end do
     end if
 
-    allocate (NAMES(N), __STAT__)
+    allocate (NAMES(N), _STAT)
     NAMES = ALL_NAMES(1:N)
     deallocate (ALL_NAMES)
 
-    RETURN_(ESMF_SUCCESS)
+    _RETURN(_SUCCESS)
   end subroutine GetTriIncrements
 
 
