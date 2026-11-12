@@ -203,3 +203,340 @@ mapl:
         standard_name: "turbulence_ice_water_tendency"
         units: "kg kg-1 s-1"
         vertical_dim_spec: "center"
+
+  connections:
+    - src_comp: <self>
+      src_name: PLE
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: PLE
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: PREF
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: PREF
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: ZLE
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: ZLE
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: KH
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: KH
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: TKE
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: TKE
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: WQT
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: WQT
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: WSL
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: WSL
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: W2
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: W2
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: W3
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: W3
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: SL3
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: SL3
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: SL2
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: SL2
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: PDF_A
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: PDF_A
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: QT2
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: QT2
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: QT3
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: QT3
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: SLQT
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: SLQT
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: T
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: T
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: U
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: U
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: V
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: V
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: W
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: W
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: TS
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: TS
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: SNOMAS
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: SNOMAS
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: FRLANDICE
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: FRLANDICE
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: FRLAND
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: FRLAND
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: FRACI
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: FRACI
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: KPBL
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: KPBL
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: KPBL_SC
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: KPBL_SC
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: OMEGA
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: OMEGA
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: AREA
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: AREA
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: DTDTDYN
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: DTDTDYN
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: DQVDTDYN
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: DQVDTDYN
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: QV_DYN_IN
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: QV_DYN_IN
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: T_DYN_IN
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: T_DYN_IN
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: U_DYN_IN
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: U_DYN_IN
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: V_DYN_IN
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: V_DYN_IN
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: PLE_DYN_IN
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: PLE_DYN_IN
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: DTDT_BL
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: DTDT_BL
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: DQDT_BL
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: DQDT_BL
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: RADLW
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: RADLW
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: RADSW
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: RADSW
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: T2M
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: T2M
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: Q2M
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: Q2M
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: TA
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: TA
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: QA
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: QA
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: SH
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: SH
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: EVAP
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: EVAP
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: PHIS
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: PHIS
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: DQLDTTRB
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: DQLDTTRB
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: DQIDTTRB
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: DQIDTTRB
+      dst_intent: export

@@ -65,3 +65,102 @@ mapl:
         standard_name: "convective_fraction"
         units: "1"
         vertical_dim_spec: "none"
+
+  connections:
+    - src_comp: <self>
+      src_name: PLE
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: PLE
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: T
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: T
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: Q
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: Q
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: U
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: U
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: V
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: V
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: PHIS
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: PHIS
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: SGH
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: SGH
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: VARFLT
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: VARFLT
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: PREF
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: PREF
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: AREA
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: AREA
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: HT_dc
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: HT_dc
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: HT_mi
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: HT_mi
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: WSPD_STABLE300M
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: WSPD_STABLE300M
+      dst_intent: export
+
+    - src_comp: <self>
+      src_name: CNV_FRC
+      src_intent: internal
+      dst_comp: <self>
+      dst_name: CNV_FRC
+      dst_intent: export
