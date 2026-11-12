@@ -21,7 +21,7 @@ md.miscellaneous.name = "GRIS"
 md.mesh.epsg = 3413
 
 # path to ISMIP7 data 
-mipkit_path = '/discover/nobackup/agstubbl/ISSM/data/GRIS/GreenlandObsISMIP7-v1.3.nc'
+mipkit_path = '/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/landice/issm/v1/GRIS/GreenlandObsISMIP7-v1.3.nc'
 
 # Setting mask:
 mask = interpMIPkitGreenland(md.mesh.x,md.mesh.y,'mask',ncfile=mipkit_path,default_value=0)

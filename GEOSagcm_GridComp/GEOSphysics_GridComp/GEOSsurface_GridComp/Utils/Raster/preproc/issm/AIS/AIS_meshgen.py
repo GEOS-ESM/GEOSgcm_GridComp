@@ -24,7 +24,7 @@ if not os.path.exists('./netcdfs'):
 # project mesh onto new coordinate system
 md = triangle(model(), '/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/landice/issm/v1/AIS/AntarcticaOutline.exp', h_max)
 
-mipkit_path = '/discover/nobackup/agstubbl/ISSM/data/AIS/AntarcticaObsISMIP7-v1.2.nc'
+mipkit_path = '/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/landice/issm/v1/AIS/AntarcticaObsISMIP7-v1.2.nc'
 
 vx = interpMIPkitAntarctica(md.mesh.x, md.mesh.y, 'vx_mosaic',ncfile=mipkit_path,default_value=0)
 vy = interpMIPkitAntarctica(md.mesh.x, md.mesh.y, 'vy_mosaic',ncfile=mipkit_path,default_value=0)

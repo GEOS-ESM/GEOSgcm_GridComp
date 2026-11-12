@@ -22,7 +22,7 @@ md = loadmodel('./netcdfs/AIS_mesh.nc')
 md.miscellaneous.name="AIS"
 md.mesh.epsg=3031
 
-mipkit_path = '/discover/nobackup/agstubbl/ISSM/data/AIS/AntarcticaObsISMIP7-v1.2.nc'
+mipkit_path = '/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/landice/issm/v1/AIS/AntarcticaObsISMIP7-v1.2.nc'
 
 # setting mask:
 mask = interpMIPkitAntarctica(md.mesh.x,md.mesh.y,'mask_bedmachine',ncfile=mipkit_path,default_value=0)

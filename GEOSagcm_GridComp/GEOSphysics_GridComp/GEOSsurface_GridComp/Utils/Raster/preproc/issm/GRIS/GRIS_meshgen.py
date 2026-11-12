@@ -29,7 +29,7 @@ md = triangle(model(), '/discover/nobackup/projects/gmao/bcs_shared/preprocessin
 md.mesh.x = xi
 md.mesh.y = yi
 
-mipkit_path = '/discover/nobackup/agstubbl/ISSM/data/GRIS/GreenlandObsISMIP7-v1.3.nc'
+mipkit_path = '/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/landice/issm/v1/GRIS/GreenlandObsISMIP7-v1.3.nc'
 vx = interpMIPkitGreenland(md.mesh.x, md.mesh.y, 'vx_mosaic',ncfile=mipkit_path,default_value=0)
 vy = interpMIPkitGreenland(md.mesh.x, md.mesh.y, 'vy_mosaic',ncfile=mipkit_path,default_value=0)
 v = np.sqrt(vx**2 + vy**2)
