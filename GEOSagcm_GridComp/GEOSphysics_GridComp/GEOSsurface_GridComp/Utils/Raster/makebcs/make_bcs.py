@@ -4,6 +4,15 @@
 #
 
 import sys
+
+# Explicit geometry-only entry point. Keep legacy questionnaire/config paths
+# unchanged and do not import their dependencies for this workflow.
+if __name__ == '__main__' and '--lis' in sys.argv[1:]:
+    from make_bcs_lis import main as lis_main
+    lis_args = sys.argv[1:].copy()
+    lis_args.remove('--lis')
+    raise SystemExit(lis_main(lis_args))
+
 import argparse
 import textwrap
 import ruamel.yaml
