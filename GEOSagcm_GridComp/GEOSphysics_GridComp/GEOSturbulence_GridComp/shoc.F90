@@ -38,6 +38,8 @@ module shoc
     real    :: LENFAC1
     real    :: LENFAC2
     real    :: LENFAC3
+    real    :: REDLHGT
+    real    :: REDLFAC
     real    :: BRUNT_CBLH_FAC
  endtype SHOCPARAMS_TYPE
  type (SHOCPARAMS_TYPE) :: shocparams
@@ -64,6 +66,8 @@ module shoc
                  smixt2_inv,smixt3_inv,                          &  ! out
                  bruntmst_inv, ri_inv, prnum_inv,                &  ! out
                  lpar_inv,                                       &  ! out
+                 tkeprior, bruntul, lshocul,                     &
+                 lshoc1ul, lshoc2ul, lshoc3ul,                   &
                  shocparams )
 
 
@@ -113,6 +117,9 @@ module shoc
   real, intent(  out) :: isotropy_inv(nx,ny,nzm) ! return to isotropy timescale
   real, intent(inout) :: tkesbdiss_inv(nx,ny,nzm)  ! dissipation
 
+  real, dimension(nx,ny,nzm), intent(  out) :: tkeprior, bruntul, lshocul,   &
+                                               lshoc1ul, lshoc2ul, lshoc3ul
+  
   real, dimension(:,:,:), pointer :: lpar_inv
   real, dimension(:,:,:), pointer :: tkesbbuoy_inv  ! buoyancy production
   real, dimension(:,:,:), pointer :: tkesbshear_inv ! shear production
@@ -310,7 +317,7 @@ module shoc
 
 !  if (associated(bruntedg_inv)) bruntedg_inv(:,:,0:nzm) = brunt_edge(:,:,nz:1:-1)
 !  if (associated(bruntdry_inv)) bruntdry_inv(:,:,0:nzm) = brunt_dry(:,:,nz:1:-1)
-  if (associated(bruntmst_inv)) bruntmst_inv(:,:,1:nzm) = brunt(:,:,nzm:1:-1)
+  if (associated(bruntmst_inv)) bruntmst_inv(:,:,1:nzm) = brunt2(:,:,nzm:1:-1)
   if (associated(prnum_inv))    prnum_inv(:,:,0:nz-1)     = prnum(:,:,nz:1:-1)
   if (associated(ri_inv))       ri_inv(:,:,0:nz-1)        = ri(:,:,nz:1:-1)
   if (associated(lpar_inv))     lpar_inv(:,:,1:nzm)      = l_par(:,:,nzm:1:-1)
@@ -712,6 +719,8 @@ contains
 
       !=========== Length scale calculations ===========
       ! Based on Eq. 10 in BK13 (Eq. 4.12 in Pete's dissertation)
+      bruntul = brunt(:,:,nzm:1:-1)
+      tkeprior = tke(:,:,nzm:1:-1)
       do k=1,nzm-1
         do j=1,ny
           do i=1,nx
@@ -754,13 +763,13 @@ contains
              if ( shocparams%LENOPT .lt. 4 ) then
 
                  ! Surface length scale, following Olson et al 2026
-                 if (lobukhov(i,j).gt.0.1) then
-                    smixt1(i,j,k) = vonk*zl(i,j,k)*shocparams%LENFAC1 / (1.+3.*zl(i,j,k)/lobukhov(i,j))
-                 else if (lobukhov(i,j).lt.-0.1) then
-                    smixt1(i,j,k) = vonk*zl(i,j,k)*shocparams%LENFAC1 * (1.-10.*zl(i,j,k)/lobukhov(i,j))**0.2
-                 else
+!                 if (lobukhov(i,j).gt.0.1) then
+!                    smixt1(i,j,k) = vonk*zl(i,j,k)*shocparams%LENFAC1 / (1.+3.*zl(i,j,k)/lobukhov(i,j))
+!                 else if (lobukhov(i,j).lt.-0.1) then
+!                    smixt1(i,j,k) = vonk*zl(i,j,k)*shocparams%LENFAC1 * (1.-10.*zl(i,j,k)/lobukhov(i,j))**0.2
+!                 else
                     smixt1(i,j,k) = vonk*zl(i,j,k)*shocparams%LENFAC1
-                 end if
+!                 end if
 !                 smixt1(i,j,k) = sqrt(400.*tkes*vonk*zl(i,j,k))*shocparams%LENFAC1  ! original SHOC, includes TKE
 
                  ! Turbulent length scale
@@ -776,6 +785,12 @@ contains
 !                 else
                     smixt3(i,j,k) = max(0.05,tkes)*shocparams%LENFAC3/(sqrt(brunt2(i,j,k)))
 !                 end if
+
+                 lshoc1ul(i,j,nzm-k+1) = vonk*zl(i,j,k)*shocparams%LENFAC1
+                 lshoc2ul(i,j,nzm-k+1) = sqrt(l_par(i,j,k)*400.*tkes)*shocparams%LENFAC2
+                 lshoc3ul(i,j,nzm-k+1) = max(0.05,tkes)*shocparams%LENFAC3/(sqrt(brunt2(i,j,k)))
+                 
+                 lshocul(i,j,nzm-k+1) = SQRT(3./(1./lshoc1ul(i,j,nzm-k+1)**2+1./lshoc2ul(i,j,nzm-k+1)**2+1./lshoc3ul(i,j,nzm-k+1)**2))
 
                  ! Limit component length scales to less than maximum
                  smixt1(i,j,k) = min(max_eddy_length_scale,smixt1(i,j,k))
@@ -808,10 +823,12 @@ contains
            ! Enforce minimum and maximum length scales, and reduce final
            ! length scale exponentially with height above the dry CBL.
            smixt(i,j,k) = max(min_eddy_length_scale,smixt(i,j,k))
+!           if (zl(i,j,k).gt.shocparams%REDLHGT) smixt(i,j,k) = shocparams%REDLFAC*smixt(i,j,k)
            if (zl(i,j,k).gt.dryzpbl(i,j)) smixt(i,j,k) = smixt(i,j,k)*(0.025+0.975*exp(-(zl(i,j,k)-dryzpbl(i,j))/3000.))
         end do
       end do
     end do
+   
     smixt(:,:,nzm) = smixt(:,:,nzm-1)
     smixt1(:,:,nzm) = smixt1(:,:,nzm-1)
     smixt2(:,:,nzm) = smixt2(:,:,nzm-1)

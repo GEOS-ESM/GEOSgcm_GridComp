@@ -1973,9 +1973,49 @@ end if
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                  &
+       SHORT_NAME = 'LSHOCunlim',                                &
+       LONG_NAME  = 'eddy_dissipation_length_from_SHOC_unlim',   &
+       UNITS      = 'm',                                         &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                  &
+       SHORT_NAME = 'LSHOC1unlim',                                    &
+       LONG_NAME  = 'dissipation_length_term1_from_SHOC_unlim',        &
+       UNITS      = 'm',                                         &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                  &
+       SHORT_NAME = 'LSHOC2unlim',                                    &
+       LONG_NAME  = 'dissipation_length_term2_from_SHOC_unlim',        &
+       UNITS      = 'm',                                         &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                  &
+       SHORT_NAME = 'LSHOC3unlim',                                    &
+       LONG_NAME  = 'dissipation_length_term3_from_SHOC_unlim',        &
+       UNITS      = 'm',                                         &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                  &
        SHORT_NAME = 'BRUNTSHOC',                                 &
-       LONG_NAME  = 'Brunt_Vaisala_frequency_from_SHOC',         &
-       UNITS      = 's-1',                                       &
+       LONG_NAME  = 'Squared_Brunt_Vaisala_frequency_from_SHOC', &
+       UNITS      = 's-2',                                       &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                  &
+       SHORT_NAME = 'BRUNTSHOCunlim',                                 &
+       LONG_NAME  = 'Squared_Brunt_Vaisala_frequency_from_SHOC_unlim', &
+       UNITS      = 's-2',                                       &
        DIMS       = MAPL_DimsHorzVert,                           &
        VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
     VERIFY_(STATUS)
@@ -1998,6 +2038,15 @@ end if
                                                         RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                                  &
+       LONG_NAME  = 'turbulent_kinetic_energy_prior_to_update',  &
+       SHORT_NAME = 'TKEPRIOR',                                  &
+       UNITS      = 'm2 s-2',                                    &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationCenter,                        &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+    
     if (DO_WAVES/=0 .and. DO_SEA_SPRAY/=0) then
         call MAPL_AddExportSpec(GC,                                  &
            SHORT_NAME      = 'SHFX_SPRAY',                           &
@@ -2995,7 +3044,8 @@ end if
                                             LSHOC1,LSHOC2,LSHOC3, & 
                                             SHOCPRNUM,LPARSHOC,&
                                             TKEBUOY,TKESHEAR,TKEDISS,TKEDISSx, &
-                                            SL2, SL3, W2, W3, WSL, SLQT !, W3CANUTO, QT2DIAG,SL2DIAG,SLQTDIAG
+                                            SL2, SL3, W2, W3, WSL, SLQT, TKEprior, &
+                                            LSHOCul,LSHOC1ul,LSHOC2ul,LSHOC3ul,BRUNTSHOCul
      real, dimension(:,:), pointer       :: edmf_depth, lobukhov
 
 ! EDMF variables
@@ -3281,11 +3331,14 @@ end if
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1, trim(COMP_NAME)//"_SHC_LENFAC1:",     default=1.,   RC=STATUS); VERIFY_(STATUS)       
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2, trim(COMP_NAME)//"_SHC_LENFAC2:",     default=1.,   RC=STATUS); VERIFY_(STATUS)       
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=1.,   RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%REDLHGT, trim(COMP_NAME)//"_SHC_REDLHGT:",     default=1.,   RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%REDLFAC, trim(COMP_NAME)//"_SHC_REDLFAC:",     default=1.,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT, trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=2,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%BRUNT_CBLH_FAC, trim(COMP_NAME)//"_SHC_BRUNT_CBLH_FAC:", default=1.,    RC=STATUS); VERIFY_(STATUS)
        SHOCPARAMS%LENFAC1 = 5. * SHOCPARAMS%LENFAC1
        SHOCPARAMS%LENFAC2 = 2. * SHOCPARAMS%LENFAC2
-       SHOCPARAMS%LENFAC3 = 0.5 * SHOCPARAMS%LENFAC3
+       SHOCPARAMS%LENFAC3 = 1.5 * SHOCPARAMS%LENFAC3
+       SHOCPARAMS%REDLHGT = 200. * SHOCPARAMS%REDLHGT
        SHOCPARAMS%BRUNT_CBLH_FAC = 0.75 * SHOCPARAMS%BRUNT_CBLH_FAC
        call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 6.0 , RC=STATUS); VERIFY_(STATUS)
      else
@@ -3503,6 +3556,20 @@ end if
      call MAPL_GetPointer(EXPORT,  edmf_depth,     'EDMF_DEPTH', RC=STATUS)
      VERIFY_(STATUS)
 
+     call MAPL_GetPointer(EXPORT,  TKEPRIOR, 'TKEPRIOR',ALLOC=.TRUE.,  RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,  LSHOCUL, 'LSHOCunlim',ALLOC=.TRUE.,  RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,  LSHOC1UL, 'LSHOC1unlim', ALLOC=.TRUE., RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,  LSHOC2UL, 'LSHOC2unlim', ALLOC=.TRUE., RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,  LSHOC3UL, 'LSHOC3unlim', ALLOC=.TRUE., RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,  BRUNTSHOCUL, 'BRUNTSHOCunlim', ALLOC=.TRUE., RC=STATUS)
+     VERIFY_(STATUS)
+
+     
 !========== SHOC ===========
      call MAPL_GetPointer(EXPORT, TKEDISSx, 'TKEDISS',  RC=STATUS)
      VERIFY_(STATUS)
@@ -4003,6 +4070,12 @@ end if
                        RI,                    &
                        SHOCPRNUM,             &
                        LPARSHOC,              &
+                       TKEprior,              &
+                       BRUNTSHOCul,           &
+                       LSHOCul,               &
+                       LSHOC1ul,               &
+                       LSHOC2ul,               &
+                       LSHOC3ul,               &
                        !== Tuning params ==
                        SHOCPARAMS )
 
