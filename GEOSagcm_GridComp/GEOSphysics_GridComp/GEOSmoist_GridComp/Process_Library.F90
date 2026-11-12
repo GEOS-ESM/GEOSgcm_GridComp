@@ -2670,7 +2670,7 @@ contains
       beta = (MAPL_RGAS / MAPL_RVAP) * (MAPL_ALHL / (MAPL_RGAS * tbar)) * (MAPL_ALHL / (MAPL_CP * tbar))
 
       ! If some skewness is present
-      if (A > 0.001 .and. A /= 0.5 .and. &
+      if (A > 0.001 .and. A < 0.5 .and. &
            (qt3bar > 0.0 .or. t3bar > 0.0 .or. w3bar > 0.0)) then
 
          ! Empirical adjustment to ensure realizability
@@ -2712,9 +2712,9 @@ contains
 
       end if
 
-      if (A > 0.001 .and. qt3bar > 0.0 .and. A /= 0.5) then
+      if (A > 0.001 .and. qt3bar > 0.0 .and. A < 0.5) then
 
-         qt1 = A * qt2 / (1.0 - A)
+         qt1 = A * qt2 / (A - 1.0)
 
          fac = SQRT(A / (1.0 - A))
          tmp = MAX(0.0, qt2bar - (1.0 - A) * qt1**2 - A * qt2**2)
