@@ -40,242 +40,194 @@ mapl:
   connections:
     - src_name: PLE
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: PLE
       dst_comp: MOIST
     - src_name: PREF
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: PREF
       dst_comp: MOIST
     - src_name: ZLE
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: ZLE
       dst_comp: MOIST
     - src_name: KH
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: KH
       dst_comp: MOIST
     - src_name: TKE
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: TKE
       dst_comp: MOIST
     - src_name: WQT
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: WQT
       dst_comp: MOIST
     - src_name: WSL
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: WSL
       dst_comp: MOIST
     - src_name: W2
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: W2
       dst_comp: MOIST
     - src_name: W3
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: W3
       dst_comp: MOIST
     - src_name: SL3
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: SL3
       dst_comp: MOIST
     - src_name: SL2
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: SL2
       dst_comp: MOIST
     - src_name: PDF_A
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: PDF_A
       dst_comp: MOIST
     - src_name: QT2
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: QT2
       dst_comp: MOIST
     - src_name: QT3
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: QT3
       dst_comp: MOIST
     - src_name: SLQT
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: SLQT
       dst_comp: MOIST
     - src_name: T
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: T
       dst_comp: MOIST
     - src_name: U
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: U
       dst_comp: MOIST
     - src_name: V
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: V
       dst_comp: MOIST
     - src_name: W
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: W
       dst_comp: MOIST
     - src_name: TS
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: TS
       dst_comp: MOIST
     - src_name: SNOMAS
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: SNOMAS
       dst_comp: MOIST
     - src_name: FRLANDICE
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: FRLANDICE
       dst_comp: MOIST
     - src_name: FRLAND
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: FRLAND
       dst_comp: MOIST
     - src_name: FRACI
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: FRACI
       dst_comp: MOIST
     - src_name: KPBL
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: KPBL
       dst_comp: MOIST
     - src_name: KPBL_SC
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: KPBL_SC
       dst_comp: MOIST
     - src_name: OMEGA
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: OMEGA
       dst_comp: MOIST
     - src_name: AREA
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: AREA
       dst_comp: MOIST
     - src_name: DTDTDYN
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: DTDTDYN
       dst_comp: MOIST
     - src_name: DQVDTDYN
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: DQVDTDYN
       dst_comp: MOIST
     - src_name: QV_DYN_IN
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: QV_DYN_IN
       dst_comp: MOIST
     - src_name: T_DYN_IN
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: T_DYN_IN
       dst_comp: MOIST
     - src_name: U_DYN_IN
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: U_DYN_IN
       dst_comp: MOIST
     - src_name: V_DYN_IN
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: V_DYN_IN
       dst_comp: MOIST
     - src_name: PLE_DYN_IN
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: PLE_DYN_IN
       dst_comp: MOIST
     - src_name: DTDT_BL
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: DTDT_BL
       dst_comp: MOIST
     - src_name: DQDT_BL
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: DQDT_BL
       dst_comp: MOIST
     - src_name: RADLW
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: RADLW
       dst_comp: MOIST
     - src_name: RADSW
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: RADSW
       dst_comp: MOIST
     - src_name: T2M
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: T2M
       dst_comp: MOIST
     - src_name: Q2M
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: Q2M
       dst_comp: MOIST
     - src_name: TA
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: TA
       dst_comp: MOIST
     - src_name: QA
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: QA
       dst_comp: MOIST
     - src_name: SH
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: SH
       dst_comp: MOIST
     - src_name: EVAP
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: EVAP
       dst_comp: MOIST
     - src_name: PHIS
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: PHIS
       dst_comp: MOIST
     - src_name: DQLDTTRB
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: DQLDTTRB
       dst_comp: MOIST
     - src_name: DQIDTTRB
       src_comp: DataForMoist
-      src_intent: internal
       dst_name: DQIDTTRB
       dst_comp: MOIST
     - src_name: AERO
