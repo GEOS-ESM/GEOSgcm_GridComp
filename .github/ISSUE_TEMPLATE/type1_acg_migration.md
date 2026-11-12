@@ -33,6 +33,7 @@ labels: ["acg-migration", "mapl3-readiness"]
 
 ### Preparation
 - [ ] Read `GWD_StateSpecs.rc` to understand `schema_version: 2.0.0` format
+- [ ] Read "Porting to MAPL3" in the top-level `AGENTS.md`: ACG silently drops columns it does not know, so MAPL2's `DEFAULT=x` must become `FILL=x`, `FRIENDLYTO=<self>` on an internal becomes `ADD2EXPORT`, and `FRIENDLYTO=<other component>` becomes a service subscription
 - [ ] Identify all `MAPL_AddImportSpec` / `MAPL_AddExportSpec` / `MAPL_AddInternalSpec` calls
 - [ ] Check whether a `*_StateSpecs.rc` file already exists (partial migration)
 
@@ -68,7 +69,7 @@ labels: ["acg-migration", "mapl3-readiness"]
 
 ### PR
 - [ ] PR title: `[ACG] ComponentName: migrate to mapl_acg`
-- [ ] PR targets `main`
+- [ ] PR targets `release/MAPL-v3`
 - [ ] PR links to this issue and references GwdGridComp as template
 
 ## Notes

@@ -1,6 +1,6 @@
 # Moist MAPL3 port: from `FRIENDLYTO` to services
 
-This note records how Moist's MAPL2 "friendly" fields map onto MAPL3 services (2026-10-30; `CNV_TR` and `MTR` mechanics added 2026-11-04; updated 2026-11-09 for the BACM_1M port and the removal of `CONVECTION_TRACER == 1` support). It accompanies step 4 of `mapl3-porting-notes.md` and covers branch `feature/pchakrab/port-moist-to-mapl3`. MAPL2 references are to `origin/develop`.
+This note records how Moist's MAPL2 "friendly" fields map onto MAPL3 services (2026-10-30; `CNV_TR` and `MTR` mechanics added 2026-11-04; updated 2026-11-09 for the BACM_1M port and the removal of `CONVECTION_TRACER == 1` support). It accompanies step 4 of `mapl3-porting-notes.md` and covers the port on branch `feature/pchakrab/port-moist-to-mapl3`, merged in GEOSgcm_GridComp#1566. MAPL2 references are to `origin/develop`.
 
 File abbreviations:
 

@@ -15,13 +15,9 @@ labels: ["pre-migration-audit", "mapl3-readiness"]
 
 ## Purpose
 
-This is a **read-and-report** issue, not a fix issue. The auditor reads the
-component and identifies anything that would complicate or obscure the MAPL3
-migration: code smells, VERIFY_ patterns, repeated blocks, lurking bugs,
-tight coupling, anything relevant.
+This is a **read-and-report** issue, not a fix issue. The auditor reads the component and identifies anything that would complicate or obscure the MAPL3 migration: code smells, VERIFY_ patterns, repeated blocks, lurking bugs, tight coupling, anything relevant.
 
-**Output:** a written-up findings list posted as a comment on this issue,
-plus zero or more new `[Fix]` issues spawned from those findings.
+**Output:** a written-up findings list posted as a comment on this issue, plus zero or more new `[Fix]` issues spawned from those findings.
 
 This issue closes when the audit writeup is complete — **not** when fixes are done.
 
@@ -33,9 +29,7 @@ This issue closes when the audit writeup is complete — **not** when fixes are 
 - [ ] Any error paths that silently swallow failures?
 
 ### Code structure
-- [ ] Repeated code blocks that could be extracted into a helper subroutine
-- [ ] Very long subroutines (>200 lines) that should be split
-- [ ] Dead code / commented-out blocks that should be removed
+- [ ] Repeated code blocks, very long subroutines (>200 lines), dead or commented-out code: note them for a later cleanup issue, but do not change them as part of the migration, which must match a MAPL2 capture bit for bit ("Porting to MAPL3" in the top-level `AGENTS.md`)
 
 ### MAPL usage
 - [ ] Use of deprecated MAPL2 APIs that will break in MAPL3
