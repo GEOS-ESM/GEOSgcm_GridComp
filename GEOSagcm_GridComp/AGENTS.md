@@ -9,6 +9,7 @@
 
 - Read [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (what the Agcm subtree is and how it is put together: run orders, Superdyn, the Physics children, services, contracts, the background to the traps below) before changing children, connections, exports, schemes or configuration. Update it when the structure, a contract or an invariant changes; it describes only what changes rarely, so keep status and to-dos out of it.
 - Moist's port is recorded in `GEOSphysics_GridComp/GEOSmoist_GridComp/mapl3-porting-notes.md`: read it before changing Moist, and record each decision there with its reason.
+- Turbulence is being ported (not yet built); its notes are `GEOSphysics_GridComp/GEOSturbulence_GridComp/mapl3-porting-notes.md`. Same rule.
 - Keep this file current: update it when status, a rule or a trap changes, and update its "verified against" commit.
 
 ## Status and to-dos
