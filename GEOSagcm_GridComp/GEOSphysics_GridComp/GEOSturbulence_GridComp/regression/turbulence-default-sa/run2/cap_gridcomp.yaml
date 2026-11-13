@@ -1,0 +1,15 @@
+run_extdata: false
+run_history: true
+root_name: Root
+history_name: &history HIST
+
+mapl:
+  setServices:
+    sharedObj: libMAPL.cap
+  children:
+    Root:
+      dso: libTurbulencePhasesDriver_GridComp.so
+      setservices: turbulencephasesdriver_setservices_
+      config_file: root.yaml
+    *history :
+      config_file: history.yaml

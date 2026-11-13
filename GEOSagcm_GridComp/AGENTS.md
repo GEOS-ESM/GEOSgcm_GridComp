@@ -15,7 +15,7 @@
 ## Status and to-dos
 
 - Superdyn: only `DYCORE: FV3` is accepted; the `FV3+ADV` and data-dynamics (`DATMO`) branches are commented out, so `ADV` is never added.
-- Turbulence: only the SHOC-MF configuration (`TURBULENCE_DO_SHOC: 1`, `EDMF_DOMF: 1`) is regression-tested; Louis/Lock, sea spray and the SCM surface are ported but not run. Its `TRDIFF` service maps a subscribed field's standard name back to a short name only for Moist's water species (`diffused_short_name`); other tracers keep their standard name, so a `TRI_increments` tendency for them is not found (porting notes, issue 1).
+- Turbulence: two configurations are regression-tested: SHOC-MF (`TURBULENCE_DO_SHOC: 1`, `EDMF_DOMF: 1`) and the v12 default (SHOC and EDMF off: Louis/Lock, `PDFSHAPE` 1), each as `run1` and `run2`. Sea spray, the SCM surface and L72 with the `JASON_*` options are ported but not run. Its `TRDIFF` service maps a subscribed field's standard name back to a short name only for Moist's water species (`diffused_short_name`); other tracers keep their standard name, so a `TRI_increments` tendency for them is not found (porting notes, issue 1).
 - Turbulence's regression data is only in `~/regression-data-turb` of the porter (bmauer) until copied to `/ford1` and S3; without it the cases pass without running.
 - Nothing connects Superdyn and Physics yet: the Agcm is not ported, so the `TRADV` subscriptions of Moist and GOCART and the application of physics tendencies are not exercised.
 - Moist schemes: GFDL_1M, BACM_1M, GF and UW are ported. MGB2_2M, THOM_1M and RAS stop with `_FAIL` in `SetServices` and `Initialize`; their interface modules are commented out of `CMakeLists.txt` (their kernels are built). NSSL_2M is not selectable.
@@ -57,6 +57,6 @@ Moist:
 
 ## Build and test
 
-- Regression tests (label `REGRESSION`): `GEOSphysics_GridComp/regression/` (`moist-gfdl1m-gf-uw-sa`, `moist-gfdl1m-gf-shoc-sa`, `moist-bacm1m-gf-uw-sa`; its `README.md` describes them, how they were built from MAPL2 captures, `cmpchk.py`, and their run time), `GEOSphysics_GridComp/GEOSgwd_GridComp/regression/` (`gwd-ncar-sa`) and `GEOSphysics_GridComp/GEOSturbulence_GridComp/regression/` (`turbulence-shocmf-sa/run1`, `turbulence-shocmf-sa/run2`). The dynamical-core cases are in FVdycoreCubed. The general rules for regression cases are in the `GEOSgcm_GridComp` `AGENTS.md`.
+- Regression tests (label `REGRESSION`): `GEOSphysics_GridComp/regression/` (`moist-gfdl1m-gf-uw-sa`, `moist-gfdl1m-gf-shoc-sa`, `moist-bacm1m-gf-uw-sa`; its `README.md` describes them, how they were built from MAPL2 captures, `cmpchk.py`, and their run time), `GEOSphysics_GridComp/GEOSgwd_GridComp/regression/` (`gwd-ncar-sa`) and `GEOSphysics_GridComp/GEOSturbulence_GridComp/regression/` (`turbulence-shocmf-sa/run1`, `turbulence-shocmf-sa/run2`, `turbulence-default-sa/run1`, `turbulence-default-sa/run2`). The dynamical-core cases are in FVdycoreCubed. The general rules for regression cases are in the `GEOSgcm_GridComp` `AGENTS.md`.
 - ctest sets `OMP_NUM_THREADS=1` for the Physics cases (`EXTRA_ENV` in their regression `CMakeLists.txt`); set it yourself when running a case by hand.
 - `GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist/` has its own tests (`pyMoist/tests/`).

@@ -6,12 +6,14 @@ Standalone MAPL3 regression case for TURBULENCE, compared exactly against a stor
 |---|---|---|---|
 | `turbulence-shocmf-sa/run1` | TURBULENCE Run1 | TURBULENCE import, internal, export; DataTracers internal (the diffused tracers) | matches the MAPL2 capture (cmpchk.py, 2026-11-13); reproduced by a second run |
 | `turbulence-shocmf-sa/run2` | TURBULENCE Run1, then Run2 | same | matches the MAPL2 capture (cmpchk.py, 2026-11-13); reproduced by a second run |
+| `turbulence-default-sa/run1` | TURBULENCE Run1 (SHOC and EDMF off) | same | matches the MAPL2 capture (cmpchk.py, 2026-11-13, 149 variables); reproduced by a second run |
+| `turbulence-default-sa/run2` | TURBULENCE Run1, then Run2 (SHOC and EDMF off) | same | matches the MAPL2 capture (cmpchk.py, 2026-11-13, 158 variables); reproduced by a second run |
 
 The cases are listed in `cases.txt` and registered by `CMakeLists.txt` through `esma_add_regression_tests` (`NAME turbulence`; ctest label `REGRESSION`, test name = case name), added by `add_subdirectory (regression)` in `../CMakeLists.txt`. `run_case.cmake` is the Moist one.
 
 ## Common setup
 
-- **Configuration:** the stock v12 C12L181 SHOC-MF setup (`TURBULENCE_DO_SHOC: 1`, `EDMF_DOMF: 1`, `PDFSHAPE: 6`, the tuned `EDMF_*` and `TURBULENCE_SHC_LENFAC*` keys, `HGT_SURFACE: 0.0`), no waves, no SCM surface, refresh every step (no `TURBULENCE_DT`). `turbulence.yaml` holds every Turbulence key the MAPL2 run's `AGCM.rc` set; keep it in sync with that run.
+- **Configuration:** `turbulence-shocmf-sa`: the stock v12 C12L181 SHOC-MF setup (`TURBULENCE_DO_SHOC: 1`, `EDMF_DOMF: 1`, `PDFSHAPE: 6`, the tuned `EDMF_*` and `TURBULENCE_SHC_LENFAC*` keys, `HGT_SURFACE: 0.0`), no waves, no SCM surface, refresh every step (no `TURBULENCE_DT`). `turbulence.yaml` holds every Turbulence key the MAPL2 run's `AGCM.rc` set; keep it in sync with that run.
 - **Geometry, layout, logging:** as the Moist cases: C12L181 (vertical grid from `PLE`), 6 MPI tasks, `OMP_NUM_THREADS=1`, `logging.yaml`.
 - **Clock:** one 20-minute step from `2000-04-14T22:00:00` (`cap_restart.yaml`), the fourth step of the MAPL2 run, which started at 21:00. The refresh alarm rings on the first step, so `REFRESH` runs, as in MAPL2.
 - **No ExtData; History only activates exports** (`history.yaml`, a collection that never writes).
@@ -19,6 +21,14 @@ The cases are listed in `cases.txt` and registered by `CMakeLists.txt` through `
 - **Diffused tracers:** `DataTracers` holds the 47 fields of MAPL2's `TR` bundle in the capture (Physics' `QW`, Moist's 8 water species, the PChem, GOCART and TR tracers) and subscribes them to TURBULENCE's `TRDIFF` service, with the capture's long names as standard names (TURBULENCE recovers `Q`, `QLLS`, `QILS`, ... from them). Its internal state is checkpointed and compared, so the diffusion of every tracer is checked. Names: the capture's `TR_<name>` without the prefix, `.` replaced by `_` (`CA.ocphobic` -> `CA_ocphobic`).
 - **Unconnected:** TURBULENCE's `TRADV` subscription (SHOC on), as Moist's.
 - **Exports:** History activates the exports MAPL2 had allocated (the export capture), less the `TRI` bundle members, the fields that are internals in MAPL3, and the 7 never written with SHOC on (`DU`, `DBUOY`, `WERAD`, `ZCLD`, `ZRADBS`, `ZRADML`, `ZSML`). Which exports are requested changes what TURBULENCE's `ALLOC=` and `associated()` tests do, so the list reproduces the MAPL2 run (`../mapl3-porting-notes.md`, step 6).
+
+## `turbulence-default-sa`
+
+The stock v12 C12L181 default setup, with the SHOC-MF block of `AGCM.rc` commented out: `TURBULENCE_DO_SHOC` and `EDMF_DOMF` at their default 0, so Turbulence runs the Louis/Lock path. At `LM /= 72` the code defaults are `JASON_*` false, `PBLHT_OPTION` 5, `SMTH_HGT` 300 and `PDFSHAPE` 1. `turbulence.yaml` has only `HGT_SURFACE: 0.0` and `USE_WAVES: 0`. Everything else is as `turbulence-shocmf-sa` (same clock, geometry, 44 imports, 47 tracers, the same 9 `phase2_fields`; `data-for-turbulence.yaml`, `data-tracers.yaml`, `data-phase2.yaml` and the two roots differ only in comments), and so are `run1` and `run2` (above). With SHOC off there is no `TRADV` subscription.
+
+Exports: the MAPL2 export capture lacks `BRUNTSHOC`, `EDMF_FRC`, `EDMF_MF`, `EDMF_WQT`, `EDMF_WSL` and `LOBUKHOV` (SHOC and EDMF off). `history.yaml` requests the captured exports, less the `TRI` members, the internals, and eight that must not be requested because this configuration never writes them (MAPL3 would leave them uninitialized, MAPL2 zeroed them): `DU`, `EDMF_DQRDT`, `EDMF_DQSDT`, the PDF moments `SL2`, `SL3`, `W2`, `W3` (`PDFSHAPE < 5`), and `ISOTROPY` (with SHOC off and `TKE` requested, its level 0 is read uninitialized: floating invalid trap; unrequested, it is a zero-filled work array as in MAPL2). `DBUOY`, `WERAD`, `ZCLD`, `ZRADBS`, `ZRADML` and `ZSML` are written here (Lock) and compared.
+
+Data: converted capture in `~/input/turbulence/default/C12L181/new-style`; restart subsets as for `turbulence-shocmf-sa`, in `GEOSturbulence_GridComp/turbulence-default-sa/` of the regression data (the same layout as below).
 
 ## `run1`
 
@@ -39,6 +49,10 @@ CAP (libMAPL.cap; ExtData off, History on)
 ```
 
 Root's import `X` and TURBULENCE's import `X` are the same field (both connected to `DataForTurbulence`), so the copy changes what Run2 sees. Restarts from the MAPL2 states before Run1, plus `DataPhase2_internal.nc` from the import state before Run2; compared with the states after Run2.
+
+## Rebuilding a case's data
+
+`tools/` has the scripts that turn a MAPL2 capture into a case (conversion, the restart files, the data-component YAML, the History list, running by hand), and `tools/README.md` says why they are needed and how to use them. ctest does not use them.
 
 ## Regression data
 
@@ -73,6 +87,7 @@ After a run, each case's `cmpchk.py`, run from the run directory, compares `chec
 ## Running
 
 ```
-ctest -R turbulence-shocmf-sa      # both
+ctest -R turbulence-shocmf-sa      # both SHOC-MF cases
+ctest -R turbulence-default-sa     # both default-setup cases
 ctest -R turbulence-shocmf-sa/run2
 ```
