@@ -15,6 +15,8 @@ module GEOS_TurbulenceGridCompMod
   use ESMF
   use GEOS_Mod
   use MAPL
+  use pflogger, only: logger_t => logger
+  use gFTL2_StringVector, only: StringVector
   use LockEntrain
   use shoc
   use edmf_mod, only: run_edmf,mfparams
@@ -57,63 +59,50 @@ module GEOS_TurbulenceGridCompMod
 !\noindent
 !{\bf Methods}
 !
-!   {\tt GEOS\_TurbulenceGridComp} uses the default Finalize method of GEOS\_Generic.
-!   Its Initialize method does the generic initialization and then fills the TRI
-!   export bundle (see below). It has a 2-stage Run method that can be used in
-!   conjunction with two-stage surface calculations to implement semi-implicit
-!   time differencing.
+!   {\tt GEOS\_TurbulenceGridComp} has no Finalize method. Its Initialize method
+!   creates the refresh alarm and fills the TRI export bundle (see below). It has
+!   two run phases, Run1 and Run2, that can be used in conjunction with two-stage
+!   surface calculations to implement semi-implicit time differencing.
 !
 !\vspace{12 pt}
 !\noindent
 !{\bf Time Behavior}
 !
-!   {\tt GEOS\_TurbulenceGridComp} assumes both run stages will be invoked every 
-!   RUN\_DT seconds, where RUN\_DT is required in the configuration. On this interval
-!   both run stages will perform diffusion updates using diffusivities found in the
-!   internal state.  The diffusivities in the internal state may be refreshed intermitently
-!   by specifying MY\_STEP and ACCUMINT in the configuration. Accumulated imports used
-!   in the intermittent refreshing are valid only on MY\_STEP intervals. Currently the
-!   origin of these intervals is the beginning of the run. Accumulation of these imports
-!   is done for a period ACCUMINT prior to the valid time. Both ACCUMINT and MY\_STEP are
-!   in seconds.
+!   {\tt GEOS\_TurbulenceGridComp} assumes both run phases are invoked on every
+!   step of its clock (MAPL2: RUN\_DT). On this interval both phases perform
+!   diffusion updates using diffusivities found in the internal state. The
+!   diffusivities are refreshed when the refresh alarm rings, every
+!   TURBULENCE\_DT seconds (default: the clock step; MAPL2: the generic run
+!   alarm, DT:).
 !
 !\vspace{12 pt}
 !\noindent
-!{\bf Working with Bundles and Friendlies}
+!{\bf Working with Bundles and Services}
 !
-!   {\tt GEOS\_TurbulenceGridComp} works on bundles of quantities to be diffused
-!   and with corresponding bundles of their tendencies, surface values, etc.
-!   These bundles may contain an arbitrary number of conservative quantities and
-!   no requirements or restrictions are placed on what quantities they contain.
-!   Quantities required for the calculation, such as pressures, stability, etc
-!   are passed separately from the diffused quantities. Little distinction is made
-!   of what is in the bundle, except that needed to decide what diffusivity applies
-!   to the quantity and in what form its effects are implemented.
+!   {\tt GEOS\_TurbulenceGridComp} provides the service TRDIFF (MAPL2: the TR
+!   import bundle, which Physics filled with the fields friendly to
+!   TURBULENCE). Components subscribe their internals to it; Turbulence
+!   updates them in place. No requirements are placed on what quantities the
+!   bundle contains; little distinction is made, except that needed to decide
+!   what diffusivity applies to the quantity and in what form its effects are
+!   implemented. MAPL3 gives the bundle's fields generated names, so their short
+!   names are recovered from their standard names (diffused\_short\_name).
 !
-!   Quantities to be diffused can be marked as "Friendly-for-diffusion". In that case,
-!   {\tt GEOS\_TurbulenceGridComp} directly updates the quantity; otherwise it 
-!   merely computes its tendency, placing it in the appropriate export and treating
-!   the quantity itself as read-only.
+!   Tendencies are internals named NAMEIT (QVIT for Q), re-exported, looked up
+!   by name for every diffused quantity; a tendency is computed only if it
+!   exists. SIT, UIT, VIT, TKESHOCIT, QVIT, QLLSIT and QILSIT always exist;
+!   tracer tendencies are created for the names in the TRI\_increments list of
+!   the configuration (names whose tendency is already built in, such as S or
+!   Q, are skipped).
 !
-!   Tendencies are explicit exports named NAMEIT (QVIT for Q), looked up by
-!   name for every diffused quantity. A tendency is computed only if its
-!   export exists and has been allocated. QVIT, QLLSIT and QILSIT always
-!   exist; tracer tendencies are created for the names listed under
-!   TRI_increments:: in the resource file (names whose tendency is already
-!   one of the built-in exports, such as S or Q, are skipped).
-!
-!   For History, the tendency exports are also collected in the TRI export
-!   bundle, filled by Turbulence's Initialize: SIT, UIT, VIT, TKESHOCIT,
-!   QLLSIT, QILSIT, QVIT (as QIT), and the TRI_increments:: tracer
-!   tendencies. These are the same fields as the exports, and are allocated
-!   so they are always computed.
+!   For History, the tendencies are also collected in the TRI export bundle,
+!   filled by Initialize: SIT, UIT, VIT, TKESHOCIT, QLLSIT, QILSIT, QVIT (as
+!   QIT), and the TRI\_increments tracer tendencies.
 !   
-!   {\tt GEOS\_TurbulenceGridComp} works with one bundle, TR, in the import
-!   state. Dry static energy, the winds, and
-!   Turbulence's own TKESHOC and QT2 are not in this bundle: they are
-!   diffused directly (see DIRECT_NAME) from imports (S, U, V) or the
-!   internal state (TKESHOC, QT2), and are always diffused first, in that
-!   order. Their tendencies are SIT, UIT, VIT and TKESHOCIT. Under
+!   Dry static energy, the winds, and Turbulence's own TKESHOC and QT2 are not
+!   in TRDIFF: they are diffused directly (see DIRECT_NAME) from imports (S, U,
+!   V) or the internal state (TKESHOC, QT2), and are always diffused first, in
+!   that order. Their tendencies are SIT, UIT, VIT and TKESHOCIT. Under
 !   SYNCUV the mixing coefficients are computed from the winds after Moist
 !   (UAFMOIST, VAFMOIST). The surface values (SHAT, UHAT, VHAT, QHAT)
 !   and their changes (SDEL, UDEL, VDEL, QDEL) are explicit imports, and the
@@ -121,21 +110,13 @@ module GEOS_TurbulenceGridCompMod
 !   value (SDFL, UDFL, VDFL, QDFL) are explicit exports. Quantities other than
 !   S, U, V and Q have zero surface flux.
 !
-!   All tendency exports are checked for associated pointers before being
-!   updated.
-!
-!   Fields in the TR bundle can have four attributes:
+!   Fields in the TRDIFF bundle can have two attributes (ESMF Info keys):
 ! \begin{itemize}
-! \item FriendlyTo[{\it Component Name}]: default=false --- If true, TR field is updated.
-! \item WeightedTendency: default=true --- If true, tendencies are pressure-weighted
-! \item DiffuseLike: ('S','Q','M') default='S' --- Use mixing coefficients for either
+! \item WeightedTendency: default=false --- If true, tendencies are pressure-weighted
+! \item DiffuseLike: ('S','Q','U') default='Q' --- Use mixing coefficients for either
 !          heat, moisture or momentum.
 ! \end{itemize}
 !  
-!   Only fields in the TR bundle are checked for friendly status. Non-friendly
-!   fields in TR and all other bundles are treated with the usual Import/Export
-!   rules.
-!
 !\vspace{12 pt}
 !\noindent
 !{\bf Other imports and exports}
@@ -175,10 +156,7 @@ module GEOS_TurbulenceGridCompMod
 !
 !EOP
 
-    logical                             :: dflt_false = .false.
-    character(len=ESMF_MAXSTR)          :: dflt_q     = 'Q'
-
-    ! Quantities diffused directly rather than via the TR bundle, in the order
+    ! Quantities diffused directly rather than via the TRDIFF bundle, in the order
     ! they are processed (S must be first for SHVC). For each: its name in the
     ! import or internal state, diffusion type, whether its tendency is
     ! pressure-weighted, whether the quantity itself is updated, and whether
@@ -196,6 +174,27 @@ module GEOS_TurbulenceGridCompMod
          [.false., .false., .false., .true., .true.]
 
     logical :: DEBUG_TRB
+
+    ! Name of the alarm that triggers REFRESH (MAPL2: the generic RUNALARM)
+    character(len=*), parameter :: REFRESH_ALARM_NAME = 'turbulence_refresh_alarm'
+
+    ! Component logger, set by Run1 and Run2, for the DEBUG_TRB reports of
+    ! module procedures that have no gridded component (report_maxmin)
+    class(logger_t), pointer :: TRB_LOGGER => null()
+
+    ! MAPL3 pointers to vertically edge-located fields are 1-based; MAPL2's
+    ! were 0:LM, which this code assumes. Remaps a pointer in place (if
+    ! associated) to MAPL2's bounds.
+    interface zero_based_edges
+       module procedure zero_based_edges_1d
+       module procedure zero_based_edges_3d
+       module procedure zero_based_edges_4d
+    end interface zero_based_edges
+
+    interface get_pointer_alloc
+       module procedure get_pointer_alloc_2d
+       module procedure get_pointer_alloc_3d
+    end interface get_pointer_alloc
 
 contains
 
@@ -223,8 +222,8 @@ contains
 
 ! !ARGUMENTS:
 
-    type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
-    integer, optional                  :: RC  ! return code
+    type(ESMF_GridComp)                :: GC  ! gridded component
+    integer, intent(out)               :: RC  ! return code
 !EOP
     integer                            :: DO_SHOC, NUMUP, SCM_SL
 !=============================================================================
@@ -233,9 +232,6 @@ contains
 
     integer                                 :: STATUS
     character(len=ESMF_MAXSTR)              :: COMP_NAME
-    type (ESMF_Config)                      :: CF
-
-    type (MAPL_MetaComp), pointer           :: MAPL
 
     integer :: DO_WAVES
     integer :: DO_SEA_SPRAY
@@ -244,124 +240,118 @@ contains
     character(len=ESMF_MAXSTR), allocatable :: NAMES(:)
     character(len=ESMF_MAXSTR)              :: TendUnits
     type(MAPL_UngriddedDim)                 :: ungrd_numup
+    type(StringVector)                      :: ADVECTED
 
 !=============================================================================
 
 ! Begin...
 
-! Get my name and set-up traceback handle
+! Get my name (prefix of the TURBULENCE_* resource labels: MAPL3 names the
+! user gridcomp after the child)
 ! ---------------------------------------
 
-    call ESMF_GridCompGet( GC, CONFIG=CF, NAME=COMP_NAME, _RC)
+    call ESMF_GridCompGet( GC, NAME=COMP_NAME, _RC)
 
-! Get my MAPL_Generic state
-!--------------------------
-    call MAPL_GetObjectFromGC ( GC, MAPL, _RC)
+    call MAPL_GridCompGetResource(GC, 'DEBUG_TRB', DEBUG_TRB, default=.false., _RC)
 
-    call MAPL_GetResource( MAPL, DEBUG_TRB,   Label="DEBUG_TRB:", default=.FALSE., _RC)
+    call MAPL_GridCompGetResource(GC, 'USE_WAVES', DO_WAVES, default=0, _RC)
 
-    call MAPL_GetResource ( MAPL, DO_WAVES, Label="USE_WAVES:", DEFAULT=0, _RC)
-
-    call MAPL_GetResource ( MAPL, DO_SEA_SPRAY, Label="USE_SEA_SPRAY:", DEFAULT=0, _RC)
+    call MAPL_GridCompGetResource(GC, 'USE_SEA_SPRAY', DO_SEA_SPRAY, default=0, _RC)
 
 ! Set the Initialize and Run entry points
 ! ---------------------------------------
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, _RC)
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run1, _RC)
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run2, _RC)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run1, phase_name='Run1', _RC)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run2, phase_name='Run2', _RC)
 
 ! Get number of EDMF updrafts
 ! ----------------------------
-    call ESMF_ConfigGetAttribute( CF, NUMUP, Label="EDMF_NUMUP:", default=10, _RC)
+    call MAPL_GridCompGetResource(GC, 'EDMF_NUMUP', NUMUP, default=10, _RC)
     ungrd_numup = MAPL_UngriddedDim(NUMUP, name="EDMF_plume", units="1")
 
-    call ESMF_ConfigGetAttribute( CF, SCM_SL, Label="SCM_SL:", default=0, _RC)
+    call MAPL_GridCompGetResource(GC, 'SCM_SL', SCM_SL, default=0, _RC)
 
-    call ESMF_ConfigGetAttribute( CF, DO_SHOC, Label=trim(COMP_NAME)//"_DO_SHOC:", &
-                                  default=0, _RC)
+    call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_DO_SHOC', DO_SHOC, default=0, _RC)
 
 ! Set the state variable specs.
 ! -----------------------------
 
 !BOS
 
-! The specs are in Turbulence_StateSpecs.rc. TR, TRI and the TRI_increments
-! tendencies stay hand-written (bundles, and names known only at run time).
+! The specs are in Turbulence_StateSpecs.rc. TRDIFF, TRADV, TRI and the
+! TRI_increments tendencies stay hand-written (services, a bundle, and names
+! known only at run time).
 
 #include "Turbulence_Import___.h"
 
-     call MAPL_AddImportSpec(GC,                                  &
-        SHORT_NAME         = 'TR',                                &
-        LONG_NAME          = 'diffused_quantities',               &
-        UNITS              = 'X',                                 &
-        DIMS               = MAPL_DimsHorzVert,                   &
-        VLOCATION          = MAPL_VLocationCenter,                &
-        DATATYPE           = MAPL_BundleItem,                     &
-        RESTART    = MAPL_RestartSkip,                            &
-
-                                                       _RC)
-
 #include "Turbulence_Export___.h"
 
-    call MAPL_AddExportSpec(GC,                                   &
-        SHORT_NAME = 'TRI',                                       &
-        LONG_NAME  = 'diffusion_tendencies',                      &
-        UNITS      = 'X kg m-2 s-1',                              &
-        DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,                        &
-        DATATYPE   = MAPL_BundleItem,                             &
-                                                       _RC)
+! Turbulent diffusion service (replaces MAPL2's TR import, which Physics filled
+! with the fields FRIENDLYTO=TURBULENCE). Subscribers list their internals as
+! service items; MAPL adds the bundle to both the import and the export state.
+    call MAPL_GridCompAddSpec(GC,                                      &
+         state_intent  = ESMF_STATEINTENT_EXPORT,                      &
+         short_name    = 'TRDIFF',                                     &
+         standard_name = 'turbulently_diffused_quantities',            &
+         itemtype      = MAPL_STATEITEM_SERVICE,                       &
+                                                                   _RC)
 
-! Tracer tendencies requested in TRI_increments::
+! TRI: the tendency internals (re-exported), for History as TRI%NAME; filled
+! in Initialize.
+    call MAPL_GridCompAddSpec(GC,                                      &
+         state_intent  = ESMF_STATEINTENT_EXPORT,                      &
+         short_name    = 'TRI',                                        &
+         standard_name = 'diffusion_tendencies',                       &
+         units         = 'X kg m-2 s-1',                               &
+         dims          = 'xyz',                                        &
+         vertical_stagger = MAPL_VERTICAL_STAGGER_CENTER,              &
+         itemtype      = MAPL_STATEITEM_FIELDBUNDLE,                   &
+                                                                   _RC)
+
+#include "Turbulence_Internal___.h"
+
+! Tracer tendencies requested in TRI_increments: internals, re-exported, as
+! the other tendencies (MAPL2 allocated them all for TRI)
 !------------------------------------------------
-    call GetTriIncrements(CF, NAMES, _RC)
+    call GetTriIncrements(GC, NAMES, _RC)
     do i = 1, size(NAMES)
       if (NAMES(i) == 'AOADAYS') then
         TendUnits = 'days s-1'
       else
         TendUnits = 'UNITS'
       end if
-      call MAPL_AddExportSpec(GC,                                           &
-        SHORT_NAME =  trim(NAMES(i))//'IT',                                 &
-        LONG_NAME  = 'tendency_of_'//trim(NAMES(i))//'_due_to_turbulence',  &
-        UNITS      =  TendUnits,                                            &
-        DIMS       =  MAPL_DimsHorzVert,                                    &
-        VLOCATION  =  MAPL_VLocationCenter,                                 &
-        _RC)
+      call MAPL_GridCompAddSpec(GC,                                                       &
+         state_intent     = ESMF_STATEINTENT_INTERNAL,                                    &
+         short_name       = trim(NAMES(i))//'IT',                                         &
+         standard_name    = 'tendency_of_'//trim(NAMES(i))//'_due_to_turbulence',         &
+         units            = trim(TendUnits),                                              &
+         dims             = 'xyz',                                                        &
+         vertical_stagger = MAPL_VERTICAL_STAGGER_CENTER,                                 &
+         restart_mode     = MAPL_RESTART_SKIP,                                            &
+         fill_value       = 0.0,                                                          &
+         add_to_export    = .true.,                                                       &
+                                                                                      _RC)
     end do
     deallocate(NAMES)
 
-#include "Turbulence_Internal___.h"
+! Advection (replaces MAPL2's FRIENDLYTO='DYNAMICS:TURBULENCE' when SHOC is
+! on): one subscription to the TRADV service for these internals
+    if (DO_SHOC /= 0) then
+       call ADVECTED%push_back('PDF_A')
+       call ADVECTED%push_back('TKESHOC')
+       call ADVECTED%push_back('QT2')
+       call ADVECTED%push_back('QT3')
+       call MAPL_GridCompAddSpec(GC,                                   &
+            state_intent  = ESMF_STATEINTENT_IMPORT,                   &
+            short_name    = 'TRADV',                                   &
+            standard_name = 'advected_quantities',                     &
+            itemtype      = MAPL_STATEITEM_SERVICE,                    &
+            service_items = ADVECTED,                                  &
+                                                                   _RC)
+    end if
 
 !EOS
-
-! Set the Profiling timers
-! ------------------------
-
-    call MAPL_TimerAdd(GC,   name="-RUN1"       ,_RC)
-    call MAPL_TimerAdd(GC,   name="--DIFFUSE"   ,_RC)
-    call MAPL_TimerAdd(GC,   name="--REFRESHKS" ,_RC)
-    call MAPL_TimerAdd(GC,   name="---PRELIMS"  ,_RC)
-    call MAPL_TimerAdd(GC,   name="---SURFACE" ,_RC)
-    call MAPL_TimerAdd(GC,   name="---MASSFLUX" ,_RC)
-    call MAPL_TimerAdd(GC,   name="---SHOC"    ,_RC)
-    call MAPL_TimerAdd(GC,   name="---LOUIS"    ,_RC)
-    call MAPL_TimerAdd(GC,   name="---LOCK"     ,_RC)
-    call MAPL_TimerAdd(GC,   name="----LOCK_RUN",_RC)
-    call MAPL_TimerAdd(GC,   name="----LOCK_DATA",_RC)
-    call MAPL_TimerAdd(GC,   name="----LOCK_ALLOC",_RC)
-    call MAPL_TimerAdd(GC,   name="----LOCK_DEALLOC",_RC)
-    call MAPL_TimerAdd(GC,   name="---POSTLOCK" ,_RC)
-    call MAPL_TimerAdd(GC,   name="---BELJAARS" ,_RC)
-    call MAPL_TimerAdd(GC,   name="---DECOMP"   ,_RC)
-    call MAPL_TimerAdd(GC,   name="-RUN2"       ,_RC)
-    call MAPL_TimerAdd(GC,   name="--UPDATE"    ,_RC)
-    
-! Set generic init and final methods
-! ----------------------------------
-
-    call MAPL_GenericSetServices    ( GC, _RC)
 
     _RETURN(_SUCCESS)
   
@@ -381,35 +371,83 @@ contains
 
 ! !ARGUMENTS:
 
-    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
-    type(ESMF_State),    intent(inout) :: IMPORT ! Import state
-    type(ESMF_State),    intent(inout) :: EXPORT ! Export state
-    type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
-    integer, optional,   intent(  out) :: RC     ! Error code
+    type(ESMF_GridComp)  :: GC     ! Gridded component
+    type(ESMF_State)     :: IMPORT ! Import state
+    type(ESMF_State)     :: EXPORT ! Export state
+    type(ESMF_Clock)     :: CLOCK  ! The clock
+    integer, intent(out) :: RC     ! Error code
 
-! !DESCRIPTION: Does the generic initialization, then fills the TRI export
-!   bundle with the turbulence tendency exports, so they can be requested in
-!   History as TRI%NAME. Q's tendency, QVIT, is in the bundle as QIT. Bundle
-!   fields are allocated here because History does not allocate them.
+! !DESCRIPTION: Creates the refresh alarm, then fills the TRI export bundle
+!   with the turbulence tendencies, so they can be requested in History as
+!   TRI%NAME. Q's tendency, QVIT, is in the bundle as QIT. The tendencies are
+!   internals, so they are always allocated and computed.
 
 !EOP
 
     integer                                 :: STATUS
     character(len=ESMF_MAXSTR)              :: COMP_NAME
-    type (ESMF_Config)                      :: CF
+    type (ESMF_State)                       :: INTERNAL
     type (ESMF_FieldBundle)                 :: TRI
     type (ESMF_Field)                       :: FIELD
-    real, dimension(:,:,:), pointer         :: PTR
     character(len=ESMF_MAXSTR), allocatable :: NAMES(:)
     integer                                 :: I
+
+    real                                    :: run_dt
+    integer                                 :: refresh_dt
+    type(ESMF_TimeInterval)                 :: refresh_interval, time_step
+    type(ESMF_Time)                         :: current_time, ring_time
+    type(ESMF_Calendar)                     :: cal
+    integer                                 :: yy, mm, dd, reference_date, reference_time
+    logical                                 :: run_at_interval_start
+    type(ESMF_Alarm)                        :: refresh_alarm
 
     character(len=*), parameter :: TRI_FIXED(6) = &
          [character(len=9) :: 'SIT', 'UIT', 'VIT', 'TKESHOCIT', 'QLLSIT', 'QILSIT']
 
-    call ESMF_GridCompGet( GC, CONFIG=CF, NAME=COMP_NAME, _RC)
+    call ESMF_GridCompGet( GC, NAME=COMP_NAME, _RC)
 
-    call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK, _RC)
+! Refresh alarm (MAPL2: the generic RUNALARM, period DT:), set up as in MAPL2's
+! handle_clock_and_main_alarm (MAPL_Generic.F90), which MAPL3 no longer
+! provides for components; same code as IRRAD's and SOLAR's MAPL3 ports.
+! MAPL3 calls Run1 and Run2 on every step of Turbulence's own clock.
+    call MAPL_ClockGet(CLOCK, dt=run_dt, _RC)
+    call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_DT', refresh_dt, default=nint(run_dt), _RC)
+    _ASSERT(refresh_dt > 0, trim(COMP_NAME)//'_DT must be a positive number of seconds')
+    _ASSERT(mod(refresh_dt, nint(run_dt)) == 0, trim(COMP_NAME)//'_DT must be a multiple of the clock time step')
+    call ESMF_TimeIntervalSet(refresh_interval, s=refresh_dt, _RC)
 
+    call ESMF_ClockGet(CLOCK, currTime=current_time, timeStep=time_step, calendar=cal, _RC)
+    call ESMF_TimeGet(current_time, yy=yy, mm=mm, dd=dd, _RC)
+    call MAPL_GridCompGetResource(GC, 'RUN_AT_INTERVAL_START', run_at_interval_start, default=.false., _RC)
+    ! alarm reference date and time default to midnight of the current day
+    call MAPL_GridCompGetResource(GC, 'REFERENCE_DATE', reference_date, default=yy*10000 + mm*100 + dd, _RC)
+    call MAPL_GridCompGetResource(GC, 'REFERENCE_TIME', reference_time, default=0, _RC)
+    call ESMF_TimeSet(ring_time, &
+         yy=reference_date/10000, mm=mod(reference_date, 10000)/100, dd=mod(reference_date, 100), &
+         h=reference_time/10000, m=mod(reference_time, 10000)/100, s=mod(reference_time, 100), &
+         calendar=cal, _RC)
+    if (ring_time > current_time) then
+       ring_time = ring_time - (int((ring_time - current_time)/refresh_interval) + 1)*refresh_interval
+    end if
+    ! back off by the clock's dt since the clock advances AFTER the run method
+    if (.not. run_at_interval_start) ring_time = ring_time - time_step
+    ! make sure that ring_time is not in the past
+    do while (ring_time < current_time)
+       ring_time = ring_time + refresh_interval
+    end do
+
+    refresh_alarm = ESMF_AlarmCreate( &
+         name=REFRESH_ALARM_NAME, &
+         clock=CLOCK, &
+         ringTime=ring_time, &
+         ringInterval=refresh_interval, &
+         sticky=.false., _RC)
+    if (ring_time == current_time) then
+       call ESMF_AlarmRingerOn(refresh_alarm, _RC)
+    end if
+
+! TRI
+    call MAPL_GridCompGetInternalState(GC, INTERNAL, _RC)
     call ESMF_StateGet(EXPORT, 'TRI', TRI, _RC)
 
     do I = 1, size(TRI_FIXED)
@@ -418,7 +456,7 @@ contains
 
     call AddToTRI('QVIT', 'QIT', _RC)
 
-    call GetTriIncrements(CF, NAMES, _RC)
+    call GetTriIncrements(GC, NAMES, _RC)
     do I = 1, size(NAMES)
        call AddToTRI(trim(NAMES(I))//'IT', trim(NAMES(I))//'IT', _RC)
     end do
@@ -428,19 +466,18 @@ contains
 
   contains
 
-    subroutine AddToTRI(EXPORT_NAME, BUNDLE_NAME, RC)
-      character(len=*),  intent(in ) :: EXPORT_NAME
+    subroutine AddToTRI(INTERNAL_NAME, BUNDLE_NAME, RC)
+      character(len=*),  intent(in ) :: INTERNAL_NAME
       character(len=*),  intent(in ) :: BUNDLE_NAME
       integer, optional, intent(out) :: RC
 
       integer :: STATUS
 
-      call MAPL_GetPointer(EXPORT, PTR, EXPORT_NAME, alloc=.true., _RC)
-      call ESMF_StateGet(EXPORT, EXPORT_NAME, FIELD, _RC)
-      if (BUNDLE_NAME /= EXPORT_NAME) then
+      call ESMF_StateGet(INTERNAL, INTERNAL_NAME, FIELD, _RC)
+      if (BUNDLE_NAME /= INTERNAL_NAME) then
          FIELD = ESMF_NamedAlias(FIELD, name=BUNDLE_NAME, _RC)
       end if
-      call MAPL_FieldBundleAdd(TRI, FIELD, _RC)
+      call MAPL_FieldBundleAdd(TRI, [FIELD], _RC)
 
       _RETURN(_SUCCESS)
     end subroutine AddToTRI
@@ -465,11 +502,11 @@ contains
 
 ! !ARGUMENTS:
 
-    type(ESMF_GridComp), intent(inout) :: GC
-    type(ESMF_State),    intent(inout) :: IMPORT
-    type(ESMF_State),    intent(inout) :: EXPORT
-    type(ESMF_Clock),    intent(inout) :: CLOCK
-    integer, optional,   intent(  out) :: RC
+    type(ESMF_GridComp)  :: GC
+    type(ESMF_State)     :: IMPORT
+    type(ESMF_State)     :: EXPORT
+    type(ESMF_Clock)     :: CLOCK
+    integer, intent(out) :: RC
 
 ! !DESCRIPTION: The first run stage of {\tt GEOS\_TurbulenceGridComp} computes the diffusivities,
 !   sets-up the matrix for a backward-implicit computation of the surface fluxes,
@@ -505,10 +542,11 @@ contains
 
 ! Local derived type aliases
 
-    type (MAPL_MetaComp), pointer   :: MAPL
-    type (ESMF_Config      )            :: CF
+    type (ESMF_Grid        )            :: GRID
     type (ESMF_State       )            :: INTERNAL 
     type (ESMF_Alarm       )            :: ALARM   
+    logical                             :: REFRESH_NOW
+    class(logger_t), pointer            :: LOGGER
 
     character(len=ESMF_MAXSTR) :: GRIDNAME
     character(len=4)           :: imchar
@@ -558,39 +596,28 @@ contains
 
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, _RC)
 
-! Get my internal MAPL_Generic state
+    call MAPL_GridCompTimerStart(GC, "TOTAL", _RC)
+    call MAPL_GridCompTimerStart(GC, "-RUN1", _RC)
+
+! Grid sizes, internal state, logger
 !-----------------------------------
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, _RC)
-
-    call MAPL_TimerOn(MAPL,"TOTAL")
-    call MAPL_TimerOn(MAPL,"-RUN1")
-
-! Get parameters from generic state.
-!-----------------------------------
-
-    call MAPL_Get(MAPL,        &
-         IM=IM, JM=JM, LM=LM,               &
-         RUNALARM=ALARM,                    &
-         INTERNAL_ESMF_STATE=INTERNAL,      &
-                                  _RC)
-
-! Get configuration from component
-!---------------------------------
-
-    call ESMF_GridCompGet( GC, CONFIG = CF, _RC)
+    call MAPL_GridCompGet(GC, num_levels=LM, grid=GRID, logger=LOGGER, _RC)
+    call MAPL_GridGet(GRID, IM=IM, JM=JM, _RC)
+    call MAPL_GridCompGetInternalState(GC, INTERNAL, _RC)
+    TRB_LOGGER => LOGGER
 
 ! Sea spray
-    call MAPL_GetResource ( MAPL, DO_WAVES, Label="USE_WAVES:", DEFAULT=0, _RC)
+    call MAPL_GridCompGetResource(GC, 'USE_WAVES', DO_WAVES, default=0, _RC)
 
-    call MAPL_GetResource ( MAPL, DO_SEA_SPRAY, Label="USE_SEA_SPRAY:", DEFAULT=0, _RC)
+    call MAPL_GridCompGetResource(GC, 'USE_SEA_SPRAY', DO_SEA_SPRAY, default=0, _RC)
 
     if (DO_WAVES/=0 .and. DO_SEA_SPRAY/=0) then
-        call MAPL_GetPointer(IMPORT, SH_SPR, 'SHFX_SPRAY', _RC)
-        call MAPL_GetPointer(IMPORT, LH_SPR, 'LHFX_SPRAY', _RC)
+        call MAPL_StateGetPointer(IMPORT, SH_SPR, 'SHFX_SPRAY', _RC)
+        call MAPL_StateGetPointer(IMPORT, LH_SPR, 'LHFX_SPRAY', _RC)
 
-        call MAPL_GetPointer(EXPORT, SH_SPRX, 'SHFX_SPRAY', _RC)
-        call MAPL_GetPointer(EXPORT, LH_SPRX, 'LHFX_SPRAY', _RC)
+        call MAPL_StateGetPointer(EXPORT, SH_SPRX, 'SHFX_SPRAY', _RC)
+        call MAPL_StateGetPointer(EXPORT, LH_SPRX, 'LHFX_SPRAY', _RC)
 
         if (associated(SH_SPRX)) SH_SPRX = SH_SPR
         if (associated(LH_SPRX)) LH_SPRX = LH_SPR
@@ -602,115 +629,122 @@ contains
 ! Get pressure & height structure; this is instantaneous.
 !-----------------------------------------------
 
-     call MAPL_GetPointer(IMPORT,  PLE,   'PLE',     _RC)
-     call MAPL_GetPointer(IMPORT,  ZLE,   'ZLE',     _RC)
+     call MAPL_StateGetPointer(IMPORT,  PLE,   'PLE',     _RC)
+     call zero_based_edges(PLE)
+     call MAPL_StateGetPointer(IMPORT,  ZLE,   'ZLE',     _RC)
+     call zero_based_edges(ZLE)
 
 ! Get surface exchange coefficients
 !----------------------------------
 
-     call MAPL_GetPointer(IMPORT,  CU,     'CM',     _RC)
-     call MAPL_GetPointer(IMPORT,  CT,     'CT',     _RC)
-     call MAPL_GetPointer(IMPORT,  CQ,     'CQ',     _RC)
+     call MAPL_StateGetPointer(IMPORT,  CU,     'CM',     _RC)
+     call MAPL_StateGetPointer(IMPORT,  CT,     'CT',     _RC)
+     call MAPL_StateGetPointer(IMPORT,  CQ,     'CQ',     _RC)
 
 !----- variables needed for SHOC and EDMF -----
-    call MAPL_GetPointer(IMPORT, SH,   'SH',    _RC)
-    call MAPL_GetPointer(IMPORT, EVAP, 'EVAP',    _RC)
-    call MAPL_GetPointer(IMPORT, WTHV2, 'WTHV2',    _RC)
-    call MAPL_GetPointer(IMPORT, WQT_DC, 'WQT_DC',    _RC)
-    call MAPL_GetPointer(IMPORT, PHIS,   'PHIS',    _RC)
+    call MAPL_StateGetPointer(IMPORT, SH,   'SH',    _RC)
+    call MAPL_StateGetPointer(IMPORT, EVAP, 'EVAP',    _RC)
+    call MAPL_StateGetPointer(IMPORT, WTHV2, 'WTHV2',    _RC)
+    call MAPL_StateGetPointer(IMPORT, WQT_DC, 'WQT_DC',    _RC)
+    call zero_based_edges(WQT_DC)
+    call MAPL_StateGetPointer(IMPORT, PHIS,   'PHIS',    _RC)
 
 !----- Variables for idealized SCM surface layer ------
-    call MAPL_GetResource (MAPL, SCM_SL, "SCM_SL:", default=0, _RC)
+    call MAPL_GridCompGetResource(GC, 'SCM_SL', SCM_SL, default=0, _RC)
     if (SCM_SL /= 0) then
-      call MAPL_GetPointer(INTERNAL, cu_scm,    'cu_scm', _RC)
-      call MAPL_GetPointer(INTERNAL, ct_scm,    'ct_scm', _RC)
-      call MAPL_GetPointer(INTERNAL, ssurf_scm, 'ssurf_scm', _RC)
-      call MAPL_GetPointer(INTERNAL, qsurf_scm, 'qsurf_scm', _RC)
+      call MAPL_StateGetPointer(INTERNAL, cu_scm,    'cu_scm', _RC)
+      call MAPL_StateGetPointer(INTERNAL, ct_scm,    'ct_scm', _RC)
+      call MAPL_StateGetPointer(INTERNAL, ssurf_scm, 'ssurf_scm', _RC)
+      call MAPL_StateGetPointer(INTERNAL, qsurf_scm, 'qsurf_scm', _RC)
     end if
 
 ! Get pointers from internal state
 !---------------------------------
-    call MAPL_GetPointer(INTERNAL, AKS,   'AKS',     _RC)
-    call MAPL_GetPointer(INTERNAL, BKS,   'BKS',     _RC)
-    call MAPL_GetPointer(INTERNAL, CKS,   'CKS',     _RC)
-    call MAPL_GetPointer(INTERNAL, DKS,   'DKS',     _RC)
-    call MAPL_GetPointer(INTERNAL, AKQ,   'AKQ',     _RC)
-    call MAPL_GetPointer(INTERNAL, BKQ,   'BKQ',     _RC)
-    call MAPL_GetPointer(INTERNAL, CKQ,   'CKQ',     _RC)
-    call MAPL_GetPointer(INTERNAL, DKQ,   'DKQ',     _RC)
-    call MAPL_GetPointer(INTERNAL, AKV,   'AKV',     _RC)
-    call MAPL_GetPointer(INTERNAL, BKV,   'BKV',     _RC)
-    call MAPL_GetPointer(INTERNAL, CKV,   'CKV',     _RC)
-    call MAPL_GetPointer(INTERNAL, DKV,   'DKV',     _RC)
-    call MAPL_GetPointer(INTERNAL, EKV,   'EKV',     _RC)
-    call MAPL_GetPointer(INTERNAL, FKV,   'FKV',     _RC)
-    call MAPL_GetPointer(INTERNAL, SINC,  'SINC',    _RC)
-    call MAPL_GetPointer(INTERNAL, ZPBL,  'ZPBL',    _RC)
+    call MAPL_StateGetPointer(INTERNAL, AKS,   'AKS',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, BKS,   'BKS',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, CKS,   'CKS',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, DKS,   'DKS',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, AKQ,   'AKQ',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, BKQ,   'BKQ',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, CKQ,   'CKQ',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, DKQ,   'DKQ',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, AKV,   'AKV',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, BKV,   'BKV',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, CKV,   'CKV',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, DKV,   'DKV',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, EKV,   'EKV',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, FKV,   'FKV',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, SINC,  'SINC',    _RC)
+    call MAPL_StateGetPointer(INTERNAL, ZPBL,  'ZPBL',    _RC)
 
 !----- SHOC-related variables -----
-    call MAPL_GetResource (MAPL, DO_SHOC, trim(COMP_NAME)//"_DO_SHOC:", &
-                           default=0, _RC)
-    call MAPL_GetPointer(INTERNAL, TKESHOC,'TKESHOC', _RC)
-    call MAPL_GetPointer(INTERNAL, TKH,    'TKH',     _RC)
-    call MAPL_GetPointer(INTERNAL, QT3,    'QT3',     _RC)
-    call MAPL_GetPointer(INTERNAL, QT2,    'QT2',     _RC)
-    call MAPL_GetPointer(INTERNAL, PDF_A,  'PDF_A',     _RC)
-    call MAPL_GetPointer(INTERNAL, MFAW,    'MFAW',     _RC)
-    call MAPL_GetPointer(INTERNAL, QTFLXMF, 'QTFLXMF',     _RC)
-    call MAPL_GetPointer(INTERNAL, SLFLXMF, 'SLFLXMF',     _RC)
+    call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_DO_SHOC', DO_SHOC, default=0, _RC)
+    call MAPL_StateGetPointer(INTERNAL, TKESHOC,'TKESHOC', _RC)
+    call MAPL_StateGetPointer(INTERNAL, TKH,    'TKH',     _RC)
+    call zero_based_edges(TKH)
+    call MAPL_StateGetPointer(INTERNAL, QT3,    'QT3',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, QT2,    'QT2',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, PDF_A,  'PDF_A',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, MFAW,    'MFAW',     _RC)
+    call zero_based_edges(MFAW)
+    call MAPL_StateGetPointer(INTERNAL, QTFLXMF, 'QTFLXMF',     _RC)
+    call zero_based_edges(QTFLXMF)
+    call MAPL_StateGetPointer(INTERNAL, SLFLXMF, 'SLFLXMF',     _RC)
+    call zero_based_edges(SLFLXMF)
 !
 ! edmf variables
 !
     
 ! a,b,c and rhs for s
-    call MAPL_GetPointer(INTERNAL, AKSS,   'AKSS',     _RC)
-    call MAPL_GetPointer(INTERNAL, BKSS,   'BKSS',     _RC)
-    call MAPL_GetPointer(INTERNAL, CKSS,   'CKSS',     _RC)
-    call MAPL_GetPointer(INTERNAL, YS,   'YS',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, AKSS,   'AKSS',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, BKSS,   'BKSS',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, CKSS,   'CKSS',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, YS,   'YS',     _RC)
 ! a,b,c for moisture and rhs for qv,ql,qi    
-    call MAPL_GetPointer(INTERNAL, AKQQ,   'AKQQ',     _RC)
-    call MAPL_GetPointer(INTERNAL, BKQQ,   'BKQQ',     _RC)
-    call MAPL_GetPointer(INTERNAL, CKQQ,   'CKQQ',     _RC)
-    call MAPL_GetPointer(INTERNAL, YQV,   'YQV',     _RC)
-    call MAPL_GetPointer(INTERNAL, YQL,   'YQL',     _RC)
-    call MAPL_GetPointer(INTERNAL, YQI,   'YQI',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, AKQQ,   'AKQQ',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, BKQQ,   'BKQQ',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, CKQQ,   'CKQQ',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, YQV,   'YQV',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, YQL,   'YQL',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, YQI,   'YQI',     _RC)
 ! a,b,c and rhs for wind speed    
-    call MAPL_GetPointer(INTERNAL, AKUU,   'AKUU',     _RC)
-    call MAPL_GetPointer(INTERNAL, BKUU,   'BKUU',     _RC)
-    call MAPL_GetPointer(INTERNAL, CKUU,   'CKUU',     _RC)
-    call MAPL_GetPointer(INTERNAL, YU,   'YU',     _RC)
-    call MAPL_GetPointer(INTERNAL, YV,   'YV',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, AKUU,   'AKUU',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, BKUU,   'BKUU',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, CKUU,   'CKUU',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, YU,   'YU',     _RC)
+    call MAPL_StateGetPointer(INTERNAL, YV,   'YV',     _RC)
 
 
-! Get application's timestep from configuration
+! Get application's timestep: Turbulence's clock step (MAPL2: RUN_DT:)
 !----------------------------------------------
 
-    call ESMF_ConfigGetAttribute(CF, DT, Label="RUN_DT:" , _RC)
+    call MAPL_ClockGet(CLOCK, dt=DT, _RC)
 
 ! If its time, do the refresh
 ! ---------------------------
 
-    if ( ESMF_AlarmIsRinging(ALARM, rc=status) ) then
-       _VERIFY(STATUS)
+    call ESMF_ClockGetAlarm(CLOCK, alarmname=REFRESH_ALARM_NAME, alarm=ALARM, _RC)
+    REFRESH_NOW = ESMF_AlarmIsRinging(ALARM, _RC)
+    if ( REFRESH_NOW ) then
        call ESMF_AlarmRingerOff(ALARM, _RC)
 
-       call MAPL_TimerOn (MAPL,"--REFRESHKS")
+       call MAPL_GridCompTimerStart(GC, "--REFRESHKS", _RC)
         call REFRESH(IM,JM,LM,_RC)
-       call MAPL_TimerOff(MAPL,"--REFRESHKS")
+       call MAPL_GridCompTimerStop(GC, "--REFRESHKS", _RC)
     endif
 
 ! Solve the free atmosphere problem
 ! ---------------------------------
 
-    call MAPL_TimerOn (MAPL,"--DIFFUSE")
+    call MAPL_GridCompTimerStart(GC, "--DIFFUSE", _RC)
      call DIFFUSE(IM,JM,LM,_RC)
-    call MAPL_TimerOff(MAPL,"--DIFFUSE")
+    call MAPL_GridCompTimerStop(GC, "--DIFFUSE", _RC)
 
 !  All done with RUN1
 !--------------------
 
-    call MAPL_TimerOff(MAPL,"-RUN1")
-    call MAPL_TimerOff(MAPL,"TOTAL")
+    call MAPL_GridCompTimerStop(GC, "-RUN1", _RC)
+    call MAPL_GridCompTimerStop(GC, "TOTAL", _RC)
     _RETURN(_SUCCESS)
 
   contains
@@ -868,6 +902,14 @@ contains
      logical                             :: ALLOC_ZPBLRI, CALC_ZPBLRI          
      logical                             :: PDFALLOC
 
+     ! Storage for exports MAPL2 fetched with ALLOC= when they are not requested (get_pointer_alloc)
+     real, allocatable, target, dimension(:,:,:) :: KH_wk, KM_wk, RI_wk, EKH_wk, EKM_wk, KHLS_wk, &
+                                                    KHSFC_wk, KHRAD_wk, LWCRT_wk, edmf_dqrdt_wk, edmf_dqsdt_wk, &
+                                                    slqt_wk, w3_wk, w2_wk, sl3_wk, sl2_wk, edmf_wqt_wk, &
+                                                    edmf_wsl_wk, EDMF_FRC_wk, ISOTROPY_wk, BRUNTSHOC_wk
+     real, allocatable, target, dimension(:,:)   :: KPBL_SC_wk, ZCLD_wk, ZSML_wk, ZRADML_wk, ZRADBS_wk, &
+                                                    lobukhov_wk
+
      real                                :: LOUIS_B_KH, LOUIS_B_KM
      real                                :: LOUIS_C_KH, LOUIS_C_KM 
      real                                :: LOUIS_D_KH, LOUIS_D_KM 
@@ -990,285 +1032,312 @@ contains
 ! Get tracer bundle for aerosol PBL calculation
 !-----------------------------------
 
-    call ESMF_StateGet(IMPORT, 'TR' ,    TR,     _RC)
+    call GetTRDIFF(IMPORT, EXPORT, TR, _RC)
 
     call ESMF_FieldBundleGet(TR, fieldCOUNT=NTR, _RC)
 
 ! Get Sounding from the import state
 !-----------------------------------
 
-     call MAPL_GetPointer(IMPORT,     T,       'T', _RC)
-     call MAPL_GetPointer(IMPORT,     Q,      'QV', _RC)
-     call MAPL_GetPointer(IMPORT,    TH,      'TH', _RC)
+     call MAPL_StateGetPointer(IMPORT,     T,       'T', _RC)
+     call MAPL_StateGetPointer(IMPORT,     Q,      'QV', _RC)
+     call MAPL_StateGetPointer(IMPORT,    TH,      'TH', _RC)
 ! Under SYNCUV the coefficients use the winds after Moist; the winds
 !  that are diffused are always the U and V imports (see DIFFUSE).
-     call MAPL_GetResource(MAPL, SYNCUV, 'SYNCUV:', DEFAULT=1.0, _RC)
+     call MAPL_GridCompGetResource(GC, 'SYNCUV', SYNCUV, default=1.0, _RC)
      if ( SYNCUV.ge.1. ) then
-        call MAPL_GetPointer(IMPORT,  U, 'UAFMOIST', _RC)
-        call MAPL_GetPointer(IMPORT,  V, 'VAFMOIST', _RC)
+        call MAPL_StateGetPointer(IMPORT,  U, 'UAFMOIST', _RC)
+        call MAPL_StateGetPointer(IMPORT,  V, 'VAFMOIST', _RC)
      else
-        call MAPL_GetPointer(IMPORT,  U,        'U', _RC)
-        call MAPL_GetPointer(IMPORT,  V,        'V', _RC)
+        call MAPL_StateGetPointer(IMPORT,  U,        'U', _RC)
+        call MAPL_StateGetPointer(IMPORT,  V,        'V', _RC)
      end if
-     call MAPL_GetPointer(IMPORT, OMEGA,   'OMEGA', _RC)
-     call MAPL_GetPointer(IMPORT,  AREA,   'AREA',  _RC)
-     call MAPL_GetPointer(IMPORT,VARFLT,  'VARFLT', _RC)
-     call MAPL_GetPointer(IMPORT,  PREF,    'PREF', _RC)
-     call MAPL_GetPointer(IMPORT, RADLW,   'RADLW', _RC)
-     call MAPL_GetPointer(IMPORT,RADLWC,  'RADLWC', _RC)
-     call MAPL_GetPointer(IMPORT, QLTOT,   'QLTOT', _RC)
-     call MAPL_GetPointer(IMPORT, QITOT,   'QITOT', _RC)
-     call MAPL_GetPointer(IMPORT, QRTOT,   'QRTOT', _RC) 
-     call MAPL_GetPointer(IMPORT, QSTOT,   'QSTOT', _RC) 
-     call MAPL_GetPointer(IMPORT, QGTOT,   'QGTOT', _RC) 
-     call MAPL_GetPointer(IMPORT,  FCLD,    'FCLD', _RC)
-     call MAPL_GetPointer(IMPORT, BSTAR,   'BSTAR', _RC)
-     call MAPL_GetPointer(IMPORT, USTAR,   'USTAR', _RC)
-     call MAPL_GetPointer(IMPORT,FRLAND,  'FRLAND', _RC)
-     call MAPL_GetPointer(IMPORT,    Z0,      'Z0', _RC)
-     call MAPL_GetPointer(IMPORT,   Z0H,     'Z0H', _RC)
-     call MAPL_GetPointer(IMPORT,   EIS,     'EIS', _RC)
+     call MAPL_StateGetPointer(IMPORT, OMEGA,   'OMEGA', _RC)
+     call MAPL_StateGetPointer(IMPORT,  AREA,   'AREA',  _RC)
+     call MAPL_StateGetPointer(IMPORT,VARFLT,  'VARFLT', _RC)
+     call MAPL_StateGetPointer(IMPORT,  PREF,    'PREF', _RC)
+     call zero_based_edges(PREF)
+     call MAPL_StateGetPointer(IMPORT, RADLW,   'RADLW', _RC)
+     call MAPL_StateGetPointer(IMPORT,RADLWC,  'RADLWC', _RC)
+     call MAPL_StateGetPointer(IMPORT, QLTOT,   'QLTOT', _RC)
+     call MAPL_StateGetPointer(IMPORT, QITOT,   'QITOT', _RC)
+     call MAPL_StateGetPointer(IMPORT, QRTOT,   'QRTOT', _RC) 
+     call MAPL_StateGetPointer(IMPORT, QSTOT,   'QSTOT', _RC) 
+     call MAPL_StateGetPointer(IMPORT, QGTOT,   'QGTOT', _RC) 
+     call MAPL_StateGetPointer(IMPORT,  FCLD,    'FCLD', _RC)
+     call MAPL_StateGetPointer(IMPORT, BSTAR,   'BSTAR', _RC)
+     call MAPL_StateGetPointer(IMPORT, USTAR,   'USTAR', _RC)
+     call MAPL_StateGetPointer(IMPORT,FRLAND,  'FRLAND', _RC)
+     call MAPL_StateGetPointer(IMPORT,    Z0,      'Z0', _RC)
+     call MAPL_StateGetPointer(IMPORT,   Z0H,     'Z0H', _RC)
+     call MAPL_StateGetPointer(IMPORT,   EIS,     'EIS', _RC)
 
 
 ! Get turbulence parameters from configuration
 !---------------------------------------------
      if (LM .eq. 72) then
-       call MAPL_GetResource (MAPL, JASON_PBL_SC  , "JASON_PBL_SC:"  , default=.TRUE.,  _RC)
-       call MAPL_GetResource (MAPL, JASON_BELJAARS, "JASON_BELJAARS:", default=.TRUE.,  _RC)
-       call MAPL_GetResource (MAPL, JASON_LOUIS   , "JASON_LOUIS:"   , default=.TRUE.,  _RC)
-       call MAPL_GetResource (MAPL, JASON_LOCK    , "JASON_LOCK:"    , default=.TRUE.,  _RC)
-       call MAPL_GetResource (MAPL, PBLHT_OPTION  , trim(COMP_NAME)//"_PBLHT_OPTION:", default=4,      _RC)
-       call MAPL_GetResource (MAPL, SMTH_HGT      , trim(COMP_NAME)//"_SMTH_HGT:",     default=0.0,    _RC)
+       call MAPL_GridCompGetResource(GC, 'JASON_PBL_SC', JASON_PBL_SC, default=.TRUE., _RC)
+       call MAPL_GridCompGetResource(GC, 'JASON_BELJAARS', JASON_BELJAARS, default=.TRUE., _RC)
+       call MAPL_GridCompGetResource(GC, 'JASON_LOUIS', JASON_LOUIS, default=.TRUE., _RC)
+       call MAPL_GridCompGetResource(GC, 'JASON_LOCK', JASON_LOCK, default=.TRUE., _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_PBLHT_OPTION', PBLHT_OPTION, default=4, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_SMTH_HGT', SMTH_HGT, default=0.0, _RC)
      else
-       call MAPL_GetResource (MAPL, JASON_PBL_SC  , "JASON_PBL_SC:"  , default=.FALSE.,  _RC)
-       call MAPL_GetResource (MAPL, JASON_BELJAARS, "JASON_BELJAARS:", default=.FALSE.,  _RC)
-       call MAPL_GetResource (MAPL, JASON_LOUIS   , "JASON_LOUIS:"   , default=.FALSE.,  _RC)
-       call MAPL_GetResource (MAPL, JASON_LOCK    , "JASON_LOCK:"    , default=.FALSE.,  _RC)
-       call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=5,      _RC)
-       call MAPL_GetResource (MAPL, SMTH_HGT,     trim(COMP_NAME)//"_SMTH_HGT:",     default=300.0,  _RC)
+       call MAPL_GridCompGetResource(GC, 'JASON_PBL_SC', JASON_PBL_SC, default=.FALSE., _RC)
+       call MAPL_GridCompGetResource(GC, 'JASON_BELJAARS', JASON_BELJAARS, default=.FALSE., _RC)
+       call MAPL_GridCompGetResource(GC, 'JASON_LOUIS', JASON_LOUIS, default=.FALSE., _RC)
+       call MAPL_GridCompGetResource(GC, 'JASON_LOCK', JASON_LOCK, default=.FALSE., _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_PBLHT_OPTION', PBLHT_OPTION, default=5, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_SMTH_HGT', SMTH_HGT, default=300.0, _RC)
      endif
 
      ! Beljaars
      if (JASON_BELJAARS) then
-       call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=6.0,    _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_C_B', C_B, default=6.0, _RC)
      else
-       call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=-3.0,   _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_C_B', C_B, default=-3.0, _RC)
      endif
      ! Louis
      if (JASON_LOUIS) then
-       call MAPL_GetResource (MAPL, LOUIS_B_KH,   trim(COMP_NAME)//"_LOUIS_B_KH:",   default=5.0,    _RC)
-       call MAPL_GetResource (MAPL, LOUIS_C_KH,   trim(COMP_NAME)//"_LOUIS_C_KH:",   default=7.5,    _RC)
-       call MAPL_GetResource (MAPL, LOUIS_D_KH,   trim(COMP_NAME)//"_LOUIS_D_KH:",   default=5.0,    _RC)
-       call MAPL_GetResource (MAPL, LOUIS_B_KM,   trim(COMP_NAME)//"_LOUIS_B_KM:",   default=5.0,    _RC)
-       call MAPL_GetResource (MAPL, LOUIS_C_KM,   trim(COMP_NAME)//"_LOUIS_C_KM:",   default=5.0,    _RC)
-       call MAPL_GetResource (MAPL, LOUIS_D_KM,   trim(COMP_NAME)//"_LOUIS_D_KM:",   default=5.0,    _RC)
-       call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.2,    _RC)
-       call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.2,    _RC)
-       call MAPL_GetResource (MAPL, LAMBDAM,      trim(COMP_NAME)//"_LAMBDAM:",      default=160.0,  _RC)
-       call MAPL_GetResource (MAPL, LAMBDAM2,     trim(COMP_NAME)//"_LAMBDAM2:",     default=1.0,    _RC)
-       call MAPL_GetResource (MAPL, LAMBDAH,      trim(COMP_NAME)//"_LAMBDAH:",      default=160.0,  _RC)
-       call MAPL_GetResource (MAPL, LAMBDAH2,     trim(COMP_NAME)//"_LAMBDAH2:",     default=1.0,    _RC)
-       call MAPL_GetResource (MAPL, ZKHMENV,      trim(COMP_NAME)//"_ZKHMENV:",      default=3000.,  _RC)
-       call MAPL_GetResource (MAPL, MINTHICK,     trim(COMP_NAME)//"_MINTHICK:",     default=2.0,    _RC)
-       call MAPL_GetResource (MAPL, MINSHEAR,     trim(COMP_NAME)//"_MINSHEAR:",     default=0.0030, _RC)
-       call MAPL_GetResource (MAPL, LAMBDA_B,     trim(COMP_NAME)//"_LAMBDA_B:",     default=1500.,  _RC)
-       call MAPL_GetResource (MAPL, AKHMMAX,      trim(COMP_NAME)//"_AKHMMAX:",      default=500.,   _RC)
-       call MAPL_GetResource (MAPL, MO_MAX_ITER, trim(COMP_NAME)//"_MO_MAX_ITER:",   default=0,      _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_LOUIS_B_KH', LOUIS_B_KH, default=5.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_LOUIS_C_KH', LOUIS_C_KH, default=7.5, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_LOUIS_D_KH', LOUIS_D_KH, default=5.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_LOUIS_B_KM', LOUIS_B_KM, default=5.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_LOUIS_C_KM', LOUIS_C_KM, default=5.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_LOUIS_D_KM', LOUIS_D_KM, default=5.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_ALHFAC', ALHFAC, default=1.2, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_ALMFAC', ALMFAC, default=1.2, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_LAMBDAM', LAMBDAM, default=160.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_LAMBDAM2', LAMBDAM2, default=1.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_LAMBDAH', LAMBDAH, default=160.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_LAMBDAH2', LAMBDAH2, default=1.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_ZKHMENV', ZKHMENV, default=3000., _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_MINTHICK', MINTHICK, default=2.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_MINSHEAR', MINSHEAR, default=0.0030, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_LAMBDA_B', LAMBDA_B, default=1500., _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_AKHMMAX', AKHMMAX, default=500., _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_MO_MAX_ITER', MO_MAX_ITER, default=0, _RC)
      else
-       call MAPL_GetResource (MAPL, LOUIS_B_KH,   trim(COMP_NAME)//"_LOUIS_B_KH:",   default=5.0,    _RC)
-       call MAPL_GetResource (MAPL, LOUIS_C_KH,   trim(COMP_NAME)//"_LOUIS_C_KH:",   default=7.5,    _RC)
-       call MAPL_GetResource (MAPL, LOUIS_D_KH,   trim(COMP_NAME)//"_LOUIS_D_KH:",   default=5.0,    _RC)
-       call MAPL_GetResource (MAPL, LOUIS_B_KM,   trim(COMP_NAME)//"_LOUIS_B_KM:",   default=5.0,    _RC)
-       call MAPL_GetResource (MAPL, LOUIS_C_KM,   trim(COMP_NAME)//"_LOUIS_C_KM:",   default=5.0,    _RC)
-       call MAPL_GetResource (MAPL, LOUIS_D_KM,   trim(COMP_NAME)//"_LOUIS_D_KM:",   default=5.0,    _RC)
-       call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.0,    _RC)
-       call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.0,    _RC)
-       call MAPL_GetResource (MAPL, LAMBDAM,      trim(COMP_NAME)//"_LAMBDAM:",      default=150.0,  _RC)
-       call MAPL_GetResource (MAPL, LAMBDAM2,     trim(COMP_NAME)//"_LAMBDAM2:",     default=1.0,    _RC)
-       call MAPL_GetResource (MAPL, LAMBDAH,      trim(COMP_NAME)//"_LAMBDAH:",      default=200.0,  _RC)
-       call MAPL_GetResource (MAPL, LAMBDAH2,     trim(COMP_NAME)//"_LAMBDAH2:",     default=1.0,    _RC)
-       call MAPL_GetResource (MAPL, ZKHMENV,      trim(COMP_NAME)//"_ZKHMENV:",      default=3200.,  _RC)
-       call MAPL_GetResource (MAPL, MINTHICK,     trim(COMP_NAME)//"_MINTHICK:",     default=2.0,    _RC)
-       call MAPL_GetResource (MAPL, MINSHEAR,     trim(COMP_NAME)//"_MINSHEAR:",     default=0.0030, _RC)
-       call MAPL_GetResource (MAPL, LAMBDA_B,     trim(COMP_NAME)//"_LAMBDA_B:",     default=1500.,  _RC)
-       call MAPL_GetResource (MAPL, AKHMMAX,      trim(COMP_NAME)//"_AKHMMAX:",      default=500.,   _RC)
-       call MAPL_GetResource (MAPL, MO_MAX_ITER, trim(COMP_NAME)//"_MO_MAX_ITER:",   default=0,      _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_LOUIS_B_KH', LOUIS_B_KH, default=5.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_LOUIS_C_KH', LOUIS_C_KH, default=7.5, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_LOUIS_D_KH', LOUIS_D_KH, default=5.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_LOUIS_B_KM', LOUIS_B_KM, default=5.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_LOUIS_C_KM', LOUIS_C_KM, default=5.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_LOUIS_D_KM', LOUIS_D_KM, default=5.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_ALHFAC', ALHFAC, default=1.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_ALMFAC', ALMFAC, default=1.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_LAMBDAM', LAMBDAM, default=150.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_LAMBDAM2', LAMBDAM2, default=1.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_LAMBDAH', LAMBDAH, default=200.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_LAMBDAH2', LAMBDAH2, default=1.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_ZKHMENV', ZKHMENV, default=3200., _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_MINTHICK', MINTHICK, default=2.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_MINSHEAR', MINSHEAR, default=0.0030, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_LAMBDA_B', LAMBDA_B, default=1500., _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_AKHMMAX', AKHMMAX, default=500., _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_MO_MAX_ITER', MO_MAX_ITER, default=0, _RC)
      endif
      ! Lock
      if (JASON_LOCK) then
-       call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=50.0,   _RC)
-       call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=0.85,   _RC)
-       call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=0.60,   _RC)
-       call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=0.30,   _RC)
-       call MAPL_GetResource (MAPL, PRANDTLSFC,   trim(COMP_NAME)//"_PRANDTLSFC:",   default=1.0,    _RC)
-       call MAPL_GetResource (MAPL, PRANDTLRAD,   trim(COMP_NAME)//"_PRANDTLRAD:",   default=0.75,   _RC)
-       call MAPL_GetResource (MAPL, BETA_RAD,     trim(COMP_NAME)//"_BETA_RAD:",     default=0.20,   _RC)
-       call MAPL_GetResource (MAPL, BETA_SURF,    trim(COMP_NAME)//"_BETA_SURF:",    default=0.25,   _RC)
-       call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.5e-3, _RC)
-       call MAPL_GetResource (MAPL, TPFAC,        trim(COMP_NAME)//"_TPFAC:",        default=20.0,   _RC)
-       call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.5,    _RC)
-       call MAPL_GetResource (MAPL, LOCK_ON,      trim(COMP_NAME)//"_LOCK_ON:",      default=1,      _RC)
-       call MAPL_GetResource (MAPL, VSCALE_SURF,  trim(COMP_NAME)//"_VSCALE_SURF:",  default=2.5e-3, _RC)
-       call MAPL_GetResource (MAPL, USE_EIS,      trim(COMP_NAME)//"_USE_EIS:",      default=.false.,_RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_LAMBDADISS', LAMBDADISS, default=50.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_KHRADFAC', KHRADFAC, default=0.85, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_KHSFCFAC_LND', KHSFCFAC_LND, default=0.60, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_KHSFCFAC_OCN', KHSFCFAC_OCN, default=0.30, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_PRANDTLSFC', PRANDTLSFC, default=1.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_PRANDTLRAD', PRANDTLRAD, default=0.75, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_BETA_RAD', BETA_RAD, default=0.20, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_BETA_SURF', BETA_SURF, default=0.25, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_ENTRATE_SURF', ENTRATE_SURF, default=1.5e-3, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_TPFAC', TPFAC, default=20.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_PCEFF_SURF', PCEFF_SURF, default=0.5, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_LOCK_ON', LOCK_ON, default=1, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_VSCALE_SURF', VSCALE_SURF, default=2.5e-3, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_USE_EIS', USE_EIS, default=.false., _RC)
      else
-       call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=15.,    _RC)
-       call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=0.8,    _RC)
-       call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=1.0,    _RC)
-       call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=1.0,    _RC)
-       call MAPL_GetResource (MAPL, PRANDTLSFC,   trim(COMP_NAME)//"_PRANDTLSFC:",   default=1.0,    _RC)
-       call MAPL_GetResource (MAPL, PRANDTLRAD,   trim(COMP_NAME)//"_PRANDTLRAD:",   default=0.75,   _RC)
-       call MAPL_GetResource (MAPL, BETA_RAD,     trim(COMP_NAME)//"_BETA_RAD:",     default=0.15,   _RC)
-       call MAPL_GetResource (MAPL, BETA_SURF,    trim(COMP_NAME)//"_BETA_SURF:",    default=0.10,   _RC)
-       call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.5e-3, _RC)
-       call MAPL_GetResource (MAPL, TPFAC,        trim(COMP_NAME)//"_TPFAC:",        default=0.0,   _RC)
-       call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.375,  _RC)
-       call MAPL_GetResource (MAPL, LOCK_ON,      trim(COMP_NAME)//"_LOCK_ON:",      default=1,      _RC)
-       call MAPL_GetResource (MAPL, VSCALE_SURF,  trim(COMP_NAME)//"_VSCALE_SURF:",  default=2.5e-3, _RC)
-       call MAPL_GetResource (MAPL, USE_EIS,      trim(COMP_NAME)//"_USE_EIS:",      default=.false.,_RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_LAMBDADISS', LAMBDADISS, default=15., _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_KHRADFAC', KHRADFAC, default=0.8, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_KHSFCFAC_LND', KHSFCFAC_LND, default=1.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_KHSFCFAC_OCN', KHSFCFAC_OCN, default=1.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_PRANDTLSFC', PRANDTLSFC, default=1.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_PRANDTLRAD', PRANDTLRAD, default=0.75, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_BETA_RAD', BETA_RAD, default=0.15, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_BETA_SURF', BETA_SURF, default=0.10, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_ENTRATE_SURF', ENTRATE_SURF, default=1.5e-3, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_TPFAC', TPFAC, default=0.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_PCEFF_SURF', PCEFF_SURF, default=0.375, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_LOCK_ON', LOCK_ON, default=1, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_VSCALE_SURF', VSCALE_SURF, default=2.5e-3, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_USE_EIS', USE_EIS, default=.false., _RC)
      endif
 
-     call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",       default=0,           _RC)
+     call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_DO_SHOC', DO_SHOC, default=0, _RC)
      if (DO_SHOC /= 0) then
-       call MAPL_GetResource (MAPL, SHOCPARAMS%PRNUM,   trim(COMP_NAME)//"_SHC_PRNUM:",       default=-0.9, _RC)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LAMBDA,  trim(COMP_NAME)//"_SHC_LAMBDA:",      default=0.25, _RC)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%TSCALE,  trim(COMP_NAME)//"_SHC_TSCALE:",      default=400., _RC)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%CKVAL,   trim(COMP_NAME)//"_SHC_CK:",          default=0.1,  _RC)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%CEFAC,   trim(COMP_NAME)//"_SHC_CEFAC:",       default=1.0,  _RC)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%CESFAC,  trim(COMP_NAME)//"_SHC_CESFAC:",      default=4.,   _RC)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENOPT,  trim(COMP_NAME)//"_SHC_LENOPT:",      default=3,    _RC)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1, trim(COMP_NAME)//"_SHC_LENFAC1:",     default=5.,   _RC)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2, trim(COMP_NAME)//"_SHC_LENFAC2:",     default=2.,   _RC)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=0.5,  _RC)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT, trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=2,    _RC)
-       call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 6.0 , _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_SHC_PRNUM', SHOCPARAMS%PRNUM, default=-0.9, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_SHC_LAMBDA', SHOCPARAMS%LAMBDA, default=0.25, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_SHC_TSCALE', SHOCPARAMS%TSCALE, default=400., _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_SHC_CK', SHOCPARAMS%CKVAL, default=0.1, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_SHC_CEFAC', SHOCPARAMS%CEFAC, default=1.0, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_SHC_CESFAC', SHOCPARAMS%CESFAC, default=4., _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_SHC_LENOPT', SHOCPARAMS%LENOPT, default=3, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_SHC_LENFAC1', SHOCPARAMS%LENFAC1, default=5., _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_SHC_LENFAC2', SHOCPARAMS%LENFAC2, default=2., _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_SHC_LENFAC3', SHOCPARAMS%LENFAC3, default=0.5, _RC)
+       call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_SHC_BUOY_OPTION', SHOCPARAMS%BUOYOPT, default=2, _RC)
+       call MAPL_GridCompGetResource(GC, 'PDFSHAPE', PDFSHAPE, default=6.0, _RC)
      else
-       call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 1.0 , _RC)
+       call MAPL_GridCompGetResource(GC, 'PDFSHAPE', PDFSHAPE, default=1.0, _RC)
      end if
 
-     call MAPL_GetResource (MAPL, DOPROGQT2,  'DOPROGQT2:',  DEFAULT = 1     , _RC)
-     call MAPL_GetResource (MAPL, SL2TUNE,    'SL2TUNE:',    DEFAULT = 4.0   , _RC)
-     call MAPL_GetResource (MAPL, QT2TUNE,    'QT2TUNE:',    DEFAULT = 1.0   , _RC)
-     call MAPL_GetResource (MAPL, SLQT2TUNE,  'SLQT2TUNE:',  DEFAULT = 7.0   , _RC)
-     call MAPL_GetResource (MAPL, SKEW_TDIS,  'SKEW_TDIS:',  DEFAULT = 900.0,  _RC)
-     call MAPL_GetResource (MAPL, SKEW_TGEN,  'SKEW_TGEN:',  DEFAULT = 900.0,  _RC)
-     call MAPL_GetResource (MAPL, QT2_TDIS,   'QT2_TDIS:',   DEFAULT = 900.0,  _RC)
-     call MAPL_GetResource (MAPL, FREE_ATM_SIGS, 'FREE_ATM_SIGS:', DEFAULT = 0.05, _RC)
+     call MAPL_GridCompGetResource(GC, 'DOPROGQT2', DOPROGQT2, default=1, _RC)
+     call MAPL_GridCompGetResource(GC, 'SL2TUNE', SL2TUNE, default=4.0, _RC)
+     call MAPL_GridCompGetResource(GC, 'QT2TUNE', QT2TUNE, default=1.0, _RC)
+     call MAPL_GridCompGetResource(GC, 'SLQT2TUNE', SLQT2TUNE, default=7.0, _RC)
+     call MAPL_GridCompGetResource(GC, 'SKEW_TDIS', SKEW_TDIS, default=900.0, _RC)
+     call MAPL_GridCompGetResource(GC, 'SKEW_TGEN', SKEW_TGEN, default=900.0, _RC)
+     call MAPL_GridCompGetResource(GC, 'QT2_TDIS', QT2_TDIS, default=900.0, _RC)
+     call MAPL_GridCompGetResource(GC, 'FREE_ATM_SIGS', FREE_ATM_SIGS, default=0.05, _RC)
 
 ! Get pointers from export state...
 !-----------------------------------
 
      PDFALLOC = (PDFSHAPE.ge.5)
 
-     call MAPL_GetPointer(EXPORT,      KH,      'KH', ALLOC=.TRUE., _RC)
-     call MAPL_GetPointer(EXPORT,      KM,      'KM', ALLOC=.TRUE., _RC)
-     call MAPL_GetPointer(EXPORT,      RI,      'RI', ALLOC=.TRUE., _RC)
-     call MAPL_GetPointer(EXPORT,      DU,      'DU',               _RC)
-     call MAPL_GetPointer(EXPORT,     EKH,     'EKH', ALLOC=.TRUE., _RC)
-     call MAPL_GetPointer(EXPORT,     EKM,     'EKM', ALLOC=.TRUE., _RC)
-     call MAPL_GetPointer(EXPORT,    KHLS,    'KHLS', ALLOC=.TRUE., _RC)
-     call MAPL_GetPointer(EXPORT,    KMLS,    'KMLS',               _RC)
-     call MAPL_GetPointer(EXPORT,   KHSFC,   'KHSFC', ALLOC=.TRUE., _RC)
-     call MAPL_GetPointer(EXPORT,   KHRAD,   'KHRAD', ALLOC=.TRUE., _RC)
-     call MAPL_GetPointer(EXPORT,    PPBL,    'PPBL',               _RC)
-     call MAPL_GetPointer(EXPORT,    KPBL,    'KPBL',               _RC)
-     call MAPL_GetPointer(EXPORT,    KPBL_SC, 'KPBL_SC', ALLOC=.TRUE., _RC)
-     call MAPL_GetPointer(EXPORT,    ZPBL_SC, 'ZPBL_SC',            _RC)
-     call MAPL_GetPointer(EXPORT,    TCZPBL,  'TCZPBL',             _RC)
-     call MAPL_GetPointer(EXPORT,    ZPBL2,  'ZPBL2',               _RC)
-     call MAPL_GetPointer(EXPORT,    ZPBL10p,  'ZPBL10p',           _RC)
-     call MAPL_GetPointer(EXPORT,    ZPBLHTKE,  'ZPBLHTKE',         _RC)
-     call MAPL_GetPointer(EXPORT,    TKE,  'TKE',         _RC)
-     call MAPL_GetPointer(EXPORT,    ZPBLRI,  'ZPBLRI',             _RC)
-     call MAPL_GetPointer(EXPORT,    ZPBLTHV,  'ZPBLTHV',           _RC)
-     call MAPL_GetPointer(EXPORT,    ZPBLQV,  'ZPBLQV',           _RC)
-     call MAPL_GetPointer(EXPORT,    ZPBLRFRCT, 'ZPBLRFRCT',           _RC)
-     call MAPL_GetPointer(EXPORT,    SBIFRQ,  'SBIFRQ',           _RC)
-     call MAPL_GetPointer(EXPORT,    SBITOP,  'SBITOP',           _RC)
-     call MAPL_GetPointer(EXPORT,   LWCRT,   'LWCRT', ALLOC=.TRUE., _RC)
-     call MAPL_GetPointer(EXPORT,   WERAD,   'WERAD',               _RC)
-     call MAPL_GetPointer(EXPORT,   WESFC,   'WESFC',               _RC)
-     call MAPL_GetPointer(EXPORT,   DBUOY,   'DBUOY',               _RC)
-     call MAPL_GetPointer(EXPORT, TRINVBS, 'TRINVBS',               _RC)
-     call MAPL_GetPointer(EXPORT, TRINVDELT, 'TRINVDELT',           _RC)
-     call MAPL_GetPointer(EXPORT, TRINVFRQ, 'TRINVFRQ',             _RC)
-     call MAPL_GetPointer(EXPORT,  VSCRAD,  'VSCRAD',               _RC)
-     call MAPL_GetPointer(EXPORT,  VSCsfc,  'VSCSFC',               _RC)
-     call MAPL_GetPointer(EXPORT,   KERAD,   'KERAD',               _RC)
-     call MAPL_GetPointer(EXPORT,  VSCBRV,  'VSCBRV',               _RC)
-     call MAPL_GetPointer(EXPORT,   WEBRV,   'WEBRV',               _RC)
-     call MAPL_GetPointer(EXPORT,    CHIS,    'CHIS',               _RC)
-     call MAPL_GetPointer(EXPORT,  DSIEMS,  'DSIEMS',               _RC)
-     call MAPL_GetPointer(EXPORT,    ZCLD,    'ZCLD', ALLOC=.TRUE., _RC)
-     call MAPL_GetPointer(EXPORT,    ZSML,    'ZSML', ALLOC=.TRUE., _RC)
-     call MAPL_GetPointer(EXPORT,  ZRADML,  'ZRADML', ALLOC=.TRUE., _RC)
-     call MAPL_GetPointer(EXPORT,  ZRADBS,  'ZRADBS', ALLOC=.TRUE., _RC)
-     call MAPL_GetPointer(EXPORT, ZCLDTOP, 'ZCLDTOP',               _RC)
-     call MAPL_GetPointer(EXPORT, DELSINV, 'DELSINV',               _RC)
-     call MAPL_GetPointer(EXPORT,RADRCODE,'RADRCODE',               _RC)
-     call MAPL_GetPointer(EXPORT,   SMIXT,   'SMIXT',               _RC)
-     call MAPL_GetPointer(EXPORT,   CLDRF,   'CLDRF',               _RC)
-     call MAPL_GetPointer(EXPORT,     ALH,     'ALH',               _RC)
-     call MAPL_GetPointer(EXPORT,     ALM,     'ALM',               _RC)
-     call MAPL_GetPointer(EXPORT,  AKSODT,  'AKSODT',               _RC)
-     call MAPL_GetPointer(EXPORT,  CKSODT,  'CKSODT',               _RC)
-     call MAPL_GetPointer(EXPORT,  AKQODT,  'AKQODT',               _RC)
-     call MAPL_GetPointer(EXPORT,  CKQODT,  'CKQODT',               _RC)
-     call MAPL_GetPointer(EXPORT,  AKVODT,  'AKVODT',               _RC)
-     call MAPL_GetPointer(EXPORT,  CKVODT,  'CKVODT',               _RC)
-     call MAPL_GetPointer(EXPORT,     ZLS,     'ZLS',               _RC)
-     call MAPL_GetPointer(EXPORT,    ZLES,    'ZLES',               _RC)
-     call MAPL_GetPointer(EXPORT, EDMF_PLUMES_W, 'EDMF_PLUMES_W',   _RC)
-     call MAPL_GetPointer(EXPORT, EDMF_PLUMES_QT, 'EDMF_PLUMES_QT', _RC)
-     call MAPL_GetPointer(EXPORT, EDMF_PLUMES_THL, 'EDMF_PLUMES_THL', _RC)
-     call MAPL_GetPointer(EXPORT,  edmf_dqrdt,  'EDMF_DQRDT', ALLOC=.true., _RC)
-     call MAPL_GetPointer(EXPORT,  edmf_dqsdt,  'EDMF_DQSDT', ALLOC=.true., _RC)
-     call MAPL_GetPointer(EXPORT,  edmf_buoyf, 'EDMF_BUOYF',  _RC)
-     call MAPL_GetPointer(EXPORT,  edmf_slqt, 'EDMF_SLQT', _RC)
-     call MAPL_GetPointer(EXPORT,  edmf_w2,   'EDMF_W2', _RC)
-     call MAPL_GetPointer(EXPORT,  edmf_w3,   'EDMF_W3', _RC)
-     call MAPL_GetPointer(EXPORT,  edmf_qt3,  'EDMF_QT3', _RC)
-     call MAPL_GetPointer(EXPORT,  edmf_sl3,  'EDMF_SL3', _RC)
-     call MAPL_GetPointer(EXPORT,  slqt,  'SLQT', ALLOC=PDFALLOC,   _RC)
-     call MAPL_GetPointer(EXPORT,  w3,    'W3', ALLOC=PDFALLOC,   _RC)
-     call MAPL_GetPointer(EXPORT,  w2,    'W2', ALLOC=PDFALLOC,   _RC)
-     call MAPL_GetPointer(EXPORT,  sl3,   'SL3', ALLOC=PDFALLOC,   _RC)
-     call MAPL_GetPointer(EXPORT,  sl2,   'SL2', ALLOC=PDFALLOC,   _RC)
-     call MAPL_GetPointer(EXPORT,  lobukhov,  'LOBUKHOV', ALLOC=(DO_SHOC/=0), _RC)
-     call MAPL_GetPointer(EXPORT,  edmf_wqt,    'EDMF_WQT', ALLOC=PDFALLOC, _RC)
-     call MAPL_GetPointer(EXPORT,  edmf_wsl,    'EDMF_WSL', ALLOC=PDFALLOC, _RC)
-     call MAPL_GetPointer(EXPORT,  edmf_tke,    'EDMF_TKE', _RC)
-     call MAPL_GetPointer(EXPORT,  edmf_mfx,    'EDMF_MF', ALLOC=PDFALLOC, _RC)
-     call MAPL_GetPointer(EXPORT,  edmf_dmfx,   'EDMF_DMF', _RC)
-     call MAPL_GetPointer(EXPORT,  edmf_dry_a,  'EDMF_DRY_A',       _RC)
-     call MAPL_GetPointer(EXPORT,  edmf_moist_a, 'EDMF_MOIST_A',   _RC)
-     call MAPL_GetPointer(EXPORT,  EDMF_FRC,    'EDMF_FRC', ALLOC=PDFALLOC, _RC)
-     call MAPL_GetPointer(EXPORT,  edmf_dry_u,  'EDMF_DRY_U',      _RC)
-     call MAPL_GetPointer(EXPORT,  edmf_moist_u, 'EDMF_MOIST_U',  _RC)
-     call MAPL_GetPointer(EXPORT,  edmf_dry_v,   'EDMF_DRY_V',       _RC)
-     call MAPL_GetPointer(EXPORT,  edmf_moist_v, 'EDMF_MOIST_V',  _RC)
-     call MAPL_GetPointer(EXPORT,  edmf_dry_w,   'EDMF_DRY_W',      _RC)
-     call MAPL_GetPointer(EXPORT,  edmf_moist_w, 'EDMF_MOIST_W',  _RC)
-     call MAPL_GetPointer(EXPORT,  edmf_dry_qt,  'EDMF_DRY_QT',    _RC)
-     call MAPL_GetPointer(EXPORT,  edmf_moist_qt,  'EDMF_MOIST_QT',  _RC)
-     call MAPL_GetPointer(EXPORT,  edmf_dry_thl,   'EDMF_DRY_THL',     _RC)
-     call MAPL_GetPointer(EXPORT,  edmf_moist_thl, 'EDMF_MOIST_THL',  _RC)
-     call MAPL_GetPointer(EXPORT,  edmf_moist_qc,  'EDMF_MOIST_QC',    _RC)
-     call MAPL_GetPointer(EXPORT,  edmf_entx,      'EDMF_ENTR', ALLOC=.TRUE., _RC)
-     call MAPL_GetPointer(EXPORT,  edmf_depth,     'EDMF_DEPTH', _RC)
+     call get_pointer_alloc(EXPORT, KH, 'KH', .TRUE., KH_wk, IM, JM, 0, LM, _RC)
+     call get_pointer_alloc(EXPORT, KM, 'KM', .TRUE., KM_wk, IM, JM, 0, LM, _RC)
+     call get_pointer_alloc(EXPORT, RI, 'RI', .TRUE., RI_wk, IM, JM, 0, LM, _RC)
+     call MAPL_StateGetPointer(EXPORT,      DU,      'DU',               _RC)
+     call zero_based_edges(DU)
+     call get_pointer_alloc(EXPORT, EKH, 'EKH', .TRUE., EKH_wk, IM, JM, 0, LM, _RC)
+     call get_pointer_alloc(EXPORT, EKM, 'EKM', .TRUE., EKM_wk, IM, JM, 0, LM, _RC)
+     call get_pointer_alloc(EXPORT, KHLS, 'KHLS', .TRUE., KHLS_wk, IM, JM, 0, LM, _RC)
+     call MAPL_StateGetPointer(EXPORT,    KMLS,    'KMLS',               _RC)
+     call zero_based_edges(KMLS)
+     call get_pointer_alloc(EXPORT, KHSFC, 'KHSFC', .TRUE., KHSFC_wk, IM, JM, 0, LM, _RC)
+     call get_pointer_alloc(EXPORT, KHRAD, 'KHRAD', .TRUE., KHRAD_wk, IM, JM, 0, LM, _RC)
+     call MAPL_StateGetPointer(EXPORT,    PPBL,    'PPBL',               _RC)
+     call MAPL_StateGetPointer(EXPORT,    KPBL,    'KPBL',               _RC)
+     call get_pointer_alloc(EXPORT, KPBL_SC, 'KPBL_SC', .TRUE., KPBL_SC_wk, IM, JM, _RC)
+     call MAPL_StateGetPointer(EXPORT,    ZPBL_SC, 'ZPBL_SC',            _RC)
+     call MAPL_StateGetPointer(EXPORT,    TCZPBL,  'TCZPBL',             _RC)
+     call MAPL_StateGetPointer(EXPORT,    ZPBL2,  'ZPBL2',               _RC)
+     call MAPL_StateGetPointer(EXPORT,    ZPBL10p,  'ZPBL10p',           _RC)
+     call MAPL_StateGetPointer(EXPORT,    ZPBLHTKE,  'ZPBLHTKE',         _RC)
+     call MAPL_StateGetPointer(EXPORT,    TKE,  'TKE',         _RC)
+     call zero_based_edges(TKE)
+     call MAPL_StateGetPointer(EXPORT,    ZPBLRI,  'ZPBLRI',             _RC)
+     call MAPL_StateGetPointer(EXPORT,    ZPBLTHV,  'ZPBLTHV',           _RC)
+     call MAPL_StateGetPointer(EXPORT,    ZPBLQV,  'ZPBLQV',           _RC)
+     call MAPL_StateGetPointer(EXPORT,    ZPBLRFRCT, 'ZPBLRFRCT',           _RC)
+     call MAPL_StateGetPointer(EXPORT,    SBIFRQ,  'SBIFRQ',           _RC)
+     call MAPL_StateGetPointer(EXPORT,    SBITOP,  'SBITOP',           _RC)
+     call get_pointer_alloc(EXPORT, LWCRT, 'LWCRT', .TRUE., LWCRT_wk, IM, JM, 1, LM, _RC)
+     call MAPL_StateGetPointer(EXPORT,   WERAD,   'WERAD',               _RC)
+     call MAPL_StateGetPointer(EXPORT,   WESFC,   'WESFC',               _RC)
+     call MAPL_StateGetPointer(EXPORT,   DBUOY,   'DBUOY',               _RC)
+     call MAPL_StateGetPointer(EXPORT, TRINVBS, 'TRINVBS',               _RC)
+     call MAPL_StateGetPointer(EXPORT, TRINVDELT, 'TRINVDELT',           _RC)
+     call MAPL_StateGetPointer(EXPORT, TRINVFRQ, 'TRINVFRQ',             _RC)
+     call MAPL_StateGetPointer(EXPORT,  VSCRAD,  'VSCRAD',               _RC)
+     call MAPL_StateGetPointer(EXPORT,  VSCsfc,  'VSCSFC',               _RC)
+     call MAPL_StateGetPointer(EXPORT,   KERAD,   'KERAD',               _RC)
+     call MAPL_StateGetPointer(EXPORT,  VSCBRV,  'VSCBRV',               _RC)
+     call MAPL_StateGetPointer(EXPORT,   WEBRV,   'WEBRV',               _RC)
+     call MAPL_StateGetPointer(EXPORT,    CHIS,    'CHIS',               _RC)
+     call MAPL_StateGetPointer(EXPORT,  DSIEMS,  'DSIEMS',               _RC)
+     call get_pointer_alloc(EXPORT, ZCLD, 'ZCLD', .TRUE., ZCLD_wk, IM, JM, _RC)
+     call get_pointer_alloc(EXPORT, ZSML, 'ZSML', .TRUE., ZSML_wk, IM, JM, _RC)
+     call get_pointer_alloc(EXPORT, ZRADML, 'ZRADML', .TRUE., ZRADML_wk, IM, JM, _RC)
+     call get_pointer_alloc(EXPORT, ZRADBS, 'ZRADBS', .TRUE., ZRADBS_wk, IM, JM, _RC)
+     call MAPL_StateGetPointer(EXPORT, ZCLDTOP, 'ZCLDTOP',               _RC)
+     call MAPL_StateGetPointer(EXPORT, DELSINV, 'DELSINV',               _RC)
+     call MAPL_StateGetPointer(EXPORT,RADRCODE,'RADRCODE',               _RC)
+     call MAPL_StateGetPointer(EXPORT,   SMIXT,   'SMIXT',               _RC)
+     call MAPL_StateGetPointer(EXPORT,   CLDRF,   'CLDRF',               _RC)
+     call MAPL_StateGetPointer(EXPORT,     ALH,     'ALH',               _RC)
+     call zero_based_edges(ALH)
+     call MAPL_StateGetPointer(EXPORT,     ALM,     'ALM',               _RC)
+     call zero_based_edges(ALM)
+     call MAPL_StateGetPointer(EXPORT,  AKSODT,  'AKSODT',               _RC)
+     call MAPL_StateGetPointer(EXPORT,  CKSODT,  'CKSODT',               _RC)
+     call MAPL_StateGetPointer(EXPORT,  AKQODT,  'AKQODT',               _RC)
+     call MAPL_StateGetPointer(EXPORT,  CKQODT,  'CKQODT',               _RC)
+     call MAPL_StateGetPointer(EXPORT,  AKVODT,  'AKVODT',               _RC)
+     call MAPL_StateGetPointer(EXPORT,  CKVODT,  'CKVODT',               _RC)
+     call MAPL_StateGetPointer(EXPORT,     ZLS,     'ZLS',               _RC)
+     call MAPL_StateGetPointer(EXPORT,    ZLES,    'ZLES',               _RC)
+     call zero_based_edges(ZLES)
+     call MAPL_StateGetPointer(EXPORT, EDMF_PLUMES_W, 'EDMF_PLUMES_W',   _RC)
+     call zero_based_edges(EDMF_PLUMES_W)
+     call MAPL_StateGetPointer(EXPORT, EDMF_PLUMES_QT, 'EDMF_PLUMES_QT', _RC)
+     call zero_based_edges(EDMF_PLUMES_QT)
+     call MAPL_StateGetPointer(EXPORT, EDMF_PLUMES_THL, 'EDMF_PLUMES_THL', _RC)
+     call zero_based_edges(EDMF_PLUMES_THL)
+     call get_pointer_alloc(EXPORT, edmf_dqrdt, 'EDMF_DQRDT', .true., edmf_dqrdt_wk, IM, JM, 1, LM, _RC)
+     call get_pointer_alloc(EXPORT, edmf_dqsdt, 'EDMF_DQSDT', .true., edmf_dqsdt_wk, IM, JM, 1, LM, _RC)
+     call MAPL_StateGetPointer(EXPORT,  edmf_buoyf, 'EDMF_BUOYF',  _RC)
+     call MAPL_StateGetPointer(EXPORT,  edmf_slqt, 'EDMF_SLQT', _RC)
+     call MAPL_StateGetPointer(EXPORT,  edmf_w2,   'EDMF_W2', _RC)
+     call MAPL_StateGetPointer(EXPORT,  edmf_w3,   'EDMF_W3', _RC)
+     call MAPL_StateGetPointer(EXPORT,  edmf_qt3,  'EDMF_QT3', _RC)
+     call MAPL_StateGetPointer(EXPORT,  edmf_sl3,  'EDMF_SL3', _RC)
+     call get_pointer_alloc(EXPORT, slqt, 'SLQT', PDFALLOC, slqt_wk, IM, JM, 1, LM, _RC)
+     call get_pointer_alloc(EXPORT, w3, 'W3', PDFALLOC, w3_wk, IM, JM, 1, LM, _RC)
+     call get_pointer_alloc(EXPORT, w2, 'W2', PDFALLOC, w2_wk, IM, JM, 1, LM, _RC)
+     call get_pointer_alloc(EXPORT, sl3, 'SL3', PDFALLOC, sl3_wk, IM, JM, 1, LM, _RC)
+     call get_pointer_alloc(EXPORT, sl2, 'SL2', PDFALLOC, sl2_wk, IM, JM, 1, LM, _RC)
+     call get_pointer_alloc(EXPORT, lobukhov, 'LOBUKHOV', DO_SHOC/=0, lobukhov_wk, IM, JM, _RC)
+     call get_pointer_alloc(EXPORT, edmf_wqt, 'EDMF_WQT', PDFALLOC, edmf_wqt_wk, IM, JM, 0, LM, _RC)
+     call get_pointer_alloc(EXPORT, edmf_wsl, 'EDMF_WSL', PDFALLOC, edmf_wsl_wk, IM, JM, 0, LM, _RC)
+     call MAPL_StateGetPointer(EXPORT,  edmf_tke,    'EDMF_TKE', _RC)
+     call zero_based_edges(edmf_tke)
+     ! EDMF_MF and EDMF_ENTR: internals (re-exported), DIFFUSE reads them on every step
+    call MAPL_StateGetPointer(INTERNAL,  edmf_mfx,    'EDMF_MF', _RC)
+    call zero_based_edges(edmf_mfx)
+     call MAPL_StateGetPointer(EXPORT,  edmf_dmfx,   'EDMF_DMF', _RC)
+     call MAPL_StateGetPointer(EXPORT,  edmf_dry_a,  'EDMF_DRY_A',       _RC)
+     call zero_based_edges(edmf_dry_a)
+     call MAPL_StateGetPointer(EXPORT,  edmf_moist_a, 'EDMF_MOIST_A',   _RC)
+     call zero_based_edges(edmf_moist_a)
+     call get_pointer_alloc(EXPORT, EDMF_FRC, 'EDMF_FRC', PDFALLOC, EDMF_FRC_wk, IM, JM, 1, LM, _RC)
+     call MAPL_StateGetPointer(EXPORT,  edmf_dry_u,  'EDMF_DRY_U',      _RC)
+     call zero_based_edges(edmf_dry_u)
+     call MAPL_StateGetPointer(EXPORT,  edmf_moist_u, 'EDMF_MOIST_U',  _RC)
+     call zero_based_edges(edmf_moist_u)
+     call MAPL_StateGetPointer(EXPORT,  edmf_dry_v,   'EDMF_DRY_V',       _RC)
+     call zero_based_edges(edmf_dry_v)
+     call MAPL_StateGetPointer(EXPORT,  edmf_moist_v, 'EDMF_MOIST_V',  _RC)
+     call zero_based_edges(edmf_moist_v)
+     call MAPL_StateGetPointer(EXPORT,  edmf_dry_w,   'EDMF_DRY_W',      _RC)
+     call zero_based_edges(edmf_dry_w)
+     call MAPL_StateGetPointer(EXPORT,  edmf_moist_w, 'EDMF_MOIST_W',  _RC)
+     call zero_based_edges(edmf_moist_w)
+     call MAPL_StateGetPointer(EXPORT,  edmf_dry_qt,  'EDMF_DRY_QT',    _RC)
+     call zero_based_edges(edmf_dry_qt)
+     call MAPL_StateGetPointer(EXPORT,  edmf_moist_qt,  'EDMF_MOIST_QT',  _RC)
+     call zero_based_edges(edmf_moist_qt)
+     call MAPL_StateGetPointer(EXPORT,  edmf_dry_thl,   'EDMF_DRY_THL',     _RC)
+     call zero_based_edges(edmf_dry_thl)
+     call MAPL_StateGetPointer(EXPORT,  edmf_moist_thl, 'EDMF_MOIST_THL',  _RC)
+     call zero_based_edges(edmf_moist_thl)
+     call MAPL_StateGetPointer(EXPORT,  edmf_moist_qc,  'EDMF_MOIST_QC',    _RC)
+     call zero_based_edges(edmf_moist_qc)
+     call MAPL_StateGetPointer(INTERNAL,  edmf_entx,      'EDMF_ENTR', _RC)
+     call MAPL_StateGetPointer(EXPORT,  edmf_depth,     'EDMF_DEPTH', _RC)
 
 !========== SHOC ===========
-     call MAPL_GetPointer(EXPORT, TKEDISSx, 'TKEDISS',  _RC)
-     call MAPL_GetPointer(EXPORT, TKEBUOY, 'TKEBUOY',  _RC)
-     call MAPL_GetPointer(EXPORT, TKESHEAR,'TKESHEAR', _RC)
-     call MAPL_GetPointer(EXPORT, ISOTROPY,'ISOTROPY', ALLOC=.TRUE., _RC)
-     call MAPL_GetPointer(EXPORT, LSHOC,   'LSHOC',    _RC)
-     call MAPL_GetPointer(EXPORT, LSHOC1,  'LSHOC1',   _RC)
-     call MAPL_GetPointer(EXPORT, LSHOC2,  'LSHOC2',   _RC)
-     call MAPL_GetPointer(EXPORT, LSHOC3,  'LSHOC3',   _RC)
-     call MAPL_GetPointer(EXPORT, BRUNTSHOC, 'BRUNTSHOC', ALLOC=PDFALLOC, _RC)
-     call MAPL_GetPointer(EXPORT, SHOCPRNUM,'SHOCPRNUM', _RC)
+     call MAPL_StateGetPointer(EXPORT, TKEDISSx, 'TKEDISS',  _RC)
+     call MAPL_StateGetPointer(EXPORT, TKEBUOY, 'TKEBUOY',  _RC)
+     call MAPL_StateGetPointer(EXPORT, TKESHEAR,'TKESHEAR', _RC)
+     call get_pointer_alloc(EXPORT, ISOTROPY, 'ISOTROPY', .TRUE., ISOTROPY_wk, IM, JM, 0, LM, _RC)
+     call MAPL_StateGetPointer(EXPORT, LSHOC,   'LSHOC',    _RC)
+     call MAPL_StateGetPointer(EXPORT, LSHOC1,  'LSHOC1',   _RC)
+     call MAPL_StateGetPointer(EXPORT, LSHOC2,  'LSHOC2',   _RC)
+     call MAPL_StateGetPointer(EXPORT, LSHOC3,  'LSHOC3',   _RC)
+     call get_pointer_alloc(EXPORT, BRUNTSHOC, 'BRUNTSHOC', PDFALLOC, BRUNTSHOC_wk, IM, JM, 1, LM, _RC)
+     call MAPL_StateGetPointer(EXPORT, SHOCPRNUM,'SHOCPRNUM', _RC)
+     call zero_based_edges(SHOCPRNUM)
 
-     call MAPL_GetPointer(INTERNAL, TKEDISS, 'TKEDISS' , _RC)
+     call MAPL_StateGetPointer(INTERNAL, TKEDISS, 'TKEDISS' , _RC)
 ! Initialize some arrays
 
       LWCRT = RADLW - RADLWC
@@ -1333,7 +1402,7 @@ contains
          SMTH_LEV=LM-5
       end if
 
-      call MAPL_TimerOn(MAPL,"---PRELIMS")
+      call MAPL_GridCompTimerStart(GC, "---PRELIMS", _RC)
 
       ! Layer height, pressure, and virtual temperatures
       !-------------------------------------------------
@@ -1399,7 +1468,7 @@ contains
 
       rho = plo/( MAPL_RGAS*tv )
 
-      call MAPL_TimerOff(MAPL,"---PRELIMS")
+      call MAPL_GridCompTimerStop(GC, "---PRELIMS", _RC)
 
    ! Calculate liquid water potential temperature (THL) and total water (QT)
     EXF=T/TH
@@ -1408,69 +1477,69 @@ contains
     QT=Q+QLTOT+QITOT
 
 ! get updraft constants
-    call MAPL_GetResource (MAPL, DOMF, "EDMF_DOMF:", default=0,  _RC)
+    call MAPL_GridCompGetResource(GC, 'EDMF_DOMF', DOMF, default=0, _RC)
     
     if ( DOMF /= 0 ) then
       ! number of updrafts
-      call MAPL_GetResource (MAPL, MFPARAMS%NUP,       "EDMF_NUMUP:",         default=10,    _RC)
-      call MAPL_GetResource (MAPL, MFPARAMS%DOTRACERS, "EDMF_DOTRACERS:",     default=.true., _RC)
+      call MAPL_GridCompGetResource(GC, 'EDMF_NUMUP', MFPARAMS%NUP, default=10, _RC)
+      call MAPL_GridCompGetResource(GC, 'EDMF_DOTRACERS', MFPARAMS%DOTRACERS, default=.true., _RC)
       ! boundaries for the updraft area (min/max sigma of w pdf)
-      call MAPL_GetResource (MAPL, MFPARAMS%PWMIN,     "EDMF_PWMIN:",         default=1.2,   _RC)
-      call MAPL_GetResource (MAPL, MFPARAMS%PWMAX,     "EDMF_PWMAX:",         default=3.,    _RC)
-      call MAPL_GetResource (MAPL, MFPARAMS%ENTUFAC,   "EDMF_ENTUFAC:",       default=2.0,   _RC)
-      call MAPL_GetResource (MAPL, MFPARAMS%WA,        "EDMF_WA:",            default=1.0,   _RC)
-      call MAPL_GetResource (MAPL, MFPARAMS%WB,        "EDMF_WB:",            default=1.5,   _RC)
-      call MAPL_GetResource (MAPL, MFPARAMS%WC,        "EDMF_WC:",            default=0.05,  _RC)
-      call MAPL_GetResource (MAPL, MFPARAMS%WCTHRESH,  "EDMF_WCTHRESH:",      default=11.,   _RC)
+      call MAPL_GridCompGetResource(GC, 'EDMF_PWMIN', MFPARAMS%PWMIN, default=1.2, _RC)
+      call MAPL_GridCompGetResource(GC, 'EDMF_PWMAX', MFPARAMS%PWMAX, default=3., _RC)
+      call MAPL_GridCompGetResource(GC, 'EDMF_ENTUFAC', MFPARAMS%ENTUFAC, default=2.0, _RC)
+      call MAPL_GridCompGetResource(GC, 'EDMF_WA', MFPARAMS%WA, default=1.0, _RC)
+      call MAPL_GridCompGetResource(GC, 'EDMF_WB', MFPARAMS%WB, default=1.5, _RC)
+      call MAPL_GridCompGetResource(GC, 'EDMF_WC', MFPARAMS%WC, default=0.05, _RC)
+      call MAPL_GridCompGetResource(GC, 'EDMF_WCTHRESH', MFPARAMS%WCTHRESH, default=11., _RC)
       ! coefficients for surface forcing, appropriate for L137
-      call MAPL_GetResource (MAPL, MFPARAMS%AlphaW,    "EDMF_ALPHAW:",        default=0.05,  _RC)
-      call MAPL_GetResource (MAPL, MFPARAMS%AlphaQT,   "EDMF_ALPHAQT:",       default=1.0,   _RC)
-      call MAPL_GetResource (MAPL, MFPARAMS%AlphaTH,   "EDMF_ALPHATH:",       default=1.0,   _RC)
+      call MAPL_GridCompGetResource(GC, 'EDMF_ALPHAW', MFPARAMS%AlphaW, default=0.05, _RC)
+      call MAPL_GridCompGetResource(GC, 'EDMF_ALPHAQT', MFPARAMS%AlphaQT, default=1.0, _RC)
+      call MAPL_GridCompGetResource(GC, 'EDMF_ALPHATH', MFPARAMS%AlphaTH, default=1.0, _RC)
       ! Entrainment rate options
-      call MAPL_GetResource (MAPL, MFPARAMS%ET,        "EDMF_ET:",            default=2,     _RC)
+      call MAPL_GridCompGetResource(GC, 'EDMF_ET', MFPARAMS%ET, default=2, _RC)
       ! constant entrainment rate   
-      call MAPL_GetResource (MAPL, MFPARAMS%ENT0,      "EDMF_ENT0:",          default=0.35,  _RC)
+      call MAPL_GridCompGetResource(GC, 'EDMF_ENT0', MFPARAMS%ENT0, default=0.35, _RC)
       ! L0 if ET==1
-      call MAPL_GetResource (MAPL, MFPARAMS%L0,        "EDMF_L0:",            default=100.,  _RC)
+      call MAPL_GridCompGetResource(GC, 'EDMF_L0', MFPARAMS%L0, default=100., _RC)
       ! L0fac if ET==2
-      call MAPL_GetResource (MAPL, MFPARAMS%L0fac,     "EDMF_L0FAC:",         default=10.,   _RC)
-      call MAPL_GetResource (MAPL, MFPARAMS%MFLIMFAC,  "EDMF_MFLIMFAC:",      default=2.0,   _RC)
-      call MAPL_GetResource (MAPL, MFPARAMS%ICE_RAMP,  "EDMF_ICE_RAMP:",      default=-40.0, _RC)
-      call MAPL_GetResource (MAPL, MFPARAMS%ENTRAIN,   "EDMF_ENTRAIN:",       default=0,     _RC)
-      call MAPL_GetResource (MAPL, MFPARAMS%STOCHFRAC, "EDMF_STOCHASTIC:",    default=0.4,   _RC)
-      call MAPL_GetResource (MAPL, MFPARAMS%DISCRETE,  "EDMF_DISCRETE_TYPE:", default=1,     _RC)
-      call MAPL_GetResource (MAPL, MFPARAMS%IMPLICIT,  "EDMF_IMPLICIT:",      default=1,     _RC)
-      call MAPL_GetResource (MAPL, MFPARAMS%PRCPCRIT,  "EDMF_PRCPCRIT:",      default=-1.,   _RC)
-      call MAPL_GetResource (MAPL, MFPARAMS%UPABUOYDEP,"EDMF_UPABUOYDEP:",    default=1,     _RC)
-      call MAPL_GetResource (MAPL, MFPARAMS%TREFF,     "EDMF_TREFF:",         default=1.,    _RC)
+      call MAPL_GridCompGetResource(GC, 'EDMF_L0FAC', MFPARAMS%L0fac, default=10., _RC)
+      call MAPL_GridCompGetResource(GC, 'EDMF_MFLIMFAC', MFPARAMS%MFLIMFAC, default=2.0, _RC)
+      call MAPL_GridCompGetResource(GC, 'EDMF_ICE_RAMP', MFPARAMS%ICE_RAMP, default=-40.0, _RC)
+      call MAPL_GridCompGetResource(GC, 'EDMF_ENTRAIN', MFPARAMS%ENTRAIN, default=0, _RC)
+      call MAPL_GridCompGetResource(GC, 'EDMF_STOCHASTIC', MFPARAMS%STOCHFRAC, default=0.4, _RC)
+      call MAPL_GridCompGetResource(GC, 'EDMF_DISCRETE_TYPE', MFPARAMS%DISCRETE, default=1, _RC)
+      call MAPL_GridCompGetResource(GC, 'EDMF_IMPLICIT', MFPARAMS%IMPLICIT, default=1, _RC)
+      call MAPL_GridCompGetResource(GC, 'EDMF_PRCPCRIT', MFPARAMS%PRCPCRIT, default=-1., _RC)
+      call MAPL_GridCompGetResource(GC, 'EDMF_UPABUOYDEP', MFPARAMS%UPABUOYDEP, default=1, _RC)
+      call MAPL_GridCompGetResource(GC, 'EDMF_TREFF', MFPARAMS%TREFF, default=1., _RC)
     else
        MFPARAMS%TREFF = 0.
        MFPARAMS%DOTRACERS = .false.
     end if
 
-    call MAPL_GetResource(MAPL, SCM_SL,        'SCM_SL:',        DEFAULT=0 )
+    call MAPL_GridCompGetResource(GC, 'SCM_SL', SCM_SL, default=0, _RC)
 
 
 if (SCM_SL /= 0) then
-    call MAPL_GetResource(MAPL, SCM_SURF,      'SCM_SURF:', DEFAULT=0 )
-    call MAPL_GetResource(MAPL, SCM_DTDT_SURF, 'SCM_DTDT_SURF:', DEFAULT=0. )
+    call MAPL_GridCompGetResource(GC, 'SCM_SURF', SCM_SURF, default=0, _RC)
+    call MAPL_GridCompGetResource(GC, 'SCM_DTDT_SURF', SCM_DTDT_SURF, default=0., _RC)
 
-    call MAPL_GetResource(MAPL, SCM_SL_FLUX,   'SCM_SL_FLUX:', DEFAULT=0 )
-    call MAPL_GetResource(MAPL, SCM_SH,        'SCM_SH:',      DEFAULT=0. )
-    call MAPL_GetResource(MAPL, SCM_LH,        'SCM_LH:',      DEFAULT=0. )
-    call MAPL_GetResource(MAPL, SCM_Z0,        'SCM_Z0:',      DEFAULT=1.E-4 )
-    call MAPL_GetResource(MAPL, SCM_RH_SURF,   'SCM_RH_SURF:', DEFAULT=0.98 )
-    call MAPL_GetResource(MAPL, SCM_TSURF,     'SCM_TSURF:',   DEFAULT=298.76 ) ! S6
+    call MAPL_GridCompGetResource(GC, 'SCM_SL_FLUX', SCM_SL_FLUX, default=0, _RC)
+    call MAPL_GridCompGetResource(GC, 'SCM_SH', SCM_SH, default=0., _RC)
+    call MAPL_GridCompGetResource(GC, 'SCM_LH', SCM_LH, default=0., _RC)
+    call MAPL_GridCompGetResource(GC, 'SCM_Z0', SCM_Z0, default=1.E-4, _RC)
+    call MAPL_GridCompGetResource(GC, 'SCM_RH_SURF', SCM_RH_SURF, default=0.98, _RC)
+    call MAPL_GridCompGetResource(GC, 'SCM_TSURF', SCM_TSURF, default=298.76, _RC) ! S6
 !    call MAPL_GetResource(MAPL, SCM_TSURF,    'SCM_TSURF:',    DEFAULT=292.46 ) ! S11
 !    call MAPL_GetResource(MAPL, SCM_TSURF,    'SCM_TSURF:',    DEFAULT=290.96 ) ! S12
-    call MAPL_GetResource(MAPL, SCM_ZETA,      'SCM_ZETA:',    DEFAULT=-0.012957419628129 ) ! S6
+    call MAPL_GridCompGetResource(GC, 'SCM_ZETA', SCM_ZETA, default=-0.012957419628129, _RC) ! S6
 !    call MAPL_GetResource(MAPL, SCM_ZETA,      'SCM_ZETA:',    DEFAULT=-0.013215659785478 ) ! S11
 !    call MAPL_GetResource(MAPL, SCM_ZETA,      'SCM_ZETA:',    DEFAULT=-0.007700882024895 ) ! S12
 
-       call MAPL_TimerOn(MAPL,"---SURFACE")
+       call MAPL_GridCompTimerStart(GC, "---SURFACE", _RC)
 
-       call MAPL_GetPointer(IMPORT, SHOBS,'SHOBS', _RC)
-       call MAPL_GetPointer(IMPORT, LHOBS,'LHOBS', _RC)
+       call MAPL_StateGetPointer(IMPORT, SHOBS,'SHOBS', _RC)
+       call MAPL_StateGetPointer(IMPORT, LHOBS,'LHOBS', _RC)
 
 
        if ( SCM_SL_FLUX == 1 ) then
@@ -1514,7 +1583,7 @@ if (SCM_SL /= 0) then
        
 !       print *,'bstar=',bstar_scm,'  ustar=',ustar_scm       
 
-       call MAPL_TimerOff(MAPL,"---SURFACE")
+       call MAPL_GridCompTimerStop(GC, "---SURFACE", _RC)
 end if
 
 
@@ -1523,7 +1592,7 @@ end if
 !===============================================================
 !                      EDMF Mass Flux
 !===============================================================
-    call MAPL_TimerOn(MAPL,"---MASSFLUX")
+    call MAPL_GridCompTimerStart(GC, "---MASSFLUX", _RC)
 
 ! Initialize EDMF output variables
     mfsl2  = 0.0
@@ -1693,7 +1762,7 @@ end if
 
 
    
-   call MAPL_TimerOff(MAPL,"---MASSFLUX")
+   call MAPL_GridCompTimerStop(GC, "---MASSFLUX", _RC)
 
    
    if (associated(lobukhov)) then
@@ -1720,7 +1789,7 @@ end if
         LOCK_ON = 0
         ISOTROPY = 600.
 
-        call MAPL_TimerOn (MAPL,name="---SHOC" ,_RC)
+        call MAPL_GridCompTimerStart(GC, "---SHOC", _RC)
 
         call RUN_SHOC( IM, JM, LM, LM+1, DT,  &
                        !== Inputs ==
@@ -1766,14 +1835,14 @@ end if
         if (associated(TKEDISSx)) TKEDISSx = TKEDISS
         KH(:,:,1:LM) = TKH(:,:,1:LM)
 
-        call MAPL_TimerOff (MAPL,name="---SHOC" ,_RC)
+        call MAPL_GridCompTimerStop(GC, "---SHOC", _RC)
 
       end if  ! DOSHOC condition
 
 !   Refresh diffusivities: First compute Louis...
 !   ---------------------------------------------
 
-      call MAPL_TimerOn (MAPL,name="---LOUIS" ,_RC)
+      call MAPL_GridCompTimerStart(GC, "---LOUIS", _RC)
 
       if (DO_SHOC == 0) then
         if (JASON_LOUIS) then
@@ -1804,9 +1873,9 @@ end if
       end if
 
 
-      call MAPL_TimerOff(MAPL,name="---LOUIS" ,_RC)
+      call MAPL_GridCompTimerStop(GC, "---LOUIS", _RC)
 
-      call MAPL_TimerOn (MAPL,name="---LOCK" ,_RC)
+      call MAPL_GridCompTimerStart(GC, "---LOCK", _RC)
 
       !   ...then add Lock.
       !--------------------
@@ -1818,13 +1887,13 @@ end if
          _ASSERT(LM <= GPU_MAXLEVS,'needs informative message') !If this is tripped, GNUmakefile
                                     !must be changed
 
-         call MAPL_GetResource(MAPL,BLOCKSIZE_X,'BLOCKSIZE_X:',DEFAULT=16,_RC)
-         call MAPL_GetResource(MAPL,BLOCKSIZE_Y,'BLOCKSIZE_Y:',DEFAULT=8,_RC)
+         call MAPL_GridCompGetResource(GC, 'BLOCKSIZE_X', BLOCKSIZE_X, default=16, _RC)
+         call MAPL_GridCompGetResource(GC, 'BLOCKSIZE_Y', BLOCKSIZE_Y, default=8, _RC)
 
          Block = dim3(blocksize_x,blocksize_y,1)
          Grid = dim3(ceiling(real(IM)/real(blocksize_x)),ceiling(real(JM)/real(blocksize_y)),1)
 
-         call MAPL_TimerOn (MAPL,name="----LOCK_ALLOC" ,_RC)
+         call MAPL_GridCompTimerStart(GC, "----LOCK_ALLOC", _RC)
 
          ! ----------------------
          ! Allocate device arrays
@@ -1910,9 +1979,9 @@ end if
          IF (ASSOCIATED(CLDRF))    CLDRADF_DIAG_dev_ptr   => CLDRADF_DIAG_dev
          IF (ASSOCIATED(RADRCODE)) RADRCODE_DIAG_dev_ptr  => RADRCODE_DIAG_dev
 
-         call MAPL_TimerOff(MAPL,name="----LOCK_ALLOC" ,_RC)
+         call MAPL_GridCompTimerStop(GC, "----LOCK_ALLOC", _RC)
 
-         call MAPL_TimerOn (MAPL,name="----LOCK_DATA" ,_RC)
+         call MAPL_GridCompTimerStart(GC, "----LOCK_DATA", _RC)
 
          ! ---------------------
          ! Copy inputs to device
@@ -1945,9 +2014,9 @@ end if
          DIFF_M_dev(:,:,1:LM+1) = KM(:,:,0:LM)
          DIFF_T_dev(:,:,1:LM+1) = KH(:,:,0:LM)
 
-         call MAPL_TimerOff(MAPL,name="----LOCK_DATA" ,_RC)
+         call MAPL_GridCompTimerStop(GC, "----LOCK_DATA", _RC)
 
-         call MAPL_TimerOn (MAPL,name="----LOCK_RUN" ,_RC)
+         call MAPL_GridCompTimerStart(GC, "----LOCK_RUN", _RC)
 
          call ENTRAIN<<<Grid,Block>>>(IM, JM, LM,   &
                                       ! Inputs
@@ -2015,9 +2084,9 @@ end if
          ! Kernel is done
          ! --------------
 
-         call MAPL_TimerOff(MAPL,name="----LOCK_RUN" ,_RC)
+         call MAPL_GridCompTimerStop(GC, "----LOCK_RUN", _RC)
 
-         call MAPL_TimerOn (MAPL,name="----LOCK_DATA" ,_RC)
+         call MAPL_GridCompTimerStart(GC, "----LOCK_DATA", _RC)
 
          ! ------------------------
          ! Copy outputs to the host
@@ -2060,9 +2129,9 @@ end if
          IF (ASSOCIATED(CLDRF))    CLDRF    = CLDRADF_DIAG_dev
          IF (ASSOCIATED(RADRCODE)) RADRCODE = RADRCODE_DIAG_dev
 
-         call MAPL_TimerOff(MAPL,name="----LOCK_DATA" ,_RC)
+         call MAPL_GridCompTimerStop(GC, "----LOCK_DATA", _RC)
 
-         call MAPL_TimerOn (MAPL,name="----LOCK_DEALLOC" ,_RC)
+         call MAPL_GridCompTimerStart(GC, "----LOCK_DEALLOC", _RC)
 
          ! ------------------------
          ! Deallocate device arrays
@@ -2148,7 +2217,7 @@ end if
          IF (ASSOCIATED(CLDRF))    NULLIFY(CLDRADF_DIAG_dev_ptr)
          IF (ASSOCIATED(RADRCODE)) NULLIFY(RADRCODE_DIAG_dev_ptr)
 
-         call MAPL_TimerOff(MAPL,name="----LOCK_DEALLOC" ,_RC)
+         call MAPL_GridCompTimerStop(GC, "----LOCK_DEALLOC", _RC)
 
 #else
 
@@ -2218,9 +2287,9 @@ end if
          KHRAD = 0.0
       end if DO_ENTRAIN
 
-      call MAPL_TimerOff(MAPL,name="---LOCK" ,_RC)
+      call MAPL_GridCompTimerStop(GC, "---LOCK", _RC)
 
-      call MAPL_TimerOn (MAPL,"---POSTLOCK")
+      call MAPL_GridCompTimerStart(GC, "---POSTLOCK", _RC)
 
 
 
@@ -2882,7 +2951,7 @@ end if
       if (associated(AKVODT)) AKVODT = -AKV/DT
       if (associated(CKVODT)) CKVODT = -CKV/DT
 
-      call MAPL_TimerOff(MAPL,"---POSTLOCK")
+      call MAPL_GridCompTimerStop(GC, "---POSTLOCK", _RC)
 
 !BOP
 !
@@ -2900,7 +2969,7 @@ end if
 !
 !EOP
 
-      call MAPL_TimerOn(MAPL,"---BELJAARS")
+      call MAPL_GridCompTimerStart(GC, "---BELJAARS", _RC)
       if (C_B /= 0.0) then
       call BELJAARS(IM, JM, LM, DT, &
                     LAMBDA_B, C_B,  &
@@ -2909,9 +2978,9 @@ end if
                     VARFLT, PLE,    &
                     BKV, BKUU, FKV  )
       endif
-      call MAPL_TimerOff(MAPL,"---BELJAARS")
+      call MAPL_GridCompTimerStop(GC, "---BELJAARS", _RC)
 
-      call MAPL_TimerOn(MAPL,"---DECOMP")
+      call MAPL_GridCompTimerStart(GC, "---DECOMP", _RC)
 
 ! Do LU decomposition; C is not modified.
 ! On exit, B is the main diagonals of the LU
@@ -2966,7 +3035,7 @@ end if
       BKUU=BKX
       AKUU=AKX  
 
-      call MAPL_TimerOff(MAPL,"---DECOMP")
+      call MAPL_GridCompTimerStop(GC, "---DECOMP", _RC)
 
       if(ALLOC_TCZPBL) deallocate(TCZPBL)
       if(ALLOC_ZPBL2) deallocate(ZPBL2)
@@ -2992,13 +3061,12 @@ end if
     integer, optional, intent(OUT)      :: RC
 
 ! !DESCRIPTION: {\tt DIFFUSE} computes semi-implicit tendencies of all fields in
-!  the TR bundle. Each field is examined for three attributes: {\tt DiffuseLike},
-!  {\tt FriendlyToTURBULENCE}, and {\tt WeightedTendency}. These determine the behavior of
+!  the TRDIFF bundle. Each field is examined for two attributes: {\tt DiffuseLike}
+!  and {\tt WeightedTendency}. These determine the behavior of
 !  {\tt DIFFUSE} for that field. {\tt DiffuseLike} can be either 'U', 'Q', or 'S'; the default is 'Q'.
-!  {\tt FriendlyToTURBULENCE}, and {\tt WeightedTendency} are ESMF logicals.
-!  If {\tt FriendlyToTURBULENCE} is true, the field in TR is updated directly; otherwise
-!  it is left untouched. In either case, if the corresponding tendency export
-!  (NAMEIT, or QVIT for Q) is allocated, the tendencies are returned there. If
+!  The field in TRDIFF is updated directly (MAPL2: if {\tt FriendlyToTURBULENCE}).
+!  If the corresponding tendency internal (NAMEIT, or QVIT for Q) exists,
+!  the tendencies are returned there. If
 !  {\tt WeightedTendency} is true, the tendency, if any, is pressure weighted.
 
 !EOP
@@ -3038,6 +3106,8 @@ end if
     
     ! pointers to exports after diffuse
     real, dimension(:,:,:), pointer     :: UAFDIFFUSE, VAFDIFFUSE, SAFDIFFUSE, QAFDIFFUSE
+    ! Storage for exports MAPL2 fetched with ALLOC= when they are not requested (get_pointer_alloc)
+    real, allocatable, target, dimension(:,:,:) :: UAFDIFFUSE_wk, VAFDIFFUSE_wk, SAFDIFFUSE_wk, QAFDIFFUSE_wk
 
     real, dimension(:,:),   pointer     :: SHOBS, LHOBS
 
@@ -3054,20 +3124,20 @@ end if
 
 
     ! Get info for idealized SCM surface layer
-    call MAPL_GetResource(MAPL, SCM_SL, 'SCM_SL:', default=0, _RC)
+    call MAPL_GridCompGetResource(GC, 'SCM_SL', SCM_SL, default=0, _RC)
 
     ! Prescribed surface exchange coefficients
     if ( SCM_SL /= 0 ) then
-       call MAPL_GetResource(MAPL, SCM_SL_FLUX, 'SCM_SL_FLUX:', default=0, _RC)
-       call MAPL_GetResource(MAPL, SCM_SH,   'SCM_SH:',   default=0., _RC)
-       call MAPL_GetResource(MAPL, SCM_LH,   'SCM_LH:', default=0., _RC)
+       call MAPL_GridCompGetResource(GC, 'SCM_SL_FLUX', SCM_SL_FLUX, default=0, _RC)
+       call MAPL_GridCompGetResource(GC, 'SCM_SH', SCM_SH, default=0., _RC)
+       call MAPL_GridCompGetResource(GC, 'SCM_LH', SCM_LH, default=0., _RC)
 
        CU => cu_scm
        CT => ct_scm
        CQ => ct_scm
 
-       call MAPL_GetPointer(IMPORT, SHOBS,'SHOBS', _RC)
-       call MAPL_GetPointer(IMPORT, LHOBS,'LHOBS', _RC)
+       call MAPL_StateGetPointer(IMPORT, SHOBS,'SHOBS', _RC)
+       call MAPL_StateGetPointer(IMPORT, LHOBS,'LHOBS', _RC)
     end if
 
 
@@ -3075,12 +3145,12 @@ end if
 ! Get the bundle containing the quantities to be diffused.
 !---------------------------------------------------------
 
-    call ESMF_StateGet(IMPORT, 'TR' ,    TR,     _RC)
+    call GetTRDIFF(IMPORT, EXPORT, TR, _RC)
 
     if (DO_WAVES/=0 .and. DO_SEA_SPRAY/=0) then
-       call MAPL_GetPointer(IMPORT, SH_SPRAY_, 'SHFX_SPRAY',   _RC)
+       call MAPL_StateGetPointer(IMPORT, SH_SPRAY_, 'SHFX_SPRAY',   _RC)
 
-       call MAPL_GetPointer(IMPORT, LH_SPRAY_, 'LHFX_SPRAY',   _RC)
+       call MAPL_StateGetPointer(IMPORT, LH_SPRAY_, 'LHFX_SPRAY',   _RC)
 
        SH_SPRAY = SH_SPRAY_
        LH_SPRAY = LH_SPRAY_
@@ -3094,14 +3164,15 @@ end if
 
 ! Get pointers to exports of U,V and S that diffuse sees
 !  Required for SYNCTQ (ALLOC=.TRUE.)
-    call MAPL_GetPointer(EXPORT, UAFDIFFUSE ,  'UAFDIFFUSE' , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, VAFDIFFUSE ,  'VAFDIFFUSE' , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, SAFDIFFUSE ,  'SAFDIFFUSE' , ALLOC=.TRUE., _RC)
-    call MAPL_GetPointer(EXPORT, QAFDIFFUSE ,  'QAFDIFFUSE' , ALLOC=.TRUE., _RC)
+    call get_pointer_alloc(EXPORT, UAFDIFFUSE, 'UAFDIFFUSE', .TRUE., UAFDIFFUSE_wk, IM, JM, 1, LM, _RC)
+    call get_pointer_alloc(EXPORT, VAFDIFFUSE, 'VAFDIFFUSE', .TRUE., VAFDIFFUSE_wk, IM, JM, 1, LM, _RC)
+    call get_pointer_alloc(EXPORT, SAFDIFFUSE, 'SAFDIFFUSE', .TRUE., SAFDIFFUSE_wk, IM, JM, 1, LM, _RC)
+    call get_pointer_alloc(EXPORT, QAFDIFFUSE, 'QAFDIFFUSE', .TRUE., QAFDIFFUSE_wk, IM, JM, 1, LM, _RC)
 
 
-    call MAPL_GetPointer(EXPORT,  edmf_mf,    'EDMF_MF', _RC)
-    call MAPL_GetPointer(EXPORT,  edmf_entx,  'EDMF_ENTR', _RC)
+    call MAPL_StateGetPointer(INTERNAL,  edmf_mf,    'EDMF_MF', _RC)
+   call zero_based_edges(edmf_mf)
+    call MAPL_StateGetPointer(INTERNAL,  edmf_entx,  'EDMF_ENTR', _RC)
 
     
 ! Count the fields in TR
@@ -3128,9 +3199,9 @@ end if
           WEIGHTED = DIRECT_WEIGHTED(K)
           FRIENDLY = DIRECT_FRIENDLY(K)
           if (DIRECT_INTERNAL(K)) then
-             call MAPL_GetPointer(INTERNAL, S, trim(NAME), _RC)
+             call MAPL_StateGetPointer(INTERNAL, S, trim(NAME), _RC)
           else
-             call MAPL_GetPointer(IMPORT,   S, trim(NAME), _RC)
+             call MAPL_StateGetPointer(IMPORT,   S, trim(NAME), _RC)
           end if
 
        else
@@ -3138,39 +3209,19 @@ end if
 ! Get the Kth Field and its name from tracer bundle
 !--------------------------------------------------
 
-          call ESMF_FieldBundleGet(TR, K-NDIRECT, FIELD, _RC)
+          call GetDiffusedField(TR, K-NDIRECT, NAME, TYPE, WEIGHTED, S, _RC)
 
-          call ESMF_FieldGet(FIELD, name=NAME, _RC)
+! Every TRDIFF field is a subscriber's internal, updated in place (MAPL2:
+!  the FriendlyToTURBULENCE attribute; Physics filled TR with friendlies only)
 
-! Get item's diffusion type (U, S or Q; default is Q)
-!----------------------------------------------------
-
-          call ESMF_AttributeGet(FIELD, NAME="DiffuseLike",         &
-               VALUE=TYPE, DEFAULTVALUE=dflt_q,    _RC)
-
-! Get item's friendly status (default is not friendly)
-!-----------------------------------------------------
-
-          call ESMF_AttributeGet(FIELD, NAME="FriendlyToTURBULENCE", &
-               VALUE=FRIENDLY, DEFAULTVALUE=dflt_false,    _RC)
-
-! Get item's weighting (default is unweighted tendencies)
-!--------------------------------------------------------
-
-          call ESMF_AttributeGet(FIELD, NAME="WeightedTendency",   &
-               VALUE=WEIGHTED, DEFAULTVALUE=dflt_false,    _RC)
-
-! Get pointer to the quantity
-! ---------------------------
-
-          call ESMFL_BundleGetPointerToData(TR    ,      NAME,         S  , _RC)
+          FRIENDLY = .true.
 
        end if
 
 ! Get pointer to its tendency, if requested
 ! -----------------------------------------
 
-       call GetTendency(EXPORT, NAME, SOI, _RC)
+       call GetTendency(INTERNAL, NAME, SOI, _RC)
 
 ! Surface values, fluxes and sensitivities exist only for S, U, V and Q;
 !  all other quantities are left unassociated (zero flux).
@@ -3178,9 +3229,9 @@ end if
        nullify(SRG, SF, SDF)
        select case (trim(NAME))
        case ('S','U','V','Q')
-          call MAPL_GetPointer(IMPORT, SRG, trim(NAME)//'HAT', _RC)
-          call MAPL_GetPointer(EXPORT, SF , trim(NAME)//'FLX', _RC)
-          call MAPL_GetPointer(EXPORT, SDF, trim(NAME)//'DFL', _RC)
+          call MAPL_StateGetPointer(IMPORT, SRG, trim(NAME)//'HAT', _RC)
+          call MAPL_StateGetPointer(EXPORT, SF , trim(NAME)//'FLX', _RC)
+          call MAPL_StateGetPointer(EXPORT, SDF, trim(NAME)//'DFL', _RC)
        end select
 
 ! The quantity must exist; others are optional.
@@ -3423,11 +3474,11 @@ end subroutine RUN1
 
 ! !ARGUMENTS:
 
-    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
-    type(ESMF_State),    intent(inout) :: IMPORT ! Import state
-    type(ESMF_State),    intent(inout) :: EXPORT ! Export state
-    type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
-    integer, optional,   intent(  out) :: RC     ! Error code:
+    type(ESMF_GridComp)  :: GC     ! Gridded component 
+    type(ESMF_State)     :: IMPORT ! Import state
+    type(ESMF_State)     :: EXPORT ! Export state
+    type(ESMF_Clock)     :: CLOCK  ! The clock
+    integer, intent(out) :: RC     ! Error code:
 
 ! !DESCRIPTION: Second run stage of {\tt GEOS\_TurbulenceGridComp} performs
 !    the updates due to changes in surface quantities. Its input are the changes in 
@@ -3444,9 +3495,9 @@ end subroutine RUN1
 
 ! Local derived type aliases
 
-    type (MAPL_MetaComp), pointer       :: MAPL
-    type (ESMF_Config      )            :: CF
+    type (ESMF_Grid        )            :: GRID
     type (ESMF_State       )            :: INTERNAL 
+    class(logger_t), pointer            :: LOGGER
 
 ! Local variables
 
@@ -3454,7 +3505,7 @@ end subroutine RUN1
     real                                :: DT
 
     real, pointer, dimension(:,:)       :: VARFLT
-    real, pointer, dimension(:,:)       :: LATS
+    real, allocatable, dimension(:,:)   :: LONS, LATS
 
 ! Begin... 
 !---------
@@ -3464,47 +3515,38 @@ end subroutine RUN1
 
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, _RC)
 
-! Get my internal MAPL_Generic state
+    call MAPL_GridCompTimerStart(GC, "TOTAL", _RC)
+    call MAPL_GridCompTimerStart(GC, "-RUN2", _RC)
+
+! Grid sizes, latitudes (radians), internal state, logger
 !-----------------------------------
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, _RC)
+    call MAPL_GridCompGet(GC, num_levels=LM, grid=GRID, logger=LOGGER, _RC)
+    call MAPL_GridGet(GRID, IM=IM, JM=JM, _RC)
+    call MAPL_GridGetCoordinates(GRID, longitudes=LONS, latitudes=LATS, _RC)
+    call MAPL_GridCompGetInternalState(GC, INTERNAL, _RC)
+    TRB_LOGGER => LOGGER
 
-    call MAPL_TimerOn(MAPL,"TOTAL")
-    call MAPL_TimerOn(MAPL,"-RUN2")
-
-! Get parameters from generic state.
-!-----------------------------------
-
-          call MAPL_Get( MAPL, IM=IM, JM=JM, LM=LM,          &
-                               LATS = LATS,                  &
-                               INTERNAL_ESMF_STATE=INTERNAL, &
-                                                   _RC)
-
-! Get configuration from component
-!---------------------------------
-
-    call ESMF_GridCompGet( GC, CONFIG = CF, _RC)
-
-! Get application's timestep from configuration
+! Get application's timestep: Turbulence's clock step (MAPL2: RUN_DT:)
 !----------------------------------------------
 
-    call ESMF_ConfigGetAttribute( CF, DT, Label="RUN_DT:" , _RC)
+    call MAPL_ClockGet(CLOCK, dt=DT, _RC)
 
 
-    call MAPL_GetPointer(IMPORT,VARFLT,  'VARFLT', _RC)
+    call MAPL_StateGetPointer(IMPORT,VARFLT,  'VARFLT', _RC)
 
 ! Solve the free atmosphere problem
 ! ---------------------------------
 
-    call MAPL_TimerOn (MAPL,"--UPDATE")
+    call MAPL_GridCompTimerStart(GC, "--UPDATE", _RC)
       call UPDATE(IM,JM,LM,LATS,_RC)
-    call MAPL_TimerOff(MAPL,"--UPDATE")
+    call MAPL_GridCompTimerStop(GC, "--UPDATE", _RC)
 
 !  All done with RUN
 !-------------------
 
-    call MAPL_TimerOff(MAPL,"-RUN2")
-    call MAPL_TimerOff(MAPL,"TOTAL")
+    call MAPL_GridCompTimerStop(GC, "-RUN2", _RC)
+    call MAPL_GridCompTimerStop(GC, "TOTAL", _RC)
     _RETURN(_SUCCESS)
 
   contains
@@ -3556,6 +3598,10 @@ end subroutine RUN1
       real, allocatable                   :: tmp3d(:,:,:)
       !  pointers to export of S after update
       real, dimension(:,:,:), pointer     :: SAFUPDATE
+      ! Storage for exports MAPL2 fetched with ALLOC= when they are not requested (get_pointer_alloc)
+      real, allocatable, target, dimension(:,:,:) :: QTX_wk, SLX_wk, WSL_wk, WQT_wk, INTDIS_wk, TOPDIS_wk, &
+                                                     SAFUPDATE_wk
+      real, allocatable, target, dimension(:,:)   :: SRFDIS_wk
 
 ! The following variables are for SHVC parameterization
 
@@ -3588,99 +3634,103 @@ end subroutine RUN1
 
       ALLOC_TMP = .FALSE.
 
-      call MAPL_GetPointer(INTERNAL, TKH , 'TKH' , _RC)
-      call MAPL_GetPointer(INTERNAL, TKEDISS, 'TKEDISS' , _RC)
+      call MAPL_StateGetPointer(INTERNAL, TKH , 'TKH' , _RC)
+      call zero_based_edges(TKH)
+      call MAPL_StateGetPointer(INTERNAL, TKEDISS, 'TKEDISS' , _RC)
 
-      call MAPL_GetPointer(EXPORT, QTX      , 'QT'       , ALLOC=.TRUE., _RC)
-      call MAPL_GetPointer(EXPORT, SLX      , 'SL'       , ALLOC=.TRUE., _RC)
-      call MAPL_GetPointer(EXPORT, QTFLXTRB , 'QTFLXTRB' , _RC)
-      call MAPL_GetPointer(EXPORT, SLFLXTRB , 'SLFLXTRB' , _RC)
-      call MAPL_GetPointer(EXPORT, UFLXTRB  , 'UFLXTRB'  , _RC)
-      call MAPL_GetPointer(EXPORT, VFLXTRB  , 'VFLXTRB'  , _RC)
+      call get_pointer_alloc(EXPORT, QTX, 'QT', .TRUE., QTX_wk, IM, JM, 1, LM, _RC)
+      call get_pointer_alloc(EXPORT, SLX, 'SL', .TRUE., SLX_wk, IM, JM, 1, LM, _RC)
+      call MAPL_StateGetPointer(EXPORT, QTFLXTRB , 'QTFLXTRB' , _RC)
+      call zero_based_edges(QTFLXTRB)
+      call MAPL_StateGetPointer(EXPORT, SLFLXTRB , 'SLFLXTRB' , _RC)
+      call zero_based_edges(SLFLXTRB)
+      call MAPL_StateGetPointer(EXPORT, UFLXTRB  , 'UFLXTRB'  , _RC)
+      call zero_based_edges(UFLXTRB)
+      call MAPL_StateGetPointer(EXPORT, VFLXTRB  , 'VFLXTRB'  , _RC)
+      call zero_based_edges(VFLXTRB)
 
       ! MF contribution, used to calculate TRB fluxes above
-      call MAPL_GetPointer(INTERNAL, SLFLXMF  , 'SLFLXMF'  , _RC)
-      call MAPL_GetPointer(INTERNAL, QTFLXMF  , 'QTFLXMF'  , _RC)
-      call MAPL_GetPointer(INTERNAL, MFAW     , 'MFAW'     , _RC)
+      call MAPL_StateGetPointer(INTERNAL, SLFLXMF  , 'SLFLXMF'  , _RC)
+      call zero_based_edges(SLFLXMF)
+      call MAPL_StateGetPointer(INTERNAL, QTFLXMF  , 'QTFLXMF'  , _RC)
+      call zero_based_edges(QTFLXMF)
+      call MAPL_StateGetPointer(INTERNAL, MFAW     , 'MFAW'     , _RC)
+      call zero_based_edges(MFAW)
       
       ! Used in update_moments for ADG PDF (requires all of above)
-      call MAPL_GetPointer(EXPORT, WSL,     'WSL'   , ALLOC=.TRUE., _RC)
-      call MAPL_GetPointer(EXPORT, WQT,     'WQT'   , ALLOC=.TRUE., _RC)
+      call get_pointer_alloc(EXPORT, WSL, 'WSL', .TRUE., WSL_wk, IM, JM, 1, LM, _RC)
+      call get_pointer_alloc(EXPORT, WQT, 'WQT', .TRUE., WQT_wk, IM, JM, 1, LM, _RC)
 
-      call MAPL_GetPointer(EXPORT, KETRB ,  'KETRB' , _RC)
-      call MAPL_GetPointer(EXPORT, KESRF ,  'KESRF' , _RC)
-      call MAPL_GetPointer(EXPORT, KETOP ,  'KETOP' , _RC)
-      call MAPL_GetPointer(EXPORT, KEINT ,  'KEINT' , _RC)
+      call MAPL_StateGetPointer(EXPORT, KETRB ,  'KETRB' , _RC)
+      call MAPL_StateGetPointer(EXPORT, KESRF ,  'KESRF' , _RC)
+      call MAPL_StateGetPointer(EXPORT, KETOP ,  'KETOP' , _RC)
+      call MAPL_StateGetPointer(EXPORT, KEINT ,  'KEINT' , _RC)
 
-      call MAPL_GetPointer(EXPORT, DPDTTRB,  'DPDTTRB', _RC)
+      call MAPL_StateGetPointer(EXPORT, DPDTTRB,  'DPDTTRB', _RC)
 
-      call MAPL_GetPointer(EXPORT, SRFDIS,  'SRFDIS',                  &
-                       alloc=associated(KETRB) .or. associated(KESRF), &
-                                                              _RC)
-      call MAPL_GetPointer(EXPORT, INTDIS,  'INTDIS',                  &
-                       alloc=associated(KETRB) .or. associated(KEINT), &
-                                                              _RC)
-      call MAPL_GetPointer(EXPORT, TOPDIS,  'TOPDIS',                  &
-                       alloc=associated(KETRB) .or. associated(KETOP), &
-                                                              _RC)
+      call get_pointer_alloc(EXPORT, SRFDIS, 'SRFDIS', associated(KETRB) .or. associated(KESRF), SRFDIS_wk, IM, JM, _RC)
+      call get_pointer_alloc(EXPORT, INTDIS, 'INTDIS', associated(KETRB) .or. associated(KEINT), INTDIS_wk, IM, JM, 1, LM, _RC)
+      call get_pointer_alloc(EXPORT, TOPDIS, 'TOPDIS', associated(KETRB) .or. associated(KETOP), TOPDIS_wk, IM, JM, 1, LM, _RC)
 
                       HGT_SURFACE = 50.0
       if (LM .eq. 72) HGT_SURFACE =  0.0
-      call MAPL_GetResource( MAPL, HGT_SURFACE, 'HGT_SURFACE:', default=HGT_SURFACE, _RC)
+      call MAPL_GridCompGetResource(GC, 'HGT_SURFACE', HGT_SURFACE, default=(HGT_SURFACE), _RC)
 
                       CAP_INTDIS = 1.0 ! Kelvin [per time step done when applied]                 
       if (LM .eq. 72) CAP_INTDIS = 0.0
-      call MAPL_GetResource (MAPL, CAP_INTDIS,   trim(COMP_NAME)//"_CAP_INTDIS:",     default=CAP_INTDIS,  _RC)
+      call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_CAP_INTDIS', CAP_INTDIS, default=(CAP_INTDIS), _RC)
 
                       CAP_TOPDIS = 1.0 ! Kelvin [per time step done when applied]                 
       if (LM .eq. 72) CAP_TOPDIS = 0.0
-      call MAPL_GetResource (MAPL, CAP_TOPDIS,   trim(COMP_NAME)//"_CAP_TOPDIS:",     default=CAP_TOPDIS,  _RC)
+      call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_CAP_TOPDIS', CAP_TOPDIS, default=(CAP_TOPDIS), _RC)
 
-      call MAPL_GetResource (MAPL, DO_SHOC, trim(COMP_NAME)//"_DO_SHOC:", default=0, _RC)
+      call MAPL_GridCompGetResource(GC, trim(COMP_NAME)//'_DO_SHOC', DO_SHOC, default=0, _RC)
 
 
 ! SHVC Resource parameters. SHVC_EFFECT can be set to zero to turn-off SHVC.
 ! SHVC_EFFECT = 1. is the tuned value for  2 degree horizontal resolution.
 ! It should be set to a lower number at higher resolution.
 
-      call MAPL_GetResource( MAPL, SHVC_EFFECT, 'SHVC_EFFECT:', default=0.   , _RC)
+      call MAPL_GridCompGetResource(GC, 'SHVC_EFFECT', SHVC_EFFECT, default=0., _RC)
 
       DO_SHVC = SHVC_EFFECT > 0.0
 
       if(DO_SHVC) then
-         call MAPL_GetResource( MAPL, SHVC_CRIT,   'SHVC_CRIT:'  , default=300. , _RC)
-         call MAPL_GetResource( MAPL, SHVC_ALPHA,  'SHVC_ALPHA:' , default=1.   , _RC)
-         call MAPL_GetResource( MAPL, SHVC_1500,   'SHVC_1500:'  , default=2100., _RC)
-         call MAPL_GetResource( MAPL, SHVC_ZDEPTH, 'SHVC_ZDEPTH:', default=3500., _RC)
-         call MAPL_GetResource( MAPL, SHVC_SCALING,'SHVC_SCALING:',default=1.0  , _RC)
+         call MAPL_GridCompGetResource(GC, 'SHVC_CRIT', SHVC_CRIT, default=300., _RC)
+         call MAPL_GridCompGetResource(GC, 'SHVC_ALPHA', SHVC_ALPHA, default=1., _RC)
+         call MAPL_GridCompGetResource(GC, 'SHVC_1500', SHVC_1500, default=2100., _RC)
+         call MAPL_GridCompGetResource(GC, 'SHVC_ZDEPTH', SHVC_ZDEPTH, default=3500., _RC)
+         call MAPL_GridCompGetResource(GC, 'SHVC_SCALING', SHVC_SCALING, default=1.0, _RC)
       end if
 
 ! Determine whether running idealized SCM surface layer
 !------------------------------------------------------
 
-      call MAPL_GetResource(MAPL, SCM_SL, 'SCM_SL:', DEFAULT=0)
+      call MAPL_GridCompGetResource(GC, 'SCM_SL', SCM_SL, default=0, _RC)
 
 ! Get imports
 !------------
 
-      call MAPL_GetPointer(IMPORT,    PLE,     'PLE', _RC)
-      call MAPL_GetPointer(IMPORT,    ZLE,     'ZLE', _RC)
+      call MAPL_StateGetPointer(IMPORT,    PLE,     'PLE', _RC)
+      call zero_based_edges(PLE)
+      call MAPL_StateGetPointer(IMPORT,    ZLE,     'ZLE', _RC)
+      call zero_based_edges(ZLE)
 
 ! Get the tendecy sensitivities computed in RUN1
 !-----------------------------------------------
 
-      call MAPL_GetPointer(INTERNAL, DKS,   'DKS',   _RC)
-      call MAPL_GetPointer(INTERNAL, DKV,   'DKV',   _RC)
-      call MAPL_GetPointer(INTERNAL, DKQ,   'DKQ',   _RC)
+      call MAPL_StateGetPointer(INTERNAL, DKS,   'DKS',   _RC)
+      call MAPL_StateGetPointer(INTERNAL, DKV,   'DKV',   _RC)
+      call MAPL_StateGetPointer(INTERNAL, DKQ,   'DKQ',   _RC)
 
-      call MAPL_GetPointer(INTERNAL, EKV,   'EKV',   _RC)
-      call MAPL_GetPointer(INTERNAL, FKV,   'FKV',   _RC)
-      call MAPL_GetPointer(INTERNAL, SINC,  'SINC',    _RC)
+      call MAPL_StateGetPointer(INTERNAL, EKV,   'EKV',   _RC)
+      call MAPL_StateGetPointer(INTERNAL, FKV,   'FKV',   _RC)
+      call MAPL_StateGetPointer(INTERNAL, SINC,  'SINC',    _RC)
 
 ! Get the bundle containing the quantities to be diffused.
 !---------------------------------------------------------
 
-      call ESMF_StateGet(IMPORT, 'TR' ,    TR,     _RC)
+      call GetTRDIFF(IMPORT, EXPORT, TR, _RC)
 
 ! Count them
 !-----------
@@ -3711,11 +3761,11 @@ end subroutine RUN1
       DZ = ZLE(:,:,0:LM-1) - ZLE(:,:,1:LM) ! Layer thickness (positive m)
 
 ! Diagnostics
-      call MAPL_GetPointer(EXPORT, HGTLM5 ,  'HGTLM5' , _RC)
+      call MAPL_StateGetPointer(EXPORT, HGTLM5 ,  'HGTLM5' , _RC)
       if(associated(HGTLM5)) then
          HGTLM5 = ZL0(:,:,LM-5)
       end if
-      call MAPL_GetPointer(EXPORT, LM50M ,  'LM50M' , _RC)
+      call MAPL_StateGetPointer(EXPORT, LM50M ,  'LM50M' , _RC)
       if(associated(LM50M)) then
          LM50M = LM
          do L=LM,2,-1
@@ -3818,7 +3868,7 @@ end subroutine RUN1
 
 ! Get pointer to export S after update required for SYNCTQ (ALLOC=.TRUE.)
 !----------------------------------------------------
-    call MAPL_GetPointer(EXPORT, SAFUPDATE ,  'SAFUPDATE' , ALLOC=.TRUE., _RC)
+    call get_pointer_alloc(EXPORT, SAFUPDATE, 'SAFUPDATE', .TRUE., SAFUPDATE_wk, IM, JM, 1, LM, _RC)
 
        if (associated(INTDIS) .and. DO_SHOC /= 0) then
           INTDIS(:,:,1:LM) = -1.*TKEDISS(:,:,1:LM)*DP(:,:,1:LM)/MAPL_CP
@@ -3838,9 +3888,9 @@ end subroutine RUN1
             WEIGHTED = DIRECT_WEIGHTED(K)
             FRIENDLY = DIRECT_FRIENDLY(K)
             if (DIRECT_INTERNAL(K)) then
-               call MAPL_GetPointer(INTERNAL, S, trim(NAME), _RC)
+               call MAPL_StateGetPointer(INTERNAL, S, trim(NAME), _RC)
             else
-               call MAPL_GetPointer(IMPORT,   S, trim(NAME), _RC)
+               call MAPL_StateGetPointer(IMPORT,   S, trim(NAME), _RC)
             end if
 
          else
@@ -3848,39 +3898,19 @@ end subroutine RUN1
 ! Get Kth field from bundle
 !--------------------------
           
-            call ESMF_FieldBundleGet(TR, K-NDIRECT, FIELD, _RC)
+            call GetDiffusedField(TR, K-NDIRECT, NAME, TYPE, WEIGHTED, S, _RC)
 
-            call ESMF_FieldGet(FIELD, name=NAME, _RC)
-
-! Get item's diffusion type (U, S or Q; default is Q)
-!----------------------------------------------------
-
-            call ESMF_AttributeGet(FIELD, NAME="DiffuseLike",         &
-                 VALUE=TYPE, DEFAULTVALUE=dflt_Q,    _RC)
-
-! Get item's friendly status (default is not friendly)
-!-----------------------------------------------------
-
-            call ESMF_AttributeGet(FIELD, NAME="FriendlyToTURBULENCE", &
-                 VALUE=Friendly, DEFAULTVALUE=dflt_false,    _RC)
-
-! Get item's weighting (default is unweighted tendencies)
-!--------------------------------------------------------
-
-            call ESMF_AttributeGet(FIELD, NAME="WeightedTendency",    &
-                 VALUE=WEIGHTED, DEFAULTVALUE=dflt_false,    _RC)
-
-! Get pointer to the quantity
-! ---------------------------
-
-            call ESMFL_BundleGetPointerToData(TR    ,      NAME,         S  , _RC)
+! Every TRDIFF field is a subscriber's internal, updated in place (MAPL2:
+!  the FriendlyToTURBULENCE attribute; Physics filled TR with friendlies only)
+          
+            FRIENDLY = .true.
 
          end if
 
 ! Get pointer to its tendency, if requested
 ! -----------------------------------------
 
-         call GetTendency(EXPORT, NAME, SOI, _RC)
+         call GetTendency(INTERNAL, NAME, SOI, _RC)
 
 ! Get pointers to the surface increment, the preliminary surface flux,
 !   and the sensitivity of the surface flux to the surface value.
@@ -3888,9 +3918,9 @@ end subroutine RUN1
          nullify(DSG, SF, SDF)
          select case (trim(NAME))
          case ('S','U','V','Q')
-            call MAPL_GetPointer(IMPORT, DSG, trim(NAME)//'DEL', _RC)
-            call MAPL_GetPointer(EXPORT, SF , trim(NAME)//'FLX', _RC)
-            call MAPL_GetPointer(EXPORT, SDF, trim(NAME)//'DFL', _RC)
+            call MAPL_StateGetPointer(IMPORT, DSG, trim(NAME)//'DEL', _RC)
+            call MAPL_StateGetPointer(EXPORT, SF , trim(NAME)//'FLX', _RC)
+            call MAPL_StateGetPointer(EXPORT, SDF, trim(NAME)//'DFL', _RC)
          end select
 
 !  Point to the appropriate sensitivity
@@ -4467,9 +4497,9 @@ end subroutine RUN1
       KH(:,:,1:LM-1) = ALHFAC*ALH*KH(:,:,1:LM-1)*DV*RLS
 
    if (DEBUG_TRB) then
-      call MAPL_MaxMin('LOUIS: RI', RI)
-      call MAPL_MaxMin('LOUIS: KM', KM)
-      call MAPL_MaxMin('LOUIS: KH', KH)
+      call report_maxmin('LOUIS: RI', RI)
+      call report_maxmin('LOUIS: KM', KM)
+      call report_maxmin('LOUIS: KH', KH)
    endif 
 
       KM  = min(KM, AKHMMAX)
@@ -4643,9 +4673,9 @@ subroutine LOUIS_KS_OPTIMIZED( IM,JM,LM,MO_MAX_ITER,DTIME, &
    !$OMP END PARALLEL DO
 
    if (DEBUG_TRB) then
-      call MAPL_MaxMin('LOUIS: RI', RI)
-      call MAPL_MaxMin('LOUIS: KM', KM)
-      call MAPL_MaxMin('LOUIS: KH', KH)
+      call report_maxmin('LOUIS: RI', RI)
+      call report_maxmin('LOUIS: KM', KM)
+      call report_maxmin('LOUIS: KH', KH)
    endif
 
    if (associated(KMLS_DIAG)) KMLS_DIAG = KM
@@ -4880,9 +4910,9 @@ end subroutine ComputeMOScalingInterlevel
         end do
       end do
 
-      if (DEBUG_TRB) call MAPL_MaxMin('TOFD: BKV ', BKV)
-      if (DEBUG_TRB) call MAPL_MaxMin('TOFD: FKV ', FKV*(PLE(:,:,1:LM)-PLE(:,:,0:LM-1)))
-      if (DEBUG_TRB) call MAPL_MaxMin('TOFD: FKVP', FKV)
+      if (DEBUG_TRB) call report_maxmin('TOFD: BKV ', BKV)
+      if (DEBUG_TRB) call report_maxmin('TOFD: FKV ', FKV*(PLE(:,:,1:LM)-PLE(:,:,0:LM-1)))
+      if (DEBUG_TRB) call report_maxmin('TOFD: FKVP', FKV)
 
       endif
 
@@ -5083,12 +5113,13 @@ end subroutine ComputeMOScalingInterlevel
 
 !=============================================================================
 
-! Points PTR at the turbulence tendency export for the diffused quantity
+! Points PTR at the turbulence tendency internal for the diffused quantity
 !  NAME (QVIT for Q, otherwise NAMEIT). PTR is left unassociated if there
-!  is no such export or it has not been allocated.
+!  is no such internal. The tendencies are internals (re-exported), so they
+!  are always allocated, as MAPL2's TRI bundle allocated them.
 
-  subroutine GetTendency(EXPORT, NAME, PTR, RC)
-    type(ESMF_State),                intent(inout) :: EXPORT
+  subroutine GetTendency(INTERNAL, NAME, PTR, RC)
+    type(ESMF_State),                intent(inout) :: INTERNAL
     character(len=*),                intent(in   ) :: NAME
     real, dimension(:,:,:), pointer                :: PTR
     integer, optional,               intent(  out) :: RC
@@ -5104,9 +5135,9 @@ end subroutine ComputeMOScalingInterlevel
     end if
 
     nullify(PTR)
-    call ESMF_StateGet(EXPORT, TNAME, itemType=itemType, _RC)
+    call ESMF_StateGet(INTERNAL, TNAME, itemType=itemType, _RC)
     if (itemType == ESMF_STATEITEM_FIELD) then
-       call MAPL_GetPointer(EXPORT, PTR, TNAME, _RC)
+       call MAPL_StateGetPointer(INTERNAL, PTR, TNAME, _RC)
     end if
 
     _RETURN(_SUCCESS)
@@ -5114,41 +5145,101 @@ end subroutine ComputeMOScalingInterlevel
 
 !=============================================================================
 
-! Returns the names listed under TRI_increments:: in CF (empty if none).
+! The TRDIFF service bundle (MAPL2: the TR import). Turbulence provides the
+!  service; MAPL puts the bundle in both states. Its fields are the
+!  subscribers' internals, so the two bundles must share the data (as Moist
+!  checks for MTR and DynCore for TRADV).
+
+  subroutine GetTRDIFF(IMPORT, EXPORT, TR, RC)
+    type(ESMF_State),       intent(inout) :: IMPORT
+    type(ESMF_State),       intent(inout) :: EXPORT
+    type(ESMF_FieldBundle), intent(  out) :: TR
+    integer, optional,      intent(  out) :: RC
+
+    integer                :: STATUS
+    type(ESMF_FieldBundle) :: TR_IMPORT
+    logical                :: SAME_DATA
+
+    call ESMF_StateGet(EXPORT, 'TRDIFF', TR, _RC)
+    call ESMF_StateGet(IMPORT, 'TRDIFF', TR_IMPORT, _RC)
+    SAME_DATA = MAPL_FieldBundleSameData(TR_IMPORT, TR, _RC)
+    _ASSERT(SAME_DATA, 'TRDIFF bundles in import and export do not point to the same data')
+
+    _RETURN(_SUCCESS)
+  end subroutine GetTRDIFF
+
+!=============================================================================
+
+! Field K of the TRDIFF bundle: its short name, diffusion type (attribute
+!  DiffuseLike: U, S or Q; default Q), whether its tendency is pressure
+!  weighted (attribute WeightedTendency; default false) and its data.
+!  MAPL2 read the attributes with ESMF_AttributeGet; nobody sets them on
+!  develop, so the defaults apply, but a subscriber can still set them.
+
+  subroutine GetDiffusedField(TR, K, NAME, TYPE, WEIGHTED, S, RC)
+    type(ESMF_FieldBundle),          intent(inout) :: TR
+    integer,                         intent(in   ) :: K
+    character(len=*),                intent(  out) :: NAME
+    character(len=*),                intent(  out) :: TYPE
+    logical,                         intent(  out) :: WEIGHTED
+    real, dimension(:,:,:), pointer                :: S
+    integer, optional,               intent(  out) :: RC
+
+    integer          :: STATUS
+    type(ESMF_Field) :: FIELD
+    type(ESMF_Info)  :: INFO
+
+    call ESMF_FieldBundleGet(TR, K, FIELD, _RC)
+
+    NAME = diffused_short_name(FIELD, _RC)
+
+    call ESMF_InfoGetFromHost(FIELD, INFO, _RC)
+    call ESMF_InfoGet(INFO, key='DiffuseLike', value=TYPE, default='Q', _RC)
+    call ESMF_InfoGet(INFO, key='WeightedTendency', value=WEIGHTED, default=.false., _RC)
+
+    call ESMF_FieldGet(FIELD, localDe=0, farrayPtr=S, _RC)
+
+    _RETURN(_SUCCESS)
+  end subroutine GetDiffusedField
+
+!=============================================================================
+
+! Returns the names in the TRI_increments list of the component's
+!  configuration (empty if none; MAPL2: the TRI_increments:: table).
 !  bundleParser.py adds a name for every TRI%NAMEIT requested in History, so
-!  names whose tendency is already a built-in export (S, U, V, TKESHOC, Q,
+!  names whose tendency is already a built-in internal (S, U, V, TKESHOC, Q,
 !  QLLS, QILS) are skipped, as are repeated names.
 
-  subroutine GetTriIncrements(CF, NAMES, RC)
-    type(ESMF_Config),                       intent(inout) :: CF
+  subroutine GetTriIncrements(GC, NAMES, RC)
+    type(ESMF_GridComp),                     intent(inout) :: GC
     character(len=ESMF_MAXSTR), allocatable, intent(  out) :: NAMES(:)
     integer, optional,                       intent(  out) :: RC
 
     integer                               :: STATUS
-    integer                               :: I, N, NQ, nCols
-    character(len=ESMF_MAXSTR)            :: NAME
-    character(len=ESMF_MAXSTR), allocatable :: ALL_NAMES(:)
+    integer                               :: I, N, NQ
+    type(ESMF_HConfig)                    :: HCONFIG
+    logical                               :: IS_DEFINED
+    character(len=ESMF_MAXSTR), allocatable :: LIST(:), ALL_NAMES(:)
 
     character(len=*), parameter :: BUILTIN(7) = &
          [character(len=7) :: 'S', 'U', 'V', 'TKESHOC', 'Q', 'QLLS', 'QILS']
 
+    call MAPL_GridCompGet(GC, hconfig=HCONFIG, _RC)
+    IS_DEFINED = ESMF_HConfigIsDefined(HCONFIG, keyString='TRI_increments', _RC)
     NQ = 0
-    call ESMF_ConfigGetDim (CF, NQ, nCols, label=('TRI_increments::'), rc=STATUS)
-    if (STATUS /= ESMF_SUCCESS) NQ = 0
+    if (IS_DEFINED) then
+       LIST = ESMF_HConfigAsStringSeq(HCONFIG, keyString='TRI_increments', stringLen=ESMF_MAXSTR, _RC)
+       NQ = size(LIST)
+    end if
 
     allocate (ALL_NAMES(NQ), _STAT)
     N = 0
-    if (NQ > 0) then
-       call ESMF_ConfigFindLabel (CF, ('TRI_increments::'), _RC)
-       do I = 1, NQ
-          call ESMF_ConfigNextLine(CF, _RC)
-          call ESMF_ConfigGetAttribute(CF, NAME, _RC)
-          if (any(BUILTIN == NAME)) cycle
-          if (any(ALL_NAMES(1:N) == NAME)) cycle
-          N = N + 1
-          ALL_NAMES(N) = NAME
-       end do
-    end if
+    do I = 1, NQ
+       if (any(BUILTIN == LIST(I))) cycle
+       if (any(ALL_NAMES(1:N) == LIST(I))) cycle
+       N = N + 1
+       ALL_NAMES(N) = LIST(I)
+    end do
 
     allocate (NAMES(N), _STAT)
     NAMES = ALL_NAMES(1:N)
@@ -5156,6 +5247,135 @@ end subroutine ComputeMOScalingInterlevel
 
     _RETURN(_SUCCESS)
   end subroutine GetTriIncrements
+
+!=============================================================================
+
+  subroutine zero_based_edges_1d(X)
+    real, pointer, intent(inout) :: X(:)
+    if (associated(X)) X(0:) => X
+  end subroutine zero_based_edges_1d
+
+  subroutine zero_based_edges_3d(X)
+    real, pointer, intent(inout) :: X(:,:,:)
+    if (associated(X)) X(1:,1:,0:) => X
+  end subroutine zero_based_edges_3d
+
+  subroutine zero_based_edges_4d(X)
+    real, pointer, intent(inout) :: X(:,:,:,:)
+    if (associated(X)) X(1:,1:,0:,1:) => X
+  end subroutine zero_based_edges_4d
+
+!=============================================================================
+
+! MAPL2's MAPL_GetPointer(..., ALLOC=ALLOC): X points to the export NAME if it
+!  is allocated (requested), else, if ALLOC, to WORK, allocated here and
+!  zero-filled as MAPL2 allocated exports; else X is null. LB is 0 for
+!  edge-located fields (MAPL2's bounds), 1 otherwise. WORK must be a TARGET
+!  local of the caller, which then owns the storage.
+
+  subroutine get_pointer_alloc_2d(STATE, X, NAME, ALLOC, WORK, IM, JM, RC)
+    type(ESMF_State),                  intent(inout) :: STATE
+    real, pointer,                     intent(inout) :: X(:,:)
+    character(len=*),                  intent(in   ) :: NAME
+    logical,                           intent(in   ) :: ALLOC
+    real, allocatable, target,         intent(inout) :: WORK(:,:)
+    integer,                           intent(in   ) :: IM, JM
+    integer, optional,                 intent(  out) :: RC
+
+    integer :: STATUS
+
+    call MAPL_StateGetPointer(STATE, X, NAME, _RC)
+    if (.not. associated(X) .and. ALLOC) then
+       allocate(WORK(IM,JM), source=0.0, _STAT)
+       X => WORK
+    end if
+
+    _RETURN(_SUCCESS)
+  end subroutine get_pointer_alloc_2d
+
+  subroutine get_pointer_alloc_3d(STATE, X, NAME, ALLOC, WORK, IM, JM, LB, LM, RC)
+    type(ESMF_State),                  intent(inout) :: STATE
+    real, pointer,                     intent(inout) :: X(:,:,:)
+    character(len=*),                  intent(in   ) :: NAME
+    logical,                           intent(in   ) :: ALLOC
+    real, allocatable, target,         intent(inout) :: WORK(:,:,:)
+    integer,                           intent(in   ) :: IM, JM, LB, LM
+    integer, optional,                 intent(  out) :: RC
+
+    integer :: STATUS
+
+    call MAPL_StateGetPointer(STATE, X, NAME, _RC)
+    if (LB == 0) call zero_based_edges(X)
+    if (.not. associated(X) .and. ALLOC) then
+       allocate(WORK(IM,JM,LB:LM), source=0.0, _STAT)
+       X => WORK
+    end if
+
+    _RETURN(_SUCCESS)
+  end subroutine get_pointer_alloc_3d
+
+!=============================================================================
+
+! MAPL2's MAPL_MaxMin (DEBUG_TRB): logs the global max and min of X.
+
+  subroutine report_maxmin(LABEL, X)
+    character(len=*), intent(in) :: LABEL
+    real,             intent(in) :: X(:,:,:)
+
+    integer       :: STATUS, COMM
+    type(ESMF_VM) :: VM
+    real          :: MM(2)
+
+    call ESMF_VMGetCurrent(VM, rc=STATUS)
+    call ESMF_VMGet(VM, mpiCommunicator=COMM, rc=STATUS)
+    MM = MAPL_MaxMin(X, COMM, rc=STATUS)
+    if (associated(TRB_LOGGER)) then
+       call TRB_LOGGER%info(LABEL // ' max, min: %es12.5 %es12.5', MM(1), MM(2))
+    end if
+  end subroutine report_maxmin
+
+!=============================================================================
+
+! Short name of a field of the TRDIFF service bundle. MAPL3 gives subscribed
+!  fields generated names, so the name is recovered from the standard name
+!  (as FVdycoreCubed's get_short_name, fv_shared.F90) for the quantities this
+!  code selects by name (Q, QLLS, QILS) and Moist's other diffused
+!  internals; any other field gets its standard name.
+
+  function diffused_short_name(FIELD, RC) result(SHORT_NAME)
+    type(ESMF_Field),  intent(inout) :: FIELD
+    integer, optional, intent(  out) :: RC
+    character(len=:), allocatable    :: SHORT_NAME
+
+    integer                       :: STATUS
+    character(len=:), allocatable :: STANDARD_NAME
+
+    call MAPL_FieldGet(FIELD, standard_name=STANDARD_NAME, _RC)
+    select case (trim(STANDARD_NAME))
+    case ('specific_humidity')
+       SHORT_NAME = 'Q'
+    case ('mass_fraction_of_large_scale_cloud_liquid_water')
+       SHORT_NAME = 'QLLS'
+    case ('mass_fraction_of_convective_cloud_liquid_water')
+       SHORT_NAME = 'QLCN'
+    case ('mass_fraction_of_large_scale_cloud_ice_water')
+       SHORT_NAME = 'QILS'
+    case ('mass_fraction_of_convective_cloud_ice_water')
+       SHORT_NAME = 'QICN'
+    case ('mass_fraction_of_rain')
+       SHORT_NAME = 'QRAIN'
+    case ('mass_fraction_of_snow')
+       SHORT_NAME = 'QSNOW'
+    case ('mass_fraction_of_graupel')
+       SHORT_NAME = 'QGRAUPEL'
+    case default
+       ! TODO: tracers of other subscribers (GOCART, TRI_increments) need a
+       ! mapping too (mapl3-porting-notes.md, issue 1)
+       SHORT_NAME = trim(STANDARD_NAME)
+    end select
+
+    _RETURN(_SUCCESS)
+  end function diffused_short_name
 
 
 end module GEOS_TurbulenceGridCompMod

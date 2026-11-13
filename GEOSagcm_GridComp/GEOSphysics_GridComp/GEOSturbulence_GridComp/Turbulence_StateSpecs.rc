@@ -4,9 +4,10 @@ component: TURBULENCE
 # Generated from the MAPL2 MAPL_Add*Spec calls in SetServices (develop @ f31a2151),
 # in their order.
 #
-# Not here (hand-written in SetServices): the TR (import) and TRI (export)
-# bundles, and the <NAME>IT tendency exports for the names in TRI_increments,
-# which are known only at run time.
+# Not here (hand-written in SetServices): the TRDIFF service (MAPL2's TR
+# import), the TRADV subscription, the TRI bundle (export), and the <NAME>IT
+# tendency internals for the names in TRI_increments, which are known only at
+# run time.
 #
 # From MAPL2: DEFAULT -> FILL; internals without DEFAULT get FILL 0.0 (MAPL2
 # zero-filled internals, MAPL3 does not); MAPL_RestartSkip -> SKIP;
@@ -111,21 +112,12 @@ category: EXPORT
  WQT             |          | kg kg-1 m s-1   | xyz  | C    |             |      |                                   | Total_water_flux
  WSL             |          | K m s-1         | xyz  | C    |             |      |                                   | Liquid_water_static_energy_flux
  LOBUKHOV        |          | m               | xy   | N    |             |      |                                   | Monin_Obukhov_length
- EDMF_ENTR       |          | m-1             | xyz  | C    |             |      |                                   | EDMF_mean_updraft_lateral_entrainment_rate
  EDMF_DEPTH      |          | m               | xy   | N    |             |      |                                   | EDMF_plume_depth_for_entrainment
- EDMF_MF         |          | kg m s-1        | xyz  | E    |             |      |                                   | EDMF_mass_flux
  EDMF_DMF        |          | kg m-2 s-1      | xyz  | C    |             |      |                                   | EDMF_detrained_mass_flux
  SSRCMF          |          | J kg-1 s-1      | xyz  | C    |             |      |                                   | EDMF_dry_static_energy_source_term
  QVSRCMF         |          | kg kg-1 s-1     | xyz  | C    |             |      |                                   | EDMF_specific_humidity_source_term
  QLSRCMF         |          | kg kg-1 s-1     | xyz  | C    |             |      |                                   | EDMF_liquid_water_source_term
  QISRCMF         |          | kg kg-1 s-1     | xyz  | C    |             |      |                                   | EDMF_ice_water_source_term
- SIT             |          | Pa m+2 s-3      | xyz  | C    |             |      |                                   | pressure_weighted_tendency_of_dry_static_energy_due_to_turbulence
- UIT             |          | m s-2           | xyz  | C    |             |      |                                   | tendency_of_eastward_wind_due_to_turbulence
- VIT             |          | m s-2           | xyz  | C    |             |      |                                   | tendency_of_northward_wind_due_to_turbulence
- TKESHOCIT       |          | m2 s-3          | xyz  | C    |             |      |                                   | tendency_of_TKE_due_to_turbulence_transport
- QVIT            |          | kg kg-1 s-1     | xyz  | C    |             |      |                                   | tendency_of_specific_humidity_due_to_turbulence
- QLLSIT          |          | kg kg-1 s-1     | xyz  | C    |             |      |                                   | tendency_of_liquid_condensate_due_to_turbulence
- QILSIT          |          | kg kg-1 s-1     | xyz  | C    |             |      |                                   | tendency_of_frozen_condensate_due_to_turbulence
  SFLX            |          | W m-2           | xy   | N    |             |      |                                   | surface_sensible_heat_flux_from_turbulence
  UFLX            |          | N m-2           | xy   | N    |             |      |                                   | surface_eastward_surface_stress_from_turbulence
  VFLX            |          | N m-2           | xy   | N    |             |      |                                   | surface_northward_surface_stress_from_turbulence
@@ -274,3 +266,16 @@ category: INTERNAL
  MFAW      | m s-1         | xyz  | E    |         | 0.0  |            |             | updraft_normalized_mass_flux
  SLFLXMF   | K m s-1       | xyz  | E    |         | 0.0  |            |             | liquid_water_static_energy_flux_by_updrafts
  QTFLXMF   | kg kg-1 m s-1 | xyz  | E    |         | 0.0  |            |             | total_water_flux_by_updrafts
+#
+# Tendencies (were exports): always computed, as MAPL2 allocated them for the TRI bundle (decision 2)
+ SIT       | Pa m+2 s-3    | xyz  | C    | SKIP    | 0.0  | T          |             | pressure_weighted_tendency_of_dry_static_energy_due_to_turbulence
+ UIT       | m s-2         | xyz  | C    | SKIP    | 0.0  | T          |             | tendency_of_eastward_wind_due_to_turbulence
+ VIT       | m s-2         | xyz  | C    | SKIP    | 0.0  | T          |             | tendency_of_northward_wind_due_to_turbulence
+ TKESHOCIT | m2 s-3        | xyz  | C    | SKIP    | 0.0  | T          |             | tendency_of_TKE_due_to_turbulence_transport
+ QVIT      | kg kg-1 s-1   | xyz  | C    | SKIP    | 0.0  | T          |             | tendency_of_specific_humidity_due_to_turbulence
+ QLLSIT    | kg kg-1 s-1   | xyz  | C    | SKIP    | 0.0  | T          |             | tendency_of_liquid_condensate_due_to_turbulence
+ QILSIT    | kg kg-1 s-1   | xyz  | C    | SKIP    | 0.0  | T          |             | tendency_of_frozen_condensate_due_to_turbulence
+#
+# EDMF mass flux and entrainment (were exports, ALLOC): written by REFRESH, read by DIFFUSE on every step
+ EDMF_MF   | kg m s-1      | xyz  | E    | SKIP    | 0.0  | T          |             | EDMF_mass_flux
+ EDMF_ENTR | m-1           | xyz  | C    | SKIP    | 0.0  | T          |             | EDMF_mean_updraft_lateral_entrainment_rate
