@@ -1,8 +1,8 @@
 # GEOS_TurbulenceGridComp MAPL3 porting plan
 
-Status (2026-11-13): step 0 done upstream (PR #1582); steps 2-7 done on branch `feature/bmauer/port-turbulence-to-mapl3` (rebased onto `release/MAPL-v3` @ `86b1a7d5`). Step 1 (MAPL2 baseline) to do; steps 8-10 not started. The driver compiles (ifx Debug, by hand against `build-debug`'s MAPL, kernels patched for issue 9 in a scratch copy only); not built by CMake, not run.
+Status (2026-11-13): steps 0-9 done on branch `feature/bmauer/port-turbulence-to-mapl3` (rebased onto `release/MAPL-v3` @ `86b1a7d5`; step 0 upstream through PR #1582). Turbulence builds (ifx Debug) and both regression cases, `turbulence-shocmf-sa/run1` and `run2`, match the MAPL2 capture in every compared variable. Step 10 (wiring) waits on the Physics/Agcm ports.
 
-Resume here (2026-11-13): next is step 8 (build): issue 9 in the kernels (`use mapl_SatVapor_mod` in `shoc.F90`/`scm_surface.F90`, `MAPL_UNDEF` from `MAPL_Constants` in `edmf.F90`; checked to compile), `Turbulence_SetServices` wrapper, `../CMakeLists.txt`. In parallel (user): the step-1 MAPL2 capture.
+Resume here (2026-11-13): the regression data is only in `~/regression-data-turb/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSturbulence_GridComp` (to copy to `/ford1/share/gmao_SIteam/regression-data/...` and to S3, as the Moist data was); the converted MAPL2 capture is in `~/input/turbulence/shocmf/C12L181/new-style`. Open items: issue 1's names for tracers without a known standard name; other configurations (Louis/Lock at L72, as `moist-bacm1m-gf-uw-sa`) need their own capture and case.
 
 Follows the Moist port (`../GEOSmoist_GridComp/mapl3-porting-notes.md`, with `mapl3-alloc-exports.md` and `mapl3-friendlies-to-services.md`) and the rules in the `GEOSgcm_GridComp` and `GEOSagcm_GridComp` `AGENTS.md`. The MAPL3 API lessons listed there ("Lessons carried over") are not repeated here.
 
@@ -78,7 +78,7 @@ Edge fields:
 ### 0. Sync with `develop` (done 2026-11-12; upstream 2026-11-13)
 `GEOS_TurbulenceGridComp.F90` and `edmf.F90` were first copied onto this branch from `develop` @ `f31a2151`; the other Turbulence files were already identical. The same sync then reached `release/MAPL-v3` through PR #1582 (`86b1a7d5`, merge of `develop` @ `f31a2151`), so the branch was rebased onto it and its own sync commit dropped: all Turbulence sources on `release/MAPL-v3` are byte-identical to `develop` @ `f31a2151`. Before, the `release/MAPL-v3` copy was `develop` @ `7f80bd2f` plus one release-only edit (the two `FriendlyToTURBULENCE` reads through `ESMF_InfoGet`), which the port replaces anyway (issue 1). PR #1582 also synced `GEOS_PhysicsGridComp.F90` with `develop` (not built on this line).
 
-### 1. MAPL2 baseline (to do)
+### 1. MAPL2 baseline (done 2026-11-13; see step 9)
 - Build MAPL2 from `develop` @ `f31a2151` (or later; then repeat step 0 with that commit).
 - Capture with `COMPONENT_TO_RECORD: TURBULENCE` at C12, before and after Run1 and Run2, import, internal and export. Record a later step than the first. Request every Turbulence export in `HISTORY.rc`.
 - Configurations, matching the Moist cases: L181 SHOC-MF (v12 default, as `moist-gfdl1m-gf-shoc-sa`); later L72 Louis/Lock (as `moist-bacm1m-gf-uw-sa`).
@@ -140,11 +140,19 @@ Survey (2026-11-13): 42 sites (Initialize 1, REFRESH 29, DIFFUSE 4, UPDATE 8; th
 - `MAPL_MaxMin` (9 calls, `DEBUG_TRB`, in `LOUIS_KS*` and `BELJAARS`, which have no `GC`) -> `report_maxmin(label, x)`: `MAPL_MaxMin(x, comm)` on the current VM, logged through the component logger kept in a module variable (`TRB_LOGGER`, set by Run1 and Run2).
 - Seen, not changed (MAPL2 behaviour): exports used unguarded without `ALLOC`, which crash if not requested: `KPBL` (REFRESH, feeds `BELJAARS` when `C_B /= 0`, the default), `SBIFRQ`/`SBITOP` (written when either is requested), `TRINVDELT`/`TRINVFRQ` (guarded by `TRINVBS` only), `SFLX`/`QFLX` with sea spray (DIFFUSE), `QFLX` in the `DPDTTRB` block (UPDATE). In the GCM, Moist and Surface connect `KPBL` and the fluxes; a standalone case must request them. `ZPBLRI` is allocated locally without a matching deallocate (leaks each refresh). `UPDATE` changes the internals `QTFLXMF`/`SLFLXMF` in place each step, so between refreshes the `-MFAW*QT` term is applied repeatedly.
 
-### 8. Build
-Uncomment `GEOSturbulence_GridComp` in `../CMakeLists.txt`; `TYPE SHARED`; `Turbulence_SetServices` wrapper; fixes in the other sources (issue 9).
+### 8. Build (done 2026-11-13)
+- `../CMakeLists.txt`: `GEOSturbulence_GridComp` uncommented. `CMakeLists.txt`: `TYPE SHARED`, OpenMP link (as GWD; `LOUIS_KS_OPTIMIZED` has `!$OMP` loops), `add_subdirectory(regression)`.
+- External `Turbulence_SetServices` wrapper at the end of `GEOS_TurbulenceGridComp.F90` (as `GWD_SetServices`).
+- Issue 9: `shoc.F90` and `scm_surface.F90` `use mapl_SatVapor_mod, only: MAPL_EQsat` (was `MAPL_SatVaporMod`), `edmf.F90` takes `MAPL_UNDEF` from `MAPL_Constants` (was `MAPL_Mod`), as Moist's `Process_Library.F90` and `cloudnew.F90`.
+- Builds with ifx 2025.3 Debug (`-check all`, `-warn unused`) with no errors or warnings in the Turbulence sources. The build environment is `module purge; ml ifx-stack; ml ifx/2025.3`, not `@env/g5_modules.sh` (ifx 2024.2; `GEOS.x` fails to link with it).
 
-### 9. Standalone regression (`../regression/`)
-`DataForTurbulence` (all imports, restarted from the step-1 "before" capture), a `DataTracers` subscriber to `TRDIFF`, History collection that activates only written exports, `logging.yaml`, `cmpchk.py`. Phases: decision 3.
+### 9. Standalone regression (done 2026-11-13)
+`regression/` (own directory and data path, as GWD; GOCART2G's per-phase layout): case `turbulence-shocmf-sa` with `run1` and `run2` (decision 3). Details: `regression/README.md`.
+- MAPL2 capture (step 1, 2026-11-13): C12L181 SHOC-MF, 1200 s, start 21:00, capture at 22:00 (fourth step), refresh every step; TURBULENCE's import, internal and export states before and after each phase. `TR` held 47 fields (Physics' `QW`, Moist's 8, 38 PChem/GOCART/TR tracers); Run1 updates all 47 in place, Run2 only `Q`. Of `EDMF_ENTR`, 97% is `MAPL_UNDEF`, but DIFFUSE's tracer transport never reads an undefined level in this run (235 columns, 3704 reads), so issue 7's overflow does not occur here.
+- `DataTracers` subscribes all 47 tracers to `TRDIFF` (option B, 2026-11-13), standard names from the capture's long names, and is checkpointed, so ctest also compares the diffused tracers.
+- History activates the exports the MAPL2 run had allocated, less `TRI_*`, the MAPL3 internals and the 7 never written with SHOC on (`DU`, `DBUOY`, `WERAD`, `ZCLD`, `ZRADBS`, `ZRADML`, `ZSML`); `run1` also less the 9 only Run2 writes. Every activated export matches MAPL2, so every one is written.
+- Results (2026-11-13, ifx Debug): `cmpchk.py` finds no difference in any variable: `run1` 44 imports, 10 internals, 55 exports, 47 tracers; `run2` 44, 10, 64, 47. A second run of each is bit-identical. `checkpoints/last/` in the regression data is that output; both cases pass through `run_case.cmake` against it.
+- Not checked: `TRI` (no History request in the cases; it is in the export checkpoint), the refresh alarm with `TURBULENCE_DT` longer than the step, other configurations (Louis/Lock, sea spray, SCM).
 
 ### 10. Wiring (blocked on the Physics/Agcm ports)
 Connections with Moist and Surface (`SHAT`... `SDEL`..., `SFLX`... `SDFL`...), `TRDIFF` subscriptions from GOCART, Physics' use of `INTDIS`/`TOPDIS`, `*AFDIFFUSE`, `SAFUPDATE`.
@@ -152,7 +160,7 @@ Connections with Moist and Surface (`SHAT`... `SDEL`..., `SFLX`... `SDFL`...), `
 ## Decisions
 1. **DECIDED (2026-11-12) - no codee format pass.** Unlike Moist: Turbulence is still changed on `develop` (EDMF, SHOC), and keeping its layout keeps later syncs mergeable. Macros only (step 2); new code follows the surrounding style.
 2. **DECIDED (2026-11-12) - keep `TRI`.** An export bundle filled in Initialize with the `*IT` tendency exports, as MAPL2; closest to MAPL2, and History configurations using `TRI%NAME` keep working.
-3. **Open - regression phases:** one case running Run1 then Run2 (inputs `SDEL`... supplied as data), or one case per phase as GOCART2G. Decide once the step-1 capture exists.
+3. **DECIDED (2026-11-13) - regression phases: one case, `run1` and `run2` directories, as GOCART2G.** `run2` cannot run Run2 alone: Run2 continues from Run1's `RESTART: SKIP` internals (`DKS`, `DKV`, `DKQ`, `EKV`, `FKV`, `SINC`, the tendencies) and exports (`SFLX`, `QFLX`, `SDFL`, `QDFL`), which MAPL3 cannot restart, and Surface changes 9 imports between the phases. So `run2`'s Root is a test-only driver (`regression/TurbulencePhasesDriver_GridComp`) that runs Run1, sets those imports to their captured values before Run2, and runs Run2; the configurable Root runs a child's phases back to back.
 4. **DECIDED (2026-11-13) - run phase names `Run1`/`Run2`**, as GOCART2G (`GOCART2G_GridCompMod.F90`), whose standalone cases select a phase with `run_phases: [Run1]` (configurable component). The earlier plan said `run1`/`run2`.
 5. **DECIDED (2026-11-13) - `ALLOC=` by `get_pointer_alloc`** for the local (group C) sites instead of Moist's "always a local, copy to the export" (Moist decision 1): the same results, but the export is written directly when it is requested, as in MAPL2, so `associated()` tests, pointer dummies and conditional `ALLOC` need no special cases. Group B (`EDMF_MF`, `EDMF_ENTR`) becomes internals, as in Moist.
 6. **DECIDED (2026-11-13) - resource labels with `COMP_NAME` kept** (`TURBULENCE_DO_SHOC`, `TURBULENCE_LOUIS_B_KH`, ...; issue 8). MAPL3 names the user gridcomp after the child (`@MAPL/superstructure/generic/OuterMetaComponent/add_child_by_spec.F90`), so with the child named `TURBULENCE` the keys are MAPL2's. Lost: MAPL2's automatic `<COMP>_` prefix lookup for unprefixed labels (e.g. `TURBULENCE_PDFSHAPE:` overriding `PDFSHAPE:`).

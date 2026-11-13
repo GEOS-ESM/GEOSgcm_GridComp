@@ -1,0 +1,212 @@
+# The 47 fields of MAPL2's TR bundle in the capture (Physics' QW, Moist's 8,
+# the PChem, GOCART and TR tracers), subscribed to TURBULENCE's TRDIFF service
+# (MAPL2: FRIENDLYTO TURBULENCE). Restarted from the capture's TR_* fields
+# (TR_ prefix dropped, '.' -> '_'); standard names and units from the capture.
+# TURBULENCE recovers Q, QLLS, ... from the standard names (diffused_short_name).
+mapl:
+
+  setServices:
+    sharedObj: libconfigurable_gridcomp
+    userRoutine: setservices_
+
+  misc:
+    restart:
+      internal: true
+    checkpoint:
+      internal: true   # the diffused tracers, compared by cmpchk.py
+
+  states:
+    internal:
+      QW:
+        standard_name: "mass_fraction_of_wet_air"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      Q:
+        standard_name: "specific_humidity"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      QLLS:
+        standard_name: "mass_fraction_of_large_scale_cloud_liquid_water"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      QLCN:
+        standard_name: "mass_fraction_of_convective_cloud_liquid_water"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      QILS:
+        standard_name: "mass_fraction_of_large_scale_cloud_ice_water"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      QICN:
+        standard_name: "mass_fraction_of_convective_cloud_ice_water"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      QRAIN:
+        standard_name: "mass_fraction_of_rain"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      QSNOW:
+        standard_name: "mass_fraction_of_snow"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      QGRAUPEL:
+        standard_name: "mass_fraction_of_graupel"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      OX:
+        standard_name: "odd_oxygen_volume_mixing_ratio"
+        units: "mol mol-1"
+        vertical_dim_spec: "center"
+      N2O:
+        standard_name: "nitrous_oxide_volume_mixing_ratio"
+        units: "mol mol-1"
+        vertical_dim_spec: "center"
+      CFC11:
+        standard_name: "CFC11_(CCl3F)_volume_mixing_ratio"
+        units: "mol mol-1"
+        vertical_dim_spec: "center"
+      CFC12:
+        standard_name: "CFC12_(CCl2F2)_volume_mixing_ratio"
+        units: "mol mol-1"
+        vertical_dim_spec: "center"
+      HCFC22:
+        standard_name: "HCFC22_(CHClF2)_volume_mixing_ratio"
+        units: "mol mol-1"
+        vertical_dim_spec: "center"
+      CH4:
+        standard_name: "methane_volume_mixing_ratio"
+        units: "mol mol-1"
+        vertical_dim_spec: "center"
+      VOC:
+        standard_name: "Volatile Organic Compound (VOC) --anthropogenic sources"
+        units: "mol mol-1"
+        vertical_dim_spec: "center"
+      VOCbiob:
+        standard_name: "Volatile Organic Compound (VOC) -- biomass burning sources"
+        units: "mol mol-1"
+        vertical_dim_spec: "center"
+      CO:
+        standard_name: "Carbon Monoxide (All Sources)"
+        units: "mol mol-1"
+        vertical_dim_spec: "center"
+      DU:
+        standard_name: "Dust Mixing Ratio (Bin 001)"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      DU002:
+        standard_name: "Dust Mixing Ratio (Bin 002)"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      DU003:
+        standard_name: "Dust Mixing Ratio (Bin 003)"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      DU004:
+        standard_name: "Dust Mixing Ratio (Bin 004)"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      DU005:
+        standard_name: "Dust Mixing Ratio (Bin 005)"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      SS:
+        standard_name: "Sea Salt Mixing Ratio (bin 001)"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      SS002:
+        standard_name: "Sea Salt Mixing Ratio (bin 002)"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      SS003:
+        standard_name: "Sea Salt Mixing Ratio (bin 003)"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      SS004:
+        standard_name: "Sea Salt Mixing Ratio (bin 004)"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      SS005:
+        standard_name: "Sea Salt Mixing Ratio (bin 005)"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      CA_ocphobic:
+        standard_name: "OC Hydrophobic Aerosol Mixing Ratio"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      CA_ocphilic:
+        standard_name: "OC Hydrophilic Aerosol Mixing Ratio"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      CA_bcphobic:
+        standard_name: "BC Hydrophobic Aerosol Mixing Ratio"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      CA_bcphilic:
+        standard_name: "BC Hydrophilic Aerosol Mixing Ratio"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      CA_brphobic:
+        standard_name: "BR Hydrophobic Aerosol Mixing Ratio"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      CA_brphilic:
+        standard_name: "BR Hydrophilic Aerosol Mixing Ratio"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      DMS:
+        standard_name: "Dimethylsulphide"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      SO2:
+        standard_name: "Sulphur dioxide"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      SO4:
+        standard_name: "Sulphate aerosol"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      MSA:
+        standard_name: "Methanesulphonic acid"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      NH3:
+        standard_name: "Ammonia (NH3, gas phase)"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      NH4a:
+        standard_name: "Ammonium ion (NH4+, aerosol phase)"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      NO3an1:
+        standard_name: "Nitrate size bin 001"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      NO3an2:
+        standard_name: "Nitrate size bin 002"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      NO3an3:
+        standard_name: "Nitrate size bin 003"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      aoa:
+        standard_name: "Age of air (uniform source) tracer"
+        units: "days"
+        vertical_dim_spec: "center"
+      e90:
+        standard_name: "Constant burden 90 day tracer"
+        units: "mol mol-1"
+        vertical_dim_spec: "center"
+      Rn222:
+        standard_name: "Radon-222"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      CH3I:
+        standard_name: "Methyl iodide"
+        units: "mol mol-1"
+        vertical_dim_spec: "center"
+
+    import:
+      TRDIFF:
+        class: service
+        items: [QW, Q, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL, OX, N2O, CFC11, CFC12, HCFC22, CH4, VOC, VOCbiob, CO, DU, DU002, DU003, DU004, DU005, SS, SS002, SS003, SS004, SS005, CA_ocphobic, CA_ocphilic, CA_bcphobic, CA_bcphilic, CA_brphobic, CA_brphilic, DMS, SO2, SO4, MSA, NH3, NH4a, NO3an1, NO3an2, NO3an3, aoa, e90, Rn222, CH3I]

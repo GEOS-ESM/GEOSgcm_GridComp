@@ -1,0 +1,32 @@
+# Turbulence settings of the MAPL2 baseline run (AGCM.rc of the capture):
+# C12L181, the stock v12 L181 SHOC-MF setup (gcm_setup, AGCM.rc.tmpl SHOC-MF
+# block), refresh every step (no TURBULENCE_DT), no waves, no SCM surface.
+# Every other Turbulence key is at its code default. Keep in sync with the
+# AGCM.rc of the run that produced the baseline.
+TURBULENCE_DO_SHOC: 1
+EDMF_DOMF: 1
+PDFSHAPE: 6.0
+EDMF_ALPHAW: 0.07
+EDMF_ENT0: 0.40
+EDMF_ENTUFAC: 1.2
+EDMF_L0FAC: 11.0
+TURBULENCE_SHC_LENFAC1: 8.0
+TURBULENCE_SHC_LENFAC2: 2.0
+TURBULENCE_SHC_LENFAC3: 1.0
+HGT_SURFACE: 0.0
+USE_WAVES: 0
+
+mapl:
+  setServices:
+    sharedObj: libGEOSturbulence_GridComp
+    userRoutine: turbulence_setservices_
+
+  # Exports are activated by HIST (history.yaml), not activate_all_exports:
+  # an export this configuration never writes would be allocated uninitialized.
+  misc:
+    restart:
+      internal: true
+    checkpoint:
+      export: true
+      import: true
+      internal: true

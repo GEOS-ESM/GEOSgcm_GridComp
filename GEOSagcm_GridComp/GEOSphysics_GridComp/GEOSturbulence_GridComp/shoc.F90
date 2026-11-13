@@ -22,7 +22,7 @@ module shoc
 
  use MAPL,              only: MAPL_UNDEF
 
- use MAPL_SatVaporMod,  only: MAPL_EQsat
+ use mapl_SatVapor_mod, only: MAPL_EQsat
 
  implicit none
 

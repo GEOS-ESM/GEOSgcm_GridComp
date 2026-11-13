@@ -1,13 +1,13 @@
 # GEOSgcm_GridComp: guide for agents
 
-**Describes:** the MAPL3 line, branch `release/MAPL-v3`; verified against `GEOSgcm_GridComp` @ `b1825cc1` (2026-11-10).
+**Describes:** the MAPL3 line, branch `release/MAPL-v3`; verified against `GEOSgcm_GridComp` @ `86b1a7d5` plus the Turbulence port branch (2026-11-13).
 **Placement:** `src/Components/@GEOSgcm_GridComp` in the GEOSgcm fixture (`components.yaml`, key `GEOSgcm_GridComp`); other fixtures may place it elsewhere. Paths below are relative to this repository.
 
 ## What this is
 
 The component hierarchy of the GEOS general circulation model: the root composite `GEOS_GcmGridComp.F90` (atmosphere, ocean, waves, IAU/replay, digital filter) and its children. Several subdirectories are separate nested repositories (Chemistry, Radiation, FV dynamical core, Ocean, ...); edit them only in their own repository.
 
-> **Build status on this line:** partly built; the full model is not built. On `release/MAPL-v3`, `CMakeLists.txt` adds only `GEOSagcm_GridComp`; the Ogcm, Wgcm, DataAtm and mkiau composites are commented out ("not yet ported to MAPL3") and the root library `GEOS_GcmGridComp.F90` is bypassed. The Agcm library `GEOS_AgcmGridComp.F90` and the Physics library `GEOS_PhysicsGridComp.F90` are bypassed too; Surface and Turbulence are not built. In the GEOSgcm fixture, built: Superdyn (with FVdycoreCubed), Moist, GWD, Chemistry (GOCART only), Radiation. The fixture's sparse file excludes the Held-Suarez files; a checkout that includes them builds the Held-Suarez library and the `hs` regression. The Gcm, Agcm and Physics sources are MAPL2-style code kept for a later port (`CMakeLists.txt` at each level).
+> **Build status on this line:** partly built; the full model is not built. On `release/MAPL-v3`, `CMakeLists.txt` adds only `GEOSagcm_GridComp`; the Ogcm, Wgcm, DataAtm and mkiau composites are commented out ("not yet ported to MAPL3") and the root library `GEOS_GcmGridComp.F90` is bypassed. The Agcm library `GEOS_AgcmGridComp.F90` and the Physics library `GEOS_PhysicsGridComp.F90` are bypassed too; Surface is not built. In the GEOSgcm fixture, built: Superdyn (with FVdycoreCubed), Moist, Turbulence, GWD, Chemistry (GOCART only), Radiation. The fixture's sparse file excludes the Held-Suarez files; a checkout that includes them builds the Held-Suarez library and the `hs` regression. The Gcm, Agcm and Physics sources are MAPL2-style code kept for a later port (`CMakeLists.txt` at each level).
 
 ## Documents
 
@@ -50,7 +50,7 @@ Nested repositories (separate Git repositories, each with its own `AGENTS.md`; a
 This repository does not build alone; build the GEOSgcm fixture (`README.md`, `parallel_build.csh`). CI: `.github/workflows/`, `.circleci/config.yml` (runs `ctest -L REGRESSION`).
 
 Regression tests (label `REGRESSION`, one test per line of a `regression/cases.txt`):
-- Physics: the Moist cases in `GEOSphysics_GridComp/regression` and `gwd-ncar-sa` in `GEOSgwd_GridComp/regression` (`GEOSagcm_GridComp/AGENTS.md`).
+- Physics: the Moist cases in `GEOSphysics_GridComp/regression`, `gwd-ncar-sa` in `GEOSgwd_GridComp/regression` and the Turbulence cases in `GEOSturbulence_GridComp/regression` (`GEOSagcm_GridComp/AGENTS.md`).
 - `GEOShs_GridComp/regression`: `held-suarez`, only when the Held-Suarez files are in the checkout.
 
 About the regression cases:

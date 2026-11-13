@@ -5380,3 +5380,11 @@ end subroutine ComputeMOScalingInterlevel
 
 end module GEOS_TurbulenceGridCompMod
 
+! External entry point with a unique name, for MAPL3's dynamic loading (as GWD_SetServices)
+subroutine Turbulence_SetServices(gc, rc)
+   use ESMF
+   use GEOS_TurbulenceGridCompMod, only: mySetservices => SetServices
+   type(ESMF_GridComp) :: gc
+   integer, intent(out) :: rc
+   call mySetservices(gc, rc=rc)
+end subroutine Turbulence_SetServices

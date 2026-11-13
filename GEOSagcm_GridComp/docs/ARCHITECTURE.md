@@ -44,7 +44,7 @@ Sources and consumers are the connections in the composites' `SetServices`; othe
 - **Turbulence.**
   - Imports: the state from the parent; total water and buoyancy fluxes from Moist; exchange coefficients and surface fluxes from Surface; `RADLW`, `RADLWC` from Radiation.
   - Exports: diffusivities, PBL depth and turbulence moments to Moist and Chemistry; implicit-diffusion fields that the Physics composite uses between stages.
-  - Services: provides `TRDIFF` (turbulent diffusion). In the MAPL2 code this is the `TR` bundle, with companion bundles `TRG` and `DTG` in the same field order.
+  - Services: provides `TRDIFF` (turbulent diffusion; MAPL2's `TR` import bundle); subscribes `PDF_A`, `TKESHOC`, `QT2`, `QT3` to `TRADV` when SHOC is on. Its own `S`, `U`, `V`, `TKESHOC` and `QT2` are diffused directly, not through the bundle.
 
 ## Invariants
 
@@ -54,10 +54,10 @@ Sources and consumers are the connections in the composites' `SetServices`; othe
 
 ## Cross-cutting concerns
 
-- **Generated specs:** GWD and Moist declare their specs in `*_StateSpecs.rc` (ACG); Moist's scheme fields are added by the `_Setup` routines. Superdyn declares none of its own: it re-exports `DYN`'s.
+- **Generated specs:** GWD, Moist and Turbulence declare their specs in `*_StateSpecs.rc` (ACG); Moist's scheme fields are added by the `_Setup` routines. Superdyn declares none of its own: it re-exports `DYN`'s.
 - **Threading:** GWD keeps per-thread workspaces and the Moist schemes use OpenMP loops; module-level scratch data and loop-carried dependencies are races.
 - **Exports as work arrays:** Moist uses some exports as scratch space and reads others back by name, so which exports are requested matters (`GEOSphysics_GridComp/GEOSmoist_GridComp/mapl3-alloc-exports.md`).
-- **Testing:** each regression case runs one component (GWD, Moist, or in FVdycoreCubed the dynamical core) for one step under a configurable Root, with imports from a data component restarted from a MAPL2 capture, and compares checkpoints exactly against a stored MAPL3 baseline validated against that capture.
+- **Testing:** each regression case runs one component (GWD, Moist, Turbulence, or in FVdycoreCubed the dynamical core) for one step under a configurable Root, with imports from a data component restarted from a MAPL2 capture, and compares checkpoints exactly against a stored MAPL3 baseline validated against that capture.
 
 ## Where to go next
 
