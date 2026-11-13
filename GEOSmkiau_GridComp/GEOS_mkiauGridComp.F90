@@ -364,7 +364,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
-         SHORT_NAME = 'DQIDT',                                     &
+         SHORT_NAME = 'DQLDT',                                     &
          LONG_NAME  = 'specific_humidity_analysis_increment',      &
          UNITS      = 'kg kg-1',                                   &
          DIMS       = MAPL_DimsHorzVert,                           &
@@ -372,7 +372,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
-         SHORT_NAME = 'DQLDT',                                     &
+         SHORT_NAME = 'DQIDT',                                     &
          LONG_NAME  = 'specific_humidity_analysis_increment',      &
          UNITS      = 'kg kg-1',                                   &
          DIMS       = MAPL_DimsHorzVert,                           &
@@ -470,7 +470,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                    &   
-         SHORT_NAME = 'QIBKG',                                     &
+         SHORT_NAME = 'QLBKG',                                     &
          LONG_NAME  = 'water_vapor_specific_humdity_of_background',&
          UNITS      = 'kg/kg',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
@@ -479,7 +479,7 @@ contains
     VERIFY_(STATUS) 
 
     call MAPL_AddExportSpec(GC,                                    &   
-         SHORT_NAME = 'QLBKG',                                     &
+         SHORT_NAME = 'QIBKG',                                     &
          LONG_NAME  = 'water_vapor_specific_humdity_of_background',&
          UNITS      = 'kg/kg',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
@@ -645,8 +645,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real, pointer, dimension(:,:,:)     ::   v_bkg, dv, dvwindfix
   real, pointer, dimension(:,:,:)     ::  tv_bkg, dt, t_bkg
   real, pointer, dimension(:,:,:)     ::   q_bkg, dq
-  real, pointer, dimension(:,:,:)     ::  qi_bkg, dqi
   real, pointer, dimension(:,:,:)     ::  ql_bkg, dql
+  real, pointer, dimension(:,:,:)     ::  qi_bkg, dqi
   real, pointer, dimension(:,:,:)     ::  o3_bkg, do3
   real, pointer, dimension(:,:,:)     :: ple_bkg, dple
   real, pointer, dimension(:,:)       ::  ts_bkg, dts
@@ -664,8 +664,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real, allocatable, dimension(:,:,:) ::   v_rep
   real, allocatable, dimension(:,:,:) ::   t_rep
   real, allocatable, dimension(:,:,:) ::   q_rep
-  real, allocatable, dimension(:,:,:) ::  qi_rep
   real, allocatable, dimension(:,:,:) ::  ql_rep
+  real, allocatable, dimension(:,:,:) ::  qi_rep
   real, allocatable, dimension(:,:,:) ::  o3_rep
   real, allocatable, dimension(:,:,:) :: thv_rep
   real, allocatable, dimension(:,:,:) :: ple_rep
@@ -684,8 +684,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real, pointer, dimension(:,:,:)     ::   t_ana
   real, pointer, dimension(:,:,:)     :: thv_ana
   real, pointer, dimension(:,:,:)     ::   q_ana
-  real, pointer, dimension(:,:,:)     ::  qi_ana
   real, pointer, dimension(:,:,:)     ::  ql_ana
+  real, pointer, dimension(:,:,:)     ::  qi_ana
   real, pointer, dimension(:,:,:)     ::  o3_ana
 
   real, allocatable, dimension(:,:,:) :: ple_ana
@@ -788,12 +788,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   logical                             :: ANALYZE_TS
   character(len=ESMF_MAXSTR)          :: REPLAY_MODE
   character(len=ESMF_MAXSTR)          :: REPLAY_U, REPLAY_V,  REPLAY_T, REPLAY_QV, REPLAY_TS, REPLAY_O3
-  character(len=ESMF_MAXSTR)          :: REPLAY_QI, REPLAY_QL
+  character(len=ESMF_MAXSTR)          :: REPLAY_QL, REPLAY_QI
   character(len=ESMF_MAXSTR)          :: REPLAY_P, REPLAY_PS, REPLAY_DP
   character(len=ESMF_MAXSTR)          :: REPLAY_PHIS
   character(len=ESMF_MAXSTR)          :: REPLAY_T_TYPE
   logical                             :: L_REPLAY_PHIS, L_REPLAY_P, L_REPLAY_U, L_REPLAY_V, L_REPLAY_T, L_REPLAY_QV, L_REPLAY_TS, L_REPLAY_O3
-  logical                             :: L_REPLAY_QI, L_REPLAY_QL
+  logical                             :: L_REPLAY_QL, L_REPLAY_QI
   logical                             :: L_CUBE
   logical                             :: do_transforms
   logical                             :: USE_SPECFILT
@@ -802,8 +802,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real                                :: REPLAY_V_FACTOR
   real                                :: REPLAY_T_FACTOR
   real                                :: REPLAY_QV_FACTOR
-  real                                :: REPLAY_QI_FACTOR
   real                                :: REPLAY_QL_FACTOR
+  real                                :: REPLAY_QI_FACTOR
   real                                :: REPLAY_O3_FACTOR
   real                                :: REPLAY_TS_FACTOR
 
@@ -966,9 +966,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, REPLAY_QV,     Label="REPLAY_QV:",     default='YES',           RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, REPLAY_QI,     Label="REPLAY_QI:",     default='YES',           RC=STATUS)
-    VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, REPLAY_QL,     Label="REPLAY_QL:",     default='YES',           RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, REPLAY_QI,     Label="REPLAY_QI:",     default='YES',           RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, REPLAY_O3,     Label="REPLAY_O3:",     default='YES',           RC=STATUS)
     VERIFY_(STATUS)
@@ -980,8 +980,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetResource(MAPL, REPLAY_V_FACTOR,  Label="REPLAY_V_FACTOR:",  default=1.0 , RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, REPLAY_T_FACTOR,  Label="REPLAY_T_FACTOR:",  default=1.0 , RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, REPLAY_QV_FACTOR, Label="REPLAY_QV_FACTOR:", default=1.0 , RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, REPLAY_QI_FACTOR, Label="REPLAY_QI_FACTOR:", default=1.0 , RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, REPLAY_QL_FACTOR, Label="REPLAY_QL_FACTOR:", default=1.0 , RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, REPLAY_QI_FACTOR, Label="REPLAY_QI_FACTOR:", default=1.0 , RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, REPLAY_O3_FACTOR, Label="REPLAY_O3_FACTOR:", default=1.0 , RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, REPLAY_TS_FACTOR, Label="REPLAY_TS_FACTOR:", default=1.0 , RC=STATUS) ; VERIFY_(STATUS)
 
@@ -992,8 +992,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       REPLAY_V      = ESMF_UtilStringUpperCase(REPLAY_V )
       REPLAY_T      = ESMF_UtilStringUpperCase(REPLAY_T )
       REPLAY_QV     = ESMF_UtilStringUpperCase(REPLAY_QV)
-      REPLAY_QI     = ESMF_UtilStringUpperCase(REPLAY_QI)
       REPLAY_QL     = ESMF_UtilStringUpperCase(REPLAY_QL)
+      REPLAY_QI     = ESMF_UtilStringUpperCase(REPLAY_QI)
       REPLAY_O3     = ESMF_UtilStringUpperCase(REPLAY_O3)
       REPLAY_T_TYPE = ESMF_UtilStringUpperCase(REPLAY_T_TYPE)
 
@@ -1004,8 +1004,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     L_REPLAY_V      = trim(REPLAY_V)     .ne.'NO' .and. trim(REPLAY_V)     .ne.'NULL'
     L_REPLAY_T      = trim(REPLAY_T)     .ne.'NO' .and. trim(REPLAY_T)     .ne.'NULL'
     L_REPLAY_QV     = trim(REPLAY_QV)    .ne.'NO' .and. trim(REPLAY_QV)    .ne.'NULL'
-    L_REPLAY_QI     = trim(REPLAY_QI)    .ne.'NO' .and. trim(REPLAY_QI)    .ne.'NULL'
     L_REPLAY_QL     = trim(REPLAY_QL)    .ne.'NO' .and. trim(REPLAY_QL)    .ne.'NULL'
+    L_REPLAY_QI     = trim(REPLAY_QI)    .ne.'NO' .and. trim(REPLAY_QI)    .ne.'NULL'
     L_REPLAY_O3     = trim(REPLAY_O3)    .ne.'NO' .and. trim(REPLAY_O3)    .ne.'NULL'
 
     call MAPL_GetResource(MAPL, DAMPBEG,  LABEL="REPLAY_DAMPBEG:", default=1.0, RC=status)
@@ -1352,8 +1352,8 @@ CONTAINS
                                                     'tv   ', &
                                                     'ozone', &
                                                     'delp ', &
-                                                    'qi   ', &
                                                     'ql   ', &
+                                                    'qi   ', &
                                                     'ts   ' /)
     integer rank,ni
     type(ESMF_Field)  :: Field
@@ -1388,9 +1388,9 @@ CONTAINS
     VERIFY_(STATUS)
     call MAPL_GetPointer(export,   dq, 'DQVDT', alloc=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(export,  dqi, 'DQIDT', alloc=.TRUE., RC=STATUS)
-    VERIFY_(STATUS)
     call MAPL_GetPointer(export,  dql, 'DQLDT', alloc=.TRUE., RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(export,  dqi, 'DQIDT', alloc=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(export,  do3, 'DO3DT', alloc=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
@@ -1451,8 +1451,8 @@ CONTAINS
            endif
            if(trim(NAME)=='ozone') do3=gptr3d
            if(trim(NAME)=='sphu' ) dq =gptr3d
-           if(trim(NAME)=='qi'   ) dqi=gptr3d
            if(trim(NAME)=='ql'   ) dql=gptr3d
+           if(trim(NAME)=='qi'   ) dqi=gptr3d
            if(trim(NAME)=='tv'   ) dt =gptr3d
            if(trim(NAME)=='delp' ) dp =gptr3d
            endif
@@ -1492,9 +1492,9 @@ CONTAINS
     VERIFY_(STATUS)
     call MAPL_GetPointer( import, q_bkg,'QV',   RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer( import, qi_bkg,'QITOT',   RC=STATUS)
-    VERIFY_(STATUS)
     call MAPL_GetPointer( import, ql_bkg,'QLTOT',   RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer( import, qi_bkg,'QITOT',   RC=STATUS)
     VERIFY_(STATUS)
 
 !   Convert virtual temperature increment into dry temperature increment
@@ -1528,8 +1528,8 @@ CONTAINS
     allocate(    t_bkg(IM,JM,1:LM), source = 0.0 )
     allocate(   tv_bkg(IM,JM,1:LM), source = 0.0 )
     allocate(    q_bkg(IM,JM,1:LM), source = 0.0 )
-    allocate(   qi_bkg(IM,JM,1:LM), source = 0.0 )
     allocate(   ql_bkg(IM,JM,1:LM), source = 0.0 )
+    allocate(   qi_bkg(IM,JM,1:LM), source = 0.0 )
     allocate(   o3_bkg(IM,JM,1:LM), source = 0.0 )
     allocate(   dp_bkg(IM,JM,1:LM), source = 0.0 )
     allocate(  ple_bkg(IM,JM,0:LM), source = 0.0 )
@@ -1615,19 +1615,6 @@ CONTAINS
        q_bkg=ptr3d
     endif
 
-    call MAPL_GetPointer(import,  ptr3d,   'QITOT',   RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer( export, temp3d, 'QIBKG', RC=STATUS)
-    VERIFY_(STATUS)
-    if( associated(temp3d) ) temp3d = ptr3d
-
-    if (trim(GRIDINC)=="ANA" .and. do_transforms) then
-       call mkiau_internal_state%bkg2ana_regridder%regrid(ptr3d, qi_bkg, rc=status)
-       VERIFY_(status)
-    else
-       qi_bkg=ptr3d
-    endif
-
     call MAPL_GetPointer(import,  ptr3d,   'QLTOT',   RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer( export, temp3d, 'QLBKG', RC=STATUS)
@@ -1639,6 +1626,19 @@ CONTAINS
        VERIFY_(status)
     else
        ql_bkg=ptr3d
+    endif
+
+    call MAPL_GetPointer(import,  ptr3d,   'QITOT',   RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer( export, temp3d, 'QIBKG', RC=STATUS)
+    VERIFY_(STATUS)
+    if( associated(temp3d) ) temp3d = ptr3d
+    
+    if (trim(GRIDINC)=="ANA" .and. do_transforms) then
+       call mkiau_internal_state%bkg2ana_regridder%regrid(ptr3d, qi_bkg, rc=status)
+       VERIFY_(status)
+    else
+       qi_bkg=ptr3d
     endif
 
     allocate ( qdum1(IMbkg,JMbkg,3) )
@@ -1799,8 +1799,8 @@ CONTAINS
              print *, 'REPLAY_V ........ ',trim(REPLAY_V)
              print *, 'REPLAY_T ........ ',trim(REPLAY_T)
              print *, 'REPLAY_QV ....... ',trim(REPLAY_QV)
-             print *, 'REPLAY_QI ....... ',trim(REPLAY_QI)
              print *, 'REPLAY_QL ....... ',trim(REPLAY_QL)
+             print *, 'REPLAY_QI ....... ',trim(REPLAY_QI)
              print *, 'REPLAY_O3 ....... ',trim(REPLAY_O3)
              print *
              endif
@@ -1821,8 +1821,8 @@ CONTAINS
     allocate (    t_ana(IM,JM,  LM), source = 0.0 )
     allocate (  thv_ana(IM,JM,  LM), source = 0.0 )
     allocate (    q_ana(IM,JM,  LM), source = 0.0 )
-    allocate (   qi_ana(IM,JM,  LM), source = 0.0 )
     allocate (   ql_ana(IM,JM,  LM), source = 0.0 )
+    allocate (   qi_ana(IM,JM,  LM), source = 0.0 )
     allocate (   o3_ana(IM,JM,  LM), source = 0.0 )
     allocate (   pk_ana(IM,JM,  LM), source = 0.0 )
     allocate (  ple_ana(IM,JM,0:LM), source = 0.0 )
@@ -1834,8 +1834,8 @@ CONTAINS
     allocate (    t_rep(IM,JM,  LMana), source = 0.0 )
     allocate (  thv_rep(IM,JM,  LMana), source = 0.0 )
     allocate (    q_rep(IM,JM,  LMana), source = 0.0 )
-    allocate (   qi_rep(IM,JM,  LMana), source = 0.0 )
     allocate (   ql_rep(IM,JM,  LMana), source = 0.0 )
+    allocate (   qi_rep(IM,JM,  LMana), source = 0.0 )
     allocate (   o3_rep(IM,JM,  LMana), source = 0.0 )
     allocate (   pk_rep(IM,JM,  LMana), source = 0.0 )
     allocate (  ple_rep(IM,JM,0:LMana), source = 0.0 )
@@ -1855,8 +1855,8 @@ CONTAINS
        v_ana =    v_bkg
        t_ana =    t_bkg
        q_ana =    q_bkg
-      qi_ana =   qi_bkg
       ql_ana =   ql_bkg
+      qi_ana =   qi_bkg
       o3_ana =   o3_bkg
 
 ! Surface Temperature
@@ -2081,74 +2081,12 @@ CONTAINS
            RETURN_(ESMF_FAILURE)
         endif
 
-! ANA Moisture Variable - ice
-!----------------------
-        FOUND = .false.
-
-     ! dkim6, skip the block until feigured
-     if( 1 .eq. 1) then
-
-        do k=1,nq
-
-           if(MAPL_AM_I_ROOT() ) then
-              print *, 'dkim6,test1a: ', k, REPLAY_QI, L_REPLAY_QI, rnames(k)
-              !print *, 'dkim6,test1a: ', 12, YES, T, qitot
-           endif 
-
-           if( match('qi',REPLAY_QI,rnames(k)) ) then
-               call ESMFL_BundleGetPointertoData(RBUNDLEP0,trim(rnames(k)),ptr3d, RC=STATUS)
-               if(STATUS==ESMF_SUCCESS) then
-
-               ! dkim6, test only
-               if(MAPL_AM_I_ROOT() ) then
-                  print *, 'dkim6,test1b: I am in qi ', ESMF_SUCCESS
-                  !print *, 'dkim6,test1b: I am in qi ',          0
-               endif
-
-                          qi_rep =  ptr3d
-                          if( currTime /= REPLAY_TIMEP0 ) then
-                              call ESMFL_BundleGetPointertoData(RBUNDLEM1,trim(rnames(k)),ptr3d, RC=STATUS)
-                              VERIFY_(STATUS)
-                              qi_rep =  facp0*qi_rep + facm1*ptr3d
-                              if( REPLAY_TIME_INTERP == "CUBIC" ) then
-                                  call ESMFL_BundleGetPointertoData(RBUNDLEP1,trim(rnames(k)),ptr3d, RC=STATUS)
-                                  VERIFY_(STATUS)
-                                  qi_rep =  qi_rep + facp1*ptr3d
-                              call ESMFL_BundleGetPointertoData(RBUNDLEM2,trim(rnames(k)),ptr3d, RC=STATUS)
-                              VERIFY_(STATUS)
-                              qi_rep =  qi_rep + facm2*ptr3d
-                          !   qi_rep =  max( qi_rep, 0.0 )
-                          endif
-                          endif
-                          if( REPLAY_QI_FACTOR.ne.1.0 ) qi_rep = qi_rep * REPLAY_QI_FACTOR
-                          FOUND = .true.
-
-                          ! dkim6, test only
-                          if(MAPL_AM_I_ROOT() ) then
-                             print *, 'dkim6,test1c: ', STATUS, ESMF_SUCCESS
-                             !print *, 'dkim6,test1c: ',       0           0
-                             print *, 'dkim6,test1d: ', maxval(qi_rep)
-                             !print *, 'dkim6,test1d: ',   2.7630122E-05
-                          endif 
-
-                          exit
-               endif
-           endif
-        enddo
-        if( .not.FOUND .and. L_REPLAY_QI ) then
-           write(STRING,'(A)') "ANA Variable: QI Not Found!"
-           call WRITE_PARALLEL( trim(STRING)   )
-           RETURN_(ESMF_FAILURE)
-        endif
-
-     endif
-
 ! ANA Liquid Variable - liquid
 !----------------------
         FOUND = .false.
 
      ! dkim6, skip the block until feigured
-     if( 2 .eq. 1) then
+     if( 1 .eq. 1) then
 
         do k=1,nq
            if( match('ql',REPLAY_QL,rnames(k)) ) then
@@ -2177,6 +2115,46 @@ CONTAINS
         enddo
         if( .not.FOUND .and. L_REPLAY_QL ) then
            write(STRING,'(A)') "ANA Variable: QL Not Found!"
+           call WRITE_PARALLEL( trim(STRING)   )
+           RETURN_(ESMF_FAILURE)
+        endif
+
+     endif
+
+! ANA Moisture Variable - ice
+!----------------------
+        FOUND = .false.
+    
+     ! dkim6, skip the block until feigured
+     if( 1 .eq. 1) then
+    
+        do k=1,nq
+           if( match('qi',REPLAY_QI,rnames(k)) ) then
+               call ESMFL_BundleGetPointertoData(RBUNDLEP0,trim(rnames(k)),ptr3d, RC=STATUS)
+               if(STATUS==ESMF_SUCCESS) then 
+                          qi_rep =  ptr3d
+                          if( currTime /= REPLAY_TIMEP0 ) then
+                              call ESMFL_BundleGetPointertoData(RBUNDLEM1,trim(rnames(k)),ptr3d, RC=STATUS)
+                              VERIFY_(STATUS)
+                              qi_rep =  facp0*qi_rep + facm1*ptr3d
+                              if( REPLAY_TIME_INTERP == "CUBIC" ) then
+                                  call ESMFL_BundleGetPointertoData(RBUNDLEP1,trim(rnames(k)),ptr3d, RC=STATUS)
+                                  VERIFY_(STATUS)
+                                  qi_rep =  qi_rep + facp1*ptr3d
+                              call ESMFL_BundleGetPointertoData(RBUNDLEM2,trim(rnames(k)),ptr3d, RC=STATUS)
+                              VERIFY_(STATUS)
+                              qi_rep =  qi_rep + facm2*ptr3d
+                          !   qi_rep =  max( qi_rep, 0.0 )
+                          endif
+                          endif
+                          if( REPLAY_QI_FACTOR.ne.1.0 ) qi_rep = qi_rep * REPLAY_QI_FACTOR
+                          FOUND = .true.
+                          exit
+               endif
+           endif
+        enddo
+        if( .not.FOUND .and. L_REPLAY_QI ) then
+           write(STRING,'(A)') "ANA Variable: QI Not Found!"
            call WRITE_PARALLEL( trim(STRING)   )
            RETURN_(ESMF_FAILURE)
         endif
@@ -2383,8 +2361,8 @@ CONTAINS
                                  v_rep,    v_ana, &
                                thv_rep,  thv_ana, &
                                  q_rep,    q_ana, &
-                                qi_rep,   qi_ana, &
                                 ql_rep,   ql_ana, &
+                                qi_rep,   qi_ana, &
                                 o3_rep,   o3_ana, &
                               phis_ana, phis_bkg, &
                             ak_rep,bk_rep, ak,bk, &
@@ -2411,8 +2389,8 @@ CONTAINS
                   v_ana =   v_rep
                   t_ana =   t_rep
                   q_ana =   q_rep
-                 qi_ana =  qi_rep
                  ql_ana =  ql_rep
+                 qi_ana =  qi_rep
                  o3_ana =  o3_rep
 
             endif
@@ -2428,8 +2406,8 @@ CONTAINS
                   v_ana =   v_rep
                   t_ana =   t_rep
                   q_ana =   q_rep
-                 qi_ana =  qi_rep
                  ql_ana =  ql_rep
+                 qi_ana =  qi_rep
                  o3_ana =  o3_rep
     endif
 
@@ -2556,9 +2534,9 @@ CONTAINS
     VERIFY_(STATUS)
     call MAPL_GetPointer(export,   dq, 'DQVDT', alloc=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(export,   dqi, 'DQIDT', alloc=.TRUE., RC=STATUS)
+    call MAPL_GetPointer(export,  dql, 'DQLDT', alloc=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(export,   dql, 'DQLDT', alloc=.TRUE., RC=STATUS)
+    call MAPL_GetPointer(export,  dqi, 'DQIDT', alloc=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(export,  do3, 'DO3DT', alloc=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
@@ -2671,71 +2649,6 @@ CONTAINS
        dq=ptr3d
     endif
 
-! Ice
-! --------
-
-  if( 1 .eq. 1) then
-
-     if(MAPL_AM_I_ROOT() ) then
-        print *, 'dkim6,test2: ', REPLAY_QI, L_REPLAY_QI, JCAP
-        !print *, 'dkim6,test2: ', YES,   T,   62  (or -1 if not setup in AGCM.rc)
-     endif
-
-    if( L_REPLAY_QI ) then
-        ptr3d = qi_ana-qi_bkg
-
-        ! dkim6, test only
-        if(MAPL_AM_I_ROOT() ) then
-           print *, 'dkim6,test2a max: ', maxval(qi_rep), maxval(qi_ana), maxval(ptr3d)
-           !print *, 'dkim6,tes2a max: ', 2.7630122E-05  2.3597026E-05  2.3597026E-05
-
-           print *, 'dkim6,test2b mean: ', sum(qi_rep)/real(size(qi_rep)), sum(qi_ana)/real(size(qi_ana)), sum(ptr3d)/real(size(ptr3d))
-           !print *, 'dkim6,tes2b mean: ', 3.3524432E-07  3.3402318E-07 -1.0858483E-06
-
-           print *, 'dkim6,test2c: ', trim(GRIDINC), USE_SPECFILT, do_transforms
-           !print *, 'dkim6,tes2c: ', ANA T T
-        endif
-
-    else
-        ptr3d = 0.0
-    endif
-    if (trim(GRIDINC)=="ANA" .and. USE_SPECFILT .and. L_REPLAY_QI) then
-        call Spectrans_ScalarPar (im,jm,LMbkg,ptr3d,JCAP,GRIDana,RC=STATUS)
-        VERIFY_(STATUS)
-    endif
-    if (trim(GRIDINC)=="ANA" .and. do_transforms) then
-       call mkiau_internal_state%ana2bkg_regridder%regrid(ptr3d, dqi, rc=status)
-       VERIFY_(status)
-    else
-       dqi=ptr3d
-    endif
-
-    ! dkim6, test only
-    if(MAPL_AM_I_ROOT() ) then
-       print *, 'dkim6,test3a: ',  im, jm, LMbkg, STATUS 
-       !print *, 'dkim6,tes3a: ',  32          31          72        0
-
-       !!!print *, 'dkim6,test3aa: ', trim(GRIDINC), USE_SPECFILT, do_transforms
-       !!!print *, 'dkim6,tes3aa: ', 
-
-       print *, 'dkim6,test3b max: ', maxval(dqi), maxval(ptr3d)
-       !print *, 'dkim6,tes3b max: ', 9.2902992E-06  1.5952459E-05
-
-       print *, 'dkim6,test3c mean: ', sum(dqi)/real(size(dqi)), sum(ptr3d)/real(size(ptr3d))
-       !print *, 'dkim6,test3c mean: ', -4.9100468E-08 -1.0643106E-06
-
-       print *, 'dkim6,test3d: ', GRIDana
-       !print *, 'dkim6,test3d: ', 23415484058368              82949521
-
-       print *, 'dkim6,test3e: ', GRIDrep
-       !print *, 'dkim6,tes3e: ', 23415484058368              82949521
-
-       print *, 'dkim6,test3f: ', LMbkg
-       !print *, 'dkim6,test3f: ', 72
-    endif
-
-  endif
-
 ! Water
 ! --------
     if( L_REPLAY_QL ) then
@@ -2752,6 +2665,24 @@ CONTAINS
        VERIFY_(status)
     else
        dql=ptr3d
+    endif
+    
+! Ice
+! --------
+    if( L_REPLAY_QI ) then
+        ptr3d = qi_ana-qi_bkg
+    else 
+        ptr3d = 0.0
+    endif
+    if (trim(GRIDINC)=="ANA" .and. USE_SPECFILT .and. L_REPLAY_QI) then
+        call Spectrans_ScalarPar (im,jm,LMbkg,ptr3d,JCAP,GRIDana,RC=STATUS)
+        VERIFY_(STATUS)
+    endif        
+    if (trim(GRIDINC)=="ANA" .and. do_transforms) then
+       call mkiau_internal_state%ana2bkg_regridder%regrid(ptr3d, dqi, rc=status)
+       VERIFY_(status)
+    else
+       dqi=ptr3d
     endif
 
 ! Ozone
@@ -2885,8 +2816,8 @@ CONTAINS
     deallocate(     t_bkg )
     deallocate(    tv_bkg )
     deallocate(     q_bkg )
-    deallocate(    qi_bkg )
     deallocate(    ql_bkg )
+    deallocate(    qi_bkg )
     deallocate(    o3_bkg )
     deallocate (   dp_bkg )
     deallocate(   ple_bkg )
@@ -2899,8 +2830,8 @@ CONTAINS
     deallocate (    v_ana )
     deallocate (    t_ana )
     deallocate (    q_ana )
-    deallocate (   qi_ana )
     deallocate (   ql_ana )
+    deallocate (   qi_ana )
     deallocate (   o3_ana )
     deallocate (   ps_ana )
     deallocate (   pk_ana )
@@ -2919,8 +2850,8 @@ CONTAINS
     deallocate (    t_rep )
     deallocate (  thv_rep )
     deallocate (    q_rep )
-    deallocate (   qi_rep )
     deallocate (   ql_rep )
+    deallocate (   qi_rep )
     deallocate (   o3_rep )
     deallocate (   pk_rep )
     deallocate (  ple_rep )
@@ -3357,14 +3288,14 @@ CONTAINS
           if( trim(var)  == 'SPHU'     ) match = .true.
       endif
 
-      if(     trim(name) == 'QI'       ) then
-          if( trim(var)  == 'QI'       ) match = .true.
-          if( trim(var)  == 'QITOT'    ) match = .true.
-      endif
-
       if(     trim(name) == 'QL'       ) then
           if( trim(var)  == 'QL'       ) match = .true.
           if( trim(var)  == 'QLTOT'    ) match = .true.
+      endif
+
+      if(     trim(name) == 'QI'       ) then
+          if( trim(var)  == 'QI'       ) match = .true.
+          if( trim(var)  == 'QITOT'    ) match = .true.
       endif
 
       if(     trim(name) == 'TH'       ) then
@@ -3731,8 +3662,8 @@ CONTAINS
                              v_in,  v_out,    &
                            thv_in,thv_out,    &
                             qv_in, qv_out,    &
-                            qi_in, qi_out,    &
                             ql_in, ql_out,    &
+                            qi_in, qi_out,    &
                             o3_in, o3_out,    &
                             phis_in,phis_out, &
                             ak_in,bk_in, ak_out,bk_out,im,jm,LM_in,LM_out )
@@ -3749,8 +3680,8 @@ CONTAINS
 !     v_in  ....... input meridional wind
 !     thv_in  ..... input virtual potential  temperature
 !     qv_in ....... input specific   humidity
-!     qi_in ....... input specific   humidity
 !     ql_in ....... input specific   humidity
+!     qi_in ....... input specific   humidity
 !     o3_in  ...... input ozone
 
 !     ple_out...... output edge pressure
@@ -3758,8 +3689,8 @@ CONTAINS
 !     v_out ....... output meridional wind
 !     thv_out ..... output virtual potential  temperature
 !     qv_out ...... output specific   humidity
-!     qi_out ...... output specific   humidity
 !     ql_out ...... output specific   humidity
+!     qi_out ...... output specific   humidity
 !     o3_out ...... output ozone
 
 !     phis_in... input  surface geopotential
@@ -3789,8 +3720,8 @@ CONTAINS
       real        v_in(im,jm,LM_in)
       real      thv_in(im,jm,LM_in)
       real       qv_in(im,jm,LM_in)
-      real       qi_in(im,jm,LM_in)
       real       ql_in(im,jm,LM_in)
+      real       qi_in(im,jm,LM_in)
       real       o3_in(im,jm,LM_in)
 
       real      ple_out(im,jm,LM_out+1)
@@ -3798,8 +3729,8 @@ CONTAINS
       real        v_out(im,jm,LM_out)
       real      thv_out(im,jm,LM_out)
       real       qv_out(im,jm,LM_out)
-      real       qi_out(im,jm,LM_out)
       real       ql_out(im,jm,LM_out)
+      real       qi_out(im,jm,LM_out)
       real       o3_out(im,jm,LM_out)
 
       real phis_in (im,jm)
@@ -3886,8 +3817,8 @@ CONTAINS
 ! ---------------------------------------
       q_in(:,:,:,1) = qv_in(:,:,:)
       q_in(:,:,:,2) = o3_in(:,:,:)
-      q_in(:,:,:,3) = qi_in(:,:,:)
-      q_in(:,:,:,4) = ql_in(:,:,:)
+      q_in(:,:,:,3) = ql_in(:,:,:)
+      q_in(:,:,:,4) = qi_in(:,:,:)
 
       ! dkim6, nq = 4  with qi_in and ql_in, and *_out
       !  see ~/src/Shared/@GMAO_Shared/GEOS_Shared/GEOS_GmapMod.F90
@@ -3897,8 +3828,8 @@ CONTAINS
 
        qv_out(:,:,:) = q_out(:,:,:,1)
        o3_out(:,:,:) = q_out(:,:,:,2)
-       qi_out(:,:,:) = q_out(:,:,:,3)
-       ql_out(:,:,:) = q_out(:,:,:,4)
+       ql_out(:,:,:) = q_out(:,:,:,3)
+       qi_out(:,:,:) = q_out(:,:,:,4)
 
       deallocate(  phi_in  )
       deallocate(  pke_in  )

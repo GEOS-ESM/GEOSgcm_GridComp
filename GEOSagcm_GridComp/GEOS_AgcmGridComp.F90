@@ -247,6 +247,24 @@ contains
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
 
+    !dkim6, add
+    !call MAPL_AddImportSpec ( gc,                                  &
+    !     SHORT_NAME = 'DQLLSDT',                                   &
+    !     LONG_NAME  = 'large_scale_liquid_analysis_increment',     &
+    !     UNITS      = 'kg kg-1',                                   &
+    !     DIMS       = MAPL_DimsHorzVert,                           &
+    !     VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    !VERIFY_(STATUS)
+
+    !dkim6, add
+    !call MAPL_AddImportSpec ( gc,                                  &
+    !     SHORT_NAME = 'DQLCNDT',                                   &
+    !     LONG_NAME  = 'convective_liquid_analysis_increment',      &
+    !     UNITS      = 'kg kg-1',                                   &
+    !     DIMS       = MAPL_DimsHorzVert,                           &
+    !     VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    !VERIFY_(STATUS)
+
     call MAPL_AddImportSpec ( gc,                                  &
          SHORT_NAME = 'DO3DT',                                     &
          LONG_NAME  = 'ozone_analysis_increment',                  &
@@ -313,6 +331,26 @@ contains
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
 
+    !dkim6, add
+    !call MAPL_AddInternalSpec ( gc,                                &
+    !     SHORT_NAME = 'DQLLSDT',                                   &
+    !     LONG_NAME  = 'large_scale_liquid_bias_tendency',          &
+    !     UNITS      = 'kg kg-1 s-1',                               &
+    !     FRIENDLYTO = trim(COMP_NAME),                             &
+    !     DIMS       = MAPL_DimsHorzVert,                           &
+    !     VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    !VERIFY_(STATUS)
+
+    !dkim6, add
+    !call MAPL_AddInternalSpec ( gc,                                &
+    !     SHORT_NAME = 'DQLCNDT',                                   &
+    !     LONG_NAME  = 'convective_liquid_bias_tendency',           &
+    !     UNITS      = 'kg kg-1 s-1',                               &
+    !     FRIENDLYTO = trim(COMP_NAME),                             &
+    !     DIMS       = MAPL_DimsHorzVert,                           &
+    !     VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    !VERIFY_(STATUS)
+
     call MAPL_AddInternalSpec ( gc,                                &
          SHORT_NAME = 'DO3DT',                                     &
          LONG_NAME  = 'ozone_bias_tendency',                       &
@@ -356,28 +394,7 @@ contains
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddExportSpec ( gc,                                  &
-         SHORT_NAME = 'QIBKG',                                     &
-         LONG_NAME  = 'specific_humidity_background',      &
-         UNITS      = 'kg kg-1',                                   &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
-    call MAPL_AddExportSpec ( gc,                                  &
-         SHORT_NAME = 'QIANA',                                     &
-         LONG_NAME  = 'specific_humidity_after_analysis',      &
-         UNITS      = 'kg kg-1',                                   &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
-    call MAPL_AddExportSpec ( gc,                                  &
-         SHORT_NAME = 'QICON',                                     &
-         LONG_NAME  = 'specific_humidity_after_constraint',      &
-         UNITS      = 'kg kg-1',                                   &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
-
+    !dkim6, add
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'QLBKG',                                     &
          LONG_NAME  = 'specific_humidity_background',      &
@@ -394,6 +411,28 @@ contains
     VERIFY_(STATUS)
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'QLCON',                                     &
+         LONG_NAME  = 'specific_humidity_after_constraint',      &
+         UNITS      = 'kg kg-1',                                   &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                                  &
+         SHORT_NAME = 'QIBKG',                                     &
+         LONG_NAME  = 'specific_humidity_background',      &
+         UNITS      = 'kg kg-1',                                   &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( gc,                                  &
+         SHORT_NAME = 'QIANA',                                     &
+         LONG_NAME  = 'specific_humidity_after_analysis',      &
+         UNITS      = 'kg kg-1',                                   &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( gc,                                  &
+         SHORT_NAME = 'QICON',                                     &
          LONG_NAME  = 'specific_humidity_after_constraint',      &
          UNITS      = 'kg kg-1',                                   &
          DIMS       = MAPL_DimsHorzVert,                           &
@@ -480,6 +519,42 @@ contains
          DIMS       = MAPL_DimsHorzVert,                                  &
          VLOCATION  = MAPL_VLocationCenter,                    RC=STATUS  )
     VERIFY_(STATUS)
+
+    !dkim6, add
+    call MAPL_AddExportSpec ( gc,                                         &
+         SHORT_NAME = 'DQLLSDT',                                          &
+         LONG_NAME  = 'large_scale_liquid_water_analysis_tendency',       &
+         UNITS      = 'kg kg-1 s-1',                                      &
+         DIMS       = MAPL_DimsHorzVert,                                  &
+         VLOCATION  = MAPL_VLocationCenter,                    RC=STATUS  )
+    VERIFY_(STATUS)
+
+    !dkim6, add
+    call MAPL_AddExportSpec ( gc,                                         &
+         SHORT_NAME = 'DQLCNDT',                                          &
+         LONG_NAME  = 'convective_liquid_water_analysis_tendency',        &
+         UNITS      = 'kg kg-1 s-1',                                      &
+         DIMS       = MAPL_DimsHorzVert,                                  &
+         VLOCATION  = MAPL_VLocationCenter,                    RC=STATUS  )
+    VERIFY_(STATUS)
+
+    !dkim6, add
+    call MAPL_AddExportSpec ( gc,                                         &
+         SHORT_NAME = 'DQILSDT',                                          &
+         LONG_NAME  = 'large_scale_ice_water_analysis_tendency',       &
+         UNITS      = 'kg kg-1 s-1',                                      &
+         DIMS       = MAPL_DimsHorzVert,                                  &
+         VLOCATION  = MAPL_VLocationCenter,                    RC=STATUS  )
+    VERIFY_(STATUS)
+
+    !dkim6, add
+    call MAPL_AddExportSpec ( gc,                                         &
+         SHORT_NAME = 'DQICNDT',                                          &
+         LONG_NAME  = 'convective_ice_water_analysis_tendency',        &
+         UNITS      = 'kg kg-1 s-1',                                      &
+         DIMS       = MAPL_DimsHorzVert,                                  &
+         VLOCATION  = MAPL_VLocationCenter,                    RC=STATUS  )
+    VERIFY_(STATUS) 
 
     call MAPL_AddExportSpec ( gc,                                         &
          SHORT_NAME = 'DQIDT_ANA',                                        &
@@ -1735,6 +1810,12 @@ contains
    real,   allocatable, dimension(:,:,:) :: tdpnew
    real,   allocatable, dimension(:,:,:) :: DQVCON
 
+   !dkim6, add
+   real,   allocatable, dimension(:,:,:) :: DQLLS_OLD
+   real,   allocatable, dimension(:,:,:) :: DQLCN_OLD
+   real,   allocatable, dimension(:,:,:) :: DQILS_OLD
+   real,   allocatable, dimension(:,:,:) :: DQICN_OLD
+
    real*8                                ::   gamma
    real*8                                ::  alf_bks_ave
    real*8                                ::  dry_bkg_ave
@@ -2307,12 +2388,15 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                 call MAPL_GetPointer ( EXPORT, ptr3d, 'QVBKG', rc=STATUS )
                 VERIFY_(STATUS)
                 if(associated(ptr3d)) ptr3d = Q
-                call MAPL_GetPointer ( EXPORT, ptr3d, 'QIBKG', rc=STATUS )
-                VERIFY_(STATUS)
-                if(associated(ptr3d)) ptr3d = QILS + QICN
+
+                !dkim6, add
                 call MAPL_GetPointer ( EXPORT, ptr3d, 'QLBKG', rc=STATUS )
                 VERIFY_(STATUS)
                 if(associated(ptr3d)) ptr3d = QLLS + QLCN
+                call MAPL_GetPointer ( EXPORT, ptr3d, 'QIBKG', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(ptr3d)) ptr3d = QILS + QICN
+
                 call MAPL_GetPointer ( EXPORT, ptr3d, 'DPBKG', rc=STATUS )
                 VERIFY_(STATUS)
                 if(associated(ptr3d)) ptr3d = DP
@@ -2323,6 +2407,18 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                 DQRANA = QRAIN
                 DQSANA = QSNOW
                 DQGANA = QGRAUPEL
+
+                !dkim6, add
+                allocate( DQLLS_OLD(IM,JM,LM),STAT=STATUS ) ; VERIFY_(STATUS)
+                allocate( DQLCN_OLD(IM,JM,LM),STAT=STATUS ) ; VERIFY_(STATUS)
+                DQLLS_OLD = QLLS
+                DQLCN_OLD = QLCN
+
+                !dkim6, add
+                allocate( DQILS_OLD(IM,JM,LM),STAT=STATUS ) ; VERIFY_(STATUS)
+                allocate( DQICN_OLD(IM,JM,LM),STAT=STATUS ) ; VERIFY_(STATUS)
+                DQILS_OLD = QILS
+                DQICN_OLD = QICN
 
                 if(TYPE  == CORRECTOR) then
 
@@ -2349,6 +2445,12 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 
                 call DO_Friendly (Q,'DQVDT',PREF)
 
+                !dkim6, add
+                !call DO_Friendly (QLLS,'DQLLSDT',PREF)
+                !call DO_Friendly (QLCN,'DQLCNDT',PREF)
+                !call DO_Friendly (QILS,'DQILSDT',PREF)
+                !call DO_Friendly (QICN,'DQICNDT',PREF)
+
                 ! -----------------------------------------------------------------------------------------
                 ! -----------------------------------------------------------------------------------------
 
@@ -2368,12 +2470,15 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                 call MAPL_GetPointer ( EXPORT, ptr3d, 'QVANA', rc=STATUS )
                 VERIFY_(STATUS)
                 if(associated(ptr3d)) ptr3d = Q
-                call MAPL_GetPointer ( EXPORT, ptr3d, 'QIANA', rc=STATUS )
-                VERIFY_(STATUS)
-                if(associated(ptr3d)) ptr3d = QILS + QICN
+
+                !dkim6, add
                 call MAPL_GetPointer ( EXPORT, ptr3d, 'QLANA', rc=STATUS )
                 VERIFY_(STATUS)
                 if(associated(ptr3d)) ptr3d = QLLS + QLCN
+                call MAPL_GetPointer ( EXPORT, ptr3d, 'QIANA', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(ptr3d)) ptr3d = QILS + QICN
+
                 call MAPL_GetPointer ( EXPORT, ptr3d, 'DPANA', rc=STATUS )
                 VERIFY_(STATUS)
                 if(associated(ptr3d)) ptr3d = DP_ANA
@@ -2545,13 +2650,13 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                 VERIFY_(STATUS)
                 if(associated(ptr3d)) ptr3d = Q
 
-                call MAPL_GetPointer ( EXPORT, ptr3d, 'QICON', rc=STATUS )
-                VERIFY_(STATUS)
-                if(associated(ptr3d)) ptr3d = QILS + QICN
-
+                !dkim6, add
                 call MAPL_GetPointer ( EXPORT, ptr3d, 'QLCON', rc=STATUS )
                 VERIFY_(STATUS)
                 if(associated(ptr3d)) ptr3d = QLLS + QLCN
+                call MAPL_GetPointer ( EXPORT, ptr3d, 'QICON', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(ptr3d)) ptr3d = QILS + QICN
 
                 DQVCON = Q           - DQVCON
                 DQVANA = Q           - DQVANA
@@ -2560,6 +2665,12 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                 DQRANA = QRAIN       - DQRANA
                 DQSANA = QSNOW       - DQSANA
                 DQGANA = QGRAUPEL    - DQGANA
+
+                !dkim6, Calculate the difference (New State - Old State)
+                DQLLS_OLD = QLLS - DQLLS_OLD
+                DQLCN_OLD = QLCN - DQLCN_OLD
+                DQILS_OLD = QILS - DQILS_OLD
+                DQICN_OLD = QICN - DQICN_OLD
 
                 ! Update Tendency Diagnostic due to CONSTRAINTS
                 ! ---------------------------------------------
@@ -2592,6 +2703,29 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                 VERIFY_(STATUS)
                 if(associated(TENDAN)) TENDAN = DQGANA/DT
 
+                !dkim6, add
+                call MAPL_GetPointer ( EXPORT, TENDAN, 'DQLLSDT', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(TENDAN)) TENDAN = DQLLS_OLD/DT
+                deallocate(DQLLS_OLD)
+
+                !dkim6, add
+                call MAPL_GetPointer ( EXPORT, TENDAN, 'DQLCNDT', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(TENDAN)) TENDAN = DQLCN_OLD/DT
+                deallocate(DQLCN_OLD)
+
+                !dkim6, add
+                call MAPL_GetPointer ( EXPORT, TENDAN, 'DQILSDT', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(TENDAN)) TENDAN = DQILS_OLD/DT
+                deallocate(DQILS_OLD)
+
+                !dkim6, add
+                call MAPL_GetPointer ( EXPORT, TENDAN, 'DQICNDT', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(TENDAN)) TENDAN = DQICN_OLD/DT
+                deallocate(DQICN_OLD)
 
                 deallocate(  dp_ana )
                 deallocate( ple_ana )
