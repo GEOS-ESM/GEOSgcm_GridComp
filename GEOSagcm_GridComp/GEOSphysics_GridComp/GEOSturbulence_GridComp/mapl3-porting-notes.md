@@ -1,6 +1,6 @@
 # GEOS_TurbulenceGridComp MAPL3 porting plan
 
-Status (2026-11-12): steps 0, 2 and 3 done on branch `feature/bmauer/port-turbulence-to-mapl3` (off `release/MAPL-v3`). Step 1 (MAPL2 baseline) to do; steps 4-10 not started.
+Status (2026-11-13): step 0 done upstream (PR #1582); steps 2 and 3 done on branch `feature/bmauer/port-turbulence-to-mapl3` (rebased onto `release/MAPL-v3` @ `86b1a7d5`). Step 1 (MAPL2 baseline) to do; steps 4-10 not started.
 
 Resume here (2026-11-12): next is step 4 (SetServices): entry-point signatures (`I_SetServices`/`I_Run`) and `phase_name` for Run1/Run2; `MAPL_GridCompGetResource` for `DEBUG_TRB`, `USE_WAVES`, `USE_SEA_SPRAY`, `EDMF_NUMUP`, `SCM_SL`, `TURBULENCE_DO_SHOC` (label prefix, issue 8) and `TRI_increments` (YAML list, replacing `GetTriIncrements`); `TR` -> provided service `TRDIFF` (issue 1); `TRI` as a `MAPL_STATEITEM_FIELDBUNDLE` export (decision 2); the `TRI_increments` `<NAME>IT` exports as `MAPL_GridCompAddSpec`; `TRADV` subscription of `PDF_A`, `TKESHOC`, `QT2`, `QT3` when `DO_SHOC /= 0` (issue 3); drop `MAPL_TimerAdd`, `MAPL_GetObjectFromGC`, `MAPL_GenericSetServices`. In parallel (user): the step-1 MAPL2 capture.
 
@@ -75,8 +75,8 @@ Edge fields:
 
 ## Steps
 
-### 0. Sync with `develop` (done 2026-11-12)
-`GEOS_TurbulenceGridComp.F90` and `edmf.F90` copied from `develop` @ `f31a2151` (commit `9270a7e9`); the other Turbulence files were already identical. Before, the `release/MAPL-v3` copy was `develop` @ `7f80bd2f` plus one release-only edit (the two `FriendlyToTURBULENCE` reads through `ESMF_InfoGet`), which the port replaces anyway (issue 1). `GEOS_PhysicsGridComp.F90` was not synced (decided 2026-11-12): it is not built on this line.
+### 0. Sync with `develop` (done 2026-11-12; upstream 2026-11-13)
+`GEOS_TurbulenceGridComp.F90` and `edmf.F90` were first copied onto this branch from `develop` @ `f31a2151`; the other Turbulence files were already identical. The same sync then reached `release/MAPL-v3` through PR #1582 (`86b1a7d5`, merge of `develop` @ `f31a2151`), so the branch was rebased onto it and its own sync commit dropped: all Turbulence sources on `release/MAPL-v3` are byte-identical to `develop` @ `f31a2151`. Before, the `release/MAPL-v3` copy was `develop` @ `7f80bd2f` plus one release-only edit (the two `FriendlyToTURBULENCE` reads through `ESMF_InfoGet`), which the port replaces anyway (issue 1). PR #1582 also synced `GEOS_PhysicsGridComp.F90` with `develop` (not built on this line).
 
 ### 1. MAPL2 baseline (to do)
 - Build MAPL2 from `develop` @ `f31a2151` (or later; then repeat step 0 with that commit).
