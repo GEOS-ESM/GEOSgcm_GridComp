@@ -34,7 +34,7 @@ MODULE ConvPar_GF2020
             cum_fadj_massflx, cum_use_excess, adv_trigger, &
             evap_fix, output_sound, use_cloud_dissipation, &
             use_smooth_tend, use_inv_layers, beta_sh, use_linear_subcl_mf, &
-            CUM_AVE_LAYER
+            CUM_AVE_LAYER, sequential_plumes
 
   !=============================================================================
   ! 1. GENERAL SCHEME TOGGLES & NUMERICS
@@ -48,6 +48,7 @@ MODULE ConvPar_GF2020
   INTEGER :: USE_SMOOTH_TEND     = 0       ! 0 = OFF, >0 averages tendencies (e.g., 1=avg(k-1,k,k+1))
   REAL    :: MAX_TQ_TEND         = 100.    ! Max T,Q tendency allowed (K/day)
   INTEGER :: OUTPUT_SOUND        = 0       ! Diagnostic profile output flag
+  LOGICAL :: SEQUENTIAL_PLUMES   = .TRUE.  ! True: shal -> mid -> deep sequential state update
 
   LOGICAL :: wrtgrads            = .FALSE.
   INTEGER :: ntimes = 0
@@ -848,7 +849,7 @@ CONTAINS
    !$OMP        cum_min_edt_ocean, cum_max_edt_land, cum_max_edt_ocean, &
    !$OMP        cum_fadj_massflx, cum_use_excess, cumulus_type, closure_choice, &
    !$OMP        cum_entr_rate, cum_cap_maxs, FIX_NEGATIVES, USE_MOMENTUM_TRANSP, &
-   !$OMP        CONVECTION_TRACER, do_this_column, &
+   !$OMP        CONVECTION_TRACER, do_this_column, SEQUENTIAL_PLUMES, &
    !$OMP        ierr4d, jmin4d, klcl4d, k224d, kbcon4d, ktop4d, kstabi4d, kstabm4d, &
    !$OMP        cprr4d, xmb4d, edt4d, pwav4d, sigma4d, pcup5d, entr5d, &
    !$OMP        up_massentr5d, up_massdetr5d, dd_massentr5d, dd_massdetr5d, &
@@ -1009,12 +1010,12 @@ CONTAINS
       ENDDO
 
       !===========================================================================
-      ! 4. PLUME ITERATION LOOP (Call CUP_gf for Deep, Mid, Shallow)
+      ! 4. PLUME ITERATION LOOP (Call CUP_gf for Shallow, Mid, Deep)
       !===========================================================================
       DO ii_plume = 1, maxiens
 
          !-- Set processing order
-         if(SH_MD_DP) then
+         if(SH_MD_DP .or. SEQUENTIAL_PLUMES) then
             if(ii_plume == 1) plume = shal
             if(ii_plume == 2) plume = mid
             if(ii_plume == 3) plume = deep
@@ -1122,6 +1123,25 @@ CONTAINS
          DO i = its, itf
             CONPRR(i,j) = CONPRR(i,j) + cprr4d(i,j,plume)
          ENDDO
+
+         !-- Update environmental profiles sequentially for downstream plumes (shal -> mid -> deep)
+         IF (SEQUENTIAL_PLUMES .and. ii_plume < maxiens) THEN
+            DO i = its, itf
+               IF (ierr4d(i,j,plume) == 0) THEN
+                  last_ierr(i) = 0
+                  DO k = kts, ktop4d(i,j,plume)
+                     temp_old(i,k) = temp_old(i,k) + outt(i,k,plume) * dt
+                     qv_old(i,k)   = max(smallerqv, qv_old(i,k) + outq(i,k,plume) * dt)
+
+                     temp_new_ADV(i,k) = temp_new_ADV(i,k) + outt(i,k,plume) * dt
+                     qv_new_ADV(i,k)   = max(smallerqv, qv_new_ADV(i,k) + outq(i,k,plume) * dt)
+
+                     rhoi(i,k) = 1.e2 * po(i,k) / (287.04 * temp_old(i,k) * (1. + 0.608 * qv_old(i,k)))
+                  ENDDO
+               ENDIF
+            ENDDO
+         ENDIF
+
       ENDDO ! End Plume loop
 
       !===========================================================================
@@ -5058,9 +5078,6 @@ CONTAINS
 
          k_ent=maxloc(zuo(i,:),1)
 
-        !!-will not allow detrainment below cloud base or in the PBL
-        !if(draft=='shallow' .or. draft == 'mid') then
-        !     cd(i,1:max(kbcon(i),kpbl(i))+1)=0.0
          !-will not allow detrainment below the location of the maximum zu
          if (draft=='shallow' .or. draft == 'mid') then
               cd(i,1:maxloc(zuo(i,:),1)-2)=0.0

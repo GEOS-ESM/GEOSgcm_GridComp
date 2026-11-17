@@ -186,6 +186,7 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
       call MAPL_GetResource(MAPL, USE_SCALE_DEP             , 'USE_SCALE_DEP:'         ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, USE_MOMENTUM_TRANSP       , 'USE_MOMENTUM_TRANSP:'   ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, DICYCLE                   , 'DICYCLE:'               ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SEQUENTIAL_PLUMES         , 'SEQUENTIAL_PLUMES:'     ,default= .TRUE., RC=STATUS );VERIFY_(STATUS)
 
       ! -----------------------------------------------------------------------------------------
       ! GRELL-FREITAS ENTRAINMENT, MICROPHYSICS & DETRAINMENT CONTROLS
@@ -203,10 +204,10 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
       !   - ENTR_SH : High rate; ensures shallow boundary-layer clouds dilute and mix out rapidly.
       if (INT(ZERO_DIFF_ENTR) == 0) then
         call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 0.1e-4,RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 0.6e-4,RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)        , 'ENTR_MD:'               ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 1.0e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)        , 'ENTR_MD:'               ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)       , 'ENTR_SH:'               ,default= 6.0e-4,RC=STATUS );VERIFY_(STATUS)
-      else
+       else
         ! Legacy GF settings
         call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 0.1e-4,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 1.0e-4,RC=STATUS );VERIFY_(STATUS)

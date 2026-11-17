@@ -7,14 +7,14 @@ category: INTERNAL
 #--------------------------------------------------------------------------------------------------------------------
  NAME   | UNITS   | DIMS | VLOC | UNGRIDDED  | COND                  | LONG NAME
 #--------------------------------------------------------------------------------------------------------------------
- KWVRDG | km      | xy   | N    | (/16/)     | self%NCAR_NRDG /= 0.0 | horizonal wavenumber of mountain ridges
- EFFRDG | km      | xy   | N    | (/16/)     | self%NCAR_NRDG /= 0.0 | efficiency of mountain ridge scheme
- GBXAR  | NA      | xy   | N    |            | self%NCAR_NRDG /= 0.0 | grid box area
- HWDTH  | km      | xy   | N    | (/16/)     | self%NCAR_NRDG /= 0.0 | width of mountain ridges
- CLNGT  | km      | xy   | N    | (/16/)     | self%NCAR_NRDG /= 0.0 | width of mountain ridges
- MXDIS  | NA      | xy   | N    | (/16/)     | self%NCAR_NRDG /= 0.0 | NA
- ANGLL  | NA      | xy   | N    | (/16/)     | self%NCAR_NRDG /= 0.0 | NA
- ANIXY  | NA      | xy   | N    | (/16/)     | self%NCAR_NRDG /= 0.0 | NA
+ KWVRDG | m-1     | xy   | N    | (/16/)     | self%NCAR_NRDG /= 0.0 | horizontal wavenumber of mountain ridges
+ EFFRDG | 1       | xy   | N    | (/16/)     | self%NCAR_NRDG /= 0.0 | efficiency of mountain ridge scheme
+ GBXAR  | sr      | xy   | N    |            | self%NCAR_NRDG /= 0.0 | grid box area in steradians
+ HWDTH  | km      | xy   | N    | (/16/)     | self%NCAR_NRDG /= 0.0 | cross-ridge width of mountain ridges
+ CLNGT  | km      | xy   | N    | (/16/)     | self%NCAR_NRDG /= 0.0 | crest length (along-ridge) of mountain ridges
+ MXDIS  | m       | xy   | N    | (/16/)     | self%NCAR_NRDG /= 0.0 | height of mountain ridges
+ ANGLL  | degrees | xy   | N    | (/16/)     | self%NCAR_NRDG /= 0.0 | angle of ridge axis with respect to north
+ ANIXY  | 1       | xy   | N    | (/16/)     | self%NCAR_NRDG /= 0.0 | anisotropy parameter of mountain ridges
 
 category: IMPORT
 #-------------------------------------------------------------------------------------------------------
@@ -48,11 +48,11 @@ category: EXPORT
  Q          | Q_EXP    | kg kg-1  | xyz  | C    | specific_humidity
  U          | U_EXP    | m s-1    | xyz  | C    | eastward_wind
  V          | V_EXP    | m s-1    | xyz  | C    | northward_wind
- RDG1_MXDIS |          | 1        | xy   | N    | ridge1_mxdis
- RDG1_HWDTH |          | 1        | xy   | N    | ridge1_hwdth
- RDG1_CLNGT |          | 1        | xy   | N    | ridge1_clngt
- RDG1_ANGLL |          | 1        | xy   | N    | ridge1_angll
- RDG1_ANIXY |          | 1        | xy   | N    | ridge1_anixy
+ RDG1_MXDIS |          | m        | xy   | N    | ridge1_height
+ RDG1_HWDTH |          | km       | xy   | N    | ridge1_cross_ridge_width
+ RDG1_CLNGT |          | km       | xy   | N    | ridge1_crest_length
+ RDG1_ANGLL |          | degrees  | xy   | N    | ridge1_axis_angle_from_north
+ RDG1_ANIXY |          | 1        | xy   | N    | ridge1_anisotropy
  RDG1_GBXAR |          | km^2     | xy   | N    | ridge1_gridbox_area
  SGH        | SGH_EXP  | m        | xy   | N    | standard_deviation_of_topography
  PREF       | PREF_EXP | Pa       |   z  | E    | reference_air_pressure

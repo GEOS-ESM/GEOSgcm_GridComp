@@ -187,6 +187,7 @@ subroutine gw_rdg_ifc(band, &
   real :: tau_0_ubc(ncol)
 
   real :: uhtmax, utfac
+  real :: tauox_acc(ncol), tauoy_acc(ncol), tau_sfc
   integer :: i, k, l, nn
 
   !-----------------------------------------------------------------------
@@ -202,6 +203,8 @@ subroutine gw_rdg_ifc(band, &
   ttrdg = 0.0
   isoflag = 0
   tau_0_ubc(:) = tau_0_ubc_oro
+  tauox_acc = 0.0
+  tauoy_acc = 0.0
 
   !-----------------------------------------------------------------------
   ! Loop over all ridges
@@ -236,6 +239,18 @@ subroutine gw_rdg_ifc(band, &
           piln, rhoi, nm, ni, ubm, ubi, xv, yv, &
           c, kvtt, tau, tau_0_ubc, utgw, vtgw, ttgw, gwut, alpha, &
           kwvrdg=kwvrdg(:,nn))
+
+     ! Surface stress of this ridge: tau is rebuilt for every ridge, so it must be
+     ! read here, in the ridge's own direction (xv,yv), and weighted by the same
+     ! efficiency as the tendencies
+     do i = 1, ncol
+        tau_sfc = 0.0
+        do l = -band%ngwv, band%ngwv
+           tau_sfc = tau_sfc + real(tau(i,l,pver+1))
+        end do
+        tauox_acc(i) = tauox_acc(i) + effrdg(i,nn) * tau_sfc * xv(i)
+        tauoy_acc(i) = tauoy_acc(i) + effrdg(i,nn) * tau_sfc * yv(i)
+     end do
 
      ! Apply efficiency factor only (no limiter yet)
      do i = 1, ncol
@@ -276,20 +291,11 @@ subroutine gw_rdg_ifc(band, &
         vtrdg(i,k) = vtrdg(i,k) * utfac
         ttrdg(i,k) = ttrdg(i,k) * utfac
      end do
-  end do
 
-  !-----------------------------------------------------------------------
-  ! Compute surface stress (at bottom interface, k=pver+1)
-  !-----------------------------------------------------------------------
-  taugwx_sfc = 0.0
-  taugwy_sfc = 0.0
-  do i = 1, ncol
-     do l = -band%ngwv, band%ngwv
-        ! Surface stress from this wave (accumulated over all ridges)
-        taugwx_sfc(i) = taugwx_sfc(i) + real(tau(i,l,pver+1)) * xv(i)
-        taugwy_sfc(i) = taugwy_sfc(i) + real(tau(i,l,pver+1)) * yv(i)
-     enddo
-  enddo
+     ! Surface stress follows the same limiter as the tendencies
+     taugwx_sfc(i) = tauox_acc(i) * utfac
+     taugwy_sfc(i) = tauoy_acc(i) * utfac
+  end do
 
   !-----------------------------------------------------------------------
   ! Clean up
@@ -449,8 +455,11 @@ subroutine gw_rdg_src(band, ncol, pver , pint, pmid, delp, &
      end do
   end do
 
+  ! The source averages above sum over layers src_level..tend_level inclusive,
+  ! so the normalising pressure thickness runs from the top interface of
+  ! src_level to the bottom interface of tend_level.
   do i = 1, ncol
-     dpsrc(i) = pint(i,tend_level(i)) - pint(i,src_level(i))
+     dpsrc(i) = pint(i,tend_level(i)+1) - pint(i,src_level(i))
   end do
   where ( dpsrc > 0.0 )
     rsrc = rsrc / dpsrc
