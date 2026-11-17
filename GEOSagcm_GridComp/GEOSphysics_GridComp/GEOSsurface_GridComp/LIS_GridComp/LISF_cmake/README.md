@@ -81,7 +81,8 @@ Everything else in LISF's `default.cfg` is left at its default (mostly On).
 | --- | --- |
 | `VIC.4.1.1`, `VIC.4.1.2` | Restricted / unsupported. |
 | `CABLE` | `cable_canopy.f90` fails to compile with array shape-mismatch errors (`rbw`/`poolcoef1*`). |
-| `Noah.3.9` | `noah39_main.F90` calls `SFCDIF_OFF` with more actual than dummy arguments (vendored bug). We use Noah.3.3 / NoahMP.3.6 / NoahMP.4.0.1. |
+| `Noah.3.3`, `Noah.3.6` | `noah33_main.F90` / `noah36_main.F90` use undeclared variables (`sfctsno`, `e2sat`, `q2sati`, `rho`, `q2diag`, `t2diag`; plus `gama` in 3.6) inside `#if (defined COUPLED)` blocks (vendored bug). |
+| `Noah.3.9` | `noah39_main.F90` calls `SFCDIF_OFF` with more actual than dummy arguments (vendored bug). We use NoahMP.3.6 / NoahMP.4.0.1. |
 | `RUC.3.7` | `LIS_lsm_pluginMod.F90` declares `external ruc37_reset` but no `RUC37_reset.F90` exists anywhere in LISF's `ruc.3.7` plugin (vendored gap), leaving `ruc37_reset_` undefined at link time. |
 
 None of these are used by the Plug, which only drives Noah/NoahMP LSMs.

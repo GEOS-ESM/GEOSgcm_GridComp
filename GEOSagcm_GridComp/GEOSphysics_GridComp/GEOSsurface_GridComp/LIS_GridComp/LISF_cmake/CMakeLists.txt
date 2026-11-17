@@ -33,6 +33,8 @@ file (WRITE ${LISF_GEN}/user.cfg
 VIC.4.1.1: Off
 VIC.4.1.2: Off
 CABLE: Off
+Noah.3.3: Off
+Noah.3.6: Off
 Noah.3.9: Off
 RUC.3.7: Off
 ")
