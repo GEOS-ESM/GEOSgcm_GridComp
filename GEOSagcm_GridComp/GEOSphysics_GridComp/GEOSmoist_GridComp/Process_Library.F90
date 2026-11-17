@@ -2767,7 +2767,7 @@ module GEOSmoist_Process_Library
 
     if (a > 0.001 .and. qt3bar > 0.0 .and. a /= 0.5) then
 
-      qt1 = a * qt2 / (1.0 - a)
+      qt1 = a * qt2 / (a - 1.0)   ! zero-mean constraint (1-a)*qt1 + a*qt2 = 0, same as t1 and w1 (was a*qt2/(1-a): wrong sign)
 
       fac = sqrt(a / (1.0 - a))
       tmp = max(0.0, qt2bar - (1.0 - a) * qt1**2 - a * qt2**2)
