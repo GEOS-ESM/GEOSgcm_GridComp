@@ -11,7 +11,9 @@ esma_set_this ()
 # just to get this static data.
 # LIS_Fields.F90 holds the shared Import/Export/Internal field
 # catalog derived from it.
-set (SRCS LIS_FieldCatalog.F90 LIS_Fields.F90 LIS_GridComp.F90)
+# The MAPL state specs themselves now come from LIS_StateSpecs.rc (via
+# mapl_acg below); the catalog files are kept for now but unused.
+set (SRCS LIS_GridComp.F90)
 
 # LISF_cmake/ builds the `LIS` library target natively under CMake from
 # @LISF's own source tree (see LISF_cmake/CMakeLists.txt for details).
@@ -21,6 +23,10 @@ esma_add_library (${this}
   SRCS ${SRCS}
   DEPENDENCIES MAPL LIS
   TYPE SHARED
+)
+
+mapl_acg (${this} LIS_StateSpecs.rc
+  IMPORT_SPECS EXPORT_SPECS INTERNAL_SPECS
 )
 
 # Force the Fortran compiler driver as the linker -- otherwise CMake picks

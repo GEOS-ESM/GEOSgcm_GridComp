@@ -23,7 +23,7 @@ module LIS_GridComp
    use ESMF
    use MAPL
 
-   use LIS_coreMod, only: LIS_rc, LIS_domain, LIS_config_init, LIS_core_init, LIS_finalize
+   use LIS_coreMod, only: LIS_rc, LIS_config_init, LIS_core_init, LIS_finalize
    use LIS_domainMod, only: LIS_domain_init
    use LIS_paramsMod, only: LIS_param_init
    use LIS_surfaceModelMod, only: LIS_surfaceModel_init, LIS_surfaceModel_setup
@@ -35,9 +35,9 @@ module LIS_GridComp
    use LIS_FORC_AttributesMod, only: LIS_FORC_Wind_E, LIS_FORC_Wind_N
    use LIS_FORC_AttributesMod, only: LIS_FORC_Psurf, LIS_FORC_Rainf, LIS_FORC_Snowf
    use LIS_historyMod, only: LIS_tile2grid, LIS_grid2tile
+   use LIS_histDataMod, only: LIS_histData, LIS_metadataEntry
+   use LIS_histDataMod, only: LIS_MOC_QH, LIS_MOC_QLE, LIS_MOC_QS, LIS_MOC_SWE
    use LIS_timeMgrMod, only: LIS_timemgr_set
-
-   use LIS_Fields, only: LIS_FieldSpec, LisFieldsInit
 
    use iso_fortran_env, only: real32
 
@@ -68,10 +68,6 @@ contains
       character(len=ESMF_MAXSTR) :: IAm
       integer :: status
       character(len=ESMF_MAXSTR) :: comp_name
-      integer :: i
-      type(LIS_FieldSpec), allocatable :: import_fields(:)
-      type(LIS_FieldSpec), allocatable :: export_fields(:)
-      type(LIS_FieldSpec), allocatable :: internal_fields(:)
 
       IAm = 'SetServices'
       call ESMF_GridCompGet(gc, name=comp_name, _RC)
@@ -83,39 +79,10 @@ contains
       call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_FINALIZE, Finalize, _RC)
       call MAPL_GridCompSetEntryPoint(gc, ESMF_METHOD_WRITERESTART, Record, _RC)
 
-      ! Set the state variable specs. The catalog is fully static (see
-      ! LIS_FieldCatalog), so it needs no live LIS state.
-      call LisFieldsInit(import_fields, export_fields, internal_fields, _RC)
-
-      do i = 1, size(import_fields)
-         call MAPL_AddImportSpec(gc, &
-              short_name=trim(import_fields(i)%short_name), &
-              long_name=trim(import_fields(i)%long_name), &
-              units=trim(import_fields(i)%units), &
-              dims=MAPL_DimsHorzOnly, &
-              vlocation=MAPL_VLocationNone, &
-              _RC)
-      end do
-
-      do i = 1, size(export_fields)
-         call MAPL_AddExportSpec(gc, &
-              short_name=trim(export_fields(i)%short_name), &
-              long_name=trim(export_fields(i)%long_name), &
-              units=trim(export_fields(i)%units), &
-              dims=MAPL_DimsHorzOnly, &
-              vlocation=MAPL_VLocationNone, &
-              _RC)
-      end do
-
-      do i = 1, size(internal_fields)
-         call MAPL_AddInternalSpec(gc, &
-              short_name=trim(internal_fields(i)%short_name), &
-              long_name=trim(internal_fields(i)%long_name), &
-              units=trim(internal_fields(i)%units), &
-              dims=MAPL_DimsHorzOnly, &
-              vlocation=MAPL_VLocationNone, &
-              _RC)
-      end do
+      ! Set the state variable specs (generated from LIS_StateSpecs.rc)
+#include "LIS_Import___.h"
+#include "LIS_Export___.h"
+#include "LIS_Internal___.h"
 
       ! Set the Profiling timers
       call MAPL_TimerAdd(gc, name="INITIALIZE", _RC)
@@ -256,10 +223,10 @@ contains
       call MAPL_GetPointer(import, SNOWF_F, 'SNOWF_F', _RC)
 
       call MAPL_GetPointer(export, AVGSURFT, 'AVGSURFT', ALLOC=.true., _RC)
-      call MAPL_GetPointer(export, QH, 'QH', ALLOC=.true., _RC)
-      call MAPL_GetPointer(export, QLE, 'QLE', ALLOC=.true., _RC)
-      call MAPL_GetPointer(export, QS, 'QS', ALLOC=.true., _RC)
-      call MAPL_GetPointer(export, SWE, 'SWE', ALLOC=.true., _RC)
+      call MAPL_GetPointer(export, QH, 'QH', _RC)
+      call MAPL_GetPointer(export, QLE, 'QLE', _RC)
+      call MAPL_GetPointer(export, QS, 'QS', _RC)
+      call MAPL_GetPointer(export, SWE, 'SWE', _RC)
 
       ! Sync LIS's clock to the current GEOS time, then scatter GEOS's gridded
       ! forcing into LIS's tile space.
@@ -267,54 +234,77 @@ contains
       call ESMF_TimeGet(current_time, YY=year, MM=month, DD=day, H=hour, M=minute, S=second, _RC)
       call LIS_timemgr_set(LIS_rc, year, month, day, hour, minute, second, 0, LIS_rc%ts)
 
-      call PutForcing(trim(LIS_FORC_Tair%varname(1)), TAIR_F)
-      call PutForcing(trim(LIS_FORC_Qair%varname(1)), QAIR_F)
-      call PutForcing(trim(LIS_FORC_SWdown%varname(1)), SWDOWN_F)
-      call PutForcing(trim(LIS_FORC_LWdown%varname(1)), LWDOWN_F)
-      call PutForcing(trim(LIS_FORC_Wind_E%varname(1)), EWIND_F)
-      call PutForcing(trim(LIS_FORC_Wind_N%varname(1)), NWIND_F)
-      call PutForcing(trim(LIS_FORC_Psurf%varname(1)), PSURF_F)
-      call PutForcing(trim(LIS_FORC_Rainf%varname(1)), RAINF_F)
-      call PutForcing(trim(LIS_FORC_Snowf%varname(1)), SNOWF_F)
+      call PutForcing(trim(LIS_FORC_Tair%varname(1)), TAIR_F, _RC)
+      call PutForcing(trim(LIS_FORC_Qair%varname(1)), QAIR_F, _RC)
+      call PutForcing(trim(LIS_FORC_SWdown%varname(1)), SWDOWN_F, _RC)
+      call PutForcing(trim(LIS_FORC_LWdown%varname(1)), LWDOWN_F, _RC)
+      call PutForcing(trim(LIS_FORC_Wind_E%varname(1)), EWIND_F, _RC)
+      call PutForcing(trim(LIS_FORC_Wind_N%varname(1)), NWIND_F, _RC)
+      call PutForcing(trim(LIS_FORC_Psurf%varname(1)), PSURF_F, _RC)
+      call PutForcing(trim(LIS_FORC_Rainf%varname(1)), RAINF_F, _RC)
+      call PutForcing(trim(LIS_FORC_Snowf%varname(1)), SNOWF_F, _RC)
 
       ! Advance LIS one GEOS heartbeat: forcing-to-tile-space interpolation,
       ! then run the surface model(s) for this nest.
       call LIS_surfaceModel_f2t(NEST)
       call LIS_surfaceModel_run(NEST)
 
-      ! TODO: gather LIS's land-surface diagnostics back to grid space for the
-      ! rest of LIS_EXPORT_FIELDS (only AVGSURFT/QH/QLE/QS/SWE are wired here).
-      ! LIS_surfaceModel_setexport()/LIS_lsm_setexport() are only compiled under
-      ! -DRM_WRF_COUPLING and are LSM-specific; the LSM-agnostic path is via the
-      ! MOC diagnostics in LIS_histDataMod (e.g. LIS_MOC_QH, LIS_MOC_QLE,
-      ! LIS_MOC_QTAU) which each LSM populates during LIS_surfaceModel_run.
-      ! Wire a tile-space accessor for the MOC indices needed here, then call
-      ! LIS_tile2grid(NEST, gridArray, tileArray) to aggregate to grid space, e.g.:
-      !
-      !   call LIS_tile2grid(NEST, AVGSURFT, tileAvgsurft)
-      !   call LIS_tile2grid(NEST, QH,       tileQh)
-      !   call LIS_tile2grid(NEST, QLE,      tileQle)
-      !   call LIS_tile2grid(NEST, QS,       tileQs)
-      !   call LIS_tile2grid(NEST, SWE,      tileSwe)
+      if (associated(QH)) then
+         call GetDiagnostic(LIS_MOC_QH, 'Qh', QH, _RC)
+      end if
+      if (associated(QLE)) then
+         call GetDiagnostic(LIS_MOC_QLE, 'Qle', QLE, _RC)
+      end if
+      if (associated(QS)) then
+         call GetDiagnostic(LIS_MOC_QS, 'Qs', QS, _RC)
+      end if
+      if (associated(SWE)) then
+         call GetDiagnostic(LIS_MOC_SWE, 'SWE', SWE, _RC)
+      end if
+
+      ! TODO: fill AVGSURFT and the remaining exports the same way via GetDiagnostic
       call MAPL_TimerOff(MAPL, "RUN")
 
       RETURN_(ESMF_SUCCESS)
-
-   contains
-
-      subroutine PutForcing(varname, gridvar)
-         character(len=*), intent(in) :: varname
-         real(kind=real32), pointer, intent(in) :: gridvar(:, :)
-
-         type(ESMF_Field) :: field
-         real, pointer :: tilevar(:)
-
-         call ESMF_StateGet(LIS_FORC_State(NEST), trim(varname), field, _RC)
-         call ESMF_FieldGet(field, localDE=0, farrayPtr=tilevar, _RC)
-         call LIS_grid2tile(NEST, real(gridvar), tilevar)
-      end subroutine PutForcing
-
    end subroutine Run
+
+   subroutine PutForcing(varname, gridvar, rc)
+      character(len=*), intent(in) :: varname
+      real(kind=real32), pointer, intent(in) :: gridvar(:, :)
+      integer, optional, intent(out) :: rc
+
+      integer :: status
+      type(ESMF_Field) :: field
+      real, pointer :: tilevar(:)
+
+      call ESMF_StateGet(LIS_FORC_State(NEST), trim(varname), field, _RC)
+      call ESMF_FieldGet(field, localDE=0, farrayPtr=tilevar, _RC)
+      call LIS_grid2tile(NEST, real(gridvar), tilevar)
+
+      _RETURN(_SUCCESS)
+   end subroutine PutForcing
+
+   subroutine GetDiagnostic(moc_index, moc_name, gridvar, rc)
+      integer, intent(in) :: moc_index
+      character(len=*), intent(in) :: moc_name
+      real(kind=real32), pointer, intent(in) :: gridvar(:, :)
+      integer, optional, intent(out) :: rc
+
+      type(LIS_metadataEntry), pointer :: diag
+      integer :: slot
+      logical :: instantaneous
+
+      _ASSERT(moc_index > 0, moc_name // ' not enabled in MODEL_OUTPUT_LIST')
+      diag => LIS_histData(NEST)%ptr_into_lsm_list(moc_index)%dataEntryPtr
+      _ASSERT(diag%selectOpt /= 0, moc_name // ' not enabled in MODEL_OUTPUT_LIST')
+      ! For timeAvgOpt 1/3, modelOutput holds a running sum, not the current value
+      instantaneous = diag%timeAvgOpt == 0 .or. diag%timeAvgOpt == 2
+      _ASSERT(instantaneous, moc_name // ' needs time-avg option 0 or 2')
+      slot = merge(2, 1, diag%timeAvgOpt == 2)
+      call LIS_tile2grid(NEST, gridvar, diag%modelOutput(slot, :, 1))
+
+      _RETURN(_SUCCESS)
+   end subroutine GetDiagnostic
 
    !BOP
    !IROUTINE: Finalize -- Finalize method for the direct-call LISF Plug
