@@ -2146,14 +2146,6 @@ module GEOS_SurfaceGridCompMod
 !--------------------------------------------------------------
 
 ! land ice only exports
-  call MAPL_AddExportSpec(GC,                     &
-       LONG_NAME          = 'change_in_surface_energy_over_glaciated_surface',&
-       UNITS              = 'W m-2'                     ,&
-       SHORT_NAME         = 'DHGLC'                     ,&
-       DIMS               = MAPL_DimsTileOnly           ,&
-       VLOCATION          = MAPL_VLocationNone          ,&
-       RC=STATUS  )
-  VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                     &
        LONG_NAME          = 'snowfall_on_glaciated_surface',&
@@ -2174,9 +2166,36 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                     &
-       LONG_NAME          = 'snow_ice_evaporation_energy_flux_over_glaciated_surface',&
+       LONG_NAME          = 'rate_of_change_in_energy_over_glaciated_surface',&
+       UNITS              = 'W m-2'                     ,&
+       SHORT_NAME         = 'DHGLC'                     ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                     &
+       LONG_NAME          = 'rate_of_change_in_energy_of_top_layer_of_ice_and_snow',&
+       UNITS              = 'W m-2'                     ,&
+       SHORT_NAME         = 'DHGLCSRF'                  ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                     &
+       LONG_NAME          = 'rate_of_change_in_snow_pack_mass',&
        UNITS              = 'kg m-2 s-1'                ,&
-       SHORT_NAME         = 'EVAPICEGLC'                ,&
+       SHORT_NAME         = 'DMSNO'                     ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                     &
+       LONG_NAME          = 'evaporation_from_snow_on_glaciated_surface',&
+       UNITS              = 'kg m-2 s-1'                 ,&
+       SHORT_NAME         = 'EVAPSNO'                   ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
        RC=STATUS  )
@@ -2184,8 +2203,8 @@ module GEOS_SurfaceGridCompMod
 
   call MAPL_AddExportSpec(GC,                     &
        LONG_NAME          = 'runoff_flux_over_glaciated_surface',&
-       UNITS              = 'kg m-2 s-1'                ,&
-       SHORT_NAME         = 'RUNOFFGLC'                 ,&
+       UNITS              = 'kg m-2 s-1'                 ,&
+       SHORT_NAME         = 'RUNOFGLC'                  ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
        RC=STATUS  )
@@ -5811,10 +5830,12 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: PRECCU       => NULL()
     real, pointer, dimension(:,:) :: T2MDEW       => NULL()
     real, pointer, dimension(:,:) :: T2MWET       => NULL()
-    real, pointer, dimension(:,:) :: DHGLC        => NULL()
     real, pointer, dimension(:,:) :: SNOGLC       => NULL()
     real, pointer, dimension(:,:) :: PRECIPGLC    => NULL()
-    real, pointer, dimension(:,:) :: EVPICEGLC    => NULL()
+    real, pointer, dimension(:,:) :: DHGLC        => NULL()
+    real, pointer, dimension(:,:) :: DHGLCSRF     => NULL()
+    real, pointer, dimension(:,:) :: DMSNO        => NULL()
+    real, pointer, dimension(:,:) :: EVAPSNO      => NULL()
     real, pointer, dimension(:,:) :: RUNOFFGLC    => NULL()
     real, pointer, dimension(:,:) :: ASNOW_GL     => NULL()
 ! GOSWIM (internal/export variables from catch/catchcn)
@@ -6130,10 +6151,12 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: WNETFLUXLAKETILE => NULL()
     real, pointer, dimension(:) :: DHLAKETILE       => NULL()
     real, pointer, dimension(:) :: FRLAKEICETILE    => NULL()
-    real, pointer, dimension(:) :: DHGLCTILE        => NULL() !Glacier only tile
-    real, pointer, dimension(:) :: SNOGLCTILE       => NULL()
+    real, pointer, dimension(:) :: SNOGLCTILE       => NULL() !glacier only
     real, pointer, dimension(:) :: PRECIPGLCTILE    => NULL()
-    real, pointer, dimension(:) :: EVPICEGLCTILE    => NULL()
+    real, pointer, dimension(:) :: DHGLCTILE        => NULL()
+    real, pointer, dimension(:) :: DHGLCSRFTILE     => NULL()
+    real, pointer, dimension(:) :: DMSNOTILE        => NULL()
+    real, pointer, dimension(:) :: EVAPSNOTILE      => NULL()
     real, pointer, dimension(:) :: RUNOFFGLCTILE    => NULL()
     real, pointer, dimension(:) :: ASNOW_GLTILE     => NULL()
     real, pointer, dimension(:,:) :: RDU001TILE     => NULL()
@@ -7074,11 +7097,13 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , WNETFLUXLAKE, 'WNETFLUXLAKE',  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , DHLAKE      , 'DHLAKE'      ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , FRLAKEICE   , 'FRLAKEICE'   ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT  , DHGLC       , 'DHGLC'       ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT  , SNOGLC      , 'SNOGLC'      ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , SNOGLC      , 'SNOGLC'      ,  RC=STATUS); VERIFY_(STATUS) !glacier tile only
     call MAPL_GetPointer(EXPORT  , PRECIPGLC   , 'PRECIPGLC'   ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT  , EVPICEGLC   , 'EVPICEGLC'   ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT  , RUNOFFGLC   , 'RNOFFGLC'    ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , DHGLC       , 'DHGLC'       ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , DHGLCSRF    , 'DHGLCSRF'    ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , DMSNO       , 'DMSNO'       ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , EVAPSNO     , 'EVAPSNO'     ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , RUNOFFGLC   , 'RUNOFFGLC'   ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , ASNOW_GL    , 'ASNOW_GL'    ,  RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetPointer(EXPORT  , RDU001  , 'RDU001' ,  RC=STATUS); VERIFY_(STATUS)
@@ -7758,12 +7783,13 @@ module GEOS_SurfaceGridCompMod
     call MKTILE(CDCR2   ,CDCR2TILE   ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(POROS   ,POROSTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
 
-    call MKTILE(DHGLC    ,DHGLCTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
-    call MKTILE(SNOGLC   ,SNOGLCTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
-    call MKTILE(PRECIPGLC   ,PRECIPGLCTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
-    call MKTILE(EVPICEGLC   ,EVPICEGLCTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
-    call MKTILE(RUNOFFGLC   ,RUNOFFGLCTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
-    call MKTILE(ASNOW_GL   ,ASNOW_GLTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(SNOGLC      ,SNOGLCTILE    ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(PRECIPGLC   ,PRECIPGLCTILE ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(DHGLC       ,DHGLCTILE     ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(DHGLCSRF    ,DHGLCSRFTILE  ,NT,RC=STATUS); VERIFY_(STATUS)    
+    call MKTILE(EVAPSNO     ,EVAPSNOTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(RUNOFFGLC   ,RUNOFFGLCTILE ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(ASNOW_GL    ,ASNOW_GLTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
     
     IF (LSM_CHOICE > 1) THEN
        call MKTILE(CNLAI   ,CNLAITILE   ,NT,RC=STATUS); VERIFY_(STATUS)
@@ -8649,12 +8675,14 @@ module GEOS_SurfaceGridCompMod
     if(associated(DHLAKE      ))call MAPL_LocStreamTransform(LOCSTREAM,DHLAKE      ,DHLAKETILE      ,RC=STATUS); VERIFY_(STATUS)
     if(associated(FRLAKEICE   ))call MAPL_LocStreamTransform(LOCSTREAM,FRLAKEICE   ,FRLAKEICETILE   ,RC=STATUS); VERIFY_(STATUS)
     
- if(associated(DHGLC     ))call MAPL_LocStreamTransform(LOCSTREAM,DHGLC     ,DHGLCTILE   ,RC=STATUS); VERIFY_(STATUS)
- if(associated(SNOGLC    ))call MAPL_LocStreamTransform(LOCSTREAM,SNOGLC    ,SNOGLCTILE   ,RC=STATUS); VERIFY_(STATUS)
- if(associated(PRECIPGLC ))call MAPL_LocStreamTransform(LOCSTREAM,PRECIPGLC ,PRECIPGLCTILE   ,RC=STATUS); VERIFY_(STATUS)
- if(associated(EVPICEGLC ))call MAPL_LocStreamTransform(LOCSTREAM,EVPICEGLC ,EVPICEGLCTILE   ,RC=STATUS); VERIFY_(STATUS)
- if(associated(RUNOFFGLC ))call MAPL_LocStreamTransform(LOCSTREAM,RUNOFFGLC ,RUNOFFGLCTILE   ,RC=STATUS); VERIFY_(STATUS)
- if(associated(ASNOW_GL  ))call MAPL_LocStreamTransform(LOCSTREAM,ASNOW_GL  ,ASNOW_GLTILE   ,RC=STATUS); VERIFY_(STATUS)
+ if(associated(SNOGLC    ))call MAPL_LocStreamTransform(LOCSTREAM,SNOGLC     ,SNOGLCTILE    ,RC=STATUS); VERIFY_(STATUS)
+ if(associated(PRECIPGLC ))call MAPL_LocStreamTransform(LOCSTREAM,PRECIPGLC  ,PRECIPGLCTILE ,RC=STATUS); VERIFY_(STATUS)
+ if(associated(DHGLC     ))call MAPL_LocStreamTransform(LOCSTREAM,DHGLC      ,DHGLCTILE     ,RC=STATUS); VERIFY_(STATUS)
+ if(associated(DHGLCSRF  ))call MAPL_LocStreamTransform(LOCSTREAM,DHGLCSRF   ,DHGLCSRFTILE  ,RC=STATUS); VERIFY_(STATUS)
+ if(associated(DMSNO     ))call MAPL_LocStreamTransform(LOCSTREAM,DMSNO      ,DMSNOTILE     ,RC=STATUS); VERIFY_(STATUS) 
+ if(associated(EVAPSNO   ))call MAPL_LocStreamTransform(LOCSTREAM,EVAPSNO    ,EVAPSNOTILE   ,RC=STATUS); VERIFY_(STATUS)    
+ if(associated(RUNOFFGLC  ))call MAPL_LocStreamTransform(LOCSTREAM,RUNOFFGLC ,RUNOFFGLCTILE ,RC=STATUS); VERIFY_(STATUS)
+ if(associated(ASNOW_GL  ))call MAPL_LocStreamTransform(LOCSTREAM,ASNOW_GL   ,ASNOW_GLTILE  ,RC=STATUS); VERIFY_(STATUS)
 
     DO N = 1, N_SNOW_LAND
        if(associated(RDU001)) call MAPL_LocStreamTransform( LOCSTREAM,RDU001(:,:,N) ,RDU001TILE(:,N), RC=STATUS); VERIFY_(STATUS)
@@ -9332,10 +9360,12 @@ module GEOS_SurfaceGridCompMod
     if(associated(DHLAKETILE      )) deallocate(DHLAKETILE      )
     if(associated(FRLAKEICETILE   )) deallocate(FRLAKEICETILE   )
    
-    if(associated(DHGLCTILE     )) deallocate(DHGLCTILE    )
     if(associated(SNOGLCTILE    )) deallocate(SNOGLCTILE   )
     if(associated(PRECIPGLCTILE )) deallocate(PRECIPGLCTILE)
-    if(associated(EVPICEGLCTILE )) deallocate(EVPICEGLCTILE)
+    if(associated(DHGLCTILE     )) deallocate(DHGLCTILE)
+    if(associated(DHGLCSRFTILE  )) deallocate(DHGLCSRFTILE)
+    if(associated(DMSNOTILE     )) deallocate(DMSNOTILE)
+    if(associated(EVAPSNOTILE   )) deallocate(EVAPSNOTILE) 
     if(associated(RUNOFFGLCTILE )) deallocate(RUNOFFGLCTILE)
     if(associated(ASNOW_GLTILE  )) deallocate(ASNOW_GLTILE )
 
@@ -9679,12 +9709,14 @@ module GEOS_SurfaceGridCompMod
       call MAPL_GetPointer(GEX(type), dum, 'DHLAKE'      , ALLOC=associated(DHLAKETILE)      , notFoundOK=.true., RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'FRLAKEICE'   , ALLOC=associated(FRLAKEICETILE)   , notFoundOK=.true., RC=STATUS); VERIFY_(STATUS)
 
-      call MAPL_GetPointer(GEX(type), dum, 'DHGLC'    , ALLOC=associated(DHGLCTILE)    , notFoundOK=.true., RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'SNOGLC'   , ALLOC=associated(SNOGLCTILE)   , notFoundOK=.true., RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'PRECIPGLC', ALLOC=associated(PRECIPGLCTILE), notFoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(GEX(type), dum, 'EVPICEGLC', ALLOC=associated(EVPICEGLCTILE), notFoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'DHGLCGLC' , ALLOC=associated(DHGLCTILE)    , notFoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'DHGLCSRF' , ALLOC=associated(DHGLCSRFTILE) , notFoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'DMSNO'    , ALLOC=associated(DMSNOTILE)    , notFoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'EVAPSNO'  , ALLOC=associated(EVAPSNOTILE)  , notFoundOK=.true., RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'RUNOFFGLC', ALLOC=associated(RUNOFFGLCTILE), notFoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(GEX(type), dum, 'ASNOW_GL' , ALLOC=associated(ASNOW_GLTILE), notFoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'ASNOW_GL' , ALLOC=associated(ASNOW_GLTILE) , notFoundOK=.true., RC=STATUS); VERIFY_(STATUS)
 
       call MAPL_GetPointer(GEX(type), dum, 'FRACI'   , ALLOC=associated(   FRTILE   ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
@@ -10393,13 +10425,14 @@ module GEOS_SurfaceGridCompMod
       if(associated(DHLAKETILE      )) call FILLOUT_TILE(GEX(type), 'DHLAKE'       , DHLAKETILE       , XFORM, RC=STATUS);VERIFY_(STATUS)
       if(associated(FRLAKEICETILE   )) call FILLOUT_TILE(GEX(type), 'FRLAKEICE'    , FRLAKEICETILE    , XFORM, RC=STATUS);VERIFY_(STATUS)
       
-      if(associated(DHGLCTILE    )) call FILLOUT_TILE(GEX(type), 'DHGLC'     , DHGLCTILE    , XFORM, RC=STATUS);VERIFY_(STATUS)
       if(associated(SNOGLCTILE   )) call FILLOUT_TILE(GEX(type), 'SNOGLC'    , SNOGLCTILE    , XFORM, RC=STATUS);VERIFY_(STATUS)
-      if(associated(PRECIPGLCTILE)) call FILLOUT_TILE(GEX(type), 'PRECIPGLC' , PRECIPGLCTILE    , XFORM, RC=STATUS);VERIFY_(STATUS)
-      if(associated(EVPICEGLCTILE)) call FILLOUT_TILE(GEX(type), 'EVPICEGLC' , EVPICEGLCTILE    , XFORM, RC=STATUS);VERIFY_(STATUS)
-      if(associated(RUNOFFGLCTILE)) call FILLOUT_TILE(GEX(type), 'RUNOFFGLC' , RUNOFFGLCTILE    , XFORM, RC=STATUS);VERIFY_(STATUS)
-      if(associated(ASNOW_GLTILE )) call FILLOUT_TILE(GEX(type), 'ASNOW_GL'  , ASNOW_GLTILE    , XFORM, RC=STATUS);VERIFY_(STATUS)
-
+      if(associated(PRECIPGLCTILE)) call FILLOUT_TILE(GEX(type), 'PRECIPGLC' , PRECIPGLCTILE , XFORM, RC=STATUS);VERIFY_(STATUS)
+      if(associated(DHGLCTILE    )) call FILLOUT_TILE(GEX(type), 'DHGLC'     , DHGLCTILE     , XFORM, RC=STATUS);VERIFY_(STATUS)
+      if(associated(DHGLCSRFTILE )) call FILLOUT_TILE(GEX(type), 'DHGLCSRF'  , DHGLCSRFTILE  , XFORM, RC=STATUS);VERIFY_(STATUS)
+      if(associated(DMSNOTILE    )) call FILLOUT_TILE(GEX(type), 'DMSNO'     , DMSNOTILE     , XFORM, RC=STATUS);VERIFY_(STATUS)
+      if(associated(EVAPSNOTILE  )) call FILLOUT_TILE(GEX(type), 'EVAPSNO'   , EVAPSNOTILE   , XFORM, RC=STATUS);VERIFY_(STATUS)      
+      if(associated(RUNOFFGLCTILE)) call FILLOUT_TILE(GEX(type), 'RUNOFFGLC' , RUNOFFGLCTILE , XFORM, RC=STATUS);VERIFY_(STATUS)
+      if(associated(ASNOW_GLTILE )) call FILLOUT_TILE(GEX(type), 'ASNOW_GL'  , ASNOW_GLTILE  , XFORM, RC=STATUS);VERIFY_(STATUS)
 
       if(associated(RDU001TILE)) call FILLOUT_TILE(GEX(type), 'RDU001' , RDU001TILE , XFORM, RC=STATUS);VERIFY_(STATUS)
       if(associated(RDU002TILE)) call FILLOUT_TILE(GEX(type), 'RDU002' , RDU002TILE , XFORM, RC=STATUS);VERIFY_(STATUS)
