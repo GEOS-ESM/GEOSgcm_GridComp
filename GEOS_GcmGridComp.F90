@@ -554,7 +554,7 @@ contains
        VERIFY_(STATUS)
 
        call MAPL_AddConnectivity ( GC,                              &
-            SHORT_NAME  = (/'DUDT ','DVDT ','DTDT ','DQVDT','DPEDT','DO3DT','DTSDT'/), &
+            SHORT_NAME  = (/'DUDT ','DVDT ','DTDT ','DQVDT','DQLDT','DQIDT','DPEDT','DO3DT','DTSDT'/), &
             DST_ID = AGCM,                                          &
             SRC_ID = AIAU,                                          &
             RC=STATUS  )
