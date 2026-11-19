@@ -11,9 +11,9 @@ module GEOS_IssmGridCompMod
   ! !DESCRIPTION:
   !
   !   {\tt GEOS\_ISSM} runs ISSM (Ice-sheet and Sea-level System Model)
-  !   Imports: ICESMB (defined on landice tiles)  [via private internal state]
-  !   Exports: ICESURF, ICETHICK, ICEVX, ICEVY, DHDT, DIVQ, ICESMB_ISSM (defined on mesh) [true export state]
-  !   Exports: ICESURF, ICETHICK, ICEVEL (defined on landice tiles) [via private internal state]
+  !   Imports:   ICESMB (defined on landice tiles)  [via private internal state]
+  !   Exports:   ICESURF, ICETHICK, ICEVX, ICEVY,                          DHDT, DIVQ, ICESMB_ISSM (defined on mesh) [true export state]
+  !   Exports:   ICESURF, ICETHICK, ICEVEL                                                         (defined on landice tiles) [via private internal state]
   !   Internals: ICESURF, ICETHICK, ICEVX, ICEVY, IMLS, OMLS, ISSM_NSTEPS, DHDT, DIVQ, ICESMB_ISSM (defined on mesh) [true internal state]
   ! *** NOTES:
   !            (*) currently we run over all input files (*.bin) that are found in ISSM_EXPDIR (scratch directory)
@@ -309,6 +309,7 @@ contains
          VLOCATION  = MAPL_VLocationNone,          &
          RESTART    = MAPL_RestartOptional,        &
          _RC  )
+    
     call MAPL_AddInternalSpec(GC,                  &
          SHORT_NAME = 'RS_NODEIDS',                &
          LONG_NAME  = 'restart_node_ids',          &
@@ -734,16 +735,16 @@ contains
     ZEROS(:) = 0.0_dp
 
     ! get pointers to restarts
-    call MAPL_GetPointer(INTERNAL, ICESURF_IN, 'ICESURF', _RC)
-    call MAPL_GetPointer(INTERNAL, ICETHICK_IN, 'ICETHICK',_RC)
-    call MAPL_GetPointer(INTERNAL, ICEVX_IN, 'ICEVX',_RC)
-    call MAPL_GetPointer(INTERNAL, ICEVY_IN, 'ICEVY',_RC)
-    call MAPL_GetPointer(INTERNAL, IMLS_IN, 'IMLS', _RC)
-    call MAPL_GetPointer(INTERNAL, OMLS_IN, 'OMLS',_RC)
-    call MAPL_GetPointer(INTERNAL, restartNodeIds, 'RS_NODEIDS',_RC)
-    call MAPL_GetPointer(INTERNAL, DIVQ_IN, 'DIVQ',_RC)
-    call MAPL_GetPointer(INTERNAL, DHDT_IN, 'DHDT',_RC)
-    call MAPL_GetPointer(INTERNAL, ICESMB_IN, 'ICESMB_ISSM',_RC)
+    call MAPL_GetPointer(INTERNAL, ICESURF_IN,     'ICESURF',    _RC)
+    call MAPL_GetPointer(INTERNAL, ICETHICK_IN,    'ICETHICK',   _RC)
+    call MAPL_GetPointer(INTERNAL, ICEVX_IN,       'ICEVX',      _RC)
+    call MAPL_GetPointer(INTERNAL, ICEVY_IN,       'ICEVY',      _RC)
+    call MAPL_GetPointer(INTERNAL, IMLS_IN,        'IMLS',       _RC)
+    call MAPL_GetPointer(INTERNAL, OMLS_IN,        'OMLS',       _RC)
+    call MAPL_GetPointer(INTERNAL, restartNodeIds, 'RS_NODEIDS', _RC)
+    call MAPL_GetPointer(INTERNAL, DIVQ_IN,        'DIVQ',       _RC)
+    call MAPL_GetPointer(INTERNAL, DHDT_IN,        'DHDT',       _RC)
+    call MAPL_GetPointer(INTERNAL, ICESMB_IN,      'ICESMB_ISSM',_RC)
 
     ! if restart has been read, apply halo operation and send pointers to ISSM
     ! else, ISSM will just use default initial values in ISSM*.bin input files
@@ -799,9 +800,9 @@ contains
        call apply_halo(OMLS_IN,OMLS_HALO,_RC)
 
        ! package restarts into one pointer
-       GEOS_RESTARTS(:) = 0.0_dp
-       GEOS_RESTARTS(1:num_nodes) = ICESURF_HALO(:)
-       GEOS_RESTARTS(num_nodes+1:2*num_nodes) = ICETHICK_HALO(:)
+       GEOS_RESTARTS(:)                         = 0.0_dp
+       GEOS_RESTARTS(            1:  num_nodes) = ICESURF_HALO(:)
+       GEOS_RESTARTS(  num_nodes+1:2*num_nodes) = ICETHICK_HALO(:)
        GEOS_RESTARTS(2*num_nodes+1:3*num_nodes) = ICEVX_HALO(:)
        GEOS_RESTARTS(3*num_nodes+1:4*num_nodes) = ICEVY_HALO(:)
        GEOS_RESTARTS(4*num_nodes+1:5*num_nodes) = OMLS_HALO(:)
@@ -822,12 +823,12 @@ contains
        call ESMF_VMBarrier(vm, _RC)
 
        ! Unpack restart array
-       ICESURF_HALO(:)  = GEOS_RESTARTS(1:num_nodes)
-       ICETHICK_HALO(:) = GEOS_RESTARTS(num_nodes+1:2*num_nodes)
-       ICEVX_HALO(:) = GEOS_RESTARTS(2*num_nodes+1:3*num_nodes)
-       ICEVY_HALO(:) = GEOS_RESTARTS(3*num_nodes+1:4*num_nodes)
-       OMLS_HALO(:)  = GEOS_RESTARTS(4*num_nodes+1:5*num_nodes)
-       IMLS_HALO(:)  = GEOS_RESTARTS(5*num_nodes+1:6*num_nodes)
+       ICESURF_HALO( :) = GEOS_RESTARTS(            1:  num_nodes)
+       ICETHICK_HALO(:) = GEOS_RESTARTS(  num_nodes+1:2*num_nodes)
+       ICEVX_HALO(   :) = GEOS_RESTARTS(2*num_nodes+1:3*num_nodes)
+       ICEVY_HALO(   :) = GEOS_RESTARTS(3*num_nodes+1:4*num_nodes)
+       OMLS_HALO(    :) = GEOS_RESTARTS(4*num_nodes+1:5*num_nodes)
+       IMLS_HALO(    :) = GEOS_RESTARTS(5*num_nodes+1:6*num_nodes)
 
        ! filter out halo points (keep the owned indices) for restarts
        if(associated(ICESURF_IN)) ICESURF_IN = ICESURF_HALO(owned_idx)
@@ -839,8 +840,8 @@ contains
 
        ! if bootstrapping, set ice mass balance diagnostics to zero 
        ! because we don't yet have an SMB or DH/DT calculation
-       if(associated(DIVQ_IN)) DIVQ_IN = 0.0
-       if(associated(DHDT_IN)) DHDT_IN = 0.0
+       if(associated(DIVQ_IN))   DIVQ_IN   = 0.0
+       if(associated(DHDT_IN))   DHDT_IN   = 0.0
        if(associated(ICESMB_IN)) ICESMB_IN = 0.0
 
     end if
