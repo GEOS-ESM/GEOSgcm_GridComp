@@ -248,22 +248,22 @@ contains
     VERIFY_(STATUS)
 
     !dkim6, add
-    !call MAPL_AddImportSpec ( gc,                                  &
-    !     SHORT_NAME = 'DQLLSDT',                                   &
-    !     LONG_NAME  = 'large_scale_liquid_analysis_increment',     &
-    !     UNITS      = 'kg kg-1',                                   &
-    !     DIMS       = MAPL_DimsHorzVert,                           &
-    !     VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    !VERIFY_(STATUS)
+    call MAPL_AddImportSpec ( gc,                                  &
+         SHORT_NAME = 'DQLDT',                                     &
+         LONG_NAME  = 'large_scale_liquid_analysis_increment',     &
+         UNITS      = 'kg kg-1',                                   &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
 
     !dkim6, add
-    !call MAPL_AddImportSpec ( gc,                                  &
-    !     SHORT_NAME = 'DQLCNDT',                                   &
-    !     LONG_NAME  = 'convective_liquid_analysis_increment',      &
-    !     UNITS      = 'kg kg-1',                                   &
-    !     DIMS       = MAPL_DimsHorzVert,                           &
-    !     VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    !VERIFY_(STATUS)
+    call MAPL_AddImportSpec ( gc,                                  &
+         SHORT_NAME = 'DQIDT',                                     &
+         LONG_NAME  = 'convective_ice_analysis_increment',         &
+         UNITS      = 'kg kg-1',                                   &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddImportSpec ( gc,                                  &
          SHORT_NAME = 'DO3DT',                                     &
@@ -332,24 +332,24 @@ contains
     VERIFY_(STATUS)
 
     !dkim6, add
-    !call MAPL_AddInternalSpec ( gc,                                &
-    !     SHORT_NAME = 'DQLLSDT',                                   &
-    !     LONG_NAME  = 'large_scale_liquid_bias_tendency',          &
-    !     UNITS      = 'kg kg-1 s-1',                               &
-    !     FRIENDLYTO = trim(COMP_NAME),                             &
-    !     DIMS       = MAPL_DimsHorzVert,                           &
-    !     VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    !VERIFY_(STATUS)
+    call MAPL_AddInternalSpec ( gc,                                &
+         SHORT_NAME = 'DQLDT',                                     &
+         LONG_NAME  = 'liquid_bias_tendency',                      &
+         UNITS      = 'kg kg-1 s-1',                               &
+         FRIENDLYTO = trim(COMP_NAME),                             &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
 
     !dkim6, add
-    !call MAPL_AddInternalSpec ( gc,                                &
-    !     SHORT_NAME = 'DQLCNDT',                                   &
-    !     LONG_NAME  = 'convective_liquid_bias_tendency',           &
-    !     UNITS      = 'kg kg-1 s-1',                               &
-    !     FRIENDLYTO = trim(COMP_NAME),                             &
-    !     DIMS       = MAPL_DimsHorzVert,                           &
-    !     VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    !VERIFY_(STATUS)
+    call MAPL_AddInternalSpec ( gc,                                &
+         SHORT_NAME = 'DQIDT',                                     &
+         LONG_NAME  = 'ice_bias_tendency',                         &
+         UNITS      = 'kg kg-1 s-1',                               &
+         FRIENDLYTO = trim(COMP_NAME),                             &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec ( gc,                                &
          SHORT_NAME = 'DO3DT',                                     &
@@ -2038,6 +2038,9 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                   call MAPL_GetPointer(IMPORT,ptr3d,'DQVDT',RC=STATUS) ; ptr3d=0.0
                   call MAPL_GetPointer(IMPORT,ptr3d,'DO3DT',RC=STATUS) ; ptr3d=0.0
                   call MAPL_GetPointer(IMPORT,ptr2d,'DTSDT',RC=STATUS) ; if(associated(ptr2d)) ptr2d=0.0
+                  !dkim6, add
+                  call MAPL_GetPointer(IMPORT,ptr3d,'DQLDT',RC=STATUS) ; ptr3d=0.0
+                  call MAPL_GetPointer(IMPORT,ptr3d,'DQIDT',RC=STATUS) ; ptr3d=0.0
                else
                   call ESMF_ClockGetAlarm(Clock,'ReplayShutOff',Alarm,rc=Status)
                   VERIFY_(status)
@@ -2446,10 +2449,8 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                 call DO_Friendly (Q,'DQVDT',PREF)
 
                 !dkim6, add
-                !call DO_Friendly (QLLS,'DQLLSDT',PREF)
-                !call DO_Friendly (QLCN,'DQLCNDT',PREF)
-                !call DO_Friendly (QILS,'DQILSDT',PREF)
-                !call DO_Friendly (QICN,'DQICNDT',PREF)
+                call DO_Friendly (QLLS,'DQLDT',PREF)
+                call DO_Friendly (QILS,'DQIDT',PREF)
 
                 ! -----------------------------------------------------------------------------------------
                 ! -----------------------------------------------------------------------------------------

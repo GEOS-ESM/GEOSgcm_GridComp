@@ -560,6 +560,14 @@ contains
             RC=STATUS  )
        VERIFY_(STATUS)
 
+       !dkim6, add
+       call MAPL_AddConnectivity ( GC,                              &
+            SHORT_NAME  = (/'DQLDT','DQIDT'/), &
+            DST_ID = AGCM,                                          &
+            SRC_ID = AIAU,                                          &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+
        call MAPL_AddConnectivity ( GC,                          &
             SRC_NAME  = [character(len=13) :: 'Q ','PPBL','TROPP_BLENDED'], &
             DST_NAME  = [character(len=13) :: 'QV','PPBL','TROPP_BLENDED'], &
