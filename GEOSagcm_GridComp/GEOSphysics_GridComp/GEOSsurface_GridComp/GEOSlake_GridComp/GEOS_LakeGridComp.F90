@@ -197,9 +197,9 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                     &
-         LONG_NAME          = 'runoff_total_flux'         ,&
-         UNITS              = 'kg m-2 s-1'                ,&
-         SHORT_NAME         = 'RUNOFF'                    ,&           
+         LONG_NAME          = 'runoff_total_flux'         ,&    ! Lake GridComp: "RUNOFF" = PRECIP - EVAP 
+         UNITS              = 'kg m-2 s-1'                ,&    !
+         SHORT_NAME         = 'RUNOFF'                    ,&    ! in Surface GridComp, Lake "RUNOFF" is averaged with RUNOFF from Land and Landice (--> RUNOFFTOT in "flx" Collection)
          DIMS               = MAPL_DimsTileOnly           ,&
          VLOCATION          = MAPL_VLocationNone          ,&
          RC=STATUS  )
@@ -208,7 +208,7 @@ contains
     call MAPL_AddExportSpec(GC,                     &
          LONG_NAME          = 'net_water_flux_into_lake'  ,&
          UNITS              = 'kg m-2 s-1'                ,&
-         SHORT_NAME         = 'WNETFLUXLAKE'              ,&            ! a.k.a. "RUNOFF" (but meant for lake tiles only)
+         SHORT_NAME         = 'WNETFLUXLAKE'              ,&    ! same as "RUNOFF" (but meant for lake tiles only)
          DIMS               = MAPL_DimsTileOnly           ,&
          VLOCATION          = MAPL_VLocationNone          ,&
          RC=STATUS  )
