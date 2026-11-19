@@ -167,7 +167,7 @@ end subroutine SortTiling
 
 ! --------------------------------------------------------------------------------------------
 
-subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zip, Verb, rc)
+subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zip, Verb, rc, N_LandUnits)
 
   ! Write ASCII tile file 
   !
@@ -197,6 +197,9 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
   logical, optional, intent(IN) :: Zip
   logical, optional, intent(IN) :: Verb
   integer, optional, intent(out) :: rc
+  ! LIS uses the same ASCII layout but a different native land-ID bound.
+  ! Absent argument preserves every legacy caller/header.
+  integer, optional, intent(in) :: N_LandUnits
 
 ! Table variables
 !
@@ -223,9 +226,11 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
   real(REAL64)   :: xc, yc, area
   real(REAL64)   :: garea, ctg(size(Gridname))
   real(REAL64)   :: sphere, error
-  integer        :: status, tmp_in1, tmp_in2, ncat
+  integer        :: status, tmp_in1, tmp_in2, ncat, land_unit_count
   logical        :: file_exists
 
+  land_unit_count = SRTM_maxcat
+  if (present(N_LandUnits)) land_unit_count = N_LandUnits
   ip = size(iTable,2)
   ng = size(GridName)
 
@@ -243,7 +248,7 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
 
   if(DoZip) then
      call ZipBuff(trim(File)//char(0),trim(Line)//char(0),0,1,1)
-     write(LINE,'(4I10)') ip, SRTM_maxcat, nx, ny
+     write(LINE,'(4I10)') ip, land_unit_count, nx, ny
      call ZipBuff(trim(File)//char(0),trim(Line)//char(0),1,1,1)
      write(LINE,'(I10)' ) ng
      call ZipBuff(trim(File)//char(0),trim(Line)//char(0),1,1,1)
@@ -264,7 +269,7 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
         Inquire(Unit=Unit,Opened=Opened)
      end do
      open (UNIT,file=trim(File), form='formatted', status='unknown')
-     write(UNIT,'(4I10)') ip, SRTM_maxcat, nx, ny             
+     write(UNIT,'(4I10)') ip, land_unit_count, nx, ny
      write(UNIT,'(I10)' ) ng              
      do l=1,ng
         ix=index(GridName(l),'/',Back=.true.)

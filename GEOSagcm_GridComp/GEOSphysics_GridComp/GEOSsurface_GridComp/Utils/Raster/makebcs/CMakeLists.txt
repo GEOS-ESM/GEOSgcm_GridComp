@@ -4,6 +4,8 @@ set (srcs
 LDAS_DateTimeMod.F90
 mod_process_hres_data.F90
 rasterize.F90
+LISRasterGeometryMod.F90
+LISRasterInputMod.F90
 read_riveroutlet.F90
 CubedSphere_GridMod.F90
 rmTinyCatchParaMod.F90
