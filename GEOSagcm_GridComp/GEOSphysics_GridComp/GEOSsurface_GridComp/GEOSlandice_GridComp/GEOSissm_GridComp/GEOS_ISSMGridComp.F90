@@ -706,6 +706,9 @@ contains
     ISSM_DT_DP = real(ISSM_DT,kind=dp) 
     !call MAPL_GetResource(MAPL, ISSM_DT, Label=trim(COMP_NAME)//"_DT:",DEFAULT=302400.0, _RC)
 
+    ! make sure ISSM_DT is multiple of LANDICE_DT
+    _ASSERT( mod(nint(ISSM_DT), nint(LANDICE_DT)) == 0, "ISSM_DT must be multiple of LANDICE_DT")
+    
     ! total landice time steps between ISSM runs
     NSTEPS_RING = nint(ISSM_DT/LANDICE_DT)
 
