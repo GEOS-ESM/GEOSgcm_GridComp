@@ -16,7 +16,11 @@ module GEOS_IssmGridCompMod
   !   Exports:   ICESURF, ICETHICK, ICEVEL                                                         (defined on landice tiles) [via private internal state]
   !   Internals: ICESURF, ICETHICK, ICEVX, ICEVY, IMLS, OMLS, ISSM_NSTEPS, DHDT, DIVQ, ICESMB_ISSM (defined on mesh) [true internal state]
   ! *** NOTES:
-  !            (*) currently we run over all input files (*.bin) that are found in ISSM_EXPDIR (scratch directory)
+  !            (*) The current ISSM configuration solves the mass balance equation DHDT + DIVQ = ICESMB_ISSM, where DHDT is the rate of 
+  !                change of the ice thickness, DIVQ is the ice flux divergence, and ICESMB_ISSM is the surface-mass balance (from landice)
+  !                that has been averaged between ISSM timesteps. This assumes that there is no melting at the base of the ice sheet.
+  !                Future development will include melting at the ice base.
+  !            (*) currently we run over all input files (ISSM*.bin) that are found in ISSM_EXPDIR (scratch directory)
   !                (e.g., Greenland + Antarctica + any other glaciers that have been configured)
   !            (*) ISSM meshes are internal to ISSM (C++ source)--we create an ESMF_MESH version for regridding
   !                imports/exports that is the global combination of all ISSM meshes
