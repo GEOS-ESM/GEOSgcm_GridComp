@@ -3059,30 +3059,30 @@ end if
     ! initialize running mean ICESMB and number of steps since last ISSM solve
 #ifdef HAVE_ISSM
     if(DO_ISSM==1) then
-        if (.not. associated(ICESMB_ISSM)) then
-            allocate(ICESMB_ISSM(NT),STAT=STATUS)
-            VERIFY_(STATUS)
+       if (.not. associated(ICESMB_ISSM)) then
+          allocate(ICESMB_ISSM(NT),STAT=STATUS)
+          VERIFY_(STATUS)
 
-            ! initialize from restart:
-            if (associated(ICESMB_IN)) then
-               ICESMB_ISSM(:) = ICESMB_IN(:)
-            else
-               ICESMB_ISSM(:) = 0
-            end if
-	     end if
+          ! initialize from restart:
+          if (associated(ICESMB_IN)) then
+             ICESMB_ISSM(:) = ICESMB_IN(:)
+          else
+             ICESMB_ISSM(:) = 0
+          end if
+       end if
 
-        ! get number of timesteps from issm tile internal state
-        call MAPL_Get (MAPL, GCS=GCS, GCNAMES=GCNAMES, RC=STATUS )
-		  VERIFY_(STATUS)
-        do N=1, size(GCS)
+       ! get number of timesteps from issm tile internal state
+       call MAPL_Get (MAPL, GCS=GCS, GCNAMES=GCNAMES, RC=STATUS )
+       VERIFY_(STATUS)
+       do N=1, size(GCS)
           if (index(GCNAMES(N), 'ISSM') /=0 ) then
              call ESMF_UserCompGetInternalState(GCS(N), 'ISSM_TILES', issm_tile_wrap, status)
              VERIFY_(STATUS)
              issm_tile_state =>issm_tile_wrap%ptr
              ISSM_NSTEPS = issm_tile_state%ISSM_NSTEPS
           end if
-        end do
-	 end if
+       end do
+    end if
 #endif
 
     allocate(MLT (NT), STAT=STATUS)
@@ -3359,8 +3359,9 @@ end if
 !        RCONSTIT(:,:,13) = IRSS003(:,:)
 !        RCONSTIT(:,:,14) = IRSS004(:,:)
 !        RCONSTIT(:,:,15) = IRSS005(:,:)
-    end if
 
+     end if   ! N_CONST_LANDICE4SNWALB /= 0
+     
     LANDICELT = 0.0
     ZONEAREA  = 1.0
     ! zc1 is not the actual thickness, but the vertical coordinate which is +ve upward
@@ -3651,85 +3652,85 @@ end if
              !if(abs(LATSD-0.605467530483E+02) < 1.e-3 .and. &
              !   abs(LONSD-(-0.433431029954E+02)) < 1.e-3 ) then
              if(abs(LATSD-0.807870232172E+02) < 1.e-3 .and. &
-                abs(LONSD-(-0.154247429558E+02)) < 1.e-3 ) then
-               print*, 'PE = ', mype, ' tile = ',k
+                  abs(LONSD-(-0.154247429558E+02)) < 1.e-3 ) then
+                print*, 'PE = ', mype, ' tile = ',k
              endif
 #endif
              TKSNO = condice
 
-          call SNOWRT( LONS(k), LATS(k),                                       &  ! in     [radians]  !!!
-                   1,NUM_SNOW_LAYERS,MAPL_LANDICE,                             &  ! in
-                   MAXSNDZ, RHOFRESH, DZMAX,                                   &  ! in
-                   LANDICELT(k),ZONEAREA,TKGND,PRECIP(k),SNO(k),TA(k),DT,      &  ! in
-                   EVAPI(k),DEVAPDT(k),SHF(k),SHD(k),ULW(k),BLWN(k),           &  ! in
-                   RADDN(k),ZC1,TOTDEPOS(k,:),                                 &  ! in
-                   WESN(k,:),HTSN(k,:),SNDZ(k,:), RCONSTIT(k,:,:),             &  ! inout
-                   HLWO(k), FROZFRAC(k,:),TPSN(k,:), RMELT(k,:),               &  ! out
-                   AREASC(k),FR(K,N),PERC(k),FHGND(k),                         &  ! out
-                   EVAPO(k),SHFO(k),LHFO(k),HCORR(k),ghflxsno(k),              &  ! out
-                   SNDZSC(k), WESNPREC(k), SNDZPREC(k),SNDZ1PERC(k),           &  ! out
-                   WESNPERC(k,:), WESNDENS(k,:), WESNREPAR(k,:), MLT(k),       &  ! out
-                   EXCS(k,:), DRHO0(k,:), WESNBOT(k), TKSNO, DTS(k)       )       ! out
+             call SNOWRT( LONS(k), LATS(k),                                   &  ! in     [radians]  !!!
+                  1,NUM_SNOW_LAYERS,MAPL_LANDICE,                             &  ! in
+                  MAXSNDZ, RHOFRESH, DZMAX,                                   &  ! in
+                  LANDICELT(k),ZONEAREA,TKGND,PRECIP(k),SNO(k),TA(k),DT,      &  ! in
+                  EVAPI(k),DEVAPDT(k),SHF(k),SHD(k),ULW(k),BLWN(k),           &  ! in
+                  RADDN(k),ZC1,TOTDEPOS(k,:),                                 &  ! in
+                  WESN(k,:),HTSN(k,:),SNDZ(k,:), RCONSTIT(k,:,:),             &  ! inout
+                  HLWO(k), FROZFRAC(k,:),TPSN(k,:), RMELT(k,:),               &  ! out
+                  AREASC(k),FR(K,N),PERC(k),FHGND(k),                         &  ! out
+                  EVAPO(k),SHFO(k),LHFO(k),HCORR(k),ghflxsno(k),              &  ! out
+                  SNDZSC(k), WESNPREC(k), SNDZPREC(k),SNDZ1PERC(k),           &  ! out
+                  WESNPERC(k,:), WESNDENS(k,:), WESNREPAR(k,:), MLT(k),       &  ! out
+                  EXCS(k,:), DRHO0(k,:), WESNBOT(k), TKSNO, DTS(k)       )       ! out
 
              ! Snow impurities update
-              if (N_CONST_LANDICE4SNWALB /= 0) then
-                 if(associated(IRDU001)) IRDU001(k,:) = RCONSTIT(k,:,1)
-                 if(associated(IRDU002)) IRDU002(k,:) = RCONSTIT(k,:,2)
-                 if(associated(IRDU003)) IRDU003(k,:) = RCONSTIT(k,:,3)
-                 if(associated(IRDU004)) IRDU004(k,:) = RCONSTIT(k,:,4)
-                 if(associated(IRDU005)) IRDU005(k,:) = RCONSTIT(k,:,5)
-                 if(associated(IRBC001)) IRBC001(k,:) = RCONSTIT(k,:,6)
-                 if(associated(IRBC002)) IRBC002(k,:) = RCONSTIT(k,:,7)
-                 if(associated(IROC001)) IROC001(k,:) = RCONSTIT(k,:,8)
-                 if(associated(IROC002)) IROC002(k,:) = RCONSTIT(k,:,9)
-              end if
-           if (N_constit>0) then
-              if(associated(RMELTDU001)) RMELTDU001(k) = RMELT(k,1)
-              if(associated(RMELTDU002)) RMELTDU002(k) = RMELT(k,2)
-              if(associated(RMELTDU003)) RMELTDU003(k) = RMELT(k,3)
-              if(associated(RMELTDU004)) RMELTDU004(k) = RMELT(k,4)
-              if(associated(RMELTDU005)) RMELTDU005(k) = RMELT(k,5)
-              if(associated(RMELTBC001)) RMELTBC001(k) = RMELT(k,6)
-              if(associated(RMELTBC002)) RMELTBC002(k) = RMELT(k,7)
-              if(associated(RMELTOC001)) RMELTOC001(k) = RMELT(k,8)
-              if(associated(RMELTOC002)) RMELTOC002(k) = RMELT(k,9)
-           end if
+             if (N_CONST_LANDICE4SNWALB /= 0) then
+                if(associated(IRDU001)) IRDU001(k,:) = RCONSTIT(k,:,1)
+                if(associated(IRDU002)) IRDU002(k,:) = RCONSTIT(k,:,2)
+                if(associated(IRDU003)) IRDU003(k,:) = RCONSTIT(k,:,3)
+                if(associated(IRDU004)) IRDU004(k,:) = RCONSTIT(k,:,4)
+                if(associated(IRDU005)) IRDU005(k,:) = RCONSTIT(k,:,5)
+                if(associated(IRBC001)) IRBC001(k,:) = RCONSTIT(k,:,6)
+                if(associated(IRBC002)) IRBC002(k,:) = RCONSTIT(k,:,7)
+                if(associated(IROC001)) IROC001(k,:) = RCONSTIT(k,:,8)
+                if(associated(IROC002)) IROC002(k,:) = RCONSTIT(k,:,9)
+             end if
+             if (N_constit>0) then
+                if(associated(RMELTDU001)) RMELTDU001(k) = RMELT(k,1)
+                if(associated(RMELTDU002)) RMELTDU002(k) = RMELT(k,2)
+                if(associated(RMELTDU003)) RMELTDU003(k) = RMELT(k,3)
+                if(associated(RMELTDU004)) RMELTDU004(k) = RMELT(k,4)
+                if(associated(RMELTDU005)) RMELTDU005(k) = RMELT(k,5)
+                if(associated(RMELTBC001)) RMELTBC001(k) = RMELT(k,6)
+                if(associated(RMELTBC002)) RMELTBC002(k) = RMELT(k,7)
+                if(associated(RMELTOC001)) RMELTOC001(k) = RMELT(k,8)
+                if(associated(RMELTOC002)) RMELTOC002(k) = RMELT(k,9)
+             end if
 
              if(associated(LWC ))then
-                  ZDEP = sum(SNDZ(k,:))
-                  if(sum(WESN(k,:)) > MINSWE) then
-                      if(ZDEP <= LWCTOP) then
-                         LWC(k) = sum(WESN(k,:)*(1.-FROZFRAC(k,:)))/sum(WESN(k,:))
-                      else
-                         KL  = 0
-                         ZKL = 0.0
-                         do l=1,NUM_SNOW_LAYERS
-                            ZKL = ZKL + SNDZ(k,l)
-                            if(ZKL > LWCTOP) then
-                              KL = l
-                              exit
-                            endif
-                         enddo
-                         ALPHA = 1.0 - (ZKL-LWCTOP)/SNDZ(k,KL)
-                         LWC(k) = (sum(WESN(k,1:KL-1)*(1.-FROZFRAC(k,1:KL-1)))+ &
-                                   ALPHA*WESN(k,KL)*(1.-FROZFRAC(k,KL))) / &
-                                  (sum(WESN(k,1:KL-1))+ALPHA*WESN(k,KL))
-                      endif
-                  else
-                      LWC(k) = 0.0
-                  endif
+                ZDEP = sum(SNDZ(k,:))
+                if(sum(WESN(k,:)) > MINSWE) then
+                   if(ZDEP <= LWCTOP) then
+                      LWC(k) = sum(WESN(k,:)*(1.-FROZFRAC(k,:)))/sum(WESN(k,:))
+                   else
+                      KL  = 0
+                      ZKL = 0.0
+                      do l=1,NUM_SNOW_LAYERS
+                         ZKL = ZKL + SNDZ(k,l)
+                         if(ZKL > LWCTOP) then
+                            KL = l
+                            exit
+                         endif
+                      enddo
+                      ALPHA = 1.0 - (ZKL-LWCTOP)/SNDZ(k,KL)
+                      LWC(k) = (sum(WESN(k,1:KL-1)*(1.-FROZFRAC(k,1:KL-1)))+ &
+                           ALPHA*WESN(k,KL)*(1.-FROZFRAC(k,KL))) / &
+                           (sum(WESN(k,1:KL-1))+ALPHA*WESN(k,KL))
+                   endif
+                else
+                   LWC(k) = 0.0
+                endif
              endif
              if(FR(K,N) < MINFRACSNO) then
                 TICE(k,N,:) =  TICE(k,ICE,:)
              else
-                 call SOLVEICELAYER(NUM_ICE_LAYERS, DT, TICE(k,N,:), DZMAXI, 1,   &
-                                 MELTI(k),                    &
-                                 condsno=TKSNO(NUM_SNOW_LAYERS),       &
-                                 !tsn=TPSN(k,NUM_SNOW_LAYERS),          &
-                                 fhgnd=FHGND(k),          &
-                                 sndz=SNDZ(k,NUM_SNOW_LAYERS)          &
-                                 )
-                 if(associated(RUNOFF)) RUNOFF(K)   = RUNOFF(K) + FR(K,N) * MELTI(K)
+                call SOLVEICELAYER(NUM_ICE_LAYERS, DT, TICE(k,N,:), DZMAXI, 1,   &
+                     MELTI(k),                    &
+                     condsno=TKSNO(NUM_SNOW_LAYERS),       &
+                                !tsn=TPSN(k,NUM_SNOW_LAYERS),          &
+                     fhgnd=FHGND(k),          &
+                     sndz=SNDZ(k,NUM_SNOW_LAYERS)          &
+                     )
+                if(associated(RUNOFF)) RUNOFF(K)   = RUNOFF(K) + FR(K,N) * MELTI(K)
              endif
           enddo
           WESNSC = EVAPO
@@ -3737,7 +3738,8 @@ end if
           if(associated(RUNOFF))   RUNOFF   = RUNOFF + PERC
           TS(:,N) = TPSN(:,1)+MAPL_TICE
           if(associated(MELTWTRCONT )) MELTWTRCONT = sum(WESN*(1.-FROZFRAC),dim=2)
-       endif
+
+       endif    ! if N==SNOW
 
        DQS       = GEOS_QSAT(TS(:,N), PS, PASCALS=.TRUE.,RAMP=0.0) - QS(:,N)
        QS(:,N)   = QS(:,N) + DQS
@@ -3774,7 +3776,7 @@ end if
           enddo
        endif
 
-    enddo ! NUM_SUBTILES
+    enddo ! N=1,NUM_SUBTILES
 
     FR(:,ICE) = max(1.0-FR(:,SNOW), 0.0)
    
@@ -3825,34 +3827,34 @@ end if
 
     ! average ICESMB over time steps between ISSM runs
     if(DO_ISSM==1) then
-        if(associated(ICESMB_ISSM)) ICESMB_ISSM = ICESMB_ISSM + (ICESMB-ICESMB_ISSM)/(ISSM_NSTEPS+1)
-        ISSM_NSTEPS = ISSM_NSTEPS + 1 ! accumulated timesteps since last ISSM run
+       if(associated(ICESMB_ISSM)) ICESMB_ISSM = ICESMB_ISSM + (ICESMB-ICESMB_ISSM)/(ISSM_NSTEPS+1)
+       ISSM_NSTEPS = ISSM_NSTEPS + 1 ! accumulated timesteps since last ISSM run
 
-		! update internal state
-		ICESMB_IN(:) = ICESMB_ISSM(:)
+       ! update internal state
+       ICESMB_IN(:) = ICESMB_ISSM(:)
     end if
 ! Update snow and landice albedos to anticipate
 !   next radiation calculation
 !-----------------------------------------------
-          call MAPL_SunGetInsolation(LONS, LATS,      &
-            ORBIT, ZTH, SLR, &
-            INTV = TINT,     &
-            currTime=CURRENT_TIME+DELT,  &
-            RC=STATUS )
-          VERIFY_(STATUS)
+    call MAPL_SunGetInsolation(LONS, LATS,      &
+         ORBIT, ZTH, SLR, &
+         INTV = TINT,     &
+         currTime=CURRENT_TIME+DELT,  &
+         RC=STATUS )
+    VERIFY_(STATUS)
 
-          ZTH = max(0.0,ZTH)
+    ZTH = max(0.0,ZTH)
 
-       ITYPE = 9
+    ITYPE = 9
 
-       call    SNOW_ALBEDO(NT, NUM_SNOW_LAYERS, N_CONST_LANDICE4SNWALB, ITYPE, LAI, ZTH, &
-                   RHOFRESH, VISMAX, NIRMAX, SLOPE,  &   ! 0.96, 0.68, 1.0,  & !
-                   WESNN, HTSNN, SNDZN,        & ! snow stuff
-                   LNDVR, LNDNR, LNDVF, LNDNF, & ! instantaneous snow-free albedos on tiles
-                   SNOVR, SNONR, SNOVF, SNONF, & ! instantaneous snow albedos on tiles
-                   RCONSTIT, UU, TS(:,SNOW), DRPAR, DFPAR & ! When only N_constit > 0 (oprional)
+    call    SNOW_ALBEDO(NT, NUM_SNOW_LAYERS, N_CONST_LANDICE4SNWALB, ITYPE, LAI, ZTH, &
+         RHOFRESH, VISMAX, NIRMAX, SLOPE,  &   ! 0.96, 0.68, 1.0,  & !
+         WESNN, HTSNN, SNDZN,        & ! snow stuff
+         LNDVR, LNDNR, LNDVF, LNDNF, & ! instantaneous snow-free albedos on tiles
+         SNOVR, SNONR, SNOVF, SNONF, & ! instantaneous snow albedos on tiles
+         RCONSTIT, UU, TS(:,SNOW), DRPAR, DFPAR & ! When only N_constit > 0 (oprional)
                    )
-
+    
     if(associated(ALBVF )) ALBVF = FR(:,ICE)*LANDICEALB+FR(:,SNOW)*SNOVF
     if(associated(ALBVR )) ALBVR = FR(:,ICE)*LANDICEALB+FR(:,SNOW)*SNOVR
     if(associated(ALBNF )) ALBNF = FR(:,ICE)*LANDICEALB+FR(:,SNOW)*SNONF
@@ -3967,40 +3969,40 @@ end if
 ! Run ISSM
 #ifdef HAVE_ISSM
     if (DO_ISSM==1) then
-      call MAPL_Get (MAPL, GCS=GCS, GCNAMES=GCNAMES, RC=STATUS )
-      do N=1, size(GCS)
-         if (index(GCNAMES(N), 'ISSM') /=0 ) then
-            call MAPL_GetObjectFromGC(GCS(N), CHILD_MAPL, RC=STATUS); VERIFY_(STATUS)
-            call MAPL_Get(CHILD_MAPL, RUNALARM = ISSM_ALARM, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_Get (MAPL, GCS=GCS, GCNAMES=GCNAMES, RC=STATUS )
+       do N=1, size(GCS)
+          if (index(GCNAMES(N), 'ISSM') /=0 ) then
+             call MAPL_GetObjectFromGC(GCS(N), CHILD_MAPL, RC=STATUS); VERIFY_(STATUS)
+             call MAPL_Get(CHILD_MAPL, RUNALARM = ISSM_ALARM, RC=STATUS); VERIFY_(STATUS)
 
-            issm_tile_state%ICESMB_ISSM   = ICESMB_ISSM
-            issm_tile_state%ISSM_NSTEPS = ISSM_NSTEPS
+             issm_tile_state%ICESMB_ISSM   = ICESMB_ISSM
+             issm_tile_state%ISSM_NSTEPS = ISSM_NSTEPS
 
-            ! call ISSM run method every time landice runs so that restarts will persist
-            ! ISSM Run method only calls the ISSM C++ solvers at ISSM_DT intervals
-            call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, CLOCK, RC=STATUS)
-            VERIFY_(STATUS)
+             ! call ISSM run method every time landice runs so that restarts will persist
+             ! ISSM Run method only calls the ISSM C++ solvers at ISSM_DT intervals
+             call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, CLOCK, RC=STATUS)
+             VERIFY_(STATUS)
 
-            if (ESMF_AlarmIsRinging (ISSM_ALARM, RC=STATUS)) then
-               ! if ISSM solvers were called, get exports on tile space
-               if(associated(ICESURF))  ICESURF = issm_tile_state%ICESURF_TILE
-               if(associated(ICETHICK)) ICETHICK = issm_tile_state%ICETHICK_TILE
-               if(associated(ICEVEL))   ICEVEL = issm_tile_state%ICEVEL_TILE
+             if (ESMF_AlarmIsRinging (ISSM_ALARM, RC=STATUS)) then
+                ! if ISSM solvers were called, get exports on tile space
+                if(associated(ICESURF))  ICESURF = issm_tile_state%ICESURF_TILE
+                if(associated(ICETHICK)) ICETHICK = issm_tile_state%ICETHICK_TILE
+                if(associated(ICEVEL))   ICEVEL = issm_tile_state%ICEVEL_TILE
 
-               ! refresh ICESMB accumulator
-               ISSM_NSTEPS = 0    ! set ISSM time step accumulation back to zero
-               ICESMB_ISSM(:) = 0 ! zero out ICESMB running average
+                ! refresh ICESMB accumulator
+                ISSM_NSTEPS = 0    ! set ISSM time step accumulation back to zero
+                ICESMB_ISSM(:) = 0 ! zero out ICESMB running average
 
-               ! update private internal state
-               issm_tile_state%ICESMB_ISSM   = ICESMB_ISSM
-               issm_tile_state%ISSM_NSTEPS = ISSM_NSTEPS
+                ! update private internal state
+                issm_tile_state%ICESMB_ISSM   = ICESMB_ISSM
+                issm_tile_state%ISSM_NSTEPS = ISSM_NSTEPS
 
-               ! update internal state for running-mean ICESMB
-               ICESMB_IN(:) = ICESMB_ISSM(:)
+                ! update internal state for running-mean ICESMB
+                ICESMB_IN(:) = ICESMB_ISSM(:)
 
-            end if
-         end if
-      end do
+             end if
+          end if
+       end do
     end if
 #endif
 
