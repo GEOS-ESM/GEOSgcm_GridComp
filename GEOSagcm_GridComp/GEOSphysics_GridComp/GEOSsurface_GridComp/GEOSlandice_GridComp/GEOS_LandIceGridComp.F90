@@ -3737,8 +3737,10 @@ end if
           !PERC = PERC + MELTI
           if(associated(RUNOFF))   RUNOFF   = RUNOFF + PERC
           TS(:,N) = TPSN(:,1)+MAPL_TICE
-          if(associated(MELTWTRCONT )) MELTWTRCONT = sum(WESN*(1.-FROZFRAC),dim=2)
 
+          if(associated(MELTWTRCONT )) MELTWTRCONT = sum(WESN*(1.-FROZFRAC),dim=2)
+          if(associated(EVAPSNO))      EVAPSNO     = EVAPO                           ! snow-surface evaporation
+          
        endif    ! if N==SNOW
 
        DQS       = GEOS_QSAT(TS(:,N), PS, PASCALS=.TRUE.,RAMP=0.0) - QS(:,N)
@@ -3754,7 +3756,7 @@ end if
        if(associated(SUBLIM  )) SUBLIM  = SUBLIM   + FR(:,N)*EVAPO
        if(associated(SHOUT   )) SHOUT   = SHOUT    + FR(:,N)*SHF
        if(associated(HLATN   )) HLATN   = HLATN    + FR(:,N)*LHF
-      ! if(N==SNOW .and. associated(EVAPSNO)) EVAPSNO = FR(:,N)*EVAPO   ! snow-surface evaporation, weighted by snow fraction
+
        if(associated(DELTS   )) DELTS   = DELTS    + DTS*CFT*FR(:,N)
        if(associated(DELQS   )) DELQS   = DELQS    + DQS*CFQ*FR(:,N)
        if(associated(EVPICE  )) EVPICE  = EVPICE   + FR(:,N)*LHF
@@ -3770,6 +3772,7 @@ end if
        if(associated(ACCUM   )) ACCUM   = ACCUM    - FR(:,N) * EVAPO
        if(associated(MELTWTR )) MELTWTR = MELTWTR  + FR(:,N) * MELTI
 
+       
        if(associated(TICE0   )) then
           do k=1,NT
             TICE0(k,:) =  TICE0(k,:)  + TICE(k,N,:) * FR(k,N)
@@ -3779,8 +3782,6 @@ end if
     enddo ! N=1,NUM_SUBTILES
 
     FR(:,ICE) = max(1.0-FR(:,SNOW), 0.0)
-   
-    if(associated(EVAPSNO)) EVAPSNO = FR(:,SNOW)*EVAPO
    
     ! Change in energy of snow and ice over this step [J m-2] = energy after - energy before.
     ! Uses the updated FR(:,ICE) so that it matches the state that will be used next step.
