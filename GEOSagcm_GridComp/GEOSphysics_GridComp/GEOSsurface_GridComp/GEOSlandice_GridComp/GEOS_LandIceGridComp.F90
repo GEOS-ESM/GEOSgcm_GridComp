@@ -982,18 +982,18 @@ call MAPL_AddExportSpec(GC,                    &
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
-       LONG_NAME          = 'rate_of_change_in_snow_pack_mass',&
+       LONG_NAME          = 'rate_of_change_in_snowpack_mass_over_glaciated_surface',&
        UNITS              = 'kg m-2 s-1'                ,&
-       SHORT_NAME         = 'DMSNO'               ,&
+       SHORT_NAME         = 'DSNOMASGLC'                ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
        RC=STATUS  )
   VERIFY_(STATUS)
  
   call MAPL_AddExportSpec(GC                  ,&
-       LONG_NAME          = 'evaporation_from_snow_surface',&
-       UNITS              = 'kg m-2 s-1'                ,&
-       SHORT_NAME         = 'EVAPSNO'                  ,&
+       LONG_NAME          = 'snowpack_evaporation_over_glaciated_surface',&
+       UNITS              = 'kg m-2 s-1'                ,&                    ! mass flux  (land-only "EVPSNO" in Catch GC is energy flux) 
+       SHORT_NAME         = 'EVAPSNOGLC'                ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
        RC=STATUS  )
@@ -2656,7 +2656,7 @@ contains
    real, pointer, dimension(:  )  :: GHTSKIN
    real, pointer, dimension(:  )  :: DHGLC    !surface energy change over glacier
    real, pointer, dimension(:  )  :: DHGLCSRF !For the surface only 
-   real, pointer, dimension(:  )  :: DMSNO
+   real, pointer, dimension(:  )  :: DSNOMAS
    real, pointer, dimension(:  )  :: EVAPSNO 
    real, pointer, dimension(:)   :: RMELTDU001
    real, pointer, dimension(:)   :: RMELTDU002
@@ -2968,7 +2968,7 @@ end if
    call MAPL_GetPointer(EXPORT,ALBNR  , 'ALBNR'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,DELTS  , 'DELTS'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,DELQS  , 'DELQS'  , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,EVPICE , 'EVPICE_GL' , RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,EVPICE , 'EVPICE_GL', RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SUBLIM , 'SUBLIM' , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,ACCUM  , 'ACCUM'  , alloc=.true. , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SMELT  , 'SMELT'  , RC=STATUS); VERIFY_(STATUS)
@@ -2977,8 +2977,8 @@ end if
    call MAPL_GetPointer(EXPORT,PRECIPEXP  , 'PRECIPGLC'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,DHGLC,   'DHGLC' , RC=STATUS); VERIFY_(STATUS)  !export energy change
    call MAPL_GetPointer(EXPORT,DHGLCSRF,   'DHGLCSRF' , RC=STATUS); VERIFY_(STATUS)  !export surface energy change
-   call MAPL_GetPointer(EXPORT,DMSNO,'DMSNO', RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,EVAPSNO,'EVAPSNO', RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,DSNOMAS,'DSNOMASGLC', RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,EVAPSNO,'EVAPSNOGLC', RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,RUNOFF, 'RUNOFFGLC',  RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,RAINRFZ, 'RAINRFZ', RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SNOWALB, 'SNOWALB', RC=STATUS); VERIFY_(STATUS)
@@ -3490,10 +3490,10 @@ end if
     endif
 
     ! Snow pack mass (sum of WESN over snow layers) before the update; DELSNOWMASS temporarily holds -(mass before).
-    if(associated(DMSNO)) then
-       DMSNO = 0.0
+    if(associated(DSNOMAS)) then
+       DSNOMAS = 0.0
        do L=1,NUM_SNOW_LAYERS
-          DMSNO = DMSNO - WESN(:,L)
+          DSNOMAS = DSNOMAS - WESN(:,L)
        enddo
     endif
 
@@ -3741,7 +3741,6 @@ end if
           if(associated(MELTWTRCONT )) MELTWTRCONT = sum(WESN*(1.-FROZFRAC),dim=2)
           if(associated(EVAPSNO))      EVAPSNO     = EVAPO                           ! snow-surface evaporation
 
-
        else
 
           _ASSERT(.false., 'unknown subtile case')          
@@ -3807,11 +3806,11 @@ end if
     endif
 
     ! Change in snow pack mass over this step, per second [kg m-2 s-1]
-    if(associated(DMSNO)) then
+    if(associated(DSNOMAS)) then
        do L=1,NUM_SNOW_LAYERS
-          DMSNO = DMSNO + WESN(:,L)
+          DSNOMAS = DSNOMAS + WESN(:,L)
        enddo
-       DMSNO = DMSNO / DT   ! kg m-2 per step -> kg m-2 s-1
+       DSNOMAS = DSNOMAS / DT   ! kg m-2 per step -> kg m-2 s-1
     endif
 
     if(associated(GHTSKIN )) GHTSKIN = ghflxsno*FR(:,SNOW) + ghflxice*FR(:,ICE)
