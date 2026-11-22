@@ -196,7 +196,7 @@ contains
     !   Export states:
     call MAPL_AddExportSpec(GC,                    &
          SHORT_NAME = 'ICESURF',                   &
-         LONG_NAME  = 'ice_sheet_elevation',       &
+         LONG_NAME  = 'ice_sheet_surface_elevation',       &
          UNITS      = 'm',                         &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
@@ -204,7 +204,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                    &
          SHORT_NAME = 'ICEVX',                     &
-         LONG_NAME  = 'ice_velocity_x_direction',  &
+         LONG_NAME  = 'ice_sheet_velocity_x_direction',  &
          UNITS      = 'm s-1',                     &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
@@ -212,7 +212,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                    &
          SHORT_NAME = 'ICEVY',                      &
-         LONG_NAME  = 'ice_velocity_y_direction',   &
+         LONG_NAME  = 'ice_sheet_velocity_y_direction',   &
          UNITS      = 'm s-1',                      &
          DIMS       = MAPL_DimsTileOnly,            &
          VLOCATION  = MAPL_VLocationNone,           &
@@ -220,7 +220,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                    &
          SHORT_NAME = 'ICETHICK',                  &
-         LONG_NAME  = 'ice_thickness',             &
+         LONG_NAME  = 'ice_sheet_thickness',             &
          UNITS      = 'm',                         &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
@@ -228,7 +228,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                    &
          SHORT_NAME = 'ICESMB_ISSM',               &
-         LONG_NAME  = 'issm_surface_mass_balance', &
+         LONG_NAME  = 'ice_sheet_surface_mass_balance', &
          UNITS      = 'm s-1',                &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
@@ -236,7 +236,7 @@ contains
      
     call MAPL_AddExportSpec(GC,                    &
          SHORT_NAME = 'DIVQ',                      &
-         LONG_NAME  = 'ice_flux_divergence',       &
+         LONG_NAME  = 'ice_sheet_flux_divergence',       &
          UNITS      = 'm s-1',                     &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
@@ -244,7 +244,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                    &
          SHORT_NAME = 'DHDT',                      &
-         LONG_NAME  = 'ice_thickness_change_rate', &
+         LONG_NAME  = 'ice_sheet_thickness_change_rate', &
          UNITS      = 'm s-1',                     &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
@@ -271,7 +271,7 @@ contains
 
     call MAPL_AddInternalSpec(GC,                  &
          SHORT_NAME = 'IMLS',                      &
-         LONG_NAME  = 'ice_mask_levelset',         &
+         LONG_NAME  = 'ice_sheet_mask_levelset',         &
          UNITS      = 'none',                      &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
@@ -289,7 +289,7 @@ contains
 
     call MAPL_AddInternalSpec(GC,                  &
          SHORT_NAME = 'ICEVX',                     &
-         LONG_NAME  = 'ice_velocity_x_direction',  &
+         LONG_NAME  = 'ice_sheet_velocity_x_direction',  &
          UNITS      = 'm s-1',                     &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
@@ -298,7 +298,7 @@ contains
 
     call MAPL_AddInternalSpec(GC,                  &
          SHORT_NAME = 'ICEVY',                     &
-         LONG_NAME  = 'ice_velocity_y_direction',  &
+         LONG_NAME  = 'ice_sheet_velocity_y_direction',  &
          UNITS      = 'm s-1',                     &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
@@ -325,7 +325,7 @@ contains
 
      call MAPL_AddInternalSpec(GC,                 &
          SHORT_NAME = 'DIVQ',                      &
-         LONG_NAME  = 'ice_flux_divergence',       &
+         LONG_NAME  = 'ice_sheet_flux_divergence',       &
          UNITS      = 'm s-1',                     &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
@@ -334,7 +334,7 @@ contains
 
     call MAPL_AddInternalSpec(GC,                  &
          SHORT_NAME = 'DHDT',                      &
-         LONG_NAME  = 'ice_thickness_change_rate', &
+         LONG_NAME  = 'ice_sheet_thickness_change_rate', &
          UNITS      = 'm s-1',                     &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
@@ -343,7 +343,7 @@ contains
     
     call MAPL_AddInternalSpec(GC,                  &
          SHORT_NAME = 'ICESMB_ISSM',               &
-         LONG_NAME  = 'issm_surface_mass_balance', &
+         LONG_NAME  = 'ice_sheet_surface_mass_balance', &
          UNITS      = 'm s-1',                     &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &

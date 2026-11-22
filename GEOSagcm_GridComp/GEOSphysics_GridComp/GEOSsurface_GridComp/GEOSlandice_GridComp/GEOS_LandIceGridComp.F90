@@ -228,7 +228,7 @@ module GEOS_LandiceGridCompMod
 
      call MAPL_AddExportSpec(GC,                   &
         SHORT_NAME = 'ICESMB',                     &
-        LONG_NAME  = 'ice_surface_mass_balance',   &
+        LONG_NAME  = 'ice_sheet_surface_mass_balance',   &
         UNITS      = 'kg m-2 s-1',                 &
         DIMS       = MAPL_DimsTileOnly,            &
         VLOCATION  = MAPL_VLocationNone,           &
@@ -239,7 +239,7 @@ module GEOS_LandiceGridCompMod
    if (DO_ISSM==1) then
      call MAPL_AddExportSpec(GC,                   &
         SHORT_NAME = 'ICESURF',                    &
-        LONG_NAME  = 'ice_surface_elevation',      &
+        LONG_NAME  = 'ice_sheet_surface_elevation',      &
         UNITS      = 'm',                          &
         DIMS       = MAPL_DimsTileOnly,            &
         VLOCATION  = MAPL_VLocationNone,           &
@@ -248,7 +248,7 @@ module GEOS_LandiceGridCompMod
 
      call MAPL_AddExportSpec(GC,                   &
         SHORT_NAME = 'ICEVEL',                     &
-        LONG_NAME  = 'ice_flow_speed',             &
+        LONG_NAME  = 'ice_sheet_flow_speed',             &
         UNITS      = 'm s-1',                      &
         DIMS       = MAPL_DimsTileOnly,            &
         VLOCATION  = MAPL_VLocationNone,           &
@@ -257,7 +257,7 @@ module GEOS_LandiceGridCompMod
 
      call MAPL_AddExportSpec(GC,                   &
         SHORT_NAME = 'ICETHICK',                   &
-        LONG_NAME  = 'ice_thickness',              &
+        LONG_NAME  = 'ice_sheet_thickness',              &
         UNITS      = 'm',                          &
         DIMS       = MAPL_DimsTileOnly,            &
         VLOCATION  = MAPL_VLocationNone,           &
@@ -1094,11 +1094,11 @@ call MAPL_AddExportSpec(GC,                    &
    if (DO_ISSM==1) then
      call MAPL_AddInternalSpec(GC,                                &
         SHORT_NAME         = 'ICESMB_ISSM',                       &
-        LONG_NAME          = 'issm_surface_mass_balance',         &
+        LONG_NAME          = 'ice_sheet_surface_mass_balance',    &
         UNITS              = 'kg m-2 s-1',                        &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-		  RESTART            = MAPL_RestartOptional,                &
+        RESTART            = MAPL_RestartOptional,                &
         DEFAULT            = 0.0 ,                                &
                                                     RC=STATUS  )
    end if
