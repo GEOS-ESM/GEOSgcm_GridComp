@@ -2204,7 +2204,7 @@ module GEOS_SurfaceGridCompMod
   call MAPL_AddExportSpec(GC,                     &
        LONG_NAME          = 'runoff_flux_over_glaciated_surface',&
        UNITS              = 'kg m-2 s-1'                 ,&
-       SHORT_NAME         = 'RUNOFGLC'                  ,&
+       SHORT_NAME         = 'RUNOFFGLC'                 ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
        RC=STATUS  )
@@ -9712,7 +9712,7 @@ module GEOS_SurfaceGridCompMod
 
       call MAPL_GetPointer(GEX(type), dum, 'SNOGLC'   , ALLOC=associated(SNOGLCTILE)   , notFoundOK=.true., RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'PRECIPGLC', ALLOC=associated(PRECIPGLCTILE), notFoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(GEX(type), dum, 'DHGLCGLC' , ALLOC=associated(DHGLCTILE)    , notFoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'DHGLC'    , ALLOC=associated(DHGLCTILE)    , notFoundOK=.true., RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'DHGLCSRF' , ALLOC=associated(DHGLCSRFTILE) , notFoundOK=.true., RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'DSNOMASGLC',ALLOC=associated(DSNOMASGLCTILE),notFoundOK=.true., RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'EVAPSNOGLC',ALLOC=associated(EVAPSNOGLCTILE),notFoundOK=.true., RC=STATUS); VERIFY_(STATUS)
