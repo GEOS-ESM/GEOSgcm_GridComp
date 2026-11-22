@@ -2166,7 +2166,7 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                     &
-       LONG_NAME          = 'rate_of_change_in_energy_over_glaciated_surface',&
+       LONG_NAME          = 'rate_of_change_of_total_glacier_energy'  ,&
        UNITS              = 'W m-2'                     ,&
        SHORT_NAME         = 'DHGLC'                     ,&
        DIMS               = MAPL_DimsTileOnly           ,&
@@ -2175,7 +2175,7 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                     &
-       LONG_NAME          = 'rate_of_change_in_energy_of_top_layer_of_ice_and_snow',&
+       LONG_NAME          = 'rate_of_change_of_glacier_energy_in_top_layer_snow_and_ice',& 
        UNITS              = 'W m-2'                     ,&
        SHORT_NAME         = 'DHGLCSRF'                  ,&
        DIMS               = MAPL_DimsTileOnly           ,&

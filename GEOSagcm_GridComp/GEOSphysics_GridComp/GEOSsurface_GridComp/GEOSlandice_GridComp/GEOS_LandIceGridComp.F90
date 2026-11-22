@@ -964,7 +964,7 @@ call MAPL_AddExportSpec(GC,                    &
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
-        LONG_NAME          = 'rate_of_change_in_energy_over_glaciated_surface'  ,&
+        LONG_NAME          = 'rate_of_change_of_total_glacier_energy'  ,&
         UNITS              = 'W m-2'                     ,&
         SHORT_NAME         = 'DHGLC'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
@@ -973,7 +973,7 @@ call MAPL_AddExportSpec(GC,                    &
      VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
-       LONG_NAME          = 'rate_of_change_in_energy_of_top_layer_of_ice_and_snow',&
+       LONG_NAME          = 'rate_of_change_of_glacier_energy_in_top_layer_snow_and_ice',&
        UNITS              = 'W m-2'                     ,&
        SHORT_NAME         = 'DHGLCSRF'                  ,&
        DIMS               = MAPL_DimsTileOnly           ,&
@@ -2654,8 +2654,8 @@ contains
    real, pointer, dimension(:  )  :: DNICFLX
    real, pointer, dimension(:  )  :: GHSNOW
    real, pointer, dimension(:  )  :: GHTSKIN
-   real, pointer, dimension(:  )  :: DHGLC    !surface energy change over glacier
-   real, pointer, dimension(:  )  :: DHGLCSRF !For the surface only 
+   real, pointer, dimension(:  )  :: DHGLC       ! total energy change over glacier
+   real, pointer, dimension(:  )  :: DHGLCSRF    ! total energy change over glacier for surface only 
    real, pointer, dimension(:  )  :: DSNOMAS
    real, pointer, dimension(:  )  :: EVAPSNO 
    real, pointer, dimension(:)   :: RMELTDU001
@@ -2975,8 +2975,8 @@ end if
    call MAPL_GetPointer(EXPORT,IMELT  , 'IMELT'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SNOEXP  , 'SNOGLC'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,PRECIPEXP  , 'PRECIPGLC'  , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,DHGLC,   'DHGLC' , RC=STATUS); VERIFY_(STATUS)  !export energy change
-   call MAPL_GetPointer(EXPORT,DHGLCSRF,   'DHGLCSRF' , RC=STATUS); VERIFY_(STATUS)  !export surface energy change
+   call MAPL_GetPointer(EXPORT,DHGLC,   'DHGLC'    , RC=STATUS); VERIFY_(STATUS)        ! export energy change
+   call MAPL_GetPointer(EXPORT,DHGLCSRF,'DHGLCSRF' , RC=STATUS); VERIFY_(STATUS)        ! export surface energy change
    call MAPL_GetPointer(EXPORT,DSNOMAS,'DSNOMASGLC', RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,EVAPSNO,'EVAPSNOGLC', RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,RUNOFF, 'RUNOFFGLC',  RC=STATUS); VERIFY_(STATUS)
@@ -3486,7 +3486,7 @@ end if
     ! Top (first) snow layer and top (first) ice layer only; DHGLCSRF temporarily holds -(energy before).
     if(associated(DHGLCSRF)) then
        DHGLCSRF = - ( HTSN(:,1) +                                                  &
-                          FR(:,ICE)*MAPL_CAPICE*RHOICE*DZMAXI(1)*(TICE(:,ICE,1)-MAPL_TICE) )
+            FR(:,ICE)*MAPL_CAPICE*RHOICE*DZMAXI(1)*(TICE(:,ICE,1)-MAPL_TICE) )
     endif
 
     ! Snow pack mass (sum of WESN over snow layers) before the update; DELSNOWMASS temporarily holds -(mass before).
@@ -3796,7 +3796,7 @@ end if
        do L=1,NUM_ICE_LAYERS
           DHGLC = DHGLC + FR(:,ICE)*MAPL_CAPICE*RHOICE*DZMAXI(L)*(TICE(:,ICE,L)-MAPL_TICE)
        enddo
-       DHGLC = DHGLC / DT       !J m-2 per step -> W m-2
+       DHGLC = DHGLC / DT         ! J m-2 per step -> W m-2
     endif
 
     if(associated(DHGLCSRF)) then
