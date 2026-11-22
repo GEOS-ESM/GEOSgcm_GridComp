@@ -430,8 +430,8 @@ module GEOS_LandiceGridCompMod
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'snow_ice_evaporation_energy_flux_over_glaciated_surface',&
-    UNITS              = 'kg m-2 s-1'                ,&
-    SHORT_NAME         = 'EVPICE_GL'                 ,&
+    UNITS              = 'W m-2'                     ,&
+    SHORT_NAME         = 'EVPICE_GL'                 ,&                ! note suffix "_GL" (Catch GC has EVPICE, which is meant to be land-only)
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
