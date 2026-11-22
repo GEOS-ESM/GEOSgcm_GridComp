@@ -431,7 +431,7 @@ module GEOS_LandiceGridCompMod
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'snow_ice_evaporation_energy_flux_over_glaciated_surface',&
     UNITS              = 'W m-2'                     ,&
-    SHORT_NAME         = 'EVPICE_GL'                 ,&                ! note suffix "_GL" (Catch GC has EVPICE, which is meant to be land-only)
+    SHORT_NAME         = 'EVPICE_GL'                 ,&     ! note suffix "_GL" (Catch GC has EVPICE, which is meant to be land-only)
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
@@ -440,7 +440,7 @@ module GEOS_LandiceGridCompMod
   call MAPL_AddExportSpec(GC,                    & 
     LONG_NAME          = 'runoff_flux_over_glaciated_surface',&
     UNITS              = 'kg m-2 s-1'                ,&
-    SHORT_NAME         = 'RUNOFFGLC'                 ,&
+    SHORT_NAME         = 'RUNOFFGLC'                 ,&     ! at Surface GC level, runoff over glacier only (cf. all-surface "RUNOFF")
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
@@ -748,7 +748,7 @@ call MAPL_AddExportSpec(GC,                    &
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'runoff_total_flux'         ,&
+    LONG_NAME          = 'runoff_total_flux'         ,&      ! will be averaged with land runoff in Surface GC; see also RUNOFFGLC
     UNITS              = 'kg m-2 s-1'                ,&
     SHORT_NAME         = 'RUNOFF'                    ,&
     DIMS               = MAPL_DimsTileOnly           ,&
