@@ -3583,8 +3583,27 @@ end if
        PERC  = 0.0
        MELTI = 0.0
 
+       ! calculations specific to subtile (ICE, SNOW) 
+       
+       if (N==ICE) then
 
-       if(N==SNOW) then
+          do k=1,NT
+             if(FR(k,N) > MINFRACSNO) then
+                call SOLVEICELAYER(NUM_ICE_LAYERS, DT, TICE(k,N,:), DZMAXI, 0,   &
+                                 MELTI(k), DTSS=DTS(k),  RUNOFF=PERC(k),                 &
+                                 lhturb=LHF(k),hlwtc=ULW(k),hsturb=SHF(k),raddn=RADDN(k),        &
+                                 dlhdtc=LHD(k),dhsdtc=SHD(k),dhlwtc=BLWN(k),rain=RAIN(k),    &
+                                 rainrf=RAINRF(k),                                          &
+                                 lhflux=LHFO(k),shflux=SHFO(k),hlwout=HLWO(k),evapout=EVAPO(k), &
+                                 ghflxice=ghflxice(k))
+             else
+                TICE(k,N,:) =  TICE(k,SNOW,:)
+             endif
+          enddo
+          TS(:,N)   =  TICE(:,N,1)
+          if(associated(RUNOFF))   RUNOFF   = RUNOFF + FR(:,N) * PERC
+
+       elseif (N==SNOW) then
 
           ITYPE = 9
           LAI   = 0.0
@@ -3621,27 +3640,8 @@ end if
                   SNOWALB = MAPL_UNDEF
               endwhere
           endif
-       endif
 
-       if(N==ICE) then
-          do k=1,NT
-             if(FR(k,N) > MINFRACSNO) then
-                call SOLVEICELAYER(NUM_ICE_LAYERS, DT, TICE(k,N,:), DZMAXI, 0,   &
-                                 MELTI(k), DTSS=DTS(k),  RUNOFF=PERC(k),                 &
-                                 lhturb=LHF(k),hlwtc=ULW(k),hsturb=SHF(k),raddn=RADDN(k),        &
-                                 dlhdtc=LHD(k),dhsdtc=SHD(k),dhlwtc=BLWN(k),rain=RAIN(k),    &
-                                 rainrf=RAINRF(k),                                          &
-                                 lhflux=LHFO(k),shflux=SHFO(k),hlwout=HLWO(k),evapout=EVAPO(k), &
-                                 ghflxice=ghflxice(k))
-             else
-                TICE(k,N,:) =  TICE(k,SNOW,:)
-             endif
-          enddo
-          TS(:,N)   =  TICE(:,N,1)
-          if(associated(RUNOFF))   RUNOFF   = RUNOFF + FR(:,N) * PERC
-       endif
 
-       if(N==SNOW) then
           LANDICELT  =  TICE(:,N,1) - MAPL_TICE
           do k=1,NT
 #if 0
@@ -3740,8 +3740,13 @@ end if
 
           if(associated(MELTWTRCONT )) MELTWTRCONT = sum(WESN*(1.-FROZFRAC),dim=2)
           if(associated(EVAPSNO))      EVAPSNO     = EVAPO                           ! snow-surface evaporation
+
+
+       else
+
+          _ASSERT(.false., 'unknown subtile case')          
           
-       endif    ! if N==SNOW
+       endif    ! if N==ICE, N==SNOW
 
        DQS       = GEOS_QSAT(TS(:,N), PS, PASCALS=.TRUE.,RAMP=0.0) - QS(:,N)
        QS(:,N)   = QS(:,N) + DQS
@@ -3834,6 +3839,7 @@ end if
        ! update internal state
        ICESMB_IN(:) = ICESMB_ISSM(:)
     end if
+    
 ! Update snow and landice albedos to anticipate
 !   next radiation calculation
 !-----------------------------------------------
@@ -3853,7 +3859,7 @@ end if
          WESNN, HTSNN, SNDZN,        & ! snow stuff
          LNDVR, LNDNR, LNDVF, LNDNF, & ! instantaneous snow-free albedos on tiles
          SNOVR, SNONR, SNOVF, SNONF, & ! instantaneous snow albedos on tiles
-         RCONSTIT, UU, TS(:,SNOW), DRPAR, DFPAR & ! When only N_constit > 0 (oprional)
+         RCONSTIT, UU, TS(:,SNOW), DRPAR, DFPAR & ! When only N_constit > 0 (optional)
                    )
     
     if(associated(ALBVF )) ALBVF = FR(:,ICE)*LANDICEALB+FR(:,SNOW)*SNOVF
