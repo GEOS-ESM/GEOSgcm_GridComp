@@ -2615,8 +2615,8 @@ contains
    real, pointer, dimension(:  )  :: ACCUM
    real, pointer, dimension(:  )  :: SMELT
    real, pointer, dimension(:  )  :: IMELT
-   real, pointer, dimension(:  )  :: SNOEXP !snowfall export 
-   real, pointer, dimension(:  )  :: PRECIPEXP !precipitation export
+   real, pointer, dimension(:  )  :: SNOEXP            ! snowfall export 
+   real, pointer, dimension(:  )  :: PRECIPEXP         ! total precipitation export
    real, pointer, dimension(:  )  :: RAINRFZ
    real, pointer, dimension(:  )  :: SNOWALB
    real, pointer, dimension(:  )  :: SNICEALB
@@ -2974,7 +2974,7 @@ end if
    call MAPL_GetPointer(EXPORT,SMELT  , 'SMELT'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,IMELT  , 'IMELT'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SNOEXP  , 'SNOGLC'  , RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,PRECIPEXP  , 'PRECIPGLC'  , RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,PRECIPEXP,'PRECIPGLC',RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,DHGLC,   'DHGLC'    , RC=STATUS); VERIFY_(STATUS)        ! export energy change
    call MAPL_GetPointer(EXPORT,DHGLCSRF,'DHGLCSRF' , RC=STATUS); VERIFY_(STATUS)        ! export surface energy change
    call MAPL_GetPointer(EXPORT,DSNOMAS,'DSNOMASGLC', RC=STATUS); VERIFY_(STATUS)
