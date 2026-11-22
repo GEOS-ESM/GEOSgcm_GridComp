@@ -510,6 +510,16 @@ contains
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
+     call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'CNV_FRC',                           &
+        LONG_NAME          = 'convective_fraction',               &
+        UNITS              = '1',                                 &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART    = MAPL_RestartSkip,                            &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'FRLAND',                            &
         LONG_NAME          = 'land_fraction',                     &
@@ -2941,7 +2951,10 @@ end if
      integer, dimension(IM,JM)           :: SMTH_LEV
 
      real, dimension(:,:,:), pointer     :: EKH, EKM, KHLS, KMLS, KHRAD, KHSFC
-     real, dimension(:,:  ), pointer     :: Z0, Z0H, EIS
+     real, dimension(:,:  ), pointer     :: Z0, Z0H, EIS, CNV_FRC
+     real, dimension(IM,JM)              :: FASIGS2D, FASW
+     integer                             :: FAS_MODE
+     real                                :: FAS_STAB, FAS_CNVREF, FAS_EISLO, FAS_EISHI
      real, dimension(:,:  ), pointer     :: BSTAR, USTAR, PPBL, WERAD, WESFC,VSCRAD,KERAD,DBUOY,ZSML,ZCLD,ZRADML,FRLAND,TRINVBS,TRINVFRQ,TRINVDELT
      real, dimension(:,:  ), pointer     :: TCZPBL => null()
      real, dimension(:,:  ), pointer     :: ZPBL2 => null()
@@ -3149,6 +3162,7 @@ end if
      call MAPL_GetPointer(IMPORT,    Z0,      'Z0', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,   Z0H,     'Z0H', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,   EIS,     'EIS', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer(IMPORT,   CNV_FRC, 'CNV_FRC', RC=STATUS); VERIFY_(STATUS)
 
 !    onemsig for scale awareness
 !-------------------------------
@@ -3277,6 +3291,13 @@ end if
      call MAPL_GetResource (MAPL, SKEW_TGEN,  'SKEW_TGEN:',  DEFAULT = 900.0,  RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, QT2_TDIS,   'QT2_TDIS:',   DEFAULT = 900.0,  RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, FREE_ATM_SIGS, 'FREE_ATM_SIGS:', DEFAULT = 0.05, RC=STATUS); VERIFY_(STATUS)
+     ! Regime dependence of FREE_ATM_SIGS (0: uniform; 1: weighted by the convective fraction CNV_FRC; 2: ramp in EIS).
+     ! FREE_ATM_SIGS is the value in the convective / unstable regime (weight 1), FAS_STAB the value in the stable / extratropical regime (weight 0).
+     call MAPL_GetResource (MAPL, FAS_MODE,   'FAS_MODE:',   DEFAULT = 0,      RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, FAS_STAB,   'FAS_STAB:',   DEFAULT = 0.05,   RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, FAS_CNVREF, 'FAS_CNVREF:', DEFAULT = 0.5,    RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, FAS_EISLO,  'FAS_EISLO:',  DEFAULT = 1.0,    RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, FAS_EISHI,  'FAS_EISHI:',  DEFAULT = 5.0,    RC=STATUS); VERIFY_(STATUS)
 
 ! Get pointers from export state...
 !-----------------------------------
@@ -4489,6 +4510,16 @@ end if
 
       ! Update the higher order moments required for the ADG PDF
       if ( (PDFSHAPE.ge.5) ) then
+      ! Regime dependent free-atmosphere QT std-dev target: FREE_ATM_SIGS in the convective / unstable regime (weight 1),
+      ! FAS_STAB in the stable / extratropical regime (weight 0)
+      FASIGS2D = FREE_ATM_SIGS
+      FASW     = 1.0
+      if (FAS_MODE == 1 .and. associated(CNV_FRC)) then
+         FASW = max(0.0, min(1.0, CNV_FRC/max(FAS_CNVREF,1.e-6)))
+      else if (FAS_MODE == 2 .and. associated(EIS)) then
+         FASW = max(0.0, min(1.0, (FAS_EISHI - EIS)/max(FAS_EISHI-FAS_EISLO,1.e-6)))
+      end if
+      if (FAS_MODE == 1 .or. FAS_MODE == 2) FASIGS2D = FAS_STAB + (FREE_ATM_SIGS - FAS_STAB)*FASW
       SL = T + (MAPL_GRAV*Z - MAPL_ALHL*QLTOT - MAPL_ALHS*QITOT)/MAPL_CP
       call update_moments(IM, JM, LM, DT, &
                           SH,             &  ! in
@@ -4527,7 +4558,7 @@ end if
                           skew_tgen,      &
                           skew_tdis,      &
                           qt2_tdis,      &
-                          free_atm_sigs )
+                          FASIGS2D )
 
        end if
 

@@ -901,8 +901,9 @@ contains
                               QT2TUNE,     &
                               SKEW_TGEN,   &
                               SKEW_TDIS,   &
-                              QT2_TDIS,   &
-                              FREE_ATM_QT2
+                              QT2_TDIS
+
+    real,    intent(in   ) :: FREE_ATM_QT2 (IM,JM)   ! free-atmosphere QT std-dev target (fraction of QT), may vary with regime
 
     integer, intent(in   ) :: DOPROGQT2   ! prognostic QT2 switch
 
