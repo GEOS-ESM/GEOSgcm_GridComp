@@ -204,7 +204,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                    &
          SHORT_NAME = 'ICEVX',                     &
-         LONG_NAME  = 'ice_sheet_velocity_x_direction',  &
+         LONG_NAME  = 'ice_sheet_velocity_in_local_cartesian_x_direction',  &
          UNITS      = 'm s-1',                     &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
@@ -212,7 +212,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                    &
          SHORT_NAME = 'ICEVY',                      &
-         LONG_NAME  = 'ice_sheet_velocity_y_direction',   &
+         LONG_NAME  = 'ice_sheet_velocity_in_local_cartesian_y_direction',   &
          UNITS      = 'm s-1',                      &
          DIMS       = MAPL_DimsTileOnly,            &
          VLOCATION  = MAPL_VLocationNone,           &
@@ -271,7 +271,7 @@ contains
 
     call MAPL_AddInternalSpec(GC,                  &
          SHORT_NAME = 'IMLS',                      &
-         LONG_NAME  = 'ice_sheet_mask_levelset',         &
+         LONG_NAME  = 'ice_sheet_mask_levelset',   &
          UNITS      = 'none',                      &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
@@ -289,7 +289,7 @@ contains
 
     call MAPL_AddInternalSpec(GC,                  &
          SHORT_NAME = 'ICEVX',                     &
-         LONG_NAME  = 'ice_sheet_velocity_x_direction',  &
+         LONG_NAME  = 'ice_sheet_velocity_in_local_cartesian_x_direction',  &
          UNITS      = 'm s-1',                     &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
@@ -298,7 +298,7 @@ contains
 
     call MAPL_AddInternalSpec(GC,                  &
          SHORT_NAME = 'ICEVY',                     &
-         LONG_NAME  = 'ice_sheet_velocity_y_direction',  &
+         LONG_NAME  = 'ice_sheet_velocity_in_local_cartesian_y_direction',  &
          UNITS      = 'm s-1',                     &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
