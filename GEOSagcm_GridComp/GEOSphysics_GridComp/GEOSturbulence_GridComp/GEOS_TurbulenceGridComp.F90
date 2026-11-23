@@ -60,9 +60,9 @@ module GEOS_TurbulenceGridCompMod
 !{\bf Methods}
 !
 !   {\tt GEOS\_TurbulenceGridComp} has no Finalize method. Its Initialize method
-!   creates the refresh alarm and fills the TRI export bundle (see below). It has
-!   two run phases, Run1 and Run2, that can be used in conjunction with two-stage
-!   surface calculations to implement semi-implicit time differencing.
+!   creates the refresh alarm (see below). It has two run phases, Run1 and
+!   Run2, that can be used in conjunction with two-stage surface calculations
+!   to implement semi-implicit time differencing.
 !
 !\vspace{12 pt}
 !\noindent
@@ -88,16 +88,16 @@ module GEOS_TurbulenceGridCompMod
 !   implemented. MAPL3 gives the bundle's fields generated names, so their short
 !   names are recovered from their standard names (diffused\_short\_name).
 !
-!   Tendencies are internals named NAMEIT (QVIT for Q), re-exported, looked up
-!   by name for every diffused quantity; a tendency is computed only if it
-!   exists. SIT, UIT, VIT, TKESHOCIT, QVIT, QLLSIT and QILSIT always exist;
-!   tracer tendencies are created for the names in the TRI\_increments list of
-!   the configuration (names whose tendency is already built in, such as S or
-!   Q, are skipped).
-!
-!   For History, the tendencies are also collected in the TRI export bundle,
-!   filled by Initialize: SIT, UIT, VIT, TKESHOCIT, QLLSIT, QILSIT, QVIT (as
-!   QIT), and the TRI\_increments tracer tendencies.
+!   Tendencies are internals named NAMEIT (QVIT for Q), re-exported
+!   (ADD2EXPORT), looked up by name for every diffused quantity; a tendency is
+!   computed only if it exists. SIT, UIT, VIT, TKESHOCIT, QVIT, QLLSIT and
+!   QILSIT always exist; tracer tendencies are created for the names in the
+!   TRI\_increments list of the configuration (names whose tendency is already
+!   built in, such as S or Q, are skipped). Being re-exported internals, every
+!   tendency can be requested in History by its own name (MAPL2 also
+!   collected them in a TRI export bundle, for History as TRI%NAME; MAPL3
+!   drops the bundle, since a service-bundle member no longer needs it to be
+!   requested on its own).
 !   
 !   Dry static energy, the winds, and Turbulence's own TKESHOC and QT2 are not
 !   in TRDIFF: they are diffused directly (see DIRECT_NAME) from imports (S, U,
@@ -279,9 +279,9 @@ contains
 
 !BOS
 
-! The specs are in Turbulence_StateSpecs.rc. TRDIFF, TRADV, TRI and the
-! TRI_increments tendencies stay hand-written (services, a bundle, and names
-! known only at run time).
+! The specs are in Turbulence_StateSpecs.rc. TRDIFF, TRADV and the
+! TRI_increments tendencies stay hand-written (services and names known only
+! at run time).
 
 #include "Turbulence_Import___.h"
 
@@ -295,18 +295,6 @@ contains
          short_name    = 'TRDIFF',                                     &
          standard_name = 'turbulently_diffused_quantities',            &
          itemtype      = MAPL_STATEITEM_SERVICE,                       &
-                                                                   _RC)
-
-! TRI: the tendency internals (re-exported), for History as TRI%NAME; filled
-! in Initialize.
-    call MAPL_GridCompAddSpec(GC,                                      &
-         state_intent  = ESMF_STATEINTENT_EXPORT,                      &
-         short_name    = 'TRI',                                        &
-         standard_name = 'diffusion_tendencies',                       &
-         units         = 'X kg m-2 s-1',                               &
-         dims          = 'xyz',                                        &
-         vertical_stagger = MAPL_VERTICAL_STAGGER_CENTER,              &
-         itemtype      = MAPL_STATEITEM_FIELDBUNDLE,                   &
                                                                    _RC)
 
 #include "Turbulence_Internal___.h"
@@ -377,20 +365,15 @@ contains
     type(ESMF_Clock)     :: CLOCK  ! The clock
     integer, intent(out) :: RC     ! Error code
 
-! !DESCRIPTION: Creates the refresh alarm, then fills the TRI export bundle
-!   with the turbulence tendencies, so they can be requested in History as
-!   TRI%NAME. Q's tendency, QVIT, is in the bundle as QIT. The tendencies are
-!   internals, so they are always allocated and computed.
+! !DESCRIPTION: Creates the refresh alarm. The turbulence tendencies (SIT,
+!   UIT, VIT, TKESHOCIT, QVIT, QLLSIT, QILSIT and the TRI_increments tracer
+!   tendencies) are internals re-exported with ADD2EXPORT, so they are always
+!   allocated and computed, and can be requested in History by name.
 
 !EOP
 
     integer                                 :: STATUS
     character(len=ESMF_MAXSTR)              :: COMP_NAME
-    type (ESMF_State)                       :: INTERNAL
-    type (ESMF_FieldBundle)                 :: TRI
-    type (ESMF_Field)                       :: FIELD
-    character(len=ESMF_MAXSTR), allocatable :: NAMES(:)
-    integer                                 :: I
 
     real                                    :: run_dt
     integer                                 :: refresh_dt
@@ -400,9 +383,6 @@ contains
     integer                                 :: yy, mm, dd, reference_date, reference_time
     logical                                 :: run_at_interval_start
     type(ESMF_Alarm)                        :: refresh_alarm
-
-    character(len=*), parameter :: TRI_FIXED(6) = &
-         [character(len=9) :: 'SIT', 'UIT', 'VIT', 'TKESHOCIT', 'QLLSIT', 'QILSIT']
 
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, _RC)
 
@@ -446,41 +426,7 @@ contains
        call ESMF_AlarmRingerOn(refresh_alarm, _RC)
     end if
 
-! TRI
-    call MAPL_GridCompGetInternalState(GC, INTERNAL, _RC)
-    call ESMF_StateGet(EXPORT, 'TRI', TRI, _RC)
-
-    do I = 1, size(TRI_FIXED)
-       call AddToTRI(trim(TRI_FIXED(I)), trim(TRI_FIXED(I)), _RC)
-    end do
-
-    call AddToTRI('QVIT', 'QIT', _RC)
-
-    call GetTriIncrements(GC, NAMES, _RC)
-    do I = 1, size(NAMES)
-       call AddToTRI(trim(NAMES(I))//'IT', trim(NAMES(I))//'IT', _RC)
-    end do
-    deallocate(NAMES)
-
     _RETURN(_SUCCESS)
-
-  contains
-
-    subroutine AddToTRI(INTERNAL_NAME, BUNDLE_NAME, RC)
-      character(len=*),  intent(in ) :: INTERNAL_NAME
-      character(len=*),  intent(in ) :: BUNDLE_NAME
-      integer, optional, intent(out) :: RC
-
-      integer :: STATUS
-
-      call ESMF_StateGet(INTERNAL, INTERNAL_NAME, FIELD, _RC)
-      if (BUNDLE_NAME /= INTERNAL_NAME) then
-         FIELD = ESMF_NamedAlias(FIELD, name=BUNDLE_NAME, _RC)
-      end if
-      call MAPL_FieldBundleAdd(TRI, [FIELD], _RC)
-
-      _RETURN(_SUCCESS)
-    end subroutine AddToTRI
 
   end subroutine Initialize
 
@@ -5170,7 +5116,8 @@ end subroutine ComputeMOScalingInterlevel
 
 !=============================================================================
 
-! Field K of the TRDIFF bundle: its short name, diffusion type (attribute
+! Field K of the TRDIFF bundle: its name (the subscriber's short name, which
+!  MAPL keeps on the bundle member), diffusion type (attribute
 !  DiffuseLike: U, S or Q; default Q), whether its tendency is pressure
 !  weighted (attribute WeightedTendency; default false) and its data.
 !  MAPL2 read the attributes with ESMF_AttributeGet; nobody sets them on
@@ -5191,7 +5138,7 @@ end subroutine ComputeMOScalingInterlevel
 
     call ESMF_FieldBundleGet(TR, K, FIELD, _RC)
 
-    NAME = diffused_short_name(FIELD, _RC)
+    call ESMF_FieldGet(FIELD, name=NAME, _RC)
 
     call ESMF_InfoGetFromHost(FIELD, INFO, _RC)
     call ESMF_InfoGet(INFO, key='DiffuseLike', value=TYPE, default='Q', _RC)
@@ -5205,10 +5152,11 @@ end subroutine ComputeMOScalingInterlevel
 !=============================================================================
 
 ! Returns the names in the TRI_increments list of the component's
-!  configuration (empty if none; MAPL2: the TRI_increments:: table).
-!  bundleParser.py adds a name for every TRI%NAMEIT requested in History, so
-!  names whose tendency is already a built-in internal (S, U, V, TKESHOC, Q,
-!  QLLS, QILS) are skipped, as are repeated names.
+!  configuration (empty if none; MAPL2: the TRI_increments:: table, which
+!  bundleParser.py built by scanning History for TRI%NAMEIT requests; MAPL3
+!  has no TRI bundle, so the list is set directly). Names whose tendency is
+!  already a built-in internal (S, U, V, TKESHOC, Q, QLLS, QILS) are skipped,
+!  as are repeated names.
 
   subroutine GetTriIncrements(GC, NAMES, RC)
     type(ESMF_GridComp),                     intent(inout) :: GC
@@ -5335,48 +5283,6 @@ end subroutine ComputeMOScalingInterlevel
   end subroutine report_maxmin
 
 !=============================================================================
-
-! Short name of a field of the TRDIFF service bundle. MAPL3 gives subscribed
-!  fields generated names, so the name is recovered from the standard name
-!  (as FVdycoreCubed's get_short_name, fv_shared.F90) for the quantities this
-!  code selects by name (Q, QLLS, QILS) and Moist's other diffused
-!  internals; any other field gets its standard name.
-
-  function diffused_short_name(FIELD, RC) result(SHORT_NAME)
-    type(ESMF_Field),  intent(inout) :: FIELD
-    integer, optional, intent(  out) :: RC
-    character(len=:), allocatable    :: SHORT_NAME
-
-    integer                       :: STATUS
-    character(len=:), allocatable :: STANDARD_NAME
-
-    call MAPL_FieldGet(FIELD, standard_name=STANDARD_NAME, _RC)
-    select case (trim(STANDARD_NAME))
-    case ('specific_humidity')
-       SHORT_NAME = 'Q'
-    case ('mass_fraction_of_large_scale_cloud_liquid_water')
-       SHORT_NAME = 'QLLS'
-    case ('mass_fraction_of_convective_cloud_liquid_water')
-       SHORT_NAME = 'QLCN'
-    case ('mass_fraction_of_large_scale_cloud_ice_water')
-       SHORT_NAME = 'QILS'
-    case ('mass_fraction_of_convective_cloud_ice_water')
-       SHORT_NAME = 'QICN'
-    case ('mass_fraction_of_rain')
-       SHORT_NAME = 'QRAIN'
-    case ('mass_fraction_of_snow')
-       SHORT_NAME = 'QSNOW'
-    case ('mass_fraction_of_graupel')
-       SHORT_NAME = 'QGRAUPEL'
-    case default
-       ! TODO: tracers of other subscribers (GOCART, TRI_increments) need a
-       ! mapping too (mapl3-porting-notes.md, issue 1)
-       SHORT_NAME = trim(STANDARD_NAME)
-    end select
-
-    _RETURN(_SUCCESS)
-  end function diffused_short_name
-
 
 end module GEOS_TurbulenceGridCompMod
 

@@ -82,7 +82,9 @@ act, other = [], []
 for v in exp.variables:
     if v in skipdims or v in exp.dimensions:
         continue
-    if v.startswith('TRI_') or v in internal_names:
+    # TRI_<name> members, internals, and the TRI_increments tendencies (<name>IT,
+    # internals made at run time, so not in the spec table; their TRI_ member is)
+    if v.startswith('TRI_') or v in internal_names or 'TRI_' + v in exp.variables:
         other.append(v); continue
     assert v in export_names, v
     act.append(v)

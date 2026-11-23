@@ -5,9 +5,10 @@ component: TURBULENCE
 # in their order.
 #
 # Not here (hand-written in SetServices): the TRDIFF service (MAPL2's TR
-# import), the TRADV subscription, the TRI bundle (export), and the <NAME>IT
-# tendency internals for the names in TRI_increments, which are known only at
-# run time.
+# import), the TRADV subscription, and the <NAME>IT tendency internals for the
+# names in TRI_increments, which are known only at run time. MAPL2's TRI
+# export bundle is dropped (porting notes, issue 2): the tendency internals
+# are re-exported (ADD2EXPORT below) and can be requested in History by name.
 #
 # From MAPL2: DEFAULT -> FILL; internals without DEFAULT get FILL 0.0 (MAPL2
 # zero-filled internals, MAPL3 does not); MAPL_RestartSkip -> SKIP;
@@ -267,7 +268,7 @@ category: INTERNAL
  SLFLXMF   | K m s-1       | xyz  | E    |         | 0.0  |            |             | liquid_water_static_energy_flux_by_updrafts
  QTFLXMF   | kg kg-1 m s-1 | xyz  | E    |         | 0.0  |            |             | total_water_flux_by_updrafts
 #
-# Tendencies (were exports): always computed, as MAPL2 allocated them for the TRI bundle (decision 2)
+# Tendencies (were exports): always computed, re-exported, requestable in History by name (MAPL2 allocated them for the TRI bundle; decision 2, dropped: see mapl3-porting-notes.md issue 2)
  SIT       | Pa m+2 s-3    | xyz  | C    | SKIP    | 0.0  | T          |             | pressure_weighted_tendency_of_dry_static_energy_due_to_turbulence
  UIT       | m s-2         | xyz  | C    | SKIP    | 0.0  | T          |             | tendency_of_eastward_wind_due_to_turbulence
  VIT       | m s-2         | xyz  | C    | SKIP    | 0.0  | T          |             | tendency_of_northward_wind_due_to_turbulence

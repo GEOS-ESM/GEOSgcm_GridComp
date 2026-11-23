@@ -2,7 +2,7 @@
 # the PChem, GOCART and TR tracers), subscribed to TURBULENCE's TRDIFF service
 # (MAPL2: FRIENDLYTO TURBULENCE). Restarted from the capture's TR_* fields
 # (TR_ prefix dropped, '.' -> '_'); standard names and units from the capture.
-# TURBULENCE recovers Q, QLLS, ... from the standard names (diffused_short_name).
+# TURBULENCE selects Q, QLLS, ... by the bundle member name (the subscriber's short name; needs the MAPL service-bundle member naming).
 mapl:
 
   setServices:
