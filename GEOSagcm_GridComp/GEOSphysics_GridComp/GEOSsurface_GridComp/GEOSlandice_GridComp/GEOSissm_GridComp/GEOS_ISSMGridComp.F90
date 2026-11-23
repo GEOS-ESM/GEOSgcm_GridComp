@@ -12,12 +12,12 @@ module GEOS_IssmGridCompMod
   !
   !   {\tt GEOS\_ISSM} runs ISSM (Ice-sheet and Sea-level System Model)
   !   Imports:   ICEEQUIVSMB (defined on landice tiles)  [via private internal state]
-  !   Exports:   ICESURF, ICETHICK, ICEVX, ICEVY,                          DTHICKGLC, DIVQGLC, ICEEQUIVSMB (defined on mesh) [true export state]
+  !   Exports:   ICESURF, ICETHICK, ICEVX, ICEVY,                          ICEDTHICK, ICEDIVQ, ICEEQUIVSMB (defined on mesh) [true export state]
   !   Exports:   ICESURF, ICETHICK, ICEVEL                                                         (defined on landice tiles)[via private internal state]
-  !   Internals: ICESURF, ICETHICK, ICEVX, ICEVY, IMLS, OMLS, ISSM_NSTEPS, DTHICKGLC, DIVQGLC, ICEEQUIVSMB (defined on mesh) [true internal state]
+  !   Internals: ICESURF, ICETHICK, ICEVX, ICEVY, IMLS, OMLS, ISSM_NSTEPS, ICEDTHICK, ICEDIVQ, ICEEQUIVSMB (defined on mesh) [true internal state]
   ! *** NOTES:
-  !            (*) The current ISSM configuration solves the mass balance equation DTHICKGLC + DIVQGLC = ICEEQUIVSMB, where DTHICKGLC is the rate of 
-  !                change of the ice thickness, DIVQGLC is the ice flux divergence, and ICEEQUIVSMB is the surface-mass balance (from landice)
+  !            (*) The current ISSM configuration solves the mass balance equation ICEDTHICK + ICEDIVQ = ICEEQUIVSMB, where ICEDTHICK is the rate of 
+  !                change of the ice thickness, ICEDIVQ is the ice flux divergence, and ICEEQUIVSMB is the surface-mass balance (from landice)
   !                that has been averaged between ISSM timesteps. This assumes that there is no melting at the base of the ice sheet.
   !                Future development will include melting at the ice base.
   !            (*) currently we run over all input files (ISSM*.bin) that are found in ISSM_EXPDIR (scratch directory)
@@ -235,7 +235,7 @@ contains
          _RC  )
      
     call MAPL_AddExportSpec(GC,                    &
-         SHORT_NAME = 'DIVQGLC',                   &
+         SHORT_NAME = 'ICEDIVQ',                   &
          LONG_NAME  = 'ice_sheet_flux_divergence', &
          UNITS      = 'm s-1',                     &
          DIMS       = MAPL_DimsTileOnly,           &
@@ -243,7 +243,7 @@ contains
          _RC  )
 
     call MAPL_AddExportSpec(GC,                    &
-         SHORT_NAME = 'DTHICKGLC',                 &
+         SHORT_NAME = 'ICEDTHICK',                 &
          LONG_NAME  = 'ice_sheet_thickness_change_rate', &
          UNITS      = 'm s-1',                     &
          DIMS       = MAPL_DimsTileOnly,           &
@@ -324,7 +324,7 @@ contains
          _RC  )
 
      call MAPL_AddInternalSpec(GC,                 &
-         SHORT_NAME = 'DIVQGLC',                   &
+         SHORT_NAME = 'ICEDIVQ',                   &
          LONG_NAME  = 'ice_sheet_flux_divergence', &
          UNITS      = 'm s-1',                     &
          DIMS       = MAPL_DimsTileOnly,           &
@@ -333,7 +333,7 @@ contains
          _RC  )
 
     call MAPL_AddInternalSpec(GC,                  &
-         SHORT_NAME = 'DTHICKGLC',                 &
+         SHORT_NAME = 'ICEDTHICK',                 &
          LONG_NAME  = 'ice_sheet_thickness_change_rate', &
          UNITS      = 'm s-1',                     &
          DIMS       = MAPL_DimsTileOnly,           &
@@ -467,8 +467,8 @@ contains
     real, pointer, dimension(:)        :: ICEVY_IN      => null()   ! ice velocity (y direction) restart
     real, pointer, dimension(:)        :: IMLS_IN       => null()   ! ice-mask levelset restart
     real, pointer, dimension(:)        :: OMLS_IN       => null()   ! ocean-mask levelset restart
-    real, pointer, dimension(:)        :: DIVQGLC_IN    => null()   ! ice flux divergence restart
-    real, pointer, dimension(:)        :: DTHICKGLC_IN  => null()   ! ice thickness change restart
+    real, pointer, dimension(:)        :: ICEDIVQ_IN    => null()   ! ice flux divergence restart
+    real, pointer, dimension(:)        :: ICEDTHICK_IN  => null()   ! ice thickness change restart
     real, pointer, dimension(:)        :: ICEEQUIVSMB_IN=> null()   ! ice surface mass balance restart
 
     ! restarts with halo points (interleaved), to send to ISSM
@@ -493,8 +493,8 @@ contains
     real, pointer, dimension(:)            :: ICETHICK_EX   => null() ! ice thickness 
     real, pointer, dimension(:)            :: ICEVX_EX      => null() ! ice velocity (x direction) 
     real, pointer, dimension(:)            :: ICEVY_EX      => null() ! ice velocity (y direction)
-    real, pointer, dimension(:)            :: DIVQGLC_EX    => null() ! ice flux divergence 
-    real, pointer, dimension(:)            :: DTHICKGLC_EX  => null() ! ice thickness change 
+    real, pointer, dimension(:)            :: ICEDIVQ_EX    => null() ! ice flux divergence 
+    real, pointer, dimension(:)            :: ICEDTHICK_EX  => null() ! ice thickness change 
     real, pointer, dimension(:)            :: ICEEQUIVSMB_EX=> null() ! ice surface mass balance 
 
     ! restart redistribution
@@ -749,8 +749,8 @@ contains
     call MAPL_GetPointer(INTERNAL, IMLS_IN,        'IMLS',       _RC)
     call MAPL_GetPointer(INTERNAL, OMLS_IN,        'OMLS',       _RC)
     call MAPL_GetPointer(INTERNAL, restartNodeIds, 'RS_NODEIDS', _RC)
-    call MAPL_GetPointer(INTERNAL, DIVQGLC_IN,     'DIVQGLC',    _RC)
-    call MAPL_GetPointer(INTERNAL, DTHICKGLC_IN,   'DTHICKGLC',  _RC)
+    call MAPL_GetPointer(INTERNAL, ICEDIVQ_IN,     'ICEDIVQ',    _RC)
+    call MAPL_GetPointer(INTERNAL, ICEDTHICK_IN,   'ICEDTHICK',  _RC)
     call MAPL_GetPointer(INTERNAL, ICEEQUIVSMB_IN, 'ICEEQUIVSMB',_RC)
 
     ! if restart has been read, apply halo operation and send pointers to ISSM
@@ -787,8 +787,8 @@ contains
           call apply_redist(ICEVY_IN,_RC)
           call apply_redist(IMLS_IN,_RC)
           call apply_redist(OMLS_IN,_RC)
-          call apply_redist(DIVQGLC_IN,_RC)
-          call apply_redist(DTHICKGLC_IN,_RC)
+          call apply_redist(ICEDIVQ_IN,_RC)
+          call apply_redist(ICEDTHICK_IN,_RC)
           call apply_redist(ICEEQUIVSMB_IN,_RC)
 
           call ESMF_VMBarrier(vm, _RC)
@@ -847,8 +847,8 @@ contains
 
        ! if bootstrapping, set ice mass balance diagnostics to zero 
        ! because we don't yet have an SMB or DH/DT calculation
-       if(associated(DIVQGLC_IN))     DIVQGLC_IN     = 0.0
-       if(associated(DTHICKGLC_IN))   DTHICKGLC_IN   = 0.0
+       if(associated(ICEDIVQ_IN))     ICEDIVQ_IN     = 0.0
+       if(associated(ICEDTHICK_IN))   ICEDTHICK_IN   = 0.0
        if(associated(ICEEQUIVSMB_IN)) ICEEQUIVSMB_IN = 0.0
 
     end if
@@ -868,11 +868,11 @@ contains
     call MAPL_GetPointer(EXPORT, ICEVY_EX, 'ICEVY',alloc=.true.,_RC)
     if(associated(ICEVY_EX)) ICEVY_EX = ICEVY_HALO(owned_idx)
 
-    call MAPL_GetPointer(EXPORT, DIVQGLC_EX, 'DIVQGLC',alloc=.true.,_RC)
-    if(associated(DIVQGLC_EX)) DIVQGLC_EX = DIVQGLC_IN
+    call MAPL_GetPointer(EXPORT, ICEDIVQ_EX, 'ICEDIVQ',alloc=.true.,_RC)
+    if(associated(ICEDIVQ_EX)) ICEDIVQ_EX = ICEDIVQ_IN
 
-    call MAPL_GetPointer(EXPORT, DTHICKGLC_EX, 'DTHICKGLC',alloc=.true.,_RC)
-    if(associated(DTHICKGLC_EX)) DTHICKGLC_EX = DTHICKGLC_IN
+    call MAPL_GetPointer(EXPORT, ICEDTHICK_EX, 'ICEDTHICK',alloc=.true.,_RC)
+    if(associated(ICEDTHICK_EX)) ICEDTHICK_EX = ICEDTHICK_IN
 
     call MAPL_GetPointer(EXPORT, ICEEQUIVSMB_EX, 'ICEEQUIVSMB',alloc=.true.,_RC)
     if(associated(ICEEQUIVSMB_EX)) ICEEQUIVSMB_EX = ICEEQUIVSMB_IN
@@ -1124,7 +1124,7 @@ contains
     real, pointer, dimension(:)          :: ICETHICK_TILE => null() ! ice thickness on landice tiles
     real, pointer, dimension(:)          :: ICETHICK_EX   => null() ! pointer to ice thickness export state (mesh tiles)
     real, pointer, dimension(:)          :: ICETHICK_IN   => null() ! pointer to ice thicknesss internal state (mesh tiles)
-    real, pointer, dimension(:)          :: ICETHICK_OLD  => null() ! old ice thicknesss for calculating DTHICKGLC (mesh tiles)
+    real, pointer, dimension(:)          :: ICETHICK_OLD  => null() ! old ice thicknesss for calculating ICEDTHICK (mesh tiles)
 
     ! ice-flow velocity in x direction (in projection coordinates)
     real(dp),    pointer, dimension(:)   :: ICEVX_MESH   => null() ! ice x-velocity on mesh
@@ -1137,13 +1137,13 @@ contains
     real, pointer, dimension(:)          :: ICEVY_IN     => null() ! pointer to internal state (mesh tiles)
 
     ! ice flux divergence
-    real(dp),    pointer, dimension(:)   :: DIVQGLC_MESH => null() ! ice flux divergence
-    real, pointer, dimension(:)          :: DIVQGLC_EX   => null() ! pointer to export state (mesh tiles)
-    real, pointer, dimension(:)          :: DIVQGLC_IN   => null() ! pointer to internal state (mesh tiles)
+    real(dp),    pointer, dimension(:)   :: ICEDIVQ_MESH => null() ! ice flux divergence
+    real, pointer, dimension(:)          :: ICEDIVQ_EX   => null() ! pointer to export state (mesh tiles)
+    real, pointer, dimension(:)          :: ICEDIVQ_IN   => null() ! pointer to internal state (mesh tiles)
 
     ! rate of ice thickness change
-    real, pointer, dimension(:)          :: DTHICKGLC_EX => null() ! pointer to export state (mesh tiles)
-    real, pointer, dimension(:)          :: DTHICKGLC_IN => null() ! pointer to internal state (mesh tiles)
+    real, pointer, dimension(:)          :: ICEDTHICK_EX => null() ! pointer to export state (mesh tiles)
+    real, pointer, dimension(:)          :: ICEDTHICK_IN => null() ! pointer to internal state (mesh tiles)
 
     ! ice mask level set (tracks glacier terminus)
     real(dp),    pointer, dimension(:)   :: IMLS_MESH    => null() ! ice mask level set
@@ -1211,7 +1211,7 @@ contains
        allocate(ICEVEL_MESH(num_nodes))
        allocate(IMLS_MESH(num_nodes))
        allocate(OMLS_MESH(num_nodes))
-       allocate(DIVQGLC_MESH(num_nodes))
+       allocate(ICEDIVQ_MESH(num_nodes))
 
        ! allocate old ice thickness array
        allocate(ICETHICK_OLD(num_owned_nodes))
@@ -1289,12 +1289,12 @@ contains
        ICEVY_MESH(:) = ISSM_OUTPUTS(3*num_nodes+1:4*num_nodes)
        OMLS_MESH(:) = ISSM_OUTPUTS(4*num_nodes+1:5*num_nodes)
        IMLS_MESH(:) = ISSM_OUTPUTS(5*num_nodes+1:6*num_nodes)
-       DIVQGLC_MESH(:) = ISSM_OUTPUTS(6*num_nodes+1:7*num_nodes)
+       ICEDIVQ_MESH(:) = ISSM_OUTPUTS(6*num_nodes+1:7*num_nodes)
 
        ! mask non-ice points (IMLS>0) such that thickness = 1 meter and velocity = 0
        where (IMLS_MESH > 0.0) ICEVX_MESH = 0.0
        where (IMLS_MESH > 0.0) ICEVY_MESH = 0.0
-       where (IMLS_MESH > 0.0) DIVQGLC_MESH = 0.0
+       where (IMLS_MESH > 0.0) ICEDIVQ_MESH = 0.0
        where (IMLS_MESH > 0.0) ICETHICK_MESH = 1.0
 
        ! calculate ice flow speed
@@ -1310,8 +1310,8 @@ contains
        call MAPL_GetPointer(EXPORT, ICEVY_EX, 'ICEVY', _RC)
        if(associated(ICEVY_EX)) ICEVY_EX = ICEVY_MESH(internal_state%owned_idx)
 
-       call MAPL_GetPointer(EXPORT, DIVQGLC_EX, 'DIVQGLC', _RC)
-       if(associated(DIVQGLC_EX)) DIVQGLC_EX = DIVQGLC_MESH(internal_state%owned_idx)
+       call MAPL_GetPointer(EXPORT, ICEDIVQ_EX, 'ICEDIVQ', _RC)
+       if(associated(ICEDIVQ_EX)) ICEDIVQ_EX = ICEDIVQ_MESH(internal_state%owned_idx)
 
        call MAPL_GetPointer(EXPORT, ICETHICK_EX, 'ICETHICK', _RC)
        if(associated(ICETHICK_EX)) ICETHICK_OLD(:) = ICETHICK_EX(:) ! save old thickness
@@ -1330,8 +1330,8 @@ contains
        call MAPL_GetPointer(INTERNAL, ICEVY_IN, 'ICEVY', _RC)
        if(associated(ICEVY_IN)) ICEVY_IN = ICEVY_MESH(internal_state%owned_idx)
 
-       call MAPL_GetPointer(INTERNAL, DIVQGLC_IN, 'DIVQGLC', _RC)
-       if(associated(DIVQGLC_IN)) DIVQGLC_IN = DIVQGLC_MESH(internal_state%owned_idx)
+       call MAPL_GetPointer(INTERNAL, ICEDIVQ_IN, 'ICEDIVQ', _RC)
+       if(associated(ICEDIVQ_IN)) ICEDIVQ_IN = ICEDIVQ_MESH(internal_state%owned_idx)
 
        call MAPL_GetPointer(INTERNAL, OMLS_IN, 'OMLS', _RC)
        if(associated(OMLS_IN)) OMLS_IN = OMLS_MESH(internal_state%owned_idx)
@@ -1340,14 +1340,14 @@ contains
        if(associated(IMLS_IN)) IMLS_IN = IMLS_MESH(internal_state%owned_idx)
 
        ! calculate rate of thickness change
-       call MAPL_GetPointer(EXPORT, DTHICKGLC_EX, 'DTHICKGLC', _RC)
-       if(associated(DTHICKGLC_EX)) then
-          DTHICKGLC_EX = (ICETHICK_EX-ICETHICK_OLD)/ISSM_DT
-          where (IMLS_IN > 0.0) DTHICKGLC_EX = 0.0
+       call MAPL_GetPointer(EXPORT, ICEDTHICK_EX, 'ICEDTHICK', _RC)
+       if(associated(ICEDTHICK_EX)) then
+          ICEDTHICK_EX = (ICETHICK_EX-ICETHICK_OLD)/ISSM_DT
+          where (IMLS_IN > 0.0) ICEDTHICK_EX = 0.0
        end if 
 
-       call MAPL_GetPointer(INTERNAL, DTHICKGLC_IN, 'DTHICKGLC', _RC)
-       if(associated(DTHICKGLC_IN)) DTHICKGLC_IN = DTHICKGLC_EX
+       call MAPL_GetPointer(INTERNAL, ICEDTHICK_IN, 'ICEDTHICK', _RC)
+       if(associated(ICEDTHICK_IN)) ICEDTHICK_IN = ICEDTHICK_EX
 
        ! *************************************************************************** !
        ! REGRID MESH FIELDS ONTO LANDICE TILES AND EXPORT VIA PRIVATE INTERNAL STATE
@@ -1385,7 +1385,7 @@ contains
     if(associated(IMLS_MESH))        deallocate(IMLS_MESH)
     if(associated(OMLS_MESH))        deallocate(OMLS_MESH)
     if(associated(ICEEQUIVSMB_MESH)) deallocate(ICEEQUIVSMB_MESH)
-    if(associated(DIVQGLC_MESH))     deallocate(DIVQGLC_MESH)
+    if(associated(ICEDIVQ_MESH))     deallocate(ICEDIVQ_MESH)
     if(associated(ICETHICK_OLD))     deallocate(ICETHICK_OLD)
     if(associated(ISSM_OUTPUTS))     deallocate(ISSM_OUTPUTS)
     if(associated(ICEEQUIVSMB_TILE)) deallocate(ICEEQUIVSMB_TILE)
