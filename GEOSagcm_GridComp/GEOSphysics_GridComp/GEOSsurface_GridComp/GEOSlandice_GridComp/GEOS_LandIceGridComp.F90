@@ -1092,14 +1092,14 @@ call MAPL_AddExportSpec(GC,                    &
 !  !Internal state:
 #ifdef HAVE_ISSM
    if (DO_ISSM==1) then
-     call MAPL_AddInternalSpec(GC,                                &
-        SHORT_NAME         = 'ICESMB_ISSM',                       &
-        LONG_NAME          = 'ice_sheet_surface_mass_balance',    &
-        UNITS              = 'kg m-2 s-1',                        &
-        DIMS               = MAPL_DimsTileOnly,                   &
-        VLOCATION          = MAPL_VLocationNone,                  &
-        RESTART            = MAPL_RestartOptional,                &
-        DEFAULT            = 0.0 ,                                &
+     call MAPL_AddInternalSpec(GC,                                 &
+        SHORT_NAME         = 'ICEEQUIVSMB',                        &
+        LONG_NAME          = 'ice_equivalent_surface_mass_balance',&
+        UNITS              = 'm s-1',                              &
+        DIMS               = MAPL_DimsTileOnly,                    &
+        VLOCATION          = MAPL_VLocationNone,                   &
+        RESTART            = MAPL_RestartOptional,                 &
+        DEFAULT            = 0.0 ,                                 &
                                                     RC=STATUS  )
    end if
 #endif
@@ -1932,7 +1932,7 @@ call MAPL_AddExportSpec(GC,                    &
              allocate(issm_tile_state%ICESURF_TILE(nt_local))
              allocate(issm_tile_state%ICETHICK_TILE(nt_local))
              allocate(issm_tile_state%ICEVEL_TILE(nt_local))
-             allocate(issm_tile_state%ICESMB_ISSM(nt_local))
+             allocate(issm_tile_state%ICEEQUIVSMB(nt_local))
              issm_tile_state%LANDICE_DT = LANDICE_DT
              issm_tile_wrap%ptr => issm_tile_state
              call ESMF_UserCompSetInternalState(GCS(I), 'ISSM_TILES', issm_tile_wrap, status)
@@ -2593,7 +2593,7 @@ contains
 
 ! pointer to ISSM import via private internal state
 ! accumulate over time steps for averaging
-   real, pointer, dimension(:), save :: ICESMB_ISSM=>null()
+   real, pointer, dimension(:), save :: ICEEQUIVSMB=>null()
    integer, save                     :: ISSM_NSTEPS = 0 ! time steps since last ISSM run
 
 ! pointers to export
@@ -2669,7 +2669,7 @@ contains
    real, pointer, dimension(:)   :: RMELTOC002
   
 ! pointers to internal
-   real, pointer, dimension(:)    :: ICESMB_IN
+   real, pointer, dimension(:)    :: ICEEQUIVSMB_IN
    real, pointer, dimension(:,:)  :: TS
    real, pointer, dimension(:,:)  :: QS
    real, pointer, dimension(:,:)  :: FR
@@ -2917,7 +2917,7 @@ contains
 !----------------------
 #ifdef HAVE_ISSM
 if (DO_ISSM==1) then
-   call MAPL_GetPointer(INTERNAL,ICESMB_IN , 'ICESMB_ISSM',alloc=.true., RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(INTERNAL,ICEEQUIVSMB_IN , 'ICEEQUIVSMB',alloc=.true., RC=STATUS); VERIFY_(STATUS)
 end if
 #endif
    call MAPL_GetPointer(INTERNAL,TS   , 'TS'     , RC=STATUS); VERIFY_(STATUS)
@@ -3056,18 +3056,18 @@ end if
     NT = size(LWDNSRF)
 
 
-    ! initialize running mean ICESMB and number of steps since last ISSM solve
+    ! initialize running mean ICEEQUIVSMB and number of steps since last ISSM solve
 #ifdef HAVE_ISSM
     if(DO_ISSM==1) then
-       if (.not. associated(ICESMB_ISSM)) then
-          allocate(ICESMB_ISSM(NT),STAT=STATUS)
+       if (.not. associated(ICEEQUIVSMB)) then
+          allocate(ICEEQUIVSMB(NT),STAT=STATUS)
           VERIFY_(STATUS)
 
           ! initialize from restart:
-          if (associated(ICESMB_IN)) then
-             ICESMB_ISSM(:) = ICESMB_IN(:)
+          if (associated(ICEEQUIVSMB_IN)) then
+             ICEEQUIVSMB(:) = ICEEQUIVSMB_IN(:)
           else
-             ICESMB_ISSM(:) = 0
+             ICEEQUIVSMB(:) = 0
           end if
        end if
 
@@ -3830,13 +3830,13 @@ end if
     ! Calculate surface mass balance (SMB) for ISSM
     if(associated(ICESMB)) ICESMB    = ACCUM - RUNOFF
 
-    ! average ICESMB over time steps between ISSM runs
+    ! average ICESMB (divided by ice density) over time steps between ISSM runs
     if(DO_ISSM==1) then
-       if(associated(ICESMB_ISSM)) ICESMB_ISSM = ICESMB_ISSM + (ICESMB-ICESMB_ISSM)/(ISSM_NSTEPS+1)
+       if(associated(ICEEQUIVSMB)) ICEEQUIVSMB = ICEEQUIVSMB + (ICESMB/RHOICE-ICEEQUIVSMB)/(ISSM_NSTEPS+1)
        ISSM_NSTEPS = ISSM_NSTEPS + 1 ! accumulated timesteps since last ISSM run
 
        ! update internal state
-       ICESMB_IN(:) = ICESMB_ISSM(:)
+       ICEEQUIVSMB_IN(:) = ICEEQUIVSMB(:)
     end if
     
 ! Update snow and landice albedos to anticipate
@@ -3981,7 +3981,7 @@ end if
              call MAPL_GetObjectFromGC(GCS(N), CHILD_MAPL, RC=STATUS); VERIFY_(STATUS)
              call MAPL_Get(CHILD_MAPL, RUNALARM = ISSM_ALARM, RC=STATUS); VERIFY_(STATUS)
 
-             issm_tile_state%ICESMB_ISSM   = ICESMB_ISSM
+             issm_tile_state%ICEEQUIVSMB   = ICEEQUIVSMB
              issm_tile_state%ISSM_NSTEPS = ISSM_NSTEPS
 
              ! call ISSM run method every time landice runs so that restarts will persist
@@ -3995,16 +3995,16 @@ end if
                 if(associated(ICETHICK)) ICETHICK = issm_tile_state%ICETHICK_TILE
                 if(associated(ICEVEL))   ICEVEL = issm_tile_state%ICEVEL_TILE
 
-                ! refresh ICESMB accumulator
+                ! refresh ICEEQUIVSMB accumulator
                 ISSM_NSTEPS = 0    ! set ISSM time step accumulation back to zero
-                ICESMB_ISSM(:) = 0 ! zero out ICESMB running average
+                ICEEQUIVSMB(:) = 0 ! zero out ICEEQUIVSMB running average
 
                 ! update private internal state
-                issm_tile_state%ICESMB_ISSM   = ICESMB_ISSM
+                issm_tile_state%ICEEQUIVSMB   = ICEEQUIVSMB
                 issm_tile_state%ISSM_NSTEPS = ISSM_NSTEPS
 
-                ! update internal state for running-mean ICESMB
-                ICESMB_IN(:) = ICESMB_ISSM(:)
+                ! update internal state for running-mean ICEEQUIVSMB
+                ICEEQUIVSMB_IN(:) = ICEEQUIVSMB(:)
 
              end if
           end if
