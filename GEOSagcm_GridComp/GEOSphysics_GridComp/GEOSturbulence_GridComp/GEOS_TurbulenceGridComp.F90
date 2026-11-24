@@ -1394,6 +1394,38 @@ end if
      VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                 &
+         SHORT_NAME = 'QTFLXMF',                                 &
+         LONG_NAME  = 'total_water_flux_from_mass_flux',         &
+         UNITS      = 'kg kg-1 m-1 s-1',                          &
+         DIMS       = MAPL_DimsHorzVert,                          &
+         VLOCATION  = MAPL_VLocationEdge,              RC=STATUS  )
+     VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                                 &
+         SHORT_NAME = 'SLFLXMF',                                 &
+         LONG_NAME  = 'liquid_water_static_energy_flux_from_mass_flux', &
+         UNITS      = 'J m-1 s-1',                          &
+         DIMS       = MAPL_DimsHorzVert,                          &
+         VLOCATION  = MAPL_VLocationEdge,              RC=STATUS  )
+     VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                                 &
+         SHORT_NAME = 'QTFLXDIF',                                 &
+         LONG_NAME  = 'total_water_flux_from_diffusion',         &
+         UNITS      = 'kg kg-1 m-1 s-1',                          &
+         DIMS       = MAPL_DimsHorzVert,                          &
+         VLOCATION  = MAPL_VLocationEdge,              RC=STATUS  )
+     VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                                 &
+         SHORT_NAME = 'SLFLXDIF',                                 &
+         LONG_NAME  = 'liquid_water_static_energy_flux_from_diffusion', &
+         UNITS      = 'J m-1 s-1',                          &
+         DIMS       = MAPL_DimsHorzVert,                          &
+         VLOCATION  = MAPL_VLocationEdge,              RC=STATUS  )
+     VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                                 &
          SHORT_NAME = 'UFLXTRB',                                  &
          LONG_NAME  = 'turbulent_flux_of_zonal_wind_component',   &
          UNITS      = 'm2 s-2',                                   &
@@ -3061,7 +3093,7 @@ end if
                                     edmfmoistqc
      real, dimension(im,jm,lm)   :: zlo, pk, rho
      real, dimension(im,jm)      :: edmfZCLD
-     real, dimension(im,jm,0:lm) :: RHOE, RHOAW3, edmf_mf, mfwsl, mfwqt, mftke
+     real, dimension(im,jm,0:lm) :: RHOE, RHOAW3, edmf_mf, mfwsl, mfwqt, mftke, exfh
      real, dimension(im,jm,lm)   :: buoyf, mfw2, mfw3, mfqt3,     &
                                     mfsl3, mfqt2, mfsl2,   &
                                     mfslqt, edmf_ent
@@ -3077,7 +3109,7 @@ end if
      real, dimension( IM, JM, LM )       :: QPL,QPI
      integer                             :: DO_SHOC, DOPROGQT2
      real                                :: SL2TUNE, QT2TUNE, SLQT2TUNE,          &
-                                            SKEW_TGEN, SKEW_TDIS, QT2_TDIS, FREE_ATM_SIGS
+                                            QT3_TGEN, QT3_TDIS, QT2_TDIS, PDFA_TGEN, PDFA_TDIS, MFQTFAC, FREE_ATM_SIGS
      real    :: PDFSHAPE
 
      real    :: lambdadiss
@@ -3249,8 +3281,10 @@ end if
 
      call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",       default=0,           RC=STATUS); VERIFY_(STATUS)
      if (DO_SHOC /= 0) then
+       call MAPL_GetResource (MAPL, SHOCPARAMS%EISFAC2,  trim(COMP_NAME)//"_SHC_EISFAC2:",      default=0.0,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%EISFAC3,  trim(COMP_NAME)//"_SHC_EISFAC3:",      default=0.0,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%PRNUM,   trim(COMP_NAME)//"_SHC_PRNUM:",       default=-0.9, RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LAMBDA,  trim(COMP_NAME)//"_SHC_LAMBDA:",      default=0.25, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LAMBDA,  trim(COMP_NAME)//"_SHC_LAMBDA:",      default=0.5,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%TSCALE,  trim(COMP_NAME)//"_SHC_TSCALE:",      default=400., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%CKVAL,   trim(COMP_NAME)//"_SHC_CK:",          default=0.1,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%CEFAC,   trim(COMP_NAME)//"_SHC_CEFAC:",       default=1.0,  RC=STATUS); VERIFY_(STATUS)
@@ -3269,10 +3303,13 @@ end if
      call MAPL_GetResource (MAPL, SL2TUNE,    'SL2TUNE:',    DEFAULT = 4.0   , RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, QT2TUNE,    'QT2TUNE:',    DEFAULT = 1.0   , RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, SLQT2TUNE,  'SLQT2TUNE:',  DEFAULT = 7.0   , RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, SKEW_TDIS,  'SKEW_TDIS:',  DEFAULT = 900.0,  RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, SKEW_TGEN,  'SKEW_TGEN:',  DEFAULT = 900.0,  RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, QT2_TDIS,   'QT2_TDIS:',   DEFAULT = 900.0,  RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, FREE_ATM_SIGS, 'FREE_ATM_SIGS:', DEFAULT = 0.05, RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, QT3_TDIS,   'QT3_TDIS:',  DEFAULT = 3600.0,  RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, QT3_TGEN,   'QT3_TGEN:',  DEFAULT = 150.0,  RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, QT2_TDIS,   'QT2_TDIS:',   DEFAULT = 3600.0,  RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, PDFA_TGEN,  'PDFA_TGEN:',  DEFAULT = 900.0,  RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, PDFA_TDIS,  'PDFA_TDIS:',  DEFAULT = 3600.0,  RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, MFQTFAC,  'MFQTFAC:',    DEFAULT = 6.0,  RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, FREE_ATM_SIGS, 'FREE_ATM_SIGS:', DEFAULT = 0.08, RC=STATUS); VERIFY_(STATUS)
 
 ! Get pointers from export state...
 !-----------------------------------
@@ -3629,6 +3666,7 @@ end if
 
    ! Calculate liquid water potential temperature (THL) and total water (QT)
     EXF=T/TH 
+    EXFH = (PLE/MAPL_P00)**MAPL_KAPPA
     THL=TH-(MAPL_ALHL*QLTOT+MAPL_ALHS*QITOT)/(MAPL_CP*EXF)
     QT=Q+QLTOT+QITOT
 
@@ -3640,7 +3678,7 @@ end if
       call MAPL_GetResource (MAPL, MFPARAMS%NUP,       "EDMF_NUMUP:",         default=10,    RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%DOTRACERS, "EDMF_DOTRACERS:",     default=.true., RC=STATUS)
       ! boundaries for the updraft area (min/max sigma of w pdf)
-      call MAPL_GetResource (MAPL, MFPARAMS%PWMIN,     "EDMF_PWMIN:",         default=1.2,   RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%PWMIN,     "EDMF_PWMIN:",         default=1.3,   RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%PWMAX,     "EDMF_PWMAX:",         default=3.,    RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%ENTUFAC,   "EDMF_ENTUFAC:",       default=2.0,   RC=STATUS)  
       call MAPL_GetResource (MAPL, MFPARAMS%WA,        "EDMF_WA:",            default=1.0,   RC=STATUS)
@@ -3793,7 +3831,9 @@ end if
                     THV,                      & 
                     Q,                        & 
                     QLTOT,                    & 
-                    QITOT,                    & 
+                    QITOT,                    &
+                    exf,                      &
+                    exfh,                     &
                     SH,                       & 
                     EVAP,                     & 
                     FRLAND,                   &
@@ -3954,6 +3994,8 @@ end if
         call RUN_SHOC( IM, JM, LM, LM+1, DT,  &
                        !== Inputs ==
                        SH(:,:),               &
+                       EIS(:,:),              &
+                       FRLAND(:,:),           &
                        LOBUKHOV(:,:),         &
                        PLO(:,:,1:LM),         &
                        ZL0(:,:,0:LM),         &
@@ -4526,9 +4568,12 @@ end if
                           sl2tune,        &
                           qt2tune,        &
                           slqt2tune,      &
-                          skew_tgen,      &
-                          skew_tdis,      &
-                          qt2_tdis,      &
+                          qt3_tgen,      &
+                          qt3_tdis,      &
+                          qt2_tdis,       &
+                          pdfa_tgen,      &
+                          pdfa_tdis,      &
+                          mfqtfac,        &
                           free_atm_sigs )
 
        end if
@@ -5813,7 +5858,8 @@ end subroutine RUN1
       real, dimension(:,:,:), pointer     :: DPDTTRB
       real, dimension(:,:,:), pointer     :: QTFLXTRB, SLFLXTRB, WSL, WQT, &
                                              TKH, UFLXTRB, VFLXTRB, QTX, SLX, &
-                                             SLFLXMF, QTFLXMF, MFAW, TKEDISS
+                                             SLFLXMF, QTFLXMF, MFAW, TKEDISS, &
+                                             SLFLXDIF, QTFLXDIF, SLFLXMFx, QTFLXMFx
 
       integer                             :: KM, K, L, I, J
       logical                             :: FRIENDLY
@@ -5867,6 +5913,10 @@ end subroutine RUN1
       call MAPL_GetPointer(EXPORT, SLFLXTRB , 'SLFLXTRB' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, UFLXTRB  , 'UFLXTRB'  , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, VFLXTRB  , 'VFLXTRB'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, QTFLXMFx , 'QTFLXMF' , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, SLFLXMFx , 'SLFLXMF' , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, QTFLXDIF , 'QTFLXDIF' , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, SLFLXDIF , 'SLFLXDIF' , RC=STATUS); VERIFY_(STATUS)
 
       ! MF contribution, used to calculate TRB fluxes above
       call MAPL_GetPointer(INTERNAL, SLFLXMF  , 'SLFLXMF'  , RC=STATUS); VERIFY_(STATUS)
@@ -6474,6 +6524,8 @@ end subroutine RUN1
             QTFLXMF(:,:,LM) = QTFLXMF(:,:,LM-1)
             QTFLXMF(:,:,0) = 0.
          end if
+         if (associated(QTFLXDIF)) QTFLXDIF = tmp3d
+         if (associated(QTFLXMFx)) QTFLXMFx = QTFLXMF
          if (associated(QTFLXTRB)) QTFLXTRB = tmp3d + QTFLXMF
          if (associated(WQT)) WQT = 0.5*( tmp3d(:,:,1:LM)+tmp3d(:,:,0:LM-1) + QTFLXMF(:,:,1:LM)+QTFLXMF(:,:,0:LM-1) ) 
       end if
@@ -6488,6 +6540,8 @@ end subroutine RUN1
             SLFLXMF(:,:,LM) = 0.
             SLFLXMF(:,:,0) = 0.
          end if
+         if (associated(SLFLXDIF)) SLFLXDIF = tmp3d/MAPL_CP
+         if (associated(SLFLXMFx)) SLFLXMFx = SLFLXMF
          if (associated(SLFLXTRB)) SLFLXTRB = tmp3d/MAPL_CP + SLFLXMF
          if (associated(WSL)) WSL = 0.5*( (tmp3d(:,:,1:LM)+tmp3d(:,:,0:LM-1))/MAPL_CP + SLFLXMF(:,:,1:LM)+SLFLXMF(:,:,0:LM-1) )         
       end if

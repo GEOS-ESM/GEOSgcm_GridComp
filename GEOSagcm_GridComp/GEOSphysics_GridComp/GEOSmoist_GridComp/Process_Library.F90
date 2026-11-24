@@ -854,8 +854,9 @@ module GEOSmoist_Process_Library
 
       ! 4. LIQUID RADII EVALUATION
       ! Pass grid-mean QL to perfectly balance the grid-mean drop concentration NL
-      if (QL > 0.0) then
-         RADIUS = LDRADIUS4(PL,TE,QL,NL,NI,1,CNV_FRC)
+      if ((F>0.) .and. (QL > 0.0)) then
+         QCm=QL/F
+         RADIUS = LDRADIUS4(PL,TE,QCm,NL,NI,1,CNV_FRC)
       else
          RADIUS = 0.0
       end if
@@ -931,8 +932,9 @@ module GEOSmoist_Process_Library
       
       ! 4. ICE RADII EVALUATION
       ! Pass grid-mean QI to perfectly balance the grid-mean crystal concentration NI
-      if (QI > 0.0) then
-         RADIUS = LDRADIUS4(PL,TE,QI,NL,NI,2,CNV_FRC)
+      if ((F>0.) .and. (QI > 0.0)) then
+         QCm=QI/F
+         RADIUS = LDRADIUS4(PL,TE,QCm,NL,NI,2,CNV_FRC)
       else
          RADIUS = 0.0
       end if
@@ -1121,7 +1123,7 @@ module GEOSmoist_Process_Library
              !                   
              ! Problem: DeMott activation severely underpredicts NNI in deep tropics
              ! (0.01-0.1 L^-1 vs observed 50-100 L^-1 from homogeneous freezing).
-             ! This produces unrealistically large ice crystals (r_eff > 150 μm)
+             ! This produces unrealistically large ice crystals (r_eff > 150 ?m)
              ! that make tropical anvils too transparent to radiation.
              !
              ! Tighter limits on the radius here prevents unrealistically large ice crystals
@@ -2764,7 +2766,7 @@ module GEOSmoist_Process_Library
 
     if (a > 0.001 .and. qt3bar > 0.0 .and. a /= 0.5) then
 
-      qt1 = a * qt2 / (1.0 - a)
+      qt1 = a * qt2 / (a - 1.0)
 
       fac = sqrt(a / (1.0 - a))
       tmp = max(0.0, qt2bar - (1.0 - a) * qt1**2 - a * qt2**2)
@@ -2808,7 +2810,7 @@ module GEOSmoist_Process_Library
     ! Calculate saturation mixing ratio for plume 1
     qsat1 = qsat + dqsat * t1pert
 
-    cq = 1.0 / (1.0 + beta * qsat1)
+    cq = 1.0 / (1.0 + beta * qsat)
     ct = (1.0 + beta * qtbar) * exner * &
          (MAPL_CP/MAPL_ALHL) * beta * qsat * cq**2
 
@@ -2836,11 +2838,11 @@ module GEOSmoist_Process_Library
 
     qc = qc1 * (1.0 - a) + qc2 * a
 
-    wqc = (1.0 - a) * w1 * qc1 + a * w2 * qc2
-!    wqc = (1.0 - a) * (w1 * qc1 + cld1 * (cq * sigw1 * sigqt1 * rwqt - &
-!                                         ct * sigw1 * sigt1 * rwth)) + &
-!                  a * (w2 * qc2 + cld2 * (cq * sigw2 * sigqt2 * rwqt - &
-!                                         ct * sigw2 * sigt2 * rwth))
+!    wqc = (1.0 - a) * w1 * qc1 + a * w2 * qc2
+    wqc = (1.0 - a) * (w1 * qc1 + cld1 * (cq * sigw1 * sigqt1 * rwqt - &
+                                         ct * sigw1 * sigt1 * rwth)) + &
+                  a * (w2 * qc2 + cld2 * (cq * sigw2 * sigqt2 * rwqt - &
+                                         ct * sigw2 * sigt2 * rwth))
 
     cld = (1.0 - a) * cld1 + a * cld2
 

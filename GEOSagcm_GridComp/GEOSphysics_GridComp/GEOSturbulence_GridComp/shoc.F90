@@ -38,6 +38,8 @@ module shoc
     real    :: LENFAC1
     real    :: LENFAC2
     real    :: LENFAC3
+    real    :: EISFAC2
+    real    :: EISFAC3
  endtype SHOCPARAMS_TYPE
  type (SHOCPARAMS_TYPE) :: shocparams
 
@@ -48,8 +50,8 @@ module shoc
  contains
 
  subroutine run_shoc( nx, ny, nzm, nz, dtn,                      &  ! in
-                 shf, lobukhov, prsl_inv, phii_inv, phil_inv,    &  ! in
-                 u_inv, v_inv,                                   &  ! in
+                 shf, eis, frland, lobukhov, prsl_inv,           &  ! in
+                 phii_inv, phil_inv, u_inv, v_inv,               &  ! in
                  omega_inv, tabs_inv, qwv_inv,                   &  ! in
                  qi_inv, qc_inv, qpi_inv,                        &  ! in
                  qpl_inv, cld_sgs_inv, wthv_sec_inv,             &  ! in
@@ -86,6 +88,8 @@ module shoc
   type(shocparams_type), intent(in) :: shocparams
   real, intent(in   ) :: dtn          ! Physics time step, s
   real, intent(in   ) :: shf(nx,ny)           ! Surface sensible heat flux, W/m2
+  real, intent(in   ) :: eis(nx,ny)           ! Estimated inversion strength (K)
+  real, intent(in   ) :: frland(nx,ny)        ! Land fraction
   real, intent(in   ) :: lobukhov(nx,ny)      ! Monin-Obukhov length, m
   real, intent(in   ) :: prsl_inv (nx,ny,nzm) ! mean layer presure
   real, intent(in   ) :: phii_inv (nx,ny,nz ) ! interface geopotential height
@@ -564,7 +568,7 @@ contains
 ! This subroutine computes the turbulent length scale
 
 ! Local variables
-    real    wrk, wrk1, wrk2, wrk3
+    real    wrk, wrk1, wrk2, wrk3, eisfac
     integer i, j, k, kk, kl, ku, kb, kc
     real :: z_target, z_transition_width, kludge_weight, kludge_factor
 
@@ -761,7 +765,8 @@ contains
 !                 smixt1(i,j,k) = sqrt(400.*tkes*vonk*zl(i,j,k))*shocparams%LENFAC1  ! original SHOC, includes TKE
 
                  ! Turbulent length scale
-                 smixt2(i,j,k) = sqrt(l_par(i,j,k)*400.*tkes)*shocparams%LENFAC2
+                 eisfac = (1.+(1.-FRLAND(i,j))*shocparams%EISFAC2*0.5*(1.+tanh(0.5*(eis(i,j)-6.))))
+                 smixt2(i,j,k) = sqrt(l_par(i,j,k)*400.*tkes)*shocparams%LENFAC2*eisfac
 
                  ! Stability length scale
                  ! Smoothly reduce sensitivity to stability within dry CBL or SBL,
@@ -776,7 +781,8 @@ contains
                  kludge_weight = 0.5 * (1.0 - tanh((zl(i,j,k) - z_target) / z_transition_width))
                  ! Scale the multiplier smoothly from 4.0 down to 1.0
                  kludge_factor = 1.0 + 3.0 * kludge_weight
-                 smixt3(i,j,k) = max(0.05,tkes) * kludge_factor * shocparams%LENFAC3 / (sqrt(brunt2(i,j,k)))
+                 eisfac = (1.+(1.-FRLAND(i,j))*shocparams%EISFAC3*0.5*(1.+tanh(0.5*(eis(i,j)-6.))))
+                 smixt3(i,j,k) = max(0.05,tkes) * kludge_factor * shocparams%LENFAC3*eisfac / (sqrt(brunt2(i,j,k)))
 
                  ! Limit component length scales to less than maximum
                  smixt1(i,j,k) = min(max_eddy_length_scale,smixt1(i,j,k))
@@ -858,10 +864,13 @@ contains
                            hl2tune,    &
                            qt2tune,    &
                            hlqt2tune,  &
-                           skew_tgen,  &
-                           skew_tdis,  &
-                           qt2_tdis,  &
-                           free_atm_qt2 )
+                           qt3_tgen,  &
+                           qt3_tdis,  &
+                           qt2_tdis,   &
+                           pdfa_tgen,  &
+                           pdfa_tdis,  &
+                           mfqtfac,    &
+                           free_atm_sigs )
 
 
     integer, intent(in   ) :: IM, JM, LM       ! dimensions
@@ -899,10 +908,13 @@ contains
     real,    intent(in   ) :: HL2TUNE,     &   ! tuning parameters
                               HLQT2TUNE,   &
                               QT2TUNE,     &
-                              SKEW_TGEN,   &
-                              SKEW_TDIS,   &
-                              QT2_TDIS,   &
-                              FREE_ATM_QT2
+                              QT3_TGEN,   &
+                              QT3_TDIS,   &
+                              QT2_TDIS,    &
+                              PDFA_TDIS,   &
+                              PDFA_TGEN,   &
+                              MFQTFAC,     &
+                              FREE_ATM_SIGS
 
     integer, intent(in   ) :: DOPROGQT2   ! prognostic QT2 switch
 
@@ -940,7 +952,7 @@ contains
         qtgrad(:,:,k)   = max(-0.0015*qt(:,:,k+1),wrk2 / (ZL(:,:,k)-ZL(:,:,k+1))) 
 
         ! Mean gradient production of total water variance, with and without MF contribution
-        qt2prod_edge(:,:,k) = (KH(:,:,k)*qtgrad(:,:,k)-MFWQT(:,:,k)-0.*WQT_DC(:,:,k))*qtgrad(:,:,k)
+        qt2prod_edge(:,:,k) = (KH(:,:,k)*qtgrad(:,:,k)-MFQTFAC*MFWQT(:,:,k)-0.*WQT_DC(:,:,k))*qtgrad(:,:,k)
 
         ! Covariance of total water mixing ratio and liquid/ice water static energy.  Eq 5 in BK13
         hlqt_edge(:,:,k) = HLQT2TUNE * sm * wrk1 * wrk2
@@ -953,7 +965,7 @@ contains
 
 
     ! value to relax QT2 above PBL, based on grid area
-    wrk3 = FREE_ATM_QT2*SQRT(SQRT(AREA/1.e10))
+    wrk3 = FREE_ATM_SIGS*SQRT(SQRT(AREA/1.e10))
 
     ! Full level calculations
     do k=1,LM
@@ -975,16 +987,17 @@ contains
               wrk2 = (wrk3*qt(:,:,k))**2
            elsewhere
               wrk2 = 0.
-           end where
-           qt2(:,:,k) = (qt2(:,:,k)+(wrk1+wrk2/QT2_TDIS)*DT) / (1. + DT/QT2_TDIS)
+           end where  !  TDIS ~ 1 / (1/QT2_TDIS + KH/10000)
+!           qt2(:,:,k) = (qt2(:,:,k)+(wrk1+wrk2/QT2_TDIS)*DT) / (1. + DT/QT2_TDIS)
+           qt2(:,:,k) = (qt2(:,:,k)+(wrk1+wrk2/QT2_TDIS)*DT) / (1. + DT*(1./QT2_TDIS+KH(:,:,k)/1e4))
         else
-           qt2(:,:,k) = QT2TUNE*SKEW_TGEN*wrk1
+           qt2(:,:,k) = QT2TUNE*QT2_TDIS*wrk1
         end if
 
         hlqt(:,:,k) = onemmf*0.5*( hlqt_edge(:,:,kd) + hlqt_edge(:,:,ku) ) + MFHLQT(:,:,k)
 
         ! Restrict QT variance, 2-25% of total water.
-        qt2(:,:,k) = max(min(qt2(:,:,k),(0.25*QT(:,:,k))**2),(0.02*QT(:,:,k))**2)
+        qt2(:,:,k) = max(min(qt2(:,:,k),(0.3*QT(:,:,k))**2),(0.01*QT(:,:,k))**2)
         ! Restrict HL variance
         hl2(:,:,k) = max(min(hl2(:,:,k),HL2MAX),HL2MIN)
 
@@ -995,22 +1008,24 @@ contains
        
     ! Update PDF_A and third moments
     if (DOPROGQT2 /= 0) then
-       if (SKEW_TDIS.gt.0.) then
-         pdf_a = (pdf_a+mffrc*DT/SKEW_TGEN)/(1.+DT/SKEW_TDIS)
+       if (PDFA_TDIS.gt.0.) then
+!         pdf_a = (pdf_a+mffrc*DT/PDFA_TGEN)/(1.+DT/PDFA_TDIS)
+         pdf_a = (pdf_a+mffrc*DT/PDFA_TGEN)/(1.+DT*(1./PDFA_TDIS+KH(:,:,1:LM)/1e4))
        else
-         pdf_a = pdf_a/(1.-DT/SKEW_TDIS)
+         pdf_a = pdf_a/(1.-DT/PDFA_TDIS)
        end if
        where (mffrc.gt.pdf_a)
          pdf_a = mffrc
        end where
-       qt3 = ( qt3 + max(MFQT3,0.)*DT/SKEW_TGEN ) / ( 1. + DT/SKEW_TDIS )
+!       qt3 = ( qt3 + max(MFQT3,0.)*DT/QT3_TGEN ) / ( 1. + DT/QT3_TDIS )
+       qt3 = ( qt3 + max(MFQT3,0.)*DT/QT3_TGEN ) / ( 1. + DT*(1./QT3_TDIS+KH(:,:,1:LM)/1e4) )
     else
        pdf_a = mffrc
        qt3 = max(MFQT3,0.) 
     end if
     pdf_a = min(0.5,max(0.,pdf_a))
 
-    qt3 = min(( qt3 + max(MFQT3,0.)*DT/SKEW_TGEN ) / ( 1. + DT/SKEW_TDIS ),10.*qt2**1.5)
+    qt3 = min(qt3,10.*qt2**1.5)
     hl3 = max(MFHL3,-10.*hl2**1.5)
     w3  = MFW3
 
