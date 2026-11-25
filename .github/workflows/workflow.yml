@@ -36,7 +36,8 @@ jobs:
     with:
       compiler: ${{ matrix.compiler }}
       cmake-build-type: ${{ matrix.build-type }}
-      fixture-repo: GEOS-ESM/GEOSgcm
+      fixture-repo: ${{ matrix.fixture-repo }}
+      run-mepo-develop: ${{ matrix.run-mepo-develop }}
 
   spack_build:
     strategy:
@@ -52,6 +53,7 @@ jobs:
       BUILDCACHE_USERNAME: ${{ secrets.BUILDCACHE_USERNAME }}
       BUILDCACHE_TOKEN: ${{ secrets.BUILDCACHE_TOKEN }}
     with:
-      fixture-repo: GEOS-ESM/GEOSgcm
+      fixture-repo: ${{ matrix.fixture-repo }}
+      run-mepo-develop: ${{ matrix.run-mepo-develop }}
       load-fms: true
 
