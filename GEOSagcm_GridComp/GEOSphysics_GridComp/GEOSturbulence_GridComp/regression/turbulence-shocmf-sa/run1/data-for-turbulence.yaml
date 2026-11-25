@@ -1,0 +1,239 @@
+# The 44 unconditional imports of TURBULENCE (Turbulence_StateSpecs.rc; the
+# sea-spray and SCM imports are off), restarted from the MAPL2 import state
+# captured before the run phase. Standard names and units as in the specs.
+mapl:
+
+  setServices:
+    sharedObj: libconfigurable_gridcomp
+    userRoutine: setservices_
+
+  misc:
+    restart:
+      internal: true
+
+  states:
+    internal:
+      PHIS:
+        standard_name: "surface geopotential"
+        units: "m+2 s-2"
+        vertical_dim_spec: "none"
+      AREA:
+        standard_name: "grid_box_area"
+        units: "m^2"
+        vertical_dim_spec: "none"
+      PLE:
+        standard_name: "air_pressure"
+        units: "Pa"
+        vertical_dim_spec: "edge"
+      ZLE:
+        standard_name: "geopotential_height"
+        units: "m"
+        vertical_dim_spec: "edge"
+      T:
+        standard_name: "air_temperature"
+        units: "K"
+        vertical_dim_spec: "center"
+      TH:
+        standard_name: "potential_temperature"
+        units: "K"
+        vertical_dim_spec: "center"
+      QV:
+        standard_name: "specific_humidity"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      QLTOT:
+        standard_name: "liquid_condensate_mixing_ratio"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      QITOT:
+        standard_name: "frozen_condensate_mixing_ratio"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      QRTOT:
+        standard_name: "suspended_rain_mixing_ratio"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      QSTOT:
+        standard_name: "suspended_snow_mixing_ratio"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      QGTOT:
+        standard_name: "suspended_graupel_mixing_ratio"
+        units: "kg kg-1"
+        vertical_dim_spec: "center"
+      FCLD:
+        standard_name: "cloud_fraction"
+        units: "1"
+        vertical_dim_spec: "center"
+      U:
+        standard_name: "eastward_wind"
+        units: "m s-1"
+        vertical_dim_spec: "center"
+      V:
+        standard_name: "northward_wind"
+        units: "m s-1"
+        vertical_dim_spec: "center"
+      CT:
+        standard_name: "surface_heat_exchange_coefficient"
+        units: "kg m-2 s-1"
+        vertical_dim_spec: "none"
+      CQ:
+        standard_name: "surface_moisture_exchange_coefficient"
+        units: "kg m-2 s-1"
+        vertical_dim_spec: "none"
+      CM:
+        standard_name: "surface_momentum_exchange_coefficient"
+        units: "kg m-2 s-1"
+        vertical_dim_spec: "none"
+      BSTAR:
+        standard_name: "surface_bouyancy_scale"
+        units: "m s-2"
+        vertical_dim_spec: "none"
+      USTAR:
+        standard_name: "surface_velocity_scale"
+        units: "m s-1"
+        vertical_dim_spec: "none"
+      Z0:
+        standard_name: "surface_roughness"
+        units: "m"
+        vertical_dim_spec: "none"
+      Z0H:
+        standard_name: "surface_roughness_for_heat"
+        units: "m"
+        vertical_dim_spec: "none"
+      EIS:
+        standard_name: "estimated_inversion_strength"
+        units: "K"
+        vertical_dim_spec: "none"
+      FRLAND:
+        standard_name: "land_fraction"
+        units: "1"
+        vertical_dim_spec: "none"
+      RADLW:
+        standard_name: "air_temperature_tendency_due_to_longwave"
+        units: "K s-1"
+        vertical_dim_spec: "center"
+      RADLWC:
+        standard_name: "clearsky_air_temperature_tendency_lw"
+        units: "K s-1"
+        vertical_dim_spec: "center"
+      PREF:
+        standard_name: "reference_air_pressure"
+        units: "Pa"
+        dims: "z"
+        vertical_dim_spec: "edge"
+      VARFLT:
+        standard_name: "variance_of_filtered_topography"
+        units: "m+2"
+        vertical_dim_spec: "none"
+      S:
+        standard_name: "dry_static_energy"
+        units: "m+2 s-2"
+        vertical_dim_spec: "center"
+      UAFMOIST:
+        standard_name: "eastward_wind_after_moist"
+        units: "m s-1"
+        vertical_dim_spec: "center"
+      VAFMOIST:
+        standard_name: "northward_wind_after_moist"
+        units: "m s-1"
+        vertical_dim_spec: "center"
+      SHAT:
+        standard_name: "surface_value_of_dry_static_energy"
+        units: "m+2 s-2"
+        vertical_dim_spec: "none"
+      UHAT:
+        standard_name: "surface_value_of_eastward_wind"
+        units: "m s-1"
+        vertical_dim_spec: "none"
+      VHAT:
+        standard_name: "surface_value_of_northward_wind"
+        units: "m s-1"
+        vertical_dim_spec: "none"
+      QHAT:
+        standard_name: "surface_value_of_specific_humidity"
+        units: "kg kg-1"
+        vertical_dim_spec: "none"
+      SDEL:
+        standard_name: "change_of_surface_value_of_dry_static_energy"
+        units: "m+2 s-2"
+        vertical_dim_spec: "none"
+      UDEL:
+        standard_name: "change_of_surface_value_of_eastward_wind"
+        units: "m s-1"
+        vertical_dim_spec: "none"
+      VDEL:
+        standard_name: "change_of_surface_value_of_northward_wind"
+        units: "m s-1"
+        vertical_dim_spec: "none"
+      QDEL:
+        standard_name: "change_of_surface_value_of_specific_humidity"
+        units: "kg kg-1"
+        vertical_dim_spec: "none"
+      OMEGA:
+        standard_name: "vertical_pressure_velocity"
+        units: "Pa s-1"
+        vertical_dim_spec: "center"
+      EVAP:
+        standard_name: "surface_evaporation"
+        units: "kg m-2 s-1"
+        vertical_dim_spec: "none"
+      SH:
+        standard_name: "surface_sensible_heat_flux"
+        units: "W m-2"
+        vertical_dim_spec: "none"
+      WTHV2:
+        standard_name: "Buoyancy_flux_for_SHOC_TKE"
+        units: "1"
+        vertical_dim_spec: "center"
+      WQT_DC:
+        standard_name: "Total_water_flux_from_deep_convection"
+        units: "kg kg-1 m s-1"
+        vertical_dim_spec: "edge"
+
+  # Re-export each internal, so it can be connected to TURBULENCE (as DataForMoist)
+  connections:
+    - {src_comp: "<self>", src_name: PHIS, src_intent: internal, dst_comp: "<self>", dst_name: PHIS, dst_intent: export}
+    - {src_comp: "<self>", src_name: AREA, src_intent: internal, dst_comp: "<self>", dst_name: AREA, dst_intent: export}
+    - {src_comp: "<self>", src_name: PLE, src_intent: internal, dst_comp: "<self>", dst_name: PLE, dst_intent: export}
+    - {src_comp: "<self>", src_name: ZLE, src_intent: internal, dst_comp: "<self>", dst_name: ZLE, dst_intent: export}
+    - {src_comp: "<self>", src_name: T, src_intent: internal, dst_comp: "<self>", dst_name: T, dst_intent: export}
+    - {src_comp: "<self>", src_name: TH, src_intent: internal, dst_comp: "<self>", dst_name: TH, dst_intent: export}
+    - {src_comp: "<self>", src_name: QV, src_intent: internal, dst_comp: "<self>", dst_name: QV, dst_intent: export}
+    - {src_comp: "<self>", src_name: QLTOT, src_intent: internal, dst_comp: "<self>", dst_name: QLTOT, dst_intent: export}
+    - {src_comp: "<self>", src_name: QITOT, src_intent: internal, dst_comp: "<self>", dst_name: QITOT, dst_intent: export}
+    - {src_comp: "<self>", src_name: QRTOT, src_intent: internal, dst_comp: "<self>", dst_name: QRTOT, dst_intent: export}
+    - {src_comp: "<self>", src_name: QSTOT, src_intent: internal, dst_comp: "<self>", dst_name: QSTOT, dst_intent: export}
+    - {src_comp: "<self>", src_name: QGTOT, src_intent: internal, dst_comp: "<self>", dst_name: QGTOT, dst_intent: export}
+    - {src_comp: "<self>", src_name: FCLD, src_intent: internal, dst_comp: "<self>", dst_name: FCLD, dst_intent: export}
+    - {src_comp: "<self>", src_name: U, src_intent: internal, dst_comp: "<self>", dst_name: U, dst_intent: export}
+    - {src_comp: "<self>", src_name: V, src_intent: internal, dst_comp: "<self>", dst_name: V, dst_intent: export}
+    - {src_comp: "<self>", src_name: CT, src_intent: internal, dst_comp: "<self>", dst_name: CT, dst_intent: export}
+    - {src_comp: "<self>", src_name: CQ, src_intent: internal, dst_comp: "<self>", dst_name: CQ, dst_intent: export}
+    - {src_comp: "<self>", src_name: CM, src_intent: internal, dst_comp: "<self>", dst_name: CM, dst_intent: export}
+    - {src_comp: "<self>", src_name: BSTAR, src_intent: internal, dst_comp: "<self>", dst_name: BSTAR, dst_intent: export}
+    - {src_comp: "<self>", src_name: USTAR, src_intent: internal, dst_comp: "<self>", dst_name: USTAR, dst_intent: export}
+    - {src_comp: "<self>", src_name: Z0, src_intent: internal, dst_comp: "<self>", dst_name: Z0, dst_intent: export}
+    - {src_comp: "<self>", src_name: Z0H, src_intent: internal, dst_comp: "<self>", dst_name: Z0H, dst_intent: export}
+    - {src_comp: "<self>", src_name: EIS, src_intent: internal, dst_comp: "<self>", dst_name: EIS, dst_intent: export}
+    - {src_comp: "<self>", src_name: FRLAND, src_intent: internal, dst_comp: "<self>", dst_name: FRLAND, dst_intent: export}
+    - {src_comp: "<self>", src_name: RADLW, src_intent: internal, dst_comp: "<self>", dst_name: RADLW, dst_intent: export}
+    - {src_comp: "<self>", src_name: RADLWC, src_intent: internal, dst_comp: "<self>", dst_name: RADLWC, dst_intent: export}
+    - {src_comp: "<self>", src_name: PREF, src_intent: internal, dst_comp: "<self>", dst_name: PREF, dst_intent: export}
+    - {src_comp: "<self>", src_name: VARFLT, src_intent: internal, dst_comp: "<self>", dst_name: VARFLT, dst_intent: export}
+    - {src_comp: "<self>", src_name: S, src_intent: internal, dst_comp: "<self>", dst_name: S, dst_intent: export}
+    - {src_comp: "<self>", src_name: UAFMOIST, src_intent: internal, dst_comp: "<self>", dst_name: UAFMOIST, dst_intent: export}
+    - {src_comp: "<self>", src_name: VAFMOIST, src_intent: internal, dst_comp: "<self>", dst_name: VAFMOIST, dst_intent: export}
+    - {src_comp: "<self>", src_name: SHAT, src_intent: internal, dst_comp: "<self>", dst_name: SHAT, dst_intent: export}
+    - {src_comp: "<self>", src_name: UHAT, src_intent: internal, dst_comp: "<self>", dst_name: UHAT, dst_intent: export}
+    - {src_comp: "<self>", src_name: VHAT, src_intent: internal, dst_comp: "<self>", dst_name: VHAT, dst_intent: export}
+    - {src_comp: "<self>", src_name: QHAT, src_intent: internal, dst_comp: "<self>", dst_name: QHAT, dst_intent: export}
+    - {src_comp: "<self>", src_name: SDEL, src_intent: internal, dst_comp: "<self>", dst_name: SDEL, dst_intent: export}
+    - {src_comp: "<self>", src_name: UDEL, src_intent: internal, dst_comp: "<self>", dst_name: UDEL, dst_intent: export}
+    - {src_comp: "<self>", src_name: VDEL, src_intent: internal, dst_comp: "<self>", dst_name: VDEL, dst_intent: export}
+    - {src_comp: "<self>", src_name: QDEL, src_intent: internal, dst_comp: "<self>", dst_name: QDEL, dst_intent: export}
+    - {src_comp: "<self>", src_name: OMEGA, src_intent: internal, dst_comp: "<self>", dst_name: OMEGA, dst_intent: export}
+    - {src_comp: "<self>", src_name: EVAP, src_intent: internal, dst_comp: "<self>", dst_name: EVAP, dst_intent: export}
+    - {src_comp: "<self>", src_name: SH, src_intent: internal, dst_comp: "<self>", dst_name: SH, dst_intent: export}
+    - {src_comp: "<self>", src_name: WTHV2, src_intent: internal, dst_comp: "<self>", dst_name: WTHV2, dst_intent: export}
+    - {src_comp: "<self>", src_name: WQT_DC, src_intent: internal, dst_comp: "<self>", dst_name: WQT_DC, dst_intent: export}

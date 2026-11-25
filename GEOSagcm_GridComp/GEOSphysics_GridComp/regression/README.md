@@ -1,6 +1,6 @@
 # GEOSphysics regression tests
 
-Standalone MAPL3 regression cases for the Physics components that have no regression directory of their own. Each case runs one component under a configurable `Root`, with every import supplied from a restarted "DataFor*" gridcomp, and compares the resulting checkpoints against a stored baseline. GWD (`../GEOSgwd_GridComp/regression/`) and Radiation (`../@GEOSradiation_GridComp/regression/`) keep their own.
+Standalone MAPL3 regression cases for the Physics components that have no regression directory of their own. Each case runs one component under a configurable `Root`, with every import supplied from a restarted "DataFor*" gridcomp, and compares the resulting checkpoints against a stored baseline. GWD (`../GEOSgwd_GridComp/regression/`), Turbulence (`../GEOSturbulence_GridComp/regression/`) and Radiation (`../@GEOSradiation_GridComp/regression/`) keep their own.
 
 | Case       | Component run | States compared by ctest       | Status |
 |------------|---------------|--------------------------------|--------|

@@ -1,0 +1,84 @@
+---
+# TURBULENCE's Run1 alone. TURBULENCE's TRADV subscription (SHOC on) is left
+# unconnected, as Moist's.
+mapl:
+
+  setServices:
+    sharedObj: libconfigurable_gridcomp
+    userRoutine: setservices_
+
+  geometry:
+    esmf_geom:
+      class: CubedSphere
+      im_world: 12
+    vertical_grid:
+      grid_type: model
+      fields: {pressure: PLE}
+      num_levels: 181
+
+  children:
+    DataForTurbulence:
+      dso: libconfigurable_gridcomp.so
+      setservices: setservices_
+      config_file: data-for-turbulence.yaml
+
+    DataTracers:
+      dso: libconfigurable_gridcomp.so
+      setservices: setservices_
+      config_file: data-tracers.yaml
+
+    TURBULENCE:
+      dso: libGEOSturbulence_GridComp.so
+      setservices: turbulence_setservices_
+      config_file: turbulence.yaml
+      run_phases: [Run1]
+
+  connections:
+    - {name: PHIS, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: AREA, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: PLE, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: ZLE, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: T, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: TH, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: QV, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: QLTOT, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: QITOT, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: QRTOT, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: QSTOT, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: QGTOT, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: FCLD, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: U, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: V, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: CT, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: CQ, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: CM, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: BSTAR, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: USTAR, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: Z0, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: Z0H, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: EIS, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: FRLAND, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: RADLW, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: RADLWC, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: PREF, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: VARFLT, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: S, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: UAFMOIST, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: VAFMOIST, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: SHAT, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: UHAT, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: VHAT, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: QHAT, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: SDEL, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: UDEL, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: VDEL, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: QDEL, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: OMEGA, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: EVAP, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: SH, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: WTHV2, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: WQT_DC, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - src_name: TRDIFF
+      src_comp: TURBULENCE
+      dst_name: TRDIFF
+      dst_comp: DataTracers

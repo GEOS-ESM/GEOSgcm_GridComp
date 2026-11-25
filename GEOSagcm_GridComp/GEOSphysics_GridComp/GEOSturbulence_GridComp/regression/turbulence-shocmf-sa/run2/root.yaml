@@ -1,0 +1,188 @@
+---
+# TURBULENCE's Run1 then Run2 (TurbulencePhasesDriver_GridComp). Between the
+# phases the driver sets the imports that MAPL2's Surface (and Physics) change
+# between Run1 and Run2 to their captured values before Run2: for each X in
+# phase2_fields it imports X (the same field as TURBULENCE's import X, both
+# connected to DataForTurbulence) and X_PHASE2 (DataPhase2, restarted from the
+# MAPL2 import state before Run2). The list is every import that differs
+# between the "after Run1" and "before Run2" captures.
+phase2_fields: [EVAP, QDEL, QHAT, S, SDEL, SH, T, TH, USTAR]
+
+mapl:
+
+  setServices:
+    sharedObj: libTurbulencePhasesDriver_GridComp
+    userRoutine: turbulencephasesdriver_setservices_
+
+  geometry:
+    esmf_geom:
+      class: CubedSphere
+      im_world: 12
+    vertical_grid:
+      grid_type: model
+      fields: {pressure: PLE}
+      num_levels: 181
+
+  states:
+    import:
+      EVAP:
+        standard_name: "surface_evaporation"
+        units: "kg m-2 s-1"
+        vertical_dim_spec: "none"
+      EVAP_PHASE2:
+        standard_name: "surface_evaporation"
+        units: "kg m-2 s-1"
+        vertical_dim_spec: "none"
+      QDEL:
+        standard_name: "change_of_surface_value_of_specific_humidity"
+        units: "kg kg-1"
+        vertical_dim_spec: "none"
+      QDEL_PHASE2:
+        standard_name: "change_of_surface_value_of_specific_humidity"
+        units: "kg kg-1"
+        vertical_dim_spec: "none"
+      QHAT:
+        standard_name: "surface_value_of_specific_humidity"
+        units: "kg kg-1"
+        vertical_dim_spec: "none"
+      QHAT_PHASE2:
+        standard_name: "surface_value_of_specific_humidity"
+        units: "kg kg-1"
+        vertical_dim_spec: "none"
+      S:
+        standard_name: "dry_static_energy"
+        units: "m+2 s-2"
+        vertical_dim_spec: "center"
+      S_PHASE2:
+        standard_name: "dry_static_energy"
+        units: "m+2 s-2"
+        vertical_dim_spec: "center"
+      SDEL:
+        standard_name: "change_of_surface_value_of_dry_static_energy"
+        units: "m+2 s-2"
+        vertical_dim_spec: "none"
+      SDEL_PHASE2:
+        standard_name: "change_of_surface_value_of_dry_static_energy"
+        units: "m+2 s-2"
+        vertical_dim_spec: "none"
+      SH:
+        standard_name: "surface_sensible_heat_flux"
+        units: "W m-2"
+        vertical_dim_spec: "none"
+      SH_PHASE2:
+        standard_name: "surface_sensible_heat_flux"
+        units: "W m-2"
+        vertical_dim_spec: "none"
+      T:
+        standard_name: "air_temperature"
+        units: "K"
+        vertical_dim_spec: "center"
+      T_PHASE2:
+        standard_name: "air_temperature"
+        units: "K"
+        vertical_dim_spec: "center"
+      TH:
+        standard_name: "potential_temperature"
+        units: "K"
+        vertical_dim_spec: "center"
+      TH_PHASE2:
+        standard_name: "potential_temperature"
+        units: "K"
+        vertical_dim_spec: "center"
+      USTAR:
+        standard_name: "surface_velocity_scale"
+        units: "m s-1"
+        vertical_dim_spec: "none"
+      USTAR_PHASE2:
+        standard_name: "surface_velocity_scale"
+        units: "m s-1"
+        vertical_dim_spec: "none"
+
+  children:
+    DataForTurbulence:
+      dso: libconfigurable_gridcomp.so
+      setservices: setservices_
+      config_file: data-for-turbulence.yaml
+
+    DataPhase2:
+      dso: libconfigurable_gridcomp.so
+      setservices: setservices_
+      config_file: data-phase2.yaml
+
+    DataTracers:
+      dso: libconfigurable_gridcomp.so
+      setservices: setservices_
+      config_file: data-tracers.yaml
+
+    TURBULENCE:
+      dso: libGEOSturbulence_GridComp.so
+      setservices: turbulence_setservices_
+      config_file: turbulence.yaml
+
+  connections:
+    - {name: PHIS, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: AREA, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: PLE, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: ZLE, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: T, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: TH, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: QV, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: QLTOT, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: QITOT, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: QRTOT, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: QSTOT, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: QGTOT, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: FCLD, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: U, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: V, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: CT, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: CQ, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: CM, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: BSTAR, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: USTAR, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: Z0, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: Z0H, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: EIS, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: FRLAND, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: RADLW, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: RADLWC, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: PREF, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: VARFLT, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: S, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: UAFMOIST, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: VAFMOIST, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: SHAT, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: UHAT, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: VHAT, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: QHAT, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: SDEL, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: UDEL, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: VDEL, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: QDEL, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: OMEGA, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: EVAP, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: SH, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: WTHV2, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: WQT_DC, src_comp: DataForTurbulence, dst_comp: TURBULENCE}
+    - {name: EVAP, src_comp: DataForTurbulence, dst_comp: "<self>"}
+    - {src_name: EVAP, src_comp: DataPhase2, dst_name: EVAP_PHASE2, dst_comp: "<self>"}
+    - {name: QDEL, src_comp: DataForTurbulence, dst_comp: "<self>"}
+    - {src_name: QDEL, src_comp: DataPhase2, dst_name: QDEL_PHASE2, dst_comp: "<self>"}
+    - {name: QHAT, src_comp: DataForTurbulence, dst_comp: "<self>"}
+    - {src_name: QHAT, src_comp: DataPhase2, dst_name: QHAT_PHASE2, dst_comp: "<self>"}
+    - {name: S, src_comp: DataForTurbulence, dst_comp: "<self>"}
+    - {src_name: S, src_comp: DataPhase2, dst_name: S_PHASE2, dst_comp: "<self>"}
+    - {name: SDEL, src_comp: DataForTurbulence, dst_comp: "<self>"}
+    - {src_name: SDEL, src_comp: DataPhase2, dst_name: SDEL_PHASE2, dst_comp: "<self>"}
+    - {name: SH, src_comp: DataForTurbulence, dst_comp: "<self>"}
+    - {src_name: SH, src_comp: DataPhase2, dst_name: SH_PHASE2, dst_comp: "<self>"}
+    - {name: T, src_comp: DataForTurbulence, dst_comp: "<self>"}
+    - {src_name: T, src_comp: DataPhase2, dst_name: T_PHASE2, dst_comp: "<self>"}
+    - {name: TH, src_comp: DataForTurbulence, dst_comp: "<self>"}
+    - {src_name: TH, src_comp: DataPhase2, dst_name: TH_PHASE2, dst_comp: "<self>"}
+    - {name: USTAR, src_comp: DataForTurbulence, dst_comp: "<self>"}
+    - {src_name: USTAR, src_comp: DataPhase2, dst_name: USTAR_PHASE2, dst_comp: "<self>"}
+    - src_name: TRDIFF
+      src_comp: TURBULENCE
+      dst_name: TRDIFF
+      dst_comp: DataTracers

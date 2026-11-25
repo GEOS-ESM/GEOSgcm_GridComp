@@ -1,0 +1,74 @@
+# Activates (requests) the TURBULENCE exports the MAPL2 run had allocated
+# (requested by History or by other components, or ALLOC'd): those in the MAPL2
+# export capture, less the TRI bundle members and the fields that are internals
+# in MAPL3 (always active), and less the 7 that are never written with SHOC on
+# (no Lock, no Louis): DU, DBUOY, WERAD, ZCLD, ZRADBS, ZRADML, ZSML (MAPL3 would
+# leave them uninitialized, MAPL2 zeroed them). Requesting a field changes what
+# MAPL2's ALLOC= and associated() tests do, so this list reproduces the MAPL2
+# run. A collection that never writes (start after the cap stop) still connects
+# its fields. No geom/vertical_grid: native grid.
+mapl:
+  setServices:
+    sharedObj: libMAPL.history
+
+active_collections:
+  - turbulence
+
+time_specs:
+  never: &never
+    frequency: PT20M
+    start: "3000-01-01T00:00:00"
+
+collections:
+  turbulence:
+    template: "%c.%y4%m2%d2_%h2%n2z.nc4"
+    time_spec: *never
+    var_list:
+      BRUNTSHOC:     {source: TURBULENCE.BRUNTSHOC}
+      DPDTTRB:       {source: TURBULENCE.DPDTTRB}
+      EDMF_DQRDT:    {source: TURBULENCE.EDMF_DQRDT}
+      EDMF_DQSDT:    {source: TURBULENCE.EDMF_DQSDT}
+      EDMF_FRC:      {source: TURBULENCE.EDMF_FRC}
+      EDMF_WQT:      {source: TURBULENCE.EDMF_WQT}
+      EDMF_WSL:      {source: TURBULENCE.EDMF_WSL}
+      EKH:           {source: TURBULENCE.EKH}
+      EKM:           {source: TURBULENCE.EKM}
+      INTDIS:        {source: TURBULENCE.INTDIS}
+      ISOTROPY:      {source: TURBULENCE.ISOTROPY}
+      KH:            {source: TURBULENCE.KH}
+      KHLS:          {source: TURBULENCE.KHLS}
+      KHRAD:         {source: TURBULENCE.KHRAD}
+      KHSFC:         {source: TURBULENCE.KHSFC}
+      KM:            {source: TURBULENCE.KM}
+      KMLS:          {source: TURBULENCE.KMLS}
+      KPBL:          {source: TURBULENCE.KPBL}
+      KPBL_SC:       {source: TURBULENCE.KPBL_SC}
+      LOBUKHOV:      {source: TURBULENCE.LOBUKHOV}
+      LWCRT:         {source: TURBULENCE.LWCRT}
+      PPBL:          {source: TURBULENCE.PPBL}
+      QAFDIFFUSE:    {source: TURBULENCE.QAFDIFFUSE}
+      QDFL:          {source: TURBULENCE.QDFL}
+      QFLX:          {source: TURBULENCE.QFLX}
+      QT:            {source: TURBULENCE.QT}
+      RI:            {source: TURBULENCE.RI}
+      SAFDIFFUSE:    {source: TURBULENCE.SAFDIFFUSE}
+      SAFUPDATE:     {source: TURBULENCE.SAFUPDATE}
+      SDFL:          {source: TURBULENCE.SDFL}
+      SFLX:          {source: TURBULENCE.SFLX}
+      SL:            {source: TURBULENCE.SL}
+      SL2:           {source: TURBULENCE.SL2}
+      SL3:           {source: TURBULENCE.SL3}
+      SLQT:          {source: TURBULENCE.SLQT}
+      SRFDIS:        {source: TURBULENCE.SRFDIS}
+      TKE:           {source: TURBULENCE.TKE}
+      TOPDIS:        {source: TURBULENCE.TOPDIS}
+      UAFDIFFUSE:    {source: TURBULENCE.UAFDIFFUSE}
+      UDFL:          {source: TURBULENCE.UDFL}
+      UFLX:          {source: TURBULENCE.UFLX}
+      VAFDIFFUSE:    {source: TURBULENCE.VAFDIFFUSE}
+      VDFL:          {source: TURBULENCE.VDFL}
+      VFLX:          {source: TURBULENCE.VFLX}
+      W2:            {source: TURBULENCE.W2}
+      W3:            {source: TURBULENCE.W3}
+      WQT:           {source: TURBULENCE.WQT}
+      WSL:           {source: TURBULENCE.WSL}

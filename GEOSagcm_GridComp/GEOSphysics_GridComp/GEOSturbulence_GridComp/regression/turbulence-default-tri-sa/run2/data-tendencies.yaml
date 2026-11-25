@@ -1,0 +1,48 @@
+# Receives TURBULENCE's tendency exports, so that they are written to a
+# checkpoint and compared (the exports are RESTART: SKIP internals, which MAPL3
+# does not write to a checkpoint; this component's imports are). Connecting them
+# also requests them, as History would (MAPL2 exported them all).
+mapl:
+
+  setServices:
+    sharedObj: libconfigurable_gridcomp
+    userRoutine: setservices_
+
+  misc:
+    checkpoint:
+      import: true
+
+  states:
+    import:
+      SIT:
+        standard_name: "pressure_weighted_tendency_of_dry_static_energy_due_to_turbulence"
+        units: "Pa m+2 s-3"
+        vertical_dim_spec: "center"
+      UIT:
+        standard_name: "tendency_of_eastward_wind_due_to_turbulence"
+        units: "m s-2"
+        vertical_dim_spec: "center"
+      VIT:
+        standard_name: "tendency_of_northward_wind_due_to_turbulence"
+        units: "m s-2"
+        vertical_dim_spec: "center"
+      TKESHOCIT:
+        standard_name: "tendency_of_TKE_due_to_turbulence_transport"
+        units: "m2 s-3"
+        vertical_dim_spec: "center"
+      QVIT:
+        standard_name: "tendency_of_specific_humidity_due_to_turbulence"
+        units: "kg kg-1 s-1"
+        vertical_dim_spec: "center"
+      QLLSIT:
+        standard_name: "tendency_of_liquid_condensate_due_to_turbulence"
+        units: "kg kg-1 s-1"
+        vertical_dim_spec: "center"
+      QILSIT:
+        standard_name: "tendency_of_frozen_condensate_due_to_turbulence"
+        units: "kg kg-1 s-1"
+        vertical_dim_spec: "center"
+      OXIT:
+        standard_name: "tendency_of_OX_due_to_turbulence"
+        units: "UNITS"
+        vertical_dim_spec: "center"

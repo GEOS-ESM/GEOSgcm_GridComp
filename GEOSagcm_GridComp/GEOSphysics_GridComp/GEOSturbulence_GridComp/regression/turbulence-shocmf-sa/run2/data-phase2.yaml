@@ -1,0 +1,63 @@
+# TURBULENCE imports that change between MAPL2's Run1 and Run2, restarted
+# from the import state captured before Run2. The driver copies them into
+# DataForTurbulence's fields between the phases (root.yaml).
+mapl:
+
+  setServices:
+    sharedObj: libconfigurable_gridcomp
+    userRoutine: setservices_
+
+  misc:
+    restart:
+      internal: true
+
+  states:
+    internal:
+      EVAP:
+        standard_name: "surface_evaporation"
+        units: "kg m-2 s-1"
+        vertical_dim_spec: "none"
+      QDEL:
+        standard_name: "change_of_surface_value_of_specific_humidity"
+        units: "kg kg-1"
+        vertical_dim_spec: "none"
+      QHAT:
+        standard_name: "surface_value_of_specific_humidity"
+        units: "kg kg-1"
+        vertical_dim_spec: "none"
+      S:
+        standard_name: "dry_static_energy"
+        units: "m+2 s-2"
+        vertical_dim_spec: "center"
+      SDEL:
+        standard_name: "change_of_surface_value_of_dry_static_energy"
+        units: "m+2 s-2"
+        vertical_dim_spec: "none"
+      SH:
+        standard_name: "surface_sensible_heat_flux"
+        units: "W m-2"
+        vertical_dim_spec: "none"
+      T:
+        standard_name: "air_temperature"
+        units: "K"
+        vertical_dim_spec: "center"
+      TH:
+        standard_name: "potential_temperature"
+        units: "K"
+        vertical_dim_spec: "center"
+      USTAR:
+        standard_name: "surface_velocity_scale"
+        units: "m s-1"
+        vertical_dim_spec: "none"
+
+  # Re-export each internal, so it can be connected to TURBULENCE (as DataForMoist)
+  connections:
+    - {src_comp: "<self>", src_name: EVAP, src_intent: internal, dst_comp: "<self>", dst_name: EVAP, dst_intent: export}
+    - {src_comp: "<self>", src_name: QDEL, src_intent: internal, dst_comp: "<self>", dst_name: QDEL, dst_intent: export}
+    - {src_comp: "<self>", src_name: QHAT, src_intent: internal, dst_comp: "<self>", dst_name: QHAT, dst_intent: export}
+    - {src_comp: "<self>", src_name: S, src_intent: internal, dst_comp: "<self>", dst_name: S, dst_intent: export}
+    - {src_comp: "<self>", src_name: SDEL, src_intent: internal, dst_comp: "<self>", dst_name: SDEL, dst_intent: export}
+    - {src_comp: "<self>", src_name: SH, src_intent: internal, dst_comp: "<self>", dst_name: SH, dst_intent: export}
+    - {src_comp: "<self>", src_name: T, src_intent: internal, dst_comp: "<self>", dst_name: T, dst_intent: export}
+    - {src_comp: "<self>", src_name: TH, src_intent: internal, dst_comp: "<self>", dst_name: TH, dst_intent: export}
+    - {src_comp: "<self>", src_name: USTAR, src_intent: internal, dst_comp: "<self>", dst_name: USTAR, dst_intent: export}
