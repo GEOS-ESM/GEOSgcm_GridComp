@@ -744,6 +744,14 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   integer                             :: JCAP,LMP1
   logical                             :: dowindfix
   logical                             :: doremap
+  logical                             :: INC_ON_ANA
+  character(len=ESMF_MAXSTR)          :: VFILT, VFILT_DEF
+  logical                             :: VF_T, VF_U, VF_V, VF_IAU_NEW
+  integer                             :: VF_NPASS, VF_IP, VF_E
+  real                                :: VF_NU
+  real, allocatable, dimension(:,:,:) :: ple_dn,  u_dn,  v_dn, thv_dn,  q_dn,  o3_dn
+  real, allocatable, dimension(:,:,:) :: ple_rt,  u_rt,  v_rt, thv_rt,  q_rt,  o3_rt, t_rt
+  real, allocatable, dimension(:,:,:) :: thv_bkg, pke_bkg, pk_bkg, pke_rt, pk_rt
   logical                             :: FOUND
   logical                             :: ANALYZE_TS
   character(len=ESMF_MAXSTR)          :: REPLAY_MODE
@@ -888,6 +896,29 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, CREMAP,      LABEL="REPLAY_REMAP:",   default="yes",  RC=STATUS)
     VERIFY_(STATUS)
+    ! When the analysis has fewer levels than the model, form the increment on the analysis levels:
+    !    inc = remap_up(ANA) - remap_up(remap_down(BKG))
+    ! instead of remap_up(ANA) - BKG, so that vertical structure of BKG that the analysis cannot
+    ! represent is not removed (stripes in the increment).  Default .FALSE. (no change to existing runs).
+    ! Defaults: off / NONE at 72 levels (zero-diff), on / TUV otherwise
+    VF_IAU_NEW = (LMbkg /= 72)
+    VFILT_DEF  = 'NONE'
+    if (VF_IAU_NEW) VFILT_DEF = 'TUV'
+    call MAPL_GetResource(MAPL, INC_ON_ANA,  LABEL="REPLAY_INC_ON_ANA_LEVELS:", default=VF_IAU_NEW, RC=STATUS)
+    VERIFY_(STATUS)
+    ! Vertical filter of the IAU increments on the pure-pressure layers (both edges with bk=0).
+    ! REPLAY_VFILT is NONE or a combination of the letters T, U, V.  Conservative (mass-weighted)
+    ! 1-2-1 type smoother, REPLAY_VFILT_PASSES passes with coefficient REPLAY_VFILT_NU (0.25 = 1-2-1).
+    call MAPL_GetResource(MAPL, VFILT,       LABEL="REPLAY_VFILT:",        default=trim(VFILT_DEF), RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, VF_NPASS,    LABEL="REPLAY_VFILT_PASSES:", default=1,      RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, VF_NU,       LABEL="REPLAY_VFILT_NU:",     default=0.25,   RC=STATUS)
+    VERIFY_(STATUS)
+    VFILT = ESMF_UtilStringUpperCase(VFILT)
+    VF_T = index(trim(VFILT),'T') > 0
+    VF_U = index(trim(VFILT),'U') > 0
+    VF_V = index(trim(VFILT),'V') > 0
     call MAPL_GetResource(MAPL, FIXWIND,     LABEL="REPLAY_WINDFIX:", default="yes",  RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, K,           Label="ANALYZE_TS:",     default=0,      RC=STATUS)
@@ -2194,6 +2225,83 @@ CONTAINS
                   enddo
                       t_ana = thv_ana*pk_ana/(1.0+eps*q_ana)
 
+                ! Increment on the analysis levels:  inc = R_up(ANA) - R_up(R_down(BKG))
+                ! ---------------------------------------------------------------------
+                if( INC_ON_ANA .and. LMana.ne.LMbkg ) then
+
+                   if(first .and. MAPL_AM_I_ROOT()) then
+                      print *, 'Forming IAU increments on ANA vertical levels (REPLAY_INC_ON_ANA_LEVELS) ...'
+                      print *
+                   endif
+
+                   allocate ( ple_dn(IM,JM,0:LMana), source = 0.0 )
+                   allocate (   u_dn(IM,JM,  LMana), source = 0.0 )
+                   allocate (   v_dn(IM,JM,  LMana), source = 0.0 )
+                   allocate ( thv_dn(IM,JM,  LMana), source = 0.0 )
+                   allocate (   q_dn(IM,JM,  LMana), source = 0.0 )
+                   allocate (  o3_dn(IM,JM,  LMana), source = 0.0 )
+                   allocate ( ple_rt(IM,JM,0:LMbkg), source = 0.0 )
+                   allocate (   u_rt(IM,JM,  LMbkg), source = 0.0 )
+                   allocate (   v_rt(IM,JM,  LMbkg), source = 0.0 )
+                   allocate ( thv_rt(IM,JM,  LMbkg), source = 0.0 )
+                   allocate (   q_rt(IM,JM,  LMbkg), source = 0.0 )
+                   allocate (  o3_rt(IM,JM,  LMbkg), source = 0.0 )
+                   allocate (   t_rt(IM,JM,  LMbkg), source = 0.0 )
+                   allocate ( thv_bkg(IM,JM,  LMbkg), source = 0.0 )
+                   allocate ( pke_bkg(IM,JM,0:LMbkg), source = 0.0 )
+                   allocate (  pk_bkg(IM,JM,  LMbkg), source = 0.0 )
+                   allocate (  pke_rt(IM,JM,0:LMbkg), source = 0.0 )
+                   allocate (   pk_rt(IM,JM,  LMbkg), source = 0.0 )
+
+                   pke_bkg = ple_bkg**MAPL_KAPPA
+                   do L=1,LMbkg
+                      pk_bkg(:,:,L) = ( pke_bkg(:,:,L)-pke_bkg(:,:,L-1) ) &
+                                    / ( MAPL_KAPPA*log(ple_bkg(:,:,L)/ple_bkg(:,:,L-1)) )
+                   enddo
+                   thv_bkg = t_bkg*(1.0+eps*q_bkg)/pk_bkg
+
+                   ! BKG (model levels, BKG topography) down to the ANA levels ...
+                   call myremap ( ple_bkg,  ple_dn, &
+                                    u_bkg,    u_dn, &
+                                    v_bkg,    v_dn, &
+                                  thv_bkg,  thv_dn, &
+                                    q_bkg,    q_dn, &
+                                   o3_bkg,   o3_dn, &
+                                 phis_bkg, phis_bkg, &
+                               ak,bk, ak_rep,bk_rep, &
+                                   im,jm,LMbkg,LMana )
+                   ! ... and back up to the model levels with the same operator
+                   call myremap ( ple_dn,  ple_rt, &
+                                    u_dn,    u_rt, &
+                                    v_dn,    v_rt, &
+                                  thv_dn,  thv_rt, &
+                                    q_dn,    q_rt, &
+                                   o3_dn,   o3_rt, &
+                                phis_bkg, phis_bkg, &
+                              ak_rep,bk_rep, ak,bk, &
+                                  im,jm,LMana,LMbkg )
+
+                   pke_rt = ple_rt**MAPL_KAPPA
+                   do L=1,LMbkg
+                      pk_rt(:,:,L) = ( pke_rt(:,:,L)-pke_rt(:,:,L-1) ) &
+                                   / ( MAPL_KAPPA*log(ple_rt(:,:,L)/ple_rt(:,:,L-1)) )
+                   enddo
+                   t_rt = thv_rt*pk_rt/(1.0+eps*q_rt)
+
+                   ! Subtract the representation error of the round trip, so ANA-BKG becomes
+                   ! R_up(ANA) - R_up(R_down(BKG)).  Pressure (ple_ana) is not modified.
+                   u_ana  =  u_ana - ( u_rt - u_bkg )
+                   v_ana  =  v_ana - ( v_rt - v_bkg )
+                   t_ana  =  t_ana - ( t_rt - t_bkg )
+                   q_ana  = max( q_ana  - ( q_rt  - q_bkg  ), 0.0 )
+                   o3_ana = max( o3_ana - ( o3_rt - o3_bkg ), 0.0 )
+
+                   deallocate ( ple_dn, u_dn, v_dn, thv_dn, q_dn, o3_dn )
+                   deallocate ( ple_rt, u_rt, v_rt, thv_rt, q_rt, o3_rt, t_rt )
+                   deallocate ( thv_bkg, pke_bkg, pk_bkg, pke_rt, pk_rt )
+
+                endif
+
             else
 
                 if(first .and. MAPL_AM_I_ROOT()) then
@@ -2400,6 +2508,23 @@ CONTAINS
        vptr3d = 0.0
     endif
 
+! Vertical filter of the increments on the pure-pressure layers (bk = 0 at both edges)
+! -------------------------------------------------------------------------------------
+    VF_IP = -1
+    if( VF_T .or. VF_U .or. VF_V ) then
+       do VF_E = 0,LMbkg
+          if( bk(lbound(bk,1)+VF_E) /= 0.0 ) exit
+          VF_IP = VF_E
+       enddo
+       if(first .and. MAPL_AM_I_ROOT()) then
+          print *, 'Vertical filter of IAU increments (REPLAY_VFILT=', trim(VFILT), ') on layers 1 to', VF_IP, &
+                   ' (pure pressure, edge', VF_IP, ' at p =', ak(lbound(ak,1)+VF_IP)/100., ' hPa), passes =', VF_NPASS, ' nu =', VF_NU
+          print *
+       endif
+       if( VF_U ) call vfilt_inc ( im,jm,LMbkg,VF_IP,VF_NU,VF_NPASS,ple_bkg,uptr3d )
+       if( VF_V ) call vfilt_inc ( im,jm,LMbkg,VF_IP,VF_NU,VF_NPASS,ple_bkg,vptr3d )
+    endif
+
     if (trim(GRIDINC)=="ANA" .and. USE_SPECFILT .and. (L_REPLAY_U .or. L_REPLAY_V) ) then
         call Spectrans_VectorPar (im,jm,LMbkg,uptr3d,vptr3d,JCAP,GRIDana,RC=STATUS)
         VERIFY_(STATUS)
@@ -2428,6 +2553,7 @@ CONTAINS
     else
         ptr3d = 0.0
     endif
+    if( VF_T ) call vfilt_inc ( im,jm,LMbkg,VF_IP,VF_NU,VF_NPASS,ple_bkg,ptr3d )
     if (trim(GRIDINC)=="ANA" .and. USE_SPECFILT .and. L_REPLAY_T) then
         call Spectrans_ScalarPar (im,jm,LMbkg,ptr3d,JCAP,GRIDana,RC=STATUS)
         VERIFY_(STATUS)
@@ -2939,6 +3065,38 @@ CONTAINS
       return
   end subroutine blend
 
+
+  subroutine vfilt_inc ( im,jm,lm,ip,nu,npass,ple,x )
+! Conservative vertical smoother of a layer increment x on layers 1..ip (ip = last layer whose
+! edges are both pure-pressure).  Flux form with dp weights: the column integral of x*dp is
+! unchanged and nothing is exchanged with layers ip+1..lm.  nu = 0.25 on a uniform grid is the 1-2-1 filter.
+    implicit none
+    integer, intent(in)    :: im, jm, lm, ip, npass
+    real,    intent(in)    :: nu
+    real,    intent(in)    :: ple(im,jm,0:lm)
+    real,    intent(inout) :: x(im,jm,lm)
+    integer :: i, j, k, n
+    real    :: f(0:ip), dp(ip)
+
+    if( ip < 2 .or. npass < 1 ) return
+    do j=1,jm
+    do i=1,im
+       do k=1,ip
+          dp(k) = ple(i,j,k)-ple(i,j,k-1)
+       enddo
+       do n=1,npass
+          f(0)  = 0.0
+          f(ip) = 0.0
+          do k=1,ip-1
+             f(k) = nu*2.0*dp(k)*dp(k+1)/(dp(k)+dp(k+1))*(x(i,j,k+1)-x(i,j,k))
+          enddo
+          do k=1,ip
+             x(i,j,k) = x(i,j,k) + (f(k)-f(k-1))/dp(k)
+          enddo
+       enddo
+    enddo
+    enddo
+  end subroutine vfilt_inc
 
   subroutine POLEFIX (  ua,va,VM,GRID )
      implicit none
