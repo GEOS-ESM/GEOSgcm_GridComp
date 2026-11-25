@@ -739,8 +739,8 @@ module GEOSmoist_Process_Library
             case (SRF_TYPE_LANDICE); glac_shift_local =  GLAC_SHIFT_LANDICE
             case (SRF_TYPE_ICE);     glac_shift_local =  GLAC_SHIFT_SEAICE
             case (SRF_TYPE_SNOW);    glac_shift_local =  GLAC_SHIFT_SNOW
-            case (SRF_TYPE_OCEAN);   glac_shift_local =  GLAC_SHIFT_LAND
-            case (SRF_TYPE_LAND);    glac_shift_local =  GLAC_SHIFT_OCEAN
+            case (SRF_TYPE_OCEAN);   glac_shift_local =  GLAC_SHIFT_OCEAN
+            case (SRF_TYPE_LAND);    glac_shift_local =  GLAC_SHIFT_LAND
             case default;            glac_shift_local =  GLAC_SHIFT_CONV
          end select
          ! include the convective fraction
