@@ -231,7 +231,7 @@ else
 endif
 
 # copy ISSM files to bcs dir
-/bin/cp -p /discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/landice/issm/v1/ISSM_ME23083_N34534_AIS_GRIS/* landice/shared/
+/bin/cp -p /discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/landice/issm/v1/ISSM_ME22565_N35646_AIS_GRIS/* landice/shared/
 echo "Successfully copied ISSM binary and toolkits files to bcs dir."
 
 if ( ! -d route ) mkdir -p route

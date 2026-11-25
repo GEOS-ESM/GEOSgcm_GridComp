@@ -1,6 +1,11 @@
-import devpath
-import numpy as np
+# Redirects both stdout (prints) and stderr (errors) to a black hole
 import os,sys
+import contextlib
+with open(os.devnull, 'w') as devnull:
+    with contextlib.redirect_stdout(devnull), contextlib.redirect_stderr(devnull):
+        import devpath
+        
+import numpy as np
 from pathlib import Path
 from contextlib import redirect_stdout
 from netCDF4 import Dataset
