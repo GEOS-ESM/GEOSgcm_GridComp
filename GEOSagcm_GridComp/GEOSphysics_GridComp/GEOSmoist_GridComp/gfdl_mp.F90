@@ -1527,7 +1527,7 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
         if (consv_checker) then
             call mtetw (ks, ke, qv (i, ks:), ql (i, ks:), qr (i, ks:), qi (i, ks:), &
                 qs (i, ks:), qg (i, ks:), tz, ua (i, ks:), va (i, ks:), wa (i, ks:), &
-                delp (i, :), dte (i), 0.0, water (i), rain (i), ice (i), &
+                delp (i, ks:), dte (i), 0.0, water (i), rain (i), ice (i), &
                 snow (i), graupel (i), 0.0, 0.0, dtm, te_beg_m (i, ks:), &
                 tw_beg_m (i, :), te_b_beg_m (i), tw_b_beg_m (i), .true., hydrostatic)
         endif
