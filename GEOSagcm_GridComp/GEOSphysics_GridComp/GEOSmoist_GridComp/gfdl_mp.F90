@@ -4932,7 +4932,7 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
                 ! nothing for ice
                 subl = 0.0
              endif
-
+             
             ! -------------------------------------------------------------------------
             ! Resolution-Dependent Evaporation and Sublimation Shutoff
             ! -------------------------------------------------------------------------
@@ -4948,13 +4948,18 @@ subroutine pinst (ks, ke, qa, qv, ql, qr, qi, qs, qg, tz, dp, cvm, te8, dts, den
              evap = evap*onemsig ! resolution dependent evap 0:1 coarse:fine
              subl = subl*onemsig ! resolution dependent subl 0:1 coarse:fine
 
+             ! Zero out cloud evap/subl from GFDL.
+             ! This should be handled by PDF and EVAP3/SUBL3 routines  
+             evap = 0.
+             subl = 0.             
+
              mppe1 = mppe1 + evap * dp (k) * convt
              mpps1 = mpps1 + subl * dp (k) * convt
 
              call update_qt (qa (k), qv (k), ql (k), qr (k), qi (k), qs (k), qg (k), &
                  evap + subl, - evap, 0., - subl, 0., 0., te8 (k), cvm (k), tz (k), &
                  lcpk (k), icpk (k), tcpk (k), tcp3 (k), 'pinst')
-
+             
         endif
 
     enddo
