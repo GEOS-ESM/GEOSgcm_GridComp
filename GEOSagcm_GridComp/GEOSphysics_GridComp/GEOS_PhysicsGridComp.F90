@@ -2207,6 +2207,10 @@ contains
    logical                             :: DEBUG_SYNCTQ, DEBUG_PHYINC
    real                                :: SYNCUV, SYNCTQ, DOPHYSICS
    real                                :: HGT_SURFACE
+   integer                             :: DO_GWD, DO_MOIST, DO_TURBL, DO_SURF, DO_CHEM, DO_RAD
+   logical                             :: RUN_GWD, RUN_MOIST, RUN_TURBL, RUN_SURF, RUN_CHEM, RUN_RAD
+   logical                             :: SYNC1, SYNC2, SYNCUV1, SYNCUV2
+   logical, save                       :: FIRST_RUN = .true.
 
    real, pointer, dimension(:,:,:)     :: S, T, ZLE, PLE, PK, U, V, W
    real, pointer, dimension(:,:,:)     :: DM, DPI, TOT, FRI, TTN, STN,TMP
@@ -2396,6 +2400,63 @@ contains
                     HGT_SURFACE = 50.0
     if (LM .eq. 72) HGT_SURFACE =  0.0
     call MAPL_GetResource(STATE, HGT_SURFACE, Label="HGT_SURFACE:", DEFAULT= HGT_SURFACE, _RC)
+
+! Switches to skip the Run of individual children (default: run all)
+! --------------------------------------------------------------------
+    call MAPL_GetResource(STATE, DO_GWD,   Label="DO_GWD:",        DEFAULT=1, _RC)
+    call MAPL_GetResource(STATE, DO_MOIST, Label="DO_MOIST:",      DEFAULT=1, _RC)
+    call MAPL_GetResource(STATE, DO_TURBL, Label="DO_TURBULENCE:", DEFAULT=1, _RC)
+    call MAPL_GetResource(STATE, DO_SURF,  Label="DO_SURFACE:",    DEFAULT=1, _RC)
+    call MAPL_GetResource(STATE, DO_CHEM,  Label="DO_CHEMISTRY:",  DEFAULT=1, _RC)
+    call MAPL_GetResource(STATE, DO_RAD,   Label="DO_RADIATION:",  DEFAULT=1, _RC)
+    RUN_GWD   = DO_GWD   /= 0
+    RUN_MOIST = DO_MOIST /= 0
+    RUN_TURBL = DO_TURBL /= 0
+    RUN_SURF  = DO_SURF  /= 0
+    RUN_CHEM  = DO_CHEM  /= 0
+    RUN_RAD   = DO_RAD   /= 0
+
+! SYNC stage 1 fills child imports from MOIST exports, stage 2 from TURBULENCE
+! exports; those imports are terminated in SetServices when SYNCTQ/SYNCUV>=1
+! ----------------------------------------------------------------------------
+    SYNC1   = ( SYNCTQ.ge.1. ) .and. RUN_MOIST
+    SYNC2   = SYNC1   .and. RUN_TURBL
+    SYNCUV1 = ( SYNCUV.ge.1. ) .and. RUN_MOIST
+    SYNCUV2 = SYNCUV1 .and. RUN_TURBL
+
+    if ( SYNCTQ.ge.1. ) then
+       if ( ( .not.RUN_MOIST .and. ( RUN_SURF .or. RUN_TURBL .or. RUN_RAD .or. &
+              ( RUN_CHEM .and. SYNCTQ.eq.1. ) ) ) .or. &
+            ( .not.RUN_TURBL .and. RUN_RAD ) ) then
+          if (MAPL_AM_I_ROOT()) then
+             print *, trim(Iam)//': DO_MOIST/DO_TURBULENCE=0 with dependent children on requires SYNCTQ: 0'
+          end if
+          _FAIL('inconsistent DO_* switches for SYNCTQ')
+       end if
+    end if
+    if ( SYNCUV.ge.1. ) then
+       if ( .not.RUN_MOIST .and. ( RUN_SURF .or. RUN_TURBL ) ) then
+          if (MAPL_AM_I_ROOT()) then
+             print *, trim(Iam)//': DO_MOIST=0 with SURFACE/TURBULENCE on requires SYNCUV: 0'
+          end if
+          _FAIL('inconsistent DO_* switches for SYNCUV')
+       end if
+    end if
+
+    if ( FIRST_RUN ) then
+       if ( MAPL_AM_I_ROOT() .and. ( DOPHYSICS.ne.1. .or. .not.( RUN_GWD .and. RUN_MOIST .and. &
+            RUN_TURBL .and. RUN_SURF .and. RUN_CHEM .and. RUN_RAD ) ) ) then
+          print *, trim(Iam)//': physics children run switches:'
+          print *, '   DOPHYSICS  = ', DOPHYSICS
+          print *, '   GWD        = ', RUN_GWD
+          print *, '   MOIST      = ', RUN_MOIST
+          print *, '   TURBULENCE = ', RUN_TURBL
+          print *, '   SURFACE    = ', RUN_SURF
+          print *, '   CHEMISTRY  = ', RUN_CHEM
+          print *, '   RADIATION  = ', RUN_RAD
+       end if
+       FIRST_RUN = .false.
+    end if
 
 
 ! Pointers to Imports
@@ -2607,6 +2668,7 @@ contains
 !----------------------------------------
 
     I=GWD
+    if ( RUN_GWD ) then
     call MAPL_TimerOn (STATE,GCNames(I))
      t1 = MPI_Wtime(status); VERIFY_(STATUS)
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, userRC=STATUS ); VERIFY_(STATUS)
@@ -2615,14 +2677,16 @@ contains
      if (associated(PTR2D)) PTR2D = t2-t1
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    _RC)
     call MAPL_TimerOff(STATE,GCNames(I))
+    endif
 
 ! Moist Processes
 !----------------
 
+    I=MOIST
+
+    if ( RUN_MOIST ) then
     call Initialize_IncBundle_run( GIM(MOIST), EXPORT, MTRIinc, __RC__)  ! 3D non-weighted
     call Initialize_IncMBundle_run(GIM(MOIST), EXPORT, DM=DM,   __RC__)  ! 2D mass-weighted
-
-    I=MOIST
 
     call MAPL_TimerOn (STATE,GCNames(I))
      t1 = MPI_Wtime(status); VERIFY_(STATUS)
@@ -2632,6 +2696,7 @@ contains
      if (associated(PTR2D)) PTR2D = t2-t1
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    _RC)
     call MAPL_TimerOff(STATE,GCNames(I))
+    endif
 
 ! Get fill negative export pointers if requested
 ! ----------------------------------------------
@@ -2655,14 +2720,16 @@ contains
     call FILLQ2ZERO( QSNOW   , DM, DT=DT, DQDT=  DQSDT_FILL, WARNING_LABEL="QS After Moist"  , VM=VMG, _RC)
     call FILLQ2ZERO( QGRAUPEL, DM, DT=DT, DQDT=  DQGDT_FILL, WARNING_LABEL="QG After Moist"  , VM=VMG, _RC)
 
+    if ( RUN_MOIST ) then
     call MAPL_GetObjectFromGC ( GCS(I), CMETA, _RC)
 
     call Compute_IncBundle( GIM(MOIST), EXPORT, MTRIinc, STATE, __RC__)  ! 3D non-weighted
     call Compute_IncMBundle(GIM(MOIST), EXPORT, CMETA, DM=DM,   __RC__)  ! 2D mass-weighted
+    endif
 
 !  SYNCUV - Stage 1 SYNC of U/V
 !--------------------------------------
-    if ( SYNCUV.ge.1. ) then
+    if ( SYNCUV1 ) then
     ! From Moist
      call MAPL_GetPointer ( GEX(MOIST),  UAFMOIST,  'UAFMOIST', _RC)
      call MAPL_GetPointer ( GEX(MOIST),  VAFMOIST,  'VAFMOIST', _RC)
@@ -2683,7 +2750,7 @@ contains
 
 !  SYNCTQ - Stage 1 SYNC of T/Q and U/V
 !--------------------------------------
-    if ( SYNCTQ.ge.1. ) then
+    if ( SYNC1 ) then
      call MAPL_GetPointer(GIM(MOIST), DTDT_BL, 'DTDT_BL', alloc = .true. ,_RC)
      call MAPL_GetPointer(GIM(MOIST), DQDT_BL, 'DQDT_BL', alloc = .true. ,_RC)
     ! From Moist
@@ -2723,14 +2790,14 @@ contains
     endif
 
     if (DEBUG_SYNCTQ) then
-       if ( SYNCTQ.ge.1. ) then
+       if ( SYNC1 ) then
          call MAPL_MaxMin('DEBUG S: SFORTURB', SFORTURB)
          call MAPL_MaxMin('SYNCTQ: TAFMOIST', TAFMOIST)
          call MAPL_MaxMin('SYNCTQ: QAFMOIST', QAFMOIST)
          call MAPL_MaxMin('SYNCTQ: TFORSURF', TFORSURF)
          call MAPL_MaxMin('SYNCTQ: QFORSURF', QFORSURF)
        endif
-       if ( SYNCUV.ge.1. ) then
+       if ( SYNCUV1 ) then
          call MAPL_MaxMin('SYNCTQ: UFORSURF', UFORSURF)
          call MAPL_MaxMin('SYNCTQ: VFORSURF', VFORSURF)
        endif
@@ -2755,6 +2822,7 @@ contains
 
     I=SURF
 
+    if ( RUN_SURF ) then
     call MAPL_TimerOn(STATE,GCNames(I))
      t1 = MPI_Wtime(status); VERIFY_(STATUS)
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=1, userRC=STATUS ); VERIFY_(STATUS)
@@ -2762,12 +2830,14 @@ contains
      call MAPL_GetPointer (EXPORT, PTR2D, 'TIME_IN_SFC', _RC)
      if (associated(PTR2D)) PTR2D = t2-t1
     call MAPL_TimerOff(STATE,GCNames(I))
+    endif
 
 ! Aerosol/Chemistry Stage 1
 !--------------------------
 
     I=CHEM
 
+    if ( RUN_CHEM ) then
     call MAPL_TimerOn(STATE,GCNames(I))
      t1 = MPI_Wtime(status); VERIFY_(STATUS)
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, phase=1, userRC=STATUS ); VERIFY_(STATUS)
@@ -2776,12 +2846,14 @@ contains
      if (associated(PTR2D)) PTR2D = t2-t1
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    _RC)
     call MAPL_TimerOff(STATE,GCNames(I))
+    endif
 
 ! Turbulence Stage 1
 !-------------------
 
     I=TURBL
 
+    if ( RUN_TURBL ) then
     call MAPL_TimerOn(STATE,GCNames(I))
      t1 = MPI_Wtime(status); VERIFY_(STATUS)
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=1, userRC=STATUS ); VERIFY_(STATUS)
@@ -2789,6 +2861,7 @@ contains
      call MAPL_GetPointer (EXPORT, PTR2D, 'TIME_IN_TRB', _RC)
      if (associated(PTR2D)) PTR2D = t2-t1
     call MAPL_TimerOff(STATE,GCNames(I))
+    endif
 
 ! Get fill negative export pointers if requested
 ! ----------------------------------------------
@@ -2814,7 +2887,7 @@ contains
 
 !  SYNCUV - Stage 2 SYNC of U/V
 !--------------------------------------
-    if ( SYNCUV.ge.1. ) then
+    if ( SYNCUV2 ) then
     ! From TURBL Run 1
      call MAPL_GetPointer ( GEX(TURBL), UAFDIFFUSE, 'UAFDIFFUSE', _RC)
      call MAPL_GetPointer ( GEX(TURBL), VAFDIFFUSE, 'VAFDIFFUSE', _RC)
@@ -2834,7 +2907,7 @@ contains
 
 !  SYNCTQ - Stage 2 SYNC of T/Q
 !--------------------------------------
-    if ( SYNCTQ.ge.1. ) then
+    if ( SYNC2 ) then
     ! For TURBL
      call MAPL_GetPointer ( GEX(TURBL), SAFDIFFUSE, 'SAFDIFFUSE', _RC)
      call MAPL_GetPointer ( GIM(TURBL), TFORTURB,   'T', _RC)
@@ -2864,12 +2937,12 @@ contains
     endif
 
     if (DEBUG_SYNCTQ) then
-     if ( SYNCTQ.ge.1. ) then
+     if ( SYNC1 ) then
        call MAPL_MaxMin('SYNCTQ: TFORSURF', TFORSURF)
        call MAPL_MaxMin('SYNCTQ: QFORSURF', QFORSURF)
        call MAPL_MaxMin('SYNCTQ: TFORTURB', TFORTURB)
      endif
-     if ( SYNCUV.ge.1. ) then
+     if ( SYNCUV1 ) then
        call MAPL_MaxMin('SYNCTQ: UFORSURF', UFORSURF)
        call MAPL_MaxMin('SYNCTQ: VFORSURF', VFORSURF)
      endif
@@ -2894,6 +2967,7 @@ contains
 
     I=SURF
 
+    if ( RUN_SURF ) then
     call MAPL_TimerOn(STATE,GCNames(I))
      t1 = MPI_Wtime(status); VERIFY_(STATUS)
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=2, userRC=STATUS ); VERIFY_(STATUS)
@@ -2902,12 +2976,14 @@ contains
      if (associated(PTR2D)) PTR2D = PTR2D + t2-t1
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    _RC)
     call MAPL_TimerOff(STATE,GCNames(I))
+    endif
 
 ! Turbulence Stage 2
 !-------------------
 
     I=TURBL
 
+    if ( RUN_TURBL ) then
     call MAPL_TimerOn(STATE,GCNames(I))
      t1 = MPI_Wtime(status); VERIFY_(STATUS)
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=2, userRC=STATUS ); VERIFY_(STATUS)
@@ -2916,6 +2992,7 @@ contains
      if (associated(PTR2D)) PTR2D = PTR2D + t2-t1
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    _RC)
     call MAPL_TimerOff(STATE,GCNames(I))
+    endif
 
 ! Get fill negative export pointers if requested
 ! ----------------------------------------------
@@ -2939,7 +3016,7 @@ contains
     call FILLQ2ZERO( QSNOW   , DM, DT=DT, DQDT=  DQSDT_FILL, WARNING_LABEL="QS After Stage2"  , VM=VMG, _RC)
     call FILLQ2ZERO( QGRAUPEL, DM, DT=DT, DQDT=  DQGDT_FILL, WARNING_LABEL="QG After Stage2"  , VM=VMG, _RC)
 
-    if ( SYNCTQ.ge.1. ) then
+    if ( SYNC2 ) then
     ! For RAD
      call MAPL_GetPointer ( GIM(RAD), TFORRAD, 'T',  _RC)
      ! For Stage 2 - Changes in S from TURBL assumed to be all in T
@@ -2984,9 +3061,13 @@ contains
 
 ! Boundary Layer Tendencies for GF
 !--------------------------
-    if ( SYNCTQ.ge.1. ) then
+    if ( SYNC2 ) then
        DTDT_BL=(TFORRAD-DTDT_BL)/DT
        DQDT_BL=(QV-DQDT_BL)/DT
+    else if ( SYNC1 ) then
+       ! TURBULENCE skipped: no boundary-layer tendencies (undo stage-1 copies)
+       DTDT_BL=0.
+       DQDT_BL=0.
     endif
 
 ! Aerosol/Chemistry Stage 2
@@ -2994,6 +3075,7 @@ contains
 
     I=CHEM
 
+    if ( RUN_CHEM ) then
     call MAPL_TimerOn(STATE,GCNames(I))
      t1 = MPI_Wtime(status); VERIFY_(STATUS)
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=2, userRC=STATUS ); VERIFY_(STATUS)
@@ -3002,12 +3084,14 @@ contains
      if (associated(PTR2D)) PTR2D = PTR2D + t2-t1
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    _RC)
     call MAPL_TimerOff(STATE,GCNames(I))
+    endif
 
 ! Radiation
 !----------
 
     I=RAD
 
+    if ( RUN_RAD ) then
     call MAPL_TimerOn (STATE,GCNames(I))
      t1 = MPI_Wtime(status); VERIFY_(STATUS)
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, userRC=STATUS ); VERIFY_(STATUS)
@@ -3016,8 +3100,9 @@ contains
      if (associated(PTR2D)) PTR2D = t2-t1
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    _RC)
     call MAPL_TimerOff(STATE,GCNames(I))
+    endif
 
-    if (DEBUG_SYNCTQ) then
+    if (DEBUG_SYNCTQ .and. SYNC2 .and. RUN_RAD) then
       call MAPL_MaxMin('SYNCTQ: TAFRAD ', TFORRAD + DT*TIR*DPI)
     endif
 
