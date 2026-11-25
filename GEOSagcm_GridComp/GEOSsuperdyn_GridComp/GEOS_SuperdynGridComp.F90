@@ -507,6 +507,81 @@ integer ::          ADV = -1
                                                         RC=STATUS  )
     VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'DTDTRMP',                                   &
+         CHILD_ID   = DYN,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'RMPERRT',                                   &
+         CHILD_ID   = DYN,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'STRPPRE',                                   &
+         CHILD_ID   = DYN,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'STRPPOST',                                   &
+         CHILD_ID   = DYN,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'RMPLIM',                                   &
+         CHILD_ID   = DYN,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'DUDTRMP',                                   &
+         CHILD_ID   = DYN,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'DVDTRMP',                                   &
+         CHILD_ID   = DYN,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'RMPERRU',                                   &
+         CHILD_ID   = DYN,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'RMPERRV',                                   &
+         CHILD_ID   = DYN,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'RMPCONSD',                                   &
+         CHILD_ID   = DYN,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'RMPCONSL',                                   &
+         CHILD_ID   = DYN,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'DTDTGAPN',                                   &
+         CHILD_ID   = DYN,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'DTDTGAPL',                                   &
+         CHILD_ID   = DYN,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'DTDTGTHN',                                   &
+         CHILD_ID   = DYN,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'DTDTGTHL',                                   &
+         CHILD_ID   = DYN,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'DQVDTDYN',                                   &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
