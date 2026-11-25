@@ -2375,7 +2375,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'SNOLAND',                   &
-    LONG_NAME          = 'snowfall_land',             &
+    LONG_NAME          = 'snowfall_land',             &     ! includes icefall (ICE) when provided by atmosphere!
     UNITS              = 'kg m-2 s-1',                &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -6190,7 +6190,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(EVPSNO)) EVPSNO = EVPICE
         if(associated(SUBLIM)) SUBLIM = EVPICE*(1./MAPL_ALHS)*FR(:,FSNW)
         if(associated(PRLAND)) PRLAND = PCU+PLS+SLDTOT
-        if(associated(SNOLAND)) SNOLAND = SLDTOT     ! note, not just SNO
+        if(associated(SNOLAND)) SNOLAND = SLDTOT     ! note, not just SNO, includes ICE when provided by atmosphere
         if(associated(DRPARLAND)) DRPARLAND = DRPAR
         if(associated(DFPARLAND)) DFPARLAND = DFPAR
        

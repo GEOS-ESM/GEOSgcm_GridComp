@@ -11,12 +11,16 @@ module GEOS_IssmGridCompMod
   ! !DESCRIPTION:
   !
   !   {\tt GEOS\_ISSM} runs ISSM (Ice-sheet and Sea-level System Model)
-  !   Imports: ICESMB (defined on landice tiles)  [via private internal state]
-  !   Exports: ICESURF, ICETHICK, ICESMB_ISSM, ICEVX, ICEVY (defined on mesh) [true export state]
-  !   Exports: ICESURF, ICETHICK, ICEVEL (defined on landice tiles) [via private internal state]
-  !   Internals: ICESURF, ICETHICK, IMLS, OMLS, ISSM_NSTEPS (defined on mesh) [true internal state]
+  !   Imports:   ICEEQUIVSMB (defined on landice tiles)  [via private internal state]
+  !   Exports:   ICESURF, ICETHICK, ICEVX, ICEVY,                          ICEDTHICK, ICEDIVQ, ICEEQUIVSMB (defined on mesh) [true export state]
+  !   Exports:   ICESURF, ICETHICK, ICEVEL                                                         (defined on landice tiles)[via private internal state]
+  !   Internals: ICESURF, ICETHICK, ICEVX, ICEVY, IMLS, OMLS, ISSM_NSTEPS, ICEDTHICK, ICEDIVQ, ICEEQUIVSMB (defined on mesh) [true internal state]
   ! *** NOTES:
-  !            (*) currently we run over all input files (*.bin) that are found in ISSM_EXPDIR (scratch directory)
+  !            (*) The current ISSM configuration solves the mass balance equation ICEDTHICK + ICEDIVQ = ICEEQUIVSMB, where ICEDTHICK is the rate of 
+  !                change of the ice thickness, ICEDIVQ is the ice flux divergence, and ICEEQUIVSMB is the surface-mass balance (from landice)
+  !                that has been averaged between ISSM timesteps. This assumes that there is no melting at the base of the ice sheet.
+  !                Future development will include melting at the ice base.
+  !            (*) currently we run over all input files (ISSM*.bin) that are found in ISSM_EXPDIR (scratch directory)
   !                (e.g., Greenland + Antarctica + any other glaciers that have been configured)
   !            (*) ISSM meshes are internal to ISSM (C++ source)--we create an ESMF_MESH version for regridding
   !                imports/exports that is the global combination of all ISSM meshes
@@ -93,7 +97,7 @@ module GEOS_IssmGridCompMod
      real, pointer :: ICESURF_TILE(:)
      real, pointer :: ICETHICK_TILE(:)
      real, pointer :: ICEVEL_TILE(:)
-     real, pointer :: ICESMB_ISSM(:)
+     real, pointer :: ICEEQUIVSMB(:)
      integer       :: ISSM_NSTEPS
      real          :: LANDICE_DT
   end type T_ISSM_TILE_STATE
@@ -123,7 +127,7 @@ module GEOS_IssmGridCompMod
      type (T_ISSM_STATE), pointer :: ptr
   end type ISSM_WRAP
 
-  integer                      :: num_outputs = 6          ! number of output fields that ISSM sends to GEOS
+  integer                      :: num_outputs = 7          ! number of output fields that ISSM sends to GEOS
   logical                      :: ISSM_RST_FOUND = .false. ! restart found flag
   type(T_ISSM_STATE), pointer  :: internal_state=>null()   ! internal state for regridding and halo operations
 
@@ -187,12 +191,12 @@ contains
     ! Set the state variable specs.
     !-----------------------------------
 
-    !   Import states: ICESMB is imported via the ISSM_TILE private internal state
+    !   Import states: ICEEQUIVSMB is imported via the ISSM_TILE private internal state
 
     !   Export states:
     call MAPL_AddExportSpec(GC,                    &
          SHORT_NAME = 'ICESURF',                   &
-         LONG_NAME  = 'ice_sheet_elevation',       &
+         LONG_NAME  = 'ice_sheet_surface_elevation',       &
          UNITS      = 'm',                         &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
@@ -200,7 +204,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                    &
          SHORT_NAME = 'ICEVX',                     &
-         LONG_NAME  = 'ice_velocity_x_direction',  &
+         LONG_NAME  = 'ice_sheet_velocity_in_local_cartesian_x_direction',  &
          UNITS      = 'm s-1',                     &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
@@ -208,7 +212,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                    &
          SHORT_NAME = 'ICEVY',                      &
-         LONG_NAME  = 'ice_velocity_y_direction',   &
+         LONG_NAME  = 'ice_sheet_velocity_in_local_cartesian_y_direction',   &
          UNITS      = 'm s-1',                      &
          DIMS       = MAPL_DimsTileOnly,            &
          VLOCATION  = MAPL_VLocationNone,           &
@@ -216,19 +220,35 @@ contains
 
     call MAPL_AddExportSpec(GC,                    &
          SHORT_NAME = 'ICETHICK',                  &
-         LONG_NAME  = 'ice_thickness',             &
+         LONG_NAME  = 'ice_sheet_thickness',       &
          UNITS      = 'm',                         &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
          _RC  )
 
     call MAPL_AddExportSpec(GC,                    &
-         SHORT_NAME = 'ICESMB_ISSM',               &
-         LONG_NAME  = 'issm_surface_mass_balance', &
-         UNITS      = 'kg m-2 s-1',                &
+         SHORT_NAME = 'ICEEQUIVSMB',               &
+         LONG_NAME  = 'ice_sheet_surface_mass_balance', &
+         UNITS      = 'm s-1',                     &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
          _RC  )
+     
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'ICEDIVQ',                   &
+         LONG_NAME  = 'ice_sheet_flux_divergence', &
+         UNITS      = 'm s-1',                     &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone,          &
+         _RC  )
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'ICEDTHICK',                 &
+         LONG_NAME  = 'ice_sheet_thickness_change_rate', &
+         UNITS      = 'm s-1',                     &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone,          &
+         _RC  )    
 
     !   Internal states:
     call MAPL_AddInternalSpec(GC,                  &
@@ -251,7 +271,7 @@ contains
 
     call MAPL_AddInternalSpec(GC,                  &
          SHORT_NAME = 'IMLS',                      &
-         LONG_NAME  = 'ice_mask_levelset',         &
+         LONG_NAME  = 'ice_sheet_mask_levelset',   &
          UNITS      = 'none',                      &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
@@ -269,7 +289,7 @@ contains
 
     call MAPL_AddInternalSpec(GC,                  &
          SHORT_NAME = 'ICEVX',                     &
-         LONG_NAME  = 'ice_velocity_x_direction',  &
+         LONG_NAME  = 'ice_sheet_velocity_in_local_cartesian_x_direction',  &
          UNITS      = 'm s-1',                     &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
@@ -278,7 +298,7 @@ contains
 
     call MAPL_AddInternalSpec(GC,                  &
          SHORT_NAME = 'ICEVY',                     &
-         LONG_NAME  = 'ice_velocity_y_direction',  &
+         LONG_NAME  = 'ice_sheet_velocity_in_local_cartesian_y_direction',  &
          UNITS      = 'm s-1',                     &
          DIMS       = MAPL_DimsTileOnly,           &
          VLOCATION  = MAPL_VLocationNone,          &
@@ -293,6 +313,7 @@ contains
          VLOCATION  = MAPL_VLocationNone,          &
          RESTART    = MAPL_RestartOptional,        &
          _RC  )
+    
     call MAPL_AddInternalSpec(GC,                  &
          SHORT_NAME = 'RS_NODEIDS',                &
          LONG_NAME  = 'restart_node_ids',          &
@@ -302,6 +323,32 @@ contains
          RESTART    = MAPL_RestartOptional,        &
          _RC  )
 
+     call MAPL_AddInternalSpec(GC,                 &
+         SHORT_NAME = 'ICEDIVQ',                   &
+         LONG_NAME  = 'ice_sheet_flux_divergence', &
+         UNITS      = 'm s-1',                     &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone,          &
+         RESTART    = MAPL_RestartOptional,        &
+         _RC  )
+
+    call MAPL_AddInternalSpec(GC,                  &
+         SHORT_NAME = 'ICEDTHICK',                 &
+         LONG_NAME  = 'ice_sheet_thickness_change_rate', &
+         UNITS      = 'm s-1',                     &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone,          &
+         RESTART    = MAPL_RestartOptional,        &
+         _RC  )  
+    
+    call MAPL_AddInternalSpec(GC,                  &
+         SHORT_NAME = 'ICEEQUIVSMB',               &
+         LONG_NAME  = 'ice_sheet_surface_mass_balance', &
+         UNITS      = 'm s-1',                     &
+         DIMS       = MAPL_DimsTileOnly,           &
+         VLOCATION  = MAPL_VLocationNone,          &
+         RESTART    = MAPL_RestartOptional,        &
+         _RC  )
 
     ! Set the Profiling timers
     ! ------------------------
@@ -414,12 +461,15 @@ contains
     integer                                :: n1,n2,n3
 
     ! pointers to internal state for restarts
-    real, pointer, dimension(:)        :: ICESURF_IN    => null() ! ice surface elevation restart
-    real, pointer, dimension(:)        :: ICETHICK_IN   => null() ! ice thickness restart
-    real, pointer, dimension(:)        :: ICEVX_IN      => null() ! ice velocity (x direction) restart
-    real, pointer, dimension(:)        :: ICEVY_IN      => null() ! ice velocity (y direction) restart
-    real, pointer, dimension(:)        :: IMLS_IN       => null() ! ice-mask levelset restart
-    real, pointer, dimension(:)        :: OMLS_IN       => null() ! ocean-mask levelset restart
+    real, pointer, dimension(:)        :: ICESURF_IN    => null()   ! ice surface elevation restart
+    real, pointer, dimension(:)        :: ICETHICK_IN   => null()   ! ice thickness restart
+    real, pointer, dimension(:)        :: ICEVX_IN      => null()   ! ice velocity (x direction) restart
+    real, pointer, dimension(:)        :: ICEVY_IN      => null()   ! ice velocity (y direction) restart
+    real, pointer, dimension(:)        :: IMLS_IN       => null()   ! ice-mask levelset restart
+    real, pointer, dimension(:)        :: OMLS_IN       => null()   ! ocean-mask levelset restart
+    real, pointer, dimension(:)        :: ICEDIVQ_IN    => null()   ! ice flux divergence restart
+    real, pointer, dimension(:)        :: ICEDTHICK_IN  => null()   ! ice thickness change restart
+    real, pointer, dimension(:)        :: ICEEQUIVSMB_IN=> null()   ! ice surface mass balance restart
 
     ! restarts with halo points (interleaved), to send to ISSM
     real(dp), pointer, dimension(:)        :: ICESURF_HALO  => null()
@@ -439,10 +489,13 @@ contains
     real, pointer, dimension(:)            :: ICEVEL_TILE   => null() ! ice flow speed on landice tiles
 
     ! export variables on mesh tile space
-    real, pointer, dimension(:)            :: ICESURF_EX    => null() ! ice surface elevation on mesh tiles
-    real, pointer, dimension(:)            :: ICETHICK_EX   => null() ! ice thickness on mesh tiles
-    real, pointer, dimension(:)            :: ICEVX_EX      => null() ! ice velocity (x direction) on mesh tiles
-    real, pointer, dimension(:)            :: ICEVY_EX      => null() ! ice velocity (y direction) on mesh tiles
+    real, pointer, dimension(:)            :: ICESURF_EX    => null() ! ice surface elevation 
+    real, pointer, dimension(:)            :: ICETHICK_EX   => null() ! ice thickness 
+    real, pointer, dimension(:)            :: ICEVX_EX      => null() ! ice velocity (x direction) 
+    real, pointer, dimension(:)            :: ICEVY_EX      => null() ! ice velocity (y direction)
+    real, pointer, dimension(:)            :: ICEDIVQ_EX    => null() ! ice flux divergence 
+    real, pointer, dimension(:)            :: ICEDTHICK_EX  => null() ! ice thickness change 
+    real, pointer, dimension(:)            :: ICEEQUIVSMB_EX=> null() ! ice surface mass balance 
 
     ! restart redistribution
     real, pointer, dimension(:)            :: restartNodeIds=> null() ! nodeIds for restart ordering
@@ -653,6 +706,9 @@ contains
     ISSM_DT_DP = real(ISSM_DT,kind=dp) 
     !call MAPL_GetResource(MAPL, ISSM_DT, Label=trim(COMP_NAME)//"_DT:",DEFAULT=302400.0, _RC)
 
+    ! make sure ISSM_DT is multiple of LANDICE_DT
+    _ASSERT( mod(nint(ISSM_DT), nint(LANDICE_DT)) == 0, "ISSM_DT must be multiple of LANDICE_DT")
+    
     ! total landice time steps between ISSM runs
     NSTEPS_RING = nint(ISSM_DT/LANDICE_DT)
 
@@ -686,13 +742,16 @@ contains
     ZEROS(:) = 0.0_dp
 
     ! get pointers to restarts
-    call MAPL_GetPointer(INTERNAL, ICESURF_IN, 'ICESURF', _RC)
-    call MAPL_GetPointer(INTERNAL, ICETHICK_IN, 'ICETHICK',_RC)
-    call MAPL_GetPointer(INTERNAL, ICEVX_IN, 'ICEVX',_RC)
-    call MAPL_GetPointer(INTERNAL, ICEVY_IN, 'ICEVY',_RC)
-    call MAPL_GetPointer(INTERNAL, IMLS_IN, 'IMLS', _RC)
-    call MAPL_GetPointer(INTERNAL, OMLS_IN, 'OMLS',_RC)
-    call MAPL_GetPointer(INTERNAL, restartNodeIds, 'RS_NODEIDS',_RC)
+    call MAPL_GetPointer(INTERNAL, ICESURF_IN,     'ICESURF',    _RC)
+    call MAPL_GetPointer(INTERNAL, ICETHICK_IN,    'ICETHICK',   _RC)
+    call MAPL_GetPointer(INTERNAL, ICEVX_IN,       'ICEVX',      _RC)
+    call MAPL_GetPointer(INTERNAL, ICEVY_IN,       'ICEVY',      _RC)
+    call MAPL_GetPointer(INTERNAL, IMLS_IN,        'IMLS',       _RC)
+    call MAPL_GetPointer(INTERNAL, OMLS_IN,        'OMLS',       _RC)
+    call MAPL_GetPointer(INTERNAL, restartNodeIds, 'RS_NODEIDS', _RC)
+    call MAPL_GetPointer(INTERNAL, ICEDIVQ_IN,     'ICEDIVQ',    _RC)
+    call MAPL_GetPointer(INTERNAL, ICEDTHICK_IN,   'ICEDTHICK',  _RC)
+    call MAPL_GetPointer(INTERNAL, ICEEQUIVSMB_IN, 'ICEEQUIVSMB',_RC)
 
     ! if restart has been read, apply halo operation and send pointers to ISSM
     ! else, ISSM will just use default initial values in ISSM*.bin input files
@@ -728,6 +787,9 @@ contains
           call apply_redist(ICEVY_IN,_RC)
           call apply_redist(IMLS_IN,_RC)
           call apply_redist(OMLS_IN,_RC)
+          call apply_redist(ICEDIVQ_IN,_RC)
+          call apply_redist(ICEDTHICK_IN,_RC)
+          call apply_redist(ICEEQUIVSMB_IN,_RC)
 
           call ESMF_VMBarrier(vm, _RC)
 
@@ -745,9 +807,9 @@ contains
        call apply_halo(OMLS_IN,OMLS_HALO,_RC)
 
        ! package restarts into one pointer
-       GEOS_RESTARTS(:) = 0.0_dp
-       GEOS_RESTARTS(1:num_nodes) = ICESURF_HALO(:)
-       GEOS_RESTARTS(num_nodes+1:2*num_nodes) = ICETHICK_HALO(:)
+       GEOS_RESTARTS(:)                         = 0.0_dp
+       GEOS_RESTARTS(            1:  num_nodes) = ICESURF_HALO(:)
+       GEOS_RESTARTS(  num_nodes+1:2*num_nodes) = ICETHICK_HALO(:)
        GEOS_RESTARTS(2*num_nodes+1:3*num_nodes) = ICEVX_HALO(:)
        GEOS_RESTARTS(3*num_nodes+1:4*num_nodes) = ICEVY_HALO(:)
        GEOS_RESTARTS(4*num_nodes+1:5*num_nodes) = OMLS_HALO(:)
@@ -768,12 +830,12 @@ contains
        call ESMF_VMBarrier(vm, _RC)
 
        ! Unpack restart array
-       ICESURF_HALO(:)  = GEOS_RESTARTS(1:num_nodes)
-       ICETHICK_HALO(:) = GEOS_RESTARTS(num_nodes+1:2*num_nodes)
-       ICEVX_HALO(:) = GEOS_RESTARTS(2*num_nodes+1:3*num_nodes)
-       ICEVY_HALO(:) = GEOS_RESTARTS(3*num_nodes+1:4*num_nodes)
-       OMLS_HALO(:)  = GEOS_RESTARTS(4*num_nodes+1:5*num_nodes)
-       IMLS_HALO(:)  = GEOS_RESTARTS(5*num_nodes+1:6*num_nodes)
+       ICESURF_HALO( :) = GEOS_RESTARTS(            1:  num_nodes)
+       ICETHICK_HALO(:) = GEOS_RESTARTS(  num_nodes+1:2*num_nodes)
+       ICEVX_HALO(   :) = GEOS_RESTARTS(2*num_nodes+1:3*num_nodes)
+       ICEVY_HALO(   :) = GEOS_RESTARTS(3*num_nodes+1:4*num_nodes)
+       OMLS_HALO(    :) = GEOS_RESTARTS(4*num_nodes+1:5*num_nodes)
+       IMLS_HALO(    :) = GEOS_RESTARTS(5*num_nodes+1:6*num_nodes)
 
        ! filter out halo points (keep the owned indices) for restarts
        if(associated(ICESURF_IN)) ICESURF_IN = ICESURF_HALO(owned_idx)
@@ -782,6 +844,12 @@ contains
        if(associated(ICEVY_IN)) ICEVY_IN = ICEVY_HALO(owned_idx)
        if(associated(OMLS_IN)) OMLS_IN = OMLS_HALO(owned_idx)
        if(associated(IMLS_IN)) IMLS_IN = IMLS_HALO(owned_idx)
+
+       ! if bootstrapping, set ice mass balance diagnostics to zero 
+       ! because we don't yet have an SMB or DH/DT calculation
+       if(associated(ICEDIVQ_IN))     ICEDIVQ_IN     = 0.0
+       if(associated(ICEDTHICK_IN))   ICEDTHICK_IN   = 0.0
+       if(associated(ICEEQUIVSMB_IN)) ICEEQUIVSMB_IN = 0.0
 
     end if
 
@@ -799,6 +867,15 @@ contains
 
     call MAPL_GetPointer(EXPORT, ICEVY_EX, 'ICEVY',alloc=.true.,_RC)
     if(associated(ICEVY_EX)) ICEVY_EX = ICEVY_HALO(owned_idx)
+
+    call MAPL_GetPointer(EXPORT, ICEDIVQ_EX, 'ICEDIVQ',alloc=.true.,_RC)
+    if(associated(ICEDIVQ_EX)) ICEDIVQ_EX = ICEDIVQ_IN
+
+    call MAPL_GetPointer(EXPORT, ICEDTHICK_EX, 'ICEDTHICK',alloc=.true.,_RC)
+    if(associated(ICEDTHICK_EX)) ICEDTHICK_EX = ICEDTHICK_IN
+
+    call MAPL_GetPointer(EXPORT, ICEEQUIVSMB_EX, 'ICEEQUIVSMB',alloc=.true.,_RC)
+    if(associated(ICEEQUIVSMB_EX)) ICEEQUIVSMB_EX = ICEEQUIVSMB_IN
 
     ! Finally, set the tile export state so landice can access values before ISSM runs
     !-----------------------------------
@@ -1019,6 +1096,7 @@ contains
     ! internal state for regridding and halo operations
     type(ESMF_Mesh)                      :: mesh                    ! ESMF version of ISSM mesh
     integer                              :: num_nodes               ! number of nodes on PET
+    integer                              :: num_owned_nodes         ! number of owned nodes on PET
 
     ! tile information
     integer                              :: NT                      ! number of landice tiles
@@ -1027,9 +1105,10 @@ contains
 
     ! surface mass balance on mesh and landice tiles
     ! note: SMB has been time-averaged between ISSM runs
-    real(dp), pointer, dimension(:)      :: ICESMB_MESH   => null() ! surface mass balce on mesh elements
-    real, pointer, dimension(:)          :: ICESMB_TILE   => null() ! surface mass balance on landice tiles
-    real, pointer, dimension(:)          :: ICESMB_EX     => null() ! pointer to export state (mesh tiles)
+    real(dp), pointer, dimension(:)      :: ICEEQUIVSMB_MESH   => null() ! surface mass balance on mesh elements
+    real, pointer, dimension(:)          :: ICEEQUIVSMB_TILE   => null() ! surface mass balance on landice tiles
+    real, pointer, dimension(:)          :: ICEEQUIVSMB_EX     => null() ! pointer to export state (mesh tiles)
+    real, pointer, dimension(:)          :: ICEEQUIVSMB_IN     => null() ! pointer to internal state (mesh tiles)
 
     ! ISSM Outputs
     real(dp),    pointer, dimension(:)   :: ISSM_OUTPUTS  => null() ! pointer containing all outputs
@@ -1045,6 +1124,7 @@ contains
     real, pointer, dimension(:)          :: ICETHICK_TILE => null() ! ice thickness on landice tiles
     real, pointer, dimension(:)          :: ICETHICK_EX   => null() ! pointer to ice thickness export state (mesh tiles)
     real, pointer, dimension(:)          :: ICETHICK_IN   => null() ! pointer to ice thicknesss internal state (mesh tiles)
+    real, pointer, dimension(:)          :: ICETHICK_OLD  => null() ! old ice thicknesss for calculating ICEDTHICK (mesh tiles)
 
     ! ice-flow velocity in x direction (in projection coordinates)
     real(dp),    pointer, dimension(:)   :: ICEVX_MESH   => null() ! ice x-velocity on mesh
@@ -1054,7 +1134,16 @@ contains
     ! ice-flow velocity in y direction (in projection coordinates)
     real(dp),    pointer, dimension(:)   :: ICEVY_MESH   => null() ! ice y-velocity on mesh
     real, pointer, dimension(:)          :: ICEVY_EX     => null() ! pointer to export state (mesh tiles)
-    real, pointer, dimension(:)          :: ICEVY_IN     => null() ! pointer to export state (mesh tiles)
+    real, pointer, dimension(:)          :: ICEVY_IN     => null() ! pointer to internal state (mesh tiles)
+
+    ! ice flux divergence
+    real(dp),    pointer, dimension(:)   :: ICEDIVQ_MESH => null() ! ice flux divergence
+    real, pointer, dimension(:)          :: ICEDIVQ_EX   => null() ! pointer to export state (mesh tiles)
+    real, pointer, dimension(:)          :: ICEDIVQ_IN   => null() ! pointer to internal state (mesh tiles)
+
+    ! rate of ice thickness change
+    real, pointer, dimension(:)          :: ICEDTHICK_EX => null() ! pointer to export state (mesh tiles)
+    real, pointer, dimension(:)          :: ICEDTHICK_IN => null() ! pointer to internal state (mesh tiles)
 
     ! ice mask level set (tracks glacier terminus)
     real(dp),    pointer, dimension(:)   :: IMLS_MESH    => null() ! ice mask level set
@@ -1095,7 +1184,6 @@ contains
 
     call MAPL_Get(MAPL, RUNALARM = ALARM, _RC )
 
-
     ! run ISSM at specified time steps,
     ! if bootstrapping restart and issm has run not by final time step, run anyways
     ! with timestep of zero, which just gets restart values
@@ -1108,10 +1196,9 @@ contains
        ! get timestep for ISSM
        call MAPL_GetResource(MAPL, ISSM_DT, Label="ISSM_DT:",DEFAULT=302400.0, _RC)
        ISSM_DT_DP = real(ISSM_DT,kind=dp) 
-       !call MAPL_GetResource(MAPL, ISSM_DT, Label=trim(COMP_NAME)//"_DT:",DEFAULT=302400.0, _RC)
 
        ! get number of mesh elements
-       call ESMF_MeshGet(mesh,nodeCount=num_nodes)
+       call ESMF_MeshGet(mesh,nodeCount=num_nodes,numOwnedNodes=num_owned_nodes)
 
        ! allocate ice-elevation output (export from ISSM)
        allocate(ISSM_OUTPUTS(num_outputs*num_nodes))
@@ -1124,9 +1211,13 @@ contains
        allocate(ICEVEL_MESH(num_nodes))
        allocate(IMLS_MESH(num_nodes))
        allocate(OMLS_MESH(num_nodes))
+       allocate(ICEDIVQ_MESH(num_nodes))
+
+       ! allocate old ice thickness array
+       allocate(ICETHICK_OLD(num_owned_nodes))
 
        ! allocate input arrays defined on mesh nodes
-       allocate(ICESMB_MESH(num_nodes))
+       allocate(ICEEQUIVSMB_MESH(num_nodes))
 
        ! initialize ISSM outputs to zero
        ICESURF_MESH(:) = 0.0_dp
@@ -1145,40 +1236,45 @@ contains
        issm_tile_state => issm_tile_wrap%ptr
 
        ! *************************************************************************** !
-       ! GET ICESMB IMPORT (surface mass balance)
+       ! GET ICEEQUIVSMB IMPORT (surface mass balance)
        ! *************************************************************************** !
-       ! NOTE: ICESMB (from landice) has been time-averaged between ISSM runs
-       !       hence the name ICESMB_ISSM
+       ! NOTE: ICESMB (from landice) has been time-averaged between ISSM runs and divided by density
        
-       ! allocate tiles for ICESMB
-       if(.not.associated(ICESMB_TILE)) then
-          allocate(ICESMB_TILE(NT), STAT=STATUS)
+       ! allocate tiles for ICEEQUIVSMB
+       if(.not.associated(ICEEQUIVSMB_TILE)) then
+          allocate(ICEEQUIVSMB_TILE(NT), STAT=STATUS)
           _VERIFY(STATUS)
-          ICESMB_TILE = MAPL_Undef
+          ICEEQUIVSMB_TILE = MAPL_Undef
        end if
 
        ! copy import values into tile array
-       ICESMB_TILE = issm_tile_state%ICESMB_ISSM
+       ICEEQUIVSMB_TILE = issm_tile_state%ICEEQUIVSMB
 
-       ! transform ICESMB from landice tiles to mesh
-       call tile_to_mesh(ICESMB_TILE,ICESMB_MESH,_RC)
+       ! transform ICEEQUIVSMB from landice tiles to mesh
+       call tile_to_mesh(ICEEQUIVSMB_TILE,ICEEQUIVSMB_MESH,_RC)
 
-       ! save ICESMB on mesh elements
-       call MAPL_GetPointer(EXPORT  , ICESMB_EX , 'ICESMB_ISSM' , _RC)
+       call MAPL_GetPointer(INTERNAL, IMLS_IN, 'IMLS', _RC)
 
-       if(associated(ICESMB_EX)) ICESMB_EX = ICESMB_MESH(internal_state%owned_idx)
+       ! save ICEEQUIVSMB on mesh elements (export and internal)
+       call MAPL_GetPointer(EXPORT, ICEEQUIVSMB_EX, 'ICEEQUIVSMB', _RC)
+       
+       if (associated(ICEEQUIVSMB_EX)) then
+          ICEEQUIVSMB_EX = ICEEQUIVSMB_MESH(internal_state%owned_idx)
+          where (IMLS_IN>0.0) ICEEQUIVSMB_EX = 0.0 ! mask non-ice points to preserve diagnostics
+       end if 
+
+       call MAPL_GetPointer(INTERNAL, ICEEQUIVSMB_IN, 'ICEEQUIVSMB', _RC)
+       if(associated(ICEEQUIVSMB_IN)) ICEEQUIVSMB_IN = ICEEQUIVSMB_EX
 
        ! *************************************************************************** !
        !  RUN ISSM WITH SMB INPUT AND ICE-ELEVATION OUTPUT
        ! *************************************************************************** !
-       ! convert SMB to units of [m/s] (ice-equivalent) before passing to ISSM
-       ICESMB_MESH = ICESMB_MESH/rho_ice
 
        call ESMF_VMBarrier(vm, _RC)
        call MAPL_TimerOn(MAPL,"ISSMCore" )
 
        ! call run method from ISSM library
-       call RunISSM(ISSM_DT_DP, c_loc(ICESMB_MESH), c_loc(ISSM_OUTPUTS))
+       call RunISSM(ISSM_DT_DP, c_loc(ICEEQUIVSMB_MESH), c_loc(ISSM_OUTPUTS))
 
        call ESMF_VMBarrier(vm, _RC)
        call MAPL_TimerOff(MAPL,"ISSMCore" )
@@ -1193,6 +1289,13 @@ contains
        ICEVY_MESH(:) = ISSM_OUTPUTS(3*num_nodes+1:4*num_nodes)
        OMLS_MESH(:) = ISSM_OUTPUTS(4*num_nodes+1:5*num_nodes)
        IMLS_MESH(:) = ISSM_OUTPUTS(5*num_nodes+1:6*num_nodes)
+       ICEDIVQ_MESH(:) = ISSM_OUTPUTS(6*num_nodes+1:7*num_nodes)
+
+       ! mask non-ice points (IMLS>0) such that thickness = 1 meter and velocity = 0
+       where (IMLS_MESH > 0.0) ICEVX_MESH = 0.0
+       where (IMLS_MESH > 0.0) ICEVY_MESH = 0.0
+       where (IMLS_MESH > 0.0) ICEDIVQ_MESH = 0.0
+       where (IMLS_MESH > 0.0) ICETHICK_MESH = 1.0
 
        ! calculate ice flow speed
        ICEVEL_MESH = sqrt(ICEVX_MESH**2 + ICEVY_MESH**2)
@@ -1207,7 +1310,11 @@ contains
        call MAPL_GetPointer(EXPORT, ICEVY_EX, 'ICEVY', _RC)
        if(associated(ICEVY_EX)) ICEVY_EX = ICEVY_MESH(internal_state%owned_idx)
 
+       call MAPL_GetPointer(EXPORT, ICEDIVQ_EX, 'ICEDIVQ', _RC)
+       if(associated(ICEDIVQ_EX)) ICEDIVQ_EX = ICEDIVQ_MESH(internal_state%owned_idx)
+
        call MAPL_GetPointer(EXPORT, ICETHICK_EX, 'ICETHICK', _RC)
+       if(associated(ICETHICK_EX)) ICETHICK_OLD(:) = ICETHICK_EX(:) ! save old thickness
        if(associated(ICETHICK_EX)) ICETHICK_EX = ICETHICK_MESH(internal_state%owned_idx)
 
        ! set pointers to tile-mesh internals
@@ -1223,11 +1330,24 @@ contains
        call MAPL_GetPointer(INTERNAL, ICEVY_IN, 'ICEVY', _RC)
        if(associated(ICEVY_IN)) ICEVY_IN = ICEVY_MESH(internal_state%owned_idx)
 
+       call MAPL_GetPointer(INTERNAL, ICEDIVQ_IN, 'ICEDIVQ', _RC)
+       if(associated(ICEDIVQ_IN)) ICEDIVQ_IN = ICEDIVQ_MESH(internal_state%owned_idx)
+
        call MAPL_GetPointer(INTERNAL, OMLS_IN, 'OMLS', _RC)
        if(associated(OMLS_IN)) OMLS_IN = OMLS_MESH(internal_state%owned_idx)
 
        call MAPL_GetPointer(INTERNAL, IMLS_IN, 'IMLS', _RC)
        if(associated(IMLS_IN)) IMLS_IN = IMLS_MESH(internal_state%owned_idx)
+
+       ! calculate rate of thickness change
+       call MAPL_GetPointer(EXPORT, ICEDTHICK_EX, 'ICEDTHICK', _RC)
+       if(associated(ICEDTHICK_EX)) then
+          ICEDTHICK_EX = (ICETHICK_EX-ICETHICK_OLD)/ISSM_DT
+          where (IMLS_IN > 0.0) ICEDTHICK_EX = 0.0
+       end if 
+
+       call MAPL_GetPointer(INTERNAL, ICEDTHICK_IN, 'ICEDTHICK', _RC)
+       if(associated(ICEDTHICK_IN)) ICEDTHICK_IN = ICEDTHICK_EX
 
        ! *************************************************************************** !
        ! REGRID MESH FIELDS ONTO LANDICE TILES AND EXPORT VIA PRIVATE INTERNAL STATE
@@ -1257,19 +1377,21 @@ contains
     call ESMF_VMBarrier(vm,_RC)
 
     ! deallocates
-    if(associated(ICESURF_MESH))  deallocate(ICESURF_MESH)
-    if(associated(ICETHICK_MESH)) deallocate(ICETHICK_MESH)
-    if(associated(ICEVEL_MESH))   deallocate(ICEVEL_MESH)
-    if(associated(ICEVX_MESH))    deallocate(ICEVX_MESH)
-    if(associated(ICEVY_MESH))    deallocate(ICEVY_MESH)
-    if(associated(IMLS_MESH))     deallocate(IMLS_MESH)
-    if(associated(OMLS_MESH))     deallocate(OMLS_MESH)
-    if(associated(ICESMB_MESH))   deallocate(ICESMB_MESH)
-    if(associated(ISSM_OUTPUTS))  deallocate(ISSM_OUTPUTS)
-    if(associated(ICESMB_TILE))   deallocate(ICESMB_TILE)
-    if(associated(ICESURF_TILE))  deallocate(ICESURF_TILE)
-    if(associated(ICETHICK_TILE)) deallocate(ICETHICK_TILE)
-    if(associated(ICEVEL_TILE))   deallocate(ICEVEL_TILE)
+    if(associated(ICESURF_MESH))     deallocate(ICESURF_MESH)
+    if(associated(ICETHICK_MESH))    deallocate(ICETHICK_MESH)
+    if(associated(ICEVEL_MESH))      deallocate(ICEVEL_MESH)
+    if(associated(ICEVX_MESH))       deallocate(ICEVX_MESH)
+    if(associated(ICEVY_MESH))       deallocate(ICEVY_MESH)
+    if(associated(IMLS_MESH))        deallocate(IMLS_MESH)
+    if(associated(OMLS_MESH))        deallocate(OMLS_MESH)
+    if(associated(ICEEQUIVSMB_MESH)) deallocate(ICEEQUIVSMB_MESH)
+    if(associated(ICEDIVQ_MESH))     deallocate(ICEDIVQ_MESH)
+    if(associated(ICETHICK_OLD))     deallocate(ICETHICK_OLD)
+    if(associated(ISSM_OUTPUTS))     deallocate(ISSM_OUTPUTS)
+    if(associated(ICEEQUIVSMB_TILE)) deallocate(ICEEQUIVSMB_TILE)
+    if(associated(ICESURF_TILE))     deallocate(ICESURF_TILE)
+    if(associated(ICETHICK_TILE))    deallocate(ICETHICK_TILE)
+    if(associated(ICEVEL_TILE))      deallocate(ICEVEL_TILE)
 
     call MAPL_TimerOff(MAPL,"RUN"  )
     call MAPL_TimerOff(MAPL,"TOTAL")
@@ -1301,10 +1423,9 @@ contains
     type(ESMF_State)                   :: INTERNAL
 
     ! ErrLog Variables
-    character(len=ESMF_MAXSTR)	       :: IAm
-    integer			                       :: STATUS
+    character(len=ESMF_MAXSTR)	    :: IAm
+    integer			              :: STATUS
     character(len=ESMF_MAXSTR)         :: COMP_NAME
-
 
     type(T_ISSM_TILE_STATE), pointer   :: issm_tile_state
     type(T_ISSM_TILE_WRAP)             :: issm_tile_wrap
