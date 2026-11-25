@@ -446,6 +446,14 @@ module GEOS_LandiceGridCompMod
                                            RC=STATUS  )
   VERIFY_(STATUS)
 
+  call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'runoff_flux_including_rainfall_over_bare_ice_only',&  !Spurious runoff from bare ice
+    UNITS              = 'kg m-2 s-1'                ,&
+    SHORT_NAME         = 'RUNOFFICEGLC'              ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
         LONG_NAME          = 'sublimation'               ,&
@@ -955,7 +963,7 @@ call MAPL_AddExportSpec(GC,                    &
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
-        LONG_NAME          = 'glacier_ice_heating_flux'  ,&
+        LONG_NAME          = 'heat_flux_from_first_to_second_snow_or_ice_layer'  ,&
         UNITS              = 'W m-2'                     ,&
         SHORT_NAME         = 'GHTSKIN'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
@@ -994,6 +1002,24 @@ call MAPL_AddExportSpec(GC,                    &
        LONG_NAME          = 'snowpack_evaporation_over_glaciated_surface',&
        UNITS              = 'kg m-2 s-1'                ,&                    ! mass flux  (land-only "EVPSNO" in Catch GC is energy flux) 
        SHORT_NAME         = 'EVAPSNOGLC'                ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'bare_ice_evaporation_over_glaciated_surface',&  !Evaporation only over bare ice
+       UNITS              = 'kg m-2 s-1'                ,&
+       SHORT_NAME         = 'EVAPICEGLC'                ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'snow_heat_content_correction_over_glaciated_surface',&
+       UNITS              = 'W m-2'                     ,&                    ! tile-mean residual of snow energy budget from SNOWRT
+       SHORT_NAME         = 'HCORRGLC'                  ,&
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
        RC=STATUS  )
@@ -2624,6 +2650,9 @@ contains
    real, pointer, dimension(:  )  :: MELTWTRCONT
    real, pointer, dimension(:  )  :: LWC
    real, pointer, dimension(:  )  :: RUNOFF
+   real, pointer, dimension(:  )  :: RUNOFFICE      ! bare ice runoff export
+   real, pointer, dimension(:  )  :: EVAPICE        ! bare ice evaporation
+   real, pointer, dimension(:  )  :: HCORREXP       ! export of HCORR 
    real, pointer, dimension(:  )  :: SNOMAS
    real, pointer, dimension(:  )  :: SNOWMASS
    real, pointer, dimension(:  )  :: SNOWDP
@@ -2987,6 +3016,9 @@ end if
    call MAPL_GetPointer(EXPORT,MELTWTRCONT, 'MELTWTRCONT', RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,LWC    , 'LWC'    , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,RUNOFF , 'RUNOFF' , alloc=.true. ,RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,RUNOFFICE,'RUNOFFICEGLC', RC=STATUS); VERIFY_(STATUS)    ! export bare ice runoff
+   call MAPL_GetPointer(EXPORT,EVAPICE,'EVAPICEGLC', RC=STATUS); VERIFY_(STATUS)        ! export bare ice evaportation
+   call MAPL_GetPointer(EXPORT,HCORREXP,'HCORRGLC', RC=STATUS); VERIFY_(STATUS)         ! export hcorr
    call MAPL_GetPointer(EXPORT,SNOMAS , 'SNOMAS_GL' , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SNOWMASS,'SNOWMASS',RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SNOWDP , 'SNOWDP_GL' , RC=STATUS); VERIFY_(STATUS)
@@ -3476,17 +3508,18 @@ end if
     if(associated(DHGLC)) then
        DHGLC = 0.0
        do L=1,NUM_SNOW_LAYERS
-          DHGLC = DHGLC - HTSN(:,L)
+          DHGLC = DHGLC + HTSN(:,L)   !HTSN is tile mean when exported from snowrt
        enddo
        do L=1,NUM_ICE_LAYERS
-          DHGLC = DHGLC - FR(:,ICE)*MAPL_CAPICE*RHOICE*DZMAXI(L)*(TICE(:,ICE,L)-MAPL_TICE)
+          DHGLC = DHGLC + FR(:,ICE) *MAPL_CAPICE*RHOICE*DZMAXI(L)*(TICE(:,ICE, L)-MAPL_TICE) &
+                        + FR(:,SNOW)*MAPL_CAPICE*RHOICE*DZMAXI(L)*(TICE(:,SNOW,L)-MAPL_TICE) 
        enddo
     endif
 
     ! Top (first) snow layer and top (first) ice layer only; DHGLCSRF temporarily holds -(energy before).
     if(associated(DHGLCSRF)) then
-       DHGLCSRF = - ( HTSN(:,1) +                                                  &
-            FR(:,ICE)*MAPL_CAPICE*RHOICE*DZMAXI(1)*(TICE(:,ICE,1)-MAPL_TICE) )
+       DHGLCSRF = HTSN(:,1) +                                                  &
+            FR(:,ICE)*MAPL_CAPICE*RHOICE*DZMAXI(1)*(TICE(:,ICE,1)-MAPL_TICE)
     endif
 
     ! Snow pack mass (sum of WESN over snow layers) before the update; DELSNOWMASS temporarily holds -(mass before).
@@ -3602,6 +3635,13 @@ end if
           enddo
           TS(:,N)   =  TICE(:,N,1)
           if(associated(RUNOFF))   RUNOFF   = RUNOFF + FR(:,N) * PERC
+
+          ! runoff from the bare-ice subtile only. Must be seperate from RUNOFF because snow PERC is added to RUNOFF below.
+          if(associated(RUNOFFICE)) RUNOFFICE = FR(:,N) * PERC
+   
+          ! repeat the same for evaporation 
+          if(associated(EVAPICE)) EVAPICE = FR(:,N) * EVAPO
+
 
        elseif (N==SNOW) then
 
@@ -3739,8 +3779,8 @@ end if
           TS(:,N) = TPSN(:,1)+MAPL_TICE
 
           if(associated(MELTWTRCONT )) MELTWTRCONT = sum(WESN*(1.-FROZFRAC),dim=2)
-          if(associated(EVAPSNO))      EVAPSNO     = EVAPO                           ! snow-surface evaporation
-
+          if(associated(EVAPSNO))      EVAPSNO     = FR(:,N) *  EVAPO                           ! snow-surface evaporation
+          if(associated(HCORREXP))     HCORREXP    = HCORR                           ! spurious snow heat  [W m-2, tile-mean]
        else
 
           _ASSERT(.false., 'unknown subtile case')          
@@ -3794,14 +3834,15 @@ end if
           DHGLC = DHGLC + HTSN(:,L)
        enddo
        do L=1,NUM_ICE_LAYERS
-          DHGLC = DHGLC + FR(:,ICE)*MAPL_CAPICE*RHOICE*DZMAXI(L)*(TICE(:,ICE,L)-MAPL_TICE)
+          DHGLC = DHGLC + FR(:,ICE) *MAPL_CAPICE*RHOICE*DZMAXI(L)*(TICE(:,ICE, L)-MAPL_TICE) &
+                        + FR(:,SNOW)*MAPL_CAPICE*RHOICE*DZMAXI(L)*(TICE(:,SNOW,L)-MAPL_TICE) 
        enddo
        DHGLC = DHGLC / DT         ! J m-2 per step -> W m-2
     endif
 
     if(associated(DHGLCSRF)) then
-       DHGLCSRF = DHGLCSRF + ( HTSN(:,1) +                                     &
-                          FR(:,ICE)*MAPL_CAPICE*RHOICE*DZMAXI(1)*(TICE(:,ICE,1)-MAPL_TICE) )
+       DHGLCSRF = DHGLCSRF + HTSN(:,1) +                                     &
+                          FR(:,ICE)*MAPL_CAPICE*RHOICE*DZMAXI(1)*(TICE(:,ICE,1)-MAPL_TICE) 
        DHGLCSRF = DHGLCSRF / DT   ! J m-2 per step -> W m-2
     endif
 
