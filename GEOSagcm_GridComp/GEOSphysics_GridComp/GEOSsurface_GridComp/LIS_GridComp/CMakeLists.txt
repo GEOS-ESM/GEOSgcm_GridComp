@@ -26,7 +26,7 @@ esma_add_library (${this}
 )
 
 mapl_acg (${this} LIS_StateSpecs.rc
-  IMPORT_SPECS EXPORT_SPECS INTERNAL_SPECS
+  IMPORT_SPECS EXPORT_SPECS
 )
 
 # Force the Fortran compiler driver as the linker -- otherwise CMake picks

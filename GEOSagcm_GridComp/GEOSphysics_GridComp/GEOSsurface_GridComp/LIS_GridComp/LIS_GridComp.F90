@@ -82,7 +82,6 @@ contains
       ! Set the state variable specs (generated from LIS_StateSpecs.rc)
 #include "LIS_Import___.h"
 #include "LIS_Export___.h"
-#include "LIS_Internal___.h"
 
       ! Set the Profiling timers
       call MAPL_TimerAdd(gc, name="INITIALIZE", _RC)
@@ -199,9 +198,9 @@ contains
       type(ESMF_Time) :: current_time
       integer :: year, month, day, hour, minute, second
 
-      real(kind=real32), pointer, dimension(:, :) :: TAIR_F, QAIR_F, SWDOWN_F, LWDOWN_F
-      real(kind=real32), pointer, dimension(:, :) :: EWIND_F, NWIND_F, PSURF_F, RAINF_F, SNOWF_F
-      real(kind=real32), pointer, dimension(:, :) :: AVGSURFT, QH, QLE, QS, SWE
+      real(kind=real32), pointer, dimension(:, :) :: TAIR, QAIR, SWD, LWD
+      real(kind=real32), pointer, dimension(:, :) :: U, V, PSURF, PRCP, SNOWF_F
+      real(kind=real32), pointer, dimension(:, :) :: AVGSURFT, QH, QLE, QS, SNOW
 
       IAm = "Run"
       call ESMF_GridCompGet(gc, name=comp_name, _RC)
@@ -212,21 +211,21 @@ contains
       call MAPL_TimerOn(MAPL, "RUN")
 
       ! Get pointers to the GEOS 2D (lon,lat) Import/Export arrays
-      call MAPL_GetPointer(import, TAIR_F, 'TAIR_F', _RC)
-      call MAPL_GetPointer(import, QAIR_F, 'QAIR_F', _RC)
-      call MAPL_GetPointer(import, SWDOWN_F, 'SWDOWN_F', _RC)
-      call MAPL_GetPointer(import, LWDOWN_F, 'LWDOWN_F', _RC)
-      call MAPL_GetPointer(import, EWIND_F, 'EWIND_F', _RC)
-      call MAPL_GetPointer(import, NWIND_F, 'NWIND_F', _RC)
-      call MAPL_GetPointer(import, PSURF_F, 'PSURF_F', _RC)
-      call MAPL_GetPointer(import, RAINF_F, 'RAINF_F', _RC)
+      call MAPL_GetPointer(import, TAIR, 'TAIR', _RC)
+      call MAPL_GetPointer(import, QAIR, 'QAIR', _RC)
+      call MAPL_GetPointer(import, SWD, 'SWD', _RC)
+      call MAPL_GetPointer(import, LWD, 'LWD', _RC)
+      call MAPL_GetPointer(import, U, 'U', _RC)
+      call MAPL_GetPointer(import, V, 'V', _RC)
+      call MAPL_GetPointer(import, PSURF, 'PSURF', _RC)
+      call MAPL_GetPointer(import, PRCP, 'PRCP', _RC)
       call MAPL_GetPointer(import, SNOWF_F, 'SNOWF_F', _RC)
 
       call MAPL_GetPointer(export, AVGSURFT, 'AVGSURFT', ALLOC=.true., _RC)
       call MAPL_GetPointer(export, QH, 'QH', _RC)
       call MAPL_GetPointer(export, QLE, 'QLE', _RC)
       call MAPL_GetPointer(export, QS, 'QS', _RC)
-      call MAPL_GetPointer(export, SWE, 'SWE', _RC)
+      call MAPL_GetPointer(export, SNOW, 'SNOW', _RC)
 
       ! Sync LIS's clock to the current GEOS time, then scatter GEOS's gridded
       ! forcing into LIS's tile space.
@@ -234,14 +233,14 @@ contains
       call ESMF_TimeGet(current_time, YY=year, MM=month, DD=day, H=hour, M=minute, S=second, _RC)
       call LIS_timemgr_set(LIS_rc, year, month, day, hour, minute, second, 0, LIS_rc%ts)
 
-      call PutForcing(trim(LIS_FORC_Tair%varname(1)), TAIR_F, _RC)
-      call PutForcing(trim(LIS_FORC_Qair%varname(1)), QAIR_F, _RC)
-      call PutForcing(trim(LIS_FORC_SWdown%varname(1)), SWDOWN_F, _RC)
-      call PutForcing(trim(LIS_FORC_LWdown%varname(1)), LWDOWN_F, _RC)
-      call PutForcing(trim(LIS_FORC_Wind_E%varname(1)), EWIND_F, _RC)
-      call PutForcing(trim(LIS_FORC_Wind_N%varname(1)), NWIND_F, _RC)
-      call PutForcing(trim(LIS_FORC_Psurf%varname(1)), PSURF_F, _RC)
-      call PutForcing(trim(LIS_FORC_Rainf%varname(1)), RAINF_F, _RC)
+      call PutForcing(trim(LIS_FORC_Tair%varname(1)), TAIR, _RC)
+      call PutForcing(trim(LIS_FORC_Qair%varname(1)), QAIR, _RC)
+      call PutForcing(trim(LIS_FORC_SWdown%varname(1)), SWD, _RC)
+      call PutForcing(trim(LIS_FORC_LWdown%varname(1)), LWD, _RC)
+      call PutForcing(trim(LIS_FORC_Wind_E%varname(1)), U, _RC)
+      call PutForcing(trim(LIS_FORC_Wind_N%varname(1)), V, _RC)
+      call PutForcing(trim(LIS_FORC_Psurf%varname(1)), PSURF, _RC)
+      call PutForcing(trim(LIS_FORC_Rainf%varname(1)), PRCP, _RC)
       call PutForcing(trim(LIS_FORC_Snowf%varname(1)), SNOWF_F, _RC)
 
       ! Advance LIS one GEOS heartbeat: forcing-to-tile-space interpolation,
@@ -258,8 +257,8 @@ contains
       if (associated(QS)) then
          call GetDiagnostic(LIS_MOC_QS, 'Qs', QS, _RC)
       end if
-      if (associated(SWE)) then
-         call GetDiagnostic(LIS_MOC_SWE, 'SWE', SWE, _RC)
+      if (associated(SNOW)) then
+         call GetDiagnostic(LIS_MOC_SWE, 'SWE', SNOW, _RC)
       end if
 
       ! TODO: fill AVGSURFT and the remaining exports the same way via GetDiagnostic

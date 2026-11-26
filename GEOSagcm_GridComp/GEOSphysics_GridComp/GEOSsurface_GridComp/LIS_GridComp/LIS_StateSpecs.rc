@@ -1,3 +1,24 @@
+#----------------------------------------------------------------------------------------------
+# LIS_GridComp state specs (processed by mapl_acg, see CMakeLists.txt)
+#
+# Source: LISF NoahMP 5.0 GEOS field catalog (reference only, not compiled)
+#   @LISF/lis/surfacemodels/land/noahmp.5.0/cpl_geos/reference/LIS_FieldCatalog_RAR.F90
+#
+# Rules for sorting catalog fields into states:
+#   IMPORT   = adImport   and not directConn
+#   EXPORT   = adExport   and not directConn
+#   INTERNAL = directConn  (none in this catalog, so no INTERNAL category)
+# NAME is the catalog stateName upper-cased; LONG NAME is the catalog stdName.
+#
+# Update of 2026-11-25 (field set replaced by the RAR catalog):
+#   - 42 imports, 24 exports, 12 internals became 14 imports, 38 exports, 0 internals.
+#   - INTERNAL category removed (SMLIQFRACL1-4, SMFRACL1-4, SOILTEMPL1-4).
+#   - Units converted to MAPL style: kg/m2s -> kg m-2 s-1, W/m2 -> W m-2, m/s -> m s-1,
+#     N/m2 -> N m-2, g/m2s -> g m-2 s-1, kg/kg -> kg kg-1, kg/m2 -> kg m-2,
+#     m3/m3 -> m3 m-3, - -> 1, mm/soil_timestep -> kg m-2 (per LIS soil time step).
+#   - SWD is kept as both an import and an export, as in the catalog.
+#----------------------------------------------------------------------------------------------
+
 schema_version: 2.0.0
 component: LIS
 
@@ -7,48 +28,20 @@ category: IMPORT
 #----------------------------------------------------------------------------------------------
  NAME              | UNITS      | DIMS | VLOC | LONG NAME
 #----------------------------------------------------------------------------------------------
- T2_F              | K          | xy   | N    | 2m_air_temperature
- CHS2_F            | m s-1      | xy   | N    | 2m_heat_exchange_coefficient
- CQS2_F            | m s-1      | xy   | N    | 2m_moisture_exchange_coefficient
- TH2_F             | K          | xy   | N    | 2m_potential_temperature
- Q2_F              | kg kg-1    | xy   | N    | 2m_specific_humidity
- TAIR_F            | K          | xy   | N    | air_temperature
- ALBEDO_F          | 1          | xy   | N    | albedo
- DENSITY_F         | kg m-3     | xy   | N    | atmospheric_density
- CAPE_F            | J kg-1     | xy   | N    | convective_available_potential_energy
- CRAINF_F          | kg m-2 s-1 | xy   | N    | convective_rainfall_flux
- COSZENITH_F       | -          | xy   | N    | cosine_solar_zenith_angle
- EWIND_F           | m s-1      | xy   | N    | eastward_wind
- EMISS_F           | -          | xy   | N    | emissivity
- FHEIGHT_F         | m          | xy   | N    | forcing_height
- GREENNESS_F       | 1          | xy   | N    | green_vegetation_fraction
- CH_F              | -          | xy   | N    | heat_exchange_coefficient_in_air
- LPRESSURE_F       | Pa         | xy   | N    | level_pressure
- MIXRATIO_F        | kg kg-1    | xy   | N    | mixing_ratio
- CM_F              | m s-1      | xy   | N    | momentum_exchange_coefficient_in_air
- NWIND_F           | m s-1      | xy   | N    | northward_wind
- O3_F              | kg kg-1    | xy   | N    | ozone_concentration
- PET_F             | kg m-2 s-1 | xy   | N    | potential_evaporation
- RAINF_F           | kg m-2 s-1 | xy   | N    | rainfall_flux
- REFET_F           | kg m-2     | xy   | N    | reference_et
- XICE_F            | -          | xy   | N    | seaicemask
+ PSURF             | Pa         | xy   | N    | surface_air_pressure
+ TAIR              | K          | xy   | N    | air_temperature
+ QAIR              | kg kg-1    | xy   | N    | specific_humidity
+ LWD               | W m-2      | xy   | N    | surface_downwelling_longwave_flux_in_air
+ SWD               | W m-2      | xy   | N    | surface_downwelling_shortwave_flux_in_air
+ U                 | m s-1      | xy   | N    | eastward_wind
+ V                 | m s-1      | xy   | N    | northward_wind
  SNOWF_F           | kg m-2 s-1 | xy   | N    | snowfall_flux
- SNOWFLAG_F        | -          | xy   | N    | snowflag
- TMN_F             | K          | xy   | N    | soil_temperature_lower_boundary
- QAIR_F            | kg kg-1    | xy   | N    | specific_humidity
- PSURF_F           | Pa         | xy   | N    | surface_air_pressure
- DIFFUSESW_F       | W m-2      | xy   | N    | surface_diffuse_downwelling_shortwave_flux_in_air
- DIRECTSW_F        | W m-2      | xy   | N    | surface_direct_downwelling_shortwave_flux_in_air
- PARDF_F           | W m-2      | xy   | N    | surface_downward_par_diffuse
- PARDR_F           | W m-2      | xy   | N    | surface_downward_par_direct
- LWDOWN_F          | W m-2      | xy   | N    | surface_downwelling_longwave_flux_in_air
- SWDOWN_F          | W m-2      | xy   | N    | surface_downwelling_shortwave_flux_in_air
- SWNET_F           | W m-2      | xy   | N    | surface_net_downward_shortwave_flux
- ROUGHNESS_F       | m          | xy   | N    | surface_roughness_length
- QSFC_F            | kg kg-1    | xy   | N    | surface_specific_humidity
- VAPORPRESS_F      | -          | xy   | N    | vapor_pressure
- VAPORPRESSDEF_F   | -          | xy   | N    | vapor_pressure_deficit
- WIND_F            | m s-1      | xy   | N    | wind_speed
+ PRCP              | kg m-2 s-1 | xy   | N    | total_precipitation
+ RAINFCONV_F       | kg m-2 s-1 | xy   | N    | convective_precipitation
+ RAINFSHCONV_F     | kg m-2 s-1 | xy   | N    | shallow_convective_precipitation
+ RAINFLS_F         | kg m-2 s-1 | xy   | N    | liquid_water_large_scale_precipitation
+ GRAUPELF          | kg m-2 s-1 | xy   | N    | freezing_rain_fall
+ HAILF             | kg m-2 s-1 | xy   | N    | icefall
 
 category: EXPORT
 #----------------------------------------------------------------------------------------------
@@ -56,46 +49,41 @@ category: EXPORT
 #----------------------------------------------------------------------------------------------
  NAME              | UNITS      | DIMS | VLOC | LONG NAME
 #----------------------------------------------------------------------------------------------
- CHS2_F            | m s-1      | xy   | N    | 2m_heat_exchange_coefficient
- CQS2_F            | m s-1      | xy   | N    | 2m_moisture_exchange_coefficient
- ALBEDO_F          | 1          | xy   | N    | albedo
- ALBEDO_SNWFF      | 1          | xy   | N    | albedo_w_snow_effect
- CANOPMOIST        | m          | xy   | N    | canopy_moisture
- QG                | W m-2      | xy   | N    | downward_heat_flux_in_soil
- EFFMIXRATIO       | kg kg-1    | xy   | N    | effective_mixing_ratio
- EMISS_F           | -          | xy   | N    | emissivity
- QLEKINEMATIC      | kg m-2 s-1 | xy   | N    | latent_heat_flux_kinematic
- SWE               | kg m-2     | xy   | N    | liquid_water_content_of_surface_snow
- RELSMC            | m3 m-3     | xy   | N    | relative_soil_moisture
- ROOTMOIST         | m3 m-3     | xy   | N    | root_zone_soil_moisture
- XICE_F            | -          | xy   | N    | seaicemask
- SNOWDEPTH         | m          | xy   | N    | snow_depth
- QSM               | kg m-2 s-1 | xy   | N    | snowmelt
- SOILMOIST         | kg m-2     | xy   | N    | soil_moisture_content
- QSB               | kg m-2     | xy   | N    | subsurface_runoff_amount
- ROUGHNESS_F       | m          | xy   | N    | surface_roughness_length
  QS                | kg m-2     | xy   | N    | surface_runoff_amount
- SNOWCOVER         | -          | xy   | N    | surface_snow_area_fraction
+ QSB               | kg m-2     | xy   | N    | subsurface_runoff_amount
+ TOTALRUNOFF       | kg m-2     | xy   | N    | total_runoff
  AVGSURFT          | K          | xy   | N    | surface_temperature
- QLE               | W m-2      | xy   | N    | surface_upward_latent_heat_flux
+ AVGSURFQ          | kg kg-1    | xy   | N    | mean_surface_specific_humidity
+ SNOW              | kg m-2     | xy   | N    | liquid_water_content_of_surface_snow
+ TAIR_T2M          | K          | xy   | N    | 2m_air_temperature
  QH                | W m-2      | xy   | N    | surface_upward_sensible_heat_flux
- VEGTYPE           | -          | xy   | N    | vegetationtype
-
-category: INTERNAL
-#----------------------------------------------------------------------------------------------
-#  VARIABLE        | DIMENSIONS        |          Additional Metadata
-#----------------------------------------------------------------------------------------------
- NAME              | UNITS      | DIMS | VLOC | LONG NAME
-#----------------------------------------------------------------------------------------------
- SMLIQFRACL1       | m3 m-3     | xy   | N    | liquid_fraction_of_soil_moisture_layer_1
- SMLIQFRACL2       | m3 m-3     | xy   | N    | liquid_fraction_of_soil_moisture_layer_2
- SMLIQFRACL3       | m3 m-3     | xy   | N    | liquid_fraction_of_soil_moisture_layer_3
- SMLIQFRACL4       | m3 m-3     | xy   | N    | liquid_fraction_of_soil_moisture_layer_4
- SMFRACL1          | m3 m-3     | xy   | N    | soil_moisture_fraction_layer_1
- SMFRACL2          | m3 m-3     | xy   | N    | soil_moisture_fraction_layer_2
- SMFRACL3          | m3 m-3     | xy   | N    | soil_moisture_fraction_layer_3
- SMFRACL4          | m3 m-3     | xy   | N    | soil_moisture_fraction_layer_4
- SOILTEMPL1        | K          | xy   | N    | soil_temperature_layer_1
- SOILTEMPL2        | K          | xy   | N    | soil_temperature_layer_2
- SOILTEMPL3        | K          | xy   | N    | soil_temperature_layer_3
- SOILTEMPL4        | K          | xy   | N    | soil_temperature_layer_4
+ Z0                | m          | xy   | N    | surface_roughness_length
+ CH_F              | m s-1      | xy   | N    | heat_exchange_coefficient_in_air
+ CM_F              | m s-1      | xy   | N    | momentum_exchange_coefficient_in_air
+ EVAP              | kg m-2 s-1 | xy   | N    | total_evapotranspiration
+ ZPD               | m          | xy   | N    | displacement_height
+ EMISS             | 1          | xy   | N    | emissivity
+ ALBEDOVISDIR      | 1          | xy   | N    | surface_reflectivity_visible_beam
+ ALBEDOVISDIF      | 1          | xy   | N    | surface_reflectivity_visible_diffuse
+ ALBEDONIRDIR      | 1          | xy   | N    | surface_reflectivity_near_infrared_beam
+ ALBEDONIRDIF      | 1          | xy   | N    | surface_reflectivity_near_infrared_diffuse
+ USTARVEG          | m s-1      | xy   | N    | friction_velocity_vegetated
+ USTARBARE         | m s-1      | xy   | N    | friction_velocity_bare
+ USTAR             | m s-1      | xy   | N    | friction_velocity
+ TAUX              | N m-2      | xy   | N    | eastward_surface_stress_on_air
+ TAUY              | N m-2      | xy   | N    | northward_surface_stress_on_air
+ SWD               | W m-2      | xy   | N    | surface_downwelling_shortwave_flux_in_air
+ LAI               | 1          | xy   | N    | leaf_area_index
+ SAI               | 1          | xy   | N    | stem_area_index
+ VAI               | 1          | xy   | N    | vegetation_area_index
+ GREENNESS         | 1          | xy   | N    | greenness_fraction
+ LANDCOVER         | 1          | xy   | N    | vegetation_type
+ QLE               | W m-2      | xy   | N    | latent_heat_flux
+ CANOPINT          | kg m-2     | xy   | N    | canopy_water_content
+ NEE               | g m-2 s-1  | xy   | N    | net_ecosystem_exchange
+ STC1              | K          | xy   | N    | soil_temperature_layer_1
+ SMC1              | m3 m-3     | xy   | N    | soil_moisture_layer_1
+ ROOTMOIST         | m3 m-3     | xy   | N    | soil_moisture_rootzone
+ SNOWH             | m          | xy   | N    | snow_depth
+ SNOCVR            | 1          | xy   | N    | snow_cover_fraction
+ RHOS              | 1          | xy   | N    | surface_air_density
