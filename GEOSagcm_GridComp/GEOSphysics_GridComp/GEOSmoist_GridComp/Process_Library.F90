@@ -7146,7 +7146,7 @@ end subroutine ANVIL_EVAP_SUBL3
                DBZ_TOP=MAPL_UNDEF
                DO J=1,JM ; DO I=1,IM
                   DO L=LM,1,-1
-                     if (ZLE0(i,j,l) >= 25000.) continue
+                     if (ZLE0(i,j,l) >= 25000.) cycle
                      if (DBZ3D(i,j,l) >= 18.5 ) then
                          DBZ_TOP(I,J) = ZLE0(I,J,L)
                          exit
@@ -7159,7 +7159,7 @@ end subroutine ANVIL_EVAP_SUBL3
                DBZ_M10C=MAPL_UNDEF
                DO J=1,JM ; DO I=1,IM
                   DO L=LM,1,-1
-                     if (ZLE0(i,j,l) >= 25000.) continue
+                     if (ZLE0(i,j,l) >= 25000.) cycle
                      if (T(i,j,l) <= MAPL_TICE-10.0) then
                          DBZ_M10C(I,J) = DBZ3D(I,J,L)
                          exit
